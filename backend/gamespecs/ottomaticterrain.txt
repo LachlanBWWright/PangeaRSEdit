@@ -50,7 +50,7 @@ SpIt:fHBBBBH+:placement,type,p0,p1,p2,p3,flags
 /////////////////////////////////////////////////////////////////
 
 //Fence List
-Fenc:HhLhhhh+:fenceType,numNubs,,bbTop,bbLeft,bbBottom,bbRight
+Fenc:HhLhhhh+:fenceType,numNubs,nubListPtr,bbTop,bbLeft,bbBottom,bbRight
 
 //Fence Nubs
 FnNb:ii+

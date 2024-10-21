@@ -48,7 +48,7 @@ export const ottoMaticSpecs = [
   /////////////////////////////////////////////////////////////////
 
   //Fence List
-  "Fenc:HhLhhhh+:fenceType,numNubs,,bbTop,bbLeft,bbBottom,bbRight",
+  "Fenc:HhLhhhh+:fenceType,numNubs,junkNubListPtr,bbTop,bbLeft,bbBottom,bbRight",
 
   //Fence Nubs
   "FnNb:ii+",
