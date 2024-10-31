@@ -4,7 +4,7 @@ export function UploadPrompt({
   setMapFile: (file: File) => void;
 }) {
   return (
-    <div className="text-white">
+    <div className="text-white m-auto flex-1">
       <input
         type="file"
         accept=".ter.rsrc"

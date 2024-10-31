@@ -2,12 +2,20 @@
 @tailwind components;
 @tailwind utilities;
 
+#root {
+  padding: 0;
+  background-color: #242424;
+}
+
 :root {
   background-color: #242424;
+  margin: 0;
+  padding: 0;
 }
 
 body {
   margin: 0;
+  padding: 0;
   display: flex;
   place-items: center;
   min-width: 320px;

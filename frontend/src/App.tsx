@@ -17,8 +17,8 @@ function App() {
 
   if (!pyodide)
     return (
-      <div className="text-white min-h-screen min-w-screen">
-        <h1>Loading Map Editor...</h1>
+      <div className="text-white w-screen h-screen flex">
+        <h1 className="flex-1 m-auto text-4xl">Loading Map Editor...</h1>
       </div>
     );
 

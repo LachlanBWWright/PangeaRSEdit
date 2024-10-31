@@ -4,6 +4,7 @@ import { load_bytes_from_json, save_to_json } from "../python/rsrcdump";
 import { ottoMaticLevel } from "../python/structSpecs/ottoMaticInterface";
 import { ottoMaticSpecs } from "../python/structSpecs/ottoMatic";
 import { UploadPrompt } from "./UploadPrompt";
+import { EditorView } from "./EditorView";
 
 export function MapPrompt({ pyodide }: { pyodide: PyodideInterface }) {
   const [data, setData] = useState<ottoMaticLevel | null>(null);
@@ -47,12 +48,13 @@ export function MapPrompt({ pyodide }: { pyodide: PyodideInterface }) {
   if (!mapFile) return <UploadPrompt setMapFile={setMapFile} />;
 
   return (
-    <div className="flex flex-col gap-2 text-white min-w-full">
+    <div className="flex flex-col gap-2 text-white h-screen min-w-full">
       <p className="text-xl">{mapFile.name}</p>
       <button className="bg-blue-400 p-2 rounded-md" onClick={(e) => saveMap()}>
         Save and download map
       </button>
       <hr />
+      {data ? <EditorView data={data} /> : <p>Loading...</p>}
     </div>
   );
 }
