@@ -5,9 +5,11 @@ import { ottoMaticLevel } from "../python/structSpecs/ottoMaticInterface";
 import { ottoMaticSpecs } from "../python/structSpecs/ottoMatic";
 import { UploadPrompt } from "./UploadPrompt";
 import { EditorView } from "./EditorView";
+import { Button } from "../components/Button";
+import { Updater, useImmer } from "use-immer";
 
 export function MapPrompt({ pyodide }: { pyodide: PyodideInterface }) {
-  const [data, setData] = useState<ottoMaticLevel | null>(null);
+  const [data, setData] = useImmer<ottoMaticLevel | null>(null);
   const [mapFile, setMapFile] = useState<undefined | File>(undefined);
   useEffect(() => {
     const loadMap = async () => {
@@ -19,7 +21,7 @@ export function MapPrompt({ pyodide }: { pyodide: PyodideInterface }) {
         levelBuffer,
         ottoMaticSpecs,
         [],
-        [],
+        []
       );
       setData(res);
     };
@@ -30,10 +32,10 @@ export function MapPrompt({ pyodide }: { pyodide: PyodideInterface }) {
     if (!mapFile) return;
     let loadRes = await load_bytes_from_json(
       pyodide,
-      mapFile,
+      data,
       ottoMaticSpecs,
       [],
-      [],
+      []
     );
 
     const mapBlob = new Blob([loadRes], { type: ".ter.rsrc" });
@@ -48,25 +50,15 @@ export function MapPrompt({ pyodide }: { pyodide: PyodideInterface }) {
   if (!mapFile) return <UploadPrompt setMapFile={setMapFile} />;
 
   return (
-    <div className="flex flex-col gap-2 text-white h-screen min-w-full">
+    <div className="flex flex-col gap-2 text-white h-screen max-h-screen overflow-clip min-w-full p-2 md:p-6">
       <p className="text-xl">{mapFile.name}</p>
-      <button className="bg-blue-400 p-2 rounded-md" onClick={(e) => saveMap()}>
-        Save and download map
-      </button>
+      <Button onClick={() => saveMap()}>Save and download map</Button>
       <hr />
-      {data ? <EditorView data={data} /> : <p>Loading...</p>}
+      {data ? (
+        <EditorView data={data} setData={setData as Updater<ottoMaticLevel>} />
+      ) : (
+        <p>Loading...</p>
+      )}
     </div>
   );
 }
-
-/*       console.log("Fence nubs", res.FnNb);
-
-      const nubKeys = Object.keys(res.FnNb);
-
-      //Fence Remover 9000
-      for (const key of nubKeys) {
-        res.FnNb[parseInt(key)].obj.forEach((item) => {
-          item[0] = 0;
-          item[1] = 1;
-        });
-      } */

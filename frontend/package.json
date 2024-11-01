@@ -13,7 +13,9 @@
     "pyodide": "^0.26.2",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "react-zoom-pan-pinch": "^3.6.1"
+    "react-konva": "^18.2.10",
+    "react-zoom-pan-pinch": "^3.6.1",
+    "use-immer": "^0.10.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.9.0",
