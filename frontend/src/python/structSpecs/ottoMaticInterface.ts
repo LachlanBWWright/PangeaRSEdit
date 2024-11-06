@@ -1,3 +1,5 @@
+import { FenceType } from "../../data/fences/ottoFenceType";
+
 export type ottoMaticLevel = {
   Atrb: {};
   Fenc: {
@@ -32,8 +34,8 @@ export type ottoMaticLevel = {
 };
 
 export type ottoFence = {
-  fenceType: number;
-  numNumbs: number;
+  fenceType: FenceType;
+  numNubs: number;
   junkNubListPtr: number;
   bbTop: number;
   bbBottom: number;

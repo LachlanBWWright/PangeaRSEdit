@@ -1,14 +1,18 @@
-import { useState } from "react";
+import { useAtom } from "jotai";
 import { Circle } from "react-konva";
+import { SelectedFence } from "../../../data/fences/fenceAtoms";
+import { getColour } from "./Fence";
 
 export default function FenceNub({
   nub,
+  idx,
   setNub,
 }: {
   nub: [number, number];
+  idx: number;
   setNub: (nub: [number, number]) => void;
 }) {
-  const [dragging, setDragging] = useState(false);
+  const [selectedFence, setSelectedFence] = useAtom(SelectedFence);
 
   return (
     <Circle
@@ -16,12 +20,11 @@ export default function FenceNub({
       y={nub[1]}
       radius={20}
       draggable
-      fill={dragging ? "red" : "blue"}
+      fill={idx === selectedFence ? "red" : getColour(idx)}
       onDragStart={() => {
-        setDragging(true);
+        setSelectedFence(idx);
       }}
       onDragEnd={(e) => {
-        setDragging(false);
         setNub([Math.round(e.target.x()), Math.round(e.target.y())]);
       }}
     />
