@@ -2,7 +2,7 @@ import { Updater } from "use-immer";
 import { ottoMaticLevel } from "../../../python/structSpecs/ottoMaticInterface";
 import { SelectedFence } from "../../../data/fences/fenceAtoms";
 import { useAtom } from "jotai";
-import { DeleteButton } from "../../../components/Button";
+import { Button, DeleteButton } from "../../../components/Button";
 import { FenceType, fenceTypeNames } from "../../../data/fences/ottoFenceType";
 
 const NUB_KEY_BASE = 1000;
@@ -24,60 +24,103 @@ export default function FenceMenu({
     .filter((key) => isNaN(key) === false);
 
   return (
-    <div>
-      {fenceData ? (
-        <>
-          <p>
-            Fence {selectedFence} ({fenceData.numNubs} points)
-          </p>
-          <div className="flex flex-row gap-2">
-            <p>
-              Fence Type {fenceTypeNames[fenceData.fenceType]} (
-              {fenceData.fenceType})
-            </p>
-            {/* Fence type selection dropdown */}
-            <select
-              value={fenceData.fenceType}
-              className="text-black"
-              onChange={(e) => {
-                const newFenceType = parseInt(e.target.value);
-                setData((data) => {
-                  if (selectedFence === undefined) return;
-                  data.Fenc[1000].obj[selectedFence].fenceType = newFenceType;
-                });
-              }}
-            >
-              {fenceValues.map((key) => (
-                <option key={key} className="text-black" value={key}>
-                  {fenceTypeNames[key as FenceType]}
-                </option>
-              ))}
-            </select>
-          </div>
-        </>
-      ) : (
+    <div className="flex flex-col gap-2">
+      {fenceData === null ? (
         <p>No Fence Selected</p>
+      ) : (
+        <p>
+          Fence {selectedFence} ({fenceData.numNubs} points)
+        </p>
       )}
-      <DeleteButton
-        disabled={selectedFence === undefined}
-        onClick={() => {
-          if (selectedFence === undefined) return;
 
-          setData((data) => {
-            data.Fenc[1000].obj.splice(selectedFence, 1);
+      <div className="grid grid-cols-[2fr_1fr] gap-2 w-full">
+        <div className="flex flex-col">
+          {fenceData !== null && (
+            <>
+              <img
+                src={`assets/ottoMatic/fences/fence${String(
+                  fenceData.fenceType
+                ).padStart(3, "0")}.png`}
+                className="max-h-40 mx-auto"
+              />
+              <select
+                value={fenceData.fenceType}
+                className="text-black"
+                onChange={(e) => {
+                  const newFenceType = parseInt(e.target.value);
+                  setData((data) => {
+                    if (selectedFence === undefined) return;
+                    data.Fenc[1000].obj[selectedFence].fenceType = newFenceType;
+                  });
+                }}
+              >
+                {fenceValues.map((key) => (
+                  <option key={key} className="text-black" value={key}>
+                    {fenceTypeNames[key as FenceType]}
+                  </option>
+                ))}
+              </select>
+            </>
+          )}
+        </div>
+        <div className="flex flex-col gap-2">
+          <Button
+            disabled={selectedFence === undefined}
+            onClick={() => {
+              setData((data) => {
+                if (selectedFence === undefined) return;
 
-            for (const nubKey of Object.keys(data.FnNb)) {
-              console.log("nubKey", parseInt(nubKey));
-              if (parseInt(nubKey) > selectedFence + NUB_KEY_BASE) {
-                data.FnNb[parseInt(nubKey) - 1] = data.FnNb[parseInt(nubKey)];
-              }
-            }
-          });
-          setSelectedFence(undefined);
-        }}
-      >
-        Delete Fence
-      </DeleteButton>
+                data.Fenc[1000].obj[selectedFence].numNubs++;
+
+                data.FnNb[selectedFence + NUB_KEY_BASE].obj.unshift([
+                  data.FnNb[selectedFence + NUB_KEY_BASE].obj[0][0] - 25,
+                  data.FnNb[selectedFence + NUB_KEY_BASE].obj[0][1] - 25,
+                ]);
+              });
+            }}
+          >
+            Add Front Nub
+          </Button>
+          <Button
+            disabled={selectedFence === undefined}
+            onClick={() => {
+              setData((data) => {
+                if (selectedFence === undefined) return;
+                const lastIdx =
+                  data.FnNb[selectedFence + NUB_KEY_BASE].obj.length - 1;
+                data.Fenc[1000].obj[selectedFence].numNubs++;
+
+                data.FnNb[selectedFence + NUB_KEY_BASE].obj.push([
+                  data.FnNb[selectedFence + NUB_KEY_BASE].obj[lastIdx][0] + 25,
+                  data.FnNb[selectedFence + NUB_KEY_BASE].obj[lastIdx][1] + 25,
+                ]);
+              });
+            }}
+          >
+            Add Back Nub
+          </Button>
+          <DeleteButton
+            disabled={selectedFence === undefined}
+            onClick={() => {
+              if (selectedFence === undefined) return;
+
+              setData((data) => {
+                data.Fenc[1000].obj.splice(selectedFence, 1);
+
+                for (const nubKey of Object.keys(data.FnNb)) {
+                  if (parseInt(nubKey) > selectedFence + NUB_KEY_BASE) {
+                    data.FnNb[parseInt(nubKey) - 1] =
+                      data.FnNb[parseInt(nubKey)];
+                  }
+                }
+              });
+              setSelectedFence(undefined);
+            }}
+          >
+            Delete Fence
+          </DeleteButton>
+        </div>
+      </div>
     </div>
   );
 }

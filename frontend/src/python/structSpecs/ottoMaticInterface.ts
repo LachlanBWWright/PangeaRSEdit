@@ -1,4 +1,5 @@
 import { FenceType } from "../../data/fences/ottoFenceType";
+import { ItemType } from "../../data/items/ottoItemType";
 
 export type ottoMaticLevel = {
   Atrb: {};
@@ -19,8 +20,22 @@ export type ottoMaticLevel = {
     }
   >;
   Hedr: {};
-  ItCo: {};
-  Itms: {};
+
+  ItCo: {
+    1000: {
+      /* Not used in the game */
+      name: "Terrain Items Color Array";
+      order: number;
+      data: any;
+    };
+  };
+  Itms: {
+    1000: {
+      name: "Terrain Items List";
+      obj: ottoItem[];
+      order: number;
+    };
+  };
   Layr: {};
   Liqd: {};
   STgd: {};
@@ -52,7 +67,19 @@ export type ottoHeader = {};
 
 export type ottoItcr = {};
 
-export type ottoItems = {};
+export type ottoItem = {
+  /* u32 bit  */
+  x: number;
+  z: number;
+  /* u16 bit */
+  type: ItemType;
+  flags: number;
+  /* u8 bit */
+  p0: number;
+  p1: number;
+  p2: number;
+  p3: number;
+};
 
 export type ottoLayr = {};
 

@@ -24,9 +24,10 @@ export enum FenceType {
   LAVAFENCE,
   ROCKFENCE,
 
+  SAUCER,
+
   NEURONFENCE,
 
-  SAUCER,
   //COUNT,
 }
 
@@ -56,7 +57,7 @@ export const fenceTypeNames: Record<FenceType, string> = {
   [FenceType.LAVAFENCE]: "Lava Fence",
   [FenceType.ROCKFENCE]: "Rock Fence",
 
-  [FenceType.NEURONFENCE]: "Neuron Fence",
-
   [FenceType.SAUCER]: "Saucer",
+
+  [FenceType.NEURONFENCE]: "Neuron Fence",
 };

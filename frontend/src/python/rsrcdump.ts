@@ -5,7 +5,7 @@ export async function save_to_json<T>(
   bytes: ArrayBuffer,
   struct_specs: string[],
   include_types: string[],
-  exclude_types: string[],
+  exclude_types: string[]
 ): Promise<T> {
   //const reader = new FileReader();
   //@ts-ignore
@@ -22,7 +22,6 @@ export async function save_to_json<T>(
     ${JSON.stringify(include_types)},
     ${JSON.stringify(exclude_types)},
   )`);
-  console.log("RETURNING");
   return JSON.parse(result);
 }
 
@@ -32,7 +31,7 @@ export async function load_bytes_from_json<T>(
   converters: string[] = [],
   only_types: string[] = [],
   skip_types: string[] = [],
-  adf: "True" | "False" = "True",
+  adf: "True" | "False" = "True"
 ): Promise<ArrayBuffer> {
   console.log(json_blob);
   console.log("Loading bytes from json");
@@ -61,7 +60,7 @@ export async function load_bytes_from_json<T>(
   const pyBuffer = res.getBuffer("dataview").data;
   const resBuffer = pyBuffer.buffer.slice(
     pyBuffer.byteOffset,
-    pyBuffer.byteOffset + pyBuffer.byteLength,
+    pyBuffer.byteOffset + pyBuffer.byteLength
   );
   return resBuffer;
 }

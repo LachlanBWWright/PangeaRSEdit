@@ -21,6 +21,7 @@ export default function FenceNub({
       radius={20}
       draggable
       fill={idx === selectedFence ? "red" : getColour(idx)}
+      onMouseDown={() => setSelectedFence(idx)}
       onDragStart={() => {
         setSelectedFence(idx);
       }}

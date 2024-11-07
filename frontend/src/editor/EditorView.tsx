@@ -4,14 +4,19 @@ import { ottoMaticLevel } from "../python/structSpecs/ottoMaticInterface";
 import { Fences } from "./subviews/Fences";
 import { Stage } from "react-konva";
 import { Updater, useImmer } from "use-immer";
+
 import FenceMenu from "./subviews/fences/FenceMenu";
+import { useSetAtom } from "jotai";
+import { SelectedFence } from "../data/fences/fenceAtoms";
+import { Items } from "./subviews/Items";
 
 enum View {
   fences,
-  topology,
   water,
   items,
   splines,
+  topology,
+  tiles,
 }
 
 export function EditorView({
@@ -27,6 +32,7 @@ export function EditorView({
     x: 0,
     y: 0,
   });
+  const setSelectedFence = useSetAtom(SelectedFence);
 
   const zoomIn = () =>
     setStage((stage) => {
@@ -39,18 +45,12 @@ export function EditorView({
 
   return (
     <div className="flex flex-col flex-1 w-full gap-2 min-h-0">
-      <div className="grid grid-cols-6 gap-2 w-full overflow-clip">
+      <div className="grid grid-cols-7 gap-2 w-full overflow-clip">
         <Button
           selected={view === View.fences}
           onClick={() => setView(View.fences)}
         >
           Fences
-        </Button>
-        <Button
-          selected={view === View.topology}
-          onClick={() => setView(View.topology)}
-        >
-          Topology
         </Button>
         <Button
           selected={view === View.water}
@@ -70,6 +70,18 @@ export function EditorView({
         >
           Splines
         </Button>
+        <Button
+          selected={view === View.topology}
+          onClick={() => setView(View.topology)}
+        >
+          Topology
+        </Button>
+        <Button
+          selected={view === View.tiles}
+          onClick={() => setView(View.tiles)}
+        >
+          Tiles
+        </Button>
         <div className="grid grid-cols-2 gap-2">
           <ZoomButton onClick={zoomIn}>Zoom In</ZoomButton>
           <ZoomButton onClick={zoomOut}>Zoom Out</ZoomButton>
@@ -86,8 +98,13 @@ export function EditorView({
         x={stage.x}
         y={stage.y}
         draggable={true}
+        onDblClick={() => {
+          if (view === View.fences) {
+            setSelectedFence(undefined);
+          }
+        }}
         onWheel={(e) => {
-          /* https://stackoverflow.com/questions/52054848/how-to-react-konva-zooming-on-scroll */
+          /*from https://stackoverflow.com/questions/52054848/how-to-react-konva-zooming-on-scroll */
           e.evt.preventDefault();
 
           const scaleBy = 1.05;
@@ -114,6 +131,7 @@ export function EditorView({
         className="w-full min-h-0 flex-1 border-2 border-black overflow-clip"
       >
         <Fences data={data} setData={setData} />
+        <Items data={data} setData={setData} />
       </Stage>
     </div>
   );

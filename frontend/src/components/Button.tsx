@@ -2,17 +2,22 @@ export function Button({
   selected,
   children,
   onClick,
+  disabled,
 }: {
   selected?: boolean;
   children?: React.ReactNode;
   onClick?: () => void;
+  disabled?: boolean;
 }) {
   return (
     <button
+      disabled={disabled}
       className={
-        selected
+        disabled
+          ? "bg-blue-400 text-white rounded-xl p-2 text-lg"
+          : selected
           ? "bg-blue-600 font-bold text-white rounded-xl p-2 text-lg"
-          : "bg-blue-400 hover:font-bold hover:bg-blue-600 text-white rounded-xl p-2 text-lg"
+          : "bg-blue-500 hover:font-bold hover:bg-blue-600 text-white rounded-xl p-2 text-lg"
       }
       onClick={onClick}
     >
@@ -32,7 +37,11 @@ export function DeleteButton({
 }) {
   return (
     <button
-      className="bg-red-400 hover:font-bold hover:bg-red-600 text-white rounded-xl p-2 text-lg"
+      className={
+        disabled
+          ? "bg-red-400 text-white rounded-xl p-2 text-lg"
+          : "bg-red-500 hover:font-bold hover:bg-red-600 text-white rounded-xl p-2 text-lg"
+      }
       disabled={disabled}
       onClick={onClick}
     >
