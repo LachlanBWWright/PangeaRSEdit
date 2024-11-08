@@ -7,6 +7,8 @@ import { UploadPrompt } from "./UploadPrompt";
 import { EditorView } from "./EditorView";
 import { Button } from "../components/Button";
 import { Updater, useImmer } from "use-immer";
+import { DataDeps } from "./DataDeps";
+import ottoPreprocessor from "../data/preprocessors/ottoPreprocessor";
 
 export function MapPrompt({ pyodide }: { pyodide: PyodideInterface }) {
   const [data, setData] = useImmer<ottoMaticLevel | null>(null);
@@ -49,13 +51,24 @@ export function MapPrompt({ pyodide }: { pyodide: PyodideInterface }) {
 
   if (!mapFile) return <UploadPrompt setMapFile={setMapFile} />;
 
+  console.log("mappromptdata", data);
   return (
     <div className="flex flex-col gap-2 text-white h-screen max-h-screen overflow-clip min-w-full p-2 md:p-6">
       <p className="text-xl">{mapFile.name}</p>
+      <Button
+        onClick={() => ottoPreprocessor(setData as Updater<ottoMaticLevel>)}
+      >
+        Update Map Content
+      </Button>
       <Button onClick={() => saveMap()}>Save and download map</Button>
       <hr />
-      {data ? (
-        <EditorView data={data} setData={setData as Updater<ottoMaticLevel>} />
+      {data !== null && data !== undefined ? (
+        <DataDeps data={data} setData={setData as Updater<ottoMaticLevel>}>
+          <EditorView
+            data={data}
+            setData={setData as Updater<ottoMaticLevel>}
+          />
+        </DataDeps>
       ) : (
         <p>Loading...</p>
       )}

@@ -19,8 +19,13 @@ export type ottoMaticLevel = {
       obj: ottoFenceNubs[];
     }
   >;
-  Hedr: {};
-
+  Hedr: {
+    1000: {
+      name: "Header";
+      obj: ottoHeader;
+      order: 0;
+    };
+  };
   ItCo: {
     1000: {
       /* Not used in the game */
@@ -61,9 +66,26 @@ export type ottoFence = {
 export type ottoTileAttribute = {};
 
 export type ottoFenceNubList = ottoFenceNubs[];
+
 export type ottoFenceNubs = [x: number, y: number];
 
-export type ottoHeader = {};
+export type ottoHeader = {
+  mapHeight: number;
+  mapWidth: number;
+  maxY: number;
+  minY: number;
+  numCheckpoints: number;
+  numFences: number;
+  numItems: number;
+  numSplines: number;
+  numTilePages: number;
+  numTiles: number;
+  numUniqueSupertiles: number;
+  numWaterPatches: number;
+  padding: string;
+  tileSize: number;
+  version: number;
+};
 
 export type ottoItcr = {};
 

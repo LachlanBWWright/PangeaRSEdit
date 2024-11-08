@@ -2,7 +2,7 @@ import { Updater } from "use-immer";
 import { ottoMaticLevel } from "../../../python/structSpecs/ottoMaticInterface";
 import { Label, Rect, Tag, Text } from "react-konva";
 import { SelectedItem } from "../../../data/items/itemAtoms";
-import { useAtom } from "jotai";
+import { useSetAtom } from "jotai";
 import { useState } from "react";
 import { itemTypeNames } from "../../../data/items/ottoItemType";
 
@@ -15,7 +15,7 @@ export function Item({
   setData: Updater<ottoMaticLevel>;
   itemIdx: number;
 }) {
-  const [selectedItem, setSelectedItem] = useAtom(SelectedItem);
+  const setSelectedItem = useSetAtom(SelectedItem);
   const item = data.Itms[1000].obj[itemIdx];
   const [hovering, setHovering] = useState(false);
 
@@ -28,15 +28,30 @@ export function Item({
         height={10}
         stroke="red"
         fill="red"
-      />
-      <Text
-        text={item.type.toString()}
-        fill="black"
-        x={item.x - 2}
-        y={item.z}
+        draggable
         onMouseOver={() => setHovering(true)}
         onMouseLeave={() => setHovering(false)}
+        onMouseDown={() => setSelectedItem(itemIdx)}
+        onDragStart={() => setSelectedItem(itemIdx)}
+        onDragEnd={(e) => {
+          setData((data) => {
+            data.Itms[1000].obj[itemIdx].x = Math.round(e.target.x());
+            data.Itms[1000].obj[itemIdx].z = Math.round(e.target.y());
+          });
+        }}
       />
+      {!hovering && (
+        <Text
+          text={item.type.toString()}
+          fill="black"
+          visible={!hovering}
+          x={item.x - 2}
+          y={item.z}
+          draggable
+          onMouseOver={() => setHovering(true)}
+          onMouseLeave={() => setHovering(false)}
+        />
+      )}
       <Label opacity={1} visible={hovering} x={item.x + 15} y={item.z}>
         <Tag fill="red" />
         <Text text={itemTypeNames[item.type]} fill="black" />

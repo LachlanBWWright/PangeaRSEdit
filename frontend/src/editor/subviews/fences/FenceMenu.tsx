@@ -107,12 +107,17 @@ export default function FenceMenu({
               setData((data) => {
                 data.Fenc[1000].obj.splice(selectedFence, 1);
 
+                let lastKey: string | undefined = undefined;
                 for (const nubKey of Object.keys(data.FnNb)) {
+                  lastKey = nubKey;
                   if (parseInt(nubKey) > selectedFence + NUB_KEY_BASE) {
                     data.FnNb[parseInt(nubKey) - 1] =
                       data.FnNb[parseInt(nubKey)];
                   }
                 }
+                if (lastKey === undefined)
+                  throw new Error("Missing Final Nubkey");
+                delete data.FnNb[parseInt(lastKey)];
               });
               setSelectedFence(undefined);
             }}

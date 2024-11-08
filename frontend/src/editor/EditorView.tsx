@@ -33,7 +33,7 @@ export function EditorView({
     y: 0,
   });
   const setSelectedFence = useSetAtom(SelectedFence);
-
+  console.log(data);
   const zoomIn = () =>
     setStage((stage) => {
       stage.scale = Math.max(0.1, stage.scale * 1.1);
