@@ -16,4 +16,14 @@ export default function ottoPreprocessor(setData: Updater<ottoMaticLevel>) {
       }
     });
   });
+
+  //TODO: Fence Bounding Boxes
+
+  //TODO: Water Bounding Boxes
+
+  //TODO: Setting Order
+
+  //HEDR (0) => alis (1-39) => ATrb(40) => Layr (41) => YCrd (42) => STgd (43)
+  //=> Itms(44) => ItCo(45) => Spln(46) => SpNB(47 - 64) => SpPt(65 - 82) => SpIt(83 - 100)
+  //Fenc (101) => FnNb (102-150) => Liqd (151) =>
 }

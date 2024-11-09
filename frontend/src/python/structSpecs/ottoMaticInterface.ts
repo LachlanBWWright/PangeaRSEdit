@@ -2,7 +2,13 @@ import { FenceType } from "../../data/fences/ottoFenceType";
 import { ItemType } from "../../data/items/ottoItemType";
 
 export type ottoMaticLevel = {
-  Atrb: {};
+  Atrb: {
+    1000: {
+      name: "Tile Attribute Data";
+      obj: ottoTileAttribute[];
+      order: number;
+    };
+  };
   Fenc: {
     //List of contiguous fences
     1000: {
@@ -15,8 +21,8 @@ export type ottoMaticLevel = {
     number,
     {
       name: "Fence Nub List";
+      obj: ottoFenceNub[];
       order: number;
-      obj: ottoFenceNubs[];
     }
   >;
   Hedr: {
@@ -30,8 +36,8 @@ export type ottoMaticLevel = {
     1000: {
       /* Not used in the game */
       name: "Terrain Items Color Array";
+      data: string;
       order: number;
-      data: any;
     };
   };
   Itms: {
@@ -41,16 +47,83 @@ export type ottoMaticLevel = {
       order: number;
     };
   };
-  Layr: {};
-  Liqd: {};
-  STgd: {};
-  SpIt: {};
-  SpNb: {};
-  SpPt: {};
-  Spln: {};
-  Ycrd: {};
-  alis: {};
-  _metadata: {};
+  Layr: {
+    1000: {
+      name: "Terrain Layer Matrix";
+      obj: number[]; //Ints
+      order: number;
+    };
+  };
+  Liqd: {
+    1000: {
+      name: "Water List";
+      data: string;
+      order: number;
+    };
+  };
+  STgd: {
+    1000: {
+      name: "SuperTile Grid";
+      obj: ottoSupertileGrid[];
+      order: number;
+    };
+  };
+  SpIt: Record<
+    number,
+    {
+      name: "Spline Item List";
+      obj: ottoSplineItem;
+      order: number;
+    }
+  >;
+  SpNb: Record<
+    number,
+    {
+      name: "Spline Nub List";
+      obj: ottoSplineNub[];
+      order: number;
+    }
+  >;
+  SpPt: Record<
+    number,
+    {
+      name: "Spline Point List";
+      obj: ottoSplinePoint[];
+      order: number;
+    }
+  >;
+  Spln: {
+    1000: {
+      name: "Spline List";
+      obj: ottoSpline[];
+      order: number;
+    };
+  };
+  Ycrd: {
+    1000: {
+      name: "Floor&Ceiling Y Coords";
+      obj: number[]; //Floats
+      order: number;
+    };
+  };
+  alis: Record<
+    number,
+    {
+      name: "Texture Page Picture Alias";
+      data: string;
+      order: number;
+    }
+  >;
+  _metadata: {
+    file_attributes: number;
+    junk1: number;
+    junk2: number;
+  };
+};
+export type ottoTileAttribute = {
+  flags: number;
+  p0: number;
+  p1: number;
 };
 
 export type ottoFence = {
@@ -63,11 +136,7 @@ export type ottoFence = {
   bbRight: number;
 };
 
-export type ottoTileAttribute = {};
-
-export type ottoFenceNubList = ottoFenceNubs[];
-
-export type ottoFenceNubs = [x: number, y: number];
+export type ottoFenceNub = [x: number, y: number];
 
 export type ottoHeader = {
   mapHeight: number;
@@ -107,16 +176,49 @@ export type ottoLayr = {};
 
 export type ottoLiquid = {};
 
-export type ottoSupertileGridMatrix = {};
+export type ottoSupertileGrid = {
+  padByte: string; //TODO: Should be removed
+  isEmpty: boolean;
+  superTileId: number;
+};
 
-export type ottoSplineItemType = {};
+export type ottoSplineItem = {
+  flags: number;
+  p0: number;
+  p1: number;
+  p2: number;
+  p3: number;
+  placement: number;
+  type: number;
+};
 
-export type ottoSplineNubs = {};
+export type ottoSplineNub = {
+  x: number;
+  z: number;
+};
 
-export type ottoSpinePoints = {};
+export type ottoSplinePoint = {
+  //These are actually floats
+  x: number;
+  z: number;
+};
 
-export type ottoSplineList = {};
+export type ottoSpline = {
+  //TODO: Fix
+  [".field1"]: number;
+  [".field2"]: number;
+  [".field4"]: number;
+  [".field6"]: number;
+  [".field7"]: number;
+  bbBottom: number;
+  bbLeft: number;
+  bbRight: number;
+  bbTop: number;
+  numItems: number;
+  numNubs: number;
+  numPoints: number;
+};
 
-export type ottoYCoordinnate = number;
+export type ottoYCoordinate = {};
 
 export type ottoAlis = {};

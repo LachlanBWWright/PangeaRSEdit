@@ -10,11 +10,12 @@ export const ottoMaticSpecs = [
   "Atrb:HBB+:flags,p0,p1",
 
   //Supertile Grid Matrix (SuperTileGridType)
-  "STgd:1s?H+:padByte,isEmpty,superTileId",
+  //"STgd:1s?H+:padByte,isEmpty,superTileId",
+  "STgd:x?H+:isEmpty,superTileId",
 
   //Map Layer Resources - 2D Array of supertiles (References Tile Attribute Resource)
   //Specifically its flags, used for 'TILE_ATTRIB' bit flags
-  //Layr:H+:TileAttributeIndex
+  "Layr:H+", //:TileAttributeIndex",
 
   //Height Data Matrix (2D array)
   //Each supertile has SUPERTILE_SIZE values in each direction (8)
@@ -32,7 +33,10 @@ export const ottoMaticSpecs = [
   /////////////////////////////////////////////////////////////////
 
   //Spline List
-  "Spln:HHLLLHHLhhhh+:numNubs,,,numPoints,,numItems,,,bbTop,bbLeft,bbBottom,bbRight",
+  //"Spln:HHLLLHHLhhhh+:numNubs,,,numPoints,,numItems,,,bbTop,bbLeft,bbBottom,bbRight",
+  //"Spln:iffiffiffhhhh+:numNubs,,,numPoints,,numItems,,,bbTop,bbLeft,bbBottom,bbRight",
+  "Spln:ixxxxixxxxixxxxhhhh+:numNubs,numPoints,numItems,bbTop,bbLeft,bbBottom,bbRight",
+  //first 2 Missing are double floats (x z)
 
   //Spline Nubs
   "SpNb:ff+:x,z",
