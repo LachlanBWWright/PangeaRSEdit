@@ -34,7 +34,7 @@ export type ottoMaticLevel = {
   };
   ItCo: {
     1000: {
-      /* Not used in the game */
+      /* Not used in the game, internal OreoTerrain item */
       name: "Terrain Items Color Array";
       data: string;
       order: number;
@@ -54,13 +54,15 @@ export type ottoMaticLevel = {
       order: number;
     };
   };
-  Liqd: {
-    1000: {
-      name: "Water List";
-      data: string;
-      order: number;
-    };
-  };
+  Liqd:
+    | undefined
+    | {
+        1000: {
+          name: "Water List";
+          obj: ottoLiquid[];
+          order: number;
+        };
+      };
   STgd: {
     1000: {
       name: "SuperTile Grid";
@@ -107,6 +109,7 @@ export type ottoMaticLevel = {
     };
   };
   alis: Record<
+    /* Appeas in skeleton unpacking code, doesn't seem to be used for .ter files */
     number,
     {
       name: "Texture Page Picture Alias";
@@ -172,9 +175,26 @@ export type ottoItem = {
   p3: number;
 };
 
-export type ottoLayr = {};
+export const OTTO_LIQD_NUBS = 100;
+export type ottoLiquid = {
+  bBoxBottom: number;
+  bBoxLeft: number;
+  bBoxRight: number;
+  bBoxTop: number;
 
-export type ottoLiquid = {};
+  flags: number;
+  height: number;
+  hotSpotX: number;
+  hotSpotZ: number;
+  numNubs: number;
+  reserved: number;
+  type: number;
+
+  nubs: [
+    number,
+    number
+  ][] /* 100 nubs, requires packing-unpacking from rsrcdump json */;
+};
 
 export type ottoSupertileGrid = {
   padByte: string; //TODO: Should be removed
@@ -204,12 +224,6 @@ export type ottoSplinePoint = {
 };
 
 export type ottoSpline = {
-  //TODO: Fix
-  [".field1"]: number;
-  [".field2"]: number;
-  [".field4"]: number;
-  [".field6"]: number;
-  [".field7"]: number;
   bbBottom: number;
   bbLeft: number;
   bbRight: number;
@@ -218,7 +232,3 @@ export type ottoSpline = {
   numNubs: number;
   numPoints: number;
 };
-
-export type ottoYCoordinate = {};
-
-export type ottoAlis = {};

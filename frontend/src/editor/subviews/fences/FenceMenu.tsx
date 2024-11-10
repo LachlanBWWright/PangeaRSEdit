@@ -30,12 +30,10 @@ export default function FenceMenu({
           <Button
             onClick={() => {
               setData((data) => {
-                if (selectedFence === undefined) return;
-
                 const keys = Object.keys(data.Fenc[1000].obj);
                 const lastStr =
-                  keys.length !== 0 ? keys[keys.length - 1] : "999";
-                const last = parseInt(lastStr) + 1;
+                  keys.length !== 0 ? keys[keys.length - 1] : "999"; //Minimum is 1000
+                const last = parseInt(lastStr) + 1; //Get key of new last
 
                 //Add Fenc object
                 data.Fenc[1000].obj[last] = {
@@ -47,9 +45,20 @@ export default function FenceMenu({
                   bbLeft: 0,
                   bbRight: 0,
                 };
-              });
 
-              //Add fence nubs
+                data.FnNb[last + NUB_KEY_BASE] = {
+                  name: "Fence Nub List", //Is this needed?
+                  obj: [
+                    [0, 0],
+                    [1000, 1000],
+                  ],
+                  order: 999, //Doesn't matter
+                };
+
+                //Add fence nubs
+                data.FnNb[last + NUB_KEY_BASE].obj[0] = [0, 0];
+                data.FnNb[last + NUB_KEY_BASE].obj[1] = [1000, 1000];
+              });
             }}
           >
             Add New Fence

@@ -62,7 +62,8 @@ export const ottoMaticSpecs = [
   /////////////////////////////////////////////////////////////////
 
   //Liquids
-  //Liqd:-TODO-:type,flags,height,numNubs,reserved,nubLIST(100 items, each with 32 bit x and y float),hotSpotX,hotSpotZ,bBoxTop,bBoxLeft,bBoxBottom,bBoxRight
+  /* Padding byte placement seems ok, not thoroughly checked */
+  "Liqd:H x x I i h x x i 200f f f h h h h+:type,flags,height,numNubs,reserved,x`y[100],hotSpotX,hotSpotZ,bBoxTop,bBoxLeft,bBoxBottom,bBoxRight",
 ];
 
 /* 

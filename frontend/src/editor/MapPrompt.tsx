@@ -7,11 +7,14 @@ import { UploadPrompt } from "./UploadPrompt";
 import { EditorView } from "./EditorView";
 import { Button } from "../components/Button";
 import { Updater, useImmer } from "use-immer";
-import ottoPreprocessor from "../data/preprocessors/ottoPreprocessor";
+import ottoPreprocessor, {
+  newJsonProcess,
+} from "../data/preprocessors/ottoPreprocessor";
 
 export function MapPrompt({ pyodide }: { pyodide: PyodideInterface }) {
   const [data, setData] = useImmer<ottoMaticLevel | null>(null);
   const [mapFile, setMapFile] = useState<undefined | File>(undefined);
+  const [processed, setProcessed] = useState(false);
   useEffect(() => {
     const loadMap = async () => {
       if (!mapFile) return;
@@ -24,10 +27,18 @@ export function MapPrompt({ pyodide }: { pyodide: PyodideInterface }) {
         [],
         []
       );
+
+      newJsonProcess(res);
       setData(res);
     };
     loadMap();
   }, [mapFile]);
+
+  useEffect(() => {
+    if (!processed) return;
+    saveMap();
+    setProcessed(false);
+  }, [processed, data]);
 
   async function saveMap() {
     if (!mapFile) return;
@@ -54,11 +65,13 @@ export function MapPrompt({ pyodide }: { pyodide: PyodideInterface }) {
     <div className="flex flex-col gap-2 text-white h-screen max-h-screen overflow-clip min-w-full p-2 md:p-6">
       <p className="text-xl">{mapFile.name}</p>
       <Button
-        onClick={() => ottoPreprocessor(setData as Updater<ottoMaticLevel>)}
+        onClick={() => {
+          ottoPreprocessor(setData as Updater<ottoMaticLevel>);
+          setProcessed(true); //Trigger useEffect for downloading
+        }}
       >
-        Update Map Content
+        Save and download map
       </Button>
-      <Button onClick={() => saveMap()}>Save and download map</Button>
       <hr />
       {data !== null && data !== undefined ? (
         <EditorView data={data} setData={setData as Updater<ottoMaticLevel>} />
