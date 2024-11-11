@@ -9,6 +9,7 @@ import FenceMenu from "./subviews/fences/FenceMenu";
 import { useSetAtom } from "jotai";
 import { SelectedFence } from "../data/fences/fenceAtoms";
 import { Items } from "./subviews/Items";
+import ItemMenu from "./subviews/items/ItemMenu";
 
 enum View {
   fences,
@@ -89,6 +90,7 @@ export function EditorView({
       </div>
       <div>
         {view === View.fences && <FenceMenu data={data} setData={setData} />}
+        {view === View.items && <ItemMenu data={data} setData={setData} />}
       </div>
       <Stage
         width={2000}
