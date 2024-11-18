@@ -1,53 +1,53 @@
 export enum SplineItemType {
-  PrimeHuman = 4, // 4: human
-  PrimeEnemy_BrainAlien = 7, // 7:  brain alien
-  PrimeEnemy_Onion = 8, // 8:  onion
-  PrimeEnemy_Corn = 9, // 9:  corn
-  PrimeEnemy_Tomato = 10, // 10: tomato
-  PrimeMagnetMonster = 35, // 35: magnet monster
-  PrimeMovingPlatform = 40, // 40: moving platform
-  PrimeEnemy_Flamester = 49, // 49: flamester
-  PrimeEnemy_GiantLizard = 50, // 50: giant lizard
-  PrimeEnemy_Mantis = 52, // 52: mantis
-  PrimeEnemy_Mutant = 59, // 59:
-  PrimeEnemy_MutantRobot = 60, // 60:
-  PrimeHumanScientist = 61, // 61:  scientist human
-  PrimeEnemy_Clown = 78, // 78:	clown enemy
-  PrimeEnemy_ClownFish = 79, // 79: clown fish
-  PrimeEnemy_StrongMan = 81, // 81: strongman
-  PrimeEnemy_JawsBot = 89, // 89: jawsbot enemy
-  PrimeEnemy_IceCube = 92, // 92:	ice cube enemy
-  PrimeEnemy_HammerBot = 93, // 93:	hammer bot enemy
-  PrimeEnemy_DrillBot = 94, // 94:  drill bot
-  PrimeEnemy_SwingerBot = 95, // 95:  swinger bot
-  PrimeLavaPlatform = 98, // 98:	lava platform
-  PrimeRailGun = 103, // 103: rail gun
+  Human = 4, // 4: human
+  BrainAlien = 7, // 7:  brain alien
+  Onion = 8, // 8:  onion
+  Corn = 9, // 9:  corn
+  Tomato = 10, // 10: tomato
+  MagnetMonster = 35, // 35: magnet monster
+  MovingPlatform = 40, // 40: moving platform
+  Flamester = 49, // 49: flamester
+  GiantLizard = 50, // 50: giant lizard
+  Mantis = 52, // 52: mantis
+  Mutant = 59, // 59:
+  MutantRobot = 60, // 60:
+  HumanScientist = 61, // 61:  scientist human
+  Clown = 78, // 78:	clown enemy
+  ClownFish = 79, // 79: clown fish
+  StrongMan = 81, // 81: strongman
+  JawsBot = 89, // 89: jawsbot enemy
+  IceCube = 92, // 92:	ice cube enemy
+  HammerBot = 93, // 93:	hammer bot enemy
+  DrillBot = 94, // 94:  drill bot
+  SwingerBot = 95, // 95:  swinger bot
+  LavaPlatform = 98, // 98:	lava platform
+  RailGun = 103, // 103: rail gun
 }
 
 export const splineItemTypeNames: Record<SplineItemType, string> = {
-  [SplineItemType.PrimeHuman]: "Human",
-  [SplineItemType.PrimeEnemy_BrainAlien]: "Brain Alien",
-  [SplineItemType.PrimeEnemy_Onion]: "Onion",
-  [SplineItemType.PrimeEnemy_Corn]: "Corn",
-  [SplineItemType.PrimeEnemy_Tomato]: "Tomato",
-  [SplineItemType.PrimeMagnetMonster]: "Magnet Monster",
-  [SplineItemType.PrimeMovingPlatform]: "Moving Platform",
-  [SplineItemType.PrimeEnemy_Flamester]: "Flamester",
-  [SplineItemType.PrimeEnemy_GiantLizard]: "Giant Lizard",
-  [SplineItemType.PrimeEnemy_Mantis]: "Mantis",
-  [SplineItemType.PrimeEnemy_Mutant]: "Mutant",
-  [SplineItemType.PrimeEnemy_MutantRobot]: "Mutant Robot",
-  [SplineItemType.PrimeHumanScientist]: "Scientist Human",
-  [SplineItemType.PrimeEnemy_Clown]: "Clown",
-  [SplineItemType.PrimeEnemy_ClownFish]: "Clown Fish",
-  [SplineItemType.PrimeEnemy_StrongMan]: "Strongman",
-  [SplineItemType.PrimeEnemy_JawsBot]: "Jawsbot",
-  [SplineItemType.PrimeEnemy_IceCube]: "Ice Cube",
-  [SplineItemType.PrimeEnemy_HammerBot]: "Hammer Bot",
-  [SplineItemType.PrimeEnemy_DrillBot]: "Drill Bot",
-  [SplineItemType.PrimeEnemy_SwingerBot]: "Swinger Bot",
-  [SplineItemType.PrimeLavaPlatform]: "Lava Platform",
-  [SplineItemType.PrimeRailGun]: "Rail Gun",
+  [SplineItemType.Human]: "Human",
+  [SplineItemType.BrainAlien]: "Brain Alien",
+  [SplineItemType.Onion]: "Onion",
+  [SplineItemType.Corn]: "Corn",
+  [SplineItemType.Tomato]: "Tomato",
+  [SplineItemType.MagnetMonster]: "Magnet Monster",
+  [SplineItemType.MovingPlatform]: "Moving Platform",
+  [SplineItemType.Flamester]: "Flamester",
+  [SplineItemType.GiantLizard]: "Giant Lizard",
+  [SplineItemType.Mantis]: "Mantis",
+  [SplineItemType.Mutant]: "Mutant",
+  [SplineItemType.MutantRobot]: "Mutant Robot",
+  [SplineItemType.HumanScientist]: "Scientist Human",
+  [SplineItemType.Clown]: "Clown",
+  [SplineItemType.ClownFish]: "Clown Fish",
+  [SplineItemType.StrongMan]: "Strongman",
+  [SplineItemType.JawsBot]: "Jawsbot",
+  [SplineItemType.IceCube]: "Ice Cube",
+  [SplineItemType.HammerBot]: "Hammer Bot",
+  [SplineItemType.DrillBot]: "Drill Bot",
+  [SplineItemType.SwingerBot]: "Swinger Bot",
+  [SplineItemType.LavaPlatform]: "Lava Platform",
+  [SplineItemType.RailGun]: "Rail Gun",
 };
 
 /* 

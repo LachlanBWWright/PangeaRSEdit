@@ -7,7 +7,7 @@ import { parseU16, parseU8 } from "../../../utils/numberParsers";
 import {
   SplineItemType,
   splineItemTypeNames,
-} from "../../../data/splines/splineItemType";
+} from "../../../data/splines/ottoSplineItemType";
 import {
   SelectedSpline,
   SelectedSplineItem,

@@ -14,6 +14,7 @@ import { Splines } from "./subviews/Splines";
 import { SplineMenu } from "./subviews/splines/SplineMenu";
 import { SelectedItem } from "../data/items/itemAtoms";
 import { SelectedSpline } from "../data/splines/splineAtoms";
+import { WaterBodies } from "./subviews/WaterBodies";
 
 enum View {
   fences,
@@ -79,12 +80,14 @@ export function EditorView({
           Splines
         </Button>
         <Button
+          disabled
           selected={view === View.topology}
           onClick={() => setView(View.topology)}
         >
           Topology
         </Button>
         <Button
+          disabled
           selected={view === View.tiles}
           onClick={() => setView(View.tiles)}
         >
@@ -144,6 +147,7 @@ export function EditorView({
         className="w-full min-h-0 flex-1 border-2 border-black overflow-clip"
       >
         <Fences data={data} setData={setData} />
+        <WaterBodies data={data} setData={setData} />
         <Items data={data} setData={setData} />
         <Splines data={data} setData={setData} />
       </Stage>

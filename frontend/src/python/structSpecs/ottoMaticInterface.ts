@@ -1,6 +1,6 @@
 import { FenceType } from "../../data/fences/ottoFenceType";
 import { ItemType } from "../../data/items/ottoItemType";
-import { SplineItemType } from "../../data/splines/splineItemType";
+import { SplineItemType } from "../../data/splines/ottoSplineItemType";
 
 export type ottoMaticLevel = {
   Atrb: {
@@ -55,15 +55,13 @@ export type ottoMaticLevel = {
       order: number;
     };
   };
-  Liqd:
-    | undefined
-    | {
-        1000: {
-          name: "Water List";
-          obj: ottoLiquid[];
-          order: number;
-        };
-      };
+  Liqd: {
+    1000: {
+      name: "Water List";
+      obj: ottoLiquid[];
+      order: number;
+    };
+  };
   STgd: {
     1000: {
       name: "SuperTile Grid";

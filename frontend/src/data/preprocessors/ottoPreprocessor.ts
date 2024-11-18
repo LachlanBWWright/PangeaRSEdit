@@ -11,7 +11,7 @@ export function newJsonProcess(json: any) {
     const nubs: [number, number][] = [];
 
     for (let i = 0; i < OTTO_LIQD_NUBS; i++) {
-      nubs.push([waterItem[`x_${i}`], waterItem[`z_${i}`]]);
+      nubs.push([waterItem[`x_${i}`], waterItem[`y_${i}`]]);
     }
 
     console.log(nubs);
@@ -39,7 +39,7 @@ export default function ottoPreprocessor(setData: Updater<ottoMaticLevel>) {
     for (let waterItem of anyData.Liqd[1000].obj) {
       for (let i = 0; i < OTTO_LIQD_NUBS; i++) {
         waterItem[`x_${i}`] = waterItem.nubs[i][0];
-        waterItem[`z_${i}`] = waterItem.nubs[i][1];
+        waterItem[`y_${i}`] = waterItem.nubs[i][1];
       }
     }
     //TODO: Fence Bounding Boxes

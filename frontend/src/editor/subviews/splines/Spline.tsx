@@ -28,7 +28,19 @@ export function Spline({
 
   //Update points when nub positions change
   useEffect(() => {
-    const newPoints = getPoints(data.SpNb[SPLINE_KEY_BASE + splineIdx].obj);
+    console.log("TEST");
+    console.log(splineIdx);
+    console.log(data.SpNb[SPLINE_KEY_BASE + splineIdx].obj);
+
+    const newPoints =
+      data.SpNb[SPLINE_KEY_BASE + splineIdx].obj.length === 1
+        ? [
+            {
+              x: data.SpNb[SPLINE_KEY_BASE + splineIdx].obj[0].x,
+              z: data.SpNb[SPLINE_KEY_BASE + splineIdx].obj[0].z,
+            },
+          ]
+        : getPoints(data.SpNb[SPLINE_KEY_BASE + splineIdx].obj);
 
     setData((data) => {
       data.SpPt[SPLINE_KEY_BASE + splineIdx].obj = newPoints;
