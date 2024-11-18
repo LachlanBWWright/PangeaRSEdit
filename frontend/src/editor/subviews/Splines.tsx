@@ -10,7 +10,7 @@ export function Splines({
   data: ottoMaticLevel;
   setData: Updater<ottoMaticLevel>;
 }) {
-  console.log(data);
+  if (!data.Spln) return <></>;
 
   return (
     <Layer>

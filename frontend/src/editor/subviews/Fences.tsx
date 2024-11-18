@@ -10,6 +10,8 @@ export function Fences({
   data: ottoMaticLevel;
   setData: Updater<ottoMaticLevel>;
 }) {
+  if (!data.Fenc) return <></>;
+
   return (
     <Layer>
       {data.Fenc[1000].obj.map((_, fenceIdx) => (

@@ -10,6 +10,8 @@ export function Items({
   data: ottoMaticLevel;
   setData: Updater<ottoMaticLevel>;
 }) {
+  if (!data.Itms) return <></>;
+
   return (
     <Layer>
       {data.Itms[1000].obj.map((_, itemIdx) => (

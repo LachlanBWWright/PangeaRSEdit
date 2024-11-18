@@ -1,9 +1,8 @@
 import { Updater } from "use-immer";
 import { ottoMaticLevel } from "../../../python/structSpecs/ottoMaticInterface";
-import { Line, Text, Circle } from "react-konva";
-import { SelectedItem } from "../../../data/items/itemAtoms";
-import { useSetAtom } from "jotai";
-import { useMemo, useState } from "react";
+import { Line, Circle } from "react-konva";
+import { useAtom } from "jotai";
+import { useEffect, useMemo } from "react";
 import { getPoints } from "../../../utils/spline";
 import { SelectedSpline } from "../../../data/splines/splineAtoms";
 
@@ -16,28 +15,9 @@ export function Spline({
   setData: Updater<ottoMaticLevel>;
   splineIdx: number;
 }) {
-  const setSelectedSpline = useSetAtom(SelectedSpline);
-  //const spline = data.Spln
+  const [selectedSpline, setSelectedSpline] = useAtom(SelectedSpline);
 
-  if (splineIdx === 0) {
-    console.log(data.Spln); //Splines
-    console.log(data.SpIt); //Spline items (Same params as items)
-    console.log(data.SpNb); //Spline nubs
-    console.log(data.SpPt); //Spline points
-    console.log("GetPoints");
-    console.log(getPoints(data.SpNb[SPLINE_KEY_BASE + splineIdx].obj));
-  }
-
-  const items = data.SpIt[SPLINE_KEY_BASE + splineIdx].obj;
   const nubs = data.SpNb[SPLINE_KEY_BASE + splineIdx].obj;
-  //const points = data.SpPt[SPLINE_KEY_BASE + splineIdx].obj;
-
-  const nubPoints = useMemo(() => {
-    return data.SpNb[SPLINE_KEY_BASE + splineIdx].obj.flatMap((nub) => [
-      nub.x,
-      nub.z,
-    ]);
-  }, [data.SpNb[SPLINE_KEY_BASE + splineIdx].obj]);
 
   const points = useMemo(() => {
     return data.SpPt[SPLINE_KEY_BASE + splineIdx].obj.flatMap((point) => [
@@ -46,36 +26,56 @@ export function Spline({
     ]);
   }, [data.SpPt[SPLINE_KEY_BASE + splineIdx].obj]);
 
-  const showSplinePoints = false;
+  //Update points when nub positions change
+  useEffect(() => {
+    const newPoints = getPoints(data.SpNb[SPLINE_KEY_BASE + splineIdx].obj);
+
+    setData((data) => {
+      data.SpPt[SPLINE_KEY_BASE + splineIdx].obj = newPoints;
+    });
+  }, [data.SpNb[SPLINE_KEY_BASE + splineIdx]]);
 
   //if (item === null || item === undefined) return <></>;
 
   return (
     <>
-      {nubs.map((nub, nubIdx) => (
-        <Circle
-          x={nub.x}
-          y={nub.z}
-          radius={10}
-          draggable
-          fill="blue"
-          onMouseDown={() => setSelectedSpline(splineIdx)}
-          /*           onMouseDown={() => setSelectedFence(idx)}
-          onDragStart={() => {
-            setSelectedFence(idx);
-          }}
-          onDragEnd={(e) => {
-            setNub([Math.round(e.target.x()), Math.round(e.target.y())]);
-          }} */
-        />
-      ))}
-      {/* Approximation of spline point formula */}
-      {/*      {showSplinePoints && 
-        points.map((point, pointIdx) => (
-            <Circle x={point.x} y={point.z} radius={2} draggable fill="red" />
-            ))}  */}
-      <Line tension={0.45} stroke="red" points={nubPoints} />
-      <Line points={points} stroke="blue" />
+      {nubs.map((nub, nubIdx) => {
+        if (nubIdx === 0) return <></>;
+        return (
+          <Circle
+            x={nub.x}
+            y={nub.z}
+            key={nubIdx}
+            radius={10}
+            draggable
+            fill={selectedSpline === splineIdx ? "red" : "blue"}
+            onMouseDown={() => setSelectedSpline(splineIdx)}
+            onDragStart={() => setSelectedSpline(splineIdx)}
+            onDragEnd={(e) => {
+              setData((data) => {
+                data.SpNb[SPLINE_KEY_BASE + splineIdx].obj[nubIdx] = {
+                  x: Math.round(e.target.x()),
+                  z: Math.round(e.target.y()),
+                };
+
+                if (
+                  nubIdx ===
+                  data.SpNb[SPLINE_KEY_BASE + splineIdx].obj.length - 1
+                ) {
+                  data.SpNb[SPLINE_KEY_BASE + splineIdx].obj[0] = {
+                    x: Math.round(e.target.x()),
+                    z: Math.round(e.target.y()),
+                  };
+                }
+              });
+            }}
+          />
+        );
+      })}
+      <Line
+        points={points}
+        stroke={selectedSpline === splineIdx ? "red" : "blue"}
+      />
     </>
   );
 }
@@ -96,4 +96,4 @@ export function getColour(index: number) {
   }
 }
 
-const SPLINE_KEY_BASE = 1000;
+export const SPLINE_KEY_BASE = 1000;
