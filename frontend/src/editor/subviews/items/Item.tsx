@@ -19,6 +19,8 @@ export function Item({
   const item = data.Itms[1000].obj[itemIdx];
   const [hovering, setHovering] = useState(false);
 
+  if (item === null || item === undefined) return <></>;
+
   return (
     <>
       <Rect

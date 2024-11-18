@@ -2,129 +2,127 @@ import { Updater } from "use-immer";
 import { ottoMaticLevel } from "../../../python/structSpecs/ottoMaticInterface";
 import { useAtom } from "jotai";
 import { Button, DeleteButton } from "../../../components/Button";
-import { SelectedItem } from "../../../data/items/itemAtoms";
-import {
-  ItemType,
-  itemTypeNames,
-  ottoItemTypeParams,
-} from "../../../data/items/ottoItemType";
+import { ottoItemTypeParams } from "../../../data/items/ottoItemType";
 import { parseU16, parseU8 } from "../../../utils/numberParsers";
+import {
+  SplineItemType,
+  splineItemTypeNames,
+} from "../../../data/splines/splineItemType";
+import { SelectedSpline } from "../../../data/splines/splineAtoms";
 
-export function ItemMenu({
+export function SplineMenu({
   data,
   setData,
 }: {
   data: ottoMaticLevel;
   setData: Updater<ottoMaticLevel>;
 }) {
-  const [selectedItem, setSelectedItem] = useAtom(SelectedItem);
+  const [selectedSpline, setSelectedSpline] = useAtom(SelectedSpline);
+  const splineData =
+    selectedSpline !== undefined ? data.SpIt[1000].obj[selectedSpline] : null;
 
-  const itemData =
-    selectedItem !== undefined ? data.Itms[1000].obj[selectedItem] : null;
-
-  const itemValues = Object.keys(ItemType)
+  const splineItemValues = Object.keys(SplineItemType)
     .map((key) => parseInt(key))
     .filter((key) => isNaN(key) === false);
 
   return (
     <div className="flex flex-col gap-2">
-      {itemData === null || itemData === undefined ? (
+      {splineData === null || splineData === undefined ? (
         <div className="h-20 px-2">
-          <Button>Add New Item</Button>
+          <Button>Add New Spline</Button>
         </div>
       ) : (
         <p>
-          Item {itemData.type} ({itemTypeNames[itemData.type]}) ({itemData.x},
-          {itemData.z})
+          Spline {splineData.type} ({splineItemTypeNames[splineData.type]})
         </p>
       )}
 
       <div className="flex flex-col gap-2">
-        {itemData !== null && itemData !== undefined && (
+        {splineData !== null && splineData !== undefined && (
           <>
             <select
-              value={itemData.type}
+              value={splineData.type}
               className="text-black"
               onChange={(e) => {
                 const newItemType = parseInt(e.target.value);
                 setData((data) => {
-                  if (selectedItem === undefined) return;
-                  data.Itms[1000].obj[selectedItem].type = newItemType;
+                  if (selectedSpline === undefined) return;
+                  data.Itms[1000].obj[selectedSpline].type = newItemType;
                 });
               }}
             >
-              {itemValues.map((key) => (
+              {splineItemValues.map((key) => (
                 <option key={key} className="text-black" value={key}>
-                  {itemTypeNames[key as ItemType]}
+                  {splineItemTypeNames[key as SplineItemType]}
                 </option>
               ))}
             </select>
             <div className="grid grid-cols-[auto_1fr_auto_1fr] gap-2">
-              <p>Flags ({ottoItemTypeParams[itemData.type].flags})</p>
+              <p>Flags ({ottoItemTypeParams[splineData.type].flags})</p>
               <input
                 className="text-black"
                 type="text"
-                value={itemData.flags}
+                value={splineData.flags}
                 onChange={(e) => {
                   setData((data) => {
-                    if (selectedItem === undefined) return;
-                    data.Itms[1000].obj[selectedItem].flags = parseU16(
+                    if (selectedSpline === undefined) return;
+                    data.Itms[1000].obj[selectedSpline].flags = parseU16(
                       e.target.value,
                     );
                   });
                 }}
               />
-              <p>Parameter 0 ({ottoItemTypeParams[itemData.type].p0})</p>
+              <p>Parameter 0 ({ottoItemTypeParams[splineData.type].p0})</p>
               <input
                 className="text-black"
                 type="text"
-                value={itemData.p0}
+                value={splineData.p0}
                 onChange={(e) => {
                   setData((data) => {
-                    if (selectedItem === undefined) return;
-                    data.Itms[1000].obj[selectedItem].p0 = parseU8(
+                    if (selectedSpline === undefined) return;
+                    data.Itms[1000].obj[selectedSpline].p0 = parseU8(
                       e.target.value,
                     );
                   });
                 }}
               />
-              <p>Parameter 1 ({ottoItemTypeParams[itemData.type].p1})</p>
+              <p>Parameter 1 ({ottoItemTypeParams[splineData.type].p1})</p>
               <input
                 className="text-black"
                 type="text"
-                value={itemData.p1}
+                value={splineData.p1}
                 onChange={(e) => {
                   setData((data) => {
-                    if (selectedItem === undefined) return;
-                    data.Itms[1000].obj[selectedItem].p1 = parseU8(
+                    if (selectedSpline === undefined) return;
+                    data.Itms[1000].obj[selectedSpline].p1 = parseU8(
                       e.target.value,
                     );
                   });
                 }}
               />
-              <p>Parameter 2 ({ottoItemTypeParams[itemData.type].p2})</p>
+              <p>Parameter 2 ({ottoItemTypeParams[splineData.type].p2})</p>
               <input
                 className="text-black"
                 type="text"
-                value={itemData.p2}
+                value={splineData.p2}
                 onChange={(e) => {
                   setData((data) => {
-                    if (selectedItem === undefined) return;
-                    data.Itms[1000].obj[selectedItem].p2 = parseU8(
+                    if (selectedSpline === undefined) return;
+                    data.Itms[1000].obj[selectedSpline].p2 = parseU8(
                       e.target.value,
                     );
                   });
                 }}
               />
-              <p>Parameter 3 ({ottoItemTypeParams[itemData.type].p3})</p>
+              <p>Parameter 3 ({ottoItemTypeParams[splineData.type].p3})</p>
               <input
                 className="text-black"
                 type="text"
-                value={itemData.p3}
+                value={splineData.p3}
                 onChange={(e) => {
                   setData((data) => {
-                    if (selectedItem === undefined) return;
-                    data.Itms[1000].obj[selectedItem].p3 = parseU8(
+                    if (selectedSpline === undefined) return;
+                    data.Itms[1000].obj[selectedSpline].p3 = parseU8(
                       e.target.value,
                     );
                   });
@@ -132,16 +130,16 @@ export function ItemMenu({
               />
             </div>
             <DeleteButton
-              disabled={selectedItem === undefined}
+              disabled={selectedSpline === undefined}
               onClick={() => {
-                if (selectedItem === undefined) return;
+                if (selectedSpline === undefined) return;
                 setData((data) => {
-                  delete data.Itms[1000].obj[selectedItem];
+                  delete data.Itms[1000].obj[selectedSpline];
                 });
-                setSelectedItem(undefined);
+                setSelectedSpline(undefined);
               }}
             >
-              Delete Item
+              Delete Spline
             </DeleteButton>
           </>
         )}

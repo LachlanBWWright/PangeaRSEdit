@@ -7,7 +7,7 @@ import { FenceType, fenceTypeNames } from "../../../data/fences/ottoFenceType";
 
 const NUB_KEY_BASE = 1000;
 
-export default function FenceMenu({
+export function FenceMenu({
   data,
   setData,
 }: {
@@ -76,9 +76,9 @@ export default function FenceMenu({
             <>
               <img
                 src={`assets/ottoMatic/fences/fence${String(
-                  fenceData.fenceType
+                  fenceData.fenceType,
                 ).padStart(3, "0")}.png`}
-                className="max-h-40 mx-auto"
+                className="max-h-56 mx-auto"
               />
               <select
                 value={fenceData.fenceType}
@@ -128,6 +128,7 @@ export default function FenceMenu({
                     data.FnNb[selectedFence + NUB_KEY_BASE].obj.length - 1;
                   data.Fenc[1000].obj[selectedFence].numNubs++;
 
+                  //Adds new nub close to the last
                   data.FnNb[selectedFence + NUB_KEY_BASE].obj.push([
                     data.FnNb[selectedFence + NUB_KEY_BASE].obj[lastIdx][0] +
                       25,
@@ -139,6 +140,48 @@ export default function FenceMenu({
             >
               Add Back Nub
             </Button>
+            <DeleteButton
+              disabled={
+                selectedFence === undefined ||
+                data.Fenc[1000].obj[selectedFence].numNubs <= 1
+              }
+              onClick={() => {
+                setData((data) => {
+                  if (
+                    selectedFence === undefined ||
+                    data.Fenc[1000].obj[selectedFence].numNubs <= 1
+                  )
+                    return;
+
+                  data.Fenc[1000].obj[selectedFence].numNubs--;
+
+                  data.FnNb[selectedFence + NUB_KEY_BASE].obj.shift();
+                });
+              }}
+            >
+              Remove Front Nub
+            </DeleteButton>
+            <DeleteButton
+              disabled={
+                selectedFence === undefined ||
+                data.Fenc[1000].obj[selectedFence].numNubs <= 1
+              }
+              onClick={() => {
+                setData((data) => {
+                  if (
+                    selectedFence === undefined ||
+                    data.Fenc[1000].obj[selectedFence].numNubs <= 1
+                  )
+                    return;
+
+                  data.Fenc[1000].obj[selectedFence].numNubs--;
+
+                  data.FnNb[selectedFence + NUB_KEY_BASE].obj.pop();
+                });
+              }}
+            >
+              Remove Back Nub
+            </DeleteButton>
             <DeleteButton
               disabled={selectedFence === undefined}
               onClick={() => {

@@ -5,11 +5,15 @@ import { Fences } from "./subviews/Fences";
 import { Stage } from "react-konva";
 import { Updater, useImmer } from "use-immer";
 
-import FenceMenu from "./subviews/fences/FenceMenu";
+import { FenceMenu } from "./subviews/fences/FenceMenu";
 import { useSetAtom } from "jotai";
 import { SelectedFence } from "../data/fences/fenceAtoms";
 import { Items } from "./subviews/Items";
-import ItemMenu from "./subviews/items/ItemMenu";
+import { ItemMenu } from "./subviews/items/ItemMenu";
+import { Splines } from "./subviews/Splines";
+import { SplineMenu } from "./subviews/splines/SplineMenu";
+import { SelectedItem } from "../data/items/itemAtoms";
+import { SelectedSpline } from "../data/splines/splineAtoms";
 
 enum View {
   fences,
@@ -34,6 +38,9 @@ export function EditorView({
     y: 0,
   });
   const setSelectedFence = useSetAtom(SelectedFence);
+  const setSelectedItem = useSetAtom(SelectedItem);
+  const setSelectedSpline = useSetAtom(SelectedSpline);
+
   console.log(data);
   const zoomIn = () =>
     setStage((stage) => {
@@ -90,7 +97,11 @@ export function EditorView({
       </div>
       <div>
         {view === View.fences && <FenceMenu data={data} setData={setData} />}
+        {/* TODO: Water */}
         {view === View.items && <ItemMenu data={data} setData={setData} />}
+        {view === View.splines && <SplineMenu data={data} setData={setData} />}
+        {/* TODO: Topology */}
+        {/* TODO: Tiles */}
       </div>
       <Stage
         width={2000}
@@ -101,9 +112,9 @@ export function EditorView({
         y={stage.y}
         draggable={true}
         onDblClick={() => {
-          if (view === View.fences) {
-            setSelectedFence(undefined);
-          }
+          setSelectedFence(undefined);
+          setSelectedItem(undefined);
+          setSelectedSpline(undefined);
         }}
         onWheel={(e) => {
           /*from https://stackoverflow.com/questions/52054848/how-to-react-konva-zooming-on-scroll */
@@ -134,6 +145,7 @@ export function EditorView({
       >
         <Fences data={data} setData={setData} />
         <Items data={data} setData={setData} />
+        <Splines data={data} setData={setData} />
       </Stage>
     </div>
   );

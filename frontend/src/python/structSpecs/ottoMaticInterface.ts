@@ -1,5 +1,6 @@
 import { FenceType } from "../../data/fences/ottoFenceType";
 import { ItemType } from "../../data/items/ottoItemType";
+import { SplineItemType } from "../../data/splines/splineItemType";
 
 export type ottoMaticLevel = {
   Atrb: {
@@ -74,7 +75,7 @@ export type ottoMaticLevel = {
     number,
     {
       name: "Spline Item List";
-      obj: ottoSplineItem;
+      obj: ottoSplineItem[];
       order: number;
     }
   >;
@@ -192,7 +193,7 @@ export type ottoLiquid = {
 
   nubs: [
     number,
-    number
+    number,
   ][] /* 100 nubs, requires packing-unpacking from rsrcdump json */;
 };
 
@@ -209,7 +210,7 @@ export type ottoSplineItem = {
   p2: number;
   p3: number;
   placement: number;
-  type: number;
+  type: SplineItemType;
 };
 
 export type ottoSplineNub = {
