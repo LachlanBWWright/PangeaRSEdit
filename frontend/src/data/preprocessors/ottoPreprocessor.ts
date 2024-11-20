@@ -24,6 +24,8 @@ export default function ottoPreprocessor(setData: Updater<ottoMaticLevel>) {
   setData((data) => {
     data.Hedr[1000].obj.numFences = data.Fenc[1000].obj.length;
     data.Hedr[1000].obj.numItems = data.Itms[1000].obj.length;
+    data.Hedr[1000].obj.numWaterPatches = data.Liqd[1000].obj.length;
+    data.Hedr[1000].obj.numSplines = data.Spln[1000].obj.length;
 
     data.Itms[1000].obj.sort((a, b) => {
       if (a.x > b.x) return 1;

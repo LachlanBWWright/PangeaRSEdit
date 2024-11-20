@@ -1,6 +1,7 @@
 import { FenceType } from "../../data/fences/ottoFenceType";
 import { ItemType } from "../../data/items/ottoItemType";
 import { SplineItemType } from "../../data/splines/ottoSplineItemType";
+import { WaterBodyType } from "../../data/water/ottoWaterItemType";
 
 export type ottoMaticLevel = {
   Atrb: {
@@ -187,7 +188,7 @@ export type ottoLiquid = {
   hotSpotZ: number;
   numNubs: number;
   reserved: number;
-  type: number;
+  type: WaterBodyType;
 
   nubs: [
     number,

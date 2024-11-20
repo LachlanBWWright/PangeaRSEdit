@@ -15,6 +15,8 @@ import { SplineMenu } from "./subviews/splines/SplineMenu";
 import { SelectedItem } from "../data/items/itemAtoms";
 import { SelectedSpline } from "../data/splines/splineAtoms";
 import { WaterBodies } from "./subviews/WaterBodies";
+import { WaterMenu } from "./subviews/water/WaterMenu";
+import { SelectedWaterBody } from "../data/water/waterAtoms";
 
 enum View {
   fences,
@@ -41,6 +43,7 @@ export function EditorView({
   const setSelectedFence = useSetAtom(SelectedFence);
   const setSelectedItem = useSetAtom(SelectedItem);
   const setSelectedSpline = useSetAtom(SelectedSpline);
+  const setSelectedWaterBody = useSetAtom(SelectedWaterBody);
 
   console.log(data);
   const zoomIn = () =>
@@ -100,7 +103,7 @@ export function EditorView({
       </div>
       <div>
         {view === View.fences && <FenceMenu data={data} setData={setData} />}
-        {/* TODO: Water */}
+        {view === View.water && <WaterMenu data={data} setData={setData} />}
         {view === View.items && <ItemMenu data={data} setData={setData} />}
         {view === View.splines && <SplineMenu data={data} setData={setData} />}
         {/* TODO: Topology */}
@@ -118,6 +121,7 @@ export function EditorView({
           setSelectedFence(undefined);
           setSelectedItem(undefined);
           setSelectedSpline(undefined);
+          setSelectedWaterBody(undefined);
         }}
         onWheel={(e) => {
           /*from https://stackoverflow.com/questions/52054848/how-to-react-konva-zooming-on-scroll */

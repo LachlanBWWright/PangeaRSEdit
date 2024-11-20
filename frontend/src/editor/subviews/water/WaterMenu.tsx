@@ -2,147 +2,78 @@ import { Updater } from "use-immer";
 import { ottoMaticLevel } from "../../../python/structSpecs/ottoMaticInterface";
 import { useAtom } from "jotai";
 import { Button, DeleteButton } from "../../../components/Button";
-import { SelectedItem } from "../../../data/items/itemAtoms";
+import { SelectedWaterBody } from "../../../data/water/waterAtoms";
 import {
-  ItemType,
-  itemTypeNames,
-  ottoItemTypeParams,
-} from "../../../data/items/ottoItemType";
-import { parseU16, parseU8 } from "../../../utils/numberParsers";
+  waterBodyNames,
+  WaterBodyType,
+} from "../../../data/water/ottoWaterItemType";
 
-export function ItemMenu({
+export function WaterMenu({
   data,
   setData,
 }: {
   data: ottoMaticLevel;
   setData: Updater<ottoMaticLevel>;
 }) {
-  const [selectedItem, setSelectedItem] = useAtom(SelectedItem);
+  const [selectedWaterBody, setSelectedWaterBody] = useAtom(SelectedWaterBody);
 
-  const itemData =
-    selectedItem !== undefined ? data.Itms[1000].obj[selectedItem] : null;
+  const waterBodyData =
+    selectedWaterBody !== undefined
+      ? data.Liqd[1000].obj[selectedWaterBody]
+      : null;
 
-  const itemValues = Object.keys(ItemType)
+  const waterBodyValues = Object.keys(WaterBodyType)
     .map((key) => parseInt(key))
     .filter((key) => isNaN(key) === false);
 
   return (
     <div className="flex flex-col gap-2">
-      {itemData === null || itemData === undefined ? (
+      {waterBodyData === null || waterBodyData === undefined ? (
         <div className="h-20 px-2">
-          <Button>Add New Item</Button>
+          <Button>Add New Water Body</Button>
         </div>
       ) : (
         <p>
-          Item {itemData.type} ({itemTypeNames[itemData.type]}) ({itemData.x},
-          {itemData.z})
+          Item {waterBodyData.type} ({waterBodyNames[waterBodyData.type]})
         </p>
       )}
 
       <div className="flex flex-col gap-2">
-        {itemData !== null && itemData !== undefined && (
+        {waterBodyData !== null && waterBodyData !== undefined && (
           <>
             <select
-              value={itemData.type}
+              value={waterBodyData.type}
               className="text-black"
               onChange={(e) => {
                 const newItemType = parseInt(e.target.value);
                 setData((data) => {
-                  if (selectedItem === undefined) return;
-                  data.Itms[1000].obj[selectedItem].type = newItemType;
+                  if (selectedWaterBody === undefined) return;
+                  data.Liqd[1000].obj[selectedWaterBody].type = newItemType;
                 });
               }}
             >
-              {itemValues.map((key) => (
+              {waterBodyValues.map((key) => (
                 <option key={key} className="text-black" value={key}>
-                  {itemTypeNames[key as ItemType]}
+                  {waterBodyNames[key as WaterBodyType]}
                 </option>
               ))}
             </select>
-            <div className="grid grid-cols-[auto_1fr_auto_1fr] gap-2">
-              <p>Flags ({ottoItemTypeParams[itemData.type].flags})</p>
-              <input
-                className="text-black"
-                type="text"
-                value={itemData.flags}
-                onChange={(e) => {
+            <div className="grid grid-cols-3 gap-2">
+              <Button disabled>Add Nub</Button>
+              <Button disabled>Delete Nub</Button>
+              <DeleteButton
+                disabled={selectedWaterBody === undefined}
+                onClick={() => {
+                  if (selectedWaterBody === undefined) return;
                   setData((data) => {
-                    if (selectedItem === undefined) return;
-                    data.Itms[1000].obj[selectedItem].flags = parseU16(
-                      e.target.value,
-                    );
+                    data.Liqd[1000].obj.splice(selectedWaterBody, 1);
                   });
+                  setSelectedWaterBody(undefined);
                 }}
-              />
-              <p>Parameter 0 ({ottoItemTypeParams[itemData.type].p0})</p>
-              <input
-                className="text-black"
-                type="text"
-                value={itemData.p0}
-                onChange={(e) => {
-                  setData((data) => {
-                    if (selectedItem === undefined) return;
-                    data.Itms[1000].obj[selectedItem].p0 = parseU8(
-                      e.target.value,
-                    );
-                  });
-                }}
-              />
-              <p>Parameter 1 ({ottoItemTypeParams[itemData.type].p1})</p>
-              <input
-                className="text-black"
-                type="text"
-                value={itemData.p1}
-                onChange={(e) => {
-                  setData((data) => {
-                    if (selectedItem === undefined) return;
-                    data.Itms[1000].obj[selectedItem].p1 = parseU8(
-                      e.target.value,
-                    );
-                  });
-                }}
-              />
-              <p>Parameter 2 ({ottoItemTypeParams[itemData.type].p2})</p>
-              <input
-                className="text-black"
-                type="text"
-                value={itemData.p2}
-                onChange={(e) => {
-                  setData((data) => {
-                    if (selectedItem === undefined) return;
-                    data.Itms[1000].obj[selectedItem].p2 = parseU8(
-                      e.target.value,
-                    );
-                  });
-                }}
-              />
-              <p>Parameter 3 ({ottoItemTypeParams[itemData.type].p3})</p>
-              <input
-                className="text-black"
-                type="text"
-                value={itemData.p3}
-                onChange={(e) => {
-                  setData((data) => {
-                    if (selectedItem === undefined) return;
-                    data.Itms[1000].obj[selectedItem].p3 = parseU8(
-                      e.target.value,
-                    );
-                  });
-                }}
-              />
+              >
+                Delete Water Body
+              </DeleteButton>
             </div>
-            <DeleteButton
-              disabled={selectedItem === undefined}
-              onClick={() => {
-                if (selectedItem === undefined) return;
-                setData((data) => {
-                  delete data.Itms[1000].obj[selectedItem];
-                });
-                setSelectedItem(undefined);
-              }}
-            >
-              Delete Item
-            </DeleteButton>
           </>
         )}
       </div>

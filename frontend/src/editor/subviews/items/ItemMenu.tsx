@@ -136,7 +136,7 @@ export function ItemMenu({
               onClick={() => {
                 if (selectedItem === undefined) return;
                 setData((data) => {
-                  delete data.Itms[1000].obj[selectedItem];
+                  data.Itms[1000].obj.splice(selectedItem, 1);
                 });
                 setSelectedItem(undefined);
               }}
