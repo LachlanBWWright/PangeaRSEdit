@@ -101,7 +101,7 @@ export type ottoMaticLevel = {
       order: number;
     };
   };
-  Ycrd: {
+  YCrd: {
     1000: {
       name: "Floor&Ceiling Y Coords";
       obj: number[]; //Floats
@@ -146,16 +146,17 @@ export type ottoHeader = {
   mapWidth: number;
   maxY: number;
   minY: number;
+
   numCheckpoints: number;
   numFences: number;
   numItems: number;
   numSplines: number;
-  numTilePages: number;
-  numTiles: number;
   numUniqueSupertiles: number;
   numWaterPatches: number;
-  padding: string;
-  tileSize: number;
+
+  numTilePages: number; //Not used by Otto source code
+  numTiles: number; //Not used by Otto source code
+  tileSize: number; //Used for scaling the Ycrds
   version: number;
 };
 
@@ -232,3 +233,8 @@ export type ottoSpline = {
   numNubs: number;
   numPoints: number;
 };
+
+//SUPERTILE_SIZE from Otto source code
+export const OTTO_SUPERTILE_SIZE = 8; //e.g. 1 supertile is 8x8 tiles
+//OREMAP_FILE_SIZE from Otto source code (1 tile is 16 units wide)
+export const OTTO_TILE_SIZE = 16;

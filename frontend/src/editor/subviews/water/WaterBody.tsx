@@ -42,10 +42,11 @@ export function WaterBody({
       waterBody.bBoxBottom = bottom;
 
       //Force hotspots to be within bounding box
+      /*      
       if (waterBody.hotSpotX < left) waterBody.hotSpotX = left;
       if (waterBody.hotSpotX > right) waterBody.hotSpotX = right;
       if (waterBody.hotSpotZ < top) waterBody.hotSpotZ = top;
-      if (waterBody.hotSpotZ > bottom) waterBody.hotSpotZ = bottom;
+      if (waterBody.hotSpotZ > bottom) waterBody.hotSpotZ = bottom; */
     });
   }, [data.Liqd[1000].obj[waterBodyIdx]]);
 

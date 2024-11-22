@@ -17,6 +17,7 @@ import { SelectedSpline } from "../data/splines/splineAtoms";
 import { WaterBodies } from "./subviews/WaterBodies";
 import { WaterMenu } from "./subviews/water/WaterMenu";
 import { SelectedWaterBody } from "../data/water/waterAtoms";
+import { TopologyGrid } from "./subviews/TopologyGrid";
 
 enum View {
   fences,
@@ -150,6 +151,7 @@ export function EditorView({
         }}
         className="w-full min-h-0 flex-1 border-2 border-black overflow-clip"
       >
+        <TopologyGrid data={data} setData={setData} />
         <Fences data={data} setData={setData} />
         <WaterBodies data={data} setData={setData} />
         <Items data={data} setData={setData} />

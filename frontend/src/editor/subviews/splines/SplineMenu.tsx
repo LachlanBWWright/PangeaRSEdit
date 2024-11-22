@@ -224,21 +224,23 @@ export function SplineMenu({
             </div>
           </>
         )}
-      </div>
-      <div className="grid grid-cols-6 gap-2">
-        <Button disabled>Add Front Nub</Button>
-        <Button disabled>Add Back Nub</Button>
-        <Button disabled>Delete Front Nub</Button>
-        <Button disabled>Delete Back Nub</Button>
-        <Button disabled>Add Spline Item</Button>
-        <DeleteButton
-          disabled={selectedSpline === undefined || true}
-          onClick={() => {
-            console.log("TODO");
-          }}
-        >
-          Delete Spline
-        </DeleteButton>
+        {splineData !== null && splineData !== undefined && (
+          <div className="grid grid-cols-6 gap-2">
+            <Button disabled>Add Front Nub</Button>
+            <Button disabled>Add Back Nub</Button>
+            <Button disabled>Delete Front Nub</Button>
+            <Button disabled>Delete Back Nub</Button>
+            <Button disabled>Add Spline Item</Button>
+            <DeleteButton
+              disabled={selectedSpline === undefined || true}
+              onClick={() => {
+                console.log("TODO");
+              }}
+            >
+              Delete Spline
+            </DeleteButton>
+          </div>
+        )}
       </div>
     </div>
   );

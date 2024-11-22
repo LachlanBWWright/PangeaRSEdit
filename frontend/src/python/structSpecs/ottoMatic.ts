@@ -1,6 +1,6 @@
 export const ottoMaticSpecs = [
   //Header
-  "Hedr:L5i3f5i40s:version,numItems,mapWidth,mapHeight,numTilePages,numTiles,tileSize,minY,maxY,numSplines,numFences,numUniqueSupertiles,numWaterPatches,numCheckpoints,padding",
+  "Hedr:L5i3f5i40x:version,numItems,mapWidth,mapHeight,numTilePages,numTiles,tileSize,minY,maxY,numSplines,numFences,numUniqueSupertiles,numWaterPatches,numCheckpoints",
 
   /////////////////////////////////////////////////////////////////
   // Supertiles
