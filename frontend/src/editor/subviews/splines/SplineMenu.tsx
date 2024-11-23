@@ -1,6 +1,6 @@
 import { Updater } from "use-immer";
 import { ottoMaticLevel } from "../../../python/structSpecs/ottoMaticInterface";
-import { useAtom } from "jotai";
+import { useAtom, useAtomValue } from "jotai";
 import { Button, DeleteButton } from "../../../components/Button";
 import { ottoItemTypeParams } from "../../../data/items/ottoItemType";
 import { parseU16, parseU8 } from "../../../utils/numberParsers";
@@ -22,11 +22,9 @@ export function SplineMenu({
   data: ottoMaticLevel;
   setData: Updater<ottoMaticLevel>;
 }) {
-  const [selectedSpline, setSelectedSpline] = useAtom(SelectedSpline);
+  const selectedSpline = useAtomValue(SelectedSpline);
   const [selectedSplineItem, setSelectedSplineItem] =
     useAtom(SelectedSplineItem);
-  console.log(data.SpIt[SPLINE_KEY_BASE + (selectedSpline ?? 0)].obj);
-  console.log("Selected Spline", selectedSpline);
 
   useEffect(() => {
     setSelectedSplineItem(undefined);

@@ -25,7 +25,7 @@ export function MapPrompt({ pyodide }: { pyodide: PyodideInterface }) {
         levelBuffer,
         ottoMaticSpecs,
         [],
-        []
+        [],
       );
 
       newJsonProcess(res);
@@ -47,7 +47,7 @@ export function MapPrompt({ pyodide }: { pyodide: PyodideInterface }) {
       data,
       ottoMaticSpecs,
       [],
-      []
+      [],
     );
 
     const mapBlob = new Blob([loadRes], { type: ".ter.rsrc" });
@@ -60,7 +60,6 @@ export function MapPrompt({ pyodide }: { pyodide: PyodideInterface }) {
   }
 
   if (!mapFile) return <UploadPrompt setMapFile={setMapFile} />;
-  console.log(data);
   return (
     <div className="flex flex-col gap-2 text-white h-screen max-h-screen overflow-clip min-w-full p-2 md:p-6">
       <p className="text-xl">{mapFile.name}</p>

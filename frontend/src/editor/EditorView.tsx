@@ -45,7 +45,6 @@ export function EditorView({
   const setSelectedItem = useSetAtom(SelectedItem);
   const setSelectedSpline = useSetAtom(SelectedSpline);
   const setSelectedWaterBody = useSetAtom(SelectedWaterBody);
-
   console.log(data);
   const zoomIn = () =>
     setStage((stage) => {

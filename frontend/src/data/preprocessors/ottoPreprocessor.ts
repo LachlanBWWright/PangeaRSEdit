@@ -13,9 +13,6 @@ export function newJsonProcess(json: any) {
     for (let i = 0; i < OTTO_LIQD_NUBS; i++) {
       nubs.push([waterItem[`x_${i}`], waterItem[`y_${i}`]]);
     }
-
-    console.log(nubs);
-
     waterItem.nubs = nubs;
   }
 }

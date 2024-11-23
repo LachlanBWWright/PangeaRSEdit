@@ -28,10 +28,6 @@ export function Spline({
 
   //Update points when nub positions change
   useEffect(() => {
-    console.log("TEST");
-    console.log(splineIdx);
-    console.log(data.SpNb[SPLINE_KEY_BASE + splineIdx].obj);
-
     const newPoints =
       data.SpNb[SPLINE_KEY_BASE + splineIdx].obj.length === 1
         ? [
