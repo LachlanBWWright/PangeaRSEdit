@@ -80,7 +80,6 @@ export function WaterBody({
         onClick={() => setSelectedWaterBody(waterBodyIdx)}
         closed
         fill={waterBodyIdx === selectedWaterBody ? "#9999FFDD" : "#9999FF77"}
-        zIndex={1}
       />
       {waterBodyIdx === selectedWaterBody &&
         data.Liqd[1000].obj[waterBodyIdx].nubs.map((nub, nubIdx) => {

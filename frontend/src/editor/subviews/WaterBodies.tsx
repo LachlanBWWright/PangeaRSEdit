@@ -15,7 +15,12 @@ export function WaterBodies({
   return (
     <Layer>
       {data.Liqd[1000].obj.map((_, waterIdx) => (
-        <WaterBody data={data} setData={setData} waterBodyIdx={waterIdx} />
+        <WaterBody
+          data={data}
+          setData={setData}
+          key={waterIdx}
+          waterBodyIdx={waterIdx}
+        />
       ))}
     </Layer>
   );

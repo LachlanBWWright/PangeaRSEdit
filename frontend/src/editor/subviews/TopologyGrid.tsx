@@ -4,14 +4,29 @@ import {
 } from "../../python/structSpecs/ottoMaticInterface";
 import { Layer, Image } from "react-konva";
 import { Updater } from "use-immer";
+import {
+  CurrentTopologyBrushMode,
+  CurrentTopologyValueMode,
+  TopologyBrushRadius,
+  TopologyValue,
+  TopologyValueMode,
+} from "../../data/topology/topologyAtoms";
+import { useAtomValue } from "jotai";
 
 export function TopologyGrid({
   data,
   setData,
+  isEditingTopology,
 }: {
   data: ottoMaticLevel;
   setData: Updater<ottoMaticLevel>;
+  isEditingTopology: boolean;
 }) {
+  const currentTopologyBrushMode = useAtomValue(CurrentTopologyBrushMode);
+  const currentTopologyValueMode = useAtomValue(CurrentTopologyValueMode);
+  const topologyValue = useAtomValue(TopologyValue);
+  const topologyBrushRadius = useAtomValue(TopologyBrushRadius);
+
   const header = data.Hedr[1000].obj;
 
   const elevationToRGBA = (elevation: number) => {
@@ -55,13 +70,31 @@ export function TopologyGrid({
         width={(header.mapWidth + 1) * OTTO_TILE_SIZE}
         height={(header.mapHeight + 1) * OTTO_TILE_SIZE}
         onMouseDown={(e) => {
+          if (!isEditingTopology) return;
           const pos = e.target.getStage()?.getRelativePointerPosition();
           if (!pos) return;
           const flatPos = flattenCoords(pos.x, pos.y);
 
           setData((data) => {
             if (data.YCrd[1000].obj[flatPos] === undefined) return;
-            data.YCrd[1000].obj[flatPos] = data.YCrd[1000].obj[flatPos] - 100;
+
+            if (currentTopologyValueMode === TopologyValueMode.SET_VALUE) {
+              data.YCrd[1000].obj[flatPos] = topologyValue;
+            } else if (
+              currentTopologyValueMode === TopologyValueMode.DELTA_VALUE
+            ) {
+              data.YCrd[1000].obj[flatPos] =
+                data.YCrd[1000].obj[flatPos] + topologyValue;
+            }
+
+            //Clamp
+            if (data.YCrd[1000].obj[flatPos] < header.minY) {
+              data.YCrd[1000].obj[flatPos] = header.minY;
+            }
+
+            if (data.YCrd[1000].obj[flatPos] > header.maxY) {
+              data.YCrd[1000].obj[flatPos] = header.maxY;
+            }
           });
         }}
         image={imgCanvas}

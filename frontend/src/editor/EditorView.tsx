@@ -18,6 +18,7 @@ import { WaterBodies } from "./subviews/WaterBodies";
 import { WaterMenu } from "./subviews/water/WaterMenu";
 import { SelectedWaterBody } from "../data/water/waterAtoms";
 import { TopologyGrid } from "./subviews/TopologyGrid";
+import { TopologyMenu } from "./subviews/topology/TopologyMenu";
 
 enum View {
   fences,
@@ -83,7 +84,6 @@ export function EditorView({
           Splines
         </Button>
         <Button
-          disabled
           selected={view === View.topology}
           onClick={() => setView(View.topology)}
         >
@@ -106,7 +106,7 @@ export function EditorView({
         {view === View.water && <WaterMenu data={data} setData={setData} />}
         {view === View.items && <ItemMenu data={data} setData={setData} />}
         {view === View.splines && <SplineMenu data={data} setData={setData} />}
-        {/* TODO: Topology */}
+        {view === View.topology && <TopologyMenu />}
         {/* TODO: Tiles */}
       </div>
       <Stage
@@ -150,7 +150,11 @@ export function EditorView({
         }}
         className="w-full min-h-0 flex-1 border-2 border-black overflow-clip"
       >
-        <TopologyGrid data={data} setData={setData} />
+        <TopologyGrid
+          data={data}
+          setData={setData}
+          isEditingTopology={view === View.topology}
+        />
         <Fences data={data} setData={setData} />
         <WaterBodies data={data} setData={setData} />
         <Items data={data} setData={setData} />
