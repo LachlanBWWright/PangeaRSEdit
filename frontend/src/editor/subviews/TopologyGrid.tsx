@@ -27,6 +27,8 @@ export function TopologyGrid({
   const topologyValue = useAtomValue(TopologyValue);
   const topologyBrushRadius = useAtomValue(TopologyBrushRadius);
 
+  console.log(currentTopologyBrushMode, topologyBrushRadius);
+
   const header = data.Hedr[1000].obj;
 
   const elevationToRGBA = (elevation: number) => {
