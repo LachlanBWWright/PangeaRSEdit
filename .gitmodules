@@ -1,3 +1,0 @@
-[submodule "backend/rsrcdump"]
-	path = backend/rsrcdump
-	url = https://github.com/LachlanBWWright/rsrcdump.git
