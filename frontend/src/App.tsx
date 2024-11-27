@@ -8,7 +8,9 @@ import { MapPrompt } from "./editor/MapPrompt";
 function App() {
   const [pyodide, setPyodide] = useState<PyodideInterface | null>(null);
   useEffect(() => {
-    loadPyodide().then(async (pyodide) => {
+    loadPyodide({
+      indexURL: "https://cdn.jsdelivr.net/pyodide/v0.26.2/full/",
+    }).then(async (pyodide) => {
       await pyodide.loadPackage(rsrcDumpUrl);
       await pyodide.runPythonAsync("import rsrcdump");
       setPyodide(pyodide);
