@@ -1,10 +1,14 @@
 import { Updater } from "use-immer";
-import { ottoMaticLevel } from "../../../python/structSpecs/ottoMaticInterface";
-import { Line, Circle } from "react-konva";
+import {
+  ottoMaticLevel,
+  ottoSplineItem,
+} from "../../../python/structSpecs/ottoMaticInterface";
+import { Line, Circle, Rect, Label, Tag, Text } from "react-konva";
 import { useAtom } from "jotai";
-import { useEffect, useMemo } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import { getPoints } from "../../../utils/spline";
 import { SelectedSpline } from "../../../data/splines/splineAtoms";
+import { splineItemTypeNames } from "../../../data/splines/ottoSplineItemType";
 
 export function Spline({
   data,
@@ -18,6 +22,7 @@ export function Spline({
   const [selectedSpline, setSelectedSpline] = useAtom(SelectedSpline);
 
   const nubs = data.SpNb[SPLINE_KEY_BASE + splineIdx].obj;
+  const items = data.SpIt[SPLINE_KEY_BASE + splineIdx].obj;
 
   const points = useMemo(() => {
     return data.SpPt[SPLINE_KEY_BASE + splineIdx].obj.flatMap((point) => [
@@ -47,43 +52,112 @@ export function Spline({
 
   return (
     <>
-      {nubs.map((nub, nubIdx) => {
-        if (nubIdx === 0) return <></>;
-        return (
-          <Circle
-            x={nub.x}
-            y={nub.z}
-            key={nubIdx}
-            radius={10}
-            draggable
-            fill={selectedSpline === splineIdx ? "red" : "blue"}
-            onMouseDown={() => setSelectedSpline(splineIdx)}
-            onDragStart={() => setSelectedSpline(splineIdx)}
-            onDragEnd={(e) => {
-              setData((data) => {
-                data.SpNb[SPLINE_KEY_BASE + splineIdx].obj[nubIdx] = {
-                  x: Math.round(e.target.x()),
-                  z: Math.round(e.target.y()),
-                };
-
-                if (
-                  nubIdx ===
-                  data.SpNb[SPLINE_KEY_BASE + splineIdx].obj.length - 1
-                ) {
-                  data.SpNb[SPLINE_KEY_BASE + splineIdx].obj[0] = {
-                    x: Math.round(e.target.x()),
-                    z: Math.round(e.target.y()),
-                  };
-                }
-              });
-            }}
-          />
-        );
-      })}
       <Line
         points={points}
         stroke={selectedSpline === splineIdx ? "red" : "blue"}
       />
+      {nubs.map((nub, nubIdx) => {
+        if (nubIdx === 0) return <></>;
+        return (
+          <Fragment key={nubIdx}>
+            <Circle
+              x={nub.x}
+              y={nub.z}
+              radius={10}
+              draggable
+              fill={selectedSpline === splineIdx ? "red" : "blue"}
+              onMouseDown={() => setSelectedSpline(splineIdx)}
+              onDragStart={() => setSelectedSpline(splineIdx)}
+              onDragEnd={(e) => {
+                setData((data) => {
+                  data.SpNb[SPLINE_KEY_BASE + splineIdx].obj[nubIdx] = {
+                    x: Math.round(e.target.x()),
+                    z: Math.round(e.target.y()),
+                  };
+
+                  if (
+                    nubIdx ===
+                    data.SpNb[SPLINE_KEY_BASE + splineIdx].obj.length - 1
+                  ) {
+                    data.SpNb[SPLINE_KEY_BASE + splineIdx].obj[0] = {
+                      x: Math.round(e.target.x()),
+                      z: Math.round(e.target.y()),
+                    };
+                  }
+                });
+              }}
+            />
+            <Text
+              x={nub.x - 4}
+              y={nub.z - 4}
+              text={nubIdx.toString()}
+              fill="white"
+              opacity={0.8}
+            />
+          </Fragment>
+        );
+      })}
+      {items.map((item, itemIdx) => {
+        //Get approx nub
+        let pointIdx = Math.floor(
+          points.length * Math.min(0.99, item.placement),
+        );
+
+        //Odd-indexed points are y, we want x
+        if (pointIdx % 2 !== 0) pointIdx--;
+
+        return (
+          <SplineItem
+            key={itemIdx}
+            x={points[pointIdx]}
+            z={points[pointIdx + 1]}
+            item={item}
+          />
+        );
+      })}
+    </>
+  );
+}
+
+function SplineItem({
+  x,
+  z,
+  item,
+}: {
+  x: number;
+  z: number;
+  item: ottoSplineItem;
+}) {
+  const [hovering, setHovering] = useState(false);
+
+  return (
+    <>
+      <Rect
+        x={x}
+        y={z}
+        width={10}
+        height={10}
+        stroke="blue"
+        fill="blue"
+        onMouseOver={() => setHovering(true)}
+        onMouseLeave={() => setHovering(false)}
+      />
+      {!hovering && (
+        <Text
+          text={item.type.toString()}
+          fill="white"
+          visible={!hovering}
+          x={x}
+          y={z}
+          draggable
+          onMouseOver={() => setHovering(true)}
+          onMouseLeave={() => setHovering(false)}
+        />
+      )}
+      <Label opacity={1} visible={hovering} x={x + 15} y={z}>
+        <Tag fill="blue" />
+        <Text text={splineItemTypeNames[item.type]} fill="white" />
+      </Label>
     </>
   );
 }

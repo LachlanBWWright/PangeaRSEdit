@@ -90,6 +90,7 @@ export function WaterBody({
               <Circle
                 x={nub[0]}
                 y={nub[1]}
+                key={waterBodyIdx}
                 radius={5}
                 fill={"#9999FFDD"}
                 draggable={true}
