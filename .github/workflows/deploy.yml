@@ -13,7 +13,7 @@ jobs:
     #work in frontend directory
     defaults:
       run:
-        working-directory: frontend
+        working-directory: ./frontend
 
     steps:
       - name: Checkout repo
