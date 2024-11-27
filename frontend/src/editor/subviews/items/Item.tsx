@@ -26,7 +26,7 @@ export function Item({
       <Rect
         x={item.x}
         y={item.z}
-        width={10}
+        width={Math.max(10, item.type.toString().length * 5)}
         height={10}
         stroke="red"
         fill="red"
@@ -42,18 +42,18 @@ export function Item({
           });
         }}
       />
-      {!hovering && (
-        <Text
-          text={item.type.toString()}
-          fill="black"
-          visible={!hovering}
-          x={item.x - 2}
-          y={item.z}
-          draggable
-          onMouseOver={() => setHovering(true)}
-          onMouseLeave={() => setHovering(false)}
-        />
-      )}
+
+      <Text
+        text={item.type.toString()}
+        fill="black"
+        visible={!hovering}
+        x={item.x - 2}
+        y={item.z}
+        draggable
+        onMouseOver={() => setHovering(true)}
+        onMouseLeave={() => setHovering(false)}
+      />
+
       <Label opacity={1} visible={hovering} x={item.x + 15} y={item.z}>
         <Tag fill="red" />
         <Text text={itemTypeNames[item.type]} fill="black" />

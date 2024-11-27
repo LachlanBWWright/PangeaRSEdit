@@ -135,25 +135,25 @@ function SplineItem({
       <Rect
         x={x}
         y={z}
-        width={10}
+        width={Math.max(10, item.type.toString().length * 5)}
         height={10}
         stroke="blue"
         fill="blue"
         onMouseOver={() => setHovering(true)}
         onMouseLeave={() => setHovering(false)}
       />
-      {!hovering && (
-        <Text
-          text={item.type.toString()}
-          fill="white"
-          visible={!hovering}
-          x={x}
-          y={z}
-          draggable
-          onMouseOver={() => setHovering(true)}
-          onMouseLeave={() => setHovering(false)}
-        />
-      )}
+
+      <Text
+        text={item.type.toString()}
+        fill="white"
+        visible={!hovering}
+        x={x}
+        y={z}
+        draggable
+        onMouseOver={() => setHovering(true)}
+        onMouseLeave={() => setHovering(false)}
+      />
+
       <Label opacity={1} visible={hovering} x={x + 15} y={z}>
         <Tag fill="blue" />
         <Text text={splineItemTypeNames[item.type]} fill="white" />

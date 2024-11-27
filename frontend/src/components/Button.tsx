@@ -14,10 +14,10 @@ export function Button({
       disabled={disabled}
       className={
         disabled
-          ? "bg-blue-400 text-white rounded-xl p-2 text-lg"
+          ? "font-semibold bg-blue-400 text-white rounded-xl p-2 text-lg"
           : selected
-          ? "bg-blue-600 font-bold text-white rounded-xl p-2 text-lg"
-          : "bg-blue-500 hover:font-bold hover:bg-blue-600 text-white rounded-xl p-2 text-lg"
+          ? "font-semibold bg-blue-600 text-white rounded-xl p-2 text-lg"
+          : "font-semibold bg-blue-500 hover:bg-blue-600 text-white rounded-xl p-2 text-lg"
       }
       onClick={onClick}
     >
@@ -39,8 +39,8 @@ export function DeleteButton({
     <button
       className={
         disabled
-          ? "bg-red-400 text-white rounded-xl p-2 text-lg"
-          : "bg-red-500 hover:font-bold hover:bg-red-600 text-white rounded-xl p-2 text-lg"
+          ? "font-semibold bg-red-400 text-white rounded-xl p-2 text-lg"
+          : "font-semibold bg-red-500 hover:bg-red-600 text-white rounded-xl p-2 text-lg"
       }
       disabled={disabled}
       onClick={onClick}
@@ -63,8 +63,8 @@ export function ZoomButton({
     <button
       className={
         selected
-          ? "bg-green-600 font-bold text-white rounded-xl p-2 text-lg"
-          : "bg-green-400 hover:font-bold hover:bg-green-600 text-white rounded-xl p-2 text-lg"
+          ? "font-semibold bg-green-600 text-white rounded-xl p-2 text-lg"
+          : "font-semibold bg-green-400 hover:bg-green-600 text-white rounded-xl p-2 text-lg"
       }
       onClick={onClick}
     >

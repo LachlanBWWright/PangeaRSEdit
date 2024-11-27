@@ -62,18 +62,17 @@ export function MapPrompt({ pyodide }: { pyodide: PyodideInterface }) {
   if (!mapFile) return <UploadPrompt setMapFile={setMapFile} />;
   return (
     <div className="flex flex-col gap-2 text-white h-screen max-h-screen overflow-clip min-w-full p-2 md:p-6">
-      <div className="flex flex-row gap-2 mx-auto w-full px-auto justify-center">
-        <p className="text-xl">Change map</p>
-        <input
-          type="file"
-          accept=".ter.rsrc"
-          onChange={async (e) => {
-            if (!e.target?.files?.[0]) return;
-
-            const file = e.target.files[0];
-            setMapFile(file);
+      <div className="flex flex-row items-center justify-center gap-2 mx-auto w-full">
+        <Button
+          onClick={() => {
+            setMapFile(undefined);
+            setData(null);
           }}
-        />
+        >
+          ←New Map
+        </Button>
+        <div className="flex-1" />
+
         <p className="text-xl">{mapFile.name}</p>
         <Button
           onClick={() => {
