@@ -3,7 +3,7 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
-  "homepage": "https://lachlanbwwright.github.io/PangeaRSEdit",
+  "homepage": "https://lachlanbwwright.github.io/PangeaRSEdit/",
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
