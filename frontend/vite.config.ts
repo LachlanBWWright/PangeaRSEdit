@@ -7,5 +7,5 @@ export default defineConfig({
     exclude: ["pyodide"],
   },
   plugins: [react()],
-  base: "/<REPO>/",
+  base: "/PangeaRSEdit/",
 });
