@@ -14,6 +14,8 @@ export const ottoMaticSpecs = [
   "STgd:x?H+:isEmpty,superTileId",
 
   //Map Layer Resources - 2D Array of supertiles (References Tile Attribute Resource)
+  //1 For each tile (e.g 176x176 in level 1 => 30976 items)
+  //Used to build GetTileAttibsAtRowCol 2D array for Otto Matic, which provides index for gTileAttribList, nothing else.
   //Specifically its flags, used for 'TILE_ATTRIB' bit flags
   "Layr:H+", //:TileAttributeIndex",
 

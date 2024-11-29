@@ -19,6 +19,8 @@ import { WaterMenu } from "./subviews/water/WaterMenu";
 import { SelectedWaterBody } from "../data/water/waterAtoms";
 import { TopologyGrid } from "./subviews/TopologyGrid";
 import { TopologyMenu } from "./subviews/topology/TopologyMenu";
+import { Tiles } from "./subviews/Tiles";
+import { TileMenu } from "./subviews/tiles/TilesMenu";
 
 enum View {
   fences,
@@ -32,9 +34,11 @@ enum View {
 export function EditorView({
   data,
   setData,
+  mapImages,
 }: {
   data: ottoMaticLevel;
   setData: Updater<ottoMaticLevel>;
+  mapImages: HTMLCanvasElement[];
 }) {
   const [view, setView] = useState<View>(View.fences);
   const [stage, setStage] = useImmer({
@@ -84,17 +88,16 @@ export function EditorView({
           Splines
         </Button>
         <Button
-          selected={view === View.topology}
-          onClick={() => setView(View.topology)}
-        >
-          Topology
-        </Button>
-        <Button
-          disabled
           selected={view === View.tiles}
           onClick={() => setView(View.tiles)}
         >
           Tiles
+        </Button>
+        <Button
+          selected={view === View.topology}
+          onClick={() => setView(View.topology)}
+        >
+          Topology
         </Button>
         <div className="grid grid-cols-2 gap-2">
           <ZoomButton onClick={zoomIn}>Zoom In</ZoomButton>
@@ -106,8 +109,8 @@ export function EditorView({
         {view === View.water && <WaterMenu data={data} setData={setData} />}
         {view === View.items && <ItemMenu data={data} setData={setData} />}
         {view === View.splines && <SplineMenu data={data} setData={setData} />}
+        {view === View.tiles && <TileMenu />}
         {view === View.topology && <TopologyMenu />}
-        {/* TODO: Tiles */}
       </div>
       <Stage
         width={2000}
@@ -150,11 +153,15 @@ export function EditorView({
         }}
         className="w-full min-h-0 flex-1 border-2 border-black overflow-clip"
       >
-        <TopologyGrid
-          data={data}
-          setData={setData}
-          isEditingTopology={view === View.topology}
-        />
+        {view === View.topology ? (
+          <TopologyGrid
+            data={data}
+            setData={setData}
+            isEditingTopology={view === View.topology}
+          />
+        ) : (
+          <Tiles data={data} mapImages={mapImages} />
+        )}
         <Fences data={data} setData={setData} />
         <WaterBodies data={data} setData={setData} />
         <Items data={data} setData={setData} />

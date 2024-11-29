@@ -30,7 +30,7 @@ export function ItemMenu({
     <div className="flex flex-col gap-2">
       {itemData === null || itemData === undefined ? (
         <div className="h-20 px-2">
-          <Button>Add New Item</Button>
+          <Button disabled>Add New Item</Button>
         </div>
       ) : (
         <p>

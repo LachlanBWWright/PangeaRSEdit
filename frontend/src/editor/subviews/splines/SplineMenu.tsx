@@ -48,7 +48,7 @@ export function SplineMenu({
     <div className="flex flex-col gap-2">
       {splineData === null || splineData === undefined ? (
         <div className="h-20 px-2">
-          <Button>Add New Spline</Button>
+          <Button disabled>Add New Spline</Button>
         </div>
       ) : (
         <select

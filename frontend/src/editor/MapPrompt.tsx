@@ -14,6 +14,9 @@ import ottoPreprocessor, {
 export function MapPrompt({ pyodide }: { pyodide: PyodideInterface }) {
   const [data, setData] = useImmer<ottoMaticLevel | null>(null);
   const [mapFile, setMapFile] = useState<undefined | File>(undefined);
+  const [mapImages, setMapImages] = useState<HTMLCanvasElement[] | undefined>(
+    undefined,
+  );
   const [processed, setProcessed] = useState(false);
   useEffect(() => {
     const loadMap = async () => {
@@ -59,7 +62,14 @@ export function MapPrompt({ pyodide }: { pyodide: PyodideInterface }) {
     downloadLink.click();
   }
 
-  if (!mapFile) return <UploadPrompt setMapFile={setMapFile} />;
+  if (!mapFile || !mapImages)
+    return (
+      <UploadPrompt
+        mapFile={mapFile}
+        setMapFile={setMapFile}
+        setMapImages={setMapImages}
+      />
+    );
   return (
     <div className="flex flex-col gap-2 text-white h-screen max-h-screen overflow-clip min-w-full p-2 md:p-6">
       <div className="flex flex-row items-center justify-center gap-2 mx-auto w-full">
@@ -84,8 +94,12 @@ export function MapPrompt({ pyodide }: { pyodide: PyodideInterface }) {
         </Button>
       </div>
       <hr />
-      {data !== null && data !== undefined ? (
-        <EditorView data={data} setData={setData as Updater<ottoMaticLevel>} />
+      {data !== null && data !== undefined && mapImages ? (
+        <EditorView
+          data={data}
+          setData={setData as Updater<ottoMaticLevel>}
+          mapImages={mapImages}
+        />
       ) : (
         <p>Loading...</p>
       )}

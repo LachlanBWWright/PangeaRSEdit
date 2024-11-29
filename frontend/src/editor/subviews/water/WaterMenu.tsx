@@ -30,7 +30,7 @@ export function WaterMenu({
     <div className="flex flex-col gap-2">
       {waterBodyData === null || waterBodyData === undefined ? (
         <div className="h-20 px-2">
-          <Button>Add New Water Body</Button>
+          <Button disabled>Add New Water Body</Button>
         </div>
       ) : (
         <p>
