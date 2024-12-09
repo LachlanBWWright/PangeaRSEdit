@@ -142,22 +142,22 @@ export type ottoFence = {
 export type ottoFenceNub = [x: number, y: number];
 
 export type ottoHeader = {
-  mapHeight: number;
-  mapWidth: number;
-  maxY: number;
-  minY: number;
-
-  numCheckpoints: number;
-  numFences: number;
+  version: number;
   numItems: number;
-  numSplines: number;
-  numUniqueSupertiles: number;
-  numWaterPatches: number;
 
+  mapWidth: number;
+  mapHeight: number;
   numTilePages: number; //Not used by Otto source code
   numTiles: number; //Not used by Otto source code
   tileSize: number; //Used for scaling the Ycrds
-  version: number;
+  minY: number;
+  maxY: number;
+
+  numSplines: number;
+  numFences: number;
+  numUniqueSupertiles: number;
+  numWaterPatches: number;
+  numCheckpoints: number;
 };
 
 export type ottoItcr = {};
