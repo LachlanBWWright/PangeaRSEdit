@@ -1,73 +1,71 @@
-const RING_BUFF_SIZE = 4096;
-const F = 18;
-const THRESHOLD = 2;
+const RING_BUFF_SIZE = 4096; //4095 - 0x0fff
+const THRESHOLD = 2; //Minimum length
+const F = 18; //Min of 2 + 4 byte uint (2+16)
+
+//Good explanation of LZSS: https://moddingwiki.shikadi.net/wiki/LZSS_compression
+//Java LZSS Implementation: https://github.com/crosswire/jsword-migration/blob/master/jsword/src/main/java/org/crosswire/common/compress/LZSS.java
 
 export function lzssDecompress(
-  origSourceOriginalPtr: DataView,
+  sourceOriginalPtr: DataView,
   destOriginalPointer: DataView,
 ) {
-  console.log(destOriginalPointer);
-  let i, j, k, r: number;
-  const textBuffer = new DataView(new ArrayBuffer(RING_BUFF_SIZE + F - 1)); //Len - RING_BUFF_SIZE + F - 1
-  let flags: number;
-  //*2 because shorts are 2 bytes
-  //const lson = new DataView(new ArrayBuffer((RING_BUFF_SIZE + 1) * 2));
-  //const rson = new DataView(new ArrayBuffer((RING_BUFF_SIZE + 157) * 2));
-  //const dad = new DataView(new ArrayBuffer((RING_BUFF_SIZE + 1) * 2));
-  let c: number;
+  let sourceSize = sourceOriginalPtr.byteLength; // + 1;
 
-  let sourceSize = origSourceOriginalPtr.byteLength;
-  const sourceOriginalPtr = new DataView(new ArrayBuffer(sourceSize + 1));
+  let destBufferPos = 0; //Buffer offset
+  let sourceBufferPos = 0; //Buffer offset
+  let ringBufferPos = RING_BUFF_SIZE - F;
 
-  //Copy buffers over
-  for (i = 0; i < sourceSize; i++) {
-    sourceOriginalPtr.setUint8(i, origSourceOriginalPtr.getUint8(i));
-  }
+  //Any segment's position can be addressed with 12 bits (RING_BUFF_SIZE),
+  const ringBuffer = new DataView(new ArrayBuffer(RING_BUFF_SIZE + F - 1)); //Len - RING_BUFF_SIZE + F - 1
+  for (let i = 0; i < RING_BUFF_SIZE - F; i++)
+    ringBuffer.setInt8(i, " ".charCodeAt(0));
 
-  //let sourceOriginalPtr = new DataView(new ArrayBuffer(sourceSize + 1));
-  let destPtr = 0; //Buffer offset
-  let sourcePtr = 0; //Buffer offset
-
-  for (i = 0; i < RING_BUFF_SIZE - F; i++)
-    textBuffer.setInt8(i, " ".charCodeAt(0));
-
-  r = RING_BUFF_SIZE - F;
-  flags = 0;
-
+  let flags = 0;
   try {
-    for (;;) {
+    while (true) {
+      //Clear the latest bit flag
       flags = Math.floor(flags / 2);
+
+      //Get the next 8 flags
       if (flags < 256) {
         if (--sourceSize < 0) break;
-        c = sourceOriginalPtr.getUint8(sourcePtr++);
-        flags = c | 0xff00;
+        const flagByte = sourceOriginalPtr.getUint8(sourceBufferPos++);
+        //The 0xff keeps keeps the flags < 256 from triggering until 8 cycles (8 bits) have been used
+        flags = flagByte | 0xff00;
       }
 
+      //Checks if the latest flag is a 0 or 1
+      //If 1, just copy 8 bits over
       if (flags & 1) {
         if (--sourceSize < 0) break;
-        c = sourceOriginalPtr.getUint8(sourcePtr++);
+        const dataByte = sourceOriginalPtr.getUint8(sourceBufferPos++);
 
-        destOriginalPointer.setUint8(destPtr++, c);
-        //if (c !== 0) console.log("SETTING DEST", destPtr, c);
+        destOriginalPointer.setUint8(destBufferPos++, dataByte);
 
-        textBuffer.setUint8(r++, c);
+        ringBuffer.setUint8(ringBufferPos++, dataByte);
 
-        r &= RING_BUFF_SIZE - 1;
+        ringBufferPos &= RING_BUFF_SIZE - 1; //Loop around after 4095
       } else {
+        //12 bits for distanceOffset, 4 bits for byteLength
         if (--sourceSize < 0) break;
-        i = sourceOriginalPtr.getUint8(sourcePtr++);
-
+        let distanceOffset = sourceOriginalPtr.getUint8(sourceBufferPos++);
         if (--sourceSize < 0) break;
-        j = sourceOriginalPtr.getUint8(sourcePtr++);
+        let byteLength = sourceOriginalPtr.getUint8(sourceBufferPos++);
 
-        i |= (j & 0xf0) << 4;
-        j = (j & 0x0f) + THRESHOLD;
-        for (k = 0; k <= j; k++) {
-          c = textBuffer.getUint8((i + k) & (RING_BUFF_SIZE - 1));
-          //if (c !== 0) console.log("SETTING DEST", destPtr, c);
-          destOriginalPointer.setUint8(destPtr++, c);
-          textBuffer.setUint8(r++, c);
-          r &= RING_BUFF_SIZE - 1;
+        //STEAL 4 bits from byteLength (12-bit uint - 0 - 4095)
+        distanceOffset |= (byteLength & 0xf0) << 4; // distanceOffset - Distance Value
+
+        //Ignore the 4 bits used for distanceOffset, add min value
+        byteLength = (byteLength & 0x0f) + THRESHOLD; //byteLength - Length Value
+
+        //Copy over (length) bytes
+        for (let i = 0; i <= byteLength; i++) {
+          const dataByte = ringBuffer.getUint8(
+            (distanceOffset + i) & (RING_BUFF_SIZE - 1),
+          );
+          destOriginalPointer.setUint8(destBufferPos++, dataByte);
+          ringBuffer.setUint8(ringBufferPos++, dataByte);
+          ringBufferPos &= RING_BUFF_SIZE - 1; //Loop around after 4095
         }
       }
     }
@@ -75,11 +73,14 @@ export function lzssDecompress(
     console.log(e);
     console.log("srcSize", sourceSize);
   }
-  console.log("textBuffer", textBuffer);
-  console.log(destOriginalPointer, "destOriginalPointer");
 }
 
-export function lzssCompress() {}
+export function lzssCompress(
+  sourceOriginalPtr: DataView,
+  destOriginalPointer: DataView,
+) {
+  const ringBuffer = new DataView(new ArrayBuffer(RING_BUFF_SIZE + F - 1)); //Len - RING_BUFF_SIZE + F - 1
+}
 
 /* 
 OTTO MATIC SOURCE CODE:

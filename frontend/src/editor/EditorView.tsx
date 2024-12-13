@@ -162,10 +162,47 @@ export function EditorView({
         ) : (
           <Tiles data={data} mapImages={mapImages} />
         )}
-        <Fences data={data} setData={setData} />
-        <WaterBodies data={data} setData={setData} />
-        <Items data={data} setData={setData} />
-        <Splines data={data} setData={setData} />
+        {view === View.topology ||
+          (view === View.tiles && (
+            <>
+              <WaterBodies data={data} setData={setData} />
+              <Fences data={data} setData={setData} />
+              <Items data={data} setData={setData} />
+              <Splines data={data} setData={setData} />
+            </>
+          ))}
+        {view === View.fences && (
+          <>
+            <WaterBodies data={data} setData={setData} />
+            <Items data={data} setData={setData} />
+            <Splines data={data} setData={setData} />
+            <Fences data={data} setData={setData} />
+          </>
+        )}
+        {view === View.water && (
+          <>
+            <Fences data={data} setData={setData} />
+            <Items data={data} setData={setData} />
+            <Splines data={data} setData={setData} />
+            <WaterBodies data={data} setData={setData} />
+          </>
+        )}
+        {view === View.splines && (
+          <>
+            <WaterBodies data={data} setData={setData} />
+            <Items data={data} setData={setData} />
+            <Fences data={data} setData={setData} />
+            <Splines data={data} setData={setData} />
+          </>
+        )}
+        {view === View.items && (
+          <>
+            <WaterBodies data={data} setData={setData} />
+            <Splines data={data} setData={setData} />
+            <Fences data={data} setData={setData} />
+            <Items data={data} setData={setData} />
+          </>
+        )}
       </Stage>
     </div>
   );

@@ -146,7 +146,6 @@ function loadMapImages(dataView: DataView) {
     const decompressedSize =
       OTTO_SUPERTILE_TEXMAP_SIZE * OTTO_SUPERTILE_TEXMAP_SIZE * 2;
     const decompressedBuffer = new DataView(new ArrayBuffer(decompressedSize));
-
     lzssDecompress(buffer, decompressedBuffer);
 
     //const imgCanvas = document.createElement("canvas");

@@ -51,21 +51,15 @@ export function DeleteButton({
 }
 
 export function ZoomButton({
-  selected,
   children,
   onClick,
 }: {
-  selected?: boolean;
   children?: React.ReactNode;
   onClick?: () => void;
 }) {
   return (
     <button
-      className={
-        selected
-          ? "font-semibold bg-green-600 text-white rounded-xl p-2 text-lg"
-          : "font-semibold bg-green-400 hover:bg-green-600 text-white rounded-xl p-2 text-lg"
-      }
+      className="font-semibold bg-green-500 hover:bg-green-600 text-white rounded-xl p-2 text-lg"
       onClick={onClick}
     >
       {children}
