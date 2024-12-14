@@ -9,7 +9,7 @@ export function lzssDecompress(
   sourceOriginalPtr: DataView,
   destOriginalPointer: DataView,
 ) {
-  let sourceSize = sourceOriginalPtr.byteLength; // + 1;
+  let sourceSize = sourceOriginalPtr.byteLength;
 
   let destBufferPos = 0; //Buffer offset
   let sourceBufferPos = 0; //Buffer offset
@@ -75,11 +75,24 @@ export function lzssDecompress(
   }
 }
 
-export function lzssCompress(
-  sourceOriginalPtr: DataView,
-  destOriginalPointer: DataView,
-) {
-  const ringBuffer = new DataView(new ArrayBuffer(RING_BUFF_SIZE + F - 1)); //Len - RING_BUFF_SIZE + F - 1
+//"Compression" algorithm, gets the data in a format that can be read by the game's decompressor, but makes it bigger
+export function lzssCompress(sourceOriginalPtr: DataView) {
+  const sourceSize = sourceOriginalPtr.byteLength; // + 1;
+  const numHeaders = Math.ceil(sourceSize / 8);
+  const destSize = sourceSize + numHeaders;
+
+  console.log("sourceSize", sourceSize, "destSize", destSize);
+  const outputBuffer = new DataView(new ArrayBuffer(destSize));
+  let destPos = 0;
+  for (let sourcePos = 0; sourcePos < sourceSize; sourcePos++) {
+    //Add 0xFF header
+    if (sourcePos % 8 == 0) {
+      outputBuffer.setUint8(destPos++, 0xff);
+      console.log("SETTING HEADER");
+    }
+    outputBuffer.setUint8(destPos++, sourceOriginalPtr.getUint8(sourcePos));
+  }
+  return outputBuffer;
 }
 
 /* 

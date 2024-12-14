@@ -3,6 +3,12 @@ import { ItemType } from "../../data/items/ottoItemType";
 import { SplineItemType } from "../../data/splines/ottoSplineItemType";
 import { WaterBodyType } from "../../data/water/ottoWaterItemType";
 
+export const OTTO_SUPERTILE_TEXMAP_SIZE = 128; //128x128 pixels
+//SUPERTILE_SIZE from Otto source code
+export const OTTO_SUPERTILE_SIZE = 8; //e.g. 1 supertile is 8x8 tiles
+//OREMAP_FILE_SIZE from Otto source code (1 tile is 16 units wide)
+export const OTTO_TILE_SIZE = 16;
+
 export type ottoMaticLevel = {
   Atrb: {
     1000: {
@@ -233,8 +239,3 @@ export type ottoSpline = {
   numNubs: number;
   numPoints: number;
 };
-
-//SUPERTILE_SIZE from Otto source code
-export const OTTO_SUPERTILE_SIZE = 8; //e.g. 1 supertile is 8x8 tiles
-//OREMAP_FILE_SIZE from Otto source code (1 tile is 16 units wide)
-export const OTTO_TILE_SIZE = 16;

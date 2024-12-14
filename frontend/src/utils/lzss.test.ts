@@ -5,13 +5,15 @@ test("compress and decompress", () => {
   const inputDataView = new DataView(new ArrayBuffer(100));
 
   for (let i = 0; i < 100; i++) {
-    inputDataView.setUint8(i, i);
+    inputDataView.setUint8(i, 255);
   }
 
-  const compressedDataView = new DataView(new ArrayBuffer());
-  const outputDataView = new DataView(new ArrayBuffer());
+  const outputDataView = new DataView(new ArrayBuffer(100));
 
-  lzssCompress(inputDataView, compressedDataView);
+  let compressedDataView = lzssCompress(inputDataView);
+  lzssDecompress(compressedDataView, outputDataView);
+
+  compressedDataView = lzssCompress(inputDataView);
   lzssDecompress(compressedDataView, outputDataView);
 
   console.log(inputDataView);

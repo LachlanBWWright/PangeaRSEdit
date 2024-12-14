@@ -1,18 +1,22 @@
 import { Button } from "../components/Button";
 import { FileUpload } from "../components/FileUpload";
 import { lzssDecompress } from "../utils/lzss";
+import { OTTO_SUPERTILE_TEXMAP_SIZE } from "../python/structSpecs/ottoMaticInterface";
 
-export const OTTO_SUPERTILE_TEXMAP_SIZE = 128; //128x128 pixels
 //import level1Url from "./assets/ottoMatic/terrain/EarthFarm.ter.rsrc?url";
 
 export function UploadPrompt({
   mapFile,
   setMapFile,
+  setMapImagesFile,
   setMapImages,
+  setMapImagesData,
 }: {
   mapFile: File | undefined;
   setMapFile: (file: File) => void;
+  setMapImagesFile: (file: File) => void;
   setMapImages: (images: HTMLCanvasElement[]) => void;
+  setMapImagesData: (images: ArrayBuffer[]) => void;
 }) {
   const useFile = async (url: string) => {
     const rsrcName = url + ".rsrc"; //.ter to .ter.rsrc
@@ -25,14 +29,14 @@ export function UploadPrompt({
 
     const imgRes = await fetch(url);
     const img = await imgRes.blob();
-    const imgFile = new File([img], url);
+    const imgFile = new File([img], url.split("/").pop() ?? "");
     const imgBuffer = await imgFile.arrayBuffer();
     const imgDataView = new DataView(imgBuffer);
-    const mapImages = loadMapImages(imgDataView);
+    const [mapImages, mapImagesData] = loadMapImages(imgDataView);
 
-    if (mapImages !== undefined) {
-      setMapImages(mapImages);
-    }
+    setMapImagesFile(imgFile);
+    setMapImages(mapImages);
+    setMapImagesData(mapImagesData);
   };
 
   return (
@@ -56,17 +60,16 @@ export function UploadPrompt({
           disabled={!mapFile}
           handleOnChange={async (e) => {
             if (!e.target?.files?.[0]) return;
-            const textureFile = e.target.files[0];
-            const buffer = await textureFile.arrayBuffer();
+            const mapImagesFile = e.target.files[0];
+            const buffer = await mapImagesFile.arrayBuffer();
 
             //Uses Big Endian by default - Which is what Otto uses
             const dataView = new DataView(buffer);
 
-            const mapImages = loadMapImages(dataView);
-
-            if (mapImages !== undefined) {
-              setMapImages(mapImages);
-            }
+            const [mapImages, mapImagesData] = loadMapImages(dataView);
+            setMapImagesFile(mapImagesFile);
+            setMapImages(mapImages);
+            setMapImagesData(mapImagesData);
           }}
         />
       </div>
@@ -120,11 +123,14 @@ export function UploadPrompt({
   );
 }
 
-function loadMapImages(dataView: DataView) {
+function loadMapImages(
+  dataView: DataView,
+): [HTMLCanvasElement[], ArrayBuffer[]] {
   let offset = 0;
   let numSupertiles = 0;
 
   const mapImages: HTMLCanvasElement[] = [];
+  const mapImagesData: ArrayBuffer[] = [];
 
   const canvas = document.createElement("canvas");
   canvas.width = OTTO_SUPERTILE_TEXMAP_SIZE;
@@ -147,6 +153,7 @@ function loadMapImages(dataView: DataView) {
       OTTO_SUPERTILE_TEXMAP_SIZE * OTTO_SUPERTILE_TEXMAP_SIZE * 2;
     const decompressedBuffer = new DataView(new ArrayBuffer(decompressedSize));
     lzssDecompress(buffer, decompressedBuffer);
+    mapImagesData.push(decompressedBuffer.buffer);
 
     //const imgCanvas = document.createElement("canvas");
     const imgCanvas = document.createElement("canvas");
@@ -165,7 +172,7 @@ function loadMapImages(dataView: DataView) {
     );
 
     if (!imageData) {
-      return;
+      throw new Error("Could not create image data");
     }
     for (
       let i = 0;
@@ -188,7 +195,7 @@ function loadMapImages(dataView: DataView) {
     }
 
     if (!imgCtx) {
-      return;
+      throw new Error("Bad data!");
     }
     //16-bit buffer from current buffer
     imgCtx?.putImageData(imageData, 0, 0);
@@ -197,5 +204,5 @@ function loadMapImages(dataView: DataView) {
     imgCanvas;
     mapImages.push(imgCanvas);
   }
-  return mapImages;
+  return [mapImages, mapImagesData];
 }

@@ -1,9 +1,9 @@
 import {
   OTTO_SUPERTILE_SIZE,
+  OTTO_SUPERTILE_TEXMAP_SIZE,
   ottoMaticLevel,
 } from "../../python/structSpecs/ottoMaticInterface";
 import { Layer, Image } from "react-konva";
-import { OTTO_SUPERTILE_TEXMAP_SIZE } from "../UploadPrompt";
 import { useMemo } from "react";
 
 export function Tiles({
