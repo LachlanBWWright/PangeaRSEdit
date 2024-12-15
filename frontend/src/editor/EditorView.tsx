@@ -6,13 +6,13 @@ import { Stage } from "react-konva";
 import { Updater, useImmer } from "use-immer";
 
 import { FenceMenu } from "./subviews/fences/FenceMenu";
-import { useSetAtom } from "jotai";
+import { useAtomValue, useSetAtom } from "jotai";
 import { SelectedFence } from "../data/fences/fenceAtoms";
 import { Items } from "./subviews/Items";
 import { ItemMenu } from "./subviews/items/ItemMenu";
 import { Splines } from "./subviews/Splines";
 import { SplineMenu } from "./subviews/splines/SplineMenu";
-import { SelectedItem } from "../data/items/itemAtoms";
+import { ClickToAddItem, SelectedItem } from "../data/items/itemAtoms";
 import { SelectedSpline } from "../data/splines/splineAtoms";
 import { WaterBodies } from "./subviews/WaterBodies";
 import { WaterMenu } from "./subviews/water/WaterMenu";
@@ -35,10 +35,12 @@ export function EditorView({
   data,
   setData,
   mapImages,
+  setMapImages,
 }: {
   data: ottoMaticLevel;
   setData: Updater<ottoMaticLevel>;
   mapImages: HTMLCanvasElement[];
+  setMapImages: (newCanvases: HTMLCanvasElement[]) => void;
 }) {
   const [view, setView] = useState<View>(View.fences);
   const [stage, setStage] = useImmer({
@@ -50,6 +52,7 @@ export function EditorView({
   const setSelectedItem = useSetAtom(SelectedItem);
   const setSelectedSpline = useSetAtom(SelectedSpline);
   const setSelectedWaterBody = useSetAtom(SelectedWaterBody);
+  const clickToAddItem = useAtomValue(ClickToAddItem);
   console.log(data);
   const zoomIn = () =>
     setStage((stage) => {
@@ -109,7 +112,14 @@ export function EditorView({
         {view === View.water && <WaterMenu data={data} setData={setData} />}
         {view === View.items && <ItemMenu data={data} setData={setData} />}
         {view === View.splines && <SplineMenu data={data} setData={setData} />}
-        {view === View.tiles && <TileMenu />}
+        {view === View.tiles && (
+          <TileMenu
+            data={data}
+            setData={setData}
+            mapImages={mapImages}
+            setMapImages={setMapImages}
+          />
+        )}
         {view === View.topology && <TopologyMenu />}
       </div>
       <Stage
@@ -120,6 +130,32 @@ export function EditorView({
         x={stage.x}
         y={stage.y}
         draggable={true}
+        onClick={(e) => {
+          console.log("TEST");
+          if (clickToAddItem === undefined) return;
+          const stage = e.target.getStage();
+
+          const pos = stage?.getRelativePointerPosition();
+          if (!pos) return;
+          const x = Math.round(pos.x);
+          const z = Math.round(pos.y);
+          console.log("SETDATA", x, z);
+          console.log(data.Itms[1000].obj);
+          console.log(data.Itms[1000].obj.length);
+
+          setData((data) => {
+            data.Itms[1000].obj.push({
+              x: x,
+              z: z,
+              type: clickToAddItem,
+              flags: 0,
+              p0: 0,
+              p1: 0,
+              p2: 0,
+              p3: 0,
+            });
+          });
+        }}
         onDblClick={() => {
           setSelectedFence(undefined);
           setSelectedItem(undefined);

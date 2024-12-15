@@ -1,14 +1,15 @@
 import { Updater } from "use-immer";
 import { ottoMaticLevel } from "../../../python/structSpecs/ottoMaticInterface";
-import { useAtom } from "jotai";
+import { useAtom, useSetAtom } from "jotai";
 import { Button, DeleteButton } from "../../../components/Button";
-import { SelectedItem } from "../../../data/items/itemAtoms";
+import { ClickToAddItem, SelectedItem } from "../../../data/items/itemAtoms";
 import {
   ItemType,
   itemTypeNames,
   ottoItemTypeParams,
 } from "../../../data/items/ottoItemType";
 import { parseU16, parseU8 } from "../../../utils/numberParsers";
+import { useEffect } from "react";
 
 export function ItemMenu({
   data,
@@ -29,9 +30,7 @@ export function ItemMenu({
   return (
     <div className="flex flex-col gap-2">
       {itemData === null || itemData === undefined ? (
-        <div className="h-20 px-2">
-          <Button disabled>Add New Item</Button>
-        </div>
+        <AddItemMenu />
       ) : (
         <p>
           Item {itemData.type} ({itemTypeNames[itemData.type]}) ({itemData.x},
@@ -148,4 +147,41 @@ export function ItemMenu({
       </div>
     </div>
   );
+}
+
+function AddItemMenu() {
+  const [clickToAddItem, setClickToAddItem] = useAtom(ClickToAddItem);
+  useEffect(() => {
+    return () => setClickToAddItem(undefined);
+  }, []);
+
+  const itemValues = Object.keys(ItemType)
+    .map((key) => parseInt(key))
+    .filter((key) => isNaN(key) === false);
+
+  if (clickToAddItem !== undefined)
+    return (
+      <>
+        <select
+          className="text-black"
+          value={itemValues[clickToAddItem]}
+          onChange={(e) => {
+            const newItemType = parseInt(e.target.value);
+            setClickToAddItem(newItemType);
+          }}
+        >
+          {itemValues.map((key) => (
+            <option key={key} className="text-black" value={key}>
+              {itemTypeNames[key as ItemType]}
+            </option>
+          ))}
+        </select>
+        <p>Click on the Canvas to add the selected item</p>
+        <DeleteButton onClick={() => setClickToAddItem(undefined)}>
+          Stop Adding Items
+        </DeleteButton>
+      </>
+    );
+
+  return <Button onClick={() => setClickToAddItem(0)}>Add Items</Button>;
 }

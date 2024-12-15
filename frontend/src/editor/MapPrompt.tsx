@@ -14,6 +14,7 @@ import ottoPreprocessor, {
   newJsonProcess,
 } from "../data/preprocessors/ottoPreprocessor";
 import { lzssCompress } from "../utils/lzss";
+import { imageDataToSixteenBit } from "../utils/imageConverter";
 
 export function MapPrompt({ pyodide }: { pyodide: PyodideInterface }) {
   const [data, setData] = useImmer<ottoMaticLevel | null>(null);
@@ -22,9 +23,6 @@ export function MapPrompt({ pyodide }: { pyodide: PyodideInterface }) {
     undefined,
   );
   const [mapImages, setMapImages] = useState<HTMLCanvasElement[] | undefined>(
-    undefined,
-  );
-  const [mapImagesData, setMapImagesData] = useState<ArrayBuffer[] | undefined>(
     undefined,
   );
   const [processed, setProcessed] = useState(false);
@@ -72,21 +70,30 @@ export function MapPrompt({ pyodide }: { pyodide: PyodideInterface }) {
     downloadLink.click();
 
     //Download Images
-    if (!mapImagesData) return;
+    if (!mapImages) return;
 
     //TODO: Hardcoded values that will break for other games / if actual compression is implemented
     const imageSize =
       OTTO_SUPERTILE_TEXMAP_SIZE * OTTO_SUPERTILE_TEXMAP_SIZE * 2;
     const compressedImageSize = imageSize + Math.ceil(imageSize / 8);
     const imageDownloadBuffer = new DataView(
-      new ArrayBuffer(mapImagesData.length * (4 + compressedImageSize)),
+      new ArrayBuffer(mapImages.length * (4 + compressedImageSize)),
     );
-    for (let i = 0; i < mapImagesData.length; i++) {
+    for (let i = 0; i < mapImages.length; i++) {
       const pos = i * (compressedImageSize + 4);
       //New dataview
       //Output file has 32-bit size headers before each image, image is size^2 2-byte pixels
       imageDownloadBuffer.setInt32(pos, compressedImageSize);
-      const decompressed = lzssCompress(new DataView(mapImagesData[i]));
+      const canvasCtx = mapImages[i].getContext("2d");
+      if (!canvasCtx) throw new Error("Could not get canvas context");
+      const decompressed = lzssCompress(
+        imageDataToSixteenBit(
+          canvasCtx.getImageData(0, 0, mapImages[i].width, mapImages[i].height)
+            .data,
+        ),
+      );
+
+      //const decompressed = lzssCompress(new DataView(mapImagesData[i]));
       for (let j = 0; j < decompressed.byteLength; j++) {
         imageDownloadBuffer.setUint8(pos + 4 + j, decompressed.getUint8(j));
       }
@@ -108,7 +115,6 @@ export function MapPrompt({ pyodide }: { pyodide: PyodideInterface }) {
         setMapFile={setMapFile}
         setMapImagesFile={setMapImagesFile}
         setMapImages={setMapImages}
-        setMapImagesData={setMapImagesData}
       />
     );
   return (
@@ -118,6 +124,8 @@ export function MapPrompt({ pyodide }: { pyodide: PyodideInterface }) {
           onClick={() => {
             setMapFile(undefined);
             setData(null);
+            setMapImages(undefined);
+            setMapImagesFile(undefined);
           }}
         >
           ←New Map
@@ -140,6 +148,7 @@ export function MapPrompt({ pyodide }: { pyodide: PyodideInterface }) {
           data={data}
           setData={setData as Updater<ottoMaticLevel>}
           mapImages={mapImages}
+          setMapImages={setMapImages}
         />
       ) : (
         <p>Loading...</p>

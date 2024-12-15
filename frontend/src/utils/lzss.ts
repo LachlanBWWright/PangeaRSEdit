@@ -81,14 +81,13 @@ export function lzssCompress(sourceOriginalPtr: DataView) {
   const numHeaders = Math.ceil(sourceSize / 8);
   const destSize = sourceSize + numHeaders;
 
-  console.log("sourceSize", sourceSize, "destSize", destSize);
+  //console.log("sourceSize", sourceSize, "destSize", destSize);
   const outputBuffer = new DataView(new ArrayBuffer(destSize));
   let destPos = 0;
   for (let sourcePos = 0; sourcePos < sourceSize; sourcePos++) {
     //Add 0xFF header
     if (sourcePos % 8 == 0) {
       outputBuffer.setUint8(destPos++, 0xff);
-      console.log("SETTING HEADER");
     }
     outputBuffer.setUint8(destPos++, sourceOriginalPtr.getUint8(sourcePos));
   }

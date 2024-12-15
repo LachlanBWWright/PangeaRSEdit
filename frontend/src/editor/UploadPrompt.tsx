@@ -2,6 +2,7 @@ import { Button } from "../components/Button";
 import { FileUpload } from "../components/FileUpload";
 import { lzssDecompress } from "../utils/lzss";
 import { OTTO_SUPERTILE_TEXMAP_SIZE } from "../python/structSpecs/ottoMaticInterface";
+import { sixteenBitToImageData } from "../utils/imageConverter";
 
 //import level1Url from "./assets/ottoMatic/terrain/EarthFarm.ter.rsrc?url";
 
@@ -10,13 +11,11 @@ export function UploadPrompt({
   setMapFile,
   setMapImagesFile,
   setMapImages,
-  setMapImagesData,
 }: {
   mapFile: File | undefined;
   setMapFile: (file: File) => void;
   setMapImagesFile: (file: File) => void;
   setMapImages: (images: HTMLCanvasElement[]) => void;
-  setMapImagesData: (images: ArrayBuffer[]) => void;
 }) {
   const useFile = async (url: string) => {
     const rsrcName = url + ".rsrc"; //.ter to .ter.rsrc
@@ -32,11 +31,10 @@ export function UploadPrompt({
     const imgFile = new File([img], url.split("/").pop() ?? "");
     const imgBuffer = await imgFile.arrayBuffer();
     const imgDataView = new DataView(imgBuffer);
-    const [mapImages, mapImagesData] = loadMapImages(imgDataView);
+    const mapImages = loadMapImages(imgDataView);
 
     setMapImagesFile(imgFile);
     setMapImages(mapImages);
-    setMapImagesData(mapImagesData);
   };
 
   return (
@@ -66,10 +64,9 @@ export function UploadPrompt({
             //Uses Big Endian by default - Which is what Otto uses
             const dataView = new DataView(buffer);
 
-            const [mapImages, mapImagesData] = loadMapImages(dataView);
+            const mapImages = loadMapImages(dataView);
             setMapImagesFile(mapImagesFile);
             setMapImages(mapImages);
-            setMapImagesData(mapImagesData);
           }}
         />
       </div>
@@ -123,9 +120,7 @@ export function UploadPrompt({
   );
 }
 
-function loadMapImages(
-  dataView: DataView,
-): [HTMLCanvasElement[], ArrayBuffer[]] {
+function loadMapImages(dataView: DataView): HTMLCanvasElement[] {
   let offset = 0;
   let numSupertiles = 0;
 
@@ -164,35 +159,15 @@ function loadMapImages(
     const imageData = imgCtx?.getImageData(
       0,
       0,
-      OTTO_SUPERTILE_TEXMAP_SIZE,
-      OTTO_SUPERTILE_TEXMAP_SIZE,
-      {
-        //colorSpace: "srgb",
-      },
+      imgCanvas.width,
+      imgCanvas.height,
     );
 
     if (!imageData) {
       throw new Error("Could not create image data");
     }
-    for (
-      let i = 0;
-      i < OTTO_SUPERTILE_TEXMAP_SIZE * OTTO_SUPERTILE_TEXMAP_SIZE;
-      i++
-    ) {
-      const data = decompressedBuffer.getUint16(i * 2);
 
-      //A RRRRR GGGGG BBBBB
-      //R - 0111 1100 0000 0000
-      //G - 0000 0011 1110 0000
-      //B - 0000 0000 0001 1111
-      const r = ((data & 0x7c00) >> 10) * 8;
-      const g = ((data & 0x03e0) >> 5) * 8;
-      const b = (data & 0x001f) * 8;
-      imageData.data[4 * i] = Math.floor(r); //(data >> 8) & 0xff;
-      imageData.data[4 * i + 1] = Math.floor(g); //(data >> 16) & 0xff;
-      imageData.data[4 * i + 2] = Math.floor(b); /* & 0x80 */ //data & 0xff;
-      imageData.data[4 * i + 3] = data & 0x8000 ? 255 : 255; //0xff;
-    }
+    sixteenBitToImageData(decompressedBuffer, imageData);
 
     if (!imgCtx) {
       throw new Error("Bad data!");
@@ -204,5 +179,5 @@ function loadMapImages(
     imgCanvas;
     mapImages.push(imgCanvas);
   }
-  return [mapImages, mapImagesData];
+  return mapImages;
 }
