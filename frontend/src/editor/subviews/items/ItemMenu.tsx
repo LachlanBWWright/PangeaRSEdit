@@ -1,6 +1,6 @@
 import { Updater } from "use-immer";
 import { ottoMaticLevel } from "../../../python/structSpecs/ottoMaticInterface";
-import { useAtom, useSetAtom } from "jotai";
+import { useAtom } from "jotai";
 import { Button, DeleteButton } from "../../../components/Button";
 import { ClickToAddItem, SelectedItem } from "../../../data/items/itemAtoms";
 import {

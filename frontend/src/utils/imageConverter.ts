@@ -23,9 +23,7 @@ export function canvasDataToSixteenBit(canvas: HTMLCanvasElement): DataView {
   return imageDataToSixteenBit(imageData.data);
 }
 
-export function imageDataToSixteenBit(
-  data: Uint8ClampedArray<ArrayBufferLike>,
-): DataView {
+export function imageDataToSixteenBit(data: Uint8ClampedArray): DataView {
   const output = new DataView(new ArrayBuffer(data.length / 2));
   for (let i = 0; i < data.length; i += 4) {
     const r = data[i];
