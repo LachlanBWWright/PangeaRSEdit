@@ -79,25 +79,25 @@ export type ottoMaticLevel = {
   SpIt: Record<
     number,
     {
-      name: "Spline Item List";
+      name?: "Spline Item List";
       obj: ottoSplineItem[];
-      order: number;
+      order?: number;
     }
   >;
   SpNb: Record<
     number,
     {
-      name: "Spline Nub List";
+      name?: "Spline Nub List";
       obj: ottoSplineNub[];
-      order: number;
+      order?: number;
     }
   >;
   SpPt: Record<
     number,
     {
-      name: "Spline Point List";
+      name?: "Spline Point List";
       obj: ottoSplinePoint[];
-      order: number;
+      order?: number;
     }
   >;
   Spln: {

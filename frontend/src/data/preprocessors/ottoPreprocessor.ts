@@ -3,6 +3,7 @@ import {
   OTTO_LIQD_NUBS,
   ottoMaticLevel,
 } from "../../python/structSpecs/ottoMaticInterface";
+import { SPLINE_KEY_BASE } from "../../editor/subviews/splines/Spline";
 
 export function newJsonProcess(json: any) {
   if (!json.Liqd) return;
@@ -41,6 +42,21 @@ export default function ottoPreprocessor(setData: Updater<ottoMaticLevel>) {
         waterItem[`y_${i}`] = waterItem.nubs[i][1];
       }
     }
+
+    //Fix spline numnubs
+    for (let i = 0; i < data.Spln[1000].obj.length; i++) {
+      const splineIdx = SPLINE_KEY_BASE + i;
+
+      const numPoints = data.SpPt[splineIdx].obj.length;
+      data.Spln[1000].obj[i].numPoints = numPoints;
+
+      const numNubs = data.SpNb[splineIdx].obj.length;
+      data.Spln[1000].obj[i].numNubs = numNubs;
+
+      const numItems = data.SpIt[splineIdx].obj.length;
+      data.Spln[1000].obj[i].numItems = numItems;
+    }
+
     //TODO: Fence Bounding Boxes
 
     //TODO: Water Bounding Boxes
