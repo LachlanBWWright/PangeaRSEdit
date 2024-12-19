@@ -57,7 +57,7 @@ export function Spline({
         stroke={selectedSpline === splineIdx ? "red" : "blue"}
       />
       {nubs.map((nub, nubIdx) => {
-        if (nubIdx === 0) return <></>;
+        if (nubIdx === 0) return;
         return (
           <Fragment key={nubIdx}>
             <Circle

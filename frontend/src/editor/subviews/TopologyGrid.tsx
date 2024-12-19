@@ -64,6 +64,35 @@ export function TopologyGrid({
     0,
   );
 
+  const setPixel = (x: number, y: number, value: number) => {
+    if (
+      x < 0 ||
+      x > (header.mapWidth + 1) * OTTO_TILE_SIZE ||
+      y < 0 ||
+      y > (header.mapHeight + 1) * OTTO_TILE_SIZE
+    )
+      return;
+    const flatPos = flattenCoords(x, y);
+    console.log(flatPos);
+    setData((data) => {
+      if (data.YCrd[1000].obj[flatPos] === undefined) return;
+
+      if (currentTopologyValueMode === TopologyValueMode.SET_VALUE) {
+        data.YCrd[1000].obj[flatPos] = value;
+      } else if (currentTopologyValueMode === TopologyValueMode.DELTA_VALUE) {
+        data.YCrd[1000].obj[flatPos] = data.YCrd[1000].obj[flatPos] + value;
+      }
+
+      //Clamp
+      if (data.YCrd[1000].obj[flatPos] < header.minY) {
+        data.YCrd[1000].obj[flatPos] = header.minY;
+      }
+      if (data.YCrd[1000].obj[flatPos] > header.maxY) {
+        data.YCrd[1000].obj[flatPos] = header.maxY;
+      }
+    });
+  };
+
   return (
     <Layer imageSmoothingEnabled={false}>
       <Image
@@ -75,29 +104,24 @@ export function TopologyGrid({
           if (!isEditingTopology) return;
           const pos = e.target.getStage()?.getRelativePointerPosition();
           if (!pos) return;
-          const flatPos = flattenCoords(pos.x, pos.y);
 
-          setData((data) => {
-            if (data.YCrd[1000].obj[flatPos] === undefined) return;
+          console.log("TEST2");
 
-            if (currentTopologyValueMode === TopologyValueMode.SET_VALUE) {
-              data.YCrd[1000].obj[flatPos] = topologyValue;
-            } else if (
-              currentTopologyValueMode === TopologyValueMode.DELTA_VALUE
-            ) {
-              data.YCrd[1000].obj[flatPos] =
-                data.YCrd[1000].obj[flatPos] + topologyValue;
+          const baseX =
+            Math.round(pos.x) - (topologyBrushRadius - 1) * OTTO_TILE_SIZE;
+          const baseY =
+            Math.round(pos.y) - (topologyBrushRadius - 1) * OTTO_TILE_SIZE;
+
+          for (let i = 0; i < (topologyBrushRadius - 1) * 2 + 1; i++) {
+            for (let j = 0; j < (topologyBrushRadius - 1) * 2 + 1; j++) {
+              console.log("i", i, "j", j);
+              setPixel(
+                baseX + i * OTTO_TILE_SIZE,
+                baseY + j * OTTO_TILE_SIZE,
+                topologyValue,
+              );
             }
-
-            //Clamp
-            if (data.YCrd[1000].obj[flatPos] < header.minY) {
-              data.YCrd[1000].obj[flatPos] = header.minY;
-            }
-
-            if (data.YCrd[1000].obj[flatPos] > header.maxY) {
-              data.YCrd[1000].obj[flatPos] = header.maxY;
-            }
-          });
+          }
         }}
         image={imgCanvas}
       />
