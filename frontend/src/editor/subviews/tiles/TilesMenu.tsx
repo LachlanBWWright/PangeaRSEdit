@@ -5,7 +5,6 @@ import { Updater } from "use-immer";
 import {
   OTTO_SUPERTILE_SIZE,
   OTTO_SUPERTILE_TEXMAP_SIZE,
-  OTTO_TILE_SIZE,
   ottoMaticLevel,
 } from "../../../python/structSpecs/ottoMaticInterface";
 import { FileUpload } from "../../../components/FileUpload";
