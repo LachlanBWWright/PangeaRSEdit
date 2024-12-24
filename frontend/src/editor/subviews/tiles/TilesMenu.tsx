@@ -4,10 +4,11 @@ import { SelectedTile } from "../../../data/tiles/tileAtoms";
 import { Updater } from "use-immer";
 import {
   OTTO_SUPERTILE_SIZE,
-  OTTO_SUPERTILE_TEXMAP_SIZE,
+  // globals.SUPERTILE_TEXMAP_SIZE,
   ottoMaticLevel,
 } from "../../../python/structSpecs/ottoMaticInterface";
 import { FileUpload } from "../../../components/FileUpload";
+import { Globals } from "../../../data/globals/globals";
 
 export function TileMenu({
   data,
@@ -22,6 +23,7 @@ export function TileMenu({
 }) {
   const selectedTile = useAtomValue(SelectedTile);
   const hedr = data.Hedr[1000].obj;
+  const globals = useAtomValue(Globals);
 
   return (
     <div className="grid grid-cols-3 gap-2">
@@ -37,16 +39,16 @@ export function TileMenu({
             if (!file) return;
 
             const canvas = document.createElement("canvas");
-            canvas.width = OTTO_SUPERTILE_TEXMAP_SIZE;
-            canvas.height = OTTO_SUPERTILE_TEXMAP_SIZE;
+            canvas.width = globals.SUPERTILE_TEXMAP_SIZE;
+            canvas.height = globals.SUPERTILE_TEXMAP_SIZE;
             const context = canvas.getContext("2d");
             if (!context) return;
             context.fillStyle = "black";
 
             context.drawImage(
               await createImageBitmap(file, {
-                resizeWidth: OTTO_SUPERTILE_TEXMAP_SIZE,
-                resizeHeight: OTTO_SUPERTILE_TEXMAP_SIZE,
+                resizeWidth: globals.SUPERTILE_TEXMAP_SIZE,
+                resizeHeight: globals.SUPERTILE_TEXMAP_SIZE,
                 resizeQuality: "high",
               }),
               0,
@@ -81,10 +83,10 @@ export function TileMenu({
 
             const canvas = document.createElement("canvas");
             canvas.width =
-              OTTO_SUPERTILE_TEXMAP_SIZE *
+              globals.SUPERTILE_TEXMAP_SIZE *
               (hedr.mapWidth / OTTO_SUPERTILE_SIZE);
             canvas.height =
-              OTTO_SUPERTILE_TEXMAP_SIZE *
+              globals.SUPERTILE_TEXMAP_SIZE *
               (hedr.mapHeight / OTTO_SUPERTILE_SIZE);
             const context = canvas.getContext("2d");
             if (!context) return;
@@ -93,10 +95,10 @@ export function TileMenu({
             context.drawImage(
               await createImageBitmap(file, {
                 resizeWidth:
-                  OTTO_SUPERTILE_TEXMAP_SIZE *
+                  globals.SUPERTILE_TEXMAP_SIZE *
                   (hedr.mapWidth / OTTO_SUPERTILE_SIZE),
                 resizeHeight:
-                  OTTO_SUPERTILE_TEXMAP_SIZE *
+                  globals.SUPERTILE_TEXMAP_SIZE *
                   (hedr.mapHeight / OTTO_SUPERTILE_SIZE),
                 resizeQuality: "high",
               }),
@@ -107,8 +109,8 @@ export function TileMenu({
             const canvasArray: HTMLCanvasElement[] = [];
 
             const blackCanvas = document.createElement("canvas");
-            blackCanvas.width = OTTO_SUPERTILE_TEXMAP_SIZE;
-            blackCanvas.height = OTTO_SUPERTILE_TEXMAP_SIZE;
+            blackCanvas.width = globals.SUPERTILE_TEXMAP_SIZE;
+            blackCanvas.height = globals.SUPERTILE_TEXMAP_SIZE;
             const blackContext = blackCanvas.getContext("2d");
             if (!blackContext) return;
             blackContext.fillStyle = "black";
@@ -116,15 +118,17 @@ export function TileMenu({
             for (let i = 0; i < hedr.mapHeight / OTTO_SUPERTILE_SIZE; i++) {
               for (let j = 0; j < hedr.mapWidth / OTTO_SUPERTILE_SIZE; j++) {
                 const tileImage = context.getImageData(
-                  j * OTTO_SUPERTILE_TEXMAP_SIZE,
-                  i * OTTO_SUPERTILE_TEXMAP_SIZE,
-                  j * OTTO_SUPERTILE_TEXMAP_SIZE + OTTO_SUPERTILE_TEXMAP_SIZE,
-                  i * OTTO_SUPERTILE_TEXMAP_SIZE + OTTO_SUPERTILE_TEXMAP_SIZE,
+                  j * globals.SUPERTILE_TEXMAP_SIZE,
+                  i * globals.SUPERTILE_TEXMAP_SIZE,
+                  j * globals.SUPERTILE_TEXMAP_SIZE +
+                    globals.SUPERTILE_TEXMAP_SIZE,
+                  i * globals.SUPERTILE_TEXMAP_SIZE +
+                    globals.SUPERTILE_TEXMAP_SIZE,
                 );
 
                 const newCanvas = document.createElement("canvas");
-                newCanvas.width = OTTO_SUPERTILE_TEXMAP_SIZE;
-                newCanvas.height = OTTO_SUPERTILE_TEXMAP_SIZE;
+                newCanvas.width = globals.SUPERTILE_TEXMAP_SIZE;
+                newCanvas.height = globals.SUPERTILE_TEXMAP_SIZE;
                 const newContext = newCanvas.getContext("2d");
                 if (!newContext) return;
                 newContext.fillStyle = "black";
