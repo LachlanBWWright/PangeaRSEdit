@@ -3,10 +3,7 @@ import { ItemType } from "../../data/items/ottoItemType";
 import { SplineItemType } from "../../data/splines/ottoSplineItemType";
 import { WaterBodyType } from "../../data/water/ottoWaterItemType";
 
-//SUPERTILE_SIZE from Otto source code
-export const OTTO_SUPERTILE_SIZE = 8; //e.g. 1 supertile is 8x8 tiles
-//OREMAP_FILE_SIZE from Otto source code (1 tile is 16 units wide)
-export const OTTO_TILE_SIZE = 16;
+export type MakeRequired<T, K extends keyof T> = T & Required<Pick<T, K>>;
 
 export type ottoMaticLevel = {
   Atrb: {
@@ -68,6 +65,7 @@ export type ottoMaticLevel = {
       order: number;
     };
   };
+
   STgd: {
     1000: {
       name: "SuperTile Grid";
@@ -128,6 +126,16 @@ export type ottoMaticLevel = {
     junk2: number;
   };
 };
+/* export type ottoMaticLevelLiquid = Omit<ottoMaticLevel, "Liqd"> & {
+  Liqd: {
+    1000: {
+      name: "Water List";
+      obj: ottoLiquid[];
+      order: number;
+    };
+  };
+};
+ */
 export type ottoTileAttribute = {
   flags: number;
   p0: number;

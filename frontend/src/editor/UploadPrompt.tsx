@@ -1,20 +1,20 @@
 import { Button } from "../components/Button";
 import { FileUpload } from "../components/FileUpload";
 import { lzssDecompress } from "../utils/lzss";
-//import { globals.SUPERTILE_TEXMAP_SIZE } from "../python/structSpecs/ottoMaticInterface";
 import { sixteenBitToImageData } from "../utils/imageConverter";
 import {
   BillyFrontierGlobals,
   Bugdom2Globals,
   BugdomGlobals,
   CroMagGlobals,
+  DataType,
   Globals,
   Nanosaur2Globals,
   NanosaurGlobals,
   OttoGlobals,
   type GlobalsInterface,
 } from "../data/globals/globals";
-import { useAtom, useSetAtom } from "jotai";
+import { useAtom } from "jotai";
 
 //import level1Url from "./assets/ottoMatic/terrain/EarthFarm.ter.rsrc?url";
 
@@ -31,7 +31,12 @@ export function UploadPrompt({
 }) {
   const [globals, setGlobals] = useAtom(Globals);
   const openFile = async (url: string, gameType: GlobalsInterface) => {
-    const rsrcName = url + ".rsrc"; //.ter to .ter.rsrc
+    /*All games' Resource Forks are .ter.rsrc, except for Nanosaur, which stores data in a .ter using a proprietary format
+    Terrain files are .ter, except for Nanosaur, which is .trt, and Bugdom, 
+    where there is no separate image file, as it's just in the Resource Fork
+    */
+    const rsrcName =
+      gameType.DATA_TYPE !== DataType.TRT_FILE ? url + ".rsrc" : url;
     const name = rsrcName.split("/").pop();
     if (!name) return;
 
@@ -40,6 +45,11 @@ export function UploadPrompt({
     const res = await fetch(rsrcName);
     const file = await res.blob();
     setMapFile(new File([file], name));
+
+    if (gameType.DATA_TYPE === DataType.TRT_FILE) {
+      //replace .ter at the end with .trt
+      url = url.split(".")[0] + ".trt";
+    }
 
     const imgRes = await fetch(url);
     const img = await imgRes.blob();

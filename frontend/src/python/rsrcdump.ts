@@ -20,7 +20,7 @@ export async function save_to_json<T>(
     buffer,
     ${JSON.stringify(struct_specs)},
     ${JSON.stringify(include_types)},
-    ${JSON.stringify(exclude_types)},
+    ${JSON.stringify(exclude_types)}
   )`);
   return JSON.parse(result);
 }

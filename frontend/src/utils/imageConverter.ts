@@ -17,7 +17,7 @@ export function sixteenBitToImageData(data: DataView, imageData: ImageData) {
 }
 
 export function canvasDataToSixteenBit(canvas: HTMLCanvasElement): DataView {
-  const canvasCtx = canvas.getContext("2d");
+  const canvasCtx = canvas.getContext("2d", { willReadFrequently: true });
   if (!canvasCtx) throw new Error("Could not get canvas context");
   const imageData = canvasCtx.getImageData(0, 0, canvas.width, canvas.height);
   return imageDataToSixteenBit(imageData.data);

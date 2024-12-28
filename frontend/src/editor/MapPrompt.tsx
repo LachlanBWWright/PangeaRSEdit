@@ -15,10 +15,10 @@ import ottoPreprocessor, {
 import { lzssCompress } from "../utils/lzss";
 import { imageDataToSixteenBit } from "../utils/imageConverter";
 import { Globals } from "../data/globals/globals";
-import { useAtom, useAtomValue } from "jotai";
+import { useAtomValue } from "jotai";
 
 export function MapPrompt({ pyodide }: { pyodide: PyodideInterface }) {
-  const [globals, setGlobals] = useAtom(Globals);
+  const globals = useAtomValue(Globals);
   const [data, setData] = useImmer<ottoMaticLevel | null>(null);
   const [mapFile, setMapFile] = useState<undefined | File>(undefined);
   const [mapImagesFile, setMapImagesFile] = useState<undefined | File>(
@@ -41,7 +41,7 @@ export function MapPrompt({ pyodide }: { pyodide: PyodideInterface }) {
         [],
       );
 
-      newJsonProcess(res);
+      newJsonProcess(res, globals);
       setData(res);
     };
     loadMap();
@@ -137,7 +137,7 @@ export function MapPrompt({ pyodide }: { pyodide: PyodideInterface }) {
         <p className="text-xl">{mapFile.name}</p>
         <Button
           onClick={() => {
-            ottoPreprocessor(setData as Updater<ottoMaticLevel>);
+            ottoPreprocessor(setData as Updater<ottoMaticLevel>, globals);
             setProcessed(true); //Trigger useEffect for downloading
           }}
         >

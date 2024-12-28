@@ -1,8 +1,4 @@
-import {
-  OTTO_SUPERTILE_SIZE,
-  //globals.SUPERTILE_TEXMAP_SIZE,
-  ottoMaticLevel,
-} from "../../python/structSpecs/ottoMaticInterface";
+import { ottoMaticLevel } from "../../python/structSpecs/ottoMaticInterface";
 import { Layer, Image, Rect } from "react-konva";
 import { Fragment, useMemo } from "react";
 import { SelectedTile } from "../../data/tiles/tileAtoms";

@@ -13,23 +13,22 @@ export enum Game {
   BILLY_FRONTIER,
 }
 
-export enum TileDataTYpe {
-  STANDARD, //.ter file - Most games
-  TRT_FILE, //.trt file - Nanosaur 1
+export enum DataType {
+  STANDARD, //.ter.rsrc / .ter file - Most games
+  TRT_FILE, //.trt / .ter file - Nanosaur 1
   RSRC_FORK, //Bundled with resource fork - Bugdom 1
 }
-/* 
-export const OTTO_SUPERTILE_TEXMAP_SIZE = 128; //128x128 pixels
-//SUPERTILE_SIZE from Otto source code
-export const OTTO_SUPERTILE_SIZE = 8; //e.g. 1 supertile is 8x8 tiles
-//OREMAP_FILE_SIZE from Otto source code (1 tile is 16 units wide)
-export const OTTO_TILE_SIZE = 16;
-export const OTTO_LIQD_NUBS = 100;
-*/
+
+export enum TileImageFormat {
+  LZSS_16_BIT, //Standard 16-bit colour with LZSS compression
+  JPG, //Used in Nanosaur 2
+}
 
 export interface GlobalsInterface {
   GAME_NAME: string;
   GAME_TYPE: Game;
+  DATA_TYPE: DataType;
+  TILE_IMAGE_FORMAT: TileImageFormat;
   STRUCT_SPECS: string[];
   SUPERTILE_TEXMAP_SIZE: number; //Dimensions of each supertile texture - SUPERTILE_TEXMAP_SIZE in src code
   TILES_PER_SUPERTILE: number; //SUPERTILE_SIZE in src code
@@ -44,6 +43,8 @@ export interface GlobalsInterface {
 export const OttoGlobals: GlobalsInterface = {
   GAME_NAME: "Otto Matic",
   GAME_TYPE: Game.OTTO_MATIC,
+  DATA_TYPE: DataType.STANDARD,
+  TILE_IMAGE_FORMAT: TileImageFormat.LZSS_16_BIT,
   STRUCT_SPECS: ottoMaticSpecs,
   SUPERTILE_TEXMAP_SIZE: 128, //Dimensions of each supertile texture
   TILES_PER_SUPERTILE: 8, //How many tiles are in a supertile
@@ -55,6 +56,8 @@ export const OttoGlobals: GlobalsInterface = {
 export const BugdomGlobals: GlobalsInterface = {
   GAME_NAME: "Bugdom",
   GAME_TYPE: Game.BUGDOM,
+  DATA_TYPE: DataType.RSRC_FORK,
+  TILE_IMAGE_FORMAT: TileImageFormat.LZSS_16_BIT,
   STRUCT_SPECS: bugdom2Specs,
   SUPERTILE_TEXMAP_SIZE: 128, //Dimensions of each supertile texture
   TILES_PER_SUPERTILE: 8, //How many tiles are in a supertile
@@ -65,6 +68,8 @@ export const BugdomGlobals: GlobalsInterface = {
 export const Bugdom2Globals: GlobalsInterface = {
   GAME_NAME: "Bugdom 2",
   GAME_TYPE: Game.BUGDOM_2,
+  DATA_TYPE: DataType.STANDARD,
+  TILE_IMAGE_FORMAT: TileImageFormat.LZSS_16_BIT,
   STRUCT_SPECS: bugdom2Specs,
   SUPERTILE_TEXMAP_SIZE: 128, //Dimensions of each supertile texture
   TILES_PER_SUPERTILE: 8, //How many tiles are in a supertile
@@ -76,17 +81,21 @@ export const Bugdom2Globals: GlobalsInterface = {
 export const NanosaurGlobals: GlobalsInterface = {
   GAME_NAME: "Nanosaur",
   GAME_TYPE: Game.NANOSAUR,
+  DATA_TYPE: DataType.TRT_FILE,
+  TILE_IMAGE_FORMAT: TileImageFormat.LZSS_16_BIT,
   STRUCT_SPECS: ottoMaticSpecs,
-  SUPERTILE_TEXMAP_SIZE: 128, //Dimensions of each supertile texture
-  TILES_PER_SUPERTILE: 8, //How many tiles are in a supertile
-  TILE_SIZE: 16, //How many units each tile is
-  LIQD_NUBS: 100,
+  SUPERTILE_TEXMAP_SIZE: 32, //Dimensions of each supertile texture
+  TILES_PER_SUPERTILE: 5, //How many tiles are in a supertile
+  TILE_SIZE: 32, //How many units each tile is //TODO: Check its not 140/32
+  LIQD_NUBS: 100, //Not applicable to Nanosaur - Water is just another item
 };
 
 //TODO: NOT CHECKED, FIX
 export const Nanosaur2Globals: GlobalsInterface = {
   GAME_NAME: "Nanosaur 2",
   GAME_TYPE: Game.NANOSAUR_2,
+  DATA_TYPE: DataType.STANDARD,
+  TILE_IMAGE_FORMAT: TileImageFormat.JPG,
   STRUCT_SPECS: bugdom2Specs,
   SUPERTILE_TEXMAP_SIZE: 256, //Dimensions of each supertile texture
   TILES_PER_SUPERTILE: 8, //How many tiles are in a supertile
@@ -98,6 +107,8 @@ export const Nanosaur2Globals: GlobalsInterface = {
 export const CroMagGlobals: GlobalsInterface = {
   GAME_NAME: "Cro Mag",
   GAME_TYPE: Game.CRO_MAG,
+  DATA_TYPE: DataType.STANDARD,
+  TILE_IMAGE_FORMAT: TileImageFormat.LZSS_16_BIT,
   STRUCT_SPECS: ottoMaticSpecs,
   SUPERTILE_TEXMAP_SIZE: 128, //Dimensions of each supertile texture
   TILES_PER_SUPERTILE: 8, //How many tiles are in a supertile
@@ -109,8 +120,10 @@ export const CroMagGlobals: GlobalsInterface = {
 export const BillyFrontierGlobals: GlobalsInterface = {
   GAME_NAME: "Billy Frontier",
   GAME_TYPE: Game.BILLY_FRONTIER,
+  DATA_TYPE: DataType.STANDARD,
+  TILE_IMAGE_FORMAT: TileImageFormat.LZSS_16_BIT,
   STRUCT_SPECS: bugdom2Specs,
-  SUPERTILE_TEXMAP_SIZE: 128, //Dimensions of each supertile texture
+  SUPERTILE_TEXMAP_SIZE: 256, //Dimensions of each supertile texture
   TILES_PER_SUPERTILE: 8, //How many tiles are in a supertile
   TILE_SIZE: 32, //How many units each tile is
   LIQD_NUBS: 100,

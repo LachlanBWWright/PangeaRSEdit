@@ -3,7 +3,7 @@ import { Layer, Stage, Image } from "react-konva";
 import { SelectedTile } from "../../../data/tiles/tileAtoms";
 import { Updater } from "use-immer";
 import {
-  OTTO_SUPERTILE_SIZE,
+  //globals.TILES_PER_SUPERTILE,
   // globals.SUPERTILE_TEXMAP_SIZE,
   ottoMaticLevel,
 } from "../../../python/structSpecs/ottoMaticInterface";
@@ -84,10 +84,10 @@ export function TileMenu({
             const canvas = document.createElement("canvas");
             canvas.width =
               globals.SUPERTILE_TEXMAP_SIZE *
-              (hedr.mapWidth / OTTO_SUPERTILE_SIZE);
+              (hedr.mapWidth / globals.TILES_PER_SUPERTILE);
             canvas.height =
               globals.SUPERTILE_TEXMAP_SIZE *
-              (hedr.mapHeight / OTTO_SUPERTILE_SIZE);
+              (hedr.mapHeight / globals.TILES_PER_SUPERTILE);
             const context = canvas.getContext("2d");
             if (!context) return;
             context.fillStyle = "black";
@@ -96,10 +96,10 @@ export function TileMenu({
               await createImageBitmap(file, {
                 resizeWidth:
                   globals.SUPERTILE_TEXMAP_SIZE *
-                  (hedr.mapWidth / OTTO_SUPERTILE_SIZE),
+                  (hedr.mapWidth / globals.TILES_PER_SUPERTILE),
                 resizeHeight:
                   globals.SUPERTILE_TEXMAP_SIZE *
-                  (hedr.mapHeight / OTTO_SUPERTILE_SIZE),
+                  (hedr.mapHeight / globals.TILES_PER_SUPERTILE),
                 resizeQuality: "high",
               }),
               0,
@@ -115,8 +115,16 @@ export function TileMenu({
             if (!blackContext) return;
             blackContext.fillStyle = "black";
             canvasArray.push(blackCanvas);
-            for (let i = 0; i < hedr.mapHeight / OTTO_SUPERTILE_SIZE; i++) {
-              for (let j = 0; j < hedr.mapWidth / OTTO_SUPERTILE_SIZE; j++) {
+            for (
+              let i = 0;
+              i < hedr.mapHeight / globals.TILES_PER_SUPERTILE;
+              i++
+            ) {
+              for (
+                let j = 0;
+                j < hedr.mapWidth / globals.TILES_PER_SUPERTILE;
+                j++
+              ) {
                 const tileImage = context.getImageData(
                   j * globals.SUPERTILE_TEXMAP_SIZE,
                   i * globals.SUPERTILE_TEXMAP_SIZE,
@@ -152,8 +160,8 @@ export function TileMenu({
         />
       </div>
       <div className="flex flex-col gap-2">
-        <p>Supertiles Wide: {hedr.mapWidth / OTTO_SUPERTILE_SIZE}</p>
-        <p>Supertiles High: {hedr.mapHeight / OTTO_SUPERTILE_SIZE}</p>
+        <p>Supertiles Wide: {hedr.mapWidth / globals.TILES_PER_SUPERTILE}</p>
+        <p>Supertiles High: {hedr.mapHeight / globals.TILES_PER_SUPERTILE}</p>
         <p>Unique Supertiles {hedr.numUniqueSupertiles}</p>
       </div>
     </div>
