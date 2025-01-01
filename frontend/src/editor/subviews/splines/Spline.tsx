@@ -6,7 +6,7 @@ import {
 } from "../../../python/structSpecs/ottoMaticInterface";
 import { Line, Circle, Rect, Label, Tag, Text } from "react-konva";
 import { useAtom, useAtomValue } from "jotai";
-import { Fragment, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { getPoints } from "../../../utils/spline";
 import { SelectedSpline } from "../../../data/splines/splineAtoms";
 import { splineItemTypeNames } from "../../../data/splines/ottoSplineItemType";

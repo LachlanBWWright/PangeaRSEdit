@@ -3,20 +3,18 @@ import { FileUpload } from "../components/FileUpload";
 import { lzssDecompress } from "../utils/lzss";
 import { sixteenBitToImageData } from "../utils/imageConverter";
 import {
-  BillyFrontierGlobals,
+  /*   BillyFrontierGlobals,
   Bugdom2Globals,
   BugdomGlobals,
-  CroMagGlobals,
+  CroMagGlobals, */
   DataType,
   Globals,
-  Nanosaur2Globals,
-  NanosaurGlobals,
+  /*   Nanosaur2Globals,
+  NanosaurGlobals, */
   OttoGlobals,
   type GlobalsInterface,
 } from "../data/globals/globals";
 import { useAtom } from "jotai";
-
-//import level1Url from "./assets/ottoMatic/terrain/EarthFarm.ter.rsrc?url";
 
 export function UploadPrompt({
   mapFile,
@@ -64,11 +62,43 @@ export function UploadPrompt({
 
   return (
     <div className="flex text-white m-auto flex-1 gap-8 flex-col items-center justify-center">
+      <div className="flex flex-col gap-2 w-1/2">
+        <p className="text-6xl pb-2">Pangea Level Editor</p>
+        <Button
+          onClick={() =>
+            window.open("https://github.com/LachlanBWWright/PangeaRSEdit")
+          }
+        >
+          View on GitHub
+        </Button>
+        <p>
+          This is a work in progress level editor for Otto Matic (And hopefully
+          additional Pangea Software games).
+        </p>
+        <p>
+          Introducing items that were not originally found in the level will be
+          likely to cause Otto Matic to crash. Downloaded levels can be used by
+          replacing the existing by level data, which can be found in the
+          Terrain folder within Otto's Data folder.
+        </p>
+        <p>
+          {" "}
+          This project uses{" "}
+          <a
+            className="underline text-blue-600 hover:text-blue-800 visited:text-purple-600"
+            href="https://github.com/jorio/rsrcdump"
+          >
+            RSRCDump
+          </a>{" "}
+          by Jorio, the creator of the ports of Pangea games to modern day
+          operating systems. Any feedback is appreciated!
+        </p>
+      </div>
       <div className="w-1/2">
-        <select className="text-black w-full">
+        {/*         <select className="text-black w-full">
           <option>Otto Matic</option>
           <option>Bugdom 2</option>
-        </select>
+        </select> */}
         <p>Upload Level Data (.ter.rsrc)</p>
         <FileUpload
           className="text-2xl"
@@ -174,7 +204,7 @@ export function UploadPrompt({
             Level 10
           </Button>
         </div>
-        <div className="grid grid-cols-1 grid-rows-11 grid-flow-col text-2xl gap-1">
+        {/*         <div className="grid grid-cols-1 grid-rows-11 grid-flow-col text-2xl gap-1">
           <p>Bugdom Levels </p>
           <Button
             onClick={() =>
@@ -642,7 +672,7 @@ export function UploadPrompt({
           >
             Town Stampede
           </Button>
-        </div>
+        </div> */}
       </div>
     </div>
   );
