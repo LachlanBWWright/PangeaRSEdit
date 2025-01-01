@@ -10,7 +10,7 @@ export function parseU16(value: number | string) {
 }
 
 export function parseU8(value: number | string) {
-  if (typeof value === "string") value = parseInt(value);
+  if (typeof value === "string") value = parseInt(value) || 0;
 
   if (isNaN(value)) return 0;
 

@@ -62,8 +62,8 @@ export function ItemMenu({
               <p>Flags ({ottoItemTypeParams[itemData.type].flags})</p>
               <input
                 className="text-black"
-                type="text"
-                value={itemData.flags}
+                type="number"
+                value={itemData.flags.toString()}
                 onChange={(e) => {
                   setData((data) => {
                     if (selectedItem === undefined) return;
@@ -76,8 +76,8 @@ export function ItemMenu({
               <p>Parameter 0 ({ottoItemTypeParams[itemData.type].p0})</p>
               <input
                 className="text-black"
-                type="text"
-                value={itemData.p0}
+                type="number"
+                value={itemData.p0.toString()}
                 onChange={(e) => {
                   setData((data) => {
                     if (selectedItem === undefined) return;
@@ -90,8 +90,8 @@ export function ItemMenu({
               <p>Parameter 1 ({ottoItemTypeParams[itemData.type].p1})</p>
               <input
                 className="text-black"
-                type="text"
-                value={itemData.p1}
+                type="number"
+                value={itemData.p1.toString()}
                 onChange={(e) => {
                   setData((data) => {
                     if (selectedItem === undefined) return;
@@ -104,8 +104,8 @@ export function ItemMenu({
               <p>Parameter 2 ({ottoItemTypeParams[itemData.type].p2})</p>
               <input
                 className="text-black"
-                type="text"
-                value={itemData.p2}
+                type="number"
+                value={itemData.p2.toString()}
                 onChange={(e) => {
                   setData((data) => {
                     if (selectedItem === undefined) return;
@@ -118,8 +118,8 @@ export function ItemMenu({
               <p>Parameter 3 ({ottoItemTypeParams[itemData.type].p3})</p>
               <input
                 className="text-black"
-                type="text"
-                value={itemData.p3}
+                type="number"
+                value={itemData.p3.toString()}
                 onChange={(e) => {
                   setData((data) => {
                     if (selectedItem === undefined) return;

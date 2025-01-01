@@ -42,15 +42,15 @@ export function TopologyMenu() {
       <input
         type="number"
         className="text-black"
-        value={brushRadius}
-        onChange={(e) => setBrushRadius(parseInt(e.target.value))}
+        defaultValue={brushRadius}
+        onChange={(e) => setBrushRadius(parseInt(e.target.value) || 0)}
       />
       <p>Height Value</p>
       <input
         type="number"
         className="text-black"
-        value={value}
-        onChange={(e) => setValue(parseInt(e.target.value))}
+        defaultValue={value}
+        onChange={(e) => setValue(parseInt(e.target.value) || 0)}
       />
     </div>
   );

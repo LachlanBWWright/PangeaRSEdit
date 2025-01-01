@@ -1,15 +1,13 @@
 import { Updater } from "use-immer";
-import {
-  OTTO_LIQD_NUBS,
-  ottoMaticLevel,
-} from "../../../python/structSpecs/ottoMaticInterface";
-import { useAtom } from "jotai";
+import { ottoMaticLevel } from "../../../python/structSpecs/ottoMaticInterface";
+import { useAtom, useAtomValue } from "jotai";
 import { Button, DeleteButton } from "../../../components/Button";
 import { SelectedWaterBody } from "../../../data/water/waterAtoms";
 import {
   waterBodyNames,
   WaterBodyType,
 } from "../../../data/water/ottoWaterItemType";
+import { Globals } from "../../../data/globals/globals";
 
 export function WaterMenu({
   data,
@@ -19,6 +17,9 @@ export function WaterMenu({
   setData: Updater<ottoMaticLevel>;
 }) {
   const [selectedWaterBody, setSelectedWaterBody] = useAtom(SelectedWaterBody);
+  const globals = useAtomValue(Globals);
+
+  if (data.Liqd === undefined) return;
 
   const waterBodyData =
     selectedWaterBody !== undefined
@@ -57,7 +58,7 @@ export function WaterMenu({
                 });
 
                 //Push additional water nubs
-                for (let i = 4; i < OTTO_LIQD_NUBS; i++) {
+                for (let i = 4; i < globals.LIQD_NUBS; i++) {
                   data.Liqd[1000].obj.at(-1)?.nubs.push([0, 0]);
                 }
               })
@@ -99,7 +100,7 @@ export function WaterMenu({
                     if (selectedWaterBody === undefined) return;
                     if (
                       data.Liqd[1000].obj[selectedWaterBody].numNubs ===
-                      OTTO_LIQD_NUBS
+                      globals.LIQD_NUBS
                     )
                       return;
                     let prevNub =

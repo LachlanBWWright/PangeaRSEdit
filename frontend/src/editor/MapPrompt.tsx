@@ -2,10 +2,9 @@ import { PyodideInterface } from "pyodide";
 import { useEffect, useState } from "react";
 import { load_bytes_from_json, save_to_json } from "../python/rsrcdump";
 import {
-  OTTO_SUPERTILE_TEXMAP_SIZE,
+  //globals.SUPERTILE_TEXMAP_SIZE,
   ottoMaticLevel,
 } from "../python/structSpecs/ottoMaticInterface";
-import { ottoMaticSpecs } from "../python/structSpecs/ottoMatic";
 import { UploadPrompt } from "./UploadPrompt";
 import { EditorView } from "./EditorView";
 import { Button } from "../components/Button";
@@ -15,8 +14,11 @@ import ottoPreprocessor, {
 } from "../data/preprocessors/ottoPreprocessor";
 import { lzssCompress } from "../utils/lzss";
 import { imageDataToSixteenBit } from "../utils/imageConverter";
+import { Globals } from "../data/globals/globals";
+import { useAtomValue } from "jotai";
 
 export function MapPrompt({ pyodide }: { pyodide: PyodideInterface }) {
+  const globals = useAtomValue(Globals);
   const [data, setData] = useImmer<ottoMaticLevel | null>(null);
   const [mapFile, setMapFile] = useState<undefined | File>(undefined);
   const [mapImagesFile, setMapImagesFile] = useState<undefined | File>(
@@ -34,12 +36,12 @@ export function MapPrompt({ pyodide }: { pyodide: PyodideInterface }) {
       let res = await save_to_json<ottoMaticLevel>(
         pyodide,
         levelBuffer,
-        ottoMaticSpecs,
+        globals.STRUCT_SPECS,
         [],
         [],
       );
 
-      newJsonProcess(res);
+      newJsonProcess(res, globals);
       setData(res);
     };
     loadMap();
@@ -56,7 +58,7 @@ export function MapPrompt({ pyodide }: { pyodide: PyodideInterface }) {
     let loadRes = await load_bytes_from_json(
       pyodide,
       data,
-      ottoMaticSpecs,
+      globals.STRUCT_SPECS,
       [],
       [],
     );
@@ -74,7 +76,7 @@ export function MapPrompt({ pyodide }: { pyodide: PyodideInterface }) {
 
     //TODO: Hardcoded values that will break for other games / if actual compression is implemented
     const imageSize =
-      OTTO_SUPERTILE_TEXMAP_SIZE * OTTO_SUPERTILE_TEXMAP_SIZE * 2;
+      globals.SUPERTILE_TEXMAP_SIZE * globals.SUPERTILE_TEXMAP_SIZE * 2;
     const compressedImageSize = imageSize + Math.ceil(imageSize / 8);
     const imageDownloadBuffer = new DataView(
       new ArrayBuffer(mapImages.length * (4 + compressedImageSize)),
@@ -135,7 +137,7 @@ export function MapPrompt({ pyodide }: { pyodide: PyodideInterface }) {
         <p className="text-xl">{mapFile.name}</p>
         <Button
           onClick={() => {
-            ottoPreprocessor(setData as Updater<ottoMaticLevel>);
+            ottoPreprocessor(setData as Updater<ottoMaticLevel>, globals);
             setProcessed(true); //Trigger useEffect for downloading
           }}
         >

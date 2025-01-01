@@ -42,6 +42,7 @@ export function EditorView({
   mapImages: HTMLCanvasElement[];
   setMapImages: (newCanvases: HTMLCanvasElement[]) => void;
 }) {
+  console.log(data);
   const [view, setView] = useState<View>(View.fences);
   const [stage, setStage] = useImmer({
     scale: 1,

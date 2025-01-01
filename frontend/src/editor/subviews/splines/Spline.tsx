@@ -2,10 +2,11 @@ import { Updater } from "use-immer";
 import {
   ottoMaticLevel,
   ottoSplineItem,
+  ottoSplineNub,
 } from "../../../python/structSpecs/ottoMaticInterface";
 import { Line, Circle, Rect, Label, Tag, Text } from "react-konva";
-import { useAtom } from "jotai";
-import { Fragment, useEffect, useMemo, useState } from "react";
+import { useAtom, useAtomValue } from "jotai";
+import { useEffect, useMemo, useState } from "react";
 import { getPoints } from "../../../utils/spline";
 import { SelectedSpline } from "../../../data/splines/splineAtoms";
 import { splineItemTypeNames } from "../../../data/splines/ottoSplineItemType";
@@ -19,7 +20,7 @@ export function Spline({
   setData: Updater<ottoMaticLevel>;
   splineIdx: number;
 }) {
-  const [selectedSpline, setSelectedSpline] = useAtom(SelectedSpline);
+  const selectedSpline = useAtomValue(SelectedSpline);
 
   const nubs = data.SpNb[SPLINE_KEY_BASE + splineIdx].obj;
   const items = data.SpIt[SPLINE_KEY_BASE + splineIdx].obj;
@@ -59,42 +60,13 @@ export function Spline({
       {nubs.map((nub, nubIdx) => {
         if (nubIdx === 0) return;
         return (
-          <Fragment key={nubIdx}>
-            <Circle
-              x={nub.x}
-              y={nub.z}
-              radius={10}
-              draggable
-              fill={selectedSpline === splineIdx ? "red" : "blue"}
-              onMouseDown={() => setSelectedSpline(splineIdx)}
-              onDragStart={() => setSelectedSpline(splineIdx)}
-              onDragEnd={(e) => {
-                setData((data) => {
-                  data.SpNb[SPLINE_KEY_BASE + splineIdx].obj[nubIdx] = {
-                    x: Math.round(e.target.x()),
-                    z: Math.round(e.target.y()),
-                  };
-
-                  if (
-                    nubIdx ===
-                    data.SpNb[SPLINE_KEY_BASE + splineIdx].obj.length - 1
-                  ) {
-                    data.SpNb[SPLINE_KEY_BASE + splineIdx].obj[0] = {
-                      x: Math.round(e.target.x()),
-                      z: Math.round(e.target.y()),
-                    };
-                  }
-                });
-              }}
-            />
-            <Text
-              x={nub.x - 4}
-              y={nub.z - 4}
-              text={nubIdx.toString()}
-              fill="white"
-              opacity={0.8}
-            />
-          </Fragment>
+          <SplineNub
+            key={nubIdx}
+            nub={nub}
+            nubIdx={nubIdx}
+            splineIdx={splineIdx}
+            setData={setData}
+          />
         );
       })}
       {items.map((item, itemIdx) => {
@@ -115,6 +87,64 @@ export function Spline({
           />
         );
       })}
+    </>
+  );
+}
+
+function SplineNub({
+  nub,
+  nubIdx,
+  splineIdx,
+  setData,
+}: {
+  nub: ottoSplineNub;
+  nubIdx: number;
+  splineIdx: number;
+  setData: Updater<ottoMaticLevel>;
+}) {
+  const [selectedSpline, setSelectedSpline] = useAtom(SelectedSpline);
+  const [hovering, setHovering] = useState(false);
+  return (
+    <>
+      <Circle
+        x={nub.x}
+        y={nub.z}
+        radius={10}
+        draggable
+        fill={selectedSpline === splineIdx ? "red" : "blue"}
+        onMouseDown={() => setSelectedSpline(splineIdx)}
+        onDragStart={() => setSelectedSpline(splineIdx)}
+        onDragEnd={(e) => {
+          setData((data) => {
+            data.SpNb[SPLINE_KEY_BASE + splineIdx].obj[nubIdx] = {
+              x: Math.round(e.target.x()),
+              z: Math.round(e.target.y()),
+            };
+
+            if (
+              nubIdx ===
+              data.SpNb[SPLINE_KEY_BASE + splineIdx].obj.length - 1
+            ) {
+              data.SpNb[SPLINE_KEY_BASE + splineIdx].obj[0] = {
+                x: Math.round(e.target.x()),
+                z: Math.round(e.target.y()),
+              };
+            }
+          });
+        }}
+        onMouseOver={() => setHovering(true)}
+        onMouseLeave={() => setHovering(false)}
+      />
+      <Text
+        x={nub.x - 4}
+        y={nub.z - 4}
+        text={nubIdx.toString()}
+        fill="white"
+        opacity={0.8}
+        onMouseOver={() => setHovering(true)}
+        onMouseLeave={() => setHovering(false)}
+        visible={!hovering}
+      />
     </>
   );
 }
