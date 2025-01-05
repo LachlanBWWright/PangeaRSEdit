@@ -17,18 +17,18 @@ import { SelectedSpline } from "../data/splines/splineAtoms";
 import { WaterBodies } from "./subviews/WaterBodies";
 import { WaterMenu } from "./subviews/water/WaterMenu";
 import { SelectedWaterBody } from "../data/water/waterAtoms";
-import { TopologyGrid } from "./subviews/TopologyGrid";
-import { TopologyMenu } from "./subviews/topology/TopologyMenu";
 import { Tiles } from "./subviews/Tiles";
-import { TileMenu } from "./subviews/tiles/TilesMenu";
+import { TilesMenu } from "./subviews/tiles/TilesMenu";
+import { Supertiles } from "./subviews/Supertiles";
+import { SupertileMenu } from "./subviews/supertiles/SupertilesMenu";
 
 enum View {
   fences,
   water,
   items,
   splines,
-  topology,
   tiles,
+  supertiles,
 }
 
 export function EditorView({
@@ -100,10 +100,10 @@ export function EditorView({
           Tiles
         </Button>
         <Button
-          selected={view === View.topology}
-          onClick={() => setView(View.topology)}
+          selected={view === View.supertiles}
+          onClick={() => setView(View.supertiles)}
         >
-          Topology
+          Supertiles
         </Button>
         <div className="grid grid-cols-2 gap-2">
           <ZoomButton onClick={zoomIn}>Zoom In</ZoomButton>
@@ -115,15 +115,15 @@ export function EditorView({
         {view === View.water && <WaterMenu data={data} setData={setData} />}
         {view === View.items && <ItemMenu data={data} setData={setData} />}
         {view === View.splines && <SplineMenu data={data} setData={setData} />}
-        {view === View.tiles && (
-          <TileMenu
+        {view === View.tiles && <TilesMenu />}
+        {view === View.supertiles && (
+          <SupertileMenu
             data={data}
             setData={setData}
             mapImages={mapImages}
             setMapImages={setMapImages}
           />
         )}
-        {view === View.topology && <TopologyMenu />}
       </div>
       <div
         className="w-full min-h-0 flex-1 border-2 border-black overflow-clip"
@@ -191,17 +191,16 @@ export function EditorView({
             });
           }}
         >
-          {view === View.topology ? (
-            <TopologyGrid
+          <Supertiles data={data} mapImages={mapImages} />
+          {view === View.tiles && (
+            <Tiles
               data={data}
               setData={setData}
-              isEditingTopology={view === View.topology}
+              isEditingTopology={view === View.tiles}
             />
-          ) : (
-            <Tiles data={data} mapImages={mapImages} />
           )}
-          {view === View.topology ||
-            (view === View.tiles && (
+          {view === View.tiles ||
+            (view === View.supertiles && (
               <>
                 <WaterBodies data={data} setData={setData} />
                 <Fences data={data} setData={setData} />
