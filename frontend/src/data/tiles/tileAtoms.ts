@@ -29,3 +29,5 @@ export const CurrentTopologyValueMode = atom<TopologyValueMode>(
 export const TopologyBrushRadius = atom<number>(1);
 
 export const TopologyValue = atom<number>(0);
+
+export const TopologyOpacity = atom<number>(1);

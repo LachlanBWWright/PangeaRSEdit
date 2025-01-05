@@ -10,6 +10,7 @@ import {
   TileViewMode,
   TileViews,
   TopologyBrushRadius,
+  TopologyOpacity,
   TopologyValue,
   TopologyValueMode,
 } from "../../data/tiles/tileAtoms";
@@ -98,6 +99,7 @@ export function TopologyTiles({
   const topologyValue = useAtomValue(TopologyValue);
   const topologyBrushRadius = useAtomValue(TopologyBrushRadius);
   const globals = useAtomValue(Globals);
+  const opacity = useAtomValue(TopologyOpacity);
 
   console.log(currentTopologyBrushMode, topologyBrushRadius);
 
@@ -176,7 +178,7 @@ export function TopologyTiles({
       <Image
         x={0}
         y={0}
-        opacity={0.9}
+        opacity={opacity}
         width={(header.mapWidth + 1) * globals.TILE_SIZE}
         height={(header.mapHeight + 1) * globals.TILE_SIZE}
         onClick={(e) => {

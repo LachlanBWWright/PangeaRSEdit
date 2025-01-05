@@ -6,6 +6,7 @@ import {
   TileViews,
   TopologyBrushMode,
   TopologyBrushRadius,
+  TopologyOpacity,
   TopologyValue,
   TopologyValueMode,
 } from "../../../data/tiles/tileAtoms";
@@ -17,6 +18,7 @@ export function TilesMenu() {
   const [valueMode, setValueMode] = useAtom(CurrentTopologyValueMode);
   const [brushRadius, setBrushRadius] = useAtom(TopologyBrushRadius);
   const [value, setValue] = useAtom(TopologyValue);
+  const [toplogyOpacity, setTopologyOpacity] = useAtom(TopologyOpacity);
   //data.YCrd[1000].obj[0]
   return (
     <div className="flex flex-col gap-2">
@@ -31,19 +33,19 @@ export function TilesMenu() {
           selected={tileView === TileViews.Flags}
           onClick={() => setTileView(TileViews.Flags)}
         >
-          Flags
+          Empty Tiles
         </Button>
         <Button
           selected={tileView === TileViews.ElectricFloor0}
           onClick={() => setTileView(TileViews.ElectricFloor0)}
         >
-          ElectricFloor0
+          Electric Floor 1
         </Button>
         <Button
           selected={tileView === TileViews.ElectricFloor1}
           onClick={() => setTileView(TileViews.ElectricFloor1)}
         >
-          ElectricFloor1
+          Electric Floor 2
         </Button>
       </div>
       {tileView === TileViews.Topology && (
@@ -83,6 +85,15 @@ export function TilesMenu() {
             className="text-black"
             defaultValue={value}
             onChange={(e) => setValue(parseInt(e.target.value) || 0)}
+          />
+          <p>Topology View Opacity</p>
+          <input
+            type="number"
+            className="text-black"
+            defaultValue={toplogyOpacity}
+            onChange={(e) =>
+              setTopologyOpacity(parseFloat(e.target.value) || 1)
+            }
           />
         </div>
       )}
