@@ -21,6 +21,7 @@ import { Tiles } from "./subviews/Tiles";
 import { TilesMenu } from "./subviews/tiles/TilesMenu";
 import { Supertiles } from "./subviews/Supertiles";
 import { SupertileMenu } from "./subviews/supertiles/SupertilesMenu";
+import { DataHistory } from "./MapPrompt";
 
 enum View {
   fences,
@@ -36,11 +37,17 @@ export function EditorView({
   setData,
   mapImages,
   setMapImages,
+  undoData,
+  redoData,
+  dataHistory,
 }: {
   data: ottoMaticLevel;
   setData: Updater<ottoMaticLevel>;
   mapImages: HTMLCanvasElement[];
   setMapImages: (newCanvases: HTMLCanvasElement[]) => void;
+  undoData: () => void;
+  redoData: () => void;
+  dataHistory: DataHistory;
 }) {
   console.log(data);
   const [view, setView] = useState<View>(View.fences);
@@ -66,6 +73,7 @@ export function EditorView({
 
   const stageRef = useRef<HTMLDivElement>(null);
 
+  console.log("DATAHISTORY", dataHistory);
   return (
     <div className="flex flex-col flex-1 w-full gap-2 min-h-0">
       <div className="grid grid-cols-7 gap-2 w-full overflow-clip">
@@ -105,9 +113,19 @@ export function EditorView({
         >
           Supertiles
         </Button>
-        <div className="grid grid-cols-2 gap-2">
-          <ZoomButton onClick={zoomIn}>Zoom In</ZoomButton>
-          <ZoomButton onClick={zoomOut}>Zoom Out</ZoomButton>
+        <div className="grid grid-cols-4 gap-2">
+          <ZoomButton disabled={dataHistory.index === 0} onClick={undoData}>
+            Undo
+          </ZoomButton>
+          <ZoomButton
+            disabled={dataHistory.index === dataHistory.items.length - 1}
+            onClick={redoData}
+          >
+            Redo
+          </ZoomButton>
+
+          <ZoomButton onClick={zoomIn}>🔍+</ZoomButton>
+          <ZoomButton onClick={zoomOut}>🔍-</ZoomButton>
         </div>
       </div>
       <div>

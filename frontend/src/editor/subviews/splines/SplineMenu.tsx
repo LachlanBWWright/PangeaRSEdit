@@ -3,7 +3,7 @@ import {
   ottoMaticLevel,
   ottoSplineItem,
 } from "../../../python/structSpecs/ottoMaticInterface";
-import { useAtom, useAtomValue } from "jotai";
+import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { Button, DeleteButton } from "../../../components/Button";
 import { ottoItemTypeParams } from "../../../data/items/ottoItemType";
 import { parseU16, parseU8 } from "../../../utils/numberParsers";
@@ -18,6 +18,7 @@ import {
 import { SPLINE_KEY_BASE } from "./Spline";
 import { useEffect } from "react";
 import { getPoints } from "../../../utils/spline";
+import { BlockHistoryUpdate } from "../../../data/globals/history";
 
 export function SplineMenu({
   data,
@@ -75,6 +76,8 @@ export function SplineMenu({
 }
 
 function AddNewSplineMenu({ setData }: { setData: Updater<ottoMaticLevel> }) {
+  const setBlockHistoryUpdate = useSetAtom(BlockHistoryUpdate);
+
   return (
     <>
       <Button
@@ -120,6 +123,7 @@ function AddNewSplineMenu({ setData }: { setData: Updater<ottoMaticLevel> }) {
               obj: getPoints(data.SpNb[splinePos].obj),
             };
           });
+          setBlockHistoryUpdate(true);
         }}
       >
         Add New Spline
@@ -316,7 +320,9 @@ function EditSplineMenu({
   data: ottoMaticLevel;
   setData: Updater<ottoMaticLevel>;
 }) {
-  const selectedSpline = useAtomValue(SelectedSpline);
+  const [selectedSpline, setSelectedSpline] = useAtom(SelectedSpline);
+  const setBlockHistoryUpdate = useSetAtom(BlockHistoryUpdate);
+
   return (
     <div className="grid grid-cols-6 gap-2">
       <Button
@@ -333,6 +339,7 @@ function EditSplineMenu({
               obj: getPoints(data.SpNb[SPLINE_KEY_BASE + selectedSpline].obj),
             };
           });
+          setBlockHistoryUpdate(true);
         }}
       >
         Add Front Nub
@@ -355,6 +362,7 @@ function EditSplineMenu({
               obj: getPoints(data.SpNb[SPLINE_KEY_BASE + selectedSpline].obj),
             };
           });
+          setBlockHistoryUpdate(true);
         }}
       >
         Add Back Nub
@@ -372,6 +380,7 @@ function EditSplineMenu({
               obj: getPoints(data.SpNb[SPLINE_KEY_BASE + selectedSpline].obj),
             };
           });
+          setBlockHistoryUpdate(true);
         }}
       >
         Delete Front Nub
@@ -394,6 +403,7 @@ function EditSplineMenu({
               obj: getPoints(data.SpNb[SPLINE_KEY_BASE + selectedSpline].obj),
             };
           });
+          setBlockHistoryUpdate(true);
         }}
       >
         Delete Back Nub
@@ -437,6 +447,7 @@ function EditSplineMenu({
             delete data.SpPt[pos];
             delete data.SpIt[pos];
           });
+          setSelectedSpline(undefined);
         }}
       >
         Delete Spline

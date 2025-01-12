@@ -1,9 +1,10 @@
 import { Updater } from "use-immer";
 import { ottoMaticLevel } from "../../../python/structSpecs/ottoMaticInterface";
 import { Circle, Line, Rect } from "react-konva";
-import { useAtom } from "jotai";
+import { useAtom, useSetAtom } from "jotai";
 import { SelectedWaterBody } from "../../../data/water/waterAtoms";
 import { useEffect } from "react";
+import { BlockHistoryUpdate } from "../../../data/globals/history";
 
 export function WaterBody({
   data,
@@ -40,15 +41,9 @@ export function WaterBody({
       waterBody.bBoxRight = right;
       waterBody.bBoxTop = top;
       waterBody.bBoxBottom = bottom;
-
-      //Force hotspots to be within bounding box
-      /*      
-      if (waterBody.hotSpotX < left) waterBody.hotSpotX = left;
-      if (waterBody.hotSpotX > right) waterBody.hotSpotX = right;
-      if (waterBody.hotSpotZ < top) waterBody.hotSpotZ = top;
-      if (waterBody.hotSpotZ > bottom) waterBody.hotSpotZ = bottom; */
     });
   }, [data.Liqd[1000].obj[waterBodyIdx]]);
+  const setBlockHistoryUpdate = useSetAtom(BlockHistoryUpdate);
 
   if (!waterBody) return <></>;
 
@@ -102,6 +97,7 @@ export function WaterBody({
                     data.Liqd[1000].obj[waterBodyIdx].nubs[nubIdx][1] =
                       Math.round(e.target.y());
                   });
+                  setBlockHistoryUpdate(true);
                 }}
               />
             </>
