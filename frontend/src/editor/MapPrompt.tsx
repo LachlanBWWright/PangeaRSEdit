@@ -15,11 +15,26 @@ import ottoPreprocessor, {
 import { lzssCompress } from "../utils/lzss";
 import { imageDataToSixteenBit } from "../utils/imageConverter";
 import { Globals } from "../data/globals/globals";
-import { useAtomValue } from "jotai";
+import { useAtom, useAtomValue } from "jotai";
+import { BlockHistoryUpdate } from "../data/globals/history";
+
+export type DataHistory = {
+  items: ottoMaticLevel[];
+  index: number;
+};
 
 export function MapPrompt({ pyodide }: { pyodide: PyodideInterface }) {
   const globals = useAtomValue(Globals);
   const [data, setData] = useImmer<ottoMaticLevel | null>(null);
+  //History of previous states for undo/redo purposes
+  const [dataHistory, setDataHistory] = useImmer<DataHistory>({
+    items: [],
+    index: 0,
+  });
+  //Set to true to block updating history, so that undo/redo doesn't change the history
+  const [blockHistoryUpdate, setBlockHistoryUpdate] =
+    useAtom(BlockHistoryUpdate);
+
   const [mapFile, setMapFile] = useState<undefined | File>(undefined);
   const [mapImagesFile, setMapImagesFile] = useState<undefined | File>(
     undefined,
@@ -28,6 +43,7 @@ export function MapPrompt({ pyodide }: { pyodide: PyodideInterface }) {
     undefined,
   );
   const [processed, setProcessed] = useState(false);
+
   useEffect(() => {
     const loadMap = async () => {
       if (!mapFile) return;
@@ -52,6 +68,57 @@ export function MapPrompt({ pyodide }: { pyodide: PyodideInterface }) {
     saveMap();
     setProcessed(false);
   }, [processed, data]);
+
+  //Update History
+  useEffect(() => {
+    console.log("setting data history", dataHistory);
+    //Wipe history for new map
+    if (!data) {
+      setDataHistory(() => ({ items: [], index: 0 }));
+    }
+    /*
+    Don't update history if change is coming from undo/redo, or something that 
+    will trigger an immediate change (e.g spline nubs triggering spline points change)
+    */
+    if (blockHistoryUpdate) {
+      setBlockHistoryUpdate(false);
+      return;
+    }
+
+    setDataHistory((draft) => {
+      if (!data) return;
+      //Remove subsequent history
+      draft.items.splice(draft.index + 1, draft.items.length - draft.index - 1);
+      draft.items.push(data);
+      draft.index = draft.items.length - 1;
+
+      //Limit history size
+      if (draft.items.length > 10) {
+        draft.items.shift();
+        draft.index -= 1;
+      }
+    });
+  }, [data]);
+
+  const undoData = () => {
+    if (dataHistory.index > 0) {
+      setDataHistory((draft) => {
+        draft.index -= 1;
+      });
+      setData(dataHistory.items[dataHistory.index - 1]);
+      setBlockHistoryUpdate(true);
+    }
+  };
+
+  const redoData = () => {
+    if (dataHistory.index < dataHistory.items.length - 1) {
+      setDataHistory((draft) => {
+        draft.index += 1;
+      });
+      setData(dataHistory.items[dataHistory.index + 1]);
+      setBlockHistoryUpdate(true);
+    }
+  };
 
   async function saveMap() {
     if (!mapFile || !mapImagesFile) return;
@@ -151,6 +218,9 @@ export function MapPrompt({ pyodide }: { pyodide: PyodideInterface }) {
           setData={setData as Updater<ottoMaticLevel>}
           mapImages={mapImages}
           setMapImages={setMapImages}
+          undoData={undoData}
+          redoData={redoData}
+          dataHistory={dataHistory}
         />
       ) : (
         <p>Loading...</p>

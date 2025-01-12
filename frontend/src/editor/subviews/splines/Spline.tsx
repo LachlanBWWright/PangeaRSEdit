@@ -5,11 +5,12 @@ import {
   ottoSplineNub,
 } from "../../../python/structSpecs/ottoMaticInterface";
 import { Line, Circle, Rect, Label, Tag, Text } from "react-konva";
-import { useAtom, useAtomValue } from "jotai";
+import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { useEffect, useMemo, useState } from "react";
 import { getPoints } from "../../../utils/spline";
 import { SelectedSpline } from "../../../data/splines/splineAtoms";
 import { splineItemTypeNames } from "../../../data/splines/ottoSplineItemType";
+import { BlockHistoryUpdate } from "../../../data/globals/history";
 
 export function Spline({
   data,
@@ -104,6 +105,7 @@ function SplineNub({
 }) {
   const [selectedSpline, setSelectedSpline] = useAtom(SelectedSpline);
   const [hovering, setHovering] = useState(false);
+  const setBlockHistoryUpdate = useSetAtom(BlockHistoryUpdate);
   return (
     <>
       <Circle
@@ -121,6 +123,7 @@ function SplineNub({
               z: Math.round(e.target.y()),
             };
 
+            //Modify "hidden" final nub, which is to be in the same position as the first nub
             if (
               nubIdx ===
               data.SpNb[SPLINE_KEY_BASE + splineIdx].obj.length - 1
@@ -131,6 +134,7 @@ function SplineNub({
               };
             }
           });
+          setBlockHistoryUpdate(true);
         }}
         onMouseOver={() => setHovering(true)}
         onMouseLeave={() => setHovering(false)}

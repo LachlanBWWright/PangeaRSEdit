@@ -147,6 +147,8 @@ export function bakeSpline(nubs: ottoSplinePoint[], pointsPerSpan: number[]) {
     numPoints++;
   }
 
+  points = points.slice(0, numPoints);
+
   return points;
 }
 /* static SplinePointType** BakeSpline(int numNubs, const SplinePointType *nubs, const int* pointsPerSpan)
