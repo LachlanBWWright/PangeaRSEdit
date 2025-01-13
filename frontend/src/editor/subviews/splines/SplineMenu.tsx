@@ -182,7 +182,7 @@ function EditSplineItemMenu({
         <p>Flags ({ottoItemTypeParams[splineItemData.type].flags})</p>
         <input
           className="text-black"
-          type="text"
+          type="number"
           value={splineItemData.flags}
           onChange={(e) => {
             setData((data) => {
@@ -200,7 +200,7 @@ function EditSplineItemMenu({
         <p>Parameter 0 ({ottoItemTypeParams[splineItemData.type].p0})</p>
         <input
           className="text-black"
-          type="text"
+          type="number"
           value={splineItemData.p0}
           onChange={(e) => {
             setData((data) => {
@@ -218,7 +218,7 @@ function EditSplineItemMenu({
         <p>Parameter 1 ({ottoItemTypeParams[splineItemData.type].p1})</p>
         <input
           className="text-black"
-          type="text"
+          type="number"
           value={splineItemData.p1}
           onChange={(e) => {
             setData((data) => {
@@ -236,7 +236,7 @@ function EditSplineItemMenu({
         <p>Parameter 2 ({ottoItemTypeParams[splineItemData.type].p2})</p>
         <input
           className="text-black"
-          type="text"
+          type="number"
           value={splineItemData.p2}
           onChange={(e) => {
             setData((data) => {
@@ -254,7 +254,7 @@ function EditSplineItemMenu({
         <p>Parameter 3 ({ottoItemTypeParams[splineItemData.type].p3})</p>
         <input
           className="text-black"
-          type="text"
+          type="number"
           value={splineItemData.p3}
           onChange={(e) => {
             setData((data) => {
@@ -272,7 +272,7 @@ function EditSplineItemMenu({
         <p>Placement (0-1)</p>
         <input
           className="text-black"
-          type="text"
+          type="number"
           value={splineItemData.placement}
           onChange={(e) => {
             setData((data) => {
@@ -285,6 +285,8 @@ function EditSplineItemMenu({
               let placement = parseFloat(e.target.value);
               if (placement < 0) placement = 0;
               if (placement > 1) placement = 1;
+
+              if (isNaN(placement)) placement = 0;
 
               data.SpIt[SPLINE_KEY_BASE + selectedSpline].obj[
                 selectedSplineItem

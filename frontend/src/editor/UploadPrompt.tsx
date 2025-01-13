@@ -62,7 +62,7 @@ export function UploadPrompt({
 
   return (
     <div className="flex text-white m-auto flex-1 gap-8 flex-col items-center justify-center">
-      <div className="flex flex-col gap-2 w-1/2">
+      <div className="flex flex-col gap-2 lg:w-1/2">
         <p className="text-6xl pb-2">Pangea Level Editor</p>
         <Button
           onClick={() =>
@@ -79,7 +79,9 @@ export function UploadPrompt({
           Introducing items that were not originally found in the level will be
           likely to cause Otto Matic to crash. Downloaded levels can be used by
           replacing the existing by level data, which can be found in the
-          Terrain folder within Otto's Data folder.
+          Terrain folder within Otto's Data folder. Otto Matic has strict limits
+          for enemies, which means that placed enemy items may not appear. This
+          can be bypassed by adding enemies as spline items.
         </p>
         <p>
           {" "}
@@ -94,7 +96,7 @@ export function UploadPrompt({
           operating systems. Any feedback is appreciated!
         </p>
       </div>
-      <div className="w-1/2">
+      <div className="lg:w-1/2">
         {/*         <select className="text-black w-full">
           <option>Otto Matic</option>
           <option>Bugdom 2</option>
