@@ -22,6 +22,12 @@ export function Fence({
 
   return (
     <>
+      <Line
+        points={lines}
+        stroke={fenceIdx === selectedFence ? "red" : getColour(fenceIdx)}
+        strokeWidth={fenceIdx === selectedFence ? 5 : 2}
+        onClick={() => setSelectedFence(fenceIdx)}
+      />
       {data.FnNb[1000 + fenceIdx].obj.map((nub, nubIdx) => (
         <FenceNub
           key={nubIdx}
@@ -34,12 +40,6 @@ export function Fence({
           }}
         />
       ))}
-      <Line
-        points={lines}
-        stroke={fenceIdx === selectedFence ? "red" : getColour(fenceIdx)}
-        strokeWidth={fenceIdx === selectedFence ? 5 : 2}
-        onClick={() => setSelectedFence(fenceIdx)}
-      />
     </>
   );
 }
