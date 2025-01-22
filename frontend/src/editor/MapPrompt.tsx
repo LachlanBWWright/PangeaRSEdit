@@ -71,7 +71,6 @@ export function MapPrompt({ pyodide }: { pyodide: PyodideInterface }) {
 
   //Update History
   useEffect(() => {
-    console.log("setting data history", dataHistory);
     //Wipe history for new map
     if (!data) {
       setDataHistory(() => ({ items: [], index: 0 }));

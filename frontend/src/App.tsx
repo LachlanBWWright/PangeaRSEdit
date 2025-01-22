@@ -9,7 +9,7 @@ function App() {
   const [pyodide, setPyodide] = useState<PyodideInterface | null>(null);
   useEffect(() => {
     loadPyodide({
-      indexURL: "https://cdn.jsdelivr.net/pyodide/v0.26.2/full/",
+      indexURL: "https://cdn.jsdelivr.net/pyodide/v0.26.4/full/",
     }).then(async (pyodide) => {
       await pyodide.loadPackage(rsrcDumpUrl);
       await pyodide.runPythonAsync("import rsrcdump");
