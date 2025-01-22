@@ -8,6 +8,13 @@ import {
   WaterBodyType,
 } from "../../../data/water/ottoWaterItemType";
 import { Globals } from "../../../data/globals/globals";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 export function WaterMenu({
   data,
@@ -76,23 +83,32 @@ export function WaterMenu({
       <div className="flex flex-col gap-2">
         {waterBodyData !== null && waterBodyData !== undefined && (
           <>
-            <select
-              value={waterBodyData.type}
-              className="text-black"
-              onChange={(e) => {
-                const newItemType = parseInt(e.target.value);
+            <Select
+              value={waterBodyData.type.toString()}
+              onValueChange={(e) => {
+                const newItemType = parseInt(e);
                 setData((data) => {
                   if (selectedWaterBody === undefined) return;
                   data.Liqd[1000].obj[selectedWaterBody].type = newItemType;
                 });
               }}
             >
-              {waterBodyValues.map((key) => (
-                <option key={key} className="text-black" value={key}>
-                  {waterBodyNames[key as WaterBodyType]}
-                </option>
-              ))}
-            </select>
+              <SelectTrigger>
+                <SelectValue>{waterBodyNames[waterBodyData.type]}</SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                {waterBodyValues.map((key) => (
+                  <SelectItem
+                    key={key}
+                    className="text-black"
+                    value={key.toString()}
+                  >
+                    {waterBodyNames[key as WaterBodyType]}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
             <div className="grid grid-cols-3 gap-2">
               <Button
                 onClick={() =>

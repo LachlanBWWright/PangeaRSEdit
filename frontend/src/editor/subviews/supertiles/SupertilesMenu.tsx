@@ -176,24 +176,3 @@ function ImageDisplay({ image }: { image: HTMLCanvasElement }) {
 
   return <Image image={image} width={250} height={250} />;
 }
-
-{
-  /*         <select
-          className="text-black"
-          value={selectedTile}
-          onChange={(e) => {
-            //setSelectedTile(parseInt(e.target.value)
-            setData((data) => {
-              data.STgd[1000].obj[selectedTile].superTileId = parseInt(
-                e.target.value,
-              );
-            });
-          }}
-        >
-          {mapImages.map((_, i) => (
-            <option key={i} value={i}>
-              {i}
-            </option>
-          ))}
-        </select> */
-}

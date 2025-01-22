@@ -81,7 +81,6 @@ export function lzssCompress(sourceOriginalPtr: DataView) {
   const numHeaders = Math.ceil(sourceSize / 8);
   const destSize = sourceSize + numHeaders;
 
-  //console.log("sourceSize", sourceSize, "destSize", destSize);
   const outputBuffer = new DataView(new ArrayBuffer(destSize));
   let destPos = 0;
   for (let sourcePos = 0; sourcePos < sourceSize; sourcePos++) {

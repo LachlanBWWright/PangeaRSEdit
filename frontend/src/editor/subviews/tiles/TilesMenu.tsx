@@ -1,3 +1,4 @@
+import { Input } from "@/components/ui/input";
 import { Button } from "../../../components/Button";
 import {
   CurrentTopologyBrushMode,
@@ -11,6 +12,12 @@ import {
   TopologyValueMode,
 } from "../../../data/tiles/tileAtoms";
 import { useAtom } from "jotai";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+} from "@/components/ui/select";
 
 export function TilesMenu() {
   const [tileView, setTileView] = useAtom(TileViewMode);
@@ -49,47 +56,67 @@ export function TilesMenu() {
         </Button>
       </div>
       {tileView === TileViews.Topology && (
-        <div className="grid grid-cols-[auto_1fr_auto_1fr] gap-2">
+        <div className="grid grid-cols-[auto_1fr_auto_1fr] gap-2 items-center">
           <p>Brush Mode</p>
-          <select
-            className="text-black"
-            value={brushMode}
-            onChange={(e) => {
-              setBrushMode(parseInt(e.target.value));
+          <Select
+            value={brushMode.toString()}
+            onValueChange={(e) => {
+              setBrushMode(parseInt(e));
             }}
           >
-            <option value={TopologyBrushMode.CIRCLE_BRUSH}>Circle Brush</option>
-            <option value={TopologyBrushMode.SQUARE_BRUSH}>Square Brush</option>
-          </select>
+            <SelectTrigger>
+              {brushMode === TopologyBrushMode.CIRCLE_BRUSH
+                ? "Circle Brush"
+                : "Square Brush"}
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={TopologyBrushMode.CIRCLE_BRUSH.toString()}>
+                Circle Brush
+              </SelectItem>
+              <SelectItem value={TopologyBrushMode.SQUARE_BRUSH.toString()}>
+                Square Brush
+              </SelectItem>
+            </SelectContent>
+          </Select>
+
           <p>Adjustment Mode</p>
-          <select
-            className="text-black"
-            value={valueMode}
-            onChange={(e) => {
-              setValueMode(parseInt(e.target.value));
+          <Select
+            value={valueMode.toString()}
+            onValueChange={(e) => {
+              setValueMode(parseInt(e));
             }}
           >
-            <option value={TopologyValueMode.SET_VALUE}>Set Value</option>
-            <option value={TopologyValueMode.DELTA_VALUE}>Delta Value</option>
-          </select>
+            <SelectTrigger>
+              {valueMode === TopologyValueMode.SET_VALUE
+                ? "Set Value"
+                : "Delta Value"}
+            </SelectTrigger>
+
+            <SelectContent>
+              <SelectItem value={TopologyValueMode.SET_VALUE.toString()}>
+                Set Value
+              </SelectItem>
+              <SelectItem value={TopologyValueMode.DELTA_VALUE.toString()}>
+                Delta Value
+              </SelectItem>
+            </SelectContent>
+          </Select>
+
           <p>Brush Radius</p>
-          <input
+          <Input
             type="number"
-            className="text-black"
             defaultValue={brushRadius}
             onChange={(e) => setBrushRadius(parseInt(e.target.value) || 0)}
           />
           <p>Height Value</p>
-          <input
+          <Input
             type="number"
-            className="text-black"
             defaultValue={value}
             onChange={(e) => setValue(parseInt(e.target.value) || 0)}
           />
           <p>Topology View Opacity</p>
-          <input
+          <Input
             type="number"
-            className="text-black"
             defaultValue={toplogyOpacity}
             onChange={(e) =>
               setTopologyOpacity(parseFloat(e.target.value) || 1)

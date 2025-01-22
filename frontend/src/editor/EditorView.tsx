@@ -73,10 +73,9 @@ export function EditorView({
 
   const stageRef = useRef<HTMLDivElement>(null);
 
-  console.log("DATAHISTORY", dataHistory);
   return (
     <div className="flex flex-col flex-1 w-full gap-2 min-h-0">
-      <div className="grid grid-cols-7 gap-2 w-full overflow-clip">
+      <div className="grid grid-cols-4 xl:grid-cols-7 gap-2 w-full overflow-clip">
         <Button
           selected={view === View.fences}
           onClick={() => setView(View.fences)}
@@ -113,19 +112,19 @@ export function EditorView({
         >
           Supertiles
         </Button>
-        <div className="grid grid-cols-4 gap-2">
+        <div className="grid col-span-2 xl:col-span-1 grid-cols-4 gap-2">
           <ZoomButton disabled={dataHistory.index === 0} onClick={undoData}>
-            Undo
+            ↩
           </ZoomButton>
           <ZoomButton
             disabled={dataHistory.index === dataHistory.items.length - 1}
             onClick={redoData}
           >
-            Redo
+            ↪
           </ZoomButton>
 
-          <ZoomButton onClick={zoomIn}>🔍+</ZoomButton>
-          <ZoomButton onClick={zoomOut}>🔍-</ZoomButton>
+          <ZoomButton onClick={zoomOut}>-</ZoomButton>
+          <ZoomButton onClick={zoomIn}>+</ZoomButton>
         </div>
       </div>
       <div>

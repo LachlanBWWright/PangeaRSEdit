@@ -10,6 +10,14 @@ import {
 } from "../../../data/items/ottoItemType";
 import { parseU16, parseU8 } from "../../../utils/numberParsers";
 import { useEffect } from "react";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectValue,
+  SelectContent,
+  SelectTrigger,
+  SelectItem,
+} from "@/components/ui/select";
 
 export function ItemMenu({
   data,
@@ -33,36 +41,46 @@ export function ItemMenu({
         <AddItemMenu />
       ) : (
         <p>
-          Item {itemData.type} ({itemTypeNames[itemData.type]}) ({itemData.x},
-          {itemData.z})
+          Item {itemData.type} ({itemData.x},{itemData.z})
         </p>
       )}
 
       <div className="flex flex-col gap-2">
         {itemData !== null && itemData !== undefined && (
           <>
-            <select
-              value={itemData.type}
-              className="text-black"
-              onChange={(e) => {
-                const newItemType = parseInt(e.target.value);
+            <Select
+              value={itemData.type.toString() ?? ""}
+              onValueChange={(e) => {
+                const newItemType = parseInt(e);
                 setData((data) => {
                   if (selectedItem === undefined) return;
                   data.Itms[1000].obj[selectedItem].type = newItemType;
                 });
               }}
             >
-              {itemValues.map((key) => (
-                <option key={key} className="text-black" value={key}>
-                  {itemTypeNames[key as ItemType]}
-                </option>
-              ))}
-            </select>
-            <div className="grid grid-cols-[auto_1fr_auto_1fr] gap-2">
-              <p>Flags ({ottoItemTypeParams[itemData.type].flags})</p>
-              <input
-                className="text-black"
+              <SelectTrigger>
+                <SelectValue>{itemTypeNames[itemData.type]}</SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                {itemValues.map((key) => (
+                  <SelectItem
+                    key={key}
+                    className="text-black"
+                    value={key.toString()}
+                  >
+                    {itemTypeNames[key as ItemType]}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            <div className="grid grid-cols-[auto_1fr_auto_1fr] gap-2 items-baseline">
+              <p className="text-baseline align-text-bottom">
+                Flags ({ottoItemTypeParams[itemData.type].flags})
+              </p>
+              <Input
                 type="number"
+                className="col-span-3"
                 value={itemData.flags.toString()}
                 onChange={(e) => {
                   setData((data) => {
@@ -74,8 +92,7 @@ export function ItemMenu({
                 }}
               />
               <p>Parameter 0 ({ottoItemTypeParams[itemData.type].p0})</p>
-              <input
-                className="text-black"
+              <Input
                 type="number"
                 value={itemData.p0.toString()}
                 onChange={(e) => {
@@ -88,8 +105,7 @@ export function ItemMenu({
                 }}
               />
               <p>Parameter 1 ({ottoItemTypeParams[itemData.type].p1})</p>
-              <input
-                className="text-black"
+              <Input
                 type="number"
                 value={itemData.p1.toString()}
                 onChange={(e) => {
@@ -102,8 +118,7 @@ export function ItemMenu({
                 }}
               />
               <p>Parameter 2 ({ottoItemTypeParams[itemData.type].p2})</p>
-              <input
-                className="text-black"
+              <Input
                 type="number"
                 value={itemData.p2.toString()}
                 onChange={(e) => {
@@ -116,8 +131,7 @@ export function ItemMenu({
                 }}
               />
               <p>Parameter 3 ({ottoItemTypeParams[itemData.type].p3})</p>
-              <input
-                className="text-black"
+              <Input
                 type="number"
                 value={itemData.p3.toString()}
                 onChange={(e) => {

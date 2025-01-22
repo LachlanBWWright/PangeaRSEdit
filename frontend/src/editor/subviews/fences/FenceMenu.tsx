@@ -4,6 +4,14 @@ import { SelectedFence } from "../../../data/fences/fenceAtoms";
 import { useAtom } from "jotai";
 import { Button, DeleteButton } from "../../../components/Button";
 import { FenceType, fenceTypeNames } from "../../../data/fences/ottoFenceType";
+import {
+  Select,
+  SelectItem,
+  SelectValue,
+  SelectContent,
+  SelectTrigger,
+} from "@/components/ui/select";
+//import { SelectContent, SelectTrigger } from "@radix-ui/react-select";
 
 const NUB_KEY_BASE = 1000;
 
@@ -80,23 +88,33 @@ export function FenceMenu({
                 ).padStart(3, "0")}.png`}
                 className="max-h-56 mx-auto"
               />
-              <select
-                value={fenceData.fenceType}
-                className="text-black"
-                onChange={(e) => {
-                  const newFenceType = parseInt(e.target.value);
+              <Select
+                value={fenceTypeNames[fenceData.fenceType]}
+                onValueChange={(e) => {
+                  const newFenceType = parseInt(e);
                   setData((data) => {
                     if (selectedFence === undefined) return;
                     data.Fenc[1000].obj[selectedFence].fenceType = newFenceType;
                   });
                 }}
               >
-                {fenceValues.map((key) => (
-                  <option key={key} className="text-black" value={key}>
-                    {fenceTypeNames[key as FenceType]}
-                  </option>
-                ))}
-              </select>
+                <SelectTrigger>
+                  <SelectValue>
+                    {fenceTypeNames[fenceData.fenceType]}
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  {fenceValues.map((key) => (
+                    <SelectItem
+                      key={key}
+                      className="text-black"
+                      value={key.toString()}
+                    >
+                      {fenceTypeNames[key as FenceType]}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </>
           )}
         </div>

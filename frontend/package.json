@@ -14,13 +14,19 @@
     "deploy": "gh-pages -d dist"
   },
   "dependencies": {
+    "@radix-ui/react-select": "^2.1.4",
+    "@radix-ui/react-slider": "^1.2.2",
+    "clsx": "^2.1.1",
     "jotai": "^2.10.1",
     "jotai-immer": "^0.4.1",
+    "lucide-react": "^0.473.0",
     "pyodide": "^0.26.2",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-konva": "^18.2.10",
     "react-zoom-pan-pinch": "^3.6.1",
+    "tailwind-merge": "^2.6.0",
+    "tailwindcss-animate": "^1.0.7",
     "use-immer": "^0.10.0"
   },
   "devDependencies": {

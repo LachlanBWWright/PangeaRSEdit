@@ -5,7 +5,7 @@ import {
 import { Layer, Image } from "react-konva";
 import { Updater } from "use-immer";
 import {
-  CurrentTopologyBrushMode,
+  //CurrentTopologyBrushMode,
   CurrentTopologyValueMode,
   TileViewMode,
   TileViews,
@@ -94,14 +94,12 @@ export function TopologyTiles({
   setData: Updater<ottoMaticLevel>;
   isEditingTopology: boolean;
 }) {
-  const currentTopologyBrushMode = useAtomValue(CurrentTopologyBrushMode);
+  //const currentTopologyBrushMode = useAtomValue(CurrentTopologyBrushMode);
   const currentTopologyValueMode = useAtomValue(CurrentTopologyValueMode);
   const topologyValue = useAtomValue(TopologyValue);
   const topologyBrushRadius = useAtomValue(TopologyBrushRadius);
   const globals = useAtomValue(Globals);
   const opacity = useAtomValue(TopologyOpacity);
-
-  console.log(currentTopologyBrushMode, topologyBrushRadius);
 
   const header = useMemo(() => data.Hedr[1000].obj, [data.Hedr]);
 
@@ -153,7 +151,6 @@ export function TopologyTiles({
     )
       return;
     const flatPos = flattenCoords(x, y);
-    console.log(flatPos);
     setData((data) => {
       if (data.YCrd[1000].obj[flatPos] === undefined) return;
 
@@ -194,7 +191,6 @@ export function TopologyTiles({
 
           for (let i = 0; i < (topologyBrushRadius - 1) * 2 + 1; i++) {
             for (let j = 0; j < (topologyBrushRadius - 1) * 2 + 1; j++) {
-              console.log("i", i, "j", j);
               setPixel(
                 baseX + i * globals.TILE_SIZE,
                 baseY + j * globals.TILE_SIZE,
@@ -219,13 +215,11 @@ export function EmptyTiles({
   isEditingTopology: boolean;
   tileGrid: ottoTileAttribute[];
 }) {
-  const currentTopologyBrushMode = useAtomValue(CurrentTopologyBrushMode);
+  //const currentTopologyBrushMode = useAtomValue(CurrentTopologyBrushMode);
   const currentTopologyValueMode = useAtomValue(CurrentTopologyValueMode);
   const topologyValue = useAtomValue(TopologyValue);
   const topologyBrushRadius = useAtomValue(TopologyBrushRadius);
   const globals = useAtomValue(Globals);
-
-  console.log(currentTopologyBrushMode, topologyBrushRadius);
 
   const header = useMemo(() => data.Hedr[1000].obj, [data.Hedr]);
 
@@ -247,9 +241,6 @@ export function EmptyTiles({
     }, //data.YCrd[1000].obj.flatMap(elevationToRGBA),
     [data.Atrb[1000].obj, globals, header],
   );
-
-  console.log("atrblen", data.Atrb[1000].obj.length);
-  console.log("Coordcolours length", Math.sqrt(coordColours.length / 4));
 
   const imgCanvas = useMemo(() => {
     const imgCanvas = document.createElement("canvas");
@@ -279,7 +270,6 @@ export function EmptyTiles({
     )
       return;
     const flatPos = flattenCoords(x, y);
-    console.log(flatPos);
     setData((data) => {
       if (data.YCrd[1000].obj[flatPos] === undefined) return;
 
@@ -319,7 +309,6 @@ export function EmptyTiles({
 
           for (let i = 0; i < (topologyBrushRadius - 1) * 2 + 1; i++) {
             for (let j = 0; j < (topologyBrushRadius - 1) * 2 + 1; j++) {
-              console.log("i", i, "j", j);
               setPixel(
                 baseX + i * globals.TILE_SIZE,
                 baseY + j * globals.TILE_SIZE,
@@ -344,13 +333,11 @@ export function ElectricFloor0Tiles({
   isEditingTopology: boolean;
   tileGrid: ottoTileAttribute[];
 }) {
-  const currentTopologyBrushMode = useAtomValue(CurrentTopologyBrushMode);
+  //const currentTopologyBrushMode = useAtomValue(CurrentTopologyBrushMode);
   const currentTopologyValueMode = useAtomValue(CurrentTopologyValueMode);
   const topologyValue = useAtomValue(TopologyValue);
   const topologyBrushRadius = useAtomValue(TopologyBrushRadius);
   const globals = useAtomValue(Globals);
-
-  console.log(currentTopologyBrushMode, topologyBrushRadius);
 
   const header = useMemo(() => data.Hedr[1000].obj, [data.Hedr]);
 
@@ -372,9 +359,6 @@ export function ElectricFloor0Tiles({
     }, //data.YCrd[1000].obj.flatMap(elevationToRGBA),
     [data.Atrb[1000].obj, globals, header],
   );
-
-  console.log("atrblen", data.Atrb[1000].obj.length);
-  console.log("Coordcolours length", Math.sqrt(coordColours.length / 4));
 
   const imgCanvas = useMemo(() => {
     const imgCanvas = document.createElement("canvas");
@@ -404,7 +388,6 @@ export function ElectricFloor0Tiles({
     )
       return;
     const flatPos = flattenCoords(x, y);
-    console.log(flatPos);
     setData((data) => {
       if (data.YCrd[1000].obj[flatPos] === undefined) return;
 
@@ -444,7 +427,6 @@ export function ElectricFloor0Tiles({
 
           for (let i = 0; i < (topologyBrushRadius - 1) * 2 + 1; i++) {
             for (let j = 0; j < (topologyBrushRadius - 1) * 2 + 1; j++) {
-              console.log("i", i, "j", j);
               setPixel(
                 baseX + i * globals.TILE_SIZE,
                 baseY + j * globals.TILE_SIZE,
@@ -469,13 +451,11 @@ export function ElectricFloor1Tiles({
   isEditingTopology: boolean;
   tileGrid: ottoTileAttribute[];
 }) {
-  const currentTopologyBrushMode = useAtomValue(CurrentTopologyBrushMode);
+  //const currentTopologyBrushMode = useAtomValue(CurrentTopologyBrushMode);
   const currentTopologyValueMode = useAtomValue(CurrentTopologyValueMode);
   const topologyValue = useAtomValue(TopologyValue);
   const topologyBrushRadius = useAtomValue(TopologyBrushRadius);
   const globals = useAtomValue(Globals);
-
-  console.log(currentTopologyBrushMode, topologyBrushRadius);
 
   const header = useMemo(() => data.Hedr[1000].obj, [data.Hedr]);
 
@@ -497,9 +477,6 @@ export function ElectricFloor1Tiles({
     }, //data.YCrd[1000].obj.flatMap(elevationToRGBA),
     [data.Atrb[1000].obj, globals, header],
   );
-
-  console.log("atrblen", data.Atrb[1000].obj.length);
-  console.log("Coordcolours length", Math.sqrt(coordColours.length / 4));
 
   const imgCanvas = useMemo(() => {
     const imgCanvas = document.createElement("canvas");
@@ -529,7 +506,6 @@ export function ElectricFloor1Tiles({
     )
       return;
     const flatPos = flattenCoords(x, y);
-    console.log(flatPos);
     setData((data) => {
       if (data.YCrd[1000].obj[flatPos] === undefined) return;
 
@@ -569,7 +545,6 @@ export function ElectricFloor1Tiles({
 
           for (let i = 0; i < (topologyBrushRadius - 1) * 2 + 1; i++) {
             for (let j = 0; j < (topologyBrushRadius - 1) * 2 + 1; j++) {
-              console.log("i", i, "j", j);
               setPixel(
                 baseX + i * globals.TILE_SIZE,
                 baseY + j * globals.TILE_SIZE,

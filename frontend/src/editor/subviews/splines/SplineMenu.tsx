@@ -19,6 +19,14 @@ import { SPLINE_KEY_BASE } from "./Spline";
 import { useEffect } from "react";
 import { getPoints } from "../../../utils/spline";
 import { BlockHistoryUpdate } from "../../../data/globals/history";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  //SelectValue,
+} from "@/components/ui/select";
 
 export function SplineMenu({
   data,
@@ -45,22 +53,34 @@ export function SplineMenu({
       {splineData === null || splineData === undefined ? (
         <AddNewSplineMenu setData={setData} />
       ) : (
-        <select
-          value={selectedSplineItem ?? "No Item Selected"}
-          className="text-black"
-          onChange={(e) => {
-            if (typeof e.target.value === "undefined") {
+        <Select
+          /*           value={
+            selectedSplineItem !== undefined
+              ? splineItemTypeNames[splineData[selectedSplineItem].type]
+              : "No Item Selected"
+          } */
+          onValueChange={(e) => {
+            if (e === "NoneSelected") {
               setSelectedSplineItem(undefined);
-            } else setSelectedSplineItem(parseInt(e.target.value));
+            } else setSelectedSplineItem(parseInt(e));
           }}
         >
-          <option value={undefined}>No Item Selected</option>
-          {splineData.map((item, itemIdx) => (
-            <option key={itemIdx} value={itemIdx}>
-              #{itemIdx} {splineItemTypeNames[item.type]}
-            </option>
-          ))}
-        </select>
+          <SelectTrigger>
+            {selectedSplineItem !== undefined
+              ? `#${selectedSplineItem} ${
+                  splineItemTypeNames[splineData[selectedSplineItem].type]
+                }`
+              : "No Item Selected"}
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="NoneSelected">No Item Selected</SelectItem>
+            {splineData.map((item, itemIdx) => (
+              <SelectItem key={itemIdx} value={itemIdx.toString()}>
+                #{itemIdx} ({splineItemTypeNames[item.type]})
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       )}
 
       <div className="flex flex-col gap-2">
@@ -155,11 +175,9 @@ function EditSplineItemMenu({
 
   return (
     <>
-      <select
-        value={splineItemData.type}
-        className="text-black"
-        onChange={(e) => {
-          const newItemType = parseInt(e.target.value);
+      <Select
+        onValueChange={(e) => {
+          const newItemType = parseInt(e);
           setData((data) => {
             if (
               selectedSpline === undefined ||
@@ -172,16 +190,21 @@ function EditSplineItemMenu({
           });
         }}
       >
-        {splineItemValues.map((key) => (
-          <option key={key} className="text-black" value={key}>
-            {splineItemTypeNames[key as SplineItemType]}
-          </option>
-        ))}
-      </select>
-      <div className="grid grid-cols-[auto_1fr_auto_1fr] gap-2">
+        <SelectTrigger>
+          {splineItemTypeNames[splineItemData.type]}
+        </SelectTrigger>
+        <SelectContent>
+          {splineItemValues.map((key) => (
+            <SelectItem key={key} className="text-black" value={key.toString()}>
+              {splineItemTypeNames[key as SplineItemType]}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+
+      <div className="grid grid-cols-[auto_1fr_auto_1fr] gap-2 items-center">
         <p>Flags ({ottoItemTypeParams[splineItemData.type].flags})</p>
-        <input
-          className="text-black"
+        <Input
           type="number"
           value={splineItemData.flags}
           onChange={(e) => {
@@ -198,8 +221,7 @@ function EditSplineItemMenu({
           }}
         />
         <p>Parameter 0 ({ottoItemTypeParams[splineItemData.type].p0})</p>
-        <input
-          className="text-black"
+        <Input
           type="number"
           value={splineItemData.p0}
           onChange={(e) => {
@@ -216,8 +238,7 @@ function EditSplineItemMenu({
           }}
         />
         <p>Parameter 1 ({ottoItemTypeParams[splineItemData.type].p1})</p>
-        <input
-          className="text-black"
+        <Input
           type="number"
           value={splineItemData.p1}
           onChange={(e) => {
@@ -234,8 +255,7 @@ function EditSplineItemMenu({
           }}
         />
         <p>Parameter 2 ({ottoItemTypeParams[splineItemData.type].p2})</p>
-        <input
-          className="text-black"
+        <Input
           type="number"
           value={splineItemData.p2}
           onChange={(e) => {
@@ -252,8 +272,7 @@ function EditSplineItemMenu({
           }}
         />
         <p>Parameter 3 ({ottoItemTypeParams[splineItemData.type].p3})</p>
-        <input
-          className="text-black"
+        <Input
           type="number"
           value={splineItemData.p3}
           onChange={(e) => {
@@ -270,8 +289,7 @@ function EditSplineItemMenu({
           }}
         />
         <p>Placement (0-1)</p>
-        <input
-          className="text-black"
+        <Input
           type="number"
           value={splineItemData.placement}
           onChange={(e) => {
