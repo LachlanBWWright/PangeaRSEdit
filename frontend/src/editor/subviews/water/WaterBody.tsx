@@ -78,7 +78,7 @@ export function WaterBody({
       />
       {waterBodyIdx === selectedWaterBody &&
         data.Liqd[1000].obj[waterBodyIdx].nubs.map((nub, nubIdx) => {
-          if (data.Liqd[1000].obj[waterBodyIdx].numNubs <= nubIdx) return <></>;
+          if (data.Liqd[1000].obj[waterBodyIdx].numNubs <= nubIdx) return;
 
           return (
             <>

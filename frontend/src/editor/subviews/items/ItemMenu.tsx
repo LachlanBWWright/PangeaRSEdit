@@ -176,20 +176,31 @@ function AddItemMenu() {
   if (clickToAddItem !== undefined)
     return (
       <>
-        <select
-          className="text-black"
-          value={itemValues[clickToAddItem]}
-          onChange={(e) => {
-            const newItemType = parseInt(e.target.value);
+        <Select
+          value={itemTypeNames[clickToAddItem as ItemType]}
+          onValueChange={(e) => {
+            const newItemType = parseInt(e);
             setClickToAddItem(newItemType);
           }}
         >
-          {itemValues.map((key) => (
-            <option key={key} className="text-black" value={key}>
-              {itemTypeNames[key as ItemType]}
-            </option>
-          ))}
-        </select>
+          <SelectTrigger>
+            <SelectValue>
+              {itemTypeNames[clickToAddItem as ItemType]}
+            </SelectValue>
+          </SelectTrigger>
+          <SelectContent>
+            {itemValues.map((key) => (
+              <SelectItem
+                key={key}
+                className="text-black"
+                value={key.toString()}
+              >
+                {itemTypeNames[key as ItemType]}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
         <p>Click on the Canvas to add the selected item</p>
         <DeleteButton onClick={() => setClickToAddItem(undefined)}>
           Stop Adding Items
