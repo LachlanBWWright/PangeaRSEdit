@@ -38,42 +38,40 @@ export function WaterMenu({
     .filter((key) => isNaN(key) === false);
 
   return (
-    <div className="flex flex-col gap-2">
+    <div className="flex flex-col gap-2 w-full">
       {waterBodyData === null || waterBodyData === undefined ? (
-        <div className="h-20 px-2">
-          <Button
-            onClick={() =>
-              setData((data) => {
-                data.Liqd[1000].obj.push({
-                  type: 0,
-                  nubs: [
-                    [100, 100],
-                    [100, 200],
-                    [200, 200],
-                    [200, 100],
-                  ],
-                  numNubs: 4,
-                  hotSpotX: 150,
-                  hotSpotZ: 150,
-                  bBoxTop: 200,
-                  bBoxLeft: 200,
-                  bBoxBottom: 200,
-                  bBoxRight: 200,
-                  height: 0,
-                  flags: 0,
-                  reserved: 0,
-                });
+        <Button
+          onClick={() =>
+            setData((data) => {
+              data.Liqd[1000].obj.push({
+                type: 0,
+                nubs: [
+                  [100, 100],
+                  [100, 200],
+                  [200, 200],
+                  [200, 100],
+                ],
+                numNubs: 4,
+                hotSpotX: 150,
+                hotSpotZ: 150,
+                bBoxTop: 200,
+                bBoxLeft: 200,
+                bBoxBottom: 200,
+                bBoxRight: 200,
+                height: 0,
+                flags: 0,
+                reserved: 0,
+              });
 
-                //Push additional water nubs
-                for (let i = 4; i < globals.LIQD_NUBS; i++) {
-                  data.Liqd[1000].obj.at(-1)?.nubs.push([0, 0]);
-                }
-              })
-            }
-          >
-            Add New Water Body
-          </Button>
-        </div>
+              //Push additional water nubs
+              for (let i = 4; i < globals.LIQD_NUBS; i++) {
+                data.Liqd[1000].obj.at(-1)?.nubs.push([0, 0]);
+              }
+            })
+          }
+        >
+          Add New Water Body
+        </Button>
       ) : (
         <p>
           Item {waterBodyData.type} ({waterBodyNames[waterBodyData.type]})

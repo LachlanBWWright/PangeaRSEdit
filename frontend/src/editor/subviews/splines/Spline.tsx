@@ -153,6 +153,9 @@ function SplineNub({
   );
 }
 
+const ITEM_BOX_SIZE = 12;
+const ITEM_BOX_OFFSET = ITEM_BOX_SIZE / 2;
+
 function SplineItem({
   x,
   z,
@@ -167,10 +170,10 @@ function SplineItem({
   return (
     <>
       <Rect
-        x={x}
-        y={z}
-        width={Math.max(10, item.type.toString().length * 5)}
-        height={10}
+        x={x - ITEM_BOX_OFFSET}
+        y={z - ITEM_BOX_OFFSET}
+        width={ITEM_BOX_SIZE}
+        height={ITEM_BOX_SIZE}
         stroke="blue"
         fill="blue"
         onMouseOver={() => setHovering(true)}
@@ -181,16 +184,17 @@ function SplineItem({
         text={item.type.toString()}
         fill="white"
         visible={!hovering}
-        x={x}
-        y={z}
+        x={x - ITEM_BOX_OFFSET}
+        y={z - ITEM_BOX_OFFSET}
         draggable
+        fontSize={8}
         onMouseOver={() => setHovering(true)}
         onMouseLeave={() => setHovering(false)}
       />
 
       <Label opacity={1} visible={hovering} x={x + 15} y={z}>
         <Tag fill="blue" />
-        <Text text={splineItemTypeNames[item.type]} fill="white" />
+        <Text text={splineItemTypeNames[item.type]} fontSize={8} fill="white" />
       </Label>
     </>
   );

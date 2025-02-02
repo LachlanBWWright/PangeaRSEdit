@@ -34,44 +34,41 @@ export function FenceMenu({
   return (
     <div className="flex flex-col gap-2">
       {fenceData === null ? (
-        <div className="h-20 px-2">
-          <Button
-            onClick={() => {
-              setData((data) => {
-                const keys = Object.keys(data.Fenc[1000].obj);
-                const lastStr =
-                  keys.length !== 0 ? keys[keys.length - 1] : "999"; //Minimum is 1000
-                const last = parseInt(lastStr) + 1; //Get key of new last
+        <Button
+          onClick={() => {
+            setData((data) => {
+              const keys = Object.keys(data.Fenc[1000].obj);
+              const lastStr = keys.length !== 0 ? keys[keys.length - 1] : "999"; //Minimum is 1000
+              const last = parseInt(lastStr) + 1; //Get key of new last
 
-                //Add Fenc object
-                data.Fenc[1000].obj[last] = {
-                  fenceType: 0,
-                  numNubs: 2,
-                  junkNubListPtr: 0,
-                  bbTop: 0,
-                  bbBottom: 0,
-                  bbLeft: 0,
-                  bbRight: 0,
-                };
+              //Add Fenc object
+              data.Fenc[1000].obj[last] = {
+                fenceType: 0,
+                numNubs: 2,
+                junkNubListPtr: 0,
+                bbTop: 0,
+                bbBottom: 0,
+                bbLeft: 0,
+                bbRight: 0,
+              };
 
-                data.FnNb[last + NUB_KEY_BASE] = {
-                  name: "Fence Nub List", //Is this needed?
-                  obj: [
-                    [0, 0],
-                    [1000, 1000],
-                  ],
-                  order: 999, //Doesn't matter
-                };
+              data.FnNb[last + NUB_KEY_BASE] = {
+                name: "Fence Nub List", //Is this needed?
+                obj: [
+                  [0, 0],
+                  [1000, 1000],
+                ],
+                order: 999, //Doesn't matter
+              };
 
-                //Add fence nubs
-                data.FnNb[last + NUB_KEY_BASE].obj[0] = [0, 0];
-                data.FnNb[last + NUB_KEY_BASE].obj[1] = [1000, 1000];
-              });
-            }}
-          >
-            Add New Fence
-          </Button>
-        </div>
+              //Add fence nubs
+              data.FnNb[last + NUB_KEY_BASE].obj[0] = [0, 0];
+              data.FnNb[last + NUB_KEY_BASE].obj[1] = [1000, 1000];
+            });
+          }}
+        >
+          Add New Fence
+        </Button>
       ) : (
         <p>
           Fence {selectedFence} ({fenceData.numNubs} points)

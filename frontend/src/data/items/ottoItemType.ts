@@ -197,6 +197,7 @@ export const itemTypeNames: Record<ItemType, string> = {
   [ItemType.RocketSled]: "Tobogan",
   [ItemType.TrapDoor]: "Trap Door",
   [ItemType.ZigZagSlats]: "Zig-Zag Slats",
+  [ItemType.Unknown]: "Unknown",
   [ItemType.LavaPillar]: "Lava Pillar",
   [ItemType.VolcanoGeneratorZone]: "Volcano Generator",
   [ItemType.JawsBot]: "Jaws Bot",
@@ -219,8 +220,6 @@ export const itemTypeNames: Record<ItemType, string> = {
   [ItemType.BlobArrow]: "Blob Arrow",
   [ItemType.NeuronStrand]: "Neuron Strand",
   [ItemType.BrainPort]: "Brain Port",
-
-  [ItemType.Unknown]: "Unknown",
 };
 
 export type OttoItemParams = {
@@ -326,6 +325,7 @@ export const ottoItemTypeParams: Record<ItemType, OttoItemParams> = {
   [ItemType.RocketSled]: ottoDefaultParams, // "Tobogan",
   [ItemType.TrapDoor]: ottoDefaultParams, // "Trap Door",
   [ItemType.ZigZagSlats]: ottoDefaultParams, // "Zig-Zag Slats",
+  [ItemType.Unknown]: ottoDefaultParams,
   [ItemType.LavaPillar]: ottoDefaultParams, // "Lava Pillar",
   [ItemType.VolcanoGeneratorZone]: ottoDefaultParams, // "Volcano Generator",
   [ItemType.JawsBot]: ottoDefaultParams, // "Jaws Bot",
@@ -348,9 +348,233 @@ export const ottoItemTypeParams: Record<ItemType, OttoItemParams> = {
   [ItemType.BlobArrow]: ottoDefaultParams, // "Blob Arrow",
   [ItemType.NeuronStrand]: ottoDefaultParams, // "Neuron Strand",
   [ItemType.BrainPort]: ottoDefaultParams, // "Brain Port",
-
-  [ItemType.Unknown]: ottoDefaultParams,
 };
+
+//Level restriction - Return 0 if available across levels, -1 if item isn't available (wasn't implemented in game)
+export function getLevelRestriction(itemType: ItemType): number {
+  switch (itemType) {
+    case ItemType.StartCoords:
+      return 0;
+    case ItemType.BasicPlant:
+      return 1;
+    case ItemType.SpacePodGenerator:
+      return 4;
+    case ItemType.Enemy_Squooshy:
+      return 8;
+    case ItemType.Human:
+      return 0;
+    case ItemType.Atom:
+      return 0;
+    case ItemType.PowerupPod:
+      return 0;
+    case ItemType.Enemy_BrainAlien:
+      return 0;
+    case ItemType.Enemy_Onion:
+      return 1;
+    case ItemType.Enemy_Corn:
+      return 1;
+    case ItemType.Enemy_Tomato:
+      return 1;
+    case ItemType.Barn:
+      return 1;
+    case ItemType.Silo:
+      return 1;
+    case ItemType.WoodenGate:
+      return 1;
+    case ItemType.PhonePole:
+      return 1;
+    case ItemType.Tractor:
+      return 1;
+    case ItemType.Sprout:
+      return 1;
+    case ItemType.CornStalk:
+      return 1;
+    case ItemType.BigLeafPlant:
+      return 1;
+    case ItemType.MetalGate:
+      return 1;
+    case ItemType.FencePost:
+      return 1;
+    case ItemType.Windmill:
+      return 1;
+    case ItemType.MetalTub:
+      return 1;
+    case ItemType.OutHouse:
+      return 1;
+    case ItemType.Rock:
+      return 1;
+    case ItemType.Hay:
+      return 1;
+    case ItemType.ExitRocket:
+      return 0;
+    case ItemType.Checkpoint:
+      return 0;
+    case ItemType.SlimePipe:
+      return 2;
+    case ItemType.FallingCrystal:
+      return 2;
+    case ItemType.MachineBoss:
+      return 2;
+    case ItemType.BlobBossTube:
+      return 2;
+    case ItemType.ScaffoldingPost:
+      return 5;
+    case ItemType.JungleGate:
+      return 6;
+    case ItemType.CrunchDoor:
+      return 0;
+    case ItemType.Manhole:
+      return 4;
+    case ItemType.CloudPlatform:
+      return 5;
+    case ItemType.CloudTunnel:
+      return 5;
+    case ItemType.Enemy_Flamester:
+      return 0; //8??
+    case ItemType.Enemy_GiantLizard:
+      return 6;
+    case ItemType.Enemy_FlyTrap:
+      return 6;
+    case ItemType.Enemy_Mantis:
+      return 6;
+    case ItemType.TurtlePlatform:
+      return 6;
+    case ItemType.Smashable:
+      return 0; //6???
+    case ItemType.LeafPlatform:
+      return 6;
+    case ItemType.HelpBeacon:
+      return 0;
+    case ItemType.Teleporter:
+      return 0;
+    case ItemType.ZipLinePost:
+      return 0; /// 0??? ziplines in 4 and 8
+    case ItemType.Enemy_Mutant:
+      return 4;
+    case ItemType.Enemy_Blob:
+      return 2;
+    case ItemType.BumperBubble:
+      return 5;
+    case ItemType.BasicCrystal:
+      return 0; //2??
+    case ItemType.InertBubble:
+      return 0;
+    case ItemType.SlimeTree:
+      return 0;
+    case ItemType.MagnetMonster:
+      return 2;
+    case ItemType.FallingSlimePlatform:
+      return 0;
+    case ItemType.BubblePump:
+      return 0;
+    case ItemType.SlimeMech:
+      return 0;
+    case ItemType.SpinningPlatform:
+      return 0; //3?
+    case ItemType.MovingPlatform:
+      return 0; //3?
+    case ItemType.Enemy_MutantRobot:
+      return 4;
+    case ItemType.HumanScientist:
+      return 0;
+    case ItemType.ProximityMine:
+      return 4;
+    case ItemType.LampPost:
+      return 4;
+    case ItemType.DebrisGate:
+      return 4;
+    case ItemType.GraveStone:
+      return 4;
+    case ItemType.CrashedShip:
+      return 4;
+    case ItemType.ChainReactingMine:
+      return 4;
+    case ItemType.Rubble:
+      return 4;
+    case ItemType.TeleporterMap:
+      return 4;
+    case ItemType.GreenSteam:
+      return 4;
+    case ItemType.TentacleGenerator:
+      return 0;
+    case ItemType.PitcherPlantBoss:
+      return 0;
+    case ItemType.PitcherPod:
+      return 0;
+    case ItemType.TractorBeamPost:
+      return 0;
+    case ItemType.Cannon:
+      return 5;
+    case ItemType.BumperCar:
+      return 5;
+    case ItemType.TireBumperStrip:
+      return 5;
+    case ItemType.Enemy_Clown:
+      return 5;
+    case ItemType.Clownfish:
+      return 5;
+    case ItemType.BumperCarPowerPost:
+      return 5;
+    case ItemType.Enemy_StrongMan:
+      return 5;
+    case ItemType.BumperCarGate:
+      return 5;
+    case ItemType.RocketSled:
+      return 5;
+    case ItemType.TrapDoor:
+      return 5;
+    case ItemType.ZigZagSlats:
+      return 5;
+    case ItemType.Unknown:
+      return -1;
+    case ItemType.LavaPillar:
+      return 8;
+    case ItemType.VolcanoGeneratorZone:
+      return 8;
+    case ItemType.JawsBot:
+      return 8;
+    case ItemType.IceSaucer:
+      return 8;
+    case ItemType.RunwayLights:
+      return 0; //???
+    case ItemType.Enemy_IceCube:
+      return 8;
+    case ItemType.HammerBot:
+      return 8;
+    case ItemType.DrillBot:
+      return 8;
+    case ItemType.SwingerBot:
+      return 8;
+    case ItemType.LavaStone:
+      return 8;
+    case ItemType.Snowball:
+      return 8;
+    case ItemType.LavaPlatform:
+      return 8;
+    case ItemType.Smoker:
+      return 8;
+    case ItemType.RadarDish:
+      return 9;
+    case ItemType.PeopleHut:
+      return 9;
+    case ItemType.Beemer:
+      return 0; //9???
+    case ItemType.Railgun:
+      return 9;
+    case ItemType.Turret:
+      return 9;
+    case ItemType.Enemy_BrainBoss:
+      return 10;
+    case ItemType.BlobArrow:
+      return 2; //???
+    case ItemType.NeuronStrand:
+      return 10;
+    case ItemType.BrainPort:
+      return 10;
+  }
+
+  return 0;
+}
 
 /* 	
 Original from otto source code:

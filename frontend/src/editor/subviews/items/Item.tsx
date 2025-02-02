@@ -6,6 +6,9 @@ import { useSetAtom } from "jotai";
 import { useState } from "react";
 import { itemTypeNames } from "../../../data/items/ottoItemType";
 
+const ITEM_BOX_SIZE = 12;
+const ITEM_BOX_OFFSET = ITEM_BOX_SIZE / 2;
+
 export function Item({
   data,
   setData,
@@ -24,10 +27,10 @@ export function Item({
   return (
     <>
       <Rect
-        x={item.x}
-        y={item.z}
-        width={Math.max(10, item.type.toString().length * 5)}
-        height={10}
+        x={item.x - ITEM_BOX_OFFSET}
+        y={item.z - ITEM_BOX_OFFSET}
+        width={ITEM_BOX_SIZE}
+        height={ITEM_BOX_SIZE}
         stroke="red"
         fill="red"
         draggable
@@ -37,8 +40,12 @@ export function Item({
         onDragStart={() => setSelectedItem(itemIdx)}
         onDragEnd={(e) => {
           setData((data) => {
-            data.Itms[1000].obj[itemIdx].x = Math.round(e.target.x());
-            data.Itms[1000].obj[itemIdx].z = Math.round(e.target.y());
+            data.Itms[1000].obj[itemIdx].x = Math.round(
+              e.target.x() + ITEM_BOX_OFFSET,
+            );
+            data.Itms[1000].obj[itemIdx].z = Math.round(
+              e.target.y() + ITEM_BOX_OFFSET,
+            );
           });
         }}
       />
@@ -47,8 +54,9 @@ export function Item({
         text={item.type.toString()}
         fill="black"
         visible={!hovering}
-        x={item.x - 2}
-        y={item.z}
+        fontSize={8}
+        x={item.x - ITEM_BOX_OFFSET}
+        y={item.z - ITEM_BOX_OFFSET}
         draggable
         onMouseOver={() => setHovering(true)}
         onMouseLeave={() => setHovering(false)}
@@ -56,7 +64,7 @@ export function Item({
 
       <Label opacity={1} visible={hovering} x={item.x + 15} y={item.z}>
         <Tag fill="red" />
-        <Text text={itemTypeNames[item.type]} fill="black" />
+        <Text text={itemTypeNames[item.type]} fontSize={8} fill="black" />
       </Label>
     </>
   );
