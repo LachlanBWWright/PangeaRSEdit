@@ -9,8 +9,9 @@ import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { useEffect, useMemo, useState } from "react";
 import { getPoints } from "../../../utils/spline";
 import { SelectedSpline } from "../../../data/splines/splineAtoms";
-import { splineItemTypeNames } from "../../../data/splines/ottoSplineItemType";
 import { BlockHistoryUpdate } from "../../../data/globals/history";
+import { getSplineItemName } from "@/data/splines/getSplineItemNames";
+import { Globals } from "@/data/globals/globals";
 
 export function Spline({
   data,
@@ -166,7 +167,7 @@ function SplineItem({
   item: ottoSplineItem;
 }) {
   const [hovering, setHovering] = useState(false);
-
+  const globals = useAtomValue(Globals);
   return (
     <>
       <Rect
@@ -194,7 +195,16 @@ function SplineItem({
 
       <Label opacity={1} visible={hovering} x={x + 15} y={z}>
         <Tag fill="blue" />
-        <Text text={splineItemTypeNames[item.type]} fontSize={8} fill="white" />
+        <Text
+          text={
+            getSplineItemName(
+              globals,
+              item.type,
+            ) /* splineItemTypeNames[item.type] */
+          }
+          fontSize={8}
+          fill="white"
+        />
       </Label>
     </>
   );

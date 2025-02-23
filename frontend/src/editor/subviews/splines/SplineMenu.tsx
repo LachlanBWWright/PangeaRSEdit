@@ -7,10 +7,7 @@ import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { Button, DeleteButton } from "../../../components/Button";
 import { ottoItemTypeParams } from "../../../data/items/ottoItemType";
 import { parseU16, parseU8 } from "../../../utils/numberParsers";
-import {
-  SplineItemType,
-  splineItemTypeNames,
-} from "../../../data/splines/ottoSplineItemType";
+
 import {
   SelectedSpline,
   SelectedSplineItem,
@@ -27,6 +24,9 @@ import {
   SelectTrigger,
   //SelectValue,
 } from "@/components/ui/select";
+import { getSplineItemTypes } from "@/data/splines/getSplineItemTypes";
+import { Globals } from "@/data/globals/globals";
+import { getSplineItemName } from "@/data/splines/getSplineItemNames";
 
 export function SplineMenu({
   data,
@@ -38,7 +38,7 @@ export function SplineMenu({
   const selectedSpline = useAtomValue(SelectedSpline);
   const [selectedSplineItem, setSelectedSplineItem] =
     useAtom(SelectedSplineItem);
-
+  const globals = useAtomValue(Globals);
   useEffect(() => {
     setSelectedSplineItem(undefined);
   }, [selectedSpline]);
@@ -68,7 +68,11 @@ export function SplineMenu({
           <SelectTrigger>
             {selectedSplineItem !== undefined
               ? `#${selectedSplineItem} ${
-                  splineItemTypeNames[splineData[selectedSplineItem].type]
+                  getSplineItemName(
+                    globals,
+                    splineData[selectedSplineItem].type,
+                  )
+                  //splineItemTypeNames[splineData[selectedSplineItem].type]
                 }`
               : "No Item Selected"}
           </SelectTrigger>
@@ -76,7 +80,7 @@ export function SplineMenu({
             <SelectItem value="NoneSelected">No Item Selected</SelectItem>
             {splineData.map((item, itemIdx) => (
               <SelectItem key={itemIdx} value={itemIdx.toString()}>
-                #{itemIdx} ({splineItemTypeNames[item.type]})
+                #{itemIdx} ({getSplineItemName(globals, item.type)})
               </SelectItem>
             ))}
           </SelectContent>
@@ -162,12 +166,13 @@ function EditSplineItemMenu({
   const selectedSpline = useAtomValue(SelectedSpline);
   const [selectedSplineItem, setSelectedSplineItem] =
     useAtom(SelectedSplineItem);
+  const globals = useAtomValue(Globals);
   if (selectedSpline === undefined) return <p>No Selected Spline</p>;
   if (selectedSplineItem === undefined) return <></>;
 
   const splineItemData = splineData.at(selectedSplineItem);
 
-  const splineItemValues = Object.keys(SplineItemType)
+  const splineItemValues = getSplineItemTypes(globals) //Object.keys(SplineItemType)
     .map((key) => parseInt(key))
     .filter((key) => isNaN(key) === false);
 
@@ -191,12 +196,12 @@ function EditSplineItemMenu({
         }}
       >
         <SelectTrigger>
-          {splineItemTypeNames[splineItemData.type]}
+          {getSplineItemName(globals, splineItemData.type)}
         </SelectTrigger>
         <SelectContent>
           {splineItemValues.map((key) => (
             <SelectItem key={key} className="text-black" value={key.toString()}>
-              {splineItemTypeNames[key as SplineItemType]}
+              {getSplineItemName(globals, key)}
             </SelectItem>
           ))}
         </SelectContent>
@@ -437,7 +442,7 @@ function EditSplineMenu({
             console.log(data.SpIt[SPLINE_KEY_BASE + selectedSpline]);
             data.SpIt[SPLINE_KEY_BASE + selectedSpline].obj.push({
               placement: 0.5,
-              type: SplineItemType.Human,
+              type: 0, //SplineItemType.Human,
               flags: 0,
               p0: 0,
               p1: 0,

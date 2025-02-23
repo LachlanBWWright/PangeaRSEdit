@@ -6,7 +6,7 @@ import { SelectedWaterBody } from "../../../data/water/waterAtoms";
 import {
   waterBodyNames,
   WaterBodyType,
-} from "../../../data/water/ottoWaterItemType";
+} from "../../../data/water/ottoWaterBodyType";
 import { Globals } from "../../../data/globals/globals";
 import {
   Select,
@@ -15,6 +15,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { getWaterBodyTypes } from "@/data/water/getWaterBodyTypes";
 
 export function WaterMenu({
   data,
@@ -33,7 +34,7 @@ export function WaterMenu({
       ? data.Liqd[1000].obj[selectedWaterBody]
       : null;
 
-  const waterBodyValues = Object.keys(WaterBodyType)
+  const waterBodyValues = getWaterBodyTypes(globals) //Object.keys(WaterBodyType)
     .map((key) => parseInt(key))
     .filter((key) => isNaN(key) === false);
 

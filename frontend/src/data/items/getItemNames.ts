@@ -33,67 +33,67 @@ import {
   itemTypeNames as ottoItemTypeNames,
 } from "./ottoItemType";
 
-export function getItemNames(globals: GlobalsInterface, itemNumber: number) {
+export function getItemName(globals: GlobalsInterface, itemNumber: number) {
   if (globals.GAME_TYPE === Game.BILLY_FRONTIER) {
-    return getBillyItemNames(itemNumber);
+    return getBillyItemName(itemNumber);
   } else if (globals.GAME_TYPE === Game.BUGDOM) {
-    return getBugdomItemNames(itemNumber);
+    return getBugdomItemName(itemNumber);
   } else if (globals.GAME_TYPE === Game.BUGDOM_2) {
-    return getBugdom2ItemNames(itemNumber);
+    return getBugdom2ItemName(itemNumber);
   } else if (globals.GAME_TYPE === Game.CRO_MAG) {
-    return getCroMagItemNames(itemNumber);
+    return getCroMagItemName(itemNumber);
   } else if (globals.GAME_TYPE === Game.NANOSAUR) {
-    return getNanosaurItemNames(itemNumber);
+    return getNanosaurItemName(itemNumber);
   } else if (globals.GAME_TYPE === Game.NANOSAUR_2) {
-    return getNanosaur2ItemNames(itemNumber);
+    return getNanosaur2ItemName(itemNumber);
   } else if (globals.GAME_TYPE === Game.OTTO_MATIC) {
-    return getOttoItemNames(itemNumber);
+    return getOttoItemName(itemNumber);
   } else return "Unknown Item.";
 }
 
-function getBillyItemNames(number: number) {
+function getBillyItemName(number: number) {
   if (number in billyItemTypeNames)
     return billyItemTypeNames[number as BillyItemType];
 
   return "Unknown Billy Item.";
 }
 
-function getBugdomItemNames(number: number) {
+function getBugdomItemName(number: number) {
   if (number in bugdomItemTypeNames)
     return bugdomItemTypeNames[number as BugdomItemType];
 
   return "Unknown Bugdom Item.";
 }
 
-function getBugdom2ItemNames(number: number) {
+function getBugdom2ItemName(number: number) {
   if (number in bugdom2ItemTypeNames)
     return bugdom2ItemTypeNames[number as Bugdom2ItemType];
 
   return "Unknown Bugdom 2 Item.";
 }
 
-function getCroMagItemNames(number: number) {
+function getCroMagItemName(number: number) {
   if (number in croMagItemTypeNames)
     return croMagItemTypeNames[number as CroMagItemType];
 
   return "Unknown Cro Mag Item.";
 }
 
-function getNanosaurItemNames(number: number) {
+function getNanosaurItemName(number: number) {
   if (number in nanosaurItemTypeNames)
     return nanosaurItemTypeNames[number as NanosaurItemType];
 
   return "Unknown Nanosaur Item.";
 }
 
-function getNanosaur2ItemNames(number: number) {
+function getNanosaur2ItemName(number: number) {
   if (number in nanosaur2ItemTypeNames)
     return nanosaur2ItemTypeNames[number as Nanosaur2ItemType];
 
   return "Unknown Nanosaur 2 Item.";
 }
 
-function getOttoItemNames(number: number) {
+function getOttoItemName(number: number) {
   if (number in ottoItemTypeNames)
     return ottoItemTypeNames[number as OttoItemType];
 

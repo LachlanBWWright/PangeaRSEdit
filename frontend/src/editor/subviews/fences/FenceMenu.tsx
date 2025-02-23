@@ -1,9 +1,8 @@
 import { Updater } from "use-immer";
 import { ottoMaticLevel } from "../../../python/structSpecs/ottoMaticInterface";
 import { SelectedFence } from "../../../data/fences/fenceAtoms";
-import { useAtom } from "jotai";
+import { useAtom, useAtomValue } from "jotai";
 import { Button, DeleteButton } from "../../../components/Button";
-import { FenceType, fenceTypeNames } from "../../../data/fences/ottoFenceType";
 import {
   Select,
   SelectItem,
@@ -11,6 +10,9 @@ import {
   SelectContent,
   SelectTrigger,
 } from "@/components/ui/select";
+import { Game, Globals } from "@/data/globals/globals";
+import { getFenceName } from "@/data/fences/getFenceNames";
+import { getFenceTypes } from "@/data/fences/getFenceTypes";
 //import { SelectContent, SelectTrigger } from "@radix-ui/react-select";
 
 const NUB_KEY_BASE = 1000;
@@ -22,12 +24,13 @@ export function FenceMenu({
   data: ottoMaticLevel;
   setData: Updater<ottoMaticLevel>;
 }) {
+  const globals = useAtomValue(Globals);
   const [selectedFence, setSelectedFence] = useAtom(SelectedFence);
 
   const fenceData =
     selectedFence !== undefined ? data.Fenc[1000].obj[selectedFence] : null;
 
-  const fenceValues = Object.keys(FenceType)
+  const fenceValues = getFenceTypes(globals) // Object.keys(FenceType)
     .map((key) => parseInt(key))
     .filter((key) => isNaN(key) === false);
 
@@ -80,13 +83,18 @@ export function FenceMenu({
           {fenceData !== null && (
             <>
               <img
-                src={`assets/ottoMatic/fences/fence${String(
-                  fenceData.fenceType,
-                ).padStart(3, "0")}.png`}
+                src={
+                  /* TODO: Previews for other games */
+                  globals.GAME_TYPE === Game.OTTO_MATIC
+                    ? `assets/ottoMatic/fences/fence${String(
+                        fenceData.fenceType,
+                      ).padStart(3, "0")}.png`
+                    : ""
+                }
                 className="max-h-56 mx-auto"
               />
               <Select
-                value={fenceTypeNames[fenceData.fenceType]}
+                value={getFenceName(globals, fenceData.fenceType)}
                 onValueChange={(e) => {
                   const newFenceType = parseInt(e);
                   setData((data) => {
@@ -97,7 +105,7 @@ export function FenceMenu({
               >
                 <SelectTrigger>
                   <SelectValue>
-                    {fenceTypeNames[fenceData.fenceType]}
+                    {getFenceName(globals, fenceData.fenceType)}
                   </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
@@ -107,7 +115,7 @@ export function FenceMenu({
                       className="text-black"
                       value={key.toString()}
                     >
-                      {fenceTypeNames[key as FenceType]}
+                      {getFenceName(globals, key)}
                     </SelectItem>
                   ))}
                 </SelectContent>
