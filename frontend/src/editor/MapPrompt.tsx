@@ -9,9 +9,7 @@ import { UploadPrompt } from "./UploadPrompt";
 import { EditorView } from "./EditorView";
 import { Button } from "../components/Button";
 import { Updater, useImmer } from "use-immer";
-import ottoPreprocessor, {
-  newJsonProcess,
-} from "../data/preprocessors/ottoPreprocessor";
+import { ottoPreprocessor } from "../data/preprocessors/ottoPreprocessor";
 import { lzssCompress } from "../utils/lzss";
 import { imageDataToSixteenBit } from "../utils/imageConverter";
 import { Globals } from "../data/globals/globals";
@@ -44,7 +42,7 @@ export function MapPrompt({ pyodide }: { pyodide: PyodideInterface }) {
   );
   const [processed, setProcessed] = useState(false);
 
-  useEffect(() => {
+  /*   useEffect(() => {
     const loadMap = async () => {
       if (!mapFile) return;
       const levelBuffer = await mapFile.arrayBuffer();
@@ -61,7 +59,7 @@ export function MapPrompt({ pyodide }: { pyodide: PyodideInterface }) {
       setData(res);
     };
     loadMap();
-  }, [mapFile]);
+  }, [mapFile]); */
 
   useEffect(() => {
     if (!processed) return;
@@ -183,6 +181,8 @@ export function MapPrompt({ pyodide }: { pyodide: PyodideInterface }) {
         setMapFile={setMapFile}
         setMapImagesFile={setMapImagesFile}
         setMapImages={setMapImages}
+        pyodide={pyodide}
+        setData={setData}
       />
     );
   return (

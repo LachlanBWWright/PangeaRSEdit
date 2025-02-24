@@ -17,17 +17,26 @@ import {
 import { useAtom } from "jotai";
 import { useState } from "react";
 import { Switch } from "@/components/ui/switch";
+import { save_to_json } from "@/python/rsrcdump";
+import { PyodideInterface } from "pyodide";
+import { preprocessJson } from "@/data/preprocessors/ottoPreprocessor";
+import { ottoMaticLevel } from "@/python/structSpecs/ottoMaticInterface";
+import { Updater } from "use-immer";
 
 export function UploadPrompt({
   mapFile,
   setMapFile,
   setMapImagesFile,
   setMapImages,
+  pyodide,
+  setData,
 }: {
   mapFile: File | undefined;
   setMapFile: (file: File) => void;
   setMapImagesFile: (file: File) => void;
   setMapImages: (images: HTMLCanvasElement[]) => void;
+  pyodide: PyodideInterface;
+  setData: Updater<ottoMaticLevel | null>;
 }) {
   const [globals, setGlobals] = useAtom(Globals);
   const [showAllGames, setShowAllGames] = useState(false);
@@ -51,6 +60,21 @@ export function UploadPrompt({
       //replace .ter at the end with .trt
       url = url.split(".")[0] + ".trt";
     }
+
+    //if (!mapFile) return;
+    const levelBuffer = await file.arrayBuffer();
+
+    let jsonData = await save_to_json<ottoMaticLevel>(
+      pyodide,
+      levelBuffer,
+      gameType.STRUCT_SPECS,
+      [],
+      [],
+    );
+
+    preprocessJson(jsonData, globals);
+
+    setData(jsonData);
 
     const imgRes = await fetch(url);
     const img = await imgRes.blob();

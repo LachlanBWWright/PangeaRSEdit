@@ -126,16 +126,7 @@ export type ottoMaticLevel = {
     junk2: number;
   };
 };
-/* export type ottoMaticLevelLiquid = Omit<ottoMaticLevel, "Liqd"> & {
-  Liqd: {
-    1000: {
-      name: "Water List";
-      obj: ottoLiquid[];
-      order: number;
-    };
-  };
-};
- */
+
 export type ottoTileAttribute = {
   flags: number;
   p0: number;

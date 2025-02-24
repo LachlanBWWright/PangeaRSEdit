@@ -18,7 +18,6 @@ export function Supertiles({
   const header = data.Hedr[1000].obj;
   const supertilesWide = header.mapWidth / globals.TILES_PER_SUPERTILE;
   const superTileGrid = data.STgd[1000].obj;
-
   const imageGrid = useMemo(() => {
     const imageArray: HTMLCanvasElement[] = [];
     for (const supertile of superTileGrid) {
@@ -26,8 +25,8 @@ export function Supertiles({
     }
     return imageArray;
   }, [data.Hedr, data.STgd, mapImages]);
-  //Create blank image
 
+  //Create blank image
   return (
     <Layer>
       {imageGrid.map((img, i) => {

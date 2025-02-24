@@ -3,7 +3,7 @@ import { ottoMaticLevel } from "../../python/structSpecs/ottoMaticInterface";
 import { SPLINE_KEY_BASE } from "../../editor/subviews/splines/Spline";
 import { GlobalsInterface } from "../globals/globals";
 
-export function newJsonProcess(json: any, globals: GlobalsInterface) {
+export function preprocessJson(json: any, globals: GlobalsInterface) {
   if (!json.Liqd) return;
 
   for (const waterItem of json.Liqd[1000].obj) {
@@ -16,7 +16,7 @@ export function newJsonProcess(json: any, globals: GlobalsInterface) {
   }
 }
 
-export default function ottoPreprocessor(
+export function ottoPreprocessor(
   setData: Updater<ottoMaticLevel>,
   globals: GlobalsInterface,
 ) {
