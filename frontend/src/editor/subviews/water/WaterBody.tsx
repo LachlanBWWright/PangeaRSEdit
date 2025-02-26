@@ -1,10 +1,8 @@
 import { Updater } from "use-immer";
 import { ottoMaticLevel } from "../../../python/structSpecs/ottoMaticInterface";
-import { Circle, Line, Rect } from "react-konva";
-import { useAtom, useSetAtom } from "jotai";
+import { Circle, Line } from "react-konva";
+import { useAtom } from "jotai";
 import { SelectedWaterBody } from "../../../data/water/waterAtoms";
-import { useEffect } from "react";
-import { BlockHistoryUpdate } from "../../../data/globals/history";
 
 export function WaterBody({
   data,
@@ -18,33 +16,6 @@ export function WaterBody({
   const [selectedWaterBody, setSelectedWaterBody] = useAtom(SelectedWaterBody);
   const waterBody = data.Liqd[1000].obj[waterBodyIdx];
 
-  useEffect(() => {
-    setData((data) => {
-      const waterBody = data.Liqd[1000].obj[waterBodyIdx];
-
-      if (!waterBody) return;
-
-      let left = waterBody.nubs[0][0];
-      let right = waterBody.nubs[0][0];
-      let top = waterBody.nubs[0][1];
-      let bottom = waterBody.nubs[0][1];
-
-      //Update bounding box
-      for (let i = 0; i < waterBody.numNubs; i++) {
-        if (waterBody.nubs[i][0] < left) left = waterBody.nubs[i][0];
-        if (waterBody.nubs[i][0] > right) right = waterBody.nubs[i][0];
-        if (waterBody.nubs[i][1] < top) top = waterBody.nubs[i][1];
-        if (waterBody.nubs[i][1] > bottom) bottom = waterBody.nubs[i][1];
-      }
-
-      waterBody.bBoxLeft = left;
-      waterBody.bBoxRight = right;
-      waterBody.bBoxTop = top;
-      waterBody.bBoxBottom = bottom;
-    });
-  }, [data.Liqd[1000].obj[waterBodyIdx]]);
-  const setBlockHistoryUpdate = useSetAtom(BlockHistoryUpdate);
-
   if (!waterBody) return <></>;
 
   const waterNubs = waterBody.nubs
@@ -53,21 +24,6 @@ export function WaterBody({
 
   return (
     <>
-      {selectedWaterBody === waterBodyIdx && (
-        <Rect
-          x={data.Liqd[1000].obj[waterBodyIdx].bBoxLeft}
-          y={data.Liqd[1000].obj[waterBodyIdx].bBoxBottom}
-          width={
-            data.Liqd[1000].obj[waterBodyIdx].bBoxRight -
-            data.Liqd[1000].obj[waterBodyIdx].bBoxLeft
-          }
-          height={
-            data.Liqd[1000].obj[waterBodyIdx].bBoxTop -
-            data.Liqd[1000].obj[waterBodyIdx].bBoxBottom
-          }
-          stroke="red"
-        />
-      )}
       <Line
         points={waterNubs}
         stroke={waterBodyIdx === selectedWaterBody ? "#9999FFDD" : "#9999FF77"}
@@ -97,7 +53,6 @@ export function WaterBody({
                     data.Liqd[1000].obj[waterBodyIdx].nubs[nubIdx][1] =
                       Math.round(e.target.y());
                   });
-                  setBlockHistoryUpdate(true);
                 }}
               />
             </>

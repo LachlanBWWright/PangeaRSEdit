@@ -3,7 +3,7 @@ import {
   ottoMaticLevel,
   ottoSplineItem,
 } from "../../../python/structSpecs/ottoMaticInterface";
-import { useAtom, useAtomValue, useSetAtom } from "jotai";
+import { useAtom, useAtomValue } from "jotai";
 import { Button, DeleteButton } from "../../../components/Button";
 import { ottoItemTypeParams } from "../../../data/items/ottoItemType";
 import { parseU16, parseU8 } from "../../../utils/numberParsers";
@@ -15,7 +15,6 @@ import {
 import { SPLINE_KEY_BASE } from "./Spline";
 import { useEffect } from "react";
 import { getPoints } from "../../../utils/spline";
-import { BlockHistoryUpdate } from "../../../data/globals/history";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -67,13 +66,10 @@ export function SplineMenu({
         >
           <SelectTrigger>
             {selectedSplineItem !== undefined
-              ? `#${selectedSplineItem} ${
-                  getSplineItemName(
-                    globals,
-                    splineData[selectedSplineItem].type,
-                  )
-                  //splineItemTypeNames[splineData[selectedSplineItem].type]
-                }`
+              ? `#${selectedSplineItem} ${getSplineItemName(
+                  globals,
+                  splineData[selectedSplineItem].type,
+                )}`
               : "No Item Selected"}
           </SelectTrigger>
           <SelectContent>
@@ -100,8 +96,6 @@ export function SplineMenu({
 }
 
 function AddNewSplineMenu({ setData }: { setData: Updater<ottoMaticLevel> }) {
-  const setBlockHistoryUpdate = useSetAtom(BlockHistoryUpdate);
-
   return (
     <>
       <Button
@@ -147,7 +141,6 @@ function AddNewSplineMenu({ setData }: { setData: Updater<ottoMaticLevel> }) {
               obj: getPoints(data.SpNb[splinePos].obj),
             };
           });
-          setBlockHistoryUpdate(true);
         }}
       >
         Add New Spline
@@ -346,7 +339,6 @@ function EditSplineMenu({
   setData: Updater<ottoMaticLevel>;
 }) {
   const [selectedSpline, setSelectedSpline] = useAtom(SelectedSpline);
-  const setBlockHistoryUpdate = useSetAtom(BlockHistoryUpdate);
 
   return (
     <div className="grid grid-cols-6 gap-2">
@@ -364,7 +356,6 @@ function EditSplineMenu({
               obj: getPoints(data.SpNb[SPLINE_KEY_BASE + selectedSpline].obj),
             };
           });
-          setBlockHistoryUpdate(true);
         }}
       >
         Add Front Nub
@@ -387,7 +378,6 @@ function EditSplineMenu({
               obj: getPoints(data.SpNb[SPLINE_KEY_BASE + selectedSpline].obj),
             };
           });
-          setBlockHistoryUpdate(true);
         }}
       >
         Add Back Nub
@@ -405,7 +395,6 @@ function EditSplineMenu({
               obj: getPoints(data.SpNb[SPLINE_KEY_BASE + selectedSpline].obj),
             };
           });
-          setBlockHistoryUpdate(true);
         }}
       >
         Delete Front Nub
@@ -428,7 +417,6 @@ function EditSplineMenu({
               obj: getPoints(data.SpNb[SPLINE_KEY_BASE + selectedSpline].obj),
             };
           });
-          setBlockHistoryUpdate(true);
         }}
       >
         Delete Back Nub
@@ -442,7 +430,7 @@ function EditSplineMenu({
             console.log(data.SpIt[SPLINE_KEY_BASE + selectedSpline]);
             data.SpIt[SPLINE_KEY_BASE + selectedSpline].obj.push({
               placement: 0.5,
-              type: 0, //SplineItemType.Human,
+              type: 0 as any, //eslint-disable-line
               flags: 0,
               p0: 0,
               p1: 0,

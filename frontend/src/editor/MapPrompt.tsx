@@ -1,6 +1,6 @@
 import { PyodideInterface } from "pyodide";
 import { useEffect, useState } from "react";
-import { load_bytes_from_json, save_to_json } from "../python/rsrcdump";
+import { load_bytes_from_json } from "../python/rsrcdump";
 import {
   //globals.SUPERTILE_TEXMAP_SIZE,
   ottoMaticLevel,
@@ -41,25 +41,6 @@ export function MapPrompt({ pyodide }: { pyodide: PyodideInterface }) {
     undefined,
   );
   const [processed, setProcessed] = useState(false);
-
-  /*   useEffect(() => {
-    const loadMap = async () => {
-      if (!mapFile) return;
-      const levelBuffer = await mapFile.arrayBuffer();
-
-      let res = await save_to_json<ottoMaticLevel>(
-        pyodide,
-        levelBuffer,
-        globals.STRUCT_SPECS,
-        [],
-        [],
-      );
-
-      newJsonProcess(res, globals);
-      setData(res);
-    };
-    loadMap();
-  }, [mapFile]); */
 
   useEffect(() => {
     if (!processed) return;
@@ -204,6 +185,7 @@ export function MapPrompt({ pyodide }: { pyodide: PyodideInterface }) {
         <Button
           onClick={() => {
             ottoPreprocessor(setData as Updater<ottoMaticLevel>, globals);
+            setBlockHistoryUpdate(true);
             setProcessed(true); //Trigger useEffect for downloading
           }}
         >

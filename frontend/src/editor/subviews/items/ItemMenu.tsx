@@ -3,7 +3,7 @@ import { ottoMaticLevel } from "../../../python/structSpecs/ottoMaticInterface";
 import { useAtom, useAtomValue } from "jotai";
 import { Button, DeleteButton } from "../../../components/Button";
 import { ClickToAddItem, SelectedItem } from "../../../data/items/itemAtoms";
-import { ItemType, ottoItemTypeParams } from "../../../data/items/ottoItemType";
+import { ottoItemTypeParams } from "../../../data/items/ottoItemType";
 import { parseU16, parseU8 } from "../../../utils/numberParsers";
 import { useEffect } from "react";
 import { Input } from "@/components/ui/input";
