@@ -3,6 +3,7 @@
 import { atom } from "jotai";
 import { ottoMaticSpecs } from "../../python/structSpecs/ottoMatic";
 import { bugdom2Specs } from "../../python/structSpecs/bugdom2";
+import { bugdomSpecs } from "@/python/structSpecs/bugdom";
 export enum Game {
   OTTO_MATIC,
   BUGDOM,
@@ -60,11 +61,11 @@ export const BugdomGlobals: GlobalsInterface = {
   GAME_TYPE: Game.BUGDOM,
   DATA_TYPE: DataType.RSRC_FORK,
   TILE_IMAGE_FORMAT: TileImageFormat.LZSS_16_BIT,
-  STRUCT_SPECS: bugdom2Specs,
-  SUPERTILE_TEXMAP_SIZE: 128, //Dimensions of each supertile texture
-  TILES_PER_SUPERTILE: 8, //How many tiles are in a supertile
+  STRUCT_SPECS: bugdomSpecs,
+  SUPERTILE_TEXMAP_SIZE: 32, //Dimensions of each supertile texture (Note; Bugdom has per-tile texmaps - supertiles are made by combining 5x5 texmaps)
+  TILES_PER_SUPERTILE: 5, //How many tiles are in a supertile
   EMPTY_TILE_IDX: 0, //TODO: Not checked
-  TILE_SIZE: 16, //How many units each tile is
+  TILE_SIZE: 32, //How many units each tile is
   LIQD_NUBS: 100,
 };
 

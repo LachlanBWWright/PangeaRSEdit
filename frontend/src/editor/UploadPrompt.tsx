@@ -8,6 +8,7 @@ import {
   BugdomGlobals,
   CroMagGlobals,
   DataType,
+  Game,
   Globals,
   Nanosaur2Globals,
   NanosaurGlobals,
@@ -22,6 +23,7 @@ import { PyodideInterface } from "pyodide";
 import { preprocessJson } from "@/data/preprocessors/ottoPreprocessor";
 import { ottoMaticLevel } from "@/python/structSpecs/ottoMaticInterface";
 import { Updater } from "use-immer";
+import { Buffer } from "buffer";
 
 export function UploadPrompt({
   mapFile,
@@ -76,15 +78,30 @@ export function UploadPrompt({
 
     setData(jsonData);
 
-    const imgRes = await fetch(url);
-    const img = await imgRes.blob();
-    const imgFile = new File([img], url.split("/").pop() ?? "");
-    const imgBuffer = await imgFile.arrayBuffer();
-    const imgDataView = new DataView(imgBuffer);
-    const mapImages = loadMapImages(imgDataView, gameType);
+    if (gameType.DATA_TYPE !== DataType.RSRC_FORK) {
+      const imgRes = await fetch(url);
+      const img = await imgRes.blob();
+      const imgFile = new File([img], url.split("/").pop() ?? "");
+      const imgBuffer = await imgFile.arrayBuffer();
+      const imgDataView = new DataView(imgBuffer);
+      const mapImages = loadMapImages(imgDataView, gameType);
 
-    setMapImagesFile(imgFile);
-    setMapImages(mapImages);
+      setMapImagesFile(imgFile);
+      setMapImages(mapImages);
+    } else {
+      //Bugdom 1-specific - The image data is within the Resource Fork
+      console.log(jsonData);
+      const imgString = jsonData.Timg[1000].data;
+      console.log(imgString);
+      const imgBuffer = Buffer.from(imgString, "hex");
+      console.log(imgBuffer);
+      console.log(imgBuffer.byteLength);
+      console.log("Resized", imgBuffer.byteLength / 2 / 32 / 32);
+      const imgDataView = new DataView(imgBuffer.buffer);
+      const mapImages = loadMapImages(imgDataView, gameType);
+
+      setMapImages(mapImages);
+    }
   };
 
   return (
@@ -279,7 +296,7 @@ export function UploadPrompt({
               </Button>
               <Button
                 onClick={() =>
-                  openFile("assets/bugdom/terrain/Hive.ter", BugdomGlobals)
+                  openFile("assets/bugdom/terrain/BeeHive.ter", BugdomGlobals)
                 }
               >
                 Level 6
@@ -790,47 +807,90 @@ function loadMapImages(
   }
 
   //Read Each
-  while (offset != dataView.byteLength) {
-    numSupertiles++;
-    let size = dataView.getInt32(offset);
+  if (globals.GAME_TYPE !== Game.BUGDOM) {
+    //Decompress
+    while (offset != dataView.byteLength) {
+      numSupertiles++;
+      let size = dataView.getInt32(offset);
 
-    offset += 4;
-    const buffer = new DataView(dataView.buffer.slice(offset, offset + size));
+      offset += 4;
+      const buffer = new DataView(dataView.buffer.slice(offset, offset + size));
+      const decompressedSize =
+        globals.SUPERTILE_TEXMAP_SIZE * globals.SUPERTILE_TEXMAP_SIZE * 2;
+      const decompressedBuffer = new DataView(
+        new ArrayBuffer(decompressedSize),
+      );
+      lzssDecompress(buffer, decompressedBuffer);
+      mapImagesData.push(decompressedBuffer.buffer);
 
-    const decompressedSize =
-      globals.SUPERTILE_TEXMAP_SIZE * globals.SUPERTILE_TEXMAP_SIZE * 2;
-    const decompressedBuffer = new DataView(new ArrayBuffer(decompressedSize));
-    lzssDecompress(buffer, decompressedBuffer);
-    mapImagesData.push(decompressedBuffer.buffer);
+      //const imgCanvas = document.createElement("canvas");
+      const imgCanvas = document.createElement("canvas");
+      imgCanvas.width = globals.SUPERTILE_TEXMAP_SIZE;
+      imgCanvas.height = globals.SUPERTILE_TEXMAP_SIZE;
+      const imgCtx = imgCanvas.getContext("2d");
 
-    //const imgCanvas = document.createElement("canvas");
-    const imgCanvas = document.createElement("canvas");
-    imgCanvas.width = globals.SUPERTILE_TEXMAP_SIZE;
-    imgCanvas.height = globals.SUPERTILE_TEXMAP_SIZE;
-    const imgCtx = imgCanvas.getContext("2d");
+      const imageData = imgCtx?.getImageData(
+        0,
+        0,
+        imgCanvas.width,
+        imgCanvas.height,
+      );
 
-    const imageData = imgCtx?.getImageData(
-      0,
-      0,
-      imgCanvas.width,
-      imgCanvas.height,
-    );
+      if (!imageData) {
+        throw new Error("Could not create image data");
+      }
 
-    if (!imageData) {
-      throw new Error("Could not create image data");
+      sixteenBitToImageData(decompressedBuffer, imageData);
+
+      if (!imgCtx) {
+        throw new Error("Bad data!");
+      }
+      //16-bit buffer from current buffer
+      imgCtx?.putImageData(imageData, 0, 0);
+
+      offset += size;
+      imgCanvas;
+      mapImages.push(imgCanvas);
     }
+  } else {
+    while (offset != dataView.byteLength) {
+      numSupertiles++;
 
-    sixteenBitToImageData(decompressedBuffer, imageData);
+      const size =
+        globals.SUPERTILE_TEXMAP_SIZE * globals.SUPERTILE_TEXMAP_SIZE * 2;
+      const bufferSlice = new DataView(
+        dataView.buffer.slice(offset, offset + size),
+      );
 
-    if (!imgCtx) {
-      throw new Error("Bad data!");
+      //const imgCanvas = document.createElement("canvas");
+      const imgCanvas = document.createElement("canvas");
+      imgCanvas.width = globals.SUPERTILE_TEXMAP_SIZE;
+      imgCanvas.height = globals.SUPERTILE_TEXMAP_SIZE;
+      const imgCtx = imgCanvas.getContext("2d");
+
+      const imageData = imgCtx?.getImageData(
+        0,
+        0,
+        imgCanvas.width,
+        imgCanvas.height,
+      );
+
+      if (!imageData) {
+        throw new Error("Could not create image data");
+      }
+
+      sixteenBitToImageData(bufferSlice, imageData);
+
+      if (!imgCtx) {
+        throw new Error("Bad data!");
+      }
+      //16-bit buffer from current buffer
+      imgCtx?.putImageData(imageData, 0, 0);
+
+      offset += size;
+      imgCanvas;
+      mapImages.push(imgCanvas);
     }
-    //16-bit buffer from current buffer
-    imgCtx?.putImageData(imageData, 0, 0);
-
-    offset += size;
-    imgCanvas;
-    mapImages.push(imgCanvas);
   }
   return mapImages;
 }
