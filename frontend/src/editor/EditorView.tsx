@@ -107,6 +107,7 @@ export function EditorView({
           Tiles
         </Button>
         <Button
+          disabled={data.STgd === undefined}
           selected={view === View.supertiles}
           onClick={() => setView(View.supertiles)}
         >
@@ -208,7 +209,7 @@ export function EditorView({
             });
           }}
         >
-          <Supertiles data={data} mapImages={mapImages} />
+          {data.STgd && <Supertiles data={data} mapImages={mapImages} />}
           {view === View.tiles && (
             <Tiles
               data={data}

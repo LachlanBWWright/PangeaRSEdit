@@ -30,12 +30,7 @@ export function imageDataToSixteenBit(data: Uint8ClampedArray): DataView {
     const g = data[i + 1];
     const b = data[i + 2];
     const a = data[i + 3];
-    if (i == 0) {
-      console.log(r, g, b, a);
-      console.log(
-        ((r / 8) << 10) | ((g / 8) << 5) | (b / 8) | (a ? 0x8000 : 0x0),
-      );
-    }
+
     output.setUint16(
       i / 2,
       ((r / 8) << 10) | ((g / 8) << 5) | (b / 8) | (a ? 0x0 : 0x8000),

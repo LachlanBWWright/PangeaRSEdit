@@ -5,12 +5,30 @@ import {
   ottoSplineNub,
 } from "../../../python/structSpecs/ottoMaticInterface";
 import { Line, Circle, Rect, Label, Tag, Text } from "react-konva";
-import { useAtom, useAtomValue, useSetAtom } from "jotai";
-import { useEffect, useMemo, useState } from "react";
+import { useAtom, useAtomValue } from "jotai";
+import { useMemo, useState } from "react";
 import { getPoints } from "../../../utils/spline";
 import { SelectedSpline } from "../../../data/splines/splineAtoms";
-import { splineItemTypeNames } from "../../../data/splines/ottoSplineItemType";
-import { BlockHistoryUpdate } from "../../../data/globals/history";
+import { getSplineItemName } from "@/data/splines/getSplineItemNames";
+import { Globals } from "@/data/globals/globals";
+
+export function updateSplinePoints(
+  splineIdx: number,
+  setData: Updater<ottoMaticLevel>,
+) {
+  setData((data) => {
+    const newPoints =
+      data.SpNb[SPLINE_KEY_BASE + splineIdx].obj.length === 1
+        ? [
+            {
+              x: data.SpNb[SPLINE_KEY_BASE + splineIdx].obj[0].x,
+              z: data.SpNb[SPLINE_KEY_BASE + splineIdx].obj[0].z,
+            },
+          ]
+        : getPoints(data.SpNb[SPLINE_KEY_BASE + splineIdx].obj);
+    data.SpPt[SPLINE_KEY_BASE + splineIdx].obj = newPoints;
+  });
+}
 
 export function Spline({
   data,
@@ -32,25 +50,6 @@ export function Spline({
       point.z,
     ]);
   }, [data.SpPt[SPLINE_KEY_BASE + splineIdx].obj]);
-
-  //Update points when nub positions change
-  useEffect(() => {
-    const newPoints =
-      data.SpNb[SPLINE_KEY_BASE + splineIdx].obj.length === 1
-        ? [
-            {
-              x: data.SpNb[SPLINE_KEY_BASE + splineIdx].obj[0].x,
-              z: data.SpNb[SPLINE_KEY_BASE + splineIdx].obj[0].z,
-            },
-          ]
-        : getPoints(data.SpNb[SPLINE_KEY_BASE + splineIdx].obj);
-
-    setData((data) => {
-      data.SpPt[SPLINE_KEY_BASE + splineIdx].obj = newPoints;
-    });
-  }, [data.SpNb[SPLINE_KEY_BASE + splineIdx]]);
-
-  //if (item === null || item === undefined) return <></>;
 
   return (
     <>
@@ -105,7 +104,6 @@ function SplineNub({
 }) {
   const [selectedSpline, setSelectedSpline] = useAtom(SelectedSpline);
   const [hovering, setHovering] = useState(false);
-  const setBlockHistoryUpdate = useSetAtom(BlockHistoryUpdate);
   return (
     <>
       <Circle
@@ -134,7 +132,7 @@ function SplineNub({
               };
             }
           });
-          setBlockHistoryUpdate(true);
+          updateSplinePoints(splineIdx, setData);
         }}
         onMouseOver={() => setHovering(true)}
         onMouseLeave={() => setHovering(false)}
@@ -166,7 +164,7 @@ function SplineItem({
   item: ottoSplineItem;
 }) {
   const [hovering, setHovering] = useState(false);
-
+  const globals = useAtomValue(Globals);
   return (
     <>
       <Rect
@@ -194,7 +192,16 @@ function SplineItem({
 
       <Label opacity={1} visible={hovering} x={x + 15} y={z}>
         <Tag fill="blue" />
-        <Text text={splineItemTypeNames[item.type]} fontSize={8} fill="white" />
+        <Text
+          text={
+            getSplineItemName(
+              globals,
+              item.type,
+            ) /* splineItemTypeNames[item.type] */
+          }
+          fontSize={8}
+          fill="white"
+        />
       </Label>
     </>
   );

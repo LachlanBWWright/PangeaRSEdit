@@ -3,7 +3,7 @@ import { ottoMaticLevel } from "../../python/structSpecs/ottoMaticInterface";
 import { SPLINE_KEY_BASE } from "../../editor/subviews/splines/Spline";
 import { GlobalsInterface } from "../globals/globals";
 
-export function newJsonProcess(json: any, globals: GlobalsInterface) {
+export function preprocessJson(json: any, globals: GlobalsInterface) {
   if (!json.Liqd) return;
 
   for (const waterItem of json.Liqd[1000].obj) {
@@ -16,7 +16,7 @@ export function newJsonProcess(json: any, globals: GlobalsInterface) {
   }
 }
 
-export default function ottoPreprocessor(
+export function ottoPreprocessor(
   setData: Updater<ottoMaticLevel>,
   globals: GlobalsInterface,
 ) {
@@ -62,7 +62,36 @@ export default function ottoPreprocessor(
 
     //TODO: Fence Bounding Boxes
 
-    //TODO: Water Bounding Boxes
+    //Update Water Bounding Boxes
+    if (data.Liqd !== undefined) {
+      for (
+        let waterBodyIdx = 0;
+        waterBodyIdx < data.Liqd[1000].obj.length;
+        waterBodyIdx++
+      ) {
+        const waterBody = data.Liqd[1000].obj[waterBodyIdx];
+
+        if (!waterBody) return;
+
+        let left = waterBody.nubs[0][0];
+        let right = waterBody.nubs[0][0];
+        let top = waterBody.nubs[0][1];
+        let bottom = waterBody.nubs[0][1];
+
+        //Update bounding box
+        for (let i = 0; i < waterBody.numNubs; i++) {
+          if (waterBody.nubs[i][0] < left) left = waterBody.nubs[i][0];
+          if (waterBody.nubs[i][0] > right) right = waterBody.nubs[i][0];
+          if (waterBody.nubs[i][1] < top) top = waterBody.nubs[i][1];
+          if (waterBody.nubs[i][1] > bottom) bottom = waterBody.nubs[i][1];
+        }
+
+        waterBody.bBoxLeft = left;
+        waterBody.bBoxRight = right;
+        waterBody.bBoxTop = top;
+        waterBody.bBoxBottom = bottom;
+      }
+    }
 
     //TODO: Setting Order
 

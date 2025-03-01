@@ -2,9 +2,10 @@ import { Updater } from "use-immer";
 import { ottoMaticLevel } from "../../../python/structSpecs/ottoMaticInterface";
 import { Label, Rect, Tag, Text } from "react-konva";
 import { SelectedItem } from "../../../data/items/itemAtoms";
-import { useSetAtom } from "jotai";
+import { useAtomValue, useSetAtom } from "jotai";
 import { useState } from "react";
-import { itemTypeNames } from "../../../data/items/ottoItemType";
+import { Globals } from "@/data/globals/globals";
+import { getItemName } from "@/data/items/getItemNames";
 
 const ITEM_BOX_SIZE = 12;
 const ITEM_BOX_OFFSET = ITEM_BOX_SIZE / 2;
@@ -21,6 +22,7 @@ export function Item({
   const setSelectedItem = useSetAtom(SelectedItem);
   const item = data.Itms[1000].obj[itemIdx];
   const [hovering, setHovering] = useState(false);
+  const globals = useAtomValue(Globals);
 
   if (item === null || item === undefined) return <></>;
 
@@ -64,7 +66,11 @@ export function Item({
 
       <Label opacity={1} visible={hovering} x={item.x + 15} y={item.z}>
         <Tag fill="red" />
-        <Text text={itemTypeNames[item.type]} fontSize={8} fill="black" />
+        <Text
+          text={getItemName(globals, item.type)}
+          fontSize={8}
+          fill="black"
+        />
       </Label>
     </>
   );

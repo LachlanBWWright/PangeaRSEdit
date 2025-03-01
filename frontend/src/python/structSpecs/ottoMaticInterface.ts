@@ -1,11 +1,11 @@
 import { FenceType } from "../../data/fences/ottoFenceType";
 import { ItemType } from "../../data/items/ottoItemType";
 import { SplineItemType } from "../../data/splines/ottoSplineItemType";
-import { WaterBodyType } from "../../data/water/ottoWaterItemType";
+import { WaterBodyType } from "../../data/water/ottoWaterBodyType";
 
 export type MakeRequired<T, K extends keyof T> = T & Required<Pick<T, K>>;
 
-export type ottoMaticLevel = {
+export interface ottoMaticLevel {
   Atrb: {
     1000: {
       name: "Tile Attribute Data";
@@ -29,6 +29,13 @@ export type ottoMaticLevel = {
       order: number;
     }
   >;
+  Timg: {
+    1000: {
+      name: "Extracted Tile Image Data 32x32/16bit";
+      data: string;
+      order: number;
+    };
+  };
   Hedr: {
     1000: {
       name: "Header";
@@ -125,17 +132,8 @@ export type ottoMaticLevel = {
     junk1: number;
     junk2: number;
   };
-};
-/* export type ottoMaticLevelLiquid = Omit<ottoMaticLevel, "Liqd"> & {
-  Liqd: {
-    1000: {
-      name: "Water List";
-      obj: ottoLiquid[];
-      order: number;
-    };
-  };
-};
- */
+}
+
 export type ottoTileAttribute = {
   flags: number;
   p0: number;

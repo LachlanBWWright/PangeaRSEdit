@@ -1,13 +1,9 @@
 import { Updater } from "use-immer";
 import { ottoMaticLevel } from "../../../python/structSpecs/ottoMaticInterface";
-import { useAtom } from "jotai";
+import { useAtom, useAtomValue } from "jotai";
 import { Button, DeleteButton } from "../../../components/Button";
 import { ClickToAddItem, SelectedItem } from "../../../data/items/itemAtoms";
-import {
-  ItemType,
-  itemTypeNames,
-  ottoItemTypeParams,
-} from "../../../data/items/ottoItemType";
+import { ottoItemTypeParams } from "../../../data/items/ottoItemType";
 import { parseU16, parseU8 } from "../../../utils/numberParsers";
 import { useEffect } from "react";
 import { Input } from "@/components/ui/input";
@@ -18,6 +14,9 @@ import {
   SelectTrigger,
   SelectItem,
 } from "@/components/ui/select";
+import { getItemName } from "@/data/items/getItemNames";
+import { Globals } from "@/data/globals/globals";
+import { getItemTypes } from "@/data/items/getItemTypes";
 
 export function ItemMenu({
   data,
@@ -26,12 +25,13 @@ export function ItemMenu({
   data: ottoMaticLevel;
   setData: Updater<ottoMaticLevel>;
 }) {
+  const globals = useAtomValue(Globals);
   const [selectedItem, setSelectedItem] = useAtom(SelectedItem);
 
   const itemData =
     selectedItem !== undefined ? data.Itms[1000].obj[selectedItem] : null;
 
-  const itemValues = Object.keys(ItemType)
+  const itemValues = getItemTypes(globals) //Object.keys(ItemType)
     .map((key) => parseInt(key))
     .filter((key) => isNaN(key) === false);
 
@@ -59,7 +59,7 @@ export function ItemMenu({
               }}
             >
               <SelectTrigger>
-                <SelectValue>{itemTypeNames[itemData.type]}</SelectValue>
+                <SelectValue>{getItemName(globals, itemData.type)}</SelectValue>
               </SelectTrigger>
               <SelectContent>
                 {itemValues.map((key) => (
@@ -68,7 +68,7 @@ export function ItemMenu({
                     className="text-black"
                     value={key.toString()}
                   >
-                    {itemTypeNames[key as ItemType]}
+                    {getItemName(globals, key)}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -168,8 +168,9 @@ function AddItemMenu() {
   useEffect(() => {
     return () => setClickToAddItem(undefined);
   }, []);
+  const globals = useAtomValue(Globals);
 
-  const itemValues = Object.keys(ItemType)
+  const itemValues = getItemTypes(globals) // Object.keys(ItemType)
     .map((key) => parseInt(key))
     .filter((key) => isNaN(key) === false);
 
@@ -177,16 +178,14 @@ function AddItemMenu() {
     return (
       <>
         <Select
-          value={itemTypeNames[clickToAddItem as ItemType]}
+          value={getItemName(globals, clickToAddItem)}
           onValueChange={(e) => {
             const newItemType = parseInt(e);
             setClickToAddItem(newItemType);
           }}
         >
           <SelectTrigger>
-            <SelectValue>
-              {itemTypeNames[clickToAddItem as ItemType]}
-            </SelectValue>
+            <SelectValue>{getItemName(globals, clickToAddItem)}</SelectValue>
           </SelectTrigger>
           <SelectContent>
             {itemValues.map((key) => (
@@ -195,7 +194,7 @@ function AddItemMenu() {
                 className="text-black"
                 value={key.toString()}
               >
-                {itemTypeNames[key as ItemType]}
+                {getItemName(globals, key)}
               </SelectItem>
             ))}
           </SelectContent>
