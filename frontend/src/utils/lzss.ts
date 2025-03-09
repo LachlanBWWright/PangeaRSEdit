@@ -77,20 +77,94 @@ export function lzssDecompress(
 
 //"Compression" algorithm, gets the data in a format that can be read by the game's decompressor, but makes it bigger
 export function lzssCompress(sourceOriginalPtr: DataView) {
-  const sourceSize = sourceOriginalPtr.byteLength; // + 1;
-  const numHeaders = Math.ceil(sourceSize / 8);
-  const destSize = sourceSize + numHeaders;
+  const sourceSize = sourceOriginalPtr.byteLength;
+  const ringBuffer = new DataView(new ArrayBuffer(RING_BUFF_SIZE + F - 1));
+  const outputBuffer = new DataView(new ArrayBuffer(sourceSize * 2));
 
-  const outputBuffer = new DataView(new ArrayBuffer(destSize));
+  let ringBufferPos = RING_BUFF_SIZE - F;
+  let sourcePos = 0;
   let destPos = 0;
-  for (let sourcePos = 0; sourcePos < sourceSize; sourcePos++) {
-    //Add 0xFF header
-    if (sourcePos % 8 == 0) {
-      outputBuffer.setUint8(destPos++, 0xff);
-    }
-    outputBuffer.setUint8(destPos++, sourceOriginalPtr.getUint8(sourcePos));
+  let flags = 0;
+  let flagPos = 0;
+  let flagBitsUsed = 0;
+
+  // Initialize ring buffer with spaces
+  for (let i = 0; i < RING_BUFF_SIZE - F; i++) {
+    ringBuffer.setUint8(i, " ".charCodeAt(0));
   }
-  return outputBuffer;
+
+  // Reserve space for the first flag byte
+  flagPos = destPos++;
+  flags = 0;
+
+  while (sourcePos < sourceSize) {
+    // Start new flag byte if needed
+    if (flagBitsUsed === 8) {
+      outputBuffer.setUint8(flagPos, flags);
+      flagPos = destPos++;
+      flags = 0;
+      flagBitsUsed = 0;
+    }
+
+    // Find longest match in ring buffer
+    let bestLength = 0;
+    let bestOffset = 0;
+    const maxSearchLength = Math.min(F, sourceSize - sourcePos);
+
+    if (sourcePos + THRESHOLD < sourceSize) {
+      for (let i = 0; i < RING_BUFF_SIZE; i++) {
+        let matchLength = 0;
+        while (
+          matchLength < maxSearchLength &&
+          sourceOriginalPtr.getUint8(sourcePos + matchLength) ===
+            ringBuffer.getUint8((i + matchLength) & (RING_BUFF_SIZE - 1))
+        ) {
+          matchLength++;
+        }
+        if (matchLength > bestLength) {
+          bestLength = matchLength;
+          bestOffset = i;
+          if (bestLength >= F) break;
+        }
+      }
+    }
+
+    if (bestLength <= THRESHOLD) {
+      // Output literal byte
+      const byte = sourceOriginalPtr.getUint8(sourcePos++);
+      outputBuffer.setUint8(destPos++, byte);
+      flags |= 1 << flagBitsUsed;
+
+      // Update ring buffer
+      ringBuffer.setUint8(ringBufferPos++, byte);
+      ringBufferPos &= RING_BUFF_SIZE - 1;
+    } else {
+      // Output match (offset/length pair)
+      const length = bestLength - THRESHOLD - 1;
+      outputBuffer.setUint8(destPos++, bestOffset & 0xff);
+      outputBuffer.setUint8(
+        destPos++,
+        ((bestOffset >> 4) & 0xf0) | (length & 0x0f),
+      );
+
+      // Update ring buffer with matched data
+      for (let i = 0; i < bestLength; i++) {
+        const byte = sourceOriginalPtr.getUint8(sourcePos + i);
+        ringBuffer.setUint8(ringBufferPos++, byte);
+        ringBufferPos &= RING_BUFF_SIZE - 1;
+      }
+      sourcePos += bestLength;
+    }
+
+    flagBitsUsed++;
+  }
+
+  // Write final flag byte if needed
+  if (flagBitsUsed > 0) {
+    outputBuffer.setUint8(flagPos, flags);
+  }
+
+  return new DataView(outputBuffer.buffer.slice(0, destPos));
 }
 
 /* 

@@ -126,11 +126,11 @@ export function MapPrompt({ pyodide }: { pyodide: PyodideInterface }) {
     const imageDownloadBuffer = new DataView(
       new ArrayBuffer(mapImages.length * (4 + compressedImageSize)),
     );
+    let pos = 0;
     for (let i = 0; i < mapImages.length; i++) {
-      const pos = i * (compressedImageSize + 4);
+      //const pos = i * (compressedImageSize + 4);
       //New dataview
       //Output file has 32-bit size headers before each image, image is size^2 2-byte pixels
-      imageDownloadBuffer.setInt32(pos, compressedImageSize);
       const canvasCtx = mapImages[i].getContext("2d");
       if (!canvasCtx) throw new Error("Could not get canvas context");
       const decompressed = lzssCompress(
@@ -139,14 +139,19 @@ export function MapPrompt({ pyodide }: { pyodide: PyodideInterface }) {
             .data,
         ),
       );
+      imageDownloadBuffer.setInt32(pos, decompressed.buffer.byteLength);
+      pos += 4;
 
       //const decompressed = lzssCompress(new DataView(mapImagesData[i]));
       for (let j = 0; j < decompressed.byteLength; j++) {
-        imageDownloadBuffer.setUint8(pos + 4 + j, decompressed.getUint8(j));
+        imageDownloadBuffer.setUint8(pos, decompressed.getUint8(j));
+        pos++;
       }
     }
 
-    const imageBlob = new Blob([imageDownloadBuffer], { type: ".ter" });
+    const imageBlob = new Blob([imageDownloadBuffer.buffer.slice(0, pos)], {
+      type: ".ter",
+    });
     const imageUrl = URL.createObjectURL(imageBlob);
 
     downloadLink = document.createElement("a");
