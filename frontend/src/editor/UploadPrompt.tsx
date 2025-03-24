@@ -826,7 +826,6 @@ async function loadMapImages(
 
         const lzssWorker = new LzssWorker();
         lzssWorker.onmessage = (e: MessageEvent<LzssResponse>) => {
-          console.log("Got message from worker", e.data);
           const data = e.data;
           if (data.type !== "decompressRes") return;
 
@@ -837,26 +836,12 @@ async function loadMapImages(
           imgCanvas.height = globals.SUPERTILE_TEXMAP_SIZE;
           const imgCtx = imgCanvas.getContext("2d");
 
-          const imageData = imgCtx?.getImageData(
-            0,
-            0,
-            imgCanvas.width,
-            imgCanvas.height,
-          );
-
-          if (!imageData) {
-            err("Could not create image data");
-            throw new Error("Could not create image data");
-          }
-
-          sixteenBitToImageData(data.dataView, imageData);
-
           if (!imgCtx) {
             err("Bad data!");
             throw new Error("Bad data!");
           }
           //16-bit buffer from current buffer
-          imgCtx?.putImageData(imageData, 0, 0);
+          imgCtx.putImageData(data.imageData, 0, 0);
 
           mapImages[data.id] = imgCanvas;
 
@@ -864,13 +849,15 @@ async function loadMapImages(
           if (resolvedTiles.count === numSupertiles) {
             res(mapImages);
           }
+          lzssWorker.terminate();
         };
-        console.log("Posting to worker", size);
         lzssWorker.postMessage({
           compressedDataView: buffer,
           outputSize: decompressedSize,
           type: "decompress",
           id: supertileId,
+          width: globals.SUPERTILE_TEXMAP_SIZE,
+          height: globals.SUPERTILE_TEXMAP_SIZE,
         } satisfies LzssMessage);
         supertileId++;
       }

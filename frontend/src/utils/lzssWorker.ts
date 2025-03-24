@@ -1,3 +1,4 @@
+import { sixteenBitToImageData } from "./imageConverter";
 import { lzssCompress, lzssDecompress } from "./lzss";
 
 export type LzssMessage =
@@ -11,6 +12,8 @@ export type LzssMessage =
       type: "decompress";
       compressedDataView: DataView;
       outputSize: number;
+      width: number;
+      height: number;
     };
 
 export type LzssResponse =
@@ -22,7 +25,7 @@ export type LzssResponse =
   | {
       id: number;
       type: "decompressRes";
-      dataView: DataView;
+      imageData: ImageData;
     };
 
 onmessage = async (event: MessageEvent<LzssMessage>) => {
@@ -36,12 +39,37 @@ onmessage = async (event: MessageEvent<LzssMessage>) => {
     } satisfies LzssResponse);
   }
   if (event.data.type === "decompress") {
-    const { compressedDataView, outputSize } = event.data;
+    const { compressedDataView, outputSize, width, height } = event.data;
     const decompressedDataView = lzssDecompress(compressedDataView, outputSize);
+
+    const imgCanvas = new OffscreenCanvas(width, height); //document.createElement("canvas");
+    imgCanvas.width = width;
+    imgCanvas.height = height;
+    const imgCtx = imgCanvas.getContext("2d");
+
+    const imageData = imgCtx?.getImageData(
+      0,
+      0,
+      imgCanvas.width,
+      imgCanvas.height,
+    );
+
+    if (!imageData) {
+      return;
+    }
+
+    sixteenBitToImageData(decompressedDataView, imageData);
+
+    if (!imgCtx) {
+      return;
+    }
+    //16-bit buffer from current buffer
+    //imgCtx?.putImageData(imageData, 0, 0);
+
     postMessage({
       id: event.data.id,
       type: "decompressRes",
-      dataView: decompressedDataView,
+      imageData: imageData,
     } satisfies LzssResponse);
   }
 };
