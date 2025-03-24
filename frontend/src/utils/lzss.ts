@@ -6,10 +6,13 @@ const F = 18; //Min of 2 + 4 byte uint (2+16)
 //Java LZSS Implementation: https://github.com/crosswire/jsword-migration/blob/master/jsword/src/main/java/org/crosswire/common/compress/LZSS.java
 
 export function lzssDecompress(
-  sourceOriginalPtr: DataView,
-  destOriginalPointer: DataView,
+  compressedDataView: DataView,
+  outputSize: number,
+  //outputBuffer: DataView,
 ) {
-  let sourceSize = sourceOriginalPtr.byteLength;
+  const outputBuffer = new DataView(new ArrayBuffer(outputSize));
+
+  let sourceSize = compressedDataView.byteLength;
 
   let destBufferPos = 0; //Buffer offset
   let sourceBufferPos = 0; //Buffer offset
@@ -21,63 +24,60 @@ export function lzssDecompress(
     ringBuffer.setInt8(i, " ".charCodeAt(0));
 
   let flags = 0;
-  try {
-    while (true) {
-      //Clear the latest bit flag
-      flags = Math.floor(flags / 2);
+  while (true) {
+    //Clear the latest bit flag
+    flags = Math.floor(flags / 2);
 
-      //Get the next 8 flags
-      if (flags < 256) {
-        if (--sourceSize < 0) break;
-        const flagByte = sourceOriginalPtr.getUint8(sourceBufferPos++);
-        //The 0xff keeps keeps the flags < 256 from triggering until 8 cycles (8 bits) have been used
-        flags = flagByte | 0xff00;
-      }
+    //Get the next 8 flags
+    if (flags < 256) {
+      if (--sourceSize < 0) break;
+      const flagByte = compressedDataView.getUint8(sourceBufferPos++);
+      //The 0xff keeps keeps the flags < 256 from triggering until 8 cycles (8 bits) have been used
+      flags = flagByte | 0xff00;
+    }
 
-      //Checks if the latest flag is a 0 or 1
-      //If 1, just copy 8 bits over
-      if (flags & 1) {
-        if (--sourceSize < 0) break;
-        const dataByte = sourceOriginalPtr.getUint8(sourceBufferPos++);
+    //Checks if the latest flag is a 0 or 1
+    //If 1, just copy 8 bits over
+    if (flags & 1) {
+      if (--sourceSize < 0) break;
+      const dataByte = compressedDataView.getUint8(sourceBufferPos++);
 
-        destOriginalPointer.setUint8(destBufferPos++, dataByte);
+      outputBuffer.setUint8(destBufferPos++, dataByte);
 
+      ringBuffer.setUint8(ringBufferPos++, dataByte);
+
+      ringBufferPos &= RING_BUFF_SIZE - 1; //Loop around after 4095
+    } else {
+      //12 bits for distanceOffset, 4 bits for byteLength
+      if (--sourceSize < 0) break;
+      let distanceOffset = compressedDataView.getUint8(sourceBufferPos++);
+      if (--sourceSize < 0) break;
+      let byteLength = compressedDataView.getUint8(sourceBufferPos++);
+
+      //STEAL 4 bits from byteLength (12-bit uint - 0 - 4095)
+      distanceOffset |= (byteLength & 0xf0) << 4; // distanceOffset - Distance Value
+
+      //Ignore the 4 bits used for distanceOffset, add min value
+      byteLength = (byteLength & 0x0f) + THRESHOLD; //byteLength - Length Value
+
+      //Copy over (length) bytes
+      for (let i = 0; i <= byteLength; i++) {
+        const dataByte = ringBuffer.getUint8(
+          (distanceOffset + i) & (RING_BUFF_SIZE - 1),
+        );
+        outputBuffer.setUint8(destBufferPos++, dataByte);
         ringBuffer.setUint8(ringBufferPos++, dataByte);
-
         ringBufferPos &= RING_BUFF_SIZE - 1; //Loop around after 4095
-      } else {
-        //12 bits for distanceOffset, 4 bits for byteLength
-        if (--sourceSize < 0) break;
-        let distanceOffset = sourceOriginalPtr.getUint8(sourceBufferPos++);
-        if (--sourceSize < 0) break;
-        let byteLength = sourceOriginalPtr.getUint8(sourceBufferPos++);
-
-        //STEAL 4 bits from byteLength (12-bit uint - 0 - 4095)
-        distanceOffset |= (byteLength & 0xf0) << 4; // distanceOffset - Distance Value
-
-        //Ignore the 4 bits used for distanceOffset, add min value
-        byteLength = (byteLength & 0x0f) + THRESHOLD; //byteLength - Length Value
-
-        //Copy over (length) bytes
-        for (let i = 0; i <= byteLength; i++) {
-          const dataByte = ringBuffer.getUint8(
-            (distanceOffset + i) & (RING_BUFF_SIZE - 1),
-          );
-          destOriginalPointer.setUint8(destBufferPos++, dataByte);
-          ringBuffer.setUint8(ringBufferPos++, dataByte);
-          ringBufferPos &= RING_BUFF_SIZE - 1; //Loop around after 4095
-        }
       }
     }
-  } catch (e) {
-    console.log(e);
-    console.log("srcSize", sourceSize);
   }
+
+  return outputBuffer;
 }
 
 //"Compression" algorithm, gets the data in a format that can be read by the game's decompressor, but makes it bigger
-export function lzssCompress(sourceOriginalPtr: DataView) {
-  const sourceSize = sourceOriginalPtr.byteLength;
+export function lzssCompress(decompressedDataView: DataView) {
+  const sourceSize = decompressedDataView.byteLength;
   const ringBuffer = new DataView(new ArrayBuffer(RING_BUFF_SIZE + F - 1));
   const outputBuffer = new DataView(new ArrayBuffer(sourceSize * 2));
 
@@ -116,7 +116,7 @@ export function lzssCompress(sourceOriginalPtr: DataView) {
         let matchLength = 0;
         while (
           matchLength < maxSearchLength &&
-          sourceOriginalPtr.getUint8(sourcePos + matchLength) ===
+          decompressedDataView.getUint8(sourcePos + matchLength) ===
             ringBuffer.getUint8((i + matchLength) & (RING_BUFF_SIZE - 1))
         ) {
           matchLength++;
@@ -131,7 +131,7 @@ export function lzssCompress(sourceOriginalPtr: DataView) {
 
     if (bestLength <= THRESHOLD) {
       // Output literal byte
-      const byte = sourceOriginalPtr.getUint8(sourcePos++);
+      const byte = decompressedDataView.getUint8(sourcePos++);
       outputBuffer.setUint8(destPos++, byte);
       flags |= 1 << flagBitsUsed;
 
@@ -149,7 +149,7 @@ export function lzssCompress(sourceOriginalPtr: DataView) {
 
       // Update ring buffer with matched data
       for (let i = 0; i < bestLength; i++) {
-        const byte = sourceOriginalPtr.getUint8(sourcePos + i);
+        const byte = decompressedDataView.getUint8(sourcePos + i);
         ringBuffer.setUint8(ringBufferPos++, byte);
         ringBufferPos &= RING_BUFF_SIZE - 1;
       }
