@@ -126,6 +126,10 @@ export function MapPrompt({ pyodide }: { pyodide: PyodideInterface }) {
     const imageDownloadBuffer = new DataView(
       new ArrayBuffer(mapImages.length * (4 + compressedImageSize)),
     );
+
+    //Webworker promise
+    const compressTextures: Promise<DataView[]> = new Promise((res, err) => {});
+
     let pos = 0;
     for (let i = 0; i < mapImages.length; i++) {
       //const pos = i * (compressedImageSize + 4);
