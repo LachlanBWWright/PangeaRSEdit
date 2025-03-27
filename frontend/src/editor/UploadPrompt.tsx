@@ -1,8 +1,6 @@
 import { Button } from "../components/Button";
 import { FileUpload } from "../components/FileUpload";
-import { lzssDecompress } from "../utils/lzss";
 import LzssWorker from "../utils/lzssWorker?worker";
-import { sixteenBitToImageData } from "../utils/imageConverter";
 import {
   BillyFrontierGlobals,
   Bugdom2Globals,
@@ -19,27 +17,26 @@ import {
 import { useAtom } from "jotai";
 import { useState } from "react";
 import { Switch } from "@/components/ui/switch";
-import { save_to_json } from "@/python/rsrcdump";
-import { PyodideInterface } from "pyodide";
 import { preprocessJson } from "@/data/preprocessors/ottoPreprocessor";
 import { ottoMaticLevel } from "@/python/structSpecs/ottoMaticInterface";
 import { Updater } from "use-immer";
 import { Buffer } from "buffer";
 import { LzssMessage, LzssResponse } from "@/utils/lzssWorker";
+import { PyodideMessage, PyodideResponse } from "@/python/pyodideWorker";
 
 export function UploadPrompt({
   mapFile,
   setMapFile,
   setMapImagesFile,
   setMapImages,
-  pyodide,
+  pyodideWorker,
   setData,
 }: {
   mapFile: File | undefined;
   setMapFile: (file: File) => void;
   setMapImagesFile: (file: File) => void;
   setMapImages: (images: HTMLCanvasElement[]) => void;
-  pyodide: PyodideInterface;
+  pyodideWorker: Worker;
   setData: Updater<ottoMaticLevel | null>;
 }) {
   const [globals, setGlobals] = useAtom(Globals);
@@ -68,13 +65,35 @@ export function UploadPrompt({
     //if (!mapFile) return;
     const levelBuffer = await file.arrayBuffer();
 
-    let jsonData = await save_to_json<ottoMaticLevel>(
+    //Call pyodide worker to run the python code
+
+    const pyodidePromise = new Promise<ottoMaticLevel>((resolve, reject) => {
+      pyodideWorker.postMessage({
+        type: "save_to_json",
+        bytes: levelBuffer,
+        struct_specs: gameType.STRUCT_SPECS,
+        include_types: [],
+        exclude_types: [],
+      } satisfies PyodideMessage);
+
+      pyodideWorker.onmessage = (event: MessageEvent<PyodideResponse>) => {
+        if (event.data.type === "save_to_json") {
+          resolve(event.data.result);
+        } else {
+          reject(new Error("Unexpected response from pyodide worker"));
+        }
+      };
+    });
+
+    const jsonData = await pyodidePromise;
+
+    /*     let jsonData = await save_to_json<ottoMaticLevel>(
       pyodide,
       levelBuffer,
       gameType.STRUCT_SPECS,
       [],
       [],
-    );
+    ); */
 
     preprocessJson(jsonData, globals);
 
@@ -789,10 +808,7 @@ export function UploadPrompt({
   );
 }
 
-async function loadMapImages(
-  dataView: DataView,
-  globals: GlobalsInterface,
-): Promise<HTMLCanvasElement[]> {
+async function loadMapImages(dataView: DataView, globals: GlobalsInterface) {
   let offset = 0;
 
   const loadPromise: Promise<HTMLCanvasElement[]> = new Promise((res, err) => {

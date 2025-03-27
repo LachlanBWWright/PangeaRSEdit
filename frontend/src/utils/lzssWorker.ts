@@ -63,8 +63,6 @@ onmessage = async (event: MessageEvent<LzssMessage>) => {
     if (!imgCtx) {
       return;
     }
-    //16-bit buffer from current buffer
-    //imgCtx?.putImageData(imageData, 0, 0);
 
     postMessage({
       id: event.data.id,
