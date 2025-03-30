@@ -125,14 +125,6 @@ export function MapPrompt({ pyodideWorker }: { pyodideWorker: Worker }) {
     });
     const loadRes = await loadResPromise;
 
-    /*          let loadRes = await load_bytes_from_json(
-      pyodide,
-      data,
-      globals.STRUCT_SPECS,
-      [],
-      [],
-    ); */
-
     const mapBlob = new Blob([loadRes], { type: ".ter.rsrc" });
     let mapUrl = URL.createObjectURL(mapBlob);
 

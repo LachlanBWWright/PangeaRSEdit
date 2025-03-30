@@ -123,7 +123,6 @@ export function WaterMenu({
                         data.Liqd[1000].obj[selectedWaterBody].numNubs - 1
                       ];
                     if (!prevNub) return;
-                    console.log("prevnub", prevNub);
                     data.Liqd[1000].obj[selectedWaterBody].nubs[
                       data.Liqd[1000].obj[selectedWaterBody].numNubs
                     ] = [prevNub[0] + 50, prevNub[1] + 50];

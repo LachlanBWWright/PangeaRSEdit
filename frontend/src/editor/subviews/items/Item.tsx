@@ -1,16 +1,17 @@
 import { Updater } from "use-immer";
 import { ottoMaticLevel } from "../../../python/structSpecs/ottoMaticInterface";
 import { Label, Rect, Tag, Text } from "react-konva";
+import type Konva from "konva";
 import { SelectedItem } from "../../../data/items/itemAtoms";
 import { useAtomValue, useSetAtom } from "jotai";
-import { useState } from "react";
+import { useState, useCallback, memo } from "react";
 import { Globals } from "@/data/globals/globals";
 import { getItemName } from "@/data/items/getItemNames";
 
 const ITEM_BOX_SIZE = 12;
 const ITEM_BOX_OFFSET = ITEM_BOX_SIZE / 2;
 
-export function Item({
+export const Item = memo(function Item({
   data,
   setData,
   itemIdx,
@@ -24,32 +25,48 @@ export function Item({
   const [hovering, setHovering] = useState(false);
   const globals = useAtomValue(Globals);
 
-  if (item === null || item === undefined) return <></>;
+  if (item === null || item === undefined) return null;
+
+  const handleMouseOver = useCallback(() => setHovering(true), []);
+  const handleMouseLeave = useCallback(() => setHovering(false), []);
+  const handleMouseDown = useCallback(
+    () => setSelectedItem(itemIdx),
+    [itemIdx, setSelectedItem],
+  );
+
+  const handleDragEnd = useCallback(
+    (e: Konva.KonvaEventObject<DragEvent>) => {
+      setData((data) => {
+        data.Itms[1000].obj[itemIdx].x = Math.round(
+          e.target.x() + ITEM_BOX_OFFSET,
+        );
+        data.Itms[1000].obj[itemIdx].z = Math.round(
+          e.target.y() + ITEM_BOX_OFFSET,
+        );
+      });
+    },
+    [itemIdx, setData],
+  );
+
+  const itemX = item.x - ITEM_BOX_OFFSET;
+  const itemZ = item.z - ITEM_BOX_OFFSET;
+  const itemName = getItemName(globals, item.type);
 
   return (
     <>
       <Rect
-        x={item.x - ITEM_BOX_OFFSET}
-        y={item.z - ITEM_BOX_OFFSET}
+        x={itemX}
+        y={itemZ}
         width={ITEM_BOX_SIZE}
         height={ITEM_BOX_SIZE}
         stroke="red"
         fill="red"
         draggable
-        onMouseOver={() => setHovering(true)}
-        onMouseLeave={() => setHovering(false)}
-        onMouseDown={() => setSelectedItem(itemIdx)}
-        onDragStart={() => setSelectedItem(itemIdx)}
-        onDragEnd={(e) => {
-          setData((data) => {
-            data.Itms[1000].obj[itemIdx].x = Math.round(
-              e.target.x() + ITEM_BOX_OFFSET,
-            );
-            data.Itms[1000].obj[itemIdx].z = Math.round(
-              e.target.y() + ITEM_BOX_OFFSET,
-            );
-          });
-        }}
+        onMouseOver={handleMouseOver}
+        onMouseLeave={handleMouseLeave}
+        onMouseDown={handleMouseDown}
+        onDragStart={handleMouseDown}
+        onDragEnd={handleDragEnd}
       />
 
       <Text
@@ -57,25 +74,24 @@ export function Item({
         fill="black"
         visible={!hovering}
         fontSize={8}
-        x={item.x - ITEM_BOX_OFFSET}
-        y={item.z - ITEM_BOX_OFFSET}
+        x={itemX}
+        y={itemZ}
         draggable
-        onMouseOver={() => setHovering(true)}
-        onMouseLeave={() => setHovering(false)}
+        onMouseOver={handleMouseOver}
+        onMouseLeave={handleMouseLeave}
       />
 
-      <Label opacity={1} visible={hovering} x={item.x + 15} y={item.z}>
-        <Tag fill="red" />
-        <Text
-          text={getItemName(globals, item.type)}
-          fontSize={8}
-          fill="black"
-        />
-      </Label>
+      {hovering && (
+        <Label opacity={1} x={item.x + 15} y={item.z}>
+          <Tag fill="red" />
+          <Text text={itemName} fontSize={8} fill="black" />
+        </Label>
+      )}
     </>
   );
-}
+});
 
+// Color function renamed to follow naming conventions
 export function getColour(index: number) {
   switch (index % 5) {
     case 0:
