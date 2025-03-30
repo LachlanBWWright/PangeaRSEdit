@@ -8,18 +8,18 @@ test("compress and decompress", () => {
     inputDataView.setUint8(i, 255);
   }
 
-  const outputDataView = new DataView(new ArrayBuffer(100));
+  // const outputDataView = new DataView(new ArrayBuffer(100));
 
   let compressedDataView = lzssCompress(inputDataView);
-  lzssDecompress(compressedDataView, outputDataView);
+  const outputDataView = lzssDecompress(compressedDataView, 100);
 
   compressedDataView = lzssCompress(inputDataView);
-  lzssDecompress(compressedDataView, outputDataView);
+  const outputDataView2 = lzssDecompress(compressedDataView, 100);
 
   console.log(inputDataView);
   console.log(outputDataView);
 
   for (let i = 0; i < inputDataView.byteLength; i++) {
-    expect(inputDataView.getUint8(i)).toEqual(outputDataView.getUint8(i));
+    expect(inputDataView.getUint8(i)).toEqual(outputDataView2.getUint8(i));
   }
 });

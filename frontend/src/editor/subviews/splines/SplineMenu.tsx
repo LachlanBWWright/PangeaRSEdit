@@ -425,9 +425,7 @@ function EditSplineMenu({
         disabled={selectedSpline === undefined}
         onClick={() => {
           setData((data) => {
-            console.log("ADDING SPLINE ITEM");
             if (selectedSpline === undefined) return;
-            console.log(data.SpIt[SPLINE_KEY_BASE + selectedSpline]);
             data.SpIt[SPLINE_KEY_BASE + selectedSpline].obj.push({
               placement: 0.5,
               type: 0 as any, //eslint-disable-line

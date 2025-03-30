@@ -1,27 +1,25 @@
-import { PyodideInterface } from "pyodide";
 import { useEffect, useState } from "react";
-import { load_bytes_from_json } from "../python/rsrcdump";
-import {
-  //globals.SUPERTILE_TEXMAP_SIZE,
-  ottoMaticLevel,
-} from "../python/structSpecs/ottoMaticInterface";
+import { ottoMaticLevel } from "../python/structSpecs/ottoMaticInterface";
 import { UploadPrompt } from "./UploadPrompt";
 import { EditorView } from "./EditorView";
 import { Button } from "../components/Button";
 import { Updater, useImmer } from "use-immer";
 import { ottoPreprocessor } from "../data/preprocessors/ottoPreprocessor";
-import { lzssCompress } from "../utils/lzss";
 import { imageDataToSixteenBit } from "../utils/imageConverter";
 import { Globals } from "../data/globals/globals";
 import { useAtom, useAtomValue } from "jotai";
 import { BlockHistoryUpdate } from "../data/globals/history";
+import LzssWorker from "../utils/lzssWorker?worker";
+import { LzssMessage, LzssResponse } from "@/utils/lzssWorker";
+import { useToast } from "@/hooks/use-toast";
+import { PyodideMessage, PyodideResponse } from "@/python/pyodideWorker";
 
 export type DataHistory = {
   items: ottoMaticLevel[];
   index: number;
 };
 
-export function MapPrompt({ pyodide }: { pyodide: PyodideInterface }) {
+export function MapPrompt({ pyodideWorker }: { pyodideWorker: Worker }) {
   const globals = useAtomValue(Globals);
   const [data, setData] = useImmer<ottoMaticLevel | null>(null);
   //History of previous states for undo/redo purposes
@@ -41,6 +39,7 @@ export function MapPrompt({ pyodide }: { pyodide: PyodideInterface }) {
     undefined,
   );
   const [processed, setProcessed] = useState(false);
+  const { toast } = useToast();
 
   useEffect(() => {
     if (!processed) return;
@@ -100,13 +99,31 @@ export function MapPrompt({ pyodide }: { pyodide: PyodideInterface }) {
 
   async function saveMap() {
     if (!mapFile || !mapImagesFile) return;
-    let loadRes = await load_bytes_from_json(
-      pyodide,
-      data,
-      globals.STRUCT_SPECS,
-      [],
-      [],
-    );
+
+    toast({
+      title: "Saving Map",
+      description: "Processing map data",
+    });
+
+    const loadResPromise = new Promise<ArrayBuffer>((resolve, reject) => {
+      pyodideWorker.postMessage({
+        type: "load_bytes_from_json",
+        json_blob: data,
+        converters: globals.STRUCT_SPECS,
+        only_types: [],
+        skip_types: [],
+        adf: "True",
+      } satisfies PyodideMessage);
+
+      pyodideWorker.onmessage = (event: MessageEvent<PyodideResponse>) => {
+        if (event.data.type === "load_bytes_from_json") {
+          resolve(event.data.result);
+        } else {
+          reject(new Error("Unexpected response from pyodide worker"));
+        }
+      };
+    });
+    const loadRes = await loadResPromise;
 
     const mapBlob = new Blob([loadRes], { type: ".ter.rsrc" });
     let mapUrl = URL.createObjectURL(mapBlob);
@@ -119,40 +136,90 @@ export function MapPrompt({ pyodide }: { pyodide: PyodideInterface }) {
     //Download Images
     if (!mapImages) return;
 
-    //TODO: Hardcoded values that will break for other games / if actual compression is implemented
-    const imageSize =
-      globals.SUPERTILE_TEXMAP_SIZE * globals.SUPERTILE_TEXMAP_SIZE * 2;
-    const compressedImageSize = imageSize + Math.ceil(imageSize / 8);
-    const imageDownloadBuffer = new DataView(
-      new ArrayBuffer(mapImages.length * (4 + compressedImageSize)),
-    );
-    for (let i = 0; i < mapImages.length; i++) {
-      const pos = i * (compressedImageSize + 4);
-      //New dataview
-      //Output file has 32-bit size headers before each image, image is size^2 2-byte pixels
-      imageDownloadBuffer.setInt32(pos, compressedImageSize);
-      const canvasCtx = mapImages[i].getContext("2d");
-      if (!canvasCtx) throw new Error("Could not get canvas context");
-      const decompressed = lzssCompress(
-        imageDataToSixteenBit(
-          canvasCtx.getImageData(0, 0, mapImages[i].width, mapImages[i].height)
-            .data,
-        ),
-      );
+    toast({
+      title: "Saving Map",
+      description: "Compressing textures",
+    });
 
-      //const decompressed = lzssCompress(new DataView(mapImagesData[i]));
-      for (let j = 0; j < decompressed.byteLength; j++) {
-        imageDownloadBuffer.setUint8(pos + 4 + j, decompressed.getUint8(j));
+    //Webworker promise
+    const compressTextures: Promise<DataView[]> = new Promise((res, err) => {
+      const compressedTextures: DataView[] = new Array(mapImages.length);
+      const resolvedTextures = { count: 0 };
+
+      for (let i = 0; i < mapImages.length; i++) {
+        const canvasCtx = mapImages[i].getContext("2d");
+        if (!canvasCtx) {
+          err(new Error("Could not get canvas context"));
+          return;
+        }
+
+        const imageData = canvasCtx.getImageData(
+          0,
+          0,
+          mapImages[i].width,
+          mapImages[i].height,
+        );
+        const decompressedBuffer = imageDataToSixteenBit(imageData.data);
+
+        const lzssWorker = new LzssWorker();
+        lzssWorker.onmessage = (e: MessageEvent<LzssResponse>) => {
+          const data = e.data;
+          if (data.type !== "compressRes") return;
+
+          compressedTextures[data.id] = data.dataView;
+          resolvedTextures.count++;
+
+          if (resolvedTextures.count === mapImages.length) {
+            res(compressedTextures);
+          }
+          lzssWorker.terminate();
+        };
+
+        lzssWorker.postMessage({
+          decompressedDataView: decompressedBuffer,
+          type: "compress",
+          id: i,
+        } satisfies LzssMessage);
+      }
+    });
+    const bufferList = await compressTextures;
+    //Combine into single buffer
+    // Calculate total size needed for combined buffer
+    let totalSize = 0;
+    for (const buffer of bufferList) {
+      totalSize += 4 + buffer.byteLength; // 4 bytes for size header + buffer size
+    }
+
+    // Create a new buffer to hold all textures
+    const imageDownloadBuffer = new DataView(new ArrayBuffer(totalSize));
+    // Fill imageDownloadBuffer with data from bufferList
+    let pos2 = 0;
+    for (let i = 0; i < bufferList.length; i++) {
+      const buffer = bufferList[i];
+      // Write size header (4 bytes)
+      imageDownloadBuffer.setInt32(pos2, buffer.byteLength);
+      pos2 += 4;
+
+      // Copy buffer data
+      for (let j = 0; j < buffer.byteLength; j++) {
+        imageDownloadBuffer.setUint8(pos2, buffer.getUint8(j));
+        pos2++;
       }
     }
 
-    const imageBlob = new Blob([imageDownloadBuffer], { type: ".ter" });
+    const imageBlob = new Blob([imageDownloadBuffer.buffer], {
+      type: ".ter",
+    });
     const imageUrl = URL.createObjectURL(imageBlob);
 
     downloadLink = document.createElement("a");
     downloadLink.href = imageUrl;
     downloadLink.setAttribute("download", mapImagesFile.name);
     downloadLink.click();
+
+    toast({
+      title: "Map Downloaded!",
+    });
   }
 
   if (!mapFile || !mapImages)
@@ -162,7 +229,7 @@ export function MapPrompt({ pyodide }: { pyodide: PyodideInterface }) {
         setMapFile={setMapFile}
         setMapImagesFile={setMapImagesFile}
         setMapImages={setMapImages}
-        pyodide={pyodide}
+        pyodideWorker={pyodideWorker}
         setData={setData}
       />
     );
@@ -181,7 +248,6 @@ export function MapPrompt({ pyodide }: { pyodide: PyodideInterface }) {
         </Button>
         <div className="flex-1" />
 
-        <p className="text-xl">{mapFile.name}</p>
         <Button
           onClick={() => {
             ottoPreprocessor(setData as Updater<ottoMaticLevel>, globals);
@@ -189,7 +255,7 @@ export function MapPrompt({ pyodide }: { pyodide: PyodideInterface }) {
             setProcessed(true); //Trigger useEffect for downloading
           }}
         >
-          Save and download map
+          Download
         </Button>
       </div>
       <hr />

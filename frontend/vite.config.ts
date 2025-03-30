@@ -8,6 +8,7 @@ export default defineConfig({
     exclude: ["pyodide"],
   },
   plugins: [react()],
+  worker: { format: "es" },
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),

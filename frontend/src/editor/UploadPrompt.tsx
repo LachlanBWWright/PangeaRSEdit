@@ -1,7 +1,6 @@
 import { Button } from "../components/Button";
 import { FileUpload } from "../components/FileUpload";
-import { lzssDecompress } from "../utils/lzss";
-import { sixteenBitToImageData } from "../utils/imageConverter";
+import LzssWorker from "../utils/lzssWorker?worker";
 import {
   BillyFrontierGlobals,
   Bugdom2Globals,
@@ -18,26 +17,26 @@ import {
 import { useAtom } from "jotai";
 import { useState } from "react";
 import { Switch } from "@/components/ui/switch";
-import { save_to_json } from "@/python/rsrcdump";
-import { PyodideInterface } from "pyodide";
 import { preprocessJson } from "@/data/preprocessors/ottoPreprocessor";
 import { ottoMaticLevel } from "@/python/structSpecs/ottoMaticInterface";
 import { Updater } from "use-immer";
 import { Buffer } from "buffer";
+import { LzssMessage, LzssResponse } from "@/utils/lzssWorker";
+import { PyodideMessage, PyodideResponse } from "@/python/pyodideWorker";
 
 export function UploadPrompt({
   mapFile,
   setMapFile,
   setMapImagesFile,
   setMapImages,
-  pyodide,
+  pyodideWorker,
   setData,
 }: {
   mapFile: File | undefined;
   setMapFile: (file: File) => void;
   setMapImagesFile: (file: File) => void;
   setMapImages: (images: HTMLCanvasElement[]) => void;
-  pyodide: PyodideInterface;
+  pyodideWorker: Worker;
   setData: Updater<ottoMaticLevel | null>;
 }) {
   const [globals, setGlobals] = useAtom(Globals);
@@ -66,13 +65,35 @@ export function UploadPrompt({
     //if (!mapFile) return;
     const levelBuffer = await file.arrayBuffer();
 
-    let jsonData = await save_to_json<ottoMaticLevel>(
+    //Call pyodide worker to run the python code
+
+    const pyodidePromise = new Promise<ottoMaticLevel>((resolve, reject) => {
+      pyodideWorker.postMessage({
+        type: "save_to_json",
+        bytes: levelBuffer,
+        struct_specs: gameType.STRUCT_SPECS,
+        include_types: [],
+        exclude_types: [],
+      } satisfies PyodideMessage);
+
+      pyodideWorker.onmessage = (event: MessageEvent<PyodideResponse>) => {
+        if (event.data.type === "save_to_json") {
+          resolve(event.data.result);
+        } else {
+          reject(new Error("Unexpected response from pyodide worker"));
+        }
+      };
+    });
+
+    const jsonData = await pyodidePromise;
+
+    /*     let jsonData = await save_to_json<ottoMaticLevel>(
       pyodide,
       levelBuffer,
       gameType.STRUCT_SPECS,
       [],
       [],
-    );
+    ); */
 
     preprocessJson(jsonData, globals);
 
@@ -84,7 +105,7 @@ export function UploadPrompt({
       const imgFile = new File([img], url.split("/").pop() ?? "");
       const imgBuffer = await imgFile.arrayBuffer();
       const imgDataView = new DataView(imgBuffer);
-      const mapImages = loadMapImages(imgDataView, gameType);
+      const mapImages = await loadMapImages(imgDataView, gameType);
 
       setMapImagesFile(imgFile);
       setMapImages(mapImages);
@@ -98,7 +119,7 @@ export function UploadPrompt({
       console.log(imgBuffer.byteLength);
       console.log("Resized", imgBuffer.byteLength / 2 / 32 / 32);
       const imgDataView = new DataView(imgBuffer.buffer);
-      const mapImages = loadMapImages(imgDataView, gameType);
+      const mapImages = await loadMapImages(imgDataView, gameType);
 
       setMapImages(mapImages);
     }
@@ -173,7 +194,7 @@ export function UploadPrompt({
             //Uses Big Endian by default - Which is what Otto uses
             const dataView = new DataView(buffer);
 
-            const mapImages = loadMapImages(dataView, globals);
+            const mapImages = await loadMapImages(dataView, globals);
             setMapImagesFile(mapImagesFile);
             setMapImages(mapImages);
           }}
@@ -787,72 +808,88 @@ export function UploadPrompt({
   );
 }
 
-function loadMapImages(
-  dataView: DataView,
-  globals: GlobalsInterface,
-): HTMLCanvasElement[] {
+async function loadMapImages(dataView: DataView, globals: GlobalsInterface) {
   let offset = 0;
-  let numSupertiles = 0;
 
-  const mapImages: HTMLCanvasElement[] = [];
-  const mapImagesData: ArrayBuffer[] = [];
-
-  const canvas = document.createElement("canvas");
-  canvas.width = globals.SUPERTILE_TEXMAP_SIZE;
-  canvas.height = globals.SUPERTILE_TEXMAP_SIZE;
-  const context = canvas.getContext("2d");
-  if (context) {
-    context.fillStyle = "black";
-    context.fillRect(0, 0, canvas.width, canvas.height);
-  }
-
-  //Read Each
-  if (globals.GAME_TYPE !== Game.BUGDOM) {
-    //Decompress
-    while (offset != dataView.byteLength) {
-      numSupertiles++;
-      let size = dataView.getInt32(offset);
-
-      offset += 4;
-      const buffer = new DataView(dataView.buffer.slice(offset, offset + size));
-      const decompressedSize =
-        globals.SUPERTILE_TEXMAP_SIZE * globals.SUPERTILE_TEXMAP_SIZE * 2;
-      const decompressedBuffer = new DataView(
-        new ArrayBuffer(decompressedSize),
-      );
-      lzssDecompress(buffer, decompressedBuffer);
-      mapImagesData.push(decompressedBuffer.buffer);
-
-      //const imgCanvas = document.createElement("canvas");
-      const imgCanvas = document.createElement("canvas");
-      imgCanvas.width = globals.SUPERTILE_TEXMAP_SIZE;
-      imgCanvas.height = globals.SUPERTILE_TEXMAP_SIZE;
-      const imgCtx = imgCanvas.getContext("2d");
-
-      const imageData = imgCtx?.getImageData(
-        0,
-        0,
-        imgCanvas.width,
-        imgCanvas.height,
-      );
-
-      if (!imageData) {
-        throw new Error("Could not create image data");
+  const loadPromise: Promise<HTMLCanvasElement[]> = new Promise((res, err) => {
+    //Read Each
+    if (globals.GAME_TYPE !== Game.BUGDOM) {
+      //Find the number of supertiles
+      let numSupertiles = 0;
+      while (offset != dataView.byteLength) {
+        const size = dataView.getInt32(offset);
+        offset += 4;
+        if (size === 0) break;
+        offset += size;
+        numSupertiles++;
       }
+      offset = 0; //Reset offset
 
-      sixteenBitToImageData(decompressedBuffer, imageData);
+      const mapImages: HTMLCanvasElement[] = new Array(numSupertiles);
+      const resolvedTiles = { count: 0 };
 
-      if (!imgCtx) {
-        throw new Error("Bad data!");
+      let supertileId = 0;
+      while (offset < dataView.byteLength) {
+        let size = dataView.getInt32(offset);
+
+        offset += 4;
+        const buffer = new DataView(
+          dataView.buffer.slice(offset, offset + size),
+        );
+        const decompressedSize =
+          globals.SUPERTILE_TEXMAP_SIZE * globals.SUPERTILE_TEXMAP_SIZE * 2;
+        offset += size;
+
+        const lzssWorker = new LzssWorker();
+        lzssWorker.onmessage = (e: MessageEvent<LzssResponse>) => {
+          const data = e.data;
+          if (data.type !== "decompressRes") return;
+
+          //mapImagesData[data.id] = decompressedBuffer.buffer; //.push(decompressedBuffer.buffer);
+
+          const imgCanvas = document.createElement("canvas");
+          imgCanvas.width = globals.SUPERTILE_TEXMAP_SIZE;
+          imgCanvas.height = globals.SUPERTILE_TEXMAP_SIZE;
+          const imgCtx = imgCanvas.getContext("2d");
+
+          if (!imgCtx) {
+            err("Bad data!");
+            throw new Error("Bad data!");
+          }
+          //16-bit buffer from current buffer
+          imgCtx.putImageData(data.imageData, 0, 0);
+
+          mapImages[data.id] = imgCanvas;
+
+          resolvedTiles.count++;
+          if (resolvedTiles.count === numSupertiles) {
+            res(mapImages);
+          }
+          lzssWorker.terminate();
+        };
+        lzssWorker.postMessage({
+          compressedDataView: buffer,
+          outputSize: decompressedSize,
+          type: "decompress",
+          id: supertileId,
+          width: globals.SUPERTILE_TEXMAP_SIZE,
+          height: globals.SUPERTILE_TEXMAP_SIZE,
+        } satisfies LzssMessage);
+        supertileId++;
       }
-      //16-bit buffer from current buffer
-      imgCtx?.putImageData(imageData, 0, 0);
-
-      offset += size;
-      imgCanvas;
-      mapImages.push(imgCanvas);
+      return [];
     }
-  } else {
+  });
+  const res = await loadPromise;
+  return res;
+}
+
+/* else {
+    //Budgdom 1 Logic - TODO: Not completed
+
+    const mapImages: HTMLCanvasElement[] = [];
+    //const mapImagesData: ArrayBuffer[] = new Array(numSupertiles);
+
     while (offset != dataView.byteLength) {
       numSupertiles++;
 
@@ -891,6 +928,5 @@ function loadMapImages(
       imgCanvas;
       mapImages.push(imgCanvas);
     }
-  }
-  return mapImages;
-}
+    return mapImages;
+  } */

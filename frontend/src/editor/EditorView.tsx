@@ -49,7 +49,6 @@ export function EditorView({
   redoData: () => void;
   dataHistory: DataHistory;
 }) {
-  console.log(data);
   const [view, setView] = useState<View>(View.fences);
   const [stage, setStage] = useImmer({
     scale: 1,
@@ -61,7 +60,6 @@ export function EditorView({
   const setSelectedSpline = useSetAtom(SelectedSpline);
   const setSelectedWaterBody = useSetAtom(SelectedWaterBody);
   const clickToAddItem = useAtomValue(ClickToAddItem);
-  console.log(data);
   const zoomIn = () =>
     setStage((stage) => {
       stage.scale = Math.max(0.1, stage.scale * 1.1);
