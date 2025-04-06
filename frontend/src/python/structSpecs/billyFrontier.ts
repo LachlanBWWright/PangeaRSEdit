@@ -1,5 +1,5 @@
 //TODO: Not checked!
-export const bugdom2Specs = [
+export const billyFrontierSpecs = [
   //Header
   //"Hedr:L5i3f5i40x:version,numItems,mapWidth,mapHeight,numTilePages,numTiles,tileSize,minY,maxY,numSplines,numFences,numUniqueSupertiles,numWaterPatches,numCheckpoints",
   "Hedr:4L3f5L40x:version,numItems,mapWidth,mapHeight,tileSize,minY,maxY,numSplines,numFences,numUniqueSupertiles,numWaterPatches,numCheckpoints",

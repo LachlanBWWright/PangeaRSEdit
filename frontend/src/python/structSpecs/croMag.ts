@@ -1,8 +1,7 @@
-//TODO: Not checked!
-export const bugdom2Specs = [
+export const croMagSpecs = [
   //Header
-  //"Hedr:L5i3f5i40x:version,numItems,mapWidth,mapHeight,numTilePages,numTiles,tileSize,minY,maxY,numSplines,numFences,numUniqueSupertiles,numWaterPatches,numCheckpoints",
-  "Hedr:4L3f5L40x:version,numItems,mapWidth,mapHeight,tileSize,minY,maxY,numSplines,numFences,numUniqueSupertiles,numWaterPatches,numCheckpoints",
+  "Hedr:L5i3f5i40x:version,numItems,mapWidth,mapHeight,numTilePages,numTiles,tileSize,minY,maxY,numSplines,numFences,numUniqueSupertiles,numWaterPatches,numCheckpoints",
+
   /////////////////////////////////////////////////////////////////
   // Supertiles
   /////////////////////////////////////////////////////////////////
@@ -12,7 +11,7 @@ export const bugdom2Specs = [
 
   //Supertile Grid Matrix (SuperTileGridType)
   //"STgd:1s?H+:padByte,isEmpty,superTileId",
-  "STgd:h+:superTileId",
+  "STgd:x?H+:isEmpty,superTileId",
 
   //Map Layer Resources - 2D Array of supertiles (References Tile Attribute Resource)
   //1 For each tile (e.g 176x176 in level 1 => 30976 items)
@@ -23,12 +22,6 @@ export const bugdom2Specs = [
   //Height Data Matrix (2D array)
   //Each supertile has SUPERTILE_SIZE values in each direction (8)
   "YCrd:f+",
-
-  /////////////////////////////////////////////////////////////////
-  // Checkpoints
-  /////////////////////////////////////////////////////////////////
-
-  "CkPt:hhffff+:unused,infoBits,x1,x2,z1,z2",
 
   /////////////////////////////////////////////////////////////////
   // Items
@@ -72,3 +65,8 @@ export const bugdom2Specs = [
   /* Padding byte placement seems ok, not thoroughly checked */
   "Liqd:H x x I i h x x i 200f f f h h h h+:type,flags,height,numNubs,reserved,x`y[100],hotSpotX,hotSpotZ,bBoxTop,bBoxLeft,bBoxBottom,bBoxRight",
 ];
+
+/* 
+//Struct specifications 
+//https://docs.python.org/3/library/struct.html#format-characters
+*/

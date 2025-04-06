@@ -22,7 +22,7 @@ export const Supertiles = memo(
     const imageGrid = useMemo(() => {
       const imageArray: HTMLCanvasElement[] = [];
       for (const supertile of superTileGrid) {
-        imageArray.push(mapImages[supertile.superTileId]);
+        imageArray.push(mapImages[supertile.superTileId ?? supertile]);
       }
       return imageArray;
     }, [data.Hedr, data.STgd, mapImages]);
