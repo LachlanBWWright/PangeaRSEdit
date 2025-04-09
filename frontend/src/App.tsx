@@ -4,7 +4,6 @@ import { MapPrompt } from "./editor/MapPrompt";
 import { Toaster } from "./components/ui/toaster";
 import PyodideWorker from "./python/pyodideWorker?worker";
 import { PyodideMessage } from "./python/pyodideWorker";
-import { Button } from "./components/Button";
 import { IntroText } from "./editor/IntroText";
 
 function App() {

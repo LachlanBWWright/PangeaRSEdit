@@ -5,7 +5,6 @@ import { EditorView } from "./EditorView";
 import { Button } from "../components/Button";
 import { Updater, useImmer } from "use-immer";
 import { ottoPreprocessor } from "../data/preprocessors/ottoPreprocessor";
-import { imageDataToSixteenBit } from "../utils/imageConverter";
 import { Globals } from "../data/globals/globals";
 import { useAtom, useAtomValue } from "jotai";
 import { BlockHistoryUpdate } from "../data/globals/history";
