@@ -24,6 +24,13 @@ import { Buffer } from "buffer";
 import { LzssMessage, LzssResponse } from "@/utils/lzssWorker";
 import { PyodideMessage, PyodideResponse } from "@/python/pyodideWorker";
 import { IntroText } from "./IntroText";
+import {
+  Select,
+  SelectContent,
+  SelectTrigger,
+  SelectValue,
+  SelectItem,
+} from "@/components/ui/select";
 
 export function UploadPrompt({
   mapFile,
@@ -63,34 +70,8 @@ export function UploadPrompt({
       url = url.split(".")[0] + ".trt";
     }
 
-    //if (!mapFile) return;
-    const levelBuffer = await file.arrayBuffer();
+    const jsonData = await parseLevelDataFile(file, gameType);
 
-    //Call pyodide worker to run the python code
-
-    const pyodidePromise = new Promise<ottoMaticLevel>((resolve, reject) => {
-      pyodideWorker.postMessage({
-        type: "save_to_json",
-        bytes: levelBuffer,
-        struct_specs: gameType.STRUCT_SPECS,
-        include_types: [],
-        exclude_types: [],
-      } satisfies PyodideMessage);
-
-      pyodideWorker.onmessage = (event: MessageEvent<PyodideResponse>) => {
-        if (event.data.type === "save_to_json") {
-          resolve(event.data.result);
-        } else {
-          reject(new Error("Unexpected response from pyodide worker"));
-        }
-      };
-    });
-
-    const jsonData = await pyodidePromise;
-
-    preprocessJson(jsonData, globals);
-
-    setData(jsonData);
     if (gameType.DATA_TYPE !== DataType.RSRC_FORK) {
       const imgRes = await fetch(url);
       const img = await imgRes.blob();
@@ -117,6 +98,37 @@ export function UploadPrompt({
     }
   };
 
+  const parseLevelDataFile = async (file: Blob, gameType: GlobalsInterface) => {
+    const levelBuffer = await file.arrayBuffer();
+
+    //Call pyodide worker to  run the python code
+
+    const pyodidePromise = new Promise<ottoMaticLevel>((resolve, reject) => {
+      pyodideWorker.postMessage({
+        type: "save_to_json",
+        bytes: levelBuffer,
+        struct_specs: gameType.STRUCT_SPECS,
+        include_types: [],
+        exclude_types: [],
+      } satisfies PyodideMessage);
+
+      pyodideWorker.onmessage = (event: MessageEvent<PyodideResponse>) => {
+        if (event.data.type === "save_to_json") {
+          resolve(event.data.result);
+        } else {
+          reject(new Error("Unexpected response from pyodide worker"));
+        }
+      };
+    });
+
+    const jsonData = await pyodidePromise;
+
+    preprocessJson(jsonData, globals);
+
+    setData(jsonData);
+    return jsonData;
+  };
+
   return (
     <div className="flex text-white m-auto flex-1 gap-8 flex-col items-center justify-center ">
       <div className="flex flex-col gap-2 lg:w-1/2">
@@ -126,11 +138,45 @@ export function UploadPrompt({
           <Switch checked={showAllGames} onCheckedChange={setShowAllGames} />
         </div>
       </div>
-      <div className="lg:w-1/2">
-        {/*         <select className="text-black w-full">
-          <option>Otto Matic</option>
-          <option>Bugdom 2</option>
-        </select> */}
+      <div className="flex flex-col gap-2 lg:w-1/3">
+        <p>Select Game</p>
+        <Select>
+          <SelectTrigger className="min-w-fit">
+            <SelectValue placeholder="Otto Matic" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem
+              value="ottoMatic"
+              onClick={() => setGlobals(OttoGlobals)}
+            >
+              Otto Matic
+            </SelectItem>
+            <SelectItem
+              value="budgdom2"
+              onClick={() => setGlobals(Bugdom2Globals)}
+            >
+              Bugdom 2
+            </SelectItem>
+            <SelectItem
+              value="croMag"
+              onClick={() => setGlobals(CroMagGlobals)}
+            >
+              Cro-Mag Rally
+            </SelectItem>
+            <SelectItem
+              value="nanosaur2"
+              onClick={() => setGlobals(Nanosaur2Globals)}
+            >
+              Nanosaur 2
+            </SelectItem>
+            <SelectItem
+              value="billyFrontier"
+              onClick={() => setGlobals(BillyFrontierGlobals)}
+            >
+              Billy Frontier
+            </SelectItem>
+          </SelectContent>
+        </Select>
         <p>Upload Level Data (.ter.rsrc)</p>
         <FileUpload
           className="text-2xl"
@@ -140,6 +186,7 @@ export function UploadPrompt({
 
             const file = e.target.files[0];
             setMapFile(file);
+            parseLevelDataFile(file, OttoGlobals);
           }}
         />
         <p>Upload Texture Data (.ter)</p>

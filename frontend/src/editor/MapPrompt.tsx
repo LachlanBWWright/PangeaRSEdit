@@ -145,7 +145,7 @@ export function MapPrompt({ pyodideWorker }: { pyodideWorker: Worker }) {
     const compressTextures: Promise<DataView[]> = new Promise((res, err) => {
       const compressedTextures: DataView[] = new Array(mapImages.length);
       const resolvedTextures = { count: 0 };
-
+      console.time("compress");
       for (let i = 0; i < mapImages.length; i++) {
         const canvasCtx = mapImages[i].getContext("2d");
         if (!canvasCtx) {
@@ -159,27 +159,34 @@ export function MapPrompt({ pyodideWorker }: { pyodideWorker: Worker }) {
           mapImages[i].width,
           mapImages[i].height,
         );
-        const decompressedBuffer = imageDataToSixteenBit(imageData.data);
+        //const decompressedBuffer = imageDataToSixteenBit(imageData.data);
 
         const lzssWorker = new LzssWorker();
         lzssWorker.onmessage = (e: MessageEvent<LzssResponse>) => {
           const data = e.data;
           if (data.type !== "compressRes") return;
 
-          compressedTextures[data.id] = data.dataView;
+          compressedTextures[data.id] = new DataView(data.dataBuffer);
           resolvedTextures.count++;
 
           if (resolvedTextures.count === mapImages.length) {
+            console.timeEnd("compress");
             res(compressedTextures);
           }
           lzssWorker.terminate();
         };
 
-        lzssWorker.postMessage({
-          decompressedDataView: decompressedBuffer,
-          type: "compress",
-          id: i,
-        } satisfies LzssMessage);
+        console.log("Before", imageData.data.buffer.byteLength);
+        lzssWorker.postMessage(
+          {
+            uIntArray: imageData.data,
+            //decompressedDataView: decompressedBuffer,
+            type: "compress",
+            id: i,
+          } satisfies LzssMessage,
+          [imageData.data.buffer],
+        );
+        console.log("After", imageData.data.buffer.byteLength);
       }
     });
     const bufferList = await compressTextures;
