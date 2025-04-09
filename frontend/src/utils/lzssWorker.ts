@@ -1,11 +1,11 @@
-import { sixteenBitToImageData } from "./imageConverter";
+import { imageDataToSixteenBit, sixteenBitToImageData } from "./imageConverter";
 import { lzssCompress, lzssDecompress } from "./lzss";
 
 export type LzssMessage =
   | {
       id: number;
       type: "compress";
-      decompressedDataView: DataView;
+      uIntArray: Uint8ClampedArray;
     }
   | {
       id: number;
@@ -20,7 +20,7 @@ export type LzssResponse =
   | {
       id: number;
       type: "compressRes";
-      dataView: DataView;
+      dataBuffer: ArrayBuffer;
     }
   | {
       id: number;
@@ -30,13 +30,18 @@ export type LzssResponse =
 
 onmessage = async (event: MessageEvent<LzssMessage>) => {
   if (event.data.type === "compress") {
-    const { decompressedDataView } = event.data;
+    const decompressedDataView = imageDataToSixteenBit(event.data.uIntArray);
+
     const compressedDataView = lzssCompress(decompressedDataView);
-    postMessage({
-      id: event.data.id,
-      type: "compressRes",
-      dataView: compressedDataView,
-    } satisfies LzssResponse);
+    postMessage(
+      {
+        id: event.data.id,
+        type: "compressRes",
+        dataBuffer: compressedDataView.buffer,
+      } satisfies LzssResponse,
+      event.origin,
+      [compressedDataView.buffer],
+    );
   }
   if (event.data.type === "decompress") {
     const { compressedDataView, outputSize, width, height } = event.data;

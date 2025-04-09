@@ -4,6 +4,7 @@ import { atom } from "jotai";
 import { ottoMaticSpecs } from "../../python/structSpecs/ottoMatic";
 import { bugdom2Specs } from "../../python/structSpecs/bugdom2";
 import { bugdomSpecs } from "@/python/structSpecs/bugdom";
+import { billyFrontierSpecs } from "@/python/structSpecs/billyFrontier";
 export enum Game {
   OTTO_MATIC,
   BUGDOM,
@@ -130,7 +131,7 @@ export const BillyFrontierGlobals: GlobalsInterface = {
   GAME_TYPE: Game.BILLY_FRONTIER,
   DATA_TYPE: DataType.STANDARD,
   TILE_IMAGE_FORMAT: TileImageFormat.LZSS_16_BIT,
-  STRUCT_SPECS: bugdom2Specs,
+  STRUCT_SPECS: billyFrontierSpecs,
   SUPERTILE_TEXMAP_SIZE: 256, //Dimensions of each supertile texture
   TILES_PER_SUPERTILE: 8, //How many tiles are in a supertile
   EMPTY_TILE_IDX: -1, //TODO: Not checked
