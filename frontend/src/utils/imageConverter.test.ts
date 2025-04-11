@@ -3,17 +3,18 @@ import { sixteenBitToImageData, imageDataToSixteenBit } from "./imageConverter";
 
 test("convert", () => {
   //Create a DataView
-  const data = new DataView(new ArrayBuffer(200));
+  const data = new DataView(new ArrayBuffer(20_000));
 
-  for (let i = 0; i < 100; i++) {
+  for (let i = 0; i < 10_000; i++) {
     //set to have random value
-    data.setUint16(i * 2, i);
+    const randVal = Math.floor(Math.random() * 65535);
+    data.setUint16(i * 2, randVal);
   }
 
   //Create canvas
   const canvas = document.createElement("canvas");
-  canvas.width = 10;
-  canvas.height = 10;
+  canvas.width = 100;
+  canvas.height = 100;
   const canvasCtx = canvas.getContext("2d");
   if (!canvasCtx) throw new Error("Could not get canvas context");
 
