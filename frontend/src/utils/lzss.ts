@@ -75,16 +75,16 @@ export function lzssDecompress(
   return outputBuffer;
 }
 
-//"Compression" algorithm, gets the data in a format that can be read by the game's decompressor, but makes it bigger
+//"Compression" algorithm, gets the data in a format that can be read by the game's decompressor
 export function lzssCompress(decompressedDataView: DataView) {
   const sourceSize = decompressedDataView.byteLength;
-  // Create a buffer to store the compressed output - worst case is source * 2
+  // Create a buffer to store the compressed output - worst case is slightly larger than source
   const outputBuffer = new DataView(new ArrayBuffer(sourceSize * 2));
   // Create the ring buffer
-  const ringBuffer = new DataView(new ArrayBuffer(RING_BUFF_SIZE));
+  const ringBuffer = new DataView(new ArrayBuffer(RING_BUFF_SIZE + F - 1));
 
-  // Initialize ring buffer with spaces
-  for (let i = 0; i < RING_BUFF_SIZE; i++) {
+  // Initialize ring buffer with spaces (matching the decompression algorithm)
+  for (let i = 0; i < RING_BUFF_SIZE - F; i++) {
     ringBuffer.setUint8(i, " ".charCodeAt(0));
   }
 
@@ -97,7 +97,11 @@ export function lzssCompress(decompressedDataView: DataView) {
   flagPos = outputPos++;
 
   let sourcePos = 0;
-  let ringPos = RING_BUFF_SIZE - F;
+  let ringPos = RING_BUFF_SIZE - F; // Match the initial position used in decompression
+
+  // Create a lookup table for faster matching
+  // This simulates the binary tree structure from the original C code in a simpler way
+  const position = new Map<number, number[]>();
 
   while (sourcePos < sourceSize) {
     // Start a new flag byte if the current one is full
@@ -116,8 +120,16 @@ export function lzssCompress(decompressedDataView: DataView) {
     if (sourcePos + THRESHOLD < sourceSize) {
       const maxMatchLength = Math.min(F, sourceSize - sourcePos);
 
-      // Search the ring buffer for matches
-      for (let offset = 0; offset < RING_BUFF_SIZE; offset++) {
+      // Get a hash of the current sequence to look up potential matches
+      // This is a faster alternative to the binary tree in the original C code
+      const hash =
+        (decompressedDataView.getUint8(sourcePos) << 8) |
+        decompressedDataView.getUint8(sourcePos + 1);
+
+      const potentialMatches = position.get(hash) || [];
+
+      // Check each potential match position
+      for (const offset of potentialMatches) {
         let matchLength = 0;
 
         // Check how many bytes match at this position
@@ -138,6 +150,22 @@ export function lzssCompress(decompressedDataView: DataView) {
           if (bestLength >= maxMatchLength) {
             break;
           }
+        }
+      }
+
+      // Add the current position to the hash table for future lookups
+      if (sourcePos + 1 < sourceSize) {
+        const newHash =
+          (decompressedDataView.getUint8(sourcePos) << 8) |
+          decompressedDataView.getUint8(sourcePos + 1);
+        if (!position.has(newHash)) {
+          position.set(newHash, []);
+        }
+        position.get(newHash)?.push(ringPos);
+
+        // Limit the number of positions we track per hash to avoid memory issues
+        if (position.get(newHash)!.length > 100) {
+          position.get(newHash)!.shift(); // Remove oldest position
         }
       }
     }
@@ -291,6 +319,4 @@ Ptr			initialDestPtr = destPtr;
 
 	return (long) decompSize;
 }
-
-
 */
