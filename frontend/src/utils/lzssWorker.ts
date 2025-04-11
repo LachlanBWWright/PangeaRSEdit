@@ -39,8 +39,8 @@ onmessage = async (event: MessageEvent<LzssMessage>) => {
         type: "compressRes",
         dataBuffer: compressedDataView.buffer,
       } satisfies LzssResponse,
-      event.origin,
-      [compressedDataView.buffer],
+      //event.origin,
+      /* [compressedDataView.buffer], */
     );
   }
   if (event.data.type === "decompress") {
