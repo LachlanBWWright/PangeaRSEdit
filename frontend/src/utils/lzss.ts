@@ -75,201 +75,143 @@ export function lzssDecompress(
   return outputBuffer;
 }
 
-//"Compression" algorithm, gets the data in a format that can be read by the game's decompressor, but makes it bigger
+//"Compression" algorithm, gets the data in a format that can be read by the game's decompressor
 export function lzssCompress(decompressedDataView: DataView) {
   const sourceSize = decompressedDataView.byteLength;
-  const ringBuffer = new DataView(new ArrayBuffer(RING_BUFF_SIZE + F - 1));
+  // Create a buffer to store the compressed output - worst case is slightly larger than source
   const outputBuffer = new DataView(new ArrayBuffer(sourceSize * 2));
+  // Create the ring buffer
+  const ringBuffer = new DataView(new ArrayBuffer(RING_BUFF_SIZE + F - 1));
 
-  let ringBufferPos = RING_BUFF_SIZE - F;
-  let sourcePos = 0;
-  let destPos = 0;
-  let flags = 0;
-  let flagPos = 0;
-  let flagBitsUsed = 0;
-
-  // Initialize ring buffer with spaces
+  // Initialize ring buffer with spaces (matching the decompression algorithm)
   for (let i = 0; i < RING_BUFF_SIZE - F; i++) {
     ringBuffer.setUint8(i, " ".charCodeAt(0));
   }
 
+  let outputPos = 0; // Current position in output buffer
+  let flagPos = 0; // Position where the current flag byte is stored
+  let bitCount = 0; // Number of bits used in the current flag byte
+  let flags = 0; // Current flag byte
+
   // Reserve space for the first flag byte
-  flagPos = destPos++;
-  flags = 0;
+  flagPos = outputPos++;
+
+  let sourcePos = 0;
+  let ringPos = RING_BUFF_SIZE - F; // Match the initial position used in decompression
+
+  // Create a lookup table for faster matching
+  // This simulates the binary tree structure from the original C code in a simpler way
+  const position = new Map<number, number[]>();
 
   while (sourcePos < sourceSize) {
-    // Start new flag byte if needed
-    if (flagBitsUsed === 8) {
+    // Start a new flag byte if the current one is full
+    if (bitCount === 8) {
       outputBuffer.setUint8(flagPos, flags);
-      flagPos = destPos++;
+      flagPos = outputPos++;
       flags = 0;
-      flagBitsUsed = 0;
+      bitCount = 0;
     }
 
-    // Find longest match in ring buffer
+    // Find the longest match in the ring buffer
     let bestLength = 0;
     let bestOffset = 0;
-    const maxSearchLength = Math.min(F, sourceSize - sourcePos);
 
+    // Only search for matches if we have enough data left to make it worthwhile
     if (sourcePos + THRESHOLD < sourceSize) {
-      for (let i = 0; i < RING_BUFF_SIZE; i++) {
+      const maxMatchLength = Math.min(F, sourceSize - sourcePos);
+
+      // Get a hash of the current sequence to look up potential matches
+      // This is a faster alternative to the binary tree in the original C code
+      const hash =
+        (decompressedDataView.getUint8(sourcePos) << 8) |
+        decompressedDataView.getUint8(sourcePos + 1);
+
+      const potentialMatches = position.get(hash) || [];
+
+      // Check each potential match position
+      for (const offset of potentialMatches) {
         let matchLength = 0;
+
+        // Check how many bytes match at this position
         while (
-          matchLength < maxSearchLength &&
-          decompressedDataView.getUint8(sourcePos + matchLength) ===
-            ringBuffer.getUint8((i + matchLength) & (RING_BUFF_SIZE - 1))
+          matchLength < maxMatchLength &&
+          ringBuffer.getUint8((offset + matchLength) % RING_BUFF_SIZE) ===
+            decompressedDataView.getUint8(sourcePos + matchLength)
         ) {
           matchLength++;
         }
+
+        // If this is the best match so far, remember it
         if (matchLength > bestLength) {
           bestLength = matchLength;
-          bestOffset = i;
-          if (bestLength >= F) break;
+          bestOffset = offset;
+
+          // If we found a match of maximum length, no need to search further
+          if (bestLength >= maxMatchLength) {
+            break;
+          }
+        }
+      }
+
+      // Add the current position to the hash table for future lookups
+      if (sourcePos + 1 < sourceSize) {
+        const newHash =
+          (decompressedDataView.getUint8(sourcePos) << 8) |
+          decompressedDataView.getUint8(sourcePos + 1);
+        if (!position.has(newHash)) {
+          position.set(newHash, []);
+        }
+        position.get(newHash)?.push(ringPos);
+
+        // Limit the number of positions we track per hash to avoid memory issues
+        if (position.get(newHash)!.length > 100) {
+          position.get(newHash)!.shift(); // Remove oldest position
         }
       }
     }
 
+    // Decide whether to output a literal or a match
     if (bestLength <= THRESHOLD) {
-      // Output literal byte
+      // Output a literal byte
       const byte = decompressedDataView.getUint8(sourcePos++);
-      outputBuffer.setUint8(destPos++, byte);
-      flags |= 1 << flagBitsUsed;
+      outputBuffer.setUint8(outputPos++, byte);
 
-      // Update ring buffer
-      ringBuffer.setUint8(ringBufferPos++, byte);
-      ringBufferPos &= RING_BUFF_SIZE - 1;
+      // Set the flag bit for a literal
+      flags |= 1 << bitCount;
+
+      // Update the ring buffer
+      ringBuffer.setUint8(ringPos, byte);
+      ringPos = (ringPos + 1) % RING_BUFF_SIZE;
     } else {
-      // Output match (offset/length pair)
-      const length = bestLength - THRESHOLD - 1;
-      outputBuffer.setUint8(destPos++, bestOffset & 0xff);
-      outputBuffer.setUint8(
-        destPos++,
-        ((bestOffset >> 4) & 0xf0) | (length & 0x0f),
-      );
+      // Output a match (offset and length)
+      // First byte is lower 8 bits of offset
+      outputBuffer.setUint8(outputPos++, bestOffset & 0xff);
 
-      // Update ring buffer with matched data
+      // Second byte: 4 high bits of offset + (length - THRESHOLD) in low 4 bits
+      const lengthCode = bestLength - THRESHOLD - 1; // adjust to 0-15 range
+      const highOffset = (bestOffset >> 8) & 0x0f; // Get top 4 bits of offset
+      outputBuffer.setUint8(outputPos++, (highOffset << 4) | lengthCode);
+
+      // Update the ring buffer with all the matched bytes
       for (let i = 0; i < bestLength; i++) {
         const byte = decompressedDataView.getUint8(sourcePos + i);
-        ringBuffer.setUint8(ringBufferPos++, byte);
-        ringBufferPos &= RING_BUFF_SIZE - 1;
+        ringBuffer.setUint8(ringPos, byte);
+        ringPos = (ringPos + 1) % RING_BUFF_SIZE;
       }
+
+      // Move forward in the source
       sourcePos += bestLength;
     }
 
-    flagBitsUsed++;
+    // Move to the next bit in the flag byte
+    bitCount++;
   }
 
-  // Write final flag byte if needed
-  if (flagBitsUsed > 0) {
+  // Write the final flag byte if it contains any flags
+  if (bitCount > 0) {
     outputBuffer.setUint8(flagPos, flags);
   }
 
-  return new DataView(outputBuffer.buffer.slice(0, destPos));
+  // Return just the part of the buffer that was used
+  return new DataView(outputBuffer.buffer.slice(0, outputPos));
 }
-
-/* 
-OTTO MATIC SOURCE CODE:
-
-#define RING_BUFF_SIZE		 		4096			 size of ring buffer 
-#define F		   		18							 upper limit for match_length 
-#define THRESHOLD		2   						 encode string into position and length if match_length is greater than this 
-#define LZSS_NIL		RING_BUFF_SIZE				 index for root of binary search trees 
-
-long LZSS_Decode(short fRefNum, Ptr destPtr, long sourceSize)
-{
-short  		i, j, k, r;
-unsigned short  flags;
-Ptr			srcOriginalPtr;
-unsigned char *sourcePtr,c;
-Ptr			initialDestPtr = destPtr;
-
-				// GET MEMORY FOR LZSS DATA 
-
-	// ring buffer of size N, with extra F-1 bytes to facilitate string comparison
-	uint8_t	*textBuffer	= (uint8_t*)AllocPtr(RING_BUFF_SIZE + F - 1);
-
-	// left & right children & parents -- These constitute binary search trees.
-	short	*lson		= (short *)AllocPtr(sizeof(short) * (RING_BUFF_SIZE + 1));
-	short	*rson		= (short *)AllocPtr(sizeof(short) * (RING_BUFF_SIZE + 257));
-	short	*dad		= (short *)AllocPtr(sizeof(short) * (RING_BUFF_SIZE + 1));
-
-	// ZS pack buffer
-	srcOriginalPtr = (Ptr)AllocPtr(sourceSize+1);
-
-	sourcePtr = (unsigned char *)srcOriginalPtr;
-
-	GAME_ASSERT(textBuffer);
-	GAME_ASSERT(lson);
-	GAME_ASSERT(rson);
-	GAME_ASSERT(dad);
-	GAME_ASSERT(srcOriginalPtr);
-
-				// READ LZSS DATA 
-
-	FSRead(fRefNum,&sourceSize,srcOriginalPtr);
-
-
-
-					// DECOMPRESS IT 
-
-	for (i = 0; i < (RING_BUFF_SIZE - F); i++)						// clear buff to "default char"? (BLG)
-		textBuffer[i] = ' ';
-
-	r = RING_BUFF_SIZE - F;
-	flags = 0;
-	for ( ; ; )
-	{
-		if (((flags >>= 1) & 256) == 0)
-		{
-			if (--sourceSize < 0)				// see if @ end of source data
-				break;
-			c = *sourcePtr++;					// get a source byte
-			flags = (unsigned short)c | 0xff00;							// uses higher byte cleverly
-		}
-													// to count eight
-		if (flags & 1)
-		{
-			if (--sourceSize < 0)				// see if @ end of source data
-				break;
-			c = *sourcePtr++;					// get a source byte
-			*destPtr++ = c;
-			textBuffer[r++] = c;
-			r &= (RING_BUFF_SIZE - 1);
-		}
-		else
-		{
-			if (--sourceSize < 0)				// see if @ end of source data
-				break;
-			i = *sourcePtr++;					// get a source byte
-			if (--sourceSize < 0)				// see if @ end of source data
-				break;
-			j = *sourcePtr++;					// get a source byte
-
-			i |= ((j & 0xf0) << 4);
-			j = (j & 0x0f) + THRESHOLD;
-			for (k = 0; k <= j; k++)
-			{
-				c = textBuffer[(i + k) & (RING_BUFF_SIZE - 1)];
-				*destPtr++ = c;
-				textBuffer[r++] = c;
-				r &= (RING_BUFF_SIZE - 1);
-			}
-		}
-	}
-
-	size_t decompSize = destPtr - initialDestPtr;		// calc size of decompressed data
-
-
-			// CLEANUP 
-
-	SafeDisposePtr(srcOriginalPtr);				// release the memory for packed buffer
-	SafeDisposePtr((Ptr)textBuffer);
-	SafeDisposePtr((Ptr)lson);
-	SafeDisposePtr((Ptr)rson);
-	SafeDisposePtr((Ptr)dad);
-
-	return (long) decompSize;
-}
-
-
-*/
