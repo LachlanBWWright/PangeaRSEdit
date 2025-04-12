@@ -5,10 +5,12 @@ import {
 import { Layer, Image } from "react-konva";
 import { Updater } from "use-immer";
 import {
+  CurrentTopologyBrushMode,
   //CurrentTopologyBrushMode,
   CurrentTopologyValueMode,
   TileViewMode,
   TileViews,
+  TopologyBrushMode,
   TopologyBrushRadius,
   TopologyOpacity,
   TopologyValue,
@@ -85,6 +87,8 @@ export function Tiles({
   );
 }
 
+type PixelType = { x: number; y: number; value: number };
+
 export function TopologyTiles({
   data,
   setData,
@@ -94,7 +98,7 @@ export function TopologyTiles({
   setData: Updater<ottoMaticLevel>;
   isEditingTopology: boolean;
 }) {
-  //const currentTopologyBrushMode = useAtomValue(CurrentTopologyBrushMode);
+  const currentTopologyBrushMode = useAtomValue(CurrentTopologyBrushMode);
   const currentTopologyValueMode = useAtomValue(CurrentTopologyValueMode);
   const topologyValue = useAtomValue(TopologyValue);
   const topologyBrushRadius = useAtomValue(TopologyBrushRadius);
@@ -142,30 +146,34 @@ export function TopologyTiles({
     return imgCanvas;
   }, [header, data.YCrd[1000].obj]);
 
-  const setPixel = (x: number, y: number, value: number) => {
-    if (
-      x < 0 ||
-      x > (header.mapWidth + 1) * globals.TILE_SIZE ||
-      y < 0 ||
-      y > (header.mapHeight + 1) * globals.TILE_SIZE
-    )
-      return;
-    const flatPos = flattenCoords(x, y);
+  const setPixels = (pixelList: PixelType[]) => {
     setData((data) => {
-      if (data.YCrd[1000].obj[flatPos] === undefined) return;
+      for (const pixelData of pixelList) {
+        const { x, y, value } = pixelData;
 
-      if (currentTopologyValueMode === TopologyValueMode.SET_VALUE) {
-        data.YCrd[1000].obj[flatPos] = value;
-      } else if (currentTopologyValueMode === TopologyValueMode.DELTA_VALUE) {
-        data.YCrd[1000].obj[flatPos] = data.YCrd[1000].obj[flatPos] + value;
-      }
+        if (
+          x < 0 ||
+          x > (header.mapWidth + 1) * globals.TILE_SIZE ||
+          y < 0 ||
+          y > (header.mapHeight + 1) * globals.TILE_SIZE
+        )
+          return;
+        const flatPos = flattenCoords(x, y);
+        if (data.YCrd[1000].obj[flatPos] === undefined) return;
 
-      //Clamp
-      if (data.YCrd[1000].obj[flatPos] < header.minY) {
-        data.YCrd[1000].obj[flatPos] = header.minY;
-      }
-      if (data.YCrd[1000].obj[flatPos] > header.maxY) {
-        data.YCrd[1000].obj[flatPos] = header.maxY;
+        if (currentTopologyValueMode === TopologyValueMode.SET_VALUE) {
+          data.YCrd[1000].obj[flatPos] = value;
+        } else if (currentTopologyValueMode === TopologyValueMode.DELTA_VALUE) {
+          data.YCrd[1000].obj[flatPos] = data.YCrd[1000].obj[flatPos] + value;
+        }
+
+        //Clamp
+        if (data.YCrd[1000].obj[flatPos] < header.minY) {
+          data.YCrd[1000].obj[flatPos] = header.minY;
+        }
+        if (data.YCrd[1000].obj[flatPos] > header.maxY) {
+          data.YCrd[1000].obj[flatPos] = header.maxY;
+        }
       }
     });
   };
@@ -179,25 +187,57 @@ export function TopologyTiles({
         width={(header.mapWidth + 1) * globals.TILE_SIZE}
         height={(header.mapHeight + 1) * globals.TILE_SIZE}
         onClick={(e) => {
-          //e.evt.
           if (!isEditingTopology) return;
           const pos = e.target.getStage()?.getRelativePointerPosition();
           if (!pos) return;
 
-          const baseX =
-            Math.round(pos.x) - (topologyBrushRadius - 1) * globals.TILE_SIZE;
-          const baseY =
-            Math.round(pos.y) - (topologyBrushRadius - 1) * globals.TILE_SIZE;
+          const centerX = Math.round(pos.x);
+          const centerY = Math.round(pos.y);
+          const radius = (topologyBrushRadius - 1) * globals.TILE_SIZE;
+          let pixelList: PixelType[] = [];
 
-          for (let i = 0; i < (topologyBrushRadius - 1) * 2 + 1; i++) {
-            for (let j = 0; j < (topologyBrushRadius - 1) * 2 + 1; j++) {
-              setPixel(
-                baseX + i * globals.TILE_SIZE,
-                baseY + j * globals.TILE_SIZE,
-                topologyValue,
-              );
+          if (currentTopologyBrushMode === TopologyBrushMode.CIRCLE_BRUSH) {
+            // Create a circular brush pattern
+            const baseX = centerX - radius;
+            const baseY = centerY - radius;
+            const diameter = radius * 2;
+
+            for (let i = 0; i <= diameter; i += globals.TILE_SIZE) {
+              for (let j = 0; j <= diameter; j += globals.TILE_SIZE) {
+                const tileX = baseX + i;
+                const tileY = baseY + j;
+
+                // Calculate if this tile is within the circle radius
+                const distanceSquared =
+                  Math.pow(tileX - centerX, 2) + Math.pow(tileY - centerY, 2);
+
+                if (distanceSquared <= Math.pow(radius, 2)) {
+                  pixelList.push({
+                    x: tileX,
+                    y: tileY,
+                    value: topologyValue,
+                  });
+                }
+              }
+            }
+          } else {
+            // Original square brush pattern
+            const baseX = centerX - radius;
+            const baseY = centerY - radius;
+            const size = radius * 2;
+
+            for (let i = 0; i <= size; i += globals.TILE_SIZE) {
+              for (let j = 0; j <= size; j += globals.TILE_SIZE) {
+                pixelList.push({
+                  x: baseX + i,
+                  y: baseY + j,
+                  value: topologyValue,
+                });
+              }
             }
           }
+
+          setPixels(pixelList);
         }}
         image={imgCanvas}
       />
@@ -215,7 +255,7 @@ export function EmptyTiles({
   isEditingTopology: boolean;
   tileGrid: ottoTileAttribute[];
 }) {
-  //const currentTopologyBrushMode = useAtomValue(CurrentTopologyBrushMode);
+  const currentTopologyBrushMode = useAtomValue(CurrentTopologyBrushMode);
   const currentTopologyValueMode = useAtomValue(CurrentTopologyValueMode);
   const topologyValue = useAtomValue(TopologyValue);
   const topologyBrushRadius = useAtomValue(TopologyBrushRadius);
@@ -261,34 +301,6 @@ export function EmptyTiles({
     return imgCanvas;
   }, [header, data.YCrd[1000].obj]);
 
-  const setPixel = (x: number, y: number, value: number) => {
-    if (
-      x < 0 ||
-      x > (header.mapWidth + 1) * globals.TILE_SIZE ||
-      y < 0 ||
-      y > (header.mapHeight + 1) * globals.TILE_SIZE
-    )
-      return;
-    const flatPos = flattenCoords(x, y);
-    setData((data) => {
-      if (data.YCrd[1000].obj[flatPos] === undefined) return;
-
-      if (currentTopologyValueMode === TopologyValueMode.SET_VALUE) {
-        data.YCrd[1000].obj[flatPos] = value;
-      } else if (currentTopologyValueMode === TopologyValueMode.DELTA_VALUE) {
-        data.YCrd[1000].obj[flatPos] = data.YCrd[1000].obj[flatPos] + value;
-      }
-
-      //Clamp
-      if (data.YCrd[1000].obj[flatPos] < header.minY) {
-        data.YCrd[1000].obj[flatPos] = header.minY;
-      }
-      if (data.YCrd[1000].obj[flatPos] > header.maxY) {
-        data.YCrd[1000].obj[flatPos] = header.maxY;
-      }
-    });
-  };
-
   return (
     <Layer imageSmoothingEnabled={false}>
       <Image
@@ -296,27 +308,6 @@ export function EmptyTiles({
         y={0}
         width={header.mapWidth * globals.TILE_SIZE}
         height={header.mapHeight * globals.TILE_SIZE}
-        onClick={(e) => {
-          //e.evt.
-          if (!isEditingTopology) return;
-          const pos = e.target.getStage()?.getRelativePointerPosition();
-          if (!pos) return;
-
-          const baseX =
-            Math.round(pos.x) - (topologyBrushRadius - 1) * globals.TILE_SIZE;
-          const baseY =
-            Math.round(pos.y) - (topologyBrushRadius - 1) * globals.TILE_SIZE;
-
-          for (let i = 0; i < (topologyBrushRadius - 1) * 2 + 1; i++) {
-            for (let j = 0; j < (topologyBrushRadius - 1) * 2 + 1; j++) {
-              setPixel(
-                baseX + i * globals.TILE_SIZE,
-                baseY + j * globals.TILE_SIZE,
-                topologyValue,
-              );
-            }
-          }
-        }}
         image={imgCanvas}
       />
     </Layer>
@@ -333,7 +324,7 @@ export function ElectricFloor0Tiles({
   isEditingTopology: boolean;
   tileGrid: ottoTileAttribute[];
 }) {
-  //const currentTopologyBrushMode = useAtomValue(CurrentTopologyBrushMode);
+  const currentTopologyBrushMode = useAtomValue(CurrentTopologyBrushMode);
   const currentTopologyValueMode = useAtomValue(CurrentTopologyValueMode);
   const topologyValue = useAtomValue(TopologyValue);
   const topologyBrushRadius = useAtomValue(TopologyBrushRadius);
@@ -379,34 +370,6 @@ export function ElectricFloor0Tiles({
     return imgCanvas;
   }, [header, data.YCrd[1000].obj]);
 
-  const setPixel = (x: number, y: number, value: number) => {
-    if (
-      x < 0 ||
-      x > (header.mapWidth + 1) * globals.TILE_SIZE ||
-      y < 0 ||
-      y > (header.mapHeight + 1) * globals.TILE_SIZE
-    )
-      return;
-    const flatPos = flattenCoords(x, y);
-    setData((data) => {
-      if (data.YCrd[1000].obj[flatPos] === undefined) return;
-
-      if (currentTopologyValueMode === TopologyValueMode.SET_VALUE) {
-        data.YCrd[1000].obj[flatPos] = value;
-      } else if (currentTopologyValueMode === TopologyValueMode.DELTA_VALUE) {
-        data.YCrd[1000].obj[flatPos] = data.YCrd[1000].obj[flatPos] + value;
-      }
-
-      //Clamp
-      if (data.YCrd[1000].obj[flatPos] < header.minY) {
-        data.YCrd[1000].obj[flatPos] = header.minY;
-      }
-      if (data.YCrd[1000].obj[flatPos] > header.maxY) {
-        data.YCrd[1000].obj[flatPos] = header.maxY;
-      }
-    });
-  };
-
   return (
     <Layer imageSmoothingEnabled={false}>
       <Image
@@ -414,27 +377,6 @@ export function ElectricFloor0Tiles({
         y={0}
         width={header.mapWidth * globals.TILE_SIZE}
         height={header.mapHeight * globals.TILE_SIZE}
-        onClick={(e) => {
-          //e.evt.
-          if (!isEditingTopology) return;
-          const pos = e.target.getStage()?.getRelativePointerPosition();
-          if (!pos) return;
-
-          const baseX =
-            Math.round(pos.x) - (topologyBrushRadius - 1) * globals.TILE_SIZE;
-          const baseY =
-            Math.round(pos.y) - (topologyBrushRadius - 1) * globals.TILE_SIZE;
-
-          for (let i = 0; i < (topologyBrushRadius - 1) * 2 + 1; i++) {
-            for (let j = 0; j < (topologyBrushRadius - 1) * 2 + 1; j++) {
-              setPixel(
-                baseX + i * globals.TILE_SIZE,
-                baseY + j * globals.TILE_SIZE,
-                topologyValue,
-              );
-            }
-          }
-        }}
         image={imgCanvas}
       />
     </Layer>
@@ -451,7 +393,7 @@ export function ElectricFloor1Tiles({
   isEditingTopology: boolean;
   tileGrid: ottoTileAttribute[];
 }) {
-  //const currentTopologyBrushMode = useAtomValue(CurrentTopologyBrushMode);
+  const currentTopologyBrushMode = useAtomValue(CurrentTopologyBrushMode);
   const currentTopologyValueMode = useAtomValue(CurrentTopologyValueMode);
   const topologyValue = useAtomValue(TopologyValue);
   const topologyBrushRadius = useAtomValue(TopologyBrushRadius);
@@ -533,23 +475,44 @@ export function ElectricFloor1Tiles({
         width={header.mapWidth * globals.TILE_SIZE}
         height={header.mapHeight * globals.TILE_SIZE}
         onClick={(e) => {
-          //e.evt.
           if (!isEditingTopology) return;
           const pos = e.target.getStage()?.getRelativePointerPosition();
           if (!pos) return;
 
-          const baseX =
-            Math.round(pos.x) - (topologyBrushRadius - 1) * globals.TILE_SIZE;
-          const baseY =
-            Math.round(pos.y) - (topologyBrushRadius - 1) * globals.TILE_SIZE;
+          const centerX = Math.round(pos.x);
+          const centerY = Math.round(pos.y);
+          const radius = (topologyBrushRadius - 1) * globals.TILE_SIZE;
 
-          for (let i = 0; i < (topologyBrushRadius - 1) * 2 + 1; i++) {
-            for (let j = 0; j < (topologyBrushRadius - 1) * 2 + 1; j++) {
-              setPixel(
-                baseX + i * globals.TILE_SIZE,
-                baseY + j * globals.TILE_SIZE,
-                topologyValue,
-              );
+          if (currentTopologyBrushMode === TopologyBrushMode.CIRCLE_BRUSH) {
+            // Create a circular brush pattern
+            const baseX = centerX - radius;
+            const baseY = centerY - radius;
+            const diameter = radius * 2;
+
+            for (let i = 0; i <= diameter; i += globals.TILE_SIZE) {
+              for (let j = 0; j <= diameter; j += globals.TILE_SIZE) {
+                const tileX = baseX + i;
+                const tileY = baseY + j;
+
+                // Calculate if this tile is within the circle radius
+                const distanceSquared =
+                  Math.pow(tileX - centerX, 2) + Math.pow(tileY - centerY, 2);
+
+                if (distanceSquared <= Math.pow(radius, 2)) {
+                  setPixel(tileX, tileY, topologyValue);
+                }
+              }
+            }
+          } else {
+            // Original square brush pattern
+            const baseX = centerX - radius;
+            const baseY = centerY - radius;
+            const size = radius * 2;
+
+            for (let i = 0; i <= size; i += globals.TILE_SIZE) {
+              for (let j = 0; j <= size; j += globals.TILE_SIZE) {
+                setPixel(baseX + i, baseY + j, topologyValue);
+              }
             }
           }
         }}
