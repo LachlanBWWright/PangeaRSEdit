@@ -131,7 +131,10 @@ export function lzssCompress(decompressedDataView: DataView) {
     }
 
     //Check match size
-    if (bestLength > THRESHOLD) {
+    if (
+      bestLength > THRESHOLD &&
+      checkBufferSafe(ringBufferPos, bestOffset, bestLength)
+    ) {
       //Output the match
       const lengthCode = bestLength - THRESHOLD - 1; // adjust to 0-15 range (matches decompression)
       const highOffset = (bestOffset >> 8) & 0x0f; // Get top 4 bits of offset
@@ -179,4 +182,19 @@ export function lzssCompress(decompressedDataView: DataView) {
   //Get substring of outputBuffer
   const outputBufferSlice = outputBuffer.buffer.slice(0, destBufferPos);
   return new DataView(outputBufferSlice);
+}
+
+function checkBufferSafe(
+  ringPos: number,
+  refPos: number,
+  length: number,
+): boolean {
+  for (let i = 0; i < length; i++) {
+    const pos = (refPos + i) % RING_BUFF_SIZE;
+    if (pos === ringPos) {
+      return false;
+    }
+  }
+
+  return true;
 }
