@@ -60,10 +60,10 @@ export function lzssDecompress(
       distanceOffset |= (byteLength & 0xf0) << 4; // distanceOffset - Distance Value
 
       //Ignore the 4 bits used for distanceOffset, add min value
-      byteLength = (byteLength & 0x0f) + THRESHOLD; //byteLength - Length Value
+      byteLength = (byteLength & 0x0f) + THRESHOLD + 1; //byteLength - Length Value
 
       //Copy over (length) bytes
-      for (let i = 0; i <= byteLength; i++) {
+      for (let i = 0; i < byteLength; i++) {
         const dataByte = ringBuffer.getUint8(
           (distanceOffset + i) & (RING_BUFF_SIZE - 1),
         );
@@ -146,7 +146,10 @@ export function lzssCompress(decompressedDataView: DataView) {
       for (let i = 0; i < bestLength; i++) {
         const byte = decompressedDataView.getUint8(sourceBufferPos + i);
         ringBuffer.setUint8(ringBufferPos, byte);
-        ringBufferPos = (ringBufferPos + 1) & (RING_BUFF_SIZE - 1); //Loop around after 4095
+        ringBufferPos++;
+        if (ringBufferPos >= RING_BUFF_SIZE) {
+          ringBufferPos = 0; //Loop around after 4095
+        }
       }
 
       sourceBufferPos += bestLength;
