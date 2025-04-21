@@ -11,8 +11,10 @@ import { WaterMenu } from "./subviews/water/WaterMenu";
 import { TilesMenu } from "./subviews/tiles/TilesMenu";
 import { SupertileMenu } from "./subviews/supertiles/SupertilesMenu";
 import { DataHistory } from "./MapPrompt";
-import { CanvasView } from "./canvas/CanvasView";
+import { KonvaView } from "./canvas/CanvasView";
 import { ThreeView } from "./threejs/Three";
+import { useAtomValue } from "jotai";
+import { CanvasView, CanvasViewMode } from "@/data/canvasView/canvasViewAtoms";
 
 export enum View {
   fences,
@@ -41,7 +43,7 @@ export function EditorView({
   dataHistory: DataHistory;
 }) {
   console.log(data);
-
+  const canvasViewMode = useAtomValue(CanvasViewMode);
   const [view, setView] = useState<View>(View.fences);
   const [stage, setStage] = useImmer({
     scale: 1,
@@ -129,8 +131,10 @@ export function EditorView({
         )}
       </div>
       <div className="w-full min-h-0 flex-1 border-2 border-black overflow-clip">
-        {false ? (
-          <CanvasView
+        {canvasViewMode === CanvasView.THREE_D && view === View.tiles ? (
+          <ThreeView data={data} mapImages={mapImages} />
+        ) : (
+          <KonvaView
             data={data}
             setData={setData}
             mapImages={mapImages}
@@ -138,8 +142,6 @@ export function EditorView({
             stage={stage}
             setStage={setStage}
           />
-        ) : (
-          <ThreeView data={data} mapImages={mapImages} />
         )}
       </div>
     </div>

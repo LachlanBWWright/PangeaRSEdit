@@ -1,123 +1,7 @@
 import { ottoMaticLevel } from "@/python/structSpecs/ottoMaticInterface";
 import { Canvas } from "@react-three/fiber";
-import { useRef } from "react";
-import { CanvasTexture, DoubleSide, Mesh, PlaneGeometry } from "three";
-import { useHeightImg } from "../subviews/tiles/useHeightImg";
-import { useMemo } from "react";
-import { useAtomValue } from "jotai";
-import { Globals, GlobalsInterface } from "@/data/globals/globals";
-
-// Utility function to combine mapImages into a single image
-export function combineMapImages(
-  mapImages: HTMLCanvasElement[],
-  data: ottoMaticLevel,
-  globals: GlobalsInterface,
-): HTMLCanvasElement {
-  if (mapImages.length === 0) {
-    throw new Error("No map images to combine");
-  }
-
-  const numWide = data.Hedr[1000].obj.mapWidth;
-  const numHigh = data.Hedr[1000].obj.mapHeight;
-
-  // Assume all images are the same size
-  const width = mapImages[0].width;
-  const height = mapImages[0].height;
-  // Combine vertically (can be adjusted as needed)
-  const combinedCanvas = document.createElement("canvas");
-  combinedCanvas.width =
-    (globals.SUPERTILE_TEXMAP_SIZE / globals.TILES_PER_SUPERTILE) * numWide;
-  console.log(
-    "width",
-    (globals.SUPERTILE_TEXMAP_SIZE / globals.TILES_PER_SUPERTILE) * numWide,
-  );
-  combinedCanvas.height =
-    (globals.SUPERTILE_TEXMAP_SIZE / globals.TILES_PER_SUPERTILE) * numHigh;
-  const ctx = combinedCanvas.getContext("2d");
-  if (!ctx) throw new Error("Could not get canvas context");
-
-  const supertilesWide = numWide / globals.TILES_PER_SUPERTILE;
-  const supertilesHigh = numHigh / globals.TILES_PER_SUPERTILE;
-
-  for (let i = 0; i < supertilesWide; i++) {
-    for (let j = 0; j < supertilesHigh; j++) {
-      const tileId = data.STgd[1000].obj[i + j * supertilesWide].superTileId;
-      const tileImg = mapImages[tileId];
-      if (tileImg) {
-        ctx.drawImage(
-          tileImg,
-          i * globals.SUPERTILE_TEXMAP_SIZE,
-          j * globals.SUPERTILE_TEXMAP_SIZE,
-        );
-      }
-    }
-  }
-
-  /*   mapImages.forEach((img, i) => {
-    ctx.drawImage(img, (i % numWide) * width, Math.floor(i / numWide) * height);
-  });
-  console.log("combinedCanvas", combinedCanvas); */
-  return combinedCanvas;
-}
-
-export function TerrainGeometry({
-  data,
-  mapImages,
-}: {
-  data: ottoMaticLevel;
-  mapImages: HTMLCanvasElement[];
-}) {
-  const globals = useAtomValue(Globals);
-  const { heightImg } = useHeightImg(data);
-  console.log("heightImg", heightImg.toDataURL());
-  const combinedImg = useMemo(
-    () => combineMapImages(mapImages, data, globals),
-    [mapImages, data],
-  );
-  console.log("combinedImg", combinedImg.toDataURL());
-
-  const testCanvas = document.createElement("canvas");
-  testCanvas.width = 100;
-  testCanvas.height = 100;
-  const testCtx = testCanvas.getContext("2d");
-  if (!testCtx) throw new Error("Could not get canvas context");
-  testCtx.fillStyle = "red";
-  testCtx.fillRect(0, 0, 100, 100);
-
-  console.log(heightImg);
-  const heightTexture = useMemo(
-    () => new CanvasTexture(heightImg),
-    [heightImg, testCanvas],
-  );
-  console.log("Height Texture", heightTexture);
-  const combinedTexture = useMemo(
-    () => new CanvasTexture(combinedImg),
-    [combinedImg],
-  );
-  console.log(combinedTexture);
-
-  const numWide = data.Hedr[1000].obj.mapWidth;
-  const numHigh = data.Hedr[1000].obj.mapHeight;
-  const meshRef = useRef<Mesh>(null);
-  const planeRef = useRef<PlaneGeometry>(null);
-  return (
-    <>
-      <mesh ref={meshRef} rotation={[0.5, 0.5, 0.5]} /* position={[0, 0, 0]} */>
-        <planeGeometry ref={planeRef} args={[5, 5, numWide * 8, numHigh * 8]} />
-        <ambientLight intensity={0.5} />
-        <meshStandardMaterial
-          side={DoubleSide}
-          needsUpdate={true}
-          /* color={"red"} */
-          alphaMap={heightTexture}
-          displacementMap={heightTexture}
-          displacementScale={0.1}
-          map={combinedTexture}
-        />
-      </mesh>
-    </>
-  );
-}
+import { TrackballControls } from "@react-three/drei";
+import { TerrainGeometry } from "./Terrain";
 
 export function ThreeView({
   data,
@@ -126,9 +10,9 @@ export function ThreeView({
   data: ottoMaticLevel;
   mapImages: HTMLCanvasElement[];
 }) {
-  const meshRef = useRef<Mesh>(null);
   return (
     <Canvas>
+      <TrackballControls />
       <TerrainGeometry data={data} mapImages={mapImages} />
     </Canvas>
   );

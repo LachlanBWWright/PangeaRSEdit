@@ -29,7 +29,7 @@ export type StageData = {
   y: number;
 };
 
-export function CanvasView({
+export function KonvaView({
   data,
   setData,
   mapImages,
