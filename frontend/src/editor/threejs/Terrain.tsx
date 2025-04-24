@@ -5,6 +5,7 @@ import { useHeightImg } from "../subviews/tiles/useHeightImg";
 import { useMemo } from "react";
 import { useAtomValue } from "jotai";
 import { Globals, GlobalsInterface } from "@/data/globals/globals";
+import { glob } from "fs";
 
 // Utility function to combine mapImages into a single image
 export function combineMapImages(
@@ -81,29 +82,34 @@ export function TerrainGeometry({
     () => new CanvasTexture(heightImg),
     [heightImg, testCanvas],
   );
-  console.log("Height Texture", heightTexture);
   const combinedTexture = useMemo(
     () => new CanvasTexture(combinedImg),
     [combinedImg],
   );
-  console.log(combinedTexture);
-
-  const numWide = data.Hedr[1000].obj.mapWidth;
-  const numHigh = data.Hedr[1000].obj.mapHeight;
+  const header = data.Hedr[1000].obj;
+  const numWide = header.mapWidth;
+  const numHigh = header.mapHeight;
   const meshRef = useRef<Mesh>(null);
   const planeRef = useRef<PlaneGeometry>(null);
+
+  const mapToUnitRatio = globals.TILE_INGAME_SIZE / globals.TILE_SIZE;
+  const heightDiff = header.maxY - header.minY;
+  const heightScale = (globals.TILE_SIZE * mapToUnitRatio) / heightDiff;
+
   return (
     <>
       <mesh ref={meshRef}>
-        <planeGeometry ref={planeRef} args={[5, 5, numWide * 8, numHigh * 8]} />
+        <planeGeometry
+          ref={planeRef}
+          args={[numWide, numHigh, numWide, numHigh]}
+        />
         <ambientLight intensity={1} />
         <meshStandardMaterial
           side={DoubleSide}
           needsUpdate={true}
-          /* color={"red"} */
           alphaMap={heightTexture}
           displacementMap={heightTexture}
-          displacementScale={0.2}
+          displacementScale={heightScale}
           map={combinedTexture}
         />
       </mesh>
