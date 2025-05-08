@@ -1,8 +1,9 @@
 import { ottoMaticLevel } from "@/python/structSpecs/ottoMaticInterface";
-import { Canvas, Camera } from "@react-three/fiber";
-import { TrackballControls, PerspectiveCamera } from "@react-three/drei";
+import { Canvas } from "@react-three/fiber";
+import { TrackballControls } from "@react-three/drei";
 import { TerrainGeometry } from "./Terrain";
 import { FenceGeometry } from "./FenceGeometry"; // Import the new FenceGeometry component
+import { LiquidGeometry } from "./LiquidGeometry"; // Import the new LiquidGeometry component
 
 export function ThreeView({
   data,
@@ -18,6 +19,7 @@ export function ThreeView({
       <TrackballControls />
       <TerrainGeometry data={data} mapImages={mapImages} />
       <FenceGeometry data={data} />
+      <LiquidGeometry data={data} />
     </Canvas>
   );
 }

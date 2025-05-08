@@ -92,6 +92,8 @@ export function TerrainGeometry({
   const planeRef = useRef<PlaneGeometry>(null);
 
   const mapToUnitRatio = globals.TILE_INGAME_SIZE;
+  console.log("MinY", header.minY);
+  console.log("MaxY", header.maxY);
   const heightDiff = header.maxY - header.minY;
   const heightScale = (globals.TILE_SIZE * mapToUnitRatio) / heightDiff;
 
@@ -100,7 +102,15 @@ export function TerrainGeometry({
   console.log("heightScale", heightScale); */
   return (
     <>
-      <mesh ref={meshRef}>
+      <mesh
+        ref={meshRef}
+        position={[
+          (numWide * globals.TILE_SIZE) / 2,
+          0,
+          (numHigh * globals.TILE_SIZE) / 2,
+        ]}
+        rotation={[-Math.PI / 2, 0, 0]}
+      >
         <planeGeometry
           ref={planeRef}
           args={[
