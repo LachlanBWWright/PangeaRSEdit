@@ -5,7 +5,6 @@ import { useHeightImg } from "../subviews/tiles/useHeightImg";
 import { useMemo } from "react";
 import { useAtomValue } from "jotai";
 import { Globals, GlobalsInterface } from "@/data/globals/globals";
-import { glob } from "fs";
 
 // Utility function to combine mapImages into a single image
 export function combineMapImages(
