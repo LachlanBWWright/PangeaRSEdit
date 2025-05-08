@@ -62,11 +62,6 @@ export const FenceGeometry: React.FC<FenceGeometryProps> = ({ data }) => {
 
   const fences = data.Fenc[1000].obj;
   const fenceNubsByFenceIdx = data.FnNb;
-  const header = data.Hedr[1000].obj; // Get header for map dimensions
-
-  // Calculate offsets to convert from 0-indexed world system to centered world system
-  const worldOriginOffsetX = (header.mapWidth * 1) / 2;
-  const worldOriginOffsetZ = (header.mapHeight * 1) / 2;
 
   return (
     <group name="fences">
@@ -90,15 +85,19 @@ export const FenceGeometry: React.FC<FenceGeometryProps> = ({ data }) => {
           const rawX2 = nubB_raw[0];
           const rawZ2 = nubB_raw[1];
 
-          // Convert raw nub coordinates to centered world coordinates
-          const cX1 = rawX1 - worldOriginOffsetX;
-          const cZ1 = rawZ1 - worldOriginOffsetZ;
-          const cX2 = rawX2 - worldOriginOffsetX;
-          const cZ2 = rawZ2 - worldOriginOffsetZ;
-
           // Get terrain height using centered coordinates
-          const terrainY1 = getTerrainHeightAtPoint(cX1, cZ1, data, globals);
-          const terrainY2 = getTerrainHeightAtPoint(cX2, cZ2, data, globals);
+          const terrainY1 = getTerrainHeightAtPoint(
+            rawX1,
+            rawZ1,
+            data,
+            globals,
+          );
+          const terrainY2 = getTerrainHeightAtPoint(
+            rawX2,
+            rawZ2,
+            data,
+            globals,
+          );
 
           // Length calculation can use raw or centered diffs, it's the same
           const length = Math.sqrt(
@@ -107,20 +106,20 @@ export const FenceGeometry: React.FC<FenceGeometryProps> = ({ data }) => {
           if (length === 0) continue; // Skip zero-length segments
 
           // Midpoint for positioning uses centered coordinates
-          const midCX = (cX1 + cX2) / 2;
-          const midCZ = (cZ1 + cZ2) / 2;
+          const midCX = (rawX1 + rawX2) / 2;
+          const midCZ = (rawZ1 + rawZ2) / 2;
 
           const segmentBaseY = (terrainY1 + terrainY2) / 2;
           const fenceMeshY = segmentBaseY + FENCE_POST_HEIGHT / 2;
 
           // Angle calculation can use raw or centered diffs
-          const angle = Math.atan2(rawZ2 - rawZ1, rawX2 - rawX1); // Angle for Y-axis rotation
+          const angle = Math.atan2(rawX2 - rawX1, rawZ2 - rawZ1); // Angle for Y-axis rotation
 
           fenceSegments.push(
             <mesh
               key={`fence-${fenceIdx}-segment-${i}`}
               position={[midCX, fenceMeshY, midCZ]} // Use centered midpoints
-              rotation={[0, angle, 0]}
+              rotation={[0, angle + Math.PI / 2, 0]}
             >
               <boxGeometry
                 args={[length, FENCE_POST_HEIGHT, FENCE_THICKNESS]}
