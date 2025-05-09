@@ -61,12 +61,10 @@ export function TerrainGeometry({
 }) {
   const globals = useAtomValue(Globals);
   const { heightImg } = useHeightImg(data);
-  console.log("heightImg", heightImg.toDataURL());
   const combinedImg = useMemo(
     () => combineMapImages(mapImages, data, globals),
     [mapImages, data],
   );
-  console.log("combinedImg", combinedImg.toDataURL());
 
   const testCanvas = document.createElement("canvas");
   testCanvas.width = 100;
@@ -92,8 +90,6 @@ export function TerrainGeometry({
   const planeRef = useRef<PlaneGeometry>(null);
 
   const mapToUnitRatio = globals.TILE_INGAME_SIZE;
-  console.log("MinY", header.minY);
-  console.log("MaxY", header.maxY);
   const heightDiff = header.maxY - header.minY;
   const heightScale = (globals.TILE_SIZE * mapToUnitRatio) / heightDiff;
 
@@ -106,7 +102,7 @@ export function TerrainGeometry({
         ref={meshRef}
         position={[
           (numWide * globals.TILE_SIZE) / 2,
-          0,
+          header.minY,
           (numHigh * globals.TILE_SIZE) / 2,
         ]}
         rotation={[-Math.PI / 2, 0, 0]}

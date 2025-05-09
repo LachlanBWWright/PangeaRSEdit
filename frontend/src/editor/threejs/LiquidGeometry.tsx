@@ -4,6 +4,7 @@ import { Globals } from "@/data/globals/globals";
 import { ottoMaticLevel } from "@/python/structSpecs/ottoMaticInterface";
 import { DoubleSide, Shape, Vector2 } from "three";
 import { WaterBodyType } from "@/data/water/ottoWaterBodyType";
+import { getTerrainHeightAtPoint } from "./FenceGeometry";
 
 interface LiquidGeometryProps {
   data: ottoMaticLevel;
@@ -51,6 +52,8 @@ export const LiquidGeometry: React.FC<LiquidGeometryProps> = ({ data }) => {
           return null;
         }
 
+        //liquidPatches[0].height
+
         const points = patch.nubs
           .slice(0, patch.numNubs)
           .map((nub) => new Vector2(nub[0], nub[1]));
@@ -63,14 +66,20 @@ export const LiquidGeometry: React.FC<LiquidGeometryProps> = ({ data }) => {
         const shape = new Shape(points);
         const { color: liquidColor, opacity } = getLiquidProperties(patch.type);
         // Assuming patch.height is in tile units, similar to other Y coordinates
-        const liquidLevelY = patch.height * globals.TILE_SIZE;
+        const liquidLevelY = getTerrainHeightAtPoint(
+          patch.hotSpotX,
+          patch.hotSpotZ,
+          data,
+          globals,
+        ); //patch.height;
 
+        console.log("Patch height", patch.height);
         return (
           <mesh
             key={`liquid-${index}`}
             position={[
               0, // The shape coordinates are world XZ, mesh is placed at correct Y
-              0,
+              liquidLevelY,
               0,
             ]}
             rotation={[Math.PI / 2, 0, 0]} // Rotate shape from XY plane to XZ plane

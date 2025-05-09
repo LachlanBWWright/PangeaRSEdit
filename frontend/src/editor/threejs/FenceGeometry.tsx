@@ -1,5 +1,8 @@
 import React from "react";
-import { ottoMaticLevel } from "@/python/structSpecs/ottoMaticInterface";
+import {
+  ottoHeader,
+  ottoMaticLevel,
+} from "@/python/structSpecs/ottoMaticInterface";
 import { useAtomValue } from "jotai";
 import { Globals, GlobalsInterface } from "@/data/globals/globals";
 
@@ -10,41 +13,73 @@ interface FenceGeometryProps {
 const FENCE_POST_HEIGHT = 10; // Example height, adjust as needed
 const FENCE_THICKNESS = 0.5; // Example thickness
 
-// Helper function to get terrain height at a specific world (x, z)
-// This is a simplified nearest-neighbor lookup. Interpolation would be more accurate.
-// MODIFIED: Now expects centered world coordinates
-const getTerrainHeightAtPoint = (
-  centeredWorldX: number, // Renamed from worldX
-  centeredWorldZ: number, // Renamed from worldZ
+export const flattenCoords = (
+  xTile: number,
+  yTile: number,
+  header: ottoHeader,
+  globals: GlobalsInterface,
+) => {
+  xTile = Math.floor(xTile);
+  yTile = Math.floor(yTile / globals.TILE_SIZE);
+  return yTile * (header.mapWidth + 1) + xTile;
+};
+
+export const getHeightAtTile = (
+  xTile: number,
+  yTile: number,
   data: ottoMaticLevel,
   globals: GlobalsInterface,
-): number => {
+) => {
   const header = data.Hedr[1000].obj;
+  const idx = flattenCoords(xTile, yTile, header, globals);
   const yCoords = data.YCrd[1000].obj;
-
-  // Convert centered world coordinates to uncentered (0-indexed) world coordinates
-  const uncenteredWorldX = centeredWorldX + (header.mapWidth * 1) / 2;
-  const uncenteredWorldZ = centeredWorldZ + (header.mapHeight * 1) / 2;
-
-  // Original logic using uncenteredWorldX and uncenteredWorldZ
-  const gx = Math.max(
-    0,
-    // Use uncenteredWorldX here
-    Math.min(header.mapWidth, Math.round(uncenteredWorldX / 1)),
-  );
-  const gz = Math.max(
-    0,
-    // Use uncenteredWorldZ here
-    Math.min(header.mapHeight, Math.round(uncenteredWorldZ / 1)),
-  );
-
-  const yIndex = gz * (header.mapWidth + 1) + gx;
-
-  if (yCoords && yIndex >= 0 && yIndex < yCoords.length) {
-    return yCoords[yIndex] * 1;
+  if (idx < 0 || idx >= yCoords.length) {
+    console.warn(
+      `Index ${idx} out of bounds for yCoords array of length ${yCoords.length}`,
+    );
+    return header.minY * 1; // Fallback if out of bounds
   }
-  // Fallback if out of bounds, or if YCrd is not available.
-  return header.minY * 1; // Use minY as a fallback
+  return yCoords[idx] * 1;
+};
+
+// Helper function to get terrain height at a specific world (x, z)
+export const getTerrainHeightAtPoint = (
+  x: number,
+  z: number,
+  data: ottoMaticLevel,
+  globals: GlobalsInterface, // Added globals here
+) => {
+  x = x / globals.TILE_SIZE;
+  z = z / globals.TILE_SIZE;
+
+  // Get the four surrounding tile coordinates
+  const x1 = Math.floor(x);
+  const z1 = Math.floor(z);
+  const x2 = Math.ceil(x);
+  const z2 = Math.ceil(z);
+
+  // Get the fractional components for interpolation
+  const xFrac = x - x1;
+  const zFrac = z - z1;
+
+  // Get heights at the four corner points
+  const h11 = getHeightAtTile(x1, z1, data, globals); // Pass globals
+  const h21 = getHeightAtTile(x2, z1, data, globals); // Pass globals
+  const h12 = getHeightAtTile(x1, z2, data, globals); // Pass globals
+  const h22 = getHeightAtTile(x2, z2, data, globals); // Pass globals
+
+  // For a point (x, z) within the rectangle defined by (x1,z1) to (x2,z2):
+  const xFactor = (x - x1) / (x2 - x1);
+  const zFactor = (z - z1) / (z2 - z1);
+
+  // Bilinear interpolation
+  const interpolatedHeight =
+    h11 * (1 - xFactor) * (1 - zFactor) +
+    h21 * xFactor * (1 - zFactor) +
+    h12 * (1 - xFactor) * zFactor +
+    h22 * xFactor * zFactor;
+
+  return interpolatedHeight;
 };
 
 export const FenceGeometry: React.FC<FenceGeometryProps> = ({ data }) => {
@@ -91,13 +126,13 @@ export const FenceGeometry: React.FC<FenceGeometryProps> = ({ data }) => {
             rawZ1,
             data,
             globals,
-          );
+          ); // Pass globals
           const terrainY2 = getTerrainHeightAtPoint(
             rawX2,
             rawZ2,
             data,
             globals,
-          );
+          ); // Pass globals
 
           // Length calculation can use raw or centered diffs, it's the same
           const length = Math.sqrt(
