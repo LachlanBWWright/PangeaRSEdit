@@ -14,14 +14,16 @@ const FENCE_POST_HEIGHT = 300; // Example height, adjust as needed
 const FENCE_THICKNESS = 0.5; // Example thickness
 
 export const flattenCoords = (
-  xTile: number,
-  yTile: number,
+  xTile: number, // Integer tile index
+  yTile: number, // Integer tile index for Z
   header: ottoHeader,
-  globals: GlobalsInterface,
+  // globals: GlobalsInterface, // globals is not used after the fix
 ) => {
-  xTile = Math.floor(xTile);
-  yTile = Math.floor(yTile / globals.TILE_SIZE);
-  return yTile * (header.mapWidth + 1) + xTile;
+  // xTile and yTile are expected to be integer tile indices.
+  // Math.floor is for safety if they are somehow passed as float tile indices.
+  const finalXTile = Math.floor(xTile);
+  const finalZTile = Math.floor(yTile); // yTile is already the Z tile index, no division needed.
+  return finalZTile * (header.mapWidth + 1) + finalXTile;
 };
 
 export const getHeightAtTile = (
@@ -31,7 +33,8 @@ export const getHeightAtTile = (
   globals: GlobalsInterface,
 ) => {
   const header = data.Hedr[1000].obj;
-  const idx = flattenCoords(xTile, yTile, header, globals);
+  // Call flattenCoords without globals, as it's no longer needed there
+  const idx = flattenCoords(xTile, yTile, header);
   const yCoords = data.YCrd[1000].obj;
   const mapTileSize = header.tileSize;
   const yScale = globals.TILE_INGAME_SIZE / mapTileSize;
@@ -46,33 +49,55 @@ export const getHeightAtTile = (
 
 // Helper function to get terrain height at a specific world (x, z)
 export const getTerrainHeightAtPoint = (
-  x: number,
-  z: number,
+  x: number, // world x
+  z: number, // world z
   data: ottoMaticLevel,
-  globals: GlobalsInterface, // Added globals here
+  globals: GlobalsInterface,
 ) => {
-  x = x / globals.TILE_SIZE;
-  z = z / globals.TILE_SIZE;
+  // Scale world coordinates to tile coordinates (where 1 unit = 1 tile)
+  const x_tile_units = x / globals.TILE_SIZE;
+  const z_tile_units = z / globals.TILE_SIZE;
+  // console.log("getTerrainHeightAtPoint input world coords:", { x, z });
+  // console.log("getTerrainHeightAtPoint tile units:", { x_tile_units, z_tile_units });
 
-  // Get the four surrounding tile coordinates
-  const x1 = Math.floor(x);
-  const z1 = Math.floor(z);
-  const x2 = Math.ceil(x);
-  const z2 = Math.ceil(z);
-
-  // Get the fractional components for interpolation
-  const xFrac = x - x1;
-  const zFrac = z - z1;
+  // Get the four surrounding tile integer indices
+  const x1 = Math.floor(x_tile_units);
+  const z1 = Math.floor(z_tile_units);
+  const x2 = Math.ceil(x_tile_units);
+  const z2 = Math.ceil(z_tile_units);
 
   // Get heights at the four corner points
-  const h11 = getHeightAtTile(x1, z1, data, globals); // Pass globals
-  const h21 = getHeightAtTile(x2, z1, data, globals); // Pass globals
-  const h12 = getHeightAtTile(x1, z2, data, globals); // Pass globals
-  const h22 = getHeightAtTile(x2, z2, data, globals); // Pass globals
+  const h11 = getHeightAtTile(x1, z1, data, globals);
+  const h21 = getHeightAtTile(x2, z1, data, globals);
+  const h12 = getHeightAtTile(x1, z2, data, globals);
+  const h22 = getHeightAtTile(x2, z2, data, globals);
 
-  // For a point (x, z) within the rectangle defined by (x1,z1) to (x2,z2):
-  const xFactor = (x - x1) / (x2 - x1);
-  const zFactor = (z - z1) / (z2 - z1);
+  if (isNaN(h11) || isNaN(h21) || isNaN(h12) || isNaN(h22)) {
+    console.warn("NaN height value(s) from getHeightAtTile:", {
+      x,
+      z,
+      x1,
+      z1,
+      x2,
+      z2,
+      h11,
+      h21,
+      h12,
+      h22,
+    });
+    // Depending on desired behavior, you might return a default height or NaN
+    // return 0; // Or some other fallback
+  }
+
+  // Bilinear interpolation factors
+  const dx = x2 - x1;
+  const dz = z2 - z1;
+
+  // If dx or dz is 0, the point is on a grid line.
+  // xFactor should be 0 if dx is 0 because x_tile_units will be equal to x1.
+  // Similar logic for zFactor.
+  const xFactor = dx === 0 ? 0 : (x_tile_units - x1) / dx;
+  const zFactor = dz === 0 ? 0 : (z_tile_units - z1) / dz;
 
   // Bilinear interpolation
   const interpolatedHeight =
@@ -80,6 +105,27 @@ export const getTerrainHeightAtPoint = (
     h21 * xFactor * (1 - zFactor) +
     h12 * (1 - xFactor) * zFactor +
     h22 * xFactor * zFactor;
+
+  if (isNaN(interpolatedHeight)) {
+    console.warn("Interpolated height is NaN. Inputs:", {
+      x_world: x,
+      z_world: z,
+      x_tile_units,
+      z_tile_units,
+      x1,
+      z1,
+      x2,
+      z2,
+      h11,
+      h21,
+      h12,
+      h22,
+      xFactor,
+      zFactor,
+      dx,
+      dz,
+    });
+  }
 
   return interpolatedHeight;
 };
@@ -128,14 +174,14 @@ export const FenceGeometry: React.FC<FenceGeometryProps> = ({ data }) => {
 
           // Get terrain height using centered coordinates
           const terrainY1 = getTerrainHeightAtPoint(
-            rawX1,
-            rawZ1,
+            nubA_raw[0],
+            nubA_raw[1],
             data,
             globals,
           ); // Pass globals
           const terrainY2 = getTerrainHeightAtPoint(
-            rawX2,
-            rawZ2,
+            nubB_raw[0],
+            nubB_raw[1],
             data,
             globals,
           ); // Pass globals
@@ -151,7 +197,7 @@ export const FenceGeometry: React.FC<FenceGeometryProps> = ({ data }) => {
           const midCZ = (rawZ1 + rawZ2) / 2;
 
           const segmentBaseY = (terrainY1 + terrainY2) / 2;
-          const fenceMeshY = segmentBaseY + FENCE_POST_HEIGHT / 2;
+          const fenceMeshY = segmentBaseY - FENCE_POST_HEIGHT / 2;
 
           // Angle calculation can use raw or centered diffs
           const angle = Math.atan2(rawX2 - rawX1, rawZ2 - rawZ1); // Angle for Y-axis rotation

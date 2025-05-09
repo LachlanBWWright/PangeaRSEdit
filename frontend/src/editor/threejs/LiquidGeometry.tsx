@@ -76,7 +76,7 @@ export const LiquidGeometry: React.FC<LiquidGeometryProps> = ({ data }) => {
             globals,
           ) + 100; //patch.height;
 
-        console.log("Patch height", patch.height);
+        console.log("Patch height", liquidLevelY);
         return (
           <mesh
             key={`liquid-${index}`}
