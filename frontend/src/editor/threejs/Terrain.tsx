@@ -1,7 +1,7 @@
 import { ottoMaticLevel } from "@/python/structSpecs/ottoMaticInterface";
 import { useRef } from "react";
 import { CanvasTexture, DoubleSide, Mesh, PlaneGeometry } from "three";
-import { useHeightImg } from "../subviews/tiles/useHeightImg";
+import { useUnscaledHeightImg } from "../subviews/tiles/useHeightImg";
 import { useMemo } from "react";
 import { useAtomValue } from "jotai";
 import { Globals, GlobalsInterface } from "@/data/globals/globals";
@@ -60,7 +60,7 @@ export function TerrainGeometry({
   mapImages: HTMLCanvasElement[];
 }) {
   const globals = useAtomValue(Globals);
-  const { heightImg } = useHeightImg(data);
+  const { heightImg } = useUnscaledHeightImg(data);
   const combinedImg = useMemo(
     () => combineMapImages(mapImages, data, globals),
     [mapImages, data],
@@ -89,29 +89,26 @@ export function TerrainGeometry({
   const meshRef = useRef<Mesh>(null);
   const planeRef = useRef<PlaneGeometry>(null);
 
-  const mapToUnitRatio = globals.TILE_INGAME_SIZE;
-  const heightDiff = header.maxY - header.minY;
-  const heightScale = (globals.TILE_SIZE * mapToUnitRatio) / heightDiff;
+  const mapTileSize = header.tileSize;
+  const yScale = globals.TILE_INGAME_SIZE / mapTileSize;
+  console.log("mapTileSize", mapTileSize, "yScale", yScale);
 
-  /*   console.log("mapToUnitRatio", mapToUnitRatio);
-  console.log("heightDiff", heightDiff);
-  console.log("heightScale", heightScale); */
   return (
     <>
       <mesh
         ref={meshRef}
         position={[
-          (numWide * globals.TILE_SIZE) / 2,
-          header.minY,
-          (numHigh * globals.TILE_SIZE) / 2,
+          (numWide * globals.TILE_INGAME_SIZE) / 2,
+          0,
+          (numHigh * globals.TILE_INGAME_SIZE) / 2,
         ]}
         rotation={[-Math.PI / 2, 0, 0]}
       >
         <planeGeometry
           ref={planeRef}
           args={[
-            numWide * globals.TILE_SIZE,
-            numHigh * globals.TILE_SIZE,
+            numWide * globals.TILE_INGAME_SIZE,
+            numHigh * globals.TILE_INGAME_SIZE,
             numWide,
             numHigh,
           ]}
@@ -122,7 +119,7 @@ export function TerrainGeometry({
           needsUpdate={true}
           alphaMap={heightTexture}
           displacementMap={heightTexture}
-          displacementScale={heightScale}
+          displacementScale={header.maxY * yScale}
           map={combinedTexture}
         />
       </mesh>

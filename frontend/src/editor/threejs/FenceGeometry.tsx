@@ -10,7 +10,7 @@ interface FenceGeometryProps {
   data: ottoMaticLevel;
 }
 
-const FENCE_POST_HEIGHT = 10; // Example height, adjust as needed
+const FENCE_POST_HEIGHT = 300; // Example height, adjust as needed
 const FENCE_THICKNESS = 0.5; // Example thickness
 
 export const flattenCoords = (
@@ -33,13 +33,15 @@ export const getHeightAtTile = (
   const header = data.Hedr[1000].obj;
   const idx = flattenCoords(xTile, yTile, header, globals);
   const yCoords = data.YCrd[1000].obj;
+  const mapTileSize = header.tileSize;
+  const yScale = globals.TILE_INGAME_SIZE / mapTileSize;
   if (idx < 0 || idx >= yCoords.length) {
     console.warn(
       `Index ${idx} out of bounds for yCoords array of length ${yCoords.length}`,
     );
-    return header.minY * 1; // Fallback if out of bounds
+    return header.minY * yScale; // Fallback if out of bounds
   }
-  return yCoords[idx] * 1;
+  return yCoords[idx] * yScale;
 };
 
 // Helper function to get terrain height at a specific world (x, z)
@@ -115,10 +117,14 @@ export const FenceGeometry: React.FC<FenceGeometryProps> = ({ data }) => {
           const nubB_raw = nubs[i + 1];
 
           // Raw (uncentered, TILE_SIZE-scaled) coordinates
-          const rawX1 = nubA_raw[0];
-          const rawZ1 = nubA_raw[1];
-          const rawX2 = nubB_raw[0];
-          const rawZ2 = nubB_raw[1];
+          const rawX1 =
+            nubA_raw[0] * (globals.TILE_INGAME_SIZE / globals.TILE_SIZE);
+          const rawZ1 =
+            nubA_raw[1] * (globals.TILE_INGAME_SIZE / globals.TILE_SIZE);
+          const rawX2 =
+            nubB_raw[0] * (globals.TILE_INGAME_SIZE / globals.TILE_SIZE);
+          const rawZ2 =
+            nubB_raw[1] * (globals.TILE_INGAME_SIZE / globals.TILE_SIZE);
 
           // Get terrain height using centered coordinates
           const terrainY1 = getTerrainHeightAtPoint(

@@ -54,9 +54,11 @@ export const LiquidGeometry: React.FC<LiquidGeometryProps> = ({ data }) => {
 
         //liquidPatches[0].height
 
+        const scale = globals.TILE_INGAME_SIZE / globals.TILE_SIZE;
+
         const points = patch.nubs
           .slice(0, patch.numNubs)
-          .map((nub) => new Vector2(nub[0], nub[1]));
+          .map((nub) => new Vector2(nub[0] * scale, nub[1] * scale));
 
         // Ensure we still have enough points after slicing and potential filtering if any
         if (points.length < 3) {
@@ -66,12 +68,13 @@ export const LiquidGeometry: React.FC<LiquidGeometryProps> = ({ data }) => {
         const shape = new Shape(points);
         const { color: liquidColor, opacity } = getLiquidProperties(patch.type);
         // Assuming patch.height is in tile units, similar to other Y coordinates
-        const liquidLevelY = getTerrainHeightAtPoint(
-          patch.hotSpotX,
-          patch.hotSpotZ,
-          data,
-          globals,
-        ); //patch.height;
+        const liquidLevelY =
+          getTerrainHeightAtPoint(
+            patch.hotSpotX,
+            patch.hotSpotZ,
+            data,
+            globals,
+          ) + 100; //patch.height;
 
         console.log("Patch height", patch.height);
         return (
