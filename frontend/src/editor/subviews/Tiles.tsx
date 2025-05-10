@@ -136,9 +136,9 @@ export function TopologyTiles({
           y < 0 ||
           y > (header.mapHeight + 1) * globals.TILE_SIZE
         )
-          return;
+          continue;
         const flatPos = flattenCoords(x, y);
-        if (data.YCrd[1000].obj[flatPos] === undefined) return;
+        if (data.YCrd[1000].obj[flatPos] === undefined) continue;
 
         if (currentTopologyValueMode === TopologyValueMode.SET_VALUE) {
           data.YCrd[1000].obj[flatPos] = value;
