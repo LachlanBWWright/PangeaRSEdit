@@ -66,7 +66,7 @@ export function Tiles({
   return <ElectricFloor1Tiles data={data} tileGrid={tileGrid} />;
 }
 
-type PixelType = { x: number; y: number; value: number };
+type PixelType = { x: number; y: number; value: number; distance: number };
 
 export function TopologyTiles({
   data,
@@ -128,7 +128,7 @@ export function TopologyTiles({
   const setPixels = (pixelList: PixelType[]) => {
     setData((data) => {
       for (const pixelData of pixelList) {
-        const { x, y, value } = pixelData;
+        const { x, y, value, distance } = pixelData;
 
         if (
           x < 0 ||
@@ -144,6 +144,11 @@ export function TopologyTiles({
           data.YCrd[1000].obj[flatPos] = value;
         } else if (currentTopologyValueMode === TopologyValueMode.DELTA_VALUE) {
           data.YCrd[1000].obj[flatPos] = data.YCrd[1000].obj[flatPos] + value;
+        } else if (
+          currentTopologyValueMode === TopologyValueMode.DELTA_WITH_DROPOFF
+        ) {
+          data.YCrd[1000].obj[flatPos] =
+            data.YCrd[1000].obj[flatPos] + value * (1 - distance);
         }
 
         //Clamp
@@ -190,11 +195,14 @@ export function TopologyTiles({
                 const distanceSquared =
                   Math.pow(tileX - centerX, 2) + Math.pow(tileY - centerY, 2);
 
+                const distance = Math.sqrt(distanceSquared) / radius;
+
                 if (distanceSquared <= Math.pow(radius, 2)) {
                   pixelList.push({
                     x: tileX,
                     y: tileY,
                     value: topologyValue,
+                    distance: distance,
                   });
                 }
               }
@@ -205,12 +213,23 @@ export function TopologyTiles({
             const baseY = centerY - radius;
             const size = radius * 2;
 
+            // Calculate distance for square brush (normalized from 0 to 1)
+            // Using Manhattan distance for square pattern
             for (let i = 0; i <= size; i += globals.TILE_SIZE) {
               for (let j = 0; j <= size; j += globals.TILE_SIZE) {
+                const tileX = baseX + i;
+                const tileY = baseY + j;
+
+                // Calculate distance from center (using max of x,y distance for square pattern feel)
+                const xDistance = Math.abs(tileX - centerX);
+                const yDistance = Math.abs(tileY - centerY);
+                const distance = Math.max(xDistance, yDistance) / radius;
+
                 pixelList.push({
-                  x: baseX + i,
-                  y: baseY + j,
+                  x: tileX,
+                  y: tileY,
                   value: topologyValue,
+                  distance: distance,
                 });
               }
             }

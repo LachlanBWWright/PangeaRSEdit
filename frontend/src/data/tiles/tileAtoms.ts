@@ -17,6 +17,7 @@ export enum TopologyBrushMode {
 export enum TopologyValueMode {
   SET_VALUE, //Sets new Ycrd to fixed values
   DELTA_VALUE, //Moves Ycrd by delta
+  DELTA_WITH_DROPOFF,
 }
 
 export const CurrentTopologyBrushMode = atom<TopologyBrushMode>(

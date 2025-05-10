@@ -23,9 +23,9 @@ const getLiquidProperties = (type: WaterBodyType) => {
     case WaterBodyType.OIL:
       return { color: 0x000000, opacity: 0.8 }; // Black
     case WaterBodyType.JUNGLEWATER:
-      return { color: 0x006400, opacity: 0.7 }; // DarkGreen
+      return { color: 6400, opacity: 0.7 }; // DarkGreen
     case WaterBodyType.MUD:
-      return { color: 0x8b4513, opacity: 0.9 }; // SaddleBrown
+      return { color: 0x8b4513, opacitF: 0.9 }; // SaddleBrown
     case WaterBodyType.RADIOACTIVE:
       return { color: 0x32cd32, opacity: 0.7 }; // LimeGreen
     case WaterBodyType.LAVA:
@@ -78,24 +78,49 @@ export const LiquidGeometry: React.FC<LiquidGeometryProps> = ({ data }) => {
 
         console.log("Patch height", liquidLevelY);
         return (
-          <mesh
-            key={`liquid-${index}`}
-            position={[
-              0, // The shape coordinates are world XZ, mesh is placed at correct Y
-              liquidLevelY,
-              0,
-            ]}
-            rotation={[Math.PI / 2, 0, 0]} // Rotate shape from XY plane to XZ plane
-            frustumCulled={false} // Optional: if liquid should always be visible
-          >
-            <shapeGeometry args={[shape]} />
-            <meshStandardMaterial
-              color={liquidColor}
-              opacity={opacity}
-              transparent={true}
-              side={DoubleSide} // Render both sides
-            />
-          </mesh>
+          <React.Fragment key={`liquid-fragment-${index}`}>
+            <mesh
+              key={`liquid-${index}`}
+              position={[
+                0, // The shape coordinates are world XZ, mesh is placed at correct Y
+                liquidLevelY,
+                0,
+              ]}
+              rotation={[Math.PI / 2, 0, 0]} // Rotate shape from XY plane to XZ plane
+              frustumCulled={false} // Optional: if liquid should always be visible
+            >
+              <shapeGeometry args={[shape]} />
+              <meshStandardMaterial
+                color={liquidColor}
+                opacity={opacity}
+                transparent={true}
+                side={DoubleSide} // Render both sides
+              />
+            </mesh>
+            {/* Test Box at hotspot */}
+            <mesh
+              key={`liquid-hotspot-box-${index}`}
+              position={[
+                patch.hotSpotX * scale,
+                liquidLevelY,
+                patch.hotSpotZ * scale,
+              ]}
+            >
+              <boxGeometry args={[55, 55, 55]} /> {/* Small box */}
+              <meshStandardMaterial color="red" />
+            </mesh>
+            <mesh
+              key={`liquid-hotspot-lower-box-${index}`}
+              position={[
+                patch.hotSpotX * scale,
+                liquidLevelY - 100,
+                patch.hotSpotZ * scale,
+              ]}
+            >
+              <boxGeometry args={[55, 55, 55]} /> {/* Small box */}
+              <meshStandardMaterial color="red" />
+            </mesh>
+          </React.Fragment>
         );
       })}
     </group>

@@ -97,9 +97,10 @@ export function TilesMenu() {
             }}
           >
             <SelectTrigger>
-              {valueMode === TopologyValueMode.SET_VALUE
-                ? "Set Value"
-                : "Delta Value"}
+              {valueMode === TopologyValueMode.SET_VALUE && "Set Value"}
+              {valueMode === TopologyValueMode.DELTA_VALUE && "Delta Value"}
+              {valueMode === TopologyValueMode.DELTA_WITH_DROPOFF &&
+                "Delta with Dropoff"}
             </SelectTrigger>
 
             <SelectContent>
@@ -108,6 +109,11 @@ export function TilesMenu() {
               </SelectItem>
               <SelectItem value={TopologyValueMode.DELTA_VALUE.toString()}>
                 Delta Value
+              </SelectItem>
+              <SelectItem
+                value={TopologyValueMode.DELTA_WITH_DROPOFF.toString()}
+              >
+                Delta with Dropoff
               </SelectItem>
             </SelectContent>
           </Select>

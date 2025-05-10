@@ -197,7 +197,7 @@ export const FenceGeometry: React.FC<FenceGeometryProps> = ({ data }) => {
           const midCZ = (rawZ1 + rawZ2) / 2;
 
           const segmentBaseY = (terrainY1 + terrainY2) / 2;
-          const fenceMeshY = segmentBaseY - FENCE_POST_HEIGHT / 2;
+          const fenceMeshY = segmentBaseY; //- FENCE_POST_HEIGHT / 2;
 
           // Angle calculation can use raw or centered diffs
           const angle = Math.atan2(rawX2 - rawX1, rawZ2 - rawZ1); // Angle for Y-axis rotation

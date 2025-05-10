@@ -4,7 +4,6 @@ import { TrackballControls } from "@react-three/drei";
 import { TerrainGeometry } from "./Terrain";
 import { FenceGeometry } from "./FenceGeometry"; // Import the new FenceGeometry component
 import { LiquidGeometry } from "./LiquidGeometry"; // Import the new LiquidGeometry component
-import { TestGeometry } from "./TestGeometry";
 import { useAtomValue } from "jotai";
 import { Globals } from "@/data/globals/globals";
 
