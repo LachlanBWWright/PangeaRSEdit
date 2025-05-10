@@ -2,7 +2,10 @@ import { Updater } from "use-immer";
 import { ottoMaticLevel } from "../../../python/structSpecs/ottoMaticInterface";
 import { Circle, Line } from "react-konva";
 import { useAtom } from "jotai";
-import { SelectedWaterBody } from "../../../data/water/waterAtoms";
+import {
+  SelectedWaterBody,
+  SelectedWaterNub,
+} from "../../../data/water/waterAtoms"; // Import SelectedWaterNub
 import { memo, useState } from "react";
 
 export const WaterBody = memo(
@@ -17,6 +20,7 @@ export const WaterBody = memo(
   }) => {
     const [selectedWaterBody, setSelectedWaterBody] =
       useAtom(SelectedWaterBody);
+    const [selectedWaterNub, setSelectedWaterNub] = useAtom(SelectedWaterNub); // Use SelectedWaterNub atom
     const waterBody = data.Liqd[1000].obj[waterBodyIdx];
     const [initialDragState, setInitialDragState] = useState<
       [number, number][] | null
@@ -80,11 +84,28 @@ export const WaterBody = memo(
                 <Circle
                   x={nub[0]}
                   y={nub[1]}
-                  key={waterBodyIdx}
-                  radius={5}
-                  fill={"#9999FFDD"}
+                  key={waterBodyIdx + "-" + nubIdx} // More specific key
+                  radius={
+                    selectedWaterNub === nubIdx &&
+                    selectedWaterBody === waterBodyIdx
+                      ? 8
+                      : 5
+                  } // Highlight selected nub
+                  fill={
+                    selectedWaterNub === nubIdx &&
+                    selectedWaterBody === waterBodyIdx
+                      ? "#FF99FFDD"
+                      : "#9999FFDD"
+                  } // Different color for selected nub
                   draggable={true}
-                  onDragStart={() => setSelectedWaterBody(waterBodyIdx)}
+                  onClick={() => {
+                    setSelectedWaterBody(waterBodyIdx);
+                    setSelectedWaterNub(nubIdx); // Set selected nub on click
+                  }}
+                  onDragStart={() => {
+                    setSelectedWaterBody(waterBodyIdx);
+                    setSelectedWaterNub(nubIdx); // Set selected nub on drag start
+                  }}
                   onDragEnd={(e) => {
                     setData((data) => {
                       data.Liqd[1000].obj[waterBodyIdx].nubs[nubIdx][0] =

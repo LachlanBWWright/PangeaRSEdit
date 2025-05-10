@@ -2,7 +2,10 @@ import { Updater } from "use-immer";
 import { ottoMaticLevel } from "../../../python/structSpecs/ottoMaticInterface";
 import { useAtom, useAtomValue } from "jotai";
 import { Button, DeleteButton } from "../../../components/Button";
-import { SelectedWaterBody } from "../../../data/water/waterAtoms";
+import {
+  SelectedWaterBody,
+  SelectedWaterNub,
+} from "../../../data/water/waterAtoms";
 import {
   waterBodyNames,
   WaterBodyType,
@@ -16,6 +19,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { getWaterBodyTypes } from "@/data/water/getWaterBodyTypes";
+import { Input } from "@/components/ui/input";
 
 export function WaterMenu({
   data,
@@ -25,16 +29,24 @@ export function WaterMenu({
   setData: Updater<ottoMaticLevel>;
 }) {
   const [selectedWaterBody, setSelectedWaterBody] = useAtom(SelectedWaterBody);
+  const [selectedWaterNub, setSelectedWaterNub] = useAtom(SelectedWaterNub);
   const globals = useAtomValue(Globals);
 
   if (data.Liqd === undefined) return;
 
   const waterBodyData =
-    selectedWaterBody !== undefined
+    selectedWaterBody !== null // Ensure selectedWaterBody is not null
       ? data.Liqd[1000].obj[selectedWaterBody]
       : null;
 
-  const waterBodyValues = getWaterBodyTypes(globals) //Object.keys(WaterBodyType)
+  const selectedNubData =
+    waterBodyData &&
+    selectedWaterNub !== null &&
+    selectedWaterNub < waterBodyData.numNubs
+      ? waterBodyData.nubs[selectedWaterNub]
+      : null;
+
+  const waterBodyValues = getWaterBodyTypes(globals)
     .map((key) => parseInt(key))
     .filter((key) => isNaN(key) === false);
 
@@ -87,7 +99,7 @@ export function WaterMenu({
               onValueChange={(e) => {
                 const newItemType = parseInt(e);
                 setData((data) => {
-                  if (selectedWaterBody === undefined) return;
+                  if (selectedWaterBody === null) return; // Add null check
                   data.Liqd[1000].obj[selectedWaterBody].type = newItemType;
                 });
               }}
@@ -108,11 +120,117 @@ export function WaterMenu({
               </SelectContent>
             </Select>
 
+            {/* Hotspot Adjustments */}
+            {waterBodyData && selectedWaterBody !== null && (
+              <>
+                <p>Adjust Hotspot Position</p>
+                <div className="grid grid-cols-[auto_1fr_auto_1fr] gap-2  items-center">
+                  <label
+                    htmlFor="hotspotX"
+                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                  >
+                    X
+                  </label>
+                  <Input
+                    id="hotspotX"
+                    type="number"
+                    value={waterBodyData.hotSpotX}
+                    onChange={(e) => {
+                      const newValue = parseInt(e.target.value);
+                      if (isNaN(newValue)) return;
+                      setData((draft) => {
+                        if (selectedWaterBody === null) return;
+                        draft.Liqd[1000].obj[selectedWaterBody].hotSpotX =
+                          newValue;
+                      });
+                    }}
+                    placeholder="X"
+                  />
+                  <label
+                    htmlFor="hotspotZ"
+                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                  >
+                    Z
+                  </label>
+                  <Input
+                    id="hotspotZ"
+                    type="number"
+                    value={waterBodyData.hotSpotZ}
+                    onChange={(e) => {
+                      const newValue = parseInt(e.target.value);
+                      if (isNaN(newValue)) return;
+                      setData((draft) => {
+                        if (selectedWaterBody === null) return;
+                        draft.Liqd[1000].obj[selectedWaterBody].hotSpotZ =
+                          newValue;
+                      });
+                    }}
+                    placeholder="Z"
+                  />
+                </div>
+              </>
+            )}
+            {selectedNubData &&
+              selectedWaterBody !== null &&
+              selectedWaterNub !== null && (
+                <>
+                  <p>Adjust Selected Nub Position ({selectedWaterNub})</p>
+                  <div className="grid grid-cols-[auto_1fr_auto_1fr] gap-2  items-center">
+                    <p className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                      X
+                    </p>
+                    <Input
+                      id="nubX"
+                      type="number"
+                      value={selectedNubData[0]}
+                      onChange={(e) => {
+                        const newValue = parseInt(e.target.value);
+                        if (isNaN(newValue)) return;
+                        setData((draft) => {
+                          if (
+                            selectedWaterBody === null ||
+                            selectedWaterNub === null
+                          )
+                            return;
+                          draft.Liqd[1000].obj[selectedWaterBody].nubs[
+                            selectedWaterNub
+                          ][0] = newValue;
+                        });
+                      }}
+                      placeholder="X"
+                    />
+                    <p className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                      Z
+                    </p>
+                    <Input
+                      id="nubZ"
+                      type="number"
+                      value={selectedNubData[1]}
+                      onChange={(e) => {
+                        const newValue = parseInt(e.target.value);
+                        if (isNaN(newValue)) return;
+                        setData((draft) => {
+                          if (
+                            selectedWaterBody === null ||
+                            selectedWaterNub === null
+                          )
+                            return;
+                          draft.Liqd[1000].obj[selectedWaterBody].nubs[
+                            selectedWaterNub
+                          ][1] = newValue;
+                        });
+                      }}
+                      placeholder="Y"
+                    />
+                  </div>
+                </>
+              )}
+
             <div className="grid grid-cols-3 gap-2">
               <Button
                 onClick={() =>
                   setData((data) => {
-                    if (selectedWaterBody === undefined) return;
+                    if (selectedWaterBody === null) return; // Add null check
                     if (
                       data.Liqd[1000].obj[selectedWaterBody].numNubs ===
                       globals.LIQD_NUBS
@@ -134,12 +252,13 @@ export function WaterMenu({
               </Button>
               <Button
                 disabled={
-                  selectedWaterBody === undefined ||
-                  data.Liqd[1000].obj[selectedWaterBody].numNubs <= 3
+                  selectedWaterBody === null || // Add null check
+                  (selectedWaterBody !== null &&
+                    data.Liqd[1000].obj[selectedWaterBody].numNubs <= 3) // Add null check
                 }
                 onClick={() => {
                   setData((data) => {
-                    if (selectedWaterBody === undefined) return;
+                    if (selectedWaterBody === null) return; // Add null check
                     if (data.Liqd[1000].obj[selectedWaterBody].numNubs <= 3)
                       return;
                     data.Liqd[1000].obj[selectedWaterBody].numNubs--;
@@ -149,13 +268,14 @@ export function WaterMenu({
                 Delete Nub
               </Button>
               <DeleteButton
-                disabled={selectedWaterBody === undefined}
+                disabled={selectedWaterBody === null} // Add null check
                 onClick={() => {
-                  if (selectedWaterBody === undefined) return;
+                  if (selectedWaterBody === null) return; // Add null check
                   setData((data) => {
                     data.Liqd[1000].obj.splice(selectedWaterBody, 1);
                   });
-                  setSelectedWaterBody(undefined);
+                  setSelectedWaterBody(null); // Change undefined to null
+                  setSelectedWaterNub(null);
                 }}
               >
                 Delete Water Body
