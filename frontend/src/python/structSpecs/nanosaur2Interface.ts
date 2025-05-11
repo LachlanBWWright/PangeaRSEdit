@@ -1,5 +1,3 @@
-export type nanosaur2Level = {};
-
 export type nanosaur2Header = {
   version: number;
   numItems: number;

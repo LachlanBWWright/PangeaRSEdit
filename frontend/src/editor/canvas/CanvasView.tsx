@@ -87,7 +87,7 @@ export function KonvaView({
         setSelectedFence(undefined);
         setSelectedItem(undefined);
         setSelectedSpline(undefined);
-        setSelectedWaterBody(undefined);
+        setSelectedWaterBody(null);
       }}
       onWheel={(e) => {
         /*from https://stackoverflow.com/questions/52054848/how-to-react-konva-zooming-on-scroll */

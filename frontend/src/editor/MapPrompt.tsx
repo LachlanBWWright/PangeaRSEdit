@@ -125,7 +125,7 @@ export function MapPrompt({ pyodideWorker }: { pyodideWorker: Worker }) {
     const loadRes = await loadResPromise;
 
     const mapBlob = new Blob([loadRes], { type: ".ter.rsrc" });
-    let mapUrl = URL.createObjectURL(mapBlob);
+    const mapUrl = URL.createObjectURL(mapBlob);
 
     let downloadLink = document.createElement("a");
     downloadLink.href = mapUrl;

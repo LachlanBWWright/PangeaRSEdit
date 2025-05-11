@@ -838,7 +838,7 @@ async function loadMapImages(dataView: DataView, globals: GlobalsInterface) {
 
       let supertileId = 0;
       while (offset < dataView.byteLength) {
-        let size = dataView.getInt32(offset);
+        const size = dataView.getInt32(offset);
 
         offset += 4;
         const buffer = new DataView(

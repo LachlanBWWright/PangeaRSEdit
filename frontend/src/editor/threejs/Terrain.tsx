@@ -63,7 +63,7 @@ export function TerrainGeometry({
   const { heightImg } = useUnscaledHeightImg(data);
   const combinedImg = useMemo(
     () => combineMapImages(mapImages, data, globals),
-    [mapImages, data],
+    [mapImages, data, globals],
   );
 
   const testCanvas = document.createElement("canvas");

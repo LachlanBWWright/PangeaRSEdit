@@ -110,7 +110,7 @@ function AddNewSplineMenu({ setData }: { setData: Updater<ottoMaticLevel> }) {
               numNubs: 3,
               numPoints: 200, //IDK
             });
-            let splinePos = SPLINE_KEY_BASE + data.Spln[1000].obj.length - 1;
+            const splinePos = SPLINE_KEY_BASE + data.Spln[1000].obj.length - 1;
 
             data.SpIt[splinePos] = { obj: [] };
             //[x1, z1, y2, z2, y3, z3, y4, z4] and so on

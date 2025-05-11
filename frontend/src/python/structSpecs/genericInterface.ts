@@ -171,8 +171,6 @@ export type ottoHeader = {
   numCheckpoints: number;
 };
 
-export type ottoItcr = {};
-
 export type ottoItem = {
   /* u32 bit  */
   x: number;

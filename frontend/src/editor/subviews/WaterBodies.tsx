@@ -28,7 +28,7 @@ export function WaterBodies({
           />
         );
       })}
-      {selectedWaterBody !== undefined && (
+      {selectedWaterBody !== null && (
         <WaterBody
           data={data}
           setData={setData}

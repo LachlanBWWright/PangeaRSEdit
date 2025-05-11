@@ -178,7 +178,7 @@ export function TopologyTiles({
           const centerX = Math.round(pos.x);
           const centerY = Math.round(pos.y);
           const radius = (topologyBrushRadius - 1) * globals.TILE_SIZE;
-          let pixelList: PixelType[] = [];
+          const pixelList: PixelType[] = [];
 
           if (currentTopologyBrushMode === TopologyBrushMode.CIRCLE_BRUSH) {
             // Create a circular brush pattern

@@ -236,7 +236,7 @@ export function WaterMenu({
                       globals.LIQD_NUBS
                     )
                       return;
-                    let prevNub =
+                    const prevNub =
                       data.Liqd[1000].obj[selectedWaterBody].nubs[
                         data.Liqd[1000].obj[selectedWaterBody].numNubs - 1
                       ];
