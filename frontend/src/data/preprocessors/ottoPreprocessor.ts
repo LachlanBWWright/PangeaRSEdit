@@ -36,9 +36,9 @@ export function ottoPreprocessor(
       }
     });
 
-    let anyData: any = data;
+    const anyData: any = data;
     if (data.Liqd !== undefined)
-      for (let waterItem of anyData.Liqd[1000].obj) {
+      for (const waterItem of anyData.Liqd[1000].obj) {
         for (let i = 0; i < globals.LIQD_NUBS; i++) {
           waterItem[`x_${i}`] = waterItem.nubs[i][0];
           waterItem[`y_${i}`] = waterItem.nubs[i][1];

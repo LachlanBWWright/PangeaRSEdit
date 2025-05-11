@@ -52,15 +52,15 @@ export function bakeSpline(nubs: ottoSplinePoint[], pointsPerSpan: number[]) {
   for (let i = 0; i < maxPoints; i++) points[i] = { x: 0, z: 0 };
 
   // DO MAGICAL CUBIC SPLINE CALCULATIONS ON CONTROL PTS
-  let h0 = space[0];
-  let h1 = space[1];
-  let h2 = space[2];
-  let h3 = space[3];
+  const h0 = space[0];
+  const h1 = space[1];
+  const h2 = space[2];
+  const h3 = space[3];
 
-  let a = space[4];
-  let b = space[5];
-  let c = space[6];
-  let d = space[7];
+  const a = space[4];
+  const b = space[5];
+  const c = space[6];
+  const d = space[7];
 
   // COPY CONTROL POINTS INTO ARRAY
   for (let i = 0; i < numNubs; i++) d[i] = nubs[i];
@@ -131,7 +131,7 @@ export function bakeSpline(nubs: ottoSplinePoint[], pointsPerSpan: number[]) {
 
     for (let spanPoint = 0; spanPoint < subdivisions; spanPoint++) {
       //GAME_ASSERT(numPoints < maxPoints);										// see if overflow
-      let t = spanPoint / subdivisions;
+      const t = spanPoint / subdivisions;
       points[numPoints].x = ((a[i].x * t + b[i].x) * t + c[i].x) * t + d[i].x; // save point
       points[numPoints].z = ((a[i].z * t + b[i].z) * t + c[i].z) * t + d[i].z;
       numPoints++;

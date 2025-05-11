@@ -1,5 +1,3 @@
-export type bugdom2Level = {};
-
 export type bugdom2Header = {
   version: number;
   numItems: number;

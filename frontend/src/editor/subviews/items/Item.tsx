@@ -25,15 +25,12 @@ export const Item = memo(function Item({
   const [hovering, setHovering] = useState(false);
   const globals = useAtomValue(Globals);
 
-  if (item === null || item === undefined) return null;
-
   const handleMouseOver = useCallback(() => setHovering(true), []);
   const handleMouseLeave = useCallback(() => setHovering(false), []);
   const handleMouseDown = useCallback(
     () => setSelectedItem(itemIdx),
     [itemIdx, setSelectedItem],
   );
-
   const handleDragEnd = useCallback(
     (e: Konva.KonvaEventObject<DragEvent>) => {
       setData((data) => {
@@ -47,6 +44,7 @@ export const Item = memo(function Item({
     },
     [itemIdx, setData],
   );
+  if (item === null || item === undefined) return null;
 
   const itemX = item.x - ITEM_BOX_OFFSET;
   const itemZ = item.z - ITEM_BOX_OFFSET;

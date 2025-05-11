@@ -41,6 +41,9 @@ export const Spline = memo(
     splineIdx: number;
   }) => {
     const selectedSpline = useAtomValue(SelectedSpline);
+    const [initialDragState, setInitialDragState] = useState<
+      { x: number; z: number }[] | null
+    >(null);
 
     const nubs = data.SpNb[SPLINE_KEY_BASE + splineIdx].obj;
     const items = data.SpIt[SPLINE_KEY_BASE + splineIdx].obj;
@@ -57,6 +60,35 @@ export const Spline = memo(
         <Line
           points={points}
           stroke={selectedSpline === splineIdx ? "red" : "blue"}
+          strokeWidth={selectedSpline === splineIdx ? 5 : 2}
+          draggable
+          onDragStart={() => {
+            // Store the initial positions of the nubs when dragging starts
+            setInitialDragState(
+              data.SpNb[SPLINE_KEY_BASE + splineIdx].obj.map((nub) => ({
+                x: nub.x,
+                z: nub.z,
+              })),
+            );
+          }}
+          onDragEnd={(e) => {
+            if (!initialDragState) return;
+
+            const dragDx = e.target.x();
+            const dragDz = e.target.y();
+
+            setData((draft) => {
+              const currentNubs = draft.SpNb[SPLINE_KEY_BASE + splineIdx].obj;
+              for (let i = 0; i < currentNubs.length; i++) {
+                currentNubs[i].x = initialDragState[i].x + dragDx;
+                currentNubs[i].z = initialDragState[i].z + dragDz;
+              }
+            });
+            updateSplinePoints(splineIdx, setData);
+            e.target.x(0); // Reset line position after dragging nubs
+            e.target.y(0); // Reset line position after dragging nubs
+            setInitialDragState(null); // Clear initial drag state
+          }}
         />
         {nubs.map((nub, nubIdx) => {
           if (nubIdx === 0) return;

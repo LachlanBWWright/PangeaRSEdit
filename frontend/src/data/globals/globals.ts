@@ -34,6 +34,7 @@ export interface GlobalsInterface {
   STRUCT_SPECS: string[];
   SUPERTILE_TEXMAP_SIZE: number; //Dimensions of each supertile texture - SUPERTILE_TEXMAP_SIZE in src code
   TILES_PER_SUPERTILE: number; //SUPERTILE_SIZE in src code
+  TILE_INGAME_SIZE: number; //How many units each tile is - TERRAIN_POLYGON_SIZE in src code
   TILE_SIZE: number; //How many units each tile is - OREOMAP_TILE_SIZE in src code
   EMPTY_TILE_IDX: number; //The number that indicates that a tile is blank
 
@@ -52,6 +53,7 @@ export const OttoGlobals: GlobalsInterface = {
   SUPERTILE_TEXMAP_SIZE: 128, //Dimensions of each supertile texture
   TILES_PER_SUPERTILE: 8, //How many tiles are in a supertile
   EMPTY_TILE_IDX: 0,
+  TILE_INGAME_SIZE: 225.0,
   TILE_SIZE: 16, //How many units each tile is
   LIQD_NUBS: 100,
 };
@@ -66,6 +68,7 @@ export const BugdomGlobals: GlobalsInterface = {
   SUPERTILE_TEXMAP_SIZE: 32, //Dimensions of each supertile texture (Note; Bugdom has per-tile texmaps - supertiles are made by combining 5x5 texmaps)
   TILES_PER_SUPERTILE: 5, //How many tiles are in a supertile
   EMPTY_TILE_IDX: 0, //TODO: Not checked
+  TILE_INGAME_SIZE: 225.0,
   TILE_SIZE: 32, //How many units each tile is
   LIQD_NUBS: 100,
 };
@@ -79,6 +82,7 @@ export const Bugdom2Globals: GlobalsInterface = {
   SUPERTILE_TEXMAP_SIZE: 128, //Dimensions of each supertile texture
   TILES_PER_SUPERTILE: 8, //How many tiles are in a supertile
   EMPTY_TILE_IDX: -1,
+  TILE_INGAME_SIZE: 225.0,
   TILE_SIZE: 16, //How many units each tile is
   LIQD_NUBS: 100,
 };
@@ -93,6 +97,7 @@ export const NanosaurGlobals: GlobalsInterface = {
   SUPERTILE_TEXMAP_SIZE: 32, //Dimensions of each supertile texture
   TILES_PER_SUPERTILE: 5, //How many tiles are in a supertile
   EMPTY_TILE_IDX: 0, //TODO: Not checked
+  TILE_INGAME_SIZE: 225.0,
   TILE_SIZE: 32, //How many units each tile is //TODO: Check its not 140/32
   LIQD_NUBS: 100, //Not applicable to Nanosaur - Water is just another item
 };
@@ -107,6 +112,7 @@ export const Nanosaur2Globals: GlobalsInterface = {
   SUPERTILE_TEXMAP_SIZE: 256, //Dimensions of each supertile texture
   TILES_PER_SUPERTILE: 8, //How many tiles are in a supertile
   EMPTY_TILE_IDX: -1, //TODO: Not checked
+  TILE_INGAME_SIZE: 225.0,
   TILE_SIZE: 16, //How many units each tile is
   LIQD_NUBS: 100,
 };
@@ -121,6 +127,7 @@ export const CroMagGlobals: GlobalsInterface = {
   SUPERTILE_TEXMAP_SIZE: 128, //Dimensions of each supertile texture
   TILES_PER_SUPERTILE: 8, //How many tiles are in a supertile
   EMPTY_TILE_IDX: 0, //TODO: Not checked
+  TILE_INGAME_SIZE: 225.0,
   TILE_SIZE: 16, //How many units each tile is
   LIQD_NUBS: 100,
 };
@@ -135,6 +142,7 @@ export const BillyFrontierGlobals: GlobalsInterface = {
   SUPERTILE_TEXMAP_SIZE: 256, //Dimensions of each supertile texture
   TILES_PER_SUPERTILE: 8, //How many tiles are in a supertile
   EMPTY_TILE_IDX: -1, //TODO: Not checked
+  TILE_INGAME_SIZE: 225.0,
   TILE_SIZE: 32, //How many units each tile is
   LIQD_NUBS: 100,
 };

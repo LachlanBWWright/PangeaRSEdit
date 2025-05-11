@@ -8,8 +8,8 @@ export async function save_to_json<T>(
   exclude_types: string[],
 ): Promise<T> {
   //const reader = new FileReader();
-  //@ts-ignore
-  self.resBuffer = bytes; //TODO: Find better solution @ts-ignore
+  //@ts-expect-error Dodgy data transfer
+  self.resBuffer = bytes; //TODO: Find better solution @ts-expect-error
   await pyodide.runPythonAsync(`
         from js import resBuffer
         buffer = resBuffer.to_py()
@@ -36,13 +36,12 @@ export async function load_bytes_from_json<T>(
   console.log(json_blob);
   console.log("Loading bytes from json");
 
-  //@ts-ignore
   const byteBuffer = new ArrayBuffer();
-  //@ts-ignore
-  self.byteBuffer = byteBuffer; //TODO: Find better solution @ts-ignore
+  //@ts-expect-error Dodgy data transfer
+  self.byteBuffer = byteBuffer; //TODO: Find better solution @ts-expect-error
   const jsonBuffer = json_blob;
-  //@ts-ignore
-  self.jsonBuffer = jsonBuffer; //TODO: Find better solution @ts-ignore
+  //@ts-expect-error Dodgy data transfer
+  self.jsonBuffer = jsonBuffer; //TODO: Find better solution @ts-expect-error
   await pyodide.runPythonAsync(`
         from js import jsonBuffer
         json_buffer = jsonBuffer.to_py()

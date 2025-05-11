@@ -18,6 +18,9 @@ import {
   SelectItem,
   SelectTrigger,
 } from "@/components/ui/select";
+import { CanvasView, CanvasViewMode } from "@/data/canvasView/canvasViewAtoms";
+import { useEffect } from "react";
+import { Switch } from "@/components/ui/switch";
 
 export function TilesMenu() {
   const [tileView, setTileView] = useAtom(TileViewMode);
@@ -26,7 +29,14 @@ export function TilesMenu() {
   const [brushRadius, setBrushRadius] = useAtom(TopologyBrushRadius);
   const [value, setValue] = useAtom(TopologyValue);
   const [toplogyOpacity, setTopologyOpacity] = useAtom(TopologyOpacity);
-  //data.YCrd[1000].obj[0]
+  const [canvasViewMode, setCanvasViewMode] = useAtom(CanvasViewMode);
+
+  useEffect(() => {
+    if (tileView !== TileViews.Topology) {
+      setCanvasViewMode(CanvasView.TWO_D);
+    }
+  }, [tileView]);
+
   return (
     <div className="flex flex-col gap-2">
       <div className="grid grid-cols-4 gap-2">
@@ -87,9 +97,10 @@ export function TilesMenu() {
             }}
           >
             <SelectTrigger>
-              {valueMode === TopologyValueMode.SET_VALUE
-                ? "Set Value"
-                : "Delta Value"}
+              {valueMode === TopologyValueMode.SET_VALUE && "Set Value"}
+              {valueMode === TopologyValueMode.DELTA_VALUE && "Delta Value"}
+              {valueMode === TopologyValueMode.DELTA_WITH_DROPOFF &&
+                "Delta with Dropoff"}
             </SelectTrigger>
 
             <SelectContent>
@@ -98,6 +109,11 @@ export function TilesMenu() {
               </SelectItem>
               <SelectItem value={TopologyValueMode.DELTA_VALUE.toString()}>
                 Delta Value
+              </SelectItem>
+              <SelectItem
+                value={TopologyValueMode.DELTA_WITH_DROPOFF.toString()}
+              >
+                Delta with Dropoff
               </SelectItem>
             </SelectContent>
           </Select>
@@ -122,6 +138,15 @@ export function TilesMenu() {
               setTopologyOpacity(parseFloat(e.target.value) || 1)
             }
           />
+          <div className="flex flex-row justify-center gap-2 items-center col-span-2">
+            <p>Show 3D Map (View Only)</p>
+            <Switch
+              checked={canvasViewMode === CanvasView.THREE_D}
+              onCheckedChange={(e) => {
+                setCanvasViewMode(e ? CanvasView.THREE_D : CanvasView.TWO_D);
+              }}
+            />
+          </div>
         </div>
       )}
     </div>
