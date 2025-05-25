@@ -120,7 +120,7 @@ export function EditorView({
         {view === View.water && <WaterMenu data={data} setData={setData} />}
         {view === View.items && <ItemMenu data={data} setData={setData} />}
         {view === View.splines && <SplineMenu data={data} setData={setData} />}
-        {view === View.tiles && <TilesMenu />}
+        {view === View.tiles && <TilesMenu data={data} setData={setData} />}
         {view === View.supertiles && (
           <SupertileMenu
             data={data}
