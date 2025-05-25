@@ -6,7 +6,6 @@ import { Layer, Image } from "react-konva";
 import { Updater } from "use-immer";
 import {
   CurrentTopologyBrushMode,
-  //CurrentTopologyBrushMode,
   CurrentTopologyValueMode,
   TileViewMode,
   TileViews,
@@ -15,10 +14,13 @@ import {
   TopologyOpacity,
   TopologyValue,
   TopologyValueMode,
+  TileEditingEnabled,
+  TileBrushType,
 } from "../../data/tiles/tileAtoms";
 import { useAtomValue } from "jotai";
 import { Globals } from "../../data/globals/globals";
 import { useMemo } from "react";
+import { handleTileClick } from "../../data/tiles/tileHandlers";
 
 /* 
 
@@ -43,8 +45,7 @@ export function Tiles({
 
   const tileGrid = useMemo(
     () => data.Layr[1000].obj.map((atrbIdx) => data.Atrb[1000].obj[atrbIdx]),
-
-    [],
+    [data.Layr, data.Atrb],
   );
 
   if (tileViewMode === TileViews.Topology)
@@ -57,13 +58,17 @@ export function Tiles({
     );
 
   if (tileViewMode === TileViews.Flags)
-    return <EmptyTiles data={data} tileGrid={tileGrid} />;
+    return <EmptyTiles data={data} setData={setData} tileGrid={tileGrid} />;
   if (tileViewMode === TileViews.ElectricFloor0)
-    return <ElectricFloor0Tiles data={data} tileGrid={tileGrid} />;
+    return (
+      <ElectricFloor0Tiles data={data} setData={setData} tileGrid={tileGrid} />
+    );
 
   //ElectricFloor1
 
-  return <ElectricFloor1Tiles data={data} tileGrid={tileGrid} />;
+  return (
+    <ElectricFloor1Tiles data={data} setData={setData} tileGrid={tileGrid} />
+  );
 }
 
 type PixelType = { x: number; y: number; value: number; distance: number };
@@ -214,7 +219,7 @@ export function TopologyTiles({
             const size = radius * 2;
 
             // Calculate distance for square brush (normalized from 0 to 1)
-            // Using Manhattan distance for square pattern
+            // Using Manhattan distance for square pattern feel
             for (let i = 0; i <= size; i += globals.TILE_SIZE) {
               for (let j = 0; j <= size; j += globals.TILE_SIZE) {
                 const tileX = baseX + i;
@@ -244,12 +249,18 @@ export function TopologyTiles({
 }
 export function EmptyTiles({
   data,
+  setData,
   tileGrid,
 }: {
   data: ottoMaticLevel;
+  setData: Updater<ottoMaticLevel>;
   tileGrid: ottoTileAttribute[];
 }) {
   const globals = useAtomValue(Globals);
+  // Use Jotai atoms for tile editing state
+  const tileEditingEnabled = useAtomValue(TileEditingEnabled);
+  const brushType = useAtomValue(TileBrushType);
+  const currentTileView = useAtomValue(TileViewMode);
 
   const header = useMemo(() => data.Hedr[1000].obj, [data.Hedr]);
 
@@ -259,12 +270,9 @@ export function EmptyTiles({
     return [0, 0, 0, 0];
   };
 
-  const coordColours = useMemo(
-    () => {
-      return tileGrid.flatMap((tile) => flagToColour(tile.flags));
-    }, //data.YCrd[1000].obj.flatMap(elevationToRGBA),
-    [data.Atrb[1000].obj, globals, header],
-  );
+  const coordColours = useMemo(() => {
+    return tileGrid.flatMap((tile) => flagToColour(tile.flags));
+  }, [tileGrid]);
 
   const imgCanvas = useMemo(() => {
     const imgCanvas = document.createElement("canvas");
@@ -283,7 +291,26 @@ export function EmptyTiles({
       0,
     );
     return imgCanvas;
-  }, [header, data.YCrd[1000].obj]);
+  }, [header.mapWidth, header.mapHeight, coordColours]);
+
+  const handleTileClickEvent = (e: any) => {
+    if (!tileEditingEnabled) return;
+
+    const pos = e.target.getStage()?.getRelativePointerPosition();
+    if (!pos) return;
+
+    // Call our handler function
+    handleTileClick(
+      pos.x,
+      pos.y,
+      data,
+      setData,
+      currentTileView,
+      tileEditingEnabled,
+      brushType,
+      globals.TILE_SIZE,
+    );
+  };
 
   return (
     <Layer imageSmoothingEnabled={false}>
@@ -293,18 +320,25 @@ export function EmptyTiles({
         width={header.mapWidth * globals.TILE_SIZE}
         height={header.mapHeight * globals.TILE_SIZE}
         image={imgCanvas}
+        onClick={handleTileClickEvent}
       />
     </Layer>
   );
 }
 export function ElectricFloor0Tiles({
   data,
+  setData,
   tileGrid,
 }: {
   data: ottoMaticLevel;
+  setData: Updater<ottoMaticLevel>;
   tileGrid: ottoTileAttribute[];
 }) {
   const globals = useAtomValue(Globals);
+  // Use Jotai atoms for tile editing state
+  const tileEditingEnabled = useAtomValue(TileEditingEnabled);
+  const brushType = useAtomValue(TileBrushType);
+  const currentTileView = useAtomValue(TileViewMode);
 
   const header = useMemo(() => data.Hedr[1000].obj, [data.Hedr]);
 
@@ -314,12 +348,9 @@ export function ElectricFloor0Tiles({
     return [0, 0, 0, 0];
   };
 
-  const coordColours = useMemo(
-    () => {
-      return tileGrid.flatMap((tile) => flagToColour(tile.flags));
-    }, //data.YCrd[1000].obj.flatMap(elevationToRGBA),
-    [data.Atrb[1000].obj, globals, header],
-  );
+  const coordColours = useMemo(() => {
+    return tileGrid.flatMap((tile) => flagToColour(tile.flags));
+  }, [tileGrid]);
 
   const imgCanvas = useMemo(() => {
     const imgCanvas = document.createElement("canvas");
@@ -338,7 +369,26 @@ export function ElectricFloor0Tiles({
       0,
     );
     return imgCanvas;
-  }, [header, data.YCrd[1000].obj]);
+  }, [header.mapWidth, header.mapHeight, coordColours]);
+
+  const handleTileClickEvent = (e: any) => {
+    if (!tileEditingEnabled) return;
+
+    const pos = e.target.getStage()?.getRelativePointerPosition();
+    if (!pos) return;
+
+    // Call our handler function
+    handleTileClick(
+      pos.x,
+      pos.y,
+      data,
+      setData,
+      currentTileView,
+      tileEditingEnabled,
+      brushType,
+      globals.TILE_SIZE,
+    );
+  };
 
   return (
     <Layer imageSmoothingEnabled={false}>
@@ -348,18 +398,25 @@ export function ElectricFloor0Tiles({
         width={header.mapWidth * globals.TILE_SIZE}
         height={header.mapHeight * globals.TILE_SIZE}
         image={imgCanvas}
+        onClick={handleTileClickEvent}
       />
     </Layer>
   );
 }
 export function ElectricFloor1Tiles({
   data,
+  setData,
   tileGrid,
 }: {
   data: ottoMaticLevel;
+  setData: Updater<ottoMaticLevel>;
   tileGrid: ottoTileAttribute[];
 }) {
   const globals = useAtomValue(Globals);
+  // Use Jotai atoms for tile editing state
+  const tileEditingEnabled = useAtomValue(TileEditingEnabled);
+  const brushType = useAtomValue(TileBrushType);
+  const currentTileView = useAtomValue(TileViewMode);
 
   const header = useMemo(() => data.Hedr[1000].obj, [data.Hedr]);
 
@@ -369,12 +426,9 @@ export function ElectricFloor1Tiles({
     return [0, 0, 0, 0];
   };
 
-  const coordColours = useMemo(
-    () => {
-      return tileGrid.flatMap((tile) => flagToColour(tile.flags));
-    }, //data.YCrd[1000].obj.flatMap(elevationToRGBA),
-    [data.Atrb[1000].obj, globals, header],
-  );
+  const coordColours = useMemo(() => {
+    return tileGrid.flatMap((tile) => flagToColour(tile.flags));
+  }, [tileGrid]);
 
   const imgCanvas = useMemo(() => {
     const imgCanvas = document.createElement("canvas");
@@ -393,7 +447,26 @@ export function ElectricFloor1Tiles({
       0,
     );
     return imgCanvas;
-  }, [header, data.YCrd[1000].obj]);
+  }, [header.mapWidth, header.mapHeight, coordColours]);
+
+  const handleTileClickEvent = (e: any) => {
+    if (!tileEditingEnabled) return;
+
+    const pos = e.target.getStage()?.getRelativePointerPosition();
+    if (!pos) return;
+
+    // Call our handler function
+    handleTileClick(
+      pos.x,
+      pos.y,
+      data,
+      setData,
+      currentTileView,
+      tileEditingEnabled,
+      brushType,
+      globals.TILE_SIZE,
+    );
+  };
 
   return (
     <Layer imageSmoothingEnabled={false}>
@@ -403,6 +476,7 @@ export function ElectricFloor1Tiles({
         width={header.mapWidth * globals.TILE_SIZE}
         height={header.mapHeight * globals.TILE_SIZE}
         image={imgCanvas}
+        onClick={handleTileClickEvent}
       />
     </Layer>
   );

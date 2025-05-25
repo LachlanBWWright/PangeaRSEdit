@@ -32,3 +32,12 @@ export const TopologyBrushRadius = atom<number>(1);
 export const TopologyValue = atom<number>(0);
 
 export const TopologyOpacity = atom<number>(1);
+
+// Tile editing atoms
+export const TileEditingEnabled = atom<boolean>(false);
+export const TileBrushType = atom<"add" | "remove">("add");
+
+// Constants for the tile attributes flags
+export const TILE_ATTRIB_BLANK = 1;
+export const TILE_ATTRIB_ELECTROCUTE_AREA0 = 1 << 1;
+export const TILE_ATTRIB_ELECTROCUTE_AREA1 = 1 << 2;
