@@ -4,15 +4,40 @@ import { SPLINE_KEY_BASE } from "../../editor/subviews/splines/Spline";
 import { GlobalsInterface } from "../globals/globals";
 
 export function preprocessJson(json: any, globals: GlobalsInterface) {
-  if (!json.Liqd) return;
+  console.log(json);
+  // Ensure Layr points to unique Atrb values, and Atrb values match underlying values
+  if (json.Layr && json.Atrb && json.Layr[1000] && json.Atrb[1000]) {
+    console.log(json);
+    const layrArr = json.Layr[1000].obj;
+    const atrbArr = json.Atrb[1000].obj;
 
-  for (const waterItem of json.Liqd[1000].obj) {
-    const nubs: [number, number][] = [];
+    console.log("layrArr", layrArr);
+    console.log("atrbArr", atrbArr);
+    const newAtrbArr = [];
+    const newLayrArr = [];
 
-    for (let i = 0; i < globals.LIQD_NUBS; i++) {
-      nubs.push([waterItem[`x_${i}`], waterItem[`y_${i}`]]);
+    for (let i = 0; i < layrArr.length; i++) {
+      newLayrArr.push(i);
+      newAtrbArr.push(atrbArr[layrArr[i]]);
     }
-    waterItem.nubs = nubs;
+
+    console.log("newAtrbArr", newAtrbArr);
+    console.log("newLayrArr", newLayrArr);
+    json.Atrb[1000].obj = newAtrbArr;
+    json.Layr[1000].obj = newLayrArr;
+  } else {
+    console.warn("Layr or Atrb not found in JSON");
+  }
+
+  if (json.Liqd) {
+    for (const waterItem of json.Liqd[1000].obj) {
+      const nubs: [number, number][] = [];
+
+      for (let i = 0; i < globals.LIQD_NUBS; i++) {
+        nubs.push([waterItem[`x_${i}`], waterItem[`y_${i}`]]);
+      }
+      waterItem.nubs = nubs;
+    }
   }
 }
 
@@ -92,6 +117,37 @@ export function ottoPreprocessor(
         waterBody.bBoxBottom = bottom;
       }
     }
+
+    // Create a map of unique values in data.Atrb[1000].obj
+    //TODO: This is disabled as it breaks tile property editing if you download and continue editing a map
+    /*     const atrbArr = data.Atrb?.[1000]?.obj;
+    if (Array.isArray(atrbArr)) {
+      const newAtrbArr = [];
+      const atrbValueToIndex = new Map();
+      let newIndex = 0;
+      for (let i = 0; i < atrbArr.length; i++) {
+        const value = atrbArr[i];
+        const stringifiedValue = JSON.stringify(value);
+        if (!atrbValueToIndex.has(stringifiedValue)) {
+          atrbValueToIndex.set(stringifiedValue, newIndex);
+          newAtrbArr.push(value);
+          newIndex++;
+        }
+      }
+
+      for (const layr of data.Layr[1000].obj) {
+        //console.log("layr", layr);
+        const newIdx = atrbValueToIndex.get(
+          JSON.stringify(data.Atrb[1000].obj[layr]),
+        );
+        if (newIdx === undefined) throw new Error("Invalid Atrb index");
+        // Update the Layr index to point to the new Atrb index
+        data.Layr[1000].obj[layr] = newIdx;
+      }
+      data.Atrb[1000].obj = newAtrbArr;
+    } */
+
+    //data.Atrb
 
     //TODO: Setting Order
 
