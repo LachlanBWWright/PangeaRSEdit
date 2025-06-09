@@ -9,6 +9,79 @@ import {
 } from "../../../python/structSpecs/ottoMaticInterface";
 import { FileUpload } from "../../../components/FileUpload";
 import { Globals } from "../../../data/globals/globals";
+import { Button, SmallButton } from "../../../components/Button";
+
+// Function to download a selected tile as an image
+const downloadSelectedTile = (
+  mapImages: HTMLCanvasElement[],
+  superTileId: number,
+  tileIndex: number,
+) => {
+  // Skip if it's an empty tile (ID 0)
+  if (superTileId === 0 || !mapImages[superTileId]) return;
+
+  const tileImage = mapImages[superTileId];
+
+  // Create download link
+  const link = document.createElement("a");
+  link.download = `tile_${tileIndex}.png`;
+  link.href = tileImage.toDataURL("image/png");
+  link.click();
+};
+
+// Function to download the entire map as an image
+const downloadMapImage = (
+  mapImages: HTMLCanvasElement[],
+  data: ottoMaticLevel,
+  globals: { SUPERTILE_TEXMAP_SIZE: number; TILES_PER_SUPERTILE: number },
+) => {
+  const hedr = data.Hedr[1000].obj;
+
+  // Create canvas to hold the complete map
+  const canvas = document.createElement("canvas");
+  canvas.width =
+    globals.SUPERTILE_TEXMAP_SIZE *
+    (hedr.mapWidth / globals.TILES_PER_SUPERTILE);
+  canvas.height =
+    globals.SUPERTILE_TEXMAP_SIZE *
+    (hedr.mapHeight / globals.TILES_PER_SUPERTILE);
+  const context = canvas.getContext("2d");
+
+  if (!context) return;
+  context.fillStyle = "black";
+  context.fillRect(0, 0, canvas.width, canvas.height);
+
+  // Place all supertiles onto the canvas
+  for (let i = 0; i < hedr.mapHeight / globals.TILES_PER_SUPERTILE; i++) {
+    for (let j = 0; j < hedr.mapWidth / globals.TILES_PER_SUPERTILE; j++) {
+      // Calculate the index in the STgd array
+      const tileIndex = i * (hedr.mapWidth / globals.TILES_PER_SUPERTILE) + j;
+
+      // Get supertile ID
+      const superTileId = data.STgd[1000].obj[tileIndex].superTileId;
+
+      // Skip empty tiles (ID 0)
+      if (superTileId === 0) continue;
+
+      // Get the image for this supertile
+      const tileImage = mapImages[superTileId];
+      if (!tileImage) continue;
+
+      // Draw the supertile at its position
+      context.drawImage(
+        tileImage,
+        j * globals.SUPERTILE_TEXMAP_SIZE,
+        i * globals.SUPERTILE_TEXMAP_SIZE,
+      );
+    }
+  }
+
+  // Create download link
+  const link = document.createElement("a");
+  link.download = "map_image.png";
+  link.href = canvas.toDataURL("image/png");
+  link.click();
+};
 
 export function SupertileMenu({
   data,
@@ -63,13 +136,25 @@ export function SupertileMenu({
             setMapImages(newMapImages);
           }}
         />
-        <Stage width={250} height={250} className="mx-auto">
+        <Stage width={120} height={120} className="mx-auto">
           <Layer>
             <ImageDisplay
               image={mapImages[data.STgd[1000].obj[selectedTile].superTileId]}
             />
           </Layer>
         </Stage>
+        <p>Download Selected Tile</p>
+        <SmallButton
+          onClick={() =>
+            downloadSelectedTile(
+              mapImages,
+              data.STgd[1000].obj[selectedTile].superTileId,
+              selectedTile,
+            )
+          }
+        >
+          Download
+        </SmallButton>
       </div>
       <div className="flex flex-col gap-2">
         <p>Upload Image For Whole Map</p>
@@ -158,6 +243,11 @@ export function SupertileMenu({
             });
           }}
         />
+        <div className="flex-1" />
+        <p>Download Image For Whole Map</p>
+        <SmallButton onClick={() => downloadMapImage(mapImages, data, globals)}>
+          Download
+        </SmallButton>
       </div>
       <div className="flex flex-col gap-2">
         <p>Supertiles Wide: {hedr.mapWidth / globals.TILES_PER_SUPERTILE}</p>

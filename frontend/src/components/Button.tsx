@@ -73,3 +73,31 @@ export function ZoomButton({
     </button>
   );
 }
+
+export function SmallButton({
+  selected,
+  children,
+  onClick,
+  disabled,
+}: {
+  selected?: boolean;
+  children?: React.ReactNode;
+  onClick?: () => void;
+  disabled?: boolean;
+}) {
+  return (
+    <button
+      disabled={disabled}
+      className={
+        disabled
+          ? "font-medium bg-blue-400 text-white rounded-md px-2 py-1 text-sm"
+          : selected
+          ? "font-medium bg-blue-600 text-white rounded-md px-2 py-1 text-sm"
+          : "font-medium bg-blue-500 hover:bg-blue-600 text-white rounded-md px-2 py-1 text-sm"
+      }
+      onClick={onClick}
+    >
+      {children}
+    </button>
+  );
+}
