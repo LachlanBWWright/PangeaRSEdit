@@ -261,6 +261,7 @@ export function EmptyTiles({
   const tileEditingEnabled = useAtomValue(TileEditingEnabled);
   const brushType = useAtomValue(TileBrushType);
   const currentTileView = useAtomValue(TileViewMode);
+  const topologyBrushRadius = useAtomValue(TopologyBrushRadius);
 
   const header = useMemo(() => data.Hedr[1000].obj, [data.Hedr]);
 
@@ -299,7 +300,7 @@ export function EmptyTiles({
     const pos = e.target.getStage()?.getRelativePointerPosition();
     if (!pos) return;
 
-    // Call our handler function
+    // Call our handler function with brush radius
     handleTileClick(
       pos.x,
       pos.y,
@@ -309,6 +310,7 @@ export function EmptyTiles({
       tileEditingEnabled,
       brushType,
       globals.TILE_SIZE,
+      topologyBrushRadius,
     );
   };
 
@@ -339,6 +341,7 @@ export function ElectricFloor0Tiles({
   const tileEditingEnabled = useAtomValue(TileEditingEnabled);
   const brushType = useAtomValue(TileBrushType);
   const currentTileView = useAtomValue(TileViewMode);
+  const topologyBrushRadius = useAtomValue(TopologyBrushRadius);
 
   const header = useMemo(() => data.Hedr[1000].obj, [data.Hedr]);
 
@@ -377,7 +380,7 @@ export function ElectricFloor0Tiles({
     const pos = e.target.getStage()?.getRelativePointerPosition();
     if (!pos) return;
 
-    // Call our handler function
+    // Call our handler function with brush radius
     handleTileClick(
       pos.x,
       pos.y,
@@ -387,6 +390,7 @@ export function ElectricFloor0Tiles({
       tileEditingEnabled,
       brushType,
       globals.TILE_SIZE,
+      topologyBrushRadius,
     );
   };
 
@@ -417,6 +421,7 @@ export function ElectricFloor1Tiles({
   const tileEditingEnabled = useAtomValue(TileEditingEnabled);
   const brushType = useAtomValue(TileBrushType);
   const currentTileView = useAtomValue(TileViewMode);
+  const topologyBrushRadius = useAtomValue(TopologyBrushRadius);
 
   const header = useMemo(() => data.Hedr[1000].obj, [data.Hedr]);
 
@@ -455,7 +460,7 @@ export function ElectricFloor1Tiles({
     const pos = e.target.getStage()?.getRelativePointerPosition();
     if (!pos) return;
 
-    // Call our handler function
+    // Call our handler function with brush radius
     handleTileClick(
       pos.x,
       pos.y,
@@ -465,6 +470,7 @@ export function ElectricFloor1Tiles({
       tileEditingEnabled,
       brushType,
       globals.TILE_SIZE,
+      topologyBrushRadius,
     );
   };
 

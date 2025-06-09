@@ -207,7 +207,7 @@ export function TilesMenu({
         tileView === TileViews.ElectricFloor0 ||
         tileView === TileViews.ElectricFloor1) && (
         <div className="grid grid-cols-[auto_1fr_auto_1fr] gap-2 items-center">
-          <div className="flex flex-row justify-center gap-2 items-center col-span-2">
+          <div className="flex flex-row justify-center gap-2 items-center col-span-4">
             <p>Enable Tile Editing</p>
             <Switch
               checked={tileEditingEnabled}
@@ -219,6 +219,12 @@ export function TilesMenu({
 
           {tileEditingEnabled && (
             <>
+              <p>Brush Radius</p>
+              <Input
+                type="number"
+                defaultValue={brushRadius}
+                onChange={(e) => setBrushRadius(parseInt(e.target.value) || 0)}
+              />
               <p>Brush Type</p>
               <Select
                 value={selectedTileBrushType}
