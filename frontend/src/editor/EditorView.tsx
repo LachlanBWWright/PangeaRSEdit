@@ -15,6 +15,7 @@ import { KonvaView } from "./canvas/CanvasView";
 import { ThreeView } from "./threejs/Three";
 import { useAtomValue } from "jotai";
 import { CanvasView, CanvasViewMode } from "@/data/canvasView/canvasViewAtoms";
+import { Separator } from "@/components/ui/separator";
 
 export enum View {
   fences,
@@ -115,6 +116,7 @@ export function EditorView({
           <ZoomButton onClick={zoomIn}>+</ZoomButton>
         </div>
       </div>
+      <Separator />
       <div>
         {view === View.fences && <FenceMenu data={data} setData={setData} />}
         {view === View.water && <WaterMenu data={data} setData={setData} />}
