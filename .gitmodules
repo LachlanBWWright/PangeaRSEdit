@@ -1,3 +1,24 @@
 [submodule "backend/rsrcdump"]
 	path = backend/rsrcdump
 	url = https://github.com/LachlanBWWright/rsrcdump.git
+[submodule "games/ottomatic"]
+	path = games/ottomatic
+	url = https://github.com/jorio/ottomatic.git
+[submodule "games/cromagrally"]
+	path = games/cromagrally
+	url = https://github.com/jorio/cromagrally.git
+[submodule "games/bugdom"]
+	path = games/bugdom
+	url = https://github.com/jorio/bugdom.git
+[submodule "games/bugdom2"]
+	path = games/bugdom2
+	url = https://github.com/jorio/bugdom2.git
+[submodule "games/nanosaur"]
+	path = games/nanosaur
+	url = https://github.com/jorio/nanosaur.git
+[submodule "games/nanosaur2"]
+	path = games/nanosaur2
+	url = https://github.com/jorio/nanosaur2.git
+[submodule "games/billyfrontier"]
+	path = games/billyfrontier
+	url = https://github.com/jorio/billyfrontier.git
