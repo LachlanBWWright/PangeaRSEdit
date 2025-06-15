@@ -1,3 +1,5 @@
+import { ItemParams } from "../items/itemParams";
+
 export enum SplineItemType {
   Human = 4, // 4: human
   BrainAlien = 7, // 7:  brain alien
@@ -48,6 +50,42 @@ export const splineItemTypeNames: Record<SplineItemType, string> = {
   [SplineItemType.SwingerBot]: "Swinger Bot",
   [SplineItemType.LavaPlatform]: "Lava Platform",
   [SplineItemType.RailGun]: "Rail Gun",
+};
+
+// Default parameter description for spline items that haven't been researched yet
+const defaultParams: ItemParams = {
+  flags: "Unknown",
+  p0: "Unknown",
+  p1: "Unknown",
+  p2: "Unknown",
+  p3: "Unknown",
+};
+
+// Parameter descriptions for each spline item type
+export const ottoSplineItemTypeParams: Record<SplineItemType, ItemParams> = {
+  [SplineItemType.Human]: defaultParams,
+  [SplineItemType.BrainAlien]: defaultParams,
+  [SplineItemType.Onion]: defaultParams,
+  [SplineItemType.Corn]: defaultParams,
+  [SplineItemType.Tomato]: defaultParams,
+  [SplineItemType.MagnetMonster]: defaultParams,
+  [SplineItemType.MovingPlatform]: defaultParams,
+  [SplineItemType.Flamester]: defaultParams,
+  [SplineItemType.GiantLizard]: defaultParams,
+  [SplineItemType.Mantis]: defaultParams,
+  [SplineItemType.Mutant]: defaultParams,
+  [SplineItemType.MutantRobot]: defaultParams,
+  [SplineItemType.HumanScientist]: defaultParams,
+  [SplineItemType.Clown]: defaultParams,
+  [SplineItemType.ClownFish]: defaultParams,
+  [SplineItemType.StrongMan]: defaultParams,
+  [SplineItemType.JawsBot]: defaultParams,
+  [SplineItemType.IceCube]: defaultParams,
+  [SplineItemType.HammerBot]: defaultParams,
+  [SplineItemType.DrillBot]: defaultParams,
+  [SplineItemType.SwingerBot]: defaultParams,
+  [SplineItemType.LavaPlatform]: defaultParams,
+  [SplineItemType.RailGun]: defaultParams,
 };
 
 /* 

@@ -1,3 +1,5 @@
+import { ItemParams } from "../items/itemParams";
+
 export enum SplineItemType {
   NilMyStartCoords, // My Start Coords
   NilXxxxx, // 1: xxxxx
@@ -112,4 +114,72 @@ export const splineItemTypeNames: Record<SplineItemType, string> = {
   [SplineItemType.NilRollingBoulder]: "Rolling Boulder",
   [SplineItemType.Enemy_Roach]: "ENEMY: ROACH",
   [SplineItemType.Enemy_Skippy]: "ENEMY: SKIPPY",
+};
+
+// Default parameter description for spline items that haven't been researched yet
+const defaultParams: ItemParams = {
+  flags: "Unknown",
+  p0: "Unknown",
+  p1: "Unknown",
+  p2: "Unknown",
+  p3: "Unknown",
+};
+
+// Parameter descriptions for each spline item type
+export const bugdomSplineItemTypeParams: Record<SplineItemType, ItemParams> = {
+  [SplineItemType.NilMyStartCoords]: defaultParams,
+  [SplineItemType.NilXxxxx]: defaultParams,
+  [SplineItemType.NilSugar]: defaultParams,
+  [SplineItemType.Enemy_BoxerFly]: defaultParams,
+  [SplineItemType.NilBugTest]: defaultParams,
+  [SplineItemType.NilClover]: defaultParams,
+  [SplineItemType.NilGrass]: defaultParams,
+  [SplineItemType.NilWeed]: defaultParams,
+  [SplineItemType.Enemy_Slug]: defaultParams,
+  [SplineItemType.Enemy_Ant]: defaultParams,
+  [SplineItemType.NilSunflower]: defaultParams,
+  [SplineItemType.NilCosmo]: defaultParams,
+  [SplineItemType.NilPoppy]: defaultParams,
+  [SplineItemType.NilWallEnd]: defaultParams,
+  [SplineItemType.NilWaterPatch]: defaultParams,
+  [SplineItemType.NilFireAnt]: defaultParams,
+  [SplineItemType.NilWaterBug]: defaultParams,
+  [SplineItemType.NilTree]: defaultParams,
+  [SplineItemType.NilDragonfly]: defaultParams,
+  [SplineItemType.NilCatTail]: defaultParams,
+  [SplineItemType.NilDuckWeed]: defaultParams,
+  [SplineItemType.NilLilyFlower]: defaultParams,
+  [SplineItemType.NilLilyPad]: defaultParams,
+  [SplineItemType.NilPondGrass]: defaultParams,
+  [SplineItemType.NilReed]: defaultParams,
+  [SplineItemType.NilPondFishEnemy]: defaultParams,
+  [SplineItemType.HoneycombPlatform]: defaultParams,
+  [SplineItemType.NilHoneyPatch]: defaultParams,
+  [SplineItemType.NilFirecracker]: defaultParams,
+  [SplineItemType.NilDetonator]: defaultParams,
+  [SplineItemType.NilWaxMembrane]: defaultParams,
+  [SplineItemType.Enemy_Mosquito]: defaultParams,
+  [SplineItemType.NilCheckpoint]: defaultParams,
+  [SplineItemType.NilLawnDoor]: defaultParams,
+  [SplineItemType.NilDock]: defaultParams,
+  [SplineItemType.Foot]: defaultParams,
+  [SplineItemType.Enemy_Spider]: defaultParams,
+  [SplineItemType.Enemy_Caterpiller]: defaultParams,
+  [SplineItemType.NilEnemy_Firefly]: defaultParams,
+  [SplineItemType.NilExitLog]: defaultParams,
+  [SplineItemType.NilRootSwing]: defaultParams,
+  [SplineItemType.NilThornBush]: defaultParams,
+  [SplineItemType.NilFireFlyTargetLocation]: defaultParams,
+  [SplineItemType.NilFireWall]: defaultParams,
+  [SplineItemType.NilWaterValve]: defaultParams,
+  [SplineItemType.NilHoneyTube]: defaultParams,
+  [SplineItemType.Enemy_Larva]: defaultParams,
+  [SplineItemType.NilEnemy_FlyingBee]: defaultParams,
+  [SplineItemType.Enemy_WorkerBee]: defaultParams,
+  [SplineItemType.NilEnemy_QueenBee]: defaultParams,
+  [SplineItemType.NilRockLedge]: defaultParams,
+  [SplineItemType.NilStump]: defaultParams,
+  [SplineItemType.NilRollingBoulder]: defaultParams,
+  [SplineItemType.Enemy_Roach]: defaultParams,
+  [SplineItemType.Enemy_Skippy]: defaultParams,
 };

@@ -1,3 +1,5 @@
+import { ItemParams } from "./itemParams";
+
 export enum ItemType {
   StartCoords, // My Start Coords
   PowerUp, // 1: PowerUp
@@ -42,4 +44,37 @@ export const itemTypeNames: Record<ItemType, string> = {
   [ItemType.StepStone]: "Step stone",
   [ItemType.RollingBoulder]: "Rolling boulder",
   [ItemType.SporePod]: "Spore pod",
+};
+
+export type NanosaurItemParams = ItemParams;
+
+const nanosaurDefaultParams: NanosaurItemParams = {
+  flags: "Unknown",
+  p0: "Unknown",
+  p1: "Unknown",
+  p2: "Unknown",
+  p3: "Unknown",
+};
+
+export const nanosaurItemTypeParams: Record<ItemType, NanosaurItemParams> = {
+  [ItemType.StartCoords]: nanosaurDefaultParams,
+  [ItemType.PowerUp]: nanosaurDefaultParams,
+  [ItemType.Enemy_Tricer]: nanosaurDefaultParams,
+  [ItemType.Enemy_Rex]: nanosaurDefaultParams,
+  [ItemType.LavaPatch]: nanosaurDefaultParams,
+  [ItemType.Egg]: nanosaurDefaultParams,
+  [ItemType.GasVent]: nanosaurDefaultParams,
+  [ItemType.Enemy_Ptera]: nanosaurDefaultParams,
+  [ItemType.Enemy_Stego]: nanosaurDefaultParams,
+  [ItemType.TimePortal]: nanosaurDefaultParams,
+  [ItemType.Tree]: nanosaurDefaultParams,
+  [ItemType.Boulder]: nanosaurDefaultParams,
+  [ItemType.Mushroom]: nanosaurDefaultParams,
+  [ItemType.Bush]: nanosaurDefaultParams,
+  [ItemType.WaterPatch]: nanosaurDefaultParams,
+  [ItemType.Crystal]: nanosaurDefaultParams,
+  [ItemType.Enemy_Spitter]: nanosaurDefaultParams,
+  [ItemType.StepStone]: nanosaurDefaultParams,
+  [ItemType.RollingBoulder]: nanosaurDefaultParams,
+  [ItemType.SporePod]: nanosaurDefaultParams,
 };

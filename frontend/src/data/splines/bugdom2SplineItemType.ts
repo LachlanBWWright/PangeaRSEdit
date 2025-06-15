@@ -1,3 +1,5 @@
+import { ItemParams } from "../items/itemParams";
+
 export enum SplineItemType {
   PrimeEnemy_Gnome = 4, // 4: gnome
   PrimeEnemy_HouseFly = 10, // 10: housefly
@@ -32,4 +34,32 @@ export const splineItemTypeNames: Record<SplineItemType, string> = {
   [SplineItemType.PrimeHanger]: "Hanger",
   [SplineItemType.PrimeEnemy_Roach]: "Roach",
   [SplineItemType.PrimeEnemy_Ant]: "Ant",
+};
+
+// Default parameter description for spline items that haven't been researched yet
+const defaultParams: ItemParams = {
+  flags: "Unknown",
+  p0: "Unknown",
+  p1: "Unknown",
+  p2: "Unknown",
+  p3: "Unknown",
+};
+
+// Parameter descriptions for each spline item type
+export const bugdom2SplineItemTypeParams: Record<SplineItemType, ItemParams> = {
+  [SplineItemType.PrimeEnemy_Gnome]: defaultParams,
+  [SplineItemType.PrimeEnemy_HouseFly]: defaultParams,
+  [SplineItemType.PrimeBumbleBee]: defaultParams,
+  [SplineItemType.PrimeEnemy_Flea]: defaultParams,
+  [SplineItemType.PrimeEnemy_Tick]: defaultParams,
+  [SplineItemType.PrimeSlotCar]: defaultParams,
+  [SplineItemType.PrimeEnemy_ToySoldier]: defaultParams,
+  [SplineItemType.PrimeEnemy_Otto]: defaultParams,
+  [SplineItemType.PrimeEnemy_Dragonfly]: defaultParams,
+  [SplineItemType.PrimeVacuume]: defaultParams,
+  [SplineItemType.PrimeMothPath]: defaultParams,
+  [SplineItemType.PrimeEnemy_ComputerBug]: defaultParams,
+  [SplineItemType.PrimeHanger]: defaultParams,
+  [SplineItemType.PrimeEnemy_Roach]: defaultParams,
+  [SplineItemType.PrimeEnemy_Ant]: defaultParams,
 };

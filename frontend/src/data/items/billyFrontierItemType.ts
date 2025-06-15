@@ -1,3 +1,5 @@
+import { ItemParams } from "./itemParams";
+
 export enum ItemType {
   StartCoords, // My Start Coords
   Dueler, // 1: dueler
@@ -76,4 +78,57 @@ export const itemTypeNames: Record<ItemType, string> = {
   [ItemType.StampedeKangarex]: "StampedeKangarex",
   [ItemType.Shorty_Shootout]: "Shorty_Shootout",
   [ItemType.Peso]: "Peso",
+};
+
+export type BillyFrontierItemParams = ItemParams;
+
+const billyFrontierDefaultParams: BillyFrontierItemParams = {
+  flags: "Unknown",
+  p0: "Unknown",
+  p1: "Unknown",
+  p2: "Unknown",
+  p3: "Unknown",
+};
+
+export const billyFrontierItemTypeParams: Record<
+  ItemType,
+  BillyFrontierItemParams
+> = {
+  [ItemType.StartCoords]: billyFrontierDefaultParams,
+  [ItemType.Dueler]: billyFrontierDefaultParams,
+  [ItemType.Building]: billyFrontierDefaultParams,
+  [ItemType.HeadStone]: billyFrontierDefaultParams,
+  [ItemType.Plant]: billyFrontierDefaultParams,
+  [ItemType.DuelRockWall]: billyFrontierDefaultParams,
+  [ItemType.Coffin]: billyFrontierDefaultParams,
+  [ItemType.FrogMan_Shootout]: billyFrontierDefaultParams,
+  [ItemType.Bandito_Shootout]: billyFrontierDefaultParams,
+  [ItemType.Barrel]: billyFrontierDefaultParams,
+  [ItemType.WoodCrate]: billyFrontierDefaultParams,
+  [ItemType.HayBale]: billyFrontierDefaultParams,
+  [ItemType.ShootoutSaloon]: billyFrontierDefaultParams,
+  [ItemType.ShootoutAlley]: billyFrontierDefaultParams,
+  [ItemType.Post]: billyFrontierDefaultParams,
+  [ItemType.Flame]: billyFrontierDefaultParams,
+  [ItemType.Smoker]: billyFrontierDefaultParams,
+  [ItemType.SceneryKangaCow]: billyFrontierDefaultParams,
+  [ItemType.Table]: billyFrontierDefaultParams,
+  [ItemType.Chair]: billyFrontierDefaultParams,
+  [ItemType.StampedeKanga]: billyFrontierDefaultParams,
+  [ItemType.Boost]: billyFrontierDefaultParams,
+  [ItemType.StampedeCamera]: billyFrontierDefaultParams,
+  [ItemType.Wallker]: billyFrontierDefaultParams,
+  [ItemType.DeadTree]: billyFrontierDefaultParams,
+  [ItemType.Rock]: billyFrontierDefaultParams,
+  [ItemType.ElectricFence]: billyFrontierDefaultParams,
+  [ItemType.Tumbleweed]: billyFrontierDefaultParams,
+  [ItemType.TremorGrave]: billyFrontierDefaultParams,
+  [ItemType.TeePee]: billyFrontierDefaultParams,
+  [ItemType.SwampCabin]: billyFrontierDefaultParams,
+  [ItemType.TremorAlien_Shootout]: billyFrontierDefaultParams,
+  [ItemType.FreeLifePOW]: billyFrontierDefaultParams,
+  [ItemType.SpearSkull]: billyFrontierDefaultParams,
+  [ItemType.StampedeKangarex]: billyFrontierDefaultParams,
+  [ItemType.Shorty_Shootout]: billyFrontierDefaultParams,
+  [ItemType.Peso]: billyFrontierDefaultParams,
 };

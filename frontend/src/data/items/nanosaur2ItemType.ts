@@ -1,3 +1,5 @@
+import { ItemParams } from "./itemParams";
+
 export enum ItemType {
   StartCoords, // My Start Coords
   BirchTree,
@@ -100,4 +102,66 @@ export const itemTypeNames: Record<ItemType, string> = {
   [ItemType.Hole]: "Hole",
   [ItemType.FreeLifePOW]: "Free Life POW",
   [ItemType.RamphorEnemy]: "Ramphor Enemy",
+};
+
+// Default parameter description for items that haven't been researched yet
+const defaultParams: ItemParams = {
+  flags: "Unknown",
+  p0: "Unknown",
+  p1: "Unknown",
+  p2: "Unknown",
+  p3: "Unknown",
+};
+
+// Parameter descriptions for each item type
+export const nanosaur2ItemTypeParams: Record<ItemType, ItemParams> = {
+  [ItemType.StartCoords]: defaultParams,
+  [ItemType.BirchTree]: defaultParams,
+  [ItemType.PineTree]: defaultParams,
+  [ItemType.Egg]: defaultParams,
+  [ItemType.EggWormhole]: defaultParams,
+  [ItemType.TowerTurret]: defaultParams,
+  [ItemType.WeaponPOW]: defaultParams,
+  [ItemType.SmallTree]: defaultParams,
+  [ItemType.FallenTree]: defaultParams,
+  [ItemType.TreeStump]: defaultParams,
+  [ItemType.Grass]: defaultParams,
+  [ItemType.Fern]: defaultParams,
+  [ItemType.BerryBush]: defaultParams,
+  [ItemType.CatTail]: defaultParams,
+  [ItemType.Rock]: defaultParams,
+  [ItemType.Enemy_Raptor]: defaultParams,
+  [ItemType.DustDevil]: defaultParams,
+  [ItemType.AirMine]: defaultParams,
+  [ItemType.ForestDoor]: defaultParams,
+  [ItemType.ForestDoorKey]: defaultParams,
+  [ItemType.Electrode]: defaultParams,
+  [ItemType.HealthPOW]: defaultParams,
+  [ItemType.FuelPOW]: defaultParams,
+  [ItemType.RiverRock]: defaultParams,
+  [ItemType.GasMound]: defaultParams,
+  [ItemType.BentPineTree]: defaultParams,
+  [ItemType.Enemy_Brach]: defaultParams,
+  [ItemType.DesertTree]: defaultParams,
+  [ItemType.DesertBush]: defaultParams,
+  [ItemType.Cactus]: defaultParams,
+  [ItemType.Crystal]: defaultParams,
+  [ItemType.PalmTree]: defaultParams,
+  [ItemType.LaserOrb]: defaultParams,
+  [ItemType.ShieldPOW]: defaultParams,
+  [ItemType.Smoker]: defaultParams,
+  [ItemType.Flame]: defaultParams,
+  [ItemType.PalmBush]: defaultParams,
+  [ItemType.BurntDesertTree]: defaultParams,
+  [ItemType.HydraTree]: defaultParams,
+  [ItemType.OddTree]: defaultParams,
+  [ItemType.GeckoPlant]: defaultParams,
+  [ItemType.SproutPlant]: defaultParams,
+  [ItemType.Ivy]: defaultParams,
+  [ItemType.Asteroid]: defaultParams,
+  [ItemType.SwampFallenTree]: defaultParams,
+  [ItemType.SwampStump]: defaultParams,
+  [ItemType.Hole]: defaultParams,
+  [ItemType.FreeLifePOW]: defaultParams,
+  [ItemType.RamphorEnemy]: defaultParams,
 };
