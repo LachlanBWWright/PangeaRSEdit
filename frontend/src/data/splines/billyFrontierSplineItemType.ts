@@ -18,24 +18,74 @@ export const splineItemTypeNames: Record<SplineItemType, string> = {
   [SplineItemType.PrimeStampedeKangaRex]: "Stampede Kanga Rex",
 };
 
-// Default parameter description for spline items that haven't been researched yet
-const defaultParams: ItemParams = {
-  flags: "Unknown",
-  p0: "Unknown",
-  p1: "Unknown",
-  p2: "Unknown",
-  p3: "Unknown",
-};
-
 // Parameter descriptions for each spline item type
 export const billyFrontierSplineItemTypeParams: Record<
   SplineItemType,
   ItemParams
 > = {
-  [SplineItemType.PrimeStampedeKangaCow]: defaultParams,
-  [SplineItemType.PrimeStampedeCamera]: defaultParams,
-  [SplineItemType.PrimeWalker]: defaultParams,
-  [SplineItemType.PrimeTumbleweed]: defaultParams,
-  [SplineItemType.PrimeTremorAlien]: defaultParams,
-  [SplineItemType.PrimeStampedeKangaRex]: defaultParams,
+  [SplineItemType.PrimeStampedeKangaCow]: {
+    flags: "Stampede Kanga Cow behavior flags",
+    p0: "Unused",
+    p1: "Unused",
+    p2: "Unused",
+    p3: "Unused",
+  },
+
+  [SplineItemType.PrimeStampedeCamera]: {
+    flags: "Stampede camera behavior flags",
+    p0: "Unused",
+    p1: "Unused",
+    p2: "Unused",
+    p3: "Unused",
+  },
+
+  [SplineItemType.PrimeWalker]: {
+    flags: "Walker enemy behavior flags",
+    p0: "Unused",
+    p1: {
+      type: "Integer",
+      description: "Stop point number for walker to patrol to",
+      codeSample: {
+        code: "newObj->StopPoint = itemPtr->parm[1];    // remember stop point #",
+        fileName: "Enemy_Walker.c",
+        lineNumber: 111,
+      },
+    },
+    p2: "Unused",
+    p3: "Unused",
+  },
+
+  [SplineItemType.PrimeTumbleweed]: {
+    flags: "Tumbleweed behavior flags",
+    p0: "Unused",
+    p1: "Unused",
+    p2: "Unused",
+    p3: "Unused",
+  },
+
+  [SplineItemType.PrimeTremorAlien]: {
+    flags: "Tremor Alien behavior flags",
+    p0: {
+      type: "Integer",
+      description: "Stop point number for enemy spawning/grouping",
+      codeSample: {
+        code: "short stopPoint = itemPtr->parm[0];\n// ...\ngNumEnemiesThisStopPoint[stopPoint]++;    // inc sp count",
+        fileName: "Enemy_TremorAlien.c",
+        lineNumber: 427,
+      },
+    },
+    p1: "Unused",
+    p2: "Unused",
+    p3: "Unused",
+  },
+
+  [SplineItemType.PrimeStampedeKangaRex]: {
+    flags: "Stampede Kanga Rex behavior flags",
+    p0: "Unused",
+    p1: "Unused",
+    p2: "Unused",
+    p3: "Unused",
+  },
 };
+
+export type BillyFrontierSplineItemParams = ItemParams;
