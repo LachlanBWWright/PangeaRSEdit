@@ -1233,11 +1233,4 @@ export const bugdom2ItemTypeParams: Record<ItemType, Bugdom2ItemParams> = {
     p2: "Unknown",
     p3: "Unknown",
   },
-  [ItemType.BeeHive]: {
-    p0: "Unused",
-    p1: "Unused",
-    p2: "Unused",
-    p3: "Unused",
-    flags: "Unused",
-  },
 };

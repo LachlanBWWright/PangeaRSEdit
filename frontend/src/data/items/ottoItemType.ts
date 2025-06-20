@@ -286,7 +286,29 @@ export const ottoItemTypeParams: Record<ItemType, OttoItemParams> = {
     p0: "Unused",
     p1: "Unused",
     p2: "Unused",
-    p3: "Unused",
+    p3: {
+      type: "Bit Flags",
+      flags: [
+        {
+          index: 0,
+          description: "Always add",
+          codeSample: {
+            code: "if (!(itemPtr->parm[3] & 1))",
+            fileName: "Enemies/FireIce/Enemy_Squooshy.c",
+            lineNumber: 95,
+          },
+        },
+        {
+          index: 1,
+          description: "Enemy regenerate",
+          codeSample: {
+            code: "newObj->EnemyRegenerate = itemPtr->parm[3] & (1<<1);",
+            fileName: "Enemies/FireIce/Enemy_Squooshy.c",
+            lineNumber: 104,
+          },
+        },
+      ],
+    },
   },
   [ItemType.Human]: {
     flags: "Auto-fade status bits",
@@ -416,24 +438,90 @@ export const ottoItemTypeParams: Record<ItemType, OttoItemParams> = {
   },
   [ItemType.Enemy_Onion]: {
     flags: "Auto-fade status bits",
-    p0: "Unused",
-    p1: "Unused",
-    p2: "Unused",
-    p3: "Unused",
+    p0: "Unknown",
+    p1: "Unknown",
+    p2: "Unknown",
+    p3: {
+      type: "Bit Flags",
+      flags: [
+        {
+          index: 0,
+          description: "Always add (ignore max limit)",
+          codeSample: {
+            code: "if (!(itemPtr->parm[3] & 1)) { /* check max limit */ }",
+            fileName: "Enemies/Farm/Enemy_Onion.c",
+            lineNumber: 100,
+          },
+        },
+        {
+          index: 1,
+          description: "Enemy regenerate",
+          codeSample: {
+            code: "newObj->EnemyRegenerate = itemPtr->parm[3] & (1<<1);",
+            fileName: "Enemies/Farm/Enemy_Onion.c",
+            lineNumber: 108,
+          },
+        },
+      ],
+    },
   },
   [ItemType.Enemy_Corn]: {
     flags: "Auto-fade status bits",
-    p0: "Unused",
-    p1: "Unused",
-    p2: "Unused",
-    p3: "Unused",
+    p0: "Unknown",
+    p1: "Unknown",
+    p2: "Unknown",
+    p3: {
+      type: "Bit Flags",
+      flags: [
+        {
+          index: 0,
+          description: "Always add (ignore max limit)",
+          codeSample: {
+            code: "if (!(itemPtr->parm[3] & 1)) { /* check max limit */ }",
+            fileName: "Enemies/Farm/Enemy_Corn.c",
+            lineNumber: 98,
+          },
+        },
+        {
+          index: 1,
+          description: "Enemy regenerate",
+          codeSample: {
+            code: "newObj->EnemyRegenerate = itemPtr->parm[3] & (1<<1);",
+            fileName: "Enemies/Farm/Enemy_Corn.c",
+            lineNumber: 107,
+          },
+        },
+      ],
+    },
   },
   [ItemType.Enemy_Tomato]: {
     flags: "Auto-fade status bits",
-    p0: "Unused",
-    p1: "Unused",
-    p2: "Unused",
-    p3: "Unused",
+    p0: "Unknown",
+    p1: "Unknown",
+    p2: "Unknown",
+    p3: {
+      type: "Bit Flags",
+      flags: [
+        {
+          index: 0,
+          description: "Always add (ignore max limit)",
+          codeSample: {
+            code: "if (!(itemPtr->parm[3] & 1)) { /* check max limit */ }",
+            fileName: "Enemies/Farm/Enemy_Tomato.c",
+            lineNumber: 100,
+          },
+        },
+        {
+          index: 1,
+          description: "Enemy regenerate",
+          codeSample: {
+            code: "newObj->EnemyRegenerate = itemPtr->parm[3] & (1<<1);",
+            fileName: "Enemies/Farm/Enemy_Tomato.c",
+            lineNumber: 109,
+          },
+        },
+      ],
+    },
   },
   [ItemType.Barn]: {
     flags: "Auto-fade status bits",
@@ -1133,7 +1221,29 @@ export const ottoItemTypeParams: Record<ItemType, OttoItemParams> = {
     p0: "Unused",
     p1: "Unused",
     p2: "Unused",
-    p3: "Unused",
+    p3: {
+      type: "Bit Flags",
+      flags: [
+        {
+          index: 0,
+          description: "Always add (ignore max limit)",
+          codeSample: {
+            code: "if (!(itemPtr->parm[3] & 1)) { /* check max limit */ }",
+            fileName: "Enemies/Cloud/Enemy_Clown.c",
+            lineNumber: 118,
+          },
+        },
+        {
+          index: 1,
+          description: "Enemy regenerate",
+          codeSample: {
+            code: "newObj->EnemyRegenerate = itemPtr->parm[3] & (1<<1);",
+            fileName: "Enemies/Cloud/Enemy_Clown.c",
+            lineNumber: 126,
+          },
+        },
+      ],
+    },
   },
   [ItemType.Clownfish]: {
     flags: "Auto-fade status bits | On spline",
@@ -1646,116 +1756,3 @@ export function getLevelRestriction(itemType: ItemType): number {
 
   return 0;
 }
-
-/* 	
-Original from otto source code:
-
-        NilAdd,								// My Start Coords
-		AddBasicPlant,						// 1:  basic plant/tree
-		AddSpacePodGenerator,				// 2:  space pod
-		AddEnemy_Squooshy,					// 3: squooshy enemy
-		AddHuman,							// 4: Human
-		AddAtom,
-		AddPowerupPod,
-		AddEnemy_BrainAlien,				// 7:  brain alien
-		AddEnemy_Onion,						// 8:  Onion
-		AddEnemy_Corn,						// 9:  Corn
-		AddEnemy_Tomato,					// 10:  tomato
-		AddBarn,							// 11:  barn
-		AddSilo,							// 12:  solo
-		AddWoodenGate,						// 13:  wooden gate
-		AddPhonePole,						// 14:  phone pole
-		AddTractor,							// 15:  farm tractor
-		AddSprout,							// 16:  add sprout
-		AddCornStalk,						// 17:  corn stalk
-		AddBigLeafPlant,					// 18:  big leaf plant
-		AddMetalGate,						// 19:  metal gate
-		AddFencePost,						// 20:  fence post
-		AddWindmill,						// 21:  windmill
-		AddMetalTub,						// 22:  metal tub
-		AddOutHouse,						// 23:  outhouse
-		AddRock,							// 24:  rock
-		AddHay,								// 25:  hay bale
-		AddExitRocket,						// 26:  exit rocket
-		AddCheckpoint,						// 27:  checkpoint
-		AddSlimePipe,						// 28:  slime pipe
-		AddFallingCrystal,					// 29:	falling crystal
-		AddEnemy_Blob,						// 30:  blob enemy
-		AddBumperBubble,					// 31:  bumper bubble
-		AddBasicCrystal,					// 32:  basic crystal
-		AddInertBubble,						// 33:  soap bubble
-		AddSlimeTree,						// 34:  slime tree
-		NilAdd,								// 35:  magnet monster (spline only)
-		AddFallingSlimePlatform,			// 36:  falling slime platform
-		AddBubblePump,						// 37:  bubble pump
-		AddSlimeMech,						// 38:  slime mech
-		AddSpinningPlatform,				// 39:  spinning platform
-		NilAdd,								// 40:  moving platform (spline only)
-		NilAdd,								// 41:  blob boss machine
-		AddBlobBossTube,					// 42: 	blob boss tube
-		AddScaffoldingPost,					// 43:  scaffolding post
-		AddJungleGate,						// 44:  jungle gate
-		AddCrunchDoor,						// 45:  crunch door
-		AddManhole,							// 46:  manhole
-		AddCloudPlatform,					// 47:  cloud platform
-		AddCloudTunnel,						// 48:  cloud tunnel
-		AddEnemy_Flamester,					// 49:  flamester
-		AddEnemy_GiantLizard,				// 50:  giant lizard
-		AddEnemy_FlyTrap,					// 51:  venus flytrap
-		AddEnemy_Mantis,					// 52:  mantis
-		AddTurtlePlatform,					// 53:  turtle platform
-		AddSmashable,						// 54:  jungle smashable
-		AddLeafPlatform,					// 55:  leaf platform
-		AddHelpBeacon,						// 56:  help beacon
-		AddTeleporter,						// 57:  teleporter
-		AddZipLinePost,						// 58:  zip line post
-		AddEnemy_Mutant,					// 59:  mutant enemy
-		AddEnemy_MutantRobot,				// 60:  mutant robot enemy
-		AddHumanScientist,					// 61:  scientist human
-		AddProximityMine,					// 62:  proximity mine
-		AddLampPost,						// 63:  lamp posts
-		AddDebrisGate,						// 64:  debris gate
-		AddGraveStone,						// 65:  grave stone
-		AddCrashedShip,						// 66:  crashed ship
-		AddChainReactingMine,				// 67:  chain reacting mine
-		AddRubble,							// 68:  rubble
-		AddTeleporterMap,					// 69:  teleporter map (UNUSED)
-		AddGreenSteam,						// 70:  green steam
-		AddTentacleGenerator,				// 71:  tentacle generator
-		AddPitcherPlantBoss,				// 72:  pitcher plant boss
-		AddPitcherPod,						// 73:  pitcher pod
-		AddTractorBeamPost,					// 74:  tractor beam post
-		AddCannon,							// 75:  cannon
-		AddBumperCar,						// 76:  bumper car
-		AddTireBumperStrip,					// 77:	tire bumper
-		AddEnemy_Clown,						// 78:	clown enemy
-		NilAdd,								// 79: clown fish
-		AddBumperCarPowerPost,				// 80: bumper car power post
-		AddEnemy_StrongMan,					// 81:	strongman enemy
-		AddBumperCarGate,					// 82:  bumper car gate
-		AddRocketSled,						// 83: tobogan
-		AddTrapDoor,						// 84:  trap door
-		AddZigZagSlats,						// 85:  zig-zag slats
-		NilAdd,								// 86: ?????
-		AddLavaPillar,						// 87:  lava pillar
-		AddVolcanoGeneratorZone,			// 88:  volcano generator
-		AddJawsBot,							// 89:  jaws bot enemy
-		AddIceSaucer,						// 90:  ice saucer
-		AddRunwayLights,					// 91:  runway lights
-		AddEnemy_IceCube,					// 92:  ice cube enemy
-		AddHammerBot,						// 93:  HAMMER BOT
-		AddDrillBot,						// 94:  drill bot
-		AddSwingerBot,						// 95:  swinger bot
-		AddLavaStone,						// 96:  lava stone
-		AddSnowball,						// 97: 	snowball
-		AddLavaPlatform,					// 98:  lava platform
-		AddSmoker,							// 99:  smoker
-		AddRadarDish,						// 100:  tower / radar dish
-		AddPeopleHut,						// 101: people hut
-		AddBeemer,							// 102:  bemmer
-		NilAdd,								// 103:  rail gun
-		AddTurret,							// 104:  turret
-		AddEnemy_BrainBoss,					// 105:  brain boss
-		AddBlobArrow,						// 106:  blob arrow
-		AddNeuronStrand,					// 107:  neuron strand
-		AddBrainPort,						// 108:  brain port */

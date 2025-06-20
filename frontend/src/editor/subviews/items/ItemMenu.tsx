@@ -4,9 +4,11 @@ import { useAtom, useAtomValue } from "jotai";
 import { Button, DeleteButton } from "../../../components/Button";
 import { ClickToAddItem, SelectedItem } from "../../../data/items/itemAtoms";
 import { ottoItemTypeParams } from "../../../data/items/ottoItemType";
+import type { ParamDescription } from "../../../data/items/itemParams";
 import { parseU16, parseU8 } from "../../../utils/numberParsers";
 import { useEffect } from "react";
 import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Select,
   SelectValue,
@@ -17,6 +19,7 @@ import {
 import { getItemName } from "@/data/items/getItemNames";
 import { Globals } from "@/data/globals/globals";
 import { getItemTypes } from "@/data/items/getItemTypes";
+import { ParamTooltip } from "./ParamTooltip";
 
 export function ItemMenu({
   data,
@@ -75,9 +78,16 @@ export function ItemMenu({
             </Select>
 
             <div className="grid grid-cols-[auto_1fr_auto_1fr] gap-2 items-baseline">
-              <p className="text-baseline align-text-bottom">
-                Flags ({ottoItemTypeParams[itemData.type].flags})
-              </p>
+              <ParamTooltip
+                label={
+                  <span className="text-baseline align-text-bottom">Flags</span>
+                }
+                tooltip={
+                  typeof ottoItemTypeParams[itemData.type].flags === "string"
+                    ? ottoItemTypeParams[itemData.type].flags
+                    : ""
+                }
+              />
               <Input
                 type="number"
                 className="col-span-3"
@@ -91,58 +101,71 @@ export function ItemMenu({
                   });
                 }}
               />
-              <p>Parameter 0 ({ottoItemTypeParams[itemData.type].p0})</p>
-              <Input
-                type="number"
-                value={itemData.p0.toString()}
-                onChange={(e) => {
+
+              {/* Param 0-3, refactored */}
+              {([0, 1, 2, 3] as const).map((i) => {
+                const paramKey = `p${i}` as const;
+                const param = ottoItemTypeParams[itemData.type][paramKey];
+                const value = itemData[paramKey];
+                const setValue = (v: number) => {
                   setData((data) => {
                     if (selectedItem === undefined) return;
-                    data.Itms[1000].obj[selectedItem].p0 = parseU8(
-                      e.target.value,
-                    );
+                    data.Itms[1000].obj[selectedItem][paramKey] = v;
                   });
-                }}
-              />
-              <p>Parameter 1 ({ottoItemTypeParams[itemData.type].p1})</p>
-              <Input
-                type="number"
-                value={itemData.p1.toString()}
-                onChange={(e) => {
-                  setData((data) => {
-                    if (selectedItem === undefined) return;
-                    data.Itms[1000].obj[selectedItem].p1 = parseU8(
-                      e.target.value,
-                    );
-                  });
-                }}
-              />
-              <p>Parameter 2 ({ottoItemTypeParams[itemData.type].p2})</p>
-              <Input
-                type="number"
-                value={itemData.p2.toString()}
-                onChange={(e) => {
-                  setData((data) => {
-                    if (selectedItem === undefined) return;
-                    data.Itms[1000].obj[selectedItem].p2 = parseU8(
-                      e.target.value,
-                    );
-                  });
-                }}
-              />
-              <p>Parameter 3 ({ottoItemTypeParams[itemData.type].p3})</p>
-              <Input
-                type="number"
-                value={itemData.p3.toString()}
-                onChange={(e) => {
-                  setData((data) => {
-                    if (selectedItem === undefined) return;
-                    data.Itms[1000].obj[selectedItem].p3 = parseU8(
-                      e.target.value,
-                    );
-                  });
-                }}
-              />
+                };
+                return [
+                  <ParamTooltip
+                    key={`tooltip-${i}`}
+                    label={<span>{`Parameter ${i}`}</span>}
+                    tooltip={getParamTooltip(param)}
+                  />,
+                  param && typeof param !== "string" && param.type === "Bit Flags" && Array.isArray(param.flags) ? (
+                    <div key={`flags-${i}`} className="flex flex-col gap-1">
+                      <div className="flex flex-wrap gap-2">
+                        {param.flags.map((flag) => {
+                          const checked = (value & (1 << flag.index)) !== 0;
+                          return (
+                            <label key={flag.index} className="inline-flex items-center gap-1">
+                              <Checkbox
+                              className="font-bold"
+                                checked={checked}
+                                onCheckedChange={(checked) => {
+                                  setData((data) => {
+                                    if (selectedItem === undefined) return;
+                                    const mask = 1 << flag.index;
+                                    if (checked) {
+                                      data.Itms[1000].obj[selectedItem][paramKey] |= mask;
+                                    } else {
+                                      data.Itms[1000].obj[selectedItem][paramKey] &= ~mask;
+                                    }
+                                  });
+                                }}
+                              />
+                              <span>{flag.description}</span>
+                            </label>
+                          );
+                        })}
+                      </div>
+                      <div className="flex items-center gap-2 mt-1">
+                        <p >Value:</p>
+                        <Input
+                          type="number"
+                          className="w-24"
+                          value={value.toString()}
+                          onChange={(e) => setValue(parseU8(e.target.value))}
+                        />
+                      </div>
+                    </div>
+                  ) : (
+                    <Input
+                      key={`input-${i}`}
+                      type="number"
+                      value={value.toString()}
+                      onChange={(e) => setValue(parseU8(e.target.value))}
+                    />
+                  )
+                ];
+              })}
             </div>
             <DeleteButton
               disabled={selectedItem === undefined}
@@ -208,4 +231,24 @@ function AddItemMenu() {
     );
 
   return <Button onClick={() => setClickToAddItem(0)}>Add Items</Button>;
+}
+
+function getParamTooltip(param: ParamDescription): string {
+  if (param === "Unknown" || param === "Unused") return "";
+  if (typeof param === "string") return param;
+  if (param && param.type === "Integer") {
+    let t = param.description;
+    if (param.codeSample) t += `\nExample: ${param.codeSample.code}`;
+    return t;
+  }
+  if (param && param.type === "Bit Flags" && Array.isArray(param.flags)) {
+    return param.flags
+      .map(
+        (f) =>
+          `${f.index}: ${f.description}` +
+          (f.codeSample ? `\nExample: ${f.codeSample.code}` : ""),
+      )
+      .join("\n\n");
+  }
+  return "";
 }
