@@ -200,10 +200,34 @@ export const bugdom2ItemTypeParams: Record<ItemType, Bugdom2ItemParams> = {
     p3: "Unknown",
   },
   [ItemType.Snail]: {
-    flags: "Unknown",
-    p0: { type: "Integer", description: "Snail shell part number" },
-    p1: "Unknown",
-    p2: "Unknown",
+    flags: "ITEM_FLAGS_USER1: Task completed (head attached)",
+    p0: {
+      type: "Integer",
+      description: "Snail kind (0-19)",
+      codeSample: {
+        code: "int snailKind = itemPtr->parm[0];\nif (snailKind > 19) return(true);",
+        fileName: "Source/Items/Snails.c",
+        lineNumber: 86,
+      },
+    },
+    p1: {
+      type: "Integer",
+      description: "Rotation (0-7, where each unit = 45°)",
+      codeSample: {
+        code: "snail = MakeSnail(SNAIL_SLOT, x, z, snailKind, itemPtr->parm[2], itemPtr->parm[1], taskCompleted);\ngNewObjectDefinition.rot = (float)rot * (PI2/8);",
+        fileName: "Source/Items/Snails.c",
+        lineNumber: 95,
+      },
+    },
+    p2: {
+      type: "Integer",
+      description: "Key color (if applicable)",
+      codeSample: {
+        code: "snail = MakeSnail(SNAIL_SLOT, x, z, snailKind, itemPtr->parm[2], itemPtr->parm[1], taskCompleted);\nsnail->KeyColor = keyColor;",
+        fileName: "Source/Items/Snails.c",
+        lineNumber: 95,
+      },
+    },
     p3: "Unknown",
   },
   [ItemType.SprinklerHead]: {
@@ -223,14 +247,38 @@ export const bugdom2ItemTypeParams: Record<ItemType, Bugdom2ItemParams> = {
   },
   [ItemType.Butterfly]: {
     flags: "Unknown",
-    p0: { type: "Integer", description: "POW kind (0-12)" },
+    p0: {
+      type: "Integer",
+      description: "POW kind (0-12)",
+      codeSample: {
+        code: "pow = MakePOW(itemPtr->parm[0], &where);",
+        fileName: "Source/Items/Powerups.c",
+        lineNumber: 585,
+      },
+    },
     p1: "Unknown",
     p2: "Unknown",
     p3: {
       type: "Bit Flags",
       flags: [
-        { index: 0, description: "Regenerating POW" },
-        { index: 1, description: "Place up high (garbage level)" },
+        {
+          index: 0,
+          description: "Regenerating POW",
+          codeSample: {
+            code: "body->Regenerate = itemPtr->parm[3] & 1; // see if regenerating kind",
+            fileName: "Source/Items/Powerups.c",
+            lineNumber: 88,
+          },
+        },
+        {
+          index: 1,
+          description: "Place up high (garbage level)",
+          codeSample: {
+            code: "Boolean upHigh = itemPtr->parm[3] & (1<<1);\nif (upHigh) yOff = 1100.0f; else yOff = 150.0f;",
+            fileName: "Source/Items/Powerups.c",
+            lineNumber: 54,
+          },
+        },
       ],
     },
   },
@@ -241,19 +289,45 @@ export const bugdom2ItemTypeParams: Record<ItemType, Bugdom2ItemParams> = {
     p2: "Unknown",
     p3: {
       type: "Bit Flags",
-      flags: [{ index: 0, description: "Always add (ignore max enemy limit)" }],
+      flags: [
+        {
+          index: 0,
+          description: "Always add (ignore max enemy limit)",
+          codeSample: {
+            code: "if (!(itemPtr->parm[3] & 1)) {\n    if (gNumEnemyOfKind[ENEMY_KIND_GNOME] >= MAX_GNOMES)\n        return(false);\n}",
+            fileName: "Source/Enemies/Enemy_Gnome.c",
+            lineNumber: 94,
+          },
+        },
+      ],
     },
   },
   [ItemType.Daisy]: {
     flags: "Unknown",
-    p0: { type: "Integer", description: "Daisy type (0-2)" },
+    p0: {
+      type: "Integer",
+      description: "Daisy type (0-2)",
+      codeSample: {
+        code: "gNewObjectDefinition.type = FOLIAGE_ObjType_Daisy1 + itemPtr->parm[0];",
+        fileName: "Source/Items/Items.c",
+        lineNumber: 181,
+      },
+    },
     p1: "Unknown",
     p2: "Unknown",
     p3: "Unknown",
   },
   [ItemType.Grass]: {
     flags: "Unknown",
-    p0: { type: "Integer", description: "Grass type (0-2)" },
+    p0: {
+      type: "Integer",
+      description: "Grass type (0-2)",
+      codeSample: {
+        code: "gNewObjectDefinition.type = FOLIAGE_ObjType_Grass1 + itemPtr->parm[0];",
+        fileName: "Source/Items/Items.c",
+        lineNumber: 299,
+      },
+    },
     p1: "Unknown",
     p2: "Unknown",
     p3: "Unknown",
@@ -263,6 +337,11 @@ export const bugdom2ItemTypeParams: Record<ItemType, Bugdom2ItemParams> = {
     p0: {
       type: "Integer",
       description: "Shell rotation (0-3, where each unit = 90°)",
+      codeSample: {
+        code: "gNewObjectDefinition.rot = (float)itemPtr->parm[0] * (PI/2);",
+        fileName: "Source/Items/Snails.c",
+        lineNumber: 677,
+      },
     },
     p1: "Unknown",
     p2: "Unknown",
@@ -270,7 +349,15 @@ export const bugdom2ItemTypeParams: Record<ItemType, Bugdom2ItemParams> = {
   },
   [ItemType.Tulip]: {
     flags: "Unknown",
-    p0: { type: "Integer", description: "Tulip type (0-2)" },
+    p0: {
+      type: "Integer",
+      description: "Tulip type (0-2)",
+      codeSample: {
+        code: "gNewObjectDefinition.type = FOLIAGE_ObjType_Tulip1 + itemPtr->parm[0];",
+        fileName: "Source/Items/Items.c",
+        lineNumber: 234,
+      },
+    },
     p1: "Unknown",
     p2: "Unknown",
     p3: "Unknown",
@@ -371,13 +458,26 @@ export const bugdom2ItemTypeParams: Record<ItemType, Bugdom2ItemParams> = {
   },
   [ItemType.Brick]: {
     flags: "Unknown",
-    p0: { type: "Integer", description: "Brick type" },
-    p1: { type: "Integer", description: "Brick rotation" },
-    p2: "Unknown",
-    p3: {
-      type: "Bit Flags",
-      flags: [{ index: 0, description: "Choose random color brick" }],
+    p0: {
+      type: "Integer",
+      description: "Brick rotation (0-3, where each unit = 90°)",
+      codeSample: {
+        code: "gNewObjectDefinition.rot = (float)itemPtr->parm[0] * PI/2;",
+        fileName: "Source/Items/Items.c",
+        lineNumber: 530,
+      },
     },
+    p1: {
+      type: "Integer",
+      description: "Brick type (varies by level)",
+      codeSample: {
+        code: "gNewObjectDefinition.type = GARDEN_ObjType_Brick; // or SIDEWALK_ObjType_Brick depending on level",
+        fileName: "Source/Items/Items.c",
+        lineNumber: 517,
+      },
+    },
+    p2: "Unknown",
+    p3: "Unknown",
   },
   [ItemType.Post]: {
     flags: "Unknown",
@@ -395,13 +495,34 @@ export const bugdom2ItemTypeParams: Record<ItemType, Bugdom2ItemParams> = {
     p3: "Unknown",
   },
   [ItemType.Chipmunk]: {
-    flags: "Unknown",
+    flags: "ITEM_FLAGS_USER1: Task completed (inactive)",
     p0: {
       type: "Integer",
       description: "Chipmunk rotation (0-7, where each unit = 45°)",
+      codeSample: {
+        code: "gNewObjectDefinition.rot = (float)itemPtr->parm[0] * PI2/8;",
+        fileName: "Source/Items/Chipmunk.c",
+        lineNumber: 130,
+      },
     },
-    p1: { type: "Integer", description: "Chipmunk kind" },
-    p2: { type: "Integer", description: "Checkpoint number" },
+    p1: {
+      type: "Integer",
+      description: "Chipmunk kind (see CHIPMUNK_KIND_* constants)",
+      codeSample: {
+        code: "int kind = itemPtr->parm[1];\nnewObj->Kind = kind;",
+        fileName: "Source/Items/Chipmunk.c",
+        lineNumber: 81,
+      },
+    },
+    p2: {
+      type: "Integer",
+      description: "Checkpoint number (if kind == CHIPMUNK_KIND_CHECKPOINT)",
+      codeSample: {
+        code: "if (kind == CHIPMUNK_KIND_CHECKPOINT)\n    newObj->CheckPointNum = itemPtr->parm[2];",
+        fileName: "Source/Items/Chipmunk.c",
+        lineNumber: 134,
+      },
+    },
     p3: "Unknown",
   },
   [ItemType.ShrubRoot]: {
@@ -420,7 +541,15 @@ export const bugdom2ItemTypeParams: Record<ItemType, Bugdom2ItemParams> = {
   },
   [ItemType.SnakeGenerator]: {
     flags: "Unknown",
-    p0: "Unknown",
+    p0: {
+      type: "Integer",
+      description: "Unused",
+      codeSample: {
+        code: "Boolean AddSnakeGenerator(TerrainItemEntryType *itemPtr, float x, float z)",
+        fileName: "Source/Enemies/Enemy_Snake.c",
+        lineNumber: 161,
+      },
+    },
     p1: "Unknown",
     p2: "Unknown",
     p3: "Unknown",
@@ -581,13 +710,18 @@ export const bugdom2ItemTypeParams: Record<ItemType, Bugdom2ItemParams> = {
   },
   [ItemType.Enemy_Tick]: {
     flags: "Unknown",
-    p0: "Unknown",
+    p0: {
+      type: "Integer",
+      description: "Unused",
+      codeSample: {
+        code: "Boolean AddEnemy_Tick(TerrainItemEntryType *itemPtr, float x, float z)",
+        fileName: "Source/Enemies/Enemy_Tick.c",
+        lineNumber: 108,
+      },
+    },
     p1: "Unknown",
     p2: "Unknown",
-    p3: {
-      type: "Bit Flags",
-      flags: [{ index: 0, description: "Always add (ignore max enemy limit)" }],
-    },
+    p3: "Unknown",
   },
   [ItemType.SlotCar]: {
     flags: "Unknown",
@@ -615,13 +749,18 @@ export const bugdom2ItemTypeParams: Record<ItemType, Bugdom2ItemParams> = {
   },
   [ItemType.Enemy_ToySoldier]: {
     flags: "Unknown",
-    p0: "Unknown",
+    p0: {
+      type: "Integer",
+      description: "Unused",
+      codeSample: {
+        code: "Boolean AddEnemy_ToySoldier(TerrainItemEntryType *itemPtr, float x, float z)",
+        fileName: "Source/Enemies/Enemy_ToySoldier.c",
+        lineNumber: 105,
+      },
+    },
     p1: "Unknown",
     p2: "Unknown",
-    p3: {
-      type: "Bit Flags",
-      flags: [{ index: 0, description: "Always add (ignore max enemy limit)" }],
-    },
+    p3: "Unknown",
   },
   [ItemType.FinishLine]: {
     flags: "Unknown",
@@ -875,13 +1014,18 @@ export const bugdom2ItemTypeParams: Record<ItemType, Bugdom2ItemParams> = {
   },
   [ItemType.Enemy_Roach]: {
     flags: "Unknown",
-    p0: "Unknown",
+    p0: {
+      type: "Integer",
+      description: "Unused",
+      codeSample: {
+        code: "Boolean AddEnemy_Roach(TerrainItemEntryType *itemPtr, float x, float z)",
+        fileName: "Source/Enemies/Enemy_Roach.c",
+        lineNumber: 125,
+      },
+    },
     p1: "Unknown",
     p2: "Unknown",
-    p3: {
-      type: "Bit Flags",
-      flags: [{ index: 0, description: "Always add (ignore max enemy limit)" }],
-    },
+    p3: "Unknown",
   },
   [ItemType.ShoeBox]: {
     flags: "Unknown",
@@ -910,7 +1054,21 @@ export const bugdom2ItemTypeParams: Record<ItemType, Bugdom2ItemParams> = {
       flags: [{ index: 0, description: "Always add (ignore max enemy limit)" }],
     },
   },
-  [ItemType.Enemy_PondFish]: bugdom2DefaultParams,
+  [ItemType.Enemy_PondFish]: {
+    flags: "Unknown",
+    p0: {
+      type: "Integer",
+      description: "Unused",
+      codeSample: {
+        code: "Boolean AddEnemy_PondFish(TerrainItemEntryType *itemPtr, float x, float z)",
+        fileName: "Source/Enemies/Enemy_PondFish.c",
+        lineNumber: 101,
+      },
+    },
+    p1: "Unknown",
+    p2: "Unknown",
+    p3: "Unknown",
+  },
   [ItemType.LilyPad]: bugdom2DefaultParams,
   [ItemType.CatTail]: bugdom2DefaultParams,
   [ItemType.Bubbler]: bugdom2DefaultParams,
@@ -940,24 +1098,62 @@ export const bugdom2ItemTypeParams: Record<ItemType, Bugdom2ItemParams> = {
     p3: "Unknown",
   },
   [ItemType.PicnicBasket]: bugdom2DefaultParams,
-  [ItemType.Kindling]: bugdom2DefaultParams,
+  [ItemType.Kindling]: {
+    flags: "Unknown",
+    p0: {
+      type: "Integer",
+      description: "Kindling part (0 = leaf, 1 = twig)",
+      codeSample: {
+        code: "gNewObjectDefinition.type = PARK_ObjType_Leaf + part;",
+        fileName: "Source/Items/BeeHive.c",
+        lineNumber: 239,
+      },
+    },
+    p1: "Unknown",
+    p2: "Unknown",
+    p3: "Unknown",
+  },
   [ItemType.BeeHive]: {
     flags: "Unknown",
-    p0: { type: "Integer", description: "Bee hive part (0 or 1)" },
+    p0: {
+      type: "Integer",
+      description: "Bee hive part (0 or 1)",
+      codeSample: {
+        code: "gNewObjectDefinition.type = PARK_ObjType_Hive;",
+        fileName: "Source/Items/BeeHive.c",
+        lineNumber: 58,
+      },
+    },
     p1: "Unknown",
     p2: "Unknown",
     p3: "Unknown",
   },
   [ItemType.SodaCan]: {
     flags: "Unknown",
-    p0: "Unknown",
+    p0: {
+      type: "Integer",
+      description: "Unknown",
+      codeSample: {
+        code: "gNewObjectDefinition.type = GARBAGE_ObjType_Can;",
+        fileName: "Source/Items/Items3.c",
+        lineNumber: 67,
+      },
+    },
     p1: "Unknown",
     p2: "Unknown",
     p3: "Unknown",
   },
   [ItemType.Veggie]: {
     flags: "Unknown",
-    p0: { type: "Integer", description: "Vegetable type" },
+    p0: {
+      type: "Integer",
+      description: "Vegetable type",
+      codeSample: {
+        code: "int type = itemPtr->parm[0];\nif (type > 3) return(true);\ngNewObjectDefinition.type = GARBAGE_ObjType_Banana + type;",
+        fileName: "Source/Items/Items3.c",
+        lineNumber: 362,
+      },
+    },
     p1: "Unknown",
     p2: "Unknown",
     p3: "Unknown",
@@ -979,7 +1175,15 @@ export const bugdom2ItemTypeParams: Record<ItemType, Bugdom2ItemParams> = {
   },
   [ItemType.TinCan]: {
     flags: "Unknown",
-    p0: { type: "Integer", description: "Tin can type" },
+    p0: {
+      type: "Integer",
+      description: "Tin can type",
+      codeSample: {
+        code: "int type = itemPtr->parm[0];\nif (type > 1) return(true);\ngNewObjectDefinition.type = GARBAGE_ObjType_TinCan;",
+        fileName: "Source/Items/Items3.c",
+        lineNumber: 457,
+      },
+    },
     p1: "Unknown",
     p2: "Unknown",
     p3: "Unknown",
@@ -1016,9 +1220,24 @@ export const bugdom2ItemTypeParams: Record<ItemType, Bugdom2ItemParams> = {
   },
   [ItemType.GliderPart]: {
     flags: "Unknown",
-    p0: { type: "Integer", description: "Glider part (0 or 1)" },
+    p0: {
+      type: "Integer",
+      description: "Glider part (0 or 1)",
+      codeSample: {
+        code: "int part = itemPtr->parm[0];\ngNewObjectDefinition.type = GARBAGE_ObjType_Glider + part;",
+        fileName: "Source/Items/Items3.c",
+        lineNumber: 601,
+      },
+    },
     p1: "Unknown",
     p2: "Unknown",
     p3: "Unknown",
+  },
+  [ItemType.BeeHive]: {
+    p0: "Unused",
+    p1: "Unused",
+    p2: "Unused",
+    p3: "Unused",
+    flags: "Unused",
   },
 };
