@@ -80,7 +80,6 @@ export const WaterBody = memo(
             if (data.Liqd[1000].obj[waterBodyIdx].numNubs <= nubIdx) return;
 
             return (
-              <>
                 <Circle
                   x={nub[0]}
                   y={nub[1]}
@@ -115,7 +114,6 @@ export const WaterBody = memo(
                     });
                   }}
                 />
-              </>
             );
           })}
         {selectedWaterBody === waterBodyIdx && (

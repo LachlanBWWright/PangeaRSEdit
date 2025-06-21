@@ -9,7 +9,7 @@ import {
 } from "../../../python/structSpecs/ottoMaticInterface";
 import { FileUpload } from "../../../components/FileUpload";
 import { Globals } from "../../../data/globals/globals";
-import { Button, SmallButton } from "../../../components/Button";
+import { Button } from "@/components/ui/button";
 
 // Function to download a selected tile as an image
 const downloadSelectedTile = (
@@ -144,7 +144,7 @@ export function SupertileMenu({
           </Layer>
         </Stage>
         <p>Download Selected Tile</p>
-        <SmallButton
+        <Button size="sm"
           onClick={() =>
             downloadSelectedTile(
               mapImages,
@@ -154,7 +154,7 @@ export function SupertileMenu({
           }
         >
           Download
-        </SmallButton>
+        </Button>
       </div>
       <div className="flex flex-col gap-2">
         <p>Upload Image For Whole Map</p>
@@ -245,9 +245,9 @@ export function SupertileMenu({
         />
         <div className="flex-1" />
         <p>Download Image For Whole Map</p>
-        <SmallButton onClick={() => downloadMapImage(mapImages, data, globals)}>
+        <Button size="sm" onClick={() => downloadMapImage(mapImages, data, globals)}>
           Download
-        </SmallButton>
+        </Button>
       </div>
       <div className="flex flex-col gap-2">
         <p>Supertiles Wide: {hedr.mapWidth / globals.TILES_PER_SUPERTILE}</p>

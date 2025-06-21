@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { ottoMaticLevel } from "../python/structSpecs/ottoMaticInterface";
 import { UploadPrompt } from "./UploadPrompt";
 import { EditorView } from "./EditorView";
-import { Button } from "../components/Button";
+import { Button } from "@/components/ui/button";
 import { Updater, useImmer } from "use-immer";
 import { ottoPreprocessor } from "../data/preprocessors/ottoPreprocessor";
 import { Globals } from "../data/globals/globals";

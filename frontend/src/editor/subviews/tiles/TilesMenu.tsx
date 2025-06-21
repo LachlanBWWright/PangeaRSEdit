@@ -1,5 +1,5 @@
 import { Input } from "@/components/ui/input";
-import { Button } from "../../../components/Button";
+import { Button } from "@/components/ui/button";
 import {
   CurrentTopologyBrushMode,
   CurrentTopologyValueMode,
@@ -145,23 +145,23 @@ export function TilesMenu({
             }}
           >
             <SelectTrigger>
-              {valueMode === TopologyValueMode.SET_VALUE && "Set Value"}
-              {valueMode === TopologyValueMode.DELTA_VALUE && "Delta Value"}
+              {valueMode === TopologyValueMode.SET_VALUE && "Set To Value"}
+              {valueMode === TopologyValueMode.DELTA_VALUE && "Adjust By Value"}
               {valueMode === TopologyValueMode.DELTA_WITH_DROPOFF &&
-                "Delta with Dropoff"}
+                "Adjust By Value (With Dropoff)"}
             </SelectTrigger>
 
             <SelectContent>
               <SelectItem value={TopologyValueMode.SET_VALUE.toString()}>
-                Set Value
+                Set To Value
               </SelectItem>
               <SelectItem value={TopologyValueMode.DELTA_VALUE.toString()}>
-                Delta Value
+                Adjust By Value
               </SelectItem>
               <SelectItem
                 value={TopologyValueMode.DELTA_WITH_DROPOFF.toString()}
               >
-                Delta with Dropoff
+                Adjust By Value (With Dropoff)
               </SelectItem>
             </SelectContent>
           </Select>

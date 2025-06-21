@@ -1,7 +1,7 @@
 import { Updater } from "use-immer";
 import { ottoMaticLevel } from "../../../python/structSpecs/ottoMaticInterface";
 import { useAtom, useAtomValue } from "jotai";
-import { Button, DeleteButton } from "../../../components/Button";
+import { Button } from "@/components/ui/button";
 import { ClickToAddItem, SelectedItem } from "../../../data/items/itemAtoms";
 import { ottoItemTypeParams } from "../../../data/items/ottoItemType";
 import type { ParamDescription } from "../../../data/items/itemParams";
@@ -167,7 +167,8 @@ export function ItemMenu({
                 ];
               })}
             </div>
-            <DeleteButton
+            <Button
+              variant="destructive"
               disabled={selectedItem === undefined}
               onClick={() => {
                 if (selectedItem === undefined) return;
@@ -178,7 +179,7 @@ export function ItemMenu({
               }}
             >
               Delete Item
-            </DeleteButton>
+            </Button>
           </>
         )}
       </div>
@@ -224,9 +225,9 @@ function AddItemMenu() {
         </Select>
 
         <p>Click on the Canvas to add the selected item</p>
-        <DeleteButton onClick={() => setClickToAddItem(undefined)}>
+        <Button variant="destructive" onClick={() => setClickToAddItem(undefined)}>
           Stop Adding Items
-        </DeleteButton>
+        </Button>
       </>
     );
 
