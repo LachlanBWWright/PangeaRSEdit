@@ -11,7 +11,6 @@ interface FenceGeometryProps {
 }
 
 const FENCE_POST_HEIGHT = 300; // Example height, adjust as needed
-const FENCE_THICKNESS = 0.5; // Example thickness
 
 export const flattenCoords = (
   xTile: number, // Integer tile index
@@ -159,7 +158,7 @@ export const FenceGeometry: React.FC<FenceGeometryProps> = ({ data }) => {
 
         const fenceSegments = [];
         for (let i = 0; i < nubs.length - 1; i++) {
-          const nubA_raw = nubs[i]; // These are [rawX, rawZ] in uncentered, TILE_SIZE-scaled system
+          const nubA_raw = nubs[i];
           const nubB_raw = nubs[i + 1];
 
           // Raw (uncentered, TILE_SIZE-scaled) coordinates
@@ -172,46 +171,53 @@ export const FenceGeometry: React.FC<FenceGeometryProps> = ({ data }) => {
           const rawZ2 =
             nubB_raw[1] * (globals.TILE_INGAME_SIZE / globals.TILE_SIZE);
 
-          // Get terrain height using centered coordinates
+          // Get terrain height at endpoints
           const terrainY1 = getTerrainHeightAtPoint(
             nubA_raw[0],
             nubA_raw[1],
             data,
             globals,
-          ); // Pass globals
+          );
           const terrainY2 = getTerrainHeightAtPoint(
             nubB_raw[0],
             nubB_raw[1],
             data,
             globals,
-          ); // Pass globals
-
-          // Length calculation can use raw or centered diffs, it's the same
-          const length = Math.sqrt(
-            Math.pow(rawX2 - rawX1, 2) + Math.pow(rawZ2 - rawZ1, 2),
           );
-          if (length === 0) continue; // Skip zero-length segments
 
-          // Midpoint for positioning uses centered coordinates
-          const midCX = (rawX1 + rawX2) / 2;
-          const midCZ = (rawZ1 + rawZ2) / 2;
+          // 3D endpoints (bottom and top)
+          const A = [rawX1, terrainY1, rawZ1];
+          const B = [rawX2, terrainY2, rawZ2];
+          const At = [rawX1, terrainY1 + FENCE_POST_HEIGHT, rawZ1];
+          const Bt = [rawX2, terrainY2 + FENCE_POST_HEIGHT, rawZ2];
 
-          const segmentBaseY = (terrainY1 + terrainY2) / 2;
-          const fenceMeshY = segmentBaseY; //- FENCE_POST_HEIGHT / 2;
-
-          // Angle calculation can use raw or centered diffs
-          const angle = Math.atan2(rawX2 - rawX1, rawZ2 - rawZ1); // Angle for Y-axis rotation
+          // Vertices: A (bottom left), B (bottom right), At (top left), Bt (top right)
+          const vertices = [
+            ...A, // 0
+            ...B, // 1
+            ...At, // 2
+            ...Bt, // 3
+          ];
+          // Indices for two triangles: (A, B, At) and (B, Bt, At)
+          const indices = [0, 1, 2, 1, 3, 2];
 
           fenceSegments.push(
-            <mesh
-              key={`fence-${fenceIdx}-segment-${i}`}
-              position={[midCX, fenceMeshY, midCZ]} // Use centered midpoints
-              rotation={[0, angle + Math.PI / 2, 0]}
-            >
-              <boxGeometry
-                args={[length, FENCE_POST_HEIGHT, FENCE_THICKNESS]}
-              />
-              <meshStandardMaterial color="saddlebrown" />
+            <mesh key={`fence-${fenceIdx}-segment-${i}`}>
+              <bufferGeometry>
+                <bufferAttribute
+                  attach="attributes-position"
+                  count={4}
+                  array={new Float32Array(vertices)}
+                  itemSize={3}
+                />
+                <bufferAttribute
+                  attach="index"
+                  array={new Uint16Array(indices)}
+                  count={indices.length}
+                  itemSize={1}
+                />
+              </bufferGeometry>
+              <meshStandardMaterial color="saddlebrown" side={2} />
             </mesh>,
           );
         }

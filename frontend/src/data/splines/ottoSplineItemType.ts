@@ -1,3 +1,5 @@
+import { ItemParams } from "../items/itemParams";
+
 export enum SplineItemType {
   Human = 4, // 4: human
   BrainAlien = 7, // 7:  brain alien
@@ -49,6 +51,213 @@ export const splineItemTypeNames: Record<SplineItemType, string> = {
   [SplineItemType.LavaPlatform]: "Lava Platform",
   [SplineItemType.RailGun]: "Rail Gun",
 };
+
+// Parameter descriptions for each spline item type
+export const ottoSplineItemTypeParams: Record<SplineItemType, ItemParams> = {
+  [SplineItemType.Human]: {
+    flags: "Spline item flags",
+    p0: {
+      type: "Integer",
+      description:
+        "Human type: 0=Farmer, 1=Bee Woman, 2=Scientist, 3=Skirt Lady",
+      codeSample: {
+        code: "Byte humanType = itemPtr->parm[0];\n// ...\nswitch (humanType)\n{\n    case HUMAN_TYPE_FARMER:     return SKELETON_TYPE_FARMER;\n    case HUMAN_TYPE_BEEWOMAN:   return SKELETON_TYPE_BEEWOMAN;\n    case HUMAN_TYPE_SCIENTIST:  return SKELETON_TYPE_SCIENTIST;\n    case HUMAN_TYPE_SKIRTLADY:  return SKELETON_TYPE_SKIRTLADY;\n}",
+        fileName: "Humans.c",
+        lineNumber: 250,
+      },
+    },
+    p1: "Unknown",
+    p2: "Unknown",
+    p3: "Unknown",
+  },
+
+  [SplineItemType.BrainAlien]: {
+    flags: "Movement and behavior flags",
+    p0: "Unknown",
+    p1: "Unknown",
+    p2: "Unknown",
+    p3: "Unknown",
+  },
+
+  [SplineItemType.Onion]: {
+    flags: "Onion enemy behavior flags",
+    p0: "Unknown",
+    p1: "Unknown",
+    p2: "Unknown",
+    p3: "Unknown",
+  },
+
+  [SplineItemType.Corn]: {
+    flags: "Corn enemy behavior flags",
+    p0: "Unknown",
+    p1: "Unknown",
+    p2: "Unknown",
+    p3: "Unknown",
+  },
+
+  [SplineItemType.Tomato]: {
+    flags: "Tomato enemy behavior flags",
+    p0: "Unknown",
+    p1: "Unknown",
+    p2: "Unknown",
+    p3: "Unknown",
+  },
+
+  [SplineItemType.MagnetMonster]: {
+    flags: "Magnet monster behavior flags",
+    p0: "Unknown",
+    p1: "Unknown",
+    p2: "Unknown",
+    p3: "Unknown",
+  },
+
+  [SplineItemType.MovingPlatform]: {
+    flags: "Platform movement and behavior flags",
+    p0: {
+      type: "Integer",
+      description:
+        "Platform type/color: 0=Blue moving platform, 1=Red moving platform",
+      codeSample: {
+        code: "int type = itemPtr->parm[0];\n// ...\ngNewObjectDefinition.type = BLOBBOSS_ObjType_MovingPlatform_Blue + type;",
+        fileName: "Items.c",
+        lineNumber: 1582,
+      },
+    },
+    p1: "Unknown",
+    p2: "Unknown",
+    p3: "Unknown",
+  },
+
+  [SplineItemType.Flamester]: {
+    flags: "Flamester enemy behavior flags",
+    p0: "Unknown",
+    p1: "Unknown",
+    p2: "Unknown",
+    p3: "Unknown",
+  },
+
+  [SplineItemType.GiantLizard]: {
+    flags: "Giant lizard behavior flags",
+    p0: "Unknown",
+    p1: "Unknown",
+    p2: "Unknown",
+    p3: "Unknown",
+  },
+
+  [SplineItemType.Mantis]: {
+    flags: "Mantis enemy behavior flags",
+    p0: "Unknown",
+    p1: "Unknown",
+    p2: "Unknown",
+    p3: "Unknown",
+  },
+
+  [SplineItemType.Mutant]: {
+    flags: "Mutant enemy behavior flags",
+    p0: "Unknown",
+    p1: "Unknown",
+    p2: "Unknown",
+    p3: "Unknown",
+  },
+
+  [SplineItemType.MutantRobot]: {
+    flags: "Mutant robot behavior flags",
+    p0: "Unknown",
+    p1: "Unknown",
+    p2: "Unknown",
+    p3: "Unknown",
+  },
+
+  [SplineItemType.HumanScientist]: {
+    flags: "Scientist behavior flags",
+    p0: "Unknown",
+    p1: "Unknown",
+    p2: "Unknown",
+    p3: "Unknown",
+  },
+
+  [SplineItemType.Clown]: {
+    flags: "Clown enemy behavior flags",
+    p0: "Unknown",
+    p1: "Unknown",
+    p2: "Unknown",
+    p3: "Unknown",
+  },
+
+  [SplineItemType.ClownFish]: {
+    flags: "Clown fish behavior flags",
+    p0: "Unknown",
+    p1: "Unknown",
+    p2: "Unknown",
+    p3: "Unknown",
+  },
+
+  [SplineItemType.StrongMan]: {
+    flags: "Strongman behavior flags",
+    p0: "Unknown",
+    p1: "Unknown",
+    p2: "Unknown",
+    p3: "Unknown",
+  },
+
+  [SplineItemType.JawsBot]: {
+    flags: "JawsBot behavior flags",
+    p0: "Unknown",
+    p1: "Unknown",
+    p2: "Unknown",
+    p3: "Unknown",
+  },
+
+  [SplineItemType.IceCube]: {
+    flags: "Ice cube behavior flags",
+    p0: "Unknown",
+    p1: "Unknown",
+    p2: "Unknown",
+    p3: "Unknown",
+  },
+
+  [SplineItemType.HammerBot]: {
+    flags: "Hammer bot behavior flags",
+    p0: "Unknown",
+    p1: "Unknown",
+    p2: "Unknown",
+    p3: "Unknown",
+  },
+
+  [SplineItemType.DrillBot]: {
+    flags: "Drill bot behavior flags",
+    p0: "Unknown",
+    p1: "Unknown",
+    p2: "Unknown",
+    p3: "Unknown",
+  },
+
+  [SplineItemType.SwingerBot]: {
+    flags: "Swinger bot behavior flags",
+    p0: "Unknown",
+    p1: "Unknown",
+    p2: "Unknown",
+    p3: "Unknown",
+  },
+
+  [SplineItemType.LavaPlatform]: {
+    flags: "Lava platform behavior flags",
+    p0: "Unused",
+    p1: "Unused",
+    p2: "Unused",
+    p3: "Unused",
+  },
+
+  [SplineItemType.RailGun]: {
+    flags: "Rail gun behavior flags",
+    p0: "Unknown",
+    p1: "Unknown",
+    p2: "Unknown",
+    p3: "Unknown",
+  },
+};
+
+export type OttoSplineItemParams = ItemParams;
 
 /* 
 

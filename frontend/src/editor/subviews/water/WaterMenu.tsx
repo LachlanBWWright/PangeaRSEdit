@@ -1,7 +1,7 @@
 import { Updater } from "use-immer";
 import { ottoMaticLevel } from "../../../python/structSpecs/ottoMaticInterface";
 import { useAtom, useAtomValue } from "jotai";
-import { Button, DeleteButton } from "../../../components/Button";
+import { Button } from "@/components/ui/button";
 import {
   SelectedWaterBody,
   SelectedWaterNub,
@@ -251,14 +251,15 @@ export function WaterMenu({
                 Add Nub
               </Button>
               <Button
+                variant="destructive"
                 disabled={
-                  selectedWaterBody === null || // Add null check
+                  selectedWaterBody === null ||
                   (selectedWaterBody !== null &&
-                    data.Liqd[1000].obj[selectedWaterBody].numNubs <= 3) // Add null check
+                    data.Liqd[1000].obj[selectedWaterBody].numNubs <= 3)
                 }
                 onClick={() => {
                   setData((data) => {
-                    if (selectedWaterBody === null) return; // Add null check
+                    if (selectedWaterBody === null) return;
                     if (data.Liqd[1000].obj[selectedWaterBody].numNubs <= 3)
                       return;
                     data.Liqd[1000].obj[selectedWaterBody].numNubs--;
@@ -267,19 +268,20 @@ export function WaterMenu({
               >
                 Delete Nub
               </Button>
-              <DeleteButton
-                disabled={selectedWaterBody === null} // Add null check
+              <Button
+                variant="destructive"
+                disabled={selectedWaterBody === null}
                 onClick={() => {
-                  if (selectedWaterBody === null) return; // Add null check
+                  if (selectedWaterBody === null) return;
                   setData((data) => {
                     data.Liqd[1000].obj.splice(selectedWaterBody, 1);
                   });
-                  setSelectedWaterBody(null); // Change undefined to null
+                  setSelectedWaterBody(null);
                   setSelectedWaterNub(null);
                 }}
               >
                 Delete Water Body
-              </DeleteButton>
+              </Button>
             </div>
           </>
         )}

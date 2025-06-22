@@ -1,4 +1,4 @@
-import { Button } from "@/components/Button";
+import { Button } from "@/components/ui/button";
 
 export function IntroText() {
   return (
@@ -8,6 +8,7 @@ export function IntroText() {
         onClick={() =>
           window.open("https://github.com/LachlanBWWright/PangeaRSEdit")
         }
+        
       >
         View on GitHub
       </Button>

@@ -1,4 +1,4 @@
-import { Button } from "../components/Button";
+import { Button } from "@/components/ui/button";
 import { FileUpload } from "../components/FileUpload";
 import LzssWorker from "../utils/lzssWorker?worker";
 import {

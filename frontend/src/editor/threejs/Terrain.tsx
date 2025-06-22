@@ -1,8 +1,6 @@
 import { ottoMaticLevel } from "@/python/structSpecs/ottoMaticInterface";
-import { useRef } from "react";
+import { useRef, useMemo } from "react";
 import { CanvasTexture, DoubleSide, Mesh, PlaneGeometry } from "three";
-import { useUnscaledHeightImg } from "../subviews/tiles/useHeightImg";
-import { useMemo } from "react";
 import { useAtomValue } from "jotai";
 import { Globals, GlobalsInterface } from "@/data/globals/globals";
 
@@ -60,69 +58,59 @@ export function TerrainGeometry({
   mapImages: HTMLCanvasElement[];
 }) {
   const globals = useAtomValue(Globals);
-  const { heightImg } = useUnscaledHeightImg(data);
   const combinedImg = useMemo(
     () => combineMapImages(mapImages, data, globals),
     [mapImages, data, globals],
-  );
-
-  const testCanvas = document.createElement("canvas");
-  testCanvas.width = 100;
-  testCanvas.height = 100;
-  const testCtx = testCanvas.getContext("2d");
-  if (!testCtx) throw new Error("Could not get canvas context");
-  testCtx.fillStyle = "red";
-  testCtx.fillRect(0, 0, 100, 100);
-
-  console.log(heightImg);
-  const heightTexture = useMemo(
-    () => new CanvasTexture(heightImg),
-    [heightImg, testCanvas],
-  );
-  const combinedTexture = useMemo(
-    () => new CanvasTexture(combinedImg),
-    [combinedImg],
   );
   const header = data.Hedr[1000].obj;
   const numWide = header.mapWidth;
   const numHigh = header.mapHeight;
   const meshRef = useRef<Mesh>(null);
-  const planeRef = useRef<PlaneGeometry>(null);
-
   const mapTileSize = header.tileSize;
   const yScale = globals.TILE_INGAME_SIZE / mapTileSize;
-  console.log("mapTileSize", mapTileSize, "yScale", yScale);
+
+  // Build geometry with explicit Y from YCrd
+  const geometry = useMemo(() => {
+    // PlaneGeometry: width, height, widthSegments, heightSegments
+    const geom = new PlaneGeometry(
+      numWide * globals.TILE_INGAME_SIZE,
+      numHigh * globals.TILE_INGAME_SIZE,
+      numWide,
+      numHigh,
+    );
+
+    const ycrd = data.YCrd[1000].obj;
+    for (let i = 0; i < geom.attributes.position.count; i++) {
+      // TODO: Change this to use Y and update the rotation of the plane?
+      geom.attributes.position.setZ(i, ycrd[i] * yScale);
+    }
+    geom.computeVertexNormals();
+    geom.attributes.position.needsUpdate = true;
+    return geom;
+  }, [data.YCrd, numWide, numHigh, yScale]);
+
+  const combinedTexture = useMemo(
+    () => new CanvasTexture(combinedImg),
+    [combinedImg],
+  );
 
   return (
-    <>
-      <mesh
-        ref={meshRef}
-        position={[
-          (numWide * globals.TILE_INGAME_SIZE) / 2,
-          0,
-          (numHigh * globals.TILE_INGAME_SIZE) / 2,
-        ]}
-        rotation={[-Math.PI / 2, 0, 0]}
-      >
-        <planeGeometry
-          ref={planeRef}
-          args={[
-            numWide * globals.TILE_INGAME_SIZE,
-            numHigh * globals.TILE_INGAME_SIZE,
-            numWide,
-            numHigh,
-          ]}
-        />
-        <ambientLight intensity={1} />
-        <meshStandardMaterial
-          side={DoubleSide}
-          needsUpdate={true}
-          alphaMap={heightTexture}
-          displacementMap={heightTexture}
-          displacementScale={header.maxY * yScale}
-          map={combinedTexture}
-        />
-      </mesh>
-    </>
+    <mesh
+      ref={meshRef}
+      position={[
+        (numWide * globals.TILE_INGAME_SIZE) / 2,
+        0,
+        (numHigh * globals.TILE_INGAME_SIZE) / 2,
+      ]}
+      rotation={[-Math.PI / 2, 0, 0]}
+      geometry={geometry}
+    >
+      <ambientLight intensity={1} />
+      <meshStandardMaterial
+        side={DoubleSide}
+        needsUpdate={true}
+        map={combinedTexture}
+      />
+    </mesh>
   );
 }

@@ -5,6 +5,7 @@ import { Toaster } from "./components/ui/toaster";
 import PyodideWorker from "./python/pyodideWorker?worker";
 import { PyodideMessage } from "./python/pyodideWorker";
 import { IntroText } from "./editor/IntroText";
+import { TooltipProvider } from "@/components/ui/tooltip";
 
 function App() {
   const [pyodideWorker, setPyodideWorker] = useState<null | Worker>(null);
@@ -33,10 +34,12 @@ function App() {
     );
 
   return (
-    <>
-      <MapPrompt pyodideWorker={pyodideWorker} />
-      <Toaster />
-    </>
+    <TooltipProvider>
+      <>
+        <MapPrompt pyodideWorker={pyodideWorker} />
+        <Toaster />
+      </>
+    </TooltipProvider>
   );
 }
 

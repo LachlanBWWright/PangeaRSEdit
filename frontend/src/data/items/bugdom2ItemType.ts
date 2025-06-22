@@ -1,3 +1,5 @@
+import { ItemParams } from "./itemParams";
+
 export enum ItemType {
   StartCoords, // My Start Coords
   Snail, // snail
@@ -174,4 +176,1061 @@ export const itemTypeNames: Record<ItemType, string> = {
   [ItemType.Detergent]: "Detergent",
   [ItemType.BoxWall]: "Box Wall",
   [ItemType.GliderPart]: "Glider Part",
+};
+
+export type Bugdom2ItemParams = ItemParams;
+
+const bugdom2DefaultParams: Bugdom2ItemParams = {
+  flags: "Unknown",
+  p0: "Unknown",
+  p1: "Unknown",
+  p2: "Unknown",
+  p3: "Unknown",
+};
+
+export const bugdom2ItemTypeParams: Record<ItemType, Bugdom2ItemParams> = {
+  [ItemType.StartCoords]: {
+    flags: "Unknown",
+    p0: {
+      type: "Integer",
+      description: "Starting rotation (0-7, where each unit = 45°)",
+    },
+    p1: "Unknown",
+    p2: "Unknown",
+    p3: "Unknown",
+  },
+  [ItemType.Snail]: {
+    flags: "ITEM_FLAGS_USER1: Task completed (head attached)",
+    p0: {
+      type: "Integer",
+      description: "Snail kind (0-19)",
+      codeSample: {
+        code: "int snailKind = itemPtr->parm[0];\nif (snailKind > 19) return(true);",
+        fileName: "Source/Items/Snails.c",
+        lineNumber: 86,
+      },
+    },
+    p1: {
+      type: "Integer",
+      description: "Rotation (0-7, where each unit = 45°)",
+      codeSample: {
+        code: "snail = MakeSnail(SNAIL_SLOT, x, z, snailKind, itemPtr->parm[2], itemPtr->parm[1], taskCompleted);\ngNewObjectDefinition.rot = (float)rot * (PI2/8);",
+        fileName: "Source/Items/Snails.c",
+        lineNumber: 95,
+      },
+    },
+    p2: {
+      type: "Integer",
+      description: "Key color (if applicable)",
+      codeSample: {
+        code: "snail = MakeSnail(SNAIL_SLOT, x, z, snailKind, itemPtr->parm[2], itemPtr->parm[1], taskCompleted);\nsnail->KeyColor = keyColor;",
+        fileName: "Source/Items/Snails.c",
+        lineNumber: 95,
+      },
+    },
+    p3: "Unknown",
+  },
+  [ItemType.SprinklerHead]: {
+    flags: "Unknown",
+    p0: {
+      type: "Integer",
+      description: "Sprinkler rotation (0-3, where each unit = 90°)",
+      codeSample: {
+        code: "gNewObjectDefinition.rot = itemPtr->parm[0] * (PI/2);",
+        fileName: "Source/Items/Traps.c",
+        lineNumber: 121,
+      },
+    },
+    p1: "Unknown",
+    p2: "Unknown",
+    p3: "Unknown",
+  },
+  [ItemType.Butterfly]: {
+    flags: "Unknown",
+    p0: {
+      type: "Integer",
+      description: "POW kind (0-12)",
+      codeSample: {
+        code: "pow = MakePOW(itemPtr->parm[0], &where);",
+        fileName: "Source/Items/Powerups.c",
+        lineNumber: 585,
+      },
+    },
+    p1: "Unknown",
+    p2: "Unknown",
+    p3: {
+      type: "Bit Flags",
+      flags: [
+        {
+          index: 0,
+          description: "Regenerating POW",
+          codeSample: {
+            code: "body->Regenerate = itemPtr->parm[3] & 1; // see if regenerating kind",
+            fileName: "Source/Items/Powerups.c",
+            lineNumber: 88,
+          },
+        },
+        {
+          index: 1,
+          description: "Place up high (garbage level)",
+          codeSample: {
+            code: "Boolean upHigh = itemPtr->parm[3] & (1<<1);\nif (upHigh) yOff = 1100.0f; else yOff = 150.0f;",
+            fileName: "Source/Items/Powerups.c",
+            lineNumber: 54,
+          },
+        },
+      ],
+    },
+  },
+  [ItemType.Enemy_Gnome]: {
+    flags: "Unknown",
+    p0: "Unknown",
+    p1: "Unknown",
+    p2: "Unknown",
+    p3: {
+      type: "Bit Flags",
+      flags: [
+        {
+          index: 0,
+          description: "Always add (ignore max enemy limit)",
+          codeSample: {
+            code: "if (!(itemPtr->parm[3] & 1)) {\n    if (gNumEnemyOfKind[ENEMY_KIND_GNOME] >= MAX_GNOMES)\n        return(false);\n}",
+            fileName: "Source/Enemies/Enemy_Gnome.c",
+            lineNumber: 94,
+          },
+        },
+      ],
+    },
+  },
+  [ItemType.Daisy]: {
+    flags: "Unknown",
+    p0: {
+      type: "Integer",
+      description: "Daisy type (0-2)",
+      codeSample: {
+        code: "gNewObjectDefinition.type = FOLIAGE_ObjType_Daisy1 + itemPtr->parm[0];",
+        fileName: "Source/Items/Items.c",
+        lineNumber: 181,
+      },
+    },
+    p1: "Unknown",
+    p2: "Unknown",
+    p3: "Unknown",
+  },
+  [ItemType.Grass]: {
+    flags: "Unknown",
+    p0: {
+      type: "Integer",
+      description: "Grass type (0-2)",
+      codeSample: {
+        code: "gNewObjectDefinition.type = FOLIAGE_ObjType_Grass1 + itemPtr->parm[0];",
+        fileName: "Source/Items/Items.c",
+        lineNumber: 299,
+      },
+    },
+    p1: "Unknown",
+    p2: "Unknown",
+    p3: "Unknown",
+  },
+  [ItemType.SnailShell]: {
+    flags: "Unknown",
+    p0: {
+      type: "Integer",
+      description: "Shell rotation (0-3, where each unit = 90°)",
+      codeSample: {
+        code: "gNewObjectDefinition.rot = (float)itemPtr->parm[0] * (PI/2);",
+        fileName: "Source/Items/Snails.c",
+        lineNumber: 677,
+      },
+    },
+    p1: "Unknown",
+    p2: "Unknown",
+    p3: "Unknown",
+  },
+  [ItemType.Tulip]: {
+    flags: "Unknown",
+    p0: {
+      type: "Integer",
+      description: "Tulip type (0-2)",
+      codeSample: {
+        code: "gNewObjectDefinition.type = FOLIAGE_ObjType_Tulip1 + itemPtr->parm[0];",
+        fileName: "Source/Items/Items.c",
+        lineNumber: 234,
+      },
+    },
+    p1: "Unknown",
+    p2: "Unknown",
+    p3: "Unknown",
+  },
+  [ItemType.Acorn]: {
+    flags: "Unknown",
+    p0: {
+      type: "Integer",
+      description: "Acorn type (0-2: green, blue, or gold)",
+      codeSample: {
+        code: "int type = itemPtr->parm[0];\nif (type > 2) return(true);\nnewObj->CloverType = type;",
+        fileName: "Source/Items/Pickups.c",
+        lineNumber: 288,
+      },
+    },
+    p1: "Unknown",
+    p2: "Unknown",
+    p3: "Unknown",
+  },
+  [ItemType.Enemy_HouseFly]: {
+    flags: "Unknown",
+    p0: "Unknown",
+    p1: "Unknown",
+    p2: "Unknown",
+    p3: {
+      type: "Bit Flags",
+      flags: [{ index: 0, description: "Always add (ignore max enemy limit)" }],
+    },
+  },
+  [ItemType.Scarecrow]: {
+    flags: "ITEM_FLAGS_USER1: Task completed (head attached)",
+    p0: {
+      type: "Integer",
+      description: "Scarecrow part (0 = body, 1 = head separately)",
+      codeSample: {
+        code: "if (itemPtr->parm[0] == 0) {\n    /* MAIN BODY */\n    gNewObjectDefinition.type = GARDEN_ObjType_ScarecrowBody;",
+        fileName: "Source/Items/Snails.c",
+        lineNumber: 809,
+      },
+    },
+    p1: "Unknown",
+    p2: "Unknown",
+    p3: "Unknown",
+  },
+  [ItemType.Enemy_EvilPlant]: {
+    flags: "Unknown",
+    p0: "Unknown",
+    p1: "Unknown",
+    p2: "Unknown",
+    p3: "Unknown",
+  },
+  [ItemType.Door]: {
+    flags: "ITEM_FLAGS_USER1: Door is open",
+    p0: {
+      type: "Integer",
+      description: "Door rotation (0-3, where each unit = 90°)",
+    },
+    p1: { type: "Integer", description: "Door color" },
+    p2: "Unknown",
+    p3: "Unknown",
+  },
+  [ItemType.RideBall]: {
+    flags: "Unknown",
+    p0: {
+      type: "Integer",
+      description: "Ball rotation (0-7, where each unit = 45°)",
+      codeSample: {
+        code: "gNewObjectDefinition.rot = (float)itemPtr->parm[0] * (PI2/8.0f);",
+        fileName: "Source/Player/RideBall.c",
+        lineNumber: 64,
+      },
+    },
+    p1: "Unknown",
+    p2: "Unknown",
+    p3: "Unknown",
+  },
+  [ItemType.BowlingMarble]: {
+    flags: "Unknown",
+    p0: "Unknown",
+    p1: "Unknown",
+    p2: "Unknown",
+    p3: "Unknown",
+  },
+  [ItemType.BowlingPins]: {
+    flags: "Unknown",
+    p0: {
+      type: "Integer",
+      description: "Pin arrangement rotation (0-7, where each unit = 45°)",
+      codeSample: {
+        code: "OGLMatrix3x3_SetRotate(&m, (float)itemPtr->parm[0] * (PI2/8));",
+        fileName: "Source/Items/Snails.c",
+        lineNumber: 1333,
+      },
+    },
+    p1: "Unknown",
+    p2: "Unknown",
+    p3: "Unknown",
+  },
+  [ItemType.Brick]: {
+    flags: "Unknown",
+    p0: {
+      type: "Integer",
+      description: "Brick rotation (0-3, where each unit = 90°)",
+      codeSample: {
+        code: "gNewObjectDefinition.rot = (float)itemPtr->parm[0] * PI/2;",
+        fileName: "Source/Items/Items.c",
+        lineNumber: 530,
+      },
+    },
+    p1: {
+      type: "Integer",
+      description: "Brick type (varies by level)",
+      codeSample: {
+        code: "gNewObjectDefinition.type = GARDEN_ObjType_Brick; // or SIDEWALK_ObjType_Brick depending on level",
+        fileName: "Source/Items/Items.c",
+        lineNumber: 517,
+      },
+    },
+    p2: "Unknown",
+    p3: "Unknown",
+  },
+  [ItemType.Post]: {
+    flags: "Unknown",
+    p0: {
+      type: "Integer",
+      description: "Post type (varies by level: brick/block/grass etc.)",
+      codeSample: {
+        code: "int type = itemPtr->parm[0];\ngNewObjectDefinition.type = GARDEN_ObjType_Post_Brick + type;",
+        fileName: "Source/Items/Items.c",
+        lineNumber: 561,
+      },
+    },
+    p1: "Unknown",
+    p2: "Unknown",
+    p3: "Unknown",
+  },
+  [ItemType.Chipmunk]: {
+    flags: "ITEM_FLAGS_USER1: Task completed (inactive)",
+    p0: {
+      type: "Integer",
+      description: "Chipmunk rotation (0-7, where each unit = 45°)",
+      codeSample: {
+        code: "gNewObjectDefinition.rot = (float)itemPtr->parm[0] * PI2/8;",
+        fileName: "Source/Items/Chipmunk.c",
+        lineNumber: 130,
+      },
+    },
+    p1: {
+      type: "Integer",
+      description: "Chipmunk kind (see CHIPMUNK_KIND_* constants)",
+      codeSample: {
+        code: "int kind = itemPtr->parm[1];\nnewObj->Kind = kind;",
+        fileName: "Source/Items/Chipmunk.c",
+        lineNumber: 81,
+      },
+    },
+    p2: {
+      type: "Integer",
+      description: "Checkpoint number (if kind == CHIPMUNK_KIND_CHECKPOINT)",
+      codeSample: {
+        code: "if (kind == CHIPMUNK_KIND_CHECKPOINT)\n    newObj->CheckPointNum = itemPtr->parm[2];",
+        fileName: "Source/Items/Chipmunk.c",
+        lineNumber: 134,
+      },
+    },
+    p3: "Unknown",
+  },
+  [ItemType.ShrubRoot]: {
+    flags: "Unknown",
+    p0: "Unknown",
+    p1: "Unknown",
+    p2: "Unknown",
+    p3: "Unknown",
+  },
+  [ItemType.Pebble]: {
+    flags: "Unknown",
+    p0: { type: "Integer", description: "Stone type" },
+    p1: "Unknown",
+    p2: "Unknown",
+    p3: "Unknown",
+  },
+  [ItemType.SnakeGenerator]: {
+    flags: "Unknown",
+    p0: {
+      type: "Integer",
+      description: "Unused",
+      codeSample: {
+        code: "Boolean AddSnakeGenerator(TerrainItemEntryType *itemPtr, float x, float z)",
+        fileName: "Source/Enemies/Enemy_Snake.c",
+        lineNumber: 161,
+      },
+    },
+    p1: "Unknown",
+    p2: "Unknown",
+    p3: "Unknown",
+  },
+  [ItemType.PoolCoping]: {
+    flags: "Unknown",
+    p0: { type: "Integer", description: "Pool coping rotation (0-3)" },
+    p1: "Unknown",
+    p2: "Unknown",
+    p3: {
+      type: "Bit Flags",
+      flags: [{ index: 0, description: "Is corner piece" }],
+    },
+  },
+  [ItemType.PoolLeaf]: {
+    flags: "Unknown",
+    p0: "Unknown",
+    p1: "Unknown",
+    p2: "Unknown",
+    p3: {
+      type: "Bit Flags",
+      flags: [
+        {
+          index: 0,
+          description: "Has key",
+          codeSample: {
+            code: "if (itemPtr->parm[3] & 1) { /* PUT KEY ON LEAF */ }",
+            fileName: "Source/Items/Items.c",
+            lineNumber: 783,
+          },
+        },
+      ],
+    },
+  },
+  [ItemType.NilAdd]: {
+    flags: "Unknown",
+    p0: "Unknown",
+    p1: "Unknown",
+    p2: "Unknown",
+    p3: "Unknown",
+  },
+  [ItemType.SquishBerry]: {
+    flags: "ITEM_FLAGS_USER1: Is squished (shows as splat)",
+    p0: "Unknown",
+    p1: "Unknown",
+    p2: "Unknown",
+    p3: "Unknown",
+  },
+  [ItemType.DogHouse]: {
+    flags: "Unknown",
+    p0: "Unknown",
+    p1: "Unknown",
+    p2: "Unknown",
+    p3: { type: "Bit Flags", flags: [{ index: 0, description: "Has key" }] },
+  },
+  [ItemType.Windmill]: {
+    flags: "Unknown",
+    p0: {
+      type: "Integer",
+      description: "Windmill rotation (0-3, where each unit = 90°)",
+    },
+    p1: "Unknown",
+    p2: "Unknown",
+    p3: "Unknown",
+  },
+  [ItemType.Rose]: {
+    flags: "Unknown",
+    p0: {
+      type: "Integer",
+      description: "Rose rotation (0-3, where each unit = 90°)",
+    },
+    p1: "Unknown",
+    p2: "Unknown",
+    p3: "Unknown",
+  },
+  [ItemType.TulipPot]: {
+    flags: "Unknown",
+    p0: {
+      type: "Integer",
+      description: "Pot rotation (0-3, where each unit = 90°)",
+      codeSample: {
+        code: "gNewObjectDefinition.rot = (float)itemPtr->parm[0] * (PI2/4);",
+        fileName: "Source/Items/Items.c",
+        lineNumber: 950,
+      },
+    },
+    p1: "Unknown",
+    p2: "Unknown",
+    p3: "Unknown",
+  },
+  [ItemType.BeachBall]: {
+    flags: "Unknown",
+    p0: "Unknown",
+    p1: "Unknown",
+    p2: "Unknown",
+    p3: "Unknown",
+  },
+  [ItemType.ChlorineFloat]: {
+    flags: "Unknown",
+    p0: "Unknown",
+    p1: "Unknown",
+    p2: "Unknown",
+    p3: "Unknown",
+  },
+  [ItemType.PoolRingFloat]: {
+    flags: "Unknown",
+    p0: "Unknown",
+    p1: "Unknown",
+    p2: "Unknown",
+    p3: "Unknown",
+  },
+  [ItemType.DrainPipe]: {
+    flags: "Unknown",
+    p0: "Unknown",
+    p1: "Unknown",
+    p2: "Unknown",
+    p3: "Unknown",
+  },
+  [ItemType.POW]: {
+    flags: "Unknown",
+    p0: { type: "Integer", description: "POW type" },
+    p1: "Unknown",
+    p2: "Unknown",
+    p3: "Unknown",
+  },
+  [ItemType.Firecracker]: {
+    flags: "Unknown",
+    p0: {
+      type: "Bit Flags",
+      flags: [{ index: 0, description: "Build 2 collision boxes" }],
+    },
+    p1: "Unknown",
+    p2: "Unknown",
+    p3: {
+      type: "Bit Flags",
+      flags: [
+        { index: 0, description: "Is primed" },
+        { index: 1, description: "Is drowning" },
+      ],
+    },
+  },
+  [ItemType.GlassBottle]: {
+    flags: "Unknown",
+    p0: "Unknown",
+    p1: "Unknown",
+    p2: "Unknown",
+    p3: "Unknown",
+  },
+  [ItemType.Enemy_Flea]: {
+    flags: "Unknown",
+    p0: "Unknown",
+    p1: "Unknown",
+    p2: "Unknown",
+    p3: {
+      type: "Bit Flags",
+      flags: [{ index: 0, description: "Always add (ignore max enemy limit)" }],
+    },
+  },
+  [ItemType.Enemy_Tick]: {
+    flags: "Unknown",
+    p0: {
+      type: "Integer",
+      description: "Unused",
+      codeSample: {
+        code: "Boolean AddEnemy_Tick(TerrainItemEntryType *itemPtr, float x, float z)",
+        fileName: "Source/Enemies/Enemy_Tick.c",
+        lineNumber: 108,
+      },
+    },
+    p1: "Unknown",
+    p2: "Unknown",
+    p3: "Unknown",
+  },
+  [ItemType.SlotCar]: {
+    flags: "Unknown",
+    p0: { type: "Integer", description: "Car number" },
+    p1: "Unknown",
+    p2: "Unknown",
+    p3: "Unknown",
+  },
+  [ItemType.LetterBlock]: {
+    flags: "Unknown",
+    p0: { type: "Integer", description: "Letter block type (affects model)" },
+    p1: "Unknown",
+    p2: "Unknown",
+    p3: "Unknown",
+  },
+  [ItemType.MouseTrap]: {
+    flags: "Unknown",
+    p0: {
+      type: "Integer",
+      description: "Trap rotation (0-3, where each unit = 90°)",
+    },
+    p1: "Unknown",
+    p2: "Unknown",
+    p3: "Unknown",
+  },
+  [ItemType.Enemy_ToySoldier]: {
+    flags: "Unknown",
+    p0: {
+      type: "Integer",
+      description: "Unused",
+      codeSample: {
+        code: "Boolean AddEnemy_ToySoldier(TerrainItemEntryType *itemPtr, float x, float z)",
+        fileName: "Source/Enemies/Enemy_ToySoldier.c",
+        lineNumber: 105,
+      },
+    },
+    p1: "Unknown",
+    p2: "Unknown",
+    p3: "Unknown",
+  },
+  [ItemType.FinishLine]: {
+    flags: "Unknown",
+    p0: {
+      type: "Integer",
+      description: "Finish line rotation (0-3, where each unit = 90°)",
+      codeSample: {
+        code: "gNewObjectDefinition.rot = (float)itemPtr->parm[0] * (PI/2);",
+        fileName: "Source/Items/SlotCar.c",
+        lineNumber: 878,
+      },
+    },
+    p1: "Unknown",
+    p2: "Unknown",
+    p3: "Unknown",
+  },
+  [ItemType.Enemy_Otto]: {
+    flags: "Unknown",
+    p0: "Unknown",
+    p1: "Unknown",
+    p2: "Unknown",
+    p3: {
+      type: "Bit Flags",
+      flags: [{ index: 0, description: "Always add (ignore max enemy limit)" }],
+    },
+  },
+  [ItemType.Puzzle]: {
+    flags: "Unknown",
+    p0: {
+      type: "Integer",
+      description: "Puzzle part (0 = main puzzle base, 1+ = individual pieces)",
+      codeSample: {
+        code: "int part = itemPtr->parm[0];\nif (part == 0) {\n    gNewObjectDefinition.type = PLAYROOM_ObjType_PuzzleMain;",
+        fileName: "Source/Items/Snails2.c",
+        lineNumber: 52,
+      },
+    },
+    p1: "Unknown",
+    p2: "Unknown",
+    p3: "Unknown",
+  },
+  [ItemType.LegoWall]: {
+    flags: "Unknown",
+    p0: {
+      type: "Integer",
+      description:
+        "Wall/brick type (0 = full wall, 1-5 = individual brick types)",
+      codeSample: {
+        code: "int type = itemPtr->parm[0];\nif (type > 5) return(true);\nif (type == 0) {\n    gNewObjectDefinition.type = PLAYROOM_ObjType_LegoWall;\n} else {\n    gNewObjectDefinition.type = PLAYROOM_ObjType_LegoWall + type;\n}",
+        fileName: "Source/Items/Items2.c",
+        lineNumber: 369,
+      },
+    },
+    p1: {
+      type: "Integer",
+      description: "Rotation (0-3, where each unit = 90°)",
+      codeSample: {
+        code: "int r = itemPtr->parm[1];\ngNewObjectDefinition.rot = (float)r * (PI/2);",
+        fileName: "Source/Items/Items2.c",
+        lineNumber: 372,
+      },
+    },
+    p2: "Unknown",
+    p3: {
+      type: "Bit Flags",
+      flags: [
+        {
+          index: 0,
+          description: "Choose random color brick (for brick types only)",
+          codeSample: {
+            code: "if (itemPtr->parm[3] & 1) gNewObjectDefinition.type = PLAYROOM_ObjType_LegoBrick_Red + RandomRange(0, 4);",
+            fileName: "Source/Items/Items2.c",
+            lineNumber: 410,
+          },
+        },
+      ],
+    },
+  },
+  [ItemType.FlashLight]: {
+    flags: "Unknown",
+    p0: {
+      type: "Integer",
+      description: "Flashlight rotation (0-3, where each unit = 90°)",
+    },
+    p1: "Unknown",
+    p2: "Unknown",
+    p3: "Unknown",
+  },
+  [ItemType.DCell]: {
+    flags: "Unknown",
+    p0: "Unknown",
+    p1: "Unknown",
+    p2: "Unknown",
+    p3: "Unknown",
+  },
+  [ItemType.Crayon]: {
+    flags: "Unknown",
+    p0: { type: "Integer", description: "Crayon type" },
+    p1: {
+      type: "Integer",
+      description: "Crayon rotation (0-3, where each unit = 90°)",
+    },
+    p2: "Unknown",
+    p3: "Unknown",
+  },
+  [ItemType.AntHill]: {
+    flags: "ITEM_FLAGS_USER1: Hill is blown up",
+    p0: "Unknown",
+    p1: "Unknown",
+    p2: "Unknown",
+    p3: "Unknown",
+  },
+  [ItemType.Enemy_Dragonfly]: {
+    flags: "Unknown",
+    p0: "Unknown",
+    p1: "Unknown",
+    p2: "Unknown",
+    p3: {
+      type: "Bit Flags",
+      flags: [{ index: 0, description: "Always add (ignore max enemy limit)" }],
+    },
+  },
+  [ItemType.Cloud]: {
+    flags: "Unknown",
+    p0: "Unknown",
+    p1: "Unknown",
+    p2: "Unknown",
+    p3: "Unknown",
+  },
+  [ItemType.Enemy_Frog]: {
+    flags: "Unknown",
+    p0: "Unknown",
+    p1: "Unknown",
+    p2: "Unknown",
+    p3: {
+      type: "Bit Flags",
+      flags: [{ index: 0, description: "Always add (ignore max enemy limit)" }],
+    },
+  },
+  [ItemType.CardboardBox]: {
+    flags: "Unknown",
+    p0: {
+      type: "Integer",
+      description: "Box type (0-3, affects model)",
+      codeSample: {
+        code: "int type = itemPtr->parm[0];\nif (type > 3) return(true);\ngNewObjectDefinition.type = CLOSET_ObjType_CardboardBox1 + type;",
+        fileName: "Source/Items/Items2.c",
+        lineNumber: 693,
+      },
+    },
+    p1: {
+      type: "Integer",
+      description: "Stack level",
+      codeSample: {
+        code: "int stackLevel = itemPtr->parm[1];",
+        fileName: "Source/Items/Items2.c",
+        lineNumber: 692,
+      },
+    },
+    p2: "Unknown",
+    p3: "Unknown",
+  },
+  [ItemType.Trampoline]: {
+    flags: "Unknown",
+    p0: "Unknown",
+    p1: "Unknown",
+    p2: "Unknown",
+    p3: "Unknown",
+  },
+  [ItemType.MothBall]: {
+    flags: "Unknown",
+    p0: "Unknown",
+    p1: "Unknown",
+    p2: "Unknown",
+    p3: "Unknown",
+  },
+  [ItemType.Vaccum]: {
+    flags: "Unknown",
+    p0: "Unknown",
+    p1: "Unknown",
+    p2: "Unknown",
+    p3: "Unknown",
+  },
+  [ItemType.ClosetWall]: {
+    flags: "Unknown",
+    p0: {
+      type: "Integer",
+      description: "Rotation (0-3, where each unit = 90°)",
+      codeSample: {
+        code: "gNewObjectDefinition.rot = (float)itemPtr->parm[0] * (PI2/4);",
+        fileName: "Source/Items/Items2.c",
+        lineNumber: 796,
+      },
+    },
+    p1: {
+      type: "Integer",
+      description: "Wall type (0 = PCI Card, 1-2 = Book stacks)",
+      codeSample: {
+        code: "int type = itemPtr->parm[1];\nif (type > 2) return(true);\ngNewObjectDefinition.type = CLOSET_ObjType_PCICard + type;",
+        fileName: "Source/Items/Items2.c",
+        lineNumber: 779,
+      },
+    },
+    p2: "Unknown",
+    p3: "Unknown",
+  },
+  [ItemType.Enemy_Moth]: {
+    flags: "Unknown",
+    p0: { type: "Integer", description: "Moth target ID or path number" },
+    p1: "Unknown",
+    p2: "Unknown",
+    p3: {
+      type: "Bit Flags",
+      flags: [{ index: 0, description: "Is target moth" }],
+    },
+  },
+  [ItemType.Enemy_ComputerBug]: {
+    flags: "Unknown",
+    p0: "Unknown",
+    p1: "Unknown",
+    p2: "Unknown",
+    p3: {
+      type: "Bit Flags",
+      flags: [{ index: 0, description: "Always add (ignore max enemy limit)" }],
+    },
+  },
+  [ItemType.SiliconPart]: bugdom2DefaultParams,
+  [ItemType.NilAdd2]: bugdom2DefaultParams,
+  [ItemType.BookStack]: {
+    flags: "Unknown",
+    p0: {
+      type: "Integer",
+      description: "Book stack type (0-2: flat book, tall book, tall stack)",
+      codeSample: {
+        code: "int type = itemPtr->parm[0];\nif (type > 2) return(true);\ngNewObjectDefinition.type = CLOSET_ObjType_FlatBook + type;",
+        fileName: "Source/Items/Items2.c",
+        lineNumber: 814,
+      },
+    },
+    p1: {
+      type: "Integer",
+      description: "Rotation (0-3, where each unit = 90°)",
+      codeSample: {
+        code: "gNewObjectDefinition.rot = (float)itemPtr->parm[1] * (PI2/4);",
+        fileName: "Source/Items/Items2.c",
+        lineNumber: 831,
+      },
+    },
+    p2: "Unknown",
+    p3: "Unknown",
+  },
+  [ItemType.Enemy_Roach]: {
+    flags: "Unknown",
+    p0: {
+      type: "Integer",
+      description: "Unused",
+      codeSample: {
+        code: "Boolean AddEnemy_Roach(TerrainItemEntryType *itemPtr, float x, float z)",
+        fileName: "Source/Enemies/Enemy_Roach.c",
+        lineNumber: 125,
+      },
+    },
+    p1: "Unknown",
+    p2: "Unknown",
+    p3: "Unknown",
+  },
+  [ItemType.ShoeBox]: {
+    flags: "Unknown",
+    p0: { type: "Integer", description: "Shoe box type" },
+    p1: { type: "Integer", description: "Stack level" },
+    p2: "Unknown",
+    p3: "Unknown",
+  },
+  [ItemType.PictureFrame]: {
+    flags: "Unknown",
+    p0: { type: "Integer", description: "Picture type (affects model)" },
+    p1: {
+      type: "Integer",
+      description: "Picture rotation (0-3, where each unit = 90°)",
+    },
+    p2: "Unknown",
+    p3: "Unknown",
+  },
+  [ItemType.Enemy_Ant]: {
+    flags: "Unknown",
+    p0: { type: "Integer", description: "Food type" },
+    p1: "Unknown",
+    p2: "Unknown",
+    p3: {
+      type: "Bit Flags",
+      flags: [{ index: 0, description: "Always add (ignore max enemy limit)" }],
+    },
+  },
+  [ItemType.Enemy_PondFish]: {
+    flags: "Unknown",
+    p0: {
+      type: "Integer",
+      description: "Unused",
+      codeSample: {
+        code: "Boolean AddEnemy_PondFish(TerrainItemEntryType *itemPtr, float x, float z)",
+        fileName: "Source/Enemies/Enemy_PondFish.c",
+        lineNumber: 101,
+      },
+    },
+    p1: "Unknown",
+    p2: "Unknown",
+    p3: "Unknown",
+  },
+  [ItemType.LilyPad]: bugdom2DefaultParams,
+  [ItemType.CatTail]: bugdom2DefaultParams,
+  [ItemType.Bubbler]: bugdom2DefaultParams,
+  [ItemType.PlatformFlower]: bugdom2DefaultParams,
+  [ItemType.FishingLure]: bugdom2DefaultParams,
+  [ItemType.Silverware]: {
+    flags: "Unknown",
+    p0: {
+      type: "Integer",
+      description: "Silverware type (0 = fork, 1 = knife, 2 = spoon)",
+      codeSample: {
+        code: "gNewObjectDefinition.type = PARK_ObjType_Fork + itemPtr->parm[0];",
+        fileName: "Source/Items/Items2.c",
+        lineNumber: 1301,
+      },
+    },
+    p1: {
+      type: "Integer",
+      description: "Rotation (0-3, where each unit = 90°)",
+      codeSample: {
+        code: "gNewObjectDefinition.rot = (float)itemPtr->parm[1] * (PI2/4);",
+        fileName: "Source/Items/Items2.c",
+        lineNumber: 1309,
+      },
+    },
+    p2: "Unknown",
+    p3: "Unknown",
+  },
+  [ItemType.PicnicBasket]: bugdom2DefaultParams,
+  [ItemType.Kindling]: {
+    flags: "Unknown",
+    p0: {
+      type: "Integer",
+      description: "Kindling part (0 = leaf, 1 = twig)",
+      codeSample: {
+        code: "gNewObjectDefinition.type = PARK_ObjType_Leaf + part;",
+        fileName: "Source/Items/BeeHive.c",
+        lineNumber: 239,
+      },
+    },
+    p1: "Unknown",
+    p2: "Unknown",
+    p3: "Unknown",
+  },
+  [ItemType.BeeHive]: {
+    flags: "Unknown",
+    p0: {
+      type: "Integer",
+      description: "Bee hive part (0 or 1)",
+      codeSample: {
+        code: "gNewObjectDefinition.type = PARK_ObjType_Hive;",
+        fileName: "Source/Items/BeeHive.c",
+        lineNumber: 58,
+      },
+    },
+    p1: "Unknown",
+    p2: "Unknown",
+    p3: "Unknown",
+  },
+  [ItemType.SodaCan]: {
+    flags: "Unknown",
+    p0: {
+      type: "Integer",
+      description: "Unknown",
+      codeSample: {
+        code: "gNewObjectDefinition.type = GARBAGE_ObjType_Can;",
+        fileName: "Source/Items/Items3.c",
+        lineNumber: 67,
+      },
+    },
+    p1: "Unknown",
+    p2: "Unknown",
+    p3: "Unknown",
+  },
+  [ItemType.Veggie]: {
+    flags: "Unknown",
+    p0: {
+      type: "Integer",
+      description: "Vegetable type",
+      codeSample: {
+        code: "int type = itemPtr->parm[0];\nif (type > 3) return(true);\ngNewObjectDefinition.type = GARBAGE_ObjType_Banana + type;",
+        fileName: "Source/Items/Items3.c",
+        lineNumber: 362,
+      },
+    },
+    p1: "Unknown",
+    p2: "Unknown",
+    p3: "Unknown",
+  },
+  [ItemType.Jar]: {
+    flags: "Unknown",
+    p0: {
+      type: "Integer",
+      description: "Jar type (0-1)",
+      codeSample: {
+        code: "int type = itemPtr->parm[0];\nif (type > 1) return(true);\ngNewObjectDefinition.type = GARBAGE_ObjType_Jar + type;",
+        fileName: "Source/Items/Items3.c",
+        lineNumber: 409,
+      },
+    },
+    p1: "Unknown",
+    p2: "Unknown",
+    p3: "Unknown",
+  },
+  [ItemType.TinCan]: {
+    flags: "Unknown",
+    p0: {
+      type: "Integer",
+      description: "Tin can type",
+      codeSample: {
+        code: "int type = itemPtr->parm[0];\nif (type > 1) return(true);\ngNewObjectDefinition.type = GARBAGE_ObjType_TinCan;",
+        fileName: "Source/Items/Items3.c",
+        lineNumber: 457,
+      },
+    },
+    p1: "Unknown",
+    p2: "Unknown",
+    p3: "Unknown",
+  },
+  [ItemType.Detergent]: {
+    flags: "Unknown",
+    p0: {
+      type: "Integer",
+      description: "Rotation (0-3, where each unit = 90°)",
+      codeSample: {
+        code: "gNewObjectDefinition.rot = (float)itemPtr->parm[0] * (PI2/4);",
+        fileName: "Source/Items/Items3.c",
+        lineNumber: 528,
+      },
+    },
+    p1: "Unknown",
+    p2: "Unknown",
+    p3: "Unknown",
+  },
+  [ItemType.BoxWall]: {
+    flags: "Unknown",
+    p0: {
+      type: "Integer",
+      description: "Rotation (0-3, where each unit = 90°)",
+      codeSample: {
+        code: "gNewObjectDefinition.rot = (float)itemPtr->parm[0] * (PI2/4);",
+        fileName: "Source/Items/Items3.c",
+        lineNumber: 571,
+      },
+    },
+    p1: "Unknown",
+    p2: "Unknown",
+    p3: "Unknown",
+  },
+  [ItemType.GliderPart]: {
+    flags: "Unknown",
+    p0: {
+      type: "Integer",
+      description: "Glider part (0 or 1)",
+      codeSample: {
+        code: "int part = itemPtr->parm[0];\ngNewObjectDefinition.type = GARBAGE_ObjType_Glider + part;",
+        fileName: "Source/Items/Items3.c",
+        lineNumber: 601,
+      },
+    },
+    p1: "Unknown",
+    p2: "Unknown",
+    p3: "Unknown",
+  },
 };

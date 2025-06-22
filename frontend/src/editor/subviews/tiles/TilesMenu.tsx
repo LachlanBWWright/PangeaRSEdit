@@ -1,5 +1,5 @@
 import { Input } from "@/components/ui/input";
-import { Button } from "../../../components/Button";
+import { Button } from "@/components/ui/button";
 import {
   CurrentTopologyBrushMode,
   CurrentTopologyValueMode,
@@ -10,6 +10,8 @@ import {
   TopologyOpacity,
   TopologyValue,
   TopologyValueMode,
+  TileEditingEnabled,
+  TileBrushType,
 } from "../../../data/tiles/tileAtoms";
 import { useAtom } from "jotai";
 import {
@@ -21,8 +23,17 @@ import {
 import { CanvasView, CanvasViewMode } from "@/data/canvasView/canvasViewAtoms";
 import { useEffect } from "react";
 import { Switch } from "@/components/ui/switch";
+import { ottoMaticLevel } from "@/python/structSpecs/ottoMaticInterface";
+import { Updater } from "use-immer";
 
-export function TilesMenu() {
+
+export function TilesMenu({
+  data,
+  setData,
+}: {
+  data: ottoMaticLevel;
+  setData: Updater<ottoMaticLevel>;
+}) {
   const [tileView, setTileView] = useAtom(TileViewMode);
   const [brushMode, setBrushMode] = useAtom(CurrentTopologyBrushMode);
   const [valueMode, setValueMode] = useAtom(CurrentTopologyValueMode);
@@ -30,12 +41,41 @@ export function TilesMenu() {
   const [value, setValue] = useAtom(TopologyValue);
   const [toplogyOpacity, setTopologyOpacity] = useAtom(TopologyOpacity);
   const [canvasViewMode, setCanvasViewMode] = useAtom(CanvasViewMode);
+  const [tileEditingEnabled, setTileEditingEnabled] =
+    useAtom(TileEditingEnabled);
+  const [selectedTileBrushType, setSelectedTileBrushType] =
+    useAtom(TileBrushType);
+
+  const header = data?.Hedr?.[1000]?.obj;
+  const minY = header?.minY || 0;
+  const maxY = header?.maxY || 0;
 
   useEffect(() => {
     if (tileView !== TileViews.Topology) {
       setCanvasViewMode(CanvasView.TWO_D);
     }
   }, [tileView]);
+
+  const handleMinYChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newValue = parseFloat(e.target.value);
+    if (isNaN(newValue)) return;
+
+    setData((draft) => {
+      draft.Hedr[1000].obj.minY = newValue;
+    });
+  };
+
+  const handleMaxYChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newValue = parseFloat(e.target.value);
+    if (isNaN(newValue)) return;
+
+    setData((draft) => {
+      draft.Hedr[1000].obj.maxY = newValue;
+    });
+  };
+
+  // We don't need to define handleTileClick here anymore,
+  // as it's been moved to the tileHandlers.ts file
 
   return (
     <div className="flex flex-col gap-2">
@@ -65,6 +105,9 @@ export function TilesMenu() {
           Electric Floor 2
         </Button>
       </div>
+
+      <div className="grid grid-cols-[auto_1fr_auto_1fr] gap-2 items-center"></div>
+
       {tileView === TileViews.Topology && (
         <div className="grid grid-cols-[auto_1fr_auto_1fr] gap-2 items-center">
           <p>Brush Mode</p>
@@ -97,23 +140,23 @@ export function TilesMenu() {
             }}
           >
             <SelectTrigger>
-              {valueMode === TopologyValueMode.SET_VALUE && "Set Value"}
-              {valueMode === TopologyValueMode.DELTA_VALUE && "Delta Value"}
+              {valueMode === TopologyValueMode.SET_VALUE && "Set To Value"}
+              {valueMode === TopologyValueMode.DELTA_VALUE && "Adjust By Value"}
               {valueMode === TopologyValueMode.DELTA_WITH_DROPOFF &&
-                "Delta with Dropoff"}
+                "Adjust By Value (With Dropoff)"}
             </SelectTrigger>
 
             <SelectContent>
               <SelectItem value={TopologyValueMode.SET_VALUE.toString()}>
-                Set Value
+                Set To Value
               </SelectItem>
               <SelectItem value={TopologyValueMode.DELTA_VALUE.toString()}>
-                Delta Value
+                Adjust By Value
               </SelectItem>
               <SelectItem
                 value={TopologyValueMode.DELTA_WITH_DROPOFF.toString()}
               >
-                Delta with Dropoff
+                Adjust By Value (With Dropoff)
               </SelectItem>
             </SelectContent>
           </Select>
@@ -130,6 +173,11 @@ export function TilesMenu() {
             defaultValue={value}
             onChange={(e) => setValue(parseInt(e.target.value) || 0)}
           />
+
+          <p>Min Height</p>
+          <Input type="number" value={minY} onChange={handleMinYChange} />
+          <p>Max Height</p>
+          <Input type="number" value={maxY} onChange={handleMaxYChange} />
           <p>Topology View Opacity</p>
           <Input
             type="number"
@@ -147,6 +195,59 @@ export function TilesMenu() {
               }}
             />
           </div>
+        </div>
+      )}
+
+      {(tileView === TileViews.Flags ||
+        tileView === TileViews.ElectricFloor0 ||
+        tileView === TileViews.ElectricFloor1) && (
+        <div className="grid grid-cols-[auto_1fr_auto_1fr] gap-2 items-center">
+          <div className="flex flex-row justify-center gap-2 items-center col-span-4">
+            <p>Enable Tile Editing</p>
+            <Switch
+              checked={tileEditingEnabled}
+              onCheckedChange={(e) => {
+                setTileEditingEnabled(e);
+              }}
+            />
+          </div>
+
+          {tileEditingEnabled && (
+            <>
+              <p>Brush Radius</p>
+              <Input
+                type="number"
+                defaultValue={brushRadius}
+                onChange={(e) => setBrushRadius(parseInt(e.target.value) || 0)}
+              />
+              <p>Brush Type</p>
+              <Select
+                value={selectedTileBrushType}
+                onValueChange={(value) => {
+                  if (value === "add" || value === "remove") {
+                    setSelectedTileBrushType(value);
+                  }
+                }}
+              >
+                <SelectTrigger>
+                  {selectedTileBrushType === "add" ? "Add Flag" : "Remove Flag"}
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="add">Add Flag</SelectItem>
+                  <SelectItem value="remove">Remove Flag</SelectItem>
+                </SelectContent>
+              </Select>
+            </>
+          )}
+
+          <p className="col-span-4 mt-2">
+            {tileView === TileViews.Flags &&
+              "Click on the map to mark tiles as empty (white) or not empty (black)."}
+            {tileView === TileViews.ElectricFloor0 &&
+              "Click on the map to mark tiles as Electric Floor 1 (white) or not (black)."}
+            {tileView === TileViews.ElectricFloor1 &&
+              "Click on the map to mark tiles as Electric Floor 2 (white) or not (black)."}
+          </p>
         </div>
       )}
     </div>

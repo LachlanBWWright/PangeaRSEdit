@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Button, ZoomButton } from "../components/Button";
+import { Button } from "@/components/ui/button";
 import { ottoMaticLevel } from "../python/structSpecs/ottoMaticInterface";
 import { Updater, useImmer } from "use-immer";
 
@@ -15,6 +15,7 @@ import { KonvaView } from "./canvas/CanvasView";
 import { ThreeView } from "./threejs/Three";
 import { useAtomValue } from "jotai";
 import { CanvasView, CanvasViewMode } from "@/data/canvasView/canvasViewAtoms";
+import { Separator } from "@/components/ui/separator";
 
 export enum View {
   fences,
@@ -101,26 +102,28 @@ export function EditorView({
           Supertiles
         </Button>
         <div className="grid col-span-2 xl:col-span-1 grid-cols-4 gap-2">
-          <ZoomButton disabled={dataHistory.index === 0} onClick={undoData}>
+          <Button variant="zoom" disabled={dataHistory.index === 0} onClick={undoData}>
             ↩
-          </ZoomButton>
-          <ZoomButton
+          </Button>
+          <Button
+            variant="zoom"
             disabled={dataHistory.index === dataHistory.items.length - 1}
             onClick={redoData}
           >
             ↪
-          </ZoomButton>
+          </Button>
 
-          <ZoomButton onClick={zoomOut}>-</ZoomButton>
-          <ZoomButton onClick={zoomIn}>+</ZoomButton>
+          <Button variant="zoom" onClick={zoomOut}>-</Button>
+          <Button variant="zoom" onClick={zoomIn}>+</Button>
         </div>
       </div>
+      <Separator />
       <div>
         {view === View.fences && <FenceMenu data={data} setData={setData} />}
         {view === View.water && <WaterMenu data={data} setData={setData} />}
         {view === View.items && <ItemMenu data={data} setData={setData} />}
         {view === View.splines && <SplineMenu data={data} setData={setData} />}
-        {view === View.tiles && <TilesMenu />}
+        {view === View.tiles && <TilesMenu data={data} setData={setData} />}
         {view === View.supertiles && (
           <SupertileMenu
             data={data}

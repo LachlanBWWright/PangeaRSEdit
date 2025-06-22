@@ -8,7 +8,8 @@ export type PyodideMessage =
       type: "init";
     }
   | {
-      type: "load_bytes_from_json";
+    type: "load_bytes_from_json";
+// eslint-disable-next-line  @typescript-eslint/no-explicit-any
       json_blob: any;
       converters: string[];
       only_types: string[];
@@ -29,7 +30,8 @@ export type PyodideResponse =
       result: ArrayBuffer;
     }
   | {
-      type: "save_to_json";
+    type: "save_to_json";
+// eslint-disable-next-line  @typescript-eslint/no-explicit-any
       result: any;
     }
   | {
@@ -57,13 +59,12 @@ onmessage = async (event: MessageEvent<PyodideMessage>) => {
   if (event.data.type === "load_bytes_from_json") {
     const { json_blob, converters, only_types, skip_types, adf } = event.data;
 
-    //@ts-ignore
     const byteBuffer = new ArrayBuffer();
-    //@ts-ignore
-    self.byteBuffer = byteBuffer; //TODO: Find better solution @ts-ignore
+    //@ts-expect-error pyodide stuff
+    self.byteBuffer = byteBuffer; //TODO: Find better solution @ts-expect-error
     const jsonBuffer = json_blob;
-    //@ts-ignore
-    self.jsonBuffer = jsonBuffer; //TODO: Find better solution @ts-ignore
+    //@ts-expect-error pyodide stuff
+    self.jsonBuffer = jsonBuffer; //TODO: Find better solution @ts-expect-error
     await pyodide.runPythonAsync(`
         from js import jsonBuffer
         json_buffer = jsonBuffer.to_py()
@@ -91,8 +92,8 @@ onmessage = async (event: MessageEvent<PyodideMessage>) => {
 
   if (event.data.type === "save_to_json") {
     const { bytes, struct_specs, include_types, exclude_types } = event.data;
-    //@ts-ignore
-    self.resBuffer = bytes; //TODO: Find better solution @ts-ignore
+    //@ts-expect-error pyodide stuff
+    self.resBuffer = bytes; //TODO: Find better solution 
     await pyodide.runPythonAsync(`
             from js import resBuffer
             buffer = resBuffer.to_py()

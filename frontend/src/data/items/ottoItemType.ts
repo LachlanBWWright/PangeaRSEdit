@@ -1,3 +1,5 @@
+import { ItemParams } from "./itemParams";
+
 export enum ItemType {
   StartCoords, // My Start Coords
   BasicPlant, // 1:  basic plant/tree
@@ -222,13 +224,7 @@ export const itemTypeNames: Record<ItemType, string> = {
   [ItemType.BrainPort]: "Brain Port",
 };
 
-export type OttoItemParams = {
-  flags: string;
-  p0: string;
-  p1: string;
-  p2: string;
-  p3: string;
-};
+export type OttoItemParams = ItemParams;
 
 const ottoDefaultParams: OttoItemParams = {
   flags: "Unknown",
@@ -239,115 +235,1300 @@ const ottoDefaultParams: OttoItemParams = {
 };
 
 export const ottoItemTypeParams: Record<ItemType, OttoItemParams> = {
-  [ItemType.StartCoords]: ottoDefaultParams, // "My Start Coords",
-  [ItemType.BasicPlant]: ottoDefaultParams, // "Basic Plant",
-  [ItemType.SpacePodGenerator]: ottoDefaultParams, // "Space Pod Generator",
-  [ItemType.Enemy_Squooshy]: ottoDefaultParams, // "Squooshy Enemy",
-  [ItemType.Human]: ottoDefaultParams, // "Human",
-  [ItemType.Atom]: ottoDefaultParams, // "Atom",
-  [ItemType.PowerupPod]: ottoDefaultParams, // "Powerup Pod",
-  [ItemType.Enemy_BrainAlien]: ottoDefaultParams, // "Brain Alien Enemy",
-  [ItemType.Enemy_Onion]: ottoDefaultParams, // "Onion Enemy",
-  [ItemType.Enemy_Corn]: ottoDefaultParams, // "Corn Enemy",
-  [ItemType.Enemy_Tomato]: ottoDefaultParams, // "Tomato Enemy",
-  [ItemType.Barn]: ottoDefaultParams, // "Barn",
-  [ItemType.Silo]: ottoDefaultParams, // "Silo",
-  [ItemType.WoodenGate]: ottoDefaultParams, // "Wooden Gate",
-  [ItemType.PhonePole]: ottoDefaultParams, // "Phone Pole",
-  [ItemType.Tractor]: ottoDefaultParams, // "Farm Tractor",
-  [ItemType.Sprout]: ottoDefaultParams, // "Sprout",
-  [ItemType.CornStalk]: ottoDefaultParams, // "Corn Stalk",
-  [ItemType.BigLeafPlant]: ottoDefaultParams, // "Big Leaf Plant",
-  [ItemType.MetalGate]: ottoDefaultParams, // "Metal Gate",
-  [ItemType.FencePost]: ottoDefaultParams, // "Fence Post",
-  [ItemType.Windmill]: ottoDefaultParams, // "Windmill",
-  [ItemType.MetalTub]: ottoDefaultParams, // "Metal Tub",
-  [ItemType.OutHouse]: ottoDefaultParams, // "Outhouse",
-  [ItemType.Rock]: ottoDefaultParams, // "Rock",
-  [ItemType.Hay]: ottoDefaultParams, // "Hay Bale",
-  [ItemType.ExitRocket]: ottoDefaultParams, // "Exit Rocket",
-  [ItemType.Checkpoint]: ottoDefaultParams, // "Checkpoint",
-  [ItemType.SlimePipe]: ottoDefaultParams, // "Slime Pipe",
-  [ItemType.FallingCrystal]: ottoDefaultParams, // "Falling Crystal",
-  [ItemType.MachineBoss]: ottoDefaultParams, // "Machine Boss",
-  [ItemType.BlobBossTube]: ottoDefaultParams, // "Blob Boss Tube",
-  [ItemType.ScaffoldingPost]: ottoDefaultParams, // "Scaffolding Post",
-  [ItemType.JungleGate]: ottoDefaultParams, // "Jungle Gate",
-  [ItemType.CrunchDoor]: ottoDefaultParams, // "Crunch Door",
-  [ItemType.Manhole]: ottoDefaultParams, // "Manhole",
-  [ItemType.CloudPlatform]: ottoDefaultParams, // "Cloud Platform",
-  [ItemType.CloudTunnel]: ottoDefaultParams, // "Cloud Tunnel",
-  [ItemType.Enemy_Flamester]: ottoDefaultParams, // "Flamester",
-  [ItemType.Enemy_GiantLizard]: ottoDefaultParams, // "Giant Lizard",
-  [ItemType.Enemy_FlyTrap]: ottoDefaultParams, // "Fly Trap",
-  [ItemType.Enemy_Mantis]: ottoDefaultParams, // "Mantis",
-  [ItemType.TurtlePlatform]: ottoDefaultParams, // "Turtle Platform",
-  [ItemType.Smashable]: ottoDefaultParams, // "Smashable",
-  [ItemType.LeafPlatform]: ottoDefaultParams, // "Leaf Platform",
-  [ItemType.HelpBeacon]: ottoDefaultParams, // "Help Beacon",
-  [ItemType.Teleporter]: ottoDefaultParams, // "Teleporter",
-  [ItemType.ZipLinePost]: ottoDefaultParams, // "Zip Line Post",
-  [ItemType.Enemy_Mutant]: ottoDefaultParams, // "Mutant Enemy",
-  [ItemType.Enemy_Blob]: ottoDefaultParams, // "Blob Enemy",
-  [ItemType.BumperBubble]: ottoDefaultParams, // "Bumper Bubble",
-  [ItemType.BasicCrystal]: ottoDefaultParams, // "Basic Crystal",
-  [ItemType.InertBubble]: ottoDefaultParams, // "Soap Bubble",
-  [ItemType.SlimeTree]: ottoDefaultParams, // "Slime Tree",
-  [ItemType.MagnetMonster]: ottoDefaultParams, // "Magnet Monster",
-  [ItemType.FallingSlimePlatform]: ottoDefaultParams, // "Falling Slime Platform",
-  [ItemType.BubblePump]: ottoDefaultParams, // "Bubble Pump",
-  [ItemType.SlimeMech]: ottoDefaultParams, // "Slime Mech",
-  [ItemType.SpinningPlatform]: ottoDefaultParams, // "Spinning Platform",
-  [ItemType.MovingPlatform]: ottoDefaultParams, // "Moving Platform",
-  [ItemType.Enemy_MutantRobot]: ottoDefaultParams, // "Mutant Robot Enemy",
-  [ItemType.HumanScientist]: ottoDefaultParams, // "Scientist Human",
-  [ItemType.ProximityMine]: ottoDefaultParams, // "Proximity Mine",
-  [ItemType.LampPost]: ottoDefaultParams, // "Lamp Posts",
-  [ItemType.DebrisGate]: ottoDefaultParams, // "Debris Gate",
-  [ItemType.GraveStone]: ottoDefaultParams, // "Grave Stone",
-  [ItemType.CrashedShip]: ottoDefaultParams, // "Crashed Ship",
-  [ItemType.ChainReactingMine]: ottoDefaultParams, // "Chain Reacting Mine",
-  [ItemType.Rubble]: ottoDefaultParams, // "Rubble",
-  [ItemType.TeleporterMap]: ottoDefaultParams, // "Teleporter Map",
-  [ItemType.GreenSteam]: ottoDefaultParams, // "Green Steam",
-  [ItemType.TentacleGenerator]: ottoDefaultParams, // "Tentacle Generator",
-  [ItemType.PitcherPlantBoss]: ottoDefaultParams, // "Pitcher Plant Boss",
-  [ItemType.PitcherPod]: ottoDefaultParams, // "Pitcher Pod",
-  [ItemType.TractorBeamPost]: ottoDefaultParams, // "Shepherd Beam Post",
-  [ItemType.Cannon]: ottoDefaultParams, // "Cannon",
-  [ItemType.BumperCar]: ottoDefaultParams, // "Bumper Car",
-  [ItemType.TireBumperStrip]: ottoDefaultParams, // "Tire Bumper",
-  [ItemType.Enemy_Clown]: ottoDefaultParams, // "Clown Enemy",
-  [ItemType.Clownfish]: ottoDefaultParams, // "Clown Fish",
-  [ItemType.BumperCarPowerPost]: ottoDefaultParams, // "Bumper Car Power Post",
-  [ItemType.Enemy_StrongMan]: ottoDefaultParams, // "Strongman Enemy",
-  [ItemType.BumperCarGate]: ottoDefaultParams, // "Bumper Car Gate",
-  [ItemType.RocketSled]: ottoDefaultParams, // "Tobogan",
-  [ItemType.TrapDoor]: ottoDefaultParams, // "Trap Door",
-  [ItemType.ZigZagSlats]: ottoDefaultParams, // "Zig-Zag Slats",
+  [ItemType.StartCoords]: {
+    flags: "Used internally by terrain system",
+    p0: {
+      type: "Integer",
+      description: "Starting aim direction (0-7)",
+      codeSample: {
+        code: "gPlayerInfo.startRotY = (float)itemPtr[i].parm[0] * (PI2/8.0f); // calc starting rotation aim",
+        fileName: "Terrain2.c",
+        lineNumber: 282,
+      },
+    },
+    p1: "Unused",
+    p2: "Unused",
+    p3: "Unused",
+  },
+  [ItemType.BasicPlant]: {
+    flags: "Auto-fade status bits",
+    p0: {
+      type: "Integer",
+      description:
+        "Plant type (0=Farm Tree, 1=Jungle Fern, 2=Jungle Flower, 3=Jungle Leafy Plant, 4=Cloud Tree, 5=Snow Tree)",
+      codeSample: {
+        code: "int type = itemPtr->parm[0]; // get plant type",
+        fileName: "Items/Items.c",
+        lineNumber: 394,
+      },
+    },
+    p1: "Unused",
+    p2: "Unused",
+    p3: "Unused",
+  },
+  [ItemType.SpacePodGenerator]: {
+    flags: "Auto-fade status bits",
+    p0: {
+      type: "Integer",
+      description: "Rotation (0=0°, 1=180°)",
+      codeSample: {
+        code: "gNewObjectDefinition.rot = itemPtr->parm[0] * (PI/2);",
+        fileName: "Items/Items.c",
+        lineNumber: 145,
+      },
+    },
+    p1: "Unused",
+    p2: "Unused",
+    p3: "Unused",
+  },
+  [ItemType.Enemy_Squooshy]: {
+    flags: "Auto-fade status bits",
+    p0: "Unused",
+    p1: "Unused",
+    p2: "Unused",
+    p3: {
+      type: "Bit Flags",
+      flags: [
+        {
+          index: 0,
+          description: "Always add",
+          codeSample: {
+            code: "if (!(itemPtr->parm[3] & 1))",
+            fileName: "Enemies/FireIce/Enemy_Squooshy.c",
+            lineNumber: 95,
+          },
+        },
+        {
+          index: 1,
+          description: "Enemy regenerate",
+          codeSample: {
+            code: "newObj->EnemyRegenerate = itemPtr->parm[3] & (1<<1);",
+            fileName: "Enemies/FireIce/Enemy_Squooshy.c",
+            lineNumber: 104,
+          },
+        },
+      ],
+    },
+  },
+  [ItemType.Human]: {
+    flags: "Auto-fade status bits",
+    p0: {
+      type: "Integer",
+      description:
+        "Human type (0=Farmer, 1=Beewoman, 2=Scientist, 3=Skirtlady)",
+      codeSample: {
+        code: "int type = itemPtr->parm[0]; // get human type",
+        fileName: "Items/Items.c",
+        lineNumber: 1139,
+      },
+    },
+    p1: "Unused",
+    p2: "Unused",
+    p3: {
+      type: "Bit Flags",
+      flags: [{ index: 0, description: "Encased in ice" }],
+    },
+  },
+  [ItemType.Atom]: {
+    flags: "Auto-fade status bits",
+    p0: {
+      type: "Integer",
+      description: "Atom type (0=Red, 1=Green, 2=Blue)",
+      codeSample: {
+        code: "newObj = MakeAtom(x,ty + yoff,z, itemPtr->parm[0]);",
+        fileName: "Items/Powerups.c",
+        lineNumber: 131,
+      },
+    },
+    p1: "Unused",
+    p2: "Unused",
+    p3: {
+      type: "Bit Flags",
+      flags: [
+        {
+          index: 0,
+          description: "Auto-regenerate",
+          codeSample: {
+            code: "newObj->POWRegenerate = itemPtr->parm[3] & 1;",
+            fileName: "Items/Powerups.c",
+            lineNumber: 136,
+          },
+        },
+        {
+          index: 1,
+          description: "Put on terrain only",
+          codeSample: {
+            code: "if (itemPtr->parm[3] & (1<<1))",
+            fileName: "Items/Powerups.c",
+            lineNumber: 128,
+          },
+        },
+      ],
+    },
+  },
+  [ItemType.PowerupPod]: {
+    flags: "Auto-fade status bits",
+    p0: {
+      type: "Integer",
+      description:
+        "Powerup type (0=StunPulse, 1=Health, 2=JumpJet, 3=Fuel, 4=SuperNova, 5=Freeze, 6=Magnet, 7=Growth, 8=Flame, 9=Flare, 10=Dart, 11=FreeLife)",
+      codeSample: {
+        code: "newObj->POWType = itemPtr->parm[0];",
+        fileName: "Items/Powerups.c",
+        lineNumber: 626,
+      },
+    },
+    p1: {
+      type: "Integer",
+      description: "Atom quantity (if atom type)",
+      codeSample: {
+        code: "newObj->AtomQuantity = itemPtr->parm[1];",
+        fileName: "Items/Powerups.c",
+        lineNumber: 627,
+      },
+    },
+    p2: {
+      type: "Integer",
+      description: "Special parameter for specific uses",
+      codeSample: {
+        code: "newObj->PowerupParm2 = itemPtr->parm[2];",
+        fileName: "Items/Powerups.c",
+        lineNumber: 631,
+      },
+    },
+    p3: {
+      type: "Bit Flags",
+      flags: [
+        {
+          index: 0,
+          description: "Auto-regenerate",
+          codeSample: {
+            code: "newObj->POWRegenerate = itemPtr->parm[3] & 1;",
+            fileName: "Items/Powerups.c",
+            lineNumber: 634,
+          },
+        },
+        {
+          index: 1,
+          description: "Put on terrain only",
+          codeSample: {
+            code: "if (itemPtr->parm[3] & (1<<1))",
+            fileName: "Items/Powerups.c",
+            lineNumber: 593,
+          },
+        },
+        {
+          index: 2,
+          description: "Balloon container (cloud level)",
+          codeSample: {
+            code: "if (itemPtr->parm[3] & (1<<2))",
+            fileName: "Items/Powerups.c",
+            lineNumber: 601,
+          },
+        },
+      ],
+    },
+  },
+  [ItemType.Enemy_BrainAlien]: {
+    flags: "Auto-fade status bits",
+    p0: "Unused",
+    p1: "Unused",
+    p2: "Unused",
+    p3: "Unused",
+  },
+  [ItemType.Enemy_Onion]: {
+    flags: "Auto-fade status bits",
+    p0: "Unknown",
+    p1: "Unknown",
+    p2: "Unknown",
+    p3: {
+      type: "Bit Flags",
+      flags: [
+        {
+          index: 0,
+          description: "Always add (ignore max limit)",
+          codeSample: {
+            code: "if (!(itemPtr->parm[3] & 1)) { /* check max limit */ }",
+            fileName: "Enemies/Farm/Enemy_Onion.c",
+            lineNumber: 100,
+          },
+        },
+        {
+          index: 1,
+          description: "Enemy regenerate",
+          codeSample: {
+            code: "newObj->EnemyRegenerate = itemPtr->parm[3] & (1<<1);",
+            fileName: "Enemies/Farm/Enemy_Onion.c",
+            lineNumber: 108,
+          },
+        },
+      ],
+    },
+  },
+  [ItemType.Enemy_Corn]: {
+    flags: "Auto-fade status bits",
+    p0: "Unknown",
+    p1: "Unknown",
+    p2: "Unknown",
+    p3: {
+      type: "Bit Flags",
+      flags: [
+        {
+          index: 0,
+          description: "Always add (ignore max limit)",
+          codeSample: {
+            code: "if (!(itemPtr->parm[3] & 1)) { /* check max limit */ }",
+            fileName: "Enemies/Farm/Enemy_Corn.c",
+            lineNumber: 98,
+          },
+        },
+        {
+          index: 1,
+          description: "Enemy regenerate",
+          codeSample: {
+            code: "newObj->EnemyRegenerate = itemPtr->parm[3] & (1<<1);",
+            fileName: "Enemies/Farm/Enemy_Corn.c",
+            lineNumber: 107,
+          },
+        },
+      ],
+    },
+  },
+  [ItemType.Enemy_Tomato]: {
+    flags: "Auto-fade status bits",
+    p0: "Unknown",
+    p1: "Unknown",
+    p2: "Unknown",
+    p3: {
+      type: "Bit Flags",
+      flags: [
+        {
+          index: 0,
+          description: "Always add (ignore max limit)",
+          codeSample: {
+            code: "if (!(itemPtr->parm[3] & 1)) { /* check max limit */ }",
+            fileName: "Enemies/Farm/Enemy_Tomato.c",
+            lineNumber: 100,
+          },
+        },
+        {
+          index: 1,
+          description: "Enemy regenerate",
+          codeSample: {
+            code: "newObj->EnemyRegenerate = itemPtr->parm[3] & (1<<1);",
+            fileName: "Enemies/Farm/Enemy_Tomato.c",
+            lineNumber: 109,
+          },
+        },
+      ],
+    },
+  },
+  [ItemType.Barn]: {
+    flags: "Auto-fade status bits",
+    p0: { type: "Integer", description: "Rotation (0-3, multiplied by PI/2)" },
+    p1: "Unused",
+    p2: "Unused",
+    p3: "Unused",
+  },
+  [ItemType.Silo]: {
+    flags: "Auto-fade status bits",
+    p0: "Unused",
+    p1: "Unused",
+    p2: "Unused",
+    p3: "Unused",
+  },
+  [ItemType.WoodenGate]: {
+    flags: "Auto-fade status bits",
+    p0: { type: "Integer", description: "Rotation (0-3, multiplied by PI/2)" },
+    p1: "Unused",
+    p2: "Unused",
+    p3: "Unused",
+  },
+  [ItemType.PhonePole]: {
+    flags: "Auto-fade status bits",
+    p0: "Unused",
+    p1: "Unused",
+    p2: "Unused",
+    p3: "Unused",
+  },
+  [ItemType.Tractor]: {
+    flags: "Auto-fade status bits",
+    p0: "Unused",
+    p1: "Unused",
+    p2: "Unused",
+    p3: "Unused",
+  },
+  [ItemType.Sprout]: {
+    flags: "Auto-fade status bits | Saucer target",
+    p0: {
+      type: "Integer",
+      description: "Gate type (0=Wood, 1=Metal)",
+      codeSample: {
+        code: "int type = itemPtr->parm[0]; // get gate type",
+        fileName: "Items/Items.c",
+        lineNumber: 629,
+      },
+    },
+    p1: "Unused",
+    p2: "Unused",
+    p3: "Unused",
+  },
+  [ItemType.CornStalk]: {
+    flags: "Auto-fade status bits",
+    p0: "Unused",
+    p1: "Unused",
+    p2: "Unused",
+    p3: "Unused",
+  },
+  [ItemType.BigLeafPlant]: {
+    flags: "Auto-fade status bits",
+    p0: "Unused",
+    p1: "Unused",
+    p2: "Unused",
+    p3: "Unused",
+  },
+  [ItemType.MetalGate]: {
+    flags: "Auto-fade status bits",
+    p0: { type: "Integer", description: "Gate type (0=Wood, 1=Metal)" },
+    p1: "Unused",
+    p2: "Unused",
+    p3: "Unused",
+  },
+  [ItemType.FencePost]: {
+    flags: "Auto-fade status bits",
+    p0: {
+      type: "Integer",
+      description:
+        "Post type (0=Wood Farm, 1=Metal Farm, 2=Wood Jungle, 3=Crunch Apocalypse, 4=Brass Cloud, 5=Rock FireIce, 6=Ice FireIce, 7=Neuron Brain)",
+      codeSample: {
+        code: "int type = itemPtr->parm[0]; // get post type",
+        fileName: "Items/Items.c",
+        lineNumber: 629,
+      },
+    },
+    p1: "Unused",
+    p2: "Unused",
+    p3: "Unused",
+  },
+  [ItemType.Windmill]: {
+    flags: "Auto-fade status bits | Keep back faces | No texture wrap",
+    p0: {
+      type: "Integer",
+      description: "Rotation (0=0°, 1=90°, 2=180°, 3=270°)",
+      codeSample: {
+        code: "gNewObjectDefinition.rot = r = (float)itemPtr->parm[0] * (PI/2);",
+        fileName: "Items/Items.c",
+        lineNumber: 708,
+      },
+    },
+    p1: "Unused",
+    p2: "Unused",
+    p3: "Unused",
+  },
+  [ItemType.MetalTub]: {
+    flags: "Auto-fade status bits",
+    p0: "Unused",
+    p1: "Unused",
+    p2: "Unused",
+    p3: "Unused",
+  },
+  [ItemType.OutHouse]: {
+    flags: "Auto-fade status bits",
+    p0: {
+      type: "Integer",
+      description: "Rotation (0-3, multiplied by PI/2)",
+      codeSample: {
+        code: "gNewObjectDefinition.rot = (float)itemPtr->parm[0] * (PI/2);",
+        fileName: "Items/Items.c",
+        lineNumber: 543,
+      },
+    },
+    p1: "Unused",
+    p2: "Unused",
+    p3: "Unused",
+  },
+  [ItemType.Rock]: {
+    flags: "Auto-fade status bits",
+    p0: {
+      type: "Integer",
+      description: "Rock type (0=Small, 1=Large)",
+      codeSample: {
+        code: "int type = itemPtr->parm[0]; // get rock type",
+        fileName: "Items/Items.c",
+        lineNumber: 565,
+      },
+    },
+    p1: "Unused",
+    p2: "Unused",
+    p3: "Unused",
+  },
+  [ItemType.Hay]: {
+    flags: "Auto-fade status bits",
+    p0: {
+      type: "Integer",
+      description: "Hay bale type (0=Regular, 1=Round)",
+      codeSample: {
+        code: "int type = itemPtr->parm[0]; // get hay type",
+        fileName: "Items/Items.c",
+        lineNumber: 595,
+      },
+    },
+    p1: {
+      type: "Integer",
+      description: "Rotation (0-3, multiplied by PI/2)",
+      codeSample: {
+        code: "gNewObjectDefinition.rot = (float)itemPtr->parm[1] * (PI/2);",
+        fileName: "Items/Items.c",
+        lineNumber: 606,
+      },
+    },
+    p2: "Unused",
+    p3: "Unused",
+  },
+  [ItemType.ExitRocket]: {
+    flags: "Auto-fade status bits",
+    p0: "Unused",
+    p1: "Unused",
+    p2: "Unused",
+    p3: "Unused",
+  },
+  [ItemType.Checkpoint]: {
+    flags: "Auto-fade status bits",
+    p0: "Unused",
+    p1: {
+      type: "Integer",
+      description: "Player rotation (0-3, multiplied by PI2/4)",
+    },
+    p2: "Unused",
+    p3: "Unused",
+  },
+  [ItemType.SlimePipe]: {
+    flags: "Auto-fade status bits",
+    p0: {
+      type: "Integer",
+      description:
+        "Pipe type (0=FancyJ, 1=BentTube, 2=StraightTube, 3=LongU, 4=ShortU, 5=GrateTube)",
+      codeSample: {
+        code: "int type = itemPtr->parm[0]; // get pipe type",
+        fileName: "Items/Items.c",
+        lineNumber: 885,
+      },
+    },
+    p1: {
+      type: "Integer",
+      description: "Rotation (0-3, multiplied by PI/2)",
+      codeSample: {
+        code: "gNewObjectDefinition.rot = (float)itemPtr->parm[1] * (PI/2);",
+        fileName: "Items/Items.c",
+        lineNumber: 606,
+      },
+    },
+    p2: {
+      type: "Integer",
+      description: "Slime color (0=Green, 1=Red, 2=Purple)",
+      codeSample: {
+        code: "slime->OozeColor = itemPtr->parm[2];",
+        fileName: "Items/Items.c",
+        lineNumber: 885,
+      },
+    },
+    p3: "Unused",
+  },
+  [ItemType.FallingCrystal]: {
+    flags: "Auto-fade status bits | Hidden (starts underground)",
+    p0: {
+      type: "Integer",
+      description: "Rotation (0-7, multiplied by PI2/8)",
+      codeSample: {
+        code: "gNewObjectDefinition.rot = (float)itemPtr->parm[0] * (PI2/8.0f);",
+        fileName: "Items/Items.c",
+        lineNumber: 1344,
+      },
+    },
+    p1: {
+      type: "Integer",
+      description: "Crystal color (0=Blue, 1=Green, 2=Red)",
+      codeSample: {
+        code: "switch(itemPtr->parm[1]) { ... }",
+        fileName: "Items/Items.c",
+        lineNumber: 1386,
+      },
+    },
+    p2: "Unused",
+    p3: "Unused",
+  },
+  [ItemType.MachineBoss]: {
+    flags: "Auto-fade status bits",
+    p0: "Unused",
+    p1: "Unused",
+    p2: "Unused",
+    p3: "Unused",
+  },
+  [ItemType.BlobBossTube]: {
+    flags: "Auto-fade status bits",
+    p0: {
+      type: "Integer",
+      description: "Tube type (0=Bent, 1=Straight)",
+      codeSample: {
+        code: "int type = itemPtr->parm[0]; // get tube type",
+        fileName: "Items/Items.c",
+        lineNumber: 1672,
+      },
+    },
+    p1: {
+      type: "Integer",
+      description: "Rotation (0-3, multiplied by PI/2)",
+      codeSample: {
+        code: "gNewObjectDefinition.rot = (float)itemPtr->parm[1] * PI/2;",
+        fileName: "Items/Items.c",
+        lineNumber: 1682,
+      },
+    },
+    p2: "Unused",
+    p3: "Unused",
+  },
+  [ItemType.ScaffoldingPost]: {
+    flags: "Auto-fade status bits",
+    p0: {
+      type: "Integer",
+      description: "Post type (0-3)",
+      codeSample: {
+        code: "short type = itemPtr->parm[0]; // get post type",
+        fileName: "Items/Items.c",
+        lineNumber: 1707,
+      },
+    },
+    p1: "Unused",
+    p2: "Unused",
+    p3: "Unused",
+  },
+  [ItemType.Rubble]: {
+    flags: "Auto-fade status bits",
+    p0: {
+      type: "Integer",
+      description: "Rubble type (0-6)",
+      codeSample: {
+        code: "int type = itemPtr->parm[0]; // get rubble type",
+        fileName: "Items/Items.c",
+        lineNumber: 1904,
+      },
+    },
+    p1: {
+      type: "Integer",
+      description: "Rotation (0-3, multiplied by PI2/4)",
+      codeSample: {
+        code: "gNewObjectDefinition.rot = (float)itemPtr->parm[1] * (PI2/4.0f);",
+        fileName: "Items/Items.c",
+        lineNumber: 1919,
+      },
+    },
+    p2: "Unused",
+    p3: "Unused",
+  },
+  [ItemType.JungleGate]: {
+    flags: "Auto-fade status bits",
+    p0: {
+      type: "Integer",
+      description: "Rotation (0-3, multiplied by PI/2)",
+      codeSample: {
+        code: "gNewObjectDefinition.rot = itemPtr->parm[0] * (PI/2);",
+        fileName: "Items/Items.c",
+        lineNumber: 545,
+      },
+    },
+    p1: "Unused",
+    p2: "Unused",
+    p3: "Unused",
+  },
+  [ItemType.CrunchDoor]: {
+    flags: "Auto-fade status bits",
+    p0: {
+      type: "Integer",
+      description: "Rotation (0-3, multiplied by PI/2)",
+      codeSample: {
+        code: "gNewObjectDefinition.rot = itemPtr->parm[0] * (PI/2);",
+        fileName: "Items/Items.c",
+        lineNumber: 545,
+      },
+    },
+    p1: "Unused",
+    p2: "Unused",
+    p3: "Unused",
+  },
+  [ItemType.Manhole]: {
+    flags: "Auto-fade status bits | Rot Z,X,Y",
+    p0: {
+      type: "Integer",
+      description: "Rotation (0-3, multiplied by PI/2)",
+      codeSample: {
+        code: "gNewObjectDefinition.rot = itemPtr->parm[0] * (PI/2);",
+        fileName: "Items/Items.c",
+        lineNumber: 545,
+      },
+    },
+    p1: "Unused",
+    p2: "Unused",
+    p3: "Unused",
+  },
+  [ItemType.CloudPlatform]: {
+    flags: "Auto-fade status bits",
+    p0: {
+      type: "Integer",
+      description: "Platform type (0-2)",
+      codeSample: {
+        code: "int type = itemPtr->parm[0]; // get platform type",
+        fileName: "Items/Items.c",
+        lineNumber: 1139,
+      },
+    },
+    p1: "Unused",
+    p2: "Unused",
+    p3: "Unused",
+  },
+  [ItemType.CloudTunnel]: {
+    flags: "Auto-fade status bits",
+    p0: {
+      type: "Integer",
+      description: "Rotation (0-3, multiplied by PI/2)",
+      codeSample: {
+        code: "gNewObjectDefinition.rot = itemPtr->parm[0] * (PI/2);",
+        fileName: "Items/Items.c",
+        lineNumber: 545,
+      },
+    },
+    p1: "Unused",
+    p2: "Unused",
+    p3: "Unused",
+  },
+  [ItemType.Enemy_Flamester]: {
+    flags: "Auto-fade status bits",
+    p0: "Unused",
+    p1: "Unused",
+    p2: "Unused",
+    p3: "Unused",
+  },
+  [ItemType.Enemy_GiantLizard]: {
+    flags: "Auto-fade status bits",
+    p0: "Unused",
+    p1: "Unused",
+    p2: "Unused",
+    p3: "Unused",
+  },
+  [ItemType.Enemy_FlyTrap]: {
+    flags: "Auto-fade status bits",
+    p0: "Unused",
+    p1: "Unused",
+    p2: "Unused",
+    p3: "Unused",
+  },
+  [ItemType.Enemy_Mantis]: {
+    flags: "Auto-fade status bits",
+    p0: "Unused",
+    p1: "Unused",
+    p2: "Unused",
+    p3: "Unused",
+  },
+  [ItemType.TurtlePlatform]: {
+    flags: "Auto-fade status bits",
+    p0: { type: "Integer", description: "Rotation (0-7, multiplied by PI2/8)" },
+    p1: "Unused",
+    p2: "Unused",
+    p3: "Unused",
+  },
+  [ItemType.Smashable]: {
+    flags: "Auto-fade status bits",
+    p0: { type: "Integer", description: "Smashable type (0-2)" },
+    p1: "Unused",
+    p2: "Unused",
+    p3: "Unused",
+  },
+  [ItemType.LeafPlatform]: {
+    flags: "Auto-fade status bits",
+    p0: { type: "Integer", description: "Platform type (0-3)" },
+    p1: { type: "Integer", description: "Rotation (0-3, multiplied by PI2/4)" },
+    p2: "Unused",
+    p3: "Unused",
+  },
+  [ItemType.HelpBeacon]: {
+    flags: "Auto-fade status bits",
+    p0: "Unused",
+    p1: "Unused",
+    p2: "Unused",
+    p3: "Unused",
+  },
+  [ItemType.Teleporter]: {
+    flags: "Auto-fade status bits",
+    p0: { type: "Integer", description: "Teleporter ID (0-19)" },
+    p1: { type: "Integer", description: "Destination ID (0-19)" },
+    p2: { type: "Integer", description: "Rotation (0-7, multiplied by PI2/8)" },
+    p3: "Unused",
+  },
+  [ItemType.ZipLinePost]: {
+    flags: "Auto-fade status bits",
+    p0: { type: "Integer", description: "Post type (0=Start, 1=End)" },
+    p1: { type: "Integer", description: "Zipline ID (0-15)" },
+    p2: "Unused",
+    p3: "Unused",
+  },
+  [ItemType.Enemy_Mutant]: {
+    flags: "Auto-fade status bits",
+    p0: "Unused",
+    p1: "Unused",
+    p2: "Unused",
+    p3: "Unused",
+  },
+  [ItemType.Enemy_Blob]: {
+    flags: "Auto-fade status bits",
+    p0: "Unused",
+    p1: "Unused",
+    p2: "Unused",
+    p3: "Unused",
+  },
+  [ItemType.BumperBubble]: {
+    flags: "Auto-fade status bits",
+    p0: { type: "Integer", description: "Bubble type (0=Regular, 1=Large)" },
+    p1: "Unused",
+    p2: "Unused",
+    p3: "Unused",
+  },
+  [ItemType.BasicCrystal]: {
+    flags: "Auto-fade status bits",
+    p0: {
+      type: "Integer",
+      description: "Crystal type (0=Blue, 1=Green, 2=Red, 3=Purple)",
+    },
+    p1: "Unused",
+    p2: "Unused",
+    p3: "Unused",
+  },
+  [ItemType.InertBubble]: {
+    flags: "Auto-fade status bits | Aim at camera | Glow",
+    p0: "Unused",
+    p1: "Unused",
+    p2: "Unused",
+    p3: "Unused",
+  },
+  [ItemType.SlimeTree]: {
+    flags: "Auto-fade status bits",
+    p0: {
+      type: "Integer",
+      description:
+        "Tree type (0=Animating Large, 1=Static Large, 2=Static Small)",
+    },
+    p1: "Unused",
+    p2: "Unused",
+    p3: "Unused",
+  },
+  [ItemType.MagnetMonster]: {
+    flags: "Auto-fade status bits | On spline",
+    p0: "Unused",
+    p1: "Unused",
+    p2: "Unused",
+    p3: "Unused",
+  },
+  [ItemType.FallingSlimePlatform]: {
+    flags: "Auto-fade status bits",
+    p0: { type: "Integer", description: "Platform type (0-2)" },
+    p1: "Unused",
+    p2: "Unused",
+    p3: "Unused",
+  },
+  [ItemType.BubblePump]: {
+    flags: "Auto-fade status bits",
+    p0: { type: "Integer", description: "Rotation (0-3, multiplied by PI2/4)" },
+    p1: "Unused",
+    p2: "Unused",
+    p3: "Unused",
+  },
+  [ItemType.SlimeMech]: {
+    flags: "Auto-fade status bits",
+    p0: {
+      type: "Integer",
+      description: "Rotation (0-3, multiplied by PI/2)",
+      codeSample: {
+        code: "gNewObjectDefinition.rot = (float)itemPtr->parm[0] * (PI/2);",
+        fileName: "Items/Items.c",
+        lineNumber: 545,
+      },
+    },
+    p1: "Unused",
+    p2: "Unused",
+    p3: "Unused",
+  },
+  [ItemType.SpinningPlatform]: {
+    flags: "Auto-fade status bits",
+    p0: { type: "Integer", description: "Platform type (0-19)" },
+    p1: {
+      type: "Integer",
+      description: "Spin offset (0-7, multiplied by PI2/8)",
+    },
+    p2: { type: "Integer", description: "Height offset (multiplied by 10)" },
+    p3: {
+      type: "Bit Flags",
+      flags: [{ index: 0, description: "Spin direction (0=CW, 1=CCW)" }],
+    },
+  },
+  [ItemType.MovingPlatform]: {
+    flags: "Auto-fade status bits | On spline",
+    p0: {
+      type: "Integer",
+      description: "Platform type (0=Blue, 1=Red, 2=Yellow, 3=Green)",
+    },
+    p1: "Unused",
+    p2: "Unused",
+    p3: "Unused",
+  },
+  [ItemType.Enemy_MutantRobot]: {
+    flags: "Auto-fade status bits",
+    p0: "Unused",
+    p1: "Unused",
+    p2: "Unused",
+    p3: "Unused",
+  },
+  [ItemType.HumanScientist]: {
+    flags: "Auto-fade status bits",
+    p0: {
+      type: "Integer",
+      description:
+        "Scientist type (forced to 2=Scientist by AddHumanScientist)",
+    },
+    p1: "Unused",
+    p2: "Unused",
+    p3: "Unused",
+  },
+  [ItemType.ProximityMine]: {
+    flags: "Auto-fade status bits",
+    p0: { type: "Integer", description: "Mine type (0=Round, 1=Square)" },
+    p1: "Unused",
+    p2: "Unused",
+    p3: "Unused",
+  },
+  [ItemType.LampPost]: {
+    flags: "Auto-fade status bits",
+    p0: { type: "Integer", description: "Lamp post type (0-2)" },
+    p1: "Unused",
+    p2: "Unused",
+    p3: "Unused",
+  },
+  [ItemType.DebrisGate]: {
+    flags: "Auto-fade status bits",
+    p0: {
+      type: "Integer",
+      description: "Gate type (0=Open, 1=Blocked with debris)",
+    },
+    p1: { type: "Integer", description: "Rotation (0-3, multiplied by PI/2)" },
+    p2: "Unused",
+    p3: "Unused",
+  },
+  [ItemType.GraveStone]: {
+    flags: "Auto-fade status bits",
+    p0: { type: "Integer", description: "Gravestone type (0-4)" },
+    p1: { type: "Integer", description: "Rotation (0-3, multiplied by PI2/4)" },
+    p2: "Unused",
+    p3: "Unused",
+  },
+  [ItemType.CrashedShip]: {
+    flags: "Auto-fade status bits",
+    p0: { type: "Integer", description: "Ship type (0-2)" },
+    p1: { type: "Integer", description: "Rotation (0-7, multiplied by PI2/8)" },
+    p2: "Unused",
+    p3: "Unused",
+  },
+  [ItemType.ChainReactingMine]: {
+    flags: "Auto-fade status bits",
+    p0: { type: "Integer", description: "Mine type (0=Round, 1=Square)" },
+    p1: "Unused",
+    p2: "Unused",
+    p3: "Unused",
+  },
+  [ItemType.TeleporterMap]: {
+    flags: "Auto-fade status bits",
+    p0: { type: "Integer", description: "Map type (0-4)" },
+    p1: "Unused",
+    p2: "Unused",
+    p3: "Unused",
+  },
+  [ItemType.GreenSteam]: {
+    flags: "Auto-fade status bits",
+    p0: { type: "Integer", description: "Steam type (0-2)" },
+    p1: "Unused",
+    p2: "Unused",
+    p3: "Unused",
+  },
+  [ItemType.TentacleGenerator]: {
+    flags: "Auto-fade status bits",
+    p0: {
+      type: "Integer",
+      description: "Generator type (controls spawning behavior)",
+    },
+    p1: "Unused",
+    p2: "Unused",
+    p3: "Unused",
+  },
+  [ItemType.PitcherPlantBoss]: {
+    flags: "Auto-fade status bits",
+    p0: "Unused",
+    p1: "Unused",
+    p2: "Unused",
+    p3: "Unused",
+  },
+  [ItemType.PitcherPod]: {
+    flags: "Auto-fade status bits",
+    p0: {
+      type: "Integer",
+      description: "Pod type (controls pod variant and behavior)",
+    },
+    p1: "Unused",
+    p2: "Unused",
+    p3: "Unused",
+  },
+  [ItemType.TractorBeamPost]: {
+    flags: "Auto-fade status bits",
+    p0: {
+      type: "Integer",
+      description: "Post type (controls tractor beam configuration)",
+    },
+    p1: "Unused",
+    p2: "Unused",
+    p3: "Unused",
+  },
+  [ItemType.Cannon]: {
+    flags: "Auto-fade status bits",
+    p0: { type: "Integer", description: "Rotation (0-3, multiplied by PI2/4)" },
+    p1: "Unused",
+    p2: "Unused",
+    p3: "Unused",
+  },
+  [ItemType.BumperCar]: {
+    flags: "Auto-fade status bits",
+    p0: {
+      type: "Integer",
+      description: "Car color (0=Red, 1=Blue, 2=Green, 3=Yellow)",
+    },
+    p1: { type: "Integer", description: "Rotation (0-7, multiplied by PI2/8)" },
+    p2: "Unused",
+    p3: "Unused",
+  },
+  [ItemType.TireBumperStrip]: {
+    flags: "Auto-fade status bits",
+    p0: { type: "Integer", description: "Strip type (0-3)" },
+    p1: { type: "Integer", description: "Rotation (0-3, multiplied by PI/2)" },
+    p2: "Unused",
+    p3: "Unused",
+  },
+  [ItemType.Enemy_Clown]: {
+    flags: "Auto-fade status bits",
+    p0: "Unused",
+    p1: "Unused",
+    p2: "Unused",
+    p3: {
+      type: "Bit Flags",
+      flags: [
+        {
+          index: 0,
+          description: "Always add (ignore max limit)",
+          codeSample: {
+            code: "if (!(itemPtr->parm[3] & 1)) { /* check max limit */ }",
+            fileName: "Enemies/Cloud/Enemy_Clown.c",
+            lineNumber: 118,
+          },
+        },
+        {
+          index: 1,
+          description: "Enemy regenerate",
+          codeSample: {
+            code: "newObj->EnemyRegenerate = itemPtr->parm[3] & (1<<1);",
+            fileName: "Enemies/Cloud/Enemy_Clown.c",
+            lineNumber: 126,
+          },
+        },
+      ],
+    },
+  },
+  [ItemType.Clownfish]: {
+    flags: "Auto-fade status bits | On spline",
+    p0: "Unused",
+    p1: "Unused",
+    p2: "Unused",
+    p3: "Unused",
+  },
+  [ItemType.BumperCarPowerPost]: {
+    flags: "Auto-fade status bits",
+    p0: { type: "Integer", description: "Generator ID" },
+    p1: { type: "Integer", description: "Area number" },
+    p2: "Unused",
+    p3: "Unused",
+  },
+  [ItemType.Enemy_StrongMan]: {
+    flags: "Auto-fade status bits",
+    p0: "Unused",
+    p1: "Unused",
+    p2: "Unused",
+    p3: "Unused",
+  },
+  [ItemType.BumperCarGate]: {
+    flags: "Auto-fade status bits",
+    p0: { type: "Integer", description: "Gate type (0=Open, 1=Blocked)" },
+    p1: { type: "Integer", description: "Rotation (0-3, multiplied by PI/2)" },
+    p2: "Unused",
+    p3: "Unused",
+  },
+  [ItemType.RocketSled]: {
+    flags: "Auto-fade status bits",
+    p0: { type: "Integer", description: "Rotation (0-7, multiplied by PI2/8)" },
+    p1: "Unused",
+    p2: "Unused",
+    p3: "Unused",
+  },
+  [ItemType.TrapDoor]: {
+    flags: "Auto-fade status bits",
+    p0: { type: "Integer", description: "Door type (0-2)" },
+    p1: { type: "Integer", description: "Rotation (0-3, multiplied by PI/2)" },
+    p2: "Unused",
+    p3: "Unused",
+  },
+  [ItemType.ZigZagSlats]: {
+    flags: "Auto-fade status bits",
+    p0: { type: "Integer", description: "Slat configuration (0-3)" },
+    p1: { type: "Integer", description: "Rotation (0-3, multiplied by PI/2)" },
+    p2: "Unused",
+    p3: "Unused",
+  },
   [ItemType.Unknown]: ottoDefaultParams,
-  [ItemType.LavaPillar]: ottoDefaultParams, // "Lava Pillar",
-  [ItemType.VolcanoGeneratorZone]: ottoDefaultParams, // "Volcano Generator",
-  [ItemType.JawsBot]: ottoDefaultParams, // "Jaws Bot",
-  [ItemType.IceSaucer]: ottoDefaultParams, // "Ice Saucer",
-  [ItemType.RunwayLights]: ottoDefaultParams, // "Runway Lights",
-  [ItemType.Enemy_IceCube]: ottoDefaultParams, // "Ice Cube",
-  [ItemType.HammerBot]: ottoDefaultParams, // "Hammer Bot",
-  [ItemType.DrillBot]: ottoDefaultParams, // "Drill Bot",
-  [ItemType.SwingerBot]: ottoDefaultParams, // "Swinger Bot",
-  [ItemType.LavaStone]: ottoDefaultParams, // "Lava Stone",
-  [ItemType.Snowball]: ottoDefaultParams, // "Snowball",
-  [ItemType.LavaPlatform]: ottoDefaultParams, // "Lava Platform",
-  [ItemType.Smoker]: ottoDefaultParams, // "Smoker",
-  [ItemType.RadarDish]: ottoDefaultParams, // "Tower / Radar Dish",
-  [ItemType.PeopleHut]: ottoDefaultParams, // "People Hut",
-  [ItemType.Beemer]: ottoDefaultParams, // "Beemer",
-  [ItemType.Railgun]: ottoDefaultParams, // "Rail Gun",
-  [ItemType.Turret]: ottoDefaultParams, // "Turret",
-  [ItemType.Enemy_BrainBoss]: ottoDefaultParams, // "Brain Boss",
-  [ItemType.BlobArrow]: ottoDefaultParams, // "Blob Arrow",
-  [ItemType.NeuronStrand]: ottoDefaultParams, // "Neuron Strand",
-  [ItemType.BrainPort]: ottoDefaultParams, // "Brain Port",
+  [ItemType.LavaPillar]: {
+    flags: "Auto-fade status bits",
+    p0: { type: "Integer", description: "Pillar type (0-2)" },
+    p1: { type: "Integer", description: "Height variation" },
+    p2: "Unused",
+    p3: "Unused",
+  },
+  [ItemType.VolcanoGeneratorZone]: {
+    flags: "Auto-fade status bits",
+    p0: { type: "Integer", description: "Generator frequency" },
+    p1: "Unused",
+    p2: "Unused",
+    p3: "Unused",
+  },
+  [ItemType.JawsBot]: {
+    flags: "Auto-fade status bits",
+    p0: { type: "Integer", description: "Bot type" },
+    p1: "Unused",
+    p2: "Unused",
+    p3: "Unused",
+  },
+  [ItemType.IceSaucer]: {
+    flags: "Auto-fade status bits",
+    p0: { type: "Integer", description: "Saucer type" },
+    p1: "Unused",
+    p2: "Unused",
+    p3: "Unused",
+  },
+  [ItemType.RunwayLights]: {
+    flags: "Auto-fade status bits",
+    p0: { type: "Integer", description: "Light pattern (0-3)" },
+    p1: { type: "Integer", description: "Rotation (0-3, multiplied by PI/2)" },
+    p2: "Unused",
+    p3: "Unused",
+  },
+  [ItemType.Enemy_IceCube]: {
+    flags: "Auto-fade status bits",
+    p0: "Unused",
+    p1: "Unused",
+    p2: "Unused",
+    p3: "Unused",
+  },
+  [ItemType.HammerBot]: {
+    flags: "Auto-fade status bits",
+    p0: "Unused",
+    p1: "Unused",
+    p2: "Unused",
+    p3: {
+      type: "Bit Flags",
+      flags: [
+        {
+          index: 0,
+          description: "Always add (ignore max limit)",
+          codeSample: {
+            code: "if (!(itemPtr->parm[3] & 1)) { /* check max limit */ }",
+            fileName: "Enemies/FireIce/Enemy_HammerBot.c",
+            lineNumber: 91,
+          },
+        },
+        {
+          index: 1,
+          description: "Enemy regenerate",
+          codeSample: {
+            code: "body->EnemyRegenerate = itemPtr->parm[3] & (1<<1);",
+            fileName: "Enemies/FireIce/Enemy_HammerBot.c",
+            lineNumber: 99,
+          },
+        },
+      ],
+    },
+  },
+  [ItemType.DrillBot]: {
+    flags: "Auto-fade status bits",
+    p0: "Unused",
+    p1: "Unused",
+    p2: "Unused",
+    p3: {
+      type: "Bit Flags",
+      flags: [
+        {
+          index: 0,
+          description: "Always add (ignore max limit)",
+          codeSample: {
+            code: "if (!(itemPtr->parm[3] & 1)) { /* check max limit */ }",
+            fileName: "Enemies/FireIce/Enemy_DrillBot.c",
+            lineNumber: 90,
+          },
+        },
+        {
+          index: 1,
+          description: "Enemy regenerate",
+          codeSample: {
+            code: "body->EnemyRegenerate = itemPtr->parm[3] & (1<<1);",
+            fileName: "Enemies/FireIce/Enemy_DrillBot.c",
+            lineNumber: 99,
+          },
+        },
+      ],
+    },
+  },
+  [ItemType.SwingerBot]: {
+    flags: "Auto-fade status bits",
+    p0: "Unused",
+    p1: "Unused",
+    p2: "Unused",
+    p3: {
+      type: "Bit Flags",
+      flags: [
+        {
+          index: 0,
+          description: "Always add (ignore max limit)",
+          codeSample: {
+            code: "if (!(itemPtr->parm[3] & 1)) { /* check max limit */ }",
+            fileName: "Enemies/FireIce/Enemy_SwingerBot.c",
+            lineNumber: 85,
+          },
+        },
+        {
+          index: 1,
+          description: "Enemy regenerate",
+          codeSample: {
+            code: "body->EnemyRegenerate = itemPtr->parm[3] & (1<<1);",
+            fileName: "Enemies/FireIce/Enemy_SwingerBot.c",
+            lineNumber: 95,
+          },
+        },
+      ],
+    },
+  },
+  [ItemType.LavaStone]: {
+    flags: "Auto-fade status bits",
+    p0: { type: "Integer", description: "Stone type (0-3)" },
+    p1: { type: "Integer", description: "Rotation (0-7, multiplied by PI2/8)" },
+    p2: "Unused",
+    p3: "Unused",
+  },
+  [ItemType.Snowball]: {
+    flags: "Auto-fade status bits",
+    p0: { type: "Integer", description: "Snowball size (0-2)" },
+    p1: "Unused",
+    p2: "Unused",
+    p3: "Unused",
+  },
+  [ItemType.LavaPlatform]: {
+    flags: "Auto-fade status bits",
+    p0: { type: "Integer", description: "Platform type (0-2)" },
+    p1: "Unused",
+    p2: "Unused",
+    p3: "Unused",
+  },
+  [ItemType.Smoker]: {
+    flags: "Auto-fade status bits",
+    p0: {
+      type: "Integer",
+      description: "Smoker type (0-2)",
+      codeSample: {
+        code: "newObj->Kind = itemPtr->parm[0]; // save smoke kind",
+        fileName: "Effects/Effects.c",
+        lineNumber: 1685,
+      },
+    },
+    p1: "Unused",
+    p2: "Unused",
+    p3: "Unused",
+  },
+  [ItemType.RadarDish]: {
+    flags: "Auto-fade status bits",
+    p0: { type: "Integer", description: "Dish type (0=Tower, 1=Radar)" },
+    p1: { type: "Integer", description: "Rotation (0-3, multiplied by PI/2)" },
+    p2: "Unused",
+    p3: "Unused",
+  },
+  [ItemType.PeopleHut]: {
+    flags: "Auto-fade status bits",
+    p0: { type: "Integer", description: "Number of humans" },
+    p1: { type: "Integer", description: "Human type" },
+    p2: "Unused",
+    p3: "Unused",
+  },
+  [ItemType.Beemer]: {
+    flags: "Auto-fade status bits",
+    p0: { type: "Integer", description: "Beemer type" },
+    p1: "Unused",
+    p2: "Unused",
+    p3: "Unused",
+  },
+  [ItemType.Railgun]: {
+    flags: "Auto-fade status bits",
+    p0: { type: "Integer", description: "Gun orientation" },
+    p1: { type: "Integer", description: "Rotation (0-3, multiplied by PI/2)" },
+    p2: "Unused",
+    p3: "Unused",
+  },
+  [ItemType.Turret]: {
+    flags: "Auto-fade status bits",
+    p0: { type: "Integer", description: "Turret type" },
+    p1: { type: "Integer", description: "Rotation (0-7, multiplied by PI2/8)" },
+    p2: "Unused",
+    p3: "Unused",
+  },
+  [ItemType.Enemy_BrainBoss]: {
+    flags: "Auto-fade status bits",
+    p0: "Unused",
+    p1: "Unused",
+    p2: "Unused",
+    p3: "Unused",
+  },
+  [ItemType.BlobArrow]: {
+    flags: "Auto-fade status bits",
+    p0: {
+      type: "Integer",
+      description: "Arrow direction (0-7, multiplied by PI2/8)",
+    },
+    p1: "Unused",
+    p2: "Unused",
+    p3: "Unused",
+  },
+  [ItemType.NeuronStrand]: {
+    flags: "Auto-fade status bits",
+    p0: { type: "Integer", description: "Strand type (0-3)" },
+    p1: { type: "Integer", description: "Rotation (0-3, multiplied by PI/2)" },
+    p2: "Unused",
+    p3: "Unused",
+  },
+  [ItemType.BrainPort]: {
+    flags: "Auto-fade status bits",
+    p0: {
+      type: "Integer",
+      description: "Portal ID (0-7, also controls rotation)",
+    },
+    p1: "Unused",
+    p2: "Unused",
+    p3: "Unused",
+  },
 };
 
 //Level restriction - Return 0 if available across levels, -1 if item isn't available (wasn't implemented in game)
@@ -575,116 +1756,3 @@ export function getLevelRestriction(itemType: ItemType): number {
 
   return 0;
 }
-
-/* 	
-Original from otto source code:
-
-        NilAdd,								// My Start Coords
-		AddBasicPlant,						// 1:  basic plant/tree
-		AddSpacePodGenerator,				// 2:  space pod
-		AddEnemy_Squooshy,					// 3: squooshy enemy
-		AddHuman,							// 4: Human
-		AddAtom,
-		AddPowerupPod,
-		AddEnemy_BrainAlien,				// 7:  brain alien
-		AddEnemy_Onion,						// 8:  Onion
-		AddEnemy_Corn,						// 9:  Corn
-		AddEnemy_Tomato,					// 10:  tomato
-		AddBarn,							// 11:  barn
-		AddSilo,							// 12:  solo
-		AddWoodenGate,						// 13:  wooden gate
-		AddPhonePole,						// 14:  phone pole
-		AddTractor,							// 15:  farm tractor
-		AddSprout,							// 16:  add sprout
-		AddCornStalk,						// 17:  corn stalk
-		AddBigLeafPlant,					// 18:  big leaf plant
-		AddMetalGate,						// 19:  metal gate
-		AddFencePost,						// 20:  fence post
-		AddWindmill,						// 21:  windmill
-		AddMetalTub,						// 22:  metal tub
-		AddOutHouse,						// 23:  outhouse
-		AddRock,							// 24:  rock
-		AddHay,								// 25:  hay bale
-		AddExitRocket,						// 26:  exit rocket
-		AddCheckpoint,						// 27:  checkpoint
-		AddSlimePipe,						// 28:  slime pipe
-		AddFallingCrystal,					// 29:	falling crystal
-		AddEnemy_Blob,						// 30:  blob enemy
-		AddBumperBubble,					// 31:  bumper bubble
-		AddBasicCrystal,					// 32:  basic crystal
-		AddInertBubble,						// 33:  soap bubble
-		AddSlimeTree,						// 34:  slime tree
-		NilAdd,								// 35:  magnet monster (spline only)
-		AddFallingSlimePlatform,			// 36:  falling slime platform
-		AddBubblePump,						// 37:  bubble pump
-		AddSlimeMech,						// 38:  slime mech
-		AddSpinningPlatform,				// 39:  spinning platform
-		NilAdd,								// 40:  moving platform (spline only)
-		NilAdd,								// 41:  blob boss machine
-		AddBlobBossTube,					// 42: 	blob boss tube
-		AddScaffoldingPost,					// 43:  scaffolding post
-		AddJungleGate,						// 44:  jungle gate
-		AddCrunchDoor,						// 45:  crunch door
-		AddManhole,							// 46:  manhole
-		AddCloudPlatform,					// 47:  cloud platform
-		AddCloudTunnel,						// 48:  cloud tunnel
-		AddEnemy_Flamester,					// 49:  flamester
-		AddEnemy_GiantLizard,				// 50:  giant lizard
-		AddEnemy_FlyTrap,					// 51:  venus flytrap
-		AddEnemy_Mantis,					// 52:  mantis
-		AddTurtlePlatform,					// 53:  turtle platform
-		AddSmashable,						// 54:  jungle smashable
-		AddLeafPlatform,					// 55:  leaf platform
-		AddHelpBeacon,						// 56:  help beacon
-		AddTeleporter,						// 57:  teleporter
-		AddZipLinePost,						// 58:  zip line post
-		AddEnemy_Mutant,					// 59:  mutant enemy
-		AddEnemy_MutantRobot,				// 60:  mutant robot enemy
-		AddHumanScientist,					// 61:  scientist human
-		AddProximityMine,					// 62:  proximity mine
-		AddLampPost,						// 63:  lamp posts
-		AddDebrisGate,						// 64:  debris gate
-		AddGraveStone,						// 65:  grave stone
-		AddCrashedShip,						// 66:  crashed ship
-		AddChainReactingMine,				// 67:  chain reacting mine
-		AddRubble,							// 68:  rubble
-		AddTeleporterMap,					// 69:  teleporter map (UNUSED)
-		AddGreenSteam,						// 70:  green steam
-		AddTentacleGenerator,				// 71:  tentacle generator
-		AddPitcherPlantBoss,				// 72:  pitcher plant boss
-		AddPitcherPod,						// 73:  pitcher pod
-		AddTractorBeamPost,					// 74:  tractor beam post
-		AddCannon,							// 75:  cannon
-		AddBumperCar,						// 76:  bumper car
-		AddTireBumperStrip,					// 77:	tire bumper
-		AddEnemy_Clown,						// 78:	clown enemy
-		NilAdd,								// 79: clown fish
-		AddBumperCarPowerPost,				// 80: bumper car power post
-		AddEnemy_StrongMan,					// 81:	strongman enemy
-		AddBumperCarGate,					// 82:  bumper car gate
-		AddRocketSled,						// 83: tobogan
-		AddTrapDoor,						// 84:  trap door
-		AddZigZagSlats,						// 85:  zig-zag slats
-		NilAdd,								// 86: ?????
-		AddLavaPillar,						// 87:  lava pillar
-		AddVolcanoGeneratorZone,			// 88:  volcano generator
-		AddJawsBot,							// 89:  jaws bot enemy
-		AddIceSaucer,						// 90:  ice saucer
-		AddRunwayLights,					// 91:  runway lights
-		AddEnemy_IceCube,					// 92:  ice cube enemy
-		AddHammerBot,						// 93:  HAMMER BOT
-		AddDrillBot,						// 94:  drill bot
-		AddSwingerBot,						// 95:  swinger bot
-		AddLavaStone,						// 96:  lava stone
-		AddSnowball,						// 97: 	snowball
-		AddLavaPlatform,					// 98:  lava platform
-		AddSmoker,							// 99:  smoker
-		AddRadarDish,						// 100:  tower / radar dish
-		AddPeopleHut,						// 101: people hut
-		AddBeemer,							// 102:  bemmer
-		NilAdd,								// 103:  rail gun
-		AddTurret,							// 104:  turret
-		AddEnemy_BrainBoss,					// 105:  brain boss
-		AddBlobArrow,						// 106:  blob arrow
-		AddNeuronStrand,					// 107:  neuron strand
-		AddBrainPort,						// 108:  brain port */

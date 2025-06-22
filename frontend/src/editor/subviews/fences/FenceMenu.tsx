@@ -2,7 +2,7 @@ import { Updater } from "use-immer";
 import { ottoMaticLevel } from "../../../python/structSpecs/ottoMaticInterface";
 import { SelectedFence } from "../../../data/fences/fenceAtoms";
 import { useAtom, useAtomValue } from "jotai";
-import { Button, DeleteButton } from "../../../components/Button";
+import { Button } from "@/components/ui/button";
 import {
   Select,
   SelectItem,
@@ -163,7 +163,8 @@ export function FenceMenu({
             >
               Add Back Nub
             </Button>
-            <DeleteButton
+            <Button
+              variant="destructive"
               disabled={
                 selectedFence === undefined ||
                 data.Fenc[1000].obj[selectedFence].numNubs <= 1
@@ -175,16 +176,15 @@ export function FenceMenu({
                     data.Fenc[1000].obj[selectedFence].numNubs <= 1
                   )
                     return;
-
                   data.Fenc[1000].obj[selectedFence].numNubs--;
-
                   data.FnNb[selectedFence + NUB_KEY_BASE].obj.shift();
                 });
               }}
             >
               Remove Front Nub
-            </DeleteButton>
-            <DeleteButton
+            </Button>
+            <Button
+              variant="destructive"
               disabled={
                 selectedFence === undefined ||
                 data.Fenc[1000].obj[selectedFence].numNubs <= 1
@@ -196,23 +196,20 @@ export function FenceMenu({
                     data.Fenc[1000].obj[selectedFence].numNubs <= 1
                   )
                     return;
-
                   data.Fenc[1000].obj[selectedFence].numNubs--;
-
                   data.FnNb[selectedFence + NUB_KEY_BASE].obj.pop();
                 });
               }}
             >
               Remove Back Nub
-            </DeleteButton>
-            <DeleteButton
+            </Button>
+            <Button
+              variant="destructive"
               disabled={selectedFence === undefined}
               onClick={() => {
                 if (selectedFence === undefined) return;
-
                 setData((data) => {
                   data.Fenc[1000].obj.splice(selectedFence, 1);
-
                   let lastKey: string | undefined = undefined;
                   for (const nubKey of Object.keys(data.FnNb)) {
                     lastKey = nubKey;
@@ -229,7 +226,7 @@ export function FenceMenu({
               }}
             >
               Delete Fence
-            </DeleteButton>
+            </Button>
           </div>
         )}
       </div>

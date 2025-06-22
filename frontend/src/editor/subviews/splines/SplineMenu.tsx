@@ -4,8 +4,10 @@ import {
   ottoSplineItem,
 } from "../../../python/structSpecs/ottoMaticInterface";
 import { useAtom, useAtomValue } from "jotai";
-import { Button, DeleteButton } from "../../../components/Button";
+import { Button } from "@/components/ui/button";
 import { ottoItemTypeParams } from "../../../data/items/ottoItemType";
+import { ParamTooltip } from "../items/ParamTooltip";
+import { getParamTooltip } from "../items/getParamTooltip";
 import { parseU16, parseU8 } from "../../../utils/numberParsers";
 
 import {
@@ -26,6 +28,7 @@ import {
 import { getSplineItemTypes } from "@/data/splines/getSplineItemTypes";
 import { Globals } from "@/data/globals/globals";
 import { getSplineItemName } from "@/data/splines/getSplineItemNames";
+import { Checkbox } from "@/components/ui/checkbox";
 
 export function SplineMenu({
   data,
@@ -201,7 +204,11 @@ function EditSplineItemMenu({
       </Select>
 
       <div className="grid grid-cols-[auto_1fr_auto_1fr] gap-2 items-center">
-        <p>Flags ({ottoItemTypeParams[splineItemData.type].flags})</p>
+        {/* Flags field */}
+        <ParamTooltip
+          label={<span>Flags</span>}
+          tooltip={getParamTooltip(ottoItemTypeParams[splineItemData.type].flags)}
+        />
         <Input
           type="number"
           value={splineItemData.flags}
@@ -218,11 +225,13 @@ function EditSplineItemMenu({
             });
           }}
         />
-        <p>Parameter 0 ({ottoItemTypeParams[splineItemData.type].p0})</p>
-        <Input
-          type="number"
-          value={splineItemData.p0}
-          onChange={(e) => {
+
+        {/* Param 0-3, with bit flag support */}
+        {([0, 1, 2, 3] as const).map((i) => {
+          const paramKey = `p${i}` as const;
+          const param = ottoItemTypeParams[splineItemData.type][paramKey];
+          const value = splineItemData[paramKey];
+          const setValue = (v: number) => {
             setData((data) => {
               if (
                 selectedSpline === undefined ||
@@ -231,62 +240,72 @@ function EditSplineItemMenu({
                 return;
               data.SpIt[SPLINE_KEY_BASE + selectedSpline].obj[
                 selectedSplineItem
-              ].p0 = parseU8(e.target.value);
+              ][paramKey] = v;
             });
-          }}
-        />
-        <p>Parameter 1 ({ottoItemTypeParams[splineItemData.type].p1})</p>
-        <Input
-          type="number"
-          value={splineItemData.p1}
-          onChange={(e) => {
-            setData((data) => {
-              if (
-                selectedSpline === undefined ||
-                selectedSplineItem === undefined
-              )
-                return;
-              data.SpIt[SPLINE_KEY_BASE + selectedSpline].obj[
-                selectedSplineItem
-              ].p1 = parseU8(e.target.value);
-            });
-          }}
-        />
-        <p>Parameter 2 ({ottoItemTypeParams[splineItemData.type].p2})</p>
-        <Input
-          type="number"
-          value={splineItemData.p2}
-          onChange={(e) => {
-            setData((data) => {
-              if (
-                selectedSpline === undefined ||
-                selectedSplineItem === undefined
-              )
-                return;
-              data.SpIt[SPLINE_KEY_BASE + selectedSpline].obj[
-                selectedSplineItem
-              ].p2 = parseU8(e.target.value);
-            });
-          }}
-        />
-        <p>Parameter 3 ({ottoItemTypeParams[splineItemData.type].p3})</p>
-        <Input
-          type="number"
-          value={splineItemData.p3}
-          onChange={(e) => {
-            setData((data) => {
-              if (
-                selectedSpline === undefined ||
-                selectedSplineItem === undefined
-              )
-                return;
-              data.SpIt[SPLINE_KEY_BASE + selectedSpline].obj[
-                selectedSplineItem
-              ].p3 = parseU8(e.target.value);
-            });
-          }}
-        />
-        <p>Placement (0-1)</p>
+          };
+          return [
+            <ParamTooltip
+              key={`tooltip-${i}`}
+              label={<span>{`Parameter ${i}`}</span>}
+              tooltip={getParamTooltip(param)}
+            />,
+            param && typeof param !== "string" && param.type === "Bit Flags" && Array.isArray(param.flags) ? (
+              <div key={`flags-${i}`} className="flex flex-col gap-1">
+                <div className="flex flex-wrap gap-2">
+                  {param.flags.map((flag) => {
+                    const checked = (value & (1 << flag.index)) !== 0;
+                    return (
+                      <label key={flag.index} className="inline-flex items-center gap-1">
+                        <Checkbox
+                          className="font-bold"
+                          checked={checked}
+                          onCheckedChange={(checked) => {
+                            setData((data) => {
+                              if (
+                                selectedSpline === undefined ||
+                                selectedSplineItem === undefined
+                              )
+                                return;
+                              const mask = 1 << flag.index;
+                              if (checked) {
+                                data.SpIt[SPLINE_KEY_BASE + selectedSpline].obj[
+                                  selectedSplineItem
+                                ][paramKey] |= mask;
+                              } else {
+                                data.SpIt[SPLINE_KEY_BASE + selectedSpline].obj[
+                                  selectedSplineItem
+                                ][paramKey] &= ~mask;
+                              }
+                            });
+                          }}
+                        />
+                        <span>{flag.description}</span>
+                      </label>
+                    );
+                  })}
+                </div>
+                <div className="flex items-center gap-2 mt-1">
+                  <p>Value:</p>
+                  <Input
+                    type="number"
+                    className="w-24"
+                    value={value.toString()}
+                    onChange={(e) => setValue(parseU8(e.target.value))}
+                  />
+                </div>
+              </div>
+            ) : (
+              <Input
+                key={`input-${i}`}
+                type="number"
+                value={value.toString()}
+                onChange={(e) => setValue(parseU8(e.target.value))}
+              />
+            )
+          ];
+        })}
+
+        <span>Placement (0-1)</span>
         <Input
           type="number"
           value={splineItemData.placement}
@@ -312,7 +331,8 @@ function EditSplineItemMenu({
         />
       </div>
       <div>
-        <DeleteButton
+        <Button
+          variant="destructive"
           disabled={selectedSpline === undefined}
           onClick={() => {
             setData((data) => {
@@ -325,7 +345,7 @@ function EditSplineItemMenu({
           }}
         >
           Delete Spline Item
-        </DeleteButton>
+        </Button>
       </div>
     </>
   );
@@ -440,12 +460,12 @@ function EditSplineMenu({
       >
         Add Spline Item
       </Button>
-      <DeleteButton
+      <Button
+        variant="destructive"
         disabled={selectedSpline === undefined}
         onClick={() => {
           setData((data) => {
             if (selectedSpline === undefined) return;
-
             data.Spln[1000].obj.splice(selectedSpline, 1);
             let pos = SPLINE_KEY_BASE + selectedSpline;
             while (data.SpNb[pos + 1] !== undefined) {
@@ -462,7 +482,7 @@ function EditSplineMenu({
         }}
       >
         Delete Spline
-      </DeleteButton>
+      </Button>
     </div>
   );
 }

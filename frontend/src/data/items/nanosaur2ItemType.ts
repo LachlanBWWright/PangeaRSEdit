@@ -1,3 +1,5 @@
+import { ItemParams } from "./itemParams";
+
 export enum ItemType {
   StartCoords, // My Start Coords
   BirchTree,
@@ -100,4 +102,618 @@ export const itemTypeNames: Record<ItemType, string> = {
   [ItemType.Hole]: "Hole",
   [ItemType.FreeLifePOW]: "Free Life POW",
   [ItemType.RamphorEnemy]: "Ramphor Enemy",
+};
+
+// Parameter descriptions for each item type
+export const nanosaur2ItemTypeParams: Record<ItemType, ItemParams> = {
+  [ItemType.StartCoords]: {
+    flags: "Unknown",
+    p0: {
+      type: "Integer",
+      description:
+        "Player number (0-3, which player this start position is for)",
+      codeSample: {
+        code: "p = itemPtr[i].parm[0]; // player # is in parm 0\nif (p >= MAX_PLAYERS) // skip illegal player #'s\n  continue;",
+        fileName: "Source/Terrain/Terrain2.c",
+        lineNumber: 230,
+      },
+    },
+    p1: {
+      type: "Integer",
+      description: "Starting rotation (0-7, where each unit = 45°)",
+      codeSample: {
+        code: "gPlayerInfo[p].startRotY = (float)itemPtr[i].parm[1] * (PI2/8.0f); // calc starting rotation aim",
+        fileName: "Source/Terrain/Terrain2.c",
+        lineNumber: 238,
+      },
+    },
+    p2: "Unknown",
+    p3: "Unknown",
+  },
+  [ItemType.BirchTree]: {
+    flags: "Unknown",
+    p0: {
+      type: "Integer",
+      description:
+        "Tree variant type (0=HighRed, 1=HighYellow, 2=LowRed, 3=LowYellow)",
+      codeSample: {
+        code: ".type = LEVEL1_ObjType_Tree_Birch_HighRed + itemPtr->parm[0],",
+        fileName: "Source/Items/Trees.c",
+        lineNumber: 51,
+      },
+    },
+    p1: "Unknown",
+    p2: "Unknown",
+    p3: "Unknown",
+  },
+  [ItemType.PineTree]: {
+    flags: "Unknown",
+    p0: {
+      type: "Integer",
+      description:
+        "Tree variant type (0=HighDead, 1=HighGreen, 2=LowDead, 3=LowGreen)",
+      codeSample: {
+        code: ".type = LEVEL1_ObjType_Tree_Pine_HighDead + itemPtr->parm[0],",
+        fileName: "Source/Items/Trees.c",
+        lineNumber: 93,
+      },
+    },
+    p1: "Unknown",
+    p2: "Unknown",
+    p3: "Unknown",
+  },
+  [ItemType.Egg]: {
+    flags: "Unknown",
+    p0: {
+      type: "Integer",
+      description: "Egg color/species type",
+      codeSample: {
+        code: "short eggColor = itemPtr->parm[0];",
+        fileName: "Source/Items/Eggs.c",
+        lineNumber: 98,
+      },
+    },
+    p1: {
+      type: "Integer",
+      description: "Player number (for capture the flag modes)",
+      codeSample: {
+        code: "newObj->PlayerNum = itemPtr->parm[1]; // remember this for capture the flag modes",
+        fileName: "Source/Items/Wormhole.c",
+        lineNumber: 158,
+      },
+    },
+    p2: "Unknown",
+    p3: "Unknown",
+  },
+  [ItemType.EggWormhole]: {
+    flags: "Unknown",
+    p0: "Unknown",
+    p1: {
+      type: "Integer",
+      description: "Player number (for capture the flag modes)",
+      codeSample: {
+        code: "newObj->PlayerNum = itemPtr->parm[1]; // remember this for capture the flag modes",
+        fileName: "Source/Items/Wormhole.c",
+        lineNumber: 158,
+      },
+    },
+    p2: "Unknown",
+    p3: "Unknown",
+  },
+  [ItemType.TowerTurret]: {
+    flags: "Unknown",
+    p0: "Unknown",
+    p1: "Unknown",
+    p2: "Unknown",
+    p3: "Unknown",
+  },
+  [ItemType.WeaponPOW]: {
+    flags: "Unknown",
+    p0: {
+      type: "Integer",
+      description: "Weapon type (e.g., WEAPON_TYPE_HEATSEEKER, etc.)",
+      codeSample: {
+        code: "short weaponType = itemPtr->parm[0];\nif (weaponType == WEAPON_TYPE_SONICSCREAM) // since this in an infinite weapon, don't need POW's\n  return(true);",
+        fileName: "Source/Items/POWs.c",
+        lineNumber: 63,
+      },
+    },
+    p1: "Unknown",
+    p2: "Unknown",
+    p3: "Unknown",
+  },
+  [ItemType.SmallTree]: {
+    flags: "Unknown",
+    p0: "Unknown",
+    p1: "Unknown",
+    p2: "Unknown",
+    p3: "Unknown",
+  },
+  [ItemType.FallenTree]: {
+    flags: "Unknown",
+    p0: {
+      type: "Integer",
+      description: "Rotation (0-7, where each unit = 45°)",
+      codeSample: {
+        code: ".rot = (float)itemPtr->parm[0] * (PI2/8),",
+        fileName: "Source/Items/Trees.c",
+        lineNumber: 142,
+      },
+    },
+    p1: "Unknown",
+    p2: "Unknown",
+    p3: "Unknown",
+  },
+  [ItemType.TreeStump]: {
+    flags: "Unknown",
+    p0: "Unknown",
+    p1: "Unknown",
+    p2: "Unknown",
+    p3: "Unknown",
+  },
+  [ItemType.Grass]: {
+    flags: "Unknown",
+    p0: "Unknown",
+    p1: "Unknown",
+    p2: "Unknown",
+    p3: "Unknown",
+  },
+  [ItemType.Fern]: {
+    flags: "Unknown",
+    p0: "Unknown",
+    p1: "Unknown",
+    p2: "Unknown",
+    p3: "Unknown",
+  },
+  [ItemType.BerryBush]: {
+    flags: "Unknown",
+    p0: "Unknown",
+    p1: {
+      type: "Integer",
+      description:
+        "Rotation (0-7, where each unit = 45°) or 0 for random rotation",
+      codeSample: {
+        code: ".rot = (randomRot) ? (RandomFloat()*PI2) : ((float)itemPtr->parm[1] * (PI2/8.0f)),",
+        fileName: "Source/Items/Bushes.c",
+        lineNumber: 200,
+      },
+    },
+    p2: "Unknown",
+    p3: "Unknown",
+  },
+  [ItemType.CatTail]: {
+    flags: "Unknown",
+    p0: "Unknown",
+    p1: {
+      type: "Integer",
+      description: "Color variant",
+      codeSample: {
+        code: "short color = itemPtr->parm[1];",
+        fileName: "Source/Items/Bushes.c",
+        lineNumber: 475,
+      },
+    },
+    p2: "Unknown",
+    p3: "Unknown",
+  },
+  [ItemType.Rock]: {
+    flags: "Unknown",
+    p0: {
+      type: "Integer",
+      description: "Rock type/variant (different rock models)",
+      codeSample: {
+        code: ".type = base + itemPtr->parm[0],",
+        fileName: "Source/Items/Items.c",
+        lineNumber: 227,
+      },
+    },
+    p1: {
+      type: "Integer",
+      description:
+        "Rotation (0=random, 1-8 = specific rotation where each unit = 45°)",
+      codeSample: {
+        code: "long rot = itemPtr->parm[1];\n.rot = (rot == 0) ? (RandomFloat()*PI2) : ((float)(rot-1) * (PI2/8.0f)),",
+        fileName: "Source/Items/Items.c",
+        lineNumber: 202,
+      },
+    },
+    p2: "Unknown",
+    p3: "Unknown",
+  },
+  [ItemType.Enemy_Raptor]: {
+    flags: "Unknown",
+    p0: "Unknown",
+    p1: "Unknown",
+    p2: "Unknown",
+    p3: "Unknown",
+  },
+  [ItemType.DustDevil]: {
+    flags: "Unknown",
+    p0: "Unknown",
+    p1: "Unknown",
+    p2: "Unknown",
+    p3: "Unknown",
+  },
+  [ItemType.AirMine]: {
+    flags: "Unknown",
+    p0: "Unknown",
+    p1: "Unknown",
+    p2: "Unknown",
+    p3: "Unknown",
+  },
+  [ItemType.ForestDoor]: {
+    flags: "Unknown",
+    p0: {
+      type: "Integer",
+      description: "Key ID (which key opens this door)",
+      codeSample: {
+        code: "Byte keyID = itemPtr->parm[0];",
+        fileName: "Source/Items/ForestDoor.c",
+        lineNumber: 60,
+      },
+    },
+    p1: {
+      type: "Integer",
+      description: "Rotation (0-3, where each unit = 90°)",
+      codeSample: {
+        code: "float rot = (float)itemPtr->parm[1] * (PI/2);",
+        fileName: "Source/Items/ForestDoor.c",
+        lineNumber: 61,
+      },
+    },
+    p2: "Unknown",
+    p3: "Unknown",
+  },
+  [ItemType.ForestDoorKey]: {
+    flags: "Unknown",
+    p0: {
+      type: "Integer",
+      description: "Key ID (which door this key opens)",
+      codeSample: {
+        code: "short keyID = itemPtr->parm[0];",
+        fileName: "Source/Items/ForestDoor.c",
+        lineNumber: 215,
+      },
+    },
+    p1: {
+      type: "Integer",
+      description: "Rotation (0-7, where each unit = 45°)",
+      codeSample: {
+        code: "float rot = (float)itemPtr->parm[1] * (PI2/8);",
+        fileName: "Source/Items/ForestDoor.c",
+        lineNumber: 217,
+      },
+    },
+    p2: "Unknown",
+    p3: "Unknown",
+  },
+  [ItemType.Electrode]: {
+    flags: "Unknown",
+    p0: "Unknown",
+    p1: "Unknown",
+    p2: "Unknown",
+    p3: "Unknown",
+  },
+  [ItemType.HealthPOW]: {
+    flags: "Unknown",
+    p0: "Unknown",
+    p1: "Unknown",
+    p2: "Unknown",
+    p3: "Unknown",
+  },
+  [ItemType.FuelPOW]: {
+    flags: "Unknown",
+    p0: "Unknown",
+    p1: "Unknown",
+    p2: "Unknown",
+    p3: "Unknown",
+  },
+  [ItemType.RiverRock]: {
+    flags: "Unknown",
+    p0: "Unknown",
+    p1: "Unknown",
+    p2: "Unknown",
+    p3: "Unknown",
+  },
+  [ItemType.GasMound]: {
+    flags: "Unknown",
+    p0: "Unknown",
+    p1: "Unknown",
+    p2: "Unknown",
+    p3: "Unknown",
+  },
+  [ItemType.BentPineTree]: {
+    flags: "Unknown",
+    p0: {
+      type: "Integer",
+      description: "Tree variant type (different bent pine models)",
+      codeSample: {
+        code: ".type = LEVEL1_ObjType_BentPine1_Trunk + itemPtr->parm[0],\n// ...\ndef.type = LEVEL1_ObjType_BentPine1_Leaves + itemPtr->parm[0];",
+        fileName: "Source/Items/Trees.c",
+        lineNumber: 548,
+      },
+    },
+    p1: {
+      type: "Integer",
+      description: "Rotation (0-7, where each unit = 45°)",
+      codeSample: {
+        code: "float rot = (float)itemPtr->parm[1] * (PI2/8.0);",
+        fileName: "Source/Items/Trees.c",
+        lineNumber: 539,
+      },
+    },
+    p2: "Unknown",
+    p3: "Unknown",
+  },
+  [ItemType.Enemy_Brach]: {
+    flags: "Unknown",
+    p0: {
+      type: "Integer",
+      description: "Starting rotation (0-7, where each unit = 45°)",
+      codeSample: {
+        code: "newObj->Rot.y = ((float)itemPtr->parm[0]) * (PI2/8.0f);",
+        fileName: "Source/Enemies/Enemy_Brach.c",
+        lineNumber: 99,
+      },
+    },
+    p1: "Unknown",
+    p2: "Unknown",
+    p3: {
+      type: "Bit Flags",
+      flags: [
+        {
+          index: 0,
+          description: "Always add flag (bypass enemy count limits)",
+          codeSample: {
+            code: "if (!(itemPtr->parm[3] & 1)) // see if always add\n  if (gNumEnemyOfKind[ENEMY_KIND_BRACH] >= MAX_BRACHS)\n    return(false);",
+            fileName: "Source/Enemies/Enemy_Brach.c",
+            lineNumber: 85,
+          },
+        },
+      ],
+    },
+  },
+  [ItemType.DesertTree]: {
+    flags: "Unknown",
+    p0: {
+      type: "Integer",
+      description: "Tree variant type (different desert tree models)",
+      codeSample: {
+        code: "short type = itemPtr->parm[0];\nif (itemPtr->parm[0] > 4)\n  return(true);",
+        fileName: "Source/Items/Trees.c",
+        lineNumber: 595,
+      },
+    },
+    p1: {
+      type: "Integer",
+      description: "Rotation (0-7, where each unit = 45°)",
+      codeSample: {
+        code: "long rot = itemPtr->parm[1];",
+        fileName: "Source/Items/Trees.c",
+        lineNumber: 596,
+      },
+    },
+    p2: "Unknown",
+    p3: "Unknown",
+  },
+  [ItemType.DesertBush]: {
+    flags: "Unknown",
+    p0: {
+      type: "Integer",
+      description: "Bush variant type",
+      codeSample: {
+        code: "short type = itemPtr->parm[0];",
+        fileName: "Source/Items/Trees.c",
+        lineNumber: 661,
+      },
+    },
+    p1: {
+      type: "Integer",
+      description: "Rotation (0-7, where each unit = 45°)",
+      codeSample: {
+        code: "long rot = itemPtr->parm[1];",
+        fileName: "Source/Items/Trees.c",
+        lineNumber: 662,
+      },
+    },
+    p2: "Unknown",
+    p3: "Unknown",
+  },
+  [ItemType.Cactus]: {
+    flags: "Unknown",
+    p0: {
+      type: "Integer",
+      description: "Cactus variant type",
+      codeSample: {
+        code: "short type = itemPtr->parm[0];",
+        fileName: "Source/Items/Trees.c",
+        lineNumber: 725,
+      },
+    },
+    p1: "Unknown",
+    p2: "Unknown",
+    p3: "Unknown",
+  },
+  [ItemType.Crystal]: {
+    flags: "Unknown",
+    p0: "Unknown",
+    p1: "Unknown",
+    p2: "Unknown",
+    p3: "Unknown",
+  },
+  [ItemType.PalmTree]: {
+    flags: "Unknown",
+    p0: {
+      type: "Integer",
+      description: "Palm tree variant type",
+      codeSample: {
+        code: "short type = itemPtr->parm[0];",
+        fileName: "Source/Items/Trees.c",
+        lineNumber: 763,
+      },
+    },
+    p1: "Unknown",
+    p2: "Unknown",
+    p3: "Unknown",
+  },
+  [ItemType.LaserOrb]: {
+    flags: "Unknown",
+    p0: "Unknown",
+    p1: "Unknown",
+    p2: "Unknown",
+    p3: "Unknown",
+  },
+  [ItemType.ShieldPOW]: {
+    flags: "Unknown",
+    p0: "Unknown",
+    p1: "Unknown",
+    p2: "Unknown",
+    p3: "Unknown",
+  },
+  [ItemType.Smoker]: {
+    flags: "Unknown",
+    p0: "Unknown",
+    p1: "Unknown",
+    p2: "Unknown",
+    p3: "Unknown",
+  },
+  [ItemType.Flame]: {
+    flags: "Unknown",
+    p0: "Unknown",
+    p1: "Unknown",
+    p2: "Unknown",
+    p3: "Unknown",
+  },
+  [ItemType.PalmBush]: {
+    flags: "Unknown",
+    p0: {
+      type: "Integer",
+      description: "Palm bush variant type",
+      codeSample: {
+        code: "short type = itemPtr->parm[0];",
+        fileName: "Source/Items/Trees.c",
+        lineNumber: 800,
+      },
+    },
+    p1: "Unknown",
+    p2: "Unknown",
+    p3: "Unknown",
+  },
+  [ItemType.BurntDesertTree]: {
+    flags: "Unknown",
+    p0: "Unknown",
+    p1: "Unknown",
+    p2: "Unknown",
+    p3: "Unknown",
+  },
+  [ItemType.HydraTree]: {
+    flags: "Unknown",
+    p0: "Unknown",
+    p1: "Unknown",
+    p2: "Unknown",
+    p3: "Unknown",
+  },
+  [ItemType.OddTree]: {
+    flags: "Unknown",
+    p0: "Unknown",
+    p1: "Unknown",
+    p2: "Unknown",
+    p3: "Unknown",
+  },
+  [ItemType.GeckoPlant]: {
+    flags: "Unknown",
+    p0: "Unknown",
+    p1: "Unknown",
+    p2: "Unknown",
+    p3: "Unknown",
+  },
+  [ItemType.SproutPlant]: {
+    flags: "Unknown",
+    p0: "Unknown",
+    p1: "Unknown",
+    p2: "Unknown",
+    p3: "Unknown",
+  },
+  [ItemType.Ivy]: {
+    flags: "Unknown",
+    p0: "Unknown",
+    p1: "Unknown",
+    p2: "Unknown",
+    p3: "Unknown",
+  },
+  [ItemType.Asteroid]: {
+    flags: "Unknown",
+    p0: "Unknown",
+    p1: "Unknown",
+    p2: "Unknown",
+    p3: "Unknown",
+  },
+  [ItemType.SwampFallenTree]: {
+    flags: "Unknown",
+    p0: {
+      type: "Integer",
+      description: "Tree variant type",
+      codeSample: {
+        code: ".type = LEVEL3_ObjType_FallenTree1 + itemPtr->parm[0],",
+        fileName: "Source/Items/Trees.c",
+        lineNumber: 843,
+      },
+    },
+    p1: {
+      type: "Integer",
+      description:
+        "Rotation (0=random, 1-8 = specific rotation where each unit = 45°)",
+      codeSample: {
+        code: "if (itemPtr->parm[1] > 0)\n  def.rot = (float)(itemPtr->parm[1]-1) * (PI2/8.0);",
+        fileName: "Source/Items/Trees.c",
+        lineNumber: 853,
+      },
+    },
+    p2: "Unknown",
+    p3: "Unknown",
+  },
+  [ItemType.SwampStump]: {
+    flags: "Unknown",
+    p0: "Unknown",
+    p1: "Unknown",
+    p2: "Unknown",
+    p3: "Unknown",
+  },
+  [ItemType.Hole]: {
+    flags: "Unknown",
+    p0: "Unknown",
+    p1: "Unknown",
+    p2: "Unknown",
+    p3: "Unknown",
+  },
+  [ItemType.FreeLifePOW]: {
+    flags: "Unknown",
+    p0: "Unknown",
+    p1: "Unknown",
+    p2: "Unknown",
+    p3: "Unknown",
+  },
+  [ItemType.RamphorEnemy]: {
+    flags: "Unknown",
+    p0: {
+      type: "Integer",
+      description: "Height parameter for spline-based enemy",
+      codeSample: {
+        code: "long height = itemPtr->parm[0];",
+        fileName: "Source/Enemies/Enemy_Ramphor.c",
+        lineNumber: 85,
+      },
+    },
+    p1: {
+      type: "Integer",
+      description: "Speed parameter for spline-based enemy",
+      codeSample: {
+        code: "long speed = itemPtr->parm[1];",
+        fileName: "Source/Enemies/Enemy_Ramphor.c",
+        lineNumber: 86,
+      },
+    },
+    p2: "Unknown",
+    p3: "Unknown",
+  },
 };
