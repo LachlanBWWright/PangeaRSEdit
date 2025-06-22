@@ -21,6 +21,7 @@ import { useAtomValue } from "jotai";
 import { Globals } from "../../data/globals/globals";
 import { useMemo } from "react";
 import { handleTileClick } from "../../data/tiles/tileHandlers";
+import { KonvaEventObject } from 'konva/lib/Node';
 
 /* 
 
@@ -294,7 +295,7 @@ export function EmptyTiles({
     return imgCanvas;
   }, [header.mapWidth, header.mapHeight, coordColours]);
 
-  const handleTileClickEvent = (e: any) => {
+  const handleTileClickEvent = (e: KonvaEventObject<MouseEvent>) => {
     if (!tileEditingEnabled) return;
 
     const pos = e.target.getStage()?.getRelativePointerPosition();
@@ -304,7 +305,6 @@ export function EmptyTiles({
     handleTileClick(
       pos.x,
       pos.y,
-      data,
       setData,
       currentTileView,
       tileEditingEnabled,
@@ -374,7 +374,7 @@ export function ElectricFloor0Tiles({
     return imgCanvas;
   }, [header.mapWidth, header.mapHeight, coordColours]);
 
-  const handleTileClickEvent = (e: any) => {
+  const handleTileClickEvent = (e: KonvaEventObject<MouseEvent>) => {
     if (!tileEditingEnabled) return;
 
     const pos = e.target.getStage()?.getRelativePointerPosition();
@@ -384,7 +384,6 @@ export function ElectricFloor0Tiles({
     handleTileClick(
       pos.x,
       pos.y,
-      data,
       setData,
       currentTileView,
       tileEditingEnabled,
@@ -454,7 +453,7 @@ export function ElectricFloor1Tiles({
     return imgCanvas;
   }, [header.mapWidth, header.mapHeight, coordColours]);
 
-  const handleTileClickEvent = (e: any) => {
+  const handleTileClickEvent = (e: KonvaEventObject<MouseEvent>) => {
     if (!tileEditingEnabled) return;
 
     const pos = e.target.getStage()?.getRelativePointerPosition();
@@ -464,7 +463,6 @@ export function ElectricFloor1Tiles({
     handleTileClick(
       pos.x,
       pos.y,
-      data,
       setData,
       currentTileView,
       tileEditingEnabled,

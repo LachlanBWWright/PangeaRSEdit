@@ -142,14 +142,6 @@ export const itemTypeNames: Record<ItemType, string> = {
 
 export type CroMagItemParams = ItemParams;
 
-const croMagDefaultParams: CroMagItemParams = {
-  flags: "Unknown",
-  p0: "Unknown",
-  p1: "Unknown",
-  p2: "Unknown",
-  p3: "Unknown",
-};
-
 export const croMagItemTypeParams: Record<ItemType, CroMagItemParams> = {
   [ItemType.StartCoords]: {
     flags: "Unknown",

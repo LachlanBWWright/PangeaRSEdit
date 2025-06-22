@@ -11,7 +11,6 @@ interface FenceGeometryProps {
 }
 
 const FENCE_POST_HEIGHT = 300; // Example height, adjust as needed
-const FENCE_THICKNESS = 0.5; // Example thickness
 
 export const flattenCoords = (
   xTile: number, // Integer tile index

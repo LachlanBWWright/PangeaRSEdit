@@ -13,7 +13,6 @@ type PixelType = { x: number; y: number };
 export function handleTileClick(
   x: number,
   y: number,
-  data: ottoMaticLevel,
   setData: Updater<ottoMaticLevel>,
   tileView: TileViews,
   tileEditingEnabled: boolean,

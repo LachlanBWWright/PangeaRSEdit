@@ -3,6 +3,7 @@ import { ottoMaticLevel } from "../../python/structSpecs/ottoMaticInterface";
 import { SPLINE_KEY_BASE } from "../../editor/subviews/splines/Spline";
 import { GlobalsInterface } from "../globals/globals";
 
+// eslint-disable-next-line  @typescript-eslint/no-explicit-any
 export function preprocessJson(json: any, globals: GlobalsInterface) {
   console.log(json);
   // Ensure Layr points to unique Atrb values, and Atrb values match underlying values
@@ -61,6 +62,7 @@ export function ottoPreprocessor(
       }
     });
 
+// eslint-disable-next-line  @typescript-eslint/no-explicit-any
     const anyData: any = data;
     if (data.Liqd !== undefined)
       for (const waterItem of anyData.Liqd[1000].obj) {

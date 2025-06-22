@@ -12,9 +12,6 @@ import {
   TopologyValueMode,
   TileEditingEnabled,
   TileBrushType,
-  TILE_ATTRIB_BLANK,
-  TILE_ATTRIB_ELECTROCUTE_AREA0,
-  TILE_ATTRIB_ELECTROCUTE_AREA1,
 } from "../../../data/tiles/tileAtoms";
 import { useAtom } from "jotai";
 import {
@@ -28,8 +25,7 @@ import { useEffect } from "react";
 import { Switch } from "@/components/ui/switch";
 import { ottoMaticLevel } from "@/python/structSpecs/ottoMaticInterface";
 import { Updater } from "use-immer";
-import { Globals } from "@/data/globals/globals";
-import { useAtomValue } from "jotai";
+
 
 export function TilesMenu({
   data,
@@ -49,7 +45,6 @@ export function TilesMenu({
     useAtom(TileEditingEnabled);
   const [selectedTileBrushType, setSelectedTileBrushType] =
     useAtom(TileBrushType);
-  const globals = useAtomValue(Globals);
 
   const header = data?.Hedr?.[1000]?.obj;
   const minY = header?.minY || 0;
