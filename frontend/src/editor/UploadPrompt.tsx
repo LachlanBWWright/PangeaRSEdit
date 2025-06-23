@@ -31,6 +31,7 @@ import {
   SelectValue,
   SelectItem,
 } from "@/components/ui/select";
+import { parseNanosaur1Level } from "@/data/preprocessors/nanosaur1Preprocessor";
 
 export function UploadPrompt({
   mapFile,
@@ -101,8 +102,21 @@ export function UploadPrompt({
   const parseLevelDataFile = async (file: Blob, gameType: GlobalsInterface) => {
     const levelBuffer = await file.arrayBuffer();
 
-    //Call pyodide worker to  run the python code
+    if (gameType.GAME_TYPE === Game.NANOSAUR) {
+      // Nanosaur 1: parse with JS preprocessor
+      // You may want to extract itemCount and offset from the buffer or pass as needed
+      // For now, just return the parsed item list for demonstration
+      // TODO: Integrate with your data model as needed
+      const itemCount = 0; // <-- set correct value
+      const items = parseNanosaur1Level(levelBuffer);
+      console.log(items)
+      //setData(items as any); // or adapt to your data model
+      //return items;
 
+      throw new Error("nanosaur terrain files are not supported yet");
+    }
+
+    //Call pyodide worker to  run the python code
     const pyodidePromise = new Promise<ottoMaticLevel>((resolve, reject) => {
       pyodideWorker.postMessage({
         type: "save_to_json",
