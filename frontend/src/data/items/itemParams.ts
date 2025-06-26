@@ -1,7 +1,7 @@
 export type FlagDescription = {
   index: number;
   description: string;
-  codeSample?: CodeSample;
+  codeSample: CodeSample;
 };
 
 export type CodeSample = {
@@ -11,7 +11,7 @@ export type CodeSample = {
 };
 
 export type ParamDescription =
-  | { type: "Integer"; description: string; codeSample?: CodeSample }
+  | { type: "Integer"; description: string; codeSample: CodeSample }
   | { type: "Bit Flags"; flags: FlagDescription[] }
   | "Unused"
   | "Unknown";
