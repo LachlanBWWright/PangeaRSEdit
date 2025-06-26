@@ -803,7 +803,17 @@ export const bugdom2ItemTypeParams: Record<ItemType, Bugdom2ItemParams> = {
     p2: "Unknown",
     p3: {
       type: "Bit Flags",
-      flags: [{ index: 0, description: "Always add (ignore max enemy limit)" }],
+      flags: [
+        {
+          index: 0,
+          description: "Always add (ignore max enemy limit)",
+          codeSample: {
+            code: "if (!(itemPtr->parm[3] & 1)) {\n    if (gNumEnemyOfKind[ENEMY_KIND_FLEA] >= MAX_FLEAS)\n        return(false);\n}",
+            fileName: "Source/Enemies/Enemy_Flea.c",
+            lineNumber: 142,
+          },
+        },
+      ],
     },
   },
   [ItemType.Enemy_Tick]: {
@@ -888,7 +898,7 @@ export const bugdom2ItemTypeParams: Record<ItemType, Bugdom2ItemParams> = {
           codeSample: {
             code: "if (!(itemPtr->parm[3] & 1)) {\n    if (gNumEnemyOfKind[ENEMY_KIND_TOYSOLDIER] >= MAX_TOYSOLDIERS)\n        return(false);\n}",
             fileName: "Source/Enemies/Enemy_ToySoldier.c",
-            lineNumber: 112,
+            lineNumber: 109,
           },
         },
       ],
@@ -916,7 +926,17 @@ export const bugdom2ItemTypeParams: Record<ItemType, Bugdom2ItemParams> = {
     p2: "Unknown",
     p3: {
       type: "Bit Flags",
-      flags: [{ index: 0, description: "Always add (ignore max enemy limit)" }],
+      flags: [
+        {
+          index: 0,
+          description: "Always add (ignore max enemy limit)",
+          codeSample: {
+            code: "if (!(itemPtr->parm[3] & 1)) {\n    if (gNumEnemyOfKind[ENEMY_KIND_OTTO] >= MAX_OTTOS)\n        return(false);\n}",
+            fileName: "Source/Enemies/Enemy_Otto.c",
+            lineNumber: 120,
+          },
+        },
+      ],
     },
   },
   [ItemType.Puzzle]: {
@@ -1006,7 +1026,17 @@ export const bugdom2ItemTypeParams: Record<ItemType, Bugdom2ItemParams> = {
     p2: "Unknown",
     p3: {
       type: "Bit Flags",
-      flags: [{ index: 0, description: "Always add (ignore max enemy limit)" }],
+      flags: [
+        {
+          index: 0,
+          description: "Always add (ignore max enemy limit)",
+          codeSample: {
+            code: "if (!(itemPtr->parm[3] & 1)) {\n    if (gNumEnemyOfKind[ENEMY_KIND_DRAGONFLY] >= MAX_DRAGONFLYS)\n        return(false);\n}",
+            fileName: "Source/Enemies/Enemy_DragonFly.c",
+            lineNumber: 77,
+          },
+        },
+      ],
     },
   },
   [ItemType.Cloud]: {
@@ -1030,7 +1060,7 @@ export const bugdom2ItemTypeParams: Record<ItemType, Bugdom2ItemParams> = {
           codeSample: {
             code: "if (!(itemPtr->parm[3] & 1)) {\n    if (gNumEnemyOfKind[ENEMY_KIND_FROG] >= MAX_FROGS)\n        return(false);\n}",
             fileName: "Source/Enemies/Enemy_Frog.c",
-            lineNumber: 38,
+            lineNumber: 49,
           },
         },
       ],
@@ -1105,12 +1135,30 @@ export const bugdom2ItemTypeParams: Record<ItemType, Bugdom2ItemParams> = {
   },
   [ItemType.Enemy_Moth]: {
     flags: "Unknown",
-    p0: { type: "Integer", description: "Moth target ID or path number" },
+    p0: {
+      type: "Integer",
+      description: "Moth target ID or path number",
+      codeSample: {
+        code: "newObj->MothTargetID = itemPtr->parm[0]; // get target ID #",
+        fileName: "Source/Enemies/Enemy_Moth.c",
+        lineNumber: 126,
+      },
+    },
     p1: "Unknown",
     p2: "Unknown",
     p3: {
       type: "Bit Flags",
-      flags: [{ index: 0, description: "Is target moth" }],
+      flags: [
+        {
+          index: 0,
+          description: "Is target moth",
+          codeSample: {
+            code: "if (itemPtr->parm[3] & 1) // see if target\n    return(true);",
+            fileName: "Source/Enemies/Enemy_Moth.c",
+            lineNumber: 117,
+          },
+        },
+      ],
     },
   },
   [ItemType.Enemy_ComputerBug]: {
@@ -1120,7 +1168,17 @@ export const bugdom2ItemTypeParams: Record<ItemType, Bugdom2ItemParams> = {
     p2: "Unknown",
     p3: {
       type: "Bit Flags",
-      flags: [{ index: 0, description: "Always add (ignore max enemy limit)" }],
+      flags: [
+        {
+          index: 0,
+          description: "Always add (ignore max enemy limit)",
+          codeSample: {
+            code: "if (!(itemPtr->parm[3] & 1)) {\n    if (gNumEnemyOfKind[ENEMY_KIND_COMPUTERBUG] >= MAX_COMPUTERBUGS)\n        return(false);\n}",
+            fileName: "Source/Enemies/Enemy_ComputerBug.c",
+            lineNumber: 104,
+          },
+        },
+      ],
     },
   },
   [ItemType.SiliconPart]: bugdom2DefaultParams,
