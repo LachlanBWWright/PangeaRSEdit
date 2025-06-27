@@ -1,6 +1,12 @@
 import { Button } from "@/components/ui/button";
 import { FileUpload } from "../components/FileUpload";
 import LzssWorker from "../utils/lzssWorker?worker";
+import JpegWorker from "../utils/jpegDecompressWorker?worker";
+import { LzssMessage, LzssResponse } from "@/utils/lzssWorker";
+import {
+  JpegDecompressMessage,
+  JpegDecompressResponse,
+} from "@/utils/jpegDecompressWorker";
 import {
   BillyFrontierGlobals,
   Bugdom2Globals,
@@ -21,7 +27,6 @@ import { preprocessJson } from "@/data/preprocessors/ottoPreprocessor";
 import { ottoMaticLevel } from "@/python/structSpecs/ottoMaticInterface";
 import { Updater } from "use-immer";
 import { Buffer } from "buffer";
-import { LzssMessage, LzssResponse } from "@/utils/lzssWorker";
 import { PyodideMessage, PyodideResponse } from "@/python/pyodideWorker";
 import { IntroText } from "./IntroText";
 import {
@@ -109,7 +114,7 @@ export function UploadPrompt({
       // TODO: Integrate with your data model as needed
       const itemCount = 0; // <-- set correct value
       const items = parseNanosaur1Level(levelBuffer);
-      console.log(items)
+      console.log(items);
       //setData(items as any); // or adapt to your data model
       //return items;
 
@@ -833,9 +838,75 @@ export function UploadPrompt({
 async function loadMapImages(dataView: DataView, globals: GlobalsInterface) {
   let offset = 0;
 
+  let numSupertiles = 0;
   const loadPromise: Promise<HTMLCanvasElement[]> = new Promise((res, err) => {
-    //Read Each
-    if (globals.GAME_TYPE !== Game.BUGDOM) {
+    if (globals.GAME_TYPE === Game.NANOSAUR_2) {
+      // Nanosaur 2: Each supertile is a JPEG, decompress with jpegDecompressWorker
+      let offset = 0;
+      let numSupertiles = 0;
+      // First, count the number of JPEGs
+      while (offset < dataView.byteLength) {
+        const size = dataView.getInt32(offset);
+        offset += 4;
+        if (size === 0) break;
+
+        console.log("Secondoffset", dataView.getInt32(offset));
+
+        offset += size;
+
+        numSupertiles++;
+      }
+      offset = 0;
+      const mapImages: HTMLCanvasElement[] = new Array(numSupertiles);
+
+      let supertileId = 0;
+      let resolvedTiles = 0;
+      for (let i = 0; i < numSupertiles; i++) {
+        let size = dataView.getInt32(offset);
+        offset += 4;
+
+        const imageDescriptionOffset = dataView.getInt32(offset);
+        console.log("Image Description Offset", imageDescriptionOffset);
+        offset += imageDescriptionOffset;
+        size -= imageDescriptionOffset; // Adjust size to only include JPEG data, not the imageDescription record
+
+        if (size === 0) break;
+        const jpegArray = new Uint8Array(dataView.buffer, offset, size);
+        const jpegBuffer = new Uint8Array(jpegArray).buffer; // This creates a new ArrayBuffer
+        offset += size;
+
+        // Use jpegDecompressWorker for off-main-thread decoding
+        const jpegWorker = new JpegWorker();
+        jpegWorker.onmessage = (e: MessageEvent<JpegDecompressResponse>) => {
+          if (e.data.type !== "decompressRes") return;
+          const imageData = e.data.imageData;
+
+          const imgCanvas = document.createElement("canvas");
+          imgCanvas.width = globals.SUPERTILE_TEXMAP_SIZE;
+          imgCanvas.height = globals.SUPERTILE_TEXMAP_SIZE;
+          const imgCtx = imgCanvas.getContext("2d");
+          if (!imgCtx) {
+            err("Bad data!");
+            throw new Error("Bad data!");
+          }
+          imgCtx.putImageData(imageData, 0, 0);
+          mapImages[i] = imgCanvas;
+          resolvedTiles++;
+          if (resolvedTiles === numSupertiles) {
+            res(mapImages);
+          }
+          jpegWorker.terminate();
+        };
+        jpegWorker.postMessage({
+          id: i,
+          type: "decompress",
+          jpegData: jpegBuffer,
+        } satisfies JpegDecompressMessage);
+      }
+      return;
+    }
+    //Read Each - Logic for other games
+    else {
       //Find the number of supertiles
       let numSupertiles = 0;
       while (offset != dataView.byteLength) {
