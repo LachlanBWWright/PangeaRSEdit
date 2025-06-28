@@ -1,4 +1,4 @@
-import { decodeJpegBrowser, decodeJpegNode } from "./jpegDecompress";
+import {  decodeJpegNode } from "./jpegDecompress";
 
 export type JpegDecompressMessage = {
   id: number;
@@ -14,14 +14,7 @@ export type JpegDecompressResponse = {
 
 onmessage = async (event: MessageEvent<JpegDecompressMessage>) => {
   if (event.data.type === "decompress") {
-    console.log(
-      "Decompressing JPEG with ID:",
-      event.data.id,
-      "and data",
-      event.data.jpegData,
-    );
-    const imageData = await decodeJpegBrowser(event.data.jpegData);
-    console.log("JPEG decompression successful with ID:", event.data.id);
+    const imageData = await decodeJpegNode(event.data.jpegData);
     postMessage({
       id: event.data.id,
       type: "decompressRes",

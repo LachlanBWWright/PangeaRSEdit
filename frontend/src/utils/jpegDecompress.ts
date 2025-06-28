@@ -29,8 +29,7 @@ export async function decodeJpegBrowser(
       return;
     }
     const blob = new Blob([arrayBuffer], { type: "image/jpeg" });
-    const imgString = "data:image/jpeg;base64," + bufferToBase64(arrayBuffer);
-    console.log("JPEG Image String:", imgString);
+
     const url = URL.createObjectURL(blob);
     const img = new Image();
 

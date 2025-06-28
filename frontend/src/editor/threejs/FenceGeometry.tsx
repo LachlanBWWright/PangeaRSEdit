@@ -56,8 +56,6 @@ export const getTerrainHeightAtPoint = (
   // Scale world coordinates to tile coordinates (where 1 unit = 1 tile)
   const x_tile_units = x / globals.TILE_SIZE;
   const z_tile_units = z / globals.TILE_SIZE;
-  // console.log("getTerrainHeightAtPoint input world coords:", { x, z });
-  // console.log("getTerrainHeightAtPoint tile units:", { x_tile_units, z_tile_units });
 
   // Get the four surrounding tile integer indices
   const x1 = Math.floor(x_tile_units);

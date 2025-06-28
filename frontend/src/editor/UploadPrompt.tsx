@@ -112,7 +112,7 @@ export function UploadPrompt({
       // You may want to extract itemCount and offset from the buffer or pass as needed
       // For now, just return the parsed item list for demonstration
       // TODO: Integrate with your data model as needed
-      const itemCount = 0; // <-- set correct value
+      //const itemCount = 0; // <-- set correct value
       const items = parseNanosaur1Level(levelBuffer);
       console.log(items);
       //setData(items as any); // or adapt to your data model
@@ -838,7 +838,6 @@ export function UploadPrompt({
 async function loadMapImages(dataView: DataView, globals: GlobalsInterface) {
   let offset = 0;
 
-  let numSupertiles = 0;
   const loadPromise: Promise<HTMLCanvasElement[]> = new Promise((res, err) => {
     if (globals.GAME_TYPE === Game.NANOSAUR_2) {
       // Nanosaur 2: Each supertile is a JPEG, decompress with jpegDecompressWorker
@@ -859,7 +858,6 @@ async function loadMapImages(dataView: DataView, globals: GlobalsInterface) {
       offset = 0;
       const mapImages: HTMLCanvasElement[] = new Array(numSupertiles);
 
-      let supertileId = 0;
       let resolvedTiles = 0;
       for (let i = 0; i < numSupertiles; i++) {
         let size = dataView.getInt32(offset);
@@ -890,6 +888,18 @@ async function loadMapImages(dataView: DataView, globals: GlobalsInterface) {
             throw new Error("Bad data!");
           }
           imgCtx.putImageData(imageData, 0, 0);
+          // Flip the canvas vertically
+          const tempCanvas = document.createElement("canvas");
+          tempCanvas.width = imgCanvas.width;
+          tempCanvas.height = imgCanvas.height;
+          const tempCtx = tempCanvas.getContext("2d");
+          if (tempCtx) {
+            tempCtx.translate(0, imgCanvas.height);
+            tempCtx.scale(1, -1);
+            tempCtx.drawImage(imgCanvas, 0, 0);
+            imgCtx.clearRect(0, 0, imgCanvas.width, imgCanvas.height);
+            imgCtx.drawImage(tempCanvas, 0, 0);
+          }
           mapImages[i] = imgCanvas;
           resolvedTiles++;
           if (resolvedTiles === numSupertiles) {
