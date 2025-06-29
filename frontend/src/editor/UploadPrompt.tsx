@@ -36,7 +36,10 @@ import {
   SelectValue,
   SelectItem,
 } from "@/components/ui/select";
-import { parseNanosaur1Level } from "@/data/preprocessors/nanosaur1Preprocessor";
+import {
+  nanosaur1LevelToOttoMaticLevel,
+  parseNanosaur1Level,
+} from "@/data/preprocessors/nanosaur1Preprocessor";
 
 export function UploadPrompt({
   mapFile,
@@ -78,7 +81,12 @@ export function UploadPrompt({
 
     const jsonData = await parseLevelDataFile(file, gameType);
 
-    if (gameType.DATA_TYPE !== DataType.RSRC_FORK) {
+    //Nanosaur 1 Logic
+    if (gameType.DATA_TYPE === DataType.TRT_FILE) {
+      setMapImages([]);
+    }
+    //All other games
+    else if (gameType.DATA_TYPE !== DataType.RSRC_FORK) {
       const imgRes = await fetch(url);
       const img = await imgRes.blob();
       const imgFile = new File([img], url.split("/").pop() ?? "");
@@ -113,39 +121,44 @@ export function UploadPrompt({
       // For now, just return the parsed item list for demonstration
       // TODO: Integrate with your data model as needed
       //const itemCount = 0; // <-- set correct value
-      const items = parseNanosaur1Level(levelBuffer);
-      console.log(items);
+      const rawLevelData = parseNanosaur1Level(levelBuffer);
+      const compatibleLevel = nanosaur1LevelToOttoMaticLevel(rawLevelData);
+      // console.log(items);
       //setData(items as any); // or adapt to your data model
       //return items;
 
-      throw new Error("nanosaur terrain files are not supported yet");
+      //throw new Error("nanosaur terrain files are not supported yet");
+
+      //TODO: Missing preprocessor
+      setData(compatibleLevel); // or adapt to your data model
+      return compatibleLevel;
+    } else {
+      //Call pyodide worker to  run the python code
+      const pyodidePromise = new Promise<ottoMaticLevel>((resolve, reject) => {
+        pyodideWorker.postMessage({
+          type: "save_to_json",
+          bytes: levelBuffer,
+          struct_specs: gameType.STRUCT_SPECS,
+          include_types: [],
+          exclude_types: [],
+        } satisfies PyodideMessage);
+
+        pyodideWorker.onmessage = (event: MessageEvent<PyodideResponse>) => {
+          if (event.data.type === "save_to_json") {
+            resolve(event.data.result);
+          } else {
+            reject(new Error("Unexpected response from pyodide worker"));
+          }
+        };
+      });
+
+      const jsonData = await pyodidePromise;
+
+      preprocessJson(jsonData, globals);
+
+      setData(jsonData);
+      return jsonData;
     }
-
-    //Call pyodide worker to  run the python code
-    const pyodidePromise = new Promise<ottoMaticLevel>((resolve, reject) => {
-      pyodideWorker.postMessage({
-        type: "save_to_json",
-        bytes: levelBuffer,
-        struct_specs: gameType.STRUCT_SPECS,
-        include_types: [],
-        exclude_types: [],
-      } satisfies PyodideMessage);
-
-      pyodideWorker.onmessage = (event: MessageEvent<PyodideResponse>) => {
-        if (event.data.type === "save_to_json") {
-          resolve(event.data.result);
-        } else {
-          reject(new Error("Unexpected response from pyodide worker"));
-        }
-      };
-    });
-
-    const jsonData = await pyodidePromise;
-
-    preprocessJson(jsonData, globals);
-
-    setData(jsonData);
-    return jsonData;
   };
 
   return (
@@ -714,16 +727,7 @@ export function UploadPrompt({
               >
                 Battle 2
               </Button>
-              <Button
-                onClick={() =>
-                  openFile(
-                    "assets/nanosaur2/terrain/battle3.ter",
-                    Nanosaur2Globals,
-                  )
-                }
-              >
-                Battle 3
-              </Button>
+
               <Button
                 onClick={() =>
                   openFile(

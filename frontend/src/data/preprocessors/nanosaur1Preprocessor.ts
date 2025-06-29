@@ -1,75 +1,148 @@
+import { ottoMaticLevel } from "@/python/structSpecs/ottoMaticInterface";
 // Convert Nanosaur1LevelData to ottomaticLevel-like structure
 // This allows the editor to use Nanosaur 1 levels in the same way as Otto Matic levels
-export function nanosaur1LevelToOttoMaticLevel(level: Nanosaur1LevelData) {
-  // OttoMaticLevel expects a structure with keys like Hedr, Layr, Atrb, Itms, etc.
-  // We'll map Nanosaur 1's data to a similar structure
+export function nanosaur1LevelToOttoMaticLevel(
+  level: Nanosaur1LevelData,
+): ottoMaticLevel {
+  // Map Nanosaur 1 data to ottoMaticLevel structure
   const width = level.header.width;
   const depth = level.header.depth;
-  // Layr: texture layer (tile indices)
-  const Layr = {
-    1000: {
-      obj: Array.from(level.textureLayer),
-      width,
-      height: depth,
-    },
-  };
-  // Atrb: texture attributes (raw, not parsed here)
-  const Atrb = {
-    1000: {
-      obj: new Uint8Array(level.textureAttributes.map((attr) => attr.bits)),
-      width,
-      height: depth,
-    },
-  };
-  // Itms: terrain items (object list)
-  const Itms = {
-    1000: {
-      obj: level.objectList,
-    },
-  };
-  // Hedr: header info
-  const Hedr = {
-    1000: {
-      obj: {
-        width,
-        height: depth,
-        numItems: level.objectList.length,
-        // Add more fields as needed
+
+  // Helper for empty record fields
+  const emptyRecord = {};
+
+  // Compose ottoMaticLevel object
+  const ottoLevel: ottoMaticLevel = {
+    Atrb: {
+      1000: {
+        name: "Tile Attribute Data",
+        obj: level.textureAttributes.map((attr) => ({
+          bits: attr.bits,
+          parm0: attr.parm0,
+          parm1: attr.parm1,
+          parm2: attr.parm2,
+          undefined: attr.undefined,
+          // ottoTileAttribute required fields (fill with defaults)
+          flags: 0,
+          p0: 0,
+          p1: 0,
+        })),
+        order: 0,
       },
     },
+    Fenc: {
+      1000: {
+        name: "Fence List",
+        obj: [],
+        order: 0,
+      },
+    },
+    FnNb: emptyRecord,
+    Timg: {
+      1000: {
+        name: "Extracted Tile Image Data 32x32/16bit",
+        data: "",
+        order: 0,
+      },
+    },
+    Hedr: {
+      1000: {
+        name: "Header",
+        obj: {
+          version: 1,
+          numItems: level.objectList.length,
+          mapWidth: width,
+          mapHeight: depth,
+          numTilePages: 1,
+          numTiles: width * depth,
+          tileSize: 32,
+          minY: 0,
+          maxY: 0,
+          numSplines: 0,
+          numFences: 0,
+          numUniqueSupertiles: 0,
+          numWaterPatches: 0,
+          numCheckpoints: 0,
+        },
+        order: 0,
+      },
+    },
+    ItCo: {
+      1000: {
+        name: "Terrain Items Color Array",
+        data: "",
+        order: 0,
+      },
+    },
+    Itms: {
+      1000: {
+        name: "Terrain Items List",
+        obj: level.objectList.map((item) => ({
+          // Map available fields, fill missing ottoItem fields with defaults
+          x: item.x,
+          y: item.y,
+          z: 0,
+          type: item.type,
+          parm: item.parm,
+          flags: item.flags,
+          prevItemIdx: item.prevItemIdx,
+          nextItemIdx: item.nextItemIdx,
+          // ottoItem required fields (fill with defaults)
+          p0: 0,
+          p1: 0,
+          p2: 0,
+          p3: 0,
+        })),
+        order: 0,
+      },
+    },
+    Layr: {
+      1000: {
+        name: "Terrain Layer Matrix",
+        obj: Array.from(level.textureLayer),
+        order: 0,
+      },
+    },
+    Liqd: {
+      1000: {
+        name: "Water List",
+        obj: [],
+        order: 0,
+      },
+    },
+    STgd: {
+      1000: {
+        name: "SuperTile Grid",
+        obj: [],
+        order: 0,
+      },
+    },
+    SpIt: emptyRecord,
+    SpNb: emptyRecord,
+    SpPt: emptyRecord,
+    Spln: {
+      1000: {
+        name: "Spline List",
+        obj: [],
+        order: 0,
+      },
+    },
+    YCrd: {
+      1000: {
+        name: "Floor&Ceiling Y Coords",
+        obj: [],
+        order: 0,
+      },
+    },
+    alis: emptyRecord,
+    _metadata: {
+      file_attributes: 0,
+      junk1: 0,
+      junk2: 0,
+    },
   };
-  // Height: heightmap layer
-  const Heig = level.heightmapLayer
-    ? {
-        1000: {
-          obj: Array.from(level.heightmapLayer),
-          width,
-          height: depth,
-        },
-      }
-    : undefined;
-  // Path: path layer
-  const Path = level.pathLayer
-    ? {
-        1000: {
-          obj: Array.from(level.pathLayer),
-          width,
-          height: depth,
-        },
-      }
-    : undefined;
 
-  // Compose ottomaticLevel-like object
-  const ottomaticLevel = {
-    Hedr,
-    Layr,
-    Atrb,
-    Itms,
-    Heig,
-    Path,
-    // Add more fields as needed for compatibility
-  };
-  return ottomaticLevel;
+  return ottoLevel;
 }
 
 // TypeScript representation of the Nanosaur 1 C struct (TerrainItemEntryType)
