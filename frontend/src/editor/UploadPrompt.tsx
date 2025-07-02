@@ -39,6 +39,9 @@ import {
 import {
   nanosaur1LevelToOttoMaticLevel,
   parseNanosaur1Level,
+  parseNanosaurTerrainTextures,
+  createCanvasFromTile,
+  extractTilesFromBuffer,
 } from "@/data/preprocessors/nanosaur1Preprocessor";
 
 export function UploadPrompt({
@@ -81,9 +84,27 @@ export function UploadPrompt({
 
     const jsonData = await parseLevelDataFile(file, gameType);
 
-    //Nanosaur 1 Logic
+    // Nanosaur 1 Logic
     if (gameType.DATA_TYPE === DataType.TRT_FILE) {
-      setMapImages([]);
+      // Load the .trt file (terrain texture tileset)
+      const imgRes = await fetch(url);
+      const img = await imgRes.blob();
+      const imgFile = new File([img], url.split("/").pop() ?? "");
+      const imgBuffer = await imgFile.arrayBuffer();
+      // Parse tiles using the new function (gets tile count from buffer)
+      // Each tile is a Uint16Array of 32x32 pixels (16bpp ARGB1555)
+      // You may want to convert these to canvases for display
+      // Example: createCanvasFromTile(tile: Uint16Array)
+
+      const tiles = parseNanosaurTerrainTextures(imgBuffer);
+
+      // Convert each tile to a canvas for display
+      const canvases = tiles.map(createCanvasFromTile);
+      for (const canvas of canvases) {
+        console.log(canvas.toDataURL("image/png"));
+      }
+      setMapImagesFile(imgFile);
+      setMapImages(canvases);
     }
     //All other games
     else if (gameType.DATA_TYPE !== DataType.RSRC_FORK) {
@@ -102,11 +123,36 @@ export function UploadPrompt({
       const imgString = jsonData.Timg[1000].data;
       console.log(imgString);
       const imgBuffer = Buffer.from(imgString, "hex");
+      console.log("Image buffer length:", imgBuffer.byteLength);
+      const tileCount = imgBuffer.byteLength / 2 / 32 / 32; // 2 bytes per pixel, 32x32 pixels per tile
+      console.log("Tile count:", tileCount);
+
+      const tiles = extractTilesFromBuffer(
+        new DataView(imgBuffer.buffer),
+        tileCount,
+        32,
+        32 * 32 * 2,
+      );
+      //test start
+
+      // Convert each tile to a canvas for display
+      const canvases = tiles.map(createCanvasFromTile);
+      for (const canvas of canvases) {
+        console.log(canvas.toDataURL("image/png"));
+      }
+
+      //test end
+
       console.log(imgBuffer);
       console.log(imgBuffer.byteLength);
       console.log("Resized", imgBuffer.byteLength / 2 / 32 / 32);
       const imgDataView = new DataView(imgBuffer.buffer);
       const mapImages = await loadMapImages(imgDataView, gameType);
+
+      //Testing, delete
+      for (const canvas of mapImages) {
+        console.log(canvas.toDataURL("image/png"));
+      }
 
       setMapImages(mapImages);
     }

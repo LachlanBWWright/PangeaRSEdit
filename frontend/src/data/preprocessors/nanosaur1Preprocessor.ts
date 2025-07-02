@@ -1,3 +1,71 @@
+// Convert a 32x32 ARGB1555 tile (Uint16Array) to a canvas for display
+export function createCanvasFromTile(tile: Uint16Array): HTMLCanvasElement {
+  const size = 32;
+  const canvas = document.createElement("canvas");
+  canvas.width = size;
+  canvas.height = size;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return canvas;
+  const imageData = ctx.createImageData(size, size);
+  for (let i = 0; i < tile.length; i++) {
+    const val = tile[i];
+    // ARGB1555 to RGBA8888
+    // All nanosaur 1 terrain items have an erroneous alpha value of 0, so ignore and set to 255
+    const a = 255;
+    const r = ((val >> 10) & 0x1f) << 3;
+    const g = ((val >> 5) & 0x1f) << 3;
+    const b = (val & 0x1f) << 3;
+    imageData.data[i * 4 + 0] = r;
+    imageData.data[i * 4 + 1] = g;
+    imageData.data[i * 4 + 2] = b;
+    imageData.data[i * 4 + 3] = a;
+  }
+  ctx.putImageData(imageData, 0, 0);
+  return canvas;
+}
+// Parse Nanosaur 1 terrain tileset (32x32 tiles, 16bpp ARGB1555)
+// buffer: ArrayBuffer containing the tileset data
+// offset: byte offset to the start of the tileset in the buffer (default 0)
+// Returns: Array of Uint16Array (each tile is 32x32, 16bpp)
+export function parseNanosaurTerrainTextures(
+  buffer: ArrayBuffer,
+  offset = 0,
+): Uint16Array[] {
+  const TILE_SIZE = 32;
+  const BYTES_PER_TILE = TILE_SIZE * TILE_SIZE * 2; // 16bpp
+  const view = new DataView(buffer, offset);
+  const tileCount = view.getInt32(0, false); // big-endian
+
+  const tileDataView = new DataView(buffer, offset + 4);
+  return extractTilesFromBuffer(
+    tileDataView,
+    tileCount,
+    TILE_SIZE,
+    BYTES_PER_TILE,
+  );
+}
+
+// Helper to extract Nanosaur 1 tiles from a DataView
+export function extractTilesFromBuffer(
+  view: DataView,
+  tileCount: number,
+  TILE_SIZE: number,
+  BYTES_PER_TILE: number,
+): Uint16Array[] {
+  const tiles: Uint16Array[] = [];
+  for (let i = 0; i < tileCount; i++) {
+    const tileOffset = i * BYTES_PER_TILE; // relative to view
+    const tileData = new Uint16Array(TILE_SIZE * TILE_SIZE);
+    for (let j = 0; j < TILE_SIZE * TILE_SIZE; j++) {
+      // Each pixel is 2 bytes, big-endian
+      const pixelOffset = tileOffset + j * 2;
+      tileData[j] = view.getUint16(pixelOffset, false); // big-endian
+    }
+    tiles.push(tileData);
+  }
+  return tiles;
+}
+
 import { ottoMaticLevel } from "@/python/structSpecs/ottoMaticInterface";
 // Convert Nanosaur1LevelData to ottomaticLevel-like structure
 // This allows the editor to use Nanosaur 1 levels in the same way as Otto Matic levels
@@ -81,7 +149,7 @@ export function nanosaur1LevelToOttoMaticLevel(
           // Map available fields, fill missing ottoItem fields with defaults
           x: item.x,
           y: item.y,
-          z: 0,
+          z: item.y, //TODO: test
           type: item.type,
           parm: item.parm,
           flags: item.flags,
@@ -300,18 +368,15 @@ export function parseNanosaur1Level(buffer: ArrayBuffer): Nanosaur1LevelData {
   // Object list (TerrainItemEntryType[])
   let objectList: TerrainItemEntryType[] = [];
   if (header.objectListOffset > 0) {
-    // Guess item count: (textureAttribOffset - objectListOffset) / 12
-    let itemCount = 0;
-    if (header.textureAttribOffset > header.objectListOffset) {
-      itemCount = Math.floor(
-        (header.textureAttribOffset - header.objectListOffset) / 20,
+    const objListView = new DataView(buffer, header.objectListOffset);
+    const itemCount = objListView.getInt32(0, false); // big-endian
+    if (itemCount > 0) {
+      objectList = parseNanosaurTerrainItemList(
+        buffer,
+        itemCount,
+        header.objectListOffset + 4,
       );
     }
-    objectList = parseNanosaurTerrainItemList(
-      buffer,
-      itemCount,
-      header.objectListOffset,
-    );
   }
 
   // Texture attributes (raw, size = tileAnimDataOffset - textureAttribOffset)
@@ -331,7 +396,7 @@ export function parseNanosaur1Level(buffer: ArrayBuffer): Nanosaur1LevelData {
   }
 
   // Return all parsed data
-  return {
+  const parsedData = {
     header,
     textureLayer,
     heightmapLayer,
@@ -339,4 +404,8 @@ export function parseNanosaur1Level(buffer: ArrayBuffer): Nanosaur1LevelData {
     objectList,
     textureAttributes,
   };
+
+  console.log(parsedData);
+
+  return parsedData;
 }
