@@ -4,7 +4,7 @@ import { UploadPrompt } from "./UploadPrompt";
 import { EditorView } from "./EditorView";
 import { Button } from "@/components/ui/button";
 import { Updater, useImmer } from "use-immer";
-import { ottoPreprocessor } from "../data/preprocessors/ottoPreprocessor";
+import { ottoPreprocessor } from "../data/processors/ottoPreprocessor";
 import { Globals } from "../data/globals/globals";
 import { useAtom, useAtomValue } from "jotai";
 import { BlockHistoryUpdate } from "../data/globals/history";
@@ -18,7 +18,7 @@ export type DataHistory = {
   index: number;
 };
 
-export function MapPrompt({ pyodideWorker }: { pyodideWorker: Worker }) {
+export function IntroPrompt({ pyodideWorker }: { pyodideWorker: Worker }) {
   const globals = useAtomValue(Globals);
   const [data, setData] = useImmer<ottoMaticLevel | null>(null);
   //History of previous states for undo/redo purposes

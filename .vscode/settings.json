@@ -1,0 +1,8 @@
+{
+    "files.associations": {
+        "algorithm": "c",
+        "format": "c",
+        "chrono": "cpp",
+        "functional": "c"
+    }
+}

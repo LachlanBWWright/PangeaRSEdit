@@ -23,7 +23,7 @@ import {
 import { useAtom } from "jotai";
 import { useState } from "react";
 import { Switch } from "@/components/ui/switch";
-import { preprocessJson } from "@/data/preprocessors/ottoPreprocessor";
+import { preprocessJson } from "@/data/processors/ottoPreprocessor";
 import { ottoMaticLevel } from "@/python/structSpecs/ottoMaticInterface";
 import { Updater } from "use-immer";
 import { Buffer } from "buffer";
@@ -42,7 +42,7 @@ import {
   parseNanosaurTerrainTextures,
   createCanvasFromTile,
   extractTilesFromBuffer,
-} from "@/data/preprocessors/nanosaur1Preprocessor";
+} from "@/data/processors/classicProprocessor";
 
 export function UploadPrompt({
   mapFile,

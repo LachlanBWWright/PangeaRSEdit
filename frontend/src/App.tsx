@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import "./App.css";
-import { MapPrompt } from "./editor/MapPrompt";
+import { IntroPrompt } from "./editor/IntroPrompt";
 import { Toaster } from "./components/ui/toaster";
 import PyodideWorker from "./python/pyodideWorker?worker";
 import { PyodideMessage } from "./python/pyodideWorker";
@@ -36,7 +36,7 @@ function App() {
   return (
     <TooltipProvider>
       <>
-        <MapPrompt pyodideWorker={pyodideWorker} />
+        <IntroPrompt pyodideWorker={pyodideWorker} />
         <Toaster />
       </>
     </TooltipProvider>

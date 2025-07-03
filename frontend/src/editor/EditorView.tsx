@@ -10,7 +10,7 @@ import { WaterMenu } from "./subviews/water/WaterMenu";
 
 import { TilesMenu } from "./subviews/tiles/TilesMenu";
 import { SupertileMenu } from "./subviews/supertiles/SupertilesMenu";
-import { DataHistory } from "./MapPrompt";
+import { DataHistory } from "./IntroPrompt";
 import { KonvaView } from "./canvas/CanvasView";
 import { ThreeView } from "./threejs/Three";
 import { useAtomValue } from "jotai";
