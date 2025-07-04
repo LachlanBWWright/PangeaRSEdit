@@ -1,125 +1,256 @@
-import { BG3DParseResult, BG3DGeometryFull, BG3DMaterial } from "./parseBG3D";
-
-// Minimal glTF 2.0 types for input (matching BG3DParsedToGIFT)
-interface GLTF {
-  buffers: { uri: string; byteLength: number }[];
-  bufferViews: { buffer: number; byteOffset: number; byteLength: number }[];
-  accessors: {
-    bufferView: number;
-    byteOffset: number;
-    componentType: number;
-    count: number;
-    type: string;
-  }[];
-  meshes: {
-    primitives: {
-      attributes: { [key: string]: number };
-      indices: number;
-      material: number;
-    }[];
-  }[];
-  materials: {
-    pbrMetallicRoughness: { baseColorFactor: [number, number, number, number] };
-  }[];
-}
+import { Document } from "@gltf-transform/core";
+import {
+  BG3DParseResult,
+  BG3DMaterial,
+  BG3DTexture,
+  BG3DGeometryFull,
+  BG3DGroup,
+} from "./parseBG3D";
+import { pngToArgb16 } from "./image/pngArgb";
 
 /**
- * Convert a minimal glTF 2.0 JSON structure to a BG3DParseResult
- * @param gltf glTF 2.0 JSON object
- * @returns BG3DParseResult
+ * Convert a glTF Document (from @gltf-transform/core) to a BG3DParseResult.
+ * Transfers all possible data. Any data that cannot be mapped is extracted from extras if present.
+ * Data that cannot be transferred:
+ *   - BG3D group hierarchy (unless present in extras)
+ *   - Multiple textures per material (glTF only supports one baseColorTexture per material)
+ *   - BG3DTexture pixel format fields (unless present in extras)
+ *   - Geometry.layerMaterialNum and boundingBox (unless present in extras)
  */
-export function gltfToBG3D(gltf: GLTF): BG3DParseResult {
-  // Decode buffer (assume single buffer, data URI)
-  const bufferUri = gltf.buffers[0].uri;
-  const base64 = bufferUri.split(",")[1];
-  const binary = atob(base64);
-  const buf = new Uint8Array(binary.length);
-  for (let i = 0; i < binary.length; i++) buf[i] = binary.charCodeAt(i);
+export function gltfToBG3D(doc: Document): BG3DParseResult {
+  // 1. Materials
+  const materials: BG3DMaterial[] = doc
+    .getRoot()
+    .listMaterials()
+    .map((mat) => {
+      const extras = mat.getExtras() ?? {};
+      let diffuseColor: [number, number, number, number] = [1, 1, 1, 1];
+      const baseColor = mat.getBaseColorFactor();
+      if (
+        Array.isArray(baseColor) &&
+        baseColor.length === 4 &&
+        baseColor.every((v) => typeof v === "number")
+      ) {
+        diffuseColor = [baseColor[0], baseColor[1], baseColor[2], baseColor[3]];
+      }
+      const flags = typeof extras["flags"] === "number" ? extras["flags"] : 0;
+      // 2. Textures
+      const textures: BG3DTexture[] = [];
+      const baseColorTex = mat.getBaseColorTexture();
+      if (baseColorTex) {
+        const image = baseColorTex.getImage();
+        let texExtras: Record<string, unknown> = {};
+        let pixels: Uint8Array = new Uint8Array();
+        let width = 0;
+        let height = 0;
+        let srcPixelFormat: unknown = null;
+        let dstPixelFormat: unknown = null;
+        let bufferSize = 0;
+        if (
+          image !== null &&
+          typeof image === "object" &&
+          "getExtras" in image &&
+          typeof image["getExtras"] === "function"
+        ) {
+          // getExtras is present
+          const extrasValue = (image["getExtras"] as () => unknown)();
+          if (typeof extrasValue === "object" && extrasValue !== null) {
+            texExtras = extrasValue as Record<string, unknown>;
+          }
+          // If the image is a PNG buffer, decode it to ARGB1555
+          let pngBuffer: Uint8Array | undefined = undefined;
+          if ("buffer" in image && image["buffer"] instanceof Uint8Array) {
+            pngBuffer = image["buffer"];
+          } else if (image instanceof Uint8Array) {
+            pngBuffer = image;
+          }
+          if (pngBuffer) {
+            const pngResult = pngToArgb16(Buffer.from(pngBuffer));
+            if (
+              pngResult &&
+              typeof pngResult === "object" &&
+              "data" in pngResult &&
+              "width" in pngResult &&
+              "height" in pngResult &&
+              pngResult.data instanceof Uint16Array &&
+              typeof pngResult.width === "number" &&
+              typeof pngResult.height === "number"
+            ) {
+              pixels = new Uint8Array(pngResult.data.buffer);
+              width = pngResult.width;
+              height = pngResult.height;
+              srcPixelFormat =
+                typeof texExtras["srcPixelFormat"] === "number"
+                  ? texExtras["srcPixelFormat"]
+                  : null;
+              dstPixelFormat =
+                typeof texExtras["dstPixelFormat"] === "number"
+                  ? texExtras["dstPixelFormat"]
+                  : null;
+              bufferSize = pixels.byteLength;
+            }
+          } else if (
+            "getBuffer" in image &&
+            typeof image["getBuffer"] === "function"
+          ) {
+            const bufResult = image["getBuffer"]();
+            if (bufResult instanceof Uint8Array) {
+              pixels = bufResult;
+            }
+            width =
+              typeof texExtras["width"] === "number"
+                ? (texExtras["width"] as number)
+                : 0;
+            height =
+              typeof texExtras["height"] === "number"
+                ? (texExtras["height"] as number)
+                : 0;
+            srcPixelFormat =
+              typeof texExtras["srcPixelFormat"] === "number"
+                ? texExtras["srcPixelFormat"]
+                : null;
+            dstPixelFormat =
+              typeof texExtras["dstPixelFormat"] === "number"
+                ? texExtras["dstPixelFormat"]
+                : null;
+            bufferSize =
+              typeof texExtras["bufferSize"] === "number"
+                ? (texExtras["bufferSize"] as number)
+                : pixels.byteLength;
+          }
+        }
+        textures.push({
+          pixels,
+          width,
+          height,
+          srcPixelFormat:
+            typeof srcPixelFormat === "number" ? srcPixelFormat : 0,
+          dstPixelFormat:
+            typeof dstPixelFormat === "number" ? dstPixelFormat : 0,
+          bufferSize,
+        });
+      }
+      return {
+        diffuseColor,
+        flags,
+        textures,
+      };
+    });
 
-  // Helper to extract typed arrays from bufferViews/accessors
-  function getArray<T extends Float32Array | Uint16Array | Uint8Array>(
-    accessorIndex: number,
-    ctor: { new (b: ArrayBuffer, o: number, l: number): T },
-    bytesPerElement: number,
-  ): T {
-    const accessor = gltf.accessors[accessorIndex];
-    const view = gltf.bufferViews[accessor.bufferView];
-    const numComponents =
-      accessor.type === "VEC3"
-        ? 3
-        : accessor.type === "VEC2"
-        ? 2
-        : accessor.type === "VEC4"
-        ? 4
-        : 1;
-    const offset = (view.byteOffset ?? 0) + (accessor.byteOffset ?? 0);
-    const length = accessor.count * numComponents;
-    return new ctor(buf.buffer, offset, length);
-  }
-
-  // Convert materials
-  const materials: BG3DMaterial[] = gltf.materials.map((mat) => ({
-    flags: 0,
-    diffuseColor: mat.pbrMetallicRoughness.baseColorFactor,
-    textures: [],
-  }));
-
-  // Convert meshes/geometries
+  // 3. Geometries
   const geometries: BG3DGeometryFull[] = [];
-  for (const mesh of gltf.meshes) {
-    for (const prim of mesh.primitives) {
-      // Positions
-      const posAccessor = prim.attributes["POSITION"];
-      const positions = getArray(posAccessor, Float32Array, 4);
-      const points: [number, number, number][] = [];
-      for (let i = 0; i < positions.length; i += 3) {
-        points.push([positions[i], positions[i + 1], positions[i + 2]]);
-      }
-      // Normals (optional)
-      let normals: [number, number, number][] | undefined = undefined;
-      if ("NORMAL" in prim.attributes) {
-        const normalAccessor = prim.attributes["NORMAL"];
-        const normalArr = getArray(normalAccessor, Float32Array, 4);
-        normals = [];
-        for (let i = 0; i < normalArr.length; i += 3) {
-          normals.push([normalArr[i], normalArr[i + 1], normalArr[i + 2]]);
+  doc
+    .getRoot()
+    .listMeshes()
+    .forEach((mesh) => {
+      mesh.listPrimitives().forEach((prim) => {
+        const extras = prim.getExtras() || {};
+        // POSITION
+        const posAcc = prim.getAttribute("POSITION");
+        let points: [number, number, number][] | undefined = undefined;
+        if (posAcc) {
+          const arr = Array.from(posAcc.getArray() as Float32Array);
+          points = [];
+          for (let i = 0; i < arr.length; i += 3) {
+            if (i + 2 < arr.length)
+              points.push([arr[i], arr[i + 1], arr[i + 2]]);
+          }
         }
-      }
-      // UVs (optional)
-      let uvs: [number, number][] | undefined = undefined;
-      if ("TEXCOORD_0" in prim.attributes) {
-        const uvAccessor = prim.attributes["TEXCOORD_0"];
-        const uvArr = getArray(uvAccessor, Float32Array, 4);
-        uvs = [];
-        for (let i = 0; i < uvArr.length; i += 2) {
-          uvs.push([uvArr[i], uvArr[i + 1]]);
+        // NORMAL
+        const normAcc = prim.getAttribute("NORMAL");
+        let normals: [number, number, number][] | undefined = undefined;
+        if (normAcc) {
+          const arr = Array.from(normAcc.getArray() as Float32Array);
+          normals = [];
+          for (let i = 0; i < arr.length; i += 3) {
+            if (i + 2 < arr.length)
+              normals.push([arr[i], arr[i + 1], arr[i + 2]]);
+          }
         }
-      }
-      // Indices
-      const indexArr = getArray(prim.indices, Uint16Array, 2);
-      const triangles: [number, number, number][] = [];
-      for (let i = 0; i < indexArr.length; i += 3) {
-        triangles.push([indexArr[i], indexArr[i + 1], indexArr[i + 2]]);
-      }
-      // Material
-      const layerMaterialNum = [prim.material, 0, 0, 0];
-      geometries.push({
-        type: 0,
-        numMaterials: 1,
-        numPoints: points.length,
-        numTriangles: triangles.length,
-        layerMaterialNum,
-        points,
-        normals,
-        uvs,
-        triangles,
+        // UV
+        const uvAcc = prim.getAttribute("TEXCOORD_0");
+        let uvs: [number, number][] | undefined = undefined;
+        if (uvAcc) {
+          const arr = Array.from(uvAcc.getArray() as Float32Array);
+          uvs = [];
+          for (let i = 0; i < arr.length; i += 2) {
+            if (i + 1 < arr.length) uvs.push([arr[i], arr[i + 1]]);
+          }
+        }
+        // COLOR
+        const colorAcc = prim.getAttribute("COLOR_0");
+        let colors: [number, number, number, number][] | undefined = undefined;
+        if (colorAcc) {
+          const arr = Array.from(colorAcc.getArray() as Uint8Array);
+          colors = [];
+          for (let i = 0; i < arr.length; i += 4) {
+            if (i + 3 < arr.length)
+              colors.push([arr[i], arr[i + 1], arr[i + 2], arr[i + 3]]);
+          }
+        }
+        // TRIANGLES
+        const idxAcc = prim.getIndices();
+        let triangles: [number, number, number][] | undefined = undefined;
+        if (idxAcc) {
+          const arr = Array.from(idxAcc.getArray() as Uint32Array);
+          triangles = [];
+          for (let i = 0; i < arr.length; i += 3) {
+            if (i + 2 < arr.length)
+              triangles.push([arr[i], arr[i + 1], arr[i + 2]]);
+          }
+        }
+        // Unmappable fields from extras
+        let layerMaterialNum: number[] = [0, 0, 0, 0];
+        if (
+          Array.isArray(extras.layerMaterialNum) &&
+          extras.layerMaterialNum.length === 4
+        ) {
+          layerMaterialNum = extras.layerMaterialNum;
+        }
+        const flags = typeof extras.flags === "number" ? extras.flags : 0;
+        let boundingBox:
+          | { min: [number, number, number]; max: [number, number, number] }
+          | undefined = undefined;
+        if (
+          extras.boundingBox &&
+          typeof extras.boundingBox === "object" &&
+          Array.isArray((extras.boundingBox as any).min) &&
+          Array.isArray((extras.boundingBox as any).max) &&
+          (extras.boundingBox as any).min.length === 3 &&
+          (extras.boundingBox as any).max.length === 3
+        ) {
+          boundingBox = {
+            min: (extras.boundingBox as any).min,
+            max: (extras.boundingBox as any).max,
+          };
+        }
+        geometries.push({
+          points,
+          normals,
+          uvs,
+          colors,
+          triangles,
+          layerMaterialNum,
+          flags,
+          boundingBox,
+          numMaterials: 1, // Not always available
+          type: 0, // Not always available
+          numPoints: points?.length ?? 0,
+          numTriangles: triangles?.length ?? 0,
+        });
       });
-    }
+    });
+
+  // 4. Groups (from extras if present)
+  let groups: BG3DGroup[] = [];
+  const rootExtras = doc.getRoot().getExtras() || {};
+  if (Array.isArray(rootExtras.groups)) {
+    groups = rootExtras.groups;
   }
 
   return {
     materials,
-    groups: [], // Not handled in minimal glTF
     geometries,
+    groups,
   };
 }

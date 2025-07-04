@@ -14,8 +14,9 @@ export enum BG3DTagType {
   UVARRAY = 8,
   COLORARRAY = 9,
   TRIANGLEARRAY = 10,
-  BOUNDINGBOX = 11,
-  ENDFILE = 12,
+  ENDFILE = 11,
+  BOUNDINGBOX = 12, //LATER Games only
+  JPEGTEXTURE = 13, // Nanosaur 2 only
 }
 
 // BG3D material structure (partial)
@@ -37,9 +38,10 @@ export interface BG3DTexture {
 export interface BG3DGeometry {
   type: number;
   numMaterials: number;
+  layerMaterialNum: number[];
+  flags: number;
   numPoints: number;
   numTriangles: number;
-  layerMaterialNum: number[];
   // ...
 }
 
@@ -64,8 +66,6 @@ export interface BG3DParseResult {
   groups: BG3DGroup[];
   geometries: BG3DGeometryFull[];
 }
-
-import { Game } from "../data/globals/globals";
 
 /**
  * Parse a .bg3d file from an ArrayBuffer
@@ -171,14 +171,10 @@ export function parseBG3D(buffer: ArrayBuffer): BG3DParseResult {
         break;
       }
       case BG3DTagType.GEOMETRY: {
-        // Geometry header: type (4), numMaterials (4), numPoints (4), numTriangles (4), layerMaterialNum[4] (4*4), 3*uint32, 4*uint32
+        // Geometry header: type (4), numMaterials (4), layerMaterialNum[4] (16), flags (4), numPoints (4), numTriangles (4)
         const type = view.getUint32(offset, false);
         offset += 4;
         const numMaterials = view.getUint32(offset, false);
-        offset += 4;
-        const numPoints = view.getUint32(offset, false);
-        offset += 4;
-        const numTriangles = view.getUint32(offset, false);
         offset += 4;
         const layerMaterialNum = [
           view.getUint32(offset, false),
@@ -187,14 +183,19 @@ export function parseBG3D(buffer: ArrayBuffer): BG3DParseResult {
           view.getUint32(offset + 12, false),
         ];
         offset += 16;
-        offset += 12; // skip 3 uint32
-        offset += 16; // skip 4 uint32
+        const flags = view.getUint32(offset, false);
+        offset += 4;
+        const numPoints = view.getUint32(offset, false);
+        offset += 4;
+        const numTriangles = view.getUint32(offset, false);
+        offset += 4;
         const geom: BG3DGeometryFull = {
           type,
           numMaterials,
+          layerMaterialNum,
+          flags,
           numPoints,
           numTriangles,
-          layerMaterialNum,
         };
         geometries.push(geom);
         break;

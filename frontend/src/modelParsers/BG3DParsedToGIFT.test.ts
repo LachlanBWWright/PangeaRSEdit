@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { bg3dParsedToGLTF } from "./BG3DParsedToGIFT";
+import { bg3dParsedToGLTF } from "./BG3DParsedToGITF";
 import { gltfToBG3D } from "./gltfToBG3D";
 import { BG3DParseResult, BG3DGeometryFull, BG3DMaterial } from "./parseBG3D";
 
