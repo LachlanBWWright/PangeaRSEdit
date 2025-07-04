@@ -1,7 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { parseBG3D } from "./parseBG3D";
-import { bg3dParsedToGLTF } from "./BG3DParsedToGITF";
-import { gltfToBG3D } from "./gltfToBG3D";
+import { bg3dParsedToGLTF, gltfToBG3D } from "./parsedBg3dGitfConverter";
 import { bg3dParsedToBG3D } from "./bg3dParsedToBG3D";
 import * as fs from "fs";
 import * as path from "path";
@@ -73,11 +72,65 @@ describe("parseBG3D", () => {
     expect(parsed).toBeDefined();
     expect(Array.isArray(parsed.materials)).toBe(true);
     expect(Array.isArray(parsed.geometries)).toBe(true);
+    console.log(
+      "Original: materials",
+      parsed.materials.length,
+      "geometries",
+      parsed.geometries.length,
+    );
+    parsed.materials.forEach((mat, i) => {
+      console.log(`Original material[${i}] textures:`, mat.textures.length);
+    });
 
     // Step 2: Convert to glTF
     const gltf = bg3dParsedToGLTF(parsed);
     expect(gltf).toBeDefined();
-    //expect(Array.isArray(gltf.meshes)).toBe(true);
+
+    // Step 3: Convert back to BG3D
+    const parsed2_rt = gltfToBG3D(gltf);
+    expect(parsed2_rt).toBeDefined();
+    expect(Array.isArray(parsed2_rt.materials)).toBe(true);
+    expect(Array.isArray(parsed2_rt.geometries)).toBe(true);
+    console.log(
+      "Roundtrip: materials",
+      parsed2_rt.materials.length,
+      "geometries",
+      parsed2_rt.geometries.length,
+    );
+    parsed2_rt.materials.forEach((mat, i) => {
+      console.log(`Roundtrip material[${i}] textures:`, mat.textures.length);
+    });
+
+    // Step 4: Serialize back to BG3D
+    // Pass the original header (first 20 bytes) to preserve version info
+    const orig_rt = new Uint8Array(arrayBuffer);
+    const origHeader = orig_rt.slice(0, 20);
+    const outputBuffer_rt = bg3dParsedToBG3D(parsed2_rt, origHeader);
+    const roundtrip_rt = new Uint8Array(outputBuffer_rt);
+    if (roundtrip_rt.length !== orig_rt.length) {
+      console.log(
+        "First 64 bytes of original:",
+        Array.from(orig_rt.slice(0, 64)),
+      );
+      console.log(
+        "First 64 bytes of roundtrip:",
+        Array.from(roundtrip_rt.slice(0, 64)),
+      );
+      console.log("Last 64 bytes of original:", Array.from(orig_rt.slice(-64)));
+      console.log(
+        "Last 64 bytes of roundtrip:",
+        Array.from(roundtrip_rt.slice(-64)),
+      );
+    }
+    //expect(roundtrip_rt.length).toBe(orig_rt.length);
+    for (let i = 0; i < orig_rt.length; i++) {
+      try {
+        expect(roundtrip_rt[i], `Byte ${i} mismatch`).toBe(orig_rt[i]);
+      } catch (e) {
+        console.error(`Error at byte ${i}:`, e);
+        throw e;
+      }
+    }
 
     // Step 3: Convert glTF back to parsed BG3D
     const parsed2 = gltfToBG3D(gltf);

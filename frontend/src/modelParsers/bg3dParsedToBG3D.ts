@@ -9,28 +9,39 @@ import {
  * Serialize a BG3DParseResult back to a BG3D ArrayBuffer
  * This reverses the logic of parseBG3D.ts
  */
-export function bg3dParsedToBG3D(parsed: BG3DParseResult): ArrayBuffer {
+export function bg3dParsedToBG3D(
+  parsed: BG3DParseResult,
+  originalHeader?: Uint8Array,
+): ArrayBuffer {
   // Estimate buffer size (over-allocate, then slice)
   let size = 1024 * 1024; // 1MB default, grow if needed
   let buffer = new ArrayBuffer(size);
   let view = new DataView(buffer);
   let offset = 0;
 
-  // Write header: 'BG3D' + 16 reserved bytes (as in parseBG3D)
-  view.setUint8(offset++, "B".charCodeAt(0));
-  view.setUint8(offset++, "G".charCodeAt(0));
-  view.setUint8(offset++, "3".charCodeAt(0));
-  view.setUint8(offset++, "D".charCodeAt(0));
-  for (let i = 0; i < 16; i++) view.setUint8(offset++, 0);
+  // Write header: use original if provided, else default
+  if (originalHeader && originalHeader.length === 20) {
+    new Uint8Array(buffer, 0, 20).set(originalHeader);
+    offset += 20;
+  } else {
+    view.setUint8(offset++, "B".charCodeAt(0));
+    view.setUint8(offset++, "G".charCodeAt(0));
+    view.setUint8(offset++, "3".charCodeAt(0));
+    view.setUint8(offset++, "D".charCodeAt(0));
+    for (let i = 0; i < 16; i++) view.setUint8(offset++, 0);
+  }
+  console.log("Writing header at offset", offset);
 
   // Write materials
   for (const mat of parsed.materials) {
     // MATERIALFLAGS
+    console.log("Writing MATERIALFLAGS at offset", offset);
     view.setUint32(offset, BG3DTagType.MATERIALFLAGS, false);
     offset += 4;
     view.setUint32(offset, mat.flags, false);
     offset += 4;
     // MATERIALDIFFUSECOLOR
+    console.log("Writing MATERIALDIFFUSECOLOR at offset", offset);
     view.setUint32(offset, BG3DTagType.MATERIALDIFFUSECOLOR, false);
     offset += 4;
     for (let i = 0; i < 4; i++) {
@@ -39,6 +50,7 @@ export function bg3dParsedToBG3D(parsed: BG3DParseResult): ArrayBuffer {
     }
     // TEXTUREMAP(s)
     for (const tex of mat.textures) {
+      console.log("Writing TEXTUREMAP at offset", offset);
       view.setUint32(offset, BG3DTagType.TEXTUREMAP, false);
       offset += 4;
       view.setUint32(offset, tex.width, false);
@@ -63,6 +75,7 @@ export function bg3dParsedToBG3D(parsed: BG3DParseResult): ArrayBuffer {
 
   // Write groups (if any)
   for (const group of parsed.groups) {
+    console.log("Writing GROUPSTART at offset", offset);
     view.setUint32(offset, BG3DTagType.GROUPSTART, false);
     offset += 4;
     // Write group children as geometries
@@ -70,6 +83,7 @@ export function bg3dParsedToBG3D(parsed: BG3DParseResult): ArrayBuffer {
       writeGeometry(view, buffer, geom, offset);
       offset = writeGeometry.offset;
     }
+    console.log("Writing GROUPEND at offset", offset);
     view.setUint32(offset, BG3DTagType.GROUPEND, false);
     offset += 4;
   }
@@ -81,6 +95,7 @@ export function bg3dParsedToBG3D(parsed: BG3DParseResult): ArrayBuffer {
   }
 
   // ENDFILE
+  console.log("Writing ENDFILE at offset", offset);
   view.setUint32(offset, BG3DTagType.ENDFILE, false);
   offset += 4;
 
@@ -97,6 +112,7 @@ function writeGeometry(
 ) {
   let offset = startOffset;
   // GEOMETRY tag
+  console.log("Writing GEOMETRY at offset", offset);
   view.setUint32(offset, BG3DTagType.GEOMETRY, false);
   offset += 4;
   view.setUint32(offset, geom.type, false);
@@ -116,6 +132,7 @@ function writeGeometry(
 
   // VERTEXARRAY
   if (geom.points) {
+    console.log("Writing VERTEXARRAY at offset", offset);
     view.setUint32(offset, BG3DTagType.VERTEXARRAY, false);
     offset += 4;
     for (const [x, y, z] of geom.points) {
@@ -129,6 +146,7 @@ function writeGeometry(
   }
   // NORMALARRAY
   if (geom.normals) {
+    console.log("Writing NORMALARRAY at offset", offset);
     view.setUint32(offset, BG3DTagType.NORMALARRAY, false);
     offset += 4;
     for (const [x, y, z] of geom.normals) {
@@ -142,6 +160,7 @@ function writeGeometry(
   }
   // UVARRAY
   if (geom.uvs) {
+    console.log("Writing UVARRAY at offset", offset);
     view.setUint32(offset, BG3DTagType.UVARRAY, false);
     offset += 4;
     for (const [u, v] of geom.uvs) {
@@ -153,6 +172,7 @@ function writeGeometry(
   }
   // COLORARRAY
   if (geom.colors) {
+    console.log("Writing COLORARRAY at offset", offset);
     view.setUint32(offset, BG3DTagType.COLORARRAY, false);
     offset += 4;
     for (const [r, g, b, a] of geom.colors) {
@@ -164,6 +184,7 @@ function writeGeometry(
   }
   // TRIANGLEARRAY
   if (geom.triangles) {
+    console.log("Writing TRIANGLEARRAY at offset", offset);
     view.setUint32(offset, BG3DTagType.TRIANGLEARRAY, false);
     offset += 4;
     for (const [a, b, c] of geom.triangles) {
@@ -177,6 +198,7 @@ function writeGeometry(
   }
   // BOUNDINGBOX
   if (geom.boundingBox) {
+    console.log("Writing BOUNDINGBOX at offset", offset);
     view.setUint32(offset, BG3DTagType.BOUNDINGBOX, false);
     offset += 4;
     for (let i = 0; i < 3; i++)
