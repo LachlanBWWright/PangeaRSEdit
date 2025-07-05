@@ -3,6 +3,13 @@
         "algorithm": "c",
         "format": "c",
         "chrono": "cpp",
-        "functional": "c"
-    }
+        "functional": "c",
+        "cstdint": "cpp",
+        "array": "c",
+        "string": "c",
+        "string_view": "c",
+        "span": "c",
+        "compare": "cpp"
+    },
+    "cmake.sourceDirectory": "/home/lachl/documents/pangearsedit/games/billyfrontier"
 }

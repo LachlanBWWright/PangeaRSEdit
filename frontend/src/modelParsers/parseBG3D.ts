@@ -1,6 +1,17 @@
 // parseBG3D.ts
 // Full BG3D file parser for Otto Matic and related games
 
+//https://registry.khronos.org/OpenGL-Refpages/gl4/html/glTexImage2D.xhtml
+export enum PixelFormatSrc {
+  GL_UNSIGNED_SHORT_1_5_5_5_REV, // 1a 5r 5g 5b 0x8366 33638
+  GL_RGB, // 8r 8g 8b 0x1907 6407
+}
+
+export enum PixelFormatDst {
+  //outputs
+  GL_UNSIGNED_SHORT_5_5_5_1, // 0x8363, 32855
+}
+
 // BG3D tag constants (from C headers and extractbg3d.py)
 export enum BG3DTagType {
   MATERIALFLAGS = 0,
@@ -180,6 +191,13 @@ export function parseBG3D(buffer: ArrayBuffer): BG3DParseResult {
         // Texture pixels
         const pixels = new Uint8Array(buffer, offset, bufferSize);
         offset += bufferSize;
+
+        console.log(
+          `SrcFormat: ${srcPixelFormat}, DstFormat: ${dstPixelFormat}`,
+        );
+        console.log(
+          `Texture src format: ${PixelFormat[srcPixelFormat]}, dst format: ${PixelFormat[dstPixelFormat]}`,
+        );
         currentMaterial.textures.push({
           width,
           height,

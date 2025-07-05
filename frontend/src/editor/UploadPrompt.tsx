@@ -43,6 +43,8 @@ import {
   createCanvasFromTile,
   extractTilesFromBuffer,
 } from "@/data/processors/classicProprocessor";
+import { Separator } from "@/components/ui/separator";
+import { parseSkeletonRsrc } from "@/modelParsers/skeletonRsrc/parseSkeletonRsrc";
 
 export function UploadPrompt({
   mapFile,
@@ -190,6 +192,7 @@ export function UploadPrompt({
         } satisfies PyodideMessage);
 
         pyodideWorker.onmessage = (event: MessageEvent<PyodideResponse>) => {
+          console.log("Received message from pyodide worker:", event.data);
           if (event.data.type === "save_to_json") {
             resolve(event.data.result);
           } else {
@@ -880,6 +883,28 @@ export function UploadPrompt({
             </div>{" "}
           </>
         )}
+      </div>
+
+      <Separator />
+
+      {/* Skeleton Resource Upload */}
+      <div className="flex flex-col gap-2 lg:w-1/3">
+        <p>Upload Skeleton Resource (.skeleton.rsrc)</p>
+        <FileUpload
+          className="text-2xl"
+          acceptType=".skeleton.rsrc"
+          handleOnChange={async (e) => {
+            if (!e.target?.files?.[0]) return;
+            const skeletonFile = e.target.files[0];
+            // TODO: Connect to skeleton parsing logic
+            console.log("Skeleton resource file uploaded:", skeletonFile);
+            const res = await parseSkeletonRsrc({
+              pyodideWorker,
+              bytes: await skeletonFile.arrayBuffer(),
+            });
+            console.log(res);
+          }}
+        />
       </div>
     </div>
   );
