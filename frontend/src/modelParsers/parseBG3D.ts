@@ -54,6 +54,11 @@ export interface BG3DGeometry {
   numPoints: number;
   numTriangles: number;
   // ...geometry arrays (points, normals, uvs, etc.)
+  vertices?: [number, number, number][];
+  normals?: [number, number, number][];
+  uvs?: [number, number][];
+  colors?: [number, number, number, number][];
+  triangles?: [number, number, number][];
 }
 
 export interface BG3DGroup {
@@ -92,12 +97,12 @@ export function parseBG3D(buffer: ArrayBuffer): BG3DParseResult {
   // Main parse state
   // Material and group lists
   const materials: BG3DMaterial[] = [];
-  const groups: BG3DGroup[] = [];
+  const groups: BG3DGroup[] = [{ children: [] }]; // Start with a top-level group
   let done = false;
   // Group stack for nested group support
-  const groupStack: BG3DGroup[] = [];
+  const groupStack: BG3DGroup[] = [groups[0]];
   // Track the current group for children insertion
-  let currentGroup: BG3DGroup | null = null;
+  let currentGroup: BG3DGroup = groups[0];
   // Track the current geometry for array tags
   let currentGeometry: BG3DGeometry | null = null;
   // Only allow material tags at the top level (before any group is open)
@@ -207,19 +212,22 @@ export function parseBG3D(buffer: ArrayBuffer): BG3DParseResult {
         if (groupStack.length > 0) {
           currentGroup = groupStack[groupStack.length - 1];
         } else {
+          //There should be a base group not mentioned in open/closed tags
+          throw new Error("GROUPEND tag found with no open group");
+
           // Top-level group
-          if (finishedGroup) groups.push(finishedGroup);
-          currentGroup = null;
-          insideGroup = false;
+          // if (finishedGroup) groups.push(finishedGroup);
+          //currentGroup = null;
+          //insideGroup = false;
         }
         break;
       }
       case BG3DTagType.GEOMETRY: {
         // Geometry header: type (4), numMaterials (4), layerMaterialNum[4] (16), flags (4), numPoints (4), numTriangles (4)
-        if (!currentGroup)
-          throw new Error(
-            `GEOMETRY tag found outside of a group at offset ${tagOffset}`,
-          );
+        //if (!currentGroup)
+        //throw new Error(
+        //  `GEOMETRY tag found outside of a group at offset ${tagOffset}`,
+        //);
         const type = view.getUint32(offset, false);
         offset += 4;
         const numMaterials = view.getUint32(offset, false);
@@ -253,7 +261,7 @@ export function parseBG3D(buffer: ArrayBuffer): BG3DParseResult {
         // Vertex array: numPoints * 3 floats
         if (!currentGeometry) throw new Error("No geometry for vertex array");
         const numPoints = currentGeometry.numPoints;
-        const verticies: [number, number, number][] = [];
+        const vertices: [number, number, number][] = [];
         for (let i = 0; i < numPoints; i++) {
           const x = view.getFloat32(offset, false);
           offset += 4;
@@ -261,9 +269,9 @@ export function parseBG3D(buffer: ArrayBuffer): BG3DParseResult {
           offset += 4;
           const z = view.getFloat32(offset, false);
           offset += 4;
-          verticies.push([x, y, z]);
+          vertices.push([x, y, z]);
         }
-        (currentGeometry as any).verticies = verticies;
+        currentGeometry.vertices = vertices;
         break;
       }
       case BG3DTagType.NORMALARRAY: {
@@ -280,7 +288,7 @@ export function parseBG3D(buffer: ArrayBuffer): BG3DParseResult {
           offset += 4;
           normals.push([x, y, z]);
         }
-        (currentGeometry as any).normals = normals;
+        currentGeometry.normals = normals;
         break;
       }
       case BG3DTagType.UVARRAY: {
@@ -295,7 +303,7 @@ export function parseBG3D(buffer: ArrayBuffer): BG3DParseResult {
           offset += 4;
           uvs.push([u, v]);
         }
-        (currentGeometry as any).uvs = uvs;
+        currentGeometry.uvs = uvs;
         break;
       }
       case BG3DTagType.COLORARRAY: {
@@ -310,7 +318,7 @@ export function parseBG3D(buffer: ArrayBuffer): BG3DParseResult {
           const a = view.getUint8(offset++);
           colors.push([r, g, b, a]);
         }
-        (currentGeometry as any).colors = colors;
+        currentGeometry.colors = colors;
         break;
       }
       case BG3DTagType.TRIANGLEARRAY: {
@@ -327,7 +335,7 @@ export function parseBG3D(buffer: ArrayBuffer): BG3DParseResult {
           offset += 4;
           triangles.push([a, b, c]);
         }
-        (currentGeometry as any).triangles = triangles;
+        currentGeometry.triangles = triangles;
         // After TRIANGLEARRAY, reset currentGeometry to null to avoid accidental assignment
         currentGeometry = null;
         break;
@@ -349,7 +357,7 @@ export function parseBG3D(buffer: ArrayBuffer): BG3DParseResult {
   }
 
   // Step 2: Validate that all groups are closed (groupStack should be empty)
-  if (groupStack.length !== 0) {
+  if (groupStack.length !== 0 && groupStack.length !== 1) {
     throw new Error(
       `Unbalanced group tags: ${groupStack.length} group(s) not closed at end of file`,
     );
@@ -359,8 +367,8 @@ export function parseBG3D(buffer: ArrayBuffer): BG3DParseResult {
   // Recursively check all groups and their children
   function validateGeometryMaterials(group: BG3DGroup) {
     for (const child of group.children) {
-      if (Array.isArray((child as any).children)) {
-        validateGeometryMaterials(child as BG3DGroup);
+      if (isBG3DGroup(child) && Array.isArray(child.children)) {
+        validateGeometryMaterials(child);
       } else {
         const geom = child as BG3DGeometry;
         if (geom.layerMaterialNum) {
@@ -523,11 +531,11 @@ function writeGroup(
       }
 
       // Write arrays if present
-      if ((geom as any).verticies) {
+      if ((geom as any).vertices) {
         console.log(`[bg3dParsedToBG3D] Write VERTEXARRAY at offset ${offset}`);
         view.setUint32(offset, BG3DTagType.VERTEXARRAY, false);
         offset += 4;
-        for (const [x, y, z] of (geom as any).verticies) {
+        for (const [x, y, z] of (geom as any).vertices) {
           view.setFloat32(offset, x, false);
           offset += 4;
           view.setFloat32(offset, y, false);
@@ -536,7 +544,7 @@ function writeGroup(
           offset += 4;
         }
       }
-      if ((geom as any).normals) {
+      if (geom.normals) {
         console.log(`[bg3dParsedToBG3D] Write NORMALARRAY at offset ${offset}`);
         view.setUint32(offset, BG3DTagType.NORMALARRAY, false);
         offset += 4;
@@ -549,7 +557,7 @@ function writeGroup(
           offset += 4;
         }
       }
-      if ((geom as any).uvs) {
+      if (geom.uvs) {
         console.log(`[bg3dParsedToBG3D] Write UVARRAY at offset ${offset}`);
         view.setUint32(offset, BG3DTagType.UVARRAY, false);
         offset += 4;
@@ -560,7 +568,7 @@ function writeGroup(
           offset += 4;
         }
       }
-      if ((geom as any).colors) {
+      if (geom.colors) {
         console.log(`[bg3dParsedToBG3D] Write COLORARRAY at offset ${offset}`);
         view.setUint32(offset, BG3DTagType.COLORARRAY, false);
         offset += 4;
@@ -571,13 +579,13 @@ function writeGroup(
           view.setUint8(offset++, a);
         }
       }
-      if ((geom as any).triangles) {
+      if (geom.triangles) {
         console.log(
           `[bg3dParsedToBG3D] Write TRIANGLEARRAY at offset ${offset}`,
         );
         view.setUint32(offset, BG3DTagType.TRIANGLEARRAY, false);
         offset += 4;
-        for (const [a, b, c] of (geom as any).triangles) {
+        for (const [a, b, c] of geom.triangles) {
           view.setUint32(offset, a, false);
           offset += 4;
           view.setUint32(offset, b, false);
@@ -598,4 +606,8 @@ function writeGroup(
 
 function isBG3DGroup(obj: any): obj is BG3DGroup {
   return obj && Array.isArray(obj.children);
+}
+
+function isBG3DGeometry(obj: BG3DGeometry | BG3DGroup): obj is BG3DGeometry {
+  return !!obj && !Array.isArray((obj as any).children);
 }

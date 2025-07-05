@@ -6,10 +6,7 @@ import * as path from "path";
 import { argb16ToPng, rgb24ToPng } from "./image/pngArgb";
 
 // Adjust the path to your testSkeletons folder and BG3D file name
-const TEST_BG3D_PATH = path.join(
-  __dirname,
-  "./testSkeletons/EliteBrainAlien.bg3d",
-);
+const TEST_BG3D_PATH = path.join(__dirname, "./testSkeletons/Farmer.bg3d");
 
 describe("parseBG3DAndUnparse", () => {
   it("parses a real BG3D file from testSkeletons and converts it back and forth", () => {
@@ -25,13 +22,7 @@ describe("parseBG3DAndUnparse", () => {
     //expect(Array.isArray(parsed.materials)).toBe(true);
     expect(Array.isArray(parsed.groups)).toBe(true);
 
-    // Step 2: Back to BG3D
-    const outputBuffer = bg3dParsedToBG3D(parsed);
-    expect(outputBuffer).toBeInstanceOf(ArrayBuffer);
-    expect(outputBuffer.byteLength).toBeGreaterThan(0);
-    const outputArray = new Uint8Array(outputBuffer);
-    expect(outputArray.length).toBeGreaterThan(0);
-
+    console.log("Parsed Materials:", parsed.materials.length);
     parsed.materials.forEach((mat, i) => {
       console.log(`Material[${i}] textures:`, mat.textures.length);
       mat.textures.forEach((tex, j) => {
@@ -40,17 +31,24 @@ describe("parseBG3DAndUnparse", () => {
 
         const pngPath = path.join(
           __dirname,
-          `./testSkeletons/output/EliteBrainAlien.material${i}.texture${j}.png`,
+          `./testSkeletons/output/Farmer.material${i}.texture${j}.png`,
         );
         fs.writeFileSync(pngPath, pngBuffer);
         console.log(`Saved PNG to ${pngPath}`);
       });
     });
 
+    // Step 2: Back to BG3D
+    const outputBuffer = bg3dParsedToBG3D(parsed);
+    expect(outputBuffer).toBeInstanceOf(ArrayBuffer);
+    expect(outputBuffer.byteLength).toBeGreaterThan(0);
+    const outputArray = new Uint8Array(outputBuffer);
+    expect(outputArray.length).toBeGreaterThan(0);
+
     // Save the new BG3D file for inspection
     const roundtripPath = path.join(
       __dirname,
-      "./testSkeletons/output/EliteBrainAlien.roundtrip1.bg3d",
+      "./testSkeletons/output/Farmer.roundtrip1.bg3d",
     );
     fs.writeFileSync(roundtripPath, Buffer.from(outputBuffer));
 
