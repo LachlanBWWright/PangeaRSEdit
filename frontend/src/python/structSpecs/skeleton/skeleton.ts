@@ -15,8 +15,6 @@
 // 'KeyF'  →  JointKeyFrameHeader (structs.h)
 //   signed char numKeyFrames[MAX_ANIMS]; JointKeyframeType **keyFrames;
 //
-// 'KeyD'  →  JointKeyframeType (structs.h)
-//   int32_t tick; int32_t accelerationMode; OGLPoint3D coord; OGLVector3D rotation; OGLVector3D scale;
 //
 // 'Trak', 'TrKd'  →  (No struct found; likely unused or legacy)
 //
@@ -26,19 +24,39 @@
 // 'Nams'  →  char* (array of null-terminated strings)
 //
 export const skeletonSpecs = [
+  "AnHd:33sxh:animName,numAnimEvents",
   // FourCC:struct_chars:names (comma separated)
-  "Hedr:hhhh:version,numAnims,numJoints,num3DMFLimbs",
   //BonN - Bone Normal
   "BonN:H+:normal",
   //BonP Point index array
   "BonP:H+:pointIndex",
   "Bone:i32s3fHH8I:parentBone,name,coordX,coordY,coordZ,numPointsAttachedToBone,numNormalsAttachedToBone,reserved0,reserved1,reserved2,reserved3,reserved4,reserved5,reserved6,reserved7",
-  "AnHd:33sxh:animName,numAnimEvents",
   "Evnt:hBB+:time,type,value",
-  "KeyF:40b:numKeyFrames[40]",
-  "KeyD:ii3f3f3f:tick,accelerationMode,coordX,coordY,coordZ,rotationX,rotationY,rotationZ,scaleX,scaleY,scaleZ",
-  "Bnds:3f3fB:minX,minY,minZ,maxX,maxY,maxZ,isEmpty",
+
+  //Header has lots of blank/padding after? Cast to 8 bype struct but 84 bytes in practice
+  "Hedr:hhhh76x:version,numAnims,numJoints,num3DMFLimbs",
+
+  /* 
+typedef struct
+{
+	int32_t		tick;					// time at which this state exists                                
+	int32_t		accelerationMode;		// mode of in/out acceleration
+	OGLPoint3D	coord;					// current 3D coords of joint (relative to link)              (x y z)
+	OGLVector3D	rotation;				// current rotation values of joint (relative to link)          (x y z)
+	OGLVector3D	scale;					// current scale values of joint mesh                            (x y z)
+}JointKeyframeType;
+*/
+  "KeyF:ii3f3f3f+:tick,accelerationMode,coordX,coordY,coordZ,rotationX,rotationY,rotationZ,scaleX,scaleY,scaleZ",
+
+  //RelP Point relative offsets
+  "RelP:3f+:relOffsetX,relOffsetY,relOffsetZ",
+
+  // NumK - Number of keyframes in each joint for each animation (Signed Char)
+  "NumK:b+:numKeyFrames", // 40 bytes, 40 joints max
+
   "Nams:c+:names", // variable-length null-terminated strings
+
+  //Also Alis field for bg3d/3dmf?
 ];
 
 /* 
