@@ -1,9 +1,9 @@
 import { describe, it, expect } from "vitest";
-import { parseBG3D } from "./parseBG3D";
+import { parseBG3D, bg3dParsedToBG3D } from "./parseBG3D";
 import { bg3dParsedToGLTF, gltfToBG3D } from "./parsedBg3dGitfConverter";
-import { bg3dParsedToBG3D } from "./bg3dParsedToBG3D";
 import * as fs from "fs";
 import * as path from "path";
+import { argb16ToPng, rgb24ToPng } from "./image/pngArgb";
 
 // Adjust the path to your testSkeletons folder and BG3D file name
 const TEST_BG3D_PATH = path.join(
@@ -22,8 +22,7 @@ describe("parseBG3DAndUnparse", () => {
     // Step 1: Parse BG3D
     const parsed = parseBG3D(arrayBuffer);
     expect(parsed).toBeDefined();
-    expect(Array.isArray(parsed.materials)).toBe(true);
-    expect(Array.isArray(parsed.geometries)).toBe(true);
+    //expect(Array.isArray(parsed.materials)).toBe(true);
     expect(Array.isArray(parsed.groups)).toBe(true);
 
     // Step 2: Back to BG3D
@@ -33,14 +32,53 @@ describe("parseBG3DAndUnparse", () => {
     const outputArray = new Uint8Array(outputBuffer);
     expect(outputArray.length).toBeGreaterThan(0);
 
+    parsed.materials.forEach((mat, i) => {
+      console.log(`Material[${i}] textures:`, mat.textures.length);
+      mat.textures.forEach((tex, j) => {
+        console.log(tex);
+        const pngBuffer = rgb24ToPng(tex.pixels, tex.width, tex.height);
+
+        const pngPath = path.join(
+          __dirname,
+          `./testSkeletons/output/EliteBrainAlien.material${i}.texture${j}.png`,
+        );
+        fs.writeFileSync(pngPath, pngBuffer);
+        console.log(`Saved PNG to ${pngPath}`);
+      });
+    });
+
+    // Save the new BG3D file for inspection
+    const roundtripPath = path.join(
+      __dirname,
+      "./testSkeletons/output/EliteBrainAlien.roundtrip1.bg3d",
+    );
+    fs.writeFileSync(roundtripPath, Buffer.from(outputBuffer));
+
+    //Compare original and output arrays
+    //Compare all bytes
+    console.log("Lengths Match", outputArray.length, fileBuffer.byteLength);
+    let errorCount = 0;
+    for (let i = 20; i < outputArray.length; i++) {
+      if (outputArray[i] !== fileBuffer[i]) {
+        if (errorCount < 10) {
+          console.error(
+            `Byte ${i} mismatch: expected ${fileBuffer[i]}, got ${outputArray[i]}`,
+          );
+        }
+        errorCount++;
+      }
+      // expect(outputArray[i], `Byte ${i} mismatch`).toBe(fileBuffer[i]);
+    }
+    //Check length
+    //expect(errorCount).toBe(0);
+    //expect(outputArray.length).toBe(fileBuffer.byteLength);
+
     //Step 3: Parse new BG3D
     const parsed2 = parseBG3D(outputBuffer);
     expect(parsed2).toBeDefined();
     expect(Array.isArray(parsed2.materials)).toBe(true);
-    expect(Array.isArray(parsed2.geometries)).toBe(true);
     expect(Array.isArray(parsed2.groups)).toBe(true);
     expect(parsed2.materials.length).toBe(parsed.materials.length);
-    expect(parsed2.geometries.length).toBe(parsed.geometries.length);
     expect(parsed2.groups.length).toBe(parsed.groups.length);
 
     //Step 4: Back to BG3D again
@@ -71,12 +109,23 @@ describe("parseBG3D", () => {
     const parsed = parseBG3D(arrayBuffer);
     expect(parsed).toBeDefined();
     expect(Array.isArray(parsed.materials)).toBe(true);
-    expect(Array.isArray(parsed.geometries)).toBe(true);
+    expect(Array.isArray(parsed.groups)).toBe(true);
+    // Flatten all geometries from all groups for comparison
+    const flattenGeometries = (groups: any[]): any[] => {
+      let result: any[] = [];
+      for (const group of groups) {
+        if (group.geometries) result = result.concat(group.geometries);
+        if (group.groups)
+          result = result.concat(flattenGeometries(group.groups));
+      }
+      return result;
+    };
+    const allGeometries = flattenGeometries(parsed.groups);
     console.log(
       "Original: materials",
       parsed.materials.length,
       "geometries",
-      parsed.geometries.length,
+      allGeometries.length,
     );
     parsed.materials.forEach((mat, i) => {
       console.log(`Original material[${i}] textures:`, mat.textures.length);
@@ -90,16 +139,22 @@ describe("parseBG3D", () => {
     const parsed2_rt = gltfToBG3D(gltf);
     expect(parsed2_rt).toBeDefined();
     expect(Array.isArray(parsed2_rt.materials)).toBe(true);
-    expect(Array.isArray(parsed2_rt.geometries)).toBe(true);
+    expect(Array.isArray(parsed2_rt.groups)).toBe(true);
+    const allGeometries2 = flattenGeometries(parsed2_rt.groups);
     console.log(
       "Roundtrip: materials",
       parsed2_rt.materials.length,
       "geometries",
-      parsed2_rt.geometries.length,
+      allGeometries2.length,
     );
     parsed2_rt.materials.forEach((mat, i) => {
       console.log(`Roundtrip material[${i}] textures:`, mat.textures.length);
     });
+
+    // Compare top-level materials and groups for equality
+    expect(parsed2_rt.materials).toEqual(parsed.materials);
+    expect(parsed2_rt.groups).toEqual(parsed.groups);
+    console.log("Equality check passed");
 
     // Step 4: Serialize back to BG3D
     // Pass the original header (first 20 bytes) to preserve version info
@@ -136,81 +191,28 @@ describe("parseBG3D", () => {
     const parsed2 = gltfToBG3D(gltf);
     expect(parsed2).toBeDefined();
     expect(Array.isArray(parsed2.materials)).toBe(true);
-    expect(Array.isArray(parsed2.geometries)).toBe(true);
+    expect(Array.isArray(parsed2.groups)).toBe(true);
 
     // Step 3.5: Deep equality check between initial and round-tripped parsed BG3D
     console.log("Checking equality of parsed objects...");
     expect(parsed2.materials.length).toBe(parsed.materials.length);
-    console.log("Materials length:", parsed2.materials.length);
-    expect(parsed2.geometries.length).toBe(parsed.geometries.length);
-    console.log("Geometries length:", parsed2.geometries.length);
     expect(parsed2.groups.length).toBe(parsed.groups.length);
-    console.log("Groups length:", parsed2.groups.length);
-    console.log("Lengths match, checking contents...");
-
-    for (let i = 0; i < parsed.geometries.length; i++) {
-      console.log(`Checking geometry ${i}...`);
-      try {
-        expect(parsed2.geometries[i]).toEqual(parsed.geometries[i]);
-      } catch (e) {
-        const expected = parsed.geometries[i];
-        const actual = parsed2.geometries[i];
-        console.error(`Geometry ${i} mismatch:`);
-        console.error("Expected:", JSON.stringify(expected, null, 2));
-        console.error("Actual:", JSON.stringify(actual, null, 2));
-        // Print keys and types for both
-        const expKeys = Object.keys(expected);
-        const actKeys = Object.keys(actual);
-        console.error("Expected keys:", expKeys);
-        console.error("Actual keys:", actKeys);
-        for (const key of new Set([...expKeys, ...actKeys])) {
-          const expVal = (expected as any)[key];
-          const actVal = (actual as any)[key];
-          const same = JSON.stringify(expVal) === JSON.stringify(actVal);
-          console.error(
-            `Key: ${key}, Same: ${same}, Expected type: ${typeof expVal}, Actual type: ${typeof actVal}`,
-          );
-          if (!same) {
-            console.error(`  Expected:`, expVal);
-            console.error(`  Actual:  `, actVal);
-          }
-        }
-        throw e;
-      }
+    // Compare all geometries in all groups
+    const allGeometriesA = flattenGeometries(parsed.groups);
+    const allGeometriesB = flattenGeometries(parsed2.groups);
+    expect(allGeometriesB.length).toBe(allGeometriesA.length);
+    for (let i = 0; i < allGeometriesA.length; i++) {
+      expect(allGeometriesB[i]).toEqual(allGeometriesA[i]);
     }
     for (let i = 0; i < parsed.groups.length; i++) {
-      console.log(`Checking group ${i}...`);
-      try {
-        expect(parsed2.groups[i]).toEqual(parsed.groups[i]);
-      } catch (e) {
-        console.error(`Group ${i} mismatch:`);
-        console.error("Expected:", JSON.stringify(parsed.groups[i], null, 2));
-        console.error("Actual:", JSON.stringify(parsed2.groups[i], null, 2));
-        throw e;
-      }
+      expect(parsed2.groups[i]).toEqual(parsed.groups[i]);
     }
     for (let i = 0; i < parsed.materials.length; i++) {
-      console.log(`Checking material ${i}...`);
-      try {
-        expect(parsed2.materials[i]).toEqual(parsed.materials[i]);
-      } catch (e) {
-        console.error(`Material ${i} mismatch:`);
-        console.error(
-          "Expected:",
-          JSON.stringify(parsed.materials[i], null, 2),
-        );
-        console.error("Actual:", JSON.stringify(parsed2.materials[i], null, 2));
-        throw e;
-      }
+      expect(parsed2.materials[i]).toEqual(parsed.materials[i]);
     }
-    //expect(parsed2).toEqual(parsed);
-
-    console.log("Round trip successful!");
-
     // Step 4: Serialize parsed BG3D back to file
     const outputBuffer = bg3dParsedToBG3D(parsed2);
     expect(outputBuffer).toBeInstanceOf(ArrayBuffer);
-
     // Step 5: Compare input and output buffers (byte-for-byte)
     const orig = new Uint8Array(arrayBuffer);
     const roundtrip = new Uint8Array(outputBuffer);

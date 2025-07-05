@@ -1,4 +1,25 @@
 import { PNG } from "pngjs";
+// Convert 24-bit RGB (Uint8Array) to PNG Buffer
+export function rgb24ToPng(
+  rgb: Uint8Array,
+  width: number,
+  height: number,
+): Buffer {
+  // Convert to RGBA8 first
+  const rgba = rgb24ToRgba8(rgb);
+  return rgba8ToPng(rgba, width, height);
+}
+// Convert 24-bit RGB (Uint8Array) to 32-bit RGBA (Uint8Array), alpha set to 255
+export function rgb24ToRgba8(rgb: Uint8Array): Uint8Array {
+  const out = new Uint8Array((rgb.length / 3) * 4);
+  for (let i = 0, j = 0; i < rgb.length; i += 3, j += 4) {
+    out[j + 0] = rgb[i + 0]; // R
+    out[j + 1] = rgb[i + 1]; // G
+    out[j + 2] = rgb[i + 2]; // B
+    out[j + 3] = 255; // A
+  }
+  return out;
+}
 
 // Convert 16-bit ARGB1555 (Uint16Array) to 8-bit RGBA (Uint8Array)
 export function argb16ToRgba8(argb16: Uint16Array): Uint8Array {

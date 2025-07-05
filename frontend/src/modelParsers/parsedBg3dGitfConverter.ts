@@ -77,9 +77,32 @@ export function bg3dParsedToGLTF(parsed: BG3DParseResult): Document {
     }
   });
 
+  // Helper to collect all geometries from group hierarchy
+  function collectGeometries(groups: BG3DGroup[]): BG3DGeometryFull[] {
+    const result: BG3DGeometryFull[] = [];
+    function traverse(group: BG3DGroup) {
+      if (group.geometries) {
+        for (const geom of group.geometries) {
+          result.push(geom as BG3DGeometryFull);
+        }
+      }
+      if (group.groups) {
+        for (const subGroup of group.groups) {
+          traverse(subGroup);
+        }
+      }
+    }
+    for (const group of groups) {
+      traverse(group);
+    }
+    return result;
+  }
+
+  const allGeometries = collectGeometries(parsed.groups);
+
   // 3. Meshes and Primitives
   const gltfMeshes: Mesh[] = [];
-  parsed.geometries.forEach((geom) => {
+  allGeometries.forEach((geom) => {
     const mesh = doc.createMesh();
     const prim = doc.createPrimitive();
     // POSITION
@@ -169,8 +192,7 @@ export function bg3dParsedToGLTF(parsed: BG3DParseResult): Document {
     groups: parsed.groups,
     // Store BG3DParseResult-level fields for round-trip
     bg3dFields: {
-      numMaterials: parsed.geometries?.[0]?.numMaterials,
-      type: parsed.geometries?.[0]?.type,
+      // No flat geometries array anymore; if needed, can extract from groups
     },
   });
 
@@ -462,7 +484,6 @@ export function gltfToBG3D(doc: Document): BG3DParseResult {
 
   return {
     materials,
-    geometries,
     groups,
   };
 }
