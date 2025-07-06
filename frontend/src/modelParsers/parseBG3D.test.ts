@@ -6,15 +6,15 @@ import * as path from "path";
 import { argb16ToPng, rgb24ToPng } from "./image/pngArgb";
 
 // Adjust the path to your testSkeletons folder and BG3D file name
-const TEST_BG3D_PATH = path.join(__dirname, "./testSkeletons/Farmer.bg3d");
+const TEST_BG3D_PATH = path.join(
+  __dirname,
+  "./testSkeletons/level10_brainboss.bg3d",
+);
 
 describe("parseBG3DAndUnparse", () => {
   it("parses a real BG3D file from testSkeletons and converts it back and forth", () => {
     const fileBuffer = fs.readFileSync(TEST_BG3D_PATH);
-    const arrayBuffer = fileBuffer.buffer.slice(
-      fileBuffer.byteOffset,
-      fileBuffer.byteOffset + fileBuffer.byteLength,
-    );
+    const arrayBuffer = fileBuffer.buffer;
 
     // Step 1: Parse BG3D
     const parsed = parseBG3D(arrayBuffer);
@@ -22,7 +22,7 @@ describe("parseBG3DAndUnparse", () => {
     //expect(Array.isArray(parsed.materials)).toBe(true);
     expect(Array.isArray(parsed.groups)).toBe(true);
 
-    console.log("Parsed Materials:", parsed.materials.length);
+    /*     console.log("Parsed Materials:", parsed.materials.length);
     parsed.materials.forEach((mat, i) => {
       console.log(`Material[${i}] textures:`, mat.textures.length);
       mat.textures.forEach((tex, j) => {
@@ -31,12 +31,12 @@ describe("parseBG3DAndUnparse", () => {
 
         const pngPath = path.join(
           __dirname,
-          `./testSkeletons/output/Farmer.material${i}.texture${j}.png`,
+          `./testSkeletons/output/level10_brainboss.material${i}.texture${j}.png`,
         );
         fs.writeFileSync(pngPath, pngBuffer);
         console.log(`Saved PNG to ${pngPath}`);
       });
-    });
+    }); */
 
     // Step 2: Back to BG3D
     const outputBuffer = bg3dParsedToBG3D(parsed);
@@ -48,7 +48,7 @@ describe("parseBG3DAndUnparse", () => {
     // Save the new BG3D file for inspection
     const roundtripPath = path.join(
       __dirname,
-      "./testSkeletons/output/Farmer.roundtrip1.bg3d",
+      "./testSkeletons/output/level10_brainboss.roundtrip1.bg3d",
     );
     fs.writeFileSync(roundtripPath, Buffer.from(outputBuffer));
 
@@ -67,6 +67,8 @@ describe("parseBG3DAndUnparse", () => {
       }
       // expect(outputArray[i], `Byte ${i} mismatch`).toBe(fileBuffer[i]);
     }
+    console.log(`Total mismatches: ${errorCount}`);
+    // If there are more than 10 mismatches
     //Check length
     //expect(errorCount).toBe(0);
     //expect(outputArray.length).toBe(fileBuffer.byteLength);
@@ -76,8 +78,11 @@ describe("parseBG3DAndUnparse", () => {
     expect(parsed2).toBeDefined();
     expect(Array.isArray(parsed2.materials)).toBe(true);
     expect(Array.isArray(parsed2.groups)).toBe(true);
+    expect(parsed2.groups.length).toBe(parsed.groups.length);
     expect(parsed2.materials.length).toBe(parsed.materials.length);
     expect(parsed2.groups.length).toBe(parsed.groups.length);
+
+    //expect(parsed2.materials.length).toBe(parsed.materials.length);
 
     //Step 4: Back to BG3D again
     const outputBuffer2 = bg3dParsedToBG3D(parsed2);
@@ -146,7 +151,7 @@ describe("parseBG3D", () => {
       allGeometries2.length,
     );
     parsed2_rt.materials.forEach((mat, i) => {
-      console.log(`Roundtrip material[${i}] textures:`, mat.textures.length);
+      // console.log(`Roundtrip material[${i}] textures:`, mat.textures.length);
     });
 
     // Compare top-level materials and groups for equality
@@ -158,7 +163,7 @@ describe("parseBG3D", () => {
     // Pass the original header (first 20 bytes) to preserve version info
     const orig_rt = new Uint8Array(arrayBuffer);
     const origHeader = orig_rt.slice(0, 20);
-    const outputBuffer_rt = bg3dParsedToBG3D(parsed2_rt, origHeader);
+    const outputBuffer_rt = bg3dParsedToBG3D(parsed2_rt);
     const roundtrip_rt = new Uint8Array(outputBuffer_rt);
     if (roundtrip_rt.length !== orig_rt.length) {
       console.log(

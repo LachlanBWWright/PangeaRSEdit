@@ -1,15 +1,48 @@
 // parseBG3D.ts
 // Full BG3D file parser for Otto Matic and related games
 
+import { groupCollapsed } from "console";
+import { off } from "process";
+
 //https://registry.khronos.org/OpenGL-Refpages/gl4/html/glTexImage2D.xhtml
 export enum PixelFormatSrc {
-  GL_UNSIGNED_SHORT_1_5_5_5_REV, // 1a 5r 5g 5b 0x8366 33638
-  GL_RGB, // 8r 8g 8b 0x1907 6407
+  GL_UNSIGNED_SHORT_1_5_5_5_REV = 33638, // 1a 5r 5g 5b 0x8366 33638
+  GL_RGB = 6407, // 8r 8g 8b 0x1907 6407
 }
 
 export enum PixelFormatDst {
   //outputs
-  GL_UNSIGNED_SHORT_5_5_5_1, // 0x8363, 32855
+  GL_UNSIGNED_SHORT_5_5_5_1 = 32855, // 0x8363, 32855
+}
+
+/**
+ * Get a descriptive PixelFormatSrc enum name from a number value
+ * @param value number
+ * @returns string (e.g. "GL_RGB (6407)") or "Unknown (value)"
+ */
+export function getPixelFormatSrcName(value: number): string {
+  switch (value) {
+    case 33686:
+      return "GL_UNSIGNED_SHORT_1_5_5_5_REV (33686)";
+    case 6407:
+      return "GL_RGB (6407)";
+    default:
+      return `Unknown (${value})`;
+  }
+}
+
+/**
+ * Get a descriptive PixelFormatDst enum name from a number value
+ * @param value number
+ * @returns string (e.g. "GL_UNSIGNED_SHORT_5_5_5_1 (32855)") or "Unknown (value)"
+ */
+export function getPixelFormatDstName(value: number): string {
+  switch (value) {
+    case 32855:
+      return "GL_UNSIGNED_SHORT_5_5_5_1 (32855)";
+    default:
+      return `Unknown (${value})`;
+  }
 }
 
 // BG3D tag constants (from C headers and extractbg3d.py)
@@ -51,8 +84,8 @@ export interface BG3DMaterial {
 export interface BG3DTexture {
   width: number;
   height: number;
-  srcPixelFormat: number;
-  dstPixelFormat: number;
+  srcPixelFormat: PixelFormatSrc;
+  dstPixelFormat: PixelFormatDst;
   bufferSize: number;
   pixels: Uint8Array;
 }
@@ -70,6 +103,10 @@ export interface BG3DGeometry {
   uvs?: [number, number][];
   colors?: [number, number, number, number][];
   triangles?: [number, number, number][];
+  boundingBox?: {
+    min: [number, number, number];
+    max: [number, number, number];
+  };
 }
 
 export interface BG3DGroup {
@@ -116,8 +153,7 @@ export function parseBG3D(buffer: ArrayBuffer): BG3DParseResult {
   let currentGroup: BG3DGroup = groups[0];
   // Track the current geometry for array tags
   let currentGeometry: BG3DGeometry | null = null;
-  // Only allow material tags at the top level (before any group is open)
-  let insideGroup = false;
+
   // Current material being built
   let currentMaterial: BG3DMaterial | null = null;
 
@@ -151,10 +187,6 @@ export function parseBG3D(buffer: ArrayBuffer): BG3DParseResult {
         break;
       }
       case BG3DTagType.MATERIALDIFFUSECOLOR: {
-        if (insideGroup)
-          throw new Error(
-            "MATERIALDIFFUSECOLOR tag found inside a group; only allowed at top level",
-          );
         // 4 floats (RGBA)
         if (!currentMaterial)
           throw new Error("No current material for diffuse color");
@@ -170,10 +202,6 @@ export function parseBG3D(buffer: ArrayBuffer): BG3DParseResult {
         break;
       }
       case BG3DTagType.TEXTUREMAP: {
-        if (insideGroup)
-          throw new Error(
-            "TEXTUREMAP tag found inside a group; only allowed at top level",
-          );
         // Texture header: 4 bytes each: width, height, srcPixelFormat, dstPixelFormat, bufferSize, 4 unused
         if (!currentMaterial)
           throw new Error("No current material for texture");
@@ -196,7 +224,9 @@ export function parseBG3D(buffer: ArrayBuffer): BG3DParseResult {
           `SrcFormat: ${srcPixelFormat}, DstFormat: ${dstPixelFormat}`,
         );
         console.log(
-          `Texture src format: ${PixelFormat[srcPixelFormat]}, dst format: ${PixelFormat[dstPixelFormat]}`,
+          `Texture src format: ${getPixelFormatSrcName(
+            srcPixelFormat,
+          )}, dst format: ${getPixelFormatDstName(dstPixelFormat)}`,
         );
         currentMaterial.textures.push({
           width,
@@ -210,10 +240,13 @@ export function parseBG3D(buffer: ArrayBuffer): BG3DParseResult {
       }
       case BG3DTagType.GROUPSTART: {
         // Start a new group and push to stack
-        insideGroup = true;
         const group: BG3DGroup = { children: [] };
         if (currentGroup) {
           currentGroup.children.push(group);
+        } else {
+          // If no current group, this is a top-level group
+          groups.push(group);
+          //console.warn("Top-level group created without parent");
         }
         groupStack.push(group);
         currentGroup = group;
@@ -226,9 +259,9 @@ export function parseBG3D(buffer: ArrayBuffer): BG3DParseResult {
             `GROUPEND tag found with no open group at offset ${tagOffset}`,
           );
         }
-        const finishedGroup = groupStack.pop();
         if (groupStack.length > 0) {
           currentGroup = groupStack[groupStack.length - 1];
+          groupStack.pop();
         } else {
           //There should be a base group not mentioned in open/closed tags
           throw new Error("GROUPEND tag found with no open group");
@@ -236,16 +269,16 @@ export function parseBG3D(buffer: ArrayBuffer): BG3DParseResult {
           // Top-level group
           // if (finishedGroup) groups.push(finishedGroup);
           //currentGroup = null;
-          //insideGroup = false;
         }
         break;
       }
+
       case BG3DTagType.GEOMETRY: {
-        // Geometry header: type (4), numMaterials (4), layerMaterialNum[4] (16), flags (4), numPoints (4), numTriangles (4)
-        //if (!currentGroup)
-        //throw new Error(
-        //  `GEOMETRY tag found outside of a group at offset ${tagOffset}`,
-        //);
+        // Geometry header: type (4), numMaterials (4), layerMaterialNum[4] (only 2 read by otto) (16), flags (4), numPoints (4), numTriangles (4)
+        if (!currentGroup)
+          throw new Error(
+            `GEOMETRY tag found outside of a group at offset ${tagOffset}`,
+          );
         const type = view.getUint32(offset, false);
         offset += 4;
         const numMaterials = view.getUint32(offset, false);
@@ -271,8 +304,14 @@ export function parseBG3D(buffer: ArrayBuffer): BG3DParseResult {
           numPoints,
           numTriangles,
         };
+
         currentGroup.children.push(geom);
         currentGeometry = geom;
+
+        //Reserved header offset increase
+        //uint32_t	reserved[4];						// for future use in BG3DGeometryHeader
+        offset += 16; // Skip reserved header space (4 bytes)
+
         break;
       }
       case BG3DTagType.VERTEXARRAY: {
@@ -374,10 +413,10 @@ export function parseBG3D(buffer: ArrayBuffer): BG3DParseResult {
     }
   }
 
-  // Step 2: Validate that all groups are closed (groupStack should be empty)
-  if (groupStack.length !== 0 && groupStack.length !== 1) {
+  // Step 2: Validate that all groups are closed (groupStack should just have the base group)
+  if (groupStack.length !== 1) {
     throw new Error(
-      `Unbalanced group tags: ${groupStack.length} group(s) not closed at end of file`,
+      `Unbalanced group tags: ${groupStack.length} group(s) at end of file`,
     );
   }
 
@@ -424,29 +463,23 @@ export function parseBG3D(buffer: ArrayBuffer): BG3DParseResult {
  * Serialize a BG3DParseResult back to a BG3D ArrayBuffer
  * This reverses the logic of parseBG3D.ts
  */
-export function bg3dParsedToBG3D(
-  parsed: BG3DParseResult,
-  originalHeader?: Uint8Array,
-): ArrayBuffer {
+export function bg3dParsedToBG3D(parsed: BG3DParseResult): ArrayBuffer {
   // Static property to track offset
   let offset = 0;
 
   // Estimate buffer size (over-allocate, then slice)
-  let size = 1024 * 1024; // 1MB default, grow if needed
+  let size = 1024 * 1024 * 10; // 1MB default, grow if needed
   let buffer = new ArrayBuffer(size);
   let view = new DataView(buffer);
 
   // Write header: use original if provided, else default
-  if (originalHeader && originalHeader.length === 20) {
-    new Uint8Array(buffer, 0, 20).set(originalHeader);
-    offset += 20;
-  } else {
-    view.setUint8(offset++, "B".charCodeAt(0));
-    view.setUint8(offset++, "G".charCodeAt(0));
-    view.setUint8(offset++, "3".charCodeAt(0));
-    view.setUint8(offset++, "D".charCodeAt(0));
-    for (let i = 0; i < 16; i++) view.setUint8(offset++, 0);
-  }
+
+  view.setUint8(offset++, "B".charCodeAt(0));
+  view.setUint8(offset++, "G".charCodeAt(0));
+  view.setUint8(offset++, "3".charCodeAt(0));
+  view.setUint8(offset++, "D".charCodeAt(0));
+  for (let i = 0; i < 16; i++) view.setUint8(offset++, 0);
+
   console.log("Writing header at offset", offset);
 
   // Write all materials
@@ -487,15 +520,18 @@ export function bg3dParsedToBG3D(
         offset += 4;
       } // reserved
       // Write pixel data
+
       new Uint8Array(buffer, offset, tex.bufferSize).set(tex.pixels);
       offset += tex.bufferSize;
     }
   }
 
   // Write groups and all group-specific data
-  for (const group of parsed.groups) {
-    offset = writeGroup(view, buffer, group, offset);
-  }
+  parsed.groups.forEach((group, i) => {
+    if (i > 0) {
+      offset = writeGroup(view, buffer, group, offset);
+    }
+  });
 
   // ENDFILE
   console.log("Writing ENDFILE at offset", offset);
@@ -530,7 +566,7 @@ function writeGroup(
       offset += 4;
       view.setUint32(offset, geom.type, false);
       offset += 4;
-      view.setUint32(offset, geom.numMaterials, false);
+      view.setInt32(offset, geom.numMaterials, false);
       offset += 4;
       for (let i = 0; i < 4; i++) {
         view.setUint32(offset, geom.layerMaterialNum?.[i] ?? 0, false);
@@ -549,11 +585,11 @@ function writeGroup(
       }
 
       // Write arrays if present
-      if ((geom as any).vertices) {
+      if (geom.vertices) {
         console.log(`[bg3dParsedToBG3D] Write VERTEXARRAY at offset ${offset}`);
         view.setUint32(offset, BG3DTagType.VERTEXARRAY, false);
         offset += 4;
-        for (const [x, y, z] of (geom as any).vertices) {
+        for (const [x, y, z] of geom.vertices) {
           view.setFloat32(offset, x, false);
           offset += 4;
           view.setFloat32(offset, y, false);
@@ -566,7 +602,7 @@ function writeGroup(
         console.log(`[bg3dParsedToBG3D] Write NORMALARRAY at offset ${offset}`);
         view.setUint32(offset, BG3DTagType.NORMALARRAY, false);
         offset += 4;
-        for (const [x, y, z] of (geom as any).normals) {
+        for (const [x, y, z] of geom.normals) {
           view.setFloat32(offset, x, false);
           offset += 4;
           view.setFloat32(offset, y, false);
@@ -579,7 +615,7 @@ function writeGroup(
         console.log(`[bg3dParsedToBG3D] Write UVARRAY at offset ${offset}`);
         view.setUint32(offset, BG3DTagType.UVARRAY, false);
         offset += 4;
-        for (const [u, v] of (geom as any).uvs) {
+        for (const [u, v] of geom.uvs) {
           view.setFloat32(offset, u, false);
           offset += 4;
           view.setFloat32(offset, v, false);
@@ -590,7 +626,7 @@ function writeGroup(
         console.log(`[bg3dParsedToBG3D] Write COLORARRAY at offset ${offset}`);
         view.setUint32(offset, BG3DTagType.COLORARRAY, false);
         offset += 4;
-        for (const [r, g, b, a] of (geom as any).colors) {
+        for (const [r, g, b, a] of geom.colors) {
           view.setUint8(offset++, r);
           view.setUint8(offset++, g);
           view.setUint8(offset++, b);

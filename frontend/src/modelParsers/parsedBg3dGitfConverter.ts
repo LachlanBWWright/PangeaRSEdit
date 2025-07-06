@@ -1,5 +1,5 @@
 import {
-  BG3DGeometryFull,
+  BG3DGeometry,
   BG3DGroup,
   BG3DMaterial,
   BG3DParseResult,
@@ -18,18 +18,19 @@ import { Document, Mesh, Material, Texture } from "@gltf-transform/core";
  *   - Geometry.layerMaterialNum (stored in extras)
  *   - Geometry.boundingBox (stored in extras)
  */
+
 export function bg3dParsedToGLTF(parsed: BG3DParseResult): Document {
   const doc = new Document();
 
   // 1. Materials
-  const gltfMaterials: Material[] = parsed.materials.map((mat) => {
+  const gltfMaterials: Material[] = parsed.materials.map((mat, i) => {
     const m = doc.createMaterial("BG3DMaterial");
     m.setBaseColorFactor(mat.diffuseColor);
     // Store all BG3DMaterial fields in extras
     m.setExtras({
       flags: mat.flags,
       // Store all textures in extras for round-trip
-      textures: mat.textures?.map((tex) => ({
+      textures: mat.textures?.map((tex, j) => ({
         width: tex.width,
         height: tex.height,
         srcPixelFormat: tex.srcPixelFormat,
@@ -37,58 +38,65 @@ export function bg3dParsedToGLTF(parsed: BG3DParseResult): Document {
         bufferSize: tex.bufferSize,
         // Store pixel data as base64 for round-trip
         pixels: Buffer.from(tex.pixels).toString("base64"),
+        gltfTextureIndex: i * 8 + j, // unique index for this texture
       })),
     });
     return m;
   });
 
-  // 2. Textures/Images (if any)
-  // Attach the first texture as baseColorTexture for compatibility
+  // 2. Textures/Images (attach ALL textures as glTF images, not just the first)
   const gltfTextures: Texture[] = [];
   parsed.materials.forEach((mat, i) => {
     if (mat.textures && mat.textures.length > 0) {
-      const tex = mat.textures[0];
-      let pngBuffer: Buffer;
-      try {
-        pngBuffer = argb16ToPng(
-          new Uint16Array(
-            tex.pixels.buffer,
-            tex.pixels.byteOffset,
-            tex.pixels.byteLength / 2,
-          ),
-          tex.width,
-          tex.height,
-        );
-      } catch (e) {
-        pngBuffer = Buffer.from(tex.pixels);
-      }
-      const texture = doc.createTexture();
-      texture.setMimeType("image/png");
-      texture.setImage(pngBuffer);
-      texture.setExtras({
-        width: tex.width,
-        height: tex.height,
-        srcPixelFormat: tex.srcPixelFormat,
-        dstPixelFormat: tex.dstPixelFormat,
-        bufferSize: tex.bufferSize,
+      mat.textures.forEach((tex, j) => {
+        let pngBuffer: Buffer;
+        try {
+          pngBuffer = argb16ToPng(
+            new Uint16Array(
+              tex.pixels.buffer,
+              tex.pixels.byteOffset,
+              tex.pixels.byteLength / 2,
+            ),
+            tex.width,
+            tex.height,
+          );
+        } catch (e) {
+          pngBuffer = Buffer.from(tex.pixels);
+        }
+        const texture = doc.createTexture();
+        texture.setMimeType("image/png");
+        texture.setImage(pngBuffer);
+        texture.setExtras({
+          width: tex.width,
+          height: tex.height,
+          srcPixelFormat: tex.srcPixelFormat,
+          dstPixelFormat: tex.dstPixelFormat,
+          bufferSize: tex.bufferSize,
+          materialIndex: i,
+          textureIndex: j,
+        });
+        // Attach the first texture as baseColorTexture for compatibility
+        if (j === 0) {
+          gltfMaterials[i].setBaseColorTexture(texture);
+        }
+        gltfTextures.push(texture);
       });
-      gltfMaterials[i].setBaseColorTexture(texture);
-      gltfTextures.push(texture);
     }
   });
 
-  // Helper to collect all geometries from group hierarchy
-  function collectGeometries(groups: BG3DGroup[]): BG3DGeometryFull[] {
-    const result: BG3DGeometryFull[] = [];
+  // Helper to collect all geometries from group hierarchy (using .children)
+  function collectGeometries(groups: BG3DGroup[]): BG3DGeometry[] {
+    const result: BG3DGeometry[] = [];
     function traverse(group: BG3DGroup) {
-      if (group.geometries) {
-        for (const geom of group.geometries) {
-          result.push(geom as BG3DGeometryFull);
-        }
-      }
-      if (group.groups) {
-        for (const subGroup of group.groups) {
-          traverse(subGroup);
+      if (Array.isArray(group.children)) {
+        for (const child of group.children) {
+          if (Array.isArray((child as any).children)) {
+            // It's a BG3DGroup
+            traverse(child as BG3DGroup);
+          } else {
+            // It's a BG3DGeometry
+            result.push(child as BG3DGeometry);
+          }
         }
       }
     }
@@ -106,13 +114,13 @@ export function bg3dParsedToGLTF(parsed: BG3DParseResult): Document {
     const mesh = doc.createMesh();
     const prim = doc.createPrimitive();
     // POSITION
-    if (geom.points) {
+    if (geom.vertices) {
       prim.setAttribute(
         "POSITION",
         doc
           .createAccessor()
           .setType("VEC3")
-          .setArray(new Float32Array(geom.points.flat())),
+          .setArray(new Float32Array(geom.vertices.flat())),
       );
     }
     // NORMAL
@@ -182,12 +190,33 @@ export function bg3dParsedToGLTF(parsed: BG3DParseResult): Document {
   });
 
   // 4. Nodes and Hierarchy (Groups)
-  // For simplicity, put all meshes as root nodes; group hierarchy can be added if needed
-  gltfMeshes.forEach((mesh) => {
-    doc.createNode().setMesh(mesh);
-  });
+  // Encode BG3D group hierarchy as glTF nodes
+  function createNodeForGroup(group: BG3DGroup): any {
+    const node = doc.createNode();
+    // Attach meshes for all geometries in this group
+    for (const child of group.children) {
+      if (Array.isArray((child as any).children)) {
+        // It's a BG3DGroup
+        const childNode = createNodeForGroup(child as BG3DGroup);
+        node.addChild(childNode);
+      } else {
+        // It's a BG3DGeometry
+        const geomIndex = allGeometries.indexOf(child as BG3DGeometry);
+        if (geomIndex >= 0 && gltfMeshes[geomIndex]) {
+          node.addChild(doc.createNode().setMesh(gltfMeshes[geomIndex]));
+        }
+      }
+    }
+    return node;
+  }
+  // Add all top-level groups as root nodes
+  // Add all top-level groups as root nodes (using setChildren for glTF-Transform)
+  const rootNodes = parsed.groups.map((group) => createNodeForGroup(group));
+  for (const node of rootNodes) {
+    doc.getRoot().listNodes().push(node);
+  }
 
-  // 5. Store any unmappable data in extras at the root
+  // 5. Store any unmappable data in extras at the root (for legacy round-trip)
   doc.getRoot().setExtras({
     groups: parsed.groups,
     // Store BG3DParseResult-level fields for round-trip
@@ -360,7 +389,7 @@ export function gltfToBG3D(doc: Document): BG3DParseResult {
     });
 
   // 3. Geometries (restore all BG3D-specific fields from extras)
-  const geometries: BG3DGeometryFull[] = [];
+  const geometries: BG3DGeometry[] = [];
   doc
     .getRoot()
     .listMeshes()
@@ -369,13 +398,13 @@ export function gltfToBG3D(doc: Document): BG3DParseResult {
         const extras = prim.getExtras() || {};
         // POSITION
         const posAcc = prim.getAttribute("POSITION");
-        let points: [number, number, number][] | undefined = undefined;
+        let vertices: [number, number, number][] | undefined = undefined;
         if (posAcc) {
           const arr = Array.from(posAcc.getArray() as Float32Array);
-          points = [];
+          vertices = [];
           for (let i = 0; i < arr.length; i += 3) {
             if (i + 2 < arr.length)
-              points.push([arr[i], arr[i + 1], arr[i + 2]]);
+              vertices.push([arr[i], arr[i + 1], arr[i + 2]]);
           }
         }
         // NORMAL
@@ -453,13 +482,13 @@ export function gltfToBG3D(doc: Document): BG3DParseResult {
         const numPoints =
           typeof extras.numPoints === "number"
             ? extras.numPoints
-            : points?.length ?? 0;
+            : vertices?.length ?? 0;
         const numTriangles =
           typeof extras.numTriangles === "number"
             ? extras.numTriangles
             : triangles?.length ?? 0;
         geometries.push({
-          points,
+          vertices,
           normals,
           uvs,
           colors,
@@ -480,6 +509,9 @@ export function gltfToBG3D(doc: Document): BG3DParseResult {
   const rootExtras = doc.getRoot().getExtras() || {};
   if (Array.isArray(rootExtras.groups)) {
     groups = rootExtras.groups;
+  } else {
+    // If no group structure, put all geometries in a single top-level group
+    groups = [{ children: geometries }];
   }
 
   return {
