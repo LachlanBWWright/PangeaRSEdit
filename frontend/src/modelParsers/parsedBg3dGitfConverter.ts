@@ -5,9 +5,18 @@ import {
   BG3DParseResult,
   BG3DTexture,
 } from "./parseBG3D";
-import { argb16ToPng, pngToArgb16 } from "./image/pngArgb";
+
+import {
+  argb16ToPng,
+  rgb24ToPng,
+  rgba8ToPng,
+  pngToArgb16,
+  pngToRgb8,
+  pngToRgba8,
+} from "./image/pngArgb";
 
 import { Document, Mesh, Material, Texture } from "@gltf-transform/core";
+import { PixelFormatSrc } from "./parseBG3D";
 
 /**
  * Convert a BG3DParseResult to a glTF Document, transferring all possible data.
@@ -51,15 +60,29 @@ export function bg3dParsedToGLTF(parsed: BG3DParseResult): Document {
       mat.textures.forEach((tex, j) => {
         let pngBuffer: Buffer;
         try {
-          pngBuffer = argb16ToPng(
-            new Uint16Array(
-              tex.pixels.buffer,
-              tex.pixels.byteOffset,
-              tex.pixels.byteLength / 2,
-            ),
-            tex.width,
-            tex.height,
-          );
+          if (
+            tex.srcPixelFormat === PixelFormatSrc.GL_UNSIGNED_SHORT_1_5_5_5_REV
+          ) {
+            // ARGB16
+            pngBuffer = argb16ToPng(
+              new Uint16Array(
+                tex.pixels.buffer,
+                tex.pixels.byteOffset,
+                tex.pixels.byteLength / 2,
+              ),
+              tex.width,
+              tex.height,
+            );
+          } else if (tex.srcPixelFormat === PixelFormatSrc.GL_RGB) {
+            // RGB8
+            pngBuffer = rgb24ToPng(tex.pixels, tex.width, tex.height);
+          } else if (tex.srcPixelFormat === PixelFormatSrc.GL_RGBA) {
+            // GL_RGBA (RGBA8)
+            pngBuffer = rgba8ToPng(tex.pixels, tex.width, tex.height);
+          } else {
+            // Unknown/unsupported format, fallback to raw buffer
+            pngBuffer = Buffer.from(tex.pixels);
+          }
         } catch (e) {
           pngBuffer = Buffer.from(tex.pixels);
         }
@@ -307,7 +330,7 @@ export function gltfToBG3D(doc: Document): BG3DParseResult {
             if (typeof extrasValue === "object" && extrasValue !== null) {
               texExtras = extrasValue as Record<string, unknown>;
             }
-            // If the image is a PNG buffer, decode it to ARGB1555
+            // If the image is a PNG buffer, decode it based on srcPixelFormat
             let pngBuffer: Uint8Array | undefined = undefined;
             if ("buffer" in image && image["buffer"] instanceof Uint8Array) {
               pngBuffer = image["buffer"];
@@ -315,30 +338,63 @@ export function gltfToBG3D(doc: Document): BG3DParseResult {
               pngBuffer = image;
             }
             if (pngBuffer) {
-              const pngResult = pngToArgb16(Buffer.from(pngBuffer));
+              // Determine srcPixelFormat from texExtras (prefer explicit value)
+              let format =
+                typeof texExtras["srcPixelFormat"] === "number"
+                  ? texExtras["srcPixelFormat"]
+                  : null;
+              let pngResult: any = null;
+              if (format === PixelFormatSrc.GL_UNSIGNED_SHORT_1_5_5_5_REV) {
+                pngResult = pngToArgb16(Buffer.from(pngBuffer));
+                if (
+                  pngResult &&
+                  typeof pngResult === "object" &&
+                  "data" in pngResult &&
+                  pngResult.data instanceof Uint16Array
+                ) {
+                  pixels = new Uint8Array(pngResult.data.buffer);
+                }
+              } else if (format === PixelFormatSrc.GL_RGB) {
+                pngResult = pngToRgb8(Buffer.from(pngBuffer));
+                if (
+                  pngResult &&
+                  typeof pngResult === "object" &&
+                  "data" in pngResult &&
+                  pngResult.data instanceof Uint8Array
+                ) {
+                  pixels = pngResult.data;
+                }
+              } else if (format === PixelFormatSrc.GL_RGBA) {
+                pngResult = pngToRgba8(Buffer.from(pngBuffer));
+                if (
+                  pngResult &&
+                  typeof pngResult === "object" &&
+                  "data" in pngResult &&
+                  pngResult.data instanceof Uint8Array
+                ) {
+                  pixels = pngResult.data;
+                }
+              } else {
+                // Unknown format, fallback to raw buffer
+                pixels = pngBuffer;
+              }
               if (
                 pngResult &&
                 typeof pngResult === "object" &&
-                "data" in pngResult &&
                 "width" in pngResult &&
                 "height" in pngResult &&
-                pngResult.data instanceof Uint16Array &&
                 typeof pngResult.width === "number" &&
                 typeof pngResult.height === "number"
               ) {
-                pixels = new Uint8Array(pngResult.data.buffer);
                 width = pngResult.width;
                 height = pngResult.height;
-                srcPixelFormat =
-                  typeof texExtras["srcPixelFormat"] === "number"
-                    ? texExtras["srcPixelFormat"]
-                    : null;
-                dstPixelFormat =
-                  typeof texExtras["dstPixelFormat"] === "number"
-                    ? texExtras["dstPixelFormat"]
-                    : null;
-                bufferSize = pixels.byteLength;
               }
+              srcPixelFormat = format;
+              dstPixelFormat =
+                typeof texExtras["dstPixelFormat"] === "number"
+                  ? texExtras["dstPixelFormat"]
+                  : null;
+              bufferSize = pixels.byteLength;
             } else if (
               "getBuffer" in image &&
               typeof image["getBuffer"] === "function"

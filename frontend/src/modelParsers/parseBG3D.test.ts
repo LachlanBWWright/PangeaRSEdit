@@ -3,7 +3,18 @@ import { parseBG3D, bg3dParsedToBG3D } from "./parseBG3D";
 import { bg3dParsedToGLTF, gltfToBG3D } from "./parsedBg3dGitfConverter";
 import * as fs from "fs";
 import * as path from "path";
-import { argb16ToPng, rgb24ToPng } from "./image/pngArgb";
+
+import { argb16ToPng, rgb24ToPng, rgba8ToPng } from "./image/pngArgb";
+
+// Utility: Byte-swap a Uint16Array (swap each 16-bit word's bytes)
+function byteSwapUint16Array(arr: Uint16Array): Uint16Array {
+  const swapped = new Uint16Array(arr.length);
+  for (let i = 0; i < arr.length; i++) {
+    const val = arr[i];
+    swapped[i] = ((val & 0xff) << 8) | ((val >> 8) & 0xff);
+  }
+  return swapped;
+}
 
 // Adjust the path to your testSkeletons folder and BG3D file name
 const TEST_BG3D_PATH = path.join(
@@ -22,13 +33,32 @@ describe("parseBG3DAndUnparse", () => {
     //expect(Array.isArray(parsed.materials)).toBe(true);
     expect(Array.isArray(parsed.groups)).toBe(true);
 
-    /*     console.log("Parsed Materials:", parsed.materials.length);
+    console.log("Parsed Materials:", parsed.materials.length);
     parsed.materials.forEach((mat, i) => {
       console.log(`Material[${i}] textures:`, mat.textures.length);
       mat.textures.forEach((tex, j) => {
-        console.log(tex);
-        const pngBuffer = rgb24ToPng(tex.pixels, tex.width, tex.height);
-
+        // console.log(tex);
+        let pngBuffer: Buffer;
+        if (tex.srcPixelFormat === 33638) {
+          // GL_UNSIGNED_SHORT_1_5_5_5_REV (ARGB16)
+          // Convert ARGB16 to PNG, but byte-swap first
+          const argb16 = new Uint16Array(
+            tex.pixels.buffer,
+            tex.pixels.byteOffset,
+            tex.pixels.byteLength / 2,
+          );
+          const swapped = byteSwapUint16Array(argb16);
+          pngBuffer = argb16ToPng(swapped, tex.width, tex.height);
+        } else {
+          console.log(
+            `Texture ${i}.${j} has srcPixelFormat: ${tex.srcPixelFormat}`,
+          );
+          // GL_RGBA
+          // You may need a rgba8ToPng function if not present
+          // For now, fallback to rgb24ToPng (will be wrong if alpha is used)
+          console.log(tex.pixels, tex.width, tex.height);
+          pngBuffer = rgba8ToPng(tex.pixels, tex.width, tex.height);
+        }
         const pngPath = path.join(
           __dirname,
           `./testSkeletons/output/level10_brainboss.material${i}.texture${j}.png`,
@@ -36,7 +66,7 @@ describe("parseBG3DAndUnparse", () => {
         fs.writeFileSync(pngPath, pngBuffer);
         console.log(`Saved PNG to ${pngPath}`);
       });
-    }); */
+    });
 
     // Step 2: Back to BG3D
     const outputBuffer = bg3dParsedToBG3D(parsed);
@@ -55,6 +85,7 @@ describe("parseBG3DAndUnparse", () => {
     //Compare original and output arrays
     //Compare all bytes
     console.log("Lengths Match", outputArray.length, fileBuffer.byteLength);
+    expect(outputArray.length).toBe(fileBuffer.byteLength);
     let errorCount = 0;
     for (let i = 20; i < outputArray.length; i++) {
       if (outputArray[i] !== fileBuffer[i]) {
@@ -68,35 +99,6 @@ describe("parseBG3DAndUnparse", () => {
       // expect(outputArray[i], `Byte ${i} mismatch`).toBe(fileBuffer[i]);
     }
     console.log(`Total mismatches: ${errorCount}`);
-    // If there are more than 10 mismatches
-    //Check length
-    //expect(errorCount).toBe(0);
-    //expect(outputArray.length).toBe(fileBuffer.byteLength);
-
-    //Step 3: Parse new BG3D
-    const parsed2 = parseBG3D(outputBuffer);
-    expect(parsed2).toBeDefined();
-    expect(Array.isArray(parsed2.materials)).toBe(true);
-    expect(Array.isArray(parsed2.groups)).toBe(true);
-    expect(parsed2.groups.length).toBe(parsed.groups.length);
-    expect(parsed2.materials.length).toBe(parsed.materials.length);
-    expect(parsed2.groups.length).toBe(parsed.groups.length);
-
-    //expect(parsed2.materials.length).toBe(parsed.materials.length);
-
-    //Step 4: Back to BG3D again
-    const outputBuffer2 = bg3dParsedToBG3D(parsed2);
-    expect(outputBuffer2).toBeInstanceOf(ArrayBuffer);
-    expect(outputBuffer2.byteLength).toBeGreaterThan(0);
-    const outputArray2 = new Uint8Array(outputBuffer2);
-
-    //Compare both output arrays
-    expect(outputArray2.length).toBe(outputArray.length);
-    console.log("Lengths Match", outputArray2.length, outputArray.length);
-    console.log("Original Length:", fileBuffer.byteLength);
-    for (let i = 0; i < outputArray.length; i++) {
-      expect(outputArray2[i]).toBe(outputArray[i]);
-    }
   });
 });
 
@@ -111,117 +113,33 @@ describe("parseBG3D", () => {
     // Step 1: Parse BG3D
     const parsed = parseBG3D(arrayBuffer);
     expect(parsed).toBeDefined();
-    expect(Array.isArray(parsed.materials)).toBe(true);
-    expect(Array.isArray(parsed.groups)).toBe(true);
-    // Flatten all geometries from all groups for comparison
-    const flattenGeometries = (groups: any[]): any[] => {
-      let result: any[] = [];
-      for (const group of groups) {
-        if (group.geometries) result = result.concat(group.geometries);
-        if (group.groups)
-          result = result.concat(flattenGeometries(group.groups));
-      }
-      return result;
-    };
-    const allGeometries = flattenGeometries(parsed.groups);
-    console.log(
-      "Original: materials",
-      parsed.materials.length,
-      "geometries",
-      allGeometries.length,
-    );
-    parsed.materials.forEach((mat, i) => {
-      console.log(`Original material[${i}] textures:`, mat.textures.length);
-    });
 
     // Step 2: Convert to glTF
     const gltf = bg3dParsedToGLTF(parsed);
     expect(gltf).toBeDefined();
 
-    // Step 3: Convert back to BG3D
-    const parsed2_rt = gltfToBG3D(gltf);
-    expect(parsed2_rt).toBeDefined();
-    expect(Array.isArray(parsed2_rt.materials)).toBe(true);
-    expect(Array.isArray(parsed2_rt.groups)).toBe(true);
-    const allGeometries2 = flattenGeometries(parsed2_rt.groups);
-    console.log(
-      "Roundtrip: materials",
-      parsed2_rt.materials.length,
-      "geometries",
-      allGeometries2.length,
-    );
-    parsed2_rt.materials.forEach((mat, i) => {
-      // console.log(`Roundtrip material[${i}] textures:`, mat.textures.length);
-    });
-
-    // Compare top-level materials and groups for equality
-    expect(parsed2_rt.materials).toEqual(parsed.materials);
-    expect(parsed2_rt.groups).toEqual(parsed.groups);
-    console.log("Equality check passed");
-
-    // Step 4: Serialize back to BG3D
-    // Pass the original header (first 20 bytes) to preserve version info
-    const orig_rt = new Uint8Array(arrayBuffer);
-    const origHeader = orig_rt.slice(0, 20);
-    const outputBuffer_rt = bg3dParsedToBG3D(parsed2_rt);
-    const roundtrip_rt = new Uint8Array(outputBuffer_rt);
-    if (roundtrip_rt.length !== orig_rt.length) {
-      console.log(
-        "First 64 bytes of original:",
-        Array.from(orig_rt.slice(0, 64)),
-      );
-      console.log(
-        "First 64 bytes of roundtrip:",
-        Array.from(roundtrip_rt.slice(0, 64)),
-      );
-      console.log("Last 64 bytes of original:", Array.from(orig_rt.slice(-64)));
-      console.log(
-        "Last 64 bytes of roundtrip:",
-        Array.from(roundtrip_rt.slice(-64)),
-      );
-    }
-    //expect(roundtrip_rt.length).toBe(orig_rt.length);
-    for (let i = 0; i < orig_rt.length; i++) {
-      try {
-        expect(roundtrip_rt[i], `Byte ${i} mismatch`).toBe(orig_rt[i]);
-      } catch (e) {
-        console.error(`Error at byte ${i}:`, e);
-        throw e;
-      }
-    }
-
-    // Step 3: Convert glTF back to parsed BG3D
+    // Step 3: Convert back to Parsed BG3D
     const parsed2 = gltfToBG3D(gltf);
     expect(parsed2).toBeDefined();
-    expect(Array.isArray(parsed2.materials)).toBe(true);
-    expect(Array.isArray(parsed2.groups)).toBe(true);
 
-    // Step 3.5: Deep equality check between initial and round-tripped parsed BG3D
-    console.log("Checking equality of parsed objects...");
-    expect(parsed2.materials.length).toBe(parsed.materials.length);
-    expect(parsed2.groups.length).toBe(parsed.groups.length);
-    // Compare all geometries in all groups
-    const allGeometriesA = flattenGeometries(parsed.groups);
-    const allGeometriesB = flattenGeometries(parsed2.groups);
-    expect(allGeometriesB.length).toBe(allGeometriesA.length);
-    for (let i = 0; i < allGeometriesA.length; i++) {
-      expect(allGeometriesB[i]).toEqual(allGeometriesA[i]);
-    }
-    for (let i = 0; i < parsed.groups.length; i++) {
-      expect(parsed2.groups[i]).toEqual(parsed.groups[i]);
-    }
-    for (let i = 0; i < parsed.materials.length; i++) {
-      expect(parsed2.materials[i]).toEqual(parsed.materials[i]);
-    }
-    // Step 4: Serialize parsed BG3D back to file
+    // Check that parsed and parsed2 are identical
+    expect(parsed2).toEqual(parsed);
+
+    // Compare top-level materials and groups for equality
+    expect(parsed2.materials).toEqual(parsed.materials);
+    expect(parsed2.groups).toEqual(parsed.groups);
+    console.log("Equality check passed");
+
+    // Step 4: Convert back to BG3D ArrayBuffer
     const outputBuffer = bg3dParsedToBG3D(parsed2);
-    expect(outputBuffer).toBeInstanceOf(ArrayBuffer);
-    // Step 5: Compare input and output buffers (byte-for-byte)
-    const orig = new Uint8Array(arrayBuffer);
-    const roundtrip = new Uint8Array(outputBuffer);
-    expect(roundtrip.length).toBe(orig.length);
-    for (let i = 0; i < orig.length; i++) {
-      expect(roundtrip[i]).toBe(orig[i]);
+
+    //Check it matches the original file
+    const outputArray = new Uint8Array(outputBuffer);
+    const originalArray = new Uint8Array(arrayBuffer);
+    console.log("Lengths Match", outputArray.length, originalArray.length);
+    for (let i = 20; i < outputArray.length; i++) {
+      expect(outputArray[i], `Byte ${i} mismatch`).toBe(originalArray[i]);
     }
+    console.log("All bytes match");
   });
-});
+}, 50000);

@@ -1,3 +1,18 @@
+// Decode PNG Buffer to RGB8 Uint8Array (strips alpha)
+export function pngToRgb8(pngBuffer: Buffer): {
+  data: Uint8Array;
+  width: number;
+  height: number;
+} {
+  const { data: rgba, width, height } = pngToRgba8(pngBuffer);
+  const rgb = new Uint8Array((rgba.length / 4) * 3);
+  for (let i = 0, j = 0; i < rgba.length; i += 4, j += 3) {
+    rgb[j + 0] = rgba[i + 0];
+    rgb[j + 1] = rgba[i + 1];
+    rgb[j + 2] = rgba[i + 2];
+  }
+  return { data: rgb, width, height };
+}
 import { PNG } from "pngjs";
 // Convert 24-bit RGB (Uint8Array) to PNG Buffer
 export function rgb24ToPng(
@@ -59,6 +74,8 @@ export function rgba8ToPng(
   height: number,
 ): Buffer {
   const png = new PNG({ width, height });
+  console.log("Setting PNG data with length:", rgba.length);
+  console.log("PNG dimensions:", width, "x", height);
   png.data.set(rgba);
   return PNG.sync.write(png);
 }

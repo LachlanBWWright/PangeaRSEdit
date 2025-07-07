@@ -1,13 +1,11 @@
 // parseBG3D.ts
 // Full BG3D file parser for Otto Matic and related games
 
-import { groupCollapsed } from "console";
-import { off } from "process";
-
 //https://registry.khronos.org/OpenGL-Refpages/gl4/html/glTexImage2D.xhtml
 export enum PixelFormatSrc {
   GL_UNSIGNED_SHORT_1_5_5_5_REV = 33638, // 1a 5r 5g 5b 0x8366 33638
   GL_RGB = 6407, // 8r 8g 8b 0x1907 6407
+  GL_RGBA = 6408, // 8r 8g 8b 8a 0x1908 6408
 }
 
 export enum PixelFormatDst {
@@ -241,13 +239,8 @@ export function parseBG3D(buffer: ArrayBuffer): BG3DParseResult {
       case BG3DTagType.GROUPSTART: {
         // Start a new group and push to stack
         const group: BG3DGroup = { children: [] };
-        if (currentGroup) {
-          currentGroup.children.push(group);
-        } else {
-          // If no current group, this is a top-level group
-          groups.push(group);
-          //console.warn("Top-level group created without parent");
-        }
+
+        currentGroup.children.push(group);
         groupStack.push(group);
         currentGroup = group;
         break;
@@ -260,8 +253,8 @@ export function parseBG3D(buffer: ArrayBuffer): BG3DParseResult {
           );
         }
         if (groupStack.length > 0) {
-          currentGroup = groupStack[groupStack.length - 1];
           groupStack.pop();
+          currentGroup = groupStack[groupStack.length - 1]; //Get last group
         } else {
           //There should be a base group not mentioned in open/closed tags
           throw new Error("GROUPEND tag found with no open group");
@@ -526,11 +519,10 @@ export function bg3dParsedToBG3D(parsed: BG3DParseResult): ArrayBuffer {
     }
   }
 
+  console.log("NUM PARSED GROUPS:", parsed.groups.length);
   // Write groups and all group-specific data
-  parsed.groups.forEach((group, i) => {
-    if (i > 0) {
-      offset = writeGroup(view, buffer, group, offset);
-    }
+  parsed.groups.forEach((group) => {
+    offset = writeGroup(view, buffer, group, offset, true);
   });
 
   // ENDFILE
@@ -548,16 +540,20 @@ function writeGroup(
   buffer: ArrayBuffer,
   group: BG3DGroup,
   startOffset: number,
+  isBaseGroup: boolean,
 ): number {
   let offset = startOffset;
   // GROUPSTART
-  console.log(`[bg3dParsedToBG3D] Write GROUPSTART at offset ${offset}`);
-  view.setUint32(offset, BG3DTagType.GROUPSTART, false);
-  offset += 4;
+
+  if (!isBaseGroup) {
+    console.log(`[bg3dParsedToBG3D] Write GROUPSTART at offset ${offset}`);
+    view.setUint32(offset, BG3DTagType.GROUPSTART, false);
+    offset += 4;
+  }
 
   for (const child of group.children) {
     if (isBG3DGroup(child)) {
-      offset = writeGroup(view, buffer, child, offset);
+      offset = writeGroup(view, buffer, child, offset, false);
     } else {
       // GEOMETRY tag
       const geom = child;
@@ -652,9 +648,11 @@ function writeGroup(
   }
 
   // GROUPEND
-  console.log(`[bg3dParsedToBG3D] Write GROUPEND at offset ${offset}`);
-  view.setUint32(offset, BG3DTagType.GROUPEND, false);
-  offset += 4;
+  if (!isBaseGroup) {
+    console.log(`[bg3dParsedToBG3D] Write GROUPEND at offset ${offset}`);
+    view.setUint32(offset, BG3DTagType.GROUPEND, false);
+    offset += 4;
+  }
   return offset;
 }
 
