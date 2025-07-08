@@ -3,6 +3,7 @@ import { parseBG3D, bg3dParsedToBG3D } from "./parseBG3D";
 import { bg3dParsedToGLTF, gltfToBG3D } from "./parsedBg3dGitfConverter";
 import * as fs from "fs";
 import * as path from "path";
+import { NodeIO } from "@gltf-transform/core";
 
 import { argb16ToPng, rgb24ToPng, rgba8ToPng } from "./image/pngArgb";
 
@@ -19,7 +20,7 @@ function byteSwapUint16Array(arr: Uint16Array): Uint16Array {
 // Adjust the path to your testSkeletons folder and BG3D file name
 const TEST_BG3D_PATH = path.join(
   __dirname,
-  "./testSkeletons/level10_brainboss.bg3d",
+  "./testSkeletons/level4_apocalypse.bg3d",
 );
 
 describe("parseBG3DAndUnparse", () => {
@@ -61,7 +62,7 @@ describe("parseBG3DAndUnparse", () => {
         }
         const pngPath = path.join(
           __dirname,
-          `./testSkeletons/output/level10_brainboss.material${i}.texture${j}.png`,
+          `./testSkeletons/output/level4_apocalypse.material${i}.texture${j}.png`,
         );
         fs.writeFileSync(pngPath, pngBuffer);
         console.log(`Saved PNG to ${pngPath}`);
@@ -78,7 +79,7 @@ describe("parseBG3DAndUnparse", () => {
     // Save the new BG3D file for inspection
     const roundtripPath = path.join(
       __dirname,
-      "./testSkeletons/output/level10_brainboss.roundtrip1.bg3d",
+      "./testSkeletons/output/level4_apocalypse.roundtrip1.bg3d",
     );
     fs.writeFileSync(roundtripPath, Buffer.from(outputBuffer));
 
@@ -103,7 +104,7 @@ describe("parseBG3DAndUnparse", () => {
 });
 
 describe("parseBG3D", () => {
-  it("parses a real BG3D file from testSkeletons", () => {
+  it("parses a real BG3D file from testSkeletons", async () => {
     const fileBuffer = fs.readFileSync(TEST_BG3D_PATH);
     const arrayBuffer = fileBuffer.buffer.slice(
       fileBuffer.byteOffset,
@@ -117,6 +118,15 @@ describe("parseBG3D", () => {
     // Step 2: Convert to glTF
     const gltf = bg3dParsedToGLTF(parsed);
     expect(gltf).toBeDefined();
+
+    //Save the glTF for inspection
+
+    const io = new NodeIO();
+    console.log("Writing glTF to NodeIO instance");
+    await io.write(
+      __dirname + "/testSkeletons/output/level4_apocalypse.glb",
+      gltf,
+    ); // Ensure the glTF is written to the NodeIO instance
 
     // Step 3: Convert back to Parsed BG3D
     const parsed2 = gltfToBG3D(gltf);

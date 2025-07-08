@@ -30,6 +30,7 @@ import { PixelFormatSrc } from "./parseBG3D";
 
 export function bg3dParsedToGLTF(parsed: BG3DParseResult): Document {
   const doc = new Document();
+  doc.createBuffer("Basebuffer");
 
   // 1. Materials
   const gltfMaterials: Material[] = parsed.materials.map((mat, i) => {
@@ -63,16 +64,19 @@ export function bg3dParsedToGLTF(parsed: BG3DParseResult): Document {
           if (
             tex.srcPixelFormat === PixelFormatSrc.GL_UNSIGNED_SHORT_1_5_5_5_REV
           ) {
-            // ARGB16
-            pngBuffer = argb16ToPng(
-              new Uint16Array(
-                tex.pixels.buffer,
-                tex.pixels.byteOffset,
-                tex.pixels.byteLength / 2,
-              ),
-              tex.width,
-              tex.height,
+            // ARGB16 with byte swap
+            const src = new Uint16Array(
+              tex.pixels.buffer,
+              tex.pixels.byteOffset,
+              tex.pixels.byteLength / 2,
             );
+            // Byte swap each 16-bit value
+            const swapped = new Uint16Array(src.length);
+            for (let k = 0; k < src.length; k++) {
+              const val = src[k];
+              swapped[k] = ((val & 0xff) << 8) | ((val >> 8) & 0xff);
+            }
+            pngBuffer = argb16ToPng(swapped, tex.width, tex.height);
           } else if (tex.srcPixelFormat === PixelFormatSrc.GL_RGB) {
             // RGB8
             pngBuffer = rgb24ToPng(tex.pixels, tex.width, tex.height);
@@ -235,8 +239,10 @@ export function bg3dParsedToGLTF(parsed: BG3DParseResult): Document {
   // Add all top-level groups as root nodes
   // Add all top-level groups as root nodes (using setChildren for glTF-Transform)
   const rootNodes = parsed.groups.map((group) => createNodeForGroup(group));
+  const scene = doc.createScene("Scene");
   for (const node of rootNodes) {
     doc.getRoot().listNodes().push(node);
+    scene.addChild(node);
   }
 
   // 5. Store any unmappable data in extras at the root (for legacy round-trip)
@@ -352,7 +358,14 @@ export function gltfToBG3D(doc: Document): BG3DParseResult {
                   "data" in pngResult &&
                   pngResult.data instanceof Uint16Array
                 ) {
-                  pixels = new Uint8Array(pngResult.data.buffer);
+                  // Byte swap each 16-bit value back to BG3D order
+                  const src = pngResult.data;
+                  const swapped = new Uint16Array(src.length);
+                  for (let k = 0; k < src.length; k++) {
+                    const val = src[k];
+                    swapped[k] = ((val & 0xff) << 8) | ((val >> 8) & 0xff);
+                  }
+                  pixels = new Uint8Array(swapped.buffer);
                 }
               } else if (format === PixelFormatSrc.GL_RGB) {
                 pngResult = pngToRgb8(Buffer.from(pngBuffer));
