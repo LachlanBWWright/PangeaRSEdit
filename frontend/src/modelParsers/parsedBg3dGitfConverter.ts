@@ -1,3 +1,15 @@
+// Browser-safe base64 encoding for Uint8Array
+function uint8ToBase64(u8: Uint8Array): string {
+  const CHUNK_SIZE = 0x8000;
+  let result = "";
+  for (let i = 0; i < u8.length; i += CHUNK_SIZE) {
+    result += String.fromCharCode.apply(
+      null,
+      u8.subarray(i, i + CHUNK_SIZE) as any,
+    );
+  }
+  return btoa(result);
+}
 import {
   BG3DGeometry,
   BG3DGroup,
@@ -30,7 +42,9 @@ import { PixelFormatSrc } from "./parseBG3D";
 
 export function bg3dParsedToGLTF(parsed: BG3DParseResult): Document {
   const doc = new Document();
+  console.log("Creating new glTF Document");
   doc.createBuffer("Basebuffer");
+  console.log("Created base buffer for glTF Document");
 
   // 1. Materials
   const gltfMaterials: Material[] = parsed.materials.map((mat, i) => {
@@ -47,19 +61,20 @@ export function bg3dParsedToGLTF(parsed: BG3DParseResult): Document {
         dstPixelFormat: tex.dstPixelFormat,
         bufferSize: tex.bufferSize,
         // Store pixel data as base64 for round-trip
-        pixels: Buffer.from(tex.pixels).toString("base64"),
+        pixels: uint8ToBase64(tex.pixels),
         gltfTextureIndex: i * 8 + j, // unique index for this texture
       })),
     });
     return m;
   });
 
+  console.log("Stage 2");
   // 2. Textures/Images (attach ALL textures as glTF images, not just the first)
   const gltfTextures: Texture[] = [];
   parsed.materials.forEach((mat, i) => {
     if (mat.textures && mat.textures.length > 0) {
       mat.textures.forEach((tex, j) => {
-        let pngBuffer: Buffer;
+        let pngBuffer: Uint8Array<ArrayBufferLike>;
         try {
           if (
             tex.srcPixelFormat === PixelFormatSrc.GL_UNSIGNED_SHORT_1_5_5_5_REV
@@ -85,10 +100,10 @@ export function bg3dParsedToGLTF(parsed: BG3DParseResult): Document {
             pngBuffer = rgba8ToPng(tex.pixels, tex.width, tex.height);
           } else {
             // Unknown/unsupported format, fallback to raw buffer
-            pngBuffer = Buffer.from(tex.pixels);
+            pngBuffer = tex.pixels;
           }
         } catch (e) {
-          pngBuffer = Buffer.from(tex.pixels);
+          pngBuffer = tex.pixels;
         }
         const texture = doc.createTexture();
         texture.setMimeType("image/png");
@@ -110,6 +125,8 @@ export function bg3dParsedToGLTF(parsed: BG3DParseResult): Document {
       });
     }
   });
+
+  console.log("Stage 3");
 
   // Helper to collect all geometries from group hierarchy (using .children)
   function collectGeometries(groups: BG3DGroup[]): BG3DGeometry[] {
@@ -134,6 +151,8 @@ export function bg3dParsedToGLTF(parsed: BG3DParseResult): Document {
   }
 
   const allGeometries = collectGeometries(parsed.groups);
+
+  console.log("Stage 4");
 
   // 3. Meshes and Primitives
   const gltfMeshes: Mesh[] = [];
@@ -216,6 +235,8 @@ export function bg3dParsedToGLTF(parsed: BG3DParseResult): Document {
     gltfMeshes.push(mesh);
   });
 
+  console.log("Stage 5");
+
   // 4. Nodes and Hierarchy (Groups)
   // Encode BG3D group hierarchy as glTF nodes
   function createNodeForGroup(group: BG3DGroup): any {
@@ -253,6 +274,8 @@ export function bg3dParsedToGLTF(parsed: BG3DParseResult): Document {
       // No flat geometries array anymore; if needed, can extract from groups
     },
   });
+
+  console.log("Finalizing glTF Document");
 
   return doc;
 }

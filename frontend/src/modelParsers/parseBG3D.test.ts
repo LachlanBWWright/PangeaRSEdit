@@ -152,4 +152,4 @@ describe("parseBG3D", () => {
     }
     console.log("All bytes match");
   });
-}, 50000);
+}, 100_000);

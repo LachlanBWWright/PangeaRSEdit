@@ -1,3 +1,5 @@
+import { PNG } from "pngjs/browser";
+
 // Decode PNG Buffer to RGB8 Uint8Array (strips alpha)
 export function pngToRgb8(pngBuffer: Buffer): {
   data: Uint8Array;
@@ -13,7 +15,6 @@ export function pngToRgb8(pngBuffer: Buffer): {
   }
   return { data: rgb, width, height };
 }
-import { PNG } from "pngjs";
 // Convert 24-bit RGB (Uint8Array) to PNG Buffer
 export function rgb24ToPng(
   rgb: Uint8Array,
