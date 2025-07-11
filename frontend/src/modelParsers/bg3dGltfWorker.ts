@@ -51,7 +51,7 @@ self.onmessage = async (e: MessageEvent<BG3DGltfWorkerMessage>) => {
       const io = new WebIO();
       const doc = await io.readBinary(new Uint8Array(msg.buffer));
       const parsed = gltfToBG3D(doc);
-      const bg3d = bg3dParsedToBG3D(parsed);
+      const bg3d = bg3dParsedToBG3D(await parsed);
       const response: BG3DGltfWorkerResponse = {
         type: "glb-to-bg3d",
         result: bg3d,

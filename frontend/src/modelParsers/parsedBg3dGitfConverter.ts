@@ -28,7 +28,8 @@ import {
 } from "./image/pngArgb";
 
 import { Document, Mesh, Material, Texture } from "@gltf-transform/core";
-import { PixelFormatSrc } from "./parseBG3D";
+import { PixelFormatSrc, PixelFormatDst } from "./parseBG3D";
+import { createWriteStream } from "fs";
 
 /**
  * Convert a BG3DParseResult to a glTF Document, transferring all possible data.
@@ -49,28 +50,17 @@ export function bg3dParsedToGLTF(parsed: BG3DParseResult): Document {
   // 1. Materials
   const gltfMaterials: Material[] = parsed.materials.map((mat, i) => {
     const m = doc.createMaterial("BG3DMaterial");
+    m.setName(`Material_${i.toString().padStart(2, "0")}`);
     m.setBaseColorFactor(mat.diffuseColor);
-    // Store all BG3DMaterial fields in extras
+    // Only store BG3DMaterial.flags in extras (no texture data)
     m.setExtras({
       flags: mat.flags,
-      // Store all textures in extras for round-trip
-      textures: mat.textures?.map((tex, j) => ({
-        width: tex.width,
-        height: tex.height,
-        srcPixelFormat: tex.srcPixelFormat,
-        dstPixelFormat: tex.dstPixelFormat,
-        bufferSize: tex.bufferSize,
-        // Store pixel data as base64 for round-trip
-        pixels: uint8ToBase64(tex.pixels),
-        gltfTextureIndex: i * 8 + j, // unique index for this texture
-      })),
     });
     return m;
   });
 
   console.log("Stage 2");
   // 2. Textures/Images (attach ALL textures as glTF images, not just the first)
-  const gltfTextures: Texture[] = [];
   parsed.materials.forEach((mat, i) => {
     if (mat.textures && mat.textures.length > 0) {
       mat.textures.forEach((tex, j) => {
@@ -121,7 +111,6 @@ export function bg3dParsedToGLTF(parsed: BG3DParseResult): Document {
         if (j === 0) {
           gltfMaterials[i].setBaseColorTexture(texture);
         }
-        gltfTextures.push(texture);
       });
     }
   });
@@ -210,6 +199,7 @@ export function bg3dParsedToGLTF(parsed: BG3DParseResult): Document {
     }
     // Material
     // Store per-primitive material index in extras
+    //TODO: Support multiple primitives per mesh
     let materialIndex = 0;
     if (
       Array.isArray(geom.layerMaterialNum) &&
@@ -222,11 +212,11 @@ export function bg3dParsedToGLTF(parsed: BG3DParseResult): Document {
     }
     // Extras for unmappable fields and BG3D-specific fields
     prim.setExtras({
-      layerMaterialNum: geom.layerMaterialNum,
+      layerMaterialNum: geom.layerMaterialNum, //TODO: Shouldn't be stored in extras
       flags: geom.flags,
       boundingBox: geom.boundingBox,
       type: geom.type,
-      numMaterials: geom.numMaterials,
+      numMaterials: geom.numMaterials, //TODO: Shouldn't be stored in extras
       numPoints: geom.numPoints,
       numTriangles: geom.numTriangles,
       materialIndex,
@@ -280,213 +270,86 @@ export function bg3dParsedToGLTF(parsed: BG3DParseResult): Document {
   return doc;
 }
 
-export function gltfToBG3D(doc: Document): BG3DParseResult {
-  // 1. Materials (restore all fields and all textures from extras)
-  const materials: BG3DMaterial[] = doc
-    .getRoot()
-    .listMaterials()
-    .map((mat) => {
-      const extras = mat.getExtras() ?? {};
-      let diffuseColor: [number, number, number, number] = [1, 1, 1, 1];
-      const baseColor = mat.getBaseColorFactor();
-      if (
-        Array.isArray(baseColor) &&
-        baseColor.length === 4 &&
-        baseColor.every((v) => typeof v === "number")
-      ) {
-        diffuseColor = [baseColor[0], baseColor[1], baseColor[2], baseColor[3]];
-      }
-      const flags = typeof extras["flags"] === "number" ? extras["flags"] : 0;
+export async function gltfToBG3D(doc: Document): Promise<BG3DParseResult> {
+  console.log("gltfToBG3D: Restoring materials...");
+  const materials: BG3DMaterial[] = await Promise.all(
+    doc
+      .getRoot()
+      .listMaterials()
+      .map(async (mat, i) => {
+        const extras = mat.getExtras() ?? {};
+        let diffuseColor: [number, number, number, number] = [1, 1, 1, 1];
+        const baseColor = mat.getBaseColorFactor();
+        if (
+          Array.isArray(baseColor) &&
+          baseColor.length === 4 &&
+          baseColor.every((v) => typeof v === "number")
+        ) {
+          diffuseColor = [
+            baseColor[0],
+            baseColor[1],
+            baseColor[2],
+            baseColor[3],
+          ];
+        }
+        const flags = typeof extras["flags"] === "number" ? extras["flags"] : 0;
 
-      // Restore all textures from extras if present, otherwise fallback to baseColorTexture
-      let textures: BG3DTexture[] = [];
-      if (Array.isArray(extras.textures)) {
-        // Textures were stored in extras as an array of objects
-        textures = extras.textures.map((t: any) => {
-          let pixels: Uint8Array = new Uint8Array();
-          let width = 0;
-          let height = 0;
-          let srcPixelFormat = 0;
-          let dstPixelFormat = 0;
-          let bufferSize = 0;
-          if (t && typeof t === "object") {
-            if (typeof t.pixels === "string") {
-              // base64 encoded
-              pixels = Uint8Array.from(atob(t.pixels), (c) => c.charCodeAt(0));
-            } else if (t.pixels instanceof Uint8Array) {
-              pixels = t.pixels;
-            }
-            width = typeof t.width === "number" ? t.width : 0;
-            height = typeof t.height === "number" ? t.height : 0;
-            srcPixelFormat =
-              typeof t.srcPixelFormat === "number" ? t.srcPixelFormat : 0;
-            dstPixelFormat =
-              typeof t.dstPixelFormat === "number" ? t.dstPixelFormat : 0;
-            bufferSize =
-              typeof t.bufferSize === "number"
-                ? t.bufferSize
-                : pixels.byteLength;
-          }
-          return {
-            pixels,
-            width,
-            height,
-            srcPixelFormat,
-            dstPixelFormat,
-            bufferSize,
-          };
-        });
-      } else {
-        // Fallback: try to restore from baseColorTexture
+        console.log(
+          `Material[${i}]: diffuseColor=`,
+          diffuseColor,
+          "flags=",
+          flags,
+        );
+
+        // Only restore textures from baseColorTexture (do not parse from extras)
+        let textures: BG3DTexture[] = [];
+
         const baseColorTex = mat.getBaseColorTexture();
         if (baseColorTex) {
           const image = baseColorTex.getImage();
-          let texExtras: Record<string, unknown> = {};
-          let pixels: Uint8Array = new Uint8Array();
-          let width = 0;
-          let height = 0;
-          let srcPixelFormat: unknown = null;
-          let dstPixelFormat: unknown = null;
-          let bufferSize = 0;
-          if (
-            image !== null &&
-            typeof image === "object" &&
-            "getExtras" in image &&
-            typeof image["getExtras"] === "function"
-          ) {
-            // getExtras is present
-            const extrasValue = (image["getExtras"] as () => unknown)();
-            if (typeof extrasValue === "object" && extrasValue !== null) {
-              texExtras = extrasValue as Record<string, unknown>;
-            }
-            // If the image is a PNG buffer, decode it based on srcPixelFormat
-            let pngBuffer: Uint8Array | undefined = undefined;
-            if ("buffer" in image && image["buffer"] instanceof Uint8Array) {
-              pngBuffer = image["buffer"];
-            } else if (image instanceof Uint8Array) {
-              pngBuffer = image;
-            }
-            if (pngBuffer) {
-              // Determine srcPixelFormat from texExtras (prefer explicit value)
-              let format =
-                typeof texExtras["srcPixelFormat"] === "number"
-                  ? texExtras["srcPixelFormat"]
-                  : null;
-              let pngResult: any = null;
-              if (format === PixelFormatSrc.GL_UNSIGNED_SHORT_1_5_5_5_REV) {
-                pngResult = pngToArgb16(Buffer.from(pngBuffer));
-                if (
-                  pngResult &&
-                  typeof pngResult === "object" &&
-                  "data" in pngResult &&
-                  pngResult.data instanceof Uint16Array
-                ) {
-                  // Byte swap each 16-bit value back to BG3D order
-                  const src = pngResult.data;
-                  const swapped = new Uint16Array(src.length);
-                  for (let k = 0; k < src.length; k++) {
-                    const val = src[k];
-                    swapped[k] = ((val & 0xff) << 8) | ((val >> 8) & 0xff);
-                  }
-                  pixels = new Uint8Array(swapped.buffer);
-                }
-              } else if (format === PixelFormatSrc.GL_RGB) {
-                pngResult = pngToRgb8(Buffer.from(pngBuffer));
-                if (
-                  pngResult &&
-                  typeof pngResult === "object" &&
-                  "data" in pngResult &&
-                  pngResult.data instanceof Uint8Array
-                ) {
-                  pixels = pngResult.data;
-                }
-              } else if (format === PixelFormatSrc.GL_RGBA) {
-                pngResult = pngToRgba8(Buffer.from(pngBuffer));
-                if (
-                  pngResult &&
-                  typeof pngResult === "object" &&
-                  "data" in pngResult &&
-                  pngResult.data instanceof Uint8Array
-                ) {
-                  pixels = pngResult.data;
-                }
-              } else {
-                // Unknown format, fallback to raw buffer
-                pixels = pngBuffer;
-              }
-              if (
-                pngResult &&
-                typeof pngResult === "object" &&
-                "width" in pngResult &&
-                "height" in pngResult &&
-                typeof pngResult.width === "number" &&
-                typeof pngResult.height === "number"
-              ) {
-                width = pngResult.width;
-                height = pngResult.height;
-              }
-              srcPixelFormat = format;
-              dstPixelFormat =
-                typeof texExtras["dstPixelFormat"] === "number"
-                  ? texExtras["dstPixelFormat"]
-                  : null;
-              bufferSize = pixels.byteLength;
-            } else if (
-              "getBuffer" in image &&
-              typeof image["getBuffer"] === "function"
-            ) {
-              const bufResult = image["getBuffer"]();
-              if (bufResult instanceof Uint8Array) {
-                pixels = bufResult;
-              }
-              width =
-                typeof texExtras["width"] === "number"
-                  ? (texExtras["width"] as number)
-                  : 0;
-              height =
-                typeof texExtras["height"] === "number"
-                  ? (texExtras["height"] as number)
-                  : 0;
-              srcPixelFormat =
-                typeof texExtras["srcPixelFormat"] === "number"
-                  ? texExtras["srcPixelFormat"]
-                  : null;
-              dstPixelFormat =
-                typeof texExtras["dstPixelFormat"] === "number"
-                  ? texExtras["dstPixelFormat"]
-                  : null;
-              bufferSize =
-                typeof texExtras["bufferSize"] === "number"
-                  ? (texExtras["bufferSize"] as number)
-                  : pixels.byteLength;
-            }
-          }
-          textures.push({
-            pixels,
-            width,
-            height,
-            srcPixelFormat:
-              typeof srcPixelFormat === "number" ? srcPixelFormat : 0,
-            dstPixelFormat:
-              typeof dstPixelFormat === "number" ? dstPixelFormat : 0,
-            bufferSize,
-          });
-        }
-      }
-      return {
-        diffuseColor,
-        flags,
-        textures,
-      };
-    });
 
-  // 3. Geometries (restore all BG3D-specific fields from extras)
+          const size = baseColorTex.getSize();
+          console.log("TEX SIZE", size);
+          if (image instanceof Uint8Array) {
+            console.log(
+              `Material[${i}]: Restoring texture from baseColorTexture, byteLength=`,
+              image.byteLength,
+            );
+
+            const pngRes = await pngToRgba8(image.buffer as ArrayBuffer);
+
+            textures.push({
+              pixels: pngRes.data,
+              width: pngRes.width,
+              height: pngRes.height,
+              srcPixelFormat: PixelFormatSrc.GL_RGBA,
+              dstPixelFormat: PixelFormatDst.GL_UNSIGNED_SHORT_5_5_5_1,
+              bufferSize: pngRes.data.byteLength,
+            });
+          } else {
+            console.log(
+              `Material[${i}]: baseColorTexture image is not Uint8Array, got:`,
+              typeof image,
+            );
+          }
+        } else {
+          console.log(`Material[${i}]: No baseColorTexture found.`);
+        }
+        return {
+          diffuseColor,
+          flags,
+          textures,
+        };
+      }),
+  );
+
+  console.log("gltfToBG3D: Restoring geometries...");
   const geometries: BG3DGeometry[] = [];
   doc
     .getRoot()
     .listMeshes()
-    .forEach((mesh) => {
-      mesh.listPrimitives().forEach((prim) => {
+    .forEach((mesh, meshIdx) => {
+      mesh.listPrimitives().forEach((prim, primIdx) => {
         const extras = prim.getExtras() || {};
         // POSITION
         const posAcc = prim.getAttribute("POSITION");
@@ -542,8 +405,11 @@ export function gltfToBG3D(doc: Document): BG3DParseResult {
               triangles.push([arr[i], arr[i + 1], arr[i + 2]]);
           }
         }
+
         // Unmappable fields from extras
+        //TODO: FIX
         let layerMaterialNum: number[] = [0, 0, 0, 0];
+
         if (
           Array.isArray(extras.layerMaterialNum) &&
           extras.layerMaterialNum.length === 4
@@ -579,6 +445,26 @@ export function gltfToBG3D(doc: Document): BG3DParseResult {
           typeof extras.numTriangles === "number"
             ? extras.numTriangles
             : triangles?.length ?? 0;
+        console.log(
+          `Geometry mesh[${meshIdx}] prim[${primIdx}]: vertices=${
+            vertices?.length ?? 0
+          }, normals=${normals?.length ?? 0}, uvs=${uvs?.length ?? 0}, colors=${
+            colors?.length ?? 0
+          }, triangles=${triangles?.length ?? 0}, layerMaterialNum=`,
+          layerMaterialNum,
+          "flags=",
+          flags,
+          "boundingBox=",
+          boundingBox,
+          "type=",
+          type,
+          "numMaterials=",
+          numMaterials,
+          "numPoints=",
+          numPoints,
+          "numTriangles=",
+          numTriangles,
+        );
         geometries.push({
           vertices,
           normals,
@@ -596,18 +482,23 @@ export function gltfToBG3D(doc: Document): BG3DParseResult {
       });
     });
 
-  // 4. Groups (from extras if present)
+  console.log("gltfToBG3D: Restoring groups...");
   let groups: BG3DGroup[] = [];
   const rootExtras = doc.getRoot().getExtras() || {};
   if (Array.isArray(rootExtras.groups)) {
+    console.log("gltfToBG3D: Found group structure in root extras.");
     groups = rootExtras.groups;
   } else {
-    // If no group structure, put all geometries in a single top-level group
+    console.log(
+      "gltfToBG3D: No group structure found, creating single group with all geometries.",
+    );
     groups = [{ children: geometries }];
   }
 
-  return {
+  const result = {
     materials,
     groups,
   };
+  console.log("gltfToBG3D: Final BG3DParseResult:", result);
+  return result;
 }

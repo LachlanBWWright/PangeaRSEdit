@@ -1,12 +1,13 @@
 import { PNG } from "pngjs/browser";
+import { Jimp } from "jimp";
 
 // Decode PNG Buffer to RGB8 Uint8Array (strips alpha)
-export function pngToRgb8(pngBuffer: Buffer): {
+export async function pngToRgb8(pngBuffer: ArrayBuffer): Promise<{
   data: Uint8Array;
   width: number;
   height: number;
-} {
-  const { data: rgba, width, height } = pngToRgba8(pngBuffer);
+}> {
+  const { data: rgba, width, height } = await pngToRgba8(pngBuffer);
   const rgb = new Uint8Array((rgba.length / 4) * 3);
   for (let i = 0, j = 0; i < rgba.length; i += 4, j += 3) {
     rgb[j + 0] = rgba[i + 0];
@@ -82,13 +83,18 @@ export function rgba8ToPng(
 }
 
 // Decode PNG Buffer to RGBA Uint8Array
-export function pngToRgba8(pngBuffer: Buffer): {
+export async function pngToRgba8(pngBuffer: ArrayBuffer): Promise<{
   data: Uint8Array;
   width: number;
   height: number;
-} {
-  const decoded = PNG.sync.read(pngBuffer);
-  return { data: decoded.data, width: decoded.width, height: decoded.height };
+}> {
+  const decoded = await Jimp.fromBuffer(pngBuffer);
+  //const decoded = PNG.sync.read(pngBuffer);
+  return {
+    data: decoded.bitmap.data,
+    width: decoded.width,
+    height: decoded.height,
+  };
 }
 
 // Convert 16-bit ARGB1555 (Uint16Array) to PNG Buffer
@@ -102,12 +108,12 @@ export function argb16ToPng(
 }
 
 // Convert PNG Buffer to 16-bit ARGB1555 (Uint16Array)
-export function pngToArgb16(pngBuffer: Buffer): {
+export async function pngToArgb16(pngBuffer: ArrayBuffer): Promise<{
   data: Uint16Array;
   width: number;
   height: number;
-} {
-  const { data: rgba, width, height } = pngToRgba8(pngBuffer);
+}> {
+  const { data: rgba, width, height } = await pngToRgba8(pngBuffer);
   const argb16 = rgba8ToArgb16(rgba);
   return { data: argb16, width, height };
 }
