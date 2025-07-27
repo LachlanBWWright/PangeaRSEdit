@@ -212,7 +212,7 @@ export function UploadPrompt({
   };
 
   return (
-    <div className="flex text-white m-auto flex-1 gap-8 flex-col items-center justify-center ">
+    <div className="flex text-white m-auto flex-1 gap-8 flex-col items-center justify-center p-8">
       <div className="flex flex-col gap-2 lg:w-1/2">
         <IntroText />
         <div className="flex flex-row justify-center gap-2 items-center">
@@ -890,6 +890,14 @@ export function UploadPrompt({
 
       {/* BG3D to GLB Upload (Web Worker) */}
       <div className="flex flex-col gap-2 lg:w-1/3">
+        <p className="text-2xl">Model Data Converters</p>
+        <p>
+          These model data converters are are in development. Only Otto Matic's
+          BG3D files work currently, and skeleton animation data is not
+          supported. Clearing the "extras" data in its GLTF format is likely to
+          corrupt the model. For example, you need check the include "Custom
+          Properties" box when exporting from Blender.
+        </p>
         <p>Convert BG3D to GLB</p>
         <p className="text-sm text-gray-300">
           Upload a .bg3d file to convert and download as .glb.
