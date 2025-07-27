@@ -1,4 +1,4 @@
-// Browser-safe base64 encoding for Uint8Array
+/* // Browser-safe base64 encoding for Uint8Array
 function uint8ToBase64(u8: Uint8Array): string {
   const CHUNK_SIZE = 0x8000;
   let result = "";
@@ -9,7 +9,7 @@ function uint8ToBase64(u8: Uint8Array): string {
     );
   }
   return btoa(result);
-}
+} */
 import {
   BG3DGeometry,
   BG3DGroup,
@@ -22,12 +22,10 @@ import {
   argb16ToPng,
   rgb24ToPng,
   rgba8ToPng,
-  pngToArgb16,
-  pngToRgb8,
   pngToRgba8,
 } from "./image/pngArgb";
 
-import { Document, Mesh, Material, Texture, Node } from "@gltf-transform/core";
+import { Document, Mesh, Material, Node } from "@gltf-transform/core";
 import { PixelFormatSrc, PixelFormatDst } from "./parseBG3D";
 
 /**
@@ -529,8 +527,7 @@ export async function gltfToBG3D(doc: Document): Promise<BG3DParseResult> {
       geometries.push(processMesh(mesh, meshIdx));
     });
 
-  console.log("gltfToBG3D: Restoring groups...");
-  let groups: BG3DGroup[] = [];
+  /*   console.log("gltfToBG3D: Restoring groups...");
   const rootExtras = doc.getRoot().getExtras() || {};
   if (Array.isArray(rootExtras.groups)) {
     console.log("gltfToBG3D: Found group structure in root extras.");
@@ -541,10 +538,11 @@ export async function gltfToBG3D(doc: Document): Promise<BG3DParseResult> {
     );
     groups = [{ children: geometries }];
   }
-
+ */
   const result = {
     materials,
-    groups: processedNodes,
+    //TODO: Fix any use
+    groups: processedNodes as any as BG3DGroup[], //groups,
     //groups,
   };
   console.log("gltfToBG3D: Final BG3DParseResult:", result);

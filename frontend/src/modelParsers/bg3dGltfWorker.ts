@@ -1,4 +1,3 @@
-import { g } from "vitest/dist/chunks/suite.d.FvehnV49.js";
 import { bg3dParsedToBG3D, parseBG3D } from "./parseBG3D";
 import { bg3dParsedToGLTF, gltfToBG3D } from "./parsedBg3dGitfConverter";
 import { WebIO } from "@gltf-transform/core";

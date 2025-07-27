@@ -83,7 +83,9 @@ export function rgba8ToPng(
 }
 
 // Decode PNG Buffer to RGBA Uint8Array
-export async function pngToRgba8(pngBuffer: ArrayBuffer): Promise<{
+export async function pngToRgba8(
+  pngBuffer: Buffer<ArrayBufferLike> | ArrayBuffer,
+): Promise<{
   data: Uint8Array;
   width: number;
   height: number;

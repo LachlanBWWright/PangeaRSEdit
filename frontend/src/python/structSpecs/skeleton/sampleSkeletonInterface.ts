@@ -1,6 +1,6 @@
-import { SkeletonResource } from "./skeletonInterface";
+/* import { SkeletonResource } from "./skeletonInterface";
 
-const skeletonSample: SkeletonResource = {
+export const skeletonSample: SkeletonResource = {
   _metadata: {
     junk1: 271353064,
     junk2: 1082,
@@ -8608,3 +8608,4 @@ const skeletonSample: SkeletonResource = {
     },
   },
 };
+ */

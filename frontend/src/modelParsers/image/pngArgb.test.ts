@@ -7,7 +7,7 @@ import {
 import { describe, it, expect } from "vitest";
 
 describe("16-bit ARGB1555 <-> PNG roundtrip", () => {
-  it("should convert ARGB1555 to PNG and back without loss (except for alpha threshold)", () => {
+  it("should convert ARGB1555 to PNG and back without loss (except for alpha threshold)", async () => {
     console.log("PNG TEST");
     const width = 4,
       height = 4;
@@ -35,7 +35,7 @@ describe("16-bit ARGB1555 <-> PNG roundtrip", () => {
     // Encode to PNG
     const png = rgba8ToPng(rgba, width, height);
     // Decode PNG back to RGBA8
-    const { data: rgba2, width: w2, height: h2 } = pngToRgba8(png);
+    const { data: rgba2, width: w2, height: h2 } = await pngToRgba8(png);
     expect(w2).toBe(width);
     expect(h2).toBe(height);
     // Convert back to ARGB16

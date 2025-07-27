@@ -5,6 +5,7 @@
  */
 export function gltfToParsed3dmf(doc: Document): BG3DParseResult {
   // TODO: Implement real conversion logic
+  console.log(doc);
   throw new Error("gltfToParsed3dmf is not yet implemented");
 }
 import { BG3DParseResult } from "./parseBG3D";
@@ -17,5 +18,6 @@ import { Document } from "@gltf-transform/core";
  */
 export function parsed3dmfToGLTF(parsed: BG3DParseResult): Document {
   // TODO: Implement real conversion logic
+  console.log(parsed);
   throw new Error("parsed3dmfToGLTF is not yet implemented");
 }

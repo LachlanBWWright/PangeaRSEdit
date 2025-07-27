@@ -5,6 +5,7 @@
  */
 export function bg3dParsedTo3DMF(parsed: BG3DParseResult): ArrayBuffer {
   // TODO: Implement real 3DMF serialization logic
+  console.log(parsed);
   throw new Error("bg3dParsedTo3DMF is not yet implemented");
 }
 import { BG3DParseResult } from "./parseBG3D";
@@ -16,5 +17,6 @@ import { BG3DParseResult } from "./parseBG3D";
  */
 export function parse3DMF(buffer: ArrayBuffer): BG3DParseResult {
   // TODO: Implement real 3DMF parsing logic
+  console.log("parse3DMF called with buffer length:", buffer.byteLength);
   throw new Error("parse3DMF is not yet implemented");
 }

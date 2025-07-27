@@ -160,7 +160,7 @@ export function parseBG3D(buffer: ArrayBuffer): BG3DParseResult {
     if (offset + 4 > buffer.byteLength) break;
     const tagOffset = offset;
     const tagValue = view.getUint32(offset, false);
-    let tag = tagValue;
+    const tag = tagValue;
     // Debug: log tag info
     console.log(
       `[parseBG3D] Read tag ${
@@ -461,9 +461,9 @@ export function bg3dParsedToBG3D(parsed: BG3DParseResult): ArrayBuffer {
   let offset = 0;
 
   // Estimate buffer size (over-allocate, then slice)
-  let size = 1024 * 1024 * 10; // 1MB default, grow if needed
-  let buffer = new ArrayBuffer(size);
-  let view = new DataView(buffer);
+  const size = 1024 * 1024 * 10; // 1MB default, grow if needed
+  const buffer = new ArrayBuffer(size);
+  const view = new DataView(buffer);
 
   // Write header: use original if provided, else default
 
@@ -659,10 +659,16 @@ function writeGroup(
   return offset;
 }
 
-function isBG3DGroup(obj: any): obj is BG3DGroup {
-  return obj && Array.isArray(obj.children);
+function isBG3DGroup(obj: BG3DGeometry | BG3DGroup): obj is BG3DGroup {
+  return (
+    obj !== null &&
+    typeof obj === "object" &&
+    "children" in obj &&
+    Array.isArray(obj.children)
+  );
 }
 
-function isBG3DGeometry(obj: BG3DGeometry | BG3DGroup): obj is BG3DGeometry {
+/* function isBG3DGeometry(obj: BG3DGeometry | BG3DGroup): obj is BG3DGeometry {
   return !!obj && !Array.isArray((obj as any).children);
 }
+ */

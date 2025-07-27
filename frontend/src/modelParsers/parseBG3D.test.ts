@@ -5,7 +5,7 @@ import * as fs from "fs";
 import * as path from "path";
 import { NodeIO } from "@gltf-transform/core";
 
-import { argb16ToPng, rgb24ToPng, rgba8ToPng } from "./image/pngArgb";
+import { argb16ToPng, rgba8ToPng } from "./image/pngArgb";
 
 // Utility: Byte-swap a Uint16Array (swap each 16-bit word's bytes)
 function byteSwapUint16Array(arr: Uint16Array): Uint16Array {
@@ -130,7 +130,7 @@ describe("parseBG3D", () => {
 
     console.log("glTF written successfully");
     // Step 3: Convert back to Parsed BG3D
-    const parsed2 = gltfToBG3D(gltf);
+    const parsed2 = await gltfToBG3D(gltf);
     console.log("Converted glTF back to Parsed BG3D");
     expect(parsed2).toBeDefined();
 
