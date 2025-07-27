@@ -568,6 +568,9 @@ function writeGroup(
         view.setUint32(offset, geom.layerMaterialNum?.[i] ?? 0, false);
         offset += 4;
       }
+      //
+      console.log("numMaterials:", geom.numMaterials);
+      console.log("layerMaterialNum:", geom.layerMaterialNum);
       view.setUint32(offset, geom.flags, false);
       offset += 4;
       view.setUint32(offset, geom.numPoints, false);
