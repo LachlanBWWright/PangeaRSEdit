@@ -1,18 +1,75 @@
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import { Canvas } from "@react-three/fiber";
-import { OrbitControls, Environment, useGLTF } from "@react-three/drei";
+import { OrbitControls, useGLTF } from "@react-three/drei";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Upload, Eye, EyeOff, Download } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Toaster } from "@/components/ui/toaster";
+import { TextureManager } from "@/components/TextureManager";
 import BG3DGltfWorker from "../modelParsers/bg3dGltfWorker?worker";
 import { BG3DGltfWorkerMessage, BG3DGltfWorkerResponse } from "../modelParsers/bg3dGltfWorker";
 
+interface Texture {
+  name: string;
+  url: string;
+  type: 'diffuse' | 'normal' | 'other';
+}
+
 // Component to load and display GLTF model
-function ModelMesh({ url, visible }: { url: string; visible: boolean }) {
+function ModelMesh({ url, visible, onTexturesExtracted }: { 
+  url: string; 
+  visible: boolean; 
+  onTexturesExtracted: (textures: Texture[]) => void;
+}) {
   const { scene } = useGLTF(url);
+  
+  useEffect(() => {
+    // Extract textures from the GLTF scene
+    const extractedTextures: Texture[] = [];
+    scene.traverse((child: any) => {
+      if (child.material) {
+        const material = child.material;
+        
+        // Check for diffuse/base color texture
+        if (material.map) {
+          extractedTextures.push({
+            name: `Material_${material.name || 'Unknown'}_Diffuse`,
+            url: material.map.image?.src || '',
+            type: 'diffuse'
+          });
+        }
+        
+        // Check for normal map
+        if (material.normalMap) {
+          extractedTextures.push({
+            name: `Material_${material.name || 'Unknown'}_Normal`,
+            url: material.normalMap.image?.src || '',
+            type: 'normal'
+          });
+        }
+        
+        // Check for other texture types
+        ['roughnessMap', 'metalnessMap', 'aoMap', 'emissiveMap'].forEach((mapType) => {
+          if (material[mapType]) {
+            extractedTextures.push({
+              name: `Material_${material.name || 'Unknown'}_${mapType}`,
+              url: material[mapType].image?.src || '',
+              type: 'other'
+            });
+          }
+        });
+      }
+    });
+    
+    // Remove duplicates and invalid textures
+    const uniqueTextures = extractedTextures.filter((texture, index, self) => 
+      texture.url && self.findIndex(t => t.url === texture.url) === index
+    );
+    
+    onTexturesExtracted(uniqueTextures);
+  }, [scene, onTexturesExtracted]);
   
   if (!visible) {
     return null;
@@ -25,6 +82,7 @@ export function ModelViewer() {
   const [gltfUrl, setGltfUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [models, setModels] = useState<Array<{ name: string; visible: boolean }>>([]);
+  const [textures, setTextures] = useState<Texture[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
@@ -112,10 +170,44 @@ export function ModelViewer() {
     ));
   };
 
+  const handleTexturesExtracted = useCallback((extractedTextures: Texture[]) => {
+    setTextures(extractedTextures);
+  }, []);
+
+  const handleDownloadTexture = useCallback(async (texture: Texture) => {
+    try {
+      const response = await fetch(texture.url);
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `${texture.name}.png`;
+      link.click();
+      
+      URL.revokeObjectURL(url);
+      
+      toast({
+        title: "Texture Downloaded",
+        description: `${texture.name} has been downloaded`,
+      });
+    } catch (error) {
+      console.error("Error downloading texture:", error);
+      toast({
+        title: "Download Failed",
+        description: "Failed to download texture",
+        variant: "destructive"
+      });
+    }
+  }, [toast]);
+
   const loadTestModel = async () => {
     try {
       // Load the Otto.bg3d test file
-      const response = await fetch('/src/modelParsers/testSkeletons/Otto.bg3d');
+      const response = await fetch('/PangeaRSEdit/Otto.bg3d');
+      if (!response.ok) {
+        throw new Error(`Failed to fetch Otto.bg3d: ${response.status}`);
+      }
       const arrayBuffer = await response.arrayBuffer();
       const file = new File([arrayBuffer], 'Otto.bg3d', { type: 'application/octet-stream' });
       await handleFileUpload(file);
@@ -211,6 +303,11 @@ export function ModelViewer() {
                     </div>
                   ))}
                 </div>
+                
+                <TextureManager 
+                  textures={textures}
+                  onDownloadTexture={handleDownloadTexture}
+                />
               </CardContent>
             </Card>
           )}
@@ -220,12 +317,16 @@ export function ModelViewer() {
         <div className="flex-1 bg-gray-800 rounded-lg overflow-hidden">
           {gltfUrl ? (
             <Canvas camera={{ position: [0, 0, 5], fov: 75 }}>
-              <ambientLight intensity={0.4} />
-              <directionalLight position={[10, 10, 5]} intensity={1} />
-              <Environment preset="studio" />
+              <ambientLight intensity={0.6} />
+              <directionalLight position={[10, 10, 5]} intensity={0.8} />
+              <directionalLight position={[-10, -10, -5]} intensity={0.3} />
               
               {/* Load the GLTF model */}
-              <ModelMesh url={gltfUrl} visible={models[0]?.visible ?? true} />
+              <ModelMesh 
+                url={gltfUrl} 
+                visible={models[0]?.visible ?? true} 
+                onTexturesExtracted={handleTexturesExtracted}
+              />
               
               <OrbitControls 
                 enablePan={true}

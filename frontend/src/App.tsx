@@ -8,7 +8,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 function App() {
   return (
     <TooltipProvider>
-      <Router>
+      <Router basename="/PangeaRSEdit">
         <div className="min-h-screen bg-gray-900">
           <Navigation />
           <Routes>
