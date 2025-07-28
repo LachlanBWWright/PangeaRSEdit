@@ -43,9 +43,9 @@ import {
   createCanvasFromTile,
   extractTilesFromBuffer,
 } from "@/data/processors/classicProprocessor";
-import { Separator } from "@/components/ui/separator";
+/* import { Separator } from "@/components/ui/separator";
 import { parseSkeletonRsrc } from "@/modelParsers/skeletonRsrc/parseSkeletonRsrc";
-import BG3DGltfWorker from "../modelParsers/bg3dGltfWorker?worker"; //"../utils/bg3dGltfWorker.ts?worker";
+import BG3DGltfWorker from "../modelParsers/bg3dGltfWorker?worker"; //"../utils/bg3dGltfWorker.ts?worker"; */
 
 export function UploadPrompt({
   mapFile,
@@ -886,114 +886,7 @@ export function UploadPrompt({
         )}
       </div>
 
-      <Separator />
-
-      {/* BG3D to GLB Upload (Web Worker) */}
-      <div className="flex flex-col gap-2 lg:w-1/3">
-        <p className="text-2xl">Model Data Converters</p>
-        <p>
-          These model data converters are are in development. Only Otto Matic's
-          BG3D files work currently, and skeleton animation data is not
-          supported. Clearing the "extras" data in its GLTF format is likely to
-          corrupt the model. For example, you need check the include "Custom
-          Properties" box when exporting from Blender.
-        </p>
-        <p>Convert BG3D to GLB</p>
-        <p className="text-sm text-gray-300">
-          Upload a .bg3d file to convert and download as .glb.
-        </p>
-        <FileUpload
-          className="text-2xl"
-          acceptType=".bg3d"
-          handleOnChange={async (e) => {
-            if (!e.target?.files?.[0]) return;
-            const file = e.target.files[0];
-            let downloadName = file.name.replace(/\.bg3d$/, ".glb");
-            try {
-              const buffer = await file.arrayBuffer();
-              const worker = new BG3DGltfWorker();
-              worker.postMessage({ type: "bg3d-to-glb", buffer }, [buffer]);
-              worker.onmessage = (event) => {
-                if (event.data.type === "error") {
-                  alert("BG3D to GLB conversion failed: " + event.data.error);
-                  worker.terminate();
-                  return;
-                }
-                if (event.data.type === "bg3d-to-glb") {
-                  const result = event.data.result;
-                  const convertedBlob = new Blob([result], {
-                    type: "model/gltf-binary",
-                  });
-                  const url = URL.createObjectURL(convertedBlob);
-                  const a = document.createElement("a");
-                  a.href = url;
-                  a.download = downloadName;
-                  document.body.appendChild(a);
-                  a.click();
-                  document.body.removeChild(a);
-                  setTimeout(() => URL.revokeObjectURL(url), 1000);
-                  worker.terminate();
-                }
-              };
-            } catch (err) {
-              alert(
-                "BG3D to GLB conversion failed: " +
-                  (err instanceof Error ? err.message : err),
-              );
-            }
-          }}
-        />
-      </div>
-
-      {/* GLB to BG3D Upload (Web Worker) */}
-      <div className="flex flex-col gap-2 lg:w-1/3">
-        <p>Convert GLB to BG3D</p>
-        <p className="text-sm text-gray-300">
-          Upload a .glb file to convert and download as .bg3d.
-        </p>
-        <FileUpload
-          className="text-2xl"
-          acceptType=".glb"
-          handleOnChange={async (e) => {
-            if (!e.target?.files?.[0]) return;
-            const file = e.target.files[0];
-            let downloadName = file.name.replace(/\.glb$/, ".bg3d");
-            try {
-              const buffer = await file.arrayBuffer();
-              const worker = new BG3DGltfWorker();
-              worker.postMessage({ type: "glb-to-bg3d", buffer }, [buffer]);
-              worker.onmessage = (event) => {
-                if (event.data.type === "error") {
-                  alert("GLB to BG3D conversion failed: " + event.data.error);
-                  worker.terminate();
-                  return;
-                }
-                if (event.data.type === "glb-to-bg3d") {
-                  const result = event.data.result;
-                  const convertedBlob = new Blob([result], {
-                    type: "application/octet-stream",
-                  });
-                  const url = URL.createObjectURL(convertedBlob);
-                  const a = document.createElement("a");
-                  a.href = url;
-                  a.download = downloadName;
-                  document.body.appendChild(a);
-                  a.click();
-                  document.body.removeChild(a);
-                  setTimeout(() => URL.revokeObjectURL(url), 1000);
-                  worker.terminate();
-                }
-              };
-            } catch (err) {
-              alert(
-                "GLB to BG3D conversion failed: " +
-                  (err instanceof Error ? err.message : err),
-              );
-            }
-          }}
-        />
-      </div>
-      {/* Skeleton Resource Upload */}
+      {/*       <Separator />
       <div className="flex flex-col gap-2 lg:w-1/3">
         <p>Parse Skeleton Data</p>
         <p className="text-sm text-gray-300">
@@ -1015,7 +908,7 @@ export function UploadPrompt({
             console.log(res);
           }}
         />
-      </div>
+      </div> */}
     </div>
   );
 }
