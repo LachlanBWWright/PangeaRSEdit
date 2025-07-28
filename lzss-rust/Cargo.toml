@@ -1,0 +1,37 @@
+[package]
+name = "lzss-rust"
+version = "0.1.0"
+edition = "2021"
+description = "Rust implementation of LZSS compression algorithm, compatible with TypeScript implementation"
+repository = "https://github.com/LachlanBWWright/PangeaRSEdit"
+license = "MIT OR Apache-2.0"
+keywords = ["compression", "lzss", "wasm", "webassembly"]
+categories = ["compression", "wasm"]
+
+[package.metadata.wasm-pack.profile.release]
+wasm-opt = false
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+wasm-bindgen = "0.2"
+
+[dependencies.web-sys]
+version = "0.3"
+features = [
+  "console",
+]
+
+# `wee_alloc` is a tiny allocator for wasm that is optimized for small code size.
+[dependencies.wee_alloc]
+version = "0.4.5"
+optional = true
+
+[features]
+default = ["console_error_panic_hook"]
+console_error_panic_hook = ["dep:console_error_panic_hook"]
+
+[dependencies.console_error_panic_hook]
+version = "0.1.6"
+optional = true
