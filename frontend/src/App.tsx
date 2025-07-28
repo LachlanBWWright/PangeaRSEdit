@@ -8,12 +8,13 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 function App() {
   return (
     <TooltipProvider>
-      <Router basename="/PangeaRSEdit">
-        <div className="min-h-screen bg-gray-900">
+      <Router basename="/PangeaRSEdit/">
+        <div className="flex flex-col min-h-screen bg-gray-900">
           <Navigation />
           <Routes>
             <Route path="/" element={<LevelEditor />} />
             <Route path="/model-viewer" element={<ModelViewer />} />
+            <Route path="*" element={<LevelEditor />} />
           </Routes>
         </div>
       </Router>

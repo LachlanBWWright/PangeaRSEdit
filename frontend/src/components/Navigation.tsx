@@ -4,7 +4,7 @@ import { Map, Box } from "lucide-react";
 
 export function Navigation() {
   const location = useLocation();
-  
+
   return (
     <nav className="bg-gray-800 border-b border-gray-700 px-4 py-2">
       <div className="flex items-center gap-4">
@@ -15,17 +15,19 @@ export function Navigation() {
             variant={location.pathname === "/" ? "default" : "ghost"}
             className="flex items-center gap-2"
           >
-            <Link to="/">
+            <Link to="/" className="text-white">
               <Map className="w-4 h-4" />
               Level Editor
             </Link>
           </Button>
           <Button
             asChild
-            variant={location.pathname === "/model-viewer" ? "default" : "ghost"}
+            variant={
+              location.pathname === "/model-viewer" ? "default" : "ghost"
+            }
             className="flex items-center gap-2"
           >
-            <Link to="/model-viewer">
+            <Link to="/model-viewer" className="text-white">
               <Box className="w-4 h-4" />
               Model Viewer
             </Link>
