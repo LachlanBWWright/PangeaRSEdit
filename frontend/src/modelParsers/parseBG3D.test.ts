@@ -1,9 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { parseBG3D, bg3dParsedToBG3D } from "./parseBG3D";
-import { bg3dParsedToGLTF, gltfToBG3D } from "./parsedBg3dGitfConverter";
 import * as fs from "fs";
 import * as path from "path";
-import { NodeIO } from "@gltf-transform/core";
 
 import { argb16ToPng, rgba8ToPng } from "./image/pngArgb";
 
