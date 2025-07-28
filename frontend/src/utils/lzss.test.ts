@@ -1031,9 +1031,8 @@ describe("LZSS Compression Algorithm", () => {
 
       // Verify all bytes match
       for (let i = 0; i < inputDataView.byteLength; i++) {
-        //console.log(i);
         if (inputDataView.getUint8(i) !== outputDataView.getUint8(i)) {
-          console.log(
+          console.error(
             `Mismatch at index ${i}: ${inputDataView.getUint8(
               i,
             )} !== ${outputDataView.getUint8(i)}`,

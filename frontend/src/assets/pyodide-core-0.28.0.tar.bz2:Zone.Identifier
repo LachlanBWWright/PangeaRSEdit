@@ -1,0 +1,4 @@
+[ZoneTransfer]
+ZoneId=3
+ReferrerUrl=https://github.com/pyodide/pyodide/releases
+HostUrl=https://objects.githubusercontent.com/github-production-release-asset-2e65be/122663163/c0085c0d-cfff-425f-82a3-fe4cd516df76?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=releaseassetproduction%2F20250705%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20250705T112913Z&X-Amz-Expires=1800&X-Amz-Signature=60821a3e2d69c2809aea030eb62f8e370b1843fad6c802c3694db79a32ce2a0c&X-Amz-SignedHeaders=host&response-content-disposition=attachment%3B%20filename%3Dpyodide-core-0.28.0.tar.bz2&response-content-type=application%2Foctet-stream

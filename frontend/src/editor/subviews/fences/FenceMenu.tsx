@@ -27,6 +27,8 @@ export function FenceMenu({
   const globals = useAtomValue(Globals);
   const [selectedFence, setSelectedFence] = useAtom(SelectedFence);
 
+  if (globals.GAME_TYPE === Game.NANOSAUR) return <></>; //No fences in this level
+
   const fenceData =
     selectedFence !== undefined ? data.Fenc[1000].obj[selectedFence] : null;
 

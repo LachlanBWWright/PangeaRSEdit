@@ -194,6 +194,11 @@ export const bugdom2ItemTypeParams: Record<ItemType, Bugdom2ItemParams> = {
     p0: {
       type: "Integer",
       description: "Starting rotation (0-7, where each unit = 45°)",
+      codeSample: {
+        code: "gPlayerInfo.startRotY = (float)itemPtr[i].parm[0] * (PI2/8.0f);	// calc starting rotation aim",
+        fileName: "Source/Terrain/Terrain2.c",
+        lineNumber: 242,
+      },
     },
     p1: "Unknown",
     p2: "Unknown",
@@ -313,9 +318,9 @@ export const bugdom2ItemTypeParams: Record<ItemType, Bugdom2ItemParams> = {
         lineNumber: 181,
       },
     },
-    p1: "Unknown",
-    p2: "Unknown",
-    p3: "Unknown",
+    p1: "Unused",
+    p2: "Unused",
+    p3: "Unused",
   },
   [ItemType.Grass]: {
     flags: "Unknown",
@@ -328,9 +333,9 @@ export const bugdom2ItemTypeParams: Record<ItemType, Bugdom2ItemParams> = {
         lineNumber: 299,
       },
     },
-    p1: "Unknown",
-    p2: "Unknown",
-    p3: "Unknown",
+    p1: "Unused",
+    p2: "Unused",
+    p3: "Unused",
   },
   [ItemType.SnailShell]: {
     flags: "Unknown",
@@ -358,9 +363,9 @@ export const bugdom2ItemTypeParams: Record<ItemType, Bugdom2ItemParams> = {
         lineNumber: 234,
       },
     },
-    p1: "Unknown",
-    p2: "Unknown",
-    p3: "Unknown",
+    p1: "Unused",
+    p2: "Unused",
+    p3: "Unused",
   },
   [ItemType.Acorn]: {
     flags: "Unknown",
@@ -384,7 +389,17 @@ export const bugdom2ItemTypeParams: Record<ItemType, Bugdom2ItemParams> = {
     p2: "Unknown",
     p3: {
       type: "Bit Flags",
-      flags: [{ index: 0, description: "Always add (ignore max enemy limit)" }],
+      flags: [
+        {
+          index: 0,
+          description: "Always add (ignore max enemy limit)",
+          codeSample: {
+            code: "if (!(itemPtr->parm[3] & 1)) {\n    if (gNumEnemyOfKind[ENEMY_KIND_HOUSEFLY] >= MAX_HOUSEFLYS)\n        return(false);\n}",
+            fileName: "Source/Enemies/Enemy_HouseFly.c",
+            lineNumber: 101,
+          },
+        },
+      ],
     },
   },
   [ItemType.Scarecrow]: {
@@ -414,8 +429,21 @@ export const bugdom2ItemTypeParams: Record<ItemType, Bugdom2ItemParams> = {
     p0: {
       type: "Integer",
       description: "Door rotation (0-3, where each unit = 90°)",
+      codeSample: {
+        code: "if (isOpen)\n    gNewObjectDefinition.rot = itemPtr->parm[0] * PI/2 + PI/2;\nelse\n    gNewObjectDefinition.rot = itemPtr->parm[0] * PI/2;",
+        fileName: "Source/Items/Items.c",
+        lineNumber: 424,
+      },
     },
-    p1: { type: "Integer", description: "Door color" },
+    p1: {
+      type: "Integer",
+      description: "Door color",
+      codeSample: {
+        code: "int doorColor = itemPtr->parm[1];\ngNewObjectDefinition.type = ... + doorColor;",
+        fileName: "Source/Items/Items.c",
+        lineNumber: 364,
+      },
+    },
     p2: "Unknown",
     p3: "Unknown",
   },
@@ -527,17 +555,25 @@ export const bugdom2ItemTypeParams: Record<ItemType, Bugdom2ItemParams> = {
   },
   [ItemType.ShrubRoot]: {
     flags: "Unknown",
-    p0: "Unknown",
-    p1: "Unknown",
-    p2: "Unknown",
-    p3: "Unknown",
+    p0: "Unused",
+    p1: "Unused",
+    p2: "Unused",
+    p3: "Unused",
   },
   [ItemType.Pebble]: {
     flags: "Unknown",
-    p0: { type: "Integer", description: "Stone type" },
-    p1: "Unknown",
-    p2: "Unknown",
-    p3: "Unknown",
+    p0: {
+      type: "Integer",
+      description: "Stone type",
+      codeSample: {
+        code: "gNewObjectDefinition.type = GARDEN_ObjType_LargeStone + itemPtr->parm[0];",
+        fileName: "Source/Items/Items.c",
+        lineNumber: 678,
+      },
+    },
+    p1: "Unused",
+    p2: "Unused",
+    p3: "Unused",
   },
   [ItemType.SnakeGenerator]: {
     flags: "Unknown",
@@ -556,19 +592,37 @@ export const bugdom2ItemTypeParams: Record<ItemType, Bugdom2ItemParams> = {
   },
   [ItemType.PoolCoping]: {
     flags: "Unknown",
-    p0: { type: "Integer", description: "Pool coping rotation (0-3)" },
-    p1: "Unknown",
-    p2: "Unknown",
+    p0: {
+      type: "Integer",
+      description: "Pool coping rotation (0-3)",
+      codeSample: {
+        code: "gNewObjectDefinition.rot = (float)itemPtr->parm[0] * (PI2/4.0f);",
+        fileName: "Source/Items/Items.c",
+        lineNumber: 728,
+      },
+    },
+    p1: "Unused",
+    p2: "Unused",
     p3: {
       type: "Bit Flags",
-      flags: [{ index: 0, description: "Is corner piece" }],
+      flags: [
+        {
+          index: 0,
+          description: "Is corner piece",
+          codeSample: {
+            code: "Boolean isCorner = itemPtr->parm[3] & 1;",
+            fileName: "Source/Items/Items.c",
+            lineNumber: 721,
+          },
+        },
+      ],
     },
   },
   [ItemType.PoolLeaf]: {
     flags: "Unknown",
-    p0: "Unknown",
-    p1: "Unknown",
-    p2: "Unknown",
+    p0: "Unused",
+    p1: "Unused",
+    p2: "Unused",
     p3: {
       type: "Bit Flags",
       flags: [
@@ -600,16 +654,29 @@ export const bugdom2ItemTypeParams: Record<ItemType, Bugdom2ItemParams> = {
   },
   [ItemType.DogHouse]: {
     flags: "Unknown",
-    p0: "Unknown",
-    p1: "Unknown",
-    p2: "Unknown",
-    p3: { type: "Bit Flags", flags: [{ index: 0, description: "Has key" }] },
+    p0: {
+      type: "Integer",
+      description: "Dog house rotation (0-7, where each unit = 45°)",
+      codeSample: {
+        code: "gNewObjectDefinition.rot = PI + ((float)itemPtr->parm[0] * (PI2/4));",
+        fileName: "Source/Items/Items.c",
+        lineNumber: 872,
+      },
+    },
+    p1: "Unused",
+    p2: "Unused",
+    p3: "Unused",
   },
   [ItemType.Windmill]: {
     flags: "Unknown",
     p0: {
       type: "Integer",
       description: "Windmill rotation (0-3, where each unit = 90°)",
+      codeSample: {
+        code: "float r = itemPtr->parm[0] * (PI2/4.0f);\ngNewObjectDefinition.rot = r;",
+        fileName: "Source/Items/Traps.c",
+        lineNumber: 273,
+      },
     },
     p1: "Unknown",
     p2: "Unknown",
@@ -617,13 +684,10 @@ export const bugdom2ItemTypeParams: Record<ItemType, Bugdom2ItemParams> = {
   },
   [ItemType.Rose]: {
     flags: "Unknown",
-    p0: {
-      type: "Integer",
-      description: "Rose rotation (0-3, where each unit = 90°)",
-    },
-    p1: "Unknown",
-    p2: "Unknown",
-    p3: "Unknown",
+    p0: "Unused",
+    p1: "Unused",
+    p2: "Unused",
+    p3: "Unused",
   },
   [ItemType.TulipPot]: {
     flags: "Unknown",
@@ -670,7 +734,15 @@ export const bugdom2ItemTypeParams: Record<ItemType, Bugdom2ItemParams> = {
   },
   [ItemType.POW]: {
     flags: "Unknown",
-    p0: { type: "Integer", description: "POW type" },
+    p0: {
+      type: "Integer",
+      description: "POW type",
+      codeSample: {
+        code: "pow = MakePOW(itemPtr->parm[0], &where);",
+        fileName: "Source/Items/Powerups.c",
+        lineNumber: 585,
+      },
+    },
     p1: "Unknown",
     p2: "Unknown",
     p3: "Unknown",
@@ -679,15 +751,41 @@ export const bugdom2ItemTypeParams: Record<ItemType, Bugdom2ItemParams> = {
     flags: "Unknown",
     p0: {
       type: "Bit Flags",
-      flags: [{ index: 0, description: "Build 2 collision boxes" }],
+      flags: [
+        {
+          index: 0,
+          description: "Build 2 collision boxes",
+          codeSample: {
+            code: "if (itemPtr->parm[0] & 1) { /* build 2 collision boxes */ }",
+            fileName: "Source/Items/Traps.c",
+            lineNumber: 327,
+          },
+        },
+      ],
     },
     p1: "Unknown",
     p2: "Unknown",
     p3: {
       type: "Bit Flags",
       flags: [
-        { index: 0, description: "Is primed" },
-        { index: 1, description: "Is drowning" },
+        {
+          index: 0,
+          description: "Is primed",
+          codeSample: {
+            code: "Boolean primed = itemPtr->parm[3] & 0x1;",
+            fileName: "Source/Items/Traps.c",
+            lineNumber: 723,
+          },
+        },
+        {
+          index: 1,
+          description: "Is drowning",
+          codeSample: {
+            code: "Boolean drowning = itemPtr->parm[3] & (1<<1);",
+            fileName: "Source/Items/Traps.c",
+            lineNumber: 724,
+          },
+        },
       ],
     },
   },
@@ -705,7 +803,17 @@ export const bugdom2ItemTypeParams: Record<ItemType, Bugdom2ItemParams> = {
     p2: "Unknown",
     p3: {
       type: "Bit Flags",
-      flags: [{ index: 0, description: "Always add (ignore max enemy limit)" }],
+      flags: [
+        {
+          index: 0,
+          description: "Always add (ignore max enemy limit)",
+          codeSample: {
+            code: "if (!(itemPtr->parm[3] & 1)) {\n    if (gNumEnemyOfKind[ENEMY_KIND_FLEA] >= MAX_FLEAS)\n        return(false);\n}",
+            fileName: "Source/Enemies/Enemy_Flea.c",
+            lineNumber: 142,
+          },
+        },
+      ],
     },
   },
   [ItemType.Enemy_Tick]: {
@@ -725,14 +833,30 @@ export const bugdom2ItemTypeParams: Record<ItemType, Bugdom2ItemParams> = {
   },
   [ItemType.SlotCar]: {
     flags: "Unknown",
-    p0: { type: "Integer", description: "Car number" },
-    p1: "Unknown",
-    p2: "Unknown",
-    p3: "Unknown",
+    p0: {
+      type: "Integer",
+      description: "Car number (0 = red, 1 = blue)",
+      codeSample: {
+        code: "int carNum = itemPtr->parm[0];\nGAME_ASSERT(carNum == 0 || carNum == 1);\ngNewObjectDefinition.type = PLAYROOM_ObjType_SlotCarRed + carNum;",
+        fileName: "Source/Items/SlotCar.c",
+        lineNumber: 81,
+      },
+    },
+    p1: "Unused",
+    p2: "Unused",
+    p3: "Unused",
   },
   [ItemType.LetterBlock]: {
     flags: "Unknown",
-    p0: { type: "Integer", description: "Letter block type (affects model)" },
+    p0: {
+      type: "Integer",
+      description: "Letter block type (affects model)",
+      codeSample: {
+        code: "gNewObjectDefinition.type = PLAYROOM_ObjType_LetterBlock1 + itemPtr->parm[0];",
+        fileName: "Source/Items/Items2.c",
+        lineNumber: 27,
+      },
+    },
     p1: "Unknown",
     p2: "Unknown",
     p3: "Unknown",
@@ -742,6 +866,11 @@ export const bugdom2ItemTypeParams: Record<ItemType, Bugdom2ItemParams> = {
     p0: {
       type: "Integer",
       description: "Trap rotation (0-3, where each unit = 90°)",
+      codeSample: {
+        code: "gNewObjectDefinition.rot = r = (float)itemPtr->parm[0] * (PI / 2);",
+        fileName: "Source/Items/Traps.c",
+        lineNumber: 749,
+      },
     },
     p1: "Unknown",
     p2: "Unknown",
@@ -760,7 +889,20 @@ export const bugdom2ItemTypeParams: Record<ItemType, Bugdom2ItemParams> = {
     },
     p1: "Unknown",
     p2: "Unknown",
-    p3: "Unknown",
+    p3: {
+      type: "Bit Flags",
+      flags: [
+        {
+          index: 0,
+          description: "Always add (ignore max enemy limit)",
+          codeSample: {
+            code: "if (!(itemPtr->parm[3] & 1)) {\n    if (gNumEnemyOfKind[ENEMY_KIND_TOYSOLDIER] >= MAX_TOYSOLDIERS)\n        return(false);\n}",
+            fileName: "Source/Enemies/Enemy_ToySoldier.c",
+            lineNumber: 109,
+          },
+        },
+      ],
+    },
   },
   [ItemType.FinishLine]: {
     flags: "Unknown",
@@ -784,7 +926,17 @@ export const bugdom2ItemTypeParams: Record<ItemType, Bugdom2ItemParams> = {
     p2: "Unknown",
     p3: {
       type: "Bit Flags",
-      flags: [{ index: 0, description: "Always add (ignore max enemy limit)" }],
+      flags: [
+        {
+          index: 0,
+          description: "Always add (ignore max enemy limit)",
+          codeSample: {
+            code: "if (!(itemPtr->parm[3] & 1)) {\n    if (gNumEnemyOfKind[ENEMY_KIND_OTTO] >= MAX_OTTOS)\n        return(false);\n}",
+            fileName: "Source/Enemies/Enemy_Otto.c",
+            lineNumber: 120,
+          },
+        },
+      ],
     },
   },
   [ItemType.Puzzle]: {
@@ -841,10 +993,7 @@ export const bugdom2ItemTypeParams: Record<ItemType, Bugdom2ItemParams> = {
   },
   [ItemType.FlashLight]: {
     flags: "Unknown",
-    p0: {
-      type: "Integer",
-      description: "Flashlight rotation (0-3, where each unit = 90°)",
-    },
+    p0: "Unused",
     p1: "Unknown",
     p2: "Unknown",
     p3: "Unknown",
@@ -858,11 +1007,8 @@ export const bugdom2ItemTypeParams: Record<ItemType, Bugdom2ItemParams> = {
   },
   [ItemType.Crayon]: {
     flags: "Unknown",
-    p0: { type: "Integer", description: "Crayon type" },
-    p1: {
-      type: "Integer",
-      description: "Crayon rotation (0-3, where each unit = 90°)",
-    },
+    p0: "Unused",
+    p1: "Unused",
     p2: "Unknown",
     p3: "Unknown",
   },
@@ -880,7 +1026,17 @@ export const bugdom2ItemTypeParams: Record<ItemType, Bugdom2ItemParams> = {
     p2: "Unknown",
     p3: {
       type: "Bit Flags",
-      flags: [{ index: 0, description: "Always add (ignore max enemy limit)" }],
+      flags: [
+        {
+          index: 0,
+          description: "Always add (ignore max enemy limit)",
+          codeSample: {
+            code: "if (!(itemPtr->parm[3] & 1)) {\n    if (gNumEnemyOfKind[ENEMY_KIND_DRAGONFLY] >= MAX_DRAGONFLYS)\n        return(false);\n}",
+            fileName: "Source/Enemies/Enemy_DragonFly.c",
+            lineNumber: 77,
+          },
+        },
+      ],
     },
   },
   [ItemType.Cloud]: {
@@ -897,7 +1053,17 @@ export const bugdom2ItemTypeParams: Record<ItemType, Bugdom2ItemParams> = {
     p2: "Unknown",
     p3: {
       type: "Bit Flags",
-      flags: [{ index: 0, description: "Always add (ignore max enemy limit)" }],
+      flags: [
+        {
+          index: 0,
+          description: "Always add (ignore max enemy limit)",
+          codeSample: {
+            code: "if (!(itemPtr->parm[3] & 1)) {\n    if (gNumEnemyOfKind[ENEMY_KIND_FROG] >= MAX_FROGS)\n        return(false);\n}",
+            fileName: "Source/Enemies/Enemy_Frog.c",
+            lineNumber: 49,
+          },
+        },
+      ],
     },
   },
   [ItemType.CardboardBox]: {
@@ -969,12 +1135,30 @@ export const bugdom2ItemTypeParams: Record<ItemType, Bugdom2ItemParams> = {
   },
   [ItemType.Enemy_Moth]: {
     flags: "Unknown",
-    p0: { type: "Integer", description: "Moth target ID or path number" },
+    p0: {
+      type: "Integer",
+      description: "Moth target ID or path number",
+      codeSample: {
+        code: "newObj->MothTargetID = itemPtr->parm[0]; // get target ID #",
+        fileName: "Source/Enemies/Enemy_Moth.c",
+        lineNumber: 126,
+      },
+    },
     p1: "Unknown",
     p2: "Unknown",
     p3: {
       type: "Bit Flags",
-      flags: [{ index: 0, description: "Is target moth" }],
+      flags: [
+        {
+          index: 0,
+          description: "Is target moth",
+          codeSample: {
+            code: "if (itemPtr->parm[3] & 1) // see if target\n    return(true);",
+            fileName: "Source/Enemies/Enemy_Moth.c",
+            lineNumber: 117,
+          },
+        },
+      ],
     },
   },
   [ItemType.Enemy_ComputerBug]: {
@@ -984,7 +1168,17 @@ export const bugdom2ItemTypeParams: Record<ItemType, Bugdom2ItemParams> = {
     p2: "Unknown",
     p3: {
       type: "Bit Flags",
-      flags: [{ index: 0, description: "Always add (ignore max enemy limit)" }],
+      flags: [
+        {
+          index: 0,
+          description: "Always add (ignore max enemy limit)",
+          codeSample: {
+            code: "if (!(itemPtr->parm[3] & 1)) {\n    if (gNumEnemyOfKind[ENEMY_KIND_COMPUTERBUG] >= MAX_COMPUTERBUGS)\n        return(false);\n}",
+            fileName: "Source/Enemies/Enemy_ComputerBug.c",
+            lineNumber: 104,
+          },
+        },
+      ],
     },
   },
   [ItemType.SiliconPart]: bugdom2DefaultParams,
@@ -1025,33 +1219,93 @@ export const bugdom2ItemTypeParams: Record<ItemType, Bugdom2ItemParams> = {
     },
     p1: "Unknown",
     p2: "Unknown",
-    p3: "Unknown",
+    p3: {
+      type: "Bit Flags",
+      flags: [
+        {
+          index: 0,
+          description: "Always add (ignore max enemy limit)",
+          codeSample: {
+            code: "if (!(itemPtr->parm[3] & 1)) {\n    if (gNumEnemyOfKind[ENEMY_KIND_ROACH] >= MAX_ROACHS)\n        return(false);\n}",
+            fileName: "Source/Enemies/Enemy_Roach.c",
+            lineNumber: 110,
+          },
+        },
+      ],
+    },
   },
   [ItemType.ShoeBox]: {
     flags: "Unknown",
-    p0: { type: "Integer", description: "Shoe box type" },
-    p1: { type: "Integer", description: "Stack level" },
+    p0: {
+      type: "Integer",
+      description: "Shoe box rotation (0-3, where each unit = 90°)",
+      codeSample: {
+        code: "gNewObjectDefinition.rot = (float)itemPtr->parm[0] * (PI/2);",
+        fileName: "Source/Items/Items2.c",
+        lineNumber: 753,
+      },
+    },
+    p1: {
+      type: "Integer",
+      description: "Stack level",
+      codeSample: {
+        code: "int stackLevel = itemPtr->parm[1];\nif (stackLevel > 0)\n    y += (float)stackLevel * (gNewObjectDefinition.scale * .44f);",
+        fileName: "Source/Items/Items2.c",
+        lineNumber: 739,
+      },
+    },
     p2: "Unknown",
     p3: "Unknown",
   },
   [ItemType.PictureFrame]: {
     flags: "Unknown",
-    p0: { type: "Integer", description: "Picture type (affects model)" },
+    p0: {
+      type: "Integer",
+      description: "Picture type (affects model)",
+      codeSample: {
+        code: "gNewObjectDefinition.type = CLOSET_ObjType_PictureFrame_Brian + itemPtr->parm[0];",
+        fileName: "Source/Items/Items2.c",
+        lineNumber: 1123,
+      },
+    },
     p1: {
       type: "Integer",
       description: "Picture rotation (0-3, where each unit = 90°)",
+      codeSample: {
+        code: "gNewObjectDefinition.rot = (float)itemPtr->parm[1] * (PI/2);",
+        fileName: "Source/Items/Items2.c",
+        lineNumber: 1127,
+      },
     },
     p2: "Unknown",
     p3: "Unknown",
   },
   [ItemType.Enemy_Ant]: {
     flags: "Unknown",
-    p0: { type: "Integer", description: "Food type" },
+    p0: {
+      type: "Integer",
+      description: "Food type",
+      codeSample: {
+        code: "int foodType = itemPtr->parm[0];",
+        fileName: "Source/Enemies/Enemy_Ant.c",
+        lineNumber: 104,
+      },
+    },
     p1: "Unknown",
     p2: "Unknown",
     p3: {
       type: "Bit Flags",
-      flags: [{ index: 0, description: "Always add (ignore max enemy limit)" }],
+      flags: [
+        {
+          index: 0,
+          description: "Always add (ignore max enemy limit)",
+          codeSample: {
+            code: "if (!(itemPtr->parm[3] & 1)) {\n    if (gNumEnemyOfKind[ENEMY_KIND_ANT] >= MAX_ANTS)\n        return(false);\n}",
+            fileName: "Source/Enemies/Enemy_Ant.c",
+            lineNumber: 110,
+          },
+        },
+      ],
     },
   },
   [ItemType.Enemy_PondFish]: {

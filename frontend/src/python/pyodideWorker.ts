@@ -8,8 +8,8 @@ export type PyodideMessage =
       type: "init";
     }
   | {
-    type: "load_bytes_from_json";
-// eslint-disable-next-line  @typescript-eslint/no-explicit-any
+      type: "load_bytes_from_json";
+      // eslint-disable-next-line  @typescript-eslint/no-explicit-any
       json_blob: any;
       converters: string[];
       only_types: string[];
@@ -30,22 +30,28 @@ export type PyodideResponse =
       result: ArrayBuffer;
     }
   | {
-    type: "save_to_json";
-// eslint-disable-next-line  @typescript-eslint/no-explicit-any
+      type: "save_to_json";
+      // eslint-disable-next-line  @typescript-eslint/no-explicit-any
       result: any;
     }
   | {
       type: "initRes";
     };
 
-onmessage = async (event: MessageEvent<PyodideMessage>) => {
+self.onmessage = async (event: MessageEvent<PyodideMessage>) => {
   if (event.data.type === "init") {
+    console.log("Initializing Pyodide...");
     const pyodideRes = await loadPyodide({
       indexURL: "https://cdn.jsdelivr.net/pyodide/v0.26.4/full/",
     });
+    console.log("Pyodide initialized");
     await pyodideRes.loadPackage(rsrcDumpUrl);
+    console.log("rsrcdump package loaded");
     await pyodideRes.runPythonAsync("import rsrcdump");
+    console.log("rsrcdump imported");
     pyodide = pyodideRes;
+
+    console.log("Sending initRes message");
 
     postMessage({
       type: "initRes",
@@ -93,7 +99,7 @@ onmessage = async (event: MessageEvent<PyodideMessage>) => {
   if (event.data.type === "save_to_json") {
     const { bytes, struct_specs, include_types, exclude_types } = event.data;
     //@ts-expect-error pyodide stuff
-    self.resBuffer = bytes; //TODO: Find better solution 
+    self.resBuffer = bytes; //TODO: Find better solution
     await pyodide.runPythonAsync(`
             from js import resBuffer
             buffer = resBuffer.to_py()

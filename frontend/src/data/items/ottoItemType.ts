@@ -326,7 +326,17 @@ export const ottoItemTypeParams: Record<ItemType, OttoItemParams> = {
     p2: "Unused",
     p3: {
       type: "Bit Flags",
-      flags: [{ index: 0, description: "Encased in ice" }],
+      flags: [
+        {
+          index: 0,
+          description: "Encased in ice",
+          codeSample: {
+            code: "if (itemPtr->parm[3] & 1)\n\t\tEncaseHumanInIce(newObj);",
+            fileName: "Items/Humans.c",
+            lineNumber: 233,
+          },
+        },
+      ],
     },
   },
   [ItemType.Atom]: {
@@ -525,7 +535,15 @@ export const ottoItemTypeParams: Record<ItemType, OttoItemParams> = {
   },
   [ItemType.Barn]: {
     flags: "Auto-fade status bits",
-    p0: { type: "Integer", description: "Rotation (0-3, multiplied by PI/2)" },
+    p0: {
+      type: "Integer",
+      description: "Rotation (0-3, multiplied by PI/2)",
+      codeSample: {
+        code: "gNewObjectDefinition.rot = itemPtr->parm[0] * (PI/2);",
+        fileName: "Items/Items.c",
+        lineNumber: 145,
+      },
+    },
     p1: "Unused",
     p2: "Unused",
     p3: "Unused",
@@ -539,14 +557,30 @@ export const ottoItemTypeParams: Record<ItemType, OttoItemParams> = {
   },
   [ItemType.WoodenGate]: {
     flags: "Auto-fade status bits",
-    p0: { type: "Integer", description: "Rotation (0-3, multiplied by PI/2)" },
+    p0: {
+      type: "Integer",
+      description: "Rotation (0-3, multiplied by PI/2)",
+      codeSample: {
+        code: "gNewObjectDefinition.rot = itemPtr->parm[0] == 1 ? PI/2 : 0;",
+        fileName: "Items/Triggers.c",
+        lineNumber: 200,
+      },
+    },
     p1: "Unused",
     p2: "Unused",
     p3: "Unused",
   },
   [ItemType.PhonePole]: {
     flags: "Auto-fade status bits",
-    p0: "Unused",
+    p0: {
+      type: "Integer",
+      description: "Rotation (0-1, multiplied by PI)",
+      codeSample: {
+        code: "gNewObjectDefinition.rot = (float)itemPtr->parm[0] * PI;",
+        fileName: "Items/Items.c",
+        lineNumber: 207,
+      },
+    },
     p1: "Unused",
     p2: "Unused",
     p3: "Unused",
@@ -566,7 +600,7 @@ export const ottoItemTypeParams: Record<ItemType, OttoItemParams> = {
       codeSample: {
         code: "int type = itemPtr->parm[0]; // get gate type",
         fileName: "Items/Items.c",
-        lineNumber: 629,
+        lineNumber: 235,
       },
     },
     p1: "Unused",
@@ -589,7 +623,15 @@ export const ottoItemTypeParams: Record<ItemType, OttoItemParams> = {
   },
   [ItemType.MetalGate]: {
     flags: "Auto-fade status bits",
-    p0: { type: "Integer", description: "Gate type (0=Wood, 1=Metal)" },
+    p0: {
+      type: "Integer",
+      description: "Gate type (0=Wood, 1=Metal)",
+      codeSample: {
+        code: "gNewObjectDefinition.rot = itemPtr->parm[0] == 1 ? PI/2 : 0;",
+        fileName: "Items/Triggers.c",
+        lineNumber: 438,
+      },
+    },
     p1: "Unused",
     p2: "Unused",
     p3: "Unused",
@@ -616,9 +658,9 @@ export const ottoItemTypeParams: Record<ItemType, OttoItemParams> = {
       type: "Integer",
       description: "Rotation (0=0°, 1=90°, 2=180°, 3=270°)",
       codeSample: {
-        code: "gNewObjectDefinition.rot = r = (float)itemPtr->parm[0] * (PI/2);",
-        fileName: "Items/Items.c",
-        lineNumber: 708,
+        code: "float r = itemPtr->parm[0] * (PI2/4.0f);",
+        fileName: "Items/Traps.c",
+        lineNumber: 300,
       },
     },
     p1: "Unused",
@@ -638,9 +680,9 @@ export const ottoItemTypeParams: Record<ItemType, OttoItemParams> = {
       type: "Integer",
       description: "Rotation (0-3, multiplied by PI/2)",
       codeSample: {
-        code: "gNewObjectDefinition.rot = (float)itemPtr->parm[0] * (PI/2);",
+        code: "gNewObjectDefinition.rot = (float)itemPtr->parm[0] * PI/2;",
         fileName: "Items/Items.c",
-        lineNumber: 543,
+        lineNumber: 555,
       },
     },
     p1: "Unused",
@@ -698,6 +740,11 @@ export const ottoItemTypeParams: Record<ItemType, OttoItemParams> = {
     p1: {
       type: "Integer",
       description: "Player rotation (0-3, multiplied by PI2/4)",
+      codeSample: {
+        code: "base->ReincarnationAim = (float)itemPtr->parm[1] * (PI2/8.0f);",
+        fileName: "Items/Triggers.c",
+        lineNumber: 696,
+      },
     },
     p2: "Unused",
     p3: "Unused",
@@ -930,22 +977,54 @@ export const ottoItemTypeParams: Record<ItemType, OttoItemParams> = {
   },
   [ItemType.TurtlePlatform]: {
     flags: "Auto-fade status bits",
-    p0: { type: "Integer", description: "Rotation (0-7, multiplied by PI2/8)" },
+    p0: {
+      type: "Integer",
+      description: "Rotation (0-7, multiplied by PI2/8)",
+      codeSample: {
+        code: "gNewObjectDefinition.rot = (float)itemPtr->parm[0] * (PI2/8.0f);",
+        fileName: "Items/Triggers2.c",
+        lineNumber: 265,
+      },
+    },
     p1: "Unused",
     p2: "Unused",
     p3: "Unused",
   },
   [ItemType.Smashable]: {
     flags: "Auto-fade status bits",
-    p0: { type: "Integer", description: "Smashable type (0-2)" },
+    p0: {
+      type: "Integer",
+      description: "Smashable type (0-2)",
+      codeSample: {
+        code: "short type = itemPtr->parm[0];\ngNewObjectDefinition.type = JUNGLE_ObjType_Hut + type;",
+        fileName: "Items/Triggers2.c",
+        lineNumber: 347,
+      },
+    },
     p1: "Unused",
     p2: "Unused",
     p3: "Unused",
   },
   [ItemType.LeafPlatform]: {
     flags: "Auto-fade status bits",
-    p0: { type: "Integer", description: "Platform type (0-3)" },
-    p1: { type: "Integer", description: "Rotation (0-3, multiplied by PI2/4)" },
+    p0: {
+      type: "Integer",
+      description: "Platform type (0=Short, 1=Medium, 2=Tall, 3=Unused)",
+      codeSample: {
+        code: "int type = itemPtr->parm[0]; // get platform type\ngNewObjectDefinition.type = PARK_ObjType_ShortFlower + type;",
+        fileName: "Items2.c",
+        lineNumber: 1226,
+      },
+    },
+    p1: {
+      type: "Integer",
+      description: "Rotation (0-3, multiplied by PI2/4)",
+      codeSample: {
+        code: "gNewObjectDefinition.rot = RandomFloat() * PI2; // random rotation, not directly from parm[1]",
+        fileName: "Items2.c",
+        lineNumber: 1229,
+      },
+    },
     p2: "Unused",
     p3: "Unused",
   },
@@ -958,15 +1037,55 @@ export const ottoItemTypeParams: Record<ItemType, OttoItemParams> = {
   },
   [ItemType.Teleporter]: {
     flags: "Auto-fade status bits",
-    p0: { type: "Integer", description: "Teleporter ID (0-19)" },
-    p1: { type: "Integer", description: "Destination ID (0-19)" },
-    p2: { type: "Integer", description: "Rotation (0-7, multiplied by PI2/8)" },
+    p0: {
+      type: "Integer",
+      description: "Teleporter ID (0-19)",
+      codeSample: {
+        code: "int id = itemPtr->parm[0];",
+        fileName: "Items/Teleporter.c",
+        lineNumber: 96,
+      },
+    },
+    p1: {
+      type: "Integer",
+      description: "Destination ID (0-19)",
+      codeSample: {
+        code: "int destinationID = itemPtr->parm[1];",
+        fileName: "Items/Teleporter.c",
+        lineNumber: 97,
+      },
+    },
+    p2: {
+      type: "Integer",
+      description: "Rotation (0-7, multiplied by PI2/8)",
+      codeSample: {
+        code: "float rotation = itemPtr->parm[2] * (PI2/8.0f);",
+        fileName: "Items/Teleporter.c",
+        lineNumber: 99,
+      },
+    },
     p3: "Unused",
   },
   [ItemType.ZipLinePost]: {
     flags: "Auto-fade status bits",
-    p0: { type: "Integer", description: "Post type (0=Start, 1=End)" },
-    p1: { type: "Integer", description: "Zipline ID (0-15)" },
+    p0: {
+      type: "Integer",
+      description: "Zipline ID (0-15)",
+      codeSample: {
+        code: "newObj->ZipID = itemPtr->parm[0]; // get id#",
+        fileName: "Items/ZipLine.c",
+        lineNumber: 214,
+      },
+    },
+    p1: {
+      type: "Integer",
+      description: "Post type (0=Start, 1=End)",
+      codeSample: {
+        code: "if (itemPtr[i].parm[1] == 0) // see if start or end pt",
+        fileName: "Items/ZipLine.c",
+        lineNumber: 113,
+      },
+    },
     p2: "Unused",
     p3: "Unused",
   },
@@ -986,7 +1105,7 @@ export const ottoItemTypeParams: Record<ItemType, OttoItemParams> = {
   },
   [ItemType.BumperBubble]: {
     flags: "Auto-fade status bits",
-    p0: { type: "Integer", description: "Bubble type (0=Regular, 1=Large)" },
+    p0: "Unused",
     p1: "Unused",
     p2: "Unused",
     p3: "Unused",
@@ -996,6 +1115,11 @@ export const ottoItemTypeParams: Record<ItemType, OttoItemParams> = {
     p0: {
       type: "Integer",
       description: "Crystal type (0=Blue, 1=Green, 2=Red, 3=Purple)",
+      codeSample: {
+        code: "int type = itemPtr->parm[0];",
+        fileName: "Items/Items.c",
+        lineNumber: 1330,
+      },
     },
     p1: "Unused",
     p2: "Unused",
@@ -1014,6 +1138,11 @@ export const ottoItemTypeParams: Record<ItemType, OttoItemParams> = {
       type: "Integer",
       description:
         "Tree type (0=Animating Large, 1=Static Large, 2=Static Small)",
+      codeSample: {
+        code: "switch(itemPtr->parm[0])",
+        fileName: "Items/Items.c",
+        lineNumber: 1385,
+      },
     },
     p1: "Unused",
     p2: "Unused",
@@ -1028,14 +1157,30 @@ export const ottoItemTypeParams: Record<ItemType, OttoItemParams> = {
   },
   [ItemType.FallingSlimePlatform]: {
     flags: "Auto-fade status bits",
-    p0: { type: "Integer", description: "Platform type (0-2)" },
+    p0: {
+      type: "Integer",
+      description: "Platform type (0-2)",
+      codeSample: {
+        code: "short type = itemPtr->parm[0];",
+        fileName: "Items/Triggers.c",
+        lineNumber: 1077,
+      },
+    },
     p1: "Unused",
     p2: "Unused",
     p3: "Unused",
   },
   [ItemType.BubblePump]: {
     flags: "Auto-fade status bits",
-    p0: { type: "Integer", description: "Rotation (0-3, multiplied by PI2/4)" },
+    p0: {
+      type: "Integer",
+      description: "Rotation (0-3, multiplied by PI2/4)",
+      codeSample: {
+        code: "float r = (float)itemPtr->parm[0] * (PI2/4.0f);",
+        fileName: "Items/Traps.c",
+        lineNumber: 425,
+      },
+    },
     p1: "Unused",
     p2: "Unused",
     p3: "Unused",
@@ -1057,22 +1202,38 @@ export const ottoItemTypeParams: Record<ItemType, OttoItemParams> = {
   },
   [ItemType.SpinningPlatform]: {
     flags: "Auto-fade status bits",
-    p0: { type: "Integer", description: "Platform type (0-19)" },
+    p0: {
+      type: "Integer",
+      description: "Platform type (0-3)",
+      codeSample: {
+        code: "int type = itemPtr->parm[0];\ngNewObjectDefinition.type = BLOBBOSS_ObjType_BarPlatform_Blue + type;",
+        fileName: "Items/Triggers.c",
+        lineNumber: 1349,
+      },
+    },
     p1: {
       type: "Integer",
-      description: "Spin offset (0-7, multiplied by PI2/8)",
+      description: "Rotation (0-3, multiplied by PI2/4)",
+      codeSample: {
+        code: "newObj->SpinOffset = (float)itemPtr->parm[1] * (PI2 / 8.0f);",
+        fileName: "Items/Triggers.c",
+        lineNumber: 1393,
+      },
     },
-    p2: { type: "Integer", description: "Height offset (multiplied by 10)" },
-    p3: {
-      type: "Bit Flags",
-      flags: [{ index: 0, description: "Spin direction (0=CW, 1=CCW)" }],
-    },
+
+    p2: "Unused",
+    p3: "Unused",
   },
   [ItemType.MovingPlatform]: {
     flags: "Auto-fade status bits | On spline",
     p0: {
       type: "Integer",
       description: "Platform type (0=Blue, 1=Red, 2=Yellow, 3=Green)",
+      codeSample: {
+        code: "int type = itemPtr->parm[0];",
+        fileName: "Items/Items.c",
+        lineNumber: 1582,
+      },
     },
     p1: "Unused",
     p2: "Unused",
@@ -1087,25 +1248,29 @@ export const ottoItemTypeParams: Record<ItemType, OttoItemParams> = {
   },
   [ItemType.HumanScientist]: {
     flags: "Auto-fade status bits",
-    p0: {
-      type: "Integer",
-      description:
-        "Scientist type (forced to 2=Scientist by AddHumanScientist)",
-    },
+    p0: "Unused",
     p1: "Unused",
     p2: "Unused",
     p3: "Unused",
   },
   [ItemType.ProximityMine]: {
     flags: "Auto-fade status bits",
-    p0: { type: "Integer", description: "Mine type (0=Round, 1=Square)" },
+    p0: "Unused",
     p1: "Unused",
     p2: "Unused",
     p3: "Unused",
   },
   [ItemType.LampPost]: {
     flags: "Auto-fade status bits",
-    p0: { type: "Integer", description: "Lamp post type (0-2)" },
+    p0: {
+      type: "Integer",
+      description: "Lamp post type (0-2)",
+      codeSample: {
+        code: "int type = itemPtr->parm[0];",
+        fileName: "Items/Items.c",
+        lineNumber: 1819,
+      },
+    },
     p1: "Unused",
     p2: "Unused",
     p3: "Unused",
@@ -1115,52 +1280,102 @@ export const ottoItemTypeParams: Record<ItemType, OttoItemParams> = {
     p0: {
       type: "Integer",
       description: "Gate type (0=Open, 1=Blocked with debris)",
+      codeSample: {
+        code: "short type = itemPtr->parm[0]; // 0=open, 1=blocked with debris",
+        fileName: "Items/Triggers2.c",
+        lineNumber: 583,
+      },
     },
-    p1: { type: "Integer", description: "Rotation (0-3, multiplied by PI/2)" },
+    p1: {
+      type: "Integer",
+      description: "Rotation (0-3, multiplied by PI/2)",
+      codeSample: {
+        code: "if (itemPtr->parm[1] == 1)\n\t\tgNewObjectDefinition.rot = PI/2;",
+        fileName: "Items/Triggers2.c",
+        lineNumber: 594,
+      },
+    },
     p2: "Unused",
     p3: "Unused",
   },
   [ItemType.GraveStone]: {
     flags: "Auto-fade status bits",
-    p0: { type: "Integer", description: "Gravestone type (0-4)" },
-    p1: { type: "Integer", description: "Rotation (0-3, multiplied by PI2/4)" },
+    p0: {
+      type: "Integer",
+      description: "Gravestone type (0-4)",
+      codeSample: {
+        code: "int type = itemPtr->parm[0];",
+        fileName: "Items/Items.c",
+        lineNumber: 2092,
+      },
+    },
+    p1: {
+      type: "Integer",
+      description: "Rotation (0-3, multiplied by PI2/4)",
+      codeSample: {
+        code: "gNewObjectDefinition.rot = (float)itemPtr->parm[1] * (PI2/4.0f);",
+        fileName: "Items/Items.c",
+        lineNumber: 2109,
+      },
+    },
     p2: "Unused",
     p3: "Unused",
   },
   [ItemType.CrashedShip]: {
     flags: "Auto-fade status bits",
-    p0: { type: "Integer", description: "Ship type (0-2)" },
-    p1: { type: "Integer", description: "Rotation (0-7, multiplied by PI2/8)" },
+    p0: {
+      type: "Integer",
+      description: "Ship type (0-2)",
+      codeSample: {
+        code: "int type = itemPtr->parm[0];",
+        fileName: "Items/Items.c",
+        lineNumber: 1858,
+      },
+    },
+    p1: {
+      type: "Integer",
+      description: "Rotation (0-7, multiplied by PI2/8)",
+      codeSample: {
+        code: "gNewObjectDefinition.rot = (float)itemPtr->parm[0] * (PI2/4.0f);",
+        fileName: "Items/Items.c",
+        lineNumber: 1871,
+      },
+    },
     p2: "Unused",
     p3: "Unused",
   },
   [ItemType.ChainReactingMine]: {
     flags: "Auto-fade status bits",
-    p0: { type: "Integer", description: "Mine type (0=Round, 1=Square)" },
+    p0: "Unused",
     p1: "Unused",
     p2: "Unused",
     p3: "Unused",
   },
   [ItemType.TeleporterMap]: {
     flags: "Auto-fade status bits",
-    p0: { type: "Integer", description: "Map type (0-4)" },
+    p0: {
+      type: "Integer",
+      description: "Map type (0-4)",
+      codeSample: {
+        code: "int type = itemPtr->parm[0];",
+        fileName: "Items/Items.c",
+        lineNumber: 1941,
+      },
+    },
     p1: "Unused",
     p2: "Unused",
     p3: "Unused",
   },
   [ItemType.GreenSteam]: {
     flags: "Auto-fade status bits",
-    p0: { type: "Integer", description: "Steam type (0-2)" },
+    p0: "Unused",
     p1: "Unused",
     p2: "Unused",
     p3: "Unused",
   },
   [ItemType.TentacleGenerator]: {
     flags: "Auto-fade status bits",
-    p0: {
-      type: "Integer",
-      description: "Generator type (controls spawning behavior)",
-    },
+    p0: "Unused",
     p1: "Unused",
     p2: "Unused",
     p3: "Unused",
@@ -1174,45 +1389,83 @@ export const ottoItemTypeParams: Record<ItemType, OttoItemParams> = {
   },
   [ItemType.PitcherPod]: {
     flags: "Auto-fade status bits",
-    p0: {
-      type: "Integer",
-      description: "Pod type (controls pod variant and behavior)",
-    },
+    p0: "Unused",
     p1: "Unused",
     p2: "Unused",
     p3: "Unused",
   },
   [ItemType.TractorBeamPost]: {
     flags: "Auto-fade status bits",
-    p0: {
-      type: "Integer",
-      description: "Post type (controls tractor beam configuration)",
-    },
+    p0: "Unused",
     p1: "Unused",
     p2: "Unused",
     p3: "Unused",
   },
   [ItemType.Cannon]: {
     flags: "Auto-fade status bits",
-    p0: { type: "Integer", description: "Rotation (0-3, multiplied by PI2/4)" },
+    p0: {
+      type: "Integer",
+      description: "Rotation (0-3, multiplied by PI2/4)",
+      codeSample: {
+        code: "gNewObjectDefinition.rot = (float)itemPtr->parm[0] * (PI2 / 4.0f);",
+        fileName: "Items/HumanCannonball.c",
+        lineNumber: 48,
+      },
+    },
     p1: "Unused",
     p2: "Unused",
     p3: "Unused",
   },
   [ItemType.BumperCar]: {
     flags: "Auto-fade status bits",
-    p0: {
-      type: "Integer",
-      description: "Car color (0=Red, 1=Blue, 2=Green, 3=Yellow)",
-    },
-    p1: { type: "Integer", description: "Rotation (0-7, multiplied by PI2/8)" },
+    p0: "Unused",
+    p1: "Unused",
     p2: "Unused",
     p3: "Unused",
   },
   [ItemType.TireBumperStrip]: {
     flags: "Auto-fade status bits",
-    p0: { type: "Integer", description: "Strip type (0-3)" },
-    p1: { type: "Integer", description: "Rotation (0-3, multiplied by PI/2)" },
+    p0: {
+      type: "Integer",
+      description: "How many tires in the strip",
+      codeSample: {
+        code: "numTires = itemPtr->parm[0];",
+        fileName: "Items/BumperCar.c",
+        lineNumber: 200,
+      },
+    },
+    p1: {
+      type: "Integer",
+      description: "Rotation of the tire strip",
+      codeSample: {
+        code: "rotation = itemPtr->parm[1];",
+        fileName: "Items/BumperCar.c",
+        lineNumber: 201,
+      },
+    },
+    p2: "Unused",
+    p3: "Unused",
+  },
+  [ItemType.BumperCarPowerPost]: {
+    flags: "Auto-fade status bits",
+    p0: {
+      type: "Integer",
+      description: "ID of the power post",
+      codeSample: {
+        code: "id = itemPtr->parm[0];",
+        fileName: "Items/BumperCar.c",
+        lineNumber: 918,
+      },
+    },
+    p1: {
+      type: "Integer",
+      description: "Area number",
+      codeSample: {
+        code: "area = itemPtr->parm[1];",
+        fileName: "Items/BumperCar.c",
+        lineNumber: 917,
+      },
+    },
     p2: "Unused",
     p3: "Unused",
   },
@@ -1252,13 +1505,7 @@ export const ottoItemTypeParams: Record<ItemType, OttoItemParams> = {
     p2: "Unused",
     p3: "Unused",
   },
-  [ItemType.BumperCarPowerPost]: {
-    flags: "Auto-fade status bits",
-    p0: { type: "Integer", description: "Generator ID" },
-    p1: { type: "Integer", description: "Area number" },
-    p2: "Unused",
-    p3: "Unused",
-  },
+
   [ItemType.Enemy_StrongMan]: {
     flags: "Auto-fade status bits",
     p0: "Unused",
@@ -1268,65 +1515,129 @@ export const ottoItemTypeParams: Record<ItemType, OttoItemParams> = {
   },
   [ItemType.BumperCarGate]: {
     flags: "Auto-fade status bits",
-    p0: { type: "Integer", description: "Gate type (0=Open, 1=Blocked)" },
-    p1: { type: "Integer", description: "Rotation (0-3, multiplied by PI/2)" },
+    p0: "Unused",
+    p1: {
+      type: "Integer",
+      description: "Rotation (0-3, multiplied by PI/2)",
+      codeSample: {
+        code: "short area = itemPtr->parm[1];",
+        fileName: "Items/BumperCar.c",
+        lineNumber: 1209,
+      },
+    },
     p2: "Unused",
     p3: "Unused",
   },
   [ItemType.RocketSled]: {
     flags: "Auto-fade status bits",
-    p0: { type: "Integer", description: "Rotation (0-7, multiplied by PI2/8)" },
+    p0: {
+      type: "Integer",
+      description: "Rotation (0-7, multiplied by PI2/8)",
+      codeSample: {
+        code: "gNewObjectDefinition.rot = (float)itemPtr->parm[0] * (PI2/8); // set rotation for RocketSled",
+        fileName: "Items/RocketSled.c",
+        lineNumber: 54,
+      },
+    },
     p1: "Unused",
     p2: "Unused",
     p3: "Unused",
   },
   [ItemType.TrapDoor]: {
     flags: "Auto-fade status bits",
-    p0: { type: "Integer", description: "Door type (0-2)" },
-    p1: { type: "Integer", description: "Rotation (0-3, multiplied by PI/2)" },
+    p0: "Unused",
+    p1: "Unused",
     p2: "Unused",
     p3: "Unused",
   },
   [ItemType.ZigZagSlats]: {
     flags: "Auto-fade status bits",
-    p0: { type: "Integer", description: "Slat configuration (0-3)" },
-    p1: { type: "Integer", description: "Rotation (0-3, multiplied by PI/2)" },
+    p0: {
+      type: "Integer",
+      description: "Slat configuration (0-3)",
+      codeSample: {
+        code: "gNewObjectDefinition.type = CLOUD_ObjType_ZigZag_Blue + itemPtr->parm[0];",
+        fileName: "Items/items2.c",
+        lineNumber: 66,
+      },
+    },
+    p1: {
+      type: "Integer",
+      description: "Rotation (0-3, multiplied by PI/2)",
+      codeSample: {
+        code: "newObj->ZigOrZag = itemPtr->parm[1];",
+        fileName: "Items/items2.c",
+        lineNumber: 82,
+      },
+    },
     p2: "Unused",
     p3: "Unused",
   },
   [ItemType.Unknown]: ottoDefaultParams,
   [ItemType.LavaPillar]: {
     flags: "Auto-fade status bits",
-    p0: { type: "Integer", description: "Pillar type (0-2)" },
-    p1: { type: "Integer", description: "Height variation" },
+    p0: {
+      type: "Integer",
+      description: "Pillar type (0-2)",
+      codeSample: {
+        code: "gNewObjectDefinition.rot = (float)itemPtr->parm[0] * (PI2/8.0f);",
+        fileName: "Items/Volcano.c",
+        lineNumber: 69,
+      },
+    },
+    p1: "Unused",
     p2: "Unused",
     p3: "Unused",
   },
   [ItemType.VolcanoGeneratorZone]: {
     flags: "Auto-fade status bits",
-    p0: { type: "Integer", description: "Generator frequency" },
+    p0: "Unused",
     p1: "Unused",
     p2: "Unused",
     p3: "Unused",
   },
   [ItemType.JawsBot]: {
     flags: "Auto-fade status bits",
-    p0: { type: "Integer", description: "Bot type" },
+    p0: {
+      type: "Integer",
+      description: "Bot type",
+      codeSample: {
+        code: "if (!(itemPtr->parm[3] & 1))",
+        fileName: "Enemies/FireIce/Enemy_JawsBot.c",
+        lineNumber: 76,
+      },
+    },
     p1: "Unused",
     p2: "Unused",
     p3: "Unused",
   },
   [ItemType.IceSaucer]: {
     flags: "Auto-fade status bits",
-    p0: { type: "Integer", description: "Saucer type" },
+    p0: "Unused",
     p1: "Unused",
     p2: "Unused",
     p3: "Unused",
   },
   [ItemType.RunwayLights]: {
     flags: "Auto-fade status bits",
-    p0: { type: "Integer", description: "Light pattern (0-3)" },
-    p1: { type: "Integer", description: "Rotation (0-3, multiplied by PI/2)" },
+    p0: {
+      type: "Integer",
+      description: "Light pattern (0-3)",
+      codeSample: {
+        code: "r = (float)itemPtr->parm[0] * (PI/8);",
+        fileName: "Effects/Sparkle.c",
+        lineNumber: 469,
+      },
+    },
+    p1: {
+      type: "Integer",
+      description: "Rotation (0-3, multiplied by PI/2)",
+      codeSample: {
+        code: "numSparkles = itemPtr->parm[1];",
+        fileName: "Effects/Sparkle.c",
+        lineNumber: 466,
+      },
+    },
     p2: "Unused",
     p3: "Unused",
   },
@@ -1426,21 +1737,45 @@ export const ottoItemTypeParams: Record<ItemType, OttoItemParams> = {
   },
   [ItemType.LavaStone]: {
     flags: "Auto-fade status bits",
-    p0: { type: "Integer", description: "Stone type (0-3)" },
-    p1: { type: "Integer", description: "Rotation (0-7, multiplied by PI2/8)" },
+    p0: {
+      type: "Integer",
+      description: "Stone type (0-3)",
+      codeSample: {
+        code: "short type = itemPtr->parm[0];",
+        fileName: "Items/items2.c",
+        lineNumber: 270,
+      },
+    },
+    p1: {
+      type: "Integer",
+      description: "Rotation (0-7, multiplied by PI2/8)",
+      codeSample: {
+        code: "float rot = (float)itemPtr->parm[1] * (PI2/16);",
+        fileName: "Items/items2.c",
+        lineNumber: 271,
+      },
+    },
     p2: "Unused",
     p3: "Unused",
   },
   [ItemType.Snowball]: {
     flags: "Auto-fade status bits",
-    p0: { type: "Integer", description: "Snowball size (0-2)" },
+    p0: {
+      type: "Integer",
+      description: "Snowball size (0-2)",
+      codeSample: {
+        code: "gNewObjectDefinition.type = FIREICE_ObjType_Snowball_Small + itemPtr->parm[0];",
+        fileName: "Items/Traps.c",
+        lineNumber: 2084,
+      },
+    },
     p1: "Unused",
     p2: "Unused",
     p3: "Unused",
   },
   [ItemType.LavaPlatform]: {
     flags: "Auto-fade status bits",
-    p0: { type: "Integer", description: "Platform type (0-2)" },
+    p0: "Unused",
     p1: "Unused",
     p2: "Unused",
     p3: "Unused",
@@ -1462,36 +1797,60 @@ export const ottoItemTypeParams: Record<ItemType, OttoItemParams> = {
   },
   [ItemType.RadarDish]: {
     flags: "Auto-fade status bits",
-    p0: { type: "Integer", description: "Dish type (0=Tower, 1=Radar)" },
-    p1: { type: "Integer", description: "Rotation (0-3, multiplied by PI/2)" },
+    p0: {
+      type: "Integer",
+      description: "Dish type (0=Tower, 1=Radar)",
+      codeSample: {
+        code: "gNewObjectDefinition.type = SAUCER_ObjType_DishBase;",
+        fileName: "Items/items2.c",
+        lineNumber: 372,
+      },
+    },
+    p1: "Unused",
     p2: "Unused",
     p3: "Unused",
   },
   [ItemType.PeopleHut]: {
     flags: "Auto-fade status bits",
-    p0: { type: "Integer", description: "Number of humans" },
-    p1: { type: "Integer", description: "Human type" },
+    p0: {
+      type: "Integer",
+      description: "Number of humans",
+      codeSample: {
+        code: "short numHumans = itemPtr->parm[0];",
+        fileName: "Items/Humans.c",
+        lineNumber: 1064,
+      },
+    },
+    p1: {
+      type: "Integer",
+      description: "Human type",
+      codeSample: {
+        code: "short humanType = itemPtr->parm[1];",
+        fileName: "Items/Humans.c",
+        lineNumber: 1063,
+      },
+    },
     p2: "Unused",
     p3: "Unused",
   },
   [ItemType.Beemer]: {
     flags: "Auto-fade status bits",
-    p0: { type: "Integer", description: "Beemer type" },
+    p0: "Unused",
     p1: "Unused",
     p2: "Unused",
     p3: "Unused",
   },
   [ItemType.Railgun]: {
     flags: "Auto-fade status bits",
-    p0: { type: "Integer", description: "Gun orientation" },
-    p1: { type: "Integer", description: "Rotation (0-3, multiplied by PI/2)" },
+    p0: "Unused",
+    p1: "Unused",
     p2: "Unused",
     p3: "Unused",
   },
   [ItemType.Turret]: {
     flags: "Auto-fade status bits",
-    p0: { type: "Integer", description: "Turret type" },
-    p1: { type: "Integer", description: "Rotation (0-7, multiplied by PI2/8)" },
+    p0: "Unused",
+    p1: "Unused",
     p2: "Unused",
     p3: "Unused",
   },
@@ -1507,6 +1866,11 @@ export const ottoItemTypeParams: Record<ItemType, OttoItemParams> = {
     p0: {
       type: "Integer",
       description: "Arrow direction (0-7, multiplied by PI2/8)",
+      codeSample: {
+        code: "gNewObjectDefinition.rot = (float)itemPtr->parm[0] * (PI2/8);",
+        fileName: "Items/items2.c",
+        lineNumber: 441,
+      },
     },
     p1: "Unused",
     p2: "Unused",
@@ -1514,8 +1878,8 @@ export const ottoItemTypeParams: Record<ItemType, OttoItemParams> = {
   },
   [ItemType.NeuronStrand]: {
     flags: "Auto-fade status bits",
-    p0: { type: "Integer", description: "Strand type (0-3)" },
-    p1: { type: "Integer", description: "Rotation (0-3, multiplied by PI/2)" },
+    p0: "Unused",
+    p1: "Unused",
     p2: "Unused",
     p3: "Unused",
   },
@@ -1524,6 +1888,11 @@ export const ottoItemTypeParams: Record<ItemType, OttoItemParams> = {
     p0: {
       type: "Integer",
       description: "Portal ID (0-7, also controls rotation)",
+      codeSample: {
+        code: "id = itemPtr->parm[0];",
+        fileName: "Enemies/Enemy_BrainBoss.c",
+        lineNumber: 979,
+      },
     },
     p1: "Unused",
     p2: "Unused",

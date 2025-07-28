@@ -3,8 +3,8 @@
 import { atom } from "jotai";
 import { ottoMaticSpecs } from "../../python/structSpecs/ottoMatic";
 import { bugdom2Specs } from "../../python/structSpecs/bugdom2";
-import { bugdomSpecs } from "@/python/structSpecs/bugdom";
-import { billyFrontierSpecs } from "@/python/structSpecs/billyFrontier";
+import { bugdomSpecs } from "../../python/structSpecs/bugdom";
+import { billyFrontierSpecs } from "../../python/structSpecs/billyFrontier";
 export enum Game {
   OTTO_MATIC,
   BUGDOM,

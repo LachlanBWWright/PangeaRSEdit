@@ -1,6 +1,12 @@
 import { Button } from "@/components/ui/button";
 import { FileUpload } from "../components/FileUpload";
 import LzssWorker from "../utils/lzssWorker?worker";
+import JpegWorker from "../utils/jpegDecompressWorker?worker";
+import { LzssMessage, LzssResponse } from "@/utils/lzssWorker";
+import {
+  JpegDecompressMessage,
+  JpegDecompressResponse,
+} from "@/utils/jpegDecompressWorker";
 import {
   BillyFrontierGlobals,
   Bugdom2Globals,
@@ -17,11 +23,10 @@ import {
 import { useAtom } from "jotai";
 import { useState } from "react";
 import { Switch } from "@/components/ui/switch";
-import { preprocessJson } from "@/data/preprocessors/ottoPreprocessor";
+import { preprocessJson } from "@/data/processors/ottoPreprocessor";
 import { ottoMaticLevel } from "@/python/structSpecs/ottoMaticInterface";
 import { Updater } from "use-immer";
 import { Buffer } from "buffer";
-import { LzssMessage, LzssResponse } from "@/utils/lzssWorker";
 import { PyodideMessage, PyodideResponse } from "@/python/pyodideWorker";
 import { IntroText } from "./IntroText";
 import {
@@ -31,6 +36,16 @@ import {
   SelectValue,
   SelectItem,
 } from "@/components/ui/select";
+import {
+  nanosaur1LevelToOttoMaticLevel,
+  parseNanosaur1Level,
+  parseNanosaurTerrainTextures,
+  createCanvasFromTile,
+  extractTilesFromBuffer,
+} from "@/data/processors/classicProprocessor";
+import { Separator } from "@/components/ui/separator";
+import { parseSkeletonRsrc } from "@/modelParsers/skeletonRsrc/parseSkeletonRsrc";
+import BG3DGltfWorker from "../modelParsers/bg3dGltfWorker?worker"; //"../utils/bg3dGltfWorker.ts?worker";
 
 export function UploadPrompt({
   mapFile,
@@ -72,7 +87,30 @@ export function UploadPrompt({
 
     const jsonData = await parseLevelDataFile(file, gameType);
 
-    if (gameType.DATA_TYPE !== DataType.RSRC_FORK) {
+    // Nanosaur 1 Logic
+    if (gameType.DATA_TYPE === DataType.TRT_FILE) {
+      // Load the .trt file (terrain texture tileset)
+      const imgRes = await fetch(url);
+      const img = await imgRes.blob();
+      const imgFile = new File([img], url.split("/").pop() ?? "");
+      const imgBuffer = await imgFile.arrayBuffer();
+      // Parse tiles using the new function (gets tile count from buffer)
+      // Each tile is a Uint16Array of 32x32 pixels (16bpp ARGB1555)
+      // You may want to convert these to canvases for display
+      // Example: createCanvasFromTile(tile: Uint16Array)
+
+      const tiles = parseNanosaurTerrainTextures(imgBuffer);
+
+      // Convert each tile to a canvas for display
+      const canvases = tiles.map(createCanvasFromTile);
+      for (const canvas of canvases) {
+        console.log(canvas.toDataURL("image/png"));
+      }
+      setMapImagesFile(imgFile);
+      setMapImages(canvases);
+    }
+    //All other games
+    else if (gameType.DATA_TYPE !== DataType.RSRC_FORK) {
       const imgRes = await fetch(url);
       const img = await imgRes.blob();
       const imgFile = new File([img], url.split("/").pop() ?? "");
@@ -88,11 +126,36 @@ export function UploadPrompt({
       const imgString = jsonData.Timg[1000].data;
       console.log(imgString);
       const imgBuffer = Buffer.from(imgString, "hex");
+      console.log("Image buffer length:", imgBuffer.byteLength);
+      const tileCount = imgBuffer.byteLength / 2 / 32 / 32; // 2 bytes per pixel, 32x32 pixels per tile
+      console.log("Tile count:", tileCount);
+
+      const tiles = extractTilesFromBuffer(
+        new DataView(imgBuffer.buffer),
+        tileCount,
+        32,
+        32 * 32 * 2,
+      );
+      //test start
+
+      // Convert each tile to a canvas for display
+      const canvases = tiles.map(createCanvasFromTile);
+      for (const canvas of canvases) {
+        console.log(canvas.toDataURL("image/png"));
+      }
+
+      //test end
+
       console.log(imgBuffer);
       console.log(imgBuffer.byteLength);
       console.log("Resized", imgBuffer.byteLength / 2 / 32 / 32);
       const imgDataView = new DataView(imgBuffer.buffer);
       const mapImages = await loadMapImages(imgDataView, gameType);
+
+      //Testing, delete
+      for (const canvas of mapImages) {
+        console.log(canvas.toDataURL("image/png"));
+      }
 
       setMapImages(mapImages);
     }
@@ -101,36 +164,55 @@ export function UploadPrompt({
   const parseLevelDataFile = async (file: Blob, gameType: GlobalsInterface) => {
     const levelBuffer = await file.arrayBuffer();
 
-    //Call pyodide worker to  run the python code
+    if (gameType.GAME_TYPE === Game.NANOSAUR) {
+      // Nanosaur 1: parse with JS preprocessor
+      // You may want to extract itemCount and offset from the buffer or pass as needed
+      // For now, just return the parsed item list for demonstration
+      // TODO: Integrate with your data model as needed
+      //const itemCount = 0; // <-- set correct value
+      const rawLevelData = parseNanosaur1Level(levelBuffer);
+      const compatibleLevel = nanosaur1LevelToOttoMaticLevel(rawLevelData);
+      // console.log(items);
+      //setData(items as any); // or adapt to your data model
+      //return items;
 
-    const pyodidePromise = new Promise<ottoMaticLevel>((resolve, reject) => {
-      pyodideWorker.postMessage({
-        type: "save_to_json",
-        bytes: levelBuffer,
-        struct_specs: gameType.STRUCT_SPECS,
-        include_types: [],
-        exclude_types: [],
-      } satisfies PyodideMessage);
+      //throw new Error("nanosaur terrain files are not supported yet");
 
-      pyodideWorker.onmessage = (event: MessageEvent<PyodideResponse>) => {
-        if (event.data.type === "save_to_json") {
-          resolve(event.data.result);
-        } else {
-          reject(new Error("Unexpected response from pyodide worker"));
-        }
-      };
-    });
+      //TODO: Missing preprocessor
+      setData(compatibleLevel); // or adapt to your data model
+      return compatibleLevel;
+    } else {
+      //Call pyodide worker to  run the python code
+      const pyodidePromise = new Promise<ottoMaticLevel>((resolve, reject) => {
+        pyodideWorker.postMessage({
+          type: "save_to_json",
+          bytes: levelBuffer,
+          struct_specs: gameType.STRUCT_SPECS,
+          include_types: [],
+          exclude_types: [],
+        } satisfies PyodideMessage);
 
-    const jsonData = await pyodidePromise;
+        pyodideWorker.onmessage = (event: MessageEvent<PyodideResponse>) => {
+          console.log("Received message from pyodide worker:", event.data);
+          if (event.data.type === "save_to_json") {
+            resolve(event.data.result);
+          } else {
+            reject(new Error("Unexpected response from pyodide worker"));
+          }
+        };
+      });
 
-    preprocessJson(jsonData, globals);
+      const jsonData = await pyodidePromise;
 
-    setData(jsonData);
-    return jsonData;
+      preprocessJson(jsonData, globals);
+
+      setData(jsonData);
+      return jsonData;
+    }
   };
 
   return (
-    <div className="flex text-white m-auto flex-1 gap-8 flex-col items-center justify-center ">
+    <div className="flex text-white m-auto flex-1 gap-8 flex-col items-center justify-center p-8">
       <div className="flex flex-col gap-2 lg:w-1/2">
         <IntroText />
         <div className="flex flex-row justify-center gap-2 items-center">
@@ -695,16 +777,7 @@ export function UploadPrompt({
               >
                 Battle 2
               </Button>
-              <Button
-                onClick={() =>
-                  openFile(
-                    "assets/nanosaur2/terrain/battle3.ter",
-                    Nanosaur2Globals,
-                  )
-                }
-              >
-                Battle 3
-              </Button>
+
               <Button
                 onClick={() =>
                   openFile(
@@ -812,6 +885,137 @@ export function UploadPrompt({
           </>
         )}
       </div>
+
+      <Separator />
+
+      {/* BG3D to GLB Upload (Web Worker) */}
+      <div className="flex flex-col gap-2 lg:w-1/3">
+        <p className="text-2xl">Model Data Converters</p>
+        <p>
+          These model data converters are are in development. Only Otto Matic's
+          BG3D files work currently, and skeleton animation data is not
+          supported. Clearing the "extras" data in its GLTF format is likely to
+          corrupt the model. For example, you need check the include "Custom
+          Properties" box when exporting from Blender.
+        </p>
+        <p>Convert BG3D to GLB</p>
+        <p className="text-sm text-gray-300">
+          Upload a .bg3d file to convert and download as .glb.
+        </p>
+        <FileUpload
+          className="text-2xl"
+          acceptType=".bg3d"
+          handleOnChange={async (e) => {
+            if (!e.target?.files?.[0]) return;
+            const file = e.target.files[0];
+            let downloadName = file.name.replace(/\.bg3d$/, ".glb");
+            try {
+              const buffer = await file.arrayBuffer();
+              const worker = new BG3DGltfWorker();
+              worker.postMessage({ type: "bg3d-to-glb", buffer }, [buffer]);
+              worker.onmessage = (event) => {
+                if (event.data.type === "error") {
+                  alert("BG3D to GLB conversion failed: " + event.data.error);
+                  worker.terminate();
+                  return;
+                }
+                if (event.data.type === "bg3d-to-glb") {
+                  const result = event.data.result;
+                  const convertedBlob = new Blob([result], {
+                    type: "model/gltf-binary",
+                  });
+                  const url = URL.createObjectURL(convertedBlob);
+                  const a = document.createElement("a");
+                  a.href = url;
+                  a.download = downloadName;
+                  document.body.appendChild(a);
+                  a.click();
+                  document.body.removeChild(a);
+                  setTimeout(() => URL.revokeObjectURL(url), 1000);
+                  worker.terminate();
+                }
+              };
+            } catch (err) {
+              alert(
+                "BG3D to GLB conversion failed: " +
+                  (err instanceof Error ? err.message : err),
+              );
+            }
+          }}
+        />
+      </div>
+
+      {/* GLB to BG3D Upload (Web Worker) */}
+      <div className="flex flex-col gap-2 lg:w-1/3">
+        <p>Convert GLB to BG3D</p>
+        <p className="text-sm text-gray-300">
+          Upload a .glb file to convert and download as .bg3d.
+        </p>
+        <FileUpload
+          className="text-2xl"
+          acceptType=".glb"
+          handleOnChange={async (e) => {
+            if (!e.target?.files?.[0]) return;
+            const file = e.target.files[0];
+            let downloadName = file.name.replace(/\.glb$/, ".bg3d");
+            try {
+              const buffer = await file.arrayBuffer();
+              const worker = new BG3DGltfWorker();
+              worker.postMessage({ type: "glb-to-bg3d", buffer }, [buffer]);
+              worker.onmessage = (event) => {
+                if (event.data.type === "error") {
+                  alert("GLB to BG3D conversion failed: " + event.data.error);
+                  worker.terminate();
+                  return;
+                }
+                if (event.data.type === "glb-to-bg3d") {
+                  const result = event.data.result;
+                  const convertedBlob = new Blob([result], {
+                    type: "application/octet-stream",
+                  });
+                  const url = URL.createObjectURL(convertedBlob);
+                  const a = document.createElement("a");
+                  a.href = url;
+                  a.download = downloadName;
+                  document.body.appendChild(a);
+                  a.click();
+                  document.body.removeChild(a);
+                  setTimeout(() => URL.revokeObjectURL(url), 1000);
+                  worker.terminate();
+                }
+              };
+            } catch (err) {
+              alert(
+                "GLB to BG3D conversion failed: " +
+                  (err instanceof Error ? err.message : err),
+              );
+            }
+          }}
+        />
+      </div>
+      {/* Skeleton Resource Upload */}
+      <div className="flex flex-col gap-2 lg:w-1/3">
+        <p>Parse Skeleton Data</p>
+        <p className="text-sm text-gray-300">
+          Upload Skeleton Resource (.skeleton.rsrc) to console log the parsed
+          data.
+        </p>
+        <FileUpload
+          className="text-2xl"
+          acceptType=".skeleton.rsrc"
+          handleOnChange={async (e) => {
+            if (!e.target?.files?.[0]) return;
+            const skeletonFile = e.target.files[0];
+            // TODO: Connect to skeleton parsing logic
+            console.log("Skeleton resource file uploaded:", skeletonFile);
+            const res = await parseSkeletonRsrc({
+              pyodideWorker,
+              bytes: await skeletonFile.arrayBuffer(),
+            });
+            console.log(res);
+          }}
+        />
+      </div>
     </div>
   );
 }
@@ -820,8 +1024,84 @@ async function loadMapImages(dataView: DataView, globals: GlobalsInterface) {
   let offset = 0;
 
   const loadPromise: Promise<HTMLCanvasElement[]> = new Promise((res, err) => {
-    //Read Each
-    if (globals.GAME_TYPE !== Game.BUGDOM) {
+    if (globals.GAME_TYPE === Game.NANOSAUR_2) {
+      // Nanosaur 2: Each supertile is a JPEG, decompress with jpegDecompressWorker
+      let offset = 0;
+      let numSupertiles = 0;
+      // First, count the number of JPEGs
+      while (offset < dataView.byteLength) {
+        const size = dataView.getInt32(offset);
+        offset += 4;
+        if (size === 0) break;
+
+        console.log("Secondoffset", dataView.getInt32(offset));
+
+        offset += size;
+
+        numSupertiles++;
+      }
+      offset = 0;
+      const mapImages: HTMLCanvasElement[] = new Array(numSupertiles);
+
+      let resolvedTiles = 0;
+      for (let i = 0; i < numSupertiles; i++) {
+        let size = dataView.getInt32(offset);
+        offset += 4;
+
+        const imageDescriptionOffset = dataView.getInt32(offset);
+        console.log("Image Description Offset", imageDescriptionOffset);
+        offset += imageDescriptionOffset;
+        size -= imageDescriptionOffset; // Adjust size to only include JPEG data, not the imageDescription record
+
+        if (size === 0) break;
+        const jpegArray = new Uint8Array(dataView.buffer, offset, size);
+        const jpegBuffer = new Uint8Array(jpegArray).buffer; // This creates a new ArrayBuffer
+        offset += size;
+
+        // Use jpegDecompressWorker for off-main-thread decoding
+        const jpegWorker = new JpegWorker();
+        jpegWorker.onmessage = (e: MessageEvent<JpegDecompressResponse>) => {
+          if (e.data.type !== "decompressRes") return;
+          const imageData = e.data.imageData;
+
+          const imgCanvas = document.createElement("canvas");
+          imgCanvas.width = globals.SUPERTILE_TEXMAP_SIZE;
+          imgCanvas.height = globals.SUPERTILE_TEXMAP_SIZE;
+          const imgCtx = imgCanvas.getContext("2d");
+          if (!imgCtx) {
+            err("Bad data!");
+            throw new Error("Bad data!");
+          }
+          imgCtx.putImageData(imageData, 0, 0);
+          // Flip the canvas vertically
+          const tempCanvas = document.createElement("canvas");
+          tempCanvas.width = imgCanvas.width;
+          tempCanvas.height = imgCanvas.height;
+          const tempCtx = tempCanvas.getContext("2d");
+          if (tempCtx) {
+            tempCtx.translate(0, imgCanvas.height);
+            tempCtx.scale(1, -1);
+            tempCtx.drawImage(imgCanvas, 0, 0);
+            imgCtx.clearRect(0, 0, imgCanvas.width, imgCanvas.height);
+            imgCtx.drawImage(tempCanvas, 0, 0);
+          }
+          mapImages[i] = imgCanvas;
+          resolvedTiles++;
+          if (resolvedTiles === numSupertiles) {
+            res(mapImages);
+          }
+          jpegWorker.terminate();
+        };
+        jpegWorker.postMessage({
+          id: i,
+          type: "decompress",
+          jpegData: jpegBuffer,
+        } satisfies JpegDecompressMessage);
+      }
+      return;
+    }
+    //Read Each - Logic for other games
+    else {
       //Find the number of supertiles
       let numSupertiles = 0;
       while (offset != dataView.byteLength) {

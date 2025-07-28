@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { ottoMaticLevel } from "../python/structSpecs/ottoMaticInterface";
 import { Updater, useImmer } from "use-immer";
@@ -10,7 +10,7 @@ import { WaterMenu } from "./subviews/water/WaterMenu";
 
 import { TilesMenu } from "./subviews/tiles/TilesMenu";
 import { SupertileMenu } from "./subviews/supertiles/SupertilesMenu";
-import { DataHistory } from "./MapPrompt";
+import { DataHistory } from "./IntroPrompt";
 import { KonvaView } from "./canvas/CanvasView";
 import { ThreeView } from "./threejs/Three";
 import { useAtomValue } from "jotai";
@@ -51,6 +51,34 @@ export function EditorView({
     x: 0,
     y: 0,
   });
+
+  // Keyboard listeners for undo/redo
+  const handleKeyDown = useCallback(
+    (e: KeyboardEvent) => {
+      if (
+        (e.ctrlKey || e.metaKey) &&
+        !e.shiftKey &&
+        (e.key === "z" || e.key === "Z")
+      ) {
+        e.preventDefault();
+        undoData();
+      } else if (
+        (e.ctrlKey || e.metaKey) &&
+        (e.key === "y" || (e.shiftKey && (e.key === "z" || e.key === "Z")))
+      ) {
+        e.preventDefault();
+        redoData();
+      }
+    },
+    [undoData, redoData],
+  );
+
+  useEffect(() => {
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [handleKeyDown]);
 
   const zoomIn = () =>
     setStage((stage) => {
@@ -102,7 +130,11 @@ export function EditorView({
           Supertiles
         </Button>
         <div className="grid col-span-2 xl:col-span-1 grid-cols-4 gap-2">
-          <Button variant="zoom" disabled={dataHistory.index === 0} onClick={undoData}>
+          <Button
+            variant="zoom"
+            disabled={dataHistory.index === 0}
+            onClick={undoData}
+          >
             ↩
           </Button>
           <Button
@@ -113,8 +145,12 @@ export function EditorView({
             ↪
           </Button>
 
-          <Button variant="zoom" onClick={zoomOut}>-</Button>
-          <Button variant="zoom" onClick={zoomIn}>+</Button>
+          <Button variant="zoom" onClick={zoomOut}>
+            -
+          </Button>
+          <Button variant="zoom" onClick={zoomIn}>
+            +
+          </Button>
         </div>
       </div>
       <Separator />

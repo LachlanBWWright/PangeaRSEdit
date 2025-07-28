@@ -6,9 +6,9 @@ import path from "path";
 export default defineConfig({
   optimizeDeps: {
     exclude: ["pyodide"],
-        esbuildOptions: {
+    esbuildOptions: {
       target: "es2022",
-    }
+    },
   },
   plugins: [react()],
   worker: { format: "es" },
@@ -19,10 +19,10 @@ export default defineConfig({
   },
   base: "/PangeaRSEdit/",
   build: {
-    target: "es2022"
+    target: "es2022",
   },
   esbuild: {
-    target: "es2022"
+    target: "es2022",
   },
 
   test: {
