@@ -4,7 +4,8 @@ export function sixteenBitToImageData(data: DataView, imageData: ImageData) {
   }
 
   for (let i = 0; i < data.byteLength; i += 2) {
-    const short = data.getUint16(i);
+    // Read as big-endian (false) to match game data format
+    const short = data.getUint16(i, false);
     const r = ((short & 0x7c00) >> 10) * 8;
     const g = ((short & 0x03e0) >> 5) * 8;
     const b = (short & 0x001f) * 8;
@@ -31,9 +32,11 @@ export function imageDataToSixteenBit(data: Uint8ClampedArray): DataView {
     const b = data[i + 2];
     const a = data[i + 3];
 
+    // Write as big-endian (false) to match game data format
     output.setUint16(
       i / 2,
       ((r / 8) << 10) | ((g / 8) << 5) | (b / 8) | (a ? 0x0 : 0x8000),
+      false
     );
   }
   return output;
