@@ -38,7 +38,8 @@ async function initWasm() {
     const wasmImport = await import('../wasm/lzss_rust.js');
     
     // Initialize the WASM module with the WASM file from public directory
-    await wasmImport.default('/wasm/lzss_rust_bg.wasm');
+    // Use base URL to ensure correct path resolution
+    await wasmImport.default('/PangeaRSEdit/wasm/lzss_rust_bg.wasm');
     
     wasmModule = wasmImport;
     return wasmModule;

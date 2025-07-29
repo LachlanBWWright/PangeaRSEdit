@@ -1,11 +1,18 @@
 import { expect, test, describe } from "vitest";
 import { lzssCompress, lzssDecompress } from "./lzss";
+import * as fs from 'fs';
+import * as path from 'path';
 
 // Import WebAssembly functions (should be available after build)
 async function loadWasmModule() {
   try {
     const wasmModule = await import('../wasm/lzss_rust.js');
-    await wasmModule.default('/wasm/lzss_rust_bg.wasm');
+    
+    // Load WASM file directly from filesystem for testing
+    const wasmPath = path.join(__dirname, '../../public/wasm/lzss_rust_bg.wasm');
+    const wasmBytes = fs.readFileSync(wasmPath);
+    
+    await wasmModule.default(wasmBytes);
     return wasmModule;
   } catch (error) {
     console.error('Failed to load WASM module:', error);
