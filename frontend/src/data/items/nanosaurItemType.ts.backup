@@ -57,7 +57,7 @@ export const nanosaurItemTypeParams: Record<ItemType, NanosaurItemParams> = {
       codeSample: {
         code: "gMyStartAim = gMasterItemList[i].parm[0]; // get aim 0..7",
         fileName: "src/Terrain/Terrain2.c",
-        lineNumber: 178,
+        lineNumber: 174,
       },
     },
     p1: "Unknown",

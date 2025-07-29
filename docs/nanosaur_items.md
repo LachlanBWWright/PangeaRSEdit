@@ -9,6 +9,7 @@ This document lists all terrain items found in the game's source code.
 | 2 | `AddEnemy_Tricer` | Triceratops enemy |
 | 3 | `AddEnemy_Rex` | Rex enemy |
 | 4 | `AddLavaPatch` | Lava patch |
+| 5 | `AddEgg` | Egg |
 | 6 | `AddGasVent` | Gas vent |
 | 7 | `AddEnemy_Ptera` | Pteranodon enemy |
 | 8 | `AddEnemy_Stego` | Stegosaurus enemy |
@@ -22,4 +23,3 @@ This document lists all terrain items found in the game's source code.
 | 16 | `AddEnemy_Spitter` | spitter enemy |
 | 17 | `AddStepStone` | step stone |
 | 18 | `AddRollingBoulder` | rolling boulder |
-| 19 | `AddSporePod` | spore pod |

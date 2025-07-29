@@ -197,7 +197,7 @@ export const bugdom2ItemTypeParams: Record<ItemType, Bugdom2ItemParams> = {
       codeSample: {
         code: "gPlayerInfo.startRotY = (float)itemPtr[i].parm[0] * (PI2/8.0f);	// calc starting rotation aim",
         fileName: "Source/Terrain/Terrain2.c",
-        lineNumber: 241,
+        lineNumber: 242,
       },
     },
     p1: "Unknown",
@@ -258,7 +258,7 @@ export const bugdom2ItemTypeParams: Record<ItemType, Bugdom2ItemParams> = {
       codeSample: {
         code: "pow = MakePOW(itemPtr->parm[0], &where);",
         fileName: "Source/Items/Powerups.c",
-        lineNumber: 586,
+        lineNumber: 585,
       },
     },
     p1: "Unknown",
@@ -315,7 +315,7 @@ export const bugdom2ItemTypeParams: Record<ItemType, Bugdom2ItemParams> = {
       codeSample: {
         code: "gNewObjectDefinition.type = FOLIAGE_ObjType_Daisy1 + itemPtr->parm[0];",
         fileName: "Source/Items/Items.c",
-        lineNumber: 182,
+        lineNumber: 181,
       },
     },
     p1: "Unused",
@@ -330,7 +330,7 @@ export const bugdom2ItemTypeParams: Record<ItemType, Bugdom2ItemParams> = {
       codeSample: {
         code: "gNewObjectDefinition.type = FOLIAGE_ObjType_Grass1 + itemPtr->parm[0];",
         fileName: "Source/Items/Items.c",
-        lineNumber: 301,
+        lineNumber: 299,
       },
     },
     p1: "Unused",
@@ -344,8 +344,8 @@ export const bugdom2ItemTypeParams: Record<ItemType, Bugdom2ItemParams> = {
       description: "Shell rotation (0-3, where each unit = 90°)",
       codeSample: {
         code: "gNewObjectDefinition.rot = (float)itemPtr->parm[0] * (PI/2);",
-        fileName: "Source/Items/SlotCar.c",
-        lineNumber: 878,
+        fileName: "Source/Items/Snails.c",
+        lineNumber: 677,
       },
     },
     p1: "Unknown",
@@ -360,7 +360,7 @@ export const bugdom2ItemTypeParams: Record<ItemType, Bugdom2ItemParams> = {
       codeSample: {
         code: "gNewObjectDefinition.type = FOLIAGE_ObjType_Tulip1 + itemPtr->parm[0];",
         fileName: "Source/Items/Items.c",
-        lineNumber: 236,
+        lineNumber: 234,
       },
     },
     p1: "Unused",
@@ -477,7 +477,7 @@ export const bugdom2ItemTypeParams: Record<ItemType, Bugdom2ItemParams> = {
       codeSample: {
         code: "OGLMatrix3x3_SetRotate(&m, (float)itemPtr->parm[0] * (PI2/8));",
         fileName: "Source/Items/Snails.c",
-        lineNumber: 1337,
+        lineNumber: 1333,
       },
     },
     p1: "Unknown",
@@ -492,7 +492,7 @@ export const bugdom2ItemTypeParams: Record<ItemType, Bugdom2ItemParams> = {
       codeSample: {
         code: "gNewObjectDefinition.rot = (float)itemPtr->parm[0] * PI/2;",
         fileName: "Source/Items/Items.c",
-        lineNumber: 539,
+        lineNumber: 530,
       },
     },
     p1: {
@@ -530,7 +530,7 @@ export const bugdom2ItemTypeParams: Record<ItemType, Bugdom2ItemParams> = {
       codeSample: {
         code: "gNewObjectDefinition.rot = (float)itemPtr->parm[0] * PI2/8;",
         fileName: "Source/Items/Chipmunk.c",
-        lineNumber: 127,
+        lineNumber: 130,
       },
     },
     p1: {
@@ -568,7 +568,7 @@ export const bugdom2ItemTypeParams: Record<ItemType, Bugdom2ItemParams> = {
       codeSample: {
         code: "gNewObjectDefinition.type = GARDEN_ObjType_LargeStone + itemPtr->parm[0];",
         fileName: "Source/Items/Items.c",
-        lineNumber: 628,
+        lineNumber: 678,
       },
     },
     p1: "Unused",
@@ -598,7 +598,7 @@ export const bugdom2ItemTypeParams: Record<ItemType, Bugdom2ItemParams> = {
       codeSample: {
         code: "gNewObjectDefinition.rot = (float)itemPtr->parm[0] * (PI2/4.0f);",
         fileName: "Source/Items/Items.c",
-        lineNumber: 684,
+        lineNumber: 728,
       },
     },
     p1: "Unused",
@@ -610,10 +610,10 @@ export const bugdom2ItemTypeParams: Record<ItemType, Bugdom2ItemParams> = {
           index: 0,
           description: "Is corner piece",
           codeSample: {
-        code: "Boolean isCorner = itemPtr->parm[3] & 1;",
-        fileName: "Source/Items/Items.c",
-        lineNumber: 670,
-      },
+            code: "Boolean isCorner = itemPtr->parm[3] & 1;",
+            fileName: "Source/Items/Items.c",
+            lineNumber: 721,
+          },
         },
       ],
     },
@@ -660,7 +660,7 @@ export const bugdom2ItemTypeParams: Record<ItemType, Bugdom2ItemParams> = {
       codeSample: {
         code: "gNewObjectDefinition.rot = PI + ((float)itemPtr->parm[0] * (PI2/4));",
         fileName: "Source/Items/Items.c",
-        lineNumber: 898,
+        lineNumber: 872,
       },
     },
     p1: "Unused",
@@ -740,7 +740,7 @@ export const bugdom2ItemTypeParams: Record<ItemType, Bugdom2ItemParams> = {
       codeSample: {
         code: "pow = MakePOW(itemPtr->parm[0], &where);",
         fileName: "Source/Items/Powerups.c",
-        lineNumber: 586,
+        lineNumber: 585,
       },
     },
     p1: "Unknown",
@@ -854,7 +854,7 @@ export const bugdom2ItemTypeParams: Record<ItemType, Bugdom2ItemParams> = {
       codeSample: {
         code: "gNewObjectDefinition.type = PLAYROOM_ObjType_LetterBlock1 + itemPtr->parm[0];",
         fileName: "Source/Items/Items2.c",
-        lineNumber: 55,
+        lineNumber: 27,
       },
     },
     p1: "Unknown",
@@ -869,7 +869,7 @@ export const bugdom2ItemTypeParams: Record<ItemType, Bugdom2ItemParams> = {
       codeSample: {
         code: "gNewObjectDefinition.rot = r = (float)itemPtr->parm[0] * (PI / 2);",
         fileName: "Source/Items/Traps.c",
-        lineNumber: 743,
+        lineNumber: 749,
       },
     },
     p1: "Unknown",
@@ -1118,7 +1118,7 @@ export const bugdom2ItemTypeParams: Record<ItemType, Bugdom2ItemParams> = {
       codeSample: {
         code: "gNewObjectDefinition.rot = (float)itemPtr->parm[0] * (PI2/4);",
         fileName: "Source/Items/Items2.c",
-        lineNumber: 793,
+        lineNumber: 796,
       },
     },
     p1: {
@@ -1141,7 +1141,7 @@ export const bugdom2ItemTypeParams: Record<ItemType, Bugdom2ItemParams> = {
       codeSample: {
         code: "newObj->MothTargetID = itemPtr->parm[0]; // get target ID #",
         fileName: "Source/Enemies/Enemy_Moth.c",
-        lineNumber: 124,
+        lineNumber: 126,
       },
     },
     p1: "Unknown",
@@ -1242,7 +1242,7 @@ export const bugdom2ItemTypeParams: Record<ItemType, Bugdom2ItemParams> = {
       codeSample: {
         code: "gNewObjectDefinition.rot = (float)itemPtr->parm[0] * (PI/2);",
         fileName: "Source/Items/Items2.c",
-        lineNumber: 754,
+        lineNumber: 753,
       },
     },
     p1: {
@@ -1274,7 +1274,7 @@ export const bugdom2ItemTypeParams: Record<ItemType, Bugdom2ItemParams> = {
       codeSample: {
         code: "gNewObjectDefinition.rot = (float)itemPtr->parm[1] * (PI/2);",
         fileName: "Source/Items/Items2.c",
-        lineNumber: 1131,
+        lineNumber: 1127,
       },
     },
     p2: "Unknown",
@@ -1288,7 +1288,7 @@ export const bugdom2ItemTypeParams: Record<ItemType, Bugdom2ItemParams> = {
       codeSample: {
         code: "int foodType = itemPtr->parm[0];",
         fileName: "Source/Enemies/Enemy_Ant.c",
-        lineNumber: 108,
+        lineNumber: 104,
       },
     },
     p1: "Unknown",
@@ -1345,7 +1345,7 @@ export const bugdom2ItemTypeParams: Record<ItemType, Bugdom2ItemParams> = {
       codeSample: {
         code: "gNewObjectDefinition.rot = (float)itemPtr->parm[1] * (PI2/4);",
         fileName: "Source/Items/Items2.c",
-        lineNumber: 831,
+        lineNumber: 1309,
       },
     },
     p2: "Unknown",
@@ -1360,7 +1360,7 @@ export const bugdom2ItemTypeParams: Record<ItemType, Bugdom2ItemParams> = {
       codeSample: {
         code: "gNewObjectDefinition.type = PARK_ObjType_Leaf + part;",
         fileName: "Source/Items/BeeHive.c",
-        lineNumber: 242,
+        lineNumber: 239,
       },
     },
     p1: "Unknown",
@@ -1375,7 +1375,7 @@ export const bugdom2ItemTypeParams: Record<ItemType, Bugdom2ItemParams> = {
       codeSample: {
         code: "gNewObjectDefinition.type = PARK_ObjType_Hive;",
         fileName: "Source/Items/BeeHive.c",
-        lineNumber: 60,
+        lineNumber: 58,
       },
     },
     p1: "Unknown",
@@ -1390,7 +1390,7 @@ export const bugdom2ItemTypeParams: Record<ItemType, Bugdom2ItemParams> = {
       codeSample: {
         code: "gNewObjectDefinition.type = GARBAGE_ObjType_Can;",
         fileName: "Source/Items/Items3.c",
-        lineNumber: 68,
+        lineNumber: 67,
       },
     },
     p1: "Unknown",
@@ -1450,7 +1450,7 @@ export const bugdom2ItemTypeParams: Record<ItemType, Bugdom2ItemParams> = {
       codeSample: {
         code: "gNewObjectDefinition.rot = (float)itemPtr->parm[0] * (PI2/4);",
         fileName: "Source/Items/Items3.c",
-        lineNumber: 527,
+        lineNumber: 528,
       },
     },
     p1: "Unknown",
@@ -1465,7 +1465,7 @@ export const bugdom2ItemTypeParams: Record<ItemType, Bugdom2ItemParams> = {
       codeSample: {
         code: "gNewObjectDefinition.rot = (float)itemPtr->parm[0] * (PI2/4);",
         fileName: "Source/Items/Items3.c",
-        lineNumber: 527,
+        lineNumber: 571,
       },
     },
     p1: "Unknown",

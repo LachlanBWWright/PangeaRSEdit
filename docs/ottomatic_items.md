@@ -9,6 +9,8 @@ This document lists all terrain items found in the game's source code.
 | 2 | `AddSpacePodGenerator` | space pod |
 | 3 | `AddEnemy_Squooshy` | squooshy enemy |
 | 4 | `AddHuman` | Human |
+| 5 | `AddAtom` | Atom |
+| 6 | `AddPowerupPod` | PowerupPod |
 | 7 | `AddEnemy_BrainAlien` | brain alien |
 | 8 | `AddEnemy_Onion` | Onion |
 | 9 | `AddEnemy_Corn` | Corn |

@@ -5,6 +5,15 @@ This document lists all terrain items found in the game's source code.
 | Index | Function | Description |
 |-------|----------|-------------|
 | 0 | `NilAdd` | My Start Coords |
+| 1 | `AddSnail` | snail |
+| 2 | `AddSprinklerHead` | sprinkler head |
+| 3 | `AddButterfly` | butterfly pow |
+| 4 | `AddEnemy_Gnome` | gnome |
+| 5 | `AddDaisy` | daisy |
+| 6 | `AddGrass` | grass |
+| 7 | `AddSnailShell` | snail shell |
+| 8 | `AddTulip` | tulip |
+| 9 | `AddAcorn` | acorn |
 | 10 | `AddEnemy_HouseFly` | housefly |
 | 11 | `AddScarecrow` | scarecrow |
 | 12 | `AddEnemy_EvilPlant` | evil plant |
@@ -58,6 +67,7 @@ This document lists all terrain items found in the game's source code.
 | 60 | `AddEnemy_Moth` | moth |
 | 61 | `AddEnemy_ComputerBug` | computer bug |
 | 62 | `AddSiliconPart` | silicon part |
+| 63 | `NilAdd` | Nil |
 | 64 | `AddBookStack` | book stack |
 | 65 | `AddEnemy_Roach` | roach enemy |
 | 66 | `AddShoeBox` | shoe box |
