@@ -2,76 +2,95 @@ import { FenceType } from "../../data/fences/ottoFenceType";
 import { ItemType } from "../../data/items/ottoItemType";
 import { SplineItemType } from "../../data/splines/ottoSplineItemType";
 import { WaterBodyType } from "../../data/water/ottoWaterBodyType";
-import type {
-  HeaderData,
-  FenceData,
-  SplineData,
-  LiquidData,
-  ItemData,
-} from "./ottoMaticLevelData";
 
-export type MakeRequired<T, K extends keyof T> = T & Required<Pick<T, K>>;
-
-export interface ottoMaticLevel extends HeaderData, FenceData, SplineData, LiquidData, ItemData {
-  Atrb: {
+// Header data interface
+export interface HeaderData {
+  Hedr: {
     1000: {
-      name: "Tile Attribute Data";
-      obj: ottoTileAttribute[];
-      order: number;
+      name: "Header";
+      obj: ottoHeader;
+      order: 0;
     };
-  };
-  Timg: {
-    1000: {
-      name: "Extracted Tile Image Data 32x32/16bit";
-      data: string;
-      order: number;
-    };
-  };
-  ItCo: {
-    1000: {
-      /* Not used in the game, internal OreoTerrain item */
-      name: "Terrain Items Color Array";
-      data: string;
-      order: number;
-    };
-  };
-  Layr: {
-    1000: {
-      name: "Terrain Layer Matrix";
-      obj: number[]; //Ints
-      order: number;
-    };
-  };
-  STgd: {
-    1000: {
-      name: "SuperTile Grid";
-      obj: ottoSupertileGrid[];
-      order: number;
-    };
-  };
-  YCrd: {
-    1000: {
-      name: "Floor&Ceiling Y Coords";
-      obj: number[]; //Floats
-      order: number;
-    };
-  };
-  alis: Record<
-    /* Appeas in skeleton unpacking code, doesn't seem to be used for .ter files */
-    number,
-    {
-      name: "Texture Page Picture Alias";
-      data: string;
-      order: number;
-    }
-  >;
-  _metadata: {
-    file_attributes: number;
-    junk1: number;
-    junk2: number;
   };
 }
 
+// Fence data interfaces
+export interface FenceData {
+  Fenc: {
+    1000: {
+      name: "Fence List";
+      obj: ottoFence[];
+      order: number;
+    };
+  };
+  FnNb: Record<
+    number,
+    {
+      name: "Fence Nub List";
+      obj: ottoFenceNub[];
+      order: number;
+    }
+  >;
+}
+
+// Spline data interfaces
+export interface SplineData {
+  SpNb: Record<
+    number,
+    {
+      name?: "Spline Nub List";
+      obj: ottoSplineNub[];
+      order?: number;
+    }
+  >;
+  SpPt: Record<
+    number,
+    {
+      name?: "Spline Point List";
+      obj: ottoSplinePoint[];
+      order?: number;
+    }
+  >;
+  SpIt: Record<
+    number,
+    {
+      name?: "Spline Item List";
+      obj: ottoSplineItem[];
+      order?: number;
+    }
+  >;
+  Spln: {
+    1000: {
+      name: "Spline List";
+      obj: ottoSpline[];
+      order: number;
+    };
+  };
+}
+
+// Liquid/Water data interface
+export interface LiquidData {
+  Liqd: {
+    1000: {
+      name: "Water List";
+      obj: ottoLiquid[];
+      order: number;
+    };
+  };
+}
+
+// Item data interface (excluding spline items which are in SplineData)
+export interface ItemData {
+  Itms: {
+    1000: {
+      name: "Terrain Items List";
+      obj: ottoItem[];
+      order: number;
+    };
+  };
+}
+
+// Type definitions for individual data types (imported from the main interface)
 export type ottoTileAttribute = {
   flags: number;
   p0: number;
@@ -96,9 +115,9 @@ export type ottoHeader = {
 
   mapWidth: number;
   mapHeight: number;
-  numTilePages: number; //Not used by Otto source code
-  numTiles: number; //Not used by Otto source code
-  tileSize: number; //Used for scaling the Ycrds
+  numTilePages: number;
+  numTiles: number;
+  tileSize: number;
   minY: number;
   maxY: number;
 
@@ -110,13 +129,10 @@ export type ottoHeader = {
 };
 
 export type ottoItem = {
-  /* u32 bit  */
   x: number;
   z: number;
-  /* u16 bit */
   type: ItemType;
   flags: number;
-  /* u8 bit */
   p0: number;
   p1: number;
   p2: number;
@@ -138,14 +154,11 @@ export type ottoLiquid = {
   reserved: number;
   type: WaterBodyType;
 
-  nubs: [
-    number,
-    number,
-  ][] /* 100 nubs, requires packing-unpacking from rsrcdump json */;
+  nubs: [number, number][];
 };
 
 export type ottoSupertileGrid = {
-  padByte: string; //TODO: Should be removed
+  padByte: string;
   isEmpty: boolean;
   superTileId: number;
 };
@@ -166,7 +179,6 @@ export type ottoSplineNub = {
 };
 
 export type ottoSplinePoint = {
-  //These are actually floats
   x: number;
   z: number;
 };
