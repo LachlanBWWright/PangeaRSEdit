@@ -12,7 +12,13 @@ import { Splines } from "../subviews/Splines";
 import { WaterBodies } from "../subviews/WaterBodies";
 import { Tiles } from "../subviews/Tiles";
 import { Supertiles } from "../subviews/Supertiles";
-import { ottoMaticLevel } from "@/python/structSpecs/ottoMaticInterface";
+import { 
+  HeaderData, 
+  ItemData, 
+  LiquidData, 
+  FenceData, 
+  SplineData 
+} from "@/python/structSpecs/ottoMaticLevelData";
 
 enum View {
   fences,
@@ -30,15 +36,35 @@ export type StageData = {
 };
 
 export function KonvaView({
-  data,
-  setData,
+  headerData,
+  setHeaderData,
+  itemData,
+  setItemData,
+  liquidData,
+  setLiquidData,
+  fenceData,
+  setFenceData,
+  splineData,
+  setSplineData,
+  otherData,
+  setOtherData,
   mapImages,
   view,
   stage,
   setStage,
 }: {
-  data: ottoMaticLevel;
-  setData: Updater<ottoMaticLevel>;
+  headerData: HeaderData;
+  setHeaderData: Updater<HeaderData>;
+  itemData: ItemData;
+  setItemData: Updater<ItemData>;
+  liquidData: LiquidData;
+  setLiquidData: Updater<LiquidData>;
+  fenceData: FenceData;
+  setFenceData: Updater<FenceData>;
+  splineData: SplineData;
+  setSplineData: Updater<SplineData>;
+  otherData: Partial<any>; // Keep as any for now since we need to handle STgd and other data
+  setOtherData: Updater<any>;
   mapImages: HTMLCanvasElement[];
   view: View;
   stage: StageData;
@@ -70,8 +96,8 @@ export function KonvaView({
         const x = Math.round(pos.x);
         const z = Math.round(pos.y);
 
-        setData((data) => {
-          data.Itms[1000].obj.push({
+        setItemData((itemData) => {
+          itemData.Itms[1000].obj.push({
             x: x,
             z: z,
             type: clickToAddItem,
@@ -115,53 +141,53 @@ export function KonvaView({
         });
       }}
     >
-      {data.STgd && <Supertiles data={data} mapImages={mapImages} />}
+      {otherData.STgd && <Supertiles otherData={otherData} setOtherData={setOtherData} mapImages={mapImages} />}
       {view === View.tiles && (
         <Tiles
-          data={data}
-          setData={setData}
+          otherData={otherData}
+          setOtherData={setOtherData}
           isEditingTopology={view === View.tiles}
         />
       )}
       {view === View.tiles ||
         (view === View.supertiles && (
           <>
-            <WaterBodies data={data} setData={setData} />
-            <Fences data={data} setData={setData} />
-            <Items data={data} setData={setData} />
-            <Splines data={data} setData={setData} />
+            <WaterBodies liquidData={liquidData} setLiquidData={setLiquidData} />
+            <Fences fenceData={fenceData} setFenceData={setFenceData} />
+            <Items itemData={itemData} setItemData={setItemData} headerData={headerData} setHeaderData={setHeaderData} />
+            <Splines splineData={splineData} setSplineData={setSplineData} headerData={headerData} setHeaderData={setHeaderData} />
           </>
         ))}
       {view === View.fences && (
         <>
-          <WaterBodies data={data} setData={setData} />
-          <Items data={data} setData={setData} />
-          <Splines data={data} setData={setData} />
-          <Fences data={data} setData={setData} />
+          <WaterBodies liquidData={liquidData} setLiquidData={setLiquidData} />
+          <Items itemData={itemData} setItemData={setItemData} headerData={headerData} setHeaderData={setHeaderData} />
+          <Splines splineData={splineData} setSplineData={setSplineData} headerData={headerData} setHeaderData={setHeaderData} />
+          <Fences fenceData={fenceData} setFenceData={setFenceData} />
         </>
       )}
       {view === View.water && (
         <>
-          <Fences data={data} setData={setData} />
-          <Items data={data} setData={setData} />
-          <Splines data={data} setData={setData} />
-          <WaterBodies data={data} setData={setData} />
+          <Fences fenceData={fenceData} setFenceData={setFenceData} />
+          <Items itemData={itemData} setItemData={setItemData} headerData={headerData} setHeaderData={setHeaderData} />
+          <Splines splineData={splineData} setSplineData={setSplineData} headerData={headerData} setHeaderData={setHeaderData} />
+          <WaterBodies liquidData={liquidData} setLiquidData={setLiquidData} />
         </>
       )}
       {view === View.splines && (
         <>
-          <WaterBodies data={data} setData={setData} />
-          <Items data={data} setData={setData} />
-          <Fences data={data} setData={setData} />
-          <Splines data={data} setData={setData} />
+          <WaterBodies liquidData={liquidData} setLiquidData={setLiquidData} />
+          <Items itemData={itemData} setItemData={setItemData} headerData={headerData} setHeaderData={setHeaderData} />
+          <Fences fenceData={fenceData} setFenceData={setFenceData} />
+          <Splines splineData={splineData} setSplineData={setSplineData} headerData={headerData} setHeaderData={setHeaderData} />
         </>
       )}
       {view === View.items && (
         <>
-          <WaterBodies data={data} setData={setData} />
-          <Splines data={data} setData={setData} />
-          <Fences data={data} setData={setData} />
-          <Items data={data} setData={setData} />
+          <WaterBodies liquidData={liquidData} setLiquidData={setLiquidData} />
+          <Splines splineData={splineData} setSplineData={setSplineData} headerData={headerData} setHeaderData={setHeaderData} />
+          <Fences fenceData={fenceData} setFenceData={setFenceData} />
+          <Items itemData={itemData} setItemData={setItemData} headerData={headerData} setHeaderData={setHeaderData} />
         </>
       )}
     </Stage>

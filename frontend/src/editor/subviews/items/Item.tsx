@@ -1,5 +1,5 @@
 import { Updater } from "use-immer";
-import { ottoMaticLevel } from "../../../python/structSpecs/ottoMaticInterface";
+import { ItemData, HeaderData } from "../../../python/structSpecs/ottoMaticLevelData";
 import { Label, Rect, Tag, Text } from "react-konva";
 import type Konva from "konva";
 import { SelectedItem } from "../../../data/items/itemAtoms";
@@ -13,16 +13,20 @@ const ITEM_BOX_SIZE = 12;
 const ITEM_BOX_OFFSET = ITEM_BOX_SIZE / 2;
 
 export const Item = memo(function Item({
-  data,
-  setData,
+  itemData,
+  setItemData,
+  headerData,
+  setHeaderData,
   itemIdx,
 }: {
-  data: ottoMaticLevel;
-  setData: Updater<ottoMaticLevel>;
+  itemData: ItemData;
+  setItemData: Updater<ItemData>;
+  headerData: HeaderData;
+  setHeaderData: Updater<HeaderData>;
   itemIdx: number;
 }) {
   const setSelectedItem = useSetAtom(SelectedItem);
-  const item = selectItem(data, itemIdx);
+  const item = selectItem({ Itms: itemData.Itms }, itemIdx);
   const [hovering, setHovering] = useState(false);
   const globals = useAtomValue(Globals);
 
@@ -34,12 +38,12 @@ export const Item = memo(function Item({
   );
   const handleDragEnd = useCallback(
     (e: Konva.KonvaEventObject<DragEvent>) => {
-      updateItem(setData, itemIdx, {
+      updateItem(setItemData, itemIdx, {
         x: Math.round(e.target.x() + ITEM_BOX_OFFSET),
         z: Math.round(e.target.y() + ITEM_BOX_OFFSET),
       });
     },
-    [itemIdx, setData],
+    [itemIdx, setItemData],
   );
   
   if (item === null || item === undefined) return null;
