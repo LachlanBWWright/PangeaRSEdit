@@ -11,6 +11,10 @@ import {
   selectSplines 
 } from './index';
 import { ottoMaticLevel } from '../../python/structSpecs/ottoMaticInterface';
+import { SplineItemType } from '../../data/splines/ottoSplineItemType';
+import { ItemType } from '../../data/items/ottoItemType';
+import { WaterBodyType } from '../../data/water/ottoWaterBodyType';
+import { FenceType } from '../../data/fences/ottoFenceType';
 
 // Mock level data for testing
 const createMockLevelData = (): ottoMaticLevel => ({
@@ -40,8 +44,8 @@ const createMockLevelData = (): ottoMaticLevel => ({
     1000: {
       name: "Terrain Items List",
       obj: [
-        { x: 10, z: 20, type: 1, flags: 0, p0: 0, p1: 0, p2: 0, p3: 0 },
-        { x: 30, z: 40, type: 2, flags: 1, p0: 1, p1: 1, p2: 1, p3: 1 }
+        { x: 10, z: 20, type: ItemType.BasicPlant, flags: 0, p0: 0, p1: 0, p2: 0, p3: 0 },
+        { x: 30, z: 40, type: ItemType.SpacePodGenerator, flags: 1, p0: 1, p1: 1, p2: 1, p3: 1 }
       ],
       order: 1
     }
@@ -51,7 +55,7 @@ const createMockLevelData = (): ottoMaticLevel => ({
       name: "Water List",
       obj: [
         {
-          type: 1,
+          type: WaterBodyType.BLUEWATER,
           flags: 0,
           height: 10,
           numNubs: 4,
@@ -73,7 +77,7 @@ const createMockLevelData = (): ottoMaticLevel => ({
       name: "Fence List",
       obj: [
         {
-          fenceType: 1,
+          fenceType: FenceType.FARMWOOD,
           numNubs: 2,
           junkNubListPtr: 0,
           bbTop: 10,
@@ -132,7 +136,7 @@ const createMockLevelData = (): ottoMaticLevel => ({
       name: "Spline Item List",
       obj: [
         {
-          type: 1,
+          type: SplineItemType.Human,
           placement: 0.5,
           flags: 0,
           p0: 0,
@@ -211,7 +215,7 @@ describe('Data Selectors', () => {
     });
 
     it('should return null when no header data exists', () => {
-      const emptyData = { ...mockData, Hedr: undefined } as any;
+      const emptyData = { ...mockData, Hedr: undefined } as unknown as ottoMaticLevel;
       const headerData = selectHeaderData(emptyData);
       expect(headerData).toBeNull();
     });
@@ -227,12 +231,12 @@ describe('Data Selectors', () => {
     it('should select items array correctly', () => {
       const items = selectItems(mockData);
       expect(items).toHaveLength(2);
-      expect(items[0].x).toBe(10);
-      expect(items[1].x).toBe(30);
+      expect(items[0].type).toBe(ItemType.BasicPlant);
+      expect(items[1].type).toBe(ItemType.SpacePodGenerator);
     });
 
     it('should return empty array when no items exist', () => {
-      const emptyData = { ...mockData, Itms: undefined } as any;
+      const emptyData = { ...mockData, Itms: undefined } as unknown as ottoMaticLevel;
       const items = selectItems(emptyData);
       expect(items).toEqual([]);
     });
@@ -248,7 +252,7 @@ describe('Data Selectors', () => {
     it('should select liquids array correctly', () => {
       const liquids = selectLiquids(mockData);
       expect(liquids).toHaveLength(1);
-      expect(liquids[0].type).toBe(1);
+      expect(liquids[0].type).toBe(WaterBodyType.BLUEWATER);
     });
   });
 
@@ -263,7 +267,7 @@ describe('Data Selectors', () => {
     it('should select fences array correctly', () => {
       const fences = selectFences(mockData);
       expect(fences).toHaveLength(1);
-      expect(fences[0].fenceType).toBe(1);
+      expect(fences[0].fenceType).toBe(FenceType.FARMWOOD);
     });
   });
 
