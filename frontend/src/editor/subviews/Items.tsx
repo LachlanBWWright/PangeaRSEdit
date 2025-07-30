@@ -3,6 +3,7 @@ import { Layer, Rect } from "react-konva";
 import { Updater } from "use-immer";
 import { Item } from "./items/Item";
 import { memo } from "react";
+import { selectItems } from "../../data/selectors";
 
 export const Items = memo(
   ({
@@ -12,12 +13,14 @@ export const Items = memo(
     data: ottoMaticLevel;
     setData: Updater<ottoMaticLevel>;
   }) => {
-    if (!data.Itms) return <></>;
+    const items = selectItems(data);
+    
+    if (items.length === 0) return <></>;
 
     return (
       <Layer>
         <Rect />
-        {data.Itms[1000].obj.map((_, itemIdx) => (
+        {items.map((_, itemIdx) => (
           <Item key={itemIdx} data={data} setData={setData} itemIdx={itemIdx} />
         ))}
       </Layer>

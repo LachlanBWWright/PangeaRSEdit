@@ -7,6 +7,7 @@ import { useAtomValue, useSetAtom } from "jotai";
 import { useState, useCallback, memo } from "react";
 import { Globals } from "@/data/globals/globals";
 import { getItemName } from "@/data/items/getItemNames";
+import { selectItem, updateItem } from "../../../data/selectors";
 
 const ITEM_BOX_SIZE = 12;
 const ITEM_BOX_OFFSET = ITEM_BOX_SIZE / 2;
@@ -21,7 +22,7 @@ export const Item = memo(function Item({
   itemIdx: number;
 }) {
   const setSelectedItem = useSetAtom(SelectedItem);
-  const item = data.Itms[1000].obj[itemIdx];
+  const item = selectItem(data, itemIdx);
   const [hovering, setHovering] = useState(false);
   const globals = useAtomValue(Globals);
 
@@ -33,17 +34,14 @@ export const Item = memo(function Item({
   );
   const handleDragEnd = useCallback(
     (e: Konva.KonvaEventObject<DragEvent>) => {
-      setData((data) => {
-        data.Itms[1000].obj[itemIdx].x = Math.round(
-          e.target.x() + ITEM_BOX_OFFSET,
-        );
-        data.Itms[1000].obj[itemIdx].z = Math.round(
-          e.target.y() + ITEM_BOX_OFFSET,
-        );
+      updateItem(setData, itemIdx, {
+        x: Math.round(e.target.x() + ITEM_BOX_OFFSET),
+        z: Math.round(e.target.y() + ITEM_BOX_OFFSET),
       });
     },
     [itemIdx, setData],
   );
+  
   if (item === null || item === undefined) return null;
 
   const itemX = item.x - ITEM_BOX_OFFSET;

@@ -4,6 +4,7 @@ import { Updater } from "use-immer";
 import { WaterBody } from "./water/WaterBody";
 import { SelectedWaterBody } from "@/data/water/waterAtoms";
 import { useAtomValue } from "jotai";
+import { selectLiquids } from "../../data/selectors";
 
 export function WaterBodies({
   data,
@@ -13,11 +14,13 @@ export function WaterBodies({
   setData: Updater<ottoMaticLevel>;
 }) {
   const selectedWaterBody = useAtomValue(SelectedWaterBody);
-  if (!data.Liqd) return <></>;
+  const liquids = selectLiquids(data);
+  
+  if (liquids.length === 0) return <></>;
 
   return (
     <Layer>
-      {data.Liqd[1000].obj.map((_, waterIdx) => {
+      {liquids.map((_, waterIdx) => {
         if (selectedWaterBody === waterIdx) return;
         return (
           <WaterBody
