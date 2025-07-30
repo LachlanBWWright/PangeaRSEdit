@@ -1,4 +1,4 @@
-import { ottoMaticLevel } from "../../python/structSpecs/ottoMaticInterface";
+import { LiquidData } from "../../python/structSpecs/ottoMaticLevelData";
 import { Layer } from "react-konva";
 import { Updater } from "use-immer";
 import { WaterBody } from "./water/WaterBody";
@@ -7,14 +7,14 @@ import { useAtomValue } from "jotai";
 import { selectLiquids } from "../../data/selectors";
 
 export function WaterBodies({
-  data,
-  setData,
+  liquidData,
+  setLiquidData,
 }: {
-  data: ottoMaticLevel;
-  setData: Updater<ottoMaticLevel>;
+  liquidData: LiquidData;
+  setLiquidData: Updater<LiquidData>;
 }) {
   const selectedWaterBody = useAtomValue(SelectedWaterBody);
-  const liquids = selectLiquids(data);
+  const liquids = selectLiquids({ Liqd: liquidData.Liqd });
   
   if (liquids.length === 0) return <></>;
 
@@ -24,8 +24,8 @@ export function WaterBodies({
         if (selectedWaterBody === waterIdx) return;
         return (
           <WaterBody
-            data={data}
-            setData={setData}
+            liquidData={liquidData}
+            setLiquidData={setLiquidData}
             key={waterIdx}
             waterBodyIdx={waterIdx}
           />
@@ -33,8 +33,8 @@ export function WaterBodies({
       })}
       {selectedWaterBody !== null && (
         <WaterBody
-          data={data}
-          setData={setData}
+          liquidData={liquidData}
+          setLiquidData={setLiquidData}
           key={selectedWaterBody}
           waterBodyIdx={selectedWaterBody}
         />

@@ -1,9 +1,9 @@
 import { Updater } from "use-immer";
 import {
-  ottoMaticLevel,
   ottoSplineItem,
   ottoSplineNub,
 } from "../../../python/structSpecs/ottoMaticInterface";
+import { SplineData } from "../../../python/structSpecs/ottoMaticLevelData";
 import { Line, Circle, Rect, Label, Tag, Text } from "react-konva";
 import { useAtom, useAtomValue } from "jotai";
 import { memo, useMemo, useState } from "react";
@@ -21,26 +21,26 @@ import {
 
 export function updateSplinePointsFromNubs(
   splineIdx: number,
-  setData: Updater<ottoMaticLevel>,
+  setSplineData: Updater<SplineData>,
 ) {
-  setData((data) => {
-    const nubs = selectSplineNubs(data, SPLINE_KEY_BASE + splineIdx);
+  setSplineData((splineData) => {
+    const nubs = selectSplineNubs(splineData, SPLINE_KEY_BASE + splineIdx);
     const newPoints = nubs.length === 1
       ? [{ x: nubs[0].x, z: nubs[0].z }]
       : getPoints(nubs);
     
-    updateSplinePoints(setData, SPLINE_KEY_BASE + splineIdx, newPoints);
+    updateSplinePoints(setSplineData, SPLINE_KEY_BASE + splineIdx, newPoints);
   });
 }
 
 export const Spline = memo(
   ({
-    data,
-    setData,
+    splineData,
+    setSplineData,
     splineIdx,
   }: {
-    data: ottoMaticLevel;
-    setData: Updater<ottoMaticLevel>;
+    splineData: SplineData;
+    setSplineData: Updater<SplineData>;
     splineIdx: number;
   }) => {
     const selectedSpline = useAtomValue(SelectedSpline);
@@ -48,9 +48,9 @@ export const Spline = memo(
       { x: number; z: number }[] | null
     >(null);
 
-    const nubs = selectSplineNubs(data, SPLINE_KEY_BASE + splineIdx);
-    const items = selectSplineItems(data, SPLINE_KEY_BASE + splineIdx);
-    const splinePoints = selectSplinePoints(data, SPLINE_KEY_BASE + splineIdx);
+    const nubs = selectSplineNubs(splineData, SPLINE_KEY_BASE + splineIdx);
+    const items = selectSplineItems(splineData, SPLINE_KEY_BASE + splineIdx);
+    const splinePoints = selectSplinePoints(splineData, SPLINE_KEY_BASE + splineIdx);
 
     const points = useMemo(() => {
       return splinePoints.flatMap((point) => [point.x, point.z]);
@@ -81,8 +81,8 @@ export const Spline = memo(
               z: initPos.z + dragDz,
             }));
             
-            updateSplineNubs(setData, SPLINE_KEY_BASE + splineIdx, updatedNubs);
-            updateSplinePointsFromNubs(splineIdx, setData);
+            updateSplineNubs(setSplineData, SPLINE_KEY_BASE + splineIdx, updatedNubs);
+            updateSplinePointsFromNubs(splineIdx, setSplineData);
             e.target.x(0); // Reset line position after dragging nubs
             e.target.y(0); // Reset line position after dragging nubs
             setInitialDragState(null); // Clear initial drag state
@@ -96,7 +96,7 @@ export const Spline = memo(
               nub={nub}
               nubIdx={nubIdx}
               splineIdx={splineIdx}
-              setData={setData}
+              setSplineData={setSplineData}
             />
           );
         })}
@@ -128,12 +128,12 @@ const SplineNub = memo(
     nub,
     nubIdx,
     splineIdx,
-    setData,
+    setSplineData,
   }: {
     nub: ottoSplineNub;
     nubIdx: number;
     splineIdx: number;
-    setData: Updater<ottoMaticLevel>;
+    setSplineData: Updater<SplineData>;
   }) => {
     const [selectedSpline, setSelectedSpline] = useAtom(SelectedSpline);
     const [hovering, setHovering] = useState(false);
@@ -151,8 +151,8 @@ const SplineNub = memo(
             const newX = Math.round(e.target.x());
             const newZ = Math.round(e.target.y());
             
-            setData((data) => {
-              const nubs = selectSplineNubs(data, SPLINE_KEY_BASE + splineIdx);
+            setSplineData((splineData) => {
+              const nubs = selectSplineNubs(splineData, SPLINE_KEY_BASE + splineIdx);
               const updatedNubs = [...nubs];
               updatedNubs[nubIdx] = { x: newX, z: newZ };
 
@@ -161,9 +161,9 @@ const SplineNub = memo(
                 updatedNubs[0] = { x: newX, z: newZ };
               }
               
-              updateSplineNubs(setData, SPLINE_KEY_BASE + splineIdx, updatedNubs);
+              updateSplineNubs(setSplineData, SPLINE_KEY_BASE + splineIdx, updatedNubs);
             });
-            updateSplinePointsFromNubs(splineIdx, setData);
+            updateSplinePointsFromNubs(splineIdx, setSplineData);
           }}
           onMouseOver={() => setHovering(true)}
           onMouseLeave={() => setHovering(false)}
