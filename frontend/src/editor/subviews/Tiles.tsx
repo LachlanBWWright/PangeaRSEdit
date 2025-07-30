@@ -1,5 +1,4 @@
 import {
-  ottoMaticLevel,
   ottoTileAttribute,
 } from "../../python/structSpecs/ottoMaticInterface";
 import { Layer, Image } from "react-konva";
@@ -34,19 +33,19 @@ import { KonvaEventObject } from 'konva/lib/Node';
 */
 
 export function Tiles({
-  data,
-  setData,
+  otherData,
+  setOtherData,
   isEditingTopology,
 }: {
-  data: ottoMaticLevel;
-  setData: Updater<ottoMaticLevel>;
+  otherData: Partial<any>;
+  setOtherData: Updater<any>;
   isEditingTopology: boolean;
 }) {
   const tileViewMode = useAtomValue(TileViewMode);
 
   const tileGrid = useMemo(
-    () => data.Layr[1000].obj.map((atrbIdx) => data.Atrb[1000].obj[atrbIdx]),
-    [data.Layr, data.Atrb],
+    () => otherData.Layr?.[1000]?.obj?.map((atrbIdx: number) => otherData.Atrb?.[1000]?.obj?.[atrbIdx]) || [],
+    [otherData.Layr, otherData.Atrb],
   );
 
   if (tileViewMode === TileViews.Topology)
@@ -90,7 +89,7 @@ export function TopologyTiles({
   const globals = useAtomValue(Globals);
   const opacity = useAtomValue(TopologyOpacity);
 
-  const header = useMemo(() => data.Hedr[1000].obj, [data.Hedr]);
+  const header = useMemo(() => otherData.Hedr?.[1000]?.obj, [otherData.Hedr]);
 
   const elevationToRGBA = (elevation: number) => {
     return [

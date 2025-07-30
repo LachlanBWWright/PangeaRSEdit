@@ -1,4 +1,3 @@
-import { ottoMaticLevel } from "@/python/structSpecs/ottoMaticInterface";
 import { Canvas } from "@react-three/fiber";
 import { TrackballControls } from "@react-three/drei";
 import { TerrainGeometry } from "./Terrain";
@@ -8,14 +7,14 @@ import { useAtomValue } from "jotai";
 import { Globals } from "@/data/globals/globals";
 
 export function ThreeView({
-  data,
+  otherData,
   mapImages,
 }: {
-  data: ottoMaticLevel;
+  otherData: Partial<any>;
   mapImages: HTMLCanvasElement[];
 }) {
   const globals = useAtomValue(Globals);
-  const header = data.Hedr[1000].obj;
+  const header = otherData.Hedr?.[1000]?.obj;
 
   const numWide = header.mapWidth;
   const numHigh = header.mapHeight;
