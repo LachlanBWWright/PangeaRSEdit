@@ -76,6 +76,7 @@ export interface BG3DMaterial {
   flags: number;
   diffuseColor: [number, number, number, number];
   textures: BG3DTexture[]; // Support for mipmaps
+  jpegTextures: BG3DJpegTexture[]; // JPEG textures for Nanosaur 2+
   // ...other material properties as needed
 }
 
@@ -86,6 +87,13 @@ export interface BG3DTexture {
   dstPixelFormat: PixelFormatDst;
   bufferSize: number;
   pixels: Uint8Array;
+}
+
+export interface BG3DJpegTexture {
+  width: number;
+  height: number;
+  bufferSize: number;
+  jpegData: Uint8Array;
 }
 
 export interface BG3DGeometry {
@@ -180,6 +188,7 @@ export function parseBG3D(buffer: ArrayBuffer): BG3DParseResult {
           flags,
           diffuseColor: [1, 1, 1, 1],
           textures: [],
+          jpegTextures: [],
         };
         materials.push(currentMaterial);
         break;
@@ -386,14 +395,54 @@ export function parseBG3D(buffer: ArrayBuffer): BG3DParseResult {
           triangles.push([a, b, c]);
         }
         currentGeometry.triangles = triangles;
-        // After TRIANGLEARRAY, reset currentGeometry to null to avoid accidental assignment
-        currentGeometry = null;
+        // Keep currentGeometry for potential BOUNDINGBOX tag that may follow
         break;
       }
       case BG3DTagType.BOUNDINGBOX: {
         // Bounding box: 6 floats (min x/y/z, max x/y/z)
-        // Not stored in BG3DGroup interface, so skip
-        offset += 24;
+        if (!currentGeometry) throw new Error("No geometry for bounding box");
+        const minX = view.getFloat32(offset, false);
+        offset += 4;
+        const minY = view.getFloat32(offset, false);
+        offset += 4;
+        const minZ = view.getFloat32(offset, false);
+        offset += 4;
+        const maxX = view.getFloat32(offset, false);
+        offset += 4;
+        const maxY = view.getFloat32(offset, false);
+        offset += 4;
+        const maxZ = view.getFloat32(offset, false);
+        offset += 4;
+        currentGeometry.boundingBox = {
+          min: [minX, minY, minZ],
+          max: [maxX, maxY, maxZ],
+        };
+        break;
+      }
+      case BG3DTagType.JPEGTEXTURE: {
+        // JPEG Texture: similar to TEXTUREMAP but with JPEG compressed data
+        if (!currentMaterial)
+          throw new Error("No current material for JPEG texture");
+        const width = view.getUint32(offset, false);
+        offset += 4;
+        const height = view.getUint32(offset, false);
+        offset += 4;
+        const bufferSize = view.getUint32(offset, false);
+        offset += 4;
+        offset += 20; // skip 5 unused uint32s (20 bytes)
+        // JPEG data
+        const jpegData = new Uint8Array(buffer, offset, bufferSize);
+        offset += bufferSize;
+
+        console.log(
+          `JPEG Texture: ${width}x${height}, size: ${bufferSize} bytes`,
+        );
+        currentMaterial.jpegTextures.push({
+          width,
+          height,
+          bufferSize,
+          jpegData,
+        });
         break;
       }
       case BG3DTagType.ENDFILE: {
@@ -516,6 +565,25 @@ export function bg3dParsedToBG3D(parsed: BG3DParseResult): ArrayBuffer {
 
       new Uint8Array(buffer, offset, tex.bufferSize).set(tex.pixels);
       offset += tex.bufferSize;
+    }
+    // JPEGTEXTURE(s)
+    for (const jpegTex of material.jpegTextures) {
+      console.log(`[bg3dParsedToBG3D] Write JPEGTEXTURE at offset ${offset}`);
+      view.setUint32(offset, BG3DTagType.JPEGTEXTURE, false);
+      offset += 4;
+      view.setUint32(offset, jpegTex.width, false);
+      offset += 4;
+      view.setUint32(offset, jpegTex.height, false);
+      offset += 4;
+      view.setUint32(offset, jpegTex.bufferSize, false);
+      offset += 4;
+      for (let i = 0; i < 5; i++) {
+        view.setUint32(offset, 0, false);
+        offset += 4;
+      } // reserved (20 bytes)
+      // Write JPEG data
+      new Uint8Array(buffer, offset, jpegTex.bufferSize).set(jpegTex.jpegData);
+      offset += jpegTex.bufferSize;
     }
   }
 
@@ -646,6 +714,24 @@ function writeGroup(
           view.setUint32(offset, c, false);
           offset += 4;
         }
+      }
+      if (geom.boundingBox) {
+        console.log(`[bg3dParsedToBG3D] Write BOUNDINGBOX at offset ${offset}`);
+        view.setUint32(offset, BG3DTagType.BOUNDINGBOX, false);
+        offset += 4;
+        // Write min and max coordinates
+        view.setFloat32(offset, geom.boundingBox.min[0], false);
+        offset += 4;
+        view.setFloat32(offset, geom.boundingBox.min[1], false);
+        offset += 4;
+        view.setFloat32(offset, geom.boundingBox.min[2], false);
+        offset += 4;
+        view.setFloat32(offset, geom.boundingBox.max[0], false);
+        offset += 4;
+        view.setFloat32(offset, geom.boundingBox.max[1], false);
+        offset += 4;
+        view.setFloat32(offset, geom.boundingBox.max[2], false);
+        offset += 4;
       }
     }
   }
