@@ -1,4 +1,3 @@
-import { ottoMaticLevel } from "../../python/structSpecs/ottoMaticInterface";
 import { Layer, Image, Rect } from "react-konva";
 import { Fragment, memo, useMemo } from "react";
 import { SelectedTile } from "../../data/supertiles/supertileAtoms";
@@ -7,25 +6,25 @@ import { Globals } from "../../data/globals/globals";
 
 export const Supertiles = memo(
   ({
-    data,
+    otherData,
     mapImages,
   }: {
-    data: ottoMaticLevel;
+    otherData: Partial<any>;
     mapImages: HTMLCanvasElement[];
   }) => {
     //if (!data.Itms) return <></>;\
     const globals = useAtomValue(Globals);
     const [selectedTile, setSelectedTile] = useAtom(SelectedTile);
-    const header = data.Hedr[1000].obj;
-    const supertilesWide = header.mapWidth / globals.TILES_PER_SUPERTILE;
-    const superTileGrid = data.STgd[1000].obj;
+    const header = otherData.Hedr?.[1000]?.obj;
+    const supertilesWide = header?.mapWidth / globals.TILES_PER_SUPERTILE;
+    const superTileGrid = otherData.STgd?.[1000]?.obj || [];
     const imageGrid = useMemo(() => {
       const imageArray: HTMLCanvasElement[] = [];
       for (const supertile of superTileGrid) {
         imageArray.push(mapImages[supertile.superTileId ?? supertile]);
       }
       return imageArray;
-    }, [data.Hedr, data.STgd, mapImages]);
+    }, [otherData.Hedr, otherData.STgd, mapImages]);
 
     //Create blank image
     return (

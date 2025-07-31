@@ -1,5 +1,5 @@
 import { Updater } from "use-immer";
-import { ottoMaticLevel } from "../../../python/structSpecs/ottoMaticInterface";
+import { ItemData, HeaderData } from "../../../python/structSpecs/ottoMaticLevelData";
 import { useAtom, useAtomValue } from "jotai";
 import { Button } from "@/components/ui/button";
 import { ClickToAddItem, SelectedItem } from "../../../data/items/itemAtoms";
@@ -22,17 +22,23 @@ import { getItemTypes } from "@/data/items/getItemTypes";
 import { ParamTooltip } from "./ParamTooltip";
 
 export function ItemMenu({
-  data,
-  setData,
+  itemData,
+  setItemData,
+  headerData,
+  setHeaderData,
 }: {
-  data: ottoMaticLevel;
-  setData: Updater<ottoMaticLevel>;
+  itemData: ItemData;
+  setItemData: Updater<ItemData>;
+  headerData: HeaderData;
+  setHeaderData: Updater<HeaderData>;
 }) {
   const globals = useAtomValue(Globals);
   const [selectedItem, setSelectedItem] = useAtom(SelectedItem);
 
-  const itemData =
-    selectedItem !== undefined ? data.Itms[1000].obj[selectedItem] : null;
+  if (itemData.Itms === undefined) return null;
+
+  const selectedItemData =
+    selectedItem !== undefined ? itemData.Itms[1000].obj[selectedItem] : null;
 
   const itemValues = getItemTypes(globals) //Object.keys(ItemType)
     .map((key) => parseInt(key))
@@ -40,29 +46,29 @@ export function ItemMenu({
 
   return (
     <div className="flex flex-col gap-2">
-      {itemData === null || itemData === undefined ? (
+      {selectedItemData === null || selectedItemData === undefined ? (
         <AddItemMenu />
       ) : (
         <p>
-          Item {itemData.type} ({itemData.x},{itemData.z})
+          Item {selectedItemData.type} ({selectedItemData.x},{selectedItemData.z})
         </p>
       )}
 
       <div className="flex flex-col gap-2">
-        {itemData !== null && itemData !== undefined && (
+        {selectedItemData !== null && selectedItemData !== undefined && (
           <>
             <Select
-              value={itemData.type.toString() ?? ""}
+              value={selectedItemData.type.toString() ?? ""}
               onValueChange={(e) => {
                 const newItemType = parseInt(e);
-                setData((data) => {
+                setItemData((itemData) => {
                   if (selectedItem === undefined) return;
-                  data.Itms[1000].obj[selectedItem].type = newItemType;
+                  itemData.Itms[1000].obj[selectedItem].type = newItemType;
                 });
               }}
             >
               <SelectTrigger>
-                <SelectValue>{getItemName(globals, itemData.type)}</SelectValue>
+                <SelectValue>{getItemName(globals, selectedItemData.type)}</SelectValue>
               </SelectTrigger>
               <SelectContent>
                 {itemValues.map((key) => (
@@ -83,19 +89,19 @@ export function ItemMenu({
                   <span className="text-baseline align-text-bottom">Flags</span>
                 }
                 tooltip={
-                  typeof ottoItemTypeParams[itemData.type].flags === "string"
-                    ? ottoItemTypeParams[itemData.type].flags
+                  typeof ottoItemTypeParams[selectedItemData.type].flags === "string"
+                    ? ottoItemTypeParams[selectedItemData.type].flags
                     : ""
                 }
               />
               <Input
                 type="number"
                 className="col-span-3"
-                value={itemData.flags.toString()}
+                value={selectedItemData.flags.toString()}
                 onChange={(e) => {
-                  setData((data) => {
+                  setItemData((itemData) => {
                     if (selectedItem === undefined) return;
-                    data.Itms[1000].obj[selectedItem].flags = parseU16(
+                    itemData.Itms[1000].obj[selectedItem].flags = parseU16(
                       e.target.value,
                     );
                   });
@@ -105,12 +111,12 @@ export function ItemMenu({
               {/* Param 0-3, refactored */}
               {([0, 1, 2, 3] as const).map((i) => {
                 const paramKey = `p${i}` as const;
-                const param = ottoItemTypeParams[itemData.type][paramKey];
-                const value = itemData[paramKey];
+                const param = ottoItemTypeParams[selectedItemData.type][paramKey];
+                const value = selectedItemData[paramKey];
                 const setValue = (v: number) => {
-                  setData((data) => {
+                  setItemData((itemData) => {
                     if (selectedItem === undefined) return;
-                    data.Itms[1000].obj[selectedItem][paramKey] = v;
+                    itemData.Itms[1000].obj[selectedItem][paramKey] = v;
                   });
                 };
                 return [
@@ -130,13 +136,13 @@ export function ItemMenu({
                               className="font-bold"
                                 checked={checked}
                                 onCheckedChange={(checked) => {
-                                  setData((data) => {
+                                  setItemData((itemData) => {
                                     if (selectedItem === undefined) return;
                                     const mask = 1 << flag.index;
                                     if (checked) {
-                                      data.Itms[1000].obj[selectedItem][paramKey] |= mask;
+                                      itemData.Itms[1000].obj[selectedItem][paramKey] |= mask;
                                     } else {
-                                      data.Itms[1000].obj[selectedItem][paramKey] &= ~mask;
+                                      itemData.Itms[1000].obj[selectedItem][paramKey] &= ~mask;
                                     }
                                   });
                                 }}
@@ -172,8 +178,8 @@ export function ItemMenu({
               disabled={selectedItem === undefined}
               onClick={() => {
                 if (selectedItem === undefined) return;
-                setData((data) => {
-                  data.Itms[1000].obj.splice(selectedItem, 1);
+                setItemData((itemData) => {
+                  itemData.Itms[1000].obj.splice(selectedItem, 1);
                 });
                 setSelectedItem(undefined);
               }}

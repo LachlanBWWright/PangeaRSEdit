@@ -23,16 +23,16 @@ import {
 import { CanvasView, CanvasViewMode } from "@/data/canvasView/canvasViewAtoms";
 import { useEffect } from "react";
 import { Switch } from "@/components/ui/switch";
-import { ottoMaticLevel } from "@/python/structSpecs/ottoMaticInterface";
+import { HeaderData } from "@/python/structSpecs/ottoMaticLevelData";
 import { Updater } from "use-immer";
 
 
 export function TilesMenu({
-  data,
-  setData,
+  headerData,
+  setHeaderData,
 }: {
-  data: ottoMaticLevel;
-  setData: Updater<ottoMaticLevel>;
+  headerData: HeaderData;
+  setHeaderData: Updater<HeaderData>;
 }) {
   const [tileView, setTileView] = useAtom(TileViewMode);
   const [brushMode, setBrushMode] = useAtom(CurrentTopologyBrushMode);
@@ -46,7 +46,7 @@ export function TilesMenu({
   const [selectedTileBrushType, setSelectedTileBrushType] =
     useAtom(TileBrushType);
 
-  const header = data?.Hedr?.[1000]?.obj;
+  const header = headerData?.Hedr?.[1000]?.obj;
   const minY = header?.minY || 0;
   const maxY = header?.maxY || 0;
 
@@ -60,8 +60,10 @@ export function TilesMenu({
     const newValue = parseFloat(e.target.value);
     if (isNaN(newValue)) return;
 
-    setData((draft) => {
-      draft.Hedr[1000].obj.minY = newValue;
+    setHeaderData((draft) => {
+      if (draft.Hedr?.[1000]?.obj) {
+        draft.Hedr[1000].obj.minY = newValue;
+      }
     });
   };
 
@@ -69,8 +71,10 @@ export function TilesMenu({
     const newValue = parseFloat(e.target.value);
     if (isNaN(newValue)) return;
 
-    setData((draft) => {
-      draft.Hedr[1000].obj.maxY = newValue;
+    setHeaderData((draft) => {
+      if (draft.Hedr?.[1000]?.obj) {
+        draft.Hedr[1000].obj.maxY = newValue;
+      }
     });
   };
 
