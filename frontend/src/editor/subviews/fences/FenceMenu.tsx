@@ -13,6 +13,7 @@ import {
 import { Game, Globals } from "@/data/globals/globals";
 import { getFenceName } from "@/data/fences/getFenceNames";
 import { getFenceTypes } from "@/data/fences/getFenceTypes";
+import { getFenceImagePath } from "@/data/fences/getFenceImagePath";
 //import { SelectContent, SelectTrigger } from "@radix-ui/react-select";
 
 const NUB_KEY_BASE = 1000;
@@ -85,15 +86,9 @@ export function FenceMenu({
           {fenceData !== null && (
             <>
               <img
-                src={
-                  /* TODO: Previews for other games */
-                  globals.GAME_TYPE === Game.OTTO_MATIC
-                    ? `assets/ottoMatic/fences/fence${String(
-                        fenceData.fenceType,
-                      ).padStart(3, "0")}.png`
-                    : ""
-                }
+                src={getFenceImagePath(globals, fenceData.fenceType)}
                 className="max-h-56 mx-auto"
+                alt={`Fence ${fenceData.fenceType}`}
               />
               <Select
                 value={getFenceName(globals, fenceData.fenceType)}
