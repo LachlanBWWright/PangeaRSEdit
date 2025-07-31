@@ -16,6 +16,9 @@ import {
   BG3DMaterial,
   BG3DParseResult,
   BG3DTexture,
+  BG3DSkeleton,
+  BG3DBone,
+  BG3DAnimation,
 } from "./parseBG3D";
 
 import {
@@ -25,7 +28,7 @@ import {
   pngToRgba8,
 } from "./image/pngArgb";
 
-import { Document, Mesh, Material, Node } from "@gltf-transform/core";
+import { Document, Mesh, Material, Node, Skin, Accessor } from "@gltf-transform/core";
 import { PixelFormatSrc, PixelFormatDst } from "./parseBG3D";
 
 /**
@@ -111,6 +114,64 @@ export function bg3dParsedToGLTF(parsed: BG3DParseResult): Document {
     }
   });
 
+  // 2.5. Skeleton/Joints (create glTF joints from skeleton data)
+  let gltfJoints: Node[] = [];
+  let gltfSkin: Skin | null = null;
+  
+  if (parsed.skeleton) {
+    console.log("Creating glTF skeleton from BG3D skeleton data");
+    const skeleton = parsed.skeleton;
+    
+    // Create joint nodes for each bone
+    gltfJoints = skeleton.bones.map((bone, index) => {
+      const joint = doc.createNode();
+      joint.setName(`joint_${index}_${bone.name.substring(0, 20)}`); // Truncate long names
+      
+      // Set bone transform (position only for now)
+      joint.setTranslation([bone.coordX, bone.coordY, bone.coordZ]);
+      
+      return joint;
+    });
+    
+    // Set up bone hierarchy
+    skeleton.bones.forEach((bone, index) => {
+      if (bone.parentBone >= 0 && bone.parentBone < gltfJoints.length) {
+        gltfJoints[bone.parentBone].addChild(gltfJoints[index]);
+      }
+    });
+    
+    // Create skin
+    gltfSkin = doc.createSkin();
+    gltfSkin.setName("skeleton_skin");
+    
+    // Add all joints to skin
+    gltfJoints.forEach(joint => {
+      gltfSkin!.addJoint(joint);
+    });
+    
+    // Create inverse bind matrices (identity matrices for now)
+    const numJoints = gltfJoints.length;
+    const inverseBindMatrices = new Float32Array(numJoints * 16);
+    for (let i = 0; i < numJoints; i++) {
+      const offset = i * 16;
+      // Identity matrix
+      inverseBindMatrices[offset + 0] = 1; // m00
+      inverseBindMatrices[offset + 5] = 1; // m11
+      inverseBindMatrices[offset + 10] = 1; // m22
+      inverseBindMatrices[offset + 15] = 1; // m33
+    }
+    
+    const ibmAccessor = doc
+      .createAccessor()
+      .setType("MAT4")
+      .setArray(inverseBindMatrices);
+    
+    gltfSkin.setInverseBindMatrices(ibmAccessor);
+    
+    // TODO: Convert animations to glTF format
+    // For now, we'll store animation data in extras
+  }
+
   console.log("Stage 3");
 
   // Helper to collect all geometries from group hierarchy (using .children)
@@ -178,6 +239,56 @@ export function bg3dParsedToGLTF(parsed: BG3DParseResult): Document {
           .setArray(new Uint32Array(geom.triangles.flat()))
       : null;
 
+    // Create joint and weight accessors if we have skeleton data
+    let jointAccessor: Accessor | null = null;
+    let weightAccessor: Accessor | null = null;
+    
+    if (parsed.skeleton && gltfSkin && geom.vertices) {
+      const numVertices = geom.vertices.length;
+      const joints = new Uint16Array(numVertices * 4); // 4 joints per vertex
+      const weights = new Float32Array(numVertices * 4); // 4 weights per vertex
+      
+      // For each vertex, determine which bones influence it based on skeleton data
+      for (let vertexIndex = 0; vertexIndex < numVertices; vertexIndex++) {
+        let weightsSet = 0;
+        
+        // Check each bone to see if this vertex is attached to it
+        parsed.skeleton.bones.forEach((bone, boneIndex) => {
+          if (bone.pointIndices && bone.pointIndices.includes(vertexIndex) && weightsSet < 4) {
+            const weightIndex = vertexIndex * 4 + weightsSet;
+            joints[weightIndex] = boneIndex;
+            weights[weightIndex] = 1.0 / Math.max(1, bone.pointIndices.length); // Simple weight distribution
+            weightsSet++;
+          }
+        });
+        
+        // Normalize weights
+        let totalWeight = 0;
+        for (let i = 0; i < 4; i++) {
+          totalWeight += weights[vertexIndex * 4 + i];
+        }
+        if (totalWeight > 0) {
+          for (let i = 0; i < 4; i++) {
+            weights[vertexIndex * 4 + i] /= totalWeight;
+          }
+        } else {
+          // No bone influences this vertex, assign to root bone
+          joints[vertexIndex * 4] = 0;
+          weights[vertexIndex * 4] = 1.0;
+        }
+      }
+      
+      jointAccessor = doc
+        .createAccessor()
+        .setType("VEC4")
+        .setArray(joints);
+        
+      weightAccessor = doc
+        .createAccessor()
+        .setType("VEC4")
+        .setArray(weights);
+    }
+
     for (let i = 0; i < geom.numMaterials; i++) {
       const prim = doc.createPrimitive();
 
@@ -192,6 +303,12 @@ export function bg3dParsedToGLTF(parsed: BG3DParseResult): Document {
       }
       if (colorAccessor) {
         prim.setAttribute("COLOR_0", colorAccessor);
+      }
+      if (jointAccessor) {
+        prim.setAttribute("JOINTS_0", jointAccessor);
+      }
+      if (weightAccessor) {
+        prim.setAttribute("WEIGHTS_0", weightAccessor);
       }
       if (indexAccessor) {
         prim.setIndices(indexAccessor);
@@ -233,27 +350,46 @@ export function bg3dParsedToGLTF(parsed: BG3DParseResult): Document {
         // It's a BG3DGeometry
         const geomIndex = allGeometries.indexOf(child as BG3DGeometry);
         if (geomIndex >= 0 && gltfMeshes[geomIndex]) {
-          node.addChild(
-            doc
-              .createNode()
-              .setMesh(gltfMeshes[geomIndex])
-              .setName("item_" + idx.toString().padStart(4, "0")),
-          );
+          const meshNode = doc
+            .createNode()
+            .setMesh(gltfMeshes[geomIndex])
+            .setName("item_" + idx.toString().padStart(4, "0"));
+          
+          // Apply skin if we have skeleton data
+          if (gltfSkin) {
+            meshNode.setSkin(gltfSkin);
+          }
+          
+          node.addChild(meshNode);
         }
       }
     }
     return { node, idx };
   }
-  // Add all top-level groups as root nodes
+  
   // Add all top-level groups as root nodes (using setChildren for glTF-Transform)
-  const rootNodes: Node[] = []; //parsed.groups.map((group) => createNodeForGroup(group, 0));
+  const rootNodes: Node[] = [];
   let idx = 0;
   for (const group of parsed.groups) {
     const { node, idx: newIdx } = createNodeForGroup(group, idx);
     rootNodes.push(node);
     idx = newIdx;
   }
+  
   const scene = doc.createScene("Scene");
+  
+  // Add skeleton joints to scene if present
+  if (gltfJoints.length > 0) {
+    // Add root bones (those without parents) to the scene
+    parsed.skeleton?.bones.forEach((bone, index) => {
+      if (bone.parentBone < 0) {
+        doc.getRoot().listNodes().push(gltfJoints[index]);
+        scene.addChild(gltfJoints[index]);
+      }
+    });
+  }
+  
+  // Add geometry nodes to scene
   for (const node of rootNodes) {
     doc.getRoot().listNodes().push(node);
     scene.addChild(node);
@@ -264,7 +400,8 @@ export function bg3dParsedToGLTF(parsed: BG3DParseResult): Document {
     groups: parsed.groups,
     // Store BG3DParseResult-level fields for round-trip
     bg3dFields: {
-      // No flat geometries array anymore; if needed, can extract from groups
+      // Store skeleton data for round-trip (main skeleton data is now in proper glTF format)
+      skeleton: parsed.skeleton,
     },
   });
 
@@ -338,6 +475,61 @@ export async function gltfToBG3D(doc: Document): Promise<BG3DParseResult> {
       };
     }),
   );
+
+  console.log("gltfToBG3D: Restoring skeleton data...");
+  let skeleton: BG3DSkeleton | undefined = undefined;
+  
+  // First, try to restore from extras (for round-trip compatibility)
+  const rootExtras = doc.getRoot().getExtras() || {};
+  if (rootExtras.bg3dFields?.skeleton) {
+    console.log("gltfToBG3D: Found skeleton in extras");
+    skeleton = rootExtras.bg3dFields.skeleton;
+  } else {
+    // Try to extract from glTF skeleton/skin data
+    const skins = doc.getRoot().listSkins();
+    if (skins.length > 0) {
+      console.log("gltfToBG3D: Extracting skeleton from glTF skin data");
+      const skin = skins[0];
+      const joints = skin.listJoints();
+      
+      if (joints.length > 0) {
+        const bones: BG3DBone[] = [];
+        
+        // Convert joints back to bones
+        joints.forEach((joint, index) => {
+          const translation = joint.getTranslation() || [0, 0, 0];
+          
+          // Find parent bone index
+          let parentBone = -1;
+          const parent = joint.getParent();
+          if (parent) {
+            parentBone = joints.indexOf(parent);
+          }
+          
+          bones.push({
+            parentBone,
+            name: joint.getName() || `bone_${index}`,
+            coordX: translation[0],
+            coordY: translation[1],
+            coordZ: translation[2],
+            numPointsAttachedToBone: 0, // Would need to calculate from mesh data
+            numNormalsAttachedToBone: 0, // Would need to calculate from mesh data
+            pointIndices: [], // Would need to extract from joint weights
+            normalIndices: [], // Would need to extract from joint weights
+          });
+        });
+        
+        skeleton = {
+          version: 272, // Default version
+          numAnims: 0, // No animations extracted yet
+          numJoints: bones.length,
+          num3DMFLimbs: 0,
+          bones,
+          animations: [], // TODO: Extract animations from glTF
+        };
+      }
+    }
+  }
 
   console.log("gltfToBG3D: Restoring geometries...");
   //TODO: Needs Fixing
@@ -543,6 +735,7 @@ export async function gltfToBG3D(doc: Document): Promise<BG3DParseResult> {
     materials,
     //TODO: Fix any use
     groups: processedNodes as any as BG3DGroup[], //groups,
+    skeleton, // Include extracted skeleton data
     //groups,
   };
   console.log("gltfToBG3D: Final BG3DParseResult:", result);

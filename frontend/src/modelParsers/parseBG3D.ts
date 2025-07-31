@@ -1,6 +1,8 @@
 // parseBG3D.ts
 // Full BG3D file parser for Otto Matic and related games
 
+import type { SkeletonResource } from "../python/structSpecs/skeleton/skeletonInterface";
+
 //https://registry.khronos.org/OpenGL-Refpages/gl4/html/glTexImage2D.xhtml
 export enum PixelFormatSrc {
   GL_UNSIGNED_SHORT_1_5_5_5_REV = 33638, // 1a 5r 5g 5b 0x8366 33638
@@ -111,19 +113,69 @@ export interface BG3DGroup {
   children: (BG3DGeometry | BG3DGroup)[];
 }
 
+// Skeleton data structures for BG3D
+export interface BG3DBone {
+  parentBone: number; // -1 if no parent, otherwise index of parent bone
+  name: string;
+  coordX: number;
+  coordY: number;
+  coordZ: number;
+  numPointsAttachedToBone: number;
+  numNormalsAttachedToBone: number;
+  pointIndices?: number[]; // Indices of points attached to this bone
+  normalIndices?: number[]; // Indices of normals attached to this bone
+}
+
+export interface BG3DKeyframe {
+  tick: number;
+  accelerationMode: number;
+  coordX: number;
+  coordY: number;
+  coordZ: number;
+  rotationX: number;
+  rotationY: number;
+  rotationZ: number;
+  scaleX: number;
+  scaleY: number;
+  scaleZ: number;
+}
+
+export interface BG3DAnimationEvent {
+  time: number;
+  type: number;
+  value: number;
+}
+
+export interface BG3DAnimation {
+  name: string;
+  numAnimEvents: number;
+  events: BG3DAnimationEvent[];
+  keyframes: { [boneIndex: number]: BG3DKeyframe[] }; // Keyframes per bone
+}
+
+export interface BG3DSkeleton {
+  version: number;
+  numAnims: number;
+  numJoints: number;
+  num3DMFLimbs: number;
+  bones: BG3DBone[];
+  animations: BG3DAnimation[];
+}
+
 export interface BG3DParseResult {
   materials: BG3DMaterial[];
   groups: BG3DGroup[];
+  skeleton?: BG3DSkeleton; // Optional skeleton data
   // ...other global properties as needed
 }
 
 /**
  * Parse a .bg3d file from an ArrayBuffer
  * @param buffer ArrayBuffer containing the .bg3d file
- * @param gameType Which game this BG3D is from (Game enum)
+ * @param skeleton Optional skeleton data to include in the result
  * @returns BG3DParseResult
  */
-export function parseBG3D(buffer: ArrayBuffer): BG3DParseResult {
+export function parseBG3D(buffer: ArrayBuffer, skeleton?: SkeletonResource): BG3DParseResult {
   const view = new DataView(buffer);
   let offset = 0;
   // Read header (first 4 bytes should be 'BG3D')
@@ -449,12 +501,129 @@ export function parseBG3D(buffer: ArrayBuffer): BG3DParseResult {
   return {
     materials,
     groups,
+    skeleton: skeleton ? convertSkeletonResourceToBG3D(skeleton) : undefined,
+  };
+}
+
+/**
+ * Convert a SkeletonResource to BG3DSkeleton format
+ */
+function convertSkeletonResourceToBG3D(skeleton: SkeletonResource): BG3DSkeleton {
+  // Get header information
+  const headerEntries = Object.values(skeleton.Hedr);
+  const header = headerEntries[0]?.obj || {
+    version: 0,
+    numAnims: 0,
+    numJoints: 0,
+    num3DMFLimbs: 0,
+  };
+
+  // Convert bones
+  const bones: BG3DBone[] = [];
+  const boneEntries = Object.entries(skeleton.Bone || {});
+  
+  // Sort by order to maintain correct indices
+  boneEntries.sort(([, a], [, b]) => a.order - b.order);
+  
+  boneEntries.forEach(([boneId, boneEntry], index) => {
+    const boneObj = boneEntry.obj;
+    
+    // Get point indices for this bone
+    const pointIndices: number[] = [];
+    const bonePEntry = skeleton.BonP?.[boneId];
+    if (bonePEntry) {
+      pointIndices.push(...bonePEntry.obj.map(p => p.pointIndex));
+    }
+    
+    // Get normal indices for this bone
+    const normalIndices: number[] = [];
+    const boneNEntry = skeleton.BonN?.[boneId];
+    if (boneNEntry) {
+      normalIndices.push(...boneNEntry.obj.map(n => n.normal));
+    }
+    
+    bones.push({
+      parentBone: boneObj.parentBone,
+      name: boneObj.name,
+      coordX: boneObj.coordX,
+      coordY: boneObj.coordY,
+      coordZ: boneObj.coordZ,
+      numPointsAttachedToBone: boneObj.numPointsAttachedToBone,
+      numNormalsAttachedToBone: boneObj.numNormalsAttachedToBone,
+      pointIndices,
+      normalIndices,
+    });
+  });
+
+  // Convert animations
+  const animations: BG3DAnimation[] = [];
+  const animHeaderEntries = Object.entries(skeleton.AnHd || {});
+  
+  animHeaderEntries.forEach(([animId, animEntry]) => {
+    const animHeader = animEntry.obj;
+    
+    // Get animation events
+    const events: BG3DAnimationEvent[] = [];
+    const eventEntry = skeleton.Evnt?.[animId];
+    if (eventEntry) {
+      eventEntry.obj.forEach(event => {
+        events.push({
+          time: event.time,
+          type: event.type,
+          value: event.value,
+        });
+      });
+    }
+    
+    // Get keyframes for all bones in this animation
+    const keyframes: { [boneIndex: number]: BG3DKeyframe[] } = {};
+    const keyframeEntry = skeleton.KeyF?.[animId];
+    if (keyframeEntry) {
+      // Group keyframes by bone (assuming keyframes are in order)
+      // This is a simplified approach - you may need to adjust based on actual data structure
+      keyframeEntry.obj.forEach((keyframe, keyframeIndex) => {
+        const boneIndex = Math.floor(keyframeIndex / bones.length); // Simplified assumption
+        if (!keyframes[boneIndex]) {
+          keyframes[boneIndex] = [];
+        }
+        keyframes[boneIndex].push({
+          tick: keyframe.tick,
+          accelerationMode: keyframe.accelerationMode,
+          coordX: keyframe.coordX,
+          coordY: keyframe.coordY,
+          coordZ: keyframe.coordZ,
+          rotationX: keyframe.rotationX,
+          rotationY: keyframe.rotationY,
+          rotationZ: keyframe.rotationZ,
+          scaleX: keyframe.scaleX,
+          scaleY: keyframe.scaleY,
+          scaleZ: keyframe.scaleZ,
+        });
+      });
+    }
+    
+    animations.push({
+      name: animHeader.animName,
+      numAnimEvents: animHeader.numAnimEvents,
+      events,
+      keyframes,
+    });
+  });
+
+  return {
+    version: header.version,
+    numAnims: header.numAnims,
+    numJoints: header.numJoints,
+    num3DMFLimbs: header.num3DMFLimbs,
+    bones,
+    animations,
   };
 }
 
 /**
  * Serialize a BG3DParseResult back to a BG3D ArrayBuffer
  * This reverses the logic of parseBG3D.ts
+ * Note: Skeleton data is not included in BG3D format as it's stored separately
  */
 export function bg3dParsedToBG3D(parsed: BG3DParseResult): ArrayBuffer {
   // Static property to track offset
@@ -666,6 +835,122 @@ function isBG3DGroup(obj: BG3DGeometry | BG3DGroup): obj is BG3DGroup {
     "children" in obj &&
     Array.isArray(obj.children)
   );
+}
+
+/**
+ * Convert BG3DSkeleton back to SkeletonResource format
+ */
+export function convertBG3DToSkeletonResource(skeleton: BG3DSkeleton): SkeletonResource {
+  const skeletonResource: SkeletonResource = {
+    Hedr: {},
+    Bone: {},
+    BonP: {},
+    BonN: {},
+    AnHd: {},
+    Evnt: {},
+    NumK: {},
+    KeyF: {},
+  };
+
+  // Convert header
+  skeletonResource.Hedr["1000"] = {
+    name: "Header",
+    order: 0,
+    obj: {
+      version: skeleton.version,
+      numAnims: skeleton.numAnims,
+      numJoints: skeleton.numJoints,
+      num3DMFLimbs: skeleton.num3DMFLimbs,
+    },
+  };
+
+  // Convert bones
+  skeleton.bones.forEach((bone, index) => {
+    const boneId = (1000 + index).toString();
+    
+    // Main bone entry
+    skeletonResource.Bone[boneId] = {
+      name: index === 0 ? "Bone" : "NewBone",
+      order: index * 3 + 1, // Spacing for other entries
+      obj: {
+        parentBone: bone.parentBone,
+        name: bone.name,
+        coordX: bone.coordX,
+        coordY: bone.coordY,
+        coordZ: bone.coordZ,
+        numPointsAttachedToBone: bone.numPointsAttachedToBone,
+        numNormalsAttachedToBone: bone.numNormalsAttachedToBone,
+      },
+    };
+
+    // Point indices
+    if (bone.pointIndices && bone.pointIndices.length > 0) {
+      skeletonResource.BonP[boneId] = {
+        name: index === 0 ? "Bone" : "NewBone",
+        order: index * 3 + 2,
+        obj: bone.pointIndices.map(pointIndex => ({ pointIndex })),
+      };
+    }
+
+    // Normal indices  
+    if (bone.normalIndices && bone.normalIndices.length > 0) {
+      skeletonResource.BonN[boneId] = {
+        name: index === 0 ? "Bone" : "NewBone",
+        order: index * 3 + 3,
+        obj: bone.normalIndices.map(normal => ({ normal })),
+      };
+    }
+  });
+
+  // Convert animations
+  skeleton.animations.forEach((animation, index) => {
+    const animId = (1000 + index).toString();
+    
+    // Animation header
+    skeletonResource.AnHd[animId] = {
+      name: animation.name,
+      order: 100 + index * 3,
+      obj: {
+        animName: animation.name,
+        numAnimEvents: animation.numAnimEvents,
+      },
+    };
+
+    // Animation events
+    if (animation.events.length > 0) {
+      skeletonResource.Evnt[animId] = {
+        name: animation.name,
+        order: 100 + index * 3 + 1,
+        obj: animation.events,
+      };
+    }
+
+    // Number of keyframes (simplified - assuming all bones have same number)
+    const firstBoneKeyframes = Object.values(animation.keyframes)[0];
+    if (firstBoneKeyframes) {
+      skeletonResource.NumK[animId] = {
+        name: animation.name,
+        order: 100 + index * 3 + 2,
+        obj: [{ numKeyFrames: firstBoneKeyframes.length }],
+      };
+    }
+
+    // Keyframes - flatten all bone keyframes into single array
+    const allKeyframes: any[] = [];
+    Object.entries(animation.keyframes).forEach(([boneIndex, keyframes]) => {
+      allKeyframes.push(...keyframes);
+    });
+    
+    if (allKeyframes.length > 0) {
+      skeletonResource.KeyF[animId] = {
+        name: animation.name,
+        order: 100 + index * 3 + 3,
+        obj: allKeyframes,
+      };
+    }
+  });
+
+  return skeletonResource;
 }
 
 /* function isBG3DGeometry(obj: BG3DGeometry | BG3DGroup): obj is BG3DGeometry {
