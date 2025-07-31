@@ -1,5 +1,6 @@
 import {
   ottoTileAttribute,
+  ottoMaticLevel,
 } from "../../python/structSpecs/ottoMaticInterface";
 import { Layer, Image } from "react-konva";
 import { Updater } from "use-immer";
@@ -37,8 +38,8 @@ export function Tiles({
   setOtherData,
   isEditingTopology,
 }: {
-  otherData: Partial<any>;
-  setOtherData: Updater<any>;
+  otherData: Partial<ottoMaticLevel>;
+  setOtherData: Updater<Partial<ottoMaticLevel>>;
   isEditingTopology: boolean;
 }) {
   const tileViewMode = useAtomValue(TileViewMode);
@@ -51,35 +52,35 @@ export function Tiles({
   if (tileViewMode === TileViews.Topology)
     return (
       <TopologyTiles
-        data={data}
-        setData={setData}
+        otherData={otherData}
+        setOtherData={setOtherData}
         isEditingTopology={isEditingTopology}
       />
     );
 
   if (tileViewMode === TileViews.Flags)
-    return <EmptyTiles data={data} setData={setData} tileGrid={tileGrid} />;
+    return <EmptyTiles otherData={otherData} setOtherData={setOtherData} tileGrid={tileGrid} />;
   if (tileViewMode === TileViews.ElectricFloor0)
     return (
-      <ElectricFloor0Tiles data={data} setData={setData} tileGrid={tileGrid} />
+      <ElectricFloor0Tiles otherData={otherData} setOtherData={setOtherData} tileGrid={tileGrid} />
     );
 
   //ElectricFloor1
 
   return (
-    <ElectricFloor1Tiles data={data} setData={setData} tileGrid={tileGrid} />
+    <ElectricFloor1Tiles otherData={otherData} setOtherData={setOtherData} tileGrid={tileGrid} />
   );
 }
 
 type PixelType = { x: number; y: number; value: number; distance: number };
 
 export function TopologyTiles({
-  data,
-  setData,
+  otherData,
+  setOtherData,
   isEditingTopology,
 }: {
-  data: ottoMaticLevel;
-  setData: Updater<ottoMaticLevel>;
+  otherData: Partial<ottoMaticLevel>;
+  setOtherData: Updater<Partial<ottoMaticLevel>>;
   isEditingTopology: boolean;
 }) {
   const currentTopologyBrushMode = useAtomValue(CurrentTopologyBrushMode);
@@ -92,6 +93,7 @@ export function TopologyTiles({
   const header = useMemo(() => otherData.Hedr?.[1000]?.obj, [otherData.Hedr]);
 
   const elevationToRGBA = (elevation: number) => {
+    if (!header) return [0, 0, 0, 255];
     return [
       ((elevation - header.minY) / (header.maxY - header.minY)) * 255,
       ((elevation - header.minY) / (header.maxY - header.minY)) * 255,
@@ -101,17 +103,20 @@ export function TopologyTiles({
   };
 
   const flattenCoords = (x: number, y: number) => {
+    if (!header) return 0;
     x = Math.floor(x / globals.TILE_SIZE);
     y = Math.floor(y / globals.TILE_SIZE);
     return y * (header.mapWidth + 1) + x;
   };
 
   const coordColours = useMemo(
-    () => data.YCrd[1000].obj.flatMap(elevationToRGBA),
-    [data.YCrd[1000].obj],
+    () => otherData.YCrd?.[1000]?.obj?.flatMap(elevationToRGBA) || [],
+    [otherData.YCrd, header],
   );
 
   const imgCanvas = useMemo(() => {
+    if (!otherData.YCrd?.[1000]?.obj || !header) return null;
+    
     const imgCanvas = document.createElement("canvas");
     imgCanvas.width = header.mapWidth + 1;
     imgCanvas.height = header.mapHeight + 1;
@@ -128,10 +133,12 @@ export function TopologyTiles({
       0,
     );
     return imgCanvas;
-  }, [header, data.YCrd[1000].obj]);
+  }, [header, otherData.YCrd, coordColours]);
 
   const setPixels = (pixelList: PixelType[]) => {
-    setData((data) => {
+    setOtherData((data) => {
+      if (!data.YCrd?.[1000]?.obj || !header) return;
+      
       for (const pixelData of pixelList) {
         const { x, y, value, distance } = pixelData;
 
@@ -169,40 +176,68 @@ export function TopologyTiles({
 
   return (
     <Layer imageSmoothingEnabled={false}>
-      <Image
-        x={0}
-        y={0}
-        opacity={opacity}
-        width={(header.mapWidth + 1) * globals.TILE_SIZE}
-        height={(header.mapHeight + 1) * globals.TILE_SIZE}
-        onClick={(e) => {
-          if (!isEditingTopology) return;
-          const pos = e.target.getStage()?.getRelativePointerPosition();
-          if (!pos) return;
+      {imgCanvas && header && (
+        <Image
+          x={0}
+          y={0}
+          opacity={opacity}
+          width={(header.mapWidth + 1) * globals.TILE_SIZE}
+          height={(header.mapHeight + 1) * globals.TILE_SIZE}
+          onClick={(e) => {
+            if (!isEditingTopology) return;
+            const pos = e.target.getStage()?.getRelativePointerPosition();
+            if (!pos) return;
 
-          const centerX = Math.round(pos.x);
-          const centerY = Math.round(pos.y);
-          const radius = (topologyBrushRadius - 1) * globals.TILE_SIZE;
-          const pixelList: PixelType[] = [];
+            const centerX = Math.round(pos.x);
+            const centerY = Math.round(pos.y);
+            const radius = (topologyBrushRadius - 1) * globals.TILE_SIZE;
+            const pixelList: PixelType[] = [];
 
-          if (currentTopologyBrushMode === TopologyBrushMode.CIRCLE_BRUSH) {
-            // Create a circular brush pattern
-            const baseX = centerX - radius;
-            const baseY = centerY - radius;
-            const diameter = radius * 2;
+            if (currentTopologyBrushMode === TopologyBrushMode.CIRCLE_BRUSH) {
+              // Create a circular brush pattern
+              const baseX = centerX - radius;
+              const baseY = centerY - radius;
+              const diameter = radius * 2;
 
-            for (let i = 0; i <= diameter; i += globals.TILE_SIZE) {
-              for (let j = 0; j <= diameter; j += globals.TILE_SIZE) {
-                const tileX = baseX + i;
-                const tileY = baseY + j;
+              for (let i = 0; i <= diameter; i += globals.TILE_SIZE) {
+                for (let j = 0; j <= diameter; j += globals.TILE_SIZE) {
+                  const tileX = baseX + i;
+                  const tileY = baseY + j;
 
-                // Calculate if this tile is within the circle radius
-                const distanceSquared =
-                  Math.pow(tileX - centerX, 2) + Math.pow(tileY - centerY, 2);
+                  // Calculate if this tile is within the circle radius
+                  const distanceSquared =
+                    Math.pow(tileX - centerX, 2) + Math.pow(tileY - centerY, 2);
 
-                const distance = Math.sqrt(distanceSquared) / radius;
+                  const distance = Math.sqrt(distanceSquared) / radius;
 
-                if (distanceSquared <= Math.pow(radius, 2)) {
+                  if (distanceSquared <= Math.pow(radius, 2)) {
+                    pixelList.push({
+                      x: tileX,
+                      y: tileY,
+                      value: topologyValue,
+                      distance: distance,
+                    });
+                  }
+                }
+              }
+            } else {
+              // Original square brush pattern
+              const baseX = centerX - radius;
+              const baseY = centerY - radius;
+              const size = radius * 2;
+
+              // Calculate distance for square brush (normalized from 0 to 1)
+              // Using Manhattan distance for square pattern feel
+              for (let i = 0; i <= size; i += globals.TILE_SIZE) {
+                for (let j = 0; j <= size; j += globals.TILE_SIZE) {
+                  const tileX = baseX + i;
+                  const tileY = baseY + j;
+
+                  // Calculate distance from center (using max of x,y distance for square pattern feel)
+                  const xDistance = Math.abs(tileX - centerX);
+                  const yDistance = Math.abs(tileY - centerY);
+                  const distance = Math.max(xDistance, yDistance) / radius;
+
                   pixelList.push({
                     x: tileX,
                     y: tileY,
@@ -212,48 +247,23 @@ export function TopologyTiles({
                 }
               }
             }
-          } else {
-            // Original square brush pattern
-            const baseX = centerX - radius;
-            const baseY = centerY - radius;
-            const size = radius * 2;
 
-            // Calculate distance for square brush (normalized from 0 to 1)
-            // Using Manhattan distance for square pattern feel
-            for (let i = 0; i <= size; i += globals.TILE_SIZE) {
-              for (let j = 0; j <= size; j += globals.TILE_SIZE) {
-                const tileX = baseX + i;
-                const tileY = baseY + j;
-
-                // Calculate distance from center (using max of x,y distance for square pattern feel)
-                const xDistance = Math.abs(tileX - centerX);
-                const yDistance = Math.abs(tileY - centerY);
-                const distance = Math.max(xDistance, yDistance) / radius;
-
-                pixelList.push({
-                  x: tileX,
-                  y: tileY,
-                  value: topologyValue,
-                  distance: distance,
-                });
-              }
-            }
-          }
-
-          setPixels(pixelList);
-        }}
-        image={imgCanvas}
-      />
+            setPixels(pixelList);
+          }}
+          image={imgCanvas}
+        />
+      )}
     </Layer>
   );
 }
+
 export function EmptyTiles({
-  data,
-  setData,
+  otherData,
+  setOtherData,
   tileGrid,
 }: {
-  data: ottoMaticLevel;
-  setData: Updater<ottoMaticLevel>;
+  otherData: Partial<ottoMaticLevel>;
+  setOtherData: Updater<Partial<ottoMaticLevel>>;
   tileGrid: ottoTileAttribute[];
 }) {
   const globals = useAtomValue(Globals);
@@ -263,7 +273,7 @@ export function EmptyTiles({
   const currentTileView = useAtomValue(TileViewMode);
   const topologyBrushRadius = useAtomValue(TopologyBrushRadius);
 
-  const header = useMemo(() => data.Hedr[1000].obj, [data.Hedr]);
+  const header = useMemo(() => otherData.Hedr?.[1000]?.obj, [otherData.Hedr]);
 
   const flagToColour = (flag: number) => {
     //TILE_ATTRB_BLANK
@@ -276,6 +286,8 @@ export function EmptyTiles({
   }, [tileGrid]);
 
   const imgCanvas = useMemo(() => {
+    if (!header) return null;
+    
     const imgCanvas = document.createElement("canvas");
     imgCanvas.width = header.mapWidth;
     imgCanvas.height = header.mapHeight;
@@ -292,7 +304,7 @@ export function EmptyTiles({
       0,
     );
     return imgCanvas;
-  }, [header.mapWidth, header.mapHeight, coordColours]);
+  }, [header?.mapWidth, header?.mapHeight, coordColours]);
 
   const handleTileClickEvent = (e: KonvaEventObject<MouseEvent>) => {
     if (!tileEditingEnabled) return;
@@ -304,7 +316,7 @@ export function EmptyTiles({
     handleTileClick(
       pos.x,
       pos.y,
-      setData,
+      setOtherData,
       currentTileView,
       tileEditingEnabled,
       brushType,
@@ -315,24 +327,27 @@ export function EmptyTiles({
 
   return (
     <Layer imageSmoothingEnabled={false}>
-      <Image
-        x={0}
-        y={0}
-        width={header.mapWidth * globals.TILE_SIZE}
-        height={header.mapHeight * globals.TILE_SIZE}
-        image={imgCanvas}
-        onClick={handleTileClickEvent}
-      />
+      {imgCanvas && header && (
+        <Image
+          x={0}
+          y={0}
+          width={header.mapWidth * globals.TILE_SIZE}
+          height={header.mapHeight * globals.TILE_SIZE}
+          image={imgCanvas}
+          onClick={handleTileClickEvent}
+        />
+      )}
     </Layer>
   );
 }
+
 export function ElectricFloor0Tiles({
-  data,
-  setData,
+  otherData,
+  setOtherData,
   tileGrid,
 }: {
-  data: ottoMaticLevel;
-  setData: Updater<ottoMaticLevel>;
+  otherData: Partial<ottoMaticLevel>;
+  setOtherData: Updater<Partial<ottoMaticLevel>>;
   tileGrid: ottoTileAttribute[];
 }) {
   const globals = useAtomValue(Globals);
@@ -342,7 +357,7 @@ export function ElectricFloor0Tiles({
   const currentTileView = useAtomValue(TileViewMode);
   const topologyBrushRadius = useAtomValue(TopologyBrushRadius);
 
-  const header = useMemo(() => data.Hedr[1000].obj, [data.Hedr]);
+  const header = useMemo(() => otherData.Hedr?.[1000]?.obj, [otherData.Hedr]);
 
   const flagToColour = (flag: number) => {
     //Electric 1
@@ -355,6 +370,8 @@ export function ElectricFloor0Tiles({
   }, [tileGrid]);
 
   const imgCanvas = useMemo(() => {
+    if (!header) return null;
+    
     const imgCanvas = document.createElement("canvas");
     imgCanvas.width = header.mapWidth;
     imgCanvas.height = header.mapHeight;
@@ -371,7 +388,7 @@ export function ElectricFloor0Tiles({
       0,
     );
     return imgCanvas;
-  }, [header.mapWidth, header.mapHeight, coordColours]);
+  }, [header?.mapWidth, header?.mapHeight, coordColours]);
 
   const handleTileClickEvent = (e: KonvaEventObject<MouseEvent>) => {
     if (!tileEditingEnabled) return;
@@ -383,7 +400,7 @@ export function ElectricFloor0Tiles({
     handleTileClick(
       pos.x,
       pos.y,
-      setData,
+      setOtherData,
       currentTileView,
       tileEditingEnabled,
       brushType,
@@ -394,24 +411,27 @@ export function ElectricFloor0Tiles({
 
   return (
     <Layer imageSmoothingEnabled={false}>
-      <Image
-        x={0}
-        y={0}
-        width={header.mapWidth * globals.TILE_SIZE}
-        height={header.mapHeight * globals.TILE_SIZE}
-        image={imgCanvas}
-        onClick={handleTileClickEvent}
-      />
+      {imgCanvas && header && (
+        <Image
+          x={0}
+          y={0}
+          width={header.mapWidth * globals.TILE_SIZE}
+          height={header.mapHeight * globals.TILE_SIZE}
+          image={imgCanvas}
+          onClick={handleTileClickEvent}
+        />
+      )}
     </Layer>
   );
 }
+
 export function ElectricFloor1Tiles({
-  data,
-  setData,
+  otherData,
+  setOtherData,
   tileGrid,
 }: {
-  data: ottoMaticLevel;
-  setData: Updater<ottoMaticLevel>;
+  otherData: Partial<ottoMaticLevel>;
+  setOtherData: Updater<Partial<ottoMaticLevel>>;
   tileGrid: ottoTileAttribute[];
 }) {
   const globals = useAtomValue(Globals);
@@ -421,7 +441,7 @@ export function ElectricFloor1Tiles({
   const currentTileView = useAtomValue(TileViewMode);
   const topologyBrushRadius = useAtomValue(TopologyBrushRadius);
 
-  const header = useMemo(() => data.Hedr[1000].obj, [data.Hedr]);
+  const header = useMemo(() => otherData.Hedr?.[1000]?.obj, [otherData.Hedr]);
 
   const flagToColour = (flag: number) => {
     //Electric 2
@@ -434,6 +454,8 @@ export function ElectricFloor1Tiles({
   }, [tileGrid]);
 
   const imgCanvas = useMemo(() => {
+    if (!header) return null;
+    
     const imgCanvas = document.createElement("canvas");
     imgCanvas.width = header.mapWidth;
     imgCanvas.height = header.mapHeight;
@@ -450,7 +472,7 @@ export function ElectricFloor1Tiles({
       0,
     );
     return imgCanvas;
-  }, [header.mapWidth, header.mapHeight, coordColours]);
+  }, [header?.mapWidth, header?.mapHeight, coordColours]);
 
   const handleTileClickEvent = (e: KonvaEventObject<MouseEvent>) => {
     if (!tileEditingEnabled) return;
@@ -462,7 +484,7 @@ export function ElectricFloor1Tiles({
     handleTileClick(
       pos.x,
       pos.y,
-      setData,
+      setOtherData,
       currentTileView,
       tileEditingEnabled,
       brushType,
@@ -473,14 +495,16 @@ export function ElectricFloor1Tiles({
 
   return (
     <Layer imageSmoothingEnabled={false}>
-      <Image
-        x={0}
-        y={0}
-        width={header.mapWidth * globals.TILE_SIZE}
-        height={header.mapHeight * globals.TILE_SIZE}
-        image={imgCanvas}
-        onClick={handleTileClickEvent}
-      />
+      {imgCanvas && header && (
+        <Image
+          x={0}
+          y={0}
+          width={header.mapWidth * globals.TILE_SIZE}
+          height={header.mapHeight * globals.TILE_SIZE}
+          image={imgCanvas}
+          onClick={handleTileClickEvent}
+        />
+      )}
     </Layer>
   );
 }

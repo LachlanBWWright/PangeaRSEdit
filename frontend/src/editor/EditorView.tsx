@@ -186,9 +186,11 @@ export function EditorView({
         {view === View.water && <WaterMenu liquidData={liquidData} setLiquidData={setLiquidData} />}
         {view === View.items && <ItemMenu itemData={itemData} setItemData={setItemData} headerData={headerData} setHeaderData={setHeaderData} />}
         {view === View.splines && <SplineMenu splineData={splineData} setSplineData={setSplineData} headerData={headerData} setHeaderData={setHeaderData} />}
-        {view === View.tiles && <TilesMenu otherData={otherData} setOtherData={setOtherData} />}
+        {view === View.tiles && <TilesMenu headerData={headerData} setHeaderData={setHeaderData} />}
         {view === View.supertiles && (
           <SupertileMenu
+            headerData={headerData}
+            setHeaderData={setHeaderData}
             otherData={otherData}
             setOtherData={setOtherData}
             mapImages={mapImages}
@@ -198,7 +200,13 @@ export function EditorView({
       </div>
       <div className="w-full min-h-0 flex-1 border-2 border-black overflow-clip">
         {canvasViewMode === CanvasView.THREE_D && view === View.tiles ? (
-          <ThreeView otherData={otherData} mapImages={mapImages} />
+          <ThreeView 
+            headerData={headerData}
+            fenceData={fenceData}
+            liquidData={liquidData}
+            otherData={otherData} 
+            mapImages={mapImages} 
+          />
         ) : (
           <KonvaView
             headerData={headerData}
