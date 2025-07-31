@@ -1,7 +1,13 @@
 import { useState } from "react";
 import { Download, ChevronDown, ChevronUp, Gamepad2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { getGamesByCategory, type Level } from "@/data/levels";
 
 interface LevelCardProps {
@@ -14,7 +20,7 @@ function LevelCard({ level }: LevelCardProps) {
   const downloadLevel = () => {
     // Create a temporary link element to download the .ter file
     const downloadFile = (url: string, filename: string) => {
-      const link = document.createElement('a');
+      const link = document.createElement("a");
       link.href = url;
       link.download = filename;
       document.body.appendChild(link);
@@ -22,13 +28,16 @@ function LevelCard({ level }: LevelCardProps) {
       document.body.removeChild(link);
     };
 
-    // Download .ter file
-    const terFilename = level.terFile.split('/').pop() || `${level.id}.ter`;
-    downloadFile(level.terFile, terFilename);
+    // Download .ter file if it exists
+    if (level.terFile) {
+      const terFilename = level.terFile.split("/").pop() || `${level.id}.ter`;
+      downloadFile(level.terFile, terFilename);
+    }
 
     // Download .ter.rsrc file if it exists
     if (level.rsrcFile) {
-      const rsrcFilename = level.rsrcFile.split('/').pop() || `${level.id}.ter.rsrc`;
+      const rsrcFilename =
+        level.rsrcFile.split("/").pop() || `${level.id}.ter.rsrc`;
       downloadFile(level.rsrcFile, rsrcFilename);
     }
   };
@@ -38,16 +47,22 @@ function LevelCard({ level }: LevelCardProps) {
       <CardHeader className="pb-4">
         <div className="flex items-start justify-between">
           <div className="flex-1">
-            <CardTitle className="text-white text-lg mb-1">{level.name}</CardTitle>
+            <CardTitle className="text-white text-lg mb-1">
+              {level.name}
+            </CardTitle>
             <CardDescription className="text-gray-300 mb-2">
               {level.gameDisplayName}
-              {level.category && <span className="ml-2 text-blue-400">• {level.category}</span>}
+              {level.category && (
+                <span className="ml-2 text-blue-400">• {level.category}</span>
+              )}
               {level.difficulty && (
-                <span 
+                <span
                   className={`ml-2 px-2 py-1 rounded text-xs font-medium ${
-                    level.difficulty === 'Easy' ? 'bg-green-900 text-green-300' :
-                    level.difficulty === 'Medium' ? 'bg-yellow-900 text-yellow-300' :
-                    'bg-red-900 text-red-300'
+                    level.difficulty === "Easy"
+                      ? "bg-green-900 text-green-300"
+                      : level.difficulty === "Medium"
+                      ? "bg-yellow-900 text-yellow-300"
+                      : "bg-red-900 text-red-300"
                   }`}
                 >
                   {level.difficulty}
@@ -73,7 +88,11 @@ function LevelCard({ level }: LevelCardProps) {
           className="w-full justify-between text-gray-300 hover:text-white hover:bg-gray-700 p-3 mb-3"
         >
           <span>Details</span>
-          {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+          {isExpanded ? (
+            <ChevronUp className="w-4 h-4" />
+          ) : (
+            <ChevronDown className="w-4 h-4" />
+          )}
         </Button>
         {isExpanded && (
           <div className="text-gray-300 text-sm leading-relaxed bg-gray-900 rounded-lg p-4">
@@ -113,32 +132,33 @@ export function DownloadLevels() {
   return (
     <div className="flex-1 bg-gray-900 p-6">
       <div className="max-w-7xl mx-auto">
-        <div className="mb-8 text-center">
-          <h1 className="text-4xl font-bold text-white mb-4">Download Custom Levels</h1>
+        <div className="flex flex-col gap-2 mb-8 text-center">
+          <h1 className="text-4xl font-bold text-white pb-2">
+            Download Custom Levels
+          </h1>
           <p className="text-gray-300 text-lg max-w-3xl mx-auto">
-            Download level files (.ter and .ter.rsrc) from various Pangea Software games. 
-            Each level includes detailed descriptions and can be imported into the Level Editor 
-            for viewing, editing, or inspiration for your own creations.
+            Download levels from various Pangea Software games, and add them to
+            the data/terrain folder in the game files to replace level files.
           </p>
-        </div>
-
-        <div className="mb-6">
-          <div className="bg-gray-800 border border-gray-700 rounded-lg p-4">
-            <h3 className="text-white font-semibold mb-2">How to use:</h3>
-            <ul className="text-gray-300 text-sm space-y-1">
-              <li>• Click "Download" to get both .ter and .ter.rsrc files for a level</li>
-              <li>• Import downloaded files into the Level Editor to view and modify</li>
-              <li>• Use "Details" to learn more about each level's unique features</li>
-              <li>• Levels are organized by game for easy browsing</li>
-            </ul>
-          </div>
+          <p className="text-gray-300 text-lg max-w-3xl mx-auto">
+            If you would like to submit a level for possible inclusion here,
+            feel free to contact me through GitHub by posting it to the{" "}
+            <a
+              href="https://github.com/LachlanBWWright/PangeaRSEdit/discussions"
+              className="text-blue-400 underline hover:text-blue-300"
+            >
+              discussions page
+            </a>
+            , or messaging me on Reddit at u/LachlanBWWright.
+          </p>
+          <p></p>
         </div>
 
         {gamesByCategory.map((game) => (
-          <GameSection 
-            key={game.id} 
-            gameName={game.name} 
-            levels={game.levels} 
+          <GameSection
+            key={game.id}
+            gameName={game.name}
+            levels={game.levels}
           />
         ))}
       </div>
