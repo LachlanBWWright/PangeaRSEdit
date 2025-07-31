@@ -50,13 +50,31 @@ export function EnhancedModelMesh({
           // Helper function to process texture
           const processTexture = (texture: any, type: 'diffuse' | 'normal' | 'other', suffix: string) => {
             if (texture && texture.image) {
-              const url = texture.image.src || texture.image.data || '';
+              let url = '';
+              
+              // Handle different types of texture sources
+              if (texture.image.src) {
+                url = texture.image.src;
+              } else if (texture.image.data) {
+                // Convert data to blob URL if it's raw data
+                if (texture.image.data instanceof Uint8Array || texture.image.data instanceof ArrayBuffer) {
+                  const blob = new Blob([texture.image.data], { type: 'image/png' });
+                  url = URL.createObjectURL(blob);
+                } else {
+                  url = texture.image.data;
+                }
+              } else if (texture.source && texture.source.uri) {
+                url = texture.source.uri;
+              }
+              
               if (url && !textureUrls.has(url)) {
                 textureUrls.add(url);
                 
                 // Get image dimensions
                 const size = texture.image.width && texture.image.height ? 
                   { width: texture.image.width, height: texture.image.height } : undefined;
+                
+                console.log(`Found texture: ${materialName}_${suffix}, URL: ${url}, Size: ${size ? `${size.width}x${size.height}` : 'unknown'}`);
                 
                 extractedTextures.push({
                   name: `${materialName}_${suffix}`,
