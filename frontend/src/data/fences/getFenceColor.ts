@@ -1,4 +1,4 @@
-import { Game, GlobalsInterface } from "@/data/globals/globals";
+import { Game, GlobalsInterface } from "../globals/globals";
 
 /**
  * Gets a color for a fence based on the game type and fence type

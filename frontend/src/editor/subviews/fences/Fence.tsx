@@ -3,8 +3,10 @@ import { ottoMaticLevel } from "../../../python/structSpecs/ottoMaticInterface";
 import { Line } from "react-konva";
 import { FenceNub } from "./FenceNub";
 import { SelectedFence } from "../../../data/fences/fenceAtoms";
-import { useAtom } from "jotai";
+import { useAtom, useAtomValue } from "jotai";
 import { memo, useState } from "react"; // Added useState
+import { Globals } from "../../../data/globals/globals";
+import { getFenceColor } from "../../../data/fences/getFenceColor";
 
 export const Fence = memo(
   ({
@@ -17,6 +19,7 @@ export const Fence = memo(
     fenceIdx: number;
   }) => {
     const [selectedFence, setSelectedFence] = useAtom(SelectedFence);
+    const globals = useAtomValue(Globals);
     // State to store initial nub positions during drag
     const [initialDragState, setInitialDragState] = useState<
       [number, number][] | null
@@ -27,11 +30,14 @@ export const Fence = memo(
       nub[1],
     ]);
 
+    // Get fence type from fence data
+    const fenceType = data.Fenc[1000].obj[fenceIdx]?.fenceType || 0;
+
     return (
       <>
         <Line
           points={lines}
-          stroke={fenceIdx === selectedFence ? "red" : getColour(fenceIdx)}
+          stroke={fenceIdx === selectedFence ? "red" : getFenceColor(globals, fenceType, fenceIdx)}
           strokeWidth={fenceIdx === selectedFence ? 5 : 2}
           onClick={() => setSelectedFence(fenceIdx)}
           draggable // Make the line draggable
@@ -77,6 +83,8 @@ export const Fence = memo(
   },
 );
 
+// Legacy function kept for backward compatibility
+// Use getFenceColor from @/data/fences/getFenceColor instead
 export function getColour(index: number) {
   switch (index % 5) {
     case 0:
