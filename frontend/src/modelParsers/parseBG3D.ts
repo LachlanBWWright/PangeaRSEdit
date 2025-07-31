@@ -1,3 +1,5 @@
+import { Game } from "../data/globals/globals";
+
 // parseBG3D.ts
 // Full BG3D file parser for Otto Matic and related games
 
@@ -557,8 +559,10 @@ export function parseBG3D(buffer: ArrayBuffer): BG3DParseResult {
 /**
  * Serialize a BG3DParseResult back to a BG3D ArrayBuffer
  * This reverses the logic of parseBG3D.ts
+ * @param parsed BG3DParseResult to serialize
+ * @param gameType Game type to determine which features to include
  */
-export function bg3dParsedToBG3D(parsed: BG3DParseResult): ArrayBuffer {
+export function bg3dParsedToBG3D(parsed: BG3DParseResult, gameType: Game = Game.NANOSAUR_2): ArrayBuffer {
   // Static property to track offset
   let offset = 0;
 
@@ -619,31 +623,33 @@ export function bg3dParsedToBG3D(parsed: BG3DParseResult): ArrayBuffer {
       new Uint8Array(buffer, offset, tex.bufferSize).set(tex.pixels);
       offset += tex.bufferSize;
     }
-    // JPEGTEXTURE(s)
-    for (const jpegTex of material.jpegTextures) {
-      console.log(`[bg3dParsedToBG3D] Write JPEGTEXTURE at offset ${offset}`);
-      view.setUint32(offset, BG3DTagType.JPEGTEXTURE, false);
-      offset += 4;
-      view.setUint32(offset, jpegTex.width, false);
-      offset += 4;
-      view.setUint32(offset, jpegTex.height, false);
-      offset += 4;
-      view.setUint32(offset, jpegTex.bufferSize, false);
-      offset += 4;
-      for (let i = 0; i < 5; i++) {
-        view.setUint32(offset, 0, false);
+    // JPEGTEXTURE(s) - only for Nanosaur 2
+    if (gameType === Game.NANOSAUR_2) {
+      for (const jpegTex of material.jpegTextures) {
+        console.log(`[bg3dParsedToBG3D] Write JPEGTEXTURE at offset ${offset}`);
+        view.setUint32(offset, BG3DTagType.JPEGTEXTURE, false);
         offset += 4;
-      } // reserved (20 bytes)
-      // Write JPEG data
-      new Uint8Array(buffer, offset, jpegTex.bufferSize).set(jpegTex.jpegData);
-      offset += jpegTex.bufferSize;
+        view.setUint32(offset, jpegTex.width, false);
+        offset += 4;
+        view.setUint32(offset, jpegTex.height, false);
+        offset += 4;
+        view.setUint32(offset, jpegTex.bufferSize, false);
+        offset += 4;
+        for (let i = 0; i < 5; i++) {
+          view.setUint32(offset, 0, false);
+          offset += 4;
+        } // reserved (20 bytes)
+        // Write JPEG data
+        new Uint8Array(buffer, offset, jpegTex.bufferSize).set(jpegTex.jpegData);
+        offset += jpegTex.bufferSize;
+      }
     }
   }
 
   console.log("NUM PARSED GROUPS:", parsed.groups.length);
   // Write groups and all group-specific data
   parsed.groups.forEach((group) => {
-    offset = writeGroup(view, buffer, group, offset, true);
+    offset = writeGroup(view, buffer, group, offset, true, gameType);
   });
 
   // ENDFILE
@@ -662,6 +668,7 @@ function writeGroup(
   group: BG3DGroup,
   startOffset: number,
   isBaseGroup: boolean,
+  gameType: Game = Game.NANOSAUR_2,
 ): number {
   let offset = startOffset;
   // GROUPSTART
@@ -674,7 +681,7 @@ function writeGroup(
 
   for (const child of group.children) {
     if (isBG3DGroup(child)) {
-      offset = writeGroup(view, buffer, child, offset, false);
+      offset = writeGroup(view, buffer, child, offset, false, gameType);
     } else {
       // GEOMETRY tag
       const geom = child;
@@ -768,7 +775,8 @@ function writeGroup(
           offset += 4;
         }
       }
-      if (geom.boundingBox) {
+      // BOUNDINGBOX - disabled for Cro Mag and Otto Matic
+      if (geom.boundingBox && gameType !== Game.CRO_MAG && gameType !== Game.OTTO_MATIC) {
         console.log(`[bg3dParsedToBG3D] Write BOUNDINGBOX at offset ${offset}`);
         view.setUint32(offset, BG3DTagType.BOUNDINGBOX, false);
         offset += 4;
