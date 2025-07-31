@@ -190,4 +190,20 @@ describe("BG3D BOUNDINGBOX and JPEGTEXTURE support", () => {
     
     expect(() => parseBG3D(buffer)).toThrow("Unknown BG3D tag: 999");
   });
+
+  it("demonstrates the improvement: BG3D files with BOUNDINGBOX and JPEGTEXTURE no longer cause parser errors", () => {
+    // Before our changes, a file with these tags would cause: "Unknown BG3D tag: 12" or "Unknown BG3D tag: 13" 
+    // Now they are properly parsed
+    
+    const buffer = createBG3DWithNewTags();
+    
+    // This would have thrown before our implementation
+    expect(() => parseBG3D(buffer)).not.toThrow();
+    
+    const parsed = parseBG3D(buffer);
+    
+    // Verify both features work
+    expect(parsed.materials[0].jpegTextures).toHaveLength(1);
+    expect(parsed.groups[0].children[0].children[0]).toHaveProperty("boundingBox");
+  });
 });
