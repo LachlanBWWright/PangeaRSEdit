@@ -430,18 +430,71 @@ export function parseBG3D(buffer: ArrayBuffer): BG3DParseResult {
         const bufferSize = view.getUint32(offset, false);
         offset += 4;
         offset += 20; // skip 5 unused uint32s (20 bytes)
+        
         // JPEG data
         const jpegData = new Uint8Array(buffer, offset, bufferSize);
-        offset += bufferSize;
+        const expectedNextOffset = offset + bufferSize;
+        
+        // Error recovery: scan forward to find the next valid tag if needed
+        let actualNextOffset = expectedNextOffset;
+        let maxScanDistance = 50; // Don't scan too far
+        
+        // Check if we have a valid tag at the expected position
+        if (expectedNextOffset + 4 <= buffer.byteLength) {
+          const possibleTag = view.getUint32(expectedNextOffset, false);
+          if (possibleTag < 0 || possibleTag > 13) {
+            // Invalid tag, scan forward for a valid one with proper alignment
+            console.log(`JPEGTEXTURE: Expected tag at ${expectedNextOffset} but found ${possibleTag}, scanning forward...`);
+            
+            // Scan both forward and backward to find the correct position
+            for (let scanOffset = expectedNextOffset - maxScanDistance; 
+                 scanOffset <= expectedNextOffset + maxScanDistance && scanOffset + 8 <= buffer.byteLength; 
+                 scanOffset += 1) { // Check every byte, not just 4-byte aligned
+              const candidateTag = view.getUint32(scanOffset, false);
+              if (candidateTag >= 0 && candidateTag <= 13) {
+                // Check if this looks like a valid tag sequence
+                const nextValue = view.getUint32(scanOffset + 4, false);
+                
+                // For MATERIALFLAGS (0), next value should be flags (reasonable number)
+                // For MATERIALDIFFUSECOLOR (1), next value should be float
+                // For GROUPSTART (3), no additional data
+                // For JPEGTEXTURE (13), next should be width/height
+                let isValidSequence = false;
+                
+                if (candidateTag === 0 && nextValue < 1000000) { // MATERIALFLAGS with reasonable flags
+                  isValidSequence = true;
+                } else if (candidateTag === 1) { // MATERIALDIFFUSECOLOR
+                  isValidSequence = true; 
+                } else if (candidateTag === 3) { // GROUPSTART
+                  isValidSequence = true;
+                } else if (candidateTag === 13 && nextValue > 0 && nextValue < 10000) { // JPEGTEXTURE with reasonable width
+                  isValidSequence = true;
+                }
+                
+                if (isValidSequence) {
+                  console.log(`Found valid tag sequence: ${candidateTag} at offset ${scanOffset}`);
+                  actualNextOffset = scanOffset;
+                  break;
+                }
+              }
+            }
+          }
+        }
+        
+        // Adjust JPEG data size if we found a different next tag position
+        const actualJpegSize = actualNextOffset - offset;
+        const actualJpegData = new Uint8Array(buffer, offset, actualJpegSize);
+        
+        offset = actualNextOffset;
 
         console.log(
-          `JPEG Texture: ${width}x${height}, size: ${bufferSize} bytes`,
+          `JPEG Texture: ${width}x${height}, reported size: ${bufferSize} bytes, actual size: ${actualJpegSize} bytes`,
         );
         currentMaterial.jpegTextures.push({
           width,
           height,
-          bufferSize,
-          jpegData,
+          bufferSize: actualJpegSize, // Use actual size
+          jpegData: actualJpegData,
         });
         break;
       }

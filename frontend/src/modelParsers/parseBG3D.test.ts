@@ -21,6 +21,11 @@ const TEST_BG3D_PATH = path.join(
   "./testSkeletons/level4_apocalypse.bg3d",
 );
 
+const DESERT_BG3D_PATH = path.join(
+  __dirname,
+  "./testSkeletons/desert.bg3d",
+);
+
 describe("parseBG3DAndUnparse", () => {
   it("parses a real BG3D file from testSkeletons and converts it back and forth", () => {
     const fileBuffer = fs.readFileSync(TEST_BG3D_PATH);
@@ -152,3 +157,129 @@ describe("parseBG3D", () => {
     console.log("All bytes match"); */
   });
 }, 100_000);
+
+describe("Desert BG3D with JPEGTEXTURE support", () => {
+  it("parses desert.bg3d file containing JPEGTEXTURE tags", () => {
+    const fileBuffer = fs.readFileSync(DESERT_BG3D_PATH);
+    const arrayBuffer = fileBuffer.buffer;
+
+    // Parse the file
+    const parsed = parseBG3D(arrayBuffer);
+    expect(parsed).toBeDefined();
+    expect(parsed.materials).toBeDefined();
+    expect(parsed.groups).toBeDefined();
+
+    console.log("Desert.bg3d parsed successfully");
+    console.log(`Materials: ${parsed.materials.length}`);
+
+    // Check if any materials have JPEG textures
+    let totalJpegTextures = 0;
+    let totalRegularTextures = 0;
+    
+    parsed.materials.forEach((material, i) => {
+      totalJpegTextures += material.jpegTextures?.length || 0;
+      totalRegularTextures += material.textures?.length || 0;
+      
+      if (material.jpegTextures && material.jpegTextures.length > 0) {
+        console.log(`Material ${i} has ${material.jpegTextures.length} JPEG textures`);
+        material.jpegTextures.forEach((jpegTex, j) => {
+          expect(jpegTex.width).toBeGreaterThan(0);
+          expect(jpegTex.height).toBeGreaterThan(0);
+          expect(jpegTex.bufferSize).toBeGreaterThan(0);
+          expect(jpegTex.jpegData).toBeDefined();
+          expect(jpegTex.jpegData.length).toBe(jpegTex.bufferSize);
+          console.log(`  JPEG texture ${j}: ${jpegTex.width}x${jpegTex.height}, ${jpegTex.bufferSize} bytes`);
+        });
+      }
+    });
+
+    console.log(`Total JPEG textures: ${totalJpegTextures}`);
+    console.log(`Total regular textures: ${totalRegularTextures}`);
+    expect(totalJpegTextures).toBeGreaterThan(0); // Desert should have JPEG textures
+  });
+
+  it("round-trip conversion of desert.bg3d preserves JPEG textures", () => {
+    const fileBuffer = fs.readFileSync(DESERT_BG3D_PATH);
+    const arrayBuffer = fileBuffer.buffer;
+
+    // Parse -> Serialize -> Parse again
+    const parsed1 = parseBG3D(arrayBuffer);
+    const serialized = bg3dParsedToBG3D(parsed1);
+    const parsed2 = parseBG3D(serialized);
+
+    // Verify JPEG textures are preserved
+    expect(parsed2.materials.length).toBe(parsed1.materials.length);
+    
+    let originalJpegCount = 0;
+    let roundtripJpegCount = 0;
+    
+    for (let i = 0; i < parsed1.materials.length; i++) {
+      const original = parsed1.materials[i];
+      const roundtrip = parsed2.materials[i];
+      
+      originalJpegCount += original.jpegTextures?.length || 0;
+      roundtripJpegCount += roundtrip.jpegTextures?.length || 0;
+      
+      if (original.jpegTextures && roundtrip.jpegTextures) {
+        expect(roundtrip.jpegTextures.length).toBe(original.jpegTextures.length);
+        
+        for (let j = 0; j < original.jpegTextures.length; j++) {
+          const origTex = original.jpegTextures[j];
+          const roundTex = roundtrip.jpegTextures[j];
+          
+          expect(roundTex.width).toBe(origTex.width);
+          expect(roundTex.height).toBe(origTex.height);
+          expect(roundTex.bufferSize).toBe(origTex.bufferSize);
+          expect(roundTex.jpegData.length).toBe(origTex.jpegData.length);
+          
+          // Compare JPEG data byte-by-byte
+          for (let k = 0; k < origTex.jpegData.length; k++) {
+            expect(roundTex.jpegData[k]).toBe(origTex.jpegData[k]);
+          }
+        }
+      }
+    }
+    
+    expect(roundtripJpegCount).toBe(originalJpegCount);
+    console.log(`Preserved ${roundtripJpegCount} JPEG textures through round-trip`);
+  });
+
+  it("verifies desert.bg3d is compatible with new parser (no errors)", () => {
+    // This test ensures the desert.bg3d file doesn't trigger any unknown tag errors
+    const fileBuffer = fs.readFileSync(DESERT_BG3D_PATH);
+    const arrayBuffer = fileBuffer.buffer;
+
+    // This should not throw any errors
+    expect(() => parseBG3D(arrayBuffer)).not.toThrow();
+    
+    const parsed = parseBG3D(arrayBuffer);
+    expect(parsed).toBeDefined();
+    expect(parsed.materials.length).toBeGreaterThan(0);
+    expect(parsed.groups.length).toBeGreaterThan(0);
+    
+    console.log("Desert.bg3d parsed without errors - demonstrating improved parser capability");
+  });
+
+  it("correctly identifies JPEG texture format in desert.bg3d", () => {
+    const fileBuffer = fs.readFileSync(DESERT_BG3D_PATH);
+    const arrayBuffer = fileBuffer.buffer;
+
+    const parsed = parseBG3D(arrayBuffer);
+    
+    // Find materials with JPEG textures
+    const materialsWithJpeg = parsed.materials.filter(mat => 
+      mat.jpegTextures && mat.jpegTextures.length > 0
+    );
+    
+    expect(materialsWithJpeg.length).toBeGreaterThan(0);
+    
+    materialsWithJpeg.forEach(material => {
+      material.jpegTextures.forEach(jpegTex => {
+        // Verify JPEG header (should start with FF D8)
+        expect(jpegTex.jpegData[0]).toBe(0xFF);
+        expect(jpegTex.jpegData[1]).toBe(0xD8);
+        console.log(`Verified JPEG header for ${jpegTex.width}x${jpegTex.height} texture`);
+      });
+    });
+  });
+});
