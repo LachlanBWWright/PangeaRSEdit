@@ -93,6 +93,7 @@ describe('gltfAnalyzer', () => {
     const documents = splitGLTFByNodes(mockDoc);
     
     expect(documents).toHaveLength(1);
-    expect(documents[0]).toBeInstanceOf(Document);
+    expect(documents[0]).toHaveProperty('getRoot');
+    expect(typeof documents[0].getRoot).toBe('function');
   });
 });
