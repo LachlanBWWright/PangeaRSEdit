@@ -1,12 +1,14 @@
-import { useState, useRef, useCallback, useEffect } from "react";
+import { useState, useRef, useCallback } from "react";
 import { Canvas } from "@react-three/fiber";
-import { OrbitControls, useGLTF } from "@react-three/drei";
+import { OrbitControls } from "@react-three/drei";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Upload } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Toaster } from "@/components/ui/toaster";
-//import { TextureManager } from "@/components/TextureManager";
+import { TextureManager } from "@/components/TextureManager";
+import { ModelHierarchy } from "@/components/ModelHierarchy";
+import { EnhancedModelMesh } from "@/components/EnhancedModelMesh";
 import BG3DGltfWorker from "../modelParsers/bg3dGltfWorker?worker";
 import {
   BG3DGltfWorkerMessage,
@@ -17,83 +19,25 @@ interface Texture {
   name: string;
   url: string;
   type: "diffuse" | "normal" | "other";
+  material?: string;
+  size?: { width: number; height: number };
 }
 
-// Component to load and display GLTF model
-function ModelMesh({
-  url,
-  visible,
-  onTexturesExtracted,
-}: {
-  url: string;
+interface ModelNode {
+  name: string;
+  type: 'mesh' | 'node' | 'group';
   visible: boolean;
-  onTexturesExtracted: (textures: Texture[]) => void;
-}) {
-  const { scene } = useGLTF(url);
-
-  useEffect(() => {
-    // Extract textures from the GLTF scene
-    const extractedTextures: Texture[] = [];
-    scene.traverse((child: any) => {
-      if (child.material) {
-        const material = child.material;
-
-        // Check for diffuse/base color texture
-        if (material.map) {
-          extractedTextures.push({
-            name: `Material_${material.name || "Unknown"}_Diffuse`,
-            url: material.map.image?.src || "",
-            type: "diffuse",
-          });
-        }
-
-        // Check for normal map
-        if (material.normalMap) {
-          extractedTextures.push({
-            name: `Material_${material.name || "Unknown"}_Normal`,
-            url: material.normalMap.image?.src || "",
-            type: "normal",
-          });
-        }
-
-        // Check for other texture types
-        ["roughnessMap", "metalnessMap", "aoMap", "emissiveMap"].forEach(
-          (mapType) => {
-            if (material[mapType]) {
-              extractedTextures.push({
-                name: `Material_${material.name || "Unknown"}_${mapType}`,
-                url: material[mapType].image?.src || "",
-                type: "other",
-              });
-            }
-          },
-        );
-      }
-    });
-
-    // Remove duplicates and invalid textures
-    const uniqueTextures = extractedTextures.filter(
-      (texture, index, self) =>
-        texture.url && self.findIndex((t) => t.url === texture.url) === index,
-    );
-
-    onTexturesExtracted(uniqueTextures);
-  }, [scene, onTexturesExtracted]);
-
-  if (!visible) {
-    return null;
-  }
-
-  return <primitive object={scene} position={[0, 0, 0]} scale={1} />;
+  children?: ModelNode[];
+  meshIndex?: number;
+  nodeIndex?: number;
 }
 
 export function ModelViewer() {
   const [gltfUrl, setGltfUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [models, setModels] = useState<
-    Array<{ name: string; visible: boolean }>
-  >([]);
-  /* const [textures, setTextures] = useState<Texture[]>([]); */
+  const [textures, setTextures] = useState<Texture[]>([]);
+  const [modelNodes, setModelNodes] = useState<ModelNode[]>([]);
+  const [nodeVisibility, setNodeVisibility] = useState<Map<string, boolean>>(new Map());
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
@@ -147,9 +91,6 @@ export function ModelViewer() {
           const url = URL.createObjectURL(glbBlob);
           setGltfUrl(url);
 
-          // Initialize models list (we'll expand this when we can inspect the GLTF)
-          setModels([{ name: file.name.replace(".bg3d", ""), visible: true }]);
-
           toast({
             title: "Model Loaded",
             description: `Successfully loaded ${file.name}`,
@@ -191,12 +132,50 @@ export function ModelViewer() {
   const handleTexturesExtracted = useCallback(
     (extractedTextures: Texture[]) => {
       console.log("Extracted textures:", extractedTextures);
-      //setTextures(extractedTextures);
+      setTextures(extractedTextures);
     },
     [],
   );
 
-  /*   const handleDownloadTexture = useCallback(
+  const handleNodesExtracted = useCallback(
+    (extractedNodes: ModelNode[]) => {
+      console.log("Extracted nodes:", extractedNodes);
+      setModelNodes(extractedNodes);
+      
+      // Initialize visibility map
+      const visibilityMap = new Map<string, boolean>();
+      const initializeVisibility = (nodes: ModelNode[]) => {
+        nodes.forEach((node, index) => {
+          visibilityMap.set(`${index}`, true);
+          if (node.meshIndex !== undefined) {
+            visibilityMap.set(`mesh_${node.meshIndex}`, true);
+          }
+          if (node.children) {
+            initializeVisibility(node.children);
+          }
+        });
+      };
+      initializeVisibility(extractedNodes);
+      setNodeVisibility(visibilityMap);
+    },
+    [],
+  );
+
+  const handleNodeVisibilityChange = useCallback(
+    (nodeIndex: number, meshIndex: number | undefined, visible: boolean) => {
+      setNodeVisibility(prev => {
+        const newVisibility = new Map(prev);
+        newVisibility.set(`${nodeIndex}`, visible);
+        if (meshIndex !== undefined) {
+          newVisibility.set(`mesh_${meshIndex}`, visible);
+        }
+        return newVisibility;
+      });
+    },
+    [],
+  );
+
+  const handleDownloadTexture = useCallback(
     async (texture: Texture) => {
       try {
         const response = await fetch(texture.url);
@@ -224,7 +203,34 @@ export function ModelViewer() {
       }
     },
     [toast],
-  ); */
+  );
+
+  const handleReplaceTexture = useCallback(
+    async (texture: Texture, newFile: File) => {
+      try {
+        // Create a new object URL for the new texture
+        const newUrl = URL.createObjectURL(newFile);
+        
+        // Update the texture in the list
+        setTextures(prev => prev.map(t => 
+          t.url === texture.url ? { ...t, url: newUrl } : t
+        ));
+
+        toast({
+          title: "Texture Replaced",
+          description: `Successfully replaced ${texture.name}`,
+        });
+      } catch (error) {
+        console.error("Error replacing texture:", error);
+        toast({
+          title: "Replace Failed",
+          description: "Failed to replace texture",
+          variant: "destructive",
+        });
+      }
+    },
+    [toast],
+  );
 
   const loadTestModel = async () => {
     try {
@@ -252,7 +258,7 @@ export function ModelViewer() {
     <div className="flex flex-col flex-1 bg-gray-900 text-white">
       <div className="flex flex-1 gap-4 p-4">
         {/* Left sidebar - Controls */}
-        <div className="w-80 space-y-4">
+        <div className="w-80 space-y-4 max-h-screen overflow-y-auto">
           <Card className="bg-gray-800 border-gray-700">
             <CardHeader>
               <CardTitle className="text-white">Model Upload</CardTitle>
@@ -296,6 +302,23 @@ export function ModelViewer() {
               )}
             </CardContent>
           </Card>
+
+          {/* Model Hierarchy */}
+          {modelNodes.length > 0 && (
+            <ModelHierarchy 
+              nodes={modelNodes}
+              onVisibilityChange={handleNodeVisibilityChange}
+            />
+          )}
+
+          {/* Texture Manager */}
+          {textures.length > 0 && (
+            <TextureManager 
+              textures={textures}
+              onDownloadTexture={handleDownloadTexture}
+              onReplaceTexture={handleReplaceTexture}
+            />
+          )}
           {/* BG3D to GLB Upload (Web Worker) - Refactored UI */}
           <Card className="bg-gray-800 border-gray-700">
             <CardHeader>
@@ -582,11 +605,12 @@ export function ModelViewer() {
               <directionalLight position={[10, 10, 5]} intensity={1} />
               <directionalLight position={[-10, -10, -5]} intensity={1} />
 
-              {/* Load the GLTF model */}
-              <ModelMesh
+              {/* Load the GLTF model with enhanced features */}
+              <EnhancedModelMesh
                 url={gltfUrl}
-                visible={models[0]?.visible ?? true}
+                nodeVisibility={nodeVisibility}
                 onTexturesExtracted={handleTexturesExtracted}
+                onNodesExtracted={handleNodesExtracted}
               />
 
               <OrbitControls
