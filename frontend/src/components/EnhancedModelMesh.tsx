@@ -1,189 +1,19 @@
-import { useEffect, useRef, useMemo } from "react";
-import { useGLTF } from "@react-three/drei";
 import * as THREE from "three";
 
-interface Texture {
-  name: string;
-  url: string;
-  type: "diffuse" | "normal" | "other";
-  material?: string;
-  size?: { width: number; height: number };
-}
-
-interface ModelNode {
-  name: string;
-  type: "mesh" | "node" | "group";
-  visible: boolean;
-  children?: ModelNode[];
-  meshIndex?: number;
-  nodeIndex?: number;
-}
-
 interface EnhancedModelMeshProps {
-  url: string;
-  onTexturesExtracted: (textures: Texture[]) => void;
-  onNodesExtracted: (nodes: ModelNode[]) => void;
-  onClonedSceneUpdate: (clonedScene: THREE.Group) => void;
+  scene: THREE.Group;
 }
 
-export function EnhancedModelMesh({
-  url,
-  onTexturesExtracted,
-  onNodesExtracted,
-  onClonedSceneUpdate,
-}: EnhancedModelMeshProps) {
-  const { scene } = useGLTF(url);
-
-  // Extract textures from the scene
-  const extractedTextures = useMemo(() => {
-    const extractedTextures: Texture[] = [];
-    const textureUrls = new Set<string>();
-
-    scene.traverse((child: THREE.Object3D<THREE.Object3DEventMap>) => {
-      if (child.material) {
-        const materials = Array.isArray(child.material)
-          ? child.material
-          : [child.material];
-
-        materials.forEach((material: any) => {
-          const materialName =
-            material.name || `Material_${extractedTextures.length}`;
-
-          // Helper function to process texture
-          const processTexture = (
-            texture: any,
-            type: "diffuse" | "normal" | "other",
-            suffix: string,
-          ) => {
-            if (texture && texture.image) {
-              let url = "";
-
-              // Handle different types of texture sources
-              if (texture.image.src) {
-                url = texture.image.src;
-              } else if (texture.image.data) {
-                // Convert data to blob URL if it's raw data
-                if (
-                  texture.image.data instanceof Uint8Array ||
-                  texture.image.data instanceof ArrayBuffer
-                ) {
-                  const blob = new Blob([texture.image.data], {
-                    type: "image/png",
-                  });
-                  url = URL.createObjectURL(blob);
-                } else {
-                  url = texture.image.data;
-                }
-              } else if (texture.source && texture.source.uri) {
-                url = texture.source.uri;
-              }
-
-              if (url && !textureUrls.has(url)) {
-                textureUrls.add(url);
-
-                // Get image dimensions
-                const size =
-                  texture.image.width && texture.image.height
-                    ? {
-                        width: texture.image.width,
-                        height: texture.image.height,
-                      }
-                    : undefined;
-
-                console.log(
-                  `Found texture: ${materialName}_${suffix}, URL: ${url}, Size: ${
-                    size ? `${size.width}x${size.height}` : "unknown"
-                  }`,
-                );
-
-                extractedTextures.push({
-                  name: `${materialName}_${suffix}`,
-                  url,
-                  type,
-                  material: materialName,
-                  size,
-                });
-              }
-            }
-          };
-
-          // Extract different texture types
-          processTexture(material.map, "diffuse", "Diffuse");
-          processTexture(material.normalMap, "normal", "Normal");
-          processTexture(material.roughnessMap, "other", "Roughness");
-          processTexture(material.metalnessMap, "other", "Metalness");
-          processTexture(material.aoMap, "other", "AO");
-          processTexture(material.emissiveMap, "other", "Emissive");
-          processTexture(material.specularMap, "other", "Specular");
-          processTexture(material.alphaMap, "other", "Alpha");
-          processTexture(material.bumpMap, "other", "Bump");
-          processTexture(material.displacementMap, "other", "Displacement");
-        });
-      }
-    });
-
-    const res = extractedTextures;
-    onTexturesExtracted(res);
-    return res;
-  }, [scene]);
-
-  // Extract node hierarchy from the scene
-  const extractedNodes = useMemo(() => {
-    const extractNode = (obj: THREE.Object3D, level = 0): ModelNode => {
-      const node: ModelNode = {
-        name: obj.name || `Node_${obj.id}`,
-        type:
-          obj instanceof THREE.Mesh
-            ? "mesh"
-            : obj instanceof THREE.Group
-            ? "group"
-            : "node",
-        visible: obj.visible,
-        children: [],
-        meshIndex: obj instanceof THREE.Mesh ? obj.id : undefined,
-        nodeIndex: obj.id,
-      };
-
-      // Process children
-      if (obj.children.length > 0) {
-        node.children = obj.children.map((child) =>
-          extractNode(child, level + 1),
-        );
-      }
-
-      return node;
-    };
-
-    const res = scene.children.map((child) => extractNode(child));
-    onNodesExtracted(res);
-    return res;
-  }, [scene]);
-
-  // Clone the scene to avoid mutating the original
-  const clonedScene = useMemo(() => {
-    console.log("USEMEMO CALLED");
-    const cloned = scene.clone();
-    return cloned;
-  }, [scene]);
-
-  // Update cloned scene when it changes
-  useEffect(() => {
-    if (clonedScene) {
-      //onClonedSceneUpdate(clonedScene);
-    }
-  }, [clonedScene, onClonedSceneUpdate]);
-
-  if (!clonedScene) {
-    console.warn("No cloned scene available");
+export function EnhancedModelMesh({ scene }: EnhancedModelMeshProps) {
+  if (!scene) {
+    console.warn("No scene available");
     return null;
   }
-  console.log("Main scene:", scene.children.length);
   return (
     <>
       {scene.children.map((child, index) => (
         <primitive key={index} object={child} />
       ))}
-      {/* Render the mapped children only, preserving transforms */}
     </>
   );
 }

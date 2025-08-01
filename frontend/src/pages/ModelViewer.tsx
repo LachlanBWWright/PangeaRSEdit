@@ -7,6 +7,7 @@ import { Upload } from "lucide-react";
 import { TextureManager } from "@/components/TextureManager";
 import { ModelHierarchy } from "@/components/ModelHierarchy";
 import { EnhancedModelMesh } from "@/components/EnhancedModelMesh";
+import { useGLTF } from "@react-three/drei";
 import { ConversionPanel } from "@/components/ConversionPanel";
 import BG3DGltfWorker from "../modelParsers/bg3dGltfWorker?worker";
 import {
@@ -34,6 +35,8 @@ interface ModelNode {
 }
 
 export function ModelViewer() {
+  // --- Begin moved logic from EnhancedModelMesh ---
+  // State and refs must be declared first
   const [gltfUrl, setGltfUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [textures, setTextures] = useState<Texture[]>([]);
@@ -41,9 +44,46 @@ export function ModelViewer() {
   const [clonedScene, setClonedScene] = useState<THREE.Group | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Only call useGLTF if gltfUrl is not null
+  const gltfResult = gltfUrl ? useGLTF(gltfUrl) : null;
+  const scene = gltfResult ? gltfResult.scene : null;
+
+  // Extract node hierarchy from the scene
+  function extractNode(obj: THREE.Object3D, level = 0) {
+    const node: ModelNode = {
+      name: obj.name || `Node_${obj.id}`,
+      type:
+        obj instanceof THREE.Mesh
+          ? "mesh"
+          : obj instanceof THREE.Group
+          ? "group"
+          : "node",
+      visible: obj.visible,
+      children: [],
+      meshIndex: obj instanceof THREE.Mesh ? obj.id : undefined,
+      nodeIndex: obj.id,
+    };
+    if (obj.children.length > 0) {
+      node.children = obj.children.map((child) =>
+        extractNode(child, level + 1),
+      );
+    }
+    return node;
+  }
+
+  // Extract nodes and set state when scene changes
   useEffect(() => {
-    console.log(gltfUrl, "GLTF URL changed");
-  }, [gltfUrl]);
+    if (scene) {
+      const nodes = scene.children.map((child) => extractNode(child));
+      setModelNodes(nodes);
+      setClonedScene(scene.clone());
+    } else {
+      setModelNodes([]);
+      setClonedScene(null);
+    }
+  }, [scene]);
+  // --- End moved logic ---
+  // ...existing code...
 
   async function handleFileUpload(file: File) {
     if (!file.name.toLowerCase().endsWith(".bg3d")) {
@@ -107,19 +147,13 @@ export function ModelViewer() {
     e.preventDefault();
   }
 
-  function handleTexturesExtracted(extractedTextures: Texture[]) {
-    setTextures(extractedTextures);
-  }
-
-  function handleNodesExtracted(extractedNodes: ModelNode[]) {
-    console.log("Extracted nodes:", extractedNodes);
-    // Don't set modelNodes here - wait for cloned scene update
-  }
+  // Removed unused handleTexturesExtracted and handleNodesExtracted
 
   function handleClonedSceneUpdate(newClonedScene: THREE.Group) {
     console.log("Cloned scene updated:", newClonedScene);
     console.log("Cloned scene children:", newClonedScene.children.length);
-    setClonedScene(newClonedScene);
+
+    //setClonedScene(newClonedScene);
     // Extract updated hierarchy from cloned scene
     const extractNode = (obj: THREE.Object3D): ModelNode => {
       const node: ModelNode = {
@@ -262,21 +296,13 @@ export function ModelViewer() {
               </CardContent>
             </Card>
 
-            {/* Model Hierarchy */}
-            {(() => {
-              console.log("Checking Model Hierarchy render condition:", {
-                modelNodesLength: modelNodes.length,
-                hasClonedScene: !!clonedScene,
-                shouldRender: modelNodes.length > 0 && clonedScene,
-              });
-              return modelNodes.length > 0 && clonedScene ? (
-                <ModelHierarchy
-                  nodes={modelNodes}
-                  clonedScene={clonedScene}
-                  onVisibilityChange={handleNodeVisibilityChange}
-                />
-              ) : null;
-            })()}
+            {modelNodes.length > 0 && clonedScene ? (
+              <ModelHierarchy
+                nodes={modelNodes}
+                clonedScene={clonedScene}
+                onVisibilityChange={handleNodeVisibilityChange}
+              />
+            ) : null}
 
             {/* Texture Manager - Always show this section when model is loaded */}
             {gltfUrl && (
@@ -354,12 +380,7 @@ export function ModelViewer() {
                 <directionalLight position={[-10, -10, -5]} intensity={1} />
 
                 {/* Load the GLTF model with enhanced features */}
-                <EnhancedModelMesh
-                  url={gltfUrl}
-                  onTexturesExtracted={handleTexturesExtracted}
-                  onNodesExtracted={handleNodesExtracted}
-                  onClonedSceneUpdate={handleClonedSceneUpdate}
-                />
+                {clonedScene && <EnhancedModelMesh scene={clonedScene} />}
 
                 <OrbitControls
                   enablePan={false}
