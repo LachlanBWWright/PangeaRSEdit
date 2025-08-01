@@ -116,6 +116,7 @@ describe('Enhanced Texture Extraction', () => {
 
     extractedTextures = extractTextures();
 
+    expect(mockScene).toBeDefined();
     expect(extractedTextures).toHaveLength(1);
     expect(extractedTextures[0].name).toBe('TestMaterial_Diffuse');
     expect(extractedTextures[0].url).toBe('data:image/png;base64,test123');
@@ -168,6 +169,7 @@ describe('Enhanced Texture Extraction', () => {
 
     extractedTextures = extractTextures();
 
+    expect(mockScene).toBeDefined();
     expect(extractedTextures).toHaveLength(3);
     
     const diffuse = extractedTextures.find(t => t.type === 'diffuse');
@@ -214,6 +216,7 @@ describe('Enhanced Texture Extraction', () => {
 
     extractedTextures = extractTextures();
 
+    expect(mockScene).toBeDefined();
     expect(extractedTextures).toHaveLength(1);
     expect(extractedTextures[0].url).toContain('data:image/jpeg;base64');
     expect(extractedTextures[0].type).toBe('diffuse');
@@ -278,6 +281,7 @@ describe('Enhanced Texture Extraction', () => {
 
     extractedTextures = extractTextures();
 
+    expect(mockScene).toBeDefined();
     expect(extractedTextures).toHaveLength(1);
     expect(extractedTextures[0].url).toBe(mockObjectURL);
     expect(extractedTextures[0].size).toEqual({ width: 2, height: 1 });
@@ -324,6 +328,7 @@ describe('Enhanced Texture Extraction', () => {
 
     extractedTextures = extractTextures();
 
+    expect(mockScene).toBeDefined();
     expect(extractedTextures).toHaveLength(1); // Should only have one texture despite being used in two materials
     expect(extractedTextures[0].url).toBe('shared.png');
   });

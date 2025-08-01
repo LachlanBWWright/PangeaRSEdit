@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Checkbox } from "@/components/ui/checkbox";
 import { ChevronDown, ChevronRight, Eye, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -15,38 +14,41 @@ interface ModelNode {
 
 interface ModelHierarchyProps {
   nodes: ModelNode[];
-  onVisibilityChange: (nodeIndex: number, meshIndex: number | undefined, visible: boolean) => void;
+  onVisibilityChange: (nodePath: string, nodeIndex: number | undefined, meshIndex: number | undefined, visible: boolean) => void;
 }
 
 function NodeItem({ 
   node, 
   level = 0, 
   onVisibilityChange,
-  nodeIndex,
+  nodePath,
 }: { 
   node: ModelNode; 
   level?: number; 
-  onVisibilityChange: (nodeIndex: number, meshIndex: number | undefined, visible: boolean) => void;
-  nodeIndex: number;
+  onVisibilityChange: (nodePath: string, nodeIndex: number | undefined, meshIndex: number | undefined, visible: boolean) => void;
+  nodePath: string;
 }) {
   const [expanded, setExpanded] = useState(true);
+  const [visible, setVisible] = useState(node.visible);
   const hasChildren = node.children && node.children.length > 0;
 
   const handleVisibilityToggle = () => {
-    onVisibilityChange(nodeIndex, node.meshIndex, !node.visible);
+    const newVisible = !visible;
+    setVisible(newVisible);
+    onVisibilityChange(nodePath, node.nodeIndex, node.meshIndex, newVisible);
   };
 
   return (
     <div className="space-y-1">
       <div 
-        className="flex items-center space-x-2 p-1 rounded hover:bg-gray-700 transition-colors"
+        className="flex items-center space-x-2 p-2 rounded hover:bg-gray-700 transition-colors bg-gray-800"
         style={{ paddingLeft: `${level * 16 + 8}px` }}
       >
         {hasChildren && (
           <Button
             variant="ghost"
             size="sm"
-            className="w-4 h-4 p-0"
+            className="w-4 h-4 p-0 text-gray-300 hover:text-white"
             onClick={() => setExpanded(!expanded)}
           >
             {expanded ? 
@@ -57,29 +59,24 @@ function NodeItem({
         )}
         {!hasChildren && <div className="w-4" />}
         
-        <Checkbox
-          checked={node.visible}
-          onCheckedChange={handleVisibilityToggle}
-          className="w-4 h-4"
-        />
-        
         <Button
           variant="ghost"
           size="sm"
-          className="w-4 h-4 p-0"
+          className="w-5 h-5 p-0 hover:bg-gray-600"
           onClick={handleVisibilityToggle}
+          title={visible ? "Hide node" : "Show node"}
         >
-          {node.visible ? 
-            <Eye className="w-3 h-3 text-green-500" /> : 
-            <EyeOff className="w-3 h-3 text-red-500" />
+          {visible ? 
+            <Eye className="w-4 h-4 text-green-400" /> : 
+            <EyeOff className="w-4 h-4 text-red-400" />
           }
         </Button>
         
-        <span className="text-sm flex-1 truncate" title={node.name}>
+        <span className="text-sm flex-1 truncate text-white font-medium" title={node.name}>
           {node.name}
         </span>
         
-        <span className="text-xs text-gray-400 capitalize">
+        <span className="text-xs text-gray-400 capitalize px-2 py-1 bg-gray-700 rounded">
           {node.type}
         </span>
       </div>
@@ -88,11 +85,11 @@ function NodeItem({
         <div>
           {node.children!.map((child, index) => (
             <NodeItem
-              key={`${nodeIndex}-${index}`}
+              key={`${nodePath}-${index}`}
               node={child}
               level={level + 1}
               onVisibilityChange={onVisibilityChange}
-              nodeIndex={index}
+              nodePath={`${nodePath}-${index}`}
             />
           ))}
         </div>
@@ -102,14 +99,16 @@ function NodeItem({
 }
 
 export function ModelHierarchy({ nodes, onVisibilityChange }: ModelHierarchyProps) {
-  const [expandAll, setExpandAll] = useState(true);
+  const [showAll, setShowAll] = useState(true);
 
   const handleToggleAll = () => {
-    // Toggle visibility for all nodes
+    // Toggle visibility for all top-level nodes
+    const newShowAll = !showAll;
+    setShowAll(newShowAll);
+    
     nodes.forEach((node, index) => {
-      onVisibilityChange(index, node.meshIndex, !expandAll);
+      onVisibilityChange(`${index}`, node.nodeIndex, node.meshIndex, newShowAll);
     });
-    setExpandAll(!expandAll);
   };
 
   if (nodes.length === 0) {
@@ -125,9 +124,9 @@ export function ModelHierarchy({ nodes, onVisibilityChange }: ModelHierarchyProp
             variant="ghost"
             size="sm"
             onClick={handleToggleAll}
-            className="text-xs"
+            className="text-xs text-gray-300 hover:text-white"
           >
-            {expandAll ? "Hide All" : "Show All"}
+            {showAll ? "Hide All" : "Show All"}
           </Button>
         </div>
       </CardHeader>
@@ -137,7 +136,7 @@ export function ModelHierarchy({ nodes, onVisibilityChange }: ModelHierarchyProp
             key={index}
             node={node}
             onVisibilityChange={onVisibilityChange}
-            nodeIndex={index}
+            nodePath={`${index}`}
           />
         ))}
       </CardContent>

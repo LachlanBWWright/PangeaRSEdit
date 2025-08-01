@@ -142,24 +142,31 @@ export function EnhancedModelMesh({
   // Apply visibility changes to scene objects
   useEffect(() => {
     const updateVisibility = (obj: THREE.Object3D) => {
-      const nodeKey = `${obj.id}`;
+      // Check for various visibility keys
+      const nodeKey = `node_${obj.id}`;
       const meshKey = obj instanceof THREE.Mesh ? `mesh_${obj.id}` : undefined;
       
       // Check visibility state
-      const nodeVisible = nodeVisibility.get(nodeKey);
-      const meshVisible = meshKey ? nodeVisibility.get(meshKey) : undefined;
+      let shouldBeVisible = obj.visible; // Keep default visibility if no override
       
-      if (nodeVisible !== undefined) {
-        obj.visible = nodeVisible;
-      } else if (meshVisible !== undefined) {
-        obj.visible = meshVisible;
+      if (nodeVisibility.has(nodeKey)) {
+        shouldBeVisible = nodeVisibility.get(nodeKey)!;
+      } else if (meshKey && nodeVisibility.has(meshKey)) {
+        shouldBeVisible = nodeVisibility.get(meshKey)!;
+      }
+      
+      if (obj.visible !== shouldBeVisible) {
+        obj.visible = shouldBeVisible;
+        console.log(`Updated visibility for ${obj.name || obj.type} (ID: ${obj.id}): ${shouldBeVisible}`);
       }
       
       // Recursively update children
       obj.children.forEach(updateVisibility);
     };
 
-    scene.traverse(updateVisibility);
+    if (scene) {
+      scene.traverse(updateVisibility);
+    }
   }, [scene, nodeVisibility]);
 
   // Clone the scene to avoid mutating the original
