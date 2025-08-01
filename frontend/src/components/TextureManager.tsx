@@ -1,4 +1,10 @@
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Download, Eye, Upload, Edit } from "lucide-react";
@@ -8,7 +14,7 @@ import { toast } from "sonner";
 interface Texture {
   name: string;
   url: string;
-  type: 'diffuse' | 'normal' | 'other';
+  type: "diffuse" | "normal" | "other";
   material?: string;
   size?: { width: number; height: number };
 }
@@ -17,23 +23,31 @@ interface TextureManagerProps {
   textures: Texture[];
   onDownloadTexture: (texture: Texture) => void;
   onReplaceTexture?: (texture: Texture, newFile: File) => Promise<void>;
-  onTextureEdit?: (texture: Texture, editedImageData: ImageData) => Promise<void>;
+  onTextureEdit?: (
+    texture: Texture,
+    editedImageData: ImageData,
+  ) => Promise<void>;
 }
 
-export function TextureManager({ textures, onDownloadTexture, onReplaceTexture, onTextureEdit }: TextureManagerProps) {
+export function TextureManager({
+  textures,
+  onDownloadTexture,
+  onReplaceTexture,
+  onTextureEdit,
+}: TextureManagerProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [selectedTexture, setSelectedTexture] = useState<Texture | null>(null);
 
-  const handleReplaceTexture = useCallback(async (texture: Texture, file: File) => {
+  const handleReplaceTexture = async (texture: Texture, file: File) => {
     if (!onReplaceTexture) return;
-    
+
     try {
       await onReplaceTexture(texture, file);
       toast.success(`Successfully replaced ${texture.name}`);
     } catch (error) {
       toast.error("Failed to replace texture");
     }
-  }, [onReplaceTexture]);
+  };
 
   if (textures.length === 0) {
     return (
@@ -42,7 +56,9 @@ export function TextureManager({ textures, onDownloadTexture, onReplaceTexture, 
           <CardTitle className="text-white text-sm">Textures</CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="text-sm text-gray-400">No textures found in this model</p>
+          <p className="text-sm text-gray-400">
+            No textures found in this model
+          </p>
         </CardContent>
       </Card>
     );
@@ -57,18 +73,30 @@ export function TextureManager({ textures, onDownloadTexture, onReplaceTexture, 
       </CardHeader>
       <CardContent className="space-y-3 max-h-80 overflow-y-auto">
         {textures.map((texture, index) => (
-          <div key={index} className="flex items-center justify-between p-2 bg-gray-700 rounded">
+          <div
+            key={index}
+            className="flex items-center justify-between p-2 bg-gray-700 rounded"
+          >
             <div className="flex items-center space-x-2 flex-1 min-w-0">
-              <span className={`text-xs px-2 py-1 rounded capitalize ${
-                texture.type === 'diffuse' ? 'bg-blue-600' :
-                texture.type === 'normal' ? 'bg-purple-600' : 'bg-gray-600'
-              }`}>
+              <span
+                className={`text-xs px-2 py-1 rounded capitalize ${
+                  texture.type === "diffuse"
+                    ? "bg-blue-600"
+                    : texture.type === "normal"
+                    ? "bg-purple-600"
+                    : "bg-gray-600"
+                }`}
+              >
                 {texture.type}
               </span>
               <div className="flex-1 min-w-0">
-                <div className="text-sm truncate" title={texture.name}>{texture.name}</div>
+                <div className="text-sm truncate" title={texture.name}>
+                  {texture.name}
+                </div>
                 {texture.material && (
-                  <div className="text-xs text-gray-400 truncate">Material: {texture.material}</div>
+                  <div className="text-xs text-gray-400 truncate">
+                    Material: {texture.material}
+                  </div>
                 )}
                 {texture.size && (
                   <div className="text-xs text-gray-400">
@@ -77,15 +105,11 @@ export function TextureManager({ textures, onDownloadTexture, onReplaceTexture, 
                 )}
               </div>
             </div>
-            
+
             <div className="flex space-x-1 ml-2">
               <Dialog>
                 <DialogTrigger asChild>
-                  <Button 
-                    size="sm" 
-                    variant="ghost"
-                    className="w-8 h-8 p-0"
-                  >
+                  <Button size="sm" variant="ghost" className="w-8 h-8 p-0">
                     <Eye className="w-4 h-4" />
                   </Button>
                 </DialogTrigger>
@@ -94,20 +118,26 @@ export function TextureManager({ textures, onDownloadTexture, onReplaceTexture, 
                     <DialogTitle className="flex items-center justify-between">
                       <span>{texture.name}</span>
                       <span className="text-sm text-gray-400">
-                        {texture.type} • {texture.size ? `${texture.size.width}×${texture.size.height}` : 'Unknown size'}
+                        {texture.type} •{" "}
+                        {texture.size
+                          ? `${texture.size.width}×${texture.size.height}`
+                          : "Unknown size"}
                       </span>
                     </DialogTitle>
                   </DialogHeader>
                   <div className="flex justify-center bg-checkered p-4 rounded">
-                    <img 
-                      src={texture.url} 
+                    <img
+                      src={texture.url}
                       alt={texture.name}
                       className="max-w-full max-h-96 object-contain border border-gray-600"
                       onLoad={(e) => {
                         const img = e.target as HTMLImageElement;
                         // Update texture size if not available
                         if (!texture.size) {
-                          texture.size = { width: img.naturalWidth, height: img.naturalHeight };
+                          texture.size = {
+                            width: img.naturalWidth,
+                            height: img.naturalHeight,
+                          };
                         }
                       }}
                     />
@@ -116,8 +146,8 @@ export function TextureManager({ textures, onDownloadTexture, onReplaceTexture, 
                     <div className="flex space-x-2">
                       {onReplaceTexture && (
                         <>
-                          <Button 
-                            size="sm" 
+                          <Button
+                            size="sm"
                             variant="outline"
                             onClick={() => {
                               setSelectedTexture(texture);
@@ -135,16 +165,19 @@ export function TextureManager({ textures, onDownloadTexture, onReplaceTexture, 
                             onChange={async (e) => {
                               const file = e.target.files?.[0];
                               if (file && selectedTexture) {
-                                await handleReplaceTexture(selectedTexture, file);
-                                e.target.value = '';
+                                await handleReplaceTexture(
+                                  selectedTexture,
+                                  file,
+                                );
+                                e.target.value = "";
                               }
                             }}
                           />
                         </>
                       )}
                       {onTextureEdit && (
-                        <Button 
-                          size="sm" 
+                        <Button
+                          size="sm"
                           variant="outline"
                           onClick={() => console.log("Edit texture:", texture)}
                         >
@@ -153,8 +186,8 @@ export function TextureManager({ textures, onDownloadTexture, onReplaceTexture, 
                         </Button>
                       )}
                     </div>
-                    <Button 
-                      size="sm" 
+                    <Button
+                      size="sm"
                       variant="outline"
                       onClick={() => onDownloadTexture(texture)}
                     >
@@ -164,19 +197,19 @@ export function TextureManager({ textures, onDownloadTexture, onReplaceTexture, 
                   </div>
                 </DialogContent>
               </Dialog>
-              
-              <Button 
-                size="sm" 
+
+              <Button
+                size="sm"
                 variant="ghost"
                 onClick={() => onDownloadTexture(texture)}
                 className="w-8 h-8 p-0"
               >
                 <Download className="w-4 h-4" />
               </Button>
-              
+
               {onReplaceTexture && (
-                <Button 
-                  size="sm" 
+                <Button
+                  size="sm"
                   variant="ghost"
                   onClick={() => {
                     setSelectedTexture(texture);
@@ -190,7 +223,7 @@ export function TextureManager({ textures, onDownloadTexture, onReplaceTexture, 
             </div>
           </div>
         ))}
-        
+
         <input
           ref={fileInputRef}
           type="file"
@@ -200,7 +233,7 @@ export function TextureManager({ textures, onDownloadTexture, onReplaceTexture, 
             const file = e.target.files?.[0];
             if (file && selectedTexture) {
               await handleReplaceTexture(selectedTexture, file);
-              e.target.value = '';
+              e.target.value = "";
             }
           }}
         />

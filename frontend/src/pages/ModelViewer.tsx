@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Canvas } from "@react-three/fiber";
 import { OrbitControls } from "@react-three/drei";
 import { Button } from "@/components/ui/button";
@@ -41,102 +41,85 @@ export function ModelViewer() {
   const [clonedScene, setClonedScene] = useState<THREE.Group | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleFileUpload = useCallback(
-    async (file: File) => {
-      if (!file.name.toLowerCase().endsWith(".bg3d")) {
-        toast.error("Please select a BG3D file");
-        return;
-      }
+  useEffect(() => {
+    console.log(gltfUrl, "GLTF URL changed");
+  }, [gltfUrl]);
 
-      setLoading(true);
-
-      try {
-        const arrayBuffer = await file.arrayBuffer();
-
-        const worker = new BG3DGltfWorker();
-
-        const result = await new Promise<BG3DGltfWorkerResponse>(
-          (resolve, reject) => {
-            worker.onmessage = (e) => {
-              resolve(e.data);
-              worker.terminate();
-            };
-
-            worker.onerror = (e) => {
-              reject(e);
-              worker.terminate();
-            };
-
-            const message: BG3DGltfWorkerMessage = {
-              type: "bg3d-to-glb",
-              buffer: arrayBuffer,
-            };
-
-            worker.postMessage(message);
-          },
-        );
-
-        if (result.type === "error") {
-          throw new Error(result.error);
-        }
-
-        if (result.type === "bg3d-to-glb") {
-          const glbBlob = new Blob([result.result], {
-            type: "model/gltf-binary",
-          });
-          const url = URL.createObjectURL(glbBlob);
-          setGltfUrl(url);
-
-          toast.success(`Successfully loaded ${file.name}`);
-        }
-      } catch (error) {
-        console.error("Error loading BG3D file:", error);
-        toast.error(
-          error instanceof Error ? error.message : "Failed to load BG3D file",
-        );
-      } finally {
-        setLoading(false);
-      }
-    },
-    [],
-  );
-
-  const handleDrop = useCallback(
-    (e: React.DragEvent) => {
-      e.preventDefault();
-      const files = Array.from(e.dataTransfer.files);
-      const bg3dFile = files.find((file) =>
-        file.name.toLowerCase().endsWith(".bg3d"),
+  async function handleFileUpload(file: File) {
+    if (!file.name.toLowerCase().endsWith(".bg3d")) {
+      toast.error("Please select a BG3D file");
+      return;
+    }
+    setLoading(true);
+    try {
+      const arrayBuffer = await file.arrayBuffer();
+      const worker = new BG3DGltfWorker();
+      const result = await new Promise<BG3DGltfWorkerResponse>(
+        (resolve, reject) => {
+          worker.onmessage = (e) => {
+            resolve(e.data);
+            worker.terminate();
+          };
+          worker.onerror = (e) => {
+            reject(e);
+            worker.terminate();
+          };
+          const message: BG3DGltfWorkerMessage = {
+            type: "bg3d-to-glb",
+            buffer: arrayBuffer,
+          };
+          worker.postMessage(message);
+        },
       );
-      if (bg3dFile) {
-        handleFileUpload(bg3dFile);
+      if (result.type === "error") {
+        throw new Error(result.error);
       }
-    },
-    [handleFileUpload],
-  );
+      if (result.type === "bg3d-to-glb") {
+        const glbBlob = new Blob([result.result], {
+          type: "model/gltf-binary",
+        });
+        const url = URL.createObjectURL(glbBlob);
+        setGltfUrl(url);
+        toast.success(`Successfully loaded ${file.name}`);
+      }
+    } catch (error) {
+      console.error("Error loading BG3D file:", error);
+      toast.error(
+        error instanceof Error ? error.message : "Failed to load BG3D file",
+      );
+    } finally {
+      setLoading(false);
+    }
+  }
 
-  const handleDragOver = useCallback((e: React.DragEvent) => {
+  function handleDrop(e: React.DragEvent) {
     e.preventDefault();
-  }, []);
+    const files = Array.from(e.dataTransfer.files);
+    const bg3dFile = files.find((file) =>
+      file.name.toLowerCase().endsWith(".bg3d"),
+    );
+    if (bg3dFile) {
+      handleFileUpload(bg3dFile);
+    }
+  }
 
-  const handleTexturesExtracted = useCallback(
-    (extractedTextures: Texture[]) => {
-      console.log("Extracted textures:", extractedTextures);
-      setTextures(extractedTextures);
-    },
-    [],
-  );
+  function handleDragOver(e: React.DragEvent) {
+    e.preventDefault();
+  }
 
-  const handleNodesExtracted = useCallback((extractedNodes: ModelNode[]) => {
+  function handleTexturesExtracted(extractedTextures: Texture[]) {
+    setTextures(extractedTextures);
+  }
+
+  function handleNodesExtracted(extractedNodes: ModelNode[]) {
     console.log("Extracted nodes:", extractedNodes);
     // Don't set modelNodes here - wait for cloned scene update
-  }, []);
+  }
 
-  const handleClonedSceneUpdate = useCallback((newClonedScene: THREE.Group) => {
+  function handleClonedSceneUpdate(newClonedScene: THREE.Group) {
     console.log("Cloned scene updated:", newClonedScene);
     console.log("Cloned scene children:", newClonedScene.children.length);
     setClonedScene(newClonedScene);
-    
     // Extract updated hierarchy from cloned scene
     const extractNode = (obj: THREE.Object3D): ModelNode => {
       const node: ModelNode = {
@@ -152,79 +135,64 @@ export function ModelViewer() {
         meshIndex: obj instanceof THREE.Mesh ? obj.id : undefined,
         nodeIndex: obj.id,
       };
-
-      // Process children
       if (obj.children.length > 0) {
         node.children = obj.children.map((child) => extractNode(child));
       }
-
       return node;
     };
-
-    const updatedNodes = newClonedScene.children.map((child) => extractNode(child));
+    const updatedNodes = newClonedScene.children.map((child) =>
+      extractNode(child),
+    );
     console.log("Setting model nodes:", updatedNodes);
     setModelNodes(updatedNodes);
-  }, []);
+  }
 
-  const handleNodeVisibilityChange = useCallback(
-    (nodeObject: THREE.Object3D, visible: boolean) => {
-      nodeObject.visible = visible;
-      
-      // Trigger re-extraction of nodes to update UI
-      if (clonedScene) {
-        handleClonedSceneUpdate(clonedScene);
-      }
-      
-      console.log("Visibility change:", {
-        nodeName: nodeObject.name,
-        visible,
-      });
-    },
-    [clonedScene, handleClonedSceneUpdate],
-  );
+  function handleNodeVisibilityChange(
+    nodeObject: THREE.Object3D,
+    visible: boolean,
+  ) {
+    nodeObject.visible = visible;
+    // Trigger re-extraction of nodes to update UI
+    if (clonedScene) {
+      handleClonedSceneUpdate(clonedScene);
+    }
+    console.log("Visibility change:", {
+      nodeName: nodeObject.name,
+      visible,
+    });
+  }
 
-  const handleDownloadTexture = useCallback(
-    async (texture: Texture) => {
-      try {
-        const response = await fetch(texture.url);
-        const blob = await response.blob();
-        const url = URL.createObjectURL(blob);
+  async function handleDownloadTexture(texture: Texture) {
+    try {
+      const response = await fetch(texture.url);
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `${texture.name}.png`;
+      link.click();
+      URL.revokeObjectURL(url);
+      toast.success(`${texture.name} has been downloaded`);
+    } catch (error) {
+      console.error("Error downloading texture:", error);
+      toast.error("Failed to download texture");
+    }
+  }
 
-        const link = document.createElement("a");
-        link.href = url;
-        link.download = `${texture.name}.png`;
-        link.click();
-
-        URL.revokeObjectURL(url);
-
-        toast.success(`${texture.name} has been downloaded`);
-      } catch (error) {
-        console.error("Error downloading texture:", error);
-        toast.error("Failed to download texture");
-      }
-    },
-    [],
-  );
-
-  const handleReplaceTexture = useCallback(
-    async (texture: Texture, newFile: File) => {
-      try {
-        // Create a new object URL for the new texture
-        const newUrl = URL.createObjectURL(newFile);
-
-        // Update the texture in the list
-        setTextures((prev) =>
-          prev.map((t) => (t.url === texture.url ? { ...t, url: newUrl } : t)),
-        );
-
-        toast.success(`Successfully replaced ${texture.name}`);
-      } catch (error) {
-        console.error("Error replacing texture:", error);
-        toast.error("Failed to replace texture");
-      }
-    },
-    [],
-  );
+  async function handleReplaceTexture(texture: Texture, newFile: File) {
+    try {
+      // Create a new object URL for the new texture
+      const newUrl = URL.createObjectURL(newFile);
+      // Update the texture in the list
+      setTextures((prev) =>
+        prev.map((t) => (t.url === texture.url ? { ...t, url: newUrl } : t)),
+      );
+      toast.success(`Successfully replaced ${texture.name}`);
+    } catch (error) {
+      console.error("Error replacing texture:", error);
+      toast.error("Failed to replace texture");
+    }
+  }
 
   const loadTestModel = async () => {
     try {
@@ -299,7 +267,7 @@ export function ModelViewer() {
               console.log("Checking Model Hierarchy render condition:", {
                 modelNodesLength: modelNodes.length,
                 hasClonedScene: !!clonedScene,
-                shouldRender: modelNodes.length > 0 && clonedScene
+                shouldRender: modelNodes.length > 0 && clonedScene,
               });
               return modelNodes.length > 0 && clonedScene ? (
                 <ModelHierarchy
@@ -331,9 +299,17 @@ export function ModelViewer() {
                         No textures found in this model
                       </p>
                       <div className="text-xs text-gray-500 space-y-1">
-                        <p>• Some BG3D models may not contain extractable textures</p>
-                        <p>• Textures may be embedded differently or compressed</p>
-                        <p>• Try a different model format if texture editing is needed</p>
+                        <p>
+                          • Some BG3D models may not contain extractable
+                          textures
+                        </p>
+                        <p>
+                          • Textures may be embedded differently or compressed
+                        </p>
+                        <p>
+                          • Try a different model format if texture editing is
+                          needed
+                        </p>
                       </div>
                     </div>
                   )}

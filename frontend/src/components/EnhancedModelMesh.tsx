@@ -33,14 +33,13 @@ export function EnhancedModelMesh({
   onClonedSceneUpdate,
 }: EnhancedModelMeshProps) {
   const { scene } = useGLTF(url);
-  const sceneRef = useRef<THREE.Group>(null);
 
   // Extract textures from the scene
-  const extractTextures = useMemo(() => {
+  const extractedTextures = useMemo(() => {
     const extractedTextures: Texture[] = [];
     const textureUrls = new Set<string>();
 
-    scene.traverse((child: any) => {
+    scene.traverse((child: THREE.Object3D<THREE.Object3DEventMap>) => {
       if (child.material) {
         const materials = Array.isArray(child.material)
           ? child.material
@@ -123,11 +122,13 @@ export function EnhancedModelMesh({
       }
     });
 
-    return extractedTextures;
+    const res = extractedTextures;
+    onTexturesExtracted(res);
+    return res;
   }, [scene]);
 
   // Extract node hierarchy from the scene
-  const extractNodes = useMemo(() => {
+  const extractedNodes = useMemo(() => {
     const extractNode = (obj: THREE.Object3D, level = 0): ModelNode => {
       const node: ModelNode = {
         name: obj.name || `Node_${obj.id}`,
@@ -153,22 +154,14 @@ export function EnhancedModelMesh({
       return node;
     };
 
-    return scene.children.map((child) => extractNode(child));
+    const res = scene.children.map((child) => extractNode(child));
+    onNodesExtracted(res);
+    return res;
   }, [scene]);
-
-  // Update textures when scene changes
-  useEffect(() => {
-    onTexturesExtracted(extractTextures);
-  }, [extractTextures, onTexturesExtracted]);
-
-  // Update nodes when scene changes
-  useEffect(() => {
-    onNodesExtracted(extractNodes);
-  }, [extractNodes, onNodesExtracted]);
 
   // Clone the scene to avoid mutating the original
   const clonedScene = useMemo(() => {
-    if (!scene) return undefined;
+    console.log("USEMEMO CALLED");
     const cloned = scene.clone();
     return cloned;
   }, [scene]);
@@ -176,17 +169,21 @@ export function EnhancedModelMesh({
   // Update cloned scene when it changes
   useEffect(() => {
     if (clonedScene) {
-      onClonedSceneUpdate(clonedScene);
+      //onClonedSceneUpdate(clonedScene);
     }
   }, [clonedScene, onClonedSceneUpdate]);
 
-  if (!clonedScene) return null;
+  if (!clonedScene) {
+    console.warn("No cloned scene available");
+    return null;
+  }
+  console.log("Main scene:", scene.children.length);
   return (
-    <group ref={sceneRef}>
-      {clonedScene.children.map((child, index) => (
+    <>
+      {scene.children.map((child, index) => (
         <primitive key={index} object={child} />
       ))}
       {/* Render the mapped children only, preserving transforms */}
-    </group>
+    </>
   );
 }
