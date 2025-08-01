@@ -21,16 +21,16 @@ interface ModelNode {
 
 interface EnhancedModelMeshProps {
   url: string;
-  nodeVisibility: Map<string, boolean>;
   onTexturesExtracted: (textures: Texture[]) => void;
   onNodesExtracted: (nodes: ModelNode[]) => void;
+  onClonedSceneUpdate: (clonedScene: THREE.Group) => void;
 }
 
 export function EnhancedModelMesh({
   url,
-  nodeVisibility,
   onTexturesExtracted,
   onNodesExtracted,
+  onClonedSceneUpdate,
 }: EnhancedModelMeshProps) {
   const { scene } = useGLTF(url);
   const sceneRef = useRef<THREE.Group>(null);
@@ -170,27 +170,15 @@ export function EnhancedModelMesh({
   const clonedScene = useMemo(() => {
     if (!scene) return undefined;
     const cloned = scene.clone();
-    // Apply visibility to the clone with detailed logging
-    const updateVisibility = (obj: THREE.Object3D) => {
-      const nodeKey = `node_${obj.name}`;
-      const meshKey =
-        obj instanceof THREE.Mesh ? `mesh_${obj.name}` : undefined;
-      let shouldBeVisible = obj.visible;
-      console.log("nodeVisibility", nodeVisibility);
-      console.log("nodeKey", nodeKey);
-      console.log("meshKey", meshKey);
-      if (nodeVisibility.has(nodeKey)) {
-        shouldBeVisible = nodeVisibility.get(nodeKey)!;
-      } else if (meshKey && nodeVisibility.has(meshKey)) {
-        shouldBeVisible = nodeVisibility.get(meshKey)!;
-      }
-
-      obj.visible = shouldBeVisible;
-      obj.children.forEach(updateVisibility);
-    };
-    cloned.traverse(updateVisibility);
     return cloned;
-  }, [scene, nodeVisibility]);
+  }, [scene]);
+
+  // Update cloned scene when it changes
+  useEffect(() => {
+    if (clonedScene) {
+      onClonedSceneUpdate(clonedScene);
+    }
+  }, [clonedScene, onClonedSceneUpdate]);
 
   if (!clonedScene) return null;
   return (

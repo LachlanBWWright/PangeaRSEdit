@@ -4,7 +4,6 @@ import { OrbitControls } from "@react-three/drei";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Upload } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
 import { TextureManager } from "@/components/TextureManager";
 import { ModelHierarchy } from "@/components/ModelHierarchy";
 import { EnhancedModelMesh } from "@/components/EnhancedModelMesh";
@@ -15,6 +14,7 @@ import {
   BG3DGltfWorkerResponse,
 } from "../modelParsers/bg3dGltfWorker";
 import { toast } from "sonner";
+import * as THREE from "three";
 
 interface Texture {
   name: string;
@@ -38,19 +38,13 @@ export function ModelViewer() {
   const [loading, setLoading] = useState(false);
   const [textures, setTextures] = useState<Texture[]>([]);
   const [modelNodes, setModelNodes] = useState<ModelNode[]>([]);
-  const [nodeVisibility, setNodeVisibility] = useState<Map<string, boolean>>(
-    new Map(),
-  );
+  const [clonedScene, setClonedScene] = useState<THREE.Group | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileUpload = useCallback(
     async (file: File) => {
       if (!file.name.toLowerCase().endsWith(".bg3d")) {
-        toast("Invalid File", {
-          description: "Please select a BG3D file",
-
-          //variant: "destructive",
-        });
+        toast.error("Please select a BG3D file");
         return;
       }
 
@@ -93,21 +87,18 @@ export function ModelViewer() {
           const url = URL.createObjectURL(glbBlob);
           setGltfUrl(url);
 
-          toast("Model Loaded", {
-            description: `Successfully loaded ${file.name}`,
-          });
+          toast.success(`Successfully loaded ${file.name}`);
         }
       } catch (error) {
         console.error("Error loading BG3D file:", error);
-        toast("Error Loading Model", {
-          description:
-            error instanceof Error ? error.message : "Failed to load BG3D file",
-        });
+        toast.error(
+          error instanceof Error ? error.message : "Failed to load BG3D file",
+        );
       } finally {
         setLoading(false);
       }
     },
-    [toast],
+    [],
   );
 
   const handleDrop = useCallback(
@@ -139,61 +130,55 @@ export function ModelViewer() {
   const handleNodesExtracted = useCallback((extractedNodes: ModelNode[]) => {
     console.log("Extracted nodes:", extractedNodes);
     setModelNodes(extractedNodes);
+  }, []);
 
-    // Initialize visibility map with proper node tracking
-    const visibilityMap = new Map<string, boolean>();
-    const initializeVisibility = (
-      nodes: ModelNode[],
-      parentPath: string = "",
-    ) => {
-      nodes.forEach((node, index) => {
-        const nodePath = parentPath ? `${parentPath}-${index}` : `${index}`;
-        visibilityMap.set(nodePath, true);
+  const handleClonedSceneUpdate = useCallback((newClonedScene: THREE.Group) => {
+    console.log("Cloned scene updated:", newClonedScene);
+    setClonedScene(newClonedScene);
+    
+    // Extract updated hierarchy from cloned scene
+    const extractNode = (obj: THREE.Object3D): ModelNode => {
+      const node: ModelNode = {
+        name: obj.name || `Node_${obj.id}`,
+        type:
+          obj instanceof THREE.Mesh
+            ? "mesh"
+            : obj instanceof THREE.Group
+            ? "group"
+            : "node",
+        visible: obj.visible,
+        children: [],
+        meshIndex: obj instanceof THREE.Mesh ? obj.id : undefined,
+        nodeIndex: obj.id,
+      };
 
-        if (node.nodeIndex !== undefined) {
-          visibilityMap.set(`node_${node.name}`, true);
-        }
-        if (node.meshIndex !== undefined) {
-          visibilityMap.set(`mesh_${node.name}`, true);
-        }
+      // Process children
+      if (obj.children.length > 0) {
+        node.children = obj.children.map((child) => extractNode(child));
+      }
 
-        if (node.children) {
-          initializeVisibility(node.children, nodePath);
-        }
-      });
+      return node;
     };
-    initializeVisibility(extractedNodes);
-    setNodeVisibility(visibilityMap);
+
+    const updatedNodes = newClonedScene.children.map((child) => extractNode(child));
+    setModelNodes(updatedNodes);
   }, []);
 
   const handleNodeVisibilityChange = useCallback(
-    (
-      nodePath: string,
-      nodeIndex: number | undefined,
-      meshIndex: number | undefined,
-      visible: boolean,
-    ) => {
-      setNodeVisibility((prev) => {
-        const newVisibility = new Map(prev);
-        newVisibility.set(nodePath, visible);
-
-        if (nodeIndex !== undefined) {
-          newVisibility.set(`node_${nodeIndex}`, visible);
-        }
-        if (meshIndex !== undefined) {
-          newVisibility.set(`mesh_${meshIndex}`, visible);
-        }
-
-        console.log("Visibility change:", {
-          nodePath,
-          nodeIndex,
-          meshIndex,
-          visible,
-        });
-        return newVisibility;
+    (nodeObject: THREE.Object3D, visible: boolean) => {
+      nodeObject.visible = visible;
+      
+      // Trigger re-extraction of nodes to update UI
+      if (clonedScene) {
+        handleClonedSceneUpdate(clonedScene);
+      }
+      
+      console.log("Visibility change:", {
+        nodeName: nodeObject.name,
+        visible,
       });
     },
-    [],
+    [clonedScene, handleClonedSceneUpdate],
   );
 
   const handleDownloadTexture = useCallback(
@@ -210,17 +195,13 @@ export function ModelViewer() {
 
         URL.revokeObjectURL(url);
 
-        toast("Texture Downloaded", {
-          description: `${texture.name} has been downloaded`,
-        });
+        toast.success(`${texture.name} has been downloaded`);
       } catch (error) {
         console.error("Error downloading texture:", error);
-        toast("Download Failed", {
-          description: "Failed to download texture",
-        });
+        toast.error("Failed to download texture");
       }
     },
-    [toast],
+    [],
   );
 
   const handleReplaceTexture = useCallback(
@@ -234,17 +215,13 @@ export function ModelViewer() {
           prev.map((t) => (t.url === texture.url ? { ...t, url: newUrl } : t)),
         );
 
-        toast("Texture Replaced", {
-          description: `Successfully replaced ${texture.name}`,
-        });
+        toast.success(`Successfully replaced ${texture.name}`);
       } catch (error) {
         console.error("Error replacing texture:", error);
-        toast("Replace Failed", {
-          description: "Failed to replace texture",
-        });
+        toast.error("Failed to replace texture");
       }
     },
-    [toast],
+    [],
   );
 
   const loadTestModel = async () => {
@@ -261,9 +238,7 @@ export function ModelViewer() {
       await handleFileUpload(file);
     } catch (error) {
       console.error("Error loading sample model:", error);
-      toast("Error Loading Sample Model", {
-        description: "Failed to load Otto.bg3d sample file",
-      });
+      toast.error("Failed to load Otto.bg3d sample file");
     }
   };
 
@@ -318,20 +293,43 @@ export function ModelViewer() {
             </Card>
 
             {/* Model Hierarchy */}
-            {modelNodes.length > 0 && (
+            {modelNodes.length > 0 && clonedScene && (
               <ModelHierarchy
                 nodes={modelNodes}
+                clonedScene={clonedScene}
                 onVisibilityChange={handleNodeVisibilityChange}
               />
             )}
 
-            {/* Texture Manager */}
-            {textures.length > 0 && (
-              <TextureManager
-                textures={textures}
-                onDownloadTexture={handleDownloadTexture}
-                onReplaceTexture={handleReplaceTexture}
-              />
+            {/* Texture Manager - Always show this section when model is loaded */}
+            {gltfUrl && (
+              <Card className="bg-gray-800 border-gray-700">
+                <CardHeader>
+                  <CardTitle className="text-white text-sm">
+                    Texture Management
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {textures.length > 0 ? (
+                    <TextureManager
+                      textures={textures}
+                      onDownloadTexture={handleDownloadTexture}
+                      onReplaceTexture={handleReplaceTexture}
+                    />
+                  ) : (
+                    <div className="space-y-3">
+                      <p className="text-sm text-gray-400">
+                        No textures found in this model
+                      </p>
+                      <div className="text-xs text-gray-500 space-y-1">
+                        <p>• Some BG3D models may not contain extractable textures</p>
+                        <p>• Textures may be embedded differently or compressed</p>
+                        <p>• Try a different model format if texture editing is needed</p>
+                      </div>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
             )}
             {/* Conversion Panels */}
             <ConversionPanel
@@ -373,9 +371,9 @@ export function ModelViewer() {
                 {/* Load the GLTF model with enhanced features */}
                 <EnhancedModelMesh
                   url={gltfUrl}
-                  nodeVisibility={nodeVisibility}
                   onTexturesExtracted={handleTexturesExtracted}
                   onNodesExtracted={handleNodesExtracted}
+                  onClonedSceneUpdate={handleClonedSceneUpdate}
                 />
 
                 <OrbitControls

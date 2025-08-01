@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Download, Eye, Upload, Edit } from "lucide-react";
 import { useRef, useState, useCallback } from "react";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 
 interface Texture {
   name: string;
@@ -23,25 +23,17 @@ interface TextureManagerProps {
 export function TextureManager({ textures, onDownloadTexture, onReplaceTexture, onTextureEdit }: TextureManagerProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [selectedTexture, setSelectedTexture] = useState<Texture | null>(null);
-  const { toast } = useToast();
 
   const handleReplaceTexture = useCallback(async (texture: Texture, file: File) => {
     if (!onReplaceTexture) return;
     
     try {
       await onReplaceTexture(texture, file);
-      toast({
-        title: "Texture Replaced",
-        description: `Successfully replaced ${texture.name}`,
-      });
+      toast.success(`Successfully replaced ${texture.name}`);
     } catch (error) {
-      toast({
-        title: "Replace Failed",
-        description: "Failed to replace texture",
-        variant: "destructive",
-      });
+      toast.error("Failed to replace texture");
     }
-  }, [onReplaceTexture, toast]);
+  }, [onReplaceTexture]);
 
   if (textures.length === 0) {
     return (

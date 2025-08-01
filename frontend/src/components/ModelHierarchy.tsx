@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ChevronDown, ChevronRight, Eye, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import * as THREE from "three";
 
 interface ModelNode {
   name: string;
@@ -14,28 +15,27 @@ interface ModelNode {
 
 interface ModelHierarchyProps {
   nodes: ModelNode[];
-  onVisibilityChange: (nodePath: string, nodeIndex: number | undefined, meshIndex: number | undefined, visible: boolean) => void;
+  clonedScene: THREE.Group;
+  onVisibilityChange: (nodeObject: THREE.Object3D, visible: boolean) => void;
 }
 
 function NodeItem({ 
   node, 
   level = 0, 
   onVisibilityChange,
-  nodePath,
+  nodeObject,
 }: { 
   node: ModelNode; 
   level?: number; 
-  onVisibilityChange: (nodePath: string, nodeIndex: number | undefined, meshIndex: number | undefined, visible: boolean) => void;
-  nodePath: string;
+  onVisibilityChange: (nodeObject: THREE.Object3D, visible: boolean) => void;
+  nodeObject: THREE.Object3D;
 }) {
   const [expanded, setExpanded] = useState(true);
-  const [visible, setVisible] = useState(node.visible);
   const hasChildren = node.children && node.children.length > 0;
 
   const handleVisibilityToggle = () => {
-    const newVisible = !visible;
-    setVisible(newVisible);
-    onVisibilityChange(nodePath, node.nodeIndex, node.meshIndex, newVisible);
+    const newVisible = !nodeObject.visible;
+    onVisibilityChange(nodeObject, newVisible);
   };
 
   return (
@@ -64,9 +64,9 @@ function NodeItem({
           size="sm"
           className="w-5 h-5 p-0 hover:bg-gray-600"
           onClick={handleVisibilityToggle}
-          title={visible ? "Hide node" : "Show node"}
+          title={nodeObject.visible ? "Hide node" : "Show node"}
         >
-          {visible ? 
+          {nodeObject.visible ? 
             <Eye className="w-4 h-4 text-green-400" /> : 
             <EyeOff className="w-4 h-4 text-red-400" />
           }
@@ -83,22 +83,25 @@ function NodeItem({
       
       {hasChildren && expanded && (
         <div>
-          {node.children!.map((child, index) => (
-            <NodeItem
-              key={`${nodePath}-${index}`}
-              node={child}
-              level={level + 1}
-              onVisibilityChange={onVisibilityChange}
-              nodePath={`${nodePath}-${index}`}
-            />
-          ))}
+          {node.children!.map((child, index) => {
+            const childObject = nodeObject.children[index];
+            return (
+              <NodeItem
+                key={`${node.name}-${index}`}
+                node={child}
+                level={level + 1}
+                onVisibilityChange={onVisibilityChange}
+                nodeObject={childObject}
+              />
+            );
+          })}
         </div>
       )}
     </div>
   );
 }
 
-export function ModelHierarchy({ nodes, onVisibilityChange }: ModelHierarchyProps) {
+export function ModelHierarchy({ nodes, clonedScene, onVisibilityChange }: ModelHierarchyProps) {
   const [showAll, setShowAll] = useState(true);
 
   const handleToggleAll = () => {
@@ -106,8 +109,8 @@ export function ModelHierarchy({ nodes, onVisibilityChange }: ModelHierarchyProp
     const newShowAll = !showAll;
     setShowAll(newShowAll);
     
-    nodes.forEach((node, index) => {
-      onVisibilityChange(`${index}`, node.nodeIndex, node.meshIndex, newShowAll);
+    clonedScene.children.forEach((child) => {
+      onVisibilityChange(child, newShowAll);
     });
   };
 
@@ -131,14 +134,17 @@ export function ModelHierarchy({ nodes, onVisibilityChange }: ModelHierarchyProp
         </div>
       </CardHeader>
       <CardContent className="pt-0 space-y-1 max-h-60 overflow-y-auto">
-        {nodes.map((node, index) => (
-          <NodeItem
-            key={index}
-            node={node}
-            onVisibilityChange={onVisibilityChange}
-            nodePath={`${index}`}
-          />
-        ))}
+        {nodes.map((node, index) => {
+          const nodeObject = clonedScene.children[index];
+          return (
+            <NodeItem
+              key={index}
+              node={node}
+              onVisibilityChange={onVisibilityChange}
+              nodeObject={nodeObject}
+            />
+          );
+        })}
       </CardContent>
     </Card>
   );
