@@ -14,6 +14,7 @@ import {
   BG3DGltfWorkerMessage,
   BG3DGltfWorkerResponse,
 } from "../modelParsers/bg3dGltfWorker";
+import { BG3DParseResult, BG3DTexture } from "../modelParsers/parseBG3D";
 import { toast } from "sonner";
 import * as THREE from "three";
 
@@ -38,6 +39,7 @@ export function ModelViewer() {
   // --- Begin moved logic from EnhancedModelMesh ---
   // State and refs must be declared first
   const [gltfUrl, setGltfUrl] = useState<string | null>(null);
+  const [bg3dParsed, setBg3dParsed] = useState<BG3DParseResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [textures, setTextures] = useState<Texture[]>([]);
   const [modelNodes, setModelNodes] = useState<ModelNode[]>([]);
@@ -82,6 +84,96 @@ export function ModelViewer() {
       setClonedScene(null);
     }
   }, [scene]);
+
+  // Convert BG3D texture to displayable image URL
+  function convertBG3DTextureToImageUrl(texture: BG3DTexture, materialIndex: number, textureIndex: number): string {
+    try {
+      // Create a canvas to convert the raw pixel data to an image
+      const canvas = document.createElement('canvas');
+      canvas.width = texture.width;
+      canvas.height = texture.height;
+      const ctx = canvas.getContext('2d');
+      
+      if (!ctx) {
+        throw new Error('Could not get canvas context');
+      }
+
+      // Create ImageData from the pixel buffer
+      const imageData = ctx.createImageData(texture.width, texture.height);
+      
+      // Convert pixel format - for now we'll handle the most common case
+      // This is a simplified conversion - may need more sophisticated handling for different formats
+      if (texture.pixels.length === texture.width * texture.height * 3) {
+        // RGB format
+        for (let i = 0; i < texture.pixels.length; i += 3) {
+          const pixelIndex = (i / 3) * 4;
+          imageData.data[pixelIndex] = texture.pixels[i];     // R
+          imageData.data[pixelIndex + 1] = texture.pixels[i + 1]; // G
+          imageData.data[pixelIndex + 2] = texture.pixels[i + 2]; // B
+          imageData.data[pixelIndex + 3] = 255; // A
+        }
+      } else if (texture.pixels.length === texture.width * texture.height * 4) {
+        // RGBA format
+        imageData.data.set(texture.pixels);
+      } else {
+        // Try to handle other formats by copying raw data
+        console.warn(`Unknown texture format for texture ${textureIndex} in material ${materialIndex}`);
+        // For unknown formats, create a gray placeholder
+        for (let i = 0; i < imageData.data.length; i += 4) {
+          imageData.data[i] = 128;     // R
+          imageData.data[i + 1] = 128; // G  
+          imageData.data[i + 2] = 128; // B
+          imageData.data[i + 3] = 255; // A
+        }
+      }
+      
+      ctx.putImageData(imageData, 0, 0);
+      return canvas.toDataURL('image/png');
+    } catch (error) {
+      console.error('Error converting BG3D texture to image:', error);
+      // Return a placeholder data URL
+      const canvas = document.createElement('canvas');
+      canvas.width = 64;
+      canvas.height = 64;
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        ctx.fillStyle = '#666666';
+        ctx.fillRect(0, 0, 64, 64);
+        ctx.fillStyle = '#ffffff';
+        ctx.font = '12px Arial';
+        ctx.fillText('Error', 20, 35);
+      }
+      return canvas.toDataURL('image/png');
+    }
+  }
+
+  // Extract textures from BG3D parsed data when it changes
+  useEffect(() => {
+    if (bg3dParsed) {
+      const extractedTextures: Texture[] = [];
+      
+      bg3dParsed.materials.forEach((material, materialIndex) => {
+        material.textures.forEach((texture, textureIndex) => {
+          const imageUrl = convertBG3DTextureToImageUrl(texture, materialIndex, textureIndex);
+          extractedTextures.push({
+            name: `Material_${materialIndex}_Texture_${textureIndex}`,
+            url: imageUrl,
+            type: "diffuse", // Default to diffuse for now
+            material: `Material ${materialIndex}`,
+            size: {
+              width: texture.width,
+              height: texture.height
+            }
+          });
+        });
+      });
+      
+      setTextures(extractedTextures);
+      console.log('Extracted textures from BG3D:', extractedTextures);
+    } else {
+      setTextures([]);
+    }
+  }, [bg3dParsed]);
   // --- End moved logic ---
   // ...existing code...
 
@@ -120,6 +212,7 @@ export function ModelViewer() {
         });
         const url = URL.createObjectURL(glbBlob);
         setGltfUrl(url);
+        setBg3dParsed(result.parsed);
         toast.success(`Successfully loaded ${file.name}`);
       }
     } catch (error) {
@@ -214,17 +307,122 @@ export function ModelViewer() {
   }
 
   async function handleReplaceTexture(texture: Texture, newFile: File) {
+    if (!bg3dParsed) {
+      toast.error("No BG3D data available for texture replacement");
+      return;
+    }
+
     try {
-      // Create a new object URL for the new texture
-      const newUrl = URL.createObjectURL(newFile);
-      // Update the texture in the list
-      setTextures((prev) =>
-        prev.map((t) => (t.url === texture.url ? { ...t, url: newUrl } : t)),
+      // Parse material and texture indices from texture name
+      const match = texture.name.match(/Material_(\d+)_Texture_(\d+)/);
+      if (!match) {
+        throw new Error("Could not parse texture name format");
+      }
+      
+      const materialIndex = parseInt(match[1]);
+      const textureIndex = parseInt(match[2]);
+      
+      // Load the new image file
+      const imageUrl = URL.createObjectURL(newFile);
+      const img = new Image();
+      
+      await new Promise((resolve, reject) => {
+        img.onload = resolve;
+        img.onerror = reject;
+        img.src = imageUrl;
+      });
+      
+      // Convert image to pixel data
+      const canvas = document.createElement('canvas');
+      canvas.width = img.width;
+      canvas.height = img.height;
+      const ctx = canvas.getContext('2d');
+      
+      if (!ctx) {
+        throw new Error('Could not get canvas context');
+      }
+      
+      ctx.drawImage(img, 0, 0);
+      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      
+      // Update the BG3D texture data
+      const material = bg3dParsed.materials[materialIndex];
+      if (!material) {
+        throw new Error(`Material ${materialIndex} not found`);
+      }
+      
+      const bg3dTexture = material.textures[textureIndex];
+      if (!bg3dTexture) {
+        throw new Error(`Texture ${textureIndex} not found in material ${materialIndex}`);
+      }
+      
+      // Update texture properties
+      bg3dTexture.width = canvas.width;
+      bg3dTexture.height = canvas.height;
+      
+      // Convert RGBA to the format expected by BG3D (likely RGB)
+      const rgbData = new Uint8Array(canvas.width * canvas.height * 3);
+      for (let i = 0; i < imageData.data.length; i += 4) {
+        const rgbIndex = (i / 4) * 3;
+        rgbData[rgbIndex] = imageData.data[i];       // R
+        rgbData[rgbIndex + 1] = imageData.data[i + 1]; // G
+        rgbData[rgbIndex + 2] = imageData.data[i + 2]; // B
+      }
+      
+      bg3dTexture.pixels = rgbData;
+      bg3dTexture.bufferSize = rgbData.length;
+      
+      // Regenerate the GLTF from the modified BG3D data
+      setLoading(true);
+      const worker = new BG3DGltfWorker();
+      const result = await new Promise<BG3DGltfWorkerResponse>(
+        (resolve, reject) => {
+          worker.onmessage = (e) => {
+            resolve(e.data);
+            worker.terminate();
+          };
+          worker.onerror = (e) => {
+            reject(e);
+            worker.terminate();
+          };
+          const message: BG3DGltfWorkerMessage = {
+            type: "bg3d-parsed-to-glb",
+            parsed: bg3dParsed,
+          };
+          worker.postMessage(message);
+        }
       );
-      toast.success(`Successfully replaced ${texture.name}`);
+      
+      if (result.type === "error") {
+        throw new Error(result.error);
+      }
+      
+      if (result.type === "bg3d-parsed-to-glb") {
+        // Update the GLTF URL with the new model
+        const glbBlob = new Blob([result.result], {
+          type: "model/gltf-binary",
+        });
+        
+        // Clean up old URL
+        if (gltfUrl) {
+          URL.revokeObjectURL(gltfUrl);
+        }
+        
+        const newUrl = URL.createObjectURL(glbBlob);
+        setGltfUrl(newUrl);
+        
+        // Update the BG3D parsed state to trigger texture re-extraction
+        setBg3dParsed({...bg3dParsed});
+        
+        toast.success(`Successfully replaced ${texture.name} and updated model`);
+      }
+      
+      URL.revokeObjectURL(imageUrl);
     } catch (error) {
       console.error("Error replacing texture:", error);
-      toast.error("Failed to replace texture");
+      toast.error(`Failed to replace texture: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setLoading(false);
     }
   }
 
