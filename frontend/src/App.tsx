@@ -5,6 +5,7 @@ import { LevelEditor } from "./pages/LevelEditor";
 import { ModelViewer } from "./pages/ModelViewer";
 import { DownloadLevels } from "./pages/DownloadLevels";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { Toaster } from "./components/ui/sonner";
 
 function App() {
   return (
@@ -20,6 +21,7 @@ function App() {
           </Routes>
         </div>
       </Router>
+      <Toaster />
     </TooltipProvider>
   );
 }
