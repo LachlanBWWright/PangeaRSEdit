@@ -136,6 +136,10 @@ export function ModelHierarchy({ nodes, clonedScene, onVisibilityChange }: Model
       <CardContent className="pt-0 space-y-1 max-h-60 overflow-y-auto">
         {nodes.map((node, index) => {
           const nodeObject = clonedScene.children[index];
+          if (!nodeObject) {
+            console.warn(`No corresponding node object found for index ${index}`);
+            return null;
+          }
           return (
             <NodeItem
               key={index}

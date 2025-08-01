@@ -129,11 +129,12 @@ export function ModelViewer() {
 
   const handleNodesExtracted = useCallback((extractedNodes: ModelNode[]) => {
     console.log("Extracted nodes:", extractedNodes);
-    setModelNodes(extractedNodes);
+    // Don't set modelNodes here - wait for cloned scene update
   }, []);
 
   const handleClonedSceneUpdate = useCallback((newClonedScene: THREE.Group) => {
     console.log("Cloned scene updated:", newClonedScene);
+    console.log("Cloned scene children:", newClonedScene.children.length);
     setClonedScene(newClonedScene);
     
     // Extract updated hierarchy from cloned scene
@@ -161,6 +162,7 @@ export function ModelViewer() {
     };
 
     const updatedNodes = newClonedScene.children.map((child) => extractNode(child));
+    console.log("Setting model nodes:", updatedNodes);
     setModelNodes(updatedNodes);
   }, []);
 
@@ -293,13 +295,20 @@ export function ModelViewer() {
             </Card>
 
             {/* Model Hierarchy */}
-            {modelNodes.length > 0 && clonedScene && (
-              <ModelHierarchy
-                nodes={modelNodes}
-                clonedScene={clonedScene}
-                onVisibilityChange={handleNodeVisibilityChange}
-              />
-            )}
+            {(() => {
+              console.log("Checking Model Hierarchy render condition:", {
+                modelNodesLength: modelNodes.length,
+                hasClonedScene: !!clonedScene,
+                shouldRender: modelNodes.length > 0 && clonedScene
+              });
+              return modelNodes.length > 0 && clonedScene ? (
+                <ModelHierarchy
+                  nodes={modelNodes}
+                  clonedScene={clonedScene}
+                  onVisibilityChange={handleNodeVisibilityChange}
+                />
+              ) : null;
+            })()}
 
             {/* Texture Manager - Always show this section when model is loaded */}
             {gltfUrl && (
