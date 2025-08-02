@@ -48,6 +48,7 @@ export function ModelViewer() {
 
   // Only call useGLTF if gltfUrl is not null
   const gltfResult = gltfUrl ? useGLTF(gltfUrl) : null;
+  console.log("GLTF Result:", gltfResult);
   const scene = gltfResult ? gltfResult.scene : null;
 
   // Extract node hierarchy from the scene
@@ -78,36 +79,40 @@ export function ModelViewer() {
     if (scene) {
       const nodes = scene.children.map((child) => extractNode(child));
       setModelNodes(nodes);
-      setClonedScene(scene.clone());
+      //setClonedScene(scene.clone());
     } else {
-      setModelNodes([]);
-      setClonedScene(null);
+      //setModelNodes([]);
+      //setClonedScene(null);
     }
   }, [scene]);
 
   // Convert BG3D texture to displayable image URL
-  function convertBG3DTextureToImageUrl(texture: BG3DTexture, materialIndex: number, textureIndex: number): string {
+  function convertBG3DTextureToImageUrl(
+    texture: BG3DTexture,
+    materialIndex: number,
+    textureIndex: number,
+  ): string {
     try {
       // Create a canvas to convert the raw pixel data to an image
-      const canvas = document.createElement('canvas');
+      const canvas = document.createElement("canvas");
       canvas.width = texture.width;
       canvas.height = texture.height;
-      const ctx = canvas.getContext('2d');
-      
+      const ctx = canvas.getContext("2d");
+
       if (!ctx) {
-        throw new Error('Could not get canvas context');
+        throw new Error("Could not get canvas context");
       }
 
       // Create ImageData from the pixel buffer
       const imageData = ctx.createImageData(texture.width, texture.height);
-      
+
       // Convert pixel format - for now we'll handle the most common case
       // This is a simplified conversion - may need more sophisticated handling for different formats
       if (texture.pixels.length === texture.width * texture.height * 3) {
         // RGB format
         for (let i = 0; i < texture.pixels.length; i += 3) {
           const pixelIndex = (i / 3) * 4;
-          imageData.data[pixelIndex] = texture.pixels[i];     // R
+          imageData.data[pixelIndex] = texture.pixels[i]; // R
           imageData.data[pixelIndex + 1] = texture.pixels[i + 1]; // G
           imageData.data[pixelIndex + 2] = texture.pixels[i + 2]; // B
           imageData.data[pixelIndex + 3] = 255; // A
@@ -117,33 +122,35 @@ export function ModelViewer() {
         imageData.data.set(texture.pixels);
       } else {
         // Try to handle other formats by copying raw data
-        console.warn(`Unknown texture format for texture ${textureIndex} in material ${materialIndex}`);
+        console.warn(
+          `Unknown texture format for texture ${textureIndex} in material ${materialIndex}`,
+        );
         // For unknown formats, create a gray placeholder
         for (let i = 0; i < imageData.data.length; i += 4) {
-          imageData.data[i] = 128;     // R
-          imageData.data[i + 1] = 128; // G  
+          imageData.data[i] = 128; // R
+          imageData.data[i + 1] = 128; // G
           imageData.data[i + 2] = 128; // B
           imageData.data[i + 3] = 255; // A
         }
       }
-      
+
       ctx.putImageData(imageData, 0, 0);
-      return canvas.toDataURL('image/png');
+      return canvas.toDataURL("image/png");
     } catch (error) {
-      console.error('Error converting BG3D texture to image:', error);
+      console.error("Error converting BG3D texture to image:", error);
       // Return a placeholder data URL
-      const canvas = document.createElement('canvas');
+      const canvas = document.createElement("canvas");
       canvas.width = 64;
       canvas.height = 64;
-      const ctx = canvas.getContext('2d');
+      const ctx = canvas.getContext("2d");
       if (ctx) {
-        ctx.fillStyle = '#666666';
+        ctx.fillStyle = "#666666";
         ctx.fillRect(0, 0, 64, 64);
-        ctx.fillStyle = '#ffffff';
-        ctx.font = '12px Arial';
-        ctx.fillText('Error', 20, 35);
+        ctx.fillStyle = "#ffffff";
+        ctx.font = "12px Arial";
+        ctx.fillText("Error", 20, 35);
       }
-      return canvas.toDataURL('image/png');
+      return canvas.toDataURL("image/png");
     }
   }
 
@@ -151,10 +158,14 @@ export function ModelViewer() {
   useEffect(() => {
     if (bg3dParsed) {
       const extractedTextures: Texture[] = [];
-      
+
       bg3dParsed.materials.forEach((material, materialIndex) => {
         material.textures.forEach((texture, textureIndex) => {
-          const imageUrl = convertBG3DTextureToImageUrl(texture, materialIndex, textureIndex);
+          const imageUrl = convertBG3DTextureToImageUrl(
+            texture,
+            materialIndex,
+            textureIndex,
+          );
           extractedTextures.push({
             name: `Material_${materialIndex}_Texture_${textureIndex}`,
             url: imageUrl,
@@ -162,14 +173,14 @@ export function ModelViewer() {
             material: `Material ${materialIndex}`,
             size: {
               width: texture.width,
-              height: texture.height
-            }
+              height: texture.height,
+            },
           });
         });
       });
-      
+
       setTextures(extractedTextures);
-      console.log('Extracted textures from BG3D:', extractedTextures);
+      console.log("Extracted textures from BG3D:", extractedTextures);
     } else {
       setTextures([]);
     }
@@ -274,14 +285,12 @@ export function ModelViewer() {
     setModelNodes(updatedNodes);
   }
 
-  function handleNodeVisibilityChange(
-    nodeObject: THREE.Object3D,
-    visible: boolean,
-  ) {
+  function onVisibilityChange(nodeObject: THREE.Object3D, visible: boolean) {
     nodeObject.visible = visible;
     // Trigger re-extraction of nodes to update UI
-    if (clonedScene) {
-      handleClonedSceneUpdate(clonedScene);
+    if (gltfResult) {
+      //todo keep this removed
+      handleClonedSceneUpdate(gltfResult.scene);
     }
     console.log("Visibility change:", {
       nodeName: nodeObject.name,
@@ -318,60 +327,62 @@ export function ModelViewer() {
       if (!match) {
         throw new Error("Could not parse texture name format");
       }
-      
+
       const materialIndex = parseInt(match[1]);
       const textureIndex = parseInt(match[2]);
-      
+
       // Load the new image file
       const imageUrl = URL.createObjectURL(newFile);
       const img = new Image();
-      
+
       await new Promise((resolve, reject) => {
         img.onload = resolve;
         img.onerror = reject;
         img.src = imageUrl;
       });
-      
+
       // Convert image to pixel data
-      const canvas = document.createElement('canvas');
+      const canvas = document.createElement("canvas");
       canvas.width = img.width;
       canvas.height = img.height;
-      const ctx = canvas.getContext('2d');
-      
+      const ctx = canvas.getContext("2d");
+
       if (!ctx) {
-        throw new Error('Could not get canvas context');
+        throw new Error("Could not get canvas context");
       }
-      
+
       ctx.drawImage(img, 0, 0);
       const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-      
+
       // Update the BG3D texture data
       const material = bg3dParsed.materials[materialIndex];
       if (!material) {
         throw new Error(`Material ${materialIndex} not found`);
       }
-      
+
       const bg3dTexture = material.textures[textureIndex];
       if (!bg3dTexture) {
-        throw new Error(`Texture ${textureIndex} not found in material ${materialIndex}`);
+        throw new Error(
+          `Texture ${textureIndex} not found in material ${materialIndex}`,
+        );
       }
-      
+
       // Update texture properties
       bg3dTexture.width = canvas.width;
       bg3dTexture.height = canvas.height;
-      
+
       // Convert RGBA to the format expected by BG3D (likely RGB)
       const rgbData = new Uint8Array(canvas.width * canvas.height * 3);
       for (let i = 0; i < imageData.data.length; i += 4) {
         const rgbIndex = (i / 4) * 3;
-        rgbData[rgbIndex] = imageData.data[i];       // R
+        rgbData[rgbIndex] = imageData.data[i]; // R
         rgbData[rgbIndex + 1] = imageData.data[i + 1]; // G
         rgbData[rgbIndex + 2] = imageData.data[i + 2]; // B
       }
-      
+
       bg3dTexture.pixels = rgbData;
       bg3dTexture.bufferSize = rgbData.length;
-      
+
       // Regenerate the GLTF from the modified BG3D data
       setLoading(true);
       const worker = new BG3DGltfWorker();
@@ -390,37 +401,43 @@ export function ModelViewer() {
             parsed: bg3dParsed,
           };
           worker.postMessage(message);
-        }
+        },
       );
-      
+
       if (result.type === "error") {
         throw new Error(result.error);
       }
-      
+
       if (result.type === "bg3d-parsed-to-glb") {
         // Update the GLTF URL with the new model
         const glbBlob = new Blob([result.result], {
           type: "model/gltf-binary",
         });
-        
+
         // Clean up old URL
         if (gltfUrl) {
           URL.revokeObjectURL(gltfUrl);
         }
-        
+
         const newUrl = URL.createObjectURL(glbBlob);
         setGltfUrl(newUrl);
-        
+
         // Update the BG3D parsed state to trigger texture re-extraction
-        setBg3dParsed({...bg3dParsed});
-        
-        toast.success(`Successfully replaced ${texture.name} and updated model`);
+        setBg3dParsed({ ...bg3dParsed });
+
+        toast.success(
+          `Successfully replaced ${texture.name} and updated model`,
+        );
       }
-      
+
       URL.revokeObjectURL(imageUrl);
     } catch (error) {
       console.error("Error replacing texture:", error);
-      toast.error(`Failed to replace texture: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      toast.error(
+        `Failed to replace texture: ${
+          error instanceof Error ? error.message : "Unknown error"
+        }`,
+      );
     } finally {
       setLoading(false);
     }
@@ -494,11 +511,11 @@ export function ModelViewer() {
               </CardContent>
             </Card>
 
-            {modelNodes.length > 0 && clonedScene ? (
+            {modelNodes.length > 0 && gltfResult ? (
               <ModelHierarchy
                 nodes={modelNodes}
-                clonedScene={clonedScene}
-                onVisibilityChange={handleNodeVisibilityChange}
+                clonedScene={gltfResult.scene}
+                onVisibilityChange={onVisibilityChange}
               />
             ) : null}
 
@@ -578,7 +595,7 @@ export function ModelViewer() {
                 <directionalLight position={[-10, -10, -5]} intensity={1} />
 
                 {/* Load the GLTF model with enhanced features */}
-                {clonedScene && <EnhancedModelMesh scene={clonedScene} />}
+                {gltfResult && <EnhancedModelMesh scene={gltfResult.scene} />}
 
                 <OrbitControls
                   enablePan={false}
