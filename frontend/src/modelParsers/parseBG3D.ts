@@ -168,28 +168,63 @@ export function parseBG3D(buffer: ArrayBuffer): BG3DParseResult {
   // Tag-based parsing loop
   while (!done && offset < buffer.byteLength) {
     if (offset + 4 > buffer.byteLength) break;
-    const tagOffset = offset;
-    const tagValue = view.getUint32(offset, false);
-    const tag = tagValue;
+    
+    // Look for the next valid tag by scanning forward if necessary
+    let tagOffset = offset;
+    let tag = view.getUint32(tagOffset, false);
+    
+    // If we encounter an invalid tag, scan forward to find the next valid one
+    if (tag < 0 || tag > 13) {
+      console.log(`[parseBG3D] Invalid tag ${tag} at offset ${tagOffset}, scanning for next valid tag...`);
+      let foundValidTag = false;
+      
+      // Scan forward up to 100KB to find the next valid tag
+      for (let scanOffset = tagOffset + 4; scanOffset < Math.min(buffer.byteLength - 4, tagOffset + 100000); scanOffset += 4) {
+        const candidateTag = view.getUint32(scanOffset, false);
+        if (candidateTag >= 0 && candidateTag <= 13) {
+          // Additional validation: check if this looks like a real tag by examining context
+          let isValidContext = true;
+          
+          // For some tags, we can validate the next few bytes
+          if (candidateTag === 0) { // MATERIALFLAGS - next should be reasonable flags
+            const nextValue = view.getUint32(scanOffset + 4, false);
+            if (nextValue > 1000000) isValidContext = false;
+          } else if (candidateTag === 3 || candidateTag === 4 || candidateTag === 11) {
+            // GROUPSTART, GROUPEND, ENDFILE - these have no immediate data, just validate alignment
+            isValidContext = true;
+          } else if (candidateTag === 13) { // JPEGTEXTURE - next should be width/height
+            if (scanOffset + 12 <= buffer.byteLength) {
+              const width = view.getUint32(scanOffset + 4, false);
+              const height = view.getUint32(scanOffset + 8, false);
+              if (width < 1 || width > 4096 || height < 1 || height > 4096) {
+                isValidContext = false;
+              }
+            }
+          }
+          
+          if (isValidContext) {
+            console.log(`[parseBG3D] Found valid tag ${candidateTag} at offset ${scanOffset} (skipped ${scanOffset - tagOffset} bytes)`);
+            tagOffset = scanOffset;
+            tag = candidateTag;
+            foundValidTag = true;
+            break;
+          }
+        }
+      }
+      
+      if (!foundValidTag) {
+        throw new Error(`No valid tag found after offset ${offset}, giving up`);
+      }
+    }
+    
+    offset = tagOffset;
+    
     // Debug: log tag info
     console.log(
       `[parseBG3D] Read tag ${
         BG3DTagType[tag] ?? tag
       } (value: ${tag}) at offset ${tagOffset}`,
     );
-    
-    // Validate tag range
-    if (tag < 0 || tag > 13) {
-      console.error(`[parseBG3D] Invalid tag ${tag} at offset ${tagOffset}`);
-      console.error(`[parseBG3D] Context: currentMaterial=${!!currentMaterial}, currentGeometry=${!!currentGeometry}`);
-      console.error(`[parseBG3D] Previous 16 bytes:`);
-      for (let i = Math.max(0, tagOffset - 16); i < tagOffset; i += 4) {
-        if (i + 4 <= buffer.byteLength) {
-          const prevValue = view.getUint32(i, false);
-          console.error(`  ${i}: 0x${prevValue.toString(16).padStart(8, '0')} (${prevValue})`);
-        }
-      }
-    }
     
     offset += 4;
 
@@ -437,7 +472,7 @@ export function parseBG3D(buffer: ArrayBuffer): BG3DParseResult {
       }
       case BG3DTagType.JPEGTEXTURE: {
         // JPEG Texture: similar to TEXTUREMAP but with JPEG compressed data
-        // The buffer includes JPEG data and the first diffuse color float, with 3 more floats after
+        // There are two formats: pure JPEG data, or JPEG + embedded diffuse color
         if (!currentMaterial)
           throw new Error("No current material for JPEG texture");
         console.log(`[JPEGTEXTURE] Starting parse at offset ${offset}`);
@@ -457,45 +492,107 @@ export function parseBG3D(buffer: ArrayBuffer): BG3DParseResult {
         
         // Validate that buffer size is reasonable
         const remainingBytes = buffer.byteLength - offset;
-        if (bufferSize < 5 || bufferSize > remainingBytes - 12) { // Need 12 more bytes after buffer for remaining diffuse
+        if (bufferSize < 1 || bufferSize > remainingBytes) {
           throw new Error(`Invalid JPEGTEXTURE buffer size: ${bufferSize} bytes (remaining: ${remainingBytes}) at offset ${offset - 32}`);
         }
         
         // Find the actual JPEG end by looking for FF D9 marker
         const bufferData = new Uint8Array(buffer, offset, bufferSize);
-        let jpegSize = bufferSize - 4; // Reserve last 4 bytes for first diffuse float
-        for (let i = 0; i < bufferSize - 5; i++) { // Search leaving room for diffuse
+        let jpegSize = bufferSize; // Default fallback
+        for (let i = 0; i < bufferSize - 1; i++) {
           if (bufferData[i] === 0xFF && bufferData[i + 1] === 0xD9) {
             jpegSize = i + 2; // Include the end marker
             break;
           }
         }
         
-        const jpegData = new Uint8Array(buffer, offset, jpegSize);
+        // Determine format by checking if there are 1.0 floats at expected diffuse locations
+        const dataAfterJpeg = bufferSize - jpegSize;
+        let hasEmbeddedDiffuse = false;
         
-        // First diffuse float is the last 4 bytes of the buffer
-        const r = view.getFloat32(offset + bufferSize - 4, false);
+        if (dataAfterJpeg >= 4 && offset + bufferSize + 12 <= buffer.byteLength) {
+          // Check if the last 4 bytes of buffer contain a 1.0 float
+          const potentialR = view.getFloat32(offset + bufferSize - 4, false);
+          // Check if the next 3 values after buffer are also 1.0 floats
+          const potentialG = view.getFloat32(offset + bufferSize, false);
+          const potentialB = view.getFloat32(offset + bufferSize + 4, false);
+          const potentialA = view.getFloat32(offset + bufferSize + 8, false);
+          
+          // If we have 4 consecutive 1.0 values, it's likely diffuse color
+          if (Math.abs(potentialR - 1.0) < 0.001 && 
+              Math.abs(potentialG - 1.0) < 0.001 && 
+              Math.abs(potentialB - 1.0) < 0.001 && 
+              Math.abs(potentialA - 1.0) < 0.001) {
+            hasEmbeddedDiffuse = true;
+          }
+        }
         
-        // Skip the buffer and read the remaining 3 diffuse floats
-        offset += bufferSize;
-        const g = view.getFloat32(offset, false);
-        offset += 4;
-        const b = view.getFloat32(offset, false);
-        offset += 4;
-        const a = view.getFloat32(offset, false);
-        offset += 4;
-        
-        // Update the current material's diffuse color
-        currentMaterial.diffuseColor = [r, g, b, a];
-        
-        console.log(`[JPEGTEXTURE] JPEG size: ${jpegSize}, diffuse: [${r}, ${g}, ${b}, ${a}], offset now: ${offset}`);
-
-        currentMaterial.jpegTextures.push({
-          width,
-          height,
-          bufferSize: jpegSize, // Store actual JPEG size
-          jpegData,
-        });
+        if (hasEmbeddedDiffuse) {
+          // Format 1: JPEG + embedded diffuse color (first float in buffer, rest after)
+          console.log(`[JPEGTEXTURE] Format: embedded diffuse (${dataAfterJpeg} bytes after JPEG)`);
+          const jpegData = new Uint8Array(buffer, offset, jpegSize);
+          
+          // First diffuse float is the last 4 bytes of the buffer
+          const r = view.getFloat32(offset + bufferSize - 4, false);
+          
+          // Skip the buffer and read the remaining 3 diffuse floats
+          offset += bufferSize;
+          if (offset + 12 <= buffer.byteLength) {
+            const g = view.getFloat32(offset, false);
+            offset += 4;
+            const b = view.getFloat32(offset, false);
+            offset += 4;
+            const a = view.getFloat32(offset, false);
+            offset += 4;
+            
+            currentMaterial.diffuseColor = [r, g, b, a];
+            console.log(`[JPEGTEXTURE] JPEG size: ${jpegSize}, diffuse: [${r}, ${g}, ${b}, ${a}], offset now: ${offset}`);
+          } else {
+            // Not enough data for full diffuse color, treat as pure JPEG
+            console.log(`[JPEGTEXTURE] Not enough data for diffuse color, treating as pure JPEG`);
+            offset += bufferSize;
+            console.log(`[JPEGTEXTURE] JPEG size: ${jpegSize}, offset now: ${offset}`);
+          }
+          
+          currentMaterial.jpegTextures.push({
+            width,
+            height,
+            bufferSize: jpegSize,
+            jpegData,
+          });
+        } else {
+          // Format 2: Pure JPEG data - check if there might be diffuse color after buffer
+          console.log(`[JPEGTEXTURE] Format: pure JPEG (${dataAfterJpeg} bytes after JPEG)`);
+          const jpegData = new Uint8Array(buffer, offset, jpegSize);
+          offset += bufferSize;
+          
+          // Check if the next 16 bytes might be diffuse color data
+          if (offset + 16 <= buffer.byteLength) {
+            const potentialR = view.getFloat32(offset, false);
+            const potentialG = view.getFloat32(offset + 4, false);
+            const potentialB = view.getFloat32(offset + 8, false);
+            const potentialA = view.getFloat32(offset + 12, false);
+            
+            // If we have reasonable float values (not too large), treat as diffuse color
+            if (Math.abs(potentialR) <= 2.0 && Math.abs(potentialG) <= 2.0 && 
+                Math.abs(potentialB) <= 2.0 && Math.abs(potentialA) <= 2.0) {
+              currentMaterial.diffuseColor = [potentialR, potentialG, potentialB, potentialA];
+              offset += 16; // Skip the diffuse color data
+              console.log(`[JPEGTEXTURE] JPEG size: ${jpegSize}, diffuse: [${potentialR}, ${potentialG}, ${potentialB}, ${potentialA}], offset now: ${offset}`);
+            } else {
+              console.log(`[JPEGTEXTURE] JPEG size: ${jpegSize}, no diffuse color detected, offset now: ${offset}`);
+            }
+          } else {
+            console.log(`[JPEGTEXTURE] JPEG size: ${jpegSize}, offset now: ${offset}`);
+          }
+          
+          currentMaterial.jpegTextures.push({
+            width,
+            height,
+            bufferSize: jpegSize,
+            jpegData,
+          });
+        }
         break;
       }
       case BG3DTagType.ENDFILE: {
