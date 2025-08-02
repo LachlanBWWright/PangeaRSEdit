@@ -1,20 +1,19 @@
-import { useState, useRef, useEffect } from "react";
-import { Canvas } from "@react-three/fiber";
-import { OrbitControls } from "@react-three/drei";
+import { useState, useRef } from "react";
+import { ModelCanvas } from "./ModelCanvas";
+import { ModelHierarchy } from "@/components/ModelHierarchy";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Upload } from "lucide-react";
 import { TextureManager } from "@/components/TextureManager";
-import { ModelHierarchy } from "@/components/ModelHierarchy";
-import { EnhancedModelMesh } from "@/components/EnhancedModelMesh";
-import { useGLTF } from "@react-three/drei";
+
+// ...existing code...
 import { ConversionPanel } from "@/components/ConversionPanel";
 import BG3DGltfWorker from "../modelParsers/bg3dGltfWorker?worker";
 import {
   BG3DGltfWorkerMessage,
   BG3DGltfWorkerResponse,
 } from "../modelParsers/bg3dGltfWorker";
-import { BG3DParseResult, BG3DTexture } from "../modelParsers/parseBG3D";
+import { BG3DParseResult } from "../modelParsers/parseBG3D";
 import { toast } from "sonner";
 import * as THREE from "three";
 
@@ -41,150 +40,15 @@ export function ModelViewer() {
   const [gltfUrl, setGltfUrl] = useState<string | null>(null);
   const [bg3dParsed, setBg3dParsed] = useState<BG3DParseResult | null>(null);
   const [loading, setLoading] = useState(false);
-  const [textures, setTextures] = useState<Texture[]>([]);
+  const [textures] = useState<Texture[]>([]);
+  const [scene, setScene] = useState<THREE.Group | undefined>(undefined);
   const [modelNodes, setModelNodes] = useState<ModelNode[]>([]);
-  const [clonedScene, setClonedScene] = useState<THREE.Group | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Only call useGLTF if gltfUrl is not null
-  const gltfResult = gltfUrl ? useGLTF(gltfUrl) : null;
-  console.log("GLTF Result:", gltfResult);
-  const scene = gltfResult ? gltfResult.scene : null;
-
-  // Extract node hierarchy from the scene
-  function extractNode(obj: THREE.Object3D, level = 0) {
-    const node: ModelNode = {
-      name: obj.name || `Node_${obj.id}`,
-      type:
-        obj instanceof THREE.Mesh
-          ? "mesh"
-          : obj instanceof THREE.Group
-          ? "group"
-          : "node",
-      visible: obj.visible,
-      children: [],
-      meshIndex: obj instanceof THREE.Mesh ? obj.id : undefined,
-      nodeIndex: obj.id,
-    };
-    if (obj.children.length > 0) {
-      node.children = obj.children.map((child) =>
-        extractNode(child, level + 1),
-      );
-    }
-    return node;
-  }
-
-  // Extract nodes and set state when scene changes
-  useEffect(() => {
-    if (scene) {
-      const nodes = scene.children.map((child) => extractNode(child));
-      setModelNodes(nodes);
-      //setClonedScene(scene.clone());
-    } else {
-      //setModelNodes([]);
-      //setClonedScene(null);
-    }
-  }, [scene]);
+  // Remove conditional useGLTF, handled in ModelCanvas
 
   // Convert BG3D texture to displayable image URL
-  function convertBG3DTextureToImageUrl(
-    texture: BG3DTexture,
-    materialIndex: number,
-    textureIndex: number,
-  ): string {
-    try {
-      // Create a canvas to convert the raw pixel data to an image
-      const canvas = document.createElement("canvas");
-      canvas.width = texture.width;
-      canvas.height = texture.height;
-      const ctx = canvas.getContext("2d");
 
-      if (!ctx) {
-        throw new Error("Could not get canvas context");
-      }
-
-      // Create ImageData from the pixel buffer
-      const imageData = ctx.createImageData(texture.width, texture.height);
-
-      // Convert pixel format - for now we'll handle the most common case
-      // This is a simplified conversion - may need more sophisticated handling for different formats
-      if (texture.pixels.length === texture.width * texture.height * 3) {
-        // RGB format
-        for (let i = 0; i < texture.pixels.length; i += 3) {
-          const pixelIndex = (i / 3) * 4;
-          imageData.data[pixelIndex] = texture.pixels[i]; // R
-          imageData.data[pixelIndex + 1] = texture.pixels[i + 1]; // G
-          imageData.data[pixelIndex + 2] = texture.pixels[i + 2]; // B
-          imageData.data[pixelIndex + 3] = 255; // A
-        }
-      } else if (texture.pixels.length === texture.width * texture.height * 4) {
-        // RGBA format
-        imageData.data.set(texture.pixels);
-      } else {
-        // Try to handle other formats by copying raw data
-        console.warn(
-          `Unknown texture format for texture ${textureIndex} in material ${materialIndex}`,
-        );
-        // For unknown formats, create a gray placeholder
-        for (let i = 0; i < imageData.data.length; i += 4) {
-          imageData.data[i] = 128; // R
-          imageData.data[i + 1] = 128; // G
-          imageData.data[i + 2] = 128; // B
-          imageData.data[i + 3] = 255; // A
-        }
-      }
-
-      ctx.putImageData(imageData, 0, 0);
-      return canvas.toDataURL("image/png");
-    } catch (error) {
-      console.error("Error converting BG3D texture to image:", error);
-      // Return a placeholder data URL
-      const canvas = document.createElement("canvas");
-      canvas.width = 64;
-      canvas.height = 64;
-      const ctx = canvas.getContext("2d");
-      if (ctx) {
-        ctx.fillStyle = "#666666";
-        ctx.fillRect(0, 0, 64, 64);
-        ctx.fillStyle = "#ffffff";
-        ctx.font = "12px Arial";
-        ctx.fillText("Error", 20, 35);
-      }
-      return canvas.toDataURL("image/png");
-    }
-  }
-
-  // Extract textures from BG3D parsed data when it changes
-  useEffect(() => {
-    if (bg3dParsed) {
-      const extractedTextures: Texture[] = [];
-
-      bg3dParsed.materials.forEach((material, materialIndex) => {
-        material.textures.forEach((texture, textureIndex) => {
-          const imageUrl = convertBG3DTextureToImageUrl(
-            texture,
-            materialIndex,
-            textureIndex,
-          );
-          extractedTextures.push({
-            name: `Material_${materialIndex}_Texture_${textureIndex}`,
-            url: imageUrl,
-            type: "diffuse", // Default to diffuse for now
-            material: `Material ${materialIndex}`,
-            size: {
-              width: texture.width,
-              height: texture.height,
-            },
-          });
-        });
-      });
-
-      setTextures(extractedTextures);
-      console.log("Extracted textures from BG3D:", extractedTextures);
-    } else {
-      setTextures([]);
-    }
-  }, [bg3dParsed]);
   // --- End moved logic ---
   // ...existing code...
 
@@ -253,45 +117,11 @@ export function ModelViewer() {
 
   // Removed unused handleTexturesExtracted and handleNodesExtracted
 
-  function handleClonedSceneUpdate(newClonedScene: THREE.Group) {
-    console.log("Cloned scene updated:", newClonedScene);
-    console.log("Cloned scene children:", newClonedScene.children.length);
-
-    //setClonedScene(newClonedScene);
-    // Extract updated hierarchy from cloned scene
-    const extractNode = (obj: THREE.Object3D): ModelNode => {
-      const node: ModelNode = {
-        name: obj.name || `Node_${obj.id}`,
-        type:
-          obj instanceof THREE.Mesh
-            ? "mesh"
-            : obj instanceof THREE.Group
-            ? "group"
-            : "node",
-        visible: obj.visible,
-        children: [],
-        meshIndex: obj instanceof THREE.Mesh ? obj.id : undefined,
-        nodeIndex: obj.id,
-      };
-      if (obj.children.length > 0) {
-        node.children = obj.children.map((child) => extractNode(child));
-      }
-      return node;
-    };
-    const updatedNodes = newClonedScene.children.map((child) =>
-      extractNode(child),
-    );
-    console.log("Setting model nodes:", updatedNodes);
-    setModelNodes(updatedNodes);
-  }
+  // Removed handleClonedSceneUpdate, handled in ModelCanvas
 
   function onVisibilityChange(nodeObject: THREE.Object3D, visible: boolean) {
     nodeObject.visible = visible;
-    // Trigger re-extraction of nodes to update UI
-    if (gltfResult) {
-      //todo keep this removed
-      handleClonedSceneUpdate(gltfResult.scene);
-    }
+    // ModelCanvas will update model nodes after visibility change
     console.log("Visibility change:", {
       nodeName: nodeObject.name,
       visible,
@@ -511,13 +341,13 @@ export function ModelViewer() {
               </CardContent>
             </Card>
 
-            {modelNodes.length > 0 && gltfResult ? (
+            {scene && modelNodes.length > 0 && (
               <ModelHierarchy
                 nodes={modelNodes}
-                clonedScene={gltfResult.scene}
+                clonedScene={scene}
                 onVisibilityChange={onVisibilityChange}
               />
-            ) : null}
+            )}
 
             {/* Texture Manager - Always show this section when model is loaded */}
             {gltfUrl && (
@@ -582,27 +412,11 @@ export function ModelViewer() {
           {/* Main viewport - 3D Scene */}
           <div className="flex-1 bg-gray-800 rounded-lg overflow-hidden">
             {gltfUrl ? (
-              <Canvas
-                camera={{
-                  position: [0, 0, 50],
-                  fov: 110,
-                  near: 0.1,
-                  far: 10000,
-                }}
-              >
-                <ambientLight intensity={1} color={"#ff0000"} />
-                <directionalLight position={[10, 10, 5]} intensity={1} />
-                <directionalLight position={[-10, -10, -5]} intensity={1} />
-
-                {/* Load the GLTF model with enhanced features */}
-                {gltfResult && <EnhancedModelMesh scene={gltfResult.scene} />}
-
-                <OrbitControls
-                  enablePan={false}
-                  enableZoom={true}
-                  enableRotate={true}
-                />
-              </Canvas>
+              <ModelCanvas
+                gltfUrl={gltfUrl}
+                setModelNodes={setModelNodes}
+                onSceneReady={setScene}
+              />
             ) : (
               <div className="flex items-center justify-center h-full text-gray-400">
                 <div className="text-center">
