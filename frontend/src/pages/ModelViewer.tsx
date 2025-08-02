@@ -38,7 +38,6 @@ export function ModelViewer() {
   // --- Begin moved logic from EnhancedModelMesh ---
   // State and refs must be declared first
   const [gltfUrl, setGltfUrl] = useState<string | null>(null);
-  const [bg3dParsed, setBg3dParsed] = useState<BG3DParseResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [textures, setTextures] = useState<Texture[]>([]);
   function extractTexturesFromParsed(bg3dParsed: BG3DParseResult | null) {
@@ -140,7 +139,6 @@ export function ModelViewer() {
         });
         const url = URL.createObjectURL(glbBlob);
         setGltfUrl(url);
-        setBg3dParsed(result.parsed);
         extractTexturesFromParsed(result.parsed);
         toast.success(`Successfully loaded ${file.name}`);
       }

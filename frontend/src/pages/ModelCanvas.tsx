@@ -3,7 +3,7 @@ import { OrbitControls, useGLTF } from "@react-three/drei";
 import { EnhancedModelMesh } from "@/components/EnhancedModelMesh";
 
 import * as THREE from "three";
-import React, { useEffect } from "react";
+import { useEffect } from "react";
 
 interface ModelNode {
   name: string;
