@@ -19,6 +19,7 @@ import {
   BG3DSkeleton,
   BG3DBone,
   BG3DAnimation,
+  BG3DKeyframe,
 } from "./parseBG3D";
 
 import {
@@ -28,7 +29,153 @@ import {
   pngToRgba8,
 } from "./image/pngArgb";
 
-import { Document, Mesh, Material, Node, Skin, Accessor } from "@gltf-transform/core";
+/**
+ * Convert Euler angles (in radians) to quaternion
+ */
+function eulerToQuaternion(x: number, y: number, z: number): [number, number, number, number] {
+  const c1 = Math.cos(x / 2);
+  const c2 = Math.cos(y / 2);
+  const c3 = Math.cos(z / 2);
+  const s1 = Math.sin(x / 2);
+  const s2 = Math.sin(y / 2);
+  const s3 = Math.sin(z / 2);
+
+  const qx = s1 * c2 * c3 + c1 * s2 * s3;
+  const qy = c1 * s2 * c3 - s1 * c2 * s3;
+  const qz = c1 * c2 * s3 + s1 * s2 * c3;
+  const qw = c1 * c2 * c3 - s1 * s2 * s3;
+
+  return [qx, qy, qz, qw];
+}
+
+/**
+ * Convert quaternion to Euler angles (in radians)
+ */
+function quaternionToEuler(qx: number, qy: number, qz: number, qw: number): [number, number, number] {
+  // Roll (x-axis rotation)
+  const sinr_cosp = 2 * (qw * qx + qy * qz);
+  const cosr_cosp = 1 - 2 * (qx * qx + qy * qy);
+  const roll = Math.atan2(sinr_cosp, cosr_cosp);
+
+  // Pitch (y-axis rotation)
+  const sinp = 2 * (qw * qy - qz * qx);
+  const pitch = Math.abs(sinp) >= 1 ? Math.sign(sinp) * Math.PI / 2 : Math.asin(sinp);
+
+  // Yaw (z-axis rotation)
+  const siny_cosp = 2 * (qw * qz + qx * qy);
+  const cosy_cosp = 1 - 2 * (qy * qy + qz * qz);
+  const yaw = Math.atan2(siny_cosp, cosy_cosp);
+
+  return [roll, pitch, yaw];
+}
+
+/**
+ * Extract animations from glTF document and convert to BG3D format
+ */
+function extractAnimationsFromGLTF(doc: any, joints: any[]): BG3DAnimation[] {
+  const animations: BG3DAnimation[] = [];
+  const gltfAnimations = doc.getRoot().listAnimations();
+  
+  gltfAnimations.forEach(gltfAnim => {
+    const bg3dAnim: BG3DAnimation = {
+      name: gltfAnim.getName() || 'animation',
+      numAnimEvents: 0,
+      events: [],
+      keyframes: {},
+    };
+    
+    // Process each channel
+    gltfAnim.listChannels().forEach(channel => {
+      const targetNode = channel.getTargetNode();
+      const targetPath = channel.getTargetPath();
+      const sampler = channel.getSampler();
+      
+      if (!targetNode || !sampler) return;
+      
+      // Find bone index for this joint
+      const boneIndex = joints.indexOf(targetNode);
+      if (boneIndex === -1) return;
+      
+      // Initialize keyframes array for this bone if not exists
+      if (!bg3dAnim.keyframes[boneIndex]) {
+        bg3dAnim.keyframes[boneIndex] = [];
+      }
+      
+      // Get input (time) and output (values) data
+      const inputAccessor = sampler.getInput();
+      const outputAccessor = sampler.getOutput();
+      
+      if (!inputAccessor || !outputAccessor) return;
+      
+      const times = inputAccessor.getArray();
+      const values = outputAccessor.getArray();
+      
+      if (!times || !values) return;
+      
+      // Convert based on target path
+      for (let i = 0; i < times.length; i++) {
+        const time = times[i];
+        const tick = Math.round(time * 30.0); // Convert seconds to ticks (30 fps)
+        
+        // Find or create keyframe for this tick
+        let keyframe = bg3dAnim.keyframes[boneIndex].find(kf => kf.tick === tick);
+        if (!keyframe) {
+          keyframe = {
+            tick,
+            accelerationMode: 0,
+            coordX: 0,
+            coordY: 0,
+            coordZ: 0,
+            rotationX: 0,
+            rotationY: 0,
+            rotationZ: 0,
+            scaleX: 1,
+            scaleY: 1,
+            scaleZ: 1,
+          };
+          bg3dAnim.keyframes[boneIndex].push(keyframe);
+        }
+        
+        // Update keyframe based on target path
+        switch (targetPath) {
+          case 'translation':
+            keyframe.coordX = values[i * 3 + 0];
+            keyframe.coordY = values[i * 3 + 1];
+            keyframe.coordZ = values[i * 3 + 2];
+            break;
+          case 'rotation':
+            // Convert quaternion to Euler angles
+            const qx = values[i * 4 + 0];
+            const qy = values[i * 4 + 1];
+            const qz = values[i * 4 + 2];
+            const qw = values[i * 4 + 3];
+            const [rx, ry, rz] = quaternionToEuler(qx, qy, qz, qw);
+            keyframe.rotationX = rx;
+            keyframe.rotationY = ry;
+            keyframe.rotationZ = rz;
+            break;
+          case 'scale':
+            keyframe.scaleX = values[i * 3 + 0];
+            keyframe.scaleY = values[i * 3 + 1];
+            keyframe.scaleZ = values[i * 3 + 2];
+            break;
+        }
+      }
+    });
+    
+    // Sort keyframes by tick for each bone
+    Object.keys(bg3dAnim.keyframes).forEach(boneIndexStr => {
+      const boneIndex = parseInt(boneIndexStr);
+      bg3dAnim.keyframes[boneIndex].sort((a, b) => a.tick - b.tick);
+    });
+    
+    animations.push(bg3dAnim);
+  });
+  
+  return animations;
+}
+
+import { Document, Mesh, Material, Node, Skin, Accessor, AnimationChannel, AnimationSampler } from "@gltf-transform/core";
 import { PixelFormatSrc, PixelFormatDst } from "./parseBG3D";
 
 /**
@@ -168,8 +315,107 @@ export function bg3dParsedToGLTF(parsed: BG3DParseResult): Document {
     
     gltfSkin.setInverseBindMatrices(ibmAccessor);
     
-    // TODO: Convert animations to glTF format
-    // For now, we'll store animation data in extras
+    // Convert animations to glTF format
+    if (parsed.skeleton && parsed.skeleton.animations.length > 0) {
+      console.log("Converting BG3D animations to glTF format");
+      
+      parsed.skeleton.animations.forEach(bg3dAnim => {
+        const gltfAnimation = doc.createAnimation(bg3dAnim.name);
+        
+        // Process each bone's keyframes
+        Object.entries(bg3dAnim.keyframes).forEach(([boneIndexStr, keyframes]) => {
+          const boneIndex = parseInt(boneIndexStr);
+          if (boneIndex < gltfJoints.length && keyframes.length > 0) {
+            const joint = gltfJoints[boneIndex];
+            
+            // Create time input accessor
+            const times = keyframes.map(kf => kf.tick / 30.0); // Convert ticks to seconds (30 fps assumed)
+            const timeBuffer = doc.createBuffer();
+            const timeAccessor = doc.createAccessor()
+              .setType("SCALAR")
+              .setArray(new Float32Array(times))
+              .setBuffer(timeBuffer);
+            
+            // Create translation output accessor
+            const translations: number[] = [];
+            keyframes.forEach(kf => {
+              translations.push(kf.coordX, kf.coordY, kf.coordZ);
+            });
+            const translationBuffer = doc.createBuffer();
+            const translationAccessor = doc.createAccessor()
+              .setType("VEC3")
+              .setArray(new Float32Array(translations))
+              .setBuffer(translationBuffer);
+            
+            // Create rotation output accessor (convert from Euler to quaternion)
+            const rotations: number[] = [];
+            keyframes.forEach(kf => {
+              // Convert Euler angles to quaternion
+              const quat = eulerToQuaternion(kf.rotationX, kf.rotationY, kf.rotationZ);
+              rotations.push(quat[0], quat[1], quat[2], quat[3]);
+            });
+            const rotationBuffer = doc.createBuffer();
+            const rotationAccessor = doc.createAccessor()
+              .setType("VEC4")
+              .setArray(new Float32Array(rotations))
+              .setBuffer(rotationBuffer);
+            
+            // Create scale output accessor
+            const scales: number[] = [];
+            keyframes.forEach(kf => {
+              scales.push(kf.scaleX, kf.scaleY, kf.scaleZ);
+            });
+            const scaleBuffer = doc.createBuffer();
+            const scaleAccessor = doc.createAccessor()
+              .setType("VEC3") 
+              .setArray(new Float32Array(scales))
+              .setBuffer(scaleBuffer);
+            
+            // Create samplers and channels
+            const translationSampler = doc.createAnimationSampler()
+              .setInput(timeAccessor)
+              .setOutput(translationAccessor)
+              .setInterpolation("LINEAR");
+            
+            const rotationSampler = doc.createAnimationSampler()
+              .setInput(timeAccessor)
+              .setOutput(rotationAccessor)
+              .setInterpolation("LINEAR");
+            
+            const scaleSampler = doc.createAnimationSampler()
+              .setInput(timeAccessor)
+              .setOutput(scaleAccessor)
+              .setInterpolation("LINEAR");
+            
+            // Add samplers to animation
+            gltfAnimation.addSampler(translationSampler);
+            gltfAnimation.addSampler(rotationSampler);
+            gltfAnimation.addSampler(scaleSampler);
+            
+            // Create channels
+            const translationChannel = doc.createAnimationChannel()
+              .setTargetNode(joint)
+              .setTargetPath("translation")
+              .setSampler(translationSampler);
+            
+            const rotationChannel = doc.createAnimationChannel()
+              .setTargetNode(joint)
+              .setTargetPath("rotation")
+              .setSampler(rotationSampler);
+            
+            const scaleChannel = doc.createAnimationChannel()
+              .setTargetNode(joint)
+              .setTargetPath("scale")
+              .setSampler(scaleSampler);
+            
+            // Add channels to animation
+            gltfAnimation.addChannel(translationChannel);
+            gltfAnimation.addChannel(rotationChannel);
+            gltfAnimation.addChannel(scaleChannel);
+          }
+        });
+      });
+    }
   }
 
   console.log("Stage 3");
@@ -525,7 +771,7 @@ export async function gltfToBG3D(doc: Document): Promise<BG3DParseResult> {
           numJoints: bones.length,
           num3DMFLimbs: 0,
           bones,
-          animations: [], // TODO: Extract animations from glTF
+          animations: extractAnimationsFromGLTF(doc, joints), // Extract animations from glTF
         };
       }
     }

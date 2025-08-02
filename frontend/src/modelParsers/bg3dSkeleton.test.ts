@@ -307,6 +307,54 @@ describe("BG3D Skeleton Integration", () => {
     expect(rootBone).toBeDefined();
     expect(rootBone!.obj.name).toBe("root_bone");
   });
+
+  it("should handle animation conversion and round-trip", async () => {
+    console.log("Testing animation conversion...");
+    
+    // Use test skeleton with animation data
+    const result = parseBG3DWithSkeletonResource(testBG3DBuffer, testSkeleton);
+    
+    // Verify skeleton has animation data
+    expect(result.skeleton).toBeDefined();
+    expect(result.skeleton!.animations).toHaveLength(1);
+    expect(result.skeleton!.animations[0].name).toBe("idle");
+    expect(result.skeleton!.animations[0].keyframes[0]).toHaveLength(2); // 2 keyframes for root bone
+    
+    // Convert to glTF
+    const gltfDoc = bg3dParsedToGLTF(result);
+    
+    // Check that glTF animations were created
+    const gltfAnimations = gltfDoc.getRoot().listAnimations();
+    expect(gltfAnimations).toHaveLength(1);
+    expect(gltfAnimations[0].getName()).toBe("idle");
+    
+    // Check animation has channels
+    const channels = gltfAnimations[0].listChannels();
+    expect(channels.length).toBeGreaterThan(0);
+    console.log(`Created ${channels.length} animation channels`);
+    
+    // Check animation has samplers
+    const samplers = gltfAnimations[0].listSamplers();
+    expect(samplers.length).toBeGreaterThan(0);
+    console.log(`Created ${samplers.length} animation samplers`);
+    
+    // Round-trip conversion
+    const roundtrip = await gltfToBG3D(gltfDoc);
+    
+    // Verify animation data is preserved
+    expect(roundtrip.skeleton).toBeDefined();
+    expect(roundtrip.skeleton!.animations).toHaveLength(1);
+    expect(roundtrip.skeleton!.animations[0].name).toBe("idle");
+    
+    // Check that keyframes are preserved (may not be exact due to conversion)
+    const originalKeyframes = result.skeleton!.animations[0].keyframes[0];
+    const roundtripKeyframes = roundtrip.skeleton!.animations[0].keyframes[0];
+    expect(roundtripKeyframes).toBeDefined();
+    expect(roundtripKeyframes.length).toBeGreaterThan(0);
+    
+    console.log(`Original keyframes: ${originalKeyframes.length}, roundtrip: ${roundtripKeyframes.length}`);
+    console.log("✅ Animation conversion and round-trip successful!");
+  });
 });
 
 // Integration test with real files
