@@ -4,9 +4,9 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
+  DialogDescription,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Download, Eye, Upload, Edit } from "lucide-react";
 import { useRef, useState } from "react";
 import { toast } from "sonner";
@@ -112,6 +112,7 @@ export function TextureManager({
                     </span>
                   </DialogTitle>
                 </DialogHeader>
+                <DialogDescription>Image:</DialogDescription>
                 <div className="flex justify-center bg-checkered p-4 rounded">
                   <img
                     src={texture.url}

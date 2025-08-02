@@ -40,7 +40,60 @@ export function ModelViewer() {
   const [gltfUrl, setGltfUrl] = useState<string | null>(null);
   const [bg3dParsed, setBg3dParsed] = useState<BG3DParseResult | null>(null);
   const [loading, setLoading] = useState(false);
-  const [textures] = useState<Texture[]>([]);
+  const [textures, setTextures] = useState<Texture[]>([]);
+  function extractTexturesFromParsed(bg3dParsed: BG3DParseResult | null) {
+    if (!bg3dParsed) {
+      setTextures([]);
+      return;
+    }
+    const extractedTextures: Texture[] = [];
+    bg3dParsed.materials.forEach((material, materialIndex) => {
+      material.textures.forEach((texture, textureIndex) => {
+        // Convert BG3D texture to displayable image URL
+        // Create a canvas to convert the raw pixel data to an image
+        const canvas = document.createElement("canvas");
+        canvas.width = texture.width;
+        canvas.height = texture.height;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) return;
+        const imageData = ctx.createImageData(texture.width, texture.height);
+        if (texture.pixels.length === texture.width * texture.height * 3) {
+          // RGB format
+          for (let i = 0; i < texture.pixels.length; i += 3) {
+            const pixelIndex = (i / 3) * 4;
+            imageData.data[pixelIndex] = texture.pixels[i];
+            imageData.data[pixelIndex + 1] = texture.pixels[i + 1];
+            imageData.data[pixelIndex + 2] = texture.pixels[i + 2];
+            imageData.data[pixelIndex + 3] = 255;
+          }
+        } else if (
+          texture.pixels.length ===
+          texture.width * texture.height * 4
+        ) {
+          // RGBA format
+          imageData.data.set(texture.pixels);
+        } else {
+          // Unknown format, fill with gray
+          for (let i = 0; i < imageData.data.length; i += 4) {
+            imageData.data[i] = 128;
+            imageData.data[i + 1] = 128;
+            imageData.data[i + 2] = 128;
+            imageData.data[i + 3] = 255;
+          }
+        }
+        ctx.putImageData(imageData, 0, 0);
+        const imageUrl = canvas.toDataURL("image/png");
+        extractedTextures.push({
+          name: `Material_${materialIndex}_Texture_${textureIndex}`,
+          url: imageUrl,
+          type: "diffuse",
+          material: `Material ${materialIndex}`,
+          size: { width: texture.width, height: texture.height },
+        });
+      });
+    });
+    setTextures(extractedTextures);
+  }
   const [scene, setScene] = useState<THREE.Group | undefined>(undefined);
   const [modelNodes, setModelNodes] = useState<ModelNode[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -88,6 +141,7 @@ export function ModelViewer() {
         const url = URL.createObjectURL(glbBlob);
         setGltfUrl(url);
         setBg3dParsed(result.parsed);
+        extractTexturesFromParsed(result.parsed);
         toast.success(`Successfully loaded ${file.name}`);
       }
     } catch (error) {
@@ -145,134 +199,6 @@ export function ModelViewer() {
     }
   }
 
-  async function handleReplaceTexture(texture: Texture, newFile: File) {
-    if (!bg3dParsed) {
-      toast.error("No BG3D data available for texture replacement");
-      return;
-    }
-
-    try {
-      // Parse material and texture indices from texture name
-      const match = texture.name.match(/Material_(\d+)_Texture_(\d+)/);
-      if (!match) {
-        throw new Error("Could not parse texture name format");
-      }
-
-      const materialIndex = parseInt(match[1]);
-      const textureIndex = parseInt(match[2]);
-
-      // Load the new image file
-      const imageUrl = URL.createObjectURL(newFile);
-      const img = new Image();
-
-      await new Promise((resolve, reject) => {
-        img.onload = resolve;
-        img.onerror = reject;
-        img.src = imageUrl;
-      });
-
-      // Convert image to pixel data
-      const canvas = document.createElement("canvas");
-      canvas.width = img.width;
-      canvas.height = img.height;
-      const ctx = canvas.getContext("2d");
-
-      if (!ctx) {
-        throw new Error("Could not get canvas context");
-      }
-
-      ctx.drawImage(img, 0, 0);
-      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-
-      // Update the BG3D texture data
-      const material = bg3dParsed.materials[materialIndex];
-      if (!material) {
-        throw new Error(`Material ${materialIndex} not found`);
-      }
-
-      const bg3dTexture = material.textures[textureIndex];
-      if (!bg3dTexture) {
-        throw new Error(
-          `Texture ${textureIndex} not found in material ${materialIndex}`,
-        );
-      }
-
-      // Update texture properties
-      bg3dTexture.width = canvas.width;
-      bg3dTexture.height = canvas.height;
-
-      // Convert RGBA to the format expected by BG3D (likely RGB)
-      const rgbData = new Uint8Array(canvas.width * canvas.height * 3);
-      for (let i = 0; i < imageData.data.length; i += 4) {
-        const rgbIndex = (i / 4) * 3;
-        rgbData[rgbIndex] = imageData.data[i]; // R
-        rgbData[rgbIndex + 1] = imageData.data[i + 1]; // G
-        rgbData[rgbIndex + 2] = imageData.data[i + 2]; // B
-      }
-
-      bg3dTexture.pixels = rgbData;
-      bg3dTexture.bufferSize = rgbData.length;
-
-      // Regenerate the GLTF from the modified BG3D data
-      setLoading(true);
-      const worker = new BG3DGltfWorker();
-      const result = await new Promise<BG3DGltfWorkerResponse>(
-        (resolve, reject) => {
-          worker.onmessage = (e) => {
-            resolve(e.data);
-            worker.terminate();
-          };
-          worker.onerror = (e) => {
-            reject(e);
-            worker.terminate();
-          };
-          const message: BG3DGltfWorkerMessage = {
-            type: "bg3d-parsed-to-glb",
-            parsed: bg3dParsed,
-          };
-          worker.postMessage(message);
-        },
-      );
-
-      if (result.type === "error") {
-        throw new Error(result.error);
-      }
-
-      if (result.type === "bg3d-parsed-to-glb") {
-        // Update the GLTF URL with the new model
-        const glbBlob = new Blob([result.result], {
-          type: "model/gltf-binary",
-        });
-
-        // Clean up old URL
-        if (gltfUrl) {
-          URL.revokeObjectURL(gltfUrl);
-        }
-
-        const newUrl = URL.createObjectURL(glbBlob);
-        setGltfUrl(newUrl);
-
-        // Update the BG3D parsed state to trigger texture re-extraction
-        setBg3dParsed({ ...bg3dParsed });
-
-        toast.success(
-          `Successfully replaced ${texture.name} and updated model`,
-        );
-      }
-
-      URL.revokeObjectURL(imageUrl);
-    } catch (error) {
-      console.error("Error replacing texture:", error);
-      toast.error(
-        `Failed to replace texture: ${
-          error instanceof Error ? error.message : "Unknown error"
-        }`,
-      );
-    } finally {
-      setLoading(false);
-    }
-  }
-
   const loadTestModel = async () => {
     try {
       // Load the Otto.bg3d test file
@@ -293,144 +219,144 @@ export function ModelViewer() {
 
   return (
     <>
-      <div className="flex flex-col flex-1 bg-gray-900 text-white">
-        <div className="flex flex-1 gap-4 p-4">
-          {/* Left sidebar - Controls */}
-          <div className="w-80 space-y-4 max-h-screen overflow-y-auto">
+      <div
+        className="flex flex-1 gap-4 p-4 flex-row max-h-screen overflow-clip bg-gray-900 text-white"
+        style={{
+          height: "calc(100vh - 56px)",
+          maxHeight: "calc(100vh - 56px)",
+        }}
+      >
+        {/* Left sidebar - Controls */}
+        <div className="flex flex-col w-80 space-y-4  overflow-y-auto px-2">
+          <Card className="bg-gray-800 border-gray-700">
+            <CardHeader>
+              <CardTitle className="text-white">Model Upload</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div
+                className="border-2 border-dashed border-gray-600 rounded-lg p-8 text-center cursor-pointer hover:border-gray-500 transition-colors"
+                onDrop={handleDrop}
+                onDragOver={handleDragOver}
+                onClick={() => fileInputRef.current?.click()}
+              >
+                <Upload className="w-12 h-12 mx-auto mb-4 text-gray-400" />
+                <p className="text-gray-400 mb-2">
+                  Drop a BG3D file here or click to select
+                </p>
+                <p className="text-sm text-gray-500">Supports .bg3d files</p>
+              </div>
+
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".bg3d"
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) handleFileUpload(file);
+                }}
+              />
+
+              <Button
+                onClick={loadTestModel}
+                variant="outline"
+                className="w-full text-white"
+                disabled={loading}
+              >
+                Load Otto.bg3d Sample Model
+              </Button>
+
+              {loading && (
+                <p className="text-center text-gray-400">Loading model...</p>
+              )}
+            </CardContent>
+          </Card>
+
+          {scene && modelNodes.length > 0 && (
+            <ModelHierarchy
+              nodes={modelNodes}
+              clonedScene={scene}
+              onVisibilityChange={onVisibilityChange}
+            />
+          )}
+
+          {/* Texture Manager - Always show this section when model is loaded */}
+          {gltfUrl && (
             <Card className="bg-gray-800 border-gray-700">
               <CardHeader>
-                <CardTitle className="text-white">Model Upload</CardTitle>
+                <CardTitle className="text-white text-sm">
+                  Texture Management
+                </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4">
-                <div
-                  className="border-2 border-dashed border-gray-600 rounded-lg p-8 text-center cursor-pointer hover:border-gray-500 transition-colors"
-                  onDrop={handleDrop}
-                  onDragOver={handleDragOver}
-                  onClick={() => fileInputRef.current?.click()}
-                >
-                  <Upload className="w-12 h-12 mx-auto mb-4 text-gray-400" />
-                  <p className="text-gray-400 mb-2">
-                    Drop a BG3D file here or click to select
-                  </p>
-                  <p className="text-sm text-gray-500">Supports .bg3d files</p>
-                </div>
-
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept=".bg3d"
-                  className="hidden"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (file) handleFileUpload(file);
-                  }}
-                />
-
-                <Button
-                  onClick={loadTestModel}
-                  variant="outline"
-                  className="w-full text-white"
-                  disabled={loading}
-                >
-                  Load Otto.bg3d Sample Model
-                </Button>
-
-                {loading && (
-                  <p className="text-center text-gray-400">Loading model...</p>
+              <CardContent>
+                {textures.length > 0 ? (
+                  <TextureManager
+                    textures={textures}
+                    onDownloadTexture={handleDownloadTexture}
+                  />
+                ) : (
+                  <div className="space-y-3">
+                    <p className="text-sm text-gray-400">
+                      No textures found in this model
+                    </p>
+                    <div className="text-xs text-gray-500 space-y-1">
+                      <p>
+                        • Some BG3D models may not contain extractable textures
+                      </p>
+                      <p>
+                        • Textures may be embedded differently or compressed
+                      </p>
+                      <p>
+                        • Try a different model format if texture editing is
+                        needed
+                      </p>
+                    </div>
+                  </div>
                 )}
               </CardContent>
             </Card>
+          )}
+          {/* Conversion Panels */}
+          <ConversionPanel
+            title="Convert BG3D to GLB"
+            description="Upload a .bg3d file to convert and download as .glb."
+            acceptedFileType=".bg3d"
+            fileExtension="bg3d"
+            outputExtension="glb"
+            conversionType="bg3d-to-glb"
+            outputMimeType="model/gltf-binary"
+          />
 
-            {scene && modelNodes.length > 0 && (
-              <ModelHierarchy
-                nodes={modelNodes}
-                clonedScene={scene}
-                onVisibilityChange={onVisibilityChange}
-              />
-            )}
+          <ConversionPanel
+            title="Convert GLB to BG3D"
+            description="Upload a .glb file to convert and download as .bg3d."
+            acceptedFileType=".glb"
+            fileExtension="glb"
+            outputExtension="bg3d"
+            conversionType="glb-to-bg3d"
+            outputMimeType="application/octet-stream"
+          />
+        </div>
 
-            {/* Texture Manager - Always show this section when model is loaded */}
-            {gltfUrl && (
-              <Card className="bg-gray-800 border-gray-700">
-                <CardHeader>
-                  <CardTitle className="text-white text-sm">
-                    Texture Management
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  {textures.length > 0 ? (
-                    <TextureManager
-                      textures={textures}
-                      onDownloadTexture={handleDownloadTexture}
-                      onReplaceTexture={handleReplaceTexture}
-                    />
-                  ) : (
-                    <div className="space-y-3">
-                      <p className="text-sm text-gray-400">
-                        No textures found in this model
-                      </p>
-                      <div className="text-xs text-gray-500 space-y-1">
-                        <p>
-                          • Some BG3D models may not contain extractable
-                          textures
-                        </p>
-                        <p>
-                          • Textures may be embedded differently or compressed
-                        </p>
-                        <p>
-                          • Try a different model format if texture editing is
-                          needed
-                        </p>
-                      </div>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            )}
-            {/* Conversion Panels */}
-            <ConversionPanel
-              title="Convert BG3D to GLB"
-              description="Upload a .bg3d file to convert and download as .glb."
-              acceptedFileType=".bg3d"
-              fileExtension="bg3d"
-              outputExtension="glb"
-              conversionType="bg3d-to-glb"
-              outputMimeType="model/gltf-binary"
+        {/* Main viewport - 3D Scene */}
+        <div className="flex-1 bg-gray-800 rounded-lg overflow-hidden">
+          {gltfUrl ? (
+            <ModelCanvas
+              gltfUrl={gltfUrl}
+              setModelNodes={setModelNodes}
+              onSceneReady={setScene}
             />
-
-            <ConversionPanel
-              title="Convert GLB to BG3D"
-              description="Upload a .glb file to convert and download as .bg3d."
-              acceptedFileType=".glb"
-              fileExtension="glb"
-              outputExtension="bg3d"
-              conversionType="glb-to-bg3d"
-              outputMimeType="application/octet-stream"
-            />
-          </div>
-
-          {/* Main viewport - 3D Scene */}
-          <div className="flex-1 bg-gray-800 rounded-lg overflow-hidden">
-            {gltfUrl ? (
-              <ModelCanvas
-                gltfUrl={gltfUrl}
-                setModelNodes={setModelNodes}
-                onSceneReady={setScene}
-              />
-            ) : (
-              <div className="flex items-center justify-center h-full text-gray-400">
-                <div className="text-center">
-                  <div className="w-24 h-24 mx-auto mb-4 rounded-full bg-gray-700 flex items-center justify-center">
-                    <Upload className="w-12 h-12" />
-                  </div>
-                  <h3 className="text-xl font-semibold mb-2">
-                    No Model Loaded
-                  </h3>
-                  <p>Upload a BG3D file to start viewing 3D models</p>
+          ) : (
+            <div className="flex items-center justify-center h-full text-gray-400">
+              <div className="text-center">
+                <div className="w-24 h-24 mx-auto mb-4 rounded-full bg-gray-700 flex items-center justify-center">
+                  <Upload className="w-12 h-12" />
                 </div>
+                <h3 className="text-xl font-semibold mb-2">No Model Loaded</h3>
+                <p>Upload a BG3D file to start viewing 3D models</p>
               </div>
-            )}
-          </div>
+            </div>
+          )}
         </div>
       </div>
     </>
