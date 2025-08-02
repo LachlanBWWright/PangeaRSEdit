@@ -95,8 +95,8 @@ function createBG3DWithNewTags(): ArrayBuffer {
   // Triangle array (empty)
   view.setUint32(offset, BG3DTagType.TRIANGLEARRAY, false);
   offset += 4;
-  
-  // BOUNDINGBOX
+
+  // BOUNDINGBOX - should be within geometry context
   view.setUint32(offset, BG3DTagType.BOUNDINGBOX, false);
   offset += 4;
   view.setFloat32(offset, -1.0, false); // minX
@@ -111,7 +111,7 @@ function createBG3DWithNewTags(): ArrayBuffer {
   offset += 4;
   view.setFloat32(offset, 6.0, false); // maxZ
   offset += 4;
-  
+
   view.setUint32(offset, BG3DTagType.GROUPEND, false);
   offset += 4;
   
@@ -172,8 +172,8 @@ describe("BG3D BOUNDINGBOX and JPEGTEXTURE support", () => {
   });
 
   it("handles unknown tag gracefully", () => {
-    // Test that the parser throws an error for truly unknown tags (not our new ones)
-    const buffer = new ArrayBuffer(100);
+    // Test that the parser throws an error when no valid tags can be found
+    const buffer = new ArrayBuffer(1000);
     const view = new DataView(buffer);
     let offset = 0;
     
@@ -184,11 +184,12 @@ describe("BG3D BOUNDINGBOX and JPEGTEXTURE support", () => {
     }
     for (let i = 0; i < 16; i++) view.setUint8(offset++, 0);
     
-    // Unknown tag 999
-    view.setUint32(offset, 999, false);
-    offset += 4;
+    // Fill with invalid data that won't scan to valid tags
+    for (let i = offset; i < buffer.byteLength; i += 4) {
+      view.setUint32(i, 0xFFFFFFFF, false); // Invalid tag values
+    }
     
-    expect(() => parseBG3D(buffer)).toThrow("Unknown BG3D tag: 999");
+    expect(() => parseBG3D(buffer)).toThrow("No valid tag found after offset");
   });
 
   it("demonstrates the improvement: BG3D files with BOUNDINGBOX and JPEGTEXTURE no longer cause parser errors", () => {

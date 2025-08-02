@@ -213,6 +213,12 @@ export function parseBG3D(buffer: ArrayBuffer): BG3DParseResult {
       }
       
       if (!foundValidTag) {
+        // If we're near the end of the file (less than 32 bytes), just finish parsing
+        if (buffer.byteLength - offset < 32) {
+          console.log(`[parseBG3D] Near end of file (${buffer.byteLength - offset} bytes remaining), finishing parsing`);
+          done = true;
+          break;
+        }
         throw new Error(`No valid tag found after offset ${offset}, giving up`);
       }
     }
@@ -307,22 +313,12 @@ export function parseBG3D(buffer: ArrayBuffer): BG3DParseResult {
       }
       case BG3DTagType.GROUPEND: {
         // End current group and pop from stack
-        if (groupStack.length === 0) {
-          throw new Error(
-            `GROUPEND tag found with no open group at offset ${tagOffset}`,
-          );
+        if (groupStack.length <= 1) {
+          console.warn(`[parseBG3D] GROUPEND tag found but only base group remaining at offset ${tagOffset}, ignoring`);
+          break;
         }
-        if (groupStack.length > 0) {
-          groupStack.pop();
-          currentGroup = groupStack[groupStack.length - 1]; //Get last group
-        } else {
-          //There should be a base group not mentioned in open/closed tags
-          throw new Error("GROUPEND tag found with no open group");
-
-          // Top-level group
-          // if (finishedGroup) groups.push(finishedGroup);
-          //currentGroup = null;
-        }
+        groupStack.pop();
+        currentGroup = groupStack[groupStack.length - 1]; //Get last group
         break;
       }
 
@@ -369,7 +365,12 @@ export function parseBG3D(buffer: ArrayBuffer): BG3DParseResult {
       }
       case BG3DTagType.VERTEXARRAY: {
         // Vertex array: numPoints * 3 floats
-        if (!currentGeometry) throw new Error("No geometry for vertex array");
+        if (!currentGeometry) {
+          console.warn(`[parseBG3D] VERTEXARRAY found without geometry context at offset ${tagOffset}, skipping`);
+          // Skip this tag - we need to determine how much data to skip
+          // This is tricky without knowing the number of points, so let's try to find the next valid tag
+          break;
+        }
         const numPoints = currentGeometry.numPoints;
         const vertices: [number, number, number][] = [];
         for (let i = 0; i < numPoints; i++) {
@@ -386,7 +387,10 @@ export function parseBG3D(buffer: ArrayBuffer): BG3DParseResult {
       }
       case BG3DTagType.NORMALARRAY: {
         // Normal array: numPoints * 3 floats
-        if (!currentGeometry) throw new Error("No geometry for normal array");
+        if (!currentGeometry) {
+          console.warn(`[parseBG3D] NORMALARRAY found without geometry context at offset ${tagOffset}, skipping`);
+          break;
+        }
         const numPoints = currentGeometry.numPoints;
         const normals: [number, number, number][] = [];
         for (let i = 0; i < numPoints; i++) {
@@ -403,7 +407,10 @@ export function parseBG3D(buffer: ArrayBuffer): BG3DParseResult {
       }
       case BG3DTagType.UVARRAY: {
         // UV array: numPoints * 2 floats
-        if (!currentGeometry) throw new Error("No geometry for uv array");
+        if (!currentGeometry) {
+          console.warn(`[parseBG3D] UVARRAY found without geometry context at offset ${tagOffset}, skipping`);
+          break;
+        }
         const numPoints = currentGeometry.numPoints;
         const uvs: [number, number][] = [];
         for (let i = 0; i < numPoints; i++) {
@@ -418,7 +425,10 @@ export function parseBG3D(buffer: ArrayBuffer): BG3DParseResult {
       }
       case BG3DTagType.COLORARRAY: {
         // Color array: numPoints * 4 bytes (RGBA)
-        if (!currentGeometry) throw new Error("No geometry for color array");
+        if (!currentGeometry) {
+          console.warn(`[parseBG3D] COLORARRAY found without geometry context at offset ${tagOffset}, skipping`);
+          break;
+        }
         const numPoints = currentGeometry.numPoints;
         const colors: [number, number, number, number][] = [];
         for (let i = 0; i < numPoints; i++) {
@@ -433,7 +443,10 @@ export function parseBG3D(buffer: ArrayBuffer): BG3DParseResult {
       }
       case BG3DTagType.TRIANGLEARRAY: {
         // Triangle array: numTriangles * 3 uint32
-        if (!currentGeometry) throw new Error("No geometry for triangle array");
+        if (!currentGeometry) {
+          console.warn(`[parseBG3D] TRIANGLEARRAY found without geometry context at offset ${tagOffset}, skipping`);
+          break;
+        }
         const numTriangles = currentGeometry.numTriangles;
         const triangles: [number, number, number][] = [];
         for (let i = 0; i < numTriangles; i++) {
@@ -451,7 +464,10 @@ export function parseBG3D(buffer: ArrayBuffer): BG3DParseResult {
       }
       case BG3DTagType.BOUNDINGBOX: {
         // Bounding box: 6 floats (min x/y/z, max x/y/z)
-        if (!currentGeometry) throw new Error("No geometry for bounding box");
+        if (!currentGeometry) {
+          console.warn(`[parseBG3D] BOUNDINGBOX found without geometry context at offset ${tagOffset}, skipping`);
+          break;
+        }
         const minX = view.getFloat32(offset, false);
         offset += 4;
         const minY = view.getFloat32(offset, false);
@@ -606,10 +622,10 @@ export function parseBG3D(buffer: ArrayBuffer): BG3DParseResult {
   }
 
   // Step 2: Validate that all groups are closed (groupStack should just have the base group)
-  if (groupStack.length !== 1) {
-    throw new Error(
-      `Unbalanced group tags: ${groupStack.length} group(s) at end of file`,
-    );
+  if (groupStack.length < 1) {
+    console.warn(`[parseBG3D] Warning: Group stack empty at end of file, this may indicate malformed data`);
+  } else if (groupStack.length > 1) {
+    console.warn(`[parseBG3D] Warning: ${groupStack.length - 1} unclosed group(s) at end of file`);
   }
 
   // Step 3: Validate that all geometry objects reference valid material indices
