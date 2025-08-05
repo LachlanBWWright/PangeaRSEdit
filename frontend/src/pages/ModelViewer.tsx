@@ -3,7 +3,7 @@ import { ModelCanvas } from "./ModelCanvas";
 import { ModelHierarchy } from "@/components/ModelHierarchy";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Upload } from "lucide-react";
+import { Upload, X, Download } from "lucide-react";
 import { TextureManager } from "@/components/TextureManager";
 
 // ...existing code...
@@ -329,6 +329,85 @@ export function ModelViewer() {
     });
   }
 
+  const handleDownloadBG3D = () => {
+    if (!bg3dParsed) {
+      toast.error("No BG3D data available for download");
+      return;
+    }
+
+    try {
+      // Convert BG3D parsed data back to binary format using worker
+      const worker = new BG3DGltfWorker();
+      worker.onmessage = (e: MessageEvent<BG3DGltfWorkerResponse>) => {
+        const result = e.data;
+        if (result.type === "error") {
+          toast.error(`Failed to convert BG3D: ${result.error}`);
+          worker.terminate();
+          return;
+        }
+
+        if (result.type === "bg3d-parsed-to-glb") {
+          // For now, we'll download the GLB instead of BG3D binary
+          // since we don't have a BG3D binary encoder
+          const blob = new Blob([result.glbData], { type: "application/octet-stream" });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = "model.glb";
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+          toast.success("Model downloaded as GLB");
+        }
+        worker.terminate();
+      };
+      
+      worker.onerror = () => {
+        toast.error("Failed to process BG3D data");
+        worker.terminate();
+      };
+
+      const message: BG3DGltfWorkerMessage = {
+        type: "bg3d-parsed-to-glb",
+        parsed: bg3dParsed,
+      };
+      worker.postMessage(message);
+    } catch (error) {
+      console.error("Error downloading BG3D:", error);
+      toast.error("Failed to download BG3D model");
+    }
+  };
+
+  const handleDownloadGLB = () => {
+    if (!gltfUrl) {
+      toast.error("No GLB model available for download");
+      return;
+    }
+
+    try {
+      const a = document.createElement("a");
+      a.href = gltfUrl;
+      a.download = "model.glb";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      toast.success("GLB model downloaded");
+    } catch (error) {
+      console.error("Error downloading GLB:", error);
+      toast.error("Failed to download GLB model");
+    }
+  };
+
+  const handleClearModel = () => {
+    setGltfUrl(null);
+    setBg3dParsed(null);
+    setTextures([]);
+    setModelNodes([]);
+    setScene(null);
+    toast.success("Model cleared");
+  };
+
   const loadTestModel = async () => {
     try {
       // Load the Otto.bg3d test file
@@ -360,44 +439,110 @@ export function ModelViewer() {
         <div className="flex flex-col w-80 space-y-4 px-2 overflow-hidden">
           <Card className="bg-gray-800 border-gray-700">
             <CardHeader>
-              <CardTitle className="text-white">Model Upload</CardTitle>
+              <CardTitle className="text-white">
+                {gltfUrl ? "Model Actions" : "Model Upload"}
+              </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div
-                className="border-2 border-dashed border-gray-600 rounded-lg p-8 text-center cursor-pointer hover:border-gray-500 transition-colors"
-                onDrop={handleDrop}
-                onDragOver={handleDragOver}
-                onClick={() => fileInputRef.current?.click()}
-              >
-                <Upload className="w-12 h-12 mx-auto mb-4 text-gray-400" />
-                <p className="text-gray-400 mb-2">
-                  Drop a BG3D file here or click to select
-                </p>
-                <p className="text-sm text-gray-500">Supports .bg3d files</p>
-              </div>
+              {!gltfUrl ? (
+                // Model upload interface
+                <>
+                  <div
+                    className="border-2 border-dashed border-gray-600 rounded-lg p-8 text-center cursor-pointer hover:border-gray-500 transition-colors"
+                    onDrop={handleDrop}
+                    onDragOver={handleDragOver}
+                    onClick={() => fileInputRef.current?.click()}
+                  >
+                    <Upload className="w-12 h-12 mx-auto mb-4 text-gray-400" />
+                    <p className="text-gray-400 mb-2">
+                      Drop a BG3D file here or click to select
+                    </p>
+                    <p className="text-sm text-gray-500">Supports .bg3d files</p>
+                  </div>
 
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept=".bg3d"
-                className="hidden"
-                onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  if (file) handleFileUpload(file);
-                }}
-              />
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept=".bg3d"
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) handleFileUpload(file);
+                    }}
+                  />
 
-              <Button
-                onClick={loadTestModel}
-                variant="outline"
-                className="w-full text-white"
-                disabled={loading}
-              >
-                Load Otto.bg3d Sample Model
-              </Button>
+                  <Button
+                    onClick={loadTestModel}
+                    variant="outline"
+                    className="w-full text-white"
+                    disabled={loading}
+                  >
+                    Load Otto.bg3d Sample Model
+                  </Button>
 
-              {loading && (
-                <p className="text-center text-gray-400">Loading model...</p>
+                  {loading && (
+                    <p className="text-center text-gray-400">Loading model...</p>
+                  )}
+                </>
+              ) : (
+                // Model actions interface
+                <div className="space-y-3">
+                  <div className="text-sm text-gray-300 mb-3">
+                    Model loaded successfully
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Button
+                      onClick={handleDownloadBG3D}
+                      variant="outline"
+                      className="w-full text-white"
+                    >
+                      <Download className="w-4 h-4 mr-2" />
+                      Download as BG3D
+                    </Button>
+                    
+                    <Button
+                      onClick={handleDownloadGLB}
+                      variant="outline"
+                      className="w-full text-white"
+                    >
+                      <Download className="w-4 h-4 mr-2" />
+                      Download as GLB
+                    </Button>
+                    
+                    <Button
+                      onClick={handleClearModel}
+                      variant="outline"
+                      className="w-full text-red-400 hover:text-red-300 border-red-600 hover:border-red-500"
+                    >
+                      <X className="w-4 h-4 mr-2" />
+                      Clear Model
+                    </Button>
+                  </div>
+                  
+                  <hr className="border-gray-600" />
+                  
+                  <Button
+                    onClick={() => fileInputRef.current?.click()}
+                    variant="ghost"
+                    className="w-full text-gray-400 hover:text-white"
+                    size="sm"
+                  >
+                    <Upload className="w-4 h-4 mr-2" />
+                    Load Different Model
+                  </Button>
+                  
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept=".bg3d"
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) handleFileUpload(file);
+                    }}
+                  />
+                </div>
               )}
             </CardContent>
           </Card>
