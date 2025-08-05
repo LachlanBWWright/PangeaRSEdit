@@ -15,6 +15,10 @@ export type BG3DGltfWorkerMessage =
   | {
       type: "bg3d-parsed-to-glb";
       parsed: BG3DParseResult;
+    }
+  | {
+      type: "bg3d-parsed-to-bg3d";
+      parsed: BG3DParseResult;
     };
 
 export type BG3DGltfWorkerResponse =
@@ -29,6 +33,10 @@ export type BG3DGltfWorkerResponse =
     }
   | {
       type: "bg3d-parsed-to-glb";
+      result: ArrayBuffer;
+    }
+  | {
+      type: "bg3d-parsed-to-bg3d";
       result: ArrayBuffer;
     }
   | {
@@ -66,6 +74,14 @@ self.onmessage = async (e: MessageEvent<BG3DGltfWorkerMessage>) => {
       const response: BG3DGltfWorkerResponse = {
         type: "bg3d-parsed-to-glb",
         result: arrBuffer,
+      };
+      self.postMessage.call(self, response);
+    } else if (msg.type === "bg3d-parsed-to-bg3d") {
+      console.log("Converting parsed BG3D back to BG3D binary");
+      const bg3dBuffer = bg3dParsedToBG3D(msg.parsed);
+      const response: BG3DGltfWorkerResponse = {
+        type: "bg3d-parsed-to-bg3d",
+        result: bg3dBuffer,
       };
       self.postMessage.call(self, response);
     } else if (msg.type === "glb-to-bg3d") {

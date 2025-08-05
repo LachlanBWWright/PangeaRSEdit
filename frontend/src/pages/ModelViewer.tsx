@@ -346,19 +346,18 @@ export function ModelViewer() {
           return;
         }
 
-        if (result.type === "bg3d-parsed-to-glb") {
-          // For now, we'll download the GLB instead of BG3D binary
-          // since we don't have a BG3D binary encoder
-          const blob = new Blob([result.glbData], { type: "application/octet-stream" });
+        if (result.type === "bg3d-parsed-to-bg3d") {
+          // Download the actual BG3D binary
+          const blob = new Blob([result.result], { type: "application/octet-stream" });
           const url = URL.createObjectURL(blob);
           const a = document.createElement("a");
           a.href = url;
-          a.download = "model.glb";
+          a.download = "model.bg3d";
           document.body.appendChild(a);
           a.click();
           document.body.removeChild(a);
           URL.revokeObjectURL(url);
-          toast.success("Model downloaded as GLB");
+          toast.success("BG3D model downloaded");
         }
         worker.terminate();
       };
@@ -369,7 +368,7 @@ export function ModelViewer() {
       };
 
       const message: BG3DGltfWorkerMessage = {
-        type: "bg3d-parsed-to-glb",
+        type: "bg3d-parsed-to-bg3d",
         parsed: bg3dParsed,
       };
       worker.postMessage(message);
@@ -429,7 +428,7 @@ export function ModelViewer() {
     setBg3dParsed(null);
     setTextures([]);
     setModelNodes([]);
-    setScene(null);
+    setScene(undefined);
     toast.success("Model cleared");
   };
 

@@ -196,9 +196,9 @@ export function TextureManager({
                     <Eye className="w-4 h-4" />
                   </Button>
                 </DialogTrigger>
-                <DialogContent className="max-w-4xl">
+                <DialogContent className="max-w-4xl text-white">
                   <DialogHeader>
-                    <DialogTitle className="flex items-center justify-between">
+                    <DialogTitle className="flex items-center justify-between text-white">
                       <span>{texture.name}</span>
                       <span className="text-sm text-gray-400">
                         {texture.type} •{" "}
@@ -208,7 +208,7 @@ export function TextureManager({
                       </span>
                     </DialogTitle>
                   </DialogHeader>
-                  <DialogDescription>Image:</DialogDescription>
+                  <DialogDescription className="text-gray-300">Image:</DialogDescription>
                   <div className="flex justify-center bg-checkered p-4 rounded">
                     <img
                       src={texture.url}

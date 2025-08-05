@@ -1,10 +1,10 @@
-import React, { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Stage, Layer, Image, Line } from "react-konva";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Slider } from "@/components/ui/slider";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Palette, Circle, Square, Save, X, Undo, Redo } from "lucide-react";
+import { Circle, Square, Save, X, Undo, Redo } from "lucide-react";
 import { toast } from "sonner";
 import Konva from "konva";
 import type { KonvaEventObject } from "konva/lib/Node";
@@ -92,7 +92,7 @@ export function ImageEditor({ isOpen, onClose, imageUrl, onSave, imageName }: Im
     }
   };
 
-  const handleMouseDown = (e: KonvaEventObject<MouseEvent>) => {
+  const handleMouseDown = (_e: KonvaEventObject<MouseEvent>) => {
     if (tool !== 'brush') return;
     
     const stage = stageRef.current;
@@ -112,7 +112,7 @@ export function ImageEditor({ isOpen, onClose, imageUrl, onSave, imageName }: Im
     setCurrentStroke(newStroke);
   };
 
-  const handleMouseMove = (e: KonvaEventObject<MouseEvent>) => {
+  const handleMouseMove = (_e: KonvaEventObject<MouseEvent>) => {
     if (!isDrawing || tool !== 'brush' || !currentStroke) return;
 
     const stage = stageRef.current;
@@ -212,9 +212,9 @@ export function ImageEditor({ isOpen, onClose, imageUrl, onSave, imageName }: Im
   if (!image) {
     return (
       <Dialog open={isOpen} onOpenChange={handleClose}>
-        <DialogContent className="max-w-4xl h-[80vh]">
+        <DialogContent className="max-w-4xl h-[80vh] text-white">
           <DialogHeader>
-            <DialogTitle>Loading Image Editor...</DialogTitle>
+            <DialogTitle className="text-white">Loading Image Editor...</DialogTitle>
           </DialogHeader>
           <div className="flex items-center justify-center h-full">
             <div className="text-gray-400">Loading image...</div>
@@ -226,9 +226,9 @@ export function ImageEditor({ isOpen, onClose, imageUrl, onSave, imageName }: Im
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="max-w-6xl h-[85vh] flex flex-col">
+      <DialogContent className="max-w-6xl h-[85vh] flex flex-col text-white">
         <DialogHeader>
-          <DialogTitle className="flex items-center justify-between">
+          <DialogTitle className="flex items-center justify-between text-white">
             <span>Image Editor - {imageName || 'Untitled'}</span>
             <div className="flex space-x-2">
               <Button
