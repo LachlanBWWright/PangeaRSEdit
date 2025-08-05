@@ -38,6 +38,7 @@ export function ModelViewer() {
   // --- Begin moved logic from EnhancedModelMesh ---
   // State and refs must be declared first
   const [gltfUrl, setGltfUrl] = useState<string | null>(null);
+  const [bg3dParsed, setBg3dParsed] = useState<BG3DParseResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [textures, setTextures] = useState<Texture[]>([]);
   function extractTexturesFromParsed(bg3dParsed: BG3DParseResult | null) {
@@ -139,6 +140,7 @@ export function ModelViewer() {
         });
         const url = URL.createObjectURL(glbBlob);
         setGltfUrl(url);
+        setBg3dParsed(result.parsed);
         extractTexturesFromParsed(result.parsed);
         toast.success(`Successfully loaded ${file.name}`);
       }
@@ -197,6 +199,136 @@ export function ModelViewer() {
     }
   }
 
+  async function handleReplaceTexture(texture: Texture, newFile: File): Promise<void> {
+    if (!bg3dParsed) {
+      throw new Error("No BG3D data available for texture replacement");
+    }
+
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      
+      img.onload = async () => {
+        try {
+          // Validate size matches the existing texture
+          if (texture.size && 
+              (img.width !== texture.size.width || img.height !== texture.size.height)) {
+            throw new Error(
+              `Image size mismatch: Expected ${texture.size.width}×${texture.size.height}, got ${img.width}×${img.height}`
+            );
+          }
+
+          // Extract material and texture indices from texture name
+          const nameMatch = texture.name.match(/Material_(\d+)_Texture_(\d+)/);
+          if (!nameMatch) {
+            throw new Error("Invalid texture name format");
+          }
+          
+          const materialIndex = parseInt(nameMatch[1]);
+          const textureIndex = parseInt(nameMatch[2]);
+
+          // Convert image to canvas and extract pixel data
+          const canvas = document.createElement("canvas");
+          canvas.width = img.width;
+          canvas.height = img.height;
+          const ctx = canvas.getContext("2d");
+          if (!ctx) {
+            throw new Error("Failed to get canvas context");
+          }
+
+          ctx.drawImage(img, 0, 0);
+          const imageData = ctx.getImageData(0, 0, img.width, img.height);
+          
+          // Convert to RGB or RGBA pixel array based on existing texture format
+          const existingTexture = bg3dParsed.materials[materialIndex]?.textures[textureIndex];
+          if (!existingTexture) {
+            throw new Error("Texture not found in BG3D data");
+          }
+
+          const isRGBA = existingTexture.pixels.length === img.width * img.height * 4;
+          const newPixels = new Uint8Array(isRGBA ? img.width * img.height * 4 : img.width * img.height * 3);
+          
+          for (let i = 0; i < imageData.data.length; i += 4) {
+            const pixelIndex = i / 4;
+            if (isRGBA) {
+              newPixels[pixelIndex * 4] = imageData.data[i];     // R
+              newPixels[pixelIndex * 4 + 1] = imageData.data[i + 1]; // G
+              newPixels[pixelIndex * 4 + 2] = imageData.data[i + 2]; // B
+              newPixels[pixelIndex * 4 + 3] = imageData.data[i + 3]; // A
+            } else {
+              newPixels[pixelIndex * 3] = imageData.data[i];     // R
+              newPixels[pixelIndex * 3 + 1] = imageData.data[i + 1]; // G
+              newPixels[pixelIndex * 3 + 2] = imageData.data[i + 2]; // B
+            }
+          }
+
+          // Update the BG3D parsed data
+          const updatedBG3D = { ...bg3dParsed };
+          updatedBG3D.materials[materialIndex].textures[textureIndex] = {
+            ...existingTexture,
+            pixels: newPixels,
+            width: img.width,
+            height: img.height
+          };
+
+          // Convert updated BG3D back to GLB
+          const worker = new BG3DGltfWorker();
+          const result = await new Promise<BG3DGltfWorkerResponse>(
+            (workerResolve, workerReject) => {
+              worker.onmessage = (e) => {
+                workerResolve(e.data);
+                worker.terminate();
+              };
+              worker.onerror = (e) => {
+                workerReject(e);
+                worker.terminate();
+              };
+              const message: BG3DGltfWorkerMessage = {
+                type: "bg3d-parsed-to-glb",
+                parsed: updatedBG3D,
+              };
+              worker.postMessage(message);
+            },
+          );
+
+          if (result.type === "error") {
+            throw new Error(result.error);
+          }
+
+          if (result.type === "bg3d-parsed-to-glb") {
+            // Update state with new model
+            setBg3dParsed(updatedBG3D);
+            
+            // Create new GLTF URL and update the 3D view
+            const glbBlob = new Blob([result.result], {
+              type: "model/gltf-binary",
+            });
+            const newUrl = URL.createObjectURL(glbBlob);
+            
+            // Clean up old URL
+            if (gltfUrl) {
+              URL.revokeObjectURL(gltfUrl);
+            }
+            
+            setGltfUrl(newUrl);
+            
+            // Re-extract textures to update the UI
+            extractTexturesFromParsed(updatedBG3D);
+            
+            resolve();
+          }
+        } catch (error) {
+          reject(error);
+        }
+      };
+
+      img.onerror = () => {
+        reject(new Error("Failed to load image"));
+      };
+
+      img.src = URL.createObjectURL(newFile);
+    });
+  }
+
   const loadTestModel = async () => {
     try {
       // Load the Otto.bg3d test file
@@ -225,7 +357,7 @@ export function ModelViewer() {
         }}
       >
         {/* Left sidebar - Controls */}
-        <div className="flex flex-col w-80 space-y-4  overflow-y-auto px-2">
+        <div className="flex flex-col w-80 space-y-4 px-2 overflow-hidden">
           <Card className="bg-gray-800 border-gray-700">
             <CardHeader>
               <CardTitle className="text-white">Model Upload</CardTitle>
@@ -286,11 +418,12 @@ export function ModelViewer() {
                   Texture Management
                 </CardTitle>
               </CardHeader>
-              <CardContent>
+              <CardContent className="max-h-60 overflow-y-auto">
                 {textures.length > 0 ? (
                   <TextureManager
                     textures={textures}
                     onDownloadTexture={handleDownloadTexture}
+                    onReplaceTexture={handleReplaceTexture}
                   />
                 ) : (
                   <div className="space-y-3">

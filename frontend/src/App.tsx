@@ -1,4 +1,4 @@
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import { HashRouter as Router, Routes, Route } from "react-router-dom";
 import "./App.css";
 import { Navigation } from "./components/Navigation";
 import { LevelEditor } from "./pages/LevelEditor";
@@ -10,7 +10,7 @@ import { Toaster } from "./components/ui/sonner";
 function App() {
   return (
     <TooltipProvider>
-      <Router basename="/PangeaRSEdit/">
+      <Router>
         <div className="flex flex-col min-h-screen bg-gray-900">
           <Navigation />
           <Routes>
