@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { Routes, Route, MemoryRouter } from "react-router-dom";
 import "./App.css";
 import { Navigation } from "./components/Navigation";
 import { LevelEditor } from "./pages/LevelEditor";
@@ -10,7 +10,7 @@ import { Toaster } from "./components/ui/sonner";
 function App() {
   return (
     <TooltipProvider>
-      <BrowserRouter basename="/PangeaRSEdit/">
+      <MemoryRouter>
         <div className="flex flex-col min-h-screen bg-gray-900">
           <Navigation />
           <Routes>
@@ -20,7 +20,7 @@ function App() {
             <Route path="*" element={<LevelEditor />} />
           </Routes>
         </div>
-      </BrowserRouter>
+      </MemoryRouter>
       <Toaster />
     </TooltipProvider>
   );
