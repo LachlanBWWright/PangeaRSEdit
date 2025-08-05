@@ -399,6 +399,31 @@ export function ModelViewer() {
     }
   };
 
+  const handleTextureEdit = async (texture: Texture, editedImageData: ImageData): Promise<void> => {
+    // Convert ImageData to a File and use the existing replace function
+    const canvas = document.createElement('canvas');
+    canvas.width = editedImageData.width;
+    canvas.height = editedImageData.height;
+    const ctx = canvas.getContext('2d');
+    
+    if (!ctx) {
+      throw new Error("Failed to get canvas context");
+    }
+
+    ctx.putImageData(editedImageData, 0, 0);
+    
+    // Convert canvas to blob and then to file
+    const blob = await new Promise<Blob>((resolve, reject) => {
+      canvas.toBlob((blob) => {
+        if (blob) resolve(blob);
+        else reject(new Error("Failed to create blob"));
+      }, 'image/png');
+    });
+
+    const file = new File([blob], `${texture.name}.png`, { type: 'image/png' });
+    return handleReplaceTexture(texture, file);
+  };
+
   const handleClearModel = () => {
     setGltfUrl(null);
     setBg3dParsed(null);
@@ -569,6 +594,7 @@ export function ModelViewer() {
                     textures={textures}
                     onDownloadTexture={handleDownloadTexture}
                     onReplaceTexture={handleReplaceTexture}
+                    onTextureEdit={handleTextureEdit}
                   />
                 ) : (
                   <div className="space-y-3">

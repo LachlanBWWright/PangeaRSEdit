@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Download, Eye, Upload, Edit, ChevronDown, ChevronUp } from "lucide-react";
 import { useRef, useState } from "react";
 import { toast } from "sonner";
+import { ImageEditor } from "./ImageEditor";
 
 interface Texture {
   name: string;
@@ -39,6 +40,8 @@ export function TextureManager({
   const [selectedTexture, setSelectedTexture] = useState<Texture | null>(null);
   const [showPreviews, setShowPreviews] = useState(false);
   const [expandedTextures, setExpandedTextures] = useState<Set<number>>(new Set());
+  const [isEditorOpen, setIsEditorOpen] = useState(false);
+  const [textureToEdit, setTextureToEdit] = useState<Texture | null>(null);
 
   const handleReplaceTexture = async (texture: Texture, file: File) => {
     if (!onReplaceTexture) return;
@@ -48,6 +51,43 @@ export function TextureManager({
       toast.success(`Successfully replaced ${texture.name}`);
     } catch (error) {
       toast.error("Failed to replace texture");
+    }
+  };
+
+  const handleEditTexture = (texture: Texture) => {
+    setTextureToEdit(texture);
+    setIsEditorOpen(true);
+  };
+
+  const handleEditorSave = async (editedImageData: ImageData) => {
+    if (!textureToEdit || !onReplaceTexture) return;
+
+    try {
+      // Convert ImageData to a File
+      const canvas = document.createElement('canvas');
+      canvas.width = editedImageData.width;
+      canvas.height = editedImageData.height;
+      const ctx = canvas.getContext('2d');
+      
+      if (!ctx) {
+        throw new Error("Failed to get canvas context");
+      }
+
+      ctx.putImageData(editedImageData, 0, 0);
+      
+      // Convert canvas to blob and then to file
+      const blob = await new Promise<Blob>((resolve) => {
+        canvas.toBlob((blob) => {
+          if (blob) resolve(blob);
+        }, 'image/png');
+      });
+
+      const file = new File([blob], `${textureToEdit.name}.png`, { type: 'image/png' });
+      await onReplaceTexture(textureToEdit, file);
+      toast.success(`Successfully updated ${textureToEdit.name}`);
+    } catch (error) {
+      console.error("Error saving edited texture:", error);
+      toast.error("Failed to save edited texture");
     }
   };
 
@@ -220,7 +260,7 @@ export function TextureManager({
                         <Button
                           size="sm"
                           variant="outline"
-                          onClick={() => console.log("Edit texture:", texture)}
+                          onClick={() => handleEditTexture(texture)}
                         >
                           <Edit className="w-4 h-4 mr-2" />
                           Edit
@@ -296,6 +336,20 @@ export function TextureManager({
           }
         }}
       />
+
+      {/* Image Editor */}
+      {textureToEdit && (
+        <ImageEditor
+          isOpen={isEditorOpen}
+          onClose={() => {
+            setIsEditorOpen(false);
+            setTextureToEdit(null);
+          }}
+          imageUrl={textureToEdit.url}
+          imageName={textureToEdit.name}
+          onSave={handleEditorSave}
+        />
+      )}
     </div>
   );
 }
