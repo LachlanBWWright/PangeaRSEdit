@@ -261,13 +261,28 @@ export function ModelViewer() {
             }
           }
 
-          // Update the BG3D parsed data
-          const updatedBG3D = { ...bg3dParsed };
-          updatedBG3D.materials[materialIndex].textures[textureIndex] = {
-            ...existingTexture,
-            pixels: newPixels,
-            width: img.width,
-            height: img.height
+          // Update the BG3D parsed data with a proper deep copy
+          const updatedBG3D = { 
+            ...bg3dParsed,
+            materials: bg3dParsed.materials.map((material, idx) => {
+              if (idx === materialIndex) {
+                return {
+                  ...material,
+                  textures: material.textures.map((texture, texIdx) => {
+                    if (texIdx === textureIndex) {
+                      return {
+                        ...existingTexture,
+                        pixels: newPixels,
+                        width: img.width,
+                        height: img.height
+                      };
+                    }
+                    return texture;
+                  })
+                };
+              }
+              return material;
+            })
           };
 
           // Convert updated BG3D back to GLB
