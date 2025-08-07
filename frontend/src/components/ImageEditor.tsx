@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Slider } from "@/components/ui/slider";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Circle, Square, Save, X, Undo, Redo } from "lucide-react";
+import { Circle, Square, Save, X, Undo, Redo, Pipette } from "lucide-react";
 import { toast } from "sonner";
 import Konva from "konva";
 import type { KonvaEventObject } from "konva/lib/Node";
@@ -300,12 +300,22 @@ export function ImageEditor({ isOpen, onClose, imageUrl, onSave, imageName }: Im
                 Color
               </label>
               <div className="space-y-2">
-                <input
-                  type="color"
-                  value={brushColor}
-                  onChange={(e) => setBrushColor(e.target.value)}
-                  className="w-full h-10 rounded border border-gray-600"
-                />
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="color"
+                    value={brushColor}
+                    onChange={(e) => setBrushColor(e.target.value)}
+                    className="flex-1 h-10 rounded border border-gray-600"
+                  />
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-10 w-10 p-0"
+                    title="Click to open color picker"
+                  >
+                    <Pipette className="w-4 h-4 text-white" />
+                  </Button>
+                </div>
                 <div className="grid grid-cols-4 gap-1">
                   {colorPalette.map((color) => (
                     <button

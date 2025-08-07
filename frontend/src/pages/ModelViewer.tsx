@@ -285,6 +285,10 @@ export function ModelViewer() {
             })
           };
 
+          // Reset scene state to prevent crashes
+          setScene(undefined);
+          setModelNodes([]);
+          
           // Convert updated BG3D back to GLB
           const worker = new BG3DGltfWorker();
           const result = await new Promise<BG3DGltfWorkerResponse>(
@@ -310,20 +314,19 @@ export function ModelViewer() {
           }
 
           if (result.type === "bg3d-parsed-to-glb") {
-            // Update state with new model
-            setBg3dParsed(updatedBG3D);
-            
-            // Create new GLTF URL and update the 3D view
-            const glbBlob = new Blob([result.result], {
-              type: "model/gltf-binary",
-            });
-            const newUrl = URL.createObjectURL(glbBlob);
-            
-            // Clean up old URL
+            // Clean up old URL first
             if (gltfUrl) {
               URL.revokeObjectURL(gltfUrl);
             }
             
+            // Update state with new model (similar to handleFileUpload)
+            setBg3dParsed(updatedBG3D);
+            
+            // Create new GLTF URL
+            const glbBlob = new Blob([result.result], {
+              type: "model/gltf-binary",
+            });
+            const newUrl = URL.createObjectURL(glbBlob);
             setGltfUrl(newUrl);
             
             // Re-extract textures to update the UI
