@@ -304,7 +304,7 @@ export const nanosaur2ItemTypeParams: Record<ItemType, ItemParams> = {
       codeSample: {
         code: ".type = base + itemPtr->parm[0],",
         fileName: "Source/Items/Items.c",
-        lineNumber: 226,
+        lineNumber: 227,
       },
     },
     p1: {
@@ -504,7 +504,7 @@ export const nanosaur2ItemTypeParams: Record<ItemType, ItemParams> = {
       codeSample: {
         code: "short type = itemPtr->parm[0];",
         fileName: "Source/Items/Trees.c",
-        lineNumber: 595,
+        lineNumber: 661,
       },
     },
     p1: {
@@ -513,7 +513,7 @@ export const nanosaur2ItemTypeParams: Record<ItemType, ItemParams> = {
       codeSample: {
         code: "long rot = itemPtr->parm[1];",
         fileName: "Source/Items/Trees.c",
-        lineNumber: 596,
+        lineNumber: 662,
       },
     },
     p2: "Unknown",
@@ -527,7 +527,7 @@ export const nanosaur2ItemTypeParams: Record<ItemType, ItemParams> = {
       codeSample: {
         code: "short type = itemPtr->parm[0];",
         fileName: "Source/Items/Trees.c",
-        lineNumber: 595,
+        lineNumber: 725,
       },
     },
     p1: "Unknown",
@@ -549,7 +549,7 @@ export const nanosaur2ItemTypeParams: Record<ItemType, ItemParams> = {
       codeSample: {
         code: "short type = itemPtr->parm[0];",
         fileName: "Source/Items/Trees.c",
-        lineNumber: 595,
+        lineNumber: 763,
       },
     },
     p1: "Unknown",
@@ -592,7 +592,7 @@ export const nanosaur2ItemTypeParams: Record<ItemType, ItemParams> = {
       codeSample: {
         code: "short type = itemPtr->parm[0];",
         fileName: "Source/Items/Trees.c",
-        lineNumber: 595,
+        lineNumber: 800,
       },
     },
     p1: "Unknown",

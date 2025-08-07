@@ -94,7 +94,7 @@ export const billyFrontierItemTypeParams: Record<
       codeSample: {
         code: "gPlayerInfo.startRotY = (float)itemPtr[i].parm[0] * (PI2/8.0f);",
         fileName: "Source/Terrain/Terrain2.c",
-        lineNumber: 211,
+        lineNumber: 248,
       },
     },
     p1: "Unknown",
@@ -132,7 +132,7 @@ export const billyFrontierItemTypeParams: Record<
       codeSample: {
         code: "gNewObjectDefinition.type = BUILDING_ObjType_Saloon + itemPtr->parm[0];",
         fileName: "Source/Items/Items.c",
-        lineNumber: 138,
+        lineNumber: 137,
       },
     },
     p1: {
@@ -155,7 +155,7 @@ export const billyFrontierItemTypeParams: Record<
       codeSample: {
         code: "gNewObjectDefinition.type = TOWN_ObjType_Headstone1 + itemPtr->parm[0];",
         fileName: "Source/Items/Items.c",
-        lineNumber: 195,
+        lineNumber: 194,
       },
     },
     p1: {
@@ -164,7 +164,7 @@ export const billyFrontierItemTypeParams: Record<
       codeSample: {
         code: "gNewObjectDefinition.rot = (float)itemPtr->parm[1] * (PI2/8);",
         fileName: "Source/Items/Items.c",
-        lineNumber: 203,
+        lineNumber: 202,
       },
     },
     p2: "Unknown",
@@ -200,7 +200,7 @@ export const billyFrontierItemTypeParams: Record<
       codeSample: {
         code: "gNewObjectDefinition.type = TOWN_ObjType_Coffin + itemPtr->parm[0];",
         fileName: "Source/Items/Items.c",
-        lineNumber: 268,
+        lineNumber: 267,
       },
     },
     p1: {
@@ -209,7 +209,7 @@ export const billyFrontierItemTypeParams: Record<
       codeSample: {
         code: "gNewObjectDefinition.rot = (float)itemPtr->parm[1] * (PI2/8);",
         fileName: "Source/Items/Items.c",
-        lineNumber: 203,
+        lineNumber: 275,
       },
     },
     p2: "Unknown",
@@ -301,7 +301,7 @@ export const billyFrontierItemTypeParams: Record<
       codeSample: {
         code: "gNewObjectDefinition.rot = (float)itemPtr->parm[1] * (PI2/8);",
         fileName: "Source/Items/Items.c",
-        lineNumber: 203,
+        lineNumber: 338,
       },
     },
     p2: {
@@ -354,7 +354,7 @@ export const billyFrontierItemTypeParams: Record<
       codeSample: {
         code: "gNewObjectDefinition.rot = (float)itemPtr->parm[1] * (PI2/8);",
         fileName: "Source/Items/Items.c",
-        lineNumber: 203,
+        lineNumber: 970,
       },
     },
     p2: "Unknown",
@@ -397,7 +397,7 @@ export const billyFrontierItemTypeParams: Record<
       codeSample: {
         code: "gNewObjectDefinition.rot = (float)itemPtr->parm[0] * (PI2/8);",
         fileName: "Source/Items/Items.c",
-        lineNumber: 1123,
+        lineNumber: 1124,
       },
     },
     p1: "Unknown",
@@ -412,7 +412,7 @@ export const billyFrontierItemTypeParams: Record<
       codeSample: {
         code: "gNewObjectDefinition.rot = (float)itemPtr->parm[0] * (PI2/8);",
         fileName: "Source/Items/Items.c",
-        lineNumber: 1123,
+        lineNumber: 1154,
       },
     },
     p1: "Unknown",
@@ -483,7 +483,7 @@ export const billyFrontierItemTypeParams: Record<
       codeSample: {
         code: "gNewObjectDefinition.rot = (float)itemPtr->parm[0] * (PI2/8);",
         fileName: "Source/Enemy/Enemy_TremorGhost.c",
-        lineNumber: 72,
+        lineNumber: 70,
       },
     },
     p1: {

@@ -151,7 +151,7 @@ export const croMagItemTypeParams: Record<ItemType, CroMagItemParams> = {
       codeSample: {
         code: "p = itemPtr[i].parm[0]; // player # is in parm 0",
         fileName: "Source/Terrain/Terrain2.c",
-        lineNumber: 248,
+        lineNumber: 246,
       },
     },
     p1: {
@@ -160,7 +160,7 @@ export const croMagItemTypeParams: Record<ItemType, CroMagItemParams> = {
       codeSample: {
         code: "gPlayerInfo[p].startRotY = PI2 * ((float)itemPtr[i].parm[1] * (1.0f/16.0f));",
         fileName: "Source/Terrain/Terrain2.c",
-        lineNumber: 255,
+        lineNumber: 253,
       },
     },
     p2: "Unknown",
@@ -210,7 +210,7 @@ export const croMagItemTypeParams: Record<ItemType, CroMagItemParams> = {
       codeSample: {
         code: "y = gWaterHeights[gTrackNum][itemPtr->parm[0]];",
         fileName: "Source/Terrain/Liquids.c",
-        lineNumber: 118,
+        lineNumber: 115,
       },
     },
     p1: "Unknown",
@@ -238,7 +238,7 @@ export const croMagItemTypeParams: Record<ItemType, CroMagItemParams> = {
       codeSample: {
         code: ".type = GLOBAL_ObjType_Sign_Fire + itemPtr->parm[0],",
         fileName: "Source/Items/Items.c",
-        lineNumber: 797,
+        lineNumber: 796,
       },
     },
     p1: {
@@ -247,7 +247,7 @@ export const croMagItemTypeParams: Record<ItemType, CroMagItemParams> = {
       codeSample: {
         code: ".rot = PI2 * ((float)itemPtr->parm[1] * (1.0f/8.0f)),",
         fileName: "Source/Items/Items.c",
-        lineNumber: 631,
+        lineNumber: 801,
       },
     },
     p2: "Unknown",
@@ -273,10 +273,10 @@ export const croMagItemTypeParams: Record<ItemType, CroMagItemParams> = {
           index: 0,
           description: "Solid collision",
           codeSample: {
-        code: "Boolean isSolid = itemPtr->parm[3] & 1;",
-        fileName: "Source/Items/Items.c",
-        lineNumber: 329,
-      },
+            code: "Boolean isSolid = itemPtr->parm[3] & 1;",
+            fileName: "Source/Items/Items.c",
+            lineNumber: 325,
+          },
         },
         {
           index: 1,
@@ -328,7 +328,7 @@ export const croMagItemTypeParams: Record<ItemType, CroMagItemParams> = {
       codeSample: {
         code: ".rot = (float)(itemPtr->parm[0]) / 8.0f * PI2,",
         fileName: "Source/Items/Triggers.c",
-        lineNumber: 926,
+        lineNumber: 1454,
       },
     },
     p1: "Unknown",
@@ -456,7 +456,7 @@ export const croMagItemTypeParams: Record<ItemType, CroMagItemParams> = {
       codeSample: {
         code: ".type = types[gTrackNum][itemPtr->parm[0]],",
         fileName: "Source/Items/Items.c",
-        lineNumber: 342,
+        lineNumber: 715,
       },
     },
     p1: {
@@ -465,7 +465,7 @@ export const croMagItemTypeParams: Record<ItemType, CroMagItemParams> = {
       codeSample: {
         code: ".rot = itemPtr->parm[1] * (PI/4),",
         fileName: "Source/Items/Items.c",
-        lineNumber: 725,
+        lineNumber: 722,
       },
     },
     p2: "Unknown",
@@ -514,7 +514,7 @@ export const croMagItemTypeParams: Record<ItemType, CroMagItemParams> = {
       codeSample: {
         code: ".type = GLOBAL_ObjType_GreyRock + itemPtr->parm[0],",
         fileName: "Source/Items/Items.c",
-        lineNumber: 977,
+        lineNumber: 976,
       },
     },
     p1: "Unknown",
@@ -594,7 +594,7 @@ export const croMagItemTypeParams: Record<ItemType, CroMagItemParams> = {
       codeSample: {
         code: ".rot = PI2 * ((float)itemPtr->parm[1] * (1.0f/8.0f)),",
         fileName: "Source/Items/Items.c",
-        lineNumber: 631,
+        lineNumber: 1295,
       },
     },
     p2: "Unknown",
@@ -605,10 +605,10 @@ export const croMagItemTypeParams: Record<ItemType, CroMagItemParams> = {
           index: 0,
           description: "Non-solid (no collision)",
           codeSample: {
-        code: "Boolean notSolid = itemPtr->parm[3] & 1;",
-        fileName: "Source/Items/Items.c",
-        lineNumber: 546,
-      },
+            code: "Boolean notSolid = itemPtr->parm[3] & 1;",
+            fileName: "Source/Items/Items.c",
+            lineNumber: 1286,
+          },
         },
       ],
     },
