@@ -192,3 +192,62 @@ export type ottoSpline = {
   numNubs: number;
   numPoints: number;
 };
+
+// Terrain and tile data interface - the "other data" that doesn't fit into main atomic types
+export interface TerrainData {
+  Atrb: {
+    1000: {
+      name: "Tile Attribute Data";
+      obj: ottoTileAttribute[];
+      order: number;
+    };
+  };
+  Timg: {
+    1000: {
+      name: "Extracted Tile Image Data 32x32/16bit";
+      data: string;
+      order: number;
+    };
+  };
+  ItCo: {
+    1000: {
+      name: "Terrain Items Color Array";
+      data: string;
+      order: number;
+    };
+  };
+  Layr: {
+    1000: {
+      name: "Terrain Layer Matrix";
+      obj: number[];
+      order: number;
+    };
+  };
+  STgd: {
+    1000: {
+      name: "SuperTile Grid";
+      obj: ottoSupertileGrid[];
+      order: number;
+    };
+  };
+  YCrd: {
+    1000: {
+      name: "Floor&Ceiling Y Coords";
+      obj: number[];
+      order: number;
+    };
+  };
+  alis: Record<
+    number,
+    {
+      name: "Texture Page Picture Alias";
+      data: string;
+      order: number;
+    }
+  >;
+  _metadata: {
+    file_attributes: number;
+    junk1: number;
+    junk2: number;
+  };
+}

@@ -2,6 +2,7 @@ import {
   ottoTileAttribute,
   ottoMaticLevel,
 } from "../../python/structSpecs/ottoMaticInterface";
+import { TerrainData, HeaderData } from "../../python/structSpecs/ottoMaticLevelData";
 import { Layer, Image } from "react-konva";
 import { Updater } from "use-immer";
 import {
@@ -34,53 +35,58 @@ import { KonvaEventObject } from 'konva/lib/Node';
 */
 
 export function Tiles({
-  otherData,
-  setOtherData,
+  headerData,
+  terrainData,
+  setTerrainData,
   isEditingTopology,
 }: {
-  otherData: Partial<ottoMaticLevel>;
-  setOtherData: Updater<Partial<ottoMaticLevel>>;
+  headerData: HeaderData;
+  terrainData: TerrainData;
+  setTerrainData: Updater<TerrainData>;
   isEditingTopology: boolean;
 }) {
   const tileViewMode = useAtomValue(TileViewMode);
 
   const tileGrid = useMemo(
-    () => otherData.Layr?.[1000]?.obj?.map((atrbIdx: number) => otherData.Atrb?.[1000]?.obj?.[atrbIdx]) || [],
-    [otherData.Layr, otherData.Atrb],
+    () => terrainData.Layr[1000].obj.map((atrbIdx: number) => terrainData.Atrb[1000].obj[atrbIdx]),
+    [terrainData.Layr, terrainData.Atrb],
   );
 
   if (tileViewMode === TileViews.Topology)
     return (
       <TopologyTiles
-        otherData={otherData}
-        setOtherData={setOtherData}
+        headerData={headerData}
+        terrainData={terrainData}
+        setTerrainData={setTerrainData}
         isEditingTopology={isEditingTopology}
       />
     );
 
   if (tileViewMode === TileViews.Flags)
-    return <EmptyTiles otherData={otherData} setOtherData={setOtherData} tileGrid={tileGrid} />;
+    return <EmptyTiles headerData={headerData} terrainData={terrainData} setTerrainData={setTerrainData} tileGrid={tileGrid} />;
   if (tileViewMode === TileViews.ElectricFloor0)
     return (
-      <ElectricFloor0Tiles otherData={otherData} setOtherData={setOtherData} tileGrid={tileGrid} />
+      <ElectricFloor0Tiles headerData={headerData} terrainData={terrainData} setTerrainData={setTerrainData} tileGrid={tileGrid} />
     );
 
   //ElectricFloor1
 
   return (
-    <ElectricFloor1Tiles otherData={otherData} setOtherData={setOtherData} tileGrid={tileGrid} />
+    <ElectricFloor1Tiles headerData={headerData} terrainData={terrainData} setTerrainData={setTerrainData} tileGrid={tileGrid} />
   );
 }
 
 type PixelType = { x: number; y: number; value: number; distance: number };
 
 export function TopologyTiles({
-  otherData,
-  setOtherData,
+  headerData,
+  terrainData,
+  setTerrainData,
   isEditingTopology,
 }: {
-  otherData: Partial<ottoMaticLevel>;
-  setOtherData: Updater<Partial<ottoMaticLevel>>;
+  headerData: HeaderData;
+  terrainData: TerrainData;
+  setTerrainData: Updater<TerrainData>;
   isEditingTopology: boolean;
 }) {
   const currentTopologyBrushMode = useAtomValue(CurrentTopologyBrushMode);
@@ -90,10 +96,9 @@ export function TopologyTiles({
   const globals = useAtomValue(Globals);
   const opacity = useAtomValue(TopologyOpacity);
 
-  const header = useMemo(() => otherData.Hedr?.[1000]?.obj, [otherData.Hedr]);
+  const header = useMemo(() => headerData.Hedr[1000].obj, [headerData.Hedr]);
 
   const elevationToRGBA = (elevation: number) => {
-    if (!header) return [0, 0, 0, 255];
     return [
       ((elevation - header.minY) / (header.maxY - header.minY)) * 255,
       ((elevation - header.minY) / (header.maxY - header.minY)) * 255,
@@ -103,20 +108,17 @@ export function TopologyTiles({
   };
 
   const flattenCoords = (x: number, y: number) => {
-    if (!header) return 0;
     x = Math.floor(x / globals.TILE_SIZE);
     y = Math.floor(y / globals.TILE_SIZE);
     return y * (header.mapWidth + 1) + x;
   };
 
   const coordColours = useMemo(
-    () => otherData.YCrd?.[1000]?.obj?.flatMap(elevationToRGBA) || [],
-    [otherData.YCrd, header],
+    () => terrainData.YCrd[1000].obj.flatMap(elevationToRGBA),
+    [terrainData.YCrd, header],
   );
 
   const imgCanvas = useMemo(() => {
-    if (!otherData.YCrd?.[1000]?.obj || !header) return null;
-    
     const imgCanvas = document.createElement("canvas");
     imgCanvas.width = header.mapWidth + 1;
     imgCanvas.height = header.mapHeight + 1;
@@ -133,12 +135,10 @@ export function TopologyTiles({
       0,
     );
     return imgCanvas;
-  }, [header, otherData.YCrd, coordColours]);
+  }, [header, terrainData.YCrd, coordColours]);
 
   const setPixels = (pixelList: PixelType[]) => {
-    setOtherData((data) => {
-      if (!data.YCrd?.[1000]?.obj || !header) return;
-      
+    setTerrainData((data) => {
       for (const pixelData of pixelList) {
         const { x, y, value, distance } = pixelData;
 
@@ -176,7 +176,7 @@ export function TopologyTiles({
 
   return (
     <Layer imageSmoothingEnabled={false}>
-      {imgCanvas && header && (
+      {imgCanvas && (
         <Image
           x={0}
           y={0}
@@ -258,12 +258,14 @@ export function TopologyTiles({
 }
 
 export function EmptyTiles({
-  otherData,
-  setOtherData,
+  headerData,
+  terrainData,
+  setTerrainData,
   tileGrid,
 }: {
-  otherData: Partial<ottoMaticLevel>;
-  setOtherData: Updater<Partial<ottoMaticLevel>>;
+  headerData: HeaderData;
+  terrainData: TerrainData;
+  setTerrainData: Updater<TerrainData>;
   tileGrid: ottoTileAttribute[];
 }) {
   const globals = useAtomValue(Globals);
@@ -273,7 +275,7 @@ export function EmptyTiles({
   const currentTileView = useAtomValue(TileViewMode);
   const topologyBrushRadius = useAtomValue(TopologyBrushRadius);
 
-  const header = useMemo(() => otherData.Hedr?.[1000]?.obj, [otherData.Hedr]);
+  const header = useMemo(() => headerData.Hedr[1000].obj, [headerData.Hedr]);
 
   const flagToColour = (flag: number) => {
     //TILE_ATTRB_BLANK

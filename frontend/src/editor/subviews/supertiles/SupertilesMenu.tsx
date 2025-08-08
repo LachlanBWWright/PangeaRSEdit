@@ -7,7 +7,7 @@ import {
   // globals.SUPERTILE_TEXMAP_SIZE,
   ottoMaticLevel,
 } from "../../../python/structSpecs/ottoMaticInterface";
-import { HeaderData } from "../../../python/structSpecs/ottoMaticLevelData";
+import { HeaderData, TerrainData } from "../../../python/structSpecs/ottoMaticLevelData";
 import { FileUpload } from "../../../components/FileUpload";
 import { Globals } from "../../../data/globals/globals";
 import { Button } from "@/components/ui/button";
@@ -34,11 +34,11 @@ const downloadSelectedTile = (
 const downloadMapImage = (
   mapImages: HTMLCanvasElement[],
   headerData: HeaderData,
-  otherData: Partial<ottoMaticLevel>,
+  terrainData: TerrainData,
   globals: { SUPERTILE_TEXMAP_SIZE: number; TILES_PER_SUPERTILE: number },
 ) => {
-  const hedr = headerData.Hedr?.[1000]?.obj;
-  if (!hedr || !otherData.STgd?.[1000]?.obj) return;
+  const hedr = headerData.Hedr[1000].obj;
+  if (!terrainData.STgd[1000].obj) return;
 
   // Create canvas to hold the complete map
   const canvas = document.createElement("canvas");
@@ -61,7 +61,7 @@ const downloadMapImage = (
       const tileIndex = i * (hedr.mapWidth / globals.TILES_PER_SUPERTILE) + j;
 
       // Get supertile ID
-      const superTileId = otherData.STgd[1000].obj[tileIndex].superTileId;
+      const superTileId = terrainData.STgd[1000].obj[tileIndex].superTileId;
 
       // Skip empty tiles (ID 0)
       if (superTileId === 0) continue;
@@ -89,8 +89,8 @@ const downloadMapImage = (
 export function SupertileMenu({
   headerData,
   setHeaderData,
-  otherData,
-  setOtherData,
+  terrainData,
+  setTerrainData,
   mapImages,
   setMapImages,
 }: {
@@ -98,11 +98,11 @@ export function SupertileMenu({
   setMapImages: (newCanvases: HTMLCanvasElement[]) => void;
   headerData: HeaderData;
   setHeaderData: Updater<HeaderData>;
-  otherData: Partial<ottoMaticLevel>;
-  setOtherData: Updater<Partial<ottoMaticLevel>>;
+  terrainData: TerrainData;
+  setTerrainData: Updater<TerrainData>;
 }) {
   const selectedTile = useAtomValue(SelectedTile);
-  const hedr = headerData.Hedr?.[1000]?.obj;
+  const hedr = headerData.Hedr[1000].obj;
   const globals = useAtomValue(Globals);
 
   return (
@@ -257,7 +257,7 @@ export function SupertileMenu({
         />
         <div className="flex-1" />
         <p>Download Image For Whole Map</p>
-        <Button size="sm" onClick={() => downloadMapImage(mapImages, headerData, otherData, globals)}>
+        <Button size="sm" onClick={() => downloadMapImage(mapImages, headerData, terrainData, globals)}>
           Download
         </Button>
       </div>

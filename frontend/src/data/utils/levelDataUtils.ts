@@ -5,6 +5,7 @@ import {
   LiquidData,
   FenceData,
   SplineData,
+  TerrainData,
 } from "../../python/structSpecs/ottoMaticLevelData";
 
 /**
@@ -18,8 +19,8 @@ export interface AtomicLevelData {
   liquidData: LiquidData | null;
   fenceData: FenceData | null;
   splineData: SplineData | null;
-  // Keep the rest of the data that doesn't fit into atomic types
-  otherData: Partial<ottoMaticLevel> | null;
+  // Terrain and tile data (no longer using Partial)
+  terrainData: TerrainData | null;
 }
 
 /**
@@ -33,7 +34,7 @@ export function splitLevelData(levelData: ottoMaticLevel | null): AtomicLevelDat
       liquidData: null,
       fenceData: null,
       splineData: null,
-      otherData: null,
+      terrainData: null,
     };
   }
 
@@ -62,19 +63,17 @@ export function splitLevelData(levelData: ottoMaticLevel | null): AtomicLevelDat
     Spln: levelData.Spln,
   };
 
-  // Extract the rest
-  const {
-    Hedr,
-    Itms,
-    Liqd,
-    Fenc,
-    FnNb,
-    SpNb,
-    SpPt,
-    SpIt,
-    Spln,
-    ...otherData
-  } = levelData;
+  // Extract terrain data (tiles, coordinates, etc.)
+  const terrainData: TerrainData = {
+    Atrb: levelData.Atrb,
+    Timg: levelData.Timg,
+    ItCo: levelData.ItCo,
+    Layr: levelData.Layr,
+    STgd: levelData.STgd,
+    YCrd: levelData.YCrd,
+    alis: levelData.alis,
+    _metadata: levelData._metadata,
+  };
 
   return {
     headerData,
@@ -82,7 +81,7 @@ export function splitLevelData(levelData: ottoMaticLevel | null): AtomicLevelDat
     liquidData,
     fenceData,
     splineData,
-    otherData,
+    terrainData,
   };
 }
 
@@ -90,15 +89,15 @@ export function splitLevelData(levelData: ottoMaticLevel | null): AtomicLevelDat
  * Combine atomic data types back into a complete ottoMaticLevel
  */
 export function combineLevelData(atomicData: AtomicLevelData): ottoMaticLevel | null {
-  const { headerData, itemData, liquidData, fenceData, splineData, otherData } = atomicData;
+  const { headerData, itemData, liquidData, fenceData, splineData, terrainData } = atomicData;
 
   // If any required data is missing, return null
-  if (!headerData || !itemData || !liquidData || !fenceData || !splineData || !otherData) {
+  if (!headerData || !itemData || !liquidData || !fenceData || !splineData || !terrainData) {
     return null;
   }
 
   return {
-    ...otherData,
+    ...terrainData,
     ...headerData,
     ...itemData,
     ...liquidData,
@@ -117,6 +116,6 @@ export function isAtomicDataComplete(atomicData: AtomicLevelData): boolean {
     atomicData.liquidData !== null &&
     atomicData.fenceData !== null &&
     atomicData.splineData !== null &&
-    atomicData.otherData !== null
+    atomicData.terrainData !== null
   );
 }

@@ -6,6 +6,7 @@ import {
   LiquidData,
   FenceData,
   SplineData,
+  TerrainData,
 } from "../python/structSpecs/ottoMaticLevelData";
 import { UploadPrompt } from "./UploadPrompt";
 import { EditorView } from "./EditorView";
@@ -40,7 +41,7 @@ export function IntroPrompt({ pyodideWorker }: { pyodideWorker: Worker }) {
   const [liquidData, setLiquidData] = useImmer<LiquidData | null>(null);
   const [fenceData, setFenceData] = useImmer<FenceData | null>(null);
   const [splineData, setSplineData] = useImmer<SplineData | null>(null);
-  const [otherData, setOtherData] = useImmer<Partial<ottoMaticLevel> | null>(null);
+  const [terrainData, setTerrainData] = useImmer<TerrainData | null>(null);
   
   //History of previous states for undo/redo purposes
   const [dataHistory, setDataHistory] = useImmer<DataHistory>({
@@ -66,7 +67,7 @@ export function IntroPrompt({ pyodideWorker }: { pyodideWorker: Worker }) {
     liquidData,
     fenceData,
     splineData,
-    otherData,
+    terrainData,
   });
 
   // Helper to set all atomic data from AtomicLevelData
@@ -76,7 +77,7 @@ export function IntroPrompt({ pyodideWorker }: { pyodideWorker: Worker }) {
     setLiquidData(atomicData.liquidData);
     setFenceData(atomicData.fenceData);
     setSplineData(atomicData.splineData);
-    setOtherData(atomicData.otherData);
+    setTerrainData(atomicData.terrainData);
   };
 
   const { toast } = useToast();
@@ -85,7 +86,7 @@ export function IntroPrompt({ pyodideWorker }: { pyodideWorker: Worker }) {
     if (!processed) return;
     saveMap();
     setProcessed(false);
-  }, [processed, headerData, itemData, liquidData, fenceData, splineData, otherData]);
+  }, [processed, headerData, itemData, liquidData, fenceData, splineData, terrainData]);
 
   //Update History
   useEffect(() => {
@@ -116,7 +117,7 @@ export function IntroPrompt({ pyodideWorker }: { pyodideWorker: Worker }) {
         draft.index -= 1;
       }
     });
-  }, [headerData, itemData, liquidData, fenceData, splineData, otherData]);
+  }, [headerData, itemData, liquidData, fenceData, splineData, terrainData]);
 
   const undoData = () => {
     if (dataHistory.index > 0) {
@@ -341,8 +342,8 @@ export function IntroPrompt({ pyodideWorker }: { pyodideWorker: Worker }) {
           setFenceData={setFenceData}
           splineData={splineData!}
           setSplineData={setSplineData}
-          otherData={otherData!}
-          setOtherData={setOtherData}
+          terrainData={terrainData!}
+          setTerrainData={setTerrainData}
           mapImages={mapImages}
           setMapImages={setMapImages}
           undoData={undoData}

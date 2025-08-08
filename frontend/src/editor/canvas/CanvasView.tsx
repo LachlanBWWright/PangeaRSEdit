@@ -17,7 +17,8 @@ import {
   ItemData, 
   LiquidData, 
   FenceData, 
-  SplineData 
+  SplineData,
+  TerrainData 
 } from "@/python/structSpecs/ottoMaticLevelData";
 
 enum View {
@@ -46,8 +47,8 @@ export function KonvaView({
   setFenceData,
   splineData,
   setSplineData,
-  otherData,
-  setOtherData,
+  terrainData,
+  setTerrainData,
   mapImages,
   view,
   stage,
@@ -63,8 +64,8 @@ export function KonvaView({
   setFenceData: Updater<FenceData>;
   splineData: SplineData;
   setSplineData: Updater<SplineData>;
-  otherData: Partial<any>; // Keep as any for now since we need to handle STgd and other data
-  setOtherData: Updater<any>;
+  terrainData: TerrainData;
+  setTerrainData: Updater<TerrainData>;
   mapImages: HTMLCanvasElement[];
   view: View;
   stage: StageData;
@@ -141,11 +142,12 @@ export function KonvaView({
         });
       }}
     >
-      {otherData.STgd && <Supertiles otherData={otherData} setOtherData={setOtherData} mapImages={mapImages} />}
+      {terrainData.STgd && <Supertiles terrainData={terrainData} setTerrainData={setTerrainData} mapImages={mapImages} />}
       {view === View.tiles && (
         <Tiles
-          otherData={otherData}
-          setOtherData={setOtherData}
+          headerData={headerData}
+          terrainData={terrainData}
+          setTerrainData={setTerrainData}
           isEditingTopology={view === View.tiles}
         />
       )}

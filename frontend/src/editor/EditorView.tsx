@@ -7,6 +7,7 @@ import {
   LiquidData,
   FenceData,
   SplineData,
+  TerrainData,
 } from "../python/structSpecs/ottoMaticLevelData";
 import { Updater, useImmer } from "use-immer";
 
@@ -44,8 +45,8 @@ export function EditorView({
   setFenceData,
   splineData,
   setSplineData,
-  otherData,
-  setOtherData,
+  terrainData,
+  setTerrainData,
   mapImages,
   setMapImages,
   undoData,
@@ -62,15 +63,15 @@ export function EditorView({
   setFenceData: Updater<FenceData>;
   splineData: SplineData;
   setSplineData: Updater<SplineData>;
-  otherData: Partial<ottoMaticLevel>;
-  setOtherData: Updater<Partial<ottoMaticLevel>>;
+  terrainData: TerrainData;
+  setTerrainData: Updater<TerrainData>;
   mapImages: HTMLCanvasElement[];
   setMapImages: (newCanvases: HTMLCanvasElement[]) => void;
   undoData: () => void;
   redoData: () => void;
   dataHistory: DataHistory;
 }) {
-  console.log(headerData, itemData, liquidData, fenceData, splineData, otherData);
+  console.log(headerData, itemData, liquidData, fenceData, splineData, terrainData);
   const canvasViewMode = useAtomValue(CanvasViewMode);
   const [view, setView] = useState<View>(View.fences);
   const [stage, setStage] = useImmer({
@@ -150,7 +151,7 @@ export function EditorView({
           Tiles
         </Button>
         <Button
-          disabled={otherData.STgd === undefined}
+          disabled={terrainData.STgd === undefined}
           selected={view === View.supertiles}
           onClick={() => setView(View.supertiles)}
         >
@@ -191,8 +192,8 @@ export function EditorView({
           <SupertileMenu
             headerData={headerData}
             setHeaderData={setHeaderData}
-            otherData={otherData}
-            setOtherData={setOtherData}
+            terrainData={terrainData}
+            setTerrainData={setTerrainData}
             mapImages={mapImages}
             setMapImages={setMapImages}
           />
@@ -204,7 +205,7 @@ export function EditorView({
             headerData={headerData}
             fenceData={fenceData}
             liquidData={liquidData}
-            otherData={otherData} 
+            terrainData={terrainData} 
             mapImages={mapImages} 
           />
         ) : (
@@ -219,8 +220,8 @@ export function EditorView({
             setFenceData={setFenceData}
             splineData={splineData}
             setSplineData={setSplineData}
-            otherData={otherData}
-            setOtherData={setOtherData}
+            terrainData={terrainData}
+            setTerrainData={setTerrainData}
             mapImages={mapImages}
             view={view}
             stage={stage}
