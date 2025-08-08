@@ -1,6 +1,5 @@
 import {
   ottoTileAttribute,
-  ottoMaticLevel,
 } from "../../python/structSpecs/ottoMaticInterface";
 import { TerrainData, HeaderData } from "../../python/structSpecs/ottoMaticLevelData";
 import { Layer, Image } from "react-konva";
@@ -21,7 +20,14 @@ import {
 import { useAtomValue } from "jotai";
 import { Globals } from "../../data/globals/globals";
 import { useMemo } from "react";
+/* Temporarily disabled during refactoring
 import { handleTileClick } from "../../data/tiles/tileHandlers";
+*/
+
+// Temporary placeholder for tile handlers during refactoring
+const handleTileClickTemp = () => {
+  console.warn("Tile editing temporarily disabled during refactoring");
+};
 import { KonvaEventObject } from 'konva/lib/Node';
 
 /* 
@@ -315,10 +321,10 @@ export function EmptyTiles({
     if (!pos) return;
 
     // Call our handler function with brush radius
-    handleTileClick(
+    handleTileClickTemp(
       pos.x,
       pos.y,
-      setOtherData,
+      setTerrainData,
       currentTileView,
       tileEditingEnabled,
       brushType,
@@ -401,10 +407,10 @@ export function ElectricFloor0Tiles({
     if (!pos) return;
 
     // Call our handler function with brush radius
-    handleTileClick(
+    handleTileClickTemp(
       pos.x,
       pos.y,
-      setOtherData,
+      setTerrainData,
       currentTileView,
       tileEditingEnabled,
       brushType,
@@ -430,12 +436,14 @@ export function ElectricFloor0Tiles({
 }
 
 export function ElectricFloor1Tiles({
-  otherData,
-  setOtherData,
+  headerData,
+  terrainData,
+  setTerrainData,
   tileGrid,
 }: {
-  otherData: Partial<ottoMaticLevel>;
-  setOtherData: Updater<Partial<ottoMaticLevel>>;
+  headerData: HeaderData;
+  terrainData: TerrainData;
+  setTerrainData: Updater<TerrainData>;
   tileGrid: ottoTileAttribute[];
 }) {
   const globals = useAtomValue(Globals);
@@ -445,7 +453,7 @@ export function ElectricFloor1Tiles({
   const currentTileView = useAtomValue(TileViewMode);
   const topologyBrushRadius = useAtomValue(TopologyBrushRadius);
 
-  const header = useMemo(() => otherData.Hedr?.[1000]?.obj, [otherData.Hedr]);
+  const header = useMemo(() => headerData.Hedr[1000].obj, [headerData.Hedr]);
 
   const flagToColour = (flag: number) => {
     //Electric 2
@@ -485,10 +493,10 @@ export function ElectricFloor1Tiles({
     if (!pos) return;
 
     // Call our handler function with brush radius
-    handleTileClick(
+    handleTileClickTemp(
       pos.x,
       pos.y,
-      setOtherData,
+      setTerrainData,
       currentTileView,
       tileEditingEnabled,
       brushType,

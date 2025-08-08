@@ -4,27 +4,31 @@ import { SelectedTile } from "../../data/supertiles/supertileAtoms";
 import { useAtom, useAtomValue } from "jotai";
 import { Globals } from "../../data/globals/globals";
 
+import { TerrainData, HeaderData } from "../../python/structSpecs/ottoMaticLevelData";
+
 export const Supertiles = memo(
   ({
-    otherData,
+    headerData,
+    terrainData,
     mapImages,
   }: {
-    otherData: Partial<any>;
+    headerData: HeaderData;
+    terrainData: TerrainData;
     mapImages: HTMLCanvasElement[];
   }) => {
     //if (!data.Itms) return <></>;\
     const globals = useAtomValue(Globals);
     const [selectedTile, setSelectedTile] = useAtom(SelectedTile);
-    const header = otherData.Hedr?.[1000]?.obj;
-    const supertilesWide = header?.mapWidth / globals.TILES_PER_SUPERTILE;
-    const superTileGrid = otherData.STgd?.[1000]?.obj || [];
+    const header = headerData.Hedr[1000].obj;
+    const supertilesWide = header.mapWidth / globals.TILES_PER_SUPERTILE;
+    const superTileGrid = terrainData.STgd[1000].obj;
     const imageGrid = useMemo(() => {
       const imageArray: HTMLCanvasElement[] = [];
       for (const supertile of superTileGrid) {
         imageArray.push(mapImages[supertile.superTileId ?? supertile]);
       }
       return imageArray;
-    }, [otherData.Hedr, otherData.STgd, mapImages]);
+    }, [headerData.Hedr, terrainData.STgd, mapImages]);
 
     //Create blank image
     return (

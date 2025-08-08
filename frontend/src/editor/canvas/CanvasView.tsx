@@ -142,7 +142,7 @@ export function KonvaView({
         });
       }}
     >
-      {terrainData.STgd && <Supertiles terrainData={terrainData} setTerrainData={setTerrainData} mapImages={mapImages} />}
+      {terrainData.STgd && <Supertiles headerData={headerData} terrainData={terrainData} mapImages={mapImages} />}
       {view === View.tiles && (
         <Tiles
           headerData={headerData}

@@ -80,42 +80,42 @@ export function IntroPrompt({ pyodideWorker }: { pyodideWorker: Worker }) {
   };
 
   // Wrapper functions to handle non-null assertions for EditorView
-  const setHeaderDataNonNull = useCallback((updater: Updater<HeaderData>) => {
+  const setHeaderDataNonNull: Updater<HeaderData> = useCallback((updater) => {
     setHeaderData((current) => {
       if (!current) return current;
       return typeof updater === 'function' ? updater(current) : updater;
     });
   }, [setHeaderData]);
 
-  const setItemDataNonNull = useCallback((updater: Updater<ItemData>) => {
+  const setItemDataNonNull: Updater<ItemData> = useCallback((updater) => {
     setItemData((current) => {
       if (!current) return current;
       return typeof updater === 'function' ? updater(current) : updater;
     });
   }, [setItemData]);
 
-  const setLiquidDataNonNull = useCallback((updater: Updater<LiquidData>) => {
+  const setLiquidDataNonNull: Updater<LiquidData> = useCallback((updater) => {
     setLiquidData((current) => {
       if (!current) return current;
       return typeof updater === 'function' ? updater(current) : updater;
     });
   }, [setLiquidData]);
 
-  const setFenceDataNonNull = useCallback((updater: Updater<FenceData>) => {
+  const setFenceDataNonNull: Updater<FenceData> = useCallback((updater) => {
     setFenceData((current) => {
       if (!current) return current;
       return typeof updater === 'function' ? updater(current) : updater;
     });
   }, [setFenceData]);
 
-  const setSplineDataNonNull = useCallback((updater: Updater<SplineData>) => {
+  const setSplineDataNonNull: Updater<SplineData> = useCallback((updater) => {
     setSplineData((current) => {
       if (!current) return current;
       return typeof updater === 'function' ? updater(current) : updater;
     });
   }, [setSplineData]);
 
-  const setTerrainDataNonNull = useCallback((updater: Updater<TerrainData>) => {
+  const setTerrainDataNonNull: Updater<TerrainData> = useCallback((updater) => {
     setTerrainData((current) => {
       if (!current) return current;
       return typeof updater === 'function' ? updater(current) : updater;
