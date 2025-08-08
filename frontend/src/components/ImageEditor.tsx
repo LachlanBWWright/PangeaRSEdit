@@ -36,6 +36,7 @@ export function ImageEditor({ isOpen, onClose, imageUrl, onSave, imageName }: Im
   const [history, setHistory] = useState<BrushStroke[][]>([]);
   const [historyIndex, setHistoryIndex] = useState(-1);
   const [saving, setSaving] = useState(false);
+  const [scale, setScale] = useState(1);
   
   const stageRef = useRef<Konva.Stage>(null);
   const layerRef = useRef<Konva.Layer>(null);
@@ -55,6 +56,12 @@ export function ImageEditor({ isOpen, onClose, imageUrl, onSave, imageName }: Im
       img.crossOrigin = 'anonymous';
       img.onload = () => {
         setImage(img);
+        // Calculate scale for display
+        const scaleX = Math.min(800 / img.width, 1);
+        const scaleY = Math.min(600 / img.height, 1);
+        const finalScale = Math.min(scaleX, scaleY);
+        setScale(finalScale);
+        
         // Reset editor state
         setStrokes([]);
         setCurrentStroke(null);
@@ -102,10 +109,16 @@ export function ImageEditor({ isOpen, onClose, imageUrl, onSave, imageName }: Im
     const pos = stage.getPointerPosition();
     if (!pos) return;
 
+    // Adjust coordinates for scale
+    const adjustedPos = {
+      x: pos.x / scale,
+      y: pos.y / scale
+    };
+
     const newStroke: BrushStroke = {
-      points: [pos.x, pos.y],
+      points: [adjustedPos.x, adjustedPos.y],
       color: brushColor,
-      size: brushSize[0],
+      size: brushSize[0] / scale, // Adjust brush size for scale
       shape: brushShape
     };
     
@@ -121,9 +134,15 @@ export function ImageEditor({ isOpen, onClose, imageUrl, onSave, imageName }: Im
     const pos = stage.getPointerPosition();
     if (!pos) return;
 
+    // Adjust coordinates for scale
+    const adjustedPos = {
+      x: pos.x / scale,
+      y: pos.y / scale
+    };
+
     const updatedStroke = {
       ...currentStroke,
-      points: [...currentStroke.points, pos.x, pos.y]
+      points: [...currentStroke.points, adjustedPos.x, adjustedPos.y]
     };
     
     setCurrentStroke(updatedStroke);
@@ -160,7 +179,7 @@ export function ImageEditor({ isOpen, onClose, imageUrl, onSave, imageName }: Im
       // Draw the original image
       ctx.drawImage(image, 0, 0);
 
-      // Draw all strokes on top
+      // Draw all strokes on top (strokes are already in original image coordinates)
       strokes.forEach(stroke => {
         if (stroke.points.length < 2) return;
 
@@ -337,10 +356,10 @@ export function ImageEditor({ isOpen, onClose, imageUrl, onSave, imageName }: Im
             <div className="w-full h-full flex items-center justify-center">
               <Stage
                 ref={stageRef}
-                width={Math.min(800, image.width)}
-                height={Math.min(600, image.height)}
-                scaleX={Math.min(800 / image.width, 600 / image.height, 1)}
-                scaleY={Math.min(800 / image.width, 600 / image.height, 1)}
+                width={Math.min(800, image.width * scale)}
+                height={Math.min(600, image.height * scale)}
+                scaleX={scale}
+                scaleY={scale}
                 onMouseDown={handleMouseDown}
                 onMousemove={handleMouseMove}
                 onMouseup={handleMouseUp}

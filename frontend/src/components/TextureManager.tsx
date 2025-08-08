@@ -60,30 +60,35 @@ export function TextureManager({
   };
 
   const handleEditorSave = async (editedImageData: ImageData) => {
-    if (!textureToEdit || !onReplaceTexture) return;
+    if (!textureToEdit) return;
 
     try {
-      // Convert ImageData to a File
-      const canvas = document.createElement('canvas');
-      canvas.width = editedImageData.width;
-      canvas.height = editedImageData.height;
-      const ctx = canvas.getContext('2d');
-      
-      if (!ctx) {
-        throw new Error("Failed to get canvas context");
+      // Use onTextureEdit if available, otherwise fall back to onReplaceTexture
+      if (onTextureEdit) {
+        await onTextureEdit(textureToEdit, editedImageData);
+      } else if (onReplaceTexture) {
+        // Convert ImageData to a File
+        const canvas = document.createElement('canvas');
+        canvas.width = editedImageData.width;
+        canvas.height = editedImageData.height;
+        const ctx = canvas.getContext('2d');
+        
+        if (!ctx) {
+          throw new Error("Failed to get canvas context");
+        }
+
+        ctx.putImageData(editedImageData, 0, 0);
+        
+        // Convert canvas to blob and then to file
+        const blob = await new Promise<Blob>((resolve) => {
+          canvas.toBlob((blob) => {
+            if (blob) resolve(blob);
+          }, 'image/png');
+        });
+
+        const file = new File([blob], `${textureToEdit.name}.png`, { type: 'image/png' });
+        await onReplaceTexture(textureToEdit, file);
       }
-
-      ctx.putImageData(editedImageData, 0, 0);
-      
-      // Convert canvas to blob and then to file
-      const blob = await new Promise<Blob>((resolve) => {
-        canvas.toBlob((blob) => {
-          if (blob) resolve(blob);
-        }, 'image/png');
-      });
-
-      const file = new File([blob], `${textureToEdit.name}.png`, { type: 'image/png' });
-      await onReplaceTexture(textureToEdit, file);
       toast.success(`Successfully updated ${textureToEdit.name}`);
     } catch (error) {
       console.error("Error saving edited texture:", error);
