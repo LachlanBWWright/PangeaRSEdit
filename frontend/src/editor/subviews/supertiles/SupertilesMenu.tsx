@@ -2,11 +2,6 @@ import { useAtomValue } from "jotai";
 import { Layer, Stage, Image } from "react-konva";
 import { SelectedTile } from "../../../data/supertiles/supertileAtoms";
 import { Updater } from "use-immer";
-import {
-  //globals.TILES_PER_SUPERTILE,
-  // globals.SUPERTILE_TEXMAP_SIZE,
-  ottoMaticLevel,
-} from "../../../python/structSpecs/ottoMaticInterface";
 import { HeaderData, TerrainData } from "../../../python/structSpecs/ottoMaticLevelData";
 import { FileUpload } from "../../../components/FileUpload";
 import { Globals } from "../../../data/globals/globals";
@@ -111,9 +106,9 @@ export function SupertileMenu({
         <p>Replace Selected Tile ({selectedTile})</p>
         <FileUpload
           acceptType="image"
-          disabled={!otherData.STgd?.[1000]?.obj?.[selectedTile] || otherData.STgd[1000].obj[selectedTile].superTileId === 0}
+          disabled={selectedTile >= terrainData.STgd[1000].obj.length || terrainData.STgd[1000].obj[selectedTile].superTileId === 0}
           handleOnChange={async (e) => {
-            if (!e.target?.files?.[0] || !otherData.STgd?.[1000]?.obj) return;
+            if (!e.target?.files?.[0] || !terrainData.STgd[1000].obj) return;
 
             const file = e.target.files[0];
             if (!file) return;
@@ -136,7 +131,7 @@ export function SupertileMenu({
             );
             const newMapImages = [...mapImages];
             newMapImages.splice(
-              otherData.STgd[1000].obj[selectedTile].superTileId,
+              terrainData.STgd[1000].obj[selectedTile].superTileId,
               1,
               canvas,
             );
@@ -146,7 +141,7 @@ export function SupertileMenu({
         <Stage width={120} height={120} className="mx-auto">
           <Layer>
             <ImageDisplay
-              image={mapImages[otherData.STgd?.[1000]?.obj?.[selectedTile]?.superTileId || 0]}
+              image={mapImages[terrainData.STgd[1000].obj[selectedTile]?.superTileId || 0]}
             />
           </Layer>
         </Stage>
@@ -155,7 +150,7 @@ export function SupertileMenu({
           onClick={() =>
             downloadSelectedTile(
               mapImages,
-              otherData.STgd?.[1000]?.obj?.[selectedTile]?.superTileId || 0,
+              terrainData.STgd[1000].obj[selectedTile]?.superTileId || 0,
               selectedTile,
             )
           }
@@ -241,8 +236,7 @@ export function SupertileMenu({
             }
 
             setMapImages(canvasArray);
-            setOtherData((data) => {
-              if (!data.STgd?.[1000]?.obj) return;
+            setTerrainData((data) => {
               for (let i = 0; i < data.STgd[1000].obj.length; i++) {
                 //1 is added to i because of the blank
                 data.STgd[1000].obj[i].superTileId = i + 1;
@@ -267,7 +261,7 @@ export function SupertileMenu({
         <p>Unique Supertiles {hedr?.numUniqueSupertiles || 0}</p>
 
         <p>Current Tile: #{selectedTile}</p>
-        <p>Texture ID: {otherData.STgd?.[1000]?.obj?.[selectedTile]?.superTileId || 0}</p>
+        <p>Texture ID: {terrainData.STgd[1000].obj[selectedTile]?.superTileId || 0}</p>
       </div>
     </div>
   );

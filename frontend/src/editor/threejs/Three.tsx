@@ -5,7 +5,6 @@ import { FenceGeometry } from "./FenceGeometry"; // Import the new FenceGeometry
 import { LiquidGeometry } from "./LiquidGeometry"; // Import the new LiquidGeometry component
 import { useAtomValue } from "jotai";
 import { Globals } from "@/data/globals/globals";
-import { ottoMaticLevel } from "@/python/structSpecs/ottoMaticInterface";
 import { HeaderData, FenceData, LiquidData, TerrainData } from "@/python/structSpecs/ottoMaticLevelData";
 
 export function ThreeView({

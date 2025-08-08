@@ -1,5 +1,4 @@
-import { useEffect, useState } from "react";
-import { ottoMaticLevel } from "../python/structSpecs/ottoMaticInterface";
+import { useEffect, useState, useCallback } from "react";
 import {
   HeaderData,
   ItemData,
@@ -79,6 +78,49 @@ export function IntroPrompt({ pyodideWorker }: { pyodideWorker: Worker }) {
     setSplineData(atomicData.splineData);
     setTerrainData(atomicData.terrainData);
   };
+
+  // Wrapper functions to handle non-null assertions for EditorView
+  const setHeaderDataNonNull = useCallback((updater: Updater<HeaderData>) => {
+    setHeaderData((current) => {
+      if (!current) return current;
+      return typeof updater === 'function' ? updater(current) : updater;
+    });
+  }, [setHeaderData]);
+
+  const setItemDataNonNull = useCallback((updater: Updater<ItemData>) => {
+    setItemData((current) => {
+      if (!current) return current;
+      return typeof updater === 'function' ? updater(current) : updater;
+    });
+  }, [setItemData]);
+
+  const setLiquidDataNonNull = useCallback((updater: Updater<LiquidData>) => {
+    setLiquidData((current) => {
+      if (!current) return current;
+      return typeof updater === 'function' ? updater(current) : updater;
+    });
+  }, [setLiquidData]);
+
+  const setFenceDataNonNull = useCallback((updater: Updater<FenceData>) => {
+    setFenceData((current) => {
+      if (!current) return current;
+      return typeof updater === 'function' ? updater(current) : updater;
+    });
+  }, [setFenceData]);
+
+  const setSplineDataNonNull = useCallback((updater: Updater<SplineData>) => {
+    setSplineData((current) => {
+      if (!current) return current;
+      return typeof updater === 'function' ? updater(current) : updater;
+    });
+  }, [setSplineData]);
+
+  const setTerrainDataNonNull = useCallback((updater: Updater<TerrainData>) => {
+    setTerrainData((current) => {
+      if (!current) return current;
+      return typeof updater === 'function' ? updater(current) : updater;
+    });
+  }, [setTerrainData]);
 
   const { toast } = useToast();
 
@@ -315,7 +357,7 @@ export function IntroPrompt({ pyodideWorker }: { pyodideWorker: Worker }) {
               ottoPreprocessor(
                 (updater) => {
                   // Apply the update to a combined data structure
-                  const updated = typeof updater === 'function' ? updater(combinedData) : updater;
+                  const updated = typeof updater === 'function' ? updater(combinedData) ?? combinedData : updater;
                   // Split back into atomic data
                   setAllAtomicData(splitLevelData(updated));
                 },
@@ -333,17 +375,17 @@ export function IntroPrompt({ pyodideWorker }: { pyodideWorker: Worker }) {
       {isAtomicDataComplete(getCurrentAtomicData()) && mapImages ? (
         <EditorView
           headerData={headerData!}
-          setHeaderData={setHeaderData}
+          setHeaderData={setHeaderDataNonNull}
           itemData={itemData!}
-          setItemData={setItemData}
+          setItemData={setItemDataNonNull}
           liquidData={liquidData!}
-          setLiquidData={setLiquidData}
+          setLiquidData={setLiquidDataNonNull}
           fenceData={fenceData!}
-          setFenceData={setFenceData}
+          setFenceData={setFenceDataNonNull}
           splineData={splineData!}
-          setSplineData={setSplineData}
+          setSplineData={setSplineDataNonNull}
           terrainData={terrainData!}
-          setTerrainData={setTerrainData}
+          setTerrainData={setTerrainDataNonNull}
           mapImages={mapImages}
           setMapImages={setMapImages}
           undoData={undoData}

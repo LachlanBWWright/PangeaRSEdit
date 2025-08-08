@@ -344,12 +344,14 @@ export function EmptyTiles({
 }
 
 export function ElectricFloor0Tiles({
-  otherData,
-  setOtherData,
+  headerData,
+  terrainData,
+  setTerrainData,
   tileGrid,
 }: {
-  otherData: Partial<ottoMaticLevel>;
-  setOtherData: Updater<Partial<ottoMaticLevel>>;
+  headerData: HeaderData;
+  terrainData: TerrainData;
+  setTerrainData: Updater<TerrainData>;
   tileGrid: ottoTileAttribute[];
 }) {
   const globals = useAtomValue(Globals);
@@ -359,7 +361,7 @@ export function ElectricFloor0Tiles({
   const currentTileView = useAtomValue(TileViewMode);
   const topologyBrushRadius = useAtomValue(TopologyBrushRadius);
 
-  const header = useMemo(() => otherData.Hedr?.[1000]?.obj, [otherData.Hedr]);
+  const header = useMemo(() => headerData.Hedr[1000].obj, [headerData.Hedr]);
 
   const flagToColour = (flag: number) => {
     //Electric 1
