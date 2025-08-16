@@ -70,12 +70,12 @@ export function splitLevelData(
 
   // Extract terrain data (tiles, coordinates, etc.) - ensure all required parts exist
   const terrainData: TerrainData | null =
-    levelData.Atrb &&
+    //levelData.Atrb &&
     levelData.ItCo &&
-    levelData.Layr &&
+    //levelData.Layr &&
     levelData.STgd &&
     levelData.YCrd &&
-    levelData.alis &&
+    //levelData.alis &&
     levelData._metadata
       ? {
           Atrb: levelData.Atrb,
@@ -88,6 +88,16 @@ export function splitLevelData(
           _metadata: levelData._metadata,
         }
       : null;
+
+  // Log which atomic fields are missing (null)
+  console.log("splitLevelData: null status", {
+    headerData: headerData === null,
+    itemData: itemData === null,
+    liquidData: liquidData === null,
+    fenceData: fenceData === null,
+    splineData: splineData === null,
+    terrainData: terrainData === null,
+  });
 
   return {
     headerData,
