@@ -140,8 +140,6 @@ export function IntroPrompt({ pyodideWorker }: { pyodideWorker: Worker }) {
     [setTerrainData],
   );
 
-  const { toast } = useToast();
-
   useEffect(() => {
     if (!processed) return;
     saveMap();
@@ -215,10 +213,8 @@ export function IntroPrompt({ pyodideWorker }: { pyodideWorker: Worker }) {
     // Combine atomic data for file I/O
     const combinedData = combineLevelData(getCurrentAtomicData());
     if (!combinedData) {
-      toast({
-        title: "Error",
+      toast("Error", {
         description: "Cannot save incomplete level data",
-        variant: "destructive",
       });
       return;
     }

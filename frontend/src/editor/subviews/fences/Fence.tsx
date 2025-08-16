@@ -31,7 +31,7 @@ export const Fence = memo(
     ]);
 
     // Get fence type from fence data
-    const fenceType = data.Fenc[1000].obj[fenceIdx]?.fenceType || 0;
+    const fenceType = fenceData.Fenc[1000].obj[fenceIdx]?.fenceType || 0;
 
     return (
       <>
@@ -48,7 +48,10 @@ export const Fence = memo(
           onDragStart={() => {
             // Store the initial positions of the nubs when dragging starts
             setInitialDragState(
-              fenceData.FnNb[1000 + fenceIdx].obj.map((nub) => [nub[0], nub[1]]),
+              fenceData.FnNb[1000 + fenceIdx].obj.map((nub) => [
+                nub[0],
+                nub[1],
+              ]),
             );
             setSelectedFence(fenceIdx); // Select the fence on drag start
           }}

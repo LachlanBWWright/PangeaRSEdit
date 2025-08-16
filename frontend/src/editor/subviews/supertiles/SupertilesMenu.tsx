@@ -114,7 +114,7 @@ export function SupertileMenu({
 
   // Handle editing individual tile texture
   const handleEditTileTexture = () => {
-    const tileId = data.STgd[1000].obj[selectedTile].superTileId;
+    const tileId = terrainData.STgd[1000].obj[selectedTile].superTileId;
     if (tileId === 0 || !mapImages[tileId]) {
       toast.error("No texture available for this tile");
       return;
@@ -150,7 +150,7 @@ export function SupertileMenu({
     for (let i = 0; i < hedr.mapHeight / globals.TILES_PER_SUPERTILE; i++) {
       for (let j = 0; j < hedr.mapWidth / globals.TILES_PER_SUPERTILE; j++) {
         const tileIndex = i * (hedr.mapWidth / globals.TILES_PER_SUPERTILE) + j;
-        const superTileId = data.STgd[1000].obj[tileIndex].superTileId;
+        const superTileId = terrainData.STgd[1000].obj[tileIndex].superTileId;
 
         if (superTileId === 0) continue;
 
@@ -175,7 +175,7 @@ export function SupertileMenu({
     editedImageData: ImageData,
   ): Promise<void> => {
     try {
-      const tileId = data.STgd[1000].obj[selectedTile].superTileId;
+      const tileId = terrainData.STgd[1000].obj[selectedTile].superTileId;
 
       // Create a new canvas with the edited data
       const canvas = document.createElement("canvas");
@@ -256,10 +256,12 @@ export function SupertileMenu({
       }
 
       setMapImages(canvasArray);
-      setData((data) => {
+      setTerrainData((data) => {
         for (let i = 0; i < data.STgd[1000].obj.length; i++) {
           data.STgd[1000].obj[i].superTileId = i + 1;
         }
+      });
+      setHeaderData((data) => {
         data.Hedr[1000].obj.numUniqueSupertiles = canvasArray.length;
       });
 
@@ -319,7 +321,9 @@ export function SupertileMenu({
             size="sm"
             variant="outline"
             onClick={handleEditTileTexture}
-            disabled={data.STgd[1000].obj[selectedTile].superTileId === 0}
+            disabled={
+              terrainData.STgd[1000].obj[selectedTile].superTileId === 0
+            }
           >
             <Edit className="w-4 h-4 mr-1" />
             Edit
@@ -342,7 +346,7 @@ export function SupertileMenu({
           onClick={() =>
             downloadSelectedTile(
               mapImages,
-              data.STgd[1000].obj[selectedTile].superTileId,
+              terrainData.STgd[1000].obj[selectedTile].superTileId,
               selectedTile,
             )
           }
@@ -454,7 +458,9 @@ export function SupertileMenu({
         <p>Download Image For Whole Map</p>
         <Button
           size="sm"
-          onClick={() => downloadMapImage(mapImages, data, globals)}
+          onClick={() =>
+            downloadMapImage(mapImages, headerData, terrainData, globals)
+          }
         >
           Download
         </Button>

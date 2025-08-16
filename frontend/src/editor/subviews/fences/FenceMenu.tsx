@@ -88,9 +88,9 @@ export function FenceMenu({
           {fenceDataObj !== null && (
             <>
               <img
-                src={getFenceImagePath(globals, fenceData.fenceType)}
+                src={getFenceImagePath(globals, fenceDataObj.fenceType)}
                 className="max-h-56 mx-auto"
-                alt={`Fence ${fenceData.fenceType}`}
+                alt={`Fence ${fenceDataObj.fenceType}`}
               />
               <Select
                 value={getFenceName(globals, fenceDataObj.fenceType)}
