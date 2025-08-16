@@ -37,7 +37,11 @@ export const Fence = memo(
       <>
         <Line
           points={lines}
-          stroke={fenceIdx === selectedFence ? "red" : getFenceColor(globals, fenceType, fenceIdx)}
+          stroke={
+            fenceIdx === selectedFence
+              ? "red"
+              : getFenceColor(globals, fenceType, fenceIdx)
+          }
           strokeWidth={fenceIdx === selectedFence ? 5 : 2}
           onClick={() => setSelectedFence(fenceIdx)}
           draggable // Make the line draggable
@@ -71,6 +75,7 @@ export const Fence = memo(
             key={nubIdx}
             idx={fenceIdx}
             nub={nub}
+            fenceType={fenceType}
             setNub={(newNub: [number, number]) => {
               setData((data) => {
                 data.FnNb[1000 + fenceIdx].obj[nubIdx] = newNub;
@@ -82,21 +87,3 @@ export const Fence = memo(
     );
   },
 );
-
-// Legacy function kept for backward compatibility
-// Use getFenceColor from @/data/fences/getFenceColor instead
-export function getColour(index: number) {
-  switch (index % 5) {
-    case 0:
-      return "#339933";
-    case 1:
-      return "#3399ff";
-    case 2:
-      return "#993399";
-    case 3:
-      return "#ff9933";
-    case 4:
-    default:
-      return "#ff3399";
-  }
-}

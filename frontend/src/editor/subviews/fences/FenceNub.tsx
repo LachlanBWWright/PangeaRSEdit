@@ -1,20 +1,27 @@
-import { useAtom } from "jotai";
+import { useAtomValue, useAtom } from "jotai";
 import { Circle } from "react-konva";
 import { SelectedFence } from "../../../data/fences/fenceAtoms";
-import { getColour } from "./Fence";
 import { memo } from "react";
+import { Globals } from "../../../data/globals/globals";
+import { getFenceColor } from "../../../data/fences/getFenceColor";
 
 export const FenceNub = memo(
   ({
     nub,
     idx,
+    fenceType,
     setNub,
   }: {
     nub: [number, number];
     idx: number;
+    fenceType: number;
     setNub: (nub: [number, number]) => void;
   }) => {
     const [selectedFence, setSelectedFence] = useAtom(SelectedFence);
+    const globals = useAtomValue(Globals);
+
+    const strokeColor =
+      idx === selectedFence ? "red" : getFenceColor(globals, fenceType, idx);
 
     return (
       <Circle
@@ -22,7 +29,9 @@ export const FenceNub = memo(
         y={nub[1]}
         radius={20}
         draggable
-        fill={idx === selectedFence ? "red" : getColour(idx)}
+        fill={strokeColor}
+        stroke={"black"}
+        strokeWidth={2}
         onMouseDown={() => setSelectedFence(idx)}
         onDragStart={() => {
           setSelectedFence(idx);
