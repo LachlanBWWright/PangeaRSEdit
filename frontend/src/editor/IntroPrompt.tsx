@@ -208,10 +208,15 @@ export function IntroPrompt({ pyodideWorker }: { pyodideWorker: Worker }) {
   async function saveMap() {
     if (!mapFile || !mapImagesFile) return;
 
-    toast.loading("Processing map data...");
+    toast.loading("Processing map data... todo");
 
     // Combine atomic data for file I/O
     const combinedData = combineLevelData(getCurrentAtomicData());
+
+    //TODO: Find better solution
+    //remove timg from combinedData - needed to fix bug
+    delete combinedData.Timg;
+
     if (!combinedData) {
       toast("Error", {
         description: "Cannot save incomplete level data",

@@ -8,69 +8,18 @@ import type {
   SplineData,
   LiquidData,
   ItemData,
+  TerrainData,
 } from "./ottoMaticLevelData";
 
 export type MakeRequired<T, K extends keyof T> = T & Required<Pick<T, K>>;
 
-export interface ottoMaticLevel extends HeaderData, FenceData, SplineData, LiquidData, ItemData {
-  Atrb: {
-    1000: {
-      name: "Tile Attribute Data";
-      obj: ottoTileAttribute[];
-      order: number;
-    };
-  };
-  Timg: {
-    1000: {
-      name: "Extracted Tile Image Data 32x32/16bit";
-      data: string;
-      order: number;
-    };
-  };
-  ItCo: {
-    1000: {
-      /* Not used in the game, internal OreoTerrain item */
-      name: "Terrain Items Color Array";
-      data: string;
-      order: number;
-    };
-  };
-  Layr: {
-    1000: {
-      name: "Terrain Layer Matrix";
-      obj: number[]; //Ints
-      order: number;
-    };
-  };
-  STgd: {
-    1000: {
-      name: "SuperTile Grid";
-      obj: ottoSupertileGrid[];
-      order: number;
-    };
-  };
-  YCrd: {
-    1000: {
-      name: "Floor&Ceiling Y Coords";
-      obj: number[]; //Floats
-      order: number;
-    };
-  };
-  alis: Record<
-    /* Appeas in skeleton unpacking code, doesn't seem to be used for .ter files */
-    number,
-    {
-      name: "Texture Page Picture Alias";
-      data: string;
-      order: number;
-    }
-  >;
-  _metadata: {
-    file_attributes: number;
-    junk1: number;
-    junk2: number;
-  };
-}
+export interface ottoMaticLevel
+  extends HeaderData,
+    Partial<FenceData>,
+    Partial<SplineData>,
+    Partial<LiquidData>,
+    Partial<ItemData>,
+    TerrainData {}
 
 export type ottoTileAttribute = {
   flags: number;

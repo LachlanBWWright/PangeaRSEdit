@@ -202,7 +202,7 @@ export interface TerrainData {
       order: number;
     };
   };
-  Timg: {
+  Timg?: {
     1000: {
       name: "Extracted Tile Image Data 32x32/16bit";
       data: string;

@@ -26,7 +26,9 @@ export interface AtomicLevelData {
 /**
  * Split a complete ottoMaticLevel into atomic data types
  */
-export function splitLevelData(levelData: ottoMaticLevel | null): AtomicLevelData {
+export function splitLevelData(
+  levelData: ottoMaticLevel | null,
+): AtomicLevelData {
   if (!levelData) {
     return {
       headerData: null,
@@ -38,42 +40,54 @@ export function splitLevelData(levelData: ottoMaticLevel | null): AtomicLevelDat
     };
   }
 
-  // Extract atomic data types
-  const headerData: HeaderData = {
-    Hedr: levelData.Hedr,
-  };
+  // Extract atomic data types (guard against missing sub-objects)
+  const headerData: HeaderData | null = levelData.Hedr
+    ? { Hedr: levelData.Hedr }
+    : null;
 
-  const itemData: ItemData = {
-    Itms: levelData.Itms,
-  };
+  const itemData: ItemData | null = levelData.Itms
+    ? { Itms: levelData.Itms }
+    : null;
 
-  const liquidData: LiquidData = {
-    Liqd: levelData.Liqd,
-  };
+  const liquidData: LiquidData | null = levelData.Liqd
+    ? { Liqd: levelData.Liqd }
+    : null;
 
-  const fenceData: FenceData = {
-    Fenc: levelData.Fenc,
-    FnNb: levelData.FnNb,
-  };
+  const fenceData: FenceData | null =
+    levelData.Fenc && levelData.FnNb
+      ? { Fenc: levelData.Fenc, FnNb: levelData.FnNb }
+      : null;
 
-  const splineData: SplineData = {
-    SpNb: levelData.SpNb,
-    SpPt: levelData.SpPt,
-    SpIt: levelData.SpIt,
-    Spln: levelData.Spln,
-  };
+  const splineData: SplineData | null =
+    levelData.SpNb && levelData.SpPt && levelData.SpIt && levelData.Spln
+      ? {
+          SpNb: levelData.SpNb,
+          SpPt: levelData.SpPt,
+          SpIt: levelData.SpIt,
+          Spln: levelData.Spln,
+        }
+      : null;
 
-  // Extract terrain data (tiles, coordinates, etc.)
-  const terrainData: TerrainData = {
-    Atrb: levelData.Atrb,
-    Timg: levelData.Timg,
-    ItCo: levelData.ItCo,
-    Layr: levelData.Layr,
-    STgd: levelData.STgd,
-    YCrd: levelData.YCrd,
-    alis: levelData.alis,
-    _metadata: levelData._metadata,
-  };
+  // Extract terrain data (tiles, coordinates, etc.) - ensure all required parts exist
+  const terrainData: TerrainData | null =
+    levelData.Atrb &&
+    levelData.ItCo &&
+    levelData.Layr &&
+    levelData.STgd &&
+    levelData.YCrd &&
+    levelData.alis &&
+    levelData._metadata
+      ? {
+          Atrb: levelData.Atrb,
+          Timg: levelData.Timg,
+          ItCo: levelData.ItCo,
+          Layr: levelData.Layr,
+          STgd: levelData.STgd,
+          YCrd: levelData.YCrd,
+          alis: levelData.alis,
+          _metadata: levelData._metadata,
+        }
+      : null;
 
   return {
     headerData,
@@ -88,14 +102,29 @@ export function splitLevelData(levelData: ottoMaticLevel | null): AtomicLevelDat
 /**
  * Combine atomic data types back into a complete ottoMaticLevel
  */
-export function combineLevelData(atomicData: AtomicLevelData): ottoMaticLevel | null {
-  const { headerData, itemData, liquidData, fenceData, splineData, terrainData } = atomicData;
+export function combineLevelData(atomicData: AtomicLevelData): ottoMaticLevel {
+  const {
+    headerData,
+    itemData,
+    liquidData,
+    fenceData,
+    splineData,
+    terrainData,
+  } = atomicData;
 
-  // If any required data is missing, return null
-  if (!headerData || !itemData || !liquidData || !fenceData || !splineData || !terrainData) {
-    return null;
+  // Ensure all pieces are present before combining
+  if (
+    !headerData ||
+    !itemData ||
+    !liquidData ||
+    !fenceData ||
+    !splineData ||
+    !terrainData
+  ) {
+    throw new Error("Cannot combine level data: atomic data is incomplete");
   }
 
+  // All pieces are non-null here; safe to spread and satisfy the full level type
   return {
     ...terrainData,
     ...headerData,
@@ -103,7 +132,7 @@ export function combineLevelData(atomicData: AtomicLevelData): ottoMaticLevel | 
     ...liquidData,
     ...fenceData,
     ...splineData,
-  } as ottoMaticLevel;
+  } satisfies ottoMaticLevel;
 }
 
 /**
