@@ -3,8 +3,10 @@ import { ottoMaticLevel } from "../../../python/structSpecs/ottoMaticInterface";
 import { Line } from "react-konva";
 import { FenceNub } from "./FenceNub";
 import { SelectedFence } from "../../../data/fences/fenceAtoms";
-import { useAtom } from "jotai";
+import { useAtom, useAtomValue } from "jotai";
 import { memo, useState } from "react"; // Added useState
+import { Globals } from "../../../data/globals/globals";
+import { getFenceColor } from "../../../data/fences/getFenceColor";
 
 export const Fence = memo(
   ({
@@ -17,6 +19,7 @@ export const Fence = memo(
     fenceIdx: number;
   }) => {
     const [selectedFence, setSelectedFence] = useAtom(SelectedFence);
+    const globals = useAtomValue(Globals);
     // State to store initial nub positions during drag
     const [initialDragState, setInitialDragState] = useState<
       [number, number][] | null
@@ -27,11 +30,18 @@ export const Fence = memo(
       nub[1],
     ]);
 
+    // Get fence type from fence data
+    const fenceType = data.Fenc[1000].obj[fenceIdx]?.fenceType || 0;
+
     return (
       <>
         <Line
           points={lines}
-          stroke={fenceIdx === selectedFence ? "red" : getColour(fenceIdx)}
+          stroke={
+            fenceIdx === selectedFence
+              ? "red"
+              : getFenceColor(globals, fenceType, fenceIdx)
+          }
           strokeWidth={fenceIdx === selectedFence ? 5 : 2}
           onClick={() => setSelectedFence(fenceIdx)}
           draggable // Make the line draggable
@@ -65,6 +75,7 @@ export const Fence = memo(
             key={nubIdx}
             idx={fenceIdx}
             nub={nub}
+            fenceType={fenceType}
             setNub={(newNub: [number, number]) => {
               setData((data) => {
                 data.FnNb[1000 + fenceIdx].obj[nubIdx] = newNub;
@@ -76,19 +87,3 @@ export const Fence = memo(
     );
   },
 );
-
-export function getColour(index: number) {
-  switch (index % 5) {
-    case 0:
-      return "#339933";
-    case 1:
-      return "#3399ff";
-    case 2:
-      return "#993399";
-    case 3:
-      return "#ff9933";
-    case 4:
-    default:
-      return "#ff3399";
-  }
-}

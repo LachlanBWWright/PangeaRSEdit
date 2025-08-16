@@ -10,7 +10,7 @@ import { useAtom, useAtomValue } from "jotai";
 import { BlockHistoryUpdate } from "../data/globals/history";
 import LzssWorker from "../utils/lzssWorker?worker";
 import { LzssMessage, LzssResponse } from "@/utils/lzssWorker";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { PyodideMessage, PyodideResponse } from "@/python/pyodideWorker";
 
 export type DataHistory = {
@@ -38,7 +38,6 @@ export function IntroPrompt({ pyodideWorker }: { pyodideWorker: Worker }) {
     undefined,
   );
   const [processed, setProcessed] = useState(false);
-  const { toast } = useToast();
 
   useEffect(() => {
     if (!processed) return;
@@ -99,10 +98,7 @@ export function IntroPrompt({ pyodideWorker }: { pyodideWorker: Worker }) {
   async function saveMap() {
     if (!mapFile || !mapImagesFile) return;
 
-    toast({
-      title: "Saving Map",
-      description: "Processing map data",
-    });
+    toast.loading("Processing map data...");
 
     const loadResPromise = new Promise<ArrayBuffer>((resolve, reject) => {
       pyodideWorker.postMessage({
@@ -135,10 +131,7 @@ export function IntroPrompt({ pyodideWorker }: { pyodideWorker: Worker }) {
     //Download Images
     if (!mapImages) return;
 
-    toast({
-      title: "Saving Map",
-      description: "Compressing textures",
-    });
+    toast.loading("Compressing textures...");
 
     //Webworker promise
     const compressTextures: Promise<DataView[]> = new Promise((res, err) => {
@@ -223,9 +216,7 @@ export function IntroPrompt({ pyodideWorker }: { pyodideWorker: Worker }) {
     downloadLink.setAttribute("download", mapImagesFile.name);
     downloadLink.click();
 
-    toast({
-      title: "Map Downloaded!",
-    });
+    toast.success("Map Downloaded!");
   }
 
   if (!mapFile || !mapImages)
