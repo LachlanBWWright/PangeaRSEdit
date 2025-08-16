@@ -6,6 +6,7 @@ import {
 import { FenceData, HeaderData } from "@/python/structSpecs/ottoMaticLevelData";
 import { useAtomValue } from "jotai";
 import { Globals, GlobalsInterface } from "@/data/globals/globals";
+import { getFenceColor } from "@/data/fences/getFenceColor";
 
 interface FenceGeometryProps {
   fenceData: FenceData;
@@ -156,7 +157,7 @@ export const FenceGeometry: React.FC<FenceGeometryProps> = ({
 
   return (
     <group name="fences">
-      {fences.map((_, fenceIdx) => {
+      {fences.map((fence, fenceIdx) => {
         const nubListKey = 1000 + fenceIdx; // FnNb keys are typically base (1000) + index
         const nubsData = fenceNubsByFenceIdx[nubListKey];
 
@@ -164,6 +165,10 @@ export const FenceGeometry: React.FC<FenceGeometryProps> = ({
           return null; // Not enough nubs to form a segment
         }
         const nubs = nubsData.obj;
+
+        // Get fence type from fence data for game-specific coloring
+        const fenceType = fence?.fenceType || 0;
+        const fenceColor = getFenceColor(globals, fenceType, fenceIdx);
 
         const fenceSegments = [];
         for (let i = 0; i < nubs.length - 1; i++) {
@@ -228,7 +233,7 @@ export const FenceGeometry: React.FC<FenceGeometryProps> = ({
                   itemSize={1}
                 />
               </bufferGeometry>
-              <meshStandardMaterial color="saddlebrown" side={2} />
+              <meshStandardMaterial color={fenceColor} side={2} />
             </mesh>,
           );
         }

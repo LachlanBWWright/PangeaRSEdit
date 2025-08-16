@@ -17,13 +17,13 @@ import { useAtom, useAtomValue } from "jotai";
 import { BlockHistoryUpdate } from "../data/globals/history";
 import LzssWorker from "../utils/lzssWorker?worker";
 import { LzssMessage, LzssResponse } from "@/utils/lzssWorker";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { PyodideMessage, PyodideResponse } from "@/python/pyodideWorker";
-import { 
-  AtomicLevelData, 
-  splitLevelData, 
-  combineLevelData, 
-  isAtomicDataComplete 
+import {
+  AtomicLevelData,
+  splitLevelData,
+  combineLevelData,
+  isAtomicDataComplete,
 } from "../data/utils/levelDataUtils";
 
 export type DataHistory = {
@@ -33,7 +33,7 @@ export type DataHistory = {
 
 export function IntroPrompt({ pyodideWorker }: { pyodideWorker: Worker }) {
   const globals = useAtomValue(Globals);
-  
+
   // Atomic data types instead of monolithic data
   const [headerData, setHeaderData] = useImmer<HeaderData | null>(null);
   const [itemData, setItemData] = useImmer<ItemData | null>(null);
@@ -41,7 +41,7 @@ export function IntroPrompt({ pyodideWorker }: { pyodideWorker: Worker }) {
   const [fenceData, setFenceData] = useImmer<FenceData | null>(null);
   const [splineData, setSplineData] = useImmer<SplineData | null>(null);
   const [terrainData, setTerrainData] = useImmer<TerrainData | null>(null);
-  
+
   //History of previous states for undo/redo purposes
   const [dataHistory, setDataHistory] = useImmer<DataHistory>({
     items: [],
@@ -80,47 +80,65 @@ export function IntroPrompt({ pyodideWorker }: { pyodideWorker: Worker }) {
   };
 
   // Wrapper functions to handle non-null assertions for EditorView
-  const setHeaderDataNonNull: Updater<HeaderData> = useCallback((updater) => {
-    setHeaderData((current) => {
-      if (!current) return current;
-      return typeof updater === 'function' ? updater(current) : updater;
-    });
-  }, [setHeaderData]);
+  const setHeaderDataNonNull: Updater<HeaderData> = useCallback(
+    (updater) => {
+      setHeaderData((current) => {
+        if (!current) return current;
+        return typeof updater === "function" ? updater(current) : updater;
+      });
+    },
+    [setHeaderData],
+  );
 
-  const setItemDataNonNull: Updater<ItemData> = useCallback((updater) => {
-    setItemData((current) => {
-      if (!current) return current;
-      return typeof updater === 'function' ? updater(current) : updater;
-    });
-  }, [setItemData]);
+  const setItemDataNonNull: Updater<ItemData> = useCallback(
+    (updater) => {
+      setItemData((current) => {
+        if (!current) return current;
+        return typeof updater === "function" ? updater(current) : updater;
+      });
+    },
+    [setItemData],
+  );
 
-  const setLiquidDataNonNull: Updater<LiquidData> = useCallback((updater) => {
-    setLiquidData((current) => {
-      if (!current) return current;
-      return typeof updater === 'function' ? updater(current) : updater;
-    });
-  }, [setLiquidData]);
+  const setLiquidDataNonNull: Updater<LiquidData> = useCallback(
+    (updater) => {
+      setLiquidData((current) => {
+        if (!current) return current;
+        return typeof updater === "function" ? updater(current) : updater;
+      });
+    },
+    [setLiquidData],
+  );
 
-  const setFenceDataNonNull: Updater<FenceData> = useCallback((updater) => {
-    setFenceData((current) => {
-      if (!current) return current;
-      return typeof updater === 'function' ? updater(current) : updater;
-    });
-  }, [setFenceData]);
+  const setFenceDataNonNull: Updater<FenceData> = useCallback(
+    (updater) => {
+      setFenceData((current) => {
+        if (!current) return current;
+        return typeof updater === "function" ? updater(current) : updater;
+      });
+    },
+    [setFenceData],
+  );
 
-  const setSplineDataNonNull: Updater<SplineData> = useCallback((updater) => {
-    setSplineData((current) => {
-      if (!current) return current;
-      return typeof updater === 'function' ? updater(current) : updater;
-    });
-  }, [setSplineData]);
+  const setSplineDataNonNull: Updater<SplineData> = useCallback(
+    (updater) => {
+      setSplineData((current) => {
+        if (!current) return current;
+        return typeof updater === "function" ? updater(current) : updater;
+      });
+    },
+    [setSplineData],
+  );
 
-  const setTerrainDataNonNull: Updater<TerrainData> = useCallback((updater) => {
-    setTerrainData((current) => {
-      if (!current) return current;
-      return typeof updater === 'function' ? updater(current) : updater;
-    });
-  }, [setTerrainData]);
+  const setTerrainDataNonNull: Updater<TerrainData> = useCallback(
+    (updater) => {
+      setTerrainData((current) => {
+        if (!current) return current;
+        return typeof updater === "function" ? updater(current) : updater;
+      });
+    },
+    [setTerrainData],
+  );
 
   const { toast } = useToast();
 
@@ -128,7 +146,15 @@ export function IntroPrompt({ pyodideWorker }: { pyodideWorker: Worker }) {
     if (!processed) return;
     saveMap();
     setProcessed(false);
-  }, [processed, headerData, itemData, liquidData, fenceData, splineData, terrainData]);
+  }, [
+    processed,
+    headerData,
+    itemData,
+    liquidData,
+    fenceData,
+    splineData,
+    terrainData,
+  ]);
 
   //Update History
   useEffect(() => {
@@ -184,10 +210,7 @@ export function IntroPrompt({ pyodideWorker }: { pyodideWorker: Worker }) {
   async function saveMap() {
     if (!mapFile || !mapImagesFile) return;
 
-    toast({
-      title: "Saving Map",
-      description: "Processing map data",
-    });
+    toast.loading("Processing map data...");
 
     // Combine atomic data for file I/O
     const combinedData = combineLevelData(getCurrentAtomicData());
@@ -231,10 +254,7 @@ export function IntroPrompt({ pyodideWorker }: { pyodideWorker: Worker }) {
     //Download Images
     if (!mapImages) return;
 
-    toast({
-      title: "Saving Map",
-      description: "Compressing textures",
-    });
+    toast.loading("Compressing textures...");
 
     //Webworker promise
     const compressTextures: Promise<DataView[]> = new Promise((res, err) => {
@@ -319,9 +339,7 @@ export function IntroPrompt({ pyodideWorker }: { pyodideWorker: Worker }) {
     downloadLink.setAttribute("download", mapImagesFile.name);
     downloadLink.click();
 
-    toast({
-      title: "Map Downloaded!",
-    });
+    toast.success("Map Downloaded!");
   }
 
   if (!mapFile || !mapImages)
@@ -354,15 +372,15 @@ export function IntroPrompt({ pyodideWorker }: { pyodideWorker: Worker }) {
           onClick={() => {
             const combinedData = combineLevelData(getCurrentAtomicData());
             if (combinedData) {
-              ottoPreprocessor(
-                (updater) => {
-                  // Apply the update to a combined data structure
-                  const updated = typeof updater === 'function' ? updater(combinedData) ?? combinedData : updater;
-                  // Split back into atomic data
-                  setAllAtomicData(splitLevelData(updated));
-                },
-                globals
-              );
+              ottoPreprocessor((updater) => {
+                // Apply the update to a combined data structure
+                const updated =
+                  typeof updater === "function"
+                    ? updater(combinedData) ?? combinedData
+                    : updater;
+                // Split back into atomic data
+                setAllAtomicData(splitLevelData(updated));
+              }, globals);
             }
             setBlockHistoryUpdate(true);
             setProcessed(true); //Trigger useEffect for downloading

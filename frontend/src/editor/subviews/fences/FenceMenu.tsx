@@ -13,6 +13,7 @@ import {
 import { Game, Globals } from "@/data/globals/globals";
 import { getFenceName } from "@/data/fences/getFenceNames";
 import { getFenceTypes } from "@/data/fences/getFenceTypes";
+import { getFenceImagePath } from "@/data/fences/getFenceImagePath";
 //import { SelectContent, SelectTrigger } from "@radix-ui/react-select";
 
 const NUB_KEY_BASE = 1000;
@@ -30,7 +31,9 @@ export function FenceMenu({
   if (globals.GAME_TYPE === Game.NANOSAUR) return <></>; //No fences in this level
 
   const fenceDataObj =
-    selectedFence !== undefined ? fenceData.Fenc[1000].obj[selectedFence] : null;
+    selectedFence !== undefined
+      ? fenceData.Fenc[1000].obj[selectedFence]
+      : null;
 
   const fenceValues = getFenceTypes(globals) // Object.keys(FenceType)
     .map((key) => parseInt(key))
@@ -85,15 +88,9 @@ export function FenceMenu({
           {fenceDataObj !== null && (
             <>
               <img
-                src={
-                  /* TODO: Previews for other games */
-                  globals.GAME_TYPE === Game.OTTO_MATIC
-                    ? `assets/ottoMatic/fences/fence${String(
-                        fenceDataObj.fenceType,
-                      ).padStart(3, "0")}.png`
-                    : ""
-                }
+                src={getFenceImagePath(globals, fenceData.fenceType)}
                 className="max-h-56 mx-auto"
+                alt={`Fence ${fenceData.fenceType}`}
               />
               <Select
                 value={getFenceName(globals, fenceDataObj.fenceType)}
@@ -101,7 +98,8 @@ export function FenceMenu({
                   const newFenceType = parseInt(e);
                   setFenceData((fenceData) => {
                     if (selectedFence === undefined) return;
-                    fenceData.Fenc[1000].obj[selectedFence].fenceType = newFenceType;
+                    fenceData.Fenc[1000].obj[selectedFence].fenceType =
+                      newFenceType;
                   });
                 }}
               >
@@ -155,10 +153,12 @@ export function FenceMenu({
 
                   //Adds new nub close to the last
                   fenceData.FnNb[selectedFence + NUB_KEY_BASE].obj.push([
-                    fenceData.FnNb[selectedFence + NUB_KEY_BASE].obj[lastIdx][0] +
-                      25,
-                    fenceData.FnNb[selectedFence + NUB_KEY_BASE].obj[lastIdx][1] +
-                      25,
+                    fenceData.FnNb[selectedFence + NUB_KEY_BASE].obj[
+                      lastIdx
+                    ][0] + 25,
+                    fenceData.FnNb[selectedFence + NUB_KEY_BASE].obj[
+                      lastIdx
+                    ][1] + 25,
                   ]);
                 });
               }}
