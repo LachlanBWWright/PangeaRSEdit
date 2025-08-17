@@ -79,7 +79,7 @@ export function IntroPrompt({ pyodideWorker }: { pyodideWorker: Worker }) {
     setTerrainData(atomicData.terrainData);
   };
 
-  // Wrapper functions to handle non-null assertions for EditorView
+  // Wrapper for header which EditorView expects non-null updates for
   const setHeaderDataNonNull: Updater<HeaderData> = useCallback(
     (updater) => {
       setHeaderData((current) => {
@@ -88,46 +88,6 @@ export function IntroPrompt({ pyodideWorker }: { pyodideWorker: Worker }) {
       });
     },
     [setHeaderData],
-  );
-
-  const setItemDataNonNull: Updater<ItemData> = useCallback(
-    (updater) => {
-      setItemData((current) => {
-        if (!current) return current;
-        return typeof updater === "function" ? updater(current) : updater;
-      });
-    },
-    [setItemData],
-  );
-
-  const setLiquidDataNonNull: Updater<LiquidData> = useCallback(
-    (updater) => {
-      setLiquidData((current) => {
-        if (!current) return current;
-        return typeof updater === "function" ? updater(current) : updater;
-      });
-    },
-    [setLiquidData],
-  );
-
-  const setFenceDataNonNull: Updater<FenceData> = useCallback(
-    (updater) => {
-      setFenceData((current) => {
-        if (!current) return current;
-        return typeof updater === "function" ? updater(current) : updater;
-      });
-    },
-    [setFenceData],
-  );
-
-  const setSplineDataNonNull: Updater<SplineData> = useCallback(
-    (updater) => {
-      setSplineData((current) => {
-        if (!current) return current;
-        return typeof updater === "function" ? updater(current) : updater;
-      });
-    },
-    [setSplineData],
   );
 
   const setTerrainDataNonNull: Updater<TerrainData> = useCallback(
@@ -208,7 +168,7 @@ export function IntroPrompt({ pyodideWorker }: { pyodideWorker: Worker }) {
   async function saveMap() {
     if (!mapFile || !mapImagesFile) return;
 
-    toast.loading("Processing map data... todo");
+    toast.loading("Processing map data...");
 
     // Combine atomic data for file I/O
     const combinedData = combineLevelData(getCurrentAtomicData());
@@ -391,18 +351,19 @@ export function IntroPrompt({ pyodideWorker }: { pyodideWorker: Worker }) {
         </Button>
       </div>
       <hr />
-      {isAtomicDataComplete(getCurrentAtomicData()) && mapImages ? (
+      {/* Render editor when we have images; allow some atomic pieces to be null. */}
+      {mapImages ? (
         <EditorView
           headerData={headerData!}
           setHeaderData={setHeaderDataNonNull}
-          itemData={itemData!}
-          setItemData={setItemDataNonNull}
-          liquidData={liquidData!}
-          setLiquidData={setLiquidDataNonNull}
-          fenceData={fenceData!}
-          setFenceData={setFenceDataNonNull}
-          splineData={splineData!}
-          setSplineData={setSplineDataNonNull}
+          itemData={itemData}
+          setItemData={setItemData}
+          liquidData={liquidData}
+          setLiquidData={setLiquidData}
+          fenceData={fenceData}
+          setFenceData={setFenceData}
+          splineData={splineData}
+          setSplineData={setSplineData}
           terrainData={terrainData!}
           setTerrainData={setTerrainDataNonNull}
           mapImages={mapImages}

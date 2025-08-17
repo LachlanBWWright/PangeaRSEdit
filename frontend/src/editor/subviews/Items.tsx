@@ -1,4 +1,4 @@
-import { ItemData, HeaderData } from "../../python/structSpecs/ottoMaticLevelData";
+import { ItemData } from "../../python/structSpecs/ottoMaticLevelData";
 import { Layer, Rect } from "react-konva";
 import { Updater } from "use-immer";
 import { Item } from "./items/Item";
@@ -9,23 +9,24 @@ export const Items = memo(
   ({
     itemData,
     setItemData,
-    headerData,
-    setHeaderData,
   }: {
     itemData: ItemData;
     setItemData: Updater<ItemData>;
-    headerData: HeaderData;
-    setHeaderData: Updater<HeaderData>;
   }) => {
     const items = selectItems({ Itms: itemData.Itms });
-    
+
     if (items.length === 0) return <></>;
 
     return (
       <Layer>
         <Rect />
         {items.map((_, itemIdx) => (
-          <Item key={itemIdx} itemData={itemData} setItemData={setItemData} headerData={headerData} setHeaderData={setHeaderData} itemIdx={itemIdx} />
+          <Item
+            key={itemIdx}
+            itemData={itemData}
+            setItemData={setItemData}
+            itemIdx={itemIdx}
+          />
         ))}
       </Layer>
     );

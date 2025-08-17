@@ -1,5 +1,5 @@
 import { Updater } from "use-immer";
-import { ItemData, HeaderData } from "../../../python/structSpecs/ottoMaticLevelData";
+import { ItemData } from "../../../python/structSpecs/ottoMaticLevelData";
 import { Label, Rect, Tag, Text } from "react-konva";
 import type Konva from "konva";
 import { SelectedItem } from "../../../data/items/itemAtoms";
@@ -15,14 +15,12 @@ const ITEM_BOX_OFFSET = ITEM_BOX_SIZE / 2;
 export const Item = memo(function Item({
   itemData,
   setItemData,
-  headerData,
-  setHeaderData,
+
   itemIdx,
 }: {
   itemData: ItemData;
   setItemData: Updater<ItemData>;
-  headerData: HeaderData;
-  setHeaderData: Updater<HeaderData>;
+
   itemIdx: number;
 }) {
   const setSelectedItem = useSetAtom(SelectedItem);
@@ -45,7 +43,7 @@ export const Item = memo(function Item({
     },
     [itemIdx, setItemData],
   );
-  
+
   if (item === null || item === undefined) return null;
 
   const itemX = item.x - ITEM_BOX_OFFSET;

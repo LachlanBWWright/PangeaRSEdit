@@ -1,5 +1,7 @@
-import { ottoMaticLevel } from "@/python/structSpecs/ottoMaticInterface";
-import { HeaderData } from "@/python/structSpecs/ottoMaticLevelData";
+import {
+  HeaderData,
+  TerrainData,
+} from "@/python/structSpecs/ottoMaticLevelData";
 import { useRef, useMemo } from "react";
 import { CanvasTexture, DoubleSide, Mesh, PlaneGeometry } from "three";
 import { useAtomValue } from "jotai";
@@ -9,7 +11,7 @@ import { Globals, GlobalsInterface } from "@/data/globals/globals";
 export function combineMapImages(
   mapImages: HTMLCanvasElement[],
   headerData: HeaderData,
-  otherData: Partial<ottoMaticLevel>,
+  terrainData: TerrainData,
   globals: GlobalsInterface,
 ): HTMLCanvasElement {
   if (mapImages.length === 0) {
@@ -17,7 +19,7 @@ export function combineMapImages(
   }
 
   const header = headerData.Hedr?.[1000]?.obj;
-  if (!header || !otherData.STgd?.[1000]?.obj) {
+  if (!header || !terrainData.STgd?.[1000]?.obj) {
     throw new Error("Missing header or supertile data");
   }
 
@@ -42,7 +44,8 @@ export function combineMapImages(
 
   for (let i = 0; i < supertilesWide; i++) {
     for (let j = 0; j < supertilesHigh; j++) {
-      const tileId = otherData.STgd[1000].obj[i + j * supertilesWide].superTileId;
+      const tileId =
+        terrainData.STgd[1000].obj[i + j * supertilesWide].superTileId;
       const tileImg = mapImages[tileId];
       if (tileImg) {
         ctx.drawImage(
@@ -59,21 +62,21 @@ export function combineMapImages(
 
 export function TerrainGeometry({
   headerData,
-  otherData,
+  terrainData,
   mapImages,
 }: {
   headerData: HeaderData;
-  otherData: Partial<ottoMaticLevel>;
+  terrainData: TerrainData;
   mapImages: HTMLCanvasElement[];
 }) {
   const globals = useAtomValue(Globals);
   const combinedImg = useMemo(
-    () => combineMapImages(mapImages, headerData, otherData, globals),
-    [mapImages, headerData, otherData, globals],
+    () => combineMapImages(mapImages, headerData, terrainData, globals),
+    [mapImages, headerData, terrainData, globals],
   );
   const header = headerData.Hedr?.[1000]?.obj;
   if (!header) return null;
-  
+
   const numWide = header.mapWidth;
   const numHigh = header.mapHeight;
   const meshRef = useRef<Mesh>(null);
@@ -82,8 +85,8 @@ export function TerrainGeometry({
 
   // Build geometry with explicit Y from YCrd
   const geometry = useMemo(() => {
-    if (!otherData.YCrd?.[1000]?.obj) return null;
-    
+    if (!terrainData.YCrd?.[1000]?.obj) return null;
+
     // PlaneGeometry: width, height, widthSegments, heightSegments
     const geom = new PlaneGeometry(
       numWide * globals.TILE_INGAME_SIZE,
@@ -92,7 +95,7 @@ export function TerrainGeometry({
       numHigh,
     );
 
-    const ycrd = otherData.YCrd[1000].obj;
+    const ycrd = terrainData.YCrd[1000].obj;
     for (let i = 0; i < geom.attributes.position.count; i++) {
       // TODO: Change this to use Y and update the rotation of the plane?
       geom.attributes.position.setZ(i, ycrd[i] * yScale);
@@ -100,7 +103,7 @@ export function TerrainGeometry({
     geom.computeVertexNormals();
     geom.attributes.position.needsUpdate = true;
     return geom;
-  }, [otherData.YCrd, numWide, numHigh, yScale]);
+  }, [terrainData.YCrd, numWide, numHigh, yScale]);
 
   const combinedTexture = useMemo(
     () => new CanvasTexture(combinedImg),

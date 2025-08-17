@@ -1,9 +1,10 @@
 import React from "react";
+import { ottoHeader } from "@/python/structSpecs/ottoMaticInterface";
 import {
-  ottoHeader,
-  ottoMaticLevel,
-} from "@/python/structSpecs/ottoMaticInterface";
-import { FenceData, HeaderData } from "@/python/structSpecs/ottoMaticLevelData";
+  FenceData,
+  HeaderData,
+  TerrainData,
+} from "@/python/structSpecs/ottoMaticLevelData";
 import { useAtomValue } from "jotai";
 import { Globals, GlobalsInterface } from "@/data/globals/globals";
 import { getFenceColor } from "@/data/fences/getFenceColor";
@@ -11,7 +12,7 @@ import { getFenceColor } from "@/data/fences/getFenceColor";
 interface FenceGeometryProps {
   fenceData: FenceData;
   headerData: HeaderData;
-  otherData: Partial<ottoMaticLevel>;
+  terrainData: TerrainData;
 }
 
 const FENCE_POST_HEIGHT = 300; // Example height, adjust as needed
@@ -33,15 +34,15 @@ export const getHeightAtTile = (
   xTile: number,
   yTile: number,
   headerData: HeaderData,
-  otherData: Partial<ottoMaticLevel>,
+  terrainData: TerrainData,
   globals: GlobalsInterface,
 ) => {
   const header = headerData.Hedr?.[1000]?.obj;
-  if (!header || !otherData.YCrd?.[1000]?.obj) return 0;
-  
+  if (!header || !terrainData.YCrd?.[1000]?.obj) return 0;
+
   // Call flattenCoords without globals, as it's no longer needed there
   const idx = flattenCoords(xTile, yTile, header);
-  const yCoords = otherData.YCrd[1000].obj;
+  const yCoords = terrainData.YCrd[1000].obj;
   const mapTileSize = header.tileSize;
   const yScale = globals.TILE_INGAME_SIZE / mapTileSize;
   if (idx < 0 || idx >= yCoords.length) {
@@ -58,7 +59,7 @@ export const getTerrainHeightAtPoint = (
   x: number, // world x
   z: number, // world z
   headerData: HeaderData,
-  otherData: Partial<ottoMaticLevel>,
+  terrainData: TerrainData,
   globals: GlobalsInterface,
 ) => {
   // Scale world coordinates to tile coordinates (where 1 unit = 1 tile)
@@ -72,10 +73,10 @@ export const getTerrainHeightAtPoint = (
   const z2 = Math.ceil(z_tile_units);
 
   // Get heights at the four corner points
-  const h11 = getHeightAtTile(x1, z1, headerData, otherData, globals);
-  const h21 = getHeightAtTile(x2, z1, headerData, otherData, globals);
-  const h12 = getHeightAtTile(x1, z2, headerData, otherData, globals);
-  const h22 = getHeightAtTile(x2, z2, headerData, otherData, globals);
+  const h11 = getHeightAtTile(x1, z1, headerData, terrainData, globals);
+  const h21 = getHeightAtTile(x2, z1, headerData, terrainData, globals);
+  const h12 = getHeightAtTile(x1, z2, headerData, terrainData, globals);
+  const h22 = getHeightAtTile(x2, z2, headerData, terrainData, globals);
 
   if (isNaN(h11) || isNaN(h21) || isNaN(h12) || isNaN(h22)) {
     console.warn("NaN height value(s) from getHeightAtTile:", {
@@ -135,10 +136,10 @@ export const getTerrainHeightAtPoint = (
   return interpolatedHeight;
 };
 
-export const FenceGeometry: React.FC<FenceGeometryProps> = ({ 
-  fenceData, 
-  headerData, 
-  otherData 
+export const FenceGeometry: React.FC<FenceGeometryProps> = ({
+  fenceData,
+  headerData,
+  terrainData,
 }) => {
   const globals = useAtomValue(Globals);
 
@@ -147,7 +148,7 @@ export const FenceGeometry: React.FC<FenceGeometryProps> = ({
     !fenceData.Fenc[1000] ||
     !fenceData.FnNb ||
     !headerData.Hedr?.[1000]?.obj ||
-    !otherData.YCrd?.[1000]?.obj
+    !terrainData.YCrd?.[1000]?.obj
   ) {
     return null;
   }
@@ -190,14 +191,14 @@ export const FenceGeometry: React.FC<FenceGeometryProps> = ({
             nubA_raw[0],
             nubA_raw[1],
             headerData,
-            otherData,
+            terrainData,
             globals,
           );
           const terrainY2 = getTerrainHeightAtPoint(
             nubB_raw[0],
             nubB_raw[1],
             headerData,
-            otherData,
+            terrainData,
             globals,
           );
 

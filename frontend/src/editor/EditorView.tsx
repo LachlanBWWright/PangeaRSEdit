@@ -54,14 +54,14 @@ export function EditorView({
 }: {
   headerData: HeaderData;
   setHeaderData: Updater<HeaderData>;
-  itemData: ItemData;
-  setItemData: Updater<ItemData>;
-  liquidData: LiquidData;
-  setLiquidData: Updater<LiquidData>;
-  fenceData: FenceData;
-  setFenceData: Updater<FenceData>;
-  splineData: SplineData;
-  setSplineData: Updater<SplineData>;
+  itemData: ItemData | null;
+  setItemData: Updater<ItemData | null>;
+  liquidData: LiquidData | null;
+  setLiquidData: Updater<LiquidData | null>;
+  fenceData: FenceData | null;
+  setFenceData: Updater<FenceData | null>;
+  splineData: SplineData | null;
+  setSplineData: Updater<SplineData | null>;
   terrainData: TerrainData;
   setTerrainData: Updater<TerrainData>;
   mapImages: HTMLCanvasElement[];
@@ -70,7 +70,14 @@ export function EditorView({
   redoData: () => void;
   dataHistory: DataHistory;
 }) {
-  console.log(headerData, itemData, liquidData, fenceData, splineData, terrainData);
+  console.log(
+    headerData,
+    itemData,
+    liquidData,
+    fenceData,
+    splineData,
+    terrainData,
+  );
   const canvasViewMode = useAtomValue(CanvasViewMode);
   const [view, setView] = useState<View>(View.fences);
   const [stage, setStage] = useImmer({
@@ -115,6 +122,47 @@ export function EditorView({
     setStage((stage) => {
       stage.scale = Math.min(5, stage.scale * 0.9);
     });
+
+  // Provide non-null Updater wrappers for menus that expect non-null data
+  const setItemDataNotNull: Updater<ItemData> = useCallback(
+    (updater) => {
+      setItemData((current) => {
+        if (!current) return current;
+        return typeof updater === "function" ? updater(current) : updater;
+      });
+    },
+    [setItemData],
+  );
+
+  const setLiquidDataNotNull: Updater<LiquidData> = useCallback(
+    (updater) => {
+      setLiquidData((current) => {
+        if (!current) return current;
+        return typeof updater === "function" ? updater(current) : updater;
+      });
+    },
+    [setLiquidData],
+  );
+
+  const setFenceDataNotNull: Updater<FenceData> = useCallback(
+    (updater) => {
+      setFenceData((current) => {
+        if (!current) return current;
+        return typeof updater === "function" ? updater(current) : updater;
+      });
+    },
+    [setFenceData],
+  );
+
+  const setSplineDataNotNull: Updater<SplineData> = useCallback(
+    (updater) => {
+      setSplineData((current) => {
+        if (!current) return current;
+        return typeof updater === "function" ? updater(current) : updater;
+      });
+    },
+    [setSplineData],
+  );
 
   return (
     <div className="flex flex-col flex-1 w-full gap-2 min-h-0">
@@ -182,11 +230,34 @@ export function EditorView({
       </div>
       <Separator />
       <div>
-        {view === View.fences && <FenceMenu fenceData={fenceData} setFenceData={setFenceData} />}
-        {view === View.water && <WaterMenu liquidData={liquidData} setLiquidData={setLiquidData} />}
-        {view === View.items && <ItemMenu itemData={itemData} setItemData={setItemData} headerData={headerData} setHeaderData={setHeaderData} />}
-        {view === View.splines && <SplineMenu splineData={splineData} setSplineData={setSplineData} headerData={headerData} setHeaderData={setHeaderData} />}
-        {view === View.tiles && <TilesMenu headerData={headerData} setHeaderData={setHeaderData} />}
+        {view === View.fences && fenceData && (
+          <FenceMenu fenceData={fenceData} setFenceData={setFenceDataNotNull} />
+        )}
+        {view === View.water && liquidData && (
+          <WaterMenu
+            liquidData={liquidData}
+            setLiquidData={setLiquidDataNotNull}
+          />
+        )}
+        {view === View.items && itemData && (
+          <ItemMenu
+            itemData={itemData}
+            setItemData={setItemDataNotNull}
+            headerData={headerData}
+            setHeaderData={setHeaderData}
+          />
+        )}
+        {view === View.splines && splineData && (
+          <SplineMenu
+            splineData={splineData}
+            setSplineData={setSplineDataNotNull}
+            headerData={headerData}
+            setHeaderData={setHeaderData}
+          />
+        )}
+        {view === View.tiles && (
+          <TilesMenu headerData={headerData} setHeaderData={setHeaderData} />
+        )}
         {view === View.supertiles && (
           <SupertileMenu
             headerData={headerData}
@@ -200,17 +271,16 @@ export function EditorView({
       </div>
       <div className="w-full min-h-0 flex-1 border-2 border-black overflow-clip">
         {canvasViewMode === CanvasView.THREE_D && view === View.tiles ? (
-          <ThreeView 
+          <ThreeView
             headerData={headerData}
             fenceData={fenceData}
             liquidData={liquidData}
-            terrainData={terrainData} 
-            mapImages={mapImages} 
+            terrainData={terrainData}
+            mapImages={mapImages}
           />
         ) : (
           <KonvaView
             headerData={headerData}
-            setHeaderData={setHeaderData}
             itemData={itemData}
             setItemData={setItemData}
             liquidData={liquidData}

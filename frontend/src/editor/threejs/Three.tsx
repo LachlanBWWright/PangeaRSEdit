@@ -5,7 +5,12 @@ import { FenceGeometry } from "./FenceGeometry"; // Import the new FenceGeometry
 import { LiquidGeometry } from "./LiquidGeometry"; // Import the new LiquidGeometry component
 import { useAtomValue } from "jotai";
 import { Globals } from "@/data/globals/globals";
-import { HeaderData, FenceData, LiquidData, TerrainData } from "@/python/structSpecs/ottoMaticLevelData";
+import {
+  HeaderData,
+  FenceData,
+  LiquidData,
+  TerrainData,
+} from "@/python/structSpecs/ottoMaticLevelData";
 
 export function ThreeView({
   headerData,
@@ -15,8 +20,8 @@ export function ThreeView({
   mapImages,
 }: {
   headerData: HeaderData;
-  fenceData: FenceData;
-  liquidData: LiquidData;
+  fenceData: FenceData | null;
+  liquidData: LiquidData | null;
   terrainData: TerrainData;
   mapImages: HTMLCanvasElement[];
 }) {
@@ -45,9 +50,25 @@ export function ThreeView({
       }}
     >
       <TrackballControls />
-      <TerrainGeometry headerData={headerData} terrainData={terrainData} mapImages={mapImages} />
-      <FenceGeometry fenceData={fenceData} headerData={headerData} terrainData={terrainData} />
-      <LiquidGeometry liquidData={liquidData} headerData={headerData} terrainData={terrainData} />
+      <TerrainGeometry
+        headerData={headerData}
+        terrainData={terrainData}
+        mapImages={mapImages}
+      />
+      {fenceData && (
+        <FenceGeometry
+          fenceData={fenceData}
+          headerData={headerData}
+          terrainData={terrainData}
+        />
+      )}
+      {liquidData && (
+        <LiquidGeometry
+          liquidData={liquidData}
+          headerData={headerData}
+          terrainData={terrainData}
+        />
+      )}
       {/*  <TestGeometry header={header} globals={globals} /> */}
     </Canvas>
   );

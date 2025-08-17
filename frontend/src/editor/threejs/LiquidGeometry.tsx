@@ -1,8 +1,11 @@
 import React from "react";
 import { useAtomValue } from "jotai";
 import { Globals } from "@/data/globals/globals";
-import { ottoMaticLevel } from "@/python/structSpecs/ottoMaticInterface";
-import { LiquidData, HeaderData } from "@/python/structSpecs/ottoMaticLevelData";
+import {
+  LiquidData,
+  HeaderData,
+  TerrainData,
+} from "@/python/structSpecs/ottoMaticLevelData";
 import { DoubleSide, Shape, Vector2 } from "three";
 import { WaterBodyType } from "@/data/water/ottoWaterBodyType";
 import { getTerrainHeightAtPoint } from "./FenceGeometry";
@@ -10,7 +13,7 @@ import { getTerrainHeightAtPoint } from "./FenceGeometry";
 interface LiquidGeometryProps {
   liquidData: LiquidData;
   headerData: HeaderData;
-  otherData: Partial<ottoMaticLevel>;
+  terrainData: TerrainData;
   // Potentially add a prop for liquid type if colors/properties need to vary
   // liquidType?: 'water' | 'lava' | 'acid';
 }
@@ -38,10 +41,10 @@ const getLiquidProperties = (type: WaterBodyType) => {
   }
 };
 
-export const LiquidGeometry: React.FC<LiquidGeometryProps> = ({ 
-  liquidData, 
-  headerData, 
-  otherData 
+export const LiquidGeometry: React.FC<LiquidGeometryProps> = ({
+  liquidData,
+  headerData,
+  terrainData,
 }) => {
   const globals = useAtomValue(Globals);
 
@@ -80,7 +83,7 @@ export const LiquidGeometry: React.FC<LiquidGeometryProps> = ({
             patch.hotSpotX,
             patch.hotSpotZ,
             headerData,
-            otherData,
+            terrainData,
             globals,
           ) + 100; //patch.height;
 
