@@ -1,5 +1,5 @@
 import { Updater } from "use-immer";
-import { ottoMaticLevel } from "../../../python/structSpecs/ottoMaticInterface";
+import { FenceData } from "../../../python/structSpecs/ottoMaticLevelData";
 import { Line } from "react-konva";
 import { FenceNub } from "./FenceNub";
 import { SelectedFence } from "../../../data/fences/fenceAtoms";
@@ -10,12 +10,12 @@ import { getFenceColor } from "../../../data/fences/getFenceColor";
 
 export const Fence = memo(
   ({
-    data,
-    setData,
+    fenceData,
+    setFenceData,
     fenceIdx,
   }: {
-    data: ottoMaticLevel;
-    setData: Updater<ottoMaticLevel>;
+    fenceData: FenceData;
+    setFenceData: Updater<FenceData>;
     fenceIdx: number;
   }) => {
     const [selectedFence, setSelectedFence] = useAtom(SelectedFence);
@@ -25,13 +25,13 @@ export const Fence = memo(
       [number, number][] | null
     >(null);
 
-    const lines = data.FnNb[1000 + fenceIdx].obj.flatMap((nub) => [
+    const lines = fenceData.FnNb[1000 + fenceIdx].obj.flatMap((nub) => [
       nub[0],
       nub[1],
     ]);
 
     // Get fence type from fence data
-    const fenceType = data.Fenc[1000].obj[fenceIdx]?.fenceType || 0;
+    const fenceType = fenceData.Fenc[1000].obj[fenceIdx]?.fenceType || 0;
 
     return (
       <>
@@ -48,7 +48,10 @@ export const Fence = memo(
           onDragStart={() => {
             // Store the initial positions of the nubs when dragging starts
             setInitialDragState(
-              data.FnNb[1000 + fenceIdx].obj.map((nub) => [nub[0], nub[1]]),
+              fenceData.FnNb[1000 + fenceIdx].obj.map((nub) => [
+                nub[0],
+                nub[1],
+              ]),
             );
             setSelectedFence(fenceIdx); // Select the fence on drag start
           }}
@@ -58,7 +61,7 @@ export const Fence = memo(
             const dragDx = e.target.x();
             const dragDz = e.target.y();
 
-            setData((draft) => {
+            setFenceData((draft) => {
               const currentNubs = draft.FnNb[1000 + fenceIdx].obj;
               for (let i = 0; i < currentNubs.length; i++) {
                 currentNubs[i][0] = initialDragState[i][0] + dragDx;
@@ -70,15 +73,15 @@ export const Fence = memo(
             setInitialDragState(null); // Clear initial drag state
           }}
         />
-        {data.FnNb[1000 + fenceIdx].obj.map((nub, nubIdx) => (
+        {fenceData.FnNb[1000 + fenceIdx].obj.map((nub, nubIdx) => (
           <FenceNub
             key={nubIdx}
             idx={fenceIdx}
             nub={nub}
             fenceType={fenceType}
             setNub={(newNub: [number, number]) => {
-              setData((data) => {
-                data.FnNb[1000 + fenceIdx].obj[nubIdx] = newNub;
+              setFenceData((fenceData) => {
+                fenceData.FnNb[1000 + fenceIdx].obj[nubIdx] = newNub;
               });
             }}
           />

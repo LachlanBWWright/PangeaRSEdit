@@ -3,10 +3,9 @@ import { Layer, Stage, Image } from "react-konva";
 import { SelectedTile } from "../../../data/supertiles/supertileAtoms";
 import { Updater } from "use-immer";
 import {
-  //globals.TILES_PER_SUPERTILE,
-  // globals.SUPERTILE_TEXMAP_SIZE,
-  ottoMaticLevel,
-} from "../../../python/structSpecs/ottoMaticInterface";
+  HeaderData,
+  TerrainData,
+} from "../../../python/structSpecs/ottoMaticLevelData";
 import { FileUpload } from "../../../components/FileUpload";
 import { Globals } from "../../../data/globals/globals";
 import { Button } from "@/components/ui/button";
@@ -36,10 +35,12 @@ const downloadSelectedTile = (
 // Function to download the entire map as an image
 const downloadMapImage = (
   mapImages: HTMLCanvasElement[],
-  data: ottoMaticLevel,
+  headerData: HeaderData,
+  terrainData: TerrainData,
   globals: { SUPERTILE_TEXMAP_SIZE: number; TILES_PER_SUPERTILE: number },
 ) => {
-  const hedr = data.Hedr[1000].obj;
+  const hedr = headerData.Hedr[1000].obj;
+  if (!terrainData.STgd[1000].obj) return;
 
   // Create canvas to hold the complete map
   const canvas = document.createElement("canvas");
@@ -62,7 +63,7 @@ const downloadMapImage = (
       const tileIndex = i * (hedr.mapWidth / globals.TILES_PER_SUPERTILE) + j;
 
       // Get supertile ID
-      const superTileId = data.STgd[1000].obj[tileIndex].superTileId;
+      const superTileId = terrainData.STgd[1000].obj[tileIndex].superTileId;
 
       // Skip empty tiles (ID 0)
       if (superTileId === 0) continue;
@@ -88,18 +89,22 @@ const downloadMapImage = (
 };
 
 export function SupertileMenu({
-  data,
-  setData,
+  headerData,
+  setHeaderData,
+  terrainData,
+  setTerrainData,
   mapImages,
   setMapImages,
 }: {
   mapImages: HTMLCanvasElement[];
   setMapImages: (newCanvases: HTMLCanvasElement[]) => void;
-  data: ottoMaticLevel;
-  setData: Updater<ottoMaticLevel>;
+  headerData: HeaderData;
+  setHeaderData: Updater<HeaderData>;
+  terrainData: TerrainData;
+  setTerrainData: Updater<TerrainData>;
 }) {
   const selectedTile = useAtomValue(SelectedTile);
-  const hedr = data.Hedr[1000].obj;
+  const hedr = headerData.Hedr[1000].obj;
   const globals = useAtomValue(Globals);
 
   // State for image editor
@@ -109,7 +114,7 @@ export function SupertileMenu({
 
   // Handle editing individual tile texture
   const handleEditTileTexture = () => {
-    const tileId = data.STgd[1000].obj[selectedTile].superTileId;
+    const tileId = terrainData.STgd[1000].obj[selectedTile].superTileId;
     if (tileId === 0 || !mapImages[tileId]) {
       toast.error("No texture available for this tile");
       return;
@@ -145,7 +150,7 @@ export function SupertileMenu({
     for (let i = 0; i < hedr.mapHeight / globals.TILES_PER_SUPERTILE; i++) {
       for (let j = 0; j < hedr.mapWidth / globals.TILES_PER_SUPERTILE; j++) {
         const tileIndex = i * (hedr.mapWidth / globals.TILES_PER_SUPERTILE) + j;
-        const superTileId = data.STgd[1000].obj[tileIndex].superTileId;
+        const superTileId = terrainData.STgd[1000].obj[tileIndex].superTileId;
 
         if (superTileId === 0) continue;
 
@@ -170,7 +175,7 @@ export function SupertileMenu({
     editedImageData: ImageData,
   ): Promise<void> => {
     try {
-      const tileId = data.STgd[1000].obj[selectedTile].superTileId;
+      const tileId = terrainData.STgd[1000].obj[selectedTile].superTileId;
 
       // Create a new canvas with the edited data
       const canvas = document.createElement("canvas");
@@ -251,10 +256,12 @@ export function SupertileMenu({
       }
 
       setMapImages(canvasArray);
-      setData((data) => {
+      setTerrainData((data) => {
         for (let i = 0; i < data.STgd[1000].obj.length; i++) {
           data.STgd[1000].obj[i].superTileId = i + 1;
         }
+      });
+      setHeaderData((data) => {
         data.Hedr[1000].obj.numUniqueSupertiles = canvasArray.length;
       });
 
@@ -272,9 +279,12 @@ export function SupertileMenu({
         <p>Replace Selected Tile ({selectedTile})</p>
         <FileUpload
           acceptType="image"
-          disabled={data.STgd[1000].obj[selectedTile].superTileId === 0}
+          disabled={
+            selectedTile >= terrainData.STgd[1000].obj.length ||
+            terrainData.STgd[1000].obj[selectedTile].superTileId === 0
+          }
           handleOnChange={async (e) => {
-            if (!e.target?.files?.[0]) return;
+            if (!e.target?.files?.[0] || !terrainData.STgd[1000].obj) return;
 
             const file = e.target.files[0];
             if (!file) return;
@@ -297,7 +307,7 @@ export function SupertileMenu({
             );
             const newMapImages = [...mapImages];
             newMapImages.splice(
-              data.STgd[1000].obj[selectedTile].superTileId,
+              terrainData.STgd[1000].obj[selectedTile].superTileId,
               1,
               canvas,
             );
@@ -311,7 +321,9 @@ export function SupertileMenu({
             size="sm"
             variant="outline"
             onClick={handleEditTileTexture}
-            disabled={data.STgd[1000].obj[selectedTile].superTileId === 0}
+            disabled={
+              terrainData.STgd[1000].obj[selectedTile].superTileId === 0
+            }
           >
             <Edit className="w-4 h-4 mr-1" />
             Edit
@@ -320,33 +332,34 @@ export function SupertileMenu({
         <Stage width={120} height={120} className="mx-auto">
           <Layer>
             <ImageDisplay
-              image={mapImages[data.STgd[1000].obj[selectedTile].superTileId]}
+              image={
+                mapImages[
+                  terrainData.STgd[1000].obj[selectedTile]?.superTileId || 0
+                ]
+              }
             />
           </Layer>
         </Stage>
         <p>Download Selected Tile</p>
-        <div className="flex gap-2 w-full">
-          <Button
-            className="flex-1"
-            size="sm"
-            onClick={() =>
-              downloadSelectedTile(
-                mapImages,
-                data.STgd[1000].obj[selectedTile].superTileId,
-                selectedTile,
-              )
-            }
-          >
-            Download
-          </Button>
-        </div>
+        <Button
+          size="sm"
+          onClick={() =>
+            downloadSelectedTile(
+              mapImages,
+              terrainData.STgd[1000].obj[selectedTile].superTileId,
+              selectedTile,
+            )
+          }
+        >
+          Download
+        </Button>
       </div>
       <div className="flex flex-col gap-2">
         <p>Upload Image For Whole Map</p>
         <FileUpload
           acceptType="image"
           handleOnChange={async (e) => {
-            if (!e.target?.files?.[0]) return;
+            if (!e.target?.files?.[0] || !hedr) return;
 
             const file = e.target.files[0];
             if (!file) return;
@@ -417,12 +430,16 @@ export function SupertileMenu({
             }
 
             setMapImages(canvasArray);
-            setData((data) => {
+            setTerrainData((data) => {
               for (let i = 0; i < data.STgd[1000].obj.length; i++) {
                 //1 is added to i because of the blank
                 data.STgd[1000].obj[i].superTileId = i + 1;
               }
-              data.Hedr[1000].obj.numUniqueSupertiles = canvasArray.length; //Blanks counted as unique supertile
+            });
+            setHeaderData((data) => {
+              if (data.Hedr?.[1000]?.obj) {
+                data.Hedr[1000].obj.numUniqueSupertiles = canvasArray.length; //Blanks counted as unique supertile
+              }
             });
           }}
         />
@@ -439,23 +456,31 @@ export function SupertileMenu({
         </div>
         <div className="flex-1" />
         <p>Download Image For Whole Map</p>
-        <div className="flex gap-2 w-full">
-          <Button
-            className="flex-1"
-            size="sm"
-            onClick={() => downloadMapImage(mapImages, data, globals)}
-          >
-            Download
-          </Button>
-        </div>
+        <Button
+          size="sm"
+          onClick={() =>
+            downloadMapImage(mapImages, headerData, terrainData, globals)
+          }
+        >
+          Download
+        </Button>
       </div>
       <div className="flex flex-col gap-2">
-        <p>Supertiles Wide: {hedr.mapWidth / globals.TILES_PER_SUPERTILE}</p>
-        <p>Supertiles High: {hedr.mapHeight / globals.TILES_PER_SUPERTILE}</p>
-        <p>Unique Supertiles {hedr.numUniqueSupertiles}</p>
+        <p>
+          Supertiles Wide:{" "}
+          {hedr ? hedr.mapWidth / globals.TILES_PER_SUPERTILE : 0}
+        </p>
+        <p>
+          Supertiles High:{" "}
+          {hedr ? hedr.mapHeight / globals.TILES_PER_SUPERTILE : 0}
+        </p>
+        <p>Unique Supertiles {hedr?.numUniqueSupertiles || 0}</p>
 
         <p>Current Tile: #{selectedTile}</p>
-        <p>Texture ID: {data.STgd[1000].obj[selectedTile].superTileId}</p>
+        <p>
+          Texture ID:{" "}
+          {terrainData.STgd[1000].obj[selectedTile]?.superTileId || 0}
+        </p>
       </div>
       {/* Image Editor for individual tile */}
       {isEditingTile && editingImageUrl && (

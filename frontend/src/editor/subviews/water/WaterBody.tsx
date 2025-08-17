@@ -1,5 +1,5 @@
 import { Updater } from "use-immer";
-import { ottoMaticLevel } from "../../../python/structSpecs/ottoMaticInterface";
+import { LiquidData } from "../../../python/structSpecs/ottoMaticLevelData";
 import { Circle, Line } from "react-konva";
 import { useAtom } from "jotai";
 import {
@@ -10,18 +10,18 @@ import { memo, useState } from "react";
 
 export const WaterBody = memo(
   ({
-    data,
-    setData,
+    liquidData,
+    setLiquidData,
     waterBodyIdx,
   }: {
-    data: ottoMaticLevel;
-    setData: Updater<ottoMaticLevel>;
+    liquidData: LiquidData;
+    setLiquidData: Updater<LiquidData>;
     waterBodyIdx: number;
   }) => {
     const [selectedWaterBody, setSelectedWaterBody] =
       useAtom(SelectedWaterBody);
     const [selectedWaterNub, setSelectedWaterNub] = useAtom(SelectedWaterNub); // Use SelectedWaterNub atom
-    const waterBody = data.Liqd[1000].obj[waterBodyIdx];
+    const waterBody = liquidData.Liqd[1000].obj[waterBodyIdx];
     const [initialDragState, setInitialDragState] = useState<
       [number, number][] | null
     >(null);
@@ -46,10 +46,10 @@ export const WaterBody = memo(
           draggable
           onDragStart={() => {
             setInitialDragState(
-              data.Liqd[1000].obj[waterBodyIdx].nubs
+              liquidData.Liqd[1000].obj[waterBodyIdx].nubs
                 .filter(
                   (_, nubIdx) =>
-                    nubIdx < data.Liqd[1000].obj[waterBodyIdx].numNubs,
+                    nubIdx < liquidData.Liqd[1000].obj[waterBodyIdx].numNubs,
                 )
                 .map((nub) => [nub[0], nub[1]]),
             );
@@ -61,7 +61,7 @@ export const WaterBody = memo(
             const dragDx = e.target.x();
             const dragDz = e.target.y();
 
-            setData((draft) => {
+            setLiquidData((draft) => {
               const currentNubs = draft.Liqd[1000].obj[waterBodyIdx].nubs;
               for (let i = 0; i < initialDragState.length; i++) {
                 if (i < draft.Liqd[1000].obj[waterBodyIdx].numNubs) {
@@ -76,8 +76,8 @@ export const WaterBody = memo(
           }}
         />
         {waterBodyIdx === selectedWaterBody &&
-          data.Liqd[1000].obj[waterBodyIdx].nubs.map((nub, nubIdx) => {
-            if (data.Liqd[1000].obj[waterBodyIdx].numNubs <= nubIdx) return;
+          liquidData.Liqd[1000].obj[waterBodyIdx].nubs.map((nub, nubIdx) => {
+            if (liquidData.Liqd[1000].obj[waterBodyIdx].numNubs <= nubIdx) return;
 
             return (
                 <Circle
@@ -106,10 +106,10 @@ export const WaterBody = memo(
                     setSelectedWaterNub(nubIdx); // Set selected nub on drag start
                   }}
                   onDragEnd={(e) => {
-                    setData((data) => {
-                      data.Liqd[1000].obj[waterBodyIdx].nubs[nubIdx][0] =
+                    setLiquidData((liquidData) => {
+                      liquidData.Liqd[1000].obj[waterBodyIdx].nubs[nubIdx][0] =
                         Math.round(e.target.x());
-                      data.Liqd[1000].obj[waterBodyIdx].nubs[nubIdx][1] =
+                      liquidData.Liqd[1000].obj[waterBodyIdx].nubs[nubIdx][1] =
                         Math.round(e.target.y());
                     });
                   }}
@@ -124,11 +124,11 @@ export const WaterBody = memo(
             fill="orange"
             draggable
             onDragEnd={(e) =>
-              setData((data) => {
-                data.Liqd[1000].obj[waterBodyIdx].hotSpotX = Math.round(
+              setLiquidData((liquidData) => {
+                liquidData.Liqd[1000].obj[waterBodyIdx].hotSpotX = Math.round(
                   e.target.x(),
                 );
-                data.Liqd[1000].obj[waterBodyIdx].hotSpotZ = Math.round(
+                liquidData.Liqd[1000].obj[waterBodyIdx].hotSpotZ = Math.round(
                   e.target.y(),
                 );
               })
