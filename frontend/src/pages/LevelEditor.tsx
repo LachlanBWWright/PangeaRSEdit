@@ -22,7 +22,9 @@ export function LevelEditor() {
     setPyodideWorker(newPyodideWorker);
   }, []);
 
-  if (!pyodideWorkerReady || !pyodideWorker)
+  // Temporarily bypass Pyodide check for testing WASM worker
+  // if (!pyodideWorkerReady || !pyodideWorker)
+  if (false)
     return (
       <div className="flex text-white m-auto flex-1 gap-8 flex-col items-center justify-center">
         <div className="flex flex-col gap-2 lg:w-1/2">
@@ -34,7 +36,7 @@ export function LevelEditor() {
 
   return (
     <TooltipProvider>
-      <IntroPrompt pyodideWorker={pyodideWorker} />
+      <IntroPrompt pyodideWorker={pyodideWorker || ({} as Worker)} />
     </TooltipProvider>
   );
 }

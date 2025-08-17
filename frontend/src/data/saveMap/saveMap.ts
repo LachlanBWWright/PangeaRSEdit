@@ -1,6 +1,5 @@
 import { PyodideMessage, PyodideResponse } from "../../python/pyodideWorker";
-import { LzssMessage, LzssResponse } from "@/utils/lzssWorker";
-import LzssWorker from "../utils/lzssWorker?worker";
+import { lzssWorkerManager, BatchCompressionTask, BatchCompressionResult } from "@/utils/lzssWorkerManager";
 import { ottoMaticLevel } from "../../python/structSpecs/ottoMaticInterface";
 import { Game, type GlobalsInterface } from "../globals/globals";
 
@@ -107,44 +106,48 @@ async function processMapData({
 async function compressMapImages(
   mapImages: HTMLCanvasElement[],
 ): Promise<DataView[]> {
-  return new Promise((res, err) => {
-    const compressedTextures: DataView[] = new Array(mapImages.length);
-    const resolvedTextures = { count: 0 };
-    console.time("compress");
+  console.time("compress");
+  
+  try {
+    // Prepare batch compression tasks
+    const tasks: BatchCompressionTask[] = [];
+    
     for (let i = 0; i < mapImages.length; i++) {
       const canvasCtx = mapImages[i].getContext("2d");
       if (!canvasCtx) {
-        err(new Error("Could not get canvas context"));
-        return;
+        throw new Error("Could not get canvas context");
       }
+      
       const imageData = canvasCtx.getImageData(
         0,
         0,
         mapImages[i].width,
         mapImages[i].height,
       );
-      const lzssWorker = new LzssWorker();
-      lzssWorker.onmessage = (e: MessageEvent<LzssResponse>) => {
-        const data = e.data;
-        if (data.type !== "compressRes") return;
-        compressedTextures[data.id] = new DataView(data.dataBuffer);
-        resolvedTextures.count++;
-        if (resolvedTextures.count === mapImages.length) {
-          console.timeEnd("compress");
-          res(compressedTextures);
-        }
-        lzssWorker.terminate();
-      };
-      lzssWorker.postMessage(
-        {
-          uIntArray: imageData.data,
-          type: "compress",
-          id: i,
-        } satisfies LzssMessage,
-        [imageData.data.buffer],
-      );
+      
+      tasks.push({
+        id: i,
+        uIntArray: imageData.data,
+      });
     }
-  });
+
+    // Use batch compression with the worker manager
+    const results: BatchCompressionResult[] = await lzssWorkerManager.compressBatch(tasks);
+    
+    // Sort results by id to maintain order
+    results.sort((a, b) => a.id - b.id);
+    
+    // Convert results to DataView array
+    const compressedTextures: DataView[] = results.map(result => 
+      new DataView(result.dataBuffer)
+    );
+
+    console.timeEnd("compress");
+    return compressedTextures;
+  } catch (error) {
+    console.error("Batch compression failed:", error);
+    throw error;
+  }
 }
 
 function combineBuffersForDownload(bufferList: DataView[]): ArrayBuffer {

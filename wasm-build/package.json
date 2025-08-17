@@ -1,0 +1,27 @@
+{
+  "name": "lzss-rust",
+  "type": "module",
+  "description": "Rust implementation of LZSS compression algorithm, compatible with TypeScript implementation",
+  "version": "0.1.0",
+  "license": "MIT OR Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/LachlanBWWright/PangeaRSEdit"
+  },
+  "files": [
+    "lzss_rust_bg.wasm",
+    "lzss_rust.js",
+    "lzss_rust.d.ts"
+  ],
+  "main": "lzss_rust.js",
+  "types": "lzss_rust.d.ts",
+  "sideEffects": [
+    "./snippets/*"
+  ],
+  "keywords": [
+    "compression",
+    "lzss",
+    "wasm",
+    "webassembly"
+  ]
+}

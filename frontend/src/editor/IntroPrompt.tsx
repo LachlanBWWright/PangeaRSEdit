@@ -15,8 +15,7 @@ import { ottoPreprocessor } from "../data/processors/ottoPreprocessor";
 import { Globals } from "../data/globals/globals";
 import { useAtom, useAtomValue } from "jotai";
 import { BlockHistoryUpdate } from "../data/globals/history";
-import LzssWorker from "../utils/lzssWorker?worker";
-import { LzssMessage, LzssResponse } from "@/utils/lzssWorker";
+import { lzssWorkerManager, BatchCompressionTask, BatchCompressionResult } from "@/utils/lzssWorkerManager";
 import { toast } from "sonner";
 import { PyodideMessage, PyodideResponse } from "@/python/pyodideWorker";
 import {
@@ -217,55 +216,42 @@ export function IntroPrompt({ pyodideWorker }: { pyodideWorker: Worker }) {
 
     toast.loading("Compressing textures...");
 
-    //Webworker promise
-    const compressTextures: Promise<DataView[]> = new Promise((res, err) => {
-      const compressedTextures: DataView[] = new Array(mapImages.length);
-      const resolvedTextures = { count: 0 };
-      console.time("compress");
+    try {
+      // Prepare batch compression tasks
+      const tasks: BatchCompressionTask[] = [];
+      
       for (let i = 0; i < mapImages.length; i++) {
         const canvasCtx = mapImages[i].getContext("2d");
         if (!canvasCtx) {
-          err(new Error("Could not get canvas context"));
-          return;
+          throw new Error("Could not get canvas context");
         }
-
+        
         const imageData = canvasCtx.getImageData(
           0,
           0,
           mapImages[i].width,
           mapImages[i].height,
         );
-        //const decompressedBuffer = imageDataToSixteenBit(imageData.data);
-
-        const lzssWorker = new LzssWorker();
-        lzssWorker.onmessage = (e: MessageEvent<LzssResponse>) => {
-          const data = e.data;
-          if (data.type !== "compressRes") return;
-
-          compressedTextures[data.id] = new DataView(data.dataBuffer);
-          resolvedTextures.count++;
-
-          if (resolvedTextures.count === mapImages.length) {
-            console.timeEnd("compress");
-            res(compressedTextures);
-          }
-          lzssWorker.terminate();
-        };
-
-        console.log("Before", imageData.data.buffer.byteLength);
-        lzssWorker.postMessage(
-          {
-            uIntArray: imageData.data,
-            //decompressedDataView: decompressedBuffer,
-            type: "compress",
-            id: i,
-          } satisfies LzssMessage,
-          [imageData.data.buffer],
-        );
-        console.log("After", imageData.data.buffer.byteLength);
+        
+        tasks.push({
+          id: i,
+          uIntArray: imageData.data,
+        });
       }
-    });
-    const bufferList = await compressTextures;
+
+      console.time("compress");
+      // Use batch compression with the worker manager
+      const results: BatchCompressionResult[] = await lzssWorkerManager.compressBatch(tasks);
+      
+      // Sort results by id to maintain order
+      results.sort((a, b) => a.id - b.id);
+      
+      // Convert results to DataView array
+      const bufferList: DataView[] = results.map(result => 
+        new DataView(result.dataBuffer)
+      );
+      console.timeEnd("compress");
+
     //Combine into single buffer
     // Calculate total size needed for combined buffer
     let totalSize = 0;
@@ -301,6 +287,10 @@ export function IntroPrompt({ pyodideWorker }: { pyodideWorker: Worker }) {
     downloadLink.click();
 
     toast.success("Map Downloaded!");
+    } catch (error) {
+      console.error("Compression failed:", error);
+      toast.error("Failed to compress textures");
+    }
   }
 
   if (!mapFile || !mapImages)
