@@ -1,8 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { FileUpload } from "../components/FileUpload";
-import LzssWorker from "../utils/lzssWorker?worker";
+import { lzssWorkerManager, BatchDecompressionTask, BatchDecompressionResult } from "@/utils/lzssWorkerManager";
 import JpegWorker from "../utils/jpegDecompressWorker?worker";
-import { LzssMessage, LzssResponse } from "@/utils/lzssWorker";
 import {
   JpegDecompressMessage,
   JpegDecompressResponse,
@@ -916,7 +915,7 @@ export function UploadPrompt({
 async function loadMapImages(dataView: DataView, globals: GlobalsInterface) {
   let offset = 0;
 
-  const loadPromise: Promise<HTMLCanvasElement[]> = new Promise((res, err) => {
+  return new Promise<HTMLCanvasElement[]>(async (res, err) => {
     if (globals.GAME_TYPE === Game.NANOSAUR_2) {
       // Nanosaur 2: Each supertile is a JPEG, decompress with jpegDecompressWorker
       let offset = 0;
@@ -995,39 +994,52 @@ async function loadMapImages(dataView: DataView, globals: GlobalsInterface) {
     }
     //Read Each - Logic for other games
     else {
-      //Find the number of supertiles
-      let numSupertiles = 0;
-      while (offset != dataView.byteLength) {
-        const size = dataView.getInt32(offset);
-        offset += 4;
-        if (size === 0) break;
-        offset += size;
-        numSupertiles++;
-      }
-      offset = 0; //Reset offset
+      try {
+        // First pass: collect all tasks
+        let numSupertiles = 0;
+        let tempOffset = 0;
+        while (tempOffset < dataView.byteLength) {
+          const size = dataView.getInt32(tempOffset);
+          tempOffset += 4;
+          if (size === 0) break;
+          tempOffset += size;
+          numSupertiles++;
+        }
 
-      const mapImages: HTMLCanvasElement[] = new Array(numSupertiles);
-      const resolvedTiles = { count: 0 };
+        // Second pass: prepare batch decompression tasks
+        const tasks: BatchDecompressionTask[] = [];
+        offset = 0;
+        
+        for (let supertileId = 0; supertileId < numSupertiles; supertileId++) {
+          const size = dataView.getInt32(offset);
+          offset += 4;
+          
+          const buffer = new DataView(
+            dataView.buffer.slice(offset, offset + size),
+          );
+          const decompressedSize =
+            globals.SUPERTILE_TEXMAP_SIZE * globals.SUPERTILE_TEXMAP_SIZE * 2;
+          offset += size;
 
-      let supertileId = 0;
-      while (offset < dataView.byteLength) {
-        const size = dataView.getInt32(offset);
+          tasks.push({
+            id: supertileId,
+            compressedDataView: buffer,
+            outputSize: decompressedSize,
+            width: globals.SUPERTILE_TEXMAP_SIZE,
+            height: globals.SUPERTILE_TEXMAP_SIZE,
+          });
+        }
 
-        offset += 4;
-        const buffer = new DataView(
-          dataView.buffer.slice(offset, offset + size),
-        );
-        const decompressedSize =
-          globals.SUPERTILE_TEXMAP_SIZE * globals.SUPERTILE_TEXMAP_SIZE * 2;
-        offset += size;
-
-        const lzssWorker = new LzssWorker();
-        lzssWorker.onmessage = (e: MessageEvent<LzssResponse>) => {
-          const data = e.data;
-          if (data.type !== "decompressRes") return;
-
-          //mapImagesData[data.id] = decompressedBuffer.buffer; //.push(decompressedBuffer.buffer);
-
+        // Process all tasks in batch using the worker manager
+        const results: BatchDecompressionResult[] = await lzssWorkerManager.decompressBatch(tasks);
+        
+        // Sort results by id to maintain order
+        results.sort((a, b) => a.id - b.id);
+        
+        // Convert results to canvas elements
+        const mapImages: HTMLCanvasElement[] = new Array(numSupertiles);
+        
+        for (const result of results) {
           const imgCanvas = document.createElement("canvas");
           imgCanvas.width = globals.SUPERTILE_TEXMAP_SIZE;
           imgCanvas.height = globals.SUPERTILE_TEXMAP_SIZE;
@@ -1037,32 +1049,18 @@ async function loadMapImages(dataView: DataView, globals: GlobalsInterface) {
             err("Bad data!");
             throw new Error("Bad data!");
           }
-          //16-bit buffer from current buffer
-          imgCtx.putImageData(data.imageData, 0, 0);
+          
+          imgCtx.putImageData(result.imageData, 0, 0);
+          mapImages[result.id] = imgCanvas;
+        }
 
-          mapImages[data.id] = imgCanvas;
-
-          resolvedTiles.count++;
-          if (resolvedTiles.count === numSupertiles) {
-            res(mapImages);
-          }
-          lzssWorker.terminate();
-        };
-        lzssWorker.postMessage({
-          compressedDataView: buffer,
-          outputSize: decompressedSize,
-          type: "decompress",
-          id: supertileId,
-          width: globals.SUPERTILE_TEXMAP_SIZE,
-          height: globals.SUPERTILE_TEXMAP_SIZE,
-        } satisfies LzssMessage);
-        supertileId++;
+        res(mapImages);
+      } catch (error) {
+        console.error("Batch decompression failed:", error);
+        err(error);
       }
-      return [];
     }
   });
-  const res = await loadPromise;
-  return res;
 }
 
 /* else {

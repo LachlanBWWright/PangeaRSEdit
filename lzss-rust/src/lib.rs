@@ -1,4 +1,6 @@
 use wasm_bindgen::prelude::*;
+use rayon::prelude::*;
+use serde::{Deserialize, Serialize};
 
 // Constants matching TypeScript implementation
 const RING_BUFF_SIZE: usize = 4096; // 4095 - 0x0fff
@@ -250,6 +252,83 @@ pub fn wasm_lzss_compress(data: &[u8]) -> Vec<u8> {
 #[wasm_bindgen]
 pub fn wasm_lzss_decompress(compressed_data: &[u8], output_size: usize) -> Vec<u8> {
     lzss_decompress(compressed_data, output_size)
+}
+
+/// Batch compression task
+#[derive(Serialize, Deserialize)]
+pub struct CompressionTask {
+    pub id: u32,
+    pub data: Vec<u8>,
+}
+
+/// Batch decompression task
+#[derive(Serialize, Deserialize)]
+pub struct DecompressionTask {
+    pub id: u32,
+    pub compressed_data: Vec<u8>,
+    pub output_size: usize,
+    pub width: u32,
+    pub height: u32,
+}
+
+/// Batch compression result
+#[derive(Serialize, Deserialize)]
+pub struct CompressionResult {
+    pub id: u32,
+    pub compressed_data: Vec<u8>,
+}
+
+/// Batch decompression result
+#[derive(Serialize, Deserialize)]
+pub struct DecompressionResult {
+    pub id: u32,
+    pub decompressed_data: Vec<u8>,
+    pub width: u32,
+    pub height: u32,
+}
+
+/// Batch compress multiple tasks in parallel using Rayon
+#[wasm_bindgen]
+pub fn wasm_lzss_compress_batch(tasks_js: JsValue) -> Result<JsValue, JsValue> {
+    // Parse input tasks from JavaScript
+    let tasks: Vec<CompressionTask> = serde_wasm_bindgen::from_value(tasks_js)
+        .map_err(|e| JsValue::from_str(&format!("Failed to parse tasks: {:?}", e)))?;
+    
+    // Process tasks in parallel using Rayon
+    let results: Vec<CompressionResult> = tasks
+        .into_par_iter()
+        .map(|task| CompressionResult {
+            id: task.id,
+            compressed_data: lzss_compress(&task.data),
+        })
+        .collect();
+    
+    // Convert results back to JavaScript
+    serde_wasm_bindgen::to_value(&results)
+        .map_err(|e| JsValue::from_str(&format!("Failed to serialize results: {:?}", e)))
+}
+
+/// Batch decompress multiple tasks in parallel using Rayon
+#[wasm_bindgen]
+pub fn wasm_lzss_decompress_batch(tasks_js: JsValue) -> Result<JsValue, JsValue> {
+    // Parse input tasks from JavaScript
+    let tasks: Vec<DecompressionTask> = serde_wasm_bindgen::from_value(tasks_js)
+        .map_err(|e| JsValue::from_str(&format!("Failed to parse tasks: {:?}", e)))?;
+    
+    // Process tasks in parallel using Rayon
+    let results: Vec<DecompressionResult> = tasks
+        .into_par_iter()
+        .map(|task| DecompressionResult {
+            id: task.id,
+            decompressed_data: lzss_decompress(&task.compressed_data, task.output_size),
+            width: task.width,
+            height: task.height,
+        })
+        .collect();
+    
+    // Convert results back to JavaScript
+    serde_wasm_bindgen::to_value(&results)
+        .map_err(|e| JsValue::from_str(&format!("Failed to serialize results: {:?}", e)))
 }
 
 #[cfg(test)]
