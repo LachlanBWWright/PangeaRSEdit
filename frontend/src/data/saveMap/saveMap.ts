@@ -18,7 +18,7 @@ export async function saveMap({
   mapFile: File | undefined;
   mapImagesFile: File | undefined;
   mapImages: HTMLCanvasElement[] | undefined;
-  data: ottoMaticLevel | null;
+  data: ottoMaticLevel;
   pyodideWorker: Worker;
   globals: GlobalsInterface;
   toast: (opts: { title: string; description?: string }) => void;
@@ -37,9 +37,10 @@ export async function saveMap({
     downloadBlob(imageDownloadBuffer, mapImagesFile.name, ".ter");
   }
 
+  console.log("TESThhhhhhh\n\n\n\n\n\n\ne\n\n\n\n\n\n\n");
   toast({
     title: "Saving Map",
-    description: "Processing map data",
+    description: "Processing map data test (THIS FILE IS NOT USED)",
   });
 
   if (globals.GAME_TYPE === Game.NANOSAUR_2) {
@@ -53,6 +54,7 @@ export async function saveMap({
     //TODO
   } else {
     const mapBuffer = await processMapData({ data, pyodideWorker, globals });
+    console.log("test\n\n\n");
     downloadBlob(mapBuffer, mapFile.name, ".ter.rsrc");
   }
 
@@ -75,11 +77,13 @@ async function processMapData({
   pyodideWorker,
   globals,
 }: {
-  data: ottoMaticLevel | null;
+  data: ottoMaticLevel;
   pyodideWorker: Worker;
   globals: GlobalsInterface;
 }): Promise<ArrayBuffer> {
   return new Promise<ArrayBuffer>((resolve, reject) => {
+    console.log("saving");
+    console.log(data);
     pyodideWorker.postMessage({
       type: "load_bytes_from_json",
       json_blob: data,

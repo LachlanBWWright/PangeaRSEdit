@@ -24,7 +24,14 @@ import { useState } from "react";
 import { Switch } from "@/components/ui/switch";
 import { preprocessJson } from "@/data/processors/ottoPreprocessor";
 import { ottoMaticLevel } from "@/python/structSpecs/ottoMaticInterface";
-import { Updater } from "use-immer";
+import {
+  HeaderData,
+  ItemData,
+  LiquidData,
+  FenceData,
+  SplineData,
+} from "@/python/structSpecs/ottoMaticLevelData";
+import { splitLevelData, AtomicLevelData } from "../data/utils/levelDataUtils";
 import { Buffer } from "buffer";
 import { PyodideMessage, PyodideResponse } from "@/python/pyodideWorker";
 import { IntroText } from "./IntroText";
@@ -59,7 +66,7 @@ export function UploadPrompt({
   setMapImagesFile: (file: File) => void;
   setMapImages: (images: HTMLCanvasElement[]) => void;
   pyodideWorker: Worker;
-  setData: Updater<ottoMaticLevel | null>;
+  setData: (data: AtomicLevelData) => void;
 }) {
   const [globals, setGlobals] = useAtom(Globals);
   const [showAllGames, setShowAllGames] = useState(false);
@@ -178,7 +185,7 @@ export function UploadPrompt({
       //throw new Error("nanosaur terrain files are not supported yet");
 
       //TODO: Missing preprocessor
-      setData(compatibleLevel); // or adapt to your data model
+      setData(splitLevelData(compatibleLevel)); // or adapt to your data model
       return compatibleLevel;
     } else {
       //Call pyodide worker to  run the python code
@@ -205,7 +212,7 @@ export function UploadPrompt({
 
       preprocessJson(jsonData, globals);
 
-      setData(jsonData);
+      setData(splitLevelData(jsonData));
       return jsonData;
     }
   };
