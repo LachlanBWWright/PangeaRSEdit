@@ -151,15 +151,20 @@ export function ModelViewer() {
       let skeletonData: SkeletonResource | undefined;
 
       // Parse skeleton file if provided
-      if (skeletonFile && pyodideWorker && isWorkerReady) {
-        console.log("Parsing skeleton file...");
-        const skeletonArrayBuffer = await skeletonFile.arrayBuffer();
-        const skeletonJsonData = await parseSkeletonRsrc({
-          pyodideWorker,
-          bytes: skeletonArrayBuffer,
-        });
-        skeletonData = skeletonJsonData as SkeletonResource;
-        console.log("Skeleton data parsed:", skeletonData);
+      if (skeletonFile) {
+        if (pyodideWorker && isWorkerReady) {
+          console.log("Parsing skeleton file...");
+          const skeletonArrayBuffer = await skeletonFile.arrayBuffer();
+          const skeletonJsonData = await parseSkeletonRsrc({
+            pyodideWorker,
+            bytes: skeletonArrayBuffer,
+          });
+          skeletonData = skeletonJsonData as SkeletonResource;
+          console.log("Skeleton data parsed:", skeletonData);
+        } else {
+          console.warn("Skeleton file provided but Pyodide worker not ready. Loading without skeleton data.");
+          toast.error("Skeleton parsing unavailable (Pyodide worker not ready). Loading model without animations.");
+        }
       }
 
       const worker = new BG3DGltfWorker();
@@ -628,6 +633,11 @@ export function ModelViewer() {
           type: "application/octet-stream",
         });
         console.log("Loaded Otto skeleton file");
+        
+        if (!pyodideWorker || !isWorkerReady) {
+          console.warn("Pyodide worker not ready for skeleton parsing");
+          toast.error("Animation loading requires network access for skeleton parsing. Loading model without animations.");
+        }
       } else {
         console.warn("Otto skeleton file not found, loading without animations");
       }
