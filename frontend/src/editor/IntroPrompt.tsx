@@ -1,5 +1,12 @@
-import { useEffect, useState } from "react";
-import { ottoMaticLevel } from "../python/structSpecs/ottoMaticInterface";
+import { useEffect, useState, useCallback } from "react";
+import {
+  HeaderData,
+  ItemData,
+  LiquidData,
+  FenceData,
+  SplineData,
+  TerrainData,
+} from "../python/structSpecs/ottoMaticLevelData";
 import { UploadPrompt } from "./UploadPrompt";
 import { EditorView } from "./EditorView";
 import { Button } from "@/components/ui/button";
@@ -10,17 +17,31 @@ import { useAtom, useAtomValue } from "jotai";
 import { BlockHistoryUpdate } from "../data/globals/history";
 import LzssWorker from "../utils/lzssWorker?worker";
 import { LzssMessage, LzssResponse } from "@/utils/lzssWorker";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { PyodideMessage, PyodideResponse } from "@/python/pyodideWorker";
+import {
+  AtomicLevelData,
+  splitLevelData,
+  combineLevelData,
+  isAtomicDataComplete,
+} from "../data/utils/levelDataUtils";
 
 export type DataHistory = {
-  items: ottoMaticLevel[];
+  items: AtomicLevelData[];
   index: number;
 };
 
 export function IntroPrompt({ pyodideWorker }: { pyodideWorker: Worker }) {
   const globals = useAtomValue(Globals);
-  const [data, setData] = useImmer<ottoMaticLevel | null>(null);
+
+  // Atomic data types instead of monolithic data
+  const [headerData, setHeaderData] = useImmer<HeaderData | null>(null);
+  const [itemData, setItemData] = useImmer<ItemData | null>(null);
+  const [liquidData, setLiquidData] = useImmer<LiquidData | null>(null);
+  const [fenceData, setFenceData] = useImmer<FenceData | null>(null);
+  const [splineData, setSplineData] = useImmer<SplineData | null>(null);
+  const [terrainData, setTerrainData] = useImmer<TerrainData | null>(null);
+
   //History of previous states for undo/redo purposes
   const [dataHistory, setDataHistory] = useImmer<DataHistory>({
     items: [],
@@ -38,18 +59,66 @@ export function IntroPrompt({ pyodideWorker }: { pyodideWorker: Worker }) {
     undefined,
   );
   const [processed, setProcessed] = useState(false);
-  const { toast } = useToast();
+  // Helper to get current atomic data
+  const getCurrentAtomicData = (): AtomicLevelData => ({
+    headerData,
+    itemData,
+    liquidData,
+    fenceData,
+    splineData,
+    terrainData,
+  });
+
+  // Helper to set all atomic data from AtomicLevelData
+  const setAllAtomicData = (atomicData: AtomicLevelData) => {
+    setHeaderData(atomicData.headerData);
+    setItemData(atomicData.itemData);
+    setLiquidData(atomicData.liquidData);
+    setFenceData(atomicData.fenceData);
+    setSplineData(atomicData.splineData);
+    setTerrainData(atomicData.terrainData);
+  };
+
+  // Wrapper for header which EditorView expects non-null updates for
+  const setHeaderDataNonNull: Updater<HeaderData> = useCallback(
+    (updater) => {
+      setHeaderData((current) => {
+        if (!current) return current;
+        return typeof updater === "function" ? updater(current) : updater;
+      });
+    },
+    [setHeaderData],
+  );
+
+  const setTerrainDataNonNull: Updater<TerrainData> = useCallback(
+    (updater) => {
+      setTerrainData((current) => {
+        if (!current) return current;
+        return typeof updater === "function" ? updater(current) : updater;
+      });
+    },
+    [setTerrainData],
+  );
 
   useEffect(() => {
     if (!processed) return;
     saveMap();
     setProcessed(false);
-  }, [processed, data]);
+  }, [
+    processed,
+    headerData,
+    itemData,
+    liquidData,
+    fenceData,
+    splineData,
+    terrainData,
+  ]);
 
   //Update History
   useEffect(() => {
+    const currentData = getCurrentAtomicData();
     //Wipe history for new map
-    if (!data) {
+    if (!isAtomicDataComplete(currentData)) {
       setDataHistory(() => ({ items: [], index: 0 }));
     }
     /*
@@ -62,10 +131,10 @@ export function IntroPrompt({ pyodideWorker }: { pyodideWorker: Worker }) {
     }
 
     setDataHistory((draft) => {
-      if (!data) return;
+      if (!isAtomicDataComplete(currentData)) return;
       //Remove subsequent history
       draft.items.splice(draft.index + 1, draft.items.length - draft.index - 1);
-      draft.items.push(data);
+      draft.items.push(currentData);
       draft.index = draft.items.length - 1;
 
       //Limit history size
@@ -74,14 +143,14 @@ export function IntroPrompt({ pyodideWorker }: { pyodideWorker: Worker }) {
         draft.index -= 1;
       }
     });
-  }, [data]);
+  }, [headerData, itemData, liquidData, fenceData, splineData, terrainData]);
 
   const undoData = () => {
     if (dataHistory.index > 0) {
       setDataHistory((draft) => {
         draft.index -= 1;
       });
-      setData(dataHistory.items[dataHistory.index - 1]);
+      setAllAtomicData(dataHistory.items[dataHistory.index - 1]);
       setBlockHistoryUpdate(true);
     }
   };
@@ -91,7 +160,7 @@ export function IntroPrompt({ pyodideWorker }: { pyodideWorker: Worker }) {
       setDataHistory((draft) => {
         draft.index += 1;
       });
-      setData(dataHistory.items[dataHistory.index + 1]);
+      setAllAtomicData(dataHistory.items[dataHistory.index + 1]);
       setBlockHistoryUpdate(true);
     }
   };
@@ -99,15 +168,26 @@ export function IntroPrompt({ pyodideWorker }: { pyodideWorker: Worker }) {
   async function saveMap() {
     if (!mapFile || !mapImagesFile) return;
 
-    toast({
-      title: "Saving Map",
-      description: "Processing map data",
-    });
+    toast.loading("Processing map data...");
+
+    // Combine atomic data for file I/O
+    const combinedData = combineLevelData(getCurrentAtomicData());
+
+    //TODO: Find better solution
+    //remove timg from combinedData - needed to fix bug
+    delete combinedData.Timg;
+
+    if (!combinedData) {
+      toast("Error", {
+        description: "Cannot save incomplete level data",
+      });
+      return;
+    }
 
     const loadResPromise = new Promise<ArrayBuffer>((resolve, reject) => {
       pyodideWorker.postMessage({
         type: "load_bytes_from_json",
-        json_blob: data,
+        json_blob: combinedData,
         converters: globals.STRUCT_SPECS,
         only_types: [],
         skip_types: [],
@@ -135,10 +215,7 @@ export function IntroPrompt({ pyodideWorker }: { pyodideWorker: Worker }) {
     //Download Images
     if (!mapImages) return;
 
-    toast({
-      title: "Saving Map",
-      description: "Compressing textures",
-    });
+    toast.loading("Compressing textures...");
 
     //Webworker promise
     const compressTextures: Promise<DataView[]> = new Promise((res, err) => {
@@ -223,9 +300,7 @@ export function IntroPrompt({ pyodideWorker }: { pyodideWorker: Worker }) {
     downloadLink.setAttribute("download", mapImagesFile.name);
     downloadLink.click();
 
-    toast({
-      title: "Map Downloaded!",
-    });
+    toast.success("Map Downloaded!");
   }
 
   if (!mapFile || !mapImages)
@@ -236,7 +311,7 @@ export function IntroPrompt({ pyodideWorker }: { pyodideWorker: Worker }) {
         setMapImagesFile={setMapImagesFile}
         setMapImages={setMapImages}
         pyodideWorker={pyodideWorker}
-        setData={setData}
+        setData={setAllAtomicData}
       />
     );
   return (
@@ -245,7 +320,7 @@ export function IntroPrompt({ pyodideWorker }: { pyodideWorker: Worker }) {
         <Button
           onClick={() => {
             setMapFile(undefined);
-            setData(null);
+            setAllAtomicData(splitLevelData(null));
             setMapImages(undefined);
             setMapImagesFile(undefined);
           }}
@@ -256,7 +331,18 @@ export function IntroPrompt({ pyodideWorker }: { pyodideWorker: Worker }) {
 
         <Button
           onClick={() => {
-            ottoPreprocessor(setData as Updater<ottoMaticLevel>, globals);
+            const combinedData = combineLevelData(getCurrentAtomicData());
+            if (combinedData) {
+              ottoPreprocessor((updater) => {
+                // Apply the update to a combined data structure
+                const updated =
+                  typeof updater === "function"
+                    ? updater(combinedData) ?? combinedData
+                    : updater;
+                // Split back into atomic data
+                setAllAtomicData(splitLevelData(updated));
+              }, globals);
+            }
             setBlockHistoryUpdate(true);
             setProcessed(true); //Trigger useEffect for downloading
           }}
@@ -265,10 +351,21 @@ export function IntroPrompt({ pyodideWorker }: { pyodideWorker: Worker }) {
         </Button>
       </div>
       <hr />
-      {data !== null && data !== undefined && mapImages ? (
+      {/* Render editor when we have images; allow some atomic pieces to be null. */}
+      {mapImages ? (
         <EditorView
-          data={data}
-          setData={setData as Updater<ottoMaticLevel>}
+          headerData={headerData!}
+          setHeaderData={setHeaderDataNonNull}
+          itemData={itemData}
+          setItemData={setItemData}
+          liquidData={liquidData}
+          setLiquidData={setLiquidData}
+          fenceData={fenceData}
+          setFenceData={setFenceData}
+          splineData={splineData}
+          setSplineData={setSplineData}
+          terrainData={terrainData!}
+          setTerrainData={setTerrainDataNonNull}
           mapImages={mapImages}
           setMapImages={setMapImages}
           undoData={undoData}

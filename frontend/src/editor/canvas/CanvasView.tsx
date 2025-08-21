@@ -3,7 +3,7 @@ import { ClickToAddItem, SelectedItem } from "@/data/items/itemAtoms";
 import { SelectedSpline } from "@/data/splines/splineAtoms";
 import { SelectedWaterBody } from "@/data/water/waterAtoms";
 import { useAtomValue, useSetAtom } from "jotai";
-import { useRef } from "react";
+import { useRef, useCallback } from "react";
 import { Stage } from "react-konva";
 import { Updater } from "use-immer";
 import { Items } from "../subviews/Items";
@@ -12,7 +12,14 @@ import { Splines } from "../subviews/Splines";
 import { WaterBodies } from "../subviews/WaterBodies";
 import { Tiles } from "../subviews/Tiles";
 import { Supertiles } from "../subviews/Supertiles";
-import { ottoMaticLevel } from "@/python/structSpecs/ottoMaticInterface";
+import {
+  HeaderData,
+  ItemData,
+  LiquidData,
+  FenceData,
+  SplineData,
+  TerrainData,
+} from "@/python/structSpecs/ottoMaticLevelData";
 
 enum View {
   fences,
@@ -30,15 +37,33 @@ export type StageData = {
 };
 
 export function KonvaView({
-  data,
-  setData,
+  headerData,
+  itemData,
+  setItemData,
+  liquidData,
+  setLiquidData,
+  fenceData,
+  setFenceData,
+  splineData,
+  setSplineData,
+  terrainData,
+  setTerrainData,
   mapImages,
   view,
   stage,
   setStage,
 }: {
-  data: ottoMaticLevel;
-  setData: Updater<ottoMaticLevel>;
+  headerData: HeaderData;
+  itemData: ItemData | null;
+  setItemData: Updater<ItemData | null>;
+  liquidData: LiquidData | null;
+  setLiquidData: Updater<LiquidData | null>;
+  fenceData: FenceData | null;
+  setFenceData: Updater<FenceData | null>;
+  splineData: SplineData | null;
+  setSplineData: Updater<SplineData | null>;
+  terrainData: TerrainData;
+  setTerrainData: Updater<TerrainData>;
   mapImages: HTMLCanvasElement[];
   view: View;
   stage: StageData;
@@ -51,6 +76,47 @@ export function KonvaView({
   const clickToAddItem = useAtomValue(ClickToAddItem);
 
   const stageRef = useRef<HTMLDivElement>(null);
+
+  // Non-null updaters for children that expect non-null data
+  const setItemDataNotNull: Updater<ItemData> = useCallback(
+    (updater) => {
+      setItemData((current) => {
+        if (!current) return current;
+        return typeof updater === "function" ? updater(current) : updater;
+      });
+    },
+    [setItemData],
+  );
+
+  const setLiquidDataNotNull: Updater<LiquidData> = useCallback(
+    (updater) => {
+      setLiquidData((current) => {
+        if (!current) return current;
+        return typeof updater === "function" ? updater(current) : updater;
+      });
+    },
+    [setLiquidData],
+  );
+
+  const setFenceDataNotNull: Updater<FenceData> = useCallback(
+    (updater) => {
+      setFenceData((current) => {
+        if (!current) return current;
+        return typeof updater === "function" ? updater(current) : updater;
+      });
+    },
+    [setFenceData],
+  );
+
+  const setSplineDataNotNull: Updater<SplineData> = useCallback(
+    (updater) => {
+      setSplineData((current) => {
+        if (!current) return current;
+        return typeof updater === "function" ? updater(current) : updater;
+      });
+    },
+    [setSplineData],
+  );
 
   return (
     <Stage
@@ -70,8 +136,9 @@ export function KonvaView({
         const x = Math.round(pos.x);
         const z = Math.round(pos.y);
 
-        setData((data) => {
-          data.Itms[1000].obj.push({
+        // Use non-null updater so child components can rely on non-null shape
+        setItemDataNotNull((itemData) => {
+          itemData.Itms[1000].obj.push({
             x: x,
             z: z,
             type: clickToAddItem,
@@ -115,53 +182,133 @@ export function KonvaView({
         });
       }}
     >
-      {data.STgd && <Supertiles data={data} mapImages={mapImages} />}
+      {terrainData.STgd && (
+        <Supertiles
+          headerData={headerData}
+          terrainData={terrainData}
+          mapImages={mapImages}
+        />
+      )}
       {view === View.tiles && (
         <Tiles
-          data={data}
-          setData={setData}
+          headerData={headerData}
+          terrainData={terrainData}
+          setTerrainData={setTerrainData}
           isEditingTopology={view === View.tiles}
         />
       )}
       {view === View.tiles ||
         (view === View.supertiles && (
           <>
-            <WaterBodies data={data} setData={setData} />
-            <Fences data={data} setData={setData} />
-            <Items data={data} setData={setData} />
-            <Splines data={data} setData={setData} />
+            {liquidData && (
+              <WaterBodies
+                liquidData={liquidData}
+                setLiquidData={setLiquidDataNotNull}
+              />
+            )}
+            {fenceData && (
+              <Fences
+                fenceData={fenceData}
+                setFenceData={setFenceDataNotNull}
+              />
+            )}
+            {itemData && (
+              <Items itemData={itemData} setItemData={setItemDataNotNull} />
+            )}
+            {splineData && (
+              <Splines
+                splineData={splineData}
+                setSplineData={setSplineDataNotNull}
+              />
+            )}
           </>
         ))}
       {view === View.fences && (
         <>
-          <WaterBodies data={data} setData={setData} />
-          <Items data={data} setData={setData} />
-          <Splines data={data} setData={setData} />
-          <Fences data={data} setData={setData} />
+          {liquidData && (
+            <WaterBodies
+              liquidData={liquidData}
+              setLiquidData={setLiquidDataNotNull}
+            />
+          )}
+          {itemData && (
+            <Items itemData={itemData} setItemData={setItemDataNotNull} />
+          )}
+          {splineData && (
+            <Splines
+              splineData={splineData}
+              setSplineData={setSplineDataNotNull}
+            />
+          )}
+          {fenceData && (
+            <Fences fenceData={fenceData} setFenceData={setFenceDataNotNull} />
+          )}
         </>
       )}
       {view === View.water && (
         <>
-          <Fences data={data} setData={setData} />
-          <Items data={data} setData={setData} />
-          <Splines data={data} setData={setData} />
-          <WaterBodies data={data} setData={setData} />
+          {fenceData && (
+            <Fences fenceData={fenceData} setFenceData={setFenceDataNotNull} />
+          )}
+          {itemData && (
+            <Items itemData={itemData} setItemData={setItemDataNotNull} />
+          )}
+          {splineData && (
+            <Splines
+              splineData={splineData}
+              setSplineData={setSplineDataNotNull}
+            />
+          )}
+          {liquidData && (
+            <WaterBodies
+              liquidData={liquidData}
+              setLiquidData={setLiquidDataNotNull}
+            />
+          )}
         </>
       )}
       {view === View.splines && (
         <>
-          <WaterBodies data={data} setData={setData} />
-          <Items data={data} setData={setData} />
-          <Fences data={data} setData={setData} />
-          <Splines data={data} setData={setData} />
+          {liquidData && (
+            <WaterBodies
+              liquidData={liquidData}
+              setLiquidData={setLiquidDataNotNull}
+            />
+          )}
+          {itemData && (
+            <Items itemData={itemData} setItemData={setItemDataNotNull} />
+          )}
+          {fenceData && (
+            <Fences fenceData={fenceData} setFenceData={setFenceDataNotNull} />
+          )}
+          {splineData && (
+            <Splines
+              splineData={splineData}
+              setSplineData={setSplineDataNotNull}
+            />
+          )}
         </>
       )}
       {view === View.items && (
         <>
-          <WaterBodies data={data} setData={setData} />
-          <Splines data={data} setData={setData} />
-          <Fences data={data} setData={setData} />
-          <Items data={data} setData={setData} />
+          {liquidData && (
+            <WaterBodies
+              liquidData={liquidData}
+              setLiquidData={setLiquidDataNotNull}
+            />
+          )}
+          {splineData && (
+            <Splines
+              splineData={splineData}
+              setSplineData={setSplineDataNotNull}
+            />
+          )}
+          {fenceData && (
+            <Fences fenceData={fenceData} setFenceData={setFenceDataNotNull} />
+          )}
+          {itemData && (
+            <Items itemData={itemData} setItemData={setItemDataNotNull} />
+          )}
         </>
       )}
     </Stage>
