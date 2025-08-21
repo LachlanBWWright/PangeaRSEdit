@@ -9,6 +9,7 @@ import { TextureManager } from "@/components/TextureManager";
 
 // ...existing code...
 import { ConversionPanel } from "@/components/ConversionPanel";
+import { SkeletonConversionPanel } from "@/components/SkeletonConversionPanel";
 import BG3DGltfWorker from "../modelParsers/bg3dGltfWorker?worker";
 import {
   BG3DGltfWorkerMessage,
@@ -50,6 +51,8 @@ export function ModelViewer() {
   const [animationMixer, setAnimationMixer] = useState<THREE.AnimationMixer | null>(null);
   const [pyodideWorker, setPyodideWorker] = useState<Worker | null>(null);
   const [isWorkerReady, setIsWorkerReady] = useState(false);
+  const [uploadStep, setUploadStep] = useState<"select-bg3d" | "select-skeleton" | "completed">("select-bg3d");
+  const [pendingBg3dFile, setPendingBg3dFile] = useState<File | null>(null);
   function extractTexturesFromParsed(bg3dParsed: BG3DParseResult | null) {
     if (!bg3dParsed) {
       setTextures([]);
@@ -151,12 +154,11 @@ export function ModelViewer() {
       if (skeletonFile && pyodideWorker && isWorkerReady) {
         console.log("Parsing skeleton file...");
         const skeletonArrayBuffer = await skeletonFile.arrayBuffer();
-        const skeletonJsonBuffer = await parseSkeletonRsrc({
+        const skeletonJsonData = await parseSkeletonRsrc({
           pyodideWorker,
           bytes: skeletonArrayBuffer,
         });
-        const skeletonJson = new TextDecoder().decode(skeletonJsonBuffer);
-        skeletonData = JSON.parse(skeletonJson);
+        skeletonData = skeletonJsonData as SkeletonResource;
         console.log("Skeleton data parsed:", skeletonData);
       }
 
@@ -206,6 +208,10 @@ export function ModelViewer() {
         if (result.parsed.skeleton?.animations?.length) {
           console.log(`Model contains ${result.parsed.skeleton.animations.length} animations`);
         }
+        
+        // Reset upload state
+        setUploadStep("completed");
+        setPendingBg3dFile(null);
       }
     } catch (error) {
       console.error("Error loading BG3D file:", error);
@@ -214,6 +220,23 @@ export function ModelViewer() {
       );
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function handleBg3dFileSelect(bg3dFile: File) {
+    setPendingBg3dFile(bg3dFile);
+    setUploadStep("select-skeleton");
+  }
+
+  async function handleSkeletonFileSelect(skeletonFile?: File) {
+    if (pendingBg3dFile) {
+      await handleFileUpload(pendingBg3dFile, skeletonFile);
+    }
+  }
+
+  function handleSkipSkeleton() {
+    if (pendingBg3dFile) {
+      handleFileUpload(pendingBg3dFile);
     }
   }
 
@@ -227,10 +250,28 @@ export function ModelViewer() {
       file.name.toLowerCase().endsWith(".skeleton.rsrc"),
     );
     
-    if (bg3dFile) {
-      handleFileUpload(bg3dFile, skeletonFile);
-    } else if (skeletonFile) {
-      toast.error("Please also select a BG3D file to go with the skeleton file");
+    if (uploadStep === "select-bg3d") {
+      if (bg3dFile) {
+        if (skeletonFile) {
+          // Both files dropped at once, process immediately
+          handleFileUpload(bg3dFile, skeletonFile);
+        } else {
+          // Only BG3D dropped, move to skeleton selection step
+          handleBg3dFileSelect(bg3dFile);
+        }
+      } else if (skeletonFile) {
+        toast.error("Please first select a BG3D file");
+      } else {
+        toast.error("Please drop a BG3D file");
+      }
+    } else if (uploadStep === "select-skeleton") {
+      if (skeletonFile) {
+        handleSkeletonFileSelect(skeletonFile);
+      } else if (bg3dFile) {
+        toast.error("Already selected BG3D file. Please select a skeleton file or skip this step.");
+      } else {
+        toast.error("Please drop a skeleton.rsrc file or click 'Skip Skeleton'");
+      }
     }
   }
 
@@ -558,6 +599,8 @@ export function ModelViewer() {
     setTextures([]);
     setModelNodes([]);
     setScene(undefined);
+    setUploadStep("select-bg3d");
+    setPendingBg3dFile(null);
     toast.success("Model cleared");
   };
 
@@ -617,37 +660,94 @@ export function ModelViewer() {
               {!gltfUrl ? (
                 // Model upload interface
                 <>
-                  <div
-                    className="border-2 border-dashed border-gray-600 rounded-lg p-8 text-center cursor-pointer hover:border-gray-500 transition-colors"
-                    onDrop={handleDrop}
-                    onDragOver={handleDragOver}
-                    onClick={() => fileInputRef.current?.click()}
-                  >
-                    <Upload className="w-12 h-12 mx-auto mb-4 text-gray-400" />
-                    <p className="text-gray-400 mb-2">
-                      Drop BG3D and skeleton files here or click to select
-                    </p>
-                    <p className="text-sm text-gray-500">Supports .bg3d files and optional .skeleton.rsrc files</p>
-                  </div>
+                  {uploadStep === "select-bg3d" && (
+                    <>
+                      <div
+                        className="border-2 border-dashed border-gray-600 rounded-lg p-8 text-center cursor-pointer hover:border-gray-500 transition-colors"
+                        onDrop={handleDrop}
+                        onDragOver={handleDragOver}
+                        onClick={() => fileInputRef.current?.click()}
+                      >
+                        <Upload className="w-12 h-12 mx-auto mb-4 text-gray-400" />
+                        <p className="text-gray-400 mb-2">
+                          Drop BG3D file here or click to select
+                        </p>
+                        <p className="text-sm text-gray-500">Upload .bg3d file first, then optionally add skeleton</p>
+                      </div>
 
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept=".bg3d,.skeleton.rsrc"
-                    multiple
-                    className="hidden"
-                    onChange={(e) => {
-                      const files = Array.from(e.target.files || []);
-                      const bg3dFile = files.find(f => f.name.toLowerCase().endsWith(".bg3d"));
-                      const skeletonFile = files.find(f => f.name.toLowerCase().endsWith(".skeleton.rsrc"));
+                      <input
+                        ref={fileInputRef}
+                        type="file"
+                        accept=".bg3d"
+                        className="hidden"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file && file.name.toLowerCase().endsWith(".bg3d")) {
+                            handleBg3dFileSelect(file);
+                          } else if (file) {
+                            toast.error("Please select a BG3D file");
+                          }
+                        }}
+                      />
+                    </>
+                  )}
+
+                  {uploadStep === "select-skeleton" && pendingBg3dFile && (
+                    <>
+                      <div className="text-sm text-gray-300 mb-3">
+                        BG3D file selected: <strong>{pendingBg3dFile.name}</strong>
+                      </div>
                       
-                      if (bg3dFile) {
-                        handleFileUpload(bg3dFile, skeletonFile);
-                      } else if (files.length > 0) {
-                        toast.error("Please select a BG3D file (and optionally a skeleton.rsrc file)");
-                      }
-                    }}
-                  />
+                      <div
+                        className="border-2 border-dashed border-gray-600 rounded-lg p-8 text-center cursor-pointer hover:border-gray-500 transition-colors"
+                        onDrop={handleDrop}
+                        onDragOver={handleDragOver}
+                        onClick={() => fileInputRef.current?.click()}
+                      >
+                        <Upload className="w-12 h-12 mx-auto mb-4 text-gray-400" />
+                        <p className="text-gray-400 mb-2">
+                          Drop skeleton file here or click to select
+                        </p>
+                        <p className="text-sm text-gray-500">Optional: Add .skeleton.rsrc file for animations</p>
+                      </div>
+
+                      <input
+                        ref={fileInputRef}
+                        type="file"
+                        accept=".skeleton.rsrc"
+                        className="hidden"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file && file.name.toLowerCase().endsWith(".skeleton.rsrc")) {
+                            handleSkeletonFileSelect(file);
+                          } else if (file) {
+                            toast.error("Please select a skeleton.rsrc file");
+                          }
+                        }}
+                      />
+
+                      <div className="flex gap-2">
+                        <Button
+                          onClick={handleSkipSkeleton}
+                          variant="outline"
+                          className="flex-1 text-white"
+                          disabled={loading}
+                        >
+                          Skip Skeleton
+                        </Button>
+                        <Button
+                          onClick={() => {
+                            setUploadStep("select-bg3d");
+                            setPendingBg3dFile(null);
+                          }}
+                          variant="ghost"
+                          className="flex-1 text-gray-400 hover:text-white"
+                        >
+                          Choose Different BG3D
+                        </Button>
+                      </div>
+                    </>
+                  )}
 
                   <Button
                     onClick={loadTestModel}
@@ -788,24 +888,16 @@ export function ModelViewer() {
             </Card>
           )}
           {/* Conversion Panels */}
-          <ConversionPanel
+          <SkeletonConversionPanel
             title="Convert BG3D to GLB"
-            description="Upload a .bg3d file to convert and download as .glb."
-            acceptedFileType=".bg3d"
-            fileExtension="bg3d"
-            outputExtension="glb"
+            description="Upload .bg3d and optional .skeleton.rsrc files to convert and download as .glb."
             conversionType="bg3d-to-glb"
-            outputMimeType="model/gltf-binary"
           />
 
-          <ConversionPanel
+          <SkeletonConversionPanel
             title="Convert GLB to BG3D"
             description="Upload a .glb file to convert and download as .bg3d."
-            acceptedFileType=".glb"
-            fileExtension="glb"
-            outputExtension="bg3d"
             conversionType="glb-to-bg3d"
-            outputMimeType="application/octet-stream"
           />
         </div>
 
