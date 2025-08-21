@@ -1,6 +1,7 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { ModelCanvas } from "./ModelCanvas";
 import { ModelHierarchy } from "@/components/ModelHierarchy";
+import { AnimationViewer, AnimationInfo } from "@/components/AnimationViewer";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Upload, X, Download } from "lucide-react";
@@ -14,6 +15,9 @@ import {
   BG3DGltfWorkerResponse,
 } from "../modelParsers/bg3dGltfWorker";
 import { BG3DParseResult } from "../modelParsers/parseBG3D";
+import { parseSkeletonRsrc } from "../modelParsers/skeletonRsrc/parseSkeletonRsrc";
+import PyodideWorker from "../python/pyodideWorker?worker";
+import type { SkeletonResource } from "../python/structSpecs/skeleton/skeletonInterface";
 import { toast } from "sonner";
 import * as THREE from "three";
 
@@ -41,6 +45,10 @@ export function ModelViewer() {
   const [bg3dParsed, setBg3dParsed] = useState<BG3DParseResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [textures, setTextures] = useState<Texture[]>([]);
+  const [animations, setAnimations] = useState<AnimationInfo[]>([]);
+  const [animationMixer, setAnimationMixer] = useState<THREE.AnimationMixer | null>(null);
+  const [pyodideWorker, setPyodideWorker] = useState<Worker | null>(null);
+  const [isWorkerReady, setIsWorkerReady] = useState(false);
   function extractTexturesFromParsed(bg3dParsed: BG3DParseResult | null) {
     if (!bg3dParsed) {
       setTextures([]);
@@ -98,6 +106,23 @@ export function ModelViewer() {
   const [modelNodes, setModelNodes] = useState<ModelNode[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Initialize pyodide worker for skeleton parsing
+  useEffect(() => {
+    const worker = new PyodideWorker();
+    worker.postMessage({ type: "init" });
+    worker.onmessage = (e) => {
+      if (e.data.type === "initRes") {
+        setIsWorkerReady(true);
+        console.log("Pyodide worker ready");
+      }
+    };
+    setPyodideWorker(worker);
+    
+    return () => {
+      worker.terminate();
+    };
+  }, []);
+
   // Remove conditional useGLTF, handled in ModelCanvas
 
   // Convert BG3D texture to displayable image URL
@@ -105,14 +130,35 @@ export function ModelViewer() {
   // --- End moved logic ---
   // ...existing code...
 
-  async function handleFileUpload(file: File) {
-    if (!file.name.toLowerCase().endsWith(".bg3d")) {
+  async function handleFileUpload(bg3dFile: File, skeletonFile?: File) {
+    if (!bg3dFile.name.toLowerCase().endsWith(".bg3d")) {
       toast.error("Please select a BG3D file");
       return;
     }
+    
+    if (skeletonFile && !skeletonFile.name.toLowerCase().endsWith(".skeleton.rsrc")) {
+      toast.error("Skeleton file must be a .skeleton.rsrc file");
+      return;
+    }
+
     setLoading(true);
     try {
-      const arrayBuffer = await file.arrayBuffer();
+      const bg3dArrayBuffer = await bg3dFile.arrayBuffer();
+      let skeletonData: SkeletonResource | undefined;
+
+      // Parse skeleton file if provided
+      if (skeletonFile && pyodideWorker && isWorkerReady) {
+        console.log("Parsing skeleton file...");
+        const skeletonArrayBuffer = await skeletonFile.arrayBuffer();
+        const skeletonJsonBuffer = await parseSkeletonRsrc({
+          pyodideWorker,
+          bytes: skeletonArrayBuffer,
+        });
+        const skeletonJson = new TextDecoder().decode(skeletonJsonBuffer);
+        skeletonData = JSON.parse(skeletonJson);
+        console.log("Skeleton data parsed:", skeletonData);
+      }
+
       const worker = new BG3DGltfWorker();
       const result = await new Promise<BG3DGltfWorkerResponse>(
         (resolve, reject) => {
@@ -124,17 +170,27 @@ export function ModelViewer() {
             reject(e);
             worker.terminate();
           };
-          const message: BG3DGltfWorkerMessage = {
-            type: "bg3d-to-glb",
-            buffer: arrayBuffer,
-          };
+          
+          // Choose the appropriate message type based on whether we have skeleton data
+          const message: BG3DGltfWorkerMessage = skeletonData
+            ? {
+                type: "bg3d-with-skeleton-to-glb",
+                bg3dBuffer: bg3dArrayBuffer,
+                skeletonData,
+              }
+            : {
+                type: "bg3d-to-glb",
+                buffer: bg3dArrayBuffer,
+              };
           worker.postMessage(message);
         },
       );
+      
       if (result.type === "error") {
         throw new Error(result.error);
       }
-      if (result.type === "bg3d-to-glb") {
+      
+      if (result.type === "bg3d-to-glb" || result.type === "bg3d-with-skeleton-to-glb") {
         const glbBlob = new Blob([result.result], {
           type: "model/gltf-binary",
         });
@@ -142,7 +198,13 @@ export function ModelViewer() {
         setGltfUrl(url);
         setBg3dParsed(result.parsed);
         extractTexturesFromParsed(result.parsed);
-        toast.success(`Successfully loaded ${file.name}`);
+        
+        const fileName = skeletonFile ? `${bg3dFile.name} + ${skeletonFile.name}` : bg3dFile.name;
+        toast.success(`Successfully loaded ${fileName}`);
+        
+        if (result.parsed.skeleton?.animations?.length) {
+          console.log(`Model contains ${result.parsed.skeleton.animations.length} animations`);
+        }
       }
     } catch (error) {
       console.error("Error loading BG3D file:", error);
@@ -160,13 +222,25 @@ export function ModelViewer() {
     const bg3dFile = files.find((file) =>
       file.name.toLowerCase().endsWith(".bg3d"),
     );
+    const skeletonFile = files.find((file) =>
+      file.name.toLowerCase().endsWith(".skeleton.rsrc"),
+    );
+    
     if (bg3dFile) {
-      handleFileUpload(bg3dFile);
+      handleFileUpload(bg3dFile, skeletonFile);
+    } else if (skeletonFile) {
+      toast.error("Please also select a BG3D file to go with the skeleton file");
     }
   }
 
   function handleDragOver(e: React.DragEvent) {
     e.preventDefault();
+  }
+
+  // Handle animation state from ModelCanvas
+  function handleAnimationsReady(animationInfos: AnimationInfo[], mixer: THREE.AnimationMixer | null) {
+    setAnimations(animationInfos);
+    setAnimationMixer(mixer);
   }
 
   // Removed unused handleTexturesExtracted and handleNodesExtracted
@@ -452,19 +526,36 @@ export function ModelViewer() {
 
   const loadTestModel = async () => {
     try {
-      // Load the Otto.bg3d test file
-      const response = await fetch("/PangeaRSEdit/Otto.bg3d");
-      if (!response.ok) {
-        throw new Error(`Failed to fetch Otto.bg3d: ${response.status}`);
+      // Load both Otto.bg3d and Otto.skeleton.rsrc test files
+      const [bg3dResponse, skeletonResponse] = await Promise.all([
+        fetch("/PangeaRSEdit/Otto.bg3d"),
+        fetch("/PangeaRSEdit/Otto.skeleton.rsrc"),
+      ]);
+      
+      if (!bg3dResponse.ok) {
+        throw new Error(`Failed to fetch Otto.bg3d: ${bg3dResponse.status}`);
       }
-      const arrayBuffer = await response.arrayBuffer();
-      const file = new File([arrayBuffer], "Otto.bg3d", {
+      
+      const bg3dArrayBuffer = await bg3dResponse.arrayBuffer();
+      const bg3dFile = new File([bg3dArrayBuffer], "Otto.bg3d", {
         type: "application/octet-stream",
       });
-      await handleFileUpload(file);
+      
+      let skeletonFile: File | undefined;
+      if (skeletonResponse.ok) {
+        const skeletonArrayBuffer = await skeletonResponse.arrayBuffer();
+        skeletonFile = new File([skeletonArrayBuffer], "Otto.skeleton.rsrc", {
+          type: "application/octet-stream",
+        });
+        console.log("Loaded Otto skeleton file");
+      } else {
+        console.warn("Otto skeleton file not found, loading without animations");
+      }
+      
+      await handleFileUpload(bg3dFile, skeletonFile);
     } catch (error) {
       console.error("Error loading sample model:", error);
-      toast.error("Failed to load Otto.bg3d sample file");
+      toast.error("Failed to load Otto sample files");
     }
   };
 
@@ -497,19 +588,27 @@ export function ModelViewer() {
                   >
                     <Upload className="w-12 h-12 mx-auto mb-4 text-gray-400" />
                     <p className="text-gray-400 mb-2">
-                      Drop a BG3D file here or click to select
+                      Drop BG3D and skeleton files here or click to select
                     </p>
-                    <p className="text-sm text-gray-500">Supports .bg3d files</p>
+                    <p className="text-sm text-gray-500">Supports .bg3d files and optional .skeleton.rsrc files</p>
                   </div>
 
                   <input
                     ref={fileInputRef}
                     type="file"
-                    accept=".bg3d"
+                    accept=".bg3d,.skeleton.rsrc"
+                    multiple
                     className="hidden"
                     onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      if (file) handleFileUpload(file);
+                      const files = Array.from(e.target.files || []);
+                      const bg3dFile = files.find(f => f.name.toLowerCase().endsWith(".bg3d"));
+                      const skeletonFile = files.find(f => f.name.toLowerCase().endsWith(".skeleton.rsrc"));
+                      
+                      if (bg3dFile) {
+                        handleFileUpload(bg3dFile, skeletonFile);
+                      } else if (files.length > 0) {
+                        toast.error("Please select a BG3D file (and optionally a skeleton.rsrc file)");
+                      }
                     }}
                   />
 
@@ -577,11 +676,19 @@ export function ModelViewer() {
                   <input
                     ref={fileInputRef}
                     type="file"
-                    accept=".bg3d"
+                    accept=".bg3d,.skeleton.rsrc"
+                    multiple
                     className="hidden"
                     onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      if (file) handleFileUpload(file);
+                      const files = Array.from(e.target.files || []);
+                      const bg3dFile = files.find(f => f.name.toLowerCase().endsWith(".bg3d"));
+                      const skeletonFile = files.find(f => f.name.toLowerCase().endsWith(".skeleton.rsrc"));
+                      
+                      if (bg3dFile) {
+                        handleFileUpload(bg3dFile, skeletonFile);
+                      } else if (files.length > 0) {
+                        toast.error("Please select a BG3D file (and optionally a skeleton.rsrc file)");
+                      }
                     }}
                   />
                 </div>
@@ -594,6 +701,14 @@ export function ModelViewer() {
               nodes={modelNodes}
               clonedScene={scene}
               onVisibilityChange={onVisibilityChange}
+            />
+          )}
+
+          {/* Animation Viewer - Show when animations are available */}
+          {gltfUrl && (
+            <AnimationViewer
+              animations={animations}
+              animationMixer={animationMixer}
             />
           )}
 
@@ -664,6 +779,7 @@ export function ModelViewer() {
               gltfUrl={gltfUrl}
               setModelNodes={setModelNodes}
               onSceneReady={setScene}
+              onAnimationsReady={handleAnimationsReady}
             />
           ) : (
             <div className="flex items-center justify-center h-full text-gray-400">
