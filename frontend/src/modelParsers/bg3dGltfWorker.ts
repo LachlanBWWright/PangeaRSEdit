@@ -1,6 +1,7 @@
 import { bg3dParsedToBG3D, parseBG3D, BG3DParseResult } from "./parseBG3D";
 import { bg3dParsedToGLTF, gltfToBG3D } from "./parsedBg3dGitfConverter";
 import { parseBG3DWithSkeletonResource } from "./bg3dWithSkeleton";
+import { bg3dSkeletonToSkeletonResource, skeletonResourceToBinary } from "./skeletonExport";
 import { WebIO } from "@gltf-transform/core";
 import type { SkeletonResource } from "../python/structSpecs/skeleton/skeletonInterface";
 

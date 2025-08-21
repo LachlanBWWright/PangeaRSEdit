@@ -16,6 +16,7 @@ import {
 } from "../modelParsers/bg3dGltfWorker";
 import { BG3DParseResult } from "../modelParsers/parseBG3D";
 import { parseSkeletonRsrc } from "../modelParsers/skeletonRsrc/parseSkeletonRsrc";
+import { bg3dSkeletonToSkeletonResource, skeletonResourceToBinary } from "../modelParsers/skeletonExport";
 import PyodideWorker from "../python/pyodideWorker?worker";
 import type { SkeletonResource } from "../python/structSpecs/skeleton/skeletonInterface";
 import { toast } from "sonner";
@@ -449,6 +450,12 @@ export function ModelViewer() {
           a.click();
           document.body.removeChild(a);
           URL.revokeObjectURL(url);
+          
+          // Also download skeleton if available
+          if (bg3dParsed.skeleton && pyodideWorker && isWorkerReady) {
+            handleDownloadSkeleton();
+          }
+          
           toast.success("BG3D model downloaded");
         }
         worker.terminate();
@@ -467,6 +474,36 @@ export function ModelViewer() {
     } catch (error) {
       console.error("Error downloading BG3D:", error);
       toast.error("Failed to download BG3D model");
+    }
+  };
+
+  const handleDownloadSkeleton = async () => {
+    if (!bg3dParsed?.skeleton || !pyodideWorker || !isWorkerReady) {
+      return;
+    }
+
+    try {
+      console.log("Converting skeleton to resource format...");
+      const skeletonResource = bg3dSkeletonToSkeletonResource(bg3dParsed.skeleton);
+      
+      console.log("Converting skeleton resource to binary...");
+      const skeletonBinary = await skeletonResourceToBinary(skeletonResource, pyodideWorker);
+      
+      // Download the skeleton file
+      const blob = new Blob([skeletonBinary], { type: "application/octet-stream" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "model.skeleton.rsrc";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      
+      toast.success("Skeleton file downloaded");
+    } catch (error) {
+      console.error("Error downloading skeleton:", error);
+      toast.error("Failed to download skeleton file");
     }
   };
 
