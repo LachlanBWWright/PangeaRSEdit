@@ -271,11 +271,14 @@ export function bg3dParsedToGLTF(parsed: BG3DParseResult): Document {
     // Create joint nodes for each bone
     gltfJoints = skeleton.bones.map((bone, index) => {
       const joint = doc.createNode();
-      joint.setName(`joint_${index}_${bone.name.substring(0, 20)}`); // Truncate long names
+      // Use the exact bone name for better targeting - remove any invalid characters
+      const cleanName = bone.name.replace(/[^a-zA-Z0-9_]/g, '_');
+      joint.setName(cleanName);
       
       // Set bone transform (position only for now)
       joint.setTranslation([bone.coordX, bone.coordY, bone.coordZ]);
       
+      console.log(`Created joint ${index}: ${cleanName} at [${bone.coordX}, ${bone.coordY}, ${bone.coordZ}]`);
       return joint;
     });
     
@@ -343,6 +346,12 @@ export function bg3dParsedToGLTF(parsed: BG3DParseResult): Document {
             // Sort keyframes by tick to ensure proper order
             const sortedKeyframes = [...keyframes].sort((a, b) => a.tick - b.tick);
             
+            // Skip bones with no meaningful keyframes
+            if (sortedKeyframes.length === 0) {
+              console.log(`Skipping bone ${boneIndex} (${joint.getName()}) - no keyframes`);
+              return;
+            }
+            
             // Calculate proper timing - assume 30 FPS but ensure non-zero duration
             const maxTick = Math.max(...sortedKeyframes.map(kf => kf.tick));
             const minTick = Math.min(...sortedKeyframes.map(kf => kf.tick));
@@ -358,10 +367,12 @@ export function bg3dParsedToGLTF(parsed: BG3DParseResult): Document {
               if (sortedKeyframes.length === 1) {
                 times = [0, 1.0]; // 1 second duration
                 sortedKeyframes.push({ ...sortedKeyframes[0] }); // Duplicate the keyframe
+                actualDuration = 1.0;
               } else {
+                // Multiple keyframes with same tick - spread them over 1 second
                 times = sortedKeyframes.map((_, index) => index * (1.0 / (sortedKeyframes.length - 1)));
+                actualDuration = 1.0;
               }
-              actualDuration = 1.0;
             } else {
               times = sortedKeyframes.map(kf => (kf.tick - minTick) / fps);
               actualDuration = Math.max(...times);
@@ -374,7 +385,7 @@ export function bg3dParsedToGLTF(parsed: BG3DParseResult): Document {
               }
             }
             
-            console.log(`Animation ${bg3dAnim.name}, bone ${boneIndex}: ${sortedKeyframes.length} keyframes, duration: ${actualDuration} seconds`);
+            console.log(`Animation ${bg3dAnim.name}, bone ${boneIndex} (${joint.getName()}): ${sortedKeyframes.length} keyframes, ticks ${minTick}-${maxTick}, duration: ${actualDuration} seconds`);
             
             const timeAccessor = doc.createAccessor()
               .setType("SCALAR")
