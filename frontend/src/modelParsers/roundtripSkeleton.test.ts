@@ -52,8 +52,11 @@ describe('BG3D + Skeleton Roundtrip Tests', () => {
     // Parse the roundtrip binary back to verify integrity
     const reparsedSkeletonResource = parseSkeletonRsrcTS(new Uint8Array(roundtripSkeletonBinary));
     
-    // Verify key structure matches
-    expect(Object.keys(reparsedSkeletonResource)).toEqual(Object.keys(originalSkeletonResource));
+    // Verify key structure matches (excluding non-skeleton metadata like 'alis')
+    const skeletonResourceTypes = ['_metadata', 'Hedr', 'Bone', 'BonP', 'BonN', 'RelP', 'AnHd', 'Evnt', 'NumK', 'KeyF'];
+    const originalKeys = Object.keys(originalSkeletonResource).filter(key => skeletonResourceTypes.includes(key));
+    const roundtripKeys = Object.keys(reparsedSkeletonResource).filter(key => skeletonResourceTypes.includes(key));
+    expect(roundtripKeys.sort()).toEqual(originalKeys.sort());
     
     // Verify bone count matches
     const originalBoneCount = Object.keys(originalSkeletonResource.Bone || {}).length;

@@ -238,9 +238,10 @@ describe("BG3D Skeleton Integration", () => {
     expect(gltfDoc).toBeDefined();
     
     // Check that skeleton data is converted to glTF format
-    const joints = gltfDoc.getRoot().listNodes().filter(node => 
-      node.getName()?.startsWith("joint_")
-    );
+    const joints = gltfDoc.getRoot().listNodes().filter(node => {
+      const name = node.getName();
+      return name === "root_bone" || name === "child_bone_1" || name === "child_bone_2";
+    });
     expect(joints.length).toBeGreaterThan(0);
     
     // Check that skin is created

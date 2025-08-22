@@ -4,83 +4,209 @@
 import type { SkeletonResource } from "../python/structSpecs/skeleton/skeletonInterface";
 
 /**
- * Convert SkeletonResource JSON to binary .rsrc format using TypeScript implementation
- * This is a simplified implementation that creates a basic resource fork structure
+ * Convert SkeletonResource JSON to binary .rsrc format using proper resource fork structure
+ * Implements the Mac resource fork format as expected by rsrcdump parser
  */
 export function skeletonResourceToBinary(skeletonResource: SkeletonResource): ArrayBuffer {
   console.log("Converting SkeletonResource to binary format...");
   
-  // For now, we'll use a simplified approach that creates a working .rsrc file
-  // A full implementation would need the complete rsrcdump TypeScript packing functionality
-  
-  // Calculate the total size needed for all resources
-  let totalSize = 0;
-  const resourceData: Array<{ type: string; id: number; data: Uint8Array; name: string }> = [];
+  // Collect all resources and convert to binary
+  const resourceEntries: Array<{
+    type: string;
+    id: number;
+    data: Uint8Array;
+    name: string;
+  }> = [];
   
   // Process each resource type
   Object.entries(skeletonResource).forEach(([resourceType, resources]) => {
     if (typeof resources === 'object' && resources !== null) {
       Object.entries(resources).forEach(([resourceId, resource]: [string, any]) => {
-        if (resource && typeof resource === 'object' && resource.obj) {
-          // Convert the object data to binary format
-          const binaryData = convertResourceObjectToBinary(resourceType, resource.obj);
-          resourceData.push({
+        if (resource && typeof resource === 'object') {
+          let binaryData: Uint8Array;
+          
+          if (resource.obj) {
+            // Convert structured object data to binary format
+            binaryData = convertResourceObjectToBinary(resourceType, resource.obj);
+          } else if (resource.data) {
+            // Handle raw data (like 'alis' resources)
+            if (typeof resource.data === 'string') {
+              // Convert hex string to binary
+              const hexString = resource.data.replace(/\s/g, '');
+              binaryData = new Uint8Array(hexString.length / 2);
+              for (let i = 0; i < hexString.length; i += 2) {
+                binaryData[i / 2] = parseInt(hexString.substr(i, 2), 16);
+              }
+            } else if (resource.data instanceof Uint8Array) {
+              binaryData = resource.data;
+            } else {
+              console.warn(`Unknown data format for ${resourceType}:${resourceId}`);
+              binaryData = new Uint8Array(0);
+            }
+          } else {
+            console.warn(`No obj or data field for ${resourceType}:${resourceId}`);
+            binaryData = new Uint8Array(0);
+          }
+          
+          resourceEntries.push({
             type: resourceType,
             id: parseInt(resourceId),
             data: binaryData,
             name: resource.name || '',
           });
-          totalSize += binaryData.length;
         }
       });
     }
   });
   
-  // Create a minimal resource fork structure
-  // This is a simplified version - a full implementation would need complete resource fork format
-  const headerSize = 256; // Space for resource fork header
-  const resourceMapSize = resourceData.length * 32; // 32 bytes per resource entry
-  const totalFileSize = headerSize + resourceMapSize + totalSize;
+  console.log(`Converting ${resourceEntries.length} resources to binary format`);
   
+  // Group resources by type for the type list
+  const resourcesByType = new Map<string, Array<typeof resourceEntries[0]>>();
+  resourceEntries.forEach(entry => {
+    if (!resourcesByType.has(entry.type)) {
+      resourcesByType.set(entry.type, []);
+    }
+    resourcesByType.get(entry.type)!.push(entry);
+  });
+  
+  // Calculate sizes
+  let totalDataSize = 0;
+  resourceEntries.forEach(entry => {
+    totalDataSize += 4 + entry.data.length; // 4-byte length prefix + data
+  });
+  
+  // Build name list
+  let nameListData = new Uint8Array(0);
+  const nameOffsets = new Map<string, number>();
+  resourceEntries.forEach(entry => {
+    if (entry.name && entry.name.length > 0) {
+      const nameBytes = new TextEncoder().encode(entry.name);
+      const currentOffset = nameListData.length;
+      nameOffsets.set(`${entry.type}:${entry.id}`, currentOffset);
+      
+      // Pascal string format: length byte + string data
+      const pascalString = new Uint8Array(1 + nameBytes.length);
+      pascalString[0] = nameBytes.length;
+      pascalString.set(nameBytes, 1);
+      
+      const newNameList = new Uint8Array(nameListData.length + pascalString.length);
+      newNameList.set(nameListData);
+      newNameList.set(pascalString, nameListData.length);
+      nameListData = newNameList;
+    }
+  });
+  
+  // Calculate type list size: 2 bytes for count + 8 bytes per type
+  const typeListSize = 2 + (resourcesByType.size * 8);
+  
+  // Calculate resource list size: 12 bytes per resource  
+  const resourceListSize = resourceEntries.length * 12;
+  
+  // Calculate map size: header (28 bytes) + type list + resource list + name list
+  const mapHeaderSize = 28;
+  const mapSize = mapHeaderSize + typeListSize + resourceListSize + nameListData.length;
+  
+  // Total file size: data section + map section
+  const totalFileSize = 16 + totalDataSize + mapSize;
+  
+  // Create the buffer
   const buffer = new ArrayBuffer(totalFileSize);
   const view = new DataView(buffer);
   const uint8View = new Uint8Array(buffer);
   
-  // Write a basic resource fork header (simplified)
-  view.setUint32(0, resourceMapSize, false); // Resource data offset
-  view.setUint32(4, totalFileSize - headerSize, false); // Resource map offset
-  view.setUint32(8, totalSize, false); // Resource data length
-  view.setUint32(12, resourceMapSize, false); // Resource map length
+  // Write resource fork header (16 bytes)
+  const dataOffset = 16;
+  const mapOffset = 16 + totalDataSize;
   
-  // Write resource data
-  let dataOffset = headerSize;
-  let mapOffset = headerSize + totalSize;
+  view.setUint32(0, dataOffset, false);     // Resource data offset from start of file
+  view.setUint32(4, mapOffset, false);      // Resource map offset from start of file  
+  view.setUint32(8, totalDataSize, false);  // Resource data length
+  view.setUint32(12, mapSize, false);       // Resource map length
   
-  resourceData.forEach((resource, index) => {
-    // Copy resource data
-    uint8View.set(resource.data, dataOffset);
+  // Write resource data section
+  let currentDataPos = dataOffset;
+  const resourceDataOffsets = new Map<string, number>();
+  
+  resourceEntries.forEach(entry => {
+    const key = `${entry.type}:${entry.id}`;
+    resourceDataOffsets.set(key, currentDataPos - dataOffset);
     
-    // Write resource map entry (simplified)
-    const mapEntryOffset = mapOffset + (index * 32);
+    // Write data length prefix (4 bytes)
+    view.setUint32(currentDataPos, entry.data.length, false);
+    currentDataPos += 4;
     
-    // Resource type (4 bytes)
-    const typeBytes = new TextEncoder().encode(resource.type.padEnd(4).substring(0, 4));
-    uint8View.set(typeBytes, mapEntryOffset);
-    
-    // Resource ID (2 bytes)
-    view.setUint16(mapEntryOffset + 4, resource.id, false);
-    
-    // Resource name offset (2 bytes) - simplified
-    view.setUint16(mapEntryOffset + 6, 0, false);
-    
-    // Resource attributes and data offset (8 bytes)
-    view.setUint32(mapEntryOffset + 8, dataOffset - headerSize, false);
-    view.setUint32(mapEntryOffset + 12, resource.data.length, false);
-    
-    dataOffset += resource.data.length;
+    // Write resource data
+    uint8View.set(entry.data, currentDataPos);
+    currentDataPos += entry.data.length;
   });
   
-  console.log(`Created skeleton binary with ${resourceData.length} resources, total size: ${totalFileSize} bytes`);
+  // Write resource map
+  let mapPos = mapOffset;
+  
+  // Map header (28 bytes) - copy of resource header + extra fields
+  view.setUint32(mapPos, dataOffset, false); mapPos += 4;
+  view.setUint32(mapPos, mapOffset, false); mapPos += 4;
+  view.setUint32(mapPos, totalDataSize, false); mapPos += 4;
+  view.setUint32(mapPos, mapSize, false); mapPos += 4;
+  view.setUint32(mapPos, 0, false); mapPos += 4;          // Next resource map (unused)
+  view.setUint16(mapPos, 0, false); mapPos += 2;          // File reference number (unused)
+  view.setUint16(mapPos, 0, false); mapPos += 2;          // File attributes
+  view.setUint16(mapPos, mapHeaderSize, false); mapPos += 2; // Type list offset within map
+  view.setUint16(mapPos, mapHeaderSize + typeListSize + resourceListSize, false); mapPos += 2; // Name list offset within map
+  
+  // Write type list
+  view.setUint16(mapPos, resourcesByType.size - 1, false); // Number of types - 1
+  mapPos += 2;
+  
+  let currentResourceListOffset = typeListSize;
+  
+  Array.from(resourcesByType.entries()).forEach(([typeName, resources]) => {
+    // Write type entry (8 bytes)
+    const typeBytes = new TextEncoder().encode(typeName.padEnd(4).substring(0, 4));
+    uint8View.set(typeBytes, mapPos);
+    mapPos += 4;
+    
+    view.setUint16(mapPos, resources.length - 1, false); // Number of resources - 1
+    mapPos += 2;
+    
+    view.setUint16(mapPos, currentResourceListOffset, false); // Offset to resource list for this type
+    mapPos += 2;
+    
+    currentResourceListOffset += resources.length * 12;
+  });
+  
+  // Write resource list
+  Array.from(resourcesByType.values()).forEach(resources => {
+    resources.forEach(resource => {
+      const key = `${resource.type}:${resource.id}`;
+      
+      // Resource entry (12 bytes)
+      view.setInt16(mapPos, resource.id, false); // Resource ID
+      mapPos += 2;
+      
+      // Name offset
+      const nameOffset = nameOffsets.get(key);
+      view.setUint16(mapPos, nameOffset !== undefined ? nameOffset : 0xFFFF, false);
+      mapPos += 2;
+      
+      // Packed attributes: 24-bit data offset + 8-bit flags
+      const dataOffsetInDataSection = resourceDataOffsets.get(key) || 0;
+      const packedAttr = (0 << 24) | (dataOffsetInDataSection & 0xFFFFFF);
+      view.setUint32(mapPos, packedAttr, false);
+      mapPos += 4;
+      
+      view.setUint32(mapPos, 0, false); // Reserved/junk
+      mapPos += 4;
+    });
+  });
+  
+  // Write name list
+  if (nameListData.length > 0) {
+    uint8View.set(nameListData, mapPos);
+  }
+  
+  console.log(`Created resource fork: ${totalFileSize} bytes, ${resourceEntries.length} resources, ${resourcesByType.size} types`);
   return buffer;
 }
 

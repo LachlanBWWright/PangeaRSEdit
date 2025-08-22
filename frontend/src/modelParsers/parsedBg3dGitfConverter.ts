@@ -302,28 +302,112 @@ export function bg3dParsedToGLTF(parsed: BG3DParseResult): Document {
       gltfSkin!.addJoint(joint);
     });
     
-    // Create inverse bind matrices based on bone coordinates
+    // Helper function to invert a 4x4 matrix
+    const invertMatrix4x4 = (matrix: Float32Array): Float32Array => {
+      const inv = new Float32Array(16);
+      const m = matrix;
+      
+      inv[0] = m[5] * m[10] * m[15] - m[5] * m[11] * m[14] - m[9] * m[6] * m[15] +
+               m[9] * m[7] * m[14] + m[13] * m[6] * m[11] - m[13] * m[7] * m[10];
+      inv[4] = -m[4] * m[10] * m[15] + m[4] * m[11] * m[14] + m[8] * m[6] * m[15] -
+               m[8] * m[7] * m[14] - m[12] * m[6] * m[11] + m[12] * m[7] * m[10];
+      inv[8] = m[4] * m[9] * m[15] - m[4] * m[11] * m[13] - m[8] * m[5] * m[15] +
+               m[8] * m[7] * m[13] + m[12] * m[5] * m[11] - m[12] * m[7] * m[9];
+      inv[12] = -m[4] * m[9] * m[14] + m[4] * m[10] * m[13] + m[8] * m[5] * m[14] -
+                m[8] * m[6] * m[13] - m[12] * m[5] * m[10] + m[12] * m[6] * m[9];
+      inv[1] = -m[1] * m[10] * m[15] + m[1] * m[11] * m[14] + m[9] * m[2] * m[15] -
+               m[9] * m[3] * m[14] - m[13] * m[2] * m[11] + m[13] * m[3] * m[10];
+      inv[5] = m[0] * m[10] * m[15] - m[0] * m[11] * m[14] - m[8] * m[2] * m[15] +
+               m[8] * m[3] * m[14] + m[12] * m[2] * m[11] - m[12] * m[3] * m[10];
+      inv[9] = -m[0] * m[9] * m[15] + m[0] * m[11] * m[13] + m[8] * m[1] * m[15] -
+               m[8] * m[3] * m[13] - m[12] * m[1] * m[11] + m[12] * m[3] * m[9];
+      inv[13] = m[0] * m[9] * m[14] - m[0] * m[10] * m[13] - m[8] * m[1] * m[14] +
+                m[8] * m[2] * m[13] + m[12] * m[1] * m[10] - m[12] * m[2] * m[9];
+      inv[2] = m[1] * m[6] * m[15] - m[1] * m[7] * m[14] - m[5] * m[2] * m[15] +
+               m[5] * m[3] * m[14] + m[13] * m[2] * m[7] - m[13] * m[3] * m[6];
+      inv[6] = -m[0] * m[6] * m[15] + m[0] * m[7] * m[14] + m[4] * m[2] * m[15] -
+               m[4] * m[3] * m[14] - m[12] * m[2] * m[7] + m[12] * m[3] * m[6];
+      inv[10] = m[0] * m[5] * m[15] - m[0] * m[7] * m[13] - m[4] * m[1] * m[15] +
+                m[4] * m[3] * m[13] + m[12] * m[1] * m[7] - m[12] * m[3] * m[5];
+      inv[14] = -m[0] * m[5] * m[14] + m[0] * m[6] * m[13] + m[4] * m[1] * m[14] -
+                m[4] * m[2] * m[13] - m[12] * m[1] * m[6] + m[12] * m[2] * m[5];
+      inv[3] = -m[1] * m[6] * m[11] + m[1] * m[7] * m[10] + m[5] * m[2] * m[11] -
+               m[5] * m[3] * m[10] - m[9] * m[2] * m[7] + m[9] * m[3] * m[6];
+      inv[7] = m[0] * m[6] * m[11] - m[0] * m[7] * m[10] - m[4] * m[2] * m[11] +
+               m[4] * m[3] * m[10] + m[8] * m[2] * m[7] - m[8] * m[3] * m[6];
+      inv[11] = -m[0] * m[5] * m[11] + m[0] * m[7] * m[9] + m[4] * m[1] * m[11] -
+                m[4] * m[3] * m[9] - m[8] * m[1] * m[7] + m[8] * m[3] * m[5];
+      inv[15] = m[0] * m[5] * m[10] - m[0] * m[6] * m[9] - m[4] * m[1] * m[10] +
+                m[4] * m[2] * m[9] + m[8] * m[1] * m[6] - m[8] * m[2] * m[5];
+
+      const det = m[0] * inv[0] + m[1] * inv[4] + m[2] * inv[8] + m[3] * inv[12];
+      
+      if (Math.abs(det) < 1e-6) {
+        // Singular matrix, return identity
+        const identity = new Float32Array(16);
+        identity[0] = identity[5] = identity[10] = identity[15] = 1;
+        return identity;
+      }
+      
+      const invDet = 1.0 / det;
+      for (let i = 0; i < 16; i++) {
+        inv[i] *= invDet;
+      }
+      
+      return inv;
+    };
+
+    // Create inverse bind matrices based on bone hierarchy
     const numJoints = gltfJoints.length;
     const inverseBindMatrices = new Float32Array(numJoints * 16);
     
+    // Calculate world transform for each bone in bind pose
+    const calculateBoneWorldTransform = (boneIndex: number): Float32Array => {
+      const bone = parsed.skeleton!.bones[boneIndex];
+      const matrix = new Float32Array(16);
+      
+      // Identity matrix
+      matrix[0] = 1; matrix[5] = 1; matrix[10] = 1; matrix[15] = 1;
+      
+      // Apply translation
+      matrix[12] = bone.coordX || 0;
+      matrix[13] = bone.coordY || 0;
+      matrix[14] = bone.coordZ || 0;
+      
+      // If this bone has a parent, multiply by parent's world transform
+      if (bone.parentBone >= 0 && bone.parentBone < parsed.skeleton!.bones.length) {
+        const parentWorldTransform = calculateBoneWorldTransform(bone.parentBone);
+        
+        // Multiply parent transform * current transform
+        const result = new Float32Array(16);
+        for (let i = 0; i < 4; i++) {
+          for (let j = 0; j < 4; j++) {
+            result[i * 4 + j] = 0;
+            for (let k = 0; k < 4; k++) {
+              result[i * 4 + j] += parentWorldTransform[i * 4 + k] * matrix[k * 4 + j];
+            }
+          }
+        }
+        return result;
+      }
+      
+      return matrix;
+    };
+    
+    // Calculate inverse bind matrix for each bone
     parsed.skeleton.bones.forEach((bone, i) => {
       const offset = i * 16;
       
-      // Create transform matrix from bone coordinates
-      // BG3D bone coordinates represent the bone's position in model space
-      const x = bone.coordX || 0;
-      const y = bone.coordY || 0;
-      const z = bone.coordZ || 0;
+      // Get world transform for this bone
+      const worldTransform = calculateBoneWorldTransform(i);
       
-      // For inverse bind matrix, we need the inverse of the bind pose
-      // Since BG3D coordinates are already in bind pose, we create inverse translation
-      inverseBindMatrices[offset + 0] = 1;   // m00
-      inverseBindMatrices[offset + 5] = 1;   // m11
-      inverseBindMatrices[offset + 10] = 1;  // m22
-      inverseBindMatrices[offset + 15] = 1;  // m33
-      inverseBindMatrices[offset + 12] = -x; // inverse translation x
-      inverseBindMatrices[offset + 13] = -y; // inverse translation y
-      inverseBindMatrices[offset + 14] = -z; // inverse translation z
+      // Calculate proper inverse of world transform
+      const inverseTransform = invertMatrix4x4(worldTransform);
+      
+      // Copy inverse transform to result array
+      for (let j = 0; j < 16; j++) {
+        inverseBindMatrices[offset + j] = inverseTransform[j];
+      }
     });
     
     const ibmAccessor = doc
