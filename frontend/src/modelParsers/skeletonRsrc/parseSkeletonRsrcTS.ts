@@ -155,13 +155,15 @@ function parseBoneData(hexData: string, boneName: string): any {
   }
   offset += 32; // Skip name field
   
-  // coordX, coordY, coordZ: 12 bytes - use big endian (same as Otto SwizzleFloat)
-  const coordX = view.getFloat32(offset, false); // false = big endian
+  // coordX, coordY, coordZ: 12 bytes - parse as big endian (the raw file format)
+  console.log(`Bone ${boneName} coord bytes:`, hexData.substring(72, 96)); // coordinates start after 36-byte header (72 hex chars)
+  const coordX = view.getFloat32(offset, false); // false = big endian (Otto file format)
   offset += 4;
   const coordY = view.getFloat32(offset, false); 
   offset += 4;
   const coordZ = view.getFloat32(offset, false);
   offset += 4;
+  console.log(`Bone ${boneName} coordinates: [${coordX}, ${coordY}, ${coordZ}]`);
   
   // numPointsAttachedToBone, numNormalsAttachedToBone: 8 bytes
   const numPointsAttachedToBone = view.getUint32(offset, true);
