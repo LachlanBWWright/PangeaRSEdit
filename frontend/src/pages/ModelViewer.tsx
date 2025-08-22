@@ -16,9 +16,8 @@ import {
   BG3DGltfWorkerResponse,
 } from "../modelParsers/bg3dGltfWorker";
 import { BG3DParseResult } from "../modelParsers/parseBG3D";
-import { parseSkeletonRsrc } from "../modelParsers/skeletonRsrc/parseSkeletonRsrc";
+import { parseSkeletonRsrcTS } from "../modelParsers/skeletonRsrc/parseSkeletonRsrcTS";
 import { bg3dSkeletonToSkeletonResource, skeletonResourceToBinary } from "../modelParsers/skeletonExport";
-import PyodideWorker from "../python/pyodideWorker?worker";
 import type { SkeletonResource } from "../python/structSpecs/skeleton/skeletonInterface";
 import { toast } from "sonner";
 import * as THREE from "three";
@@ -49,8 +48,6 @@ export function ModelViewer() {
   const [textures, setTextures] = useState<Texture[]>([]);
   const [animations, setAnimations] = useState<AnimationInfo[]>([]);
   const [animationMixer, setAnimationMixer] = useState<THREE.AnimationMixer | null>(null);
-  const [pyodideWorker, setPyodideWorker] = useState<Worker | null>(null);
-  const [isWorkerReady, setIsWorkerReady] = useState(false);
   const [uploadStep, setUploadStep] = useState<"select-bg3d" | "select-skeleton" | "completed">("select-bg3d");
   const [pendingBg3dFile, setPendingBg3dFile] = useState<File | null>(null);
   function extractTexturesFromParsed(bg3dParsed: BG3DParseResult | null) {
@@ -110,22 +107,7 @@ export function ModelViewer() {
   const [modelNodes, setModelNodes] = useState<ModelNode[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Initialize pyodide worker for skeleton parsing
-  useEffect(() => {
-    const worker = new PyodideWorker();
-    worker.postMessage({ type: "init" });
-    worker.onmessage = (e) => {
-      if (e.data.type === "initRes") {
-        setIsWorkerReady(true);
-        console.log("Pyodide worker ready");
-      }
-    };
-    setPyodideWorker(worker);
-    
-    return () => {
-      worker.terminate();
-    };
-  }, []);
+  // Removed Pyodide worker initialization since we're using TypeScript implementation
 
   // Remove conditional useGLTF, handled in ModelCanvas
 
@@ -152,18 +134,14 @@ export function ModelViewer() {
 
       // Parse skeleton file if provided
       if (skeletonFile) {
-        if (pyodideWorker && isWorkerReady) {
-          console.log("Parsing skeleton file...");
+        try {
+          console.log("Parsing skeleton file with TypeScript implementation...");
           const skeletonArrayBuffer = await skeletonFile.arrayBuffer();
-          const skeletonJsonData = await parseSkeletonRsrc({
-            pyodideWorker,
-            bytes: skeletonArrayBuffer,
-          });
-          skeletonData = skeletonJsonData as SkeletonResource;
+          skeletonData = parseSkeletonRsrcTS(skeletonArrayBuffer);
           console.log("Skeleton data parsed:", skeletonData);
-        } else {
-          console.warn("Skeleton file provided but Pyodide worker not ready. Loading without skeleton data.");
-          toast.error("Skeleton parsing unavailable (Pyodide worker not ready). Loading model without animations.");
+        } catch (error) {
+          console.warn("Failed to parse skeleton file:", error);
+          toast.error("Failed to parse skeleton file. Loading model without animations.");
         }
       }
 
@@ -497,9 +475,9 @@ export function ModelViewer() {
           document.body.removeChild(a);
           URL.revokeObjectURL(url);
           
-          // Also download skeleton if available
-          if (bg3dParsed.skeleton && pyodideWorker && isWorkerReady) {
-            handleDownloadSkeleton();
+          // Also download skeleton if available (not yet implemented)
+          if (bg3dParsed.skeleton) {
+            console.log("Skeleton export not yet available with TypeScript implementation");
           }
           
           toast.success("BG3D model downloaded");
@@ -524,7 +502,7 @@ export function ModelViewer() {
   };
 
   const handleDownloadSkeleton = async () => {
-    if (!bg3dParsed?.skeleton || !pyodideWorker || !isWorkerReady) {
+    if (!bg3dParsed?.skeleton) {
       return;
     }
 
@@ -532,21 +510,9 @@ export function ModelViewer() {
       console.log("Converting skeleton to resource format...");
       const skeletonResource = bg3dSkeletonToSkeletonResource(bg3dParsed.skeleton);
       
-      console.log("Converting skeleton resource to binary...");
-      const skeletonBinary = await skeletonResourceToBinary(skeletonResource, pyodideWorker);
-      
-      // Download the skeleton file
-      const blob = new Blob([skeletonBinary], { type: "application/octet-stream" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = "model.skeleton.rsrc";
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-      
-      toast.success("Skeleton file downloaded");
+      // TODO: Implement skeleton resource to binary conversion using TypeScript
+      console.warn("Skeleton binary export not yet implemented with TypeScript. Download skipped.");
+      toast.error("Skeleton binary export not yet implemented. Please use GLB export for now.");
     } catch (error) {
       console.error("Error downloading skeleton:", error);
       toast.error("Failed to download skeleton file");
@@ -633,11 +599,6 @@ export function ModelViewer() {
           type: "application/octet-stream",
         });
         console.log("Loaded Otto skeleton file");
-        
-        if (!pyodideWorker || !isWorkerReady) {
-          console.warn("Pyodide worker not ready for skeleton parsing");
-          toast.error("Animation loading requires network access for skeleton parsing. Loading model without animations.");
-        }
       } else {
         console.warn("Otto skeleton file not found, loading without animations");
       }
