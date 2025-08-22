@@ -1,5 +1,6 @@
 import { saveToJson } from "../../rsrcdump-ts/rsrcdump";
 import type { SkeletonResource } from "../../python/structSpecs/skeleton/skeletonInterface";
+import { skeletonSpecs } from "../../python/structSpecs/skeleton/skeleton";
 
 /**
  * Parse hex data as array of 16-bit unsigned integers for BonP entries
@@ -116,9 +117,9 @@ function parseNumKData(hexData: string): { numKeyFrames: number }[] {
 }
 
 /**
- * Parse hex data for Bone entries
+ * Parse hex data for Bone entries (fallback for when rsrcdump doesn't parse correctly)
  */
-function parseBoneData(hexData: string, boneName: string): any {
+function parseBoneDataFallback(hexData: string, boneName: string): any {
   if (!hexData || hexData.length === 0) {
     return {
       parentBone: -1,
@@ -155,13 +156,13 @@ function parseBoneData(hexData: string, boneName: string): any {
   }
   offset += 32; // Skip name field
   
-  // coordX, coordY, coordZ: 12 bytes - parse as big endian (the raw file format)
+  // coordX, coordY, coordZ: 12 bytes - parse as little endian since rsrcdump should handle byte order
   console.log(`Bone ${boneName} coord bytes:`, hexData.substring(72, 96)); // coordinates start after 36-byte header (72 hex chars)
-  const coordX = view.getFloat32(offset, false); // false = big endian (Otto file format)
+  const coordX = view.getFloat32(offset, true); // true = little endian since rsrcdump handles byte order
   offset += 4;
-  const coordY = view.getFloat32(offset, false); 
+  const coordY = view.getFloat32(offset, true); 
   offset += 4;
-  const coordZ = view.getFloat32(offset, false);
+  const coordZ = view.getFloat32(offset, true);
   offset += 4;
   console.log(`Bone ${boneName} coordinates: [${coordX}, ${coordY}, ${coordZ}]`);
   
@@ -256,23 +257,91 @@ function transformToSkeletonResource(rawData: any): SkeletonResource {
       const hexData = resourceData.data || '';
       
       if (typeName === 'BonP') {
-        obj = parseBonPData(hexData);
+        // Check if rsrcdump already parsed the data correctly
+        if (Array.isArray(resourceData) && resourceData.length > 0 && 
+            resourceData[0].pointIndex !== undefined) {
+          obj = resourceData;
+        } else {
+          obj = parseBonPData(hexData);
+        }
       } else if (typeName === 'BonN') {
-        obj = parseBonNData(hexData);
+        // Check if rsrcdump already parsed the data correctly
+        if (Array.isArray(resourceData) && resourceData.length > 0 && 
+            resourceData[0].normal !== undefined) {
+          obj = resourceData;
+        } else {
+          obj = parseBonNData(hexData);
+        }
       } else if (typeName === 'RelP') {
-        obj = parseRelPData(hexData);
+        // Check if rsrcdump already parsed the data correctly
+        if (Array.isArray(resourceData) && resourceData.length > 0 && 
+            resourceData[0].relOffsetX !== undefined) {
+          obj = resourceData;
+        } else {
+          obj = parseRelPData(hexData);
+        }
       } else if (typeName === 'Evnt') {
-        obj = parseEvntData(hexData);
+        // Check if rsrcdump already parsed the data correctly
+        if (Array.isArray(resourceData) && resourceData.length > 0 && 
+            resourceData[0].time !== undefined) {
+          obj = resourceData;
+        } else {
+          obj = parseEvntData(hexData);
+        }
       } else if (typeName === 'NumK') {
-        obj = parseNumKData(hexData);
+        // Check if rsrcdump already parsed the data correctly
+        if (Array.isArray(resourceData) && resourceData.length > 0 && 
+            resourceData[0].numKeyFrames !== undefined) {
+          obj = resourceData;
+        } else {
+          obj = parseNumKData(hexData);
+        }
       } else if (typeName === 'KeyF') {
-        obj = parseKeyFData(hexData);
+        // Check if rsrcdump already parsed the keyframe data correctly
+        if (Array.isArray(resourceData) && resourceData.length > 0 && 
+            resourceData[0].tick !== undefined) {
+          // Use the already parsed data from rsrcdump
+          obj = resourceData;
+          console.log(`KeyF data from rsrcdump:`, obj.slice(0, 2)); // Log first 2 keyframes
+        } else {
+          // Fallback to manual hex parsing
+          const hexData = resourceData.data || '';
+          obj = parseKeyFData(hexData);
+        }
       } else if (typeName === 'Bone') {
-        obj = parseBoneData(hexData, resourceData.name || `Bone_${resourceId}`);
+        // Check if rsrcdump already parsed the bone data correctly
+        if (resourceData.parentBone !== undefined && 
+            resourceData.coordX !== undefined && 
+            resourceData.coordY !== undefined && 
+            resourceData.coordZ !== undefined) {
+          // Use the already parsed data from rsrcdump
+          obj = {
+            parentBone: resourceData.parentBone,
+            name: resourceData.name || `Bone_${resourceId}`,
+            coordX: resourceData.coordX,
+            coordY: resourceData.coordY,
+            coordZ: resourceData.coordZ,
+            numPointsAttachedToBone: resourceData.numPointsAttachedToBone || 0,
+            numNormalsAttachedToBone: resourceData.numNormalsAttachedToBone || 0,
+          };
+          console.log(`Bone ${obj.name} coordinates from rsrcdump: [${obj.coordX}, ${obj.coordY}, ${obj.coordZ}]`);
+        } else {
+          // Fallback to manual hex parsing
+          const hexData = resourceData.data || '';
+          obj = parseBoneDataFallback(hexData, resourceData.name || `Bone_${resourceId}`);
+        }
       } else if (typeName === 'AnHd') {
-        // AnHd is a single object, not an array
-        // For now, keep the hex data - we'll need to parse this properly later
-        obj = { animName: resourceData.name || `Anim_${resourceId}`, numAnimEvents: 0 };
+        // Check if rsrcdump already parsed the animation header correctly
+        if (resourceData.animName !== undefined && resourceData.numAnimEvents !== undefined) {
+          obj = {
+            animName: resourceData.animName,
+            numAnimEvents: resourceData.numAnimEvents
+          };
+        } else {
+          // AnHd is a single object, not an array
+          // For now, keep the hex data - we'll need to parse this properly later
+          obj = { animName: resourceData.name || `Anim_${resourceId}`, numAnimEvents: 0 };
+        }
       } else {
         // For other types, keep the raw data
         obj = hexData;
@@ -323,13 +392,13 @@ export function parseSkeletonRsrcTS(bytes: ArrayBuffer): SkeletonResource {
   // Convert ArrayBuffer to Uint8Array
   const uint8Array = new Uint8Array(bytes);
   
-  // Use the TypeScript rsrcdump to parse the skeleton data
+  // Use the TypeScript rsrcdump to parse the skeleton data with skeleton specs
   const jsonString = saveToJson(
     uint8Array,
-    [], // struct specs - will use default Otto specs
+    skeletonSpecs, // struct specs - include skeleton specs
     [], // include types - include all
     [], // exclude types - exclude none
-    true // use Otto specs
+    false // don't use Otto specs since we're providing skeleton specs
   );
   
   // Parse the JSON result
