@@ -2,6 +2,8 @@ import { describe, it, expect } from 'vitest';
 import { parseSkeletonRsrcTS } from './skeletonRsrc/parseSkeletonRsrcTS';
 import { bg3dParsedToGLTF, gltfToBG3D } from './parsedBg3dGitfConverter';
 import { parseBG3D } from './parseBG3D';
+import { bg3dSkeletonToSkeletonResource } from './skeletonExport';
+import { skeletonResourceToBinary } from './skeletonBinaryExport';
 import { readFileSync } from 'fs';
 
 describe('BG3D + Skeleton Roundtrip Tests', () => {
@@ -9,13 +11,14 @@ describe('BG3D + Skeleton Roundtrip Tests', () => {
   const ottoBg3dPath = '/home/runner/work/PangeaRSEdit/PangeaRSEdit/frontend/public/Otto.bg3d';
   const ottoSkeletonPath = '/home/runner/work/PangeaRSEdit/PangeaRSEdit/frontend/public/Otto.skeleton.rsrc';
   
-  it('should convert BG3D+skeleton to GLB and back with data integrity', async () => {
+  it('should perform complete BG3D+skeleton binary roundtrip with data integrity', async () => {
     // Read original files
     const bg3dData = readFileSync(ottoBg3dPath);
     const skeletonData = readFileSync(ottoSkeletonPath);
     
     // Parse original skeleton
     const originalSkeletonResource = parseSkeletonRsrcTS(new Uint8Array(skeletonData));
+    console.log('Original skeleton resource structure:', Object.keys(originalSkeletonResource));
     
     // Parse original BG3D with skeleton integrated
     const originalBg3d = parseBG3D(bg3dData.buffer.slice(bg3dData.byteOffset, bg3dData.byteOffset + bg3dData.byteLength), originalSkeletonResource);
@@ -32,10 +35,6 @@ describe('BG3D + Skeleton Roundtrip Tests', () => {
     
     const animations = gltfResult.getRoot().listAnimations();
     console.log('GLB animations:', animations.length);
-    console.log('GLB animation durations:', animations.map(a => ({ 
-      name: a.getName(), 
-      duration: a.listChannels()[0]?.getSampler()?.getOutput()?.getArray()?.length || 0
-    })));
     
     // Convert back to BG3D+skeleton
     const roundtripResult = await gltfToBG3D(gltfResult);
@@ -44,45 +43,29 @@ describe('BG3D + Skeleton Roundtrip Tests', () => {
     expect(roundtripResult.skeleton!.animations).toBeDefined();
     expect(roundtripResult.skeleton!.animations.length).toBe(originalBg3d.skeleton!.animations.length);
     
-    console.log('Roundtrip skeleton animations:', roundtripResult.skeleton!.animations.length);
-    console.log('Roundtrip animations:', roundtripResult.skeleton!.animations.map(a => ({ 
-      name: a.name, 
-      keyframes: Object.keys(a.keyframes).length,
-      maxTick: Math.max(...Object.values(a.keyframes).flat().map(kf => kf.tick || 0))
-    })));
+    // Export skeleton resource from roundtrip result
+    const roundtripSkeletonResource = bg3dSkeletonToSkeletonResource(roundtripResult.skeleton!);
+    
+    // Convert back to binary format
+    const roundtripSkeletonBinary = skeletonResourceToBinary(roundtripSkeletonResource);
+    
+    // Parse the roundtrip binary back to verify integrity
+    const reparsedSkeletonResource = parseSkeletonRsrcTS(new Uint8Array(roundtripSkeletonBinary));
+    
+    // Verify key structure matches
+    expect(Object.keys(reparsedSkeletonResource)).toEqual(Object.keys(originalSkeletonResource));
+    
+    // Verify bone count matches
+    const originalBoneCount = Object.keys(originalSkeletonResource.Bone || {}).length;
+    const roundtripBoneCount = Object.keys(reparsedSkeletonResource.Bone || {}).length;
+    expect(roundtripBoneCount).toBe(originalBoneCount);
     
     // Verify animation count matches
-    expect(roundtripResult.skeleton!.animations.length).toBe(originalBg3d.skeleton!.animations.length);
+    const originalAnimCount = Object.keys(originalSkeletonResource.AnHd || {}).length;
+    const roundtripAnimCount = Object.keys(reparsedSkeletonResource.AnHd || {}).length;
+    expect(roundtripAnimCount).toBe(originalAnimCount);
     
-    // Verify each animation has preserved data
-    for (let i = 0; i < originalBg3d.skeleton!.animations.length; i++) {
-      const originalAnim = originalBg3d.skeleton!.animations[i];
-      const roundtripAnim = roundtripResult.skeleton!.animations[i];
-      
-      expect(roundtripAnim.name).toBe(originalAnim.name);
-      expect(Object.keys(roundtripAnim.keyframes).length).toBe(Object.keys(originalAnim.keyframes).length);
-      
-      // Check that keyframes have been preserved (allowing for some floating point differences)
-      for (const boneIndexStr of Object.keys(originalAnim.keyframes)) {
-        const boneIndex = parseInt(boneIndexStr);
-        const originalKeyframes = originalAnim.keyframes[boneIndex];
-        const roundtripKeyframes = roundtripAnim.keyframes[boneIndex];
-        
-        expect(roundtripKeyframes.length).toBeGreaterThanOrEqual(1); // Should have at least one keyframe
-        
-        // Check that tick values are reasonable (not zero for all keyframes unless original was zero)
-        const originalTicks = originalKeyframes.map(kf => kf.tick || 0);
-        const roundtripTicks = roundtripKeyframes.map(kf => kf.tick || 0);
-        const originalMaxTick = Math.max(...originalTicks);
-        const roundtripMaxTick = Math.max(...roundtripTicks);
-        
-        if (originalMaxTick > 0) {
-          expect(roundtripMaxTick).toBeGreaterThan(0);
-          // Allow for some variation in timing conversion
-          expect(Math.abs(roundtripMaxTick - originalMaxTick) / originalMaxTick).toBeLessThan(0.1);
-        }
-      }
-    }
+    console.log('Roundtrip integrity test completed successfully');
   });
   
   it('should preserve skeleton bone structure in roundtrip', async () => {

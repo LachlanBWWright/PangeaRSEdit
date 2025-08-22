@@ -7,9 +7,9 @@ import {
   BG3DGltfWorkerMessage,
   BG3DGltfWorkerResponse,
 } from "../modelParsers/bg3dGltfWorker";
-import { parseSkeletonRsrc } from "../modelParsers/skeletonRsrc/parseSkeletonRsrc";
-import { bg3dSkeletonToSkeletonResource, skeletonResourceToBinary } from "../modelParsers/skeletonExport";
-import PyodideWorker from "../python/pyodideWorker?worker";
+import { parseSkeletonRsrcTS } from "../modelParsers/skeletonRsrc/parseSkeletonRsrcTS";
+import { bg3dSkeletonToSkeletonResource } from "../modelParsers/skeletonExport";
+import { skeletonResourceToBinary } from "../modelParsers/skeletonBinaryExport";
 import type { SkeletonResource } from "../python/structSpecs/skeleton/skeletonInterface";
 import { toast } from "sonner";
 
@@ -27,25 +27,8 @@ export function SkeletonConversionPanel({
   const [uploadStep, setUploadStep] = useState<"select-bg3d" | "select-skeleton" | "completed">("select-bg3d");
   const [pendingBg3dFile, setPendingBg3dFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
-  const [pyodideWorker, setPyodideWorker] = useState<Worker | null>(null);
-  const [isWorkerReady, setIsWorkerReady] = useState(false);
 
-  // Initialize pyodide worker for skeleton parsing
-  useEffect(() => {
-    const worker = new PyodideWorker();
-    worker.postMessage({ type: "init" });
-    worker.onmessage = (e) => {
-      if (e.data.type === "initRes") {
-        setIsWorkerReady(true);
-        console.log("Pyodide worker ready for conversion panel");
-      }
-    };
-    setPyodideWorker(worker);
-    
-    return () => {
-      worker.terminate();
-    };
-  }, []);
+
 
   const handleFileConversion = async (bg3dFile: File, skeletonFile?: File) => {
     setLoading(true);
@@ -53,15 +36,11 @@ export function SkeletonConversionPanel({
       const bg3dBuffer = await bg3dFile.arrayBuffer();
       let skeletonData: SkeletonResource | undefined;
 
-      // Parse skeleton file if provided
-      if (skeletonFile && pyodideWorker && isWorkerReady) {
-        console.log("Parsing skeleton file for conversion...");
+      // Parse skeleton file if provided using TypeScript implementation
+      if (skeletonFile) {
+        console.log("Parsing skeleton file for conversion with TypeScript...");
         const skeletonArrayBuffer = await skeletonFile.arrayBuffer();
-        const skeletonJsonData = await parseSkeletonRsrc({
-          pyodideWorker,
-          bytes: skeletonArrayBuffer,
-        });
-        skeletonData = skeletonJsonData as SkeletonResource;
+        skeletonData = parseSkeletonRsrcTS(skeletonArrayBuffer);
         console.log("Skeleton data parsed for conversion:", skeletonData);
       }
 
@@ -131,33 +110,19 @@ export function SkeletonConversionPanel({
             console.log("Converting skeleton to resource format for download...");
             const skeletonResource = bg3dSkeletonToSkeletonResource(result.parsed.skeleton);
             
-            if (pyodideWorker && isWorkerReady) {
-              console.log("Converting skeleton resource to binary for download...");
-              const skeletonBinary = await skeletonResourceToBinary(skeletonResource, pyodideWorker);
-              
-              // Download the skeleton file
-              const skeletonBlob = new Blob([skeletonBinary], { type: "application/octet-stream" });
-              const skeletonUrl = URL.createObjectURL(skeletonBlob);
-              const skeletonLink = document.createElement("a");
-              skeletonLink.href = skeletonUrl;
-              skeletonLink.download = bg3dFile.name.replace(/\.bg3d$/, ".skeleton.rsrc");
-              document.body.appendChild(skeletonLink);
-              skeletonLink.click();
-              document.body.removeChild(skeletonLink);
-              setTimeout(() => URL.revokeObjectURL(skeletonUrl), 1000);
-            } else {
-              console.log("Pyodide worker not available, exporting skeleton as JSON...");
-              const skeletonJson = JSON.stringify(skeletonResource, null, 2);
-              const skeletonBlob = new Blob([skeletonJson], { type: "application/json" });
-              const skeletonUrl = URL.createObjectURL(skeletonBlob);
-              const skeletonLink = document.createElement("a");
-              skeletonLink.href = skeletonUrl;
-              skeletonLink.download = bg3dFile.name.replace(/\.bg3d$/, ".skeleton.json");
-              document.body.appendChild(skeletonLink);
-              skeletonLink.click();
-              document.body.removeChild(skeletonLink);
-              setTimeout(() => URL.revokeObjectURL(skeletonUrl), 1000);
-            }
+            console.log("Converting skeleton resource to binary for download...");
+            const skeletonBinary = skeletonResourceToBinary(skeletonResource);
+            
+            // Download the skeleton file
+            const skeletonBlob = new Blob([skeletonBinary], { type: "application/octet-stream" });
+            const skeletonUrl = URL.createObjectURL(skeletonBlob);
+            const skeletonLink = document.createElement("a");
+            skeletonLink.href = skeletonUrl;
+            skeletonLink.download = bg3dFile.name.replace(/\.bg3d$/, ".skeleton.rsrc");
+            document.body.appendChild(skeletonLink);
+            skeletonLink.click();
+            document.body.removeChild(skeletonLink);
+            setTimeout(() => URL.revokeObjectURL(skeletonUrl), 1000);
             
             toast.success(`${title} conversion completed with skeleton file`);
           } catch (error) {

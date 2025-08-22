@@ -17,6 +17,7 @@ import {
 import { BG3DParseResult } from "../modelParsers/parseBG3D";
 import { parseSkeletonRsrcTS } from "../modelParsers/skeletonRsrc/parseSkeletonRsrcTS";
 import { bg3dSkeletonToSkeletonResource } from "../modelParsers/skeletonExport";
+import { skeletonResourceToBinary } from "../modelParsers/skeletonBinaryExport";
 import type { SkeletonResource } from "../python/structSpecs/skeleton/skeletonInterface";
 import { toast } from "sonner";
 import * as THREE from "three";
@@ -480,20 +481,20 @@ export function ModelViewer() {
             try {
               const skeletonResource = bg3dSkeletonToSkeletonResource(bg3dParsed.skeleton);
               
-              // For now, export as JSON until we have TypeScript binary conversion
-              const skeletonJson = JSON.stringify(skeletonResource, null, 2);
-              const skeletonBlob = new Blob([skeletonJson], { type: "application/json" });
+              // Convert to binary .rsrc format
+              const skeletonBinary = skeletonResourceToBinary(skeletonResource);
+              const skeletonBlob = new Blob([skeletonBinary], { type: "application/octet-stream" });
               const skeletonUrl = URL.createObjectURL(skeletonBlob);
               
               const skeletonLink = document.createElement("a");
               skeletonLink.href = skeletonUrl;
-              skeletonLink.download = "model.skeleton.json";
+              skeletonLink.download = "model.skeleton.rsrc";
               document.body.appendChild(skeletonLink);
               skeletonLink.click();
               document.body.removeChild(skeletonLink);
               URL.revokeObjectURL(skeletonUrl);
               
-              toast.success("Skeleton data exported as JSON");
+              toast.success("Skeleton data exported as .rsrc file");
             } catch (error) {
               console.error("Error exporting skeleton:", error);
               toast.error("Failed to export skeleton data");

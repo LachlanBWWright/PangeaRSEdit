@@ -727,26 +727,26 @@ export function bg3dParsedToGLTF(parsed: BG3DParseResult): Document {
   
   const scene = doc.createScene("Scene");
   
-  // DO NOT add skeleton joints to scene - they should only be part of the skin
-  // Joints being added to the scene makes them appear in the model hierarchy
-  // which is incorrect behavior for skeletal animation
-  
   // Add geometry nodes to scene
   for (const node of rootNodes) {
     doc.getRoot().listNodes().push(node);
     scene.addChild(node);
   }
   
-  // Add skeleton joint hierarchy to the scene so animations can find them
+  // DO NOT add skeleton joints to scene - they should only be part of the skin
+  // Joints being added to the scene makes them appear in the model hierarchy
+  // which is incorrect behavior for skeletal animation
+  
+  // However, we need to ensure joints exist in the document for animation targeting
   if (gltfJoints && gltfJoints.length > 0) {
-    console.log("Setting up joint hierarchy in scene for animation targeting");
+    console.log("Setting up joint hierarchy for animation targeting (not adding to scene)");
     
     // Add all joints to document's node list first
     for (const joint of gltfJoints) {
       doc.getRoot().listNodes().push(joint);
     }
     
-    // Build parent-child relationships and add to scene
+    // Build parent-child relationships for joints (but don't add to scene!)
     parsed.skeleton?.bones.forEach((bone, index) => {
       const joint = gltfJoints[index];
       if (!joint) return;
@@ -758,12 +758,12 @@ export function bg3dParsedToGLTF(parsed: BG3DParseResult): Document {
           parentJoint.addChild(joint);
           console.log(`Joint hierarchy: ${parentJoint.getName()} -> ${joint.getName()}`);
         }
-      } else {
-        // This is a root joint - add directly to scene
-        scene.addChild(joint);
-        console.log(`Root joint added to scene: ${joint.getName()}`);
       }
+      // NOTE: Do NOT add root joints to scene - this would make them visible
     });
+    
+    // The skin's inverse bind matrices and joint references are sufficient for animation
+    console.log("Joint hierarchy setup completed (joints not added to scene for proper skeletal animation)");
   }
 
   // 5. Store any unmappable data in extras at the root (for legacy round-trip)
