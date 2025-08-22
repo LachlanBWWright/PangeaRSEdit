@@ -33,8 +33,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 export function SplineMenu({
   splineData,
   setSplineData,
-  headerData,
-  setHeaderData,
+  headerData: _headerData,
+  setHeaderData: _setHeaderData,
 }: {
   splineData: SplineData;
   setSplineData: Updater<SplineData>;

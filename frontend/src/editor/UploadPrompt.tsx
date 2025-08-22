@@ -125,6 +125,9 @@ export function UploadPrompt({
       console.log(jsonData);
       const imgString = jsonData.Timg?.[1000]?.data;
       console.log(imgString);
+      if (!imgString) {
+        throw new Error("No image data found");
+      }
       const imgBuffer = Buffer.from(imgString, "hex");
       console.log("Image buffer length:", imgBuffer.byteLength);
       const tileCount = imgBuffer.byteLength / 2 / 32 / 32; // 2 bytes per pixel, 32x32 pixels per tile

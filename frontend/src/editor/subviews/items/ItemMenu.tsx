@@ -24,8 +24,8 @@ import { ParamTooltip } from "./ParamTooltip";
 export function ItemMenu({
   itemData,
   setItemData,
-  headerData,
-  setHeaderData,
+  headerData: _headerData,
+  setHeaderData: _setHeaderData,
 }: {
   itemData: ItemData;
   setItemData: Updater<ItemData>;

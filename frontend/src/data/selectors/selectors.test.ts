@@ -11,6 +11,7 @@ import {
   selectSplines 
 } from './index';
 import { ottoMaticLevel } from '../../python/structSpecs/ottoMaticInterface';
+import { ItemData, LiquidData } from '../../python/structSpecs/ottoMaticLevelData';
 import { SplineItemType } from '../../data/splines/ottoSplineItemType';
 import { ItemType } from '../../data/items/ottoItemType';
 import { WaterBodyType } from '../../data/water/ottoWaterBodyType';
@@ -223,20 +224,20 @@ describe('Data Selectors', () => {
 
   describe('Item Data Selectors', () => {
     it('should select item data correctly', () => {
-      const itemData = selectItemData(mockData);
+      const itemData = selectItemData(mockData as ItemData);
       expect(itemData).toBeTruthy();
       expect(itemData?.Itms[1000].obj).toHaveLength(2);
     });
 
     it('should select items array correctly', () => {
-      const items = selectItems(mockData);
+      const items = selectItems(mockData as ItemData);
       expect(items).toHaveLength(2);
       expect(items[0].type).toBe(ItemType.BasicPlant);
       expect(items[1].type).toBe(ItemType.SpacePodGenerator);
     });
 
     it('should return empty array when no items exist', () => {
-      const emptyData = { ...mockData, Itms: undefined } as unknown as ottoMaticLevel;
+      const emptyData = { ...mockData, Itms: undefined } as unknown as ItemData;
       const items = selectItems(emptyData);
       expect(items).toEqual([]);
     });
@@ -244,13 +245,13 @@ describe('Data Selectors', () => {
 
   describe('Liquid Data Selectors', () => {
     it('should select liquid data correctly', () => {
-      const liquidData = selectLiquidData(mockData);
+      const liquidData = selectLiquidData(mockData as LiquidData);
       expect(liquidData).toBeTruthy();
       expect(liquidData?.Liqd[1000].obj).toHaveLength(1);
     });
 
     it('should select liquids array correctly', () => {
-      const liquids = selectLiquids(mockData);
+      const liquids = selectLiquids(mockData as LiquidData);
       expect(liquids).toHaveLength(1);
       expect(liquids[0].type).toBe(WaterBodyType.BLUEWATER);
     });
