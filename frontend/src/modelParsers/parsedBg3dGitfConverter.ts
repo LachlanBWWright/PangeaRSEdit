@@ -295,17 +295,29 @@ export function bg3dParsedToGLTF(parsed: BG3DParseResult): Document {
       gltfSkin!.addJoint(joint);
     });
     
-    // Create inverse bind matrices (identity matrices for now)
+    // Create inverse bind matrices based on bone coordinates
     const numJoints = gltfJoints.length;
     const inverseBindMatrices = new Float32Array(numJoints * 16);
-    for (let i = 0; i < numJoints; i++) {
+    
+    parsed.skeleton.bones.forEach((bone, i) => {
       const offset = i * 16;
-      // Identity matrix
-      inverseBindMatrices[offset + 0] = 1; // m00
-      inverseBindMatrices[offset + 5] = 1; // m11
-      inverseBindMatrices[offset + 10] = 1; // m22
-      inverseBindMatrices[offset + 15] = 1; // m33
-    }
+      
+      // Create transform matrix from bone coordinates
+      // BG3D bone coordinates represent the bone's position in model space
+      const x = bone.coordX || 0;
+      const y = bone.coordY || 0;
+      const z = bone.coordZ || 0;
+      
+      // For inverse bind matrix, we need the inverse of the bind pose
+      // Since BG3D coordinates are already in bind pose, we create inverse translation
+      inverseBindMatrices[offset + 0] = 1;   // m00
+      inverseBindMatrices[offset + 5] = 1;   // m11
+      inverseBindMatrices[offset + 10] = 1;  // m22
+      inverseBindMatrices[offset + 15] = 1;  // m33
+      inverseBindMatrices[offset + 12] = -x; // inverse translation x
+      inverseBindMatrices[offset + 13] = -y; // inverse translation y
+      inverseBindMatrices[offset + 14] = -z; // inverse translation z
+    });
     
     const ibmAccessor = doc
       .createAccessor()
@@ -328,8 +340,42 @@ export function bg3dParsedToGLTF(parsed: BG3DParseResult): Document {
           if (boneIndex < gltfJoints.length && keyframes.length > 0) {
             const joint = gltfJoints[boneIndex];
             
-            // Create time input accessor
-            const times = keyframes.map(kf => kf.tick / 30.0); // Convert ticks to seconds (30 fps assumed)
+            // Sort keyframes by tick to ensure proper order
+            const sortedKeyframes = [...keyframes].sort((a, b) => a.tick - b.tick);
+            
+            // Calculate proper timing - assume 30 FPS but ensure non-zero duration
+            const maxTick = Math.max(...sortedKeyframes.map(kf => kf.tick));
+            const minTick = Math.min(...sortedKeyframes.map(kf => kf.tick));
+            const tickRange = maxTick - minTick;
+            
+            // Use 30 FPS as base, but ensure minimum duration of 1.0 seconds for single-frame animations
+            const fps = 30.0;
+            let times: number[];
+            let actualDuration: number;
+            
+            if (tickRange === 0 || sortedKeyframes.length === 1) {
+              // Single keyframe or all same tick - create a looping animation with proper duration
+              if (sortedKeyframes.length === 1) {
+                times = [0, 1.0]; // 1 second duration
+                sortedKeyframes.push({ ...sortedKeyframes[0] }); // Duplicate the keyframe
+              } else {
+                times = sortedKeyframes.map((_, index) => index * (1.0 / (sortedKeyframes.length - 1)));
+              }
+              actualDuration = 1.0;
+            } else {
+              times = sortedKeyframes.map(kf => (kf.tick - minTick) / fps);
+              actualDuration = Math.max(...times);
+              
+              // Ensure minimum duration of 0.1 seconds for very short animations
+              if (actualDuration < 0.1) {
+                const scale = 0.1 / actualDuration;
+                times = times.map(t => t * scale);
+                actualDuration = 0.1;
+              }
+            }
+            
+            console.log(`Animation ${bg3dAnim.name}, bone ${boneIndex}: ${sortedKeyframes.length} keyframes, duration: ${actualDuration} seconds`);
+            
             const timeAccessor = doc.createAccessor()
               .setType("SCALAR")
               .setArray(new Float32Array(times))
@@ -337,7 +383,7 @@ export function bg3dParsedToGLTF(parsed: BG3DParseResult): Document {
             
             // Create translation output accessor
             const translations: number[] = [];
-            keyframes.forEach(kf => {
+            sortedKeyframes.forEach(kf => {
               translations.push(kf.coordX, kf.coordY, kf.coordZ);
             });
             const translationAccessor = doc.createAccessor()
@@ -347,7 +393,7 @@ export function bg3dParsedToGLTF(parsed: BG3DParseResult): Document {
             
             // Create rotation output accessor (convert from Euler to quaternion)
             const rotations: number[] = [];
-            keyframes.forEach(kf => {
+            sortedKeyframes.forEach(kf => {
               // Convert Euler angles to quaternion
               const quat = eulerToQuaternion(kf.rotationX, kf.rotationY, kf.rotationZ);
               rotations.push(quat[0], quat[1], quat[2], quat[3]);
@@ -359,7 +405,7 @@ export function bg3dParsedToGLTF(parsed: BG3DParseResult): Document {
             
             // Create scale output accessor
             const scales: number[] = [];
-            keyframes.forEach(kf => {
+            sortedKeyframes.forEach(kf => {
               scales.push(kf.scaleX, kf.scaleY, kf.scaleZ);
             });
             const scaleAccessor = doc.createAccessor()
@@ -495,33 +541,52 @@ export function bg3dParsedToGLTF(parsed: BG3DParseResult): Document {
       const joints = new Uint16Array(numVertices * 4); // 4 joints per vertex
       const weights = new Float32Array(numVertices * 4); // 4 weights per vertex
       
+      // Initialize all weights to 0 and all joints to 0
+      joints.fill(0);
+      weights.fill(0);
+      
       // For each vertex, determine which bones influence it based on skeleton data
       for (let vertexIndex = 0; vertexIndex < numVertices; vertexIndex++) {
-        let weightsSet = 0;
+        const influencingBones: { boneIndex: number; weight: number }[] = [];
         
-        // Check each bone to see if this vertex is attached to it
+        // Find all bones that influence this vertex
         parsed.skeleton.bones.forEach((bone, boneIndex) => {
-          if (bone.pointIndices && bone.pointIndices.includes(vertexIndex) && weightsSet < 4) {
-            const weightIndex = vertexIndex * 4 + weightsSet;
-            joints[weightIndex] = boneIndex;
-            weights[weightIndex] = 1.0 / Math.max(1, bone.pointIndices.length); // Simple weight distribution
-            weightsSet++;
+          if (bone.pointIndices && bone.pointIndices.includes(vertexIndex)) {
+            // Calculate weight based on inverse of number of vertices influenced by this bone
+            // This gives more weight to bones that influence fewer vertices
+            const weight = bone.pointIndices.length > 0 ? 1.0 / bone.pointIndices.length : 0;
+            influencingBones.push({ boneIndex, weight });
           }
         });
         
-        // Normalize weights
-        let totalWeight = 0;
-        for (let i = 0; i < 4; i++) {
-          totalWeight += weights[vertexIndex * 4 + i];
-        }
-        if (totalWeight > 0) {
-          for (let i = 0; i < 4; i++) {
-            weights[vertexIndex * 4 + i] /= totalWeight;
-          }
-        } else {
-          // No bone influences this vertex, assign to root bone
+        // If no bones influence this vertex, assign to root bone (index 0)
+        if (influencingBones.length === 0) {
           joints[vertexIndex * 4] = 0;
           weights[vertexIndex * 4] = 1.0;
+        } else {
+          // Sort by weight (highest first) and take up to 4 bones
+          influencingBones.sort((a, b) => b.weight - a.weight);
+          const selectedBones = influencingBones.slice(0, 4);
+          
+          // Calculate total weight for normalization
+          const totalWeight = selectedBones.reduce((sum, bone) => sum + bone.weight, 0);
+          
+          // Assign joints and normalized weights
+          selectedBones.forEach((bone, i) => {
+            joints[vertexIndex * 4 + i] = bone.boneIndex;
+            weights[vertexIndex * 4 + i] = totalWeight > 0 ? bone.weight / totalWeight : 0;
+          });
+          
+          // Ensure weights sum to 1.0 (fix floating point precision issues)
+          let weightSum = 0;
+          for (let i = 0; i < 4; i++) {
+            weightSum += weights[vertexIndex * 4 + i];
+          }
+          if (weightSum > 0 && Math.abs(weightSum - 1.0) > 1e-6) {
+            for (let i = 0; i < 4; i++) {
+              weights[vertexIndex * 4 + i] /= weightSum;
+            }
+          }
         }
       }
       
@@ -627,16 +692,9 @@ export function bg3dParsedToGLTF(parsed: BG3DParseResult): Document {
   
   const scene = doc.createScene("Scene");
   
-  // Add skeleton joints to scene if present
-  if (gltfJoints.length > 0) {
-    // Add root bones (those without parents) to the scene
-    parsed.skeleton?.bones.forEach((bone, index) => {
-      if (bone.parentBone < 0) {
-        doc.getRoot().listNodes().push(gltfJoints[index]);
-        scene.addChild(gltfJoints[index]);
-      }
-    });
-  }
+  // DO NOT add skeleton joints to scene - they should only be part of the skin
+  // Joints being added to the scene makes them appear in the model hierarchy
+  // which is incorrect behavior for skeletal animation
   
   // Add geometry nodes to scene
   for (const node of rootNodes) {

@@ -28,8 +28,40 @@ export function ModelCanvas(props: ModelCanvasProps) {
   const gltfResult = useGLTF(gltfUrl);
   const [animationMixer, setAnimationMixer] = useState<THREE.AnimationMixer | null>(null);
 
-  // Extract node hierarchy from the scene
-  function extractNode(obj: THREE.Object3D, level = 0): ModelNode {
+  // Check if an object is a joint/bone that should be hidden from hierarchy
+  function isJoint(obj: THREE.Object3D): boolean {
+    // Check if it's a THREE.Bone
+    if (obj.type === 'Bone') {
+      return true;
+    }
+    
+    // Check if the name suggests it's a joint/bone
+    const name = obj.name.toLowerCase();
+    const jointKeywords = ['joint', 'bone', 'pelvis', 'torso', 'hip', 'knee', 'foot', 'chest', 'head', 'shoulder', 'elbow', 'hand'];
+    
+    // If the name contains any joint keywords, it's likely a joint
+    if (jointKeywords.some(keyword => name.includes(keyword))) {
+      return true;
+    }
+    
+    // If it has no mesh children but has transform data, it might be a joint
+    if (obj.children.length > 0 && !obj.children.some(child => child instanceof THREE.Mesh)) {
+      const hasOnlyJointChildren = obj.children.every(child => isJoint(child));
+      if (hasOnlyJointChildren) {
+        return true;
+      }
+    }
+    
+    return false;
+  }
+
+  // Extract node hierarchy from the scene, filtering out joints
+  function extractNode(obj: THREE.Object3D, level = 0): ModelNode | null {
+    // Skip joints/bones
+    if (isJoint(obj)) {
+      return null;
+    }
+    
     const node: ModelNode = {
       name: obj.name || `Node_${obj.id}`,
       type:
@@ -46,7 +78,7 @@ export function ModelCanvas(props: ModelCanvasProps) {
     if (obj.children.length > 0) {
       node.children = obj.children.map((child) =>
         extractNode(child, level + 1),
-      );
+      ).filter((child): child is ModelNode => child !== null);
     }
     return node;
   }
@@ -56,7 +88,7 @@ export function ModelCanvas(props: ModelCanvasProps) {
     if (gltfResult?.scene) {
       const nodes = gltfResult.scene.children.map((child) =>
         extractNode(child),
-      );
+      ).filter((node): node is ModelNode => node !== null);
       setModelNodes(nodes);
       if (onSceneReady) onSceneReady(gltfResult.scene);
 
