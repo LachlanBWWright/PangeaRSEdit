@@ -283,9 +283,13 @@ export function bg3dParsedToGLTF(parsed: BG3DParseResult): Document {
     });
     
     // Set up bone hierarchy
+    const rootJoints: Node[] = [];
     skeleton.bones.forEach((bone, index) => {
       if (bone.parentBone >= 0 && bone.parentBone < gltfJoints.length) {
         gltfJoints[bone.parentBone].addChild(gltfJoints[index]);
+      } else {
+        // This is a root joint - add to scene
+        rootJoints.push(gltfJoints[index]);
       }
     });
     

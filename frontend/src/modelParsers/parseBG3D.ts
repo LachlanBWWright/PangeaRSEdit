@@ -559,8 +559,18 @@ function convertSkeletonResourceToBG3D(skeleton: SkeletonResource): BG3DSkeleton
   const animations: BG3DAnimation[] = [];
   const animHeaderEntries = Object.entries(skeleton.AnHd || {});
   
-  animHeaderEntries.forEach(([animId, animEntry], animIndex) => {
+  // Sort animation headers by their resource ID to ensure correct order
+  animHeaderEntries.sort(([a], [b]) => parseInt(a, 10) - parseInt(b, 10));
+  
+  animHeaderEntries.forEach(([animId, animEntry], forEachIndex) => {
     const animHeader = animEntry.obj;
+    
+    // Calculate the actual animation index from the resource ID
+    // AnHd resource IDs are sequential: 1000, 1001, 1002, ..., 1034
+    // But KeyF resource IDs follow pattern: 1000+(animIndex*100)+boneIndex
+    // So animation 0 uses KeyF 1000-1015, animation 1 uses KeyF 1100-1115, etc.
+    const animResourceId = parseInt(animId, 10);
+    const animIndex = animResourceId - 1000;  // This is correct for both AnHd and KeyF mapping
     
     // Get animation events
     const events: BG3DAnimationEvent[] = [];
@@ -585,26 +595,36 @@ function convertSkeletonResourceToBG3D(skeleton: SkeletonResource): BG3DSkeleton
     
     // Parse keyframes from individual KeyF resources
     // Each KeyF resource follows the pattern: 1000 + (animIndex * 100) + boneIndex
+    // Where animIndex is the actual animation index (0-34), not the forEach index
     
     // Debug: Log available KeyF resources for this animation
-    if (animIndex === 0) {
-      console.log(`Available KeyF resources:`, Object.keys(skeleton.KeyF || {}));
+    if (forEachIndex === 0) {
+      console.log(`Animation mapping debug: AnHd ID ${animId} maps to animation index ${animIndex}`);
+      console.log(`Available KeyF resources:`, Object.keys(skeleton.KeyF || {}).length);
     }
     
     for (let boneIndex = 0; boneIndex < bones.length; boneIndex++) {
+      // KeyF resource pattern: 1000 + (animIndex * 100) + boneIndex
+      // Animation 0: 1000-1015, Animation 1: 1100-1115, etc.
       const keyframeResourceId = (1000 + (animIndex * 100) + boneIndex).toString();
       const keyframeEntry = skeleton.KeyF?.[keyframeResourceId];
       
-      console.log(`Looking for animation ${animIndex}, bone ${boneIndex}: KeyF resource ID ${keyframeResourceId}, found: ${!!keyframeEntry}`);
+      if (forEachIndex < 3) { // Only log for first 3 animations to avoid spam
+        console.log(`Animation ${animIndex} (${animHeader.animName}), bone ${boneIndex}: KeyF resource ID ${keyframeResourceId}, found: ${!!keyframeEntry}`);
+      }
       
-      if (keyframeEntry && keyframeEntry.obj) {
-        console.log(`  Examining KeyF resource ${keyframeResourceId}:`, keyframeEntry);
-        console.log(`  Structure:`, JSON.stringify(keyframeEntry, null, 2));
-        console.log(`  Found ${keyframeEntry.obj.length} keyframes for bone ${boneIndex} in animation ${animIndex}`);
-        keyframeEntry.obj.forEach((keyframe, idx) => {
-          if (idx === 0) {
-            console.log(`  First keyframe: tick=${keyframe.tick}, coord=[${keyframe.coordX}, ${keyframe.coordY}, ${keyframe.coordZ}]`);
+      if (keyframeEntry && keyframeEntry.obj && Array.isArray(keyframeEntry.obj)) {
+        if (forEachIndex < 3) {
+          console.log(`  Found ${keyframeEntry.obj.length} keyframes for bone ${boneIndex} in animation ${animIndex}`);
+          if (keyframeEntry.obj.length > 0) {
+            const firstKeyframe = keyframeEntry.obj[0];
+            const lastKeyframe = keyframeEntry.obj[keyframeEntry.obj.length - 1];
+            console.log(`  First keyframe: tick=${firstKeyframe.tick}, coord=[${firstKeyframe.coordX}, ${firstKeyframe.coordY}, ${firstKeyframe.coordZ}]`);
+            console.log(`  Last keyframe: tick=${lastKeyframe.tick}, coord=[${lastKeyframe.coordX}, ${lastKeyframe.coordY}, ${lastKeyframe.coordZ}]`);
           }
+        }
+        
+        keyframeEntry.obj.forEach((keyframe) => {
           keyframes[boneIndex].push({
             tick: keyframe.tick,
             accelerationMode: keyframe.accelerationMode,
@@ -619,13 +639,17 @@ function convertSkeletonResourceToBG3D(skeleton: SkeletonResource): BG3DSkeleton
             scaleZ: keyframe.scaleZ,
           });
         });
-      } else {
-        console.log(`  KeyF resource ${keyframeResourceId} is ${!keyframeEntry ? 'missing' : 'has no obj array'}`);
+      } else if (forEachIndex < 3) {
+        const objInfo = keyframeEntry?.obj ? `obj type: ${typeof keyframeEntry.obj}, is array: ${Array.isArray(keyframeEntry.obj)}, length: ${keyframeEntry.obj.length || 'N/A'}` : 'no obj';
+        console.log(`  KeyF resource ${keyframeResourceId} is ${!keyframeEntry ? 'missing' : `present but: ${objInfo}`}`);
+        if (keyframeEntry?.obj && !Array.isArray(keyframeEntry.obj)) {
+          console.log(`  KeyF obj structure:`, keyframeEntry.obj);
+        }
       }
     }
     
     const totalKeyframes = Object.values(keyframes).reduce((sum, boneKeyframes) => sum + boneKeyframes.length, 0);
-    console.log(`Animation ${animIndex}: ${animHeader.animName}: ${totalKeyframes} total keyframes across ${bones.length} bones`);
+    console.log(`Animation ${animIndex} (${animHeader.animName}): ${totalKeyframes} total keyframes across ${bones.length} bones`);
     
     animations.push({
       name: animHeader.animName,
@@ -960,19 +984,19 @@ export function convertBG3DToSkeletonResource(skeleton: BG3DSkeleton): SkeletonR
       };
     }
 
-    // Keyframes - flatten all bone keyframes into single array
-    const allKeyframes: any[] = [];
-    Object.entries(animation.keyframes).forEach(([, keyframes]) => {
-      allKeyframes.push(...keyframes);
+    // Keyframes - create separate KeyF resource for each bone 
+    // Otto uses pattern: 1000 + (animIndex * 100) + boneIndex
+    Object.entries(animation.keyframes).forEach(([boneIndexStr, keyframes]) => {
+      const boneIndex = parseInt(boneIndexStr);
+      if (keyframes.length > 0) {
+        const keyFrameResourceId = (1000 + (index * 100) + boneIndex).toString();
+        skeletonResource.KeyF[keyFrameResourceId] = {
+          name: skeleton.bones[boneIndex]?.name || `Bone_${boneIndex}`,
+          order: 1000 + (index * 100) + boneIndex,
+          obj: keyframes,
+        };
+      }
     });
-    
-    if (allKeyframes.length > 0) {
-      skeletonResource.KeyF[animId] = {
-        name: animation.name,
-        order: 100 + index * 3 + 3,
-        obj: allKeyframes,
-      };
-    }
   });
 
   return skeletonResource;

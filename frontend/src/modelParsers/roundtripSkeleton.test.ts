@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { parseSkeletonRsrcTS } from './skeletonRsrc/parseSkeletonRsrcTS';
 import { bg3dParsedToGLTF, gltfToBG3D } from './parsedBg3dGitfConverter';
-import { parseBG3D, BG3DParseResult } from './parseBG3D';
+import { parseBG3D } from './parseBG3D';
 import { readFileSync } from 'fs';
 
 describe('BG3D + Skeleton Roundtrip Tests', () => {
@@ -34,7 +34,7 @@ describe('BG3D + Skeleton Roundtrip Tests', () => {
     console.log('GLB animations:', animations.length);
     console.log('GLB animation durations:', animations.map(a => ({ 
       name: a.getName(), 
-      duration: a.listChannels()[0]?.listSamplers()[0]?.getOutput()?.getArray()?.length || 0
+      duration: a.listChannels()[0]?.getSampler()?.getOutput()?.getArray()?.length || 0
     })));
     
     // Convert back to BG3D+skeleton
@@ -134,10 +134,10 @@ describe('BG3D + Skeleton Roundtrip Tests', () => {
       expect(channels.length).toBeGreaterThan(0);
       
       for (const channel of channels) {
-        const samplers = channel.listSamplers();
-        expect(samplers.length).toBeGreaterThan(0);
+        const sampler = channel.getSampler();
+        expect(sampler).toBeTruthy();
         
-        for (const sampler of samplers) {
+        if (sampler) {
           const input = sampler.getInput();
           const times = input?.getArray();
           

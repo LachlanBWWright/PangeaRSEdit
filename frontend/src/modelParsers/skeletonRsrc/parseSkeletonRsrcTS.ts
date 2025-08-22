@@ -298,15 +298,27 @@ function transformToSkeletonResource(rawData: any): SkeletonResource {
         }
       } else if (typeName === 'KeyF') {
         // Check if rsrcdump already parsed the keyframe data correctly
-        if (Array.isArray(resourceData) && resourceData.length > 0 && 
-            resourceData[0].tick !== undefined) {
+        // resourceData should have structure: { name: string, obj: KeyFrame[] }
+        if (resourceData && resourceData.obj && Array.isArray(resourceData.obj) && 
+            resourceData.obj.length > 0 && resourceData.obj[0].tick !== undefined) {
           // Use the already parsed data from rsrcdump
-          obj = resourceData;
-          console.log(`KeyF data from rsrcdump:`, obj.slice(0, 2)); // Log first 2 keyframes
+          obj = resourceData.obj;
+          console.log(`KeyF ${resourceId} data from rsrcdump:`, obj.length, 'keyframes'); 
+        } else if (resourceData && resourceData.obj && Array.isArray(resourceData.obj)) {
+          // rsrcdump parsed it as an array but it might be empty or malformed
+          obj = resourceData.obj;
+          console.log(`KeyF ${resourceId} empty/malformed from rsrcdump:`, obj.length, 'keyframes');
         } else {
+          // Check what we actually got from rsrcdump
+          console.log(`KeyF ${resourceId} raw resourceData:`, resourceData);
+          console.log(`KeyF ${resourceId} resourceData type:`, typeof resourceData);
+          console.log(`KeyF ${resourceId} resourceData.keys:`, Object.keys(resourceData || {}));
+          
           // Fallback to manual hex parsing
           const hexData = resourceData.data || '';
+          console.log(`KeyF ${resourceId} hex data length:`, hexData.length);
           obj = parseKeyFData(hexData);
+          console.log(`KeyF ${resourceId} parsed from hex:`, obj.length, 'keyframes');
         }
       } else if (typeName === 'Bone') {
         // Check if rsrcdump already parsed the bone data correctly
