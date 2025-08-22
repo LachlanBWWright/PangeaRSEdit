@@ -712,6 +712,22 @@ export function bg3dParsedToGLTF(parsed: BG3DParseResult): Document {
     doc.getRoot().listNodes().push(node);
     scene.addChild(node);
   }
+  
+  // Add skeleton root bones to the document (but not scene) so animations can find them
+  if (gltfJoints && gltfJoints.length > 0) {
+    // Find root bones (those without parents) and add them to the document
+    const rootBones: Node[] = [];
+    parsed.skeleton?.bones.forEach((bone, index) => {
+      if (bone.parentBone < 0 && gltfJoints[index]) {
+        rootBones.push(gltfJoints[index]);
+      }
+    });
+    
+    // Add root bones to document's node list for animation targeting
+    for (const rootBone of rootBones) {
+      doc.getRoot().listNodes().push(rootBone);
+    }
+  }
 
   // 5. Store any unmappable data in extras at the root (for legacy round-trip)
   doc.getRoot().setExtras({
