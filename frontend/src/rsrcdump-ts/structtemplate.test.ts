@@ -1,4 +1,4 @@
-import { StructTemplateParser } from '../src/structtemplate.js';
+import { StructTemplateParser } from './structtemplate';
 import { describe, it, expect } from 'vitest';
 
 describe('StructTemplate parsing', () => {

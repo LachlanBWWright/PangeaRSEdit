@@ -8,7 +8,6 @@ import { Upload, X, Download } from "lucide-react";
 import { TextureManager } from "@/components/TextureManager";
 
 // ...existing code...
-import { ConversionPanel } from "@/components/ConversionPanel";
 import { SkeletonConversionPanel } from "@/components/SkeletonConversionPanel";
 import BG3DGltfWorker from "../modelParsers/bg3dGltfWorker?worker";
 import {
@@ -17,7 +16,6 @@ import {
 } from "../modelParsers/bg3dGltfWorker";
 import { BG3DParseResult } from "../modelParsers/parseBG3D";
 import { parseSkeletonRsrcTS } from "../modelParsers/skeletonRsrc/parseSkeletonRsrcTS";
-import { bg3dSkeletonToSkeletonResource } from "../modelParsers/skeletonExport";
 import type { SkeletonResource } from "../python/structSpecs/skeleton/skeletonInterface";
 import { toast } from "sonner";
 import * as THREE from "three";

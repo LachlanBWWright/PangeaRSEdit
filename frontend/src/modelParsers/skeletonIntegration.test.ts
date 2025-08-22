@@ -129,9 +129,9 @@ const mockSkeletonData = {
     "1": {
       name: "Number of Keyframes",
       order: 3,
-      obj: {
+      obj: [{
         numKeyFrames: 1
-      }
+      }]
     }
   },
   KeyF: {
@@ -174,8 +174,10 @@ describe('BG3D Skeleton Integration', () => {
     });
 
     expect(result.type).toBe('bg3d-to-glb');
-    expect(result.parsed).toBeDefined();
-    expect(result.parsed.skeleton).toBeUndefined();
+    if (result.type === 'bg3d-to-glb') {
+      expect(result.parsed).toBeDefined();
+      expect(result.parsed.skeleton).toBeUndefined();
+    }
   });
 
   test('should handle BG3D file with skeleton data', async () => {
@@ -195,11 +197,13 @@ describe('BG3D Skeleton Integration', () => {
     });
 
     expect(result.type).toBe('bg3d-with-skeleton-to-glb');
-    expect(result.parsed).toBeDefined();
-    expect(result.parsed.skeleton).toBeDefined();
-    expect(result.parsed.skeleton?.bones).toHaveLength(1);
-    expect(result.parsed.skeleton?.animations).toHaveLength(1);
-    expect(result.parsed.skeleton?.animations[0].name).toBe('test_animation');
+    if (result.type === 'bg3d-with-skeleton-to-glb') {
+      expect(result.parsed).toBeDefined();
+      expect(result.parsed.skeleton).toBeDefined();
+      expect(result.parsed.skeleton?.bones).toHaveLength(1);
+      expect(result.parsed.skeleton?.animations).toHaveLength(1);
+      expect(result.parsed.skeleton?.animations[0].name).toBe('test_animation');
+    }
   });
 
   test('should validate skeleton file format', async () => {

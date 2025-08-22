@@ -713,20 +713,33 @@ export function bg3dParsedToGLTF(parsed: BG3DParseResult): Document {
     scene.addChild(node);
   }
   
-  // Add skeleton root bones to the document (but not scene) so animations can find them
+  // Add skeleton joint hierarchy to the scene so animations can find them
   if (gltfJoints && gltfJoints.length > 0) {
-    // Find root bones (those without parents) and add them to the document
-    const rootBones: Node[] = [];
+    console.log("Setting up joint hierarchy in scene for animation targeting");
+    
+    // Add all joints to document's node list first
+    for (const joint of gltfJoints) {
+      doc.getRoot().listNodes().push(joint);
+    }
+    
+    // Build parent-child relationships and add to scene
     parsed.skeleton?.bones.forEach((bone, index) => {
-      if (bone.parentBone < 0 && gltfJoints[index]) {
-        rootBones.push(gltfJoints[index]);
+      const joint = gltfJoints[index];
+      if (!joint) return;
+      
+      if (bone.parentBone >= 0 && bone.parentBone < gltfJoints.length) {
+        // This joint has a parent - set up the relationship
+        const parentJoint = gltfJoints[bone.parentBone];
+        if (parentJoint) {
+          parentJoint.addChild(joint);
+          console.log(`Joint hierarchy: ${parentJoint.getName()} -> ${joint.getName()}`);
+        }
+      } else {
+        // This is a root joint - add directly to scene
+        scene.addChild(joint);
+        console.log(`Root joint added to scene: ${joint.getName()}`);
       }
     });
-    
-    // Add root bones to document's node list for animation targeting
-    for (const rootBone of rootBones) {
-      doc.getRoot().listNodes().push(rootBone);
-    }
   }
 
   // 5. Store any unmappable data in extras at the root (for legacy round-trip)

@@ -525,7 +525,7 @@ function convertSkeletonResourceToBG3D(skeleton: SkeletonResource): BG3DSkeleton
   // Sort by order to maintain correct indices
   boneEntries.sort(([, a], [, b]) => a.order - b.order);
   
-  boneEntries.forEach(([boneId, boneEntry], index) => {
+  boneEntries.forEach(([boneId, boneEntry]) => {
     const boneObj = boneEntry.obj;
     
     // Get point indices for this bone
@@ -946,7 +946,7 @@ export function convertBG3DToSkeletonResource(skeleton: BG3DSkeleton): SkeletonR
 
     // Keyframes - flatten all bone keyframes into single array
     const allKeyframes: any[] = [];
-    Object.entries(animation.keyframes).forEach(([boneIndex, keyframes]) => {
+    Object.entries(animation.keyframes).forEach(([, keyframes]) => {
       allKeyframes.push(...keyframes);
     });
     

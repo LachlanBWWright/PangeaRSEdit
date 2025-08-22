@@ -3,8 +3,8 @@
 import { describe, it, expect } from 'vitest';
 import { readFileSync, writeFileSync } from 'fs';
 import { join } from 'path';
-import { load, saveToJson } from '../src/rsrcdump.js';
-import { ottoMaticSpecs } from '../src/ottoSpecs.js';
+import { load, saveToJson } from './rsrcdump';
+// import { ottoMaticSpecs } from './ottoSpecs';
 
 describe('TypeScript rsrcdump', () => {
   const testFile = join(__dirname, '..', 'EarthFarm.ter.rsrc');

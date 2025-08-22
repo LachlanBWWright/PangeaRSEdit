@@ -25,7 +25,7 @@ import { handleTileClick } from "../../data/tiles/tileHandlers";
 */
 
 // Temporary placeholder for tile handlers during refactoring
-const handleTileClickTemp = () => {
+const handleTileClickTemp = (...args: any[]) => {
   console.warn("Tile editing temporarily disabled during refactoring");
 };
 import { KonvaEventObject } from 'konva/lib/Node';
