@@ -611,6 +611,28 @@ export function ModelViewer() {
     }
   };
 
+  const loadTestModelWithoutSkeleton = async () => {
+    try {
+      // Load only Otto.bg3d test file
+      const bg3dResponse = await fetch("/PangeaRSEdit/Otto.bg3d");
+      
+      if (!bg3dResponse.ok) {
+        throw new Error(`Failed to fetch Otto.bg3d: ${bg3dResponse.status}`);
+      }
+      
+      const bg3dArrayBuffer = await bg3dResponse.arrayBuffer();
+      const bg3dFile = new File([bg3dArrayBuffer], "Otto.bg3d", {
+        type: "application/octet-stream",
+      });
+      
+      console.log("Loading Otto model without skeleton data for comparison");
+      await handleFileUpload(bg3dFile); // No skeleton file
+    } catch (error) {
+      console.error("Error loading sample model without skeleton:", error);
+      toast.error("Failed to load Otto sample file");
+    }
+  };
+
   return (
     <>
       <div
@@ -727,7 +749,16 @@ export function ModelViewer() {
                     className="w-full text-white"
                     disabled={loading}
                   >
-                    Load Otto.bg3d Sample Model
+                    Load Otto.bg3d Sample Model (with Skeleton)
+                  </Button>
+
+                  <Button
+                    onClick={loadTestModelWithoutSkeleton}
+                    variant="outline"
+                    className="w-full text-white"
+                    disabled={loading}
+                  >
+                    Load Otto.bg3d Sample Model (without Skeleton)
                   </Button>
 
                   {loading && (
