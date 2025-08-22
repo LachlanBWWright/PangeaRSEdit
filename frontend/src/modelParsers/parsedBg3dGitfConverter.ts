@@ -364,11 +364,14 @@ export function bg3dParsedToGLTF(parsed: BG3DParseResult): Document {
             
             console.log(`  Tick range: ${minTick} to ${maxTick} (range: ${tickRange})`);
             
-            // Otto Matic timing: currentTime += (30.0f*fps)*skeleton->AnimSpeed
-            // Where fps = gFramesPerSecondFrac (1/60) and animSpeed = 1.0
-            // So each frame advances by 30 * (1/60) * 1 = 0.5 time units
-            // Therefore, to convert ticks to seconds: tick / 30.0
-            const tickToSecondsMultiplier = 30.0;
+            // Otto Matic timing analysis from SkeletonAnim.c:
+            // currentTime += (30.0f*fps)*skeleton->AnimSpeed
+            // Where fps = gFramesPerSecondFrac (time per frame, NOT frames per second)
+            // At 60 FPS: fps = 1/60 = 0.0167, animSpeed = 1.0
+            // Each frame advances by: 30.0 * (1/60) * 1.0 = 0.5 time units
+            // Since 1/60 second = 0.5 time units, then 1 second = 30 time units
+            // Therefore: seconds = ticks / 30.0
+            const tickToSecondsMultiplier = 1.0 / 30.0;
             let times: number[];
             let actualDuration: number;
             
@@ -386,8 +389,8 @@ export function bg3dParsedToGLTF(parsed: BG3DParseResult): Document {
               }
             } else {
               // Normal case: convert ticks to time using Otto's timing system
-              times = sortedKeyframes.map(kf => kf.tick / tickToSecondsMultiplier);
-              actualDuration = maxTick / tickToSecondsMultiplier;
+              times = sortedKeyframes.map(kf => kf.tick * tickToSecondsMultiplier);
+              actualDuration = maxTick * tickToSecondsMultiplier;
               
               // Ensure minimum duration of 0.033 seconds (2 frames at 60 FPS)
               if (actualDuration < 0.033) {
@@ -845,9 +848,14 @@ export async function gltfToBG3D(doc: Document): Promise<BG3DParseResult> {
   
   // First, try to restore from extras (for round-trip compatibility)
   const rootExtras = doc.getRoot().getExtras() || {};
+  console.log("gltfToBG3D: Root extras:", rootExtras);
   if ((rootExtras as any).bg3dFields?.skeleton) {
     console.log("gltfToBG3D: Found skeleton in extras");
     skeleton = (rootExtras as any).bg3dFields.skeleton;
+    console.log("gltfToBG3D: Restored skeleton from extras:", {
+      numBones: skeleton?.bones?.length,
+      numAnimations: skeleton?.animations?.length
+    });
   } else {
     // Try to extract from glTF skeleton/skin data
     const skins = doc.getRoot().listSkins();

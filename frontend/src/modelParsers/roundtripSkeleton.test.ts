@@ -14,21 +14,19 @@ describe('BG3D + Skeleton Roundtrip Tests', () => {
     const bg3dData = readFileSync(ottoBg3dPath);
     const skeletonData = readFileSync(ottoSkeletonPath);
     
-    // Parse original BG3D
-    const originalBg3d = parseBG3D(bg3dData.buffer.slice(bg3dData.byteOffset, bg3dData.byteOffset + bg3dData.byteLength));
-    
     // Parse original skeleton
-    const originalSkeleton = parseSkeletonRsrcTS(new Uint8Array(skeletonData));
+    const originalSkeletonResource = parseSkeletonRsrcTS(new Uint8Array(skeletonData));
     
-    console.log('Original skeleton animations:', originalSkeleton.animations.length);
-    console.log('Original animations:', originalSkeleton.animations.map(a => ({ 
-      name: a.name, 
-      keyframes: a.keyframes.length,
-      maxTick: Math.max(...a.keyframes.flat().map(kf => kf.tick || 0))
-    })));
+    // Parse original BG3D with skeleton integrated
+    const originalBg3d = parseBG3D(bg3dData.buffer.slice(bg3dData.byteOffset, bg3dData.byteOffset + bg3dData.byteLength), originalSkeletonResource);
+    
+    console.log('Original BG3D with skeleton:', {
+      bones: originalBg3d.skeleton?.bones?.length,
+      animations: originalBg3d.skeleton?.animations?.length
+    });
     
     // Convert to GLB
-    const gltfResult = await bg3dParsedToGLTF(originalBg3d, originalSkeleton);
+    const gltfResult = await bg3dParsedToGLTF(originalBg3d);
     expect(gltfResult).toBeDefined();
     expect(gltfResult.getRoot().listAnimations().length).toBeGreaterThan(0);
     
@@ -40,31 +38,33 @@ describe('BG3D + Skeleton Roundtrip Tests', () => {
     })));
     
     // Convert back to BG3D+skeleton
-    const roundtripResult = gltfToBG3D(gltfResult);
+    const roundtripResult = await gltfToBG3D(gltfResult);
     expect(roundtripResult).toBeDefined();
-    expect(roundtripResult.animations).toBeDefined();
-    expect(roundtripResult.animations.length).toBe(originalSkeleton.animations.length);
+    expect(roundtripResult.skeleton).toBeDefined();
+    expect(roundtripResult.skeleton!.animations).toBeDefined();
+    expect(roundtripResult.skeleton!.animations.length).toBe(originalBg3d.skeleton!.animations.length);
     
-    console.log('Roundtrip skeleton animations:', roundtripResult.animations.length);
-    console.log('Roundtrip animations:', roundtripResult.animations.map(a => ({ 
+    console.log('Roundtrip skeleton animations:', roundtripResult.skeleton!.animations.length);
+    console.log('Roundtrip animations:', roundtripResult.skeleton!.animations.map(a => ({ 
       name: a.name, 
-      keyframes: a.keyframes.length,
-      maxTick: Math.max(...a.keyframes.flat().map(kf => kf.tick || 0))
+      keyframes: Object.keys(a.keyframes).length,
+      maxTick: Math.max(...Object.values(a.keyframes).flat().map(kf => kf.tick || 0))
     })));
     
     // Verify animation count matches
-    expect(roundtripResult.animations.length).toBe(originalSkeleton.animations.length);
+    expect(roundtripResult.skeleton!.animations.length).toBe(originalBg3d.skeleton!.animations.length);
     
     // Verify each animation has preserved data
-    for (let i = 0; i < originalSkeleton.animations.length; i++) {
-      const originalAnim = originalSkeleton.animations[i];
-      const roundtripAnim = roundtripResult.animations[i];
+    for (let i = 0; i < originalBg3d.skeleton!.animations.length; i++) {
+      const originalAnim = originalBg3d.skeleton!.animations[i];
+      const roundtripAnim = roundtripResult.skeleton!.animations[i];
       
       expect(roundtripAnim.name).toBe(originalAnim.name);
-      expect(roundtripAnim.keyframes.length).toBe(originalAnim.keyframes.length);
+      expect(Object.keys(roundtripAnim.keyframes).length).toBe(Object.keys(originalAnim.keyframes).length);
       
       // Check that keyframes have been preserved (allowing for some floating point differences)
-      for (let boneIndex = 0; boneIndex < originalAnim.keyframes.length; boneIndex++) {
+      for (const boneIndexStr of Object.keys(originalAnim.keyframes)) {
+        const boneIndex = parseInt(boneIndexStr);
         const originalKeyframes = originalAnim.keyframes[boneIndex];
         const roundtripKeyframes = roundtripAnim.keyframes[boneIndex];
         
@@ -90,21 +90,21 @@ describe('BG3D + Skeleton Roundtrip Tests', () => {
     const bg3dData = readFileSync(ottoBg3dPath);
     const skeletonData = readFileSync(ottoSkeletonPath);
     
-    // Parse original files
-    const originalBg3d = parseBG3D(bg3dData.buffer.slice(bg3dData.byteOffset, bg3dData.byteOffset + bg3dData.byteLength));
-    const originalSkeleton = parseSkeletonRsrcTS(new Uint8Array(skeletonData));
+    // Parse original files with skeleton integrated
+    const originalSkeletonResource = parseSkeletonRsrcTS(new Uint8Array(skeletonData));
+    const originalBg3d = parseBG3D(bg3dData.buffer.slice(bg3dData.byteOffset, bg3dData.byteOffset + bg3dData.byteLength), originalSkeletonResource);
     
     // Convert to GLB and back
-    const gltfResult = await bg3dParsedToGLTF(originalBg3d, originalSkeleton);
-    const roundtripResult = gltfToBG3D(gltfResult);
+    const gltfResult = await bg3dParsedToGLTF(originalBg3d);
+    const roundtripResult = await gltfToBG3D(gltfResult);
     
     // Verify bone count matches
-    expect(roundtripResult.bones.length).toBe(originalSkeleton.bones.length);
+    expect(roundtripResult.skeleton!.bones.length).toBe(originalBg3d.skeleton!.bones.length);
     
     // Verify bone hierarchy and coordinates
-    for (let i = 0; i < originalSkeleton.bones.length; i++) {
-      const originalBone = originalSkeleton.bones[i];
-      const roundtripBone = roundtripResult.bones[i];
+    for (let i = 0; i < originalBg3d.skeleton!.bones.length; i++) {
+      const originalBone = originalBg3d.skeleton!.bones[i];
+      const roundtripBone = roundtripResult.skeleton!.bones[i];
       
       expect(roundtripBone.name).toBe(originalBone.name);
       expect(roundtripBone.parentBone).toBe(originalBone.parentBone);
@@ -121,11 +121,11 @@ describe('BG3D + Skeleton Roundtrip Tests', () => {
     const bg3dData = readFileSync(ottoBg3dPath);
     const skeletonData = readFileSync(ottoSkeletonPath);
     
-    const originalBg3d = parseBG3D(bg3dData.buffer.slice(bg3dData.byteOffset, bg3dData.byteOffset + bg3dData.byteLength));
-    const originalSkeleton = parseSkeletonRsrcTS(new Uint8Array(skeletonData));
+    const originalSkeletonResource = parseSkeletonRsrcTS(new Uint8Array(skeletonData));
+    const originalBg3d = parseBG3D(bg3dData.buffer.slice(bg3dData.byteOffset, bg3dData.byteOffset + bg3dData.byteLength), originalSkeletonResource);
     
     // Convert to GLB
-    const gltfResult = await bg3dParsedToGLTF(originalBg3d, originalSkeleton);
+    const gltfResult = await bg3dParsedToGLTF(originalBg3d);
     const animations = gltfResult.getRoot().listAnimations();
     
     // Verify animations have reasonable durations (not 0)

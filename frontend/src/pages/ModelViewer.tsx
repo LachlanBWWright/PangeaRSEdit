@@ -473,9 +473,30 @@ export function ModelViewer() {
           document.body.removeChild(a);
           URL.revokeObjectURL(url);
           
-          // Also download skeleton if available (not yet implemented)
-          if (bg3dParsed.skeleton) {
-            console.log("Skeleton export not yet available with TypeScript implementation");
+          // Also download skeleton if available
+          if (bg3dParsed.skeleton && bg3dParsed.skeleton.animations.length > 0) {
+            console.log("Exporting skeleton resource for download...");
+            try {
+              const skeletonResource = bg3dSkeletonToSkeletonResource(bg3dParsed.skeleton);
+              
+              // For now, export as JSON until we have TypeScript binary conversion
+              const skeletonJson = JSON.stringify(skeletonResource, null, 2);
+              const skeletonBlob = new Blob([skeletonJson], { type: "application/json" });
+              const skeletonUrl = URL.createObjectURL(skeletonBlob);
+              
+              const skeletonLink = document.createElement("a");
+              skeletonLink.href = skeletonUrl;
+              skeletonLink.download = "model.skeleton.json";
+              document.body.appendChild(skeletonLink);
+              skeletonLink.click();
+              document.body.removeChild(skeletonLink);
+              URL.revokeObjectURL(skeletonUrl);
+              
+              toast.success("Skeleton data exported as JSON");
+            } catch (error) {
+              console.error("Error exporting skeleton:", error);
+              toast.error("Failed to export skeleton data");
+            }
           }
           
           toast.success("BG3D model downloaded");
