@@ -19,7 +19,6 @@ import {
   BG3DSkeleton,
   BG3DBone,
   BG3DAnimation,
-  BG3DKeyframe,
 } from "./parseBG3D";
 
 import {
@@ -72,11 +71,11 @@ function quaternionToEuler(qx: number, qy: number, qz: number, qw: number): [num
 /**
  * Extract animations from glTF document and convert to BG3D format
  */
-function extractAnimationsFromGLTF(doc: any, joints: any[]): BG3DAnimation[] {
+function extractAnimationsFromGLTF(doc: Document, joints: Node[]): BG3DAnimation[] {
   const animations: BG3DAnimation[] = [];
   const gltfAnimations = doc.getRoot().listAnimations();
   
-  gltfAnimations.forEach(gltfAnim => {
+  gltfAnimations.forEach((gltfAnim: any) => {
     const bg3dAnim: BG3DAnimation = {
       name: gltfAnim.getName() || 'animation',
       numAnimEvents: 0,
@@ -85,7 +84,7 @@ function extractAnimationsFromGLTF(doc: any, joints: any[]): BG3DAnimation[] {
     };
     
     // Process each channel
-    gltfAnim.listChannels().forEach(channel => {
+    gltfAnim.listChannels().forEach((channel: any) => {
       const targetNode = channel.getTargetNode();
       const targetPath = channel.getTargetPath();
       const sampler = channel.getSampler();
@@ -175,7 +174,7 @@ function extractAnimationsFromGLTF(doc: any, joints: any[]): BG3DAnimation[] {
   return animations;
 }
 
-import { Document, Mesh, Material, Node, Skin, Accessor, AnimationChannel, AnimationSampler } from "@gltf-transform/core";
+import { Document, Mesh, Material, Node, Skin, Accessor } from "@gltf-transform/core";
 import { PixelFormatSrc, PixelFormatDst } from "./parseBG3D";
 
 /**
@@ -191,7 +190,7 @@ import { PixelFormatSrc, PixelFormatDst } from "./parseBG3D";
 export function bg3dParsedToGLTF(parsed: BG3DParseResult): Document {
   const doc = new Document();
   console.log("Creating new glTF Document");
-  doc.createBuffer("Basebuffer");
+  const baseBuffer = doc.createBuffer("MainBuffer");
   console.log("Created base buffer for glTF Document");
 
   // 1. Materials
@@ -311,7 +310,8 @@ export function bg3dParsedToGLTF(parsed: BG3DParseResult): Document {
     const ibmAccessor = doc
       .createAccessor()
       .setType("MAT4")
-      .setArray(inverseBindMatrices);
+      .setArray(inverseBindMatrices)
+      .setBuffer(baseBuffer);
     
     gltfSkin.setInverseBindMatrices(ibmAccessor);
     
@@ -330,22 +330,20 @@ export function bg3dParsedToGLTF(parsed: BG3DParseResult): Document {
             
             // Create time input accessor
             const times = keyframes.map(kf => kf.tick / 30.0); // Convert ticks to seconds (30 fps assumed)
-            const timeBuffer = doc.createBuffer();
             const timeAccessor = doc.createAccessor()
               .setType("SCALAR")
               .setArray(new Float32Array(times))
-              .setBuffer(timeBuffer);
+              .setBuffer(baseBuffer);
             
             // Create translation output accessor
             const translations: number[] = [];
             keyframes.forEach(kf => {
               translations.push(kf.coordX, kf.coordY, kf.coordZ);
             });
-            const translationBuffer = doc.createBuffer();
             const translationAccessor = doc.createAccessor()
               .setType("VEC3")
               .setArray(new Float32Array(translations))
-              .setBuffer(translationBuffer);
+              .setBuffer(baseBuffer);
             
             // Create rotation output accessor (convert from Euler to quaternion)
             const rotations: number[] = [];
@@ -354,22 +352,20 @@ export function bg3dParsedToGLTF(parsed: BG3DParseResult): Document {
               const quat = eulerToQuaternion(kf.rotationX, kf.rotationY, kf.rotationZ);
               rotations.push(quat[0], quat[1], quat[2], quat[3]);
             });
-            const rotationBuffer = doc.createBuffer();
             const rotationAccessor = doc.createAccessor()
               .setType("VEC4")
               .setArray(new Float32Array(rotations))
-              .setBuffer(rotationBuffer);
+              .setBuffer(baseBuffer);
             
             // Create scale output accessor
             const scales: number[] = [];
             keyframes.forEach(kf => {
               scales.push(kf.scaleX, kf.scaleY, kf.scaleZ);
             });
-            const scaleBuffer = doc.createBuffer();
             const scaleAccessor = doc.createAccessor()
               .setType("VEC3") 
               .setArray(new Float32Array(scales))
-              .setBuffer(scaleBuffer);
+              .setBuffer(baseBuffer);
             
             // Create samplers and channels
             const translationSampler = doc.createAnimationSampler()
@@ -459,30 +455,35 @@ export function bg3dParsedToGLTF(parsed: BG3DParseResult): Document {
           .createAccessor()
           .setType("VEC3")
           .setArray(new Float32Array(geom.vertices.flat()))
+          .setBuffer(baseBuffer)
       : null;
     const normalAccessor = geom.normals
       ? doc
           .createAccessor()
           .setType("VEC3")
           .setArray(new Float32Array(geom.normals.flat()))
+          .setBuffer(baseBuffer)
       : null;
     const texcoordAccessor = geom.uvs
       ? doc
           .createAccessor()
           .setType("VEC2")
           .setArray(new Float32Array(geom.uvs.flat()))
+          .setBuffer(baseBuffer)
       : null;
     const colorAccessor = geom.colors
       ? doc
           .createAccessor()
           .setType("VEC4")
           .setArray(new Uint8Array(geom.colors.flat()))
+          .setBuffer(baseBuffer)
       : null;
     const indexAccessor = geom.triangles
       ? doc
           .createAccessor()
           .setType("SCALAR")
           .setArray(new Uint32Array(geom.triangles.flat()))
+          .setBuffer(baseBuffer)
       : null;
 
     // Create joint and weight accessors if we have skeleton data
@@ -527,12 +528,14 @@ export function bg3dParsedToGLTF(parsed: BG3DParseResult): Document {
       jointAccessor = doc
         .createAccessor()
         .setType("VEC4")
-        .setArray(joints);
+        .setArray(joints)
+        .setBuffer(baseBuffer);
         
       weightAccessor = doc
         .createAccessor()
         .setType("VEC4")
-        .setArray(weights);
+        .setArray(weights)
+        .setBuffer(baseBuffer);
     }
 
     for (let i = 0; i < geom.numMaterials; i++) {
@@ -727,9 +730,9 @@ export async function gltfToBG3D(doc: Document): Promise<BG3DParseResult> {
   
   // First, try to restore from extras (for round-trip compatibility)
   const rootExtras = doc.getRoot().getExtras() || {};
-  if (rootExtras.bg3dFields?.skeleton) {
+  if ((rootExtras as any).bg3dFields?.skeleton) {
     console.log("gltfToBG3D: Found skeleton in extras");
-    skeleton = rootExtras.bg3dFields.skeleton;
+    skeleton = (rootExtras as any).bg3dFields.skeleton;
   } else {
     // Try to extract from glTF skeleton/skin data
     const skins = doc.getRoot().listSkins();
@@ -747,7 +750,7 @@ export async function gltfToBG3D(doc: Document): Promise<BG3DParseResult> {
           
           // Find parent bone index
           let parentBone = -1;
-          const parent = joint.getParent();
+          const parent = (joint as any).getParent?.();
           if (parent) {
             parentBone = joints.indexOf(parent);
           }

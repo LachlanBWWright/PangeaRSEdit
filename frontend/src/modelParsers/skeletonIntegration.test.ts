@@ -1,5 +1,5 @@
-import { describe, test, expect, vi } from 'vitest';
-import { BG3DGltfWorkerMessage, BG3DGltfWorkerResponse } from '../bg3dGltfWorker';
+import { describe, test, expect } from 'vitest';
+import { BG3DGltfWorkerMessage, BG3DGltfWorkerResponse } from './bg3dGltfWorker';
 
 // Mock worker implementation for testing
 class MockBG3DGltfWorker {

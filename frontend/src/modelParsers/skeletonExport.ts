@@ -2,7 +2,7 @@
 // Convert BG3D skeleton data back to skeleton resource format
 
 import type { SkeletonResource } from "../python/structSpecs/skeleton/skeletonInterface";
-import type { BG3DSkeleton, BG3DBone, BG3DAnimation } from "./parseBG3D";
+import type { BG3DSkeleton } from "./parseBG3D";
 
 /**
  * Convert BG3D skeleton data to SkeletonResource format

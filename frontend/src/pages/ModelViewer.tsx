@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef } from "react";
 import { ModelCanvas } from "./ModelCanvas";
 import { ModelHierarchy } from "@/components/ModelHierarchy";
 import { AnimationViewer, AnimationInfo } from "@/components/AnimationViewer";
@@ -17,7 +17,7 @@ import {
 } from "../modelParsers/bg3dGltfWorker";
 import { BG3DParseResult } from "../modelParsers/parseBG3D";
 import { parseSkeletonRsrcTS } from "../modelParsers/skeletonRsrc/parseSkeletonRsrcTS";
-import { bg3dSkeletonToSkeletonResource, skeletonResourceToBinary } from "../modelParsers/skeletonExport";
+import { bg3dSkeletonToSkeletonResource } from "../modelParsers/skeletonExport";
 import type { SkeletonResource } from "../python/structSpecs/skeleton/skeletonInterface";
 import { toast } from "sonner";
 import * as THREE from "three";
@@ -501,23 +501,24 @@ export function ModelViewer() {
     }
   };
 
-  const handleDownloadSkeleton = async () => {
-    if (!bg3dParsed?.skeleton) {
-      return;
-    }
+  // NOTE: Skeleton download functionality disabled - using GLB export for now
+  // const handleDownloadSkeleton = async () => {
+  //   if (!bg3dParsed?.skeleton) {
+  //     return;
+  //   }
 
-    try {
-      console.log("Converting skeleton to resource format...");
-      const skeletonResource = bg3dSkeletonToSkeletonResource(bg3dParsed.skeleton);
+  //   try {
+  //     console.log("Converting skeleton to resource format...");
+  //     const skeletonResource = bg3dSkeletonToSkeletonResource(bg3dParsed.skeleton);
       
-      // TODO: Implement skeleton resource to binary conversion using TypeScript
-      console.warn("Skeleton binary export not yet implemented with TypeScript. Download skipped.");
-      toast.error("Skeleton binary export not yet implemented. Please use GLB export for now.");
-    } catch (error) {
-      console.error("Error downloading skeleton:", error);
-      toast.error("Failed to download skeleton file");
-    }
-  };
+  //     // TODO: Implement skeleton resource to binary conversion using TypeScript
+  //     console.warn("Skeleton binary export not yet implemented with TypeScript. Download skipped.");
+  //     toast.error("Skeleton binary export not yet implemented. Please use GLB export for now.");
+  //   } catch (error) {
+  //     console.error("Error downloading skeleton:", error);
+  //     toast.error("Failed to download skeleton file");
+  //   }
+  // };
 
   const handleDownloadGLB = () => {
     if (!gltfUrl) {
