@@ -155,13 +155,17 @@ function parseBoneData(hexData: string, boneName: string): any {
   }
   offset += 32; // Skip name field
   
-  // coordX, coordY, coordZ: 12 bytes
-  const coordX = view.getFloat32(offset, true);
+  // coordX, coordY, coordZ: 12 bytes - try big endian first
+  const coordX = view.getFloat32(offset, false);
   offset += 4;
-  const coordY = view.getFloat32(offset, true);
+  const coordY = view.getFloat32(offset, false);
   offset += 4;
-  const coordZ = view.getFloat32(offset, true);
+  const coordZ = view.getFloat32(offset, false);
   offset += 4;
+  
+  // Debug: Log the raw bytes for the coordinates to understand the data format
+  console.log(`Bone ${boneName} coord bytes: ${Array.from(bytes.slice(36, 48)).map(b => b.toString(16).padStart(2, '0')).join(' ')}`);
+  console.log(`Bone ${boneName} coords (big endian): X=${coordX}, Y=${coordY}, Z=${coordZ}`);
   
   // numPointsAttachedToBone, numNormalsAttachedToBone: 8 bytes
   const numPointsAttachedToBone = view.getUint32(offset, true);
