@@ -25,7 +25,7 @@ import { handleTileClick } from "../../data/tiles/tileHandlers";
 */
 
 // Temporary placeholder for tile handlers during refactoring
-const handleTileClickTemp = () => {
+const handleTileClickTemp = (..._args: any[]) => {
   console.warn("Tile editing temporarily disabled during refactoring");
 };
 import { KonvaEventObject } from 'konva/lib/Node';
@@ -265,7 +265,7 @@ export function TopologyTiles({
 
 export function EmptyTiles({
   headerData,
-  terrainData,
+  terrainData: _terrainData,
   setTerrainData,
   tileGrid,
 }: {
@@ -351,7 +351,7 @@ export function EmptyTiles({
 
 export function ElectricFloor0Tiles({
   headerData,
-  terrainData,
+  terrainData: _terrainData,
   setTerrainData,
   tileGrid,
 }: {
@@ -437,7 +437,7 @@ export function ElectricFloor0Tiles({
 
 export function ElectricFloor1Tiles({
   headerData,
-  terrainData,
+  terrainData: _terrainData,
   setTerrainData,
   tileGrid,
 }: {
