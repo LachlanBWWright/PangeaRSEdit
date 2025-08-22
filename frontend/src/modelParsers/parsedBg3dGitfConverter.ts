@@ -357,15 +357,18 @@ export function bg3dParsedToGLTF(parsed: BG3DParseResult): Document {
             const tickValues = sortedKeyframes.map(kf => kf.tick);
             console.log(`Animation ${bg3dAnim.name}, bone ${boneIndex} (${joint.getName()}): tick values = [${tickValues.join(', ')}]`);
             
-            // Calculate proper timing using Otto Matic's 60 FPS tick rate
+            // Calculate proper timing using Otto Matic's animation system
             const maxTick = Math.max(...sortedKeyframes.map(kf => kf.tick));
             const minTick = Math.min(...sortedKeyframes.map(kf => kf.tick));
             const tickRange = maxTick - minTick;
             
             console.log(`  Tick range: ${minTick} to ${maxTick} (range: ${tickRange})`);
             
-            // Otto Matic uses 60 FPS tick rate (found in source code)
-            const fps = 60.0;
+            // Otto Matic timing: currentTime += (30.0f*fps)*skeleton->AnimSpeed
+            // Where fps = gFramesPerSecondFrac (1/60) and animSpeed = 1.0
+            // So each frame advances by 30 * (1/60) * 1 = 0.5 time units
+            // Therefore, to convert ticks to seconds: tick / 30.0
+            const tickToSecondsMultiplier = 30.0;
             let times: number[];
             let actualDuration: number;
             
@@ -382,9 +385,9 @@ export function bg3dParsedToGLTF(parsed: BG3DParseResult): Document {
                 actualDuration = 1.0;
               }
             } else {
-              // Normal case: convert ticks to time using 60 FPS
-              times = sortedKeyframes.map(kf => kf.tick / fps);
-              actualDuration = maxTick / fps;
+              // Normal case: convert ticks to time using Otto's timing system
+              times = sortedKeyframes.map(kf => kf.tick / tickToSecondsMultiplier);
+              actualDuration = maxTick / tickToSecondsMultiplier;
               
               // Ensure minimum duration of 0.033 seconds (2 frames at 60 FPS)
               if (actualDuration < 0.033) {
