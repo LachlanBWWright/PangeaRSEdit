@@ -585,12 +585,26 @@ function convertSkeletonResourceToBG3D(skeleton: SkeletonResource): BG3DSkeleton
     
     // Parse keyframes from individual KeyF resources
     // Each KeyF resource follows the pattern: 1000 + (animIndex * 100) + boneIndex
+    
+    // Debug: Log available KeyF resources for this animation
+    if (animIndex === 0) {
+      console.log(`Available KeyF resources:`, Object.keys(skeleton.KeyF || {}));
+    }
+    
     for (let boneIndex = 0; boneIndex < bones.length; boneIndex++) {
       const keyframeResourceId = (1000 + (animIndex * 100) + boneIndex).toString();
       const keyframeEntry = skeleton.KeyF?.[keyframeResourceId];
       
+      console.log(`Looking for animation ${animIndex}, bone ${boneIndex}: KeyF resource ID ${keyframeResourceId}, found: ${!!keyframeEntry}`);
+      
       if (keyframeEntry && keyframeEntry.obj) {
-        keyframeEntry.obj.forEach((keyframe) => {
+        console.log(`  Examining KeyF resource ${keyframeResourceId}:`, keyframeEntry);
+        console.log(`  Structure:`, JSON.stringify(keyframeEntry, null, 2));
+        console.log(`  Found ${keyframeEntry.obj.length} keyframes for bone ${boneIndex} in animation ${animIndex}`);
+        keyframeEntry.obj.forEach((keyframe, idx) => {
+          if (idx === 0) {
+            console.log(`  First keyframe: tick=${keyframe.tick}, coord=[${keyframe.coordX}, ${keyframe.coordY}, ${keyframe.coordZ}]`);
+          }
           keyframes[boneIndex].push({
             tick: keyframe.tick,
             accelerationMode: keyframe.accelerationMode,
@@ -605,6 +619,8 @@ function convertSkeletonResourceToBG3D(skeleton: SkeletonResource): BG3DSkeleton
             scaleZ: keyframe.scaleZ,
           });
         });
+      } else {
+        console.log(`  KeyF resource ${keyframeResourceId} is ${!keyframeEntry ? 'missing' : 'has no obj array'}`);
       }
     }
     

@@ -336,6 +336,7 @@ export function bg3dParsedToGLTF(parsed: BG3DParseResult): Document {
       
       parsed.skeleton.animations.forEach(bg3dAnim => {
         const gltfAnimation = doc.createAnimation(bg3dAnim.name);
+        let maxAnimationDuration = 0;
         
         // Process each bone's keyframes
         Object.entries(bg3dAnim.keyframes).forEach(([boneIndexStr, keyframes]) => {
@@ -352,40 +353,51 @@ export function bg3dParsedToGLTF(parsed: BG3DParseResult): Document {
               return;
             }
             
-            // Calculate proper timing - assume 30 FPS but ensure non-zero duration
+            // DEBUG: Log actual tick values
+            const tickValues = sortedKeyframes.map(kf => kf.tick);
+            console.log(`Animation ${bg3dAnim.name}, bone ${boneIndex} (${joint.getName()}): tick values = [${tickValues.join(', ')}]`);
+            
+            // Calculate proper timing using Otto Matic's 60 FPS tick rate
             const maxTick = Math.max(...sortedKeyframes.map(kf => kf.tick));
             const minTick = Math.min(...sortedKeyframes.map(kf => kf.tick));
             const tickRange = maxTick - minTick;
             
-            // Use 30 FPS as base, but ensure minimum duration of 1.0 seconds for single-frame animations
-            const fps = 30.0;
+            console.log(`  Tick range: ${minTick} to ${maxTick} (range: ${tickRange})`);
+            
+            // Otto Matic uses 60 FPS tick rate (found in source code)
+            const fps = 60.0;
             let times: number[];
             let actualDuration: number;
             
-            if (tickRange === 0 || sortedKeyframes.length === 1) {
-              // Single keyframe or all same tick - create a looping animation with proper duration
+            if (tickRange === 0) {
+              // All keyframes at same tick - this shouldn't happen but handle gracefully
               if (sortedKeyframes.length === 1) {
-                times = [0, 1.0]; // 1 second duration
-                sortedKeyframes.push({ ...sortedKeyframes[0] }); // Duplicate the keyframe
+                // Single keyframe - create a 1-second hold
+                times = [0, 1.0];
+                sortedKeyframes.push({ ...sortedKeyframes[0] });
                 actualDuration = 1.0;
               } else {
-                // Multiple keyframes with same tick - spread them over 1 second
-                times = sortedKeyframes.map((_, index) => index * (1.0 / (sortedKeyframes.length - 1)));
+                // Multiple keyframes at same tick - spread over 1 second
+                times = sortedKeyframes.map((_, index) => index / Math.max(1, sortedKeyframes.length - 1));
                 actualDuration = 1.0;
               }
             } else {
-              times = sortedKeyframes.map(kf => (kf.tick - minTick) / fps);
-              actualDuration = Math.max(...times);
+              // Normal case: convert ticks to time using 60 FPS
+              times = sortedKeyframes.map(kf => kf.tick / fps);
+              actualDuration = maxTick / fps;
               
-              // Ensure minimum duration of 0.1 seconds for very short animations
-              if (actualDuration < 0.1) {
-                const scale = 0.1 / actualDuration;
+              // Ensure minimum duration of 0.033 seconds (2 frames at 60 FPS)
+              if (actualDuration < 0.033) {
+                const scale = 0.033 / actualDuration;
                 times = times.map(t => t * scale);
-                actualDuration = 0.1;
+                actualDuration = 0.033;
               }
             }
             
-            console.log(`Animation ${bg3dAnim.name}, bone ${boneIndex} (${joint.getName()}): ${sortedKeyframes.length} keyframes, ticks ${minTick}-${maxTick}, duration: ${actualDuration} seconds`);
+            // Track the maximum duration across all bones for this animation
+            maxAnimationDuration = Math.max(maxAnimationDuration, actualDuration);
+            
+            console.log(`Animation ${bg3dAnim.name}, bone ${boneIndex} (${joint.getName()}): ${sortedKeyframes.length} keyframes, ticks ${minTick}-${maxTick}, duration: ${actualDuration} seconds, maxAnimDuration: ${maxAnimationDuration}`);
             
             const timeAccessor = doc.createAccessor()
               .setType("SCALAR")
@@ -467,6 +479,8 @@ export function bg3dParsedToGLTF(parsed: BG3DParseResult): Document {
             gltfAnimation.addChannel(scaleChannel);
           }
         });
+        
+        console.log(`Created animation ${bg3dAnim.name} with overall duration: ${maxAnimationDuration} seconds`);
       });
     }
   }
