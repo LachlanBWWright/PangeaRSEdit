@@ -180,12 +180,16 @@ function buildJointHierarchy(joints: Node[], bones: BG3DBone[], scene: any): voi
         const parentIndex = bones.findIndex(b => b.name === expectedParentName);
         if (parentIndex >= 0) {
           const parentJoint = joints[parentIndex];
-          // Remove from scene and add to parent
-          scene.removeChild(joint);
-          parentJoint.addChild(joint);
-          const rootIndex = rootJoints.indexOf(bone.name);
-          if (rootIndex >= 0) rootJoints.splice(rootIndex, 1);
-          console.log(`  ${bone.name} -> child of ${expectedParentName}`);
+          if (parentJoint) {
+            // Remove from scene and add to parent
+            scene.removeChild(joint);
+            parentJoint.addChild(joint);
+            const rootIndex = rootJoints.indexOf(bone.name);
+            if (rootIndex >= 0) rootJoints.splice(rootIndex, 1);
+            console.log(`  ${bone.name} -> child of ${expectedParentName}`);
+          } else {
+            console.log(`  Warning: Parent joint not found for ${bone.name} -> ${expectedParentName}`);
+          }
         }
       }
     });
