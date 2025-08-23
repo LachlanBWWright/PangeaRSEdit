@@ -138,6 +138,11 @@ function createJointNodes(doc: Document, bones: BG3DBone[]): Node[] {
 function buildJointHierarchy(joints: Node[], bones: BG3DBone[], scene: any): void {
   console.log("Building joint hierarchy...");
   
+  if (joints.length !== bones.length) {
+    console.error(`Mismatch: ${joints.length} joints vs ${bones.length} bones`);
+    return;
+  }
+  
   const rootJoints: string[] = [];
   
   // Check if we have any valid parent bone relationships
@@ -178,18 +183,25 @@ function buildJointHierarchy(joints: Node[], bones: BG3DBone[], scene: any): voi
       
       if (expectedParentName) {
         const parentIndex = bones.findIndex(b => b.name === expectedParentName);
-        if (parentIndex >= 0) {
+        if (parentIndex >= 0 && parentIndex < joints.length) {
           const parentJoint = joints[parentIndex];
-          if (parentJoint) {
-            // Remove from scene and add to parent
-            scene.removeChild(joint);
-            parentJoint.addChild(joint);
-            const rootIndex = rootJoints.indexOf(bone.name);
-            if (rootIndex >= 0) rootJoints.splice(rootIndex, 1);
-            console.log(`  ${bone.name} -> child of ${expectedParentName}`);
+          const joint = joints[index];
+          if (parentJoint && joint) {
+            try {
+              // Remove from scene and add to parent
+              scene.removeChild(joint);
+              parentJoint.addChild(joint);
+              const rootIndex = rootJoints.indexOf(bone.name);
+              if (rootIndex >= 0) rootJoints.splice(rootIndex, 1);
+              console.log(`  ${bone.name} -> child of ${expectedParentName}`);
+            } catch (e) {
+              console.log(`  Warning: Failed to add ${bone.name} as child of ${expectedParentName}:`, e);
+            }
           } else {
-            console.log(`  Warning: Parent joint not found for ${bone.name} -> ${expectedParentName}`);
+            console.log(`  Warning: Parent joint ${parentJoint ? 'found' : 'null'} or joint ${joint ? 'found' : 'null'} for ${bone.name} -> ${expectedParentName}`);
           }
+        } else {
+          console.log(`  Warning: Parent index ${parentIndex} out of range for ${bone.name} -> ${expectedParentName}`);
         }
       }
     });
@@ -413,12 +425,28 @@ export function createSkeletonSystem(doc: Document, skeleton: BG3DSkeleton): { s
   console.log(`Bones: ${skeleton.bones.length}, Animations: ${skeleton.animations.length}`);
   
   const scene = doc.getRoot().getDefaultScene();
+  if (!scene) {
+    console.log("No default scene found, creating one...");
+    const newScene = doc.createScene("default");
+    doc.getRoot().setDefaultScene(newScene);
+    const actualScene = doc.getRoot().getDefaultScene();
+    if (!actualScene) {
+      throw new Error("Failed to create default scene in glTF document");
+    }
+    return createSkeletonSystem(doc, skeleton); // Retry with new scene
+  }
   
   // Step 1: Create joint nodes with proper local transforms
   const joints = createJointNodes(doc, skeleton.bones);
   
   // Step 2: Build proper hierarchy (CRITICAL: joints must be in scene before animations)
-  buildJointHierarchy(joints, skeleton.bones, scene);
+  try {
+    buildJointHierarchy(joints, skeleton.bones, scene);
+  } catch (e) {
+    console.error("Error building joint hierarchy:", e);
+    // Add all joints to scene as root joints if hierarchy fails
+    joints.forEach(joint => scene.addChild(joint));
+  }
   
   // Step 3: Create skin with inverse bind matrices
   const skin = createSkin(doc, joints, skeleton.bones);

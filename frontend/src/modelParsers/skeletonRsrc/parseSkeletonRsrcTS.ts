@@ -322,6 +322,7 @@ function transformToSkeletonResource(rawData: any): SkeletonResource {
         }
       } else if (typeName === 'Bone') {
         // Check if rsrcdump already parsed the bone data correctly
+        console.log(`Checking bone data for ${resourceId}:`, resourceData);
         if (resourceData.parentBone !== undefined && 
             resourceData.coordX !== undefined && 
             resourceData.coordY !== undefined && 
@@ -336,11 +337,13 @@ function transformToSkeletonResource(rawData: any): SkeletonResource {
             numPointsAttachedToBone: resourceData.numPointsAttachedToBone || 0,
             numNormalsAttachedToBone: resourceData.numNormalsAttachedToBone || 0,
           };
-          console.log(`Bone ${obj.name} coordinates from rsrcdump: [${obj.coordX}, ${obj.coordY}, ${obj.coordZ}]`);
+          console.log(`Bone ${obj.name} coordinates from rsrcdump: [${obj.coordX}, ${obj.coordY}, ${obj.coordZ}], parentBone: ${obj.parentBone}`);
         } else {
           // Fallback to manual hex parsing
+          console.log(`Bone ${resourceId} falling back to manual parsing. resourceData:`, resourceData);
           const hexData = resourceData.data || '';
           obj = parseBoneDataFallback(hexData, resourceData.name || `Bone_${resourceId}`);
+          console.log(`Bone ${obj.name} coordinates from fallback: [${obj.coordX}, ${obj.coordY}, ${obj.coordZ}], parentBone: ${obj.parentBone}`);
         }
       } else if (typeName === 'AnHd') {
         // Check if rsrcdump already parsed the animation header correctly
