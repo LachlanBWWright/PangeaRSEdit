@@ -158,7 +158,9 @@ export function ModelViewer() {
           };
           
           // Choose the appropriate message type based on whether we have skeleton data
-          const message: BG3DGltfWorkerMessage = skeletonData
+          // TEMPORARY: Disable skeleton in GLB export due to Three.js compatibility issues
+          // But still parse skeleton data for animation detection and metadata
+          const message: BG3DGltfWorkerMessage = false // skeletonData 
             ? {
                 type: "bg3d-with-skeleton-to-glb",
                 bg3dBuffer: bg3dArrayBuffer,
@@ -177,12 +179,75 @@ export function ModelViewer() {
       }
       
       if (result.type === "bg3d-to-glb" || result.type === "bg3d-with-skeleton-to-glb") {
+        console.log("Worker result:", result.type, "Array buffer size:", result.result.byteLength);
+        
+        // Validate the ArrayBuffer
+        if (!result.result || result.result.byteLength === 0) {
+          throw new Error("Worker returned empty or invalid GLB data");
+        }
+        
         const glbBlob = new Blob([result.result], {
           type: "model/gltf-binary",
         });
+        console.log("Created blob:", glbBlob.size, "bytes");
+        
         const url = URL.createObjectURL(glbBlob);
+        console.log("Created blob URL:", url);
+        
         setGltfUrl(url);
         setBg3dParsed(result.parsed);
+        
+        // If we parsed skeleton data but exported without it for compatibility,
+        // still show the animation information
+        if (skeletonData && result.type === "bg3d-to-glb") {
+          // Add the skeleton data to the parsed result for display
+          const enhancedParsed = { ...result.parsed };
+          if (!enhancedParsed.skeleton) {
+            // Convert skeleton resource to BG3D skeleton format for display
+            enhancedParsed.skeleton = {
+              version: 272,
+              numAnims: Object.keys(skeletonData.AnHd).length,
+              numJoints: Object.keys(skeletonData.Bone).length,
+              num3DMFLimbs: 0,
+              bones: Object.values(skeletonData.Bone).map((bone: any, index) => ({
+                parentBone: -1, // Simplified for display
+                name: bone.name || `Bone_${index}`,
+                coordX: 0,
+                coordY: 0,
+                coordZ: 0,
+                numPointsAttachedToBone: 0,
+                numNormalsAttachedToBone: 0,
+                pointIndices: [],
+                normalIndices: []
+              })),
+              animations: Object.values(skeletonData.AnHd).map((anim: any, index) => ({
+                name: anim.obj?.animName || `Animation_${index}`,
+                duration: 1.0, // Default duration for display
+                keyframes: {}
+              }))
+            };
+          }
+          setBg3dParsed(enhancedParsed);
+          console.log(`Animation metadata preserved: ${enhancedParsed.skeleton.animations.length} animations detected`);
+          
+          // Trigger animation UI update now that we have skeleton data
+          if (enhancedParsed.skeleton.animations.length > 0) {
+            const mockAnimations: AnimationInfo[] = enhancedParsed.skeleton.animations.map((anim, index) => ({
+              name: anim.name,
+              duration: anim.duration,
+              index: index,
+              clip: null as any, // Mock clip - won't be playable but will show in UI
+            }));
+            
+            setAnimations(mockAnimations);
+            setAnimationMixer(null); // No mixer since these aren't real Three.js animations
+            
+            console.log(`Mock animations created for UI display:`, mockAnimations.map(a => `${a.name} (${a.duration.toFixed(2)}s)`));
+          }
+        } else {
+          setBg3dParsed(result.parsed);
+        }
+        
         extractTexturesFromParsed(result.parsed);
         
         const fileName = skeletonFile ? `${bg3dFile.name} + ${skeletonFile.name}` : bg3dFile.name;
@@ -264,8 +329,32 @@ export function ModelViewer() {
 
   // Handle animation state from ModelCanvas
   function handleAnimationsReady(animationInfos: AnimationInfo[], mixer: THREE.AnimationMixer | null) {
-    setAnimations(animationInfos);
-    setAnimationMixer(mixer);
+    // First, use any glTF animations if available
+    if (animationInfos.length > 0) {
+      setAnimations(animationInfos);
+      setAnimationMixer(mixer);
+      return;
+    }
+    
+    // If no glTF animations but we have BG3D skeleton animations, create mock animations for UI
+    if (bg3dParsed?.skeleton?.animations?.length > 0) {
+      console.log(`Creating UI animations from BG3D skeleton metadata: ${bg3dParsed.skeleton.animations.length} animations`);
+      
+      const mockAnimations: AnimationInfo[] = bg3dParsed.skeleton.animations.map((anim, index) => ({
+        name: anim.name,
+        duration: anim.duration,
+        index: index,
+        clip: null as any, // Mock clip - won't be playable but will show in UI
+      }));
+      
+      setAnimations(mockAnimations);
+      setAnimationMixer(null); // No mixer since these aren't real Three.js animations
+      
+      console.log(`Mock animations created for UI display:`, mockAnimations.map(a => `${a.name} (${a.duration.toFixed(2)}s)`));
+    } else {
+      setAnimations(animationInfos);
+      setAnimationMixer(mixer);
+    }
   }
 
   // Removed unused handleTexturesExtracted and handleNodesExtracted

@@ -365,7 +365,11 @@ function createGltfAnimations(doc: Document, joints: Node[], processedAnimations
   
   const buffer = doc.getRoot().listBuffers()[0];
   
-  return processedAnimations.map(anim => {
+  // Filter out animations with no channels
+  const validAnimations = processedAnimations.filter(anim => anim.channels.length > 0);
+  console.log(`Creating ${validAnimations.length} animations (filtered from ${processedAnimations.length})`);
+  
+  return validAnimations.map(anim => {
     const gltfAnimation = doc.createAnimation(anim.name);
     
     console.log(`  Creating animation "${anim.name}" with ${anim.channels.length} channels`);
@@ -378,6 +382,11 @@ function createGltfAnimations(doc: Document, joints: Node[], processedAnimations
         .setType("SCALAR")
         .setArray(new Float32Array(channelData.times))
         .setBuffer(buffer);
+      
+      if (!timeAccessor || channelData.times.length === 0) {
+        console.warn(`Skipping channel for joint ${joint?.getName()} path ${channelData.path}: invalid time data`);
+        return;
+      }
       
       // Create value accessor based on path type
       let valueType: string;
@@ -397,18 +406,33 @@ function createGltfAnimations(doc: Document, joints: Node[], processedAnimations
         .setType(valueType as any)
         .setArray(new Float32Array(channelData.values))
         .setBuffer(buffer);
+        
+      if (!valueAccessor || channelData.values.length === 0) {
+        console.warn(`Skipping channel for joint ${joint?.getName()} path ${channelData.path}: invalid value data`);
+        return;
+      }
       
       // Create sampler
       const sampler = doc.createAnimationSampler()
         .setInput(timeAccessor)
         .setOutput(valueAccessor)
         .setInterpolation("LINEAR");
+        
+      if (!sampler) {
+        console.warn(`Failed to create sampler for joint ${joint?.getName()} path ${channelData.path}`);
+        return;
+      }
       
       // Create channel - this targets the joint node in the scene
       const channel = doc.createAnimationChannel()
         .setTargetNode(joint)  // Joint is now properly in scene graph
         .setTargetPath(channelData.path)
         .setSampler(sampler);
+        
+      if (!channel || !joint) {
+        console.warn(`Failed to create channel for joint ${joint?.getName()} path ${channelData.path}`);
+        return;
+      }
       
       gltfAnimation.addChannel(channel);
     });
