@@ -258,6 +258,9 @@ export function bg3dParsedToGLTF(parsed: BG3DParseResult): Document {
     }
   });
 
+  // Create scene early so it's available for skeleton processing
+  const scene = doc.createScene("Scene");
+
   // 2.5. Skeleton/Joints (create glTF joints from skeleton data)
   let gltfJoints: Node[] = [];
   let gltfSkin: Skin | null = null;
@@ -822,8 +825,6 @@ export function bg3dParsedToGLTF(parsed: BG3DParseResult): Document {
     idx = newIdx;
   }
   
-  const scene = doc.createScene("Scene");
-  
   // Add geometry nodes to scene
   for (const node of rootNodes) {
     doc.getRoot().listNodes().push(node);
@@ -831,6 +832,7 @@ export function bg3dParsedToGLTF(parsed: BG3DParseResult): Document {
   }
   
   // Skeleton joints already added to scene during skeleton setup above
+  if (gltfJoints && gltfJoints.length > 0) {
     console.log("Adding skeleton joints to scene for animation targeting");
     
     // Debug: Print the actual bone hierarchy to understand the structure
@@ -868,7 +870,7 @@ export function bg3dParsedToGLTF(parsed: BG3DParseResult): Document {
     };
     
     // Build proper joint hierarchy using logical structure
-    const rootJoints: any[] = [];
+    const additionalRootJoints: any[] = [];
     const jointMap = new Map<string, any>();
     
     // First pass: create joint mapping using sanitized names
@@ -890,31 +892,35 @@ export function bg3dParsedToGLTF(parsed: BG3DParseResult): Document {
       
       if (!parentBoneName) {
         // This is a root joint
-        rootJoints.push(joint);
-        console.log(`Found root joint: ${joint.getName()}`);
+        additionalRootJoints.push(joint);
+        console.log(`Root joint: ${joint.getName()}`);
       } else {
-        // This joint has a logical parent - add it as child of parent
+        // Find parent joint and set up hierarchy
         const parentJoint = jointMap.get(parentBoneName);
         if (parentJoint) {
           parentJoint.addChild(joint);
           console.log(`Added ${joint.getName()} as child of ${parentJoint.getName()}`);
         } else {
           // Parent not found, treat as root
-          rootJoints.push(joint);
+          additionalRootJoints.push(joint);
           console.log(`Parent '${parentBoneName}' not found for ${joint.getName()}, treating as root`);
         }
       }
     });
     
-    // Add root joints to scene
-    rootJoints.forEach(rootJoint => {
-      scene.addChild(rootJoint);
-      console.log(`Added root joint to scene: ${rootJoint.getName()}`);
+    // Add root joints to scene (they were already added during skeleton setup, 
+    // but this ensures any missed ones are included)
+    additionalRootJoints.forEach(rootJoint => {
+      // Check if not already in scene to avoid duplicates
+      if (!scene.listChildren().includes(rootJoint)) {
+        scene.addChild(rootJoint);
+        console.log(`Added additional root joint to scene: ${rootJoint.getName()}`);
+      }
     });
     
-    console.log(`Joint hierarchy setup completed - ${rootJoints.length} root joints added`);
+    console.log(`Joint hierarchy setup completed - ${additionalRootJoints.length} additional root joints processed`);
   }
-
+  
   // 5. Store any unmappable data in extras at the root (for legacy round-trip)
   doc.getRoot().setExtras({
     groups: parsed.groups,
