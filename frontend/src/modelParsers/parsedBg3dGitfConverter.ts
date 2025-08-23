@@ -189,9 +189,8 @@ import { PixelFormatSrc, PixelFormatDst } from "./parseBG3D";
 
 export function bg3dParsedToGLTF(parsed: BG3DParseResult): Document {
   const doc = new Document();
-  console.log("Creating new glTF Document");
+  // Create base buffer for glTF Document
   const baseBuffer = doc.createBuffer("MainBuffer");
-  console.log("Created base buffer for glTF Document");
 
   // 1. Materials
   const gltfMaterials: Material[] = parsed.materials.map((mat, i) => {
@@ -206,7 +205,6 @@ export function bg3dParsedToGLTF(parsed: BG3DParseResult): Document {
     return m;
   });
 
-  console.log("Stage 2");
   // 2. Textures/Images (attach ALL textures as glTF images, not just the first)
   parsed.materials.forEach((mat, i) => {
     if (mat.textures && mat.textures.length > 0) {
@@ -265,11 +263,11 @@ export function bg3dParsedToGLTF(parsed: BG3DParseResult): Document {
   let gltfSkin: Skin | null = null;
   
   if (parsed.skeleton) {
-    console.log("Creating glTF skeleton from BG3D skeleton data");
+    // Create glTF skeleton from BG3D skeleton data
     const skeleton = parsed.skeleton;
     
     // Create joint nodes for each bone
-    gltfJoints = skeleton.bones.map((bone, index) => {
+    gltfJoints = skeleton.bones.map((bone) => {
       const joint = doc.createNode();
       // Use the exact bone name for better targeting - ensure consistent naming
       joint.setName(bone.name);
@@ -278,7 +276,6 @@ export function bg3dParsedToGLTF(parsed: BG3DParseResult): Document {
       // Otto coordinates are relative to parent bone and should be preserved
       joint.setTranslation([bone.coordX, bone.coordY, bone.coordZ]);
       
-      console.log(`Created joint ${index}: ${bone.name} at [${bone.coordX}, ${bone.coordY}, ${bone.coordZ}]`);
       return joint;
     });
     
@@ -358,56 +355,69 @@ export function bg3dParsedToGLTF(parsed: BG3DParseResult): Document {
       return inv;
     };
 
-    // Create inverse bind matrices based on bone hierarchy
+    // Create inverse bind matrices using proper glTF Transform patterns
+    // According to glTF 2.0 spec, inverse bind matrices transform vertices from model space to bone space
     const numJoints = gltfJoints.length;
     const inverseBindMatrices = new Float32Array(numJoints * 16);
     
-    // Calculate world transform for each bone in bind pose
-    const calculateBoneWorldTransform = (boneIndex: number): Float32Array => {
+    // For Otto Matic models, bones are in a hierarchy with relative transforms
+    // We need to calculate the inverse of the bind pose world transform for each bone
+    
+    const calculateWorldMatrix = (boneIndex: number, visited = new Set<number>()): Float32Array => {
+      if (visited.has(boneIndex)) {
+        // Prevent infinite recursion in case of circular dependencies
+        const identity = new Float32Array(16);
+        identity[0] = identity[5] = identity[10] = identity[15] = 1;
+        return identity;
+      }
+      visited.add(boneIndex);
+      
       const bone = parsed.skeleton!.bones[boneIndex];
-      const matrix = new Float32Array(16);
+      const localMatrix = new Float32Array(16);
       
-      // Identity matrix
-      matrix[0] = 1; matrix[5] = 1; matrix[10] = 1; matrix[15] = 1;
+      // Create identity matrix
+      localMatrix[0] = localMatrix[5] = localMatrix[10] = localMatrix[15] = 1;
       
-      // Apply translation using Otto's native coordinates
-      matrix[12] = bone.coordX || 0;
-      matrix[13] = bone.coordY || 0;
-      matrix[14] = bone.coordZ || 0;
+      // Set translation component only (no rotation/scale to avoid interfering with model geometry)
+      localMatrix[12] = bone.coordX || 0;
+      localMatrix[13] = bone.coordY || 0;
+      localMatrix[14] = bone.coordZ || 0;
       
-      // If this bone has a parent, multiply by parent's world transform
-      if (bone.parentBone >= 0 && bone.parentBone < parsed.skeleton!.bones.length) {
-        const parentWorldTransform = calculateBoneWorldTransform(bone.parentBone);
+      // If this bone has a valid parent, multiply by parent's world matrix
+      if (bone.parentBone >= 0 && bone.parentBone < parsed.skeleton!.bones.length && bone.parentBone !== boneIndex) {
+        const parentWorld = calculateWorldMatrix(bone.parentBone, visited);
         
-        // Multiply parent transform * current transform
-        const result = new Float32Array(16);
-        for (let i = 0; i < 4; i++) {
-          for (let j = 0; j < 4; j++) {
-            result[i * 4 + j] = 0;
+        // Multiply parent * local to get world transform
+        const worldMatrix = new Float32Array(16);
+        for (let row = 0; row < 4; row++) {
+          for (let col = 0; col < 4; col++) {
+            worldMatrix[row * 4 + col] = 0;
             for (let k = 0; k < 4; k++) {
-              result[i * 4 + j] += parentWorldTransform[i * 4 + k] * matrix[k * 4 + j];
+              worldMatrix[row * 4 + col] += parentWorld[row * 4 + k] * localMatrix[k * 4 + col];
             }
           }
         }
-        return result;
+        visited.delete(boneIndex);
+        return worldMatrix;
       }
       
-      return matrix;
+      visited.delete(boneIndex);
+      return localMatrix;
     };
     
     // Calculate inverse bind matrix for each bone
-    parsed.skeleton.bones.forEach((_, i) => {
-      const offset = i * 16;
+    parsed.skeleton.bones.forEach((_, boneIndex) => {
+      const offset = boneIndex * 16;
       
-      // Get world transform for this bone
-      const worldTransform = calculateBoneWorldTransform(i);
+      // Get the world transform for this bone in bind pose
+      const worldMatrix = calculateWorldMatrix(boneIndex);
       
-      // Calculate proper inverse of world transform
-      const inverseTransform = invertMatrix4x4(worldTransform);
+      // Calculate the inverse transform
+      const inverseMatrix = invertMatrix4x4(worldMatrix);
       
-      // Copy inverse transform to result array
+      // Copy inverse transform to the result array
       for (let j = 0; j < 16; j++) {
-        inverseBindMatrices[offset + j] = inverseTransform[j];
+        inverseBindMatrices[offset + j] = inverseMatrix[j];
       }
     });
     
@@ -421,8 +431,6 @@ export function bg3dParsedToGLTF(parsed: BG3DParseResult): Document {
     
     // Convert animations to glTF format
     if (parsed.skeleton && parsed.skeleton.animations.length > 0) {
-      console.log("Converting BG3D animations to glTF format");
-      
       parsed.skeleton.animations.forEach(bg3dAnim => {
         const gltfAnimation = doc.createAnimation(bg3dAnim.name);
         let maxAnimationDuration = 0;
@@ -438,13 +446,8 @@ export function bg3dParsedToGLTF(parsed: BG3DParseResult): Document {
             
             // Skip bones with no meaningful keyframes
             if (sortedKeyframes.length === 0) {
-              console.log(`Skipping bone ${boneIndex} (${joint.getName()}) - no keyframes`);
               return;
             }
-            
-            // DEBUG: Log actual tick values
-            const tickValues = sortedKeyframes.map(kf => kf.tick);
-            console.log(`Animation ${bg3dAnim.name}, bone ${boneIndex} (${joint.getName()}): tick values = [${tickValues.join(', ')}]`);
             
             // Calculate proper timing using Otto Matic's animation system
             const maxTick = Math.max(...sortedKeyframes.map(kf => kf.tick));
@@ -491,8 +494,6 @@ export function bg3dParsedToGLTF(parsed: BG3DParseResult): Document {
             
             // Track the maximum duration across all bones for this animation
             maxAnimationDuration = Math.max(maxAnimationDuration, actualDuration);
-            
-            console.log(`Animation ${bg3dAnim.name}, bone ${boneIndex} (${joint.getName()}): ${sortedKeyframes.length} keyframes, ticks ${minTick}-${maxTick}, duration: ${actualDuration} seconds, maxAnimDuration: ${maxAnimationDuration}`);
             
             const timeAccessor = doc.createAccessor()
               .setType("SCALAR")
@@ -665,46 +666,44 @@ export function bg3dParsedToGLTF(parsed: BG3DParseResult): Document {
       joints.fill(0);
       weights.fill(0);
       
-      // For each vertex, determine which bones influence it based on skeleton data
+      // Otto Matic's skinning approach: each vertex can be influenced by multiple bones
+      // Based on the pointIndices in each bone structure
       for (let vertexIndex = 0; vertexIndex < numVertices; vertexIndex++) {
         const influencingBones: { boneIndex: number; weight: number }[] = [];
         
         // Find all bones that influence this vertex
         parsed.skeleton.bones.forEach((bone, boneIndex) => {
           if (bone.pointIndices && bone.pointIndices.includes(vertexIndex)) {
-            // Calculate weight based on inverse of number of vertices influenced by this bone
-            // This gives more weight to bones that influence fewer vertices
-            const weight = bone.pointIndices.length > 0 ? 1.0 / bone.pointIndices.length : 0;
-            influencingBones.push({ boneIndex, weight });
+            // For Otto Matic, if a bone influences a vertex, give it equal weight
+            // This is simpler than distance-based weighting and matches Otto's model
+            influencingBones.push({ boneIndex, weight: 1.0 });
           }
         });
         
-        // If no bones influence this vertex, assign to root bone (index 0)
+        // If no bones influence this vertex, assign to root bone (index 0) with full weight
         if (influencingBones.length === 0) {
           joints[vertexIndex * 4] = 0;
           weights[vertexIndex * 4] = 1.0;
         } else {
-          // Sort by weight (highest first) and take up to 4 bones
-          influencingBones.sort((a, b) => b.weight - a.weight);
+          // Normalize weights so they sum to 1.0
+          const totalWeight = influencingBones.length;
+          const normalizedWeight = 1.0 / totalWeight;
+          
+          // Take up to 4 bones (glTF limit) and assign normalized weights
           const selectedBones = influencingBones.slice(0, 4);
           
-          // Calculate total weight for normalization
-          const totalWeight = selectedBones.reduce((sum, bone) => sum + bone.weight, 0);
-          
-          // Assign joints and normalized weights
           selectedBones.forEach((bone, i) => {
             joints[vertexIndex * 4 + i] = bone.boneIndex;
-            weights[vertexIndex * 4 + i] = totalWeight > 0 ? bone.weight / totalWeight : 0;
+            weights[vertexIndex * 4 + i] = normalizedWeight;
           });
           
-          // Ensure weights sum to 1.0 (fix floating point precision issues)
-          let weightSum = 0;
-          for (let i = 0; i < 4; i++) {
-            weightSum += weights[vertexIndex * 4 + i];
-          }
-          if (weightSum > 0 && Math.abs(weightSum - 1.0) > 1e-6) {
+          // Handle case where more than 4 bones influence the vertex
+          if (influencingBones.length > 4) {
+            // Redistribute the weight of remaining bones to the first 4
+            const remainingWeight = (influencingBones.length - 4) * normalizedWeight;
+            const redistributedWeight = remainingWeight / 4;
             for (let i = 0; i < 4; i++) {
-              weights[vertexIndex * 4 + i] /= weightSum;
+              weights[vertexIndex * 4 + i] += redistributedWeight;
             }
           }
         }
