@@ -185,7 +185,6 @@ function buildJointHierarchy(joints: Node[], bones: BG3DBone[], scene: any): voi
         const parentIndex = bones.findIndex(b => b.name === expectedParentName);
         if (parentIndex >= 0 && parentIndex < joints.length) {
           const parentJoint = joints[parentIndex];
-          const joint = joints[index];
           if (parentJoint && joint) {
             try {
               // Remove from scene and add to parent
@@ -212,7 +211,7 @@ function buildJointHierarchy(joints: Node[], bones: BG3DBone[], scene: any): voi
       
       if (bone.parentBone >= 0 && bone.parentBone < bones.length) {
         const parentJoint = joints[bone.parentBone];
-        if (parentJoint) {
+        if (parentJoint && joint) {
           parentJoint.addChild(joint);
           console.log(`  ${bone.name} -> child of ${bones[bone.parentBone].name}`);
         } else {
@@ -377,18 +376,41 @@ function createGltfAnimations(doc: Document, joints: Node[], processedAnimations
     anim.channels.forEach(channelData => {
       const joint = joints[channelData.boneIndex];
       
-      // Create time accessor
-      const timeAccessor = doc.createAccessor()
-        .setType("SCALAR")
-        .setArray(new Float32Array(channelData.times))
-        .setBuffer(buffer);
-      
-      if (!timeAccessor || channelData.times.length === 0) {
-        console.warn(`Skipping channel for joint ${joint?.getName()} path ${channelData.path}: invalid time data`);
+      // Validate input data first
+      if (!channelData.times || channelData.times.length === 0) {
+        console.warn(`Skipping channel for joint ${joint?.getName()} path ${channelData.path}: no time data`);
         return;
       }
       
-      // Create value accessor based on path type
+      if (!channelData.values || channelData.values.length === 0) {
+        console.warn(`Skipping channel for joint ${joint?.getName()} path ${channelData.path}: no value data`);
+        return;
+      }
+      
+      // Validate joint exists
+      if (!joint) {
+        console.warn(`Skipping channel for path ${channelData.path}: joint not found (index ${channelData.boneIndex})`);
+        return;
+      }
+      
+      // Create time accessor with additional validation
+      let timeAccessor;
+      try {
+        timeAccessor = doc.createAccessor()
+          .setType("SCALAR")
+          .setArray(new Float32Array(channelData.times))
+          .setBuffer(buffer);
+          
+        if (!timeAccessor) {
+          console.warn(`Failed to create time accessor for joint ${joint.getName()} path ${channelData.path}`);
+          return;
+        }
+      } catch (error) {
+        console.warn(`Error creating time accessor for joint ${joint.getName()} path ${channelData.path}:`, error);
+        return;
+      }
+      
+      // Create value accessor based on path type with validation
       let valueType: string;
       switch (channelData.path) {
         case 'translation':
@@ -402,39 +424,61 @@ function createGltfAnimations(doc: Document, joints: Node[], processedAnimations
           valueType = "VEC3";
       }
       
-      const valueAccessor = doc.createAccessor()
-        .setType(valueType as any)
-        .setArray(new Float32Array(channelData.values))
-        .setBuffer(buffer);
-        
-      if (!valueAccessor || channelData.values.length === 0) {
-        console.warn(`Skipping channel for joint ${joint?.getName()} path ${channelData.path}: invalid value data`);
+      let valueAccessor;
+      try {
+        valueAccessor = doc.createAccessor()
+          .setType(valueType as any)
+          .setArray(new Float32Array(channelData.values))
+          .setBuffer(buffer);
+          
+        if (!valueAccessor) {
+          console.warn(`Failed to create value accessor for joint ${joint.getName()} path ${channelData.path}`);
+          return;
+        }
+      } catch (error) {
+        console.warn(`Error creating value accessor for joint ${joint.getName()} path ${channelData.path}:`, error);
         return;
       }
       
-      // Create sampler
-      const sampler = doc.createAnimationSampler()
-        .setInput(timeAccessor)
-        .setOutput(valueAccessor)
-        .setInterpolation("LINEAR");
-        
-      if (!sampler) {
-        console.warn(`Failed to create sampler for joint ${joint?.getName()} path ${channelData.path}`);
+      // Create sampler with robust error handling
+      let sampler;
+      try {
+        sampler = doc.createAnimationSampler()
+          .setInput(timeAccessor)
+          .setOutput(valueAccessor)
+          .setInterpolation("LINEAR");
+          
+        if (!sampler) {
+          console.warn(`Failed to create sampler for joint ${joint.getName()} path ${channelData.path}`);
+          return;
+        }
+      } catch (error) {
+        console.warn(`Error creating sampler for joint ${joint.getName()} path ${channelData.path}:`, error);
+        return;
+      }
+      // Create channel with robust error handling
+      let channel;
+      try {
+        channel = doc.createAnimationChannel()
+          .setTargetNode(joint)  // Joint is now properly in scene graph
+          .setTargetPath(channelData.path)
+          .setSampler(sampler);
+          
+        if (!channel) {
+          console.warn(`Failed to create channel for joint ${joint.getName()} path ${channelData.path}`);
+          return;
+        }
+      } catch (error) {
+        console.warn(`Error creating channel for joint ${joint.getName()} path ${channelData.path}:`, error);
         return;
       }
       
-      // Create channel - this targets the joint node in the scene
-      const channel = doc.createAnimationChannel()
-        .setTargetNode(joint)  // Joint is now properly in scene graph
-        .setTargetPath(channelData.path)
-        .setSampler(sampler);
-        
-      if (!channel || !joint) {
-        console.warn(`Failed to create channel for joint ${joint?.getName()} path ${channelData.path}`);
-        return;
+      try {
+        gltfAnimation.addChannel(channel);
+        console.log(`    Added channel: ${joint.getName()}.${channelData.path}`);
+      } catch (error) {
+        console.warn(`Error adding channel for joint ${joint.getName()} path ${channelData.path}:`, error);
       }
-      
-      gltfAnimation.addChannel(channel);
     });
     
     return gltfAnimation;

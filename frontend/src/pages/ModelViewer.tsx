@@ -160,11 +160,11 @@ export function ModelViewer() {
           // Choose the appropriate message type based on whether we have skeleton data
           // TEMPORARY: Disable skeleton in GLB export due to Three.js compatibility issues
           // But still parse skeleton data for animation detection and metadata
-          const message: BG3DGltfWorkerMessage = false // skeletonData 
+          const message: BG3DGltfWorkerMessage = false && skeletonData // skeletonData 
             ? {
                 type: "bg3d-with-skeleton-to-glb",
                 bg3dBuffer: bg3dArrayBuffer,
-                skeletonData,
+                skeletonData: skeletonData!,
               }
             : {
                 type: "bg3d-to-glb",
@@ -223,18 +223,20 @@ export function ModelViewer() {
               animations: Object.values(skeletonData.AnHd).map((anim: any, index) => ({
                 name: anim.obj?.animName || `Animation_${index}`,
                 duration: 1.0, // Default duration for display
+                numAnimEvents: 0,
+                events: [],
                 keyframes: {}
               }))
             };
           }
           setBg3dParsed(enhancedParsed);
-          console.log(`Animation metadata preserved: ${enhancedParsed.skeleton.animations.length} animations detected`);
+          console.log(`Animation metadata preserved: ${enhancedParsed.skeleton?.animations?.length || 0} animations detected`);
           
           // Trigger animation UI update now that we have skeleton data
-          if (enhancedParsed.skeleton.animations.length > 0) {
+          if (enhancedParsed.skeleton?.animations?.length && enhancedParsed.skeleton.animations.length > 0) {
             const mockAnimations: AnimationInfo[] = enhancedParsed.skeleton.animations.map((anim, index) => ({
               name: anim.name,
-              duration: anim.duration,
+              duration: 1.0, // Use default duration since BG3DAnimation doesn't have duration
               index: index,
               clip: null as any, // Mock clip - won't be playable but will show in UI
             }));
@@ -337,12 +339,12 @@ export function ModelViewer() {
     }
     
     // If no glTF animations but we have BG3D skeleton animations, create mock animations for UI
-    if (bg3dParsed?.skeleton?.animations?.length > 0) {
+    if (bg3dParsed?.skeleton?.animations?.length && bg3dParsed.skeleton.animations.length > 0) {
       console.log(`Creating UI animations from BG3D skeleton metadata: ${bg3dParsed.skeleton.animations.length} animations`);
       
       const mockAnimations: AnimationInfo[] = bg3dParsed.skeleton.animations.map((anim, index) => ({
         name: anim.name,
-        duration: anim.duration,
+        duration: 1.0, // Use default duration since BG3DAnimation doesn't have duration
         index: index,
         clip: null as any, // Mock clip - won't be playable but will show in UI
       }));
