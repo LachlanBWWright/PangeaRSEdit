@@ -527,6 +527,9 @@ function convertSkeletonResourceToBG3D(skeleton: SkeletonResource): BG3DSkeleton
   
   boneEntries.forEach(([boneId, boneEntry]) => {
     const boneObj = boneEntry.obj;
+    console.log(`Bone ${boneId} raw obj:`, boneObj);
+    console.log(`Bone ${boneId} full entry:`, boneEntry);
+    console.log(`Bone ${boneId} raw data keys:`, Object.keys(boneObj || {}));
     
     // Get point indices for this bone
     const pointIndices: number[] = [];

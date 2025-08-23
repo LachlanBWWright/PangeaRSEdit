@@ -21,11 +21,11 @@ import {
   pngToRgba8,
 } from "./image/pngArgb";
 
-import { createSkeletonSystem, extractAnimationsFromGLTF } from "./skeletonGltfTransform";
+import { createSkeletonSystem, extractAnimationsFromGLTF } from "./skeletonSystemNew";
 
 
 
-import { Document, Mesh, Material, Node, Skin, Accessor } from "@gltf-transform/core";
+import { Document, Mesh, Material, Node, Skin, Accessor, Animation } from "@gltf-transform/core";
 import { PixelFormatSrc, PixelFormatDst } from "./parseBG3D";
 
 /**
@@ -103,24 +103,17 @@ export function bg3dParsedToGLTF(parsed: BG3DParseResult): Document {
   const scene = doc.createScene("Scene");
 
   // 3. Skeleton System (NEW IMPLEMENTATION)
-  let gltfJoints: Node[] = [];
   let gltfSkin: Skin | null = null;
+  let gltfAnimations: Animation[] = [];
   
   if (parsed.skeleton) {
     console.log("Creating skeleton system with new implementation...");
     const skeletonSystem = createSkeletonSystem(doc, parsed.skeleton);
     
-    gltfJoints = skeletonSystem.joints;
     gltfSkin = skeletonSystem.skin;
+    gltfAnimations = skeletonSystem.animations;
     
-    // Add root joints to scene
-    const rootJoints = gltfJoints.filter(joint => !(joint as any).getParent || !(joint as any).getParent());
-    rootJoints.forEach(joint => {
-      scene.addChild(joint);
-      console.log(`Added root joint to scene: ${joint.getName()}`);
-    });
-    
-    console.log(`Skeleton system created: ${gltfJoints.length} joints, ${skeletonSystem.animations.length} animations`);
+    console.log(`Skeleton system created: ${gltfSkin.listJoints().length} joints, ${gltfAnimations.length} animations`);
   }
 
   // Helper to collect all geometries from group hierarchy
@@ -318,6 +311,11 @@ export function bg3dParsedToGLTF(parsed: BG3DParseResult): Document {
     scene.addChild(groupNode);
   });
 
+  // Add animations to the document  
+  gltfAnimations.forEach(animation => {
+    doc.getRoot().listAnimations().push(animation);
+  });
+
   console.log("=== BG3D to glTF Conversion Complete ===");
   return doc;
 }
@@ -408,7 +406,7 @@ export async function gltfToBG3D(doc: Document): Promise<BG3DParseResult> {
           numJoints: bones.length,
           num3DMFLimbs: 0,
           bones,
-          animations: extractAnimationsFromGLTF(doc, joints),
+          animations: extractAnimationsFromGLTF(doc),
         };
       }
     }
