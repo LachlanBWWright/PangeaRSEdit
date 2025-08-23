@@ -269,8 +269,11 @@ export function bg3dParsedToGLTF(parsed: BG3DParseResult): Document {
     // Create joint nodes for each bone
     gltfJoints = skeleton.bones.map((bone) => {
       const joint = doc.createNode();
-      // Use the exact bone name for better targeting - ensure consistent naming
-      joint.setName(bone.name);
+      // Sanitize bone names to ensure Three.js compatibility (replace spaces with underscores)
+      const sanitizedName = bone.name.replace(/\s+/g, '_');
+      joint.setName(sanitizedName);
+      
+      console.log(`Created joint: "${bone.name}" -> "${sanitizedName}"`);
       
       // Use Otto's native coordinates without scaling to avoid coordinate corruption
       // Otto coordinates are relative to parent bone and should be preserved
@@ -289,6 +292,12 @@ export function bg3dParsedToGLTF(parsed: BG3DParseResult): Document {
         // This is a root joint
         rootJoints.push(gltfJoints[index]);
       }
+    });
+    
+    // Add root joints to scene immediately after hierarchy setup
+    rootJoints.forEach(joint => {
+      scene.addChild(joint);
+      console.log(`Added root joint to scene: ${joint.getName()}`);
     });
     
     // Create skin
@@ -438,8 +447,9 @@ export function bg3dParsedToGLTF(parsed: BG3DParseResult): Document {
         // Process each bone's keyframes
         Object.entries(bg3dAnim.keyframes).forEach(([boneIndexStr, keyframes]) => {
           const boneIndex = parseInt(boneIndexStr);
-          if (boneIndex < gltfJoints.length && keyframes.length > 0) {
+          if (boneIndex < gltfJoints.length && keyframes.length > 0 && parsed.skeleton) {
             const joint = gltfJoints[boneIndex];
+            const bone = parsed.skeleton.bones[boneIndex]; // Get the bone for this joint
             
             // Sort keyframes by tick to ensure proper order
             const sortedKeyframes = [...keyframes].sort((a, b) => a.tick - b.tick);
@@ -553,7 +563,10 @@ export function bg3dParsedToGLTF(parsed: BG3DParseResult): Document {
             gltfAnimation.addSampler(rotationSampler);
             gltfAnimation.addSampler(scaleSampler);
             
-            // Create channels
+            // Create channels - ensure bone names match joint names exactly
+            console.log(`Creating animation channels for bone: ${bone.name} -> joint: ${joint.getName()}`);
+            console.log(`Joint details - name: "${joint.getName()}", type: ${joint.constructor.name}`);
+            
             const translationChannel = doc.createAnimationChannel()
               .setTargetNode(joint)
               .setTargetPath("translation")
@@ -817,24 +830,89 @@ export function bg3dParsedToGLTF(parsed: BG3DParseResult): Document {
     scene.addChild(node);
   }
   
-  // Add skeleton joints to scene but make them invisible
-  // This is required for Three.js to properly target them in animations
-  if (gltfJoints && gltfJoints.length > 0) {
+  // Skeleton joints already added to scene during skeleton setup above
     console.log("Adding skeleton joints to scene for animation targeting");
     
-    // Find root joints (those without parents) and add them to scene
+    // Debug: Print the actual bone hierarchy to understand the structure
     parsed.skeleton?.bones.forEach((bone, index) => {
-      if (bone.parentBone < 0) {
-        // This is a root joint - add to scene
-        const rootJoint = gltfJoints[index];
-        if (rootJoint) {
-          scene.addChild(rootJoint);
-          console.log(`Added root joint to scene: ${rootJoint.getName()}`);
+      console.log(`Bone ${index} (${bone.name}): parentBone = ${bone.parentBone}`);
+    });
+    
+    // Otto's skeleton appears to use a flat structure (all parentBone = -1)
+    // But we need to create a logical hierarchy for proper animation
+    // Based on typical Otto character structure, let's build a proper hierarchy
+    const boneNameToIndex = new Map<string, number>();
+    parsed.skeleton?.bones.forEach((bone, index) => {
+      boneNameToIndex.set(bone.name, index);
+    });
+    
+    // Define Otto's logical bone hierarchy based on typical humanoid structure
+    // Use sanitized names (with underscores) to match joint names
+    const logicalHierarchy: { [boneName: string]: string | null } = {
+      'Pelvis': null,           // Root bone
+      'Torso': 'Pelvis',        // Torso is child of Pelvis
+      'Chest': 'Torso',         // Chest is child of Torso
+      'Head': 'Chest',          // Head is child of Chest
+      'RightHip': 'Pelvis',     // Right leg starts at Pelvis
+      'RightKnee': 'RightHip',  // Knee is child of Hip
+      'RightFoot': 'RightKnee', // Foot is child of Knee
+      'LeftHip': 'Pelvis',      // Left leg starts at Pelvis
+      'LeftKnee': 'LeftHip',    // Knee is child of Hip
+      'LeftFoot': 'LeftKnee',   // Foot is child of Knee
+      'RtShoulder': 'Chest',    // Right arm starts at Chest
+      'RightElbow': 'RtShoulder', // Elbow is child of Shoulder
+      'RightHand': 'RightElbow',  // Hand is child of Elbow
+      'LeftShoulder': 'Chest',  // Left arm starts at Chest
+      'LeftElbow': 'LeftShoulder', // Elbow is child of Shoulder
+      'Left_Hand': 'LeftElbow', // Hand is child of Elbow (note underscore for sanitized name)
+    };
+    
+    // Build proper joint hierarchy using logical structure
+    const rootJoints: any[] = [];
+    const jointMap = new Map<string, any>();
+    
+    // First pass: create joint mapping using sanitized names
+    parsed.skeleton?.bones.forEach((bone, index) => {
+      const joint = gltfJoints[index];
+      if (joint) {
+        const sanitizedName = bone.name.replace(/\s+/g, '_');
+        jointMap.set(sanitizedName, joint);
+      }
+    });
+    
+    // Second pass: build hierarchy
+    parsed.skeleton?.bones.forEach((bone, index) => {
+      const joint = gltfJoints[index];
+      if (!joint) return;
+      
+      const sanitizedName = bone.name.replace(/\s+/g, '_');
+      const parentBoneName = logicalHierarchy[sanitizedName];
+      
+      if (!parentBoneName) {
+        // This is a root joint
+        rootJoints.push(joint);
+        console.log(`Found root joint: ${joint.getName()}`);
+      } else {
+        // This joint has a logical parent - add it as child of parent
+        const parentJoint = jointMap.get(parentBoneName);
+        if (parentJoint) {
+          parentJoint.addChild(joint);
+          console.log(`Added ${joint.getName()} as child of ${parentJoint.getName()}`);
+        } else {
+          // Parent not found, treat as root
+          rootJoints.push(joint);
+          console.log(`Parent '${parentBoneName}' not found for ${joint.getName()}, treating as root`);
         }
       }
     });
     
-    console.log("Joint hierarchy setup completed with scene integration");
+    // Add root joints to scene
+    rootJoints.forEach(rootJoint => {
+      scene.addChild(rootJoint);
+      console.log(`Added root joint to scene: ${rootJoint.getName()}`);
+    });
+    
+    console.log(`Joint hierarchy setup completed - ${rootJoints.length} root joints added`);
   }
 
   // 5. Store any unmappable data in extras at the root (for legacy round-trip)
