@@ -271,24 +271,25 @@ export function bg3dParsedToGLTF(parsed: BG3DParseResult): Document {
     // Create joint nodes for each bone
     gltfJoints = skeleton.bones.map((bone, index) => {
       const joint = doc.createNode();
-      // Use the exact bone name for better targeting - remove any invalid characters
-      const cleanName = bone.name.replace(/[^a-zA-Z0-9_]/g, '_');
-      joint.setName(cleanName);
+      // Use the exact bone name for better targeting - ensure consistent naming
+      joint.setName(bone.name);
       
-      // Set bone transform (position only for now)
+      // Use Otto's native coordinates without scaling to avoid coordinate corruption
+      // Otto coordinates are relative to parent bone and should be preserved
       joint.setTranslation([bone.coordX, bone.coordY, bone.coordZ]);
       
-      console.log(`Created joint ${index}: ${cleanName} at [${bone.coordX}, ${bone.coordY}, ${bone.coordZ}]`);
+      console.log(`Created joint ${index}: ${bone.name} at [${bone.coordX}, ${bone.coordY}, ${bone.coordZ}]`);
       return joint;
     });
     
-    // Set up bone hierarchy
+    // Set up bone hierarchy - establish parent-child relationships first
     const rootJoints: Node[] = [];
     skeleton.bones.forEach((bone, index) => {
       if (bone.parentBone >= 0 && bone.parentBone < gltfJoints.length) {
+        // Has a parent - add as child
         gltfJoints[bone.parentBone].addChild(gltfJoints[index]);
       } else {
-        // This is a root joint - add to scene
+        // This is a root joint
         rootJoints.push(gltfJoints[index]);
       }
     });
@@ -369,7 +370,7 @@ export function bg3dParsedToGLTF(parsed: BG3DParseResult): Document {
       // Identity matrix
       matrix[0] = 1; matrix[5] = 1; matrix[10] = 1; matrix[15] = 1;
       
-      // Apply translation
+      // Apply translation using Otto's native coordinates
       matrix[12] = bone.coordX || 0;
       matrix[13] = bone.coordY || 0;
       matrix[14] = bone.coordZ || 0;
@@ -395,7 +396,7 @@ export function bg3dParsedToGLTF(parsed: BG3DParseResult): Document {
     };
     
     // Calculate inverse bind matrix for each bone
-    parsed.skeleton.bones.forEach((bone, i) => {
+    parsed.skeleton.bones.forEach((_, i) => {
       const offset = i * 16;
       
       // Get world transform for this bone
@@ -498,7 +499,7 @@ export function bg3dParsedToGLTF(parsed: BG3DParseResult): Document {
               .setArray(new Float32Array(times))
               .setBuffer(baseBuffer);
             
-            // Create translation output accessor
+            // Create translation output accessor - use Otto's native coordinates
             const translations: number[] = [];
             sortedKeyframes.forEach(kf => {
               translations.push(kf.coordX, kf.coordY, kf.coordZ);
@@ -817,37 +818,24 @@ export function bg3dParsedToGLTF(parsed: BG3DParseResult): Document {
     scene.addChild(node);
   }
   
-  // DO NOT add skeleton joints to scene - they should only be part of the skin
-  // Joints being added to the scene makes them appear in the model hierarchy
-  // which is incorrect behavior for skeletal animation
-  
-  // However, we need to ensure joints exist in the document for animation targeting
+  // Add skeleton joints to scene but make them invisible
+  // This is required for Three.js to properly target them in animations
   if (gltfJoints && gltfJoints.length > 0) {
-    console.log("Setting up joint hierarchy for animation targeting (not adding to scene)");
+    console.log("Adding skeleton joints to scene for animation targeting");
     
-    // Add all joints to document's node list first
-    for (const joint of gltfJoints) {
-      doc.getRoot().listNodes().push(joint);
-    }
-    
-    // Build parent-child relationships for joints (but don't add to scene!)
+    // Find root joints (those without parents) and add them to scene
     parsed.skeleton?.bones.forEach((bone, index) => {
-      const joint = gltfJoints[index];
-      if (!joint) return;
-      
-      if (bone.parentBone >= 0 && bone.parentBone < gltfJoints.length) {
-        // This joint has a parent - set up the relationship
-        const parentJoint = gltfJoints[bone.parentBone];
-        if (parentJoint) {
-          parentJoint.addChild(joint);
-          console.log(`Joint hierarchy: ${parentJoint.getName()} -> ${joint.getName()}`);
+      if (bone.parentBone < 0) {
+        // This is a root joint - add to scene
+        const rootJoint = gltfJoints[index];
+        if (rootJoint) {
+          scene.addChild(rootJoint);
+          console.log(`Added root joint to scene: ${rootJoint.getName()}`);
         }
       }
-      // NOTE: Do NOT add root joints to scene - this would make them visible
     });
     
-    // The skin's inverse bind matrices and joint references are sufficient for animation
-    console.log("Joint hierarchy setup completed (joints not added to scene for proper skeletal animation)");
+    console.log("Joint hierarchy setup completed with scene integration");
   }
 
   // 5. Store any unmappable data in extras at the root (for legacy round-trip)
