@@ -1,8 +1,8 @@
 import { Updater } from "use-immer";
 import {
-  ottoMaticLevel,
   ottoSplineItem,
 } from "../../../python/structSpecs/ottoMaticInterface";
+import { SplineData, HeaderData } from "../../../python/structSpecs/ottoMaticLevelData";
 import { useAtom, useAtomValue } from "jotai";
 import { Button } from "@/components/ui/button";
 import { ottoItemTypeParams } from "../../../data/items/ottoItemType";
@@ -31,11 +31,15 @@ import { getSplineItemName } from "@/data/splines/getSplineItemNames";
 import { Checkbox } from "@/components/ui/checkbox";
 
 export function SplineMenu({
-  data,
-  setData,
+  splineData,
+  setSplineData,
+  headerData: _headerData,
+  setHeaderData: _setHeaderData,
 }: {
-  data: ottoMaticLevel;
-  setData: Updater<ottoMaticLevel>;
+  splineData: SplineData;
+  setSplineData: Updater<SplineData>;
+  headerData: HeaderData;
+  setHeaderData: Updater<HeaderData>;
 }) {
   const selectedSpline = useAtomValue(SelectedSpline);
   const [selectedSplineItem, setSelectedSplineItem] =
@@ -45,20 +49,22 @@ export function SplineMenu({
     setSelectedSplineItem(undefined);
   }, [selectedSpline]);
 
-  const splineData =
+  if (splineData.Spln === undefined) return null;
+
+  const currentSplineData =
     selectedSpline !== undefined
-      ? data.SpIt[SPLINE_KEY_BASE + selectedSpline].obj
+      ? splineData.SpIt[SPLINE_KEY_BASE + selectedSpline]?.obj
       : null;
 
   return (
     <div className="flex flex-col gap-2">
-      {splineData === null || splineData === undefined ? (
-        <AddNewSplineMenu setData={setData} />
+      {currentSplineData === null || currentSplineData === undefined ? (
+        <AddNewSplineMenu setSplineData={setSplineData} />
       ) : (
         <Select
           /*           value={
             selectedSplineItem !== undefined
-              ? splineItemTypeNames[splineData[selectedSplineItem].type]
+              ? splineItemTypeNames[currentSplineData[selectedSplineItem].type]
               : "No Item Selected"
           } */
           onValueChange={(e) => {
@@ -71,13 +77,13 @@ export function SplineMenu({
             {selectedSplineItem !== undefined
               ? `#${selectedSplineItem} ${getSplineItemName(
                   globals,
-                  splineData[selectedSplineItem].type,
+                  currentSplineData[selectedSplineItem].type,
                 )}`
               : "No Item Selected"}
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="NoneSelected">No Item Selected</SelectItem>
-            {splineData.map((item, itemIdx) => (
+            {currentSplineData.map((item, itemIdx) => (
               <SelectItem key={itemIdx} value={itemIdx.toString()}>
                 #{itemIdx} ({getSplineItemName(globals, item.type)})
               </SelectItem>
@@ -87,24 +93,24 @@ export function SplineMenu({
       )}
 
       <div className="flex flex-col gap-2">
-        {splineData && (
-          <EditSplineItemMenu splineData={splineData} setData={setData} />
+        {currentSplineData && (
+          <EditSplineItemMenu splineItemData={currentSplineData} setSplineData={setSplineData} />
         )}
-        {splineData !== null && splineData !== undefined && (
-          <EditSplineMenu data={data} setData={setData} />
+        {currentSplineData !== null && currentSplineData !== undefined && (
+          <EditSplineMenu splineData={splineData} setSplineData={setSplineData} />
         )}
       </div>
     </div>
   );
 }
 
-function AddNewSplineMenu({ setData }: { setData: Updater<ottoMaticLevel> }) {
+function AddNewSplineMenu({ setSplineData }: { setSplineData: Updater<SplineData> }) {
   return (
     <>
       <Button
         onClick={() => {
-          setData((data) => {
-            data.Spln[1000].obj.push({
+          setSplineData((splineData) => {
+            splineData.Spln[1000].obj.push({
               bbBottom: 200,
               bbLeft: 100,
               bbRight: 200,
@@ -113,11 +119,11 @@ function AddNewSplineMenu({ setData }: { setData: Updater<ottoMaticLevel> }) {
               numNubs: 3,
               numPoints: 200, //IDK
             });
-            const splinePos = SPLINE_KEY_BASE + data.Spln[1000].obj.length - 1;
+            const splinePos = SPLINE_KEY_BASE + splineData.Spln[1000].obj.length - 1;
 
-            data.SpIt[splinePos] = { obj: [] };
+            splineData.SpIt[splinePos] = { obj: [] };
             //[x1, z1, y2, z2, y3, z3, y4, z4] and so on
-            data.SpNb[splinePos] = {
+            splineData.SpNb[splinePos] = {
               obj: [
                 {
                   x: 100,
@@ -140,8 +146,8 @@ function AddNewSplineMenu({ setData }: { setData: Updater<ottoMaticLevel> }) {
               ],
             };
 
-            data.SpPt[splinePos] = {
-              obj: getPoints(data.SpNb[splinePos].obj),
+            splineData.SpPt[splinePos] = {
+              obj: getPoints(splineData.SpNb[splinePos].obj),
             };
           });
         }}
@@ -153,11 +159,11 @@ function AddNewSplineMenu({ setData }: { setData: Updater<ottoMaticLevel> }) {
 }
 
 function EditSplineItemMenu({
-  setData,
-  splineData,
+  setSplineData,
+  splineItemData,
 }: {
-  setData: Updater<ottoMaticLevel>;
-  splineData: ottoSplineItem[];
+  setSplineData: Updater<SplineData>;
+  splineItemData: ottoSplineItem[];
 }) {
   const selectedSpline = useAtomValue(SelectedSpline);
   const [selectedSplineItem, setSelectedSplineItem] =
@@ -166,33 +172,33 @@ function EditSplineItemMenu({
   if (selectedSpline === undefined) return <p>No Selected Spline</p>;
   if (selectedSplineItem === undefined) return <></>;
 
-  const splineItemData = splineData.at(selectedSplineItem);
+  const currentSplineItemData = splineItemData.at(selectedSplineItem);
 
   const splineItemValues = getSplineItemTypes(globals) //Object.keys(SplineItemType)
     .map((key) => parseInt(key))
     .filter((key) => isNaN(key) === false);
 
-  if (splineItemData === undefined) return <></>;
+  if (currentSplineItemData === undefined) return <></>;
 
   return (
     <>
       <Select
         onValueChange={(e) => {
           const newItemType = parseInt(e);
-          setData((data) => {
+          setSplineData((splineData) => {
             if (
               selectedSpline === undefined ||
               selectedSplineItem === undefined
             )
               return;
-            data.SpIt[SPLINE_KEY_BASE + selectedSpline].obj[
+            splineData.SpIt[SPLINE_KEY_BASE + selectedSpline].obj[
               selectedSplineItem
             ].type = newItemType;
           });
         }}
       >
         <SelectTrigger>
-          {getSplineItemName(globals, splineItemData.type)}
+          {getSplineItemName(globals, currentSplineItemData.type)}
         </SelectTrigger>
         <SelectContent>
           {splineItemValues.map((key) => (
@@ -207,19 +213,19 @@ function EditSplineItemMenu({
         {/* Flags field */}
         <ParamTooltip
           label={<span>Flags</span>}
-          tooltip={getParamTooltip(ottoItemTypeParams[splineItemData.type].flags)}
+          tooltip={getParamTooltip(ottoItemTypeParams[currentSplineItemData.type].flags)}
         />
         <Input
           type="number"
-          value={splineItemData.flags}
+          value={currentSplineItemData.flags}
           onChange={(e) => {
-            setData((data) => {
+            setSplineData((splineData) => {
               if (
                 selectedSpline === undefined ||
                 selectedSplineItem === undefined
               )
                 return;
-              data.SpIt[SPLINE_KEY_BASE + selectedSpline].obj[
+              splineData.SpIt[SPLINE_KEY_BASE + selectedSpline].obj[
                 selectedSplineItem
               ].flags = parseU16(e.target.value);
             });
@@ -229,16 +235,16 @@ function EditSplineItemMenu({
         {/* Param 0-3, with bit flag support */}
         {([0, 1, 2, 3] as const).map((i) => {
           const paramKey = `p${i}` as const;
-          const param = ottoItemTypeParams[splineItemData.type][paramKey];
-          const value = splineItemData[paramKey];
+          const param = ottoItemTypeParams[currentSplineItemData.type][paramKey];
+          const value = currentSplineItemData[paramKey];
           const setValue = (v: number) => {
-            setData((data) => {
+            setSplineData((splineData) => {
               if (
                 selectedSpline === undefined ||
                 selectedSplineItem === undefined
               )
                 return;
-              data.SpIt[SPLINE_KEY_BASE + selectedSpline].obj[
+              splineData.SpIt[SPLINE_KEY_BASE + selectedSpline].obj[
                 selectedSplineItem
               ][paramKey] = v;
             });
@@ -260,7 +266,7 @@ function EditSplineItemMenu({
                           className="font-bold"
                           checked={checked}
                           onCheckedChange={(checked) => {
-                            setData((data) => {
+                            setSplineData((splineData) => {
                               if (
                                 selectedSpline === undefined ||
                                 selectedSplineItem === undefined
@@ -268,11 +274,11 @@ function EditSplineItemMenu({
                                 return;
                               const mask = 1 << flag.index;
                               if (checked) {
-                                data.SpIt[SPLINE_KEY_BASE + selectedSpline].obj[
+                                splineData.SpIt[SPLINE_KEY_BASE + selectedSpline].obj[
                                   selectedSplineItem
                                 ][paramKey] |= mask;
                               } else {
-                                data.SpIt[SPLINE_KEY_BASE + selectedSpline].obj[
+                                splineData.SpIt[SPLINE_KEY_BASE + selectedSpline].obj[
                                   selectedSplineItem
                                 ][paramKey] &= ~mask;
                               }
@@ -308,9 +314,9 @@ function EditSplineItemMenu({
         <span>Placement (0-1)</span>
         <Input
           type="number"
-          value={splineItemData.placement}
+          value={currentSplineItemData.placement}
           onChange={(e) => {
-            setData((data) => {
+            setSplineData((splineData) => {
               if (
                 selectedSpline === undefined ||
                 selectedSplineItem === undefined
@@ -323,7 +329,7 @@ function EditSplineItemMenu({
 
               if (isNaN(placement)) placement = 0;
 
-              data.SpIt[SPLINE_KEY_BASE + selectedSpline].obj[
+              splineData.SpIt[SPLINE_KEY_BASE + selectedSpline].obj[
                 selectedSplineItem
               ].placement = placement;
             });
@@ -335,9 +341,9 @@ function EditSplineItemMenu({
           variant="destructive"
           disabled={selectedSpline === undefined}
           onClick={() => {
-            setData((data) => {
+            setSplineData((splineData) => {
               if (selectedSplineItem === undefined) return;
-              data.SpIt[SPLINE_KEY_BASE + selectedSpline].obj.splice(
+              splineData.SpIt[SPLINE_KEY_BASE + selectedSpline].obj.splice(
                 selectedSplineItem,
               );
               setSelectedSplineItem(undefined);
@@ -352,11 +358,11 @@ function EditSplineItemMenu({
 }
 
 function EditSplineMenu({
-  data,
-  setData,
+  splineData,
+  setSplineData,
 }: {
-  data: ottoMaticLevel;
-  setData: Updater<ottoMaticLevel>;
+  splineData: SplineData;
+  setSplineData: Updater<SplineData>;
 }) {
   const [selectedSpline, setSelectedSpline] = useAtom(SelectedSpline);
 
@@ -364,16 +370,16 @@ function EditSplineMenu({
     <div className="grid grid-cols-6 gap-2">
       <Button
         onClick={() => {
-          setData((data) => {
+          setSplineData((splineData) => {
             if (selectedSpline === undefined) return;
-            const splineNubs = data.SpNb[SPLINE_KEY_BASE + selectedSpline].obj;
+            const splineNubs = splineData.SpNb[SPLINE_KEY_BASE + selectedSpline].obj;
 
-            data.SpNb[SPLINE_KEY_BASE + selectedSpline].obj.splice(1, 0, {
+            splineData.SpNb[SPLINE_KEY_BASE + selectedSpline].obj.splice(1, 0, {
               x: splineNubs[0].x + 30,
               z: splineNubs[0].z + 30,
             });
-            data.SpPt[SPLINE_KEY_BASE + selectedSpline] = {
-              obj: getPoints(data.SpNb[SPLINE_KEY_BASE + selectedSpline].obj),
+            splineData.SpPt[SPLINE_KEY_BASE + selectedSpline] = {
+              obj: getPoints(splineData.SpNb[SPLINE_KEY_BASE + selectedSpline].obj),
             };
           });
         }}
@@ -382,11 +388,11 @@ function EditSplineMenu({
       </Button>
       <Button
         onClick={() => {
-          setData((data) => {
+          setSplineData((splineData) => {
             if (selectedSpline === undefined) return;
-            const splineNubs = data.SpNb[SPLINE_KEY_BASE + selectedSpline].obj;
+            const splineNubs = splineData.SpNb[SPLINE_KEY_BASE + selectedSpline].obj;
 
-            data.SpNb[SPLINE_KEY_BASE + selectedSpline].obj.splice(
+            splineData.SpNb[SPLINE_KEY_BASE + selectedSpline].obj.splice(
               splineNubs.length - 1,
               0,
               {
@@ -394,8 +400,8 @@ function EditSplineMenu({
                 z: splineNubs[splineNubs.length - 1].z + 100,
               },
             );
-            data.SpPt[SPLINE_KEY_BASE + selectedSpline] = {
-              obj: getPoints(data.SpNb[SPLINE_KEY_BASE + selectedSpline].obj),
+            splineData.SpPt[SPLINE_KEY_BASE + selectedSpline] = {
+              obj: getPoints(splineData.SpNb[SPLINE_KEY_BASE + selectedSpline].obj),
             };
           });
         }}
@@ -405,14 +411,14 @@ function EditSplineMenu({
       <Button
         disabled={
           selectedSpline === undefined ||
-          data.SpNb[SPLINE_KEY_BASE + selectedSpline].obj.length <= 4
+          splineData.SpNb[SPLINE_KEY_BASE + selectedSpline]?.obj.length <= 4
         }
         onClick={() => {
-          setData((data) => {
+          setSplineData((splineData) => {
             if (selectedSpline === undefined) return;
-            data.SpNb[SPLINE_KEY_BASE + selectedSpline].obj.splice(1, 1);
-            data.SpPt[SPLINE_KEY_BASE + selectedSpline] = {
-              obj: getPoints(data.SpNb[SPLINE_KEY_BASE + selectedSpline].obj),
+            splineData.SpNb[SPLINE_KEY_BASE + selectedSpline].obj.splice(1, 1);
+            splineData.SpPt[SPLINE_KEY_BASE + selectedSpline] = {
+              obj: getPoints(splineData.SpNb[SPLINE_KEY_BASE + selectedSpline].obj),
             };
           });
         }}
@@ -422,19 +428,19 @@ function EditSplineMenu({
       <Button
         disabled={
           selectedSpline === undefined ||
-          data.SpNb[SPLINE_KEY_BASE + selectedSpline].obj.length <= 4
+          splineData.SpNb[SPLINE_KEY_BASE + selectedSpline]?.obj.length <= 4
         }
         onClick={() => {
-          setData((data) => {
+          setSplineData((splineData) => {
             if (selectedSpline === undefined) return;
-            const splineNubs = data.SpNb[SPLINE_KEY_BASE + selectedSpline].obj;
+            const splineNubs = splineData.SpNb[SPLINE_KEY_BASE + selectedSpline].obj;
             //Remove 2nd to last
-            data.SpNb[SPLINE_KEY_BASE + selectedSpline].obj.splice(
+            splineData.SpNb[SPLINE_KEY_BASE + selectedSpline].obj.splice(
               splineNubs.length - 2,
               1,
             );
-            data.SpPt[SPLINE_KEY_BASE + selectedSpline] = {
-              obj: getPoints(data.SpNb[SPLINE_KEY_BASE + selectedSpline].obj),
+            splineData.SpPt[SPLINE_KEY_BASE + selectedSpline] = {
+              obj: getPoints(splineData.SpNb[SPLINE_KEY_BASE + selectedSpline].obj),
             };
           });
         }}
@@ -444,9 +450,9 @@ function EditSplineMenu({
       <Button
         disabled={selectedSpline === undefined}
         onClick={() => {
-          setData((data) => {
+          setSplineData((splineData) => {
             if (selectedSpline === undefined) return;
-            data.SpIt[SPLINE_KEY_BASE + selectedSpline].obj.push({
+            splineData.SpIt[SPLINE_KEY_BASE + selectedSpline].obj.push({
               placement: 0.5,
               type: 0 as any, //eslint-disable-line
               flags: 0,
@@ -464,19 +470,19 @@ function EditSplineMenu({
         variant="destructive"
         disabled={selectedSpline === undefined}
         onClick={() => {
-          setData((data) => {
+          setSplineData((splineData) => {
             if (selectedSpline === undefined) return;
-            data.Spln[1000].obj.splice(selectedSpline, 1);
+            splineData.Spln[1000].obj.splice(selectedSpline, 1);
             let pos = SPLINE_KEY_BASE + selectedSpline;
-            while (data.SpNb[pos + 1] !== undefined) {
-              data.SpNb[pos] = data.SpNb[pos + 1];
-              data.SpPt[pos] = data.SpPt[pos + 1];
-              data.SpIt[pos] = data.SpIt[pos + 1];
+            while (splineData.SpNb[pos + 1] !== undefined) {
+              splineData.SpNb[pos] = splineData.SpNb[pos + 1];
+              splineData.SpPt[pos] = splineData.SpPt[pos + 1];
+              splineData.SpIt[pos] = splineData.SpIt[pos + 1];
               pos++;
             }
-            delete data.SpNb[pos];
-            delete data.SpPt[pos];
-            delete data.SpIt[pos];
+            delete splineData.SpNb[pos];
+            delete splineData.SpPt[pos];
+            delete splineData.SpIt[pos];
           });
           setSelectedSpline(undefined);
         }}

@@ -1,5 +1,5 @@
 import { Updater } from "use-immer";
-import { ottoMaticLevel } from "../../../python/structSpecs/ottoMaticInterface";
+import { FenceData } from "../../../python/structSpecs/ottoMaticLevelData";
 import { SelectedFence } from "../../../data/fences/fenceAtoms";
 import { useAtom, useAtomValue } from "jotai";
 import { Button } from "@/components/ui/button";
@@ -13,24 +13,27 @@ import {
 import { Game, Globals } from "@/data/globals/globals";
 import { getFenceName } from "@/data/fences/getFenceNames";
 import { getFenceTypes } from "@/data/fences/getFenceTypes";
+import { getFenceImagePath } from "@/data/fences/getFenceImagePath";
 //import { SelectContent, SelectTrigger } from "@radix-ui/react-select";
 
 const NUB_KEY_BASE = 1000;
 
 export function FenceMenu({
-  data,
-  setData,
+  fenceData,
+  setFenceData,
 }: {
-  data: ottoMaticLevel;
-  setData: Updater<ottoMaticLevel>;
+  fenceData: FenceData;
+  setFenceData: Updater<FenceData>;
 }) {
   const globals = useAtomValue(Globals);
   const [selectedFence, setSelectedFence] = useAtom(SelectedFence);
 
   if (globals.GAME_TYPE === Game.NANOSAUR) return <></>; //No fences in this level
 
-  const fenceData =
-    selectedFence !== undefined ? data.Fenc[1000].obj[selectedFence] : null;
+  const fenceDataObj =
+    selectedFence !== undefined
+      ? fenceData.Fenc[1000].obj[selectedFence]
+      : null;
 
   const fenceValues = getFenceTypes(globals) // Object.keys(FenceType)
     .map((key) => parseInt(key))
@@ -38,16 +41,16 @@ export function FenceMenu({
 
   return (
     <div className="flex flex-col gap-2">
-      {fenceData === null ? (
+      {fenceDataObj === null ? (
         <Button
           onClick={() => {
-            setData((data) => {
-              const keys = Object.keys(data.Fenc[1000].obj);
+            setFenceData((fenceData) => {
+              const keys = Object.keys(fenceData.Fenc[1000].obj);
               const lastStr = keys.length !== 0 ? keys[keys.length - 1] : "999"; //Minimum is 1000
               const last = parseInt(lastStr) + 1; //Get key of new last
 
               //Add Fenc object
-              data.Fenc[1000].obj[last] = {
+              fenceData.Fenc[1000].obj[last] = {
                 fenceType: 0,
                 numNubs: 2,
                 junkNubListPtr: 0,
@@ -57,7 +60,7 @@ export function FenceMenu({
                 bbRight: 0,
               };
 
-              data.FnNb[last + NUB_KEY_BASE] = {
+              fenceData.FnNb[last + NUB_KEY_BASE] = {
                 name: "Fence Nub List", //Is this needed?
                 obj: [
                   [0, 0],
@@ -67,8 +70,8 @@ export function FenceMenu({
               };
 
               //Add fence nubs
-              data.FnNb[last + NUB_KEY_BASE].obj[0] = [0, 0];
-              data.FnNb[last + NUB_KEY_BASE].obj[1] = [1000, 1000];
+              fenceData.FnNb[last + NUB_KEY_BASE].obj[0] = [0, 0];
+              fenceData.FnNb[last + NUB_KEY_BASE].obj[1] = [1000, 1000];
             });
           }}
         >
@@ -76,38 +79,33 @@ export function FenceMenu({
         </Button>
       ) : (
         <p>
-          Fence {selectedFence} ({fenceData.numNubs} points)
+          Fence {selectedFence} ({fenceDataObj.numNubs} points)
         </p>
       )}
 
       <div className="grid grid-cols-[2fr_1fr] gap-2 w-full">
         <div className="flex flex-col">
-          {fenceData !== null && (
+          {fenceDataObj !== null && (
             <>
               <img
-                src={
-                  /* TODO: Previews for other games */
-                  globals.GAME_TYPE === Game.OTTO_MATIC
-                    ? `assets/ottoMatic/fences/fence${String(
-                        fenceData.fenceType,
-                      ).padStart(3, "0")}.png`
-                    : ""
-                }
+                src={getFenceImagePath(globals, fenceDataObj.fenceType)}
                 className="max-h-56 mx-auto"
+                alt={`Fence ${fenceDataObj.fenceType}`}
               />
               <Select
-                value={getFenceName(globals, fenceData.fenceType)}
+                value={getFenceName(globals, fenceDataObj.fenceType)}
                 onValueChange={(e) => {
                   const newFenceType = parseInt(e);
-                  setData((data) => {
+                  setFenceData((fenceData) => {
                     if (selectedFence === undefined) return;
-                    data.Fenc[1000].obj[selectedFence].fenceType = newFenceType;
+                    fenceData.Fenc[1000].obj[selectedFence].fenceType =
+                      newFenceType;
                   });
                 }}
               >
                 <SelectTrigger>
                   <SelectValue>
-                    {getFenceName(globals, fenceData.fenceType)}
+                    {getFenceName(globals, fenceDataObj.fenceType)}
                   </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
@@ -125,19 +123,19 @@ export function FenceMenu({
             </>
           )}
         </div>
-        {fenceData && (
+        {fenceDataObj && (
           <div className="flex flex-col gap-2">
             <Button
               disabled={selectedFence === undefined}
               onClick={() => {
-                setData((data) => {
+                setFenceData((fenceData) => {
                   if (selectedFence === undefined) return;
 
-                  data.Fenc[1000].obj[selectedFence].numNubs++;
+                  fenceData.Fenc[1000].obj[selectedFence].numNubs++;
 
-                  data.FnNb[selectedFence + NUB_KEY_BASE].obj.unshift([
-                    data.FnNb[selectedFence + NUB_KEY_BASE].obj[0][0] - 25,
-                    data.FnNb[selectedFence + NUB_KEY_BASE].obj[0][1] - 25,
+                  fenceData.FnNb[selectedFence + NUB_KEY_BASE].obj.unshift([
+                    fenceData.FnNb[selectedFence + NUB_KEY_BASE].obj[0][0] - 25,
+                    fenceData.FnNb[selectedFence + NUB_KEY_BASE].obj[0][1] - 25,
                   ]);
                 });
               }}
@@ -147,18 +145,20 @@ export function FenceMenu({
             <Button
               disabled={selectedFence === undefined}
               onClick={() => {
-                setData((data) => {
+                setFenceData((fenceData) => {
                   if (selectedFence === undefined) return;
                   const lastIdx =
-                    data.FnNb[selectedFence + NUB_KEY_BASE].obj.length - 1;
-                  data.Fenc[1000].obj[selectedFence].numNubs++;
+                    fenceData.FnNb[selectedFence + NUB_KEY_BASE].obj.length - 1;
+                  fenceData.Fenc[1000].obj[selectedFence].numNubs++;
 
                   //Adds new nub close to the last
-                  data.FnNb[selectedFence + NUB_KEY_BASE].obj.push([
-                    data.FnNb[selectedFence + NUB_KEY_BASE].obj[lastIdx][0] +
-                      25,
-                    data.FnNb[selectedFence + NUB_KEY_BASE].obj[lastIdx][1] +
-                      25,
+                  fenceData.FnNb[selectedFence + NUB_KEY_BASE].obj.push([
+                    fenceData.FnNb[selectedFence + NUB_KEY_BASE].obj[
+                      lastIdx
+                    ][0] + 25,
+                    fenceData.FnNb[selectedFence + NUB_KEY_BASE].obj[
+                      lastIdx
+                    ][1] + 25,
                   ]);
                 });
               }}
@@ -169,17 +169,17 @@ export function FenceMenu({
               variant="destructive"
               disabled={
                 selectedFence === undefined ||
-                data.Fenc[1000].obj[selectedFence].numNubs <= 1
+                fenceData.Fenc[1000].obj[selectedFence].numNubs <= 1
               }
               onClick={() => {
-                setData((data) => {
+                setFenceData((fenceData) => {
                   if (
                     selectedFence === undefined ||
-                    data.Fenc[1000].obj[selectedFence].numNubs <= 1
+                    fenceData.Fenc[1000].obj[selectedFence].numNubs <= 1
                   )
                     return;
-                  data.Fenc[1000].obj[selectedFence].numNubs--;
-                  data.FnNb[selectedFence + NUB_KEY_BASE].obj.shift();
+                  fenceData.Fenc[1000].obj[selectedFence].numNubs--;
+                  fenceData.FnNb[selectedFence + NUB_KEY_BASE].obj.shift();
                 });
               }}
             >
@@ -189,17 +189,17 @@ export function FenceMenu({
               variant="destructive"
               disabled={
                 selectedFence === undefined ||
-                data.Fenc[1000].obj[selectedFence].numNubs <= 1
+                fenceData.Fenc[1000].obj[selectedFence].numNubs <= 1
               }
               onClick={() => {
-                setData((data) => {
+                setFenceData((fenceData) => {
                   if (
                     selectedFence === undefined ||
-                    data.Fenc[1000].obj[selectedFence].numNubs <= 1
+                    fenceData.Fenc[1000].obj[selectedFence].numNubs <= 1
                   )
                     return;
-                  data.Fenc[1000].obj[selectedFence].numNubs--;
-                  data.FnNb[selectedFence + NUB_KEY_BASE].obj.pop();
+                  fenceData.Fenc[1000].obj[selectedFence].numNubs--;
+                  fenceData.FnNb[selectedFence + NUB_KEY_BASE].obj.pop();
                 });
               }}
             >
@@ -210,19 +210,19 @@ export function FenceMenu({
               disabled={selectedFence === undefined}
               onClick={() => {
                 if (selectedFence === undefined) return;
-                setData((data) => {
-                  data.Fenc[1000].obj.splice(selectedFence, 1);
+                setFenceData((fenceData) => {
+                  fenceData.Fenc[1000].obj.splice(selectedFence, 1);
                   let lastKey: string | undefined = undefined;
-                  for (const nubKey of Object.keys(data.FnNb)) {
+                  for (const nubKey of Object.keys(fenceData.FnNb)) {
                     lastKey = nubKey;
                     if (parseInt(nubKey) > selectedFence + NUB_KEY_BASE) {
-                      data.FnNb[parseInt(nubKey) - 1] =
-                        data.FnNb[parseInt(nubKey)];
+                      fenceData.FnNb[parseInt(nubKey) - 1] =
+                        fenceData.FnNb[parseInt(nubKey)];
                     }
                   }
                   if (lastKey === undefined)
                     throw new Error("Missing Final Nubkey");
-                  delete data.FnNb[parseInt(lastKey)];
+                  delete fenceData.FnNb[parseInt(lastKey)];
                 });
                 setSelectedFence(undefined);
               }}

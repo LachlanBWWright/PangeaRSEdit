@@ -25,7 +25,7 @@ import { useState } from "react";
 import { Switch } from "@/components/ui/switch";
 import { preprocessJson } from "@/data/processors/ottoPreprocessor";
 import { ottoMaticLevel } from "@/python/structSpecs/ottoMaticInterface";
-import { Updater } from "use-immer";
+import { splitLevelData, AtomicLevelData } from "../data/utils/levelDataUtils";
 import { Buffer } from "buffer";
 import { PyodideMessage, PyodideResponse } from "@/python/pyodideWorker";
 import { IntroText } from "./IntroText";
@@ -60,7 +60,7 @@ export function UploadPrompt({
   setMapImagesFile: (file: File) => void;
   setMapImages: (images: HTMLCanvasElement[]) => void;
   pyodideWorker: Worker;
-  setData: Updater<ottoMaticLevel | null>;
+  setData: (data: AtomicLevelData) => void;
 }) {
   const [globals, setGlobals] = useAtom(Globals);
   const [showAllGames, setShowAllGames] = useState(false);
@@ -123,8 +123,11 @@ export function UploadPrompt({
     } else {
       //Bugdom 1-specific - The image data is within the Resource Fork
       console.log(jsonData);
-      const imgString = jsonData.Timg[1000].data;
+      const imgString = jsonData.Timg?.[1000]?.data;
       console.log(imgString);
+      if (!imgString) {
+        throw new Error("No image data found");
+      }
       const imgBuffer = Buffer.from(imgString, "hex");
       console.log("Image buffer length:", imgBuffer.byteLength);
       const tileCount = imgBuffer.byteLength / 2 / 32 / 32; // 2 bytes per pixel, 32x32 pixels per tile
@@ -179,7 +182,7 @@ export function UploadPrompt({
       //throw new Error("nanosaur terrain files are not supported yet");
 
       //TODO: Missing preprocessor
-      setData(compatibleLevel); // or adapt to your data model
+      setData(splitLevelData(compatibleLevel)); // or adapt to your data model
       return compatibleLevel;
     } else {
       //Call pyodide worker to  run the python code
@@ -206,7 +209,7 @@ export function UploadPrompt({
 
       preprocessJson(jsonData, globals);
 
-      setData(jsonData);
+      setData(splitLevelData(jsonData));
       return jsonData;
     }
   };
