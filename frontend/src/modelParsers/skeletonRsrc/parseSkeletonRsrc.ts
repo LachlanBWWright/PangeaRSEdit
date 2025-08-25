@@ -9,7 +9,7 @@ import type {
  * Parse a skeleton resource using the pyodide worker and skeletonSpecs
  * @param pyodideWorker The initialized Pyodide web worker
  * @param bytes The JSON data to parse (object or array)
- * @returns Promise resolving to the parsed JSON object result
+ * @returns Promise resolving to the parsed ArrayBuffer result
  */
 export function parseSkeletonRsrc({
   pyodideWorker,
@@ -20,8 +20,8 @@ export function parseSkeletonRsrc({
   only_types?: string[];
   skip_types?: string[];
   adf?: "True" | "False";
-}): Promise<any> {
-  return new Promise<any>((resolve, reject) => {
+}): Promise<ArrayBuffer> {
+  return new Promise<ArrayBuffer>((resolve, reject) => {
     pyodideWorker.postMessage({
       type: "save_to_json",
       bytes,

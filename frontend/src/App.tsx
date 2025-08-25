@@ -1,16 +1,15 @@
-import { Routes, Route, HashRouter } from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import "./App.css";
 import { Navigation } from "./components/Navigation";
 import { LevelEditor } from "./pages/LevelEditor";
 import { ModelViewer } from "./pages/ModelViewer";
 import { DownloadLevels } from "./pages/DownloadLevels";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { Toaster } from "./components/ui/sonner";
 
 function App() {
   return (
     <TooltipProvider>
-      <HashRouter>
+      <Router basename="/PangeaRSEdit/">
         <div className="flex flex-col min-h-screen bg-gray-900">
           <Navigation />
           <Routes>
@@ -20,8 +19,7 @@ function App() {
             <Route path="*" element={<LevelEditor />} />
           </Routes>
         </div>
-      </HashRouter>
-      <Toaster />
+      </Router>
     </TooltipProvider>
   );
 }

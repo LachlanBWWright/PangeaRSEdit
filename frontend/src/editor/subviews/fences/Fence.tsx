@@ -1,57 +1,44 @@
 import { Updater } from "use-immer";
-import { FenceData } from "../../../python/structSpecs/ottoMaticLevelData";
+import { ottoMaticLevel } from "../../../python/structSpecs/ottoMaticInterface";
 import { Line } from "react-konva";
 import { FenceNub } from "./FenceNub";
 import { SelectedFence } from "../../../data/fences/fenceAtoms";
-import { useAtom, useAtomValue } from "jotai";
+import { useAtom } from "jotai";
 import { memo, useState } from "react"; // Added useState
-import { Globals } from "../../../data/globals/globals";
-import { getFenceColor } from "../../../data/fences/getFenceColor";
 
 export const Fence = memo(
   ({
-    fenceData,
-    setFenceData,
+    data,
+    setData,
     fenceIdx,
   }: {
-    fenceData: FenceData;
-    setFenceData: Updater<FenceData>;
+    data: ottoMaticLevel;
+    setData: Updater<ottoMaticLevel>;
     fenceIdx: number;
   }) => {
     const [selectedFence, setSelectedFence] = useAtom(SelectedFence);
-    const globals = useAtomValue(Globals);
     // State to store initial nub positions during drag
     const [initialDragState, setInitialDragState] = useState<
       [number, number][] | null
     >(null);
 
-    const lines = fenceData.FnNb[1000 + fenceIdx].obj.flatMap((nub) => [
+    const lines = data.FnNb[1000 + fenceIdx].obj.flatMap((nub) => [
       nub[0],
       nub[1],
     ]);
-
-    // Get fence type from fence data
-    const fenceType = fenceData.Fenc[1000].obj[fenceIdx]?.fenceType || 0;
 
     return (
       <>
         <Line
           points={lines}
-          stroke={
-            fenceIdx === selectedFence
-              ? "red"
-              : getFenceColor(globals, fenceType, fenceIdx)
-          }
+          stroke={fenceIdx === selectedFence ? "red" : getColour(fenceIdx)}
           strokeWidth={fenceIdx === selectedFence ? 5 : 2}
           onClick={() => setSelectedFence(fenceIdx)}
           draggable // Make the line draggable
           onDragStart={() => {
             // Store the initial positions of the nubs when dragging starts
             setInitialDragState(
-              fenceData.FnNb[1000 + fenceIdx].obj.map((nub) => [
-                nub[0],
-                nub[1],
-              ]),
+              data.FnNb[1000 + fenceIdx].obj.map((nub) => [nub[0], nub[1]]),
             );
             setSelectedFence(fenceIdx); // Select the fence on drag start
           }}
@@ -61,7 +48,7 @@ export const Fence = memo(
             const dragDx = e.target.x();
             const dragDz = e.target.y();
 
-            setFenceData((draft) => {
+            setData((draft) => {
               const currentNubs = draft.FnNb[1000 + fenceIdx].obj;
               for (let i = 0; i < currentNubs.length; i++) {
                 currentNubs[i][0] = initialDragState[i][0] + dragDx;
@@ -73,15 +60,14 @@ export const Fence = memo(
             setInitialDragState(null); // Clear initial drag state
           }}
         />
-        {fenceData.FnNb[1000 + fenceIdx].obj.map((nub, nubIdx) => (
+        {data.FnNb[1000 + fenceIdx].obj.map((nub, nubIdx) => (
           <FenceNub
             key={nubIdx}
             idx={fenceIdx}
             nub={nub}
-            fenceType={fenceType}
             setNub={(newNub: [number, number]) => {
-              setFenceData((fenceData) => {
-                fenceData.FnNb[1000 + fenceIdx].obj[nubIdx] = newNub;
+              setData((data) => {
+                data.FnNb[1000 + fenceIdx].obj[nubIdx] = newNub;
               });
             }}
           />
@@ -90,3 +76,19 @@ export const Fence = memo(
     );
   },
 );
+
+export function getColour(index: number) {
+  switch (index % 5) {
+    case 0:
+      return "#339933";
+    case 1:
+      return "#3399ff";
+    case 2:
+      return "#993399";
+    case 3:
+      return "#ff9933";
+    case 4:
+    default:
+      return "#ff3399";
+  }
+}

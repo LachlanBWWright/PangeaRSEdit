@@ -1,13 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
-import {
-  HeaderData,
-  ItemData,
-  LiquidData,
-  FenceData,
-  SplineData,
-  TerrainData,
-} from "../python/structSpecs/ottoMaticLevelData";
+import { ottoMaticLevel } from "../python/structSpecs/ottoMaticInterface";
 import { Updater, useImmer } from "use-immer";
 
 import { FenceMenu } from "./subviews/fences/FenceMenu";
@@ -34,50 +27,23 @@ export enum View {
 }
 
 export function EditorView({
-  headerData,
-  setHeaderData,
-  itemData,
-  setItemData,
-  liquidData,
-  setLiquidData,
-  fenceData,
-  setFenceData,
-  splineData,
-  setSplineData,
-  terrainData,
-  setTerrainData,
+  data,
+  setData,
   mapImages,
   setMapImages,
   undoData,
   redoData,
   dataHistory,
 }: {
-  headerData: HeaderData;
-  setHeaderData: Updater<HeaderData>;
-  itemData: ItemData | null;
-  setItemData: Updater<ItemData | null>;
-  liquidData: LiquidData | null;
-  setLiquidData: Updater<LiquidData | null>;
-  fenceData: FenceData | null;
-  setFenceData: Updater<FenceData | null>;
-  splineData: SplineData | null;
-  setSplineData: Updater<SplineData | null>;
-  terrainData: TerrainData;
-  setTerrainData: Updater<TerrainData>;
+  data: ottoMaticLevel;
+  setData: Updater<ottoMaticLevel>;
   mapImages: HTMLCanvasElement[];
   setMapImages: (newCanvases: HTMLCanvasElement[]) => void;
   undoData: () => void;
   redoData: () => void;
   dataHistory: DataHistory;
 }) {
-  console.log(
-    headerData,
-    itemData,
-    liquidData,
-    fenceData,
-    splineData,
-    terrainData,
-  );
+  console.log(data);
   const canvasViewMode = useAtomValue(CanvasViewMode);
   const [view, setView] = useState<View>(View.fences);
   const [stage, setStage] = useImmer({
@@ -123,47 +89,6 @@ export function EditorView({
       stage.scale = Math.min(5, stage.scale * 0.9);
     });
 
-  // Provide non-null Updater wrappers for menus that expect non-null data
-  const setItemDataNotNull: Updater<ItemData> = useCallback(
-    (updater) => {
-      setItemData((current) => {
-        if (!current) return current;
-        return typeof updater === "function" ? updater(current) : updater;
-      });
-    },
-    [setItemData],
-  );
-
-  const setLiquidDataNotNull: Updater<LiquidData> = useCallback(
-    (updater) => {
-      setLiquidData((current) => {
-        if (!current) return current;
-        return typeof updater === "function" ? updater(current) : updater;
-      });
-    },
-    [setLiquidData],
-  );
-
-  const setFenceDataNotNull: Updater<FenceData> = useCallback(
-    (updater) => {
-      setFenceData((current) => {
-        if (!current) return current;
-        return typeof updater === "function" ? updater(current) : updater;
-      });
-    },
-    [setFenceData],
-  );
-
-  const setSplineDataNotNull: Updater<SplineData> = useCallback(
-    (updater) => {
-      setSplineData((current) => {
-        if (!current) return current;
-        return typeof updater === "function" ? updater(current) : updater;
-      });
-    },
-    [setSplineData],
-  );
-
   return (
     <div className="flex flex-col flex-1 w-full gap-2 min-h-0">
       <div className="grid grid-cols-4 xl:grid-cols-7 gap-2 w-full overflow-clip">
@@ -198,7 +123,7 @@ export function EditorView({
           Tiles
         </Button>
         <Button
-          disabled={terrainData.STgd === undefined}
+          disabled={data.STgd === undefined}
           selected={view === View.supertiles}
           onClick={() => setView(View.supertiles)}
         >
@@ -230,40 +155,15 @@ export function EditorView({
       </div>
       <Separator />
       <div>
-        {view === View.fences && fenceData && (
-          <FenceMenu fenceData={fenceData} setFenceData={setFenceDataNotNull} />
-        )}
-        {view === View.water && liquidData && (
-          <WaterMenu
-            liquidData={liquidData}
-            setLiquidData={setLiquidDataNotNull}
-          />
-        )}
-        {view === View.items && itemData && (
-          <ItemMenu
-            itemData={itemData}
-            setItemData={setItemDataNotNull}
-            headerData={headerData}
-            setHeaderData={setHeaderData}
-          />
-        )}
-        {view === View.splines && splineData && (
-          <SplineMenu
-            splineData={splineData}
-            setSplineData={setSplineDataNotNull}
-            headerData={headerData}
-            setHeaderData={setHeaderData}
-          />
-        )}
-        {view === View.tiles && (
-          <TilesMenu headerData={headerData} setHeaderData={setHeaderData} />
-        )}
+        {view === View.fences && <FenceMenu data={data} setData={setData} />}
+        {view === View.water && <WaterMenu data={data} setData={setData} />}
+        {view === View.items && <ItemMenu data={data} setData={setData} />}
+        {view === View.splines && <SplineMenu data={data} setData={setData} />}
+        {view === View.tiles && <TilesMenu data={data} setData={setData} />}
         {view === View.supertiles && (
           <SupertileMenu
-            headerData={headerData}
-            setHeaderData={setHeaderData}
-            terrainData={terrainData}
-            setTerrainData={setTerrainData}
+            data={data}
+            setData={setData}
             mapImages={mapImages}
             setMapImages={setMapImages}
           />
@@ -271,26 +171,11 @@ export function EditorView({
       </div>
       <div className="w-full min-h-0 flex-1 border-2 border-black overflow-clip">
         {canvasViewMode === CanvasView.THREE_D && view === View.tiles ? (
-          <ThreeView
-            headerData={headerData}
-            fenceData={fenceData}
-            liquidData={liquidData}
-            terrainData={terrainData}
-            mapImages={mapImages}
-          />
+          <ThreeView data={data} mapImages={mapImages} />
         ) : (
           <KonvaView
-            headerData={headerData}
-            itemData={itemData}
-            setItemData={setItemData}
-            liquidData={liquidData}
-            setLiquidData={setLiquidData}
-            fenceData={fenceData}
-            setFenceData={setFenceData}
-            splineData={splineData}
-            setSplineData={setSplineData}
-            terrainData={terrainData}
-            setTerrainData={setTerrainData}
+            data={data}
+            setData={setData}
             mapImages={mapImages}
             view={view}
             stage={stage}
