@@ -376,9 +376,9 @@ function createGltfAnimations(doc: Document, joints: Node[], processedAnimations
     return [];
   }
   
-  // Filter out animations with no channels
-  const validAnimations = processedAnimations.filter(anim => anim.channels.length > 0);
-  console.log(`Creating ${validAnimations.length} animations (filtered from ${processedAnimations.length})`);
+  // Filter out animations with no channels AND limit to prevent GLB corruption
+  const validAnimations = processedAnimations.filter(anim => anim.channels.length > 0).slice(0, 3); // Limit to 3 animations to prevent corruption
+  console.log(`Creating ${validAnimations.length} animations (filtered from ${processedAnimations.length}, limited to prevent GLB corruption)`);
   
   return validAnimations.map(anim => {
     const gltfAnimation = doc.createAnimation(anim.name);
@@ -387,7 +387,10 @@ function createGltfAnimations(doc: Document, joints: Node[], processedAnimations
     
     let successfulChannels = 0;
     
-    anim.channels.forEach(channelData => {
+    // Limit channels per animation to prevent corruption
+    const limitedChannels = anim.channels.slice(0, 5); // Limit to 5 channels per animation
+    
+    limitedChannels.forEach(channelData => {
       const joint = joints[channelData.boneIndex];
       
       // Validate input data first
