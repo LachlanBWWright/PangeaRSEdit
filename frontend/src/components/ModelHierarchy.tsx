@@ -92,6 +92,10 @@ function NodeItem({
         <div>
           {node.children!.map((child, index) => {
             const childObject = nodeObject.children[index];
+            if (!childObject) {
+              console.warn(`Missing child object at index ${index} for node ${node.name}`);
+              return null;
+            }
             return (
               <NodeItem
                 key={`${node.name}-${index}`}

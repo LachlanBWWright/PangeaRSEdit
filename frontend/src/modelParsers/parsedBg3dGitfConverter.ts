@@ -1,21 +1,17 @@
-/* // Browser-safe base64 encoding for Uint8Array
-function uint8ToBase64(u8: Uint8Array): string {
-  const CHUNK_SIZE = 0x8000;
-  let result = "";
-  for (let i = 0; i < u8.length; i += CHUNK_SIZE) {
-    result += String.fromCharCode.apply(
-      null,
-      u8.subarray(i, i + CHUNK_SIZE) as any,
-    );
-  }
-  return btoa(result);
-} */
+/**
+ * Clean BG3D to glTF Converter with New Skeleton System
+ * 
+ * This converter focuses on accuracy and maintainability, using the new
+ * skeleton system for proper Otto Matic animation support.
+ */
 import {
   BG3DGeometry,
   BG3DGroup,
   BG3DMaterial,
   BG3DParseResult,
   BG3DTexture,
+  BG3DSkeleton,
+  BG3DBone,
 } from "./parseBG3D";
 
 import {
@@ -25,55 +21,48 @@ import {
   pngToRgba8,
 } from "./image/pngArgb";
 
-import { Document, Mesh, Material, Node } from "@gltf-transform/core";
+import { createSkeletonSystem, extractAnimationsFromGLTF } from "./skeletonSystemNew";
+
+
+
+import { Document, Mesh, Material, Node, Skin, Accessor, Animation } from "@gltf-transform/core";
 import { PixelFormatSrc, PixelFormatDst } from "./parseBG3D";
 
 /**
- * Convert a BG3DParseResult to a glTF Document, transferring all possible data.
- * Any data that cannot be mapped is stored in extras.
- * Data that cannot be transferred:
- *   - BG3DMaterial.flags (stored in extras)
- *   - BG3DTexture pixel format fields (stored in extras, pixel data may need conversion)
- *   - Geometry.layerMaterialNum (stored in extras)
- *   - Geometry.boundingBox (stored in extras)
+ * Convert a BG3DParseResult to a glTF Document using the new skeleton system.
+ * Clean implementation focused on accuracy and maintainability.
  */
-
 export function bg3dParsedToGLTF(parsed: BG3DParseResult): Document {
   const doc = new Document();
-  console.log("Creating new glTF Document");
-  doc.createBuffer("Basebuffer");
-  console.log("Created base buffer for glTF Document");
+  // Create single buffer for all data (GLB requirement)
+  const baseBuffer = doc.createBuffer("MainBuffer");
+
+  console.log("=== Starting BG3D to glTF Conversion ===");
 
   // 1. Materials
   const gltfMaterials: Material[] = parsed.materials.map((mat, i) => {
     const m = doc.createMaterial("BG3DMaterial");
     m.setName(`Material_${i.toString().padStart(4, "0")}`);
     m.setBaseColorFactor(mat.diffuseColor);
-    // Only store BG3DMaterial.flags in extras (no texture data)
     m.setExtras({
       flags: mat.flags,
     });
-
     return m;
   });
 
-  console.log("Stage 2");
-  // 2. Textures/Images (attach ALL textures as glTF images, not just the first)
+  // 2. Textures/Images
   parsed.materials.forEach((mat, i) => {
     if (mat.textures && mat.textures.length > 0) {
       mat.textures.forEach((tex, j) => {
         let pngBuffer: Uint8Array<ArrayBufferLike>;
         try {
-          if (
-            tex.srcPixelFormat === PixelFormatSrc.GL_UNSIGNED_SHORT_1_5_5_5_REV
-          ) {
+          if (tex.srcPixelFormat === PixelFormatSrc.GL_UNSIGNED_SHORT_1_5_5_5_REV) {
             // ARGB16 with byte swap
             const src = new Uint16Array(
               tex.pixels.buffer,
               tex.pixels.byteOffset,
               tex.pixels.byteLength / 2,
             );
-            // Byte swap each 16-bit value
             const swapped = new Uint16Array(src.length);
             for (let k = 0; k < src.length; k++) {
               const val = src[k];
@@ -81,18 +70,16 @@ export function bg3dParsedToGLTF(parsed: BG3DParseResult): Document {
             }
             pngBuffer = argb16ToPng(swapped, tex.width, tex.height);
           } else if (tex.srcPixelFormat === PixelFormatSrc.GL_RGB) {
-            // RGB8
             pngBuffer = rgb24ToPng(tex.pixels, tex.width, tex.height);
           } else if (tex.srcPixelFormat === PixelFormatSrc.GL_RGBA) {
-            // GL_RGBA (RGBA8)
             pngBuffer = rgba8ToPng(tex.pixels, tex.width, tex.height);
           } else {
-            // Unknown/unsupported format, fallback to raw buffer
             pngBuffer = tex.pixels;
           }
         } catch (e) {
           pngBuffer = tex.pixels;
         }
+        
         const texture = doc.createTexture();
         texture.setMimeType("image/png");
         texture.setImage(pngBuffer);
@@ -103,7 +90,8 @@ export function bg3dParsedToGLTF(parsed: BG3DParseResult): Document {
           dstPixelFormat: tex.dstPixelFormat,
           bufferSize: tex.bufferSize,
         });
-        // Attach the first texture as baseColorTexture for compatibility
+        
+        // Attach the first texture as baseColorTexture
         if (j === 0) {
           gltfMaterials[i].setBaseColorTexture(texture);
         }
@@ -111,19 +99,32 @@ export function bg3dParsedToGLTF(parsed: BG3DParseResult): Document {
     }
   });
 
-  console.log("Stage 3");
+  // Create scene
+  const scene = doc.createScene("Scene");
 
-  // Helper to collect all geometries from group hierarchy (using .children)
+  // 3. Skeleton System (NEW IMPLEMENTATION)
+  let gltfSkin: Skin | null = null;
+  let gltfAnimations: Animation[] = [];
+  
+  if (parsed.skeleton) {
+    console.log("Creating skeleton system with new implementation...");
+    const skeletonSystem = createSkeletonSystem(doc, parsed.skeleton);
+    
+    gltfSkin = skeletonSystem.skin;
+    gltfAnimations = skeletonSystem.animations;
+    
+    console.log(`Skeleton system created: ${gltfSkin.listJoints().length} joints, ${gltfAnimations.length} animations`);
+  }
+
+  // Helper to collect all geometries from group hierarchy
   function collectGeometries(groups: BG3DGroup[]): BG3DGeometry[] {
     const result: BG3DGeometry[] = [];
     function traverse(group: BG3DGroup) {
       if (Array.isArray(group.children)) {
         for (const child of group.children) {
           if (Array.isArray((child as any).children)) {
-            // It's a BG3DGroup
             traverse(child as BG3DGroup);
           } else {
-            // It's a BG3DGeometry
             result.push(child as BG3DGeometry);
           }
         }
@@ -136,184 +137,213 @@ export function bg3dParsedToGLTF(parsed: BG3DParseResult): Document {
   }
 
   const allGeometries = collectGeometries(parsed.groups);
+  console.log(`Processing ${allGeometries.length} geometries`);
 
-  console.log("Stage 4");
-
-  // 3. Meshes and Primitives
+  // 4. Meshes and Primitives
   const gltfMeshes: Mesh[] = [];
-  allGeometries.forEach((geom) => {
+  allGeometries.forEach((geom, index) => {
     const mesh = doc.createMesh();
+    mesh.setName(`Item_${index.toString().padStart(4, "0")}`);
 
-    mesh.setName(`Item_${gltfMeshes.length.toString().padStart(4, "0")}`);
-
-    // Create accessors as consts using ternary expressions, then use if checks for prim.setAttribute/setIndices
+    // Create accessors for geometry data
     const positionAccessor = geom.vertices
-      ? doc
-          .createAccessor()
+      ? doc.createAccessor()
           .setType("VEC3")
           .setArray(new Float32Array(geom.vertices.flat()))
+          .setBuffer(baseBuffer)
       : null;
+      
     const normalAccessor = geom.normals
-      ? doc
-          .createAccessor()
+      ? doc.createAccessor()
           .setType("VEC3")
           .setArray(new Float32Array(geom.normals.flat()))
+          .setBuffer(baseBuffer)
       : null;
+      
     const texcoordAccessor = geom.uvs
-      ? doc
-          .createAccessor()
+      ? doc.createAccessor()
           .setType("VEC2")
           .setArray(new Float32Array(geom.uvs.flat()))
+          .setBuffer(baseBuffer)
       : null;
+      
     const colorAccessor = geom.colors
-      ? doc
-          .createAccessor()
+      ? doc.createAccessor()
           .setType("VEC4")
           .setArray(new Uint8Array(geom.colors.flat()))
+          .setBuffer(baseBuffer)
       : null;
+      
     const indexAccessor = geom.triangles
-      ? doc
-          .createAccessor()
+      ? doc.createAccessor()
           .setType("SCALAR")
           .setArray(new Uint32Array(geom.triangles.flat()))
+          .setBuffer(baseBuffer)
       : null;
 
-    for (let i = 0; i < geom.numMaterials; i++) {
-      const prim = doc.createPrimitive();
-
-      if (positionAccessor) {
-        prim.setAttribute("POSITION", positionAccessor);
+    // Create joint and weight accessors for skinning
+    let jointAccessor: Accessor | null = null;
+    let weightAccessor: Accessor | null = null;
+    
+    if (parsed.skeleton && gltfSkin && geom.vertices) {
+      const numVertices = geom.vertices.length;
+      const joints = new Uint16Array(numVertices * 4);
+      const weights = new Float32Array(numVertices * 4);
+      
+      // Initialize to root bone with full weight
+      for (let i = 0; i < numVertices; i++) {
+        joints[i * 4] = 0; // Root bone
+        weights[i * 4] = 1.0; // Full weight
+        // Other joints/weights remain 0
       }
-      if (normalAccessor) {
-        prim.setAttribute("NORMAL", normalAccessor);
-      }
-      if (texcoordAccessor) {
-        prim.setAttribute("TEXCOORD_0", texcoordAccessor);
-      }
-      if (colorAccessor) {
-        prim.setAttribute("COLOR_0", colorAccessor);
-      }
-      if (indexAccessor) {
-        prim.setIndices(indexAccessor);
-      }
-      // Material
-      // Store per-primitive material index in extras
-
-      if (gltfMaterials[geom.layerMaterialNum[i]]) {
-        prim.setMaterial(gltfMaterials[geom.layerMaterialNum[i]]);
-      }
-      // Extras for unmappable fields and BG3D-specific fields
-      prim.setExtras({
-        flags: geom.flags,
-        boundingBox: geom.boundingBox,
-        type: geom.type,
+      
+      // Apply bone influences based on Otto's point indices
+      parsed.skeleton.bones.forEach((bone, boneIndex) => {
+        if (bone.pointIndices) {
+          bone.pointIndices.forEach(vertexIndex => {
+            if (vertexIndex < numVertices) {
+              const offset = vertexIndex * 4;
+              
+              // Find empty slot for this influence
+              for (let slot = 0; slot < 4; slot++) {
+                if (weights[offset + slot] === 0) {
+                  joints[offset + slot] = boneIndex;
+                  weights[offset + slot] = 1.0;
+                  break;
+                }
+              }
+            }
+          });
+        }
       });
-      mesh.addPrimitive(prim);
+      
+      // Normalize weights for each vertex
+      for (let i = 0; i < numVertices; i++) {
+        const offset = i * 4;
+        let totalWeight = 0;
+        for (let j = 0; j < 4; j++) {
+          totalWeight += weights[offset + j];
+        }
+        if (totalWeight > 0) {
+          for (let j = 0; j < 4; j++) {
+            weights[offset + j] /= totalWeight;
+          }
+        }
+      }
+      
+      jointAccessor = doc.createAccessor()
+        .setType("VEC4")
+        .setArray(joints)
+        .setBuffer(baseBuffer);
+        
+      weightAccessor = doc.createAccessor()
+        .setType("VEC4")
+        .setArray(weights)
+        .setBuffer(baseBuffer);
     }
 
+    // Create primitive
+    const primitive = doc.createPrimitive();
+    
+    if (positionAccessor) primitive.setAttribute("POSITION", positionAccessor);
+    if (normalAccessor) primitive.setAttribute("NORMAL", normalAccessor);
+    if (texcoordAccessor) primitive.setAttribute("TEXCOORD_0", texcoordAccessor);
+    if (colorAccessor) primitive.setAttribute("COLOR_0", colorAccessor);
+    if (indexAccessor) primitive.setIndices(indexAccessor);
+    
+    // Add skinning attributes if available
+    if (jointAccessor) primitive.setAttribute("JOINTS_0", jointAccessor);
+    if (weightAccessor) primitive.setAttribute("WEIGHTS_0", weightAccessor);
+
+    // Set material
+    if (typeof geom.layerMaterialNum === 'number' && geom.layerMaterialNum < gltfMaterials.length) {
+      primitive.setMaterial(gltfMaterials[geom.layerMaterialNum]);
+    } else if (Array.isArray(geom.layerMaterialNum) && geom.layerMaterialNum[0] < gltfMaterials.length) {
+      primitive.setMaterial(gltfMaterials[geom.layerMaterialNum[0]]);
+    }
+
+    // Store original properties in extras
+    primitive.setExtras({
+      layerMaterialNum: geom.layerMaterialNum,
+      boundingBox: geom.boundingBox,
+    });
+
+    mesh.addPrimitive(primitive);
     gltfMeshes.push(mesh);
   });
 
-  console.log("Stage 5");
+  // 5. Scene hierarchy
+  parsed.groups.forEach((group, i) => {
+    const groupNode = doc.createNode();
+    groupNode.setName(`Group_${i.toString().padStart(4, "0")}`);
 
-  // 4. Nodes and Hierarchy (Groups)
-  // Encode BG3D group hierarchy as glTF nodes
-  function createNodeForGroup(group: BG3DGroup, idx: number) {
-    const node = doc.createNode();
-    node.setName("item_" + idx.toString().padStart(4, "0"));
-    idx++;
-    // Attach meshes for all geometries in this group
-    for (const child of group.children) {
-      if (Array.isArray((child as any).children)) {
-        // It's a BG3DGroup
-        const childNode = createNodeForGroup(child as BG3DGroup, idx);
-        node.addChild(childNode.node);
-        idx = childNode.idx;
-      } else {
-        // It's a BG3DGeometry
-        const geomIndex = allGeometries.indexOf(child as BG3DGeometry);
-        if (geomIndex >= 0 && gltfMeshes[geomIndex]) {
-          node.addChild(
-            doc
-              .createNode()
-              .setMesh(gltfMeshes[geomIndex])
-              .setName("item_" + idx.toString().padStart(4, "0")),
-          );
+    function addGeometriesToNode(node: Node, group: BG3DGroup) {
+      if (Array.isArray(group.children)) {
+        for (const child of group.children) {
+          if (Array.isArray((child as any).children)) {
+            // It's a subgroup
+            const childNode = doc.createNode();
+            childNode.setName(`Subgroup_${node.listChildren().length}`);
+            addGeometriesToNode(childNode, child as BG3DGroup);
+            node.addChild(childNode);
+          } else {
+            // It's geometry - find corresponding mesh
+            const childGeom = child as BG3DGeometry;
+            const geomIndex = allGeometries.indexOf(childGeom);
+            if (geomIndex >= 0 && geomIndex < gltfMeshes.length) {
+              const meshNode = doc.createNode();
+              meshNode.setName(`Mesh_${geomIndex.toString().padStart(4, "0")}`);
+              meshNode.setMesh(gltfMeshes[geomIndex]);
+              
+              // Apply skin to mesh if available
+              if (gltfSkin) {
+                meshNode.setSkin(gltfSkin);
+              }
+              
+              node.addChild(meshNode);
+            }
+          }
         }
       }
     }
-    return { node, idx };
-  }
-  // Add all top-level groups as root nodes
-  // Add all top-level groups as root nodes (using setChildren for glTF-Transform)
-  const rootNodes: Node[] = []; //parsed.groups.map((group) => createNodeForGroup(group, 0));
-  let idx = 0;
-  for (const group of parsed.groups) {
-    const { node, idx: newIdx } = createNodeForGroup(group, idx);
-    rootNodes.push(node);
-    idx = newIdx;
-  }
-  const scene = doc.createScene("Scene");
-  for (const node of rootNodes) {
-    doc.getRoot().listNodes().push(node);
-    scene.addChild(node);
-  }
 
-  // 5. Store any unmappable data in extras at the root (for legacy round-trip)
-  doc.getRoot().setExtras({
-    groups: parsed.groups,
-    // Store BG3DParseResult-level fields for round-trip
-    bg3dFields: {
-      // No flat geometries array anymore; if needed, can extract from groups
-    },
+    addGeometriesToNode(groupNode, group);
+    scene.addChild(groupNode);
   });
 
-  console.log("Finalizing glTF Document");
+  // Add animations to the document  
+  gltfAnimations.forEach(animation => {
+    doc.getRoot().listAnimations().push(animation);
+  });
 
+  console.log("=== BG3D to glTF Conversion Complete ===");
   return doc;
 }
-
+/**
+ * Convert glTF Document back to BG3D format
+ */
 export async function gltfToBG3D(doc: Document): Promise<BG3DParseResult> {
-  console.log("gltfToBG3D: Restoring materials...");
+  console.log("=== Starting glTF to BG3D Conversion ===");
+  
+  // 1. Restore materials
   const docMaterials = doc.getRoot().listMaterials();
   const materials: BG3DMaterial[] = await Promise.all(
-    docMaterials.map(async (mat, i) => {
+    docMaterials.map(async (mat) => {
       const extras = mat.getExtras() ?? {};
       let diffuseColor: [number, number, number, number] = [1, 1, 1, 1];
       const baseColor = mat.getBaseColorFactor();
-      if (
-        Array.isArray(baseColor) &&
-        baseColor.length === 4 &&
-        baseColor.every((v) => typeof v === "number")
-      ) {
+      if (Array.isArray(baseColor) && baseColor.length === 4) {
         diffuseColor = [baseColor[0], baseColor[1], baseColor[2], baseColor[3]];
       }
       const flags = typeof extras["flags"] === "number" ? extras["flags"] : 0;
 
-      console.log(
-        `Material[${i}]: diffuseColor=`,
-        diffuseColor,
-        "flags=",
-        flags,
-      );
-
-      // Only restore textures from baseColorTexture (do not parse from extras)
+      // Restore textures from baseColorTexture
       let textures: BG3DTexture[] = [];
-
       const baseColorTex = mat.getBaseColorTexture();
       if (baseColorTex) {
         const image = baseColorTex.getImage();
-
-        const size = baseColorTex.getSize();
-        console.log("TEX SIZE", size);
         if (image instanceof Uint8Array) {
-          console.log(
-            `Material[${i}]: Restoring texture from baseColorTexture, byteLength=`,
-            image.byteLength,
-          );
-
           const pngRes = await pngToRgba8(image.buffer as ArrayBuffer);
-
           textures.push({
             pixels: pngRes.data,
             width: pngRes.width,
@@ -322,15 +352,9 @@ export async function gltfToBG3D(doc: Document): Promise<BG3DParseResult> {
             dstPixelFormat: PixelFormatDst.GL_UNSIGNED_SHORT_5_5_5_1,
             bufferSize: pngRes.data.byteLength,
           });
-        } else {
-          console.log(
-            `Material[${i}]: baseColorTexture image is not Uint8Array, got:`,
-            typeof image,
-          );
         }
-      } else {
-        console.log(`Material[${i}]: No baseColorTexture found.`);
       }
+      
       return {
         diffuseColor,
         flags,
@@ -339,212 +363,161 @@ export async function gltfToBG3D(doc: Document): Promise<BG3DParseResult> {
     }),
   );
 
-  console.log("gltfToBG3D: Restoring geometries...");
-  //TODO: Needs Fixing
-  //TODO: Not scanning nodes?
-  //TODO: Double roundtrip ruins texture data
-  //doc.getGraph().listEdges()[0].getChild()
-
-  // Processes a glTF Node, extracts mesh/geometry data, and returns BG3DGeometry[]
-  // Processes a glTF Node, extracts mesh/geometry data, and returns BG3DGroup
-  function processNode(node: Node): BG3DGroup | BG3DGeometry {
-    const children: (BG3DGroup | BG3DGeometry)[] = [];
-    const mesh = node.getMesh();
-    if (mesh) {
-      // Use processMesh to extract geometry from mesh
-      return processMesh(mesh, 0);
+  // 2. Restore skeleton data
+  let skeleton: BG3DSkeleton | undefined = undefined;
+  const rootExtras = doc.getRoot().getExtras() || {};
+  
+  if ((rootExtras as any).bg3dFields?.skeleton) {
+    // Round-trip: restore from extras
+    skeleton = (rootExtras as any).bg3dFields.skeleton;
+    console.log("Restored skeleton from extras:", {
+      numBones: skeleton?.bones?.length,
+      numAnimations: skeleton?.animations?.length
+    });
+  } else {
+    // Extract from glTF skin/animation data using new skeleton system
+    const skins = doc.getRoot().listSkins();
+    if (skins.length > 0) {
+      const skin = skins[0];
+      const joints = skin.listJoints();
+      
+      if (joints.length > 0) {
+        const bones: BG3DBone[] = joints.map((joint, index) => {
+          const translation = joint.getTranslation() || [0, 0, 0];
+          const parent = (joint as any).getParent?.();
+          const parentBone = parent ? joints.indexOf(parent) : -1;
+          
+          return {
+            parentBone,
+            name: joint.getName() || `bone_${index}`,
+            coordX: translation[0],
+            coordY: translation[1],
+            coordZ: translation[2],
+            numPointsAttachedToBone: 0,
+            numNormalsAttachedToBone: 0,
+            pointIndices: [],
+            normalIndices: [],
+          };
+        });
+        
+        skeleton = {
+          version: 272,
+          numAnims: 0,
+          numJoints: bones.length,
+          num3DMFLimbs: 0,
+          bones,
+          animations: extractAnimationsFromGLTF(doc),
+        };
+      }
     }
-    // Recursively process child nodes
-    const nodeChildren = node.listChildren();
-    for (const childNode of nodeChildren) {
-      children.push(processNode(childNode));
-    }
-    return { children };
   }
 
-  function processMesh(mesh: Mesh, meshIdx: number) {
-    console.log(`Parsing mesh ${mesh.getName()}`);
+  // 3. Process scene hierarchy to extract geometries
+  function processMesh(mesh: Mesh): BG3DGeometry {
     const primitives = mesh.listPrimitives();
-    const prim = primitives[0]; // Assuming single primitive per mesh
+    const prim = primitives[0]; // Use first primitive
     const extras = prim.getExtras() || {};
-    // POSITION
-
+    
+    // Extract geometry data
     const posAcc = prim.getAttribute("POSITION");
     let vertices: [number, number, number][] | undefined = undefined;
     if (posAcc) {
       const arr = Array.from(posAcc.getArray() as Float32Array);
       vertices = [];
       for (let i = 0; i < arr.length; i += 3) {
-        if (i + 2 < arr.length) vertices.push([arr[i], arr[i + 1], arr[i + 2]]);
+        vertices.push([arr[i], arr[i + 1], arr[i + 2]]);
       }
     }
-    const numPoints = vertices ? vertices.length : 0;
-    // NORMAL
+    
     const normAcc = prim.getAttribute("NORMAL");
     let normals: [number, number, number][] | undefined = undefined;
     if (normAcc) {
       const arr = Array.from(normAcc.getArray() as Float32Array);
       normals = [];
       for (let i = 0; i < arr.length; i += 3) {
-        if (i + 2 < arr.length) normals.push([arr[i], arr[i + 1], arr[i + 2]]);
+        normals.push([arr[i], arr[i + 1], arr[i + 2]]);
       }
     }
-    // UV
+    
     const uvAcc = prim.getAttribute("TEXCOORD_0");
     let uvs: [number, number][] | undefined = undefined;
     if (uvAcc) {
       const arr = Array.from(uvAcc.getArray() as Float32Array);
       uvs = [];
       for (let i = 0; i < arr.length; i += 2) {
-        if (i + 1 < arr.length) uvs.push([arr[i], arr[i + 1]]);
+        uvs.push([arr[i], arr[i + 1]]);
       }
     }
-    // COLOR
+    
     const colorAcc = prim.getAttribute("COLOR_0");
     let colors: [number, number, number, number][] | undefined = undefined;
     if (colorAcc) {
       const arr = Array.from(colorAcc.getArray() as Uint8Array);
       colors = [];
       for (let i = 0; i < arr.length; i += 4) {
-        if (i + 3 < arr.length)
-          colors.push([arr[i], arr[i + 1], arr[i + 2], arr[i + 3]]);
+        colors.push([arr[i], arr[i + 1], arr[i + 2], arr[i + 3]]);
       }
     }
-    // TRIANGLES
+    
     const idxAcc = prim.getIndices();
     let triangles: [number, number, number][] | undefined = undefined;
     if (idxAcc) {
       const arr = Array.from(idxAcc.getArray() as Uint32Array);
       triangles = [];
       for (let i = 0; i < arr.length; i += 3) {
-        if (i + 2 < arr.length)
-          triangles.push([arr[i], arr[i + 1], arr[i + 2]]);
+        triangles.push([arr[i], arr[i + 1], arr[i + 2]]);
       }
     }
-    const numTriangles = triangles ? triangles.length : 0;
-
-    // Unmappable fields from extras
-
-    let layerMaterialNum: number[] = [0, 0, 0, 0];
-
-    let numMaterials = 0;
-    for (let i = 0; i < 4 && i < primitives.length; i++) {
-      //Find index of corresponding material in docmaterials
-
-      let found = false;
-      for (let j = 0; j < docMaterials.length; j++) {
-        if (docMaterials[j] === primitives[i].getMaterial()) {
-          layerMaterialNum[i] = j;
-          numMaterials++;
-          found = true;
-
-          break;
-        }
-      }
-      if (!found) {
-        console.warn(
-          `Geometry mesh[${meshIdx}] prim[${i}]: No matching material found for primitive`,
-        );
-      }
+    
+    // Find material index
+    const material = prim.getMaterial();
+    let materialIndex = 0;
+    if (material) {
+      materialIndex = docMaterials.indexOf(material);
+      if (materialIndex < 0) materialIndex = 0;
     }
-
-    /*     if (
-      Array.isArray(extras.layerMaterialNum) &&
-      extras.layerMaterialNum.length === 4
-    ) {
-      layerMaterialNum = extras.layerMaterialNum;
-    } */
-    console.log("Layer Material Num:", layerMaterialNum);
-    console.log("numMaterials:", numMaterials);
-    const flags = typeof extras.flags === "number" ? extras.flags : 0;
-    let boundingBox:
-      | { min: [number, number, number]; max: [number, number, number] }
-      | undefined = undefined;
-    if (
-      extras.boundingBox &&
-      typeof extras.boundingBox === "object" &&
-      Array.isArray((extras.boundingBox as any).min) &&
-      Array.isArray((extras.boundingBox as any).max) &&
-      (extras.boundingBox as any).min.length === 3 &&
-      (extras.boundingBox as any).max.length === 3
-    ) {
-      boundingBox = {
-        min: (extras.boundingBox as any).min,
-        max: (extras.boundingBox as any).max,
-      };
-    }
-    // Restore type, numMaterials, numPoints, numTriangles from extras if present
-    const type = typeof extras.type === "number" ? extras.type : 0;
-
-    console.log(
-      `Geometry mesh[${meshIdx}] prim[]: vertices=${
-        vertices?.length ?? 0
-      }, normals=${normals?.length ?? 0}, uvs=${uvs?.length ?? 0}, colors=${
-        colors?.length ?? 0
-      }, triangles=${triangles?.length ?? 0}, layerMaterialNum=`,
-      layerMaterialNum,
-      "flags=",
-      flags,
-      "boundingBox=",
-      boundingBox,
-      "type=",
-      type,
-      "numMaterials=",
-      numMaterials,
-      "numPoints=",
-      numPoints,
-      "numTriangles=",
-      numTriangles,
-    );
+    
     return {
       vertices,
       normals,
       uvs,
       colors,
       triangles,
-      layerMaterialNum,
-      flags,
-      boundingBox,
-      numMaterials,
-      type,
-      numPoints,
-      numTriangles,
+      layerMaterialNum: [materialIndex, 0, 0, 0], // BG3D expects array format
+      flags: typeof extras.flags === "number" ? extras.flags : 0,
+      boundingBox: extras.boundingBox as { min: [number, number, number]; max: [number, number, number] } | undefined,
+      numMaterials: 1,
+      type: typeof extras.type === "number" ? extras.type : 0,
+      numPoints: vertices ? vertices.length : 0,
+      numTriangles: triangles ? triangles.length : 0,
     };
   }
-
-  const childNodes = doc.getRoot().listScenes()[0].listChildren();
-  //childNodes.forEach(node => node.getM)
-  console.log("childNodes:");
-  console.log(childNodes);
-  const processedNodes = childNodes.map((node) => processNode(node));
-  //Flat processing
-  //TODO: FIX, REMOVE AND REPLACE
-  const geometries: BG3DGeometry[] = [];
-  doc
-    .getRoot()
-    .listMeshes()
-    .forEach((mesh, meshIdx) => {
-      geometries.push(processMesh(mesh, meshIdx));
-    });
-
-  /*   console.log("gltfToBG3D: Restoring groups...");
-  const rootExtras = doc.getRoot().getExtras() || {};
-  if (Array.isArray(rootExtras.groups)) {
-    console.log("gltfToBG3D: Found group structure in root extras.");
-    groups = rootExtras.groups;
-  } else {
-    console.log(
-      "gltfToBG3D: No group structure found, creating single group with all geometries.",
-    );
-    groups = [{ children: geometries }];
+  
+  function processNode(node: Node): BG3DGroup | BG3DGeometry {
+    const mesh = node.getMesh();
+    if (mesh) {
+      return processMesh(mesh);
+    }
+    
+    // Process child nodes
+    const children: (BG3DGroup | BG3DGeometry)[] = [];
+    const nodeChildren = node.listChildren();
+    for (const childNode of nodeChildren) {
+      children.push(processNode(childNode));
+    }
+    return { children };
   }
- */
-  const result = {
+  
+  // Process scene hierarchy
+  const scene = doc.getRoot().listScenes()[0];
+  const childNodes = scene.listChildren();
+  const groups: BG3DGroup[] = childNodes.map(node => processNode(node)) as BG3DGroup[];
+  
+  console.log("=== glTF to BG3D Conversion Complete ===");
+  
+  return {
     materials,
-    //TODO: Fix any use
-    groups: processedNodes as any as BG3DGroup[], //groups,
-    //groups,
+    groups,
+    skeleton,
   };
-  console.log("gltfToBG3D: Final BG3DParseResult:", result);
-  return result;
 }

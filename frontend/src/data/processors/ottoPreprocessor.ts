@@ -52,7 +52,7 @@ export function ottoPreprocessor(
     data.Hedr[1000].obj.numWaterPatches = data.Liqd?.[1000].obj.length ?? 0;
     data.Hedr[1000].obj.numSplines = data.Spln?.[1000].obj.length ?? 0;
 
-    data.Itms[1000].obj.sort((a, b) => {
+    data.Itms?.[1000].obj.sort((a, b) => {
       if (a.x > b.x) return 1;
       else if (a.x < b.x) return -1;
       else {
@@ -77,13 +77,13 @@ export function ottoPreprocessor(
       for (let i = 0; i < data.Spln[1000].obj.length; i++) {
         const splineIdx = SPLINE_KEY_BASE + i;
 
-        const numPoints = data.SpPt[splineIdx].obj.length;
+        const numPoints = data.SpPt?.[splineIdx]?.obj.length ?? 0;
         data.Spln[1000].obj[i].numPoints = numPoints;
 
-        const numNubs = data.SpNb[splineIdx].obj.length;
+        const numNubs = data.SpNb?.[splineIdx]?.obj.length ?? 0;
         data.Spln[1000].obj[i].numNubs = numNubs;
 
-        const numItems = data.SpIt[splineIdx].obj.length;
+        const numItems = data.SpIt?.[splineIdx]?.obj.length ?? 0;
         data.Spln[1000].obj[i].numItems = numItems;
       }
 
