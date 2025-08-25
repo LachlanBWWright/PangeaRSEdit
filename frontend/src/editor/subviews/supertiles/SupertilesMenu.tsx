@@ -13,6 +13,14 @@ import { ImageEditor } from "@/components/ImageEditor";
 import { useState } from "react";
 import { Edit } from "lucide-react";
 import { toast } from "sonner";
+import { 
+  addSupertileRow, 
+  removeSupertileRow, 
+  addSupertileColumn, 
+  removeSupertileColumn,
+  addBlankSupertileTextures,
+  Side 
+} from "../../../utils/supertileOperations";
 
 // Function to download a selected tile as an image
 const downloadSelectedTile = (
@@ -273,6 +281,96 @@ export function SupertileMenu({
     }
   };
 
+  // Handle adding a row of supertiles
+  const handleAddRow = (side: Side.TOP | Side.BOTTOM) => {
+    try {
+      const levelData = {
+        ...headerData,
+        ...terrainData
+      };
+      
+      const newLevelData = addSupertileRow(levelData, side, globals);
+      
+      // Calculate how many new supertiles we added
+      const newSupertileCount = hedr.mapWidth / globals.TILES_PER_SUPERTILE;
+      const newMapImages = addBlankSupertileTextures(mapImages, newSupertileCount, globals);
+      
+      setHeaderData(headerData => ({ ...headerData, ...newLevelData }));
+      setTerrainData(terrainData => ({ ...terrainData, ...newLevelData }));
+      setMapImages(newMapImages);
+      
+      toast.success(`Added supertile row to ${side}`);
+    } catch (error) {
+      console.error("Error adding row:", error);
+      toast.error(`Failed to add supertile row: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  };
+
+  // Handle removing a row of supertiles  
+  const handleRemoveRow = (side: Side.TOP | Side.BOTTOM) => {
+    try {
+      const levelData = {
+        ...headerData,
+        ...terrainData
+      };
+      
+      const newLevelData = removeSupertileRow(levelData, side, globals);
+      
+      setHeaderData(headerData => ({ ...headerData, ...newLevelData }));
+      setTerrainData(terrainData => ({ ...terrainData, ...newLevelData }));
+      
+      toast.success(`Removed supertile row from ${side}`);
+    } catch (error) {
+      console.error("Error removing row:", error);
+      toast.error(`Failed to remove supertile row: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  };
+
+  // Handle adding a column of supertiles
+  const handleAddColumn = (side: Side.LEFT | Side.RIGHT) => {
+    try {
+      const levelData = {
+        ...headerData,
+        ...terrainData
+      };
+      
+      const newLevelData = addSupertileColumn(levelData, side, globals);
+      
+      // Calculate how many new supertiles we added
+      const newSupertileCount = hedr.mapHeight / globals.TILES_PER_SUPERTILE;
+      const newMapImages = addBlankSupertileTextures(mapImages, newSupertileCount, globals);
+      
+      setHeaderData(headerData => ({ ...headerData, ...newLevelData }));
+      setTerrainData(terrainData => ({ ...terrainData, ...newLevelData }));
+      setMapImages(newMapImages);
+      
+      toast.success(`Added supertile column to ${side}`);
+    } catch (error) {
+      console.error("Error adding column:", error);
+      toast.error(`Failed to add supertile column: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  };
+
+  // Handle removing a column of supertiles
+  const handleRemoveColumn = (side: Side.LEFT | Side.RIGHT) => {
+    try {
+      const levelData = {
+        ...headerData,
+        ...terrainData
+      };
+      
+      const newLevelData = removeSupertileColumn(levelData, side, globals);
+      
+      setHeaderData(headerData => ({ ...headerData, ...newLevelData }));
+      setTerrainData(terrainData => ({ ...terrainData, ...newLevelData }));
+      
+      toast.success(`Removed supertile column from ${side}`);
+    } catch (error) {
+      console.error("Error removing column:", error);
+      toast.error(`Failed to remove supertile column: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  };
+
   return (
     <div className="grid grid-cols-3 gap-2">
       <div className="flex flex-col gap-2">
@@ -481,6 +579,80 @@ export function SupertileMenu({
           Texture ID:{" "}
           {terrainData.STgd[1000].obj[selectedTile]?.superTileId || 0}
         </p>
+        
+        <div className="border-t pt-4 mt-4">
+          <p className="font-semibold mb-2">Row Operations</p>
+          <div className="grid grid-cols-2 gap-1 mb-2">
+            <Button 
+              size="sm" 
+              variant="outline"
+              onClick={() => handleAddRow(Side.TOP)}
+            >
+              + Top
+            </Button>
+            <Button 
+              size="sm" 
+              variant="outline"
+              onClick={() => handleAddRow(Side.BOTTOM)}
+            >
+              + Bottom
+            </Button>
+          </div>
+          <div className="grid grid-cols-2 gap-1 mb-3">
+            <Button 
+              size="sm" 
+              variant="destructive"
+              onClick={() => handleRemoveRow(Side.TOP)}
+              disabled={(hedr?.mapHeight || 0) / globals.TILES_PER_SUPERTILE <= 1}
+            >
+              - Top
+            </Button>
+            <Button 
+              size="sm" 
+              variant="destructive"
+              onClick={() => handleRemoveRow(Side.BOTTOM)}
+              disabled={(hedr?.mapHeight || 0) / globals.TILES_PER_SUPERTILE <= 1}
+            >
+              - Bottom
+            </Button>
+          </div>
+          
+          <p className="font-semibold mb-2">Column Operations</p>
+          <div className="grid grid-cols-2 gap-1 mb-2">
+            <Button 
+              size="sm" 
+              variant="outline"
+              onClick={() => handleAddColumn(Side.LEFT)}
+            >
+              + Left
+            </Button>
+            <Button 
+              size="sm" 
+              variant="outline"
+              onClick={() => handleAddColumn(Side.RIGHT)}
+            >
+              + Right
+            </Button>
+          </div>
+          <div className="grid grid-cols-2 gap-1">
+            <Button 
+              size="sm" 
+              variant="destructive"
+              onClick={() => handleRemoveColumn(Side.LEFT)}
+              disabled={(hedr?.mapWidth || 0) / globals.TILES_PER_SUPERTILE <= 1}
+            >
+              - Left
+            </Button>
+            <Button 
+              size="sm" 
+              variant="destructive"
+              onClick={() => handleRemoveColumn(Side.RIGHT)}
+              disabled={(hedr?.mapWidth || 0) / globals.TILES_PER_SUPERTILE <= 1}
+            >
+              - Right
+            </Button>
+          </div>
+        </div>
       </div>
       {/* Image Editor for individual tile */}
       {isEditingTile && editingImageUrl && (
