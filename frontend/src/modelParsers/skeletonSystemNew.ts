@@ -379,6 +379,8 @@ function createGltfAnimations(doc: Document, joints: Node[], processedAnimations
     
     console.log(`  Creating animation "${anim.name}" with ${anim.channels.length} channels`);
     
+    let successfulChannels = 0;
+    
     anim.channels.forEach(channelData => {
       const joint = joints[channelData.boneIndex];
       
@@ -481,12 +483,14 @@ function createGltfAnimations(doc: Document, joints: Node[], processedAnimations
       
       try {
         gltfAnimation.addChannel(channel);
+        successfulChannels++;
         console.log(`    Added channel: ${joint.getName()}.${channelData.path}`);
       } catch (error) {
         console.warn(`Error adding channel for joint ${joint.getName()} path ${channelData.path}:`, error);
       }
     });
     
+    console.log(`  Animation "${anim.name}" final result: ${successfulChannels} channels added`);
     return gltfAnimation;
   });
 }

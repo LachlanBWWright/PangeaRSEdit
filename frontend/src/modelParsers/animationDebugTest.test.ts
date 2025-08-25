@@ -60,15 +60,21 @@ describe("Animation Debug Test", () => {
       const firstGltfAnim = gltfAnimations[0];
       console.log(`First glTF animation: "${firstGltfAnim.getName()}"`);
       
+      const channels = firstGltfAnim.listChannels();
       const samplers = firstGltfAnim.listSamplers();
-      console.log(`Has ${samplers.length} samplers`);
+      console.log(`Has ${channels.length} channels and ${samplers.length} samplers`);
       
-      if (samplers.length > 0) {
-        const firstSampler = samplers[0];
-        const input = firstSampler.getInput();
-        if (input) {
-          const times = input.getArray();
-          console.log(`First sampler times:`, Array.from(times as Float32Array).slice(0, 10));
+      if (channels.length > 0) {
+        const firstChannel = channels[0];
+        const sampler = firstChannel.getSampler();
+        console.log(`First channel sampler:`, sampler ? "exists" : "null");
+        
+        if (sampler) {
+          const input = sampler.getInput();
+          if (input) {
+            const times = input.getArray();
+            console.log(`First sampler times:`, Array.from(times as Float32Array).slice(0, 10));
+          }
         }
       }
     }
