@@ -2,7 +2,7 @@ import { defineConfig, devices } from '@playwright/test';
 
 export default defineConfig({
   testDir: './src',
-  testMatch: '**/debug_animation_test.ts',
+  testMatch: '**/test-otto-functionality.spec.ts',
   fullyParallel: false,
   forbidOnly: !!process.env.CI,
   retries: 0,

@@ -12,6 +12,26 @@ import { Document, Node, Skin, Animation } from "@gltf-transform/core";
 import { BG3DSkeleton, BG3DBone, BG3DAnimation } from "./parseBG3D";
 
 /**
+ * Convert Euler angles (in radians) to quaternion
+ * Order: X-Y-Z rotation order
+ */
+function eulerToQuaternion(x: number, y: number, z: number): [number, number, number, number] {
+  const c1 = Math.cos(x / 2);
+  const c2 = Math.cos(y / 2);
+  const c3 = Math.cos(z / 2);
+  const s1 = Math.sin(x / 2);
+  const s2 = Math.sin(y / 2);
+  const s3 = Math.sin(z / 2);
+
+  const qx = s1 * c2 * c3 + c1 * s2 * s3;
+  const qy = c1 * s2 * c3 - s1 * c2 * s3;
+  const qz = c1 * c2 * s3 + s1 * s2 * c3;
+  const qw = c1 * c2 * c3 - s1 * s2 * s3;
+
+  return [qx, qy, qz, qw];
+}
+
+/**
  * Processed animation data ready for glTF conversion
  */
 interface ProcessedAnimation {
@@ -321,12 +341,13 @@ function processOttoAnimations(bg3dAnimations: BG3DAnimation[], bones: BG3DBone[
           });
         }
         
-        // Extract rotation data (convert to quaternions if needed)
-        const rotations = keyframes.map(kf => [kf.rotationX, kf.rotationY, kf.rotationZ]).flat();
+        // Extract rotation data (convert Euler angles to quaternions)
+        const rotationEulers = keyframes.map(kf => [kf.rotationX, kf.rotationY, kf.rotationZ]);
+        const rotationQuats = rotationEulers.map(euler => eulerToQuaternion(euler[0], euler[1], euler[2]));
+        const rotations = rotationQuats.flat();
         const hasRotationVar = hasVariation(rotations);
-        console.log(`    ${bone.name} rotation variation: ${hasRotationVar} (sample: [${rotations.slice(0, 6).join(', ')}...])`);
+        console.log(`    ${bone.name} rotation variation: ${hasRotationVar} (${rotationQuats.length} quaternions)`);
         if (hasRotationVar) {
-          // For now, treat as Euler angles - could convert to quaternions later
           channels.push({
             boneIndex,
             path: 'rotation',
@@ -376,9 +397,9 @@ function createGltfAnimations(doc: Document, joints: Node[], processedAnimations
     return [];
   }
   
-  // Filter out animations with no channels AND limit to prevent GLB corruption
-  const validAnimations = processedAnimations.filter(anim => anim.channels.length > 0).slice(0, 3); // Limit to 3 animations to prevent corruption
-  console.log(`Creating ${validAnimations.length} animations (filtered from ${processedAnimations.length}, limited to prevent GLB corruption)`);
+  // Filter out animations with no channels
+  const validAnimations = processedAnimations.filter(anim => anim.channels.length > 0);
+  console.log(`Creating ${validAnimations.length} animations (filtered from ${processedAnimations.length})`);
   
   return validAnimations.map(anim => {
     const gltfAnimation = doc.createAnimation(anim.name);
@@ -387,10 +408,10 @@ function createGltfAnimations(doc: Document, joints: Node[], processedAnimations
     
     let successfulChannels = 0;
     
-    // Limit channels per animation to prevent corruption
-    const limitedChannels = anim.channels.slice(0, 5); // Limit to 5 channels per animation
+    // Process all channels
+    const allChannels = anim.channels;
     
-    limitedChannels.forEach(channelData => {
+    allChannels.forEach(channelData => {
       const joint = joints[channelData.boneIndex];
       
       // Validate input data first
@@ -455,7 +476,7 @@ function createGltfAnimations(doc: Document, joints: Node[], processedAnimations
           valueType = "VEC3";
           break;
         case 'rotation':
-          valueType = "VEC3"; // Could be VEC4 for quaternions
+          valueType = "VEC4"; // Quaternions are VEC4
           break;
         default:
           valueType = "VEC3";
@@ -466,7 +487,7 @@ function createGltfAnimations(doc: Document, joints: Node[], processedAnimations
         valueAccessor = doc.createAccessor()
           .setType(valueType as any)
           .setArray(new Float32Array(channelData.values))
-          .setBuffer(buffer);
+          .setBuffer(targetBuffer);
           
         if (!valueAccessor) {
           console.warn(`Failed to create value accessor for joint ${joint.getName()} path ${channelData.path}`);
