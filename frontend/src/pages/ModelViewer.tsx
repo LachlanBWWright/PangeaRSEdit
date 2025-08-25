@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Upload, X, Download } from "lucide-react";
 import { TextureManager } from "@/components/TextureManager";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 
 // ...existing code...
 import { SkeletonConversionPanel } from "@/components/SkeletonConversionPanel";
@@ -1017,12 +1018,14 @@ export function ModelViewer() {
         {/* Main viewport - 3D Scene */}
         <div className="flex-1 bg-gray-800 rounded-lg overflow-hidden">
           {gltfUrl ? (
-            <ModelCanvas
-              gltfUrl={gltfUrl}
-              setModelNodes={setModelNodes}
-              onSceneReady={setScene}
-              onAnimationsReady={handleAnimationsReady}
-            />
+            <ErrorBoundary>
+              <ModelCanvas
+                gltfUrl={gltfUrl}
+                setModelNodes={setModelNodes}
+                onSceneReady={setScene}
+                onAnimationsReady={handleAnimationsReady}
+              />
+            </ErrorBoundary>
           ) : (
             <div className="flex items-center justify-center h-full text-gray-400">
               <div className="text-center">

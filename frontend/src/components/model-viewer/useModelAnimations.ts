@@ -14,32 +14,38 @@ export function useModelAnimations(
   const [animationMixer, setAnimationMixer] = useState<THREE.AnimationMixer | null>(null);
 
   useEffect(() => {
-    if (gltfResult?.scene) {
-      // Handle animations
-      if (gltfResult.animations && gltfResult.animations.length > 0) {
-        const mixer = new THREE.AnimationMixer(gltfResult.scene);
-        setAnimationMixer(mixer);
+    try {
+      if (gltfResult?.scene) {
+        // Handle animations
+        if (gltfResult.animations && gltfResult.animations.length > 0) {
+          const mixer = new THREE.AnimationMixer(gltfResult.scene);
+          setAnimationMixer(mixer);
 
-        // Extract animation info
-        const animationInfos: AnimationInfo[] = gltfResult.animations.map((clip: THREE.AnimationClip, index: number) => ({
-          name: clip.name || `Animation ${index + 1}`,
-          duration: clip.duration,
-          index: index,
-          clip: clip,
-        }));
+          // Extract animation info
+          const animationInfos: AnimationInfo[] = gltfResult.animations.map((clip: THREE.AnimationClip, index: number) => ({
+            name: clip.name || `Animation ${index + 1}`,
+            duration: clip.duration,
+            index: index,
+            clip: clip,
+          }));
 
-        if (onAnimationsReady) {
-          onAnimationsReady(animationInfos, mixer);
+          if (onAnimationsReady) {
+            onAnimationsReady(animationInfos, mixer);
+          }
+
+          console.log(`Found ${gltfResult.animations.length} animations:`, animationInfos);
+        } else {
+          setAnimationMixer(null);
+          if (onAnimationsReady) {
+            onAnimationsReady([], null);
+          }
         }
-
-        console.log(`Found ${gltfResult.animations.length} animations:`, animationInfos);
       } else {
         setAnimationMixer(null);
-        if (onAnimationsReady) {
-          onAnimationsReady([], null);
-        }
+        if (onAnimationsReady) onAnimationsReady([], null);
       }
-    } else {
+    } catch (error) {
+      console.error("Error in useModelAnimations:", error);
       setAnimationMixer(null);
       if (onAnimationsReady) onAnimationsReady([], null);
     }

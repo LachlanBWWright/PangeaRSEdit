@@ -106,6 +106,9 @@ export function bg3dParsedToGLTF(parsed: BG3DParseResult, originalBinaryData?: {
   let gltfSkin: Skin | null = null;
   let gltfAnimations: Animation[] = [];
   
+  // TEMPORARILY DISABLE SKELETON PROCESSING TO DEBUG
+  console.log("Skeleton processing temporarily disabled for debugging");
+  /*
   if (parsed.skeleton) {
     console.log("Creating skeleton system with new implementation...");
     const skeletonSystem = createSkeletonSystem(doc, parsed.skeleton);
@@ -115,6 +118,7 @@ export function bg3dParsedToGLTF(parsed: BG3DParseResult, originalBinaryData?: {
     
     console.log(`Skeleton system created: ${gltfSkin.listJoints().length} joints, ${gltfAnimations.length} animations`);
   }
+  */
 
   // Helper to collect all geometries from group hierarchy
   function collectGeometries(groups: BG3DGroup[]): BG3DGeometry[] {

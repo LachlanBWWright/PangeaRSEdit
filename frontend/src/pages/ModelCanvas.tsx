@@ -9,6 +9,12 @@ import { AnimationUpdater } from "@/components/model-viewer/AnimationUpdater";
 export function ModelCanvas(props: ModelCanvasProps) {
   const { gltfUrl, setModelNodes, onSceneReady, onAnimationsReady } = props;
   
+  // Validate gltfUrl before using it
+  if (!gltfUrl || typeof gltfUrl !== 'string') {
+    console.error("Invalid gltfUrl provided to ModelCanvas:", gltfUrl);
+    return <div>Error: Invalid model URL</div>;
+  }
+  
   // Always call useGLTF unconditionally
   const gltfResult = useGLTF(gltfUrl);
 

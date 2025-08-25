@@ -46,14 +46,20 @@ export function useModelHierarchy(
   onSceneReady?: (scene: THREE.Group | undefined) => void
 ) {
   useEffect(() => {
-    if (gltfResult?.scene) {
-      const nodes = gltfResult.scene.children.map((child: THREE.Object3D) =>
-        extractNode(child),
-      ).filter((node): node is ModelNode => node !== null);
-      
-      setModelNodes(nodes);
-      if (onSceneReady) onSceneReady(gltfResult.scene);
-    } else {
+    try {
+      if (gltfResult?.scene) {
+        const nodes = gltfResult.scene.children.map((child: THREE.Object3D) =>
+          extractNode(child),
+        ).filter((node): node is ModelNode => node !== null);
+        
+        setModelNodes(nodes);
+        if (onSceneReady) onSceneReady(gltfResult.scene);
+      } else {
+        setModelNodes([]);
+        if (onSceneReady) onSceneReady(undefined as any);
+      }
+    } catch (error) {
+      console.error("Error in useModelHierarchy:", error);
       setModelNodes([]);
       if (onSceneReady) onSceneReady(undefined as any);
     }

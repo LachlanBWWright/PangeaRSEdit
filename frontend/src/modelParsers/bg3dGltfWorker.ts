@@ -69,6 +69,7 @@ export type BG3DGltfWorkerResponse =
 
 self.onmessage = async (e: MessageEvent<BG3DGltfWorkerMessage>) => {
   const msg = e.data;
+  console.log("Worker received message:", msg.type);
   try {
     if (msg.type === "bg3d-to-glb") {
       console.log("Converting BG3D to GLB");
