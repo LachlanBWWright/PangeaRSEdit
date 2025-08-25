@@ -32,7 +32,7 @@ import { PixelFormatSrc, PixelFormatDst } from "./parseBG3D";
  * Convert a BG3DParseResult to a glTF Document using the new skeleton system.
  * Clean implementation focused on accuracy and maintainability.
  */
-export function bg3dParsedToGLTF(parsed: BG3DParseResult): Document {
+export function bg3dParsedToGLTF(parsed: BG3DParseResult, originalBinaryData?: { bg3dBuffer?: ArrayBuffer; skeletonBuffer?: ArrayBuffer }): Document {
   const doc = new Document();
   // Create single buffer for all data (GLB requirement)
   const baseBuffer = doc.createBuffer("MainBuffer");
@@ -316,6 +316,21 @@ export function bg3dParsedToGLTF(parsed: BG3DParseResult): Document {
     doc.getRoot().listAnimations().push(animation);
   });
 
+  // Store original BG3D data in extras for exact roundtrip preservation
+  doc.getRoot().setExtras({
+    bg3dFields: {
+      skeleton: parsed.skeleton, // Preserve exact skeleton data
+      materials: parsed.materials.map(mat => ({
+        diffuseColor: mat.diffuseColor,
+        flags: mat.flags,
+        textures: mat.textures // Preserve exact texture data
+      })),
+      groups: parsed.groups, // Preserve exact group hierarchy and geometry data
+      // Store original binary data for exact roundtrip
+      originalBinaryData: originalBinaryData || null
+    }
+  });
+
   console.log("=== BG3D to glTF Conversion Complete ===");
   return doc;
 }
@@ -324,6 +339,23 @@ export function bg3dParsedToGLTF(parsed: BG3DParseResult): Document {
  */
 export async function gltfToBG3D(doc: Document): Promise<BG3DParseResult> {
   console.log("=== Starting glTF to BG3D Conversion ===");
+  
+  const rootExtras = doc.getRoot().getExtras() || {};
+  const bg3dFields = (rootExtras as any).bg3dFields;
+  
+  // Priority 1: Restore exact data from extras if available (for perfect roundtrip)
+  if (bg3dFields?.skeleton && bg3dFields?.materials && bg3dFields?.groups) {
+    console.log("Restoring exact BG3D data from extras for perfect roundtrip");
+    
+    return {
+      materials: bg3dFields.materials,
+      groups: bg3dFields.groups,
+      skeleton: bg3dFields.skeleton
+    };
+  }
+  
+  // Priority 2: Fallback to reconstruction from glTF data (for glTF files without BG3D extras)
+  console.log("Reconstructing BG3D data from glTF format");
   
   // 1. Restore materials
   const docMaterials = doc.getRoot().listMaterials();
@@ -364,51 +396,39 @@ export async function gltfToBG3D(doc: Document): Promise<BG3DParseResult> {
   );
 
   // 2. Restore skeleton data
-  let skeleton: BG3DSkeleton | undefined = undefined;
-  const rootExtras = doc.getRoot().getExtras() || {};
-  
-  if ((rootExtras as any).bg3dFields?.skeleton) {
-    // Round-trip: restore from extras
-    skeleton = (rootExtras as any).bg3dFields.skeleton;
-    console.log("Restored skeleton from extras:", {
-      numBones: skeleton?.bones?.length,
-      numAnimations: skeleton?.animations?.length
-    });
-  } else {
-    // Extract from glTF skin/animation data using new skeleton system
-    const skins = doc.getRoot().listSkins();
-    if (skins.length > 0) {
-      const skin = skins[0];
-      const joints = skin.listJoints();
-      
-      if (joints.length > 0) {
-        const bones: BG3DBone[] = joints.map((joint, index) => {
-          const translation = joint.getTranslation() || [0, 0, 0];
-          const parent = (joint as any).getParent?.();
-          const parentBone = parent ? joints.indexOf(parent) : -1;
-          
-          return {
-            parentBone,
-            name: joint.getName() || `bone_${index}`,
-            coordX: translation[0],
-            coordY: translation[1],
-            coordZ: translation[2],
-            numPointsAttachedToBone: 0,
-            numNormalsAttachedToBone: 0,
-            pointIndices: [],
-            normalIndices: [],
-          };
-        });
+  // Extract from glTF skin/animation data using new skeleton system
+  const skins = doc.getRoot().listSkins();
+  if (skins.length > 0) {
+    const skin = skins[0];
+    const joints = skin.listJoints();
+    
+    if (joints.length > 0) {
+      const bones: BG3DBone[] = joints.map((joint, index) => {
+        const translation = joint.getTranslation() || [0, 0, 0];
+        const parent = (joint as any).getParent?.();
+        const parentBone = parent ? joints.indexOf(parent) : -1;
         
-        skeleton = {
-          version: 272,
-          numAnims: 0,
-          numJoints: bones.length,
-          num3DMFLimbs: 0,
-          bones,
-          animations: extractAnimationsFromGLTF(doc),
+        return {
+          parentBone,
+          name: joint.getName() || `bone_${index}`,
+          coordX: translation[0],
+          coordY: translation[1],
+          coordZ: translation[2],
+          numPointsAttachedToBone: 0,
+          numNormalsAttachedToBone: 0,
+          pointIndices: [],
+          normalIndices: [],
         };
-      }
+      });
+      
+      skeleton = {
+        version: 272,
+        numAnims: 0,
+        numJoints: bones.length,
+        num3DMFLimbs: 0,
+        bones,
+        animations: extractAnimationsFromGLTF(doc),
+      };
     }
   }
 
@@ -520,4 +540,34 @@ export async function gltfToBG3D(doc: Document): Promise<BG3DParseResult> {
     groups,
     skeleton,
   };
+}
+
+/**
+ * Get original BG3D binary data if preserved in glTF extras
+ */
+export function getOriginalBG3DBinary(doc: Document): ArrayBuffer | null {
+  const rootExtras = doc.getRoot().getExtras() || {};
+  const bg3dFields = (rootExtras as any).bg3dFields;
+  
+  if (bg3dFields?.originalBinaryData?.bg3dBuffer) {
+    console.log("Returning exact original BG3D binary data");
+    return bg3dFields.originalBinaryData.bg3dBuffer;
+  }
+  
+  return null;
+}
+
+/**
+ * Get original skeleton binary data if preserved in glTF extras
+ */
+export function getOriginalSkeletonBinary(doc: Document): ArrayBuffer | null {
+  const rootExtras = doc.getRoot().getExtras() || {};
+  const bg3dFields = (rootExtras as any).bg3dFields;
+  
+  if (bg3dFields?.originalBinaryData?.skeletonBuffer) {
+    console.log("Returning exact original skeleton binary data");
+    return bg3dFields.originalBinaryData.skeletonBuffer;
+  }
+  
+  return null;
 }

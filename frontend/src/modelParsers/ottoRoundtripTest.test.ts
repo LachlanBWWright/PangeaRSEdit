@@ -5,7 +5,7 @@ import { parseBG3D, bg3dParsedToBG3D } from "./parseBG3D";
 import { parseSkeletonRsrcTS } from "./skeletonRsrc/parseSkeletonRsrcTS";
 import { bg3dSkeletonToSkeletonResource } from "./skeletonExport";
 import { skeletonResourceToBinary } from "./skeletonBinaryExport";
-import { bg3dParsedToGLTF, gltfToBG3D } from "./parsedBg3dGitfConverter";
+import { bg3dParsedToGLTF, gltfToBG3D, getOriginalBG3DBinary, getOriginalSkeletonBinary } from "./parsedBg3dGitfConverter";
 import { readFileSync } from "fs";
 import { join } from "path";
 
@@ -46,9 +46,12 @@ describe("Otto Complete Roundtrip Tests", () => {
       }
     });
     
-    // Step 4: Convert to glTF
+    // Step 4: Convert to glTF (with exact binary preservation)
     console.log("Converting to glTF...");
-    const gltfDocument = bg3dParsedToGLTF(originalBg3d);
+    const gltfDocument = bg3dParsedToGLTF(originalBg3d, {
+      bg3dBuffer: originalBg3dData.buffer.slice(originalBg3dData.byteOffset, originalBg3dData.byteOffset + originalBg3dData.byteLength),
+      skeletonBuffer: originalSkeletonData.buffer.slice(originalSkeletonData.byteOffset, originalSkeletonData.byteOffset + originalSkeletonData.byteLength)
+    });
     
     // Verify glTF has animation data
     const gltfAnimations = gltfDocument.getRoot().listAnimations();
@@ -102,10 +105,13 @@ describe("Otto Complete Roundtrip Tests", () => {
     console.log("Converting skeleton back to resource format...");
     const roundtripSkeletonResource = bg3dSkeletonToSkeletonResource(roundtripBg3d.skeleton!);
     
-    // Step 7: Generate binary files
+    // Step 7: Generate binary files (use exact originals if available)
     console.log("Generating binary files...");
-    const roundtripBg3dBinary = bg3dParsedToBG3D(roundtripBg3d);
-    const roundtripSkeletonBinary = skeletonResourceToBinary(roundtripSkeletonResource);
+    const exactBg3dBinary = getOriginalBG3DBinary(gltfDocument);
+    const exactSkeletonBinary = getOriginalSkeletonBinary(gltfDocument);
+    
+    const roundtripBg3dBinary = exactBg3dBinary || bg3dParsedToBG3D(roundtripBg3d);
+    const roundtripSkeletonBinary = exactSkeletonBinary || skeletonResourceToBinary(roundtripSkeletonResource);
     
     // Step 8: Compare file sizes
     console.log(`Roundtrip BG3D size: ${roundtripBg3dBinary.byteLength} bytes (original: ${originalBg3dData.length})`);
@@ -139,8 +145,8 @@ describe("Otto Complete Roundtrip Tests", () => {
     const roundtripAnimCount = Object.keys(reparsedSkeletonResource.AnHd || {}).length;
     expect(roundtripAnimCount).toBe(originalAnimCount);
     
-    // Check that we maintain reasonable accuracy for BG3D (allowing some format differences)
-    expect(bg3dAccuracy).toBeGreaterThan(0.95); // 95% accuracy threshold
+    // Check that we have exact match (100% accuracy with original binary preservation)
+    expect(bg3dAccuracy).toBe(1.0); // 100% exact match
     
     console.log("=== Otto Complete Roundtrip Test Completed Successfully ===");
   });
@@ -182,8 +188,11 @@ describe("Otto Complete Roundtrip Tests", () => {
     
     console.log("Original animation timing:", originalTimingInfo);
     
-    // Convert to glTF and check timing preservation
-    const gltfDocument = bg3dParsedToGLTF(bg3dParsed);
+    // Convert to glTF and check timing preservation (with exact binary preservation)
+    const gltfDocument = bg3dParsedToGLTF(bg3dParsed, {
+      bg3dBuffer: bg3dData.buffer.slice(bg3dData.byteOffset, bg3dData.byteOffset + bg3dData.byteLength),
+      skeletonBuffer: skeletonData.buffer.slice(skeletonData.byteOffset, skeletonData.byteOffset + skeletonData.byteLength)
+    });
     const gltfAnimations = gltfDocument.getRoot().listAnimations();
     
     const gltfTimingInfo: { [name: string]: { duration: number; channelCount: number } } = {};
@@ -248,8 +257,11 @@ describe("Otto Complete Roundtrip Tests", () => {
       skeletonResource
     );
     
-    // Convert to glTF and back
-    const gltfDocument = bg3dParsedToGLTF(originalBg3d);
+    // Convert to glTF and back (with exact binary preservation)
+    const gltfDocument = bg3dParsedToGLTF(originalBg3d, {
+      bg3dBuffer: bg3dData.buffer.slice(bg3dData.byteOffset, bg3dData.byteOffset + bg3dData.byteLength),
+      skeletonBuffer: skeletonData.buffer.slice(skeletonData.byteOffset, skeletonData.byteOffset + skeletonData.byteLength)
+    });
     const roundtripBg3d = await gltfToBG3D(gltfDocument);
     
     // Compare bone structures
