@@ -365,10 +365,16 @@ function processOttoAnimations(bg3dAnimations: BG3DAnimation[], bones: BG3DBone[
 /**
  * Create glTF animations with proper node targeting
  */
-function createGltfAnimations(doc: Document, joints: Node[], processedAnimations: ProcessedAnimation[]): Animation[] {
+function createGltfAnimations(doc: Document, joints: Node[], processedAnimations: ProcessedAnimation[], buffer?: any): Animation[] {
   console.log("Creating glTF animations...");
   
-  const buffer = doc.getRoot().listBuffers()[0];
+  // Use provided buffer or fallback to first buffer
+  const targetBuffer = buffer || doc.getRoot().listBuffers()[0];
+  
+  if (!targetBuffer) {
+    console.error("No buffer available for animation data");
+    return [];
+  }
   
   // Filter out animations with no channels
   const validAnimations = processedAnimations.filter(anim => anim.channels.length > 0);
@@ -395,6 +401,26 @@ function createGltfAnimations(doc: Document, joints: Node[], processedAnimations
         return;
       }
       
+      // Enhanced validation for animation data
+      const expectedValuesPerTime = channelData.path === 'rotation' || channelData.path === 'translation' || channelData.path === 'scale' ? 3 : 1;
+      const expectedValueCount = channelData.times.length * expectedValuesPerTime;
+      
+      if (channelData.values.length !== expectedValueCount) {
+        console.warn(`Skipping channel for joint ${joint?.getName()} path ${channelData.path}: value count mismatch. Expected ${expectedValueCount}, got ${channelData.values.length}`);
+        return;
+      }
+      
+      // Validate for NaN or infinite values
+      if (channelData.times.some(t => !isFinite(t))) {
+        console.warn(`Skipping channel for joint ${joint?.getName()} path ${channelData.path}: invalid time values`);
+        return;
+      }
+      
+      if (channelData.values.some(v => !isFinite(v))) {
+        console.warn(`Skipping channel for joint ${joint?.getName()} path ${channelData.path}: invalid value data`);
+        return;
+      }
+      
       // Validate joint exists
       if (!joint) {
         console.warn(`Skipping channel for path ${channelData.path}: joint not found (index ${channelData.boneIndex})`);
@@ -407,7 +433,7 @@ function createGltfAnimations(doc: Document, joints: Node[], processedAnimations
         timeAccessor = doc.createAccessor()
           .setType("SCALAR")
           .setArray(new Float32Array(channelData.times))
-          .setBuffer(buffer);
+          .setBuffer(targetBuffer);
           
         if (!timeAccessor) {
           console.warn(`Failed to create time accessor for joint ${joint.getName()} path ${channelData.path}`);
@@ -498,7 +524,7 @@ function createGltfAnimations(doc: Document, joints: Node[], processedAnimations
 /**
  * Main function to create complete skeleton system
  */
-export function createSkeletonSystem(doc: Document, skeleton: BG3DSkeleton): { skin: Skin; animations: Animation[] } {
+export function createSkeletonSystem(doc: Document, skeleton: BG3DSkeleton, buffer?: any): { skin: Skin; animations: Animation[] } {
   console.log("=== Creating Skeleton System (Rebuilt Implementation) ===");
   console.log(`Bones: ${skeleton.bones.length}, Animations: ${skeleton.animations.length}`);
   
@@ -511,7 +537,7 @@ export function createSkeletonSystem(doc: Document, skeleton: BG3DSkeleton): { s
     if (!actualScene) {
       throw new Error("Failed to create default scene in glTF document");
     }
-    return createSkeletonSystem(doc, skeleton); // Retry with new scene
+    return createSkeletonSystem(doc, skeleton, buffer); // Retry with new scene
   }
   
   // Step 1: Create joint nodes with proper local transforms
@@ -531,7 +557,7 @@ export function createSkeletonSystem(doc: Document, skeleton: BG3DSkeleton): { s
   
   // Step 4: Process and create animations (joints are now accessible in scene)
   const processedAnimations = processOttoAnimations(skeleton.animations, skeleton.bones);
-  const animations = createGltfAnimations(doc, joints, processedAnimations);
+  const animations = createGltfAnimations(doc, joints, processedAnimations, buffer);
   
   console.log("=== Skeleton System Complete ===");
   console.log(`Result: ${joints.length} joints, ${animations.length} animations`);
