@@ -310,7 +310,9 @@ function processOttoAnimations(bg3dAnimations: BG3DAnimation[], bones: BG3DBone[
         
         // Extract translation data
         const translations = keyframes.map(kf => [kf.coordX, kf.coordY, kf.coordZ]).flat();
-        if (hasVariation(translations)) {
+        const hasTranslationVar = hasVariation(translations);
+        console.log(`    ${bone.name} translation variation: ${hasTranslationVar} (sample: [${translations.slice(0, 6).join(', ')}...])`);
+        if (hasTranslationVar) {
           channels.push({
             boneIndex,
             path: 'translation',
@@ -321,7 +323,9 @@ function processOttoAnimations(bg3dAnimations: BG3DAnimation[], bones: BG3DBone[
         
         // Extract rotation data (convert to quaternions if needed)
         const rotations = keyframes.map(kf => [kf.rotationX, kf.rotationY, kf.rotationZ]).flat();
-        if (hasVariation(rotations)) {
+        const hasRotationVar = hasVariation(rotations);
+        console.log(`    ${bone.name} rotation variation: ${hasRotationVar} (sample: [${rotations.slice(0, 6).join(', ')}...])`);
+        if (hasRotationVar) {
           // For now, treat as Euler angles - could convert to quaternions later
           channels.push({
             boneIndex,
@@ -333,7 +337,9 @@ function processOttoAnimations(bg3dAnimations: BG3DAnimation[], bones: BG3DBone[
         
         // Extract scale data
         const scales = keyframes.map(kf => [kf.scaleX, kf.scaleY, kf.scaleZ]).flat();
-        if (hasVariation(scales)) {
+        const hasScaleVar = hasVariation(scales);
+        console.log(`    ${bone.name} scale variation: ${hasScaleVar} (sample: [${scales.slice(0, 6).join(', ')}...])`);
+        if (hasScaleVar) {
           channels.push({
             boneIndex,
             path: 'scale',
@@ -534,13 +540,94 @@ export function createSkeletonSystem(doc: Document, skeleton: BG3DSkeleton): { s
  */
 export function extractAnimationsFromGLTF(doc: Document): BG3DAnimation[] {
   const animations = doc.getRoot().listAnimations();
+  const skins = doc.getRoot().listSkins();
+  
+  // We need the joints to map back to bone indices
+  const joints = skins.length > 0 ? skins[0].listJoints() : [];
   
   return animations.map(anim => {
+    console.log(`Extracting animation "${anim.getName()}" from glTF`);
+    
+    const keyframes: { [boneIndex: string]: any[] } = {};
+    
+    // Process each channel in the animation
+    const channels = anim.listChannels();
+    channels.forEach(channel => {
+      const target = channel.getTargetNode();
+      const sampler = channel.getSampler();
+      const path = channel.getTargetPath();
+      
+      if (!target || !sampler) return;
+      
+      // Find the bone index for this joint
+      const boneIndex = joints.indexOf(target);
+      if (boneIndex === -1) return;
+      
+      const boneIndexStr = boneIndex.toString();
+      
+      // Get time and value data
+      const inputAccessor = sampler.getInput();
+      const outputAccessor = sampler.getOutput();
+      
+      if (!inputAccessor || !outputAccessor) return;
+      
+      const times = Array.from(inputAccessor.getArray() as Float32Array);
+      const values = Array.from(outputAccessor.getArray() as Float32Array);
+      
+      // Initialize keyframes for this bone if not exists
+      if (!keyframes[boneIndexStr]) {
+        keyframes[boneIndexStr] = [];
+      }
+      
+      // Convert glTF data back to Otto format
+      const valuesPerFrame = path === 'rotation' || path === 'translation' || path === 'scale' ? 3 : 1;
+      
+      for (let i = 0; i < times.length; i++) {
+        const tick = Math.round(times[i] * 30); // Convert back to 30 FPS
+        
+        // Find or create keyframe for this tick
+        let keyframe = keyframes[boneIndexStr].find(kf => kf.tick === tick);
+        if (!keyframe) {
+          keyframe = {
+            tick,
+            accelerationMode: 0,
+            coordX: 0, coordY: 0, coordZ: 0,
+            rotationX: 0, rotationY: 0, rotationZ: 0,
+            scaleX: 1, scaleY: 1, scaleZ: 1
+          };
+          keyframes[boneIndexStr].push(keyframe);
+        }
+        
+        // Apply the values based on path
+        const valueIndex = i * valuesPerFrame;
+        if (path === 'translation') {
+          keyframe.coordX = values[valueIndex] || 0;
+          keyframe.coordY = values[valueIndex + 1] || 0;
+          keyframe.coordZ = values[valueIndex + 2] || 0;
+        } else if (path === 'rotation') {
+          keyframe.rotationX = values[valueIndex] || 0;
+          keyframe.rotationY = values[valueIndex + 1] || 0;
+          keyframe.rotationZ = values[valueIndex + 2] || 0;
+        } else if (path === 'scale') {
+          keyframe.scaleX = values[valueIndex] || 1;
+          keyframe.scaleY = values[valueIndex + 1] || 1;
+          keyframe.scaleZ = values[valueIndex + 2] || 1;
+        }
+      }
+    });
+    
+    // Sort keyframes by tick for each bone
+    Object.values(keyframes).forEach(boneKeyframes => {
+      boneKeyframes.sort((a, b) => a.tick - b.tick);
+    });
+    
+    console.log(`Extracted animation "${anim.getName()}" with ${Object.keys(keyframes).length} bone tracks`);
+    
     return {
       name: anim.getName() || "Unknown",
       numAnimEvents: 0,
       events: [],
-      keyframes: {}
+      keyframes
     };
   });
 }
