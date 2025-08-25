@@ -8,7 +8,7 @@ export default defineConfig({
   workers: process.env.CI ? 1 : undefined,
   reporter: 'html',
   use: {
-    baseURL: 'http://localhost:5173/PangeaRSEdit/',
+    baseURL: 'http://localhost:5174/PangeaRSEdit/',
     trace: 'on-first-retry',
     headless: true,
   },
@@ -22,7 +22,7 @@ export default defineConfig({
 
   webServer: {
     command: 'npm run dev',
-    port: 5173,
-    reuseExistingServer: !process.env.CI,
+    port: 5174,
+    reuseExistingServer: true,
   },
 });

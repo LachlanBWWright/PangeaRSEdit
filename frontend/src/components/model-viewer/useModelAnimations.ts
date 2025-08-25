@@ -49,7 +49,7 @@ export function useModelAnimations(
       setAnimationMixer(null);
       if (onAnimationsReady) onAnimationsReady([], null);
     }
-  }, [gltfResult?.scene, gltfResult?.animations, onAnimationsReady]);
+  }, [gltfResult?.scene, gltfResult?.animations]);
 
   return { animationMixer };
 }

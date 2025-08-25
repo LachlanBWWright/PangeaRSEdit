@@ -426,7 +426,7 @@ function createGltfAnimations(doc: Document, joints: Node[], processedAnimations
       }
       
       // Enhanced validation for animation data
-      const expectedValuesPerTime = channelData.path === 'rotation' || channelData.path === 'translation' || channelData.path === 'scale' ? 3 : 1;
+      const expectedValuesPerTime = channelData.path === 'rotation' ? 4 : (channelData.path === 'translation' || channelData.path === 'scale' ? 3 : 1);
       const expectedValueCount = channelData.times.length * expectedValuesPerTime;
       
       if (channelData.values.length !== expectedValueCount) {
@@ -454,6 +454,9 @@ function createGltfAnimations(doc: Document, joints: Node[], processedAnimations
       // Create time accessor with additional validation
       let timeAccessor;
       try {
+        // Debug: Check the time data
+        console.log(`        Time data for ${joint.getName()}.${channelData.path}: [${channelData.times.slice(0, 3).join(', ')}...] (${channelData.times.length} values)`);
+        
         timeAccessor = doc.createAccessor()
           .setType("SCALAR")
           .setArray(new Float32Array(channelData.times))
@@ -532,15 +535,27 @@ function createGltfAnimations(doc: Document, joints: Node[], processedAnimations
       }
       
       try {
-        gltfAnimation.addChannel(channel);
+        gltfAnimation.addSampler(sampler).addChannel(channel);
         successfulChannels++;
-        console.log(`    Added channel: ${joint.getName()}.${channelData.path}`);
+        console.log(`    Added sampler and channel: ${joint.getName()}.${channelData.path}`);
       } catch (error) {
-        console.warn(`Error adding channel for joint ${joint.getName()} path ${channelData.path}:`, error);
+        console.warn(`Error adding sampler and channel for joint ${joint.getName()} path ${channelData.path}:`, error);
       }
     });
     
-    console.log(`  Animation "${anim.name}" final result: ${successfulChannels} channels added`);
+    // Debug: Check if the animation has samplers after adding channels
+    const samplers = gltfAnimation.listSamplers();
+    console.log(`  Animation "${anim.name}" final result: ${successfulChannels} channels added, ${samplers.length} samplers detected`);
+    
+    // Debug: List the channels we just added
+    const channels = gltfAnimation.listChannels();
+    console.log(`  Animation "${anim.name}" channels: ${channels.length} found`);
+    channels.forEach((channel, index) => {
+      const sampler = channel.getSampler();
+      const node = channel.getTargetNode();
+      console.log(`    Channel ${index}: ${node?.getName()}.${channel.getTargetPath()}, sampler: ${sampler ? 'present' : 'missing'}`);
+    });
+    
     return gltfAnimation;
   });
 }
@@ -580,7 +595,15 @@ export function createSkeletonSystem(doc: Document, skeleton: BG3DSkeleton, buff
   const skin = createSkin(doc, joints, skeleton.bones);
   
   // Step 4: Process and create animations (joints are now accessible in scene)
+  console.log(`About to process ${skeleton.animations.length} Otto animations...`);
   const processedAnimations = processOttoAnimations(skeleton.animations, skeleton.bones);
+  console.log(`Processed animations: ${processedAnimations.length}, creating glTF animations...`);
+  
+  // Debug: Check which animations have channels
+  processedAnimations.forEach(anim => {
+    console.log(`Processed animation "${anim.name}": ${anim.channels.length} channels, duration: ${anim.duration}`);
+  });
+  
   const animations = createGltfAnimations(doc, joints, processedAnimations, buffer);
   
   console.log("=== Skeleton System Complete ===");
