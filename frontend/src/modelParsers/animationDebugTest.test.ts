@@ -1,5 +1,5 @@
 // Debug test to understand animation processing
-import { describe, it, expect } from "vitest";
+import { describe, it } from "vitest";
 import { parseBG3D } from "./parseBG3D";
 import { parseSkeletonRsrcTS } from "./skeletonRsrc/parseSkeletonRsrcTS";
 import { bg3dParsedToGLTF } from "./parsedBg3dGitfConverter";

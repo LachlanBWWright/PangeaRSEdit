@@ -89,13 +89,21 @@ self.onmessage = async (e: MessageEvent<BG3DGltfWorkerMessage>) => {
       self.postMessage.call(self, response);
     } else if (msg.type === "bg3d-with-skeleton-to-glb") {
       console.log("Converting BG3D with skeleton to GLB");
+      console.log("BG3D buffer size:", msg.bg3dBuffer.byteLength);
+      console.log("Skeleton data:", msg.skeletonData);
+      
       const parsed = parseBG3DWithSkeletonResource(msg.bg3dBuffer, msg.skeletonData);
       console.log("Parsed BG3D with skeleton:", parsed);
+      console.log("Skeleton in parsed result:", parsed.skeleton ? `${parsed.skeleton.bones.length} bones, ${parsed.skeleton.animations.length} animations` : "none");
+      
       const doc = bg3dParsedToGLTF(parsed);
       console.log("Converting parsed BG3D with skeleton to GLTF document");
+      console.log("GLTF Document with skeleton:", doc);
+      
       const io = new WebIO();
       const glbBuffer = await io.writeBinary(doc);
       const arrBuffer = new Uint8Array(glbBuffer).buffer;
+      console.log("Generated GLB buffer size:", arrBuffer.byteLength);
 
       const response: BG3DGltfWorkerResponse = {
         type: "bg3d-with-skeleton-to-glb",

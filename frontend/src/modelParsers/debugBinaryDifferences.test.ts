@@ -1,6 +1,6 @@
 // Debug Binary Differences Test
 // This test helps identify exactly where the binary differences are occurring
-import { describe, it, expect } from "vitest";
+import { describe, it } from "vitest";
 import { parseBG3D, bg3dParsedToBG3D } from "./parseBG3D";
 import { parseSkeletonRsrcTS } from "./skeletonRsrc/parseSkeletonRsrcTS";
 import { bg3dSkeletonToSkeletonResource } from "./skeletonExport";
@@ -102,7 +102,7 @@ describe("Debug Binary Differences", () => {
     const originalSkeletonResource = parseSkeletonRsrcTS(new Uint8Array(originalSkeletonData));
     console.log("Original skeleton structure:", {
       types: Object.keys(originalSkeletonResource).length,
-      totalResources: Object.values(originalSkeletonResource).reduce((sum, type) => 
+      totalResources: Object.values(originalSkeletonResource).reduce((sum: number, type) => 
         sum + (typeof type === 'object' && type ? Object.keys(type).length : 0), 0)
     });
     
@@ -118,7 +118,7 @@ describe("Debug Binary Differences", () => {
     
     console.log("Roundtrip skeleton structure:", {
       types: Object.keys(roundtripSkeletonResource).length,
-      totalResources: Object.values(roundtripSkeletonResource).reduce((sum, type) => 
+      totalResources: Object.values(roundtripSkeletonResource).reduce((sum: number, type) => 
         sum + (typeof type === 'object' && type ? Object.keys(type).length : 0), 0)
     });
     

@@ -1,7 +1,7 @@
 /**
  * Debug test to see what's happening in the browser
  */
-import { test, expect } from '@playwright/test';
+import { test } from '@playwright/test';
 
 test('Debug Otto Browser Loading', async ({ page }) => {
   console.log('Starting debug test...');

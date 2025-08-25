@@ -2,8 +2,7 @@
  * Test browser-based roundtrip conversion
  */
 import { test, expect } from '@playwright/test';
-import { readFileSync, writeFileSync } from 'fs';
-import { join } from 'path';
+import { readFileSync } from 'fs';
 
 test('Browser Roundtrip Test', async ({ page }) => {
   console.log('Testing browser-based roundtrip conversion...');

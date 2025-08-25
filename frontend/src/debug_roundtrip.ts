@@ -1,6 +1,6 @@
 import { parseBG3D, bg3dParsedToBG3D } from "./modelParsers/parseBG3D";
 import { parseSkeletonRsrcTS } from "./modelParsers/skeletonRsrc/parseSkeletonRsrcTS";
-import { bg3dParsedToGLTF, gltfToBG3D, getOriginalBG3DBinary, getOriginalSkeletonBinary } from "./modelParsers/parsedBg3dGitfConverter";
+import { bg3dParsedToGLTF, gltfToBG3D, getOriginalBG3DBinary } from "./modelParsers/parsedBg3dGitfConverter";
 import { readFileSync, writeFileSync } from "fs";
 import { join } from "path";
 import { fileURLToPath } from 'url';
