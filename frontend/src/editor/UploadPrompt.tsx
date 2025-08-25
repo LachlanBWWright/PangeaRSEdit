@@ -25,7 +25,7 @@ import { useState } from "react";
 import { Switch } from "@/components/ui/switch";
 import { preprocessJson } from "@/data/processors/ottoPreprocessor";
 import { ottoMaticLevel } from "@/python/structSpecs/ottoMaticInterface";
-import { splitLevelData, AtomicLevelData } from "../data/utils/levelDataUtils";
+import { Updater } from "use-immer";
 import { Buffer } from "buffer";
 import { PyodideMessage, PyodideResponse } from "@/python/pyodideWorker";
 import { IntroText } from "./IntroText";
@@ -60,7 +60,7 @@ export function UploadPrompt({
   setMapImagesFile: (file: File) => void;
   setMapImages: (images: HTMLCanvasElement[]) => void;
   pyodideWorker: Worker;
-  setData: (data: AtomicLevelData) => void;
+  setData: Updater<ottoMaticLevel | null>;
 }) {
   const [globals, setGlobals] = useAtom(Globals);
   const [showAllGames, setShowAllGames] = useState(false);
@@ -123,11 +123,8 @@ export function UploadPrompt({
     } else {
       //Bugdom 1-specific - The image data is within the Resource Fork
       console.log(jsonData);
-      const imgString = jsonData.Timg?.[1000]?.data;
+      const imgString = jsonData.Timg[1000].data;
       console.log(imgString);
-      if (!imgString) {
-        throw new Error("No image data found");
-      }
       const imgBuffer = Buffer.from(imgString, "hex");
       console.log("Image buffer length:", imgBuffer.byteLength);
       const tileCount = imgBuffer.byteLength / 2 / 32 / 32; // 2 bytes per pixel, 32x32 pixels per tile
@@ -182,7 +179,7 @@ export function UploadPrompt({
       //throw new Error("nanosaur terrain files are not supported yet");
 
       //TODO: Missing preprocessor
-      setData(splitLevelData(compatibleLevel)); // or adapt to your data model
+      setData(compatibleLevel); // or adapt to your data model
       return compatibleLevel;
     } else {
       //Call pyodide worker to  run the python code
@@ -209,7 +206,7 @@ export function UploadPrompt({
 
       preprocessJson(jsonData, globals);
 
-      setData(splitLevelData(jsonData));
+      setData(jsonData);
       return jsonData;
     }
   };

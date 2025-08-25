@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { IntroPrompt } from "../editor/IntroPrompt";
+import { Toaster } from "../components/ui/toaster";
 import PyodideWorker from "../python/pyodideWorker?worker";
 import { PyodideMessage } from "../python/pyodideWorker";
 import { IntroText } from "../editor/IntroText";
@@ -8,7 +9,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 export function LevelEditor() {
   const [pyodideWorker, setPyodideWorker] = useState<null | Worker>(null);
   const [pyodideWorkerReady, setPyodideWorkerReady] = useState(false);
-
+  
   useEffect(() => {
     const newPyodideWorker = new PyodideWorker();
     newPyodideWorker.postMessage({
@@ -34,7 +35,10 @@ export function LevelEditor() {
 
   return (
     <TooltipProvider>
-      <IntroPrompt pyodideWorker={pyodideWorker} />
+      <>
+        <IntroPrompt pyodideWorker={pyodideWorker} />
+        <Toaster />
+      </>
     </TooltipProvider>
   );
 }

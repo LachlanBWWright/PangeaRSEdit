@@ -1,24 +1,24 @@
-import { SplineData } from "../../python/structSpecs/ottoMaticLevelData";
+import { ottoMaticLevel } from "../../python/structSpecs/ottoMaticInterface";
 import { Layer } from "react-konva";
 import { Updater } from "use-immer";
 import { Spline } from "./splines/Spline";
 
 export function Splines({
-  splineData,
-  setSplineData,
+  data,
+  setData,
 }: {
-  splineData: SplineData;
-  setSplineData: Updater<SplineData>;
+  data: ottoMaticLevel;
+  setData: Updater<ottoMaticLevel>;
 }) {
-  if (!splineData.Spln) return <></>;
+  if (!data.Spln) return <></>;
 
   return (
     <Layer>
-      {splineData.Spln[1000].obj.map((_, splineIdx) => (
+      {data.Spln[1000].obj.map((_, splineIdx) => (
         <Spline
           key={splineIdx}
-          splineData={splineData}
-          setSplineData={setSplineData}
+          data={data}
+          setData={setData}
           splineIdx={splineIdx}
         />
       ))}

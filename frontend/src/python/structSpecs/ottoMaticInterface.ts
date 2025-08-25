@@ -2,24 +2,137 @@ import { FenceType } from "../../data/fences/ottoFenceType";
 import { ItemType } from "../../data/items/ottoItemType";
 import { SplineItemType } from "../../data/splines/ottoSplineItemType";
 import { WaterBodyType } from "../../data/water/ottoWaterBodyType";
-import type {
-  HeaderData,
-  FenceData,
-  SplineData,
-  LiquidData,
-  ItemData,
-  TerrainData,
-} from "./ottoMaticLevelData";
 
 export type MakeRequired<T, K extends keyof T> = T & Required<Pick<T, K>>;
 
-export interface ottoMaticLevel
-  extends HeaderData,
-    Partial<FenceData>,
-    Partial<SplineData>,
-    Partial<LiquidData>,
-    Partial<ItemData>,
-    TerrainData {}
+export interface ottoMaticLevel {
+  Atrb: {
+    1000: {
+      name: "Tile Attribute Data";
+      obj: ottoTileAttribute[];
+      order: number;
+    };
+  };
+  Fenc: {
+    //List of contiguous fences
+    1000: {
+      name: "Fence List";
+      obj: ottoFence[];
+      order: number;
+    };
+  };
+  FnNb: Record<
+    number,
+    {
+      name: "Fence Nub List";
+      obj: ottoFenceNub[];
+      order: number;
+    }
+  >;
+  Timg: {
+    1000: {
+      name: "Extracted Tile Image Data 32x32/16bit";
+      data: string;
+      order: number;
+    };
+  };
+  Hedr: {
+    1000: {
+      name: "Header";
+      obj: ottoHeader;
+      order: 0;
+    };
+  };
+  ItCo: {
+    1000: {
+      /* Not used in the game, internal OreoTerrain item */
+      name: "Terrain Items Color Array";
+      data: string;
+      order: number;
+    };
+  };
+  Itms: {
+    1000: {
+      name: "Terrain Items List";
+      obj: ottoItem[];
+      order: number;
+    };
+  };
+  Layr: {
+    1000: {
+      name: "Terrain Layer Matrix";
+      obj: number[]; //Ints
+      order: number;
+    };
+  };
+  Liqd: {
+    1000: {
+      name: "Water List";
+      obj: ottoLiquid[];
+      order: number;
+    };
+  };
+
+  STgd: {
+    1000: {
+      name: "SuperTile Grid";
+      obj: ottoSupertileGrid[];
+      order: number;
+    };
+  };
+  SpIt: Record<
+    number,
+    {
+      name?: "Spline Item List";
+      obj: ottoSplineItem[];
+      order?: number;
+    }
+  >;
+  SpNb: Record<
+    number,
+    {
+      name?: "Spline Nub List";
+      obj: ottoSplineNub[];
+      order?: number;
+    }
+  >;
+  SpPt: Record<
+    number,
+    {
+      name?: "Spline Point List";
+      obj: ottoSplinePoint[];
+      order?: number;
+    }
+  >;
+  Spln: {
+    1000: {
+      name: "Spline List";
+      obj: ottoSpline[];
+      order: number;
+    };
+  };
+  YCrd: {
+    1000: {
+      name: "Floor&Ceiling Y Coords";
+      obj: number[]; //Floats
+      order: number;
+    };
+  };
+  alis: Record<
+    /* Appeas in skeleton unpacking code, doesn't seem to be used for .ter files */
+    number,
+    {
+      name: "Texture Page Picture Alias";
+      data: string;
+      order: number;
+    }
+  >;
+  _metadata: {
+    file_attributes: number;
+    junk1: number;
+    junk2: number;
+  };
+}
 
 export type ottoTileAttribute = {
   flags: number;

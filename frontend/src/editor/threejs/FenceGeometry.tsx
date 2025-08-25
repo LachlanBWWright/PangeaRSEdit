@@ -1,18 +1,13 @@
 import React from "react";
-import { ottoHeader } from "@/python/structSpecs/ottoMaticInterface";
 import {
-  FenceData,
-  HeaderData,
-  TerrainData,
-} from "@/python/structSpecs/ottoMaticLevelData";
+  ottoHeader,
+  ottoMaticLevel,
+} from "@/python/structSpecs/ottoMaticInterface";
 import { useAtomValue } from "jotai";
 import { Globals, GlobalsInterface } from "@/data/globals/globals";
-import { getFenceColor } from "@/data/fences/getFenceColor";
 
 interface FenceGeometryProps {
-  fenceData: FenceData;
-  headerData: HeaderData;
-  terrainData: TerrainData;
+  data: ottoMaticLevel;
 }
 
 const FENCE_POST_HEIGHT = 300; // Example height, adjust as needed
@@ -33,16 +28,13 @@ export const flattenCoords = (
 export const getHeightAtTile = (
   xTile: number,
   yTile: number,
-  headerData: HeaderData,
-  terrainData: TerrainData,
+  data: ottoMaticLevel,
   globals: GlobalsInterface,
 ) => {
-  const header = headerData.Hedr?.[1000]?.obj;
-  if (!header || !terrainData.YCrd?.[1000]?.obj) return 0;
-
+  const header = data.Hedr[1000].obj;
   // Call flattenCoords without globals, as it's no longer needed there
   const idx = flattenCoords(xTile, yTile, header);
-  const yCoords = terrainData.YCrd[1000].obj;
+  const yCoords = data.YCrd[1000].obj;
   const mapTileSize = header.tileSize;
   const yScale = globals.TILE_INGAME_SIZE / mapTileSize;
   if (idx < 0 || idx >= yCoords.length) {
@@ -58,8 +50,7 @@ export const getHeightAtTile = (
 export const getTerrainHeightAtPoint = (
   x: number, // world x
   z: number, // world z
-  headerData: HeaderData,
-  terrainData: TerrainData,
+  data: ottoMaticLevel,
   globals: GlobalsInterface,
 ) => {
   // Scale world coordinates to tile coordinates (where 1 unit = 1 tile)
@@ -73,10 +64,10 @@ export const getTerrainHeightAtPoint = (
   const z2 = Math.ceil(z_tile_units);
 
   // Get heights at the four corner points
-  const h11 = getHeightAtTile(x1, z1, headerData, terrainData, globals);
-  const h21 = getHeightAtTile(x2, z1, headerData, terrainData, globals);
-  const h12 = getHeightAtTile(x1, z2, headerData, terrainData, globals);
-  const h22 = getHeightAtTile(x2, z2, headerData, terrainData, globals);
+  const h11 = getHeightAtTile(x1, z1, data, globals);
+  const h21 = getHeightAtTile(x2, z1, data, globals);
+  const h12 = getHeightAtTile(x1, z2, data, globals);
+  const h22 = getHeightAtTile(x2, z2, data, globals);
 
   if (isNaN(h11) || isNaN(h21) || isNaN(h12) || isNaN(h22)) {
     console.warn("NaN height value(s) from getHeightAtTile:", {
@@ -136,29 +127,25 @@ export const getTerrainHeightAtPoint = (
   return interpolatedHeight;
 };
 
-export const FenceGeometry: React.FC<FenceGeometryProps> = ({
-  fenceData,
-  headerData,
-  terrainData,
-}) => {
+export const FenceGeometry: React.FC<FenceGeometryProps> = ({ data }) => {
   const globals = useAtomValue(Globals);
 
   if (
-    !fenceData.Fenc ||
-    !fenceData.Fenc[1000] ||
-    !fenceData.FnNb ||
-    !headerData.Hedr?.[1000]?.obj ||
-    !terrainData.YCrd?.[1000]?.obj
+    !data.Fenc ||
+    !data.Fenc[1000] ||
+    !data.FnNb ||
+    !data.Hedr?.[1000]?.obj ||
+    !data.YCrd?.[1000]?.obj
   ) {
     return null;
   }
 
-  const fences = fenceData.Fenc[1000].obj;
-  const fenceNubsByFenceIdx = fenceData.FnNb;
+  const fences = data.Fenc[1000].obj;
+  const fenceNubsByFenceIdx = data.FnNb;
 
   return (
     <group name="fences">
-      {fences.map((fence, fenceIdx) => {
+      {fences.map((_, fenceIdx) => {
         const nubListKey = 1000 + fenceIdx; // FnNb keys are typically base (1000) + index
         const nubsData = fenceNubsByFenceIdx[nubListKey];
 
@@ -166,10 +153,6 @@ export const FenceGeometry: React.FC<FenceGeometryProps> = ({
           return null; // Not enough nubs to form a segment
         }
         const nubs = nubsData.obj;
-
-        // Get fence type from fence data for game-specific coloring
-        const fenceType = fence?.fenceType || 0;
-        const fenceColor = getFenceColor(globals, fenceType, fenceIdx);
 
         const fenceSegments = [];
         for (let i = 0; i < nubs.length - 1; i++) {
@@ -190,15 +173,13 @@ export const FenceGeometry: React.FC<FenceGeometryProps> = ({
           const terrainY1 = getTerrainHeightAtPoint(
             nubA_raw[0],
             nubA_raw[1],
-            headerData,
-            terrainData,
+            data,
             globals,
           );
           const terrainY2 = getTerrainHeightAtPoint(
             nubB_raw[0],
             nubB_raw[1],
-            headerData,
-            terrainData,
+            data,
             globals,
           );
 
@@ -234,7 +215,7 @@ export const FenceGeometry: React.FC<FenceGeometryProps> = ({
                   itemSize={1}
                 />
               </bufferGeometry>
-              <meshStandardMaterial color={fenceColor} side={2} />
+              <meshStandardMaterial color="saddlebrown" side={2} />
             </mesh>,
           );
         }
