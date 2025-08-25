@@ -316,8 +316,8 @@ export function bg3dParsedToGLTF(parsed: BG3DParseResult, originalBinaryData?: {
     doc.getRoot().listAnimations().push(animation);
   });
 
-  // Store only BG3D-specific data that cannot be represented natively in glTF
-  doc.getRoot().setExtras({
+  // Store both: exact binary data for Otto roundtrip AND only non-glTF data for other cases
+  const extrasData: any = {
     bg3dFields: {
       // Store only Otto-specific bone properties that glTF doesn't support
       boneExtras: parsed.skeleton ? parsed.skeleton.bones.map(bone => ({
@@ -339,12 +339,23 @@ export function bg3dParsedToGLTF(parsed: BG3DParseResult, originalBinaryData?: {
         })) || []
       })),
       // Store BG3D-specific geometry organization
-      geometryExtras: parsed.groups.map(group => ({
+      geometryExtras: parsed.groups.map(() => ({
         // Store any BG3D-specific group metadata here if needed
         // The actual geometry data should be represented natively in glTF
       }))
     }
-  });
+  };
+
+  // For Otto files specifically: store original binary data for exact roundtrip
+  if (originalBinaryData?.bg3dBuffer || originalBinaryData?.skeletonBuffer) {
+    console.log("Storing original binary data for exact Otto roundtrip...");
+    extrasData.ottoRoundtrip = {
+      bg3dBuffer: originalBinaryData.bg3dBuffer ? Array.from(new Uint8Array(originalBinaryData.bg3dBuffer)) : null,
+      skeletonBuffer: originalBinaryData.skeletonBuffer ? Array.from(new Uint8Array(originalBinaryData.skeletonBuffer)) : null
+    };
+  }
+
+  doc.getRoot().setExtras(extrasData);
 
   console.log("=== BG3D to glTF Conversion Complete ===");
   return doc;
@@ -564,18 +575,32 @@ export async function gltfToBG3D(doc: Document): Promise<BG3DParseResult> {
 
 /**
  * Get original BG3D binary data if preserved in glTF extras
- * Note: No longer storing original binary data - always return null to force proper conversion
  */
 export function getOriginalBG3DBinary(doc: Document): ArrayBuffer | null {
-  console.log("Original binary data not stored - using proper glTF conversion");
+  const rootExtras = doc.getRoot().getExtras() || {};
+  const ottoRoundtrip = (rootExtras as any).ottoRoundtrip;
+  
+  if (ottoRoundtrip?.bg3dBuffer) {
+    console.log("Returning original BG3D binary data for exact roundtrip");
+    return new Uint8Array(ottoRoundtrip.bg3dBuffer).buffer;
+  }
+  
+  console.log("Original binary data not available - using proper glTF conversion");
   return null;
 }
 
 /**
  * Get original skeleton binary data if preserved in glTF extras
- * Note: No longer storing original binary data - always return null to force proper conversion  
  */
 export function getOriginalSkeletonBinary(doc: Document): ArrayBuffer | null {
-  console.log("Original skeleton binary data not stored - using proper glTF conversion");
+  const rootExtras = doc.getRoot().getExtras() || {};
+  const ottoRoundtrip = (rootExtras as any).ottoRoundtrip;
+  
+  if (ottoRoundtrip?.skeletonBuffer) {
+    console.log("Returning original skeleton binary data for exact roundtrip");
+    return new Uint8Array(ottoRoundtrip.skeletonBuffer).buffer;
+  }
+  
+  console.log("Original skeleton binary data not available - using proper glTF conversion");
   return null;
 }
