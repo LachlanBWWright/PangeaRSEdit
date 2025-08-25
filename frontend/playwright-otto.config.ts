@@ -2,7 +2,7 @@ import { defineConfig, devices } from '@playwright/test';
 
 export default defineConfig({
   testDir: './src',
-  testMatch: '**/debug_browser_test.ts',
+  testMatch: '**/debug_animation_test.ts',
   fullyParallel: false,
   forbidOnly: !!process.env.CI,
   retries: 0,

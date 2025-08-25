@@ -157,10 +157,8 @@ export function ModelViewer() {
             worker.terminate();
           };
           
-          // Choose the appropriate message type based on whether we have skeleton data
-          // TEMPORARY: Disable skeleton in GLB export due to Three.js compatibility issues
-          // But still parse skeleton data for animation detection and metadata
-          const message: BG3DGltfWorkerMessage = false && skeletonData // skeletonData 
+          // Use skeleton data if available for proper glTF animation support
+          const message: BG3DGltfWorkerMessage = skeletonData 
             ? {
                 type: "bg3d-with-skeleton-to-glb",
                 bg3dBuffer: bg3dArrayBuffer,
