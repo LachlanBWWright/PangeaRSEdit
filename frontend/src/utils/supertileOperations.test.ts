@@ -78,7 +78,7 @@ function createTestLevel(mapWidth: number, mapHeight: number): ottoMaticLevel {
     YCrd: {
       1000: {
         name: "Floor&Ceiling Y Coords",
-        obj: Array.from({ length: tilesCount }, () => 0),
+        obj: Array.from({ length: (mapWidth + 1) * (mapHeight + 1) }, () => 0),
         order: 42,
       },
     },
@@ -170,7 +170,9 @@ describe('Add supertile row operations', () => {
     // Should have 384 tiles (16 x 24)
     expect(result.Atrb[1000].obj).toHaveLength(384);
     expect(result.Layr[1000].obj).toHaveLength(384);
-    expect(result.YCrd[1000].obj).toHaveLength(384);
+    
+    // YCrd should have (width+1) * (height+1) entries for vertices
+    expect(result.YCrd[1000].obj).toHaveLength((16 + 1) * (24 + 1)); // 17 * 25 = 425
     
     // First 2 supertiles should be blank (new row at top)
     expect(result.STgd[1000].obj[0].isEmpty).toBe(true);

@@ -264,6 +264,14 @@ export function EditorView({
             setHeaderData={setHeaderData}
             terrainData={terrainData}
             setTerrainData={setTerrainData}
+            itemData={itemData}
+            setItemData={setItemData}
+            fenceData={fenceData}
+            setFenceData={setFenceData}
+            splineData={splineData}
+            setSplineData={setSplineData}
+            liquidData={liquidData}
+            setLiquidData={setLiquidData}
             mapImages={mapImages}
             setMapImages={setMapImages}
           />

@@ -227,4 +227,60 @@ test.describe('Supertile Row/Column Operations', () => {
     expect(finalHeight).toBe(initialHeight + 2);
     expect(finalWidth).toBe(initialWidth + 2);
   });
+
+  test('should navigate to tiles menu without errors after dimension changes', async ({ page }) => {
+    // First add some columns and rows to change dimensions
+    await page.getByRole('button', { name: '+ Top' }).click();
+    await page.waitForTimeout(300);
+    
+    await page.getByRole('button', { name: '+ Left' }).click();
+    await page.waitForTimeout(300);
+    
+    // Now try to navigate to Tiles menu (this should trigger the ImageData creation)
+    await page.getByRole('button', { name: 'Tiles' }).click();
+    await page.waitForTimeout(1000);
+    
+    // Check that we're in the tiles view without errors
+    // The tiles menu should be visible and functional
+    await expect(page.getByText(/Current Tile/)).toBeVisible();
+    
+    // Take a screenshot to show this is working
+    await page.screenshot({ path: 'tiles-menu-after-resize.png', fullPage: true });
+  });
+
+  test('should allow map download after dimension changes', async ({ page }) => {
+    // Navigate to supertiles view
+    await page.getByRole('button', { name: 'Supertiles' }).click();
+    await page.waitForTimeout(500);
+    
+    // Add some columns and rows to change dimensions
+    await page.getByRole('button', { name: '+ Bottom' }).click();
+    await page.waitForTimeout(300);
+    
+    await page.getByRole('button', { name: '+ Right' }).click();
+    await page.waitForTimeout(300);
+    
+    // Set up download listener
+    const downloadPromise = page.waitForEvent('download');
+    
+    // Click download button for the whole map
+    await page.getByText('Download Image For Whole Map').click();
+    await page.waitForTimeout(100);
+    await page.getByRole('button', { name: 'Download' }).nth(1).click();
+    
+    // Wait for the download to start (this will throw if there are read-only property errors)
+    try {
+      const download = await downloadPromise;
+      
+      // Verify the download was successful
+      expect(download.suggestedFilename()).toContain('map_image');
+      
+      // Take a screenshot to show this is working
+      await page.screenshot({ path: 'map-download-after-resize.png', fullPage: true });
+    } catch (error) {
+      // If download fails, still take a screenshot to show the state
+      await page.screenshot({ path: 'map-download-error.png', fullPage: true });
+      throw error;
+    }
+  });
 });

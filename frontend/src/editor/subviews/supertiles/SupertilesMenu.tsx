@@ -5,6 +5,10 @@ import { Updater } from "use-immer";
 import {
   HeaderData,
   TerrainData,
+  ItemData,
+  FenceData,
+  SplineData,
+  LiquidData,
 } from "../../../python/structSpecs/ottoMaticLevelData";
 import { FileUpload } from "../../../components/FileUpload";
 import { Globals } from "../../../data/globals/globals";
@@ -101,6 +105,14 @@ export function SupertileMenu({
   setHeaderData,
   terrainData,
   setTerrainData,
+  itemData,
+  setItemData,
+  fenceData,
+  setFenceData,
+  splineData,
+  setSplineData,
+  liquidData,
+  setLiquidData,
   mapImages,
   setMapImages,
 }: {
@@ -110,6 +122,14 @@ export function SupertileMenu({
   setHeaderData: Updater<HeaderData>;
   terrainData: TerrainData;
   setTerrainData: Updater<TerrainData>;
+  itemData: ItemData | null;
+  setItemData: Updater<ItemData | null>;
+  fenceData: FenceData | null;
+  setFenceData: Updater<FenceData | null>;
+  splineData: SplineData | null;
+  setSplineData: Updater<SplineData | null>;
+  liquidData: LiquidData | null;
+  setLiquidData: Updater<LiquidData | null>;
 }) {
   const selectedTile = useAtomValue(SelectedTile);
   const hedr = headerData.Hedr[1000].obj;
@@ -281,6 +301,18 @@ export function SupertileMenu({
     }
   };
 
+  // Helper function to create complete level data for operations
+  const createCompleteLevelData = () => {
+    return {
+      ...headerData,
+      ...terrainData,
+      ...(itemData || {}),
+      ...(fenceData || {}),
+      ...(splineData || {}),
+      ...(liquidData || {}),
+    };
+  };
+
   // Helper function to update state with new level data
   const updateLevelData = (newLevelData: any) => {
     // Update header data using immer draft mutation
@@ -294,52 +326,67 @@ export function SupertileMenu({
       draft.Atrb[1000].obj = newLevelData.Atrb[1000].obj;
       draft.Layr[1000].obj = newLevelData.Layr[1000].obj;
       draft.YCrd[1000].obj = newLevelData.YCrd[1000].obj;
-      
-      // Update any spatial data that might be present
-      if (newLevelData.Itms && draft.Itms) {
-        draft.Itms[1000].obj = newLevelData.Itms[1000].obj;
-      }
-      if (newLevelData.Fenc && draft.Fenc) {
-        draft.Fenc[1000].obj = newLevelData.Fenc[1000].obj;
-      }
-      if (newLevelData.FnNb && draft.FnNb) {
-        for (const key in newLevelData.FnNb) {
-          if (newLevelData.FnNb.hasOwnProperty(key)) {
-            draft.FnNb[Number(key)] = newLevelData.FnNb[Number(key)];
-          }
-        }
-      }
-      if (newLevelData.Spln && draft.Spln) {
-        draft.Spln[1000].obj = newLevelData.Spln[1000].obj;
-      }
-      if (newLevelData.SpNb && draft.SpNb) {
-        for (const key in newLevelData.SpNb) {
-          if (newLevelData.SpNb.hasOwnProperty(key)) {
-            draft.SpNb[Number(key)] = newLevelData.SpNb[Number(key)];
-          }
-        }
-      }
-      if (newLevelData.SpPt && draft.SpPt) {
-        for (const key in newLevelData.SpPt) {
-          if (newLevelData.SpPt.hasOwnProperty(key)) {
-            draft.SpPt[Number(key)] = newLevelData.SpPt[Number(key)];
-          }
-        }
-      }
-      if (newLevelData.Liqd && draft.Liqd) {
-        draft.Liqd[1000].obj = newLevelData.Liqd[1000].obj;
-      }
     });
+    
+    // Update spatial data if present and changed
+    if (newLevelData.Itms && setItemData && itemData) {
+      setItemData(draft => {
+        if (draft && draft.Itms) {
+          draft.Itms[1000].obj = newLevelData.Itms[1000].obj;
+        }
+      });
+    }
+    
+    if (newLevelData.Fenc && setFenceData && fenceData) {
+      setFenceData(draft => {
+        if (draft && draft.Fenc) {
+          draft.Fenc[1000].obj = newLevelData.Fenc[1000].obj;
+        }
+        if (draft && draft.FnNb && newLevelData.FnNb) {
+          for (const key in newLevelData.FnNb) {
+            if (newLevelData.FnNb.hasOwnProperty(key)) {
+              draft.FnNb[Number(key)] = newLevelData.FnNb[Number(key)];
+            }
+          }
+        }
+      });
+    }
+    
+    if (newLevelData.Spln && setSplineData && splineData) {
+      setSplineData(draft => {
+        if (draft && draft.Spln) {
+          draft.Spln[1000].obj = newLevelData.Spln[1000].obj;
+        }
+        if (draft && draft.SpNb && newLevelData.SpNb) {
+          for (const key in newLevelData.SpNb) {
+            if (newLevelData.SpNb.hasOwnProperty(key)) {
+              draft.SpNb[Number(key)] = newLevelData.SpNb[Number(key)];
+            }
+          }
+        }
+        if (draft && draft.SpPt && newLevelData.SpPt) {
+          for (const key in newLevelData.SpPt) {
+            if (newLevelData.SpPt.hasOwnProperty(key)) {
+              draft.SpPt[Number(key)] = newLevelData.SpPt[Number(key)];
+            }
+          }
+        }
+      });
+    }
+    
+    if (newLevelData.Liqd && setLiquidData && liquidData) {
+      setLiquidData(draft => {
+        if (draft && draft.Liqd) {
+          draft.Liqd[1000].obj = newLevelData.Liqd[1000].obj;
+        }
+      });
+    }
   };
 
   // Handle adding a row of supertiles
   const handleAddRow = (side: Side.TOP | Side.BOTTOM) => {
     try {
-      const levelData = {
-        ...headerData,
-        ...terrainData
-      };
-      
+      const levelData = createCompleteLevelData();
       const newLevelData = addSupertileRow(levelData, side, globals);
       
       // Calculate how many new supertiles we added
@@ -359,11 +406,7 @@ export function SupertileMenu({
   // Handle removing a row of supertiles  
   const handleRemoveRow = (side: Side.TOP | Side.BOTTOM) => {
     try {
-      const levelData = {
-        ...headerData,
-        ...terrainData
-      };
-      
+      const levelData = createCompleteLevelData();
       const newLevelData = removeSupertileRow(levelData, side, globals);
       
       updateLevelData(newLevelData);
@@ -378,11 +421,7 @@ export function SupertileMenu({
   // Handle adding a column of supertiles
   const handleAddColumn = (side: Side.LEFT | Side.RIGHT) => {
     try {
-      const levelData = {
-        ...headerData,
-        ...terrainData
-      };
-      
+      const levelData = createCompleteLevelData();
       const newLevelData = addSupertileColumn(levelData, side, globals);
       
       // Calculate how many new supertiles we added
@@ -402,11 +441,7 @@ export function SupertileMenu({
   // Handle removing a column of supertiles
   const handleRemoveColumn = (side: Side.LEFT | Side.RIGHT) => {
     try {
-      const levelData = {
-        ...headerData,
-        ...terrainData
-      };
-      
+      const levelData = createCompleteLevelData();
       const newLevelData = removeSupertileColumn(levelData, side, globals);
       
       updateLevelData(newLevelData);
