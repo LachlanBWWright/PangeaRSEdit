@@ -281,6 +281,57 @@ export function SupertileMenu({
     }
   };
 
+  // Helper function to update state with new level data
+  const updateLevelData = (newLevelData: any) => {
+    // Update header data using immer draft mutation
+    setHeaderData(draft => {
+      draft.Hedr[1000].obj = newLevelData.Hedr[1000].obj;
+    });
+    
+    // Update terrain data using immer draft mutation
+    setTerrainData(draft => {
+      draft.STgd[1000].obj = newLevelData.STgd[1000].obj;
+      draft.Atrb[1000].obj = newLevelData.Atrb[1000].obj;
+      draft.Layr[1000].obj = newLevelData.Layr[1000].obj;
+      draft.YCrd[1000].obj = newLevelData.YCrd[1000].obj;
+      
+      // Update any spatial data that might be present
+      if (newLevelData.Itms && draft.Itms) {
+        draft.Itms[1000].obj = newLevelData.Itms[1000].obj;
+      }
+      if (newLevelData.Fenc && draft.Fenc) {
+        draft.Fenc[1000].obj = newLevelData.Fenc[1000].obj;
+      }
+      if (newLevelData.FnNb && draft.FnNb) {
+        for (const key in newLevelData.FnNb) {
+          if (newLevelData.FnNb.hasOwnProperty(key)) {
+            draft.FnNb[Number(key)] = newLevelData.FnNb[Number(key)];
+          }
+        }
+      }
+      if (newLevelData.Spln && draft.Spln) {
+        draft.Spln[1000].obj = newLevelData.Spln[1000].obj;
+      }
+      if (newLevelData.SpNb && draft.SpNb) {
+        for (const key in newLevelData.SpNb) {
+          if (newLevelData.SpNb.hasOwnProperty(key)) {
+            draft.SpNb[Number(key)] = newLevelData.SpNb[Number(key)];
+          }
+        }
+      }
+      if (newLevelData.SpPt && draft.SpPt) {
+        for (const key in newLevelData.SpPt) {
+          if (newLevelData.SpPt.hasOwnProperty(key)) {
+            draft.SpPt[Number(key)] = newLevelData.SpPt[Number(key)];
+          }
+        }
+      }
+      if (newLevelData.Liqd && draft.Liqd) {
+        draft.Liqd[1000].obj = newLevelData.Liqd[1000].obj;
+      }
+    });
+  };
+
   // Handle adding a row of supertiles
   const handleAddRow = (side: Side.TOP | Side.BOTTOM) => {
     try {
@@ -295,8 +346,7 @@ export function SupertileMenu({
       const newSupertileCount = hedr.mapWidth / globals.TILES_PER_SUPERTILE;
       const newMapImages = addBlankSupertileTextures(mapImages, newSupertileCount, globals);
       
-      setHeaderData(headerData => ({ ...headerData, ...newLevelData }));
-      setTerrainData(terrainData => ({ ...terrainData, ...newLevelData }));
+      updateLevelData(newLevelData);
       setMapImages(newMapImages);
       
       toast.success(`Added supertile row to ${side}`);
@@ -316,8 +366,7 @@ export function SupertileMenu({
       
       const newLevelData = removeSupertileRow(levelData, side, globals);
       
-      setHeaderData(headerData => ({ ...headerData, ...newLevelData }));
-      setTerrainData(terrainData => ({ ...terrainData, ...newLevelData }));
+      updateLevelData(newLevelData);
       
       toast.success(`Removed supertile row from ${side}`);
     } catch (error) {
@@ -340,8 +389,7 @@ export function SupertileMenu({
       const newSupertileCount = hedr.mapHeight / globals.TILES_PER_SUPERTILE;
       const newMapImages = addBlankSupertileTextures(mapImages, newSupertileCount, globals);
       
-      setHeaderData(headerData => ({ ...headerData, ...newLevelData }));
-      setTerrainData(terrainData => ({ ...terrainData, ...newLevelData }));
+      updateLevelData(newLevelData);
       setMapImages(newMapImages);
       
       toast.success(`Added supertile column to ${side}`);
@@ -361,8 +409,7 @@ export function SupertileMenu({
       
       const newLevelData = removeSupertileColumn(levelData, side, globals);
       
-      setHeaderData(headerData => ({ ...headerData, ...newLevelData }));
-      setTerrainData(terrainData => ({ ...terrainData, ...newLevelData }));
+      updateLevelData(newLevelData);
       
       toast.success(`Removed supertile column from ${side}`);
     } catch (error) {
