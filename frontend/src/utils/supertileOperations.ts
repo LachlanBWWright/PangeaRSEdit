@@ -28,18 +28,17 @@ function adjustSpatialCoordinates(
   data: ottoMaticLevel,
   operation: Operation,
   side: Side,
-  tileSize: number,
   globals: GlobalsInterface
 ): ottoMaticLevel {
   const adjustmentX = (operation === Operation.ADD_COLUMN && side === Side.LEFT) ? 
-    globals.TILES_PER_SUPERTILE * tileSize : 
+    globals.TILES_PER_SUPERTILE * globals.TILE_SIZE : 
     (operation === Operation.REMOVE_COLUMN && side === Side.LEFT) ? 
-    -globals.TILES_PER_SUPERTILE * tileSize : 0;
+    -globals.TILES_PER_SUPERTILE * globals.TILE_SIZE : 0;
     
   const adjustmentZ = (operation === Operation.ADD_ROW && side === Side.TOP) ? 
-    globals.TILES_PER_SUPERTILE * tileSize : 
+    globals.TILES_PER_SUPERTILE * globals.TILE_SIZE : 
     (operation === Operation.REMOVE_ROW && side === Side.TOP) ? 
-    -globals.TILES_PER_SUPERTILE * tileSize : 0;
+    -globals.TILES_PER_SUPERTILE * globals.TILE_SIZE : 0;
 
   // Only adjust if we're adding/removing from top or left
   if (adjustmentX === 0 && adjustmentZ === 0) {
@@ -347,7 +346,6 @@ export function addSupertileRow(
     baseResult, 
     Operation.ADD_ROW, 
     side, 
-    header.tileSize, 
     globals
   );
 }
@@ -480,7 +478,6 @@ export function addSupertileColumn(
     baseResult, 
     Operation.ADD_COLUMN, 
     side, 
-    header.tileSize, 
     globals
   );
 }
@@ -583,7 +580,6 @@ export function removeSupertileRow(
     baseResult, 
     Operation.REMOVE_ROW, 
     side, 
-    header.tileSize, 
     globals
   );
 }
@@ -692,7 +688,6 @@ export function removeSupertileColumn(
     baseResult, 
     Operation.REMOVE_COLUMN, 
     side, 
-    header.tileSize, 
     globals
   );
 }
