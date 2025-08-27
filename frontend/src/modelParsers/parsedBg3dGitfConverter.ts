@@ -279,7 +279,7 @@ export function bg3dParsedToGLTF(parsed: BG3DParseResult, originalBinaryData?: {
     gltfMeshes.push(mesh);
   });
 
-  // 5. Scene hierarchy
+  // 5. Scene hierarchy with proper skinned mesh structure
   parsed.groups.forEach((group, i) => {
     const groupNode = doc.createNode();
     groupNode.setName(`Group_${i.toString().padStart(4, "0")}`);
@@ -305,9 +305,15 @@ export function bg3dParsedToGLTF(parsed: BG3DParseResult, originalBinaryData?: {
               // Apply skin to mesh if available
               if (gltfSkin) {
                 meshNode.setSkin(gltfSkin);
+                console.log(`Applied skin to mesh ${meshNode.getName()}`);
+                
+                // For skinned meshes, add directly to scene root to avoid hierarchy issues
+                scene.addChild(meshNode);
+                console.log(`Added skinned mesh ${meshNode.getName()} directly to scene`);
+              } else {
+                // Non-skinned meshes follow normal hierarchy
+                node.addChild(meshNode);
               }
-              
-              node.addChild(meshNode);
             }
           }
         }
@@ -315,7 +321,11 @@ export function bg3dParsedToGLTF(parsed: BG3DParseResult, originalBinaryData?: {
     }
 
     addGeometriesToNode(groupNode, group);
-    scene.addChild(groupNode);
+    
+    // Only add group node to scene if it has non-skinned children
+    if (groupNode.listChildren().length > 0) {
+      scene.addChild(groupNode);
+    }
   });
 
   // Add animations to the document  

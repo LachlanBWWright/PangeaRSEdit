@@ -226,8 +226,38 @@ function buildJointHierarchy(joints: Node[], bones: BG3DBone[], scene: any): voi
     });
   } else {
     // Use original parent bone indices
+    // First pass: identify all root joints (no parent or invalid parent)
+    const rootJointIndices: number[] = [];
+    
+    bones.forEach((bone, index) => {
+      if (bone.parentBone < 0 || bone.parentBone >= bones.length) {
+        rootJointIndices.push(index);
+      }
+    });
+    
+    // If no root joints found, make the first joint the root
+    if (rootJointIndices.length === 0 && joints.length > 0) {
+      console.log("No natural root joints found, making first joint the root");
+      rootJointIndices.push(0);
+    }
+    
+    // Add all root joints to scene first
+    rootJointIndices.forEach(index => {
+      const joint = joints[index];
+      const bone = bones[index];
+      scene.addChild(joint);
+      rootJoints.push(bone.name);
+      console.log(`  ${bone.name} -> root joint (added to scene)`);
+    });
+    
+    // Second pass: build hierarchy for all non-root joints
     bones.forEach((bone, index) => {
       const joint = joints[index];
+      
+      // Skip joints that are already added as root joints
+      if (rootJointIndices.includes(index)) {
+        return;
+      }
       
       if (bone.parentBone >= 0 && bone.parentBone < bones.length) {
         const parentJoint = joints[bone.parentBone];
@@ -235,19 +265,73 @@ function buildJointHierarchy(joints: Node[], bones: BG3DBone[], scene: any): voi
           parentJoint.addChild(joint);
           console.log(`  ${bone.name} -> child of ${bones[bone.parentBone].name}`);
         } else {
+          // Fallback: add to scene if parent joint not found
           scene.addChild(joint);
           rootJoints.push(bone.name);
-          console.log(`  ${bone.name} -> root joint (parent not found)`);
+          console.log(`  ${bone.name} -> root joint (parent not found, fallback to scene)`);
         }
-      } else {
-        scene.addChild(joint);
-        rootJoints.push(bone.name);
-        console.log(`  ${bone.name} -> root joint`);
       }
     });
   }
   
   console.log(`Hierarchy complete: ${rootJoints.length} root joints [${rootJoints.join(', ')}]`);
+  
+  // Verification: ensure all joints are reachable from scene
+  const unreachableJoints: string[] = [];
+  const sceneChildren = scene.listChildren();
+  
+  joints.forEach((joint, index) => {
+    const bone = bones[index];
+    
+    // Check if joint is reachable from scene by traversing the hierarchy
+    let isReachable = false;
+    
+    // Check if joint is directly in scene
+    if (sceneChildren.includes(joint)) {
+      isReachable = true;
+    } else {
+      // Check if joint is reachable through any scene child's hierarchy
+      for (const sceneChild of sceneChildren) {
+        if (isJointInHierarchy(joint, sceneChild)) {
+          isReachable = true;
+          break;
+        }
+      }
+    }
+    
+    if (!isReachable) {
+      unreachableJoints.push(bone.name);
+      console.warn(`Joint ${bone.name} is not reachable from scene - adding as fallback root`);
+      // Add unreachable joints directly to scene as a fallback
+      scene.addChild(joint);
+    }
+  });
+  
+  if (unreachableJoints.length > 0) {
+    console.warn(`Fixed ${unreachableJoints.length} unreachable joints: [${unreachableJoints.join(', ')}]`);
+  } else {
+    console.log("✅ All joints are reachable from scene");
+  }
+}
+
+/**
+ * Helper function to check if a joint is in a node's hierarchy
+ */
+function isJointInHierarchy(targetJoint: Node, parentNode: Node): boolean {
+  const children = parentNode.listChildren();
+  
+  if (children.includes(targetJoint)) {
+    return true;
+  }
+  
+  // Recursively check children
+  for (const child of children) {
+    if (isJointInHierarchy(targetJoint, child)) {
+      return true;
+    }
+  }
+  
+  return false;
 }
 
 /**
