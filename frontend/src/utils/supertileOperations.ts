@@ -1,7 +1,8 @@
 import { 
   ottoMaticLevel, 
   ottoSupertileGrid, 
-  ottoTileAttribute 
+  ottoTileAttribute,
+  ottoFenceNub
 } from "../python/structSpecs/ottoMaticInterface";
 import { GlobalsInterface } from "../data/globals/globals";
 
@@ -17,6 +18,156 @@ export enum Operation {
   REMOVE_ROW = "remove_row", 
   ADD_COLUMN = "add_column",
   REMOVE_COLUMN = "remove_column"
+}
+
+/**
+ * Adjusts spatial coordinates for items, splines, fences, and liquids
+ * when adding/removing from top/left sides
+ */
+function adjustSpatialCoordinates(
+  data: ottoMaticLevel,
+  operation: Operation,
+  side: Side,
+  tileSize: number,
+  globals: GlobalsInterface
+): ottoMaticLevel {
+  const adjustmentX = (operation === Operation.ADD_COLUMN && side === Side.LEFT) ? 
+    globals.TILES_PER_SUPERTILE * tileSize : 
+    (operation === Operation.REMOVE_COLUMN && side === Side.LEFT) ? 
+    -globals.TILES_PER_SUPERTILE * tileSize : 0;
+    
+  const adjustmentZ = (operation === Operation.ADD_ROW && side === Side.TOP) ? 
+    globals.TILES_PER_SUPERTILE * tileSize : 
+    (operation === Operation.REMOVE_ROW && side === Side.TOP) ? 
+    -globals.TILES_PER_SUPERTILE * tileSize : 0;
+
+  // Only adjust if we're adding/removing from top or left
+  if (adjustmentX === 0 && adjustmentZ === 0) {
+    return data;
+  }
+
+  const result = { ...data };
+
+  // Adjust items
+  if (data.Itms && data.Itms[1000]) {
+    result.Itms = {
+      ...data.Itms,
+      1000: {
+        ...data.Itms[1000],
+        obj: data.Itms[1000].obj.map(item => ({
+          ...item,
+          x: item.x + adjustmentX,
+          z: item.z + adjustmentZ
+        }))
+      }
+    };
+  }
+
+  // Adjust fences
+  if (data.Fenc && data.Fenc[1000]) {
+    result.Fenc = {
+      ...data.Fenc,
+      1000: {
+        ...data.Fenc[1000],
+        obj: data.Fenc[1000].obj.map(fence => ({
+          ...fence,
+          bbLeft: fence.bbLeft + adjustmentX,
+          bbRight: fence.bbRight + adjustmentX,
+          bbTop: fence.bbTop + adjustmentZ,
+          bbBottom: fence.bbBottom + adjustmentZ
+        }))
+      }
+    };
+  }
+
+  // Adjust fence nubs
+  if (data.FnNb) {
+    result.FnNb = {};
+    for (const key in data.FnNb) {
+      if (data.FnNb.hasOwnProperty(key)) {
+        const fenceNubData = data.FnNb[Number(key)];
+        result.FnNb[Number(key)] = {
+          ...fenceNubData,
+          obj: fenceNubData.obj.map(nub => [nub[0] + adjustmentX, nub[1] + adjustmentZ] as ottoFenceNub)
+        };
+      }
+    }
+  }
+
+  // Adjust splines
+  if (data.Spln && data.Spln[1000]) {
+    result.Spln = {
+      ...data.Spln,
+      1000: {
+        ...data.Spln[1000],
+        obj: data.Spln[1000].obj.map(spline => ({
+          ...spline,
+          bbLeft: spline.bbLeft + adjustmentX,
+          bbRight: spline.bbRight + adjustmentX,
+          bbTop: spline.bbTop + adjustmentZ,
+          bbBottom: spline.bbBottom + adjustmentZ
+        }))
+      }
+    };
+  }
+
+  // Adjust spline nubs
+  if (data.SpNb) {
+    result.SpNb = {};
+    for (const key in data.SpNb) {
+      if (data.SpNb.hasOwnProperty(key)) {
+        const splineNubData = data.SpNb[Number(key)];
+        result.SpNb[Number(key)] = {
+          ...splineNubData,
+          obj: splineNubData.obj.map(nub => ({
+            ...nub,
+            x: nub.x + adjustmentX,
+            z: nub.z + adjustmentZ
+          }))
+        };
+      }
+    }
+  }
+
+  // Adjust spline points
+  if (data.SpPt) {
+    result.SpPt = {};
+    for (const key in data.SpPt) {
+      if (data.SpPt.hasOwnProperty(key)) {
+        const splinePointData = data.SpPt[Number(key)];
+        result.SpPt[Number(key)] = {
+          ...splinePointData,
+          obj: splinePointData.obj.map(point => ({
+            ...point,
+            x: point.x + adjustmentX,
+            z: point.z + adjustmentZ
+          }))
+        };
+      }
+    }
+  }
+
+  // Adjust liquid/water bodies
+  if (data.Liqd && data.Liqd[1000]) {
+    result.Liqd = {
+      ...data.Liqd,
+      1000: {
+        ...data.Liqd[1000],
+        obj: data.Liqd[1000].obj.map(liquid => ({
+          ...liquid,
+          bBoxLeft: liquid.bBoxLeft + adjustmentX,
+          bBoxRight: liquid.bBoxRight + adjustmentX,
+          bBoxTop: liquid.bBoxTop + adjustmentZ,
+          bBoxBottom: liquid.bBoxBottom + adjustmentZ,
+          hotSpotX: liquid.hotSpotX + adjustmentX,
+          hotSpotZ: liquid.hotSpotZ + adjustmentZ,
+          nubs: liquid.nubs.map(nub => [nub[0] + adjustmentX, nub[1] + adjustmentZ] as [number, number])
+        }))
+      }
+    };
+  }
+
+  return result;
 }
 
 /**
@@ -121,11 +272,17 @@ export function addSupertileRow(
   
   const newTileAttributes: ottoTileAttribute[] = [];
   const newLayerData: number[] = [];
-  const newYCoords: number[] = [];
   
   for (let i = 0; i < newTileCount; i++) {
     newTileAttributes.push(createBlankTileAttribute());
     newLayerData.push(0); // Default layer
+  }
+  
+  // YCrd represents height data at tile vertices, so it needs (width+1) * (height+1) entries
+  // When adding a row, we need to add (width+1) * TILES_PER_SUPERTILE new Y coordinates
+  const newYCoordCount = (header.mapWidth + 1) * globals.TILES_PER_SUPERTILE;
+  const newYCoords: number[] = [];
+  for (let i = 0; i < newYCoordCount; i++) {
     newYCoords.push(0); // Default Y coordinate
   }
   
@@ -150,7 +307,8 @@ export function addSupertileRow(
     mapHeight: header.mapHeight + globals.TILES_PER_SUPERTILE
   };
   
-  return {
+  // Create the base level data with terrain changes
+  const baseResult = {
     ...data,
     Hedr: {
       1000: {
@@ -183,6 +341,15 @@ export function addSupertileRow(
       }
     }
   };
+
+  // Apply coordinate adjustments for spatial data when adding from top
+  return adjustSpatialCoordinates(
+    baseResult, 
+    Operation.ADD_ROW, 
+    side, 
+    header.tileSize, 
+    globals
+  );
 }
 
 /**
@@ -218,11 +385,10 @@ export function addSupertileColumn(
     }
   }
   
-  // Create new tile data arrays
+  // Create new tile data arrays for Atrb and Layr (per tile)
   const newTileWidth = currentTileWidth + globals.TILES_PER_SUPERTILE;
   const newAtrb: ottoTileAttribute[] = [];
   const newLayr: number[] = [];
-  const newYCrd: number[] = [];
   
   for (let tileRow = 0; tileRow < header.mapHeight; tileRow++) {
     for (let tileCol = 0; tileCol < newTileWidth; tileCol++) {
@@ -230,19 +396,40 @@ export function addSupertileColumn(
         // Insert blank tiles at start of row
         newAtrb.push(createBlankTileAttribute());
         newLayr.push(0);
-        newYCrd.push(0);
       } else if (side === Side.RIGHT && tileCol >= currentTileWidth) {
         // Insert blank tiles at end of row
         newAtrb.push(createBlankTileAttribute());
         newLayr.push(0);
-        newYCrd.push(0);
       } else {
         // Copy existing tile
         const srcCol = side === Side.LEFT ? tileCol - globals.TILES_PER_SUPERTILE : tileCol;
         const srcIndex = tileCoordsToIndex(srcCol, tileRow, currentTileWidth);
         newAtrb.push(data.Atrb[1000].obj[srcIndex]);
         newLayr.push(data.Layr[1000].obj[srcIndex]);
-        newYCrd.push(data.YCrd[1000].obj[srcIndex]);
+      }
+    }
+  }
+  
+  // Create new Y coordinate data (per vertex, not per tile)
+  // YCrd has (width+1) * (height+1) entries for tile vertices
+  const newYCoordWidth = newTileWidth + 1;
+  const newYCoordHeight = header.mapHeight + 1;
+  const currentYCoordWidth = currentTileWidth + 1;
+  const newYCrd: number[] = [];
+  
+  for (let yRow = 0; yRow < newYCoordHeight; yRow++) {
+    for (let yCol = 0; yCol < newYCoordWidth; yCol++) {
+      if (side === Side.LEFT && yCol < globals.TILES_PER_SUPERTILE) {
+        // Insert blank Y coordinates at start of row
+        newYCrd.push(0);
+      } else if (side === Side.RIGHT && yCol >= currentYCoordWidth) {
+        // Insert blank Y coordinates at end of row
+        newYCrd.push(0);
+      } else {
+        // Copy existing Y coordinate
+        const srcYCol = side === Side.LEFT ? yCol - globals.TILES_PER_SUPERTILE : yCol;
+        const srcYIndex = yRow * currentYCoordWidth + srcYCol;
+        newYCrd.push(data.YCrd[1000].obj[srcYIndex]);
       }
     }
   }
@@ -253,7 +440,8 @@ export function addSupertileColumn(
     mapWidth: header.mapWidth + globals.TILES_PER_SUPERTILE
   };
   
-  return {
+  // Create the base level data with terrain changes
+  const baseResult = {
     ...data,
     Hedr: {
       1000: {
@@ -286,6 +474,15 @@ export function addSupertileColumn(
       }
     }
   };
+
+  // Apply coordinate adjustments for spatial data when adding from left
+  return adjustSpatialCoordinates(
+    baseResult, 
+    Operation.ADD_COLUMN, 
+    side, 
+    header.tileSize, 
+    globals
+  );
 }
 
 /**
@@ -313,22 +510,31 @@ export function removeSupertileRow(
     newSTgd.splice(-currentSupertileWidth, currentSupertileWidth);
   }
   
-  // Remove tile data
+  // Remove tile data (Atrb and Layr are per tile)
   const tilesPerSupertileRow = currentSupertileWidth * globals.TILES_PER_SUPERTILE;
   const tilesToRemove = globals.TILES_PER_SUPERTILE * tilesPerSupertileRow;
   
   const newAtrb = [...data.Atrb[1000].obj];
   const newLayr = [...data.Layr[1000].obj];
-  const newYCrd = [...data.YCrd[1000].obj];
   
   if (side === Side.TOP) {
     newAtrb.splice(0, tilesToRemove);
     newLayr.splice(0, tilesToRemove);
-    newYCrd.splice(0, tilesToRemove);
   } else {
     newAtrb.splice(-tilesToRemove, tilesToRemove);
     newLayr.splice(-tilesToRemove, tilesToRemove);
-    newYCrd.splice(-tilesToRemove, tilesToRemove);
+  }
+  
+  // Remove Y coordinate data (YCrd is per vertex, has (width+1) * (height+1) entries)
+  // When removing a row, we need to remove (width+1) * TILES_PER_SUPERTILE Y coordinates
+  const yCoordWidth = header.mapWidth + 1;
+  const yCoordsToRemove = yCoordWidth * globals.TILES_PER_SUPERTILE;
+  const newYCrd = [...data.YCrd[1000].obj];
+  
+  if (side === Side.TOP) {
+    newYCrd.splice(0, yCoordsToRemove);
+  } else {
+    newYCrd.splice(-yCoordsToRemove, yCoordsToRemove);
   }
   
   // Update header
@@ -337,7 +543,8 @@ export function removeSupertileRow(
     mapHeight: header.mapHeight - globals.TILES_PER_SUPERTILE
   };
   
-  return {
+  // Create the base level data with terrain changes
+  const baseResult = {
     ...data,
     Hedr: {
       1000: {
@@ -370,6 +577,15 @@ export function removeSupertileRow(
       }
     }
   };
+
+  // Apply coordinate adjustments for spatial data when removing from top
+  return adjustSpatialCoordinates(
+    baseResult, 
+    Operation.REMOVE_ROW, 
+    side, 
+    header.tileSize, 
+    globals
+  );
 }
 
 /**
@@ -401,11 +617,10 @@ export function removeSupertileColumn(
     }
   }
   
-  // Create new tile data arrays
+  // Create new tile data arrays for Atrb and Layr (per tile)
   const newTileWidth = currentTileWidth - globals.TILES_PER_SUPERTILE;
   const newAtrb: ottoTileAttribute[] = [];
   const newLayr: number[] = [];
-  const newYCrd: number[] = [];
   
   for (let tileRow = 0; tileRow < header.mapHeight; tileRow++) {
     for (let tileCol = 0; tileCol < newTileWidth; tileCol++) {
@@ -413,7 +628,21 @@ export function removeSupertileColumn(
       const srcIndex = tileCoordsToIndex(srcCol, tileRow, currentTileWidth);
       newAtrb.push(data.Atrb[1000].obj[srcIndex]);
       newLayr.push(data.Layr[1000].obj[srcIndex]);
-      newYCrd.push(data.YCrd[1000].obj[srcIndex]);
+    }
+  }
+  
+  // Create new Y coordinate data (per vertex, not per tile)
+  // YCrd has (width+1) * (height+1) entries for tile vertices
+  const newYCoordWidth = newTileWidth + 1;
+  const newYCoordHeight = header.mapHeight + 1;
+  const currentYCoordWidth = currentTileWidth + 1;
+  const newYCrd: number[] = [];
+  
+  for (let yRow = 0; yRow < newYCoordHeight; yRow++) {
+    for (let yCol = 0; yCol < newYCoordWidth; yCol++) {
+      const srcYCol = side === Side.LEFT ? yCol + globals.TILES_PER_SUPERTILE : yCol;
+      const srcYIndex = yRow * currentYCoordWidth + srcYCol;
+      newYCrd.push(data.YCrd[1000].obj[srcYIndex]);
     }
   }
   
@@ -423,7 +652,8 @@ export function removeSupertileColumn(
     mapWidth: header.mapWidth - globals.TILES_PER_SUPERTILE
   };
   
-  return {
+  // Create the base level data with terrain changes
+  const baseResult = {
     ...data,
     Hedr: {
       1000: {
@@ -456,6 +686,15 @@ export function removeSupertileColumn(
       }
     }
   };
+
+  // Apply coordinate adjustments for spatial data when removing from left
+  return adjustSpatialCoordinates(
+    baseResult, 
+    Operation.REMOVE_COLUMN, 
+    side, 
+    header.tileSize, 
+    globals
+  );
 }
 
 /**
