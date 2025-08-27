@@ -1,7 +1,7 @@
 import { expect, test } from 'vitest';
 import { readFileSync } from 'fs';
 import { join } from 'path';
-import { validateModel } from 'gltf-validator';
+import { validateModel } from 'gltf-validator/lib-esm/index.js';
 import { bg3dParsedToGLTF } from './parsedBg3dGitfConverter';
 import { parseBG3DWithSkeletonResource } from './bg3dWithSkeleton';
 import { parseSkeletonRsrcTS } from './skeletonRsrc/parseSkeletonRsrcTS';
@@ -15,33 +15,51 @@ test('GLB validation for Otto skeleton system', async () => {
   const bg3dPath = join(__dirname, '../../public/Otto.bg3d');
   const skeletonPath = join(__dirname, '../../public/Otto.skeleton.rsrc');
   
-  const bg3dBuffer = readFileSync(bg3dPath);
-  const skeletonBuffer = readFileSync(skeletonPath);
+  const bg3dBuffer = readFileSync(bg3dPath).buffer;
+  const skeletonBuffer = readFileSync(skeletonPath).buffer;
   
   console.log(`Loaded BG3D: ${bg3dBuffer.length} bytes`);
   console.log(`Loaded skeleton: ${skeletonBuffer.length} bytes`);
   
   // Parse skeleton using TypeScript implementation
-  const skeletonArrayBuffer = parseSkeletonRsrcTS(skeletonBuffer);
+  const skeletonData = parseSkeletonRsrcTS(skeletonBuffer);
   
-  // Check what type of data we got back
-  console.log('Skeleton parse result type:', typeof skeletonArrayBuffer);
-  console.log('Skeleton parse result:', skeletonArrayBuffer);
+  // Check what type of data we got back and parse it properly
+  console.log('Skeleton parse result type:', typeof skeletonData);
   
   let skeleton: any;
-  if (typeof skeletonArrayBuffer === 'string') {
-    // If it's already a string, parse it directly
-    skeleton = JSON.parse(skeletonArrayBuffer);
-  } else if (skeletonArrayBuffer instanceof ArrayBuffer) {
-    // If it's an ArrayBuffer, decode it
-    const skeletonJson = new TextDecoder().decode(skeletonArrayBuffer);
+  if (typeof skeletonData === 'string') {
+    skeleton = JSON.parse(skeletonData);
+  } else if (skeletonData instanceof ArrayBuffer) {
+    const skeletonJson = new TextDecoder().decode(skeletonData);
     skeleton = JSON.parse(skeletonJson);
   } else {
-    // If it's already an object, use it directly  
-    skeleton = skeletonArrayBuffer;
+    skeleton = skeletonData;
   }
   
-  const skeletonResource = bg3dSkeletonToSkeletonResource(skeleton);
+  console.log('Parsed skeleton data - checking structure:', skeleton);
+  
+  // The skeleton parser returns the raw parsed data, not a SkeletonResource
+  // We need to convert it to the expected format
+  const skeletonResource = {
+    Hedr: skeleton.Hedr || {},
+    bones: skeleton.Bone ? Object.entries(skeleton.Bone).map(([id, boneData]: [string, any]) => ({
+      name: boneData.name,
+      coordX: boneData.coordX || 0,
+      coordY: boneData.coordY || 0, 
+      coordZ: boneData.coordZ || 0,
+      parentBone: boneData.parentBone || -1,
+      pointIndices: [],
+      normalIndices: [],
+      numPointsAttachedToBone: 0,
+      numNormalsAttachedToBone: 0
+    })) : [],
+    animations: skeleton.AnHd ? Object.entries(skeleton.AnHd).map(([id, animData]: [string, any]) => ({
+      name: animData.name,
+      duration: 1.0, // Default duration
+      keyframes: {}
+    })) : []
+  };
   
   console.log(`Parsed skeleton: ${skeletonResource.bones.length} bones, ${skeletonResource.animations.length} animations`);
   

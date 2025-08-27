@@ -190,13 +190,23 @@ function buildJointHierarchy(joints: Node[], bones: BG3DBone[], scene: any): voi
       "Left Hand": "LeftElbow"
     };
     
-    // Add all joints to scene first (in case some don't have parents)
-    joints.forEach((joint, index) => {
-      scene.addChild(joint);
-      rootJoints.push(bones[index].name);
+    // CRITICAL FIX: Add root joints to scene first, then build hierarchy
+    // Find all root joints (those without parents in our hierarchy)
+    const allBoneNames = bones.map(b => b.name);
+    const rootJointNames = allBoneNames.filter(name => !boneHierarchy[name]);
+    
+    // Add root joints to scene
+    rootJointNames.forEach(name => {
+      const index = bones.findIndex(b => b.name === name);
+      if (index >= 0) {
+        const joint = joints[index];
+        scene.addChild(joint);
+        rootJoints.push(name);
+        console.log(`  ${name} -> root joint (added to scene)`);
+      }
     });
     
-    // Then build hierarchy by moving joints under parents
+    // Build hierarchy without removing from scene - only add children to parents
     bones.forEach((bone, index) => {
       const joint = joints[index];
       const expectedParentName = boneHierarchy[bone.name];
@@ -207,20 +217,26 @@ function buildJointHierarchy(joints: Node[], bones: BG3DBone[], scene: any): voi
           const parentJoint = joints[parentIndex];
           if (parentJoint && joint) {
             try {
-              // Remove from scene and add to parent
-              scene.removeChild(joint);
+              // FIXED: Only add as child, don't remove from scene
               parentJoint.addChild(joint);
-              const rootIndex = rootJoints.indexOf(bone.name);
-              if (rootIndex >= 0) rootJoints.splice(rootIndex, 1);
               console.log(`  ${bone.name} -> child of ${expectedParentName}`);
             } catch (e) {
               console.log(`  Warning: Failed to add ${bone.name} as child of ${expectedParentName}:`, e);
+              // Fallback: add to scene if hierarchy fails
+              scene.addChild(joint);
+              rootJoints.push(bone.name);
             }
           } else {
             console.log(`  Warning: Parent joint ${parentJoint ? 'found' : 'null'} or joint ${joint ? 'found' : 'null'} for ${bone.name} -> ${expectedParentName}`);
+            // Fallback: add to scene if parent not found
+            scene.addChild(joint);
+            rootJoints.push(bone.name);
           }
         } else {
           console.log(`  Warning: Parent index ${parentIndex} out of range for ${bone.name} -> ${expectedParentName}`);
+          // Fallback: add to scene if parent index invalid
+          scene.addChild(joint);
+          rootJoints.push(bone.name);
         }
       }
     });
