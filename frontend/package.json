@@ -34,6 +34,7 @@
     "buffer": "^6.0.3",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "gltf-validator": "^2.0.0-dev.3.10",
     "jimp": "^1.6.0",
     "jotai": "^2.10.1",
     "jotai-immer": "^0.4.1",

@@ -1,17 +1,16 @@
 import { defineConfig, devices } from '@playwright/test';
 
 export default defineConfig({
-  testDir: './src',
-  testMatch: '**/test-otto-functionality.spec.ts',
-  fullyParallel: false,
+  testDir: './',
+  fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: 0,
   workers: 1,
   reporter: 'list',
   use: {
-    baseURL: 'http://localhost:5173/',
+    baseURL: 'http://localhost:5175/PangeaRSEdit/',
     trace: 'on-first-retry',
-    screenshot: 'on',
+    headless: true,
   },
 
   projects: [

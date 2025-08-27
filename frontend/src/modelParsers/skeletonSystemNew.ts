@@ -12,6 +12,26 @@ import { Document, Node, Skin, Animation } from "@gltf-transform/core";
 import { BG3DSkeleton, BG3DBone, BG3DAnimation } from "./parseBG3D";
 
 /**
+ * Convert Euler angles (in radians) to quaternion
+ * Order: X-Y-Z rotation order
+ */
+function eulerToQuaternion(x: number, y: number, z: number): [number, number, number, number] {
+  const c1 = Math.cos(x / 2);
+  const c2 = Math.cos(y / 2);
+  const c3 = Math.cos(z / 2);
+  const s1 = Math.sin(x / 2);
+  const s2 = Math.sin(y / 2);
+  const s3 = Math.sin(z / 2);
+
+  const qx = s1 * c2 * c3 + c1 * s2 * s3;
+  const qy = c1 * s2 * c3 - s1 * c2 * s3;
+  const qz = c1 * c2 * s3 + s1 * s2 * c3;
+  const qw = c1 * c2 * c3 - s1 * s2 * s3;
+
+  return [qx, qy, qz, qw];
+}
+
+/**
  * Processed animation data ready for glTF conversion
  */
 interface ProcessedAnimation {
@@ -170,13 +190,23 @@ function buildJointHierarchy(joints: Node[], bones: BG3DBone[], scene: any): voi
       "Left Hand": "LeftElbow"
     };
     
-    // Add all joints to scene first (in case some don't have parents)
-    joints.forEach((joint, index) => {
-      scene.addChild(joint);
-      rootJoints.push(bones[index].name);
+    // CRITICAL FIX: Add root joints to scene first, then build hierarchy
+    // Find all root joints (those without parents in our hierarchy)
+    const allBoneNames = bones.map(b => b.name);
+    const rootJointNames = allBoneNames.filter(name => !boneHierarchy[name]);
+    
+    // Add root joints to scene
+    rootJointNames.forEach(name => {
+      const index = bones.findIndex(b => b.name === name);
+      if (index >= 0) {
+        const joint = joints[index];
+        scene.addChild(joint);
+        rootJoints.push(name);
+        console.log(`  ${name} -> root joint (added to scene)`);
+      }
     });
     
-    // Then build hierarchy by moving joints under parents
+    // Build hierarchy without removing from scene - only add children to parents
     bones.forEach((bone, index) => {
       const joint = joints[index];
       const expectedParentName = boneHierarchy[bone.name];
@@ -187,27 +217,63 @@ function buildJointHierarchy(joints: Node[], bones: BG3DBone[], scene: any): voi
           const parentJoint = joints[parentIndex];
           if (parentJoint && joint) {
             try {
-              // Remove from scene and add to parent
-              scene.removeChild(joint);
+              // FIXED: Only add as child, don't remove from scene
               parentJoint.addChild(joint);
-              const rootIndex = rootJoints.indexOf(bone.name);
-              if (rootIndex >= 0) rootJoints.splice(rootIndex, 1);
               console.log(`  ${bone.name} -> child of ${expectedParentName}`);
             } catch (e) {
               console.log(`  Warning: Failed to add ${bone.name} as child of ${expectedParentName}:`, e);
+              // Fallback: add to scene if hierarchy fails
+              scene.addChild(joint);
+              rootJoints.push(bone.name);
             }
           } else {
             console.log(`  Warning: Parent joint ${parentJoint ? 'found' : 'null'} or joint ${joint ? 'found' : 'null'} for ${bone.name} -> ${expectedParentName}`);
+            // Fallback: add to scene if parent not found
+            scene.addChild(joint);
+            rootJoints.push(bone.name);
           }
         } else {
           console.log(`  Warning: Parent index ${parentIndex} out of range for ${bone.name} -> ${expectedParentName}`);
+          // Fallback: add to scene if parent index invalid
+          scene.addChild(joint);
+          rootJoints.push(bone.name);
         }
       }
     });
   } else {
     // Use original parent bone indices
+    // First pass: identify all root joints (no parent or invalid parent)
+    const rootJointIndices: number[] = [];
+    
+    bones.forEach((bone, index) => {
+      if (bone.parentBone < 0 || bone.parentBone >= bones.length) {
+        rootJointIndices.push(index);
+      }
+    });
+    
+    // If no root joints found, make the first joint the root
+    if (rootJointIndices.length === 0 && joints.length > 0) {
+      console.log("No natural root joints found, making first joint the root");
+      rootJointIndices.push(0);
+    }
+    
+    // Add all root joints to scene first
+    rootJointIndices.forEach(index => {
+      const joint = joints[index];
+      const bone = bones[index];
+      scene.addChild(joint);
+      rootJoints.push(bone.name);
+      console.log(`  ${bone.name} -> root joint (added to scene)`);
+    });
+    
+    // Second pass: build hierarchy for all non-root joints
     bones.forEach((bone, index) => {
       const joint = joints[index];
+      
+      // Skip joints that are already added as root joints
+      if (rootJointIndices.includes(index)) {
+        return;
+      }
       
       if (bone.parentBone >= 0 && bone.parentBone < bones.length) {
         const parentJoint = joints[bone.parentBone];
@@ -215,19 +281,73 @@ function buildJointHierarchy(joints: Node[], bones: BG3DBone[], scene: any): voi
           parentJoint.addChild(joint);
           console.log(`  ${bone.name} -> child of ${bones[bone.parentBone].name}`);
         } else {
+          // Fallback: add to scene if parent joint not found
           scene.addChild(joint);
           rootJoints.push(bone.name);
-          console.log(`  ${bone.name} -> root joint (parent not found)`);
+          console.log(`  ${bone.name} -> root joint (parent not found, fallback to scene)`);
         }
-      } else {
-        scene.addChild(joint);
-        rootJoints.push(bone.name);
-        console.log(`  ${bone.name} -> root joint`);
       }
     });
   }
   
   console.log(`Hierarchy complete: ${rootJoints.length} root joints [${rootJoints.join(', ')}]`);
+  
+  // Verification: ensure all joints are reachable from scene
+  const unreachableJoints: string[] = [];
+  const sceneChildren = scene.listChildren();
+  
+  joints.forEach((joint, index) => {
+    const bone = bones[index];
+    
+    // Check if joint is reachable from scene by traversing the hierarchy
+    let isReachable = false;
+    
+    // Check if joint is directly in scene
+    if (sceneChildren.includes(joint)) {
+      isReachable = true;
+    } else {
+      // Check if joint is reachable through any scene child's hierarchy
+      for (const sceneChild of sceneChildren) {
+        if (isJointInHierarchy(joint, sceneChild)) {
+          isReachable = true;
+          break;
+        }
+      }
+    }
+    
+    if (!isReachable) {
+      unreachableJoints.push(bone.name);
+      console.warn(`Joint ${bone.name} is not reachable from scene - adding as fallback root`);
+      // Add unreachable joints directly to scene as a fallback
+      scene.addChild(joint);
+    }
+  });
+  
+  if (unreachableJoints.length > 0) {
+    console.warn(`Fixed ${unreachableJoints.length} unreachable joints: [${unreachableJoints.join(', ')}]`);
+  } else {
+    console.log("✅ All joints are reachable from scene");
+  }
+}
+
+/**
+ * Helper function to check if a joint is in a node's hierarchy
+ */
+function isJointInHierarchy(targetJoint: Node, parentNode: Node): boolean {
+  const children = parentNode.listChildren();
+  
+  if (children.includes(targetJoint)) {
+    return true;
+  }
+  
+  // Recursively check children
+  for (const child of children) {
+    if (isJointInHierarchy(targetJoint, child)) {
+      return true;
+    }
+  }
+  
+  return false;
 }
 
 /**
@@ -310,7 +430,9 @@ function processOttoAnimations(bg3dAnimations: BG3DAnimation[], bones: BG3DBone[
         
         // Extract translation data
         const translations = keyframes.map(kf => [kf.coordX, kf.coordY, kf.coordZ]).flat();
-        if (hasVariation(translations)) {
+        const hasTranslationVar = hasVariation(translations);
+        console.log(`    ${bone.name} translation variation: ${hasTranslationVar} (sample: [${translations.slice(0, 6).join(', ')}...])`);
+        if (hasTranslationVar) {
           channels.push({
             boneIndex,
             path: 'translation',
@@ -319,10 +441,13 @@ function processOttoAnimations(bg3dAnimations: BG3DAnimation[], bones: BG3DBone[
           });
         }
         
-        // Extract rotation data (convert to quaternions if needed)
-        const rotations = keyframes.map(kf => [kf.rotationX, kf.rotationY, kf.rotationZ]).flat();
-        if (hasVariation(rotations)) {
-          // For now, treat as Euler angles - could convert to quaternions later
+        // Extract rotation data (convert Euler angles to quaternions)
+        const rotationEulers = keyframes.map(kf => [kf.rotationX, kf.rotationY, kf.rotationZ]);
+        const rotationQuats = rotationEulers.map(euler => eulerToQuaternion(euler[0], euler[1], euler[2]));
+        const rotations = rotationQuats.flat();
+        const hasRotationVar = hasVariation(rotations);
+        console.log(`    ${bone.name} rotation variation: ${hasRotationVar} (${rotationQuats.length} quaternions)`);
+        if (hasRotationVar) {
           channels.push({
             boneIndex,
             path: 'rotation',
@@ -333,7 +458,9 @@ function processOttoAnimations(bg3dAnimations: BG3DAnimation[], bones: BG3DBone[
         
         // Extract scale data
         const scales = keyframes.map(kf => [kf.scaleX, kf.scaleY, kf.scaleZ]).flat();
-        if (hasVariation(scales)) {
+        const hasScaleVar = hasVariation(scales);
+        console.log(`    ${bone.name} scale variation: ${hasScaleVar} (sample: [${scales.slice(0, 6).join(', ')}...])`);
+        if (hasScaleVar) {
           channels.push({
             boneIndex,
             path: 'scale',
@@ -359,10 +486,16 @@ function processOttoAnimations(bg3dAnimations: BG3DAnimation[], bones: BG3DBone[
 /**
  * Create glTF animations with proper node targeting
  */
-function createGltfAnimations(doc: Document, joints: Node[], processedAnimations: ProcessedAnimation[]): Animation[] {
+function createGltfAnimations(doc: Document, joints: Node[], processedAnimations: ProcessedAnimation[], buffer?: any): Animation[] {
   console.log("Creating glTF animations...");
   
-  const buffer = doc.getRoot().listBuffers()[0];
+  // Use provided buffer or fallback to first buffer
+  const targetBuffer = buffer || doc.getRoot().listBuffers()[0];
+  
+  if (!targetBuffer) {
+    console.error("No buffer available for animation data");
+    return [];
+  }
   
   // Filter out animations with no channels
   const validAnimations = processedAnimations.filter(anim => anim.channels.length > 0);
@@ -373,7 +506,12 @@ function createGltfAnimations(doc: Document, joints: Node[], processedAnimations
     
     console.log(`  Creating animation "${anim.name}" with ${anim.channels.length} channels`);
     
-    anim.channels.forEach(channelData => {
+    let successfulChannels = 0;
+    
+    // Process all channels
+    const allChannels = anim.channels;
+    
+    allChannels.forEach(channelData => {
       const joint = joints[channelData.boneIndex];
       
       // Validate input data first
@@ -387,6 +525,26 @@ function createGltfAnimations(doc: Document, joints: Node[], processedAnimations
         return;
       }
       
+      // Enhanced validation for animation data
+      const expectedValuesPerTime = channelData.path === 'rotation' ? 4 : (channelData.path === 'translation' || channelData.path === 'scale' ? 3 : 1);
+      const expectedValueCount = channelData.times.length * expectedValuesPerTime;
+      
+      if (channelData.values.length !== expectedValueCount) {
+        console.warn(`Skipping channel for joint ${joint?.getName()} path ${channelData.path}: value count mismatch. Expected ${expectedValueCount}, got ${channelData.values.length}`);
+        return;
+      }
+      
+      // Validate for NaN or infinite values
+      if (channelData.times.some(t => !isFinite(t))) {
+        console.warn(`Skipping channel for joint ${joint?.getName()} path ${channelData.path}: invalid time values`);
+        return;
+      }
+      
+      if (channelData.values.some(v => !isFinite(v))) {
+        console.warn(`Skipping channel for joint ${joint?.getName()} path ${channelData.path}: invalid value data`);
+        return;
+      }
+      
       // Validate joint exists
       if (!joint) {
         console.warn(`Skipping channel for path ${channelData.path}: joint not found (index ${channelData.boneIndex})`);
@@ -396,10 +554,13 @@ function createGltfAnimations(doc: Document, joints: Node[], processedAnimations
       // Create time accessor with additional validation
       let timeAccessor;
       try {
+        // Debug: Check the time data
+        console.log(`        Time data for ${joint.getName()}.${channelData.path}: [${channelData.times.slice(0, 3).join(', ')}...] (${channelData.times.length} values)`);
+        
         timeAccessor = doc.createAccessor()
           .setType("SCALAR")
           .setArray(new Float32Array(channelData.times))
-          .setBuffer(buffer);
+          .setBuffer(targetBuffer);
           
         if (!timeAccessor) {
           console.warn(`Failed to create time accessor for joint ${joint.getName()} path ${channelData.path}`);
@@ -418,7 +579,7 @@ function createGltfAnimations(doc: Document, joints: Node[], processedAnimations
           valueType = "VEC3";
           break;
         case 'rotation':
-          valueType = "VEC3"; // Could be VEC4 for quaternions
+          valueType = "VEC4"; // Quaternions are VEC4
           break;
         default:
           valueType = "VEC3";
@@ -429,7 +590,7 @@ function createGltfAnimations(doc: Document, joints: Node[], processedAnimations
         valueAccessor = doc.createAccessor()
           .setType(valueType as any)
           .setArray(new Float32Array(channelData.values))
-          .setBuffer(buffer);
+          .setBuffer(targetBuffer);
           
         if (!valueAccessor) {
           console.warn(`Failed to create value accessor for joint ${joint.getName()} path ${channelData.path}`);
@@ -474,11 +635,25 @@ function createGltfAnimations(doc: Document, joints: Node[], processedAnimations
       }
       
       try {
-        gltfAnimation.addChannel(channel);
-        console.log(`    Added channel: ${joint.getName()}.${channelData.path}`);
+        gltfAnimation.addSampler(sampler).addChannel(channel);
+        successfulChannels++;
+        console.log(`    Added sampler and channel: ${joint.getName()}.${channelData.path}`);
       } catch (error) {
-        console.warn(`Error adding channel for joint ${joint.getName()} path ${channelData.path}:`, error);
+        console.warn(`Error adding sampler and channel for joint ${joint.getName()} path ${channelData.path}:`, error);
       }
+    });
+    
+    // Debug: Check if the animation has samplers after adding channels
+    const samplers = gltfAnimation.listSamplers();
+    console.log(`  Animation "${anim.name}" final result: ${successfulChannels} channels added, ${samplers.length} samplers detected`);
+    
+    // Debug: List the channels we just added
+    const channels = gltfAnimation.listChannels();
+    console.log(`  Animation "${anim.name}" channels: ${channels.length} found`);
+    channels.forEach((channel, index) => {
+      const sampler = channel.getSampler();
+      const node = channel.getTargetNode();
+      console.log(`    Channel ${index}: ${node?.getName()}.${channel.getTargetPath()}, sampler: ${sampler ? 'present' : 'missing'}`);
     });
     
     return gltfAnimation;
@@ -488,7 +663,7 @@ function createGltfAnimations(doc: Document, joints: Node[], processedAnimations
 /**
  * Main function to create complete skeleton system
  */
-export function createSkeletonSystem(doc: Document, skeleton: BG3DSkeleton): { skin: Skin; animations: Animation[] } {
+export function createSkeletonSystem(doc: Document, skeleton: BG3DSkeleton, buffer?: any): { skin: Skin; animations: Animation[] } {
   console.log("=== Creating Skeleton System (Rebuilt Implementation) ===");
   console.log(`Bones: ${skeleton.bones.length}, Animations: ${skeleton.animations.length}`);
   
@@ -501,7 +676,7 @@ export function createSkeletonSystem(doc: Document, skeleton: BG3DSkeleton): { s
     if (!actualScene) {
       throw new Error("Failed to create default scene in glTF document");
     }
-    return createSkeletonSystem(doc, skeleton); // Retry with new scene
+    return createSkeletonSystem(doc, skeleton, buffer); // Retry with new scene
   }
   
   // Step 1: Create joint nodes with proper local transforms
@@ -520,8 +695,16 @@ export function createSkeletonSystem(doc: Document, skeleton: BG3DSkeleton): { s
   const skin = createSkin(doc, joints, skeleton.bones);
   
   // Step 4: Process and create animations (joints are now accessible in scene)
+  console.log(`About to process ${skeleton.animations.length} Otto animations...`);
   const processedAnimations = processOttoAnimations(skeleton.animations, skeleton.bones);
-  const animations = createGltfAnimations(doc, joints, processedAnimations);
+  console.log(`Processed animations: ${processedAnimations.length}, creating glTF animations...`);
+  
+  // Debug: Check which animations have channels
+  processedAnimations.forEach(anim => {
+    console.log(`Processed animation "${anim.name}": ${anim.channels.length} channels, duration: ${anim.duration}`);
+  });
+  
+  const animations = createGltfAnimations(doc, joints, processedAnimations, buffer);
   
   console.log("=== Skeleton System Complete ===");
   console.log(`Result: ${joints.length} joints, ${animations.length} animations`);
@@ -534,13 +717,94 @@ export function createSkeletonSystem(doc: Document, skeleton: BG3DSkeleton): { s
  */
 export function extractAnimationsFromGLTF(doc: Document): BG3DAnimation[] {
   const animations = doc.getRoot().listAnimations();
+  const skins = doc.getRoot().listSkins();
+  
+  // We need the joints to map back to bone indices
+  const joints = skins.length > 0 ? skins[0].listJoints() : [];
   
   return animations.map(anim => {
+    console.log(`Extracting animation "${anim.getName()}" from glTF`);
+    
+    const keyframes: { [boneIndex: string]: any[] } = {};
+    
+    // Process each channel in the animation
+    const channels = anim.listChannels();
+    channels.forEach(channel => {
+      const target = channel.getTargetNode();
+      const sampler = channel.getSampler();
+      const path = channel.getTargetPath();
+      
+      if (!target || !sampler) return;
+      
+      // Find the bone index for this joint
+      const boneIndex = joints.indexOf(target);
+      if (boneIndex === -1) return;
+      
+      const boneIndexStr = boneIndex.toString();
+      
+      // Get time and value data
+      const inputAccessor = sampler.getInput();
+      const outputAccessor = sampler.getOutput();
+      
+      if (!inputAccessor || !outputAccessor) return;
+      
+      const times = Array.from(inputAccessor.getArray() as Float32Array);
+      const values = Array.from(outputAccessor.getArray() as Float32Array);
+      
+      // Initialize keyframes for this bone if not exists
+      if (!keyframes[boneIndexStr]) {
+        keyframes[boneIndexStr] = [];
+      }
+      
+      // Convert glTF data back to Otto format
+      const valuesPerFrame = path === 'rotation' || path === 'translation' || path === 'scale' ? 3 : 1;
+      
+      for (let i = 0; i < times.length; i++) {
+        const tick = Math.round(times[i] * 30); // Convert back to 30 FPS
+        
+        // Find or create keyframe for this tick
+        let keyframe = keyframes[boneIndexStr].find(kf => kf.tick === tick);
+        if (!keyframe) {
+          keyframe = {
+            tick,
+            accelerationMode: 0,
+            coordX: 0, coordY: 0, coordZ: 0,
+            rotationX: 0, rotationY: 0, rotationZ: 0,
+            scaleX: 1, scaleY: 1, scaleZ: 1
+          };
+          keyframes[boneIndexStr].push(keyframe);
+        }
+        
+        // Apply the values based on path
+        const valueIndex = i * valuesPerFrame;
+        if (path === 'translation') {
+          keyframe.coordX = values[valueIndex] || 0;
+          keyframe.coordY = values[valueIndex + 1] || 0;
+          keyframe.coordZ = values[valueIndex + 2] || 0;
+        } else if (path === 'rotation') {
+          keyframe.rotationX = values[valueIndex] || 0;
+          keyframe.rotationY = values[valueIndex + 1] || 0;
+          keyframe.rotationZ = values[valueIndex + 2] || 0;
+        } else if (path === 'scale') {
+          keyframe.scaleX = values[valueIndex] || 1;
+          keyframe.scaleY = values[valueIndex + 1] || 1;
+          keyframe.scaleZ = values[valueIndex + 2] || 1;
+        }
+      }
+    });
+    
+    // Sort keyframes by tick for each bone
+    Object.values(keyframes).forEach(boneKeyframes => {
+      boneKeyframes.sort((a, b) => a.tick - b.tick);
+    });
+    
+    console.log(`Extracted animation "${anim.getName()}" with ${Object.keys(keyframes).length} bone tracks`);
+    
     return {
       name: anim.getName() || "Unknown",
       numAnimEvents: 0,
       events: [],
-      keyframes: {}
+      keyframes
     };
   });
 }
