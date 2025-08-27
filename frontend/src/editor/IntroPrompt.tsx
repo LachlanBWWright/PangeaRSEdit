@@ -333,11 +333,18 @@ export function IntroPrompt({ pyodideWorker }: { pyodideWorker: Worker }) {
           onClick={() => {
             const combinedData = combineLevelData(getCurrentAtomicData());
             if (combinedData) {
+              // Deep-clone combinedData to avoid mutating read-only/immer proxied objects
+              // Use structuredClone if available, fallback to JSON clone
+              const clone =
+                typeof structuredClone === "function"
+                  ? structuredClone(combinedData)
+                  : JSON.parse(JSON.stringify(combinedData));
+
               ottoPreprocessor((updater) => {
-                // Apply the update to a combined data structure
+                // Apply the update to a cloned combined data structure
                 const updated =
                   typeof updater === "function"
-                    ? updater(combinedData) ?? combinedData
+                    ? updater(clone) ?? clone
                     : updater;
                 // Split back into atomic data
                 setAllAtomicData(splitLevelData(updated));

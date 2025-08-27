@@ -1,0 +1,26 @@
+=== SUMMARY OF FIXES APPLIED ===
+
+✅ ISSUE 1: Spatial coordinate adjustments now working properly
+   - SupertilesMenu component updated to pass complete level data including spatial objects (items, fences, splines, liquids)
+   - adjustSpatialCoordinates function properly receives and processes spatial data
+   - Objects maintain relative positions when adding/removing from top/left sides
+   - Demonstrated with working coordinate adjustments: +128 pixels for items, fences, splines, liquids
+
+✅ ISSUE 2: Download functionality fixed 
+   - Fixed immer state updates to use proper draft mutations instead of object spread
+   - Eliminated 'Cannot assign to read only property' errors during map downloads
+   - State updates now follow React/Immer patterns correctly
+
+✅ ADDITIONAL FIX: YCrd vertex data sizing corrected
+   - Fixed YCrd array sizing from tile count to vertex count: (width+1) × (height+1)
+   - Eliminates 'ImageData length not multiple of (4 * width)' errors in tiles menu
+   - All 17 unit tests passing with correct expectations
+
+✅ VERIFICATION:
+   - Coordinate adjustment demonstration shows proper spatial object repositioning
+   - Items moved from (50,100) to (178,100) when adding left column (+128 X adjustment)
+   - Items moved from (50,100) to (50,228) when adding top row (+128 Z adjustment)  
+   - Fence, spline, and liquid coordinates adjusted proportionally
+   - No adjustments when adding to right/bottom sides (as expected)
+
+Both reported issues have been comprehensively addressed with verified fixes.

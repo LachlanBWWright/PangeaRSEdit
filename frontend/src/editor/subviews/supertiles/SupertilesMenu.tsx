@@ -5,6 +5,10 @@ import { Updater } from "use-immer";
 import {
   HeaderData,
   TerrainData,
+  ItemData,
+  FenceData,
+  SplineData,
+  LiquidData,
 } from "../../../python/structSpecs/ottoMaticLevelData";
 import { FileUpload } from "../../../components/FileUpload";
 import { Globals } from "../../../data/globals/globals";
@@ -13,6 +17,14 @@ import { ImageEditor } from "@/components/ImageEditor";
 import { useState } from "react";
 import { Edit } from "lucide-react";
 import { toast } from "sonner";
+import { 
+  addSupertileRow, 
+  removeSupertileRow, 
+  addSupertileColumn, 
+  removeSupertileColumn,
+  addBlankSupertileTextures,
+  Side 
+} from "../../../utils/supertileOperations";
 
 // Function to download a selected tile as an image
 const downloadSelectedTile = (
@@ -93,6 +105,14 @@ export function SupertileMenu({
   setHeaderData,
   terrainData,
   setTerrainData,
+  itemData,
+  setItemData,
+  fenceData,
+  setFenceData,
+  splineData,
+  setSplineData,
+  liquidData,
+  setLiquidData,
   mapImages,
   setMapImages,
 }: {
@@ -102,6 +122,14 @@ export function SupertileMenu({
   setHeaderData: Updater<HeaderData>;
   terrainData: TerrainData;
   setTerrainData: Updater<TerrainData>;
+  itemData: ItemData | null;
+  setItemData: Updater<ItemData | null>;
+  fenceData: FenceData | null;
+  setFenceData: Updater<FenceData | null>;
+  splineData: SplineData | null;
+  setSplineData: Updater<SplineData | null>;
+  liquidData: LiquidData | null;
+  setLiquidData: Updater<LiquidData | null>;
 }) {
   const selectedTile = useAtomValue(SelectedTile);
   const hedr = headerData.Hedr[1000].obj;
@@ -270,6 +298,158 @@ export function SupertileMenu({
       console.error("Error saving map edit:", error);
       toast.error("Failed to save map texture");
       throw error;
+    }
+  };
+
+  // Helper function to create complete level data for operations
+  const createCompleteLevelData = () => {
+    return {
+      ...headerData,
+      ...terrainData,
+      ...(itemData || {}),
+      ...(fenceData || {}),
+      ...(splineData || {}),
+      ...(liquidData || {}),
+    };
+  };
+
+  // Helper function to update state with new level data
+  const updateLevelData = (newLevelData: any) => {
+    // Update header data using immer draft mutation
+    setHeaderData(draft => {
+      draft.Hedr[1000].obj = newLevelData.Hedr[1000].obj;
+    });
+    
+    // Update terrain data using immer draft mutation
+    setTerrainData(draft => {
+      draft.STgd[1000].obj = newLevelData.STgd[1000].obj;
+      draft.Atrb[1000].obj = newLevelData.Atrb[1000].obj;
+      draft.Layr[1000].obj = newLevelData.Layr[1000].obj;
+      draft.YCrd[1000].obj = newLevelData.YCrd[1000].obj;
+    });
+    
+    // Update spatial data if present and changed
+    if (newLevelData.Itms && setItemData && itemData) {
+      setItemData(draft => {
+        if (draft && draft.Itms) {
+          draft.Itms[1000].obj = newLevelData.Itms[1000].obj;
+        }
+      });
+    }
+    
+    if (newLevelData.Fenc && setFenceData && fenceData) {
+      setFenceData(draft => {
+        if (draft && draft.Fenc) {
+          draft.Fenc[1000].obj = newLevelData.Fenc[1000].obj;
+        }
+        if (draft && draft.FnNb && newLevelData.FnNb) {
+          for (const key in newLevelData.FnNb) {
+            if (newLevelData.FnNb.hasOwnProperty(key)) {
+              draft.FnNb[Number(key)] = newLevelData.FnNb[Number(key)];
+            }
+          }
+        }
+      });
+    }
+    
+    if (newLevelData.Spln && setSplineData && splineData) {
+      setSplineData(draft => {
+        if (draft && draft.Spln) {
+          draft.Spln[1000].obj = newLevelData.Spln[1000].obj;
+        }
+        if (draft && draft.SpNb && newLevelData.SpNb) {
+          for (const key in newLevelData.SpNb) {
+            if (newLevelData.SpNb.hasOwnProperty(key)) {
+              draft.SpNb[Number(key)] = newLevelData.SpNb[Number(key)];
+            }
+          }
+        }
+        if (draft && draft.SpPt && newLevelData.SpPt) {
+          for (const key in newLevelData.SpPt) {
+            if (newLevelData.SpPt.hasOwnProperty(key)) {
+              draft.SpPt[Number(key)] = newLevelData.SpPt[Number(key)];
+            }
+          }
+        }
+      });
+    }
+    
+    if (newLevelData.Liqd && setLiquidData && liquidData) {
+      setLiquidData(draft => {
+        if (draft && draft.Liqd) {
+          draft.Liqd[1000].obj = newLevelData.Liqd[1000].obj;
+        }
+      });
+    }
+  };
+
+  // Handle adding a row of supertiles
+  const handleAddRow = (side: Side.TOP | Side.BOTTOM) => {
+    try {
+      const levelData = createCompleteLevelData();
+      const newLevelData = addSupertileRow(levelData, side, globals);
+      
+      // Calculate how many new supertiles we added
+      const newSupertileCount = hedr.mapWidth / globals.TILES_PER_SUPERTILE;
+      const newMapImages = addBlankSupertileTextures(mapImages, newSupertileCount, globals);
+      
+      updateLevelData(newLevelData);
+      setMapImages(newMapImages);
+      
+      toast.success(`Added supertile row to ${side}`);
+    } catch (error) {
+      console.error("Error adding row:", error);
+      toast.error(`Failed to add supertile row: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  };
+
+  // Handle removing a row of supertiles  
+  const handleRemoveRow = (side: Side.TOP | Side.BOTTOM) => {
+    try {
+      const levelData = createCompleteLevelData();
+      const newLevelData = removeSupertileRow(levelData, side, globals);
+      
+      updateLevelData(newLevelData);
+      
+      toast.success(`Removed supertile row from ${side}`);
+    } catch (error) {
+      console.error("Error removing row:", error);
+      toast.error(`Failed to remove supertile row: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  };
+
+  // Handle adding a column of supertiles
+  const handleAddColumn = (side: Side.LEFT | Side.RIGHT) => {
+    try {
+      const levelData = createCompleteLevelData();
+      const newLevelData = addSupertileColumn(levelData, side, globals);
+      
+      // Calculate how many new supertiles we added
+      const newSupertileCount = hedr.mapHeight / globals.TILES_PER_SUPERTILE;
+      const newMapImages = addBlankSupertileTextures(mapImages, newSupertileCount, globals);
+      
+      updateLevelData(newLevelData);
+      setMapImages(newMapImages);
+      
+      toast.success(`Added supertile column to ${side}`);
+    } catch (error) {
+      console.error("Error adding column:", error);
+      toast.error(`Failed to add supertile column: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  };
+
+  // Handle removing a column of supertiles
+  const handleRemoveColumn = (side: Side.LEFT | Side.RIGHT) => {
+    try {
+      const levelData = createCompleteLevelData();
+      const newLevelData = removeSupertileColumn(levelData, side, globals);
+      
+      updateLevelData(newLevelData);
+      
+      toast.success(`Removed supertile column from ${side}`);
+    } catch (error) {
+      console.error("Error removing column:", error);
+      toast.error(`Failed to remove supertile column: ${error instanceof Error ? error.message : String(error)}`);
     }
   };
 
@@ -481,6 +661,80 @@ export function SupertileMenu({
           Texture ID:{" "}
           {terrainData.STgd[1000].obj[selectedTile]?.superTileId || 0}
         </p>
+        
+        <div className="border-t pt-4 mt-4">
+          <p className="font-semibold mb-2">Row Operations</p>
+          <div className="grid grid-cols-2 gap-1 mb-2">
+            <Button 
+              size="sm" 
+              variant="outline"
+              onClick={() => handleAddRow(Side.TOP)}
+            >
+              + Top
+            </Button>
+            <Button 
+              size="sm" 
+              variant="outline"
+              onClick={() => handleAddRow(Side.BOTTOM)}
+            >
+              + Bottom
+            </Button>
+          </div>
+          <div className="grid grid-cols-2 gap-1 mb-3">
+            <Button 
+              size="sm" 
+              variant="destructive"
+              onClick={() => handleRemoveRow(Side.TOP)}
+              disabled={(hedr?.mapHeight || 0) / globals.TILES_PER_SUPERTILE <= 1}
+            >
+              - Top
+            </Button>
+            <Button 
+              size="sm" 
+              variant="destructive"
+              onClick={() => handleRemoveRow(Side.BOTTOM)}
+              disabled={(hedr?.mapHeight || 0) / globals.TILES_PER_SUPERTILE <= 1}
+            >
+              - Bottom
+            </Button>
+          </div>
+          
+          <p className="font-semibold mb-2">Column Operations</p>
+          <div className="grid grid-cols-2 gap-1 mb-2">
+            <Button 
+              size="sm" 
+              variant="outline"
+              onClick={() => handleAddColumn(Side.LEFT)}
+            >
+              + Left
+            </Button>
+            <Button 
+              size="sm" 
+              variant="outline"
+              onClick={() => handleAddColumn(Side.RIGHT)}
+            >
+              + Right
+            </Button>
+          </div>
+          <div className="grid grid-cols-2 gap-1">
+            <Button 
+              size="sm" 
+              variant="destructive"
+              onClick={() => handleRemoveColumn(Side.LEFT)}
+              disabled={(hedr?.mapWidth || 0) / globals.TILES_PER_SUPERTILE <= 1}
+            >
+              - Left
+            </Button>
+            <Button 
+              size="sm" 
+              variant="destructive"
+              onClick={() => handleRemoveColumn(Side.RIGHT)}
+              disabled={(hedr?.mapWidth || 0) / globals.TILES_PER_SUPERTILE <= 1}
+            >
+              - Right
+            </Button>
+          </div>
+        </div>
       </div>
       {/* Image Editor for individual tile */}
       {isEditingTile && editingImageUrl && (
