@@ -154,9 +154,10 @@ function createJointNodes(doc: Document, bones: BG3DBone[]): Node[] {
 
 /**
  * Build proper parent-child hierarchy based on Otto's parentBone indices
+ * CRITICAL: This function ensures all joints are findable by Three.js PropertyBinding
  */
 function buildJointHierarchy(joints: Node[], bones: BG3DBone[], scene: any): void {
-  console.log("Building joint hierarchy...");
+  console.log("Building joint hierarchy for Three.js PropertyBinding compatibility...");
   
   if (joints.length !== bones.length) {
     console.error(`Mismatch: ${joints.length} joints vs ${bones.length} bones`);
@@ -190,45 +191,68 @@ function buildJointHierarchy(joints: Node[], bones: BG3DBone[], scene: any): voi
       "Left Hand": "LeftElbow"
     };
     
-    // CRITICAL FIX: Ensure ALL joints are accessible from scene for Three.js PropertyBinding
-    // First add ALL joints directly to scene, then build hierarchy
-    console.log("Adding all joints to scene to ensure Three.js can find them...");
-    joints.forEach((joint, index) => {
-      scene.addChild(joint);
-      console.log(`  ${bones[index].name} -> added to scene (index ${index})`);
-    });
+    // CRITICAL FIX: Build hierarchy to ensure Three.js PropertyBinding can find all joints
+    // Strategy: Create a proper skeleton hierarchy that follows glTF best practices
+    console.log("Building proper skeleton hierarchy...");
     
-    // Then build hierarchy by adding parent-child relationships
-    // This ensures all joints remain accessible from scene root
-    console.log("Building parent-child relationships...");
-    bones.forEach((bone, index) => {
-      const joint = joints[index];
-      const expectedParentName = boneHierarchy[bone.name];
+    // First, add only the root joint (Pelvis) to the scene
+    const pelvisIndex = bones.findIndex(bone => bone.name === "Pelvis");
+    if (pelvisIndex >= 0) {
+      const pelvisJoint = joints[pelvisIndex];
+      scene.addChild(pelvisJoint);
+      rootJoints.push("Pelvis");
+      console.log(`  Added root joint: Pelvis`);
       
-      if (expectedParentName) {
-        const parentIndex = bones.findIndex(b => b.name === expectedParentName);
-        if (parentIndex >= 0 && parentIndex < joints.length) {
-          const parentJoint = joints[parentIndex];
-          if (parentJoint && joint) {
-            try {
-              // Add as child while keeping in scene
-              parentJoint.addChild(joint);
-              console.log(`  ${bone.name} -> child of ${expectedParentName}`);
-            } catch (e) {
-              console.log(`  Warning: Failed to add ${bone.name} as child of ${expectedParentName}:`, e);
+      // Then build hierarchy by adding children to their parents
+      bones.forEach((bone, index) => {
+        if (index === pelvisIndex) return; // Skip root
+        
+        const joint = joints[index];
+        const expectedParentName = boneHierarchy[bone.name];
+        
+        if (expectedParentName) {
+          const parentIndex = bones.findIndex(b => b.name === expectedParentName);
+          if (parentIndex >= 0 && parentIndex < joints.length) {
+            const parentJoint = joints[parentIndex];
+            if (parentJoint && joint) {
+              try {
+                parentJoint.addChild(joint);
+                console.log(`  ${bone.name} -> child of ${expectedParentName}`);
+              } catch (e) {
+                console.log(`  Warning: Failed to add ${bone.name} as child of ${expectedParentName}:`, e);
+                // Fallback: add directly to scene
+                scene.addChild(joint);
+                console.log(`  Fallback: Added ${bone.name} directly to scene`);
+              }
             }
           }
+        } else {
+          // No parent defined, add to scene as root
+          scene.addChild(joint);
+          rootJoints.push(bone.name);
+          console.log(`  Added as root joint: ${bone.name}`);
         }
-      }
-    });
+      });
+    } else {
+      // No Pelvis found, add all joints as roots
+      console.log("No Pelvis joint found, adding all as root joints");
+      joints.forEach((joint, index) => {
+        scene.addChild(joint);
+        rootJoints.push(bones[index].name);
+        console.log(`  Added root joint: ${bones[index].name}`);
+      });
+    }
   } else {
-    // Use original parent bone indices
+    // Use original parent bone indices with proper hierarchy
+    console.log("Using Otto parent bone data to build hierarchy...");
+    
     // First pass: identify all root joints (no parent or invalid parent)
     const rootJointIndices: number[] = [];
     
     bones.forEach((bone, index) => {
       if (bone.parentBone < 0 || bone.parentBone >= bones.length) {
         rootJointIndices.push(index);
+        rootJoints.push(bone.name);
       }
     });
     
@@ -236,19 +260,23 @@ function buildJointHierarchy(joints: Node[], bones: BG3DBone[], scene: any): voi
     if (rootJointIndices.length === 0 && joints.length > 0) {
       console.log("No natural root joints found, making first joint the root");
       rootJointIndices.push(0);
+      rootJoints.push(bones[0].name);
     }
     
-    // CRITICAL FIX: Add ALL joints to scene first to ensure Three.js can find them
-    console.log("Adding all joints to scene to ensure Three.js PropertyBinding can find them...");
-    joints.forEach((joint, index) => {
+    // Add root joints to scene first
+    rootJointIndices.forEach(index => {
+      const joint = joints[index];
       scene.addChild(joint);
-      console.log(`  ${bones[index].name} -> added to scene (index ${index})`);
+      console.log(`  Added root joint: ${bones[index].name}`);
     });
     
-    // Then build parent-child relationships while keeping all joints in scene
+    // Then build parent-child relationships
     console.log("Building parent-child relationships...");
     bones.forEach((bone, index) => {
       const joint = joints[index];
+      
+      // Skip if this is a root joint
+      if (rootJointIndices.includes(index)) return;
       
       if (bone.parentBone >= 0 && bone.parentBone < bones.length) {
         const parentJoint = joints[bone.parentBone];
@@ -258,6 +286,9 @@ function buildJointHierarchy(joints: Node[], bones: BG3DBone[], scene: any): voi
             console.log(`  ${bone.name} -> child of ${bones[bone.parentBone].name}`);
           } catch (e) {
             console.log(`  Warning: Failed to add ${bone.name} as child of ${bones[bone.parentBone].name}:`, e);
+            // Fallback: add to scene as root
+            scene.addChild(joint);
+            console.log(`  Fallback: Added ${bone.name} directly to scene`);
           }
         }
       }
@@ -266,42 +297,53 @@ function buildJointHierarchy(joints: Node[], bones: BG3DBone[], scene: any): voi
   
   console.log(`Hierarchy complete: ${rootJoints.length} root joints [${rootJoints.join(', ')}]`);
   
-  // Verification: ensure all joints are reachable from scene
-  const unreachableJoints: string[] = [];
-  const sceneChildren = scene.listChildren();
+  // Final verification: ensure all joints are findable by Three.js PropertyBinding
+  console.log("Verifying joint accessibility for Three.js PropertyBinding...");
+  const allSceneNodes: Node[] = [];
   
+  // Traverse the entire scene hierarchy to collect all nodes
+  function collectAllNodes(node: Node) {
+    allSceneNodes.push(node);
+    node.listChildren().forEach(child => collectAllNodes(child));
+  }
+  
+  scene.listChildren().forEach((child: Node) => collectAllNodes(child));
+  
+  // Check that every joint is findable in the scene hierarchy
+  const missingJoints: string[] = [];
   joints.forEach((joint, index) => {
     const bone = bones[index];
+    const isInScene = allSceneNodes.includes(joint);
     
-    // Check if joint is reachable from scene by traversing the hierarchy
-    let isReachable = false;
-    
-    // Check if joint is directly in scene
-    if (sceneChildren.includes(joint)) {
-      isReachable = true;
-    } else {
-      // Check if joint is reachable through any scene child's hierarchy
-      for (const sceneChild of sceneChildren) {
-        if (isJointInHierarchy(joint, sceneChild)) {
-          isReachable = true;
-          break;
-        }
-      }
-    }
-    
-    if (!isReachable) {
-      unreachableJoints.push(bone.name);
-      console.warn(`Joint ${bone.name} is not reachable from scene - adding as fallback root`);
-      // Add unreachable joints directly to scene as a fallback
+    if (!isInScene) {
+      missingJoints.push(bone.name);
+      console.warn(`Joint ${bone.name} is not in scene hierarchy - adding as fallback root`);
       scene.addChild(joint);
+    } else {
+      console.log(`  ✓ Joint ${bone.name} is accessible from scene`);
     }
   });
   
-  if (unreachableJoints.length > 0) {
-    console.warn(`Fixed ${unreachableJoints.length} unreachable joints: [${unreachableJoints.join(', ')}]`);
+  if (missingJoints.length > 0) {
+    console.warn(`Fixed ${missingJoints.length} missing joints: [${missingJoints.join(', ')}]`);
   } else {
-    console.log("✅ All joints are reachable from scene");
+    console.log("✅ All joints are accessible from scene hierarchy");
   }
+  
+  // Additional verification: print the final scene structure
+  console.log("Final scene structure:");
+  function printHierarchy(node: Node, indent: string = "  ") {
+    console.log(`${indent}${node.getName()}`);
+    node.listChildren().forEach(child => {
+      printHierarchy(child, indent + "  ");
+    });
+  }
+  
+  scene.listChildren().forEach((child: Node) => {
+    if (joints.includes(child)) {
+      printHierarchy(child, "  ");
+    }
+  });
 }
 
 /**
@@ -665,6 +707,29 @@ export function createSkeletonSystem(doc: Document, skeleton: BG3DSkeleton, buff
     // Add all joints to scene as root joints if hierarchy fails
     joints.forEach(joint => scene.addChild(joint));
   }
+  
+  // CRITICAL FIX: Ensure Three.js PropertyBinding can find joints by storing references
+  // Store joint references in the document for Three.js to find during animation binding
+  console.log("Storing joint references for PropertyBinding compatibility...");
+  joints.forEach((joint, index) => {
+    const bone = skeleton.bones[index];
+    
+    // Ensure joint has the exact name that animations will target
+    joint.setName(bone.name);
+    
+    // Add joint to scene if not already there (double-check)
+    const allSceneNodes: any[] = [];
+    function collectNodes(node: any) {
+      allSceneNodes.push(node);
+      node.listChildren().forEach((child: any) => collectNodes(child));
+    }
+    scene.listChildren().forEach((child: any) => collectNodes(child));
+    
+    if (!allSceneNodes.includes(joint)) {
+      scene.addChild(joint);
+      console.log(`  Added missing joint to scene: ${bone.name}`);
+    }
+  });
   
   // Step 3: Create skin with inverse bind matrices
   const skin = createSkin(doc, joints, skeleton.bones);
