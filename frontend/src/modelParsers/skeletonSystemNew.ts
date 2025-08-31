@@ -667,16 +667,17 @@ export function createSkeletonSystem(doc: Document, skeleton: BG3DSkeleton, buff
   console.log("=== Creating Skeleton System (Rebuilt Implementation) ===");
   console.log(`Bones: ${skeleton.bones.length}, Animations: ${skeleton.animations.length}`);
   
-  const scene = doc.getRoot().getDefaultScene();
+  let scene = doc.getRoot().getDefaultScene();
   if (!scene) {
     console.log("No default scene found, creating one...");
     const newScene = doc.createScene("default");
     doc.getRoot().setDefaultScene(newScene);
-    const actualScene = doc.getRoot().getDefaultScene();
-    if (!actualScene) {
+    scene = doc.getRoot().getDefaultScene();
+    if (!scene) {
       throw new Error("Failed to create default scene in glTF document");
     }
-    return createSkeletonSystem(doc, skeleton, buffer); // Retry with new scene
+  } else {
+    console.log(`Using existing default scene: "${scene.getName()}"`);
   }
   
   // Step 1: Create joint nodes with proper local transforms

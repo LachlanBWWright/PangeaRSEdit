@@ -116,8 +116,9 @@ export function bg3dParsedToGLTF(
     }
   });
 
-  // Create scene
+  // Create scene and set as default
   const scene = doc.createScene("Scene");
+  doc.getRoot().setDefaultScene(scene);
 
   // 3. Skeleton System (NEW IMPLEMENTATION)
   let gltfSkin: Skin | null = null;
