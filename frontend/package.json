@@ -16,6 +16,7 @@
   },
   "dependencies": {
     "@gltf-transform/core": "^4.2.0",
+    "@gltf-transform/extensions": "^4.2.1",
     "@jimp/jpeg": "^0.22.12",
     "@jimp/png": "^0.22.12",
     "@playwright/test": "^1.54.1",

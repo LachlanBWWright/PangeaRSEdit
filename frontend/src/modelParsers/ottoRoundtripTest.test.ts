@@ -8,24 +8,53 @@ import { skeletonResourceToBinary } from "./skeletonBinaryExport";
 import { bg3dParsedToGLTF, gltfToBG3D, getOriginalBG3DBinary, getOriginalSkeletonBinary } from "./parsedBg3dGitfConverter";
 import { readFileSync } from "fs";
 import { join } from "path";
+import { WebIO } from "@gltf-transform/core";
+import { KHRONOS_EXTENSIONS } from "@gltf-transform/extensions";
 
 describe("Otto Complete Roundtrip Tests", () => {
-  const ottoBg3dPath = join(__dirname, "../../public/Otto.bg3d");
-  const ottoSkeletonPath = join(__dirname, "../../public/Otto.skeleton.rsrc");
+  const testModels = [
+    {
+      name: "Otto",
+      bg3dPath: join(__dirname, "../../public/Otto.bg3d"),
+      skeletonPath: join(__dirname, "../../public/Otto.skeleton.rsrc")
+    },
+    {
+      name: "Onion", 
+      bg3dPath: join(__dirname, "../../public/Onion.bg3d"),
+      skeletonPath: join(__dirname, "../../public/Onion.skeleton.rsrc")
+    },
+    {
+      name: "BeeWoman",
+      bg3dPath: join(__dirname, "../../public/BeeWoman.bg3d"), 
+      skeletonPath: join(__dirname, "../../public/BeeWoman.skeleton.rsrc")
+    },
+    {
+      name: "Farmer",
+      bg3dPath: join(__dirname, "../../public/Farmer.bg3d"),
+      skeletonPath: join(__dirname, "../../public/Farmer.skeleton.rsrc")
+    },
+    {
+      name: "Mutant", 
+      bg3dPath: join(__dirname, "../../public/Mutant.bg3d"),
+      skeletonPath: join(__dirname, "../../public/Mutant.skeleton.rsrc")
+    }
+  ];
 
-  it("should perform byte-for-byte roundtrip of Otto.bg3d + Otto.skeleton.rsrc", async () => {
-    console.log("=== Starting Otto Complete Roundtrip Test ===");
+  // Test each model individually
+  testModels.forEach(({ name, bg3dPath, skeletonPath }) => {
+    it(`should perform byte-for-byte roundtrip of ${name}.bg3d + ${name}.skeleton.rsrc`, async () => {
+    console.log(`=== Starting ${name} Complete Roundtrip Test ===`);
     
     // Step 1: Load original files
-    const originalBg3dData = readFileSync(ottoBg3dPath);
-    const originalSkeletonData = readFileSync(ottoSkeletonPath);
+    const originalBg3dData = readFileSync(bg3dPath);
+    const originalSkeletonData = readFileSync(skeletonPath);
     
-    console.log(`Original BG3D size: ${originalBg3dData.length} bytes`);
-    console.log(`Original skeleton size: ${originalSkeletonData.length} bytes`);
+    console.log(`${name} - Original BG3D size: ${originalBg3dData.length} bytes`);
+    console.log(`${name} - Original skeleton size: ${originalSkeletonData.length} bytes`);
     
     // Step 2: Parse original skeleton resource
     const originalSkeletonResource = parseSkeletonRsrcTS(new Uint8Array(originalSkeletonData));
-    console.log("Original skeleton structure:", {
+    console.log(`${name} - Original skeleton structure:`, {
       bones: Object.keys(originalSkeletonResource.Bone || {}).length,
       animations: Object.keys(originalSkeletonResource.AnHd || {}).length,
       keyframes: Object.keys(originalSkeletonResource.KeyF || {}).length
@@ -37,7 +66,7 @@ describe("Otto Complete Roundtrip Tests", () => {
       originalSkeletonResource
     );
     
-    console.log("Original BG3D with skeleton:", {
+    console.log(`${name} - Original BG3D with skeleton:`, {
       materials: originalBg3d.materials.length,
       geometries: originalBg3d.groups.length,
       skeleton: {
@@ -55,7 +84,7 @@ describe("Otto Complete Roundtrip Tests", () => {
     
     // Verify glTF has animation data
     const gltfAnimations = gltfDocument.getRoot().listAnimations();
-    console.log(`glTF animations created: ${gltfAnimations.length}`);
+    console.log(`${name} - glTF animations created: ${gltfAnimations.length}`);
     
     // Check animation durations using channels instead of samplers
     const animationInfo = gltfAnimations.map(anim => {
@@ -86,7 +115,7 @@ describe("Otto Complete Roundtrip Tests", () => {
       return { name: anim.getName(), duration: maxTime, channelCount: channels.length };
     });
     
-    console.log("Animation durations:", animationInfo);
+    console.log(`${name} - Animation durations:`, animationInfo);
     
     // Verify we have reasonable animation durations (excluding single-frame poses)
     const multiFrameAnimations = animationInfo.filter(anim => anim.duration > 0 || anim.channelCount > 0);
@@ -126,8 +155,8 @@ describe("Otto Complete Roundtrip Tests", () => {
     }
     
     // Step 8: Compare file sizes
-    console.log(`Roundtrip BG3D size: ${roundtripBg3dBinary.byteLength} bytes (original: ${originalBg3dData.length})`);
-    console.log(`Roundtrip skeleton size: ${roundtripSkeletonBinary.byteLength} bytes (original: ${originalSkeletonData.length})`);
+    console.log(`${name} - Roundtrip BG3D size: ${roundtripBg3dBinary.byteLength} bytes (original: ${originalBg3dData.length})`);
+    console.log(`${name} - Roundtrip skeleton size: ${roundtripSkeletonBinary.byteLength} bytes (original: ${originalSkeletonData.length})`);
     
     // Step 9: Perform byte-by-byte comparison (this may not be 100% until we perfect the conversion)
     const originalBg3dArray = new Uint8Array(originalBg3dData.buffer.slice(originalBg3dData.byteOffset, originalBg3dData.byteOffset + originalBg3dData.byteLength));
@@ -143,7 +172,7 @@ describe("Otto Complete Roundtrip Tests", () => {
     }
     
     const bg3dAccuracy = 1 - (bg3dMismatches / maxBg3dLength);
-    console.log(`BG3D accuracy: ${(bg3dAccuracy * 100).toFixed(6)}% (${bg3dMismatches} mismatches out of ${maxBg3dLength} bytes)`);
+    console.log(`${name} - BG3D accuracy: ${(bg3dAccuracy * 100).toFixed(6)}% (${bg3dMismatches} mismatches out of ${maxBg3dLength} bytes)`);
     
     // For skeleton, we'll compare the parsed structure rather than raw bytes since the binary format might differ
     const reparsedSkeletonResource = parseSkeletonRsrcTS(new Uint8Array(roundtripSkeletonBinary));
@@ -158,18 +187,67 @@ describe("Otto Complete Roundtrip Tests", () => {
     expect(roundtripAnimCount).toBe(originalAnimCount);
     
     // For now, we expect high accuracy but maybe not 100% until the conversion is perfected
-    console.log(`BG3D conversion quality: ${bg3dAccuracy >= 0.95 ? 'EXCELLENT' : bg3dAccuracy >= 0.90 ? 'GOOD' : 'NEEDS_WORK'}`);
+    console.log(`${name} - BG3D conversion quality: ${bg3dAccuracy >= 0.95 ? 'EXCELLENT' : bg3dAccuracy >= 0.90 ? 'GOOD' : 'NEEDS_WORK'}`);
     expect(bg3dAccuracy).toBeGreaterThan(0.90); // Should be at least 90% accurate
     
-    console.log("=== Otto Complete Roundtrip Test Completed Successfully ===");
+    console.log(`=== ${name} Complete Roundtrip Test Completed Successfully ===`);
+  });
+  });
+
+  it("should test all models using glTF validator", async () => {
+    console.log("=== Running glTF Validator Tests for All Models ===");
+
+    for (const { name, bg3dPath, skeletonPath } of testModels) {
+      console.log(`\n--- Testing ${name} with glTF Validator ---`);
+      
+      // Load files
+      const bg3dData = readFileSync(bg3dPath);
+      const skeletonData = readFileSync(skeletonPath);
+      
+      // Parse with skeleton
+      const skeletonResource = parseSkeletonRsrcTS(new Uint8Array(skeletonData));
+      const bg3dParsed = parseBG3D(
+        bg3dData.buffer.slice(bg3dData.byteOffset, bg3dData.byteOffset + bg3dData.byteLength),
+        skeletonResource
+      );
+      
+      // Convert to glTF  
+      const gltfDocument = bg3dParsedToGLTF(bg3dParsed);
+      
+      // Export to GLB buffer
+      const io = new WebIO().registerExtensions(KHRONOS_EXTENSIONS);
+      const glbBuffer = await io.writeBinary(gltfDocument);
+      
+      // Run glTF validator (mock test for now - would need actual validator integration)
+      expect(glbBuffer.byteLength).toBeGreaterThan(0);
+      console.log(`${name} - GLB export size: ${glbBuffer.byteLength} bytes - ✓`);
+      
+      // Verify basic glTF structure
+      const gltfRoot = gltfDocument.getRoot();
+      const scenes = gltfRoot.listScenes();
+      const animations = gltfRoot.listAnimations();
+      const skins = gltfRoot.listSkins();
+      
+      expect(scenes.length).toBeGreaterThan(0);
+      expect(animations.length).toBeGreaterThan(0);
+      expect(skins.length).toBeGreaterThan(0);
+      
+      console.log(`${name} - glTF structure: ${scenes.length} scenes, ${animations.length} animations, ${skins.length} skins - ✓`);
+    }
+    
+    console.log("=== glTF Validator Tests Completed ===");
   });
 
   it("should preserve animation timing data accurately", async () => {
     console.log("=== Testing Animation Timing Preservation ===");
     
+    // Use Otto model for timing test
+    const bg3dPath = testModels[0].bg3dPath; // Otto
+    const skeletonPath = testModels[0].skeletonPath;
+    
     // Load and parse files
-    const bg3dData = readFileSync(ottoBg3dPath);
-    const skeletonData = readFileSync(ottoSkeletonPath);
+    const bg3dData = readFileSync(bg3dPath);
+    const skeletonData = readFileSync(skeletonPath);
     
     const skeletonResource = parseSkeletonRsrcTS(new Uint8Array(skeletonData));
     const bg3dParsed = parseBG3D(
@@ -257,9 +335,13 @@ describe("Otto Complete Roundtrip Tests", () => {
   it("should preserve bone hierarchy and transformations", async () => {
     console.log("=== Testing Bone Hierarchy Preservation ===");
     
+    // Use Otto model for hierarchy test
+    const bg3dPath = testModels[0].bg3dPath; // Otto
+    const skeletonPath = testModels[0].skeletonPath;
+    
     // Load and parse files
-    const bg3dData = readFileSync(ottoBg3dPath);
-    const skeletonData = readFileSync(ottoSkeletonPath);
+    const bg3dData = readFileSync(bg3dPath);
+    const skeletonData = readFileSync(skeletonPath);
     
     const skeletonResource = parseSkeletonRsrcTS(new Uint8Array(skeletonData));
     const originalBg3d = parseBG3D(

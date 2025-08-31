@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Download, Play } from "lucide-react";
+import { Play } from "lucide-react";
 import { toast } from "sonner";
 
 export interface GameModel {
@@ -10,6 +10,7 @@ export interface GameModel {
   bg3dFile: string;
   skeletonFile?: string;
   description?: string;
+  category: "Characters" | "Levels" | "Objects";
 }
 
 export interface GameInfo {
@@ -29,62 +30,336 @@ const GAMES: GameInfo[] = [
     id: "ottomatic",
     name: "Otto Matic",
     models: [
+      // Character Models with Skeletons
       {
         name: "Otto",
-        bg3dFile: "/PangeaRSEdit/games/ottomatic/Otto.bg3d",
-        skeletonFile: "/PangeaRSEdit/games/ottomatic/Otto.skeleton.rsrc",
-        description: "Main character with full skeleton and animations"
+        bg3dFile: "/PangeaRSEdit/games/ottomatic/skeletons/Otto.bg3d",
+        skeletonFile: "/PangeaRSEdit/games/ottomatic/skeletons/Otto.skeleton.rsrc",
+        description: "Main character with full skeleton and animations",
+        category: "Characters"
       },
       {
         name: "Onion",
-        bg3dFile: "/PangeaRSEdit/games/ottomatic/Onion.bg3d", 
-        skeletonFile: "/PangeaRSEdit/games/ottomatic/Onion.skeleton.rsrc",
-        description: "Onion alien character with animations"
+        bg3dFile: "/PangeaRSEdit/games/ottomatic/skeletons/Onion.bg3d", 
+        skeletonFile: "/PangeaRSEdit/games/ottomatic/skeletons/Onion.skeleton.rsrc",
+        description: "Onion alien character with animations",
+        category: "Characters"
       },
-      // Additional Otto Matic models will be added here when more files are copied
+      {
+        name: "BeeWoman",
+        bg3dFile: "/PangeaRSEdit/games/ottomatic/skeletons/BeeWoman.bg3d",
+        skeletonFile: "/PangeaRSEdit/games/ottomatic/skeletons/BeeWoman.skeleton.rsrc",
+        description: "Bee Woman character with animations",
+        category: "Characters"
+      },
+      {
+        name: "Blob",
+        bg3dFile: "/PangeaRSEdit/games/ottomatic/skeletons/Blob.bg3d",
+        skeletonFile: "/PangeaRSEdit/games/ottomatic/skeletons/Blob.skeleton.rsrc",
+        description: "Blob enemy with animations",
+        category: "Characters"
+      },
+      {
+        name: "BrainAlien",
+        bg3dFile: "/PangeaRSEdit/games/ottomatic/skeletons/BrainAlien.bg3d",
+        skeletonFile: "/PangeaRSEdit/games/ottomatic/skeletons/BrainAlien.skeleton.rsrc",
+        description: "Brain Alien enemy with animations",
+        category: "Characters"
+      },
+      {
+        name: "Farmer",
+        bg3dFile: "/PangeaRSEdit/games/ottomatic/skeletons/Farmer.bg3d",
+        skeletonFile: "/PangeaRSEdit/games/ottomatic/skeletons/Farmer.skeleton.rsrc",
+        description: "Farmer character with animations",
+        category: "Characters"
+      },
+      {
+        name: "Mutant",
+        bg3dFile: "/PangeaRSEdit/games/ottomatic/skeletons/Mutant.bg3d",
+        skeletonFile: "/PangeaRSEdit/games/ottomatic/skeletons/Mutant.skeleton.rsrc",
+        description: "Mutant enemy with animations",
+        category: "Characters"
+      },
+      // Level Models (no skeletons)
+      {
+        name: "Level 1 - Farm",
+        bg3dFile: "/PangeaRSEdit/games/ottomatic/models/level1_farm.bg3d",
+        description: "Farm level environment models",
+        category: "Levels"
+      },
+      {
+        name: "Level 2 - Slime",
+        bg3dFile: "/PangeaRSEdit/games/ottomatic/models/level2_slime.bg3d",
+        description: "Slime level environment models",
+        category: "Levels"
+      },
+      {
+        name: "Global Models",
+        bg3dFile: "/PangeaRSEdit/games/ottomatic/models/global.bg3d",
+        description: "Shared game objects and models",
+        category: "Objects"
+      },
+      {
+        name: "Main Menu",
+        bg3dFile: "/PangeaRSEdit/games/ottomatic/models/mainmenu.bg3d",
+        description: "Main menu interface models",
+        category: "Objects"
+      }
     ]
   },
   {
     id: "bugdom2",
     name: "Bugdom 2", 
     models: [
-      // Models will be added when files are copied to /games/bugdom2/
+      // Character Models with Skeletons
+      {
+        name: "BuddyBug",
+        bg3dFile: "/PangeaRSEdit/games/bugdom2/skeletons/BuddyBug.bg3d",
+        skeletonFile: "/PangeaRSEdit/games/bugdom2/skeletons/BuddyBug.skeleton.rsrc",
+        description: "Main character Buddy Bug with animations",
+        category: "Characters"
+      },
+      {
+        name: "Ant",
+        bg3dFile: "/PangeaRSEdit/games/bugdom2/skeletons/Ant.bg3d",
+        skeletonFile: "/PangeaRSEdit/games/bugdom2/skeletons/Ant.skeleton.rsrc",
+        description: "Ant enemy with animations",
+        category: "Characters"
+      },
+      {
+        name: "BumbleBee",
+        bg3dFile: "/PangeaRSEdit/games/bugdom2/skeletons/BumbleBee.bg3d",
+        skeletonFile: "/PangeaRSEdit/games/bugdom2/skeletons/BumbleBee.skeleton.rsrc",
+        description: "Bumblebee character with animations",
+        category: "Characters"
+      },
+      {
+        name: "DragonFly",
+        bg3dFile: "/PangeaRSEdit/games/bugdom2/skeletons/DragonFly.bg3d",
+        skeletonFile: "/PangeaRSEdit/games/bugdom2/skeletons/DragonFly.skeleton.rsrc",
+        description: "Dragonfly character with animations",
+        category: "Characters"
+      },
+      {
+        name: "Frog",
+        bg3dFile: "/PangeaRSEdit/games/bugdom2/skeletons/Frog.bg3d",
+        skeletonFile: "/PangeaRSEdit/games/bugdom2/skeletons/Frog.skeleton.rsrc",
+        description: "Frog character with animations",
+        category: "Characters"
+      },
+      // Level Models (no skeletons)
+      {
+        name: "Level 1 - Garden",
+        bg3dFile: "/PangeaRSEdit/games/bugdom2/models/Level1_Garden.bg3d",
+        description: "Garden level environment models",
+        category: "Levels"
+      },
+      {
+        name: "Level 2 - Sidewalk", 
+        bg3dFile: "/PangeaRSEdit/games/bugdom2/models/Level2_Sidewalk.bg3d",
+        description: "Sidewalk level environment models",
+        category: "Levels"
+      },
+      {
+        name: "Global Models",
+        bg3dFile: "/PangeaRSEdit/games/bugdom2/models/Global.bg3d",
+        description: "Shared game objects and models",
+        category: "Objects"
+      }
     ]
   },
   {
     id: "cromagrally", 
     name: "Cro-Mag Rally",
     models: [
-      // Models will be added when files are copied to /games/cromagrally/
+      // Character Models with Skeletons
+      {
+        name: "CroMag",
+        bg3dFile: "/PangeaRSEdit/games/cromagrally/skeletons/CroMag.bg3d",
+        skeletonFile: "/PangeaRSEdit/games/cromagrally/skeletons/CroMag.skeleton.rsrc",
+        description: "Cro-Mag character with animations",
+        category: "Characters"
+      },
+      {
+        name: "Caveman",
+        bg3dFile: "/PangeaRSEdit/games/cromagrally/skeletons/Caveman.bg3d",
+        skeletonFile: "/PangeaRSEdit/games/cromagrally/skeletons/Caveman.skeleton.rsrc",
+        description: "Caveman character with animations",
+        category: "Characters"
+      },
+      {
+        name: "Dino",
+        bg3dFile: "/PangeaRSEdit/games/cromagrally/skeletons/Dino.bg3d",
+        skeletonFile: "/PangeaRSEdit/games/cromagrally/skeletons/Dino.skeleton.rsrc",
+        description: "Dinosaur character with animations",
+        category: "Characters"
+      },
+      {
+        name: "Pterodactyl",
+        bg3dFile: "/PangeaRSEdit/games/cromagrally/skeletons/Pterodactyl.bg3d",
+        skeletonFile: "/PangeaRSEdit/games/cromagrally/skeletons/Pterodactyl.skeleton.rsrc",
+        description: "Pterodactyl character with animations",
+        category: "Characters"
+      },
+      {
+        name: "Viking",
+        bg3dFile: "/PangeaRSEdit/games/cromagrally/skeletons/Viking.bg3d",
+        skeletonFile: "/PangeaRSEdit/games/cromagrally/skeletons/Viking.skeleton.rsrc",
+        description: "Viking character with animations",
+        category: "Characters"
+      },
+      // Level Models (no skeletons)
+      {
+        name: "Desert Level",
+        bg3dFile: "/PangeaRSEdit/games/cromagrally/models/desert.bg3d",
+        description: "Desert level environment models",
+        category: "Levels"
+      },
+      {
+        name: "Forest Level",
+        bg3dFile: "/PangeaRSEdit/games/cromagrally/models/forest.bg3d",
+        description: "Forest level environment models",
+        category: "Levels"
+      },
+      {
+        name: "Global Models",
+        bg3dFile: "/PangeaRSEdit/games/cromagrally/models/global.bg3d",
+        description: "Shared game objects and models",
+        category: "Objects"
+      }
     ]
   },
   {
     id: "nanosaur2",
     name: "Nanosaur 2",
     models: [
-      // Models will be added when files are copied to /games/nanosaur2/
+      // Character Models with Skeletons
+      {
+        name: "Nano",
+        bg3dFile: "/PangeaRSEdit/games/nanosaur2/skeletons/nano.bg3d",
+        skeletonFile: "/PangeaRSEdit/games/nanosaur2/skeletons/nano.skeleton.rsrc",
+        description: "Main Nanosaur character with animations",
+        category: "Characters"
+      },
+      {
+        name: "Raptor",
+        bg3dFile: "/PangeaRSEdit/games/nanosaur2/skeletons/raptor.bg3d",
+        skeletonFile: "/PangeaRSEdit/games/nanosaur2/skeletons/raptor.skeleton.rsrc",
+        description: "Raptor dinosaur with animations",
+        category: "Characters"
+      },
+      {
+        name: "Brach",
+        bg3dFile: "/PangeaRSEdit/games/nanosaur2/skeletons/brach.bg3d",
+        skeletonFile: "/PangeaRSEdit/games/nanosaur2/skeletons/brach.skeleton.rsrc",
+        description: "Brachiosaurus with animations",
+        category: "Characters"
+      },
+      {
+        name: "Ramphor",
+        bg3dFile: "/PangeaRSEdit/games/nanosaur2/skeletons/ramphor.bg3d",
+        skeletonFile: "/PangeaRSEdit/games/nanosaur2/skeletons/ramphor.skeleton.rsrc",
+        description: "Ramphor dinosaur with animations",
+        category: "Characters"
+      },
+      // Level Models (no skeletons)
+      {
+        name: "Desert Level",
+        bg3dFile: "/PangeaRSEdit/games/nanosaur2/models/desert.bg3d",
+        description: "Desert level environment models",
+        category: "Levels"
+      },
+      {
+        name: "Forest Level",
+        bg3dFile: "/PangeaRSEdit/games/nanosaur2/models/forest.bg3d",
+        description: "Forest level environment models",
+        category: "Levels"
+      },
+      {
+        name: "Global Models",
+        bg3dFile: "/PangeaRSEdit/games/nanosaur2/models/global.bg3d",
+        description: "Shared game objects and models",
+        category: "Objects"
+      }
     ]
   },
   {
     id: "billyfrontier",
     name: "Billy Frontier", 
     models: [
-      // Models will be added when files are copied to /games/billyfrontier/
+      // Character Models with Skeletons
+      {
+        name: "Billy",
+        bg3dFile: "/PangeaRSEdit/games/billyfrontier/skeletons/Billy.bg3d",
+        skeletonFile: "/PangeaRSEdit/games/billyfrontier/skeletons/Billy.skeleton.rsrc",
+        description: "Main character Billy with animations",
+        category: "Characters"
+      },
+      {
+        name: "Bandito",
+        bg3dFile: "/PangeaRSEdit/games/billyfrontier/skeletons/Bandito.bg3d",
+        skeletonFile: "/PangeaRSEdit/games/billyfrontier/skeletons/Bandito.skeleton.rsrc",
+        description: "Bandito enemy with animations",
+        category: "Characters"
+      },
+      {
+        name: "FrogMan",
+        bg3dFile: "/PangeaRSEdit/games/billyfrontier/skeletons/FrogMan.bg3d",
+        skeletonFile: "/PangeaRSEdit/games/billyfrontier/skeletons/FrogMan.skeleton.rsrc",
+        description: "Frog Man character with animations",
+        category: "Characters"
+      },
+      {
+        name: "KangaRex",
+        bg3dFile: "/PangeaRSEdit/games/billyfrontier/skeletons/KangaRex.bg3d",
+        skeletonFile: "/PangeaRSEdit/games/billyfrontier/skeletons/KangaRex.skeleton.rsrc",
+        description: "Kanga Rex dinosaur with animations",
+        category: "Characters"
+      },
+      // Level Models (no skeletons)  
+      {
+        name: "Town Level",
+        bg3dFile: "/PangeaRSEdit/games/billyfrontier/models/town.bg3d",
+        description: "Town level environment models",
+        category: "Levels"
+      },
+      {
+        name: "Swamp Level",
+        bg3dFile: "/PangeaRSEdit/games/billyfrontier/models/swamp.bg3d",
+        description: "Swamp level environment models",
+        category: "Levels"
+      },
+      {
+        name: "Global Models",
+        bg3dFile: "/PangeaRSEdit/games/billyfrontier/models/global.bg3d",
+        description: "Shared game objects and models",
+        category: "Objects"
+      }
     ]
   }
 ];
 
 export function GameModelSelector({ onLoadModel, loading }: GameModelSelectorProps) {
   const [selectedGameId, setSelectedGameId] = useState<string>("");
+  const [selectedCategory, setSelectedCategory] = useState<string>("Characters");
   const [selectedModel, setSelectedModel] = useState<GameModel | null>(null);
   const [loadWithSkeleton, setLoadWithSkeleton] = useState<boolean>(true);
 
   const selectedGame = GAMES.find(game => game.id === selectedGameId);
-  const availableModels = selectedGame?.models || [];
+  const availableModels = selectedGame?.models.filter(model => model.category === selectedCategory) || [];
+  const availableCategories = selectedGame ? 
+    [...new Set(selectedGame.models.map(model => model.category))] : [];
 
   useEffect(() => {
-    // Reset model selection when game changes
+    // Reset model selection when game or category changes
     setSelectedModel(null);
+  }, [selectedGameId, selectedCategory]);
+
+  useEffect(() => {
+    // Reset category when game changes
+    if (selectedGame && availableCategories.length > 0) {
+      setSelectedCategory(availableCategories[0]);
+    }
   }, [selectedGameId]);
 
   const handleLoadSelectedModel = async () => {
@@ -157,6 +432,29 @@ export function GameModelSelector({ onLoadModel, loading }: GameModelSelectorPro
             </SelectContent>
           </Select>
         </div>
+
+        {/* Model Category Selection */}
+        {selectedGame && availableCategories.length > 1 && (
+          <div className="space-y-2">
+            <label className="text-sm text-gray-300">Category</label>
+            <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+              <SelectTrigger className="w-full bg-gray-700 border-gray-600 text-white">
+                <SelectValue placeholder="Select a category" />
+              </SelectTrigger>
+              <SelectContent className="bg-gray-700 border-gray-600">
+                {availableCategories.map((category) => (
+                  <SelectItem 
+                    key={category} 
+                    value={category}
+                    className="text-white hover:bg-gray-600"
+                  >
+                    {category}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
 
         {/* Model Selection */}
         {selectedGame && (

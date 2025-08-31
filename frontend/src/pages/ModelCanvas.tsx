@@ -5,7 +5,6 @@ import { ModelCanvasProps } from "@/components/model-viewer/types";
 import { useModelHierarchy } from "@/components/model-viewer/useModelHierarchy";
 import { useModelAnimations } from "@/components/model-viewer/useModelAnimations";
 import { AnimationUpdater } from "@/components/model-viewer/AnimationUpdater";
-import { gltf } from "gltf-validator";
 
 export function ModelCanvas(props: ModelCanvasProps) {
   const { gltfUrl, setModelNodes, onSceneReady, onAnimationsReady } = props;
