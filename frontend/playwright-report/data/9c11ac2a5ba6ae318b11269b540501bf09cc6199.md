@@ -1,0 +1,41 @@
+# Page snapshot
+
+```yaml
+- navigation:
+  - heading "PangeaRS Edit" [level=1]
+  - link "Level Editor":
+    - /url: "#/"
+    - img
+    - text: Level Editor
+  - link "Model Viewer":
+    - /url: "#/model-viewer"
+    - img
+    - text: Model Viewer
+  - link "Download Levels":
+    - /url: "#/download-levels"
+    - img
+    - text: Download Levels
+- heading "Model Upload" [level=3]
+- button "Game Models"
+- button "Upload Files"
+- heading "Game Model Selector" [level=3]
+- text: Game
+- combobox: Select a game
+- button "Load Model" [disabled]:
+  - img
+  - text: Load Model
+- heading "Convert BG3D to GLB" [level=3]
+- paragraph: Upload .bg3d and optional .skeleton.rsrc files to convert and download as .glb.
+- img
+- paragraph: Drop a BG3D file here or click to select
+- paragraph: Upload .bg3d file first, then optionally add skeleton
+- heading "Convert GLB to BG3D" [level=3]
+- paragraph: Upload a .glb file to convert and download as .bg3d.
+- img
+- paragraph: Drop a GLB file here or click to select
+- paragraph: Supports .glb files
+- img
+- heading "No Model Loaded" [level=3]
+- paragraph: Upload a BG3D file to start viewing 3D models
+- region "Notifications alt+T"
+```
