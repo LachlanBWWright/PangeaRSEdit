@@ -1,6 +1,10 @@
 // Test to inspect the actual Three.js animation structure and property names
 import { describe, it, expect } from 'vitest';
-import { convertBG3DWithSkeletonToGLTF } from './bg3dWithSkeleton';
+import { bg3dParsedToGLTF } from './parsedBg3dGitfConverter';
+import { parseBG3D } from './parseBG3D';
+import { parseSkeletonRsrcTS } from './skeletonRsrc/parseSkeletonRsrcTS';
+import { Document } from '@gltf-transform/core';
+import { KHRONOS_EXTENSIONS } from '@gltf-transform/extensions';
 import * as fs from 'fs';
 import * as THREE from 'three';
 import { GLTFLoader } from 'three-stdlib';
@@ -10,8 +14,8 @@ describe('Three.js Animation Property Names Debug', () => {
     console.log('=== Three.js Animation Property Names Debug ===');
     
     // Load Otto files
-    const bg3dPath = '/home/runner/work/PangeaRSEdit/PangeaRSEdit/frontend/public/Otto.bg3d';
-    const skeletonPath = '/home/runner/work/PangeaRSEdit/PangeaRSEdit/frontend/public/Otto.skeleton.rsrc';
+    const bg3dPath = '/home/runner/work/PangeaRSEdit/PangeaRSEdit/frontend/public/games/ottomatic/skeletons/Otto.bg3d';
+    const skeletonPath = '/home/runner/work/PangeaRSEdit/PangeaRSEdit/frontend/public/games/ottomatic/skeletons/Otto.skeleton.rsrc';
     
     const bg3dBuffer = fs.readFileSync(bg3dPath);
     const skeletonBuffer = fs.readFileSync(skeletonPath);
@@ -19,8 +23,21 @@ describe('Three.js Animation Property Names Debug', () => {
     console.log(`BG3D size: ${bg3dBuffer.length} bytes`);
     console.log(`Skeleton size: ${skeletonBuffer.length} bytes`);
     
-    // Convert to GLB
-    const glbBuffer = convertBG3DWithSkeletonToGLTF(bg3dBuffer, skeletonBuffer);
+    // Parse skeleton
+    const skeleton = parseSkeletonRsrcTS(skeletonBuffer.buffer);
+    console.log(`Parsed skeleton: ${skeleton.bones.length} bones, ${skeleton.animations.length} animations`);
+    
+    // Parse BG3D with skeleton
+    const bg3dParsed = parseBG3D(bg3dBuffer.buffer, skeleton);
+    console.log(`Parsed BG3D: ${bg3dParsed.materials.length} materials, ${bg3dParsed.groups.length} groups`);
+    
+    // Convert to glTF document
+    const doc = bg3dParsedToGLTF(bg3dParsed);
+    
+    // Export to GLB buffer
+    const io = doc.createRoot().getDocument().createIO();
+    io.registerExtensions(KHRONOS_EXTENSIONS);
+    const glbBuffer = Buffer.from(await io.writeBinary(doc));
     console.log(`Generated GLB size: ${glbBuffer.length} bytes`);
     
     // Save GLB temporarily for Three.js to load
