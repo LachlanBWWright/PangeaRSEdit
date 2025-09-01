@@ -6,6 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Upload, X, Download } from "lucide-react";
 import { TextureManager } from "@/components/TextureManager";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { GameModelSelector } from "@/components/GameModelSelector";
 
 // ...existing code...
 import { SkeletonConversionPanel } from "@/components/SkeletonConversionPanel";
@@ -50,6 +52,7 @@ export function ModelViewer() {
   const [animationMixer, setAnimationMixer] = useState<THREE.AnimationMixer | null>(null);
   const [uploadStep, setUploadStep] = useState<"select-bg3d" | "select-skeleton" | "completed">("select-bg3d");
   const [pendingBg3dFile, setPendingBg3dFile] = useState<File | null>(null);
+  const [useGameSelector, setUseGameSelector] = useState<boolean>(true); // New state for UI mode
   function extractTexturesFromParsed(bg3dParsed: BG3DParseResult | null) {
     if (!bg3dParsed) {
       setTextures([]);
@@ -157,10 +160,8 @@ export function ModelViewer() {
             worker.terminate();
           };
           
-          // Choose the appropriate message type based on whether we have skeleton data
-          // TEMPORARY: Disable skeleton in GLB export due to Three.js compatibility issues
-          // But still parse skeleton data for animation detection and metadata
-          const message: BG3DGltfWorkerMessage = false && skeletonData // skeletonData 
+          // Use skeleton data if available for proper glTF animation support
+          const message: BG3DGltfWorkerMessage = skeletonData 
             ? {
                 type: "bg3d-with-skeleton-to-glb",
                 bg3dBuffer: bg3dArrayBuffer,
@@ -685,6 +686,7 @@ export function ModelViewer() {
     setScene(undefined);
     setUploadStep("select-bg3d");
     setPendingBg3dFile(null);
+    // Don't reset useGameSelector - let user keep their preference
     toast.success("Model cleared");
   };
 
@@ -764,114 +766,151 @@ export function ModelViewer() {
             </CardHeader>
             <CardContent className="space-y-4">
               {!gltfUrl ? (
-                // Model upload interface
+                // Model loading interface
                 <>
-                  {uploadStep === "select-bg3d" && (
-                    <>
-                      <div
-                        className="border-2 border-dashed border-gray-600 rounded-lg p-8 text-center cursor-pointer hover:border-gray-500 transition-colors"
-                        onDrop={handleDrop}
-                        onDragOver={handleDragOver}
-                        onClick={() => fileInputRef.current?.click()}
-                      >
-                        <Upload className="w-12 h-12 mx-auto mb-4 text-gray-400" />
-                        <p className="text-gray-400 mb-2">
-                          Drop BG3D file here or click to select
-                        </p>
-                        <p className="text-sm text-gray-500">Upload .bg3d file first, then optionally add skeleton</p>
-                      </div>
+                  {/* Mode Toggle */}
+                  <div className="flex space-x-2 mb-4">
+                    <Button
+                      onClick={() => setUseGameSelector(true)}
+                      variant={useGameSelector ? "default" : "outline"}
+                      size="sm"
+                      className="flex-1"
+                    >
+                      Game Models
+                    </Button>
+                    <Button
+                      onClick={() => setUseGameSelector(false)}
+                      variant={!useGameSelector ? "default" : "outline"}
+                      size="sm"
+                      className="flex-1"
+                    >
+                      Upload Files
+                    </Button>
+                  </div>
 
-                      <input
-                        ref={fileInputRef}
-                        type="file"
-                        accept=".bg3d"
-                        className="hidden"
-                        onChange={(e) => {
-                          const file = e.target.files?.[0];
-                          if (file && file.name.toLowerCase().endsWith(".bg3d")) {
-                            handleBg3dFileSelect(file);
-                          } else if (file) {
-                            toast.error("Please select a BG3D file");
-                          }
-                        }}
-                      />
-                    </>
-                  )}
-
-                  {uploadStep === "select-skeleton" && pendingBg3dFile && (
+                  {useGameSelector ? (
+                    // Game Model Selector Mode
+                    <GameModelSelector
+                      onLoadModel={handleFileUpload}
+                      loading={loading}
+                    />
+                  ) : (
+                    // File Upload Mode
                     <>
-                      <div className="text-sm text-gray-300 mb-3">
-                        BG3D file selected: <strong>{pendingBg3dFile.name}</strong>
-                      </div>
+                      {uploadStep === "select-bg3d" && (
+                        <>
+                          <div
+                            className="border-2 border-dashed border-gray-600 rounded-lg p-8 text-center cursor-pointer hover:border-gray-500 transition-colors"
+                            onDrop={handleDrop}
+                            onDragOver={handleDragOver}
+                            onClick={() => fileInputRef.current?.click()}
+                          >
+                            <Upload className="w-12 h-12 mx-auto mb-4 text-gray-400" />
+                            <p className="text-gray-400 mb-2">
+                              Drop BG3D file here or click to select
+                            </p>
+                            <p className="text-sm text-gray-500">Upload .bg3d file first, then optionally add skeleton</p>
+                          </div>
+
+                          <input
+                            ref={fileInputRef}
+                            type="file"
+                            accept=".bg3d"
+                            className="hidden"
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              if (file && file.name.toLowerCase().endsWith(".bg3d")) {
+                                handleBg3dFileSelect(file);
+                              } else if (file) {
+                                toast.error("Please select a BG3D file");
+                              }
+                            }}
+                          />
+                        </>
+                      )}
+
+                      {uploadStep === "select-skeleton" && pendingBg3dFile && (
+                        <>
+                          <div className="text-sm text-gray-300 mb-3">
+                            BG3D file selected: <strong>{pendingBg3dFile.name}</strong>
+                          </div>
+                          
+                          <div
+                            className="border-2 border-dashed border-gray-600 rounded-lg p-8 text-center cursor-pointer hover:border-gray-500 transition-colors"
+                            onDrop={handleDrop}
+                            onDragOver={handleDragOver}
+                            onClick={() => fileInputRef.current?.click()}
+                          >
+                            <Upload className="w-12 h-12 mx-auto mb-4 text-gray-400" />
+                            <p className="text-gray-400 mb-2">
+                              Drop skeleton file here or click to select
+                            </p>
+                            <p className="text-sm text-gray-500">Optional: Add .skeleton.rsrc file for animations</p>
+                          </div>
+
+                          <input
+                            ref={fileInputRef}
+                            type="file"
+                            accept=".skeleton.rsrc"
+                            className="hidden"
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              if (file && file.name.toLowerCase().endsWith(".skeleton.rsrc")) {
+                                handleSkeletonFileSelect(file);
+                              } else if (file) {
+                                toast.error("Please select a skeleton.rsrc file");
+                              }
+                            }}
+                          />
+
+                          <div className="flex gap-2">
+                            <Button
+                              onClick={handleSkipSkeleton}
+                              variant="outline"
+                              className="flex-1 text-white"
+                              disabled={loading}
+                            >
+                              Skip Skeleton
+                            </Button>
+                            <Button
+                              onClick={() => {
+                                setUploadStep("select-bg3d");
+                                setPendingBg3dFile(null);
+                              }}
+                              variant="ghost"
+                              className="flex-1 text-gray-400 hover:text-white"
+                            >
+                              Choose Different BG3D
+                            </Button>
+                          </div>
+                        </>
+                      )}
+
+                      {/* Test buttons - only show in file upload mode */}
+                      <hr className="border-gray-600" />
+                      <p className="text-xs text-gray-400 text-center mb-2">
+                        Or use legacy test files:
+                      </p>
                       
-                      <div
-                        className="border-2 border-dashed border-gray-600 rounded-lg p-8 text-center cursor-pointer hover:border-gray-500 transition-colors"
-                        onDrop={handleDrop}
-                        onDragOver={handleDragOver}
-                        onClick={() => fileInputRef.current?.click()}
+                      <Button
+                        onClick={loadTestModel}
+                        variant="outline"
+                        className="w-full text-white"
+                        disabled={loading}
                       >
-                        <Upload className="w-12 h-12 mx-auto mb-4 text-gray-400" />
-                        <p className="text-gray-400 mb-2">
-                          Drop skeleton file here or click to select
-                        </p>
-                        <p className="text-sm text-gray-500">Optional: Add .skeleton.rsrc file for animations</p>
-                      </div>
+                        Load Otto.bg3d Sample Model (with Skeleton)
+                      </Button>
 
-                      <input
-                        ref={fileInputRef}
-                        type="file"
-                        accept=".skeleton.rsrc"
-                        className="hidden"
-                        onChange={(e) => {
-                          const file = e.target.files?.[0];
-                          if (file && file.name.toLowerCase().endsWith(".skeleton.rsrc")) {
-                            handleSkeletonFileSelect(file);
-                          } else if (file) {
-                            toast.error("Please select a skeleton.rsrc file");
-                          }
-                        }}
-                      />
-
-                      <div className="flex gap-2">
-                        <Button
-                          onClick={handleSkipSkeleton}
-                          variant="outline"
-                          className="flex-1 text-white"
-                          disabled={loading}
-                        >
-                          Skip Skeleton
-                        </Button>
-                        <Button
-                          onClick={() => {
-                            setUploadStep("select-bg3d");
-                            setPendingBg3dFile(null);
-                          }}
-                          variant="ghost"
-                          className="flex-1 text-gray-400 hover:text-white"
-                        >
-                          Choose Different BG3D
-                        </Button>
-                      </div>
+                      <Button
+                        onClick={loadTestModelWithoutSkeleton}
+                        variant="outline"
+                        className="w-full text-white"
+                        disabled={loading}
+                      >
+                        Load Otto.bg3d Sample Model (without Skeleton)
+                      </Button>
                     </>
                   )}
-
-                  <Button
-                    onClick={loadTestModel}
-                    variant="outline"
-                    className="w-full text-white"
-                    disabled={loading}
-                  >
-                    Load Otto.bg3d Sample Model (with Skeleton)
-                  </Button>
-
-                  <Button
-                    onClick={loadTestModelWithoutSkeleton}
-                    variant="outline"
-                    className="w-full text-white"
-                    disabled={loading}
-                  >
-                    Load Otto.bg3d Sample Model (without Skeleton)
-                  </Button>
 
                   {loading && (
                     <p className="text-center text-gray-400">Loading model...</p>
@@ -1019,12 +1058,14 @@ export function ModelViewer() {
         {/* Main viewport - 3D Scene */}
         <div className="flex-1 bg-gray-800 rounded-lg overflow-hidden">
           {gltfUrl ? (
-            <ModelCanvas
-              gltfUrl={gltfUrl}
-              setModelNodes={setModelNodes}
-              onSceneReady={setScene}
-              onAnimationsReady={handleAnimationsReady}
-            />
+            <ErrorBoundary>
+              <ModelCanvas
+                gltfUrl={gltfUrl}
+                setModelNodes={setModelNodes}
+                onSceneReady={setScene}
+                onAnimationsReady={handleAnimationsReady}
+              />
+            </ErrorBoundary>
           ) : (
             <div className="flex items-center justify-center h-full text-gray-400">
               <div className="text-center">
