@@ -4,6 +4,66 @@
 import type { SkeletonResource } from "../python/structSpecs/skeleton/skeletonInterface";
 import type { BG3DSkeleton } from "./parseBG3D";
 
+interface SkeletonResourceBone {
+  name: string;
+  order: number;
+  obj: {
+    parentBone: number;
+    name: string;
+    coordX: number;
+    coordY: number;
+    coordZ: number;
+    numPointsAttachedToBone: number;
+    numNormalsAttachedToBone: number;
+  };
+}
+
+interface SkeletonResourceBonePoint {
+  name: string;
+  order: number;
+  obj: Array<{ pointIndex: number }>;
+}
+
+interface SkeletonResourceBoneNormal {
+  name: string;
+  order: number;
+  obj: Array<{ normalIndex: number }>;
+}
+
+interface SkeletonResourceAnimation {
+  name: string;
+  order: number;
+  obj: {
+    animName: string;
+    numEvents: number;
+    events: Array<unknown>;
+  };
+}
+
+interface SkeletonResourceEvent {
+  name: string;
+  order: number;
+  obj: unknown;
+}
+
+interface SkeletonResourceKeyframe {
+  name: string;
+  order: number;
+  obj: {
+    tick: number;
+    accelerationMode: number;
+    coordX: number;
+    coordY: number;
+    coordZ: number;
+    rotationX: number;
+    rotationY: number;
+    rotationZ: number;
+    scaleX: number;
+    scaleY: number;
+    scaleZ: number;
+  };
+}
+
 /**
  * Convert BG3D skeleton data to SkeletonResource format
  * @param skeleton BG3D skeleton data
@@ -19,7 +79,7 @@ export function bg3dSkeletonToSkeletonResource(skeleton: BG3DSkeleton): Skeleton
   };
 
   // Convert bones
-  const bones: { [key: string]: any } = {};
+  const bones: { [key: string]: SkeletonResourceBone } = {};
   skeleton.bones.forEach((bone, index) => {
     bones[index.toString()] = {
       name: "Bone",
@@ -37,7 +97,7 @@ export function bg3dSkeletonToSkeletonResource(skeleton: BG3DSkeleton): Skeleton
   });
 
   // Convert bone point attachments (simplified for now)
-  const bonP: { [key: string]: any } = {};
+  const bonP: { [key: string]: SkeletonResourceBonePoint } = {};
   skeleton.bones.forEach((bone, index) => {
     if (bone.pointIndices && bone.pointIndices.length > 0) {
       bonP[index.toString()] = {
@@ -49,22 +109,22 @@ export function bg3dSkeletonToSkeletonResource(skeleton: BG3DSkeleton): Skeleton
   });
 
   // Convert bone normal attachments (simplified for now)
-  const bonN: { [key: string]: any } = {};
+  const bonN: { [key: string]: SkeletonResourceBoneNormal } = {};
   skeleton.bones.forEach((bone, index) => {
     if (bone.normalIndices && bone.normalIndices.length > 0) {
       bonN[index.toString()] = {
         name: "Bone Normals",
         order: skeleton.bones.length * 2 + index + 1,
-        obj: bone.normalIndices.map(normal => ({ normal }))
+        obj: bone.normalIndices.map(normal => ({ normalIndex: normal }))
       };
     }
   });
 
   // Convert animations
-  const anHd: { [key: string]: any } = {};
-  const evnt: { [key: string]: any } = {};
-  const numK: { [key: string]: any } = {};
-  const keyF: { [key: string]: any } = {};
+  const anHd: { [key: string]: SkeletonResourceAnimation } = {};
+  const evnt: { [key: string]: SkeletonResourceEvent } = {};
+  const numK: { [key: string]: { name: string; order: number; obj: number } } = {};
+  const keyF: { [key: string]: SkeletonResourceKeyframe } = {};
 
   skeleton.animations.forEach((animation, animIndex) => {
     // Animation header

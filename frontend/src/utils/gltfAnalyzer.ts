@@ -64,7 +64,8 @@ export async function analyzeGLTF(glbArrayBuffer: ArrayBuffer): Promise<GLTFAnal
     ];
 
     textureTypes.forEach(({ prop, type }) => {
-      const texture = (material as any)[prop]();
+      // Type assertion needed for dynamic property access on gltf-transform Material
+      const texture = (material as Record<string, () => any>)[prop]();
       if (texture) {
         materialData.textures.push({
           type,
