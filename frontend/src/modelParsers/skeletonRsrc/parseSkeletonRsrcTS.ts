@@ -7,7 +7,7 @@ import { skeletonSpecs } from "../../python/structSpecs/skeleton/skeleton";
  */
 function parseBonPData(hexData: string): { pointIndex: number }[] {
   if (!hexData || hexData.length === 0) return [];
-  
+
   const result: { pointIndex: number }[] = [];
   // Each point index is 2 bytes (4 hex chars)
   for (let i = 0; i < hexData.length; i += 4) {
@@ -25,7 +25,7 @@ function parseBonPData(hexData: string): { pointIndex: number }[] {
  */
 function parseBonNData(hexData: string): { normal: number }[] {
   if (!hexData || hexData.length === 0) return [];
-  
+
   const result: { normal: number }[] = [];
   // Each normal index is 2 bytes (4 hex chars)
   for (let i = 0; i < hexData.length; i += 4) {
@@ -41,17 +41,23 @@ function parseBonNData(hexData: string): { normal: number }[] {
 /**
  * Parse hex data as array of 32-bit floats for RelP entries
  */
-function parseRelPData(hexData: string): { relOffsetX: number; relOffsetY: number; relOffsetZ: number }[] {
+function parseRelPData(
+  hexData: string,
+): { relOffsetX: number; relOffsetY: number; relOffsetZ: number }[] {
   if (!hexData || hexData.length === 0) return [];
-  
-  const result: { relOffsetX: number; relOffsetY: number; relOffsetZ: number }[] = [];
-  
+
+  const result: {
+    relOffsetX: number;
+    relOffsetY: number;
+    relOffsetZ: number;
+  }[] = [];
+
   // Convert hex string to bytes
   const bytes = new Uint8Array(hexData.length / 2);
   for (let i = 0; i < hexData.length; i += 2) {
     bytes[i / 2] = parseInt(hexData.substring(i, i + 2), 16);
   }
-  
+
   // Each point is 3 floats (12 bytes)
   const view = new DataView(bytes.buffer);
   for (let i = 0; i < bytes.length; i += 12) {
@@ -62,24 +68,26 @@ function parseRelPData(hexData: string): { relOffsetX: number; relOffsetY: numbe
       result.push({ relOffsetX, relOffsetY, relOffsetZ });
     }
   }
-  
+
   return result;
 }
 
 /**
  * Parse hex data for Event entries
  */
-function parseEvntData(hexData: string): { time: number; type: number; value: number }[] {
+function parseEvntData(
+  hexData: string,
+): { time: number; type: number; value: number }[] {
   if (!hexData || hexData.length === 0) return [];
-  
+
   const result: { time: number; type: number; value: number }[] = [];
-  
+
   // Convert hex string to bytes
   const bytes = new Uint8Array(hexData.length / 2);
   for (let i = 0; i < hexData.length; i += 2) {
     bytes[i / 2] = parseInt(hexData.substring(i, i + 2), 16);
   }
-  
+
   // Each event is 3 32-bit values (12 bytes total)
   const view = new DataView(bytes.buffer);
   for (let i = 0; i < bytes.length; i += 12) {
@@ -90,7 +98,7 @@ function parseEvntData(hexData: string): { time: number; type: number; value: nu
       result.push({ time, type, value });
     }
   }
-  
+
   return result;
 }
 
@@ -99,20 +107,20 @@ function parseEvntData(hexData: string): { time: number; type: number; value: nu
  */
 function parseNumKData(hexData: string): { numKeyFrames: number }[] {
   if (!hexData || hexData.length === 0) return [];
-  
+
   const result: { numKeyFrames: number }[] = [];
-  
+
   // Convert hex string to bytes
   const bytes = new Uint8Array(hexData.length / 2);
   for (let i = 0; i < hexData.length; i += 2) {
     bytes[i / 2] = parseInt(hexData.substring(i, i + 2), 16);
   }
-  
+
   // Each entry is 1 byte
   for (let i = 0; i < bytes.length; i++) {
     result.push({ numKeyFrames: bytes[i] });
   }
-  
+
   return result;
 }
 
@@ -131,50 +139,52 @@ function parseBoneDataFallback(hexData: string, boneName: string): any {
       numNormalsAttachedToBone: 0,
     };
   }
-  
+
   // Convert hex string to bytes
   const bytes = new Uint8Array(hexData.length / 2);
   for (let i = 0; i < hexData.length; i += 2) {
     bytes[i / 2] = parseInt(hexData.substring(i, i + 2), 16);
   }
-  
+
   const view = new DataView(bytes.buffer);
-  
+
   // Parse bone data structure (84 bytes total)
   let offset = 0;
-  
+
   // parentBone: 4 bytes
   const parentBone = view.getInt32(offset, true);
   offset += 4;
-  
+
   // name: read up to 32 bytes as null-terminated string
-  let name = '';
+  let name = "";
   for (let i = 0; i < 32 && offset + i < bytes.length; i++) {
     const char = bytes[offset + i];
     if (char === 0) break; // null terminator
     name += String.fromCharCode(char);
   }
   offset += 32; // Skip name field
-  
+
   // coordX, coordY, coordZ: 12 bytes - parse as little endian since rsrcdump should handle byte order
   console.log(`Bone ${boneName} coord bytes:`, hexData.substring(72, 96)); // coordinates start after 36-byte header (72 hex chars)
   const coordX = view.getFloat32(offset, true); // true = little endian since rsrcdump handles byte order
   offset += 4;
-  const coordY = view.getFloat32(offset, true); 
+  const coordY = view.getFloat32(offset, true);
   offset += 4;
   const coordZ = view.getFloat32(offset, true);
   offset += 4;
-  console.log(`Bone ${boneName} coordinates: [${coordX}, ${coordY}, ${coordZ}]`);
-  
+  console.log(
+    `Bone ${boneName} coordinates: [${coordX}, ${coordY}, ${coordZ}]`,
+  );
+
   // numPointsAttachedToBone, numNormalsAttachedToBone: 8 bytes
   const numPointsAttachedToBone = view.getUint32(offset, true);
   offset += 4;
   const numNormalsAttachedToBone = view.getUint32(offset, true);
   offset += 4;
-  
+
   // Use the parsed name if available, otherwise fall back to the provided name
   const finalName = name.length > 0 ? name : boneName;
-  
+
   return {
     parentBone,
     name: finalName,
@@ -187,15 +197,15 @@ function parseBoneDataFallback(hexData: string, boneName: string): any {
 }
 function parseKeyFData(hexData: string): any[] {
   if (!hexData || hexData.length === 0) return [];
-  
+
   const result: any[] = [];
-  
+
   // Convert hex string to bytes
   const bytes = new Uint8Array(hexData.length / 2);
   for (let i = 0; i < hexData.length; i += 2) {
     bytes[i / 2] = parseInt(hexData.substring(i, i + 2), 16);
   }
-  
+
   // Each keyframe is 11 floats (44 bytes total): tick, accelerationMode, coordX, coordY, coordZ, rotationX, rotationY, rotationZ, scaleX, scaleY, scaleZ
   const view = new DataView(bytes.buffer);
   for (let i = 0; i < bytes.length; i += 44) {
@@ -211,14 +221,23 @@ function parseKeyFData(hexData: string): any[] {
       const scaleX = view.getFloat32(i + 32, true);
       const scaleY = view.getFloat32(i + 36, true);
       const scaleZ = view.getFloat32(i + 40, true);
-      
+
       result.push({
-        tick, accelerationMode, coordX, coordY, coordZ,
-        rotationX, rotationY, rotationZ, scaleX, scaleY, scaleZ
+        tick,
+        accelerationMode,
+        coordX,
+        coordY,
+        coordZ,
+        rotationX,
+        rotationY,
+        rotationZ,
+        scaleX,
+        scaleY,
+        scaleZ,
       });
     }
   }
-  
+
   return result;
 }
 
@@ -228,7 +247,7 @@ function parseKeyFData(hexData: string): any[] {
 function transformToSkeletonResource(rawData: any): SkeletonResource {
   console.log("Raw data structure:", rawData);
   console.log("Raw data keys:", Object.keys(rawData));
-  
+
   const result: SkeletonResource = {
     _metadata: rawData._metadata,
     Hedr: {},
@@ -239,94 +258,138 @@ function transformToSkeletonResource(rawData: any): SkeletonResource {
     AnHd: {},
     Evnt: {},
     NumK: {},
-    KeyF: {}
+    KeyF: {},
   };
 
   // Transform each resource type
   for (const [typeName, typeData] of Object.entries(rawData)) {
-    if (typeName === '_metadata') continue;
-    
+    if (typeName === "_metadata") continue;
+
     console.log(`Processing type: ${typeName}`, typeData);
-    
+
     const typeMap = typeData as { [key: string]: any };
     for (const [resourceId, resourceData] of Object.entries(typeMap)) {
       const resourceIdNum = parseInt(resourceId, 10);
-      
+
       // Parse the binary data based on the resource type
       let obj: any;
-      const hexData = resourceData.data || '';
-      
-      if (typeName === 'BonP') {
+      const hexData = resourceData.data || "";
+
+      if (typeName === "BonP") {
         // Check if rsrcdump already parsed the data correctly
-        if (Array.isArray(resourceData) && resourceData.length > 0 && 
-            resourceData[0].pointIndex !== undefined) {
+        if (
+          Array.isArray(resourceData) &&
+          resourceData.length > 0 &&
+          resourceData[0].pointIndex !== undefined
+        ) {
           obj = resourceData;
         } else {
           obj = parseBonPData(hexData);
         }
-      } else if (typeName === 'BonN') {
+      } else if (typeName === "BonN") {
         // Check if rsrcdump already parsed the data correctly
-        if (Array.isArray(resourceData) && resourceData.length > 0 && 
-            resourceData[0].normal !== undefined) {
+        if (
+          Array.isArray(resourceData) &&
+          resourceData.length > 0 &&
+          resourceData[0].normal !== undefined
+        ) {
           obj = resourceData;
         } else {
           obj = parseBonNData(hexData);
         }
-      } else if (typeName === 'RelP') {
+      } else if (typeName === "RelP") {
         // Check if rsrcdump already parsed the data correctly
-        if (Array.isArray(resourceData) && resourceData.length > 0 && 
-            resourceData[0].relOffsetX !== undefined) {
+        if (
+          Array.isArray(resourceData) &&
+          resourceData.length > 0 &&
+          resourceData[0].relOffsetX !== undefined
+        ) {
           obj = resourceData;
         } else {
           obj = parseRelPData(hexData);
         }
-      } else if (typeName === 'Evnt') {
+      } else if (typeName === "Evnt") {
         // Check if rsrcdump already parsed the data correctly
-        if (Array.isArray(resourceData) && resourceData.length > 0 && 
-            resourceData[0].time !== undefined) {
+        if (
+          Array.isArray(resourceData) &&
+          resourceData.length > 0 &&
+          resourceData[0].time !== undefined
+        ) {
           obj = resourceData;
         } else {
           obj = parseEvntData(hexData);
         }
-      } else if (typeName === 'NumK') {
+      } else if (typeName === "NumK") {
         // Check if rsrcdump already parsed the data correctly
-        if (Array.isArray(resourceData) && resourceData.length > 0 && 
-            resourceData[0].numKeyFrames !== undefined) {
+        if (
+          Array.isArray(resourceData) &&
+          resourceData.length > 0 &&
+          resourceData[0].numKeyFrames !== undefined
+        ) {
           obj = resourceData;
         } else {
           obj = parseNumKData(hexData);
         }
-      } else if (typeName === 'KeyF') {
+      } else if (typeName === "KeyF") {
         // Check if rsrcdump already parsed the keyframe data correctly
         // resourceData should have structure: { name: string, obj: KeyFrame[] }
-        if (resourceData && resourceData.obj && Array.isArray(resourceData.obj) && 
-            resourceData.obj.length > 0 && resourceData.obj[0].tick !== undefined) {
+        if (
+          resourceData &&
+          resourceData.obj &&
+          Array.isArray(resourceData.obj) &&
+          resourceData.obj.length > 0 &&
+          resourceData.obj[0].tick !== undefined
+        ) {
           // Use the already parsed data from rsrcdump
           obj = resourceData.obj;
-          console.log(`KeyF ${resourceId} data from rsrcdump:`, obj.length, 'keyframes'); 
-        } else if (resourceData && resourceData.obj && Array.isArray(resourceData.obj)) {
+          console.log(
+            `KeyF ${resourceId} data from rsrcdump:`,
+            obj.length,
+            "keyframes",
+          );
+        } else if (
+          resourceData &&
+          resourceData.obj &&
+          Array.isArray(resourceData.obj)
+        ) {
           // rsrcdump parsed it as an array but it might be empty or malformed
           obj = resourceData.obj;
-          console.log(`KeyF ${resourceId} empty/malformed from rsrcdump:`, obj.length, 'keyframes');
+          console.log(
+            `KeyF ${resourceId} empty/malformed from rsrcdump:`,
+            obj.length,
+            "keyframes",
+          );
         } else {
           // Check what we actually got from rsrcdump
           console.log(`KeyF ${resourceId} raw resourceData:`, resourceData);
-          console.log(`KeyF ${resourceId} resourceData type:`, typeof resourceData);
-          console.log(`KeyF ${resourceId} resourceData.keys:`, Object.keys(resourceData || {}));
-          
+          console.log(
+            `KeyF ${resourceId} resourceData type:`,
+            typeof resourceData,
+          );
+          console.log(
+            `KeyF ${resourceId} resourceData.keys:`,
+            Object.keys(resourceData || {}),
+          );
+
           // Fallback to manual hex parsing
-          const hexData = resourceData.data || '';
+          const hexData = resourceData.data || "";
           console.log(`KeyF ${resourceId} hex data length:`, hexData.length);
           obj = parseKeyFData(hexData);
-          console.log(`KeyF ${resourceId} parsed from hex:`, obj.length, 'keyframes');
+          console.log(
+            `KeyF ${resourceId} parsed from hex:`,
+            obj.length,
+            "keyframes",
+          );
         }
-      } else if (typeName === 'Bone') {
+      } else if (typeName === "Bone") {
         // Check if rsrcdump already parsed the bone data correctly
         console.log(`Checking bone data for ${resourceId}:`, resourceData);
-        if (resourceData.parentBone !== undefined && 
-            resourceData.coordX !== undefined && 
-            resourceData.coordY !== undefined && 
-            resourceData.coordZ !== undefined) {
+        if (
+          resourceData.parentBone !== undefined &&
+          resourceData.coordX !== undefined &&
+          resourceData.coordY !== undefined &&
+          resourceData.coordZ !== undefined
+        ) {
           // Use the already parsed data from rsrcdump
           obj = {
             parentBone: resourceData.parentBone,
@@ -335,58 +398,75 @@ function transformToSkeletonResource(rawData: any): SkeletonResource {
             coordY: resourceData.coordY,
             coordZ: resourceData.coordZ,
             numPointsAttachedToBone: resourceData.numPointsAttachedToBone || 0,
-            numNormalsAttachedToBone: resourceData.numNormalsAttachedToBone || 0,
+            numNormalsAttachedToBone:
+              resourceData.numNormalsAttachedToBone || 0,
           };
-          console.log(`Bone ${obj.name} coordinates from rsrcdump: [${obj.coordX}, ${obj.coordY}, ${obj.coordZ}], parentBone: ${obj.parentBone}`);
+          console.log(
+            `Bone ${obj.name} coordinates from rsrcdump: [${obj.coordX}, ${obj.coordY}, ${obj.coordZ}], parentBone: ${obj.parentBone}`,
+          );
         } else {
           // Fallback to manual hex parsing
-          console.log(`Bone ${resourceId} falling back to manual parsing. resourceData:`, resourceData);
-          const hexData = resourceData.data || '';
-          obj = parseBoneDataFallback(hexData, resourceData.name || `Bone_${resourceId}`);
-          console.log(`Bone ${obj.name} coordinates from fallback: [${obj.coordX}, ${obj.coordY}, ${obj.coordZ}], parentBone: ${obj.parentBone}`);
+          console.log(
+            `Bone ${resourceId} falling back to manual parsing. resourceData:`,
+            resourceData,
+          );
+          const hexData = resourceData.data || "";
+          obj = parseBoneDataFallback(
+            hexData,
+            resourceData.name || `Bone_${resourceId}`,
+          );
+          console.log(
+            `Bone ${obj.name} coordinates from fallback: [${obj.coordX}, ${obj.coordY}, ${obj.coordZ}], parentBone: ${obj.parentBone}`,
+          );
         }
-      } else if (typeName === 'AnHd') {
+      } else if (typeName === "AnHd") {
         // Check if rsrcdump already parsed the animation header correctly
-        if (resourceData.animName !== undefined && resourceData.numAnimEvents !== undefined) {
+        if (
+          resourceData.animName !== undefined &&
+          resourceData.numAnimEvents !== undefined
+        ) {
           obj = {
             animName: resourceData.animName,
-            numAnimEvents: resourceData.numAnimEvents
+            numAnimEvents: resourceData.numAnimEvents,
           };
         } else {
           // AnHd is a single object, not an array
           // For now, keep the hex data - we'll need to parse this properly later
-          obj = { animName: resourceData.name || `Anim_${resourceId}`, numAnimEvents: 0 };
+          obj = {
+            animName: resourceData.name || `Anim_${resourceId}`,
+            numAnimEvents: 0,
+          };
         }
       } else {
         // For other types, keep the raw data
         obj = hexData;
       }
-      
+
       // Create the expected structure for each resource type
       const entry = {
         name: resourceData.name || `Resource_${resourceId}`,
         order: resourceIdNum,
-        obj: obj
+        obj: obj,
       };
 
       // Add to the appropriate section
-      if (typeName === 'Hedr') {
+      if (typeName === "Hedr") {
         result.Hedr[resourceId] = entry;
-      } else if (typeName === 'Bone') {
+      } else if (typeName === "Bone") {
         result.Bone[resourceId] = entry;
-      } else if (typeName === 'BonP') {
+      } else if (typeName === "BonP") {
         result.BonP[resourceId] = entry;
-      } else if (typeName === 'BonN') {
+      } else if (typeName === "BonN") {
         result.BonN[resourceId] = entry;
-      } else if (typeName === 'RelP') {
+      } else if (typeName === "RelP") {
         result.RelP![resourceId] = entry;
-      } else if (typeName === 'AnHd') {
+      } else if (typeName === "AnHd") {
         result.AnHd[resourceId] = entry;
-      } else if (typeName === 'Evnt') {
+      } else if (typeName === "Evnt") {
         result.Evnt[resourceId] = entry;
-      } else if (typeName === 'NumK') {
+      } else if (typeName === "NumK") {
         result.NumK[resourceId] = entry;
-      } else if (typeName === 'KeyF') {
+      } else if (typeName === "KeyF") {
         result.KeyF[resourceId] = entry;
       } else {
         // Store unknown types as well
@@ -406,26 +486,26 @@ function transformToSkeletonResource(rawData: any): SkeletonResource {
 export function parseSkeletonRsrcTS(bytes: ArrayBuffer): SkeletonResource {
   // Convert ArrayBuffer to Uint8Array
   const uint8Array = new Uint8Array(bytes);
-  
+
   // Use the TypeScript rsrcdump to parse the skeleton data with skeleton specs
   const jsonString = saveToJson(
     uint8Array,
     skeletonSpecs, // struct specs - include skeleton specs
     [], // include types - include all
     [], // exclude types - exclude none
-    false // don't use Otto specs since we're providing skeleton specs
+    false, // don't use Otto specs since we're providing skeleton specs
   );
-  
+
   // Parse the JSON result
   const parsed = JSON.parse(jsonString);
-  
+
   // The skeleton data should be in the parsed result
   // We need to find the skeleton resource in the result
   console.log("Parsed skeleton data:", parsed);
-  
+
   // Transform to expected format
   const transformedData = transformToSkeletonResource(parsed);
   console.log("Transformed skeleton data:", transformedData);
-  
+
   return transformedData;
 }
