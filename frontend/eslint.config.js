@@ -5,7 +5,24 @@ import reactRefresh from 'eslint-plugin-react-refresh'
 import tseslint from 'typescript-eslint'
 
 export default tseslint.config(
-  { ignores: ['dist', 'src/assets/pyodide/**'] },
+  { 
+    ignores: [
+      'dist', 
+      'src/assets/pyodide/**',
+      // Ignore files not in TypeScript project
+      '*.spec.ts',
+      '*.test.ts',
+      'manual-pickup2-test.spec.ts',
+      'playwright-otto-test.config.ts',
+      'playwright-otto.config.ts', 
+      'playwright.config.ts',
+      'simple_test.ts',
+      'vitest.setup.ts',
+      'tests/**/*',
+      'vite.config.ts',
+      'test-*.spec.ts'
+    ] 
+  },
   {
     extends: [js.configs.recommended, ...tseslint.configs.recommended],
     files: ['**/*.{ts,tsx}'],
@@ -13,7 +30,7 @@ export default tseslint.config(
       ecmaVersion: 2020,
       globals: globals.browser,
       parserOptions: {
-        project: true,
+        project: ['./tsconfig.app.json', './tsconfig.node.json'],
         tsconfigRootDir: import.meta.dirname,
       },
     },
