@@ -144,8 +144,7 @@ export const FenceGeometry: React.FC<FenceGeometryProps> = ({
   const globals = useAtomValue(Globals);
 
   if (
-    !fenceData.Fenc ||
-    !fenceData.Fenc[1000] ||
+    !fenceData.Fenc?.[1000] ||
     !fenceData.FnNb ||
     !headerData.Hedr?.[1000]?.obj ||
     !terrainData.YCrd?.[1000]?.obj
@@ -162,7 +161,7 @@ export const FenceGeometry: React.FC<FenceGeometryProps> = ({
         const nubListKey = 1000 + fenceIdx; // FnNb keys are typically base (1000) + index
         const nubsData = fenceNubsByFenceIdx[nubListKey];
 
-        if (!nubsData || !nubsData.obj || nubsData.obj.length < 2) {
+        if (!nubsData?.obj || nubsData.obj.length < 2) {
           return null; // Not enough nubs to form a segment
         }
         const nubs = nubsData.obj;

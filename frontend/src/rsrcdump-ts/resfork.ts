@@ -41,7 +41,7 @@ export class ResourceForkParser {
     const fileAttributes = mapView.getUint16(pos, false); pos += 2;
     const typeListOffsetInMap = mapView.getUint16(pos, false); pos += 2;
     const nameListOffsetInMap = mapView.getUint16(pos, false); pos += 2;
-    let numTypes = mapView.getUint16(pos, false) + 1; pos += 2;
+    const numTypes = mapView.getUint16(pos, false) + 1; pos += 2;
     
     const resources = new Map<string, Map<number, Resource>>();
     

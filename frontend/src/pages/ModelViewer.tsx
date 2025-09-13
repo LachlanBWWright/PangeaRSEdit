@@ -819,7 +819,7 @@ export function ModelViewer() {
                             className="hidden"
                             onChange={(e) => {
                               const file = e.target.files?.[0];
-                              if (file && file.name.toLowerCase().endsWith(".bg3d")) {
+                              if (file?.name.toLowerCase().endsWith(".bg3d")) {
                                 handleBg3dFileSelect(file);
                               } else if (file) {
                                 toast.error("Please select a BG3D file");
@@ -855,7 +855,7 @@ export function ModelViewer() {
                             className="hidden"
                             onChange={(e) => {
                               const file = e.target.files?.[0];
-                              if (file && file.name.toLowerCase().endsWith(".skeleton.rsrc")) {
+                              if (file?.name.toLowerCase().endsWith(".skeleton.rsrc")) {
                                 handleSkeletonFileSelect(file);
                               } else if (file) {
                                 toast.error("Please select a skeleton.rsrc file");

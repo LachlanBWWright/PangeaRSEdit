@@ -49,7 +49,7 @@ export function TextureManager({
     try {
       await onReplaceTexture(texture, file);
       toast.success(`Successfully replaced ${texture.name}`);
-    } catch (error) {
+    } catch {
       toast.error("Failed to replace texture");
     }
   };
@@ -222,12 +222,10 @@ export function TextureManager({
                       onLoad={(e) => {
                         const img = e.target as HTMLImageElement;
                         // Update texture size if not available
-                        if (!texture.size) {
-                          texture.size = {
+                        texture.size ??= {
                             width: img.naturalWidth,
                             height: img.naturalHeight,
                           };
-                        }
                       }}
                     />
                   </div>
