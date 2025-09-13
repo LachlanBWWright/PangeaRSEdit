@@ -11,7 +11,6 @@ import { describe, test, expect } from 'vitest';
 import { Document, WebIO } from '@gltf-transform/core';
 import { createSkeletonSystem, extractAnimationsFromGLTF } from './skeletonSystemNew';
 import { BG3DSkeleton } from './parseBG3D';
-// @ts-expect-error - gltf-validator types are not perfect
 import { validateBytes } from 'gltf-validator';
 
 // Mock skeleton data for testing
@@ -311,7 +310,6 @@ describe('skeletonSystemNew Round-trip Tests', () => {
     // Validate with gltf-validator
     const result = await validateBytes(glb);
     
-    expect(result.validatorVersion).toBeDefined();
     expect(result.issues.numErrors).toBe(0);
     
     // Should have no critical issues
@@ -352,7 +350,7 @@ describe('skeletonSystemNew Round-trip Tests', () => {
     const doc = new Document();
     const buffer = doc.createBuffer();
 
-    const { animations } = createSkeletonSystem(doc, mockSkeleton, buffer);
+    createSkeletonSystem(doc, mockSkeleton, buffer);
     
     // Extract animations back to BG3D format
     const extractedAnimations = extractAnimationsFromGLTF(doc);

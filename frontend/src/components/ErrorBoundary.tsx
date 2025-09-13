@@ -31,7 +31,7 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
           <div className="text-center p-4">
             <h3 className="text-xl font-semibold mb-2">Model Loading Error</h3>
             <p className="text-sm mb-4">
-              {this.state.error?.message || 'An error occurred while loading the model'}
+              {this.state.error?.message ?? 'An error occurred while loading the model'}
             </p>
             <button
               className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"

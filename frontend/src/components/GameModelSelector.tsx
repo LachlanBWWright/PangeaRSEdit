@@ -227,7 +227,7 @@ export function GameModelSelector({ onLoadModel, loading }: GameModelSelectorPro
   const [loadWithSkeleton, setLoadWithSkeleton] = useState<boolean>(true);
 
   const selectedGame = GAMES.find(game => game.id === selectedGameId);
-  const availableModels = selectedGame?.models.filter(model => model.category === selectedCategory) || [];
+  const availableModels = selectedGame?.models.filter(model => model.category === selectedCategory) ?? [];
   const availableCategories = selectedGame ? 
     [...new Set(selectedGame.models.map(model => model.category))] : [];
 
@@ -241,7 +241,7 @@ export function GameModelSelector({ onLoadModel, loading }: GameModelSelectorPro
     if (selectedGame && availableCategories.length > 0) {
       setSelectedCategory(availableCategories[0]);
     }
-  }, [selectedGameId]);
+  }, [selectedGameId, availableCategories, selectedGame]);
 
   const handleLoadSelectedModel = async () => {
     if (!selectedModel) {
@@ -343,10 +343,10 @@ export function GameModelSelector({ onLoadModel, loading }: GameModelSelectorPro
             <label className="text-sm text-gray-300">Model</label>
             {availableModels.length > 0 ? (
               <Select 
-                value={selectedModel?.name || ""} 
+                value={selectedModel?.name ?? ""} 
                 onValueChange={(modelName) => {
                   const model = availableModels.find(m => m.name === modelName);
-                  setSelectedModel(model || null);
+                  setSelectedModel(model ?? null);
                 }}
               >
                 <SelectTrigger className="w-full bg-gray-700 border-gray-600 text-white">
@@ -413,7 +413,7 @@ export function GameModelSelector({ onLoadModel, loading }: GameModelSelectorPro
           className="w-full"
         >
           <Play className="w-4 h-4 mr-2" />
-          {loading ? "Loading..." : `Load ${selectedModel?.name || "Model"}`}
+          {loading ? "Loading..." : `Load ${selectedModel?.name ?? "Model"}`}
         </Button>
 
         {/* Model Info */}

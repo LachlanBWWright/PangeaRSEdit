@@ -508,7 +508,7 @@ export async function gltfToBG3D(doc: Document): Promise<BG3DParseResult> {
       const flags = materialExtras[index]?.flags || 0;
 
       // Restore textures from baseColorTexture
-      let textures: BG3DTexture[] = [];
+      const textures: BG3DTexture[] = [];
       const baseColorTex = mat.getBaseColorTexture();
       if (baseColorTex) {
         const image = baseColorTex.getImage();

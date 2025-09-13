@@ -30,5 +30,12 @@
   },
   "include": [
     "src"
+  ],
+  "exclude": [
+    "src/debug_*.ts",
+    "src/test-*.ts",
+    "src/browser_roundtrip_test.ts",
+    "src/final_success_test.ts",
+    "src/modelParsers/debug-*.ts"
   ]
 }

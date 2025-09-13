@@ -334,8 +334,7 @@ function transformToSkeletonResource(rawData: any): SkeletonResource {
         // Check if rsrcdump already parsed the keyframe data correctly
         // resourceData should have structure: { name: string, obj: KeyFrame[] }
         if (
-          resourceData &&
-          resourceData.obj &&
+          resourceData?.obj &&
           Array.isArray(resourceData.obj) &&
           resourceData.obj.length > 0 &&
           resourceData.obj[0].tick !== undefined
@@ -348,8 +347,7 @@ function transformToSkeletonResource(rawData: any): SkeletonResource {
             "keyframes",
           );
         } else if (
-          resourceData &&
-          resourceData.obj &&
+          resourceData?.obj &&
           Array.isArray(resourceData.obj)
         ) {
           // rsrcdump parsed it as an array but it might be empty or malformed

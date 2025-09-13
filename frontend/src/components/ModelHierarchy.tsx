@@ -90,7 +90,7 @@ function NodeItem({
 
       {hasChildren && expanded && (
         <div>
-          {node.children!.map((child, index) => {
+          {node.children?.map((child, index) => {
             const childObject = nodeObject.children[index];
             if (!childObject) {
               console.warn(`Missing child object at index ${index} for node ${node.name}`);

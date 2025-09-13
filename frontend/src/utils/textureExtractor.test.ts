@@ -67,7 +67,7 @@ describe('Enhanced Texture Extraction', () => {
       const textureUrls = new Set<string>();
       
       const processTexture = (texture: any, type: 'diffuse' | 'normal' | 'other', suffix: string, materialName: string) => {
-        if (texture && texture.image) {
+        if (texture?.image) {
           let url = '';
           
           if (texture.image.src) {
@@ -75,7 +75,7 @@ describe('Enhanced Texture Extraction', () => {
           } else if (texture.image.data instanceof Uint8Array) {
             const blob = new Blob([texture.image.data], { type: 'image/png' });
             url = URL.createObjectURL(blob);
-          } else if (texture.source && texture.source.uri) {
+          } else if (texture.source?.uri) {
             url = texture.source.uri;
           }
           
@@ -142,7 +142,7 @@ describe('Enhanced Texture Extraction', () => {
       const textureUrls = new Set<string>();
       
       const processTexture = (texture: any, type: 'diffuse' | 'normal' | 'other', suffix: string, materialName: string) => {
-        if (texture && texture.image) {
+        if (texture?.image) {
           const url = texture.image.src || texture.source.uri;
           if (url && !textureUrls.has(url)) {
             textureUrls.add(url);
@@ -192,7 +192,7 @@ describe('Enhanced Texture Extraction', () => {
       const textureUrls = new Set<string>();
       
       const processTexture = (texture: any, type: 'diffuse' | 'normal' | 'other', suffix: string, materialName: string) => {
-        if (texture && texture.image) {
+        if (texture?.image) {
           const url = texture.image.src || texture.source.uri;
           if (url && !textureUrls.has(url)) {
             textureUrls.add(url);
@@ -246,7 +246,7 @@ describe('Enhanced Texture Extraction', () => {
       const textureUrls = new Set<string>();
       
       const processTexture = (texture: any, type: 'diffuse' | 'normal' | 'other', suffix: string, materialName: string) => {
-        if (texture && texture.image) {
+        if (texture?.image) {
           let url = '';
           
           if (texture.image.src) {
@@ -254,7 +254,7 @@ describe('Enhanced Texture Extraction', () => {
           } else if (texture.image.data instanceof Uint8Array) {
             const blob = new Blob([texture.image.data], { type: 'image/png' });
             url = URL.createObjectURL(blob);
-          } else if (texture.source && texture.source.uri) {
+          } else if (texture.source?.uri) {
             url = texture.source.uri;
           }
           
@@ -301,7 +301,7 @@ describe('Enhanced Texture Extraction', () => {
       const textureUrls = new Set<string>();
       
       const processTexture = (texture: any, type: 'diffuse' | 'normal' | 'other', suffix: string, materialName: string) => {
-        if (texture && texture.image) {
+        if (texture?.image) {
           const url = texture.image.src || texture.source.uri;
           if (url && !textureUrls.has(url)) {
             textureUrls.add(url);

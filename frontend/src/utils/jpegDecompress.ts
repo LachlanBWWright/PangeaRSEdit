@@ -61,7 +61,7 @@ export async function decodeJpegBrowser(
  * @returns ImageData (RGBA)
  */
 export function decodeJpegNode(jpegData: ArrayBuffer): ImageData {
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
+   
   const resData = Jpeg.decode(new Uint8Array(jpegData), { useTArray: true });
   // Copy to a new Uint8ClampedArray backed by a real ArrayBuffer
   const clamped = new Uint8ClampedArray(resData.data.length);
