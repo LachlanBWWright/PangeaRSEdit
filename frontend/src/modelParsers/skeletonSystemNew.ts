@@ -272,6 +272,53 @@ function createJointNodes(doc: Document, bones: BG3DBone[]): Node[] {
 }
 
 /**
+ * Sort bones by hierarchy depth to ensure parents are processed before children
+ */
+function sortBonesByHierarchy(bones: BG3DBone[]): number[] {
+  const result: number[] = [];
+  const processed = new Set<number>();
+  const childrenMap: Map<number, number[]> = new Map();
+
+  // Build children map
+  bones.forEach((bone, index) => {
+    if (!childrenMap.has(bone.parentBone)) {
+      childrenMap.set(bone.parentBone, []);
+    }
+    childrenMap.get(bone.parentBone)!.push(index);
+  });
+
+  // Process bones level by level using BFS
+  const queue: number[] = [];
+
+  // Start with root bones (parentBone === -1)
+  if (childrenMap.has(-1)) {
+    queue.push(...childrenMap.get(-1)!);
+  }
+
+  while (queue.length > 0) {
+    const currentIndex = queue.shift()!;
+    if (processed.has(currentIndex)) continue;
+
+    result.push(currentIndex);
+    processed.add(currentIndex);
+
+    // Add children to queue
+    if (childrenMap.has(currentIndex)) {
+      queue.push(...childrenMap.get(currentIndex)!);
+    }
+  }
+
+  // Add any remaining bones that weren't reached (shouldn't happen in a proper hierarchy)
+  bones.forEach((_, index) => {
+    if (!processed.has(index)) {
+      result.push(index);
+    }
+  });
+
+  return result;
+}
+
+/**
  * Build proper joint hierarchy following gltf-transform Skin specifications
  * CRITICAL: This function ensures all joints are findable by Three.js PropertyBinding
  * According to gltf-transform specs, all joints must be accessible from scene for PropertyBinding
@@ -306,53 +353,56 @@ function buildJointHierarchy(
 
   // Step 2: Build parent-child relationships AFTER all joints are in scene
   // This approach ensures PropertyBinding can find joints while maintaining hierarchy
-  console.log("Step 2: Building parent-child relationships...");
+  console.log(
+    "Step 2: Building parent-child relationships using parentBone indices...",
+  );
 
-  const boneHierarchy: { [key: string]: string } = {
-    Torso: "Pelvis",
-    Chest: "Torso",
-    Head: "Chest",
-    RightHip: "Pelvis",
-    LeftHip: "Pelvis",
-    RightKnee: "RightHip",
-    LeftKnee: "LeftHip",
-    RightFoot: "RightKnee",
-    LeftFoot: "LeftKnee",
-    RtShoulder: "Chest",
-    LeftShoulder: "Chest",
-    RightElbow: "RtShoulder",
-    LeftElbow: "LeftShoulder",
-    RightHand: "RightElbow",
-    "Left Hand": "LeftElbow",
-  };
+  // Sort bones by hierarchy depth to ensure parents are processed before children
+  const sortedBoneIndices = sortBonesByHierarchy(bones);
+  console.log(
+    `Processing bones in hierarchy order: [${sortedBoneIndices.join(", ")}]`,
+  );
 
-  // Build hierarchy but keep all joints accessible from scene
-  bones.forEach((bone, index) => {
-    const joint = joints[index];
-    const expectedParentName = boneHierarchy[bone.name];
+  sortedBoneIndices.forEach((boneIndex: number) => {
+    const bone = bones[boneIndex];
+    const joint = joints[boneIndex];
 
-    if (expectedParentName && bone.name !== "Pelvis") {
-      // Don't parent the root
-      const parentIndex = bones.findIndex((b) => b.name === expectedParentName);
-      if (parentIndex >= 0 && parentIndex < joints.length) {
-        const parentJoint = joints[parentIndex];
-        if (parentJoint && joint) {
-          try {
-            // Remove from scene before adding as child
-            scene.removeChild(joint);
-            parentJoint.addChild(joint);
-            console.log(`  ✓ ${bone.name} -> child of ${expectedParentName}`);
-          } catch (e) {
-            console.warn(
-              `  Warning: Failed to parent ${bone.name} to ${expectedParentName}:`,
-              e,
-            );
-            // Keep in scene root if parenting fails
-            if (!scene.listChildren().includes(joint)) {
-              scene.addChild(joint);
-            }
+    if (bone.parentBone >= 0 && bone.parentBone < bones.length) {
+      const parentJoint = joints[bone.parentBone];
+      if (parentJoint && joint) {
+        try {
+          // Remove from scene before adding as child
+          scene.removeChild(joint);
+          parentJoint.addChild(joint);
+          console.log(
+            `  ✓ ${bone.name} -> child of ${bones[bone.parentBone].name}`,
+          );
+        } catch (e) {
+          console.warn(
+            `  Warning: Failed to parent ${bone.name} to ${
+              bones[bone.parentBone].name
+            }:`,
+            e,
+          );
+          // Keep in scene root if parenting fails
+          if (!scene.listChildren().includes(joint)) {
+            scene.addChild(joint);
           }
         }
+      } else {
+        console.warn(
+          `  Warning: Invalid parent for ${bone.name} (parentBone: ${bone.parentBone})`,
+        );
+        // Add to scene root
+        if (!scene.listChildren().includes(joint)) {
+          scene.addChild(joint);
+        }
+      }
+    } else if (bone.parentBone === -1) {
+      // Root bone: ensure it's in scene
+      if (!scene.listChildren().includes(joint)) {
+        scene.addChild(joint);
+        console.log(`  ✓ ${bone.name} -> root joint`);
       }
     }
   });
@@ -401,42 +451,6 @@ function buildJointHierarchy(
   console.log(
     `✅ Joint hierarchy complete: ${joints.length} joints accessible for PropertyBinding`,
   );
-}
-
-/**
- * Helper function to find a node by name in the scene hierarchy
- */
-function findNodeByName(parentNode: Node, name: string): Node | null {
-  if (parentNode.getName() === name) {
-    return parentNode;
-  }
-
-  for (const child of parentNode.listChildren()) {
-    const found = findNodeByName(child, name);
-    if (found) return found;
-  }
-
-  return null;
-}
-
-/**
- * Helper function to check if a joint is in a node's hierarchy
- */
-function isJointInHierarchy(targetJoint: Node, parentNode: Node): boolean {
-  const children = parentNode.listChildren();
-
-  if (children.includes(targetJoint)) {
-    return true;
-  }
-
-  // Recursively check children
-  for (const child of children) {
-    if (isJointInHierarchy(targetJoint, child)) {
-      return true;
-    }
-  }
-
-  return false;
 }
 
 /**
