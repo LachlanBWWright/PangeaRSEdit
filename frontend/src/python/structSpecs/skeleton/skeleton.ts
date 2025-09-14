@@ -30,11 +30,11 @@ export const skeletonSpecs = [
   "BonN:H+:normal",
   //BonP Point index array
   "BonP:H+:pointIndex",
-  "Bone:i32s3fHH8i:parentBone,name,coordX,coordY,coordZ,numPointsAttachedToBone,numNormalsAttachedToBone,reserved0,reserved1,reserved2,reserved3,reserved4,reserved5,reserved6,reserved7",
+  "Bone:32s i32 3f 3f i32 100i:name,parentBone,relX,relY,relZ,relRotX,relRotY,relRotZ,numPointsAttached,attachedPointList",
   "Evnt:hBB+:time,type,value",
 
   //Header has lots of blank/padding after? Cast to 8 bype struct but 84 bytes in practice
-  "Hedr:hhhh76x:version,numAnims,numJoints,num3DMFLimbs",
+  "Hedr:LLLL:numBones,numAnims,numKeyFrames,numAnimEvents",
 
   /* 
 typedef struct

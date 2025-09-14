@@ -60,15 +60,18 @@ export interface SkeletonHeader {
   num3DMFLimbs: number;
 }
 
-// Bone object inside Bone field
+// Bone object inside Bone field (extended format for Otto Matic and later)
 export interface BoneObj {
-  parentBone: number; // -1 if no parent, otherwise index of parent bone
   name: string;
-  coordX: number;
-  coordY: number;
-  coordZ: number;
-  numPointsAttachedToBone: number;
-  numNormalsAttachedToBone: number;
+  parentBone: number; // Index of parent bone (-1 if root)
+  relX: number; // Position relative to parent
+  relY: number;
+  relZ: number;
+  relRotX: number; // Rotation relative to parent (degrees)
+  relRotY: number;
+  relRotZ: number;
+  numPointsAttached: number; // Number of mesh points attached to this bone
+  attachedPointList: number[]; // Indices of attached mesh points
 }
 
 export interface BoneEntry {

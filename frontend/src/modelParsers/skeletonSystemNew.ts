@@ -220,12 +220,38 @@ function calculateLocalTransform(
   console.log(
     `Calculating local transform for bone "${bone.name}" (parentBone: ${bone.parentBone})`,
   );
+
+  // Check if bone has coordinate properties
+  if (
+    bone.coordX === undefined ||
+    bone.coordY === undefined ||
+    bone.coordZ === undefined
+  ) {
+    console.log(
+      `  Bone "${bone.name}" missing coordinate properties, using [0, 0, 0]`,
+    );
+    return [0, 0, 0];
+  }
+
   console.log(
     `  Bone absolute coords: [${bone.coordX}, ${bone.coordY}, ${bone.coordZ}]`,
   );
 
   if (bone.parentBone >= 0 && bone.parentBone < bones.length) {
     const parent = bones[bone.parentBone];
+
+    // Check if parent has coordinate properties
+    if (
+      parent.coordX === undefined ||
+      parent.coordY === undefined ||
+      parent.coordZ === undefined
+    ) {
+      console.log(
+        `  Parent "${parent.name}" missing coordinate properties, using child coords as local`,
+      );
+      return [bone.coordX, bone.coordY, bone.coordZ];
+    }
+
     console.log(
       `  Parent "${parent.name}" coords: [${parent.coordX}, ${parent.coordY}, ${parent.coordZ}]`,
     );
@@ -252,23 +278,63 @@ function calculateLocalTransform(
 /**
  * Create joint nodes with proper local transforms
  */
-function createJointNodes(doc: Document, bones: BG3DBone[]): Node[] {
+function createJointNodes(
+  doc: Document,
+  bones: BG3DBone[],
+): { joints: Node[]; bones: BG3DBone[] } {
   console.log("Creating joint nodes with local transforms...");
 
-  return bones.map((bone, index) => {
+  let workingBones = [...bones]; // Work with a copy
+
+  // Check if all bones are root bones (Otto skeleton issue)
+  const allRootBones = workingBones.every((bone) => bone.parentBone === -1);
+  if (allRootBones && workingBones.length > 0) {
+    console.log("⚠️  Detected Otto-style skeleton: all bones are root bones");
+    console.log("   Creating synthetic root bone for glTF compatibility");
+
+    // Create synthetic root bone
+    const syntheticRoot: BG3DBone = {
+      name: "Root",
+      parentBone: -1,
+      coordX: 0,
+      coordY: 0,
+      coordZ: 0,
+      numPointsAttachedToBone: 0,
+      numNormalsAttachedToBone: 0,
+    };
+
+    // Add synthetic root to working bones array
+    workingBones = [syntheticRoot, ...workingBones];
+
+    // Update parentBone indices for all original bones to point to synthetic root (index 0)
+    for (let i = 1; i < workingBones.length; i++) {
+      workingBones[i].parentBone = 0;
+    }
+  }
+
+  const joints = workingBones.map((bone, index) => {
     const joint = doc.createNode(bone.name);
-    const localTransform = calculateLocalTransform(bone, bones);
+    const localTransform = calculateLocalTransform(bone, workingBones);
 
-    joint.setTranslation(localTransform);
-
-    console.log(
-      `  Joint ${index}: "${bone.name}" at local [${localTransform
-        .map((v) => v.toFixed(2))
-        .join(", ")}]`,
-    );
+    // Safety check for undefined localTransform
+    if (!localTransform) {
+      console.log(
+        `  Joint ${index}: "${bone.name}" - using default transform [0, 0, 0]`,
+      );
+      joint.setTranslation([0, 0, 0]);
+    } else {
+      joint.setTranslation(localTransform);
+      console.log(
+        `  Joint ${index}: "${bone.name}" at local [${localTransform
+          .map((v) => v.toFixed(2))
+          .join(", ")}]`,
+      );
+    }
 
     return joint;
   });
+
+  return { joints, bones: workingBones };
 }
 
 /**
@@ -337,75 +403,103 @@ function buildJointHierarchy(
     return;
   }
 
-  // CRITICAL CHANGE: Following gltf-transform Skin specs - add ALL joints to scene FIRST
-  // This ensures PropertyBinding can find every joint by name
-  console.log(
-    "Step 1: Adding ALL joints to scene root for PropertyBinding compatibility...",
-  );
-  joints.forEach((joint, index) => {
-    const bone = bones[index];
-    // Ensure joint has exact name that animations will target
-    joint.setName(bone.name);
-    // Add every joint directly to scene root
-    scene.addChild(joint);
-    console.log(`  ✓ Added joint "${bone.name}" to scene root`);
-  });
+  // Check if we have a synthetic root (first bone is named "Root")
+  const hasSyntheticRoot = bones.length > 0 && bones[0].name === "Root";
 
-  // Step 2: Build parent-child relationships AFTER all joints are in scene
-  // This approach ensures PropertyBinding can find joints while maintaining hierarchy
-  console.log(
-    "Step 2: Building parent-child relationships using parentBone indices...",
-  );
+  if (hasSyntheticRoot) {
+    console.log("Building hierarchy with synthetic root...");
 
-  // Sort bones by hierarchy depth to ensure parents are processed before children
-  const sortedBoneIndices = sortBonesByHierarchy(bones);
-  console.log(
-    `Processing bones in hierarchy order: [${sortedBoneIndices.join(", ")}]`,
-  );
+    // Add synthetic root to scene
+    scene.addChild(joints[0]);
+    console.log(`  ✓ Added synthetic root "${bones[0].name}" to scene`);
 
-  sortedBoneIndices.forEach((boneIndex: number) => {
-    const bone = bones[boneIndex];
-    const joint = joints[boneIndex];
+    // Build hierarchy from synthetic root down
+    for (let i = 1; i < bones.length; i++) {
+      const bone = bones[i];
+      const joint = joints[i];
 
-    if (bone.parentBone >= 0 && bone.parentBone < bones.length) {
-      const parentJoint = joints[bone.parentBone];
-      if (parentJoint && joint) {
-        try {
-          // Remove from scene before adding as child
-          scene.removeChild(joint);
-          parentJoint.addChild(joint);
-          console.log(
-            `  ✓ ${bone.name} -> child of ${bones[bone.parentBone].name}`,
-          );
-        } catch (e) {
+      // All non-root bones should be parented to synthetic root (parentBone = 0)
+      if (bone.parentBone === 0) {
+        joints[0].addChild(joint);
+        console.log(`  ✓ ${bone.name} -> child of ${bones[0].name}`);
+      } else {
+        console.warn(
+          `  Warning: Bone "${bone.name}" has unexpected parentBone ${bone.parentBone}`,
+        );
+        // Add to synthetic root anyway
+        joints[0].addChild(joint);
+      }
+    }
+  } else {
+    // Original hierarchy building logic for normal skeletons
+    console.log(
+      "Step 1: Adding ALL joints to scene root for PropertyBinding compatibility...",
+    );
+    joints.forEach((joint, index) => {
+      const bone = bones[index];
+      // Ensure joint has exact name that animations will target
+      joint.setName(bone.name);
+      // Add every joint directly to scene root
+      scene.addChild(joint);
+      console.log(`  ✓ Added joint "${bone.name}" to scene root`);
+    });
+
+    // Step 2: Build parent-child relationships AFTER all joints are in scene
+    // This approach ensures PropertyBinding can find joints while maintaining hierarchy
+    console.log(
+      "Step 2: Building parent-child relationships using parentBone indices...",
+    );
+
+    // Sort bones by hierarchy depth to ensure parents are processed before children
+    const sortedBoneIndices = sortBonesByHierarchy(bones);
+    console.log(
+      `Processing bones in hierarchy order: [${sortedBoneIndices.join(", ")}]`,
+    );
+
+    sortedBoneIndices.forEach((boneIndex: number) => {
+      const bone = bones[boneIndex];
+      const joint = joints[boneIndex];
+
+      if (bone.parentBone >= 0 && bone.parentBone < bones.length) {
+        const parentJoint = joints[bone.parentBone];
+        if (parentJoint && joint) {
+          try {
+            // Remove from scene before adding as child
+            scene.removeChild(joint);
+            parentJoint.addChild(joint);
+            console.log(
+              `  ✓ ${bone.name} -> child of ${bones[bone.parentBone].name}`,
+            );
+          } catch (e) {
+            console.warn(
+              `  Warning: Failed to parent ${bone.name} to ${
+                bones[bone.parentBone].name
+              }:`,
+              e,
+            );
+            // Keep in scene root if parenting fails
+            if (!scene.listChildren().includes(joint)) {
+              scene.addChild(joint);
+            }
+          }
+        } else {
           console.warn(
-            `  Warning: Failed to parent ${bone.name} to ${
-              bones[bone.parentBone].name
-            }:`,
-            e,
+            `  Warning: Invalid parent for ${bone.name} (parentBone: ${bone.parentBone})`,
           );
-          // Keep in scene root if parenting fails
+          // Add to scene root
           if (!scene.listChildren().includes(joint)) {
             scene.addChild(joint);
           }
         }
-      } else {
-        console.warn(
-          `  Warning: Invalid parent for ${bone.name} (parentBone: ${bone.parentBone})`,
-        );
-        // Add to scene root
+      } else if (bone.parentBone === -1) {
+        // Root bone: ensure it's in scene
         if (!scene.listChildren().includes(joint)) {
           scene.addChild(joint);
+          console.log(`  ✓ ${bone.name} -> root joint`);
         }
       }
-    } else if (bone.parentBone === -1) {
-      // Root bone: ensure it's in scene
-      if (!scene.listChildren().includes(joint)) {
-        scene.addChild(joint);
-        console.log(`  ✓ ${bone.name} -> root joint`);
-      }
-    }
-  });
+    });
+  }
 
   // Final verification: ensure all joints are still findable
   console.log(
@@ -496,13 +590,25 @@ function createSkin(doc: Document, joints: Node[], bones: BG3DBone[]): Skin {
 
   // According to gltf-transform specs: Set skeleton root for proper joint resolution
   // The skeleton root helps Three.js PropertyBinding find the joint hierarchy
-  const rootJoint =
-    joints.find((joint) => joint.getName() === "Pelvis") || joints[0];
-  if (rootJoint) {
-    skin.setSkeleton(rootJoint);
+  let skeletonRoot: Node | null = null;
+
+  // If we have a synthetic root (first joint), use it as skeleton root
+  if (joints.length > 0 && joints[0].getName() === "Root") {
+    skeletonRoot = joints[0];
     console.log(
-      `  Set skeleton root to: "${rootJoint.getName()}" for PropertyBinding`,
+      `  Set synthetic root "${skeletonRoot.getName()}" as skeleton root`,
     );
+  } else {
+    // Fallback to existing logic
+    skeletonRoot =
+      joints.find((joint) => joint.getName() === "Pelvis") || joints[0];
+    console.log(
+      `  Set skeleton root to: "${skeletonRoot.getName()}" for PropertyBinding`,
+    );
+  }
+
+  if (skeletonRoot) {
+    skin.setSkeleton(skeletonRoot);
   }
 
   // Calculate and set inverse bind matrices following glTF specifications
@@ -950,11 +1056,18 @@ export function createSkeletonSystem(
   }
 
   // Step 1: Create joint nodes with proper local transforms
-  const joints = createJointNodes(doc, skeleton.bones);
+  // IMPORTANT: createJointNodes may modify the bones array by adding a synthetic root
+  const { joints, bones: workingBones } = createJointNodes(doc, skeleton.bones);
+
+  // Check if we added a synthetic root (joints.length > original bones.length)
+  const hasSyntheticRoot = joints.length > skeleton.bones.length;
+  if (hasSyntheticRoot) {
+    console.log("✅ Synthetic root bone added for glTF compatibility");
+  }
 
   // Step 2: Build proper hierarchy (CRITICAL: joints must be in scene before animations)
   try {
-    buildJointHierarchy(joints, skeleton.bones, scene);
+    buildJointHierarchy(joints, workingBones, scene);
   } catch (e) {
     console.error("Error building joint hierarchy:", e);
     // Add all joints to scene as root joints if hierarchy fails
@@ -975,7 +1088,7 @@ export function createSkeletonSystem(
 
   // Ensure every joint is accessible and properly named
   joints.forEach((joint, index) => {
-    const bone = skeleton.bones[index];
+    const bone = workingBones[index];
 
     // Ensure correct naming for PropertyBinding
     joint.setName(bone.name);
@@ -994,7 +1107,7 @@ export function createSkeletonSystem(
   );
 
   // Step 3: Create skin following gltf-transform specifications
-  const skin = createSkin(doc, joints, skeleton.bones);
+  const skin = createSkin(doc, joints, workingBones);
 
   // Step 4: Process animations (joints are now properly accessible)
   console.log(
@@ -1002,7 +1115,7 @@ export function createSkeletonSystem(
   );
   const processedAnimations = processOttoAnimations(
     skeleton.animations,
-    skeleton.bones,
+    workingBones,
   );
   const animations = createGltfAnimations(
     doc,

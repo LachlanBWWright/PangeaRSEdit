@@ -1,6 +1,6 @@
 /**
- * Otto-specific test to debug PropertyBinding issues
- * Tests actual Otto model files to find the root cause of skeleton issues
+ * Bugdom 2 Skip-specific test to validate skeleton parsing
+ * Tests Skip model skeleton files to ensure proper parsing and coordinate extraction
  */
 
 import { describe, test, expect } from "vitest";
@@ -12,35 +12,38 @@ import { validateBytes } from "gltf-validator";
 import fs from "fs";
 import path from "path";
 
-describe("Otto Model Specific Tests", () => {
-  test("loads and validates Otto model skeleton", async () => {
+describe("Bugdom 2 Skip Model Tests", () => {
+  test("loads and validates Skip_Explore skeleton", async () => {
     try {
-      // Load Otto BG3D file
-      const bg3dPath = path.join(__dirname, "../../public/Otto.bg3d");
-      if (!fs.existsSync(bg3dPath)) {
-        console.log("Otto.bg3d not found, skipping test");
-        return;
-      }
-      const bg3dBuffer = fs.readFileSync(bg3dPath);
-
-      // Load Otto skeleton file
+      // Load Skip_Explore skeleton file
       const skeletonPath = path.join(
         __dirname,
-        "../../public/Otto.skeleton.rsrc",
+        "../../public/games/bugdom2/skeletons/Skip_Explore.skeleton.rsrc",
       );
       if (!fs.existsSync(skeletonPath)) {
-        console.log("Otto.skeleton.rsrc not found, skipping test");
+        console.log("Skip_Explore.skeleton.rsrc not found, skipping test");
         return;
       }
       const skeletonBuffer = fs.readFileSync(skeletonPath);
       const skeletonRsrc = parseSkeletonRsrcTS(skeletonBuffer.buffer);
 
-      // Parse BG3D with skeleton
+      console.log("Skip_Explore skeleton data:", skeletonRsrc);
+
+      // Parse with a compatible BG3D file (using BuddyBug as a base since it's a character model)
+      const bg3dPath = path.join(
+        __dirname,
+        "../../public/games/bugdom2/skeletons/BuddyBug.bg3d",
+      );
+      if (!fs.existsSync(bg3dPath)) {
+        console.log("BuddyBug.bg3d not found, skipping BG3D test");
+        return;
+      }
+      const bg3dBuffer = fs.readFileSync(bg3dPath);
       const bg3dData = parseBG3D(bg3dBuffer.buffer, skeletonRsrc);
 
-      console.log("Otto BG3D skeleton data:", bg3dData.skeleton);
+      console.log("Skip_Explore BG3D skeleton data:", bg3dData.skeleton);
       console.log(
-        "Otto bones:",
+        "Skip bones:",
         bg3dData.skeleton?.bones.map((b) => ({
           name: b.name,
           parent: b.parentBone,
@@ -65,8 +68,10 @@ describe("Otto Model Specific Tests", () => {
             `Bone ${index} (${bone.name}): [${bone.coordX}, ${bone.coordY}, ${bone.coordZ}]`,
           );
         });
+
         // At least some bones should have non-zero coordinates
         expect(nonZeroCoords.length).toBeGreaterThan(0);
+
         // Log specific coordinate values for debugging
         bones.forEach((bone, index) => {
           console.log(
@@ -82,12 +87,12 @@ describe("Otto Model Specific Tests", () => {
           `Bones with all-zero coordinates: ${allZeroBones.length}/${bones.length}`,
         );
 
-        // For Otto, we expect most bones to have non-zero positions
+        // For Skip, we expect most bones to have non-zero positions
         // Allow at most 2 bones to be at origin (maybe root or special cases)
         expect(allZeroBones.length).toBeLessThan(bones.length - 1);
       }
 
-      // Test skeleton system with real Otto data
+      // Test skeleton system with Skip data
       if (bg3dData.skeleton) {
         const doc = new Document();
         const buffer = doc.createBuffer();
@@ -98,10 +103,8 @@ describe("Otto Model Specific Tests", () => {
         expect(skin).toBeDefined();
         expect(skin.listJoints().length).toBeGreaterThan(0);
 
-        // Check for Pelvis bone specifically (from error message)
+        // Check for specific bones that might exist in Skip
         const joints = skin.listJoints();
-        const pelvisJoint = joints.find((j) => j.getName() === "Pelvis");
-        console.log("Pelvis joint found:", !!pelvisJoint);
         console.log(
           "All joint names:",
           joints.map((j) => j.getName()),
@@ -137,27 +140,30 @@ describe("Otto Model Specific Tests", () => {
     }
   });
 
-  test("analyzes Otto skeleton hierarchy for PropertyBinding issues", async () => {
+  test("analyzes Skip_Explore skeleton hierarchy for PropertyBinding issues", async () => {
     try {
-      // Load Otto skeleton file
+      // Load Skip_Explore skeleton file
       const skeletonPath = path.join(
         __dirname,
-        "../../public/Otto.skeleton.rsrc",
+        "../../public/games/bugdom2/skeletons/Skip_Explore.skeleton.rsrc",
       );
       if (!fs.existsSync(skeletonPath)) {
-        console.log("Otto.skeleton.rsrc not found, skipping test");
+        console.log("Skip_Explore.skeleton.rsrc not found, skipping test");
         return;
       }
       const skeletonBuffer = fs.readFileSync(skeletonPath);
       const skeletonRsrc = parseSkeletonRsrcTS(skeletonBuffer.buffer);
 
-      // Parse BG3D with skeleton
-      const bg3dPath = path.join(__dirname, "../../public/Otto.bg3d");
+      // Parse with compatible BG3D
+      const bg3dPath = path.join(
+        __dirname,
+        "../../public/games/bugdom2/skeletons/BuddyBug.bg3d",
+      );
       const bg3dBuffer = fs.readFileSync(bg3dPath);
       const bg3dData = parseBG3D(bg3dBuffer.buffer, skeletonRsrc);
 
       if (bg3dData.skeleton) {
-        console.log("\n=== Otto Skeleton Analysis ===");
+        console.log("\n=== Skip_Explore Skeleton Analysis ===");
         console.log(`Total bones: ${bg3dData.skeleton.bones.length}`);
         console.log(`Total animations: ${bg3dData.skeleton.animations.length}`);
 
@@ -180,7 +186,7 @@ describe("Otto Model Specific Tests", () => {
         console.log(`\nRoot bones (parentBone = -1): ${rootBones.length}`);
         rootBones.forEach((bone) => console.log(`- ${bone.name}`));
 
-        // Analyze animations for Pelvis track
+        // Analyze animations
         console.log("\nAnimations:");
         bg3dData.skeleton.animations.forEach((anim) => {
           console.log(
@@ -236,20 +242,22 @@ describe("Otto Model Specific Tests", () => {
     }
   });
 
-  test("tests Otto skeleton file parsing and validation", async () => {
+  test("tests Skip_Title skeleton file parsing and validation", async () => {
     try {
-      // Load Otto skeleton file
+      // Load Skip_Title skeleton file
       const skeletonPath = path.join(
         __dirname,
-        "../../public/Otto.skeleton.rsrc",
+        "../../public/games/bugdom2/skeletons/Skip_Title.skeleton.rsrc",
       );
       if (!fs.existsSync(skeletonPath)) {
-        console.log("Otto.skeleton.rsrc not found, skipping skeleton test");
+        console.log(
+          "Skip_Title.skeleton.rsrc not found, skipping skeleton test",
+        );
         return;
       }
       const skeletonBuffer = fs.readFileSync(skeletonPath);
 
-      console.log("\n=== Otto Skeleton File Test ===");
+      console.log("\n=== Skip_Title Skeleton File Test ===");
       console.log(`Skeleton file size: ${skeletonBuffer.length} bytes`);
 
       // Parse skeleton file
@@ -313,29 +321,105 @@ describe("Otto Model Specific Tests", () => {
     }
   });
 
-  test("byte-for-byte roundtrip test", async () => {
+  test("tests Skip_Tunnel skeleton file parsing and validation", async () => {
     try {
-      // Load Otto BG3D file
-      const bg3dPath = path.join(__dirname, "../../public/Otto.bg3d");
-      if (!fs.existsSync(bg3dPath)) {
-        console.log("Otto.bg3d not found, skipping test");
-        return;
-      }
-      const bg3dBuffer = fs.readFileSync(bg3dPath);
-
-      // Load Otto skeleton file
+      // Load Skip_Tunnel skeleton file
       const skeletonPath = path.join(
         __dirname,
-        "../../public/Otto.skeleton.rsrc",
+        "../../public/games/bugdom2/skeletons/Skip_Tunnel.skeleton.rsrc",
       );
       if (!fs.existsSync(skeletonPath)) {
-        console.log("Otto.skeleton.rsrc not found, skipping test");
+        console.log(
+          "Skip_Tunnel.skeleton.rsrc not found, skipping skeleton test",
+        );
+        return;
+      }
+      const skeletonBuffer = fs.readFileSync(skeletonPath);
+
+      console.log("\n=== Skip_Tunnel Skeleton File Test ===");
+      console.log(`Skeleton file size: ${skeletonBuffer.length} bytes`);
+
+      // Parse skeleton file
+      const skeletonRsrc = parseSkeletonRsrcTS(skeletonBuffer.buffer) as any;
+
+      console.log("Skeleton parsing result:");
+      console.log(`- Parsed successfully: ${!!skeletonRsrc}`);
+
+      if (skeletonRsrc) {
+        // Validate skeleton structure
+        expect(skeletonRsrc).toBeDefined();
+        expect(skeletonRsrc.Bone).toBeDefined();
+        expect(typeof skeletonRsrc.Bone).toBe("object");
+
+        // Convert Bone object to array for easier testing
+        const bonesArray = Object.values(skeletonRsrc.Bone);
+        expect(bonesArray.length).toBeGreaterThan(0);
+
+        console.log(`- Total bones: ${bonesArray.length}`);
+
+        // CRITICAL VALIDATION: Check that coordinates are properly parsed (not all zeros)
+        let bonesWithValidCoords = 0;
+        let bonesWithZeroCoords = 0;
+
+        bonesArray.forEach((boneEntry: any, index: number) => {
+          expect(boneEntry.obj).toBeDefined();
+          expect(boneEntry.obj.coordX).toBeDefined();
+          expect(boneEntry.obj.coordY).toBeDefined();
+          expect(boneEntry.obj.coordZ).toBeDefined();
+
+          const { coordX, coordY, coordZ, name } = boneEntry.obj;
+          const hasNonZeroCoords = coordX !== 0 || coordY !== 0 || coordZ !== 0;
+
+          if (hasNonZeroCoords) {
+            bonesWithValidCoords++;
+          } else {
+            bonesWithZeroCoords++;
+          }
+
+          console.log(
+            `  Bone ${index}: "${name}" coords=[${coordX}, ${coordY}, ${coordZ}] ${
+              hasNonZeroCoords ? "✓" : "✗"
+            }`,
+          );
+        });
+
+        console.log(
+          `- Bones with valid coordinates: ${bonesWithValidCoords}/${bonesArray.length}`,
+        );
+        console.log(
+          `- Bones with zero coordinates: ${bonesWithZeroCoords}/${bonesArray.length}`,
+        );
+
+        // The fix should ensure most bones have non-zero coordinates
+        expect(bonesWithValidCoords).toBeGreaterThan(0);
+        expect(bonesWithZeroCoords).toBeLessThan(bonesArray.length); // Not ALL bones should be at origin
+      }
+    } catch (error) {
+      console.error("Skeleton file test failed:", error);
+      throw error;
+    }
+  });
+
+  test("byte-for-byte roundtrip test for Skip_Explore", async () => {
+    try {
+      // Load Skip_Explore skeleton file
+      const skeletonPath = path.join(
+        __dirname,
+        "../../public/games/bugdom2/skeletons/Skip_Explore.skeleton.rsrc",
+      );
+      if (!fs.existsSync(skeletonPath)) {
+        console.log("Skip_Explore.skeleton.rsrc not found, skipping test");
         return;
       }
       const skeletonBuffer = fs.readFileSync(skeletonPath);
       const skeletonRsrc = parseSkeletonRsrcTS(skeletonBuffer.buffer);
 
-      // Parse BG3D with skeleton
+      // Parse with compatible BG3D
+      const bg3dPath = path.join(
+        __dirname,
+        "../../public/games/bugdom2/skeletons/BuddyBug.bg3d",
+      );
+      const bg3dBuffer = fs.readFileSync(bg3dPath);
       const bg3dData = parseBG3D(bg3dBuffer.buffer, skeletonRsrc);
 
       if (!bg3dData.skeleton) {
@@ -364,7 +448,7 @@ describe("Otto Model Specific Tests", () => {
       const roundtripSkin = roundtripDoc.getRoot().listSkins()[0];
       const roundtripJoints = roundtripSkin ? roundtripSkin.listJoints() : [];
 
-      console.log("\n=== Roundtrip Comparison ===");
+      console.log("\n=== Skip_Explore Roundtrip Comparison ===");
       console.log(`Original joints: ${originalJoints.length}`);
       console.log(`Roundtrip joints: ${roundtripJoints.length}`);
 
