@@ -88,6 +88,11 @@ export interface BG3DTexture {
   dstPixelFormat: PixelFormatDst;
   bufferSize: number;
   pixels: Uint8Array;
+  // If this texture was stored as a JPEG in the BG3D file, `isJPEG` will be true
+  // and `pixels` will contain the raw JPEG bytes. If an alpha channel followed
+  // the JPEG data it will be placed in `alpha` as a Uint8Array of length width*height.
+  isJPEG?: boolean;
+  alpha?: Uint8Array | null;
 }
 
 export interface BG3DGeometry {
@@ -307,6 +312,7 @@ export function parseBG3D(
         });
         break;
       }
+
       case BG3DTagType.GROUPSTART: {
         // Start a new group and push to stack
         const group: BG3DGroup = { children: [] };
@@ -481,6 +487,55 @@ export function parseBG3D(
         } else {
           offset = buffer.byteLength;
         }
+        break;
+      }
+      case BG3DTagType.JPEGTEXTURE: {
+        // JPEG Texture header: width (4), height (4), bufferSize (4), hasAlphaChannel (4)
+        if (!currentMaterial)
+          throw new Error("No current material for jpeg texture");
+        const width = view.getUint32(offset, false);
+        offset += 4;
+        const height = view.getUint32(offset, false);
+        offset += 4;
+        const bufferSize = view.getUint32(offset, false);
+        offset += 4;
+        const hasAlpha = view.getUint32(offset, false);
+        offset += 4;
+
+        // Read JPEG data (image descriptor + compressed data)
+        if (offset + bufferSize > buffer.byteLength) {
+          throw new Error(
+            `Unexpected EOF while reading JPEG texture data at offset ${offset}`,
+          );
+        }
+        const jpegBytes = new Uint8Array(buffer, offset, bufferSize);
+        offset += bufferSize;
+
+        // If there is an alpha channel, read width*height bytes of alpha
+        let alpha: Uint8Array | null = null;
+        if (hasAlpha) {
+          const alphaSize = width * height;
+          if (offset + alphaSize > buffer.byteLength) {
+            throw new Error(
+              `Unexpected EOF while reading JPEG alpha data at offset ${offset}`,
+            );
+          }
+          alpha = new Uint8Array(buffer, offset, alphaSize);
+          offset += alphaSize;
+        }
+
+        // We don't attempt to decode JPEG here; store raw JPEG bytes and optional alpha
+        currentMaterial.textures.push({
+          width,
+          height,
+          srcPixelFormat: PixelFormatSrc.GL_RGBA, // best-effort placeholder
+          dstPixelFormat:
+            PixelFormatDst.GL_UNSIGNED_SHORT_5_5_5_1,
+          bufferSize,
+          pixels: jpegBytes,
+          isJPEG: true,
+          alpha,
+        });
         break;
       }
       case BG3DTagType.ENDFILE: {
