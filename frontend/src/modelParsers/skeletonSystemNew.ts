@@ -602,9 +602,11 @@ function createSkin(doc: Document, joints: Node[], bones: BG3DBone[]): Skin {
     // Fallback to existing logic
     skeletonRoot =
       joints.find((joint) => joint.getName() === "Pelvis") || joints[0];
-    console.log(
-      `  Set skeleton root to: "${skeletonRoot.getName()}" for PropertyBinding`,
-    );
+    if (skeletonRoot) {
+      console.log(
+        `  Set skeleton root to: "${skeletonRoot.getName()}" for PropertyBinding`,
+      );
+    }
   }
 
   if (skeletonRoot) {

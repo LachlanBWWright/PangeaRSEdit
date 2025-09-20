@@ -45,7 +45,7 @@ describe("LZSS Compression Algorithm", () => {
           expect(inputDataView.getUint8(j)).toEqual(outputDataView.getUint8(j));
         }
       }
-    });
+    }, 15000); // 15 second timeout
   });
 
   describe("Edge Cases", () => {

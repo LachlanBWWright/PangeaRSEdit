@@ -7,7 +7,7 @@ import { load, saveToJson } from './rsrcdump';
 // import { ottoMaticSpecs } from './ottoSpecs';
 
 describe('TypeScript rsrcdump', () => {
-  const testFile = join(__dirname, '..', 'EarthFarm.ter.rsrc');
+  const testFile = join(__dirname, '..', '..', 'public', 'assets', 'ottoMatic', 'terrain', 'EarthFarm.ter.rsrc');
 
   it('should load resource fork', () => {
     const data = readFileSync(testFile);
