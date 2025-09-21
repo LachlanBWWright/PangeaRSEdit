@@ -132,6 +132,7 @@ describe("Bugdom 2 Skip Model Tests", () => {
         });
 
         // Test that should pass
+        console.log(result.issues.messages);
         expect(result.issues.numErrors).toBe(0);
       }
     } catch (error) {
