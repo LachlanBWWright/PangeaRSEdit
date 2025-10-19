@@ -423,10 +423,9 @@ export function bg3dParsedToGLTF(
     addSkinnedMeshesFromGroup(group);
   });
 
-  // Add animations to the document
-  gltfAnimations.forEach((animation) => {
-    doc.getRoot().listAnimations().push(animation);
-  });
+  // Note: Animations are automatically added to the document when created with doc.createAnimation()
+  // No need to manually push them to the list
+  console.log(`glTF document now has ${doc.getRoot().listAnimations().length} animations`);
 
   // Store both: exact binary data for Otto roundtrip AND only non-glTF data for other cases
   const extrasData: any = {
