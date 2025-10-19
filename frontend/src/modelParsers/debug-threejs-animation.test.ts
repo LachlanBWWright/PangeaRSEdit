@@ -1,9 +1,12 @@
 // Test to inspect the actual Three.js animation structure and property names
-import { describe, it, expect } from 'vitest';
-import { convertBG3DWithSkeletonToGLTF } from './bg3dWithSkeleton';
+import { describe, it } from 'vitest';
+import { parseBG3D } from './parseBG3D';
+import { parseSkeletonRsrcTS } from './skeletonRsrc/parseSkeletonRsrcTS';
+import { bg3dParsedToGLTF } from './parsedBg3dGitfConverter';
 import * as fs from 'fs';
 import * as THREE from 'three';
 import { GLTFLoader } from 'three-stdlib';
+import { NodeIO } from '@gltf-transform/core';
 
 describe('Three.js Animation Property Names Debug', () => {
   it('should inspect actual Three.js animation structure to debug PropertyBinding errors', async () => {
@@ -19,8 +22,14 @@ describe('Three.js Animation Property Names Debug', () => {
     console.log(`BG3D size: ${bg3dBuffer.length} bytes`);
     console.log(`Skeleton size: ${skeletonBuffer.length} bytes`);
     
+    // Parse skeleton and BG3D
+    const skeleton = parseSkeletonRsrcTS(new Uint8Array(skeletonBuffer));
+    const bg3dParsed = parseBG3D(bg3dBuffer.buffer, skeleton);
+    
     // Convert to GLB
-    const glbBuffer = convertBG3DWithSkeletonToGLTF(bg3dBuffer, skeletonBuffer);
+    const gltfDoc = bg3dParsedToGLTF(bg3dParsed);
+    const io = new NodeIO();
+    const glbBuffer = await io.writeBinary(gltfDoc);
     console.log(`Generated GLB size: ${glbBuffer.length} bytes`);
     
     // Save GLB temporarily for Three.js to load

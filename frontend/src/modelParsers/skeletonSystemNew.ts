@@ -310,9 +310,7 @@ function buildJointHierarchy(
   console.log("Step 2: Verifying skeletal hierarchy from bone parent data...");
 
   // Use actual bone parent data from the skeleton instead of hardcoded hierarchy
-  bones.forEach((bone, index) => {
-    const joint = joints[index];
-    
+  bones.forEach((bone) => {
     if (bone.parentBone >= 0 && bone.parentBone < bones.length) {
       const parentBone = bones[bone.parentBone];
       console.log(`  ✓ ${bone.name} has parent: ${parentBone.name}`);
@@ -374,42 +372,6 @@ function buildJointHierarchy(
   if (notAccessibleCount > 0) {
     console.error(`⚠️ ${notAccessibleCount} joints are not accessible - animations may fail`);
   }
-}
-
-/**
- * Helper function to find a node by name in the scene hierarchy
- */
-function findNodeByName(parentNode: Node, name: string): Node | null {
-  if (parentNode.getName() === name) {
-    return parentNode;
-  }
-
-  for (const child of parentNode.listChildren()) {
-    const found = findNodeByName(child, name);
-    if (found) return found;
-  }
-
-  return null;
-}
-
-/**
- * Helper function to check if a joint is in a node's hierarchy
- */
-function isJointInHierarchy(targetJoint: Node, parentNode: Node): boolean {
-  const children = parentNode.listChildren();
-
-  if (children.includes(targetJoint)) {
-    return true;
-  }
-
-  // Recursively check children
-  for (const child of children) {
-    if (isJointInHierarchy(targetJoint, child)) {
-      return true;
-    }
-  }
-
-  return false;
 }
 
 /**
