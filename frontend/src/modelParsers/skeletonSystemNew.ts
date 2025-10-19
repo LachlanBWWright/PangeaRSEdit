@@ -272,22 +272,23 @@ function createJointNodes(doc: Document, bones: BG3DBone[]): Node[] {
 }
 
 /**
- * Build proper joint hierarchy following glTF 2.0 specification
- * glTF 2.0 requires joints to have a common root and proper parent-child relationships
- * Three.js PropertyBinding will work correctly with a proper hierarchy
+ * Build proper joint hierarchy for glTF 2.0 compliance
+ * Creates a container root node that satisfies glTF's common root requirement
+ * while keeping joints' absolute transforms intact for proper visual hierarchy
  */
 function buildJointHierarchy(
   joints: Node[],
   bones: BG3DBone[],
   scene: Scene,
+  doc: Document,
 ): Node {
   console.log(
-    "Building joint hierarchy following glTF 2.0 specification...",
+    "Building joint hierarchy for glTF 2.0 compliance...",
   );
 
   if (joints.length !== bones.length) {
     console.error(`Mismatch: ${joints.length} joints vs ${bones.length} bones`);
-    return joints[0]; // Return first joint as fallback
+    return joints[0];
   }
 
   // Step 1: Set joint names
@@ -298,104 +299,29 @@ function buildJointHierarchy(
     console.log(`  ✓ Joint ${index}: "${bone.name}"`);
   });
 
-  // Step 2: Build parent-child hierarchy based on bone parent data
-  console.log("Step 2: Building parent-child relationships...");
-  
-  const rootJoints: Node[] = [];
-  
-  bones.forEach((bone, index) => {
-    const joint = joints[index];
-    
-    if (bone.parentBone >= 0 && bone.parentBone < bones.length) {
-      // This bone has a parent - establish the relationship
-      const parentJoint = joints[bone.parentBone];
-      const parentBone = bones[bone.parentBone];
-      
-      parentJoint.addChild(joint);
-      console.log(`  ✓ ${bone.name} → parent: ${parentBone.name}`);
-    } else {
-      // This is a root bone
-      rootJoints.push(joint);
-      console.log(`  ✓ ${bone.name} → root joint`);
-    }
-  });
+  // Step 2: Create a container root node for glTF 2.0 compliance
+  // This satisfies the "common root" requirement without breaking the skeleton
+  console.log("Step 2: Creating skeleton root container...");
+  const skeletonRoot = doc.createNode("SkeletonRoot");
+  scene.addChild(skeletonRoot);
+  console.log(`  ✓ Created skeleton root container`);
 
-  // Step 3: Handle common root requirement for glTF 2.0
-  let commonRoot: Node;
-  
-  if (rootJoints.length === 1) {
-    // Single root - perfect for glTF
-    commonRoot = rootJoints[0];
-    console.log(`Step 3: Single root joint: "${commonRoot.getName()}"`);
-    scene.addChild(commonRoot);
-  } else if (rootJoints.length > 1) {
-    // Multiple roots - glTF requires a common root, so create one
-    console.log(`Step 3: Multiple root joints (${rootJoints.length}) detected - creating common root for glTF compatibility`);
-    commonRoot = joints[0]; // Use first joint (typically Pelvis for Otto) as common root
-    
-    // Add all other root joints as children of the common root
-    rootJoints.forEach((joint, index) => {
-      if (joint !== commonRoot) {
-        console.log(`  ✓ Attaching "${joint.getName()}" to common root "${commonRoot.getName()}"`);
-        commonRoot.addChild(joint);
-      }
-    });
-    
-    // Add common root to scene
-    scene.addChild(commonRoot);
-    console.log(`  ✓ Common root "${commonRoot.getName()}" added to scene`);
-  } else {
-    // No roots found - should not happen
-    console.error("No root joints found!");
-    commonRoot = joints[0];
-    scene.addChild(commonRoot);
-  }
-
-  // Step 4: Verify hierarchy structure
-  console.log("Step 4: Verifying glTF hierarchy structure...");
-  
-  // Helper to collect all joints in hierarchy
-  function collectJointsInHierarchy(node: Node): Set<Node> {
-    const collected = new Set<Node>();
-    collected.add(node);
-    node.listChildren().forEach((child) => {
-      const childJoints = collectJointsInHierarchy(child);
-      childJoints.forEach((j) => collected.add(j));
-    });
-    return collected;
-  }
-  
-  // Collect all joints accessible from scene
-  const accessibleJoints = new Set<Node>();
-  scene.listChildren().forEach((child) => {
-    collectJointsInHierarchy(child).forEach((j) => accessibleJoints.add(j));
-  });
-  
-  let accessibleCount = 0;
-  let notAccessibleCount = 0;
-  
+  // Step 3: Add all joints as children of the container root
+  // Joints keep their absolute transforms (not relative to each other)
+  // This is correct because Otto stores absolute bone coordinates
+  console.log("Step 3: Adding joints to skeleton root (with absolute transforms)...");
   joints.forEach((joint, index) => {
     const bone = bones[index];
-    if (accessibleJoints.has(joint)) {
-      console.log(`  ✅ ${bone.name} accessible in hierarchy`);
-      accessibleCount++;
-    } else {
-      console.error(`  ❌ ${bone.name} NOT accessible in hierarchy`);
-      notAccessibleCount++;
-    }
+    // Keep the absolute transform that was already set by createJointNodes
+    skeletonRoot.addChild(joint);
+    console.log(`  ✓ Added "${bone.name}" to skeleton root (absolute transform)`);
   });
 
   console.log(
-    `✅ Joint hierarchy complete: ${accessibleCount}/${joints.length} joints accessible`,
+    `✅ Joint hierarchy complete: ${joints.length} joints under skeleton root`,
   );
   
-  if (notAccessibleCount > 0) {
-    console.error(`⚠️ ${notAccessibleCount} joints are not accessible - glTF may be invalid`);
-  } else {
-    console.log("✅ All joints accessible from scene - glTF hierarchy is valid");
-  }
-  
-  return commonRoot;
+  return skeletonRoot;
 }
 
 /**
@@ -424,25 +350,24 @@ function calculateInverseBindMatrices(bones: BG3DBone[]): Float32Array {
 }
 
 /**
- * Create skin following gltf-transform Skin specifications exactly
- * According to glTF 2.0, the skeleton node must be a common root of all joints
+ * Create skin following glTF 2.0 specifications
+ * Sets the skeleton root to the container node that holds all joints
  */
 function createSkin(doc: Document, joints: Node[], bones: BG3DBone[], skeletonRoot: Node): Skin {
   console.log("Creating skin following glTF 2.0 Skin specifications...");
 
   const skin = doc.createSkin("skeleton");
 
-  // According to gltf-transform Skin specs: Add joints in order
-  // This is critical for PropertyBinding to work correctly
+  // Add joints in order (required for proper skinning)
   joints.forEach((joint, index) => {
     skin.addJoint(joint);
     console.log(`  Added joint ${index}: "${joint.getName()}" to skin`);
   });
 
-  // Set the skeleton root to the common root (required by glTF 2.0)
+  // Set the skeleton root to the container node (required by glTF 2.0)
   skin.setSkeleton(skeletonRoot);
   console.log(
-    `  Set skeleton root to: "${skeletonRoot.getName()}" (common root for glTF 2.0)`,
+    `  Set skeleton root to: "${skeletonRoot.getName()}" (container for all joints)`,
   );
 
   // Calculate and set inverse bind matrices following glTF specifications
@@ -871,7 +796,7 @@ export function createSkeletonSystem(
   skeleton: BG3DSkeleton,
   buffer?: Buffer,
 ): { skin: Skin; animations: Animation[] } {
-  console.log("=== Creating Skeleton System (Rebuilt Implementation) ===");
+  console.log("=== Creating Skeleton System (glTF 2.0 Compliant) ===");
   console.log(
     `Bones: ${skeleton.bones.length}, Animations: ${skeleton.animations.length}`,
   );
@@ -889,24 +814,25 @@ export function createSkeletonSystem(
     console.log(`Using existing default scene: "${scene.getName()}"`);
   }
 
-  // Step 1: Create joint nodes with proper local transforms
+  // Step 1: Create joint nodes with absolute transforms (Otto uses absolute coordinates)
   const joints = createJointNodes(doc, skeleton.bones);
 
-  // Step 2: Build proper hierarchy (returns the common root for glTF)
-  let commonRoot: Node;
+  // Step 2: Build hierarchy with container root (returns the skeleton root node)
+  let skeletonRoot: Node;
   try {
-    commonRoot = buildJointHierarchy(joints, skeleton.bones, scene);
+    skeletonRoot = buildJointHierarchy(joints, skeleton.bones, scene, doc);
   } catch (e) {
     console.error("Error building joint hierarchy:", e);
-    // Add all joints to scene as root joints if hierarchy fails
-    joints.forEach((joint) => scene.addChild(joint));
-    commonRoot = joints[0];
+    // Fallback: create container and add all joints
+    skeletonRoot = doc.createNode("SkeletonRoot");
+    scene.addChild(skeletonRoot);
+    joints.forEach((joint) => skeletonRoot.addChild(joint));
   }
 
-  // Step 3: Create skin following glTF 2.0 specifications with proper common root
-  const skin = createSkin(doc, joints, skeleton.bones, commonRoot);
+  // Step 3: Create skin with proper skeleton root
+  const skin = createSkin(doc, joints, skeleton.bones, skeletonRoot);
 
-  // Step 4: Process animations (joints are now in proper hierarchy)
+  // Step 4: Process animations
   console.log(
     `Processing ${skeleton.animations.length} animations...`,
   );
@@ -921,10 +847,11 @@ export function createSkeletonSystem(
     buffer,
   );
 
-  console.log("=== Skeleton System Complete (glTF 2.0 compliant) ===");
+  console.log("=== Skeleton System Complete (glTF 2.0 Compliant) ===");
   console.log(
     `Result: ${joints.length} joints, ${animations.length} animations`,
   );
+
 
   return { skin, animations };
 }

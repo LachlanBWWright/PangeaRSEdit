@@ -774,7 +774,7 @@ export function ModelViewer() {
                       onClick={() => setUseGameSelector(true)}
                       variant={useGameSelector ? "default" : "outline"}
                       size="sm"
-                      className="flex-1"
+                      className={`flex-1 ${!useGameSelector ? 'text-gray-300 hover:text-white' : ''}`}
                     >
                       Game Models
                     </Button>
@@ -782,7 +782,7 @@ export function ModelViewer() {
                       onClick={() => setUseGameSelector(false)}
                       variant={!useGameSelector ? "default" : "outline"}
                       size="sm"
-                      className="flex-1"
+                      className={`flex-1 ${useGameSelector ? 'text-gray-300 hover:text-white' : ''}`}
                     >
                       Upload Files
                     </Button>
@@ -790,10 +790,35 @@ export function ModelViewer() {
 
                   {useGameSelector ? (
                     // Game Model Selector Mode
-                    <GameModelSelector
-                      onLoadModel={handleFileUpload}
-                      loading={loading}
-                    />
+                    <>
+                      <GameModelSelector
+                        onLoadModel={handleFileUpload}
+                        loading={loading}
+                      />
+                      
+                      <hr className="border-gray-600 my-4" />
+                      <p className="text-xs text-gray-400 text-center mb-2">
+                        Or use sample files:
+                      </p>
+                      
+                      <Button
+                        onClick={loadTestModel}
+                        variant="outline"
+                        className="w-full text-white"
+                        disabled={loading}
+                      >
+                        Load Otto.bg3d Sample Model (with Skeleton)
+                      </Button>
+
+                      <Button
+                        onClick={loadTestModelWithoutSkeleton}
+                        variant="outline"
+                        className="w-full text-white mt-2"
+                        disabled={loading}
+                      >
+                        Load Otto.bg3d Sample Model (without Skeleton)
+                      </Button>
+                    </>
                   ) : (
                     // File Upload Mode
                     <>
@@ -885,30 +910,6 @@ export function ModelViewer() {
                           </div>
                         </>
                       )}
-
-                      {/* Test buttons - only show in file upload mode */}
-                      <hr className="border-gray-600" />
-                      <p className="text-xs text-gray-400 text-center mb-2">
-                        Or use legacy test files:
-                      </p>
-                      
-                      <Button
-                        onClick={loadTestModel}
-                        variant="outline"
-                        className="w-full text-white"
-                        disabled={loading}
-                      >
-                        Load Otto.bg3d Sample Model (with Skeleton)
-                      </Button>
-
-                      <Button
-                        onClick={loadTestModelWithoutSkeleton}
-                        variant="outline"
-                        className="w-full text-white"
-                        disabled={loading}
-                      >
-                        Load Otto.bg3d Sample Model (without Skeleton)
-                      </Button>
                     </>
                   )}
 
