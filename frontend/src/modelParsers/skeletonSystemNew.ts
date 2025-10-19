@@ -304,45 +304,22 @@ function buildJointHierarchy(
     console.log(`  ✓ Added joint "${bone.name}" to scene root`);
   });
 
-  // Step 2: Apply local transforms for proper skeletal structure 
+  // Step 2: Verify skeletal hierarchy using actual bone parent data
   // According to gltf-transform specifications, joints can have local transforms for hierarchy
   // while remaining as scene children for PropertyBinding accessibility
-  console.log("Step 2: Applying local transforms for skeletal hierarchy...");
+  console.log("Step 2: Verifying skeletal hierarchy from bone parent data...");
 
-  const boneHierarchy: { [key: string]: string } = {
-    Torso: "Pelvis",
-    Chest: "Torso", 
-    Head: "Chest",
-    RightHip: "Pelvis",
-    LeftHip: "Pelvis",
-    RightKnee: "RightHip",
-    LeftKnee: "LeftHip",
-    RightFoot: "RightKnee",
-    LeftFoot: "LeftKnee",
-    RtShoulder: "Chest",
-    LeftShoulder: "Chest",
-    RightElbow: "RtShoulder", 
-    LeftElbow: "LeftShoulder",
-    RightHand: "RightElbow",
-    "Left Hand": "LeftElbow",
-  };
-
-  // Set up hierarchical transforms without removing joints from scene
-  // This maintains PropertyBinding compatibility while preserving skeletal structure
+  // Use actual bone parent data from the skeleton instead of hardcoded hierarchy
   bones.forEach((bone, index) => {
     const joint = joints[index];
-    const expectedParentName = boneHierarchy[bone.name];
-
-    if (expectedParentName && bone.name !== "Pelvis") {
-      const parentIndex = bones.findIndex((b) => b.name === expectedParentName);
-      if (parentIndex >= 0 && parentIndex < joints.length) {
-        const parentJoint = joints[parentIndex];
-        if (parentJoint && joint) {
-          console.log(`  ✓ ${bone.name} hierarchically linked to ${expectedParentName}`);
-          // Joint hierarchy is maintained through gltf-transform skin relationships
-          // All joints remain as scene children for PropertyBinding accessibility
-        }
-      }
+    
+    if (bone.parentBone >= 0 && bone.parentBone < bones.length) {
+      const parentBone = bones[bone.parentBone];
+      console.log(`  ✓ ${bone.name} has parent: ${parentBone.name}`);
+      // Joint hierarchy is maintained through gltf-transform skin relationships
+      // All joints remain as scene children for PropertyBinding accessibility
+    } else {
+      console.log(`  ✓ ${bone.name} is a root bone (no parent)`);
     }
   });
 
@@ -374,23 +351,29 @@ function buildJointHierarchy(
   console.log(`  Scene contains ${sceneChildren.length} direct children`);
   console.log(`  Joints accessible by PropertyBinding: [${jointNames.join(', ')}]`);
 
-  // Verify that all 16 expected Otto joints are accessible
-  const expectedJoints = ["Pelvis", "Torso", "Chest", "Head", "RightHip", "LeftHip", 
-                         "RightKnee", "LeftKnee", "RightFoot", "LeftFoot", "RtShoulder", 
-                         "LeftShoulder", "RightElbow", "LeftElbow", "RightHand", "Left Hand"];
+  // Verify that ALL bones from the actual skeleton are accessible
+  // (not just hardcoded Otto bones - this should work for any character)
+  let accessibleCount = 0;
+  let notAccessibleCount = 0;
   
-  expectedJoints.forEach(expectedName => {
-    const joint = joints.find(j => j.getName() === expectedName);
+  joints.forEach((joint, index) => {
+    const bone = bones[index];
     if (joint && sceneChildren.includes(joint)) {
-      console.log(`  ✅ ${expectedName} ready for PropertyBinding`);
+      console.log(`  ✅ ${bone.name} ready for PropertyBinding`);
+      accessibleCount++;
     } else {
-      console.error(`  ❌ ${expectedName} NOT accessible for PropertyBinding`);
+      console.error(`  ❌ ${bone.name} NOT accessible for PropertyBinding`);
+      notAccessibleCount++;
     }
   });
 
   console.log(
-    `✅ Joint hierarchy complete: ${joints.length} joints accessible for Three.js PropertyBinding`,
+    `✅ Joint hierarchy complete: ${accessibleCount}/${joints.length} joints accessible for Three.js PropertyBinding`,
   );
+  
+  if (notAccessibleCount > 0) {
+    console.error(`⚠️ ${notAccessibleCount} joints are not accessible - animations may fail`);
+  }
 }
 
 /**
