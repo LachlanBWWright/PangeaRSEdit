@@ -261,6 +261,14 @@ function buildJointHierarchy(
     throw new Error(`Mismatch: ${joints.length} joints vs ${bones.length} bones`);
   }
 
+  console.log("\n=== Building Joint Hierarchy ===");
+  console.log(`Total bones: ${bones.length}`);
+  
+  // Log parent bone structure for debugging
+  bones.forEach((bone, index) => {
+    console.log(`Bone ${index}: "${bone.name}" - parentBone: ${bone.parentBone}`);
+  });
+
   const rootJoints: Node[] = [];
 
   // Build parent-child relationships based on parentBone indices
@@ -271,24 +279,44 @@ function buildJointHierarchy(
       // This bone has a parent - add as child of parent joint
       const parentJoint = joints[bone.parentBone];
       parentJoint.addChild(joint);
+      console.log(`  ✓ "${bone.name}" → child of "${bones[bone.parentBone].name}"`);
     } else {
       // This bone is a root (parentBone is -1 or invalid)
       rootJoints.push(joint);
+      console.log(`  ✓ "${bone.name}" → ROOT joint`);
     }
   });
 
-  // Add all root joints to the scene
-  rootJoints.forEach((rootJoint) => {
-    scene.addChild(rootJoint);
-  });
+  console.log(`Found ${rootJoints.length} root joint(s)`);
 
-  // glTF 2.0 requires a skeleton root - use first root joint
-  // For Otto, this should be the Pelvis bone
-  if (rootJoints.length === 0) {
+  // glTF 2.0 REQUIRES that all joints have a common root
+  // If we have multiple roots, we MUST create a container to hold them
+  if (rootJoints.length > 1) {
+    console.log(`WARNING: Found ${rootJoints.length} root joints - glTF 2.0 requires common root`);
+    console.log(`Creating artificial root node to contain all roots...`);
+    
+    // Create an artificial root node
+    const artificialRoot = joints[0].getGraph().createNode("ArmatureRoot");
+    
+    // Make all root joints children of the artificial root
+    rootJoints.forEach((rootJoint) => {
+      artificialRoot.addChild(rootJoint);
+      console.log(`  Moved "${rootJoint.getName()}" under ArmatureRoot`);
+    });
+    
+    // Add only the artificial root to the scene
+    scene.addChild(artificialRoot);
+    
+    console.log(`✅ Created common root: ArmatureRoot`);
+    return artificialRoot;
+  } else if (rootJoints.length === 1) {
+    // Single root - add to scene
+    scene.addChild(rootJoints[0]);
+    console.log(`✅ Single root: "${rootJoints[0].getName()}"`);
+    return rootJoints[0];
+  } else {
     throw new Error("No root joints found in skeleton!");
   }
-
-  return rootJoints[0];
 }
 
 /**
