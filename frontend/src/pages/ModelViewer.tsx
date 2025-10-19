@@ -804,19 +804,19 @@ export function ModelViewer() {
                       <Button
                         onClick={loadTestModel}
                         variant="outline"
-                        className="w-full text-white"
+                        className="w-full text-white text-xs"
                         disabled={loading}
                       >
-                        Load Otto.bg3d Sample Model (with Skeleton)
+                        Otto Sample (with Skeleton)
                       </Button>
 
                       <Button
                         onClick={loadTestModelWithoutSkeleton}
                         variant="outline"
-                        className="w-full text-white mt-2"
+                        className="w-full text-white text-xs mt-2"
                         disabled={loading}
                       >
-                        Load Otto.bg3d Sample Model (without Skeleton)
+                        Otto Sample (no Skeleton)
                       </Button>
                     </>
                   ) : (

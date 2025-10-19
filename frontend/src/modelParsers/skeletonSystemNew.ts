@@ -212,149 +212,83 @@ class Matrix4 {
 
 /**
  * Convert Otto's absolute bone coordinates to glTF local transforms
+ * Otto stores bone coordinates in ABSOLUTE world space
+ * glTF requires LOCAL space (relative to parent)
+ * Formula: local = child_absolute - parent_absolute
  */
 function calculateLocalTransform(
   bone: BG3DBone,
   bones: BG3DBone[],
 ): [number, number, number] {
-  console.log(
-    `Calculating local transform for bone "${bone.name}" (parentBone: ${bone.parentBone})`,
-  );
-  console.log(
-    `  Bone absolute coords: [${bone.coordX}, ${bone.coordY}, ${bone.coordZ}]`,
-  );
-
+  // If bone has a valid parent, calculate local transform as difference
   if (bone.parentBone >= 0 && bone.parentBone < bones.length) {
     const parent = bones[bone.parentBone];
-    console.log(
-      `  Parent "${parent.name}" coords: [${parent.coordX}, ${parent.coordY}, ${parent.coordZ}]`,
-    );
-    const localTransform: [number, number, number] = [
+    return [
       bone.coordX - parent.coordX,
       bone.coordY - parent.coordY,
       bone.coordZ - parent.coordZ,
     ];
-    console.log(
-      `  Calculated local transform: [${localTransform
-        .map((v) => v.toFixed(2))
-        .join(", ")}]`,
-    );
-    return localTransform;
   }
 
-  // Root bones: local transform = absolute coordinates
-  console.log(
-    `  Root bone local transform: [${bone.coordX}, ${bone.coordY}, ${bone.coordZ}]`,
-  );
+  // Root bones (no parent): local transform equals absolute coordinates
   return [bone.coordX, bone.coordY, bone.coordZ];
 }
 
 /**
  * Create joint nodes with proper local transforms
+ * Converts Otto's absolute bone coordinates to glTF's local space
  */
 function createJointNodes(doc: Document, bones: BG3DBone[]): Node[] {
-  console.log("Creating joint nodes with local transforms...");
-
-  return bones.map((bone, index) => {
+  return bones.map((bone) => {
     const joint = doc.createNode(bone.name);
     const localTransform = calculateLocalTransform(bone, bones);
-
     joint.setTranslation(localTransform);
-
-    console.log(
-      `  Joint ${index}: "${bone.name}" at local [${localTransform
-        .map((v) => v.toFixed(2))
-        .join(", ")}]`,
-    );
-
     return joint;
   });
 }
 
 /**
  * Build proper joint hierarchy for glTF 2.0 compliance
- * For skeletons with parent relationships: builds proper tree
- * For flat skeletons (like Otto): creates container root with all joints as children
+ * Creates parent-child relationships based on bone.parentBone indices
+ * Otto humanoid skeleton has hierarchical structure (Pelvis → Torso → etc.)
  */
 function buildJointHierarchy(
   joints: Node[],
   bones: BG3DBone[],
   scene: Scene,
-  doc: Document,
 ): Node {
-  console.log("Building joint hierarchy for glTF 2.0 compliance...");
-
   if (joints.length !== bones.length) {
-    console.error(`Mismatch: ${joints.length} joints vs ${bones.length} bones`);
-    return joints[0];
+    throw new Error(`Mismatch: ${joints.length} joints vs ${bones.length} bones`);
   }
 
-  // Step 1: Set joint names
-  console.log("Step 1: Setting joint names...");
+  const rootJoints: Node[] = [];
+
+  // Build parent-child relationships based on parentBone indices
   joints.forEach((joint, index) => {
     const bone = bones[index];
-    joint.setName(bone.name);
-    console.log(`  ✓ Joint ${index}: "${bone.name}"`);
+    
+    if (bone.parentBone >= 0 && bone.parentBone < bones.length) {
+      // This bone has a parent - add as child of parent joint
+      const parentJoint = joints[bone.parentBone];
+      parentJoint.addChild(joint);
+    } else {
+      // This bone is a root (parentBone is -1 or invalid)
+      rootJoints.push(joint);
+    }
   });
 
-  // Step 2: Check if bones have parent relationships
-  const hasParentRelationships = bones.some(bone => bone.parentBone >= 0 && bone.parentBone < bones.length);
-  
-  if (hasParentRelationships) {
-    console.log("Step 2: Building parent-child hierarchy (bones have parent relationships)...");
-    const rootJoints: Node[] = [];
+  // Add all root joints to the scene
+  rootJoints.forEach((rootJoint) => {
+    scene.addChild(rootJoint);
+  });
 
-    joints.forEach((joint, index) => {
-      const bone = bones[index];
-      console.log(`    Checking bone ${index} "${bone.name}": parentBone = ${bone.parentBone}`);
-      if (bone.parentBone >= 0 && bone.parentBone < bones.length) {
-        // This joint has a parent - add it as a child of the parent joint
-        const parentJoint = joints[bone.parentBone];
-        parentJoint.addChild(joint);
-        console.log(
-          `  ✓ "${bone.name}" (${index}) → child of "${bones[bone.parentBone].name}" (${bone.parentBone})`,
-        );
-      } else {
-        // This is a root joint (no parent)
-        rootJoints.push(joint);
-        console.log(`  ✓ "${bone.name}" (${index}) → ROOT joint`);
-      }
-    });
-
-    // Step 3: Add root joints to the scene
-    console.log(`Step 3: Adding ${rootJoints.length} root joint(s) to scene...`);
-    rootJoints.forEach((rootJoint) => {
-      scene.addChild(rootJoint);
-      console.log(`  ✓ Added root joint "${rootJoint.getName()}" to scene`);
-    });
-
-    console.log(
-      `✅ Joint hierarchy complete: ${rootJoints.length} root(s), ${joints.length} total joints`,
-    );
-
-    // Return the first root joint as the skeleton root
-    return rootJoints[0];
-  } else {
-    // Flat skeleton (no parent relationships) - create container root
-    console.log("Step 2: Creating container root (flat skeleton, no parent relationships)...");
-    const skeletonRoot = doc.createNode("SkeletonRoot");
-    
-    // Add all joints as children of the container root
-    joints.forEach((joint, index) => {
-      skeletonRoot.addChild(joint);
-      console.log(`  ✓ Added "${bones[index].name}" to skeleton root`);
-    });
-    
-    // Add the skeleton root to the scene
-    scene.addChild(skeletonRoot);
-    console.log(`Step 3: Added skeleton root to scene`);
-    
-    console.log(
-      `✅ Joint hierarchy complete: 1 container root, ${joints.length} child joints`,
-    );
-    
-    return skeletonRoot;
+  // glTF 2.0 requires a skeleton root - use first root joint
+  // For Otto, this should be the Pelvis bone
+  if (rootJoints.length === 0) {
+    throw new Error("No root joints found in skeleton!");
   }
+
+  return rootJoints[0];
 }
 
 /**
@@ -384,26 +318,22 @@ function calculateInverseBindMatrices(bones: BG3DBone[]): Float32Array {
 
 /**
  * Create skin following glTF 2.0 specifications
- * Sets the skeleton root to the container node that holds all joints
+ * Sets the skeleton root to the first root joint (e.g., Pelvis for Otto)
  */
 function createSkin(doc: Document, joints: Node[], bones: BG3DBone[], skeletonRoot: Node): Skin {
-  console.log("Creating skin following glTF 2.0 Skin specifications...");
-
   const skin = doc.createSkin("skeleton");
 
   // Add joints in order (required for proper skinning)
-  joints.forEach((joint, index) => {
+  joints.forEach((joint) => {
     skin.addJoint(joint);
-    console.log(`  Added joint ${index}: "${joint.getName()}" to skin`);
   });
 
-  // Set the skeleton root to the container node (required by glTF 2.0)
+  // Set the skeleton root (required by glTF 2.0)
+  // For Otto, this is the Pelvis bone (first root joint)
   skin.setSkeleton(skeletonRoot);
-  console.log(
-    `  Set skeleton root to: "${skeletonRoot.getName()}" (container for all joints)`,
-  );
 
-  // Calculate and set inverse bind matrices following glTF specifications
+  // Calculate and set inverse bind matrices
+  // These transform vertices from model space to bone space
   const ibmData = calculateInverseBindMatrices(bones);
   const buffer = doc.getRoot().listBuffers()[0];
   const ibmAccessor = doc
@@ -414,9 +344,6 @@ function createSkin(doc: Document, joints: Node[], bones: BG3DBone[], skeletonRo
 
   skin.setInverseBindMatrices(ibmAccessor);
 
-  console.log(
-    `✅ Skin created with ${joints.length} joints following glTF 2.0 specs`,
-  );
   return skin;
 }
 
@@ -853,13 +780,10 @@ export function createSkeletonSystem(
   // Step 2: Build hierarchy (returns the skeleton root node)
   let skeletonRoot: Node;
   try {
-    skeletonRoot = buildJointHierarchy(joints, skeleton.bones, scene, doc);
+    skeletonRoot = buildJointHierarchy(joints, skeleton.bones, scene);
   } catch (e) {
     console.error("Error building joint hierarchy:", e);
-    // Fallback: create container and add all joints
-    skeletonRoot = doc.createNode("SkeletonRoot");
-    scene.addChild(skeletonRoot);
-    joints.forEach((joint) => skeletonRoot.addChild(joint));
+    throw e; // Don't silently fail - skeleton issues must be fixed
   }
 
   // Step 3: Create skin with proper skeleton root
