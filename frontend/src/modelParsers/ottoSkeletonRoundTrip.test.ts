@@ -29,6 +29,13 @@ describe("Otto BG3D Skeleton Round-trip", () => {
     // Verify Otto has 16 bones
     expect(bg3dParsed.skeleton!.bones.length).toBe(16);
     
+    // Debug: Log bone parent data
+    console.log("\n=== Otto Bone Parent Structure ===");
+    bg3dParsed.skeleton!.bones.forEach((bone, index) => {
+      console.log(`Bone ${index}: "${bone.name}" - parent: ${bone.parentBone}`);
+    });
+    console.log("===================================\n");
+    
     // Verify expected Otto bone names
     const boneNames = bg3dParsed.skeleton!.bones.map(b => b.name);
     const expectedOttoBones = [

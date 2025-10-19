@@ -272,106 +272,130 @@ function createJointNodes(doc: Document, bones: BG3DBone[]): Node[] {
 }
 
 /**
- * Build proper joint hierarchy following gltf-transform Skin specifications
- * CRITICAL: This function ensures all joints are findable by Three.js PropertyBinding
- * According to gltf-transform specs, ALL joints must remain accessible from scene for PropertyBinding
+ * Build proper joint hierarchy following glTF 2.0 specification
+ * glTF 2.0 requires joints to have a common root and proper parent-child relationships
+ * Three.js PropertyBinding will work correctly with a proper hierarchy
  */
 function buildJointHierarchy(
   joints: Node[],
   bones: BG3DBone[],
   scene: Scene,
-): void {
+): Node {
   console.log(
-    "Building joint hierarchy following gltf-transform Skin specifications...",
+    "Building joint hierarchy following glTF 2.0 specification...",
   );
 
   if (joints.length !== bones.length) {
     console.error(`Mismatch: ${joints.length} joints vs ${bones.length} bones`);
-    return;
+    return joints[0]; // Return first joint as fallback
   }
 
-  // CRITICAL: Following gltf-transform Skin specs - add ALL joints to scene FIRST and KEEP them there
-  // Three.js PropertyBinding requires all joints to be accessible from scene root for name-based lookups
-  console.log(
-    "Step 1: Adding ALL joints to scene root for PropertyBinding compatibility...",
-  );
+  // Step 1: Set joint names
+  console.log("Step 1: Setting joint names...");
   joints.forEach((joint, index) => {
     const bone = bones[index];
-    // Ensure joint has exact name that animations will target
     joint.setName(bone.name);
-    // Add every joint directly to scene root - CRITICAL for PropertyBinding
-    scene.addChild(joint);
-    console.log(`  ✓ Added joint "${bone.name}" to scene root`);
+    console.log(`  ✓ Joint ${index}: "${bone.name}"`);
   });
 
-  // Step 2: Verify skeletal hierarchy using actual bone parent data
-  // According to gltf-transform specifications, joints can have local transforms for hierarchy
-  // while remaining as scene children for PropertyBinding accessibility
-  console.log("Step 2: Verifying skeletal hierarchy from bone parent data...");
-
-  // Use actual bone parent data from the skeleton instead of hardcoded hierarchy
-  bones.forEach((bone) => {
-    if (bone.parentBone >= 0 && bone.parentBone < bones.length) {
-      const parentBone = bones[bone.parentBone];
-      console.log(`  ✓ ${bone.name} has parent: ${parentBone.name}`);
-      // Joint hierarchy is maintained through gltf-transform skin relationships
-      // All joints remain as scene children for PropertyBinding accessibility
-    } else {
-      console.log(`  ✓ ${bone.name} is a root bone (no parent)`);
-    }
-  });
-
-  // Final verification: ensure ALL joints remain accessible from scene for PropertyBinding
-  console.log(
-    "Step 3: Final verification - ensuring PropertyBinding can find all joints...",
-  );
-
-  // Verify every joint is directly accessible from scene root
-  joints.forEach((joint, index) => {
-    const bone = bones[index];
-    const sceneChildren = scene.listChildren();
-    
-    if (!sceneChildren.includes(joint)) {
-      console.error(
-        `❌ Joint ${bone.name} not accessible from scene root - fixing...`,
-      );
-      scene.addChild(joint);
-    } else {
-      console.log(`  ✓ Joint "${bone.name}" accessible from scene root for PropertyBinding`);
-    }
-  });
-
-  // Log final scene structure optimized for PropertyBinding
-  console.log("Final scene structure optimized for Three.js PropertyBinding:");
-  const sceneChildren = scene.listChildren();
-  const jointNames = joints.map(j => j.getName()).filter(Boolean);
+  // Step 2: Build parent-child hierarchy based on bone parent data
+  console.log("Step 2: Building parent-child relationships...");
   
-  console.log(`  Scene contains ${sceneChildren.length} direct children`);
-  console.log(`  Joints accessible by PropertyBinding: [${jointNames.join(', ')}]`);
+  const rootJoints: Node[] = [];
+  
+  bones.forEach((bone, index) => {
+    const joint = joints[index];
+    
+    if (bone.parentBone >= 0 && bone.parentBone < bones.length) {
+      // This bone has a parent - establish the relationship
+      const parentJoint = joints[bone.parentBone];
+      const parentBone = bones[bone.parentBone];
+      
+      parentJoint.addChild(joint);
+      console.log(`  ✓ ${bone.name} → parent: ${parentBone.name}`);
+    } else {
+      // This is a root bone
+      rootJoints.push(joint);
+      console.log(`  ✓ ${bone.name} → root joint`);
+    }
+  });
 
-  // Verify that ALL bones from the actual skeleton are accessible
-  // (not just hardcoded Otto bones - this should work for any character)
+  // Step 3: Handle common root requirement for glTF 2.0
+  let commonRoot: Node;
+  
+  if (rootJoints.length === 1) {
+    // Single root - perfect for glTF
+    commonRoot = rootJoints[0];
+    console.log(`Step 3: Single root joint: "${commonRoot.getName()}"`);
+    scene.addChild(commonRoot);
+  } else if (rootJoints.length > 1) {
+    // Multiple roots - glTF requires a common root, so create one
+    console.log(`Step 3: Multiple root joints (${rootJoints.length}) detected - creating common root for glTF compatibility`);
+    commonRoot = joints[0]; // Use first joint (typically Pelvis for Otto) as common root
+    
+    // Add all other root joints as children of the common root
+    rootJoints.forEach((joint, index) => {
+      if (joint !== commonRoot) {
+        console.log(`  ✓ Attaching "${joint.getName()}" to common root "${commonRoot.getName()}"`);
+        commonRoot.addChild(joint);
+      }
+    });
+    
+    // Add common root to scene
+    scene.addChild(commonRoot);
+    console.log(`  ✓ Common root "${commonRoot.getName()}" added to scene`);
+  } else {
+    // No roots found - should not happen
+    console.error("No root joints found!");
+    commonRoot = joints[0];
+    scene.addChild(commonRoot);
+  }
+
+  // Step 4: Verify hierarchy structure
+  console.log("Step 4: Verifying glTF hierarchy structure...");
+  
+  // Helper to collect all joints in hierarchy
+  function collectJointsInHierarchy(node: Node): Set<Node> {
+    const collected = new Set<Node>();
+    collected.add(node);
+    node.listChildren().forEach((child) => {
+      const childJoints = collectJointsInHierarchy(child);
+      childJoints.forEach((j) => collected.add(j));
+    });
+    return collected;
+  }
+  
+  // Collect all joints accessible from scene
+  const accessibleJoints = new Set<Node>();
+  scene.listChildren().forEach((child) => {
+    collectJointsInHierarchy(child).forEach((j) => accessibleJoints.add(j));
+  });
+  
   let accessibleCount = 0;
   let notAccessibleCount = 0;
   
   joints.forEach((joint, index) => {
     const bone = bones[index];
-    if (joint && sceneChildren.includes(joint)) {
-      console.log(`  ✅ ${bone.name} ready for PropertyBinding`);
+    if (accessibleJoints.has(joint)) {
+      console.log(`  ✅ ${bone.name} accessible in hierarchy`);
       accessibleCount++;
     } else {
-      console.error(`  ❌ ${bone.name} NOT accessible for PropertyBinding`);
+      console.error(`  ❌ ${bone.name} NOT accessible in hierarchy`);
       notAccessibleCount++;
     }
   });
 
   console.log(
-    `✅ Joint hierarchy complete: ${accessibleCount}/${joints.length} joints accessible for Three.js PropertyBinding`,
+    `✅ Joint hierarchy complete: ${accessibleCount}/${joints.length} joints accessible`,
   );
   
   if (notAccessibleCount > 0) {
-    console.error(`⚠️ ${notAccessibleCount} joints are not accessible - animations may fail`);
+    console.error(`⚠️ ${notAccessibleCount} joints are not accessible - glTF may be invalid`);
+  } else {
+    console.log("✅ All joints accessible from scene - glTF hierarchy is valid");
   }
+  
+  return commonRoot;
 }
 
 /**
@@ -401,10 +425,10 @@ function calculateInverseBindMatrices(bones: BG3DBone[]): Float32Array {
 
 /**
  * Create skin following gltf-transform Skin specifications exactly
- * According to gltf-transform docs, all joints must be accessible from scene for PropertyBinding
+ * According to glTF 2.0, the skeleton node must be a common root of all joints
  */
-function createSkin(doc: Document, joints: Node[], bones: BG3DBone[]): Skin {
-  console.log("Creating skin following gltf-transform Skin specifications...");
+function createSkin(doc: Document, joints: Node[], bones: BG3DBone[], skeletonRoot: Node): Skin {
+  console.log("Creating skin following glTF 2.0 Skin specifications...");
 
   const skin = doc.createSkin("skeleton");
 
@@ -415,16 +439,11 @@ function createSkin(doc: Document, joints: Node[], bones: BG3DBone[]): Skin {
     console.log(`  Added joint ${index}: "${joint.getName()}" to skin`);
   });
 
-  // According to gltf-transform specs: Set skeleton root for proper joint resolution
-  // The skeleton root helps Three.js PropertyBinding find the joint hierarchy
-  const rootJoint =
-    joints.find((joint) => joint.getName() === "Pelvis") || joints[0];
-  if (rootJoint) {
-    skin.setSkeleton(rootJoint);
-    console.log(
-      `  Set skeleton root to: "${rootJoint.getName()}" for PropertyBinding`,
-    );
-  }
+  // Set the skeleton root to the common root (required by glTF 2.0)
+  skin.setSkeleton(skeletonRoot);
+  console.log(
+    `  Set skeleton root to: "${skeletonRoot.getName()}" (common root for glTF 2.0)`,
+  );
 
   // Calculate and set inverse bind matrices following glTF specifications
   const ibmData = calculateInverseBindMatrices(bones);
@@ -438,7 +457,7 @@ function createSkin(doc: Document, joints: Node[], bones: BG3DBone[]): Skin {
   skin.setInverseBindMatrices(ibmAccessor);
 
   console.log(
-    `✅ Skin created with ${joints.length} joints following gltf-transform specs`,
+    `✅ Skin created with ${joints.length} joints following glTF 2.0 specs`,
   );
   return skin;
 }
@@ -873,53 +892,23 @@ export function createSkeletonSystem(
   // Step 1: Create joint nodes with proper local transforms
   const joints = createJointNodes(doc, skeleton.bones);
 
-  // Step 2: Build proper hierarchy (CRITICAL: joints must be in scene before animations)
+  // Step 2: Build proper hierarchy (returns the common root for glTF)
+  let commonRoot: Node;
   try {
-    buildJointHierarchy(joints, skeleton.bones, scene);
+    commonRoot = buildJointHierarchy(joints, skeleton.bones, scene);
   } catch (e) {
     console.error("Error building joint hierarchy:", e);
     // Add all joints to scene as root joints if hierarchy fails
     joints.forEach((joint) => scene.addChild(joint));
+    commonRoot = joints[0];
   }
 
-  // CRITICAL: Final verification for Three.js PropertyBinding compatibility
-  // All joints must be accessible from scene according to gltf-transform Skin specs
-  console.log("Final PropertyBinding compatibility verification...");
+  // Step 3: Create skin following glTF 2.0 specifications with proper common root
+  const skin = createSkin(doc, joints, skeleton.bones, commonRoot);
 
-  const allAccessibleNodes = new Set<Node>();
-  function collectAccessibleNodes(node: Node) {
-    allAccessibleNodes.add(node);
-    node.listChildren().forEach((child) => collectAccessibleNodes(child));
-  }
-
-  scene.listChildren().forEach((child: Node) => collectAccessibleNodes(child));
-
-  // Ensure every joint is accessible and properly named
-  joints.forEach((joint, index) => {
-    const bone = skeleton.bones[index];
-
-    // Ensure correct naming for PropertyBinding
-    joint.setName(bone.name);
-
-    // Verify accessibility
-    if (!allAccessibleNodes.has(joint)) {
-      console.error(`❌ Joint "${bone.name}" not accessible - emergency fix`);
-      scene.addChild(joint);
-    } else {
-      console.log(`  ✅ Joint "${bone.name}" accessible for PropertyBinding`);
-    }
-  });
-
+  // Step 4: Process animations (joints are now in proper hierarchy)
   console.log(
-    `✅ PropertyBinding verification complete: ${joints.length} joints accessible`,
-  );
-
-  // Step 3: Create skin following gltf-transform specifications
-  const skin = createSkin(doc, joints, skeleton.bones);
-
-  // Step 4: Process animations (joints are now properly accessible)
-  console.log(
-    `Processing ${skeleton.animations.length} animations for PropertyBinding...`,
+    `Processing ${skeleton.animations.length} animations...`,
   );
   const processedAnimations = processOttoAnimations(
     skeleton.animations,
@@ -932,11 +921,10 @@ export function createSkeletonSystem(
     buffer,
   );
 
-  console.log("=== Skeleton System Complete (gltf-transform compliant) ===");
+  console.log("=== Skeleton System Complete (glTF 2.0 compliant) ===");
   console.log(
     `Result: ${joints.length} joints, ${animations.length} animations`,
   );
-  console.log("All joints accessible for Three.js PropertyBinding");
 
   return { skin, animations };
 }
