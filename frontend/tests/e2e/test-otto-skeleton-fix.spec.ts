@@ -15,6 +15,20 @@ test.describe('Otto Skeleton Model Loading', () => {
       });
     });
 
+    // Click Model Viewer tab
+    await page.waitForSelector('text=Model Viewer', { timeout: 10000 });
+    await page.click('text=Model Viewer');
+    
+    // Wait for page to load
+    await page.waitForTimeout(2000);
+    
+    // Click Game Models button (should already be selected by default)
+    await page.waitForSelector('text=Game Models', { timeout: 10000 });
+    await page.click('text=Game Models');
+    
+    // Wait for game models UI to appear
+    await page.waitForTimeout(1000);
+
     // Find and click the "Load Otto.bg3d Sample Model (with Skeleton)" button
     await page.waitForSelector('text=Load Otto.bg3d Sample Model (with Skeleton)', { timeout: 10000 });
     await page.click('text=Load Otto.bg3d Sample Model (with Skeleton)');
@@ -79,7 +93,21 @@ test.describe('Otto Skeleton Model Loading', () => {
 
   test('check animation functionality works', async ({ page }) => {
     // Navigate to the model viewer
-    await page.goto('http://localhost:5173/PangeaRSEdit/PangeaRSEdit/');
+    await page.goto('/');
+    
+    // Click Model Viewer tab
+    await page.waitForSelector('text=Model Viewer', { timeout: 10000 });
+    await page.click('text=Model Viewer');
+    
+    // Wait for page to load
+    await page.waitForTimeout(2000);
+    
+    // Click Game Models button
+    await page.waitForSelector('text=Game Models', { timeout: 10000 });
+    await page.click('text=Game Models');
+    
+    // Wait for game models UI to appear
+    await page.waitForTimeout(1000);
     
     // Load Otto with skeleton
     await page.waitForSelector('text=Load Otto.bg3d Sample Model (with Skeleton)', { timeout: 10000 });
