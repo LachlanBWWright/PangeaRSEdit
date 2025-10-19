@@ -49,10 +49,40 @@ describe("Skeleton Animation glTF Validation", () => {
       });
     }
     
+    console.log("\n=== Analyzing glTF Structure ===");
+    
+    // Debug: Check the hierarchy
+    const defaultScene = gltfDoc.getRoot().getDefaultScene()!;
+    const rootChildren = defaultScene.listChildren();
+    
+    console.log("\n=== Scene Root Children ===");
+    rootChildren.forEach((child, i) => {
+      console.log(`${i}. ${child.getName()} (children: ${child.listChildren().length})`);
+      child.listChildren().forEach((grandchild, j) => {
+        console.log(`   ${j}. ${grandchild.getName()} (children: ${grandchild.listChildren().length})`);
+        grandchild.listChildren().forEach((ggchild, k) => {
+          console.log(`      ${k}. ${ggchild.getName()} (children: ${ggchild.listChildren().length})`);
+        });
+      });
+    });
+
+    // Check skins
+    console.log("\n=== Skins ===");
+    const allSkins = gltfDoc.getRoot().listSkins();
+    allSkins.forEach((skin, i) => {
+      console.log(`Skin ${i}: ${skin.getName()}`);
+      console.log(`  Skeleton root: ${skin.getSkeleton()?.getName() || "NONE"}`);
+      console.log(`  Joints (${skin.listJoints().length}):`);
+      skin.listJoints().forEach((joint, j) => {
+        const parent = joint.getParentNode();
+        console.log(`    ${j}. ${joint.getName()} (parent: ${parent?.getName() || "NONE"})`);
+      });
+    });
+    
     // Validation should pass (no errors)
     expect(validationReport.issues.numErrors).toBe(0);
     
-    console.log("\n=== Analyzing glTF Structure ===");
+    console.log("\n=== Full Analysis ===");
     
     // Get the root
     const root = gltfDoc.getRoot();

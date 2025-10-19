@@ -273,8 +273,8 @@ function createJointNodes(doc: Document, bones: BG3DBone[]): Node[] {
 
 /**
  * Build proper joint hierarchy for glTF 2.0 compliance
- * Creates a container root node that satisfies glTF's common root requirement
- * while keeping joints' absolute transforms intact for proper visual hierarchy
+ * For skeletons with parent relationships: builds proper tree
+ * For flat skeletons (like Otto): creates container root with all joints as children
  */
 function buildJointHierarchy(
   joints: Node[],
@@ -282,9 +282,7 @@ function buildJointHierarchy(
   scene: Scene,
   doc: Document,
 ): Node {
-  console.log(
-    "Building joint hierarchy for glTF 2.0 compliance...",
-  );
+  console.log("Building joint hierarchy for glTF 2.0 compliance...");
 
   if (joints.length !== bones.length) {
     console.error(`Mismatch: ${joints.length} joints vs ${bones.length} bones`);
@@ -299,29 +297,64 @@ function buildJointHierarchy(
     console.log(`  ✓ Joint ${index}: "${bone.name}"`);
   });
 
-  // Step 2: Create a container root node for glTF 2.0 compliance
-  // This satisfies the "common root" requirement without breaking the skeleton
-  console.log("Step 2: Creating skeleton root container...");
-  const skeletonRoot = doc.createNode("SkeletonRoot");
-  scene.addChild(skeletonRoot);
-  console.log(`  ✓ Created skeleton root container`);
-
-  // Step 3: Add all joints as children of the container root
-  // Joints keep their absolute transforms (not relative to each other)
-  // This is correct because Otto stores absolute bone coordinates
-  console.log("Step 3: Adding joints to skeleton root (with absolute transforms)...");
-  joints.forEach((joint, index) => {
-    const bone = bones[index];
-    // Keep the absolute transform that was already set by createJointNodes
-    skeletonRoot.addChild(joint);
-    console.log(`  ✓ Added "${bone.name}" to skeleton root (absolute transform)`);
-  });
-
-  console.log(
-    `✅ Joint hierarchy complete: ${joints.length} joints under skeleton root`,
-  );
+  // Step 2: Check if bones have parent relationships
+  const hasParentRelationships = bones.some(bone => bone.parentBone >= 0 && bone.parentBone < bones.length);
   
-  return skeletonRoot;
+  if (hasParentRelationships) {
+    console.log("Step 2: Building parent-child hierarchy (bones have parent relationships)...");
+    const rootJoints: Node[] = [];
+
+    joints.forEach((joint, index) => {
+      const bone = bones[index];
+      console.log(`    Checking bone ${index} "${bone.name}": parentBone = ${bone.parentBone}`);
+      if (bone.parentBone >= 0 && bone.parentBone < bones.length) {
+        // This joint has a parent - add it as a child of the parent joint
+        const parentJoint = joints[bone.parentBone];
+        parentJoint.addChild(joint);
+        console.log(
+          `  ✓ "${bone.name}" (${index}) → child of "${bones[bone.parentBone].name}" (${bone.parentBone})`,
+        );
+      } else {
+        // This is a root joint (no parent)
+        rootJoints.push(joint);
+        console.log(`  ✓ "${bone.name}" (${index}) → ROOT joint`);
+      }
+    });
+
+    // Step 3: Add root joints to the scene
+    console.log(`Step 3: Adding ${rootJoints.length} root joint(s) to scene...`);
+    rootJoints.forEach((rootJoint) => {
+      scene.addChild(rootJoint);
+      console.log(`  ✓ Added root joint "${rootJoint.getName()}" to scene`);
+    });
+
+    console.log(
+      `✅ Joint hierarchy complete: ${rootJoints.length} root(s), ${joints.length} total joints`,
+    );
+
+    // Return the first root joint as the skeleton root
+    return rootJoints[0];
+  } else {
+    // Flat skeleton (no parent relationships) - create container root
+    console.log("Step 2: Creating container root (flat skeleton, no parent relationships)...");
+    const skeletonRoot = doc.createNode("SkeletonRoot");
+    
+    // Add all joints as children of the container root
+    joints.forEach((joint, index) => {
+      skeletonRoot.addChild(joint);
+      console.log(`  ✓ Added "${bones[index].name}" to skeleton root`);
+    });
+    
+    // Add the skeleton root to the scene
+    scene.addChild(skeletonRoot);
+    console.log(`Step 3: Added skeleton root to scene`);
+    
+    console.log(
+      `✅ Joint hierarchy complete: 1 container root, ${joints.length} child joints`,
+    );
+    
+    return skeletonRoot;
+  }
 }
 
 /**
@@ -817,7 +850,7 @@ export function createSkeletonSystem(
   // Step 1: Create joint nodes with absolute transforms (Otto uses absolute coordinates)
   const joints = createJointNodes(doc, skeleton.bones);
 
-  // Step 2: Build hierarchy with container root (returns the skeleton root node)
+  // Step 2: Build hierarchy (returns the skeleton root node)
   let skeletonRoot: Node;
   try {
     skeletonRoot = buildJointHierarchy(joints, skeleton.bones, scene, doc);
