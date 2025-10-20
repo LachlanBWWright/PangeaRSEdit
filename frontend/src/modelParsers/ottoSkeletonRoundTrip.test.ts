@@ -6,6 +6,8 @@ import { bg3dSkeletonToSkeletonResource } from "./skeletonExport";
 import { bg3dParsedToGLTF } from "./parsedBg3dGitfConverter";
 import { readFileSync } from "fs";
 import { join } from "path";
+import { NodeIO } from "@gltf-transform/core";
+import { validateBytes } from "gltf-validator";
 
 describe("Otto BG3D Skeleton Round-trip", () => {
   it("should preserve Otto animation timing and structure in round-trip conversion", async () => {
@@ -54,6 +56,31 @@ describe("Otto BG3D Skeleton Round-trip", () => {
     
     const animations = gltfDocument.getRoot().listAnimations();
     expect(animations.length).toBeGreaterThan(0);
+    
+    // **ADD glTF VALIDATION**
+    console.log('\n=== Running Official glTF Validator ===');
+    const io = new NodeIO();
+    const glbBuffer = await io.writeBinary(gltfDocument);
+    console.log(`Generated GLB size: ${glbBuffer.length} bytes`);
+    
+    const validationReport = await validateBytes(glbBuffer);
+    console.log(`Validation: ${validationReport.issues.numErrors} errors, ${validationReport.issues.numWarnings} warnings, ${validationReport.issues.numInfos} infos`);
+    
+    if (validationReport.issues.messages.length > 0) {
+      console.log('\nValidation Issues:');
+      validationReport.issues.messages.forEach((msg, index) => {
+        const severity = msg.severity === 0 ? 'ERROR' : msg.severity === 1 ? 'WARNING' : 'INFO';
+        console.log(`  ${index + 1}. [${severity}] ${msg.message}`);
+        if (msg.pointer) {
+          console.log(`     Pointer: ${msg.pointer}`);
+        }
+      });
+    }
+    
+    // glTF MUST pass validation (0 errors - warnings are acceptable for informational purposes)
+    expect(validationReport.issues.numErrors).toBe(0);
+    // Note: Warnings about skinned mesh parent nodes are informational
+    // The warning "Node with a skinned mesh is not root" is expected when meshes are children of Armature
     
     // Verify all joints are properly accessible in the scene
     const scene = gltfDocument.getRoot().getDefaultScene();

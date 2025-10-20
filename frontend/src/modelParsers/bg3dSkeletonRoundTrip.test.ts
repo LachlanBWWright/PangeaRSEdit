@@ -6,6 +6,8 @@ import { bg3dSkeletonToSkeletonResource } from "./skeletonExport";
 import { bg3dParsedToGLTF } from "./parsedBg3dGitfConverter";
 import { readFileSync } from "fs";
 import { join } from "path";
+import { NodeIO } from "@gltf-transform/core";
+import { validateBytes } from "gltf-validator";
 
 describe("BG3D Skeleton Round-trip", () => {
   it("should preserve animation timing in round-trip conversion", async () => {
@@ -28,6 +30,26 @@ describe("BG3D Skeleton Round-trip", () => {
     
     const animations = gltfDocument.getRoot().listAnimations();
     expect(animations.length).toBeGreaterThan(0);
+    
+    // **ADD glTF VALIDATION**
+    console.log('\n=== Running Official glTF Validator ===');
+    const io = new NodeIO();
+    const glbBuffer = await io.writeBinary(gltfDocument);
+    console.log(`Generated GLB size: ${glbBuffer.length} bytes`);
+    
+    const validationReport = await validateBytes(glbBuffer);
+    console.log(`Validation: ${validationReport.issues.numErrors} errors, ${validationReport.issues.numWarnings} warnings`);
+    
+    if (validationReport.issues.messages.length > 0) {
+      console.log('\nValidation Issues:');
+      validationReport.issues.messages.forEach((msg, index) => {
+        const severity = msg.severity === 0 ? 'ERROR' : msg.severity === 1 ? 'WARNING' : 'INFO';
+        console.log(`  ${index + 1}. [${severity}] ${msg.message}`);
+      });
+    }
+    
+    // glTF MUST pass validation (0 errors)
+    expect(validationReport.issues.numErrors).toBe(0);
     
     // Test that animations have reasonable durations (not all 0 or extreme values)
     const animationDurations: { [name: string]: number } = {};

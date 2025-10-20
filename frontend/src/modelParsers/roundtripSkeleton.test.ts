@@ -5,11 +5,14 @@ import { parseBG3D } from './parseBG3D';
 import { bg3dSkeletonToSkeletonResource } from './skeletonExport';
 import { skeletonResourceToBinary } from './skeletonBinaryExport';
 import { readFileSync } from 'fs';
+import { join } from 'path';
+import { NodeIO } from '@gltf-transform/core';
+import { validateBytes } from 'gltf-validator';
 
 describe('BG3D + Skeleton Roundtrip Tests', () => {
-  // Test data paths
-  const ottoBg3dPath = '/home/runner/work/PangeaRSEdit/PangeaRSEdit/frontend/public/Otto.bg3d';
-  const ottoSkeletonPath = '/home/runner/work/PangeaRSEdit/PangeaRSEdit/frontend/public/Otto.skeleton.rsrc';
+  // Test data paths - relative to this test file
+  const ottoBg3dPath = join(__dirname, '../../public/Otto.bg3d');
+  const ottoSkeletonPath = join(__dirname, '../../public/Otto.skeleton.rsrc');
   
   it('should perform complete BG3D+skeleton binary roundtrip with data integrity', async () => {
     // Read original files
@@ -35,6 +38,25 @@ describe('BG3D + Skeleton Roundtrip Tests', () => {
     
     const animations = gltfResult.getRoot().listAnimations();
     console.log('GLB animations:', animations.length);
+    
+    // **ADD glTF VALIDATION**
+    console.log('\n=== Running Official glTF Validator ===');
+    const io = new NodeIO();
+    const glbBuffer = await io.writeBinary(gltfResult);
+    const validationReport = await validateBytes(glbBuffer);
+    
+    console.log(`Validation: ${validationReport.issues.numErrors} errors, ${validationReport.issues.numWarnings} warnings`);
+    
+    if (validationReport.issues.messages.length > 0) {
+      console.log('\nValidation Issues:');
+      validationReport.issues.messages.forEach((msg, index) => {
+        const severity = msg.severity === 0 ? 'ERROR' : msg.severity === 1 ? 'WARNING' : 'INFO';
+        console.log(`  ${index + 1}. [${severity}] ${msg.message}`);
+      });
+    }
+    
+    // glTF MUST pass validation (0 errors)
+    expect(validationReport.issues.numErrors).toBe(0);
     
     // Convert back to BG3D+skeleton
     const roundtripResult = await gltfToBG3D(gltfResult);
