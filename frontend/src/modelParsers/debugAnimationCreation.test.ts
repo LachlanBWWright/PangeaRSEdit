@@ -60,7 +60,6 @@ describe("Debug animation creation", () => {
       if (samplers.length > 0) {
         const sampler = samplers[0];
         const input = sampler.getInput();
-        const output = sampler.getOutput();
         if (input) {
           const times = input.getArray();
           if (times) {
