@@ -213,10 +213,17 @@ class Matrix4 {
 /**
  * Create joint nodes with transforms
  * Since all joints are flat at scene root (for PropertyBinding), we use absolute transforms
+ * 
+ * CRITICAL: Bone names must be sanitized for PropertyBinding compatibility.
+ * Three.js PropertyBinding cannot handle spaces in names (e.g., "Left Hand.quaternion" fails).
+ * We replace spaces with underscores to ensure all animations target correctly.
  */
 function createJointNodes(doc: Document, bones: BG3DBone[]): Node[] {
   return bones.map((bone) => {
-    const joint = doc.createNode(bone.name);
+    // CRITICAL: Sanitize bone name - replace spaces with underscores for PropertyBinding
+    // Fixes "THREE.PropertyBinding: No target node found for track: Left_Hand.quaternion" error
+    const sanitizedName = bone.name.replace(/\s+/g, '_');
+    const joint = doc.createNode(sanitizedName);
     // Use absolute coordinates since joints are flat at scene root
     joint.setTranslation([bone.coordX, bone.coordY, bone.coordZ]);
     return joint;

@@ -6,7 +6,7 @@ export function Navigation() {
   const location = useLocation();
 
   return (
-    <nav className="bg-gray-800 border-b border-gray-700 px-4 py-2 h-14 flex items-center gap-4">
+    <nav className="sticky top-0 z-50 bg-gray-800 border-b border-gray-700 px-4 py-2 h-14 flex items-center gap-4">
       <h1 className="text-white text-xl font-bold">PangeaRS Edit</h1>
       <div className="flex gap-2">
         <Button

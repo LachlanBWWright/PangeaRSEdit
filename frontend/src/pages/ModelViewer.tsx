@@ -721,15 +721,9 @@ export function ModelViewer() {
 
   return (
     <>
-      <div
-        className="flex flex-1 gap-4 p-4 flex-row max-h-screen overflow-clip bg-gray-900 text-white"
-        style={{
-          height: "calc(100vh - 56px)",
-          maxHeight: "calc(100vh - 56px)",
-        }}
-      >
+      <div className="h-full flex gap-4 p-4 bg-gray-900 text-white">
         {/* Left sidebar - Controls */}
-        <div className="flex flex-col w-80 space-y-4 px-2 overflow-hidden">
+        <div className="flex flex-col w-80 space-y-4 px-2 overflow-y-auto">
           <Card className="bg-gray-800 border-gray-700">
             <CardHeader>
               <CardTitle className="text-white">
@@ -1069,7 +1063,7 @@ export function ModelViewer() {
         </div>
 
         {/* Main viewport - 3D Scene */}
-        <div className="flex-1 bg-gray-800 rounded-lg overflow-hidden">
+        <div className="flex-1 bg-gray-800 rounded-lg overflow-hidden min-h-0">
           {gltfUrl ? (
             <ErrorBoundary>
               <ModelCanvas

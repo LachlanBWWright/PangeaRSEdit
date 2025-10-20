@@ -11,14 +11,16 @@ function App() {
   return (
     <TooltipProvider>
       <HashRouter>
-        <div className="flex flex-col min-h-screen bg-gray-900">
+        <div className="flex flex-col h-screen bg-gray-900">
           <Navigation />
-          <Routes>
-            <Route path="/" element={<LevelEditor />} />
-            <Route path="/model-viewer" element={<ModelViewer />} />
-            <Route path="/download-levels" element={<DownloadLevels />} />
-            <Route path="*" element={<LevelEditor />} />
-          </Routes>
+          <div className="flex-1 overflow-hidden">
+            <Routes>
+              <Route path="/" element={<LevelEditor />} />
+              <Route path="/model-viewer" element={<ModelViewer />} />
+              <Route path="/download-levels" element={<DownloadLevels />} />
+              <Route path="*" element={<LevelEditor />} />
+            </Routes>
+          </div>
         </div>
       </HashRouter>
       <Toaster />
