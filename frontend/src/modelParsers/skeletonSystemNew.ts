@@ -229,6 +229,9 @@ function createJointNodes(doc: Document, bones: BG3DBone[]): Node[] {
  * glTF 2.0 REQUIRES all joints in a skin to have a common root in the scene hierarchy.
  * We create an "Armature" node as the common parent of all joints.
  * 
+ * IMPORTANT: The Armature node itself must be added to the scene. Skinned meshes will be
+ * added as children of the Armature (or as siblings, but descendant of scene).
+ * 
  * Note: Three.js PropertyBinding can find joints by name even when they're nested,
  * as long as they're in the scene hierarchy.
  */
@@ -247,7 +250,6 @@ function buildJointHierarchy(
   
   // Create armature root as common parent for all joints (glTF 2.0 requirement)
   const skeletonRoot = doc.createNode("Armature");
-  scene.addChild(skeletonRoot);
   
   // Add ALL joints as children of the armature root
   // This creates a flat structure under the armature while satisfying glTF 2.0
@@ -257,7 +259,11 @@ function buildJointHierarchy(
     console.log(`  ✓ Added "${bone.name}" under Armature`);
   });
   
+  // Add the Armature to the scene
+  scene.addChild(skeletonRoot);
+  
   console.log(`✅ Created Armature with ${joints.length} joint children`);
+  console.log(`✅ Armature added to scene root`);
   console.log(`✅ Satisfies glTF 2.0 common root requirement`);
   
   return skeletonRoot;

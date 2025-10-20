@@ -18,10 +18,18 @@ export function EnhancedModelMesh({ scene, wireframeMode = false, showSkeleton =
       if (object instanceof THREE.Mesh) {
         if (Array.isArray(object.material)) {
           object.material.forEach((mat) => {
-            if (mat) mat.wireframe = wireframeMode;
+            if (mat) {
+              mat.wireframe = wireframeMode;
+              // Ensure mesh remains visible even in wireframe mode
+              mat.visible = true;
+              object.visible = true;
+            }
           });
         } else if (object.material) {
           object.material.wireframe = wireframeMode;
+          // Ensure mesh remains visible even in wireframe mode
+          object.material.visible = true;
+          object.visible = true;
         }
       }
     });

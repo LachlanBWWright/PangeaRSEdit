@@ -348,7 +348,19 @@ export function bg3dParsedToGLTF(
   // Determine scene root after skeleton creation (createSkeletonSystem may have set a default scene)
   const sceneRoot = doc.getRoot().getDefaultScene() || scene;
 
-  // Helper: add skinned meshes from a group directly to sceneRoot
+  // Find the Armature node (skeleton root) to attach skinned meshes to
+  // Skinned meshes MUST be children of (or siblings to) the skeleton root in glTF
+  let skeletonArmatureNode: Node | null = null;
+  if (gltfSkin) {
+    const skeletonRoot = gltfSkin.getSkeleton();
+    if (skeletonRoot && skeletonRoot.getName() === "Armature") {
+      skeletonArmatureNode = skeletonRoot;
+      console.log("Found Armature node for attaching skinned meshes");
+    }
+  }
+
+  // Helper: add skinned meshes from a group as children of the Armature node
+  // This is REQUIRED by glTF spec - skinned meshes must be descendants of skeleton root
   function addSkinnedMeshesFromGroup(group: BG3DGroup) {
     if (!Array.isArray(group.children)) return;
     for (const child of group.children) {
@@ -365,8 +377,17 @@ export function bg3dParsedToGLTF(
             meshNode.setName(`Mesh_${geomIndex.toString().padStart(4, "0")}`);
             meshNode.setMesh(gltfMeshes[geomIndex]);
             meshNode.setSkin(gltfSkin);
-            sceneRoot.addChild(meshNode);
-            console.log(`Added skinned mesh ${meshNode.getName()} directly to sceneRoot`);
+            
+            // CRITICAL: Add skinned mesh as child of Armature node (skeleton root)
+            // This is REQUIRED by glTF 2.0 specification
+            if (skeletonArmatureNode) {
+              skeletonArmatureNode.addChild(meshNode);
+              console.log(`✅ Added skinned mesh ${meshNode.getName()} as child of Armature (CORRECT)`);
+            } else {
+              // Fallback: add to scene root (but this violates glTF spec)
+              sceneRoot.addChild(meshNode);
+              console.warn(`⚠️  Added skinned mesh ${meshNode.getName()} to scene root (no Armature found)`);
+            }
           }
         }
       }
