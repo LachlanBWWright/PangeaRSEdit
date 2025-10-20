@@ -215,6 +215,7 @@ describe("Skeleton Animation glTF Validation", () => {
     
     let animationsWithTiming = 0;
     let singleFrameAnimations = 0;
+    const animationDurations: number[] = [];
     
     animations.forEach((animation) => {
       const channels = animation.listChannels();
@@ -234,6 +235,8 @@ describe("Skeleton Animation glTF Validation", () => {
         }
       });
       
+      animationDurations.push(maxDuration);
+      
       if (maxDuration > 0) {
         animationsWithTiming++;
       } else {
@@ -243,9 +246,20 @@ describe("Skeleton Animation glTF Validation", () => {
     
     console.log(`Animations with timing: ${animationsWithTiming}`);
     console.log(`Single-frame animations/poses: ${singleFrameAnimations}`);
+    console.log(`Animation durations (first 10): ${animationDurations.slice(0, 10).map(d => d.toFixed(2)).join(', ')}`);
     
     // Most animations should have timing
     expect(animationsWithTiming).toBeGreaterThan(animations.length * 0.7);
+    
+    // Verify animations DON'T all have the same duration (no placeholder 1.0 values)
+    const uniqueDurations = new Set(animationDurations);
+    console.log(`Unique duration values: ${uniqueDurations.size}`);
+    expect(uniqueDurations.size).toBeGreaterThan(5); // At least 6 different durations
+    
+    // Verify no placeholder 1.0 durations (except for single-frame animations which are 0)
+    const nonZeroDurations = animationDurations.filter(d => d > 0);
+    const hasPlaceholderOnes = nonZeroDurations.every(d => Math.abs(d - 1.0) < 0.01);
+    expect(hasPlaceholderOnes).toBe(false); // Should NOT all be 1.0
     
     console.log("\n=== ✅ All Validation Checks Passed ===");
     console.log("✓ glTF structure is valid");

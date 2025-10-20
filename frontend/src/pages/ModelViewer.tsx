@@ -223,7 +223,6 @@ export function ModelViewer() {
               })),
               animations: Object.values(skeletonData.AnHd).map((anim: any, index) => ({
                 name: anim.obj?.animName || `Animation_${index}`,
-                duration: 1.0, // Default duration for display
                 numAnimEvents: 0,
                 events: [],
                 keyframes: {}
@@ -232,21 +231,6 @@ export function ModelViewer() {
           }
           setBg3dParsed(enhancedParsed);
           console.log(`Animation metadata preserved: ${enhancedParsed.skeleton?.animations?.length || 0} animations detected`);
-          
-          // Trigger animation UI update now that we have skeleton data
-          if (enhancedParsed.skeleton?.animations?.length && enhancedParsed.skeleton.animations.length > 0) {
-            const mockAnimations: AnimationInfo[] = enhancedParsed.skeleton.animations.map((anim, index) => ({
-              name: anim.name,
-              duration: 1.0, // Use default duration since BG3DAnimation doesn't have duration
-              index: index,
-              clip: null as any, // Mock clip - won't be playable but will show in UI
-            }));
-            
-            setAnimations(mockAnimations);
-            setAnimationMixer(null); // No mixer since these aren't real Three.js animations
-            
-            console.log(`Mock animations created for UI display:`, mockAnimations.map(a => `${a.name} (${a.duration.toFixed(2)}s)`));
-          }
         } else {
           setBg3dParsed(result.parsed);
         }
@@ -332,31 +316,15 @@ export function ModelViewer() {
 
   // Handle animation state from ModelCanvas
   function handleAnimationsReady(animationInfos: AnimationInfo[], mixer: THREE.AnimationMixer | null) {
-    // First, use any glTF animations if available
-    if (animationInfos.length > 0) {
-      setAnimations(animationInfos);
-      setAnimationMixer(mixer);
-      return;
-    }
+    // Use glTF animations from the model
+    setAnimations(animationInfos);
+    setAnimationMixer(mixer);
     
-    // If no glTF animations but we have BG3D skeleton animations, create mock animations for UI
-    if (bg3dParsed?.skeleton?.animations?.length && bg3dParsed.skeleton.animations.length > 0) {
-      console.log(`Creating UI animations from BG3D skeleton metadata: ${bg3dParsed.skeleton.animations.length} animations`);
-      
-      const mockAnimations: AnimationInfo[] = bg3dParsed.skeleton.animations.map((anim, index) => ({
-        name: anim.name,
-        duration: 1.0, // Use default duration since BG3DAnimation doesn't have duration
-        index: index,
-        clip: null as any, // Mock clip - won't be playable but will show in UI
-      }));
-      
-      setAnimations(mockAnimations);
-      setAnimationMixer(null); // No mixer since these aren't real Three.js animations
-      
-      console.log(`Mock animations created for UI display:`, mockAnimations.map(a => `${a.name} (${a.duration.toFixed(2)}s)`));
+    if (animationInfos.length > 0) {
+      console.log(`Loaded ${animationInfos.length} animations from glTF:`, 
+        animationInfos.map(a => `${a.name} (${a.duration.toFixed(2)}s)`));
     } else {
-      setAnimations(animationInfos);
-      setAnimationMixer(mixer);
+      console.log("No animations found in glTF");
     }
   }
 

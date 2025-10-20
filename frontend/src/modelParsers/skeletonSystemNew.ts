@@ -226,13 +226,14 @@ function createJointNodes(doc: Document, bones: BG3DBone[]): Node[] {
 /**
  * Build proper joint hierarchy for glTF 2.0 compliance
  * 
- * CRITICAL: All joints must be direct children of scene for Three.js PropertyBinding.
- * PropertyBinding uses name-based lookups that require joints at scene root.
+ * glTF 2.0 REQUIRES all joints in a skin to have a common root in the scene hierarchy.
+ * We create an "Armature" node as the common parent of all joints.
  * 
- * For glTF 2.0 "common root" requirement: scene itself serves as common root,
- * and we set skin.skeleton to point to an armature container or first joint.
+ * Note: Three.js PropertyBinding can find joints by name even when they're nested,
+ * as long as they're in the scene hierarchy.
  */
 function buildJointHierarchy(
+  doc: Document,
   joints: Node[],
   bones: BG3DBone[],
   scene: Scene,
@@ -241,24 +242,23 @@ function buildJointHierarchy(
     throw new Error(`Mismatch: ${joints.length} joints vs ${bones.length} bones`);
   }
 
-  console.log("\n=== Building Joint Hierarchy (Flat for PropertyBinding) ===");
+  console.log("\n=== Building Joint Hierarchy (glTF 2.0 Compliant) ===");
   console.log(`Total bones: ${bones.length}`);
   
-  // Add ALL joints as direct children of scene for PropertyBinding compatibility
-  // Three.js PropertyBinding requires joints to be accessible from scene root
-  joints.forEach((joint, index) => {
-    const bone = bones[index];
-    scene.addChild(joint);
-    console.log(`  ✓ Added "${bone.name}" to scene root`);
-  });
-
-  // For glTF 2.0 compliance: create a container node that serves as skeleton root
-  // This satisfies the "common root" requirement while keeping joints flat
-  const skeletonRoot = joints[0].getGraph().createNode("Armature");
+  // Create armature root as common parent for all joints (glTF 2.0 requirement)
+  const skeletonRoot = doc.createNode("Armature");
   scene.addChild(skeletonRoot);
   
-  console.log(`✅ Flat hierarchy: ${joints.length} joints at scene root`);
-  console.log(`✅ Skeleton root: "Armature" (for glTF 2.0 compliance)`);
+  // Add ALL joints as children of the armature root
+  // This creates a flat structure under the armature while satisfying glTF 2.0
+  joints.forEach((joint, index) => {
+    const bone = bones[index];
+    skeletonRoot.addChild(joint);
+    console.log(`  ✓ Added "${bone.name}" under Armature`);
+  });
+  
+  console.log(`✅ Created Armature with ${joints.length} joint children`);
+  console.log(`✅ Satisfies glTF 2.0 common root requirement`);
   
   return skeletonRoot;
 }
@@ -752,7 +752,7 @@ export function createSkeletonSystem(
   // Step 2: Build hierarchy (returns the skeleton root node)
   let skeletonRoot: Node;
   try {
-    skeletonRoot = buildJointHierarchy(joints, skeleton.bones, scene);
+    skeletonRoot = buildJointHierarchy(doc, joints, skeleton.bones, scene);
   } catch (e) {
     console.error("Error building joint hierarchy:", e);
     throw e; // Don't silently fail - skeleton issues must be fixed
