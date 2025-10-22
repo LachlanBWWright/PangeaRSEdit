@@ -8,8 +8,13 @@
  * 4. Native glTF animation format (not stored in extras)
  */
 
-import { Document, Node, Skin, Animation, Scene, Buffer } from "@gltf-transform/core";
-import { BG3DSkeleton, BG3DBone, BG3DAnimation, BG3DKeyframe } from "./parseBG3D";
+import { Document, Node, Skin, Animation, Buffer } from "@gltf-transform/core";
+import {
+  BG3DSkeleton,
+  BG3DBone,
+  BG3DAnimation,
+  BG3DKeyframe,
+} from "./parseBG3D";
 
 /**
  * Convert Euler angles (in radians) to quaternion
@@ -213,7 +218,7 @@ class Matrix4 {
 /**
  * Create joint nodes with transforms
  * Since all joints are flat at scene root (for PropertyBinding), we use absolute transforms
- * 
+ *
  * CRITICAL: Bone names must be sanitized for PropertyBinding compatibility.
  * Three.js PropertyBinding cannot handle spaces in names (e.g., "Left Hand.quaternion" fails).
  * We replace spaces with underscores to ensure all animations target correctly.
@@ -222,7 +227,7 @@ function createJointNodes(doc: Document, bones: BG3DBone[]): Node[] {
   return bones.map((bone) => {
     // CRITICAL: Sanitize bone name - replace spaces with underscores for PropertyBinding
     // Fixes "THREE.PropertyBinding: No target node found for track: Left_Hand.quaternion" error
-    const sanitizedName = bone.name.replace(/\s+/g, '_');
+    const sanitizedName = bone.name.replace(/\s+/g, "_");
     const joint = doc.createNode(sanitizedName);
     // Use absolute coordinates since joints are flat at scene root
     joint.setTranslation([bone.coordX, bone.coordY, bone.coordZ]);
@@ -232,13 +237,13 @@ function createJointNodes(doc: Document, bones: BG3DBone[]): Node[] {
 
 /**
  * Build proper joint hierarchy for glTF 2.0 compliance
- * 
+ *
  * glTF 2.0 REQUIRES all joints in a skin to have a common root in the scene hierarchy.
  * We create an "Armature" node as the common parent of all joints.
- * 
+ *
  * IMPORTANT: The Armature node itself must be added to the scene. Skinned meshes will be
  * added as children of the Armature (or as siblings, but descendant of scene).
- * 
+ *
  * Note: Three.js PropertyBinding can find joints by name even when they're nested,
  * as long as they're in the scene hierarchy.
  */
@@ -246,33 +251,91 @@ function buildJointHierarchy(
   doc: Document,
   joints: Node[],
   bones: BG3DBone[],
-  scene: Scene,
 ): Node {
   if (joints.length !== bones.length) {
-    throw new Error(`Mismatch: ${joints.length} joints vs ${bones.length} bones`);
+    throw new Error(
+      `Mismatch: ${joints.length} joints vs ${bones.length} bones`,
+    );
   }
 
   console.log("\n=== Building Joint Hierarchy (glTF 2.0 Compliant) ===");
   console.log(`Total bones: ${bones.length}`);
-  
+
   // Create armature root as common parent for all joints (glTF 2.0 requirement)
   const skeletonRoot = doc.createNode("Armature");
-  
-  // Add ALL joints as children of the armature root
-  // This creates a flat structure under the armature while satisfying glTF 2.0
-  joints.forEach((joint, index) => {
-    const bone = bones[index];
-    skeletonRoot.addChild(joint);
-    console.log(`  ✓ Added "${bone.name}" under Armature`);
+
+  // Build hierarchy based on parentBone relationships
+  const addedBones = new Set<number>();
+
+  // Helper function to recursively add bone and its children
+  function addBoneHierarchy(boneIndex: number, parentNode: Node) {
+    if (addedBones.has(boneIndex)) {
+      console.warn(`Bone ${boneIndex} already added, skipping to avoid cycles`);
+      return;
+    }
+
+    const bone = bones[boneIndex];
+    const joint = joints[boneIndex];
+
+    parentNode.addChild(joint);
+    addedBones.add(boneIndex);
+
+    console.log(`  ✓ Added "${bone.name}" under ${parentNode.getName()}`);
+
+    // Find and add children
+    bones.forEach((childBone, childIndex) => {
+      if (childBone.parentBone === boneIndex && !addedBones.has(childIndex)) {
+        addBoneHierarchy(childIndex, joint);
+      }
+    });
+  }
+
+  // Find root bones (those with no valid parent)
+  const rootBoneIndices: number[] = [];
+  bones.forEach((bone, index) => {
+    if (
+      bone.parentBone === -1 ||
+      bone.parentBone >= bones.length ||
+      bone.parentBone < -1
+    ) {
+      rootBoneIndices.push(index);
+    }
   });
-  
+
+  console.log(
+    `Found ${rootBoneIndices.length} root bones: ${rootBoneIndices
+      .map((i) => bones[i].name)
+      .join(", ")}`,
+  );
+
+  // Add root bones as children of Armature
+  rootBoneIndices.forEach((rootIndex) => {
+    addBoneHierarchy(rootIndex, skeletonRoot);
+  });
+
+  // Check if all bones were added
+  if (addedBones.size !== bones.length) {
+    console.warn(
+      `Not all bones were added to hierarchy. Added: ${addedBones.size}, Total: ${bones.length}`,
+    );
+    // Add any remaining bones as children of Armature to ensure they're in the scene
+    bones.forEach((bone, index) => {
+      if (!addedBones.has(index)) {
+        console.warn(`Adding orphaned bone ${bone.name} directly to Armature`);
+        skeletonRoot.addChild(joints[index]);
+        addedBones.add(index);
+      }
+    });
+  }
+
   // Add the Armature to the scene
-  scene.addChild(skeletonRoot);
-  
-  console.log(`✅ Created Armature with ${joints.length} joint children`);
+  // Note: skeletonRoot is now added to scene via skeletonParent in createSkeletonSystem
+  // scene.addChild(skeletonRoot);
+
+  console.log(`✅ Created Armature with hierarchical bone structure`);
   console.log(`✅ Armature added to scene root`);
   console.log(`✅ Satisfies glTF 2.0 common root requirement`);
-  
+
   return skeletonRoot;
 }
 
@@ -303,9 +366,14 @@ function calculateInverseBindMatrices(bones: BG3DBone[]): Float32Array {
 
 /**
  * Create skin following glTF 2.0 specifications
- * Sets the skeleton root to the first root joint (e.g., Pelvis for Otto)
+ * Sets the skeleton root to a parent node of the joint hierarchy
  */
-function createSkin(doc: Document, joints: Node[], bones: BG3DBone[], skeletonRoot: Node): Skin {
+function createSkin(
+  doc: Document,
+  joints: Node[],
+  bones: BG3DBone[],
+  skeletonRoot: Node,
+): Skin {
   const skin = doc.createSkin("skeleton");
 
   // Add joints in order (required for proper skinning)
@@ -313,9 +381,11 @@ function createSkin(doc: Document, joints: Node[], bones: BG3DBone[], skeletonRo
     skin.addJoint(joint);
   });
 
-  // Set the skeleton root (required by glTF 2.0)
-  // For Otto, this is the Pelvis bone (first root joint)
-  skin.setSkeleton(skeletonRoot);
+  // Create a skeleton root node that is the parent of the joint hierarchy
+  // This follows glTF 2.0 spec where skeleton can be a parent of the common root
+  const skeletonParent = doc.createNode("Skeleton");
+  skeletonParent.addChild(skeletonRoot);
+  skin.setSkeleton(skeletonParent);
 
   // Calculate and set inverse bind matrices
   // These transform vertices from model space to bone space
@@ -765,7 +835,7 @@ export function createSkeletonSystem(
   // Step 2: Build hierarchy (returns the skeleton root node)
   let skeletonRoot: Node;
   try {
-    skeletonRoot = buildJointHierarchy(doc, joints, skeleton.bones, scene);
+    skeletonRoot = buildJointHierarchy(doc, joints, skeleton.bones);
   } catch (e) {
     console.error("Error building joint hierarchy:", e);
     throw e; // Don't silently fail - skeleton issues must be fixed
@@ -774,20 +844,25 @@ export function createSkeletonSystem(
   // Step 3: Create skin with proper skeleton root
   const skin = createSkin(doc, joints, skeleton.bones, skeletonRoot);
 
+  // Add the skeleton parent to the scene (glTF 2.0 requirement)
+  scene.addChild(skin.getSkeleton()!);
+
   // Step 4: Process animations
-  console.log(
-    `Processing ${skeleton.animations.length} animations...`,
-  );
+  console.log(`Processing ${skeleton.animations.length} animations...`);
   const processedAnimations = processOttoAnimations(
     skeleton.animations,
     skeleton.bones,
   );
-  
+
   console.log(`Processed ${processedAnimations.length} animations:`);
-  processedAnimations.slice(0, 5).forEach(anim => {
-    console.log(`  - "${anim.name}": ${anim.duration.toFixed(2)}s, ${anim.channels.length} channels`);
+  processedAnimations.slice(0, 5).forEach((anim) => {
+    console.log(
+      `  - "${anim.name}": ${anim.duration.toFixed(2)}s, ${
+        anim.channels.length
+      } channels`,
+    );
   });
-  
+
   const animations = createGltfAnimations(
     doc,
     joints,
@@ -799,7 +874,6 @@ export function createSkeletonSystem(
   console.log(
     `Result: ${joints.length} joints, ${animations.length} animations`,
   );
-
 
   return { skin, animations };
 }

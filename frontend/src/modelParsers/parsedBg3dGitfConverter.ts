@@ -471,7 +471,6 @@ export function bg3dParsedToGLTF(
       boneExtras: parsed.skeleton
         ? parsed.skeleton.bones.map((bone) => ({
             name: bone.name,
-            parentBone: bone.parentBone, // Store this as it's critical for Otto format
             pointIndices: bone.pointIndices,
             normalIndices: bone.normalIndices,
             numPointsAttachedToBone: bone.numPointsAttachedToBone,
@@ -589,9 +588,23 @@ export async function gltfToBG3D(doc: Document): Promise<BG3DParseResult> {
         // Get BG3D-specific bone data from extras
         const boneExtra = boneExtras[index] || {};
 
-        // Use the stored parentBone value (critical for Otto format)
-        const parentBone =
-          boneExtra.parentBone !== undefined ? boneExtra.parentBone : -1;
+        // Infer parentBone from node hierarchy (glTF 2.0 compliant)
+        let parentBone = -1;
+        const jointParents = joint
+          .listParents()
+          .filter((p) => p instanceof Node);
+        if (jointParents.length > 0) {
+          const jointParent = jointParents[0] as Node;
+          // Check if parent is the skeleton root (Armature), if so, parentBone = -1
+          const skeletonRoot = skin.getSkeleton();
+          if (jointParent !== skeletonRoot) {
+            // Find the index of the parent in the joints list
+            const parentIndex = joints.indexOf(jointParent);
+            if (parentIndex !== -1) {
+              parentBone = parentIndex;
+            }
+          }
+        }
 
         return {
           parentBone,
