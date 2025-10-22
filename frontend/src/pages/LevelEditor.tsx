@@ -33,10 +33,8 @@ export function LevelEditor() {
     );
 
   return (
-    <div className="h-full overflow-auto">
-      <TooltipProvider>
-        <IntroPrompt pyodideWorker={pyodideWorker} />
-      </TooltipProvider>
-    </div>
+    <TooltipProvider>
+      <IntroPrompt pyodideWorker={pyodideWorker} />
+    </TooltipProvider>
   );
 }

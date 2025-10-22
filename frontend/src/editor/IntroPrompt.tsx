@@ -315,7 +315,7 @@ export function IntroPrompt({ pyodideWorker }: { pyodideWorker: Worker }) {
       />
     );
   return (
-    <div className="flex flex-col gap-2 text-white h-screen max-h-screen overflow-clip min-w-full p-2 md:p-6">
+    <div className="flex flex-col gap-2 text-white overflow-clip min-w-full p-2 md:p-6 h-[calc(100vh-56px)]">
       <div className="flex flex-row items-center justify-center gap-2 mx-auto w-full">
         <Button
           onClick={() => {

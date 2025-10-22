@@ -371,22 +371,30 @@ export function bg3dParsedToGLTF(
         const geomIndex = allGeometries.indexOf(childGeom);
         if (geomIndex >= 0 && geomIndex < gltfMeshes.length) {
           const prim = gltfMeshes[geomIndex].listPrimitives()[0];
-          const primHasJoints = !!(prim && prim.getAttribute && prim.getAttribute("JOINTS_0"));
+          const primHasJoints = !!(
+            prim &&
+            prim.getAttribute &&
+            prim.getAttribute("JOINTS_0")
+          );
           if (gltfSkin && primHasJoints) {
             const meshNode = doc.createNode();
             meshNode.setName(`Mesh_${geomIndex.toString().padStart(4, "0")}`);
             meshNode.setMesh(gltfMeshes[geomIndex]);
             meshNode.setSkin(gltfSkin);
-            
+
             // CRITICAL: Add skinned mesh as child of Armature node (skeleton root)
             // This is REQUIRED by glTF 2.0 specification
             if (skeletonArmatureNode) {
               skeletonArmatureNode.addChild(meshNode);
-              console.log(`✅ Added skinned mesh ${meshNode.getName()} as child of Armature (CORRECT)`);
+              console.log(
+                `✅ Added skinned mesh ${meshNode.getName()} as child of Armature (CORRECT)`,
+              );
             } else {
               // Fallback: add to scene root (but this violates glTF spec)
               sceneRoot.addChild(meshNode);
-              console.warn(`⚠️  Added skinned mesh ${meshNode.getName()} to scene root (no Armature found)`);
+              console.warn(
+                `⚠️  Added skinned mesh ${meshNode.getName()} to scene root (no Armature found)`,
+              );
             }
           }
         }
@@ -418,11 +426,17 @@ export function bg3dParsedToGLTF(
               const geomIndex = allGeometries.indexOf(childGeom);
               if (geomIndex >= 0 && geomIndex < gltfMeshes.length) {
                 const meshNode = doc.createNode();
-                meshNode.setName(`Mesh_${geomIndex.toString().padStart(4, "0")}`);
+                meshNode.setName(
+                  `Mesh_${geomIndex.toString().padStart(4, "0")}`,
+                );
                 meshNode.setMesh(gltfMeshes[geomIndex]);
 
                 const prim = gltfMeshes[geomIndex].listPrimitives()[0];
-                const primHasJoints = !!(prim && prim.getAttribute && prim.getAttribute("JOINTS_0"));
+                const primHasJoints = !!(
+                  prim &&
+                  prim.getAttribute &&
+                  prim.getAttribute("JOINTS_0")
+                );
 
                 if (!primHasJoints) {
                   node.addChild(meshNode);
@@ -446,7 +460,9 @@ export function bg3dParsedToGLTF(
 
   // Note: Animations are automatically added to the document when created with doc.createAnimation()
   // No need to manually push them to the list
-  console.log(`glTF document now has ${doc.getRoot().listAnimations().length} animations`);
+  console.log(
+    `glTF document now has ${doc.getRoot().listAnimations().length} animations`,
+  );
 
   // Store both: exact binary data for Otto roundtrip AND only non-glTF data for other cases
   const extrasData: any = {
@@ -579,7 +595,7 @@ export async function gltfToBG3D(doc: Document): Promise<BG3DParseResult> {
 
         return {
           parentBone,
-          name: joint.getName() || `bone_${index}`,
+          name: boneExtra.name || joint.getName() || `bone_${index}`,
           coordX: translation[0],
           coordY: translation[1],
           coordZ: translation[2],
