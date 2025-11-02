@@ -66,6 +66,14 @@ export const ottoMaticSpecs = [
   //Liquids
   /* Padding byte placement seems ok, not thoroughly checked */
   "Liqd:H x x I i h x x i 200f f f h h h h+:type,flags,height,numNubs,reserved,x`y[100],hotSpotX,hotSpotZ,bBoxTop,bBoxLeft,bBoxBottom,bBoxRight",
+  
+  /////////////////////////////////////////////////////////////////
+  // Skeleton
+  /////////////////////////////////////////////////////////////////
+  
+  // Relative Points - used in skeleton files for deformation points
+  // Each point has 3 floats: relOffsetX, relOffsetY, relOffsetZ
+  "RelP:fff+:relOffsetX,relOffsetY,relOffsetZ",
 ];
 
 export function loadOttoSpecs(specsArray: string[]): Map<string, ResourceConverter> {

@@ -329,16 +329,16 @@ function convertBoneNormalsToBinary(boneNormals: any[]): Uint8Array {
 }
 
 function convertAnimationHeaderToBinary(animHeader: any): Uint8Array {
-  const buffer = new ArrayBuffer(64); // Space for animation header + name
+  const buffer = new ArrayBuffer(36); // AnHd struct: i32s = 4 + 32 = 36 bytes
   const view = new DataView(buffer);
   const uint8View = new Uint8Array(buffer);
   
   view.setUint32(0, animHeader.numAnimEvents || 0, false);
   
-  // Write animation name
+  // Write animation name (32 bytes max)
   if (animHeader.animName && typeof animHeader.animName === 'string') {
     const nameBytes = new TextEncoder().encode(animHeader.animName);
-    uint8View.set(nameBytes.slice(0, 60), 4);
+    uint8View.set(nameBytes.slice(0, 32), 4);
   }
   
   return uint8View;
