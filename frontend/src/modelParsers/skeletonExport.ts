@@ -18,12 +18,13 @@ export function bg3dSkeletonToSkeletonResource(skeleton: BG3DSkeleton): Skeleton
     num3DMFLimbs: skeleton.num3DMFLimbs,
   };
 
-  // Convert bones
+  // Convert bones - use resource IDs starting from 1000
   const bones: { [key: string]: any } = {};
   skeleton.bones.forEach((bone, index) => {
-    bones[index.toString()] = {
+    const resourceId = 1000 + index;
+    bones[resourceId.toString()] = {
       name: bone.name, // Use actual bone name, not generic "Bone"
-      order: index + 1,
+      order: resourceId,
       obj: {
         parentBone: bone.parentBone,
         name: bone.name,
@@ -36,25 +37,27 @@ export function bg3dSkeletonToSkeletonResource(skeleton: BG3DSkeleton): Skeleton
     };
   });
 
-  // Convert bone point attachments (simplified for now)
+  // Convert bone point attachments - use resource IDs matching bone IDs (1000+)
   const bonP: { [key: string]: any } = {};
   skeleton.bones.forEach((bone, index) => {
     if (bone.pointIndices && bone.pointIndices.length > 0) {
-      bonP[index.toString()] = {
+      const resourceId = 1000 + index;
+      bonP[resourceId.toString()] = {
         name: "Bone Points",
-        order: skeleton.bones.length + index + 1,
+        order: resourceId,
         obj: bone.pointIndices.map(pointIndex => ({ pointIndex }))
       };
     }
   });
 
-  // Convert bone normal attachments (simplified for now)
+  // Convert bone normal attachments - use resource IDs matching bone IDs (1000+)
   const bonN: { [key: string]: any } = {};
   skeleton.bones.forEach((bone, index) => {
     if (bone.normalIndices && bone.normalIndices.length > 0) {
-      bonN[index.toString()] = {
+      const resourceId = 1000 + index;
+      bonN[resourceId.toString()] = {
         name: "Bone Normals",
-        order: skeleton.bones.length * 2 + index + 1,
+        order: resourceId,
         obj: bone.normalIndices.map(normal => ({ normal }))
       };
     }
@@ -67,10 +70,12 @@ export function bg3dSkeletonToSkeletonResource(skeleton: BG3DSkeleton): Skeleton
   const keyF: { [key: string]: any } = {};
 
   skeleton.animations.forEach((animation, animIndex) => {
-    // Animation header
-    anHd[animIndex.toString()] = {
+    const animResourceId = 1000 + animIndex;
+    
+    // Animation header - use resource IDs starting from 1000
+    anHd[animResourceId.toString()] = {
       name: animation.name, // Use actual animation name, not generic "Animation Header"
-      order: skeleton.bones.length * 3 + animIndex + 1,
+      order: animResourceId,
       obj: {
         animName: animation.name,
         numAnimEvents: animation.numAnimEvents,
@@ -79,9 +84,9 @@ export function bg3dSkeletonToSkeletonResource(skeleton: BG3DSkeleton): Skeleton
 
     // Animation events
     if (animation.events.length > 0) {
-      evnt[animIndex.toString()] = {
+      evnt[animResourceId.toString()] = {
         name: "Animation Events",
-        order: skeleton.bones.length * 3 + skeleton.animations.length + animIndex + 1,
+        order: animResourceId,
         obj: animation.events.map(event => ({
           time: event.time,
           type: event.type,
@@ -91,22 +96,24 @@ export function bg3dSkeletonToSkeletonResource(skeleton: BG3DSkeleton): Skeleton
     }
 
     // Process keyframes for each bone
-    Object.entries(animation.keyframes).forEach(([boneIndexStr, keyframes], boneKeyIndex) => {
-      const keyId = `${animIndex}_${boneIndexStr}`;
+    Object.entries(animation.keyframes).forEach(([boneIndexStr, keyframes]) => {
+      const boneIndex = parseInt(boneIndexStr);
       
-      // Number of keyframes
-      numK[keyId] = {
+      // NumK resource ID: use same as animation (1000 + animIndex)
+      const numKResourceId = animResourceId;
+      numK[numKResourceId.toString()] = {
         name: "Number of Keyframes",
-        order: skeleton.bones.length * 3 + skeleton.animations.length * 2 + boneKeyIndex + 1,
+        order: numKResourceId,
         obj: {
           numKeyFrames: keyframes.length,
         }
       };
 
-      // Keyframes
-      keyF[keyId] = {
+      // KeyF resource ID: pattern is 1000 + (animIndex * 100) + boneIndex
+      const keyFResourceId = 1000 + (animIndex * 100) + boneIndex;
+      keyF[keyFResourceId.toString()] = {
         name: "Keyframes",
-        order: skeleton.bones.length * 3 + skeleton.animations.length * 3 + boneKeyIndex + 1,
+        order: keyFResourceId,
         obj: keyframes.map(kf => ({
           tick: kf.tick,
           accelerationMode: kf.accelerationMode,
@@ -126,9 +133,9 @@ export function bg3dSkeletonToSkeletonResource(skeleton: BG3DSkeleton): Skeleton
 
   return {
     Hedr: {
-      "1": {
+      "1000": {
         name: "Header",
-        order: 0,
+        order: 1000,
         obj: header
       }
     },
