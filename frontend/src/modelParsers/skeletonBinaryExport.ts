@@ -2,6 +2,18 @@
 // Converts SkeletonResource JSON back to binary .rsrc format
 
 import type { SkeletonResource } from "../python/structSpecs/skeleton/skeletonInterface";
+import { packAdf } from "../rsrcdump-ts/adf";
+
+// Global storage for Finder Info to preserve during round-trip
+let globalFinderInfo: Uint8Array | undefined = undefined;
+
+export function setFinderInfo(finderInfo: Uint8Array | undefined) {
+  globalFinderInfo = finderInfo;
+}
+
+export function getFinderInfo(): Uint8Array | undefined {
+  return globalFinderInfo;
+}
 
 /**
  * Convert SkeletonResource JSON to binary .rsrc format using proper resource fork structure
@@ -207,7 +219,14 @@ export function skeletonResourceToBinary(skeletonResource: SkeletonResource): Ar
   }
   
   console.log(`Created resource fork: ${totalFileSize} bytes, ${resourceEntries.length} resources, ${resourcesByType.size} types`);
-  return buffer;
+  
+  // Wrap resource fork in AppleDouble format
+  const resourceFork = new Uint8Array(buffer);
+  const finderInfo = getFinderInfo();
+  const appleDouble = packAdf(resourceFork, finderInfo);
+  console.log(`Wrapped in AppleDouble format: ${appleDouble.length} bytes total (with ${finderInfo ? finderInfo.length : 0} byte Finder Info)`);
+  
+  return appleDouble.buffer;
 }
 
 /**

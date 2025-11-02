@@ -14,12 +14,13 @@ import { describe, it, expect } from "vitest";
 import { parseBG3D, bg3dParsedToBG3D } from "./parseBG3D";
 import { parseSkeletonRsrcTS } from "./skeletonRsrc/parseSkeletonRsrcTS";
 import { bg3dSkeletonToSkeletonResource } from "./skeletonExport";
-import { skeletonResourceToBinary } from "./skeletonBinaryExport";
+import { skeletonResourceToBinary, setFinderInfo } from "./skeletonBinaryExport";
 import { bg3dParsedToGLTF } from "./parsedBg3dGitfConverter";
 import { readFileSync } from "fs";
 import { join } from "path";
 import { NodeIO } from "@gltf-transform/core";
 import { validateBytes } from "gltf-validator";
+import { unpackAdf } from "../rsrcdump-ts/adf";
 
 describe("Comprehensive Otto Round-trip Validation", () => {
   const REQUIRED_ACCURACY = 0.99; // 99% byte-for-byte match required
@@ -42,6 +43,14 @@ describe("Comprehensive Otto Round-trip Validation", () => {
     
     console.log(`  ✓ Loaded Otto.bg3d: ${originalBg3dData.length} bytes`);
     console.log(`  ✓ Loaded skeleton.rsrc: ${originalSkeletonData.length} bytes`);
+    
+    // Extract Finder Info from original skeleton file for preservation
+    const adfEntries = unpackAdf(new Uint8Array(originalSkeletonData));
+    const originalFinderInfo = adfEntries.get(9); // Entry ID 9 is Finder Info
+    if (originalFinderInfo) {
+      console.log(`  ✓ Extracted Finder Info: ${originalFinderInfo.length} bytes`);
+      setFinderInfo(originalFinderInfo);
+    }
 
     // ========================================================================
     // STEP 2: Parse Original Files to Internal Structures
