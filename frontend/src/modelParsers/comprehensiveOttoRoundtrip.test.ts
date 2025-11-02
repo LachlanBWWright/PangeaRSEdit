@@ -171,7 +171,8 @@ describe("Comprehensive Otto Round-trip Validation", () => {
     
     // Export Skeleton
     const roundtripSkeletonResource = bg3dSkeletonToSkeletonResource(
-      roundtripBg3dParsed.skeleton!
+      roundtripBg3dParsed.skeleton!,
+      originalSkeletonResource.RelP // Pass RelP from original since it's not modified
     );
     const roundtripSkeletonBinary = skeletonResourceToBinary(
       roundtripSkeletonResource

@@ -7,9 +7,13 @@ import type { BG3DSkeleton } from "./parseBG3D";
 /**
  * Convert BG3D skeleton data to SkeletonResource format
  * @param skeleton BG3D skeleton data
+ * @param relP Optional RelP data from original skeleton resource
  * @returns SkeletonResource object
  */
-export function bg3dSkeletonToSkeletonResource(skeleton: BG3DSkeleton): SkeletonResource {
+export function bg3dSkeletonToSkeletonResource(
+  skeleton: BG3DSkeleton,
+  relP?: { [key: string]: any }
+): SkeletonResource {
   // Create header
   const header = {
     version: skeleton.version,
@@ -140,6 +144,7 @@ export function bg3dSkeletonToSkeletonResource(skeleton: BG3DSkeleton): Skeleton
     Bone: bones,
     BonP: bonP,
     BonN: bonN,
+    RelP: relP || {}, // Include RelP if provided, otherwise empty
     AnHd: anHd,
     Evnt: evnt,
     NumK: numK,
