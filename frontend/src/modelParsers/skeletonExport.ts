@@ -12,7 +12,8 @@ import type { BG3DSkeleton } from "./parseBG3D";
  */
 export function bg3dSkeletonToSkeletonResource(
   skeleton: BG3DSkeleton,
-  relP?: { [key: string]: any }
+  relP?: { [key: string]: any },
+  evntData?: { [key: string]: any }
 ): SkeletonResource {
   // Create header
   const header = {
@@ -67,7 +68,8 @@ export function bg3dSkeletonToSkeletonResource(
 
   // Convert animations
   const anHd: { [key: string]: any } = {};
-  const evnt: { [key: string]: any } = {};
+  // Use provided evntData if available, otherwise create empty
+  const evnt: { [key: string]: any } = evntData || {};
   const numK: { [key: string]: any } = {};
   const keyF: { [key: string]: any } = {};
 
@@ -84,8 +86,8 @@ export function bg3dSkeletonToSkeletonResource(
       }
     };
 
-    // Animation events
-    if (animation.events.length > 0) {
+    // Animation events (only if evntData not provided)
+    if (!evntData && animation.events.length > 0) {
       evnt[animResourceId.toString()] = {
         name: "Animation Events",
         order: animResourceId,
