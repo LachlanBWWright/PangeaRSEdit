@@ -238,34 +238,45 @@ function convertResourceObjectToBinary(resourceType: string, obj: any): Uint8Arr
 }
 
 function convertHeaderToBinary(header: any): Uint8Array {
-  const buffer = new ArrayBuffer(16); // Simplified header size
+  // Hedr struct: hhhh76x = int16*4 + 76 bytes padding = 84 bytes total
+  const buffer = new ArrayBuffer(84);
   const view = new DataView(buffer);
   
-  view.setUint32(0, header.version || 1, false);
-  view.setUint32(4, header.numAnims || 0, false);
-  view.setUint32(8, header.numJoints || 0, false);
-  view.setUint32(12, header.num3DMFLimbs || 0, false);
+  view.setInt16(0, header.version || 1, false);
+  view.setInt16(2, header.numAnims || 0, false);
+  view.setInt16(4, header.numJoints || 0, false);
+  view.setInt16(6, header.num3DMFLimbs || 0, false);
+  // Remaining 76 bytes are padding (already zero-filled)
   
   return new Uint8Array(buffer);
 }
 
 function convertBoneToBinary(bone: any): Uint8Array {
-  const buffer = new ArrayBuffer(64); // Space for bone data + name
+  // Bone struct: i32s3fHH8i = int32 + 32 chars + 3*float32 + 2*uint16 + 8*int32 = 4+32+12+4+32 = 84 bytes
+  const buffer = new ArrayBuffer(84);
   const view = new DataView(buffer);
   const uint8View = new Uint8Array(buffer);
   
-  view.setInt16(0, bone.parentBone || -1, false);
-  view.setFloat32(4, bone.coordX || 0, false);
-  view.setFloat32(8, bone.coordY || 0, false);
-  view.setFloat32(12, bone.coordZ || 0, false);
-  view.setUint32(16, bone.numPointsAttachedToBone || 0, false);
-  view.setUint32(20, bone.numNormalsAttachedToBone || 0, false);
+  view.setInt32(0, bone.parentBone || -1, false);
   
-  // Write bone name (rest of buffer)
+  // Write bone name (32 bytes)
   if (bone.name && typeof bone.name === 'string') {
     const nameBytes = new TextEncoder().encode(bone.name);
-    const maxNameLength = buffer.byteLength - 24;
-    uint8View.set(nameBytes.slice(0, maxNameLength), 24);
+    uint8View.set(nameBytes.slice(0, 32), 4);
+  }
+  
+  // Write coordinates (3 float32s = 12 bytes)
+  view.setFloat32(36, bone.coordX || 0, false);
+  view.setFloat32(40, bone.coordY || 0, false);
+  view.setFloat32(44, bone.coordZ || 0, false);
+  
+  // Write counts (2 uint16s = 4 bytes)
+  view.setUint16(48, bone.numPointsAttachedToBone || 0, false);
+  view.setUint16(50, bone.numNormalsAttachedToBone || 0, false);
+  
+  // Write reserved fields (8 int32s = 32 bytes)
+  for (let i = 0; i < 8; i++) {
+    view.setInt32(52 + i * 4, bone[`reserved${i}`] || 0, false);
   }
   
   return uint8View;
@@ -316,14 +327,16 @@ function convertAnimationHeaderToBinary(animHeader: any): Uint8Array {
 function convertAnimationEventsToBinary(events: any[]): Uint8Array {
   if (!Array.isArray(events)) return new Uint8Array(0);
   
-  const buffer = new ArrayBuffer(events.length * 12); // 12 bytes per event
+  // Evnt struct: hBB = int16 + byte + byte = 4 bytes per event
+  const buffer = new ArrayBuffer(events.length * 4);
   const view = new DataView(buffer);
+  const uint8View = new Uint8Array(buffer);
   
   events.forEach((event, index) => {
-    const offset = index * 12;
-    view.setFloat32(offset, event.time || 0, false);
-    view.setUint32(offset + 4, event.type || 0, false);
-    view.setUint32(offset + 8, event.value || 0, false);
+    const offset = index * 4;
+    view.setInt16(offset, event.time || 0, false);
+    uint8View[offset + 2] = event.type || 0;
+    uint8View[offset + 3] = event.value || 0;
   });
   
   return new Uint8Array(buffer);
@@ -341,13 +354,14 @@ function convertNumKeyframesToBinary(numKeyframes: any): Uint8Array {
 function convertKeyframesToBinary(keyframes: any[]): Uint8Array {
   if (!Array.isArray(keyframes)) return new Uint8Array(0);
   
-  const buffer = new ArrayBuffer(keyframes.length * 48); // 48 bytes per keyframe
+  // KeyF struct: ii3f3f3f = int32, int32, 3*float32, 3*float32, 3*float32 = 44 bytes per keyframe
+  const buffer = new ArrayBuffer(keyframes.length * 44);
   const view = new DataView(buffer);
   
   keyframes.forEach((keyframe, index) => {
-    const offset = index * 48;
-    view.setUint32(offset, keyframe.tick || 0, false);
-    view.setUint32(offset + 4, keyframe.accelerationMode || 0, false);
+    const offset = index * 44;
+    view.setInt32(offset, keyframe.tick || 0, false);
+    view.setInt32(offset + 4, keyframe.accelerationMode || 0, false);
     view.setFloat32(offset + 8, keyframe.coordX || 0, false);
     view.setFloat32(offset + 12, keyframe.coordY || 0, false);
     view.setFloat32(offset + 16, keyframe.coordZ || 0, false);
@@ -357,7 +371,6 @@ function convertKeyframesToBinary(keyframes: any[]): Uint8Array {
     view.setFloat32(offset + 32, keyframe.scaleX || 1, false);
     view.setFloat32(offset + 36, keyframe.scaleY || 1, false);
     view.setFloat32(offset + 40, keyframe.scaleZ || 1, false);
-    // 4 bytes padding
   });
   
   return new Uint8Array(buffer);
