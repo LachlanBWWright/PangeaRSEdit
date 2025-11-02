@@ -59,7 +59,7 @@ describe("Comprehensive Otto Round-trip Validation", () => {
     
     console.log(`  ✓ Parsed skeleton with ${Object.keys(originalSkeletonResource.Bone || {}).length} bones`);
     console.log(`  ✓ Parsed skeleton with ${Object.keys(originalSkeletonResource.AnHd || {}).length} animations`);
-    console.log(`  ✓ Parsed BG3D with ${originalBg3dParsed.materialGroups.length} material groups`);
+    console.log(`  ✓ Parsed BG3D with ${originalBg3dParsed.materials.length} materials and ${originalBg3dParsed.groups.length} groups`);
     
     // Verify skeleton was integrated
     expect(originalBg3dParsed.skeleton).toBeDefined();
@@ -147,7 +147,7 @@ describe("Comprehensive Otto Round-trip Validation", () => {
     // since we're testing the export path primarily
     const roundtripBg3dParsed = originalBg3dParsed;
     
-    console.log(`  ✓ Round-trip BG3D has ${roundtripBg3dParsed.materialGroups.length} material groups`);
+    console.log(`  ✓ Round-trip BG3D has ${roundtripBg3dParsed.materials.length} materials and ${roundtripBg3dParsed.groups.length} groups`);
     console.log(`  ✓ Round-trip skeleton has ${roundtripBg3dParsed.skeleton!.bones.length} bones`);
     console.log(`  ✓ Round-trip skeleton has ${roundtripBg3dParsed.skeleton!.animations.length} animations`);
 

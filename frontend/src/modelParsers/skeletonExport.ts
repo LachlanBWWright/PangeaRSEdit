@@ -22,7 +22,7 @@ export function bg3dSkeletonToSkeletonResource(skeleton: BG3DSkeleton): Skeleton
   const bones: { [key: string]: any } = {};
   skeleton.bones.forEach((bone, index) => {
     bones[index.toString()] = {
-      name: "Bone",
+      name: bone.name, // Use actual bone name, not generic "Bone"
       order: index + 1,
       obj: {
         parentBone: bone.parentBone,
@@ -69,7 +69,7 @@ export function bg3dSkeletonToSkeletonResource(skeleton: BG3DSkeleton): Skeleton
   skeleton.animations.forEach((animation, animIndex) => {
     // Animation header
     anHd[animIndex.toString()] = {
-      name: "Animation Header",
+      name: animation.name, // Use actual animation name, not generic "Animation Header"
       order: skeleton.bones.length * 3 + animIndex + 1,
       obj: {
         animName: animation.name,
