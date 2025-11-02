@@ -38,29 +38,27 @@ export function bg3dSkeletonToSkeletonResource(skeleton: BG3DSkeleton): Skeleton
   });
 
   // Convert bone point attachments - use resource IDs matching bone IDs (1000+)
+  // Create resources for ALL bones, even if empty (size 0)
   const bonP: { [key: string]: any } = {};
   skeleton.bones.forEach((bone, index) => {
-    if (bone.pointIndices && bone.pointIndices.length > 0) {
-      const resourceId = 1000 + index;
-      bonP[resourceId.toString()] = {
-        name: "Bone Points",
-        order: resourceId,
-        obj: bone.pointIndices.map(pointIndex => ({ pointIndex }))
-      };
-    }
+    const resourceId = 1000 + index;
+    bonP[resourceId.toString()] = {
+      name: bone.name, // Use bone name, not generic "Bone Points"
+      order: resourceId,
+      obj: (bone.pointIndices || []).map(pointIndex => ({ pointIndex }))
+    };
   });
 
   // Convert bone normal attachments - use resource IDs matching bone IDs (1000+)
+  // Create resources for ALL bones, even if empty (size 0)
   const bonN: { [key: string]: any } = {};
   skeleton.bones.forEach((bone, index) => {
-    if (bone.normalIndices && bone.normalIndices.length > 0) {
-      const resourceId = 1000 + index;
-      bonN[resourceId.toString()] = {
-        name: "Bone Normals",
-        order: resourceId,
-        obj: bone.normalIndices.map(normal => ({ normal }))
-      };
-    }
+    const resourceId = 1000 + index;
+    bonN[resourceId.toString()] = {
+      name: bone.name, // Use bone name, not generic "Bone Normals"
+      order: resourceId,
+      obj: (bone.normalIndices || []).map(normal => ({ normal }))
+    };
   });
 
   // Convert animations

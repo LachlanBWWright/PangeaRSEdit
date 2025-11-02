@@ -87,6 +87,7 @@ export function skeletonResourceToBinary(skeletonResource: SkeletonResource): Ar
   resourceEntries.forEach(entry => {
     totalDataSize += 4 + entry.data.length; // 4-byte length prefix + data
   });
+  console.log(`Data section size: ${totalDataSize} bytes`);
   
   // Build name list
   let nameListData = new Uint8Array(0);
