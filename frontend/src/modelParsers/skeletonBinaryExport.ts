@@ -251,6 +251,8 @@ function convertResourceObjectToBinary(resourceType: string, obj: any): Uint8Arr
       return convertNumKeyframesToBinary(obj);
     case 'KeyF':
       return convertKeyframesToBinary(obj);
+    case 'RelP':
+      return convertRelativePointsToBinary(obj);
     default:
       console.warn(`Unknown resource type: ${resourceType}, using default binary conversion`);
       return new Uint8Array(0);
@@ -391,6 +393,21 @@ function convertKeyframesToBinary(keyframes: any[]): Uint8Array {
     view.setFloat32(offset + 32, keyframe.scaleX || 1, false);
     view.setFloat32(offset + 36, keyframe.scaleY || 1, false);
     view.setFloat32(offset + 40, keyframe.scaleZ || 1, false);
+  });
+  
+  return new Uint8Array(buffer);
+}
+function convertRelativePointsToBinary(points: any[]): Uint8Array {
+  // RelP: Array of 3D points (x, y, z) - 3 float32s per point = 12 bytes per point
+  const numPoints = points.length;
+  const buffer = new ArrayBuffer(numPoints * 12);
+  const view = new DataView(buffer);
+  
+  points.forEach((point, index) => {
+    const offset = index * 12;
+    view.setFloat32(offset, point.relOffsetX || 0, false);
+    view.setFloat32(offset + 4, point.relOffsetY || 0, false);
+    view.setFloat32(offset + 8, point.relOffsetZ || 0, false);
   });
   
   return new Uint8Array(buffer);
