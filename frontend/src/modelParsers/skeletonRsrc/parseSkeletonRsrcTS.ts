@@ -303,19 +303,19 @@ function transformToSkeletonResource(rawData: any): SkeletonResource {
           hasResourceData: Array.isArray(resourceData) && resourceData.length > 0,
           resourceDataLength: Array.isArray(resourceData) ? resourceData.length : 0,
           hexDataLength: hexData?.length || 0,
-          resourceKeys: Object.keys(res),
-          hasData: res.hasOwnProperty('data'),
-          hasObj: res.hasOwnProperty('obj'),
-          hasConversionError: res.hasOwnProperty('conversionError')
+          resourceKeys: Object.keys(resourceData),
+          hasData: resourceData.hasOwnProperty('data'),
+          hasObj: resourceData.hasOwnProperty('obj'),
+          hasConversionError: resourceData.hasOwnProperty('conversionError')
         });
-        if (res.hasOwnProperty('obj')) {
-          console.log(`[DEBUG] RelP resource has 'obj' field:`, Array.isArray(res.obj) ? `array with ${res.obj.length} items` : typeof res.obj);
+        if (resourceData.hasOwnProperty('obj')) {
+          console.log(`[DEBUG] RelP resource has 'obj' field:`, Array.isArray(resourceData.obj) ? `array with ${resourceData.obj.length} items` : typeof resourceData.obj);
         }
-        if (res.hasOwnProperty('data')) {
-          console.log(`[DEBUG] RelP resource has 'data' field:`, typeof res.data, `length: ${res.data?.length || 0}`);
+        if (resourceData.hasOwnProperty('data')) {
+          console.log(`[DEBUG] RelP resource has 'data' field:`, typeof resourceData.data, `length: ${resourceData.data?.length || 0}`);
         }
-        if (res.hasOwnProperty('conversionError')) {
-          console.error(`[ERROR] RelP conversion error:`, res.conversionError);
+        if (resourceData.hasOwnProperty('conversionError')) {
+          console.error(`[ERROR] RelP conversion error:`, resourceData.conversionError);
         }
         if (
           Array.isArray(resourceData) &&
