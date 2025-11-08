@@ -181,9 +181,158 @@ describe("Comprehensive Otto Round-trip Validation", () => {
     console.log(`  ✓ Exported skeleton: ${roundtripSkeletonBinary.byteLength} bytes`);
 
     // ========================================================================
-    // STEP 7: Byte-for-Byte Accuracy Verification
+    // STEP 7: Parse Round-trip Skeleton and Compare Structures
     // ========================================================================
-    console.log("\n[STEP 7] Verifying byte-for-byte accuracy...");
+    console.log("\n[STEP 7] Parsing round-trip skeleton and comparing structures...");
+    
+    const roundtripSkeletonParsed = parseSkeletonRsrcTS(
+      new Uint8Array(roundtripSkeletonBinary)
+    );
+    
+    console.log("\n  Comparing Parsed Structures:");
+    console.log(`    Original Bones: ${Object.keys(originalSkeletonResource.Bone || {}).length}`);
+    console.log(`    Roundtrip Bones: ${Object.keys(roundtripSkeletonParsed.Bone || {}).length}`);
+    console.log(`    Original Animations: ${Object.keys(originalSkeletonResource.AnHd || {}).length}`);
+    console.log(`    Roundtrip Animations: ${Object.keys(roundtripSkeletonParsed.AnHd || {}).length}`);
+    
+    // Compare bone structure
+    if (originalSkeletonResource.Bone && roundtripSkeletonParsed.Bone) {
+      const originalBoneIds = Object.keys(originalSkeletonResource.Bone).sort();
+      const roundtripBoneIds = Object.keys(roundtripSkeletonParsed.Bone).sort();
+      
+      console.log(`\n  Bone ID Comparison:`);
+      if (originalBoneIds.join(',') === roundtripBoneIds.join(',')) {
+        console.log(`    ✓ Bone IDs match: ${originalBoneIds.join(', ')}`);
+      } else {
+        console.log(`    ✗ Bone IDs differ:`);
+        console.log(`      Original: ${originalBoneIds.join(', ')}`);
+        console.log(`      Roundtrip: ${roundtripBoneIds.join(', ')}`);
+      }
+      
+      // Compare each bone's fields
+      console.log(`\n  Bone Field Comparison:`);
+      for (const boneId of originalBoneIds) {
+        if (!roundtripSkeletonParsed.Bone[boneId]) {
+          console.log(`    ✗ Bone ${boneId} missing in roundtrip`);
+          continue;
+        }
+        
+        const origBone = originalSkeletonResource.Bone[boneId];
+        const rtBone = roundtripSkeletonParsed.Bone[boneId];
+        
+        // Compare specific fields
+        const fieldsToCompare = ['name', 'order', 'parentBone', 'coordX', 'coordY', 'coordZ'];
+        let boneMismatches = 0;
+        
+        for (const field of fieldsToCompare) {
+          if (JSON.stringify((origBone as any)[field]) !== JSON.stringify((rtBone as any)[field])) {
+            console.log(`    ✗ Bone ${boneId} field '${field}' differs: ${JSON.stringify((origBone as any)[field])} → ${JSON.stringify((rtBone as any)[field])}`);
+            boneMismatches++;
+          }
+        }
+        
+        if (boneMismatches === 0) {
+          console.log(`    ✓ Bone ${boneId} fields match`);
+        }
+      }
+    }
+    
+    // Compare RelP (Relative Points)
+    if (originalSkeletonResource.RelP && roundtripSkeletonParsed.RelP) {
+      const origRelPIds = Object.keys(originalSkeletonResource.RelP).sort();
+      const rtRelPIds = Object.keys(roundtripSkeletonParsed.RelP).sort();
+      
+      console.log(`\n  RelP Comparison:`);
+      console.log(`    Original RelP IDs: ${origRelPIds.length}`);
+      console.log(`    Roundtrip RelP IDs: ${rtRelPIds.length}`);
+      
+      if (origRelPIds.join(',') === rtRelPIds.join(',')) {
+        console.log(`    ✓ RelP IDs match`);
+        
+        // Compare RelP data
+        for (const relPId of origRelPIds) {
+          const origRelP = originalSkeletonResource.RelP[relPId];
+          const rtRelP = roundtripSkeletonParsed.RelP[relPId];
+          
+          if (!rtRelP) {
+            console.log(`    ✗ RelP ${relPId} missing in roundtrip`);
+            continue;
+          }
+          
+          if (origRelP.length !== rtRelP.length) {
+            console.log(`    ✗ RelP ${relPId} length differs: ${origRelP.length} → ${rtRelP.length}`);
+          } else {
+            // Sample check first few points
+            let relPMismatches = 0;
+            for (let i = 0; i < Math.min(5, origRelP.length); i++) {
+              const origPoint = origRelP[i];
+              const rtPoint = rtRelP[i];
+              if (origPoint.relOffsetX !== rtPoint.relOffsetX ||
+                  origPoint.relOffsetY !== rtPoint.relOffsetY ||
+                  origPoint.relOffsetZ !== rtPoint.relOffsetZ) {
+                console.log(`      ✗ Point ${i} differs: (${origPoint.relOffsetX}, ${origPoint.relOffsetY}, ${origPoint.relOffsetZ}) → (${rtPoint.relOffsetX}, ${rtPoint.relOffsetY}, ${rtPoint.relOffsetZ})`);
+                relPMismatches++;
+              }
+            }
+            if (relPMismatches === 0) {
+              console.log(`    ✓ RelP ${relPId} data matches (sampled ${Math.min(5, origRelP.length)} points)`);
+            }
+          }
+        }
+      } else {
+        console.log(`    ✗ RelP IDs differ`);
+        console.log(`      Original: ${origRelPIds.join(', ')}`);
+        console.log(`      Roundtrip: ${rtRelPIds.join(', ')}`);
+      }
+    } else if (originalSkeletonResource.RelP) {
+      console.log(`\n  RelP Comparison:`);
+      console.log(`    ✗ RelP missing in roundtrip skeleton`);
+    }
+    
+    // Compare Evnt (Animation Events)
+    if (originalSkeletonResource.Evnt && roundtripSkeletonParsed.Evnt) {
+      const origEvntIds = Object.keys(originalSkeletonResource.Evnt).sort();
+      const rtEvntIds = Object.keys(roundtripSkeletonParsed.Evnt).sort();
+      
+      console.log(`\n  Evnt Comparison:`);
+      console.log(`    Original Evnt IDs: ${origEvntIds.length}`);
+      console.log(`    Roundtrip Evnt IDs: ${rtEvntIds.length}`);
+      
+      if (origEvntIds.join(',') === rtEvntIds.join(',')) {
+        console.log(`    ✓ Evnt IDs match`);
+        
+        // Compare Evnt data structure
+        for (const evntId of origEvntIds) {
+          const origEvnt = originalSkeletonResource.Evnt[evntId];
+          const rtEvnt = roundtripSkeletonParsed.Evnt[evntId];
+          
+          if (!rtEvnt) {
+            console.log(`    ✗ Evnt ${evntId} missing in roundtrip`);
+            continue;
+          }
+          
+          if (JSON.stringify(origEvnt) !== JSON.stringify(rtEvnt)) {
+            console.log(`    ✗ Evnt ${evntId} differs:`);
+            console.log(`      Original: ${JSON.stringify(origEvnt)}`);
+            console.log(`      Roundtrip: ${JSON.stringify(rtEvnt)}`);
+          } else {
+            console.log(`    ✓ Evnt ${evntId} matches`);
+          }
+        }
+      } else {
+        console.log(`    ✗ Evnt IDs differ`);
+        console.log(`      Original: ${origEvntIds.join(', ')}`);
+        console.log(`      Roundtrip: ${rtEvntIds.join(', ')}`);
+      }
+    } else if (originalSkeletonResource.Evnt) {
+      console.log(`\n  Evnt Comparison:`);
+      console.log(`    ✗ Evnt missing in roundtrip skeleton`);
+    }
+
+    // ========================================================================
+    // STEP 8: Byte-for-Byte Accuracy Verification
+    // ========================================================================
+    console.log("\n[STEP 8] Verifying byte-for-byte accuracy...");
     
     // === BG3D File Accuracy ===
     console.log("\n  BG3D File Comparison:");
