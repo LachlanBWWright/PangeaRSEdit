@@ -299,14 +299,22 @@ function transformToSkeletonResource(rawData: any): SkeletonResource {
         }
       } else if (typeName === "RelP") {
         // Check if rsrcdump already parsed the data correctly
+        console.log(`[DEBUG] Parsing RelP resource ${resourceId}:`, {
+          hasResourceData: Array.isArray(resourceData) && resourceData.length > 0,
+          resourceDataLength: Array.isArray(resourceData) ? resourceData.length : 0,
+          hexDataLength: hexData?.length || 0
+        });
         if (
           Array.isArray(resourceData) &&
           resourceData.length > 0 &&
           resourceData[0].relOffsetX !== undefined
         ) {
+          console.log(`[DEBUG] Using rsrcdump-parsed RelP data: ${resourceData.length} points`);
           obj = resourceData;
         } else {
+          console.log(`[DEBUG] Fallback: parsing RelP from hexData (${hexData?.length || 0} bytes)`);
           obj = parseRelPData(hexData);
+          console.log(`[DEBUG] Parsed ${obj.length} RelP points from hex data`);
         }
       } else if (typeName === "Evnt") {
         // Check if rsrcdump already parsed the data correctly
