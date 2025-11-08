@@ -15,6 +15,13 @@ export function bg3dSkeletonToSkeletonResource(
   relP?: { [key: string]: any },
   evntData?: { [key: string]: any }
 ): SkeletonResource {
+  // Debug: Check what RelP data we received
+  if (relP && relP['1000']) {
+    console.log(`RelP received with ${relP['1000'].obj?.length || 0} points`);
+  } else {
+    console.log('No RelP data received');
+  }
+  
   // Create header
   const header = {
     version: skeleton.version,
