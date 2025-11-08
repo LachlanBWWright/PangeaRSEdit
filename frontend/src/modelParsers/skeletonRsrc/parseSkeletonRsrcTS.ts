@@ -302,8 +302,21 @@ function transformToSkeletonResource(rawData: any): SkeletonResource {
         console.log(`[DEBUG] Parsing RelP resource ${resourceId}:`, {
           hasResourceData: Array.isArray(resourceData) && resourceData.length > 0,
           resourceDataLength: Array.isArray(resourceData) ? resourceData.length : 0,
-          hexDataLength: hexData?.length || 0
+          hexDataLength: hexData?.length || 0,
+          resourceKeys: Object.keys(res),
+          hasData: res.hasOwnProperty('data'),
+          hasObj: res.hasOwnProperty('obj'),
+          hasConversionError: res.hasOwnProperty('conversionError')
         });
+        if (res.hasOwnProperty('obj')) {
+          console.log(`[DEBUG] RelP resource has 'obj' field:`, Array.isArray(res.obj) ? `array with ${res.obj.length} items` : typeof res.obj);
+        }
+        if (res.hasOwnProperty('data')) {
+          console.log(`[DEBUG] RelP resource has 'data' field:`, typeof res.data, `length: ${res.data?.length || 0}`);
+        }
+        if (res.hasOwnProperty('conversionError')) {
+          console.error(`[ERROR] RelP conversion error:`, res.conversionError);
+        }
         if (
           Array.isArray(resourceData) &&
           resourceData.length > 0 &&
