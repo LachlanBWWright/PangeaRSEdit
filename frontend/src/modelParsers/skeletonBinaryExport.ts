@@ -89,13 +89,12 @@ export function skeletonResourceToBinaryTS(skeletonResource: SkeletonResource): 
           
           const resNum = parseInt(resourceId);
           const resName = resource.name || '';
-          const nameBytes = resName ? new TextEncoder().encode(resName) : new Uint8Array(0);
           
           typeMap.set(resNum, {
             type: resourceType,
             num: resNum,
             data: binaryData,
-            name: nameBytes,
+            name: resName, // Keep as string, resforkPack will encode it
             flags: resource.flags !== undefined ? resource.flags : 0,
             junk: resource.junk !== undefined ? resource.junk : 0,
             order: resource.order !== undefined ? resource.order : resNum,

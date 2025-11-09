@@ -33,8 +33,11 @@ export function packResourceFork(fork: ResourceFork): Uint8Array {
   const encoder = new TextEncoder();
   for (const res of orderedResources) {
     if (res.name && res.name.length > 0) {
-      // Names are stored as binary (Uint8Array), so use length directly
-      nameListSize += 1 + res.name.length; // 1 byte length + name bytes
+      // Encode name to get actual byte length
+      const nameBytes = typeof res.name === 'string' 
+        ? encoder.encode(res.name)
+        : res.name;
+      nameListSize += 1 + nameBytes.length; // 1 byte length + name bytes
     }
   }
   
@@ -193,8 +196,10 @@ export function packResourceFork(fork: ResourceFork): Uint8Array {
       view.setUint16(placeholder.pos, nameOffset, false);
       
       // Write name (Pascal string: 1 byte length + name bytes)
-      // Name is already a Uint8Array, don't encode again
-      const nameBytes = placeholder.res.name;
+      // Encode string to UTF-8 bytes
+      const nameBytes = typeof placeholder.res.name === 'string' 
+        ? encoder.encode(placeholder.res.name)
+        : placeholder.res.name;
       uint8View[pos++] = nameBytes.length;
       uint8View.set(nameBytes, pos);
       pos += nameBytes.length;
