@@ -3,7 +3,7 @@ import type { BoneRaw } from "../parseSkeletonRsrcTS";
 
 export function handleBone(
   resourceName: string,
-  resourceData: BoneRaw | { data?: string; name?: string } | undefined,
+  resourceData: BoneRaw | { data?: string; name?: string; obj?: BoneRaw } | undefined,
   resourceId: string,
   hexData: string,
 ): BoneRaw {
@@ -11,14 +11,18 @@ export function handleBone(
     `Checking bone data for ${resourceName} (${resourceId}):`,
     resourceData,
   );
+  
+  // Check if data is in the obj field (rsrcdump format)
+  const boneData = (resourceData as { obj?: BoneRaw })?.obj || resourceData;
+  
   if (
-    resourceData &&
-    (resourceData as BoneRaw).parentBone !== undefined &&
-    (resourceData as BoneRaw).coordX !== undefined &&
-    (resourceData as BoneRaw).coordY !== undefined &&
-    (resourceData as BoneRaw).coordZ !== undefined
+    boneData &&
+    (boneData as BoneRaw).parentBone !== undefined &&
+    (boneData as BoneRaw).coordX !== undefined &&
+    (boneData as BoneRaw).coordY !== undefined &&
+    (boneData as BoneRaw).coordZ !== undefined
   ) {
-    const rd = resourceData as BoneRaw;
+    const rd = boneData as BoneRaw;
     const obj: BoneRaw = {
       parentBone: rd.parentBone,
       name: rd.name || resourceName,
@@ -37,7 +41,7 @@ export function handleBone(
       `Bone ${resourceName} (${resourceId}) falling back to manual parsing. resourceData:`,
       resourceData,
     );
-    const hex = (resourceData as { data?: string })?.data || "";
+    const hex = (resourceData as { data?: string })?.data || hexData || "";
     const obj = parseBoneDataFallback(
       hex,
       (resourceData as { name?: string })?.name || resourceName,
