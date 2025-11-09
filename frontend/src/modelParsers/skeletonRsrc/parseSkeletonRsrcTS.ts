@@ -24,6 +24,7 @@ export interface HedrRaw {
 export interface BoneRaw {
   parentBone: number;
   name: string;
+  unnamedPadding?: number; // Unnamed 2-byte field between name and coords
   coordX: number;
   coordY: number;
   coordZ: number;

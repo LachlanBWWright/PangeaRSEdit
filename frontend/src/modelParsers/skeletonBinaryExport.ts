@@ -185,34 +185,44 @@ function convertHeaderToBinary(header: any): Uint8Array {
 }
 
 function convertBoneToBinary(bone: any): Uint8Array {
-  // Bone struct: i32s3fHH8i = int32 + 32 chars + 3*float32 + 2*uint16 + 8*int32 = 4+32+12+4+32 = 84 bytes
+  // Bone struct: h32sh3f2H8L = 84 bytes
+  // h = parentBone (2 bytes)
+  // 32s = name (32 bytes)
+  // h = unnamed field (2 bytes) - padding or reserved
+  // 3f = coordX, coordY, coordZ (12 bytes)
+  // 2H = numPointsAttachedToBone, numNormalsAttachedToBone (4 bytes)
+  // 8L = reserved0-7 (32 bytes)
   const buffer = new ArrayBuffer(84);
   const view = new DataView(buffer);
   const uint8View = new Uint8Array(buffer);
   
-  view.setInt32(0, bone.parentBone || -1, false);
+  // Write parent bone index (signed 16-bit integer = 2 bytes)
+  view.setInt16(0, bone.parentBone !== undefined ? bone.parentBone : -1, false);
   
   // Write bone name (32 bytes) - Pascal string format: length byte + characters
   if (bone.name && typeof bone.name === 'string') {
     const nameBytes = new TextEncoder().encode(bone.name);
     const nameLength = Math.min(nameBytes.length, 31); // Max 31 chars (1 byte for length)
-    uint8View[4] = nameLength; // Write length prefix at position 4
-    uint8View.set(nameBytes.slice(0, nameLength), 5); // Write name bytes starting at position 5
+    uint8View[2] = nameLength; // Write length prefix at position 2
+    uint8View.set(nameBytes.slice(0, nameLength), 3); // Write name bytes starting at position 3
     // Rest of the 32-byte field is already zero-filled
   }
   
-  // Write coordinates (3 float32s = 12 bytes)
+  // Write unnamed/padding field (2 bytes at offset 34) - preserve if available, else 0
+  view.setInt16(34, bone.unnamedPadding !== undefined ? bone.unnamedPadding : 0, false);
+  
+  // Write coordinates (3 float32s = 12 bytes starting at offset 36)
   view.setFloat32(36, bone.coordX || 0, false);
   view.setFloat32(40, bone.coordY || 0, false);
   view.setFloat32(44, bone.coordZ || 0, false);
   
-  // Write counts (2 uint16s = 4 bytes)
+  // Write counts (2 uint16s = 4 bytes starting at offset 48)
   view.setUint16(48, bone.numPointsAttachedToBone || 0, false);
   view.setUint16(50, bone.numNormalsAttachedToBone || 0, false);
   
-  // Write reserved fields (8 int32s = 32 bytes)
+  // Write reserved fields (8 uint32s = 32 bytes starting at offset 52)
   for (let i = 0; i < 8; i++) {
-    view.setInt32(52 + i * 4, bone[`reserved${i}`] || 0, false);
+    view.setUint32(52 + i * 4, bone[`reserved${i}`] !== undefined ? bone[`reserved${i}`] : 0, false);
   }
   
   return uint8View;

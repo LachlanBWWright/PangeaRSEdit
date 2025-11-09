@@ -45,11 +45,20 @@ export function handleBone(
     const obj: BoneRaw = {
       parentBone: rd.parentBone,
       name: cleanName,
+      unnamedPadding: (rd as any).unnamedPadding,
       coordX: rd.coordX,
       coordY: rd.coordY,
       coordZ: rd.coordZ,
       numPointsAttachedToBone: rd.numPointsAttachedToBone || 0,
       numNormalsAttachedToBone: rd.numNormalsAttachedToBone || 0,
+      reserved0: rd.reserved0,
+      reserved1: rd.reserved1,
+      reserved2: rd.reserved2,
+      reserved3: rd.reserved3,
+      reserved4: rd.reserved4,
+      reserved5: rd.reserved5,
+      reserved6: rd.reserved6,
+      reserved7: rd.reserved7,
     };
     console.log(
       `Bone ${obj.name} coordinates from rsrcdump: [${obj.coordX}, ${obj.coordY}, ${obj.coordZ}], parentBone: ${obj.parentBone}`,
