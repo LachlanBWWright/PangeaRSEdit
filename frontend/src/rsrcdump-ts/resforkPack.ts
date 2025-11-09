@@ -106,9 +106,9 @@ export function packResourceFork(fork: ResourceFork): Uint8Array {
   view.setUint32(pos, mapSize, false); pos += 4;
   
   // Next 12 bytes: junk fields and offsets
-  view.setUint32(pos, fork.junkNextresmap, false); pos += 4;
-  view.setUint16(pos, fork.junkFilerefnum, false); pos += 2;
-  view.setUint16(pos, fork.fileAttributes, false); pos += 2;
+  view.setUint32(pos, fork.junkNextresmap !== undefined ? fork.junkNextresmap : 0, false); pos += 4;
+  view.setUint16(pos, fork.junkFilerefnum !== undefined ? fork.junkFilerefnum : 0, false); pos += 2;
+  view.setUint16(pos, fork.fileAttributes !== undefined ? fork.fileAttributes : 0, false); pos += 2;
   
   const typeListOffsetInMap = 28;
   const nameListOffsetInMap = 28 + typeListSize + resourceListSize;
@@ -175,11 +175,13 @@ export function packResourceFork(fork: ResourceFork): Uint8Array {
       
       // Write flags + data offset (4 bytes packed)
       const dataOffsetRelative = resourceDataOffsets.get(key) || 0;
-      const packedAttr = (res.flags << 24) | (dataOffsetRelative & 0xFFFFFF);
+      const flags = res.flags !== undefined ? res.flags : 0;
+      const packedAttr = (flags << 24) | (dataOffsetRelative & 0xFFFFFF);
       view.setUint32(pos, packedAttr, false); pos += 4;
       
       // Write junk (4 bytes)
-      view.setUint32(pos, res.junk, false); pos += 4;
+      const junk = res.junk !== undefined ? res.junk : 0;
+      view.setUint32(pos, junk, false); pos += 4;
     }
   }
   
