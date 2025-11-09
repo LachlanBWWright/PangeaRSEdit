@@ -3,6 +3,7 @@
 
 import type { SkeletonResource } from "../python/structSpecs/skeleton/skeletonInterface";
 import { packAdf } from "../rsrcdump-ts/adf";
+import { skeletonResourceToBinary as skeletonResourceToBinaryPyodide } from "./skeletonExport";
 
 // Global storage for Finder Info to preserve during round-trip
 let globalFinderInfo: Uint8Array | undefined = undefined;
@@ -16,10 +17,35 @@ export function getFinderInfo(): Uint8Array | undefined {
 }
 
 /**
- * Convert SkeletonResource JSON to binary .rsrc format using proper resource fork structure
+ * Convert SkeletonResource JSON to binary .rsrc format with configurable converter
+ * @param skeletonResource The skeleton resource to convert
+ * @param options Conversion options
+ * @returns ArrayBuffer (sync) or Promise<ArrayBuffer> (async with Pyodide)
+ */
+export function skeletonResourceToBinary(
+  skeletonResource: SkeletonResource,
+  options?: {
+    usePyodide?: boolean;
+    pyodideWorker?: Worker;
+  }
+): ArrayBuffer | Promise<ArrayBuffer> {
+  const usePyodide = options?.usePyodide ?? true; // Default to Pyodide
+  
+  if (usePyodide) {
+    if (!options?.pyodideWorker) {
+      throw new Error("Pyodide worker required when usePyodide is true");
+    }
+    return skeletonResourceToBinaryPyodide(skeletonResource, options.pyodideWorker);
+  }
+  
+  return skeletonResourceToBinaryTS(skeletonResource);
+}
+
+/**
+ * Convert SkeletonResource JSON to binary .rsrc format using TypeScript implementation
  * Implements the Mac resource fork format as expected by rsrcdump parser
  */
-export function skeletonResourceToBinary(skeletonResource: SkeletonResource): ArrayBuffer {
+export function skeletonResourceToBinaryTS(skeletonResource: SkeletonResource): ArrayBuffer {
   console.log("Converting SkeletonResource to binary format...");
   
   // Collect all resources and convert to binary

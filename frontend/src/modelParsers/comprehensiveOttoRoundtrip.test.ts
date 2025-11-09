@@ -10,9 +10,9 @@
  * 6. Verify 99%+ byte-for-byte match with originals
  */
 
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { parseBG3D, bg3dParsedToBG3D } from "./parseBG3D";
-import { parseSkeletonRsrcTS } from "./skeletonRsrc/parseSkeletonRsrcTS";
+import { parseSkeletonRsrc, parseSkeletonRsrcTS } from "./skeletonRsrc/parseSkeletonRsrcTS";
 import { bg3dSkeletonToSkeletonResource } from "./skeletonExport";
 import {
   skeletonResourceToBinary,
@@ -24,9 +24,14 @@ import { join } from "path";
 import { NodeIO } from "@gltf-transform/core";
 import { validateBytes } from "gltf-validator";
 import { unpackAdf } from "../rsrcdump-ts/adf";
+import PyodideWorker from "../python/pyodideWorker?worker";
 
 describe("Comprehensive Otto Round-trip Validation", () => {
   const REQUIRED_ACCURACY = 0.99; // 99% byte-for-byte match required
+  
+  // NOTE: This test uses TypeScript parser for Node.js compatibility
+  // In production, Pyodide parser should be used for byte-perfect accuracy
+  // The functions default to Pyodide when pyodideWorker is available
 
   it("should perform complete round-trip: Otto.bg3d + skeleton.rsrc → glTF → bg3d + skeleton.rsrc with 99%+ accuracy", async () => {
     console.log("\n" + "=".repeat(80));
@@ -50,9 +55,11 @@ describe("Comprehensive Otto Round-trip Validation", () => {
     );
 
     // Count resources in original for comparison
-    const originalSkeletonResourceForCount = parseSkeletonRsrcTS(
+    // Using TypeScript parser for Node.js test compatibility
+    const originalSkeletonResourceForCount = parseSkeletonRsrc(
       originalSkeletonData.buffer,
-    );
+      { usePyodide: false }
+    ) as any;
     let totalOriginalResources = 0;
     Object.keys(originalSkeletonResourceForCount).forEach((resourceType) => {
       const resources = (originalSkeletonResourceForCount as any)[resourceType];
@@ -81,9 +88,10 @@ describe("Comprehensive Otto Round-trip Validation", () => {
     // ========================================================================
     console.log("\n[STEP 2] Parsing original files to internal structures...");
 
-    const originalSkeletonResource = parseSkeletonRsrcTS(
-      new Uint8Array(originalSkeletonData),
-    );
+    const originalSkeletonResource = parseSkeletonRsrc(
+      new Uint8Array(originalSkeletonData).buffer,
+      { usePyodide: false }
+    ) as any;
 
     const originalBg3dParsed = parseBG3D(
       originalBg3dData.buffer,
@@ -238,7 +246,8 @@ describe("Comprehensive Otto Round-trip Validation", () => {
     );
     const roundtripSkeletonBinary = skeletonResourceToBinary(
       roundtripSkeletonResource,
-    );
+      { usePyodide: false }
+    ) as ArrayBuffer;
     console.log(
       `  ✓ Exported skeleton: ${roundtripSkeletonBinary.byteLength} bytes`,
     );
@@ -250,9 +259,10 @@ describe("Comprehensive Otto Round-trip Validation", () => {
       "\n[STEP 7] Parsing round-trip skeleton and comparing structures...",
     );
 
-    const roundtripSkeletonParsed = parseSkeletonRsrcTS(
-      new Uint8Array(roundtripSkeletonBinary),
-    );
+    const roundtripSkeletonParsed = parseSkeletonRsrc(
+      new Uint8Array(roundtripSkeletonBinary).buffer,
+      { usePyodide: false }
+    ) as any;
 
     console.log("\n  Comparing Parsed Structures:");
     console.log(
@@ -790,9 +800,10 @@ describe("Comprehensive Otto Round-trip Validation", () => {
     console.log("\n[STEP 8] Verifying structural integrity...");
 
     // Re-parse the round-trip files to verify they're valid
-    const reparsedSkeletonResource = parseSkeletonRsrcTS(
-      new Uint8Array(roundtripSkeletonBinary),
-    );
+    const reparsedSkeletonResource = parseSkeletonRsrc(
+      new Uint8Array(roundtripSkeletonBinary).buffer,
+      { usePyodide: false }
+    ) as any;
     const reparsedBg3dParsed = parseBG3D(
       roundtripBg3dBinary,
       reparsedSkeletonResource,
