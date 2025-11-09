@@ -45,10 +45,10 @@ describe("Comprehensive Otto Round-trip Validation", () => {
     console.log(`  ✓ Loaded skeleton.rsrc: ${originalSkeletonData.length} bytes`);
     
     // Count resources in original for comparison
-    const originalSkeletonResource = parseSkeletonRsrcTS(originalSkeletonData.buffer);
+    const originalSkeletonResourceForCount = parseSkeletonRsrcTS(originalSkeletonData.buffer);
     let totalOriginalResources = 0;
-    Object.keys(originalSkeletonResource).forEach(resourceType => {
-      const resources = (originalSkeletonResource as any)[resourceType];
+    Object.keys(originalSkeletonResourceForCount).forEach(resourceType => {
+      const resources = (originalSkeletonResourceForCount as any)[resourceType];
       if (resources && typeof resources === 'object') {
         const count = Object.keys(resources).length;
         totalOriginalResources += count;
@@ -432,8 +432,14 @@ describe("Comprehensive Otto Round-trip Validation", () => {
     console.log(`    Mismatches: ${skeletonMismatches}`);
     console.log(`    Accuracy: ${(skeletonAccuracy * 100).toFixed(4)}%`);
     
+    // Show first 64 bytes of each file for structural comparison
+    console.log(`\n    Original first 64 bytes:`);
+    console.log(`      ${Array.from(originalSkeletonArray.slice(0, 64)).map(b => b.toString(16).padStart(2, '0')).join(' ')}`);
+    console.log(`    Roundtrip first 64 bytes:`);
+    console.log(`      ${Array.from(roundtripSkeletonArray.slice(0, 64)).map(b => b.toString(16).padStart(2, '0')).join(' ')}`);
+    
     if (skeletonMismatchDetails.length > 0) {
-      console.log(`    First mismatches:`);
+      console.log(`\n    First mismatches:`);
       skeletonMismatchDetails.forEach(({ offset, original, roundtrip }) => {
         console.log(`      Offset 0x${offset.toString(16).padStart(8, '0')}: ${original} → ${roundtrip}`);
       });
