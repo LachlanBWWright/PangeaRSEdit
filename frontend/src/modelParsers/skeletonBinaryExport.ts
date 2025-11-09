@@ -2,7 +2,9 @@
 // Converts SkeletonResource JSON back to binary .rsrc format
 
 import type { SkeletonResource } from "../python/structSpecs/skeleton/skeletonInterface";
+import type { ResourceFork, Resource } from "../rsrcdump-ts/types";
 import { packAdf } from "../rsrcdump-ts/adf";
+import { packResourceFork } from "../rsrcdump-ts/resforkPack";
 import { skeletonResourceToBinary as skeletonResourceToBinaryPyodide } from "./skeletonExport";
 
 // Global storage for Finder Info to preserve during round-trip
@@ -43,27 +45,21 @@ export function skeletonResourceToBinary(
 
 /**
  * Convert SkeletonResource JSON to binary .rsrc format using TypeScript implementation
- * Implements the Mac resource fork format as expected by rsrcdump parser
+ * Uses the resforkPack module which matches Python rsrcdump byte-for-byte
  */
 export function skeletonResourceToBinaryTS(skeletonResource: SkeletonResource): ArrayBuffer {
-  console.log("Converting SkeletonResource to binary format...");
+  console.log("Converting SkeletonResource to binary format using TypeScript pack...");
   
-  // Collect all resources and convert to binary
-  const resourceEntries: Array<{
-    type: string;
-    id: number;
-    data: Uint8Array;
-    name: string;
-    flags: number;
-    junk: number;
-    order: number;
-  }> = [];
+  // Build ResourceFork structure
+  const resourceMap = new Map<string, Map<number, Resource>>();
   
   // Process each resource type
   Object.entries(skeletonResource).forEach(([resourceType, resources]) => {
     if (resourceType === '_metadata') return; // Skip metadata
     
     if (typeof resources === 'object' && resources !== null) {
+      const typeMap = new Map<number, Resource>();
+      
       Object.entries(resources).forEach(([resourceId, resource]: [string, any]) => {
         if (resource && typeof resource === 'object') {
           let binaryData: Uint8Array;
@@ -91,181 +87,46 @@ export function skeletonResourceToBinaryTS(skeletonResource: SkeletonResource): 
             binaryData = new Uint8Array(0);
           }
           
-          resourceEntries.push({
+          const resNum = parseInt(resourceId);
+          const resName = resource.name || '';
+          const nameBytes = resName ? new TextEncoder().encode(resName) : new Uint8Array(0);
+          
+          typeMap.set(resNum, {
             type: resourceType,
-            id: parseInt(resourceId),
+            num: resNum,
             data: binaryData,
-            name: resource.name || '',
+            name: nameBytes,
             flags: resource.flags !== undefined ? resource.flags : 0,
             junk: resource.junk !== undefined ? resource.junk : 0,
-            order: resource.order !== undefined ? resource.order : parseInt(resourceId),
+            order: resource.order !== undefined ? resource.order : resNum,
           });
         }
       });
-    }
-  });
-  
-  console.log(`Converting ${resourceEntries.length} resources to binary format`);
-  
-  // Sort resources by order field to preserve original ordering
-  resourceEntries.sort((a, b) => a.order - b.order);
-  
-  // Group resources by type for the type list
-  const resourcesByType = new Map<string, Array<typeof resourceEntries[0]>>();
-  resourceEntries.forEach(entry => {
-    if (!resourcesByType.has(entry.type)) {
-      resourcesByType.set(entry.type, []);
-    }
-    resourcesByType.get(entry.type)!.push(entry);
-  });
-  
-  // Calculate sizes
-  let totalDataSize = 0;
-  resourceEntries.forEach(entry => {
-    totalDataSize += 4 + entry.data.length; // 4-byte length prefix + data
-  });
-  console.log(`Data section size: ${totalDataSize} bytes`);
-  
-  // Build name list
-  let nameListData = new Uint8Array(0);
-  const nameOffsets = new Map<string, number>();
-  resourceEntries.forEach(entry => {
-    if (entry.name && entry.name.length > 0) {
-      const nameBytes = new TextEncoder().encode(entry.name);
-      const currentOffset = nameListData.length;
-      nameOffsets.set(`${entry.type}:${entry.id}`, currentOffset);
       
-      // Pascal string format: length byte + string data
-      const pascalString = new Uint8Array(1 + nameBytes.length);
-      pascalString[0] = nameBytes.length;
-      pascalString.set(nameBytes, 1);
-      
-      const newNameList = new Uint8Array(nameListData.length + pascalString.length);
-      newNameList.set(nameListData);
-      newNameList.set(pascalString, nameListData.length);
-      nameListData = newNameList;
+      if (typeMap.size > 0) {
+        resourceMap.set(resourceType, typeMap);
+      }
     }
   });
   
-  // Calculate type list size: 2 bytes for count + 8 bytes per type
-  const typeListSize = 2 + (resourcesByType.size * 8);
-  
-  // Calculate resource list size: 12 bytes per resource  
-  const resourceListSize = resourceEntries.length * 12;
-  
-  // Calculate map size: header (28 bytes) + type list + resource list + name list
-  const mapHeaderSize = 28;
-  const mapSize = mapHeaderSize + typeListSize + resourceListSize + nameListData.length;
-  
-  // Total file size: data section + map section
-  const totalFileSize = 16 + totalDataSize + mapSize;
-  
-  // Create the buffer
-  const buffer = new ArrayBuffer(totalFileSize);
-  const view = new DataView(buffer);
-  const uint8View = new Uint8Array(buffer);
-  
-  // Write resource fork header (16 bytes)
-  const dataOffset = 16;
-  const mapOffset = 16 + totalDataSize;
-  
-  view.setUint32(0, dataOffset, false);     // Resource data offset from start of file
-  view.setUint32(4, mapOffset, false);      // Resource map offset from start of file  
-  view.setUint32(8, totalDataSize, false);  // Resource data length
-  view.setUint32(12, mapSize, false);       // Resource map length
-  
-  // Write resource data section
-  let currentDataPos = dataOffset;
-  const resourceDataOffsets = new Map<string, number>();
-  
-  resourceEntries.forEach(entry => {
-    const key = `${entry.type}:${entry.id}`;
-    resourceDataOffsets.set(key, currentDataPos - dataOffset);
-    
-    // Write data length prefix (4 bytes)
-    view.setUint32(currentDataPos, entry.data.length, false);
-    currentDataPos += 4;
-    
-    // Write resource data
-    uint8View.set(entry.data, currentDataPos);
-    currentDataPos += entry.data.length;
-  });
-  
-  // Extract metadata fields for proper preservation
+  // Extract metadata fields
   const metadata = (skeletonResource as any)._metadata || {};
-  const junk1 = metadata.junk1 !== undefined ? metadata.junk1 : 0;
-  const junk2 = metadata.junk2 !== undefined ? metadata.junk2 : 0;
-  const fileAttributes = metadata.file_attributes !== undefined ? metadata.file_attributes : 0;
   
-  // Write resource map
-  let mapPos = mapOffset;
+  const fork: ResourceFork = {
+    resources: resourceMap,
+    fileAttributes: metadata.file_attributes !== undefined ? metadata.file_attributes : 0,
+    junkNextresmap: metadata.junk1 !== undefined ? metadata.junk1 : 0,
+    junkFilerefnum: metadata.junk2 !== undefined ? metadata.junk2 : 0,
+  };
   
-  // Map header (28 bytes) - copy of resource header + extra fields
-  view.setUint32(mapPos, dataOffset, false); mapPos += 4;
-  view.setUint32(mapPos, mapOffset, false); mapPos += 4;
-  view.setUint32(mapPos, totalDataSize, false); mapPos += 4;
-  view.setUint32(mapPos, mapSize, false); mapPos += 4;
-  view.setUint32(mapPos, junk1, false); mapPos += 4;          // Next resource map (junk1 from metadata)
-  view.setUint16(mapPos, junk2, false); mapPos += 2;          // File reference number (junk2 from metadata)
-  view.setUint16(mapPos, fileAttributes, false); mapPos += 2; // File attributes from metadata
-  view.setUint16(mapPos, mapHeaderSize, false); mapPos += 2; // Type list offset within map
-  view.setUint16(mapPos, mapHeaderSize + typeListSize + resourceListSize, false); mapPos += 2; // Name list offset within map
+  console.log(`Packing ${resourceMap.size} resource types...`);
   
-  // Write type list
-  view.setUint16(mapPos, resourcesByType.size - 1, false); // Number of types - 1
-  mapPos += 2;
+  // Use the Python-compatible pack function
+  const resourceFork = packResourceFork(fork);
   
-  let currentResourceListOffset = typeListSize;
-  
-  Array.from(resourcesByType.entries()).forEach(([typeName, resources]) => {
-    // Write type entry (8 bytes)
-    const typeBytes = new TextEncoder().encode(typeName.padEnd(4).substring(0, 4));
-    uint8View.set(typeBytes, mapPos);
-    mapPos += 4;
-    
-    view.setUint16(mapPos, resources.length - 1, false); // Number of resources - 1
-    mapPos += 2;
-    
-    view.setUint16(mapPos, currentResourceListOffset, false); // Offset to resource list for this type
-    mapPos += 2;
-    
-    currentResourceListOffset += resources.length * 12;
-  });
-  
-  // Write resource list
-  Array.from(resourcesByType.values()).forEach(resources => {
-    resources.forEach(resource => {
-      const key = `${resource.type}:${resource.id}`;
-      
-      // Resource entry (12 bytes)
-      view.setInt16(mapPos, resource.id, false); // Resource ID
-      mapPos += 2;
-      
-      // Name offset
-      const nameOffset = nameOffsets.get(key);
-      view.setUint16(mapPos, nameOffset !== undefined ? nameOffset : 0xFFFF, false);
-      mapPos += 2;
-      
-      // Packed attributes: 8-bit flags + 24-bit data offset
-      const dataOffsetInDataSection = resourceDataOffsets.get(key) || 0;
-      const packedAttr = ((resource.flags & 0xFF) << 24) | (dataOffsetInDataSection & 0xFFFFFF);
-      view.setUint32(mapPos, packedAttr, false);
-      mapPos += 4;
-      
-      view.setUint32(mapPos, resource.junk, false); // Reserved/junk from metadata
-      mapPos += 4;
-    });
-  });
-  
-  // Write name list
-  if (nameListData.length > 0) {
-    uint8View.set(nameListData, mapPos);
-  }
-  
-  console.log(`Created resource fork: ${totalFileSize} bytes, ${resourceEntries.length} resources, ${resourcesByType.size} types`);
+  console.log(`Created resource fork: ${resourceFork.length} bytes`);
   
   // Wrap resource fork in AppleDouble format
-  const resourceFork = new Uint8Array(buffer);
   const finderInfo = getFinderInfo();
   const appleDouble = packAdf(resourceFork, finderInfo);
   console.log(`Wrapped in AppleDouble format: ${appleDouble.length} bytes total (with ${finderInfo ? finderInfo.length : 0} byte Finder Info)`);
