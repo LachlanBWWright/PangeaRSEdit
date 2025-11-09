@@ -47,6 +47,14 @@ export function bg3dSkeletonToSkeletonResource(
         coordZ: bone.coordZ,
         numPointsAttachedToBone: bone.numPointsAttachedToBone,
         numNormalsAttachedToBone: bone.numNormalsAttachedToBone,
+        reserved0: (bone as any).reserved0 !== undefined ? (bone as any).reserved0 : 0,
+        reserved1: (bone as any).reserved1 !== undefined ? (bone as any).reserved1 : 0,
+        reserved2: (bone as any).reserved2 !== undefined ? (bone as any).reserved2 : 0,
+        reserved3: (bone as any).reserved3 !== undefined ? (bone as any).reserved3 : 0,
+        reserved4: (bone as any).reserved4 !== undefined ? (bone as any).reserved4 : 0,
+        reserved5: (bone as any).reserved5 !== undefined ? (bone as any).reserved5 : 0,
+        reserved6: (bone as any).reserved6 !== undefined ? (bone as any).reserved6 : 0,
+        reserved7: (bone as any).reserved7 !== undefined ? (bone as any).reserved7 : 0,
       }
     };
   });
