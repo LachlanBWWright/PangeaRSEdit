@@ -23,8 +23,21 @@ export function handleBone(
     (boneData as BoneRaw).coordZ !== undefined
   ) {
     const rd = boneData as BoneRaw;
-    // Truncate name at first null character to avoid corruption from 32-byte buffer padding
+    // Handle Pascal string format: first byte is length, followed by characters
     let cleanName = rd.name || resourceName;
+    
+    // Check if this is a Pascal string (first char is length byte)
+    if (cleanName.length > 0) {
+      const firstCharCode = cleanName.charCodeAt(0);
+      // If first char is a small number (0-32) and matches or is close to string length-1,
+      // it's likely a Pascal string length prefix
+      if (firstCharCode > 0 && firstCharCode <= 32 && firstCharCode <= cleanName.length - 1) {
+        // Strip the length prefix
+        cleanName = cleanName.substring(1, 1 + firstCharCode);
+      }
+    }
+    
+    // Also truncate at first null character to avoid corruption from padding
     const nullIndex = cleanName.indexOf('\0');
     if (nullIndex >= 0) {
       cleanName = cleanName.substring(0, nullIndex);

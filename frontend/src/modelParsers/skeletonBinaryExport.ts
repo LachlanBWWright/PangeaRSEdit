@@ -281,10 +281,13 @@ function convertBoneToBinary(bone: any): Uint8Array {
   
   view.setInt32(0, bone.parentBone || -1, false);
   
-  // Write bone name (32 bytes)
+  // Write bone name (32 bytes) - Pascal string format: length byte + characters
   if (bone.name && typeof bone.name === 'string') {
     const nameBytes = new TextEncoder().encode(bone.name);
-    uint8View.set(nameBytes.slice(0, 32), 4);
+    const nameLength = Math.min(nameBytes.length, 31); // Max 31 chars (1 byte for length)
+    uint8View[4] = nameLength; // Write length prefix at position 4
+    uint8View.set(nameBytes.slice(0, nameLength), 5); // Write name bytes starting at position 5
+    // Rest of the 32-byte field is already zero-filled
   }
   
   // Write coordinates (3 float32s = 12 bytes)
@@ -331,17 +334,22 @@ function convertBoneNormalsToBinary(boneNormals: any[]): Uint8Array {
 }
 
 function convertAnimationHeaderToBinary(animHeader: any): Uint8Array {
-  const buffer = new ArrayBuffer(36); // AnHd struct: i32s = 4 + 32 = 36 bytes
+  // AnHd struct: 33sxh = 33-byte Pascal string + 1 padding + 2-byte short = 36 bytes
+  const buffer = new ArrayBuffer(36);
   const view = new DataView(buffer);
   const uint8View = new Uint8Array(buffer);
   
-  view.setUint32(0, animHeader.numAnimEvents || 0, false);
-  
-  // Write animation name (32 bytes max)
+  // Write animation name (33 bytes: 1 length + 32 data) - Pascal string format
   if (animHeader.animName && typeof animHeader.animName === 'string') {
     const nameBytes = new TextEncoder().encode(animHeader.animName);
-    uint8View.set(nameBytes.slice(0, 32), 4);
+    const nameLength = Math.min(nameBytes.length, 32); // Max 32 chars (1 byte reserved for length)
+    uint8View[0] = nameLength; // Write length prefix at position 0
+    uint8View.set(nameBytes.slice(0, nameLength), 1); // Write name bytes starting at position 1
   }
+  // Position 33 is padding (x), already zero
+  
+  // Write numAnimEvents at position 34 (after name + padding)
+  view.setInt16(34, animHeader.numAnimEvents || 0, false);
   
   return uint8View;
 }
