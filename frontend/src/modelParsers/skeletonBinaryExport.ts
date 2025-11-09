@@ -400,6 +400,7 @@ function convertKeyframesToBinary(keyframes: any[]): Uint8Array {
 function convertRelativePointsToBinary(points: any[]): Uint8Array {
   // RelP: Array of 3D points (x, y, z) - 3 float32s per point = 12 bytes per point
   const numPoints = points.length;
+  console.log(`[DEBUG] convertRelativePointsToBinary called with ${numPoints} points`);
   const buffer = new ArrayBuffer(numPoints * 12);
   const view = new DataView(buffer);
   
@@ -410,5 +411,6 @@ function convertRelativePointsToBinary(points: any[]): Uint8Array {
     view.setFloat32(offset + 8, point.relOffsetZ || 0, false);
   });
   
+  console.log(`[DEBUG] convertRelativePointsToBinary produced ${buffer.byteLength} bytes`);
   return new Uint8Array(buffer);
 }

@@ -317,12 +317,22 @@ function transformToSkeletonResource(rawData: any): SkeletonResource {
         if (resourceData.hasOwnProperty('conversionError')) {
           console.error(`[ERROR] RelP conversion error:`, resourceData.conversionError);
         }
+        
+        // Check if rsrcdump successfully parsed the data into 'obj' field
         if (
+          resourceData.obj &&
+          Array.isArray(resourceData.obj) &&
+          resourceData.obj.length > 0 &&
+          resourceData.obj[0].relOffsetX !== undefined
+        ) {
+          console.log(`[DEBUG] Using rsrcdump-parsed RelP data from 'obj' field: ${resourceData.obj.length} points`);
+          obj = resourceData.obj;
+        } else if (
           Array.isArray(resourceData) &&
           resourceData.length > 0 &&
           resourceData[0].relOffsetX !== undefined
         ) {
-          console.log(`[DEBUG] Using rsrcdump-parsed RelP data: ${resourceData.length} points`);
+          console.log(`[DEBUG] Using rsrcdump-parsed RelP data (array format): ${resourceData.length} points`);
           obj = resourceData;
         } else {
           console.log(`[DEBUG] Fallback: parsing RelP from hexData (${hexData?.length || 0} bytes)`);
@@ -330,14 +340,24 @@ function transformToSkeletonResource(rawData: any): SkeletonResource {
           console.log(`[DEBUG] Parsed ${obj.length} RelP points from hex data`);
         }
       } else if (typeName === "Evnt") {
-        // Check if rsrcdump already parsed the data correctly
+        // Check if rsrcdump successfully parsed the data into 'obj' field
         if (
+          resourceData.obj &&
+          Array.isArray(resourceData.obj) &&
+          resourceData.obj.length > 0 &&
+          resourceData.obj[0].time !== undefined
+        ) {
+          console.log(`[DEBUG] Using rsrcdump-parsed Evnt data from 'obj' field: ${resourceData.obj.length} events`);
+          obj = resourceData.obj;
+        } else if (
           Array.isArray(resourceData) &&
           resourceData.length > 0 &&
           resourceData[0].time !== undefined
         ) {
+          console.log(`[DEBUG] Using rsrcdump-parsed Evnt data (array format): ${resourceData.length} events`);
           obj = resourceData;
         } else {
+          console.log(`[DEBUG] Fallback: parsing Evnt from hexData (${hexData?.length || 0} bytes)`);
           obj = parseEvntData(hexData);
         }
       } else if (typeName === "NumK") {
