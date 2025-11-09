@@ -187,7 +187,8 @@ describe("Comprehensive Otto Round-trip Validation", () => {
       roundtripBg3dParsed.skeleton!,
       originalSkeletonResource.RelP, // Pass RelP from original since it's not modified
       originalSkeletonResource.Evnt, // Pass Evnt from original since it's not in glTF
-      originalSkeletonResource.alis  // Pass alis from original
+      originalSkeletonResource.alis,  // Pass alis from original
+      originalSkeletonResource._metadata  // Pass _metadata from original
     );
     const roundtripSkeletonBinary = skeletonResourceToBinary(
       roundtripSkeletonResource

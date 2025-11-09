@@ -14,7 +14,8 @@ export function bg3dSkeletonToSkeletonResource(
   skeleton: BG3DSkeleton,
   relP?: { [key: string]: any },
   evntData?: { [key: string]: any },
-  alisData?: { [key: string]: any }
+  alisData?: { [key: string]: any },
+  metadata?: any
 ): SkeletonResource {
   // Debug: Check what RelP data we received
   if (relP && relP['1000']) {
@@ -164,6 +165,7 @@ export function bg3dSkeletonToSkeletonResource(
     NumK: numK,
     KeyF: keyF,
     alis: alisData || {}, // Include alis if provided, otherwise empty
+    _metadata: metadata || {}, // Include metadata if provided, otherwise empty
   };
 }
 
