@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pyodide Skeleton Roundtrip Test</title>
+    <style>
+        body {
+            font-family: monospace;
+            padding: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        #log {
+            white-space: pre-wrap;
+            background: #f5f5f5;
+            padding: 15px;
+            border: 1px solid #ddd;
+            max-height: 600px;
+            overflow-y: auto;
+        }
+        .success { color: green; }
+        .error { color: red; }
+        .info { color: blue; }
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            margin: 10px 5px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Pyodide Skeleton Roundtrip Test</h1>
+    <p>This test validates byte-for-byte accuracy using Pyodide for parsing and export.</p>
+    
+    <div>
+        <button onclick="runTest()" id="testBtn">Run Pyodide Roundtrip Test</button>
+        <button onclick="clearLog()">Clear Log</button>
+    </div>
+    
+    <h2>Test Log:</h2>
+    <div id="log"></div>
+
+    <script type="module">
+        import PyodideWorker from './src/python/pyodideWorker?worker';
+        
+        let pyodideWorker = null;
+        let pyodideReady = false;
+        
+        function log(message, type = 'info') {
+            const logDiv = document.getElementById('log');
+            const span = document.createElement('span');
+            span.className = type;
+            span.textContent = message + '\n';
+            logDiv.appendChild(span);
+            logDiv.scrollTop = logDiv.scrollHeight;
+            console.log(message);
+        }
+        
+        window.clearLog = function() {
+            document.getElementById('log').innerHTML = '';
+        };
+        
+        async function initPyodide() {
+            if (pyodideReady) return;
+            
+            log('Initializing Pyodide worker...', 'info');
+            pyodideWorker = new PyodideWorker();
+            
+            await new Promise((resolve) => {
+                pyodideWorker.onmessage = (event) => {
+                    if (event.data.type === 'initRes') {
+                        pyodideReady = true;
+                        log('✓ Pyodide worker initialized', 'success');
+                        resolve();
+                    }
+                };
+                pyodideWorker.postMessage({ type: 'init' });
+            });
+        }
+        
+        async function parseSkeletonWithPyodide(bytes) {
+            return new Promise((resolve, reject) => {
+                const handleMessage = (event) => {
+                    if (event.data.type === 'save_to_json') {
+                        pyodideWorker.removeEventListener('message', handleMessage);
+                        resolve(event.data.result);
+                    }
+                };
+                
+                pyodideWorker.addEventListener('message', handleMessage);
+                pyodideWorker.postMessage({
+                    type: 'save_to_json',
+                    bytes: bytes,
+                    struct_specs: [], // Will use skeleton specs
+                    include_types: [],
+                    exclude_types: []
+                });
+            });
+        }
+        
+        async function exportSkeletonWithPyodide(skeletonResource) {
+            return new Promise((resolve, reject) => {
+                const handleMessage = (event) => {
+                    if (event.data.type === 'load_bytes_from_json') {
+                        pyodideWorker.removeEventListener('message', handleMessage);
+                        resolve(event.data.result);
+                    }
+                };
+                
+                pyodideWorker.addEventListener('message', handleMessage);
+                pyodideWorker.postMessage({
+                    type: 'load_bytes_from_json',
+                    json_blob: skeletonResource,
+                    converters: ['skeleton'],
+                    only_types: [],
+                    skip_types: [],
+                    adf: 'False'
+                });
+            });
+        }
+        
+        window.runTest = async function() {
+            try {
+                document.getElementById('testBtn').disabled = true;
+                clearLog();
+                
+                log('='.repeat(80), 'info');
+                log('PYODIDE SKELETON ROUNDTRIP TEST', 'info');
+                log('='.repeat(80), 'info');
+                
+                await initPyodide();
+                
+                log('\n[STEP 1] Loading Otto.skeleton.rsrc...', 'info');
+                const response = await fetch('/Otto.skeleton.rsrc');
+                if (!response.ok) {
+                    throw new Error('Failed to load Otto.skeleton.rsrc');
+                }
+                const originalData = await response.arrayBuffer();
+                log(`✓ Loaded ${originalData.byteLength} bytes`, 'success');
+                
+                log('\n[STEP 2] Parsing with Pyodide...', 'info');
+                const parsed = await parseSkeletonWithPyodide(originalData);
+                log(`✓ Parsed skeleton resource`, 'success');
+                log(`  Bones: ${Object.keys(parsed.Bone || {}).length}`, 'info');
+                log(`  Animations: ${Object.keys(parsed.AnHd || {}).length}`, 'info');
+                
+                log('\n[STEP 3] Exporting back to binary with Pyodide...', 'info');
+                const roundtripData = await exportSkeletonWithPyodide(parsed);
+                log(`✓ Exported ${roundtripData.byteLength} bytes`, 'success');
+                
+                log('\n[STEP 4] Comparing byte-for-byte...', 'info');
+                const original = new Uint8Array(originalData);
+                const roundtrip = new Uint8Array(roundtripData);
+                
+                log(`  Original size:  ${original.length} bytes`, 'info');
+                log(`  Roundtrip size: ${roundtrip.length} bytes`, 'info');
+                
+                const minLength = Math.min(original.length, roundtrip.length);
+                let matches = 0;
+                let firstMismatch = -1;
+                
+                for (let i = 0; i < minLength; i++) {
+                    if (original[i] === roundtrip[i]) {
+                        matches++;
+                    } else if (firstMismatch === -1) {
+                        firstMismatch = i;
+                    }
+                }
+                
+                const accuracy = matches / original.length;
+                const accuracyPercent = (accuracy * 100).toFixed(4);
+                
+                log(`  Byte matches: ${matches}/${original.length}`, 'info');
+                log(`  Accuracy: ${accuracyPercent}%`, accuracy >= 0.99 ? 'success' : 'error');
+                
+                if (firstMismatch !== -1) {
+                    log(`  First mismatch at offset 0x${firstMismatch.toString(16).padStart(8, '0')}`, 'error');
+                    log(`    Original: 0x${original[firstMismatch].toString(16).padStart(2, '0')}`, 'error');
+                    log(`    Roundtrip: 0x${roundtrip[firstMismatch].toString(16).padStart(2, '0')}`, 'error');
+                }
+                
+                log('\n' + '='.repeat(80), 'info');
+                if (accuracy >= 0.99) {
+                    log('✓ TEST PASSED - 99%+ byte-for-byte accuracy achieved!', 'success');
+                } else {
+                    log('✗ TEST FAILED - Accuracy below 99% threshold', 'error');
+                }
+                log('='.repeat(80), 'info');
+                
+            } catch (error) {
+                log(`\n✗ ERROR: ${error.message}`, 'error');
+                console.error(error);
+            } finally {
+                document.getElementById('testBtn').disabled = false;
+            }
+        };
+    </script>
+</body>
+</html>
