@@ -54,10 +54,15 @@ export function skeletonResourceToBinaryTS(skeletonResource: SkeletonResource): 
     id: number;
     data: Uint8Array;
     name: string;
+    flags: number;
+    junk: number;
+    order: number;
   }> = [];
   
   // Process each resource type
   Object.entries(skeletonResource).forEach(([resourceType, resources]) => {
+    if (resourceType === '_metadata') return; // Skip metadata
+    
     if (typeof resources === 'object' && resources !== null) {
       Object.entries(resources).forEach(([resourceId, resource]: [string, any]) => {
         if (resource && typeof resource === 'object') {
@@ -91,6 +96,9 @@ export function skeletonResourceToBinaryTS(skeletonResource: SkeletonResource): 
             id: parseInt(resourceId),
             data: binaryData,
             name: resource.name || '',
+            flags: resource.flags !== undefined ? resource.flags : 0,
+            junk: resource.junk !== undefined ? resource.junk : 0,
+            order: resource.order !== undefined ? resource.order : parseInt(resourceId),
           });
         }
       });
@@ -98,6 +106,9 @@ export function skeletonResourceToBinaryTS(skeletonResource: SkeletonResource): 
   });
   
   console.log(`Converting ${resourceEntries.length} resources to binary format`);
+  
+  // Sort resources by order field to preserve original ordering
+  resourceEntries.sort((a, b) => a.order - b.order);
   
   // Group resources by type for the type list
   const resourcesByType = new Map<string, Array<typeof resourceEntries[0]>>();
@@ -180,6 +191,12 @@ export function skeletonResourceToBinaryTS(skeletonResource: SkeletonResource): 
     currentDataPos += entry.data.length;
   });
   
+  // Extract metadata fields for proper preservation
+  const metadata = (skeletonResource as any)._metadata || {};
+  const junk1 = metadata.junk1 !== undefined ? metadata.junk1 : 0;
+  const junk2 = metadata.junk2 !== undefined ? metadata.junk2 : 0;
+  const fileAttributes = metadata.file_attributes !== undefined ? metadata.file_attributes : 0;
+  
   // Write resource map
   let mapPos = mapOffset;
   
@@ -188,9 +205,9 @@ export function skeletonResourceToBinaryTS(skeletonResource: SkeletonResource): 
   view.setUint32(mapPos, mapOffset, false); mapPos += 4;
   view.setUint32(mapPos, totalDataSize, false); mapPos += 4;
   view.setUint32(mapPos, mapSize, false); mapPos += 4;
-  view.setUint32(mapPos, 0, false); mapPos += 4;          // Next resource map (unused)
-  view.setUint16(mapPos, 0, false); mapPos += 2;          // File reference number (unused)
-  view.setUint16(mapPos, 0, false); mapPos += 2;          // File attributes
+  view.setUint32(mapPos, junk1, false); mapPos += 4;          // Next resource map (junk1 from metadata)
+  view.setUint16(mapPos, junk2, false); mapPos += 2;          // File reference number (junk2 from metadata)
+  view.setUint16(mapPos, fileAttributes, false); mapPos += 2; // File attributes from metadata
   view.setUint16(mapPos, mapHeaderSize, false); mapPos += 2; // Type list offset within map
   view.setUint16(mapPos, mapHeaderSize + typeListSize + resourceListSize, false); mapPos += 2; // Name list offset within map
   
@@ -229,13 +246,13 @@ export function skeletonResourceToBinaryTS(skeletonResource: SkeletonResource): 
       view.setUint16(mapPos, nameOffset !== undefined ? nameOffset : 0xFFFF, false);
       mapPos += 2;
       
-      // Packed attributes: 24-bit data offset + 8-bit flags
+      // Packed attributes: 8-bit flags + 24-bit data offset
       const dataOffsetInDataSection = resourceDataOffsets.get(key) || 0;
-      const packedAttr = (0 << 24) | (dataOffsetInDataSection & 0xFFFFFF);
+      const packedAttr = ((resource.flags & 0xFF) << 24) | (dataOffsetInDataSection & 0xFFFFFF);
       view.setUint32(mapPos, packedAttr, false);
       mapPos += 4;
       
-      view.setUint32(mapPos, 0, false); // Reserved/junk
+      view.setUint32(mapPos, resource.junk, false); // Reserved/junk from metadata
       mapPos += 4;
     });
   });
