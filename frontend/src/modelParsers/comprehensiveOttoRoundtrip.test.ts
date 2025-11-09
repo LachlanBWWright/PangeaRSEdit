@@ -433,6 +433,214 @@ describe("Comprehensive Otto Round-trip Validation", () => {
       console.log(`    ✗ Evnt missing in roundtrip skeleton`);
     }
 
+    // Compare BonP (Bone Points)
+    if (originalSkeletonResource.BonP && roundtripSkeletonParsed.BonP) {
+      const origBonPIds = Object.keys(originalSkeletonResource.BonP).sort();
+      const rtBonPIds = Object.keys(roundtripSkeletonParsed.BonP).sort();
+
+      console.log(`\n  BonP Comparison:`);
+      console.log(`    Original BonP IDs: ${origBonPIds.length}`);
+      console.log(`    Roundtrip BonP IDs: ${rtBonPIds.length}`);
+
+      if (origBonPIds.join(",") === rtBonPIds.join(",")) {
+        console.log(`    ✓ BonP IDs match`);
+        
+        let bonPMismatches = 0;
+        for (const bonPId of origBonPIds) {
+          const origBonP = originalSkeletonResource.BonP[bonPId];
+          const rtBonP = roundtripSkeletonParsed.BonP[bonPId];
+          
+          if (!rtBonP) {
+            console.log(`    ✗ BonP ${bonPId} missing in roundtrip`);
+            bonPMismatches++;
+            continue;
+          }
+          
+          if (origBonP.obj.length !== rtBonP.obj.length) {
+            console.log(`    ✗ BonP ${bonPId} length differs: ${origBonP.obj.length} → ${rtBonP.obj.length}`);
+            bonPMismatches++;
+          } else {
+            // Deep compare point indices
+            let pointMismatches = 0;
+            for (let i = 0; i < origBonP.obj.length; i++) {
+              if (origBonP.obj[i].pointIndex !== rtBonP.obj[i].pointIndex) {
+                if (pointMismatches < 3) {
+                  console.log(`      ✗ BonP ${bonPId} point ${i} differs: ${origBonP.obj[i].pointIndex} → ${rtBonP.obj[i].pointIndex}`);
+                }
+                pointMismatches++;
+              }
+            }
+            if (pointMismatches === 0) {
+              console.log(`    ✓ BonP ${bonPId} matches (${origBonP.obj.length} points)`);
+            } else {
+              console.log(`    ✗ BonP ${bonPId} has ${pointMismatches} point mismatches`);
+              bonPMismatches++;
+            }
+          }
+        }
+        
+        if (bonPMismatches > 0) {
+          console.log(`    ✗ Total BonP mismatches: ${bonPMismatches}`);
+        }
+      } else {
+        console.log(`    ✗ BonP IDs differ`);
+      }
+    }
+
+    // Compare BonN (Bone Normals)
+    if (originalSkeletonResource.BonN && roundtripSkeletonParsed.BonN) {
+      const origBonNIds = Object.keys(originalSkeletonResource.BonN).sort();
+      const rtBonNIds = Object.keys(roundtripSkeletonParsed.BonN).sort();
+
+      console.log(`\n  BonN Comparison:`);
+      console.log(`    Original BonN IDs: ${origBonNIds.length}`);
+      console.log(`    Roundtrip BonN IDs: ${rtBonNIds.length}`);
+
+      if (origBonNIds.join(",") === rtBonNIds.join(",")) {
+        console.log(`    ✓ BonN IDs match`);
+        
+        let bonNMismatches = 0;
+        for (const bonNId of origBonNIds) {
+          const origBonN = originalSkeletonResource.BonN[bonNId];
+          const rtBonN = roundtripSkeletonParsed.BonN[bonNId];
+          
+          if (!rtBonN) {
+            console.log(`    ✗ BonN ${bonNId} missing in roundtrip`);
+            bonNMismatches++;
+            continue;
+          }
+          
+          if (origBonN.obj.length !== rtBonN.obj.length) {
+            console.log(`    ✗ BonN ${bonNId} length differs: ${origBonN.obj.length} → ${rtBonN.obj.length}`);
+            bonNMismatches++;
+          } else {
+            // Deep compare normal indices
+            let normalMismatches = 0;
+            for (let i = 0; i < origBonN.obj.length; i++) {
+              if (origBonN.obj[i].normal !== rtBonN.obj[i].normal) {
+                if (normalMismatches < 3) {
+                  console.log(`      ✗ BonN ${bonNId} normal ${i} differs: ${origBonN.obj[i].normal} → ${rtBonN.obj[i].normal}`);
+                }
+                normalMismatches++;
+              }
+            }
+            if (normalMismatches === 0) {
+              console.log(`    ✓ BonN ${bonNId} matches (${origBonN.obj.length} normals)`);
+            } else {
+              console.log(`    ✗ BonN ${bonNId} has ${normalMismatches} normal mismatches`);
+              bonNMismatches++;
+            }
+          }
+        }
+        
+        if (bonNMismatches > 0) {
+          console.log(`    ✗ Total BonN mismatches: ${bonNMismatches}`);
+        }
+      } else {
+        console.log(`    ✗ BonN IDs differ`);
+      }
+    }
+
+    // Compare KeyF (Keyframes) - sample first 3 animations
+    if (originalSkeletonResource.KeyF && roundtripSkeletonParsed.KeyF) {
+      const origKeyFIds = Object.keys(originalSkeletonResource.KeyF).sort();
+      const rtKeyFIds = Object.keys(roundtripSkeletonParsed.KeyF).sort();
+
+      console.log(`\n  KeyF Comparison (sampling):`);
+      console.log(`    Original KeyF resources: ${origKeyFIds.length}`);
+      console.log(`    Roundtrip KeyF resources: ${rtKeyFIds.length}`);
+
+      if (origKeyFIds.length === rtKeyFIds.length) {
+        console.log(`    ✓ KeyF resource count matches`);
+        
+        // Sample first 3 animations (48 keyframe resources: 3 anims * 16 bones)
+        let keyFMismatches = 0;
+        for (let i = 0; i < Math.min(48, origKeyFIds.length); i++) {
+          const keyFId = origKeyFIds[i];
+          const origKeyF = originalSkeletonResource.KeyF[keyFId];
+          const rtKeyF = roundtripSkeletonParsed.KeyF[keyFId];
+          
+          if (!rtKeyF) {
+            if (i < 32) console.log(`    ✗ KeyF ${keyFId} missing in roundtrip`);
+            keyFMismatches++;
+            continue;
+          }
+          
+          if (origKeyF.obj.length !== rtKeyF.obj.length) {
+            if (i < 32) console.log(`    ✗ KeyF ${keyFId} length differs: ${origKeyF.obj.length} → ${rtKeyF.obj.length}`);
+            keyFMismatches++;
+          } else {
+            // Deep compare keyframes
+            let frameMismatches = 0;
+            for (let j = 0; j < origKeyF.obj.length; j++) {
+              const origFrame = origKeyF.obj[j];
+              const rtFrame = rtKeyF.obj[j];
+              
+              // Compare with tolerance for floats
+              if (Math.abs(origFrame.tick - rtFrame.tick) > 0.001 ||
+                  Math.abs(origFrame.coordX - rtFrame.coordX) > 0.001 ||
+                  Math.abs(origFrame.coordY - rtFrame.coordY) > 0.001 ||
+                  Math.abs(origFrame.coordZ - rtFrame.coordZ) > 0.001) {
+                frameMismatches++;
+              }
+            }
+            if (frameMismatches > 0) {
+              if (i < 32) console.log(`    ✗ KeyF ${keyFId} has ${frameMismatches} frame mismatches`);
+              keyFMismatches++;
+            }
+          }
+        }
+        
+        if (keyFMismatches > 0) {
+          console.log(`    ✗ KeyF mismatches in sampled resources: ${keyFMismatches}`);
+        } else {
+          console.log(`    ✓ KeyF sampled resources match`);
+        }
+      } else {
+        console.log(`    ✗ KeyF resource count differs`);
+      }
+    }
+
+    // Compare AnHd (Animation Headers) - sample first few
+    if (originalSkeletonResource.AnHd && roundtripSkeletonParsed.AnHd) {
+      const origAnHdIds = Object.keys(originalSkeletonResource.AnHd).sort();
+      const rtAnHdIds = Object.keys(roundtripSkeletonParsed.AnHd).sort();
+
+      console.log(`\n  AnHd Comparison:`);
+      console.log(`    Original AnHd IDs: ${origAnHdIds.length}`);
+      console.log(`    Roundtrip AnHd IDs: ${rtAnHdIds.length}`);
+
+      if (origAnHdIds.join(",") === rtAnHdIds.join(",")) {
+        console.log(`    ✓ AnHd IDs match`);
+        
+        let anHdMismatches = 0;
+        for (const anHdId of origAnHdIds.slice(0, 5)) { // Sample first 5
+          const origAnHd = originalSkeletonResource.AnHd[anHdId];
+          const rtAnHd = roundtripSkeletonParsed.AnHd[anHdId];
+          
+          if (!rtAnHd) {
+            console.log(`    ✗ AnHd ${anHdId} missing in roundtrip`);
+            anHdMismatches++;
+            continue;
+          }
+          
+          if (origAnHd.obj.animName !== rtAnHd.obj.animName ||
+              origAnHd.obj.numAnimEvents !== rtAnHd.obj.numAnimEvents) {
+            console.log(`    ✗ AnHd ${anHdId} differs: "${origAnHd.obj.animName}" (${origAnHd.obj.numAnimEvents}) → "${rtAnHd.obj.animName}" (${rtAnHd.obj.numAnimEvents})`);
+            anHdMismatches++;
+          }
+        }
+        
+        if (anHdMismatches === 0) {
+          console.log(`    ✓ AnHd sampled resources match`);
+        } else {
+          console.log(`    ✗ AnHd mismatches: ${anHdMismatches}`);
+        }
+      } else {
+        console.log(`    ✗ AnHd IDs differ`);
+      }
+    }
+
     // ========================================================================
     // STEP 8: Byte-for-Byte Accuracy Verification
     // ========================================================================
