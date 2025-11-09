@@ -359,64 +359,9 @@ export function bg3dParsedToGLTF(
     }
   }
 
-  // Convert RelP entries (relative points) into glTF POINTS meshes or nodes
-  try {
-    if (parsed.skeleton && parsed.skeleton.relPoints) {
-      const relPoints = parsed.skeleton.relPoints;
-      const jointList = gltfSkin ? gltfSkin.listJoints() : [];
-      Object.entries(relPoints).forEach(([rid, points]) => {
-        if (!Array.isArray(points) || points.length === 0) return;
-
-        // Create a mesh containing the points as a POSITION accessor
-        const relMesh = doc.createMesh();
-        relMesh.setName(`RelP_${rid}`);
-
-        // Flatten points array to Float32Array
-        const flat = new Float32Array(points.flat());
-        const posAccessor = doc
-          .createAccessor()
-          .setType("VEC3")
-          .setArray(flat)
-          .setBuffer(baseBuffer);
-
-        const relPrim = doc.createPrimitive();
-        relPrim.setAttribute("POSITION", posAccessor);
-
-        // Try to set primitive mode to POINTS (glTF mode 0)
-
-        relPrim.setMode?.(0);
-
-        relMesh.addPrimitive(relPrim);
-
-        // Create node for the RelP mesh
-        const relNode = doc
-          .createNode()
-          .setName(`RelPNode_${rid}`)
-          .setMesh(relMesh);
-
-        // Parent to the joint corresponding to resource id if possible.
-        // Heuristic: resource IDs like 1000+n map to bone index n.
-        let parentNode: Node | null = skeletonArmatureNode;
-        const ridNum = parseInt(rid, 10);
-        if (!isNaN(ridNum) && gltfSkin) {
-          const boneIndex = ridNum - 1000;
-          if (boneIndex >= 0 && boneIndex < jointList.length) {
-            parentNode = jointList[boneIndex];
-          }
-        }
-
-        if (parentNode) {
-          parentNode.addChild(relNode);
-          console.log(`Added RelP_${rid} as child of ${parentNode.getName()}`);
-        } else {
-          sceneRoot.addChild(relNode);
-          console.log(`Added RelP_${rid} to scene root (no joint mapping)`);
-        }
-      });
-    }
-  } catch (e) {
-    console.warn("Failed to convert RelP to glTF nodes/meshes:", e);
-  }
+  // Note: RelP (relative points) are NOT converted to glTF meshes.
+  // RelP is mesh deformation data used during animation, not geometry to render.
+  // It is preserved in the skeleton resource for round-trip but not visualized.
 
   // Helper: add skinned meshes from a group as children of the Armature node
   // This is REQUIRED by glTF spec - skinned meshes must be descendants of skeleton root
@@ -523,19 +468,11 @@ export function bg3dParsedToGLTF(
     `glTF document now has ${doc.getRoot().listAnimations().length} animations`,
   );
 
-  // Store both: exact binary data for Otto roundtrip AND only non-glTF data for other cases
+  // Store only non-glTF-representable data (material/texture metadata)
+  // DO NOT store skeleton data or binary blobs - these must round-trip through glTF structures
   const extrasData: any = {
     bg3dFields: {
-      // Store only Otto-specific bone properties that glTF doesn't support
-      boneExtras: parsed.skeleton
-        ? parsed.skeleton.bones.map((bone) => ({
-            name: bone.name,
-            pointIndices: bone.pointIndices,
-            normalIndices: bone.normalIndices,
-            numPointsAttachedToBone: bone.numPointsAttachedToBone,
-            numNormalsAttachedToBone: bone.numNormalsAttachedToBone,
-          }))
-        : [],
+      // Note: Skeleton data (bones, pointIndices, animations) stored in native glTF format
       // Store BG3D-specific material properties
       materialExtras: parsed.materials.map((mat) => ({
         flags: mat.flags,
@@ -555,19 +492,8 @@ export function bg3dParsedToGLTF(
     },
   };
 
-  // For Otto files specifically: store original binary data for exact roundtrip
-  if (originalBinaryData?.bg3dBuffer || originalBinaryData?.skeletonBuffer) {
-    console.log("Storing original binary data for exact Otto roundtrip...");
-    extrasData.ottoRoundtrip = {
-      bg3dBuffer: originalBinaryData.bg3dBuffer
-        ? Array.from(new Uint8Array(originalBinaryData.bg3dBuffer))
-        : null,
-      skeletonBuffer: originalBinaryData.skeletonBuffer
-        ? Array.from(new Uint8Array(originalBinaryData.skeletonBuffer))
-        : null,
-    };
-  }
-
+  // Do NOT store original binary data - all data must round-trip through proper glTF structures
+  
   doc.getRoot().setExtras(extrasData);
 
   console.log("=== BG3D to glTF Conversion Complete ===");
@@ -583,8 +509,9 @@ export async function gltfToBG3D(doc: Document): Promise<BG3DParseResult> {
   const bg3dFields = (rootExtras as any).bg3dFields;
 
   // Extract BG3D-specific metadata from extras (only non-glTF-representable data)
-  const boneExtras = bg3dFields?.boneExtras || [];
   const materialExtras = bg3dFields?.materialExtras || [];
+  
+  // Note: Bone data (pointIndices, normalIndices) will be reconstructed from mesh skinning data
 
   console.log("Reconstructing BG3D data from glTF native format...");
 
@@ -641,11 +568,9 @@ export async function gltfToBG3D(doc: Document): Promise<BG3DParseResult> {
     const joints = skin.listJoints();
 
     if (joints.length > 0) {
+      // First pass: create bones with basic data
       const bones: BG3DBone[] = joints.map((joint, index) => {
         const translation = joint.getTranslation() || [0, 0, 0];
-
-        // Get BG3D-specific bone data from extras
-        const boneExtra = boneExtras[index] || {};
 
         // Infer parentBone from node hierarchy (glTF 2.0 compliant)
         let parentBone = -1;
@@ -667,15 +592,62 @@ export async function gltfToBG3D(doc: Document): Promise<BG3DParseResult> {
 
         return {
           parentBone,
-          name: boneExtra.name || joint.getName() || `bone_${index}`,
+          name: joint.getName() || `bone_${index}`,
           coordX: translation[0],
           coordY: translation[1],
           coordZ: translation[2],
-          numPointsAttachedToBone: boneExtra.numPointsAttachedToBone || 0,
-          numNormalsAttachedToBone: boneExtra.numNormalsAttachedToBone || 0,
-          pointIndices: boneExtra.pointIndices || [],
-          normalIndices: boneExtra.normalIndices || [],
+          numPointsAttachedToBone: 0,  // Will be calculated below
+          numNormalsAttachedToBone: 0, // Will be calculated below
+          pointIndices: [],  // Will be populated below
+          normalIndices: [], // Will be populated below
         };
+      });
+
+      // Second pass: extract pointIndices and normalIndices from mesh skinning data
+      // Collect all vertices influenced by each bone from JOINTS_0 and WEIGHTS_0 attributes
+      const bonePointSets: Set<number>[] = bones.map(() => new Set<number>());
+      const boneNormalSets: Set<number>[] = bones.map(() => new Set<number>());
+      
+      let globalVertexOffset = 0;
+      doc.getRoot().listMeshes().forEach((mesh) => {
+        mesh.listPrimitives().forEach((prim) => {
+          const jointsAcc = prim.getAttribute("JOINTS_0");
+          const weightsAcc = prim.getAttribute("WEIGHTS_0");
+          const posAcc = prim.getAttribute("POSITION");
+          
+          if (jointsAcc && weightsAcc && posAcc) {
+            const jointsArray = jointsAcc.getArray() as Uint16Array;
+            const weightsArray = weightsAcc.getArray() as Float32Array;
+            const numVertices = posAcc.getCount();
+            
+            for (let vi = 0; vi < numVertices; vi++) {
+              const globalVertexIndex = globalVertexOffset + vi;
+              
+              // Each vertex has up to 4 joint influences
+              for (let ji = 0; ji < 4; ji++) {
+                const jointIndex = jointsArray[vi * 4 + ji];
+                const weight = weightsArray[vi * 4 + ji];
+                
+                // Only consider influences with non-zero weight
+                if (weight > 0 && jointIndex < bones.length) {
+                  bonePointSets[jointIndex].add(globalVertexIndex);
+                  // For normals, use same indices as points
+                  boneNormalSets[jointIndex].add(globalVertexIndex);
+                }
+              }
+            }
+            
+            globalVertexOffset += numVertices;
+          }
+        });
+      });
+      
+      // Update bones with calculated data
+      bones.forEach((bone, index) => {
+        bone.pointIndices = Array.from(bonePointSets[index]).sort((a, b) => a - b);
+        bone.normalIndices = Array.from(boneNormalSets[index]).sort((a, b) => a - b);
+        bone.numPointsAttachedToBone = bone.pointIndices.length;
+        bone.numNormalsAttachedToBone = bone.normalIndices.length;
       });
 
       // Extract animations from glTF Animation objects

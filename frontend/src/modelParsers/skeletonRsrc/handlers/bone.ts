@@ -23,9 +23,15 @@ export function handleBone(
     (boneData as BoneRaw).coordZ !== undefined
   ) {
     const rd = boneData as BoneRaw;
+    // Truncate name at first null character to avoid corruption from 32-byte buffer padding
+    let cleanName = rd.name || resourceName;
+    const nullIndex = cleanName.indexOf('\0');
+    if (nullIndex >= 0) {
+      cleanName = cleanName.substring(0, nullIndex);
+    }
     const obj: BoneRaw = {
       parentBone: rd.parentBone,
-      name: rd.name || resourceName,
+      name: cleanName,
       coordX: rd.coordX,
       coordY: rd.coordY,
       coordZ: rd.coordZ,
