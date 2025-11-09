@@ -129,8 +129,12 @@ export function bg3dSkeletonToSkeletonResource(
 
       // KeyF resource ID: pattern is 1000 + (animIndex * 100) + boneIndex
       const keyFResourceId = 1000 + (animIndex * 100) + boneIndex;
+      
+      // Get the bone name for this keyframe resource
+      const boneName = skeleton.bones[boneIndex]?.name || '';
+      
       keyF[keyFResourceId.toString()] = {
-        name: "Keyframes",
+        name: boneName, // Use bone name, not generic "Keyframes"
         order: keyFResourceId,
         obj: keyframes.map(kf => ({
           tick: kf.tick,
