@@ -228,21 +228,17 @@ export function bg3dParsedToGLTF(
       const joints = new Uint16Array(numVertices * 4);
       const weights = new Float32Array(numVertices * 4);
 
-      // Initialize to root bone with full weight
-      for (let i = 0; i < numVertices; i++) {
-        joints[i * 4] = 0; // Root bone
-        weights[i * 4] = 1.0; // Full weight
-        // Other joints/weights remain 0
-      }
-
+      // All arrays initialized to 0 (no bone influences by default)
+      
       // Apply bone influences based on Otto's point indices
+      // Each vertex can be influenced by multiple bones - we track all influences
       parsed.skeleton.bones.forEach((bone, boneIndex) => {
         if (bone.pointIndices) {
           bone.pointIndices.forEach((vertexIndex) => {
             if (vertexIndex < numVertices) {
               const offset = vertexIndex * 4;
 
-              // Find empty slot for this influence
+              // Find empty slot for this influence (skip slots already used)
               for (let slot = 0; slot < 4; slot++) {
                 if (weights[offset + slot] === 0) {
                   joints[offset + slot] = boneIndex;
@@ -256,16 +252,23 @@ export function bg3dParsedToGLTF(
       });
 
       // Normalize weights for each vertex
+      // If a vertex has no bone influences, assign it to root bone (bone 0)
       for (let i = 0; i < numVertices; i++) {
         const offset = i * 4;
         let totalWeight = 0;
         for (let j = 0; j < 4; j++) {
           totalWeight += weights[offset + j];
         }
+        
         if (totalWeight > 0) {
+          // Normalize existing weights
           for (let j = 0; j < 4; j++) {
             weights[offset + j] /= totalWeight;
           }
+        } else {
+          // No bone influences - assign to root bone
+          joints[offset] = 0;
+          weights[offset] = 1.0;
         }
       }
 

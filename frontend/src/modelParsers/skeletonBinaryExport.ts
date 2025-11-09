@@ -310,11 +310,12 @@ function convertBoneToBinary(bone: any): Uint8Array {
 function convertBonePointsToBinary(bonePoints: any[]): Uint8Array {
   if (!Array.isArray(bonePoints)) return new Uint8Array(0);
   
-  const buffer = new ArrayBuffer(bonePoints.length * 4); // 4 bytes per point index
+  // BonP format: H+ = unsigned short (2 bytes) per point index
+  const buffer = new ArrayBuffer(bonePoints.length * 2); // 2 bytes per point index
   const view = new DataView(buffer);
   
   bonePoints.forEach((point, index) => {
-    view.setUint32(index * 4, point.pointIndex || 0, false);
+    view.setUint16(index * 2, point.pointIndex || 0, false);
   });
   
   return new Uint8Array(buffer);
@@ -323,11 +324,12 @@ function convertBonePointsToBinary(bonePoints: any[]): Uint8Array {
 function convertBoneNormalsToBinary(boneNormals: any[]): Uint8Array {
   if (!Array.isArray(boneNormals)) return new Uint8Array(0);
   
-  const buffer = new ArrayBuffer(boneNormals.length * 4); // 4 bytes per normal
+  // BonN format: H+ = unsigned short (2 bytes) per normal index
+  const buffer = new ArrayBuffer(boneNormals.length * 2); // 2 bytes per normal
   const view = new DataView(buffer);
   
   boneNormals.forEach((normal, index) => {
-    view.setUint32(index * 4, normal.normal || 0, false);
+    view.setUint16(index * 2, normal.normal || 0, false);
   });
   
   return new Uint8Array(buffer);
