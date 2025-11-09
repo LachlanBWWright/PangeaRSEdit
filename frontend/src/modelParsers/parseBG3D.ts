@@ -556,7 +556,7 @@ function convertSkeletonResourceToBG3D(
 
     bones.push({
       parentBone: boneObj.parentBone,
-      name: boneObj.name,
+      name: boneEntry.name, // Use resource name, not obj.name (which may have Pascal string prefix)
       unnamedPadding: (boneObj as any).unnamedPadding,
       coordX: boneObj.coordX,
       coordY: boneObj.coordY,

@@ -48,6 +48,7 @@ export function packResourceFork(fork: ResourceFork): Uint8Array {
   const totalSize = 16 + 240 + dataSize + mapSize;
   
   console.log(`[resforkPack] Data size: ${dataSize}, Map size: ${mapSize}, Total: ${totalSize}`);
+  console.log(`[resforkPack] Type list size: ${typeListSize}, Resource list size: ${resourceListSize}, Name list size: ${nameListSize}`);
   console.log(`[resforkPack] Resources: ${orderedResources.length}, Types: ${typeCount}`);
   console.log(`[resforkPack] Type list: ${typeListSize}, Resource list: ${resourceListSize}, Name list: ${nameListSize}`);
   
@@ -131,7 +132,10 @@ export function packResourceFork(fork: ResourceFork): Uint8Array {
     listOffset: number;
   }> = [];
   
-  let currentResourceListOffset = 0;
+  // Resource list offset is relative to TYPE LIST START (not resource list start)
+  const typeListStart = pos - 2;  // Start of type list (after count)
+  let currentResourceListOffset = typeListSize; // Start after type list
+  
   for (const [typeName, typeMap] of fork.resources) {
     const typeBytes = new TextEncoder().encode(typeName.padEnd(4).substring(0, 4));
     uint8View.set(typeBytes, pos); pos += 4;
@@ -142,7 +146,7 @@ export function packResourceFork(fork: ResourceFork): Uint8Array {
     // Write count - 1
     view.setUint16(pos, resourcesOfType.length - 1, false); pos += 2;
     
-    // Write offset to resource list for this type (relative to resource list start)
+    // Write offset to resource list for this type (relative to TYPE LIST START, not resource list start!)
     view.setUint16(pos, currentResourceListOffset, false); pos += 2;
     
     typeEntries.push({

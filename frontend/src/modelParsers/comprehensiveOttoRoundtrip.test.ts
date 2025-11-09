@@ -253,6 +253,11 @@ describe("Comprehensive Otto Round-trip Validation", () => {
     console.log(
       `  ✓ Exported skeleton: ${roundtripSkeletonBinary.byteLength} bytes`,
     );
+    
+    // Write to temp file for debugging
+    const { writeFileSync: writeFileSyncDebug } = await import('fs');
+    writeFileSyncDebug('/tmp/roundtrip_skeleton.rsrc', new Uint8Array(roundtripSkeletonBinary));
+    console.log('  ✓ Written to /tmp/roundtrip_skeleton.rsrc for inspection');
 
     // ========================================================================
     // STEP 7: Parse Round-trip Skeleton and Compare Structures

@@ -32,8 +32,11 @@ export function handleBone(
       // If first char is a small number (0-32) and matches or is close to string length-1,
       // it's likely a Pascal string length prefix
       if (firstCharCode > 0 && firstCharCode <= 32 && firstCharCode <= cleanName.length - 1) {
+        console.log(`[bone handler] Detected Pascal string: first=${firstCharCode}, total_len=${cleanName.length}`);
+        console.log(`[bone handler] Original: ${JSON.stringify(cleanName.substring(0, 10))}`);
         // Strip the length prefix
         cleanName = cleanName.substring(1, 1 + firstCharCode);
+        console.log(`[bone handler] After strip: ${JSON.stringify(cleanName)}`);
       }
     }
     
