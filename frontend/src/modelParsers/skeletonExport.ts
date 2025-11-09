@@ -106,19 +106,16 @@ export function bg3dSkeletonToSkeletonResource(
       };
     }
 
+    // NumK resource: ONE per animation, contains array of keyframe counts for all bones
+    // Initialize array with skeleton.numJoints entries (all 0)
+    const numKeyFramesArray = new Array(skeleton.numJoints).fill(0);
+    
     // Process keyframes for each bone
     Object.entries(animation.keyframes).forEach(([boneIndexStr, keyframes]) => {
       const boneIndex = parseInt(boneIndexStr);
       
-      // NumK resource ID: use same as animation (1000 + animIndex)
-      const numKResourceId = animResourceId;
-      numK[numKResourceId.toString()] = {
-        name: "Number of Keyframes",
-        order: numKResourceId,
-        obj: {
-          numKeyFrames: keyframes.length,
-        }
-      };
+      // Store the number of keyframes for this bone in the array
+      numKeyFramesArray[boneIndex] = keyframes.length;
 
       // KeyF resource ID: pattern is 1000 + (animIndex * 100) + boneIndex
       const keyFResourceId = 1000 + (animIndex * 100) + boneIndex;
@@ -140,6 +137,13 @@ export function bg3dSkeletonToSkeletonResource(
         }))
       };
     });
+    
+    // Create ONE NumK resource per animation with the array of keyframe counts
+    numK[animResourceId.toString()] = {
+      name: animation.name,
+      order: animResourceId,
+      obj: numKeyFramesArray, // Array of signed bytes, one per bone
+    };
   });
 
   return {

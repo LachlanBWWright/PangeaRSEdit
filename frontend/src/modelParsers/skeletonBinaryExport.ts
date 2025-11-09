@@ -365,11 +365,25 @@ function convertAnimationEventsToBinary(events: any[]): Uint8Array {
 }
 
 function convertNumKeyframesToBinary(numKeyframes: any): Uint8Array {
+  // NumK is an array of signed bytes (b+), one per bone
+  if (Array.isArray(numKeyframes)) {
+    // Each entry is a signed byte (int8)
+    const buffer = new ArrayBuffer(numKeyframes.length);
+    const view = new DataView(buffer);
+    
+    numKeyframes.forEach((count, index) => {
+      view.setInt8(index, count || 0);
+    });
+    
+    console.log(`[NumK] Converted ${numKeyframes.length} keyframe counts to ${buffer.byteLength} bytes`);
+    return new Uint8Array(buffer);
+  }
+  
+  // Fallback for old format (shouldn't happen now)
+  console.warn("[NumK] Received non-array format, using fallback");
   const buffer = new ArrayBuffer(4);
   const view = new DataView(buffer);
-  
   view.setUint32(0, numKeyframes.numKeyFrames || 0, false);
-  
   return new Uint8Array(buffer);
 }
 

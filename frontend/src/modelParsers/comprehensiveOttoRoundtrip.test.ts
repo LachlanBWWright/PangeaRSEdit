@@ -44,6 +44,19 @@ describe("Comprehensive Otto Round-trip Validation", () => {
     console.log(`  ✓ Loaded Otto.bg3d: ${originalBg3dData.length} bytes`);
     console.log(`  ✓ Loaded skeleton.rsrc: ${originalSkeletonData.length} bytes`);
     
+    // Count resources in original for comparison
+    const originalSkeletonResource = parseSkeletonRsrcTS(originalSkeletonData.buffer);
+    let totalOriginalResources = 0;
+    Object.keys(originalSkeletonResource).forEach(resourceType => {
+      const resources = (originalSkeletonResource as any)[resourceType];
+      if (resources && typeof resources === 'object') {
+        const count = Object.keys(resources).length;
+        totalOriginalResources += count;
+        console.log(`    - ${resourceType}: ${count} resources`);
+      }
+    });
+    console.log(`  ✓ Original skeleton has ${totalOriginalResources} total resources`);
+    
     // Extract Finder Info from original skeleton file for preservation
     const adfEntries = unpackAdf(new Uint8Array(originalSkeletonData));
     const originalFinderInfo = adfEntries.get(9); // Entry ID 9 is Finder Info
