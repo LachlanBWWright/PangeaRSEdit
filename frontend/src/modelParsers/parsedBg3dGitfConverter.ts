@@ -359,6 +359,65 @@ export function bg3dParsedToGLTF(
     }
   }
 
+  // Convert RelP entries (relative points) into glTF POINTS meshes or nodes
+  try {
+    if (parsed.skeleton && parsed.skeleton.relPoints) {
+      const relPoints = parsed.skeleton.relPoints;
+      const jointList = gltfSkin ? gltfSkin.listJoints() : [];
+      Object.entries(relPoints).forEach(([rid, points]) => {
+        if (!Array.isArray(points) || points.length === 0) return;
+
+        // Create a mesh containing the points as a POSITION accessor
+        const relMesh = doc.createMesh();
+        relMesh.setName(`RelP_${rid}`);
+
+        // Flatten points array to Float32Array
+        const flat = new Float32Array(points.flat());
+        const posAccessor = doc
+          .createAccessor()
+          .setType("VEC3")
+          .setArray(flat)
+          .setBuffer(baseBuffer);
+
+        const relPrim = doc.createPrimitive();
+        relPrim.setAttribute("POSITION", posAccessor);
+
+        // Try to set primitive mode to POINTS (glTF mode 0)
+
+        relPrim.setMode?.(0);
+
+        relMesh.addPrimitive(relPrim);
+
+        // Create node for the RelP mesh
+        const relNode = doc
+          .createNode()
+          .setName(`RelPNode_${rid}`)
+          .setMesh(relMesh);
+
+        // Parent to the joint corresponding to resource id if possible.
+        // Heuristic: resource IDs like 1000+n map to bone index n.
+        let parentNode: Node | null = skeletonArmatureNode;
+        const ridNum = parseInt(rid, 10);
+        if (!isNaN(ridNum) && gltfSkin) {
+          const boneIndex = ridNum - 1000;
+          if (boneIndex >= 0 && boneIndex < jointList.length) {
+            parentNode = jointList[boneIndex];
+          }
+        }
+
+        if (parentNode) {
+          parentNode.addChild(relNode);
+          console.log(`Added RelP_${rid} as child of ${parentNode.getName()}`);
+        } else {
+          sceneRoot.addChild(relNode);
+          console.log(`Added RelP_${rid} to scene root (no joint mapping)`);
+        }
+      });
+    }
+  } catch (e) {
+    console.warn("Failed to convert RelP to glTF nodes/meshes:", e);
+  }
+
   // Helper: add skinned meshes from a group as children of the Armature node
   // This is REQUIRED by glTF spec - skinned meshes must be descendants of skeleton root
   function addSkinnedMeshesFromGroup(group: BG3DGroup) {
