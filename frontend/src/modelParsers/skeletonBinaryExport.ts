@@ -121,6 +121,13 @@ export function skeletonResourceToBinaryTS(skeletonResource: SkeletonResource): 
   
   console.log(`Packing ${resourceMap.size} resource types...`);
   
+  // Count total resources for debugging
+  let totalResources = 0;
+  for (const typeMap of resourceMap.values()) {
+    totalResources += typeMap.size;
+  }
+  console.log(`Total resources: ${totalResources}`);
+  
   // Use the Python-compatible pack function
   const resourceFork = packResourceFork(fork);
   

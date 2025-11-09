@@ -44,6 +44,10 @@ export function packResourceFork(fork: ResourceFork): Uint8Array {
   // Total size: 16 byte header + 240 bytes reserved + data + map
   const totalSize = 16 + 240 + dataSize + mapSize;
   
+  console.log(`[resforkPack] Data size: ${dataSize}, Map size: ${mapSize}, Total: ${totalSize}`);
+  console.log(`[resforkPack] Resources: ${orderedResources.length}, Types: ${typeCount}`);
+  console.log(`[resforkPack] Type list: ${typeListSize}, Resource list: ${resourceListSize}, Name list: ${nameListSize}`);
+  
   const buffer = new ArrayBuffer(totalSize);
   const view = new DataView(buffer);
   const uint8View = new Uint8Array(buffer);
