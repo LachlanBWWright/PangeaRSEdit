@@ -81,10 +81,16 @@ export function packResourceFork(fork: ResourceFork): Uint8Array {
   const dataStart = pos;
   const resourceDataOffsets = new Map<string, number>();
   
-  for (const res of orderedResources) {
+  for (let i = 0; i < orderedResources.length; i++) {
+    const res = orderedResources[i];
     const key = `${res.type}:${res.num}`;
     // Store offset relative to data section start
     resourceDataOffsets.set(key, pos - dataStart);
+    
+    // Debug first 10 and resource #4
+    if (i < 10 || i === 4) {
+      console.log(`[resforkPack] Resource #${i}: ${res.type}:${res.num}, length=${res.data.length}, offset=0x${(pos - 256).toString(16)}`);
+    }
     
     // Write data length (4 bytes, big-endian)
     view.setUint32(pos, res.data.length, false); pos += 4;

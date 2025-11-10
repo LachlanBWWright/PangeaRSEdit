@@ -198,13 +198,25 @@ function convertBoneToBinary(bone: any): Uint8Array {
   // Write parent bone index (signed 16-bit integer = 2 bytes)
   view.setInt16(0, bone.parentBone !== undefined ? bone.parentBone : -1, false);
   
-  // Write bone name (32 bytes) - Pascal string format: length byte + characters
+  // Write bone name (32 bytes starting at byte 2)
+  // Format: 2 bytes padding + 1 byte length + up to 29 bytes name + padding
+  // The 32s struct field starts at byte 2 and includes 2-byte padding before Pascal string
   if (bone.name && typeof bone.name === 'string') {
+    // First 2 bytes of the 32-byte field are padding (bytes 2-3) - set to 0xFF
+    uint8View[2] = 0xFF;
+    uint8View[3] = 0xFF;
+    
+    // Then Pascal string: length byte at byte 4, name starts at byte 5
     const nameBytes = new TextEncoder().encode(bone.name);
-    const nameLength = Math.min(nameBytes.length, 31); // Max 31 chars (1 byte for length)
-    uint8View[2] = nameLength; // Write length prefix at position 2
-    uint8View.set(nameBytes.slice(0, nameLength), 3); // Write name bytes starting at position 3
-    // Rest of the 32-byte field is already zero-filled
+    const nameLength = Math.min(nameBytes.length, 29); // Max 29 chars (2 bytes padding + 1 length + 29 chars = 32)
+    uint8View[4] = nameLength; // Write length prefix at byte 4
+    uint8View.set(nameBytes.slice(0, nameLength), 5); // Write name bytes starting at byte 5
+    // Rest of the 32-byte field (bytes 5+nameLength to 33) is already zero-filled
+  } else {
+    // No name - fill with padding
+    uint8View[2] = 0xFF;
+    uint8View[3] = 0xFF;
+    uint8View[4] = 0x00; // Zero length
   }
   
   // Write unnamed/padding field (2 bytes at offset 34) - preserve if available, else 0
