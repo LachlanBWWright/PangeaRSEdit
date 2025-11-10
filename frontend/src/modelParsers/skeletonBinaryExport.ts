@@ -2,9 +2,9 @@
 // Converts SkeletonResource JSON back to binary .rsrc format
 
 import type { SkeletonResource } from "../python/structSpecs/skeleton/skeletonInterface";
-import { saveFromJson } from "../rsrcdump/rsrcdump-ts/src/rsrcdump.js";
-import { skeletonSpecs } from "../python/structSpecs/skeleton/skeleton.js";
+import type { ResourceFork, Resource } from "../rsrcdump-ts/types";
 import { packAdf } from "../rsrcdump-ts/adf";
+import { packResourceFork } from "../rsrcdump-ts/resforkPack";
 import { skeletonResourceToBinary as skeletonResourceToBinaryPyodide } from "./skeletonExport";
 
 // Global storage for Finder Info to preserve during round-trip
@@ -45,18 +45,90 @@ export function skeletonResourceToBinary(
 
 /**
  * Convert SkeletonResource JSON to binary .rsrc format using TypeScript implementation
- * Uses the rsrcdump-ts library which provides byte-perfect packing
+ * Uses the resforkPack module which matches Python rsrcdump byte-for-byte
  */
 export function skeletonResourceToBinaryTS(skeletonResource: SkeletonResource): ArrayBuffer {
-  console.log("Converting SkeletonResource to binary format using rsrcdump-ts...");
+  console.log("Converting SkeletonResource to binary format using TypeScript pack...");
   
-  // Use rsrcdump-ts saveFromJson with skeleton specs to convert JSON to binary
-  // This handles all the packing using the official rsrcdump TypeScript library
-  const resourceFork = saveFromJson(
-    skeletonResource,
-    skeletonSpecs,
-    false // Don't use otto specs, use the provided skeleton specs
-  );
+  // Build ResourceFork structure
+  const resourceMap = new Map<string, Map<number, Resource>>();
+  
+  // Process each resource type
+  Object.entries(skeletonResource).forEach(([resourceType, resources]) => {
+    if (resourceType === '_metadata') return; // Skip metadata
+    
+    if (typeof resources === 'object' && resources !== null) {
+      const typeMap = new Map<number, Resource>();
+      
+      Object.entries(resources).forEach(([resourceId, resource]: [string, any]) => {
+        if (resource && typeof resource === 'object') {
+          let binaryData: Uint8Array;
+          
+          if (resource.obj) {
+            // Convert structured object data to binary format
+            binaryData = convertResourceObjectToBinary(resourceType, resource.obj);
+          } else if (resource.data) {
+            // Handle raw data (like 'alis' resources)
+            if (typeof resource.data === 'string') {
+              // Convert hex string to binary
+              const hexString = resource.data.replace(/\s/g, '');
+              binaryData = new Uint8Array(hexString.length / 2);
+              for (let i = 0; i < hexString.length; i += 2) {
+                binaryData[i / 2] = parseInt(hexString.substr(i, 2), 16);
+              }
+            } else if (resource.data instanceof Uint8Array) {
+              binaryData = resource.data;
+            } else {
+              console.warn(`Unknown data format for ${resourceType}:${resourceId}`);
+              binaryData = new Uint8Array(0);
+            }
+          } else {
+            console.warn(`No obj or data field for ${resourceType}:${resourceId}`);
+            binaryData = new Uint8Array(0);
+          }
+          
+          const resNum = parseInt(resourceId);
+          const resName = resource.name || '';
+          
+          typeMap.set(resNum, {
+            type: resourceType,
+            num: resNum,
+            data: binaryData,
+            name: resName, // Keep as string, resforkPack will encode it
+            flags: resource.flags !== undefined ? resource.flags : 0,
+            junk: resource.junk !== undefined ? resource.junk : 0,
+            order: resource.order !== undefined ? resource.order : resNum,
+          });
+        }
+      });
+      
+      if (typeMap.size > 0) {
+        resourceMap.set(resourceType, typeMap);
+      }
+    }
+  });
+  
+  // Extract metadata fields
+  const metadata = (skeletonResource as any)._metadata || {};
+  
+  const fork: ResourceFork = {
+    resources: resourceMap,
+    fileAttributes: metadata.file_attributes !== undefined ? metadata.file_attributes : 0,
+    junkNextresmap: metadata.junk1 !== undefined ? metadata.junk1 : 0,
+    junkFilerefnum: metadata.junk2 !== undefined ? metadata.junk2 : 0,
+  };
+  
+  console.log(`Packing ${resourceMap.size} resource types...`);
+  
+  // Count total resources for debugging
+  let totalResources = 0;
+  for (const typeMap of resourceMap.values()) {
+    totalResources += typeMap.size;
+  }
+  console.log(`Total resources: ${totalResources}`);
+  
+  // Use the Python-compatible pack function
+  const resourceFork = packResourceFork(fork);
   
   console.log(`Created resource fork: ${resourceFork.length} bytes`);
   
@@ -126,25 +198,13 @@ function convertBoneToBinary(bone: any): Uint8Array {
   // Write parent bone index (signed 16-bit integer = 2 bytes)
   view.setInt16(0, bone.parentBone !== undefined ? bone.parentBone : -1, false);
   
-  // Write bone name (32 bytes starting at byte 2)
-  // Format: 2 bytes padding + 1 byte length + up to 29 bytes name + padding
-  // The 32s struct field starts at byte 2 and includes 2-byte padding before Pascal string
+  // Write bone name (32 bytes) - Pascal string format: length byte + characters
   if (bone.name && typeof bone.name === 'string') {
-    // First 2 bytes of the 32-byte field are padding (bytes 2-3) - set to 0xFF
-    uint8View[2] = 0xFF;
-    uint8View[3] = 0xFF;
-    
-    // Then Pascal string: length byte at byte 4, name starts at byte 5
     const nameBytes = new TextEncoder().encode(bone.name);
-    const nameLength = Math.min(nameBytes.length, 29); // Max 29 chars (2 bytes padding + 1 length + 29 chars = 32)
-    uint8View[4] = nameLength; // Write length prefix at byte 4
-    uint8View.set(nameBytes.slice(0, nameLength), 5); // Write name bytes starting at byte 5
-    // Rest of the 32-byte field (bytes 5+nameLength to 33) is already zero-filled
-  } else {
-    // No name - fill with padding
-    uint8View[2] = 0xFF;
-    uint8View[3] = 0xFF;
-    uint8View[4] = 0x00; // Zero length
+    const nameLength = Math.min(nameBytes.length, 31); // Max 31 chars (1 byte for length)
+    uint8View[2] = nameLength; // Write length prefix at position 2
+    uint8View.set(nameBytes.slice(0, nameLength), 3); // Write name bytes starting at position 3
+    // Rest of the 32-byte field is already zero-filled
   }
   
   // Write unnamed/padding field (2 bytes at offset 34) - preserve if available, else 0
@@ -284,6 +344,7 @@ function convertKeyframesToBinary(keyframes: any[]): Uint8Array {
 function convertRelativePointsToBinary(points: any[]): Uint8Array {
   // RelP: Array of 3D points (x, y, z) - 3 float32s per point = 12 bytes per point
   const numPoints = points.length;
+  console.log(`[DEBUG] convertRelativePointsToBinary called with ${numPoints} points`);
   const buffer = new ArrayBuffer(numPoints * 12);
   const view = new DataView(buffer);
   
@@ -294,5 +355,6 @@ function convertRelativePointsToBinary(points: any[]): Uint8Array {
     view.setFloat32(offset + 8, point.relOffsetZ || 0, false);
   });
   
+  console.log(`[DEBUG] convertRelativePointsToBinary produced ${buffer.byteLength} bytes`);
   return new Uint8Array(buffer);
 }
