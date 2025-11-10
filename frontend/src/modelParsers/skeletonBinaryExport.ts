@@ -2,9 +2,9 @@
 // Converts SkeletonResource JSON back to binary .rsrc format
 
 import type { SkeletonResource } from "../python/structSpecs/skeleton/skeletonInterface";
-import type { ResourceFork, Resource } from "../rsrcdump-ts/types";
+import { saveFromJson } from "../rsrcdump/rsrcdump-ts/src/rsrcdump.js";
+import { skeletonSpecs } from "../python/structSpecs/skeleton/skeleton.js";
 import { packAdf } from "../rsrcdump-ts/adf";
-import { packResourceFork } from "../rsrcdump-ts/resforkPack";
 import { skeletonResourceToBinary as skeletonResourceToBinaryPyodide } from "./skeletonExport";
 
 // Global storage for Finder Info to preserve during round-trip
@@ -45,107 +45,18 @@ export function skeletonResourceToBinary(
 
 /**
  * Convert SkeletonResource JSON to binary .rsrc format using TypeScript implementation
- * Uses the resforkPack module which matches Python rsrcdump byte-for-byte
+ * Uses the rsrcdump-ts library which provides byte-perfect packing
  */
 export function skeletonResourceToBinaryTS(skeletonResource: SkeletonResource): ArrayBuffer {
-  console.log("Converting SkeletonResource to binary format using TypeScript pack...");
+  console.log("Converting SkeletonResource to binary format using rsrcdump-ts...");
   
-  // Build ResourceFork structure
-  const resourceMap = new Map<string, Map<number, Resource>>();
-  
-  // Process each resource type
-  Object.entries(skeletonResource).forEach(([resourceType, resources]) => {
-    if (resourceType === '_metadata') return; // Skip metadata
-    
-    if (typeof resources === 'object' && resources !== null) {
-      const typeMap = new Map<number, Resource>();
-      
-      Object.entries(resources).forEach(([resourceId, resource]: [string, any]) => {
-        if (resource && typeof resource === 'object') {
-          let binaryData: Uint8Array;
-          
-          // For RelP and similar resources that might have expanded data,
-          // prefer using original binary data if available
-          if (resource.data && (resourceType === 'RelP' || resourceType === 'alis')) {
-            // Use raw binary data
-            if (typeof resource.data === 'string') {
-              // Convert hex string to binary
-              const hexString = resource.data.replace(/\s/g, '');
-              binaryData = new Uint8Array(hexString.length / 2);
-              for (let i = 0; i < hexString.length; i += 2) {
-                binaryData[i / 2] = parseInt(hexString.substr(i, 2), 16);
-              }
-            } else if (resource.data instanceof Uint8Array) {
-              binaryData = resource.data;
-            } else {
-              console.warn(`Unknown data format for ${resourceType}:${resourceId}`);
-              binaryData = new Uint8Array(0);
-            }
-          } else if (resource.obj) {
-            // Convert structured object data to binary format
-            binaryData = convertResourceObjectToBinary(resourceType, resource.obj);
-          } else if (resource.data) {
-            // Handle raw data (like 'alis' resources)
-            if (typeof resource.data === 'string') {
-              // Convert hex string to binary
-              const hexString = resource.data.replace(/\s/g, '');
-              binaryData = new Uint8Array(hexString.length / 2);
-              for (let i = 0; i < hexString.length; i += 2) {
-                binaryData[i / 2] = parseInt(hexString.substr(i, 2), 16);
-              }
-            } else if (resource.data instanceof Uint8Array) {
-              binaryData = resource.data;
-            } else {
-              console.warn(`Unknown data format for ${resourceType}:${resourceId}`);
-              binaryData = new Uint8Array(0);
-            }
-          } else {
-            console.warn(`No obj or data field for ${resourceType}:${resourceId}`);
-            binaryData = new Uint8Array(0);
-          }
-          
-          const resNum = parseInt(resourceId);
-          const resName = resource.name || '';
-          
-          typeMap.set(resNum, {
-            type: resourceType,
-            num: resNum,
-            data: binaryData,
-            name: resName, // Keep as string, resforkPack will encode it
-            flags: resource.flags !== undefined ? resource.flags : 0,
-            junk: resource.junk !== undefined ? resource.junk : 0,
-            order: resource.order !== undefined ? resource.order : resNum,
-          });
-        }
-      });
-      
-      if (typeMap.size > 0) {
-        resourceMap.set(resourceType, typeMap);
-      }
-    }
-  });
-  
-  // Extract metadata fields
-  const metadata = (skeletonResource as any)._metadata || {};
-  
-  const fork: ResourceFork = {
-    resources: resourceMap,
-    fileAttributes: metadata.file_attributes !== undefined ? metadata.file_attributes : 0,
-    junkNextresmap: metadata.junk1 !== undefined ? metadata.junk1 : 0,
-    junkFilerefnum: metadata.junk2 !== undefined ? metadata.junk2 : 0,
-  };
-  
-  console.log(`Packing ${resourceMap.size} resource types...`);
-  
-  // Count total resources for debugging
-  let totalResources = 0;
-  for (const typeMap of resourceMap.values()) {
-    totalResources += typeMap.size;
-  }
-  console.log(`Total resources: ${totalResources}`);
-  
-  // Use the Python-compatible pack function
-  const resourceFork = packResourceFork(fork);
+  // Use rsrcdump-ts saveFromJson with skeleton specs to convert JSON to binary
+  // This handles all the packing using the official rsrcdump TypeScript library
+  const resourceFork = saveFromJson(
+    skeletonResource,
+    skeletonSpecs,
+    false // Don't use otto specs, use the provided skeleton specs
+  );
   
   console.log(`Created resource fork: ${resourceFork.length} bytes`);
   
