@@ -117,6 +117,7 @@ export interface BG3DGroup {
 export interface BG3DBone {
   parentBone: number; // -1 if no parent, otherwise index of parent bone
   name: string;
+  unnamedPadding?: number; // 2-byte padding field in Bone struct
   coordX: number;
   coordY: number;
   coordZ: number;
@@ -124,6 +125,15 @@ export interface BG3DBone {
   numNormalsAttachedToBone: number;
   pointIndices?: number[]; // Indices of points attached to this bone
   normalIndices?: number[]; // Indices of normals attached to this bone
+  // Reserved fields from Bone struct (8 uint32s = 32 bytes)
+  reserved0?: number;
+  reserved1?: number;
+  reserved2?: number;
+  reserved3?: number;
+  reserved4?: number;
+  reserved5?: number;
+  reserved6?: number;
+  reserved7?: number;
 }
 
 export interface BG3DKeyframe {

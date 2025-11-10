@@ -64,11 +64,20 @@ export interface SkeletonHeader {
 export interface BoneObj {
   parentBone: number; // -1 if no parent, otherwise index of parent bone
   name: string;
+  unnamedPadding?: number; // 2-byte padding field
   coordX: number;
   coordY: number;
   coordZ: number;
   numPointsAttachedToBone: number;
   numNormalsAttachedToBone: number;
+  reserved0?: number; // Reserved field 0
+  reserved1?: number; // Reserved field 1
+  reserved2?: number; // Reserved field 2
+  reserved3?: number; // Reserved field 3
+  reserved4?: number; // Reserved field 4
+  reserved5?: number; // Reserved field 5
+  reserved6?: number; // Reserved field 6
+  reserved7?: number; // Reserved field 7
 }
 
 export interface BoneEntry {
