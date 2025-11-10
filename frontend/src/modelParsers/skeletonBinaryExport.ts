@@ -64,7 +64,24 @@ export function skeletonResourceToBinaryTS(skeletonResource: SkeletonResource): 
         if (resource && typeof resource === 'object') {
           let binaryData: Uint8Array;
           
-          if (resource.obj) {
+          // For RelP and similar resources that might have expanded data,
+          // prefer using original binary data if available
+          if (resource.data && (resourceType === 'RelP' || resourceType === 'alis')) {
+            // Use raw binary data
+            if (typeof resource.data === 'string') {
+              // Convert hex string to binary
+              const hexString = resource.data.replace(/\s/g, '');
+              binaryData = new Uint8Array(hexString.length / 2);
+              for (let i = 0; i < hexString.length; i += 2) {
+                binaryData[i / 2] = parseInt(hexString.substr(i, 2), 16);
+              }
+            } else if (resource.data instanceof Uint8Array) {
+              binaryData = resource.data;
+            } else {
+              console.warn(`Unknown data format for ${resourceType}:${resourceId}`);
+              binaryData = new Uint8Array(0);
+            }
+          } else if (resource.obj) {
             // Convert structured object data to binary format
             binaryData = convertResourceObjectToBinary(resourceType, resource.obj);
           } else if (resource.data) {
@@ -356,7 +373,6 @@ function convertKeyframesToBinary(keyframes: any[]): Uint8Array {
 function convertRelativePointsToBinary(points: any[]): Uint8Array {
   // RelP: Array of 3D points (x, y, z) - 3 float32s per point = 12 bytes per point
   const numPoints = points.length;
-  console.log(`[DEBUG] convertRelativePointsToBinary called with ${numPoints} points`);
   const buffer = new ArrayBuffer(numPoints * 12);
   const view = new DataView(buffer);
   
@@ -367,6 +383,5 @@ function convertRelativePointsToBinary(points: any[]): Uint8Array {
     view.setFloat32(offset + 8, point.relOffsetZ || 0, false);
   });
   
-  console.log(`[DEBUG] convertRelativePointsToBinary produced ${buffer.byteLength} bytes`);
   return new Uint8Array(buffer);
 }
