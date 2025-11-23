@@ -159,11 +159,11 @@ describe("Comprehensive Otto Round-trip Validation", () => {
         const jointName = joint.getName();
         expect(jointName).toBeTruthy();
         expect(jointName.length).toBeGreaterThan(0);
-        // Verify names are sanitized (no spaces)
-        expect(jointName).not.toMatch(/\s/);
+        // Bone names preserve original format including spaces for perfect roundtrip
+        // e.g., "Left Hand" not "Left_Hand"
       });
       console.log(
-        `    ✓ All ${joints.length} joints have valid, sanitized names`,
+        `    ✓ All ${joints.length} joints have valid names (spaces preserved for roundtrip)`,
       );
     }
 
