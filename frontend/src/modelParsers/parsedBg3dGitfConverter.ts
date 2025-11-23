@@ -19,6 +19,7 @@ import {
   rgb24ToPng,
   rgba8ToPng,
   pngToRgba8,
+  pngToRgb8,
 } from "./image/pngArgb";
 
 import {
@@ -545,15 +546,17 @@ export async function gltfToBG3D(doc: Document): Promise<BG3DParseResult> {
             image[6] === 0x1A && image[7] === 0x0A;
           
           if (isPNG) {
-            // Pass the full Uint8Array (PNG data with headers), not just the buffer
-            const pngRes = await pngToRgba8(Buffer.from(image));
+            // BG3D textures are typically RGB format (no alpha channel)
+            // Even if PNG is stored as RGBA in glTF (due to pngjs library limitations),
+            // we convert back to RGB to match original format and prevent file size inflation
+            const pngRes = await pngToRgb8(Buffer.from(image));
+            
             const textureExtra = materialExtras[index]?.textureExtras?.[0];
             textures.push({
               pixels: pngRes.data,
               width: pngRes.width,
               height: pngRes.height,
-              srcPixelFormat:
-                textureExtra?.srcPixelFormat || PixelFormatSrc.GL_RGBA,
+              srcPixelFormat: PixelFormatSrc.GL_RGB, // BG3D default format
               dstPixelFormat:
                 textureExtra?.dstPixelFormat ||
                 PixelFormatDst.GL_UNSIGNED_SHORT_5_5_5_1,
