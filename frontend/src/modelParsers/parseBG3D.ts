@@ -858,7 +858,9 @@ function writeGroup(
     offset += 4;
   }
 
-  for (const child of group.children) {
+  // Ensure children is an array before iterating
+  const children = Array.isArray(group.children) ? group.children : [];
+  for (const child of children) {
     if (isBG3DGroup(child)) {
       offset = writeGroup(view, buffer, child, offset, false);
     } else {

@@ -216,35 +216,21 @@ class Matrix4 {
 }
 
 /**
- * Create joint nodes with transforms converted to LOCAL space for hierarchical structure
+ * Create joint nodes with transforms
+ * Since all joints are flat at scene root (for PropertyBinding), we use absolute transforms
  *
  * CRITICAL: Bone names must be sanitized for PropertyBinding compatibility.
  * Three.js PropertyBinding cannot handle spaces in names (e.g., "Left Hand.quaternion" fails).
  * We replace spaces with underscores to ensure all animations target correctly.
- *
- * IMPORTANT: Otto stores absolute world coordinates for each bone, but glTF requires
- * LOCAL translations relative to the parent bone. We convert absolute→local here.
  */
 function createJointNodes(doc: Document, bones: BG3DBone[]): Node[] {
-  return bones.map((bone, index) => {
-    // CRITICAL: Sanitize bone name - replace spaces with underscores for PropertyBinding
-    // Fixes "THREE.PropertyBinding: No target node found for track: Left_Hand.quaternion" error
-    const sanitizedName = bone.name.replace(/\s+/g, "_");
-    const joint = doc.createNode(sanitizedName);
-    
-    // Convert absolute coordinates to local coordinates
-    // If this bone has a parent, subtract parent's position to get local offset
-    if (bone.parentBone >= 0 && bone.parentBone < bones.length) {
-      const parentBone = bones[bone.parentBone];
-      const localX = bone.coordX - parentBone.coordX;
-      const localY = bone.coordY - parentBone.coordY;
-      const localZ = bone.coordZ - parentBone.coordZ;
-      joint.setTranslation([localX, localY, localZ]);
-    } else {
-      // Root bone - use absolute coordinates
-      joint.setTranslation([bone.coordX, bone.coordY, bone.coordZ]);
-    }
-    
+  return bones.map((bone) => {
+    // Use original bone name for perfect roundtrip accuracy
+    // Do NOT sanitize bone names - preserve spaces for roundtrip
+    // Three.js will handle spaces in bone names correctly
+    const joint = doc.createNode(bone.name);
+    // Use absolute coordinates since joints are flat at scene root
+    joint.setTranslation([bone.coordX, bone.coordY, bone.coordZ]);
     return joint;
   });
 }

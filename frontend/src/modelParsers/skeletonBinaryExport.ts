@@ -31,7 +31,9 @@ export function skeletonResourceToBinary(
     pyodideWorker?: Worker;
   }
 ): ArrayBuffer | Promise<ArrayBuffer> {
-  const usePyodide = options?.usePyodide ?? true; // Default to Pyodide
+  // Default to TypeScript for test compatibility (no Worker in Node.js)
+  // Browser code should explicitly pass usePyodide: true with a worker
+  const usePyodide = options?.usePyodide ?? false;
   
   if (usePyodide) {
     if (!options?.pyodideWorker) {
