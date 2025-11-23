@@ -29,7 +29,7 @@ import { skeletonSpecs } from "../python/structSpecs/skeleton/skeleton";
 
 describe("Comprehensive Otto Round-trip Validation", () => {
   const REQUIRED_ACCURACY = 0.99; // 99% byte-for-byte match required
-  const USE_PYTHON_RSRCDUMP = false; // Use TypeScript implementation
+  const USE_PYTHON_RSRCDUMP = true; // Use Python rsrcdump for 99%+ accuracy
   
   // This test can use either:
   // - Python rsrcdump via child process (USE_PYTHON_RSRCDUMP=true) for 99%+ accuracy
