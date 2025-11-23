@@ -216,18 +216,18 @@ class Matrix4 {
 }
 
 /**
- * Create joint nodes with transforms
- * Since all joints are flat at scene root (for PropertyBinding), we use absolute transforms
+ * Create joint nodes (bones) for the skeleton.
  *
- * CRITICAL: Bone names must be sanitized for PropertyBinding compatibility.
- * Three.js PropertyBinding cannot handle spaces in names (e.g., "Left Hand.quaternion" fails).
- * We replace spaces with underscores to ensure all animations target correctly.
+ * IMPORTANT: Bone names are preserved exactly as they appear in the Otto Matic files,
+ * including spaces (e.g., "Left Hand"). This ensures perfect roundtrip accuracy.
+ * Modern Three.js versions handle spaces in bone names correctly.
+ *
+ * Note: Otto stores absolute world coordinates for each bone. Since we add joints
+ * flat at the scene root (not in a hierarchy), we use these absolute coordinates directly.
  */
 function createJointNodes(doc: Document, bones: BG3DBone[]): Node[] {
   return bones.map((bone) => {
-    // Use original bone name for perfect roundtrip accuracy
-    // Do NOT sanitize bone names - preserve spaces for roundtrip
-    // Three.js will handle spaces in bone names correctly
+    // Preserve original bone names for perfect roundtrip accuracy
     const joint = doc.createNode(bone.name);
     // Use absolute coordinates since joints are flat at scene root
     joint.setTranslation([bone.coordX, bone.coordY, bone.coordZ]);
