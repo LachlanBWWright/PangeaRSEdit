@@ -537,19 +537,31 @@ export async function gltfToBG3D(doc: Document): Promise<BG3DParseResult> {
       if (baseColorTex) {
         const image = baseColorTex.getImage();
         if (image instanceof Uint8Array) {
-          const pngRes = await pngToRgba8(image.buffer as ArrayBuffer);
-          const textureExtra = materialExtras[index]?.textureExtras?.[0];
-          textures.push({
-            pixels: pngRes.data,
-            width: pngRes.width,
-            height: pngRes.height,
-            srcPixelFormat:
-              textureExtra?.srcPixelFormat || PixelFormatSrc.GL_RGBA,
-            dstPixelFormat:
-              textureExtra?.dstPixelFormat ||
-              PixelFormatDst.GL_UNSIGNED_SHORT_5_5_5_1,
-            bufferSize: pngRes.data.byteLength, // Use actual converted data size
-          });
+          // Verify this is valid PNG data by checking PNG signature
+          const isPNG = image.length >= 8 &&
+            image[0] === 0x89 && image[1] === 0x50 && 
+            image[2] === 0x4E && image[3] === 0x47 &&
+            image[4] === 0x0D && image[5] === 0x0A &&
+            image[6] === 0x1A && image[7] === 0x0A;
+          
+          if (isPNG) {
+            // Pass the full Uint8Array (PNG data with headers), not just the buffer
+            const pngRes = await pngToRgba8(Buffer.from(image));
+            const textureExtra = materialExtras[index]?.textureExtras?.[0];
+            textures.push({
+              pixels: pngRes.data,
+              width: pngRes.width,
+              height: pngRes.height,
+              srcPixelFormat:
+                textureExtra?.srcPixelFormat || PixelFormatSrc.GL_RGBA,
+              dstPixelFormat:
+                textureExtra?.dstPixelFormat ||
+                PixelFormatDst.GL_UNSIGNED_SHORT_5_5_5_1,
+              bufferSize: pngRes.data.byteLength, // Use actual converted data size
+            });
+          } else {
+            console.warn("Image data from glTF is not valid PNG, skipping texture for material", index);
+          }
         }
       }
 
