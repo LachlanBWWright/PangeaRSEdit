@@ -571,9 +571,11 @@ export async function gltfToBG3D(doc: Document): Promise<BG3DParseResult> {
     const joints = skin.listJoints();
 
     if (joints.length > 0) {
-      // First pass: create bones with basic data
+      // First pass: create bones with basic data and infer hierarchy
+      // CRITICAL: We need to convert LOCAL translations back to ABSOLUTE (world) coordinates
+      // because Otto stores absolute bone positions, but glTF uses local (parent-relative) transforms
       const bones: BG3DBone[] = joints.map((joint, index) => {
-        const translation = joint.getTranslation() || [0, 0, 0];
+        const localTranslation = joint.getTranslation() || [0, 0, 0];
 
         // Infer parentBone from node hierarchy (glTF 2.0 compliant)
         let parentBone = -1;
@@ -596,15 +598,42 @@ export async function gltfToBG3D(doc: Document): Promise<BG3DParseResult> {
         return {
           parentBone,
           name: joint.getName() || `bone_${index}`,
-          coordX: translation[0],
-          coordY: translation[1],
-          coordZ: translation[2],
+          coordX: localTranslation[0],  // Temporarily local, will convert to absolute below
+          coordY: localTranslation[1],
+          coordZ: localTranslation[2],
           numPointsAttachedToBone: 0,  // Will be calculated below
           numNormalsAttachedToBone: 0, // Will be calculated below
           pointIndices: [],  // Will be populated below
           normalIndices: [], // Will be populated below
         };
       });
+      
+      // Second pass: Convert local translations to absolute world coordinates
+      // Process bones in dependency order (parents before children)
+      const convertedBones = new Set<number>();
+      
+      function convertBoneToAbsolute(boneIndex: number) {
+        if (convertedBones.has(boneIndex)) return;
+        
+        const bone = bones[boneIndex];
+        
+        // If this bone has a parent, convert parent first, then add parent's position
+        if (bone.parentBone >= 0 && bone.parentBone < bones.length) {
+          convertBoneToAbsolute(bone.parentBone);
+          const parentBone = bones[bone.parentBone];
+          
+          // Convert local to absolute: absolute = parent_absolute + local
+          bone.coordX += parentBone.coordX;
+          bone.coordY += parentBone.coordY;
+          bone.coordZ += parentBone.coordZ;
+        }
+        // Root bones already have absolute coordinates (local == absolute when no parent)
+        
+        convertedBones.add(boneIndex);
+      }
+      
+      // Convert all bones to absolute coordinates
+      bones.forEach((_, index) => convertBoneToAbsolute(index));
 
       // Second pass: extract pointIndices and normalIndices from mesh skinning data
       // Collect all vertices influenced by each bone from JOINTS_0 and WEIGHTS_0 attributes
