@@ -108,7 +108,7 @@ describe("BG3D Skeleton Round-trip with FULL ACCURACY", () => {
       const roundtripSkeletonResource = bg3dSkeletonToSkeletonResource(
         roundtripBg3d.skeleton!,
       );
-      roundtripSkeletonBinary = skeletonResourceToBinary(
+      roundtripSkeletonBinary = await skeletonResourceToBinary(
         roundtripSkeletonResource,
       );
     }
@@ -144,11 +144,39 @@ describe("BG3D Skeleton Round-trip with FULL ACCURACY", () => {
       )}% (${bg3dMismatches} mismatches out of ${maxBg3dLength} bytes)`,
     );
 
+    // Skeleton byte-for-byte check (when possible)
+    const originalSkeletonArray = new Uint8Array(
+      originalSkeletonData.buffer.slice(
+        originalSkeletonData.byteOffset,
+        originalSkeletonData.byteOffset + originalSkeletonData.byteLength,
+      ),
+    );
+    const roundtripSkeletonArray = new Uint8Array(roundtripSkeletonBinary);
+
+    let skeletonMismatches = 0;
+    const maxSkeletonLength = Math.min(
+      originalSkeletonArray.length,
+      roundtripSkeletonArray.length,
+    );
+
+    for (let i = 0; i < maxSkeletonLength; i++) {
+      if (originalSkeletonArray[i] !== roundtripSkeletonArray[i]) {
+        skeletonMismatches++;
+      }
+    }
+
+    const skeletonAccuracy = 1 - skeletonMismatches / maxSkeletonLength;
+    console.log(
+      `Skeleton Accuracy: ${(skeletonAccuracy * 100).toFixed(
+        8,
+      )}% (${skeletonMismatches} mismatches out of ${maxSkeletonLength} bytes)`,
+    );
+
     // Skeleton accuracy check (structural comparison since binary format may differ)
     const roundtripSkeletonResource = bg3dSkeletonToSkeletonResource(
       roundtripBg3d.skeleton!,
     );
-    const reparsedSkeletonBinary = skeletonResourceToBinary(
+    const reparsedSkeletonBinary = await skeletonResourceToBinary(
       roundtripSkeletonResource,
     );
     const reparsedSkeletonResource = parseSkeletonRsrcTS(
@@ -179,6 +207,20 @@ describe("BG3D Skeleton Round-trip with FULL ACCURACY", () => {
     } else {
       expect(bg3dAccuracy).toBeGreaterThan(0.9999); // 99.99% minimum when reconstructing
       console.log("✅ BG3D: High accuracy achieved (reconstruction mode)");
+    }
+
+    // REQUIRE 100% ACCURACY for Skeleton when preserved binary available
+    if (originalSkeletonBinary) {
+      // also require equal length
+      expect(roundtripSkeletonArray.length).toBe(originalSkeletonArray.length);
+      expect(skeletonAccuracy).toBe(1.0);
+      console.log("✅ Skeleton: 100% byte-for-byte accuracy achieved");
+    } else {
+      // If not preserved, ensure structural parity (checked below) and high byte similarity
+      expect(skeletonAccuracy).toBeGreaterThan(0.9999);
+      console.log(
+        "✅ Skeleton: High byte-level similarity (reconstruction mode)",
+      );
     }
 
     console.log("✅ Skeleton structure perfectly preserved");

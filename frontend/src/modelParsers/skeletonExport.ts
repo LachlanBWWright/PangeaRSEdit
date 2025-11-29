@@ -177,7 +177,7 @@ export function bg3dSkeletonToSkeletonResource(
     Evnt: evnt,
     NumK: numK,
     KeyF: keyF,
-    alis: alisData || {}, // Include alis if provided, otherwise empty
+    alis: (alisData && Object.keys(alisData).length>0) ? alisData : { "1000": { name: "alis", order: 1000, data: "00" } }, // Ensure alis resource exists (placeholder hex data if missing)
     _metadata: metadata || {}, // Include metadata if provided, otherwise empty
   };
 }

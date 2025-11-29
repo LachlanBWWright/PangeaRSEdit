@@ -9,6 +9,7 @@
  */
 
 import { Document, Node, Skin, Animation, Buffer } from "@gltf-transform/core";
+import { Vector3 } from "three";
 import {
   BG3DSkeleton,
   BG3DBone,
@@ -213,24 +214,210 @@ class Matrix4 {
 
     return result;
   }
+
+  multiply(other: Matrix4): Matrix4 {
+    const result = new Matrix4();
+    const a = this.data;
+    const b = other.data;
+    const out = result.data;
+
+    const a00 = a[0],
+      a01 = a[1],
+      a02 = a[2],
+      a03 = a[3];
+    const a10 = a[4],
+      a11 = a[5],
+      a12 = a[6],
+      a13 = a[7];
+    const a20 = a[8],
+      a21 = a[9],
+      a22 = a[10],
+      a23 = a[11];
+    const a30 = a[12],
+      a31 = a[13],
+      a32 = a[14],
+      a33 = a[15];
+
+    const b00 = b[0],
+      b01 = b[1],
+      b02 = b[2],
+      b03 = b[3];
+    const b10 = b[4],
+      b11 = b[5],
+      b12 = b[6],
+      b13 = b[7];
+    const b20 = b[8],
+      b21 = b[9],
+      b22 = b[10],
+      b23 = b[11];
+    const b30 = b[12],
+      b31 = b[13],
+      b32 = b[14],
+      b33 = b[15];
+
+    out[0] = a00 * b00 + a01 * b10 + a02 * b20 + a03 * b30;
+    out[1] = a00 * b01 + a01 * b11 + a02 * b21 + a03 * b31;
+    out[2] = a00 * b02 + a01 * b12 + a02 * b22 + a03 * b32;
+    out[3] = a00 * b03 + a01 * b13 + a02 * b23 + a03 * b33;
+    out[4] = a10 * b00 + a11 * b10 + a12 * b20 + a13 * b30;
+    out[5] = a10 * b01 + a11 * b11 + a12 * b21 + a13 * b31;
+    out[6] = a10 * b02 + a11 * b12 + a12 * b22 + a13 * b32;
+    out[7] = a10 * b03 + a11 * b13 + a12 * b23 + a13 * b33;
+    out[8] = a20 * b00 + a21 * b10 + a22 * b20 + a23 * b30;
+    out[9] = a20 * b01 + a21 * b11 + a22 * b21 + a23 * b31;
+    out[10] = a20 * b02 + a21 * b12 + a22 * b22 + a23 * b32;
+    out[11] = a20 * b03 + a21 * b13 + a22 * b23 + a23 * b33;
+    out[12] = a30 * b00 + a31 * b10 + a32 * b20 + a33 * b30;
+    out[13] = a30 * b01 + a31 * b11 + a32 * b21 + a33 * b31;
+    out[14] = a30 * b02 + a31 * b12 + a32 * b22 + a33 * b32;
+    out[15] = a30 * b03 + a31 * b13 + a32 * b23 + a33 * b33;
+
+    return result;
+  }
 }
 
 /**
- * Create joint nodes (bones) for the skeleton.
+ * Calculate local transform for a bone relative to its parent
+ * Converts from Otto's absolute coordinates to glTF's relative transforms
+ * Also handles coordinate system conversion (right-handed Otto to left-handed glTF)
+ */
+function calculateLocalTransform(bone: BG3DBone, bones: BG3DBone[]): Matrix4 {
+  // Get bone's absolute position in Otto coordinate system (right-handed)
+  const bonePos = new Vector3(bone.coordX, bone.coordY, bone.coordZ);
+
+  // Convert to left-handed glTF coordinate system (flip Z)
+  const gltfBonePos = new Vector3(bone.coordX, bone.coordY, -bone.coordZ);
+
+  // If this bone has a valid parent, calculate relative transform
+  if (bone.parentBone >= 0 && bone.parentBone < bones.length) {
+    const parentBone = bones[bone.parentBone];
+    const parentPos = new Vector3(
+      parentBone.coordX,
+      parentBone.coordY,
+      -parentBone.coordZ,
+    );
+
+    // Calculate relative translation
+    const relativeTranslation = new Vector3().subVectors(
+      gltfBonePos,
+      parentPos,
+    );
+
+    // Create transform matrix with relative translation
+    return new Matrix4().setTranslation(
+      relativeTranslation.x,
+      relativeTranslation.y,
+      relativeTranslation.z,
+    );
+  } else {
+    // Root bone: use absolute position (converted to left-handed)
+    return new Matrix4().setTranslation(
+      gltfBonePos.x,
+      gltfBonePos.y,
+      gltfBonePos.z,
+    );
+  }
+}
+
+/**
+ * Decompose a 4x4 matrix into translation, rotation (quaternion), and scale
+ */
+function decomposeMatrix(matrix: Matrix4): {
+  translation: Vector3;
+  rotation: [number, number, number, number];
+  scale: Vector3;
+} {
+  const m = matrix.data;
+
+  // Extract translation
+  const translation = new Vector3(m[12], m[13], m[14]);
+
+  // Extract scale
+  const sx = Math.sqrt(m[0] * m[0] + m[1] * m[1] + m[2] * m[2]);
+  const sy = Math.sqrt(m[4] * m[4] + m[5] * m[5] + m[6] * m[6]);
+  const sz = Math.sqrt(m[8] * m[8] + m[9] * m[9] + m[10] * m[10]);
+  const scale = new Vector3(sx, sy, sz);
+
+  // Extract rotation (simplified - assuming no shear)
+  // Normalize the rotation matrix
+  const rotMatrix = [
+    m[0] / sx,
+    m[1] / sx,
+    m[2] / sx,
+    m[4] / sy,
+    m[5] / sy,
+    m[6] / sy,
+    m[8] / sz,
+    m[9] / sz,
+    m[10] / sz,
+  ];
+
+  // Convert rotation matrix to quaternion
+  const trace = rotMatrix[0] + rotMatrix[4] + rotMatrix[8];
+  let qw, qx, qy, qz;
+
+  if (trace > 0) {
+    const s = 0.5 / Math.sqrt(trace + 1.0);
+    qw = 0.25 / s;
+    qx = (rotMatrix[7] - rotMatrix[5]) * s;
+    qy = (rotMatrix[2] - rotMatrix[6]) * s;
+    qz = (rotMatrix[3] - rotMatrix[1]) * s;
+  } else {
+    if (rotMatrix[0] > rotMatrix[4] && rotMatrix[0] > rotMatrix[8]) {
+      const s =
+        2.0 * Math.sqrt(1.0 + rotMatrix[0] - rotMatrix[4] - rotMatrix[8]);
+      qw = (rotMatrix[7] - rotMatrix[5]) / s;
+      qx = 0.25 * s;
+      qy = (rotMatrix[1] + rotMatrix[3]) / s;
+      qz = (rotMatrix[2] + rotMatrix[6]) / s;
+    } else if (rotMatrix[4] > rotMatrix[8]) {
+      const s =
+        2.0 * Math.sqrt(1.0 + rotMatrix[4] - rotMatrix[0] - rotMatrix[8]);
+      qw = (rotMatrix[2] - rotMatrix[6]) / s;
+      qx = (rotMatrix[1] + rotMatrix[3]) / s;
+      qy = 0.25 * s;
+      qz = (rotMatrix[5] + rotMatrix[7]) / s;
+    } else {
+      const s =
+        2.0 * Math.sqrt(1.0 + rotMatrix[8] - rotMatrix[0] - rotMatrix[4]);
+      qw = (rotMatrix[3] - rotMatrix[1]) / s;
+      qx = (rotMatrix[2] + rotMatrix[6]) / s;
+      qy = (rotMatrix[5] + rotMatrix[7]) / s;
+      qz = 0.25 * s;
+    }
+  }
+
+  const rotation: [number, number, number, number] = [qx, qy, qz, qw];
+
+  return { translation, rotation, scale };
+}
+
+/**
+ * Create joint nodes (bones) for the skeleton with proper local transforms.
  *
  * IMPORTANT: Bone names are preserved exactly as they appear in the Otto Matic files,
  * including spaces (e.g., "Left Hand"). This ensures perfect roundtrip accuracy.
  * Modern Three.js versions handle spaces in bone names correctly.
  *
- * Note: Otto stores absolute world coordinates for each bone. Since we add joints
- * flat at the scene root (not in a hierarchy), we use these absolute coordinates directly.
+ * Note: Otto stores absolute world coordinates for each bone. glTF requires relative
+ * transforms, so we calculate local transforms relative to parent bones and convert
+ * to left-handed coordinate system.
  */
 function createJointNodes(doc: Document, bones: BG3DBone[]): Node[] {
-  return bones.map((bone) => {
+  return bones.map((bone, index) => {
     // Preserve original bone names for perfect roundtrip accuracy
     const joint = doc.createNode(bone.name);
-    // Use absolute coordinates since joints are flat at scene root
-    joint.setTranslation([bone.coordX, bone.coordY, bone.coordZ]);
+
+    // Calculate and set local transform
+    const localTransform = calculateLocalTransform(bone, bones);
+
+    // Decompose matrix into TRS components for better glTF compatibility
+    const { translation, rotation, scale } = decomposeMatrix(localTransform);
+
+    joint.setTranslation([translation.x, translation.y, translation.z]);
+    joint.setRotation(rotation);
+    joint.setScale([scale.x, scale.y, scale.z]);
+
     return joint;
   });
 }
@@ -340,24 +527,35 @@ function buildJointHierarchy(
 }
 
 /**
- * Calculate inverse bind matrices for skin
+ * Calculate inverse bind matrices for skin using hierarchical transforms
+ * Inverse bind matrices transform vertices from model space to bone space at bind pose
  */
 function calculateInverseBindMatrices(bones: BG3DBone[]): Float32Array {
   const matrices = new Float32Array(bones.length * 16);
 
+  // First, calculate world transforms for all bones
+  const worldTransforms: Matrix4[] = new Array(bones.length);
+
   bones.forEach((bone, index) => {
-    // Otto stores absolute coordinates, so world matrix is translation by absolute position
-    const worldMatrix = new Matrix4().setTranslation(
-      bone.coordX,
-      bone.coordY,
-      bone.coordZ,
-    );
-    const invMatrix = worldMatrix.invert();
+    // Calculate local transform (already handles coordinate system conversion)
+    const localTransform = calculateLocalTransform(bone, bones);
+
+    // Calculate world transform by composing with parent transforms
+    if (bone.parentBone >= 0 && bone.parentBone < bones.length) {
+      const parentWorld = worldTransforms[bone.parentBone];
+      worldTransforms[index] = parentWorld.multiply(localTransform);
+    } else {
+      // Root bone
+      worldTransforms[index] = localTransform;
+    }
+
+    // Calculate inverse bind matrix (inverse of world transform)
+    const invBindMatrix = worldTransforms[index].invert();
 
     // Store in column-major order (glTF requirement)
     const offset = index * 16;
     for (let i = 0; i < 16; i++) {
-      matrices[offset + i] = invMatrix.data[i];
+      matrices[offset + i] = invBindMatrix.data[i];
     }
   });
 
@@ -413,6 +611,7 @@ function hasVariation(values: number[], threshold = 0.001): boolean {
 
 /**
  * Process Otto animation data into glTF-compatible format
+ * Converts absolute keyframe coordinates to relative transforms
  */
 function processOttoAnimations(
   bg3dAnimations: BG3DAnimation[],
@@ -437,9 +636,14 @@ function processOttoAnimations(
         const times = keyframes.map((kf) => kf.tick / 30.0);
         maxTime = Math.max(maxTime, ...times);
 
-        // Extract translation data
+        // Calculate relative translations (keyframe position - rest pose position)
+        const restPos = new Vector3(bone.coordX, bone.coordY, -bone.coordZ); // Convert to left-handed
         const translations = keyframes
-          .map((kf) => [kf.coordX, kf.coordY, kf.coordZ])
+          .map((kf) => {
+            const kfPos = new Vector3(kf.coordX, kf.coordY, -kf.coordZ); // Convert to left-handed
+            const relativePos = new Vector3().subVectors(kfPos, restPos);
+            return [relativePos.x, relativePos.y, relativePos.z];
+          })
           .flat();
         const hasTranslationVar = hasVariation(translations);
         console.log(
@@ -459,6 +663,7 @@ function processOttoAnimations(
         }
 
         // Extract rotation data (convert Euler angles to quaternions)
+        // Note: Otto rotations are relative to rest pose, so no subtraction needed
         const rotationEulers = keyframes.map((kf) => [
           kf.rotationX,
           kf.rotationY,
@@ -481,7 +686,7 @@ function processOttoAnimations(
           });
         }
 
-        // Extract scale data
+        // Extract scale data (relative to rest pose scale of 1.0)
         const scales = keyframes
           .map((kf) => [kf.scaleX, kf.scaleY, kf.scaleZ])
           .flat();
