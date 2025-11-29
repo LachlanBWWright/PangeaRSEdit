@@ -101,14 +101,14 @@ export function gltfJointsToBg3dBones(joints: any[], skin: Skin): BG3DBone[] {
     let parentBone = -1;
     const jointParents = joint
       .listParents()
-      .filter((p: any) => p instanceof (joint.constructor as any));
+      .filter((p: any) => p instanceof joint.constructor);
     if (jointParents.length > 0) {
       const jointParent = jointParents[0];
       // Check if parent is the skeleton root (Armature), if so, parentBone = -1
       const skeletonRoot = skin.getSkeleton();
       if (jointParent !== skeletonRoot) {
         // Find the index of the parent in the joints list
-        const parentIndex = joints.indexOf(jointParent as any);
+        const parentIndex = joints.indexOf(jointParent);
         if (parentIndex !== -1) {
           parentBone = parentIndex;
         }

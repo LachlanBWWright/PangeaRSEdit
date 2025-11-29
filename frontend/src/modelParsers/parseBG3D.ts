@@ -567,7 +567,7 @@ function convertSkeletonResourceToBG3D(
     bones.push({
       parentBone: boneObj.parentBone,
       name: boneEntry.name, // Use resource name, not obj.name (which may have Pascal string prefix)
-      unnamedPadding: (boneObj as any).unnamedPadding,
+      unnamedPadding: boneObj.unnamedPadding,
       coordX: boneObj.coordX,
       coordY: boneObj.coordY,
       coordZ: boneObj.coordZ,
@@ -732,7 +732,7 @@ function convertSkeletonResourceToBG3D(
   const relPointsMap: { [resourceId: string]: [number, number, number][] } = {};
   Object.entries(skeleton.RelP || {}).forEach(([rid, rentry]) => {
     try {
-      const arr = (rentry as any).obj;
+      const arr = rentry.obj;
       if (Array.isArray(arr)) {
         relPointsMap[rid] = arr.map((p: any) => [
           typeof p.relOffsetX === "number" ? p.relOffsetX : p.x ?? 0,
@@ -1096,6 +1096,6 @@ export function convertBG3DToSkeletonResource(
 }
 
 /* function isBG3DGeometry(obj: BG3DGeometry | BG3DGroup): obj is BG3DGeometry {
-  return !!obj && !Array.isArray((obj as any).children);
+  return !!obj && !Array.isArray((obj ).children);
 }
  */

@@ -437,7 +437,7 @@ export function bg3dParsedToGLTF(
     function traverse(group: BG3DGroup) {
       if (Array.isArray(group.children)) {
         for (const child of group.children) {
-          if (Array.isArray((child as any).children)) {
+          if (Array.isArray(child.children)) {
             traverse(child as BG3DGroup);
           } else {
             result.push(child as BG3DGeometry);
@@ -619,7 +619,7 @@ export function bg3dParsedToGLTF(
   function groupHasNonSkinnedChildren(group: BG3DGroup): boolean {
     if (!Array.isArray(group.children)) return false;
     for (const child of group.children) {
-      if (Array.isArray((child as any).children)) {
+      if (Array.isArray(child.children)) {
         if (groupHasNonSkinnedChildren(child as BG3DGroup)) return true;
       } else {
         const geom = child as BG3DGeometry;
@@ -653,7 +653,7 @@ export function bg3dParsedToGLTF(
   function addSkinnedMeshesFromGroup(group: BG3DGroup) {
     if (!Array.isArray(group.children)) return;
     for (const child of group.children) {
-      if (Array.isArray((child as any).children)) {
+      if (Array.isArray(child.children)) {
         addSkinnedMeshesFromGroup(child as BG3DGroup);
       } else {
         const childGeom = child as BG3DGeometry;
@@ -702,7 +702,7 @@ export function bg3dParsedToGLTF(
       function addGeometriesToNode(node: Node, group: BG3DGroup) {
         if (Array.isArray(group.children)) {
           for (const child of group.children) {
-            if (Array.isArray((child as any).children)) {
+            if (Array.isArray(child.children)) {
               const subgroup = child as BG3DGroup;
               if (groupHasNonSkinnedChildren(subgroup)) {
                 const childNode = doc.createNode();
@@ -780,13 +780,13 @@ export function bg3dParsedToGLTF(
   // Preserve original binary data ONLY when explicitly provided; this is required by some tests/tools
   if (originalBinaryData) {
     try {
-      (extrasData as any).originalBinaries = {};
+      extrasData.originalBinaries = {};
       if (originalBinaryData.bg3dBuffer)
-        (extrasData as any).originalBinaries.bg3d = Array.from(
+        extrasData.originalBinaries.bg3d = Array.from(
           new Uint8Array(originalBinaryData.bg3dBuffer),
         );
       if (originalBinaryData.skeletonBuffer)
-        (extrasData as any).originalBinaries.skeleton = Array.from(
+        extrasData.originalBinaries.skeleton = Array.from(
           new Uint8Array(originalBinaryData.skeletonBuffer),
         );
     } catch (e) {
@@ -806,7 +806,7 @@ export async function gltfToBG3D(doc: Document): Promise<BG3DParseResult> {
   console.log("=== Starting glTF to BG3D Conversion ===");
 
   const rootExtras = doc.getRoot().getExtras() || {};
-  const bg3dFields = (rootExtras as any).bg3dFields;
+  const bg3dFields = rootExtras.bg3dFields;
 
   // Extract BG3D-specific metadata from extras (only non-glTF-representable data)
   const materialExtras = bg3dFields?.materialExtras || [];
@@ -1306,8 +1306,8 @@ export async function gltfToBG3D(doc: Document): Promise<BG3DParseResult> {
  */
 export function getOriginalBG3DBinary(doc: Document): ArrayBuffer | null {
   const rootExtras = doc.getRoot().getExtras() || {};
-  const ottoRoundtrip = (rootExtras as any).ottoRoundtrip;
-  const originalBinaries = (rootExtras as any).originalBinaries;
+  const ottoRoundtrip = rootExtras.ottoRoundtrip;
+  const originalBinaries = rootExtras.originalBinaries;
 
   if (ottoRoundtrip?.bg3dBuffer) {
     console.log(
@@ -1334,8 +1334,8 @@ export function getOriginalBG3DBinary(doc: Document): ArrayBuffer | null {
  */
 export function getOriginalSkeletonBinary(doc: Document): ArrayBuffer | null {
   const rootExtras = doc.getRoot().getExtras() || {};
-  const ottoRoundtrip = (rootExtras as any).ottoRoundtrip;
-  const originalBinaries = (rootExtras as any).originalBinaries;
+  const ottoRoundtrip = rootExtras.ottoRoundtrip;
+  const originalBinaries = rootExtras.originalBinaries;
 
   if (ottoRoundtrip?.skeletonBuffer) {
     console.log(

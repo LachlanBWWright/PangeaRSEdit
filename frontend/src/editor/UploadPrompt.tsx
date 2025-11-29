@@ -43,6 +43,7 @@ import {
   createCanvasFromTile,
   extractTilesFromBuffer,
 } from "@/data/processors/classicProprocessor";
+import LevelGrid from "./LevelGrid";
 /* import { Separator } from "@/components/ui/separator";
 import { parseSkeletonRsrc } from "@/modelParsers/skeletonRsrc/parseSkeletonRsrc";
 import BG3DGltfWorker from "../modelParsers/bg3dGltfWorker?worker"; //"../utils/bg3dGltfWorker.ts?worker"; */
@@ -176,7 +177,7 @@ export function UploadPrompt({
       const rawLevelData = parseNanosaur1Level(levelBuffer);
       const compatibleLevel = nanosaur1LevelToOttoMaticLevel(rawLevelData);
       // console.log(items);
-      //setData(items as any); // or adapt to your data model
+      //setData(items); // or adapt to your data model
       //return items;
 
       //throw new Error("nanosaur terrain files are not supported yet");
@@ -295,8 +296,7 @@ export function UploadPrompt({
       </div>
 
       <div className="flex flex-row gap-8 overflow-x-auto flex-wrap justify-center max-w-full  ">
-        <div className="grid grid-cols-1 grid-rows-11 grid-flow-col text-2xl gap-1 min-w-40">
-          <p>Otto Matic Levels</p>
+        <LevelGrid title="Otto Matic Levels">
           <Button
             onClick={() =>
               openFile("assets/ottoMatic/terrain/EarthFarm.ter", OttoGlobals)
@@ -367,12 +367,11 @@ export function UploadPrompt({
           >
             Level 10
           </Button>
-        </div>
+        </LevelGrid>
         {showAllGames && (
           <>
             {" "}
-            <div className="grid grid-cols-1 grid-rows-11 grid-flow-col text-2xl gap-1 min-w-40">
-              <p>Bugdom Levels </p>
+            <LevelGrid title="Bugdom Levels">
               <Button
                 onClick={() =>
                   openFile("assets/bugdom/terrain/Training.ter", BugdomGlobals)
@@ -443,9 +442,8 @@ export function UploadPrompt({
               >
                 Level 10
               </Button>
-            </div>
-            <div className="grid grid-cols-1 grid-rows-11 grid-flow-col text-2xl gap-1 min-w-40">
-              <p>Bugdom 2 Levels </p>
+            </LevelGrid>
+            <LevelGrid title="Bugdom 2 Levels">
               <Button
                 onClick={() =>
                   openFile(
@@ -528,9 +526,8 @@ export function UploadPrompt({
               >
                 Level 10
               </Button>
-            </div>
-            <div className="grid grid-cols-1 grid-rows-11 grid-flow-col text-2xl gap-1 min-w-40">
-              <p>Cro-Mag Races</p>
+            </LevelGrid>
+            <LevelGrid title="Cro-Mag Races">
               <Button
                 onClick={() =>
                   openFile(
@@ -621,9 +618,8 @@ export function UploadPrompt({
               >
                 Atlantis
               </Button>
-            </div>
-            <div className="grid grid-cols-1 grid-rows-11 grid-flow-col text-2xl gap-1 min-w-40">
-              <p>Cro-Mag Battles </p>
+            </LevelGrid>
+            <LevelGrid title="Cro-Mag Battles">
               <Button
                 onClick={() =>
                   openFile(
@@ -704,9 +700,8 @@ export function UploadPrompt({
               >
                 Tar Pits
               </Button>
-            </div>{" "}
-            <div className="grid grid-cols-1 grid-rows-11 grid-flow-col text-2xl gap-1 min-w-40">
-              <p>Nanosaur Levels</p>
+            </LevelGrid>
+            <LevelGrid title="Nanosaur Levels">
               <Button
                 onClick={() =>
                   openFile(
@@ -727,9 +722,8 @@ export function UploadPrompt({
               >
                 Extreme
               </Button>
-            </div>
-            <div className="grid grid-cols-1 grid-rows-11 grid-flow-col text-2xl gap-1 min-w-40">
-              <p>Nanosaur 2 Levels</p>
+            </LevelGrid>
+            <LevelGrid title="Nanosaur 2 Levels">
               <Button
                 onClick={() =>
                   openFile(
@@ -780,7 +774,6 @@ export function UploadPrompt({
               >
                 Battle 2
               </Button>
-
               <Button
                 onClick={() =>
                   openFile(
@@ -821,7 +814,7 @@ export function UploadPrompt({
               >
                 CTF 2
               </Button>
-            </div>
+            </LevelGrid>
             <div className="grid grid-cols-1 grid-rows-11 grid-flow-col text-2xl gap-1 min-w-40">
               <p>Billy Frontier Levels</p>
               <Button

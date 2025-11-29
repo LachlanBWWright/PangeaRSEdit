@@ -283,7 +283,7 @@ class Matrix4 {
  */
 function calculateLocalTransform(bone: BG3DBone, bones: BG3DBone[]): Matrix4 {
   // Get bone's absolute position in Otto coordinate system (right-handed)
-  const bonePos = new Vector3(bone.coordX, bone.coordY, bone.coordZ);
+  //const bonePos = new Vector3(bone.coordX, bone.coordY, bone.coordZ);
 
   // Convert to left-handed glTF coordinate system (flip Z)
   const gltfBonePos = new Vector3(bone.coordX, bone.coordY, -bone.coordZ);
@@ -404,7 +404,7 @@ function decomposeMatrix(matrix: Matrix4): {
  * to left-handed coordinate system.
  */
 function createJointNodes(doc: Document, bones: BG3DBone[]): Node[] {
-  return bones.map((bone, index) => {
+  return bones.map((bone) => {
     // Preserve original bone names for perfect roundtrip accuracy
     const joint = doc.createNode(bone.name);
 

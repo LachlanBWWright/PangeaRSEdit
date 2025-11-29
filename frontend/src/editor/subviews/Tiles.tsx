@@ -21,6 +21,7 @@ import {
 import { useAtomValue } from "jotai";
 import { Globals } from "../../data/globals/globals";
 import { useMemo } from "react";
+import { createImageCanvas } from "./tiles/tilesUtils";
 import { KonvaEventObject } from "konva/lib/Node";
 
 /* 
@@ -137,24 +138,15 @@ export function TopologyTiles({
     [terrainData.YCrd, header],
   );
 
-  const imgCanvas = useMemo(() => {
-    const imgCanvas = document.createElement("canvas");
-    imgCanvas.width = header.mapWidth + 1;
-    imgCanvas.height = header.mapHeight + 1;
-    const imgCtx = imgCanvas.getContext("2d");
-    if (!imgCtx) throw new Error("Could not get canvas context");
-
-    imgCtx.putImageData(
-      new ImageData(
-        new Uint8ClampedArray(coordColours),
+  const imgCanvas = useMemo(
+    () =>
+      createImageCanvas(
         header.mapWidth + 1,
         header.mapHeight + 1,
+        coordColours,
       ),
-      0,
-      0,
-    );
-    return imgCanvas;
-  }, [header, terrainData.YCrd, coordColours]);
+    [header, terrainData.YCrd, coordColours],
+  );
 
   const setPixels = (pixelList: PixelType[]) => {
     setTerrainData((data) => {
@@ -307,23 +299,7 @@ export function EmptyTiles({
 
   const imgCanvas = useMemo(() => {
     if (!header) return null;
-
-    const imgCanvas = document.createElement("canvas");
-    imgCanvas.width = header.mapWidth;
-    imgCanvas.height = header.mapHeight;
-    const imgCtx = imgCanvas.getContext("2d");
-    if (!imgCtx) throw new Error("Could not get canvas context");
-
-    imgCtx.putImageData(
-      new ImageData(
-        new Uint8ClampedArray(coordColours),
-        header.mapWidth,
-        header.mapHeight,
-      ),
-      0,
-      0,
-    );
-    return imgCanvas;
+    return createImageCanvas(header.mapWidth, header.mapHeight, coordColours);
   }, [header?.mapWidth, header?.mapHeight, coordColours]);
 
   const handleTileClickEvent = (e: KonvaEventObject<MouseEvent>) => {
@@ -417,23 +393,7 @@ export function ElectricFloor0Tiles({
 
   const imgCanvas = useMemo(() => {
     if (!header) return null;
-
-    const imgCanvas = document.createElement("canvas");
-    imgCanvas.width = header.mapWidth;
-    imgCanvas.height = header.mapHeight;
-    const imgCtx = imgCanvas.getContext("2d");
-    if (!imgCtx) throw new Error("Could not get canvas context");
-
-    imgCtx.putImageData(
-      new ImageData(
-        new Uint8ClampedArray(coordColours),
-        header.mapWidth,
-        header.mapHeight,
-      ),
-      0,
-      0,
-    );
-    return imgCanvas;
+    return createImageCanvas(header.mapWidth, header.mapHeight, coordColours);
   }, [header?.mapWidth, header?.mapHeight, coordColours]);
 
   const handleTileClickEvent = (e: KonvaEventObject<MouseEvent>) => {
@@ -527,23 +487,7 @@ export function ElectricFloor1Tiles({
 
   const imgCanvas = useMemo(() => {
     if (!header) return null;
-
-    const imgCanvas = document.createElement("canvas");
-    imgCanvas.width = header.mapWidth;
-    imgCanvas.height = header.mapHeight;
-    const imgCtx = imgCanvas.getContext("2d");
-    if (!imgCtx) throw new Error("Could not get canvas context");
-
-    imgCtx.putImageData(
-      new ImageData(
-        new Uint8ClampedArray(coordColours),
-        header.mapWidth,
-        header.mapHeight,
-      ),
-      0,
-      0,
-    );
-    return imgCanvas;
+    return createImageCanvas(header.mapWidth, header.mapHeight, coordColours);
   }, [header?.mapWidth, header?.mapHeight, coordColours]);
 
   const handleTileClickEvent = (e: KonvaEventObject<MouseEvent>) => {

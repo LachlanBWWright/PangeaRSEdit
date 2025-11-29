@@ -43,8 +43,8 @@ export function bg3dSceneToGltf(
       return node;
     } else {
       // This is a BG3DGeometry - find corresponding mesh
-      const geometry = group as BG3DGeometry;
-      const meshIndex = bg3dGroups.indexOf(geometry as any);
+      const geometry = group;
+      const meshIndex = bg3dGroups.indexOf(geometry);
       if (meshIndex >= 0 && meshIndex < gltfMeshes.length) {
         const node = doc.createNode();
         node.setMesh(gltfMeshes[meshIndex]);

@@ -3,7 +3,10 @@ import type { BoneRaw } from "../parseSkeletonRsrcTS";
 
 export function handleBone(
   resourceName: string,
-  resourceData: BoneRaw | { data?: string; name?: string; obj?: BoneRaw } | undefined,
+  resourceData:
+    | BoneRaw
+    | { data?: string; name?: string; obj?: BoneRaw }
+    | undefined,
   resourceId: string,
   hexData: string,
 ): BoneRaw {
@@ -11,10 +14,10 @@ export function handleBone(
     `Checking bone data for ${resourceName} (${resourceId}):`,
     resourceData,
   );
-  
+
   // Check if data is in the obj field (rsrcdump format)
   const boneData = (resourceData as { obj?: BoneRaw })?.obj || resourceData;
-  
+
   if (
     boneData &&
     (boneData as BoneRaw).parentBone !== undefined &&
@@ -25,30 +28,40 @@ export function handleBone(
     const rd = boneData as BoneRaw;
     // Handle Pascal string format: 2 bytes padding + length byte + name characters
     let cleanName = rd.name || resourceName;
-    
+
     // Check if this is a Pascal string with 2-byte padding prefix
     // Format: [padding0][padding1][length][name...]
     if (cleanName.length >= 3) {
       const lengthByte = cleanName.charCodeAt(2); // Length is at position 2 (after 2 padding bytes)
       // If 3rd char is a small number (1-29) indicating name length
-      if (lengthByte > 0 && lengthByte <= 29 && lengthByte <= cleanName.length - 3) {
-        console.log(`[bone handler] Detected Pascal string with padding: length=${lengthByte}, total_len=${cleanName.length}`);
-        console.log(`[bone handler] Original: ${JSON.stringify(cleanName.substring(0, Math.min(15, cleanName.length)))}`);
+      if (
+        lengthByte > 0 &&
+        lengthByte <= 29 &&
+        lengthByte <= cleanName.length - 3
+      ) {
+        console.log(
+          `[bone handler] Detected Pascal string with padding: length=${lengthByte}, total_len=${cleanName.length}`,
+        );
+        console.log(
+          `[bone handler] Original: ${JSON.stringify(
+            cleanName.substring(0, Math.min(15, cleanName.length)),
+          )}`,
+        );
         // Skip 2-byte padding + 1-byte length, read name
         cleanName = cleanName.substring(3, 3 + lengthByte);
         console.log(`[bone handler] After strip: ${JSON.stringify(cleanName)}`);
       }
     }
-    
+
     // Also truncate at first null character to avoid corruption from padding
-    const nullIndex = cleanName.indexOf('\0');
+    const nullIndex = cleanName.indexOf("\0");
     if (nullIndex >= 0) {
       cleanName = cleanName.substring(0, nullIndex);
     }
     const obj: BoneRaw = {
       parentBone: rd.parentBone,
       name: cleanName,
-      unnamedPadding: (rd as any).unnamedPadding,
+      unnamedPadding: rd.unnamedPadding,
       coordX: rd.coordX,
       coordY: rd.coordY,
       coordZ: rd.coordZ,
