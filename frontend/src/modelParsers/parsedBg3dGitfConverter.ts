@@ -438,9 +438,9 @@ export function bg3dParsedToGLTF(
       if (Array.isArray(group.children)) {
         for (const child of group.children) {
           if (Array.isArray(child.children)) {
-            traverse(child as BG3DGroup);
+            traverse(child);
           } else {
-            result.push(child as BG3DGeometry);
+            result.push(child);
           }
         }
       }
@@ -620,9 +620,9 @@ export function bg3dParsedToGLTF(
     if (!Array.isArray(group.children)) return false;
     for (const child of group.children) {
       if (Array.isArray(child.children)) {
-        if (groupHasNonSkinnedChildren(child as BG3DGroup)) return true;
+        if (groupHasNonSkinnedChildren(child)) return true;
       } else {
-        const geom = child as BG3DGeometry;
+        const geom = child;
         // If this geometry is NOT skinned, it should be part of the group hierarchy
         if (!isGeometrySkinnedByIndex(geom)) return true;
       }
@@ -654,9 +654,9 @@ export function bg3dParsedToGLTF(
     if (!Array.isArray(group.children)) return;
     for (const child of group.children) {
       if (Array.isArray(child.children)) {
-        addSkinnedMeshesFromGroup(child as BG3DGroup);
+        addSkinnedMeshesFromGroup(child);
       } else {
-        const childGeom = child as BG3DGeometry;
+        const childGeom = child;
         const geomIndex = allGeometries.indexOf(childGeom);
         if (geomIndex >= 0 && geomIndex < gltfMeshes.length) {
           const prim = gltfMeshes[geomIndex].listPrimitives()[0];
@@ -703,7 +703,7 @@ export function bg3dParsedToGLTF(
         if (Array.isArray(group.children)) {
           for (const child of group.children) {
             if (Array.isArray(child.children)) {
-              const subgroup = child as BG3DGroup;
+              const subgroup = child;
               if (groupHasNonSkinnedChildren(subgroup)) {
                 const childNode = doc.createNode();
                 childNode.setName(`Subgroup_${node.listChildren().length}`);
@@ -711,7 +711,7 @@ export function bg3dParsedToGLTF(
                 node.addChild(childNode);
               }
             } else {
-              const childGeom = child as BG3DGeometry;
+              const childGeom = child;
               const geomIndex = allGeometries.indexOf(childGeom);
               if (geomIndex >= 0 && geomIndex < gltfMeshes.length) {
                 const meshNode = doc.createNode();
@@ -1034,7 +1034,7 @@ export async function gltfToBG3D(doc: Document): Promise<BG3DParseResult> {
             .listParents()
             .filter((p) => p instanceof Node);
           if (jointParents.length > 0) {
-            const jointParent = jointParents[0] as Node;
+            const jointParent = jointParents[0];
             // Check if parent is the skeleton root (Armature), if so, parentBone = -1
             const skeletonRoot = skin.getSkeleton();
             if (jointParent !== skeletonRoot) {
@@ -1197,7 +1197,7 @@ export async function gltfToBG3D(doc: Document): Promise<BG3DParseResult> {
     const posAcc = prim.getAttribute("POSITION");
     let vertices: [number, number, number][] | undefined = undefined;
     if (posAcc) {
-      const arr = Array.from(posAcc.getArray() as Float32Array);
+      const arr = Array.from(posAcc.getArray());
       vertices = [];
       for (let i = 0; i < arr.length; i += 3) {
         vertices.push([arr[i], arr[i + 1], arr[i + 2]]);
@@ -1207,7 +1207,7 @@ export async function gltfToBG3D(doc: Document): Promise<BG3DParseResult> {
     const normAcc = prim.getAttribute("NORMAL");
     let normals: [number, number, number][] | undefined = undefined;
     if (normAcc) {
-      const arr = Array.from(normAcc.getArray() as Float32Array);
+      const arr = Array.from(normAcc.getArray());
       normals = [];
       for (let i = 0; i < arr.length; i += 3) {
         normals.push([arr[i], arr[i + 1], arr[i + 2]]);
@@ -1217,7 +1217,7 @@ export async function gltfToBG3D(doc: Document): Promise<BG3DParseResult> {
     const uvAcc = prim.getAttribute("TEXCOORD_0");
     let uvs: [number, number][] | undefined = undefined;
     if (uvAcc) {
-      const arr = Array.from(uvAcc.getArray() as Float32Array);
+      const arr = Array.from(uvAcc.getArray());
       uvs = [];
       for (let i = 0; i < arr.length; i += 2) {
         uvs.push([arr[i], arr[i + 1]]);
@@ -1227,7 +1227,7 @@ export async function gltfToBG3D(doc: Document): Promise<BG3DParseResult> {
     const colorAcc = prim.getAttribute("COLOR_0");
     let colors: [number, number, number, number][] | undefined = undefined;
     if (colorAcc) {
-      const arr = Array.from(colorAcc.getArray() as Uint8Array);
+      const arr = Array.from(colorAcc.getArray());
       colors = [];
       for (let i = 0; i < arr.length; i += 4) {
         colors.push([arr[i], arr[i + 1], arr[i + 2], arr[i + 3]]);
@@ -1237,7 +1237,7 @@ export async function gltfToBG3D(doc: Document): Promise<BG3DParseResult> {
     const idxAcc = prim.getIndices();
     let triangles: [number, number, number][] | undefined = undefined;
     if (idxAcc) {
-      const arr = Array.from(idxAcc.getArray() as Uint32Array);
+      const arr = Array.from(idxAcc.getArray());
       triangles = [];
       for (let i = 0; i < arr.length; i += 3) {
         triangles.push([arr[i], arr[i + 1], arr[i + 2]]);
@@ -1288,9 +1288,7 @@ export async function gltfToBG3D(doc: Document): Promise<BG3DParseResult> {
   // Process scene hierarchy
   const scene = doc.getRoot().listScenes()[0];
   const childNodes = scene.listChildren();
-  const groups: BG3DGroup[] = childNodes.map((node) =>
-    processNode(node),
-  ) as BG3DGroup[];
+  const groups: BG3DGroup[] = childNodes.map((node) => processNode(node));
 
   console.log("=== glTF to BG3D Conversion Complete ===");
 
@@ -1333,7 +1331,7 @@ export function getOriginalBG3DBinary(doc: Document): ArrayBuffer | null {
  * Get original skeleton binary data if preserved in glTF extras
  */
 export function getOriginalSkeletonBinary(doc: Document): ArrayBuffer | null {
-  const rootExtras = doc.getRoot().getExtras() || {};
+  const rootExtras = doc.getRoot().getExtras();
   const ottoRoundtrip = rootExtras.ottoRoundtrip;
   const originalBinaries = rootExtras.originalBinaries;
 

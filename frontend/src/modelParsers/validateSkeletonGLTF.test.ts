@@ -228,7 +228,7 @@ describe("Skeleton Animation glTF Validation", () => {
           if (input) {
             const times = input.getArray();
             if (times && times.length > 0) {
-              const lastTime = times[times.length - 1] as number;
+              const lastTime = times[times.length - 1];
               maxDuration = Math.max(maxDuration, lastTime);
             }
           }

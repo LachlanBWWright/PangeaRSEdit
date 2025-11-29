@@ -11,25 +11,29 @@ import { getPoints } from "../../../utils/spline";
 import { SelectedSpline } from "../../../data/splines/splineAtoms";
 import { getSplineItemName } from "@/data/splines/getSplineItemNames";
 import { Globals } from "@/data/globals/globals";
-import { 
-  selectSplineNubs, 
-  selectSplinePoints, 
+import {
+  selectSplineNubs,
+  selectSplinePoints,
   selectSplineItems,
-  updateSplineNubs,
-  updateSplinePoints 
 } from "../../../data/selectors";
 
 export function updateSplinePointsFromNubs(
   splineIdx: number,
   setSplineData: Updater<SplineData>,
 ) {
-  setSplineData((splineData) => {
-    const nubs = selectSplineNubs(splineData, SPLINE_KEY_BASE + splineIdx);
-    const newPoints = nubs.length === 1
-      ? [{ x: nubs[0].x, z: nubs[0].z }]
-      : getPoints(nubs);
-    
-    updateSplinePoints(setSplineData, SPLINE_KEY_BASE + splineIdx, newPoints);
+  // Compute points from current nubs and write them directly into the draft
+  setSplineData((draft) => {
+    const nubs = selectSplineNubs(draft, SPLINE_KEY_BASE + splineIdx);
+    const newPoints =
+      nubs.length === 1 ? [{ x: nubs[0].x, z: nubs[0].z }] : getPoints(nubs);
+
+    if (draft.SpPt?.[SPLINE_KEY_BASE + splineIdx]) {
+      draft.SpPt[SPLINE_KEY_BASE + splineIdx].obj = newPoints;
+      if (draft.Spln?.[1000]?.obj?.[SPLINE_KEY_BASE + splineIdx]) {
+        draft.Spln[1000].obj[SPLINE_KEY_BASE + splineIdx].numPoints =
+          newPoints.length;
+      }
+    }
   });
 }
 
@@ -50,7 +54,10 @@ export const Spline = memo(
 
     const nubs = selectSplineNubs(splineData, SPLINE_KEY_BASE + splineIdx);
     const items = selectSplineItems(splineData, SPLINE_KEY_BASE + splineIdx);
-    const splinePoints = selectSplinePoints(splineData, SPLINE_KEY_BASE + splineIdx);
+    const splinePoints = selectSplinePoints(
+      splineData,
+      SPLINE_KEY_BASE + splineIdx,
+    );
 
     const points = useMemo(() => {
       return splinePoints.flatMap((point) => [point.x, point.z]);
@@ -65,10 +72,12 @@ export const Spline = memo(
           draggable
           onDragStart={() => {
             // Store the initial positions of the nubs when dragging starts
-            setInitialDragState(nubs.map((nub) => ({
-              x: nub.x,
-              z: nub.z,
-            })));
+            setInitialDragState(
+              nubs.map((nub) => ({
+                x: nub.x,
+                z: nub.z,
+              })),
+            );
           }}
           onDragEnd={(e) => {
             if (!initialDragState) return;
@@ -80,8 +89,18 @@ export const Spline = memo(
               x: initPos.x + dragDx,
               z: initPos.z + dragDz,
             }));
-            
-            updateSplineNubs(setSplineData, SPLINE_KEY_BASE + splineIdx, updatedNubs);
+
+            // Write updated nubs directly into the draft to avoid nested updaters
+            setSplineData((draft) => {
+              if (draft.SpNb?.[SPLINE_KEY_BASE + splineIdx]) {
+                draft.SpNb[SPLINE_KEY_BASE + splineIdx].obj = updatedNubs;
+              }
+              if (draft.Spln?.[1000]?.obj?.[SPLINE_KEY_BASE + splineIdx]) {
+                draft.Spln[1000].obj[SPLINE_KEY_BASE + splineIdx].numNubs =
+                  updatedNubs.length;
+              }
+            });
+
             updateSplinePointsFromNubs(splineIdx, setSplineData);
             e.target.x(0); // Reset line position after dragging nubs
             e.target.y(0); // Reset line position after dragging nubs
@@ -150,19 +169,27 @@ const SplineNub = memo(
           onDragEnd={(e) => {
             const newX = Math.round(e.target.x());
             const newZ = Math.round(e.target.y());
-            
-            setSplineData((splineData) => {
-              const nubs = selectSplineNubs(splineData, SPLINE_KEY_BASE + splineIdx);
-              const updatedNubs = [...nubs];
+
+            setSplineData((draft) => {
+              const currentNubs =
+                draft.SpNb?.[SPLINE_KEY_BASE + splineIdx]?.obj || [];
+              const updatedNubs = [...currentNubs];
               updatedNubs[nubIdx] = { x: newX, z: newZ };
 
               //Modify "hidden" final nub, which is to be in the same position as the first nub
-              if (nubIdx === nubs.length - 1) {
+              if (nubIdx === currentNubs.length - 1) {
                 updatedNubs[0] = { x: newX, z: newZ };
               }
-              
-              updateSplineNubs(setSplineData, SPLINE_KEY_BASE + splineIdx, updatedNubs);
+
+              if (draft.SpNb?.[SPLINE_KEY_BASE + splineIdx]) {
+                draft.SpNb[SPLINE_KEY_BASE + splineIdx].obj = updatedNubs;
+              }
+              if (draft.Spln?.[1000]?.obj?.[SPLINE_KEY_BASE + splineIdx]) {
+                draft.Spln[1000].obj[SPLINE_KEY_BASE + splineIdx].numNubs =
+                  updatedNubs.length;
+              }
             });
+
             updateSplinePointsFromNubs(splineIdx, setSplineData);
           }}
           onMouseOver={() => setHovering(true)}
