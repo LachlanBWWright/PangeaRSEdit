@@ -26,29 +26,24 @@ export function handleBone(
     (boneData as BoneRaw).coordZ !== undefined
   ) {
     const rd = boneData as BoneRaw;
-    // Handle Pascal string format: 2 bytes padding + length byte + name characters
+    // Handle Pascal string format: 1 byte length + name characters (up to 31 bytes)
+    // The name field is 32 bytes total in File_BoneDefinitionType
     let cleanName = rd.name || resourceName;
 
-    // Check if this is a Pascal string with 2-byte padding prefix
-    // Format: [padding0][padding1][length][name...]
-    if (cleanName.length >= 3) {
-      const lengthByte = cleanName.charCodeAt(2); // Length is at position 2 (after 2 padding bytes)
-      // If 3rd char is a small number (1-29) indicating name length
+    // Check if this is a Pascal string format: [length][name...]
+    if (cleanName.length >= 1) {
+      const lengthByte = cleanName.charCodeAt(0);
+      // If 1st char is a small number (1-31) indicating name length
       if (
         lengthByte > 0 &&
-        lengthByte <= 29 &&
-        lengthByte <= cleanName.length - 3
+        lengthByte <= 31 &&
+        lengthByte <= cleanName.length - 1
       ) {
         console.log(
-          `[bone handler] Detected Pascal string with padding: length=${lengthByte}, total_len=${cleanName.length}`,
+          `[bone handler] Detected Pascal string: length=${lengthByte}, total_len=${cleanName.length}`,
         );
-        console.log(
-          `[bone handler] Original: ${JSON.stringify(
-            cleanName.substring(0, Math.min(15, cleanName.length)),
-          )}`,
-        );
-        // Skip 2-byte padding + 1-byte length, read name
-        cleanName = cleanName.substring(3, 3 + lengthByte);
+        // Skip 1-byte length, read name
+        cleanName = cleanName.substring(1, 1 + lengthByte);
         console.log(`[bone handler] After strip: ${JSON.stringify(cleanName)}`);
       }
     }
@@ -61,7 +56,6 @@ export function handleBone(
     const obj: BoneRaw = {
       parentBone: rd.parentBone,
       name: cleanName,
-      unnamedPadding: rd.unnamedPadding,
       coordX: rd.coordX,
       coordY: rd.coordY,
       coordZ: rd.coordZ,

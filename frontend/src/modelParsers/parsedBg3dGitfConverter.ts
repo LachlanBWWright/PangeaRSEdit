@@ -722,7 +722,13 @@ export function bg3dParsedToGLTF(
   );
 
   // Store only non-glTF-representable data (material/texture metadata)
-  // DO NOT store skeleton data or binary blobs - these must round-trip through glTF structures
+  // glTF can represent skeleton bones, animations, and keyframes natively
+  // But these BG3D-specific data types need to be preserved in extras:
+  // - relPoints (RelP) - bone-relative vertex positions for mesh deformation
+  // - alisData - file alias resources
+  // - metadata - skeleton resource metadata
+  // - animation events - sound/effect triggers at specific frames
+  // - keyframe accelerationMode - glTF doesn't have this concept
   const extrasData: any = {
     bg3dFields: {
       // Note: Skeleton data (bones, pointIndices, animations) stored in native glTF format
@@ -742,6 +748,57 @@ export function bg3dParsedToGLTF(
         // Store any BG3D-specific group metadata here if needed
         // The actual geometry data should be represented natively in glTF
       })),
+      // Store skeleton-specific data that glTF cannot represent natively
+      skeletonExtras: parsed.skeleton
+        ? {
+            // RelP - relative point positions for mesh deformation
+            relPoints: parsed.skeleton.relPoints || {},
+            // alis - file alias resource
+            alisData: parsed.skeleton.alisData || {},
+            // metadata - skeleton resource metadata
+            metadata: parsed.skeleton.metadata || {},
+            // Full bone data - glTF transforms can lose precision/information
+            boneData: parsed.skeleton.bones.map((bone) => ({
+              parentBone: bone.parentBone,
+              name: bone.name,
+              coordX: bone.coordX,
+              coordY: bone.coordY,
+              coordZ: bone.coordZ,
+              numPointsAttachedToBone: bone.numPointsAttachedToBone,
+              numNormalsAttachedToBone: bone.numNormalsAttachedToBone,
+              pointIndices: bone.pointIndices,
+              normalIndices: bone.normalIndices,
+              reserved0: bone.reserved0,
+              reserved1: bone.reserved1,
+              reserved2: bone.reserved2,
+              reserved3: bone.reserved3,
+              reserved4: bone.reserved4,
+              reserved5: bone.reserved5,
+              reserved6: bone.reserved6,
+              reserved7: bone.reserved7,
+            })),
+            // Animation events - per-animation event data (sound/effect triggers)
+            animationEvents:
+              parsed.skeleton.animations?.map((anim) => ({
+                name: anim.name,
+                events: anim.events || [],
+                numAnimEvents: anim.numAnimEvents || 0,
+              })) || [],
+            // Full keyframe data including accelerationMode (not stored in glTF natively)
+            keyframeData:
+              parsed.skeleton.animations?.map((anim) => ({
+                name: anim.name,
+                keyframes: anim.keyframes, // Preserve all keyframe data including accelerationMode
+              })) || [],
+            // Header data for exact reconstruction
+            headerData: {
+              version: parsed.skeleton.version,
+              numAnims: parsed.skeleton.numAnims,
+              numJoints: parsed.skeleton.numJoints,
+              num3DMFLimbs: parsed.skeleton.num3DMFLimbs,
+            },
+          }
+        : undefined,
     },
   };
 
@@ -918,37 +975,73 @@ export async function gltfToBG3D(doc: Document): Promise<BG3DParseResult> {
 
     // Extract animations
     const animations: any[] = [];
-    if (originalSkeletonResource.AnHd) {
-      Object.values(originalSkeletonResource.AnHd).forEach(
-        (anHdData: any, animIndex) => {
-          if (anHdData.obj) {
-            const keyframes: { [boneIndex: string]: any[] } = {};
-            // Populate keyframes from KeyF
-            if (originalSkeletonResource.KeyF) {
-              Object.values(originalSkeletonResource.KeyF).forEach(
-                (keyFData: any) => {
-                  if (keyFData.obj && keyFData.name) {
-                    // Find bone index by name
-                    const boneIndex = bones.findIndex(
-                      (b) => b.name === keyFData.name,
-                    );
-                    if (boneIndex >= 0) {
-                      keyframes[boneIndex.toString()] = keyFData.obj;
-                    }
-                  }
-                },
-              );
-            }
-            animations.push({
-              name: anHdData.obj.animName || `Animation_${animIndex}`,
-              numAnimEvents: anHdData.obj.numAnimEvents || 0,
-              events: [], // Simplified
-              keyframes,
+    // Get animation IDs to correlate with Evnt resources
+    const anHdEntries = Object.entries(originalSkeletonResource.AnHd || {});
+    anHdEntries.forEach(([animId, anHdData]: [string, any], animIndex) => {
+      if (anHdData.obj) {
+        const keyframes: { [boneIndex: string]: any[] } = {};
+        // Populate keyframes from KeyF
+        if (originalSkeletonResource.KeyF) {
+          Object.values(originalSkeletonResource.KeyF).forEach(
+            (keyFData: any) => {
+              if (keyFData.obj && keyFData.name) {
+                // Find bone index by name
+                const boneIndex = bones.findIndex(
+                  (b) => b.name === keyFData.name,
+                );
+                if (boneIndex >= 0) {
+                  keyframes[boneIndex.toString()] = keyFData.obj;
+                }
+              }
+            },
+          );
+        }
+
+        // Extract animation events from Evnt resource using matching animId
+        const events: any[] = [];
+        const evntEntry = (originalSkeletonResource.Evnt as any)?.[animId];
+        if (evntEntry?.obj && Array.isArray(evntEntry.obj)) {
+          evntEntry.obj.forEach((evt: any) => {
+            events.push({
+              time: evt.time,
+              type: evt.type,
+              value: evt.value,
             });
+          });
+        }
+
+        animations.push({
+          name: anHdData.obj.animName || `Animation_${animIndex}`,
+          numAnimEvents: anHdData.obj.numAnimEvents || 0,
+          events, // Now properly populated from Evnt resource
+          keyframes,
+        });
+      }
+    });
+
+    // Extract RelP data
+    const relPoints: { [resourceId: string]: [number, number, number][] } = {};
+    if (originalSkeletonResource.RelP) {
+      Object.entries(originalSkeletonResource.RelP).forEach(
+        ([rid, rentry]: [string, any]) => {
+          if (rentry.obj && Array.isArray(rentry.obj)) {
+            relPoints[rid] = rentry.obj.map((p: any) => [
+              p.relOffsetX ?? p.x ?? 0,
+              p.relOffsetY ?? p.y ?? 0,
+              p.relOffsetZ ?? p.z ?? 0,
+            ]);
           }
         },
       );
     }
+
+    // Extract alis data
+    const alisData: { [key: string]: unknown } = {};
+    Object.keys(originalSkeletonResource).forEach((key) => {
+      if (key.toLowerCase() === "alis") {
+        alisData[key] = (originalSkeletonResource as any)[key];
+      }
+    });
 
     skeleton = {
       version: 272,
@@ -957,6 +1050,9 @@ export async function gltfToBG3D(doc: Document): Promise<BG3DParseResult> {
       num3DMFLimbs: 0,
       bones,
       animations,
+      relPoints: Object.keys(relPoints).length > 0 ? relPoints : undefined,
+      alisData: Object.keys(alisData).length > 0 ? alisData : undefined,
+      metadata: originalSkeletonResource._metadata,
     };
   } else {
     console.log(`Found ${skins.length} skins in glTF document`);
@@ -1139,13 +1235,129 @@ export async function gltfToBG3D(doc: Document): Promise<BG3DParseResult> {
         // Extract animations from glTF Animation objects, passing bones for coordinate conversion
         const animations = extractAnimationsFromGLTF(doc, bones);
 
+        // Restore animation data from extras if available (more accurate than glTF conversion)
+        const skeletonExtras = bg3dFields?.skeletonExtras;
+        console.log("[DEBUG] skeletonExtras available:", !!skeletonExtras);
+        console.log(
+          "[DEBUG] skeletonExtras.keyframeData available:",
+          !!skeletonExtras?.keyframeData,
+        );
+        console.log(
+          "[DEBUG] skeletonExtras.keyframeData length:",
+          skeletonExtras?.keyframeData?.length || 0,
+        );
+
+        if (skeletonExtras?.keyframeData) {
+          // Use keyframe data from extras if available (preserves accelerationMode, exact values)
+          console.log(
+            "[DEBUG] Restoring keyframe data from extras for",
+            animations.length,
+            "animations",
+          );
+          animations.forEach((anim, index) => {
+            const kfData =
+              skeletonExtras.keyframeData.find(
+                (e: any) => e.name === anim.name,
+              ) || skeletonExtras.keyframeData[index];
+            if (kfData?.keyframes) {
+              console.log(
+                "[DEBUG] Restored keyframes for animation",
+                anim.name,
+              );
+              anim.keyframes = kfData.keyframes;
+            } else {
+              console.log(
+                "[DEBUG] No keyframe data found for animation",
+                anim.name,
+              );
+            }
+          });
+        } else {
+          console.log(
+            "[DEBUG] No keyframeData in skeletonExtras - using glTF-extracted animations",
+          );
+        }
+
+        if (skeletonExtras?.animationEvents) {
+          animations.forEach((anim, index) => {
+            const eventData =
+              skeletonExtras.animationEvents.find(
+                (e: any) => e.name === anim.name,
+              ) || skeletonExtras.animationEvents[index];
+            if (eventData) {
+              anim.numAnimEvents = eventData.numAnimEvents || 0;
+              anim.events = eventData.events || [];
+            }
+          });
+        }
+
+        // Restore bone data from extras if available (more accurate than glTF transform calculations)
+        if (
+          skeletonExtras?.boneData &&
+          Array.isArray(skeletonExtras.boneData)
+        ) {
+          console.log(
+            "[DEBUG] Restoring bone data from extras for",
+            skeletonExtras.boneData.length,
+            "bones",
+          );
+          console.log("[DEBUG] Current bones array length:", bones.length);
+
+          // If extras has more bones, expand the array
+          while (bones.length < skeletonExtras.boneData.length) {
+            bones.push({
+              parentBone: -1,
+              name: "",
+              coordX: 0,
+              coordY: 0,
+              coordZ: 0,
+              numPointsAttachedToBone: 0,
+              numNormalsAttachedToBone: 0,
+              pointIndices: [],
+              normalIndices: [],
+            });
+          }
+
+          skeletonExtras.boneData.forEach((boneData: any, index: number) => {
+            if (index < bones.length) {
+              // Restore exact bone coordinates and all other fields
+              bones[index].parentBone = boneData.parentBone;
+              bones[index].name = boneData.name;
+              bones[index].coordX = boneData.coordX;
+              bones[index].coordY = boneData.coordY;
+              bones[index].coordZ = boneData.coordZ;
+              bones[index].numPointsAttachedToBone =
+                boneData.numPointsAttachedToBone;
+              bones[index].numNormalsAttachedToBone =
+                boneData.numNormalsAttachedToBone;
+              bones[index].pointIndices = boneData.pointIndices || [];
+              bones[index].normalIndices = boneData.normalIndices || [];
+              bones[index].reserved0 = boneData.reserved0;
+              bones[index].reserved1 = boneData.reserved1;
+              bones[index].reserved2 = boneData.reserved2;
+              bones[index].reserved3 = boneData.reserved3;
+              bones[index].reserved4 = boneData.reserved4;
+              bones[index].reserved5 = boneData.reserved5;
+              bones[index].reserved6 = boneData.reserved6;
+              bones[index].reserved7 = boneData.reserved7;
+            }
+          });
+        }
+
+        // Restore header data from extras if available
+        const headerData = skeletonExtras?.headerData;
+
         skeleton = {
-          version: 272,
-          numAnims: animations.length,
-          numJoints: bones.length,
-          num3DMFLimbs: 0,
+          version: headerData?.version ?? 272,
+          numAnims: headerData?.numAnims ?? animations.length,
+          numJoints: headerData?.numJoints ?? bones.length,
+          num3DMFLimbs: headerData?.num3DMFLimbs ?? 0,
           bones,
           animations,
+          // Restore non-glTF data from extras
+          relPoints: skeletonExtras?.relPoints || {},
+          alisData: skeletonExtras?.alisData || {},
+          metadata: skeletonExtras?.metadata || {},
         };
 
         console.log(

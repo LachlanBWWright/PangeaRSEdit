@@ -7,7 +7,10 @@ import type { BG3DSkeleton } from "./parseBG3D";
 /**
  * Convert BG3D skeleton data to SkeletonResource format
  * @param skeleton BG3D skeleton data
- * @param relP Optional RelP data from original skeleton resource
+ * @param relP Optional RelP data from original skeleton resource (uses skeleton.relPoints if not provided)
+ * @param evntData Optional Evnt data (uses skeleton.animations[].events if not provided)
+ * @param alisData Optional alis data (uses skeleton.alisData if not provided)
+ * @param metadata Optional metadata (uses skeleton.metadata if not provided)
  * @returns SkeletonResource object
  */
 export function bg3dSkeletonToSkeletonResource(
@@ -17,9 +20,17 @@ export function bg3dSkeletonToSkeletonResource(
   alisData?: { [key: string]: any },
   metadata?: any,
 ): SkeletonResource {
+  // Use skeleton's own data if not explicitly provided
+  const effectiveRelP =
+    relP || convertRelPointsToRelPFormat(skeleton.relPoints);
+  const effectiveAlisData = alisData || skeleton.alisData;
+  const effectiveMetadata = metadata || skeleton.metadata;
+
   // Debug: Check what RelP data we received
-  if (relP && relP["1000"]) {
-    console.log(`RelP received with ${relP["1000"].obj?.length || 0} points`);
+  if (effectiveRelP && effectiveRelP["1000"]) {
+    console.log(
+      `RelP received with ${effectiveRelP["1000"].obj?.length || 0} points`,
+    );
   } else {
     console.log("No RelP data received");
   }
@@ -42,7 +53,6 @@ export function bg3dSkeletonToSkeletonResource(
       obj: {
         parentBone: bone.parentBone,
         name: bone.name,
-        unnamedPadding: bone.unnamedPadding,
         coordX: bone.coordX,
         coordY: bone.coordY,
         coordZ: bone.coordZ,
@@ -172,17 +182,42 @@ export function bg3dSkeletonToSkeletonResource(
     Bone: bones,
     BonP: bonP,
     BonN: bonN,
-    RelP: relP || {}, // Include RelP if provided, otherwise empty
+    RelP: effectiveRelP || {}, // Include RelP if provided or from skeleton, otherwise empty
     AnHd: anHd,
     Evnt: evnt,
     NumK: numK,
     KeyF: keyF,
     alis:
-      alisData && Object.keys(alisData).length > 0
-        ? alisData
+      effectiveAlisData && Object.keys(effectiveAlisData).length > 0
+        ? effectiveAlisData
         : { "1000": { name: "alis", order: 1000, data: "00" } }, // Ensure alis resource exists (placeholder hex data if missing)
-    _metadata: metadata || {}, // Include metadata if provided, otherwise empty
+    _metadata: effectiveMetadata || {}, // Include metadata if provided or from skeleton, otherwise empty
   };
+}
+
+/**
+ * Helper function to convert relPoints format to RelP resource format
+ */
+function convertRelPointsToRelPFormat(relPoints?: {
+  [resourceId: string]: [number, number, number][];
+}): { [key: string]: any } | undefined {
+  if (!relPoints || Object.keys(relPoints).length === 0) {
+    return undefined;
+  }
+
+  const relP: { [key: string]: any } = {};
+  Object.entries(relPoints).forEach(([resourceId, points]) => {
+    relP[resourceId] = {
+      name: `RelP_${resourceId}`,
+      order: parseInt(resourceId, 10),
+      obj: points.map(([x, y, z]) => ({
+        relOffsetX: x,
+        relOffsetY: y,
+        relOffsetZ: z,
+      })),
+    };
+  });
+  return relP;
 }
 
 /**

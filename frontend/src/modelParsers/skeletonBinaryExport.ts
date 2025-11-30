@@ -212,10 +212,9 @@ function convertHeaderToBinary(header: any): Uint8Array {
 }
 
 function convertBoneToBinary(bone: any): Uint8Array {
-  // Bone struct: h32sh3f2H8L = 84 bytes
-  // h = parentBone (2 bytes)
-  // 32s = name (32 bytes)
-  // h = unnamed field (2 bytes) - padding or reserved
+  // Bone struct: l32s3f2H8L = 84 bytes (matches File_BoneDefinitionType from file.h)
+  // l = parentBone (4 bytes, int32_t)
+  // 32s = name (32 bytes, unsigned char[32])
   // 3f = coordX, coordY, coordZ (12 bytes)
   // 2H = numPointsAttachedToBone, numNormalsAttachedToBone (4 bytes)
   // 8L = reserved0-7 (32 bytes)
@@ -223,34 +222,20 @@ function convertBoneToBinary(bone: any): Uint8Array {
   const view = new DataView(buffer);
   const uint8View = new Uint8Array(buffer);
 
-  // Write parent bone index (signed 16-bit integer = 2 bytes)
-  view.setInt16(0, bone.parentBone !== undefined ? bone.parentBone : -1, false);
+  // Write parent bone index (signed 32-bit integer = 4 bytes) at offset 0
+  view.setInt32(0, bone.parentBone !== undefined ? bone.parentBone : -1, false);
 
-  // Write bone name (32 bytes starting at byte 2)
-  // Format: 2 bytes padding + 1 byte length + up to 29 bytes name + padding
-  // The 32s struct field starts at byte 2 and includes 2-byte padding before Pascal string
+  // Write bone name (32 bytes starting at byte 4)
+  // The name field is unsigned char[32] - a raw 32-byte array
+  // BioOreo used Pascal string format: 1 byte length + up to 31 bytes name
   if (bone.name && typeof bone.name === "string") {
-    // First 2 bytes of the 32-byte field are padding (bytes 2-3)
-    // Preserve original padding if available, otherwise use 0xFF
-    const padding0 = bone.namePadding0 !== undefined ? bone.namePadding0 : 0xff;
-    const padding1 = bone.namePadding1 !== undefined ? bone.namePadding1 : 0xff;
-    uint8View[2] = padding0;
-    uint8View[3] = padding1;
-
-    // Then Pascal string: length byte at byte 4, name starts at byte 5
+    // Pascal string: length byte at byte 4, name starts at byte 5
     const nameBytes = new TextEncoder().encode(bone.name);
-    const nameLength = Math.min(nameBytes.length, 29); // Max 29 chars (2 bytes padding + 1 length + 29 chars = 32)
+    const nameLength = Math.min(nameBytes.length, 31); // Max 31 chars (1 length + 31 chars = 32)
     uint8View[4] = nameLength; // Write length prefix at byte 4
     uint8View.set(nameBytes.slice(0, nameLength), 5); // Write name bytes starting at byte 5
-    // Rest of the 32-byte field (bytes 5+nameLength to 33) is already zero-filled
+    // Rest of the 32-byte field (bytes 5+nameLength to 35) is already zero-filled
   }
-
-  // Write unnamed/padding field (2 bytes at offset 34) - preserve if available, else 0
-  view.setInt16(
-    34,
-    bone.unnamedPadding !== undefined ? bone.unnamedPadding : 0,
-    false,
-  );
 
   // Write coordinates (3 float32s = 12 bytes starting at offset 36)
   view.setFloat32(36, bone.coordX || 0, false);

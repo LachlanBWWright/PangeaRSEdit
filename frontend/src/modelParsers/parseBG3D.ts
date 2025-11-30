@@ -117,7 +117,6 @@ export interface BG3DGroup {
 export interface BG3DBone {
   parentBone: number; // -1 if no parent, otherwise index of parent bone
   name: string;
-  unnamedPadding?: number; // 2-byte padding field in Bone struct
   coordX: number;
   coordY: number;
   coordZ: number;
@@ -173,6 +172,10 @@ export interface BG3DSkeleton {
   // Relative point lists (RelP) parsed from SkeletonResource.RelP
   // Keyed by original resource id (e.g. "1000") with array of [x,y,z] points
   relPoints?: { [resourceId: string]: [number, number, number][] };
+  // alis resource data for roundtrip preservation (not used in glTF but needed for binary export)
+  alisData?: { [key: string]: unknown };
+  // Original skeleton resource metadata for roundtrip preservation
+  metadata?: Record<string, unknown>;
 }
 
 export interface BG3DParseResult {
@@ -567,7 +570,6 @@ function convertSkeletonResourceToBG3D(
     bones.push({
       parentBone: boneObj.parentBone,
       name: boneEntry.name, // Use resource name, not obj.name (which may have Pascal string prefix)
-      unnamedPadding: boneObj.unnamedPadding,
       coordX: boneObj.coordX,
       coordY: boneObj.coordY,
       coordZ: boneObj.coordZ,
@@ -747,6 +749,16 @@ function convertSkeletonResourceToBG3D(
     }
   });
 
+  // Extract alis data from skeleton resource (stored at skeleton.alis = { "1000": {...} })
+  // We want to preserve just the inner structure { "1000": { name: "alis", order: 1000, data: "..." } }
+  let alisData: { [key: string]: unknown } | undefined = undefined;
+  Object.keys(skeleton).forEach((key) => {
+    if (key.toLowerCase() === "alis") {
+      // Store the inner structure directly, not wrapped in another object
+      alisData = skeleton[key] as { [key: string]: unknown };
+    }
+  });
+
   return {
     version: header.version,
     numAnims: header.numAnims,
@@ -755,6 +767,9 @@ function convertSkeletonResourceToBG3D(
     bones,
     animations,
     relPoints: relPointsMap,
+    alisData:
+      alisData && Object.keys(alisData).length > 0 ? alisData : undefined,
+    metadata: skeleton._metadata,
   };
 }
 

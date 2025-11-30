@@ -121,14 +121,35 @@ export function parseBoneDataFallback(
 
   const view = new DataView(bytes.buffer);
   let offset = 0;
+  // File_BoneDefinitionType layout from file.h:
+  // int32_t parentBone (4 bytes)
+  // unsigned char name[32] (32 bytes)
+  // OGLPoint3D coord (12 bytes = 3 floats)
+  // uint16_t numPointsAttachedToBone (2 bytes)
+  // uint16_t numNormalsAttachedToBone (2 bytes)
+  // uint32_t reserved[8] (32 bytes)
+  // Total: 84 bytes
   const parentBone = view.getInt32(offset, false);
   offset += 4;
 
+  // Parse Pascal string from 32-byte name field
   let name = "";
-  for (let i = 0; i < 32 && offset + i < bytes.length; i++) {
-    const char = bytes[offset + i];
-    if (char === 0) break;
-    name += String.fromCharCode(char);
+  // Check if first byte is a length byte (Pascal string format)
+  const lengthByte = bytes[offset];
+  if (lengthByte > 0 && lengthByte <= 31) {
+    // Pascal string: length byte + up to 31 chars
+    for (let i = 1; i <= lengthByte && offset + i < bytes.length; i++) {
+      const char = bytes[offset + i];
+      if (char === 0) break;
+      name += String.fromCharCode(char);
+    }
+  } else {
+    // Raw null-terminated string
+    for (let i = 0; i < 32 && offset + i < bytes.length; i++) {
+      const char = bytes[offset + i];
+      if (char === 0) break;
+      name += String.fromCharCode(char);
+    }
   }
   offset += 32;
 
@@ -139,10 +160,29 @@ export function parseBoneDataFallback(
   const coordZ = view.getFloat32(offset, false);
   offset += 4;
 
-  const numPointsAttachedToBone = view.getUint32(offset, false);
-  offset += 4;
-  const numNormalsAttachedToBone = view.getUint32(offset, false);
-  offset += 4;
+  // uint16_t fields for point/normal counts
+  const numPointsAttachedToBone = view.getUint16(offset, false);
+  offset += 2;
+  const numNormalsAttachedToBone = view.getUint16(offset, false);
+  offset += 2;
+
+  // Read reserved fields (8 uint32s = 32 bytes)
+  const reserved0 =
+    bytes.length >= offset + 4 ? view.getUint32(offset, false) : 0;
+  const reserved1 =
+    bytes.length >= offset + 8 ? view.getUint32(offset + 4, false) : 0;
+  const reserved2 =
+    bytes.length >= offset + 12 ? view.getUint32(offset + 8, false) : 0;
+  const reserved3 =
+    bytes.length >= offset + 16 ? view.getUint32(offset + 12, false) : 0;
+  const reserved4 =
+    bytes.length >= offset + 20 ? view.getUint32(offset + 16, false) : 0;
+  const reserved5 =
+    bytes.length >= offset + 24 ? view.getUint32(offset + 20, false) : 0;
+  const reserved6 =
+    bytes.length >= offset + 28 ? view.getUint32(offset + 24, false) : 0;
+  const reserved7 =
+    bytes.length >= offset + 32 ? view.getUint32(offset + 28, false) : 0;
 
   const finalName = name.length > 0 ? name : boneName;
 
@@ -154,6 +194,14 @@ export function parseBoneDataFallback(
     coordZ,
     numPointsAttachedToBone,
     numNormalsAttachedToBone,
+    reserved0,
+    reserved1,
+    reserved2,
+    reserved3,
+    reserved4,
+    reserved5,
+    reserved6,
+    reserved7,
   };
 }
 

@@ -54,6 +54,17 @@ describe("BG3D + Skeleton Roundtrip Tests with FULL ACCURACY", () => {
 
     // Convert to glTF WITHOUT storing original binary (no extras!)
     const gltf1 = await bg3dParsedToGLTF(originalBg3d);
+    
+    // Debug: Check what extras were stored
+    const gltf1Extras = gltf1.getRoot().getExtras();
+    const hasSkeletonExtras = !!gltf1Extras?.bg3dFields?.skeletonExtras;
+    const hasKeyframeData = !!gltf1Extras?.bg3dFields?.skeletonExtras?.keyframeData;
+    const keyframeCount = gltf1Extras?.bg3dFields?.skeletonExtras?.keyframeData?.length || 0;
+    
+    // Assert extras are being stored properly
+    expect(hasSkeletonExtras).toBe(true);
+    expect(hasKeyframeData).toBe(true);
+    expect(keyframeCount).toBeGreaterThan(0);
 
     // Validate glTF
     console.log("\n=== glTF VALIDATION (First Roundtrip) ===");
@@ -73,6 +84,25 @@ describe("BG3D + Skeleton Roundtrip Tests with FULL ACCURACY", () => {
     const roundtrip1SkeletonResource = bg3dSkeletonToSkeletonResource(
       roundtrip1Result.skeleton!,
     );
+    
+    // Debug: Check resource counts in RT1 skeleton
+    console.log('=== RT1 SKELETON RESOURCE COUNTS ===');
+    console.log('Hedr:', Object.keys(roundtrip1SkeletonResource.Hedr).length);
+    console.log('Bone:', Object.keys(roundtrip1SkeletonResource.Bone).length);
+    console.log('BonP:', Object.keys(roundtrip1SkeletonResource.BonP).length);
+    console.log('BonN:', Object.keys(roundtrip1SkeletonResource.BonN).length);
+    console.log('RelP:', Object.keys(roundtrip1SkeletonResource.RelP || {}).length);
+    console.log('AnHd:', Object.keys(roundtrip1SkeletonResource.AnHd).length);
+    console.log('Evnt:', Object.keys(roundtrip1SkeletonResource.Evnt).length);
+    console.log('NumK:', Object.keys(roundtrip1SkeletonResource.NumK).length);
+    console.log('KeyF:', Object.keys(roundtrip1SkeletonResource.KeyF).length);
+    console.log('alis:', Object.keys(roundtrip1SkeletonResource.alis || {}).length);
+    // Debug: Show alis structure
+    console.log('alis structure:', JSON.stringify(roundtrip1SkeletonResource.alis, null, 2).substring(0, 500));
+    // Debug: Show BG3DSkeleton data
+    console.log('RT1 skeleton.alisData keys:', Object.keys(roundtrip1Result.skeleton!.alisData || {}).length);
+    console.log('RT1 skeleton.relPoints keys:', Object.keys(roundtrip1Result.skeleton!.relPoints || {}).length);
+    
     const roundtrip1SkeletonBinary = await skeletonResourceToBinary(
       roundtrip1SkeletonResource,
     );
@@ -111,6 +141,22 @@ describe("BG3D + Skeleton Roundtrip Tests with FULL ACCURACY", () => {
     const roundtrip2SkeletonResource = bg3dSkeletonToSkeletonResource(
       roundtrip2Result.skeleton!,
     );
+    
+    // Debug: Check resource counts in RT2 skeleton
+    console.log('=== RT2 SKELETON RESOURCE COUNTS ===');
+    console.log('Hedr:', Object.keys(roundtrip2SkeletonResource.Hedr).length);
+    console.log('Bone:', Object.keys(roundtrip2SkeletonResource.Bone).length);
+    console.log('BonP:', Object.keys(roundtrip2SkeletonResource.BonP).length);
+    console.log('BonN:', Object.keys(roundtrip2SkeletonResource.BonN).length);
+    console.log('RelP:', Object.keys(roundtrip2SkeletonResource.RelP || {}).length);
+    console.log('AnHd:', Object.keys(roundtrip2SkeletonResource.AnHd).length);
+    console.log('Evnt:', Object.keys(roundtrip2SkeletonResource.Evnt).length);
+    console.log('NumK:', Object.keys(roundtrip2SkeletonResource.NumK).length);
+    console.log('KeyF:', Object.keys(roundtrip2SkeletonResource.KeyF).length);
+    console.log('alis:', Object.keys(roundtrip2SkeletonResource.alis || {}).length);
+    // Debug: Show alis structure
+    console.log('alis structure:', JSON.stringify(roundtrip2SkeletonResource.alis, null, 2).substring(0, 500));
+    
     const roundtrip2SkeletonBinary = await skeletonResourceToBinary(
       roundtrip2SkeletonResource,
     );
@@ -121,6 +167,24 @@ describe("BG3D + Skeleton Roundtrip Tests with FULL ACCURACY", () => {
     console.log(
       `Second roundtrip Skeleton: ${roundtrip2SkeletonBinary.byteLength} bytes`,
     );
+    
+    // Debug: Compare first bone resource
+    console.log('\n=== FIRST BONE RESOURCE COMPARISON ===');
+    const rt1Bone1000 = roundtrip1SkeletonResource.Bone["1000"];
+    const rt2Bone1000 = roundtrip2SkeletonResource.Bone["1000"];
+    console.log('RT1 Bone 1000:', JSON.stringify(rt1Bone1000, null, 2).substring(0, 500));
+    console.log('RT2 Bone 1000:', JSON.stringify(rt2Bone1000, null, 2).substring(0, 500));
+    
+    // Debug: Compare first keyframe resource 
+    console.log('\n=== FIRST KEYFRAME RESOURCE COMPARISON ===');
+    const rt1KeyF1000 = roundtrip1SkeletonResource.KeyF["1000"];
+    const rt2KeyF1000 = roundtrip2SkeletonResource.KeyF["1000"];
+    console.log('RT1 KeyF 1000 count:', rt1KeyF1000?.obj?.length || 0);
+    console.log('RT2 KeyF 1000 count:', rt2KeyF1000?.obj?.length || 0);
+    if (rt1KeyF1000?.obj?.[0] && rt2KeyF1000?.obj?.[0]) {
+      console.log('RT1 KeyF 1000 first:', JSON.stringify(rt1KeyF1000.obj[0]));
+      console.log('RT2 KeyF 1000 first:', JSON.stringify(rt2KeyF1000.obj[0]));
+    }
 
     // ===== COMPARE FIRST AND SECOND ROUNDTRIP =====
     console.log("\n=== COMPARING ROUNDTRIP 1 vs ROUNDTRIP 2 ===");
@@ -268,10 +332,10 @@ describe("BG3D + Skeleton Roundtrip Tests with FULL ACCURACY", () => {
       }
     }
 
-    // REQUIRE 99.99% ACCURACY for BG3D, 90% for skeleton (due to RelP not preserved in glTF)
+    // REQUIRE 99.99% ACCURACY for BG3D, 99% for skeleton
     // If roundtrip1 matches roundtrip2, the system is semantically stable
     expect(bg3dAccuracy).toBeGreaterThan(0.9999);
-    expect(skeletonAccuracy).toBeGreaterThan(0.9);
+    expect(skeletonAccuracy).toBeGreaterThan(0.99);
 
     console.log("\n✅ DOUBLE ROUNDTRIP TEST PASSED");
     console.log(

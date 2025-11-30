@@ -61,10 +61,12 @@ export interface SkeletonHeader {
 }
 
 // Bone object inside Bone field
+// Matches File_BoneDefinitionType from file.h:
+// int32_t parentBone, unsigned char name[32], OGLPoint3D coord, uint16_t numPointsAttachedToBone,
+// uint16_t numNormalsAttachedToBone, uint32_t reserved[8]
 export interface BoneObj {
-  parentBone: number; // -1 if no parent, otherwise index of parent bone
-  name: string;
-  unnamedPadding?: number; // 2-byte padding field
+  parentBone: number; // -1 if no parent, otherwise index of parent bone (int32_t)
+  name: string; // 32-byte Pascal string
   coordX: number;
   coordY: number;
   coordZ: number;
