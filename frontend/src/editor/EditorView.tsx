@@ -174,7 +174,11 @@ export function EditorView({
         zoomOut={zoomOut}
         dataHistoryIndex={dataHistory.index}
         dataHistoryLength={dataHistory.items.length}
-        terrainHasSTgd={terrainData.STgd !== undefined}
+        terrainHasSTgd={
+          terrainData &&
+          terrainData.STgd !== undefined &&
+          terrainData.STgd !== null
+        }
       />
       <div>
         {view === View.fences && fenceData && (

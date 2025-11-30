@@ -12,6 +12,7 @@ import {
   type GlobalsInterface,
 } from "../data/globals/globals";
 import { loadMapImages } from "./loadLogic/loadMapImages";
+import { combineCanvases } from "./utils/combineCanvases";
 
 import { useAtom } from "jotai";
 import { useState } from "react";
@@ -65,6 +66,7 @@ export function UploadPrompt({
 }) {
   const [globals, setGlobals] = useAtom(Globals);
   const [showAllGames, setShowAllGames] = useState(false);
+
   const openFile = async (url: string, gameType: GlobalsInterface) => {
     /*All games' Resource Forks are .ter.rsrc, except for Nanosaur, which stores data in a .ter using a proprietary format
     Terrain files are .ter, except for Nanosaur, which is .trt, and Bugdom, 
@@ -107,6 +109,15 @@ export function UploadPrompt({
       for (const canvas of canvases) {
         console.log(canvas.toDataURL("image/png"));
       }
+
+      // Combine tiles into a single collage and log its data URL
+      try {
+        const collage = combineCanvases(canvases);
+        console.log("Collage dataURL:", collage.toDataURL("image/png"));
+      } catch (err) {
+        console.warn("Failed to create collage:", err);
+      }
+
       setMapImagesFile(imgFile);
       setMapImages(canvases);
     }
@@ -153,15 +164,19 @@ export function UploadPrompt({
       console.log(imgBuffer);
       console.log(imgBuffer.byteLength);
       console.log("Resized", imgBuffer.byteLength / 2 / 32 / 32);
-      const imgDataView = new DataView(imgBuffer.buffer);
-      const mapImages = await loadMapImages(imgDataView, gameType);
 
-      //Testing, delete
-      for (const canvas of mapImages) {
-        console.log(canvas.toDataURL("image/png"));
+      // We already converted tiles to canvases above using `createCanvasFromTile`.
+      // `loadMapImages` does not currently implement Bugdom decoding and will
+      // return an empty array. Use the canvases we already created instead.
+      // Combine tiles into a single collage and log its data URL
+      try {
+        const collage = combineCanvases(canvases);
+        console.log(collage.toDataURL("image/png"));
+      } catch (err) {
+        console.warn("Failed to create collage:", err);
       }
 
-      setMapImages(mapImages);
+      setMapImages(canvases);
     }
   };
 

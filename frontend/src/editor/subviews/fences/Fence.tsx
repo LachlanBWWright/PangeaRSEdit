@@ -4,7 +4,7 @@ import { Line } from "react-konva";
 import { FenceNub } from "./FenceNub";
 import { SelectedFence } from "../../../data/fences/fenceAtoms";
 import { useAtom, useAtomValue } from "jotai";
-import { memo, useState } from "react"; // Added useState
+import { memo, useState, useRef } from "react"; // Added useState
 import { Globals } from "../../../data/globals/globals";
 import { getFenceColor } from "../../../data/fences/getFenceColor";
 
@@ -54,6 +54,23 @@ export const Fence = memo(
               ]),
             );
             setSelectedFence(fenceIdx); // Select the fence on drag start
+          }}
+          onDragMove={(e) => {
+            if (!initialDragState) return;
+
+            const dragDx = e.target.x();
+            const dragDz = e.target.y();
+
+            setFenceData((draft) => {
+              const currentNubs = draft.FnNb[1000 + fenceIdx].obj;
+              for (let i = 0; i < currentNubs.length; i++) {
+                currentNubs[i][0] = initialDragState[i][0] + dragDx;
+                currentNubs[i][1] = initialDragState[i][1] + dragDz;
+              }
+            });
+            e.target.x(0); // Reset line position after dragging nubs
+            e.target.y(0); // Reset line position after dragging nubs
+            setInitialDragState(null); // Clear initial drag state
           }}
           onDragEnd={(e) => {
             if (!initialDragState) return;

@@ -182,7 +182,7 @@ export function KonvaView({
         });
       }}
     >
-      {terrainData.STgd && (
+      {terrainData && terrainData.STgd && (
         <Supertiles
           headerData={headerData}
           terrainData={terrainData}

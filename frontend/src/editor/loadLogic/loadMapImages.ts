@@ -89,6 +89,11 @@ export async function loadMapImages(
         } satisfies JpegDecompressMessage);
       }
       return;
+    } else if (globals.GAME_TYPE === Game.BUGDOM) {
+      //Budgdom 1 Logic - TODO: Not completed
+
+      console.log("Budgdom map image loading not implemented yet");
+      res([]);
     }
     //Read Each - Logic for other games
     else {

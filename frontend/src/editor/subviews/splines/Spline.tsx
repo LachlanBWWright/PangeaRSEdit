@@ -6,7 +6,7 @@ import {
 import { SplineData } from "../../../python/structSpecs/ottoMaticLevelData";
 import { Line, Circle, Rect, Label, Tag, Text } from "react-konva";
 import { useAtom, useAtomValue } from "jotai";
-import { memo, useMemo, useState } from "react";
+import { memo, useMemo, useState, useRef } from "react";
 import { getPoints } from "../../../utils/spline";
 import { SelectedSpline } from "../../../data/splines/splineAtoms";
 import { getSplineItemName } from "@/data/splines/getSplineItemNames";
@@ -51,6 +51,7 @@ export const Spline = memo(
     const [initialDragState, setInitialDragState] = useState<
       { x: number; z: number }[] | null
     >(null);
+    const lineRafRef = useRef<number | null>(null);
 
     const nubs = selectSplineNubs(splineData, SPLINE_KEY_BASE + splineIdx);
     const items = selectSplineItems(splineData, SPLINE_KEY_BASE + splineIdx);
@@ -79,7 +80,45 @@ export const Spline = memo(
               })),
             );
           }}
+          onDragMove={(e) => {
+            if (!initialDragState) return;
+
+            const dragDx = e.target.x();
+            const dragDz = e.target.y();
+
+            if (lineRafRef.current) cancelAnimationFrame(lineRafRef.current);
+            lineRafRef.current = requestAnimationFrame(() => {
+              const updatedNubs = initialDragState.map((initPos) => ({
+                x: initPos.x + dragDx,
+                z: initPos.z + dragDz,
+              }));
+
+              // Update both nub list and computed points in a single draft update
+              setSplineData((draft) => {
+                if (draft.SpNb?.[SPLINE_KEY_BASE + splineIdx]) {
+                  draft.SpNb[SPLINE_KEY_BASE + splineIdx].obj = updatedNubs;
+                }
+
+                const newPoints =
+                  updatedNubs.length === 1
+                    ? [{ x: updatedNubs[0].x, z: updatedNubs[0].z }]
+                    : getPoints(updatedNubs);
+
+                if (draft.SpPt?.[SPLINE_KEY_BASE + splineIdx]) {
+                  draft.SpPt[SPLINE_KEY_BASE + splineIdx].obj = newPoints;
+                }
+
+                if (draft.Spln?.[1000]?.obj?.[SPLINE_KEY_BASE + splineIdx]) {
+                  draft.Spln[1000].obj[SPLINE_KEY_BASE + splineIdx].numNubs =
+                    updatedNubs.length;
+                  draft.Spln[1000].obj[SPLINE_KEY_BASE + splineIdx].numPoints =
+                    newPoints.length;
+                }
+              });
+            });
+          }}
           onDragEnd={(e) => {
+            if (lineRafRef.current) cancelAnimationFrame(lineRafRef.current);
             if (!initialDragState) return;
 
             const dragDx = e.target.x();
@@ -156,6 +195,7 @@ const SplineNub = memo(
   }) => {
     const [selectedSpline, setSelectedSpline] = useAtom(SelectedSpline);
     const [hovering, setHovering] = useState(false);
+    const nubRafRef = useRef<number | null>(null);
     return (
       <>
         <Circle
@@ -166,7 +206,47 @@ const SplineNub = memo(
           fill={selectedSpline === splineIdx ? "red" : "blue"}
           onMouseDown={() => setSelectedSpline(splineIdx)}
           onDragStart={() => setSelectedSpline(splineIdx)}
+          onDragMove={(e) => {
+            const newX = Math.round(e.target.x());
+            const newZ = Math.round(e.target.y());
+
+            if (nubRafRef.current) cancelAnimationFrame(nubRafRef.current);
+            nubRafRef.current = requestAnimationFrame(() => {
+              setSplineData((draft) => {
+                const currentNubs =
+                  draft.SpNb?.[SPLINE_KEY_BASE + splineIdx]?.obj || [];
+                const updatedNubs = [...currentNubs];
+                updatedNubs[nubIdx] = { x: newX, z: newZ };
+
+                //Modify "hidden" final nub, which is to be in the same position as the first nub
+                if (nubIdx === currentNubs.length - 1) {
+                  updatedNubs[0] = { x: newX, z: newZ };
+                }
+
+                if (draft.SpNb?.[SPLINE_KEY_BASE + splineIdx]) {
+                  draft.SpNb[SPLINE_KEY_BASE + splineIdx].obj = updatedNubs;
+                }
+
+                const newPoints =
+                  updatedNubs.length === 1
+                    ? [{ x: updatedNubs[0].x, z: updatedNubs[0].z }]
+                    : getPoints(updatedNubs);
+
+                if (draft.SpPt?.[SPLINE_KEY_BASE + splineIdx]) {
+                  draft.SpPt[SPLINE_KEY_BASE + splineIdx].obj = newPoints;
+                }
+
+                if (draft.Spln?.[1000]?.obj?.[SPLINE_KEY_BASE + splineIdx]) {
+                  draft.Spln[1000].obj[SPLINE_KEY_BASE + splineIdx].numNubs =
+                    updatedNubs.length;
+                  draft.Spln[1000].obj[SPLINE_KEY_BASE + splineIdx].numPoints =
+                    newPoints.length;
+                }
+              });
+            });
+          }}
           onDragEnd={(e) => {
+            if (nubRafRef.current) cancelAnimationFrame(nubRafRef.current);
             const newX = Math.round(e.target.x());
             const newZ = Math.round(e.target.y());
 
