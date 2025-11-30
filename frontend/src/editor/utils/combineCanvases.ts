@@ -1,4 +1,6 @@
-export function combineCanvases(canvases: HTMLCanvasElement[]): HTMLCanvasElement {
+export function combineCanvases(
+  canvases: HTMLCanvasElement[],
+): HTMLCanvasElement {
   const collage = document.createElement("canvas");
   if (!canvases || canvases.length === 0) {
     collage.width = 1;

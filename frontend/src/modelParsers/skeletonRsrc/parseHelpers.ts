@@ -50,9 +50,9 @@ export function parseRelPData(
   const view = new DataView(bytes.buffer);
   for (let i = 0; i < bytes.length; i += 12) {
     if (i + 12 <= bytes.length) {
-      const relOffsetX = view.getFloat32(i, true);
-      const relOffsetY = view.getFloat32(i + 4, true);
-      const relOffsetZ = view.getFloat32(i + 8, true);
+      const relOffsetX = view.getFloat32(i, false);
+      const relOffsetY = view.getFloat32(i + 4, false);
+      const relOffsetZ = view.getFloat32(i + 8, false);
       result.push({ relOffsetX, relOffsetY, relOffsetZ });
     }
   }
@@ -74,9 +74,9 @@ export function parseEvntData(
   const view = new DataView(bytes.buffer);
   for (let i = 0; i < bytes.length; i += 12) {
     if (i + 12 <= bytes.length) {
-      const time = view.getUint32(i, true);
-      const type = view.getUint32(i + 4, true);
-      const value = view.getUint32(i + 8, true);
+      const time = view.getUint32(i, false);
+      const type = view.getUint32(i + 4, false);
+      const value = view.getUint32(i + 8, false);
       result.push({ time, type, value });
     }
   }
@@ -121,7 +121,7 @@ export function parseBoneDataFallback(
 
   const view = new DataView(bytes.buffer);
   let offset = 0;
-  const parentBone = view.getInt32(offset, true);
+  const parentBone = view.getInt32(offset, false);
   offset += 4;
 
   let name = "";
@@ -132,16 +132,16 @@ export function parseBoneDataFallback(
   }
   offset += 32;
 
-  const coordX = view.getFloat32(offset, true);
+  const coordX = view.getFloat32(offset, false);
   offset += 4;
-  const coordY = view.getFloat32(offset, true);
+  const coordY = view.getFloat32(offset, false);
   offset += 4;
-  const coordZ = view.getFloat32(offset, true);
+  const coordZ = view.getFloat32(offset, false);
   offset += 4;
 
-  const numPointsAttachedToBone = view.getUint32(offset, true);
+  const numPointsAttachedToBone = view.getUint32(offset, false);
   offset += 4;
-  const numNormalsAttachedToBone = view.getUint32(offset, true);
+  const numNormalsAttachedToBone = view.getUint32(offset, false);
   offset += 4;
 
   const finalName = name.length > 0 ? name : boneName;
@@ -169,17 +169,19 @@ export function parseKeyFData(hexData: string): KeyFRaw[] {
   const view = new DataView(bytes.buffer);
   for (let i = 0; i < bytes.length; i += 44) {
     if (i + 44 <= bytes.length) {
-      const tick = view.getFloat32(i, true);
-      const accelerationMode = view.getFloat32(i + 4, true);
-      const coordX = view.getFloat32(i + 8, true);
-      const coordY = view.getFloat32(i + 12, true);
-      const coordZ = view.getFloat32(i + 16, true);
-      const rotationX = view.getFloat32(i + 20, true);
-      const rotationY = view.getFloat32(i + 24, true);
-      const rotationZ = view.getFloat32(i + 28, true);
-      const scaleX = view.getFloat32(i + 32, true);
-      const scaleY = view.getFloat32(i + 36, true);
-      const scaleZ = view.getFloat32(i + 40, true);
+      // KeyF format: ii3f3f3f = 2 int32s + 9 float32s
+      // IMPORTANT: tick and accelerationMode are int32, NOT float32!
+      const tick = view.getInt32(i, false); // big-endian int32
+      const accelerationMode = view.getInt32(i + 4, false); // big-endian int32
+      const coordX = view.getFloat32(i + 8, false); // big-endian float32
+      const coordY = view.getFloat32(i + 12, false);
+      const coordZ = view.getFloat32(i + 16, false);
+      const rotationX = view.getFloat32(i + 20, false);
+      const rotationY = view.getFloat32(i + 24, false);
+      const rotationZ = view.getFloat32(i + 28, false);
+      const scaleX = view.getFloat32(i + 32, false);
+      const scaleY = view.getFloat32(i + 36, false);
+      const scaleZ = view.getFloat32(i + 40, false);
 
       result.push({
         tick,
