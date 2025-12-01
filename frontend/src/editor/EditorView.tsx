@@ -176,8 +176,9 @@ export function EditorView({
         dataHistoryLength={dataHistory.items.length}
         terrainHasSTgd={
           terrainData &&
-          terrainData.STgd !== undefined &&
-          terrainData.STgd !== null
+          // For Bugdom 1: has Layr (tile layer data), for other games: has STgd
+          ((terrainData.STgd !== undefined && terrainData.STgd !== null) ||
+            (terrainData.Layr !== undefined && terrainData.Layr !== null))
         }
       />
       <div>

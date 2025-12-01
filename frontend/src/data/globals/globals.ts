@@ -58,18 +58,20 @@ export const OttoGlobals: GlobalsInterface = {
   LIQD_NUBS: 100,
 };
 
-//TODO: NOT CHECKED, FIX!
+// Bugdom 1 uses individual 32x32 tiles that are combined into supertiles at runtime
+// Unlike other games which have pre-composed supertile textures
+// Supertiles are 5x5 tiles = 160x160 pixels
 export const BugdomGlobals: GlobalsInterface = {
   GAME_NAME: "Bugdom",
   GAME_TYPE: Game.BUGDOM,
   DATA_TYPE: DataType.RSRC_FORK,
   TILE_IMAGE_FORMAT: TileImageFormat.LZSS_16_BIT,
   STRUCT_SPECS: bugdomSpecs,
-  SUPERTILE_TEXMAP_SIZE: 32, //Dimensions of each supertile texture (Note; Bugdom has per-tile texmaps - supertiles are made by combining 5x5 texmaps)
-  TILES_PER_SUPERTILE: 5, //How many tiles are in a supertile
-  EMPTY_TILE_IDX: 0, //TODO: Not checked
-  TILE_INGAME_SIZE: 225.0,
-  TILE_SIZE: 32, //How many units each tile is
+  SUPERTILE_TEXMAP_SIZE: 160, // Composed supertile size (5 tiles * 32 pixels = 160)
+  TILES_PER_SUPERTILE: 5, // How many tiles are in a supertile (5x5)
+  EMPTY_TILE_IDX: 0,
+  TILE_INGAME_SIZE: 160.0, // TERRAIN_POLYGON_SIZE from Bugdom source (160 world units per supertile)
+  TILE_SIZE: 32, // OREOMAP_TILE_SIZE - pixel size of each individual tile texture
   LIQD_NUBS: 100,
 };
 
@@ -87,19 +89,19 @@ export const Bugdom2Globals: GlobalsInterface = {
   LIQD_NUBS: 100,
 };
 
-//TODO: FIX NOT CHECKED
+//Nanosaur 1 uses individual 32x32 tiles composed into 5x5 supertiles (like Bugdom 1)
 export const NanosaurGlobals: GlobalsInterface = {
   GAME_NAME: "Nanosaur",
   GAME_TYPE: Game.NANOSAUR,
   DATA_TYPE: DataType.TRT_FILE,
   TILE_IMAGE_FORMAT: TileImageFormat.LZSS_16_BIT,
   STRUCT_SPECS: ottoMaticSpecs,
-  SUPERTILE_TEXMAP_SIZE: 32, //Dimensions of each supertile texture
-  TILES_PER_SUPERTILE: 5, //How many tiles are in a supertile
-  EMPTY_TILE_IDX: 0, //TODO: Not checked
-  TILE_INGAME_SIZE: 225.0,
-  TILE_SIZE: 32, //How many units each tile is //TODO: Check its not 140/32
-  LIQD_NUBS: 100, //Not applicable to Nanosaur - Water is just another item
+  SUPERTILE_TEXMAP_SIZE: 160, // 5 tiles * 32 pixels = 160 (same as Bugdom)
+  TILES_PER_SUPERTILE: 5, // SUPERTILE_SIZE in source (5x5 tiles per supertile)
+  EMPTY_TILE_IDX: 0,
+  TILE_INGAME_SIZE: 140.0, // TERRAIN_POLYGON_SIZE from Nanosaur source
+  TILE_SIZE: 32, // OREOMAP_TILE_SIZE - 32x32 pixel tiles
+  LIQD_NUBS: 100, // Not applicable to Nanosaur - Water is just another item
 };
 
 //TODO: NOT CHECKED, FIX

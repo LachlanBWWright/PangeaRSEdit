@@ -604,13 +604,12 @@ function processOttoAnimations(
         const times = keyframes.map((kf) => kf.tick / 30.0);
         maxTime = Math.max(maxTime, ...times);
 
-        // Calculate relative translations (keyframe position - rest pose position)
-        const restPos = new Vector3(bone.coordX, bone.coordY, -bone.coordZ); // Convert to left-handed
+        // Otto keyframe coord is LOCAL (relative to parent), which matches glTF joint translation
+        // glTF animation values REPLACE the node's TRS, so we use kf.coord directly (with Z-flip)
         const translations = keyframes
           .map((kf) => {
-            const kfPos = new Vector3(kf.coordX, kf.coordY, -kf.coordZ); // Convert to left-handed
-            const relativePos = new Vector3().subVectors(kfPos, restPos);
-            return [relativePos.x, relativePos.y, relativePos.z];
+            // Convert Otto LOCAL coord to glTF coord (just flip Z)
+            return [kf.coordX, kf.coordY, -kf.coordZ];
           })
           .flat();
         // Always include translation channel for roundtrip stability
@@ -624,14 +623,20 @@ function processOttoAnimations(
 
         // Extract rotation data (convert Euler angles to quaternions)
         // Note: Otto rotations are relative to rest pose, so no subtraction needed
-        const rotationEulers = keyframes.map((kf) => [
-          kf.rotationX,
-          kf.rotationY,
-          kf.rotationZ,
-        ]);
-        const rotationQuats = rotationEulers.map((euler) =>
-          eulerToQuaternion(euler[0], euler[1], euler[2]),
-        );
+        // Coordinate system conversion: Otto uses +Z forward, glTF uses +Z backward
+        // When Z axis is flipped, the rotation axis (ax, ay, az) becomes (ax, ay, -az)
+        // For quaternion q = (qx, qy, qz, qw), the transformed quaternion is:
+        // q' = (qx, qy, -qz, qw)
+        const rotationQuats = keyframes.map((kf) => {
+          // First convert Otto Euler angles to quaternion
+          const [qx, qy, qz, qw] = eulerToQuaternion(
+            kf.rotationX,
+            kf.rotationY,
+            kf.rotationZ,
+          );
+          // Apply Z-flip transformation to quaternion: negate qz only
+          return [qx, qy, -qz, qw];
+        });
         const rotations = rotationQuats.flat();
         // Always include rotation channel for roundtrip stability
         channels.push({
@@ -1173,14 +1178,24 @@ export function extractAnimationsFromGLTF(
         // Find or create keyframe for this tick
         let keyframe = keyframes[boneIndexStr].find((kf) => kf.tick === tick);
         if (!keyframe) {
-          // Initialize with bone's rest position since glTF only stores delta from rest pose
-          // If there's no translation channel, the keyframe coords should be the rest position
+          // Initialize with bone's LOCAL rest position (computed from absolute coords)
+          // For root bone: localPos = bone.coord
+          // For child bone: localPos = bone.coord - parent.coord
+          let localX = bone?.coordX ?? 0;
+          let localY = bone?.coordY ?? 0;
+          let localZ = bone?.coordZ ?? 0;
+          if (bone && bones && bone.parentBone >= 0 && bone.parentBone < bones.length) {
+            const parent = bones[bone.parentBone];
+            localX = bone.coordX - parent.coordX;
+            localY = bone.coordY - parent.coordY;
+            localZ = bone.coordZ - parent.coordZ;
+          }
           keyframe = {
             tick,
             accelerationMode: 0,
-            coordX: bone?.coordX ?? 0,
-            coordY: bone?.coordY ?? 0,
-            coordZ: bone?.coordZ ?? 0,
+            coordX: localX,
+            coordY: localY,
+            coordZ: localZ,
             rotationX: 0,
             rotationY: 0,
             rotationZ: 0,
@@ -1194,32 +1209,26 @@ export function extractAnimationsFromGLTF(
         // Apply the values based on path
         const valueIndex = i * valuesPerFrame;
         if (path === "translation") {
-          // glTF stores RELATIVE translation (offset from rest pose)
-          // Otto stores ABSOLUTE keyframe position
-          // Convert: absolute = relative + rest_pose
-          // Also convert coordinate system: glTF left-handed → Otto right-handed (flip Z)
-          const relX = values[valueIndex] || 0;
-          const relY = values[valueIndex + 1] || 0;
-          const relZ = values[valueIndex + 2] || 0;
-
-          if (bone) {
-            // Add rest pose (already in Otto coords) to relative (in glTF coords with Z flipped)
-            keyframe.coordX = relX + bone.coordX;
-            keyframe.coordY = relY + bone.coordY;
-            keyframe.coordZ = -relZ + bone.coordZ; // Flip glTF Z back, then add rest pose
-          } else {
-            // No bone data - just convert coordinate system
-            keyframe.coordX = relX;
-            keyframe.coordY = relY;
-            keyframe.coordZ = -relZ;
-          }
+          // glTF animation translation is LOCAL (same as Otto kf.coord)
+          // Just convert coordinate system: flip Z back
+          const glTFX = values[valueIndex] || 0;
+          const glTFY = values[valueIndex + 1] || 0;
+          const glTFZ = values[valueIndex + 2] || 0;
+          
+          // Flip Z back to Otto's coordinate system
+          keyframe.coordX = glTFX;
+          keyframe.coordY = glTFY;
+          keyframe.coordZ = -glTFZ;
         } else if (path === "rotation") {
           // Convert quaternion (x, y, z, w) back to Euler angles (XYZ order)
+          // glTF stores quaternion with Z-flip applied: (qx, qy, -qz, qw)
+          // Reverse the Z-flip: negate qz to get back to Otto's coordinate system
           const qx = values[valueIndex] || 0;
           const qy = values[valueIndex + 1] || 0;
           const qz = values[valueIndex + 2] || 0;
           const qw = values[valueIndex + 3] || 1;
-          const [rx, ry, rz] = quaternionToEuler(qx, qy, qz, qw);
+          // Inverse of forward transformation (qx, qy, -qz, qw): negate qz back
+          const [rx, ry, rz] = quaternionToEuler(qx, qy, -qz, qw);
           keyframe.rotationX = rx;
           keyframe.rotationY = ry;
           keyframe.rotationZ = rz;

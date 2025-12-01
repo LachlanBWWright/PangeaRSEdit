@@ -72,11 +72,13 @@ export function parseEvntData(
   }
 
   const view = new DataView(bytes.buffer);
-  for (let i = 0; i < bytes.length; i += 12) {
-    if (i + 12 <= bytes.length) {
-      const time = view.getUint32(i, false);
-      const type = view.getUint32(i + 4, false);
-      const value = view.getUint32(i + 8, false);
+  // AnimEventType: short time (2 bytes) + byte type (1 byte) + byte value (1 byte) = 4 bytes per event
+  // Matches spec: Evnt:hBB+:time,type,value
+  for (let i = 0; i < bytes.length; i += 4) {
+    if (i + 4 <= bytes.length) {
+      const time = view.getInt16(i, false);      // short (2 bytes, signed)
+      const type = bytes[i + 2];                  // byte (1 byte, unsigned)
+      const value = bytes[i + 3];                 // byte (1 byte, unsigned)
       result.push({ time, type, value });
     }
   }

@@ -136,21 +136,55 @@ export function UploadPrompt({
       //Bugdom 1-specific - The image data is within the Resource Fork
       console.log(jsonData);
       const imgString = jsonData.Timg?.[1000]?.data;
-      console.log(imgString);
+      console.log(
+        "Timg hex string (first 200 chars):",
+        imgString?.substring(0, 200),
+      );
+      console.log("Timg hex string length:", imgString?.length);
       if (!imgString) {
         throw new Error("No image data found");
       }
       const imgBuffer = Buffer.from(imgString, "hex");
       console.log("Image buffer length:", imgBuffer.byteLength);
+      console.log("Image buffer byteOffset:", imgBuffer.byteOffset);
+
+      // Log first 32 bytes as hex to see raw data
+      const first32Bytes = Array.from(imgBuffer.slice(0, 32))
+        .map((b) => b.toString(16).padStart(2, "0"))
+        .join(" ");
+      console.log("First 32 bytes of Timg:", first32Bytes);
+
+      // Log first 8 pixels as 16-bit values (big-endian)
+      const alignedBuffer = new ArrayBuffer(imgBuffer.byteLength);
+      new Uint8Array(alignedBuffer).set(imgBuffer);
+      const tempView = new DataView(alignedBuffer);
+      const first8Pixels = [];
+      for (let i = 0; i < 8; i++) {
+        const val = tempView.getUint16(i * 2, false); // big-endian
+        first8Pixels.push({
+          hex: "0x" + val.toString(16).padStart(4, "0"),
+          decimal: val,
+        });
+      }
+      console.log("First 8 pixels as 16-bit big-endian:", first8Pixels);
+
       const tileCount = imgBuffer.byteLength / 2 / 32 / 32; // 2 bytes per pixel, 32x32 pixels per tile
       console.log("Tile count:", tileCount);
 
       const tiles = extractTilesFromBuffer(
-        new DataView(imgBuffer.buffer),
+        new DataView(alignedBuffer),
         tileCount,
         32,
         32 * 32 * 2,
       );
+
+      // Debug: Log first tile's first 8 raw pixel values
+      if (tiles.length > 0) {
+        console.log(
+          "First tile, first 8 raw Uint16 values:",
+          Array.from(tiles[0].slice(0, 8)),
+        );
+      }
       //test start
 
       // Convert each tile to a canvas for display
@@ -176,7 +210,13 @@ export function UploadPrompt({
         console.warn("Failed to create collage:", err);
       }
 
+      console.log("Bugdom tile images loaded:", canvases.length, "tiles");
+      console.log(
+        "First 3 tile image dimensions:",
+        canvases.slice(0, 3).map((c) => `${c.width}x${c.height}`),
+      );
       setMapImages(canvases);
+      console.log("setMapImages called with", canvases.length, "canvases");
     }
   };
 
@@ -223,7 +263,9 @@ export function UploadPrompt({
 
       const jsonData = await pyodidePromise;
 
-      preprocessJson(jsonData, globals);
+      // IMPORTANT: Use gameType directly, not globals from hook state!
+      // The setGlobals(gameType) call is async and hasn't updated globals yet
+      preprocessJson(jsonData, gameType);
 
       setData(splitLevelData(jsonData));
       return jsonData;
