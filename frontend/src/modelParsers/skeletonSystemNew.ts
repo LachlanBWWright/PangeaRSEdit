@@ -1184,7 +1184,12 @@ export function extractAnimationsFromGLTF(
           let localX = bone?.coordX ?? 0;
           let localY = bone?.coordY ?? 0;
           let localZ = bone?.coordZ ?? 0;
-          if (bone && bones && bone.parentBone >= 0 && bone.parentBone < bones.length) {
+          if (
+            bone &&
+            bones &&
+            bone.parentBone >= 0 &&
+            bone.parentBone < bones.length
+          ) {
             const parent = bones[bone.parentBone];
             localX = bone.coordX - parent.coordX;
             localY = bone.coordY - parent.coordY;
@@ -1214,7 +1219,7 @@ export function extractAnimationsFromGLTF(
           const glTFX = values[valueIndex] || 0;
           const glTFY = values[valueIndex + 1] || 0;
           const glTFZ = values[valueIndex + 2] || 0;
-          
+
           // Flip Z back to Otto's coordinate system
           keyframe.coordX = glTFX;
           keyframe.coordY = glTFY;

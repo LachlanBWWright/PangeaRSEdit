@@ -27,7 +27,9 @@ export const Supertiles = memo(
 
     console.log("Supertiles component render:", {
       gameType: globals.GAME_TYPE,
-      usesIndividualTiles: globals.GAME_TYPE === Game.BUGDOM || globals.GAME_TYPE === Game.NANOSAUR,
+      usesIndividualTiles:
+        globals.GAME_TYPE === Game.BUGDOM ||
+        globals.GAME_TYPE === Game.NANOSAUR,
       hasLayr: !!terrainData.Layr,
       hasSTgd: !!terrainData.STgd,
       hasXlat: !!terrainData.Xlat,
@@ -36,12 +38,18 @@ export const Supertiles = memo(
 
     // For Bugdom 1 and Nanosaur 1, use the BugdomSupertiles component which constructs
     // supertiles from individual 32x32 tiles (optionally using Xlat translation table)
-    if (globals.GAME_TYPE === Game.BUGDOM || globals.GAME_TYPE === Game.NANOSAUR) {
+    if (
+      globals.GAME_TYPE === Game.BUGDOM ||
+      globals.GAME_TYPE === Game.NANOSAUR
+    ) {
       const xlatTable = terrainData.Xlat?.[1000]?.obj;
-      console.log("Supertiles: Using BugdomSupertiles for individual tile rendering", {
-        game: globals.GAME_NAME,
-        xlatTableLength: xlatTable?.length,
-      });
+      console.log(
+        "Supertiles: Using BugdomSupertiles for individual tile rendering",
+        {
+          game: globals.GAME_NAME,
+          xlatTableLength: xlatTable?.length,
+        },
+      );
 
       return (
         <BugdomSupertiles

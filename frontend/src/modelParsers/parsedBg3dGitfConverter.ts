@@ -422,6 +422,58 @@ export function bg3dParsedToGLTF(
   const allGeometries = collectGeometries(parsed.groups);
   console.log(`Processing ${allGeometries.length} geometries`);
 
+  // Build decomposed point list mapping (like Otto's runtime decomposition)
+  // This maps from decomposedPointIndex -> {meshIndex, localVertexIndex}[]
+  // Otto matches vertices by position with 0.001 threshold
+  interface DecomposedPoint {
+    realPoint: [number, number, number]; // World position
+    refs: { meshIndex: number; vertexIndex: number }[];
+  }
+  const decomposedPointList: DecomposedPoint[] = [];
+  const MATCH_THRESHOLD = 0.001;
+
+  function pointsAreCloseEnough(
+    p1: [number, number, number] | number[],
+    p2: [number, number, number] | number[],
+  ): boolean {
+    return (
+      Math.abs(p1[0] - p2[0]) < MATCH_THRESHOLD &&
+      Math.abs(p1[1] - p2[1]) < MATCH_THRESHOLD &&
+      Math.abs(p1[2] - p2[2]) < MATCH_THRESHOLD
+    );
+  }
+
+  // Build the decomposed point list by iterating through geometries in order
+  allGeometries.forEach((geom, meshIndex) => {
+    if (!geom.vertices) return;
+
+    geom.vertices.forEach((vertex, vertexIndex) => {
+      // Check if this vertex matches an existing decomposed point
+      let foundIndex = -1;
+      for (let i = 0; i < decomposedPointList.length; i++) {
+        if (pointsAreCloseEnough(vertex, decomposedPointList[i].realPoint)) {
+          foundIndex = i;
+          break;
+        }
+      }
+
+      if (foundIndex >= 0) {
+        // Add another reference to existing decomposed point
+        decomposedPointList[foundIndex].refs.push({ meshIndex, vertexIndex });
+      } else {
+        // Create new decomposed point
+        decomposedPointList.push({
+          realPoint: [vertex[0], vertex[1], vertex[2]],
+          refs: [{ meshIndex, vertexIndex }],
+        });
+      }
+    });
+  });
+
+  console.log(
+    `Built decomposed point list with ${decomposedPointList.length} unique points across ${allGeometries.length} meshes`,
+  );
+
   // 4. Meshes and Primitives
   const gltfMeshes: Mesh[] = [];
   allGeometries.forEach((geom, index) => {
@@ -480,20 +532,33 @@ export function bg3dParsedToGLTF(
 
       // All arrays initialized to 0 (no bone influences by default)
 
-      // Apply bone influences based on Otto's point indices
-      // Each vertex can be influenced by multiple bones - we track all influences
+      // Apply bone influences based on Otto's decomposed point indices
+      // bone.pointIndices contains indices into the decomposed point list,
+      // not direct vertex indices. We need to translate through the mapping.
       parsed.skeleton.bones.forEach((bone, boneIndex) => {
         if (bone.pointIndices) {
-          bone.pointIndices.forEach((vertexIndex) => {
-            if (vertexIndex < numVertices) {
-              const offset = vertexIndex * 4;
+          bone.pointIndices.forEach((decomposedIndex) => {
+            // Look up the decomposed point and find all references to this mesh
+            if (decomposedIndex < decomposedPointList.length) {
+              const decomposedPoint = decomposedPointList[decomposedIndex];
 
-              // Find empty slot for this influence (skip slots already used)
-              for (let slot = 0; slot < 4; slot++) {
-                if (weights[offset + slot] === 0) {
-                  joints[offset + slot] = boneIndex;
-                  weights[offset + slot] = 1.0;
-                  break;
+              // Find all references that point to this mesh (index)
+              for (const ref of decomposedPoint.refs) {
+                if (ref.meshIndex === index) {
+                  // This decomposed point maps to vertex ref.vertexIndex in this mesh
+                  const localVertexIndex = ref.vertexIndex;
+                  if (localVertexIndex < numVertices) {
+                    const offset = localVertexIndex * 4;
+
+                    // Find empty slot for this influence (skip slots already used)
+                    for (let slot = 0; slot < 4; slot++) {
+                      if (weights[offset + slot] === 0) {
+                        joints[offset + slot] = boneIndex;
+                        weights[offset + slot] = 1.0;
+                        break;
+                      }
+                    }
+                  }
                 }
               }
             }
@@ -1177,13 +1242,95 @@ export async function gltfToBG3D(doc: Document): Promise<BG3DParseResult> {
         });
 
         // Second pass: extract pointIndices and normalIndices from mesh skinning data
-        // Collect all vertices influenced by each bone from JOINTS_0 and WEIGHTS_0 attributes
+        // First, build the decomposed point list by iterating through meshes in order
+        // (matching Otto's runtime decomposition algorithm)
+        interface ReverseDecomposedPoint {
+          realPoint: [number, number, number];
+          refs: { meshIndex: number; vertexIndex: number }[];
+        }
+        const reverseDecomposedPointList: ReverseDecomposedPoint[] = [];
+        const REVERSE_MATCH_THRESHOLD = 0.001;
+
+        function reversePointsAreCloseEnough(
+          p1: [number, number, number] | number[],
+          p2: [number, number, number] | number[],
+        ): boolean {
+          return (
+            Math.abs(p1[0] - p2[0]) < REVERSE_MATCH_THRESHOLD &&
+            Math.abs(p1[1] - p2[1]) < REVERSE_MATCH_THRESHOLD &&
+            Math.abs(p1[2] - p2[2]) < REVERSE_MATCH_THRESHOLD
+          );
+        }
+
+        // Build mapping from (meshIndex, vertexIndex) → decomposedPointIndex
+        const vertexToDecomposedIndex = new Map<string, number>();
+
+        let currentMeshIndex = 0;
+        doc
+          .getRoot()
+          .listMeshes()
+          .forEach((mesh) => {
+            mesh.listPrimitives().forEach((prim) => {
+              const posAcc = prim.getAttribute("POSITION");
+              if (posAcc) {
+                const posArray = posAcc.getArray() as Float32Array;
+                const numVertices = posAcc.getCount();
+
+                for (let vi = 0; vi < numVertices; vi++) {
+                  const vertex: [number, number, number] = [
+                    posArray[vi * 3],
+                    posArray[vi * 3 + 1],
+                    posArray[vi * 3 + 2],
+                  ];
+
+                  // Check if this vertex matches an existing decomposed point
+                  let foundIndex = -1;
+                  for (let i = 0; i < reverseDecomposedPointList.length; i++) {
+                    if (
+                      reversePointsAreCloseEnough(
+                        vertex,
+                        reverseDecomposedPointList[i].realPoint,
+                      )
+                    ) {
+                      foundIndex = i;
+                      break;
+                    }
+                  }
+
+                  const key = `${currentMeshIndex}:${vi}`;
+                  if (foundIndex >= 0) {
+                    // Add reference to existing decomposed point
+                    reverseDecomposedPointList[foundIndex].refs.push({
+                      meshIndex: currentMeshIndex,
+                      vertexIndex: vi,
+                    });
+                    vertexToDecomposedIndex.set(key, foundIndex);
+                  } else {
+                    // Create new decomposed point
+                    const newIndex = reverseDecomposedPointList.length;
+                    reverseDecomposedPointList.push({
+                      realPoint: vertex,
+                      refs: [{ meshIndex: currentMeshIndex, vertexIndex: vi }],
+                    });
+                    vertexToDecomposedIndex.set(key, newIndex);
+                  }
+                }
+              }
+            });
+            currentMeshIndex++;
+          });
+
+        console.log(
+          `[Reverse] Built decomposed point list with ${reverseDecomposedPointList.length} unique points`,
+        );
+
+        // Now collect bone influences using decomposed point indices
         const bonePointSets: Set<number>[] = bones.map(() => new Set<number>());
         const boneNormalSets: Set<number>[] = bones.map(
           () => new Set<number>(),
         );
 
-        let globalVertexOffset = 0;
+        let meshIndexForSkinning = 0;
         doc
           .getRoot()
           .listMeshes()
@@ -1199,7 +1346,10 @@ export async function gltfToBG3D(doc: Document): Promise<BG3DParseResult> {
                 const numVertices = posAcc.getCount();
 
                 for (let vi = 0; vi < numVertices; vi++) {
-                  const globalVertexIndex = globalVertexOffset + vi;
+                  // Get decomposed point index for this vertex
+                  const key = `${meshIndexForSkinning}:${vi}`;
+                  const decomposedIndex = vertexToDecomposedIndex.get(key);
+                  if (decomposedIndex === undefined) continue;
 
                   // Each vertex has up to 4 joint influences
                   for (let ji = 0; ji < 4; ji++) {
@@ -1208,16 +1358,15 @@ export async function gltfToBG3D(doc: Document): Promise<BG3DParseResult> {
 
                     // Only consider influences with non-zero weight
                     if (weight > 0 && jointIndex < bones.length) {
-                      bonePointSets[jointIndex].add(globalVertexIndex);
+                      bonePointSets[jointIndex].add(decomposedIndex);
                       // For normals, use same indices as points
-                      boneNormalSets[jointIndex].add(globalVertexIndex);
+                      boneNormalSets[jointIndex].add(decomposedIndex);
                     }
                   }
                 }
-
-                globalVertexOffset += numVertices;
               }
             });
+            meshIndexForSkinning++;
           });
 
         // Update bones with calculated data

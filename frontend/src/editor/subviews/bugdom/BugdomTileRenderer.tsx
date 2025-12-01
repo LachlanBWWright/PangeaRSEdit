@@ -634,7 +634,9 @@ export function isBugdomGame(globals: { GAME_TYPE: Game }): boolean {
  * (Bugdom 1 and Nanosaur 1 both use 5x5 grids of 32x32 tiles)
  */
 export function usesIndividualTiles(globals: { GAME_TYPE: Game }): boolean {
-  return globals.GAME_TYPE === Game.BUGDOM || globals.GAME_TYPE === Game.NANOSAUR;
+  return (
+    globals.GAME_TYPE === Game.BUGDOM || globals.GAME_TYPE === Game.NANOSAUR
+  );
 }
 
 export default BugdomSupertiles;

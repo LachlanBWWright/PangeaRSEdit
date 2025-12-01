@@ -4,10 +4,10 @@ This document describes exactly how Bugdom and Nanosaur 1's terrain tile systems
 
 ## Games Using This System
 
-| Game | Tile Format | File Format | Has Xlat Table |
-|------|-------------|-------------|----------------|
-| **Bugdom 1** | 32×32 px ARGB1555 | `.ter.rsrc` (Resource Fork) | Yes |
-| **Nanosaur 1** | 32×32 px ARGB1555 | `.ter` + `.trt` (Binary) | No |
+| Game           | Tile Format       | File Format                 | Has Xlat Table |
+| -------------- | ----------------- | --------------------------- | -------------- |
+| **Bugdom 1**   | 32×32 px ARGB1555 | `.ter.rsrc` (Resource Fork) | Yes            |
+| **Nanosaur 1** | 32×32 px ARGB1555 | `.ter` + `.trt` (Binary)    | No             |
 
 Both games compose **5×5 grids of tiles** into **160×160 pixel supertiles** at runtime.
 
@@ -74,12 +74,14 @@ Unlike later Pangea games (Otto Matic, etc.) which store pre-composed supertile 
 ## File Format Differences
 
 ### Bugdom 1
+
 - Uses **Resource Fork** format (`.ter.rsrc`)
 - Tile images stored in `Timg` resource
 - Has `Xlat` translation table to map tile indices to image indices
 - Layer data in `Layr` resource contains tile indices that reference Xlat
 
 ### Nanosaur 1
+
 - Uses **Binary** format (`.ter` for terrain, `.trt` for tile textures)
 - `.trt` file structure:
   - 4 bytes: tile count (big-endian int32)

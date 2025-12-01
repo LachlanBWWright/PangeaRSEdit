@@ -37,7 +37,10 @@ export function SupertileMenu({
 
   // For Bugdom 1 and Nanosaur 1, use the specialized tile-based menu
   // Both games use individual 32x32 tiles composed into 5x5 supertiles
-  if (globals.GAME_TYPE === Game.BUGDOM || globals.GAME_TYPE === Game.NANOSAUR) {
+  if (
+    globals.GAME_TYPE === Game.BUGDOM ||
+    globals.GAME_TYPE === Game.NANOSAUR
+  ) {
     return (
       <BugdomTileMenu
         headerData={headerData}

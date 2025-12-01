@@ -9,7 +9,10 @@ export function preprocessJson(json: any, globals: GlobalsInterface) {
 
   // For Bugdom 1 and Nanosaur 1, Layr contains tile indices with flip/rotate bits - DO NOT MODIFY!
   // The Layr preprocessing below is only for Otto Matic and other games where Layr contains Atrb indices.
-  if (globals.GAME_TYPE === Game.BUGDOM || globals.GAME_TYPE === Game.NANOSAUR) {
+  if (
+    globals.GAME_TYPE === Game.BUGDOM ||
+    globals.GAME_TYPE === Game.NANOSAUR
+  ) {
     console.log(
       `${globals.GAME_NAME}: Skipping Layr/Atrb preprocessing (Layr contains tile indices with flip/rotate bits)`,
     );

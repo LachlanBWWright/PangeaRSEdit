@@ -76,9 +76,9 @@ export function parseEvntData(
   // Matches spec: Evnt:hBB+:time,type,value
   for (let i = 0; i < bytes.length; i += 4) {
     if (i + 4 <= bytes.length) {
-      const time = view.getInt16(i, false);      // short (2 bytes, signed)
-      const type = bytes[i + 2];                  // byte (1 byte, unsigned)
-      const value = bytes[i + 3];                 // byte (1 byte, unsigned)
+      const time = view.getInt16(i, false); // short (2 bytes, signed)
+      const type = bytes[i + 2]; // byte (1 byte, unsigned)
+      const value = bytes[i + 3]; // byte (1 byte, unsigned)
       result.push({ time, type, value });
     }
   }
