@@ -1146,15 +1146,13 @@ export async function gltfToBG3D(doc: Document): Promise<BG3DParseResult> {
             coordX = matrix[12] || 0;
             coordY = matrix[13] || 0;
             coordZ = matrix[14] || 0;
-
-            // Convert back from left-handed glTF to right-handed Otto (flip Z)
-            coordZ = -coordZ;
+            // No coordinate flip needed - both Otto and glTF use compatible right-handed systems
           } else {
             // Fallback to translation if matrix not available
             const translation = joint.getTranslation() || [0, 0, 0];
             coordX = translation[0];
             coordY = translation[1];
-            coordZ = -translation[2]; // Convert back from left-handed
+            coordZ = translation[2];
           }
 
           // Infer parentBone from node hierarchy (glTF 2.0 compliant)
@@ -1234,11 +1232,11 @@ export async function gltfToBG3D(doc: Document): Promise<BG3DParseResult> {
             worldTransforms[index] = localMatrix;
           }
 
-          // Extract world translation and convert coordinate system
+          // Extract world translation - no coordinate flip needed
           const worldTranslation = worldTransforms[index].getTranslation();
           bone.coordX = worldTranslation.x;
           bone.coordY = worldTranslation.y;
-          bone.coordZ = -worldTranslation.z; // Convert from left-handed glTF to right-handed Otto
+          bone.coordZ = worldTranslation.z;
         });
 
         // Second pass: extract pointIndices and normalIndices from mesh skinning data

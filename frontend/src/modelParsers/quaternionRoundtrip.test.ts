@@ -2,7 +2,10 @@ import { describe, it, expect } from "vitest";
 
 /**
  * Convert Euler angles (in radians) to quaternion
- * Order: X-Y-Z rotation order
+ *
+ * Otto uses EXTRINSIC XYZ rotation order: R = Rz * Ry * Rx
+ * This is equivalent to INTRINSIC ZYX order.
+ * The quaternion for this is q = qz * qy * qx (same order as matrix multiplication).
  */
 function eulerToQuaternion(
   x: number,
@@ -16,17 +19,17 @@ function eulerToQuaternion(
   const s2 = Math.sin(y / 2);
   const s3 = Math.sin(z / 2);
 
-  const qx = s1 * c2 * c3 + c1 * s2 * s3;
-  const qy = c1 * s2 * c3 - s1 * c2 * s3;
-  const qz = c1 * c2 * s3 + s1 * s2 * c3;
-  const qw = c1 * c2 * c3 - s1 * s2 * s3;
+  // Extrinsic XYZ (= intrinsic ZYX) rotation order: q = qz * qy * qx
+  const qx = c2 * c3 * s1 - s2 * s3 * c1;
+  const qy = c1 * c3 * s2 + s1 * c2 * s3;
+  const qz = c1 * c2 * s3 - s1 * s2 * c3;
+  const qw = c1 * c2 * c3 + s1 * s2 * s3;
 
   return [qx, qy, qz, qw];
 }
 
 /**
- * Convert quaternion back to Euler angles (XYZ order)
- * Three.js setFromRotationMatrix implementation
+ * Convert quaternion to Euler angles (EXTRINSIC XYZ rotation order = Rz * Ry * Rx)
  */
 function quaternionToEuler(
   x: number,
@@ -43,8 +46,7 @@ function quaternionToEuler(
     w /= len;
   }
 
-  // Convert quaternion to rotation matrix (Three.js approach)
-  // Matrix is column-major, indexed as m[col][row] = m[col*4 + row]
+  // Convert quaternion to rotation matrix
   const x2 = x + x,
     y2 = y + y,
     z2 = z + z;
@@ -58,31 +60,31 @@ function quaternionToEuler(
     wy = w * y2,
     wz = w * z2;
 
-  // Rotation matrix elements (column-major)
-  const m11 = 1 - (yy + zz); // te[0]
-  const m12 = xy - wz; // te[4]
-  const m13 = xz + wy; // te[8]
-  const m21 = xy + wz; // te[1]
-  const m22 = 1 - (xx + zz); // te[5]
-  const m23 = yz - wx; // te[9]
-  // const m31 = xz - wy;     // te[2]
-  // const m32 = yz + wx;     // te[6]
-  const m33 = 1 - (xx + yy); // te[10]
+  // Rotation matrix elements (using R[row][col] indexing)
+  const R00 = 1 - (yy + zz);
+  const R01 = xy - wz;
+  const R10 = xy + wz;
+  const R11 = 1 - (xx + zz);
+  const R20 = xz - wy;
+  const R21 = yz + wx;
+  const R22 = 1 - (xx + yy);
 
-  // Extract Euler angles from rotation matrix (XYZ order)
-  // Three.js setFromRotationMatrix implementation
+  // Extract Euler angles for EXTRINSIC XYZ order (= Rz * Ry * Rx)
   const clamp = (val: number, min: number, max: number) =>
     Math.max(min, Math.min(max, val));
 
-  const ry = Math.asin(clamp(m13, -1, 1)); // Y rotation (pitch)
+  // y = asin(-R20) where R20 = -sin(y)
+  const ry = Math.asin(clamp(-R20, -1, 1));
 
   let rx: number, rz: number;
-  if (Math.abs(m13) < 0.9999999) {
-    rx = Math.atan2(-m23, m33); // X rotation (roll)
-    rz = Math.atan2(-m12, m11); // Z rotation (yaw)
+  if (Math.abs(R20) < 0.9999999) {
+    // x = atan2(R21, R22) where R21 = sin(x)*cos(y), R22 = cos(x)*cos(y)
+    rx = Math.atan2(R21, R22);
+    // z = atan2(R10, R00) where R10 = cos(y)*sin(z), R00 = cos(y)*cos(z)
+    rz = Math.atan2(R10, R00);
   } else {
     // Gimbal lock case
-    rx = Math.atan2(m21, m22);
+    rx = Math.atan2(-R01, R11);
     rz = 0;
   }
 
