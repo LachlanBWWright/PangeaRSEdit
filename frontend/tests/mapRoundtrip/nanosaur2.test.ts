@@ -4,8 +4,9 @@
  * Tests the complete roundtrip for Nanosaur 2 terrain files:
  * Binary -> JSON -> Binary -> JSON
  *
- * Note: Nanosaur 2 uses the same resource fork format as Bugdom 2 with bugdom2Specs,
- * but uses JPG tile images instead of LZSS-compressed 16-bit images.
+ * Note: Nanosaur 2 uses a format similar to Otto Matic but with
+ * a simplified header (no numTilePages/numTiles).
+ * Uses JPG tile images instead of LZSS-compressed 16-bit images.
  */
 
 import { describe, it, expect, beforeAll } from "vitest";
@@ -18,7 +19,7 @@ import {
   saveToBytes,
   saveFromJson,
 } from "../../src/rsrcdump-ts/rsrcdump";
-import { bugdom2Specs } from "../../src/python/structSpecs/bugdom2";
+import { nanosaur2Specs } from "../../src/python/structSpecs/nanosaur2";
 import { Nanosaur2Globals } from "../../src/data/globals/globals";
 import { preprocessJson } from "../../src/data/processors/ottoPreprocessor";
 
@@ -69,7 +70,7 @@ describe("Nanosaur 2 Map Roundtrip", () => {
   it("should parse to JSON with bugdom2 specs", () => {
     if (!fileExists) return;
 
-    const jsonData = saveToJsonObject(originalData, bugdom2Specs, [], [], true);
+    const jsonData = saveToJsonObject(originalData, nanosaur2Specs, [], [], true);
 
     expect(jsonData).toBeDefined();
     expect(typeof jsonData).toBe("object");
@@ -86,11 +87,11 @@ describe("Nanosaur 2 Map Roundtrip", () => {
     if (!fileExists) return;
 
     // Step 1: Binary -> JSON
-    const jsonData = saveToJsonObject(originalData, bugdom2Specs, [], [], true);
+    const jsonData = saveToJsonObject(originalData, nanosaur2Specs, [], [], true);
     expect(jsonData).toBeDefined();
 
     // Step 2: JSON -> Binary
-    const reserializedData = saveFromJson(jsonData, bugdom2Specs, true);
+    const reserializedData = saveFromJson(jsonData, nanosaur2Specs, true);
     expect(reserializedData).toBeDefined();
     expect(reserializedData.length).toBeGreaterThan(0);
 
@@ -107,13 +108,13 @@ describe("Nanosaur 2 Map Roundtrip", () => {
     if (!fileExists) return;
 
     // Step 1: Binary -> JSON
-    const json1 = saveToJsonObject(originalData, bugdom2Specs, [], [], true);
+    const json1 = saveToJsonObject(originalData, nanosaur2Specs, [], [], true);
 
     // Step 2: JSON -> Binary
-    const binary2 = saveFromJson(json1, bugdom2Specs, true);
+    const binary2 = saveFromJson(json1, nanosaur2Specs, true);
 
     // Step 3: Binary -> JSON again
-    const json2 = saveToJsonObject(binary2, bugdom2Specs, [], [], true);
+    const json2 = saveToJsonObject(binary2, nanosaur2Specs, [], [], true);
 
     // Compare header data
     expect(json1.Hedr).toBeDefined();
@@ -138,9 +139,9 @@ describe("Nanosaur 2 Map Roundtrip", () => {
   it("should preserve layer data through roundtrip", () => {
     if (!fileExists) return;
 
-    const json1 = saveToJsonObject(originalData, bugdom2Specs, [], [], true);
-    const binary2 = saveFromJson(json1, bugdom2Specs, true);
-    const json2 = saveToJsonObject(binary2, bugdom2Specs, [], [], true);
+    const json1 = saveToJsonObject(originalData, nanosaur2Specs, [], [], true);
+    const binary2 = saveFromJson(json1, nanosaur2Specs, true);
+    const json2 = saveToJsonObject(binary2, nanosaur2Specs, [], [], true);
 
     expect(json1.Layr).toBeDefined();
     expect(json2.Layr).toBeDefined();
@@ -163,9 +164,9 @@ describe("Nanosaur 2 Map Roundtrip", () => {
   it("should preserve item data through roundtrip", () => {
     if (!fileExists) return;
 
-    const json1 = saveToJsonObject(originalData, bugdom2Specs, [], [], true);
-    const binary2 = saveFromJson(json1, bugdom2Specs, true);
-    const json2 = saveToJsonObject(binary2, bugdom2Specs, [], [], true);
+    const json1 = saveToJsonObject(originalData, nanosaur2Specs, [], [], true);
+    const binary2 = saveFromJson(json1, nanosaur2Specs, true);
+    const json2 = saveToJsonObject(binary2, nanosaur2Specs, [], [], true);
 
     expect(json1.Itms).toBeDefined();
     expect(json2.Itms).toBeDefined();
@@ -190,7 +191,7 @@ describe("Nanosaur 2 Map Roundtrip", () => {
   it("should preprocess JSON correctly with Nanosaur 2 globals", () => {
     if (!fileExists) return;
 
-    const jsonData = saveToJsonObject(originalData, bugdom2Specs, [], [], true);
+    const jsonData = saveToJsonObject(originalData, nanosaur2Specs, [], [], true);
 
     // Preprocessing should not throw
     expect(() => {
@@ -238,13 +239,13 @@ describe("Nanosaur 2 Multiple Levels", () => {
       const data = readFileSync(filePath);
 
       // Parse to JSON
-      const json1 = saveToJsonObject(data, bugdom2Specs, [], [], true);
+      const json1 = saveToJsonObject(data, nanosaur2Specs, [], [], true);
       expect(json1).toBeDefined();
       expect(json1.Hedr).toBeDefined();
 
       // Roundtrip
-      const binary2 = saveFromJson(json1, bugdom2Specs, true);
-      const json2 = saveToJsonObject(binary2, bugdom2Specs, [], [], true);
+      const binary2 = saveFromJson(json1, nanosaur2Specs, true);
+      const json2 = saveToJsonObject(binary2, nanosaur2Specs, [], [], true);
 
       // Verify header consistency
       const header1 = json1.Hedr[1000]?.obj;

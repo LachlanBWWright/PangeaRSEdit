@@ -3,6 +3,9 @@
  *
  * Tests the complete roundtrip for Cro-Mag Rally terrain files:
  * Binary -> JSON -> Binary -> JSON
+ *
+ * Note: Cro-Mag Rally uses a similar format to Otto Matic but with numPaths
+ * instead of numWaterPatches in the header.
  */
 
 import { describe, it, expect, beforeAll } from "vitest";
@@ -15,12 +18,9 @@ import {
   saveToBytes,
   saveFromJson,
 } from "../../src/rsrcdump-ts/rsrcdump";
-import { ottoMaticSpecs } from "../../src/python/structSpecs/ottoMatic";
+import { croMagSpecs } from "../../src/python/structSpecs/croMag";
 import { CroMagGlobals } from "../../src/data/globals/globals";
 import { preprocessJson } from "../../src/data/processors/ottoPreprocessor";
-
-// Cro-Mag Rally uses the same specs as Otto Matic
-const croMagSpecs = ottoMaticSpecs;
 
 describe("Cro-Mag Rally Map Roundtrip", () => {
   const testFilePath = join(

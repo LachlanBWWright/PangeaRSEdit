@@ -5,6 +5,8 @@ import { ottoMaticSpecs } from "../../python/structSpecs/ottoMatic";
 import { bugdom2Specs } from "../../python/structSpecs/bugdom2";
 import { bugdomSpecs } from "../../python/structSpecs/bugdom";
 import { billyFrontierSpecs } from "../../python/structSpecs/billyFrontier";
+import { croMagSpecs } from "../../python/structSpecs/croMag";
+import { nanosaur2Specs } from "../../python/structSpecs/nanosaur2";
 export enum Game {
   OTTO_MATIC,
   BUGDOM,
@@ -104,48 +106,51 @@ export const NanosaurGlobals: GlobalsInterface = {
   LIQD_NUBS: 100, // Not applicable to Nanosaur - Water is just another item
 };
 
-//TODO: NOT CHECKED, FIX
+// Nanosaur 2 uses 256x256 supertile textures (JPG format)
+// Source: games/nanosaur2/Source/Headers/terrain.h - DEFAULT_TERRAIN_SCALE = 210
 export const Nanosaur2Globals: GlobalsInterface = {
   GAME_NAME: "Nanosaur 2",
   GAME_TYPE: Game.NANOSAUR_2,
   DATA_TYPE: DataType.STANDARD,
   TILE_IMAGE_FORMAT: TileImageFormat.JPG,
-  STRUCT_SPECS: bugdom2Specs,
-  SUPERTILE_TEXMAP_SIZE: 256, //Dimensions of each supertile texture
-  TILES_PER_SUPERTILE: 8, //How many tiles are in a supertile
-  EMPTY_TILE_IDX: -1, //TODO: Not checked
-  TILE_INGAME_SIZE: 225.0,
-  TILE_SIZE: 16, //How many units each tile is
+  STRUCT_SPECS: nanosaur2Specs,
+  SUPERTILE_TEXMAP_SIZE: 256, // SUPERTILE_TEXMAP_SIZE from terrain.h
+  TILES_PER_SUPERTILE: 8, // SUPERTILE_SIZE from terrain.h
+  EMPTY_TILE_IDX: 0, // Uses isEmpty flag like Otto Matic
+  TILE_INGAME_SIZE: 210.0, // DEFAULT_TERRAIN_SCALE from terrain.h
+  TILE_SIZE: 32, // OREOMAP_TILE_SIZE = SUPERTILE_TEXMAP_SIZE/SUPERTILE_SIZE = 256/8 = 32
   LIQD_NUBS: 100,
 };
 
-//TODO: NOT CHECKED, FIX
+// Cro-Mag Rally uses similar format to Otto Matic but with numPaths instead of numWaterPatches
+// Source: games/cromagrally/Source/Headers/terrain.h
 export const CroMagGlobals: GlobalsInterface = {
-  GAME_NAME: "Cro Mag",
+  GAME_NAME: "Cro-Mag Rally",
   GAME_TYPE: Game.CRO_MAG,
   DATA_TYPE: DataType.STANDARD,
   TILE_IMAGE_FORMAT: TileImageFormat.LZSS_16_BIT,
-  STRUCT_SPECS: ottoMaticSpecs,
-  SUPERTILE_TEXMAP_SIZE: 128, //Dimensions of each supertile texture
-  TILES_PER_SUPERTILE: 8, //How many tiles are in a supertile
-  EMPTY_TILE_IDX: 0, //TODO: Not checked
-  TILE_INGAME_SIZE: 225.0,
-  TILE_SIZE: 16, //How many units each tile is
+  STRUCT_SPECS: croMagSpecs,
+  SUPERTILE_TEXMAP_SIZE: 128, // SUPERTILE_TEXMAP_SIZE from terrain.h
+  TILES_PER_SUPERTILE: 8, // SUPERTILE_SIZE from terrain.h
+  EMPTY_TILE_IDX: 0,
+  TILE_INGAME_SIZE: 800.0, // TERRAIN_POLYGON_SIZE from terrain.h
+  TILE_SIZE: 16, // OREOMAP_TILE_SIZE from terrain.h
   LIQD_NUBS: 100,
 };
 
-//TODO: NOT CHECKED, FIX
+// Billy Frontier uses 256x256 supertile textures
+// Source: games/billyfrontier/Source/Headers/terrain.h - DEFAULT_TERRAIN_SCALE = 125
 export const BillyFrontierGlobals: GlobalsInterface = {
   GAME_NAME: "Billy Frontier",
   GAME_TYPE: Game.BILLY_FRONTIER,
   DATA_TYPE: DataType.STANDARD,
   TILE_IMAGE_FORMAT: TileImageFormat.LZSS_16_BIT,
   STRUCT_SPECS: billyFrontierSpecs,
-  SUPERTILE_TEXMAP_SIZE: 256, //Dimensions of each supertile texture
-  TILES_PER_SUPERTILE: 8, //How many tiles are in a supertile
-  EMPTY_TILE_IDX: -1, //TODO: Not checked
-  TILE_INGAME_SIZE: 225.0,
-  TILE_SIZE: 32, //How many units each tile is
+  SUPERTILE_TEXMAP_SIZE: 256, // SUPERTILE_TEXMAP_SIZE from terrain.h
+  TILES_PER_SUPERTILE: 8, // SUPERTILE_SIZE from terrain.h
+  EMPTY_TILE_IDX: -1, // Uses signed short, -1 = empty
+  TILE_INGAME_SIZE: 125.0, // DEFAULT_TERRAIN_SCALE from terrain.h
+  TILE_SIZE: 32, // OREOMAP_TILE_SIZE = SUPERTILE_TEXMAP_SIZE/SUPERTILE_SIZE = 256/8 = 32
   LIQD_NUBS: 100,
 };
 
