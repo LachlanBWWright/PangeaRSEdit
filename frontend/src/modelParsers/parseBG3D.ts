@@ -84,10 +84,12 @@ export interface BG3DMaterial {
 export interface BG3DTexture {
   width: number;
   height: number;
-  srcPixelFormat: PixelFormatSrc;
-  dstPixelFormat: PixelFormatDst;
+  srcPixelFormat: PixelFormatSrc | number; // number allows JPEG marker (-1)
+  dstPixelFormat: PixelFormatDst | number; // number allows JPEG alpha marker (-2)
   bufferSize: number;
   pixels: Uint8Array;
+  isJpeg?: boolean; // True if this is JPEG data (Nanosaur 2)
+  jpegAlphaData?: Uint8Array; // Separate alpha channel for JPEG (Nanosaur 2)
 }
 
 export interface BG3DGeometry {
@@ -124,6 +126,15 @@ export interface BG3DBone {
   numNormalsAttachedToBone: number;
   pointIndices?: number[]; // Indices of points attached to this bone
   normalIndices?: number[]; // Indices of normals attached to this bone
+  // Reserved fields from Bone struct (8 uint32s = 32 bytes)
+  reserved0?: number;
+  reserved1?: number;
+  reserved2?: number;
+  reserved3?: number;
+  reserved4?: number;
+  reserved5?: number;
+  reserved6?: number;
+  reserved7?: number;
 }
 
 export interface BG3DKeyframe {
@@ -163,6 +174,10 @@ export interface BG3DSkeleton {
   // Relative point lists (RelP) parsed from SkeletonResource.RelP
   // Keyed by original resource id (e.g. "1000") with array of [x,y,z] points
   relPoints?: { [resourceId: string]: [number, number, number][] };
+  // alis resource data for roundtrip preservation (not used in glTF but needed for binary export)
+  alisData?: { [key: string]: unknown };
+  // Original skeleton resource metadata for roundtrip preservation
+  metadata?: Record<string, unknown>;
 }
 
 export interface BG3DParseResult {
@@ -291,6 +306,49 @@ export function parseBG3D(
           dstPixelFormat,
           bufferSize,
           pixels,
+        });
+        break;
+      }
+      case BG3DTagType.JPEGTEXTURE: {
+        // JPEG texture (Nanosaur 2 only)
+        // Header: width (4), height (4), bufferSize (4), hasAlphaChannel (4) = 16 bytes
+        if (!currentMaterial)
+          throw new Error("No current material for JPEG texture");
+        const width = view.getUint32(offset, false);
+        offset += 4;
+        const height = view.getUint32(offset, false);
+        offset += 4;
+        const bufferSize = view.getUint32(offset, false);
+        offset += 4;
+        const hasAlphaChannel = view.getUint32(offset, false);
+        offset += 4;
+
+        // Read JPEG data
+        const jpegData = new Uint8Array(buffer, offset, bufferSize);
+        offset += bufferSize;
+
+        // Read alpha channel if present
+        let jpegAlphaData: Uint8Array | undefined = undefined;
+        if (hasAlphaChannel) {
+          const alphaSize = width * height;
+          jpegAlphaData = new Uint8Array(buffer, offset, alphaSize);
+          offset += alphaSize;
+        }
+
+        console.log(
+          `JPEG Texture: ${width}x${height}, buffer: ${bufferSize}, hasAlpha: ${hasAlphaChannel}`,
+        );
+
+        // Store as a special texture type with JPEG marker
+        currentMaterial.textures.push({
+          width,
+          height,
+          srcPixelFormat: -1, // Special marker for JPEG
+          dstPixelFormat: hasAlphaChannel ? -2 : -1, // -2 indicates alpha channel present
+          bufferSize,
+          pixels: jpegData, // Store JPEG data
+          isJpeg: true,
+          jpegAlphaData,
         });
         break;
       }
@@ -445,14 +503,31 @@ export function parseBG3D(
           triangles.push([a, b, c]);
         }
         currentGeometry.triangles = triangles;
-        // After TRIANGLEARRAY, reset currentGeometry to null to avoid accidental assignment
-        currentGeometry = null;
+        // Note: Do NOT reset currentGeometry here - BOUNDINGBOX may follow in later games
         break;
       }
       case BG3DTagType.BOUNDINGBOX: {
-        // Bounding box: 6 floats (min x/y/z, max x/y/z)
-        // Not stored in BG3DGroup interface, so skip
-        offset += 24;
+        // Bounding box: 6 floats (min x/y/z, max x/y/z) + 1 byte isEmpty + 3 bytes padding = 28 bytes total
+        // Used by Bugdom 2, Billy Frontier, and Nanosaur 2
+        if (!currentGeometry) throw new Error("No geometry for bounding box");
+        const minX = view.getFloat32(offset, false);
+        offset += 4;
+        const minY = view.getFloat32(offset, false);
+        offset += 4;
+        const minZ = view.getFloat32(offset, false);
+        offset += 4;
+        const maxX = view.getFloat32(offset, false);
+        offset += 4;
+        const maxY = view.getFloat32(offset, false);
+        offset += 4;
+        const maxZ = view.getFloat32(offset, false);
+        offset += 4;
+        // isEmpty byte + 3 padding bytes
+        offset += 4;
+        currentGeometry.boundingBox = {
+          min: [minX, minY, minZ],
+          max: [maxX, maxY, maxZ],
+        };
         break;
       }
       case BG3DTagType.ENDFILE: {
@@ -556,12 +631,20 @@ function convertSkeletonResourceToBG3D(
 
     bones.push({
       parentBone: boneObj.parentBone,
-      name: boneObj.name,
+      name: boneEntry.name, // Use resource name, not obj.name (which may have Pascal string prefix)
       coordX: boneObj.coordX,
       coordY: boneObj.coordY,
       coordZ: boneObj.coordZ,
       numPointsAttachedToBone: boneObj.numPointsAttachedToBone,
       numNormalsAttachedToBone: boneObj.numNormalsAttachedToBone,
+      reserved0: boneObj.reserved0,
+      reserved1: boneObj.reserved1,
+      reserved2: boneObj.reserved2,
+      reserved3: boneObj.reserved3,
+      reserved4: boneObj.reserved4,
+      reserved5: boneObj.reserved5,
+      reserved6: boneObj.reserved6,
+      reserved7: boneObj.reserved7,
       pointIndices,
       normalIndices,
     });
@@ -713,7 +796,7 @@ function convertSkeletonResourceToBG3D(
   const relPointsMap: { [resourceId: string]: [number, number, number][] } = {};
   Object.entries(skeleton.RelP || {}).forEach(([rid, rentry]) => {
     try {
-      const arr = (rentry as any).obj;
+      const arr = rentry.obj;
       if (Array.isArray(arr)) {
         relPointsMap[rid] = arr.map((p: any) => [
           typeof p.relOffsetX === "number" ? p.relOffsetX : p.x ?? 0,
@@ -728,6 +811,16 @@ function convertSkeletonResourceToBG3D(
     }
   });
 
+  // Extract alis data from skeleton resource (stored at skeleton.alis = { "1000": {...} })
+  // We want to preserve just the inner structure { "1000": { name: "alis", order: 1000, data: "..." } }
+  let alisData: { [key: string]: unknown } | undefined = undefined;
+  Object.keys(skeleton).forEach((key) => {
+    if (key.toLowerCase() === "alis") {
+      // Store the inner structure directly, not wrapped in another object
+      alisData = skeleton[key] as { [key: string]: unknown };
+    }
+  });
+
   return {
     version: header.version,
     numAnims: header.numAnims,
@@ -736,6 +829,9 @@ function convertSkeletonResourceToBG3D(
     bones,
     animations,
     relPoints: relPointsMap,
+    alisData:
+      alisData && Object.keys(alisData).length > 0 ? alisData : undefined,
+    metadata: skeleton._metadata,
   };
 }
 
@@ -781,29 +877,54 @@ export function bg3dParsedToBG3D(parsed: BG3DParseResult): ArrayBuffer {
       view.setFloat32(offset, material.diffuseColor[i], false);
       offset += 4;
     }
-    // TEXTUREMAP(s)
+    // TEXTUREMAP(s) or JPEGTEXTURE(s)
     for (const tex of material.textures) {
-      console.log(`[bg3dParsedToBG3D] Write TEXTUREMAP at offset ${offset}`);
-      view.setUint32(offset, BG3DTagType.TEXTUREMAP, false);
-      offset += 4;
-      view.setUint32(offset, tex.width, false);
-      offset += 4;
-      view.setUint32(offset, tex.height, false);
-      offset += 4;
-      view.setUint32(offset, tex.srcPixelFormat, false);
-      offset += 4;
-      view.setUint32(offset, tex.dstPixelFormat, false);
-      offset += 4;
-      view.setUint32(offset, tex.bufferSize, false);
-      offset += 4;
-      for (let i = 0; i < 4; i++) {
-        view.setUint32(offset, 0, false);
+      if (tex.isJpeg) {
+        // Write JPEGTEXTURE (Nanosaur 2)
+        console.log(`[bg3dParsedToBG3D] Write JPEGTEXTURE at offset ${offset}`);
+        view.setUint32(offset, BG3DTagType.JPEGTEXTURE, false);
         offset += 4;
-      } // reserved
-      // Write pixel data
-
-      new Uint8Array(buffer, offset, tex.bufferSize).set(tex.pixels);
-      offset += tex.bufferSize;
+        view.setUint32(offset, tex.width, false);
+        offset += 4;
+        view.setUint32(offset, tex.height, false);
+        offset += 4;
+        view.setUint32(offset, tex.bufferSize, false);
+        offset += 4;
+        view.setUint32(offset, tex.jpegAlphaData ? 1 : 0, false);
+        offset += 4;
+        // Write JPEG data
+        new Uint8Array(buffer, offset, tex.bufferSize).set(tex.pixels);
+        offset += tex.bufferSize;
+        // Write alpha channel if present
+        if (tex.jpegAlphaData) {
+          new Uint8Array(buffer, offset, tex.jpegAlphaData.length).set(
+            tex.jpegAlphaData,
+          );
+          offset += tex.jpegAlphaData.length;
+        }
+      } else {
+        // Write standard TEXTUREMAP
+        console.log(`[bg3dParsedToBG3D] Write TEXTUREMAP at offset ${offset}`);
+        view.setUint32(offset, BG3DTagType.TEXTUREMAP, false);
+        offset += 4;
+        view.setUint32(offset, tex.width, false);
+        offset += 4;
+        view.setUint32(offset, tex.height, false);
+        offset += 4;
+        view.setUint32(offset, tex.srcPixelFormat, false);
+        offset += 4;
+        view.setUint32(offset, tex.dstPixelFormat, false);
+        offset += 4;
+        view.setUint32(offset, tex.bufferSize, false);
+        offset += 4;
+        for (let i = 0; i < 4; i++) {
+          view.setUint32(offset, 0, false);
+          offset += 4;
+        } // reserved
+        // Write pixel data
+        new Uint8Array(buffer, offset, tex.bufferSize).set(tex.pixels);
+        offset += tex.bufferSize;
+      }
     }
   }
 
@@ -839,7 +960,9 @@ function writeGroup(
     offset += 4;
   }
 
-  for (const child of group.children) {
+  // Ensure children is an array before iterating
+  const children = Array.isArray(group.children) ? group.children : [];
+  for (const child of children) {
     if (isBG3DGroup(child)) {
       offset = writeGroup(view, buffer, child, offset, false);
     } else {
@@ -934,6 +1057,29 @@ function writeGroup(
           view.setUint32(offset, c, false);
           offset += 4;
         }
+      }
+      // Write bounding box if present (Bugdom 2, Billy Frontier, Nanosaur 2)
+      if (geom.boundingBox) {
+        console.log(`[bg3dParsedToBG3D] Write BOUNDINGBOX at offset ${offset}`);
+        view.setUint32(offset, BG3DTagType.BOUNDINGBOX, false);
+        offset += 4;
+        // min x, y, z
+        view.setFloat32(offset, geom.boundingBox.min[0], false);
+        offset += 4;
+        view.setFloat32(offset, geom.boundingBox.min[1], false);
+        offset += 4;
+        view.setFloat32(offset, geom.boundingBox.min[2], false);
+        offset += 4;
+        // max x, y, z
+        view.setFloat32(offset, geom.boundingBox.max[0], false);
+        offset += 4;
+        view.setFloat32(offset, geom.boundingBox.max[1], false);
+        offset += 4;
+        view.setFloat32(offset, geom.boundingBox.max[2], false);
+        offset += 4;
+        // isEmpty byte (0) + 3 padding bytes
+        view.setUint32(offset, 0, false);
+        offset += 4;
       }
     }
   }
@@ -1075,6 +1221,6 @@ export function convertBG3DToSkeletonResource(
 }
 
 /* function isBG3DGeometry(obj: BG3DGeometry | BG3DGroup): obj is BG3DGeometry {
-  return !!obj && !Array.isArray((obj as any).children);
+  return !!obj && !Array.isArray((obj ).children);
 }
  */

@@ -9,6 +9,7 @@
  */
 
 import { Document, Node, Skin, Animation, Buffer } from "@gltf-transform/core";
+import { Vector3 } from "three";
 import {
   BG3DSkeleton,
   BG3DBone,
@@ -18,7 +19,20 @@ import {
 
 /**
  * Convert Euler angles (in radians) to quaternion
- * Order: X-Y-Z rotation order
+ *
+ * Otto uses EXTRINSIC XYZ rotation order: R = Rz * Ry * Rx
+ * This is equivalent to INTRINSIC ZYX order.
+ * The quaternion for this is q = qz * qy * qx (same order as matrix multiplication).
+ *
+ * Derivation: For R = Rz * Ry * Rx, the quaternion is computed as:
+ *   q = qz * qy * qx
+ * where qx = [sin(x/2), 0, 0, cos(x/2)], etc.
+ *
+ * This gives:
+ *   qx = c2*c3*s1 - s2*s3*c1
+ *   qy = c1*c3*s2 + s1*c2*s3
+ *   qz = c1*c2*s3 - s1*s2*c3
+ *   qw = c1*c2*c3 + s1*s2*s3
  */
 function eulerToQuaternion(
   x: number,
@@ -32,10 +46,11 @@ function eulerToQuaternion(
   const s2 = Math.sin(y / 2);
   const s3 = Math.sin(z / 2);
 
-  const qx = s1 * c2 * c3 + c1 * s2 * s3;
-  const qy = c1 * s2 * c3 - s1 * c2 * s3;
-  const qz = c1 * c2 * s3 + s1 * s2 * c3;
-  const qw = c1 * c2 * c3 - s1 * s2 * s3;
+  // Extrinsic XYZ (= intrinsic ZYX) rotation order: q = qz * qy * qx
+  const qx = c2 * c3 * s1 - s2 * s3 * c1;
+  const qy = c1 * c3 * s2 + s1 * c2 * s3;
+  const qz = c1 * c2 * s3 - s1 * s2 * c3;
+  const qw = c1 * c2 * c3 + s1 * s2 * s3;
 
   return [qx, qy, qz, qw];
 }
@@ -213,24 +228,169 @@ class Matrix4 {
 
     return result;
   }
+
+  multiply(other: Matrix4): Matrix4 {
+    // Column-major matrix multiplication: result = this * other
+    // For column-major storage: m[col*4 + row]
+    // So a[0], a[1], a[2], a[3] is column 0 (rows 0-3)
+    //    a[4], a[5], a[6], a[7] is column 1 (rows 0-3), etc.
+
+    const result = new Matrix4();
+    const a = this.data;
+    const b = other.data;
+    const out = result.data;
+
+    // For each column j of result
+    for (let j = 0; j < 4; j++) {
+      // For each row i of result
+      for (let i = 0; i < 4; i++) {
+        // result[j][i] = sum over k of a[k][i] * b[j][k]
+        // In column-major: result[j*4+i] = sum(a[k*4+i] * b[j*4+k])
+        let sum = 0;
+        for (let k = 0; k < 4; k++) {
+          sum += a[k * 4 + i] * b[j * 4 + k];
+        }
+        out[j * 4 + i] = sum;
+      }
+    }
+
+    return result;
+  }
 }
 
 /**
- * Create joint nodes with transforms
- * Since all joints are flat at scene root (for PropertyBinding), we use absolute transforms
+ * Calculate local transform matrix for a bone relative to its parent
+ * Both Otto and glTF use right-handed coordinate systems, so no coordinate flip is needed.
+ * The mesh vertices are kept in Otto's coordinate space, so the skeleton must match.
+ */
+function calculateLocalTransform(bone: BG3DBone, bones: BG3DBone[]): Matrix4 {
+  // Get bone's absolute position in Otto coordinate system
+  const bonePos = new Vector3(bone.coordX, bone.coordY, bone.coordZ);
+
+  // If this bone has a valid parent, calculate relative transform
+  if (bone.parentBone >= 0 && bone.parentBone < bones.length) {
+    const parentBone = bones[bone.parentBone];
+    const parentPos = new Vector3(
+      parentBone.coordX,
+      parentBone.coordY,
+      parentBone.coordZ,
+    );
+
+    // Calculate relative translation
+    const relativeTranslation = new Vector3().subVectors(bonePos, parentPos);
+
+    // Create transform matrix with relative translation
+    return new Matrix4().setTranslation(
+      relativeTranslation.x,
+      relativeTranslation.y,
+      relativeTranslation.z,
+    );
+  } else {
+    // Root bone: use absolute position
+    return new Matrix4().setTranslation(bonePos.x, bonePos.y, bonePos.z);
+  }
+}
+
+/**
+ * Decompose a 4x4 matrix into translation, rotation (quaternion), and scale
+ */
+function decomposeMatrix(matrix: Matrix4): {
+  translation: Vector3;
+  rotation: [number, number, number, number];
+  scale: Vector3;
+} {
+  const m = matrix.data;
+
+  // Extract translation
+  const translation = new Vector3(m[12], m[13], m[14]);
+
+  // Extract scale
+  const sx = Math.sqrt(m[0] * m[0] + m[1] * m[1] + m[2] * m[2]);
+  const sy = Math.sqrt(m[4] * m[4] + m[5] * m[5] + m[6] * m[6]);
+  const sz = Math.sqrt(m[8] * m[8] + m[9] * m[9] + m[10] * m[10]);
+  const scale = new Vector3(sx, sy, sz);
+
+  // Extract rotation (simplified - assuming no shear)
+  // Normalize the rotation matrix
+  const rotMatrix = [
+    m[0] / sx,
+    m[1] / sx,
+    m[2] / sx,
+    m[4] / sy,
+    m[5] / sy,
+    m[6] / sy,
+    m[8] / sz,
+    m[9] / sz,
+    m[10] / sz,
+  ];
+
+  // Convert rotation matrix to quaternion
+  const trace = rotMatrix[0] + rotMatrix[4] + rotMatrix[8];
+  let qw, qx, qy, qz;
+
+  if (trace > 0) {
+    const s = 0.5 / Math.sqrt(trace + 1.0);
+    qw = 0.25 / s;
+    qx = (rotMatrix[7] - rotMatrix[5]) * s;
+    qy = (rotMatrix[2] - rotMatrix[6]) * s;
+    qz = (rotMatrix[3] - rotMatrix[1]) * s;
+  } else {
+    if (rotMatrix[0] > rotMatrix[4] && rotMatrix[0] > rotMatrix[8]) {
+      const s =
+        2.0 * Math.sqrt(1.0 + rotMatrix[0] - rotMatrix[4] - rotMatrix[8]);
+      qw = (rotMatrix[7] - rotMatrix[5]) / s;
+      qx = 0.25 * s;
+      qy = (rotMatrix[1] + rotMatrix[3]) / s;
+      qz = (rotMatrix[2] + rotMatrix[6]) / s;
+    } else if (rotMatrix[4] > rotMatrix[8]) {
+      const s =
+        2.0 * Math.sqrt(1.0 + rotMatrix[4] - rotMatrix[0] - rotMatrix[8]);
+      qw = (rotMatrix[2] - rotMatrix[6]) / s;
+      qx = (rotMatrix[1] + rotMatrix[3]) / s;
+      qy = 0.25 * s;
+      qz = (rotMatrix[5] + rotMatrix[7]) / s;
+    } else {
+      const s =
+        2.0 * Math.sqrt(1.0 + rotMatrix[8] - rotMatrix[0] - rotMatrix[4]);
+      qw = (rotMatrix[3] - rotMatrix[1]) / s;
+      qx = (rotMatrix[2] + rotMatrix[6]) / s;
+      qy = (rotMatrix[5] + rotMatrix[7]) / s;
+      qz = 0.25 * s;
+    }
+  }
+
+  const rotation: [number, number, number, number] = [qx, qy, qz, qw];
+
+  return { translation, rotation, scale };
+}
+
+/**
+ * Create joint nodes (bones) for the skeleton with proper local transforms.
  *
- * CRITICAL: Bone names must be sanitized for PropertyBinding compatibility.
- * Three.js PropertyBinding cannot handle spaces in names (e.g., "Left Hand.quaternion" fails).
- * We replace spaces with underscores to ensure all animations target correctly.
+ * IMPORTANT: Bone names are preserved exactly as they appear in the Otto Matic files,
+ * including spaces (e.g., "Left Hand"). This ensures perfect roundtrip accuracy.
+ * Modern Three.js versions handle spaces in bone names correctly.
+ *
+ * Note: Otto stores absolute world coordinates for each bone. glTF requires relative
+ * transforms, so we calculate local transforms relative to parent bones.
+ * Both Otto and glTF use right-handed coordinate systems, so no coordinate flip is needed.
+ * The mesh vertices are kept in Otto's coordinate space, so the skeleton must match.
  */
 function createJointNodes(doc: Document, bones: BG3DBone[]): Node[] {
   return bones.map((bone) => {
-    // CRITICAL: Sanitize bone name - replace spaces with underscores for PropertyBinding
-    // Fixes "THREE.PropertyBinding: No target node found for track: Left_Hand.quaternion" error
-    const sanitizedName = bone.name.replace(/\s+/g, "_");
-    const joint = doc.createNode(sanitizedName);
-    // Use absolute coordinates since joints are flat at scene root
-    joint.setTranslation([bone.coordX, bone.coordY, bone.coordZ]);
+    // Preserve original bone names for perfect roundtrip accuracy
+    const joint = doc.createNode(bone.name);
+
+    // Calculate and set local transform
+    const localTransform = calculateLocalTransform(bone, bones);
+
+    // Decompose matrix into TRS components for better glTF compatibility
+    const { translation, rotation, scale } = decomposeMatrix(localTransform);
+
+    joint.setTranslation([translation.x, translation.y, translation.z]);
+    joint.setRotation(rotation);
+    joint.setScale([scale.x, scale.y, scale.z]);
+
     return joint;
   });
 }
@@ -340,24 +500,35 @@ function buildJointHierarchy(
 }
 
 /**
- * Calculate inverse bind matrices for skin
+ * Calculate inverse bind matrices for skin using hierarchical transforms
+ * Inverse bind matrices transform vertices from model space to bone space at bind pose
  */
 function calculateInverseBindMatrices(bones: BG3DBone[]): Float32Array {
   const matrices = new Float32Array(bones.length * 16);
 
+  // First, calculate world transforms for all bones
+  const worldTransforms: Matrix4[] = new Array(bones.length);
+
   bones.forEach((bone, index) => {
-    // Otto stores absolute coordinates, so world matrix is translation by absolute position
-    const worldMatrix = new Matrix4().setTranslation(
-      bone.coordX,
-      bone.coordY,
-      bone.coordZ,
-    );
-    const invMatrix = worldMatrix.invert();
+    // Calculate local transform (already handles coordinate system conversion)
+    const localTransform = calculateLocalTransform(bone, bones);
+
+    // Calculate world transform by composing with parent transforms
+    if (bone.parentBone >= 0 && bone.parentBone < bones.length) {
+      const parentWorld = worldTransforms[bone.parentBone];
+      worldTransforms[index] = parentWorld.multiply(localTransform);
+    } else {
+      // Root bone
+      worldTransforms[index] = localTransform;
+    }
+
+    // Calculate inverse bind matrix (inverse of world transform)
+    const invBindMatrix = worldTransforms[index].invert();
 
     // Store in column-major order (glTF requirement)
     const offset = index * 16;
     for (let i = 0; i < 16; i++) {
-      matrices[offset + i] = invMatrix.data[i];
+      matrices[offset + i] = invBindMatrix.data[i];
     }
   });
 
@@ -413,6 +584,7 @@ function hasVariation(values: number[], threshold = 0.001): boolean {
 
 /**
  * Process Otto animation data into glTF-compatible format
+ * Converts absolute keyframe coordinates to relative transforms
  */
 function processOttoAnimations(
   bg3dAnimations: BG3DAnimation[],
@@ -437,68 +609,55 @@ function processOttoAnimations(
         const times = keyframes.map((kf) => kf.tick / 30.0);
         maxTime = Math.max(maxTime, ...times);
 
-        // Extract translation data
+        // Otto keyframe coord is LOCAL (relative to parent), which matches glTF joint translation
+        // glTF animation values REPLACE the node's TRS, so we use kf.coord directly
+        // No coordinate flip needed - mesh vertices are in Otto space, so skeleton should match
         const translations = keyframes
-          .map((kf) => [kf.coordX, kf.coordY, kf.coordZ])
+          .map((kf) => {
+            return [kf.coordX, kf.coordY, kf.coordZ];
+          })
           .flat();
-        const hasTranslationVar = hasVariation(translations);
-        console.log(
-          `    ${
-            bone.name
-          } translation variation: ${hasTranslationVar} (sample: [${translations
-            .slice(0, 6)
-            .join(", ")}...])`,
-        );
-        if (hasTranslationVar) {
-          channels.push({
-            boneIndex,
-            path: "translation",
-            times: [...times],
-            values: translations,
-          });
-        }
+        // Always include translation channel for roundtrip stability
+        // (hasVariation filtering causes non-deterministic behavior on roundtrip)
+        channels.push({
+          boneIndex,
+          path: "translation",
+          times: [...times],
+          values: translations,
+        });
 
         // Extract rotation data (convert Euler angles to quaternions)
-        const rotationEulers = keyframes.map((kf) => [
-          kf.rotationX,
-          kf.rotationY,
-          kf.rotationZ,
-        ]);
-        const rotationQuats = rotationEulers.map((euler) =>
-          eulerToQuaternion(euler[0], euler[1], euler[2]),
-        );
+        // Otto uses EXTRINSIC XYZ rotation order (R = Rz * Ry * Rx)
+        // No coordinate flip needed - keeping skeleton in Otto coordinate space to match mesh
+        const rotationQuats = keyframes.map((kf) => {
+          // Convert Otto Euler angles to quaternion (extrinsic XYZ = intrinsic ZYX)
+          const [qx, qy, qz, qw] = eulerToQuaternion(
+            kf.rotationX,
+            kf.rotationY,
+            kf.rotationZ,
+          );
+          return [qx, qy, qz, qw];
+        });
         const rotations = rotationQuats.flat();
-        const hasRotationVar = hasVariation(rotations);
-        console.log(
-          `    ${bone.name} rotation variation: ${hasRotationVar} (${rotationQuats.length} quaternions)`,
-        );
-        if (hasRotationVar) {
-          channels.push({
-            boneIndex,
-            path: "rotation",
-            times: [...times],
-            values: rotations,
-          });
-        }
+        // Always include rotation channel for roundtrip stability
+        channels.push({
+          boneIndex,
+          path: "rotation",
+          times: [...times],
+          values: rotations,
+        });
 
-        // Extract scale data
+        // Extract scale data (relative to rest pose scale of 1.0)
         const scales = keyframes
           .map((kf) => [kf.scaleX, kf.scaleY, kf.scaleZ])
           .flat();
-        const hasScaleVar = hasVariation(scales);
-        console.log(
-          `    ${bone.name} scale variation: ${hasScaleVar} (sample: [${scales
-            .slice(0, 6)
-            .join(", ")}...])`,
-        );
-        if (hasScaleVar) {
-          channels.push({
-            boneIndex,
-            path: "scale",
-            times: [...times],
-            values: scales,
-          });
-        }
+        // Always include scale channel for roundtrip stability
+        channels.push({
+          boneIndex,
+          path: "scale",
+          times: [...times],
+          values: scales,
+        });
 
         console.log(
           `    Bone ${bone.name}: ${keyframes.length} keyframes, ${times[
@@ -879,9 +1038,103 @@ export function createSkeletonSystem(
 }
 
 /**
- * Extract animation data from glTF document for round-trip conversion
+ * Convert quaternion to Euler angles (EXTRINSIC XYZ rotation order = Rz * Ry * Rx)
+ * Uses quaternion -> rotation matrix -> Euler extraction.
+ * This is numerically stable compared to direct conversion.
+ * Returns angles in radians.
+ *
+ * For extrinsic XYZ (R = Rz * Ry * Rx), the matrix is:
+ *   R = [cy*cz,             sx*sy*cz-cx*sz,    cx*sy*cz+sx*sz  ]
+ *       [cy*sz,             sx*sy*sz+cx*cz,    cx*sy*sz-sx*cz  ]
+ *       [-sy,               sx*cy,             cx*cy           ]
+ *
+ * Extraction:
+ *   y = asin(-R20)
+ *   x = atan2(R21, R22)
+ *   z = atan2(R10, R00)
  */
-export function extractAnimationsFromGLTF(doc: Document): BG3DAnimation[] {
+function quaternionToEuler(
+  x: number,
+  y: number,
+  z: number,
+  w: number,
+): [number, number, number] {
+  // Normalize the quaternion to avoid numerical issues
+  const len = Math.sqrt(x * x + y * y + z * z + w * w);
+  if (len > 0) {
+    x /= len;
+    y /= len;
+    z /= len;
+    w /= len;
+  }
+
+  // Convert quaternion to rotation matrix
+  // Standard formula: R[i][j] = ...
+  const x2 = x + x,
+    y2 = y + y,
+    z2 = z + z;
+  const xx = x * x2,
+    xy = x * y2,
+    xz = x * z2;
+  const yy = y * y2,
+    yz = y * z2,
+    zz = z * z2;
+  const wx = w * x2,
+    wy = w * y2,
+    wz = w * z2;
+
+  // Rotation matrix elements (using R[row][col] indexing)
+  const R00 = 1 - (yy + zz);
+  const R01 = xy - wz;
+  // const R02 = xz + wy;  // Not needed
+  const R10 = xy + wz;
+  const R11 = 1 - (xx + zz);
+  // const R12 = yz - wx;  // Not needed
+  const R20 = xz - wy;
+  const R21 = yz + wx;
+  const R22 = 1 - (xx + yy);
+
+  // Extract Euler angles for EXTRINSIC XYZ order (= Rz * Ry * Rx)
+  const clamp = (val: number, min: number, max: number) =>
+    Math.max(min, Math.min(max, val));
+
+  // y = asin(-R20) where R20 = -sin(y)
+  const ry = Math.asin(clamp(-R20, -1, 1));
+
+  let rx: number, rz: number;
+  if (Math.abs(R20) < 0.9999999) {
+    // x = atan2(R21, R22) where R21 = sin(x)*cos(y), R22 = cos(x)*cos(y)
+    rx = Math.atan2(R21, R22);
+    // z = atan2(R10, R00) where R10 = cos(y)*sin(z), R00 = cos(y)*cos(z)
+    rz = Math.atan2(R10, R00);
+  } else {
+    // Gimbal lock case: y = ±90°, cos(y) = 0
+    // In this case, we can only determine x+z or x-z
+    // We set z=0 and solve for x from the remaining matrix elements
+    rx = Math.atan2(-R01, R11);
+    rz = 0;
+  }
+
+  return [rx, ry, rz];
+}
+
+/**
+ * Extract animation data from glTF document for round-trip conversion
+ *
+ * Converts glTF animation channels back to Otto's keyframe format:
+ * - glTF quaternions (VEC4) → Otto Euler angles (rotationX, rotationY, rotationZ)
+ * - glTF translation (VEC3) → Otto coordinates (coordX, coordY, coordZ)
+ *   Note: glTF stores relative offsets, Otto stores absolute positions
+ *   We add bone rest pose to convert from relative to absolute
+ * - glTF scale (VEC3) → Otto scale (scaleX, scaleY, scaleZ)
+ *
+ * @param doc glTF Document to extract from
+ * @param bones Optional array of BG3DBone for converting relative translations back to absolute
+ */
+export function extractAnimationsFromGLTF(
+  doc: Document,
+  bones?: BG3DBone[],
+): BG3DAnimation[] {
   const animations = doc.getRoot().listAnimations();
   const skins = doc.getRoot().listSkins();
 
@@ -922,11 +1175,17 @@ export function extractAnimationsFromGLTF(doc: Document): BG3DAnimation[] {
         keyframes[boneIndexStr] = [];
       }
 
-      // Convert glTF data back to Otto format
+      // Determine values per frame based on path type
+      // glTF stores rotation as quaternion (VEC4), translation and scale as VEC3
       const valuesPerFrame =
-        path === "rotation" || path === "translation" || path === "scale"
+        path === "rotation"
+          ? 4
+          : path === "translation" || path === "scale"
           ? 3
           : 1;
+
+      // Get bone rest pose for converting relative translations to absolute
+      const bone = bones && boneIndex < bones.length ? bones[boneIndex] : null;
 
       for (let i = 0; i < times.length; i++) {
         const tick = Math.round(times[i] * 30); // Convert back to 30 FPS
@@ -934,12 +1193,29 @@ export function extractAnimationsFromGLTF(doc: Document): BG3DAnimation[] {
         // Find or create keyframe for this tick
         let keyframe = keyframes[boneIndexStr].find((kf) => kf.tick === tick);
         if (!keyframe) {
+          // Initialize with bone's LOCAL rest position (computed from absolute coords)
+          // For root bone: localPos = bone.coord
+          // For child bone: localPos = bone.coord - parent.coord
+          let localX = bone?.coordX ?? 0;
+          let localY = bone?.coordY ?? 0;
+          let localZ = bone?.coordZ ?? 0;
+          if (
+            bone &&
+            bones &&
+            bone.parentBone >= 0 &&
+            bone.parentBone < bones.length
+          ) {
+            const parent = bones[bone.parentBone];
+            localX = bone.coordX - parent.coordX;
+            localY = bone.coordY - parent.coordY;
+            localZ = bone.coordZ - parent.coordZ;
+          }
           keyframe = {
             tick,
             accelerationMode: 0,
-            coordX: 0,
-            coordY: 0,
-            coordZ: 0,
+            coordX: localX,
+            coordY: localY,
+            coordZ: localZ,
             rotationX: 0,
             rotationY: 0,
             rotationZ: 0,
@@ -953,13 +1229,26 @@ export function extractAnimationsFromGLTF(doc: Document): BG3DAnimation[] {
         // Apply the values based on path
         const valueIndex = i * valuesPerFrame;
         if (path === "translation") {
-          keyframe.coordX = values[valueIndex] || 0;
-          keyframe.coordY = values[valueIndex + 1] || 0;
-          keyframe.coordZ = values[valueIndex + 2] || 0;
+          // glTF animation translation is LOCAL (same as Otto kf.coord)
+          // No coordinate flip needed - both systems are compatible
+          const glTFX = values[valueIndex] || 0;
+          const glTFY = values[valueIndex + 1] || 0;
+          const glTFZ = values[valueIndex + 2] || 0;
+
+          keyframe.coordX = glTFX;
+          keyframe.coordY = glTFY;
+          keyframe.coordZ = glTFZ;
         } else if (path === "rotation") {
-          keyframe.rotationX = values[valueIndex] || 0;
-          keyframe.rotationY = values[valueIndex + 1] || 0;
-          keyframe.rotationZ = values[valueIndex + 2] || 0;
+          // Convert quaternion (x, y, z, w) back to Euler angles (extrinsic XYZ order)
+          // This matches Otto's OGLMatrix4x4_SetRotate_XYZ which uses R = Rz * Ry * Rx
+          const qx = values[valueIndex] || 0;
+          const qy = values[valueIndex + 1] || 0;
+          const qz = values[valueIndex + 2] || 0;
+          const qw = values[valueIndex + 3] || 1;
+          const [rx, ry, rz] = quaternionToEuler(qx, qy, qz, qw);
+          keyframe.rotationX = rx;
+          keyframe.rotationY = ry;
+          keyframe.rotationZ = rz;
         } else if (path === "scale") {
           keyframe.scaleX = values[valueIndex] || 1;
           keyframe.scaleY = values[valueIndex + 1] || 1;

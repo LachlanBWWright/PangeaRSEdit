@@ -13,7 +13,7 @@ function extractNode(obj: THREE.Object3D, level = 0): ModelNode | null {
   if (isJoint(obj)) {
     return null;
   }
-  
+
   const node: ModelNode = {
     name: obj.name || `Node_${obj.id}`,
     type:
@@ -27,13 +27,13 @@ function extractNode(obj: THREE.Object3D, level = 0): ModelNode | null {
     meshIndex: obj instanceof THREE.Mesh ? obj.id : undefined,
     nodeIndex: obj.id,
   };
-  
+
   if (obj.children.length > 0) {
-    node.children = obj.children.map((child) =>
-      extractNode(child, level + 1),
-    ).filter((child): child is ModelNode => child !== null);
+    node.children = obj.children
+      .map((child) => extractNode(child, level + 1))
+      .filter((child): child is ModelNode => child !== null);
   }
-  
+
   return node;
 }
 
@@ -43,25 +43,25 @@ function extractNode(obj: THREE.Object3D, level = 0): ModelNode | null {
 export function useModelHierarchy(
   gltfResult: GLTFResult | undefined,
   setModelNodes: (nodes: ModelNode[]) => void,
-  onSceneReady?: (scene: THREE.Group | undefined) => void
+  onSceneReady?: (scene: THREE.Group | undefined) => void,
 ) {
   useEffect(() => {
     try {
       if (gltfResult?.scene) {
-        const nodes = gltfResult.scene.children.map((child: THREE.Object3D) =>
-          extractNode(child),
-        ).filter((node): node is ModelNode => node !== null);
-        
+        const nodes = gltfResult.scene.children
+          .map((child: THREE.Object3D) => extractNode(child))
+          .filter((node): node is ModelNode => node !== null);
+
         setModelNodes(nodes);
         if (onSceneReady) onSceneReady(gltfResult.scene);
       } else {
         setModelNodes([]);
-        if (onSceneReady) onSceneReady(undefined as any);
+        if (onSceneReady) onSceneReady(undefined);
       }
     } catch (error) {
       console.error("Error in useModelHierarchy:", error);
       setModelNodes([]);
-      if (onSceneReady) onSceneReady(undefined as any);
+      if (onSceneReady) onSceneReady(undefined);
     }
   }, [gltfResult?.scene, setModelNodes, onSceneReady]);
 }

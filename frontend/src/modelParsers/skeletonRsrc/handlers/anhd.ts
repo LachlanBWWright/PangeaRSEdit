@@ -2,14 +2,14 @@ import type { AnHdRaw } from "../parseSkeletonRsrcTS";
 
 export function handleAnHd(
   resourceName: string,
-  resourceData: AnHdRaw | { name?: string; order?: number } | undefined,
+  resourceData: AnHdRaw,
 ): AnHdRaw {
   if (
     resourceData &&
-    (resourceData as AnHdRaw).animName !== undefined &&
-    (resourceData as AnHdRaw).numAnimEvents !== undefined
+    resourceData.animName !== undefined &&
+    resourceData.numAnimEvents !== undefined
   ) {
-    const rd = resourceData as AnHdRaw;
+    const rd = resourceData;
     return {
       animName: rd.animName,
       numAnimEvents: rd.numAnimEvents,

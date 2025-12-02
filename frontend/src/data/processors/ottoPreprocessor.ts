@@ -1,13 +1,23 @@
 import { Updater } from "use-immer";
 import { ottoMaticLevel } from "../../python/structSpecs/ottoMaticInterface";
 import { SPLINE_KEY_BASE } from "../../editor/subviews/splines/Spline";
-import { GlobalsInterface } from "../globals/globals";
+import { Game, GlobalsInterface } from "../globals/globals";
 
 // eslint-disable-next-line  @typescript-eslint/no-explicit-any
 export function preprocessJson(json: any, globals: GlobalsInterface) {
   console.log(json);
-  // Ensure Layr points to unique Atrb values, and Atrb values match underlying values
-  if (json.Layr && json.Atrb && json.Layr[1000] && json.Atrb[1000]) {
+
+  // For Bugdom 1 and Nanosaur 1, Layr contains tile indices with flip/rotate bits - DO NOT MODIFY!
+  // The Layr preprocessing below is only for Otto Matic and other games where Layr contains Atrb indices.
+  if (
+    globals.GAME_TYPE === Game.BUGDOM ||
+    globals.GAME_TYPE === Game.NANOSAUR
+  ) {
+    console.log(
+      `${globals.GAME_NAME}: Skipping Layr/Atrb preprocessing (Layr contains tile indices with flip/rotate bits)`,
+    );
+  } else if (json.Layr && json.Atrb && json.Layr[1000] && json.Atrb[1000]) {
+    // Otto Matic and other games: Ensure Layr points to unique Atrb values
     console.log(json);
     const layrArr = json.Layr[1000].obj;
     const atrbArr = json.Atrb[1000].obj;
@@ -62,7 +72,7 @@ export function ottoPreprocessor(
       }
     });
 
-// eslint-disable-next-line  @typescript-eslint/no-explicit-any
+    // eslint-disable-next-line  @typescript-eslint/no-explicit-any
     const anyData: any = data;
     if (data.Liqd !== undefined)
       for (const waterItem of anyData.Liqd[1000].obj) {

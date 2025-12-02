@@ -13,7 +13,7 @@ function App() {
       <HashRouter>
         <div className="flex flex-col h-screen bg-gray-900">
           <Navigation />
-          <div className="flex-1 overflow-hidden">
+          <div className="flex-1 min-h-0 overflow-auto">
             <Routes>
               <Route path="/" element={<LevelEditor />} />
               <Route path="/model-viewer" element={<ModelViewer />} />

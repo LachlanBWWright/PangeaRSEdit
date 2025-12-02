@@ -69,25 +69,27 @@ export function splitLevelData(
       : null;
 
   // Extract terrain data (tiles, coordinates, etc.) - ensure all required parts exist
-  const terrainData: TerrainData | null =
-    //levelData.Atrb &&
+  // Note: Bugdom 1 uses Layr + Xlat instead of STgd, so we allow either
+  const hasTerrainData =
     levelData.ItCo &&
-    //levelData.Layr &&
-    levelData.STgd &&
+    (levelData.STgd || levelData.Layr) && // Either STgd (most games) or Layr (Bugdom 1)
     levelData.YCrd &&
-    //levelData.alis &&
-    levelData._metadata
-      ? {
-          Atrb: levelData.Atrb,
-          Timg: levelData.Timg,
-          ItCo: levelData.ItCo,
-          Layr: levelData.Layr,
-          STgd: levelData.STgd,
-          YCrd: levelData.YCrd,
-          alis: levelData.alis,
-          _metadata: levelData._metadata,
-        }
-      : null;
+    levelData._metadata;
+
+  const terrainData: TerrainData | null = hasTerrainData
+    ? {
+        Atrb: levelData.Atrb,
+        Timg: levelData.Timg,
+        Xlat: levelData.Xlat, // Bugdom 1 tile translation table
+        Vcol: levelData.Vcol, // Bugdom 1 vertex colors
+        ItCo: levelData.ItCo,
+        Layr: levelData.Layr,
+        STgd: levelData.STgd,
+        YCrd: levelData.YCrd,
+        alis: levelData.alis,
+        _metadata: levelData._metadata,
+      }
+    : null;
 
   // Log which atomic fields are missing (null)
   console.log("splitLevelData: null status", {

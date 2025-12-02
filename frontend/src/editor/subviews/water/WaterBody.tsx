@@ -6,7 +6,7 @@ import {
   SelectedWaterBody,
   SelectedWaterNub,
 } from "../../../data/water/waterAtoms"; // Import SelectedWaterNub
-import { memo, useState } from "react";
+import { memo, useState, useRef } from "react";
 
 export const WaterBody = memo(
   ({
@@ -25,6 +25,8 @@ export const WaterBody = memo(
     const [initialDragState, setInitialDragState] = useState<
       [number, number][] | null
     >(null);
+    const lineRafRef = useRef<number | null>(null);
+    const nubRafRefs = useRef<Record<number, number | null>>({});
 
     if (!waterBody) return <></>;
 
@@ -55,7 +57,27 @@ export const WaterBody = memo(
             );
             setSelectedWaterBody(waterBodyIdx);
           }}
+          onDragMove={(e) => {
+            if (!initialDragState) return;
+
+            const dragDx = e.target.x();
+            const dragDz = e.target.y();
+
+            if (lineRafRef.current) cancelAnimationFrame(lineRafRef.current);
+            lineRafRef.current = requestAnimationFrame(() => {
+              setLiquidData((draft) => {
+                const currentNubs = draft.Liqd[1000].obj[waterBodyIdx].nubs;
+                for (let i = 0; i < initialDragState.length; i++) {
+                  if (i < draft.Liqd[1000].obj[waterBodyIdx].numNubs) {
+                    currentNubs[i][0] = initialDragState[i][0] + dragDx;
+                    currentNubs[i][1] = initialDragState[i][1] + dragDz;
+                  }
+                }
+              });
+            });
+          }}
           onDragEnd={(e) => {
+            if (lineRafRef.current) cancelAnimationFrame(lineRafRef.current);
             if (!initialDragState) return;
 
             const dragDx = e.target.x();
@@ -77,43 +99,61 @@ export const WaterBody = memo(
         />
         {waterBodyIdx === selectedWaterBody &&
           liquidData.Liqd[1000].obj[waterBodyIdx].nubs.map((nub, nubIdx) => {
-            if (liquidData.Liqd[1000].obj[waterBodyIdx].numNubs <= nubIdx) return;
+            if (liquidData.Liqd[1000].obj[waterBodyIdx].numNubs <= nubIdx)
+              return;
 
             return (
-                <Circle
-                  x={nub[0]}
-                  y={nub[1]}
-                  key={waterBodyIdx + "-" + nubIdx} // More specific key
-                  radius={
-                    selectedWaterNub === nubIdx &&
-                    selectedWaterBody === waterBodyIdx
-                      ? 8
-                      : 5
-                  } // Highlight selected nub
-                  fill={
-                    selectedWaterNub === nubIdx &&
-                    selectedWaterBody === waterBodyIdx
-                      ? "#FF99FFDD"
-                      : "#9999FFDD"
-                  } // Different color for selected nub
-                  draggable={true}
-                  onClick={() => {
-                    setSelectedWaterBody(waterBodyIdx);
-                    setSelectedWaterNub(nubIdx); // Set selected nub on click
-                  }}
-                  onDragStart={() => {
-                    setSelectedWaterBody(waterBodyIdx);
-                    setSelectedWaterNub(nubIdx); // Set selected nub on drag start
-                  }}
-                  onDragEnd={(e) => {
+              <Circle
+                x={nub[0]}
+                y={nub[1]}
+                key={waterBodyIdx + "-" + nubIdx} // More specific key
+                radius={
+                  selectedWaterNub === nubIdx &&
+                  selectedWaterBody === waterBodyIdx
+                    ? 8
+                    : 5
+                } // Highlight selected nub
+                fill={
+                  selectedWaterNub === nubIdx &&
+                  selectedWaterBody === waterBodyIdx
+                    ? "#FF99FFDD"
+                    : "#9999FFDD"
+                } // Different color for selected nub
+                draggable={true}
+                onClick={() => {
+                  setSelectedWaterBody(waterBodyIdx);
+                  setSelectedWaterNub(nubIdx); // Set selected nub on click
+                }}
+                onDragStart={() => {
+                  setSelectedWaterBody(waterBodyIdx);
+                  setSelectedWaterNub(nubIdx); // Set selected nub on drag start
+                }}
+                onDragMove={(e) => {
+                  const newX = Math.round(e.target.x());
+                  const newY = Math.round(e.target.y());
+
+                  if (nubRafRefs.current[nubIdx])
+                    cancelAnimationFrame(nubRafRefs.current[nubIdx]!);
+                  nubRafRefs.current[nubIdx] = requestAnimationFrame(() => {
                     setLiquidData((liquidData) => {
                       liquidData.Liqd[1000].obj[waterBodyIdx].nubs[nubIdx][0] =
-                        Math.round(e.target.x());
+                        newX;
                       liquidData.Liqd[1000].obj[waterBodyIdx].nubs[nubIdx][1] =
-                        Math.round(e.target.y());
+                        newY;
                     });
-                  }}
-                />
+                  });
+                }}
+                onDragEnd={(e) => {
+                  if (nubRafRefs.current[nubIdx])
+                    cancelAnimationFrame(nubRafRefs.current[nubIdx]!);
+                  setLiquidData((liquidData) => {
+                    liquidData.Liqd[1000].obj[waterBodyIdx].nubs[nubIdx][0] =
+                      Math.round(e.target.x());
+                    liquidData.Liqd[1000].obj[waterBodyIdx].nubs[nubIdx][1] =
+                      Math.round(e.target.y());
+                  });
+                }}
+              />
             );
           })}
         {selectedWaterBody === waterBodyIdx && (

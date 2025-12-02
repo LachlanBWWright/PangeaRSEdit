@@ -1,5 +1,5 @@
 import { Canvas } from "@react-three/fiber";
-import { TrackballControls } from "@react-three/drei";
+import { MapControls } from "@react-three/drei";
 import { TerrainGeometry } from "./Terrain";
 import { FenceGeometry } from "./FenceGeometry"; // Import the new FenceGeometry component
 import { LiquidGeometry } from "./LiquidGeometry"; // Import the new LiquidGeometry component
@@ -42,14 +42,37 @@ export function ThreeView({
   return (
     <Canvas
       camera={{
-        fov: 110,
+        fov: 60,
         near: 0.1,
         far: 100000,
-        position: [unitsWide / 2, 5000, unitsHigh / 2],
-        rotation: [0, Math.PI, 0],
+        // Place the camera above the map and slightly to the side, so it's easier
+        // to orbit and pan while keeping a top-down editing view
+        position: [
+          unitsWide / 2,
+          Math.max(unitsWide, unitsHigh) * 0.15,
+          unitsHigh / 2 + 400,
+        ],
       }}
     >
-      <TrackballControls />
+      <MapControls
+        // Make the controls the default camera controls
+        makeDefault
+        // Smooth movement
+        enableDamping
+        dampingFactor={0.08}
+        // Allow panning and rotating but reduce rotation to stay usable for map editing
+        enablePan
+        enableRotate
+        minDistance={50}
+        maxDistance={Math.max(unitsWide, unitsHigh) * 10}
+        // Don't allow going below the horizon (keeps it primarily a top-down editor)
+        minPolarAngle={0}
+        maxPolarAngle={Math.PI / 2 - 0.05}
+        // Keep panning aligned with the ground plane, so panning feels intuitive
+        screenSpacePanning={false}
+        // Start looking at the center of the map
+        target={[unitsWide / 2, 0, unitsHigh / 2]}
+      />
       <TerrainGeometry
         headerData={headerData}
         terrainData={terrainData}

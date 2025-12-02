@@ -105,80 +105,37 @@ function transformToSkeletonResource(
     if (typeName === "_metadata") continue;
     for (const [resourceId, resourceData] of Object.entries(typeData || {})) {
       const resourceIdNum = parseInt(resourceId, 10);
-      const resourceName =
-        (resourceData as { name?: string })?.name || `Resource_${resourceId}`;
-      const hexData = (resourceData as { data?: string })?.data || "";
+      const resourceName = resourceData?.name || `Resource_${resourceId}`;
+      const hexData = resourceData?.data || "";
       let obj: unknown;
 
       switch (typeName) {
         case "BonP":
-          obj = handleBonP(
-            resourceName,
-            resourceData as BonPRaw[] | { obj?: BonPRaw[] } | undefined,
-            hexData,
-          );
+          obj = handleBonP(resourceName, resourceData, hexData);
           break;
         case "BonN":
-          obj = handleBonN(
-            resourceName,
-            resourceData as BonNRaw[] | { obj?: BonNRaw[] } | undefined,
-            hexData,
-          );
+          obj = handleBonN(resourceName, resourceData, hexData);
           break;
         case "RelP":
-          obj = handleRelP(
-            resourceName,
-            resourceData as RelPRaw[] | { obj?: RelPRaw[] } | undefined,
-            resourceId,
-            hexData,
-          );
+          obj = handleRelP(resourceName, resourceData, resourceId, hexData);
           break;
         case "Evnt":
-          obj = handleEvnt(
-            resourceName,
-            resourceData as EvntRaw[] | { obj?: EvntRaw[] } | undefined,
-            resourceId,
-            hexData,
-          );
+          obj = handleEvnt(resourceName, resourceData, resourceId, hexData);
           break;
         case "NumK":
-          obj = handleNumK(
-            resourceName,
-            resourceData as NumKRaw[] | { obj?: NumKRaw[] } | undefined,
-            hexData,
-          );
+          obj = handleNumK(resourceName, resourceData, hexData);
           break;
         case "KeyF":
-          obj = handleKeyF(
-            resourceName,
-            resourceData as KeyFRaw[] | { obj?: KeyFRaw[] } | undefined,
-            resourceId,
-            hexData,
-          );
+          obj = handleKeyF(resourceName, resourceData, resourceId, hexData);
           break;
         case "Bone":
-          obj = handleBone(
-            resourceName,
-            resourceData as
-              | BoneRaw
-              | { data?: string; name?: string }
-              | undefined,
-            resourceId,
-            hexData,
-          );
+          obj = handleBone(resourceName, resourceData, resourceId, hexData);
           break;
         case "AnHd":
-          obj = handleAnHd(
-            resourceName,
-            resourceData as
-              | AnHdRaw
-              | { name?: string; order?: number }
-              | undefined,
-          );
+          obj = handleAnHd(resourceName, resourceData);
           break;
         default:
-          obj =
-            (resourceData as { obj?: unknown })?.obj ?? hexData ?? resourceData;
+          obj = resourceData?.obj ?? hexData ?? resourceData;
       }
 
       const entry = {
@@ -196,18 +153,82 @@ function transformToSkeletonResource(
       else if (typeName === "Evnt") result.Evnt[resourceId] = entry;
       else if (typeName === "NumK") result.NumK[resourceId] = entry;
       else if (typeName === "KeyF") result.KeyF[resourceId] = entry;
-      else
-        (result as unknown as Record<string, unknown>)[typeName] =
-          typeData as unknown;
+      else result[typeName] = typeData;
     }
   }
 
   return result;
 }
 
+/**
+ * Parse skeleton resource synchronously using TypeScript parser
+ */
 export function parseSkeletonRsrcTS(bytes: ArrayBuffer): SkeletonResource {
   const parsed = parseSkeletonRsrcJson(bytes);
   return transformToSkeletonResource(parsed);
+}
+
+/**
+ * Parse skeleton resource using Pyodide worker (async)
+ * @param bytes Skeleton resource binary data
+ * @param pyodideWorker Initialized Pyodide worker
+ * @returns Promise resolving to parsed SkeletonResource
+ */
+export async function parseSkeletonRsrcPyodide(
+  bytes: ArrayBuffer,
+  pyodideWorker: Worker,
+): Promise<SkeletonResource> {
+  return new Promise((resolve, reject) => {
+    const handleMessage = (event: MessageEvent) => {
+      if (event.data.type === "save_to_json") {
+        pyodideWorker.removeEventListener("message", handleMessage);
+        pyodideWorker.removeEventListener("error", handleError);
+        resolve(event.data.result as SkeletonResource);
+      }
+    };
+
+    const handleError = (error: ErrorEvent) => {
+      pyodideWorker.removeEventListener("message", handleMessage);
+      pyodideWorker.removeEventListener("error", handleError);
+      reject(error);
+    };
+
+    pyodideWorker.addEventListener("message", handleMessage);
+    pyodideWorker.addEventListener("error", handleError);
+
+    pyodideWorker.postMessage({
+      type: "save_to_json",
+      bytes,
+      struct_specs: skeletonSpecs,
+      include_types: [],
+      exclude_types: [],
+    });
+  });
+}
+
+/**
+ * Parse skeleton resource with configurable parser
+ * @param bytes Skeleton resource binary data
+ * @param options Parser options
+ * @returns SkeletonResource (sync) or Promise<SkeletonResource> (async with Pyodide)
+ */
+export function parseSkeletonRsrc(
+  bytes: ArrayBuffer,
+  options?: {
+    usePyodide?: boolean;
+    pyodideWorker?: Worker;
+  },
+): SkeletonResource | Promise<SkeletonResource> {
+  const usePyodide = options?.usePyodide ?? true; // Default to Pyodide
+
+  if (usePyodide) {
+    if (!options?.pyodideWorker) {
+      throw new Error("Pyodide worker required when usePyodide is true");
+    }
+    return parseSkeletonRsrcPyodide(bytes, options.pyodideWorker);
+  }
+
+  return parseSkeletonRsrcTS(bytes);
 }
 
 export function parseSkeletonRsrcJson(bytes: ArrayBuffer): ParsedSkeleton {
