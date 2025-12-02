@@ -130,7 +130,7 @@ export function DownloadLevels() {
   const gamesByCategory = getGamesByCategory();
 
   return (
-    <div className="flex-1 bg-gray-900 p-6">
+    <div className="h-full overflow-auto bg-gray-900 p-6">
       <div className="max-w-7xl mx-auto">
         <div className="flex flex-col gap-2 mb-8 text-center">
           <h1 className="text-4xl font-bold text-white pb-2">

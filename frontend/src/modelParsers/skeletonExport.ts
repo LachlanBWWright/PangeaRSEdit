@@ -7,9 +7,34 @@ import type { BG3DSkeleton } from "./parseBG3D";
 /**
  * Convert BG3D skeleton data to SkeletonResource format
  * @param skeleton BG3D skeleton data
+ * @param relP Optional RelP data from original skeleton resource (uses skeleton.relPoints if not provided)
+ * @param evntData Optional Evnt data (uses skeleton.animations[].events if not provided)
+ * @param alisData Optional alis data (uses skeleton.alisData if not provided)
+ * @param metadata Optional metadata (uses skeleton.metadata if not provided)
  * @returns SkeletonResource object
  */
-export function bg3dSkeletonToSkeletonResource(skeleton: BG3DSkeleton): SkeletonResource {
+export function bg3dSkeletonToSkeletonResource(
+  skeleton: BG3DSkeleton,
+  relP?: { [key: string]: any },
+  evntData?: { [key: string]: any },
+  alisData?: { [key: string]: any },
+  metadata?: any,
+): SkeletonResource {
+  // Use skeleton's own data if not explicitly provided
+  const effectiveRelP =
+    relP || convertRelPointsToRelPFormat(skeleton.relPoints);
+  const effectiveAlisData = alisData || skeleton.alisData;
+  const effectiveMetadata = metadata || skeleton.metadata;
+
+  // Debug: Check what RelP data we received
+  if (effectiveRelP && effectiveRelP["1000"]) {
+    console.log(
+      `RelP received with ${effectiveRelP["1000"].obj?.length || 0} points`,
+    );
+  } else {
+    console.log("No RelP data received");
+  }
+
   // Create header
   const header = {
     version: skeleton.version,
@@ -18,12 +43,13 @@ export function bg3dSkeletonToSkeletonResource(skeleton: BG3DSkeleton): Skeleton
     num3DMFLimbs: skeleton.num3DMFLimbs,
   };
 
-  // Convert bones
+  // Convert bones - use resource IDs starting from 1000
   const bones: { [key: string]: any } = {};
   skeleton.bones.forEach((bone, index) => {
-    bones[index.toString()] = {
-      name: "Bone",
-      order: index + 1,
+    const resourceId = 1000 + index;
+    bones[resourceId.toString()] = {
+      name: bone.name, // Use actual bone name, not generic "Bone"
+      order: resourceId,
       obj: {
         parentBone: bone.parentBone,
         name: bone.name,
@@ -32,82 +58,96 @@ export function bg3dSkeletonToSkeletonResource(skeleton: BG3DSkeleton): Skeleton
         coordZ: bone.coordZ,
         numPointsAttachedToBone: bone.numPointsAttachedToBone,
         numNormalsAttachedToBone: bone.numNormalsAttachedToBone,
-      }
+        reserved0: bone.reserved0,
+        reserved1: bone.reserved1,
+        reserved2: bone.reserved2,
+        reserved3: bone.reserved3,
+        reserved4: bone.reserved4,
+        reserved5: bone.reserved5,
+        reserved6: bone.reserved6,
+        reserved7: bone.reserved7,
+      },
     };
   });
 
-  // Convert bone point attachments (simplified for now)
+  // Convert bone point attachments - use resource IDs matching bone IDs (1000+)
+  // Create resources for ALL bones, even if empty (size 0)
   const bonP: { [key: string]: any } = {};
   skeleton.bones.forEach((bone, index) => {
-    if (bone.pointIndices && bone.pointIndices.length > 0) {
-      bonP[index.toString()] = {
-        name: "Bone Points",
-        order: skeleton.bones.length + index + 1,
-        obj: bone.pointIndices.map(pointIndex => ({ pointIndex }))
-      };
-    }
+    const resourceId = 1000 + index;
+    bonP[resourceId.toString()] = {
+      name: bone.name, // Use bone name, not generic "Bone Points"
+      order: resourceId,
+      obj: (bone.pointIndices || []).map((pointIndex) => ({ pointIndex })),
+    };
   });
 
-  // Convert bone normal attachments (simplified for now)
+  // Convert bone normal attachments - use resource IDs matching bone IDs (1000+)
+  // Create resources for ALL bones, even if empty (size 0)
   const bonN: { [key: string]: any } = {};
   skeleton.bones.forEach((bone, index) => {
-    if (bone.normalIndices && bone.normalIndices.length > 0) {
-      bonN[index.toString()] = {
-        name: "Bone Normals",
-        order: skeleton.bones.length * 2 + index + 1,
-        obj: bone.normalIndices.map(normal => ({ normal }))
-      };
-    }
+    const resourceId = 1000 + index;
+    bonN[resourceId.toString()] = {
+      name: bone.name, // Use bone name, not generic "Bone Normals"
+      order: resourceId,
+      obj: (bone.normalIndices || []).map((normal) => ({ normal })),
+    };
   });
 
   // Convert animations
   const anHd: { [key: string]: any } = {};
-  const evnt: { [key: string]: any } = {};
+  // Use provided evntData if available, otherwise create empty
+  const evnt: { [key: string]: any } = evntData || {};
   const numK: { [key: string]: any } = {};
   const keyF: { [key: string]: any } = {};
 
   skeleton.animations.forEach((animation, animIndex) => {
-    // Animation header
-    anHd[animIndex.toString()] = {
-      name: "Animation Header",
-      order: skeleton.bones.length * 3 + animIndex + 1,
+    const animResourceId = 1000 + animIndex;
+
+    // Animation header - use resource IDs starting from 1000
+    anHd[animResourceId.toString()] = {
+      name: animation.name, // Use actual animation name, not generic "Animation Header"
+      order: animResourceId,
       obj: {
         animName: animation.name,
         numAnimEvents: animation.numAnimEvents,
-      }
+      },
     };
 
-    // Animation events
-    if (animation.events.length > 0) {
-      evnt[animIndex.toString()] = {
+    // Animation events (only if evntData not provided)
+    if (!evntData && animation.events.length > 0) {
+      evnt[animResourceId.toString()] = {
         name: "Animation Events",
-        order: skeleton.bones.length * 3 + skeleton.animations.length + animIndex + 1,
-        obj: animation.events.map(event => ({
+        order: animResourceId,
+        obj: animation.events.map((event) => ({
           time: event.time,
           type: event.type,
           value: event.value,
-        }))
+        })),
       };
     }
 
-    // Process keyframes for each bone
-    Object.entries(animation.keyframes).forEach(([boneIndexStr, keyframes], boneKeyIndex) => {
-      const keyId = `${animIndex}_${boneIndexStr}`;
-      
-      // Number of keyframes
-      numK[keyId] = {
-        name: "Number of Keyframes",
-        order: skeleton.bones.length * 3 + skeleton.animations.length * 2 + boneKeyIndex + 1,
-        obj: {
-          numKeyFrames: keyframes.length,
-        }
-      };
+    // NumK resource: ONE per animation, contains array of keyframe counts for all bones
+    // Initialize array with skeleton.numJoints entries (all 0)
+    const numKeyFramesArray = new Array(skeleton.numJoints).fill(0);
 
-      // Keyframes
-      keyF[keyId] = {
-        name: "Keyframes",
-        order: skeleton.bones.length * 3 + skeleton.animations.length * 3 + boneKeyIndex + 1,
-        obj: keyframes.map(kf => ({
+    // Process keyframes for each bone
+    Object.entries(animation.keyframes).forEach(([boneIndexStr, keyframes]) => {
+      const boneIndex = parseInt(boneIndexStr);
+
+      // Store the number of keyframes for this bone in the array
+      numKeyFramesArray[boneIndex] = keyframes.length;
+
+      // KeyF resource ID: pattern is 1000 + (animIndex * 100) + boneIndex
+      const keyFResourceId = 1000 + animIndex * 100 + boneIndex;
+
+      // Get the bone name for this keyframe resource
+      const boneName = skeleton.bones[boneIndex]?.name || "";
+
+      keyF[keyFResourceId.toString()] = {
+        name: boneName, // Use bone name, not generic "Keyframes"
+        order: keyFResourceId,
+        obj: keyframes.map((kf) => ({
           tick: kf.tick,
           accelerationMode: kf.accelerationMode,
           coordX: kf.coordX,
@@ -119,27 +159,65 @@ export function bg3dSkeletonToSkeletonResource(skeleton: BG3DSkeleton): Skeleton
           scaleX: kf.scaleX,
           scaleY: kf.scaleY,
           scaleZ: kf.scaleZ,
-        }))
+        })),
       };
     });
+
+    // Create ONE NumK resource per animation with the array of keyframe counts
+    numK[animResourceId.toString()] = {
+      name: animation.name,
+      order: animResourceId,
+      obj: numKeyFramesArray, // Array of signed bytes, one per bone
+    };
   });
 
   return {
     Hedr: {
-      "1": {
+      "1000": {
         name: "Header",
-        order: 0,
-        obj: header
-      }
+        order: 1000,
+        obj: header,
+      },
     },
     Bone: bones,
     BonP: bonP,
     BonN: bonN,
+    RelP: effectiveRelP || {}, // Include RelP if provided or from skeleton, otherwise empty
     AnHd: anHd,
     Evnt: evnt,
     NumK: numK,
     KeyF: keyF,
+    alis:
+      effectiveAlisData && Object.keys(effectiveAlisData).length > 0
+        ? effectiveAlisData
+        : { "1000": { name: "alis", order: 1000, data: "00" } }, // Ensure alis resource exists (placeholder hex data if missing)
+    _metadata: effectiveMetadata || {}, // Include metadata if provided or from skeleton, otherwise empty
   };
+}
+
+/**
+ * Helper function to convert relPoints format to RelP resource format
+ */
+function convertRelPointsToRelPFormat(relPoints?: {
+  [resourceId: string]: [number, number, number][];
+}): { [key: string]: any } | undefined {
+  if (!relPoints || Object.keys(relPoints).length === 0) {
+    return undefined;
+  }
+
+  const relP: { [key: string]: any } = {};
+  Object.entries(relPoints).forEach(([resourceId, points]) => {
+    relP[resourceId] = {
+      name: `RelP_${resourceId}`,
+      order: parseInt(resourceId, 10),
+      obj: points.map(([x, y, z]) => ({
+        relOffsetX: x,
+        relOffsetY: y,
+        relOffsetZ: z,
+      })),
+    };
+  });
+  return relP;
 }
 
 /**
@@ -150,7 +228,7 @@ export function bg3dSkeletonToSkeletonResource(skeleton: BG3DSkeleton): Skeleton
  */
 export async function skeletonResourceToBinary(
   skeletonResource: SkeletonResource,
-  pyodideWorker: Worker
+  pyodideWorker: Worker,
 ): Promise<ArrayBuffer> {
   return new Promise((resolve, reject) => {
     pyodideWorker.onmessage = (event) => {

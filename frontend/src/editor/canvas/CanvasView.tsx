@@ -182,7 +182,8 @@ export function KonvaView({
         });
       }}
     >
-      {terrainData.STgd && (
+      {/* Render supertiles - for Bugdom 1 (has Layr) or other games (has STgd) */}
+      {terrainData && (terrainData.STgd || terrainData.Layr) && (
         <Supertiles
           headerData={headerData}
           terrainData={terrainData}

@@ -1,25 +1,19 @@
-import { Button } from "@/components/ui/button";
 import { FileUpload } from "../components/FileUpload";
-import LzssWorker from "../utils/lzssWorker?worker";
-import JpegWorker from "../utils/jpegDecompressWorker?worker";
-import { LzssMessage, LzssResponse } from "@/utils/lzssWorker";
-import {
-  JpegDecompressMessage,
-  JpegDecompressResponse,
-} from "@/utils/jpegDecompressWorker";
+// image decompression moved to `loadLogic/loadMapImages`
 import {
   BillyFrontierGlobals,
   Bugdom2Globals,
-  BugdomGlobals,
   CroMagGlobals,
   DataType,
   Game,
   Globals,
   Nanosaur2Globals,
-  NanosaurGlobals,
   OttoGlobals,
   type GlobalsInterface,
 } from "../data/globals/globals";
+import { loadMapImages } from "./loadLogic/loadMapImages";
+import { combineCanvases } from "./utils/combineCanvases";
+
 import { useAtom } from "jotai";
 import { useState } from "react";
 import { Switch } from "@/components/ui/switch";
@@ -43,6 +37,14 @@ import {
   createCanvasFromTile,
   extractTilesFromBuffer,
 } from "@/data/processors/classicProprocessor";
+// Level grids moved to `gameLevelSelectors/*`
+import OttoLevels from "./gameLevelSelectors/OttoLevels";
+import BugdomLevels from "./gameLevelSelectors/BugdomLevels";
+import Bugdom2Levels from "./gameLevelSelectors/Bugdom2Levels";
+import CroMagLevels from "./gameLevelSelectors/CroMagLevels";
+import NanosaurLevels from "./gameLevelSelectors/NanosaurLevels";
+import Nanosaur2Levels from "./gameLevelSelectors/Nanosaur2Levels";
+import BillyFrontierLevels from "./gameLevelSelectors/BillyFrontierLevels";
 /* import { Separator } from "@/components/ui/separator";
 import { parseSkeletonRsrc } from "@/modelParsers/skeletonRsrc/parseSkeletonRsrc";
 import BG3DGltfWorker from "../modelParsers/bg3dGltfWorker?worker"; //"../utils/bg3dGltfWorker.ts?worker"; */
@@ -64,6 +66,7 @@ export function UploadPrompt({
 }) {
   const [globals, setGlobals] = useAtom(Globals);
   const [showAllGames, setShowAllGames] = useState(false);
+
   const openFile = async (url: string, gameType: GlobalsInterface) => {
     /*All games' Resource Forks are .ter.rsrc, except for Nanosaur, which stores data in a .ter using a proprietary format
     Terrain files are .ter, except for Nanosaur, which is .trt, and Bugdom, 
@@ -106,6 +109,15 @@ export function UploadPrompt({
       for (const canvas of canvases) {
         console.log(canvas.toDataURL("image/png"));
       }
+
+      // Combine tiles into a single collage and log its data URL
+      try {
+        const collage = combineCanvases(canvases);
+        console.log("Collage dataURL:", collage.toDataURL("image/png"));
+      } catch (err) {
+        console.warn("Failed to create collage:", err);
+      }
+
       setMapImagesFile(imgFile);
       setMapImages(canvases);
     }
@@ -124,21 +136,55 @@ export function UploadPrompt({
       //Bugdom 1-specific - The image data is within the Resource Fork
       console.log(jsonData);
       const imgString = jsonData.Timg?.[1000]?.data;
-      console.log(imgString);
+      console.log(
+        "Timg hex string (first 200 chars):",
+        imgString?.substring(0, 200),
+      );
+      console.log("Timg hex string length:", imgString?.length);
       if (!imgString) {
         throw new Error("No image data found");
       }
       const imgBuffer = Buffer.from(imgString, "hex");
       console.log("Image buffer length:", imgBuffer.byteLength);
+      console.log("Image buffer byteOffset:", imgBuffer.byteOffset);
+
+      // Log first 32 bytes as hex to see raw data
+      const first32Bytes = Array.from(imgBuffer.slice(0, 32))
+        .map((b) => b.toString(16).padStart(2, "0"))
+        .join(" ");
+      console.log("First 32 bytes of Timg:", first32Bytes);
+
+      // Log first 8 pixels as 16-bit values (big-endian)
+      const alignedBuffer = new ArrayBuffer(imgBuffer.byteLength);
+      new Uint8Array(alignedBuffer).set(imgBuffer);
+      const tempView = new DataView(alignedBuffer);
+      const first8Pixels = [];
+      for (let i = 0; i < 8; i++) {
+        const val = tempView.getUint16(i * 2, false); // big-endian
+        first8Pixels.push({
+          hex: "0x" + val.toString(16).padStart(4, "0"),
+          decimal: val,
+        });
+      }
+      console.log("First 8 pixels as 16-bit big-endian:", first8Pixels);
+
       const tileCount = imgBuffer.byteLength / 2 / 32 / 32; // 2 bytes per pixel, 32x32 pixels per tile
       console.log("Tile count:", tileCount);
 
       const tiles = extractTilesFromBuffer(
-        new DataView(imgBuffer.buffer),
+        new DataView(alignedBuffer),
         tileCount,
         32,
         32 * 32 * 2,
       );
+
+      // Debug: Log first tile's first 8 raw pixel values
+      if (tiles.length > 0) {
+        console.log(
+          "First tile, first 8 raw Uint16 values:",
+          Array.from(tiles[0].slice(0, 8)),
+        );
+      }
       //test start
 
       // Convert each tile to a canvas for display
@@ -152,15 +198,25 @@ export function UploadPrompt({
       console.log(imgBuffer);
       console.log(imgBuffer.byteLength);
       console.log("Resized", imgBuffer.byteLength / 2 / 32 / 32);
-      const imgDataView = new DataView(imgBuffer.buffer);
-      const mapImages = await loadMapImages(imgDataView, gameType);
 
-      //Testing, delete
-      for (const canvas of mapImages) {
-        console.log(canvas.toDataURL("image/png"));
+      // We already converted tiles to canvases above using `createCanvasFromTile`.
+      // `loadMapImages` does not currently implement Bugdom decoding and will
+      // return an empty array. Use the canvases we already created instead.
+      // Combine tiles into a single collage and log its data URL
+      try {
+        const collage = combineCanvases(canvases);
+        console.log(collage.toDataURL("image/png"));
+      } catch (err) {
+        console.warn("Failed to create collage:", err);
       }
 
-      setMapImages(mapImages);
+      console.log("Bugdom tile images loaded:", canvases.length, "tiles");
+      console.log(
+        "First 3 tile image dimensions:",
+        canvases.slice(0, 3).map((c) => `${c.width}x${c.height}`),
+      );
+      setMapImages(canvases);
+      console.log("setMapImages called with", canvases.length, "canvases");
     }
   };
 
@@ -176,7 +232,7 @@ export function UploadPrompt({
       const rawLevelData = parseNanosaur1Level(levelBuffer);
       const compatibleLevel = nanosaur1LevelToOttoMaticLevel(rawLevelData);
       // console.log(items);
-      //setData(items as any); // or adapt to your data model
+      //setData(items); // or adapt to your data model
       //return items;
 
       //throw new Error("nanosaur terrain files are not supported yet");
@@ -207,7 +263,9 @@ export function UploadPrompt({
 
       const jsonData = await pyodidePromise;
 
-      preprocessJson(jsonData, globals);
+      // IMPORTANT: Use gameType directly, not globals from hook state!
+      // The setGlobals(gameType) call is async and hasn't updated globals yet
+      preprocessJson(jsonData, gameType);
 
       setData(splitLevelData(jsonData));
       return jsonData;
@@ -295,822 +353,18 @@ export function UploadPrompt({
       </div>
 
       <div className="flex flex-row gap-8 overflow-x-auto flex-wrap justify-center max-w-full  ">
-        <div className="grid grid-cols-1 grid-rows-11 grid-flow-col text-2xl gap-1 min-w-40">
-          <p>Otto Matic Levels</p>
-          <Button
-            onClick={() =>
-              openFile("assets/ottoMatic/terrain/EarthFarm.ter", OttoGlobals)
-            }
-          >
-            Level 1
-          </Button>
-          <Button
-            onClick={() =>
-              openFile("assets/ottoMatic/terrain/BlobWorld.ter", OttoGlobals)
-            }
-          >
-            Level 2
-          </Button>
-          <Button
-            onClick={() =>
-              openFile("assets/ottoMatic/terrain/BlobBoss.ter", OttoGlobals)
-            }
-          >
-            Level 3
-          </Button>
-          <Button
-            onClick={() =>
-              openFile("assets/ottoMatic/terrain/Apocalypse.ter", OttoGlobals)
-            }
-          >
-            Level 4
-          </Button>
-          <Button
-            onClick={() =>
-              openFile("assets/ottoMatic/terrain/Cloud.ter", OttoGlobals)
-            }
-          >
-            Level 5
-          </Button>
-          <Button
-            onClick={() =>
-              openFile("assets/ottoMatic/terrain/Jungle.ter", OttoGlobals)
-            }
-          >
-            Level 6
-          </Button>
-          <Button
-            onClick={() =>
-              openFile("assets/ottoMatic/terrain/JungleBoss.ter", OttoGlobals)
-            }
-          >
-            Level 7
-          </Button>
-          <Button
-            onClick={() =>
-              openFile("assets/ottoMatic/terrain/FireIce.ter", OttoGlobals)
-            }
-          >
-            Level 8
-          </Button>
-          <Button
-            onClick={() =>
-              openFile("assets/ottoMatic/terrain/Saucer.ter", OttoGlobals)
-            }
-          >
-            Level 9
-          </Button>
-          <Button
-            onClick={() =>
-              openFile("assets/ottoMatic/terrain/BrainBoss.ter", OttoGlobals)
-            }
-          >
-            Level 10
-          </Button>
-        </div>
+        <OttoLevels openFile={openFile} />
         {showAllGames && (
           <>
-            {" "}
-            <div className="grid grid-cols-1 grid-rows-11 grid-flow-col text-2xl gap-1 min-w-40">
-              <p>Bugdom Levels </p>
-              <Button
-                onClick={() =>
-                  openFile("assets/bugdom/terrain/Training.ter", BugdomGlobals)
-                }
-              >
-                Level 1
-              </Button>
-              <Button
-                onClick={() =>
-                  openFile("assets/bugdom/terrain/Lawn.ter", BugdomGlobals)
-                }
-              >
-                Level 2
-              </Button>
-              <Button
-                onClick={() =>
-                  openFile("assets/bugdom/terrain/Pond.ter", BugdomGlobals)
-                }
-              >
-                Level 3
-              </Button>
-              <Button
-                onClick={() =>
-                  openFile("assets/bugdom/terrain/Beach.ter", BugdomGlobals)
-                }
-              >
-                Level 4
-              </Button>
-              <Button
-                onClick={() =>
-                  openFile("assets/bugdom/terrain/Flight.ter", BugdomGlobals)
-                }
-              >
-                Level 5
-              </Button>
-              <Button
-                onClick={() =>
-                  openFile("assets/bugdom/terrain/BeeHive.ter", BugdomGlobals)
-                }
-              >
-                Level 6
-              </Button>
-              <Button
-                onClick={() =>
-                  openFile("assets/bugdom/terrain/QueenBee.ter", BugdomGlobals)
-                }
-              >
-                Level 7
-              </Button>
-              <Button
-                onClick={() =>
-                  openFile("assets/bugdom/terrain/Night.ter", BugdomGlobals)
-                }
-              >
-                Level 8
-              </Button>
-              <Button
-                onClick={() =>
-                  openFile("assets/bugdom/terrain/AntHill.ter", BugdomGlobals)
-                }
-              >
-                Level 9
-              </Button>
-              <Button
-                onClick={() =>
-                  openFile("assets/bugdom/terrain/AntKing.ter", BugdomGlobals)
-                }
-              >
-                Level 10
-              </Button>
-            </div>
-            <div className="grid grid-cols-1 grid-rows-11 grid-flow-col text-2xl gap-1 min-w-40">
-              <p>Bugdom 2 Levels </p>
-              <Button
-                onClick={() =>
-                  openFile(
-                    "assets/bugdom2/terrain/Level1_Garden.ter",
-                    Bugdom2Globals,
-                  )
-                }
-              >
-                Level 1
-              </Button>
-              <Button
-                onClick={() =>
-                  openFile(
-                    "assets/bugdom2/terrain/Level2_SideWalk.ter",
-                    Bugdom2Globals,
-                  )
-                }
-              >
-                Level 2
-              </Button>
-              <Button
-                onClick={() =>
-                  openFile(
-                    "assets/bugdom2/terrain/Level3_DogHair.ter",
-                    Bugdom2Globals,
-                  )
-                }
-              >
-                Level 3
-              </Button>
-              <Button disabled>Level 4</Button>
-              <Button
-                onClick={() =>
-                  openFile(
-                    "assets/bugdom2/terrain/Level5_Playroom.ter",
-                    Bugdom2Globals,
-                  )
-                }
-              >
-                Level 5
-              </Button>
-              <Button
-                onClick={() =>
-                  openFile(
-                    "assets/bugdom2/terrain/Level6_Closet.ter",
-                    Bugdom2Globals,
-                  )
-                }
-              >
-                Level 6
-              </Button>
-              <Button disabled>Level 7</Button>
-              <Button
-                onClick={() =>
-                  openFile(
-                    "assets/bugdom2/terrain/Level8_Garbage.ter",
-                    Bugdom2Globals,
-                  )
-                }
-              >
-                Level 8
-              </Button>
-              <Button
-                onClick={() =>
-                  openFile(
-                    "assets/bugdom2/terrain/Level9_Balsa.ter",
-                    Bugdom2Globals,
-                  )
-                }
-              >
-                Level 9
-              </Button>
-              <Button
-                onClick={() =>
-                  openFile(
-                    "assets/bugdom2/terrain/Level10_Park.ter",
-                    Bugdom2Globals,
-                  )
-                }
-              >
-                Level 10
-              </Button>
-            </div>
-            <div className="grid grid-cols-1 grid-rows-11 grid-flow-col text-2xl gap-1 min-w-40">
-              <p>Cro-Mag Races</p>
-              <Button
-                onClick={() =>
-                  openFile(
-                    "assets/croMag/terrain/StoneAge_Desert.ter",
-                    CroMagGlobals,
-                  )
-                }
-              >
-                Desert
-              </Button>
-              <Button
-                onClick={() =>
-                  openFile(
-                    "assets/croMag/terrain/StoneAge_Jungle.ter",
-                    CroMagGlobals,
-                  )
-                }
-              >
-                Jungle
-              </Button>
-              <Button
-                onClick={() =>
-                  openFile(
-                    "assets/croMag/terrain/StoneAge_Ice.ter",
-                    CroMagGlobals,
-                  )
-                }
-              >
-                Ice
-              </Button>
-              <Button
-                onClick={() =>
-                  openFile(
-                    "assets/croMag/terrain/BronzeAge_Crete.ter",
-                    CroMagGlobals,
-                  )
-                }
-              >
-                Crete
-              </Button>
-              <Button
-                onClick={() =>
-                  openFile(
-                    "assets/croMag/terrain/BronzeAge_China.ter",
-                    CroMagGlobals,
-                  )
-                }
-              >
-                China
-              </Button>
-              <Button
-                onClick={() =>
-                  openFile(
-                    "assets/croMag/terrain/BronzeAge_Egypt.ter",
-                    CroMagGlobals,
-                  )
-                }
-              >
-                Egypt
-              </Button>
-              <Button
-                onClick={() =>
-                  openFile(
-                    "assets/croMag/terrain/IronAge_Europe.ter",
-                    CroMagGlobals,
-                  )
-                }
-              >
-                Europe
-              </Button>
-              <Button
-                onClick={() =>
-                  openFile(
-                    "assets/croMag/terrain/IronAge_Scandinavia.ter",
-                    CroMagGlobals,
-                  )
-                }
-              >
-                Scandinavia
-              </Button>
-              <Button
-                onClick={() =>
-                  openFile(
-                    "assets/croMag/terrain/IronAge_Atlantis.ter",
-                    CroMagGlobals,
-                  )
-                }
-              >
-                Atlantis
-              </Button>
-            </div>
-            <div className="grid grid-cols-1 grid-rows-11 grid-flow-col text-2xl gap-1 min-w-40">
-              <p>Cro-Mag Battles </p>
-              <Button
-                onClick={() =>
-                  openFile(
-                    "assets/croMag/terrain/Battle_Aztec.ter",
-                    CroMagGlobals,
-                  )
-                }
-              >
-                Aztec
-              </Button>
-              <Button
-                onClick={() =>
-                  openFile(
-                    "assets/croMag/terrain/Battle_Celtic.ter",
-                    CroMagGlobals,
-                  )
-                }
-              >
-                Celtic
-              </Button>
-              <Button
-                onClick={() =>
-                  openFile(
-                    "assets/croMag/terrain/Battle_Coliseum.ter",
-                    CroMagGlobals,
-                  )
-                }
-              >
-                Coliseum
-              </Button>
-              <Button
-                onClick={() =>
-                  openFile(
-                    "assets/croMag/terrain/Battle_Maze.ter",
-                    CroMagGlobals,
-                  )
-                }
-              >
-                Maze
-              </Button>
-              <Button
-                onClick={() =>
-                  openFile(
-                    "assets/croMag/terrain/Battle_Ramps.ter",
-                    CroMagGlobals,
-                  )
-                }
-              >
-                Ramps
-              </Button>
-              <Button
-                onClick={() =>
-                  openFile(
-                    "assets/croMag/terrain/Battle_Spiral.ter",
-                    CroMagGlobals,
-                  )
-                }
-              >
-                Spiral
-              </Button>
-              <Button
-                onClick={() =>
-                  openFile(
-                    "assets/croMag/terrain/Battle_StoneHenge.ter",
-                    CroMagGlobals,
-                  )
-                }
-              >
-                Stonehenge
-              </Button>
-              <Button
-                onClick={() =>
-                  openFile(
-                    "assets/croMag/terrain/Battle_TarPits.ter",
-                    CroMagGlobals,
-                  )
-                }
-              >
-                Tar Pits
-              </Button>
-            </div>{" "}
-            <div className="grid grid-cols-1 grid-rows-11 grid-flow-col text-2xl gap-1 min-w-40">
-              <p>Nanosaur Levels</p>
-              <Button
-                onClick={() =>
-                  openFile(
-                    "assets/nanosaur/terrain/Level1.ter",
-                    NanosaurGlobals,
-                  )
-                }
-              >
-                Default
-              </Button>
-              <Button
-                onClick={() =>
-                  openFile(
-                    "assets/nanosaur/terrain/Level1Pro.ter",
-                    NanosaurGlobals,
-                  )
-                }
-              >
-                Extreme
-              </Button>
-            </div>
-            <div className="grid grid-cols-1 grid-rows-11 grid-flow-col text-2xl gap-1 min-w-40">
-              <p>Nanosaur 2 Levels</p>
-              <Button
-                onClick={() =>
-                  openFile(
-                    "assets/nanosaur2/terrain/level1.ter",
-                    Nanosaur2Globals,
-                  )
-                }
-              >
-                Level 1
-              </Button>
-              <Button
-                onClick={() =>
-                  openFile(
-                    "assets/nanosaur2/terrain/level2.ter",
-                    Nanosaur2Globals,
-                  )
-                }
-              >
-                Level 2
-              </Button>
-              <Button
-                onClick={() =>
-                  openFile(
-                    "assets/nanosaur2/terrain/level3.ter",
-                    Nanosaur2Globals,
-                  )
-                }
-              >
-                Level 3
-              </Button>
-              <Button
-                onClick={() =>
-                  openFile(
-                    "assets/nanosaur2/terrain/battle1.ter",
-                    Nanosaur2Globals,
-                  )
-                }
-              >
-                Battle 1
-              </Button>
-              <Button
-                onClick={() =>
-                  openFile(
-                    "assets/nanosaur2/terrain/battle2.ter",
-                    Nanosaur2Globals,
-                  )
-                }
-              >
-                Battle 2
-              </Button>
-
-              <Button
-                onClick={() =>
-                  openFile(
-                    "assets/nanosaur2/terrain/race1.ter",
-                    Nanosaur2Globals,
-                  )
-                }
-              >
-                Race 1
-              </Button>
-              <Button
-                onClick={() =>
-                  openFile(
-                    "assets/nanosaur2/terrain/race2.ter",
-                    Nanosaur2Globals,
-                  )
-                }
-              >
-                Race 2
-              </Button>
-              <Button
-                onClick={() =>
-                  openFile(
-                    "assets/nanosaur2/terrain/flag1.ter",
-                    Nanosaur2Globals,
-                  )
-                }
-              >
-                CTF 1
-              </Button>
-              <Button
-                onClick={() =>
-                  openFile(
-                    "assets/nanosaur2/terrain/flag2.ter",
-                    Nanosaur2Globals,
-                  )
-                }
-              >
-                CTF 2
-              </Button>
-            </div>
-            <div className="grid grid-cols-1 grid-rows-11 grid-flow-col text-2xl gap-1 min-w-40">
-              <p>Billy Frontier Levels</p>
-              <Button
-                onClick={() =>
-                  openFile(
-                    "assets/billyFrontier/terrain/swamp_duel.ter",
-                    BillyFrontierGlobals,
-                  )
-                }
-              >
-                Swamp Duel
-              </Button>
-              <Button
-                onClick={() =>
-                  openFile(
-                    "assets/billyFrontier/terrain/swamp_shootout.ter",
-                    BillyFrontierGlobals,
-                  )
-                }
-              >
-                Swamp Shootout
-              </Button>
-              <Button
-                onClick={() =>
-                  openFile(
-                    "assets/billyFrontier/terrain/swamp_stampede.ter",
-                    BillyFrontierGlobals,
-                  )
-                }
-              >
-                Swamp Stampede
-              </Button>
-              <Button
-                onClick={() =>
-                  openFile(
-                    "assets/billyFrontier/terrain/town_duel.ter",
-                    BillyFrontierGlobals,
-                  )
-                }
-              >
-                Town Duel
-              </Button>
-              <Button
-                onClick={() =>
-                  openFile(
-                    "assets/billyFrontier/terrain/town_shootout.ter",
-                    BillyFrontierGlobals,
-                  )
-                }
-              >
-                Town Shootout
-              </Button>
-              <Button
-                onClick={() =>
-                  openFile(
-                    "assets/billyFrontier/terrain/town_stampede.ter",
-                    BillyFrontierGlobals,
-                  )
-                }
-              >
-                Town Stampede
-              </Button>
-            </div>{" "}
+            <BugdomLevels openFile={openFile} />
+            <Bugdom2Levels openFile={openFile} />
+            <CroMagLevels openFile={openFile} />
+            <NanosaurLevels openFile={openFile} />
+            <Nanosaur2Levels openFile={openFile} />
+            <BillyFrontierLevels openFile={openFile} />
           </>
         )}
       </div>
-
-      {/*       <Separator />
-      <div className="flex flex-col gap-2 lg:w-1/3">
-        <p>Parse Skeleton Data</p>
-        <p className="text-sm text-gray-300">
-          Upload Skeleton Resource (.skeleton.rsrc) to console log the parsed
-          data.
-        </p>
-        <FileUpload
-          className="text-2xl"
-          acceptType=".skeleton.rsrc"
-          handleOnChange={async (e) => {
-            if (!e.target?.files?.[0]) return;
-            const skeletonFile = e.target.files[0];
-            // TODO: Connect to skeleton parsing logic
-            console.log("Skeleton resource file uploaded:", skeletonFile);
-            const res = await parseSkeletonRsrc({
-              pyodideWorker,
-              bytes: await skeletonFile.arrayBuffer(),
-            });
-            console.log(res);
-          }}
-        />
-      </div> */}
     </div>
   );
 }
-
-async function loadMapImages(dataView: DataView, globals: GlobalsInterface) {
-  let offset = 0;
-
-  const loadPromise: Promise<HTMLCanvasElement[]> = new Promise((res, err) => {
-    if (globals.GAME_TYPE === Game.NANOSAUR_2) {
-      // Nanosaur 2: Each supertile is a JPEG, decompress with jpegDecompressWorker
-      let offset = 0;
-      let numSupertiles = 0;
-      // First, count the number of JPEGs
-      while (offset < dataView.byteLength) {
-        const size = dataView.getInt32(offset);
-        offset += 4;
-        if (size === 0) break;
-
-        console.log("Secondoffset", dataView.getInt32(offset));
-
-        offset += size;
-
-        numSupertiles++;
-      }
-      offset = 0;
-      const mapImages: HTMLCanvasElement[] = new Array(numSupertiles);
-
-      let resolvedTiles = 0;
-      for (let i = 0; i < numSupertiles; i++) {
-        let size = dataView.getInt32(offset);
-        offset += 4;
-
-        const imageDescriptionOffset = dataView.getInt32(offset);
-        console.log("Image Description Offset", imageDescriptionOffset);
-        offset += imageDescriptionOffset;
-        size -= imageDescriptionOffset; // Adjust size to only include JPEG data, not the imageDescription record
-
-        if (size === 0) break;
-        const jpegArray = new Uint8Array(dataView.buffer, offset, size);
-        const jpegBuffer = new Uint8Array(jpegArray).buffer; // This creates a new ArrayBuffer
-        offset += size;
-
-        // Use jpegDecompressWorker for off-main-thread decoding
-        const jpegWorker = new JpegWorker();
-        jpegWorker.onmessage = (e: MessageEvent<JpegDecompressResponse>) => {
-          if (e.data.type !== "decompressRes") return;
-          const imageData = e.data.imageData;
-
-          const imgCanvas = document.createElement("canvas");
-          imgCanvas.width = globals.SUPERTILE_TEXMAP_SIZE;
-          imgCanvas.height = globals.SUPERTILE_TEXMAP_SIZE;
-          const imgCtx = imgCanvas.getContext("2d");
-          if (!imgCtx) {
-            err("Bad data!");
-            throw new Error("Bad data!");
-          }
-          imgCtx.putImageData(imageData, 0, 0);
-          // Flip the canvas vertically
-          const tempCanvas = document.createElement("canvas");
-          tempCanvas.width = imgCanvas.width;
-          tempCanvas.height = imgCanvas.height;
-          const tempCtx = tempCanvas.getContext("2d");
-          if (tempCtx) {
-            tempCtx.translate(0, imgCanvas.height);
-            tempCtx.scale(1, -1);
-            tempCtx.drawImage(imgCanvas, 0, 0);
-            imgCtx.clearRect(0, 0, imgCanvas.width, imgCanvas.height);
-            imgCtx.drawImage(tempCanvas, 0, 0);
-          }
-          mapImages[i] = imgCanvas;
-          resolvedTiles++;
-          if (resolvedTiles === numSupertiles) {
-            res(mapImages);
-          }
-          jpegWorker.terminate();
-        };
-        jpegWorker.postMessage({
-          id: i,
-          type: "decompress",
-          jpegData: jpegBuffer,
-        } satisfies JpegDecompressMessage);
-      }
-      return;
-    }
-    //Read Each - Logic for other games
-    else {
-      //Find the number of supertiles
-      let numSupertiles = 0;
-      while (offset != dataView.byteLength) {
-        const size = dataView.getInt32(offset);
-        offset += 4;
-        if (size === 0) break;
-        offset += size;
-        numSupertiles++;
-      }
-      offset = 0; //Reset offset
-
-      const mapImages: HTMLCanvasElement[] = new Array(numSupertiles);
-      const resolvedTiles = { count: 0 };
-
-      let supertileId = 0;
-      while (offset < dataView.byteLength) {
-        const size = dataView.getInt32(offset);
-
-        offset += 4;
-        const buffer = new DataView(
-          dataView.buffer.slice(offset, offset + size),
-        );
-        const decompressedSize =
-          globals.SUPERTILE_TEXMAP_SIZE * globals.SUPERTILE_TEXMAP_SIZE * 2;
-        offset += size;
-
-        const lzssWorker = new LzssWorker();
-        lzssWorker.onmessage = (e: MessageEvent<LzssResponse>) => {
-          const data = e.data;
-          if (data.type !== "decompressRes") return;
-
-          //mapImagesData[data.id] = decompressedBuffer.buffer; //.push(decompressedBuffer.buffer);
-
-          const imgCanvas = document.createElement("canvas");
-          imgCanvas.width = globals.SUPERTILE_TEXMAP_SIZE;
-          imgCanvas.height = globals.SUPERTILE_TEXMAP_SIZE;
-          const imgCtx = imgCanvas.getContext("2d");
-
-          if (!imgCtx) {
-            err("Bad data!");
-            throw new Error("Bad data!");
-          }
-          //16-bit buffer from current buffer
-          imgCtx.putImageData(data.imageData, 0, 0);
-
-          mapImages[data.id] = imgCanvas;
-
-          resolvedTiles.count++;
-          if (resolvedTiles.count === numSupertiles) {
-            res(mapImages);
-          }
-          lzssWorker.terminate();
-        };
-        lzssWorker.postMessage({
-          compressedDataView: buffer,
-          outputSize: decompressedSize,
-          type: "decompress",
-          id: supertileId,
-          width: globals.SUPERTILE_TEXMAP_SIZE,
-          height: globals.SUPERTILE_TEXMAP_SIZE,
-        } satisfies LzssMessage);
-        supertileId++;
-      }
-      return [];
-    }
-  });
-  const res = await loadPromise;
-  return res;
-}
-
-/* else {
-    //Budgdom 1 Logic - TODO: Not completed
-
-    const mapImages: HTMLCanvasElement[] = [];
-    //const mapImagesData: ArrayBuffer[] = new Array(numSupertiles);
-
-    while (offset != dataView.byteLength) {
-      numSupertiles++;
-
-      const size =
-        globals.SUPERTILE_TEXMAP_SIZE * globals.SUPERTILE_TEXMAP_SIZE * 2;
-      const bufferSlice = new DataView(
-        dataView.buffer.slice(offset, offset + size),
-      );
-
-      //const imgCanvas = document.createElement("canvas");
-      const imgCanvas = document.createElement("canvas");
-      imgCanvas.width = globals.SUPERTILE_TEXMAP_SIZE;
-      imgCanvas.height = globals.SUPERTILE_TEXMAP_SIZE;
-      const imgCtx = imgCanvas.getContext("2d");
-
-      const imageData = imgCtx?.getImageData(
-        0,
-        0,
-        imgCanvas.width,
-        imgCanvas.height,
-      );
-
-      if (!imageData) {
-        throw new Error("Could not create image data");
-      }
-
-      sixteenBitToImageData(bufferSlice, imageData);
-
-      if (!imgCtx) {
-        throw new Error("Bad data!");
-      }
-      //16-bit buffer from current buffer
-      imgCtx?.putImageData(imageData, 0, 0);
-
-      offset += size;
-      imgCanvas;
-      mapImages.push(imgCanvas);
-    }
-    return mapImages;
-  } */

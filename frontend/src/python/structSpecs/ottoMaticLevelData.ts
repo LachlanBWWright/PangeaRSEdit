@@ -209,6 +209,14 @@ export interface TerrainData {
       order: number;
     };
   };
+  // Xlat is only used in Bugdom 1 - maps tile indices to image indices
+  Xlat?: {
+    1000: {
+      name: "Tile Index Translation Table";
+      obj: Array<{ idx: number }>;
+      order: number;
+    };
+  };
   ItCo: {
     1000: {
       name: "Terrain Items Color Array";
@@ -216,14 +224,15 @@ export interface TerrainData {
       order: number;
     };
   };
-  Layr: {
+  Layr?: {
     1000: {
       name: "Terrain Layer Matrix";
       obj: number[];
       order: number;
     };
   };
-  STgd: {
+  // STgd is optional - Bugdom 1 doesn't have it (uses Layr + Xlat instead)
+  STgd?: {
     1000: {
       name: "SuperTile Grid";
       obj: ottoSupertileGrid[];
@@ -237,6 +246,17 @@ export interface TerrainData {
       order: number;
     };
   };
+  // Vcol (Vertex Colors) - 16-bit color values for each vertex (mapWidth+1 x mapHeight+1)
+  // Used for lighting/shading the terrain. Only in Bugdom 1.
+  // Floor colors in 1000, ceiling colors in 1001 (if ceiling exists)
+  Vcol?: Record<
+    number,
+    {
+      name: "Floor&Ceiling Vertex Colors";
+      data: string;
+      order: number;
+    }
+  >;
   alis: Record<
     number,
     {

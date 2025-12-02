@@ -173,7 +173,7 @@ export function nanosaur1LevelToOttoMaticLevel(
     Layr: {
       1000: {
         name: "Terrain Layer Matrix",
-        obj: Array.from(level.textureLayer),
+        obj: level.textureLayer, // Already a number[] with proper big-endian values
         order: 0,
       },
     },
@@ -247,7 +247,7 @@ export interface Nanosaur1LevelHeader {
 
 export interface Nanosaur1LevelData {
   header: Nanosaur1LevelHeader;
-  textureLayer: Uint16Array;
+  textureLayer: number[];
   heightmapLayer: Uint16Array | null;
   pathLayer: Uint16Array | null;
   objectList: TerrainItemEntryType[];
@@ -341,14 +341,14 @@ export function parseNanosaur1Level(buffer: ArrayBuffer): Nanosaur1LevelData {
     tileAnimDataOffset: readInt32BE(view, 36),
   };
 
-  // Texture layer (width * depth, uint16)
-  let textureLayer: Uint16Array = new Uint16Array(0);
+  // Texture layer (width * depth, uint16) - big-endian values
+  let textureLayer: number[] = [];
   if (header.textureLayerOffset > 0) {
-    textureLayer = new Uint16Array(
-      buffer,
-      header.textureLayerOffset,
-      header.width * header.depth,
-    );
+    const layerView = new DataView(buffer, header.textureLayerOffset);
+    const layerSize = header.width * header.depth;
+    for (let i = 0; i < layerSize; i++) {
+      textureLayer.push(layerView.getUint16(i * 2, false)); // big-endian
+    }
   }
 
   // Heightmap layer (width * depth, uint16)
