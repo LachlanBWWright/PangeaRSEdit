@@ -84,10 +84,12 @@ export interface BG3DMaterial {
 export interface BG3DTexture {
   width: number;
   height: number;
-  srcPixelFormat: PixelFormatSrc;
-  dstPixelFormat: PixelFormatDst;
+  srcPixelFormat: PixelFormatSrc | number; // number allows JPEG marker (-1)
+  dstPixelFormat: PixelFormatDst | number; // number allows JPEG alpha marker (-2)
   bufferSize: number;
   pixels: Uint8Array;
+  isJpeg?: boolean; // True if this is JPEG data (Nanosaur 2)
+  jpegAlphaData?: Uint8Array; // Separate alpha channel for JPEG (Nanosaur 2)
 }
 
 export interface BG3DGeometry {
@@ -124,6 +126,15 @@ export interface BG3DBone {
   numNormalsAttachedToBone: number;
   pointIndices?: number[]; // Indices of points attached to this bone
   normalIndices?: number[]; // Indices of normals attached to this bone
+  // Reserved fields from Bone struct (8 uint32s = 32 bytes)
+  reserved0?: number;
+  reserved1?: number;
+  reserved2?: number;
+  reserved3?: number;
+  reserved4?: number;
+  reserved5?: number;
+  reserved6?: number;
+  reserved7?: number;
 }
 
 export interface BG3DKeyframe {
@@ -160,6 +171,13 @@ export interface BG3DSkeleton {
   num3DMFLimbs: number;
   bones: BG3DBone[];
   animations: BG3DAnimation[];
+  // Relative point lists (RelP) parsed from SkeletonResource.RelP
+  // Keyed by original resource id (e.g. "1000") with array of [x,y,z] points
+  relPoints?: { [resourceId: string]: [number, number, number][] };
+  // alis resource data for roundtrip preservation (not used in glTF but needed for binary export)
+  alisData?: { [key: string]: unknown };
+  // Original skeleton resource metadata for roundtrip preservation
+  metadata?: Record<string, unknown>;
 }
 
 export interface BG3DParseResult {
@@ -175,7 +193,10 @@ export interface BG3DParseResult {
  * @param skeleton Optional skeleton data to include in the result
  * @returns BG3DParseResult
  */
-export function parseBG3D(buffer: ArrayBuffer, skeleton?: SkeletonResource): BG3DParseResult {
+export function parseBG3D(
+  buffer: ArrayBuffer,
+  skeleton?: SkeletonResource,
+): BG3DParseResult {
   const view = new DataView(buffer);
   let offset = 0;
   // Read header (first 4 bytes should be 'BG3D')
@@ -288,6 +309,49 @@ export function parseBG3D(buffer: ArrayBuffer, skeleton?: SkeletonResource): BG3
         });
         break;
       }
+      case BG3DTagType.JPEGTEXTURE: {
+        // JPEG texture (Nanosaur 2 only)
+        // Header: width (4), height (4), bufferSize (4), hasAlphaChannel (4) = 16 bytes
+        if (!currentMaterial)
+          throw new Error("No current material for JPEG texture");
+        const width = view.getUint32(offset, false);
+        offset += 4;
+        const height = view.getUint32(offset, false);
+        offset += 4;
+        const bufferSize = view.getUint32(offset, false);
+        offset += 4;
+        const hasAlphaChannel = view.getUint32(offset, false);
+        offset += 4;
+
+        // Read JPEG data
+        const jpegData = new Uint8Array(buffer, offset, bufferSize);
+        offset += bufferSize;
+
+        // Read alpha channel if present
+        let jpegAlphaData: Uint8Array | undefined = undefined;
+        if (hasAlphaChannel) {
+          const alphaSize = width * height;
+          jpegAlphaData = new Uint8Array(buffer, offset, alphaSize);
+          offset += alphaSize;
+        }
+
+        console.log(
+          `JPEG Texture: ${width}x${height}, buffer: ${bufferSize}, hasAlpha: ${hasAlphaChannel}`,
+        );
+
+        // Store as a special texture type with JPEG marker
+        currentMaterial.textures.push({
+          width,
+          height,
+          srcPixelFormat: -1, // Special marker for JPEG
+          dstPixelFormat: hasAlphaChannel ? -2 : -1, // -2 indicates alpha channel present
+          bufferSize,
+          pixels: jpegData, // Store JPEG data
+          isJpeg: true,
+          jpegAlphaData,
+        });
+        break;
+      }
       case BG3DTagType.GROUPSTART: {
         // Start a new group and push to stack
         const group: BG3DGroup = { children: [] };
@@ -378,6 +442,7 @@ export function parseBG3D(buffer: ArrayBuffer, skeleton?: SkeletonResource): BG3
       }
       case BG3DTagType.NORMALARRAY: {
         // Normal array: numPoints * 3 floats
+
         if (!currentGeometry) throw new Error("No geometry for normal array");
         const numPoints = currentGeometry.numPoints;
         const normals: [number, number, number][] = [];
@@ -438,14 +503,31 @@ export function parseBG3D(buffer: ArrayBuffer, skeleton?: SkeletonResource): BG3
           triangles.push([a, b, c]);
         }
         currentGeometry.triangles = triangles;
-        // After TRIANGLEARRAY, reset currentGeometry to null to avoid accidental assignment
-        currentGeometry = null;
+        // Note: Do NOT reset currentGeometry here - BOUNDINGBOX may follow in later games
         break;
       }
       case BG3DTagType.BOUNDINGBOX: {
-        // Bounding box: 6 floats (min x/y/z, max x/y/z)
-        // Not stored in BG3DGroup interface, so skip
-        offset += 24;
+        // Bounding box: 6 floats (min x/y/z, max x/y/z) + 1 byte isEmpty + 3 bytes padding = 28 bytes total
+        // Used by Bugdom 2, Billy Frontier, and Nanosaur 2
+        if (!currentGeometry) throw new Error("No geometry for bounding box");
+        const minX = view.getFloat32(offset, false);
+        offset += 4;
+        const minY = view.getFloat32(offset, false);
+        offset += 4;
+        const minZ = view.getFloat32(offset, false);
+        offset += 4;
+        const maxX = view.getFloat32(offset, false);
+        offset += 4;
+        const maxY = view.getFloat32(offset, false);
+        offset += 4;
+        const maxZ = view.getFloat32(offset, false);
+        offset += 4;
+        // isEmpty byte + 3 padding bytes
+        offset += 4;
+        currentGeometry.boundingBox = {
+          min: [minX, minY, minZ],
+          max: [maxX, maxY, maxZ],
+        };
         break;
       }
       case BG3DTagType.ENDFILE: {
@@ -508,7 +590,9 @@ export function parseBG3D(buffer: ArrayBuffer, skeleton?: SkeletonResource): BG3
 /**
  * Convert a SkeletonResource to BG3DSkeleton format
  */
-function convertSkeletonResourceToBG3D(skeleton: SkeletonResource): BG3DSkeleton {
+function convertSkeletonResourceToBG3D(
+  skeleton: SkeletonResource,
+): BG3DSkeleton {
   // Get header information
   const headerEntries = Object.values(skeleton.Hedr);
   const header = headerEntries[0]?.obj || {
@@ -521,38 +605,46 @@ function convertSkeletonResourceToBG3D(skeleton: SkeletonResource): BG3DSkeleton
   // Convert bones
   const bones: BG3DBone[] = [];
   const boneEntries = Object.entries(skeleton.Bone || {});
-  
+
   // Sort by order to maintain correct indices
   boneEntries.sort(([, a], [, b]) => a.order - b.order);
-  
+
   boneEntries.forEach(([boneId, boneEntry]) => {
     const boneObj = boneEntry.obj;
     console.log(`Bone ${boneId} raw obj:`, boneObj);
     console.log(`Bone ${boneId} full entry:`, boneEntry);
     console.log(`Bone ${boneId} raw data keys:`, Object.keys(boneObj || {}));
-    
+
     // Get point indices for this bone
     const pointIndices: number[] = [];
     const bonePEntry = skeleton.BonP?.[boneId];
     if (bonePEntry) {
-      pointIndices.push(...bonePEntry.obj.map(p => p.pointIndex));
+      pointIndices.push(...bonePEntry.obj.map((p) => p.pointIndex));
     }
-    
+
     // Get normal indices for this bone
     const normalIndices: number[] = [];
     const boneNEntry = skeleton.BonN?.[boneId];
     if (boneNEntry) {
-      normalIndices.push(...boneNEntry.obj.map(n => n.normal));
+      normalIndices.push(...boneNEntry.obj.map((n) => n.normal));
     }
-    
+
     bones.push({
       parentBone: boneObj.parentBone,
-      name: boneObj.name,
+      name: boneEntry.name, // Use resource name, not obj.name (which may have Pascal string prefix)
       coordX: boneObj.coordX,
       coordY: boneObj.coordY,
       coordZ: boneObj.coordZ,
       numPointsAttachedToBone: boneObj.numPointsAttachedToBone,
       numNormalsAttachedToBone: boneObj.numNormalsAttachedToBone,
+      reserved0: boneObj.reserved0,
+      reserved1: boneObj.reserved1,
+      reserved2: boneObj.reserved2,
+      reserved3: boneObj.reserved3,
+      reserved4: boneObj.reserved4,
+      reserved5: boneObj.reserved5,
+      reserved6: boneObj.reserved6,
+      reserved7: boneObj.reserved7,
       pointIndices,
       normalIndices,
     });
@@ -561,25 +653,25 @@ function convertSkeletonResourceToBG3D(skeleton: SkeletonResource): BG3DSkeleton
   // Convert animations
   const animations: BG3DAnimation[] = [];
   const animHeaderEntries = Object.entries(skeleton.AnHd || {});
-  
+
   // Sort animation headers by their resource ID to ensure correct order
   animHeaderEntries.sort(([a], [b]) => parseInt(a, 10) - parseInt(b, 10));
-  
+
   animHeaderEntries.forEach(([animId, animEntry], forEachIndex) => {
     const animHeader = animEntry.obj;
-    
+
     // Calculate the actual animation index from the resource ID
     // AnHd resource IDs are sequential: 1000, 1001, 1002, ..., 1034
     // But KeyF resource IDs follow pattern: 1000+(animIndex*100)+boneIndex
     // So animation 0 uses KeyF 1000-1015, animation 1 uses KeyF 1100-1115, etc.
     const animResourceId = parseInt(animId, 10);
-    const animIndex = animResourceId - 1000;  // This is correct for both AnHd and KeyF mapping
-    
+    const animIndex = animResourceId - 1000; // This is correct for both AnHd and KeyF mapping
+
     // Get animation events
     const events: BG3DAnimationEvent[] = [];
     const eventEntry = skeleton.Evnt?.[animId];
     if (eventEntry) {
-      eventEntry.obj.forEach(event => {
+      eventEntry.obj.forEach((event) => {
         events.push({
           time: event.time,
           type: event.type,
@@ -587,46 +679,71 @@ function convertSkeletonResourceToBG3D(skeleton: SkeletonResource): BG3DSkeleton
         });
       });
     }
-    
+
     // Get keyframes for all bones in this animation
     const keyframes: { [boneIndex: number]: BG3DKeyframe[] } = {};
-    
+
     // Initialize keyframes arrays for all bones
     for (let boneIndex = 0; boneIndex < bones.length; boneIndex++) {
       keyframes[boneIndex] = [];
     }
-    
+
     // Parse keyframes from individual KeyF resources
     // Each KeyF resource follows the pattern: 1000 + (animIndex * 100) + boneIndex
     // Where animIndex is the actual animation index (0-34), not the forEach index
-    
+
     // Debug: Log available KeyF resources for this animation
     if (forEachIndex === 0) {
-      console.log(`Animation mapping debug: AnHd ID ${animId} maps to animation index ${animIndex}`);
-      console.log(`Available KeyF resources:`, Object.keys(skeleton.KeyF || {}).length);
+      console.log(
+        `Animation mapping debug: AnHd ID ${animId} maps to animation index ${animIndex}`,
+      );
+      console.log(
+        `Available KeyF resources:`,
+        Object.keys(skeleton.KeyF || {}).length,
+      );
     }
-    
+
     for (let boneIndex = 0; boneIndex < bones.length; boneIndex++) {
       // KeyF resource pattern: 1000 + (animIndex * 100) + boneIndex
       // Animation 0: 1000-1015, Animation 1: 1100-1115, etc.
-      const keyframeResourceId = (1000 + (animIndex * 100) + boneIndex).toString();
+      const keyframeResourceId = (
+        1000 +
+        animIndex * 100 +
+        boneIndex
+      ).toString();
       const keyframeEntry = skeleton.KeyF?.[keyframeResourceId];
-      
-      if (forEachIndex < 3) { // Only log for first 3 animations to avoid spam
-        console.log(`Animation ${animIndex} (${animHeader.animName}), bone ${boneIndex}: KeyF resource ID ${keyframeResourceId}, found: ${!!keyframeEntry}`);
+
+      if (forEachIndex < 3) {
+        // Only log for first 3 animations to avoid spam
+        console.log(
+          `Animation ${animIndex} (${
+            animHeader.animName
+          }), bone ${boneIndex}: KeyF resource ID ${keyframeResourceId}, found: ${!!keyframeEntry}`,
+        );
       }
-      
-      if (keyframeEntry && keyframeEntry.obj && Array.isArray(keyframeEntry.obj)) {
+
+      if (
+        keyframeEntry &&
+        keyframeEntry.obj &&
+        Array.isArray(keyframeEntry.obj)
+      ) {
         if (forEachIndex < 3) {
-          console.log(`  Found ${keyframeEntry.obj.length} keyframes for bone ${boneIndex} in animation ${animIndex}`);
+          console.log(
+            `  Found ${keyframeEntry.obj.length} keyframes for bone ${boneIndex} in animation ${animIndex}`,
+          );
           if (keyframeEntry.obj.length > 0) {
             const firstKeyframe = keyframeEntry.obj[0];
-            const lastKeyframe = keyframeEntry.obj[keyframeEntry.obj.length - 1];
-            console.log(`  First keyframe: tick=${firstKeyframe.tick}, coord=[${firstKeyframe.coordX}, ${firstKeyframe.coordY}, ${firstKeyframe.coordZ}]`);
-            console.log(`  Last keyframe: tick=${lastKeyframe.tick}, coord=[${lastKeyframe.coordX}, ${lastKeyframe.coordY}, ${lastKeyframe.coordZ}]`);
+            const lastKeyframe =
+              keyframeEntry.obj[keyframeEntry.obj.length - 1];
+            console.log(
+              `  First keyframe: tick=${firstKeyframe.tick}, coord=[${firstKeyframe.coordX}, ${firstKeyframe.coordY}, ${firstKeyframe.coordZ}]`,
+            );
+            console.log(
+              `  Last keyframe: tick=${lastKeyframe.tick}, coord=[${lastKeyframe.coordX}, ${lastKeyframe.coordY}, ${lastKeyframe.coordZ}]`,
+            );
           }
         }
-        
+
         keyframeEntry.obj.forEach((keyframe) => {
           keyframes[boneIndex].push({
             tick: keyframe.tick,
@@ -643,23 +760,65 @@ function convertSkeletonResourceToBG3D(skeleton: SkeletonResource): BG3DSkeleton
           });
         });
       } else if (forEachIndex < 3) {
-        const objInfo = keyframeEntry?.obj ? `obj type: ${typeof keyframeEntry.obj}, is array: ${Array.isArray(keyframeEntry.obj)}, length: ${keyframeEntry.obj.length || 'N/A'}` : 'no obj';
-        console.log(`  KeyF resource ${keyframeResourceId} is ${!keyframeEntry ? 'missing' : `present but: ${objInfo}`}`);
+        const objInfo = keyframeEntry?.obj
+          ? `obj type: ${typeof keyframeEntry.obj}, is array: ${Array.isArray(
+              keyframeEntry.obj,
+            )}, length: ${keyframeEntry.obj.length || "N/A"}`
+          : "no obj";
+        console.log(
+          `  KeyF resource ${keyframeResourceId} is ${
+            !keyframeEntry ? "missing" : `present but: ${objInfo}`
+          }`,
+        );
         if (keyframeEntry?.obj && !Array.isArray(keyframeEntry.obj)) {
           console.log(`  KeyF obj structure:`, keyframeEntry.obj);
         }
       }
     }
-    
-    const totalKeyframes = Object.values(keyframes).reduce((sum, boneKeyframes) => sum + boneKeyframes.length, 0);
-    console.log(`Animation ${animIndex} (${animHeader.animName}): ${totalKeyframes} total keyframes across ${bones.length} bones`);
-    
+
+    const totalKeyframes = Object.values(keyframes).reduce(
+      (sum, boneKeyframes) => sum + boneKeyframes.length,
+      0,
+    );
+    console.log(
+      `Animation ${animIndex} (${animHeader.animName}): ${totalKeyframes} total keyframes across ${bones.length} bones`,
+    );
+
     animations.push({
       name: animHeader.animName,
       numAnimEvents: animHeader.numAnimEvents,
       events,
       keyframes,
     });
+  });
+
+  // Build RelP map from SkeletonResource (if present)
+  const relPointsMap: { [resourceId: string]: [number, number, number][] } = {};
+  Object.entries(skeleton.RelP || {}).forEach(([rid, rentry]) => {
+    try {
+      const arr = rentry.obj;
+      if (Array.isArray(arr)) {
+        relPointsMap[rid] = arr.map((p: any) => [
+          typeof p.relOffsetX === "number" ? p.relOffsetX : p.x ?? 0,
+          typeof p.relOffsetY === "number" ? p.relOffsetY : p.y ?? 0,
+          typeof p.relOffsetZ === "number" ? p.relOffsetZ : p.z ?? 0,
+        ]);
+      } else {
+        relPointsMap[rid] = [];
+      }
+    } catch (e) {
+      relPointsMap[rid] = [];
+    }
+  });
+
+  // Extract alis data from skeleton resource (stored at skeleton.alis = { "1000": {...} })
+  // We want to preserve just the inner structure { "1000": { name: "alis", order: 1000, data: "..." } }
+  let alisData: { [key: string]: unknown } | undefined = undefined;
+  Object.keys(skeleton).forEach((key) => {
+    if (key.toLowerCase() === "alis") {
+      // Store the inner structure directly, not wrapped in another object
+      alisData = skeleton[key] as { [key: string]: unknown };
+    }
   });
 
   return {
@@ -669,6 +828,10 @@ function convertSkeletonResourceToBG3D(skeleton: SkeletonResource): BG3DSkeleton
     num3DMFLimbs: header.num3DMFLimbs,
     bones,
     animations,
+    relPoints: relPointsMap,
+    alisData:
+      alisData && Object.keys(alisData).length > 0 ? alisData : undefined,
+    metadata: skeleton._metadata,
   };
 }
 
@@ -714,29 +877,54 @@ export function bg3dParsedToBG3D(parsed: BG3DParseResult): ArrayBuffer {
       view.setFloat32(offset, material.diffuseColor[i], false);
       offset += 4;
     }
-    // TEXTUREMAP(s)
+    // TEXTUREMAP(s) or JPEGTEXTURE(s)
     for (const tex of material.textures) {
-      console.log(`[bg3dParsedToBG3D] Write TEXTUREMAP at offset ${offset}`);
-      view.setUint32(offset, BG3DTagType.TEXTUREMAP, false);
-      offset += 4;
-      view.setUint32(offset, tex.width, false);
-      offset += 4;
-      view.setUint32(offset, tex.height, false);
-      offset += 4;
-      view.setUint32(offset, tex.srcPixelFormat, false);
-      offset += 4;
-      view.setUint32(offset, tex.dstPixelFormat, false);
-      offset += 4;
-      view.setUint32(offset, tex.bufferSize, false);
-      offset += 4;
-      for (let i = 0; i < 4; i++) {
-        view.setUint32(offset, 0, false);
+      if (tex.isJpeg) {
+        // Write JPEGTEXTURE (Nanosaur 2)
+        console.log(`[bg3dParsedToBG3D] Write JPEGTEXTURE at offset ${offset}`);
+        view.setUint32(offset, BG3DTagType.JPEGTEXTURE, false);
         offset += 4;
-      } // reserved
-      // Write pixel data
-
-      new Uint8Array(buffer, offset, tex.bufferSize).set(tex.pixels);
-      offset += tex.bufferSize;
+        view.setUint32(offset, tex.width, false);
+        offset += 4;
+        view.setUint32(offset, tex.height, false);
+        offset += 4;
+        view.setUint32(offset, tex.bufferSize, false);
+        offset += 4;
+        view.setUint32(offset, tex.jpegAlphaData ? 1 : 0, false);
+        offset += 4;
+        // Write JPEG data
+        new Uint8Array(buffer, offset, tex.bufferSize).set(tex.pixels);
+        offset += tex.bufferSize;
+        // Write alpha channel if present
+        if (tex.jpegAlphaData) {
+          new Uint8Array(buffer, offset, tex.jpegAlphaData.length).set(
+            tex.jpegAlphaData,
+          );
+          offset += tex.jpegAlphaData.length;
+        }
+      } else {
+        // Write standard TEXTUREMAP
+        console.log(`[bg3dParsedToBG3D] Write TEXTUREMAP at offset ${offset}`);
+        view.setUint32(offset, BG3DTagType.TEXTUREMAP, false);
+        offset += 4;
+        view.setUint32(offset, tex.width, false);
+        offset += 4;
+        view.setUint32(offset, tex.height, false);
+        offset += 4;
+        view.setUint32(offset, tex.srcPixelFormat, false);
+        offset += 4;
+        view.setUint32(offset, tex.dstPixelFormat, false);
+        offset += 4;
+        view.setUint32(offset, tex.bufferSize, false);
+        offset += 4;
+        for (let i = 0; i < 4; i++) {
+          view.setUint32(offset, 0, false);
+          offset += 4;
+        } // reserved
+        // Write pixel data
+        new Uint8Array(buffer, offset, tex.bufferSize).set(tex.pixels);
+        offset += tex.bufferSize;
+      }
     }
   }
 
@@ -772,7 +960,9 @@ function writeGroup(
     offset += 4;
   }
 
-  for (const child of group.children) {
+  // Ensure children is an array before iterating
+  const children = Array.isArray(group.children) ? group.children : [];
+  for (const child of children) {
     if (isBG3DGroup(child)) {
       offset = writeGroup(view, buffer, child, offset, false);
     } else {
@@ -868,6 +1058,29 @@ function writeGroup(
           offset += 4;
         }
       }
+      // Write bounding box if present (Bugdom 2, Billy Frontier, Nanosaur 2)
+      if (geom.boundingBox) {
+        console.log(`[bg3dParsedToBG3D] Write BOUNDINGBOX at offset ${offset}`);
+        view.setUint32(offset, BG3DTagType.BOUNDINGBOX, false);
+        offset += 4;
+        // min x, y, z
+        view.setFloat32(offset, geom.boundingBox.min[0], false);
+        offset += 4;
+        view.setFloat32(offset, geom.boundingBox.min[1], false);
+        offset += 4;
+        view.setFloat32(offset, geom.boundingBox.min[2], false);
+        offset += 4;
+        // max x, y, z
+        view.setFloat32(offset, geom.boundingBox.max[0], false);
+        offset += 4;
+        view.setFloat32(offset, geom.boundingBox.max[1], false);
+        offset += 4;
+        view.setFloat32(offset, geom.boundingBox.max[2], false);
+        offset += 4;
+        // isEmpty byte (0) + 3 padding bytes
+        view.setUint32(offset, 0, false);
+        offset += 4;
+      }
     }
   }
 
@@ -892,7 +1105,9 @@ function isBG3DGroup(obj: BG3DGeometry | BG3DGroup): obj is BG3DGroup {
 /**
  * Convert BG3DSkeleton back to SkeletonResource format
  */
-export function convertBG3DToSkeletonResource(skeleton: BG3DSkeleton): SkeletonResource {
+export function convertBG3DToSkeletonResource(
+  skeleton: BG3DSkeleton,
+): SkeletonResource {
   const skeletonResource: SkeletonResource = {
     Hedr: {},
     Bone: {},
@@ -919,7 +1134,7 @@ export function convertBG3DToSkeletonResource(skeleton: BG3DSkeleton): SkeletonR
   // Convert bones
   skeleton.bones.forEach((bone, index) => {
     const boneId = (1000 + index).toString();
-    
+
     // Main bone entry
     skeletonResource.Bone[boneId] = {
       name: index === 0 ? "Bone" : "NewBone",
@@ -940,16 +1155,16 @@ export function convertBG3DToSkeletonResource(skeleton: BG3DSkeleton): SkeletonR
       skeletonResource.BonP[boneId] = {
         name: index === 0 ? "Bone" : "NewBone",
         order: index * 3 + 2,
-        obj: bone.pointIndices.map(pointIndex => ({ pointIndex })),
+        obj: bone.pointIndices.map((pointIndex) => ({ pointIndex })),
       };
     }
 
-    // Normal indices  
+    // Normal indices
     if (bone.normalIndices && bone.normalIndices.length > 0) {
       skeletonResource.BonN[boneId] = {
         name: index === 0 ? "Bone" : "NewBone",
         order: index * 3 + 3,
-        obj: bone.normalIndices.map(normal => ({ normal })),
+        obj: bone.normalIndices.map((normal) => ({ normal })),
       };
     }
   });
@@ -957,7 +1172,7 @@ export function convertBG3DToSkeletonResource(skeleton: BG3DSkeleton): SkeletonR
   // Convert animations
   skeleton.animations.forEach((animation, index) => {
     const animId = (1000 + index).toString();
-    
+
     // Animation header
     skeletonResource.AnHd[animId] = {
       name: animation.name,
@@ -987,15 +1202,15 @@ export function convertBG3DToSkeletonResource(skeleton: BG3DSkeleton): SkeletonR
       };
     }
 
-    // Keyframes - create separate KeyF resource for each bone 
+    // Keyframes - create separate KeyF resource for each bone
     // Otto uses pattern: 1000 + (animIndex * 100) + boneIndex
     Object.entries(animation.keyframes).forEach(([boneIndexStr, keyframes]) => {
       const boneIndex = parseInt(boneIndexStr);
       if (keyframes.length > 0) {
-        const keyFrameResourceId = (1000 + (index * 100) + boneIndex).toString();
+        const keyFrameResourceId = (1000 + index * 100 + boneIndex).toString();
         skeletonResource.KeyF[keyFrameResourceId] = {
           name: skeleton.bones[boneIndex]?.name || `Bone_${boneIndex}`,
-          order: 1000 + (index * 100) + boneIndex,
+          order: 1000 + index * 100 + boneIndex,
           obj: keyframes,
         };
       }
@@ -1006,6 +1221,6 @@ export function convertBG3DToSkeletonResource(skeleton: BG3DSkeleton): SkeletonR
 }
 
 /* function isBG3DGeometry(obj: BG3DGeometry | BG3DGroup): obj is BG3DGeometry {
-  return !!obj && !Array.isArray((obj as any).children);
+  return !!obj && !Array.isArray((obj ).children);
 }
  */

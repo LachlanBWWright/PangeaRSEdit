@@ -22,3 +22,6 @@
 [submodule "games/billyfrontier"]
 	path = games/billyfrontier
 	url = https://github.com/jorio/billyfrontier.git
+[submodule "frontend/src/rsrcdump"]
+	path = frontend/src/rsrcdump
+	url = https://github.com/LachlanBWWright/rsrcdump.git

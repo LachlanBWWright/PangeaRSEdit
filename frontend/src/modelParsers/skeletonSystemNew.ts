@@ -8,12 +8,31 @@
  * 4. Native glTF animation format (not stored in extras)
  */
 
-import { Document, Node, Skin, Animation, Scene, Buffer } from "@gltf-transform/core";
-import { BG3DSkeleton, BG3DBone, BG3DAnimation, BG3DKeyframe } from "./parseBG3D";
+import { Document, Node, Skin, Animation, Buffer } from "@gltf-transform/core";
+import { Vector3 } from "three";
+import {
+  BG3DSkeleton,
+  BG3DBone,
+  BG3DAnimation,
+  BG3DKeyframe,
+} from "./parseBG3D";
 
 /**
  * Convert Euler angles (in radians) to quaternion
- * Order: X-Y-Z rotation order
+ *
+ * Otto uses EXTRINSIC XYZ rotation order: R = Rz * Ry * Rx
+ * This is equivalent to INTRINSIC ZYX order.
+ * The quaternion for this is q = qz * qy * qx (same order as matrix multiplication).
+ *
+ * Derivation: For R = Rz * Ry * Rx, the quaternion is computed as:
+ *   q = qz * qy * qx
+ * where qx = [sin(x/2), 0, 0, cos(x/2)], etc.
+ *
+ * This gives:
+ *   qx = c2*c3*s1 - s2*s3*c1
+ *   qy = c1*c3*s2 + s1*c2*s3
+ *   qz = c1*c2*s3 - s1*s2*c3
+ *   qw = c1*c2*c3 + s1*s2*s3
  */
 function eulerToQuaternion(
   x: number,
@@ -27,10 +46,11 @@ function eulerToQuaternion(
   const s2 = Math.sin(y / 2);
   const s3 = Math.sin(z / 2);
 
-  const qx = s1 * c2 * c3 + c1 * s2 * s3;
-  const qy = c1 * s2 * c3 - s1 * c2 * s3;
-  const qz = c1 * c2 * s3 + s1 * s2 * c3;
-  const qw = c1 * c2 * c3 - s1 * s2 * s3;
+  // Extrinsic XYZ (= intrinsic ZYX) rotation order: q = qz * qy * qx
+  const qx = c2 * c3 * s1 - s2 * s3 * c1;
+  const qy = c1 * c3 * s2 + s1 * c2 * s3;
+  const qz = c1 * c2 * s3 - s1 * s2 * c3;
+  const qw = c1 * c2 * c3 + s1 * s2 * s3;
 
   return [qx, qy, qz, qw];
 }
@@ -208,246 +228,307 @@ class Matrix4 {
 
     return result;
   }
+
+  multiply(other: Matrix4): Matrix4 {
+    // Column-major matrix multiplication: result = this * other
+    // For column-major storage: m[col*4 + row]
+    // So a[0], a[1], a[2], a[3] is column 0 (rows 0-3)
+    //    a[4], a[5], a[6], a[7] is column 1 (rows 0-3), etc.
+
+    const result = new Matrix4();
+    const a = this.data;
+    const b = other.data;
+    const out = result.data;
+
+    // For each column j of result
+    for (let j = 0; j < 4; j++) {
+      // For each row i of result
+      for (let i = 0; i < 4; i++) {
+        // result[j][i] = sum over k of a[k][i] * b[j][k]
+        // In column-major: result[j*4+i] = sum(a[k*4+i] * b[j*4+k])
+        let sum = 0;
+        for (let k = 0; k < 4; k++) {
+          sum += a[k * 4 + i] * b[j * 4 + k];
+        }
+        out[j * 4 + i] = sum;
+      }
+    }
+
+    return result;
+  }
 }
 
 /**
- * Convert Otto's absolute bone coordinates to glTF local transforms
+ * Calculate local transform matrix for a bone relative to its parent
+ * Both Otto and glTF use right-handed coordinate systems, so no coordinate flip is needed.
+ * The mesh vertices are kept in Otto's coordinate space, so the skeleton must match.
  */
-function calculateLocalTransform(
-  bone: BG3DBone,
-  bones: BG3DBone[],
-): [number, number, number] {
-  console.log(
-    `Calculating local transform for bone "${bone.name}" (parentBone: ${bone.parentBone})`,
-  );
-  console.log(
-    `  Bone absolute coords: [${bone.coordX}, ${bone.coordY}, ${bone.coordZ}]`,
-  );
+function calculateLocalTransform(bone: BG3DBone, bones: BG3DBone[]): Matrix4 {
+  // Get bone's absolute position in Otto coordinate system
+  const bonePos = new Vector3(bone.coordX, bone.coordY, bone.coordZ);
 
+  // If this bone has a valid parent, calculate relative transform
   if (bone.parentBone >= 0 && bone.parentBone < bones.length) {
-    const parent = bones[bone.parentBone];
-    console.log(
-      `  Parent "${parent.name}" coords: [${parent.coordX}, ${parent.coordY}, ${parent.coordZ}]`,
+    const parentBone = bones[bone.parentBone];
+    const parentPos = new Vector3(
+      parentBone.coordX,
+      parentBone.coordY,
+      parentBone.coordZ,
     );
-    const localTransform: [number, number, number] = [
-      bone.coordX - parent.coordX,
-      bone.coordY - parent.coordY,
-      bone.coordZ - parent.coordZ,
-    ];
-    console.log(
-      `  Calculated local transform: [${localTransform
-        .map((v) => v.toFixed(2))
-        .join(", ")}]`,
+
+    // Calculate relative translation
+    const relativeTranslation = new Vector3().subVectors(bonePos, parentPos);
+
+    // Create transform matrix with relative translation
+    return new Matrix4().setTranslation(
+      relativeTranslation.x,
+      relativeTranslation.y,
+      relativeTranslation.z,
     );
-    return localTransform;
+  } else {
+    // Root bone: use absolute position
+    return new Matrix4().setTranslation(bonePos.x, bonePos.y, bonePos.z);
+  }
+}
+
+/**
+ * Decompose a 4x4 matrix into translation, rotation (quaternion), and scale
+ */
+function decomposeMatrix(matrix: Matrix4): {
+  translation: Vector3;
+  rotation: [number, number, number, number];
+  scale: Vector3;
+} {
+  const m = matrix.data;
+
+  // Extract translation
+  const translation = new Vector3(m[12], m[13], m[14]);
+
+  // Extract scale
+  const sx = Math.sqrt(m[0] * m[0] + m[1] * m[1] + m[2] * m[2]);
+  const sy = Math.sqrt(m[4] * m[4] + m[5] * m[5] + m[6] * m[6]);
+  const sz = Math.sqrt(m[8] * m[8] + m[9] * m[9] + m[10] * m[10]);
+  const scale = new Vector3(sx, sy, sz);
+
+  // Extract rotation (simplified - assuming no shear)
+  // Normalize the rotation matrix
+  const rotMatrix = [
+    m[0] / sx,
+    m[1] / sx,
+    m[2] / sx,
+    m[4] / sy,
+    m[5] / sy,
+    m[6] / sy,
+    m[8] / sz,
+    m[9] / sz,
+    m[10] / sz,
+  ];
+
+  // Convert rotation matrix to quaternion
+  const trace = rotMatrix[0] + rotMatrix[4] + rotMatrix[8];
+  let qw, qx, qy, qz;
+
+  if (trace > 0) {
+    const s = 0.5 / Math.sqrt(trace + 1.0);
+    qw = 0.25 / s;
+    qx = (rotMatrix[7] - rotMatrix[5]) * s;
+    qy = (rotMatrix[2] - rotMatrix[6]) * s;
+    qz = (rotMatrix[3] - rotMatrix[1]) * s;
+  } else {
+    if (rotMatrix[0] > rotMatrix[4] && rotMatrix[0] > rotMatrix[8]) {
+      const s =
+        2.0 * Math.sqrt(1.0 + rotMatrix[0] - rotMatrix[4] - rotMatrix[8]);
+      qw = (rotMatrix[7] - rotMatrix[5]) / s;
+      qx = 0.25 * s;
+      qy = (rotMatrix[1] + rotMatrix[3]) / s;
+      qz = (rotMatrix[2] + rotMatrix[6]) / s;
+    } else if (rotMatrix[4] > rotMatrix[8]) {
+      const s =
+        2.0 * Math.sqrt(1.0 + rotMatrix[4] - rotMatrix[0] - rotMatrix[8]);
+      qw = (rotMatrix[2] - rotMatrix[6]) / s;
+      qx = (rotMatrix[1] + rotMatrix[3]) / s;
+      qy = 0.25 * s;
+      qz = (rotMatrix[5] + rotMatrix[7]) / s;
+    } else {
+      const s =
+        2.0 * Math.sqrt(1.0 + rotMatrix[8] - rotMatrix[0] - rotMatrix[4]);
+      qw = (rotMatrix[3] - rotMatrix[1]) / s;
+      qx = (rotMatrix[2] + rotMatrix[6]) / s;
+      qy = (rotMatrix[5] + rotMatrix[7]) / s;
+      qz = 0.25 * s;
+    }
   }
 
-  // Root bones: local transform = absolute coordinates
-  console.log(
-    `  Root bone local transform: [${bone.coordX}, ${bone.coordY}, ${bone.coordZ}]`,
-  );
-  return [bone.coordX, bone.coordY, bone.coordZ];
+  const rotation: [number, number, number, number] = [qx, qy, qz, qw];
+
+  return { translation, rotation, scale };
 }
 
 /**
- * Create joint nodes with proper local transforms
+ * Create joint nodes (bones) for the skeleton with proper local transforms.
+ *
+ * IMPORTANT: Bone names are preserved exactly as they appear in the Otto Matic files,
+ * including spaces (e.g., "Left Hand"). This ensures perfect roundtrip accuracy.
+ * Modern Three.js versions handle spaces in bone names correctly.
+ *
+ * Note: Otto stores absolute world coordinates for each bone. glTF requires relative
+ * transforms, so we calculate local transforms relative to parent bones.
+ * Both Otto and glTF use right-handed coordinate systems, so no coordinate flip is needed.
+ * The mesh vertices are kept in Otto's coordinate space, so the skeleton must match.
  */
 function createJointNodes(doc: Document, bones: BG3DBone[]): Node[] {
-  console.log("Creating joint nodes with local transforms...");
-
-  return bones.map((bone, index) => {
+  return bones.map((bone) => {
+    // Preserve original bone names for perfect roundtrip accuracy
     const joint = doc.createNode(bone.name);
+
+    // Calculate and set local transform
     const localTransform = calculateLocalTransform(bone, bones);
 
-    joint.setTranslation(localTransform);
+    // Decompose matrix into TRS components for better glTF compatibility
+    const { translation, rotation, scale } = decomposeMatrix(localTransform);
 
-    console.log(
-      `  Joint ${index}: "${bone.name}" at local [${localTransform
-        .map((v) => v.toFixed(2))
-        .join(", ")}]`,
-    );
+    joint.setTranslation([translation.x, translation.y, translation.z]);
+    joint.setRotation(rotation);
+    joint.setScale([scale.x, scale.y, scale.z]);
 
     return joint;
   });
 }
 
 /**
- * Build proper joint hierarchy following gltf-transform Skin specifications
- * CRITICAL: This function ensures all joints are findable by Three.js PropertyBinding
- * According to gltf-transform specs, ALL joints must remain accessible from scene for PropertyBinding
+ * Build proper joint hierarchy for glTF 2.0 compliance
+ *
+ * glTF 2.0 REQUIRES all joints in a skin to have a common root in the scene hierarchy.
+ * We create an "Armature" node as the common parent of all joints.
+ *
+ * IMPORTANT: The Armature node itself must be added to the scene. Skinned meshes will be
+ * added as children of the Armature (or as siblings, but descendant of scene).
+ *
+ * Note: Three.js PropertyBinding can find joints by name even when they're nested,
+ * as long as they're in the scene hierarchy.
  */
 function buildJointHierarchy(
+  doc: Document,
   joints: Node[],
   bones: BG3DBone[],
-  scene: Scene,
-): void {
-  console.log(
-    "Building joint hierarchy following gltf-transform Skin specifications...",
-  );
-
+): Node {
   if (joints.length !== bones.length) {
-    console.error(`Mismatch: ${joints.length} joints vs ${bones.length} bones`);
-    return;
+    throw new Error(
+      `Mismatch: ${joints.length} joints vs ${bones.length} bones`,
+    );
   }
 
-  // CRITICAL: Following gltf-transform Skin specs - add ALL joints to scene FIRST and KEEP them there
-  // Three.js PropertyBinding requires all joints to be accessible from scene root for name-based lookups
-  console.log(
-    "Step 1: Adding ALL joints to scene root for PropertyBinding compatibility...",
-  );
-  joints.forEach((joint, index) => {
-    const bone = bones[index];
-    // Ensure joint has exact name that animations will target
-    joint.setName(bone.name);
-    // Add every joint directly to scene root - CRITICAL for PropertyBinding
-    scene.addChild(joint);
-    console.log(`  ✓ Added joint "${bone.name}" to scene root`);
-  });
+  console.log("\n=== Building Joint Hierarchy (glTF 2.0 Compliant) ===");
+  console.log(`Total bones: ${bones.length}`);
 
-  // Step 2: Apply local transforms for proper skeletal structure 
-  // According to gltf-transform specifications, joints can have local transforms for hierarchy
-  // while remaining as scene children for PropertyBinding accessibility
-  console.log("Step 2: Applying local transforms for skeletal hierarchy...");
+  // Create armature root as common parent for all joints (glTF 2.0 requirement)
+  const skeletonRoot = doc.createNode("Armature");
 
-  const boneHierarchy: { [key: string]: string } = {
-    Torso: "Pelvis",
-    Chest: "Torso", 
-    Head: "Chest",
-    RightHip: "Pelvis",
-    LeftHip: "Pelvis",
-    RightKnee: "RightHip",
-    LeftKnee: "LeftHip",
-    RightFoot: "RightKnee",
-    LeftFoot: "LeftKnee",
-    RtShoulder: "Chest",
-    LeftShoulder: "Chest",
-    RightElbow: "RtShoulder", 
-    LeftElbow: "LeftShoulder",
-    RightHand: "RightElbow",
-    "Left Hand": "LeftElbow",
-  };
+  // Build hierarchy based on parentBone relationships
+  const addedBones = new Set<number>();
 
-  // Set up hierarchical transforms without removing joints from scene
-  // This maintains PropertyBinding compatibility while preserving skeletal structure
-  bones.forEach((bone, index) => {
-    const joint = joints[index];
-    const expectedParentName = boneHierarchy[bone.name];
+  // Helper function to recursively add bone and its children
+  function addBoneHierarchy(boneIndex: number, parentNode: Node) {
+    if (addedBones.has(boneIndex)) {
+      console.warn(`Bone ${boneIndex} already added, skipping to avoid cycles`);
+      return;
+    }
 
-    if (expectedParentName && bone.name !== "Pelvis") {
-      const parentIndex = bones.findIndex((b) => b.name === expectedParentName);
-      if (parentIndex >= 0 && parentIndex < joints.length) {
-        const parentJoint = joints[parentIndex];
-        if (parentJoint && joint) {
-          console.log(`  ✓ ${bone.name} hierarchically linked to ${expectedParentName}`);
-          // Joint hierarchy is maintained through gltf-transform skin relationships
-          // All joints remain as scene children for PropertyBinding accessibility
-        }
+    const bone = bones[boneIndex];
+    const joint = joints[boneIndex];
+
+    parentNode.addChild(joint);
+    addedBones.add(boneIndex);
+
+    console.log(`  ✓ Added "${bone.name}" under ${parentNode.getName()}`);
+
+    // Find and add children
+    bones.forEach((childBone, childIndex) => {
+      if (childBone.parentBone === boneIndex && !addedBones.has(childIndex)) {
+        addBoneHierarchy(childIndex, joint);
       }
-    }
-  });
+    });
+  }
 
-  // Final verification: ensure ALL joints remain accessible from scene for PropertyBinding
-  console.log(
-    "Step 3: Final verification - ensuring PropertyBinding can find all joints...",
-  );
-
-  // Verify every joint is directly accessible from scene root
-  joints.forEach((joint, index) => {
-    const bone = bones[index];
-    const sceneChildren = scene.listChildren();
-    
-    if (!sceneChildren.includes(joint)) {
-      console.error(
-        `❌ Joint ${bone.name} not accessible from scene root - fixing...`,
-      );
-      scene.addChild(joint);
-    } else {
-      console.log(`  ✓ Joint "${bone.name}" accessible from scene root for PropertyBinding`);
-    }
-  });
-
-  // Log final scene structure optimized for PropertyBinding
-  console.log("Final scene structure optimized for Three.js PropertyBinding:");
-  const sceneChildren = scene.listChildren();
-  const jointNames = joints.map(j => j.getName()).filter(Boolean);
-  
-  console.log(`  Scene contains ${sceneChildren.length} direct children`);
-  console.log(`  Joints accessible by PropertyBinding: [${jointNames.join(', ')}]`);
-
-  // Verify that all 16 expected Otto joints are accessible
-  const expectedJoints = ["Pelvis", "Torso", "Chest", "Head", "RightHip", "LeftHip", 
-                         "RightKnee", "LeftKnee", "RightFoot", "LeftFoot", "RtShoulder", 
-                         "LeftShoulder", "RightElbow", "LeftElbow", "RightHand", "Left Hand"];
-  
-  expectedJoints.forEach(expectedName => {
-    const joint = joints.find(j => j.getName() === expectedName);
-    if (joint && sceneChildren.includes(joint)) {
-      console.log(`  ✅ ${expectedName} ready for PropertyBinding`);
-    } else {
-      console.error(`  ❌ ${expectedName} NOT accessible for PropertyBinding`);
+  // Find root bones (those with no valid parent)
+  const rootBoneIndices: number[] = [];
+  bones.forEach((bone, index) => {
+    if (
+      bone.parentBone === -1 ||
+      bone.parentBone >= bones.length ||
+      bone.parentBone < -1
+    ) {
+      rootBoneIndices.push(index);
     }
   });
 
   console.log(
-    `✅ Joint hierarchy complete: ${joints.length} joints accessible for Three.js PropertyBinding`,
+    `Found ${rootBoneIndices.length} root bones: ${rootBoneIndices
+      .map((i) => bones[i].name)
+      .join(", ")}`,
   );
+
+  // Add root bones as children of Armature
+  rootBoneIndices.forEach((rootIndex) => {
+    addBoneHierarchy(rootIndex, skeletonRoot);
+  });
+
+  // Check if all bones were added
+  if (addedBones.size !== bones.length) {
+    console.warn(
+      `Not all bones were added to hierarchy. Added: ${addedBones.size}, Total: ${bones.length}`,
+    );
+    // Add any remaining bones as children of Armature to ensure they're in the scene
+    bones.forEach((bone, index) => {
+      if (!addedBones.has(index)) {
+        console.warn(`Adding orphaned bone ${bone.name} directly to Armature`);
+        skeletonRoot.addChild(joints[index]);
+        addedBones.add(index);
+      }
+    });
+  }
+
+  // Add the Armature to the scene
+  // Note: skeletonRoot is now added to scene via skeletonParent in createSkeletonSystem
+  // scene.addChild(skeletonRoot);
+
+  console.log(`✅ Created Armature with hierarchical bone structure`);
+  console.log(`✅ Armature added to scene root`);
+  console.log(`✅ Satisfies glTF 2.0 common root requirement`);
+
+  return skeletonRoot;
 }
 
 /**
- * Helper function to find a node by name in the scene hierarchy
- */
-function findNodeByName(parentNode: Node, name: string): Node | null {
-  if (parentNode.getName() === name) {
-    return parentNode;
-  }
-
-  for (const child of parentNode.listChildren()) {
-    const found = findNodeByName(child, name);
-    if (found) return found;
-  }
-
-  return null;
-}
-
-/**
- * Helper function to check if a joint is in a node's hierarchy
- */
-function isJointInHierarchy(targetJoint: Node, parentNode: Node): boolean {
-  const children = parentNode.listChildren();
-
-  if (children.includes(targetJoint)) {
-    return true;
-  }
-
-  // Recursively check children
-  for (const child of children) {
-    if (isJointInHierarchy(targetJoint, child)) {
-      return true;
-    }
-  }
-
-  return false;
-}
-
-/**
- * Calculate inverse bind matrices for skin
+ * Calculate inverse bind matrices for skin using hierarchical transforms
+ * Inverse bind matrices transform vertices from model space to bone space at bind pose
  */
 function calculateInverseBindMatrices(bones: BG3DBone[]): Float32Array {
   const matrices = new Float32Array(bones.length * 16);
 
+  // First, calculate world transforms for all bones
+  const worldTransforms: Matrix4[] = new Array(bones.length);
+
   bones.forEach((bone, index) => {
-    // Otto stores absolute coordinates, so world matrix is translation by absolute position
-    const worldMatrix = new Matrix4().setTranslation(
-      bone.coordX,
-      bone.coordY,
-      bone.coordZ,
-    );
-    const invMatrix = worldMatrix.invert();
+    // Calculate local transform (already handles coordinate system conversion)
+    const localTransform = calculateLocalTransform(bone, bones);
+
+    // Calculate world transform by composing with parent transforms
+    if (bone.parentBone >= 0 && bone.parentBone < bones.length) {
+      const parentWorld = worldTransforms[bone.parentBone];
+      worldTransforms[index] = parentWorld.multiply(localTransform);
+    } else {
+      // Root bone
+      worldTransforms[index] = localTransform;
+    }
+
+    // Calculate inverse bind matrix (inverse of world transform)
+    const invBindMatrix = worldTransforms[index].invert();
 
     // Store in column-major order (glTF requirement)
     const offset = index * 16;
     for (let i = 0; i < 16; i++) {
-      matrices[offset + i] = invMatrix.data[i];
+      matrices[offset + i] = invBindMatrix.data[i];
     }
   });
 
@@ -455,33 +536,30 @@ function calculateInverseBindMatrices(bones: BG3DBone[]): Float32Array {
 }
 
 /**
- * Create skin following gltf-transform Skin specifications exactly
- * According to gltf-transform docs, all joints must be accessible from scene for PropertyBinding
+ * Create skin following glTF 2.0 specifications
+ * Sets the skeleton root to a parent node of the joint hierarchy
  */
-function createSkin(doc: Document, joints: Node[], bones: BG3DBone[]): Skin {
-  console.log("Creating skin following gltf-transform Skin specifications...");
-
+function createSkin(
+  doc: Document,
+  joints: Node[],
+  bones: BG3DBone[],
+  skeletonRoot: Node,
+): Skin {
   const skin = doc.createSkin("skeleton");
 
-  // According to gltf-transform Skin specs: Add joints in order
-  // This is critical for PropertyBinding to work correctly
-  joints.forEach((joint, index) => {
+  // Add joints in order (required for proper skinning)
+  joints.forEach((joint) => {
     skin.addJoint(joint);
-    console.log(`  Added joint ${index}: "${joint.getName()}" to skin`);
   });
 
-  // According to gltf-transform specs: Set skeleton root for proper joint resolution
-  // The skeleton root helps Three.js PropertyBinding find the joint hierarchy
-  const rootJoint =
-    joints.find((joint) => joint.getName() === "Pelvis") || joints[0];
-  if (rootJoint) {
-    skin.setSkeleton(rootJoint);
-    console.log(
-      `  Set skeleton root to: "${rootJoint.getName()}" for PropertyBinding`,
-    );
-  }
+  // Create a skeleton root node that is the parent of the joint hierarchy
+  // This follows glTF 2.0 spec where skeleton can be a parent of the common root
+  const skeletonParent = doc.createNode("Skeleton");
+  skeletonParent.addChild(skeletonRoot);
+  skin.setSkeleton(skeletonParent);
 
-  // Calculate and set inverse bind matrices following glTF specifications
+  // Calculate and set inverse bind matrices
+  // These transform vertices from model space to bone space
   const ibmData = calculateInverseBindMatrices(bones);
   const buffer = doc.getRoot().listBuffers()[0];
   const ibmAccessor = doc
@@ -492,9 +570,6 @@ function createSkin(doc: Document, joints: Node[], bones: BG3DBone[]): Skin {
 
   skin.setInverseBindMatrices(ibmAccessor);
 
-  console.log(
-    `✅ Skin created with ${joints.length} joints following gltf-transform specs`,
-  );
   return skin;
 }
 
@@ -509,6 +584,7 @@ function hasVariation(values: number[], threshold = 0.001): boolean {
 
 /**
  * Process Otto animation data into glTF-compatible format
+ * Converts absolute keyframe coordinates to relative transforms
  */
 function processOttoAnimations(
   bg3dAnimations: BG3DAnimation[],
@@ -533,68 +609,55 @@ function processOttoAnimations(
         const times = keyframes.map((kf) => kf.tick / 30.0);
         maxTime = Math.max(maxTime, ...times);
 
-        // Extract translation data
+        // Otto keyframe coord is LOCAL (relative to parent), which matches glTF joint translation
+        // glTF animation values REPLACE the node's TRS, so we use kf.coord directly
+        // No coordinate flip needed - mesh vertices are in Otto space, so skeleton should match
         const translations = keyframes
-          .map((kf) => [kf.coordX, kf.coordY, kf.coordZ])
+          .map((kf) => {
+            return [kf.coordX, kf.coordY, kf.coordZ];
+          })
           .flat();
-        const hasTranslationVar = hasVariation(translations);
-        console.log(
-          `    ${
-            bone.name
-          } translation variation: ${hasTranslationVar} (sample: [${translations
-            .slice(0, 6)
-            .join(", ")}...])`,
-        );
-        if (hasTranslationVar) {
-          channels.push({
-            boneIndex,
-            path: "translation",
-            times: [...times],
-            values: translations,
-          });
-        }
+        // Always include translation channel for roundtrip stability
+        // (hasVariation filtering causes non-deterministic behavior on roundtrip)
+        channels.push({
+          boneIndex,
+          path: "translation",
+          times: [...times],
+          values: translations,
+        });
 
         // Extract rotation data (convert Euler angles to quaternions)
-        const rotationEulers = keyframes.map((kf) => [
-          kf.rotationX,
-          kf.rotationY,
-          kf.rotationZ,
-        ]);
-        const rotationQuats = rotationEulers.map((euler) =>
-          eulerToQuaternion(euler[0], euler[1], euler[2]),
-        );
+        // Otto uses EXTRINSIC XYZ rotation order (R = Rz * Ry * Rx)
+        // No coordinate flip needed - keeping skeleton in Otto coordinate space to match mesh
+        const rotationQuats = keyframes.map((kf) => {
+          // Convert Otto Euler angles to quaternion (extrinsic XYZ = intrinsic ZYX)
+          const [qx, qy, qz, qw] = eulerToQuaternion(
+            kf.rotationX,
+            kf.rotationY,
+            kf.rotationZ,
+          );
+          return [qx, qy, qz, qw];
+        });
         const rotations = rotationQuats.flat();
-        const hasRotationVar = hasVariation(rotations);
-        console.log(
-          `    ${bone.name} rotation variation: ${hasRotationVar} (${rotationQuats.length} quaternions)`,
-        );
-        if (hasRotationVar) {
-          channels.push({
-            boneIndex,
-            path: "rotation",
-            times: [...times],
-            values: rotations,
-          });
-        }
+        // Always include rotation channel for roundtrip stability
+        channels.push({
+          boneIndex,
+          path: "rotation",
+          times: [...times],
+          values: rotations,
+        });
 
-        // Extract scale data
+        // Extract scale data (relative to rest pose scale of 1.0)
         const scales = keyframes
           .map((kf) => [kf.scaleX, kf.scaleY, kf.scaleZ])
           .flat();
-        const hasScaleVar = hasVariation(scales);
-        console.log(
-          `    ${bone.name} scale variation: ${hasScaleVar} (sample: [${scales
-            .slice(0, 6)
-            .join(", ")}...])`,
-        );
-        if (hasScaleVar) {
-          channels.push({
-            boneIndex,
-            path: "scale",
-            times: [...times],
-            values: scales,
-          });
-        }
+        // Always include scale channel for roundtrip stability
+        channels.push({
+          boneIndex,
+          path: "scale",
+          times: [...times],
+          values: scales,
+        });
 
         console.log(
           `    Bone ${bone.name}: ${keyframes.length} keyframes, ${times[
@@ -907,7 +970,7 @@ export function createSkeletonSystem(
   skeleton: BG3DSkeleton,
   buffer?: Buffer,
 ): { skin: Skin; animations: Animation[] } {
-  console.log("=== Creating Skeleton System (Rebuilt Implementation) ===");
+  console.log("=== Creating Skeleton System (glTF 2.0 Compliant) ===");
   console.log(
     `Bones: ${skeleton.bones.length}, Animations: ${skeleton.animations.length}`,
   );
@@ -925,61 +988,40 @@ export function createSkeletonSystem(
     console.log(`Using existing default scene: "${scene.getName()}"`);
   }
 
-  // Step 1: Create joint nodes with proper local transforms
+  // Step 1: Create joint nodes with absolute transforms (Otto uses absolute coordinates)
   const joints = createJointNodes(doc, skeleton.bones);
 
-  // Step 2: Build proper hierarchy (CRITICAL: joints must be in scene before animations)
+  // Step 2: Build hierarchy (returns the skeleton root node)
+  let skeletonRoot: Node;
   try {
-    buildJointHierarchy(joints, skeleton.bones, scene);
+    skeletonRoot = buildJointHierarchy(doc, joints, skeleton.bones);
   } catch (e) {
     console.error("Error building joint hierarchy:", e);
-    // Add all joints to scene as root joints if hierarchy fails
-    joints.forEach((joint) => scene.addChild(joint));
+    throw e; // Don't silently fail - skeleton issues must be fixed
   }
 
-  // CRITICAL: Final verification for Three.js PropertyBinding compatibility
-  // All joints must be accessible from scene according to gltf-transform Skin specs
-  console.log("Final PropertyBinding compatibility verification...");
+  // Step 3: Create skin with proper skeleton root
+  const skin = createSkin(doc, joints, skeleton.bones, skeletonRoot);
 
-  const allAccessibleNodes = new Set<Node>();
-  function collectAccessibleNodes(node: Node) {
-    allAccessibleNodes.add(node);
-    node.listChildren().forEach((child) => collectAccessibleNodes(child));
-  }
+  // Add the skeleton parent to the scene (glTF 2.0 requirement)
+  scene.addChild(skin.getSkeleton()!);
 
-  scene.listChildren().forEach((child: Node) => collectAccessibleNodes(child));
-
-  // Ensure every joint is accessible and properly named
-  joints.forEach((joint, index) => {
-    const bone = skeleton.bones[index];
-
-    // Ensure correct naming for PropertyBinding
-    joint.setName(bone.name);
-
-    // Verify accessibility
-    if (!allAccessibleNodes.has(joint)) {
-      console.error(`❌ Joint "${bone.name}" not accessible - emergency fix`);
-      scene.addChild(joint);
-    } else {
-      console.log(`  ✅ Joint "${bone.name}" accessible for PropertyBinding`);
-    }
-  });
-
-  console.log(
-    `✅ PropertyBinding verification complete: ${joints.length} joints accessible`,
-  );
-
-  // Step 3: Create skin following gltf-transform specifications
-  const skin = createSkin(doc, joints, skeleton.bones);
-
-  // Step 4: Process animations (joints are now properly accessible)
-  console.log(
-    `Processing ${skeleton.animations.length} animations for PropertyBinding...`,
-  );
+  // Step 4: Process animations
+  console.log(`Processing ${skeleton.animations.length} animations...`);
   const processedAnimations = processOttoAnimations(
     skeleton.animations,
     skeleton.bones,
   );
+
+  console.log(`Processed ${processedAnimations.length} animations:`);
+  processedAnimations.slice(0, 5).forEach((anim) => {
+    console.log(
+      `  - "${anim.name}": ${anim.duration.toFixed(2)}s, ${
+        anim.channels.length
+      } channels`,
+    );
+  });
+
   const animations = createGltfAnimations(
     doc,
     joints,
@@ -987,19 +1029,112 @@ export function createSkeletonSystem(
     buffer,
   );
 
-  console.log("=== Skeleton System Complete (gltf-transform compliant) ===");
+  console.log("=== Skeleton System Complete (glTF 2.0 Compliant) ===");
   console.log(
     `Result: ${joints.length} joints, ${animations.length} animations`,
   );
-  console.log("All joints accessible for Three.js PropertyBinding");
 
   return { skin, animations };
 }
 
 /**
- * Extract animation data from glTF document for round-trip conversion
+ * Convert quaternion to Euler angles (EXTRINSIC XYZ rotation order = Rz * Ry * Rx)
+ * Uses quaternion -> rotation matrix -> Euler extraction.
+ * This is numerically stable compared to direct conversion.
+ * Returns angles in radians.
+ *
+ * For extrinsic XYZ (R = Rz * Ry * Rx), the matrix is:
+ *   R = [cy*cz,             sx*sy*cz-cx*sz,    cx*sy*cz+sx*sz  ]
+ *       [cy*sz,             sx*sy*sz+cx*cz,    cx*sy*sz-sx*cz  ]
+ *       [-sy,               sx*cy,             cx*cy           ]
+ *
+ * Extraction:
+ *   y = asin(-R20)
+ *   x = atan2(R21, R22)
+ *   z = atan2(R10, R00)
  */
-export function extractAnimationsFromGLTF(doc: Document): BG3DAnimation[] {
+function quaternionToEuler(
+  x: number,
+  y: number,
+  z: number,
+  w: number,
+): [number, number, number] {
+  // Normalize the quaternion to avoid numerical issues
+  const len = Math.sqrt(x * x + y * y + z * z + w * w);
+  if (len > 0) {
+    x /= len;
+    y /= len;
+    z /= len;
+    w /= len;
+  }
+
+  // Convert quaternion to rotation matrix
+  // Standard formula: R[i][j] = ...
+  const x2 = x + x,
+    y2 = y + y,
+    z2 = z + z;
+  const xx = x * x2,
+    xy = x * y2,
+    xz = x * z2;
+  const yy = y * y2,
+    yz = y * z2,
+    zz = z * z2;
+  const wx = w * x2,
+    wy = w * y2,
+    wz = w * z2;
+
+  // Rotation matrix elements (using R[row][col] indexing)
+  const R00 = 1 - (yy + zz);
+  const R01 = xy - wz;
+  // const R02 = xz + wy;  // Not needed
+  const R10 = xy + wz;
+  const R11 = 1 - (xx + zz);
+  // const R12 = yz - wx;  // Not needed
+  const R20 = xz - wy;
+  const R21 = yz + wx;
+  const R22 = 1 - (xx + yy);
+
+  // Extract Euler angles for EXTRINSIC XYZ order (= Rz * Ry * Rx)
+  const clamp = (val: number, min: number, max: number) =>
+    Math.max(min, Math.min(max, val));
+
+  // y = asin(-R20) where R20 = -sin(y)
+  const ry = Math.asin(clamp(-R20, -1, 1));
+
+  let rx: number, rz: number;
+  if (Math.abs(R20) < 0.9999999) {
+    // x = atan2(R21, R22) where R21 = sin(x)*cos(y), R22 = cos(x)*cos(y)
+    rx = Math.atan2(R21, R22);
+    // z = atan2(R10, R00) where R10 = cos(y)*sin(z), R00 = cos(y)*cos(z)
+    rz = Math.atan2(R10, R00);
+  } else {
+    // Gimbal lock case: y = ±90°, cos(y) = 0
+    // In this case, we can only determine x+z or x-z
+    // We set z=0 and solve for x from the remaining matrix elements
+    rx = Math.atan2(-R01, R11);
+    rz = 0;
+  }
+
+  return [rx, ry, rz];
+}
+
+/**
+ * Extract animation data from glTF document for round-trip conversion
+ *
+ * Converts glTF animation channels back to Otto's keyframe format:
+ * - glTF quaternions (VEC4) → Otto Euler angles (rotationX, rotationY, rotationZ)
+ * - glTF translation (VEC3) → Otto coordinates (coordX, coordY, coordZ)
+ *   Note: glTF stores relative offsets, Otto stores absolute positions
+ *   We add bone rest pose to convert from relative to absolute
+ * - glTF scale (VEC3) → Otto scale (scaleX, scaleY, scaleZ)
+ *
+ * @param doc glTF Document to extract from
+ * @param bones Optional array of BG3DBone for converting relative translations back to absolute
+ */
+export function extractAnimationsFromGLTF(
+  doc: Document,
+  bones?: BG3DBone[],
+): BG3DAnimation[] {
   const animations = doc.getRoot().listAnimations();
   const skins = doc.getRoot().listSkins();
 
@@ -1040,11 +1175,17 @@ export function extractAnimationsFromGLTF(doc: Document): BG3DAnimation[] {
         keyframes[boneIndexStr] = [];
       }
 
-      // Convert glTF data back to Otto format
+      // Determine values per frame based on path type
+      // glTF stores rotation as quaternion (VEC4), translation and scale as VEC3
       const valuesPerFrame =
-        path === "rotation" || path === "translation" || path === "scale"
+        path === "rotation"
+          ? 4
+          : path === "translation" || path === "scale"
           ? 3
           : 1;
+
+      // Get bone rest pose for converting relative translations to absolute
+      const bone = bones && boneIndex < bones.length ? bones[boneIndex] : null;
 
       for (let i = 0; i < times.length; i++) {
         const tick = Math.round(times[i] * 30); // Convert back to 30 FPS
@@ -1052,12 +1193,29 @@ export function extractAnimationsFromGLTF(doc: Document): BG3DAnimation[] {
         // Find or create keyframe for this tick
         let keyframe = keyframes[boneIndexStr].find((kf) => kf.tick === tick);
         if (!keyframe) {
+          // Initialize with bone's LOCAL rest position (computed from absolute coords)
+          // For root bone: localPos = bone.coord
+          // For child bone: localPos = bone.coord - parent.coord
+          let localX = bone?.coordX ?? 0;
+          let localY = bone?.coordY ?? 0;
+          let localZ = bone?.coordZ ?? 0;
+          if (
+            bone &&
+            bones &&
+            bone.parentBone >= 0 &&
+            bone.parentBone < bones.length
+          ) {
+            const parent = bones[bone.parentBone];
+            localX = bone.coordX - parent.coordX;
+            localY = bone.coordY - parent.coordY;
+            localZ = bone.coordZ - parent.coordZ;
+          }
           keyframe = {
             tick,
             accelerationMode: 0,
-            coordX: 0,
-            coordY: 0,
-            coordZ: 0,
+            coordX: localX,
+            coordY: localY,
+            coordZ: localZ,
             rotationX: 0,
             rotationY: 0,
             rotationZ: 0,
@@ -1071,13 +1229,26 @@ export function extractAnimationsFromGLTF(doc: Document): BG3DAnimation[] {
         // Apply the values based on path
         const valueIndex = i * valuesPerFrame;
         if (path === "translation") {
-          keyframe.coordX = values[valueIndex] || 0;
-          keyframe.coordY = values[valueIndex + 1] || 0;
-          keyframe.coordZ = values[valueIndex + 2] || 0;
+          // glTF animation translation is LOCAL (same as Otto kf.coord)
+          // No coordinate flip needed - both systems are compatible
+          const glTFX = values[valueIndex] || 0;
+          const glTFY = values[valueIndex + 1] || 0;
+          const glTFZ = values[valueIndex + 2] || 0;
+
+          keyframe.coordX = glTFX;
+          keyframe.coordY = glTFY;
+          keyframe.coordZ = glTFZ;
         } else if (path === "rotation") {
-          keyframe.rotationX = values[valueIndex] || 0;
-          keyframe.rotationY = values[valueIndex + 1] || 0;
-          keyframe.rotationZ = values[valueIndex + 2] || 0;
+          // Convert quaternion (x, y, z, w) back to Euler angles (extrinsic XYZ order)
+          // This matches Otto's OGLMatrix4x4_SetRotate_XYZ which uses R = Rz * Ry * Rx
+          const qx = values[valueIndex] || 0;
+          const qy = values[valueIndex + 1] || 0;
+          const qz = values[valueIndex + 2] || 0;
+          const qw = values[valueIndex + 3] || 1;
+          const [rx, ry, rz] = quaternionToEuler(qx, qy, qz, qw);
+          keyframe.rotationX = rx;
+          keyframe.rotationY = ry;
+          keyframe.rotationZ = rz;
         } else if (path === "scale") {
           keyframe.scaleX = values[valueIndex] || 1;
           keyframe.scaleY = values[valueIndex + 1] || 1;

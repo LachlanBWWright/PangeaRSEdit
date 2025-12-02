@@ -16,4 +16,7 @@ export type ModelCanvasProps = {
   setModelNodes: (nodes: ModelNode[]) => void;
   onSceneReady?: (scene: THREE.Group | undefined) => void;
   onAnimationsReady?: (animations: AnimationInfo[], mixer: THREE.AnimationMixer | null) => void;
+  wireframeMode?: boolean;
+  showSkeleton?: boolean;
+  logBonePositions?: boolean;
 };

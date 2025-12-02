@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { Button } from "@/components/ui/button";
+import EditorToolbar from "./EditorToolbar";
 import {
   HeaderData,
   ItemData,
@@ -22,7 +22,6 @@ import { KonvaView } from "./canvas/CanvasView";
 import { ThreeView } from "./threejs/Three";
 import { useAtomValue } from "jotai";
 import { CanvasView, CanvasViewMode } from "@/data/canvasView/canvasViewAtoms";
-import { Separator } from "@/components/ui/separator";
 
 export enum View {
   fences,
@@ -166,69 +165,22 @@ export function EditorView({
 
   return (
     <div className="flex flex-col flex-1 w-full gap-2 min-h-0">
-      <div className="grid grid-cols-4 xl:grid-cols-7 gap-2 w-full overflow-clip">
-        <Button
-          selected={view === View.fences}
-          onClick={() => setView(View.fences)}
-        >
-          Fences
-        </Button>
-        <Button
-          selected={view === View.water}
-          onClick={() => setView(View.water)}
-        >
-          Water
-        </Button>
-        <Button
-          selected={view === View.items}
-          onClick={() => setView(View.items)}
-        >
-          Items
-        </Button>
-        <Button
-          selected={view === View.splines}
-          onClick={() => setView(View.splines)}
-        >
-          Splines
-        </Button>
-        <Button
-          selected={view === View.tiles}
-          onClick={() => setView(View.tiles)}
-        >
-          Tiles
-        </Button>
-        <Button
-          disabled={terrainData.STgd === undefined}
-          selected={view === View.supertiles}
-          onClick={() => setView(View.supertiles)}
-        >
-          Supertiles
-        </Button>
-        <div className="grid col-span-2 xl:col-span-1 grid-cols-4 gap-2">
-          <Button
-            variant="zoom"
-            disabled={dataHistory.index === 0}
-            onClick={undoData}
-          >
-            ↩
-          </Button>
-          <Button
-            variant="zoom"
-            disabled={dataHistory.index === dataHistory.items.length - 1}
-            onClick={redoData}
-          >
-            ↪
-          </Button>
-
-          <Button variant="zoom" onClick={zoomOut}>
-            -
-          </Button>
-          <Button variant="zoom" onClick={zoomIn}>
-            +
-          </Button>
-        </div>
-      </div>
-      <Separator />
+      <EditorToolbar
+        view={view}
+        setView={setView}
+        undoData={undoData}
+        redoData={redoData}
+        zoomIn={zoomIn}
+        zoomOut={zoomOut}
+        dataHistoryIndex={dataHistory.index}
+        dataHistoryLength={dataHistory.items.length}
+        terrainHasSTgd={
+          terrainData &&
+          // For Bugdom 1: has Layr (tile layer data), for other games: has STgd
+          ((terrainData.STgd !== undefined && terrainData.STgd !== null) ||
+            (terrainData.Layr !== undefined && terrainData.Layr !== null))
+        }
+      />
       <div>
         {view === View.fences && fenceData && (
           <FenceMenu fenceData={fenceData} setFenceData={setFenceDataNotNull} />

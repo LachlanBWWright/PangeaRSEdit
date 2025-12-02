@@ -30,7 +30,11 @@ export const skeletonSpecs = [
   "BonN:H+:normal",
   //BonP Point index array
   "BonP:H+:pointIndex",
-  "Bone:i32s3fHH8i:parentBone,name,coordX,coordY,coordZ,numPointsAttachedToBone,numNormalsAttachedToBone,reserved0,reserved1,reserved2,reserved3,reserved4,reserved5,reserved6,reserved7",
+  // Bone struct matches File_BoneDefinitionType from file.h:
+  // int32_t parentBone (4 bytes), unsigned char name[32] (32 bytes), OGLPoint3D coord (12 bytes),
+  // uint16_t numPointsAttachedToBone (2 bytes), uint16_t numNormalsAttachedToBone (2 bytes), uint32_t reserved[8] (32 bytes)
+  // Total: 4 + 32 + 12 + 2 + 2 + 32 = 84 bytes
+  "Bone:l32s3f2H8L:parentBone,name,coordX,coordY,coordZ,numPointsAttachedToBone,numNormalsAttachedToBone,reserved0,reserved1,reserved2,reserved3,reserved4,reserved5,reserved6,reserved7",
   "Evnt:hBB+:time,type,value",
 
   //Header has lots of blank/padding after? Cast to 8 bype struct but 84 bytes in practice

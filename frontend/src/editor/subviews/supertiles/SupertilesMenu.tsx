@@ -7,86 +7,14 @@ import {
   TerrainData,
 } from "../../../python/structSpecs/ottoMaticLevelData";
 import { FileUpload } from "../../../components/FileUpload";
-import { Globals } from "../../../data/globals/globals";
+import { Game, Globals } from "../../../data/globals/globals";
 import { Button } from "@/components/ui/button";
 import { ImageEditor } from "@/components/ImageEditor";
 import { useState } from "react";
 import { Edit } from "lucide-react";
 import { toast } from "sonner";
-
-// Function to download a selected tile as an image
-const downloadSelectedTile = (
-  mapImages: HTMLCanvasElement[],
-  superTileId: number,
-  tileIndex: number,
-) => {
-  // Skip if it's an empty tile (ID 0)
-  if (superTileId === 0 || !mapImages[superTileId]) return;
-
-  const tileImage = mapImages[superTileId];
-
-  // Create download link
-  const link = document.createElement("a");
-  link.download = `tile_${tileIndex}.png`;
-  link.href = tileImage.toDataURL("image/png");
-  link.click();
-};
-
-// Function to download the entire map as an image
-const downloadMapImage = (
-  mapImages: HTMLCanvasElement[],
-  headerData: HeaderData,
-  terrainData: TerrainData,
-  globals: { SUPERTILE_TEXMAP_SIZE: number; TILES_PER_SUPERTILE: number },
-) => {
-  const hedr = headerData.Hedr[1000].obj;
-  if (!terrainData.STgd[1000].obj) return;
-
-  // Create canvas to hold the complete map
-  const canvas = document.createElement("canvas");
-  canvas.width =
-    globals.SUPERTILE_TEXMAP_SIZE *
-    (hedr.mapWidth / globals.TILES_PER_SUPERTILE);
-  canvas.height =
-    globals.SUPERTILE_TEXMAP_SIZE *
-    (hedr.mapHeight / globals.TILES_PER_SUPERTILE);
-  const context = canvas.getContext("2d");
-
-  if (!context) return;
-  context.fillStyle = "black";
-  context.fillRect(0, 0, canvas.width, canvas.height);
-
-  // Place all supertiles onto the canvas
-  for (let i = 0; i < hedr.mapHeight / globals.TILES_PER_SUPERTILE; i++) {
-    for (let j = 0; j < hedr.mapWidth / globals.TILES_PER_SUPERTILE; j++) {
-      // Calculate the index in the STgd array
-      const tileIndex = i * (hedr.mapWidth / globals.TILES_PER_SUPERTILE) + j;
-
-      // Get supertile ID
-      const superTileId = terrainData.STgd[1000].obj[tileIndex].superTileId;
-
-      // Skip empty tiles (ID 0)
-      if (superTileId === 0) continue;
-
-      // Get the image for this supertile
-      const tileImage = mapImages[superTileId];
-      if (!tileImage) continue;
-
-      // Draw the supertile at its position
-      context.drawImage(
-        tileImage,
-        j * globals.SUPERTILE_TEXMAP_SIZE,
-        i * globals.SUPERTILE_TEXMAP_SIZE,
-      );
-    }
-  }
-
-  // Create download link
-  const link = document.createElement("a");
-  link.download = "map_image.png";
-  link.href = canvas.toDataURL("image/png");
-  link.click();
-};
+import { downloadSelectedTile, downloadMapImage } from "./supertileUtils";
+import { BugdomTileMenu } from "../bugdom/BugdomTileMenu";
 
 export function SupertileMenu({
   headerData,
@@ -107,14 +35,82 @@ export function SupertileMenu({
   const hedr = headerData.Hedr[1000].obj;
   const globals = useAtomValue(Globals);
 
+  // For Bugdom 1 and Nanosaur 1, use the specialized tile-based menu
+  // Both games use individual 32x32 tiles composed into 5x5 supertiles
+  if (
+    globals.GAME_TYPE === Game.BUGDOM ||
+    globals.GAME_TYPE === Game.NANOSAUR
+  ) {
+    return (
+      <BugdomTileMenu
+        headerData={headerData}
+        setHeaderData={setHeaderData}
+        terrainData={terrainData}
+        setTerrainData={setTerrainData}
+        mapImages={mapImages}
+        setMapImages={setMapImages}
+      />
+    );
+  }
+
+  // For other games, use the standard menu
+  return (
+    <StandardSupertileMenu
+      headerData={headerData}
+      setHeaderData={setHeaderData}
+      terrainData={terrainData}
+      setTerrainData={setTerrainData}
+      mapImages={mapImages}
+      setMapImages={setMapImages}
+      selectedTile={selectedTile}
+      hedr={hedr}
+      globals={globals}
+    />
+  );
+}
+
+// Internal component for non-Bugdom games that have STgd
+function StandardSupertileMenu({
+  headerData,
+  setHeaderData,
+  terrainData,
+  setTerrainData,
+  mapImages,
+  setMapImages,
+  selectedTile,
+  hedr,
+  globals,
+}: {
+  mapImages: HTMLCanvasElement[];
+  setMapImages: (newCanvases: HTMLCanvasElement[]) => void;
+  headerData: HeaderData;
+  setHeaderData: Updater<HeaderData>;
+  terrainData: TerrainData;
+  setTerrainData: Updater<TerrainData>;
+  selectedTile: number;
+  hedr: HeaderData["Hedr"][1000]["obj"];
+  globals: ReturnType<typeof useAtomValue<typeof Globals>>;
+}) {
   // State for image editor
   const [isEditingTile, setIsEditingTile] = useState(false);
   const [isEditingMap, setIsEditingMap] = useState(false);
   const [editingImageUrl, setEditingImageUrl] = useState<string | null>(null);
 
+  // Check if STgd exists
+  if (!terrainData.STgd?.[1000]?.obj) {
+    return (
+      <div className="p-4 text-white">
+        <p>No supertile grid data available</p>
+      </div>
+    );
+  }
+
+  // Now TypeScript knows STgd exists
+  const stgd = terrainData.STgd[1000].obj;
+
   // Handle editing individual tile texture
   const handleEditTileTexture = () => {
-    const tileId = terrainData.STgd[1000].obj[selectedTile].superTileId;
+    const tileId = stgd[selectedTile].superTileId;
     if (tileId === 0 || !mapImages[tileId]) {
       toast.error("No texture available for this tile");
       return;
@@ -150,7 +146,7 @@ export function SupertileMenu({
     for (let i = 0; i < hedr.mapHeight / globals.TILES_PER_SUPERTILE; i++) {
       for (let j = 0; j < hedr.mapWidth / globals.TILES_PER_SUPERTILE; j++) {
         const tileIndex = i * (hedr.mapWidth / globals.TILES_PER_SUPERTILE) + j;
-        const superTileId = terrainData.STgd[1000].obj[tileIndex].superTileId;
+        const superTileId = stgd[tileIndex].superTileId;
 
         if (superTileId === 0) continue;
 
@@ -175,7 +171,7 @@ export function SupertileMenu({
     editedImageData: ImageData,
   ): Promise<void> => {
     try {
-      const tileId = terrainData.STgd[1000].obj[selectedTile].superTileId;
+      const tileId = stgd[selectedTile].superTileId;
 
       // Create a new canvas with the edited data
       const canvas = document.createElement("canvas");
@@ -257,6 +253,7 @@ export function SupertileMenu({
 
       setMapImages(canvasArray);
       setTerrainData((data) => {
+        if (!data.STgd?.[1000]?.obj) return;
         for (let i = 0; i < data.STgd[1000].obj.length; i++) {
           data.STgd[1000].obj[i].superTileId = i + 1;
         }
@@ -280,11 +277,10 @@ export function SupertileMenu({
         <FileUpload
           acceptType="image"
           disabled={
-            selectedTile >= terrainData.STgd[1000].obj.length ||
-            terrainData.STgd[1000].obj[selectedTile].superTileId === 0
+            selectedTile >= stgd.length || stgd[selectedTile].superTileId === 0
           }
           handleOnChange={async (e) => {
-            if (!e.target?.files?.[0] || !terrainData.STgd[1000].obj) return;
+            if (!e.target?.files?.[0] || !stgd) return;
 
             const file = e.target.files[0];
             if (!file) return;
@@ -306,11 +302,7 @@ export function SupertileMenu({
               0,
             );
             const newMapImages = [...mapImages];
-            newMapImages.splice(
-              terrainData.STgd[1000].obj[selectedTile].superTileId,
-              1,
-              canvas,
-            );
+            newMapImages.splice(stgd[selectedTile].superTileId, 1, canvas);
             setMapImages(newMapImages);
           }}
         />
@@ -321,9 +313,7 @@ export function SupertileMenu({
             size="sm"
             variant="outline"
             onClick={handleEditTileTexture}
-            disabled={
-              terrainData.STgd[1000].obj[selectedTile].superTileId === 0
-            }
+            disabled={stgd[selectedTile].superTileId === 0}
           >
             <Edit className="w-4 h-4 mr-1" />
             Edit
@@ -332,11 +322,7 @@ export function SupertileMenu({
         <Stage width={120} height={120} className="mx-auto">
           <Layer>
             <ImageDisplay
-              image={
-                mapImages[
-                  terrainData.STgd[1000].obj[selectedTile]?.superTileId || 0
-                ]
-              }
+              image={mapImages[stgd[selectedTile]?.superTileId || 0]}
             />
           </Layer>
         </Stage>
@@ -346,7 +332,7 @@ export function SupertileMenu({
           onClick={() =>
             downloadSelectedTile(
               mapImages,
-              terrainData.STgd[1000].obj[selectedTile].superTileId,
+              stgd[selectedTile].superTileId,
               selectedTile,
             )
           }
@@ -431,6 +417,7 @@ export function SupertileMenu({
 
             setMapImages(canvasArray);
             setTerrainData((data) => {
+              if (!data.STgd?.[1000]?.obj) return;
               for (let i = 0; i < data.STgd[1000].obj.length; i++) {
                 //1 is added to i because of the blank
                 data.STgd[1000].obj[i].superTileId = i + 1;
@@ -477,10 +464,7 @@ export function SupertileMenu({
         <p>Unique Supertiles {hedr?.numUniqueSupertiles || 0}</p>
 
         <p>Current Tile: #{selectedTile}</p>
-        <p>
-          Texture ID:{" "}
-          {terrainData.STgd[1000].obj[selectedTile]?.superTileId || 0}
-        </p>
+        <p>Texture ID: {stgd[selectedTile]?.superTileId || 0}</p>
       </div>
       {/* Image Editor for individual tile */}
       {isEditingTile && editingImageUrl && (
