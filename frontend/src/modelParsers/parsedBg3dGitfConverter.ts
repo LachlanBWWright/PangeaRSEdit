@@ -322,7 +322,27 @@ export function bg3dParsedToGLTF(
       mat.textures.forEach((tex, j) => {
         let pngBuffer: Uint8Array<ArrayBufferLike>;
         try {
-          if (
+          if (tex.isJpeg) {
+            // JPEG texture (Nanosaur 2) - store as JPEG directly
+            // Note: glTF supports JPEG directly, so we can use it as-is
+            // The alpha channel would need to be handled separately if needed
+            const texture = doc.createTexture();
+            texture.setMimeType("image/jpeg");
+            texture.setImage(tex.pixels);
+            texture.setExtras({
+              width: tex.width,
+              height: tex.height,
+              srcPixelFormat: tex.srcPixelFormat,
+              dstPixelFormat: tex.dstPixelFormat,
+              bufferSize: tex.bufferSize,
+              isJpeg: true,
+              hasAlpha: !!tex.jpegAlphaData,
+            });
+            if (j === 0) {
+              gltfMaterials[i].setBaseColorTexture(texture);
+            }
+            return; // Skip the rest of the texture processing
+          } else if (
             tex.srcPixelFormat === PixelFormatSrc.GL_UNSIGNED_SHORT_1_5_5_5_REV
           ) {
             // ARGB16 with byte swap
@@ -923,8 +943,17 @@ export async function gltfToBG3D(doc: Document): Promise<BG3DParseResult> {
       const baseColorTex = mat.getBaseColorTexture();
       if (baseColorTex) {
         const image = baseColorTex.getImage();
+        const texExtras = baseColorTex.getExtras() as Record<
+          string,
+          unknown
+        > | null;
+
         if (image instanceof Uint8Array) {
-          // Verify this is valid PNG data by checking PNG signature
+          // Check for JPEG signature (0xFF 0xD8)
+          const isJPEG =
+            image.length >= 2 && image[0] === 0xff && image[1] === 0xd8;
+
+          // Check for PNG signature
           const isPNG =
             image.length >= 8 &&
             image[0] === 0x89 &&
@@ -936,7 +965,22 @@ export async function gltfToBG3D(doc: Document): Promise<BG3DParseResult> {
             image[6] === 0x1a &&
             image[7] === 0x0a;
 
-          if (isPNG) {
+          if (isJPEG || texExtras?.isJpeg) {
+            // JPEG texture (Nanosaur 2) - preserve as-is
+            console.log(`Preserving JPEG texture for material ${index}`);
+            const width = (texExtras?.width as number) || 128;
+            const height = (texExtras?.height as number) || 128;
+            textures.push({
+              pixels: image,
+              width,
+              height,
+              srcPixelFormat: -1, // JPEG marker
+              dstPixelFormat: texExtras?.hasAlpha ? -2 : -1,
+              bufferSize: image.byteLength,
+              isJpeg: true,
+              // Note: Alpha channel would need to be stored separately if needed
+            });
+          } else if (isPNG) {
             // BG3D textures are typically RGB format (no alpha channel)
             // Even if PNG is stored as RGBA in glTF (due to pngjs library limitations),
             // we convert back to RGB to match original format and prevent file size inflation
@@ -966,7 +1010,7 @@ export async function gltfToBG3D(doc: Document): Promise<BG3DParseResult> {
             });
           } else {
             console.warn(
-              "Image data from glTF is not valid PNG, skipping texture for material",
+              "Image data from glTF is not valid PNG or JPEG, skipping texture for material",
               index,
             );
           }
