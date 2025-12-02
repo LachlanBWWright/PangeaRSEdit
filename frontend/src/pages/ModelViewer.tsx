@@ -709,8 +709,8 @@ export function ModelViewer() {
     try {
       // Load both Otto.bg3d and Otto.skeleton.rsrc test files
       const [bg3dResponse, skeletonResponse] = await Promise.all([
-        fetch("/PangeaRSEdit/Otto.bg3d"),
-        fetch("/PangeaRSEdit/Otto.skeleton.rsrc"),
+        fetch("/PangeaRSEdit/games/ottomatic/skeletons/Otto.bg3d"),
+        fetch("/PangeaRSEdit/games/ottomatic/skeletons/Otto.skeleton.rsrc"),
       ]);
 
       if (!bg3dResponse.ok) {
@@ -745,7 +745,9 @@ export function ModelViewer() {
   const loadTestModelWithoutSkeleton = async () => {
     try {
       // Load only Otto.bg3d test file
-      const bg3dResponse = await fetch("/PangeaRSEdit/Otto.bg3d");
+      const bg3dResponse = await fetch(
+        "/PangeaRSEdit/games/ottomatic/skeletons/Otto.bg3d",
+      );
 
       if (!bg3dResponse.ok) {
         throw new Error(`Failed to fetch Otto.bg3d: ${bg3dResponse.status}`);
