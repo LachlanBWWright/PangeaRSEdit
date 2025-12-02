@@ -309,16 +309,15 @@ export interface NanosaurTileAttribute {
 // ============================================================================
 
 /**
- * Nanosaur 2 header
- * Source: games/nanosaur2/Source/Headers/structs.h
+ * Nanosaur 2 header - simplified format without numTilePages/numTiles
+ * Source: games/nanosaur2/Source/System/File.c - PlayfieldHeaderType
+ * Note: Same as Bugdom 2 format
  */
 export interface Nanosaur2Header {
   version: number;
   numItems: number;
   mapWidth: number;
   mapHeight: number;
-  numTilePages: number;
-  numTiles: number;
   tileSize: number;
   minY: number;
   maxY: number;
