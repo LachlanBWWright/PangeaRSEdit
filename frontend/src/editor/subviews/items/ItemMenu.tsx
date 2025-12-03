@@ -40,9 +40,12 @@ export function ItemMenu({
   const selectedItemData =
     selectedItem !== undefined ? itemData.Itms[1000].obj[selectedItem] : null;
 
-  const itemValues = getItemTypes(globals) //Object.keys(ItemType)
-    .map((key) => parseInt(key))
-    .filter((key) => isNaN(key) === false);
+  const itemTypesResult = getItemTypes(globals);
+  const itemValues = itemTypesResult.ok
+    ? itemTypesResult.value
+        .map((key) => parseInt(key))
+        .filter((key) => isNaN(key) === false)
+    : [];
 
   return (
     <div className="flex flex-col gap-2">
@@ -200,9 +203,12 @@ function AddItemMenu() {
   }, []);
   const globals = useAtomValue(Globals);
 
-  const itemValues = getItemTypes(globals) // Object.keys(ItemType)
-    .map((key) => parseInt(key))
-    .filter((key) => isNaN(key) === false);
+  const itemTypesResult = getItemTypes(globals);
+  const itemValues = itemTypesResult.ok
+    ? itemTypesResult.value
+        .map((key) => parseInt(key))
+        .filter((key) => isNaN(key) === false)
+    : [];
 
   if (clickToAddItem !== undefined)
     return (

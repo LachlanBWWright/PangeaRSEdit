@@ -46,9 +46,12 @@ export function WaterMenu({
       ? waterBodyData.nubs[selectedWaterNub]
       : null;
 
-  const waterBodyValues = getWaterBodyTypes(globals)
-    .map((key) => parseInt(key))
-    .filter((key) => isNaN(key) === false);
+  const waterTypesResult = getWaterBodyTypes(globals);
+  const waterBodyValues = waterTypesResult.ok
+    ? waterTypesResult.value
+        .map((key) => parseInt(key))
+        .filter((key) => isNaN(key) === false)
+    : [];
 
   return (
     <div className="flex flex-col gap-2 w-full">

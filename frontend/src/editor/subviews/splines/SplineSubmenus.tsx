@@ -85,9 +85,12 @@ export function EditSplineItemMenu({
 
   const currentSplineItemData = splineItemData.at(selectedSplineItem);
 
-  const splineItemValues = getSplineItemTypes(globals)
-    .map((key) => parseInt(key))
-    .filter((key) => isNaN(key) === false);
+  const splineItemTypesResult = getSplineItemTypes(globals);
+  const splineItemValues = splineItemTypesResult.ok
+    ? splineItemTypesResult.value
+        .map((key) => parseInt(key))
+        .filter((key) => isNaN(key) === false)
+    : [];
 
   if (currentSplineItemData === undefined) return <></>;
 

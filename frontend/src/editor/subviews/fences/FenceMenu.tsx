@@ -35,9 +35,12 @@ export function FenceMenu({
       ? fenceData.Fenc[1000].obj[selectedFence]
       : null;
 
-  const fenceValues = getFenceTypes(globals) // Object.keys(FenceType)
-    .map((key) => parseInt(key))
-    .filter((key) => isNaN(key) === false);
+  const fenceTypesResult = getFenceTypes(globals);
+  const fenceValues = fenceTypesResult.ok
+    ? fenceTypesResult.value
+        .map((key) => parseInt(key))
+        .filter((key) => isNaN(key) === false)
+    : [];
 
   return (
     <div className="flex flex-col gap-2">
