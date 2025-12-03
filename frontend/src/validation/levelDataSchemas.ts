@@ -266,10 +266,10 @@ export type OttoMaticLevelData = z.infer<typeof ottoMaticLevelSchema>;
  * Validate level data using Zod safeParse
  * Returns a Result type instead of throwing
  */
-export function validateLevelData(
+export function validateLevelData<T>(
   data: unknown,
-  schema: z.ZodSchema = ottoMaticLevelSchema
-): Result<z.infer<typeof schema>, Error> {
+  schema: z.ZodSchema<T>
+): Result<T, Error> {
   const result = schema.safeParse(data);
   if (result.success) {
     return ok(result.data);
@@ -284,7 +284,7 @@ export function validateLevelData(
  * Validate Otto Matic level data
  */
 export function validateOttoMaticLevel(data: unknown): Result<OttoMaticLevelData, Error> {
-  return validateLevelData(data, ottoMaticLevelSchema);
+  return validateLevelData<OttoMaticLevelData>(data, ottoMaticLevelSchema);
 }
 
 /**
