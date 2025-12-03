@@ -223,7 +223,9 @@ export function parseSkeletonRsrc(
 
   if (usePyodide) {
     if (!options?.pyodideWorker) {
-      throw new Error("Pyodide worker required when usePyodide is true");
+      // When pyodide is required but not provided, fall back to TS implementation
+      console.warn("Pyodide worker not provided, falling back to TS implementation");
+      return parseSkeletonRsrcTS(bytes);
     }
     return parseSkeletonRsrcPyodide(bytes, options.pyodideWorker);
   }

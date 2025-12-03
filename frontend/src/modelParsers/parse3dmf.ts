@@ -1,21 +1,23 @@
+import { BG3DParseResult } from "./parseBG3D";
+import { Result, err } from "../types/result";
+
 /**
  * Placeholder for serializing a BG3DParseResult back to a 3DMF ArrayBuffer.
  * @param parsed BG3DParseResult
- * @returns ArrayBuffer
+ * @returns Result<ArrayBuffer, Error>
  */
-export function bg3dParsedTo3DMF(parsed: BG3DParseResult): ArrayBuffer {
+export function bg3dParsedTo3DMF(parsed: BG3DParseResult): Result<ArrayBuffer, Error> {
   // TODO: Implement real 3DMF serialization logic
   console.log(parsed);
-  throw new Error("bg3dParsedTo3DMF is not yet implemented");
+  return err(new Error("bg3dParsedTo3DMF is not yet implemented"));
 }
-import { BG3DParseResult } from "./parseBG3D";
 
 /**
  * Placeholder for a 3DMF parser. Returns a BG3DParseResult-like structure for now.
  * @param buffer ArrayBuffer containing the 3DMF file
- * @returns BG3DParseResult
+ * @returns Result<BG3DParseResult, Error>
  */
-export function parse3DMF(_buffer: ArrayBuffer): BG3DParseResult {
+export function parse3DMF(_buffer: ArrayBuffer): Result<BG3DParseResult, Error> {
   // TODO: Implement real 3DMF parsing logic
-  throw new Error("parse3DMF is not yet implemented");
+  return err(new Error("parse3DMF is not yet implemented"));
 }

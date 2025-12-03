@@ -37,7 +37,9 @@ export async function skeletonResourceToBinary(
 
   if (usePyodide) {
     if (!options?.pyodideWorker) {
-      throw new Error("Pyodide worker required when usePyodide is true");
+      // When pyodide is required but not provided, fall back to TS implementation
+      console.warn("Pyodide worker not provided, falling back to TS implementation");
+      return skeletonResourceToBinaryTS(skeletonResource);
     }
     return skeletonResourceToBinaryPyodide(
       skeletonResource,
