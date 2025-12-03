@@ -136,12 +136,14 @@ export function tryFn<T>(fn: () => T): Result<T, Error> {
 
 /**
  * Safely access an array element by index
- * Returns Err if index is out of bounds
+ * Returns Err if index is out of bounds or element is undefined (for sparse arrays)
  */
 export function safeIndex<T>(arr: readonly T[], index: number): Result<T, Error> {
   if (index < 0 || index >= arr.length) {
     return err(new Error(`Index ${index} out of bounds for array of length ${arr.length}`));
   }
+  // With noUncheckedIndexedAccess, arr[index] is T | undefined
+  // The undefined check handles sparse arrays where a valid index may still be undefined
   const value = arr[index];
   if (value === undefined) {
     return err(new Error(`Array element at index ${index} is undefined`));
