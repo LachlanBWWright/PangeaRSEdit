@@ -16,6 +16,7 @@ import {
   BG3DAnimation,
   BG3DKeyframe,
 } from "./parseBG3D";
+import { Result, ok, err, isErr } from "../types/result";
 
 /**
  * Convert Euler angles (in radians) to quaternion
@@ -411,11 +412,11 @@ function buildJointHierarchy(
   doc: Document,
   joints: Node[],
   bones: BG3DBone[],
-): Node {
+): Result<Node, Error> {
   if (joints.length !== bones.length) {
-    throw new Error(
+    return err(new Error(
       `Mismatch: ${joints.length} joints vs ${bones.length} bones`,
-    );
+    ));
   }
 
   console.log("\n=== Building Joint Hierarchy (glTF 2.0 Compliant) ===");
@@ -436,6 +437,11 @@ function buildJointHierarchy(
 
     const bone = bones[boneIndex];
     const joint = joints[boneIndex];
+    
+    if (!bone || !joint) {
+      console.warn(`Bone or joint at index ${boneIndex} not found`);
+      return;
+    }
 
     parentNode.addChild(joint);
     addedBones.add(boneIndex);
@@ -464,7 +470,7 @@ function buildJointHierarchy(
 
   console.log(
     `Found ${rootBoneIndices.length} root bones: ${rootBoneIndices
-      .map((i) => bones[i].name)
+      .map((i) => bones[i]?.name ?? "undefined")
       .join(", ")}`,
   );
 
@@ -480,9 +486,10 @@ function buildJointHierarchy(
     );
     // Add any remaining bones as children of Armature to ensure they're in the scene
     bones.forEach((bone, index) => {
-      if (!addedBones.has(index)) {
+      const joint = joints[index];
+      if (!addedBones.has(index) && joint) {
         console.warn(`Adding orphaned bone ${bone.name} directly to Armature`);
-        skeletonRoot.addChild(joints[index]);
+        skeletonRoot.addChild(joint);
         addedBones.add(index);
       }
     });
@@ -496,7 +503,7 @@ function buildJointHierarchy(
   console.log(`✅ Armature added to scene root`);
   console.log(`✅ Satisfies glTF 2.0 common root requirement`);
 
-  return skeletonRoot;
+  return ok(skeletonRoot);
 }
 
 /**
@@ -969,7 +976,7 @@ export function createSkeletonSystem(
   doc: Document,
   skeleton: BG3DSkeleton,
   buffer?: Buffer,
-): { skin: Skin; animations: Animation[] } {
+): Result<{ skin: Skin; animations: Animation[] }, Error> {
   console.log("=== Creating Skeleton System (glTF 2.0 Compliant) ===");
   console.log(
     `Bones: ${skeleton.bones.length}, Animations: ${skeleton.animations.length}`,
@@ -982,7 +989,7 @@ export function createSkeletonSystem(
     doc.getRoot().setDefaultScene(newScene);
     scene = doc.getRoot().getDefaultScene();
     if (!scene) {
-      throw new Error("Failed to create default scene in glTF document");
+      return err(new Error("Failed to create default scene in glTF document"));
     }
   } else {
     console.log(`Using existing default scene: "${scene.getName()}"`);
@@ -992,19 +999,21 @@ export function createSkeletonSystem(
   const joints = createJointNodes(doc, skeleton.bones);
 
   // Step 2: Build hierarchy (returns the skeleton root node)
-  let skeletonRoot: Node;
-  try {
-    skeletonRoot = buildJointHierarchy(doc, joints, skeleton.bones);
-  } catch (e) {
-    console.error("Error building joint hierarchy:", e);
-    throw e; // Don't silently fail - skeleton issues must be fixed
+  const skeletonRootResult = buildJointHierarchy(doc, joints, skeleton.bones);
+  if (isErr(skeletonRootResult)) {
+    console.error("Error building joint hierarchy:", skeletonRootResult.error);
+    return skeletonRootResult;
   }
+  const skeletonRoot = skeletonRootResult.value;
 
   // Step 3: Create skin with proper skeleton root
   const skin = createSkin(doc, joints, skeleton.bones, skeletonRoot);
 
   // Add the skeleton parent to the scene (glTF 2.0 requirement)
-  scene.addChild(skin.getSkeleton()!);
+  const skeleton_root = skin.getSkeleton();
+  if (skeleton_root) {
+    scene.addChild(skeleton_root);
+  }
 
   // Step 4: Process animations
   console.log(`Processing ${skeleton.animations.length} animations...`);
@@ -1034,7 +1043,7 @@ export function createSkeletonSystem(
     `Result: ${joints.length} joints, ${animations.length} animations`,
   );
 
-  return { skin, animations };
+  return ok({ skin, animations });
 }
 
 /**

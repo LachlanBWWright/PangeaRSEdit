@@ -26,6 +26,8 @@ import {
   extractAnimationsFromGLTF,
 } from "./skeletonSystemNew";
 
+import { isErr } from "../types/result";
+
 import {
   Document,
   Mesh,
@@ -401,20 +403,24 @@ export function bg3dParsedToGLTF(
       `Input skeleton has ${parsed.skeleton.bones.length} bones, ${parsed.skeleton.animations.length} animations`,
     );
 
-    const skeletonSystem = createSkeletonSystem(
+    const skeletonSystemResult = createSkeletonSystem(
       doc,
       parsed.skeleton,
       baseBuffer,
     );
 
-    gltfSkin = skeletonSystem.skin;
-    gltfAnimations = skeletonSystem.animations;
+    if (isErr(skeletonSystemResult)) {
+      console.error("Failed to create skeleton system:", skeletonSystemResult.error);
+    } else {
+      gltfSkin = skeletonSystemResult.value.skin;
+      gltfAnimations = skeletonSystemResult.value.animations;
 
-    console.log(
-      `Skeleton system created: skin=${!!gltfSkin}, joints=${
-        gltfSkin?.listJoints().length
-      }, animations=${gltfAnimations.length}`,
-    );
+      console.log(
+        `Skeleton system created: skin=${!!gltfSkin}, joints=${
+          gltfSkin?.listJoints().length
+        }, animations=${gltfAnimations.length}`,
+      );
+    }
   } else {
     console.log("No skeleton data in parsed BG3D");
   }

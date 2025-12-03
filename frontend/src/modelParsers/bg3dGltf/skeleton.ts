@@ -9,6 +9,7 @@ import { createSkeletonSystem } from "../skeletonSystemNew";
 
 import { Document, Skin } from "@gltf-transform/core";
 import { parseSkeletonRsrcTS } from "../skeletonRsrc/parseSkeletonRsrcTS";
+import { isErr, Result, ok, err } from "../../types/result";
 
 // Import modular functions
 import {
@@ -31,13 +32,19 @@ export function bg3dSkeletonToGltf(
   parsedSkeleton: BG3DSkeleton,
   doc: Document,
   baseBuffer: any,
-): { skin: Skin | null; animations: any[] } {
+): Result<{ skin: Skin | null; animations: any[] }, Error> {
   console.log("Creating skeleton system with new implementation...");
   console.log(
     `Input skeleton has ${parsedSkeleton.bones.length} bones, ${parsedSkeleton.animations.length} animations`,
   );
 
-  const skeletonSystem = createSkeletonSystem(doc, parsedSkeleton, baseBuffer);
+  const skeletonSystemResult = createSkeletonSystem(doc, parsedSkeleton, baseBuffer);
+
+  if (isErr(skeletonSystemResult)) {
+    return skeletonSystemResult;
+  }
+
+  const skeletonSystem = skeletonSystemResult.value;
 
   console.log(
     `Skeleton system created: skin=${!!skeletonSystem.skin}, joints=${
@@ -45,7 +52,7 @@ export function bg3dSkeletonToGltf(
     }, animations=${skeletonSystem.animations.length}`,
   );
 
-  return skeletonSystem;
+  return ok(skeletonSystem);
 }
 
 /**
@@ -63,6 +70,9 @@ export function gltfSkeletonToBg3d(doc: Document): BG3DSkeleton | undefined {
 
   console.log("Extracting skeleton from glTF Skin and Animations...");
   const skin = skins[0];
+  if (!skin) {
+    return undefined;
+  }
   const joints = skin.listJoints();
 
   console.log(`Skin has ${joints.length} joints`);
