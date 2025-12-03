@@ -10,20 +10,21 @@ import { SplineItemType as CroMagSplineItemType } from "./croMagSplineItemType";
 //Nanosaur 2
 import { SplineItemType as Nanosaur2SplineItemType } from "./nanosaur2SplineItemType";
 import { SplineItemType as OttoSplineItemType } from "./ottoSplineItemType";
+import { Result, ok, err } from "../../types/result";
 
-export function getSplineItemTypes(globals: GlobalsInterface) {
+export function getSplineItemTypes(globals: GlobalsInterface): Result<string[], Error> {
   if (globals.GAME_TYPE === Game.BILLY_FRONTIER) {
-    return Object.keys(BillySplineItemType);
+    return ok(Object.keys(BillySplineItemType));
   } else if (globals.GAME_TYPE === Game.BUGDOM) {
-    return Object.keys(BugdomSplineItemType);
+    return ok(Object.keys(BugdomSplineItemType));
   } else if (globals.GAME_TYPE === Game.BUGDOM_2) {
-    return Object.keys(Bugdom2SplineItemType);
+    return ok(Object.keys(Bugdom2SplineItemType));
   } else if (globals.GAME_TYPE === Game.CRO_MAG) {
-    return Object.keys(CroMagSplineItemType);
+    return ok(Object.keys(CroMagSplineItemType));
   } else if (globals.GAME_TYPE === Game.NANOSAUR_2) {
-    return Object.keys(Nanosaur2SplineItemType);
+    return ok(Object.keys(Nanosaur2SplineItemType));
   } else if (globals.GAME_TYPE === Game.OTTO_MATIC) {
-    return Object.keys(OttoSplineItemType);
+    return ok(Object.keys(OttoSplineItemType));
   }
-  throw new Error("Invalid Game!");
+  return err(new Error("Invalid Game!"));
 }

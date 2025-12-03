@@ -10,21 +10,22 @@ import { WaterBodyType as CroMagWaterBodyType } from "./croMagWaterBodyType";
 //Nanosaur 2
 import { WaterBodyType as Nanosaur2WaterBodyType } from "./nanosaur2WaterBodyType";
 import { WaterBodyType as OttoWaterBodyType } from "./ottoWaterBodyType";
+import { Result, ok, err } from "../../types/result";
 
-export function getWaterBodyTypes(globals: GlobalsInterface) {
+export function getWaterBodyTypes(globals: GlobalsInterface): Result<string[], Error> {
   if (globals.GAME_TYPE === Game.BILLY_FRONTIER) {
-    return Object.keys(BillyWaterBodyType);
+    return ok(Object.keys(BillyWaterBodyType));
   } else if (globals.GAME_TYPE === Game.BUGDOM) {
-    return Object.keys(BugdomWaterBodyType);
+    return ok(Object.keys(BugdomWaterBodyType));
   } else if (globals.GAME_TYPE === Game.BUGDOM_2) {
-    return Object.keys(Bugdom2WaterBodyType);
+    return ok(Object.keys(Bugdom2WaterBodyType));
   } else if (globals.GAME_TYPE === Game.CRO_MAG) {
-    return Object.keys(CroMagWaterBodyType);
+    return ok(Object.keys(CroMagWaterBodyType));
   } else if (globals.GAME_TYPE === Game.NANOSAUR_2) {
-    return Object.keys(Nanosaur2WaterBodyType);
+    return ok(Object.keys(Nanosaur2WaterBodyType));
   } else if (globals.GAME_TYPE === Game.OTTO_MATIC) {
-    return Object.keys(OttoWaterBodyType);
+    return ok(Object.keys(OttoWaterBodyType));
   }
 
-  throw new Error("Invalid water body type!");
+  return err(new Error("Invalid water body type!"));
 }

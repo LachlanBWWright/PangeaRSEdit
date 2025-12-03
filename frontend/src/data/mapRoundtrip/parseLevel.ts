@@ -11,6 +11,7 @@ import {
 } from "../processors/classicProprocessor";
 import { preprocessJson } from "../processors/ottoPreprocessor";
 import { Game, GlobalsInterface } from "../globals/globals";
+import { Result, ok, err, isErr } from "../../types/result";
 
 /**
  * Parse a level data buffer to JSON using pyodide
@@ -19,37 +20,45 @@ import { Game, GlobalsInterface } from "../globals/globals";
  * @param buffer - The raw binary level data
  * @param options - Parsing options including struct specs
  * @param pyodideRunner - A function that runs pyodide code (can be worker or direct)
- * @returns The parsed level data as ottoMaticLevel
+ * @returns Result with the parsed level data as ottoMaticLevel
  */
 export async function parseLevelBuffer(
   buffer: ArrayBuffer,
   options: ParseLevelOptions,
   pyodideRunner: (code: string, buffer: ArrayBuffer) => Promise<string>,
-): Promise<ottoMaticLevel> {
+): Promise<Result<ottoMaticLevel, Error>> {
   const { structSpecs, includeTypes = [], excludeTypes = [] } = options;
 
-  const resultJson = await pyodideRunner(
-    `rsrcdump.save_to_json(
+  try {
+    const resultJson = await pyodideRunner(
+      `rsrcdump.save_to_json(
+        buffer,
+        ${JSON.stringify(structSpecs)},
+        ${JSON.stringify(includeTypes)},
+        ${JSON.stringify(excludeTypes)}
+      )`,
       buffer,
-      ${JSON.stringify(structSpecs)},
-      ${JSON.stringify(includeTypes)},
-      ${JSON.stringify(excludeTypes)}
-    )`,
-    buffer,
-  );
+    );
 
-  return JSON.parse(resultJson);
+    return ok(JSON.parse(resultJson) as ottoMaticLevel);
+  } catch (error) {
+    return err(error instanceof Error ? error : new Error(String(error)));
+  }
 }
 
 /**
  * Parse a Nanosaur 1 level file (uses different format than other games)
  *
  * @param buffer - The raw .ter file data
- * @returns The parsed level data converted to ottoMaticLevel format
+ * @returns Result with the parsed level data converted to ottoMaticLevel format
  */
-export function parseNanosaur1Buffer(buffer: ArrayBuffer): ottoMaticLevel {
-  const rawLevelData = parseNanosaur1Level(buffer);
-  return nanosaur1LevelToOttoMaticLevel(rawLevelData);
+export function parseNanosaur1Buffer(buffer: ArrayBuffer): Result<ottoMaticLevel, Error> {
+  try {
+    const rawLevelData = parseNanosaur1Level(buffer);
+    return ok(nanosaur1LevelToOttoMaticLevel(rawLevelData));
+  } catch (error) {
+    return err(error instanceof Error ? error : new Error(String(error)));
+  }
 }
 
 /**
@@ -58,25 +67,30 @@ export function parseNanosaur1Buffer(buffer: ArrayBuffer): ottoMaticLevel {
  * @param levelData - The level data to serialize
  * @param options - Serialization options including struct specs
  * @param pyodideRunner - A function that runs pyodide code
- * @returns The serialized binary buffer
+ * @returns Result with the serialized binary buffer
  */
 export async function serializeLevelData(
   levelData: ottoMaticLevel,
   options: SerializeLevelOptions,
   pyodideRunner: (code: string, jsonData: object) => Promise<ArrayBuffer>,
-): Promise<ArrayBuffer> {
+): Promise<Result<ArrayBuffer, Error>> {
   const { structSpecs, onlyTypes = [], skipTypes = [], adf = true } = options;
 
-  return await pyodideRunner(
-    `rsrcdump.load_bytes_from_json(
-      json_buffer,
-      ${JSON.stringify(structSpecs)},
-      ${JSON.stringify(onlyTypes)},
-      ${JSON.stringify(skipTypes)},
-      ${adf ? "True" : "False"}
-    )`,
-    levelData,
-  );
+  try {
+    const result = await pyodideRunner(
+      `rsrcdump.load_bytes_from_json(
+        json_buffer,
+        ${JSON.stringify(structSpecs)},
+        ${JSON.stringify(onlyTypes)},
+        ${JSON.stringify(skipTypes)},
+        ${adf ? "True" : "False"}
+      )`,
+      levelData,
+    );
+    return ok(result);
+  } catch (error) {
+    return err(error instanceof Error ? error : new Error(String(error)));
+  }
 }
 
 /**
@@ -86,23 +100,23 @@ export async function serializeLevelData(
  * @param buffer - The raw binary level data
  * @param gameType - The game type configuration
  * @param pyodideRunner - A function that runs pyodide code (optional for Nanosaur 1)
- * @returns The parsed level data
+ * @returns Result with the parsed level data
  */
 export async function parseLevelForGame(
   buffer: ArrayBuffer,
   gameType: GlobalsInterface,
   pyodideRunner?: (code: string, buffer: ArrayBuffer) => Promise<string>,
-): Promise<ottoMaticLevel> {
+): Promise<Result<ottoMaticLevel, Error>> {
   if (gameType.GAME_TYPE === Game.NANOSAUR) {
     // Nanosaur 1 uses its own parser
     return parseNanosaur1Buffer(buffer);
   }
 
   if (!pyodideRunner) {
-    throw new Error("pyodideRunner is required for non-Nanosaur 1 games");
+    return err(new Error("pyodideRunner is required for non-Nanosaur 1 games"));
   }
 
-  const jsonData = await parseLevelBuffer(
+  const parseResult = await parseLevelBuffer(
     buffer,
     {
       structSpecs: gameType.STRUCT_SPECS,
@@ -110,10 +124,17 @@ export async function parseLevelForGame(
     pyodideRunner,
   );
 
-  // Apply preprocessing
-  preprocessJson(jsonData, gameType);
+  if (isErr(parseResult)) {
+    return parseResult;
+  }
 
-  return jsonData;
+  // Apply preprocessing
+  const preprocessResult = preprocessJson(parseResult.value, gameType);
+  if (isErr(preprocessResult)) {
+    return preprocessResult;
+  }
+
+  return ok(parseResult.value);
 }
 
 /**
@@ -123,7 +144,7 @@ export async function parseLevelForGame(
  * @param buffer - The raw binary level data
  * @param gameType - The game type configuration
  * @param pyodideRunner - Functions for running pyodide code
- * @returns Object containing original, serialized, and re-parsed data
+ * @returns Result with object containing original, serialized, and re-parsed data
  */
 export async function performRoundtrip(
   buffer: ArrayBuffer,
@@ -132,35 +153,51 @@ export async function performRoundtrip(
     parse: (code: string, buffer: ArrayBuffer) => Promise<string>;
     serialize: (code: string, jsonData: object) => Promise<ArrayBuffer>;
   },
-): Promise<{
+): Promise<Result<{
   original: ottoMaticLevel;
   serialized: ArrayBuffer;
   roundtrip: ottoMaticLevel;
-}> {
+}, Error>> {
   // Parse the original buffer
-  const original = await parseLevelForGame(
+  const originalResult = await parseLevelForGame(
     buffer,
     gameType,
     pyodideRunner.parse,
   );
 
+  if (isErr(originalResult)) {
+    return err(new Error(`Failed to parse original: ${originalResult.error.message}`));
+  }
+
   // Serialize back to binary
-  const serialized = await serializeLevelData(
-    original,
+  const serializedResult = await serializeLevelData(
+    originalResult.value,
     {
       structSpecs: gameType.STRUCT_SPECS,
     },
     pyodideRunner.serialize,
   );
 
+  if (isErr(serializedResult)) {
+    return err(new Error(`Failed to serialize: ${serializedResult.error.message}`));
+  }
+
   // Parse the serialized buffer
-  const roundtrip = await parseLevelForGame(
-    serialized,
+  const roundtripResult = await parseLevelForGame(
+    serializedResult.value,
     gameType,
     pyodideRunner.parse,
   );
 
-  return { original, serialized, roundtrip };
+  if (isErr(roundtripResult)) {
+    return err(new Error(`Failed to parse roundtrip: ${roundtripResult.error.message}`));
+  }
+
+  return ok({
+    original: originalResult.value,
+    serialized: serializedResult.value,
+    roundtrip: roundtripResult.value,
+  });
 }
 
 /**

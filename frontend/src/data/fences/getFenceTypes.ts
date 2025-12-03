@@ -11,21 +11,22 @@ import { FenceType as CroMagFenceType } from "./croMagFenceType";
 import { FenceType as Nanosaur2FenceType } from "./nanosaur2FenceType";
 //Otto Matic
 import { FenceType as OttoFenceType } from "./ottoFenceType";
+import { Result, ok, err } from "../../types/result";
 
-export function getFenceTypes(globals: GlobalsInterface) {
+export function getFenceTypes(globals: GlobalsInterface): Result<string[], Error> {
   if (globals.GAME_TYPE === Game.BILLY_FRONTIER) {
-    return Object.keys(BillyFenceType);
+    return ok(Object.keys(BillyFenceType));
   } else if (globals.GAME_TYPE === Game.BUGDOM) {
-    return Object.keys(BugdomFenceType);
+    return ok(Object.keys(BugdomFenceType));
   } else if (globals.GAME_TYPE === Game.BUGDOM_2) {
-    return Object.keys(Bugdom2FenceType);
+    return ok(Object.keys(Bugdom2FenceType));
   } else if (globals.GAME_TYPE === Game.CRO_MAG) {
-    return Object.keys(CroMagFenceType);
+    return ok(Object.keys(CroMagFenceType));
   } else if (globals.GAME_TYPE === Game.NANOSAUR_2) {
-    return Object.keys(Nanosaur2FenceType);
+    return ok(Object.keys(Nanosaur2FenceType));
   } else if (globals.GAME_TYPE === Game.OTTO_MATIC) {
-    return Object.keys(OttoFenceType);
+    return ok(Object.keys(OttoFenceType));
   }
 
-  throw new Error("Invalid Game Type");
+  return err(new Error("Invalid Game Type"));
 }

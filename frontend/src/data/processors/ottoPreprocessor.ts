@@ -2,9 +2,10 @@ import { Updater } from "use-immer";
 import { ottoMaticLevel } from "../../python/structSpecs/ottoMaticInterface";
 import { SPLINE_KEY_BASE } from "../../editor/subviews/splines/Spline";
 import { Game, GlobalsInterface } from "../globals/globals";
+import { Result, ok, err } from "../../types/result";
 
 // eslint-disable-next-line  @typescript-eslint/no-explicit-any
-export function preprocessJson(json: any, globals: GlobalsInterface) {
+export function preprocessJson(json: any, globals: GlobalsInterface): Result<void, Error> {
   console.log(json);
 
   // For Bugdom 1 and Nanosaur 1, Layr contains tile indices with flip/rotate bits - DO NOT MODIFY!
@@ -24,12 +25,28 @@ export function preprocessJson(json: any, globals: GlobalsInterface) {
 
     console.log("layrArr", layrArr);
     console.log("atrbArr", atrbArr);
+    
+    if (!Array.isArray(layrArr)) {
+      return err(new Error("Layr[1000].obj is not an array"));
+    }
+    if (!Array.isArray(atrbArr)) {
+      return err(new Error("Atrb[1000].obj is not an array"));
+    }
+    
     const newAtrbArr = [];
     const newLayrArr = [];
 
     for (let i = 0; i < layrArr.length; i++) {
       newLayrArr.push(i);
-      newAtrbArr.push(atrbArr[layrArr[i]]);
+      const layrIndex = layrArr[i];
+      if (layrIndex === undefined) {
+        return err(new Error(`Layr index ${i} is undefined`));
+      }
+      const atrbValue = atrbArr[layrIndex];
+      if (atrbValue === undefined) {
+        return err(new Error(`Atrb index ${layrIndex} is undefined`));
+      }
+      newAtrbArr.push(atrbValue);
     }
 
     console.log("newAtrbArr", newAtrbArr);
@@ -41,7 +58,11 @@ export function preprocessJson(json: any, globals: GlobalsInterface) {
   }
 
   if (json.Liqd) {
-    for (const waterItem of json.Liqd[1000].obj) {
+    const liquidObj = json.Liqd[1000]?.obj;
+    if (!Array.isArray(liquidObj)) {
+      return err(new Error("Liqd[1000].obj is not an array"));
+    }
+    for (const waterItem of liquidObj) {
       const nubs: [number, number][] = [];
 
       for (let i = 0; i < globals.LIQD_NUBS; i++) {
@@ -50,6 +71,8 @@ export function preprocessJson(json: any, globals: GlobalsInterface) {
       waterItem.nubs = nubs;
     }
   }
+  
+  return ok(undefined);
 }
 
 export function ottoPreprocessor(

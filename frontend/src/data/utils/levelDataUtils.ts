@@ -7,6 +7,7 @@ import {
   SplineData,
   TerrainData,
 } from "../../python/structSpecs/ottoMaticLevelData";
+import { Result, ok, err } from "../../types/result";
 
 /**
  * Utility functions for combining and splitting level data between atomic types
@@ -113,8 +114,9 @@ export function splitLevelData(
 
 /**
  * Combine atomic data types back into a complete ottoMaticLevel
+ * Returns a Result instead of throwing
  */
-export function combineLevelData(atomicData: AtomicLevelData): ottoMaticLevel {
+export function combineLevelData(atomicData: AtomicLevelData): Result<ottoMaticLevel, Error> {
   const {
     headerData,
     itemData,
@@ -133,18 +135,18 @@ export function combineLevelData(atomicData: AtomicLevelData): ottoMaticLevel {
     !splineData ||
     !terrainData
   ) {
-    throw new Error("Cannot combine level data: atomic data is incomplete");
+    return err(new Error("Cannot combine level data: atomic data is incomplete"));
   }
 
   // All pieces are non-null here; safe to spread and satisfy the full level type
-  return {
+  return ok({
     ...terrainData,
     ...headerData,
     ...itemData,
     ...liquidData,
     ...fenceData,
     ...splineData,
-  } satisfies ottoMaticLevel;
+  } satisfies ottoMaticLevel);
 }
 
 /**
