@@ -17,8 +17,14 @@ import { validateBytes } from "gltf-validator";
 
 describe("BG3D + Skeleton Roundtrip Tests with FULL ACCURACY", () => {
   // Test data paths - relative to this test file
-  const ottoBg3dPath = join(__dirname, "../../public/Otto.bg3d");
-  const ottoSkeletonPath = join(__dirname, "../../public/Otto.skeleton.rsrc");
+  const ottoBg3dPath = join(
+    __dirname,
+    "../../../games/ottomatic/Data/Skeletons/Otto.bg3d",
+  );
+  const ottoSkeletonPath = join(
+    __dirname,
+    "../../../games/ottomatic/Data/Skeletons/Otto.skeleton.rsrc",
+  );
 
   it("should achieve 100% semantic accuracy via double roundtrip test (no glTF extras)", async () => {
     console.log("=== DOUBLE ROUNDTRIP TEST (NO EXTRAS) ===");
@@ -54,13 +60,15 @@ describe("BG3D + Skeleton Roundtrip Tests with FULL ACCURACY", () => {
 
     // Convert to glTF WITHOUT storing original binary (no extras!)
     const gltf1 = await bg3dParsedToGLTF(originalBg3d);
-    
+
     // Debug: Check what extras were stored
     const gltf1Extras = gltf1.getRoot().getExtras();
     const hasSkeletonExtras = !!gltf1Extras?.bg3dFields?.skeletonExtras;
-    const hasKeyframeData = !!gltf1Extras?.bg3dFields?.skeletonExtras?.keyframeData;
-    const keyframeCount = gltf1Extras?.bg3dFields?.skeletonExtras?.keyframeData?.length || 0;
-    
+    const hasKeyframeData =
+      !!gltf1Extras?.bg3dFields?.skeletonExtras?.keyframeData;
+    const keyframeCount =
+      gltf1Extras?.bg3dFields?.skeletonExtras?.keyframeData?.length || 0;
+
     // Assert extras are being stored properly
     expect(hasSkeletonExtras).toBe(true);
     expect(hasKeyframeData).toBe(true);
@@ -84,25 +92,43 @@ describe("BG3D + Skeleton Roundtrip Tests with FULL ACCURACY", () => {
     const roundtrip1SkeletonResource = bg3dSkeletonToSkeletonResource(
       roundtrip1Result.skeleton!,
     );
-    
+
     // Debug: Check resource counts in RT1 skeleton
-    console.log('=== RT1 SKELETON RESOURCE COUNTS ===');
-    console.log('Hedr:', Object.keys(roundtrip1SkeletonResource.Hedr).length);
-    console.log('Bone:', Object.keys(roundtrip1SkeletonResource.Bone).length);
-    console.log('BonP:', Object.keys(roundtrip1SkeletonResource.BonP).length);
-    console.log('BonN:', Object.keys(roundtrip1SkeletonResource.BonN).length);
-    console.log('RelP:', Object.keys(roundtrip1SkeletonResource.RelP || {}).length);
-    console.log('AnHd:', Object.keys(roundtrip1SkeletonResource.AnHd).length);
-    console.log('Evnt:', Object.keys(roundtrip1SkeletonResource.Evnt).length);
-    console.log('NumK:', Object.keys(roundtrip1SkeletonResource.NumK).length);
-    console.log('KeyF:', Object.keys(roundtrip1SkeletonResource.KeyF).length);
-    console.log('alis:', Object.keys(roundtrip1SkeletonResource.alis || {}).length);
+    console.log("=== RT1 SKELETON RESOURCE COUNTS ===");
+    console.log("Hedr:", Object.keys(roundtrip1SkeletonResource.Hedr).length);
+    console.log("Bone:", Object.keys(roundtrip1SkeletonResource.Bone).length);
+    console.log("BonP:", Object.keys(roundtrip1SkeletonResource.BonP).length);
+    console.log("BonN:", Object.keys(roundtrip1SkeletonResource.BonN).length);
+    console.log(
+      "RelP:",
+      Object.keys(roundtrip1SkeletonResource.RelP || {}).length,
+    );
+    console.log("AnHd:", Object.keys(roundtrip1SkeletonResource.AnHd).length);
+    console.log("Evnt:", Object.keys(roundtrip1SkeletonResource.Evnt).length);
+    console.log("NumK:", Object.keys(roundtrip1SkeletonResource.NumK).length);
+    console.log("KeyF:", Object.keys(roundtrip1SkeletonResource.KeyF).length);
+    console.log(
+      "alis:",
+      Object.keys(roundtrip1SkeletonResource.alis || {}).length,
+    );
     // Debug: Show alis structure
-    console.log('alis structure:', JSON.stringify(roundtrip1SkeletonResource.alis, null, 2).substring(0, 500));
+    console.log(
+      "alis structure:",
+      JSON.stringify(roundtrip1SkeletonResource.alis, null, 2).substring(
+        0,
+        500,
+      ),
+    );
     // Debug: Show BG3DSkeleton data
-    console.log('RT1 skeleton.alisData keys:', Object.keys(roundtrip1Result.skeleton!.alisData || {}).length);
-    console.log('RT1 skeleton.relPoints keys:', Object.keys(roundtrip1Result.skeleton!.relPoints || {}).length);
-    
+    console.log(
+      "RT1 skeleton.alisData keys:",
+      Object.keys(roundtrip1Result.skeleton!.alisData || {}).length,
+    );
+    console.log(
+      "RT1 skeleton.relPoints keys:",
+      Object.keys(roundtrip1Result.skeleton!.relPoints || {}).length,
+    );
+
     const roundtrip1SkeletonBinary = await skeletonResourceToBinary(
       roundtrip1SkeletonResource,
     );
@@ -141,22 +167,34 @@ describe("BG3D + Skeleton Roundtrip Tests with FULL ACCURACY", () => {
     const roundtrip2SkeletonResource = bg3dSkeletonToSkeletonResource(
       roundtrip2Result.skeleton!,
     );
-    
+
     // Debug: Check resource counts in RT2 skeleton
-    console.log('=== RT2 SKELETON RESOURCE COUNTS ===');
-    console.log('Hedr:', Object.keys(roundtrip2SkeletonResource.Hedr).length);
-    console.log('Bone:', Object.keys(roundtrip2SkeletonResource.Bone).length);
-    console.log('BonP:', Object.keys(roundtrip2SkeletonResource.BonP).length);
-    console.log('BonN:', Object.keys(roundtrip2SkeletonResource.BonN).length);
-    console.log('RelP:', Object.keys(roundtrip2SkeletonResource.RelP || {}).length);
-    console.log('AnHd:', Object.keys(roundtrip2SkeletonResource.AnHd).length);
-    console.log('Evnt:', Object.keys(roundtrip2SkeletonResource.Evnt).length);
-    console.log('NumK:', Object.keys(roundtrip2SkeletonResource.NumK).length);
-    console.log('KeyF:', Object.keys(roundtrip2SkeletonResource.KeyF).length);
-    console.log('alis:', Object.keys(roundtrip2SkeletonResource.alis || {}).length);
+    console.log("=== RT2 SKELETON RESOURCE COUNTS ===");
+    console.log("Hedr:", Object.keys(roundtrip2SkeletonResource.Hedr).length);
+    console.log("Bone:", Object.keys(roundtrip2SkeletonResource.Bone).length);
+    console.log("BonP:", Object.keys(roundtrip2SkeletonResource.BonP).length);
+    console.log("BonN:", Object.keys(roundtrip2SkeletonResource.BonN).length);
+    console.log(
+      "RelP:",
+      Object.keys(roundtrip2SkeletonResource.RelP || {}).length,
+    );
+    console.log("AnHd:", Object.keys(roundtrip2SkeletonResource.AnHd).length);
+    console.log("Evnt:", Object.keys(roundtrip2SkeletonResource.Evnt).length);
+    console.log("NumK:", Object.keys(roundtrip2SkeletonResource.NumK).length);
+    console.log("KeyF:", Object.keys(roundtrip2SkeletonResource.KeyF).length);
+    console.log(
+      "alis:",
+      Object.keys(roundtrip2SkeletonResource.alis || {}).length,
+    );
     // Debug: Show alis structure
-    console.log('alis structure:', JSON.stringify(roundtrip2SkeletonResource.alis, null, 2).substring(0, 500));
-    
+    console.log(
+      "alis structure:",
+      JSON.stringify(roundtrip2SkeletonResource.alis, null, 2).substring(
+        0,
+        500,
+      ),
+    );
+
     const roundtrip2SkeletonBinary = await skeletonResourceToBinary(
       roundtrip2SkeletonResource,
     );
@@ -167,23 +205,29 @@ describe("BG3D + Skeleton Roundtrip Tests with FULL ACCURACY", () => {
     console.log(
       `Second roundtrip Skeleton: ${roundtrip2SkeletonBinary.byteLength} bytes`,
     );
-    
+
     // Debug: Compare first bone resource
-    console.log('\n=== FIRST BONE RESOURCE COMPARISON ===');
+    console.log("\n=== FIRST BONE RESOURCE COMPARISON ===");
     const rt1Bone1000 = roundtrip1SkeletonResource.Bone["1000"];
     const rt2Bone1000 = roundtrip2SkeletonResource.Bone["1000"];
-    console.log('RT1 Bone 1000:', JSON.stringify(rt1Bone1000, null, 2).substring(0, 500));
-    console.log('RT2 Bone 1000:', JSON.stringify(rt2Bone1000, null, 2).substring(0, 500));
-    
-    // Debug: Compare first keyframe resource 
-    console.log('\n=== FIRST KEYFRAME RESOURCE COMPARISON ===');
+    console.log(
+      "RT1 Bone 1000:",
+      JSON.stringify(rt1Bone1000, null, 2).substring(0, 500),
+    );
+    console.log(
+      "RT2 Bone 1000:",
+      JSON.stringify(rt2Bone1000, null, 2).substring(0, 500),
+    );
+
+    // Debug: Compare first keyframe resource
+    console.log("\n=== FIRST KEYFRAME RESOURCE COMPARISON ===");
     const rt1KeyF1000 = roundtrip1SkeletonResource.KeyF["1000"];
     const rt2KeyF1000 = roundtrip2SkeletonResource.KeyF["1000"];
-    console.log('RT1 KeyF 1000 count:', rt1KeyF1000?.obj?.length || 0);
-    console.log('RT2 KeyF 1000 count:', rt2KeyF1000?.obj?.length || 0);
+    console.log("RT1 KeyF 1000 count:", rt1KeyF1000?.obj?.length || 0);
+    console.log("RT2 KeyF 1000 count:", rt2KeyF1000?.obj?.length || 0);
     if (rt1KeyF1000?.obj?.[0] && rt2KeyF1000?.obj?.[0]) {
-      console.log('RT1 KeyF 1000 first:', JSON.stringify(rt1KeyF1000.obj[0]));
-      console.log('RT2 KeyF 1000 first:', JSON.stringify(rt2KeyF1000.obj[0]));
+      console.log("RT1 KeyF 1000 first:", JSON.stringify(rt1KeyF1000.obj[0]));
+      console.log("RT2 KeyF 1000 first:", JSON.stringify(rt2KeyF1000.obj[0]));
     }
 
     // ===== COMPARE FIRST AND SECOND ROUNDTRIP =====
@@ -194,73 +238,135 @@ describe("BG3D + Skeleton Roundtrip Tests with FULL ACCURACY", () => {
     const rt2BoneCount = roundtrip2Result.skeleton!.bones.length;
     const rt1AnimCount = roundtrip1Result.skeleton!.animations.length;
     const rt2AnimCount = roundtrip2Result.skeleton!.animations.length;
-    console.log(`RT1 Skeleton: ${rt1BoneCount} bones, ${rt1AnimCount} animations`);
-    console.log(`RT2 Skeleton: ${rt2BoneCount} bones, ${rt2AnimCount} animations`);
-    
+    console.log(
+      `RT1 Skeleton: ${rt1BoneCount} bones, ${rt1AnimCount} animations`,
+    );
+    console.log(
+      `RT2 Skeleton: ${rt2BoneCount} bones, ${rt2AnimCount} animations`,
+    );
+
     // Debug: Compare bone rest positions
     console.log(`\n=== BONE REST POSITION COMPARISON ===`);
     for (let i = 0; i < Math.min(3, rt1BoneCount); i++) {
       const rt1Bone = roundtrip1Result.skeleton!.bones[i];
       const rt2Bone = roundtrip2Result.skeleton!.bones[i];
       console.log(`Bone ${i} (${rt1Bone.name}):`);
-      console.log(`  RT1 coord: [${rt1Bone.coordX.toFixed(6)}, ${rt1Bone.coordY.toFixed(6)}, ${rt1Bone.coordZ.toFixed(6)}]`);
-      console.log(`  RT2 coord: [${rt2Bone.coordX.toFixed(6)}, ${rt2Bone.coordY.toFixed(6)}, ${rt2Bone.coordZ.toFixed(6)}]`);
-      console.log(`  diff:      [${Math.abs(rt1Bone.coordX - rt2Bone.coordX).toFixed(10)}, ${Math.abs(rt1Bone.coordY - rt2Bone.coordY).toFixed(10)}, ${Math.abs(rt1Bone.coordZ - rt2Bone.coordZ).toFixed(10)}]`);
+      console.log(
+        `  RT1 coord: [${rt1Bone.coordX.toFixed(6)}, ${rt1Bone.coordY.toFixed(
+          6,
+        )}, ${rt1Bone.coordZ.toFixed(6)}]`,
+      );
+      console.log(
+        `  RT2 coord: [${rt2Bone.coordX.toFixed(6)}, ${rt2Bone.coordY.toFixed(
+          6,
+        )}, ${rt2Bone.coordZ.toFixed(6)}]`,
+      );
+      console.log(
+        `  diff:      [${Math.abs(rt1Bone.coordX - rt2Bone.coordX).toFixed(
+          10,
+        )}, ${Math.abs(rt1Bone.coordY - rt2Bone.coordY).toFixed(
+          10,
+        )}, ${Math.abs(rt1Bone.coordZ - rt2Bone.coordZ).toFixed(10)}]`,
+      );
     }
     console.log(`=== END BONE COMPARISON ===\n`);
-    
+
     // Assert structure matches
     expect(rt1BoneCount).toBe(rt2BoneCount);
     expect(rt1AnimCount).toBe(rt2AnimCount);
-    
+
     // Check animation keyframe counts
     if (rt1AnimCount > 0 && rt2AnimCount > 0) {
       const rt1Anim = roundtrip1Result.skeleton!.animations[0];
       const rt2Anim = roundtrip2Result.skeleton!.animations[0];
       const rt1BoneWithKfCount = Object.keys(rt1Anim.keyframes).length;
       const rt2BoneWithKfCount = Object.keys(rt2Anim.keyframes).length;
-      console.log(`First animation - RT1: ${rt1BoneWithKfCount} bones with keyframes, RT2: ${rt2BoneWithKfCount} bones with keyframes`);
-      
+      console.log(
+        `First animation - RT1: ${rt1BoneWithKfCount} bones with keyframes, RT2: ${rt2BoneWithKfCount} bones with keyframes`,
+      );
+
       // This is likely the issue - bones with keyframes differ between roundtrips
       expect(rt1BoneWithKfCount).toBe(rt2BoneWithKfCount);
-      
+
       // Compare ALL bones with keyframes to find differences
-      const rt1BoneKeys = Object.keys(rt1Anim.keyframes).sort((a, b) => parseInt(a) - parseInt(b));
-      const rt2BoneKeys = Object.keys(rt2Anim.keyframes).sort((a, b) => parseInt(a) - parseInt(b));
-      
+      const rt1BoneKeys = Object.keys(rt1Anim.keyframes).sort(
+        (a, b) => parseInt(a) - parseInt(b),
+      );
+      const rt2BoneKeys = Object.keys(rt2Anim.keyframes).sort(
+        (a, b) => parseInt(a) - parseInt(b),
+      );
+
       console.log(`\n=== DETAILED KEYFRAME COMPARISON ===`);
-      
+
       // Check if same bones have keyframes
-      const keysMatch = rt1BoneKeys.join(',') === rt2BoneKeys.join(',');
+      const keysMatch = rt1BoneKeys.join(",") === rt2BoneKeys.join(",");
       console.log(`Same bones have keyframes: ${keysMatch}`);
       if (!keysMatch) {
-        console.log(`  RT1 bones: [${rt1BoneKeys.join(', ')}]`);
-        console.log(`  RT2 bones: [${rt2BoneKeys.join(', ')}]`);
+        console.log(`  RT1 bones: [${rt1BoneKeys.join(", ")}]`);
+        console.log(`  RT2 bones: [${rt2BoneKeys.join(", ")}]`);
       }
-      
+
       // Compare first 3 bones in detail
       for (let bi = 0; bi < Math.min(3, rt1BoneKeys.length); bi++) {
         const boneKey = rt1BoneKeys[bi];
         const rt1Kfs = rt1Anim.keyframes[parseInt(boneKey)];
         const rt2Kfs = rt2Anim.keyframes[parseInt(boneKey)];
-        const boneName = roundtrip1Result.skeleton!.bones[parseInt(boneKey)]?.name || `bone_${boneKey}`;
-        
+        const boneName =
+          roundtrip1Result.skeleton!.bones[parseInt(boneKey)]?.name ||
+          `bone_${boneKey}`;
+
         console.log(`\nBone ${boneKey} (${boneName}):`);
-        console.log(`  RT1: ${rt1Kfs?.length || 0} keyframes, RT2: ${rt2Kfs?.length || 0} keyframes`);
-        
+        console.log(
+          `  RT1: ${rt1Kfs?.length || 0} keyframes, RT2: ${
+            rt2Kfs?.length || 0
+          } keyframes`,
+        );
+
         if (rt1Kfs && rt2Kfs) {
           // Compare first keyframe
           if (rt1Kfs.length > 0 && rt2Kfs.length > 0) {
             const kf1 = rt1Kfs[0];
             const kf2 = rt2Kfs[0];
             console.log(`  First keyframe comparison:`);
-            console.log(`    tick:  RT1=${kf1.tick}, RT2=${kf2.tick}, match=${kf1.tick === kf2.tick}`);
-            console.log(`    coord: RT1=[${kf1.coordX.toFixed(6)}, ${kf1.coordY.toFixed(6)}, ${kf1.coordZ.toFixed(6)}]`);
-            console.log(`           RT2=[${kf2.coordX.toFixed(6)}, ${kf2.coordY.toFixed(6)}, ${kf2.coordZ.toFixed(6)}]`);
-            console.log(`    diff:  [${Math.abs(kf1.coordX - kf2.coordX).toFixed(6)}, ${Math.abs(kf1.coordY - kf2.coordY).toFixed(6)}, ${Math.abs(kf1.coordZ - kf2.coordZ).toFixed(6)}]`);
-            console.log(`    rot:   RT1=[${kf1.rotationX.toFixed(6)}, ${kf1.rotationY.toFixed(6)}, ${kf1.rotationZ.toFixed(6)}]`);
-            console.log(`           RT2=[${kf2.rotationX.toFixed(6)}, ${kf2.rotationY.toFixed(6)}, ${kf2.rotationZ.toFixed(6)}]`);
-            console.log(`    rdiff: [${Math.abs(kf1.rotationX - kf2.rotationX).toFixed(6)}, ${Math.abs(kf1.rotationY - kf2.rotationY).toFixed(6)}, ${Math.abs(kf1.rotationZ - kf2.rotationZ).toFixed(6)}]`);
+            console.log(
+              `    tick:  RT1=${kf1.tick}, RT2=${kf2.tick}, match=${
+                kf1.tick === kf2.tick
+              }`,
+            );
+            console.log(
+              `    coord: RT1=[${kf1.coordX.toFixed(6)}, ${kf1.coordY.toFixed(
+                6,
+              )}, ${kf1.coordZ.toFixed(6)}]`,
+            );
+            console.log(
+              `           RT2=[${kf2.coordX.toFixed(6)}, ${kf2.coordY.toFixed(
+                6,
+              )}, ${kf2.coordZ.toFixed(6)}]`,
+            );
+            console.log(
+              `    diff:  [${Math.abs(kf1.coordX - kf2.coordX).toFixed(
+                6,
+              )}, ${Math.abs(kf1.coordY - kf2.coordY).toFixed(6)}, ${Math.abs(
+                kf1.coordZ - kf2.coordZ,
+              ).toFixed(6)}]`,
+            );
+            console.log(
+              `    rot:   RT1=[${kf1.rotationX.toFixed(
+                6,
+              )}, ${kf1.rotationY.toFixed(6)}, ${kf1.rotationZ.toFixed(6)}]`,
+            );
+            console.log(
+              `           RT2=[${kf2.rotationX.toFixed(
+                6,
+              )}, ${kf2.rotationY.toFixed(6)}, ${kf2.rotationZ.toFixed(6)}]`,
+            );
+            console.log(
+              `    rdiff: [${Math.abs(kf1.rotationX - kf2.rotationX).toFixed(
+                6,
+              )}, ${Math.abs(kf1.rotationY - kf2.rotationY).toFixed(
+                6,
+              )}, ${Math.abs(kf1.rotationZ - kf2.rotationZ).toFixed(6)}]`,
+            );
           }
         }
       }
@@ -319,14 +425,20 @@ describe("BG3D + Skeleton Roundtrip Tests with FULL ACCURACY", () => {
         4,
       )}% (${skeletonMismatches} mismatches out of ${maxSkeletonLength} bytes)`,
     );
-    
+
     // Debug: Find first mismatching bytes to understand what's different
     if (skeletonMismatches > 0) {
       console.log("\n=== FIRST 10 SKELETON BYTE MISMATCHES ===");
       let mismatchCount = 0;
       for (let i = 0; i < minSkeletonLength && mismatchCount < 10; i++) {
         if (rt1SkeletonArray[i] !== rt2SkeletonArray[i]) {
-          console.log(`  Byte ${i}: RT1=0x${rt1SkeletonArray[i].toString(16).padStart(2, '0')} RT2=0x${rt2SkeletonArray[i].toString(16).padStart(2, '0')}`);
+          console.log(
+            `  Byte ${i}: RT1=0x${rt1SkeletonArray[i]
+              .toString(16)
+              .padStart(2, "0")} RT2=0x${rt2SkeletonArray[i]
+              .toString(16)
+              .padStart(2, "0")}`,
+          );
           mismatchCount++;
         }
       }

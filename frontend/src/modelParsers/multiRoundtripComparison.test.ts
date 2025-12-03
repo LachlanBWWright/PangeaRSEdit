@@ -23,8 +23,14 @@ describe("Multi-Roundtrip Semantic Accuracy", () => {
     console.log("=".repeat(80));
 
     // Load original files
-    const ottoBg3dPath = join(__dirname, "../../public/Otto.bg3d");
-    const ottoSkeletonPath = join(__dirname, "../../public/Otto.skeleton.rsrc");
+    const ottoBg3dPath = join(
+      __dirname,
+      "../../../games/ottomatic/Data/Skeletons/Otto.bg3d",
+    );
+    const ottoSkeletonPath = join(
+      __dirname,
+      "../../../games/ottomatic/Data/Skeletons/Otto.skeleton.rsrc",
+    );
     const originalBg3dData = readFileSync(ottoBg3dPath);
     const originalSkeletonData = readFileSync(ottoSkeletonPath);
 

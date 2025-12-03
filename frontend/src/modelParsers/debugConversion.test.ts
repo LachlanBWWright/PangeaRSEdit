@@ -6,8 +6,14 @@ import { readFileSync } from "fs";
 import { join } from "path";
 
 describe("Debug Conversion", () => {
-  const ottoBg3dPath = join(__dirname, "../../public/Otto.bg3d");
-  const ottoSkeletonPath = join(__dirname, "../../public/Otto.skeleton.rsrc");
+  const ottoBg3dPath = join(
+    __dirname,
+    "../../../games/ottomatic/Data/Skeletons/Otto.bg3d",
+  );
+  const ottoSkeletonPath = join(
+    __dirname,
+    "../../../games/ottomatic/Data/Skeletons/Otto.skeleton.rsrc",
+  );
 
   it("should show what happens in the conversion", async () => {
     // Load original files

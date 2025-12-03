@@ -22,8 +22,14 @@ import { NodeIO } from "@gltf-transform/core";
 import { validateBytes } from "gltf-validator";
 
 describe("Comprehensive Skeleton Value Validation", () => {
-  const ottoBg3dPath = join(__dirname, "../../public/Otto.bg3d");
-  const ottoSkeletonPath = join(__dirname, "../../public/Otto.skeleton.rsrc");
+  const ottoBg3dPath = join(
+    __dirname,
+    "../../../games/ottomatic/Data/Skeletons/Otto.bg3d",
+  );
+  const ottoSkeletonPath = join(
+    __dirname,
+    "../../../games/ottomatic/Data/Skeletons/Otto.skeleton.rsrc",
+  );
 
   interface ValidationResult {
     boneHierarchy: boolean;
@@ -33,9 +39,21 @@ describe("Comprehensive Skeleton Value Validation", () => {
     gltfCompliance: boolean;
     details: {
       boneCount: { original: number; roundtrip: number };
-      coordinateErrors: Array<{ bone: string; original: [number, number, number]; roundtrip: [number, number, number] }>;
-      vertexBindingErrors: Array<{ bone: string; originalCount: number; roundtripCount: number }>;
-      animationErrors: Array<{ anim: string; originalChannels: number; roundtripChannels: number }>;
+      coordinateErrors: Array<{
+        bone: string;
+        original: [number, number, number];
+        roundtrip: [number, number, number];
+      }>;
+      vertexBindingErrors: Array<{
+        bone: string;
+        originalCount: number;
+        roundtripCount: number;
+      }>;
+      animationErrors: Array<{
+        anim: string;
+        originalChannels: number;
+        roundtripChannels: number;
+      }>;
       gltfValidationErrors: number;
     };
   }
@@ -49,14 +67,14 @@ describe("Comprehensive Skeleton Value Validation", () => {
 
     // Parse original
     const originalSkeletonResource = parseSkeletonRsrcTS(
-      new Uint8Array(originalSkeletonData)
+      new Uint8Array(originalSkeletonData),
     );
     const originalBg3d = parseBG3D(
       originalBg3dData.buffer.slice(
         originalBg3dData.byteOffset,
-        originalBg3dData.byteOffset + originalBg3dData.byteLength
+        originalBg3dData.byteOffset + originalBg3dData.byteLength,
       ),
-      originalSkeletonResource
+      originalSkeletonResource,
     );
 
     // Execute roundtrip
@@ -72,13 +90,13 @@ describe("Comprehensive Skeleton Value Validation", () => {
       details: {
         boneCount: {
           original: originalBg3d.skeleton?.bones.length || 0,
-          roundtrip: roundtripResult.skeleton?.bones.length || 0
+          roundtrip: roundtripResult.skeleton?.bones.length || 0,
         },
         coordinateErrors: [],
         vertexBindingErrors: [],
         animationErrors: [],
-        gltfValidationErrors: 0
-      }
+        gltfValidationErrors: 0,
+      },
     };
 
     // 1. Validate Bone Hierarchy Structure
@@ -94,7 +112,9 @@ describe("Comprehensive Skeleton Value Validation", () => {
 
     if (origBones.length !== rtBones.length) {
       result.boneHierarchy = false;
-      console.error(`❌ Bone count mismatch: ${origBones.length} vs ${rtBones.length}`);
+      console.error(
+        `❌ Bone count mismatch: ${origBones.length} vs ${rtBones.length}`,
+      );
     }
 
     // Check each bone
@@ -106,16 +126,22 @@ describe("Comprehensive Skeleton Value Validation", () => {
       // Name check
       if (origBone.name !== rtBone.name) {
         result.boneHierarchy = false;
-        console.error(`❌ Bone ${index} name mismatch: "${origBone.name}" vs "${rtBone.name}"`);
+        console.error(
+          `❌ Bone ${index} name mismatch: "${origBone.name}" vs "${rtBone.name}"`,
+        );
       }
 
       // Parent check
       if (origBone.parentBone !== rtBone.parentBone) {
         result.boneHierarchy = false;
-        console.error(`❌ Bone ${index} (${origBone.name}) parent mismatch: ${origBone.parentBone} vs ${rtBone.parentBone}`);
+        console.error(
+          `❌ Bone ${index} (${origBone.name}) parent mismatch: ${origBone.parentBone} vs ${rtBone.parentBone}`,
+        );
       }
 
-      console.log(`✅ Bone ${index}: "${origBone.name}" parent=${origBone.parentBone}`);
+      console.log(
+        `✅ Bone ${index}: "${origBone.name}" parent=${origBone.parentBone}`,
+      );
     });
 
     // 2. Validate Coordinate System Conversion
@@ -124,27 +150,46 @@ describe("Comprehensive Skeleton Value Validation", () => {
       if (index >= rtBones.length) return;
 
       const rtBone = rtBones[index];
-      const origCoords: [number, number, number] = [origBone.coordX, origBone.coordY, origBone.coordZ];
-      const rtCoords: [number, number, number] = [rtBone.coordX, rtBone.coordY, rtBone.coordZ];
+      const origCoords: [number, number, number] = [
+        origBone.coordX,
+        origBone.coordY,
+        origBone.coordZ,
+      ];
+      const rtCoords: [number, number, number] = [
+        rtBone.coordX,
+        rtBone.coordY,
+        rtBone.coordZ,
+      ];
 
       // Allow for coordinate system conversion (right-handed Otto → left-handed glTF → right-handed Otto)
       // The Z coordinate should be negated in the roundtrip due to the conversion
-      const expectedRtCoords: [number, number, number] = [origBone.coordX, origBone.coordY, -origBone.coordZ];
+      const expectedRtCoords: [number, number, number] = [
+        origBone.coordX,
+        origBone.coordY,
+        -origBone.coordZ,
+      ];
 
       const coordDiff = Math.sqrt(
         Math.pow(rtCoords[0] - expectedRtCoords[0], 2) +
-        Math.pow(rtCoords[1] - expectedRtCoords[1], 2) +
-        Math.pow(rtCoords[2] - expectedRtCoords[2], 2)
+          Math.pow(rtCoords[1] - expectedRtCoords[1], 2) +
+          Math.pow(rtCoords[2] - expectedRtCoords[2], 2),
       );
 
-      if (coordDiff > 0.001) { // Allow small floating point errors
+      if (coordDiff > 0.001) {
+        // Allow small floating point errors
         result.coordinates = false;
         result.details.coordinateErrors.push({
           bone: origBone.name,
           original: origCoords,
-          roundtrip: rtCoords
+          roundtrip: rtCoords,
         });
-        console.error(`❌ Bone ${index} (${origBone.name}) coordinate error: [${origCoords.join(',')}] vs [${rtCoords.join(',')}] (expected: [${expectedRtCoords.join(',')}])`);
+        console.error(
+          `❌ Bone ${index} (${
+            origBone.name
+          }) coordinate error: [${origCoords.join(",")}] vs [${rtCoords.join(
+            ",",
+          )}] (expected: [${expectedRtCoords.join(",")}])`,
+        );
       } else {
         console.log(`✅ Bone ${index}: "${origBone.name}" coords OK`);
       }
@@ -166,17 +211,25 @@ describe("Comprehensive Skeleton Value Validation", () => {
         result.details.vertexBindingErrors.push({
           bone: origBone.name,
           originalCount: origPoints.length,
-          roundtripCount: rtPoints.length
+          roundtripCount: rtPoints.length,
         });
-        console.error(`❌ Bone ${index} (${origBone.name}) point count: ${origPoints.length} vs ${rtPoints.length}`);
+        console.error(
+          `❌ Bone ${index} (${origBone.name}) point count: ${origPoints.length} vs ${rtPoints.length}`,
+        );
       } else {
         // Check if arrays are identical
-        const pointsMatch = origPoints.every((val, idx) => val === rtPoints[idx]);
+        const pointsMatch = origPoints.every(
+          (val, idx) => val === rtPoints[idx],
+        );
         if (!pointsMatch) {
           result.vertexBinding = false;
-          console.error(`❌ Bone ${index} (${origBone.name}) point indices don't match`);
+          console.error(
+            `❌ Bone ${index} (${origBone.name}) point indices don't match`,
+          );
         } else {
-          console.log(`✅ Bone ${index}: "${origBone.name}" points OK (${origPoints.length})`);
+          console.log(
+            `✅ Bone ${index}: "${origBone.name}" points OK (${origPoints.length})`,
+          );
         }
       }
 
@@ -186,7 +239,9 @@ describe("Comprehensive Skeleton Value Validation", () => {
 
       if (origNormals.length !== rtNormals.length) {
         result.vertexBinding = false;
-        console.error(`❌ Bone ${index} (${origBone.name}) normal count: ${origNormals.length} vs ${rtNormals.length}`);
+        console.error(
+          `❌ Bone ${index} (${origBone.name}) normal count: ${origNormals.length} vs ${rtNormals.length}`,
+        );
       }
     });
 
@@ -197,7 +252,9 @@ describe("Comprehensive Skeleton Value Validation", () => {
 
     if (origAnims.length !== rtAnims.length) {
       result.animations = false;
-      console.error(`❌ Animation count mismatch: ${origAnims.length} vs ${rtAnims.length}`);
+      console.error(
+        `❌ Animation count mismatch: ${origAnims.length} vs ${rtAnims.length}`,
+      );
     }
 
     origAnims.forEach((origAnim, animIndex) => {
@@ -207,7 +264,9 @@ describe("Comprehensive Skeleton Value Validation", () => {
 
       if (origAnim.name !== rtAnim.name) {
         result.animations = false;
-        console.error(`❌ Animation ${animIndex} name mismatch: "${origAnim.name}" vs "${rtAnim.name}"`);
+        console.error(
+          `❌ Animation ${animIndex} name mismatch: "${origAnim.name}" vs "${rtAnim.name}"`,
+        );
       }
 
       // Count channels (keyframes per bone)
@@ -219,11 +278,15 @@ describe("Comprehensive Skeleton Value Validation", () => {
         result.details.animationErrors.push({
           anim: origAnim.name,
           originalChannels: origChannels,
-          roundtripChannels: rtChannels
+          roundtripChannels: rtChannels,
         });
-        console.error(`❌ Animation ${animIndex} (${origAnim.name}) channels: ${origChannels} vs ${rtChannels}`);
+        console.error(
+          `❌ Animation ${animIndex} (${origAnim.name}) channels: ${origChannels} vs ${rtChannels}`,
+        );
       } else {
-        console.log(`✅ Animation ${animIndex}: "${origAnim.name}" channels OK (${origChannels})`);
+        console.log(
+          `✅ Animation ${animIndex}: "${origAnim.name}" channels OK (${origChannels})`,
+        );
       }
     });
 
@@ -237,10 +300,15 @@ describe("Comprehensive Skeleton Value Validation", () => {
 
     if (validation.issues.numErrors > 0) {
       result.gltfCompliance = false;
-      console.error(`❌ glTF validation errors: ${validation.issues.numErrors}`);
+      console.error(
+        `❌ glTF validation errors: ${validation.issues.numErrors}`,
+      );
       validation.issues.messages.forEach((msg, i) => {
-        if (i < 5) { // Show first 5 errors
-          console.error(`   ${msg.severity === 0 ? 'ERROR' : 'WARNING'}: ${msg.message}`);
+        if (i < 5) {
+          // Show first 5 errors
+          console.error(
+            `   ${msg.severity === 0 ? "ERROR" : "WARNING"}: ${msg.message}`,
+          );
         }
       });
     } else {
@@ -263,18 +331,24 @@ describe("Comprehensive Skeleton Value Validation", () => {
     const result = validateSkeletonRoundtrip();
 
     console.log("\n=== VALIDATION SUMMARY ===");
-    console.log(`Bone Hierarchy: ${result.boneHierarchy ? '✅' : '❌'}`);
-    console.log(`Coordinates: ${result.coordinates ? '✅' : '❌'}`);
-    console.log(`Vertex Binding: ${result.vertexBinding ? '✅' : '❌'}`);
-    console.log(`Animations: ${result.animations ? '✅' : '❌'}`);
-    console.log(`glTF Compliance: ${result.gltfCompliance ? '✅' : '❌'}`);
+    console.log(`Bone Hierarchy: ${result.boneHierarchy ? "✅" : "❌"}`);
+    console.log(`Coordinates: ${result.coordinates ? "✅" : "❌"}`);
+    console.log(`Vertex Binding: ${result.vertexBinding ? "✅" : "❌"}`);
+    console.log(`Animations: ${result.animations ? "✅" : "❌"}`);
+    console.log(`glTF Compliance: ${result.gltfCompliance ? "✅" : "❌"}`);
 
     console.log("\n=== DETAILED RESULTS ===");
-    console.log(`Bone Count: ${result.details.boneCount.original} → ${result.details.boneCount.roundtrip}`);
+    console.log(
+      `Bone Count: ${result.details.boneCount.original} → ${result.details.boneCount.roundtrip}`,
+    );
     console.log(`Coordinate Errors: ${result.details.coordinateErrors.length}`);
-    console.log(`Vertex Binding Errors: ${result.details.vertexBindingErrors.length}`);
+    console.log(
+      `Vertex Binding Errors: ${result.details.vertexBindingErrors.length}`,
+    );
     console.log(`Animation Errors: ${result.details.animationErrors.length}`);
-    console.log(`glTF Validation Errors: ${result.details.gltfValidationErrors}`);
+    console.log(
+      `glTF Validation Errors: ${result.details.gltfValidationErrors}`,
+    );
 
     // All validations should pass
     expect(result.boneHierarchy).toBe(true);
@@ -292,14 +366,14 @@ describe("Comprehensive Skeleton Value Validation", () => {
     const originalSkeletonData = readFileSync(ottoSkeletonPath);
 
     const originalSkeletonResource = parseSkeletonRsrcTS(
-      new Uint8Array(originalSkeletonData)
+      new Uint8Array(originalSkeletonData),
     );
     const originalBg3d = parseBG3D(
       originalBg3dData.buffer.slice(
         originalBg3dData.byteOffset,
-        originalBg3dData.byteOffset + originalBg3dData.byteLength
+        originalBg3dData.byteOffset + originalBg3dData.byteLength,
       ),
-      originalSkeletonResource
+      originalSkeletonResource,
     );
 
     // Convert to glTF
@@ -311,46 +385,63 @@ describe("Comprehensive Skeleton Value Validation", () => {
     let verticesWithUniformWeights = 0; // All weights = 1.0
     let totalWeightSum = 0;
 
-    gltfDoc.getRoot().listMeshes().forEach((mesh) => {
-      mesh.listPrimitives().forEach((prim) => {
-        const jointsAcc = prim.getAttribute("JOINTS_0");
-        const weightsAcc = prim.getAttribute("WEIGHTS_0");
+    gltfDoc
+      .getRoot()
+      .listMeshes()
+      .forEach((mesh) => {
+        mesh.listPrimitives().forEach((prim) => {
+          const jointsAcc = prim.getAttribute("JOINTS_0");
+          const weightsAcc = prim.getAttribute("WEIGHTS_0");
 
-        if (jointsAcc && weightsAcc) {
-          const weightsArray = weightsAcc.getArray() as Float32Array;
-          const numVertices = weightsAcc.getCount();
+          if (jointsAcc && weightsAcc) {
+            const weightsArray = weightsAcc.getArray() as Float32Array;
+            const numVertices = weightsAcc.getCount();
 
-          totalVertices += numVertices;
+            totalVertices += numVertices;
 
-          for (let i = 0; i < numVertices; i++) {
-            const weightSum = weightsArray[i * 4] + weightsArray[i * 4 + 1] +
-                             weightsArray[i * 4 + 2] + weightsArray[i * 4 + 3];
+            for (let i = 0; i < numVertices; i++) {
+              const weightSum =
+                weightsArray[i * 4] +
+                weightsArray[i * 4 + 1] +
+                weightsArray[i * 4 + 2] +
+                weightsArray[i * 4 + 3];
 
-            if (weightSum > 0) {
-              verticesWithWeights++;
+              if (weightSum > 0) {
+                verticesWithWeights++;
 
-              // Check if all non-zero weights are 1.0 (the bug)
-              const nonZeroWeights = [weightsArray[i * 4], weightsArray[i * 4 + 1],
-                                     weightsArray[i * 4 + 2], weightsArray[i * 4 + 3]]
-                                     .filter(w => w > 0);
+                // Check if all non-zero weights are 1.0 (the bug)
+                const nonZeroWeights = [
+                  weightsArray[i * 4],
+                  weightsArray[i * 4 + 1],
+                  weightsArray[i * 4 + 2],
+                  weightsArray[i * 4 + 3],
+                ].filter((w) => w > 0);
 
-              const allWeightsOne = nonZeroWeights.every(w => Math.abs(w - 1.0) < 0.001);
+                const allWeightsOne = nonZeroWeights.every(
+                  (w) => Math.abs(w - 1.0) < 0.001,
+                );
 
-              if (allWeightsOne && nonZeroWeights.length > 1) {
-                verticesWithUniformWeights++;
+                if (allWeightsOne && nonZeroWeights.length > 1) {
+                  verticesWithUniformWeights++;
+                }
+
+                totalWeightSum += weightSum;
               }
-
-              totalWeightSum += weightSum;
             }
           }
-        }
+        });
       });
-    });
 
     console.log(`Total vertices: ${totalVertices}`);
     console.log(`Vertices with weights: ${verticesWithWeights}`);
-    console.log(`Vertices with uniform weights (bug): ${verticesWithUniformWeights}`);
-    console.log(`Average weight sum per vertex: ${(totalWeightSum / verticesWithWeights).toFixed(3)}`);
+    console.log(
+      `Vertices with uniform weights (bug): ${verticesWithUniformWeights}`,
+    );
+    console.log(
+      `Average weight sum per vertex: ${(
+        totalWeightSum / verticesWithWeights
+      ).toFixed(3)}`,
+    );
 
     // This test should fail initially, exposing the weight calculation bug
     expect(verticesWithUniformWeights).toBe(0); // Should be 0 when fixed
@@ -364,14 +455,14 @@ describe("Comprehensive Skeleton Value Validation", () => {
     const originalSkeletonData = readFileSync(ottoSkeletonPath);
 
     const originalSkeletonResource = parseSkeletonRsrcTS(
-      new Uint8Array(originalSkeletonData)
+      new Uint8Array(originalSkeletonData),
     );
     const originalBg3d = parseBG3D(
       originalBg3dData.buffer.slice(
         originalBg3dData.byteOffset,
-        originalBg3dData.byteOffset + originalBg3dData.byteLength
+        originalBg3dData.byteOffset + originalBg3dData.byteLength,
       ),
-      originalSkeletonResource
+      originalSkeletonResource,
     );
 
     // Analyze bone positions
@@ -381,30 +472,46 @@ describe("Comprehensive Skeleton Value Validation", () => {
     bones.forEach((bone, index) => {
       const distanceFromOrigin = Math.sqrt(
         bone.coordX * bone.coordX +
-        bone.coordY * bone.coordY +
-        bone.coordZ * bone.coordZ
+          bone.coordY * bone.coordY +
+          bone.coordZ * bone.coordZ,
       );
 
-      console.log(`  Bone ${index} (${bone.name}): [${bone.coordX.toFixed(2)}, ${bone.coordY.toFixed(2)}, ${bone.coordZ.toFixed(2)}] dist=${distanceFromOrigin.toFixed(2)} parent=${bone.parentBone}`);
+      console.log(
+        `  Bone ${index} (${bone.name}): [${bone.coordX.toFixed(
+          2,
+        )}, ${bone.coordY.toFixed(2)}, ${bone.coordZ.toFixed(
+          2,
+        )}] dist=${distanceFromOrigin.toFixed(2)} parent=${bone.parentBone}`,
+      );
     });
 
     // Check hierarchy - all root bones should have parentBone = -1
-    const rootBones = bones.filter(bone => bone.parentBone === -1);
-    const childBones = bones.filter(bone => bone.parentBone !== -1);
+    const rootBones = bones.filter((bone) => bone.parentBone === -1);
+    const childBones = bones.filter((bone) => bone.parentBone !== -1);
 
-    console.log(`\nHierarchy: ${rootBones.length} root bones, ${childBones.length} child bones`);
+    console.log(
+      `\nHierarchy: ${rootBones.length} root bones, ${childBones.length} child bones`,
+    );
 
     // Check if child bones are positioned relative to parents
-    childBones.forEach(childBone => {
+    childBones.forEach((childBone) => {
       const parentBone = bones[childBone.parentBone];
       if (parentBone) {
         const relativeX = childBone.coordX - parentBone.coordX;
         const relativeY = childBone.coordY - parentBone.coordY;
         const relativeZ = childBone.coordZ - parentBone.coordZ;
 
-        const relativeDistance = Math.sqrt(relativeX*relativeX + relativeY*relativeY + relativeZ*relativeZ);
+        const relativeDistance = Math.sqrt(
+          relativeX * relativeX + relativeY * relativeY + relativeZ * relativeZ,
+        );
 
-        console.log(`  ${childBone.name} relative to ${parentBone.name}: [${relativeX.toFixed(2)}, ${relativeY.toFixed(2)}, ${relativeZ.toFixed(2)}] dist=${relativeDistance.toFixed(2)}`);
+        console.log(
+          `  ${childBone.name} relative to ${
+            parentBone.name
+          }: [${relativeX.toFixed(2)}, ${relativeY.toFixed(
+            2,
+          )}, ${relativeZ.toFixed(2)}] dist=${relativeDistance.toFixed(2)}`,
+        );
       }
     });
 

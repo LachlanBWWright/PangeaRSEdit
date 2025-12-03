@@ -6,8 +6,14 @@ import { readFileSync } from "fs";
 import { join } from "path";
 
 describe("Debug Skeleton Roundtrip", () => {
-  const ottoBg3dPath = join(__dirname, "../../public/Otto.bg3d");
-  const ottoSkeletonPath = join(__dirname, "../../public/Otto.skeleton.rsrc");
+  const ottoBg3dPath = join(
+    __dirname,
+    "../../../games/ottomatic/Data/Skeletons/Otto.bg3d",
+  );
+  const ottoSkeletonPath = join(
+    __dirname,
+    "../../../games/ottomatic/Data/Skeletons/Otto.skeleton.rsrc",
+  );
 
   it("should have stable keyframe counts between RT1 and RT2", async () => {
     // Load and parse

@@ -9,8 +9,14 @@ import { readFileSync } from "fs";
 import { join } from "path";
 
 describe("Minimal Skeleton Roundtrip Tests", () => {
-  const ottoBg3dPath = join(__dirname, "../../public/Otto.bg3d");
-  const ottoSkeletonPath = join(__dirname, "../../public/Otto.skeleton.rsrc");
+  const ottoBg3dPath = join(
+    __dirname,
+    "../../../games/ottomatic/Data/Skeletons/Otto.bg3d",
+  );
+  const ottoSkeletonPath = join(
+    __dirname,
+    "../../../games/ottomatic/Data/Skeletons/Otto.skeleton.rsrc",
+  );
 
   it("should preserve bone rest positions through double roundtrip", async () => {
     // Load original files
