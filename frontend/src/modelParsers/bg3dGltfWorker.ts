@@ -5,6 +5,7 @@ import { parseBG3DWithSkeletonResource } from "./bg3dWithSkeleton";
 // import { bg3dSkeletonToSkeletonResource, skeletonResourceToBinary } from "./skeletonExport";
 import { WebIO } from "@gltf-transform/core";
 import type { SkeletonResource } from "../python/structSpecs/skeleton/skeletonInterface";
+import { isErr } from "../types/result";
 
 // Message types
 export type BG3DGltfWorkerMessage =
@@ -73,7 +74,16 @@ self.onmessage = async (e: MessageEvent<BG3DGltfWorkerMessage>) => {
   try {
     if (msg.type === "bg3d-to-glb") {
       console.log("Converting BG3D to GLB");
-      const parsed = parseBG3D(msg.buffer);
+      const parseResult = parseBG3D(msg.buffer);
+      if (isErr(parseResult)) {
+        const response: BG3DGltfWorkerResponse = {
+          type: "error",
+          error: parseResult.error.message,
+        };
+        self.postMessage(response);
+        return;
+      }
+      const parsed = parseResult.value;
       console.log("Parsed BG3D:", parsed);
       const doc = bg3dParsedToGLTF(parsed);
       console.log("Converting parsed BG3D to GLTF document");
@@ -93,7 +103,16 @@ self.onmessage = async (e: MessageEvent<BG3DGltfWorkerMessage>) => {
       console.log("BG3D buffer size:", msg.bg3dBuffer.byteLength);
       console.log("Skeleton data:", msg.skeletonData);
       
-      const parsed = parseBG3DWithSkeletonResource(msg.bg3dBuffer, msg.skeletonData);
+      const parseResult = parseBG3DWithSkeletonResource(msg.bg3dBuffer, msg.skeletonData);
+      if (isErr(parseResult)) {
+        const response: BG3DGltfWorkerResponse = {
+          type: "error",
+          error: parseResult.error.message,
+        };
+        self.postMessage(response);
+        return;
+      }
+      const parsed = parseResult.value;
       console.log("Parsed BG3D with skeleton:", parsed);
       console.log("Skeleton in parsed result:", parsed.skeleton ? `${parsed.skeleton.bones.length} bones, ${parsed.skeleton.animations.length} animations` : "none");
       
@@ -162,7 +181,11 @@ self.onmessage = async (e: MessageEvent<BG3DGltfWorkerMessage>) => {
       };
       self.postMessage.call(self, response);
     } else {
-      throw new Error("Unknown conversion type");
+      const response: BG3DGltfWorkerResponse = {
+        type: "error",
+        error: "Unknown conversion type",
+      };
+      self.postMessage(response);
     }
   } catch (err) {
     const response: BG3DGltfWorkerResponse = {

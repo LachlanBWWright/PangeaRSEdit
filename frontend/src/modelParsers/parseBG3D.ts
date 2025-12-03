@@ -2,6 +2,7 @@
 // Full BG3D file parser for Otto Matic and related games
 
 import type { SkeletonResource } from "../python/structSpecs/skeleton/skeletonInterface";
+import { Result, ok, err } from "../types/result";
 
 //https://registry.khronos.org/OpenGL-Refpages/gl4/html/glTexImage2D.xhtml
 export enum PixelFormatSrc {
@@ -191,12 +192,12 @@ export interface BG3DParseResult {
  * Parse a .bg3d file from an ArrayBuffer
  * @param buffer ArrayBuffer containing the .bg3d file
  * @param skeleton Optional skeleton data to include in the result
- * @returns BG3DParseResult
+ * @returns Result<BG3DParseResult, Error>
  */
 export function parseBG3D(
   buffer: ArrayBuffer,
   skeleton?: SkeletonResource,
-): BG3DParseResult {
+): Result<BG3DParseResult, Error> {
   const view = new DataView(buffer);
   let offset = 0;
   // Read header (first 4 bytes should be 'BG3D')
@@ -207,7 +208,7 @@ export function parseBG3D(
     view.getUint8(offset++),
   );
   if (headerString !== "BG3D") {
-    throw new Error("Not a BG3D file");
+    return err(new Error("Not a BG3D file"));
   }
 
   // Skip remainder of header (BG3DHeaderType is 20 bytes, 16 byte string, 4 byte version)
@@ -259,8 +260,9 @@ export function parseBG3D(
       }
       case BG3DTagType.MATERIALDIFFUSECOLOR: {
         // 4 floats (RGBA)
-        if (!currentMaterial)
-          throw new Error("No current material for diffuse color");
+        if (!currentMaterial) {
+          return err(new Error("No current material for diffuse color"));
+        }
         const r = view.getFloat32(offset, false);
         offset += 4;
         const g = view.getFloat32(offset, false);
@@ -274,8 +276,9 @@ export function parseBG3D(
       }
       case BG3DTagType.TEXTUREMAP: {
         // Texture header: 4 bytes each: width, height, srcPixelFormat, dstPixelFormat, bufferSize, 4 unused
-        if (!currentMaterial)
-          throw new Error("No current material for texture");
+        if (!currentMaterial) {
+          return err(new Error("No current material for texture"));
+        }
         const width = view.getUint32(offset, false);
         offset += 4;
         const height = view.getUint32(offset, false);
@@ -312,8 +315,9 @@ export function parseBG3D(
       case BG3DTagType.JPEGTEXTURE: {
         // JPEG texture (Nanosaur 2 only)
         // Header: width (4), height (4), bufferSize (4), hasAlphaChannel (4) = 16 bytes
-        if (!currentMaterial)
-          throw new Error("No current material for JPEG texture");
+        if (!currentMaterial) {
+          return err(new Error("No current material for JPEG texture"));
+        }
         const width = view.getUint32(offset, false);
         offset += 4;
         const height = view.getUint32(offset, false);
@@ -364,30 +368,31 @@ export function parseBG3D(
       case BG3DTagType.GROUPEND: {
         // End current group and pop from stack
         if (groupStack.length === 0) {
-          throw new Error(
+          return err(new Error(
             `GROUPEND tag found with no open group at offset ${tagOffset}`,
-          );
+          ));
         }
         if (groupStack.length > 0) {
           groupStack.pop();
-          currentGroup = groupStack[groupStack.length - 1]; //Get last group
+          const lastGroup = groupStack[groupStack.length - 1];
+          if (!lastGroup) {
+            return err(new Error("GROUPEND tag found with no open group"));
+          }
+          currentGroup = lastGroup;
         } else {
           //There should be a base group not mentioned in open/closed tags
-          throw new Error("GROUPEND tag found with no open group");
-
-          // Top-level group
-          // if (finishedGroup) groups.push(finishedGroup);
-          //currentGroup = null;
+          return err(new Error("GROUPEND tag found with no open group"));
         }
         break;
       }
 
       case BG3DTagType.GEOMETRY: {
         // Geometry header: type (4), numMaterials (4), layerMaterialNum[4] (only 2 read by otto) (16), flags (4), numPoints (4), numTriangles (4)
-        if (!currentGroup)
-          throw new Error(
+        if (!currentGroup) {
+          return err(new Error(
             `GEOMETRY tag found outside of a group at offset ${tagOffset}`,
-          );
+          ));
+        }
         const type = view.getUint32(offset, false);
         offset += 4;
         const numMaterials = view.getUint32(offset, false);
@@ -425,7 +430,9 @@ export function parseBG3D(
       }
       case BG3DTagType.VERTEXARRAY: {
         // Vertex array: numPoints * 3 floats
-        if (!currentGeometry) throw new Error("No geometry for vertex array");
+        if (!currentGeometry) {
+          return err(new Error("No geometry for vertex array"));
+        }
         const numPoints = currentGeometry.numPoints;
         const vertices: [number, number, number][] = [];
         for (let i = 0; i < numPoints; i++) {
@@ -443,7 +450,9 @@ export function parseBG3D(
       case BG3DTagType.NORMALARRAY: {
         // Normal array: numPoints * 3 floats
 
-        if (!currentGeometry) throw new Error("No geometry for normal array");
+        if (!currentGeometry) {
+          return err(new Error("No geometry for normal array"));
+        }
         const numPoints = currentGeometry.numPoints;
         const normals: [number, number, number][] = [];
         for (let i = 0; i < numPoints; i++) {
@@ -460,7 +469,9 @@ export function parseBG3D(
       }
       case BG3DTagType.UVARRAY: {
         // UV array: numPoints * 2 floats
-        if (!currentGeometry) throw new Error("No geometry for uv array");
+        if (!currentGeometry) {
+          return err(new Error("No geometry for uv array"));
+        }
         const numPoints = currentGeometry.numPoints;
         const uvs: [number, number][] = [];
         for (let i = 0; i < numPoints; i++) {
@@ -475,7 +486,9 @@ export function parseBG3D(
       }
       case BG3DTagType.COLORARRAY: {
         // Color array: numPoints * 4 bytes (RGBA)
-        if (!currentGeometry) throw new Error("No geometry for color array");
+        if (!currentGeometry) {
+          return err(new Error("No geometry for color array"));
+        }
         const numPoints = currentGeometry.numPoints;
         const colors: [number, number, number, number][] = [];
         for (let i = 0; i < numPoints; i++) {
@@ -490,7 +503,9 @@ export function parseBG3D(
       }
       case BG3DTagType.TRIANGLEARRAY: {
         // Triangle array: numTriangles * 3 uint32
-        if (!currentGeometry) throw new Error("No geometry for triangle array");
+        if (!currentGeometry) {
+          return err(new Error("No geometry for triangle array"));
+        }
         const numTriangles = currentGeometry.numTriangles;
         const triangles: [number, number, number][] = [];
         for (let i = 0; i < numTriangles; i++) {
@@ -509,7 +524,9 @@ export function parseBG3D(
       case BG3DTagType.BOUNDINGBOX: {
         // Bounding box: 6 floats (min x/y/z, max x/y/z) + 1 byte isEmpty + 3 bytes padding = 28 bytes total
         // Used by Bugdom 2, Billy Frontier, and Nanosaur 2
-        if (!currentGeometry) throw new Error("No geometry for bounding box");
+        if (!currentGeometry) {
+          return err(new Error("No geometry for bounding box"));
+        }
         const minX = view.getFloat32(offset, false);
         offset += 4;
         const minY = view.getFloat32(offset, false);
@@ -535,56 +552,61 @@ export function parseBG3D(
         break;
       }
       default: {
-        throw new Error(`Unknown BG3D tag: ${tag} at offset ${offset - 4}`);
+        return err(new Error(`Unknown BG3D tag: ${tag} at offset ${offset - 4}`));
       }
     }
   }
 
   // Step 2: Validate that all groups are closed (groupStack should just have the base group)
   if (groupStack.length !== 1) {
-    throw new Error(
+    return err(new Error(
       `Unbalanced group tags: ${groupStack.length} group(s) at end of file`,
-    );
+    ));
   }
 
   // Step 3: Validate that all geometry objects reference valid material indices
   // Recursively check all groups and their children
-  function validateGeometryMaterials(group: BG3DGroup) {
+  function validateGeometryMaterials(group: BG3DGroup): Result<void, Error> {
     for (const child of group.children) {
       if (isBG3DGroup(child) && Array.isArray(child.children)) {
-        validateGeometryMaterials(child);
+        const result = validateGeometryMaterials(child);
+        if (!result.ok) return result;
       } else {
         const geom = child as BG3DGeometry;
         if (geom.layerMaterialNum) {
           for (let i = 0; i < geom.numMaterials; i++) {
             const matIdx = geom.layerMaterialNum[i];
-            if (matIdx < 0 || matIdx >= materials.length) {
-              throw new Error(
+            if (matIdx !== undefined && (matIdx < 0 || matIdx >= materials.length)) {
+              return err(new Error(
                 `Geometry references invalid material index ${matIdx} (materials length: ${materials.length}) in group validation`,
-              );
+              ));
             }
           }
         }
       }
     }
+    return ok(undefined);
   }
   for (const group of groups) {
-    validateGeometryMaterials(group);
+    const validationResult = validateGeometryMaterials(group);
+    if (!validationResult.ok) {
+      return validationResult;
+    }
   }
 
   // Step 5: Ensure at least one group and one material exist
   if (groups.length === 0) {
-    throw new Error("No groups found in BG3D file");
+    return err(new Error("No groups found in BG3D file"));
   }
   if (materials.length === 0) {
-    throw new Error("No materials found in BG3D file");
+    return err(new Error("No materials found in BG3D file"));
   }
 
-  return {
+  return ok({
     materials,
     groups,
     skeleton: skeleton ? convertSkeletonResourceToBG3D(skeleton) : undefined,
-  };
+  });
 }
 
 /**

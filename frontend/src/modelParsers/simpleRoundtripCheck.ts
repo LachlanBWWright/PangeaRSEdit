@@ -10,6 +10,7 @@ import { bg3dParsedToGLTF, gltfToBG3D } from "./parsedBg3dGitfConverter";
 import { parseBG3D, bg3dParsedToBG3D } from "./parseBG3D";
 import { bg3dSkeletonToSkeletonResource } from "./skeletonExport";
 import { skeletonResourceToBinaryTS } from "./skeletonBinaryExport";
+import { isErr } from "../types/result";
 
 async function main() {
   const ottoBg3dPath = join(__dirname, "../public/Otto.bg3d");
@@ -29,13 +30,19 @@ async function main() {
       originalSkeletonData.byteOffset + originalSkeletonData.byteLength,
     ),
   );
-  const originalBg3d = parseBG3D(
+  const originalBg3dResult = parseBG3D(
     originalBg3dData.buffer.slice(
       originalBg3dData.byteOffset,
       originalBg3dData.byteOffset + originalBg3dData.byteLength,
     ),
     originalSkeletonResource,
   );
+
+  if (isErr(originalBg3dResult)) {
+    console.error("Failed to parse BG3D:", originalBg3dResult.error);
+    return;
+  }
+  const originalBg3d = originalBg3dResult.value;
 
   console.log("\n=== ORIGINAL SKELETON DATA ===");
   console.log(`Bones: ${originalBg3d.skeleton?.bones.length}`);
@@ -89,10 +96,16 @@ async function main() {
   const roundtrip1SkeletonResourceParsed = parseSkeletonRsrcTS(
     roundtrip1SkeletonBinary,
   );
-  const roundtrip1Bg3dParsed = parseBG3D(
+  const roundtrip1Bg3dParsedResult = parseBG3D(
     roundtrip1Bg3dBinary,
     roundtrip1SkeletonResourceParsed,
   );
+
+  if (isErr(roundtrip1Bg3dParsedResult)) {
+    console.error("Failed to parse roundtrip BG3D:", roundtrip1Bg3dParsedResult.error);
+    return;
+  }
+  const roundtrip1Bg3dParsed = roundtrip1Bg3dParsedResult.value;
 
   console.log(
     `Parsed RT1 Bones: ${roundtrip1Bg3dParsed.skeleton?.bones.length}`,
@@ -156,9 +169,9 @@ async function main() {
       if (rt1Array[i] !== rt2Array[i]) {
         console.log(
           `  Byte ${i}: RT1=0x${rt1Array[i]
-            .toString(16)
+            ?.toString(16)
             .padStart(2, "0")} RT2=0x${rt2Array[i]
-            .toString(16)
+            ?.toString(16)
             .padStart(2, "0")}`,
         );
         count++;
