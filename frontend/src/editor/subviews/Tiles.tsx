@@ -357,6 +357,7 @@ export function EmptyTiles({
     const radius = (topologyBrushRadius - 1) * globals.TILE_SIZE;
 
     setTerrainData((data) => {
+      if (!data.Layr?.[1000]?.obj || !data.Atrb?.[1000]?.obj) return;
       const baseX = centerX - radius;
       const baseY = centerY - radius;
       const size = radius * 2;
@@ -454,6 +455,7 @@ export function ElectricFloor0Tiles({
     const radius = (topologyBrushRadius - 1) * globals.TILE_SIZE;
 
     setTerrainData((data) => {
+      if (!data.Layr?.[1000]?.obj || !data.Atrb?.[1000]?.obj) return;
       const baseX = centerX - radius;
       const baseY = centerY - radius;
       const size = radius * 2;
@@ -551,6 +553,7 @@ export function ElectricFloor1Tiles({
     const radius = (topologyBrushRadius - 1) * globals.TILE_SIZE;
 
     setTerrainData((data) => {
+      if (!data.Layr?.[1000]?.obj || !data.Atrb?.[1000]?.obj) return;
       const baseX = centerX - radius;
       const baseY = centerY - radius;
       const size = radius * 2;

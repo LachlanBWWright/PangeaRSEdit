@@ -201,7 +201,7 @@ class Matrix4 {
 
     const invDet = 1.0 / det;
     for (let i = 0; i < 16; i++) {
-      inv[i] *= invDet;
+      inv[i] = inv[i]! * invDet;
     }
 
     return result;
@@ -226,7 +226,7 @@ class Matrix4 {
         // In column-major: result[j*4+i] = sum(a[k*4+i] * b[j*4+k])
         let sum = 0;
         for (let k = 0; k < 4; k++) {
-          sum += a[k * 4 + i] * b[j * 4 + k];
+          sum += a[k * 4 + i]! * b[j * 4 + k]!;
         }
         out[j * 4 + i] = sum;
       }
@@ -341,7 +341,10 @@ export function bg3dParsedToGLTF(
               hasAlpha: !!tex.jpegAlphaData,
             });
             if (j === 0) {
-              gltfMaterials[i].setBaseColorTexture(texture);
+              const gltfMat = gltfMaterials[i];
+              if (gltfMat) {
+                gltfMat.setBaseColorTexture(texture);
+              }
             }
             return; // Skip the rest of the texture processing
           } else if (
@@ -356,7 +359,9 @@ export function bg3dParsedToGLTF(
             const swapped = new Uint16Array(src.length);
             for (let k = 0; k < src.length; k++) {
               const val = src[k];
-              swapped[k] = ((val & 0xff) << 8) | ((val >> 8) & 0xff);
+              if (val !== undefined) {
+                swapped[k] = ((val & 0xff) << 8) | ((val >> 8) & 0xff);
+              }
             }
             pngBuffer = argb16ToPng(swapped, tex.width, tex.height);
           } else if (tex.srcPixelFormat === PixelFormatSrc.GL_RGB) {
@@ -383,7 +388,10 @@ export function bg3dParsedToGLTF(
 
         // Attach the first texture as baseColorTexture
         if (j === 0) {
-          gltfMaterials[i].setBaseColorTexture(texture);
+          const gltfMat = gltfMaterials[i];
+          if (gltfMat) {
+            gltfMat.setBaseColorTexture(texture);
+          }
         }
       });
     }
@@ -431,10 +439,10 @@ export function bg3dParsedToGLTF(
     function traverse(group: BG3DGroup) {
       if (Array.isArray(group.children)) {
         for (const child of group.children) {
-          if (Array.isArray(child.children)) {
-            traverse(child);
+          if ('children' in child && Array.isArray(child.children)) {
+            traverse(child as BG3DGroup);
           } else {
-            result.push(child);
+            result.push(child as BG3DGeometry);
           }
         }
       }
