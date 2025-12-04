@@ -47,11 +47,13 @@ export const WaterBody = memo(
           fill={waterBodyIdx === selectedWaterBody ? "#9999FFDD" : "#9999FF77"}
           draggable
           onDragStart={() => {
+            const waterBody = liquidData.Liqd[1000].obj[waterBodyIdx];
+            if (!waterBody) return;
             setInitialDragState(
-              liquidData.Liqd[1000].obj[waterBodyIdx].nubs
+              waterBody.nubs
                 .filter(
                   (_, nubIdx) =>
-                    nubIdx < liquidData.Liqd[1000].obj[waterBodyIdx].numNubs,
+                    nubIdx < waterBody.numNubs,
                 )
                 .map((nub) => [nub[0], nub[1]]),
             );
@@ -66,11 +68,15 @@ export const WaterBody = memo(
             if (lineRafRef.current) cancelAnimationFrame(lineRafRef.current);
             lineRafRef.current = requestAnimationFrame(() => {
               setLiquidData((draft) => {
-                const currentNubs = draft.Liqd[1000].obj[waterBodyIdx].nubs;
+                const waterBody = draft.Liqd[1000].obj[waterBodyIdx];
+                if (!waterBody) return;
+                const currentNubs = waterBody.nubs;
                 for (let i = 0; i < initialDragState.length; i++) {
-                  if (i < draft.Liqd[1000].obj[waterBodyIdx].numNubs) {
-                    currentNubs[i][0] = initialDragState[i][0] + dragDx;
-                    currentNubs[i][1] = initialDragState[i][1] + dragDz;
+                  const nub = currentNubs[i];
+                  const initNub = initialDragState[i];
+                  if (nub && initNub && i < waterBody.numNubs) {
+                    nub[0] = initNub[0] + dragDx;
+                    nub[1] = initNub[1] + dragDz;
                   }
                 }
               });
@@ -84,11 +90,15 @@ export const WaterBody = memo(
             const dragDz = e.target.y();
 
             setLiquidData((draft) => {
-              const currentNubs = draft.Liqd[1000].obj[waterBodyIdx].nubs;
+              const waterBody = draft.Liqd[1000].obj[waterBodyIdx];
+              if (!waterBody) return;
+              const currentNubs = waterBody.nubs;
               for (let i = 0; i < initialDragState.length; i++) {
-                if (i < draft.Liqd[1000].obj[waterBodyIdx].numNubs) {
-                  currentNubs[i][0] = initialDragState[i][0] + dragDx;
-                  currentNubs[i][1] = initialDragState[i][1] + dragDz;
+                const nub = currentNubs[i];
+                const initNub = initialDragState[i];
+                if (nub && initNub && i < waterBody.numNubs) {
+                  nub[0] = initNub[0] + dragDx;
+                  nub[1] = initNub[1] + dragDz;
                 }
               }
             });
@@ -97,10 +107,11 @@ export const WaterBody = memo(
             setInitialDragState(null);
           }}
         />
-        {waterBodyIdx === selectedWaterBody &&
-          liquidData.Liqd[1000].obj[waterBodyIdx].nubs.map((nub, nubIdx) => {
-            if (liquidData.Liqd[1000].obj[waterBodyIdx].numNubs <= nubIdx)
-              return;
+        {waterBodyIdx === selectedWaterBody && (() => {
+          const waterBody = liquidData.Liqd[1000].obj[waterBodyIdx];
+          if (!waterBody) return null;
+          return waterBody.nubs.map((nub, nubIdx) => {
+            if (waterBody.numNubs <= nubIdx) return null;
 
             return (
               <Circle
@@ -136,10 +147,12 @@ export const WaterBody = memo(
                     cancelAnimationFrame(nubRafRefs.current[nubIdx]!);
                   nubRafRefs.current[nubIdx] = requestAnimationFrame(() => {
                     setLiquidData((liquidData) => {
-                      liquidData.Liqd[1000].obj[waterBodyIdx].nubs[nubIdx][0] =
-                        newX;
-                      liquidData.Liqd[1000].obj[waterBodyIdx].nubs[nubIdx][1] =
-                        newY;
+                      const wb = liquidData.Liqd[1000].obj[waterBodyIdx];
+                      const nubToUpdate = wb?.nubs[nubIdx];
+                      if (nubToUpdate) {
+                        nubToUpdate[0] = newX;
+                        nubToUpdate[1] = newY;
+                      }
                     });
                   });
                 }}
@@ -147,15 +160,18 @@ export const WaterBody = memo(
                   if (nubRafRefs.current[nubIdx])
                     cancelAnimationFrame(nubRafRefs.current[nubIdx]!);
                   setLiquidData((liquidData) => {
-                    liquidData.Liqd[1000].obj[waterBodyIdx].nubs[nubIdx][0] =
-                      Math.round(e.target.x());
-                    liquidData.Liqd[1000].obj[waterBodyIdx].nubs[nubIdx][1] =
-                      Math.round(e.target.y());
+                    const wb = liquidData.Liqd[1000].obj[waterBodyIdx];
+                    const nubToUpdate = wb?.nubs[nubIdx];
+                    if (nubToUpdate) {
+                      nubToUpdate[0] = Math.round(e.target.x());
+                      nubToUpdate[1] = Math.round(e.target.y());
+                    }
                   });
                 }}
               />
             );
-          })}
+          });
+        })()}
         {selectedWaterBody === waterBodyIdx && (
           <Circle
             x={waterBody.hotSpotX}
