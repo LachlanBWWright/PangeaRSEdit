@@ -104,7 +104,7 @@ export function packResourceFork(fork: ResourceFork): Uint8Array {
   // ========================================
   // Write map section
   // ========================================
-  const mapStart = pos;
+  const _mapStart = pos;
   
   // Map header (28 bytes)
   // First 16 bytes: copy of resource header

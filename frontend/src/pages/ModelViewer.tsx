@@ -79,9 +79,9 @@ export function ModelViewer() {
           // RGB format
           for (let i = 0; i < texture.pixels.length; i += 3) {
             const pixelIndex = (i / 3) * 4;
-            imageData.data[pixelIndex] = texture.pixels[i];
-            imageData.data[pixelIndex + 1] = texture.pixels[i + 1];
-            imageData.data[pixelIndex + 2] = texture.pixels[i + 2];
+            imageData.data[pixelIndex] = texture.pixels[i] ?? 0;
+            imageData.data[pixelIndex + 1] = texture.pixels[i + 1] ?? 0;
+            imageData.data[pixelIndex + 2] = texture.pixels[i + 2] ?? 0;
             imageData.data[pixelIndex + 3] = 255;
           }
         } else if (
@@ -472,14 +472,14 @@ export function ModelViewer() {
           for (let i = 0; i < imageData.data.length; i += 4) {
             const pixelIndex = i / 4;
             if (isRGBA) {
-              newPixels[pixelIndex * 4] = imageData.data[i]; // R
-              newPixels[pixelIndex * 4 + 1] = imageData.data[i + 1]; // G
-              newPixels[pixelIndex * 4 + 2] = imageData.data[i + 2]; // B
-              newPixels[pixelIndex * 4 + 3] = imageData.data[i + 3]; // A
+              newPixels[pixelIndex * 4] = imageData.data[i] ?? 0; // R
+              newPixels[pixelIndex * 4 + 1] = imageData.data[i + 1] ?? 0; // G
+              newPixels[pixelIndex * 4 + 2] = imageData.data[i + 2] ?? 0; // B
+              newPixels[pixelIndex * 4 + 3] = imageData.data[i + 3] ?? 255; // A
             } else {
-              newPixels[pixelIndex * 3] = imageData.data[i]; // R
-              newPixels[pixelIndex * 3 + 1] = imageData.data[i + 1]; // G
-              newPixels[pixelIndex * 3 + 2] = imageData.data[i + 2]; // B
+              newPixels[pixelIndex * 3] = imageData.data[i] ?? 0; // R
+              newPixels[pixelIndex * 3 + 1] = imageData.data[i + 1] ?? 0; // G
+              newPixels[pixelIndex * 3 + 2] = imageData.data[i + 2] ?? 0; // B
             }
           }
 
