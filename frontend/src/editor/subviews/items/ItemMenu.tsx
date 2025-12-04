@@ -66,7 +66,10 @@ export function ItemMenu({
                 const newItemType = parseInt(e);
                 setItemData((itemData) => {
                   if (selectedItem === undefined) return;
-                  itemData.Itms[1000].obj[selectedItem].type = newItemType;
+                  const item = itemData.Itms[1000]?.obj?.[selectedItem];
+                  if (item) {
+                    item.type = newItemType;
+                  }
                 });
               }}
             >
@@ -104,9 +107,10 @@ export function ItemMenu({
                 onChange={(e) => {
                   setItemData((itemData) => {
                     if (selectedItem === undefined) return;
-                    itemData.Itms[1000].obj[selectedItem].flags = parseU16(
-                      e.target.value,
-                    );
+                    const item = itemData.Itms[1000]?.obj?.[selectedItem];
+                    if (item) {
+                      item.flags = parseU16(e.target.value);
+                    }
                   });
                 }}
               />
@@ -119,7 +123,10 @@ export function ItemMenu({
                 const setValue = (v: number) => {
                   setItemData((itemData) => {
                     if (selectedItem === undefined) return;
-                    itemData.Itms[1000].obj[selectedItem][paramKey] = v;
+                    const item = itemData.Itms[1000]?.obj?.[selectedItem];
+                    if (item) {
+                      item[paramKey] = v;
+                    }
                   });
                 };
                 return [
@@ -141,11 +148,14 @@ export function ItemMenu({
                                 onCheckedChange={(checked) => {
                                   setItemData((itemData) => {
                                     if (selectedItem === undefined) return;
-                                    const mask = 1 << flag.index;
-                                    if (checked) {
-                                      itemData.Itms[1000].obj[selectedItem][paramKey] |= mask;
-                                    } else {
-                                      itemData.Itms[1000].obj[selectedItem][paramKey] &= ~mask;
+                                    const item = itemData.Itms[1000]?.obj?.[selectedItem];
+                                    if (item) {
+                                      const mask = 1 << flag.index;
+                                      if (checked) {
+                                        item[paramKey] |= mask;
+                                      } else {
+                                        item[paramKey] &= ~mask;
+                                      }
                                     }
                                   });
                                 }}
