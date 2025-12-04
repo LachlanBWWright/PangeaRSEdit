@@ -51,7 +51,7 @@ export const getHeightAtTile = (
     );
     return header.minY * yScale; // Fallback if out of bounds
   }
-  return yCoords[idx] * yScale;
+  return (yCoords[idx] ?? header.minY) * yScale;
 };
 
 // Helper function to get terrain height at a specific world (x, z)
@@ -175,6 +175,7 @@ export const FenceGeometry: React.FC<FenceGeometryProps> = ({
         for (let i = 0; i < nubs.length - 1; i++) {
           const nubA_raw = nubs[i];
           const nubB_raw = nubs[i + 1];
+          if (!nubA_raw || !nubB_raw) continue;
 
           // Raw (uncentered, TILE_SIZE-scaled) coordinates
           const rawX1 =
