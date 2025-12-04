@@ -227,8 +227,10 @@ export function FenceMenu({
                   for (const nubKey of Object.keys(fenceData.FnNb)) {
                     lastKey = nubKey;
                     if (parseInt(nubKey) > selectedFence + NUB_KEY_BASE) {
-                      fenceData.FnNb[parseInt(nubKey) - 1] =
-                        fenceData.FnNb[parseInt(nubKey)];
+                      const currentNub = fenceData.FnNb[parseInt(nubKey)];
+                      if (currentNub) {
+                        fenceData.FnNb[parseInt(nubKey) - 1] = currentNub;
+                      }
                     }
                   }
                   if (lastKey === undefined) {
