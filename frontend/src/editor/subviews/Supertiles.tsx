@@ -70,7 +70,10 @@ export const Supertiles = memo(
     const imageGrid = useMemo(() => {
       const imageArray: HTMLCanvasElement[] = [];
       for (const supertile of superTileGrid) {
-        imageArray.push(mapImages[supertile.superTileId ?? supertile]);
+        const img = mapImages[supertile.superTileId ?? supertile];
+        if (img) {
+          imageArray.push(img);
+        }
       }
       return imageArray;
     }, [headerData.Hedr, terrainData.STgd, mapImages]);

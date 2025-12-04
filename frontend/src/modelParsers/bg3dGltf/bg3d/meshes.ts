@@ -100,13 +100,13 @@ export function bg3dMeshesToGltf(
         const offset = i * 4;
         let totalWeight = 0;
         for (let j = 0; j < 4; j++) {
-          totalWeight += weights[offset + j];
+          totalWeight += weights[offset + j] ?? 0;
         }
 
         if (totalWeight > 0) {
           // Normalize existing weights
           for (let j = 0; j < 4; j++) {
-            weights[offset + j] /= totalWeight;
+            weights[offset + j] = (weights[offset + j] ?? 0) / totalWeight;
           }
         } else {
           // No bone influences - assign to root bone
@@ -147,12 +147,15 @@ export function bg3dMeshesToGltf(
       typeof geom.layerMaterialNum === "number" &&
       geom.layerMaterialNum < gltfMaterials.length
     ) {
-      primitive.setMaterial(gltfMaterials[geom.layerMaterialNum]);
+      const mat = gltfMaterials[geom.layerMaterialNum];
+      if (mat) primitive.setMaterial(mat);
     } else if (
       Array.isArray(geom.layerMaterialNum) &&
+      geom.layerMaterialNum[0] !== undefined &&
       geom.layerMaterialNum[0] < gltfMaterials.length
     ) {
-      primitive.setMaterial(gltfMaterials[geom.layerMaterialNum[0]]);
+      const mat = gltfMaterials[geom.layerMaterialNum[0]];
+      if (mat) primitive.setMaterial(mat);
     }
 
     // Store original properties in extras
@@ -180,6 +183,7 @@ export function gltfMeshesToBg3d(
   docMeshes.forEach((mesh) => {
     const primitives = mesh.listPrimitives();
     const prim = primitives[0]; // Use first primitive
+    if (!prim) return;
     const extras = prim.getExtras() || {};
 
     // Extract geometry data
@@ -189,7 +193,7 @@ export function gltfMeshesToBg3d(
       const arr = Array.from(posAcc.getArray() as Float32Array);
       vertices = [];
       for (let i = 0; i < arr.length; i += 3) {
-        vertices.push([arr[i], arr[i + 1], arr[i + 2]]);
+        vertices.push([arr[i] ?? 0, arr[i + 1] ?? 0, arr[i + 2] ?? 0]);
       }
     }
 
@@ -199,7 +203,7 @@ export function gltfMeshesToBg3d(
       const arr = Array.from(normAcc.getArray() as Float32Array);
       normals = [];
       for (let i = 0; i < arr.length; i += 3) {
-        normals.push([arr[i], arr[i + 1], arr[i + 2]]);
+        normals.push([arr[i] ?? 0, arr[i + 1] ?? 0, arr[i + 2] ?? 0]);
       }
     }
 
