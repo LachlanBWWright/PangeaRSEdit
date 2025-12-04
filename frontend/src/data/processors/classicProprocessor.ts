@@ -15,6 +15,7 @@ export function createCanvasFromTile(tile: Uint16Array): HTMLCanvasElement {
   const imageData = ctx.createImageData(size, size);
   for (let i = 0; i < tile.length; i++) {
     const val = tile[i];
+    if (val === undefined) continue;
     // ARGB1555 to RGBA8888
     // All nanosaur 1 terrain items have an erroneous alpha value of 0, so ignore and set to 255
     const a = 255;

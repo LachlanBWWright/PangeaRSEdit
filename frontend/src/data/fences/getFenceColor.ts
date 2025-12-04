@@ -17,7 +17,7 @@ export function getFenceColor(globals: GlobalsInterface, fenceType: number, fall
         "#DC143C", // crimson
         "#00CED1", // dark turquoise
       ];
-      return ottoColors[fenceType % ottoColors.length];
+      return ottoColors[fenceType % ottoColors.length] ?? "#C0C0C0";
 
     case Game.BUGDOM:
       // Bugdom - garden/nature colors
@@ -32,7 +32,7 @@ export function getFenceColor(globals: GlobalsInterface, fenceType: number, fall
         "#556B2F", // dark olive green
         "#A0522D", // sienna
       ];
-      return bugdomColors[fenceType % bugdomColors.length];
+      return bugdomColors[fenceType % bugdomColors.length] ?? "#228B22";
 
     case Game.BUGDOM_2:
       // Bugdom 2 - more vibrant nature colors
@@ -55,7 +55,7 @@ export function getFenceColor(globals: GlobalsInterface, fenceType: number, fall
         "#FFF8DC", // cornsilk
         "#F0FFFF", // azure
       ];
-      return bugdom2Colors[fenceType % bugdom2Colors.length];
+      return bugdom2Colors[fenceType % bugdom2Colors.length] ?? "#90EE90";
 
     case Game.CRO_MAG:
       // Cro-Mag - prehistoric/stone age colors
@@ -88,7 +88,7 @@ export function getFenceColor(globals: GlobalsInterface, fenceType: number, fall
         "#B0C4DE", // light steel blue (china design)
         "#4682B4", // steel blue (viking)
       ];
-      return croMagColors[fenceType % croMagColors.length];
+      return croMagColors[fenceType % croMagColors.length] ?? "#D2691E";
 
     case Game.BILLY_FRONTIER:
       // Billy Frontier - western/frontier colors
@@ -100,7 +100,7 @@ export function getFenceColor(globals: GlobalsInterface, fenceType: number, fall
         "#F4A460", // sandy brown
         "#BC8F8F", // rosy brown
       ];
-      return billyColors[fenceType % billyColors.length];
+      return billyColors[fenceType % billyColors.length] ?? "#D2691E";
 
     case Game.NANOSAUR_2:
       // Nanosaur 2 - prehistoric jungle colors
@@ -109,7 +109,7 @@ export function getFenceColor(globals: GlobalsInterface, fenceType: number, fall
         "#DEB887", // burlywood (dust)
         "#696969", // dim gray (block)
       ];
-      return nanosaur2Colors[fenceType % nanosaur2Colors.length];
+      return nanosaur2Colors[fenceType % nanosaur2Colors.length] ?? "#228B22";
 
     case Game.NANOSAUR:
       // Nanosaur typically doesn't have fences, fall back to default

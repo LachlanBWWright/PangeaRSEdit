@@ -1,4 +1,3 @@
-import React from "react";
 import { Button } from "@/components/ui/button";
 import LevelGrid from "../LevelGrid";
 import { CroMagGlobals, type GlobalsInterface } from "@/data/globals/globals";

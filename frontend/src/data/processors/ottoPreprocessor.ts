@@ -100,24 +100,29 @@ export function ottoPreprocessor(
     if (data.Liqd !== undefined)
       for (const waterItem of anyData.Liqd[1000].obj) {
         for (let i = 0; i < globals.LIQD_NUBS; i++) {
-          waterItem[`x_${i}`] = waterItem.nubs[i][0];
-          waterItem[`y_${i}`] = waterItem.nubs[i][1];
+          const nub = waterItem.nubs[i];
+          if (nub) {
+            waterItem[`x_${i}`] = nub[0];
+            waterItem[`y_${i}`] = nub[1];
+          }
         }
       }
 
     //Fix spline numnubs
-    if (data.Spln! !== undefined)
+    if (data.Spln !== undefined)
       for (let i = 0; i < data.Spln[1000].obj.length; i++) {
         const splineIdx = SPLINE_KEY_BASE + i;
+        const spline = data.Spln[1000].obj[i];
+        if (!spline) continue;
 
         const numPoints = data.SpPt?.[splineIdx]?.obj.length ?? 0;
-        data.Spln[1000].obj[i].numPoints = numPoints;
+        spline.numPoints = numPoints;
 
         const numNubs = data.SpNb?.[splineIdx]?.obj.length ?? 0;
-        data.Spln[1000].obj[i].numNubs = numNubs;
+        spline.numNubs = numNubs;
 
         const numItems = data.SpIt?.[splineIdx]?.obj.length ?? 0;
-        data.Spln[1000].obj[i].numItems = numItems;
+        spline.numItems = numItems;
       }
 
     //TODO: Fence Bounding Boxes
@@ -133,17 +138,22 @@ export function ottoPreprocessor(
 
         if (!waterBody) return;
 
-        let left = waterBody.nubs[0][0];
-        let right = waterBody.nubs[0][0];
-        let top = waterBody.nubs[0][1];
-        let bottom = waterBody.nubs[0][1];
+        const firstNub = waterBody.nubs[0];
+        if (!firstNub) continue;
+
+        let left = firstNub[0];
+        let right = firstNub[0];
+        let top = firstNub[1];
+        let bottom = firstNub[1];
 
         //Update bounding box
         for (let i = 0; i < waterBody.numNubs; i++) {
-          if (waterBody.nubs[i][0] < left) left = waterBody.nubs[i][0];
-          if (waterBody.nubs[i][0] > right) right = waterBody.nubs[i][0];
-          if (waterBody.nubs[i][1] < top) top = waterBody.nubs[i][1];
-          if (waterBody.nubs[i][1] > bottom) bottom = waterBody.nubs[i][1];
+          const nub = waterBody.nubs[i];
+          if (!nub) continue;
+          if (nub[0] < left) left = nub[0];
+          if (nub[0] > right) right = nub[0];
+          if (nub[1] < top) top = nub[1];
+          if (nub[1] > bottom) bottom = nub[1];
         }
 
         waterBody.bBoxLeft = left;

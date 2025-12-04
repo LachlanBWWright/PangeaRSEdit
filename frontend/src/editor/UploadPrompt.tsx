@@ -179,10 +179,11 @@ export function UploadPrompt({
       );
 
       // Debug: Log first tile's first 8 raw pixel values
-      if (tiles.length > 0) {
+      const firstTile = tiles[0];
+      if (tiles.length > 0 && firstTile) {
         console.log(
           "First tile, first 8 raw Uint16 values:",
-          Array.from(tiles[0].slice(0, 8)),
+          Array.from(firstTile.slice(0, 8)),
         );
       }
       //test start

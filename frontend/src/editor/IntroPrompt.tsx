@@ -25,6 +25,7 @@ import {
   combineLevelData,
   isAtomicDataComplete,
 } from "../data/utils/levelDataUtils";
+import { isOk } from "../types/result";
 
 export type DataHistory = {
   items: AtomicLevelData[];
@@ -150,8 +151,11 @@ export function IntroPrompt({ pyodideWorker }: { pyodideWorker: Worker }) {
       setDataHistory((draft) => {
         draft.index -= 1;
       });
-      setAllAtomicData(dataHistory.items[dataHistory.index - 1]);
-      setBlockHistoryUpdate(true);
+      const historyItem = dataHistory.items[dataHistory.index - 1];
+      if (historyItem) {
+        setAllAtomicData(historyItem);
+        setBlockHistoryUpdate(true);
+      }
     }
   };
 
@@ -160,8 +164,11 @@ export function IntroPrompt({ pyodideWorker }: { pyodideWorker: Worker }) {
       setDataHistory((draft) => {
         draft.index += 1;
       });
-      setAllAtomicData(dataHistory.items[dataHistory.index + 1]);
-      setBlockHistoryUpdate(true);
+      const historyItem = dataHistory.items[dataHistory.index + 1];
+      if (historyItem) {
+        setAllAtomicData(historyItem);
+        setBlockHistoryUpdate(true);
+      }
     }
   };
 
@@ -171,18 +178,20 @@ export function IntroPrompt({ pyodideWorker }: { pyodideWorker: Worker }) {
     toast.loading("Processing map data...");
 
     // Combine atomic data for file I/O
-    const combinedData = combineLevelData(getCurrentAtomicData());
+    const combinedDataResult = combineLevelData(getCurrentAtomicData());
+
+    if (!isOk(combinedDataResult)) {
+      toast("Error", {
+        description: combinedDataResult.error.message,
+      });
+      return;
+    }
+
+    const combinedData = combinedDataResult.value;
 
     //TODO: Find better solution
     //remove timg from combinedData - needed to fix bug
     delete combinedData.Timg;
-
-    if (!combinedData) {
-      toast("Error", {
-        description: "Cannot save incomplete level data",
-      });
-      return;
-    }
 
     const loadResPromise = new Promise<ArrayBuffer>((resolve, reject) => {
       pyodideWorker.postMessage({
@@ -223,7 +232,12 @@ export function IntroPrompt({ pyodideWorker }: { pyodideWorker: Worker }) {
       const resolvedTextures = { count: 0 };
       console.time("compress");
       for (let i = 0; i < mapImages.length; i++) {
-        const canvasCtx = mapImages[i].getContext("2d");
+        const canvas = mapImages[i];
+        if (!canvas) {
+          err(new Error(`Canvas at index ${i} is undefined`));
+          return;
+        }
+        const canvasCtx = canvas.getContext("2d");
         if (!canvasCtx) {
           err(new Error("Could not get canvas context"));
           return;
@@ -232,8 +246,8 @@ export function IntroPrompt({ pyodideWorker }: { pyodideWorker: Worker }) {
         const imageData = canvasCtx.getImageData(
           0,
           0,
-          mapImages[i].width,
-          mapImages[i].height,
+          canvas.width,
+          canvas.height,
         );
         //const decompressedBuffer = imageDataToSixteenBit(imageData.data);
 
@@ -279,6 +293,7 @@ export function IntroPrompt({ pyodideWorker }: { pyodideWorker: Worker }) {
     let pos2 = 0;
     for (let i = 0; i < bufferList.length; i++) {
       const buffer = bufferList[i];
+      if (!buffer) continue;
       // Write size header (4 bytes)
       imageDownloadBuffer.setInt32(pos2, buffer.byteLength);
       pos2 += 4;
@@ -331,8 +346,9 @@ export function IntroPrompt({ pyodideWorker }: { pyodideWorker: Worker }) {
 
         <Button
           onClick={() => {
-            const combinedData = combineLevelData(getCurrentAtomicData());
-            if (combinedData) {
+            const combinedDataResult = combineLevelData(getCurrentAtomicData());
+            if (isOk(combinedDataResult)) {
+              const combinedData = combinedDataResult.value;
               ottoPreprocessor((updater) => {
                 // Apply the update to a combined data structure
                 const updated =

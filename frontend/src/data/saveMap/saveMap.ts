@@ -112,7 +112,12 @@ async function compressMapImages(
     const resolvedTextures = { count: 0 };
     console.time("compress");
     for (let i = 0; i < mapImages.length; i++) {
-      const canvasCtx = mapImages[i].getContext("2d");
+      const canvas = mapImages[i];
+      if (!canvas) {
+        err(new Error(`Canvas at index ${i} is undefined`));
+        return;
+      }
+      const canvasCtx = canvas.getContext("2d");
       if (!canvasCtx) {
         err(new Error("Could not get canvas context"));
         return;
@@ -120,8 +125,8 @@ async function compressMapImages(
       const imageData = canvasCtx.getImageData(
         0,
         0,
-        mapImages[i].width,
-        mapImages[i].height,
+        canvas.width,
+        canvas.height,
       );
       const lzssWorker = new LzssWorker();
       lzssWorker.onmessage = (e: MessageEvent<LzssResponse>) => {
@@ -156,6 +161,7 @@ function combineBuffersForDownload(bufferList: DataView[]): ArrayBuffer {
   let pos2 = 0;
   for (let i = 0; i < bufferList.length; i++) {
     const buffer = bufferList[i];
+    if (!buffer) continue;
     imageDownloadBuffer.setInt32(pos2, buffer.byteLength);
     pos2 += 4;
     for (let j = 0; j < buffer.byteLength; j++) {

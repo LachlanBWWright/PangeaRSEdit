@@ -78,27 +78,30 @@ export function handleTileClick(
 
       if (attrIndex === undefined) continue;
 
+      const attr = draft.Atrb[1000].obj[attrIndex];
+      if (!attr) continue;
+
       // Modify the flag based on the current view and brush type
       if (tileView === TileViews.Flags) {
         if (brushType === "add") {
-          draft.Atrb[1000].obj[attrIndex].flags |= TILE_ATTRIB_BLANK;
+          attr.flags |= TILE_ATTRIB_BLANK;
         } else {
-          draft.Atrb[1000].obj[attrIndex].flags &= ~TILE_ATTRIB_BLANK;
+          attr.flags &= ~TILE_ATTRIB_BLANK;
         }
       } else if (tileView === TileViews.ElectricFloor0) {
         if (brushType === "add") {
-          draft.Atrb[1000].obj[attrIndex].flags |=
+          attr.flags |=
             TILE_ATTRIB_ELECTROCUTE_AREA0;
         } else {
-          draft.Atrb[1000].obj[attrIndex].flags &=
+          attr.flags &=
             ~TILE_ATTRIB_ELECTROCUTE_AREA0;
         }
       } else if (tileView === TileViews.ElectricFloor1) {
         if (brushType === "add") {
-          draft.Atrb[1000].obj[attrIndex].flags |=
+          attr.flags |=
             TILE_ATTRIB_ELECTROCUTE_AREA1;
         } else {
-          draft.Atrb[1000].obj[attrIndex].flags &=
+          attr.flags &=
             ~TILE_ATTRIB_ELECTROCUTE_AREA1;
         }
       }
