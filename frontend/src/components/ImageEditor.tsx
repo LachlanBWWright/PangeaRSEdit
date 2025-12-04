@@ -199,7 +199,8 @@ export function ImageEditor({
       const ctx = canvas.getContext("2d");
 
       if (!ctx) {
-        throw new Error("Failed to get canvas context");
+        toast.error("Failed to get canvas context");
+        return;
       }
 
       // Draw the original image

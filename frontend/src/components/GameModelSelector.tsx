@@ -73,9 +73,10 @@ export function GameModelSelector({
       // Fetch the BG3D file
       const bg3dResponse = await fetch(selectedModel.bg3dFile);
       if (!bg3dResponse.ok) {
-        throw new Error(
+        setError(
           `Failed to fetch ${selectedModel.name}.bg3d: ${bg3dResponse.status}`,
         );
+        return;
       }
 
       const bg3dArrayBuffer = await bg3dResponse.arrayBuffer();

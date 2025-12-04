@@ -170,104 +170,108 @@ function StandardSupertileMenu({
   const handleSaveTileEdit = async (
     editedImageData: ImageData,
   ): Promise<void> => {
-    try {
-      const tileId = stgd[selectedTile].superTileId;
-
-      // Create a new canvas with the edited data
-      const canvas = document.createElement("canvas");
-      canvas.width = editedImageData.width;
-      canvas.height = editedImageData.height;
-      const ctx = canvas.getContext("2d");
-
-      if (!ctx) {
-        throw new Error("Failed to get canvas context");
-      }
-
-      ctx.putImageData(editedImageData, 0, 0);
-
-      // Update the map images array
-      const newMapImages = [...mapImages];
-      newMapImages[tileId] = canvas;
-      setMapImages(newMapImages);
-
-      toast.success("Tile texture updated successfully");
-    } catch (error) {
-      console.error("Error saving tile edit:", error);
-      toast.error("Failed to save tile texture");
-      throw error;
+    const selectedTileData = stgd[selectedTile];
+    if (!selectedTileData) {
+      toast.error("Invalid tile selected");
+      return;
     }
+    const tileId = selectedTileData.superTileId;
+
+    // Create a new canvas with the edited data
+    const canvas = document.createElement("canvas");
+    canvas.width = editedImageData.width;
+    canvas.height = editedImageData.height;
+    const ctx = canvas.getContext("2d");
+
+    if (!ctx) {
+      toast.error("Failed to get canvas context");
+      return;
+    }
+
+    ctx.putImageData(editedImageData, 0, 0);
+
+    // Update the map images array
+    const newMapImages = [...mapImages];
+    newMapImages[tileId] = canvas;
+    setMapImages(newMapImages);
+
+    toast.success("Tile texture updated successfully");
   };
 
   // Handle saving edited map texture
   const handleSaveMapEdit = async (
     editedImageData: ImageData,
   ): Promise<void> => {
-    try {
-      // Create canvas from edited image data
-      const canvas = document.createElement("canvas");
-      canvas.width = editedImageData.width;
-      canvas.height = editedImageData.height;
-      const context = canvas.getContext("2d");
+    // Create canvas from edited image data
+    const canvas = document.createElement("canvas");
+    canvas.width = editedImageData.width;
+    canvas.height = editedImageData.height;
+    const context = canvas.getContext("2d");
 
-      if (!context) {
-        throw new Error("Failed to get canvas context");
-      }
-
-      context.putImageData(editedImageData, 0, 0);
-
-      // Extract individual tiles from the edited map
-      const canvasArray: HTMLCanvasElement[] = [];
-
-      const blackCanvas = document.createElement("canvas");
-      blackCanvas.width = globals.SUPERTILE_TEXMAP_SIZE;
-      blackCanvas.height = globals.SUPERTILE_TEXMAP_SIZE;
-      const blackContext = blackCanvas.getContext("2d");
-      if (!blackContext) throw new Error("Failed to create black canvas");
-
-      blackContext.fillStyle = "black";
-      blackContext.fillRect(0, 0, blackCanvas.width, blackCanvas.height);
-      canvasArray.push(blackCanvas);
-
-      for (let i = 0; i < hedr.mapHeight / globals.TILES_PER_SUPERTILE; i++) {
-        for (let j = 0; j < hedr.mapWidth / globals.TILES_PER_SUPERTILE; j++) {
-          const tileImage = context.getImageData(
-            j * globals.SUPERTILE_TEXMAP_SIZE,
-            i * globals.SUPERTILE_TEXMAP_SIZE,
-            globals.SUPERTILE_TEXMAP_SIZE,
-            globals.SUPERTILE_TEXMAP_SIZE,
-          );
-
-          const newCanvas = document.createElement("canvas");
-          newCanvas.width = globals.SUPERTILE_TEXMAP_SIZE;
-          newCanvas.height = globals.SUPERTILE_TEXMAP_SIZE;
-          const newContext = newCanvas.getContext("2d");
-          if (!newContext) throw new Error("Failed to create tile canvas");
-
-          newContext.fillStyle = "black";
-          newContext.fillRect(0, 0, newCanvas.width, newCanvas.height);
-          newContext.putImageData(tileImage, 0, 0);
-
-          canvasArray.push(newCanvas);
-        }
-      }
-
-      setMapImages(canvasArray);
-      setTerrainData((data) => {
-        if (!data.STgd?.[1000]?.obj) return;
-        for (let i = 0; i < data.STgd[1000].obj.length; i++) {
-          data.STgd[1000].obj[i].superTileId = i + 1;
-        }
-      });
-      setHeaderData((data) => {
-        data.Hedr[1000].obj.numUniqueSupertiles = canvasArray.length;
-      });
-
-      toast.success("Map texture updated successfully");
-    } catch (error) {
-      console.error("Error saving map edit:", error);
-      toast.error("Failed to save map texture");
-      throw error;
+    if (!context) {
+      toast.error("Failed to get canvas context");
+      return;
     }
+
+    context.putImageData(editedImageData, 0, 0);
+
+    // Extract individual tiles from the edited map
+    const canvasArray: HTMLCanvasElement[] = [];
+
+    const blackCanvas = document.createElement("canvas");
+    blackCanvas.width = globals.SUPERTILE_TEXMAP_SIZE;
+    blackCanvas.height = globals.SUPERTILE_TEXMAP_SIZE;
+    const blackContext = blackCanvas.getContext("2d");
+    if (!blackContext) {
+      toast.error("Failed to create black canvas");
+      return;
+    }
+
+    blackContext.fillStyle = "black";
+    blackContext.fillRect(0, 0, blackCanvas.width, blackCanvas.height);
+    canvasArray.push(blackCanvas);
+
+    for (let i = 0; i < hedr.mapHeight / globals.TILES_PER_SUPERTILE; i++) {
+      for (let j = 0; j < hedr.mapWidth / globals.TILES_PER_SUPERTILE; j++) {
+        const tileImage = context.getImageData(
+          j * globals.SUPERTILE_TEXMAP_SIZE,
+          i * globals.SUPERTILE_TEXMAP_SIZE,
+          globals.SUPERTILE_TEXMAP_SIZE,
+          globals.SUPERTILE_TEXMAP_SIZE,
+        );
+
+        const newCanvas = document.createElement("canvas");
+        newCanvas.width = globals.SUPERTILE_TEXMAP_SIZE;
+        newCanvas.height = globals.SUPERTILE_TEXMAP_SIZE;
+        const newContext = newCanvas.getContext("2d");
+        if (!newContext) {
+          toast.error("Failed to create tile canvas");
+          return;
+        }
+
+        newContext.fillStyle = "black";
+        newContext.fillRect(0, 0, newCanvas.width, newCanvas.height);
+        newContext.putImageData(tileImage, 0, 0);
+
+        canvasArray.push(newCanvas);
+      }
+    }
+
+    setMapImages(canvasArray);
+    setTerrainData((data) => {
+      if (!data.STgd?.[1000]?.obj) return;
+      for (let i = 0; i < data.STgd[1000].obj.length; i++) {
+        const stgdEntry = data.STgd[1000].obj[i];
+        if (stgdEntry) {
+          stgdEntry.superTileId = i + 1;
+        }
+      }
+    });
+    setHeaderData((data) => {
+      data.Hedr[1000].obj.numUniqueSupertiles = canvasArray.length;
+    });
+
+    toast.success("Map texture updated successfully");
   };
 
   return (

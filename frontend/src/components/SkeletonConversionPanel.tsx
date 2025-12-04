@@ -85,7 +85,9 @@ export function SkeletonConversionPanel({
       );
 
       if (result.type === "error") {
-        throw new Error(result.error);
+        setConvertError(result.error);
+        setConverting(false);
+        return;
       }
 
       if (

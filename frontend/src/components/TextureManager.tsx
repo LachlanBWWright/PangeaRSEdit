@@ -68,7 +68,8 @@ export function TextureManager({
         const ctx = canvas.getContext("2d");
 
         if (!ctx) {
-          throw new Error("Failed to get canvas context");
+          console.error("Failed to get canvas context");
+          return;
         }
 
         ctx.putImageData(editedImageData, 0, 0);

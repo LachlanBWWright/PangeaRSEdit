@@ -231,8 +231,10 @@ export function FenceMenu({
                         fenceData.FnNb[parseInt(nubKey)];
                     }
                   }
-                  if (lastKey === undefined)
-                    throw new Error("Missing Final Nubkey");
+                  if (lastKey === undefined) {
+                    console.error("Missing Final Nubkey");
+                    return;
+                  }
                   delete fenceData.FnNb[parseInt(lastKey)];
                 });
                 setSelectedFence(undefined);

@@ -189,7 +189,8 @@ export function ModelViewer() {
       );
 
       if (result.type === "error") {
-        throw new Error(result.error);
+        toast.error(`Error loading model: ${result.error}`);
+        return;
       }
 
       if (
@@ -205,7 +206,8 @@ export function ModelViewer() {
 
         // Validate the ArrayBuffer
         if (!result.result || result.result.byteLength === 0) {
-          throw new Error("Worker returned empty or invalid GLB data");
+          toast.error("Worker returned empty or invalid GLB data");
+          return;
         }
 
         const glbBlob = new Blob([result.result], {
@@ -405,7 +407,8 @@ export function ModelViewer() {
     newFile: File,
   ): Promise<void> {
     if (!bg3dParsed) {
-      throw new Error("No BG3D data available for texture replacement");
+      toast.error("No BG3D data available for texture replacement");
+      return;
     }
 
     return new Promise((resolve, reject) => {
@@ -419,19 +422,23 @@ export function ModelViewer() {
             (img.width !== texture.size.width ||
               img.height !== texture.size.height)
           ) {
-            throw new Error(
+            toast.error(
               `Image size mismatch: Expected ${texture.size.width}×${texture.size.height}, got ${img.width}×${img.height}`,
             );
+            reject(new Error("Image size mismatch"));
+            return;
           }
 
           // Extract material and texture indices from texture name
           const nameMatch = texture.name.match(/Material_(\d+)_Texture_(\d+)/);
           if (!nameMatch) {
-            throw new Error("Invalid texture name format");
+            toast.error("Invalid texture name format");
+            reject(new Error("Invalid texture name format"));
+            return;
           }
 
-          const materialIndex = parseInt(nameMatch[1]);
-          const textureIndex = parseInt(nameMatch[2]);
+          const materialIndex = parseInt(nameMatch[1] ?? "0");
+          const textureIndex = parseInt(nameMatch[2] ?? "0");
 
           // Convert image to canvas and extract pixel data
           const canvas = document.createElement("canvas");
@@ -439,7 +446,9 @@ export function ModelViewer() {
           canvas.height = img.height;
           const ctx = canvas.getContext("2d");
           if (!ctx) {
-            throw new Error("Failed to get canvas context");
+            toast.error("Failed to get canvas context");
+            reject(new Error("Failed to get canvas context"));
+            return;
           }
 
           ctx.drawImage(img, 0, 0);
@@ -449,7 +458,9 @@ export function ModelViewer() {
           const existingTexture =
             bg3dParsed.materials[materialIndex]?.textures[textureIndex];
           if (!existingTexture) {
-            throw new Error("Texture not found in BG3D data");
+            toast.error("Texture not found in BG3D data");
+            reject(new Error("Texture not found in BG3D data"));
+            return;
           }
 
           const isRGBA =
@@ -521,7 +532,9 @@ export function ModelViewer() {
           );
 
           if (result.type === "error") {
-            throw new Error(result.error);
+            toast.error(`Error replacing texture: ${result.error}`);
+            reject(new Error(result.error));
+            return;
           }
 
           if (result.type === "bg3d-parsed-to-glb") {
@@ -676,7 +689,8 @@ export function ModelViewer() {
     const ctx = canvas.getContext("2d");
 
     if (!ctx) {
-      throw new Error("Failed to get canvas context");
+      toast.error("Failed to get canvas context");
+      return;
     }
 
     ctx.putImageData(editedImageData, 0, 0);
@@ -714,7 +728,8 @@ export function ModelViewer() {
       ]);
 
       if (!bg3dResponse.ok) {
-        throw new Error(`Failed to fetch Otto.bg3d: ${bg3dResponse.status}`);
+        toast.error(`Failed to fetch Otto.bg3d: ${bg3dResponse.status}`);
+        return;
       }
 
       const bg3dArrayBuffer = await bg3dResponse.arrayBuffer();
@@ -750,7 +765,8 @@ export function ModelViewer() {
       );
 
       if (!bg3dResponse.ok) {
-        throw new Error(`Failed to fetch Otto.bg3d: ${bg3dResponse.status}`);
+        toast.error(`Failed to fetch Otto.bg3d: ${bg3dResponse.status}`);
+        return;
       }
 
       const bg3dArrayBuffer = await bg3dResponse.arrayBuffer();
