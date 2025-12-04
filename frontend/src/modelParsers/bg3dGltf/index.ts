@@ -3,15 +3,12 @@
  * Modular exports for all conversion functions
  */
 
-// Utils
-export { Matrix4 } from "./utils";
-
 // Materials and textures
 export {
   bg3dMaterialsToGltf,
   bg3dTexturesToGltf,
   gltfMaterialsToBg3d,
-} from "./materials";
+} from "./bg3d/materials";
 
 // Skeleton
 export {
@@ -25,11 +22,11 @@ export {
   bg3dMeshesToGltf,
   gltfMeshesToBg3d,
   gltfSceneToBg3dGroups,
-} from "./meshes";
+} from "./bg3d/meshes";
 
 // Scene hierarchy
 export {
   bg3dSceneToGltf,
   gltfSceneToBg3d,
   createGltfSceneFromBg3d,
-} from "./scene";
+} from "./bg3d/scene";

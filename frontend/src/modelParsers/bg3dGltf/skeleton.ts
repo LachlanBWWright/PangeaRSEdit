@@ -9,21 +9,21 @@ import { createSkeletonSystem } from "../skeletonSystemNew";
 
 import { Document, Skin } from "@gltf-transform/core";
 import { parseSkeletonRsrcTS } from "../skeletonRsrc/parseSkeletonRsrcTS";
-import { isErr, Result, ok, err } from "../../types/result";
+import { isErr, Result, ok, _err } from "../../types/result";
 
 // Import modular functions
 import {
   gltfJointsToBg3dBones,
   originalSkeletonBinaryToBg3dBones,
-} from "./bones";
+} from "./skeleton/bones";
 import {
   gltfSkinningToBg3d,
   originalSkeletonBinarySkinningToBg3d,
-} from "./skinning";
+} from "./skeleton/skinning";
 import {
   gltfAnimationsToBg3d,
   originalSkeletonBinaryAnimationsToBg3d,
-} from "./animations";
+} from "./skeleton/animations";
 
 /**
  * Convert BG3D skeleton to glTF skeleton system
