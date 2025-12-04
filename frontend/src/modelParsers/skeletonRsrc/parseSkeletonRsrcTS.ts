@@ -1,5 +1,17 @@
 import { saveToJson } from "../../rsrcdump-ts/rsrcdump";
-import type { SkeletonResource } from "../../python/structSpecs/skeleton/skeletonInterface";
+import { isOk } from "../../types/result";
+import type { 
+  SkeletonResource,
+  HedrEntry,
+  BoneEntry,
+  BonPEntry,
+  BonNEntry,
+  RelPEntry,
+  AnHdEntry,
+  EvntEntry,
+  NumKEntry,
+  KeyFEntry,
+} from "../../python/structSpecs/skeleton/skeletonInterface";
 import { skeletonSpecs } from "../../python/structSpecs/skeleton/skeleton";
 
 // Handlers split into separate modules
@@ -138,21 +150,22 @@ function transformToSkeletonResource(
           obj = resourceData?.obj ?? hexData ?? resourceData;
       }
 
-      const entry = {
+      const baseEntry = {
         name: resourceName,
         order: resourceIdNum,
         obj,
       };
 
-      if (typeName === "Hedr") result.Hedr[resourceId] = entry;
-      else if (typeName === "Bone") result.Bone[resourceId] = entry;
-      else if (typeName === "BonP") result.BonP[resourceId] = entry;
-      else if (typeName === "BonN") result.BonN[resourceId] = entry;
-      else if (typeName === "RelP") result.RelP![resourceId] = entry;
-      else if (typeName === "AnHd") result.AnHd[resourceId] = entry;
-      else if (typeName === "Evnt") result.Evnt[resourceId] = entry;
-      else if (typeName === "NumK") result.NumK[resourceId] = entry;
-      else if (typeName === "KeyF") result.KeyF[resourceId] = entry;
+      // Cast entries to their proper types
+      if (typeName === "Hedr") result.Hedr[resourceId] = baseEntry as unknown as HedrEntry;
+      else if (typeName === "Bone") result.Bone[resourceId] = baseEntry as unknown as BoneEntry;
+      else if (typeName === "BonP") result.BonP[resourceId] = baseEntry as unknown as BonPEntry;
+      else if (typeName === "BonN") result.BonN[resourceId] = baseEntry as unknown as BonNEntry;
+      else if (typeName === "RelP") result.RelP![resourceId] = baseEntry as unknown as RelPEntry;
+      else if (typeName === "AnHd") result.AnHd[resourceId] = baseEntry as unknown as AnHdEntry;
+      else if (typeName === "Evnt") result.Evnt[resourceId] = baseEntry as unknown as EvntEntry;
+      else if (typeName === "NumK") result.NumK[resourceId] = baseEntry as unknown as NumKEntry;
+      else if (typeName === "KeyF") result.KeyF[resourceId] = baseEntry as unknown as KeyFEntry;
       else result[typeName] = typeData;
     }
   }
@@ -235,7 +248,10 @@ export function parseSkeletonRsrc(
 
 export function parseSkeletonRsrcJson(bytes: ArrayBuffer): ParsedSkeleton {
   const uint8Array = new Uint8Array(bytes);
-  const jsonString = saveToJson(uint8Array, skeletonSpecs, [], [], false);
-  const parsed = JSON.parse(jsonString) as ParsedSkeleton;
+  const result = saveToJson(uint8Array, skeletonSpecs, [], [], false);
+  if (!isOk(result)) {
+    throw result.error;
+  }
+  const parsed = JSON.parse(result.value) as ParsedSkeleton;
   return parsed;
 }
