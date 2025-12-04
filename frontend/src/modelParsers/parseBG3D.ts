@@ -217,12 +217,13 @@ export function parseBG3D(
   // Main parse state
   // Material and group lists
   const materials: BG3DMaterial[] = [];
-  const groups: BG3DGroup[] = [{ children: [] }]; // Start with a top-level group
+  const rootGroup: BG3DGroup = { children: [] };
+  const groups: BG3DGroup[] = [rootGroup]; // Start with a top-level group
   let done = false;
   // Group stack for nested group support
-  const groupStack: BG3DGroup[] = [groups[0]];
+  const groupStack: BG3DGroup[] = [rootGroup];
   // Track the current group for children insertion
-  let currentGroup: BG3DGroup = groups[0];
+  let currentGroup: BG3DGroup = rootGroup;
   // Track the current geometry for array tags
   let currentGeometry: BG3DGeometry | null = null;
 
@@ -757,30 +758,37 @@ function convertSkeletonResourceToBG3D(
             const firstKeyframe = keyframeEntry.obj[0];
             const lastKeyframe =
               keyframeEntry.obj[keyframeEntry.obj.length - 1];
-            console.log(
-              `  First keyframe: tick=${firstKeyframe.tick}, coord=[${firstKeyframe.coordX}, ${firstKeyframe.coordY}, ${firstKeyframe.coordZ}]`,
-            );
-            console.log(
-              `  Last keyframe: tick=${lastKeyframe.tick}, coord=[${lastKeyframe.coordX}, ${lastKeyframe.coordY}, ${lastKeyframe.coordZ}]`,
-            );
+            if (firstKeyframe) {
+              console.log(
+                `  First keyframe: tick=${firstKeyframe.tick}, coord=[${firstKeyframe.coordX}, ${firstKeyframe.coordY}, ${firstKeyframe.coordZ}]`,
+              );
+            }
+            if (lastKeyframe) {
+              console.log(
+                `  Last keyframe: tick=${lastKeyframe.tick}, coord=[${lastKeyframe.coordX}, ${lastKeyframe.coordY}, ${lastKeyframe.coordZ}]`,
+              );
+            }
           }
         }
 
-        keyframeEntry.obj.forEach((keyframe) => {
-          keyframes[boneIndex].push({
-            tick: keyframe.tick,
-            accelerationMode: keyframe.accelerationMode,
-            coordX: keyframe.coordX,
-            coordY: keyframe.coordY,
-            coordZ: keyframe.coordZ,
-            rotationX: keyframe.rotationX,
-            rotationY: keyframe.rotationY,
-            rotationZ: keyframe.rotationZ,
-            scaleX: keyframe.scaleX,
-            scaleY: keyframe.scaleY,
-            scaleZ: keyframe.scaleZ,
+        const boneKeyframes = keyframes[boneIndex];
+        if (boneKeyframes) {
+          keyframeEntry.obj.forEach((keyframe) => {
+            boneKeyframes.push({
+              tick: keyframe.tick,
+              accelerationMode: keyframe.accelerationMode,
+              coordX: keyframe.coordX,
+              coordY: keyframe.coordY,
+              coordZ: keyframe.coordZ,
+              rotationX: keyframe.rotationX,
+              rotationY: keyframe.rotationY,
+              rotationZ: keyframe.rotationZ,
+              scaleX: keyframe.scaleX,
+              scaleY: keyframe.scaleY,
+              scaleZ: keyframe.scaleZ,
+            });
           });
-        });
+        }
       } else if (forEachIndex < 3) {
         const objInfo = keyframeEntry?.obj
           ? `obj type: ${typeof keyframeEntry.obj}, is array: ${Array.isArray(
@@ -896,7 +904,7 @@ export function bg3dParsedToBG3D(parsed: BG3DParseResult): ArrayBuffer {
     view.setUint32(offset, BG3DTagType.MATERIALDIFFUSECOLOR, false);
     offset += 4;
     for (let i = 0; i < 4; i++) {
-      view.setFloat32(offset, material.diffuseColor[i], false);
+      view.setFloat32(offset, material.diffuseColor[i] ?? 0, false);
       offset += 4;
     }
     // TEXTUREMAP(s) or JPEGTEXTURE(s)
