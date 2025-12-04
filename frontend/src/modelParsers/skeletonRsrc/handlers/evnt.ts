@@ -4,7 +4,7 @@ import type { EvntRaw } from "../parseSkeletonRsrcTS";
 export function handleEvnt(
   resourceName: string,
   resourceData: EvntRaw[] | { obj?: EvntRaw[] } | undefined,
-  resourceId: string,
+  _resourceId: string,
   hexData: string,
 ) {
   if (

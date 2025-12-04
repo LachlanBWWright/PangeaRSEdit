@@ -4,8 +4,8 @@ import type { KeyFRaw } from "../parseSkeletonRsrcTS";
 export function handleKeyF(
   resourceName: string,
   resourceData: KeyFRaw[] | { obj?: KeyFRaw[] } | undefined,
-  resourceId: string,
-  hexData: string,
+  _resourceId: string,
+  _hexData: string,
 ) {
   if (
     resourceData &&
