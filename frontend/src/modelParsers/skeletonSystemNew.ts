@@ -224,7 +224,10 @@ class Matrix4 {
 
     const invDet = 1.0 / det;
     for (let i = 0; i < 16; i++) {
-      inv[i] *= invDet;
+      const val = inv[i];
+      if (val !== undefined) {
+        inv[i] = val * invDet;
+      }
     }
 
     return result;
@@ -249,7 +252,9 @@ class Matrix4 {
         // In column-major: result[j*4+i] = sum(a[k*4+i] * b[j*4+k])
         let sum = 0;
         for (let k = 0; k < 4; k++) {
-          sum += a[k * 4 + i] * b[j * 4 + k];
+          const aVal = a[k * 4 + i] ?? 0;
+          const bVal = b[j * 4 + k] ?? 0;
+          sum += aVal * bVal;
         }
         out[j * 4 + i] = sum;
       }
@@ -271,6 +276,10 @@ function calculateLocalTransform(bone: BG3DBone, bones: BG3DBone[]): Matrix4 {
   // If this bone has a valid parent, calculate relative transform
   if (bone.parentBone >= 0 && bone.parentBone < bones.length) {
     const parentBone = bones[bone.parentBone];
+    if (!parentBone) {
+      // Root bone: use absolute position
+      return new Matrix4().setTranslation(bonePos.x, bonePos.y, bonePos.z);
+    }
     const parentPos = new Vector3(
       parentBone.coordX,
       parentBone.coordY,
@@ -325,37 +334,48 @@ function decomposeMatrix(matrix: Matrix4): {
     m[10]! / sz,
   ];
 
+  // Get rotation matrix values safely
+  const r0 = rotMatrix[0] ?? 0;
+  const r1 = rotMatrix[1] ?? 0;
+  const r2 = rotMatrix[2] ?? 0;
+  const r3 = rotMatrix[3] ?? 0;
+  const r4 = rotMatrix[4] ?? 0;
+  const r5 = rotMatrix[5] ?? 0;
+  const r6 = rotMatrix[6] ?? 0;
+  const r7 = rotMatrix[7] ?? 0;
+  const r8 = rotMatrix[8] ?? 0;
+
   // Convert rotation matrix to quaternion
-  const trace = rotMatrix[0] + rotMatrix[4] + rotMatrix[8];
+  const trace = r0 + r4 + r8;
   let qw, qx, qy, qz;
 
   if (trace > 0) {
     const s = 0.5 / Math.sqrt(trace + 1.0);
     qw = 0.25 / s;
-    qx = (rotMatrix[7] - rotMatrix[5]) * s;
-    qy = (rotMatrix[2] - rotMatrix[6]) * s;
-    qz = (rotMatrix[3] - rotMatrix[1]) * s;
+    qx = (r7 - r5) * s;
+    qy = (r2 - r6) * s;
+    qz = (r3 - r1) * s;
   } else {
-    if (rotMatrix[0] > rotMatrix[4] && rotMatrix[0] > rotMatrix[8]) {
+    if (r0 > r4 && r0 > r8) {
       const s =
-        2.0 * Math.sqrt(1.0 + rotMatrix[0] - rotMatrix[4] - rotMatrix[8]);
-      qw = (rotMatrix[7] - rotMatrix[5]) / s;
+        2.0 * Math.sqrt(1.0 + r0 - r4 - r8);
+      qw = (r7 - r5) / s;
       qx = 0.25 * s;
-      qy = (rotMatrix[1] + rotMatrix[3]) / s;
-      qz = (rotMatrix[2] + rotMatrix[6]) / s;
-    } else if (rotMatrix[4] > rotMatrix[8]) {
+      qy = (r1 + r3) / s;
+      qz = (r2 + r6) / s;
+    } else if (r4 > r8) {
       const s =
-        2.0 * Math.sqrt(1.0 + rotMatrix[4] - rotMatrix[0] - rotMatrix[8]);
-      qw = (rotMatrix[2] - rotMatrix[6]) / s;
-      qx = (rotMatrix[1] + rotMatrix[3]) / s;
+        2.0 * Math.sqrt(1.0 + r4 - r0 - r8);
+      qw = (r2 - r6) / s;
+      qx = (r1 + r3) / s;
       qy = 0.25 * s;
-      qz = (rotMatrix[5] + rotMatrix[7]) / s;
+      qz = (r5 + r7) / s;
     } else {
       const s =
-        2.0 * Math.sqrt(1.0 + rotMatrix[8] - rotMatrix[0] - rotMatrix[4]);
-      qw = (rotMatrix[3] - rotMatrix[1]) / s;
-      qx = (rotMatrix[2] + rotMatrix[6]) / s;
-      qy = (rotMatrix[5] + rotMatrix[7]) / s;
+        2.0 * Math.sqrt(1.0 + r8 - r0 - r4);
+      qw = (r3 - r1) / s;
+      qx = (r2 + r6) / s;
+      qy = (r5 + r7) / s;
       qz = 0.25 * s;
     }
   }
@@ -523,19 +543,24 @@ function calculateInverseBindMatrices(bones: BG3DBone[]): Float32Array {
     // Calculate world transform by composing with parent transforms
     if (bone.parentBone >= 0 && bone.parentBone < bones.length) {
       const parentWorld = worldTransforms[bone.parentBone];
-      worldTransforms[index] = parentWorld.multiply(localTransform);
+      if (parentWorld) {
+        worldTransforms[index] = parentWorld.multiply(localTransform);
+      } else {
+        worldTransforms[index] = localTransform;
+      }
     } else {
       // Root bone
       worldTransforms[index] = localTransform;
     }
 
     // Calculate inverse bind matrix (inverse of world transform)
-    const invBindMatrix = worldTransforms[index].invert();
+    const currentWorld = worldTransforms[index];
+    const invBindMatrix = currentWorld ? currentWorld.invert() : new Matrix4().identity();
 
     // Store in column-major order (glTF requirement)
     const offset = index * 16;
     for (let i = 0; i < 16; i++) {
-      matrices[offset + i] = invBindMatrix.data[i];
+      matrices[offset + i] = invBindMatrix.data[i] ?? 0;
     }
   });
 
@@ -568,7 +593,7 @@ function createSkin(
   // Calculate and set inverse bind matrices
   // These transform vertices from model space to bone space
   const ibmData = calculateInverseBindMatrices(bones);
-  const buffer = doc.getRoot().listBuffers()[0];
+  const buffer = doc.getRoot().listBuffers()[0] ?? null;
   const ibmAccessor = doc
     .createAccessor()
     .setType("MAT4")
@@ -583,9 +608,10 @@ function createSkin(
 /**
  * Check if array values have meaningful variation (not all same)
  */
-function hasVariation(values: number[], threshold = 0.001): boolean {
+function _hasVariation(values: number[], threshold = 0.001): boolean {
   if (values.length < 2) return false;
   const first = values[0];
+  if (first === undefined) return false;
   return values.some((v) => Math.abs(v - first) > threshold);
 }
 
@@ -611,6 +637,7 @@ function processOttoAnimations(
 
       if (boneIndex >= 0 && boneIndex < bones.length && keyframes.length > 0) {
         const bone = bones[boneIndex];
+        if (!bone) return;
 
         // Convert timing from Otto's 30 FPS system to seconds
         const times = keyframes.map((kf) => kf.tick / 30.0);
@@ -666,10 +693,9 @@ function processOttoAnimations(
           values: scales,
         });
 
+        const lastTime = times[times.length - 1];
         console.log(
-          `    Bone ${bone.name}: ${keyframes.length} keyframes, ${times[
-            times.length - 1
-          ].toFixed(2)}s`,
+          `    Bone ${bone.name}: ${keyframes.length} keyframes, ${(lastTime ?? 0).toFixed(2)}s`,
         );
       }
     });
@@ -1148,7 +1174,8 @@ export function extractAnimationsFromGLTF(
   const skins = doc.getRoot().listSkins();
 
   // We need the joints to map back to bone indices
-  const joints = skins.length > 0 ? skins[0].listJoints() : [];
+  const firstSkin = skins[0];
+  const joints = firstSkin ? firstSkin.listJoints() : [];
 
   return animations.map((anim) => {
     console.log(`Extracting animation "${anim.getName()}" from glTF`);
@@ -1197,10 +1224,14 @@ export function extractAnimationsFromGLTF(
       const bone = bones && boneIndex < bones.length ? bones[boneIndex] : null;
 
       for (let i = 0; i < times.length; i++) {
-        const tick = Math.round(times[i] * 30); // Convert back to 30 FPS
+        const time = times[i];
+        if (time === undefined) continue;
+        const tick = Math.round(time * 30); // Convert back to 30 FPS
 
         // Find or create keyframe for this tick
-        let keyframe = keyframes[boneIndexStr].find((kf) => kf.tick === tick);
+        const boneKeyframes = keyframes[boneIndexStr];
+        if (!boneKeyframes) continue;
+        let keyframe = boneKeyframes.find((kf) => kf.tick === tick);
         if (!keyframe) {
           // Initialize with bone's LOCAL rest position (computed from absolute coords)
           // For root bone: localPos = bone.coord
@@ -1215,9 +1246,11 @@ export function extractAnimationsFromGLTF(
             bone.parentBone < bones.length
           ) {
             const parent = bones[bone.parentBone];
-            localX = bone.coordX - parent.coordX;
-            localY = bone.coordY - parent.coordY;
-            localZ = bone.coordZ - parent.coordZ;
+            if (parent) {
+              localX = bone.coordX - parent.coordX;
+              localY = bone.coordY - parent.coordY;
+              localZ = bone.coordZ - parent.coordZ;
+            }
           }
           keyframe = {
             tick,
