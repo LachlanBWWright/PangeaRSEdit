@@ -66,17 +66,21 @@ export async function analyzeGLTF(
         textures: [] as Array<{ type: string; uri?: string }>,
       };
 
-      // Check for different texture types
-      const textureTypes = [
-        { prop: "getBaseColorTexture", type: "baseColor" },
-        { prop: "getNormalTexture", type: "normal" },
-        { prop: "getMetallicRoughnessTexture", type: "metallicRoughness" },
-        { prop: "getOcclusionTexture", type: "occlusion" },
-        { prop: "getEmissiveTexture", type: "emissive" },
-      ] as const;
+      // Check for different texture types using the Material's texture getters
+      // Material from @gltf-transform/core has these methods defined
+      const textureGetters: Array<{
+        getter: () => { getURI: () => string } | null;
+        type: string;
+      }> = [
+        { getter: () => material.getBaseColorTexture(), type: "baseColor" },
+        { getter: () => material.getNormalTexture(), type: "normal" },
+        { getter: () => material.getMetallicRoughnessTexture(), type: "metallicRoughness" },
+        { getter: () => material.getOcclusionTexture(), type: "occlusion" },
+        { getter: () => material.getEmissiveTexture(), type: "emissive" },
+      ];
 
-      textureTypes.forEach(({ prop, type }) => {
-        const texture = (material as unknown as Record<string, () => { getURI: () => string } | null>)[prop]?.();
+      textureGetters.forEach(({ getter, type }) => {
+        const texture = getter();
         if (texture) {
           materialData.textures.push({
             type,

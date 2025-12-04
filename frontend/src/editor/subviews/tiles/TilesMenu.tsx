@@ -94,12 +94,16 @@ export function TilesMenu({
   };
 
   // Calculate grid columns based on available buttons
+  // Use explicit Tailwind classes to ensure they're included in the CSS bundle
   const buttonCount = 1 + (hasTileFlags ? 1 : 0) + (hasElectricFloorOptions ? 2 : 0);
-  const gridCols = `grid-cols-${Math.min(buttonCount, 4)}`;
+  const gridColsClass = buttonCount >= 4 ? "grid-cols-4" 
+    : buttonCount === 3 ? "grid-cols-3" 
+    : buttonCount === 2 ? "grid-cols-2" 
+    : "grid-cols-1";
 
   return (
     <div className="flex flex-col gap-2">
-      <div className={`grid ${gridCols} gap-2`}>
+      <div className={`grid ${gridColsClass} gap-2`}>
         <Button
           selected={tileView === TileViews.Topology}
           onClick={() => setTileView(TileViews.Topology)}
