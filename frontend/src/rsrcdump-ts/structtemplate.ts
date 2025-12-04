@@ -1,19 +1,21 @@
 // Struct template parsing for binary data formats
 
 import type { StructTemplate } from './types';
+import { Result, ok, err } from '../types/result';
 
 export class StructTemplateParser {
-  static fromTemplateString(template: string): StructTemplate {
+  static fromTemplateString(template: string): Result<StructTemplate, Error> {
     const split = template.split(':', 3);
     
-    const formatStr = split.shift()!;
-    const fieldNames = split.length > 0 ? split.shift()!.split(',') : [];
+    const formatStr = split.shift();
+    const fieldNames = split.length > 0 ? (split.shift()?.split(',') ?? []) : [];
     
     if (!formatStr) {
-      throw new Error('Empty format string');
+      return err(new Error('Empty format string'));
     }
     
-    return new StructTemplateParser(formatStr, fieldNames).build();
+    const parser = new StructTemplateParser(formatStr, fieldNames);
+    return parser.build();
   }
 
   private formatStr: string;
@@ -37,24 +39,34 @@ export class StructTemplateParser {
     }
   }
 
-  build(): StructTemplate {
-    const fieldFormats = this.splitStructFormatFields(this.formatStr);
-    this.recordLength = this.calculateRecordLength(fieldFormats);
+  build(): Result<StructTemplate, Error> {
+    const fieldFormatsResult = this.splitStructFormatFields(this.formatStr);
+    if (!fieldFormatsResult.ok) {
+      return fieldFormatsResult;
+    }
+    const fieldFormats = fieldFormatsResult.value;
     
-    return {
+    const recordLengthResult = this.calculateRecordLength(fieldFormats);
+    if (!recordLengthResult.ok) {
+      return recordLengthResult;
+    }
+    this.recordLength = recordLengthResult.value;
+    
+    return ok({
       format: this.formatStr,
       fieldNames: this.expandFieldNames(fieldFormats),
       isList: this.isList,
       recordLength: this.recordLength
-    };
+    });
   }
 
-  private splitStructFormatFields(fmt: string): string[] {
+  private splitStructFormatFields(fmt: string): Result<string[], Error> {
     const fields: string[] = [];
     let repeat = 0;
     
     for (let i = 0; i < fmt.length; i++) {
       const c = fmt[i];
+      if (c === undefined) continue;
       
       // Ignore redundant values
       if (/\s/.test(c) || '@!><'.includes(c)) {
@@ -77,14 +89,14 @@ export class StructTemplateParser {
         fields.push(`${Math.max(repeat || 1, 1)}${c}`);
         repeat = 0;
       } else {
-        throw new Error(`Unsupported struct format character '${c}'`);
+        return err(new Error(`Unsupported struct format character '${c}'`));
       }
     }
     
-    return fields;
+    return ok(fields);
   }
 
-  private calculateRecordLength(fields: string[]): number {
+  private calculateRecordLength(fields: string[]): Result<number, Error> {
     let length = 0;
     
     for (const field of fields) {
@@ -118,12 +130,12 @@ export class StructTemplateParser {
             const num = parseInt(field.slice(0, -1));
             length += num;
           } else {
-            throw new Error(`Unknown field type: ${field}`);
+            return err(new Error(`Unknown field type: ${field}`));
           }
       }
     }
     
-    return length;
+    return ok(length);
   }
 
   private expandFieldNames(fields: string[]): (string | null)[] {
@@ -172,7 +184,7 @@ export class StructTemplateParser {
     }
     
     const [, prefix, suffix, countStr] = match;
-    const count = parseInt(countStr);
+    const count = parseInt(countStr ?? '0');
     
     // Count how many consecutive non-x fields we have starting from startFieldIndex
     let availableFields = 0;
@@ -192,12 +204,16 @@ export class StructTemplateParser {
     return result;
   }
 
-  static unpackRecord(data: Uint8Array, offset: number, template: StructTemplate): any {
+  static unpackRecord(data: Uint8Array, offset: number, template: StructTemplate): Result<any, Error> {
     const view = new DataView(data.buffer, data.byteOffset + offset);
     const values: any[] = [];
     let pos = 0;
 
-    const fields = this.splitStructFormatFields(template.format);
+    const fieldsResult = this.splitStructFormatFieldsStatic(template.format);
+    if (!fieldsResult.ok) {
+      return fieldsResult;
+    }
+    const fields = fieldsResult.value;
     
     for (const field of fields) {
       switch (field) {
@@ -260,15 +276,15 @@ export class StructTemplateParser {
             values.push(new TextDecoder('utf-8').decode(bytes));
             pos += num;
           } else {
-            throw new Error(`Unknown field type: ${field}`);
+            return err(new Error(`Unknown field type: ${field}`));
           }
       }
     }
 
-    return this.tagValues(values, template);
+    return ok(this.tagValues(values, template));
   }
 
-  private static splitStructFormatFields(fmt: string): string[] {
+  private static splitStructFormatFieldsStatic(fmt: string): Result<string[], Error> {
     // Remove endianness prefix for field parsing
     const cleanFmt = fmt.replace(/^[!@=<>]/, '');
     const fields: string[] = [];
@@ -276,6 +292,7 @@ export class StructTemplateParser {
     
     for (let i = 0; i < cleanFmt.length; i++) {
       const c = cleanFmt[i];
+      if (c === undefined) continue;
       
       // Ignore whitespace
       if (/\s/.test(c)) {
@@ -300,11 +317,12 @@ export class StructTemplateParser {
       }
     }
     
-    return fields;
+    return ok(fields);
   }
 
   private static tagValues(values: any[], template: StructTemplate): any {
-    if (template.fieldNames.length === 1 && !template.fieldNames[0]) {
+    const firstFieldName = template.fieldNames[0];
+    if (template.fieldNames.length === 1 && !firstFieldName) {
       // Scalar value
       return values[0];
     }

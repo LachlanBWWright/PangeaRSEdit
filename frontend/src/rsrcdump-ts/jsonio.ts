@@ -8,6 +8,7 @@ import type {
   Resource,
 } from "./types";
 import { Base16Converter } from "./resconverters";
+import { Result, ok, err } from '../types/result';
 
 export function resourceForkToJson(
   fork: ResourceFork,
@@ -16,7 +17,7 @@ export function resourceForkToJson(
   converters: Map<string, ResourceConverter> = new Map(),
   metadata: any = {},
   quiet: boolean = false,
-): string {
+): Result<string, Error> {
   const jsonBlob: JsonOutput = {};
 
   // Add metadata
@@ -83,26 +84,36 @@ export function resourceForkToJson(
       }
 
       // Convert resource data
-      try {
-        const converter = converters.get(typeName) || new Base16Converter();
-        const obj = converter.unpack(resource, fork);
+      const converter = converters.get(typeName) || new Base16Converter();
+      const obj = converter.unpack(resource, fork);
 
+      // Handle Result-returning converters
+      if (obj && typeof obj === 'object' && 'ok' in obj) {
+        if (obj.ok) {
+          if (converter instanceof Base16Converter) {
+            wrapper.data = obj.value;
+          } else {
+            wrapper.obj = obj.value;
+          }
+        } else {
+          wrapper.conversionError = String(obj.error);
+          // Fall back to base16
+          wrapper.data = new Base16Converter().unpack(resource, fork);
+        }
+      } else {
+        // Legacy converters that don't return Result
         if (converter instanceof Base16Converter) {
           wrapper.data = obj;
         } else {
           wrapper.obj = obj;
         }
-      } catch (convertException) {
-        wrapper.conversionError = String(convertException);
-        // Fall back to base16
-        wrapper.data = new Base16Converter().unpack(resource, fork);
       }
 
       jsonBlob[typeName][resId.toString()] = wrapper;
     }
   }
 
-  return JSON.stringify(jsonBlob, null, "\t");
+  return ok(JSON.stringify(jsonBlob, null, "\t"));
 }
 
 /**
@@ -116,7 +127,7 @@ export function resourceForkToJsonObject(
   converters: Map<string, ResourceConverter> = new Map(),
   metadata: Record<string, unknown> = {},
   quiet: boolean = true,
-): JsonOutput {
+): Result<JsonOutput, Error> {
   const jsonBlob: JsonOutput = {};
 
   // Add metadata
@@ -183,26 +194,36 @@ export function resourceForkToJsonObject(
       }
 
       // Convert resource data
-      try {
-        const converter = converters.get(typeName) || new Base16Converter();
-        const obj = converter.unpack(resource, fork);
+      const converter = converters.get(typeName) || new Base16Converter();
+      const obj = converter.unpack(resource, fork);
 
+      // Handle Result-returning converters
+      if (obj && typeof obj === 'object' && 'ok' in obj) {
+        if (obj.ok) {
+          if (converter instanceof Base16Converter) {
+            wrapper.data = obj.value;
+          } else {
+            wrapper.obj = obj.value;
+          }
+        } else {
+          wrapper.conversionError = String(obj.error);
+          // Fall back to base16
+          wrapper.data = new Base16Converter().unpack(resource, fork);
+        }
+      } else {
+        // Legacy converters that don't return Result
         if (converter instanceof Base16Converter) {
           wrapper.data = obj;
         } else {
           wrapper.obj = obj;
         }
-      } catch (convertException) {
-        wrapper.conversionError = String(convertException);
-        // Fall back to base16
-        wrapper.data = new Base16Converter().unpack(resource, fork);
       }
 
       jsonBlob[typeName][resId.toString()] = wrapper;
     }
   }
 
-  return jsonBlob;
+  return ok(jsonBlob);
 }
 
 /**
@@ -212,7 +233,7 @@ export function resourceForkToJsonObject(
 export function jsonToResourceFork(
   jsonData: JsonOutput,
   converters: Map<string, ResourceConverter> = new Map(),
-): ResourceFork {
+): Result<ResourceFork, Error> {
   const resources = new Map<string, Map<number, Resource>>();
 
   // Extract metadata
@@ -242,11 +263,21 @@ export function jsonToResourceFork(
         // Use converter to pack structured data back to binary
         const converter = converters.get(typeName);
         if (converter && converter.pack) {
-          data = converter.pack(resourceData.obj);
+          const packResult = converter.pack(resourceData.obj);
+          // Handle Result-returning pack functions
+          if (packResult && typeof packResult === 'object' && 'ok' in packResult) {
+            if (packResult.ok) {
+              data = packResult.value;
+            } else {
+              return err(packResult.error);
+            }
+          } else {
+            data = packResult as Uint8Array;
+          }
         } else {
-          throw new Error(
+          return err(new Error(
             `No pack function available for resource type ${typeName}`,
-          );
+          ));
         }
       } else if (resourceData.data !== undefined) {
         // Convert hex string back to binary
@@ -257,9 +288,9 @@ export function jsonToResourceFork(
         }
         data = bytes;
       } else {
-        throw new Error(
+        return err(new Error(
           `Resource ${typeName}:${id} has neither obj nor data field`,
-        );
+        ));
       }
 
       const resource: Resource = {
@@ -280,10 +311,10 @@ export function jsonToResourceFork(
     }
   }
 
-  return {
+  return ok({
     resources,
     fileAttributes,
     junkNextresmap,
     junkFilerefnum,
-  };
+  });
 }

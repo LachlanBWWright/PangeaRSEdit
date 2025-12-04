@@ -1,5 +1,7 @@
 // AppleDouble format support for extracting resource forks
 
+import { Result, ok, err } from '../types/result';
+
 export class NotADFError extends Error {
   constructor(message?: string) {
     super(message);
@@ -69,18 +71,20 @@ export function packAdf(resourceFork: Uint8Array, finderInfo?: Uint8Array): Uint
   return new Uint8Array(buffer);
 }
 
-export function unpackAdf(data: Uint8Array): Map<number, Uint8Array> {
+export type AdfResult = Result<Map<number, Uint8Array>, NotADFError>;
+
+export function unpackAdf(data: Uint8Array): AdfResult {
   const view = new DataView(data.buffer, data.byteOffset);
   
   // Check ADF magic
   const magic = view.getUint32(0, false);
   if (magic !== 0x00051607) {
-    throw new NotADFError('Not an AppleDouble file');
+    return err(new NotADFError('Not an AppleDouble file'));
   }
   
   const version = view.getUint32(4, false);
   if (version !== 0x00020000) {
-    throw new NotADFError('Unsupported AppleDouble version');
+    return err(new NotADFError('Unsupported AppleDouble version'));
   }
   
   // Skip filler (16 bytes)
@@ -99,5 +103,5 @@ export function unpackAdf(data: Uint8Array): Map<number, Uint8Array> {
     entries.set(entryId, new Uint8Array(data.buffer, data.byteOffset + offset, length));
   }
   
-  return entries;
+  return ok(entries);
 }

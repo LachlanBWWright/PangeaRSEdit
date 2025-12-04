@@ -1,17 +1,19 @@
 // Utilities for text processing and type name parsing
 
-export function sanitizeTypeName(restype: Uint8Array): string {
+import { Result, ok, err } from '../types/result';
+
+export function sanitizeTypeName(restype: Uint8Array): Result<string, Error> {
   if (restype.length !== 4) {
-    throw new Error(`restype isn't 4 bytes`);
+    return err(new Error(`restype isn't 4 bytes`));
   }
   
   // Convert bytes to string, treating as raw bytes
   let result = '';
   for (let i = 0; i < restype.length; i++) {
     const byte = restype[i];
-    if (byte >= 32 && byte <= 126) { // printable ASCII
+    if (byte !== undefined && byte >= 32 && byte <= 126) { // printable ASCII
       result += String.fromCharCode(byte);
-    } else {
+    } else if (byte !== undefined) {
       result += encodeURIComponent(String.fromCharCode(byte));
     }
   }
@@ -21,23 +23,26 @@ export function sanitizeTypeName(restype: Uint8Array): string {
     result = result.replace(/%20+$/, '');
   }
   
-  return result;
+  return ok(result);
 }
 
-export function parseTypeName(saneName: string): Uint8Array {
+export function parseTypeName(saneName: string): Result<Uint8Array, Error> {
   const decoded = new TextEncoder().encode(decodeURIComponent(saneName));
   const result = new Uint8Array(4);
   result.fill(0x20); // space character
   
   for (let i = 0; i < Math.min(decoded.length, 4); i++) {
-    result[i] = decoded[i];
+    const byte = decoded[i];
+    if (byte !== undefined) {
+      result[i] = byte;
+    }
   }
   
   if (decoded.length > 4) {
-    throw new Error(`decoded restype doesn't work out to 4 bytes`);
+    return err(new Error(`decoded restype doesn't work out to 4 bytes`));
   }
   
-  return result;
+  return ok(result);
 }
 
 function isAllSpaces(data: Uint8Array): boolean {

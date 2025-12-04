@@ -11,20 +11,23 @@ import { StructConverter, standardConverters } from "./resconverters";
 import { parseTypeName } from "./textio";
 import { unpackAdf, NotADFError, ADF_ENTRYNUM_RESOURCEFORK } from "./adf";
 import { getDefaultOttoConverters, loadOttoSpecsFromText } from "./ottoSpecs";
+import { Result, ok, err } from '../types/result';
 
-export function load(data: Uint8Array): ResourceFork {
-  try {
-    const adfEntries = unpackAdf(data);
-    const adfResfork = adfEntries.get(ADF_ENTRYNUM_RESOURCEFORK);
+export function load(data: Uint8Array): Result<ResourceFork, Error> {
+  const adfResult = unpackAdf(data);
+  
+  if (adfResult.ok) {
+    const adfResfork = adfResult.value.get(ADF_ENTRYNUM_RESOURCEFORK);
     if (!adfResfork) {
-      throw new Error("No resource fork found in ADF");
+      return err(new Error("No resource fork found in ADF"));
     }
     return ResourceForkParser.fromBytes(adfResfork);
-  } catch (error) {
-    if (error instanceof NotADFError) {
+  } else {
+    // Not an ADF file, try parsing as raw resource fork
+    if (adfResult.error instanceof NotADFError) {
       return ResourceForkParser.fromBytes(data);
     }
-    throw error;
+    return err(adfResult.error);
   }
 }
 
@@ -34,14 +37,32 @@ export function saveToJson(
   includeTypes: string[] = [],
   excludeTypes: string[] = [],
   useOttoSpecs: boolean = true,
-): string {
-  const fork = load(data);
+): Result<string, Error> {
+  const forkResult = load(data);
+  if (!forkResult.ok) {
+    return forkResult;
+  }
+
+  const convertersResult = getConverters(structSpecs, useOttoSpecs);
+  if (!convertersResult.ok) {
+    return convertersResult;
+  }
+
+  const includeTypesResult = mapParseTypeNames(includeTypes);
+  if (!includeTypesResult.ok) {
+    return includeTypesResult;
+  }
+
+  const excludeTypesResult = mapParseTypeNames(excludeTypes);
+  if (!excludeTypesResult.ok) {
+    return excludeTypesResult;
+  }
 
   return resourceForkToJson(
-    fork,
-    includeTypes.map(parseTypeName),
-    excludeTypes.map(parseTypeName),
-    getConverters(structSpecs, useOttoSpecs),
+    forkResult.value,
+    includeTypesResult.value,
+    excludeTypesResult.value,
+    convertersResult.value,
     {},
   );
 }
@@ -52,61 +73,98 @@ export function saveToJsonWithOttoSpecs(
   structSpecs: string[] = [],
   includeTypes: string[] = [],
   excludeTypes: string[] = [],
-): string {
-  const fork = load(data);
+): Result<string, Error> {
+  const forkResult = load(data);
+  if (!forkResult.ok) {
+    return forkResult;
+  }
 
   const converters = new Map(standardConverters);
 
   // Add otto specs converters
-  const ottoConverters = loadOttoSpecsFromText(ottoSpecsText);
-  for (const [type, converter] of Array.from(ottoConverters)) {
+  const ottoConvertersResult = loadOttoSpecsFromText(ottoSpecsText);
+  if (!ottoConvertersResult.ok) {
+    return ottoConvertersResult;
+  }
+  for (const [type, converter] of Array.from(ottoConvertersResult.value)) {
     converters.set(type, converter);
   }
 
   // Add additional struct specs
   for (const templateArg of structSpecs) {
-    const [converter, restype] =
-      StructConverter.fromTemplateStringWithTypename(templateArg);
+    const converterResult = StructConverter.fromTemplateStringWithTypename(templateArg);
+    if (!converterResult.ok) {
+      return converterResult;
+    }
+    const [converter, restype] = converterResult.value;
     if (converter && restype) {
       const typeName = new TextDecoder("utf-8").decode(restype).trim();
       converters.set(typeName, converter);
     }
   }
 
+  const includeTypesResult = mapParseTypeNames(includeTypes);
+  if (!includeTypesResult.ok) {
+    return includeTypesResult;
+  }
+
+  const excludeTypesResult = mapParseTypeNames(excludeTypes);
+  if (!excludeTypesResult.ok) {
+    return excludeTypesResult;
+  }
+
   return resourceForkToJson(
-    fork,
-    includeTypes.map(parseTypeName),
-    excludeTypes.map(parseTypeName),
+    forkResult.value,
+    includeTypesResult.value,
+    excludeTypesResult.value,
     converters,
     {},
   );
 }
 
+function mapParseTypeNames(types: string[]): Result<Uint8Array[], Error> {
+  const results: Uint8Array[] = [];
+  for (const type of types) {
+    const result = parseTypeName(type);
+    if (!result.ok) {
+      return result;
+    }
+    results.push(result.value);
+  }
+  return ok(results);
+}
+
 function getConverters(
   structSpecs: string[],
   useOttoSpecs: boolean = true,
-): Map<string, ResourceConverter> {
+): Result<Map<string, ResourceConverter>, Error> {
   const converters = new Map(standardConverters);
 
   // Add default otto specs converters if requested
   if (useOttoSpecs) {
-    const ottoConverters = getDefaultOttoConverters();
-    for (const [type, converter] of Array.from(ottoConverters)) {
+    const ottoConvertersResult = getDefaultOttoConverters();
+    if (!ottoConvertersResult.ok) {
+      return ottoConvertersResult;
+    }
+    for (const [type, converter] of Array.from(ottoConvertersResult.value)) {
       converters.set(type, converter);
     }
   }
 
   // Add additional struct specs
   for (const templateArg of structSpecs) {
-    const [converter, restype] =
-      StructConverter.fromTemplateStringWithTypename(templateArg);
+    const converterResult = StructConverter.fromTemplateStringWithTypename(templateArg);
+    if (!converterResult.ok) {
+      return converterResult;
+    }
+    const [converter, restype] = converterResult.value;
     if (converter && restype) {
       const typeName = new TextDecoder("utf-8").decode(restype).trim();
       converters.set(typeName, converter);
     }
   }
 
-  return converters;
+  return ok(converters);
 }
 
 /**
@@ -116,9 +174,14 @@ export function loadFromJson(
   jsonData: JsonOutput | string,
   structSpecs: string[] = [],
   useOttoSpecs: boolean = true,
-): ResourceFork {
+): Result<ResourceFork, Error> {
+  const convertersResult = getConverters(structSpecs, useOttoSpecs);
+  if (!convertersResult.ok) {
+    return convertersResult;
+  }
+  
   const parsed = typeof jsonData === "string" ? JSON.parse(jsonData) : jsonData;
-  return jsonToResourceFork(parsed, getConverters(structSpecs, useOttoSpecs));
+  return jsonToResourceFork(parsed, convertersResult.value);
 }
 
 /**
@@ -135,9 +198,12 @@ export function saveFromJson(
   jsonData: JsonOutput | string,
   structSpecs: string[] = [],
   useOttoSpecs: boolean = true,
-): Uint8Array {
-  const fork = loadFromJson(jsonData, structSpecs, useOttoSpecs);
-  return saveToBytes(fork);
+): Result<Uint8Array, Error> {
+  const forkResult = loadFromJson(jsonData, structSpecs, useOttoSpecs);
+  if (!forkResult.ok) {
+    return forkResult;
+  }
+  return ok(saveToBytes(forkResult.value));
 }
 
 /**
@@ -149,14 +215,32 @@ export function saveToJsonObject(
   includeTypes: string[] = [],
   excludeTypes: string[] = [],
   useOttoSpecs: boolean = true,
-): JsonOutput {
-  const fork = load(data);
+): Result<JsonOutput, Error> {
+  const forkResult = load(data);
+  if (!forkResult.ok) {
+    return forkResult;
+  }
+
+  const convertersResult = getConverters(structSpecs, useOttoSpecs);
+  if (!convertersResult.ok) {
+    return convertersResult;
+  }
+
+  const includeTypesResult = mapParseTypeNames(includeTypes);
+  if (!includeTypesResult.ok) {
+    return includeTypesResult;
+  }
+
+  const excludeTypesResult = mapParseTypeNames(excludeTypes);
+  if (!excludeTypesResult.ok) {
+    return excludeTypesResult;
+  }
 
   return resourceForkToJsonObject(
-    fork,
-    includeTypes.map(parseTypeName),
-    excludeTypes.map(parseTypeName),
-    getConverters(structSpecs, useOttoSpecs),
+    forkResult.value,
+    includeTypesResult.value,
+    excludeTypesResult.value,
+    convertersResult.value,
     {},
   );
 }
