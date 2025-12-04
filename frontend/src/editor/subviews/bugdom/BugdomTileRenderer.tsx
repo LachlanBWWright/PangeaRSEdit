@@ -102,16 +102,12 @@ export function drawTileIntoBuffer(
 
   // Apply transformations based on flip/rot bits
   // Handle all 16 combinations of flip and rotation
+  // Order: rotate first, then scale (to match Konva's transformation order in BugdomTileMenu)
   const flipX = (flipRotBits & TILE_FLIPX_MASK) !== 0;
   const flipY = (flipRotBits & TILE_FLIPY_MASK) !== 0;
   const rotation = flipRotBits & TILE_ROTATE_MASK;
 
-  // Apply flips
-  const scaleX = flipX ? -1 : 1;
-  const scaleY = flipY ? -1 : 1;
-  destCtx.scale(scaleX, scaleY);
-
-  // Apply rotation (rotation bits 12-13 encode 0, 90, 180, 270 degrees)
+  // Apply rotation first (rotation bits 12-13 encode 0, 90, 180, 270 degrees)
   switch (rotation) {
     case TILE_ROT1:
       destCtx.rotate(Math.PI / 2); // 90 degrees
@@ -126,6 +122,11 @@ export function drawTileIntoBuffer(
       // No rotation
       break;
   }
+
+  // Apply flips after rotation
+  const scaleX = flipX ? -1 : 1;
+  const scaleY = flipY ? -1 : 1;
+  destCtx.scale(scaleX, scaleY);
 
   // Draw tile centered at origin (which is now at destX+16, destY+16)
   destCtx.drawImage(
