@@ -42,6 +42,76 @@ import { Quaternion } from "three";
 import { parseSkeletonRsrcTS } from "./skeletonRsrc/parseSkeletonRsrcTS";
 
 /**
+ * Type definitions for glTF extras data
+ */
+interface BG3DKeyframeLike {
+  tick: number;
+  accelerationMode: number;
+  coordX: number;
+  coordY: number;
+  coordZ: number;
+  rotationX: number;
+  rotationY: number;
+  rotationZ: number;
+  scaleX: number;
+  scaleY: number;
+  scaleZ: number;
+}
+
+interface KeyframeData {
+  name?: string;
+  keyframes?: { [boneIndex: number]: BG3DKeyframeLike[] };
+}
+
+interface AnimationEventData {
+  name?: string;
+  numAnimEvents?: number;
+  events?: { time: number; type: number; value: number }[];
+}
+
+interface BoneData {
+  parentBone?: number;
+  name?: string;
+  coordX?: number;
+  coordY?: number;
+  coordZ?: number;
+  numPointsAttachedToBone?: number;
+  numNormalsAttachedToBone?: number;
+  pointIndices?: number[];
+  normalIndices?: number[];
+  reserved0?: number;
+  reserved1?: number;
+  reserved2?: number;
+  reserved3?: number;
+  reserved4?: number;
+  reserved5?: number;
+  reserved6?: number;
+  reserved7?: number;
+}
+
+interface HeaderData {
+  version?: number;
+  numAnims?: number;
+  numJoints?: number;
+  num3DMFLimbs?: number;
+}
+
+interface SkeletonExtras {
+  keyframeData?: KeyframeData[];
+  animationEvents?: AnimationEventData[];
+  boneData?: BoneData[];
+  headerData?: HeaderData;
+  relPoints?: unknown[];
+  alisData?: unknown;
+  metadata?: unknown;
+}
+
+interface BG3DFields {
+  materialExtras?: unknown[];
+  skeletonExtras?: SkeletonExtras;
+}
+
+/**
  * Matrix utilities for coordinate transformations
  */
 class Matrix4 {
@@ -953,7 +1023,7 @@ export async function gltfToBG3D(doc: Document): Promise<BG3DParseResult> {
   console.log("=== Starting glTF to BG3D Conversion ===");
 
   const rootExtras = doc.getRoot().getExtras() || {};
-  const bg3dFields = rootExtras.bg3dFields as { materialExtras?: unknown[]; skeletonExtras?: unknown } | undefined;
+  const bg3dFields = rootExtras.bg3dFields as BG3DFields | undefined;
 
   // Extract BG3D-specific metadata from extras (only non-glTF-representable data)
   const materialExtras = (bg3dFields?.materialExtras || []) as Array<{ flags?: number; textureExtras?: Array<{ dstPixelFormat?: number }> }>;
@@ -1212,13 +1282,7 @@ export async function gltfToBG3D(doc: Document): Promise<BG3DParseResult> {
       if (!skin) {
         console.warn("No skin found in glTF document");
         return {
-          version: 0,
-          numGroups: 0,
-          numMeshes: 0,
-          numAtomicBoundingBoxes: 0,
-          numContainers: 0,
           groups: [],
-          geometries: [],
           materials: [],
         };
       }
@@ -1493,7 +1557,7 @@ export async function gltfToBG3D(doc: Document): Promise<BG3DParseResult> {
         const animations = extractAnimationsFromGLTF(doc, bones);
 
         // Restore animation data from extras if available (more accurate than glTF conversion)
-        const skeletonExtras = bg3dFields?.skeletonExtras as { keyframeData?: unknown[] } | undefined;
+        const skeletonExtras = bg3dFields?.skeletonExtras;
         console.log("[DEBUG] skeletonExtras available:", !!skeletonExtras);
         console.log(
           "[DEBUG] skeletonExtras.keyframeData available:",
@@ -1512,16 +1576,19 @@ export async function gltfToBG3D(doc: Document): Promise<BG3DParseResult> {
             "animations",
           );
           animations.forEach((anim, index) => {
+            const keyframeData = skeletonExtras.keyframeData;
+            if (!keyframeData) return;
             const kfData =
-              skeletonExtras.keyframeData.find(
-                (e: any) => e.name === anim.name,
-              ) || skeletonExtras.keyframeData[index];
+              keyframeData.find(
+                (e: KeyframeData) => e.name === anim.name,
+              ) ?? keyframeData[index];
             if (kfData?.keyframes) {
               console.log(
                 "[DEBUG] Restored keyframes for animation",
                 anim.name,
               );
-              anim.keyframes = kfData.keyframes;
+              // Cast to the proper type since BG3DKeyframeLike matches BG3DKeyframe
+              anim.keyframes = kfData.keyframes as { [boneIndex: number]: BG3DKeyframeLike[] };
             } else {
               console.log(
                 "[DEBUG] No keyframe data found for animation",
@@ -1536,11 +1603,12 @@ export async function gltfToBG3D(doc: Document): Promise<BG3DParseResult> {
         }
 
         if (skeletonExtras?.animationEvents) {
+          const animEvents = skeletonExtras.animationEvents;
           animations.forEach((anim, index) => {
             const eventData =
-              skeletonExtras.animationEvents.find(
-                (e: any) => e.name === anim.name,
-              ) || skeletonExtras.animationEvents[index];
+              animEvents.find(
+                (e: AnimationEventData) => e.name === anim.name,
+              ) ?? animEvents[index];
             if (eventData) {
               anim.numAnimEvents = eventData.numAnimEvents || 0;
               anim.events = eventData.events || [];
@@ -1553,15 +1621,16 @@ export async function gltfToBG3D(doc: Document): Promise<BG3DParseResult> {
           skeletonExtras?.boneData &&
           Array.isArray(skeletonExtras.boneData)
         ) {
+          const boneDataArray = skeletonExtras.boneData;
           console.log(
             "[DEBUG] Restoring bone data from extras for",
-            skeletonExtras.boneData.length,
+            boneDataArray.length,
             "bones",
           );
           console.log("[DEBUG] Current bones array length:", bones.length);
 
           // If extras has more bones, expand the array
-          while (bones.length < skeletonExtras.boneData.length) {
+          while (bones.length < boneDataArray.length) {
             bones.push({
               parentBone: -1,
               name: "",
@@ -1575,20 +1644,20 @@ export async function gltfToBG3D(doc: Document): Promise<BG3DParseResult> {
             });
           }
 
-          skeletonExtras.boneData.forEach((boneData: any, index: number) => {
+          boneDataArray.forEach((boneData: BoneData, index: number) => {
             if (index < bones.length) {
               const bone = bones[index];
               if (!bone) return;
               // Restore exact bone coordinates and all other fields
-              bone.parentBone = boneData.parentBone;
-              bone.name = boneData.name;
-              bone.coordX = boneData.coordX;
-              bone.coordY = boneData.coordY;
-              bone.coordZ = boneData.coordZ;
+              bone.parentBone = boneData.parentBone ?? bone.parentBone;
+              bone.name = boneData.name ?? bone.name;
+              bone.coordX = boneData.coordX ?? bone.coordX;
+              bone.coordY = boneData.coordY ?? bone.coordY;
+              bone.coordZ = boneData.coordZ ?? bone.coordZ;
               bone.numPointsAttachedToBone =
-                boneData.numPointsAttachedToBone;
+                boneData.numPointsAttachedToBone ?? bone.numPointsAttachedToBone;
               bone.numNormalsAttachedToBone =
-                boneData.numNormalsAttachedToBone;
+                boneData.numNormalsAttachedToBone ?? bone.numNormalsAttachedToBone;
               bone.pointIndices = boneData.pointIndices || [];
               bone.normalIndices = boneData.normalIndices || [];
               bone.reserved0 = boneData.reserved0;
@@ -1614,9 +1683,9 @@ export async function gltfToBG3D(doc: Document): Promise<BG3DParseResult> {
           bones,
           animations,
           // Restore non-glTF data from extras
-          relPoints: skeletonExtras?.relPoints || {},
-          alisData: skeletonExtras?.alisData || {},
-          metadata: skeletonExtras?.metadata || {},
+          relPoints: (skeletonExtras?.relPoints || undefined) as { [resourceId: string]: [number, number, number][] } | undefined,
+          alisData: (skeletonExtras?.alisData || undefined) as { [key: string]: unknown } | undefined,
+          metadata: (skeletonExtras?.metadata || undefined) as Record<string, unknown> | undefined,
         };
 
         console.log(
@@ -1630,56 +1699,72 @@ export async function gltfToBG3D(doc: Document): Promise<BG3DParseResult> {
   function processMesh(mesh: Mesh): BG3DGeometry {
     const primitives = mesh.listPrimitives();
     const prim = primitives[0]; // Use first primitive
+    if (!prim) {
+      return {
+        vertices: [],
+        normals: [],
+        uvs: [],
+        colors: [],
+        triangles: [],
+        layerMaterialNum: [0, 0, 0, 0],
+        flags: 0,
+        boundingBox: undefined,
+        numMaterials: 0,
+        type: 0,
+        numPoints: 0,
+        numTriangles: 0,
+      };
+    }
     const extras = prim.getExtras() || {};
 
     // Extract geometry data
     const posAcc = prim.getAttribute("POSITION");
     let vertices: [number, number, number][] | undefined = undefined;
     if (posAcc) {
-      const arr = Array.from(posAcc.getArray());
+      const arr = Array.from(posAcc.getArray() ?? []);
       vertices = [];
       for (let i = 0; i < arr.length; i += 3) {
-        vertices.push([arr[i], arr[i + 1], arr[i + 2]]);
+        vertices.push([(arr[i] ?? 0) as number, (arr[i + 1] ?? 0) as number, (arr[i + 2] ?? 0) as number]);
       }
     }
 
     const normAcc = prim.getAttribute("NORMAL");
     let normals: [number, number, number][] | undefined = undefined;
     if (normAcc) {
-      const arr = Array.from(normAcc.getArray());
+      const arr = Array.from(normAcc.getArray() ?? []);
       normals = [];
       for (let i = 0; i < arr.length; i += 3) {
-        normals.push([arr[i], arr[i + 1], arr[i + 2]]);
+        normals.push([(arr[i] ?? 0) as number, (arr[i + 1] ?? 0) as number, (arr[i + 2] ?? 0) as number]);
       }
     }
 
     const uvAcc = prim.getAttribute("TEXCOORD_0");
     let uvs: [number, number][] | undefined = undefined;
     if (uvAcc) {
-      const arr = Array.from(uvAcc.getArray());
+      const arr = Array.from(uvAcc.getArray() ?? []);
       uvs = [];
       for (let i = 0; i < arr.length; i += 2) {
-        uvs.push([arr[i], arr[i + 1]]);
+        uvs.push([(arr[i] ?? 0) as number, (arr[i + 1] ?? 0) as number]);
       }
     }
 
     const colorAcc = prim.getAttribute("COLOR_0");
     let colors: [number, number, number, number][] | undefined = undefined;
     if (colorAcc) {
-      const arr = Array.from(colorAcc.getArray());
+      const arr = Array.from(colorAcc.getArray() ?? []);
       colors = [];
       for (let i = 0; i < arr.length; i += 4) {
-        colors.push([arr[i], arr[i + 1], arr[i + 2], arr[i + 3]]);
+        colors.push([(arr[i] ?? 0) as number, (arr[i + 1] ?? 0) as number, (arr[i + 2] ?? 0) as number, (arr[i + 3] ?? 0) as number]);
       }
     }
 
     const idxAcc = prim.getIndices();
     let triangles: [number, number, number][] | undefined = undefined;
     if (idxAcc) {
-      const arr = Array.from(idxAcc.getArray());
+      const arr = Array.from(idxAcc.getArray() ?? []);
       triangles = [];
       for (let i = 0; i < arr.length; i += 3) {
-        triangles.push([arr[i], arr[i + 1], arr[i + 2]]);
+        triangles.push([(arr[i] ?? 0) as number, (arr[i + 1] ?? 0) as number, (arr[i + 2] ?? 0) as number]);
       }
     }
 
@@ -1726,8 +1811,15 @@ export async function gltfToBG3D(doc: Document): Promise<BG3DParseResult> {
 
   // Process scene hierarchy
   const scene = doc.getRoot().listScenes()[0];
+  if (!scene) {
+    return {
+      materials,
+      groups: [],
+      skeleton,
+    };
+  }
   const childNodes = scene.listChildren();
-  const groups: BG3DGroup[] = childNodes.map((node) => processNode(node));
+  const groups: BG3DGroup[] = childNodes.map((node) => processNode(node)) as BG3DGroup[];
 
   console.log("=== glTF to BG3D Conversion Complete ===");
 
@@ -1738,13 +1830,23 @@ export async function gltfToBG3D(doc: Document): Promise<BG3DParseResult> {
   };
 }
 
+interface OttoRoundtrip {
+  bg3dBuffer?: number[];
+  skeletonBuffer?: number[];
+}
+
+interface OriginalBinaries {
+  bg3d?: number[];
+  skeleton?: number[];
+}
+
 /**
  * Get original BG3D binary data if preserved in glTF extras
  */
 export function getOriginalBG3DBinary(doc: Document): ArrayBuffer | null {
   const rootExtras = doc.getRoot().getExtras() || {};
-  const ottoRoundtrip = rootExtras.ottoRoundtrip;
-  const originalBinaries = rootExtras.originalBinaries;
+  const ottoRoundtrip = rootExtras.ottoRoundtrip as OttoRoundtrip | undefined;
+  const originalBinaries = rootExtras.originalBinaries as OriginalBinaries | undefined;
 
   if (ottoRoundtrip?.bg3dBuffer) {
     console.log(
@@ -1770,9 +1872,9 @@ export function getOriginalBG3DBinary(doc: Document): ArrayBuffer | null {
  * Get original skeleton binary data if preserved in glTF extras
  */
 export function getOriginalSkeletonBinary(doc: Document): ArrayBuffer | null {
-  const rootExtras = doc.getRoot().getExtras();
-  const ottoRoundtrip = rootExtras.ottoRoundtrip;
-  const originalBinaries = rootExtras.originalBinaries;
+  const rootExtras = doc.getRoot().getExtras() || {};
+  const ottoRoundtrip = rootExtras.ottoRoundtrip as OttoRoundtrip | undefined;
+  const originalBinaries = rootExtras.originalBinaries as OriginalBinaries | undefined;
 
   if (ottoRoundtrip?.skeletonBuffer) {
     console.log(
