@@ -86,7 +86,7 @@ describe("Result type", () => {
     it("map should pass through Err values", () => {
       const error = new Error("test");
       const result: Result<number, Error> = err(error);
-      const mapped = map(result, (x) => x * 2);
+      const mapped = map(result, (x) => x! * 2);
       expect(isErr(mapped) && mapped.error).toBe(error);
     });
 
@@ -112,7 +112,7 @@ describe("Result type", () => {
 
     it("should short-circuit on error", () => {
       const result: Result<number, Error> = err(new Error("first error"));
-      const chained = andThen(result, (x) => ok(x * 2));
+      const chained = andThen(result, (x) => ok(x! * 2));
       expect(isErr(chained) && chained.error.message).toBe("first error");
     });
 
@@ -196,7 +196,7 @@ describe("Result type", () => {
       const result = ok(42);
       const matched = match(result, {
         ok: (v) => `value: ${v}`,
-        err: (e) => `error: ${e.message}`,
+        err: (e) => `error: ${e!.message}`,
       });
       expect(matched).toBe("value: 42");
     });

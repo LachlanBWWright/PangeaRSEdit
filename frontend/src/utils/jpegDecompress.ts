@@ -18,7 +18,7 @@ export async function decodeJpegBrowser(
     let arrayBuffer: ArrayBuffer;
     if (jpegData instanceof Uint8Array) {
       const tmp = new Uint8Array(jpegData.byteLength);
-      for (let i = 0; i < jpegData.byteLength; i++) tmp[i] = jpegData[i];
+      tmp.set(jpegData);
       arrayBuffer = tmp.buffer;
     } else if (jpegData instanceof ArrayBuffer) {
       const tmp = new Uint8Array(jpegData.byteLength);
@@ -65,7 +65,7 @@ export function decodeJpegNode(jpegData: ArrayBuffer): ImageData {
   const resData = Jpeg.decode(new Uint8Array(jpegData), { useTArray: true });
   // Copy to a new Uint8ClampedArray backed by a real ArrayBuffer
   const clamped = new Uint8ClampedArray(resData.data.length);
-  for (let i = 0; i < resData.data.length; i++) clamped[i] = resData.data[i];
+  clamped.set(resData.data);
   if (typeof ImageData !== "undefined") {
     return new ImageData(clamped, resData.width, resData.height);
   } else {

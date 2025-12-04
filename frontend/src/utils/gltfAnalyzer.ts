@@ -73,10 +73,10 @@ export async function analyzeGLTF(
         { prop: "getMetallicRoughnessTexture", type: "metallicRoughness" },
         { prop: "getOcclusionTexture", type: "occlusion" },
         { prop: "getEmissiveTexture", type: "emissive" },
-      ];
+      ] as const;
 
       textureTypes.forEach(({ prop, type }) => {
-        const texture = material[prop]();
+        const texture = (material as unknown as Record<string, () => { getURI: () => string } | null>)[prop]?.();
         if (texture) {
           materialData.textures.push({
             type,

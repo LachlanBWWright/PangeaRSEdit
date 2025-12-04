@@ -5,11 +5,11 @@ import {
 import { useRef, useMemo } from "react";
 import { CanvasTexture, DoubleSide, Mesh, PlaneGeometry } from "three";
 import { useAtomValue } from "jotai";
-import { Globals, GlobalsInterface } from "@/data/globals/globals";
+import { Globals, GlobalsInterface, Game } from "@/data/globals/globals";
 import { Result, ok, err } from "@/types/result";
 
-// Utility function to combine mapImages into a single image
-export function combineMapImages(
+// Utility function to combine mapImages into a single image for games with STgd data
+export function combineMapImagesFromSTgd(
   mapImages: HTMLCanvasElement[],
   headerData: HeaderData,
   terrainData: TerrainData,
@@ -61,6 +61,77 @@ export function combineMapImages(
   }
 
   return ok(combinedCanvas);
+}
+
+// Utility function to combine individual tiles into a single image for Bugdom/Nanosaur
+export function combineMapImagesFromTiles(
+  mapImages: HTMLCanvasElement[],
+  headerData: HeaderData,
+  terrainData: TerrainData,
+  globals: GlobalsInterface,
+): Result<HTMLCanvasElement, Error> {
+  if (mapImages.length === 0) {
+    return err(new Error("No tile images to combine"));
+  }
+
+  const header = headerData.Hedr?.[1000]?.obj;
+  if (!header || !terrainData.Layr?.[1000]?.obj) {
+    return err(new Error("Missing header or layer data"));
+  }
+
+  const numWide = header.mapWidth;
+  const numHigh = header.mapHeight;
+  const tileSize = globals.TILE_SIZE;
+
+  // Create combined canvas sized for the full terrain
+  const combinedCanvas = document.createElement("canvas");
+  combinedCanvas.width = numWide * tileSize;
+  combinedCanvas.height = numHigh * tileSize;
+  const ctx = combinedCanvas.getContext("2d");
+  if (!ctx) return err(new Error("Could not get canvas context"));
+
+  const layerData = terrainData.Layr[1000].obj;
+  const xlatTable = terrainData.Xlat?.[1000]?.obj;
+
+  for (let y = 0; y < numHigh; y++) {
+    for (let x = 0; x < numWide; x++) {
+      const layerIndex = y * numWide + x;
+      let tileIndex = layerData[layerIndex];
+      
+      if (tileIndex === undefined) continue;
+      
+      // Apply Xlat translation if available
+      if (xlatTable) {
+        const translatedIndex = xlatTable[tileIndex];
+        if (translatedIndex !== undefined) {
+          tileIndex = translatedIndex;
+        }
+      }
+      
+      const tileImg = mapImages[tileIndex];
+      if (tileImg) {
+        ctx.drawImage(tileImg, x * tileSize, y * tileSize, tileSize, tileSize);
+      }
+    }
+  }
+
+  return ok(combinedCanvas);
+}
+
+// Main function to combine map images based on game type
+export function combineMapImages(
+  mapImages: HTMLCanvasElement[],
+  headerData: HeaderData,
+  terrainData: TerrainData,
+  globals: GlobalsInterface,
+): Result<HTMLCanvasElement, Error> {
+  // For Bugdom 1 and Nanosaur 1, use individual tile combining
+  if (globals.GAME_TYPE === Game.BUGDOM || globals.GAME_TYPE === Game.NANOSAUR) {
+    return combineMapImagesFromTiles(mapImages, headerData, terrainData, globals);
+  }
+  
+  // For other games, use STgd-based supertile combining
+  return combineMapImagesFromSTgd(mapImages, headerData, terrainData, globals);
 }
 
 export function TerrainGeometry({
@@ -117,7 +188,7 @@ export function TerrainGeometry({
     geom.computeVertexNormals();
     geom.attributes.position.needsUpdate = true;
     return geom;
-  }, [terrainData.YCrd, numWide, numHigh, yScale]);
+  }, [terrainData.YCrd, numWide, numHigh, yScale, globals.TILE_INGAME_SIZE]);
 
   const combinedTexture = useMemo(
     () => new CanvasTexture(combinedImg),
