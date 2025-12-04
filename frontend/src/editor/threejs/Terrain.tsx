@@ -6,6 +6,7 @@ import { useRef, useMemo } from "react";
 import { CanvasTexture, DoubleSide, Mesh, PlaneGeometry } from "three";
 import { useAtomValue } from "jotai";
 import { Globals, GlobalsInterface } from "@/data/globals/globals";
+import { Result, ok, err } from "@/types/result";
 
 // Utility function to combine mapImages into a single image
 export function combineMapImages(
@@ -13,14 +14,14 @@ export function combineMapImages(
   headerData: HeaderData,
   terrainData: TerrainData,
   globals: GlobalsInterface,
-): HTMLCanvasElement {
+): Result<HTMLCanvasElement, Error> {
   if (mapImages.length === 0) {
-    throw new Error("No map images to combine");
+    return err(new Error("No map images to combine"));
   }
 
   const header = headerData.Hedr?.[1000]?.obj;
   if (!header || !terrainData.STgd?.[1000]?.obj) {
-    throw new Error("Missing header or supertile data");
+    return err(new Error("Missing header or supertile data"));
   }
 
   const numWide = header.mapWidth;
@@ -37,15 +38,17 @@ export function combineMapImages(
   combinedCanvas.height =
     (globals.SUPERTILE_TEXMAP_SIZE / globals.TILES_PER_SUPERTILE) * numHigh;
   const ctx = combinedCanvas.getContext("2d");
-  if (!ctx) throw new Error("Could not get canvas context");
+  if (!ctx) return err(new Error("Could not get canvas context"));
 
   const supertilesWide = numWide / globals.TILES_PER_SUPERTILE;
   const supertilesHigh = numHigh / globals.TILES_PER_SUPERTILE;
 
+  const stgdObj = terrainData.STgd[1000].obj;
   for (let i = 0; i < supertilesWide; i++) {
     for (let j = 0; j < supertilesHigh; j++) {
-      const tileId =
-        terrainData.STgd[1000].obj[i + j * supertilesWide].superTileId;
+      const stgdEntry = stgdObj[i + j * supertilesWide];
+      if (!stgdEntry) continue;
+      const tileId = stgdEntry.superTileId;
       const tileImg = mapImages[tileId];
       if (tileImg) {
         ctx.drawImage(
@@ -57,7 +60,7 @@ export function combineMapImages(
     }
   }
 
-  return combinedCanvas;
+  return ok(combinedCanvas);
 }
 
 export function TerrainGeometry({
@@ -70,10 +73,18 @@ export function TerrainGeometry({
   mapImages: HTMLCanvasElement[];
 }) {
   const globals = useAtomValue(Globals);
-  const combinedImg = useMemo(
+  const combinedImgResult = useMemo(
     () => combineMapImages(mapImages, headerData, terrainData, globals),
     [mapImages, headerData, terrainData, globals],
   );
+  
+  // Handle error case by returning null (no terrain rendered)
+  if (!combinedImgResult.ok) {
+    console.error("Failed to combine map images:", combinedImgResult.error.message);
+    return null;
+  }
+  const combinedImg = combinedImgResult.value;
+  
   const header = headerData.Hedr?.[1000]?.obj;
   if (!header) return null;
 
@@ -98,7 +109,10 @@ export function TerrainGeometry({
     const ycrd = terrainData.YCrd[1000].obj;
     for (let i = 0; i < geom.attributes.position.count; i++) {
       // TODO: Change this to use Y and update the rotation of the plane?
-      geom.attributes.position.setZ(i, ycrd[i] * yScale);
+      const ycrdValue = ycrd[i];
+      if (ycrdValue !== undefined) {
+        geom.attributes.position.setZ(i, ycrdValue * yScale);
+      }
     }
     geom.computeVertexNormals();
     geom.attributes.position.needsUpdate = true;

@@ -29,7 +29,10 @@ export function useHeightImg(headerData: HeaderData, otherData: Partial<ottoMati
     imgCanvas.width = header.mapWidth + 1;
     imgCanvas.height = header.mapHeight + 1;
     const imgCtx = imgCanvas.getContext("2d");
-    if (!imgCtx) throw new Error("Could not get canvas context");
+    if (!imgCtx) {
+      console.error("Could not get canvas context for height image");
+      return null;
+    }
 
     imgCtx.putImageData(
       new ImageData(
@@ -69,7 +72,10 @@ export function useUnscaledHeightImg(headerData: HeaderData, otherData: Partial<
     imgCanvas.width = header.mapWidth + 1;
     imgCanvas.height = header.mapHeight + 1;
     const imgCtx = imgCanvas.getContext("2d");
-    if (!imgCtx) throw new Error("Could not get canvas context");
+    if (!imgCtx) {
+      console.error("Could not get canvas context for unscaled height image");
+      return null;
+    }
 
     imgCtx.putImageData(
       new ImageData(

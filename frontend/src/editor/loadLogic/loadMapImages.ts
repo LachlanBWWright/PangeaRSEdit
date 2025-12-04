@@ -6,14 +6,15 @@ import {
   JpegDecompressResponse,
 } from "@/utils/jpegDecompressWorker";
 import { Game, type GlobalsInterface } from "@/data/globals/globals";
+import { Result, ok, err } from "@/types/result";
 
 export async function loadMapImages(
   dataView: DataView,
   globals: GlobalsInterface,
-) {
+): Promise<Result<HTMLCanvasElement[], Error>> {
   let offset = 0;
 
-  const loadPromise: Promise<HTMLCanvasElement[]> = new Promise((res, err) => {
+  const loadPromise: Promise<Result<HTMLCanvasElement[], Error>> = new Promise((resolve) => {
     if (globals.GAME_TYPE === Game.NANOSAUR_2) {
       // Nanosaur 2: Each supertile is a JPEG, decompress with jpegDecompressWorker
       let offset = 0;
@@ -33,7 +34,13 @@ export async function loadMapImages(
       offset = 0;
       const mapImages: HTMLCanvasElement[] = new Array(numSupertiles);
 
+      if (numSupertiles === 0) {
+        resolve(ok([]));
+        return;
+      }
+
       let resolvedTiles = 0;
+      let errorOccurred = false;
       for (let i = 0; i < numSupertiles; i++) {
         let size = dataView.getInt32(offset);
         offset += 4;
@@ -51,6 +58,7 @@ export async function loadMapImages(
         // Use jpegDecompressWorker for off-main-thread decoding
         const jpegWorker = new JpegWorker();
         jpegWorker.onmessage = (e: MessageEvent<JpegDecompressResponse>) => {
+          if (errorOccurred) return;
           if (e.data.type !== "decompressRes") return;
           const imageData = e.data.imageData;
 
@@ -59,8 +67,10 @@ export async function loadMapImages(
           imgCanvas.height = globals.SUPERTILE_TEXMAP_SIZE;
           const imgCtx = imgCanvas.getContext("2d");
           if (!imgCtx) {
-            err("Bad data!");
-            throw new Error("Bad data!");
+            errorOccurred = true;
+            resolve(err(new Error("Failed to get canvas context for JPEG decompress")));
+            jpegWorker.terminate();
+            return;
           }
           imgCtx.putImageData(imageData, 0, 0);
           // Flip the canvas vertically
@@ -78,7 +88,7 @@ export async function loadMapImages(
           mapImages[i] = imgCanvas;
           resolvedTiles++;
           if (resolvedTiles === numSupertiles) {
-            res(mapImages);
+            resolve(ok(mapImages));
           }
           jpegWorker.terminate();
         };
@@ -93,7 +103,7 @@ export async function loadMapImages(
       //Budgdom 1 Logic - TODO: Not completed
 
       console.log("Budgdom map image loading not implemented yet");
-      res([]);
+      resolve(ok([]));
     }
     //Read Each - Logic for other games
     else {
@@ -111,6 +121,12 @@ export async function loadMapImages(
       const mapImages: HTMLCanvasElement[] = new Array(numSupertiles);
       const resolvedTiles = { count: 0 };
 
+      if (numSupertiles === 0) {
+        resolve(ok([]));
+        return;
+      }
+
+      let errorOccurred = false;
       let supertileId = 0;
       while (offset < dataView.byteLength) {
         const size = dataView.getInt32(offset);
@@ -125,6 +141,7 @@ export async function loadMapImages(
 
         const lzssWorker = new LzssWorker();
         lzssWorker.onmessage = (e: MessageEvent<LzssResponse>) => {
+          if (errorOccurred) return;
           const data = e.data;
           if (data.type !== "decompressRes") return;
 
@@ -134,8 +151,10 @@ export async function loadMapImages(
           const imgCtx = imgCanvas.getContext("2d");
 
           if (!imgCtx) {
-            err("Bad data!");
-            throw new Error("Bad data!");
+            errorOccurred = true;
+            resolve(err(new Error("Failed to get canvas context for LZSS decompress")));
+            lzssWorker.terminate();
+            return;
           }
           //16-bit buffer from current buffer
           imgCtx.putImageData(data.imageData, 0, 0);
@@ -144,7 +163,7 @@ export async function loadMapImages(
 
           resolvedTiles.count++;
           if (resolvedTiles.count === numSupertiles) {
-            res(mapImages);
+            resolve(ok(mapImages));
           }
           lzssWorker.terminate();
         };
@@ -158,11 +177,10 @@ export async function loadMapImages(
         } satisfies LzssMessage);
         supertileId++;
       }
-      return [];
+      return;
     }
   });
-  const res = await loadPromise;
-  return res;
+  return loadPromise;
 }
 
 /* else {
@@ -194,13 +212,17 @@ export async function loadMapImages(
       );
 
       if (!imageData) {
-        throw new Error("Could not create image data");
+        // Return error instead of throwing
+        console.error("Could not create image data");
+        return;
       }
 
       sixteenBitToImageData(bufferSlice, imageData);
 
       if (!imgCtx) {
-        throw new Error("Bad data!");
+        // Return error instead of throwing
+        console.error("Bad data!");
+        return;
       }
       //16-bit buffer from current buffer
       imgCtx?.putImageData(imageData, 0, 0);
