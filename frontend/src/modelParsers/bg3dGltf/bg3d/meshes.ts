@@ -213,7 +213,7 @@ export function gltfMeshesToBg3d(
       const arr = Array.from(uvAcc.getArray() as Float32Array);
       uvs = [];
       for (let i = 0; i < arr.length; i += 2) {
-        uvs.push([arr[i], arr[i + 1]]);
+        uvs.push([arr[i] ?? 0, arr[i + 1] ?? 0]);
       }
     }
 
@@ -223,7 +223,7 @@ export function gltfMeshesToBg3d(
       const arr = Array.from(colorAcc.getArray() as Uint8Array);
       colors = [];
       for (let i = 0; i < arr.length; i += 4) {
-        colors.push([arr[i], arr[i + 1], arr[i + 2], arr[i + 3]]);
+        colors.push([arr[i] ?? 0, arr[i + 1] ?? 0, arr[i + 2] ?? 0, arr[i + 3] ?? 0]);
       }
     }
 
@@ -233,7 +233,7 @@ export function gltfMeshesToBg3d(
       const arr = Array.from(idxAcc.getArray() as Uint32Array);
       triangles = [];
       for (let i = 0; i < arr.length; i += 3) {
-        triangles.push([arr[i], arr[i + 1], arr[i + 2]]);
+        triangles.push([arr[i] ?? 0, arr[i + 1] ?? 0, arr[i + 2] ?? 0]);
       }
     }
 
@@ -281,7 +281,10 @@ export function gltfSceneToBg3dGroups(
     if (mesh) {
       const meshIndex = docMeshes.indexOf(mesh);
       if (meshIndex >= 0 && meshIndex < geometries.length) {
-        return geometries[meshIndex];
+        const geom = geometries[meshIndex];
+        if (geom) {
+          return geom;
+        }
       }
     }
 

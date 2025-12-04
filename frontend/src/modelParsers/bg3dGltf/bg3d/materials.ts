@@ -62,7 +62,7 @@ export function bg3dTexturesToGltf(
             );
             const swapped = new Uint16Array(src.length);
             for (let k = 0; k < src.length; k++) {
-              const val = src[k];
+              const val = src[k] ?? 0;
               swapped[k] = ((val & 0xff) << 8) | ((val >> 8) & 0xff);
             }
             pngBuffer = argb16ToPng(swapped, tex.width, tex.height);
@@ -90,7 +90,10 @@ export function bg3dTexturesToGltf(
 
         // Attach the first texture as baseColorTexture
         if (j === 0) {
-          gltfMaterials[i].setBaseColorTexture(texture);
+          const gltfMaterial = gltfMaterials[i];
+          if (gltfMaterial) {
+            gltfMaterial.setBaseColorTexture(texture);
+          }
         }
       });
     }
@@ -140,9 +143,9 @@ export async function gltfMaterialsToBg3d(
             const rgbaRes = await pngToRgba8(Buffer.from(image));
             const rgb = new Uint8Array((rgbaRes.data.length / 4) * 3);
             for (let i = 0, j = 0; i < rgbaRes.data.length; i += 4, j += 3) {
-              rgb[j + 0] = rgbaRes.data[i + 0];
-              rgb[j + 1] = rgbaRes.data[i + 1];
-              rgb[j + 2] = rgbaRes.data[i + 2];
+              rgb[j + 0] = rgbaRes.data[i + 0] ?? 0;
+              rgb[j + 1] = rgbaRes.data[i + 1] ?? 0;
+              rgb[j + 2] = rgbaRes.data[i + 2] ?? 0;
             }
             const pngRes = {
               data: rgb,
