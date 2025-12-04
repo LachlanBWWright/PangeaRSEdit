@@ -24,14 +24,18 @@ export function updateSplinePointsFromNubs(
   // Compute points from current nubs and write them directly into the draft
   setSplineData((draft) => {
     const nubs = selectSplineNubs(draft, SPLINE_KEY_BASE + splineIdx);
+    const firstNub = nubs[0];
     const newPoints =
-      nubs.length === 1 ? [{ x: nubs[0].x, z: nubs[0].z }] : getPoints(nubs);
+      nubs.length === 1 && firstNub 
+        ? [{ x: firstNub.x, z: firstNub.z }] 
+        : getPoints(nubs);
 
-    if (draft.SpPt?.[SPLINE_KEY_BASE + splineIdx]) {
-      draft.SpPt[SPLINE_KEY_BASE + splineIdx].obj = newPoints;
-      if (draft.Spln?.[1000]?.obj?.[SPLINE_KEY_BASE + splineIdx]) {
-        draft.Spln[1000].obj[SPLINE_KEY_BASE + splineIdx].numPoints =
-          newPoints.length;
+    const spPt = draft.SpPt?.[SPLINE_KEY_BASE + splineIdx];
+    if (spPt) {
+      spPt.obj = newPoints;
+      const spln = draft.Spln?.[1000]?.obj?.[SPLINE_KEY_BASE + splineIdx];
+      if (spln) {
+        spln.numPoints = newPoints.length;
       }
     }
   });
@@ -95,24 +99,26 @@ export const Spline = memo(
 
               // Update both nub list and computed points in a single draft update
               setSplineData((draft) => {
-                if (draft.SpNb?.[SPLINE_KEY_BASE + splineIdx]) {
-                  draft.SpNb[SPLINE_KEY_BASE + splineIdx].obj = updatedNubs;
+                const spNb = draft.SpNb?.[SPLINE_KEY_BASE + splineIdx];
+                if (spNb) {
+                  spNb.obj = updatedNubs;
                 }
 
+                const firstNub = updatedNubs[0];
                 const newPoints =
-                  updatedNubs.length === 1
-                    ? [{ x: updatedNubs[0].x, z: updatedNubs[0].z }]
+                  updatedNubs.length === 1 && firstNub
+                    ? [{ x: firstNub.x, z: firstNub.z }]
                     : getPoints(updatedNubs);
 
-                if (draft.SpPt?.[SPLINE_KEY_BASE + splineIdx]) {
-                  draft.SpPt[SPLINE_KEY_BASE + splineIdx].obj = newPoints;
+                const spPt = draft.SpPt?.[SPLINE_KEY_BASE + splineIdx];
+                if (spPt) {
+                  spPt.obj = newPoints;
                 }
 
-                if (draft.Spln?.[1000]?.obj?.[SPLINE_KEY_BASE + splineIdx]) {
-                  draft.Spln[1000].obj[SPLINE_KEY_BASE + splineIdx].numNubs =
-                    updatedNubs.length;
-                  draft.Spln[1000].obj[SPLINE_KEY_BASE + splineIdx].numPoints =
-                    newPoints.length;
+                const spln = draft.Spln?.[1000]?.obj?.[SPLINE_KEY_BASE + splineIdx];
+                if (spln) {
+                  spln.numNubs = updatedNubs.length;
+                  spln.numPoints = newPoints.length;
                 }
               });
             });
