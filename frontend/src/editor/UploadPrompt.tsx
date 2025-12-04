@@ -128,10 +128,14 @@ export function UploadPrompt({
       const imgFile = new File([img], url.split("/").pop() ?? "");
       const imgBuffer = await imgFile.arrayBuffer();
       const imgDataView = new DataView(imgBuffer);
-      const mapImages = await loadMapImages(imgDataView, gameType);
+      const mapImagesResult = await loadMapImages(imgDataView, gameType);
+      if (!mapImagesResult.ok) {
+        console.error("Failed to load map images:", mapImagesResult.error.message);
+        return;
+      }
 
       setMapImagesFile(imgFile);
-      setMapImages(mapImages);
+      setMapImages(mapImagesResult.value);
     } else {
       //Bugdom 1-specific - The image data is within the Resource Fork
       console.log(jsonData);
@@ -142,7 +146,8 @@ export function UploadPrompt({
       );
       console.log("Timg hex string length:", imgString?.length);
       if (!imgString) {
-        throw new Error("No image data found");
+        console.error("No image data found");
+        return;
       }
       const imgBuffer = Buffer.from(imgString, "hex");
       console.log("Image buffer length:", imgBuffer.byteLength);
@@ -346,9 +351,13 @@ export function UploadPrompt({
             //Uses Big Endian by default - Which is what Otto uses
             const dataView = new DataView(buffer);
 
-            const mapImages = await loadMapImages(dataView, globals);
+            const mapImagesResult = await loadMapImages(dataView, globals);
+            if (!mapImagesResult.ok) {
+              console.error("Failed to load map images:", mapImagesResult.error.message);
+              return;
+            }
             setMapImagesFile(mapImagesFile);
-            setMapImages(mapImages);
+            setMapImages(mapImagesResult.value);
           }}
         />
       </div>

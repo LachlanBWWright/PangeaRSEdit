@@ -180,11 +180,16 @@ export function TopologyTiles({
       canvas.height = 1;
       return canvas;
     }
-    return createImageCanvas(
+    const result = createImageCanvas(
       header.mapWidth + 1,
       header.mapHeight + 1,
       coordColours,
     );
+    if (!result.ok) {
+      console.error("Failed to create image canvas:", result.error.message);
+      return null;
+    }
+    return result.value;
   }, [header, yCrdData, coordColours]);
 
   const setPixels = (pixelList: PixelType[]) => {
@@ -343,7 +348,12 @@ export function EmptyTiles({
 
   const imgCanvas = useMemo(() => {
     if (!header) return null;
-    return createImageCanvas(header.mapWidth, header.mapHeight, coordColours);
+    const result = createImageCanvas(header.mapWidth, header.mapHeight, coordColours);
+    if (!result.ok) {
+      console.error("Failed to create image canvas:", result.error.message);
+      return null;
+    }
+    return result.value;
   }, [header?.mapWidth, header?.mapHeight, coordColours]);
 
   const handleTileClickEvent = (e: KonvaEventObject<MouseEvent>) => {
@@ -441,7 +451,12 @@ export function ElectricFloor0Tiles({
 
   const imgCanvas = useMemo(() => {
     if (!header) return null;
-    return createImageCanvas(header.mapWidth, header.mapHeight, coordColours);
+    const result = createImageCanvas(header.mapWidth, header.mapHeight, coordColours);
+    if (!result.ok) {
+      console.error("Failed to create image canvas:", result.error.message);
+      return null;
+    }
+    return result.value;
   }, [header?.mapWidth, header?.mapHeight, coordColours]);
 
   const handleTileClickEvent = (e: KonvaEventObject<MouseEvent>) => {
@@ -539,7 +554,12 @@ export function ElectricFloor1Tiles({
 
   const imgCanvas = useMemo(() => {
     if (!header) return null;
-    return createImageCanvas(header.mapWidth, header.mapHeight, coordColours);
+    const result = createImageCanvas(header.mapWidth, header.mapHeight, coordColours);
+    if (!result.ok) {
+      console.error("Failed to create image canvas:", result.error.message);
+      return null;
+    }
+    return result.value;
   }, [header?.mapWidth, header?.mapHeight, coordColours]);
 
   const handleTileClickEvent = (e: KonvaEventObject<MouseEvent>) => {
