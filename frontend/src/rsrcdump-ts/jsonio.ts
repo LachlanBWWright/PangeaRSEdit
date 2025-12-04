@@ -238,9 +238,10 @@ export function jsonToResourceFork(
 
   // Extract metadata
   const metadata = jsonData._metadata || {};
+  // Support both 'fileAttributes' and legacy 'file_attributes' property names
   const fileAttributes =
     (metadata.fileAttributes as number) ||
-    (metadata.file_attributes as number) ||
+    ((metadata as Record<string, unknown>)['file_attributes'] as number) ||
     0;
   const junkNextresmap = (metadata.junk1 as number) || 0;
   const junkFilerefnum = (metadata.junk2 as number) || 0;
