@@ -110,13 +110,22 @@ function StandardSupertileMenu({
 
   // Handle editing individual tile texture
   const handleEditTileTexture = () => {
-    const tileId = stgd[selectedTile].superTileId;
+    const tileEntry = stgd[selectedTile];
+    if (!tileEntry) {
+      toast.error("No tile data at this position");
+      return;
+    }
+    const tileId = tileEntry.superTileId;
     if (tileId === 0 || !mapImages[tileId]) {
       toast.error("No texture available for this tile");
       return;
     }
 
     const canvas = mapImages[tileId];
+    if (!canvas) {
+      toast.error("No canvas available for this tile");
+      return;
+    }
     const imageUrl = canvas.toDataURL("image/png");
     setEditingImageUrl(imageUrl);
     setIsEditingTile(true);
@@ -146,7 +155,9 @@ function StandardSupertileMenu({
     for (let i = 0; i < hedr.mapHeight / globals.TILES_PER_SUPERTILE; i++) {
       for (let j = 0; j < hedr.mapWidth / globals.TILES_PER_SUPERTILE; j++) {
         const tileIndex = i * (hedr.mapWidth / globals.TILES_PER_SUPERTILE) + j;
-        const superTileId = stgd[tileIndex].superTileId;
+        const tileEntry = stgd[tileIndex];
+        if (!tileEntry) continue;
+        const superTileId = tileEntry.superTileId;
 
         if (superTileId === 0) continue;
 
@@ -281,7 +292,7 @@ function StandardSupertileMenu({
         <FileUpload
           acceptType="image"
           disabled={
-            selectedTile >= stgd.length || stgd[selectedTile].superTileId === 0
+            selectedTile >= stgd.length || (stgd[selectedTile]?.superTileId ?? 0) === 0
           }
           handleOnChange={async (e) => {
             if (!e.target?.files?.[0] || !stgd) return;
@@ -306,7 +317,10 @@ function StandardSupertileMenu({
               0,
             );
             const newMapImages = [...mapImages];
-            newMapImages.splice(stgd[selectedTile].superTileId, 1, canvas);
+            const tileEntry = stgd[selectedTile];
+            if (tileEntry) {
+              newMapImages.splice(tileEntry.superTileId, 1, canvas);
+            }
             setMapImages(newMapImages);
           }}
         />
@@ -317,7 +331,7 @@ function StandardSupertileMenu({
             size="sm"
             variant="outline"
             onClick={handleEditTileTexture}
-            disabled={stgd[selectedTile].superTileId === 0}
+            disabled={(stgd[selectedTile]?.superTileId ?? 0) === 0}
           >
             <Edit className="w-4 h-4 mr-1" />
             Edit
@@ -326,20 +340,23 @@ function StandardSupertileMenu({
         <Stage width={120} height={120} className="mx-auto">
           <Layer>
             <ImageDisplay
-              image={mapImages[stgd[selectedTile]?.superTileId || 0]}
+              image={mapImages[stgd[selectedTile]?.superTileId ?? 0]}
             />
           </Layer>
         </Stage>
         <p>Download Selected Tile</p>
         <Button
           size="sm"
-          onClick={() =>
-            downloadSelectedTile(
-              mapImages,
-              stgd[selectedTile].superTileId,
-              selectedTile,
-            )
-          }
+          onClick={() => {
+            const tileEntry = stgd[selectedTile];
+            if (tileEntry) {
+              downloadSelectedTile(
+                mapImages,
+                tileEntry.superTileId,
+                selectedTile,
+              );
+            }
+          }}
         >
           Download
         </Button>
