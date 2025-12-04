@@ -59,7 +59,10 @@ export function GameModelSelector({
   useEffect(() => {
     // Reset category when game changes
     if (selectedGame && availableCategories.length > 0) {
-      setSelectedCategory(availableCategories[0]);
+      const firstCategory = availableCategories[0];
+      if (firstCategory) {
+        setSelectedCategory(firstCategory);
+      }
     }
   }, [selectedGameId]);
 
@@ -73,7 +76,7 @@ export function GameModelSelector({
       // Fetch the BG3D file
       const bg3dResponse = await fetch(selectedModel.bg3dFile);
       if (!bg3dResponse.ok) {
-        setError(
+        toast.error(
           `Failed to fetch ${selectedModel.name}.bg3d: ${bg3dResponse.status}`,
         );
         return;

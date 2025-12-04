@@ -172,7 +172,11 @@ export function translateTileIndex(
   }
 
   // Get the translated image index from Xlat
-  const translatedIndex = xlatTable[tileIndex].idx;
+  const xlatEntry = xlatTable[tileIndex];
+  if (!xlatEntry) {
+    return otherBits; // Return with image index 0
+  }
+  const translatedIndex = xlatEntry.idx;
 
   // Validate the translated index
   if (translatedIndex < 0 || translatedIndex >= numTileImages) {
@@ -238,6 +242,9 @@ export function buildSupertileFromTiles(
       }
 
       const tileValue = layerData[flatIndex];
+      if (tileValue === undefined) {
+        continue;
+      }
 
       // Apply Xlat translation if available
       const translatedTile = translateTileIndex(
@@ -473,7 +480,9 @@ export const BugdomSupertiles = memo(
             let minIdx = Infinity;
 
             for (let i = 0; i < xlatTable.length; i++) {
-              const idx = xlatTable[i].idx;
+              const entry = xlatTable[i];
+              if (!entry) continue;
+              const idx = entry.idx;
               if (idx < 0) negativeCount++;
               if (idx >= tileImages.length) outOfBoundsCount++;
               maxIdx = Math.max(maxIdx, idx);
@@ -498,6 +507,7 @@ export const BugdomSupertiles = memo(
 
         for (let i = 0; i < Math.min(1000, layerData.length); i++) {
           const val = layerData[i];
+          if (val === undefined) continue;
           const tileIdx = val & TILENUM_MASK;
           maxTileIdx = Math.max(maxTileIdx, tileIdx);
           if (val & TILE_FLIPXY_MASK) tilesWithFlipBits++;
@@ -518,11 +528,10 @@ export const BugdomSupertiles = memo(
       for (let row = 0; row < 20 && row < header.mapHeight; row++) {
         const startIdx = row * header.mapWidth;
         const tileValue = layerData[startIdx];
+        if (tileValue === undefined) continue;
         const tileIdx = tileValue & TILENUM_MASK;
-        const translatedIdx =
-          xlatTable && tileIdx < xlatTable.length
-            ? xlatTable[tileIdx].idx
-            : tileIdx;
+        const xlatEntry = xlatTable && tileIdx < xlatTable.length ? xlatTable[tileIdx] : undefined;
+        const translatedIdx = xlatEntry ? xlatEntry.idx : tileIdx;
         rowSamples.push({
           row,
           flatIndex: startIdx,

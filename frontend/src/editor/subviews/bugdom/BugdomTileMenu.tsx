@@ -129,6 +129,7 @@ export function BugdomTileMenu({
         if (flatIndex >= layerData.length) continue;
 
         const tileValue = layerData[flatIndex];
+        if (tileValue === undefined) continue;
         tiles.push({
           row: tileRow,
           col: tileCol,
@@ -156,6 +157,7 @@ export function BugdomTileMenu({
       if (!data.Layr?.[1000]?.obj) return;
 
       const currentValue = data.Layr[1000].obj[flatIndex];
+      if (currentValue === undefined) return;
       const currentRotation = currentValue & TILE_ROTATE_MASK;
 
       // Cycle through rotations: 0 -> ROT1 -> ROT2 -> ROT3 -> 0
@@ -190,6 +192,7 @@ export function BugdomTileMenu({
       if (!data.Layr?.[1000]?.obj) return;
 
       const currentValue = data.Layr[1000].obj[flatIndex];
+      if (currentValue === undefined) return;
       data.Layr[1000].obj[flatIndex] = currentValue ^ TILE_FLIPX_MASK;
     });
 
@@ -204,6 +207,7 @@ export function BugdomTileMenu({
       if (!data.Layr?.[1000]?.obj) return;
 
       const currentValue = data.Layr[1000].obj[flatIndex];
+      if (currentValue === undefined) return;
       data.Layr[1000].obj[flatIndex] = currentValue ^ TILE_FLIPY_MASK;
     });
 
@@ -243,7 +247,8 @@ export function BugdomTileMenu({
 
     // Search through Xlat to find a tile index that maps to this image
     for (let tileIdx = 0; tileIdx < xlatTable.length; tileIdx++) {
-      if (xlatTable[tileIdx].idx === imageIndex) {
+      const entry = xlatTable[tileIdx];
+      if (entry && entry.idx === imageIndex) {
         return tileIdx;
       }
     }
@@ -273,6 +278,7 @@ export function BugdomTileMenu({
       if (!data.Layr?.[1000]?.obj) return;
 
       const currentValue = data.Layr[1000].obj[currentFlatIndex];
+      if (currentValue === undefined) return;
       // Keep the flip/rotate bits, replace the tile index
       const newValue =
         (currentValue & ~TILENUM_MASK) | (tileIndexForImage & TILENUM_MASK);
