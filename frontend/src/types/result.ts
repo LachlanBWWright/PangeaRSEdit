@@ -211,3 +211,15 @@ export function match<T, E, U>(
   }
   return handlers.err(result.error);
 }
+
+/**
+ * TypedArray access helper - typed arrays (Float32Array, Uint8Array, etc.)
+ * always return a number even for out-of-bounds access (returns 0).
+ * This function asserts that the access is valid and returns the value as number,
+ * which is necessary with noUncheckedIndexedAccess enabled.
+ * 
+ * Use this only when you're certain the index is valid.
+ */
+export function typedArrayGet<T extends ArrayLike<number>>(arr: T, index: number): number {
+  return arr[index] as number;
+}

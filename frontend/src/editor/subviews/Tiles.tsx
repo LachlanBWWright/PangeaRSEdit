@@ -62,9 +62,9 @@ export function Tiles({
     ) {
       return [];
     }
-    return terrainData.Layr[1000].obj.map(
-      (atrbIdx: number) => terrainData.Atrb[1000].obj[atrbIdx],
-    );
+    return terrainData.Layr[1000].obj
+      .map((atrbIdx: number) => terrainData.Atrb[1000].obj[atrbIdx])
+      .filter((tile): tile is ottoTileAttribute => tile !== undefined);
   }, [terrainData.Layr, terrainData.Atrb, usesIndividualTiles]);
 
   // For Topology view, check if YCrd data exists
@@ -379,11 +379,14 @@ export function EmptyTiles({
 
           const flatPos = tileGridY * header.mapWidth + tileGridX;
           const atrbIdx = data.Layr[1000].obj[flatPos];
+          if (atrbIdx === undefined) continue;
+          const attr = data.Atrb[1000].obj[atrbIdx];
+          if (!attr) continue;
 
           if (brushType === "add") {
-            data.Atrb[1000].obj[atrbIdx].flags |= 1; // TILE_ATTRIB_BLANK
+            attr.flags |= 1; // TILE_ATTRIB_BLANK
           } else if (brushType === "remove") {
-            data.Atrb[1000].obj[atrbIdx].flags &= ~1; // Clear TILE_ATTRIB_BLANK
+            attr.flags &= ~1; // Clear TILE_ATTRIB_BLANK
           }
         }
       }
@@ -473,11 +476,14 @@ export function ElectricFloor0Tiles({
 
           const flatPos = tileGridY * header.mapWidth + tileGridX;
           const atrbIdx = data.Layr[1000].obj[flatPos];
+          if (atrbIdx === undefined) continue;
+          const attr = data.Atrb[1000].obj[atrbIdx];
+          if (!attr) continue;
 
           if (brushType === "add") {
-            data.Atrb[1000].obj[atrbIdx].flags |= 1 << 1; // TILE_ATTRIB_ELECTROCUTE_AREA0
+            attr.flags |= 1 << 1; // TILE_ATTRIB_ELECTROCUTE_AREA0
           } else if (brushType === "remove") {
-            data.Atrb[1000].obj[atrbIdx].flags &= ~(1 << 1); // Clear TILE_ATTRIB_ELECTROCUTE_AREA0
+            attr.flags &= ~(1 << 1); // Clear TILE_ATTRIB_ELECTROCUTE_AREA0
           }
         }
       }
@@ -567,11 +573,14 @@ export function ElectricFloor1Tiles({
 
           const flatPos = tileGridY * header.mapWidth + tileGridX;
           const atrbIdx = data.Layr[1000].obj[flatPos];
+          if (atrbIdx === undefined) continue;
+          const attr = data.Atrb[1000].obj[atrbIdx];
+          if (!attr) continue;
 
           if (brushType === "add") {
-            data.Atrb[1000].obj[atrbIdx].flags |= 1 << 2; // TILE_ATTRIB_ELECTROCUTE_AREA1
+            attr.flags |= 1 << 2; // TILE_ATTRIB_ELECTROCUTE_AREA1
           } else if (brushType === "remove") {
-            data.Atrb[1000].obj[atrbIdx].flags &= ~(1 << 2); // Clear TILE_ATTRIB_ELECTROCUTE_AREA1
+            attr.flags &= ~(1 << 2); // Clear TILE_ATTRIB_ELECTROCUTE_AREA1
           }
         }
       }
