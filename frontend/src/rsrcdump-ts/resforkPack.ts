@@ -83,13 +83,14 @@ export function packResourceFork(fork: ResourceFork): Uint8Array {
   
   for (let i = 0; i < orderedResources.length; i++) {
     const res = orderedResources[i];
-    const key = `${res.type}:${res.num}`;
+    if (!res) continue;
+    const key = `${res.type}:${res.id}`;
     // Store offset relative to data section start
     resourceDataOffsets.set(key, pos - dataStart);
     
     // Debug first 10 and resource #4
     if (i < 10 || i === 4) {
-      console.log(`[resforkPack] Resource #${i}: ${res.type}:${res.num}, length=${res.data.length}, offset=0x${(pos - 256).toString(16)}`);
+      console.log(`[resforkPack] Resource #${i}: ${res.type}:${res.id}, length=${res.data.length}, offset=0x${(pos - 256).toString(16)}`);
     }
     
     // Write data length (4 bytes, big-endian)
@@ -126,7 +127,8 @@ export function packResourceFork(fork: ResourceFork): Uint8Array {
   // ========================================
   // Write type list
   // ========================================
-  const resourceListStart = mapStart + 28 + typeListSize;
+  // Note: resourceListStart and typeListStart are calculated for documentation but not directly used
+  // const resourceListStart = mapStart + 28 + typeListSize;
   
   // Write type count - 1
   view.setUint16(pos, typeCount - 1, false); pos += 2;
@@ -139,7 +141,7 @@ export function packResourceFork(fork: ResourceFork): Uint8Array {
   }> = [];
   
   // Resource list offset is relative to TYPE LIST START (not resource list start)
-  const typeListStart = pos - 2;  // Start of type list (after count)
+  // const typeListStart = pos - 2;  // Start of type list (after count)
   let currentResourceListOffset = typeListSize; // Start after type list
   
   for (const [typeName, typeMap] of fork.resources) {
@@ -147,7 +149,7 @@ export function packResourceFork(fork: ResourceFork): Uint8Array {
     uint8View.set(typeBytes, pos); pos += 4;
     
     const resourcesOfType = Array.from(typeMap.values())
-      .sort((a, b) => a.order - b.order);
+      .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
     
     // Write count - 1
     view.setUint16(pos, resourcesOfType.length - 1, false); pos += 2;
@@ -174,10 +176,10 @@ export function packResourceFork(fork: ResourceFork): Uint8Array {
   
   for (const typeEntry of typeEntries) {
     for (const res of typeEntry.resources) {
-      const key = `${res.type}:${res.num}`;
+      const key = `${res.type}:${res.id}`;
       
       // Write resource ID (2 bytes, signed)
-      view.setInt16(pos, res.num, false); pos += 2;
+      view.setInt16(pos, res.id, false); pos += 2;
       
       // Placeholder for name offset (2 bytes)
       nameOffsetPlaceholders.push({ pos, res });
@@ -237,5 +239,5 @@ function flattenAndSortResources(fork: ResourceFork): Resource[] {
     }
   }
   
-  return flat.sort((a, b) => a.order - b.order);
+  return flat.sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
 }

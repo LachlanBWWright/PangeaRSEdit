@@ -180,6 +180,8 @@ export function EditorView({
           ((terrainData.STgd !== undefined && terrainData.STgd !== null) ||
             (terrainData.Layr !== undefined && terrainData.Layr !== null))
         }
+        hasFenceData={fenceData !== null}
+        hasLiquidData={liquidData !== null}
       />
       <div>
         {view === View.fences && fenceData && (

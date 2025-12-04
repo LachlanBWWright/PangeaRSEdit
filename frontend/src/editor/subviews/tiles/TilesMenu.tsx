@@ -13,7 +13,7 @@ import {
   TileEditingEnabled,
   TileBrushType,
 } from "../../../data/tiles/tileAtoms";
-import { useAtom } from "jotai";
+import { useAtom, useAtomValue } from "jotai";
 import {
   Select,
   SelectContent,
@@ -25,6 +25,7 @@ import { useEffect } from "react";
 import { Switch } from "@/components/ui/switch";
 import { HeaderData } from "@/python/structSpecs/ottoMaticLevelData";
 import { Updater } from "use-immer";
+import { Globals, Game } from "../../../data/globals/globals";
 
 
 export function TilesMenu({
@@ -45,16 +46,30 @@ export function TilesMenu({
     useAtom(TileEditingEnabled);
   const [selectedTileBrushType, setSelectedTileBrushType] =
     useAtom(TileBrushType);
+  const globals = useAtomValue(Globals);
 
   const header = headerData?.Hedr?.[1000]?.obj;
   const minY = header?.minY || 0;
   const maxY = header?.maxY || 0;
 
+  // Determine which tile options are available for this game
+  const gameType = globals.GAME_TYPE;
+  
+  // Electric Floor options are only available in Otto Matic
+  const hasElectricFloorOptions = gameType === Game.OTTO_MATIC;
+  
+  // Some games may have Atrb data (for tile attribute editing)
+  // Nanosaur 1 and Bugdom 1 use individual tiles, not tile attributes like Otto Matic
+  const usesIndividualTiles = gameType === Game.BUGDOM || gameType === Game.NANOSAUR;
+  
+  // Only show tile flags if game uses tile attribute system
+  const hasTileFlags = !usesIndividualTiles;
+
   useEffect(() => {
     if (tileView !== TileViews.Topology) {
       setCanvasViewMode(CanvasView.TWO_D);
     }
-  }, [tileView]);
+  }, [tileView, setCanvasViewMode]);
 
   const handleMinYChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newValue = parseFloat(e.target.value);
@@ -78,37 +93,52 @@ export function TilesMenu({
     });
   };
 
-  // We don't need to define handleTileClick here anymore,
-  // as it's been moved to the tileHandlers.ts file
+  // Calculate grid columns based on available buttons
+  const buttonCount = 1 + (hasTileFlags ? 1 : 0) + (hasElectricFloorOptions ? 2 : 0);
+  const gridCols = `grid-cols-${Math.min(buttonCount, 4)}`;
 
   return (
     <div className="flex flex-col gap-2">
-      <div className="grid grid-cols-4 gap-2">
+      <div className={`grid ${gridCols} gap-2`}>
         <Button
           selected={tileView === TileViews.Topology}
           onClick={() => setTileView(TileViews.Topology)}
         >
           Topology
         </Button>
-        <Button
-          selected={tileView === TileViews.Flags}
-          onClick={() => setTileView(TileViews.Flags)}
-        >
-          Empty Tiles
-        </Button>
-        <Button
-          selected={tileView === TileViews.ElectricFloor0}
-          onClick={() => setTileView(TileViews.ElectricFloor0)}
-        >
-          Electric Floor 1
-        </Button>
-        <Button
-          selected={tileView === TileViews.ElectricFloor1}
-          onClick={() => setTileView(TileViews.ElectricFloor1)}
-        >
-          Electric Floor 2
-        </Button>
+        {hasTileFlags && (
+          <Button
+            selected={tileView === TileViews.Flags}
+            onClick={() => setTileView(TileViews.Flags)}
+          >
+            Empty Tiles
+          </Button>
+        )}
+        {hasElectricFloorOptions && (
+          <>
+            <Button
+              selected={tileView === TileViews.ElectricFloor0}
+              onClick={() => setTileView(TileViews.ElectricFloor0)}
+            >
+              Electric Floor 1
+            </Button>
+            <Button
+              selected={tileView === TileViews.ElectricFloor1}
+              onClick={() => setTileView(TileViews.ElectricFloor1)}
+            >
+              Electric Floor 2
+            </Button>
+          </>
+        )}
       </div>
+
+      {/* Info message for games without tile attribute editing */}
+      {usesIndividualTiles && tileView !== TileViews.Topology && (
+        <div className="text-sm text-gray-500 p-2 bg-gray-800 rounded">
+          <p>Tile flag editing is not available for {globals.GAME_NAME}.</p>
+          <p>This game uses individual tiles instead of tile attributes.</p>
+        </div>
+      )}
 
       <div className="grid grid-cols-[auto_1fr_auto_1fr] gap-2 items-center"></div>
 
@@ -202,7 +232,7 @@ export function TilesMenu({
         </div>
       )}
 
-      {(tileView === TileViews.Flags ||
+      {hasTileFlags && (tileView === TileViews.Flags ||
         tileView === TileViews.ElectricFloor0 ||
         tileView === TileViews.ElectricFloor1) && (
         <div className="grid grid-cols-[auto_1fr_auto_1fr] gap-2 items-center">

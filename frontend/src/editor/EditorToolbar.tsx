@@ -1,6 +1,8 @@
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { View } from "./EditorView";
+import { useAtomValue } from "jotai";
+import { Globals, Game } from "../data/globals/globals";
 
 interface Props {
   view: View;
@@ -12,6 +14,8 @@ interface Props {
   dataHistoryIndex: number;
   dataHistoryLength: number;
   terrainHasSTgd?: boolean;
+  hasFenceData?: boolean;
+  hasLiquidData?: boolean;
 }
 
 export default function EditorToolbar({
@@ -24,22 +28,40 @@ export default function EditorToolbar({
   dataHistoryIndex,
   dataHistoryLength,
   terrainHasSTgd,
+  hasFenceData,
+  hasLiquidData,
 }: Props) {
+  const globals = useAtomValue(Globals);
+  
+  // Nanosaur 1 doesn't have fences or liquid data
+  const gameSupportsFences = globals.GAME_TYPE !== Game.NANOSAUR;
+  // Nanosaur 1 and Bugdom 1 don't have liquid data
+  const gameSupportsLiquids = globals.GAME_TYPE !== Game.NANOSAUR && globals.GAME_TYPE !== Game.BUGDOM;
+  
+  // Only show fences button if game supports fences AND we have fence data (or game supports fences in general)
+  const showFences = gameSupportsFences && (hasFenceData !== false);
+  // Only show water button if game supports liquids AND we have liquid data (or game supports liquids in general)
+  const showWater = gameSupportsLiquids && (hasLiquidData !== false);
+  
   return (
     <>
       <div className="grid grid-cols-4 xl:grid-cols-7 gap-2 w-full overflow-clip">
-        <Button
-          selected={view === View.fences}
-          onClick={() => setView(View.fences)}
-        >
-          Fences
-        </Button>
-        <Button
-          selected={view === View.water}
-          onClick={() => setView(View.water)}
-        >
-          Water
-        </Button>
+        {showFences && (
+          <Button
+            selected={view === View.fences}
+            onClick={() => setView(View.fences)}
+          >
+            Fences
+          </Button>
+        )}
+        {showWater && (
+          <Button
+            selected={view === View.water}
+            onClick={() => setView(View.water)}
+          >
+            Water
+          </Button>
+        )}
         <Button
           selected={view === View.items}
           onClick={() => setView(View.items)}

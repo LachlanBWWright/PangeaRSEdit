@@ -331,13 +331,14 @@ export class StructTemplateParser {
     
     for (let i = 0; i < values.length && i < template.fieldNames.length; i++) {
       const fieldName = template.fieldNames[i];
+      const value = values[i];
       
       // Skip fields that should be ignored (null fieldName means 'x' padding field)
-      if (fieldName === null) {
+      if (fieldName === null || fieldName === undefined) {
         continue;
       }
       
-      result[fieldName] = values[i];
+      result[fieldName] = value;
     }
     
     return result;

@@ -1,5 +1,7 @@
 // Type definitions for rsrcdump TypeScript implementation
 
+import type { Result } from '../types/result';
+
 export interface Resource {
   type: string;
   id: number;
@@ -35,7 +37,7 @@ export interface StructTemplate {
 
 export interface ResourceConverter {
   unpack(resource: Resource, fork?: ResourceFork): any;
-  pack?(obj: any): Uint8Array;
+  pack?(obj: any): Uint8Array | Result<Uint8Array, Error>;
 }
 
 export interface ConvertedResource {
