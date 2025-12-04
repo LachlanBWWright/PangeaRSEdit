@@ -105,9 +105,11 @@ export function EditSplineItemMenu({
               selectedSplineItem === undefined
             )
               return;
-            splineData.SpIt[SPLINE_KEY_BASE + selectedSpline].obj[
-              selectedSplineItem
-            ].type = newItemType;
+            const splineItems = splineData.SpIt[SPLINE_KEY_BASE + selectedSpline]?.obj;
+            const item = splineItems?.[selectedSplineItem];
+            if (item) {
+              item.type = newItemType;
+            }
           });
         }}
       >
@@ -140,9 +142,11 @@ export function EditSplineItemMenu({
                 selectedSplineItem === undefined
               )
                 return;
-              splineData.SpIt[SPLINE_KEY_BASE + selectedSpline].obj[
-                selectedSplineItem
-              ].flags = parseU16(e.target.value);
+              const splineItems = splineData.SpIt[SPLINE_KEY_BASE + selectedSpline]?.obj;
+              const item = splineItems?.[selectedSplineItem];
+              if (item) {
+                item.flags = parseU16(e.target.value);
+              }
             });
           }}
         />
@@ -159,9 +163,11 @@ export function EditSplineItemMenu({
                 selectedSplineItem === undefined
               )
                 return;
-              splineData.SpIt[SPLINE_KEY_BASE + selectedSpline].obj[
-                selectedSplineItem
-              ][paramKey] = v;
+              const splineItems = splineData.SpIt[SPLINE_KEY_BASE + selectedSpline]?.obj;
+              const item = splineItems?.[selectedSplineItem];
+              if (item) {
+                item[paramKey] = v;
+              }
             });
           };
           return [
@@ -194,14 +200,14 @@ export function EditSplineItemMenu({
                               )
                                 return;
                               const mask = 1 << flag.index;
-                              if (checked) {
-                                splineData.SpIt[
-                                  SPLINE_KEY_BASE + selectedSpline
-                                ].obj[selectedSplineItem][paramKey] |= mask;
-                              } else {
-                                splineData.SpIt[
-                                  SPLINE_KEY_BASE + selectedSpline
-                                ].obj[selectedSplineItem][paramKey] &= ~mask;
+                              const splineItems = splineData.SpIt[SPLINE_KEY_BASE + selectedSpline]?.obj;
+                              const item = splineItems?.[selectedSplineItem];
+                              if (item) {
+                                if (checked) {
+                                  item[paramKey] |= mask;
+                                } else {
+                                  item[paramKey] &= ~mask;
+                                }
                               }
                             });
                           }}
@@ -249,9 +255,11 @@ export function EditSplineItemMenu({
               if (placement > 1) placement = 1;
               if (isNaN(placement)) placement = 0;
 
-              splineData.SpIt[SPLINE_KEY_BASE + selectedSpline].obj[
-                selectedSplineItem
-              ].placement = placement;
+              const splineItems = splineData.SpIt[SPLINE_KEY_BASE + selectedSpline]?.obj;
+              const item = splineItems?.[selectedSplineItem];
+              if (item) {
+                item.placement = placement;
+              }
             });
           }}
         />
@@ -262,10 +270,11 @@ export function EditSplineItemMenu({
           disabled={selectedSpline === undefined}
           onClick={() => {
             setSplineData((splineData) => {
-              if (selectedSplineItem === undefined) return;
-              splineData.SpIt[SPLINE_KEY_BASE + selectedSpline].obj.splice(
-                selectedSplineItem,
-              );
+              if (selectedSplineItem === undefined || selectedSpline === undefined) return;
+              const splineItems = splineData.SpIt[SPLINE_KEY_BASE + selectedSpline]?.obj;
+              if (splineItems) {
+                splineItems.splice(selectedSplineItem);
+              }
               setSelectedSplineItem(undefined);
             });
           }}
@@ -292,15 +301,18 @@ export function EditSplineMenu({
           setSplineData((splineData) => {
             if (selectedSpline === undefined) return;
             const splineNubs =
-              splineData.SpNb[SPLINE_KEY_BASE + selectedSpline].obj;
+              splineData.SpNb[SPLINE_KEY_BASE + selectedSpline]?.obj;
+            if (!splineNubs) return;
+            const firstNub = splineNubs[0];
+            if (!firstNub) return;
 
-            splineData.SpNb[SPLINE_KEY_BASE + selectedSpline].obj.splice(1, 0, {
-              x: splineNubs[0].x + 30,
-              z: splineNubs[0].z + 30,
+            splineNubs.splice(1, 0, {
+              x: firstNub.x + 30,
+              z: firstNub.z + 30,
             });
             splineData.SpPt[SPLINE_KEY_BASE + selectedSpline] = {
               obj: getPoints(
-                splineData.SpNb[SPLINE_KEY_BASE + selectedSpline].obj,
+                splineNubs,
               ),
             };
           });
@@ -313,19 +325,22 @@ export function EditSplineMenu({
           setSplineData((splineData) => {
             if (selectedSpline === undefined) return;
             const splineNubs =
-              splineData.SpNb[SPLINE_KEY_BASE + selectedSpline].obj;
+              splineData.SpNb[SPLINE_KEY_BASE + selectedSpline]?.obj;
+            if (!splineNubs) return;
+            const lastNub = splineNubs[splineNubs.length - 1];
+            if (!lastNub) return;
 
-            splineData.SpNb[SPLINE_KEY_BASE + selectedSpline].obj.splice(
+            splineNubs.splice(
               splineNubs.length - 1,
               0,
               {
-                x: splineNubs[splineNubs.length - 1].x + 100,
-                z: splineNubs[splineNubs.length - 1].z + 100,
+                x: lastNub.x + 100,
+                z: lastNub.z + 100,
               },
             );
             splineData.SpPt[SPLINE_KEY_BASE + selectedSpline] = {
               obj: getPoints(
-                splineData.SpNb[SPLINE_KEY_BASE + selectedSpline].obj,
+                splineNubs,
               ),
             };
           });
