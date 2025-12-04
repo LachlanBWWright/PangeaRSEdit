@@ -137,12 +137,13 @@ export const Spline = memo(
 
             // Write updated nubs directly into the draft to avoid nested updaters
             setSplineData((draft) => {
-              if (draft.SpNb?.[SPLINE_KEY_BASE + splineIdx]) {
-                draft.SpNb[SPLINE_KEY_BASE + splineIdx].obj = updatedNubs;
+              const spNb = draft.SpNb?.[SPLINE_KEY_BASE + splineIdx];
+              if (spNb) {
+                spNb.obj = updatedNubs;
               }
-              if (draft.Spln?.[1000]?.obj?.[SPLINE_KEY_BASE + splineIdx]) {
-                draft.Spln[1000].obj[SPLINE_KEY_BASE + splineIdx].numNubs =
-                  updatedNubs.length;
+              const spln = draft.Spln?.[1000]?.obj?.[SPLINE_KEY_BASE + splineIdx];
+              if (spln) {
+                spln.numNubs = updatedNubs.length;
               }
             });
 
@@ -176,8 +177,8 @@ export const Spline = memo(
           return (
             <SplineItem
               key={itemIdx}
-              x={points[pointIdx]}
-              z={points[pointIdx + 1]}
+              x={points[pointIdx] ?? 0}
+              z={points[pointIdx + 1] ?? 0}
               item={item}
             />
           );
@@ -229,24 +230,26 @@ const SplineNub = memo(
                   updatedNubs[0] = { x: newX, z: newZ };
                 }
 
-                if (draft.SpNb?.[SPLINE_KEY_BASE + splineIdx]) {
-                  draft.SpNb[SPLINE_KEY_BASE + splineIdx].obj = updatedNubs;
+                const spNb = draft.SpNb?.[SPLINE_KEY_BASE + splineIdx];
+                if (spNb) {
+                  spNb.obj = updatedNubs;
                 }
 
+                const firstNub = updatedNubs[0];
                 const newPoints =
-                  updatedNubs.length === 1
-                    ? [{ x: updatedNubs[0].x, z: updatedNubs[0].z }]
+                  updatedNubs.length === 1 && firstNub
+                    ? [{ x: firstNub.x, z: firstNub.z }]
                     : getPoints(updatedNubs);
 
-                if (draft.SpPt?.[SPLINE_KEY_BASE + splineIdx]) {
-                  draft.SpPt[SPLINE_KEY_BASE + splineIdx].obj = newPoints;
+                const spPt = draft.SpPt?.[SPLINE_KEY_BASE + splineIdx];
+                if (spPt) {
+                  spPt.obj = newPoints;
                 }
 
-                if (draft.Spln?.[1000]?.obj?.[SPLINE_KEY_BASE + splineIdx]) {
-                  draft.Spln[1000].obj[SPLINE_KEY_BASE + splineIdx].numNubs =
-                    updatedNubs.length;
-                  draft.Spln[1000].obj[SPLINE_KEY_BASE + splineIdx].numPoints =
-                    newPoints.length;
+                const spln = draft.Spln?.[1000]?.obj?.[SPLINE_KEY_BASE + splineIdx];
+                if (spln) {
+                  spln.numNubs = updatedNubs.length;
+                  spln.numPoints = newPoints.length;
                 }
               });
             });
