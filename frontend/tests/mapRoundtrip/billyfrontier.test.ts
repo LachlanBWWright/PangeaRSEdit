@@ -44,7 +44,10 @@ describe("Billy Frontier Map Roundtrip", () => {
   it("should load resource fork correctly", () => {
     if (!fileExists) return;
 
-    const fork = load(originalData);
+    const forkResult = load(originalData);
+    expect(forkResult.ok).toBe(true);
+    if (!forkResult.ok) return;
+    const fork = forkResult.value;
 
     expect(fork).toBeDefined();
     expect(fork.resources).toBeDefined();

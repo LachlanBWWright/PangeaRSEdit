@@ -46,7 +46,10 @@ describe("Nanosaur 2 Map Roundtrip", () => {
   it("should load resource fork correctly", () => {
     if (!fileExists) return;
 
-    const fork = load(originalData);
+    const forkResult = load(originalData);
+    expect(forkResult.ok).toBe(true);
+    if (!forkResult.ok) return;
+    const fork = forkResult.value;
 
     expect(fork).toBeDefined();
     expect(fork.resources).toBeDefined();
@@ -70,7 +73,10 @@ describe("Nanosaur 2 Map Roundtrip", () => {
   it("should parse to JSON with bugdom2 specs", () => {
     if (!fileExists) return;
 
-    const jsonData = saveToJsonObject(originalData, nanosaur2Specs, [], [], true);
+    const jsonResult = saveToJsonObject(originalData, nanosaur2Specs, [], [], true);
+    expect(jsonResult.ok).toBe(true);
+    if (!jsonResult.ok) return;
+    const jsonData = jsonResult.value;
 
     expect(jsonData).toBeDefined();
     expect(typeof jsonData).toBe("object");
@@ -87,7 +93,10 @@ describe("Nanosaur 2 Map Roundtrip", () => {
     if (!fileExists) return;
 
     // Step 1: Binary -> JSON
-    const jsonData = saveToJsonObject(originalData, nanosaur2Specs, [], [], true);
+    const jsonResult = saveToJsonObject(originalData, nanosaur2Specs, [], [], true);
+    expect(jsonResult.ok).toBe(true);
+    if (!jsonResult.ok) return;
+    const jsonData = jsonResult.value;
     expect(jsonData).toBeDefined();
 
     // Step 2: JSON -> Binary
@@ -191,7 +200,10 @@ describe("Nanosaur 2 Map Roundtrip", () => {
   it("should preprocess JSON correctly with Nanosaur 2 globals", () => {
     if (!fileExists) return;
 
-    const jsonData = saveToJsonObject(originalData, nanosaur2Specs, [], [], true);
+    const jsonResult = saveToJsonObject(originalData, nanosaur2Specs, [], [], true);
+    expect(jsonResult.ok).toBe(true);
+    if (!jsonResult.ok) return;
+    const jsonData = jsonResult.value;
 
     // Preprocessing should not throw
     expect(() => {

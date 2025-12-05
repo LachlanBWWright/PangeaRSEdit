@@ -42,7 +42,10 @@ describe("Bugdom 2 Map Roundtrip", () => {
   it("should load resource fork correctly", () => {
     if (!fileExists) return;
 
-    const fork = load(originalData);
+    const forkResult = load(originalData);
+    expect(forkResult.ok).toBe(true);
+    if (!forkResult.ok) return;
+    const fork = forkResult.value;
 
     expect(fork).toBeDefined();
     expect(fork.resources).toBeDefined();
@@ -63,7 +66,10 @@ describe("Bugdom 2 Map Roundtrip", () => {
   it("should parse to JSON with bugdom2 specs", () => {
     if (!fileExists) return;
 
-    const jsonData = saveToJsonObject(originalData, bugdom2Specs, [], [], true);
+    const jsonResult = saveToJsonObject(originalData, bugdom2Specs, [], [], true);
+    expect(jsonResult.ok).toBe(true);
+    if (!jsonResult.ok) return;
+    const jsonData = jsonResult.value;
 
     expect(jsonData).toBeDefined();
     expect(jsonData._metadata).toBeDefined();
@@ -86,7 +92,10 @@ describe("Bugdom 2 Map Roundtrip", () => {
   it("should apply preprocessing correctly", () => {
     if (!fileExists) return;
 
-    const jsonData = saveToJsonObject(originalData, bugdom2Specs, [], [], true);
+    const jsonResult = saveToJsonObject(originalData, bugdom2Specs, [], [], true);
+    expect(jsonResult.ok).toBe(true);
+    if (!jsonResult.ok) return;
+    const jsonData = jsonResult.value;
 
     expect(() => {
       preprocessJson(jsonData as any, Bugdom2Globals);
@@ -154,7 +163,10 @@ describe("Bugdom 2 Map Roundtrip", () => {
   it("should produce similar binary size", () => {
     if (!fileExists) return;
 
-    const jsonData = saveToJsonObject(originalData, [], [], [], false);
+    const jsonResult = saveToJsonObject(originalData, [], [], [], false);
+    expect(jsonResult.ok).toBe(true);
+    if (!jsonResult.ok) return;
+    const jsonData = jsonResult.value;
     const binaryData2 = saveFromJson(jsonData, [], false);
 
     const sizeRatio = binaryData2.length / originalData.length;
