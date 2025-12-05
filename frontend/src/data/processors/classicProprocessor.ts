@@ -86,6 +86,25 @@ export function nanosaur1LevelToOttoMaticLevel(
   // Helper for empty record fields
   const emptyRecord = {};
 
+  // Convert heightmap data to YCrd format (array of floats)
+  // Nanosaur 1 heightmap is stored as Uint16Array with big-endian values
+  // Each value represents height at that tile position
+  let ycrdData: number[] = [];
+  if (level.heightmapLayer) {
+    // The heightmapLayer is a Uint16Array - convert to float values
+    // The values need to be read as big-endian uint16
+    for (let i = 0; i < level.heightmapLayer.length; i++) {
+      // The heightmapLayer is already a Uint16Array created from the buffer
+      // Each value represents height - convert to float
+      // The original Nanosaur code scales these values
+      const heightValue = level.heightmapLayer[i];
+      if (heightValue !== undefined) {
+        // Scale the height appropriately - Nanosaur uses fixed point
+        ycrdData.push(heightValue);
+      }
+    }
+  }
+
   // Compose ottoMaticLevel object
   const ottoLevel: ottoMaticLevel = {
     Atrb: {
@@ -205,7 +224,7 @@ export function nanosaur1LevelToOttoMaticLevel(
     YCrd: {
       1000: {
         name: "Floor&Ceiling Y Coords",
-        obj: [],
+        obj: ycrdData,
         order: 0,
       },
     },
@@ -249,8 +268,8 @@ export interface Nanosaur1LevelHeader {
 export interface Nanosaur1LevelData {
   header: Nanosaur1LevelHeader;
   textureLayer: number[];
-  heightmapLayer: Uint16Array | null;
-  pathLayer: Uint16Array | null;
+  heightmapLayer: number[] | null;
+  pathLayer: number[] | null;
   objectList: TerrainItemEntryType[];
   textureAttributes: TileAttribType[];
   // Add more fields as needed
@@ -352,24 +371,26 @@ export function parseNanosaur1Level(buffer: ArrayBuffer): Nanosaur1LevelData {
     }
   }
 
-  // Heightmap layer (width * depth, uint16)
-  let heightmapLayer: Uint16Array | null = null;
+  // Heightmap layer (width * depth, uint16) - big-endian values
+  let heightmapLayer: number[] | null = null;
   if (header.heightmapLayerOffset > 0) {
-    heightmapLayer = new Uint16Array(
-      buffer,
-      header.heightmapLayerOffset,
-      header.width * header.depth,
-    );
+    const heightView = new DataView(buffer, header.heightmapLayerOffset);
+    const layerSize = header.width * header.depth;
+    heightmapLayer = [];
+    for (let i = 0; i < layerSize; i++) {
+      heightmapLayer.push(heightView.getUint16(i * 2, false)); // big-endian
+    }
   }
 
-  // Path layer (width * depth, uint16)
-  let pathLayer: Uint16Array | null = null;
+  // Path layer (width * depth, uint16) - big-endian values
+  let pathLayer: number[] | null = null;
   if (header.pathLayerOffset > 0) {
-    pathLayer = new Uint16Array(
-      buffer,
-      header.pathLayerOffset,
-      header.width * header.depth,
-    );
+    const pathView = new DataView(buffer, header.pathLayerOffset);
+    const layerSize = header.width * header.depth;
+    pathLayer = [];
+    for (let i = 0; i < layerSize; i++) {
+      pathLayer.push(pathView.getUint16(i * 2, false)); // big-endian
+    }
   }
 
   // Object list (TerrainItemEntryType[])

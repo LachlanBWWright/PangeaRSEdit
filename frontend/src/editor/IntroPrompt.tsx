@@ -173,7 +173,13 @@ export function IntroPrompt({ pyodideWorker }: { pyodideWorker: Worker }) {
   };
 
   async function saveMap() {
-    if (!mapFile || !mapImagesFile) return;
+    if (!mapFile || !mapImagesFile) {
+      console.error("Download failed: Map file or images file not loaded");
+      toast.error("Download failed", {
+        description: "Map file or images file not loaded. Please load a level first.",
+      });
+      return;
+    }
 
     toast.loading("Processing map data...");
 
@@ -181,7 +187,8 @@ export function IntroPrompt({ pyodideWorker }: { pyodideWorker: Worker }) {
     const combinedDataResult = combineLevelData(getCurrentAtomicData());
 
     if (!isOk(combinedDataResult)) {
-      toast("Error", {
+      console.error("Download failed: Could not combine level data", combinedDataResult.error);
+      toast.error("Download failed", {
         description: combinedDataResult.error.message,
       });
       return;
@@ -193,36 +200,59 @@ export function IntroPrompt({ pyodideWorker }: { pyodideWorker: Worker }) {
     //remove timg from combinedData - needed to fix bug
     delete combinedData.Timg;
 
-    const loadResPromise = new Promise<ArrayBuffer>((resolve, reject) => {
-      pyodideWorker.postMessage({
-        type: "load_bytes_from_json",
-        json_blob: combinedData,
-        converters: globals.STRUCT_SPECS,
-        only_types: [],
-        skip_types: [],
-        adf: "True",
-      } satisfies PyodideMessage);
+    try {
+      const loadResPromise = new Promise<ArrayBuffer>((resolve, reject) => {
+        pyodideWorker.postMessage({
+          type: "load_bytes_from_json",
+          json_blob: combinedData,
+          converters: globals.STRUCT_SPECS,
+          only_types: [],
+          skip_types: [],
+          adf: "True",
+        } satisfies PyodideMessage);
 
-      pyodideWorker.onmessage = (event: MessageEvent<PyodideResponse>) => {
-        if (event.data.type === "load_bytes_from_json") {
-          resolve(event.data.result);
-        } else {
-          reject(new Error("Unexpected response from pyodide worker"));
-        }
-      };
-    });
-    const loadRes = await loadResPromise;
+        pyodideWorker.onmessage = (event: MessageEvent<PyodideResponse>) => {
+          if (event.data.type === "load_bytes_from_json") {
+            resolve(event.data.result);
+          } else {
+            console.error("Unexpected pyodide response:", event.data);
+            reject(new Error("Unexpected response from pyodide worker"));
+          }
+        };
 
-    const mapBlob = new Blob([loadRes], { type: ".ter.rsrc" });
-    const mapUrl = URL.createObjectURL(mapBlob);
+        pyodideWorker.onerror = (error) => {
+          console.error("Pyodide worker error:", error);
+          reject(new Error(`Worker error: ${error.message}`));
+        };
+      });
+      const loadRes = await loadResPromise;
 
-    let downloadLink = document.createElement("a");
-    downloadLink.href = mapUrl;
-    downloadLink.setAttribute("download", mapFile.name);
-    downloadLink.click();
+      if (!loadRes || loadRes.byteLength === 0) {
+        throw new Error("Generated map data is empty");
+      }
+
+      const mapBlob = new Blob([loadRes], { type: ".ter.rsrc" });
+      const mapUrl = URL.createObjectURL(mapBlob);
+
+      let downloadLink = document.createElement("a");
+      downloadLink.href = mapUrl;
+      downloadLink.setAttribute("download", mapFile.name);
+      downloadLink.click();
+      
+      console.log(`Map downloaded successfully: ${mapFile.name} (${loadRes.byteLength} bytes)`);
+    } catch (error) {
+      console.error("Download failed:", error);
+      toast.error("Download failed", {
+        description: error instanceof Error ? error.message : "Unknown error during map serialization",
+      });
+      return;
+    }
 
     //Download Images
-    if (!mapImages) return;
+    if (!mapImages) {
+      console.warn("No map images to download");
+      return;
+    }
 
     toast.loading("Compressing textures...");
 
@@ -310,10 +340,10 @@ export function IntroPrompt({ pyodideWorker }: { pyodideWorker: Worker }) {
     });
     const imageUrl = URL.createObjectURL(imageBlob);
 
-    downloadLink = document.createElement("a");
-    downloadLink.href = imageUrl;
-    downloadLink.setAttribute("download", mapImagesFile.name);
-    downloadLink.click();
+    const imageDownloadLink = document.createElement("a");
+    imageDownloadLink.href = imageUrl;
+    imageDownloadLink.setAttribute("download", mapImagesFile.name);
+    imageDownloadLink.click();
 
     toast.success("Map Downloaded!");
   }
