@@ -378,7 +378,7 @@ export function bg3dParsedToGLTF(
   console.log("=== Starting BG3D to glTF Conversion ===");
 
   // 1. Materials
-  const gltfMaterials: Material[] = parsed.materials.map((mat, i) => {
+  const gltfMaterials: Material[] = (parsed.materials || []).map((mat, i) => {
     const m = doc.createMaterial("BG3DMaterial");
     m.setName(`Material_${i.toString().padStart(4, "0")}`);
     m.setBaseColorFactor(mat.diffuseColor);
@@ -389,7 +389,7 @@ export function bg3dParsedToGLTF(
   });
 
   // 2. Textures/Images
-  parsed.materials.forEach((mat, i) => {
+  (parsed.materials || []).forEach((mat, i) => {
     if (mat.textures && mat.textures.length > 0) {
       mat.textures.forEach((tex, j) => {
         let pngBuffer: Uint8Array<ArrayBufferLike>;
@@ -523,7 +523,7 @@ export function bg3dParsedToGLTF(
     return result;
   }
 
-  const allGeometries = collectGeometries(parsed.groups);
+  const allGeometries = collectGeometries(parsed.groups || []);
   console.log(`Processing ${allGeometries.length} geometries`);
 
   // Build decomposed point list mapping (like Otto's runtime decomposition)
@@ -849,7 +849,7 @@ export function bg3dParsedToGLTF(
     }
   }
 
-  parsed.groups.forEach((group, i) => {
+  (parsed.groups || []).forEach((group, i) => {
     const hasNonSkinned = groupHasNonSkinnedChildren(group);
 
     // If group contains non-skinned geometry, create nodes for hierarchy
@@ -925,7 +925,7 @@ export function bg3dParsedToGLTF(
     bg3dFields: {
       // Note: Skeleton data (bones, pointIndices, animations) stored in native glTF format
       // Store BG3D-specific material properties
-      materialExtras: parsed.materials.map((mat) => ({
+      materialExtras: (parsed.materials || []).map((mat) => ({
         flags: mat.flags,
         // Store only texture metadata that glTF doesn't natively support
         textureExtras:
@@ -936,7 +936,7 @@ export function bg3dParsedToGLTF(
           })) || [],
       })),
       // Store BG3D-specific geometry organization
-      geometryExtras: parsed.groups.map(() => ({
+      geometryExtras: (parsed.groups || []).map(() => ({
         // Store any BG3D-specific group metadata here if needed
         // The actual geometry data should be represented natively in glTF
       })),
