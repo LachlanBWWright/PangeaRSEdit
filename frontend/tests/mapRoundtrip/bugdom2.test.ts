@@ -22,7 +22,7 @@ import { preprocessJson } from "../../src/data/processors/ottoPreprocessor";
 describe("Bugdom 2 Map Roundtrip", () => {
   const testFilePath = join(
     __dirname,
-    "../../../games/bugdom2/Data/Terrain/Level1_Garden.ter.rsrc",
+    "../../public/assets/bugdom2/terrain/Level1_Garden.ter.rsrc",
   );
   let originalData: Buffer;
   let fileExists: boolean;

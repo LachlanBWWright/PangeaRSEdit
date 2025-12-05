@@ -20,11 +20,11 @@ describe("BG3D Skeleton Round-trip with FULL ACCURACY", () => {
   // Test with Otto model for comprehensive accuracy testing
   const ottoBg3dPath = join(
     __dirname,
-    "../../../games/ottomatic/Data/Skeletons/Otto.bg3d",
+    "../../public/games/ottomatic/skeletons/Otto.bg3d",
   );
   const ottoSkeletonPath = join(
     __dirname,
-    "../../../games/ottomatic/Data/Skeletons/Otto.skeleton.rsrc",
+    "../../public/games/ottomatic/skeletons/Otto.skeleton.rsrc",
   );
 
   it("should achieve 100% byte-for-byte roundtrip accuracy for BG3D + skeleton", async () => {

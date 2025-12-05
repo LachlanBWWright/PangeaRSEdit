@@ -24,7 +24,7 @@ import { preprocessJson } from "../../src/data/processors/ottoPreprocessor";
 describe("Billy Frontier Map Roundtrip", () => {
   const testFilePath = join(
     __dirname,
-    "../../../games/billyfrontier/Data/Terrain/town_shootout.ter.rsrc",
+    "../../public/assets/billyFrontier/terrain/swamp_duel.ter.rsrc",
   );
   let originalData: Buffer;
   let fileExists: boolean;

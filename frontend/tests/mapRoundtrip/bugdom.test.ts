@@ -27,7 +27,7 @@ import { preprocessJson } from "../../src/data/processors/ottoPreprocessor";
 describe("Bugdom Map Roundtrip", () => {
   const testFilePath = join(
     __dirname,
-    "../../../games/bugdom/Data/Terrain/Lawn.ter.rsrc",
+    "../../public/assets/bugdom/terrain/Lawn.ter.rsrc",
   );
   let originalData: Buffer;
   let fileExists: boolean;

@@ -25,7 +25,7 @@ import { preprocessJson } from "../../src/data/processors/ottoPreprocessor";
 describe("Cro-Mag Rally Map Roundtrip", () => {
   const testFilePath = join(
     __dirname,
-    "../../../games/cromagrally/Data/Terrain/StoneAge_Jungle.ter.rsrc",
+    "../../public/assets/croMag/terrain/StoneAge_Desert.ter.rsrc",
   );
   let originalData: Buffer;
   let fileExists: boolean;

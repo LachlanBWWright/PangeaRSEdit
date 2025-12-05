@@ -22,11 +22,11 @@ import { compareLevelData } from "../../src/data/mapRoundtrip/parseLevel";
 describe("Nanosaur 1 Map Roundtrip", () => {
   const testFilePath = join(
     __dirname,
-    "../../../games/nanosaur/Data/Terrain/Level1.ter",
+    "../../public/assets/nanosaur/terrain/Level1.ter",
   );
   const textureFilePath = join(
     __dirname,
-    "../../../games/nanosaur/Data/Terrain/Level1.trt",
+    "../../public/assets/nanosaur/terrain/Level1.trt",
   );
   let originalData: Buffer;
   let textureData: Buffer;

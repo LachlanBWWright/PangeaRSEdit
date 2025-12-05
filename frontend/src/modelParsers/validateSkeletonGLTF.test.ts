@@ -13,11 +13,11 @@ describe("Skeleton Animation glTF Validation", () => {
     // Load Otto files
     const ottoPath = join(
       __dirname,
-      "../../../games/ottomatic/Data/Skeletons/Otto.bg3d",
+      "../../public/games/ottomatic/skeletons/Otto.bg3d",
     );
     const ottoSkeletonPath = join(
       __dirname,
-      "../../../games/ottomatic/Data/Skeletons/Otto.skeleton.rsrc",
+      "../../public/games/ottomatic/skeletons/Otto.skeleton.rsrc",
     );
 
     console.log("=== Loading and Parsing Otto Files ===");

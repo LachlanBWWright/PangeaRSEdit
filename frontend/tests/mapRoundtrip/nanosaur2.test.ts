@@ -26,7 +26,7 @@ import { preprocessJson } from "../../src/data/processors/ottoPreprocessor";
 describe("Nanosaur 2 Map Roundtrip", () => {
   const testFilePath = join(
     __dirname,
-    "../../../games/nanosaur2/Data/Terrain/level1.ter.rsrc",
+    "../../public/assets/nanosaur2/terrain/battle1.ter.rsrc",
   );
   let originalData: Buffer;
   let fileExists: boolean;
