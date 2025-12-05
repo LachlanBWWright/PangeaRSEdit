@@ -102,9 +102,9 @@ export function combineMapImagesFromTiles(
       
       // Apply Xlat translation if available
       if (xlatTable) {
-        const translatedIndex = xlatTable[tileIndex];
-        if (translatedIndex !== undefined) {
-          tileIndex = translatedIndex;
+        const translatedEntry = xlatTable[tileIndex];
+        if (translatedEntry !== undefined) {
+          tileIndex = translatedEntry.idx;
         }
       }
       
@@ -177,16 +177,19 @@ export function TerrainGeometry({
       numHigh,
     );
 
+    const positionAttr = geom.attributes.position;
+    if (!positionAttr) return null;
+
     const ycrd = terrainData.YCrd[1000].obj;
-    for (let i = 0; i < geom.attributes.position.count; i++) {
+    for (let i = 0; i < positionAttr.count; i++) {
       // TODO: Change this to use Y and update the rotation of the plane?
       const ycrdValue = ycrd[i];
       if (ycrdValue !== undefined) {
-        geom.attributes.position.setZ(i, ycrdValue * yScale);
+        positionAttr.setZ(i, ycrdValue * yScale);
       }
     }
     geom.computeVertexNormals();
-    geom.attributes.position.needsUpdate = true;
+    positionAttr.needsUpdate = true;
     return geom;
   }, [terrainData.YCrd, numWide, numHigh, yScale, globals.TILE_INGAME_SIZE]);
 
