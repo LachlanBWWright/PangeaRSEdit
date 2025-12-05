@@ -69,7 +69,7 @@ describe("Minimal Skeleton Roundtrip Tests", () => {
       return;
     }
 
-    const rt1Binary = await bg3dParsedToBG3D(rt1);
+    const rt1Binary = bg3dParsedToBG3D(rt1);
     const rt1SkeletonResource = bg3dSkeletonToSkeletonResource(rt1.skeleton);
     const rt1SkeletonBinary = await skeletonResourceToBinary(
       rt1SkeletonResource,
@@ -220,7 +220,7 @@ describe("Minimal Skeleton Roundtrip Tests", () => {
       return;
     }
 
-    const rt1Binary = await bg3dParsedToBG3D(rt1);
+    const rt1Binary = bg3dParsedToBG3D(rt1);
     const rt1SkeletonResource = bg3dSkeletonToSkeletonResource(rt1.skeleton);
     const rt1SkeletonBinary = await skeletonResourceToBinary(
       rt1SkeletonResource,

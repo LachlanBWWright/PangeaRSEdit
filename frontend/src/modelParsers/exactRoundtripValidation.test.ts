@@ -85,15 +85,11 @@ describe("Exact Byte-for-Byte Roundtrip Validation", () => {
     const exactBg3dBinary = getOriginalBG3DBinary(gltfDocument);
     const exactSkeletonBinary = getOriginalSkeletonBinary(gltfDocument);
 
-    const roundtripBg3dBinaryPromise =
+    const roundtripBg3dBinary =
       exactBg3dBinary || bg3dParsedToBG3D(roundtripBg3d);
-    const roundtripSkeletonBinaryPromise =
+    const roundtripSkeletonBinary =
       exactSkeletonBinary ||
-      skeletonResourceToBinary(roundtripSkeletonResource);
-
-    // Await the promises
-    const roundtripBg3dBinary = await roundtripBg3dBinaryPromise;
-    const roundtripSkeletonBinary = await roundtripSkeletonBinaryPromise;
+      await skeletonResourceToBinary(roundtripSkeletonResource);
 
     console.log(`Roundtrip BG3D: ${roundtripBg3dBinary.byteLength} bytes`);
     console.log(
