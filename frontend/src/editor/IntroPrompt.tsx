@@ -12,7 +12,7 @@ import { EditorView } from "./EditorView";
 import { Button } from "@/components/ui/button";
 import { Updater, useImmer } from "use-immer";
 import { ottoPreprocessor } from "../data/processors/ottoPreprocessor";
-import { Globals } from "../data/globals/globals";
+import { Globals, Game } from "../data/globals/globals";
 import { useAtom, useAtomValue } from "jotai";
 import { BlockHistoryUpdate } from "../data/globals/history";
 import LzssWorker from "../utils/lzssWorker?worker";
@@ -176,7 +176,8 @@ export function IntroPrompt({ pyodideWorker }: { pyodideWorker: Worker }) {
     if (!mapFile || !mapImagesFile) {
       console.error("Download failed: Map file or images file not loaded");
       toast.error("Download failed", {
-        description: "Map file or images file not loaded. Please load a level first.",
+        description:
+          "Map file or images file not loaded. Please load a level first.",
       });
       return;
     }
@@ -187,7 +188,10 @@ export function IntroPrompt({ pyodideWorker }: { pyodideWorker: Worker }) {
     const combinedDataResult = combineLevelData(getCurrentAtomicData());
 
     if (!isOk(combinedDataResult)) {
-      console.error("Download failed: Could not combine level data", combinedDataResult.error);
+      console.error(
+        "Download failed: Could not combine level data",
+        combinedDataResult.error,
+      );
       toast.error("Download failed", {
         description: combinedDataResult.error.message,
       });
@@ -238,12 +242,17 @@ export function IntroPrompt({ pyodideWorker }: { pyodideWorker: Worker }) {
       downloadLink.href = mapUrl;
       downloadLink.setAttribute("download", mapFile.name);
       downloadLink.click();
-      
-      console.log(`Map downloaded successfully: ${mapFile.name} (${loadRes.byteLength} bytes)`);
+
+      console.log(
+        `Map downloaded successfully: ${mapFile.name} (${loadRes.byteLength} bytes)`,
+      );
     } catch (error) {
       console.error("Download failed:", error);
       toast.error("Download failed", {
-        description: error instanceof Error ? error.message : "Unknown error during map serialization",
+        description:
+          error instanceof Error
+            ? error.message
+            : "Unknown error during map serialization",
       });
       return;
     }

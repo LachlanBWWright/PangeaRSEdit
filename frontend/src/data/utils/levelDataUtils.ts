@@ -81,14 +81,14 @@ export function splitLevelData(
     ? {
         Atrb: levelData.Atrb,
         Timg: levelData.Timg,
-        Xlat: levelData.Xlat, // Bugdom 1 tile translation table
-        Vcol: levelData.Vcol, // Bugdom 1 vertex colors
         ItCo: levelData.ItCo,
         Layr: levelData.Layr,
         STgd: levelData.STgd,
         YCrd: levelData.YCrd,
         alis: levelData.alis,
         _metadata: levelData._metadata,
+        ...(levelData.Xlat !== undefined ? { Xlat: levelData.Xlat } : {}),
+        ...(levelData.Vcol !== undefined ? { Vcol: levelData.Vcol } : {}),
       }
     : null;
 
@@ -116,7 +116,9 @@ export function splitLevelData(
  * Combine atomic data types back into a complete ottoMaticLevel
  * Returns a Result instead of throwing
  */
-export function combineLevelData(atomicData: AtomicLevelData): Result<ottoMaticLevel, Error> {
+export function combineLevelData(
+  atomicData: AtomicLevelData,
+): Result<ottoMaticLevel, Error> {
   const {
     headerData,
     itemData,
@@ -135,7 +137,9 @@ export function combineLevelData(atomicData: AtomicLevelData): Result<ottoMaticL
     !splineData ||
     !terrainData
   ) {
-    return err(new Error("Cannot combine level data: atomic data is incomplete"));
+    return err(
+      new Error("Cannot combine level data: atomic data is incomplete"),
+    );
   }
 
   // All pieces are non-null here; safe to spread and satisfy the full level type

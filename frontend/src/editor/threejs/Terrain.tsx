@@ -97,9 +97,9 @@ export function combineMapImagesFromTiles(
     for (let x = 0; x < numWide; x++) {
       const layerIndex = y * numWide + x;
       let tileIndex = layerData[layerIndex];
-      
+
       if (tileIndex === undefined) continue;
-      
+
       // Apply Xlat translation if available
       if (xlatTable) {
         const translatedEntry = xlatTable[tileIndex];
@@ -107,7 +107,7 @@ export function combineMapImagesFromTiles(
           tileIndex = translatedEntry.idx;
         }
       }
-      
+
       const tileImg = mapImages[tileIndex];
       if (tileImg) {
         ctx.drawImage(tileImg, x * tileSize, y * tileSize, tileSize, tileSize);
@@ -126,10 +126,18 @@ export function combineMapImages(
   globals: GlobalsInterface,
 ): Result<HTMLCanvasElement, Error> {
   // For Bugdom 1 and Nanosaur 1, use individual tile combining
-  if (globals.GAME_TYPE === Game.BUGDOM || globals.GAME_TYPE === Game.NANOSAUR) {
-    return combineMapImagesFromTiles(mapImages, headerData, terrainData, globals);
+  if (
+    globals.GAME_TYPE === Game.BUGDOM ||
+    globals.GAME_TYPE === Game.NANOSAUR
+  ) {
+    return combineMapImagesFromTiles(
+      mapImages,
+      headerData,
+      terrainData,
+      globals,
+    );
   }
-  
+
   // For other games, use STgd-based supertile combining
   return combineMapImagesFromSTgd(mapImages, headerData, terrainData, globals);
 }
@@ -148,14 +156,17 @@ export function TerrainGeometry({
     () => combineMapImages(mapImages, headerData, terrainData, globals),
     [mapImages, headerData, terrainData, globals],
   );
-  
+
   // Handle error case by returning null (no terrain rendered)
   if (!combinedImgResult.ok) {
-    console.error("Failed to combine map images:", combinedImgResult.error.message);
+    console.error(
+      "Failed to combine map images:",
+      combinedImgResult.error.message,
+    );
     return null;
   }
   const combinedImg = combinedImgResult.value;
-  
+
   const header = headerData.Hedr?.[1000]?.obj;
   if (!header) return null;
 
