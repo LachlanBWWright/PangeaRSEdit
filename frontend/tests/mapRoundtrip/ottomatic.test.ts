@@ -129,9 +129,7 @@ describe("Otto Matic Map Roundtrip", () => {
     }
   });
 
-  it.skip("should roundtrip without hex data (raw resource fork)", () => {
-    // Skip: ResourceFork binary roundtrip has bugs - only 1 type being restored
-    // See: https://github.com/LachlanBWWright/PangeaRSEdit/issues/XXX
+  it("should roundtrip without hex data (raw resource fork)", () => {
     if (!fileExists) return;
 
     // Parse without otto specs (hex data only) for simpler roundtrip
@@ -269,8 +267,7 @@ describe("Otto Matic Map Roundtrip", () => {
     console.log("✅ Structured data roundtrip successful");
   });
 
-  it.skip("should produce similar binary size", () => {
-    // Skip: ResourceFork binary roundtrip has bugs
+  it("should produce similar binary size", () => {
     if (!fileExists) return;
 
     const jsonResult = saveToJsonObject(originalData, [], [], [], false);
