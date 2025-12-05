@@ -87,21 +87,16 @@ export function nanosaur1LevelToOttoMaticLevel(
   const emptyRecord = {};
 
   // Convert heightmap data to YCrd format (array of floats)
-  // Nanosaur 1 heightmap is stored as Uint16Array with big-endian values
+  // Nanosaur 1 heightmap is stored as big-endian uint16 values
   // Each value represents height at that tile position
   let ycrdData: number[] = [];
   if (level.heightmapLayer) {
-    // The heightmapLayer is a Uint16Array - convert to float values
-    // The values need to be read as big-endian uint16
+    // The heightmapLayer is already parsed as big-endian uint16 values
+    // Each value represents height - use directly
     for (let i = 0; i < level.heightmapLayer.length; i++) {
-      // The heightmapLayer is already a Uint16Array created from the buffer
-      // Each value represents height - convert to float
-      // The original Nanosaur code scales these values
       const heightValue = level.heightmapLayer[i];
-      if (heightValue !== undefined) {
-        // Scale the height appropriately - Nanosaur uses fixed point
-        ycrdData.push(heightValue);
-      }
+      // Scale the height appropriately - Nanosaur uses fixed point
+      ycrdData.push(heightValue);
     }
   }
 
