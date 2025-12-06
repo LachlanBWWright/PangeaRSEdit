@@ -27,11 +27,8 @@ export const Fence = memo(
 
     const fenceNubs = fenceData.FnNb[1000 + fenceIdx]?.obj;
     if (!fenceNubs) return null;
-    
-    const lines = fenceNubs.flatMap((nub) => [
-      nub[0],
-      nub[1],
-    ]);
+
+    const lines = fenceNubs.flatMap((nub) => [nub[0], nub[1]]);
 
     // Get fence type from fence data
     const fenceDef = fenceData.Fenc[1000]?.obj[fenceIdx];
@@ -53,35 +50,14 @@ export const Fence = memo(
             // Store the initial positions of the nubs when dragging starts
             const nubData = fenceData.FnNb[1000 + fenceIdx]?.obj;
             if (nubData) {
-              setInitialDragState(
-                nubData.map((nub) => [nub[0], nub[1]]),
-              );
+              setInitialDragState(nubData.map((nub) => [nub[0], nub[1]]));
             }
             setSelectedFence(fenceIdx); // Select the fence on drag start
           }}
-          onDragMove={(e) => {
-            if (!initialDragState) return;
-
-            const dragDx = e.target.x();
-            const dragDz = e.target.y();
-
-            setFenceData((draft) => {
-              const currentNubs = draft.FnNb[1000 + fenceIdx]?.obj;
-              if (!currentNubs) return;
-              for (let i = 0; i < currentNubs.length; i++) {
-                const nub = currentNubs[i];
-                const initial = initialDragState[i];
-                if (nub && initial) {
-                  nub[0] = initial[0] + dragDx;
-                  nub[1] = initial[1] + dragDz;
-                }
-              }
-            });
-            e.target.x(0); // Reset line position after dragging nubs
-            e.target.y(0); // Reset line position after dragging nubs
-            setInitialDragState(null); // Clear initial drag state
+          onDragMove={() => {
+            // Don't update nub positions on each move. Visual transform is handled by Konva.
           }}
-          onDragEnd={(e) => {
+          onDragEnd={(e: any) => {
             if (!initialDragState) return;
 
             const dragDx = e.target.x();
@@ -99,8 +75,10 @@ export const Fence = memo(
                 }
               }
             });
-            e.target.x(0); // Reset line position after dragging nubs
-            e.target.y(0); // Reset line position after dragging nubs
+            try {
+              e.target.x(0); // Reset line position after dragging nubs
+              e.target.y(0); // Reset line position after dragging nubs
+            } catch {}
             setInitialDragState(null); // Clear initial drag state
           }}
         />
