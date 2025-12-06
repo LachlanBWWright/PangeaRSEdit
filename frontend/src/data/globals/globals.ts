@@ -7,6 +7,7 @@ import { bugdomSpecs } from "../../python/structSpecs/bugdom";
 import { billyFrontierSpecs } from "../../python/structSpecs/billyFrontier";
 import { croMagSpecs } from "../../python/structSpecs/croMag";
 import { nanosaur2Specs } from "../../python/structSpecs/nanosaur2";
+import { mightyMikeSpecs } from "../../python/structSpecs/mightyMike";
 export enum Game {
   OTTO_MATIC,
   BUGDOM,
@@ -15,12 +16,14 @@ export enum Game {
   NANOSAUR_2,
   CRO_MAG,
   BILLY_FRONTIER,
+  MIGHTY_MIKE,
 }
 
 export enum DataType {
   STANDARD, //.ter.rsrc / .ter file - Most games
   TRT_FILE, //.trt / .ter file - Nanosaur 1
   RSRC_FORK, //Bundled with resource fork - Bugdom 1
+  MIGHTY_MIKE, // .tileset / .map files - MightyMike
 }
 
 export enum TileImageFormat {
@@ -151,6 +154,22 @@ export const BillyFrontierGlobals: GlobalsInterface = {
   EMPTY_TILE_IDX: -1, // Uses signed short, -1 = empty
   TILE_INGAME_SIZE: 125.0, // DEFAULT_TERRAIN_SCALE from terrain.h
   TILE_SIZE: 32, // OREOMAP_TILE_SIZE = SUPERTILE_TEXMAP_SIZE/SUPERTILE_SIZE = 256/8 = 32
+  LIQD_NUBS: 100,
+};
+
+// MightyMike uses 2D tilemaps instead of 3D terrain
+// Files: .tileset (tile definitions) and .map (2D tile arrays + items)
+export const MightyMikeGlobals: GlobalsInterface = {
+  GAME_NAME: "Mighty Mike",
+  GAME_TYPE: Game.MIGHTY_MIKE,
+  DATA_TYPE: DataType.MIGHTY_MIKE,
+  TILE_IMAGE_FORMAT: TileImageFormat.LZSS_16_BIT,
+  STRUCT_SPECS: mightyMikeSpecs, // Not used for actual parsing - uses TypeScript parser
+  SUPERTILE_TEXMAP_SIZE: 32, // Individual tile size (32x32 pixels)
+  TILES_PER_SUPERTILE: 1, // No supertiles - direct tile mapping
+  EMPTY_TILE_IDX: 0,
+  TILE_INGAME_SIZE: 32.0, // Each tile is 32 units
+  TILE_SIZE: 32, // Tile pixel size
   LIQD_NUBS: 100,
 };
 

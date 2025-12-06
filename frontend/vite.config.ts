@@ -4,7 +4,15 @@ import path from "path";
 
 // https://vitejs.dev/config/
 export default defineConfig({
-  assetsInclude: ["**/*.ter.rsrc", "**/*.ter", "**/*.trt"],
+  assetsInclude: [
+    "**/*.ter.rsrc",
+    "**/*.ter",
+    "**/*.trt",
+    "**/*.tileset",
+    "**/*.map-1",
+    "**/*.map-2",
+    "**/*.map-3",
+  ],
   optimizeDeps: {
     exclude: ["pyodide"],
     esbuildOptions: {

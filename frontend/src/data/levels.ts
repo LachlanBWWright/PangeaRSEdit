@@ -33,6 +33,7 @@ export const getGameDisplayName = (game: string): string => {
     bugdom: "Bugdom",
     bugdom2: "Bugdom 2",
     croMag: "Cro-Mag Rally",
+    mightyMike: "Mighty Mike",
     nanosaur: "Nanosaur",
     nanosaur2: "Nanosaur 2",
     ottoMatic: "Otto Matic",
