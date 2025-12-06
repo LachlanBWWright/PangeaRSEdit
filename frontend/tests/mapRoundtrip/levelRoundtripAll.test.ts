@@ -14,7 +14,9 @@ import {
   saveToBytes,
 } from "../../../src/rsrcdump-ts/rsrcdump";
 
-function findTerrainFiles(gamesRoot: string): Array<{ game: string; path: string }>{
+function findTerrainFiles(
+  gamesRoot: string,
+): Array<{ game: string; path: string }> {
   const results: Array<{ game: string; path: string }> = [];
   if (!existsSync(gamesRoot)) return results;
 
@@ -39,7 +41,10 @@ function findTerrainFiles(gamesRoot: string): Array<{ game: string; path: string
   return results;
 }
 
-function firstDifference(a: Uint8Array, b: Uint8Array): { offset: number | null; count: number } {
+function firstDifference(
+  a: Uint8Array,
+  b: Uint8Array,
+): { offset: number | null; count: number } {
   const len = Math.min(a.length, b.length);
   let first: number | null = null;
   let diffs = 0;
@@ -70,7 +75,10 @@ describe("Per-level roundtrip for all games' terrain files", () => {
   for (const entry of terrainFiles) {
     const { game, path } = entry;
     // Create a test per-level so failures are granular
-    it(`${game} - ${path.replace(/.*Data\/Terrain\//, "")}: byte-for-byte hex roundtrip`, () => {
+    it(`${game} - ${path.replace(
+      /.*Data\/Terrain\//,
+      "",
+    )}: byte-for-byte hex roundtrip`, () => {
       expect(existsSync(path)).toBe(true);
       const orig = readFileSync(path);
       expect(orig.length).toBeGreaterThan(0);
@@ -93,15 +101,25 @@ describe("Per-level roundtrip for all games' terrain files", () => {
       expect(bytes.length).toBeGreaterThan(0);
 
       // Compare
-      const origArr = new Uint8Array(orig.buffer, orig.byteOffset, orig.byteLength);
-      const newArr = new Uint8Array(bytes.buffer ? bytes.buffer : bytes, 0, bytes.length);
+      const origArr = new Uint8Array(
+        orig.buffer,
+        orig.byteOffset,
+        orig.byteLength,
+      );
+      const newArr = new Uint8Array(
+        bytes.buffer ? bytes.buffer : bytes,
+        0,
+        bytes.length,
+      );
 
       const { offset, count } = firstDifference(origArr, newArr);
       const equal = count === 0;
 
       if (!equal) {
         // Provide actionable diagnostics in the test output
-        console.error(`${game} ${path} roundtrip mismatch: first diff offset=${offset}, differing bytes=${count}, origLen=${origArr.length}, newLen=${newArr.length}`);
+        console.error(
+          `${game} ${path} roundtrip mismatch: first diff offset=${offset}, differing bytes=${count}, origLen=${origArr.length}, newLen=${newArr.length}`,
+        );
       }
 
       expect(equal).toBe(true);

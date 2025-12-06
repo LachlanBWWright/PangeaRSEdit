@@ -16,14 +16,17 @@ import {
 import { billyFrontierSpecs } from "../../../src/python/structSpecs/billyFrontier";
 
 describe("Billy Frontier Level Roundtrip", () => {
-  const terrainDir = join(__dirname, "../../../../public/assets/billyFrontier/terrain");
+  const terrainDir = join(
+    __dirname,
+    "../../../../public/assets/billyFrontier/terrain",
+  );
   const levelFiles = [
     "swamp_duel.ter.rsrc",
     "town_stampede.ter.rsrc",
     "canyon_ambush.ter.rsrc",
     "desert_duel.ter.rsrc",
     "fort_battle.ter.rsrc",
-    "prairie_duel.ter.rsrc"
+    "prairie_duel.ter.rsrc",
   ];
 
   for (const levelFile of levelFiles) {
@@ -44,7 +47,10 @@ describe("Billy Frontier Level Roundtrip", () => {
       const forkResult = loadFromJson(jsonData, [], false);
       expect(forkResult.ok).toBe(true);
       if (!forkResult.ok) {
-        console.error(`Failed to load from JSON ${levelFile}:`, forkResult.error);
+        console.error(
+          `Failed to load from JSON ${levelFile}:`,
+          forkResult.error,
+        );
         return;
       }
       const fork = forkResult.value;
@@ -62,7 +68,9 @@ describe("Billy Frontier Level Roundtrip", () => {
       }
 
       if (firstDiff !== -1) {
-        console.error(`Byte difference in ${levelFile} at offset ${firstDiff}: original=${originalData[firstDiff]}, roundtrip=${roundtripData[firstDiff]}`);
+        console.error(
+          `Byte difference in ${levelFile} at offset ${firstDiff}: original=${originalData[firstDiff]}, roundtrip=${roundtripData[firstDiff]}`,
+        );
       }
 
       expect(firstDiff).toBe(-1); // No differences
@@ -73,10 +81,19 @@ describe("Billy Frontier Level Roundtrip", () => {
       const originalData = readFileSync(filePath);
 
       // Parse with specs (structured data)
-      const jsonResult = saveToJsonObject(originalData, billyFrontierSpecs, [], [], true);
+      const jsonResult = saveToJsonObject(
+        originalData,
+        billyFrontierSpecs,
+        [],
+        [],
+        true,
+      );
       expect(jsonResult.ok).toBe(true);
       if (!jsonResult.ok) {
-        console.error(`Failed to parse ${levelFile} with specs:`, jsonResult.error);
+        console.error(
+          `Failed to parse ${levelFile} with specs:`,
+          jsonResult.error,
+        );
         return;
       }
 

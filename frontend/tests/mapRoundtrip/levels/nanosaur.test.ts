@@ -17,11 +17,11 @@ import {
 // import { nanosaurSpecs } from "../../../src/python/structSpecs/nanosaur";
 
 describe("Nanosaur Level Roundtrip", () => {
-  const terrainDir = join(__dirname, "../../../../public/assets/nanosaur/terrain");
-  const levelFiles = [
-    "Level1.ter",
-    "Level1Pro.ter"
-  ];
+  const terrainDir = join(
+    __dirname,
+    "../../../../public/assets/nanosaur/terrain",
+  );
+  const levelFiles = ["Level1.ter", "Level1Pro.ter"];
 
   for (const levelFile of levelFiles) {
     it(`should roundtrip ${levelFile} byte-for-byte`, () => {
@@ -41,7 +41,10 @@ describe("Nanosaur Level Roundtrip", () => {
       const forkResult = loadFromJson(jsonData, [], false);
       expect(forkResult.ok).toBe(true);
       if (!forkResult.ok) {
-        console.error(`Failed to load from JSON ${levelFile}:`, forkResult.error);
+        console.error(
+          `Failed to load from JSON ${levelFile}:`,
+          forkResult.error,
+        );
         return;
       }
       const fork = forkResult.value;
@@ -59,7 +62,9 @@ describe("Nanosaur Level Roundtrip", () => {
       }
 
       if (firstDiff !== -1) {
-        console.error(`Byte difference in ${levelFile} at offset ${firstDiff}: original=${originalData[firstDiff]}, roundtrip=${roundtripData[firstDiff]}`);
+        console.error(
+          `Byte difference in ${levelFile} at offset ${firstDiff}: original=${originalData[firstDiff]}, roundtrip=${roundtripData[firstDiff]}`,
+        );
       }
 
       expect(firstDiff).toBe(-1); // No differences
