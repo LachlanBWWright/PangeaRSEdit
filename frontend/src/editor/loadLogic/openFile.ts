@@ -9,7 +9,7 @@ import {
 import { combineCanvases } from "@/editor/utils/combineCanvases";
 import type { GlobalsInterface } from "@/data/globals/globals";
 import type { AtomicLevelData } from "@/data/utils/levelDataUtils";
-import parseLevelDataFile from "./parseLevelDataFile";
+import { parseLevelDataFile } from "./parseLevelDataFile";
 
 export type OpenFileArgs = {
   url: string;
@@ -129,5 +129,3 @@ export async function openFile({
     setMapImages(canvases);
   }
 }
-
-export default openFile;

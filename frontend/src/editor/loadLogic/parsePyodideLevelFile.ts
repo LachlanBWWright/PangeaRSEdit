@@ -43,5 +43,3 @@ export async function parsePyodideLevelFile(
     };
   });
 }
-
-export default parsePyodideLevelFile;

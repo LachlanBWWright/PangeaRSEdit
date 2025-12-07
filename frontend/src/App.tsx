@@ -7,7 +7,7 @@ import { DownloadLevels } from "./pages/DownloadLevels";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "./components/ui/sonner";
 
-function App() {
+export function App() {
   return (
     <TooltipProvider>
       <HashRouter>
@@ -27,5 +27,3 @@ function App() {
     </TooltipProvider>
   );
 }
-
-export default App;

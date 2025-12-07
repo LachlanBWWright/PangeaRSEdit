@@ -61,15 +61,3 @@ Follow these specific instructions when writing or changing code in this workspa
 
   - When adding unit tests, mock worker messages and avoid invoking real Pyodide; see `openFile.test.ts` for examples of mocking `fetch`/`parseLevelDataFile`.
   - If you add worker logic, extract functions so core logic is testable in Node tests without running a real worker.
-  - Use `vi.mock()` for mocking modules in Vitest where appropriate.
-
-- Common pitfalls and fixes
-  - Runtime: `ReferenceError: Game is not defined` — caused by importing `Game` enum at runtime in a file that executes in worker / bundling phase. Prefer `gameType.DATA_TYPE` for dispatch or import `Game` only in non-bundling code paths.
-  - Do not throw exceptions in UI-level flows. Parsers return `Result` instead and callers check `.ok` and show toasts rather than permitting uncaught throws from worker responses.
-  - Setting `worker.onmessage` repeatedly may cause cross-talk between operations. Use `addEventListener` or unique message `id` fields for concurrent calls.
-
-If you’d like more detail added (e.g. specific test patterns, sample stub mocks, or an onboarding checklist), tell me which areas you'd like expanded and I'll iterate.
-
----
-
-References: `frontend/src/editor/`, `frontend/src/data/`, `frontend/src/python/`, tests under `frontend/tests`, and `frontend/package.json` for scripts.

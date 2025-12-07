@@ -1,11 +1,11 @@
 import { Button } from "@/components/ui/button";
-import LevelGrid from "../LevelGrid";
+import { LevelGrid } from "../LevelGrid";
 import {
   Nanosaur2Globals,
   type GlobalsInterface,
 } from "@/data/globals/globals";
 
-export default function Nanosaur2Levels({
+export function Nanosaur2Levels({
   openFile,
 }: {
   openFile: (url: string, gameType: GlobalsInterface) => void;

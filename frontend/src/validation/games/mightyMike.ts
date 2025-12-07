@@ -13,5 +13,3 @@ export type MightyMikeLevelData = z.infer<typeof mightyMikeLevelSchema>;
 export function validateMightyMikeLevel(data: unknown) {
   return validateLevelData<MightyMikeLevelData>(data, mightyMikeLevelSchema);
 }
-
-export default mightyMikeLevelSchema;

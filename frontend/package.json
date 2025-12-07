@@ -69,7 +69,7 @@
     "@vitest/browser": "^3.2.4",
     "@vitest/web-worker": "^3.2.4",
     "autoprefixer": "^10.4.20",
-    "canvas": "^2.11.2",
+
     "console-log-img": "^4.0.2",
     "eslint": "^9.9.0",
     "eslint-plugin-react-hooks": "^5.1.0-rc.0",

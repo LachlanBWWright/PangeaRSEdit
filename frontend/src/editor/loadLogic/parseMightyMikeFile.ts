@@ -55,5 +55,3 @@ export async function parseMightyMikeFile(
     return err(e instanceof Error ? e : new Error(String(e)));
   }
 }
-
-export default parseMightyMikeFile;

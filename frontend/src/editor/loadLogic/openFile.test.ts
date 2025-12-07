@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import openFile from "./openFile";
+import { openFile } from "./openFile";
 
 describe("openFile", () => {
   it("should fetch resource and call setters for MIGHTY_MIKE", async () => {
@@ -11,10 +11,10 @@ describe("openFile", () => {
 
     // mock parseLevelDataFile so we don't run complex parsing
     vi.mock("./parseLevelDataFile", () => ({
-      default: vi.fn().mockResolvedValue({ ok: true, value: {} }),
+      parseLevelDataFile: vi.fn().mockResolvedValue({ ok: true, value: {} }),
     }));
     // Import after mocking to ensure mock is applied
-    const { default: _parse } = await import("./parseLevelDataFile");
+    const { parseLevelDataFile: _parse } = await import("./parseLevelDataFile");
 
     const setGlobals = vi.fn();
     const setMapFile = vi.fn();

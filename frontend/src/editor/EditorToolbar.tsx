@@ -18,7 +18,7 @@ interface Props {
   hasLiquidData?: boolean;
 }
 
-export default function EditorToolbar({
+export function EditorToolbar({
   view,
   setView,
   undoData,
@@ -32,17 +32,18 @@ export default function EditorToolbar({
   hasLiquidData,
 }: Props) {
   const globals = useAtomValue(Globals);
-  
+
   // Nanosaur 1 doesn't have fences or liquid data
   const gameSupportsFences = globals.GAME_TYPE !== Game.NANOSAUR;
   // Nanosaur 1 and Bugdom 1 don't have liquid data
-  const gameSupportsLiquids = globals.GAME_TYPE !== Game.NANOSAUR && globals.GAME_TYPE !== Game.BUGDOM;
-  
+  const gameSupportsLiquids =
+    globals.GAME_TYPE !== Game.NANOSAUR && globals.GAME_TYPE !== Game.BUGDOM;
+
   // Only show fences button if game supports fences AND we have fence data (or game supports fences in general)
-  const showFences = gameSupportsFences && (hasFenceData !== false);
+  const showFences = gameSupportsFences && hasFenceData !== false;
   // Only show water button if game supports liquids AND we have liquid data (or game supports liquids in general)
-  const showWater = gameSupportsLiquids && (hasLiquidData !== false);
-  
+  const showWater = gameSupportsLiquids && hasLiquidData !== false;
+
   return (
     <>
       <div className="grid grid-cols-4 xl:grid-cols-7 gap-2 w-full overflow-clip">

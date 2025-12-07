@@ -531,7 +531,10 @@ export const BugdomSupertiles = memo(
         const tileValue = layerData[startIdx];
         if (tileValue === undefined) continue;
         const tileIdx = tileValue & TILENUM_MASK;
-        const xlatEntry = xlatTable && tileIdx < xlatTable.length ? xlatTable[tileIdx] : undefined;
+        const xlatEntry =
+          xlatTable && tileIdx < xlatTable.length
+            ? xlatTable[tileIdx]
+            : undefined;
         const translatedIdx = xlatEntry ? xlatEntry.idx : tileIdx;
         rowSamples.push({
           row,
@@ -648,5 +651,3 @@ export function usesIndividualTiles(globals: { GAME_TYPE: Game }): boolean {
     globals.GAME_TYPE === Game.BUGDOM || globals.GAME_TYPE === Game.NANOSAUR
   );
 }
-
-export default BugdomSupertiles;

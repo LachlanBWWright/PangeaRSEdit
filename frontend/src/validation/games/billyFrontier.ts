@@ -36,5 +36,3 @@ export function validateBillyFrontierLevel(data: unknown) {
     billyFrontierLevelSchema,
   );
 }
-
-export default billyFrontierLevelSchema;

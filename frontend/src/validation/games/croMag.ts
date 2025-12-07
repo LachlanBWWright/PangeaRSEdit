@@ -33,5 +33,3 @@ export type CroMagLevelData = z.infer<typeof croMagLevelSchema>;
 export function validateCroMagLevel(data: unknown) {
   return validateLevelData<CroMagLevelData>(data, croMagLevelSchema);
 }
-
-export default croMagLevelSchema;

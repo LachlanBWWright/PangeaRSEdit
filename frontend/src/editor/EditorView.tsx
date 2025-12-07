@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import EditorToolbar from "./EditorToolbar";
+import { EditorToolbar } from "./EditorToolbar";
 import {
   HeaderData,
   ItemData,

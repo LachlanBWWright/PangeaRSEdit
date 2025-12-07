@@ -86,5 +86,3 @@ export function validatePartialOttoMaticLevel(data: unknown) {
     ottoMaticLevelSchema.partial(),
   );
 }
-
-export default ottoMaticLevelSchema;

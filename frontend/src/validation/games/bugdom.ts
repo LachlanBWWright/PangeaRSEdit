@@ -63,5 +63,3 @@ export type BugdomLevelData = z.infer<typeof bugdomLevelSchema>;
 export function validateBugdomLevel(data: unknown) {
   return validateLevelData<BugdomLevelData>(data, bugdomLevelSchema);
 }
-
-export default bugdomLevelSchema;

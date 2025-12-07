@@ -3,9 +3,9 @@ import { splitLevelData, AtomicLevelData } from "@/data/utils/levelDataUtils";
 import type { GlobalsInterface } from "@/data/globals/globals";
 import { DataType } from "@/data/globals/globals";
 import { Result, ok, err } from "@/types/result";
-import parseNanosaurLevelFile from "./parseNanosaurLevelFile";
-import parseMightyMikeFile from "./parseMightyMikeFile";
-import parsePyodideLevelFile from "./parsePyodideLevelFile";
+import { parseNanosaurLevelFile } from "./parseNanosaurLevelFile";
+import { parseMightyMikeFile } from "./parseMightyMikeFile";
+import { parsePyodideLevelFile } from "./parsePyodideLevelFile";
 
 /**
  * Parse a level data file into an ottoMatic-compatible structure and set
@@ -43,5 +43,3 @@ export async function parseLevelDataFile(
   // All other standard games use the pyodide/protobuf flow
   return await parsePyodideLevelFile(file, gameType, pyodideWorker, setData);
 }
-
-export default parseLevelDataFile;

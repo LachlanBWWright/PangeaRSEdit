@@ -10,7 +10,7 @@ interface Props {
   selectedModel: GameModel | null;
 }
 
-export default function ModelDetails({ selectedModel }: Props) {
+export function ModelDetails({ selectedModel }: Props) {
   if (!selectedModel) return null;
 
   return (

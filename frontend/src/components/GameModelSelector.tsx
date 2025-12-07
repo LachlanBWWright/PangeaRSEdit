@@ -30,7 +30,7 @@ export interface GameModelSelectorProps {
   loading: boolean;
 }
 
-import GAMES from "@/data/games";
+import { GAMES } from "@/data/games";
 
 export function GameModelSelector({
   onLoadModel,

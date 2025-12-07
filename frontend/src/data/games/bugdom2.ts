@@ -1,6 +1,6 @@
 import type { GameInfo } from "@/components/GameModelSelector";
 
-const bugdom2: GameInfo = {
+export const bugdom2: GameInfo = {
   id: "bugdom2",
   name: "Bugdom 2",
   models: [
@@ -140,5 +140,3 @@ const bugdom2: GameInfo = {
     },
   ],
 };
-
-export default bugdom2;

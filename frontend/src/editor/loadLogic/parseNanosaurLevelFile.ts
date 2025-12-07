@@ -27,5 +27,3 @@ export async function parseNanosaurLevelFile(
     return err(e instanceof Error ? e : new Error(String(e)));
   }
 }
-
-export default parseNanosaurLevelFile;

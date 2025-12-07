@@ -13,8 +13,8 @@ import {
   type GlobalsInterface,
 } from "../data/globals/globals";
 import { loadMapImages } from "./loadLogic/loadMapImages";
-import openFile from "./loadLogic/openFile";
-import parseLevelDataFile from "./loadLogic/parseLevelDataFile";
+import { openFile } from "./loadLogic/openFile";
+import { parseLevelDataFile } from "./loadLogic/parseLevelDataFile";
 
 import { useAtom } from "jotai";
 import { useState } from "react";
@@ -31,14 +31,14 @@ import {
 } from "@/components/ui/select";
 // Utility functions are used by the extracted logic modules.
 // Level grids moved to `gameLevelSelectors/*`
-import OttoLevels from "./gameLevelSelectors/OttoLevels";
-import BugdomLevels from "./gameLevelSelectors/BugdomLevels";
-import Bugdom2Levels from "./gameLevelSelectors/Bugdom2Levels";
-import CroMagLevels from "./gameLevelSelectors/CroMagLevels";
-import NanosaurLevels from "./gameLevelSelectors/NanosaurLevels";
-import Nanosaur2Levels from "./gameLevelSelectors/Nanosaur2Levels";
-import BillyFrontierLevels from "./gameLevelSelectors/BillyFrontierLevels";
-import MightyMikeLevels from "./gameLevelSelectors/MightyMikeLevels";
+import { OttoLevels } from "./gameLevelSelectors/OttoLevels";
+import { BugdomLevels } from "./gameLevelSelectors/BugdomLevels";
+import { Bugdom2Levels } from "./gameLevelSelectors/Bugdom2Levels";
+import { CroMagLevels } from "./gameLevelSelectors/CroMagLevels";
+import { NanosaurLevels } from "./gameLevelSelectors/NanosaurLevels";
+import { Nanosaur2Levels } from "./gameLevelSelectors/Nanosaur2Levels";
+import { BillyFrontierLevels } from "./gameLevelSelectors/BillyFrontierLevels";
+import { MightyMikeLevels } from "./gameLevelSelectors/MightyMikeLevels";
 /* import { Separator } from "@/components/ui/separator";
 import { parseSkeletonRsrc } from "@/modelParsers/skeletonRsrc/parseSkeletonRsrc";
 import BG3DGltfWorker from "../modelParsers/bg3dGltfWorker?worker"; //"../utils/bg3dGltfWorker.ts?worker"; */

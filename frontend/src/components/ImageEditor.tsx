@@ -8,7 +8,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Save, X, Undo, Redo } from "lucide-react";
-import ToolsPanel from "./ImageEditor/ToolsPanel";
+import { ToolsPanel } from "./ImageEditor/ToolsPanel";
 import { toast } from "sonner";
 import Konva from "konva";
 import type { KonvaEventObject } from "konva/lib/Node";

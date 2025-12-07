@@ -39,5 +39,3 @@ export type NanosaurLevelData = z.infer<typeof nanosaurLevelSchema>;
 export function validateNanosaurLevel(data: unknown) {
   return validateLevelData<NanosaurLevelData>(data, nanosaurLevelSchema);
 }
-
-export default nanosaurLevelSchema;

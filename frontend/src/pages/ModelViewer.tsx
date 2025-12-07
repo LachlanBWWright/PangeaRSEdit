@@ -6,8 +6,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Upload } from "lucide-react";
 import { TextureManager } from "@/components/TextureManager";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
-import ModelUploadPanel from "./ModelViewer/ModelUploadPanel";
-import VisualizationOptions from "./ModelViewer/VisualizationOptions";
+import { ModelUploadPanel } from "./ModelViewer/ModelUploadPanel";
+import { VisualizationOptions } from "./ModelViewer/VisualizationOptions";
 
 // ...existing code...
 import { SkeletonConversionPanel } from "@/components/SkeletonConversionPanel";

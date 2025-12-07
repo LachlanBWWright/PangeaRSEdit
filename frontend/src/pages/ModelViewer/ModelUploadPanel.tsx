@@ -34,7 +34,7 @@ interface Props {
   onCancelSelection: () => void;
 }
 
-export default function ModelUploadPanel({
+export function ModelUploadPanel({
   gltfUrl,
   useGameSelector,
   setUseGameSelector,

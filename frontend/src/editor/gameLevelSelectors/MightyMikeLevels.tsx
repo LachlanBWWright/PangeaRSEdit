@@ -1,11 +1,11 @@
 import { Button } from "@/components/ui/button";
-import LevelGrid from "../LevelGrid";
+import { LevelGrid } from "../LevelGrid";
 import {
   MightyMikeGlobals,
   type GlobalsInterface,
 } from "@/data/globals/globals";
 
-export default function MightyMikeLevels({
+export function MightyMikeLevels({
   openFile,
 }: {
   openFile: (url: string, gameType: GlobalsInterface) => void;
