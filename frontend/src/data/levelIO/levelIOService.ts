@@ -4,7 +4,7 @@
  * This module provides testable functions for importing, exporting, and
  * downloading level data. Logic is extracted from React components to
  * enable unit testing with roundtrip verification.
- * 
+ *
  * All functions return Result types instead of throwing errors.
  */
 
@@ -75,22 +75,22 @@ export async function parseLevelBuffer(
 ): Promise<Result<ottoMaticLevel, Error>> {
   if (gameType.GAME_TYPE === Game.NANOSAUR) {
     // Nanosaur 1 uses proprietary binary format
-    const result = parseNanosaur1LevelBuffer(buffer);
+    const result = parseNanosaur1LevelBuffer(buffer, gameType);
     if (isErr(result)) {
       return result;
     }
     return ok(result.value);
   }
-  
+
   // All other games use resource fork format
   if (!pyodideRunner) {
     return err(new Error("PyodideRunner required for non-Nanosaur 1 games"));
   }
 
   const parseResult = await fromPromise(
-    pyodideRunner.parseBuffer(buffer, gameType.STRUCT_SPECS, [], [])
+    pyodideRunner.parseBuffer(buffer, gameType.STRUCT_SPECS, [], []),
   );
-  
+
   if (isErr(parseResult)) {
     return parseResult;
   }
@@ -108,10 +108,18 @@ export async function parseLevelBuffer(
  * Parse a Nanosaur 1 .ter file buffer
  * (JavaScript-based parser, no pyodide needed)
  */
-export function parseNanosaur1LevelBuffer(buffer: ArrayBuffer): Result<ottoMaticLevel, Error> {
+export function parseNanosaur1LevelBuffer(
+  buffer: ArrayBuffer,
+  gameType?: GlobalsInterface,
+): Result<ottoMaticLevel, Error> {
   try {
     const rawLevelData = parseNanosaur1Level(buffer);
-    const converted = nanosaur1LevelToOttoMaticLevel(rawLevelData);
+    const converted = nanosaur1LevelToOttoMaticLevel(
+      rawLevelData,
+      gameType?.TILE_SIZE ?? 32,
+      gameType?.TILE_INGAME_SIZE ?? 140,
+      4.0,
+    );
     return ok(converted);
   } catch (error) {
     return err(error instanceof Error ? error : new Error(String(error)));
@@ -122,7 +130,9 @@ export function parseNanosaur1LevelBuffer(buffer: ArrayBuffer): Result<ottoMatic
  * Parse a Nanosaur 1 .trt texture file
  * @returns Result with array of tile textures as Uint16Arrays
  */
-export function parseNanosaur1TextureBuffer(buffer: ArrayBuffer): Result<Uint16Array[], Error> {
+export function parseNanosaur1TextureBuffer(
+  buffer: ArrayBuffer,
+): Result<Uint16Array[], Error> {
   try {
     const textures = parseNanosaurTerrainTextures(buffer);
     return ok(textures);
@@ -150,11 +160,19 @@ export async function serializeLevelData(
 ): Promise<Result<ArrayBuffer, Error>> {
   if (gameType.GAME_TYPE === Game.NANOSAUR) {
     // Nanosaur 1 serialization not supported (proprietary format)
-    return err(new Error("Nanosaur 1 level serialization is not yet supported"));
+    return err(
+      new Error("Nanosaur 1 level serialization is not yet supported"),
+    );
   }
 
   return fromPromise(
-    pyodideRunner.serializeLevel(levelData, gameType.STRUCT_SPECS, [], [], true)
+    pyodideRunner.serializeLevel(
+      levelData,
+      gameType.STRUCT_SPECS,
+      [],
+      [],
+      true,
+    ),
   );
 }
 
@@ -177,9 +195,15 @@ export async function performRoundtrip(
   pyodideRunner: PyodideRunner,
 ): Promise<Result<RoundtripResult, Error>> {
   // Parse original
-  const originalResult = await parseLevelBuffer(buffer, gameType, pyodideRunner);
+  const originalResult = await parseLevelBuffer(
+    buffer,
+    gameType,
+    pyodideRunner,
+  );
   if (isErr(originalResult)) {
-    return err(new Error(`Failed to parse original: ${originalResult.error.message}`));
+    return err(
+      new Error(`Failed to parse original: ${originalResult.error.message}`),
+    );
   }
 
   // Serialize back to binary
@@ -189,7 +213,9 @@ export async function performRoundtrip(
     pyodideRunner,
   );
   if (isErr(serializeResult)) {
-    return err(new Error(`Failed to serialize: ${serializeResult.error.message}`));
+    return err(
+      new Error(`Failed to serialize: ${serializeResult.error.message}`),
+    );
   }
 
   // Parse the serialized buffer
@@ -199,7 +225,9 @@ export async function performRoundtrip(
     pyodideRunner,
   );
   if (isErr(roundtripResult)) {
-    return err(new Error(`Failed to parse roundtrip: ${roundtripResult.error.message}`));
+    return err(
+      new Error(`Failed to parse roundtrip: ${roundtripResult.error.message}`),
+    );
   }
 
   // Compare the two parsed results
@@ -421,7 +449,9 @@ export function triggerDownload(blob: Blob, filename: string): void {
 /**
  * Fetch a level file from a URL
  */
-export async function fetchLevelFile(url: string): Promise<Result<ArrayBuffer, Error>> {
+export async function fetchLevelFile(
+  url: string,
+): Promise<Result<ArrayBuffer, Error>> {
   try {
     const response = await fetch(url);
     if (!response.ok) {

@@ -52,10 +52,20 @@ export async function parseLevelBuffer(
  * @param buffer - The raw .ter file data
  * @returns Result with the parsed level data converted to ottoMaticLevel format
  */
-export function parseNanosaur1Buffer(buffer: ArrayBuffer): Result<ottoMaticLevel, Error> {
+export function parseNanosaur1Buffer(
+  buffer: ArrayBuffer,
+  gameType?: GlobalsInterface,
+): Result<ottoMaticLevel, Error> {
   try {
     const rawLevelData = parseNanosaur1Level(buffer);
-    return ok(nanosaur1LevelToOttoMaticLevel(rawLevelData));
+    return ok(
+      nanosaur1LevelToOttoMaticLevel(
+        rawLevelData,
+        gameType?.TILE_SIZE ?? 32,
+        gameType?.TILE_INGAME_SIZE ?? 140,
+        4.0,
+      ),
+    );
   } catch (error) {
     return err(error instanceof Error ? error : new Error(String(error)));
   }
@@ -109,7 +119,7 @@ export async function parseLevelForGame(
 ): Promise<Result<ottoMaticLevel, Error>> {
   if (gameType.GAME_TYPE === Game.NANOSAUR) {
     // Nanosaur 1 uses its own parser
-    return parseNanosaur1Buffer(buffer);
+    return parseNanosaur1Buffer(buffer, gameType);
   }
 
   if (!pyodideRunner) {
@@ -153,11 +163,16 @@ export async function performRoundtrip(
     parse: (code: string, buffer: ArrayBuffer) => Promise<string>;
     serialize: (code: string, jsonData: object) => Promise<ArrayBuffer>;
   },
-): Promise<Result<{
-  original: ottoMaticLevel;
-  serialized: ArrayBuffer;
-  roundtrip: ottoMaticLevel;
-}, Error>> {
+): Promise<
+  Result<
+    {
+      original: ottoMaticLevel;
+      serialized: ArrayBuffer;
+      roundtrip: ottoMaticLevel;
+    },
+    Error
+  >
+> {
   // Parse the original buffer
   const originalResult = await parseLevelForGame(
     buffer,
@@ -166,7 +181,9 @@ export async function performRoundtrip(
   );
 
   if (isErr(originalResult)) {
-    return err(new Error(`Failed to parse original: ${originalResult.error.message}`));
+    return err(
+      new Error(`Failed to parse original: ${originalResult.error.message}`),
+    );
   }
 
   // Serialize back to binary
@@ -179,7 +196,9 @@ export async function performRoundtrip(
   );
 
   if (isErr(serializedResult)) {
-    return err(new Error(`Failed to serialize: ${serializedResult.error.message}`));
+    return err(
+      new Error(`Failed to serialize: ${serializedResult.error.message}`),
+    );
   }
 
   // Parse the serialized buffer
@@ -190,7 +209,9 @@ export async function performRoundtrip(
   );
 
   if (isErr(roundtripResult)) {
-    return err(new Error(`Failed to parse roundtrip: ${roundtripResult.error.message}`));
+    return err(
+      new Error(`Failed to parse roundtrip: ${roundtripResult.error.message}`),
+    );
   }
 
   return ok({

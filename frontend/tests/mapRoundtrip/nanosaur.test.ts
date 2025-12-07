@@ -94,7 +94,12 @@ describe("Nanosaur 1 Map Roundtrip", () => {
     new Uint8Array(arrayBuffer).set(new Uint8Array(originalData));
 
     const levelData = parseNanosaur1Level(arrayBuffer);
-    const ottoLevel = nanosaur1LevelToOttoMaticLevel(levelData);
+    const ottoLevel = nanosaur1LevelToOttoMaticLevel(
+      levelData,
+      NanosaurGlobals.TILE_SIZE,
+      NanosaurGlobals.TILE_INGAME_SIZE,
+      4.0,
+    );
 
     expect(ottoLevel).toBeDefined();
     expect(ottoLevel.Hedr).toBeDefined();
@@ -111,6 +116,16 @@ describe("Nanosaur 1 Map Roundtrip", () => {
       mapHeight: header.mapHeight,
       numItems: header.numItems,
     });
+
+    // Verify that final editor world Y (header.maxY scaled to world units)
+    // matches engine's expected max Y produced by 255 * HEIGHT_EXTRUDE_FACTOR.
+    const editorWorldMax =
+      header.maxY * (NanosaurGlobals.TILE_INGAME_SIZE / header.tileSize);
+    const expectedEngineMax = 255.0 * 4.0; // 255 * HEIGHT_EXTRUDE_FACTOR
+    // Allow a small tolerance due to integer rounding and sampling artifacts
+    expect(Math.abs(editorWorldMax - expectedEngineMax)).toBeLessThan(
+      expectedEngineMax * 0.05,
+    );
   });
 
   it("should preserve item data through conversion", () => {
@@ -121,7 +136,12 @@ describe("Nanosaur 1 Map Roundtrip", () => {
     new Uint8Array(arrayBuffer).set(new Uint8Array(originalData));
 
     const levelData = parseNanosaur1Level(arrayBuffer);
-    const ottoLevel = nanosaur1LevelToOttoMaticLevel(levelData);
+    const ottoLevel = nanosaur1LevelToOttoMaticLevel(
+      levelData,
+      NanosaurGlobals.TILE_SIZE,
+      NanosaurGlobals.TILE_INGAME_SIZE,
+      4.0,
+    );
 
     // Check items were converted
     if (ottoLevel.Itms && ottoLevel.Itms[1000]?.obj) {
@@ -146,7 +166,12 @@ describe("Nanosaur 1 Map Roundtrip", () => {
     new Uint8Array(arrayBuffer).set(new Uint8Array(originalData));
 
     const levelData = parseNanosaur1Level(arrayBuffer);
-    const ottoLevel = nanosaur1LevelToOttoMaticLevel(levelData);
+    const ottoLevel = nanosaur1LevelToOttoMaticLevel(
+      levelData,
+      NanosaurGlobals.TILE_SIZE,
+      NanosaurGlobals.TILE_INGAME_SIZE,
+      4.0,
+    );
 
     // Check layer was converted
     if (ottoLevel.Layr && ottoLevel.Layr[1000]?.obj) {
@@ -171,10 +196,20 @@ describe("Nanosaur 1 Map Roundtrip", () => {
 
     // Convert twice
     const levelData1 = parseNanosaur1Level(arrayBuffer);
-    const ottoLevel1 = nanosaur1LevelToOttoMaticLevel(levelData1);
+    const ottoLevel1 = nanosaur1LevelToOttoMaticLevel(
+      levelData1,
+      NanosaurGlobals.TILE_SIZE,
+      NanosaurGlobals.TILE_INGAME_SIZE,
+      4.0,
+    );
 
     const levelData2 = parseNanosaur1Level(arrayBuffer);
-    const ottoLevel2 = nanosaur1LevelToOttoMaticLevel(levelData2);
+    const ottoLevel2 = nanosaur1LevelToOttoMaticLevel(
+      levelData2,
+      NanosaurGlobals.TILE_SIZE,
+      NanosaurGlobals.TILE_INGAME_SIZE,
+      4.0,
+    );
 
     // Compare headers
     expect(ottoLevel1.Hedr[1000].obj.mapWidth).toBe(

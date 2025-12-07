@@ -5,14 +5,20 @@ import { Game, GlobalsInterface } from "../globals/globals";
 import { Result, ok, err } from "../../types/result";
 
 // eslint-disable-next-line  @typescript-eslint/no-explicit-any
-export function preprocessJson(json: any, globals: GlobalsInterface): Result<void, Error> {
+export function preprocessJson(
+  json: any,
+  globals: GlobalsInterface,
+): Result<void, Error> {
   console.log(json);
 
   // For Bugdom 1 and Nanosaur 1, Layr contains tile indices with flip/rotate bits - DO NOT MODIFY!
   // The Layr preprocessing below is only for Otto Matic and other games where Layr contains Atrb indices.
   if (
     globals.GAME_TYPE === Game.BUGDOM ||
-    globals.GAME_TYPE === Game.NANOSAUR
+    globals.GAME_TYPE === Game.NANOSAUR ||
+    globals.GAME_TYPE === Game.BUGDOM_2 ||
+    globals.GAME_TYPE === Game.NANOSAUR_2 ||
+    globals.GAME_TYPE === Game.BILLY_FRONTIER
   ) {
     console.log(
       `${globals.GAME_NAME}: Skipping Layr/Atrb preprocessing (Layr contains tile indices with flip/rotate bits)`,
@@ -25,14 +31,14 @@ export function preprocessJson(json: any, globals: GlobalsInterface): Result<voi
 
     console.log("layrArr", layrArr);
     console.log("atrbArr", atrbArr);
-    
+
     if (!Array.isArray(layrArr)) {
       return err(new Error("Layr[1000].obj is not an array"));
     }
     if (!Array.isArray(atrbArr)) {
       return err(new Error("Atrb[1000].obj is not an array"));
     }
-    
+
     const newAtrbArr = [];
     const newLayrArr = [];
 
@@ -71,7 +77,7 @@ export function preprocessJson(json: any, globals: GlobalsInterface): Result<voi
       waterItem.nubs = nubs;
     }
   }
-  
+
   return ok(undefined);
 }
 

@@ -73,11 +73,35 @@ export function extractTilesFromBuffer(
   return tiles;
 }
 
+// Parse Nanosaur 1 heightmap tiles (32x32 bytes)
+export function parseNanosaurHeightmapTiles(
+  buffer: ArrayBuffer,
+  tileCount: number,
+  offset = 0,
+): Uint8Array[] {
+  const TILE_SIZE = 32;
+  const BYTES_PER_TILE = TILE_SIZE * TILE_SIZE; // 1 byte per pixel
+  const view = new DataView(buffer, offset);
+  const tiles: Uint8Array[] = [];
+  for (let i = 0; i < tileCount; i++) {
+    const tileOffset = i * BYTES_PER_TILE; // relative to view
+    const tileData = new Uint8Array(BYTES_PER_TILE);
+    for (let j = 0; j < BYTES_PER_TILE; j++) {
+      tileData[j] = view.getUint8(tileOffset + j);
+    }
+    tiles.push(tileData);
+  }
+  return tiles;
+}
+
 import { ottoMaticLevel } from "@/python/structSpecs/ottoMaticInterface";
 // Convert Nanosaur1LevelData to ottomaticLevel-like structure
 // This allows the editor to use Nanosaur 1 levels in the same way as Otto Matic levels
 export function nanosaur1LevelToOttoMaticLevel(
   level: Nanosaur1LevelData,
+  tileSize: number = 32,
+  tileIngameSize: number = 140,
+  heightExtrudeFactor: number = 4.0,
 ): ottoMaticLevel {
   // Map Nanosaur 1 data to ottoMaticLevel structure
   const width = level.header.width;
@@ -86,17 +110,80 @@ export function nanosaur1LevelToOttoMaticLevel(
   // Helper for empty record fields
   const emptyRecord = {};
 
-  // Convert heightmap data to YCrd format (array of floats)
-  // Nanosaur 1 heightmap is stored as big-endian uint16 values
-  // Each value represents height at that tile position
+  // Convert Nanosaur1 heightmap tiles & layer to YCrd format (array of floats)
+  // Nanosaur 1 stores a heightmap layer containing tile indices (with flip/rotate bits) and
+  // an array of 32x32 height tiles (bytes). We sample the appropriate heightmap pixel for
+  // each map vertex and convert to a float using the HEIGHT_EXTRUDE_FACTOR.
+  const HMTILE_SIZE = 32;
+  const TERRAIN_HMTILE_BYTES = HMTILE_SIZE * HMTILE_SIZE;
+  const HEIGHT_EXTRUDE_FACTOR = heightExtrudeFactor; // corresponds to engine define
+  // Nanosaur's engine uses a TERRAIN_POLYGON_SIZE of 140 world units and
+  // OREOMAP_TILE_SIZE (OREOMAP pixel tile) of 32. When converting to an
+  // Otto-compatible YCrd array we need to produce *pixel units* instead of
+  // world units so the editor's final y calc (pixel * TILE_INGAME_SIZE/tileSize)
+  // yields the same world Y. Compute a converter that maps engine world Y
+  // (height*HEIGHT_EXTRUDE_FACTOR) back to pixel units used by Otto.
+  const TERRAIN_POLYGON_SIZE = tileIngameSize; // world unit size of a terrain polygon
+  const OREOMAP_TILE_SIZE = tileSize; // Oreo map pixel size (heightmap tiles are tileSize x tileSize)
+  const HEIGHT_WORLD_TO_PIXEL =
+    (OREOMAP_TILE_SIZE / TERRAIN_POLYGON_SIZE) * HEIGHT_EXTRUDE_FACTOR;
+
   let ycrdData: number[] = [];
-  if (level.heightmapLayer) {
-    // The heightmapLayer is already parsed as big-endian uint16 values
-    // Each value represents height - use directly
-    for (let i = 0; i < level.heightmapLayer.length; i++) {
-      const heightValue = level.heightmapLayer[i];
-      // Scale the height appropriately - Nanosaur uses fixed point
-      ycrdData.push(heightValue);
+  if (
+    level.heightmapLayer &&
+    level.heightmapTiles &&
+    level.heightmapTiles.length > 0
+  ) {
+    // Create (depth+1) x (width+1) grid of vertex heights matching Otto/Engine convention
+    for (let row = 0; row <= depth; row++) {
+      for (let col = 0; col <= width; col++) {
+        // Choose the tile to sample from - clamp to the last tile for edges
+        const tileRow = row === depth ? depth - 1 : row;
+        const tileCol = col === width ? width - 1 : col;
+        const tileIndex = tileRow * width + tileCol;
+        const tileEntry = level.heightmapLayer[tileIndex];
+
+        // Tile entries in nanosaur are 16-bit values: lower bits = tile number, top bits = flip/rotate
+        const TILENUM_MASK = 0x0fff;
+        const TILE_FLIPX_MASK = 1 << 15;
+        const TILE_FLIPY_MASK = 1 << 14;
+
+        const tileNum = tileEntry & TILENUM_MASK;
+        const flipX = (tileEntry & TILE_FLIPX_MASK) !== 0;
+        const flipY = (tileEntry & TILE_FLIPY_MASK) !== 0;
+
+        let offx = col === width ? HMTILE_SIZE - 1 : 0;
+        let offy = row === depth ? HMTILE_SIZE - 1 : 0;
+
+        if (flipX) offx = HMTILE_SIZE - 1 - offx;
+        if (flipY) offy = HMTILE_SIZE - 1 - offy;
+
+        let heightVal = 0;
+        if (tileNum >= 0 && tileNum < level.heightmapTiles.length) {
+          const tileArr = level.heightmapTiles[tileNum];
+          const idx = offy * HMTILE_SIZE + offx;
+          heightVal = tileArr[idx] ?? 0;
+        }
+        // Convert engine world units (height*HEIGHT_EXTRUDE_FACTOR) back to "pixel"
+        // units that Otto's YCrd expects so that downstream scaling converts to
+        // the correct world Y. This prevents double-scaling via yScale in Terrain.
+        ycrdData.push(heightVal * HEIGHT_WORLD_TO_PIXEL);
+      }
+    }
+  } else if (level.heightmapLayer) {
+    // Fallback: if we don't have height tiles, produce a simple grid by mapping tile values
+    // (rare case) - these values will be in integer units and likely need further scaling.
+    for (let row = 0; row <= depth; row++) {
+      for (let col = 0; col <= width; col++) {
+        const tileRow = Math.min(row, depth - 1);
+        const tileCol = Math.min(col, width - 1);
+        const tileIndex = tileRow * width + tileCol;
+        const tileEntry = level.heightmapLayer[tileIndex];
+        const heightValue = tileEntry ?? 0;
+        // Map fallback values using same converter as above so the final output
+        // is consistent with the main path (i.e. in pixel units).
+        ycrdData.push(heightValue * HEIGHT_WORLD_TO_PIXEL);
+      }
     }
   }
 
@@ -145,8 +232,8 @@ export function nanosaur1LevelToOttoMaticLevel(
           numTilePages: 1,
           numTiles: width * depth,
           tileSize: 32,
-          minY: 0,
-          maxY: 0,
+          minY: Math.min(...ycrdData, 0),
+          maxY: Math.max(...ycrdData, 0),
           numSplines: 0,
           numFences: 0,
           numUniqueSupertiles: 0,
@@ -265,6 +352,7 @@ export interface Nanosaur1LevelData {
   textureLayer: number[];
   heightmapLayer: number[] | null;
   pathLayer: number[] | null;
+  heightmapTiles?: Uint8Array[] | null;
   objectList: TerrainItemEntryType[];
   textureAttributes: TileAttribType[];
   // Add more fields as needed
@@ -418,6 +506,27 @@ export function parseNanosaur1Level(buffer: ArrayBuffer): Nanosaur1LevelData {
     );
   }
 
+  // Heightmap tiles (32x32 bytes each)
+  let heightmapTiles: Uint8Array[] | null = null;
+  if (
+    header.heightmapTilesOffset > 0 &&
+    header.textureAttribOffset > header.heightmapTilesOffset
+  ) {
+    const HMTILE_SIZE = 32;
+    const BYTES_PER_HMTILE = HMTILE_SIZE * HMTILE_SIZE;
+    const tileCount = Math.floor(
+      (header.textureAttribOffset - header.heightmapTilesOffset) /
+        BYTES_PER_HMTILE,
+    );
+    if (tileCount > 0) {
+      heightmapTiles = parseNanosaurHeightmapTiles(
+        buffer,
+        tileCount,
+        header.heightmapTilesOffset,
+      );
+    }
+  }
+
   // Return all parsed data
   const parsedData = {
     header,
@@ -426,6 +535,7 @@ export function parseNanosaur1Level(buffer: ArrayBuffer): Nanosaur1LevelData {
     pathLayer,
     objectList,
     textureAttributes,
+    heightmapTiles: heightmapTiles,
   };
 
   console.log(parsedData);

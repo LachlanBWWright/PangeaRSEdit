@@ -1,6 +1,6 @@
 /**
  * Zod schemas for validating level data
- * 
+ *
  * These schemas ensure that parsed level data matches the expected types exactly.
  * All validation uses safeParse to return Result types instead of throwing.
  */
@@ -133,7 +133,9 @@ export type SupertileGridOtto = z.infer<typeof supertileGridOttoSchema>;
 export const supertileGridSimplifiedSchema = z.object({
   superTileId: z.number(),
 });
-export type SupertileGridSimplified = z.infer<typeof supertileGridSimplifiedSchema>;
+export type SupertileGridSimplified = z.infer<
+  typeof supertileGridSimplifiedSchema
+>;
 
 /** Schema for spline nub */
 export const splineNubSchema = z.object({
@@ -197,7 +199,7 @@ export type Metadata = z.infer<typeof metadataSchema>;
 // ============================================================================
 
 /** Create a resource entry schema with a specific object schema */
-function resourceEntrySchema<T extends z.ZodTypeAny>(objSchema: T) {
+export function resourceEntrySchema<T extends z.ZodTypeAny>(objSchema: T) {
   return z.object({
     name: z.string().optional(),
     obj: objSchema,
@@ -206,57 +208,19 @@ function resourceEntrySchema<T extends z.ZodTypeAny>(objSchema: T) {
 }
 
 /** Create a hex data resource entry schema */
-const hexDataEntrySchema = z.object({
+export const hexDataEntrySchema = z.object({
   name: z.string().optional(),
   data: z.string(),
   order: z.number().optional(),
 });
 
 // ============================================================================
-// Level Data Schemas
+// Level Data Schema helpers and notes
+//
+// Per-game level schemas (e.g. Otto Matic, Bugdom, Nanosaur) should live under
+// `frontend/src/validation/games/*` and import the shared base types from this
+// file. Keep this file focused on shared base types and generic validators.
 // ============================================================================
-
-/** Schema for Otto Matic level data */
-export const ottoMaticLevelSchema = z.object({
-  _metadata: metadataSchema,
-  
-  // Header (required)
-  Hedr: z.record(z.string(), resourceEntrySchema(headerFullSchema)),
-  
-  // Terrain data (required)
-  Atrb: z.record(z.string(), resourceEntrySchema(z.array(tileAttributeSchema))),
-  ItCo: z.record(z.string(), hexDataEntrySchema),
-  YCrd: z.record(z.string(), resourceEntrySchema(z.array(z.number()))),
-  alis: z.record(z.string(), hexDataEntrySchema),
-  
-  // Optional terrain data
-  Layr: z.record(z.string(), resourceEntrySchema(z.array(z.number()))).optional(),
-  STgd: z.record(z.string(), resourceEntrySchema(z.array(supertileGridOttoSchema))).optional(),
-  Timg: z.record(z.string(), hexDataEntrySchema).optional(),
-  Xlat: z.record(z.string(), resourceEntrySchema(z.array(z.object({ idx: z.number() })))).optional(),
-  Vcol: z.record(z.string(), hexDataEntrySchema).optional(),
-  
-  // Items (optional)
-  Itms: z.record(z.string(), resourceEntrySchema(z.array(itemSchema))).optional(),
-  
-  // Fences (optional)
-  Fenc: z.record(z.string(), resourceEntrySchema(z.array(fenceSchema))).optional(),
-  FnNb: z.record(z.string(), resourceEntrySchema(z.array(fenceNubSchema))).optional(),
-  
-  // Splines (optional)
-  Spln: z.record(z.string(), resourceEntrySchema(z.array(splineSchema))).optional(),
-  SpNb: z.record(z.string(), resourceEntrySchema(z.array(splineNubSchema))).optional(),
-  SpPt: z.record(z.string(), resourceEntrySchema(z.array(splinePointSchema))).optional(),
-  SpIt: z.record(z.string(), resourceEntrySchema(z.array(splineItemSchema))).optional(),
-  
-  // Liquids (optional)
-  Liqd: z.record(z.string(), resourceEntrySchema(z.array(liquidSchema))).optional(),
-  
-  // Checkpoints (optional)
-  CkPt: z.record(z.string(), resourceEntrySchema(z.array(checkpointSchema))).optional(),
-}).passthrough(); // Allow additional properties we might not know about
-
-export type OttoMaticLevelData = z.infer<typeof ottoMaticLevelSchema>;
 
 // ============================================================================
 // Validation Functions
@@ -268,7 +232,7 @@ export type OttoMaticLevelData = z.infer<typeof ottoMaticLevelSchema>;
  */
 export function validateLevelData<T>(
   data: unknown,
-  schema: z.ZodSchema<T>
+  schema: z.ZodSchema<T>,
 ): Result<T, Error> {
   const result = schema.safeParse(data);
   if (result.success) {
@@ -280,17 +244,16 @@ export function validateLevelData<T>(
   return err(new Error(`Level data validation failed:\n${errorMessage}`));
 }
 
-/**
- * Validate Otto Matic level data
- */
-export function validateOttoMaticLevel(data: unknown): Result<OttoMaticLevelData, Error> {
-  return validateLevelData<OttoMaticLevelData>(data, ottoMaticLevelSchema);
-}
+// Per-game level validation functions live in `src/validation/games/*` and
+// should import shared helpers and base schemas from this file.
 
 /**
  * Validate a header
  */
-export function validateHeader(data: unknown, simplified: boolean = false): Result<HeaderFull | HeaderSimplified, Error> {
+export function validateHeader(
+  data: unknown,
+  simplified: boolean = false,
+): Result<HeaderFull | HeaderSimplified, Error> {
   const schema = simplified ? headerSimplifiedSchema : headerFullSchema;
   const result = schema.safeParse(data);
   if (result.success) {
@@ -350,23 +313,32 @@ export function validateLiquids(data: unknown): Result<Liquid[], Error> {
 /**
  * Validate tile attributes array
  */
-export function validateTileAttributes(data: unknown): Result<TileAttribute[], Error> {
+export function validateTileAttributes(
+  data: unknown,
+): Result<TileAttribute[], Error> {
   const schema = z.array(tileAttributeSchema);
   const result = schema.safeParse(data);
   if (result.success) {
     return ok(result.data);
   }
-  return err(new Error(`Tile attributes validation failed: ${result.error.message}`));
+  return err(
+    new Error(`Tile attributes validation failed: ${result.error.message}`),
+  );
 }
 
 /**
  * Partial validation - validates what's present without requiring all fields
  */
-export function validatePartialLevelData(data: unknown): Result<Partial<OttoMaticLevelData>, Error> {
-  const partialSchema = ottoMaticLevelSchema.partial();
+export function validatePartialLevelDataForSchema<T extends z.ZodTypeAny>(
+  data: unknown,
+  schema: z.ZodSchema<T>,
+): Result<Partial<T>, Error> {
+  const partialSchema = schema.partial();
   const result = partialSchema.safeParse(data);
   if (result.success) {
-    return ok(result.data);
+    return ok(result.data as Partial<T>);
   }
-  return err(new Error(`Partial level data validation failed: ${result.error.message}`));
+  return err(
+    new Error(`Partial level data validation failed: ${result.error.message}`),
+  );
 }

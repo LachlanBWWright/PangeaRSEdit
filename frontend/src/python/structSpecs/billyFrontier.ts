@@ -4,7 +4,7 @@ export const billyFrontierSpecs = [
   //Header - simplified format without numTilePages/numTiles
   //Source: games/billyfrontier/Source/System/File.c - PlayfieldHeaderType
   "Hedr:4L3f5L40x:version,numItems,mapWidth,mapHeight,tileSize,minY,maxY,numSplines,numFences,numUniqueSupertiles,numWaterPatches,numCheckpoints",
-  
+
   /////////////////////////////////////////////////////////////////
   // Supertiles
   /////////////////////////////////////////////////////////////////
@@ -19,9 +19,7 @@ export const billyFrontierSpecs = [
   "Layr:H+",
 
   //Height Data Matrix (2D array of floats)
-  "YCrd:f+",
-
-  /////////////////////////////////////////////////////////////////
+  "YCrd:f+", /////////////////////////////////////////////////////////////////
   // Checkpoints/Line Markers
   /////////////////////////////////////////////////////////////////
 

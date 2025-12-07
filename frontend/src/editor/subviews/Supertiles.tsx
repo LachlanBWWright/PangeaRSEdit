@@ -68,38 +68,61 @@ export const Supertiles = memo(
 
     const superTileGrid = terrainData.STgd[1000].obj;
     const imageGrid = useMemo(() => {
-      const imageArray: HTMLCanvasElement[] = [];
-      for (const supertile of superTileGrid) {
-        const img = mapImages[supertile.superTileId ?? supertile];
-        if (img) {
-          imageArray.push(img);
-        }
+      // Keep array index aligned with supertileGrid positions so Konva layout
+      // doesn't get compressed when tiles are empty. We store `null` when
+      // a supertile has no image so the layout math still uses the same index.
+      const imageArray: (HTMLCanvasElement | null)[] = new Array(
+        superTileGrid.length,
+      ).fill(null);
+      for (let idx = 0; idx < superTileGrid.length; idx++) {
+        const supertile = superTileGrid[idx];
+        // supertile may be an object { superTileId } or a number in simplified format
+        const id = (supertile as any)?.superTileId ?? (supertile as any);
+        const img = mapImages[id] ?? null;
+        imageArray[idx] = img;
       }
       return imageArray;
-    }, [headerData.Hedr, terrainData.STgd, mapImages]);
+    }, [headerData.Hedr, terrainData.STgd, mapImages, superTileGrid]);
 
     //Create blank image
     return (
       <Layer>
         {imageGrid.map((img, i) => {
           const isSelected = selectedTile === i;
-
           return (
             <Fragment key={i}>
-              <Image
-                image={img}
-                onClick={() => setSelectedTile(i)}
-                x={
-                  (i * globals.SUPERTILE_TEXMAP_SIZE) %
-                  (globals.SUPERTILE_TEXMAP_SIZE * supertilesWide)
-                }
-                y={
-                  Math.floor(i / supertilesWide) * globals.SUPERTILE_TEXMAP_SIZE
-                }
-                width={globals.SUPERTILE_TEXMAP_SIZE}
-                height={globals.SUPERTILE_TEXMAP_SIZE}
-                fill={isSelected ? "red" : ""}
-              />
+              {img ? (
+                <Image
+                  image={img}
+                  onClick={() => setSelectedTile(i)}
+                  x={
+                    (i * globals.SUPERTILE_TEXMAP_SIZE) %
+                    (globals.SUPERTILE_TEXMAP_SIZE * supertilesWide)
+                  }
+                  y={
+                    Math.floor(i / supertilesWide) *
+                    globals.SUPERTILE_TEXMAP_SIZE
+                  }
+                  width={globals.SUPERTILE_TEXMAP_SIZE}
+                  height={globals.SUPERTILE_TEXMAP_SIZE}
+                  fill={isSelected ? "red" : ""}
+                />
+              ) : (
+                <Rect
+                  onClick={() => setSelectedTile(i)}
+                  x={
+                    (i * globals.SUPERTILE_TEXMAP_SIZE) %
+                    (globals.SUPERTILE_TEXMAP_SIZE * supertilesWide)
+                  }
+                  y={
+                    Math.floor(i / supertilesWide) *
+                    globals.SUPERTILE_TEXMAP_SIZE
+                  }
+                  width={globals.SUPERTILE_TEXMAP_SIZE}
+                  height={globals.SUPERTILE_TEXMAP_SIZE}
+                  fill="black"
+                />
+              )}
               {isSelected && (
                 <Rect
                   onClick={() => setSelectedTile(i)}

@@ -232,7 +232,11 @@ export function IntroPrompt({ pyodideWorker }: { pyodideWorker: Worker }) {
       const loadRes = await loadResPromise;
 
       if (!loadRes || loadRes.byteLength === 0) {
-        throw new Error("Generated map data is empty");
+        console.error("Download failed: Generated map data is empty");
+        toast.error("Download failed", {
+          description: "Generated map data is empty",
+        });
+        return;
       }
 
       const mapBlob = new Blob([loadRes], { type: ".ter.rsrc" });

@@ -1,0 +1,59 @@
+import { ottoMaticLevel } from "@/python/structSpecs/ottoMaticInterface";
+import { Result, ok, err } from "@/types/result";
+import { parseMightyMikeMap } from "@/modelParsers/parseMightyMike";
+import { splitLevelData, AtomicLevelData } from "@/data/utils/levelDataUtils";
+
+export async function parseMightyMikeFile(
+  file: Blob,
+  setData: (data: AtomicLevelData) => void,
+): Promise<Result<ottoMaticLevel, Error>> {
+  try {
+    const levelBuffer = await file.arrayBuffer();
+    const mapResult = parseMightyMikeMap(levelBuffer);
+    if (!mapResult.ok) {
+      return err(
+        new Error(`Failed to parse MightyMike map: ${mapResult.error}`),
+      );
+    }
+
+    const ottoCompatible: ottoMaticLevel = {
+      Hedr: {
+        version: 1,
+        numItems: mapResult.value.num_items,
+        mapWidth: mapResult.value.map_width,
+        mapHeight: mapResult.value.map_height,
+        numTilePages: 1,
+        numTiles: 100,
+        tileSize: 32,
+        minY: 0,
+        maxY: 100,
+        numSplines: 0,
+        numFences: 0,
+        numUniqueSupertiles: 1,
+        numWaterPatches: 0,
+        numCheckpoints: 0,
+      },
+      Layr: mapResult.value.map_image.flat(),
+      YCrd: new Array(
+        mapResult.value.map_width * mapResult.value.map_height,
+      ).fill(0),
+      Itms: mapResult.value.items.map((item) => ({
+        x: item.x,
+        z: item.y,
+        type: item.type,
+        p0: item.p0,
+        p1: item.p1,
+        p2: item.p2,
+        p3: item.p3,
+        flags: 0,
+      })),
+    };
+
+    setData(splitLevelData(ottoCompatible));
+    return ok(ottoCompatible);
+  } catch (e) {
+    return err(e instanceof Error ? e : new Error(String(e)));
+  }
+}
+
+export default parseMightyMikeFile;

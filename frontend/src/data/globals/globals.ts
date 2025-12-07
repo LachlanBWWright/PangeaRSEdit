@@ -88,7 +88,7 @@ export const Bugdom2Globals: GlobalsInterface = {
   STRUCT_SPECS: bugdom2Specs,
   SUPERTILE_TEXMAP_SIZE: 128, //Dimensions of each supertile texture
   TILES_PER_SUPERTILE: 8, //How many tiles are in a supertile
-  EMPTY_TILE_IDX: -1,
+  EMPTY_TILE_IDX: 0,
   TILE_INGAME_SIZE: 225.0,
   TILE_SIZE: 16, //How many units each tile is
   LIQD_NUBS: 100,
@@ -110,7 +110,7 @@ export const NanosaurGlobals: GlobalsInterface = {
 };
 
 // Nanosaur 2 uses 256x256 supertile textures (JPG format)
-// Source: games/nanosaur2/Source/Headers/terrain.h - DEFAULT_TERRAIN_SCALE = 210
+// Source: games/nanosaur2/Source/System/File.c - DEFAULT_TERRAIN_SCALE = 210
 export const Nanosaur2Globals: GlobalsInterface = {
   GAME_NAME: "Nanosaur 2",
   GAME_TYPE: Game.NANOSAUR_2,
@@ -151,7 +151,7 @@ export const BillyFrontierGlobals: GlobalsInterface = {
   STRUCT_SPECS: billyFrontierSpecs,
   SUPERTILE_TEXMAP_SIZE: 256, // SUPERTILE_TEXMAP_SIZE from terrain.h
   TILES_PER_SUPERTILE: 8, // SUPERTILE_SIZE from terrain.h
-  EMPTY_TILE_IDX: -1, // Uses signed short, -1 = empty
+  EMPTY_TILE_IDX: 0, // Uses isEmpty flag like Otto Matic
   TILE_INGAME_SIZE: 125.0, // DEFAULT_TERRAIN_SCALE from terrain.h
   TILE_SIZE: 32, // OREOMAP_TILE_SIZE = SUPERTILE_TEXMAP_SIZE/SUPERTILE_SIZE = 256/8 = 32
   LIQD_NUBS: 100,

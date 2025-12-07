@@ -48,7 +48,8 @@ export function combineMapImagesFromSTgd(
     for (let j = 0; j < supertilesHigh; j++) {
       const stgdEntry = stgdObj[i + j * supertilesWide];
       if (!stgdEntry) continue;
-      const tileId = stgdEntry.superTileId;
+      const tileId = stgdEntry.superTileId ?? stgdEntry;
+      if (tileId === globals.EMPTY_TILE_IDX) continue;
       const tileImg = mapImages[tileId];
       if (tileImg) {
         ctx.drawImage(
