@@ -71,7 +71,7 @@ function compareBG3DResults(
     for (const group of groups) {
       if (group.children) {
         for (const child of group.children) {
-          if ("vertices" in child) {
+          if ("vertices" in child || "numPoints" in child) {
             result.push(child);
           }
         }
@@ -93,14 +93,14 @@ function compareBG3DResults(
     const origGeom = origGeometries[i];
     const rtGeom = rtGeometries[i];
     
-    if (!origGeom || !rtGeom || !("vertices" in origGeom) || !("vertices" in rtGeom)) {
+    if (!origGeom || !rtGeom || !("numPoints" in origGeom) || !("numPoints" in rtGeom)) {
       differences.push(`${label}: Geometry ${i} is missing or not a geometry`);
       continue;
     }
     
-    // Compare vertex counts
-    if (origGeom.numVertices !== rtGeom.numVertices) {
-      differences.push(`${label}: Geom ${i} vertex count mismatch - original: ${origGeom.numVertices}, roundtrip: ${rtGeom.numVertices}`);
+    // Compare vertex counts (use numPoints)
+    if (origGeom.numPoints !== rtGeom.numPoints) {
+      differences.push(`${label}: Geom ${i} vertex count mismatch - original: ${origGeom.numPoints}, roundtrip: ${rtGeom.numPoints}`);
       continue;
     }
     
@@ -111,36 +111,48 @@ function compareBG3DResults(
     }
     
     // Compare vertex positions (with tolerance)
-    const minVerts = Math.min(origGeom.numVertices, rtGeom.numVertices);
-    let vertexMismatch = false;
-    for (let v = 0; v < minVerts && !vertexMismatch; v++) {
-      const origX = origGeom.vertices[v * 3] ?? 0;
-      const origY = origGeom.vertices[v * 3 + 1] ?? 0;
-      const origZ = origGeom.vertices[v * 3 + 2] ?? 0;
-      const rtX = rtGeom.vertices[v * 3] ?? 0;
-      const rtY = rtGeom.vertices[v * 3 + 1] ?? 0;
-      const rtZ = rtGeom.vertices[v * 3 + 2] ?? 0;
-      
-      if (!floatsNearlyEqual(origX, rtX) || !floatsNearlyEqual(origY, rtY) || !floatsNearlyEqual(origZ, rtZ)) {
-        differences.push(`${label}: Geom ${i}, Vertex ${v} position mismatch`);
-        vertexMismatch = true;
+    // BG3DGeometry stores vertices as [number, number, number][] tuples
+    const origVerts = origGeom.vertices;
+    const rtVerts = rtGeom.vertices;
+    
+    if (origVerts && rtVerts) {
+      const minVerts = Math.min(origVerts.length, rtVerts.length);
+      let vertexMismatch = false;
+      for (let v = 0; v < minVerts && !vertexMismatch; v++) {
+        const origV = origVerts[v];
+        const rtV = rtVerts[v];
+        if (!origV || !rtV) continue;
+        
+        const [origX, origY, origZ] = origV;
+        const [rtX, rtY, rtZ] = rtV;
+        
+        if (!floatsNearlyEqual(origX, rtX) || !floatsNearlyEqual(origY, rtY) || !floatsNearlyEqual(origZ, rtZ)) {
+          differences.push(`${label}: Geom ${i}, Vertex ${v} position mismatch`);
+          vertexMismatch = true;
+        }
       }
     }
     
     // Compare triangle indices
-    const minTris = Math.min(origGeom.numTriangles, rtGeom.numTriangles);
-    let triangleMismatch = false;
-    for (let t = 0; t < minTris && !triangleMismatch; t++) {
-      const origI0 = origGeom.triangles[t * 3] ?? 0;
-      const origI1 = origGeom.triangles[t * 3 + 1] ?? 0;
-      const origI2 = origGeom.triangles[t * 3 + 2] ?? 0;
-      const rtI0 = rtGeom.triangles[t * 3] ?? 0;
-      const rtI1 = rtGeom.triangles[t * 3 + 1] ?? 0;
-      const rtI2 = rtGeom.triangles[t * 3 + 2] ?? 0;
-      
-      if (origI0 !== rtI0 || origI1 !== rtI1 || origI2 !== rtI2) {
-        differences.push(`${label}: Geom ${i}, Triangle ${t} index mismatch`);
-        triangleMismatch = true;
+    // BG3DGeometry stores triangles as [number, number, number][] tuples
+    const origTris = origGeom.triangles;
+    const rtTris = rtGeom.triangles;
+    
+    if (origTris && rtTris) {
+      const minTris = Math.min(origTris.length, rtTris.length);
+      let triangleMismatch = false;
+      for (let t = 0; t < minTris && !triangleMismatch; t++) {
+        const origT = origTris[t];
+        const rtT = rtTris[t];
+        if (!origT || !rtT) continue;
+        
+        const [origI0, origI1, origI2] = origT;
+        const [rtI0, rtI1, rtI2] = rtT;
+        
+        if (origI0 !== rtI0 || origI1 !== rtI1 || origI2 !== rtI2) {
+          differences.push(`${label}: Geom ${i}, Triangle ${t} index mismatch`);
+          triangleMismatch = true;
+        }
       }
     }
   }

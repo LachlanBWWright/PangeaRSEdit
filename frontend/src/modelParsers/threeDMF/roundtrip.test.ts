@@ -31,45 +31,6 @@ function floatsNearlyEqual(a: number, b: number, tolerance = 1e-5): boolean {
   return diff / maxMag < tolerance;
 }
 
-/**
- * Compare two ArrayBuffers for equality
- * Returns detailed comparison results
- * @internal - reserved for future byte-level comparison tests
- */
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-function _compareBuffers(original: ArrayBuffer, roundtrip: ArrayBuffer): {
-  equal: boolean;
-  totalBytes: number;
-  matchingBytes: number;
-  firstDiffOffset: number;
-} {
-  const orig = new Uint8Array(original);
-  const rt = new Uint8Array(roundtrip);
-  
-  let matchingBytes = 0;
-  let firstDiffOffset = -1;
-  
-  const maxLen = Math.max(orig.length, rt.length);
-  
-  for (let i = 0; i < maxLen; i++) {
-    const origByte = i < orig.length ? orig[i] : undefined;
-    const rtByte = i < rt.length ? rt[i] : undefined;
-    
-    if (origByte === rtByte) {
-      matchingBytes++;
-    } else if (firstDiffOffset === -1) {
-      firstDiffOffset = i;
-    }
-  }
-  
-  return {
-    equal: orig.length === rt.length && matchingBytes === orig.length,
-    totalBytes: orig.length,
-    matchingBytes,
-    firstDiffOffset: firstDiffOffset === -1 ? -1 : firstDiffOffset,
-  };
-}
-
 describe("3DMF Byte-Accurate Roundtrip Tests", () => {
   describe("Mesh Data Preservation", () => {
     it("should preserve vertex positions in roundtrip", async () => {
