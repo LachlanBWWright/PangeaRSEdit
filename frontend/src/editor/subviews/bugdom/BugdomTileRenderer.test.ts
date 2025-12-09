@@ -19,7 +19,7 @@ import {
   buildAllBugdomSupertiles,
   isBugdomGame,
   usesIndividualTiles,
-} from "./BugdomTileRenderer";
+} from "./BugdomTileRenderer.utils";
 import { Game } from "@/data/globals/globals";
 import { HeaderData } from "@/python/structSpecs/ottoMaticLevelData";
 

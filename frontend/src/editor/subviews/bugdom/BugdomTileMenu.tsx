@@ -32,7 +32,7 @@ import {
   TILE_ROT2,
   TILE_ROT3,
   translateTileIndex,
-} from "./BugdomTileRenderer";
+} from "./BugdomTileRenderer.utils";
 
 interface BugdomTileMenuProps {
   headerData: HeaderData;

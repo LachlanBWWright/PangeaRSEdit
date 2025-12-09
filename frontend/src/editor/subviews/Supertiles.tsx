@@ -57,7 +57,7 @@ export const Supertiles = memo(
         imageArray[idx] = img;
       }
       return imageArray;
-    }, [headerData.Hedr, terrainData.STgd, mapImages, superTileGrid]);
+    }, [mapImages, superTileGrid]);
 
     // For Bugdom 1 and Nanosaur 1, use the BugdomSupertiles component which constructs
     // supertiles from individual 32x32 tiles (optionally using Xlat translation table)

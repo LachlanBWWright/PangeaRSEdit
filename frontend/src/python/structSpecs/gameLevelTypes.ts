@@ -365,18 +365,18 @@ export interface Nanosaur2Checkpoint {
  * Cro-Mag Rally header - same as Otto Matic
  * Source: games/cromagrally/Source/Headers/structs.h
  */
-export interface CroMagHeader extends OttoMaticHeader {}
+export type CroMagHeader = OttoMaticHeader;
 
 /**
  * Cro-Mag Rally terrain item - 32-bit coordinates
  * Source: games/cromagrally/Source/Headers/structs.h - TerrainItemEntryType
  */
-export interface CroMagItem<TItemType = number> extends OttoMaticItem<TItemType> {}
+export type CroMagItem<TItemType = number> = OttoMaticItem<TItemType>;
 
 /**
  * Cro-Mag Rally supertile grid - same as Otto Matic
  */
-export interface CroMagSupertileGrid extends OttoMaticSupertileGrid {}
+export type CroMagSupertileGrid = OttoMaticSupertileGrid;
 
 // ============================================================================
 // BILLY FRONTIER TYPES
@@ -386,20 +386,19 @@ export interface CroMagSupertileGrid extends OttoMaticSupertileGrid {}
  * Billy Frontier header - same as Bugdom 2 (simplified)
  * Source: games/billyfrontier/Source/Headers/structs.h
  */
-export interface BillyFrontierHeader extends Bugdom2Header {}
+export type BillyFrontierHeader = Bugdom2Header;
 
 /**
  * Billy Frontier terrain item - 32-bit coordinates
  * Source: games/billyfrontier/Source/Headers/structs.h - TerrainItemEntryType
  */
-export interface BillyFrontierItem<TItemType = number>
-  extends OttoMaticItem<TItemType> {}
+export type BillyFrontierItem<TItemType = number> = OttoMaticItem<TItemType>;
 
 /**
  * Billy Frontier supertile grid - signed short, -1 = empty
  * Same as Bugdom 2
  */
-export interface BillyFrontierSupertileGrid extends Bugdom2SupertileGrid {}
+export type BillyFrontierSupertileGrid = Bugdom2SupertileGrid;
 
 /**
  * Billy Frontier checkpoint/line marker

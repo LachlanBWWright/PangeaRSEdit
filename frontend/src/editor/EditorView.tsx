@@ -23,14 +23,7 @@ import { ThreeView } from "./threejs/Three";
 import { useAtomValue } from "jotai";
 import { CanvasView, CanvasViewMode } from "@/data/canvasView/canvasViewAtoms";
 
-export enum View {
-  fences,
-  water,
-  items,
-  splines,
-  tiles,
-  supertiles,
-}
+import View from "./viewEnum";
 
 export function EditorView({
   headerData,

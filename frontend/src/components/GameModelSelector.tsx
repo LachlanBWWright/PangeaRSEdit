@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -47,9 +47,13 @@ export function GameModelSelector({
     selectedGame?.models.filter(
       (model) => model.category === selectedCategory,
     ) || [];
-  const availableCategories = selectedGame
-    ? [...new Set(selectedGame.models.map((model) => model.category))]
-    : [];
+  const availableCategories = useMemo(
+    () =>
+      selectedGame
+        ? [...new Set(selectedGame.models.map((model) => model.category))]
+        : [],
+    [selectedGame],
+  );
 
   useEffect(() => {
     // Reset model selection when game or category changes
@@ -64,7 +68,7 @@ export function GameModelSelector({
         setSelectedCategory(firstCategory);
       }
     }
-  }, [selectedGameId]);
+  }, [selectedGameId, selectedGame, availableCategories]);
 
   const handleLoadSelectedModel = async () => {
     if (!selectedModel) {

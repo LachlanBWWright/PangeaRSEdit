@@ -61,14 +61,16 @@ export function IntroPrompt({ pyodideWorker }: { pyodideWorker: Worker }) {
   );
   const [processed, setProcessed] = useState(false);
   // Helper to get current atomic data
-  const getCurrentAtomicData = (): AtomicLevelData => ({
-    headerData,
-    itemData,
-    liquidData,
-    fenceData,
-    splineData,
-    terrainData,
-  });
+  const getCurrentAtomicData = useCallback((): AtomicLevelData => {
+    return {
+      headerData,
+      itemData,
+      liquidData,
+      fenceData,
+      splineData,
+      terrainData,
+    };
+  }, [headerData, itemData, liquidData, fenceData, splineData, terrainData]);
 
   // Helper to set all atomic data from AtomicLevelData
   const setAllAtomicData = (atomicData: AtomicLevelData) => {
@@ -101,20 +103,6 @@ export function IntroPrompt({ pyodideWorker }: { pyodideWorker: Worker }) {
     [setTerrainData],
   );
 
-  useEffect(() => {
-    if (!processed) return;
-    saveMap();
-    setProcessed(false);
-  }, [
-    processed,
-    headerData,
-    itemData,
-    liquidData,
-    fenceData,
-    splineData,
-    terrainData,
-  ]);
-
   //Update History
   useEffect(() => {
     const currentData = getCurrentAtomicData();
@@ -144,7 +132,18 @@ export function IntroPrompt({ pyodideWorker }: { pyodideWorker: Worker }) {
         draft.index -= 1;
       }
     });
-  }, [headerData, itemData, liquidData, fenceData, splineData, terrainData]);
+  }, [
+    headerData,
+    itemData,
+    liquidData,
+    fenceData,
+    splineData,
+    terrainData,
+    blockHistoryUpdate,
+    getCurrentAtomicData,
+    setBlockHistoryUpdate,
+    setDataHistory,
+  ]);
 
   const undoData = () => {
     if (dataHistory.index > 0) {
@@ -172,7 +171,7 @@ export function IntroPrompt({ pyodideWorker }: { pyodideWorker: Worker }) {
     }
   };
 
-  async function saveMap() {
+  const saveMap = useCallback(async () => {
     if (!mapFile || !mapImagesFile) {
       console.error("Download failed: Map file or images file not loaded");
       toast.error("Download failed", {
@@ -359,7 +358,29 @@ export function IntroPrompt({ pyodideWorker }: { pyodideWorker: Worker }) {
     imageDownloadLink.click();
 
     toast.success("Map Downloaded!");
-  }
+  }, [
+    mapFile,
+    mapImagesFile,
+    mapImages,
+    pyodideWorker,
+    globals,
+    getCurrentAtomicData,
+  ]);
+
+  useEffect(() => {
+    if (!processed) return;
+    saveMap();
+    setProcessed(false);
+  }, [
+    processed,
+    headerData,
+    itemData,
+    liquidData,
+    fenceData,
+    splineData,
+    terrainData,
+    saveMap,
+  ]);
 
   if (!mapFile || !mapImages)
     return (

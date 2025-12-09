@@ -9,9 +9,13 @@ import { AnimationInfo } from "@/components/AnimationViewer";
  */
 export function useModelAnimations(
   gltfResult: GLTFResult | undefined,
-  onAnimationsReady?: (animations: AnimationInfo[], mixer: THREE.AnimationMixer | null) => void
+  onAnimationsReady?: (
+    animations: AnimationInfo[],
+    mixer: THREE.AnimationMixer | null,
+  ) => void,
 ) {
-  const [animationMixer, setAnimationMixer] = useState<THREE.AnimationMixer | null>(null);
+  const [animationMixer, setAnimationMixer] =
+    useState<THREE.AnimationMixer | null>(null);
 
   useEffect(() => {
     try {
@@ -22,18 +26,23 @@ export function useModelAnimations(
           setAnimationMixer(mixer);
 
           // Extract animation info
-          const animationInfos: AnimationInfo[] = gltfResult.animations.map((clip: THREE.AnimationClip, index: number) => ({
-            name: clip.name || `Animation ${index + 1}`,
-            duration: clip.duration,
-            index: index,
-            clip: clip,
-          }));
+          const animationInfos: AnimationInfo[] = gltfResult.animations.map(
+            (clip: THREE.AnimationClip, index: number) => ({
+              name: clip.name || `Animation ${index + 1}`,
+              duration: clip.duration,
+              index: index,
+              clip: clip,
+            }),
+          );
 
           if (onAnimationsReady) {
             onAnimationsReady(animationInfos, mixer);
           }
 
-          console.log(`Found ${gltfResult.animations.length} animations:`, animationInfos);
+          console.log(
+            `Found ${gltfResult.animations.length} animations:`,
+            animationInfos,
+          );
         } else {
           setAnimationMixer(null);
           if (onAnimationsReady) {
@@ -49,7 +58,7 @@ export function useModelAnimations(
       setAnimationMixer(null);
       if (onAnimationsReady) onAnimationsReady([], null);
     }
-  }, [gltfResult?.scene, gltfResult?.animations]);
+  }, [gltfResult?.scene, gltfResult?.animations, onAnimationsReady]);
 
   return { animationMixer };
 }

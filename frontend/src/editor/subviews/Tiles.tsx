@@ -22,6 +22,7 @@ import { useAtomValue } from "jotai";
 import { Game, Globals } from "../../data/globals/globals";
 import { useMemo } from "react";
 import { createImageCanvas } from "./tiles/tilesUtils";
+import { elevationToRGBA, flattenCoords } from "./tiles/tilesUtils";
 import { KonvaEventObject } from "konva/lib/Node";
 
 /* 
@@ -146,30 +147,14 @@ export function TopologyTiles({
   // Guard against missing or empty YCrd data
   const yCrdData = terrainData.YCrd?.[1000]?.obj;
 
-  const elevationToRGBA = (elevation: number) => {
-    // Avoid division by zero
-    const range = header.maxY - header.minY;
-    if (range === 0) return [128, 128, 128, 255];
-    return [
-      ((elevation - header.minY) / range) * 255,
-      ((elevation - header.minY) / range) * 255,
-      ((elevation - header.minY) / range) * 255,
-      255,
-    ];
-  };
-  const flattenCoords = (x: number, y: number) => {
-    x = Math.floor(x / globals.TILE_SIZE);
-
-    y = Math.floor(y / globals.TILE_SIZE);
-    return y * (header.mapWidth + 1) + x;
-  };
+  // Use pure helper functions from tilesUtils to avoid recreating closures
 
   const coordColours = useMemo(() => {
     if (!yCrdData || yCrdData.length === 0) {
       // Return a minimal valid array for empty data
       return [128, 128, 128, 255];
     }
-    return yCrdData.flatMap(elevationToRGBA);
+    return yCrdData.flatMap((e) => elevationToRGBA(header, e));
   }, [yCrdData, header]);
 
   const imgCanvas = useMemo(() => {
@@ -190,7 +175,7 @@ export function TopologyTiles({
       return null;
     }
     return result.value;
-  }, [header, yCrdData, coordColours]);
+  }, [header, coordColours, yCrdData]);
 
   const setPixels = (pixelList: PixelType[]) => {
     // Guard against missing YCrd data
@@ -209,7 +194,7 @@ export function TopologyTiles({
           y > (header.mapHeight + 1) * globals.TILE_SIZE
         )
           continue;
-        const flatPos = flattenCoords(x, y);
+        const flatPos = flattenCoords(x, y, header, globals);
         if (data.YCrd[1000].obj[flatPos] === undefined) continue;
 
         if (currentTopologyValueMode === TopologyValueMode.SET_VALUE) {
@@ -359,7 +344,7 @@ export function EmptyTiles({
       return null;
     }
     return result.value;
-  }, [header?.mapWidth, header?.mapHeight, coordColours]);
+  }, [header, coordColours]);
 
   const handleTileClickEvent = (e: KonvaEventObject<MouseEvent>) => {
     if (!tileEditingEnabled) return;
@@ -467,7 +452,7 @@ export function ElectricFloor0Tiles({
       return null;
     }
     return result.value;
-  }, [header?.mapWidth, header?.mapHeight, coordColours]);
+  }, [header, coordColours]);
 
   const handleTileClickEvent = (e: KonvaEventObject<MouseEvent>) => {
     if (!tileEditingEnabled) return;
@@ -575,7 +560,7 @@ export function ElectricFloor1Tiles({
       return null;
     }
     return result.value;
-  }, [header?.mapWidth, header?.mapHeight, coordColours]);
+  }, [header, coordColours]);
 
   const handleTileClickEvent = (e: KonvaEventObject<MouseEvent>) => {
     if (!tileEditingEnabled) return;
