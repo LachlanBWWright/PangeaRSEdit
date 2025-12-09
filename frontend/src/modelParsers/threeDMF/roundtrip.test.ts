@@ -10,14 +10,15 @@ import { write3DMFFromMetaFile } from "./write3DMF";
 import { readFileSync } from "fs";
 import { join } from "path";
 
+// Use the correct paths to the public folder
 const BUGDOM_SKELETONS_PATH = join(
   __dirname,
-  "../../../../games/bugdom/Data/Skeletons"
+  "../../../public/games/bugdom1/skeletons"
 );
 
 const NANOSAUR_SKELETONS_PATH = join(
   __dirname,
-  "../../../../games/nanosaur/Data/Skeletons"
+  "../../../public/games/nanosaur1/skeletons"
 );
 
 /**

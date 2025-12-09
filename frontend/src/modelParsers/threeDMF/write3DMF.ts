@@ -301,20 +301,22 @@ function writeTextureChunks(
     // For simplicity, always write txmm format
     const isMipmap = true;
     
-    // Calculate padding
-    let rowBytes = pixmap.rowBytes;
+    // Calculate the actual bytes per pixel from pixelSize
     const bytesPerPixel = pixmap.pixelSize / 8;
     
-    // Original rowBytes might have been trimmed, compute original
-    const originalRowBytes = pixmap.width * bytesPerPixel;
-    const paddedRowBytes = (originalRowBytes + 3) & ~3; // Align to 4 bytes
-    rowBytes = paddedRowBytes;
+    // Calculate trimmed row bytes (actual data per row without padding)
+    const trimmedRowBytes = pixmap.width * bytesPerPixel;
     
-    let imageSize = rowBytes * pixmap.height;
+    // Calculate padded row bytes (4-byte aligned)
+    const paddedRowBytes = (trimmedRowBytes + 3) & ~3;
+    
+    // Calculate image size (aligned to 4 bytes)
+    let imageSize = paddedRowBytes * pixmap.height;
     if ((imageSize & 3) !== 0) {
       imageSize = (imageSize & 0xfffffffc) + 4;
     }
     
+    // txmm header size is 8 uint32s = 32 bytes
     const chunkHeaderSize = isMipmap ? 32 : 28;
     const chunkSize = chunkHeaderSize + imageSize;
     
@@ -328,7 +330,7 @@ function writeTextureChunks(
       writer.writeUint32(pixmap.byteOrder);
       writer.writeUint32(pixmap.width);
       writer.writeUint32(pixmap.height);
-      writer.writeUint32(rowBytes);
+      writer.writeUint32(paddedRowBytes); // Use the padded row bytes
       writer.writeUint32(0); // offset
     } else {
       writer.writeUint32(CHUNK_TXPM);
@@ -336,7 +338,7 @@ function writeTextureChunks(
       
       writer.writeUint32(pixmap.width);
       writer.writeUint32(pixmap.height);
-      writer.writeUint32(rowBytes);
+      writer.writeUint32(paddedRowBytes);
       writer.writeUint32(pixmap.pixelSize);
       writer.writeUint32(pixmap.pixelType);
       writer.writeUint32(pixmap.bitOrder);
@@ -344,23 +346,45 @@ function writeTextureChunks(
     }
     
     // Write image data with padding
-    const trimmedRowBytes = pixmap.width * bytesPerPixel;
-    const padding = new Uint8Array(rowBytes - trimmedRowBytes);
+    // The image data in pixmap.image might have been stored with a different row layout,
+    // so we need to handle both the stored rowBytes and the output rowBytes
+    const srcRowBytes = pixmap.rowBytes || trimmedRowBytes;
+    const rowPadding = new Uint8Array(paddedRowBytes - trimmedRowBytes);
     
+    let totalBytesWritten = 0;
     for (let y = 0; y < pixmap.height; y++) {
-      const rowStart = y * pixmap.rowBytes;
-      const rowEnd = rowStart + trimmedRowBytes;
-      const rowData = pixmap.image.slice(rowStart, rowEnd);
-      writer.writeBytes(rowData);
-      if (padding.length > 0) {
-        writer.writeBytes(padding);
+      // Get the source row from the image data
+      const srcRowStart = y * srcRowBytes;
+      const srcRowEnd = srcRowStart + Math.min(trimmedRowBytes, srcRowBytes);
+      
+      // Check bounds
+      if (srcRowEnd <= pixmap.image.length) {
+        const rowData = pixmap.image.slice(srcRowStart, srcRowEnd);
+        writer.writeBytes(rowData);
+        totalBytesWritten += rowData.length;
+        
+        // Add padding if trimmedRowBytes < srcRowBytes
+        if (rowData.length < trimmedRowBytes) {
+          const extraBytes = new Uint8Array(trimmedRowBytes - rowData.length);
+          writer.writeBytes(extraBytes);
+          totalBytesWritten += extraBytes.length;
+        }
+      } else {
+        // Source image doesn't have this row, write zeros
+        writer.writeBytes(new Uint8Array(trimmedRowBytes));
+        totalBytesWritten += trimmedRowBytes;
+      }
+      
+      // Add row padding for 4-byte alignment
+      if (rowPadding.length > 0) {
+        writer.writeBytes(rowPadding);
+        totalBytesWritten += rowPadding.length;
       }
     }
     
     // Ensure imageSize is met with padding
-    const totalWritten = rowBytes * pixmap.height;
-    if (totalWritten < imageSize) {
-      writer.writeBytes(new Uint8Array(imageSize - totalWritten));
+    if (totalBytesWritten < imageSize) {
+      writer.writeBytes(new Uint8Array(imageSize - totalBytesWritten));
     }
   }
   
