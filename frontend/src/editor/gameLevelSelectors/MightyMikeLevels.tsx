@@ -1,5 +1,4 @@
 import { Button } from "@/components/ui/button";
-import { LevelGrid } from "../LevelGrid";
 import {
   MightyMikeGlobals,
   type GlobalsInterface,

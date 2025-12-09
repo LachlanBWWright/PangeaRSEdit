@@ -6,7 +6,6 @@ import {
   metadataSchema,
   resourceEntrySchema,
   hexDataEntrySchema,
-  tileAttributeSchema,
   fenceSchema,
   fenceNubSchema,
   splineSchema,

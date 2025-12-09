@@ -9,8 +9,7 @@ export type PyodideMessage =
     }
   | {
       type: "load_bytes_from_json";
-      // eslint-disable-next-line  @typescript-eslint/no-explicit-any
-      json_blob: any;
+      json_blob: unknown;
       converters: string[];
       only_types: string[];
       skip_types: string[];
@@ -31,8 +30,7 @@ export type PyodideResponse =
     }
   | {
       type: "save_to_json";
-      // eslint-disable-next-line  @typescript-eslint/no-explicit-any
-      result: any;
+      result: unknown;
     }
   | {
       type: "initRes";

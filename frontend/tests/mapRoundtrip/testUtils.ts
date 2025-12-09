@@ -100,7 +100,7 @@ export function createMapRoundtripTestSuite(config: {
     gameName,
     globals,
     terrainRsrcPath,
-    terrainTerPath,
+    // terrainTerPath (unused in tests)
     parseBuffer,
     serializeJson,
     skipRoundtrip = false,
@@ -108,16 +108,14 @@ export function createMapRoundtripTestSuite(config: {
 
   describe(`${gameName} Map Roundtrip`, () => {
     let terrainRsrcBuffer: ArrayBuffer | null = null;
-    let terrainTerBuffer: ArrayBuffer | null = null;
+    // ter-format buffer not currently used in tests; keep as reference if future tests need it
 
     beforeAll(async () => {
       // Load terrain files if they exist
       if (terrainRsrcPath && (await fileExists(terrainRsrcPath))) {
         terrainRsrcBuffer = await readFileAsBuffer(terrainRsrcPath);
       }
-      if (terrainTerPath && (await fileExists(terrainTerPath))) {
-        terrainTerBuffer = await readFileAsBuffer(terrainTerPath);
-      }
+      // We currently only use terrainRsrcPath for roundtrip tests. ter-path kept for future.
     });
 
     it("should have valid terrain data file", () => {
@@ -161,9 +159,9 @@ export function createMapRoundtripTestSuite(config: {
         globals.STRUCT_SPECS,
       );
 
-      // This should not throw
+      // This should not throw; for the preprocessor we only need a Record-like shape
       expect(() => {
-        preprocessJson(jsonData, globals);
+        preprocessJson(jsonData as unknown as Record<string, unknown>, globals);
       }).not.toThrow();
     });
 

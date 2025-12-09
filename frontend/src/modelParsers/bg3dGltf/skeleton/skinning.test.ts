@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { Document } from "@gltf-transform/core";
 
-import { BG3DSkeleton, BG3DBone } from "../../parseBG3D";
+import { BG3DSkeleton } from "../../parseBG3D";
 import { bg3dBonesToGltf } from "./bones";
 import { bg3dSkinningToGltf, gltfSkinningToBg3d } from "./skinning";
 

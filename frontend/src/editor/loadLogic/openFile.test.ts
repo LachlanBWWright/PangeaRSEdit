@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from "vitest";
 import { openFile } from "./openFile";
+import type { GlobalsInterface } from "@/data/globals/globals";
 
 describe("openFile", () => {
   it("should fetch resource and call setters for MIGHTY_MIKE", async () => {
@@ -26,7 +27,7 @@ describe("openFile", () => {
     const gameType = {
       DATA_TYPE: "MIGHTY_MIKE",
       GAME_TYPE: "MIGHTY_MIKE",
-    } as any;
+    } as unknown as GlobalsInterface;
 
     await openFile({
       url: "assets/mightyMike/terrain/candy.map-1",

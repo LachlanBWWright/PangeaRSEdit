@@ -333,6 +333,7 @@ export function EmptyTiles({
   const tileEditingEnabled = useAtomValue(TileEditingEnabled);
   const brushType = useAtomValue(TileBrushType);
   const topologyBrushRadius = useAtomValue(TopologyBrushRadius);
+  void _terrainData;
 
   const header = useMemo(() => headerData.Hedr[1000].obj, [headerData.Hedr]);
 
@@ -348,7 +349,11 @@ export function EmptyTiles({
 
   const imgCanvas = useMemo(() => {
     if (!header) return null;
-    const result = createImageCanvas(header.mapWidth, header.mapHeight, coordColours);
+    const result = createImageCanvas(
+      header.mapWidth,
+      header.mapHeight,
+      coordColours,
+    );
     if (!result.ok) {
       console.error("Failed to create image canvas:", result.error.message);
       return null;
@@ -436,6 +441,7 @@ export function ElectricFloor0Tiles({
   const tileEditingEnabled = useAtomValue(TileEditingEnabled);
   const brushType = useAtomValue(TileBrushType);
   const topologyBrushRadius = useAtomValue(TopologyBrushRadius);
+  void _terrainData;
 
   const header = useMemo(() => headerData.Hedr[1000].obj, [headerData.Hedr]);
 
@@ -451,7 +457,11 @@ export function ElectricFloor0Tiles({
 
   const imgCanvas = useMemo(() => {
     if (!header) return null;
-    const result = createImageCanvas(header.mapWidth, header.mapHeight, coordColours);
+    const result = createImageCanvas(
+      header.mapWidth,
+      header.mapHeight,
+      coordColours,
+    );
     if (!result.ok) {
       console.error("Failed to create image canvas:", result.error.message);
       return null;
@@ -535,6 +545,7 @@ export function ElectricFloor1Tiles({
   tileGrid: ottoTileAttribute[];
 }) {
   const globals = useAtomValue(Globals);
+  void _terrainData;
   // Use Jotai atoms for tile editing state
   const tileEditingEnabled = useAtomValue(TileEditingEnabled);
   const brushType = useAtomValue(TileBrushType);
@@ -554,7 +565,11 @@ export function ElectricFloor1Tiles({
 
   const imgCanvas = useMemo(() => {
     if (!header) return null;
-    const result = createImageCanvas(header.mapWidth, header.mapHeight, coordColours);
+    const result = createImageCanvas(
+      header.mapWidth,
+      header.mapHeight,
+      coordColours,
+    );
     if (!result.ok) {
       console.error("Failed to create image canvas:", result.error.message);
       return null;

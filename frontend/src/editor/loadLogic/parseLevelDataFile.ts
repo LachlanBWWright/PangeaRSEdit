@@ -1,8 +1,8 @@
 import { ottoMaticLevel } from "@/python/structSpecs/ottoMaticInterface";
-import { splitLevelData, AtomicLevelData } from "@/data/utils/levelDataUtils";
+import { AtomicLevelData } from "@/data/utils/levelDataUtils";
 import type { GlobalsInterface } from "@/data/globals/globals";
 import { DataType } from "@/data/globals/globals";
-import { Result, ok, err } from "@/types/result";
+import { Result } from "@/types/result";
 import { parseNanosaurLevelFile } from "./parseNanosaurLevelFile";
 import { parseMightyMikeFile } from "./parseMightyMikeFile";
 import { parsePyodideLevelFile } from "./parsePyodideLevelFile";
@@ -18,10 +18,6 @@ export async function parseLevelDataFile(
   setData: (data: AtomicLevelData) => void,
 ): Promise<Result<ottoMaticLevel, Error>> {
   // Dispatch to game-specific parsers that return Results
-  if (gameType.GAME_TYPE === (gameType.GAME_TYPE as any)) {
-    // Nanosaur/Classic
-    // We'll detect by DATA_TYPE / per-game anyway. Prefer specific checks
-  }
 
   // Nanosaur 1 (TRT files) uses classic preprocessor
   // Use the specialized parser module

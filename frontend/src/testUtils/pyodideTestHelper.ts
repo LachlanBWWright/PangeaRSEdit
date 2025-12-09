@@ -52,8 +52,11 @@ export async function parseBufferToJson(
   const pyodide = await initPyodide();
 
   // Set buffer in global scope for pyodide to access
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  (globalThis as any).testBuffer = buffer;
+  const globalWithTest = globalThis as unknown as {
+    testBuffer?: ArrayBuffer;
+    jsonBuffer?: ottoMaticLevel;
+  };
+  globalWithTest.testBuffer = buffer;
 
   await pyodide.runPythonAsync(`
     from js import testBuffer
@@ -91,8 +94,11 @@ export async function serializeJsonToBuffer(
   const pyodide = await initPyodide();
 
   // Set JSON in global scope for pyodide to access
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  (globalThis as any).jsonBuffer = jsonData;
+  const globalWithTest = globalThis as unknown as {
+    testBuffer?: ArrayBuffer;
+    jsonBuffer?: ottoMaticLevel;
+  };
+  globalWithTest.jsonBuffer = jsonData;
 
   await pyodide.runPythonAsync(`
     from js import jsonBuffer

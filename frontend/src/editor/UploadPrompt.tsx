@@ -20,7 +20,7 @@ import { useAtom } from "jotai";
 import { useState } from "react";
 import { toast } from "sonner";
 import { Switch } from "@/components/ui/switch";
-import { splitLevelData, AtomicLevelData } from "../data/utils/levelDataUtils";
+import { AtomicLevelData } from "../data/utils/levelDataUtils";
 import { IntroText } from "./IntroText";
 import {
   Select,

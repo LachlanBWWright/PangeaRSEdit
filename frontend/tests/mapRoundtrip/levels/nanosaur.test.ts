@@ -8,7 +8,6 @@ import { describe, it, expect } from "vitest";
 import { readFileSync } from "fs";
 import { join } from "path";
 import {
-  load,
   saveToJsonObject,
   loadFromJson,
   saveToBytes,
@@ -72,9 +71,7 @@ describe("Nanosaur Level Roundtrip", () => {
 
     it.skip(`should parse ${levelFile} to JSON with nanosaur specs`, () => {
       // Skip: Specs not defined yet
-      const filePath = join(terrainDir, levelFile);
-      const originalData = readFileSync(filePath);
-
+      // Skipped: keep file path available if tests are enabled in the future (no runtime usage)
       // Parse with specs (structured data)
       // const jsonResult = saveToJsonObject(originalData, nanosaurSpecs, [], [], true);
       // expect(jsonResult.ok).toBe(true);

@@ -1,11 +1,10 @@
 // parseMightyMike.ts
 // TypeScript parser for MightyMike .map and .tileset files
 
-import type { Result, ResultOk, ResultErr } from "../types/result";
+import type { Result } from "../types/result";
 import type {
   MightyMikeTileSet,
   MightyMikeMap,
-  MightyMikeLevel,
   MightyMikeTileAttribute,
   MightyMikeTileAnimation,
   MightyMikeItem,
@@ -327,10 +326,11 @@ export function mightyMikeMapToBinary(map: MightyMikeMap): ArrayBuffer {
 }
 
 export function mightyMikeTileSetToBinary(
-  tileset: MightyMikeTileSet,
+  _tileset: MightyMikeTileSet,
 ): ArrayBuffer {
   // This is a complex function that would need to implement the full tileset binary format
   // For now, return an empty buffer as a placeholder
   // TODO: Implement full tileset binary export
+  void _tileset;
   return new ArrayBuffer(0);
 }

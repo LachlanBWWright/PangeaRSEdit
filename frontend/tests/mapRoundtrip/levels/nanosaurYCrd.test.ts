@@ -14,7 +14,9 @@ describe("Nanosaur 1 heightmap parsing", () => {
     const fileData = readFileSync(filePath);
     const blob = new Blob([fileData]);
 
-    const setData = (_data: any) => {};
+    const setData = (_data: Record<string, unknown>): void => {
+      void _data;
+    };
     const result = await parseNanosaurLevelFile(blob, NanosaurGlobals, setData);
     expect(result.ok).toBe(true);
     if (!result.ok) return;

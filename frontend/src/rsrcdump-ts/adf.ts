@@ -28,7 +28,7 @@ export function packAdf(resourceFork: Uint8Array, finderInfo?: Uint8Array): Uint
   // Calculate sizes
   const headerSize = 4 + 4 + 16 + 2; // magic + version + filler + num_entries = 26 bytes
   const entryDescriptorSize = entries.length * 12; // 12 bytes per entry descriptor
-  let dataOffset = headerSize + entryDescriptorSize;
+  const dataOffset = headerSize + entryDescriptorSize;
   
   // Calculate total size
   let totalSize = dataOffset;

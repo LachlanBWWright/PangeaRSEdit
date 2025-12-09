@@ -11,7 +11,7 @@ import {
   SelectedSpline,
   SelectedSplineItem,
 } from "../../../data/splines/splineAtoms";
-import { SPLINE_KEY_BASE } from "./Spline";
+import { SPLINE_KEY_BASE } from "./splineUtils";
 import { getPoints } from "../../../utils/spline";
 import { Input } from "@/components/ui/input";
 import {
@@ -105,7 +105,8 @@ export function EditSplineItemMenu({
               selectedSplineItem === undefined
             )
               return;
-            const splineItems = splineData.SpIt[SPLINE_KEY_BASE + selectedSpline]?.obj;
+            const splineItems =
+              splineData.SpIt[SPLINE_KEY_BASE + selectedSpline]?.obj;
             const item = splineItems?.[selectedSplineItem];
             if (item) {
               item.type = newItemType;
@@ -142,7 +143,8 @@ export function EditSplineItemMenu({
                 selectedSplineItem === undefined
               )
                 return;
-              const splineItems = splineData.SpIt[SPLINE_KEY_BASE + selectedSpline]?.obj;
+              const splineItems =
+                splineData.SpIt[SPLINE_KEY_BASE + selectedSpline]?.obj;
               const item = splineItems?.[selectedSplineItem];
               if (item) {
                 item.flags = parseU16(e.target.value);
@@ -163,7 +165,8 @@ export function EditSplineItemMenu({
                 selectedSplineItem === undefined
               )
                 return;
-              const splineItems = splineData.SpIt[SPLINE_KEY_BASE + selectedSpline]?.obj;
+              const splineItems =
+                splineData.SpIt[SPLINE_KEY_BASE + selectedSpline]?.obj;
               const item = splineItems?.[selectedSplineItem];
               if (item) {
                 item[paramKey] = v;
@@ -200,7 +203,10 @@ export function EditSplineItemMenu({
                               )
                                 return;
                               const mask = 1 << flag.index;
-                              const splineItems = splineData.SpIt[SPLINE_KEY_BASE + selectedSpline]?.obj;
+                              const splineItems =
+                                splineData.SpIt[
+                                  SPLINE_KEY_BASE + selectedSpline
+                                ]?.obj;
                               const item = splineItems?.[selectedSplineItem];
                               if (item) {
                                 if (checked) {
@@ -255,7 +261,8 @@ export function EditSplineItemMenu({
               if (placement > 1) placement = 1;
               if (isNaN(placement)) placement = 0;
 
-              const splineItems = splineData.SpIt[SPLINE_KEY_BASE + selectedSpline]?.obj;
+              const splineItems =
+                splineData.SpIt[SPLINE_KEY_BASE + selectedSpline]?.obj;
               const item = splineItems?.[selectedSplineItem];
               if (item) {
                 item.placement = placement;
@@ -270,8 +277,13 @@ export function EditSplineItemMenu({
           disabled={selectedSpline === undefined}
           onClick={() => {
             setSplineData((splineData) => {
-              if (selectedSplineItem === undefined || selectedSpline === undefined) return;
-              const splineItems = splineData.SpIt[SPLINE_KEY_BASE + selectedSpline]?.obj;
+              if (
+                selectedSplineItem === undefined ||
+                selectedSpline === undefined
+              )
+                return;
+              const splineItems =
+                splineData.SpIt[SPLINE_KEY_BASE + selectedSpline]?.obj;
               if (splineItems) {
                 splineItems.splice(selectedSplineItem);
               }
@@ -311,9 +323,7 @@ export function EditSplineMenu({
               z: firstNub.z + 30,
             });
             splineData.SpPt[SPLINE_KEY_BASE + selectedSpline] = {
-              obj: getPoints(
-                splineNubs,
-              ),
+              obj: getPoints(splineNubs),
             };
           });
         }}
@@ -330,18 +340,12 @@ export function EditSplineMenu({
             const lastNub = splineNubs[splineNubs.length - 1];
             if (!lastNub) return;
 
-            splineNubs.splice(
-              splineNubs.length - 1,
-              0,
-              {
-                x: lastNub.x + 100,
-                z: lastNub.z + 100,
-              },
-            );
+            splineNubs.splice(splineNubs.length - 1, 0, {
+              x: lastNub.x + 100,
+              z: lastNub.z + 100,
+            });
             splineData.SpPt[SPLINE_KEY_BASE + selectedSpline] = {
-              obj: getPoints(
-                splineNubs,
-              ),
+              obj: getPoints(splineNubs),
             };
           });
         }}

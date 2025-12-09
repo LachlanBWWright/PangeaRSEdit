@@ -72,7 +72,13 @@ describe("Cro-Mag Rally Map Roundtrip", () => {
   it("should parse to JSON with cro-mag specs", () => {
     if (!fileExists) return;
 
-    const jsonResult = saveToJsonObject(originalData, croMagSpecs, [], [], true);
+    const jsonResult = saveToJsonObject(
+      originalData,
+      croMagSpecs,
+      [],
+      [],
+      true,
+    );
     expect(jsonResult.ok).toBe(true);
     if (!jsonResult.ok) return;
     const jsonData = jsonResult.value;
@@ -98,13 +104,19 @@ describe("Cro-Mag Rally Map Roundtrip", () => {
   it("should apply preprocessing correctly", () => {
     if (!fileExists) return;
 
-    const jsonResult = saveToJsonObject(originalData, croMagSpecs, [], [], true);
+    const jsonResult = saveToJsonObject(
+      originalData,
+      croMagSpecs,
+      [],
+      [],
+      true,
+    );
     expect(jsonResult.ok).toBe(true);
     if (!jsonResult.ok) return;
     const jsonData = jsonResult.value;
 
     expect(() => {
-      preprocessJson(jsonData as any, CroMagGlobals);
+      preprocessJson(jsonData as Record<string, unknown>, CroMagGlobals);
     }).not.toThrow();
   });
 

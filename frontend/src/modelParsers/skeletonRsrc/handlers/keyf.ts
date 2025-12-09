@@ -7,6 +7,9 @@ export function handleKeyF(
   _resourceId: string,
   _hexData: string,
 ) {
+  // Keep args referenced to avoid linter unused variable warnings
+  void _resourceId;
+  void _hexData;
   if (
     resourceData &&
     (resourceData as { obj?: KeyFRaw[] }).obj &&

@@ -1,10 +1,11 @@
-import { Updater } from "use-immer";
-import {
+import type { Updater } from "use-immer";
+import type {
   ottoSplineItem,
   ottoSplineNub,
 } from "../../../python/structSpecs/ottoMaticInterface";
-import { SplineData } from "../../../python/structSpecs/ottoMaticLevelData";
+import type { SplineData } from "../../../python/structSpecs/ottoMaticLevelData";
 import { Line, Circle, Rect, Label, Tag, Text } from "react-konva";
+import type Konva from "konva";
 import { useAtom, useAtomValue } from "jotai";
 import { memo, useMemo, useState, useRef } from "react";
 import { getPoints } from "../../../utils/spline";
@@ -16,30 +17,7 @@ import {
   selectSplinePoints,
   selectSplineItems,
 } from "../../../data/selectors";
-
-export function updateSplinePointsFromNubs(
-  splineIdx: number,
-  setSplineData: Updater<SplineData>,
-) {
-  // Compute points from current nubs and write them directly into the draft
-  setSplineData((draft) => {
-    const nubs = selectSplineNubs(draft, SPLINE_KEY_BASE + splineIdx);
-    const firstNub = nubs[0];
-    const newPoints =
-      nubs.length === 1 && firstNub
-        ? [{ x: firstNub.x, z: firstNub.z }]
-        : getPoints(nubs);
-
-    const spPt = draft.SpPt?.[SPLINE_KEY_BASE + splineIdx];
-    if (spPt) {
-      spPt.obj = newPoints;
-      const spln = draft.Spln?.[1000]?.obj?.[SPLINE_KEY_BASE + splineIdx];
-      if (spln) {
-        spln.numPoints = newPoints.length;
-      }
-    }
-  });
-}
+import { updateSplinePointsFromNubs, SPLINE_KEY_BASE } from "./splineUtils";
 
 export const Spline = memo(
   ({
@@ -87,7 +65,7 @@ export const Spline = memo(
             // No per-frame state updates while dragging the whole spline.
             // Konva applies visual transform during drag — we will commit changes on drag end.
           }}
-          onDragEnd={(e: any) => {
+          onDragEnd={(e: Konva.KonvaEventObject<DragEvent>) => {
             if (!initialDragState) return;
 
             const dragDx = e.target.x();
@@ -116,12 +94,16 @@ export const Spline = memo(
             try {
               e.target.x(0);
               e.target.y(0);
-            } catch (err) {}
+            } catch (err) {
+              // Best-effort: resetting Konva node transform. Log and continue.
+              // Not a user-facing error; keep behavior unchanged.
+              console.warn("Failed to reset Konva node transform:", err);
+            }
             setInitialDragState(null);
           }}
         />
         {nubs.map((nub, nubIdx) => {
-          if (nubIdx === 0) return;
+          if (nubIdx === 0) return null;
           return (
             <SplineNub
               key={nubIdx}
@@ -180,7 +162,7 @@ const SplineNub = memo(
           fill={selectedSpline === splineIdx ? "red" : "blue"}
           onMouseDown={() => setSelectedSpline(splineIdx)}
           onDragStart={() => setSelectedSpline(splineIdx)}
-          onDragMove={(e) => {
+          onDragMove={(e: Konva.KonvaEventObject<DragEvent>) => {
             const newX = Math.round(e.target.x());
             const newZ = Math.round(e.target.y());
 
@@ -222,7 +204,7 @@ const SplineNub = memo(
               });
             });
           }}
-          onDragEnd={(e) => {
+          onDragEnd={(e: Konva.KonvaEventObject<DragEvent>) => {
             if (nubRafRef.current) cancelAnimationFrame(nubRafRef.current);
             const newX = Math.round(e.target.x());
             const newZ = Math.round(e.target.y());
@@ -315,20 +297,4 @@ const SplineItem = memo(
   },
 );
 
-export function getColour(index: number) {
-  switch (index % 5) {
-    case 0:
-      return "#339933";
-    case 1:
-      return "#3399ff";
-    case 2:
-      return "#993399";
-    case 3:
-      return "#ff9933";
-    case 4:
-    default:
-      return "#ff3399";
-  }
-}
-
-export const SPLINE_KEY_BASE = 1000;
+// SPLINE_KEY_BASE is now exported from splineUtils.ts

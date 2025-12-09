@@ -9,7 +9,7 @@ import { createSkeletonSystem } from "../skeletonSystemNew";
 
 import { Document, Skin } from "@gltf-transform/core";
 import { parseSkeletonRsrcTS } from "../skeletonRsrc/parseSkeletonRsrcTS";
-import { isErr, Result, ok, _err } from "../../types/result";
+import { isErr, Result, ok } from "../../types/result";
 
 // Import modular functions
 import {
@@ -31,14 +31,18 @@ import {
 export function bg3dSkeletonToGltf(
   parsedSkeleton: BG3DSkeleton,
   doc: Document,
-  baseBuffer: any,
-): Result<{ skin: Skin | null; animations: any[] }, Error> {
+  baseBuffer: unknown,
+): Result<{ skin: Skin | null; animations: unknown[] }, Error> {
   console.log("Creating skeleton system with new implementation...");
   console.log(
     `Input skeleton has ${parsedSkeleton.bones.length} bones, ${parsedSkeleton.animations.length} animations`,
   );
 
-  const skeletonSystemResult = createSkeletonSystem(doc, parsedSkeleton, baseBuffer);
+  const skeletonSystemResult = createSkeletonSystem(
+    doc,
+    parsedSkeleton,
+    baseBuffer,
+  );
 
   if (isErr(skeletonSystemResult)) {
     return skeletonSystemResult;

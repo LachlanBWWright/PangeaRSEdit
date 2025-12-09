@@ -4,7 +4,7 @@
 import { parseBG3D, BG3DParseResult } from "./parseBG3D";
 import { parseSkeletonRsrc } from "./skeletonRsrc/parseSkeletonRsrc";
 import type { SkeletonResource } from "../python/structSpecs/skeleton/skeletonInterface";
-import { Result, ok, err, isErr } from "../types/result";
+import { Result, err, isErr } from "../types/result";
 
 /**
  * Parse a BG3D file along with its associated skeleton file
@@ -16,36 +16,38 @@ import { Result, ok, err, isErr } from "../types/result";
 export async function parseBG3DWithSkeleton(
   bg3dBuffer: ArrayBuffer,
   skeletonBuffer: ArrayBuffer,
-  pyodideWorker: Worker
+  pyodideWorker: Worker,
 ): Promise<Result<BG3DParseResult, Error>> {
   console.log("Parsing skeleton resource...");
-  
+
   try {
     // Parse skeleton data using the existing skeleton parser
     const skeletonArrayBuffer = await parseSkeletonRsrc({
       pyodideWorker,
       bytes: skeletonBuffer,
     });
-    
+
     // Convert ArrayBuffer to SkeletonResource
     const skeletonJson = new TextDecoder().decode(skeletonArrayBuffer);
     const skeleton: SkeletonResource = JSON.parse(skeletonJson);
-    
+
     console.log("Parsing BG3D with skeleton data...");
-    
+
     // Parse BG3D with skeleton data
     const result = parseBG3D(bg3dBuffer, skeleton);
-    
+
     if (isErr(result)) {
       return result;
     }
-    
+
     console.log("Successfully parsed BG3D with skeleton:", {
       materials: result.value.materials.length,
       groups: result.value.groups.length,
-      skeleton: result.value.skeleton ? `${result.value.skeleton.bones.length} bones, ${result.value.skeleton.animations.length} animations` : "none"
+      skeleton: result.value.skeleton
+        ? `${result.value.skeleton.bones.length} bones, ${result.value.skeleton.animations.length} animations`
+        : "none",
     });
-    
+
     return result;
   } catch (error) {
     return err(error instanceof Error ? error : new Error(String(error)));
@@ -60,7 +62,7 @@ export async function parseBG3DWithSkeleton(
  */
 export function parseBG3DWithSkeletonResource(
   bg3dBuffer: ArrayBuffer,
-  skeleton: SkeletonResource
+  skeleton: SkeletonResource,
 ): Result<BG3DParseResult, Error> {
   return parseBG3D(bg3dBuffer, skeleton);
 }

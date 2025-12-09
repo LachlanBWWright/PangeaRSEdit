@@ -66,7 +66,13 @@ describe("Bugdom 2 Map Roundtrip", () => {
   it("should parse to JSON with bugdom2 specs", () => {
     if (!fileExists) return;
 
-    const jsonResult = saveToJsonObject(originalData, bugdom2Specs, [], [], true);
+    const jsonResult = saveToJsonObject(
+      originalData,
+      bugdom2Specs,
+      [],
+      [],
+      true,
+    );
     expect(jsonResult.ok).toBe(true);
     if (!jsonResult.ok) return;
     const jsonData = jsonResult.value;
@@ -92,13 +98,19 @@ describe("Bugdom 2 Map Roundtrip", () => {
   it("should apply preprocessing correctly", () => {
     if (!fileExists) return;
 
-    const jsonResult = saveToJsonObject(originalData, bugdom2Specs, [], [], true);
+    const jsonResult = saveToJsonObject(
+      originalData,
+      bugdom2Specs,
+      [],
+      [],
+      true,
+    );
     expect(jsonResult.ok).toBe(true);
     if (!jsonResult.ok) return;
     const jsonData = jsonResult.value;
 
     expect(() => {
-      preprocessJson(jsonData as any, Bugdom2Globals);
+      preprocessJson(jsonData as Record<string, unknown>, Bugdom2Globals);
     }).not.toThrow();
   });
 

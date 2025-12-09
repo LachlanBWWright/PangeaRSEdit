@@ -234,7 +234,7 @@ export function ModelViewer() {
               numJoints: Object.keys(skeletonData.Bone).length,
               num3DMFLimbs: 0,
               bones: Object.values(skeletonData.Bone).map(
-                (bone: any, index) => ({
+                (bone: Record<string, unknown>, index: number) => ({
                   parentBone: -1, // Simplified for display
                   name: bone.name || `Bone_${index}`,
                   coordX: 0,
@@ -247,7 +247,7 @@ export function ModelViewer() {
                 }),
               ),
               animations: Object.values(skeletonData.AnHd).map(
-                (anim: any, index) => ({
+                (anim: Record<string, unknown>, index: number) => ({
                   name: anim.obj?.animName || `Animation_${index}`,
                   numAnimEvents: 0,
                   events: [],

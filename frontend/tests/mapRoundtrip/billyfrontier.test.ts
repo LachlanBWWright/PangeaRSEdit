@@ -15,7 +15,6 @@ import {
   saveToJsonObject,
   loadFromJson,
   saveToBytes,
-  saveFromJson,
 } from "../../src/rsrcdump-ts/rsrcdump";
 import { billyFrontierSpecs } from "../../src/python/structSpecs/billyFrontier";
 import { BillyFrontierGlobals } from "../../src/data/globals/globals";
@@ -155,7 +154,8 @@ describe("Billy Frontier Map Roundtrip", () => {
 
     // Preprocessing should not throw
     expect(() => {
-      preprocessJson(jsonData as any, BillyFrontierGlobals);
+      // The JSON object here is untyped by design; use a typed record for preprocessing in tests
+      preprocessJson(jsonData as Record<string, unknown>, BillyFrontierGlobals);
     }).not.toThrow();
 
     // After preprocessing, verify header data is still present
@@ -249,7 +249,13 @@ describe("Billy Frontier Multiple Levels", () => {
       const data = readFileSync(filePath);
 
       // Parse to JSON
-      const json1Result = saveToJsonObject(data, billyFrontierSpecs, [], [], true);
+      const json1Result = saveToJsonObject(
+        data,
+        billyFrontierSpecs,
+        [],
+        [],
+        true,
+      );
       expect(json1Result.ok).toBe(true);
       if (!json1Result.ok) return;
       const json1 = json1Result.value;

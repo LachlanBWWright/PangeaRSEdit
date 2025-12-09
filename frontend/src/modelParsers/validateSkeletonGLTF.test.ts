@@ -5,7 +5,7 @@ import { parseSkeletonRsrcTS } from "./skeletonRsrc/parseSkeletonRsrcTS";
 import { bg3dParsedToGLTF } from "./parsedBg3dGitfConverter";
 import { readFileSync } from "fs";
 import { join } from "path";
-import { NodeIO } from "@gltf-transform/core";
+import { NodeIO, Node } from "@gltf-transform/core";
 import { validateBytes } from "gltf-validator";
 
 describe("Skeleton Animation glTF Validation", () => {
@@ -219,7 +219,8 @@ describe("Skeleton Animation glTF Validation", () => {
     let jointsAccessibleFromScene = 0;
 
     // Helper to check if node is in scene hierarchy
-    function isNodeInHierarchy(node: any, root: any): boolean {
+    type SceneOrNode = { listChildren: () => Node[] };
+    function isNodeInHierarchy(node: Node, root: SceneOrNode): boolean {
       if (root === node) return true;
 
       const children = root.listChildren();
@@ -233,7 +234,7 @@ describe("Skeleton Animation glTF Validation", () => {
     }
 
     joints.forEach((joint, index) => {
-      const isAccessible = isNodeInHierarchy(joint, scene);
+      const isAccessible = isNodeInHierarchy(joint, scene!);
       if (isAccessible) {
         jointsAccessibleFromScene++;
       }

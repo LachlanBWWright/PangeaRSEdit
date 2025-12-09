@@ -16,14 +16,14 @@ import {
   pngToRgba8,
 } from "../../image/pngArgb";
 
-import { Material } from "@gltf-transform/core";
+import { Material, Document } from "@gltf-transform/core";
 
 /**
  * Convert BG3D materials to glTF materials
  */
 export function bg3dMaterialsToGltf(
   parsedMaterials: BG3DMaterial[],
-  doc: any,
+  doc: Document,
 ): Material[] {
   const gltfMaterials: Material[] = parsedMaterials.map((mat, i) => {
     const m = doc.createMaterial("BG3DMaterial");
@@ -44,12 +44,12 @@ export function bg3dMaterialsToGltf(
 export function bg3dTexturesToGltf(
   parsedMaterials: BG3DMaterial[],
   gltfMaterials: Material[],
-  doc: any,
+  doc: Document,
 ): void {
   parsedMaterials.forEach((mat, i) => {
     if (mat.textures && mat.textures.length > 0) {
       mat.textures.forEach((tex, j) => {
-        let pngBuffer: Uint8Array<ArrayBufferLike>;
+        let pngBuffer: Uint8Array;
         try {
           if (
             tex.srcPixelFormat === PixelFormatSrc.GL_UNSIGNED_SHORT_1_5_5_5_REV
@@ -73,7 +73,7 @@ export function bg3dTexturesToGltf(
           } else {
             pngBuffer = tex.pixels;
           }
-        } catch (e) {
+        } catch {
           pngBuffer = tex.pixels;
         }
 
@@ -105,7 +105,7 @@ export function bg3dTexturesToGltf(
  */
 export async function gltfMaterialsToBg3d(
   docMaterials: Material[],
-  materialExtras: any[],
+  materialExtras: Array<Record<string, unknown>>,
 ): Promise<BG3DMaterial[]> {
   const materials: BG3DMaterial[] = await Promise.all(
     docMaterials.map(async (mat, index) => {
@@ -116,10 +116,10 @@ export async function gltfMaterialsToBg3d(
       }
 
       // Get BG3D-specific flags from extras
-      const flags = materialExtras[index]?.flags || 0;
+      const flags = (materialExtras[index]?.flags as number) || 0;
 
       // Restore textures from baseColorTexture
-      let textures: BG3DTexture[] = [];
+      const textures: BG3DTexture[] = [];
       const baseColorTex = mat.getBaseColorTexture();
       if (baseColorTex) {
         const image = baseColorTex.getImage();

@@ -2,7 +2,7 @@
  * Scene hierarchy conversion functions for BG3D ↔ glTF
  */
 
-import { Node, Scene, Mesh } from "@gltf-transform/core";
+import { Node, Scene, Mesh, Document } from "@gltf-transform/core";
 import { BG3DGroup, BG3DGeometry } from "../../parseBG3D";
 
 /**
@@ -11,7 +11,7 @@ import { BG3DGroup, BG3DGeometry } from "../../parseBG3D";
 export function bg3dSceneToGltf(
   bg3dGroups: BG3DGroup[],
   gltfMeshes: Mesh[],
-  doc: any,
+  doc: Document,
 ): Scene {
   const scene = doc.createScene();
 
@@ -116,7 +116,10 @@ export function gltfSceneToBg3d(
 /**
  * Create glTF scene from BG3D data
  */
-export function createGltfSceneFromBg3d(gltfMeshes: Mesh[], doc: any): Scene {
+export function createGltfSceneFromBg3d(
+  gltfMeshes: Mesh[],
+  doc: Document,
+): Scene {
   const scene = doc.createScene();
 
   // Create root node

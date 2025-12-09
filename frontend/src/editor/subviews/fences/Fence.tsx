@@ -1,6 +1,7 @@
 import { Updater } from "use-immer";
 import { FenceData } from "../../../python/structSpecs/ottoMaticLevelData";
 import { Line } from "react-konva";
+import Konva from "konva";
 import { FenceNub } from "./FenceNub";
 import { SelectedFence } from "../../../data/fences/fenceAtoms";
 import { useAtom, useAtomValue } from "jotai";
@@ -57,7 +58,7 @@ export const Fence = memo(
           onDragMove={() => {
             // Don't update nub positions on each move. Visual transform is handled by Konva.
           }}
-          onDragEnd={(e: any) => {
+          onDragEnd={(e: Konva.KonvaEventObject<DragEvent>) => {
             if (!initialDragState) return;
 
             const dragDx = e.target.x();
@@ -78,7 +79,9 @@ export const Fence = memo(
             try {
               e.target.x(0); // Reset line position after dragging nubs
               e.target.y(0); // Reset line position after dragging nubs
-            } catch {}
+            } catch (err) {
+              console.warn("Failed to reset Konva node transform:", err);
+            }
             setInitialDragState(null); // Clear initial drag state
           }}
         />

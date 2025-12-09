@@ -1,5 +1,8 @@
 import { Updater } from "use-immer";
-import { ItemData, HeaderData } from "../../../python/structSpecs/ottoMaticLevelData";
+import {
+  ItemData,
+  HeaderData,
+} from "../../../python/structSpecs/ottoMaticLevelData";
 import { useAtom, useAtomValue } from "jotai";
 import { Button } from "@/components/ui/button";
 import { ClickToAddItem, SelectedItem } from "../../../data/items/itemAtoms";
@@ -34,6 +37,9 @@ export function ItemMenu({
 }) {
   const globals = useAtomValue(Globals);
   const [selectedItem, setSelectedItem] = useAtom(SelectedItem);
+  // Mark unused props as used to satisfy linter; they are intentionally passed in for consistency with parent
+  void _headerData;
+  void _setHeaderData;
 
   if (itemData.Itms === undefined) return null;
 
@@ -53,7 +59,8 @@ export function ItemMenu({
         <AddItemMenu />
       ) : (
         <p>
-          Item {selectedItemData.type} ({selectedItemData.x},{selectedItemData.z})
+          Item {selectedItemData.type} ({selectedItemData.x},
+          {selectedItemData.z})
         </p>
       )}
 
@@ -74,7 +81,9 @@ export function ItemMenu({
               }}
             >
               <SelectTrigger>
-                <SelectValue>{getItemName(globals, selectedItemData.type)}</SelectValue>
+                <SelectValue>
+                  {getItemName(globals, selectedItemData.type)}
+                </SelectValue>
               </SelectTrigger>
               <SelectContent>
                 {itemValues.map((key) => (
@@ -95,7 +104,8 @@ export function ItemMenu({
                   <span className="text-baseline align-text-bottom">Flags</span>
                 }
                 tooltip={
-                  typeof ottoItemTypeParams[selectedItemData.type].flags === "string"
+                  typeof ottoItemTypeParams[selectedItemData.type].flags ===
+                  "string"
                     ? ottoItemTypeParams[selectedItemData.type].flags
                     : ""
                 }
@@ -118,7 +128,8 @@ export function ItemMenu({
               {/* Param 0-3, refactored */}
               {([0, 1, 2, 3] as const).map((i) => {
                 const paramKey = `p${i}` as const;
-                const param = ottoItemTypeParams[selectedItemData.type][paramKey];
+                const param =
+                  ottoItemTypeParams[selectedItemData.type][paramKey];
                 const value = selectedItemData[paramKey];
                 const setValue = (v: number) => {
                   setItemData((itemData) => {
@@ -135,20 +146,27 @@ export function ItemMenu({
                     label={<span>{`Parameter ${i}`}</span>}
                     tooltip={getParamTooltip(param)}
                   />,
-                  param && typeof param !== "string" && param.type === "Bit Flags" && Array.isArray(param.flags) ? (
+                  param &&
+                  typeof param !== "string" &&
+                  param.type === "Bit Flags" &&
+                  Array.isArray(param.flags) ? (
                     <div key={`flags-${i}`} className="flex flex-col gap-1">
                       <div className="flex flex-wrap gap-2">
                         {param.flags.map((flag) => {
                           const checked = (value & (1 << flag.index)) !== 0;
                           return (
-                            <label key={flag.index} className="inline-flex items-center gap-1">
+                            <label
+                              key={flag.index}
+                              className="inline-flex items-center gap-1"
+                            >
                               <Checkbox
-                              className="font-bold"
+                                className="font-bold"
                                 checked={checked}
                                 onCheckedChange={(checked) => {
                                   setItemData((itemData) => {
                                     if (selectedItem === undefined) return;
-                                    const item = itemData.Itms[1000]?.obj?.[selectedItem];
+                                    const item =
+                                      itemData.Itms[1000]?.obj?.[selectedItem];
                                     if (item) {
                                       const mask = 1 << flag.index;
                                       if (checked) {
@@ -166,7 +184,7 @@ export function ItemMenu({
                         })}
                       </div>
                       <div className="flex items-center gap-2 mt-1">
-                        <p >Value:</p>
+                        <p>Value:</p>
                         <Input
                           type="number"
                           className="w-24"
@@ -182,7 +200,7 @@ export function ItemMenu({
                       value={value.toString()}
                       onChange={(e) => setValue(parseU8(e.target.value))}
                     />
-                  )
+                  ),
                 ];
               })}
             </div>
@@ -247,7 +265,10 @@ function AddItemMenu() {
         </Select>
 
         <p>Click on the Canvas to add the selected item</p>
-        <Button variant="destructive" onClick={() => setClickToAddItem(undefined)}>
+        <Button
+          variant="destructive"
+          onClick={() => setClickToAddItem(undefined)}
+        >
           Stop Adding Items
         </Button>
       </>

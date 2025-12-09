@@ -104,7 +104,10 @@ export async function openFile({
     setMapImages(mapImagesResult.value);
   } else {
     // Bugdom 1-specific - The image data is within the Resource Fork
-    const imgString = (jsonData as any).Timg?.[1000]?.data;
+    // Dynamic JSON structure from parse result; coerce to Record types (keep safe cast)
+    const imgString = (
+      jsonData as unknown as { Timg?: Record<string, { data?: string }> }
+    ).Timg?.["1000"]?.data as string | undefined;
     if (!imgString) {
       console.error("No image data found");
       return;

@@ -36,6 +36,29 @@ export const Supertiles = memo(
       mapImagesCount: mapImages.length,
     });
 
+    const superTileGrid = terrainData.STgd[1000].obj;
+    const imageGrid = useMemo(() => {
+      // Keep array index aligned with supertileGrid positions so Konva layout
+      // doesn't get compressed when tiles are empty. We store `null` when
+      // a supertile has no image so the layout math still uses the same index.
+      const imageArray: (HTMLCanvasElement | null)[] = new Array(
+        superTileGrid.length,
+      ).fill(null);
+      for (let idx = 0; idx < superTileGrid.length; idx++) {
+        const supertile = superTileGrid[idx] as unknown;
+        // supertile may be an object { superTileId } or a number in simplified format
+        const id =
+          typeof supertile === "object" &&
+          supertile !== null &&
+          "superTileId" in (supertile as Record<string, unknown>)
+            ? (supertile as { superTileId: number }).superTileId
+            : (supertile as number);
+        const img = mapImages[id] ?? null;
+        imageArray[idx] = img;
+      }
+      return imageArray;
+    }, [headerData.Hedr, terrainData.STgd, mapImages, superTileGrid]);
+
     // For Bugdom 1 and Nanosaur 1, use the BugdomSupertiles component which constructs
     // supertiles from individual 32x32 tiles (optionally using Xlat translation table)
     if (
@@ -65,24 +88,6 @@ export const Supertiles = memo(
     if (!terrainData.STgd?.[1000]?.obj) {
       return null; // No supertile grid available
     }
-
-    const superTileGrid = terrainData.STgd[1000].obj;
-    const imageGrid = useMemo(() => {
-      // Keep array index aligned with supertileGrid positions so Konva layout
-      // doesn't get compressed when tiles are empty. We store `null` when
-      // a supertile has no image so the layout math still uses the same index.
-      const imageArray: (HTMLCanvasElement | null)[] = new Array(
-        superTileGrid.length,
-      ).fill(null);
-      for (let idx = 0; idx < superTileGrid.length; idx++) {
-        const supertile = superTileGrid[idx];
-        // supertile may be an object { superTileId } or a number in simplified format
-        const id = (supertile as any)?.superTileId ?? (supertile as any);
-        const img = mapImages[id] ?? null;
-        imageArray[idx] = img;
-      }
-      return imageArray;
-    }, [headerData.Hedr, terrainData.STgd, mapImages, superTileGrid]);
 
     //Create blank image
     return (

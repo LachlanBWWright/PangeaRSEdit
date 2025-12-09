@@ -16,16 +16,13 @@ export function handleRelP(
       resourceKeys: Object.keys(resourceData || {}),
       hasData:
         resourceData &&
-        resourceData.hasOwnProperty &&
-        resourceData.hasOwnProperty("data"),
+        Object.prototype.hasOwnProperty.call(resourceData, "data"),
       hasObj:
         resourceData &&
-        resourceData.hasOwnProperty &&
-        resourceData.hasOwnProperty("obj"),
+        Object.prototype.hasOwnProperty.call(resourceData, "obj"),
       hasConversionError:
         resourceData &&
-        resourceData.hasOwnProperty &&
-        resourceData.hasOwnProperty("conversionError"),
+        Object.prototype.hasOwnProperty.call(resourceData, "conversionError"),
     },
   );
   if (

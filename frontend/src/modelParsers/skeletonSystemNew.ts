@@ -215,7 +215,8 @@ class Matrix4 {
       m[8]! * m[1]! * m[6]! -
       m[8]! * m[2]! * m[5]!;
 
-    const det = m[0]! * inv[0]! + m[1]! * inv[4]! + m[2]! * inv[8]! + m[3]! * inv[12]!;
+    const det =
+      m[0]! * inv[0]! + m[1]! * inv[4]! + m[2]! * inv[8]! + m[3]! * inv[12]!;
 
     if (det === 0) {
       console.warn("Matrix is not invertible");
@@ -357,22 +358,19 @@ function decomposeMatrix(matrix: Matrix4): {
     qz = (r3 - r1) * s;
   } else {
     if (r0 > r4 && r0 > r8) {
-      const s =
-        2.0 * Math.sqrt(1.0 + r0 - r4 - r8);
+      const s = 2.0 * Math.sqrt(1.0 + r0 - r4 - r8);
       qw = (r7 - r5) / s;
       qx = 0.25 * s;
       qy = (r1 + r3) / s;
       qz = (r2 + r6) / s;
     } else if (r4 > r8) {
-      const s =
-        2.0 * Math.sqrt(1.0 + r4 - r0 - r8);
+      const s = 2.0 * Math.sqrt(1.0 + r4 - r0 - r8);
       qw = (r2 - r6) / s;
       qx = (r1 + r3) / s;
       qy = 0.25 * s;
       qz = (r5 + r7) / s;
     } else {
-      const s =
-        2.0 * Math.sqrt(1.0 + r8 - r0 - r4);
+      const s = 2.0 * Math.sqrt(1.0 + r8 - r0 - r4);
       qw = (r3 - r1) / s;
       qx = (r2 + r6) / s;
       qy = (r5 + r7) / s;
@@ -434,9 +432,9 @@ function buildJointHierarchy(
   bones: BG3DBone[],
 ): Result<Node, Error> {
   if (joints.length !== bones.length) {
-    return err(new Error(
-      `Mismatch: ${joints.length} joints vs ${bones.length} bones`,
-    ));
+    return err(
+      new Error(`Mismatch: ${joints.length} joints vs ${bones.length} bones`),
+    );
   }
 
   console.log("\n=== Building Joint Hierarchy (glTF 2.0 Compliant) ===");
@@ -457,7 +455,7 @@ function buildJointHierarchy(
 
     const bone = bones[boneIndex];
     const joint = joints[boneIndex];
-    
+
     if (!bone || !joint) {
       console.warn(`Bone or joint at index ${boneIndex} not found`);
       return;
@@ -555,7 +553,9 @@ function calculateInverseBindMatrices(bones: BG3DBone[]): Float32Array {
 
     // Calculate inverse bind matrix (inverse of world transform)
     const currentWorld = worldTransforms[index];
-    const invBindMatrix = currentWorld ? currentWorld.invert() : new Matrix4().identity();
+    const invBindMatrix = currentWorld
+      ? currentWorld.invert()
+      : new Matrix4().identity();
 
     // Store in column-major order (glTF requirement)
     const offset = index * 16;
@@ -608,6 +608,7 @@ function createSkin(
 /**
  * Check if array values have meaningful variation (not all same)
  */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function _hasVariation(values: number[], threshold = 0.001): boolean {
   if (values.length < 2) return false;
   const first = values[0];
@@ -695,7 +696,9 @@ function processOttoAnimations(
 
         const lastTime = times[times.length - 1];
         console.log(
-          `    Bone ${bone.name}: ${keyframes.length} keyframes, ${(lastTime ?? 0).toFixed(2)}s`,
+          `    Bone ${bone.name}: ${keyframes.length} keyframes, ${(
+            lastTime ?? 0
+          ).toFixed(2)}s`,
         );
       }
     });

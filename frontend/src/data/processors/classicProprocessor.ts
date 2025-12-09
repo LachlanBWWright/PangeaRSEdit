@@ -115,7 +115,7 @@ export function nanosaur1LevelToOttoMaticLevel(
   // an array of 32x32 height tiles (bytes). We sample the appropriate heightmap pixel for
   // each map vertex and convert to a float using the HEIGHT_EXTRUDE_FACTOR.
   const HMTILE_SIZE = 32;
-  const TERRAIN_HMTILE_BYTES = HMTILE_SIZE * HMTILE_SIZE;
+  // const TERRAIN_HMTILE_BYTES = HMTILE_SIZE * HMTILE_SIZE; // not used; keep calculation if needed later
   const HEIGHT_EXTRUDE_FACTOR = heightExtrudeFactor; // corresponds to engine define
   // Nanosaur's engine uses a TERRAIN_POLYGON_SIZE of 140 world units and
   // OREOMAP_TILE_SIZE (OREOMAP pixel tile) of 32. When converting to an
@@ -128,7 +128,7 @@ export function nanosaur1LevelToOttoMaticLevel(
   const HEIGHT_WORLD_TO_PIXEL =
     (OREOMAP_TILE_SIZE / TERRAIN_POLYGON_SIZE) * HEIGHT_EXTRUDE_FACTOR;
 
-  let ycrdData: number[] = [];
+  const ycrdData: number[] = [];
   if (
     level.heightmapLayer &&
     level.heightmapTiles &&
@@ -392,8 +392,8 @@ export function parseNanosaurTileAttribs(
     const parm0 = readInt16BE(view, base + 2);
     const parm1 = view.getUint8(base + 4);
     const parm2 = view.getUint8(base + 5);
-    const undefined = readInt16BE(view, base + 6);
-    items.push({ bits, parm0, parm1, parm2, undefined });
+    const undefinedVal = readInt16BE(view, base + 6);
+    items.push({ bits, parm0, parm1, parm2, undefined: undefinedVal });
   }
   return items;
 }
@@ -445,7 +445,7 @@ export function parseNanosaur1Level(buffer: ArrayBuffer): Nanosaur1LevelData {
   };
 
   // Texture layer (width * depth, uint16) - big-endian values
-  let textureLayer: number[] = [];
+  const textureLayer: number[] = [];
   if (header.textureLayerOffset > 0) {
     const layerView = new DataView(buffer, header.textureLayerOffset);
     const layerSize = header.width * header.depth;

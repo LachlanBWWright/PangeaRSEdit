@@ -11,10 +11,7 @@ import {
   tileAttributeSchema,
 } from "./levelDataSchemas";
 import { ottoMaticLevelSchema } from "./games/ottoMatic";
-import {
-  validateMightyMikeLevel,
-  mightyMikeLevelSchema,
-} from "./games/mightyMike";
+import { validateMightyMikeLevel } from "./games/mightyMike";
 import { isOk, isErr } from "../types/result";
 
 describe("Level Data Zod Schemas", () => {

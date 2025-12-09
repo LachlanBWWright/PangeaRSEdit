@@ -1,15 +1,18 @@
 import { Updater } from "use-immer";
 import { ottoMaticLevel } from "../../python/structSpecs/ottoMaticInterface";
-import { SPLINE_KEY_BASE } from "../../editor/subviews/splines/Spline";
+import { SPLINE_KEY_BASE } from "../../editor/subviews/splines/splineUtils";
 import { Game, GlobalsInterface } from "../globals/globals";
 import { Result, ok, err } from "../../types/result";
 
-// eslint-disable-next-line  @typescript-eslint/no-explicit-any
+// we intentionally accept a free-form JSON object here — linting for explicit any is suppressed
+
 export function preprocessJson(
-  json: any,
+  json: Record<string, unknown>,
   globals: GlobalsInterface,
 ): Result<void, Error> {
-  console.log(json);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const anyJson = json as any;
+  console.log(anyJson);
 
   // For Bugdom 1 and Nanosaur 1, Layr contains tile indices with flip/rotate bits - DO NOT MODIFY!
   // The Layr preprocessing below is only for Otto Matic and other games where Layr contains Atrb indices.
@@ -23,11 +26,16 @@ export function preprocessJson(
     console.log(
       `${globals.GAME_NAME}: Skipping Layr/Atrb preprocessing (Layr contains tile indices with flip/rotate bits)`,
     );
-  } else if (json.Layr && json.Atrb && json.Layr[1000] && json.Atrb[1000]) {
+  } else if (
+    anyJson.Layr &&
+    anyJson.Atrb &&
+    anyJson.Layr[1000] &&
+    anyJson.Atrb[1000]
+  ) {
     // Otto Matic and other games: Ensure Layr points to unique Atrb values
     console.log(json);
-    const layrArr = json.Layr[1000].obj;
-    const atrbArr = json.Atrb[1000].obj;
+    const layrArr = anyJson.Layr[1000].obj;
+    const atrbArr = anyJson.Atrb[1000].obj;
 
     console.log("layrArr", layrArr);
     console.log("atrbArr", atrbArr);
@@ -57,14 +65,14 @@ export function preprocessJson(
 
     console.log("newAtrbArr", newAtrbArr);
     console.log("newLayrArr", newLayrArr);
-    json.Atrb[1000].obj = newAtrbArr;
-    json.Layr[1000].obj = newLayrArr;
+    anyJson.Atrb[1000].obj = newAtrbArr;
+    anyJson.Layr[1000].obj = newLayrArr;
   } else {
     console.warn("Layr or Atrb not found in JSON");
   }
 
-  if (json.Liqd) {
-    const liquidObj = json.Liqd[1000]?.obj;
+  if (anyJson.Liqd) {
+    const liquidObj = anyJson.Liqd[1000]?.obj;
     if (!Array.isArray(liquidObj)) {
       return err(new Error("Liqd[1000].obj is not an array"));
     }

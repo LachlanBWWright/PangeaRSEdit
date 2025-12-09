@@ -7,13 +7,15 @@ import { useModelAnimations } from "@/components/model-viewer/useModelAnimations
 import { AnimationUpdater } from "@/components/model-viewer/AnimationUpdater";
 
 export function ModelCanvas(props: ModelCanvasProps) {
-  const { gltfUrl, setModelNodes, onSceneReady, onAnimationsReady, wireframeMode, showSkeleton, logBonePositions } = props;
-
-  // Validate gltfUrl before using it
-  if (!gltfUrl || typeof gltfUrl !== "string") {
-    console.error("Invalid gltfUrl provided to ModelCanvas:", gltfUrl);
-    return <div>Error: Invalid model URL</div>;
-  }
+  const {
+    gltfUrl,
+    setModelNodes,
+    onSceneReady,
+    onAnimationsReady,
+    wireframeMode,
+    showSkeleton,
+    logBonePositions,
+  } = props;
 
   // Always call useGLTF unconditionally
   const gltfResult = useGLTF(gltfUrl);
@@ -24,6 +26,11 @@ export function ModelCanvas(props: ModelCanvasProps) {
 
   // Handle animations
   const { animationMixer } = useModelAnimations(gltfResult, onAnimationsReady);
+  // Validate gltfUrl before using it
+  if (!gltfUrl || typeof gltfUrl !== "string") {
+    console.error("Invalid gltfUrl provided to ModelCanvas:", gltfUrl);
+    return <div>Error: Invalid model URL</div>;
+  }
 
   return (
     <>
@@ -39,8 +46,17 @@ export function ModelCanvas(props: ModelCanvasProps) {
         <ambientLight intensity={1} color={"#ff0000"} />
         <directionalLight position={[10, 10, 5]} intensity={1} />
         <directionalLight position={[-10, -10, -5]} intensity={1} />
-        {gltfResult && <EnhancedModelMesh scene={gltfResult.scene} wireframeMode={wireframeMode} showSkeleton={showSkeleton} />}
-        <AnimationUpdater animationMixer={animationMixer} logBonePositions={logBonePositions} />
+        {gltfResult && (
+          <EnhancedModelMesh
+            scene={gltfResult.scene}
+            wireframeMode={wireframeMode}
+            showSkeleton={showSkeleton}
+          />
+        )}
+        <AnimationUpdater
+          animationMixer={animationMixer}
+          logBonePositions={logBonePositions}
+        />
         <OrbitControls
           enablePan={false}
           enableZoom={true}

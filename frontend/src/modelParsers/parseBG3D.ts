@@ -369,9 +369,11 @@ export function parseBG3D(
       case BG3DTagType.GROUPEND: {
         // End current group and pop from stack
         if (groupStack.length === 0) {
-          return err(new Error(
-            `GROUPEND tag found with no open group at offset ${tagOffset}`,
-          ));
+          return err(
+            new Error(
+              `GROUPEND tag found with no open group at offset ${tagOffset}`,
+            ),
+          );
         }
         if (groupStack.length > 0) {
           groupStack.pop();
@@ -390,9 +392,11 @@ export function parseBG3D(
       case BG3DTagType.GEOMETRY: {
         // Geometry header: type (4), numMaterials (4), layerMaterialNum[4] (only 2 read by otto) (16), flags (4), numPoints (4), numTriangles (4)
         if (!currentGroup) {
-          return err(new Error(
-            `GEOMETRY tag found outside of a group at offset ${tagOffset}`,
-          ));
+          return err(
+            new Error(
+              `GEOMETRY tag found outside of a group at offset ${tagOffset}`,
+            ),
+          );
         }
         const type = view.getUint32(offset, false);
         offset += 4;
@@ -553,16 +557,20 @@ export function parseBG3D(
         break;
       }
       default: {
-        return err(new Error(`Unknown BG3D tag: ${tag} at offset ${offset - 4}`));
+        return err(
+          new Error(`Unknown BG3D tag: ${tag} at offset ${offset - 4}`),
+        );
       }
     }
   }
 
   // Step 2: Validate that all groups are closed (groupStack should just have the base group)
   if (groupStack.length !== 1) {
-    return err(new Error(
-      `Unbalanced group tags: ${groupStack.length} group(s) at end of file`,
-    ));
+    return err(
+      new Error(
+        `Unbalanced group tags: ${groupStack.length} group(s) at end of file`,
+      ),
+    );
   }
 
   // Step 3: Validate that all geometry objects reference valid material indices
@@ -577,10 +585,15 @@ export function parseBG3D(
         if (geom.layerMaterialNum) {
           for (let i = 0; i < geom.numMaterials; i++) {
             const matIdx = geom.layerMaterialNum[i];
-            if (matIdx !== undefined && (matIdx < 0 || matIdx >= materials.length)) {
-              return err(new Error(
-                `Geometry references invalid material index ${matIdx} (materials length: ${materials.length}) in group validation`,
-              ));
+            if (
+              matIdx !== undefined &&
+              (matIdx < 0 || matIdx >= materials.length)
+            ) {
+              return err(
+                new Error(
+                  `Geometry references invalid material index ${matIdx} (materials length: ${materials.length}) in group validation`,
+                ),
+              );
             }
           }
         }
@@ -828,15 +841,32 @@ function convertSkeletonResourceToBG3D(
     try {
       const arr = rentry.obj;
       if (Array.isArray(arr)) {
-        relPointsMap[rid] = arr.map((p: any) => [
-          typeof p.relOffsetX === "number" ? p.relOffsetX : p.x ?? 0,
-          typeof p.relOffsetY === "number" ? p.relOffsetY : p.y ?? 0,
-          typeof p.relOffsetZ === "number" ? p.relOffsetZ : p.z ?? 0,
-        ]);
+        relPointsMap[rid] = arr.map((p: unknown) => {
+          const obj = p as Record<string, unknown>;
+          const relOffsetX =
+            typeof obj.relOffsetX === "number"
+              ? obj.relOffsetX
+              : typeof obj.x === "number"
+              ? obj.x
+              : 0;
+          const relOffsetY =
+            typeof obj.relOffsetY === "number"
+              ? obj.relOffsetY
+              : typeof obj.y === "number"
+              ? obj.y
+              : 0;
+          const relOffsetZ =
+            typeof obj.relOffsetZ === "number"
+              ? obj.relOffsetZ
+              : typeof obj.z === "number"
+              ? obj.z
+              : 0;
+          return [relOffsetX, relOffsetY, relOffsetZ];
+        });
       } else {
         relPointsMap[rid] = [];
       }
-    } catch (e) {
+    } catch {
       relPointsMap[rid] = [];
     }
   });

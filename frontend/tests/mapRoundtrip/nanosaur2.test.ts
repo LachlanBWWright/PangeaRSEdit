@@ -12,13 +12,7 @@
 import { describe, it, expect, beforeAll } from "vitest";
 import { readFileSync, existsSync } from "fs";
 import { join } from "path";
-import {
-  load,
-  saveToJsonObject,
-  loadFromJson,
-  saveToBytes,
-  saveFromJson,
-} from "../../src/rsrcdump-ts/rsrcdump";
+import { load, saveToJsonObject } from "../../src/rsrcdump-ts/rsrcdump";
 import { nanosaur2Specs } from "../../src/python/structSpecs/nanosaur2";
 import { Nanosaur2Globals } from "../../src/data/globals/globals";
 import { preprocessJson } from "../../src/data/processors/ottoPreprocessor";
@@ -73,7 +67,13 @@ describe("Nanosaur 2 Map Roundtrip", () => {
   it("should parse to JSON with bugdom2 specs", () => {
     if (!fileExists) return;
 
-    const jsonResult = saveToJsonObject(originalData, nanosaur2Specs, [], [], true);
+    const jsonResult = saveToJsonObject(
+      originalData,
+      nanosaur2Specs,
+      [],
+      [],
+      true,
+    );
     expect(jsonResult.ok).toBe(true);
     if (!jsonResult.ok) return;
     const jsonData = jsonResult.value;
@@ -106,14 +106,20 @@ describe("Nanosaur 2 Map Roundtrip", () => {
   it("should preprocess JSON correctly with Nanosaur 2 globals", () => {
     if (!fileExists) return;
 
-    const jsonResult = saveToJsonObject(originalData, nanosaur2Specs, [], [], true);
+    const jsonResult = saveToJsonObject(
+      originalData,
+      nanosaur2Specs,
+      [],
+      [],
+      true,
+    );
     expect(jsonResult.ok).toBe(true);
     if (!jsonResult.ok) return;
     const jsonData = jsonResult.value;
 
     // Preprocessing should not throw
     expect(() => {
-      preprocessJson(jsonData as any, Nanosaur2Globals);
+      preprocessJson(jsonData as Record<string, unknown>, Nanosaur2Globals);
     }).not.toThrow();
 
     // After preprocessing, verify header data is still present

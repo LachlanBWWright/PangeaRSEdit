@@ -1,6 +1,6 @@
 // Type definitions for rsrcdump TypeScript implementation
 
-import type { Result } from '../types/result';
+import type { Result } from "../types/result";
 
 export interface Resource {
   type: string;
@@ -21,11 +21,11 @@ export interface ResourceFork {
 
 export interface StructField {
   name: string;
-  value: any;
+  value: unknown;
 }
 
 export interface ParsedStruct {
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 export interface StructTemplate {
@@ -36,8 +36,8 @@ export interface StructTemplate {
 }
 
 export interface ResourceConverter {
-  unpack(resource: Resource, fork?: ResourceFork): any;
-  pack?(obj: any): Uint8Array | Result<Uint8Array, Error>;
+  unpack(resource: Resource, fork?: ResourceFork): unknown;
+  pack?(obj: unknown): Uint8Array | Result<Uint8Array, Error>;
 }
 
 export interface ConvertedResource {
@@ -45,7 +45,7 @@ export interface ConvertedResource {
   flags?: number;
   junk?: number;
   order?: number;
-  obj?: any;
+  obj?: unknown;
   data?: string; // hex encoded fallback
   conversionError?: string;
 }
@@ -57,5 +57,5 @@ export interface JsonOutput {
     fileAttributes?: number;
     adf?: Record<string, string>;
   };
-  [resourceType: string]: Record<string, ConvertedResource> | any;
+  [resourceType: string]: Record<string, ConvertedResource> | unknown;
 }

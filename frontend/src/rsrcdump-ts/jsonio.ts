@@ -8,14 +8,14 @@ import type {
   Resource,
 } from "./types";
 import { Base16Converter } from "./resconverters";
-import { Result, ok, err } from '../types/result';
+import { Result, ok, err } from "../types/result";
 
 export function resourceForkToJson(
   fork: ResourceFork,
   includeTypes: Uint8Array[] = [],
   excludeTypes: Uint8Array[] = [],
   converters: Map<string, ResourceConverter> = new Map(),
-  metadata: any = {},
+  metadata: Record<string, unknown> = {},
   quiet: boolean = false,
 ): Result<string, Error> {
   const jsonBlob: JsonOutput = {};
@@ -88,7 +88,7 @@ export function resourceForkToJson(
       const obj = converter.unpack(resource, fork);
 
       // Handle Result-returning converters
-      if (obj && typeof obj === 'object' && 'ok' in obj) {
+      if (obj && typeof obj === "object" && "ok" in obj) {
         if (obj.ok) {
           if (converter instanceof Base16Converter) {
             wrapper.data = obj.value;
@@ -198,7 +198,7 @@ export function resourceForkToJsonObject(
       const obj = converter.unpack(resource, fork);
 
       // Handle Result-returning converters
-      if (obj && typeof obj === 'object' && 'ok' in obj) {
+      if (obj && typeof obj === "object" && "ok" in obj) {
         if (obj.ok) {
           if (converter instanceof Base16Converter) {
             wrapper.data = obj.value;
@@ -241,7 +241,7 @@ export function jsonToResourceFork(
   // Support both 'fileAttributes' and legacy 'file_attributes' property names
   const fileAttributes =
     (metadata.fileAttributes as number) ||
-    ((metadata as Record<string, unknown>)['file_attributes'] as number) ||
+    ((metadata as Record<string, unknown>)["file_attributes"] as number) ||
     0;
   const junkNextresmap = (metadata.junk1 as number) || 0;
   const junkFilerefnum = (metadata.junk2 as number) || 0;
@@ -266,7 +266,11 @@ export function jsonToResourceFork(
         if (converter && converter.pack) {
           const packResult = converter.pack(resourceData.obj);
           // Handle Result-returning pack functions
-          if (packResult && typeof packResult === 'object' && 'ok' in packResult) {
+          if (
+            packResult &&
+            typeof packResult === "object" &&
+            "ok" in packResult
+          ) {
             if (packResult.ok) {
               data = packResult.value;
             } else {
@@ -276,9 +280,11 @@ export function jsonToResourceFork(
             data = packResult as Uint8Array;
           }
         } else {
-          return err(new Error(
-            `No pack function available for resource type ${typeName}`,
-          ));
+          return err(
+            new Error(
+              `No pack function available for resource type ${typeName}`,
+            ),
+          );
         }
       } else if (resourceData.data !== undefined) {
         // Convert hex string back to binary
@@ -289,9 +295,11 @@ export function jsonToResourceFork(
         }
         data = bytes;
       } else {
-        return err(new Error(
-          `Resource ${typeName}:${id} has neither obj nor data field`,
-        ));
+        return err(
+          new Error(
+            `Resource ${typeName}:${id} has neither obj nor data field`,
+          ),
+        );
       }
 
       const resource: Resource = {

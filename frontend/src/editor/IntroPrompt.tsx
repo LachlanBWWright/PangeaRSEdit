@@ -12,7 +12,7 @@ import { EditorView } from "./EditorView";
 import { Button } from "@/components/ui/button";
 import { Updater, useImmer } from "use-immer";
 import { ottoPreprocessor } from "../data/processors/ottoPreprocessor";
-import { Globals, Game } from "../data/globals/globals";
+import { Globals } from "../data/globals/globals";
 import { useAtom, useAtomValue } from "jotai";
 import { BlockHistoryUpdate } from "../data/globals/history";
 import LzssWorker from "../utils/lzssWorker?worker";
@@ -242,7 +242,7 @@ export function IntroPrompt({ pyodideWorker }: { pyodideWorker: Worker }) {
       const mapBlob = new Blob([loadRes], { type: ".ter.rsrc" });
       const mapUrl = URL.createObjectURL(mapBlob);
 
-      let downloadLink = document.createElement("a");
+      const downloadLink = document.createElement("a");
       downloadLink.href = mapUrl;
       downloadLink.setAttribute("download", mapFile.name);
       downloadLink.click();

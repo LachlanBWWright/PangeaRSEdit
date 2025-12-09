@@ -1,6 +1,7 @@
 import { Updater } from "use-immer";
 import { LiquidData } from "../../../python/structSpecs/ottoMaticLevelData";
 import { Circle, Line } from "react-konva";
+import Konva from "konva";
 import { useAtom } from "jotai";
 import {
   SelectedWaterBody,
@@ -58,7 +59,7 @@ export const WaterBody = memo(
           onDragMove={() => {
             // No per-frame state updates — let Konva handle visuals while dragging.
           }}
-          onDragEnd={(e: any) => {
+          onDragEnd={(e: Konva.KonvaEventObject<DragEvent>) => {
             if (!initialDragState) return;
 
             const dragDx = e.target.x();
@@ -80,7 +81,10 @@ export const WaterBody = memo(
             try {
               e.target.x(0);
               e.target.y(0);
-            } catch {}
+            } catch (err) {
+              // Best-effort: reset node transform. Log for debug but do not alter behavior
+              console.warn("Failed to reset Konva node transform:", err);
+            }
             setInitialDragState(null);
           }}
         />
@@ -117,7 +121,7 @@ export const WaterBody = memo(
                     setSelectedWaterBody(waterBodyIdx);
                     setSelectedWaterNub(nubIdx); // Set selected nub on drag start
                   }}
-                  onDragMove={(e) => {
+                  onDragMove={(e: Konva.KonvaEventObject<DragEvent>) => {
                     const newX = Math.round(e.target.x());
                     const newY = Math.round(e.target.y());
 
@@ -134,7 +138,7 @@ export const WaterBody = memo(
                       });
                     });
                   }}
-                  onDragEnd={(e) => {
+                  onDragEnd={(e: Konva.KonvaEventObject<DragEvent>) => {
                     if (nubRafRefs.current[nubIdx])
                       cancelAnimationFrame(nubRafRefs.current[nubIdx]!);
                     setLiquidData((liquidData) => {

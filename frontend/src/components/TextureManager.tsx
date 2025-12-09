@@ -43,7 +43,9 @@ export function TextureManager({
     try {
       await onReplaceTexture(texture, file);
       toast.success(`Successfully replaced ${texture.name}`);
-    } catch (error) {
+    } catch (_error) {
+      // Log and notify but keep UI message the same
+      console.error("Failed to replace texture:", _error);
       toast.error("Failed to replace texture");
     }
   };
