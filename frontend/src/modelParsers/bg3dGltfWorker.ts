@@ -1,11 +1,27 @@
 import { bg3dParsedToBG3D, parseBG3D, BG3DParseResult } from "./parseBG3D";
 import { bg3dParsedToGLTF, gltfToBG3D } from "./parsedBg3dGitfConverter";
 import { parseBG3DWithSkeletonResource } from "./bg3dWithSkeleton";
+import { parse3DMF } from "./parse3dmf";
 // Commented out unused import to fix build error
 // import { bg3dSkeletonToSkeletonResource, skeletonResourceToBinary } from "./skeletonExport";
 import { WebIO } from "@gltf-transform/core";
 import type { SkeletonResource } from "../python/structSpecs/skeleton/skeletonInterface";
-import { isErr } from "../types/result";
+import { isErr, Result } from "../types/result";
+
+// Helper function to detect file format and parse accordingly
+function parseModelBuffer(buffer: ArrayBuffer): Result<BG3DParseResult, Error> {
+  // Check magic number to detect format
+  const view = new DataView(buffer);
+  if (buffer.byteLength >= 4) {
+    const magic = view.getUint32(0, false); // Big-endian
+    // 3DMF magic: '3DMF' = 0x33444d46
+    if (magic === 0x33444d46) {
+      return parse3DMF(buffer);
+    }
+  }
+  // Default to BG3D format
+  return parseBG3D(buffer);
+}
 
 // Message types
 export type BG3DGltfWorkerMessage =
@@ -73,8 +89,8 @@ self.onmessage = async (e: MessageEvent<BG3DGltfWorkerMessage>) => {
   console.log("Worker received message:", msg.type);
   try {
     if (msg.type === "bg3d-to-glb") {
-      console.log("Converting BG3D to GLB");
-      const parseResult = parseBG3D(msg.buffer);
+      console.log("Converting model (BG3D/3DMF) to GLB");
+      const parseResult = parseModelBuffer(msg.buffer);
       if (isErr(parseResult)) {
         const response: BG3DGltfWorkerResponse = {
           type: "error",
@@ -84,9 +100,9 @@ self.onmessage = async (e: MessageEvent<BG3DGltfWorkerMessage>) => {
         return;
       }
       const parsed = parseResult.value;
-      console.log("Parsed BG3D:", parsed);
+      console.log("Parsed model:", parsed);
       const doc = bg3dParsedToGLTF(parsed);
-      console.log("Converting parsed BG3D to GLTF document");
+      console.log("Converting parsed model to GLTF document");
       console.log("GLTF Document:", doc);
       const io = new WebIO();
       const glbBuffer = await io.writeBinary(doc);

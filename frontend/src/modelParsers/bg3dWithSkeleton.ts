@@ -1,20 +1,32 @@
 // bg3dWithSkeleton.ts
-// Combined parser for BG3D files with skeleton data
+// Combined parser for BG3D/3DMF files with skeleton data
 
 import { parseBG3D, BG3DParseResult } from "./parseBG3D";
+import { parse3DMF } from "./parse3dmf";
 import { parseSkeletonRsrc } from "./skeletonRsrc/parseSkeletonRsrc";
 import type { SkeletonResource } from "../python/structSpecs/skeleton/skeletonInterface";
-import { Result, err, isErr } from "../types/result";
+import { Result, err, isErr, ok } from "../types/result";
 
 /**
- * Parse a BG3D file along with its associated skeleton file
- * @param bg3dBuffer ArrayBuffer containing the .bg3d file
+ * Detect if a buffer is a 3DMF file based on magic number
+ */
+function is3DMFBuffer(buffer: ArrayBuffer): boolean {
+  if (buffer.byteLength < 4) return false;
+  const view = new DataView(buffer);
+  const magic = view.getUint32(0, false); // Big-endian
+  // 3DMF magic: '3DMF' = 0x33444d46
+  return magic === 0x33444d46;
+}
+
+/**
+ * Parse a BG3D or 3DMF file along with its associated skeleton file
+ * @param modelBuffer ArrayBuffer containing the .bg3d or .3dmf file
  * @param skeletonBuffer ArrayBuffer containing the .skeleton.rsrc file
  * @param pyodideWorker Initialized Pyodide worker for skeleton parsing
  * @returns Promise<Result<BG3DParseResult, Error>> with skeleton data included
  */
 export async function parseBG3DWithSkeleton(
-  bg3dBuffer: ArrayBuffer,
+  modelBuffer: ArrayBuffer,
   skeletonBuffer: ArrayBuffer,
   pyodideWorker: Worker,
 ): Promise<Result<BG3DParseResult, Error>> {
@@ -28,19 +40,19 @@ export async function parseBG3DWithSkeleton(
     });
 
     // Convert ArrayBuffer to SkeletonResource
-    const skeletonJson = new TextDecoder().decode(skeletonArrayBuffer);
+    const skeletonJson = new TextDecoder().decode(skeletonArrayBuffer as AllowSharedBufferSource);
     const skeleton: SkeletonResource = JSON.parse(skeletonJson);
 
-    console.log("Parsing BG3D with skeleton data...");
+    console.log("Parsing model with skeleton data...");
 
-    // Parse BG3D with skeleton data
-    const result = parseBG3D(bg3dBuffer, skeleton);
+    // Parse model with skeleton data
+    const result = parseModelWithSkeletonResource(modelBuffer, skeleton);
 
     if (isErr(result)) {
       return result;
     }
 
-    console.log("Successfully parsed BG3D with skeleton:", {
+    console.log("Successfully parsed model with skeleton:", {
       materials: result.value.materials.length,
       groups: result.value.groups.length,
       skeleton: result.value.skeleton
@@ -55,14 +67,58 @@ export async function parseBG3DWithSkeleton(
 }
 
 /**
- * Parse a BG3D file with skeleton data from a SkeletonResource object
- * @param bg3dBuffer ArrayBuffer containing the .bg3d file
+ * Parse a BG3D or 3DMF file with skeleton data from a SkeletonResource object
+ * @param modelBuffer ArrayBuffer containing the .bg3d or .3dmf file
  * @param skeleton Parsed skeleton resource
  * @returns Result<BG3DParseResult, Error> with skeleton data included
  */
 export function parseBG3DWithSkeletonResource(
-  bg3dBuffer: ArrayBuffer,
+  modelBuffer: ArrayBuffer,
   skeleton: SkeletonResource,
 ): Result<BG3DParseResult, Error> {
-  return parseBG3D(bg3dBuffer, skeleton);
+  return parseModelWithSkeletonResource(modelBuffer, skeleton);
+}
+
+/**
+ * Parse a model buffer (BG3D or 3DMF) with optional skeleton data
+ */
+function parseModelWithSkeletonResource(
+  modelBuffer: ArrayBuffer,
+  skeleton: SkeletonResource,
+): Result<BG3DParseResult, Error> {
+  if (is3DMFBuffer(modelBuffer)) {
+    // Parse 3DMF file - note: 3DMF models with skeletons may need special handling
+    // For now, parse the model and add skeleton data manually
+    const modelResult = parse3DMF(modelBuffer);
+    if (isErr(modelResult)) {
+      return modelResult;
+    }
+    
+    // TODO: Convert skeleton data to appropriate format for 3DMF models
+    // For now, return the model without skeleton animations
+    // The skeleton resource format should be compatible once we add proper conversion
+    const result = modelResult.value;
+    
+    // Add skeleton data if available
+    if (skeleton && skeleton.bones) {
+      result.skeleton = {
+        bones: skeleton.bones.map((bone, index) => ({
+          name: bone.name || `bone_${index}`,
+          parentIndex: bone.parentBone ?? -1,
+          position: bone.coord ? [bone.coord.x, bone.coord.y, bone.coord.z] as [number, number, number] : [0, 0, 0],
+          pointIndices: bone.pointList || [],
+          normalIndices: bone.normalList || [],
+        })),
+        animations: skeleton.anims ? skeleton.anims.map((anim, animIndex) => ({
+          name: anim.name || `anim_${animIndex}`,
+          keyframes: [],
+        })) : [],
+      };
+    }
+    
+    return ok(result);
+  } else {
+    // Parse BG3D file
+    return parseBG3D(modelBuffer, skeleton);
+  }
 }

@@ -55,7 +55,7 @@ export function ModelUploadPanel({
   handleClearModel,
   onCancelSelection,
 }: Props) {
-  const fileAccept = ".bg3d";
+  const fileAccept = ".bg3d,.3dmf";
 
   return (
     <Card className="bg-gray-800 border-gray-700">
@@ -129,10 +129,10 @@ export function ModelUploadPanel({
                     >
                       <Upload className="w-12 h-12 mx-auto mb-4 text-gray-400" />
                       <p className="text-gray-400 mb-2">
-                        Drop BG3D file here or click to select
+                        Drop model file here or click to select
                       </p>
                       <p className="text-sm text-gray-500">
-                        Upload .bg3d file first, then optionally add skeleton
+                        Upload .bg3d or .3dmf file first, then optionally add skeleton
                       </p>
                     </div>
                     <input
@@ -142,7 +142,7 @@ export function ModelUploadPanel({
                       className="hidden"
                       onChange={(e) => {
                         const file = e.target.files?.[0];
-                        if (file && file.name.toLowerCase().endsWith(".bg3d")) {
+                        if (file && (file.name.toLowerCase().endsWith(".bg3d") || file.name.toLowerCase().endsWith(".3dmf"))) {
                           handleBg3dFileSelect(file);
                         } else if (file) {
                           /* silent fallback: same as original toast handled upstream */
@@ -155,7 +155,7 @@ export function ModelUploadPanel({
                 {uploadStep === "select-skeleton" && pendingBg3dFile && (
                   <>
                     <div className="text-sm text-gray-300 mb-3">
-                      BG3D file selected:{" "}
+                      Model file selected:{" "}
                       <strong>{pendingBg3dFile.name}</strong>
                     </div>
                     <div

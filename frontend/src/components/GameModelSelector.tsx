@@ -77,19 +77,24 @@ export function GameModelSelector({
     }
 
     try {
-      // Fetch the BG3D file
+      // Fetch the model file (could be BG3D or 3DMF)
       const bg3dResponse = await fetch(selectedModel.bg3dFile);
       if (!bg3dResponse.ok) {
         toast.error(
-          `Failed to fetch ${selectedModel.name}.bg3d: ${bg3dResponse.status}`,
+          `Failed to fetch ${selectedModel.name}: ${bg3dResponse.status}`,
         );
         return;
       }
 
       const bg3dArrayBuffer = await bg3dResponse.arrayBuffer();
+      
+      // Determine file extension from the URL
+      const fileExtension = selectedModel.bg3dFile.endsWith(".3dmf") ? ".3dmf" : ".bg3d";
+      const fileName = `${selectedModel.name}${fileExtension}`;
+      
       const bg3dFile = new File(
         [bg3dArrayBuffer],
-        `${selectedModel.name}.bg3d`,
+        fileName,
         {
           type: "application/octet-stream",
         },
@@ -278,7 +283,7 @@ export function GameModelSelector({
               <strong>Model:</strong> {selectedModel.name}
             </p>
             <p>
-              <strong>BG3D File:</strong>{" "}
+              <strong>Model File:</strong>{" "}
               {selectedModel.bg3dFile.split("/").pop()}
             </p>
             {selectedModel.skeletonFile && (
