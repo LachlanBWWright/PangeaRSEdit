@@ -126,8 +126,12 @@ export function ModelViewer() {
   // ...existing code...
 
   async function handleFileUpload(bg3dFile: File, skeletonFile?: File) {
-    if (!bg3dFile.name.toLowerCase().endsWith(".bg3d")) {
-      toast.error("Please select a BG3D file");
+    const fileName = bg3dFile.name.toLowerCase();
+    const isBg3d = fileName.endsWith(".bg3d");
+    const is3dmf = fileName.endsWith(".3dmf");
+    
+    if (!isBg3d && !is3dmf) {
+      toast.error("Please select a BG3D or 3DMF file");
       return;
     }
 
@@ -313,33 +317,34 @@ export function ModelViewer() {
   function handleDrop(e: React.DragEvent) {
     e.preventDefault();
     const files = Array.from(e.dataTransfer.files);
-    const bg3dFile = files.find((file) =>
-      file.name.toLowerCase().endsWith(".bg3d"),
-    );
+    const modelFile = files.find((file) => {
+      const name = file.name.toLowerCase();
+      return name.endsWith(".bg3d") || name.endsWith(".3dmf");
+    });
     const skeletonFile = files.find((file) =>
       file.name.toLowerCase().endsWith(".skeleton.rsrc"),
     );
 
     if (uploadStep === "select-bg3d") {
-      if (bg3dFile) {
+      if (modelFile) {
         if (skeletonFile) {
           // Both files dropped at once, process immediately
-          handleFileUpload(bg3dFile, skeletonFile);
+          handleFileUpload(modelFile, skeletonFile);
         } else {
-          // Only BG3D dropped, move to skeleton selection step
-          handleBg3dFileSelect(bg3dFile);
+          // Only model dropped, move to skeleton selection step
+          handleBg3dFileSelect(modelFile);
         }
       } else if (skeletonFile) {
-        toast.error("Please first select a BG3D file");
+        toast.error("Please first select a BG3D or 3DMF file");
       } else {
-        toast.error("Please drop a BG3D file");
+        toast.error("Please drop a BG3D or 3DMF file");
       }
     } else if (uploadStep === "select-skeleton") {
       if (skeletonFile) {
         handleSkeletonFileSelect(skeletonFile);
-      } else if (bg3dFile) {
+      } else if (modelFile) {
         toast.error(
-          "Already selected BG3D file. Please select a skeleton file or skip this step.",
+          "Already selected model file. Please select a skeleton file or skip this step.",
         );
       } else {
         toast.error(
@@ -678,6 +683,50 @@ export function ModelViewer() {
     }
   };
 
+  const handleDownload3DMF = async () => {
+    if (!bg3dParsed) {
+      toast.error("No model data available for download");
+      return;
+    }
+
+    try {
+      // Convert BG3DParseResult to 3DMF format
+      const { bg3dParseResultToMetaFile, write3DMFFromMetaFile } = await import(
+        "../modelParsers/threeDMF"
+      );
+
+      const metaResult = bg3dParseResultToMetaFile(bg3dParsed);
+      if (!metaResult.ok) {
+        toast.error(`Failed to convert to 3DMF: ${metaResult.error.message}`);
+        return;
+      }
+
+      const writeResult = write3DMFFromMetaFile(metaResult.value);
+      if (!writeResult.ok) {
+        toast.error(`Failed to write 3DMF: ${writeResult.error.message}`);
+        return;
+      }
+
+      // Download the 3DMF binary
+      const blob = new Blob([writeResult.value], {
+        type: "application/octet-stream",
+      });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "model.3dmf";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      toast.success("3DMF model downloaded");
+    } catch (error) {
+      console.error("Error downloading 3DMF:", error);
+      toast.error("Failed to download 3DMF model");
+    }
+  };
+
   const handleTextureEdit = async (
     texture: Texture,
     editedImageData: ImageData,
@@ -805,6 +854,7 @@ export function ModelViewer() {
             handleFileUpload={handleFileUpload}
             handleDownloadBG3D={handleDownloadBG3D}
             handleDownloadGLB={handleDownloadGLB}
+            handleDownload3DMF={handleDownload3DMF}
             handleClearModel={handleClearModel}
             onCancelSelection={() => {
               setUploadStep("select-bg3d");

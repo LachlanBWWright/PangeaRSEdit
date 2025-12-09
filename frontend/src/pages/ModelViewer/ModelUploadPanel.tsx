@@ -30,6 +30,7 @@ interface Props {
   handleFileUpload: (bg3dFile: File, skeletonFile?: File) => Promise<void>;
   handleDownloadBG3D: () => void;
   handleDownloadGLB: () => void;
+  handleDownload3DMF: () => void;
   handleClearModel: () => void;
   onCancelSelection: () => void;
 }
@@ -52,6 +53,7 @@ export function ModelUploadPanel({
   handleFileUpload,
   handleDownloadBG3D,
   handleDownloadGLB,
+  handleDownload3DMF,
   handleClearModel,
   onCancelSelection,
 }: Props) {
@@ -228,6 +230,14 @@ export function ModelUploadPanel({
               >
                 <Download className="w-4 h-4 mr-2" />
                 Download as BG3D
+              </Button>
+              <Button
+                onClick={() => handleDownload3DMF()}
+                variant="outline"
+                className="w-full text-white"
+              >
+                <Download className="w-4 h-4 mr-2" />
+                Download as 3DMF
               </Button>
               <Button
                 onClick={() => handleDownloadGLB()}

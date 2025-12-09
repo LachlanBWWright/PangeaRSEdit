@@ -51,51 +51,6 @@ function floatsNearlyEqual(a: number, b: number, tolerance = 1e-5): boolean {
 }
 
 /**
- * Compare two ArrayBuffers byte-by-byte
- * Returns detailed comparison results
- */
-function compareBuffers(original: ArrayBuffer, roundtrip: ArrayBuffer): {
-  equal: boolean;
-  totalBytes: number;
-  matchingBytes: number;
-  firstDiffOffset: number;
-  firstDiffOriginal?: number;
-  firstDiffRoundtrip?: number;
-} {
-  const orig = new Uint8Array(original);
-  const rt = new Uint8Array(roundtrip);
-  
-  let matchingBytes = 0;
-  let firstDiffOffset = -1;
-  let firstDiffOriginal: number | undefined;
-  let firstDiffRoundtrip: number | undefined;
-  
-  const maxLen = Math.max(orig.length, rt.length);
-  
-  for (let i = 0; i < maxLen; i++) {
-    const origByte = i < orig.length ? orig[i] : undefined;
-    const rtByte = i < rt.length ? rt[i] : undefined;
-    
-    if (origByte === rtByte) {
-      matchingBytes++;
-    } else if (firstDiffOffset === -1) {
-      firstDiffOffset = i;
-      firstDiffOriginal = origByte;
-      firstDiffRoundtrip = rtByte;
-    }
-  }
-  
-  return {
-    equal: orig.length === rt.length && matchingBytes === orig.length,
-    totalBytes: orig.length,
-    matchingBytes,
-    firstDiffOffset: firstDiffOffset === -1 ? -1 : firstDiffOffset,
-    firstDiffOriginal,
-    firstDiffRoundtrip,
-  };
-}
-
-/**
  * Compare two TQ3MetaFile structures for semantic equality
  */
 function compareMetaFiles(
@@ -422,8 +377,8 @@ describe("3DMF TRUE Full Roundtrip Tests (3DMF → glTF → 3DMF)", () => {
 
         // Step 6: Convert skeleton from BG3D back to skeleton resource and binary
         if (roundtripBG3D.skeleton) {
-          const roundtripSkeletonResource = bg3dSkeletonToSkeletonResource(roundtripBG3D.skeleton, roundtripBG3D);
-          const roundtripSkeletonBuffer = await skeletonResourceToBinary(roundtripSkeletonResource);
+          const roundtripSkeletonResource = bg3dSkeletonToSkeletonResource(roundtripBG3D.skeleton);
+          const roundtripSkeletonBuffer = skeletonResourceToBinary(roundtripSkeletonResource);
           
           console.log(`Roundtrip skeleton size: ${roundtripSkeletonBuffer.byteLength} bytes`);
           
