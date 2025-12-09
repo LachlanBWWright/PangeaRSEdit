@@ -3,10 +3,10 @@
  * Tests parsing and roundtrip conversion
  */
 
-import { describe, it, expect, beforeAll } from "vitest";
+import { describe, it, expect } from "vitest";
 import { parse3DMFToMetaFile } from "./parse3DMF";
 import { write3DMFFromMetaFile } from "./write3DMF";
-import { metaFileToBG3DParseResult, bg3dParseResultToMetaFile } from "./convert";
+import { metaFileToBG3DParseResult } from "./convert";
 import { parse3DMF, bg3dParsedTo3DMF } from "../parse3dmf";
 import { readFileSync } from "fs";
 import { join } from "path";
@@ -25,11 +25,6 @@ const SKELETON_PATH = join(
 const NANOSAUR_MODELS_PATH = join(
   __dirname,
   "../../../../games/nanosaur/Data/Models"
-);
-
-const NANOSAUR_SKELETONS_PATH = join(
-  __dirname,
-  "../../../../games/nanosaur/Data/Skeletons"
 );
 
 describe("3DMF Parser", () => {

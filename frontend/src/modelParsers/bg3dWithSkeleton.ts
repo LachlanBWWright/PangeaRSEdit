@@ -94,17 +94,23 @@ function parseModelWithSkeletonResource(
       return modelResult;
     }
     
-    // TODO: Convert skeleton data to appropriate format for 3DMF models
-    // For now, return the model without skeleton animations
-    // The skeleton resource format should be compatible once we add proper conversion
+    // Add skeleton data if available
+    // Note: 3DMF skeleton data needs conversion from SkeletonResource format to BG3DSkeleton format
     const result = modelResult.value;
     
-    // Add skeleton data if available
     if (skeleton && skeleton.bones) {
+      // Extract header info
+      const numAnims = skeleton.anims?.length ?? 0;
+      const numJoints = skeleton.bones.length;
+      
       result.skeleton = {
+        version: 1, // Default version for 3DMF skeletons
+        numAnims,
+        numJoints,
+        num3DMFLimbs: numJoints, // Typically same as numJoints for 3DMF
         bones: skeleton.bones.map((bone, index) => ({
           name: bone.name || `bone_${index}`,
-          parentIndex: bone.parentBone ?? -1,
+          parentIndex: typeof bone.parentBone === 'number' ? bone.parentBone : -1,
           position: bone.coord ? [bone.coord.x, bone.coord.y, bone.coord.z] as [number, number, number] : [0, 0, 0],
           pointIndices: bone.pointList || [],
           normalIndices: bone.normalList || [],

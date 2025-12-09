@@ -3,7 +3,7 @@
  * This enables interoperability between the older 3DMF format and the newer BG3D format
  */
 
-import { Result, ok, err } from "../../types/result";
+import { Result, ok } from "../../types/result";
 import {
   TQ3MetaFile,
   TQ3TriMeshData,

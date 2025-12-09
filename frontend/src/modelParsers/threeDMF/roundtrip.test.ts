@@ -34,8 +34,10 @@ function floatsNearlyEqual(a: number, b: number, tolerance = 1e-5): boolean {
 /**
  * Compare two ArrayBuffers for equality
  * Returns detailed comparison results
+ * @internal - reserved for future byte-level comparison tests
  */
-function compareBuffers(original: ArrayBuffer, roundtrip: ArrayBuffer): {
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+function _compareBuffers(original: ArrayBuffer, roundtrip: ArrayBuffer): {
   equal: boolean;
   totalBytes: number;
   matchingBytes: number;

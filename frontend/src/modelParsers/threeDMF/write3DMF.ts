@@ -3,20 +3,13 @@
  * Creates byte-accurate 3DMF files for roundtrip conversion
  */
 
-import { Result, ok, err } from "../../types/result";
+import { Result, ok } from "../../types/result";
 import { BigEndianWriter } from "./binaryUtils";
 import {
   TQ3MetaFile,
   TQ3TriMeshData,
-  TQ3TriMeshFlatGroup,
   TQ3TextureShader,
-  TQ3Pixmap,
-  TOCEntry,
-  PixelType,
-  Endian,
   ShaderUVBoundary,
-  TexturingMode,
-  TQ3Boolean,
   AttributeType,
   AttributeArrayPosition,
   CHUNK_3DMF,
