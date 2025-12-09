@@ -62,12 +62,23 @@ describe("BG3D + Skeleton Roundtrip Tests with FULL ACCURACY", () => {
     const gltf1 = await bg3dParsedToGLTF(originalBg3dParsed);
 
     // Debug: Check what extras were stored
-    const gltf1Extras = gltf1.getRoot().getExtras();
-    const hasSkeletonExtras = !!gltf1Extras?.bg3dFields?.skeletonExtras;
-    const hasKeyframeData =
-      !!gltf1Extras?.bg3dFields?.skeletonExtras?.keyframeData;
-    const keyframeCount =
-      gltf1Extras?.bg3dFields?.skeletonExtras?.keyframeData?.length || 0;
+    const gltf1Extras = gltf1.getRoot().getExtras() as
+      | Record<string, unknown>
+      | undefined;
+    const bg3dFields =
+      (gltf1Extras && (gltf1Extras["bg3dFields"] as Record<string, unknown>)) ||
+      undefined;
+    const skeletonExtras =
+      (bg3dFields &&
+        (bg3dFields["skeletonExtras"] as Record<string, unknown>)) ||
+      undefined;
+    const keyframeData =
+      (skeletonExtras && (skeletonExtras["keyframeData"] as unknown[])) ||
+      undefined;
+
+    const hasSkeletonExtras = !!skeletonExtras;
+    const hasKeyframeData = !!keyframeData;
+    const keyframeCount = keyframeData?.length || 0;
 
     // Assert extras are being stored properly
     expect(hasSkeletonExtras).toBe(true);

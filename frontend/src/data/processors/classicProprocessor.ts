@@ -142,6 +142,11 @@ export function nanosaur1LevelToOttoMaticLevel(
         const tileCol = col === width ? width - 1 : col;
         const tileIndex = tileRow * width + tileCol;
         const tileEntry = level.heightmapLayer[tileIndex];
+        if (tileEntry === undefined || tileEntry === null) {
+          // missing entry - push default height and continue to next vertex
+          ycrdData.push(0);
+          continue;
+        }
 
         // Tile entries in nanosaur are 16-bit values: lower bits = tile number, top bits = flip/rotate
         const TILENUM_MASK = 0x0fff;
@@ -159,10 +164,16 @@ export function nanosaur1LevelToOttoMaticLevel(
         if (flipY) offy = HMTILE_SIZE - 1 - offy;
 
         let heightVal = 0;
-        if (tileNum >= 0 && tileNum < level.heightmapTiles.length) {
-          const tileArr = level.heightmapTiles[tileNum];
-          const idx = offy * HMTILE_SIZE + offx;
-          heightVal = tileArr[idx] ?? 0;
+        if (
+          tileNum >= 0 &&
+          Array.isArray(level.heightmapTiles) &&
+          tileNum < level.heightmapTiles.length
+        ) {
+          const tileArr = level.heightmapTiles![tileNum];
+          if (tileArr && tileArr.length > 0) {
+            const idx = offy * HMTILE_SIZE + offx;
+            heightVal = tileArr[idx] ?? 0;
+          }
         }
         // Convert engine world units (height*HEIGHT_EXTRUDE_FACTOR) back to "pixel"
         // units that Otto's YCrd expects so that downstream scaling converts to

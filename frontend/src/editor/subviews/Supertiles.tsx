@@ -36,8 +36,8 @@ export const Supertiles = memo(
       mapImagesCount: mapImages.length,
     });
 
-    const superTileGrid = terrainData.STgd[1000].obj;
     const imageGrid = useMemo(() => {
+      const superTileGrid = terrainData.STgd?.[1000]?.obj ?? [];
       // Keep array index aligned with supertileGrid positions so Konva layout
       // doesn't get compressed when tiles are empty. We store `null` when
       // a supertile has no image so the layout math still uses the same index.
@@ -57,7 +57,7 @@ export const Supertiles = memo(
         imageArray[idx] = img;
       }
       return imageArray;
-    }, [mapImages, superTileGrid]);
+    }, [mapImages, terrainData.STgd]);
 
     // For Bugdom 1 and Nanosaur 1, use the BugdomSupertiles component which constructs
     // supertiles from individual 32x32 tiles (optionally using Xlat translation table)

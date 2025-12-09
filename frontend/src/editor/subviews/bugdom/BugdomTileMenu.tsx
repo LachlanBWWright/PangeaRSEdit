@@ -10,7 +10,7 @@
  * - Edit tile assignments in the layer data
  */
 
-import { useAtomValue, useAtom } from "jotai";
+import { useAtomValue } from "jotai";
 import { Layer, Stage, Image } from "react-konva";
 import { SelectedTile } from "../../../data/supertiles/supertileAtoms";
 import { Updater } from "use-immer";
@@ -45,18 +45,14 @@ interface BugdomTileMenuProps {
 
 export function BugdomTileMenu({
   headerData,
-  setHeaderData: _setHeaderData,
+
   terrainData,
   setTerrainData,
   mapImages,
-  setMapImages: _setMapImages,
 }: BugdomTileMenuProps) {
   // Mark destructured setters as used to satisfy lint rules (component doesn't use them directly)
-  void _setHeaderData;
-  void _setMapImages;
-  // Also mark _setSelectedTile used (we don't call it directly here)
-  void _setSelectedTile;
-  const [selectedTile, _setSelectedTile] = useAtom(SelectedTile);
+
+  const selectedTile = useAtomValue(SelectedTile);
   const hedr = headerData.Hedr[1000].obj;
   const globals = useAtomValue(Globals);
 

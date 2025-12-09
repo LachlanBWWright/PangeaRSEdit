@@ -20,6 +20,7 @@ import { readFileSync } from "fs";
 import { join } from "path";
 import { NodeIO } from "@gltf-transform/core";
 import { validateBytes } from "gltf-validator";
+import { unwrap } from "../types/result";
 
 describe("Comprehensive Skeleton Value Validation", () => {
   const ottoBg3dPath = join(
@@ -58,7 +59,7 @@ describe("Comprehensive Skeleton Value Validation", () => {
     };
   }
 
-  function validateSkeletonRoundtrip(): ValidationResult {
+  async function validateSkeletonRoundtrip(): Promise<ValidationResult> {
     console.log("=== COMPREHENSIVE SKELETON VALUE VALIDATION ===");
 
     // Load original files
@@ -69,17 +70,18 @@ describe("Comprehensive Skeleton Value Validation", () => {
     const originalSkeletonResource = parseSkeletonRsrcTS(
       new Uint8Array(originalSkeletonData),
     );
-    const originalBg3d = parseBG3D(
+    const originalBg3dRes = parseBG3D(
       originalBg3dData.buffer.slice(
         originalBg3dData.byteOffset,
         originalBg3dData.byteOffset + originalBg3dData.byteLength,
       ),
       originalSkeletonResource,
     );
+    const originalBg3d = unwrap(originalBg3dRes);
 
     // Execute roundtrip
     const gltfDoc = bg3dParsedToGLTF(originalBg3d);
-    const roundtripResult = gltfToBG3D(gltfDoc);
+    const roundtripResult = await gltfToBG3D(gltfDoc);
 
     const result: ValidationResult = {
       boneHierarchy: true,
@@ -118,10 +120,11 @@ describe("Comprehensive Skeleton Value Validation", () => {
     }
 
     // Check each bone
-    origBones.forEach((origBone, index) => {
+    origBones.forEach((origBone: any, index: number) => {
       if (index >= rtBones.length) return;
 
       const rtBone = rtBones[index];
+      if (!rtBone) return;
 
       // Name check
       if (origBone.name !== rtBone.name) {
@@ -146,10 +149,11 @@ describe("Comprehensive Skeleton Value Validation", () => {
 
     // 2. Validate Coordinate System Conversion
     console.log("\n=== VALIDATING COORDINATES ===");
-    origBones.forEach((origBone, index) => {
+    origBones.forEach((origBone: any, index: number) => {
       if (index >= rtBones.length) return;
 
       const rtBone = rtBones[index];
+      if (!rtBone) return;
       const origCoords: [number, number, number] = [
         origBone.coordX,
         origBone.coordY,
@@ -197,10 +201,11 @@ describe("Comprehensive Skeleton Value Validation", () => {
 
     // 3. Validate Vertex Binding
     console.log("\n=== VALIDATING VERTEX BINDING ===");
-    origBones.forEach((origBone, index) => {
+    origBones.forEach((origBone: any, index: number) => {
       if (index >= rtBones.length) return;
 
       const rtBone = rtBones[index];
+      if (!rtBone) return;
 
       // Check point indices
       const origPoints = origBone.pointIndices || [];
@@ -219,7 +224,7 @@ describe("Comprehensive Skeleton Value Validation", () => {
       } else {
         // Check if arrays are identical
         const pointsMatch = origPoints.every(
-          (val, idx) => val === rtPoints[idx],
+          (val: number, idx: number) => val === rtPoints[idx],
         );
         if (!pointsMatch) {
           result.vertexBinding = false;
@@ -257,10 +262,11 @@ describe("Comprehensive Skeleton Value Validation", () => {
       );
     }
 
-    origAnims.forEach((origAnim, animIndex) => {
+    origAnims.forEach((origAnim: any, animIndex: number) => {
       if (animIndex >= rtAnims.length) return;
 
       const rtAnim = rtAnims[animIndex];
+      if (!rtAnim) return;
 
       if (origAnim.name !== rtAnim.name) {
         result.animations = false;
@@ -293,8 +299,8 @@ describe("Comprehensive Skeleton Value Validation", () => {
     // 5. Validate glTF Structure Compliance
     console.log("\n=== VALIDATING glTF COMPLIANCE ===");
     const io = new NodeIO();
-    const glbBuffer = io.writeBinary(gltfDoc);
-    const validation = validateBytes(glbBuffer);
+    const glbBuffer = await io.writeBinary(gltfDoc);
+    const validation = await validateBytes(glbBuffer);
 
     result.details.gltfValidationErrors = validation.issues.numErrors;
 
@@ -303,7 +309,7 @@ describe("Comprehensive Skeleton Value Validation", () => {
       console.error(
         `❌ glTF validation errors: ${validation.issues.numErrors}`,
       );
-      validation.issues.messages.forEach((msg, i) => {
+      validation.issues.messages.forEach((msg: any, i: number) => {
         if (i < 5) {
           // Show first 5 errors
           console.error(
@@ -327,8 +333,8 @@ describe("Comprehensive Skeleton Value Validation", () => {
     return result;
   }
 
-  it("should validate all skeleton values in roundtrip conversion", () => {
-    const result = validateSkeletonRoundtrip();
+  it("should validate all skeleton values in roundtrip conversion", async () => {
+    const result = await validateSkeletonRoundtrip();
 
     console.log("\n=== VALIDATION SUMMARY ===");
     console.log(`Bone Hierarchy: ${result.boneHierarchy ? "✅" : "❌"}`);
@@ -368,13 +374,14 @@ describe("Comprehensive Skeleton Value Validation", () => {
     const originalSkeletonResource = parseSkeletonRsrcTS(
       new Uint8Array(originalSkeletonData),
     );
-    const originalBg3d = parseBG3D(
+    const originalBg3dResLocal = parseBG3D(
       originalBg3dData.buffer.slice(
         originalBg3dData.byteOffset,
         originalBg3dData.byteOffset + originalBg3dData.byteLength,
       ),
       originalSkeletonResource,
     );
+    const originalBg3d = unwrap(originalBg3dResLocal);
 
     // Convert to glTF
     const gltfDoc = bg3dParsedToGLTF(originalBg3d);
@@ -388,13 +395,16 @@ describe("Comprehensive Skeleton Value Validation", () => {
     gltfDoc
       .getRoot()
       .listMeshes()
-      .forEach((mesh) => {
-        mesh.listPrimitives().forEach((prim) => {
+      .forEach((mesh: any) => {
+        mesh.listPrimitives().forEach((prim: any) => {
           const jointsAcc = prim.getAttribute("JOINTS_0");
           const weightsAcc = prim.getAttribute("WEIGHTS_0");
 
           if (jointsAcc && weightsAcc) {
-            const weightsArray = weightsAcc.getArray() as Float32Array;
+            const weightsArray = weightsAcc.getArray() as
+              | Float32Array
+              | undefined;
+            if (!weightsArray) return;
             const numVertices = weightsAcc.getCount();
 
             totalVertices += numVertices;
@@ -410,15 +420,17 @@ describe("Comprehensive Skeleton Value Validation", () => {
                 verticesWithWeights++;
 
                 // Check if all non-zero weights are 1.0 (the bug)
-                const nonZeroWeights = [
-                  weightsArray[i * 4],
-                  weightsArray[i * 4 + 1],
-                  weightsArray[i * 4 + 2],
-                  weightsArray[i * 4 + 3],
-                ].filter((w) => w > 0);
+                const w0 = weightsArray[i * 4] ?? 0;
+                const w1 = weightsArray[i * 4 + 1] ?? 0;
+                const w2 = weightsArray[i * 4 + 2] ?? 0;
+                const w3 = weightsArray[i * 4 + 3] ?? 0;
+
+                const nonZeroWeights = [w0, w1, w2, w3].filter(
+                  (w): w is number => typeof w === "number" && w > 0,
+                );
 
                 const allWeightsOne = nonZeroWeights.every(
-                  (w) => Math.abs(w - 1.0) < 0.001,
+                  (w: number) => Math.abs(w - 1.0) < 0.001,
                 );
 
                 if (allWeightsOne && nonZeroWeights.length > 1) {
@@ -457,19 +469,20 @@ describe("Comprehensive Skeleton Value Validation", () => {
     const originalSkeletonResource = parseSkeletonRsrcTS(
       new Uint8Array(originalSkeletonData),
     );
-    const originalBg3d = parseBG3D(
+    const originalBg3dResLocal2 = parseBG3D(
       originalBg3dData.buffer.slice(
         originalBg3dData.byteOffset,
         originalBg3dData.byteOffset + originalBg3dData.byteLength,
       ),
       originalSkeletonResource,
     );
+    const originalBg3d2 = unwrap(originalBg3dResLocal2);
 
     // Analyze bone positions
-    const bones = originalBg3d.skeleton!.bones;
+    const bones = originalBg3d2.skeleton!.bones;
     console.log("Original bone positions:");
 
-    bones.forEach((bone, index) => {
+    bones.forEach((bone: any, index: number) => {
       const distanceFromOrigin = Math.sqrt(
         bone.coordX * bone.coordX +
           bone.coordY * bone.coordY +
@@ -494,7 +507,7 @@ describe("Comprehensive Skeleton Value Validation", () => {
     );
 
     // Check if child bones are positioned relative to parents
-    childBones.forEach((childBone) => {
+    childBones.forEach((childBone: any) => {
       const parentBone = bones[childBone.parentBone];
       if (parentBone) {
         const relativeX = childBone.coordX - parentBone.coordX;

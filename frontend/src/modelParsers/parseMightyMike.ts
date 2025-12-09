@@ -326,11 +326,11 @@ export function mightyMikeMapToBinary(map: MightyMikeMap): ArrayBuffer {
 }
 
 export function mightyMikeTileSetToBinary(
-  _tileset: MightyMikeTileSet,
+  tileset: MightyMikeTileSet,
 ): ArrayBuffer {
   // This is a complex function that would need to implement the full tileset binary format
   // For now, return an empty buffer as a placeholder
   // TODO: Implement full tileset binary export
-  void _tileset;
+  console.log(tileset);
   return new ArrayBuffer(0);
 }

@@ -23,7 +23,7 @@ import { ThreeView } from "./threejs/Three";
 import { useAtomValue } from "jotai";
 import { CanvasView, CanvasViewMode } from "@/data/canvasView/canvasViewAtoms";
 
-import View from "./viewEnum";
+import { View } from "./viewEnum";
 
 export function EditorView({
   headerData,

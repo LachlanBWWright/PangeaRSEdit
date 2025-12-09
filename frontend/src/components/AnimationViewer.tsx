@@ -18,12 +18,14 @@ interface AnimationViewerProps {
   onAnimationChange?: (animationIndex: number | null) => void;
 }
 
-export function AnimationViewer({ 
-  animations, 
+export function AnimationViewer({
+  animations,
   animationMixer,
-  onAnimationChange 
+  onAnimationChange,
 }: AnimationViewerProps) {
-  const [selectedAnimation, setSelectedAnimation] = useState<number | null>(null);
+  const [selectedAnimation, setSelectedAnimation] = useState<number | null>(
+    null,
+  );
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
@@ -32,18 +34,22 @@ export function AnimationViewer({
 
   // Update animation state when mixer or selection changes
   useEffect(() => {
-    if (selectedAnimation !== null && animationMixer && animations[selectedAnimation]) {
+    if (
+      selectedAnimation !== null &&
+      animationMixer &&
+      animations[selectedAnimation]
+    ) {
       const animationInfo = animations[selectedAnimation];
       setDuration(animationInfo.duration);
       setCurrentTime(0);
       setIsPlaying(false);
-      
+
       // Stop current animation if any
       if (currentActionRef.current) {
         currentActionRef.current.stop();
         currentActionRef.current = null;
       }
-      
+
       // Get the animation clip and create action
       const clip = animationInfo.clip;
       if (clip) {
@@ -52,7 +58,7 @@ export function AnimationViewer({
         action.setLoop(THREE.LoopRepeat, Infinity);
         currentActionRef.current = action;
       }
-      
+
       onAnimationChange?.(selectedAnimation);
     } else {
       setDuration(0);
@@ -70,16 +76,16 @@ export function AnimationViewer({
   useEffect(() => {
     const updateTime = () => {
       if (animationMixer && currentActionRef.current && isPlaying) {
-        const time = currentActionRef.current.time;
+        const time = currentActionRef.current.time ?? 0;
         setCurrentTime(time);
-        
+
         // Loop the animation
         if (time >= duration && duration > 0) {
           currentActionRef.current.time = 0;
           setCurrentTime(0);
         }
       }
-      
+
       if (isPlaying) {
         animationRequestRef.current = requestAnimationFrame(updateTime);
       }
@@ -139,7 +145,9 @@ export function AnimationViewer({
     const mins = Math.floor(seconds / 60);
     const secs = Math.floor(seconds % 60);
     const ms = Math.floor((seconds % 1) * 100);
-    return `${mins}:${secs.toString().padStart(2, '0')}.${ms.toString().padStart(2, '0')}`;
+    return `${mins}:${secs.toString().padStart(2, "0")}.${ms
+      .toString()
+      .padStart(2, "0")}`;
   };
 
   if (animations.length === 0) {
@@ -149,7 +157,9 @@ export function AnimationViewer({
           <CardTitle className="text-white text-sm">Animations</CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="text-sm text-gray-400">No animations found in this model</p>
+          <p className="text-sm text-gray-400">
+            No animations found in this model
+          </p>
         </CardContent>
       </Card>
     );
@@ -169,7 +179,11 @@ export function AnimationViewer({
           <select
             className="w-full bg-gray-700 text-white border border-gray-600 rounded px-2 py-1 text-sm"
             value={selectedAnimation ?? ""}
-            onChange={(e) => setSelectedAnimation(e.target.value ? parseInt(e.target.value) : null)}
+            onChange={(e) =>
+              setSelectedAnimation(
+                e.target.value ? parseInt(e.target.value) : null,
+              )
+            }
           >
             <option value="">-- Select Animation --</option>
             {animations.map((anim, index) => (
@@ -192,7 +206,11 @@ export function AnimationViewer({
                 disabled={!currentActionRef.current}
                 className="flex-1 text-white"
               >
-                {isPlaying ? <Pause className="w-3 h-3" /> : <Play className="w-3 h-3" />}
+                {isPlaying ? (
+                  <Pause className="w-3 h-3" />
+                ) : (
+                  <Play className="w-3 h-3" />
+                )}
               </Button>
               <Button
                 size="sm"

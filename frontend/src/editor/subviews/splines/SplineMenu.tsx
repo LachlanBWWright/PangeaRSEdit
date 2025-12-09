@@ -29,8 +29,6 @@ import { getSplineItemName } from "@/data/splines/getSplineItemNames";
 export function SplineMenu({
   splineData,
   setSplineData,
-  headerData: _headerData,
-  setHeaderData: _setHeaderData,
 }: {
   splineData: SplineData;
   setSplineData: Updater<SplineData>;
@@ -41,9 +39,7 @@ export function SplineMenu({
   const [selectedSplineItem, setSelectedSplineItem] =
     useAtom(SelectedSplineItem);
   const globals = useAtomValue(Globals);
-  // Mark unused props as used to satisfy linter; these are passed for consistency with parent
-  void _headerData;
-  void _setHeaderData;
+
   useEffect(() => {
     setSelectedSplineItem(undefined);
   }, [selectedSpline, setSelectedSplineItem]);

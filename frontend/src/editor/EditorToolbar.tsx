@@ -1,8 +1,9 @@
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { View } from "./EditorView";
+
 import { useAtomValue } from "jotai";
 import { Globals, Game } from "../data/globals/globals";
+import { View } from "./viewEnum";
 
 interface Props {
   view: View;

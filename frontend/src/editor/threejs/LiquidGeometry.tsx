@@ -8,7 +8,7 @@ import {
 } from "@/python/structSpecs/ottoMaticLevelData";
 import { DoubleSide, Shape, Vector2 } from "three";
 import { WaterBodyType } from "@/data/water/ottoWaterBodyType";
-import { getTerrainHeightAtPoint } from "./FenceGeometry";
+import { getTerrainHeightAtPoint } from "./fenceUtils/getTerrainHeightAtPoint";
 
 interface LiquidGeometryProps {
   liquidData: LiquidData;

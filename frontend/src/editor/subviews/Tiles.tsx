@@ -304,7 +304,7 @@ export function TopologyTiles({
 
 export function EmptyTiles({
   headerData,
-  terrainData: _terrainData,
+  terrainData,
   setTerrainData,
   tileGrid,
 }: {
@@ -318,7 +318,6 @@ export function EmptyTiles({
   const tileEditingEnabled = useAtomValue(TileEditingEnabled);
   const brushType = useAtomValue(TileBrushType);
   const topologyBrushRadius = useAtomValue(TopologyBrushRadius);
-  void _terrainData;
 
   const header = useMemo(() => headerData.Hedr[1000].obj, [headerData.Hedr]);
 
@@ -412,7 +411,6 @@ export function EmptyTiles({
 
 export function ElectricFloor0Tiles({
   headerData,
-  terrainData: _terrainData,
   setTerrainData,
   tileGrid,
 }: {
@@ -426,7 +424,6 @@ export function ElectricFloor0Tiles({
   const tileEditingEnabled = useAtomValue(TileEditingEnabled);
   const brushType = useAtomValue(TileBrushType);
   const topologyBrushRadius = useAtomValue(TopologyBrushRadius);
-  void _terrainData;
 
   const header = useMemo(() => headerData.Hedr[1000].obj, [headerData.Hedr]);
 
@@ -520,7 +517,7 @@ export function ElectricFloor0Tiles({
 
 export function ElectricFloor1Tiles({
   headerData,
-  terrainData: _terrainData,
+  terrainData,
   setTerrainData,
   tileGrid,
 }: {
@@ -530,7 +527,7 @@ export function ElectricFloor1Tiles({
   tileGrid: ottoTileAttribute[];
 }) {
   const globals = useAtomValue(Globals);
-  void _terrainData;
+
   // Use Jotai atoms for tile editing state
   const tileEditingEnabled = useAtomValue(TileEditingEnabled);
   const brushType = useAtomValue(TileBrushType);

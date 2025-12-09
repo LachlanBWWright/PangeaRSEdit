@@ -4,12 +4,10 @@ import type { KeyFRaw } from "../parseSkeletonRsrcTS";
 export function handleKeyF(
   resourceName: string,
   resourceData: KeyFRaw[] | { obj?: KeyFRaw[] } | undefined,
-  _resourceId: string,
-  _hexData: string,
+  resourceId: string,
+  hexData: string,
 ) {
-  // Keep args referenced to avoid linter unused variable warnings
-  void _resourceId;
-  void _hexData;
+  console.log(resourceId, hexData);
   if (
     resourceData &&
     (resourceData as { obj?: KeyFRaw[] }).obj &&

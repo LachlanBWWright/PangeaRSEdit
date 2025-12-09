@@ -80,26 +80,42 @@ describe("Result type", () => {
     it("map should transform Ok values", () => {
       const result = ok(21);
       const mapped = map(result, (x) => x * 2);
-      expect(isOk(mapped) && mapped.value).toBe(42);
+      if (isOk(mapped)) {
+        expect(mapped.value).toBe(42);
+      } else {
+        throw new Error("expected Ok");
+      }
     });
 
     it("map should pass through Err values", () => {
       const error = new Error("test");
       const result: Result<number, Error> = err(error);
       const mapped = map(result, (x) => x! * 2);
-      expect(isErr(mapped) && mapped.error).toBe(error);
+      if (isErr(mapped)) {
+        expect(mapped.error).toBe(error);
+      } else {
+        throw new Error("expected Err");
+      }
     });
 
     it("mapErr should transform Err values", () => {
       const result: Result<number, string> = err("error");
       const mapped = mapErr(result, (e) => new Error(e));
-      expect(isErr(mapped) && mapped.error.message).toBe("error");
+      if (isErr(mapped)) {
+        expect(mapped.error.message).toBe("error");
+      } else {
+        throw new Error("expected Err");
+      }
     });
 
     it("mapErr should pass through Ok values", () => {
       const result: Result<number, string> = ok(42);
       const mapped = mapErr(result, (e) => new Error(e));
-      expect(isOk(mapped) && mapped.value).toBe(42);
+      if (isOk(mapped)) {
+        expect(mapped.value).toBe(42);
+      } else {
+        throw new Error("expected Ok");
+      }
     });
   });
 
@@ -107,19 +123,31 @@ describe("Result type", () => {
     it("should chain successful operations", () => {
       const result = ok(10);
       const chained = andThen(result, (x) => ok(x * 2));
-      expect(isOk(chained) && chained.value).toBe(20);
+      if (isOk(chained)) {
+        expect(chained.value).toBe(20);
+      } else {
+        throw new Error("expected Ok");
+      }
     });
 
     it("should short-circuit on error", () => {
       const result: Result<number, Error> = err(new Error("first error"));
       const chained = andThen(result, (x) => ok(x! * 2));
-      expect(isErr(chained) && chained.error.message).toBe("first error");
+      if (isErr(chained)) {
+        expect(chained.error.message).toBe("first error");
+      } else {
+        throw new Error("expected Err");
+      }
     });
 
     it("should propagate error from chained function", () => {
       const result = ok(10);
       const chained = andThen(result, () => err(new Error("second error")));
-      expect(isErr(chained) && chained.error.message).toBe("second error");
+      if (isErr(chained)) {
+        expect(chained.error.message).toBe("second error");
+      } else {
+        throw new Error("expected Err");
+      }
     });
   });
 
@@ -177,7 +205,11 @@ describe("Result type", () => {
     it("should combine successful results", () => {
       const results = [ok(1), ok(2), ok(3)];
       const combined = all(results);
-      expect(isOk(combined) && combined.value).toEqual([1, 2, 3]);
+      if (isOk(combined)) {
+        expect(combined.value).toEqual([1, 2, 3]);
+      } else {
+        throw new Error("expected Ok");
+      }
     });
 
     it("should return first error", () => {
@@ -187,7 +219,11 @@ describe("Result type", () => {
         ok(3),
       ];
       const combined = all(results);
-      expect(isErr(combined) && combined.error.message).toBe("error");
+      if (isErr(combined)) {
+        expect(combined.error.message).toBe("error");
+      } else {
+        throw new Error("expected Err");
+      }
     });
   });
 

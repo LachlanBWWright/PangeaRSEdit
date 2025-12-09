@@ -8,6 +8,7 @@ import { convertBG3DToSkeletonResource } from "./parseBG3D";
 import type { SkeletonResource } from "../python/structSpecs/skeleton/skeletonInterface";
 import * as fs from "fs";
 import * as path from "path";
+import { unwrap } from "../types/result";
 
 // Test skeleton data (simplified version of the sample)
 const testSkeleton: SkeletonResource = {
@@ -194,32 +195,43 @@ describe("BG3D Skeleton Integration", () => {
 
   it("should parse BG3D with skeleton data", () => {
     const result = parseBG3DWithSkeletonResource(testBG3DBuffer, testSkeleton);
+    const parsed = unwrap(result);
 
-    expect(result).toBeDefined();
-    expect(result.skeleton).toBeDefined();
-    expect(result.skeleton!.bones).toHaveLength(3);
-    expect(result.skeleton!.animations).toHaveLength(1);
+    if (!parsed || !parsed.skeleton)
+      throw new Error("parsed or parsed.skeleton missing");
+    const skeleton = parsed.skeleton;
+
+    expect(parsed).toBeDefined();
+    expect(skeleton.bones).toHaveLength(3);
+    expect(skeleton.animations).toHaveLength(1);
 
     // Check bone structure
-    const rootBone = result.skeleton!.bones[0];
+    const rootBone = skeleton.bones[0];
+    if (!rootBone) throw new Error("rootBone missing");
     expect(rootBone.parentBone).toBe(-1);
     expect(rootBone.name).toBe("root_bone");
     expect(rootBone.pointIndices).toEqual([0, 1, 2, 3, 4]);
 
-    const childBone1 = result.skeleton!.bones[1];
+    const childBone1 = skeleton.bones[1];
+    if (!childBone1) throw new Error("childBone1 missing");
     expect(childBone1.parentBone).toBe(0);
     expect(childBone1.name).toBe("child_bone_1");
     expect(childBone1.coordX).toBe(10);
 
     // Check animation
-    const animation = result.skeleton!.animations[0];
+    const animation = skeleton.animations[0];
+    if (!animation) throw new Error("animation missing");
     expect(animation.name).toBe("idle");
     expect(animation.events).toHaveLength(1);
   });
 
   it("should convert BG3D with skeleton to glTF with proper joints and skin", () => {
-    const parsed = parseBG3DWithSkeletonResource(testBG3DBuffer, testSkeleton);
-    const gltfDoc = bg3dParsedToGLTF(parsed);
+    const parsedResult = parseBG3DWithSkeletonResource(
+      testBG3DBuffer,
+      testSkeleton,
+    );
+    const parsed2 = unwrap(parsedResult);
+    const gltfDoc = bg3dParsedToGLTF(parsed2);
 
     expect(gltfDoc).toBeDefined();
 
@@ -245,22 +257,27 @@ describe("BG3D Skeleton Integration", () => {
     // Check that meshes have joint/weight attributes
     const meshes = gltfDoc.getRoot().listMeshes();
     if (meshes.length > 0) {
-      const primitive = meshes[0].listPrimitives()[0];
-      const joints = primitive.getAttribute("JOINTS_0");
-      const weights = primitive.getAttribute("WEIGHTS_0");
+      const primitives = meshes[0].listPrimitives();
+      if (primitives.length > 0) {
+        const primitive = primitives[0];
+        if (!primitive) return;
+        const joints = primitive.getAttribute("JOINTS_0");
+        const weights = primitive.getAttribute("WEIGHTS_0");
 
-      if (joints && weights) {
-        expect(joints).toBeDefined();
-        expect(weights).toBeDefined();
+        if (joints && weights) {
+          expect(joints).toBeDefined();
+          expect(weights).toBeDefined();
+        }
       }
     }
   });
 
   it("should round-trip BG3D skeleton data through glTF with full accuracy", async () => {
-    const originalParsed = parseBG3DWithSkeletonResource(
+    const originalParsedRes = parseBG3DWithSkeletonResource(
       testBG3DBuffer,
       testSkeleton,
     );
+    const originalParsed = unwrap(originalParsedRes);
     const gltfDoc = bg3dParsedToGLTF(originalParsed);
 
     // **ADD glTF VALIDATION**
@@ -281,29 +298,36 @@ describe("BG3D Skeleton Integration", () => {
     expect(roundtripParsed.skeleton).toBeDefined();
 
     // REQUIRE exact skeleton preservation
-    expect(roundtripParsed.skeleton!.bones.length).toBe(
-      originalParsed.skeleton!.bones.length,
-    );
-    expect(roundtripParsed.skeleton!.animations.length).toBe(
-      originalParsed.skeleton!.animations.length,
+    if (!originalParsed.skeleton)
+      throw new Error("originalParsed.skeleton missing");
+    if (!roundtripParsed.skeleton)
+      throw new Error("roundtripParsed.skeleton missing");
+    const originalSkeleton = originalParsed.skeleton;
+    const roundtripSkeleton = roundtripParsed.skeleton;
+
+    expect(roundtripSkeleton.bones.length).toBe(originalSkeleton.bones.length);
+    expect(roundtripSkeleton.animations.length).toBe(
+      originalSkeleton.animations.length,
     );
 
     // Check bone hierarchy is perfectly preserved
-    const originalRoot = originalParsed.skeleton!.bones.find(
+    const originalRoot = originalSkeleton.bones.find(
       (b) => b.parentBone === -1,
     );
-    const roundtripRoot = roundtripParsed.skeleton!.bones.find(
+    const roundtripRoot = roundtripSkeleton.bones.find(
       (b) => b.parentBone === -1,
     );
 
-    expect(originalRoot).toBeDefined();
-    expect(roundtripRoot).toBeDefined();
-    expect(roundtripRoot!.name).toBe(originalRoot!.name);
+    if (!originalRoot) throw new Error("originalRoot missing");
+    if (!roundtripRoot) throw new Error("roundtripRoot missing");
+    expect(roundtripRoot.name).toBe(originalRoot.name);
 
     // Verify all bones have exact coordinates
-    for (let i = 0; i < originalParsed.skeleton!.bones.length; i++) {
-      const originalBone = originalParsed.skeleton!.bones[i];
-      const roundtripBone = roundtripParsed.skeleton!.bones[i];
+    for (let i = 0; i < originalSkeleton.bones.length; i++) {
+      const originalBone = originalSkeleton.bones[i];
+      const roundtripBone = roundtripSkeleton.bones[i];
+      if (!originalBone || !roundtripBone)
+        throw new Error("missing bone during roundtrip comparison");
 
       expect(roundtripBone.name).toBe(originalBone.name);
       expect(roundtripBone.parentBone).toBe(originalBone.parentBone);
@@ -316,10 +340,15 @@ describe("BG3D Skeleton Integration", () => {
   });
 
   it("should convert BG3DSkeleton back to SkeletonResource format", () => {
-    const parsed = parseBG3DWithSkeletonResource(testBG3DBuffer, testSkeleton);
-    expect(parsed.skeleton).toBeDefined();
+    const parsedRes = parseBG3DWithSkeletonResource(
+      testBG3DBuffer,
+      testSkeleton,
+    );
+    const parsedObj = unwrap(parsedRes);
+    if (!parsedObj.skeleton) throw new Error("parsedObj.skeleton missing");
+    const parsedObjSkeleton = parsedObj.skeleton;
 
-    const convertedSkeleton = convertBG3DToSkeletonResource(parsed.skeleton!);
+    const convertedSkeleton = convertBG3DToSkeletonResource(parsedObjSkeleton);
 
     expect(convertedSkeleton).toBeDefined();
     expect(convertedSkeleton.Hedr).toBeDefined();
@@ -329,6 +358,7 @@ describe("BG3D Skeleton Integration", () => {
 
     // Check header
     const header = Object.values(convertedSkeleton.Hedr)[0];
+    if (!header) throw new Error("convertedSkeleton.Hedr header missing");
     expect(header.obj.numJoints).toBe(3);
 
     // Check bone structure
@@ -336,24 +366,29 @@ describe("BG3D Skeleton Integration", () => {
     expect(bones).toHaveLength(3);
 
     const rootBone = bones.find((b) => b.obj.parentBone === -1);
-    expect(rootBone).toBeDefined();
-    expect(rootBone!.obj.name).toBe("root_bone");
+    if (!rootBone) throw new Error("rootBone missing");
+    expect(rootBone.obj.name).toBe("root_bone");
   });
 
   it("should handle animation conversion and round-trip with 100% precision", async () => {
     console.log("Testing animation conversion with full precision...");
 
     // Use test skeleton with animation data
-    const result = parseBG3DWithSkeletonResource(testBG3DBuffer, testSkeleton);
+    const resultRes = parseBG3DWithSkeletonResource(
+      testBG3DBuffer,
+      testSkeleton,
+    );
+    const resultObj = unwrap(resultRes);
+    if (!resultObj.skeleton) throw new Error("resultObj.skeleton missing");
+    const resultSkeleton = resultObj.skeleton;
 
     // Verify skeleton has animation data
-    expect(result.skeleton).toBeDefined();
-    expect(result.skeleton!.animations).toHaveLength(1);
-    expect(result.skeleton!.animations[0].name).toBe("idle");
-    expect(result.skeleton!.animations[0].keyframes[0]).toHaveLength(2); // 2 keyframes for root bone
+    expect(resultSkeleton.animations).toHaveLength(1);
+    expect(resultSkeleton.animations[0].name).toBe("idle");
+    expect(resultSkeleton.animations[0].keyframes[0]).toHaveLength(2); // 2 keyframes for root bone
 
     // Convert to glTF
-    const gltfDoc = bg3dParsedToGLTF(result);
+    const gltfDoc = bg3dParsedToGLTF(resultObj);
 
     // Check that glTF animations were created
     const gltfAnimations = gltfDoc.getRoot().listAnimations();
@@ -396,14 +431,16 @@ describe("BG3D Skeleton Integration", () => {
     const roundtrip = await gltfToBG3D(gltfDoc);
 
     // Verify animation data is perfectly preserved
-    expect(roundtrip.skeleton).toBeDefined();
-    expect(roundtrip.skeleton!.animations).toHaveLength(1);
-    expect(roundtrip.skeleton!.animations[0].name).toBe("idle");
+    if (!roundtrip.skeleton) throw new Error("roundtrip.skeleton missing");
+    const roundtripAnimSkeleton = roundtrip.skeleton;
+    expect(roundtripAnimSkeleton.animations).toHaveLength(1);
+    expect(roundtripAnimSkeleton.animations[0].name).toBe("idle");
 
     // Check that keyframes are preserved with exact precision
-    const originalKeyframes = result.skeleton!.animations[0].keyframes[0];
-    const roundtripKeyframes = roundtrip.skeleton!.animations[0].keyframes[0];
-    expect(roundtripKeyframes).toBeDefined();
+    const originalKeyframes = resultSkeleton.animations[0].keyframes[0];
+    if (!originalKeyframes) throw new Error("originalKeyframes missing");
+    const roundtripKeyframes = roundtripAnimSkeleton.animations[0].keyframes[0];
+    if (!roundtripKeyframes) throw new Error("roundtripKeyframes missing");
     expect(roundtripKeyframes.length).toBe(originalKeyframes.length);
 
     // Verify keyframe timing precision

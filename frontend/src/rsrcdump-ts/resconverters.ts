@@ -10,8 +10,8 @@ import { StructTemplateParser } from "./structtemplate";
 import { Result, ok, err } from "../types/result";
 
 export class Base16Converter implements ResourceConverter {
-  unpack(resource: Resource, _fork?: ResourceFork): string {
-    void _fork;
+  unpack(resource: Resource, fork?: ResourceFork): string {
+    console.log(fork);
     return Array.from(resource.data)
       .map((byte) => byte.toString(16).padStart(2, "0"))
       .join("")
@@ -66,9 +66,9 @@ export class StructConverter implements ResourceConverter {
     this.template = template;
   }
 
-  unpack(resource: Resource, _fork?: ResourceFork): Result<unknown, Error> {
+  unpack(resource: Resource, fork?: ResourceFork): Result<unknown, Error> {
     // Using `_fork` param for API compatibility; mark used so lint doesn't flag as unused
-    void _fork;
+    console.log(fork);
     if (this.template.isList) {
       const result: unknown[] = [];
 
@@ -110,9 +110,9 @@ export class StructConverter implements ResourceConverter {
     }
   }
 
-  pack(_obj: unknown): Result<Uint8Array, Error> {
+  pack(obj: unknown): Result<Uint8Array, Error> {
     // Keep `_obj` referenced to satisfy unused-vars rule; actual pack not implemented
-    void _obj;
+    consolie.log(obj);
     return err(
       new Error("JSON->Binary packing not implemented in StructConverter"),
     );

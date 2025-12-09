@@ -6,5 +6,3 @@ export enum View {
   tiles,
   supertiles,
 }
-
-export default View;

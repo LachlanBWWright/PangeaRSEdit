@@ -27,8 +27,6 @@ import { ParamTooltip } from "./ParamTooltip";
 export function ItemMenu({
   itemData,
   setItemData,
-  headerData: _headerData,
-  setHeaderData: _setHeaderData,
 }: {
   itemData: ItemData;
   setItemData: Updater<ItemData>;
@@ -38,8 +36,6 @@ export function ItemMenu({
   const globals = useAtomValue(Globals);
   const [selectedItem, setSelectedItem] = useAtom(SelectedItem);
   // Mark unused props as used to satisfy linter; they are intentionally passed in for consistency with parent
-  void _headerData;
-  void _setHeaderData;
 
   if (itemData.Itms === undefined) return null;
 
