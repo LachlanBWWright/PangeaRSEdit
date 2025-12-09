@@ -344,7 +344,9 @@ function parseAtar(
       const vResult = reader.readFloat32();
       if (!uResult.ok) return err(uResult.error);
       if (!vResult.ok) return err(vResult.error);
-      mesh.vertexUVs[i] = { u: uResult.value, v: 1 - vResult.value }; // Flip V coordinate
+      // Flip V coordinate: 3DMF uses bottom-left UV origin (like OpenGL),
+      // but many 3D formats use top-left origin. Flip V for compatibility.
+      mesh.vertexUVs[i] = { u: uResult.value, v: 1 - vResult.value };
     }
   }
   // Handle vertex normals

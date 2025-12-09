@@ -266,7 +266,7 @@ export function metaFileToBG3DParseResult(
 /**
  * Convert BG3DTexture to TQ3Pixmap format
  */
-function bg3dTextureToPIxmap(texture: BG3DTexture): TQ3Pixmap {
+function bg3dTextureToPixmap(texture: BG3DTexture): TQ3Pixmap {
   // Determine pixel type from source format
   let pixelType: PixelType;
   let bytesPerPixel: number;
@@ -462,7 +462,7 @@ export function bg3dParseResultToMetaFile(
     if (!texture) continue;
 
     const shader: TQ3TextureShader = {
-      pixmap: bg3dTextureToPIxmap(texture),
+      pixmap: bg3dTextureToPixmap(texture),
       boundaryU: (material.flags & BG3DMaterialFlags.BG3D_MATERIALFLAG_CLAMP_U)
         ? ShaderUVBoundary.Clamp
         : ShaderUVBoundary.Wrap,

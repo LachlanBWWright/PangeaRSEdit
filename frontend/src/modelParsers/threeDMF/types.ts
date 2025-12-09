@@ -185,7 +185,12 @@ export interface TOCEntry {
 }
 
 /**
- * Helper to convert a 4-byte number to a FourCC string
+ * Convert a 4-byte big-endian number to a human-readable FourCC string.
+ * FourCC (Four Character Code) is used to identify chunk types in 3DMF files.
+ * Example: 0x33444d46 => "3DMF", 0x746d7368 => "tmsh"
+ * 
+ * @param fourCC - A 32-bit unsigned integer representing a FourCC code
+ * @returns A 4-character string representation of the FourCC code
  */
 export function fourCCToString(fourCC: number): string {
   return String.fromCharCode(
@@ -197,7 +202,12 @@ export function fourCCToString(fourCC: number): string {
 }
 
 /**
- * Helper to convert a FourCC string to a 4-byte number
+ * Convert a 4-character FourCC string to a 32-bit big-endian number.
+ * FourCC (Four Character Code) is used to identify chunk types in 3DMF files.
+ * Example: "3DMF" => 0x33444d46, "tmsh" => 0x746d7368
+ * 
+ * @param str - A 4-character string representing a FourCC code
+ * @returns A 32-bit unsigned integer representation of the FourCC code, or 0 if invalid
  */
 export function stringToFourCC(str: string): number {
   if (str.length !== 4) {

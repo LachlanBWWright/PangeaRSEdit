@@ -179,12 +179,13 @@ function writeAtarUVChunk(writer: BigEndianWriter, mesh: TQ3TriMeshData): void {
   writer.writeUint32(0); // positionInArray
   writer.writeUint32(0); // attributeUseFlag
   
-  // Write UVs (note: flip V back when writing)
+  // Write UVs - flip V coordinate back to 3DMF's bottom-left origin
+  // (we flipped it during parsing for compatibility with other formats)
   for (let i = 0; i < mesh.numPoints; i++) {
     const uv = mesh.vertexUVs[i];
     if (uv) {
       writer.writeFloat32(uv.u);
-      writer.writeFloat32(1 - uv.v); // Flip V back for 3DMF
+      writer.writeFloat32(1 - uv.v);
     } else {
       writer.writeFloat32(0);
       writer.writeFloat32(0);
@@ -442,7 +443,7 @@ function writeMeshContainer(
  * @returns Result<ArrayBuffer, Error> The 3DMF file as an ArrayBuffer
  */
 export function write3DMFFromMetaFile(metaFile: TQ3MetaFile): Result<ArrayBuffer, Error> {
-  const writer = new BigEndianWriter(10 * 1024 * 1024); // 10MB initial capacity
+  const writer = new BigEndianWriter(1024 * 1024); // 1MB initial capacity (grows dynamically)
   const textureOffsets = new Map<number, number>();
   
   // Write 3DMF header

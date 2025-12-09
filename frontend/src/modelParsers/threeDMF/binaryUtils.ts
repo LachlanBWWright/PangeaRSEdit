@@ -95,9 +95,14 @@ export class BigEndianReader {
   }
 
   /**
-   * Read a uint64 (big-endian) as a JavaScript number
-   * Note: JavaScript numbers can't represent all 64-bit integers precisely,
-   * but for file offsets this should be fine
+   * Read a uint64 (big-endian) as a JavaScript number.
+   * 
+   * Note: JavaScript Number type can only safely represent integers up to
+   * Number.MAX_SAFE_INTEGER (2^53 - 1 = 9,007,199,254,740,991). Values
+   * larger than this may lose precision. For 3DMF files, this is typically
+   * acceptable as file offsets rarely exceed this limit.
+   * 
+   * @returns Result<number, Error> The 64-bit integer as a JavaScript number
    */
   readUint64(): Result<number, Error> {
     if (this.offset + 8 > this.buffer.byteLength) {
@@ -106,8 +111,9 @@ export class BigEndianReader {
     const high = this.view.getUint32(this.offset, false);
     const low = this.view.getUint32(this.offset + 4, false);
     this.offset += 8;
-    // Combine as JavaScript number (may lose precision for very large values)
-    return ok(high * 0x100000000 + low);
+    // Combine as JavaScript number (safe for values <= Number.MAX_SAFE_INTEGER)
+    const value = high * 0x100000000 + low;
+    return ok(value);
   }
 
   /**
