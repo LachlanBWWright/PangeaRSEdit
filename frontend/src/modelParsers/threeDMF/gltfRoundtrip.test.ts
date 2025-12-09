@@ -5,11 +5,11 @@
  */
 
 import { describe, it, expect } from "vitest";
-import { parse3DMF, bg3dParsedTo3DMF } from "../parse3dmf";
+import { parse3DMF } from "../parse3dmf";
 import { bg3dParsedToGLTF, gltfToBG3D } from "../parsedBg3dGitfConverter";
 import { parseSkeletonRsrcTS } from "../skeletonRsrc/parseSkeletonRsrcTS";
 import { parseBG3DWithSkeletonResource } from "../bg3dWithSkeleton";
-import { bg3dParsedToBG3D, BG3DParseResult } from "../parseBG3D";
+import { BG3DParseResult } from "../parseBG3D";
 import { readFileSync } from "fs";
 import { join } from "path";
 import { NodeIO } from "@gltf-transform/core";

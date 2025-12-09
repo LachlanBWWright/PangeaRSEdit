@@ -35,7 +35,7 @@ describe("3DMF Parser", () => {
       
       try {
         fileBuffer = readFileSync(testFile).buffer;
-      } catch (e) {
+      } catch {
         console.log("Test file not available, skipping test");
         return;
       }
@@ -55,7 +55,7 @@ describe("3DMF Parser", () => {
       
       try {
         fileBuffer = readFileSync(testFile).buffer;
-      } catch (e) {
+      } catch {
         console.log("Test file not available, skipping test");
         return;
       }
@@ -75,7 +75,7 @@ describe("3DMF Parser", () => {
       
       try {
         fileBuffer = readFileSync(testFile).buffer;
-      } catch (e) {
+      } catch {
         console.log("Test file not available, skipping test");
         return;
       }
@@ -103,7 +103,7 @@ describe("3DMF Parser", () => {
       
       try {
         fileBuffer = readFileSync(testFile).buffer;
-      } catch (e) {
+      } catch {
         console.log("Test file not available, skipping test");
         return;
       }
@@ -128,7 +128,7 @@ describe("3DMF Parser", () => {
       
       try {
         fileBuffer = readFileSync(testFile).buffer;
-      } catch (e) {
+      } catch {
         console.log("Test file not available, skipping test");
         return;
       }
@@ -150,7 +150,7 @@ describe("3DMF Parser", () => {
       
       try {
         originalBuffer = readFileSync(testFile).buffer;
-      } catch (e) {
+      } catch {
         console.log("Test file not available, skipping test");
         return;
       }
@@ -208,7 +208,7 @@ describe("3DMF Parser", () => {
       
       try {
         originalBuffer = readFileSync(testFile).buffer;
-      } catch (e) {
+      } catch {
         console.log("Test file not available, skipping test");
         return;
       }
@@ -260,7 +260,7 @@ describe("3DMF Parser", () => {
         
         try {
           fileBuffer = readFileSync(testFile).buffer;
-        } catch (e) {
+        } catch {
           console.log(`${filename} not available, skipping`);
           return;
         }
@@ -280,7 +280,7 @@ describe("3DMF Parser", () => {
         
         try {
           fileBuffer = readFileSync(testFile).buffer;
-        } catch (e) {
+        } catch {
           console.log(`${filename} not available, skipping`);
           return;
         }

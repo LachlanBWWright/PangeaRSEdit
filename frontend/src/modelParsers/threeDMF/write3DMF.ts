@@ -25,9 +25,6 @@ import {
   CHUNK_TXMM,
   CHUNK_TXPM,
   CHUNK_SHDR,
-  CHUNK_RFRN,
-  CHUNK_TOC,
-  stringToFourCC,
 } from "./types";
 
 /**
@@ -462,8 +459,6 @@ export function write3DMFFromMetaFile(metaFile: TQ3MetaFile): Result<ArrayBuffer
     // Skip the bgng internal data (dspg, dgst)
     // For simplicity, write minimal bgng data
     
-    const groupContentStart = writer.tell();
-    
     // Write each mesh in the group
     for (let meshIdx = 0; meshIdx < group.numMeshes; meshIdx++) {
       const mesh = group.meshes[meshIdx];
@@ -475,10 +470,6 @@ export function write3DMFFromMetaFile(metaFile: TQ3MetaFile): Result<ArrayBuffer
     // Write endg
     writer.writeUint32(CHUNK_ENDG);
     writer.writeUint32(0);
-    
-    // Go back and write the bgng size
-    const groupContentEnd = writer.tell();
-    const groupSize = groupContentEnd - groupContentStart - 8; // Exclude endg chunk
     
     // Note: bgng size typically just covers internal metadata, not children
     // For strict compatibility, we'd need to match the original file's structure
