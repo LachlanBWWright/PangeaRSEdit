@@ -27,7 +27,7 @@ import {
 import {
   SplineItemType as OttoSplineItemType,
   splineItemTypeNames as SplineItemTypeNames,
-} from "./SplineItemType";
+} from "./ottoSplineItemType";
 
 export function getSplineItemName(
   globals: GlobalsInterface,

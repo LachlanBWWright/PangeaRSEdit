@@ -6,7 +6,7 @@ import {
 import { useAtom, useAtomValue } from "jotai";
 import { Button } from "@/components/ui/button";
 import { ClickToAddItem, SelectedItem } from "../../../data/items/itemAtoms";
-import { TerrainItemTypeParams } from "../../../data/items/TerrainItemType";
+import { TerrainItemTypeParams } from "../../../data/items/ottoItemType";
 import type { ParamDescription } from "../../../data/items/itemParams";
 import { parseU16, parseU8 } from "../../../utils/numberParsers";
 import { useEffect } from "react";

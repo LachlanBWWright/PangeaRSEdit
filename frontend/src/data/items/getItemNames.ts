@@ -31,7 +31,7 @@ import {
 import {
   ItemType as OttoItemType,
   itemTypeNames as TerrainItemTypeNames,
-} from "./TerrainItemType";
+} from "./ottoItemType";
 
 export function getItemName(globals: GlobalsInterface, itemNumber: number) {
   if (globals.GAME_TYPE === Game.BILLY_FRONTIER) {

@@ -3,7 +3,7 @@ import { Updater } from "use-immer";
 import { SplineItem } from "@/python/structSpecs/LevelTypes";
 import { SplineData } from "@/python/structSpecs/LevelTypes";
 import { useAtom, useAtomValue } from "jotai";
-import { TerrainItemTypeParams } from "../../../data/items/TerrainItemType";
+import { TerrainItemTypeParams } from "../../../data/items/ottoItemType";
 import { ParamTooltip } from "../items/ParamTooltip";
 import { getParamTooltip } from "../items/getParamTooltip";
 import { parseU16, parseU8 } from "../../../utils/numberParsers";

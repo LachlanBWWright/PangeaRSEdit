@@ -1,6 +1,6 @@
-import { FenceType } from "../../data/fences/FenceType";
-import { ItemType } from "../../data/items/TerrainItemType";
-import { SplineItemType } from "../../data/splines/SplineItemType";
+import { FenceType } from "../../data/fences/ottoFenceType";
+import { ItemType } from "../../data/items/ottoItemType";
+import { SplineItemType } from "../../data/splines/ottoSplineItemType";
 import { WaterBodyType } from "../../data/water/ottoWaterBodyType";
 
 export type MakeRequired<T, K extends keyof T> = T & Required<Pick<T, K>>;

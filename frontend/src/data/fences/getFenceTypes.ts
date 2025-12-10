@@ -10,7 +10,7 @@ import { FenceType as CroMagFenceType } from "./croMagFenceType";
 //Nanosaur 2
 import { FenceType as Nanosaur2FenceType } from "./nanosaur2FenceType";
 //Otto Matic
-import { FenceType as OttoFenceType } from "./FenceType";
+import { FenceType as OttoFenceType } from "./ottoFenceType";
 import { Result, ok, err } from "../../types/result";
 
 export function getFenceTypes(globals: GlobalsInterface): Result<string[], Error> {

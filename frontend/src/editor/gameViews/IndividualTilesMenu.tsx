@@ -17,7 +17,7 @@ import {
   TopologyOpacity,
   TopologyValue,
   TopologyValueMode,
-} from "../../../data/tiles/tileAtoms";
+} from "../../data/tiles/tileAtoms";
 import { useAtom } from "jotai";
 import {
   Select,

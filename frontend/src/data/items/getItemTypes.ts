@@ -10,7 +10,7 @@ import { ItemType as CroMagItemType } from "./croMagItemType";
 import { ItemType as NanosaurItemType } from "./nanosaurItemType";
 //Nanosaur 2
 import { ItemType as Nanosaur2ItemType } from "./nanosaur2ItemType";
-import { ItemType as OttoItemType } from "./TerrainItemType";
+import { ItemType as OttoItemType } from "./ottoItemType";
 import { Result, ok, err } from "../../types/result";
 
 export function getItemTypes(globals: GlobalsInterface): Result<string[], Error> {

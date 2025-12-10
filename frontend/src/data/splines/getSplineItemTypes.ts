@@ -9,7 +9,7 @@ import { SplineItemType as CroMagSplineItemType } from "./croMagSplineItemType";
 
 //Nanosaur 2
 import { SplineItemType as Nanosaur2SplineItemType } from "./nanosaur2SplineItemType";
-import { SplineItemType as OttoSplineItemType } from "./SplineItemType";
+import { SplineItemType as OttoSplineItemType } from "./ottoSplineItemType";
 import { Result, ok, err } from "../../types/result";
 
 export function getSplineItemTypes(globals: GlobalsInterface): Result<string[], Error> {

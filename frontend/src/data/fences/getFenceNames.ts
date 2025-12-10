@@ -28,7 +28,7 @@ import {
 import {
   FenceType as OttoFenceType,
   fenceTypeNames as FenceTypeNames,
-} from "./FenceType";
+} from "./ottoFenceType";
 
 export function getFenceName(globals: GlobalsInterface, itemNumber: number) {
   if (globals.GAME_TYPE === Game.BILLY_FRONTIER) {

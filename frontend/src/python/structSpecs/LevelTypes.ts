@@ -5,7 +5,7 @@
  * Game-specific variations should be created in separate files.
  */
 
-import { FenceType } from "../../data/fences/FenceType";
+import { FenceType } from "../../data/fences/ottoFenceType";
 import { WaterBodyType } from "../../data/water/ottoWaterBodyType";
 
 // ============================================================================
