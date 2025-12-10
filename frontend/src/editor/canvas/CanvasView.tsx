@@ -19,7 +19,7 @@ import {
   FenceData,
   SplineData,
   TerrainData,
-} from "@/python/structSpecs/ottoMaticLevelData";
+} from "@/python/structSpecs/LevelTypes";
 
 enum View {
   fences,

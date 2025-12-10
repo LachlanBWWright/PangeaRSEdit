@@ -1,17 +1,17 @@
-import { ottoMaticLevel } from "../../python/structSpecs/ottoMaticInterface";
 import {
+  LevelData,
   HeaderData,
   ItemData,
   LiquidData,
   FenceData,
   SplineData,
   TerrainData,
-} from "../../python/structSpecs/ottoMaticLevelData";
+} from "../../python/structSpecs/LevelTypes";
 import { Result, ok, err } from "../../types/result";
 
 /**
  * Utility functions for combining and splitting level data between atomic types
- * and the complete ottoMaticLevel structure for file I/O operations
+ * and the complete LevelData structure for file I/O operations
  */
 
 export interface AtomicLevelData {
@@ -20,15 +20,14 @@ export interface AtomicLevelData {
   liquidData: LiquidData | null;
   fenceData: FenceData | null;
   splineData: SplineData | null;
-  // Terrain and tile data (no longer using Partial)
   terrainData: TerrainData | null;
 }
 
 /**
- * Split a complete ottoMaticLevel into atomic data types
+ * Split a complete LevelData into atomic data types
  */
 export function splitLevelData(
-  levelData: ottoMaticLevel | null,
+  levelData: LevelData | null,
 ): AtomicLevelData {
   if (!levelData) {
     return {
@@ -113,12 +112,12 @@ export function splitLevelData(
 }
 
 /**
- * Combine atomic data types back into a complete ottoMaticLevel
+ * Combine atomic data types back into a complete LevelData
  * Returns a Result instead of throwing
  */
 export function combineLevelData(
   atomicData: AtomicLevelData,
-): Result<ottoMaticLevel, Error> {
+): Result<LevelData, Error> {
   const {
     headerData,
     itemData,
@@ -150,7 +149,7 @@ export function combineLevelData(
     ...liquidData,
     ...fenceData,
     ...splineData,
-  } satisfies ottoMaticLevel);
+  } satisfies LevelData);
 }
 
 /**

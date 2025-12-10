@@ -1,8 +1,8 @@
-import { ottoTileAttribute } from "../../python/structSpecs/ottoMaticInterface";
+import { TileAttribute } from "@/python/structSpecs/LevelTypes";
 import {
   TerrainData,
   HeaderData,
-} from "../../python/structSpecs/ottoMaticLevelData";
+} from "@/python/structSpecs/LevelTypes";
 import { Layer, Image } from "react-konva";
 import { Updater } from "use-immer";
 import {
@@ -19,7 +19,7 @@ import {
   TileBrushType,
 } from "../../data/tiles/tileAtoms";
 import { useAtomValue } from "jotai";
-import { Game, Globals } from "../../data/globals/globals";
+import { Globals } from "../../data/globals/globals";
 import { useMemo } from "react";
 import { createImageCanvas } from "./tiles/tilesUtils";
 import { elevationToRGBA, flattenCoords } from "./tiles/tilesUtils";
@@ -47,26 +47,22 @@ export function Tiles({
   isEditingTopology: boolean;
 }) {
   const tileViewMode = useAtomValue(TileViewMode);
-  const globals = useAtomValue(Globals);
 
-  // For games that use individual tiles (Bugdom, Nanosaur), Layr contains tile indices
-  // not Atrb references. Return null for tile views that don't apply.
-  const usesIndividualTiles =
-    globals.GAME_TYPE === Game.BUGDOM || globals.GAME_TYPE === Game.NANOSAUR;
+  // Check data structure to determine tile type rather than game type
+  // Games with individual tiles have Layr containing tile indices but no Atrb tile attributes
+  // Standard games have Atrb with tile flags
+  const hasAtrbData = Boolean(terrainData.Atrb?.[1000]?.obj?.length);
+  const hasLayrData = Boolean(terrainData.Layr?.[1000]?.obj);
 
   const tileGrid = useMemo(() => {
-    // For individual tile games, Layr doesn't reference Atrb, so return empty array
-    if (
-      usesIndividualTiles ||
-      !terrainData.Atrb?.[1000]?.obj?.length ||
-      !terrainData.Layr?.[1000]?.obj
-    ) {
+    // If no Atrb data or Layr doesn't reference Atrb, return empty array
+    if (!hasAtrbData || !hasLayrData) {
       return [];
     }
-    return terrainData.Layr[1000].obj
-      .map((atrbIdx: number) => terrainData.Atrb[1000].obj[atrbIdx])
-      .filter((tile): tile is ottoTileAttribute => tile !== undefined);
-  }, [terrainData.Layr, terrainData.Atrb, usesIndividualTiles]);
+    return terrainData.Layr![1000].obj
+      .map((atrbIdx: number) => terrainData.Atrb![1000].obj[atrbIdx])
+      .filter((tile): tile is TileAttribute => tile !== undefined);
+  }, [terrainData.Layr, terrainData.Atrb, hasAtrbData, hasLayrData]);
 
   // For Topology view, check if YCrd data exists
   if (tileViewMode === TileViews.Topology) {
@@ -311,7 +307,7 @@ export function EmptyTiles({
   headerData: HeaderData;
   terrainData: TerrainData;
   setTerrainData: Updater<TerrainData>;
-  tileGrid: ottoTileAttribute[];
+  tileGrid: TileAttribute[];
 }) {
   const globals = useAtomValue(Globals);
   // Use Jotai atoms for tile editing state
@@ -417,7 +413,7 @@ export function ElectricFloor0Tiles({
   headerData: HeaderData;
   terrainData: TerrainData;
   setTerrainData: Updater<TerrainData>;
-  tileGrid: ottoTileAttribute[];
+  tileGrid: TileAttribute[];
 }) {
   const globals = useAtomValue(Globals);
   // Use Jotai atoms for tile editing state
@@ -524,7 +520,7 @@ export function ElectricFloor1Tiles({
   headerData: HeaderData;
   terrainData: TerrainData;
   setTerrainData: Updater<TerrainData>;
-  tileGrid: ottoTileAttribute[];
+  tileGrid: TileAttribute[];
 }) {
   const globals = useAtomValue(Globals);
 

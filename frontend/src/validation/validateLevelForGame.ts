@@ -9,7 +9,7 @@ import { Game } from "../data/globals/globals";
 import { Result, ok, err } from "../types/result";
 
 // Import all game validators
-import { validateOttoMaticLevel, ottoMaticLevelSchema } from "./games/ottoMatic";
+import { validateOttoMaticLevel, LevelDataSchema } from "./games/ottoMatic";
 import { validateBugdomLevel, bugdomLevelSchema } from "./games/bugdom";
 import { validateBugdom2Level, bugdom2LevelSchema } from "./games/bugdom2";
 import { validateNanosaurLevel, nanosaurLevelSchema } from "./games/nanosaur";
@@ -30,7 +30,7 @@ export {
 
 // Re-export schemas
 export {
-  ottoMaticLevelSchema,
+  LevelDataSchema,
   bugdomLevelSchema,
   bugdom2LevelSchema,
   nanosaurLevelSchema,

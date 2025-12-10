@@ -1,9 +1,9 @@
 import { Button } from "@/components/ui/button";
 import { Updater } from "use-immer";
-import { ottoSplineItem } from "../../../python/structSpecs/ottoMaticInterface";
-import { SplineData } from "../../../python/structSpecs/ottoMaticLevelData";
+import { SplineItem } from "@/python/structSpecs/LevelTypes";
+import { SplineData } from "@/python/structSpecs/LevelTypes";
 import { useAtom, useAtomValue } from "jotai";
-import { ottoItemTypeParams } from "../../../data/items/ottoItemType";
+import { TerrainItemTypeParams } from "../../../data/items/TerrainItemType";
 import { ParamTooltip } from "../items/ParamTooltip";
 import { getParamTooltip } from "../items/getParamTooltip";
 import { parseU16, parseU8 } from "../../../utils/numberParsers";
@@ -74,7 +74,7 @@ export function EditSplineItemMenu({
   splineItemData,
 }: {
   setSplineData: Updater<SplineData>;
-  splineItemData: ottoSplineItem[];
+  splineItemData: SplineItem[];
 }) {
   const selectedSpline = useAtomValue(SelectedSpline);
   const [selectedSplineItem, setSelectedSplineItem] =
@@ -130,7 +130,7 @@ export function EditSplineItemMenu({
         <ParamTooltip
           label={<span>Flags</span>}
           tooltip={getParamTooltip(
-            ottoItemTypeParams[currentSplineItemData.type].flags,
+            TerrainItemTypeParams[currentSplineItemData.type].flags,
           )}
         />
         <Input
@@ -156,7 +156,7 @@ export function EditSplineItemMenu({
         {([0, 1, 2, 3] as const).map((i) => {
           const paramKey = `p${i}` as const;
           const param =
-            ottoItemTypeParams[currentSplineItemData.type][paramKey];
+            TerrainItemTypeParams[currentSplineItemData.type][paramKey];
           const value = currentSplineItemData[paramKey];
           const setValue = (v: number) => {
             setSplineData((splineData) => {

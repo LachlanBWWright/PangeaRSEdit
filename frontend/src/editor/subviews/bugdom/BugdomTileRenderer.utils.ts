@@ -1,4 +1,4 @@
-import { HeaderData } from "@/python/structSpecs/ottoMaticLevelData";
+import { HeaderData } from "@/python/structSpecs/LevelTypes";
 import { Game } from "@/data/globals/globals";
 
 // Tile bit masks from Bugdom source code (terrain.h)

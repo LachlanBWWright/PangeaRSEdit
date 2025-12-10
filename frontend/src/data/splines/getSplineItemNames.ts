@@ -26,8 +26,8 @@ import {
 } from "./nanosaur2SplineItemType";
 import {
   SplineItemType as OttoSplineItemType,
-  splineItemTypeNames as ottoSplineItemTypeNames,
-} from "./ottoSplineItemType";
+  splineItemTypeNames as SplineItemTypeNames,
+} from "./SplineItemType";
 
 export function getSplineItemName(
   globals: GlobalsInterface,
@@ -84,8 +84,8 @@ function getNanosaur2ItemName(number: number) {
 }
 
 function getOttoItemName(number: number) {
-  if (number in ottoSplineItemTypeNames)
-    return ottoSplineItemTypeNames[number as OttoSplineItemType];
+  if (number in SplineItemTypeNames)
+    return SplineItemTypeNames[number as OttoSplineItemType];
 
   return "Unknown Otto Item.";
 }

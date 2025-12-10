@@ -1,7 +1,7 @@
 import { PyodideMessage, PyodideResponse } from "../../python/pyodideWorker";
 import { LzssMessage, LzssResponse } from "@/utils/lzssWorker";
 import LzssWorker from "../utils/lzssWorker?worker";
-import { ottoMaticLevel } from "../../python/structSpecs/ottoMaticInterface";
+import { LevelData } from "@/python/structSpecs/LevelTypes";
 import { Game, type GlobalsInterface } from "../globals/globals";
 
 /**
@@ -19,7 +19,7 @@ export async function saveMap({
   mapFile: File | undefined;
   mapImagesFile: File | undefined;
   mapImages: HTMLCanvasElement[] | undefined;
-  data: ottoMaticLevel;
+  data: LevelData;
   pyodideWorker: Worker;
   globals: GlobalsInterface;
   toast: (opts: { title: string; description?: string }) => void;
@@ -78,7 +78,7 @@ async function processMapData({
   pyodideWorker,
   globals,
 }: {
-  data: ottoMaticLevel;
+  data: LevelData;
   pyodideWorker: Worker;
   globals: GlobalsInterface;
 }): Promise<ArrayBuffer> {

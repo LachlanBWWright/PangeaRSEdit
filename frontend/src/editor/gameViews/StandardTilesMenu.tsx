@@ -1,3 +1,10 @@
+/**
+ * Standard Tiles Menu
+ * 
+ * For games that use standard supertile-based terrain (Bugdom 2, Nanosaur 2, Cro-Mag, Billy Frontier)
+ * Has topology editing and empty tile flags, but no electric floor options
+ */
+
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
@@ -13,7 +20,7 @@ import {
   TileEditingEnabled,
   TileBrushType,
 } from "../../../data/tiles/tileAtoms";
-import { useAtom, useAtomValue } from "jotai";
+import { useAtom } from "jotai";
 import {
   Select,
   SelectContent,
@@ -25,10 +32,8 @@ import { useEffect } from "react";
 import { Switch } from "@/components/ui/switch";
 import { HeaderData } from "@/python/structSpecs/LevelTypes";
 import { Updater } from "use-immer";
-import { Globals, Game } from "../../../data/globals/globals";
 
-
-export function TilesMenu({
+export function StandardTilesMenu({
   headerData,
   setHeaderData,
 }: {
@@ -42,28 +47,12 @@ export function TilesMenu({
   const [value, setValue] = useAtom(TopologyValue);
   const [toplogyOpacity, setTopologyOpacity] = useAtom(TopologyOpacity);
   const [canvasViewMode, setCanvasViewMode] = useAtom(CanvasViewMode);
-  const [tileEditingEnabled, setTileEditingEnabled] =
-    useAtom(TileEditingEnabled);
-  const [selectedTileBrushType, setSelectedTileBrushType] =
-    useAtom(TileBrushType);
-  const globals = useAtomValue(Globals);
+  const [tileEditingEnabled, setTileEditingEnabled] = useAtom(TileEditingEnabled);
+  const [selectedTileBrushType, setSelectedTileBrushType] = useAtom(TileBrushType);
 
   const header = headerData?.Hedr?.[1000]?.obj;
   const minY = header?.minY || 0;
   const maxY = header?.maxY || 0;
-
-  // Determine which tile options are available for this game
-  const gameType = globals.GAME_TYPE;
-  
-  // Electric Floor options are only available in Otto Matic
-  const hasElectricFloorOptions = gameType === Game.OTTO_MATIC;
-  
-  // Some games may have Atrb data (for tile attribute editing)
-  // Nanosaur 1 and Bugdom 1 use individual tiles, not tile attributes like Otto Matic
-  const usesIndividualTiles = gameType === Game.BUGDOM || gameType === Game.NANOSAUR;
-  
-  // Only show tile flags if game uses tile attribute system
-  const hasTileFlags = !usesIndividualTiles;
 
   useEffect(() => {
     if (tileView !== TileViews.Topology) {
@@ -93,107 +82,53 @@ export function TilesMenu({
     });
   };
 
-  // Calculate grid columns based on available buttons
-  // Use explicit Tailwind classes to ensure they're included in the CSS bundle
-  const buttonCount = 1 + (hasTileFlags ? 1 : 0) + (hasElectricFloorOptions ? 2 : 0);
-  const gridColsClass = buttonCount >= 4 ? "grid-cols-4" 
-    : buttonCount === 3 ? "grid-cols-3" 
-    : buttonCount === 2 ? "grid-cols-2" 
-    : "grid-cols-1";
-
   return (
     <div className="flex flex-col gap-2">
-      <div className={`grid ${gridColsClass} gap-2`}>
+      <div className="grid grid-cols-2 gap-2">
         <Button
           selected={tileView === TileViews.Topology}
           onClick={() => setTileView(TileViews.Topology)}
         >
           Topology
         </Button>
-        {hasTileFlags && (
-          <Button
-            selected={tileView === TileViews.Flags}
-            onClick={() => setTileView(TileViews.Flags)}
-          >
-            Empty Tiles
-          </Button>
-        )}
-        {hasElectricFloorOptions && (
-          <>
-            <Button
-              selected={tileView === TileViews.ElectricFloor0}
-              onClick={() => setTileView(TileViews.ElectricFloor0)}
-            >
-              Electric Floor 1
-            </Button>
-            <Button
-              selected={tileView === TileViews.ElectricFloor1}
-              onClick={() => setTileView(TileViews.ElectricFloor1)}
-            >
-              Electric Floor 2
-            </Button>
-          </>
-        )}
+        <Button
+          selected={tileView === TileViews.Flags}
+          onClick={() => setTileView(TileViews.Flags)}
+        >
+          Empty Tiles
+        </Button>
       </div>
-
-      {/* Info message for games without tile attribute editing */}
-      {usesIndividualTiles && tileView !== TileViews.Topology && (
-        <div className="text-sm text-gray-500 p-2 bg-gray-800 rounded">
-          <p>Tile flag editing is not available for {globals.GAME_NAME}.</p>
-          <p>This game uses individual tiles instead of tile attributes.</p>
-        </div>
-      )}
-
-      <div className="grid grid-cols-[auto_1fr_auto_1fr] gap-2 items-center"></div>
 
       {tileView === TileViews.Topology && (
         <div className="grid grid-cols-[auto_1fr_auto_1fr] gap-2 items-center">
           <p>Brush Mode</p>
           <Select
             value={brushMode.toString()}
-            onValueChange={(e) => {
-              setBrushMode(parseInt(e));
-            }}
+            onValueChange={(e) => setBrushMode(parseInt(e))}
           >
             <SelectTrigger>
-              {brushMode === TopologyBrushMode.CIRCLE_BRUSH
-                ? "Circle Brush"
-                : "Square Brush"}
+              {brushMode === TopologyBrushMode.CIRCLE_BRUSH ? "Circle Brush" : "Square Brush"}
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value={TopologyBrushMode.CIRCLE_BRUSH.toString()}>
-                Circle Brush
-              </SelectItem>
-              <SelectItem value={TopologyBrushMode.SQUARE_BRUSH.toString()}>
-                Square Brush
-              </SelectItem>
+              <SelectItem value={TopologyBrushMode.CIRCLE_BRUSH.toString()}>Circle Brush</SelectItem>
+              <SelectItem value={TopologyBrushMode.SQUARE_BRUSH.toString()}>Square Brush</SelectItem>
             </SelectContent>
           </Select>
 
           <p>Adjustment Mode</p>
           <Select
             value={valueMode.toString()}
-            onValueChange={(e) => {
-              setValueMode(parseInt(e));
-            }}
+            onValueChange={(e) => setValueMode(parseInt(e))}
           >
             <SelectTrigger>
               {valueMode === TopologyValueMode.SET_VALUE && "Set To Value"}
               {valueMode === TopologyValueMode.DELTA_VALUE && "Adjust By Value"}
-              {valueMode === TopologyValueMode.DELTA_WITH_DROPOFF &&
-                "Adjust By Value (With Dropoff)"}
+              {valueMode === TopologyValueMode.DELTA_WITH_DROPOFF && "Adjust By Value (With Dropoff)"}
             </SelectTrigger>
-
             <SelectContent>
-              <SelectItem value={TopologyValueMode.SET_VALUE.toString()}>
-                Set To Value
-              </SelectItem>
-              <SelectItem value={TopologyValueMode.DELTA_VALUE.toString()}>
-                Adjust By Value
-              </SelectItem>
-              <SelectItem
-                value={TopologyValueMode.DELTA_WITH_DROPOFF.toString()}
-              >
+              <SelectItem value={TopologyValueMode.SET_VALUE.toString()}>Set To Value</SelectItem>
+              <SelectItem value={TopologyValueMode.DELTA_VALUE.toString()}>Adjust By Value</SelectItem>
+              <SelectItem value={TopologyValueMode.DELTA_WITH_DROPOFF.toString()}>
                 Adjust By Value (With Dropoff)
               </SelectItem>
             </SelectContent>
@@ -220,33 +155,25 @@ export function TilesMenu({
           <Input
             type="number"
             defaultValue={toplogyOpacity}
-            onChange={(e) =>
-              setTopologyOpacity(parseFloat(e.target.value) || 1)
-            }
+            onChange={(e) => setTopologyOpacity(parseFloat(e.target.value) || 1)}
           />
           <div className="flex flex-row justify-center gap-2 items-center col-span-2">
             <p>Show 3D Map (View Only)</p>
             <Switch
               checked={canvasViewMode === CanvasView.THREE_D}
-              onCheckedChange={(e) => {
-                setCanvasViewMode(e ? CanvasView.THREE_D : CanvasView.TWO_D);
-              }}
+              onCheckedChange={(e) => setCanvasViewMode(e ? CanvasView.THREE_D : CanvasView.TWO_D)}
             />
           </div>
         </div>
       )}
 
-      {hasTileFlags && (tileView === TileViews.Flags ||
-        tileView === TileViews.ElectricFloor0 ||
-        tileView === TileViews.ElectricFloor1) && (
+      {tileView === TileViews.Flags && (
         <div className="grid grid-cols-[auto_1fr_auto_1fr] gap-2 items-center">
           <div className="flex flex-row justify-center gap-2 items-center col-span-4">
             <p>Enable Tile Editing</p>
             <Switch
               checked={tileEditingEnabled}
-              onCheckedChange={(e) => {
-                setTileEditingEnabled(e);
-              }}
+              onCheckedChange={(e) => setTileEditingEnabled(e)}
             />
           </div>
 
@@ -279,12 +206,7 @@ export function TilesMenu({
           )}
 
           <p className="col-span-4 mt-2">
-            {tileView === TileViews.Flags &&
-              "Click on the map to mark tiles as empty (white) or not empty (black)."}
-            {tileView === TileViews.ElectricFloor0 &&
-              "Click on the map to mark tiles as Electric Floor 1 (white) or not (black)."}
-            {tileView === TileViews.ElectricFloor1 &&
-              "Click on the map to mark tiles as Electric Floor 2 (white) or not (black)."}
+            Click on the map to mark tiles as empty (white) or not empty (black).
           </p>
         </div>
       )}

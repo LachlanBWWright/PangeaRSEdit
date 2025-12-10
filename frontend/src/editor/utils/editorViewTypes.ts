@@ -12,7 +12,7 @@ import type {
   FenceData,
   SplineData,
   TerrainData,
-} from "../../python/structSpecs/ottoMaticLevelData";
+} from "@/python/structSpecs/LevelTypes";
 
 /**
  * Data history for undo/redo functionality

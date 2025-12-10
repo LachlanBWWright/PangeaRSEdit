@@ -1,5 +1,5 @@
 import { Updater } from "use-immer";
-import { ottoMaticLevel } from "../../python/structSpecs/ottoMaticInterface";
+import { LevelData } from "@/python/structSpecs/LevelTypes";
 import { SPLINE_KEY_BASE } from "../../editor/subviews/splines/splineUtils";
 import { Game, GlobalsInterface } from "../globals/globals";
 import { Result, ok, err } from "../../types/result";
@@ -90,7 +90,7 @@ export function preprocessJson(
 }
 
 export function ottoPreprocessor(
-  setData: Updater<ottoMaticLevel>,
+  setData: Updater<LevelData>,
   globals: GlobalsInterface,
 ) {
   setData((data) => {

@@ -6,7 +6,7 @@
  */
 
 import { Updater } from "use-immer";
-import type { ItemData, LiquidData, FenceData, SplineData } from "../../python/structSpecs/ottoMaticLevelData";
+import type { ItemData, LiquidData, FenceData, SplineData } from "@/python/structSpecs/LevelTypes";
 
 /**
  * Creates an Updater wrapper that only applies updates when data is non-null.

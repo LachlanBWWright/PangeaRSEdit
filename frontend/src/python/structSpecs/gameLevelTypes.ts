@@ -14,7 +14,7 @@
  * - Checkpoints (CkPt) - only in Bugdom 2, Nanosaur 2, Billy Frontier
  */
 
-import { FenceType } from "../../data/fences/ottoFenceType";
+import { FenceType } from "../../data/fences/FenceType";
 import { WaterBodyType } from "../../data/water/ottoWaterBodyType";
 
 // ============================================================================

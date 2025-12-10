@@ -1,26 +1,21 @@
 /**
  * Common Level Data Types
  *
- * This file contains generic level data types that are shared across all games.
- * Game-specific extensions should be imported from their respective files
- * (e.g., ottoMaticSpecificData.ts, bugdomSpecificData.ts).
- *
- * These types replace the previous "OttoMaticLevelData" naming which was used
- * generically across all games.
+ * These are generic level data structures shared across ALL Pangea games.
+ * Game-specific variations should be created in separate files.
  */
 
-import { FenceType } from "../../data/fences/ottoFenceType";
+import { FenceType } from "../../data/fences/FenceType";
 import { WaterBodyType } from "../../data/water/ottoWaterBodyType";
 
 // ============================================================================
-// COMMON HEADER TYPES
+// HEADER TYPES
 // ============================================================================
 
 /**
- * Base header interface shared by all games.
- * Games may extend this with additional fields.
+ * Base header interface - fields common to ALL games
  */
-export interface CommonHeader {
+export interface BaseHeader {
   version: number;
   numItems: number;
   mapWidth: number;
@@ -33,10 +28,9 @@ export interface CommonHeader {
 }
 
 /**
- * Full header format (Otto Matic, Cro-Mag Rally style)
- * Includes numTilePages, numTiles, numUniqueSupertiles, numWaterPatches, numCheckpoints
+ * Standard header - used by Otto Matic, Bugdom 2, Nanosaur 2, Billy Frontier
  */
-export interface FullHeader extends CommonHeader {
+export interface StandardHeader extends BaseHeader {
   numTilePages: number;
   numTiles: number;
   numUniqueSupertiles: number;
@@ -45,19 +39,9 @@ export interface FullHeader extends CommonHeader {
 }
 
 /**
- * Simplified header format (Bugdom 2, Billy Frontier style)
- * No numTilePages or numTiles
+ * Cro-Mag header - uses numPaths instead of numWaterPatches
  */
-export interface SimplifiedHeader extends CommonHeader {
-  numUniqueSupertiles: number;
-  numWaterPatches: number;
-  numCheckpoints: number;
-}
-
-/**
- * Cro-Mag Rally header - uses numPaths instead of numWaterPatches
- */
-export interface CroMagHeader extends CommonHeader {
+export interface CroMagHeader extends BaseHeader {
   numTilePages: number;
   numTiles: number;
   numUniqueSupertiles: number;
@@ -66,13 +50,13 @@ export interface CroMagHeader extends CommonHeader {
 }
 
 // ============================================================================
-// COMMON TILE AND TERRAIN TYPES
+// TILE AND TERRAIN TYPES
 // ============================================================================
 
 /**
- * Common tile attribute type
+ * Tile attribute - flags and parameters for each tile
  */
-export interface CommonTileAttribute {
+export interface TileAttribute {
   flags: number;
   p0: number;
   p1: number;
@@ -87,68 +71,53 @@ export interface ExtendedTileAttribute {
   parm1: number;
   parm2: number;
   undefined: number;
-  // Compatibility fields
   flags: number;
   p0: number;
   p1: number;
 }
 
 /**
- * Common supertile grid with isEmpty flag (Otto Matic style)
+ * Supertile grid entry with isEmpty flag
  */
-export interface CommonSupertileGrid {
+export interface SupertileGridEntry {
   padByte?: string;
   isEmpty: boolean;
   superTileId: number;
 }
 
 /**
- * Simplified supertile grid (-1 = empty, Bugdom 2 style)
+ * Simplified supertile grid entry (-1 = empty)
  */
-export interface SimplifiedSupertileGrid {
-  superTileId: number; // -1 = empty
+export interface SimplifiedSupertileGridEntry {
+  superTileId: number;
 }
 
 // ============================================================================
-// COMMON ITEM TYPES
+// ITEM TYPES
 // ============================================================================
 
 /**
- * Common terrain item (32-bit coordinates)
+ * Terrain item - generic type parameter for item type enum
  */
-export interface CommonItem<TItemType = number> {
-  x: number; // uint32_t
-  z: number; // uint32_t (y in file, but z in 3D space)
-  type: TItemType; // uint16_t
-  flags: number; // uint16_t
-  p0: number; // Byte
-  p1: number; // Byte
-  p2: number; // Byte
-  p3: number; // Byte
-}
-
-/**
- * Classic terrain item (16-bit coordinates, Bugdom 1, Nanosaur 1)
- */
-export interface ClassicItem<TItemType = number> {
-  x: number; // uint16_t
-  z: number; // uint16_t (y in file)
-  type: TItemType; // uint16_t
-  flags: number; // uint16_t
-  p0: number; // Byte
-  p1: number; // Byte
-  p2: number; // Byte
-  p3: number; // Byte
+export interface TerrainItem<TItemType = number> {
+  x: number;
+  z: number;
+  type: TItemType;
+  flags: number;
+  p0: number;
+  p1: number;
+  p2: number;
+  p3: number;
 }
 
 // ============================================================================
-// COMMON FENCE TYPES
+// FENCE TYPES
 // ============================================================================
 
 /**
- * Common fence definition
+ * Fence definition
  */
-export interface CommonFence {
+export interface Fence {
   fenceType: FenceType;
   numNubs: number;
   junkNubListPtr: number;
@@ -161,32 +130,32 @@ export interface CommonFence {
 /**
  * Fence nub coordinates
  */
-export type CommonFenceNub = [x: number, y: number];
+export type FenceNub = [x: number, y: number];
 
 // ============================================================================
-// COMMON SPLINE TYPES
+// SPLINE TYPES
 // ============================================================================
 
 /**
- * Common spline nub
+ * Spline nub
  */
-export interface CommonSplineNub {
+export interface SplineNub {
   x: number;
   z: number;
 }
 
 /**
- * Common spline point
+ * Spline point
  */
-export interface CommonSplinePoint {
+export interface SplinePoint {
   x: number;
   z: number;
 }
 
 /**
- * Common spline item
+ * Spline item - generic type parameter for item type enum
  */
-export interface CommonSplineItem<TSplineItemType = number> {
+export interface SplineItem<TSplineItemType = number> {
   flags: number;
   p0: number;
   p1: number;
@@ -197,9 +166,9 @@ export interface CommonSplineItem<TSplineItemType = number> {
 }
 
 /**
- * Common spline definition
+ * Spline definition
  */
-export interface CommonSpline {
+export interface Spline {
   bbBottom: number;
   bbLeft: number;
   bbRight: number;
@@ -210,13 +179,15 @@ export interface CommonSpline {
 }
 
 // ============================================================================
-// COMMON LIQUID/WATER TYPES
+// WATER/LIQUID TYPES
 // ============================================================================
 
+export const LIQUID_NUBS_COUNT = 100;
+
 /**
- * Common liquid/water body
+ * Liquid/water body
  */
-export interface CommonLiquid {
+export interface Liquid {
   bBoxBottom: number;
   bBoxLeft: number;
   bBoxRight: number;
@@ -232,13 +203,13 @@ export interface CommonLiquid {
 }
 
 // ============================================================================
-// COMMON CHECKPOINT TYPE
+// CHECKPOINT TYPE
 // ============================================================================
 
 /**
- * Common checkpoint/line marker
+ * Checkpoint/line marker
  */
-export interface CommonCheckpoint {
+export interface Checkpoint {
   unused: number;
   infoBits: number;
   x1: number;
@@ -248,11 +219,11 @@ export interface CommonCheckpoint {
 }
 
 // ============================================================================
-// COMMON DATA SECTION INTERFACES
+// DATA SECTION INTERFACES (Resource format wrappers)
 // ============================================================================
 
 /**
- * Level metadata
+ * Level metadata from resource fork
  */
 export interface LevelMetadata {
   file_attributes: number;
@@ -263,7 +234,7 @@ export interface LevelMetadata {
 /**
  * Header data section wrapper
  */
-export interface HeaderData<THeader = FullHeader> {
+export interface HeaderData<THeader = StandardHeader> {
   Hedr: {
     1000: {
       name: "Header";
@@ -280,7 +251,7 @@ export interface FenceData {
   Fenc: {
     1000: {
       name: "Fence List";
-      obj: CommonFence[];
+      obj: Fence[];
       order: number;
     };
   };
@@ -288,7 +259,7 @@ export interface FenceData {
     number,
     {
       name: "Fence Nub List";
-      obj: CommonFenceNub[];
+      obj: FenceNub[];
       order: number;
     }
   >;
@@ -297,12 +268,12 @@ export interface FenceData {
 /**
  * Spline data section
  */
-export interface SplineData<TSplineItem = CommonSplineItem> {
+export interface SplineData<TSplineItem = SplineItem> {
   SpNb: Record<
     number,
     {
       name?: "Spline Nub List";
-      obj: CommonSplineNub[];
+      obj: SplineNub[];
       order?: number;
     }
   >;
@@ -310,7 +281,7 @@ export interface SplineData<TSplineItem = CommonSplineItem> {
     number,
     {
       name?: "Spline Point List";
-      obj: CommonSplinePoint[];
+      obj: SplinePoint[];
       order?: number;
     }
   >;
@@ -325,7 +296,7 @@ export interface SplineData<TSplineItem = CommonSplineItem> {
   Spln: {
     1000: {
       name: "Spline List";
-      obj: CommonSpline[];
+      obj: Spline[];
       order: number;
     };
   };
@@ -338,7 +309,7 @@ export interface LiquidData {
   Liqd: {
     1000: {
       name: "Water List";
-      obj: CommonLiquid[];
+      obj: Liquid[];
       order: number;
     };
   };
@@ -347,7 +318,7 @@ export interface LiquidData {
 /**
  * Item data section
  */
-export interface ItemData<TItem = CommonItem> {
+export interface ItemData<TItem = TerrainItem> {
   Itms: {
     1000: {
       name: "Terrain Items List";
@@ -358,11 +329,11 @@ export interface ItemData<TItem = CommonItem> {
 }
 
 /**
- * Terrain data section - includes all terrain-related data
+ * Terrain data section - tiles, coordinates, textures
  */
 export interface TerrainData<
-  TTileAttribute = CommonTileAttribute,
-  TSupertileGrid = CommonSupertileGrid,
+  TTileAttribute = TileAttribute,
+  TSupertileGrid = SupertileGridEntry,
 > {
   Atrb: {
     1000: {
@@ -378,7 +349,6 @@ export interface TerrainData<
       order: number;
     };
   };
-  // Xlat is only used in Bugdom 1 - maps tile indices to image indices
   Xlat?: {
     1000: {
       name: "Tile Index Translation Table";
@@ -400,7 +370,6 @@ export interface TerrainData<
       order: number;
     };
   };
-  // STgd is optional - Bugdom 1 doesn't have it (uses Layr + Xlat instead)
   STgd?: {
     1000: {
       name: "SuperTile Grid";
@@ -415,8 +384,6 @@ export interface TerrainData<
       order: number;
     };
   };
-  // Vcol (Vertex Colors) - 16-bit color values for each vertex
-  // Only in Bugdom 1.
   Vcol?: Record<
     number,
     {
@@ -437,19 +404,18 @@ export interface TerrainData<
 }
 
 // ============================================================================
-// COMBINED LEVEL DATA INTERFACE
+// COMPLETE LEVEL DATA INTERFACE
 // ============================================================================
 
 /**
- * Common level data structure - the base interface for all games
- * This replaces the previous "ottoMaticLevel" as the generic type
+ * Complete level data structure - combines all sections
  */
-export interface CommonLevelData<
-  THeader = FullHeader,
-  TItem = CommonItem,
-  TTileAttribute = CommonTileAttribute,
-  TSupertileGrid = CommonSupertileGrid,
-  TSplineItem = CommonSplineItem,
+export interface LevelData<
+  THeader = StandardHeader,
+  TItem = TerrainItem,
+  TTileAttribute = TileAttribute,
+  TSupertileGrid = SupertileGridEntry,
+  TSplineItem = SplineItem,
 > extends HeaderData<THeader>,
     Partial<FenceData>,
     Partial<SplineData<TSplineItem>>,
@@ -462,19 +428,19 @@ export interface CommonLevelData<
 // ============================================================================
 
 /**
- * Check if a supertile grid has isEmpty field (Otto/CroMag style)
+ * Check if supertile grid entry has isEmpty field
  */
 export function hasIsEmptyField(
-  grid: CommonSupertileGrid | SimplifiedSupertileGrid,
-): grid is CommonSupertileGrid {
+  grid: SupertileGridEntry | SimplifiedSupertileGridEntry
+): grid is SupertileGridEntry {
   return "isEmpty" in grid;
 }
 
 /**
- * Check if supertile is empty based on game type
+ * Check if supertile is empty based on entry type
  */
 export function isSupertileEmpty(
-  grid: CommonSupertileGrid | SimplifiedSupertileGrid,
+  grid: SupertileGridEntry | SimplifiedSupertileGridEntry
 ): boolean {
   if (hasIsEmptyField(grid)) {
     return grid.isEmpty;
@@ -486,28 +452,7 @@ export function isSupertileEmpty(
  * Check if header has numTilePages/numTiles (full format)
  */
 export function hasFullHeader(
-  header: FullHeader | SimplifiedHeader,
-): header is FullHeader {
+  header: StandardHeader | BaseHeader
+): header is StandardHeader {
   return "numTilePages" in header && "numTiles" in header;
 }
-
-// ============================================================================
-// CONSTANTS
-// ============================================================================
-
-export const COMMON_LIQD_NUBS = 100;
-
-// Re-export compatibility aliases for existing code
-// These types match the previous ottoMaticLevelData.ts exports
-export type ottoTileAttribute = CommonTileAttribute;
-export type ottoFence = CommonFence;
-export type ottoFenceNub = CommonFenceNub;
-export type ottoHeader = FullHeader;
-export type ottoItem = CommonItem;
-export type ottoLiquid = CommonLiquid;
-export type ottoSupertileGrid = CommonSupertileGrid;
-export type ottoSplineItem = CommonSplineItem;
-export type ottoSplineNub = CommonSplineNub;
-export type ottoSplinePoint = CommonSplinePoint;
-export type ottoSpline = CommonSpline;
-export const OTTO_LIQD_NUBS = COMMON_LIQD_NUBS;

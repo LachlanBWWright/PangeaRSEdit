@@ -1,4 +1,4 @@
-import { ottoMaticLevel } from "@/python/structSpecs/ottoMaticInterface";
+import { LevelData } from "@/python/structSpecs/LevelTypes";
 import { Result, ok, err } from "@/types/result";
 import { parseMightyMikeMap } from "@/modelParsers/parseMightyMike";
 import { splitLevelData, AtomicLevelData } from "@/data/utils/levelDataUtils";
@@ -6,7 +6,7 @@ import { splitLevelData, AtomicLevelData } from "@/data/utils/levelDataUtils";
 export async function parseMightyMikeFile(
   file: Blob,
   setData: (data: AtomicLevelData) => void,
-): Promise<Result<ottoMaticLevel, Error>> {
+): Promise<Result<LevelData, Error>> {
   try {
     const levelBuffer = await file.arrayBuffer();
     const mapResult = parseMightyMikeMap(levelBuffer);
@@ -16,7 +16,7 @@ export async function parseMightyMikeFile(
       );
     }
 
-    const ottoCompatible: ottoMaticLevel = {
+    const ottoCompatible: LevelData = {
       Hedr: {
         version: 1,
         numItems: mapResult.value.num_items,

@@ -1,5 +1,5 @@
 import { Updater } from "use-immer";
-import { ItemData } from "../../../python/structSpecs/ottoMaticLevelData";
+import { ItemData } from "@/python/structSpecs/LevelTypes";
 import { Label, Rect, Tag, Text } from "react-konva";
 import type Konva from "konva";
 import { SelectedItem } from "../../../data/items/itemAtoms";

@@ -19,7 +19,7 @@ import { Globals } from "@/data/globals/globals";
 import {
   HeaderData,
   TerrainData,
-} from "@/python/structSpecs/ottoMaticLevelData";
+} from "@/python/structSpecs/LevelTypes";
 import {
   TILENUM_MASK,
   TILE_FLIPX_MASK,

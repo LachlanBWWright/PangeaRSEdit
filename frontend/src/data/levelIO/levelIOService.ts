@@ -10,7 +10,7 @@
 
 import { Game, GlobalsInterface, DataType } from "../globals/globals";
 import { preprocessJson } from "../processors/ottoPreprocessor";
-import { ottoMaticLevel } from "../../python/structSpecs/ottoMaticInterface";
+import { LevelData } from "@/python/structSpecs/LevelTypes";
 import {
   parseNanosaur1Level,
   nanosaur1LevelToOttoMaticLevel,
@@ -31,9 +31,9 @@ export interface PyodideRunner {
     structSpecs: string[],
     includeTypes?: string[],
     excludeTypes?: string[],
-  ) => Promise<ottoMaticLevel>;
+  ) => Promise<LevelData>;
   serializeLevel: (
-    levelData: ottoMaticLevel,
+    levelData: LevelData,
     structSpecs: string[],
     onlyTypes?: string[],
     skipTypes?: string[],
@@ -45,9 +45,9 @@ export interface PyodideRunner {
  * Result of a roundtrip test (parse -> serialize -> parse)
  */
 export interface RoundtripResult {
-  original: ottoMaticLevel;
+  original: LevelData;
   serialized: ArrayBuffer;
-  roundtrip: ottoMaticLevel;
+  roundtrip: LevelData;
   bytesMatch: boolean;
   jsonMatch: boolean;
   originalSize: number;
@@ -72,7 +72,7 @@ export async function parseLevelBuffer(
   buffer: ArrayBuffer,
   gameType: GlobalsInterface,
   pyodideRunner?: PyodideRunner,
-): Promise<Result<ottoMaticLevel, Error>> {
+): Promise<Result<LevelData, Error>> {
   if (gameType.GAME_TYPE === Game.NANOSAUR) {
     // Nanosaur 1 uses proprietary binary format
     const result = parseNanosaur1LevelBuffer(buffer, gameType);
@@ -111,7 +111,7 @@ export async function parseLevelBuffer(
 export function parseNanosaur1LevelBuffer(
   buffer: ArrayBuffer,
   gameType?: GlobalsInterface,
-): Result<ottoMaticLevel, Error> {
+): Result<LevelData, Error> {
   try {
     const rawLevelData = parseNanosaur1Level(buffer);
     const converted = nanosaur1LevelToOttoMaticLevel(
@@ -154,7 +154,7 @@ export function parseNanosaur1TextureBuffer(
  * @returns Result with serialized binary buffer or error
  */
 export async function serializeLevelData(
-  levelData: ottoMaticLevel,
+  levelData: LevelData,
   gameType: GlobalsInterface,
   pyodideRunner: PyodideRunner,
 ): Promise<Result<ArrayBuffer, Error>> {
@@ -257,8 +257,8 @@ export async function performRoundtrip(
  * Compare two level data objects deeply
  */
 export function compareLevelDataObjects(
-  original: ottoMaticLevel,
-  roundtrip: ottoMaticLevel,
+  original: LevelData,
+  roundtrip: LevelData,
 ): {
   equal: boolean;
   differences: Array<{ path: string; original: unknown; roundtrip: unknown }>;
@@ -414,7 +414,7 @@ export function compareBuffersDetailed(
  * @returns Result with blob and filename, or error
  */
 export async function createDownloadableLevel(
-  levelData: ottoMaticLevel,
+  levelData: LevelData,
   filename: string,
   gameType: GlobalsInterface,
   pyodideRunner: PyodideRunner,

@@ -2,12 +2,12 @@ import { Layer, Image, Rect } from "react-konva";
 import { Fragment, memo, useMemo } from "react";
 import { SelectedTile } from "../../data/supertiles/supertileAtoms";
 import { useAtom, useAtomValue } from "jotai";
-import { Game, Globals } from "../../data/globals/globals";
+import { Globals } from "../../data/globals/globals";
 
 import {
   TerrainData,
   HeaderData,
-} from "../../python/structSpecs/ottoMaticLevelData";
+} from "@/python/structSpecs/LevelTypes";
 import { BugdomSupertiles } from "./bugdom/BugdomTileRenderer";
 
 export const Supertiles = memo(
@@ -25,14 +25,19 @@ export const Supertiles = memo(
     const header = headerData.Hedr[1000].obj;
     const supertilesWide = header.mapWidth / globals.TILES_PER_SUPERTILE;
 
+    // Detect tile system based on data structure, not game type
+    // Individual tile games (Bugdom 1, Nanosaur 1) have Layr data and possibly Xlat
+    // Standard games have STgd with supertile grid data
+    const hasLayr = Boolean(terrainData.Layr?.[1000]?.obj);
+    const hasSTgd = Boolean(terrainData.STgd?.[1000]?.obj);
+    const hasXlat = Boolean(terrainData.Xlat?.[1000]?.obj);
+    const usesIndividualTiles = hasLayr && !hasSTgd;
+
     console.log("Supertiles component render:", {
-      gameType: globals.GAME_TYPE,
-      usesIndividualTiles:
-        globals.GAME_TYPE === Game.BUGDOM ||
-        globals.GAME_TYPE === Game.NANOSAUR,
-      hasLayr: !!terrainData.Layr,
-      hasSTgd: !!terrainData.STgd,
-      hasXlat: !!terrainData.Xlat,
+      usesIndividualTiles,
+      hasLayr,
+      hasSTgd,
+      hasXlat,
       mapImagesCount: mapImages.length,
     });
 
@@ -59,19 +64,13 @@ export const Supertiles = memo(
       return imageArray;
     }, [mapImages, terrainData.STgd]);
 
-    // For Bugdom 1 and Nanosaur 1, use the BugdomSupertiles component which constructs
-    // supertiles from individual 32x32 tiles (optionally using Xlat translation table)
-    if (
-      globals.GAME_TYPE === Game.BUGDOM ||
-      globals.GAME_TYPE === Game.NANOSAUR
-    ) {
+    // For individual tile games (Bugdom 1, Nanosaur 1), use BugdomSupertiles
+    // which constructs supertiles from individual 32x32 tiles
+    if (usesIndividualTiles) {
       const xlatTable = terrainData.Xlat?.[1000]?.obj;
       console.log(
         "Supertiles: Using BugdomSupertiles for individual tile rendering",
-        {
-          game: globals.GAME_NAME,
-          xlatTableLength: xlatTable?.length,
-        },
+        { xlatTableLength: xlatTable?.length },
       );
 
       return (

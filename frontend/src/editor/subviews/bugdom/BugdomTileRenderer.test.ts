@@ -21,7 +21,7 @@ import {
   usesIndividualTiles,
 } from "./BugdomTileRenderer.utils";
 import { Game } from "@/data/globals/globals";
-import { HeaderData } from "@/python/structSpecs/ottoMaticLevelData";
+import { HeaderData } from "@/python/structSpecs/LevelTypes";
 
 describe("Bugdom Tile Constants", () => {
   it("TILENUM_MASK should extract lower 12 bits", () => {

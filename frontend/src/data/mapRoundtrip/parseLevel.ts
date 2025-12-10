@@ -3,7 +3,7 @@
  * These functions can be used both in React components and in tests
  */
 
-import { ottoMaticLevel } from "../../python/structSpecs/ottoMaticInterface";
+import { LevelData } from "@/python/structSpecs/LevelTypes";
 import { ParseLevelOptions, SerializeLevelOptions } from "./types";
 import {
   nanosaur1LevelToOttoMaticLevel,
@@ -20,13 +20,13 @@ import { Result, ok, err, isErr } from "../../types/result";
  * @param buffer - The raw binary level data
  * @param options - Parsing options including struct specs
  * @param pyodideRunner - A function that runs pyodide code (can be worker or direct)
- * @returns Result with the parsed level data as ottoMaticLevel
+ * @returns Result with the parsed level data as LevelData
  */
 export async function parseLevelBuffer(
   buffer: ArrayBuffer,
   options: ParseLevelOptions,
   pyodideRunner: (code: string, buffer: ArrayBuffer) => Promise<string>,
-): Promise<Result<ottoMaticLevel, Error>> {
+): Promise<Result<LevelData, Error>> {
   const { structSpecs, includeTypes = [], excludeTypes = [] } = options;
 
   try {
@@ -40,7 +40,7 @@ export async function parseLevelBuffer(
       buffer,
     );
 
-    return ok(JSON.parse(resultJson) as ottoMaticLevel);
+    return ok(JSON.parse(resultJson) as LevelData);
   } catch (error) {
     return err(error instanceof Error ? error : new Error(String(error)));
   }
@@ -50,12 +50,12 @@ export async function parseLevelBuffer(
  * Parse a Nanosaur 1 level file (uses different format than other games)
  *
  * @param buffer - The raw .ter file data
- * @returns Result with the parsed level data converted to ottoMaticLevel format
+ * @returns Result with the parsed level data converted to LevelData format
  */
 export function parseNanosaur1Buffer(
   buffer: ArrayBuffer,
   gameType?: GlobalsInterface,
-): Result<ottoMaticLevel, Error> {
+): Result<LevelData, Error> {
   try {
     const rawLevelData = parseNanosaur1Level(buffer);
     return ok(
@@ -80,7 +80,7 @@ export function parseNanosaur1Buffer(
  * @returns Result with the serialized binary buffer
  */
 export async function serializeLevelData(
-  levelData: ottoMaticLevel,
+  levelData: LevelData,
   options: SerializeLevelOptions,
   pyodideRunner: (code: string, jsonData: object) => Promise<ArrayBuffer>,
 ): Promise<Result<ArrayBuffer, Error>> {
@@ -116,7 +116,7 @@ export async function parseLevelForGame(
   buffer: ArrayBuffer,
   gameType: GlobalsInterface,
   pyodideRunner?: (code: string, buffer: ArrayBuffer) => Promise<string>,
-): Promise<Result<ottoMaticLevel, Error>> {
+): Promise<Result<LevelData, Error>> {
   if (gameType.GAME_TYPE === Game.NANOSAUR) {
     // Nanosaur 1 uses its own parser
     return parseNanosaur1Buffer(buffer, gameType);
@@ -166,9 +166,9 @@ export async function performRoundtrip(
 ): Promise<
   Result<
     {
-      original: ottoMaticLevel;
+      original: LevelData;
       serialized: ArrayBuffer;
-      roundtrip: ottoMaticLevel;
+      roundtrip: LevelData;
     },
     Error
   >
@@ -230,8 +230,8 @@ export async function performRoundtrip(
  * @returns Comparison result with details about any differences
  */
 export function compareLevelData(
-  original: ottoMaticLevel,
-  roundtrip: ottoMaticLevel,
+  original: LevelData,
+  roundtrip: LevelData,
 ): {
   equal: boolean;
   differences: Array<{ path: string; original: unknown; roundtrip: unknown }>;

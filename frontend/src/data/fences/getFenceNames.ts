@@ -27,8 +27,8 @@ import {
 //Otto Matic
 import {
   FenceType as OttoFenceType,
-  fenceTypeNames as ottoFenceTypeNames,
-} from "./ottoFenceType";
+  fenceTypeNames as FenceTypeNames,
+} from "./FenceType";
 
 export function getFenceName(globals: GlobalsInterface, itemNumber: number) {
   if (globals.GAME_TYPE === Game.BILLY_FRONTIER) {
@@ -82,8 +82,8 @@ function getNanosaur2FenceName(number: number) {
 }
 
 function getOttoFenceName(number: number) {
-  if (number in ottoFenceTypeNames)
-    return ottoFenceTypeNames[number as OttoFenceType];
+  if (number in FenceTypeNames)
+    return FenceTypeNames[number as OttoFenceType];
 
   return "Unknown Otto Fence.";
 }

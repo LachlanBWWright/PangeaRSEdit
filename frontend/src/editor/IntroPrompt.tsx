@@ -6,7 +6,7 @@ import {
   FenceData,
   SplineData,
   TerrainData,
-} from "../python/structSpecs/ottoMaticLevelData";
+} from "@/python/structSpecs/LevelTypes";
 import { UploadPrompt } from "./UploadPrompt";
 import { EditorView } from "./EditorView";
 import { Button } from "@/components/ui/button";

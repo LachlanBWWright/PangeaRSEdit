@@ -1,4 +1,4 @@
-import { ottoMaticLevel } from "@/python/structSpecs/ottoMaticInterface";
+import { LevelData } from "@/python/structSpecs/LevelTypes";
 import { Result, ok, err } from "@/types/result";
 import { preprocessJson } from "@/data/processors/ottoPreprocessor";
 import type { GlobalsInterface } from "@/data/globals/globals";
@@ -11,10 +11,10 @@ export async function parsePyodideLevelFile(
   gameType: GlobalsInterface,
   pyodideWorker: Worker,
   setData: (data: AtomicLevelData) => void,
-): Promise<Result<ottoMaticLevel, Error>> {
+): Promise<Result<LevelData, Error>> {
   const levelBuffer = await file.arrayBuffer();
 
-  return new Promise<Result<ottoMaticLevel, Error>>((resolve) => {
+  return new Promise<Result<LevelData, Error>>((resolve) => {
     pyodideWorker.postMessage({
       type: "save_to_json",
       bytes: levelBuffer,
@@ -29,22 +29,20 @@ export async function parsePyodideLevelFile(
           const result = event.data.result;
 
           // Validate the parsed data using the appropriate game schema
+          // Validation failures now throw errors for type safety
           const validationResult = validateLevelDataForGame(
             result,
             gameType.GAME_TYPE
           );
           if (!validationResult.ok) {
-            // Log validation warning with context
-            console.warn(
-              `Level validation warning for ${gameType.GAME_NAME}:`,
-              validationResult.error.message
+            resolve(
+              err(
+                new Error(
+                  `Level validation failed for ${gameType.GAME_NAME}: ${validationResult.error.message}`
+                )
+              )
             );
-            console.warn(
-              `Note: The level will be loaded despite validation failure. ` +
-              `Some features may not work correctly if the data format is unexpected.`
-            );
-            // Continue with the data even if validation fails
-            // The validation is informational, not blocking
+            return;
           }
 
           // Apply preprocessing

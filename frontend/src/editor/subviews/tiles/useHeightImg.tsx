@@ -1,11 +1,11 @@
 import {
-  ottoHeader,
-  ottoMaticLevel,
-} from "@/python/structSpecs/ottoMaticInterface";
-import { HeaderData } from "@/python/structSpecs/ottoMaticLevelData";
+  StandardHeader,
+  LevelData,
+} from "@/python/structSpecs/LevelTypes";
+import { HeaderData } from "@/python/structSpecs/LevelTypes";
 import { useMemo } from "react";
 
-const elevationToRGBA = (elevation: number, header: ottoHeader) => {
+const elevationToRGBA = (elevation: number, header: StandardHeader) => {
   return [
     ((elevation - header.minY) / (header.maxY - header.minY)) * 255,
     ((elevation - header.minY) / (header.maxY - header.minY)) * 255,
@@ -14,7 +14,7 @@ const elevationToRGBA = (elevation: number, header: ottoHeader) => {
   ];
 };
 
-export function useHeightImg(headerData: HeaderData, otherData: Partial<ottoMaticLevel>) {
+export function useHeightImg(headerData: HeaderData, otherData: Partial<LevelData>) {
   const header = useMemo(() => headerData.Hedr?.[1000]?.obj, [headerData.Hedr]);
 
   const coordColours = useMemo(() => {
@@ -48,7 +48,7 @@ export function useHeightImg(headerData: HeaderData, otherData: Partial<ottoMati
   return { heightImg: imgCanvas };
 }
 
-const elevationToRGBAUnscaled = (elevation: number, header: ottoHeader) => {
+const elevationToRGBAUnscaled = (elevation: number, header: StandardHeader) => {
   return [
     (elevation / header.maxY) * 255,
     (elevation / header.maxY) * 255,
@@ -57,7 +57,7 @@ const elevationToRGBAUnscaled = (elevation: number, header: ottoHeader) => {
   ];
 };
 
-export function useUnscaledHeightImg(headerData: HeaderData, otherData: Partial<ottoMaticLevel>) {
+export function useUnscaledHeightImg(headerData: HeaderData, otherData: Partial<LevelData>) {
   const header = useMemo(() => headerData.Hedr?.[1000]?.obj, [headerData.Hedr]);
 
   const coordColours = useMemo(() => {

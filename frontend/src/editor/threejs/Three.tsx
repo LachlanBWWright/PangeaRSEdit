@@ -10,7 +10,7 @@ import {
   FenceData,
   LiquidData,
   TerrainData,
-} from "@/python/structSpecs/ottoMaticLevelData";
+} from "@/python/structSpecs/LevelTypes";
 
 export function ThreeView({
   headerData,

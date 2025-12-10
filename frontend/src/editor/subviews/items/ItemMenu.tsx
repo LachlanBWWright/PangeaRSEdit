@@ -2,11 +2,11 @@ import { Updater } from "use-immer";
 import {
   ItemData,
   HeaderData,
-} from "../../../python/structSpecs/ottoMaticLevelData";
+} from "@/python/structSpecs/LevelTypes";
 import { useAtom, useAtomValue } from "jotai";
 import { Button } from "@/components/ui/button";
 import { ClickToAddItem, SelectedItem } from "../../../data/items/itemAtoms";
-import { ottoItemTypeParams } from "../../../data/items/ottoItemType";
+import { TerrainItemTypeParams } from "../../../data/items/TerrainItemType";
 import type { ParamDescription } from "../../../data/items/itemParams";
 import { parseU16, parseU8 } from "../../../utils/numberParsers";
 import { useEffect } from "react";
@@ -100,9 +100,9 @@ export function ItemMenu({
                   <span className="text-baseline align-text-bottom">Flags</span>
                 }
                 tooltip={
-                  typeof ottoItemTypeParams[selectedItemData.type].flags ===
+                  typeof TerrainItemTypeParams[selectedItemData.type].flags ===
                   "string"
-                    ? ottoItemTypeParams[selectedItemData.type].flags
+                    ? TerrainItemTypeParams[selectedItemData.type].flags
                     : ""
                 }
               />
@@ -125,7 +125,7 @@ export function ItemMenu({
               {([0, 1, 2, 3] as const).map((i) => {
                 const paramKey = `p${i}` as const;
                 const param =
-                  ottoItemTypeParams[selectedItemData.type][paramKey];
+                  TerrainItemTypeParams[selectedItemData.type][paramKey];
                 const value = selectedItemData[paramKey];
                 const setValue = (v: number) => {
                   setItemData((itemData) => {

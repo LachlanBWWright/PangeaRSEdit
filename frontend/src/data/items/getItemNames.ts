@@ -30,8 +30,8 @@ import {
 } from "./nanosaur2ItemType";
 import {
   ItemType as OttoItemType,
-  itemTypeNames as ottoItemTypeNames,
-} from "./ottoItemType";
+  itemTypeNames as TerrainItemTypeNames,
+} from "./TerrainItemType";
 
 export function getItemName(globals: GlobalsInterface, itemNumber: number) {
   if (globals.GAME_TYPE === Game.BILLY_FRONTIER) {
@@ -94,8 +94,8 @@ function getNanosaur2ItemName(number: number) {
 }
 
 function getOttoItemName(number: number) {
-  if (number in ottoItemTypeNames)
-    return ottoItemTypeNames[number as OttoItemType];
+  if (number in TerrainItemTypeNames)
+    return TerrainItemTypeNames[number as OttoItemType];
 
   return "Unknown Otto Item.";
 }

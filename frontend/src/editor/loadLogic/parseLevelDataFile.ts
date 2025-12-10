@@ -1,4 +1,4 @@
-import { ottoMaticLevel } from "@/python/structSpecs/ottoMaticInterface";
+import { LevelData } from "@/python/structSpecs/LevelTypes";
 import { AtomicLevelData } from "@/data/utils/levelDataUtils";
 import type { GlobalsInterface } from "@/data/globals/globals";
 import { DataType } from "@/data/globals/globals";
@@ -16,7 +16,7 @@ export async function parseLevelDataFile(
   gameType: GlobalsInterface,
   pyodideWorker: Worker,
   setData: (data: AtomicLevelData) => void,
-): Promise<Result<ottoMaticLevel, Error>> {
+): Promise<Result<LevelData, Error>> {
   // Dispatch to game-specific parsers that return Results
 
   // Nanosaur 1 (TRT files) uses classic preprocessor

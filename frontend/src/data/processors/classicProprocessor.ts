@@ -94,16 +94,16 @@ export function parseNanosaurHeightmapTiles(
   return tiles;
 }
 
-import { ottoMaticLevel } from "@/python/structSpecs/ottoMaticInterface";
+import { LevelData } from "@/python/structSpecs/LevelTypes";
 // Convert Nanosaur1LevelData to ottomaticLevel-like structure
 // This allows the editor to use Nanosaur 1 levels in the same way as Otto Matic levels
-export function nanosaur1LevelToOttoMaticLevel(
+export function nanosaur1LevelToLevelData(
   level: Nanosaur1LevelData,
   tileSize: number = 32,
   tileIngameSize: number = 140,
   heightExtrudeFactor: number = 4.0,
-): ottoMaticLevel {
-  // Map Nanosaur 1 data to ottoMaticLevel structure
+): LevelData {
+  // Map Nanosaur 1 data to LevelData structure
   const width = level.header.width;
   const depth = level.header.depth;
 
@@ -198,8 +198,8 @@ export function nanosaur1LevelToOttoMaticLevel(
     }
   }
 
-  // Compose ottoMaticLevel object
-  const ottoLevel: ottoMaticLevel = {
+  // Compose LevelData object
+  const ottoLevel: LevelData = {
     Atrb: {
       1000: {
         name: "Tile Attribute Data",
@@ -209,7 +209,7 @@ export function nanosaur1LevelToOttoMaticLevel(
           parm1: attr.parm1,
           parm2: attr.parm2,
           undefined: attr.undefined,
-          // ottoTileAttribute required fields (fill with defaults)
+          // TileAttribute required fields (fill with defaults)
           flags: 0,
           p0: 0,
           p1: 0,
@@ -265,7 +265,7 @@ export function nanosaur1LevelToOttoMaticLevel(
       1000: {
         name: "Terrain Items List",
         obj: level.objectList.map((item) => ({
-          // Map available fields, fill missing ottoItem fields with defaults
+          // Map available fields, fill missing TerrainItem fields with defaults
           x: item.x,
           y: item.y,
           z: item.y, //TODO: test
@@ -274,7 +274,7 @@ export function nanosaur1LevelToOttoMaticLevel(
           flags: item.flags,
           prevItemIdx: item.prevItemIdx,
           nextItemIdx: item.nextItemIdx,
-          // ottoItem required fields (fill with defaults)
+          // TerrainItem required fields (fill with defaults)
           p0: 0,
           p1: 0,
           p2: 0,

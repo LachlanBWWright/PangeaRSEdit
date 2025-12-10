@@ -3,7 +3,7 @@ import {
   FenceData,
   HeaderData,
   TerrainData,
-} from "@/python/structSpecs/ottoMaticLevelData";
+} from "@/python/structSpecs/LevelTypes";
 import { useAtomValue } from "jotai";
 import { Globals } from "@/data/globals/globals";
 import { getFenceColor } from "@/data/fences/getFenceColor";

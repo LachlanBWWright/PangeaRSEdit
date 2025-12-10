@@ -1,8 +1,8 @@
 import {
   HeaderData,
   TerrainData,
-  ottoHeader,
-} from "@/python/structSpecs/ottoMaticLevelData";
+  StandardHeader,
+} from "@/python/structSpecs/LevelTypes";
 import { useRef, useMemo } from "react";
 import { CanvasTexture, DoubleSide, Mesh, PlaneGeometry } from "three";
 import { useAtomValue } from "jotai";
@@ -27,7 +27,7 @@ export function TerrainGeometry({
 
   const combinedImg = combinedImgResult.ok ? combinedImgResult.value : null;
 
-  const header: ottoHeader | undefined = headerData.Hedr?.[1000]?.obj;
+  const header: StandardHeader | undefined = headerData.Hedr?.[1000]?.obj;
 
   const numWide = header?.mapWidth ?? 0;
   const numHigh = header?.mapHeight ?? 0;

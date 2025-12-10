@@ -1,10 +1,10 @@
-import { ottoHeader } from "../../../python/structSpecs/ottoMaticLevelData";
+import { StandardHeader } from "@/python/structSpecs/LevelTypes";
 import { GlobalsInterface } from "@/data/globals/globals";
 
 export function flattenCoords(
   xTile: number,
   yTile: number,
-  header: ottoHeader,
+  header: StandardHeader,
   globals: GlobalsInterface,
 ) {
   const tileSize = globals.TILE_SIZE ?? header.tileSize ?? 16;
@@ -13,7 +13,7 @@ export function flattenCoords(
   return y * (header.mapWidth + 1) + x;
 }
 
-export function elevationToRGBA(header: ottoHeader, elev: number) {
+export function elevationToRGBA(header: StandardHeader, elev: number) {
   // Normalize elevation between header.minY and header.maxY and map to grayscale
   const min = header.minY ?? 0;
   const max = header.maxY ?? 255;

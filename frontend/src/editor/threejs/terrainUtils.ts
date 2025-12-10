@@ -1,7 +1,7 @@
 import {
   HeaderData,
   TerrainData,
-} from "@/python/structSpecs/ottoMaticLevelData";
+} from "@/python/structSpecs/LevelTypes";
 import { GlobalsInterface, Game } from "@/data/globals/globals";
 import { Result, ok, err } from "@/types/result";
 

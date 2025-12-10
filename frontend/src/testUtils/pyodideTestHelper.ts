@@ -5,7 +5,7 @@
 
 import { loadPyodide, PyodideInterface } from "pyodide";
 import rsrcDumpUrl from "../assets/rsrcdump-0.1.0-py3-none-any.whl?url";
-import { ottoMaticLevel } from "../python/structSpecs/ottoMaticInterface";
+import { LevelData } from "@/python/structSpecs/LevelTypes";
 
 let pyodideInstance: PyodideInterface | null = null;
 
@@ -48,13 +48,13 @@ export async function parseBufferToJson(
   structSpecs: string[],
   includeTypes: string[] = [],
   excludeTypes: string[] = [],
-): Promise<ottoMaticLevel> {
+): Promise<LevelData> {
   const pyodide = await initPyodide();
 
   // Set buffer in global scope for pyodide to access
   const globalWithTest = globalThis as unknown as {
     testBuffer?: ArrayBuffer;
-    jsonBuffer?: ottoMaticLevel;
+    jsonBuffer?: LevelData;
   };
   globalWithTest.testBuffer = buffer;
 
@@ -85,7 +85,7 @@ export async function parseBufferToJson(
  * @returns The serialized binary buffer
  */
 export async function serializeJsonToBuffer(
-  jsonData: ottoMaticLevel,
+  jsonData: LevelData,
   structSpecs: string[],
   onlyTypes: string[] = [],
   skipTypes: string[] = [],
@@ -96,7 +96,7 @@ export async function serializeJsonToBuffer(
   // Set JSON in global scope for pyodide to access
   const globalWithTest = globalThis as unknown as {
     testBuffer?: ArrayBuffer;
-    jsonBuffer?: ottoMaticLevel;
+    jsonBuffer?: LevelData;
   };
   globalWithTest.jsonBuffer = jsonData;
 
@@ -133,9 +133,9 @@ export async function performRoundtripTest(
   buffer: ArrayBuffer,
   structSpecs: string[],
 ): Promise<{
-  originalJson: ottoMaticLevel;
+  originalJson: LevelData;
   serializedBuffer: ArrayBuffer;
-  roundtripJson: ottoMaticLevel;
+  roundtripJson: LevelData;
   bufferSizeMatch: boolean;
   jsonMatch: boolean;
 }> {
