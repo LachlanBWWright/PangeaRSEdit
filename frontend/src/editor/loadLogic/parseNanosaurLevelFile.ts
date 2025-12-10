@@ -6,6 +6,7 @@ import {
 } from "@/data/processors/classicProprocessor";
 import { splitLevelData, AtomicLevelData } from "@/data/utils/levelDataUtils";
 import type { GlobalsInterface } from "@/data/globals/globals";
+import { validateLevelDataForGame } from "@/validation/validateLevelForGame";
 
 export async function parseNanosaurLevelFile(
   file: Blob,
@@ -21,6 +22,20 @@ export async function parseNanosaurLevelFile(
       gameType.TILE_INGAME_SIZE,
       4.0,
     );
+
+    // Validate the converted level data
+    const validationResult = validateLevelDataForGame(
+      compatibleLevel,
+      gameType.GAME_TYPE
+    );
+    if (!validationResult.ok) {
+      console.warn(
+        `Level validation warning for ${gameType.GAME_NAME}:`,
+        validationResult.error.message
+      );
+      // Continue with the data even if validation fails
+    }
+
     setData(splitLevelData(compatibleLevel));
     return ok(compatibleLevel);
   } catch (e) {

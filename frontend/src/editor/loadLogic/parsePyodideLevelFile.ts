@@ -4,6 +4,7 @@ import { preprocessJson } from "@/data/processors/ottoPreprocessor";
 import type { GlobalsInterface } from "@/data/globals/globals";
 import type { PyodideMessage, PyodideResponse } from "@/python/pyodideWorker";
 import { splitLevelData, AtomicLevelData } from "@/data/utils/levelDataUtils";
+import { validateLevelDataForGame } from "@/validation/validateLevelForGame";
 
 export async function parsePyodideLevelFile(
   file: Blob,
@@ -26,7 +27,22 @@ export async function parsePyodideLevelFile(
       if (event.data.type === "save_to_json") {
         try {
           const result = event.data.result;
-          // try preprocess result
+
+          // Validate the parsed data using the appropriate game schema
+          const validationResult = validateLevelDataForGame(
+            result,
+            gameType.GAME_TYPE
+          );
+          if (!validationResult.ok) {
+            console.warn(
+              `Level validation warning for ${gameType.GAME_NAME}:`,
+              validationResult.error.message
+            );
+            // Continue with the data even if validation fails
+            // The validation is informational, not blocking
+          }
+
+          // Apply preprocessing
           const preprocessResult = preprocessJson(result, gameType);
           if (!preprocessResult.ok) {
             resolve(err(preprocessResult.error));
