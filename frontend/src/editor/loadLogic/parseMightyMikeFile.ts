@@ -19,9 +19,9 @@ export async function parseMightyMikeFile(
     const ottoCompatible: LevelData = {
       Hedr: {
         version: 1,
-        numItems: mapResult.value.num_items,
-        mapWidth: mapResult.value.map_width,
-        mapHeight: mapResult.value.map_height,
+        numItems: mapResult.value.numItems,
+        mapWidth: mapResult.value.mapWidth,
+        mapHeight: mapResult.value.mapHeight,
         numTilePages: 1,
         numTiles: 100,
         tileSize: 32,
@@ -33,9 +33,9 @@ export async function parseMightyMikeFile(
         numWaterPatches: 0,
         numCheckpoints: 0,
       },
-      Layr: mapResult.value.map_image.flat(),
+      Layr: mapResult.value.mapImage.flat(),
       YCrd: new Array(
-        mapResult.value.map_width * mapResult.value.map_height,
+        mapResult.value.mapWidth * mapResult.value.mapHeight,
       ).fill(0),
       Itms: mapResult.value.items.map((item) => ({
         x: item.x,

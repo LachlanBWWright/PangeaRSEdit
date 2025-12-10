@@ -51,15 +51,15 @@ describe("parseMightyMikeMap", () => {
       expect(map).toHaveProperty("items");
 
       // Basic validation
-      expect(map.map_width).toBeGreaterThan(0);
-      expect(map.map_height).toBeGreaterThan(0);
-      expect(Array.isArray(map.map_image)).toBe(true);
+      expect(map.mapWidth).toBeGreaterThan(0);
+      expect(map.mapHeight).toBeGreaterThan(0);
+      expect(Array.isArray(map.mapImage)).toBe(true);
       expect(Array.isArray(map.items)).toBe(true);
 
       // Check map dimensions match
-      expect(map.map_image.length).toBe(map.map_height);
-      if (map.map_image.length > 0) {
-        expect(map.map_image[0].length).toBe(map.map_width);
+      expect(map.mapImage.length).toBe(map.mapHeight);
+      if (map.mapImage.length > 0) {
+        expect(map.mapImage[0].length).toBe(map.mapWidth);
       }
     }
   });

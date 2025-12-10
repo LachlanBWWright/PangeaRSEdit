@@ -1,13 +1,13 @@
 export interface MightyMikeTileSet {
-  num_tile_definitions: number;
-  num_xlate_entries: number;
-  num_tile_attribute_entries: number;
-  num_tile_anims: number;
-  num_tile_xparent_colors: number;
-  xlate_table: number[];
-  tile_attributes: MightyMikeTileAttribute[];
-  tile_animations: MightyMikeTileAnimation[];
-  transparency_colors: number[];
+  numTileDefinitions: number;
+  numXlateEntries: number;
+  numTileAttributeEntries: number;
+  numTileAnims: number;
+  numTileXparentColors: number;
+  xlateTable: number[];
+  tileAttributes: MightyMikeTileAttribute[];
+  tileAnimations: MightyMikeTileAnimation[];
+  transparencyColors: number[];
 }
 
 export interface MightyMikeTileAttribute {
@@ -22,18 +22,18 @@ export interface MightyMikeTileAttribute {
 export interface MightyMikeTileAnimation {
   name: string;
   speed: number;
-  base_tile: number;
-  num_frames: number;
-  tile_nums: number[];
+  baseTile: number;
+  numFrames: number;
+  tileNums: number[];
 }
 
 export interface MightyMikeMap {
-  map_width: number;
-  map_height: number;
-  num_items: number;
-  map_image: number[][];
+  mapWidth: number;
+  mapHeight: number;
+  numItems: number;
+  mapImage: number[][];
   items: MightyMikeItem[];
-  alt_map: number[][] | null;
+  altMap: number[][] | null;
 }
 
 export interface MightyMikeItem {

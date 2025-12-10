@@ -93,14 +93,14 @@ describe("MightyMike Roundtrip Tests", () => {
       const map = result.value;
 
       // Validate basic structure
-      expect(map.map_width).toBeGreaterThan(0);
-      expect(map.map_height).toBeGreaterThan(0);
-      expect(map.map_image.length).toBe(map.map_height);
-      expect(map.map_image[0].length).toBe(map.map_width);
-      expect(map.items.length).toBe(map.num_items);
+      expect(map.mapWidth).toBeGreaterThan(0);
+      expect(map.mapHeight).toBeGreaterThan(0);
+      expect(map.mapImage.length).toBe(map.mapHeight);
+      expect(map.mapImage[0].length).toBe(map.mapWidth);
+      expect(map.items.length).toBe(map.numItems);
 
       // Validate tile data is reasonable
-      for (const row of map.map_image) {
+      for (const row of map.mapImage) {
         for (const tile of row) {
           expect(typeof tile).toBe("number");
           expect(tile).toBeGreaterThanOrEqual(0);
@@ -119,9 +119,9 @@ describe("MightyMike Roundtrip Tests", () => {
       }
 
       console.log("Map validation passed:");
-      console.log(`  Dimensions: ${map.map_width}x${map.map_height}`);
-      console.log(`  Items: ${map.num_items}`);
-      console.log(`  Has alt map: ${map.alt_map !== null}`);
+      console.log(`  Dimensions: ${map.mapWidth}x${map.mapHeight}`);
+      console.log(`  Items: ${map.numItems}`);
+      console.log(`  Has alt map: ${map.altMap !== null}`);
     }
   });
 
@@ -141,11 +141,11 @@ describe("MightyMike Roundtrip Tests", () => {
 
       if (result.ok) {
         const map = result.value;
-        expect(map.map_width).toBeGreaterThan(0);
-        expect(map.map_height).toBeGreaterThan(0);
+        expect(map.mapWidth).toBeGreaterThan(0);
+        expect(map.mapHeight).toBeGreaterThan(0);
         console.log(
-          `${mapPath.split("/").pop()}: ${map.map_width}x${map.map_height}, ${
-            map.num_items
+          `${mapPath.split("/").pop()}: ${map.mapWidth}x${map.mapHeight}, ${
+            map.numItems
           } items`,
         );
       }
