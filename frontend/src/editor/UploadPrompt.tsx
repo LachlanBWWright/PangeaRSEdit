@@ -88,7 +88,7 @@ export function UploadPrompt({
       <div className="flex flex-col gap-2 lg:w-1/3">
         <p>Select Game</p>
         <Select>
-          <SelectTrigger className="min-w-fit">
+          <SelectTrigger className="min-w-fit" data-testid="game-selector">
             <SelectValue placeholder="Otto Matic" />
           </SelectTrigger>
           <SelectContent>

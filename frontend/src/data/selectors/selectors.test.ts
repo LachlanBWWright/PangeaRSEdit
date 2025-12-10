@@ -15,10 +15,10 @@ import {
   ItemData,
   LiquidData,
 } from "@/python/structSpecs/LevelTypes";
-import { SplineItemType } from "../../data/splines/SplineItemType";
-import { ItemType } from "../../data/items/TerrainItemType";
+import { SplineItemType } from "../../data/splines/ottoSplineItemType";
+import { ItemType } from "../../data/items/ottoItemType";
 import { WaterBodyType } from "../../data/water/ottoWaterBodyType";
-import { FenceType } from "../../data/fences/FenceType";
+import { FenceType } from "../../data/fences/ottoFenceType";
 
 // Mock level data for testing
 const createMockLevelData = (): LevelData => ({

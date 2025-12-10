@@ -409,6 +409,7 @@ export function IntroPrompt({ pyodideWorker }: { pyodideWorker: Worker }) {
         <div className="flex-1" />
 
         <Button
+          data-testid="download-button"
           onClick={() => {
             const combinedDataResult = combineLevelData(getCurrentAtomicData());
             if (isOk(combinedDataResult)) {

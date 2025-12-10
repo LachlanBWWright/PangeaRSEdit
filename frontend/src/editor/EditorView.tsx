@@ -12,5 +12,9 @@ import type { EditorViewProps } from "./utils/editorViewTypes";
  * Main EditorView that delegates to game-specific implementations
  */
 export function EditorView(props: EditorViewProps) {
-  return <GameEditorView {...props} />;
+  return (
+    <div data-testid="editor-view">
+      <GameEditorView {...props} />
+    </div>
+  );
 }
