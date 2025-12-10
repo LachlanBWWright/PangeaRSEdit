@@ -31,7 +31,6 @@ import {
 } from "../utils/editorViewUtils";
 import type { EditorViewProps } from "../utils/editorViewTypes";
 import {
-  HeaderData,
   ItemData,
   LiquidData,
   FenceData,

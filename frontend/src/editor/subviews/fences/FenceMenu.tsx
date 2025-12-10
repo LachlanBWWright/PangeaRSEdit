@@ -10,7 +10,7 @@ import {
   SelectContent,
   SelectTrigger,
 } from "@/components/ui/select";
-import { Game, Globals } from "@/data/globals/globals";
+import { Globals } from "@/data/globals/globals";
 import { getFenceName } from "@/data/fences/getFenceNames";
 import { getFenceTypes } from "@/data/fences/getFenceTypes";
 import { getFenceImagePath } from "@/data/fences/getFenceImagePath";

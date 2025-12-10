@@ -6,7 +6,7 @@
  */
 
 import { Game } from "../data/globals/globals";
-import { Result, ok, err } from "../types/result";
+import { Result, ok } from "../types/result";
 
 // Import all game validators
 import { validateOttoMaticLevel, LevelDataSchema } from "./games/ottoMatic";

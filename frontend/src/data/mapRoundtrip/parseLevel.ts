@@ -6,7 +6,7 @@
 import { LevelData } from "@/python/structSpecs/LevelTypes";
 import { ParseLevelOptions, SerializeLevelOptions } from "./types";
 import {
-  nanosaur1LevelToOttoMaticLevel,
+  nanosaur1LevelToLevelData,
   parseNanosaur1Level,
 } from "../processors/classicProprocessor";
 import { preprocessJson } from "../processors/ottoPreprocessor";
@@ -59,7 +59,7 @@ export function parseNanosaur1Buffer(
   try {
     const rawLevelData = parseNanosaur1Level(buffer);
     return ok(
-      nanosaur1LevelToOttoMaticLevel(
+      nanosaur1LevelToLevelData(
         rawLevelData,
         gameType?.TILE_SIZE ?? 32,
         gameType?.TILE_INGAME_SIZE ?? 140,

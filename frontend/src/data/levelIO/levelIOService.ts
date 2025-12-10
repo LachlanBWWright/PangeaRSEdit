@@ -13,7 +13,7 @@ import { preprocessJson } from "../processors/ottoPreprocessor";
 import { LevelData } from "@/python/structSpecs/LevelTypes";
 import {
   parseNanosaur1Level,
-  nanosaur1LevelToOttoMaticLevel,
+  nanosaur1LevelToLevelData,
   parseNanosaurTerrainTextures,
 } from "../processors/classicProprocessor";
 import { Result, ok, err, fromPromise, isErr } from "../../types/result";
@@ -114,7 +114,7 @@ export function parseNanosaur1LevelBuffer(
 ): Result<LevelData, Error> {
   try {
     const rawLevelData = parseNanosaur1Level(buffer);
-    const converted = nanosaur1LevelToOttoMaticLevel(
+    const converted = nanosaur1LevelToLevelData(
       rawLevelData,
       gameType?.TILE_SIZE ?? 32,
       gameType?.TILE_INGAME_SIZE ?? 140,
