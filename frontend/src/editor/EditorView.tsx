@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { EditorToolbar } from "./EditorToolbar";
 import {
   HeaderData,
@@ -22,8 +22,17 @@ import { KonvaView } from "./canvas/CanvasView";
 import { ThreeView } from "./threejs/Three";
 import { useAtomValue } from "jotai";
 import { CanvasView, CanvasViewMode } from "@/data/canvasView/canvasViewAtoms";
+import { Globals } from "@/data/globals/globals";
 
 import { View } from "./viewEnum";
+import {
+  createNonNullUpdater,
+  createUndoRedoKeyHandler,
+  createZoomInHandler,
+  createZoomOutHandler,
+  terrainHasSupertileData,
+} from "./utils/editorViewUtils";
+import { getGameFeatures } from "./utils/gameFeatures";
 
 export function EditorView({
   headerData,
@@ -62,14 +71,7 @@ export function EditorView({
   redoData: () => void;
   dataHistory: DataHistory;
 }) {
-  console.log(
-    headerData,
-    itemData,
-    liquidData,
-    fenceData,
-    splineData,
-    terrainData,
-  );
+  const globals = useAtomValue(Globals);
   const canvasViewMode = useAtomValue(CanvasViewMode);
   const [view, setView] = useState<View>(View.fences);
   const [stage, setStage] = useImmer({
@@ -78,25 +80,16 @@ export function EditorView({
     y: 0,
   });
 
-  // Keyboard listeners for undo/redo
-  const handleKeyDown = useCallback(
-    (e: KeyboardEvent) => {
-      if (
-        (e.ctrlKey || e.metaKey) &&
-        !e.shiftKey &&
-        (e.key === "z" || e.key === "Z")
-      ) {
-        e.preventDefault();
-        undoData();
-      } else if (
-        (e.ctrlKey || e.metaKey) &&
-        (e.key === "y" || (e.shiftKey && (e.key === "z" || e.key === "Z")))
-      ) {
-        e.preventDefault();
-        redoData();
-      }
-    },
-    [undoData, redoData],
+  // Get game-specific features
+  const gameFeatures = useMemo(
+    () => getGameFeatures(globals.GAME_TYPE),
+    [globals.GAME_TYPE]
+  );
+
+  // Extract keyboard handler using utility function
+  const handleKeyDown = useMemo(
+    () => createUndoRedoKeyHandler(undoData, redoData),
+    [undoData, redoData]
   );
 
   useEffect(() => {
@@ -106,55 +99,36 @@ export function EditorView({
     };
   }, [handleKeyDown]);
 
-  const zoomIn = () =>
-    setStage((stage) => {
-      stage.scale = Math.max(0.1, stage.scale * 1.1);
-    });
-  const zoomOut = () =>
-    setStage((stage) => {
-      stage.scale = Math.min(5, stage.scale * 0.9);
-    });
+  // Extract zoom handlers using utility functions
+  const zoomIn = useMemo(() => createZoomInHandler(setStage), [setStage]);
+  const zoomOut = useMemo(() => createZoomOutHandler(setStage), [setStage]);
 
-  // Provide non-null Updater wrappers for menus that expect non-null data
+  // Create non-null updater wrappers using utility function
   const setItemDataNotNull: Updater<ItemData> = useCallback(
-    (updater) => {
-      setItemData((current) => {
-        if (!current) return current;
-        return typeof updater === "function" ? updater(current) : updater;
-      });
-    },
-    [setItemData],
+    createNonNullUpdater(setItemData),
+    [setItemData]
   );
 
   const setLiquidDataNotNull: Updater<LiquidData> = useCallback(
-    (updater) => {
-      setLiquidData((current) => {
-        if (!current) return current;
-        return typeof updater === "function" ? updater(current) : updater;
-      });
-    },
-    [setLiquidData],
+    createNonNullUpdater(setLiquidData),
+    [setLiquidData]
   );
 
   const setFenceDataNotNull: Updater<FenceData> = useCallback(
-    (updater) => {
-      setFenceData((current) => {
-        if (!current) return current;
-        return typeof updater === "function" ? updater(current) : updater;
-      });
-    },
-    [setFenceData],
+    createNonNullUpdater(setFenceData),
+    [setFenceData]
   );
 
   const setSplineDataNotNull: Updater<SplineData> = useCallback(
-    (updater) => {
-      setSplineData((current) => {
-        if (!current) return current;
-        return typeof updater === "function" ? updater(current) : updater;
-      });
-    },
-    [setSplineData],
+    createNonNullUpdater(setSplineData),
+    [setSplineData]
   );
+
+  // Calculate available menu tabs based on game features and data availability
+  const showFenceMenu = gameFeatures.supportsFences && fenceData !== null;
+  const showWaterMenu = gameFeatures.supportsWater && liquidData !== null;
+  const showSplineMenu = gameFeatures.supportsSplines && splineData !== null;
+  const showSupertileMenu = terrainHasSupertileData(terrainData);
 
   return (
     <div className="flex flex-col flex-1 w-full gap-2 min-h-0">
@@ -167,20 +141,15 @@ export function EditorView({
         zoomOut={zoomOut}
         dataHistoryIndex={dataHistory.index}
         dataHistoryLength={dataHistory.items.length}
-        terrainHasSTgd={
-          terrainData &&
-          // For Bugdom 1: has Layr (tile layer data), for other games: has STgd
-          ((terrainData.STgd !== undefined && terrainData.STgd !== null) ||
-            (terrainData.Layr !== undefined && terrainData.Layr !== null))
-        }
-        hasFenceData={fenceData !== null}
-        hasLiquidData={liquidData !== null}
+        terrainHasSTgd={showSupertileMenu}
+        hasFenceData={showFenceMenu}
+        hasLiquidData={showWaterMenu}
       />
       <div>
-        {view === View.fences && fenceData && (
+        {view === View.fences && showFenceMenu && (
           <FenceMenu fenceData={fenceData} setFenceData={setFenceDataNotNull} />
         )}
-        {view === View.water && liquidData && (
+        {view === View.water && showWaterMenu && (
           <WaterMenu
             liquidData={liquidData}
             setLiquidData={setLiquidDataNotNull}
@@ -194,7 +163,7 @@ export function EditorView({
             setHeaderData={setHeaderData}
           />
         )}
-        {view === View.splines && splineData && (
+        {view === View.splines && showSplineMenu && (
           <SplineMenu
             splineData={splineData}
             setSplineData={setSplineDataNotNull}
@@ -205,7 +174,7 @@ export function EditorView({
         {view === View.tiles && (
           <TilesMenu headerData={headerData} setHeaderData={setHeaderData} />
         )}
-        {view === View.supertiles && (
+        {view === View.supertiles && showSupertileMenu && (
           <SupertileMenu
             headerData={headerData}
             setHeaderData={setHeaderData}
