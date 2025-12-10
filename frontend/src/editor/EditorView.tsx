@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { EditorToolbar } from "./EditorToolbar";
 import {
   HeaderData,
@@ -104,23 +104,24 @@ export function EditorView({
   const zoomOut = useMemo(() => createZoomOutHandler(setStage), [setStage]);
 
   // Create non-null updater wrappers using utility function
-  const setItemDataNotNull: Updater<ItemData> = useCallback(
-    createNonNullUpdater(setItemData),
+  // Using useMemo since createNonNullUpdater returns a function
+  const setItemDataNotNull: Updater<ItemData> = useMemo(
+    () => createNonNullUpdater(setItemData),
     [setItemData]
   );
 
-  const setLiquidDataNotNull: Updater<LiquidData> = useCallback(
-    createNonNullUpdater(setLiquidData),
+  const setLiquidDataNotNull: Updater<LiquidData> = useMemo(
+    () => createNonNullUpdater(setLiquidData),
     [setLiquidData]
   );
 
-  const setFenceDataNotNull: Updater<FenceData> = useCallback(
-    createNonNullUpdater(setFenceData),
+  const setFenceDataNotNull: Updater<FenceData> = useMemo(
+    () => createNonNullUpdater(setFenceData),
     [setFenceData]
   );
 
-  const setSplineDataNotNull: Updater<SplineData> = useCallback(
-    createNonNullUpdater(setSplineData),
+  const setSplineDataNotNull: Updater<SplineData> = useMemo(
+    () => createNonNullUpdater(setSplineData),
     [setSplineData]
   );
 

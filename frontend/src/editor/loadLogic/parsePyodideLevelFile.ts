@@ -34,9 +34,14 @@ export async function parsePyodideLevelFile(
             gameType.GAME_TYPE
           );
           if (!validationResult.ok) {
+            // Log validation warning with context
             console.warn(
               `Level validation warning for ${gameType.GAME_NAME}:`,
               validationResult.error.message
+            );
+            console.warn(
+              `Note: The level will be loaded despite validation failure. ` +
+              `Some features may not work correctly if the data format is unexpected.`
             );
             // Continue with the data even if validation fails
             // The validation is informational, not blocking

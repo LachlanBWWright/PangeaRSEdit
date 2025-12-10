@@ -144,7 +144,8 @@ export function createUndoHandler(
 }
 
 /**
- * Create handlers for undo/redo operations.
+ * Create handlers for redo operations.
+ * Returns a function that advances to the next history state when called.
  */
 export function createRedoHandler(
   history: DataHistory,

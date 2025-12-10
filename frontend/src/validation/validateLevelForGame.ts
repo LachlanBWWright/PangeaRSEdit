@@ -90,8 +90,11 @@ export function validateLevelDataForGame(
 
     default:
       // Unknown game type - try Otto Matic validation as fallback
+      // This can happen if a new game is added but validation schema is not yet implemented
+      // Action: Add a new case above for the new game type and create its validation schema
       console.warn(
-        `Unknown game type ${gameType}, using Otto Matic validation as fallback`
+        `Unknown game type ${gameType}, using Otto Matic validation as fallback. ` +
+        `To fix: Add validation schema for this game in src/validation/games/`
       );
       return validateOttoMaticLevel(data);
   }

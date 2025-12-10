@@ -4,7 +4,13 @@
  * This file re-exports types from commonLevelData.ts with Otto Matic-specific
  * type specializations for backward compatibility.
  *
- * For game-agnostic code, prefer importing from commonLevelData.ts directly.
+ * Usage guidelines:
+ * - For new game-agnostic code, prefer importing from commonLevelData.ts directly
+ * - Use this file when you need Otto Matic-specific typed items (e.g., ItemType, SplineItemType)
+ * - Existing code can continue using this file without changes
+ *
+ * Migration: If you're writing code that should work across multiple games,
+ * use types from commonLevelData.ts and parameterize item types as needed.
  */
 
 import { ItemType } from "../../data/items/ottoItemType";
