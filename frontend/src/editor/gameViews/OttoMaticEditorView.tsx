@@ -19,7 +19,7 @@ import { SplineMenu } from "../subviews/splines/SplineMenu";
 import { WaterMenu } from "../subviews/water/WaterMenu";
 import { OttoMaticTilesMenu } from "./OttoMaticTilesMenu";
 import { SupertileMenu } from "../subviews/supertiles/SupertilesMenu";
-import { KonvaView } from "../canvas/CanvasView";
+import { OttoMaticKonvaView } from "../canvas/OttoMaticKonvaView";
 import { ThreeView } from "../threejs/Three";
 import { View } from "../viewEnum";
 import {
@@ -154,7 +154,7 @@ export function OttoMaticEditorView({
             mapImages={mapImages}
           />
         ) : (
-          <KonvaView
+          <OttoMaticKonvaView
             headerData={headerData}
             itemData={itemData}
             setItemData={setItemData}

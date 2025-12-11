@@ -16,7 +16,7 @@ import { ItemMenu } from "../subviews/items/ItemMenu";
 import { SplineMenu } from "../subviews/splines/SplineMenu";
 import { IndividualTilesMenu } from "./IndividualTilesMenu";
 import { BugdomTileMenu } from "../subviews/bugdom/BugdomTileMenu";
-import { KonvaView } from "../canvas/CanvasView";
+import { Bugdom1KonvaView } from "../canvas/Bugdom1KonvaView";
 import { ThreeView } from "../threejs/Three";
 import { View } from "../viewEnum";
 import {
@@ -141,12 +141,10 @@ export function BugdomEditorView({
             mapImages={mapImages}
           />
         ) : (
-          <KonvaView
+          <Bugdom1KonvaView
             headerData={headerData}
             itemData={itemData}
             setItemData={setItemData}
-            liquidData={null}
-            setLiquidData={() => {}} // No-op for Bugdom
             fenceData={fenceData}
             setFenceData={setFenceData}
             splineData={splineData}

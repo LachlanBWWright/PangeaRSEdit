@@ -17,7 +17,7 @@ import { SplineMenu } from "../subviews/splines/SplineMenu";
 import { WaterMenu } from "../subviews/water/WaterMenu";
 import { StandardTilesMenu } from "./StandardTilesMenu";
 import { SupertileMenu } from "../subviews/supertiles/SupertilesMenu";
-import { KonvaView } from "../canvas/CanvasView";
+import { StandardKonvaView } from "../canvas/StandardKonvaView";
 import { ThreeView } from "../threejs/Three";
 import { View } from "../viewEnum";
 import {
@@ -152,7 +152,7 @@ export function StandardEditorView({
             mapImages={mapImages}
           />
         ) : (
-          <KonvaView
+          <StandardKonvaView
             headerData={headerData}
             itemData={itemData}
             setItemData={setItemData}

@@ -15,7 +15,7 @@ import { CanvasView, CanvasViewMode } from "@/data/canvasView/canvasViewAtoms";
 
 import { ItemMenu } from "../subviews/items/ItemMenu";
 import { IndividualTilesMenu } from "./IndividualTilesMenu";
-import { KonvaView } from "../canvas/CanvasView";
+import { MightyMikeKonvaView } from "../canvas/MightyMikeKonvaView";
 import { ThreeView } from "../threejs/Three";
 import { View } from "../viewEnum";
 import {
@@ -102,7 +102,7 @@ export function MightyMikeEditorView({
             mapImages={mapImages}
           />
         ) : (
-          <KonvaView
+          <MightyMikeKonvaView
             headerData={headerData}
             itemData={itemData}
             setItemData={setItemData}
