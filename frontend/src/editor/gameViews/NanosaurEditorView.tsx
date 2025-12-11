@@ -9,7 +9,7 @@
  */
 
 import { useState, useEffect, useMemo } from "react";
-import { EditorToolbar } from "../EditorToolbar";
+import { Nanosaur1EditorToolbar } from "../toolbars/Nanosaur1EditorToolbar";
 import { Updater, useImmer } from "use-immer";
 import { useAtomValue } from "jotai";
 import { CanvasView, CanvasViewMode } from "@/data/canvasView/canvasViewAtoms";
@@ -72,7 +72,7 @@ export function NanosaurEditorView({
 
   return (
     <div className="flex flex-col flex-1 w-full gap-2 min-h-0">
-      <EditorToolbar
+      <Nanosaur1EditorToolbar
         view={view}
         setView={setView}
         undoData={undoData}

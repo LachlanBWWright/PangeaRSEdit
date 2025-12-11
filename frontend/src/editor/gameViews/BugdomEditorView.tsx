@@ -6,7 +6,7 @@
  */
 
 import { useState, useEffect, useMemo } from "react";
-import { EditorToolbar } from "../EditorToolbar";
+import { Bugdom1EditorToolbar } from "../toolbars/Bugdom1EditorToolbar";
 import { Updater, useImmer } from "use-immer";
 import { useAtomValue } from "jotai";
 import { CanvasView, CanvasViewMode } from "@/data/canvasView/canvasViewAtoms";
@@ -84,7 +84,7 @@ export function BugdomEditorView({
 
   return (
     <div className="flex flex-col flex-1 w-full gap-2 min-h-0">
-      <EditorToolbar
+      <Bugdom1EditorToolbar
         view={view}
         setView={setView}
         undoData={undoData}

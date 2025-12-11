@@ -8,7 +8,7 @@
  */
 
 import { useState, useEffect, useMemo } from "react";
-import { EditorToolbar } from "../EditorToolbar";
+import { StandardEditorToolbar } from "../toolbars/StandardEditorToolbar";
 import { Updater, useImmer } from "use-immer";
 import { useAtomValue } from "jotai";
 import { CanvasView, CanvasViewMode } from "@/data/canvasView/canvasViewAtoms";
@@ -94,7 +94,7 @@ export function OttoMaticEditorView({
 
   return (
     <div className="flex flex-col flex-1 w-full gap-2 min-h-0">
-      <EditorToolbar
+      <StandardEditorToolbar
         view={view}
         setView={setView}
         undoData={undoData}
