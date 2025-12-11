@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { validateLevelData } from "../levelDataSchemas";
 import {
-  headerFullSchema,
+  headerOttoMaticSchema,
   tileAttributeSchema,
   fenceSchema,
   fenceNubSchema,
@@ -18,11 +18,11 @@ import {
   supertileGridOttoSchema,
 } from "../levelDataSchemas";
 
-// Otto-specific level schema (moved from central file)
+// Otto Matic level schema - uses full header with numTilePages/numTiles and STgd with isEmpty flag
 export const LevelDataSchema = z
   .object({
     _metadata: metadataSchema,
-    Hedr: z.record(z.string(), resourceEntrySchema(headerFullSchema)),
+    Hedr: z.record(z.string(), resourceEntrySchema(headerOttoMaticSchema)),
     Atrb: z.record(
       z.string(),
       resourceEntrySchema(z.array(tileAttributeSchema)),

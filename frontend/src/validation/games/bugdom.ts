@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { validateLevelData } from "../levelDataSchemas";
 import {
-  headerFullSchema,
+  headerBugdom1Schema,
   itemSchema,
   metadataSchema,
   resourceEntrySchema,
@@ -13,23 +13,31 @@ import {
   splinePointSchema,
   splineItemSchema,
   liquidSchema,
-  checkpointSchema,
+  supertileGridOttoSchema,
+  tileAttributeSchema,
 } from "../levelDataSchemas";
 
-// Minimal Bugdom (1) level validation - Bugdom uses Layr and tile images are
-// stored in resource fork entries. This schema is intentionally permissive
-// using `passthrough()` so non-validated properties are allowed.
+// Bugdom 1 level validation - uses Layr and tile images are
+// stored in resource fork entries. Uses STgd with isEmpty flag.
+// Header has numTilePages/numTiles but NO numUniqueSupertiles/numWaterPatches/numCheckpoints
 export const bugdomLevelSchema = z
   .object({
     _metadata: metadataSchema,
-    Hedr: z.record(z.string(), resourceEntrySchema(headerFullSchema)),
+    Hedr: z.record(z.string(), resourceEntrySchema(headerBugdom1Schema)),
     Layr: z
       .record(z.string(), resourceEntrySchema(z.array(z.number())))
       .optional(),
+    STgd: z
+      .record(z.string(), resourceEntrySchema(z.array(supertileGridOttoSchema)))
+      .optional(),
     Timg: z.record(z.string(), hexDataEntrySchema).optional(),
+    Atrb: z
+      .record(z.string(), resourceEntrySchema(z.array(tileAttributeSchema)))
+      .optional(),
     Itms: z
       .record(z.string(), resourceEntrySchema(z.array(itemSchema)))
       .optional(),
+    YCrd: z.record(z.string(), resourceEntrySchema(z.array(z.number()))).optional(),
     Fenc: z
       .record(z.string(), resourceEntrySchema(z.array(fenceSchema)))
       .optional(),
@@ -50,9 +58,6 @@ export const bugdomLevelSchema = z
       .optional(),
     Liqd: z
       .record(z.string(), resourceEntrySchema(z.array(liquidSchema)))
-      .optional(),
-    CkPt: z
-      .record(z.string(), resourceEntrySchema(z.array(checkpointSchema)))
       .optional(),
   })
   .passthrough();

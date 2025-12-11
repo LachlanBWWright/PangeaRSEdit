@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { validateLevelData } from "../levelDataSchemas";
 import {
-  headerFullSchema,
+  headerSimplifiedSchema,
   metadataSchema,
   resourceEntrySchema,
   hexDataEntrySchema,
@@ -15,13 +15,14 @@ import {
   liquidSchema,
   checkpointSchema,
   supertileGridSimplifiedSchema,
+  tileAttributeSchema,
 } from "../levelDataSchemas";
 
-// Bugdom 2 uses a -1 sentinel in STgd and nearly identical structure to Otto
+// Bugdom 2 uses simplified header (no numTilePages/numTiles) and simplified STgd (no isEmpty)
 export const bugdom2LevelSchema = z
   .object({
     _metadata: metadataSchema,
-    Hedr: z.record(z.string(), resourceEntrySchema(headerFullSchema)),
+    Hedr: z.record(z.string(), resourceEntrySchema(headerSimplifiedSchema)),
     STgd: z
       .record(
         z.string(),
@@ -29,6 +30,13 @@ export const bugdom2LevelSchema = z
       )
       .optional(),
     Timg: z.record(z.string(), hexDataEntrySchema).optional(),
+    Atrb: z
+      .record(z.string(), resourceEntrySchema(z.array(tileAttributeSchema)))
+      .optional(),
+    Layr: z
+      .record(z.string(), resourceEntrySchema(z.array(z.number())))
+      .optional(),
+    YCrd: z.record(z.string(), resourceEntrySchema(z.array(z.number()))).optional(),
     Itms: z
       .record(z.string(), resourceEntrySchema(z.array(itemSchema)))
       .optional(),
