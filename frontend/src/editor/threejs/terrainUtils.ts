@@ -2,7 +2,7 @@ import {
   HeaderData,
   TerrainData,
 } from "@/python/structSpecs/LevelTypes";
-import { GlobalsInterface, Game } from "@/data/globals/globals";
+import { GlobalsInterface, DataType } from "@/data/globals/globals";
 import { Result, ok, err } from "@/types/result";
 
 export function combineMapImagesFromSTgd(
@@ -116,9 +116,10 @@ export function combineMapImages(
   terrainData: TerrainData,
   globals: GlobalsInterface,
 ): Result<HTMLCanvasElement, Error> {
+  // Bugdom 1 and Nanosaur 1 use individual tiles (RSRC_FORK and TRT_FILE)
   if (
-    globals.GAME_TYPE === Game.BUGDOM ||
-    globals.GAME_TYPE === Game.NANOSAUR
+    globals.DATA_TYPE === DataType.RSRC_FORK ||
+    globals.DATA_TYPE === DataType.TRT_FILE
   ) {
     return combineMapImagesFromTiles(
       mapImages,

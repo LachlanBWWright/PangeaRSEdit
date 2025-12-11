@@ -2,7 +2,7 @@ import { PyodideMessage, PyodideResponse } from "../../python/pyodideWorker";
 import { LzssMessage, LzssResponse } from "@/utils/lzssWorker";
 import LzssWorker from "../utils/lzssWorker?worker";
 import { LevelData } from "@/python/structSpecs/LevelTypes";
-import { Game, type GlobalsInterface } from "../globals/globals";
+import { DataType, TileImageFormat, type GlobalsInterface } from "../globals/globals";
 
 /**
  * Save and download map and images as in IntroPrompt
@@ -44,15 +44,15 @@ export async function saveMap({
     description: "Processing map data test (THIS FILE IS NOT USED)",
   });
 
-  if (globals.GAME_TYPE === Game.NANOSAUR_2) {
-    //TODO: Nanosaur 2 map logic
+  if (globals.TILE_IMAGE_FORMAT === TileImageFormat.JPG) {
+    //TODO: JPEG-based map logic (e.g., Nanosaur 2)
   }
-  //if bugdom 1
-  else if (globals.GAME_TYPE === Game.BUGDOM) {
+  //if bugdom 1 (resource fork)
+  else if (globals.DATA_TYPE === DataType.RSRC_FORK) {
     //Should save images here too as Bugdom 1 has terrain and image data in the same file
     //TODO
-  } else if (globals.GAME_TYPE === Game.NANOSAUR) {
-    //TODO
+  } else if (globals.DATA_TYPE === DataType.TRT_FILE) {
+    //TODO: Nanosaur 1 TRT file logic
   } else {
     const mapBuffer = await processMapData({ data, pyodideWorker, globals });
     console.log("test\n\n\n");

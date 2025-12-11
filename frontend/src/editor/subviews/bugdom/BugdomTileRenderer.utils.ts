@@ -1,5 +1,5 @@
 import { HeaderData } from "@/python/structSpecs/LevelTypes";
-import { Game } from "@/data/globals/globals";
+import { DataType } from "@/data/globals/globals";
 
 // Tile bit masks from Bugdom source code (terrain.h)
 export const TILENUM_MASK = 0x0fff; // bits 0-11: tile/image number
@@ -261,17 +261,17 @@ export function buildAllBugdomSupertiles(
 /**
  * Check if the current game is Bugdom 1 (uses tile-based supertile construction)
  */
-export function isBugdomGame(globals: { GAME_TYPE: Game }): boolean {
-  return globals.GAME_TYPE === Game.BUGDOM;
+export function isBugdomGame(globals: { DATA_TYPE: DataType }): boolean {
+  return globals.DATA_TYPE === DataType.RSRC_FORK;
 }
 
 /**
  * Check if the current game uses individual tiles to construct supertiles
  * (Bugdom 1 and Nanosaur 1 both use 5x5 grids of 32x32 tiles)
  */
-export function usesIndividualTiles(globals: { GAME_TYPE: Game }): boolean {
+export function usesIndividualTiles(globals: { DATA_TYPE: DataType }): boolean {
   return (
-    globals.GAME_TYPE === Game.BUGDOM || globals.GAME_TYPE === Game.NANOSAUR
+    globals.DATA_TYPE === DataType.RSRC_FORK || globals.DATA_TYPE === DataType.TRT_FILE
   );
 }
 

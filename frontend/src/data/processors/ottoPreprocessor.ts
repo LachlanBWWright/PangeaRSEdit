@@ -4,6 +4,15 @@ import { SPLINE_KEY_BASE } from "../../editor/subviews/splines/splineUtils";
 import { Game, GlobalsInterface } from "../globals/globals";
 import { Result, ok, err } from "../../types/result";
 
+/**
+ * Check if the game uses Layr as direct tile indices with flip/rotate bits
+ * (as opposed to Otto Matic/CroMag which use Layr to index into Atrb)
+ */
+function usesLayrAsTileIndices(globals: GlobalsInterface): boolean {
+  // All games EXCEPT Otto Matic and CroMag use Layr as tile indices
+  return globals.GAME_TYPE !== Game.OTTO_MATIC && globals.GAME_TYPE !== Game.CRO_MAG;
+}
+
 // we intentionally accept a free-form JSON object here — linting for explicit any is suppressed
 
 export function preprocessJson(
@@ -14,15 +23,9 @@ export function preprocessJson(
   const anyJson = json as any;
   console.log(anyJson);
 
-  // For Bugdom 1 and Nanosaur 1, Layr contains tile indices with flip/rotate bits - DO NOT MODIFY!
-  // The Layr preprocessing below is only for Otto Matic and other games where Layr contains Atrb indices.
-  if (
-    globals.GAME_TYPE === Game.BUGDOM ||
-    globals.GAME_TYPE === Game.NANOSAUR ||
-    globals.GAME_TYPE === Game.BUGDOM_2 ||
-    globals.GAME_TYPE === Game.NANOSAUR_2 ||
-    globals.GAME_TYPE === Game.BILLY_FRONTIER
-  ) {
+  // For games that use Layr as tile indices with flip/rotate bits - DO NOT MODIFY!
+  // The Layr preprocessing below is only for Otto Matic and CroMag where Layr contains Atrb indices.
+  if (usesLayrAsTileIndices(globals)) {
     console.log(
       `${globals.GAME_NAME}: Skipping Layr/Atrb preprocessing (Layr contains tile indices with flip/rotate bits)`,
     );

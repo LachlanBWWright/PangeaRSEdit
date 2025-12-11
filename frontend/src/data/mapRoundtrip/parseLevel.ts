@@ -10,7 +10,7 @@ import {
   parseNanosaur1Level,
 } from "../processors/classicProprocessor";
 import { preprocessJson } from "../processors/ottoPreprocessor";
-import { Game, GlobalsInterface } from "../globals/globals";
+import { DataType, GlobalsInterface } from "../globals/globals";
 import { Result, ok, err, isErr } from "../../types/result";
 
 /**
@@ -117,13 +117,13 @@ export async function parseLevelForGame(
   gameType: GlobalsInterface,
   pyodideRunner?: (code: string, buffer: ArrayBuffer) => Promise<string>,
 ): Promise<Result<LevelData, Error>> {
-  if (gameType.GAME_TYPE === Game.NANOSAUR) {
-    // Nanosaur 1 uses its own parser
+  if (gameType.DATA_TYPE === DataType.TRT_FILE) {
+    // Nanosaur 1 uses its own TRT file parser
     return parseNanosaur1Buffer(buffer, gameType);
   }
 
   if (!pyodideRunner) {
-    return err(new Error("pyodideRunner is required for non-Nanosaur 1 games"));
+    return err(new Error("pyodideRunner is required for non-TRT file games"));
   }
 
   const parseResult = await parseLevelBuffer(
