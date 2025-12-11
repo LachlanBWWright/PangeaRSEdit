@@ -16,6 +16,13 @@ const MIGHTY_MIKE_MAPS_PATH = join(
   "../../../games/mightymike/Data/Maps"
 );
 
+/**
+ * Converts a Node.js Buffer to an ArrayBuffer
+ */
+function nodeBufferToArrayBuffer(buffer: Buffer): ArrayBuffer {
+  return buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength);
+}
+
 describe("parseMightyMikeTileSet", () => {
   const tilesetPath = join(MIGHTY_MIKE_MAPS_PATH, "bargain.tileset");
 
@@ -26,7 +33,7 @@ describe("parseMightyMikeTileSet", () => {
     }
 
     const buffer = readFileSync(tilesetPath);
-    const result = parseMightyMikeTileSet(buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength));
+    const result = parseMightyMikeTileSet(nodeBufferToArrayBuffer(buffer));
 
     // Tilesets use PACK_TYPE_RLB (0) which we don't support yet
     // Skip this test until RLB decompression is implemented
@@ -66,7 +73,7 @@ describe("parseMightyMikeMap", () => {
     }
 
     const buffer = readFileSync(mapPath);
-    const result = parseMightyMikeMap(buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength));
+    const result = parseMightyMikeMap(nodeBufferToArrayBuffer(buffer));
 
     expect(result.ok).toBe(true);
     if (result.ok) {
@@ -110,8 +117,8 @@ describe("parseMightyMikeLevel", () => {
     const mapBuffer = readFileSync(mapPath);
 
     const result = parseMightyMikeLevel(
-      tilesetBuffer.buffer.slice(tilesetBuffer.byteOffset, tilesetBuffer.byteOffset + tilesetBuffer.byteLength),
-      mapBuffer.buffer.slice(mapBuffer.byteOffset, mapBuffer.byteOffset + mapBuffer.byteLength)
+      nodeBufferToArrayBuffer(tilesetBuffer),
+      nodeBufferToArrayBuffer(mapBuffer)
     );
 
     // Level parsing might fail due to tileset parsing issue (PACK_TYPE_RLB)
@@ -153,7 +160,7 @@ describe("MightyMike Semantic Roundtrip", () => {
 
       // Parse the file
       const parseResult = parseMightyMikeMap(
-        originalBuffer.buffer.slice(originalBuffer.byteOffset, originalBuffer.byteOffset + originalBuffer.byteLength)
+        nodeBufferToArrayBuffer(originalBuffer)
       );
       expect(parseResult.ok).toBe(true);
 
@@ -238,7 +245,7 @@ describe("MightyMike Semantic Roundtrip", () => {
 
       const buffer = readFileSync(mapPath);
       const result = parseMightyMikeMap(
-        buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength)
+        nodeBufferToArrayBuffer(buffer)
       );
       
       expect(result.ok).toBe(true);

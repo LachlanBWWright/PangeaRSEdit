@@ -42,19 +42,6 @@ export function GameEditorView(props: EditorViewProps) {
     setSplineData,
   } = props;
 
-  // Base props shared by all views
-  const baseProps = {
-    headerData,
-    setHeaderData,
-    terrainData,
-    setTerrainData,
-    mapImages,
-    setMapImages,
-    undoData,
-    redoData,
-    dataHistory,
-  };
-
   switch (globals.GAME_TYPE) {
     case Game.OTTO_MATIC:
       // Otto Matic requires all data types - use defaults if null
@@ -124,7 +111,15 @@ export function GameEditorView(props: EditorViewProps) {
       // Mighty Mike: items and terrain only
       return (
         <MightyMikeEditorView
-          {...baseProps}
+          headerData={headerData}
+          setHeaderData={setHeaderData}
+          terrainData={terrainData}
+          setTerrainData={setTerrainData}
+          mapImages={mapImages}
+          setMapImages={setMapImages}
+          undoData={undoData}
+          redoData={redoData}
+          dataHistory={dataHistory}
           itemData={itemData}
           setItemData={setItemData}
         />
