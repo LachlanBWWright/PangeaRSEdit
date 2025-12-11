@@ -6,8 +6,9 @@ export function getWaterBodyTypeName(globals: GlobalsInterface, waterBodyNumber:
     return "Unknown Water Body (no water support)";
   }
   
-  if (waterBodyNumber in globals.WATER_TYPES) {
-    return globals.WATER_TYPES[waterBodyNumber];
+  const name = globals.WATER_TYPES[waterBodyNumber];
+  if (name !== undefined) {
+    return name;
   }
   
   return `Unknown Water Body (${waterBodyNumber})`;

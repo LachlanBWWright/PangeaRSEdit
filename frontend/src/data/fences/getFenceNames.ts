@@ -6,8 +6,9 @@ export function getFenceName(globals: GlobalsInterface, fenceNumber: number): st
     return "Unknown Fence (no fence support)";
   }
   
-  if (fenceNumber in globals.FENCE_TYPES) {
-    return globals.FENCE_TYPES[fenceNumber];
+  const name = globals.FENCE_TYPES[fenceNumber];
+  if (name !== undefined) {
+    return name;
   }
   
   return `Unknown Fence (${fenceNumber})`;

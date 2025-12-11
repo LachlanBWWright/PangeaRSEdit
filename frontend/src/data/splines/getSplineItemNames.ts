@@ -9,8 +9,9 @@ export function getSplineItemName(
     return "Unknown Spline Item (no spline support)";
   }
   
-  if (itemNumber in globals.SPLINE_ITEM_TYPES) {
-    return globals.SPLINE_ITEM_TYPES[itemNumber];
+  const name = globals.SPLINE_ITEM_TYPES[itemNumber];
+  if (name !== undefined) {
+    return name;
   }
   
   return `Unknown Spline Item (${itemNumber})`;
