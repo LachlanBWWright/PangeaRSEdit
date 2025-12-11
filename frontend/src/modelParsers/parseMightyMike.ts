@@ -10,7 +10,7 @@ import type {
   MightyMikeItem,
   MightyMikeLevel,
 } from "../python/structSpecs/mightyMikeInterface";
-import { rlwDecompress, rlwCompress, PACK_TYPE_RLW, PACK_TYPE_NONE } from "../utils/rlwDecompress";
+import { rlwDecompress, rlwCompress } from "../utils/rlwDecompress";
 
 /**
  * Decompress a Mighty Mike packed file if needed

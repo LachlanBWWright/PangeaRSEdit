@@ -300,12 +300,10 @@ export function TopologyTiles({
 
 export function EmptyTiles({
   headerData,
-  terrainData,
   setTerrainData,
   tileGrid,
 }: {
   headerData: HeaderData;
-  terrainData: TerrainData;
   setTerrainData: Updater<TerrainData>;
   tileGrid: TileAttribute[];
 }) {
@@ -513,12 +511,10 @@ export function ElectricFloor0Tiles({
 
 export function ElectricFloor1Tiles({
   headerData,
-  terrainData,
   setTerrainData,
   tileGrid,
 }: {
   headerData: HeaderData;
-  terrainData: TerrainData;
   setTerrainData: Updater<TerrainData>;
   tileGrid: TileAttribute[];
 }) {

@@ -2,7 +2,7 @@
  * Bugdom Editor View
  * 
  * For Bugdom 1 which uses individual 32x32 tiles
- * Has fences, water, items, splines but different tile system
+ * Has fences, items, splines but different tile system (no water)
  */
 
 import { useState, useEffect, useMemo } from "react";
@@ -14,7 +14,6 @@ import { CanvasView, CanvasViewMode } from "@/data/canvasView/canvasViewAtoms";
 import { FenceMenu } from "../subviews/fences/FenceMenu";
 import { ItemMenu } from "../subviews/items/ItemMenu";
 import { SplineMenu } from "../subviews/splines/SplineMenu";
-import { WaterMenu } from "../subviews/water/WaterMenu";
 import { IndividualTilesMenu } from "./IndividualTilesMenu";
 import { BugdomTileMenu } from "../subviews/bugdom/BugdomTileMenu";
 import { KonvaView } from "../canvas/CanvasView";
@@ -27,10 +26,9 @@ import {
   createZoomOutHandler,
   terrainHasSupertileData,
 } from "../utils/editorViewUtils";
-import type { EditorViewProps } from "../utils/editorViewTypes";
+import type { BugdomEditorViewProps } from "../utils/editorViewTypes";
 import {
   ItemData,
-  LiquidData,
   FenceData,
   SplineData,
 } from "@/python/structSpecs/LevelTypes";
@@ -40,8 +38,6 @@ export function BugdomEditorView({
   setHeaderData,
   itemData,
   setItemData,
-  liquidData,
-  setLiquidData,
   fenceData,
   setFenceData,
   splineData,
@@ -53,7 +49,7 @@ export function BugdomEditorView({
   undoData,
   redoData,
   dataHistory,
-}: EditorViewProps) {
+}: BugdomEditorViewProps) {
   const canvasViewMode = useAtomValue(CanvasViewMode);
   const [view, setView] = useState<View>(View.fences);
   const [stage, setStage] = useImmer({ scale: 1, x: 0, y: 0 });
@@ -74,10 +70,6 @@ export function BugdomEditorView({
   const setItemDataNotNull: Updater<ItemData> = useMemo(
     () => createNonNullUpdater(setItemData),
     [setItemData]
-  );
-  const setLiquidDataNotNull: Updater<LiquidData> = useMemo(
-    () => createNonNullUpdater(setLiquidData),
-    [setLiquidData]
   );
   const setFenceDataNotNull: Updater<FenceData> = useMemo(
     () => createNonNullUpdater(setFenceData),
@@ -103,14 +95,11 @@ export function BugdomEditorView({
         dataHistoryLength={dataHistory.items.length}
         terrainHasSTgd={showSupertileMenu}
         hasFenceData={fenceData !== null}
-        hasLiquidData={liquidData !== null}
+        hasLiquidData={false} // Bugdom doesn't have water
       />
       <div>
         {view === View.fences && fenceData && (
           <FenceMenu fenceData={fenceData} setFenceData={setFenceDataNotNull} />
-        )}
-        {view === View.water && liquidData && (
-          <WaterMenu liquidData={liquidData} setLiquidData={setLiquidDataNotNull} />
         )}
         {view === View.items && itemData && (
           <ItemMenu
@@ -147,7 +136,7 @@ export function BugdomEditorView({
           <ThreeView
             headerData={headerData}
             fenceData={fenceData}
-            liquidData={liquidData}
+            liquidData={null}
             terrainData={terrainData}
             mapImages={mapImages}
           />
@@ -156,8 +145,8 @@ export function BugdomEditorView({
             headerData={headerData}
             itemData={itemData}
             setItemData={setItemData}
-            liquidData={liquidData}
-            setLiquidData={setLiquidData}
+            liquidData={null}
+            setLiquidData={() => {}} // No-op for Bugdom
             fenceData={fenceData}
             setFenceData={setFenceData}
             splineData={splineData}

@@ -1,11 +1,10 @@
 /**
- * Nanosaur Editor View
+ * Mighty Mike Editor View
  * 
- * For Nanosaur 1 which uses individual tiles but has minimal features:
- * - No fences
- * - No water bodies
- * - No splines
- * - Just items and terrain
+ * For Mighty Mike which uses individual tiles:
+ * - Items
+ * - Terrain tiles
+ * - No fences, water bodies, or splines
  */
 
 import { useState, useEffect, useMemo } from "react";
@@ -16,7 +15,6 @@ import { CanvasView, CanvasViewMode } from "@/data/canvasView/canvasViewAtoms";
 
 import { ItemMenu } from "../subviews/items/ItemMenu";
 import { IndividualTilesMenu } from "./IndividualTilesMenu";
-import { BugdomTileMenu } from "../subviews/bugdom/BugdomTileMenu";
 import { KonvaView } from "../canvas/CanvasView";
 import { ThreeView } from "../threejs/Three";
 import { View } from "../viewEnum";
@@ -25,14 +23,13 @@ import {
   createUndoRedoKeyHandler,
   createZoomInHandler,
   createZoomOutHandler,
-  terrainHasSupertileData,
 } from "../utils/editorViewUtils";
-import type { NanosaurEditorViewProps } from "../utils/editorViewTypes";
+import type { MightyMikeEditorViewProps } from "../utils/editorViewTypes";
 import {
   ItemData,
 } from "@/python/structSpecs/LevelTypes";
 
-export function NanosaurEditorView({
+export function MightyMikeEditorView({
   headerData,
   setHeaderData,
   itemData,
@@ -40,13 +37,12 @@ export function NanosaurEditorView({
   terrainData,
   setTerrainData,
   mapImages,
-  setMapImages,
   undoData,
   redoData,
   dataHistory,
-}: NanosaurEditorViewProps) {
+}: MightyMikeEditorViewProps) {
   const canvasViewMode = useAtomValue(CanvasViewMode);
-  // Default to items view since Nanosaur doesn't have fences
+  // Default to items view since MightyMike doesn't have fences
   const [view, setView] = useState<View>(View.items);
   const [stage, setStage] = useImmer({ scale: 1, x: 0, y: 0 });
 
@@ -68,8 +64,6 @@ export function NanosaurEditorView({
     [setItemData]
   );
 
-  const showSupertileMenu = terrainHasSupertileData(terrainData);
-
   return (
     <div className="flex flex-col flex-1 w-full gap-2 min-h-0">
       <EditorToolbar
@@ -81,9 +75,9 @@ export function NanosaurEditorView({
         zoomOut={zoomOut}
         dataHistoryIndex={dataHistory.index}
         dataHistoryLength={dataHistory.items.length}
-        terrainHasSTgd={showSupertileMenu}
-        hasFenceData={false} // Nanosaur doesn't have fences
-        hasLiquidData={false} // Nanosaur doesn't have water bodies
+        terrainHasSTgd={false} // MightyMike doesn't have supertiles
+        hasFenceData={false} // MightyMike doesn't have fences
+        hasLiquidData={false} // MightyMike doesn't have water bodies
       />
       <div>
         {view === View.items && itemData && (
@@ -96,16 +90,6 @@ export function NanosaurEditorView({
         )}
         {view === View.tiles && (
           <IndividualTilesMenu headerData={headerData} setHeaderData={setHeaderData} />
-        )}
-        {view === View.supertiles && showSupertileMenu && (
-          <BugdomTileMenu
-            headerData={headerData}
-            setHeaderData={setHeaderData}
-            terrainData={terrainData}
-            setTerrainData={setTerrainData}
-            mapImages={mapImages}
-            setMapImages={setMapImages}
-          />
         )}
       </div>
       <div className="w-full min-h-0 flex-1 border-2 border-black overflow-clip">
@@ -123,11 +107,11 @@ export function NanosaurEditorView({
             itemData={itemData}
             setItemData={setItemData}
             liquidData={null}
-            setLiquidData={() => {}} // No-op for Nanosaur
+            setLiquidData={() => {}} // No-op for MightyMike
             fenceData={null}
-            setFenceData={() => {}} // No-op for Nanosaur
+            setFenceData={() => {}} // No-op for MightyMike
             splineData={null}
-            setSplineData={() => {}} // No-op for Nanosaur
+            setSplineData={() => {}} // No-op for MightyMike
             terrainData={terrainData}
             setTerrainData={setTerrainData}
             mapImages={mapImages}
