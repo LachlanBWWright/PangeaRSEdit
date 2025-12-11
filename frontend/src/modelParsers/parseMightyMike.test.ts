@@ -259,3 +259,145 @@ describe("MightyMike Semantic Roundtrip", () => {
     }
   });
 });
+
+describe("MightyMike Data Inspection", () => {
+  it("should parse and inspect map data to verify items are produced", () => {
+    const mapPath = join(MIGHTY_MIKE_MAPS_PATH, "bargain.map-1");
+    
+    if (!existsSync(mapPath)) {
+      console.log("bargain.map-1 not found, skipping test");
+      return;
+    }
+
+    const buffer = readFileSync(mapPath);
+    const result = parseMightyMikeMap(nodeBufferToArrayBuffer(buffer));
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) {
+      console.log("Failed to parse map:", result.error);
+      return;
+    }
+
+    const map = result.value;
+    
+    console.log("\n=== Mighty Mike Map Data Inspection ===");
+    console.log(`Map dimensions: ${map.mapWidth}x${map.mapHeight}`);
+    console.log(`Number of items: ${map.numItems}`);
+    console.log(`Map image array length: ${map.mapImage.length}`);
+    console.log(`Has alt map: ${map.altMap !== null}`);
+    
+    // Inspect items
+    if (map.items.length > 0) {
+      console.log("\n=== Items Inspection ===");
+      console.log(`Total items found: ${map.items.length}`);
+      
+      // Show first few items
+      const itemsToShow = Math.min(5, map.items.length);
+      console.log(`First ${itemsToShow} items:`);
+      for (let i = 0; i < itemsToShow; i++) {
+        const item = map.items[i];
+        console.log(`  Item ${i}: type=${item.type}, pos=(${item.x}, ${item.y}), params=(${item.p0}, ${item.p1}, ${item.p2}, ${item.p3})`);
+      }
+      
+      // Verify items have valid data
+      expect(map.items.length).toBe(map.numItems);
+      map.items.forEach((item, idx) => {
+        expect(typeof item.type).toBe('number');
+        expect(typeof item.x).toBe('number');
+        expect(typeof item.y).toBe('number');
+        // Item positions should be reasonable
+        expect(item.x).toBeGreaterThanOrEqual(-10000);
+        expect(item.x).toBeLessThanOrEqual(10000);
+        expect(item.y).toBeGreaterThanOrEqual(-10000);
+        expect(item.y).toBeLessThanOrEqual(10000);
+      });
+    } else {
+      console.log("No items found in map");
+    }
+    
+    // Inspect map image tiles
+    console.log("\n=== Map Image Inspection ===");
+    const uniqueTiles = new Set<number>();
+    for (const row of map.mapImage) {
+      for (const tile of row) {
+        uniqueTiles.add(tile);
+      }
+    }
+    console.log(`Unique tile numbers used: ${uniqueTiles.size}`);
+    const sortedTiles = Array.from(uniqueTiles).sort((a, b) => a - b);
+    if (sortedTiles.length <= 20) {
+      console.log(`Tile numbers: [${sortedTiles.join(', ')}]`);
+    } else {
+      console.log(`Tile range: ${sortedTiles[0]} to ${sortedTiles[sortedTiles.length - 1]}`);
+    }
+    
+    // Sample a few tiles
+    if (map.mapImage.length > 0 && map.mapImage[0].length > 0) {
+      console.log("\nSample tiles from map:");
+      const samplesToShow = Math.min(5, map.mapHeight);
+      for (let y = 0; y < samplesToShow; y++) {
+        const x = Math.min(5, map.mapWidth - 1);
+        console.log(`  Position (${x}, ${y}): tile ${map.mapImage[y][x]}`);
+      }
+    }
+    
+    console.log("\n=== Data Verification Complete ===\n");
+  });
+  
+  it("should parse and inspect tileset data", () => {
+    const tilesetPath = join(MIGHTY_MIKE_MAPS_PATH, "bargain.tileset");
+    
+    if (!existsSync(tilesetPath)) {
+      console.log("bargain.tileset not found, skipping test");
+      return;
+    }
+
+    const buffer = readFileSync(tilesetPath);
+    const result = parseMightyMikeTileSet(nodeBufferToArrayBuffer(buffer));
+
+    // Tileset might fail due to RLB compression
+    if (!result.ok) {
+      console.log("Tileset parsing failed (expected if RLB compressed):", result.error);
+      return;
+    }
+
+    const tileset = result.value;
+    
+    console.log("\n=== Mighty Mike Tileset Data Inspection ===");
+    console.log(`Number of tile definitions: ${tileset.numTileDefinitions}`);
+    console.log(`Xlate table entries: ${tileset.numXlateEntries}`);
+    console.log(`Tile attributes: ${tileset.numTileAttributeEntries}`);
+    console.log(`Tile animations: ${tileset.numTileAnims}`);
+    console.log(`Transparency colors: ${tileset.numTileXparentColors}`);
+    
+    // Inspect xlate table
+    if (tileset.xlateTable.length > 0) {
+      console.log("\nXlate table sample:");
+      const samplesToShow = Math.min(10, tileset.xlateTable.length);
+      console.log(`  First ${samplesToShow} entries: [${tileset.xlateTable.slice(0, samplesToShow).join(', ')}]`);
+    }
+    
+    // Inspect tile attributes
+    if (tileset.tileAttributes.length > 0) {
+      console.log("\nTile attributes sample:");
+      const samplesToShow = Math.min(3, tileset.tileAttributes.length);
+      for (let i = 0; i < samplesToShow; i++) {
+        const attr = tileset.tileAttributes[i];
+        console.log(`  Attr ${i}: flags=${attr.flags}, params=(${attr.p0}, ${attr.p1}, ${attr.p2}, ${attr.p3}, ${attr.p4})`);
+      }
+    }
+    
+    // Inspect animations
+    if (tileset.tileAnimations.length > 0) {
+      console.log("\nTile animations:");
+      tileset.tileAnimations.forEach((anim, idx) => {
+        console.log(`  Animation ${idx}: "${anim.name}", speed=${anim.speed}, baseTile=${anim.baseTile}, ${anim.numFrames} frames`);
+        if (anim.tileNums.length > 0) {
+          console.log(`    Frame tiles: [${anim.tileNums.join(', ')}]`);
+        }
+      });
+    }
+    
+    console.log("\n=== Tileset Verification Complete ===\n");
+  });
+});

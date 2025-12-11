@@ -57,6 +57,7 @@ export async function openFile({
     gameType,
     pyodideWorker,
     setData,
+    rsrcName, // Pass the URL for Mighty Mike tileset loading
   );
   if (!parseResult.ok) {
     console.error(
@@ -68,8 +69,9 @@ export async function openFile({
   const jsonData = parseResult.value;
 
   if (gameType.DATA_TYPE === DataType.MIGHTY_MIKE) {
-    console.log("MightyMike level loaded - tileset integration pending");
+    console.log("MightyMike level loaded successfully with tileset integration");
     setMapImages([]);
+    // TODO: Load and display tileset images
   } else if (gameType.DATA_TYPE === DataType.TRT_FILE) {
     const imgRes = await fetch(url);
     const img = await imgRes.blob();

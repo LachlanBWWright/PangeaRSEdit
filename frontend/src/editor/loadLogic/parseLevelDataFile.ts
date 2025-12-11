@@ -16,6 +16,7 @@ export async function parseLevelDataFile(
   gameType: GlobalsInterface,
   pyodideWorker: Worker,
   setData: (data: AtomicLevelData) => void,
+  fileUrl?: string,
 ): Promise<Result<LevelData, Error>> {
   // Dispatch to game-specific parsers that return Results
 
@@ -33,7 +34,7 @@ export async function parseLevelDataFile(
   // Mighty Mike (map/tile format)
   // DataType.MIGHTY_MIKE is enum value 3, but check by DATA_TYPE since it's stable
   if (gameType.DATA_TYPE === DataType.MIGHTY_MIKE) {
-    return await parseMightyMikeFile(file, setData);
+    return await parseMightyMikeFile(file, setData, fileUrl);
   }
 
   // All other standard games use the pyodide/protobuf flow
