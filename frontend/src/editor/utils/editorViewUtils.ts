@@ -6,6 +6,7 @@
  */
 
 import { Updater } from "use-immer";
+import { Draft } from "immer";
 import type { ItemData, LiquidData, FenceData, SplineData } from "@/python/structSpecs/LevelTypes";
 
 /**
@@ -18,7 +19,11 @@ export function createNonNullUpdater<T>(
   return (updater) => {
     setter((current) => {
       if (!current) return current;
-      return typeof updater === "function" ? (updater as (val: T) => T | void)(current) : updater;
+      // Cast to satisfy TypeScript's type inference for Draft types
+      const result = typeof updater === "function" 
+        ? (updater as (val: Draft<T>) => Draft<T> | void)(current as Draft<T>) 
+        : updater;
+      return result as T | null;
     });
   };
 }
