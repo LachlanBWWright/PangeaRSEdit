@@ -88,38 +88,21 @@ export function MightyMikeEditorView({
             setHeaderData={setHeaderData}
           />
         )}
-        {view === View.tiles && (
-          <IndividualTilesMenu headerData={headerData} setHeaderData={setHeaderData} />
-        )}
+        {/* Mighty Mike is 2D only - no tile editing or menus */}
       </div>
       <div className="w-full min-h-0 flex-1 border-2 border-black overflow-clip">
-        {canvasViewMode === CanvasView.THREE_D && view === View.tiles ? (
-          <ThreeView
-            headerData={headerData}
-            fenceData={null}
-            liquidData={null}
-            terrainData={terrainData}
-            mapImages={mapImages}
-          />
-        ) : (
-          <MightyMikeKonvaView
-            headerData={headerData}
-            itemData={itemData}
-            setItemData={setItemData}
-            liquidData={null}
-            setLiquidData={() => {}} // No-op for MightyMike
-            fenceData={null}
-            setFenceData={() => {}} // No-op for MightyMike
-            splineData={null}
-            setSplineData={() => {}} // No-op for MightyMike
-            terrainData={terrainData}
-            setTerrainData={setTerrainData}
-            mapImages={mapImages}
-            view={view}
-            stage={stage}
-            setStage={setStage}
-          />
-        )}
+        {/* Mighty Mike is 2D only - no 3D view */}
+        <MightyMikeKonvaView
+          headerData={headerData}
+          itemData={itemData}
+          setItemData={setItemData}
+          terrainData={terrainData}
+          setTerrainData={setTerrainData}
+          mapImages={mapImages}
+          view={view}
+          stage={stage}
+          setStage={setStage}
+        />
       </div>
     </div>
   );

@@ -67,25 +67,20 @@ export async function parseMightyMikeFile(
       }
     }
 
+    // Mighty Mike is a 2D game - only include relevant fields, no 3D/heightmap data
     const ottoCompatible: LevelData = {
       Hedr: {
         1000: {
           name: "Header",
           obj: {
-            version: 1,
             numItems: mapResult.value.numItems,
             mapWidth: mapResult.value.mapWidth,
             mapHeight: mapResult.value.mapHeight,
-            numTilePages: 1,
             numTiles: tilesetData?.numTileDefinitions || 100,
             tileSize: 32,
-            minY: 0,
-            maxY: 100,
+            // Mighty Mike is 2D only - no splines, fences, water, or supertiles
             numSplines: 0,
             numFences: 0,
-            numUniqueSupertiles: 1,
-            numWaterPatches: 0,
-            numCheckpoints: 0,
           },
           order: 0,
         },
@@ -95,15 +90,6 @@ export async function parseMightyMikeFile(
           name: "Terrain Layer Matrix",
           obj: mapResult.value.mapImage.flat(),
           order: 1,
-        },
-      },
-      YCrd: {
-        1000: {
-          name: "Floor&Ceiling Y Coords",
-          obj: new Array(
-            mapResult.value.mapWidth * mapResult.value.mapHeight,
-          ).fill(0),
-          order: 2,
         },
       },
       Itms: {
@@ -119,7 +105,7 @@ export async function parseMightyMikeFile(
             p3: item.p3,
             flags: 0,
           })),
-          order: 3,
+          order: 2,
         },
       },
       // Include tileset data if available

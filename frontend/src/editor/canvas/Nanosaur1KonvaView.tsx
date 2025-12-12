@@ -137,15 +137,8 @@ export function Nanosaur1KonvaView({
         />
       )}
       
-      {/* Tile editing view */}
-      {view === View.tiles && (
-        <Tiles
-          headerData={headerData}
-          terrainData={terrainData}
-          setTerrainData={setTerrainData}
-          isEditingTopology={true}
-        />
-      )}
+      {/* Nanosaur 1 has no tile attributes or topology editing */}
+      {/* The tiles are rendered as background by Supertiles component */}
       
       {/* Items - shown in all views */}
       {itemData && (

@@ -175,15 +175,7 @@ export function Bugdom1KonvaView({
         />
       )}
       
-      {/* Tile editing view */}
-      {view === View.tiles && (
-        <Tiles
-          headerData={headerData}
-          terrainData={terrainData}
-          setTerrainData={setTerrainData}
-          isEditingTopology={true}
-        />
-      )}
+      {/* Bugdom 1 has no tile attributes editing - tiles are rendered as background by Supertiles */}
       
       {/* Fence view - fences are primary */}
       {view === View.fences && (

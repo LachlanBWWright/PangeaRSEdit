@@ -128,18 +128,10 @@ export function MightyMikeKonvaView({
         });
       }}
     >
-      {/* Mighty Mike uses 2D tiles - render them directly */}
-      {/* TODO: Render tileset images once loaded */}
-      
-      {/* Tile editing view - Mighty Mike has no supertiles, just tiles */}
-      {view === View.tiles && (
-        <Tiles
-          headerData={headerData}
-          terrainData={terrainData}
-          setTerrainData={setTerrainData}
-          isEditingTopology={true}
-        />
-      )}
+      {/* Mighty Mike uses 2D tiles - render them as background layer */}
+      {/* Mighty Mike has no tile attributes or topology, just direct tile rendering */}
+      {/* The Layr data contains tile indices that reference the tileset */}
+      {/* TODO: Render tileset images once image loader is implemented */}
       
       {/* Items - shown in all views */}
       {itemData && (
