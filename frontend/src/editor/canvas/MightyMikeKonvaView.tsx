@@ -16,7 +16,7 @@ import { Stage } from "react-konva";
 import { Updater } from "use-immer";
 import { ClickToAddItem, SelectedItem } from "@/data/items/itemAtoms";
 import { Items } from "../subviews/Items";
-import { Tiles } from "../subviews/Tiles";
+import { MightyMikeSupertiles } from "../subviews/supertiles/MightyMikeSupertiles";
 import {
   HeaderData,
   ItemData,
@@ -128,10 +128,14 @@ export function MightyMikeKonvaView({
         });
       }}
     >
-      {/* Mighty Mike uses 2D tiles - render them as background layer */}
-      {/* Mighty Mike has no tile attributes or topology, just direct tile rendering */}
-      {/* The Layr data contains tile indices that reference the tileset */}
-      {/* TODO: Render tileset images once image loader is implemented */}
+      {/* Render 2D tile grid - Mighty Mike uses simple tile mapping */}
+      {terrainData && terrainData.Layr && (
+        <MightyMikeSupertiles
+          headerData={headerData}
+          terrainData={terrainData}
+          mapImages={mapImages}
+        />
+      )}
       
       {/* Items - shown in all views */}
       {itemData && (

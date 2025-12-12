@@ -32,6 +32,66 @@ function decompressIfNeeded(buffer: ArrayBuffer): ArrayBuffer {
   return buffer;
 }
 
+/**
+ * Parse tile images from tileset buffer
+ * Mighty Mike tiles are 32x32 pixels, stored as 8-bit indexed color with a palette
+ */
+function parseTileImages(
+  buffer: ArrayBuffer,
+  offsetToTileDefinitions: number,
+  numTileDefinitions: number,
+): HTMLCanvasElement[] {
+  const tileImages: HTMLCanvasElement[] = [];
+  const TILE_SIZE = 32;
+  const BYTES_PER_TILE = TILE_SIZE * TILE_SIZE; // 32x32 = 1024 bytes per tile (8-bit indexed)
+  
+  // Simple grayscale palette (Mighty Mike uses 8-bit indexed color)
+  // We'll create a grayscale mapping for now since we don't have the palette data
+  const palette = new Uint8Array(256 * 4);
+  for (let i = 0; i < 256; i++) {
+    palette[i * 4 + 0] = i; // R
+    palette[i * 4 + 1] = i; // G
+    palette[i * 4 + 2] = i; // B
+    palette[i * 4 + 3] = 255; // A (fully opaque)
+  }
+  
+  const tileData = new Uint8Array(buffer, offsetToTileDefinitions);
+  
+  for (let tileIndex = 0; tileIndex < numTileDefinitions; tileIndex++) {
+    const canvas = document.createElement("canvas");
+    canvas.width = TILE_SIZE;
+    canvas.height = TILE_SIZE;
+    const ctx = canvas.getContext("2d");
+    
+    if (!ctx) {
+      console.warn(`Failed to get canvas context for tile ${tileIndex}`);
+      continue;
+    }
+    
+    const imageData = ctx.createImageData(TILE_SIZE, TILE_SIZE);
+    const offset = tileIndex * BYTES_PER_TILE;
+    
+    // Convert indexed color to RGBA
+    for (let i = 0; i < BYTES_PER_TILE; i++) {
+      if (offset + i >= tileData.length) break;
+      
+      const colorIndex = tileData[offset + i];
+      const pixelOffset = i * 4;
+      
+      imageData.data[pixelOffset + 0] = palette[colorIndex * 4 + 0];
+      imageData.data[pixelOffset + 1] = palette[colorIndex * 4 + 1];
+      imageData.data[pixelOffset + 2] = palette[colorIndex * 4 + 2];
+      imageData.data[pixelOffset + 3] = palette[colorIndex * 4 + 3];
+    }
+    
+    ctx.putImageData(imageData, 0, 0);
+    tileImages.push(canvas);
+  }
+  
+  console.log(`Parsed ${tileImages.length} tile images from tileset`);
+  return tileImages;
+}
+
 export function parseMightyMikeTileSet(
   buffer: ArrayBuffer,
 ): Result<MightyMikeTileSet, string> {
@@ -161,6 +221,13 @@ export function parseMightyMikeTileSet(
       transparencyColors.push(data.getUint16(offset, false));
     }
 
+    // Parse tile images from raw pixel data
+    const tileImages = parseTileImages(
+      decompressedBuffer,
+      offsetToTileDefinitions,
+      numTileDefinitions,
+    );
+
     const tileset: MightyMikeTileSet = {
       numTileDefinitions,
       numXlateEntries,
@@ -171,6 +238,7 @@ export function parseMightyMikeTileSet(
       tileAttributes,
       tileAnimations,
       transparencyColors,
+      tileImages,
     };
 
     return { ok: true, value: tileset };

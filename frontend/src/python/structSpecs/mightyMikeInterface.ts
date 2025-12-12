@@ -8,6 +8,7 @@ export interface MightyMikeTileSet {
   tileAttributes: MightyMikeTileAttribute[];
   tileAnimations: MightyMikeTileAnimation[];
   transparencyColors: number[];
+  tileImages?: HTMLCanvasElement[]; // Optional tile images extracted from tileset
 }
 
 export interface MightyMikeTileAttribute {

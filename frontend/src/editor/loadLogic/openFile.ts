@@ -70,11 +70,15 @@ export async function openFile({
 
   if (gameType.DATA_TYPE === DataType.MIGHTY_MIKE) {
     console.log("MightyMike level loaded successfully with tileset integration");
-    // Create a dummy file for now to allow downloads
-    // TODO: Load and display tileset images
+    
+    // Extract tile images from tileset data
+    const tileImages = (jsonData as any).tileset?.tileImages || [];
+    console.log(`MightyMike: Loaded ${tileImages.length} tile images from tileset`);
+    
+    // Create a dummy file to allow downloads
     const dummyFile = new File([new Uint8Array(0)], "mightyMike_tiles.bin");
     setMapImagesFile(dummyFile);
-    setMapImages([]);
+    setMapImages(tileImages);
   } else if (gameType.DATA_TYPE === DataType.TRT_FILE) {
     const imgRes = await fetch(url);
     const img = await imgRes.blob();
