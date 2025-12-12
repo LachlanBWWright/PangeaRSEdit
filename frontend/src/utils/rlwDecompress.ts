@@ -55,11 +55,19 @@ export function rlbDecompress(compressedBuffer: ArrayBuffer): DecompressedFile {
     // Read count byte
     const countByte = inputBytes[sourcePos++];
     
+    if (countByte === undefined) {
+      break; // Reached end of input
+    }
+    
     if (countByte > 0x7F) {
       // Packed run: repeat the following byte
       // Count is stored as negative number in two's complement
       const runCount = (-(countByte - 256)) + 1; // Convert from signed byte
       const dataByte = inputBytes[sourcePos++];
+      
+      if (dataByte === undefined) {
+        break; // Reached end of input
+      }
       
       for (let i = 0; i < runCount && outputPos < decompressedSize; i++) {
         output[outputPos++] = dataByte;
@@ -69,7 +77,11 @@ export function rlbDecompress(compressedBuffer: ArrayBuffer): DecompressedFile {
       const runCount = countByte + 1;
       
       for (let i = 0; i < runCount && outputPos < decompressedSize; i++) {
-        output[outputPos++] = inputBytes[sourcePos++];
+        const byte = inputBytes[sourcePos++];
+        if (byte === undefined) {
+          break; // Reached end of input
+        }
+        output[outputPos++] = byte;
       }
     }
   }
