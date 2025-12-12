@@ -2,38 +2,25 @@ import { z } from "zod";
 import { validateLevelData } from "../levelDataSchemas";
 
 // Mighty Mike level data schema
-// Mighty Mike uses a simplified structure converted to Otto Matic format
+// Mighty Mike is a 2D game with a simplified structure
 export const mightyMikeLevelSchema = z.object({
   Hedr: z.object({
     1000: z.object({
       name: z.string().optional(),
       obj: z.object({
-        version: z.number().optional(),
+        // Mighty Mike is 2D - only relevant fields
         numItems: z.number(),
         mapWidth: z.number(),
         mapHeight: z.number(),
-        numTilePages: z.number().optional(),
         numTiles: z.number().optional(),
         tileSize: z.number().optional(),
-        minY: z.number().optional(),
-        maxY: z.number().optional(),
         numSplines: z.number().optional(),
         numFences: z.number().optional(),
-        numUniqueSupertiles: z.number().optional(),
-        numWaterPatches: z.number().optional(),
-        numCheckpoints: z.number().optional(),
       }),
       order: z.number().optional(),
     }),
   }),
   Layr: z.object({
-    1000: z.object({
-      name: z.string().optional(),
-      obj: z.array(z.number()),
-      order: z.number().optional(),
-    }),
-  }),
-  YCrd: z.object({
     1000: z.object({
       name: z.string().optional(),
       obj: z.array(z.number()),
@@ -60,6 +47,7 @@ export const mightyMikeLevelSchema = z.object({
   tileset: z.object({
     numTileDefinitions: z.number(),
     numXlateEntries: z.number(),
+    numXlateTable: z.number().optional(), // Might be in the data
     numTileAttributeEntries: z.number(),
     numTileAnims: z.number(),
     numTileXparentColors: z.number(),
