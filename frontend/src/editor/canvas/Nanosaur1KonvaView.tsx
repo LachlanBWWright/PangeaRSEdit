@@ -46,9 +46,7 @@ export function Nanosaur1KonvaView({
   itemData,
   setItemData,
   terrainData,
-  setTerrainData,
   mapImages,
-  view,
   stage,
   setStage,
 }: Nanosaur1KonvaViewProps) {

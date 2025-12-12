@@ -70,10 +70,22 @@ export async function openFile({
 
   if (gameType.DATA_TYPE === DataType.MIGHTY_MIKE) {
     console.log("MightyMike level loaded successfully with tileset integration");
+    console.log("MightyMike jsonData structure:", Object.keys(jsonData));
     
     // Extract tile images from tileset data
-    const tileImages = (jsonData as any).tileset?.tileImages || [];
+    // The tileset field is at the root level of the LevelData structure
+    const tilesetData = (jsonData as unknown as {tileset?: {tileImages?: HTMLCanvasElement[]}}).tileset;
+    const tileImages = tilesetData?.tileImages || [];
     console.log(`MightyMike: Loaded ${tileImages.length} tile images from tileset`);
+    console.log("MightyMike tileset data:", tilesetData ? {
+      numTileDefinitions: tilesetData.numTileDefinitions,
+      hasImages: !!tilesetData.tileImages,
+      imageCount: tileImages.length,
+    } : 'No tileset data');
+    
+    if (tileImages.length === 0) {
+      console.warn("MightyMike: No tile images loaded! Tileset may not have been parsed or tileImages array is empty.");
+    }
     
     // Create a dummy file to allow downloads
     const dummyFile = new File([new Uint8Array(0)], "mightyMike_tiles.bin");

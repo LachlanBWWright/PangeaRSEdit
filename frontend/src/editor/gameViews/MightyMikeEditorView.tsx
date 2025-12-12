@@ -9,14 +9,10 @@
 
 import { useState, useEffect, useMemo } from "react";
 import { MightyMikeEditorToolbar } from "../toolbars/MightyMikeEditorToolbar";
-import { Updater, useImmer } from "use-immer";
-import { useAtomValue } from "jotai";
-import { CanvasView, CanvasViewMode } from "@/data/canvasView/canvasViewAtoms";
+import { useImmer } from "use-immer";
 
 import { ItemMenu } from "../subviews/items/ItemMenu";
-import { IndividualTilesMenu } from "./IndividualTilesMenu";
 import { MightyMikeKonvaView } from "../canvas/MightyMikeKonvaView";
-import { ThreeView } from "../threejs/Three";
 import { View } from "../viewEnum";
 import {
   createNonNullUpdater,
@@ -41,7 +37,6 @@ export function MightyMikeEditorView({
   redoData,
   dataHistory,
 }: MightyMikeEditorViewProps) {
-  const canvasViewMode = useAtomValue(CanvasViewMode);
   // Default to items view since MightyMike doesn't have fences
   const [view, setView] = useState<View>(View.items);
   const [stage, setStage] = useImmer({ scale: 1, x: 0, y: 0 });

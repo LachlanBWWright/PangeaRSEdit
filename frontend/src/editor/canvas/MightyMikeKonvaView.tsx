@@ -47,9 +47,7 @@ export function MightyMikeKonvaView({
   itemData,
   setItemData,
   terrainData,
-  setTerrainData,
   mapImages,
-  view,
   stage,
   setStage,
 }: MightyMikeKonvaViewProps) {

@@ -60,7 +60,6 @@ export function Bugdom1KonvaView({
   splineData,
   setSplineData,
   terrainData,
-  setTerrainData,
   mapImages,
   view,
   stage,

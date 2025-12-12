@@ -301,7 +301,7 @@ describe("MightyMike Data Inspection", () => {
       
       // Verify items have valid data
       expect(map.items.length).toBe(map.numItems);
-      map.items.forEach((item, idx) => {
+      map.items.forEach((item) => {
         expect(typeof item.type).toBe('number');
         expect(typeof item.x).toBe('number');
         expect(typeof item.y).toBe('number');
