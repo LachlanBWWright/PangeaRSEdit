@@ -61,8 +61,10 @@ export function rlbDecompress(compressedBuffer: ArrayBuffer): DecompressedFile {
     
     if (countByte > 0x7F) {
       // Packed run: repeat the following byte
-      // Count is stored as negative number in two's complement
-      const runCount = (-(countByte - 256)) + 1; // Convert from signed byte
+      // Count byte is a negative number in two's complement (e.g., 0xFF = -1, 0xFE = -2)
+      // Convert to positive run count: negate and add 1
+      // Reference: games/mightymike/src/Heart/Misc.c line 425: count = (-count)+1;
+      const runCount = (256 - countByte) + 1;
       const dataByte = inputBytes[sourcePos++];
       
       if (dataByte === undefined) {

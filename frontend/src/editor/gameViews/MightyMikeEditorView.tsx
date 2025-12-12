@@ -88,7 +88,7 @@ export function MightyMikeEditorView({
             <h3 className="font-bold">Supertiles (Background Tile Grid)</h3>
             <p className="text-sm text-gray-600">
               Click on the map to edit individual background tiles.
-              Mighty Mike uses a 2D tile system with {headerData?.numTiles || "no"} tiles.
+              Mighty Mike uses a 2D tile system with {headerData?.numTiles || 0} tiles.
             </p>
           </div>
         )}

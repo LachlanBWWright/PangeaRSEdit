@@ -74,10 +74,13 @@ export async function openFile({
     
     // Extract tile images from tileset data
     // The tileset field is at the root level of the LevelData structure
-    const tilesetData = (jsonData as unknown as {tileset?: {
-      tileImages?: HTMLCanvasElement[];
-      numTileDefinitions?: number;
-    }}).tileset;
+    interface MightyMikeLevelData {
+      tileset?: {
+        tileImages?: HTMLCanvasElement[];
+        numTileDefinitions?: number;
+      };
+    }
+    const tilesetData = (jsonData as unknown as MightyMikeLevelData).tileset;
     const tileImages = tilesetData?.tileImages || [];
     console.log(`MightyMike: Loaded ${tileImages.length} tile images from tileset`);
     console.log("MightyMike tileset data:", tilesetData ? {
