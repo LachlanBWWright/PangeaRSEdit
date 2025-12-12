@@ -15,8 +15,7 @@ import { Stage } from "react-konva";
 import { Updater } from "use-immer";
 import { ClickToAddItem, SelectedItem } from "@/data/items/itemAtoms";
 import { Items } from "../subviews/Items";
-import { Tiles } from "../subviews/Tiles";
-import { Supertiles } from "../subviews/Supertiles";
+import { IndividualTileSupertiles } from "../subviews/supertiles/IndividualTileSupertiles";
 import {
   HeaderData,
   ItemData,
@@ -128,9 +127,9 @@ export function Nanosaur1KonvaView({
         });
       }}
     >
-      {/* Render supertiles from individual tiles (Nanosaur 1 uses Layr with individual tiles) */}
+      {/* Render individual tiles - Nanosaur 1 uses 5x5 tile system like Bugdom 1 */}
       {terrainData && terrainData.Layr && (
-        <Supertiles
+        <IndividualTileSupertiles
           headerData={headerData}
           terrainData={terrainData}
           mapImages={mapImages}
@@ -138,7 +137,7 @@ export function Nanosaur1KonvaView({
       )}
       
       {/* Nanosaur 1 has no tile attributes or topology editing */}
-      {/* The tiles are rendered as background by Supertiles component */}
+      {/* Individual tiles are composed into supertiles at render time */}
       
       {/* Items - shown in all views */}
       {itemData && (

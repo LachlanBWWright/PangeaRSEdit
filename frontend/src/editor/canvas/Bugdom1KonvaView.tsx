@@ -19,8 +19,7 @@ import { SelectedSpline } from "@/data/splines/splineAtoms";
 import { Items } from "../subviews/Items";
 import { Fences } from "../subviews/Fences";
 import { Splines } from "../subviews/Splines";
-import { Tiles } from "../subviews/Tiles";
-import { Supertiles } from "../subviews/Supertiles";
+import { IndividualTileSupertiles } from "../subviews/supertiles/IndividualTileSupertiles";
 import {
   HeaderData,
   ItemData,
@@ -166,16 +165,16 @@ export function Bugdom1KonvaView({
         });
       }}
     >
-      {/* Render supertiles from individual tiles (Bugdom 1 uses Layr with individual tiles) */}
+      {/* Render individual tiles - Bugdom 1 uses 5x5 tile system */}
       {terrainData && terrainData.Layr && (
-        <Supertiles
+        <IndividualTileSupertiles
           headerData={headerData}
           terrainData={terrainData}
           mapImages={mapImages}
         />
       )}
       
-      {/* Bugdom 1 has no tile attributes editing - tiles are rendered as background by Supertiles */}
+      {/* Bugdom 1 has no tile attributes editing - individual tiles are composed into supertiles at render time */}
       
       {/* Fence view - fences are primary */}
       {view === View.fences && (

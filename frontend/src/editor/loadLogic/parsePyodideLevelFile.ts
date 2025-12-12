@@ -28,7 +28,14 @@ export async function parsePyodideLevelFile(
         try {
           const result = event.data.result;
 
-          // Validate the parsed data using the appropriate game schema
+          // Apply preprocessing FIRST (converts liquid nubs from x_0/y_0 format to array format)
+          const preprocessResult = preprocessJson(result, gameType);
+          if (!preprocessResult.ok) {
+            resolve(err(preprocessResult.error));
+            return;
+          }
+
+          // Validate the preprocessed data using the appropriate game schema
           // Validation failures now throw errors for type safety
           const validationResult = validateLevelDataForGame(
             result,
@@ -45,12 +52,6 @@ export async function parsePyodideLevelFile(
             return;
           }
 
-          // Apply preprocessing
-          const preprocessResult = preprocessJson(result, gameType);
-          if (!preprocessResult.ok) {
-            resolve(err(preprocessResult.error));
-            return;
-          }
           setData(splitLevelData(result));
           resolve(ok(result));
         } catch (e) {

@@ -22,7 +22,7 @@ import { Fences } from "../subviews/Fences";
 import { Splines } from "../subviews/Splines";
 import { WaterBodies } from "../subviews/WaterBodies";
 import { Tiles } from "../subviews/Tiles";
-import { Supertiles } from "../subviews/Supertiles";
+import { StandardSupertiles } from "../subviews/supertiles/StandardSupertiles";
 import {
   HeaderData,
   ItemData,
@@ -185,9 +185,9 @@ export function OttoMaticKonvaView({
         });
       }}
     >
-      {/* Render supertiles (Otto uses STgd with pre-composed supertiles) */}
+      {/* Render pre-composed supertiles (Otto uses STgd) */}
       {terrainData && terrainData.STgd && (
-        <Supertiles
+        <StandardSupertiles
           headerData={headerData}
           terrainData={terrainData}
           mapImages={mapImages}
