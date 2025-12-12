@@ -83,7 +83,23 @@ export function MightyMikeEditorView({
             setHeaderData={setHeaderData}
           />
         )}
-        {/* Mighty Mike is 2D only - no tile editing or menus */}
+        {view === View.supertiles && (
+          <div className="p-4">
+            <h3 className="font-bold">Supertiles (Background Tile Grid)</h3>
+            <p className="text-sm text-gray-600">
+              Click on the map to edit individual background tiles.
+              Mighty Mike uses a 2D tile system with {headerData?.numTiles || "no"} tiles.
+            </p>
+          </div>
+        )}
+        {view === View.tiles && (
+          <div className="p-4">
+            <h3 className="font-bold">Tile Attributes</h3>
+            <p className="text-sm text-gray-600">
+              Tile collision and behavior attributes (view only for Mighty Mike).
+            </p>
+          </div>
+        )}
       </div>
       <div className="w-full min-h-0 flex-1 border-2 border-black overflow-clip">
         {/* Mighty Mike is 2D only - no 3D view */}
