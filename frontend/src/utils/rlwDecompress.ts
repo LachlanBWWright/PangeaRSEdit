@@ -30,6 +30,54 @@ export interface DecompressedFile {
 }
 
 /**
+ * Decompresses an RLB-compressed file from Mighty Mike (byte-level run-length encoding)
+ */
+export function rlbDecompress(compressedBuffer: ArrayBuffer): DecompressedFile {
+  const input = new DataView(compressedBuffer);
+  
+  // Read header
+  const decompressedSize = input.getUint32(0, false); // big-endian
+  const compressionType = input.getUint32(4, false); // big-endian
+  
+  if (compressionType !== PACK_TYPE_RLB) {
+    throw new Error(`Expected RLB compression (type 0), got: ${compressionType}`);
+  }
+  
+  // Allocate output buffer
+  const output = new Uint8Array(decompressedSize);
+  
+  let sourcePos = 8; // Start after header
+  let outputPos = 0;
+  const sourceEnd = compressedBuffer.byteLength;
+  const inputBytes = new Uint8Array(compressedBuffer);
+  
+  while (sourcePos < sourceEnd && outputPos < decompressedSize) {
+    // Read count byte
+    const countByte = inputBytes[sourcePos++];
+    
+    if (countByte > 0x7F) {
+      // Packed run: repeat the following byte
+      // Count is stored as negative number in two's complement
+      const runCount = (-(countByte - 256)) + 1; // Convert from signed byte
+      const dataByte = inputBytes[sourcePos++];
+      
+      for (let i = 0; i < runCount && outputPos < decompressedSize; i++) {
+        output[outputPos++] = dataByte;
+      }
+    } else {
+      // Literal run: copy the following bytes
+      const runCount = countByte + 1;
+      
+      for (let i = 0; i < runCount && outputPos < decompressedSize; i++) {
+        output[outputPos++] = inputBytes[sourcePos++];
+      }
+    }
+  }
+  
+  return { data: output.buffer, decompressedSize, compressionType };
+}
+
+/**
  * Decompresses an RLW-compressed file from Mighty Mike
  */
 export function rlwDecompress(compressedBuffer: ArrayBuffer): DecompressedFile {
@@ -43,6 +91,11 @@ export function rlwDecompress(compressedBuffer: ArrayBuffer): DecompressedFile {
   if (compressionType === PACK_TYPE_NONE) {
     const data = compressedBuffer.slice(8);
     return { data, decompressedSize, compressionType };
+  }
+  
+  // Handle RLB compression (byte-level run-length)
+  if (compressionType === PACK_TYPE_RLB) {
+    return rlbDecompress(compressedBuffer);
   }
   
   if (compressionType !== PACK_TYPE_RLW) {
