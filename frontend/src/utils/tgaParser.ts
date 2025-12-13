@@ -66,7 +66,7 @@ export function extractTGAPalette(buffer: ArrayBuffer): TGAPalette | null {
 
   if (paletteBytesPerEntry !== 3 && paletteBytesPerEntry !== 4) {
     console.warn(
-      `Unsupported palette depth: ${header.colorMapDepth} bits (${paletteBytesPerEntry} bytes per entry)`
+      `Unsupported palette depth: ${header.colorMapDepth} bits (${paletteBytesPerEntry} bytes per entry)`,
     );
     return null;
   }
@@ -89,16 +89,15 @@ export function extractTGAPalette(buffer: ArrayBuffer): TGAPalette | null {
   for (let i = 0; i < Math.min(paletteEntryCount, 256); i++) {
     const srcOffset = i * paletteBytesPerEntry;
     const dstOffset = i * 4;
-
     if (paletteBytesPerEntry === 3) {
-      // TGA palette is stored as BGR (reverse the byte order to RGB)
+      // TGA palette is stored as BGR
       // TGA format: byte[0]=B, byte[1]=G, byte[2]=R
       colors[dstOffset + 0] = paletteData[srcOffset + 2]!; // R from byte 2
       colors[dstOffset + 1] = paletteData[srcOffset + 1]!; // G from byte 1
       colors[dstOffset + 2] = paletteData[srcOffset + 0]!; // B from byte 0
       colors[dstOffset + 3] = 255; // A (opaque)
     } else if (paletteBytesPerEntry === 4) {
-      // TGA palette is stored as BGRA (reverse RGB bytes, keep A)
+      // TGA palette is stored as BGRA
       // TGA format: byte[0]=B, byte[1]=G, byte[2]=R, byte[3]=A
       colors[dstOffset + 0] = paletteData[srcOffset + 2]!; // R from byte 2
       colors[dstOffset + 1] = paletteData[srcOffset + 1]!; // G from byte 1
@@ -116,16 +115,19 @@ export function extractTGAPalette(buffer: ArrayBuffer): TGAPalette | null {
     colors[offset + 3] = 255; // A
   }
 
-  // Debug: log first 10 palette entries
-  console.log("TGA Palette extracted:", {
-    paletteEntryCount,
-    paletteBytesPerEntry,
-    firstColors: Array.from(colors.slice(0, 40)).map((v, i) => {
-      const colorIdx = Math.floor(i / 4);
-      const channel = ["R", "G", "B", "A"][i % 4];
-      return `Color${colorIdx}.${channel}=${v}`;
-    }),
-  });
+  // Debug: log palette extraction with focus on green colors
+  if (paletteEntryCount > 17) {
+    const color17_r = colors[17 * 4 + 0] ?? 0;
+    const color17_g = colors[17 * 4 + 1] ?? 0;
+    const color17_b = colors[17 * 4 + 2] ?? 0;
+    console.log("[TGA PALETTE] Extracted successfully:", {
+      totalColors: paletteEntryCount,
+      bitsPerColor: header.colorMapDepth,
+      color17_debug: `Raw bytes were BGR(49,254,68) -> should be RGB(68,254,49)`,
+      color17_actual: `RGB(${color17_r},${color17_g},${color17_b})`,
+      isGreen: color17_g > color17_r + 30 && color17_g > color17_b + 30 ? "YES" : "NO",
+    });
+  }
 
   return {
     colors,

@@ -25,6 +25,7 @@ function getSceneNameFromUrl(mapFileUrl: string): string | null {
  * - bargain → bargainscene.tga
  */
 async function loadScenePalette(sceneName: string, basePath?: string): Promise<Uint8Array | null> {
+  console.log(`[PALETTE] loadScenePalette called with sceneName="${sceneName}", basePath="${basePath}"`);
   try {
     // Map scene names to TGA filenames
     const sceneToTGA: Record<string, string> = {
@@ -36,8 +37,9 @@ async function loadScenePalette(sceneName: string, basePath?: string): Promise<U
     };
 
     const tgaFilename = sceneToTGA[sceneName.toLowerCase()];
+    console.log(`[PALETTE] Scene name lookup: "${sceneName}" -> "${tgaFilename || "NOT FOUND"}"`);
     if (!tgaFilename) {
-      console.warn(`[PALETTE] Unknown scene name: ${sceneName}`);
+      console.warn(`[PALETTE] ✗ Unknown scene name: ${sceneName}`);
       return null;
     }
 
@@ -68,14 +70,22 @@ async function loadScenePalette(sceneName: string, basePath?: string): Promise<U
       return null;
     }
 
+    // Convert to Uint8Array for later use
+    const paletteArray = new Uint8Array(paletteResult.colors);
+
+    // Detailed debug logging for palette verification
     console.log("[PALETTE] Successfully extracted palette from TGA:", {
       sceneName,
       tgaFile: tgaFilename,
       colorCount: 256,
-      firstColor: [paletteResult.colors[0], paletteResult.colors[1], paletteResult.colors[2], paletteResult.colors[3]],
+      color0: `RGB(${paletteArray[0]},${paletteArray[1]},${paletteArray[2]})`,
+      color17: `RGB(${paletteArray[17*4]},${paletteArray[17*4+1]},${paletteArray[17*4+2]})`,
+      color128: `RGB(${paletteArray[128*4]},${paletteArray[128*4+1]},${paletteArray[128*4+2]})`,
+      arrayLength: paletteArray.length,
+      byteAt68: paletteArray[68], // Byte at offset 68 should be something
     });
 
-    return new Uint8Array(paletteResult.colors);
+    return paletteArray;
   } catch (error) {
     console.warn("[PALETTE] Error loading palette:", error);
     return null;
@@ -88,12 +98,14 @@ async function loadScenePalette(sceneName: string, basePath?: string): Promise<U
  * @param file - The .map file blob
  * @param setData - Callback to set the editor data
  * @param mapFileUrl - Optional URL of the map file (to derive tileset URL)
+ * @param setMapImages - Optional callback to set the tile images (HTMLCanvasElement[])
  * @returns Result with the parsed level data
  */
 export async function parseMightyMikeFile(
   file: Blob,
   setData: (data: AtomicLevelData) => void,
   mapFileUrl?: string,
+  setMapImages?: (images: HTMLCanvasElement[]) => void,
 ): Promise<Result<LevelData, Error>> {
   try {
     const levelBuffer = await file.arrayBuffer();
@@ -120,9 +132,12 @@ export async function parseMightyMikeFile(
       try {
         // Get the scene name to load the corresponding palette
         const sceneName = getSceneNameFromUrl(mapFileUrl);
+        console.log(`[PALETTE LOAD] Extracted scene name from URL: "${sceneName}" (from ${mapFileUrl})`);
+
         if (sceneName) {
           paletteData = await loadScenePalette(sceneName, mapFileUrl);
           console.log(`[PALETTE LOAD] Scene: ${sceneName}, Loaded: ${!!paletteData}, Length: ${paletteData?.length || 0}`);
+
           if (paletteData) {
             // Check if palette has color variation
             const colors = new Set();
@@ -132,8 +147,17 @@ export async function parseMightyMikeFile(
               const b = paletteData[i + 2];
               colors.add(`${r},${g},${b}`);
             }
-            console.log(`[PALETTE LOAD] Unique colors in first 25: ${colors.size}, samples:`, Array.from(colors).slice(0, 5));
+            console.log(`[PALETTE LOAD] ✓ Palette loaded successfully with color variation:`, {
+              uniqueColorsInFirst25: colors.size,
+              sampleColors: Array.from(colors).slice(0, 5),
+              paletteLength: paletteData.length,
+              isUint8Array: paletteData instanceof Uint8Array,
+            });
+          } else {
+            console.warn(`[PALETTE LOAD] ✗ Failed to load palette for scene "${sceneName}" - will use grayscale fallback!`);
           }
+        } else {
+          console.warn(`[PALETTE LOAD] ✗ Could not extract scene name from URL: ${mapFileUrl}`);
         }
 
         // Replace .map-N with .tileset
@@ -274,6 +298,15 @@ export async function parseMightyMikeFile(
     console.log("MightyMike atomicData AFTER splitLevelData:", atomicData);
 
     setData(atomicData);
+
+    // CRITICAL FIX: Extract and expose tileImages from the tileset
+    // These HTMLCanvasElement objects need to be passed to the UI separately
+    // since they're not preserved in AtomicLevelData
+    if (tilesetField?.tileImages && Array.isArray(tilesetField.tileImages) && setMapImages) {
+      console.log(`[TILESET] Extracted ${tilesetField.tileImages.length} tile images for UI rendering`);
+      setMapImages(tilesetField.tileImages);
+    }
+
     return ok(ottoCompatible as unknown as LevelData);
   } catch (e) {
     return err(e instanceof Error ? e : new Error(String(e)));

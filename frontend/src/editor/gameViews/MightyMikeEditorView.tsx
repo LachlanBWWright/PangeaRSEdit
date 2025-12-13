@@ -9,7 +9,6 @@
 
 import { useState, useEffect, useMemo } from "react";
 import { useImmer, Updater } from "use-immer";
-import { useAtomValue } from "jotai";
 import { MightyMikeEditorToolbar } from "../toolbars/MightyMikeEditorToolbar";
 
 import { MightyMikeItemMenu } from "../subviews/items/MightyMikeItemMenu";
@@ -26,7 +25,6 @@ import type { MightyMikeEditorViewProps } from "../utils/editorViewTypes";
 import {
   ItemData,
 } from "@/python/structSpecs/LevelTypes";
-import { BackgroundImageAtom } from "@/data/game/gameAtoms";
 
 export function MightyMikeEditorView({
   headerData,
@@ -41,19 +39,9 @@ export function MightyMikeEditorView({
   redoData,
   dataHistory,
 }: MightyMikeEditorViewProps) {
-  const backgroundImage = useAtomValue(BackgroundImageAtom);
   // Default to items view since MightyMike doesn't have fences
   const [view, setView] = useState<View>(View.items);
   const [stage, setStage] = useImmer({ scale: 1, x: 0, y: 0 });
-
-  // Log background image status
-  useEffect(() => {
-    console.log("[BACKGROUND] MightyMikeEditorView received:", {
-      backgroundImageExists: !!backgroundImage,
-      backgroundImageType: backgroundImage?.constructor?.name,
-      backgroundImageDimensions: backgroundImage ? `${backgroundImage.width}x${backgroundImage.height}` : 'N/A',
-    });
-  }, [backgroundImage]);
 
   const handleKeyDown = useMemo(
     () => createUndoRedoKeyHandler(undoData, redoData),
@@ -122,7 +110,6 @@ export function MightyMikeEditorView({
           terrainData={terrainData}
           setTerrainData={setTerrainData}
           mapImages={mapImages}
-          backgroundImage={backgroundImage}
           view={view}
           stage={stage}
           setStage={setStage}

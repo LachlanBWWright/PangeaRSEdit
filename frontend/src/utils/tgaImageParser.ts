@@ -66,15 +66,15 @@ export function parseTGAToCanvas(buffer: ArrayBuffer): HTMLCanvasElement {
 
   // Support uncompressed (2, 3), RLE compressed (10, 11), and RLE indexed (9) TGA
   const isRLE =
-    header.imageType === 9 || header.imageType === 10 || header.imageType === 11;
-  const isUncompressed =
-    header.imageType === 2 || header.imageType === 3;
-  const isIndexed =
-    header.imageType === 9 || header.colorMapType === 1;
+    header.imageType === 9 ||
+    header.imageType === 10 ||
+    header.imageType === 11;
+  const isUncompressed = header.imageType === 2 || header.imageType === 3;
+  const isIndexed = header.imageType === 9 || header.colorMapType === 1;
 
   if (!isRLE && !isUncompressed) {
     throw new Error(
-      `Unsupported TGA image type: ${header.imageType} (only types 2, 3, 9, 10, 11 supported)`
+      `Unsupported TGA image type: ${header.imageType} (only types 2, 3, 9, 10, 11 supported)`,
     );
   }
 
@@ -85,14 +85,14 @@ export function parseTGAToCanvas(buffer: ArrayBuffer): HTMLCanvasElement {
   if (isIndexed) {
     if (header.pixelDepth !== 8) {
       throw new Error(
-        `Unsupported pixel depth for indexed color: ${header.pixelDepth} bits (must be 8)`
+        `Unsupported pixel depth for indexed color: ${header.pixelDepth} bits (must be 8)`,
       );
     }
     bytesPerPixel = 1; // indexed color is 1 byte per pixel
   } else {
     if (bytesPerPixel !== 3 && bytesPerPixel !== 4) {
       throw new Error(
-        `Unsupported pixel depth: ${header.pixelDepth} bits (must be 24 or 32)`
+        `Unsupported pixel depth: ${header.pixelDepth} bits (must be 24 or 32)`,
       );
     }
   }
@@ -108,10 +108,7 @@ export function parseTGAToCanvas(buffer: ArrayBuffer): HTMLCanvasElement {
   }
 
   // Create image data
-  const imageData = ctx.createImageData(
-    header.imageWidth,
-    header.imageHeight
-  );
+  const imageData = ctx.createImageData(header.imageWidth, header.imageHeight);
   const pixels = imageData.data;
 
   // Read color map if present (for indexed color)
@@ -139,7 +136,7 @@ export function parseTGAToCanvas(buffer: ArrayBuffer): HTMLCanvasElement {
       colorMap,
       header.colorMapOrigin,
       pixels,
-      isRLE
+      isRLE,
     );
   } else if (isRLE) {
     parseRLEData(
@@ -148,7 +145,7 @@ export function parseTGAToCanvas(buffer: ArrayBuffer): HTMLCanvasElement {
       header.imageWidth,
       header.imageHeight,
       bytesPerPixel,
-      pixels
+      pixels,
     );
   } else {
     parseUncompressedData(
@@ -157,7 +154,7 @@ export function parseTGAToCanvas(buffer: ArrayBuffer): HTMLCanvasElement {
       header.imageWidth,
       header.imageHeight,
       bytesPerPixel,
-      pixels
+      pixels,
     );
   }
 
@@ -187,7 +184,7 @@ function parseUncompressedData(
   width: number,
   height: number,
   bytesPerPixel: number,
-  pixels: Uint8ClampedArray
+  pixels: Uint8ClampedArray,
 ): void {
   let pixelIndex = 0;
   let dataOffset = offset;
@@ -224,7 +221,7 @@ function parseRLEData(
   width: number,
   height: number,
   bytesPerPixel: number,
-  pixels: Uint8ClampedArray
+  pixels: Uint8ClampedArray,
 ): void {
   let pixelIndex = 0;
   let dataOffset = offset;
@@ -290,7 +287,7 @@ function parseIndexedData(
   colorMap: Uint8Array,
   colorMapOrigin: number,
   pixels: Uint8ClampedArray,
-  isRLE: boolean
+  isRLE: boolean,
 ): void {
   const colorMapBytesPerEntry = colorMapDepth / 8;
   let pixelIndex = 0;
@@ -321,7 +318,7 @@ function parseIndexedData(
             colorIndex,
             colorMapOrigin,
             colorMapBytesPerEntry,
-            colorMap
+            colorMap,
           );
           pixelIndex++;
         }
@@ -339,7 +336,7 @@ function parseIndexedData(
             colorIndex,
             colorMapOrigin,
             colorMapBytesPerEntry,
-            colorMap
+            colorMap,
           );
           pixelIndex++;
         }
@@ -360,7 +357,7 @@ function parseIndexedData(
           colorIndex,
           colorMapOrigin,
           colorMapBytesPerEntry,
-          colorMap
+          colorMap,
         );
         pixelIndex++;
       }
@@ -377,7 +374,7 @@ function applyColorFromMap(
   colorIndex: number,
   colorMapOrigin: number,
   colorMapBytesPerEntry: number,
-  colorMap: Uint8Array
+  colorMap: Uint8Array,
 ): void {
   // Calculate offset into color map
   const adjustedIndex = colorIndex - colorMapOrigin;
@@ -392,13 +389,15 @@ function applyColorFromMap(
     return;
   }
 
-  // Color map entries can be 24-bit (BGR) or 32-bit (BGRA)
+  // Color map entries in TGA are stored as BGR(A)
+  // TGA format: byte[0]=B, byte[1]=G, byte[2]=R, (byte[3]=A)
   const b = colorMap[colorOffset] ?? 0;
   const g = colorMap[colorOffset + 1] ?? 0;
   const r = colorMap[colorOffset + 2] ?? 0;
-  const a = colorMapBytesPerEntry === 4 ? (colorMap[colorOffset + 3] ?? 255) : 255;
+  const a =
+    colorMapBytesPerEntry === 4 ? colorMap[colorOffset + 3] ?? 255 : 255;
 
-  // Convert BGR(A) to RGBA
+  // Store as RGBA in canvas pixel data
   pixels[pixelIndex * 4 + 0] = r;
   pixels[pixelIndex * 4 + 1] = g;
   pixels[pixelIndex * 4 + 2] = b;
@@ -411,7 +410,7 @@ function applyColorFromMap(
 function flipImageVertically(
   pixels: Uint8ClampedArray,
   width: number,
-  height: number
+  height: number,
 ): void {
   const bytesPerRow = width * 4;
   const tempRow = new Uint8ClampedArray(bytesPerRow);

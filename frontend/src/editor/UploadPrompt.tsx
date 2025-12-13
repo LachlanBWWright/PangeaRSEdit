@@ -74,7 +74,7 @@ export function UploadPrompt({
     });
 
   const handleParseLevelDataFile = (file: Blob, gameType: GlobalsInterface) =>
-    parseLevelDataFile(file, gameType, pyodideWorker, setData);
+    parseLevelDataFile(file, gameType, pyodideWorker, setData, undefined, setMapImages);
 
   return (
     <div className="flex text-white m-auto flex-1 gap-8 flex-col items-center justify-center p-8">

@@ -5,8 +5,6 @@ import { atom } from "jotai";
  * Stores non-serializable data like DOM elements that shouldn't go through Immer
  */
 
-export const BackgroundImageAtom = atom<HTMLCanvasElement | null>(null);
-
 /**
  * Current scene for Mighty Mike levels
  * Used to determine which .shapes files to load for item sprites

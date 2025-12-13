@@ -56,6 +56,24 @@ const MightyMikeSupertilesComponent = ({
     mapImagesType: mapImages[0]?.constructor?.name || "unknown",
   });
 
+  // Debug: Sample the actual tile canvas data to verify colors
+  if (mapImages.length > 0 && mapImages[0]) {
+    const sampleCanvas = mapImages[0];
+    const ctx = sampleCanvas?.getContext("2d");
+    if (ctx && sampleCanvas) {
+      const imageData = ctx.getImageData(0, 0, Math.min(4, sampleCanvas.width), Math.min(4, sampleCanvas.height));
+      const pixels = imageData.data;
+      // Sample first few pixels
+      const samples = [];
+      for (let i = 0; i < Math.min(4 * 4, pixels.length); i += 4) {
+        if (i + 3 < pixels.length) {
+          samples.push(`Pixel${i/4}: RGBA(${pixels[i]},${pixels[i+1]},${pixels[i+2]},${pixels[i+3]})`);
+        }
+      }
+      console.log("[TILE CANVAS] First tile canvas (tile 0) sample pixels:", samples);
+    }
+  }
+
   // If we have tile images, render them directly
   // mapImages contains the actual HTMLCanvasElement tiles from the tileset
   if (mapImages.length === 0) {

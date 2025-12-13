@@ -80,6 +80,10 @@ function parseTileImages(
   // Use provided palette or fall back to default grayscale
   const colorPalette = palette || createDefaultPalette();
 
+  if (!palette && numTileDefinitions > 0) {
+    console.warn("[TILE RENDER] ⚠️ NO PALETTE PROVIDED - Using default grayscale fallback! This will result in gray tiles!");
+  }
+
   // NOTE: The transparencyColors list from the tileset is for collision detection (gColorMaskArray),
   // NOT for visual rendering. For visual rendering, we render all colors from the palette as-is.
   // Only mark color 255 as transparent (used for blank tiles).
@@ -91,12 +95,25 @@ function parseTileImages(
   // Debug: check if palette is being used
   if (palette && numTileDefinitions > 0) {
     console.log(`[TILE RENDER] Palette provided: ${palette.length} bytes (${palette.length / 4} colors)`);
-    // Sample some palette colors
+    // Sample some palette colors - show first, green (17), and others
     const samples = [];
     for (let i = 0; i < Math.min(palette.length, 40); i += 4) {
       samples.push(`Color${i/4}: RGB(${palette[i]},${palette[i+1]},${palette[i+2]})`);
     }
-    console.log(`[TILE RENDER] Palette samples:`, samples.slice(0, 5));
+    console.log(`[TILE RENDER] Palette samples (first 10):`, samples.slice(0, 10));
+
+    // Specific check for color 17 (hedge green)
+    const color17_r = palette[17 * 4 + 0] ?? 0;
+    const color17_g = palette[17 * 4 + 1] ?? 0;
+    const color17_b = palette[17 * 4 + 2] ?? 0;
+    console.log(`[TILE RENDER] Color 17 (hedge): RGB(${color17_r},${color17_g},${color17_b})`);
+
+    // Check if green looks correct (should be G > 200)
+    if (color17_g > 200) {
+      console.log(`[TILE RENDER] ✓ Color 17 appears to be GREEN - palette is correctly converted`);
+    } else {
+      console.warn(`[TILE RENDER] ✗ Color 17 does NOT look green (G=${color17_g}) - palette may have wrong values!`);
+    }
   } else if (numTileDefinitions > 0) {
     console.log(`[TILE RENDER] No palette provided - using default grayscale`);
   }
