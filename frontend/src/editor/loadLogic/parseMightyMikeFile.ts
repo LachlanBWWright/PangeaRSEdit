@@ -5,8 +5,86 @@ import { splitLevelData, AtomicLevelData } from "@/data/utils/levelDataUtils";
 import { extractTGAPalette } from "@/utils/tgaParser";
 
 /**
+ * Get the scene name from the map file URL
+ * Example: "jurassic.map-1" -> "jurassic"
+ */
+function getSceneNameFromUrl(mapFileUrl: string): string | null {
+  const filename = mapFileUrl.split('/').pop();
+  if (!filename) return null;
+  const match = filename.match(/^(\w+)\.map-\d+$/);
+  return match ? match[1] ?? null : null;
+}
+
+/**
+ * Load the palette from the scene-specific TGA file
+ * Scene names map to TGA files:
+ * - jurassic → dinoscene.tga
+ * - candy → candyscene.tga
+ * - fairy → fairyscene.tga
+ * - clown → clownscene.tga
+ * - bargain → bargainscene.tga
+ */
+async function loadScenePalette(sceneName: string, basePath?: string): Promise<Uint8Array | null> {
+  try {
+    // Map scene names to TGA filenames
+    const sceneToTGA: Record<string, string> = {
+      jurassic: "dinoscene.tga",
+      candy: "candyscene.tga",
+      fairy: "fairyscene.tga",
+      clown: "clownscene.tga",
+      bargain: "bargainscene.tga",
+    };
+
+    const tgaFilename = sceneToTGA[sceneName.toLowerCase()];
+    if (!tgaFilename) {
+      console.warn(`[PALETTE] Unknown scene name: ${sceneName}`);
+      return null;
+    }
+
+    // Derive TGA path from basePath (mapFileUrl) if provided, otherwise use default
+    let tgaUrl: string;
+    if (basePath) {
+      // Replace .map-N with the TGA filename to get correct directory
+      tgaUrl = basePath.replace(/\.map-\d+$/, `.${tgaFilename.split('.')[0]}.tga`);
+      // Actually, just replace the whole filename
+      const dirPath = basePath.substring(0, basePath.lastIndexOf('/') + 1);
+      tgaUrl = dirPath + tgaFilename;
+    } else {
+      tgaUrl = `/PangeaRSEdit/assets/mightyMike/terrain/${tgaFilename}`;
+    }
+    console.log(`[PALETTE] Loading palette for scene "${sceneName}" from: ${tgaUrl}`);
+
+    const response = await fetch(tgaUrl);
+    if (!response.ok) {
+      console.warn(`[PALETTE] Failed to fetch TGA file: ${response.status} ${response.statusText}`);
+      return null;
+    }
+
+    const tgaBuffer = await response.arrayBuffer();
+    const paletteResult = extractTGAPalette(tgaBuffer);
+
+    if (!paletteResult) {
+      console.warn("[PALETTE] Failed to extract palette from TGA file");
+      return null;
+    }
+
+    console.log("[PALETTE] Successfully extracted palette from TGA:", {
+      sceneName,
+      tgaFile: tgaFilename,
+      colorCount: 256,
+      firstColor: [paletteResult.colors[0], paletteResult.colors[1], paletteResult.colors[2], paletteResult.colors[3]],
+    });
+
+    return new Uint8Array(paletteResult.colors);
+  } catch (error) {
+    console.warn("[PALETTE] Error loading palette:", error);
+    return null;
+  }
+}
+
+/**
  * Parse a MightyMike .map file and optionally load the corresponding .tileset file
- * 
+ *
  * @param file - The .map file blob
  * @param setData - Callback to set the editor data
  * @param mapFileUrl - Optional URL of the map file (to derive tileset URL)
@@ -33,70 +111,55 @@ export async function parseMightyMikeFile(
       items: mapResult.value.items,
     });
 
-    // Try to load the tileset file if we have the URL
+    // Try to load the tileset file
     let tilesetData = null;
+    let paletteData: Uint8Array | null = null;
+
+    // Load tileset if we have a URL
     if (mapFileUrl) {
       try {
-        // Extract the base name from the map file (e.g., "bargain" from "bargain.map-1")
-        const baseName = mapFileUrl.split('/').pop()?.split('.map-')[0];
-        if (baseName) {
-          // Replace .map-N with .tileset
-          const tilesetUrl = mapFileUrl.replace(/\.map-\d+$/, '.tileset');
-          console.log(`Attempting to load tileset from: ${tilesetUrl}`);
-
-          // Try to load scene-specific TGA palette
-          const tgaFileName = mapFileUrl.replace(/\.map-\d+$/, '').split('/').pop();
-          let sceneIndex = -1;
-          const sceneNames = ['jurassic', 'candy', 'fairy', 'clown', 'bargain'];
-          const tgaNames = ['dinoscene.tga', 'candyscene.tga', 'fairyscene.tga', 'clownscene.tga', 'bargainscene.tga'];
-
-          sceneIndex = sceneNames.indexOf(tgaFileName || '');
-          let palette: Uint8Array | undefined;
-
-          if (sceneIndex >= 0 && sceneIndex < tgaNames.length) {
-            try {
-              const tgaUrl = mapFileUrl.substring(0, mapFileUrl.lastIndexOf('/') + 1) + tgaNames[sceneIndex];
-              console.log(`Attempting to load palette from: ${tgaUrl}`);
-
-              const tgaResponse = await fetch(tgaUrl);
-              if (tgaResponse.ok) {
-                const tgaBuffer = await tgaResponse.arrayBuffer();
-                const tgaPalette = extractTGAPalette(tgaBuffer);
-                if (tgaPalette) {
-                  // Convert Uint8ClampedArray to Uint8Array
-                  palette = new Uint8Array(tgaPalette.colors);
-                  console.log(`Loaded ${baseName} palette from TGA file`);
-                } else {
-                  console.warn(`Failed to extract palette from TGA file`);
-                }
-              } else {
-                console.warn(`TGA palette file not found at ${tgaUrl}`);
-              }
-            } catch (tgaError) {
-              console.warn("Error loading TGA palette:", tgaError);
-              // Continue without palette data - will use grayscale fallback
+        // Get the scene name to load the corresponding palette
+        const sceneName = getSceneNameFromUrl(mapFileUrl);
+        if (sceneName) {
+          paletteData = await loadScenePalette(sceneName, mapFileUrl);
+          console.log(`[PALETTE LOAD] Scene: ${sceneName}, Loaded: ${!!paletteData}, Length: ${paletteData?.length || 0}`);
+          if (paletteData) {
+            // Check if palette has color variation
+            const colors = new Set();
+            for (let i = 0; i < Math.min(paletteData.length, 100); i += 4) {
+              const r = paletteData[i];
+              const g = paletteData[i + 1];
+              const b = paletteData[i + 2];
+              colors.add(`${r},${g},${b}`);
             }
+            console.log(`[PALETTE LOAD] Unique colors in first 25: ${colors.size}, samples:`, Array.from(colors).slice(0, 5));
           }
+        }
 
-          const tilesetResponse = await fetch(tilesetUrl);
-          if (tilesetResponse.ok) {
-            const tilesetBuffer = await tilesetResponse.arrayBuffer();
-            const tilesetResult = parseMightyMikeTileSet(tilesetBuffer, palette);
+        // Replace .map-N with .tileset
+        const tilesetUrl = mapFileUrl.replace(/\.map-\d+$/, '.tileset');
+        console.log(`Attempting to load tileset from: ${tilesetUrl}`);
 
-            if (tilesetResult.ok) {
-              tilesetData = tilesetResult.value;
-              console.log("MightyMike tileset parsed successfully:", {
-                numTileDefinitions: tilesetData.numTileDefinitions,
-                numTileAttributeEntries: tilesetData.numTileAttributeEntries,
-                numTileAnims: tilesetData.numTileAnims,
-                paletteLoaded: !!palette,
-              });
-            } else {
-              console.warn(`Failed to parse tileset: ${tilesetResult.error}`);
-            }
+        const tilesetResponse = await fetch(tilesetUrl);
+        if (tilesetResponse.ok) {
+          const tilesetBuffer = await tilesetResponse.arrayBuffer();
+          // Parse with the loaded palette if available
+          console.log(`[TILESET] Parsing with palette: ${!!paletteData}, palette size: ${paletteData?.length || 0}`);
+          const tilesetResult = parseMightyMikeTileSet(tilesetBuffer, paletteData || undefined);
+
+          if (tilesetResult.ok) {
+            tilesetData = tilesetResult.value;
+            console.log("MightyMike tileset parsed successfully:", {
+              numTileDefinitions: tilesetData.numTileDefinitions,
+              numTileAttributeEntries: tilesetData.numTileAttributeEntries,
+              numTileAnims: tilesetData.numTileAnims,
+              paletteLoaded: !!paletteData,
+            });
           } else {
-            console.warn(`Tileset file not found at ${tilesetUrl}`);
+            console.warn(`Failed to parse tileset: ${tilesetResult.error}`);
           }
+        } else {
+          console.warn(`Tileset file not found at ${tilesetUrl}`);
         }
       } catch (tilesetError) {
         console.warn("Error loading tileset:", tilesetError);
@@ -203,11 +266,11 @@ export async function parseMightyMikeFile(
       layrLength: ottoCompatible.Layr[1000].obj.length,
     });
 
-    const atomicData = splitLevelData(ottoCompatible as LevelData);
+    const atomicData = splitLevelData(ottoCompatible as unknown as LevelData);
     console.log("MightyMike atomicData AFTER splitLevelData:", atomicData);
 
     setData(atomicData);
-    return ok(ottoCompatible as LevelData);
+    return ok(ottoCompatible as unknown as LevelData);
   } catch (e) {
     return err(e instanceof Error ? e : new Error(String(e)));
   }

@@ -91,17 +91,19 @@ export function extractTGAPalette(buffer: ArrayBuffer): TGAPalette | null {
     const dstOffset = i * 4;
 
     if (paletteBytesPerEntry === 3) {
-      // RGB format - try direct mapping first
-      colors[dstOffset + 0] = paletteData[srcOffset + 0]!; // R
-      colors[dstOffset + 1] = paletteData[srcOffset + 1]!; // G
-      colors[dstOffset + 2] = paletteData[srcOffset + 2]!; // B
+      // TGA palette is stored as BGR (reverse the byte order to RGB)
+      // TGA format: byte[0]=B, byte[1]=G, byte[2]=R
+      colors[dstOffset + 0] = paletteData[srcOffset + 2]!; // R from byte 2
+      colors[dstOffset + 1] = paletteData[srcOffset + 1]!; // G from byte 1
+      colors[dstOffset + 2] = paletteData[srcOffset + 0]!; // B from byte 0
       colors[dstOffset + 3] = 255; // A (opaque)
     } else if (paletteBytesPerEntry === 4) {
-      // RGBA format - try direct mapping first
-      colors[dstOffset + 0] = paletteData[srcOffset + 0]!; // R
-      colors[dstOffset + 1] = paletteData[srcOffset + 1]!; // G
-      colors[dstOffset + 2] = paletteData[srcOffset + 2]!; // B
-      colors[dstOffset + 3] = paletteData[srcOffset + 3]!; // A
+      // TGA palette is stored as BGRA (reverse RGB bytes, keep A)
+      // TGA format: byte[0]=B, byte[1]=G, byte[2]=R, byte[3]=A
+      colors[dstOffset + 0] = paletteData[srcOffset + 2]!; // R from byte 2
+      colors[dstOffset + 1] = paletteData[srcOffset + 1]!; // G from byte 1
+      colors[dstOffset + 2] = paletteData[srcOffset + 0]!; // B from byte 0
+      colors[dstOffset + 3] = paletteData[srcOffset + 3]!; // A from byte 3
     }
   }
 

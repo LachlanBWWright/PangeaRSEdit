@@ -9,9 +9,11 @@
 
 import { useState, useEffect, useMemo } from "react";
 import { useImmer, Updater } from "use-immer";
+import { useAtomValue } from "jotai";
 import { MightyMikeEditorToolbar } from "../toolbars/MightyMikeEditorToolbar";
 
 import { ItemMenu } from "../subviews/items/ItemMenu";
+import { MightyMikeTileMenu } from "../subviews/mightymike/MightyMikeTileMenu";
 import { MightyMikeKonvaView } from "../canvas/MightyMikeKonvaView";
 import { View } from "../viewEnum";
 import {
@@ -24,6 +26,7 @@ import type { MightyMikeEditorViewProps } from "../utils/editorViewTypes";
 import {
   ItemData,
 } from "@/python/structSpecs/LevelTypes";
+import { BackgroundImageAtom } from "@/data/game/gameAtoms";
 
 export function MightyMikeEditorView({
   headerData,
@@ -33,13 +36,24 @@ export function MightyMikeEditorView({
   terrainData,
   setTerrainData,
   mapImages,
+  setMapImages,
   undoData,
   redoData,
   dataHistory,
 }: MightyMikeEditorViewProps) {
+  const backgroundImage = useAtomValue(BackgroundImageAtom);
   // Default to items view since MightyMike doesn't have fences
   const [view, setView] = useState<View>(View.items);
   const [stage, setStage] = useImmer({ scale: 1, x: 0, y: 0 });
+
+  // Log background image status
+  useEffect(() => {
+    console.log("[BACKGROUND] MightyMikeEditorView received:", {
+      backgroundImageExists: !!backgroundImage,
+      backgroundImageType: backgroundImage?.constructor?.name,
+      backgroundImageDimensions: backgroundImage ? `${backgroundImage.width}x${backgroundImage.height}` : 'N/A',
+    });
+  }, [backgroundImage]);
 
   const handleKeyDown = useMemo(
     () => createUndoRedoKeyHandler(undoData, redoData),
@@ -71,7 +85,7 @@ export function MightyMikeEditorView({
         dataHistoryIndex={dataHistory.index}
         dataHistoryLength={dataHistory.items.length}
       />
-      <div>
+      <div className="h-80 overflow-y-auto border-b border-gray-600">
         {view === View.items && itemData && (
           <ItemMenu
             itemData={itemData}
@@ -81,13 +95,14 @@ export function MightyMikeEditorView({
           />
         )}
         {view === View.supertiles && (
-          <div className="p-4">
-            <h3 className="font-bold">Supertiles (Background Tile Grid)</h3>
-            <p className="text-sm text-gray-600">
-              Click on the map to edit individual background tiles.
-              Mighty Mike uses a 2D tile system with {headerData?.Hedr?.[1000]?.obj?.numTiles || 0} tiles.
-            </p>
-          </div>
+          <MightyMikeTileMenu
+            headerData={headerData}
+            setHeaderData={setHeaderData}
+            terrainData={terrainData}
+            setTerrainData={setTerrainData}
+            mapImages={mapImages}
+            setMapImages={setMapImages}
+          />
         )}
         {view === View.tiles && (
           <div className="p-4">
@@ -107,6 +122,7 @@ export function MightyMikeEditorView({
           terrainData={terrainData}
           setTerrainData={setTerrainData}
           mapImages={mapImages}
+          backgroundImage={backgroundImage}
           view={view}
           stage={stage}
           setStage={setStage}

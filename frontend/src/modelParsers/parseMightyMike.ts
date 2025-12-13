@@ -10,22 +10,35 @@ import type {
   MightyMikeItem,
   MightyMikeLevel,
 } from "../python/structSpecs/mightyMikeInterface";
-import { rlwDecompress, rlwCompress } from "../utils/rlwDecompress";
+import { rlwDecompress, rlwCompress, rlbDecompress, PACK_TYPE_RLB, PACK_TYPE_RLW } from "../utils/rlwDecompress";
 
 /**
  * Decompress a Mighty Mike packed file if needed
+ * Tilesets use RLB (type 0), maps use RLW (type 6)
  */
 function decompressIfNeeded(buffer: ArrayBuffer): ArrayBuffer {
   const view = new DataView(buffer);
+  const decompressedSize = view.getUint32(0, false);
   const compressionType = view.getUint32(4, false);
-  
+
   // Check if this looks like a packed file (compression type 0-6)
   if (compressionType <= 6) {
     try {
-      const result = rlwDecompress(buffer);
-      return result.data;
-    } catch {
+      if (compressionType === PACK_TYPE_RLB) {
+        // Tileset files use RLB (byte-level) compression
+        const result = rlbDecompress(buffer);
+        return result.data;
+      } else if (compressionType === PACK_TYPE_RLW) {
+        // Map files use RLW (word-level) compression
+        const result = rlwDecompress(buffer);
+        return result.data;
+      } else {
+        // Unknown compression type, return as-is
+        return buffer;
+      }
+    } catch (error) {
       // If decompression fails, assume it's not compressed
+      console.warn(`Decompression failed for type ${compressionType}:`, error);
       return buffer;
     }
   }
@@ -67,17 +80,26 @@ function parseTileImages(
   // Use provided palette or fall back to default grayscale
   const colorPalette = palette || createDefaultPalette();
 
-  // Create transparency mask from transparencyColors list
+  // NOTE: The transparencyColors list from the tileset is for collision detection (gColorMaskArray),
+  // NOT for visual rendering. For visual rendering, we render all colors from the palette as-is.
+  // Only mark color 255 as transparent (used for blank tiles).
   const colorIsTransparent = new Uint8Array(256);
-  if (transparencyColors && transparencyColors.length > 0) {
-    for (const colorIdx of transparencyColors) {
-      if (colorIdx >= 0 && colorIdx < 256) {
-        colorIsTransparent[colorIdx] = 1;
-      }
-    }
-  }
+  colorIsTransparent[255] = 1;  // Only color 255 is visually transparent
 
   const tileData = new Uint8Array(buffer, offsetToTileDefinitions);
+
+  // Debug: check if palette is being used
+  if (palette && numTileDefinitions > 0) {
+    console.log(`[TILE RENDER] Palette provided: ${palette.length} bytes (${palette.length / 4} colors)`);
+    // Sample some palette colors
+    const samples = [];
+    for (let i = 0; i < Math.min(palette.length, 40); i += 4) {
+      samples.push(`Color${i/4}: RGB(${palette[i]},${palette[i+1]},${palette[i+2]})`);
+    }
+    console.log(`[TILE RENDER] Palette samples:`, samples.slice(0, 5));
+  } else if (numTileDefinitions > 0) {
+    console.log(`[TILE RENDER] No palette provided - using default grayscale`);
+  }
 
   for (let tileIndex = 0; tileIndex < numTileDefinitions; tileIndex++) {
     const canvas = document.createElement("canvas");
@@ -114,22 +136,6 @@ function parseTileImages(
 
     ctx.putImageData(imageData, 0, 0);
     tileImages.push(canvas);
-  }
-
-  console.log(`Parsed ${tileImages.length} tile images from tileset`);
-
-  // Debug: log first tile's color indices
-  if (tileImages.length > 0) {
-    const firstTileOffset = 0;
-    const firstPixels = Array.from(tileData.slice(firstTileOffset, firstTileOffset + 16));
-    console.log("First tile pixel color indices (first 16):", firstPixels);
-    console.log("First tile color values:", firstPixels.slice(0, 4).map(idx => ({
-      idx,
-      r: palette ? palette[idx * 4 + 0] : 0,
-      g: palette ? palette[idx * 4 + 1] : 0,
-      b: palette ? palette[idx * 4 + 2] : 0,
-      a: palette ? palette[idx * 4 + 3] : 255,
-    })));
   }
 
   return tileImages;
@@ -257,7 +263,7 @@ export function parseMightyMikeTileSet(
       });
     }
 
-    // Parse transparency colors
+    // Parse transparency colors (used for collision detection, not visual rendering)
     const transparencyColors: number[] = [];
     for (let i = 0; i < numTileXparentColors; i++) {
       const offset = offsetToTileXparentList + i * 2;

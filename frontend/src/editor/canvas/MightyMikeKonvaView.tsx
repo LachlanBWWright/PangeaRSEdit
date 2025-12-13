@@ -12,7 +12,7 @@
 
 import { useAtomValue, useSetAtom } from "jotai";
 import { useRef, useCallback, useState, useEffect } from "react";
-import { Stage } from "react-konva";
+import { Stage, Layer, Image } from "react-konva";
 import { Updater } from "use-immer";
 import { ClickToAddItem, SelectedItem } from "@/data/items/itemAtoms";
 import { Items } from "../subviews/Items";
@@ -37,6 +37,7 @@ interface MightyMikeKonvaViewProps {
   terrainData: TerrainData;
   setTerrainData: Updater<TerrainData>;
   mapImages: HTMLCanvasElement[];
+  backgroundImage?: HTMLCanvasElement | null;
   view: View;
   stage: StageData;
   setStage: Updater<StageData>;
@@ -48,7 +49,7 @@ export function MightyMikeKonvaView({
   setItemData,
   terrainData,
   mapImages,
-  view,
+  backgroundImage,
   stage,
   setStage,
 }: MightyMikeKonvaViewProps) {
@@ -57,6 +58,15 @@ export function MightyMikeKonvaView({
 
   const containerRef = useRef<HTMLDivElement>(null);
   const [containerSize, setContainerSize] = useState({ width: 3000, height: 2000 });
+
+  // Log background image status
+  useEffect(() => {
+    console.log("[BACKGROUND] MightyMikeKonvaView received:", {
+      backgroundImageExists: !!backgroundImage,
+      backgroundImageType: backgroundImage?.constructor?.name,
+      backgroundImageDimensions: backgroundImage ? `${backgroundImage.width}x${backgroundImage.height}` : 'N/A',
+    });
+  }, [backgroundImage]);
 
   // Update container size on mount and window resize
   useEffect(() => {
@@ -155,6 +165,28 @@ export function MightyMikeKonvaView({
         });
       }}
     >
+      {/* Background layer - rendered first (behind everything) */}
+      {backgroundImage ? (
+        (() => {
+          console.log("[BACKGROUND] Rendering background layer");
+          return (
+            <Layer>
+              <Image
+                image={backgroundImage}
+                x={0}
+                y={0}
+                listening={false}
+              />
+            </Layer>
+          );
+        })()
+      ) : (
+        (() => {
+          console.log("[BACKGROUND] Not rendering background layer - backgroundImage is:", backgroundImage);
+          return null;
+        })()
+      )}
+
       {/* Render 2D tile grid - Mighty Mike uses simple tile mapping, always visible */}
       {terrainData?.Layr && mapImages.length > 0 && (
         <MightyMikeSupertiles
