@@ -11,7 +11,7 @@
  */
 
 import { useAtomValue, useSetAtom } from "jotai";
-import { useRef, useCallback } from "react";
+import { useRef, useCallback, useState, useEffect } from "react";
 import { Stage } from "react-konva";
 import { Updater } from "use-immer";
 import { ClickToAddItem, SelectedItem } from "@/data/items/itemAtoms";
@@ -48,13 +48,30 @@ export function MightyMikeKonvaView({
   setItemData,
   terrainData,
   mapImages,
+  view,
   stage,
   setStage,
 }: MightyMikeKonvaViewProps) {
   const setSelectedItem = useSetAtom(SelectedItem);
   const clickToAddItem = useAtomValue(ClickToAddItem);
 
-  const stageRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [containerSize, setContainerSize] = useState({ width: 3000, height: 2000 });
+
+  // Update container size on mount and window resize
+  useEffect(() => {
+    const updateSize = () => {
+      if (containerRef.current) {
+        setContainerSize({
+          width: containerRef.current.offsetWidth,
+          height: containerRef.current.offsetHeight,
+        });
+      }
+    };
+    updateSize();
+    window.addEventListener("resize", updateSize);
+    return () => window.removeEventListener("resize", updateSize);
+  }, []);
 
   // Non-null updater for items
   const setItemDataNotNull: Updater<ItemData> = useCallback(
@@ -67,10 +84,22 @@ export function MightyMikeKonvaView({
     [setItemData],
   );
 
+  // Debug logging
+  useEffect(() => {
+    console.log("MightyMikeKonvaView: Render state", {
+      hasTerrainData: !!terrainData,
+      hasLayr: !!terrainData?.Layr,
+      mapImagesCount: mapImages.length,
+      containerSize,
+      shouldRenderTiles: !!terrainData?.Layr && mapImages.length > 0,
+    });
+  }, [terrainData, mapImages, containerSize]);
+
   return (
-    <Stage
-      width={stageRef.current?.offsetWidth ?? 3000}
-      height={stageRef.current?.offsetHeight ?? 2000}
+    <div ref={containerRef} style={{ width: "100%", height: "100%" }}>
+      <Stage
+        width={containerSize.width}
+        height={containerSize.height}
       scaleX={stage.scale}
       scaleY={stage.scale}
       x={stage.x}
@@ -126,19 +155,20 @@ export function MightyMikeKonvaView({
         });
       }}
     >
-      {/* Render 2D tile grid - Mighty Mike uses simple tile mapping */}
-      {terrainData && terrainData.Layr && (
+      {/* Render 2D tile grid - Mighty Mike uses simple tile mapping, always visible */}
+      {terrainData?.Layr && mapImages.length > 0 && (
         <MightyMikeSupertiles
           headerData={headerData}
           terrainData={terrainData}
           mapImages={mapImages}
         />
       )}
-      
+
       {/* Items - shown in all views */}
       {itemData && (
         <Items itemData={itemData} setItemData={setItemDataNotNull} />
       )}
     </Stage>
+    </div>
   );
 }

@@ -69,29 +69,71 @@ export async function openFile({
   const jsonData = parseResult.value;
 
   if (gameType.DATA_TYPE === DataType.MIGHTY_MIKE) {
-    console.log("MightyMike level loaded successfully with tileset integration");
-    console.log("MightyMike jsonData structure:", Object.keys(jsonData));
-    
+    console.log("=== MIGHTY_MIKE LEVEL LOADING ===");
+    console.log("MightyMike level loaded successfully");
+    console.log("jsonData type:", typeof jsonData);
+    const jsonKeys = Object.keys(jsonData);
+    console.log("jsonData keys:", jsonKeys);
+    console.log("jsonData full object:", jsonData);
+
+    // Check if tileset exists
+    const hasTileset = 'tileset' in jsonData;
+    console.log("Has tileset property:", hasTileset);
+
     // Extract tile images from tileset data
     // The tileset field is at the root level of the LevelData structure
     interface MightyMikeLevelData {
       tileset?: {
         tileImages?: HTMLCanvasElement[];
         numTileDefinitions?: number;
+        numTileAttributeEntries?: number;
+      };
+      Hedr?: {
+        1000?: {
+          obj: {
+            numTiles?: number;
+          };
+        };
       };
     }
     const tilesetData = (jsonData as unknown as MightyMikeLevelData).tileset;
+    const headerObj = (jsonData as unknown as MightyMikeLevelData).Hedr?.[1000]?.obj;
     const tileImages = tilesetData?.tileImages || [];
+
+    console.log("Tileset data:", tilesetData);
     console.log(`MightyMike: Loaded ${tileImages.length} tile images from tileset`);
     console.log("MightyMike tileset data:", tilesetData ? {
       numTileDefinitions: tilesetData.numTileDefinitions || 0,
+      numTileAttributeEntries: tilesetData.numTileAttributeEntries || 0,
       hasImages: !!tilesetData.tileImages,
       imageCount: tileImages.length,
     } : 'No tileset data');
-    
+    console.log("MightyMike header data:", headerObj ? {
+      numTiles: headerObj.numTiles,
+    } : 'No header data');
+
+    // Create and log tile images as a collage
+    if (tileImages.length > 0) {
+      try {
+        const collage = combineCanvases(tileImages);
+        const collageUrl = collage.toDataURL("image/png");
+        console.log(`MightyMike tile collage: ${tileImages.length} tiles in color`, collageUrl);
+
+        // Also create an image element to visualize in console
+        const img = new Image();
+        img.src = collageUrl;
+        console.log("%cMightyMike Tile Collage Preview", "font-size: 16px; font-weight: bold; color: #4CAF50;");
+        console.log(img);
+      } catch (err) {
+        console.warn("Failed to create MightyMike tile collage:", err);
+      }
+    }
+
     if (tileImages.length === 0) {
       console.warn("MightyMike: No tile images loaded! Tileset may not have been parsed or tileImages array is empty.");
     }
+
+    console.log("DEBUG: After setMapImages, tileImages.length =", tileImages.length);
     
     // Create a dummy file to allow downloads
     const dummyFile = new File([new Uint8Array(0)], "mightyMike_tiles.bin");

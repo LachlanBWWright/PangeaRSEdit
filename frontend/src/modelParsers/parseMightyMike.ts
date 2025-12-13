@@ -33,6 +33,23 @@ function decompressIfNeeded(buffer: ArrayBuffer): ArrayBuffer {
 }
 
 /**
+ * Create a default palette (grayscale with better contrast)
+ * This is used when actual palette data is not available
+ */
+function createDefaultPalette(): Uint8Array {
+  const palette = new Uint8Array(256 * 4);
+  for (let i = 0; i < 256; i++) {
+    // Use a slightly improved grayscale with better contrast
+    const value = Math.floor((i / 255) * 255);
+    palette[i * 4 + 0] = value;      // R
+    palette[i * 4 + 1] = value;      // G
+    palette[i * 4 + 2] = value;      // B
+    palette[i * 4 + 3] = 255;        // A (fully opaque)
+  }
+  return palette;
+}
+
+/**
  * Parse tile images from tileset buffer
  * Mighty Mike tiles are 32x32 pixels, stored as 8-bit indexed color with a palette
  */
@@ -40,60 +57,87 @@ function parseTileImages(
   buffer: ArrayBuffer,
   offsetToTileDefinitions: number,
   numTileDefinitions: number,
+  transparencyColors?: number[],
+  palette?: Uint8Array,
 ): HTMLCanvasElement[] {
   const tileImages: HTMLCanvasElement[] = [];
   const TILE_SIZE = 32;
   const BYTES_PER_TILE = TILE_SIZE * TILE_SIZE; // 32x32 = 1024 bytes per tile (8-bit indexed)
-  
-  // Simple grayscale palette (Mighty Mike uses 8-bit indexed color)
-  // We'll create a grayscale mapping for now since we don't have the palette data
-  const palette = new Uint8Array(256 * 4);
-  for (let i = 0; i < 256; i++) {
-    palette[i * 4 + 0] = i; // R
-    palette[i * 4 + 1] = i; // G
-    palette[i * 4 + 2] = i; // B
-    palette[i * 4 + 3] = 255; // A (fully opaque)
+
+  // Use provided palette or fall back to default grayscale
+  const colorPalette = palette || createDefaultPalette();
+
+  // Create transparency mask from transparencyColors list
+  const colorIsTransparent = new Uint8Array(256);
+  if (transparencyColors && transparencyColors.length > 0) {
+    for (const colorIdx of transparencyColors) {
+      if (colorIdx >= 0 && colorIdx < 256) {
+        colorIsTransparent[colorIdx] = 1;
+      }
+    }
   }
-  
+
   const tileData = new Uint8Array(buffer, offsetToTileDefinitions);
-  
+
   for (let tileIndex = 0; tileIndex < numTileDefinitions; tileIndex++) {
     const canvas = document.createElement("canvas");
     canvas.width = TILE_SIZE;
     canvas.height = TILE_SIZE;
     const ctx = canvas.getContext("2d");
-    
+
     if (!ctx) {
       console.warn(`Failed to get canvas context for tile ${tileIndex}`);
       continue;
     }
-    
+
     const imageData = ctx.createImageData(TILE_SIZE, TILE_SIZE);
     const offset = tileIndex * BYTES_PER_TILE;
-    
-    // Convert indexed color to RGBA
+
+    // Convert indexed color to RGBA, applying transparency
     for (let i = 0; i < BYTES_PER_TILE; i++) {
       if (offset + i >= tileData.length) break;
-      
+
       const colorIndex = tileData[offset + i];
       const pixelOffset = i * 4;
-      
-      imageData.data[pixelOffset + 0] = palette[colorIndex * 4 + 0];
-      imageData.data[pixelOffset + 1] = palette[colorIndex * 4 + 1];
-      imageData.data[pixelOffset + 2] = palette[colorIndex * 4 + 2];
-      imageData.data[pixelOffset + 3] = palette[colorIndex * 4 + 3];
+
+      imageData.data[pixelOffset + 0] = colorPalette[colorIndex * 4 + 0];
+      imageData.data[pixelOffset + 1] = colorPalette[colorIndex * 4 + 1];
+      imageData.data[pixelOffset + 2] = colorPalette[colorIndex * 4 + 2];
+
+      // Apply transparency - if this color is marked as transparent, use alpha 0
+      if (colorIsTransparent[colorIndex]) {
+        imageData.data[pixelOffset + 3] = 0;  // Transparent
+      } else {
+        imageData.data[pixelOffset + 3] = colorPalette[colorIndex * 4 + 3];  // Use palette alpha
+      }
     }
-    
+
     ctx.putImageData(imageData, 0, 0);
     tileImages.push(canvas);
   }
-  
+
   console.log(`Parsed ${tileImages.length} tile images from tileset`);
+
+  // Debug: log first tile's color indices
+  if (tileImages.length > 0) {
+    const firstTileOffset = 0;
+    const firstPixels = Array.from(tileData.slice(firstTileOffset, firstTileOffset + 16));
+    console.log("First tile pixel color indices (first 16):", firstPixels);
+    console.log("First tile color values:", firstPixels.slice(0, 4).map(idx => ({
+      idx,
+      r: palette ? palette[idx * 4 + 0] : 0,
+      g: palette ? palette[idx * 4 + 1] : 0,
+      b: palette ? palette[idx * 4 + 2] : 0,
+      a: palette ? palette[idx * 4 + 3] : 255,
+    })));
+  }
+
   return tileImages;
 }
 
 export function parseMightyMikeTileSet(
   buffer: ArrayBuffer,
+  palette?: Uint8Array,
 ): Result<MightyMikeTileSet, string> {
   try {
     // Decompress if needed
@@ -226,6 +270,8 @@ export function parseMightyMikeTileSet(
       decompressedBuffer,
       offsetToTileDefinitions,
       numTileDefinitions,
+      transparencyColors,
+      palette,
     );
 
     const tileset: MightyMikeTileSet = {

@@ -8,8 +8,8 @@
  */
 
 import { useState, useEffect, useMemo } from "react";
+import { useImmer, Updater } from "use-immer";
 import { MightyMikeEditorToolbar } from "../toolbars/MightyMikeEditorToolbar";
-import { useImmer } from "use-immer";
 
 import { ItemMenu } from "../subviews/items/ItemMenu";
 import { MightyMikeKonvaView } from "../canvas/MightyMikeKonvaView";
@@ -70,9 +70,6 @@ export function MightyMikeEditorView({
         zoomOut={zoomOut}
         dataHistoryIndex={dataHistory.index}
         dataHistoryLength={dataHistory.items.length}
-        terrainHasSTgd={false} // MightyMike doesn't have supertiles
-        hasFenceData={false} // MightyMike doesn't have fences
-        hasLiquidData={false} // MightyMike doesn't have water bodies
       />
       <div>
         {view === View.items && itemData && (
@@ -88,7 +85,7 @@ export function MightyMikeEditorView({
             <h3 className="font-bold">Supertiles (Background Tile Grid)</h3>
             <p className="text-sm text-gray-600">
               Click on the map to edit individual background tiles.
-              Mighty Mike uses a 2D tile system with {headerData?.numTiles || 0} tiles.
+              Mighty Mike uses a 2D tile system with {headerData?.Hedr?.[1000]?.obj?.numTiles || 0} tiles.
             </p>
           </div>
         )}
