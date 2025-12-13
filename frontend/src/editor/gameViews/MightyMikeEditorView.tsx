@@ -12,7 +12,7 @@ import { useImmer, Updater } from "use-immer";
 import { useAtomValue } from "jotai";
 import { MightyMikeEditorToolbar } from "../toolbars/MightyMikeEditorToolbar";
 
-import { ItemMenu } from "../subviews/items/ItemMenu";
+import { MightyMikeItemMenu } from "../subviews/items/MightyMikeItemMenu";
 import { MightyMikeTileMenu } from "../subviews/mightymike/MightyMikeTileMenu";
 import { MightyMikeKonvaView } from "../canvas/MightyMikeKonvaView";
 import { View } from "../viewEnum";
@@ -87,7 +87,7 @@ export function MightyMikeEditorView({
       />
       <div className="h-80 overflow-y-auto border-b border-gray-600">
         {view === View.items && itemData && (
-          <ItemMenu
+          <MightyMikeItemMenu
             itemData={itemData}
             setItemData={setItemDataNotNull}
             headerData={headerData}

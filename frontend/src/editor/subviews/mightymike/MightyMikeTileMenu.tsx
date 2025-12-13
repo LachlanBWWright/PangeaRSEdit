@@ -18,8 +18,17 @@ import { HeaderData, TerrainData } from "@/python/structSpecs/LevelTypes";
 import { FileUpload } from "@/components/FileUpload";
 import { Button } from "@/components/ui/button";
 import { ImageEditor } from "@/components/ImageEditor";
-import { Edit, Download, Upload } from "lucide-react";
+import { Edit, Download, Upload, Shield } from "lucide-react";
 import { toast } from "sonner";
+import { useAtom } from "jotai";
+import { ShowMightyMikeCollisionOverlay } from "@/data/game/gameAtoms";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 interface MightyMikeTileMenuProps {
   headerData: HeaderData;
@@ -40,6 +49,9 @@ export function MightyMikeTileMenu({
   setMapImages,
 }: MightyMikeTileMenuProps) {
   const selectedTile = useAtomValue(SelectedTile);
+  const [showCollisionOverlay, setShowCollisionOverlay] = useAtom(
+    ShowMightyMikeCollisionOverlay
+  );
 
   // Local state
   const [selectedPaletteTile, setSelectedPaletteTile] = useState<number>(0);
@@ -51,9 +63,43 @@ export function MightyMikeTileMenu({
   const layr = terrainData.Layr?.[1000]?.obj || [];
   const xlatTable = terrainData.Xlat?.[1000]?.obj;
 
+  // Get collision data from Mighty Mike metadata
+  const rawTerrainData = terrainData as unknown as Record<string, unknown>;
+  const mightyMikeTileValuesData =
+    (rawTerrainData?._metadata as Record<string, unknown>)?.[1000] as Record<
+      string,
+      unknown
+    > | undefined;
+  const mightyMikeTileValuesArray =
+    ((mightyMikeTileValuesData?.obj as Record<string, unknown>)
+      ?.mightyMikeTileValues as unknown[]) || [];
+
   const mapWidth = header.mapWidth;
   const mapHeight = header.mapHeight;
   const totalTiles = mapWidth * mapHeight;
+
+  // Helper: Get collision properties for current tile
+  const getCollisionProperties = (): {
+    hasCollisionMask: boolean;
+    usePixelAccurateCollision: boolean;
+  } | null => {
+    if (
+      selectedTile < 0 ||
+      selectedTile >= mightyMikeTileValuesArray.length
+    ) {
+      return null;
+    }
+
+    const tileValue = mightyMikeTileValuesArray[selectedTile] as Record<
+      string,
+      unknown
+    >;
+    return {
+      hasCollisionMask: (tileValue?.hasCollisionMask as boolean) || false,
+      usePixelAccurateCollision:
+        (tileValue?.usePixelAccurateCollision as boolean) || false,
+    };
+  };
 
   // Helper: Get image index for current tile (forward Xlat translation)
   const getCurrentTileImageIndex = (): number | null => {
@@ -212,6 +258,40 @@ export function MightyMikeTileMenu({
     toast.success("Tile updated successfully");
   };
 
+  // Handler: Update collision properties
+  const handleUpdateCollisionProperty = (
+    property: "hasCollisionMask" | "usePixelAccurateCollision",
+    value: boolean
+  ) => {
+    if (selectedTile < 0 || selectedTile >= mightyMikeTileValuesArray.length) {
+      toast.error("Invalid tile selected");
+      return;
+    }
+
+    // Update the tile value in the array
+    const tileValue = mightyMikeTileValuesArray[selectedTile] as Record<
+      string,
+      unknown
+    >;
+    if (!tileValue) return;
+
+    tileValue[property] = value;
+
+    // Update state to trigger re-render
+    setTerrainData((data) => {
+      if (!data.Layr) return;
+      // Force a state update by touching the layer data
+      const layer = data.Layr[1000];
+      if (layer) {
+        layer.obj = [...(layer.obj || [])];
+      }
+    });
+
+    toast.success(
+      `Collision ${property === "hasCollisionMask" ? "mask" : "type"} updated`
+    );
+  };
+
   // Handler: Upload tile image
   const handleUploadTile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target?.files?.[0];
@@ -274,7 +354,26 @@ export function MightyMikeTileMenu({
     currentImageIndex !== null ? mapImages[currentImageIndex] : null;
 
   return (
-    <div className="grid grid-cols-3 gap-2 p-2 h-full overflow-y-auto">
+    <div className="flex flex-col h-full overflow-hidden">
+      {/* Collision Overlay Toggle */}
+      <div className="p-2 border-b border-gray-600 flex items-center justify-between">
+        <span className="text-sm font-semibold">Collision Overlay</span>
+        <Button
+          size="sm"
+          variant={showCollisionOverlay ? "default" : "outline"}
+          onClick={() => setShowCollisionOverlay(!showCollisionOverlay)}
+          title={
+            showCollisionOverlay
+              ? "Hide collision mask overlay"
+              : "Show collision mask overlay"
+          }
+        >
+          <Shield className="w-4 h-4" />
+        </Button>
+      </div>
+
+      {/* Main Content Grid */}
+      <div className="grid grid-cols-3 gap-2 p-2 flex-1 overflow-y-auto">
       {/* Left Column: Selected Tile Operations */}
       <div className="flex flex-col gap-2">
         <p className="font-bold">Selected Tile #{selectedTile}</p>
@@ -320,20 +419,91 @@ export function MightyMikeTileMenu({
       </div>
 
       {/* Middle Column: Tile Information */}
-      <div className="flex flex-col gap-2 text-sm">
-        <p className="font-bold">Tile Information</p>
-        <div className="space-y-1">
-          <p>Map Size: {mapWidth} × {mapHeight}</p>
-          <p>Total Tiles: {totalTiles}</p>
-          <p>Available Images: {mapImages.length}</p>
-          <p>Selected Pos: {selectedTile}</p>
-          <p>
-            Logical Index:{" "}
-            {selectedTile < layr.length ? layr[selectedTile] : "N/A"}
-          </p>
-          <p>Physical Index: {currentImageIndex ?? "N/A"}</p>
-          <p>Has Xlat: {xlatTable ? "Yes" : "No"}</p>
+      <div className="flex flex-col gap-2 text-sm overflow-y-auto">
+        <div>
+          <p className="font-bold">Tile Information</p>
+          <div className="space-y-1">
+            <p>Map Size: {mapWidth} × {mapHeight}</p>
+            <p>Total Tiles: {totalTiles}</p>
+            <p>Available Images: {mapImages.length}</p>
+            <p>Selected Pos: {selectedTile}</p>
+            <p>
+              Logical Index:{" "}
+              {selectedTile < layr.length ? layr[selectedTile] : "N/A"}
+            </p>
+            <p>Physical Index: {currentImageIndex ?? "N/A"}</p>
+            <p>Has Xlat: {xlatTable ? "Yes" : "No"}</p>
+          </div>
         </div>
+
+        {/* Collision Properties Section */}
+        {mightyMikeTileValuesArray.length > 0 && (() => {
+          const collisionProps = getCollisionProperties();
+          return (
+            <div className="border-t border-gray-600 pt-2">
+              <p className="font-bold">Collision Properties</p>
+              {collisionProps ? (
+                <div className="space-y-2">
+                  {/* Collision Mask Toggle */}
+                  <div className="flex items-center justify-between">
+                    <span>Collision Mask:</span>
+                    <Select
+                      value={
+                        collisionProps.hasCollisionMask ? "enabled" : "disabled"
+                      }
+                      onValueChange={(value) =>
+                        handleUpdateCollisionProperty(
+                          "hasCollisionMask",
+                          value === "enabled"
+                        )
+                      }
+                    >
+                      <SelectTrigger className="w-24 h-7 text-xs">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="enabled">Enabled</SelectItem>
+                        <SelectItem value="disabled">Disabled</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Collision Type Selector */}
+                  {collisionProps.hasCollisionMask && (
+                    <div className="flex items-center justify-between text-xs">
+                      <span>Collision Type:</span>
+                      <Select
+                        value={
+                          collisionProps.usePixelAccurateCollision
+                            ? "pixel"
+                            : "tile"
+                        }
+                        onValueChange={(value) =>
+                          handleUpdateCollisionProperty(
+                            "usePixelAccurateCollision",
+                            value === "pixel"
+                          )
+                        }
+                      >
+                        <SelectTrigger className="w-24 h-7 text-xs">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="pixel">Pixel-Accurate</SelectItem>
+                          <SelectItem value="tile">Tile-Based</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <p className="text-gray-500 text-xs">
+                  No collision data available
+                </p>
+              )}
+            </div>
+          );
+        })()}
       </div>
 
       {/* Right Column: Tile Palette */}
@@ -375,6 +545,7 @@ export function MightyMikeTileMenu({
           <Upload className="w-4 h-4 mr-1" />
           Replace with Palette #{selectedPaletteTile}
         </Button>
+      </div>
       </div>
 
       {/* Image Editor Modal */}

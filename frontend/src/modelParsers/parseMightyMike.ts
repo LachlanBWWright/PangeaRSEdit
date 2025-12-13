@@ -332,17 +332,36 @@ export function parseMightyMikeMap(
     }
 
     // Parse map image (2D array of 16-bit big-endian integers)
-    const mapImage: number[][] = [];
+    // From Playfield.h bit definitions:
+    // - TILENUM_MASK = 0x07ff (extract only the tile number, bits 0-10)
+    // - TILE_PRIORITY_MASK = 0x8000 (collision type flag, bit 15)
+    // - TILE_PRIORITY_MASK2 = 0x4000 (pixel-accurate collision flag, bit 14)
+    const TILENUM_MASK = 0x07ff;
+    const TILE_PRIORITY_MASK = 0x8000;
+    const TILE_PRIORITY_MASK2 = 0x4000;
+    const mapImage: Array<Array<{ rawValue: number; tileIndex: number; hasCollisionMask: boolean; usePixelAccurateCollision: boolean }>> = [];
     const tilesStart = offsetToMapImage + 4; // Skip width/height
 
     for (let y = 0; y < mapHeight; y++) {
-      const row: number[] = [];
+      const row = [];
       for (let x = 0; x < mapWidth; x++) {
         const offset = tilesStart + (y * mapWidth + x) * 2;
         if (offset + 2 > dataLength) {
-          row.push(0); // Default tile
+          // Default tile with no collision flags
+          row.push({
+            rawValue: 0,
+            tileIndex: 0,
+            hasCollisionMask: false,
+            usePixelAccurateCollision: false,
+          });
         } else {
-          row.push(data.getUint16(offset, false));
+          const rawValue = data.getUint16(offset, false);
+          row.push({
+            rawValue: rawValue,
+            tileIndex: rawValue & TILENUM_MASK,
+            hasCollisionMask: (rawValue & TILE_PRIORITY_MASK) !== 0,
+            usePixelAccurateCollision: (rawValue & TILE_PRIORITY_MASK2) !== 0,
+          });
         }
       }
       mapImage.push(row);
@@ -461,10 +480,17 @@ export function mightyMikeMapToBinary(map: MightyMikeMap): ArrayBuffer {
   data.setUint16(offset + 2, map.mapHeight, false); // height
   offset += 4;
 
-  // Write tile data
+  // Write tile data (preserving the raw 16-bit values with priority flags)
   for (let y = 0; y < map.mapHeight; y++) {
     for (let x = 0; x < map.mapWidth; x++) {
-      data.setUint16(offset, map.mapImage[y][x], false);
+      const tileValue = map.mapImage[y]?.[x];
+      if (!tileValue) {
+        // Default to 0 if tile value is missing
+        data.setUint16(offset, 0, false);
+      } else {
+        // Write the raw value which preserves priority/collision bits
+        data.setUint16(offset, tileValue.rawValue, false);
+      }
       offset += 2;
     }
   }

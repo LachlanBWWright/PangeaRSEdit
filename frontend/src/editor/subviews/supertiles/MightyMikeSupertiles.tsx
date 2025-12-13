@@ -6,8 +6,8 @@
  * Tiles are indexed through a translation (xlate) table to map logical indices to physical tile images.
  */
 
-import { Layer, Image } from "react-konva";
-import { Fragment, memo } from "react";
+import { Layer, Image, Rect } from "react-konva";
+import { Fragment, memo, useMemo } from "react";
 import { useAtom } from "jotai";
 import { SelectedTile } from "@/data/supertiles/supertileAtoms";
 import { TerrainData, HeaderData } from "@/python/structSpecs/LevelTypes";
@@ -16,17 +16,31 @@ interface MightyMikeSupertilesProps {
   headerData: HeaderData;
   terrainData: TerrainData;
   mapImages: HTMLCanvasElement[];
+  showCollisionOverlay?: boolean;
 }
 
 const MightyMikeSupertilesComponent = ({
   headerData,
   terrainData,
   mapImages,
+  showCollisionOverlay = false,
 }: MightyMikeSupertilesProps) => {
   const [selectedTile, setSelectedTile] = useAtom(SelectedTile);
   const header = headerData.Hedr[1000].obj;
   const layr = terrainData.Layr?.[1000]?.obj || [];
   const xlatTable = terrainData.Xlat?.[1000]?.obj;
+
+  // Access Mighty Mike tile values from the raw terrainData if available
+  // These are stored as a keyed object during parsing, containing collision info
+  const rawTerrainData = terrainData as unknown as Record<string, unknown>;
+  const mightyMikeTileValues =
+    (rawTerrainData?._metadata as Record<string, unknown>)?.[1000] as Record<
+      string,
+      unknown
+    > | undefined;
+  const mightyMikeTileValuesArray =
+    ((mightyMikeTileValues?.obj as Record<string, unknown>)
+      ?.mightyMikeTileValues as unknown[]) || [];
 
   const TILE_SIZE = 32;
   const mapWidth = header.mapWidth;
@@ -75,41 +89,56 @@ const MightyMikeSupertilesComponent = ({
   }
 
   let validTileCount = 0;
-  let invalidTileCount = 0;
+  let invalidLogicalIndexCount = 0;
+  let invalidPhysicalIndexCount = 0;
   let emptyImageCount = 0;
 
   return (
     <Layer>
-      {layr.map((tileIndexValue, i) => {
+      {layr.map((logicalTileIndex, i) => {
         const x = (i % mapWidth) * TILE_SIZE;
         const y = Math.floor(i / mapWidth) * TILE_SIZE;
 
-        // The Layr contains logical tile indices
+        // The Layr contains logical tile indices (0-2047) after TILENUM_MASK was applied during parsing
         // Use xlate table to translate to actual image indices if available
-        let imageIndex = tileIndexValue;
-        if (
-          xlatTable &&
-          tileIndexValue >= 0 &&
-          tileIndexValue < xlatTable.length
-        ) {
-          const xlatEntry = xlatTable[tileIndexValue];
+        let imageIndex = logicalTileIndex;
+        let translatedFromXlat = false;
+
+        // Check if logical index is within bounds (0-2047)
+        if (logicalTileIndex < 0 || logicalTileIndex >= 2048) {
+          invalidLogicalIndexCount++;
+          if (invalidLogicalIndexCount <= 5) {
+            console.warn(
+              `Invalid logical tile index in Layr[${i}]: ${logicalTileIndex} (expected 0-2047). This indicates corrupted map data.`,
+            );
+          }
+          return null;
+        }
+
+        // Try to use xlate table for translation
+        if (xlatTable && logicalTileIndex < xlatTable.length) {
+          const xlatEntry = xlatTable[logicalTileIndex];
           if (
             xlatEntry &&
             typeof xlatEntry === "object" &&
             "idx" in xlatEntry
           ) {
             imageIndex = xlatEntry.idx;
+            translatedFromXlat = true;
           }
         }
 
-        // Now imageIndex should point to the correct tile image
+        // Validate the final physical image index
         if (imageIndex < 0 || imageIndex >= mapImages.length) {
-          invalidTileCount++;
-          if (invalidTileCount <= 5) {
+          invalidPhysicalIndexCount++;
+          if (invalidPhysicalIndexCount <= 5) {
+            const source = translatedFromXlat
+              ? `Xlat[${logicalTileIndex}]`
+              : `Layr (logical index)`;
             console.warn(
-              `Invalid tile image index: ${imageIndex} (from logical index ${tileIndexValue}, max: ${
+              `Invalid physical tile image index: ${imageIndex} from ${source} (max available: ${
                 mapImages.length - 1
-              })`,
+              }). Xlat table: ${xlatTable?.length || 0} entries.`,
             );
           }
           return null;
@@ -148,6 +177,37 @@ const MightyMikeSupertilesComponent = ({
                 strokeWidth={2}
               />
             )}
+            {showCollisionOverlay &&
+              mightyMikeTileValuesArray.length > 0 &&
+              i < mightyMikeTileValuesArray.length && (() => {
+                const tileValue = mightyMikeTileValuesArray[i] as Record<
+                  string,
+                  unknown
+                >;
+                const hasCollisionMask =
+                  (tileValue?.hasCollisionMask as boolean) || false;
+                const usePixelAccurateCollision =
+                  (tileValue?.usePixelAccurateCollision as boolean) || false;
+
+                if (!hasCollisionMask) return null;
+
+                // Different colors for different collision types
+                const color = usePixelAccurateCollision
+                  ? "rgba(0, 255, 0, 0.3)" // Green for pixel-accurate
+                  : "rgba(255, 165, 0, 0.3)"; // Orange for tile-based
+
+                return (
+                  <Rect
+                    key={`collision-${i}`}
+                    x={x}
+                    y={y}
+                    width={TILE_SIZE}
+                    height={TILE_SIZE}
+                    fill={color}
+                    listening={false}
+                  />
+                );
+              })()}
           </Fragment>
         );
       })}

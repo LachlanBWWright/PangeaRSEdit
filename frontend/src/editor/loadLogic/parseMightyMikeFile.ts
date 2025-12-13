@@ -198,7 +198,8 @@ export async function parseMightyMikeFile(
       Layr: {
         1000: {
           name: "Terrain Layer Matrix",
-          obj: mapResult.value.mapImage.flat(),
+          // Flatten the 2D array and extract just the tile indices for standard LevelData
+          obj: mapResult.value.mapImage.flat().map((tileValue) => tileValue.tileIndex),
           order: 1,
         },
       },
@@ -220,7 +221,10 @@ export async function parseMightyMikeFile(
       _metadata: {
         1000: {
           name: "Metadata",
-          obj: {},
+          obj: {
+            // Store full Mighty Mike tile values for round-trip preservation
+            mightyMikeTileValues: mapResult.value.mapImage.flat(),
+          },
           order: 5,
         },
       },

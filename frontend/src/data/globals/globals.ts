@@ -17,6 +17,7 @@ import { itemTypeNames as nanosaurItemTypeNames } from "../items/nanosaurItemTyp
 import { itemTypeNames as nanosaur2ItemTypeNames } from "../items/nanosaur2ItemType";
 import { itemTypeNames as croMagItemTypeNames } from "../items/croMagItemType";
 import { itemTypeNames as billyItemTypeNames } from "../items/billyFrontierItemType";
+import { itemTypeNames as mightyMikeItemTypeNames } from "../items/mightyMikeItemType";
 
 // Import fence type names
 import { fenceTypeNames as ottoFenceTypeNames } from "../fences/ottoFenceType";
@@ -232,7 +233,7 @@ export const MightyMikeGlobals: GlobalsInterface = {
   TILE_INGAME_SIZE: 32.0, // Each tile is 32 units
   TILE_SIZE: 32, // Tile pixel size
   LIQD_NUBS: 100,
-  ITEM_TYPES: {}, // TODO: Add Mighty Mike item type names
+  ITEM_TYPES: mightyMikeItemTypeNames,
   // Mighty Mike doesn't have fences, water bodies, or splines
 };
 

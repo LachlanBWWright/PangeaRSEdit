@@ -57,7 +57,7 @@ describe("Mighty Mike Roundtrip Tests", () => {
       const result = parseMightyMikeMap(jurassicMapBuffer);
       if (result.ok) {
         const mapImage = result.value.mapImage.flat();
-        const nonZeroTiles = mapImage.filter((idx) => idx !== 0);
+        const nonZeroTiles = mapImage.filter((tileValue) => tileValue.tileIndex !== 0);
         expect(nonZeroTiles.length).toBeGreaterThan(0);
         console.log("✓ Map has valid tile indices:", {
           nonZeroTiles: nonZeroTiles.length,

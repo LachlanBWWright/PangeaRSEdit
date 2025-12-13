@@ -11,11 +11,12 @@
  */
 
 import { useAtomValue, useSetAtom } from "jotai";
-import { useRef, useCallback, useState, useEffect } from "react";
+import { useRef, useState, useEffect, useMemo } from "react";
 import { Stage, Layer, Image } from "react-konva";
 import { Updater } from "use-immer";
 import { ClickToAddItem, SelectedItem } from "@/data/items/itemAtoms";
-import { Items } from "../subviews/Items";
+import { ShowMightyMikeCollisionOverlay } from "@/data/game/gameAtoms";
+import { MightyMikeItems } from "../subviews/MightyMikeItems";
 import { MightyMikeSupertiles } from "../subviews/supertiles/MightyMikeSupertiles";
 import {
   HeaderData,
@@ -55,6 +56,7 @@ export function MightyMikeKonvaView({
 }: MightyMikeKonvaViewProps) {
   const setSelectedItem = useSetAtom(SelectedItem);
   const clickToAddItem = useAtomValue(ClickToAddItem);
+  const showCollisionOverlay = useAtomValue(ShowMightyMikeCollisionOverlay);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const [containerSize, setContainerSize] = useState({ width: 3000, height: 2000 });
@@ -84,8 +86,8 @@ export function MightyMikeKonvaView({
   }, []);
 
   // Non-null updater for items
-  const setItemDataNotNull: Updater<ItemData> = useCallback(
-    (updater) => {
+  const setItemDataNotNull: Updater<ItemData> = useMemo(
+    () => (updater) => {
       setItemData((current) => {
         if (!current) return current;
         return typeof updater === "function" ? updater(current) : updater;
@@ -193,12 +195,13 @@ export function MightyMikeKonvaView({
           headerData={headerData}
           terrainData={terrainData}
           mapImages={mapImages}
+          showCollisionOverlay={showCollisionOverlay}
         />
       )}
 
       {/* Items - shown in all views */}
       {itemData && (
-        <Items itemData={itemData} setItemData={setItemDataNotNull} />
+        <MightyMikeItems itemData={itemData} setItemData={setItemDataNotNull} />
       )}
     </Stage>
     </div>
