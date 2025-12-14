@@ -11,36 +11,22 @@ import { VisualizationOptions } from "./ModelViewer/VisualizationOptions";
 
 // ...existing code...
 import { SkeletonConversionPanel } from "@/components/SkeletonConversionPanel";
-import BG3DGltfWorker from "../modelParsers/bg3dGltfWorker?worker";
-import {
-  BG3DGltfWorkerMessage,
-  BG3DGltfWorkerResponse,
-} from "../modelParsers/bg3dGltfWorker";
-import { BG3DParseResult, BG3DBone, BG3DAnimation } from "../modelParsers/parseBG3D";
-import { parseSkeletonRsrcTS } from "../modelParsers/skeletonRsrc/parseSkeletonRsrcTS";
-import { bg3dSkeletonToSkeletonResource } from "../modelParsers/skeletonExport";
-import { skeletonResourceToBinary } from "../modelParsers/skeletonBinaryExport";
-import type { SkeletonResource } from "../python/structSpecs/skeleton/skeletonInterface";
+import { BG3DParseResult } from "../modelParsers/parseBG3D";
 import { toast } from "sonner";
 import * as THREE from "three";
-import { argb16ToRgba8, rgb24ToRgba8 } from "../modelParsers/image/pngArgb";
-
-interface Texture {
-  name: string;
-  url: string;
-  type: "diffuse" | "normal" | "other";
-  material?: string;
-  size?: { width: number; height: number };
-}
-
-interface ModelNode {
-  name: string;
-  type: "mesh" | "node" | "group";
-  visible: boolean;
-  children?: ModelNode[];
-  meshIndex?: number;
-  nodeIndex?: number;
-}
+import {
+  downloadTexture,
+  downloadBG3DModel,
+  downloadGLBModel,
+  download3DMFModel,
+} from "./ModelViewer/utils/downloadUtils";
+import {
+  loadOttoTestModel,
+  loadOttoTestModelWithoutSkeleton,
+} from "./ModelViewer/utils/testModelLoaders";
+import { useFileUpload } from "./ModelViewer/hooks/useFileUpload";
+import { useTextureManagement } from "./ModelViewer/hooks/useTextureManagement";
+import type { Texture, ModelNode } from "./ModelViewer/types";
 
 export function ModelViewer() {
   // --- Begin moved logic from EnhancedModelMesh ---
@@ -60,358 +46,37 @@ export function ModelViewer() {
   const [wireframeMode, setWireframeMode] = useState<boolean>(false);
   const [showSkeleton, setShowSkeleton] = useState<boolean>(false);
   const [logBonePositions, setLogBonePositions] = useState<boolean>(false);
-  function extractTexturesFromParsed(bg3dParsed: BG3DParseResult | null) {
-    if (!bg3dParsed) {
-      setTextures([]);
-      return;
-    }
-    const extractedTextures: Texture[] = [];
-    bg3dParsed.materials.forEach((material, materialIndex) => {
-      material.textures.forEach((texture, textureIndex) => {
-        // Convert BG3D texture to displayable image URL
-        // Create a canvas to convert the raw pixel data to an image
-        const canvas = document.createElement("canvas");
-        canvas.width = texture.width;
-        canvas.height = texture.height;
-        const ctx = canvas.getContext("2d");
-        if (!ctx) return;
-        const imageData = ctx.createImageData(texture.width, texture.height);
 
-        // Use srcPixelFormat to determine how to decode the texture data
-        if (texture.srcPixelFormat === 6407) {
-          // GL_RGB format (24-bit)
-          const rgba = rgb24ToRgba8(texture.pixels);
-          imageData.data.set(rgba);
-        } else if (texture.srcPixelFormat === 6408) {
-          // GL_RGBA format (32-bit)
-          imageData.data.set(texture.pixels);
-        } else if (texture.srcPixelFormat === 33638) {
-          // GL_UNSIGNED_SHORT_1_5_5_5_REV format (16-bit ARGB)
-          // Need to apply byte swap like the glTF conversion does in bg3dGltf/bg3d/materials.ts
-          const pixelCount = texture.width * texture.height;
-          const src = new Uint16Array(
-            texture.pixels.buffer,
-            texture.pixels.byteOffset,
-            pixelCount,
-          );
-          const swapped = new Uint16Array(src.length);
-          for (let k = 0; k < src.length; k++) {
-            const val = src[k] ?? 0;
-            swapped[k] = ((val & 0xff) << 8) | ((val >> 8) & 0xff);
-          }
-
-          // Check if material has alpha blending enabled
-          const hasAlphaBlending = (material.flags & 0x2) !== 0; // BG3D_MATERIALFLAG_ALWAYSBLEND
-
-          if (hasAlphaBlending) {
-            // Material uses alpha blending, so respect the alpha bit
-            const rgba = argb16ToRgba8(swapped);
-            imageData.data.set(rgba);
-          } else {
-            // Material doesn't use alpha blending, treat as fully opaque
-            // This ensures textures that don't use alpha channel display correctly
-            const rgba = new Uint8Array(pixelCount * 4);
-            for (let i = 0; i < pixelCount; i++) {
-              const v = swapped[i] ?? 0;
-              const r = (((v >> 10) & 0x1f) * 255) / 31;
-              const g = (((v >> 5) & 0x1f) * 255) / 31;
-              const b = ((v & 0x1f) * 255) / 31;
-              rgba[i * 4 + 0] = r;
-              rgba[i * 4 + 1] = g;
-              rgba[i * 4 + 2] = b;
-              rgba[i * 4 + 3] = 255; // Always opaque
-            }
-            imageData.data.set(rgba);
-          }
-        } else if (texture.isJpeg) {
-          // JPEG texture (Nanosaur 2)
-          // For now, fill with gray - JPEG handling would need decompression
-          for (let i = 0; i < imageData.data.length; i += 4) {
-            imageData.data[i] = 128;
-            imageData.data[i + 1] = 128;
-            imageData.data[i + 2] = 128;
-            imageData.data[i + 3] = 255;
-          }
-        } else {
-          // Unknown format, fill with gray
-          for (let i = 0; i < imageData.data.length; i += 4) {
-            imageData.data[i] = 128;
-            imageData.data[i + 1] = 128;
-            imageData.data[i + 2] = 128;
-            imageData.data[i + 3] = 255;
-          }
-        }
-        ctx.putImageData(imageData, 0, 0);
-        const imageUrl = canvas.toDataURL("image/png");
-        extractedTextures.push({
-          name: `Material_${materialIndex}_Texture_${textureIndex}`,
-          url: imageUrl,
-          type: "diffuse",
-          material: `Material ${materialIndex}`,
-          size: { width: texture.width, height: texture.height },
-        });
-      });
-    });
-    setTextures(extractedTextures);
-  }
   const [scene, setScene] = useState<THREE.Group | undefined>(undefined);
   const [modelNodes, setModelNodes] = useState<ModelNode[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Removed Pyodide worker initialization since we're using TypeScript implementation
+  // Initialize file upload hook
+  const { uploadFile } = useFileUpload({
+    onGltfUrlChange: setGltfUrl,
+    onBg3dParsedChange: setBg3dParsed,
+    onTexturesChange: setTextures,
+    onLoadingChange: setLoading,
+    onUploadStepChange: setUploadStep,
+  });
 
-  // Remove conditional useGLTF, handled in ModelCanvas
+  // Initialize texture management hook
+  const { replaceTexture, editTexture } = useTextureManagement({
+    bg3dParsed,
+    gltfUrl,
+    onBg3dParsedChange: setBg3dParsed,
+    onGltfUrlChange: setGltfUrl,
+    onSceneReset: () => {
+      setScene(undefined);
+      setModelNodes([]);
+    },
+    onTexturesChange: setTextures,
+  });
 
-  // Convert BG3D texture to displayable image URL
-
-  // --- End moved logic ---
-  // ...existing code...
-
-  async function handleFileUpload(bg3dFile: File, skeletonFile?: File) {
-    const fileName = bg3dFile.name.toLowerCase();
-    const isBg3d = fileName.endsWith(".bg3d");
-    const is3dmf = fileName.endsWith(".3dmf");
-
-    if (!isBg3d && !is3dmf) {
-      toast.error("Please select a BG3D or 3DMF file");
-      return;
-    }
-
-    if (
-      skeletonFile &&
-      !skeletonFile.name.toLowerCase().endsWith(".skeleton.rsrc")
-    ) {
-      toast.error("Skeleton file must be a .skeleton.rsrc file");
-      return;
-    }
-
-    setLoading(true);
-    try {
-
-      // Convert 3DMF to BG3D if needed
-      if (is3dmf) {
-        const { parse3DMFToMetaFile, metaFileToBG3DParseResult } = await import(
-          "../modelParsers/threeDMF"
-        );
-        const { bg3dParsedToBG3D } = await import(
-          "../modelParsers/parseBG3D"
-        );
-
-        const dmfBuffer = await bg3dFile.arrayBuffer();
-        const parseResult = parse3DMFToMetaFile(dmfBuffer);
-        if (!parseResult.ok) {
-          toast.error(`Failed to parse 3DMF file: ${parseResult.error.message}`);
-          setLoading(false);
-          return;
-        }
-
-        const bg3dResult = metaFileToBG3DParseResult(parseResult.value);
-        if (!bg3dResult.ok) {
-          toast.error(`Failed to convert 3DMF to BG3D: ${bg3dResult.error.message}`);
-          setLoading(false);
-          return;
-        }
-
-        // Store the parsed BG3D data immediately so textures are available
-        setBg3dParsed(bg3dResult.value);
-        extractTexturesFromParsed(bg3dResult.value);
-
-        // Convert the parsed BG3D back to binary format for GLB conversion
-        const bg3dBuffer = bg3dParsedToBG3D(bg3dResult.value);
-
-        // Now use the worker to convert to GLB
-        const worker = new BG3DGltfWorker();
-        const result = await new Promise<BG3DGltfWorkerResponse>(
-          (resolve, reject) => {
-            worker.onmessage = (e) => {
-              resolve(e.data);
-              worker.terminate();
-            };
-            worker.onerror = (e) => {
-              reject(e);
-              worker.terminate();
-            };
-            worker.postMessage({
-              type: "bg3d-to-glb",
-              buffer: bg3dBuffer,
-            });
-          },
-        );
-
-        if (result.type === "error") {
-          toast.error(`Error loading model: ${result.error}`);
-          setLoading(false);
-          return;
-        }
-
-        if (result.type === "bg3d-to-glb") {
-          const glbBlob = new Blob([result.result], {
-            type: "model/gltf-binary",
-          });
-          const url = URL.createObjectURL(glbBlob);
-          setGltfUrl(url);
-
-          const fileName = bg3dFile.name;
-          toast.success(`Successfully loaded ${fileName}`);
-
-          setUploadStep("completed");
-          setPendingBg3dFile(null);
-          setLoading(false);
-          return;
-        }
-      }
-
-      const bg3dArrayBuffer = await bg3dFile.arrayBuffer();
-      let skeletonData: SkeletonResource | undefined;
-
-      // Parse skeleton file if provided
-      if (skeletonFile) {
-        try {
-          console.log(
-            "Parsing skeleton file with TypeScript implementation...",
-          );
-          const skeletonArrayBuffer = await skeletonFile.arrayBuffer();
-          skeletonData = parseSkeletonRsrcTS(skeletonArrayBuffer);
-          console.log("Skeleton data parsed:", skeletonData);
-        } catch (error) {
-          console.warn("Failed to parse skeleton file:", error);
-          toast.error(
-            "Failed to parse skeleton file. Loading model without animations.",
-          );
-        }
-      }
-
-      const worker = new BG3DGltfWorker();
-      const result = await new Promise<BG3DGltfWorkerResponse>(
-        (resolve, reject) => {
-          worker.onmessage = (e) => {
-            resolve(e.data);
-            worker.terminate();
-          };
-          worker.onerror = (e) => {
-            reject(e);
-            worker.terminate();
-          };
-
-          // Use skeleton data if available for proper glTF animation support
-          const message: BG3DGltfWorkerMessage = skeletonData
-            ? {
-                type: "bg3d-with-skeleton-to-glb",
-                bg3dBuffer: bg3dArrayBuffer,
-                skeletonData: skeletonData!,
-              }
-            : {
-                type: "bg3d-to-glb",
-                buffer: bg3dArrayBuffer,
-              };
-          worker.postMessage(message);
-        },
-      );
-
-      if (result.type === "error") {
-        toast.error(`Error loading model: ${result.error}`);
-        return;
-      }
-
-      if (
-        result.type === "bg3d-to-glb" ||
-        result.type === "bg3d-with-skeleton-to-glb"
-      ) {
-        console.log(
-          "Worker result:",
-          result.type,
-          "Array buffer size:",
-          result.result.byteLength,
-        );
-
-        // Validate the ArrayBuffer
-        if (!result.result || result.result.byteLength === 0) {
-          toast.error("Worker returned empty or invalid GLB data");
-          return;
-        }
-
-        const glbBlob = new Blob([result.result], {
-          type: "model/gltf-binary",
-        });
-        console.log("Created blob:", glbBlob.size, "bytes");
-
-        const url = URL.createObjectURL(glbBlob);
-        console.log("Created blob URL:", url);
-
-        setGltfUrl(url);
-        setBg3dParsed(result.parsed);
-
-        // If we parsed skeleton data but exported without it for compatibility,
-        // still show the animation information
-        if (skeletonData && result.type === "bg3d-to-glb") {
-          // Add the skeleton data to the parsed result for display
-          const enhancedParsed = { ...result.parsed };
-          if (!enhancedParsed.skeleton) {
-            // Convert skeleton resource to BG3D skeleton format for display
-            enhancedParsed.skeleton = {
-              version: 272,
-              numAnims: Object.keys(skeletonData.AnHd).length,
-              numJoints: Object.keys(skeletonData.Bone).length,
-              num3DMFLimbs: 0,
-              bones: (Object.values(skeletonData.Bone) as unknown as Record<string, unknown>[]).map(
-                (bone: Record<string, unknown>, index: number): BG3DBone => ({
-                  parentBone: -1, // Simplified for display
-                  name: (bone.name as string) || `Bone_${index}`,
-                  coordX: 0,
-                  coordY: 0,
-                  coordZ: 0,
-                  numPointsAttachedToBone: 0,
-                  numNormalsAttachedToBone: 0,
-                  pointIndices: [],
-                  normalIndices: [],
-                }),
-              ),
-              animations: (Object.values(skeletonData.AnHd) as unknown as Record<string, unknown>[]).map(
-                (anim: Record<string, unknown>, index: number): BG3DAnimation => ({
-                  name: (anim.name as string) || `Animation_${index}`,
-                  numAnimEvents: 0,
-                  events: [],
-                  keyframes: {},
-                }),
-              ),
-            };
-          }
-          setBg3dParsed(enhancedParsed);
-          console.log(
-            `Animation metadata preserved: ${
-              enhancedParsed.skeleton?.animations?.length || 0
-            } animations detected`,
-          );
-        } else {
-          setBg3dParsed(result.parsed);
-        }
-
-        extractTexturesFromParsed(result.parsed);
-
-        const fileName = skeletonFile
-          ? `${bg3dFile.name} + ${skeletonFile.name}`
-          : bg3dFile.name;
-        toast.success(`Successfully loaded ${fileName}`);
-
-        if (result.parsed.skeleton?.animations?.length) {
-          console.log(
-            `Model contains ${result.parsed.skeleton.animations.length} animations`,
-          );
-        }
-
-        // Reset upload state
-        setUploadStep("completed");
-        setPendingBg3dFile(null);
-      }
-    } catch (error) {
-      console.error("Error loading BG3D file:", error);
-      toast.error(
-        error instanceof Error ? error.message : "Failed to load BG3D file",
-      );
-    } finally {
-      setLoading(false);
-    }
-  }
+  // Wrapper that delegates to the hook
+  const handleFileUpload = (bg3dFile: File, skeletonFile?: File) => {
+    return uploadFile(bg3dFile, skeletonFile);
+  };
 
   async function handleBg3dFileSelect(bg3dFile: File) {
     setPendingBg3dFile(bg3dFile);
@@ -514,14 +179,7 @@ export function ModelViewer() {
 
   async function handleDownloadTexture(texture: Texture) {
     try {
-      const response = await fetch(texture.url);
-      const blob = await response.blob();
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = `${texture.name}.png`;
-      link.click();
-      URL.revokeObjectURL(url);
+      await downloadTexture(texture, texture.name);
       toast.success(`${texture.name} has been downloaded`);
     } catch (error) {
       console.error("Error downloading texture:", error);
@@ -529,174 +187,9 @@ export function ModelViewer() {
     }
   }
 
-  async function handleReplaceTexture(
-    texture: Texture,
-    newFile: File,
-  ): Promise<void> {
-    if (!bg3dParsed) {
-      toast.error("No BG3D data available for texture replacement");
-      return;
-    }
-
-    return new Promise((resolve, reject) => {
-      const img = new Image();
-
-      img.onload = async () => {
-        try {
-          // Validate size matches the existing texture
-          if (
-            texture.size &&
-            (img.width !== texture.size.width ||
-              img.height !== texture.size.height)
-          ) {
-            toast.error(
-              `Image size mismatch: Expected ${texture.size.width}×${texture.size.height}, got ${img.width}×${img.height}`,
-            );
-            reject(new Error("Image size mismatch"));
-            return;
-          }
-
-          // Extract material and texture indices from texture name
-          const nameMatch = texture.name.match(/Material_(\d+)_Texture_(\d+)/);
-          if (!nameMatch) {
-            toast.error("Invalid texture name format");
-            reject(new Error("Invalid texture name format"));
-            return;
-          }
-
-          const materialIndex = parseInt(nameMatch[1] ?? "0");
-          const textureIndex = parseInt(nameMatch[2] ?? "0");
-
-          // Convert image to canvas and extract pixel data
-          const canvas = document.createElement("canvas");
-          canvas.width = img.width;
-          canvas.height = img.height;
-          const ctx = canvas.getContext("2d");
-          if (!ctx) {
-            toast.error("Failed to get canvas context");
-            reject(new Error("Failed to get canvas context"));
-            return;
-          }
-
-          ctx.drawImage(img, 0, 0);
-          const imageData = ctx.getImageData(0, 0, img.width, img.height);
-
-          // Convert to RGB or RGBA pixel array based on existing texture format
-          const existingTexture =
-            bg3dParsed.materials[materialIndex]?.textures[textureIndex];
-          if (!existingTexture) {
-            toast.error("Texture not found in BG3D data");
-            reject(new Error("Texture not found in BG3D data"));
-            return;
-          }
-
-          const isRGBA =
-            existingTexture.pixels.length === img.width * img.height * 4;
-          const newPixels = new Uint8Array(
-            isRGBA ? img.width * img.height * 4 : img.width * img.height * 3,
-          );
-
-          for (let i = 0; i < imageData.data.length; i += 4) {
-            const pixelIndex = i / 4;
-            if (isRGBA) {
-              newPixels[pixelIndex * 4] = imageData.data[i] ?? 0; // R
-              newPixels[pixelIndex * 4 + 1] = imageData.data[i + 1] ?? 0; // G
-              newPixels[pixelIndex * 4 + 2] = imageData.data[i + 2] ?? 0; // B
-              newPixels[pixelIndex * 4 + 3] = imageData.data[i + 3] ?? 255; // A
-            } else {
-              newPixels[pixelIndex * 3] = imageData.data[i] ?? 0; // R
-              newPixels[pixelIndex * 3 + 1] = imageData.data[i + 1] ?? 0; // G
-              newPixels[pixelIndex * 3 + 2] = imageData.data[i + 2] ?? 0; // B
-            }
-          }
-
-          // Update the BG3D parsed data with a proper deep copy
-          const updatedBG3D = {
-            ...bg3dParsed,
-            materials: bg3dParsed.materials.map((material, idx) => {
-              if (idx === materialIndex) {
-                return {
-                  ...material,
-                  textures: material.textures.map((texture, texIdx) => {
-                    if (texIdx === textureIndex) {
-                      return {
-                        ...existingTexture,
-                        pixels: newPixels,
-                        width: img.width,
-                        height: img.height,
-                      };
-                    }
-                    return texture;
-                  }),
-                };
-              }
-              return material;
-            }),
-          };
-
-          // Reset scene state to prevent crashes
-          setScene(undefined);
-          setModelNodes([]);
-
-          // Convert updated BG3D back to GLB
-          const worker = new BG3DGltfWorker();
-          const result = await new Promise<BG3DGltfWorkerResponse>(
-            (workerResolve, workerReject) => {
-              worker.onmessage = (e) => {
-                workerResolve(e.data);
-                worker.terminate();
-              };
-              worker.onerror = (e) => {
-                workerReject(e);
-                worker.terminate();
-              };
-              const message: BG3DGltfWorkerMessage = {
-                type: "bg3d-parsed-to-glb",
-                parsed: updatedBG3D,
-              };
-              worker.postMessage(message);
-            },
-          );
-
-          if (result.type === "error") {
-            toast.error(`Error replacing texture: ${result.error}`);
-            reject(new Error(result.error));
-            return;
-          }
-
-          if (result.type === "bg3d-parsed-to-glb") {
-            // Clean up old URL first
-            if (gltfUrl) {
-              URL.revokeObjectURL(gltfUrl);
-            }
-
-            // Update state with new model (similar to handleFileUpload)
-            setBg3dParsed(updatedBG3D);
-
-            // Create new GLTF URL
-            const glbBlob = new Blob([result.result], {
-              type: "model/gltf-binary",
-            });
-            const newUrl = URL.createObjectURL(glbBlob);
-            setGltfUrl(newUrl);
-
-            // Re-extract textures to update the UI
-            extractTexturesFromParsed(updatedBG3D);
-
-            resolve();
-          }
-        } catch (error) {
-          reject(error);
-        }
-      };
-
-      img.onerror = () => {
-        reject(new Error("Failed to load image"));
-      };
-
-      img.src = URL.createObjectURL(newFile);
-    });
-  }
+  const handleReplaceTexture = (texture: Texture, newFile: File) => {
+    return replaceTexture(texture, newFile);
+  };
 
   const handleDownloadBG3D = async () => {
     if (!bg3dParsed) {
@@ -705,83 +198,13 @@ export function ModelViewer() {
     }
 
     try {
-      // Convert BG3D parsed data back to binary format using worker
-      const worker = new BG3DGltfWorker();
-      worker.onmessage = async (e: MessageEvent<BG3DGltfWorkerResponse>) => {
-        const result = e.data;
-        if (result.type === "error") {
-          toast.error(`Failed to convert BG3D: ${result.error}`);
-          worker.terminate();
-          return;
-        }
-
-        if (result.type === "bg3d-parsed-to-bg3d") {
-          // Download the actual BG3D binary
-          const blob = new Blob([result.result], {
-            type: "application/octet-stream",
-          });
-          const url = URL.createObjectURL(blob);
-          const a = document.createElement("a");
-          a.href = url;
-          a.download = "model.bg3d";
-          document.body.appendChild(a);
-          a.click();
-          document.body.removeChild(a);
-          URL.revokeObjectURL(url);
-
-          // Also download skeleton if available
-          if (
-            bg3dParsed.skeleton &&
-            bg3dParsed.skeleton.animations.length > 0
-          ) {
-            console.log("Exporting skeleton resource for download...");
-            try {
-              const skeletonResource = bg3dSkeletonToSkeletonResource(
-                bg3dParsed.skeleton,
-              );
-
-              // Convert to binary .rsrc format
-              const skeletonBinary = await skeletonResourceToBinary(
-                skeletonResource,
-              );
-              const skeletonBlob = new Blob([skeletonBinary], {
-                type: "application/octet-stream",
-              });
-              const skeletonUrl = URL.createObjectURL(skeletonBlob);
-
-              const skeletonLink = document.createElement("a");
-              skeletonLink.href = skeletonUrl;
-              skeletonLink.download = "model.skeleton.rsrc";
-              document.body.appendChild(skeletonLink);
-              skeletonLink.click();
-              document.body.removeChild(skeletonLink);
-              URL.revokeObjectURL(skeletonUrl);
-
-              toast.success("Skeleton data exported as .rsrc file");
-            } catch (error) {
-              console.error("Error exporting skeleton:", error);
-              toast.error("Failed to export skeleton data");
-            }
-          }
-
-          toast.success("BG3D model downloaded");
-        }
-        worker.terminate();
-      };
-
-      worker.onerror = () => {
-        toast.error("Failed to process BG3D data");
-        worker.terminate();
-      };
-
-      const message: BG3DGltfWorkerMessage = {
-        type: "bg3d-parsed-to-bg3d",
-        parsed: bg3dParsed,
-      };
-      worker.postMessage(message);
+      await downloadBG3DModel(bg3dParsed);
+      toast.success("BG3D model downloaded");
     } catch (error) {
       console.error("Error downloading BG3D:", error);
-      toast.error("Failed to download BG3D model");
+      toast.error(
+        error instanceof Error ? error.message : "Failed to download BG3D model",
+      );
     }
   };
 
@@ -792,12 +215,7 @@ export function ModelViewer() {
     }
 
     try {
-      const a = document.createElement("a");
-      a.href = gltfUrl;
-      a.download = "model.glb";
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
+      downloadGLBModel(gltfUrl);
       toast.success("GLB model downloaded");
     } catch (error) {
       console.error("Error downloading GLB:", error);
@@ -812,70 +230,21 @@ export function ModelViewer() {
     }
 
     try {
-      // Convert BG3DParseResult to 3DMF format
-      const { bg3dParseResultToMetaFile, write3DMFFromMetaFile } = await import(
-        "../modelParsers/threeDMF"
-      );
-
-      const metaResult = bg3dParseResultToMetaFile(bg3dParsed);
-      if (!metaResult.ok) {
-        toast.error(`Failed to convert to 3DMF: ${metaResult.error.message}`);
-        return;
-      }
-
-      const writeResult = write3DMFFromMetaFile(metaResult.value);
-      if (!writeResult.ok) {
-        toast.error(`Failed to write 3DMF: ${writeResult.error.message}`);
-        return;
-      }
-
-      // Download the 3DMF binary
-      const blob = new Blob([writeResult.value], {
-        type: "application/octet-stream",
-      });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = "model.3dmf";
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-
+      await download3DMFModel(bg3dParsed);
       toast.success("3DMF model downloaded");
     } catch (error) {
       console.error("Error downloading 3DMF:", error);
-      toast.error("Failed to download 3DMF model");
+      toast.error(
+        error instanceof Error ? error.message : "Failed to download 3DMF model",
+      );
     }
   };
 
-  const handleTextureEdit = async (
+  const handleTextureEdit = (
     texture: Texture,
     editedImageData: ImageData,
   ): Promise<void> => {
-    // Convert ImageData to a File and use the existing replace function
-    const canvas = document.createElement("canvas");
-    canvas.width = editedImageData.width;
-    canvas.height = editedImageData.height;
-    const ctx = canvas.getContext("2d");
-
-    if (!ctx) {
-      toast.error("Failed to get canvas context");
-      return;
-    }
-
-    ctx.putImageData(editedImageData, 0, 0);
-
-    // Convert canvas to blob and then to file
-    const blob = await new Promise<Blob>((resolve, reject) => {
-      canvas.toBlob((blob) => {
-        if (blob) resolve(blob);
-        else reject(new Error("Failed to create blob"));
-      }, "image/png");
-    });
-
-    const file = new File([blob], `${texture.name}.png`, { type: "image/png" });
-    return handleReplaceTexture(texture, file);
+    return editTexture(texture, editedImageData);
   };
 
   const handleClearModel = () => {
@@ -892,35 +261,7 @@ export function ModelViewer() {
 
   const loadTestModel = async () => {
     try {
-      // Load both Otto.bg3d and Otto.skeleton.rsrc test files
-      const [bg3dResponse, skeletonResponse] = await Promise.all([
-        fetch("/PangeaRSEdit/games/ottomatic/skeletons/Otto.bg3d"),
-        fetch("/PangeaRSEdit/games/ottomatic/skeletons/Otto.skeleton.rsrc"),
-      ]);
-
-      if (!bg3dResponse.ok) {
-        toast.error(`Failed to fetch Otto.bg3d: ${bg3dResponse.status}`);
-        return;
-      }
-
-      const bg3dArrayBuffer = await bg3dResponse.arrayBuffer();
-      const bg3dFile = new File([bg3dArrayBuffer], "Otto.bg3d", {
-        type: "application/octet-stream",
-      });
-
-      let skeletonFile: File | undefined;
-      if (skeletonResponse.ok) {
-        const skeletonArrayBuffer = await skeletonResponse.arrayBuffer();
-        skeletonFile = new File([skeletonArrayBuffer], "Otto.skeleton.rsrc", {
-          type: "application/octet-stream",
-        });
-        console.log("Loaded Otto skeleton file");
-      } else {
-        console.warn(
-          "Otto skeleton file not found, loading without animations",
-        );
-      }
-
+      const { bg3dFile, skeletonFile } = await loadOttoTestModel();
       await handleFileUpload(bg3dFile, skeletonFile);
     } catch (error) {
       console.error("Error loading sample model:", error);
@@ -930,23 +271,8 @@ export function ModelViewer() {
 
   const loadTestModelWithoutSkeleton = async () => {
     try {
-      // Load only Otto.bg3d test file
-      const bg3dResponse = await fetch(
-        "/PangeaRSEdit/games/ottomatic/skeletons/Otto.bg3d",
-      );
-
-      if (!bg3dResponse.ok) {
-        toast.error(`Failed to fetch Otto.bg3d: ${bg3dResponse.status}`);
-        return;
-      }
-
-      const bg3dArrayBuffer = await bg3dResponse.arrayBuffer();
-      const bg3dFile = new File([bg3dArrayBuffer], "Otto.bg3d", {
-        type: "application/octet-stream",
-      });
-
-      console.log("Loading Otto model without skeleton data for comparison");
-      await handleFileUpload(bg3dFile); // No skeleton file
+      const bg3dFile = await loadOttoTestModelWithoutSkeleton();
+      await handleFileUpload(bg3dFile);
     } catch (error) {
       console.error("Error loading sample model without skeleton:", error);
       toast.error("Failed to load Otto sample file");

@@ -1,6 +1,6 @@
 import { Link, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Map, Box, Download } from "lucide-react";
+import { Map, Box, Image, Download } from "lucide-react";
 
 export function Navigation() {
   const location = useLocation();
@@ -27,6 +27,16 @@ export function Navigation() {
           <Link to="/model-viewer" className="text-white">
             <Box className="w-4 h-4" />
             Model Viewer
+          </Link>
+        </Button>
+        <Button
+          asChild
+          variant={location.pathname === "/sprite-viewer" ? "default" : "ghost"}
+          className="flex items-center gap-2"
+        >
+          <Link to="/sprite-viewer" className="text-white">
+            <Image className="w-4 h-4" />
+            Sprite Viewer
           </Link>
         </Button>
         <Button
