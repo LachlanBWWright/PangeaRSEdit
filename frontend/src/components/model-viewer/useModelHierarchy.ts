@@ -65,9 +65,9 @@ export function useModelHierarchy(
       setModelNodes([]);
       if (onSceneReady) onSceneReady(undefined);
     }
-    // Only depend on gltfResult and setModelNodes
-    // Callbacks (onSceneReady) are now memoized in parent, but we don't need them in deps
-    // since they're only called once during the effect
+    // Only depend on gltfResult.scene
+    // setModelNodes is a stable setState function (doesn't change between renders)
+    // onSceneReady callback is memoized in parent component
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [gltfResult, gltfResult?.scene, setModelNodes]);
+  }, [gltfResult?.scene]);
 }

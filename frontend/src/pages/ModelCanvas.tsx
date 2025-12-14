@@ -17,19 +17,23 @@ export function ModelCanvas(props: ModelCanvasProps) {
     logBonePositions,
   } = props;
 
-  // Always call useGLTF unconditionally
-  const gltfResult = useGLTF(gltfUrl);
+  // Always call hooks unconditionally (must be called in every render in same order)
+  // Use fallback empty string if gltfUrl is falsy
+  const gltfResult = useGLTF(gltfUrl || "");
   console.log("gltfresult");
   console.log(gltfResult);
-  // Extract model hierarchy
+
+  // Extract model hierarchy (must be called in every render)
   useModelHierarchy(gltfResult, setModelNodes, onSceneReady);
 
-  // Handle animations
+  // Handle animations (must be called in every render)
   const { animationMixer } = useModelAnimations(gltfResult, onAnimationsReady);
-  // Validate gltfUrl before using it
-  if (!gltfUrl || typeof gltfUrl !== "string") {
-    console.error("Invalid gltfUrl provided to ModelCanvas:", gltfUrl);
-    return <div>Error: Invalid model URL</div>;
+
+  // Validate gltfUrl for rendering (after hooks)
+  const isValidUrl = gltfUrl && typeof gltfUrl === "string";
+
+  if (!isValidUrl) {
+    return <div className="flex items-center justify-center h-full text-gray-400">Error: Invalid model URL</div>;
   }
 
   return (
@@ -46,7 +50,7 @@ export function ModelCanvas(props: ModelCanvasProps) {
         <ambientLight intensity={1} color={"#ff0000"} />
         <directionalLight position={[10, 10, 5]} intensity={1} />
         <directionalLight position={[-10, -10, -5]} intensity={1} />
-        {gltfResult && (
+        {gltfResult?.scene && (
           <EnhancedModelMesh
             scene={gltfResult.scene}
             wireframeMode={wireframeMode}

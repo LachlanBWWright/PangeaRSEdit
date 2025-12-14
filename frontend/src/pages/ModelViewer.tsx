@@ -395,6 +395,7 @@ export function ModelViewer() {
           {gltfUrl ? (
             <ErrorBoundary>
               <ModelCanvas
+                key={gltfUrl}
                 gltfUrl={gltfUrl}
                 setModelNodes={setModelNodes}
                 onSceneReady={setScene}

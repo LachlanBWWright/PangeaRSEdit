@@ -13,36 +13,29 @@ export function EnhancedModelMesh({ scene, wireframeMode = false, showSkeleton =
   useEffect(() => {
     if (!scene) return;
 
-    // Apply wireframe mode to all meshes
+    // Apply wireframe mode to all meshes and ensure they remain visible
     scene.traverse((object) => {
       if (object instanceof THREE.Mesh) {
+        // Ensure mesh is visible
+        object.visible = true;
+
         if (Array.isArray(object.material)) {
           object.material.forEach((mat) => {
             if (mat) {
               mat.wireframe = wireframeMode;
-              // Ensure mesh remains visible even in wireframe mode
+              // Ensure material is visible
               mat.visible = true;
-              object.visible = true;
             }
           });
         } else if (object.material) {
           object.material.wireframe = wireframeMode;
-          // Ensure mesh remains visible even in wireframe mode
+          // Ensure material is visible
           object.material.visible = true;
-          object.visible = true;
         }
       }
     });
 
-    // Cleanup function
-    return () => {
-      // Remove skeleton helpers
-      skeletonHelpersRef.current.forEach((helper) => {
-        scene.remove(helper);
-        helper.dispose();
-      });
-      skeletonHelpersRef.current = [];
-    };
+    // No cleanup needed for wireframe effect - it doesn't modify scene graph
   }, [scene, wireframeMode]);
 
   useEffect(() => {
@@ -101,8 +94,8 @@ export function EnhancedModelMesh({ scene, wireframeMode = false, showSkeleton =
   
   return (
     <>
-      {scene.children.map((child, index) => (
-        <primitive key={index} object={child} />
+      {scene.children.map((child) => (
+        <primitive key={child.uuid} object={child} />
       ))}
     </>
   );
