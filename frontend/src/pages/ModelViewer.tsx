@@ -23,6 +23,7 @@ import { skeletonResourceToBinary } from "../modelParsers/skeletonBinaryExport";
 import type { SkeletonResource } from "../python/structSpecs/skeleton/skeletonInterface";
 import { toast } from "sonner";
 import * as THREE from "three";
+import { argb16ToRgba8, rgb24ToRgba8 } from "../modelParsers/image/pngArgb";
 
 interface Texture {
   name: string;
@@ -75,21 +76,62 @@ export function ModelViewer() {
         const ctx = canvas.getContext("2d");
         if (!ctx) return;
         const imageData = ctx.createImageData(texture.width, texture.height);
-        if (texture.pixels.length === texture.width * texture.height * 3) {
-          // RGB format
-          for (let i = 0; i < texture.pixels.length; i += 3) {
-            const pixelIndex = (i / 3) * 4;
-            imageData.data[pixelIndex] = texture.pixels[i] ?? 0;
-            imageData.data[pixelIndex + 1] = texture.pixels[i + 1] ?? 0;
-            imageData.data[pixelIndex + 2] = texture.pixels[i + 2] ?? 0;
-            imageData.data[pixelIndex + 3] = 255;
-          }
-        } else if (
-          texture.pixels.length ===
-          texture.width * texture.height * 4
-        ) {
-          // RGBA format
+
+        // Use srcPixelFormat to determine how to decode the texture data
+        if (texture.srcPixelFormat === 6407) {
+          // GL_RGB format (24-bit)
+          const rgba = rgb24ToRgba8(texture.pixels);
+          imageData.data.set(rgba);
+        } else if (texture.srcPixelFormat === 6408) {
+          // GL_RGBA format (32-bit)
           imageData.data.set(texture.pixels);
+        } else if (texture.srcPixelFormat === 33638) {
+          // GL_UNSIGNED_SHORT_1_5_5_5_REV format (16-bit ARGB)
+          // Need to apply byte swap like the glTF conversion does in bg3dGltf/bg3d/materials.ts
+          const pixelCount = texture.width * texture.height;
+          const src = new Uint16Array(
+            texture.pixels.buffer,
+            texture.pixels.byteOffset,
+            pixelCount,
+          );
+          const swapped = new Uint16Array(src.length);
+          for (let k = 0; k < src.length; k++) {
+            const val = src[k] ?? 0;
+            swapped[k] = ((val & 0xff) << 8) | ((val >> 8) & 0xff);
+          }
+
+          // Check if material has alpha blending enabled
+          const hasAlphaBlending = (material.flags & 0x2) !== 0; // BG3D_MATERIALFLAG_ALWAYSBLEND
+
+          if (hasAlphaBlending) {
+            // Material uses alpha blending, so respect the alpha bit
+            const rgba = argb16ToRgba8(swapped);
+            imageData.data.set(rgba);
+          } else {
+            // Material doesn't use alpha blending, treat as fully opaque
+            // This ensures textures that don't use alpha channel display correctly
+            const rgba = new Uint8Array(pixelCount * 4);
+            for (let i = 0; i < pixelCount; i++) {
+              const v = swapped[i] ?? 0;
+              const r = (((v >> 10) & 0x1f) * 255) / 31;
+              const g = (((v >> 5) & 0x1f) * 255) / 31;
+              const b = ((v & 0x1f) * 255) / 31;
+              rgba[i * 4 + 0] = r;
+              rgba[i * 4 + 1] = g;
+              rgba[i * 4 + 2] = b;
+              rgba[i * 4 + 3] = 255; // Always opaque
+            }
+            imageData.data.set(rgba);
+          }
+        } else if (texture.isJpeg) {
+          // JPEG texture (Nanosaur 2)
+          // For now, fill with gray - JPEG handling would need decompression
+          for (let i = 0; i < imageData.data.length; i += 4) {
+            imageData.data[i] = 128;
+            imageData.data[i + 1] = 128;
+            imageData.data[i + 2] = 128;
+            imageData.data[i + 3] = 255;
+          }
         } else {
           // Unknown format, fill with gray
           for (let i = 0; i < imageData.data.length; i += 4) {
@@ -129,7 +171,7 @@ export function ModelViewer() {
     const fileName = bg3dFile.name.toLowerCase();
     const isBg3d = fileName.endsWith(".bg3d");
     const is3dmf = fileName.endsWith(".3dmf");
-    
+
     if (!isBg3d && !is3dmf) {
       toast.error("Please select a BG3D or 3DMF file");
       return;
@@ -145,6 +187,80 @@ export function ModelViewer() {
 
     setLoading(true);
     try {
+
+      // Convert 3DMF to BG3D if needed
+      if (is3dmf) {
+        const { parse3DMFToMetaFile, metaFileToBG3DParseResult } = await import(
+          "../modelParsers/threeDMF"
+        );
+        const { bg3dParsedToBG3D } = await import(
+          "../modelParsers/parseBG3D"
+        );
+
+        const dmfBuffer = await bg3dFile.arrayBuffer();
+        const parseResult = parse3DMFToMetaFile(dmfBuffer);
+        if (!parseResult.ok) {
+          toast.error(`Failed to parse 3DMF file: ${parseResult.error.message}`);
+          setLoading(false);
+          return;
+        }
+
+        const bg3dResult = metaFileToBG3DParseResult(parseResult.value);
+        if (!bg3dResult.ok) {
+          toast.error(`Failed to convert 3DMF to BG3D: ${bg3dResult.error.message}`);
+          setLoading(false);
+          return;
+        }
+
+        // Store the parsed BG3D data immediately so textures are available
+        setBg3dParsed(bg3dResult.value);
+        extractTexturesFromParsed(bg3dResult.value);
+
+        // Convert the parsed BG3D back to binary format for GLB conversion
+        const bg3dBuffer = bg3dParsedToBG3D(bg3dResult.value);
+
+        // Now use the worker to convert to GLB
+        const worker = new BG3DGltfWorker();
+        const result = await new Promise<BG3DGltfWorkerResponse>(
+          (resolve, reject) => {
+            worker.onmessage = (e) => {
+              resolve(e.data);
+              worker.terminate();
+            };
+            worker.onerror = (e) => {
+              reject(e);
+              worker.terminate();
+            };
+            worker.postMessage({
+              type: "bg3d-to-glb",
+              buffer: bg3dBuffer,
+            });
+          },
+        );
+
+        if (result.type === "error") {
+          toast.error(`Error loading model: ${result.error}`);
+          setLoading(false);
+          return;
+        }
+
+        if (result.type === "bg3d-to-glb") {
+          const glbBlob = new Blob([result.result], {
+            type: "model/gltf-binary",
+          });
+          const url = URL.createObjectURL(glbBlob);
+          setGltfUrl(url);
+
+          const fileName = bg3dFile.name;
+          toast.success(`Successfully loaded ${fileName}`);
+
+          setUploadStep("completed");
+          setPendingBg3dFile(null);
+          setLoading(false);
+          return;
+        }
+      }
+
       const bg3dArrayBuffer = await bg3dFile.arrayBuffer();
       let skeletonData: SkeletonResource | undefined;
 
