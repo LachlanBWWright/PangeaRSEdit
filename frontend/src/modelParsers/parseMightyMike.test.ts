@@ -19,6 +19,15 @@ describe("Mighty Mike Roundtrip Tests", () => {
   let jurassicTilesetBuffer: ArrayBuffer;
   let jurassicPalette: Uint8Array | null;
 
+  const scenes = [
+    { name: "jurassic", paletteFile: "dinoscene.tga" },
+    { name: "bargain", paletteFile: "bargainscene.tga" },
+    { name: "fairy", paletteFile: "fairyscene.tga" },
+    { name: "candy", paletteFile: "candyscene.tga" },
+    { name: "clown", paletteFile: "clownscene.tga" },
+  ];
+  const tilesets: Record<string, { buffer: ArrayBuffer; palette: Uint8Array | null }> = {};
+
   beforeAll(() => {
     // Load test files from public folder
     const baseDir = join(__dirname, "../../public/assets/mightyMike/terrain");
@@ -36,6 +45,18 @@ describe("Mighty Mike Roundtrip Tests", () => {
     const paletteResult = extractTGAPalette(dinoscenePaletteBuffer);
     if (paletteResult) {
       jurassicPalette = new Uint8Array(paletteResult.colors);
+    }
+
+    // Load all tilesets
+    for (const scene of scenes) {
+      const tileBuffer = readFileSync(join(baseDir, `${scene.name}.tileset`));
+      const tilePalBuffer = readFileSync(join(baseDir, scene.paletteFile));
+      const tilePalArrayBuffer = nodeBufferToArrayBuffer(tilePalBuffer);
+      const palResult = extractTGAPalette(tilePalArrayBuffer);
+      tilesets[scene.name] = {
+        buffer: nodeBufferToArrayBuffer(tileBuffer),
+        palette: palResult ? new Uint8Array(palResult.colors) : null,
+      };
     }
   });
 
@@ -153,5 +174,27 @@ describe("Mighty Mike Roundtrip Tests", () => {
         expect(jurassicPalette.length).toBe(1024);  // 256 colors * 4 bytes (RGBA)
       }
     });
+  });
+
+  describe("All Scene Tilesets", () => {
+    for (const scene of scenes) {
+      it(`should parse ${scene.name}.tileset without errors`, () => {
+        const tileset = tilesets[scene.name];
+        expect(tileset).toBeDefined();
+        if (!tileset) return;
+        const result = parseMightyMikeTileSet(tileset.buffer, tileset.palette ?? undefined);
+        if (!result.ok) {
+          console.error(`✗ ${scene.name} tileset failed:`, result.error);
+        }
+        expect(result.ok).toBe(true);
+        if (result.ok && result.value.tileImages) {
+          console.log(`✓ ${scene.name} tileset:`, {
+            tiles: result.value.numTileDefinitions,
+            xlateEntries: result.value.numXlateEntries,
+            tileImages: result.value.tileImages.length,
+          });
+        }
+      });
+    }
   });
 });

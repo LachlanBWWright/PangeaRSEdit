@@ -10,7 +10,13 @@ import type {
   MightyMikeItem,
   MightyMikeLevel,
 } from "../python/structSpecs/mightyMikeInterface";
-import { rlwDecompress, rlwCompress, rlbDecompress, PACK_TYPE_RLB, PACK_TYPE_RLW } from "../utils/rlwDecompress";
+import {
+  rlwDecompress,
+  rlwCompress,
+  rlbDecompress,
+  PACK_TYPE_RLB,
+  PACK_TYPE_RLW,
+} from "../utils/rlwDecompress";
 
 /**
  * Decompress a Mighty Mike packed file if needed
@@ -54,10 +60,10 @@ function createDefaultPalette(): Uint8Array {
   for (let i = 0; i < 256; i++) {
     // Use a slightly improved grayscale with better contrast
     const value = Math.floor((i / 255) * 255);
-    palette[i * 4 + 0] = value;      // R
-    palette[i * 4 + 1] = value;      // G
-    palette[i * 4 + 2] = value;      // B
-    palette[i * 4 + 3] = 255;        // A (fully opaque)
+    palette[i * 4 + 0] = value; // R
+    palette[i * 4 + 1] = value; // G
+    palette[i * 4 + 2] = value; // B
+    palette[i * 4 + 3] = 255; // A (fully opaque)
   }
   return palette;
 }
@@ -81,42 +87,21 @@ function parseTileImages(
   const colorPalette = palette || createDefaultPalette();
 
   if (!palette && numTileDefinitions > 0) {
-    console.warn("[TILE RENDER] ⚠️ NO PALETTE PROVIDED - Using default grayscale fallback! This will result in gray tiles!");
+    console.warn(
+      "[TILE RENDER] ⚠️ NO PALETTE PROVIDED - Using default grayscale fallback! This will result in gray tiles!",
+    );
   }
 
   // NOTE: The transparencyColors list from the tileset is for collision detection (gColorMaskArray),
   // NOT for visual rendering. For visual rendering, we render all colors from the palette as-is.
   // Only mark color 255 as transparent (used for blank tiles).
   const colorIsTransparent = new Uint8Array(256);
-  colorIsTransparent[255] = 1;  // Only color 255 is visually transparent
+  colorIsTransparent[255] = 1; // Only color 255 is visually transparent
 
   const tileData = new Uint8Array(buffer, offsetToTileDefinitions);
 
   // Debug: check if palette is being used
-  if (palette && numTileDefinitions > 0) {
-    console.log(`[TILE RENDER] Palette provided: ${palette.length} bytes (${palette.length / 4} colors)`);
-    // Sample some palette colors - show first, green (17), and others
-    const samples = [];
-    for (let i = 0; i < Math.min(palette.length, 40); i += 4) {
-      samples.push(`Color${i/4}: RGB(${palette[i]},${palette[i+1]},${palette[i+2]})`);
-    }
-    console.log(`[TILE RENDER] Palette samples (first 10):`, samples.slice(0, 10));
-
-    // Specific check for color 17 (hedge green)
-    const color17_r = palette[17 * 4 + 0] ?? 0;
-    const color17_g = palette[17 * 4 + 1] ?? 0;
-    const color17_b = palette[17 * 4 + 2] ?? 0;
-    console.log(`[TILE RENDER] Color 17 (hedge): RGB(${color17_r},${color17_g},${color17_b})`);
-
-    // Check if green looks correct (should be G > 200)
-    if (color17_g > 200) {
-      console.log(`[TILE RENDER] ✓ Color 17 appears to be GREEN - palette is correctly converted`);
-    } else {
-      console.warn(`[TILE RENDER] ✗ Color 17 does NOT look green (G=${color17_g}) - palette may have wrong values!`);
-    }
-  } else if (numTileDefinitions > 0) {
-    console.log(`[TILE RENDER] No palette provided - using default grayscale`);
-  }
+  // Parser does not emit palette/color debug logs; diagnostic tests will collect raw palette data.
 
   for (let tileIndex = 0; tileIndex < numTileDefinitions; tileIndex++) {
     const canvas = document.createElement("canvas");
@@ -145,9 +130,9 @@ function parseTileImages(
 
       // Apply transparency - if this color is marked as transparent, use alpha 0
       if (colorIsTransparent[colorIndex]) {
-        imageData.data[pixelOffset + 3] = 0;  // Transparent
+        imageData.data[pixelOffset + 3] = 0; // Transparent
       } else {
-        imageData.data[pixelOffset + 3] = colorPalette[colorIndex * 4 + 3];  // Use palette alpha
+        imageData.data[pixelOffset + 3] = colorPalette[colorIndex * 4 + 3]; // Use palette alpha
       }
     }
 
@@ -174,6 +159,28 @@ export function parseMightyMikeTileSet(
     const offsetToTileAttributes = data.getUint32(14, false) + 2;
     const offsetToTileAnimList = data.getUint32(22, false) + 2;
     const offsetToTileXparentList = data.getUint32(26, false) + 2;
+
+    // Verify offsets are in ascending order (like original C code assertions)
+    const offsets = [
+      { name: "TileDefinitions", value: offsetToTileDefinitions },
+      { name: "XlateTable", value: offsetToXlateTable },
+      { name: "TileAttributes", value: offsetToTileAttributes },
+      { name: "TileAnimList", value: offsetToTileAnimList },
+      { name: "TileXparentList", value: offsetToTileXparentList },
+    ];
+
+    // Offsets parsed; diagnostic tests will collect and log details if needed.
+
+    for (let i = 0; i < offsets.length - 1; i++) {
+      if (offsets[i]!.value >= offsets[i + 1]!.value) {
+        return {
+          ok: false,
+          error: `Invalid tileset: offset ${offsets[i]!.name} (${
+            offsets[i]!.value
+          }) >= ${offsets[i + 1]!.name} (${offsets[i + 1]!.value})`,
+        };
+      }
+    }
 
     // Validate offsets are within bounds
     if (
@@ -356,7 +363,14 @@ export function parseMightyMikeMap(
     const TILENUM_MASK = 0x07ff;
     const TILE_PRIORITY_MASK = 0x8000;
     const TILE_PRIORITY_MASK2 = 0x4000;
-    const mapImage: Array<Array<{ rawValue: number; tileIndex: number; hasCollisionMask: boolean; usePixelAccurateCollision: boolean }>> = [];
+    const mapImage: Array<
+      Array<{
+        rawValue: number;
+        tileIndex: number;
+        hasCollisionMask: boolean;
+        usePixelAccurateCollision: boolean;
+      }>
+    > = [];
     const tilesStart = offsetToMapImage + 4; // Skip width/height
 
     for (let y = 0; y < mapHeight; y++) {
@@ -454,12 +468,12 @@ export function parseMightyMikeLevel(
   if (!tilesetResult.ok) {
     return { ok: false, error: `Tileset error: ${tilesetResult.error}` };
   }
-  
+
   const mapResult = parseMightyMikeMap(mapBuffer);
   if (!mapResult.ok) {
     return { ok: false, error: `Map error: ${mapResult.error}` };
   }
-  
+
   return {
     ok: true,
     value: {
@@ -544,7 +558,9 @@ export function mightyMikeMapToBinary(map: MightyMikeMap): ArrayBuffer {
 /**
  * Convert map to compressed binary (with RLW compression)
  */
-export function mightyMikeMapToCompressedBinary(map: MightyMikeMap): ArrayBuffer {
+export function mightyMikeMapToCompressedBinary(
+  map: MightyMikeMap,
+): ArrayBuffer {
   const uncompressed = mightyMikeMapToBinary(map);
   return rlwCompress(uncompressed);
 }

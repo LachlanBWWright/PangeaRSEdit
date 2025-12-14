@@ -1,15 +1,19 @@
 import { LevelData } from "@/python/structSpecs/LevelTypes";
 import { Result, ok, err } from "@/types/result";
-import { parseMightyMikeMap, parseMightyMikeTileSet } from "@/modelParsers/parseMightyMike";
+import {
+  parseMightyMikeMap,
+  parseMightyMikeTileSet,
+} from "@/modelParsers/parseMightyMike";
 import { splitLevelData, AtomicLevelData } from "@/data/utils/levelDataUtils";
 import { extractTGAPalette } from "@/utils/tgaParser";
+import { analyzePalette } from "@/utils/diagnosticTGAParser";
 
 /**
  * Get the scene name from the map file URL
  * Example: "jurassic.map-1" -> "jurassic"
  */
 function getSceneNameFromUrl(mapFileUrl: string): string | null {
-  const filename = mapFileUrl.split('/').pop();
+  const filename = mapFileUrl.split("/").pop();
   if (!filename) return null;
   const match = filename.match(/^(\w+)\.map-\d+$/);
   return match ? match[1] ?? null : null;
@@ -24,8 +28,13 @@ function getSceneNameFromUrl(mapFileUrl: string): string | null {
  * - clown → clownscene.tga
  * - bargain → bargainscene.tga
  */
-async function loadScenePalette(sceneName: string, basePath?: string): Promise<Uint8Array | null> {
-  console.log(`[PALETTE] loadScenePalette called with sceneName="${sceneName}", basePath="${basePath}"`);
+async function loadScenePalette(
+  sceneName: string,
+  basePath?: string,
+): Promise<Uint8Array | null> {
+  console.log(
+    `[PALETTE] loadScenePalette called with sceneName="${sceneName}", basePath="${basePath}"`,
+  );
   try {
     // Map scene names to TGA filenames
     const sceneToTGA: Record<string, string> = {
@@ -37,7 +46,11 @@ async function loadScenePalette(sceneName: string, basePath?: string): Promise<U
     };
 
     const tgaFilename = sceneToTGA[sceneName.toLowerCase()];
-    console.log(`[PALETTE] Scene name lookup: "${sceneName}" -> "${tgaFilename || "NOT FOUND"}"`);
+    console.log(
+      `[PALETTE] Scene name lookup: "${sceneName}" -> "${
+        tgaFilename || "NOT FOUND"
+      }"`,
+    );
     if (!tgaFilename) {
       console.warn(`[PALETTE] ✗ Unknown scene name: ${sceneName}`);
       return null;
@@ -45,20 +58,23 @@ async function loadScenePalette(sceneName: string, basePath?: string): Promise<U
 
     // Derive TGA path from basePath (mapFileUrl) if provided, otherwise use default
     let tgaUrl: string;
-    if (basePath) {
-      // Replace .map-N with the TGA filename to get correct directory
-      tgaUrl = basePath.replace(/\.map-\d+$/, `.${tgaFilename.split('.')[0]}.tga`);
-      // Actually, just replace the whole filename
-      const dirPath = basePath.substring(0, basePath.lastIndexOf('/') + 1);
+    if (basePath && basePath.includes("/")) {
+      // basePath has a directory, use it
+      const dirPath = basePath.substring(0, basePath.lastIndexOf("/") + 1);
       tgaUrl = dirPath + tgaFilename;
     } else {
+      // basePath is just a filename or empty, use the default asset path
       tgaUrl = `/PangeaRSEdit/assets/mightyMike/terrain/${tgaFilename}`;
     }
-    console.log(`[PALETTE] Loading palette for scene "${sceneName}" from: ${tgaUrl}`);
+    console.log(`[PALETTE] Loading palette for scene "${sceneName}"`);
+    console.log(`[PALETTE]   TGA filename expected: ${tgaFilename}`);
+    console.log(`[PALETTE]   TGA URL: ${tgaUrl}`);
 
     const response = await fetch(tgaUrl);
     if (!response.ok) {
-      console.warn(`[PALETTE] Failed to fetch TGA file: ${response.status} ${response.statusText}`);
+      console.warn(
+        `[PALETTE] Failed to fetch TGA file: ${response.status} ${response.statusText}`,
+      );
       return null;
     }
 
@@ -72,18 +88,6 @@ async function loadScenePalette(sceneName: string, basePath?: string): Promise<U
 
     // Convert to Uint8Array for later use
     const paletteArray = new Uint8Array(paletteResult.colors);
-
-    // Detailed debug logging for palette verification
-    console.log("[PALETTE] Successfully extracted palette from TGA:", {
-      sceneName,
-      tgaFile: tgaFilename,
-      colorCount: 256,
-      color0: `RGB(${paletteArray[0]},${paletteArray[1]},${paletteArray[2]})`,
-      color17: `RGB(${paletteArray[17*4]},${paletteArray[17*4+1]},${paletteArray[17*4+2]})`,
-      color128: `RGB(${paletteArray[128*4]},${paletteArray[128*4+1]},${paletteArray[128*4+2]})`,
-      arrayLength: paletteArray.length,
-      byteAt68: paletteArray[68], // Byte at offset 68 should be something
-    });
 
     return paletteArray;
   } catch (error) {
@@ -132,11 +136,17 @@ export async function parseMightyMikeFile(
       try {
         // Get the scene name to load the corresponding palette
         const sceneName = getSceneNameFromUrl(mapFileUrl);
-        console.log(`[PALETTE LOAD] Extracted scene name from URL: "${sceneName}" (from ${mapFileUrl})`);
+        console.log(
+          `[PALETTE LOAD] Extracted scene name from URL: "${sceneName}" (from ${mapFileUrl})`,
+        );
 
         if (sceneName) {
           paletteData = await loadScenePalette(sceneName, mapFileUrl);
-          console.log(`[PALETTE LOAD] Scene: ${sceneName}, Loaded: ${!!paletteData}, Length: ${paletteData?.length || 0}`);
+          console.log(
+            `[PALETTE LOAD] Scene: ${sceneName}, Loaded: ${!!paletteData}, Length: ${
+              paletteData?.length || 0
+            }`,
+          );
 
           if (paletteData) {
             // Check if palette has color variation
@@ -147,29 +157,50 @@ export async function parseMightyMikeFile(
               const b = paletteData[i + 2];
               colors.add(`${r},${g},${b}`);
             }
-            console.log(`[PALETTE LOAD] ✓ Palette loaded successfully with color variation:`, {
-              uniqueColorsInFirst25: colors.size,
-              sampleColors: Array.from(colors).slice(0, 5),
-              paletteLength: paletteData.length,
-              isUint8Array: paletteData instanceof Uint8Array,
-            });
+            console.log(
+              `[PALETTE LOAD] ✓ Palette loaded successfully with color variation:`,
+              {
+                uniqueColorsInFirst25: colors.size,
+                sampleColors: Array.from(colors).slice(0, 5),
+                paletteLength: paletteData.length,
+                isUint8Array: paletteData instanceof Uint8Array,
+              },
+            );
           } else {
-            console.warn(`[PALETTE LOAD] ✗ Failed to load palette for scene "${sceneName}" - will use grayscale fallback!`);
+            console.warn(
+              `[PALETTE LOAD] ✗ Failed to load palette for scene "${sceneName}" - will use grayscale fallback!`,
+            );
           }
         } else {
-          console.warn(`[PALETTE LOAD] ✗ Could not extract scene name from URL: ${mapFileUrl}`);
+          console.warn(
+            `[PALETTE LOAD] ✗ Could not extract scene name from URL: ${mapFileUrl}`,
+          );
         }
 
         // Replace .map-N with .tileset
-        const tilesetUrl = mapFileUrl.replace(/\.map-\d+$/, '.tileset');
+        const tilesetUrl = mapFileUrl.replace(/\.map-\d+$/, ".tileset");
         console.log(`Attempting to load tileset from: ${tilesetUrl}`);
 
         const tilesetResponse = await fetch(tilesetUrl);
         if (tilesetResponse.ok) {
           const tilesetBuffer = await tilesetResponse.arrayBuffer();
           // Parse with the loaded palette if available
-          console.log(`[TILESET] Parsing with palette: ${!!paletteData}, palette size: ${paletteData?.length || 0}`);
-          const tilesetResult = parseMightyMikeTileSet(tilesetBuffer, paletteData || undefined);
+          if (paletteData) {
+            const paletteColor17 = `RGB(${paletteData[17 * 4]},${
+              paletteData[17 * 4 + 1]
+            },${paletteData[17 * 4 + 2]})`;
+            console.log(
+              `[TILESET] ✓ Parsing WITH palette (color17=${paletteColor17}), size: ${paletteData.length} bytes`,
+            );
+          } else {
+            console.warn(
+              `[TILESET] ✗ Parsing WITHOUT palette - will use grayscale fallback!`,
+            );
+          }
+          const tilesetResult = parseMightyMikeTileSet(
+            tilesetBuffer,
+            paletteData || undefined,
+          );
 
           if (tilesetResult.ok) {
             tilesetData = tilesetResult.value;
@@ -223,7 +254,9 @@ export async function parseMightyMikeFile(
         1000: {
           name: "Terrain Layer Matrix",
           // Flatten the 2D array and extract just the tile indices for standard LevelData
-          obj: mapResult.value.mapImage.flat().map((tileValue) => tileValue.tileIndex),
+          obj: mapResult.value.mapImage
+            .flat()
+            .map((tileValue) => tileValue.tileIndex),
           order: 1,
         },
       },
@@ -238,7 +271,9 @@ export async function parseMightyMikeFile(
       YCrd: {
         1000: {
           name: "Y Coordinates",
-          obj: new Array((mapResult.value.mapWidth * mapResult.value.mapHeight)).fill(0),
+          obj: new Array(
+            mapResult.value.mapWidth * mapResult.value.mapHeight,
+          ).fill(0),
           order: 4,
         },
       },
@@ -275,19 +310,21 @@ export async function parseMightyMikeFile(
         Xlat: {
           1000: {
             name: "Tile Translation Table",
-            obj: tilesetData.xlateTable.map(idx => ({ idx })),
-          }
-        }
+            obj: tilesetData.xlateTable.map((idx) => ({ idx })),
+          },
+        },
       }),
     };
 
     console.log("Final MightyMike level data BEFORE splitLevelData:");
-    const tilesetField = (ottoCompatible as unknown as Record<string, any>).tileset;
+    const tilesetField = (ottoCompatible as unknown as Record<string, any>)
+      .tileset;
     console.log({
       hasTileset: !!tilesetField,
       tilesetType: tilesetField?.constructor?.name,
       tileImagesLength: tilesetField?.tileImages?.length || 0,
-      tileImagesType: tilesetField?.tileImages?.[0]?.constructor?.name || "unknown",
+      tileImagesType:
+        tilesetField?.tileImages?.[0]?.constructor?.name || "unknown",
       numTilesInHeader: ottoCompatible.Hedr[1000].obj.numTiles,
       mapWidth: ottoCompatible.Hedr[1000].obj.mapWidth,
       mapHeight: ottoCompatible.Hedr[1000].obj.mapHeight,
@@ -302,8 +339,14 @@ export async function parseMightyMikeFile(
     // CRITICAL FIX: Extract and expose tileImages from the tileset
     // These HTMLCanvasElement objects need to be passed to the UI separately
     // since they're not preserved in AtomicLevelData
-    if (tilesetField?.tileImages && Array.isArray(tilesetField.tileImages) && setMapImages) {
-      console.log(`[TILESET] Extracted ${tilesetField.tileImages.length} tile images for UI rendering`);
+    if (
+      tilesetField?.tileImages &&
+      Array.isArray(tilesetField.tileImages) &&
+      setMapImages
+    ) {
+      console.log(
+        `[TILESET] Extracted ${tilesetField.tileImages.length} tile images for UI rendering`,
+      );
       setMapImages(tilesetField.tileImages);
     }
 
