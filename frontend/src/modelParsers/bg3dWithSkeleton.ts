@@ -98,27 +98,42 @@ function parseModelWithSkeletonResource(
     // Note: 3DMF skeleton data needs conversion from SkeletonResource format to BG3DSkeleton format
     const result = modelResult.value;
     
-    if (skeleton && skeleton.bones) {
+    if (skeleton && skeleton.Bone) {
       // Extract header info
-      const numAnims = skeleton.anims?.length ?? 0;
-      const numJoints = skeleton.bones.length;
-      
+      const boneEntries = Object.values(skeleton.Bone || {});
+      const animEntries = Object.values(skeleton.AnHd || {});
+      const numAnims = animEntries.length ?? 0;
+      const numJoints = boneEntries.length;
+
       result.skeleton = {
         version: 1, // Default version for 3DMF skeletons
         numAnims,
         numJoints,
         num3DMFLimbs: numJoints, // Typically same as numJoints for 3DMF
-        bones: skeleton.bones.map((bone, index) => ({
-          name: bone.name || `bone_${index}`,
-          parentIndex: typeof bone.parentBone === 'number' ? bone.parentBone : -1,
-          position: bone.coord ? [bone.coord.x, bone.coord.y, bone.coord.z] as [number, number, number] : [0, 0, 0],
-          pointIndices: bone.pointList || [],
-          normalIndices: bone.normalList || [],
-        })),
-        animations: skeleton.anims ? skeleton.anims.map((anim, animIndex) => ({
-          name: anim.name || `anim_${animIndex}`,
-          keyframes: [],
-        })) : [],
+        bones: boneEntries.map((bone: unknown, index: number) => {
+          const boneObj = bone as Record<string, unknown>;
+          const coord = boneObj.coord as Record<string, number> || { x: 0, y: 0, z: 0 };
+          return {
+            parentBone: typeof boneObj.parentBone === 'number' ? (boneObj.parentBone as number) : -1,
+            name: (boneObj.name as string) || `bone_${index}`,
+            coordX: coord.x ?? 0,
+            coordY: coord.y ?? 0,
+            coordZ: coord.z ?? 0,
+            numPointsAttachedToBone: ((boneObj.pointList as number[]) || []).length,
+            numNormalsAttachedToBone: ((boneObj.normalList as number[]) || []).length,
+            pointIndices: (boneObj.pointList as number[]) || [],
+            normalIndices: (boneObj.normalList as number[]) || [],
+          };
+        }),
+        animations: animEntries.length > 0 ? animEntries.map((anim: unknown, animIndex: number) => {
+          const animObj = anim as Record<string, unknown>;
+          return {
+            name: (animObj.name as string) || `anim_${animIndex}`,
+            numAnimEvents: 0,
+            events: [],
+            keyframes: {},
+          };
+        }) : [],
       };
     }
     

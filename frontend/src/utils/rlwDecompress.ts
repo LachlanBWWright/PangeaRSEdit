@@ -1,19 +1,23 @@
 /**
  * RLW (Run-Length Word) Decompression
- * 
+ *
  * Used by Mighty Mike for map and tileset compression.
  * Format:
  * - First 4 bytes: decompressed size (big-endian)
  * - Next 4 bytes: compression type (big-endian), should be 6 for RLW
  * - Remaining bytes: compressed data
- * 
+ *
  * Compressed format:
  * - 1 byte length indicator
  * - If bit 7 set (0x80): packed stream
  *   - Next 2 bytes (big-endian) are the word to repeat (count & 0x7F) + 1 times
  * - Otherwise: literal stream
  *   - Next (count + 1) * 2 bytes are literal 16-bit words
+ *
+ * All functions return Result types for explicit error handling.
  */
+
+import { Result, ok, err } from "../types/result";
 
 export const PACK_TYPE_RLB = 0;
 export const PACK_TYPE_LZSS = 1;
@@ -32,15 +36,15 @@ export interface DecompressedFile {
 /**
  * Decompresses an RLB-compressed file from Mighty Mike (byte-level run-length encoding)
  */
-export function rlbDecompress(compressedBuffer: ArrayBuffer): DecompressedFile {
+export function rlbDecompress(compressedBuffer: ArrayBuffer): Result<DecompressedFile> {
   const input = new DataView(compressedBuffer);
-  
+
   // Read header
   const decompressedSize = input.getUint32(0, false); // big-endian
   const compressionType = input.getUint32(4, false); // big-endian
-  
+
   if (compressionType !== PACK_TYPE_RLB) {
-    throw new Error(`Expected RLB compression (type 0), got: ${compressionType}`);
+    return err(new Error(`Expected RLB compression (type 0), got: ${compressionType}`));
   }
   
   // Allocate output buffer
@@ -87,33 +91,33 @@ export function rlbDecompress(compressedBuffer: ArrayBuffer): DecompressedFile {
       }
     }
   }
-  
-  return { data: output.buffer, decompressedSize, compressionType };
+
+  return ok({ data: output.buffer, decompressedSize, compressionType });
 }
 
 /**
  * Decompresses an RLW-compressed file from Mighty Mike
  */
-export function rlwDecompress(compressedBuffer: ArrayBuffer): DecompressedFile {
+export function rlwDecompress(compressedBuffer: ArrayBuffer): Result<DecompressedFile> {
   const input = new DataView(compressedBuffer);
-  
+
   // Read header
   const decompressedSize = input.getUint32(0, false); // big-endian
   const compressionType = input.getUint32(4, false); // big-endian
-  
+
   // Handle uncompressed files
   if (compressionType === PACK_TYPE_NONE) {
     const data = compressedBuffer.slice(8);
-    return { data, decompressedSize, compressionType };
+    return ok({ data, decompressedSize, compressionType });
   }
-  
+
   // Handle RLB compression (byte-level run-length)
   if (compressionType === PACK_TYPE_RLB) {
     return rlbDecompress(compressedBuffer);
   }
-  
+
   if (compressionType !== PACK_TYPE_RLW) {
-    throw new Error(`Unsupported compression type: ${compressionType}`);
+    return err(new Error(`Unsupported compression type: ${compressionType}`));
   }
   
   // Allocate output buffer
@@ -152,8 +156,8 @@ export function rlwDecompress(compressedBuffer: ArrayBuffer): DecompressedFile {
       }
     }
   }
-  
-  return { data: output, decompressedSize, compressionType };
+
+  return ok({ data: output, decompressedSize, compressionType });
 }
 
 /**

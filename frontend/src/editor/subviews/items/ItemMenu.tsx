@@ -6,8 +6,8 @@ import {
 import { useAtom, useAtomValue } from "jotai";
 import { Button } from "@/components/ui/button";
 import { ClickToAddItem, SelectedItem } from "../../../data/items/itemAtoms";
-import { TerrainItemTypeParams } from "../../../data/items/ottoItemType";
-import type { ParamDescription } from "../../../data/items/itemParams";
+import { TerrainItemTypeParams, ItemType } from "../../../data/items/ottoItemType";
+import type { ParamDescription, FlagDescription } from "../../../data/items/itemParams";
 import { parseU16, parseU8 } from "../../../utils/numberParsers";
 import { useEffect } from "react";
 import { Input } from "@/components/ui/input";
@@ -100,9 +100,9 @@ export function ItemMenu({
                   <span className="text-baseline align-text-bottom">Flags</span>
                 }
                 tooltip={
-                  typeof TerrainItemTypeParams[selectedItemData.type].flags ===
+                  typeof TerrainItemTypeParams[selectedItemData.type as ItemType].flags ===
                   "string"
-                    ? TerrainItemTypeParams[selectedItemData.type].flags
+                    ? TerrainItemTypeParams[selectedItemData.type as ItemType].flags
                     : ""
                 }
               />
@@ -125,7 +125,7 @@ export function ItemMenu({
               {([0, 1, 2, 3] as const).map((i) => {
                 const paramKey = `p${i}` as const;
                 const param =
-                  TerrainItemTypeParams[selectedItemData.type][paramKey];
+                  TerrainItemTypeParams[selectedItemData.type as ItemType][paramKey];
                 const value = selectedItemData[paramKey];
                 const setValue = (v: number) => {
                   setItemData((itemData) => {
@@ -148,7 +148,7 @@ export function ItemMenu({
                   Array.isArray(param.flags) ? (
                     <div key={`flags-${i}`} className="flex flex-col gap-1">
                       <div className="flex flex-wrap gap-2">
-                        {param.flags.map((flag) => {
+                        {param.flags.map((flag: FlagDescription) => {
                           const checked = (value & (1 << flag.index)) !== 0;
                           return (
                             <label

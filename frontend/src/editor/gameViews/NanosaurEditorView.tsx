@@ -82,8 +82,6 @@ export function NanosaurEditorView({
         dataHistoryIndex={dataHistory.index}
         dataHistoryLength={dataHistory.items.length}
         terrainHasSTgd={showSupertileMenu}
-        hasFenceData={false} // Nanosaur doesn't have fences
-        hasLiquidData={false} // Nanosaur doesn't have water bodies
       />
       <div>
         {view === View.items && itemData && (

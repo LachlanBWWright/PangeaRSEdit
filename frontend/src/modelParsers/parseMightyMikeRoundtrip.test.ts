@@ -65,12 +65,12 @@ describe("MightyMike Roundtrip Tests", () => {
       if (firstDiffIndex !== -1) {
         console.log(`  First difference at byte ${firstDiffIndex}:`);
         console.log(
-          `    Original: 0x${originalData[firstDiffIndex]
+          `    Original: 0x${(originalData[firstDiffIndex] ?? 0)
             .toString(16)
             .padStart(2, "0")}`,
         );
         console.log(
-          `    Exported: 0x${exportedData[firstDiffIndex]
+          `    Exported: 0x${(exportedData[firstDiffIndex] ?? 0)
             .toString(16)
             .padStart(2, "0")}`,
         );
@@ -96,7 +96,7 @@ describe("MightyMike Roundtrip Tests", () => {
       expect(map.mapWidth).toBeGreaterThan(0);
       expect(map.mapHeight).toBeGreaterThan(0);
       expect(map.mapImage.length).toBe(map.mapHeight);
-      expect(map.mapImage[0].length).toBe(map.mapWidth);
+      expect((map.mapImage[0]?.length) ?? 0).toBe(map.mapWidth);
       expect(map.items.length).toBe(map.numItems);
 
       // Validate tile data is reasonable
@@ -137,7 +137,7 @@ describe("MightyMike Roundtrip Tests", () => {
       const buffer = await response.arrayBuffer();
 
       const result = parseMightyMikeMap(buffer);
-      expect(result.ok).toBe(true, `Failed to parse ${mapPath}`);
+      expect(result.ok).toBe(true);
 
       if (result.ok) {
         const map = result.value;

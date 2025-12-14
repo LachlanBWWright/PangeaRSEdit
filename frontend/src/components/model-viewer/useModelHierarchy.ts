@@ -26,6 +26,8 @@ function extractNode(obj: THREE.Object3D, level = 0): ModelNode | null {
     children: [],
     meshIndex: obj instanceof THREE.Mesh ? obj.id : undefined,
     nodeIndex: obj.id,
+    // Store reference to the original THREE object for proper matching later
+    threeObject: obj,
   };
 
   if (obj.children.length > 0) {
@@ -63,5 +65,9 @@ export function useModelHierarchy(
       setModelNodes([]);
       if (onSceneReady) onSceneReady(undefined);
     }
-  }, [gltfResult?.scene, setModelNodes, onSceneReady]);
+    // Only depend on gltfResult and setModelNodes
+    // Callbacks (onSceneReady) are now memoized in parent, but we don't need them in deps
+    // since they're only called once during the effect
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gltfResult, gltfResult?.scene, setModelNodes]);
 }

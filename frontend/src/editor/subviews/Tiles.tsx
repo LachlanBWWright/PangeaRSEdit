@@ -91,7 +91,6 @@ export function Tiles({
     return (
       <EmptyTiles
         headerData={headerData}
-        terrainData={terrainData}
         setTerrainData={setTerrainData}
         tileGrid={tileGrid}
       />
@@ -100,7 +99,6 @@ export function Tiles({
     return (
       <ElectricFloor0Tiles
         headerData={headerData}
-        terrainData={terrainData}
         setTerrainData={setTerrainData}
         tileGrid={tileGrid}
       />
@@ -111,7 +109,6 @@ export function Tiles({
   return (
     <ElectricFloor1Tiles
       headerData={headerData}
-      terrainData={terrainData}
       setTerrainData={setTerrainData}
       tileGrid={tileGrid}
     />
@@ -409,7 +406,7 @@ export function ElectricFloor0Tiles({
   tileGrid,
 }: {
   headerData: HeaderData;
-  terrainData: TerrainData;
+  terrainData?: TerrainData;
   setTerrainData: Updater<TerrainData>;
   tileGrid: TileAttribute[];
 }) {

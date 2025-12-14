@@ -288,7 +288,7 @@ export function SupertileMenu({
         <Stage width={120} height={120} className="mx-auto">
           <Layer>
             <ImageDisplay
-              image={mapImages[stgd[selectedTile]?.superTileId ?? 0]}
+              image={mapImages[stgd[selectedTile]?.superTileId ?? 0] ?? undefined}
             />
           </Layer>
         </Stage>
@@ -387,9 +387,10 @@ export function SupertileMenu({
             setMapImages(canvasArray);
             setTerrainData((data) => {
               if (!data.STgd?.[1000]?.obj) return;
-              for (let i = 0; i < data.STgd[1000].obj.length; i++) {
+              const stgdObj = data.STgd[1000]!.obj!;
+              for (let i = 0; i < stgdObj.length; i++) {
                 //1 is added to i because of the blank
-                data.STgd[1000].obj[i].superTileId = i + 1;
+                stgdObj[i]!.superTileId = i + 1;
               }
             });
             setHeaderData((data) => {
@@ -466,7 +467,7 @@ export function SupertileMenu({
   );
 }
 
-function ImageDisplay({ image }: { image: HTMLCanvasElement }) {
+function ImageDisplay({ image }: { image?: HTMLCanvasElement }) {
   if (!image) return <></>;
 
   return <Image image={image} width={250} height={250} />;

@@ -35,9 +35,9 @@ describe("Mighty Mike TGA palette raw dump", () => {
         const off = i * 4;
         if (off + 2 < pal.colors.length) {
           triplets.push([
-            pal.colors[off + 0],
-            pal.colors[off + 1],
-            pal.colors[off + 2],
+            pal.colors[off + 0] ?? 0,
+            pal.colors[off + 1] ?? 0,
+            pal.colors[off + 2] ?? 0,
           ]);
         } else {
           triplets.push(null);

@@ -3,7 +3,11 @@
  * Converts TGA files to HTMLCanvasElement for rendering
  * Unlike tgaParser.ts which extracts only the palette,
  * this parser converts the full image to canvas
+ *
+ * All functions return Result types for explicit error handling.
  */
+
+import { Result, err, ok } from "../types/result";
 
 export interface TGAHeader {
   idLength: number;
@@ -47,7 +51,7 @@ function parseTGAHeader(data: DataView): TGAHeader {
  * - RLE compressed RGB/RGBA (types 10, 11)
  * - RLE compressed indexed color (type 9)
  */
-export function parseTGAToCanvas(buffer: ArrayBuffer): HTMLCanvasElement {
+export function parseTGAToCanvas(buffer: ArrayBuffer): Result<HTMLCanvasElement> {
   const data = new DataView(buffer);
   const header = parseTGAHeader(data);
 
@@ -61,7 +65,7 @@ export function parseTGAToCanvas(buffer: ArrayBuffer): HTMLCanvasElement {
 
   // Validate header
   if (header.imageWidth === 0 || header.imageHeight === 0) {
-    throw new Error("Invalid TGA: image dimensions are zero");
+    return err(new Error("Invalid TGA: image dimensions are zero"));
   }
 
   // Support uncompressed (2, 3), RLE compressed (10, 11), and RLE indexed (9) TGA
@@ -73,8 +77,10 @@ export function parseTGAToCanvas(buffer: ArrayBuffer): HTMLCanvasElement {
   const isIndexed = header.imageType === 9 || header.colorMapType === 1;
 
   if (!isRLE && !isUncompressed) {
-    throw new Error(
-      `Unsupported TGA image type: ${header.imageType} (only types 2, 3, 9, 10, 11 supported)`,
+    return err(
+      new Error(
+        `Unsupported TGA image type: ${header.imageType} (only types 2, 3, 9, 10, 11 supported)`,
+      )
     );
   }
 
@@ -84,15 +90,19 @@ export function parseTGAToCanvas(buffer: ArrayBuffer): HTMLCanvasElement {
 
   if (isIndexed) {
     if (header.pixelDepth !== 8) {
-      throw new Error(
-        `Unsupported pixel depth for indexed color: ${header.pixelDepth} bits (must be 8)`,
+      return err(
+        new Error(
+          `Unsupported pixel depth for indexed color: ${header.pixelDepth} bits (must be 8)`,
+        )
       );
     }
     bytesPerPixel = 1; // indexed color is 1 byte per pixel
   } else {
     if (bytesPerPixel !== 3 && bytesPerPixel !== 4) {
-      throw new Error(
-        `Unsupported pixel depth: ${header.pixelDepth} bits (must be 24 or 32)`,
+      return err(
+        new Error(
+          `Unsupported pixel depth: ${header.pixelDepth} bits (must be 24 or 32)`,
+        )
       );
     }
   }
@@ -104,7 +114,7 @@ export function parseTGAToCanvas(buffer: ArrayBuffer): HTMLCanvasElement {
   const ctx = canvas.getContext("2d");
 
   if (!ctx) {
-    throw new Error("Failed to get canvas context");
+    return err(new Error("Failed to get canvas context"));
   }
 
   // Create image data
@@ -172,7 +182,7 @@ export function parseTGAToCanvas(buffer: ArrayBuffer): HTMLCanvasElement {
     height: canvas.height,
   });
 
-  return canvas;
+  return ok(canvas);
 }
 
 /**

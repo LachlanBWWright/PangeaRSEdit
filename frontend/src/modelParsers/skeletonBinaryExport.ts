@@ -85,7 +85,7 @@ export function skeletonResourceToBinaryTS(
                 resourceType,
                 resourceObj.obj,
               );
-            } else if (resource.data) {
+            } else if (resourceObj?.data) {
               // Handle raw data (like 'alis' resources)
               const dataVal = resourceObj.data;
               if (typeof dataVal === "string") {

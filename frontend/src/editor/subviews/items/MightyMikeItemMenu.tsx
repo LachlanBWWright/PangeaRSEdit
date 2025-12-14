@@ -186,7 +186,7 @@ function AddItemMenu() {
   const [clickToAddItem, setClickToAddItem] = useAtom(ClickToAddItem);
   useEffect(() => {
     return () => setClickToAddItem(undefined);
-  }, []);
+  }, [setClickToAddItem]);
   const globals = useAtomValue(Globals);
 
   const itemTypesResult = getItemTypes(globals);

@@ -3,9 +3,10 @@ import { Updater } from "use-immer";
 import { SplineItem } from "@/python/structSpecs/LevelTypes";
 import { SplineData } from "@/python/structSpecs/LevelTypes";
 import { useAtom, useAtomValue } from "jotai";
-import { TerrainItemTypeParams } from "../../../data/items/ottoItemType";
+import { TerrainItemTypeParams, ItemType } from "../../../data/items/ottoItemType";
 import { ParamTooltip } from "../items/ParamTooltip";
 import { getParamTooltip } from "../items/getParamTooltip";
+import type { FlagDescription } from "../../../data/items/itemParams";
 import { parseU16, parseU8 } from "../../../utils/numberParsers";
 import {
   SelectedSpline,
@@ -130,7 +131,7 @@ export function EditSplineItemMenu({
         <ParamTooltip
           label={<span>Flags</span>}
           tooltip={getParamTooltip(
-            TerrainItemTypeParams[currentSplineItemData.type].flags,
+            TerrainItemTypeParams[currentSplineItemData.type as ItemType].flags,
           )}
         />
         <Input
@@ -156,7 +157,7 @@ export function EditSplineItemMenu({
         {([0, 1, 2, 3] as const).map((i) => {
           const paramKey = `p${i}` as const;
           const param =
-            TerrainItemTypeParams[currentSplineItemData.type][paramKey];
+            TerrainItemTypeParams[currentSplineItemData.type as ItemType][paramKey];
           const value = currentSplineItemData[paramKey];
           const setValue = (v: number) => {
             setSplineData((splineData) => {
@@ -185,7 +186,7 @@ export function EditSplineItemMenu({
             Array.isArray(param.flags) ? (
               <div key={`flags-${i}`} className="flex flex-col gap-1">
                 <div className="flex flex-wrap gap-2">
-                  {param.flags.map((flag) => {
+                  {param.flags.map((flag: FlagDescription) => {
                     const checked = (value & (1 << flag.index)) !== 0;
                     return (
                       <label

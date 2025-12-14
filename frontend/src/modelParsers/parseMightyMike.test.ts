@@ -91,7 +91,7 @@ describe("Mighty Mike Roundtrip Tests", () => {
     it("should parse jurassic.tileset without errors", () => {
       const result = parseMightyMikeTileSet(
         jurassicTilesetBuffer,
-        jurassicPalette
+        jurassicPalette ?? undefined
       );
       expect(result.ok).toBe(true);
       if (result.ok) {
@@ -105,20 +105,20 @@ describe("Mighty Mike Roundtrip Tests", () => {
     it("should have valid tile images", () => {
       const result = parseMightyMikeTileSet(
         jurassicTilesetBuffer,
-        jurassicPalette
+        jurassicPalette ?? undefined
       );
       if (result.ok) {
         // In vitest/jsdom, canvas context getImageData doesn't persist putImageData,
         // so we just verify that: 1) tiles were created, 2) they're HTMLCanvasElements
         let validTiles = 0;
-        result.value.tileImages.forEach((canvas) => {
+        (result.value.tileImages ?? []).forEach((canvas) => {
           // Check that it's a valid HTMLCanvasElement
           if (canvas instanceof HTMLCanvasElement && canvas.width === 32 && canvas.height === 32) {
             validTiles++;
           }
         });
         console.log("✓ Tile images valid:", {
-          totalTiles: result.value.tileImages.length,
+          totalTiles: (result.value.tileImages ?? []).length,
           validTiles,
         });
         // Just verify that tiles were created as proper canvas elements
@@ -153,17 +153,17 @@ describe("Mighty Mike Roundtrip Tests", () => {
     it("should render tiles with actual colors when palette is provided", () => {
       const result = parseMightyMikeTileSet(
         jurassicTilesetBuffer,
-        jurassicPalette
+        jurassicPalette ?? undefined
       );
       if (result.ok && jurassicPalette) {
         // In vitest/jsdom, canvas imageData doesn't work properly, so just verify palette is applied
         // by checking that we have both opaque tiles and that palette was used
-        const opaqueCanvases = result.value.tileImages.filter(
+        const opaqueCanvases = (result.value.tileImages ?? []).filter(
           c => c instanceof HTMLCanvasElement && c.width === 32 && c.height === 32
         );
 
         console.log("✓ Tile color analysis:", {
-          totalCanvases: result.value.tileImages.length,
+          totalCanvases: (result.value.tileImages ?? []).length,
           validCanvases: opaqueCanvases.length,
           paletteLoaded: !!jurassicPalette,
           paletteBytesPerColor: jurassicPalette.length / 256,

@@ -60,7 +60,14 @@ export function EnhancedModelMesh({ scene, wireframeMode = false, showSkeleton =
       scene.traverse((object) => {
         if (object instanceof THREE.SkinnedMesh && object.skeleton) {
           const skeletonHelper = new THREE.SkeletonHelper(object);
-          skeletonHelper.material.linewidth = 3;
+          const materials = Array.isArray(skeletonHelper.material)
+            ? skeletonHelper.material
+            : [skeletonHelper.material];
+          materials.forEach((material) => {
+            if (material instanceof THREE.LineBasicMaterial) {
+              material.linewidth = 3;
+            }
+          });
           scene.add(skeletonHelper);
           skeletonHelpersRef.current.push(skeletonHelper);
           

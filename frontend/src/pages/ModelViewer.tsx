@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useCallback } from "react";
 import { ModelCanvas } from "./ModelCanvas";
 import { ModelHierarchy } from "@/components/ModelHierarchy";
 import { AnimationViewer, AnimationInfo } from "@/components/AnimationViewer";
@@ -16,7 +16,7 @@ import {
   BG3DGltfWorkerMessage,
   BG3DGltfWorkerResponse,
 } from "../modelParsers/bg3dGltfWorker";
-import { BG3DParseResult } from "../modelParsers/parseBG3D";
+import { BG3DParseResult, BG3DBone, BG3DAnimation } from "../modelParsers/parseBG3D";
 import { parseSkeletonRsrcTS } from "../modelParsers/skeletonRsrc/parseSkeletonRsrcTS";
 import { bg3dSkeletonToSkeletonResource } from "../modelParsers/skeletonExport";
 import { skeletonResourceToBinary } from "../modelParsers/skeletonBinaryExport";
@@ -237,10 +237,10 @@ export function ModelViewer() {
               numAnims: Object.keys(skeletonData.AnHd).length,
               numJoints: Object.keys(skeletonData.Bone).length,
               num3DMFLimbs: 0,
-              bones: Object.values(skeletonData.Bone).map(
-                (bone: Record<string, unknown>, index: number) => ({
+              bones: (Object.values(skeletonData.Bone) as unknown as Record<string, unknown>[]).map(
+                (bone: Record<string, unknown>, index: number): BG3DBone => ({
                   parentBone: -1, // Simplified for display
-                  name: bone.name || `Bone_${index}`,
+                  name: (bone.name as string) || `Bone_${index}`,
                   coordX: 0,
                   coordY: 0,
                   coordZ: 0,
@@ -250,9 +250,9 @@ export function ModelViewer() {
                   normalIndices: [],
                 }),
               ),
-              animations: Object.values(skeletonData.AnHd).map(
-                (anim: Record<string, unknown>, index: number) => ({
-                  name: anim.obj?.animName || `Animation_${index}`,
+              animations: (Object.values(skeletonData.AnHd) as unknown as Record<string, unknown>[]).map(
+                (anim: Record<string, unknown>, index: number): BG3DAnimation => ({
+                  name: (anim.name as string) || `Animation_${index}`,
                   numAnimEvents: 0,
                   events: [],
                   keyframes: {},
@@ -359,36 +359,42 @@ export function ModelViewer() {
   }
 
   // Handle animation state from ModelCanvas
-  function handleAnimationsReady(
-    animationInfos: AnimationInfo[],
-    mixer: THREE.AnimationMixer | null,
-  ) {
-    // Use glTF animations from the model
-    setAnimations(animationInfos);
-    setAnimationMixer(mixer);
+  const handleAnimationsReady = useCallback(
+    (
+      animationInfos: AnimationInfo[],
+      mixer: THREE.AnimationMixer | null,
+    ) => {
+      // Use glTF animations from the model
+      setAnimations(animationInfos);
+      setAnimationMixer(mixer);
 
-    if (animationInfos.length > 0) {
-      console.log(
-        `Loaded ${animationInfos.length} animations from glTF:`,
-        animationInfos.map((a) => `${a.name} (${a.duration.toFixed(2)}s)`),
-      );
-    } else {
-      console.log("No animations found in glTF");
-    }
-  }
+      if (animationInfos.length > 0) {
+        console.log(
+          `Loaded ${animationInfos.length} animations from glTF:`,
+          animationInfos.map((a) => `${a.name} (${a.duration.toFixed(2)}s)`),
+        );
+      } else {
+        console.log("No animations found in glTF");
+      }
+    },
+    [],
+  );
 
   // Removed unused handleTexturesExtracted and handleNodesExtracted
 
   // Removed handleClonedSceneUpdate, handled in ModelCanvas
 
-  function onVisibilityChange(nodeObject: THREE.Object3D, visible: boolean) {
-    nodeObject.visible = visible;
-    // ModelCanvas will update model nodes after visibility change
-    console.log("Visibility change:", {
-      nodeName: nodeObject.name,
-      visible,
-    });
-  }
+  const onVisibilityChange = useCallback(
+    (nodeObject: THREE.Object3D, visible: boolean) => {
+      nodeObject.visible = visible;
+      // ModelCanvas will update model nodes after visibility change
+      console.log("Visibility change:", {
+        nodeName: nodeObject.name,
+        visible,
+      });
+    },
+    [],
+  );
 
   async function handleDownloadTexture(texture: Texture) {
     try {

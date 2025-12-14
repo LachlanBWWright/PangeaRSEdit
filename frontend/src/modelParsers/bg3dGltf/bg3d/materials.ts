@@ -153,14 +153,15 @@ export async function gltfMaterialsToBg3d(
               height: rgbaRes.height,
             };
 
-            const textureExtra = materialExtras[index]?.textureExtras?.[0];
+            const materialExtra = (materialExtras as Array<Record<string, unknown>>)[index]!;
+            const textureExtra = (materialExtra?.textureExtras as unknown[] | undefined)?.[0];
             textures.push({
               pixels: pngRes.data,
               width: pngRes.width,
               height: pngRes.height,
               srcPixelFormat: PixelFormatSrc.GL_RGB, // BG3D default format
               dstPixelFormat:
-                textureExtra?.dstPixelFormat ||
+                ((textureExtra as Record<string, unknown> | undefined)?.dstPixelFormat as number | undefined) ||
                 PixelFormatDst.GL_UNSIGNED_SHORT_5_5_5_1,
               bufferSize: pngRes.data.byteLength, // Use actual converted data size
             });

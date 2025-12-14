@@ -11,6 +11,7 @@ import { selectItem, updateItem } from "../../../data/selectors";
 import { ShowMightyMikeItemImages } from "./MightyMikeItemMenu";
 import { loadItemImage } from "@/utils/mightyMikeShapeImageLoader";
 import { CurrentScene } from "@/data/game/gameAtoms";
+import { isOk } from "@/types/result";
 
 const ITEM_BOX_SIZE = 12;
 const ITEM_BOX_OFFSET = ITEM_BOX_SIZE / 2;
@@ -51,6 +52,13 @@ export const MightyMikeItem = memo(function MightyMikeItem({
     [itemIdx, setItemData],
   );
 
+  const itemX = useMemo(() => item?.x ? item.x - ITEM_BOX_OFFSET : 0, [item?.x]);
+  const itemZ = useMemo(() => item?.z ? item.z - ITEM_BOX_OFFSET : 0, [item?.z]);
+  const itemName = useMemo(
+    () => item ? getItemName(globals, item.type) : "",
+    [item, globals]
+  );
+
   // Load item image when toggle is on
   useEffect(() => {
     if (!showItemImages || !item) {
@@ -59,26 +67,27 @@ export const MightyMikeItem = memo(function MightyMikeItem({
     }
 
     loadItemImage(item.type, currentScene)
-      .then((canvas) => {
-        setItemImage(canvas);
+      .then((result) => {
+        if (isOk(result)) {
+          setItemImage(result.value);
+        } else {
+          console.warn(
+            `Failed to load image for item ${item.type}:`,
+            result.error.message
+          );
+          setItemImage(null);
+        }
       })
       .catch((error) => {
         console.warn(
-          `Failed to load image for item ${item.type}:`,
+          `Unexpected error loading image for item ${item.type}:`,
           error instanceof Error ? error.message : String(error)
         );
         setItemImage(null);
       });
-  }, [showItemImages, item?.type, currentScene]);
+  }, [showItemImages, item, currentScene]);
 
   if (item === null || item === undefined) return null;
-
-  const itemX = useMemo(() => item.x - ITEM_BOX_OFFSET, [item.x]);
-  const itemZ = useMemo(() => item.z - ITEM_BOX_OFFSET, [item.z]);
-  const itemName = useMemo(
-    () => getItemName(globals, item.type),
-    [globals, item.type]
-  );
 
   // If showing images and we have an image, use Konva Image instead of Rect
   if (showItemImages && itemImage) {

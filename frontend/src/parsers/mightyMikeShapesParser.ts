@@ -418,14 +418,14 @@ function parseShapeList(
 export function shapeFrameToCanvas(
   frame: ShapeFrame,
   colorTable: RGBColor[]
-): HTMLCanvasElement {
+): Result<HTMLCanvasElement> {
   const canvas = document.createElement("canvas");
   canvas.width = frame.header.width;
   canvas.height = frame.header.height;
 
   const ctx = canvas.getContext("2d");
   if (!ctx) {
-    throw new Error("Could not get canvas context");
+    return err(new Error("Could not get canvas context"));
   }
 
   const imageData = ctx.createImageData(
@@ -458,5 +458,5 @@ export function shapeFrameToCanvas(
   }
 
   ctx.putImageData(imageData, 0, 0);
-  return canvas;
+  return ok(canvas);
 }

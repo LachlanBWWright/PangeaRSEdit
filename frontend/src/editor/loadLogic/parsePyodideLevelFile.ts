@@ -26,7 +26,13 @@ export async function parsePyodideLevelFile(
     pyodideWorker.onmessage = (event: MessageEvent<PyodideResponse>) => {
       if (event.data.type === "save_to_json") {
         try {
-          const result = event.data.result;
+          // Validate that result is a plain object
+          if (!event.data.result || typeof event.data.result !== "object") {
+            resolve(err(new Error("Invalid response from pyodide worker: expected object")));
+            return;
+          }
+
+          const result = event.data.result as Record<string, unknown>;
 
           // Apply preprocessing FIRST (converts liquid nubs from x_0/y_0 format to array format)
           const preprocessResult = preprocessJson(result, gameType);
@@ -52,8 +58,10 @@ export async function parsePyodideLevelFile(
             return;
           }
 
-          setData(splitLevelData(result));
-          resolve(ok(result));
+          // After validation, we know the structure matches LevelData
+          const levelData = result as unknown as LevelData;
+          setData(splitLevelData(levelData));
+          resolve(ok(levelData));
         } catch (e) {
           resolve(err(e instanceof Error ? e : new Error(String(e))));
         }

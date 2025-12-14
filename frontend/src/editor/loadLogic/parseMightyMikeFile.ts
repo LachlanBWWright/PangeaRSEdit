@@ -6,7 +6,6 @@ import {
 } from "@/modelParsers/parseMightyMike";
 import { splitLevelData, AtomicLevelData } from "@/data/utils/levelDataUtils";
 import { extractTGAPalette } from "@/utils/tgaParser";
-import { analyzePalette } from "@/utils/diagnosticTGAParser";
 
 /**
  * Get the scene name from the map file URL
@@ -317,8 +316,8 @@ export async function parseMightyMikeFile(
     };
 
     console.log("Final MightyMike level data BEFORE splitLevelData:");
-    const tilesetField = (ottoCompatible as unknown as Record<string, any>)
-      .tileset;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const tilesetField = (ottoCompatible as any).tileset;
     console.log({
       hasTileset: !!tilesetField,
       tilesetType: tilesetField?.constructor?.name,

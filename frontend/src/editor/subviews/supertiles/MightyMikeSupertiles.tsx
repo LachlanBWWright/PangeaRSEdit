@@ -7,7 +7,7 @@
  */
 
 import { Layer, Image, Rect } from "react-konva";
-import { Fragment, memo, useMemo } from "react";
+import { Fragment, memo } from "react";
 import { useAtom } from "jotai";
 import { SelectedTile } from "@/data/supertiles/supertileAtoms";
 import { TerrainData, HeaderData } from "@/python/structSpecs/LevelTypes";
@@ -106,11 +106,6 @@ const MightyMikeSupertilesComponent = ({
     );
   }
 
-  let validTileCount = 0;
-  let invalidLogicalIndexCount = 0;
-  let invalidPhysicalIndexCount = 0;
-  let emptyImageCount = 0;
-
   return (
     <Layer>
       {layr.map((logicalTileIndex, i) => {
@@ -124,12 +119,9 @@ const MightyMikeSupertilesComponent = ({
 
         // Check if logical index is within bounds (0-2047)
         if (logicalTileIndex < 0 || logicalTileIndex >= 2048) {
-          invalidLogicalIndexCount++;
-          if (invalidLogicalIndexCount <= 5) {
-            console.warn(
-              `Invalid logical tile index in Layr[${i}]: ${logicalTileIndex} (expected 0-2047). This indicates corrupted map data.`,
-            );
-          }
+          console.warn(
+            `Invalid logical tile index in Layr[${i}]: ${logicalTileIndex} (expected 0-2047). This indicates corrupted map data.`,
+          );
           return null;
         }
 
@@ -148,17 +140,14 @@ const MightyMikeSupertilesComponent = ({
 
         // Validate the final physical image index
         if (imageIndex < 0 || imageIndex >= mapImages.length) {
-          invalidPhysicalIndexCount++;
-          if (invalidPhysicalIndexCount <= 5) {
-            const source = translatedFromXlat
-              ? `Xlat[${logicalTileIndex}]`
-              : `Layr (logical index)`;
-            console.warn(
-              `Invalid physical tile image index: ${imageIndex} from ${source} (max available: ${
-                mapImages.length - 1
-              }). Xlat table: ${xlatTable?.length || 0} entries.`,
-            );
-          }
+          const source = translatedFromXlat
+            ? `Xlat[${logicalTileIndex}]`
+            : `Layr (logical index)`;
+          console.warn(
+            `Invalid physical tile image index: ${imageIndex} from ${source} (max available: ${
+              mapImages.length - 1
+            }). Xlat table: ${xlatTable?.length || 0} entries.`,
+          );
           return null;
         }
 
@@ -167,11 +156,8 @@ const MightyMikeSupertilesComponent = ({
 
         if (!img) {
           // Draw a placeholder if no image available
-          emptyImageCount++;
           return null;
         }
-
-        validTileCount++;
 
         return (
           <Fragment key={i}>

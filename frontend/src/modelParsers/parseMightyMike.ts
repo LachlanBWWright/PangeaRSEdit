@@ -2,6 +2,7 @@
 // TypeScript parser for MightyMike .map and .tileset files
 
 import type { Result } from "../types/result";
+import { isOk } from "../types/result";
 import type {
   MightyMikeTileSet,
   MightyMikeMap,
@@ -24,7 +25,6 @@ import {
  */
 function decompressIfNeeded(buffer: ArrayBuffer): ArrayBuffer {
   const view = new DataView(buffer);
-  const decompressedSize = view.getUint32(0, false);
   const compressionType = view.getUint32(4, false);
 
   // Check if this looks like a packed file (compression type 0-6)
@@ -33,11 +33,21 @@ function decompressIfNeeded(buffer: ArrayBuffer): ArrayBuffer {
       if (compressionType === PACK_TYPE_RLB) {
         // Tileset files use RLB (byte-level) compression
         const result = rlbDecompress(buffer);
-        return result.data;
+        if (isOk(result)) {
+          return result.value.data;
+        } else {
+          console.warn(`RLB decompression failed:`, result.error);
+          return buffer;
+        }
       } else if (compressionType === PACK_TYPE_RLW) {
         // Map files use RLW (word-level) compression
         const result = rlwDecompress(buffer);
-        return result.data;
+        if (isOk(result)) {
+          return result.value.data;
+        } else {
+          console.warn(`RLW decompression failed:`, result.error);
+          return buffer;
+        }
       } else {
         // Unknown compression type, return as-is
         return buffer;
@@ -70,13 +80,24 @@ function createDefaultPalette(): Uint8Array {
 
 /**
  * Parse tile images from tileset buffer
- * Mighty Mike tiles are 32x32 pixels, stored as 8-bit indexed color with a palette
+ * Mighty Mike tiles are 32x32 pixels, stored as 8-bit indexed color
+ *
+ * IMPORTANT: This function creates canvas snapshots of tiles at the time of parsing.
+ * To match the original C code behavior more closely (where tiles are rendered at
+ * display time with the current palette), tiles should ideally be re-rendered whenever
+ * the palette changes. For now, we snapshot the palette at parse time.
+ *
+ * Transparency handling:
+ * - The transparencyColors array from the tileset is for COLLISION DETECTION only
+ *   (matches gColorMaskArray in Playfield.c), NOT for visual rendering
+ * - For visual rendering, DO NOT mark any pixels as transparent based on palette index
+ * - All pixels are rendered with their palette color as-is
  */
 function parseTileImages(
   buffer: ArrayBuffer,
   offsetToTileDefinitions: number,
   numTileDefinitions: number,
-  transparencyColors?: number[],
+  _transparencyColors?: number[], // Note: transparency colors are for collision detection only
   palette?: Uint8Array,
 ): HTMLCanvasElement[] {
   const tileImages: HTMLCanvasElement[] = [];
@@ -92,16 +113,13 @@ function parseTileImages(
     );
   }
 
-  // NOTE: The transparencyColors list from the tileset is for collision detection (gColorMaskArray),
-  // NOT for visual rendering. For visual rendering, we render all colors from the palette as-is.
-  // Only mark color 255 as transparent (used for blank tiles).
-  const colorIsTransparent = new Uint8Array(256);
-  colorIsTransparent[255] = 1; // Only color 255 is visually transparent
+  // NOTE: In the original C code, transparency colors (gColorMaskArray) are used ONLY
+  // for collision detection via the render engine's collision system.
+  // They are NOT used to make pixels visually transparent.
+  // Every pixel is rendered with its palette color.
+  // Therefore, we do NOT create a colorIsTransparent array for visual rendering.
 
   const tileData = new Uint8Array(buffer, offsetToTileDefinitions);
-
-  // Debug: check if palette is being used
-  // Parser does not emit palette/color debug logs; diagnostic tests will collect raw palette data.
 
   for (let tileIndex = 0; tileIndex < numTileDefinitions; tileIndex++) {
     const canvas = document.createElement("canvas");
@@ -117,22 +135,23 @@ function parseTileImages(
     const imageData = ctx.createImageData(TILE_SIZE, TILE_SIZE);
     const offset = tileIndex * BYTES_PER_TILE;
 
-    // Convert indexed color to RGBA, applying transparency
+    // Convert indexed color to RGBA
+    // All pixels use their palette color; no special transparency handling
     for (let i = 0; i < BYTES_PER_TILE; i++) {
       if (offset + i >= tileData.length) break;
 
       const colorIndex = tileData[offset + i];
       const pixelOffset = i * 4;
 
-      imageData.data[pixelOffset + 0] = colorPalette[colorIndex * 4 + 0];
-      imageData.data[pixelOffset + 1] = colorPalette[colorIndex * 4 + 1];
-      imageData.data[pixelOffset + 2] = colorPalette[colorIndex * 4 + 2];
-
-      // Apply transparency - if this color is marked as transparent, use alpha 0
-      if (colorIsTransparent[colorIndex]) {
-        imageData.data[pixelOffset + 3] = 0; // Transparent
-      } else {
-        imageData.data[pixelOffset + 3] = colorPalette[colorIndex * 4 + 3]; // Use palette alpha
+      // Bounds check for palette access
+      const colorIdx = colorIndex || 0; // Default to 0 if undefined
+      const paletteOffset = (colorIdx & 0xff) * 4;
+      if (paletteOffset + 3 < colorPalette.length) {
+        // Copy RGBA directly from palette
+        imageData.data[pixelOffset + 0] = colorPalette[paletteOffset] ?? 0;
+        imageData.data[pixelOffset + 1] = colorPalette[paletteOffset + 1] ?? 0;
+        imageData.data[pixelOffset + 2] = colorPalette[paletteOffset + 2] ?? 0;
+        imageData.data[pixelOffset + 3] = colorPalette[paletteOffset + 3] ?? 255;
       }
     }
 
@@ -546,7 +565,8 @@ export function mightyMikeMapToBinary(map: MightyMikeMap): ArrayBuffer {
     offset = offsetToAltMap;
     for (let y = 0; y < map.mapHeight; y++) {
       for (let x = 0; x < map.mapWidth; x++) {
-        data.setUint8(offset, map.altMap[y][x]);
+        const altMapValue = map.altMap[y]?.[x] ?? 0;
+        data.setUint8(offset, altMapValue);
         offset += 1;
       }
     }

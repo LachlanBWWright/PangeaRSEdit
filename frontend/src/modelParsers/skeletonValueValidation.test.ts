@@ -411,10 +411,10 @@ describe("Comprehensive Skeleton Value Validation", () => {
 
             for (let i = 0; i < numVertices; i++) {
               const weightSum =
-                weightsArray[i * 4] +
-                weightsArray[i * 4 + 1] +
-                weightsArray[i * 4 + 2] +
-                weightsArray[i * 4 + 3];
+                (weightsArray[i * 4] ?? 0) +
+                (weightsArray[i * 4 + 1] ?? 0) +
+                (weightsArray[i * 4 + 2] ?? 0) +
+                (weightsArray[i * 4 + 3] ?? 0);
 
               if (weightSum > 0) {
                 verticesWithWeights++;

@@ -95,7 +95,6 @@ export function BugdomEditorView({
         dataHistoryLength={dataHistory.items.length}
         terrainHasSTgd={showSupertileMenu}
         hasFenceData={fenceData !== null}
-        hasLiquidData={false} // Bugdom doesn't have water
       />
       <div>
         {view === View.fences && fenceData && (

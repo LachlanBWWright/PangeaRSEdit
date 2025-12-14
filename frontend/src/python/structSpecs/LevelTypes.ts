@@ -7,7 +7,6 @@
 
 import { FenceType } from "../../data/fences/ottoFenceType";
 import { WaterBodyType } from "../../data/water/ottoWaterBodyType";
-import type { MightyMikeTileValue } from "./mightyMikeInterface";
 
 // ============================================================================
 // HEADER TYPES

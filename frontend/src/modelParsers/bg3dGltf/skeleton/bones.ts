@@ -109,7 +109,7 @@ export function gltfJointsToBg3dBones(joints: Node[], skin: Skin): BG3DBone[] {
         const skeletonRoot = skin.getSkeleton();
         if (jointParent !== skeletonRoot) {
           // Find the index of the parent in the joints list
-          const parentIndex = joints.indexOf(jointParent);
+          const parentIndex = joints.findIndex((j) => j === (jointParent as Node));
           if (parentIndex !== -1) {
             parentBone = parentIndex;
           }
@@ -145,7 +145,7 @@ export function gltfJointsToBg3dBones(joints: Node[], skin: Skin): BG3DBone[] {
       // Convert glTF matrix (column-major) to our Mat4
       localMatrix = createMatrix4();
       for (let i = 0; i < 16; i++) {
-        localMatrix[i] = jointMatrix[i];
+        localMatrix[i] = jointMatrix[i] ?? 0;
       }
     } else {
       // Build matrix from TRS components - simplified for now

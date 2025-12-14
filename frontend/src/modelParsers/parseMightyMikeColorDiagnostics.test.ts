@@ -1,7 +1,6 @@
 import { describe, it, expect, beforeAll } from "vitest";
 import { readFileSync } from "fs";
 import { join } from "path";
-import { parseMightyMikeTileSet } from "./parseMightyMike";
 import { extractTGAPalette } from "../utils/tgaParser";
 import { setApplyColorCorrection } from "../utils/tgaParser";
 
@@ -24,6 +23,23 @@ function parseTGAHeaderLocal(buffer: ArrayBuffer) {
   };
 }
 
+interface PaletteStats {
+  avgR: number;
+  avgG: number;
+  avgB: number;
+  greenRatio: number;
+  count: number;
+}
+
+interface SceneStats {
+  header: unknown;
+  paletteProvided: boolean;
+  paletteBytesPerEntry: number;
+  paletteStats: PaletteStats | null;
+  paletteRawStats?: PaletteStats | null;
+  rawPaletteBytes?: number[] | null;
+}
+
 describe("Mighty Mike Color Diagnostics", () => {
   const scenes = [
     { name: "jurassic", paletteFile: "dinoscene.tga" },
@@ -35,14 +51,12 @@ describe("Mighty Mike Color Diagnostics", () => {
 
   const baseDir = join(__dirname, "../../public/assets/mightyMike/terrain");
 
-  const sceneStats: Record<string, any> = {};
+  const sceneStats: Record<string, SceneStats> = {};
 
   beforeAll(() => {
     for (const scene of scenes) {
-      const tilesetPath = join(baseDir, `${scene.name}.tileset`);
       const palettePath = join(baseDir, scene.paletteFile);
 
-      const tilesetBuf = nodeBufferToArrayBuffer(readFileSync(tilesetPath));
       const palBuf = nodeBufferToArrayBuffer(readFileSync(palettePath));
 
       const header = parseTGAHeaderLocal(palBuf);
@@ -54,14 +68,7 @@ describe("Mighty Mike Color Diagnostics", () => {
       setApplyColorCorrection(true);
       const paletteBytesPerEntry = header.colorMapDepth / 8;
 
-      // Parse tileset with and without palette
-      const parsedWithPalette = parseMightyMikeTileSet(
-        tilesetBuf,
-        paletteResult ? new Uint8Array(paletteResult.colors) : undefined,
-      );
-      const parsedNoPalette = parseMightyMikeTileSet(tilesetBuf);
-
-      const stats: any = {
+      const stats: SceneStats = {
         header,
         paletteProvided: !!paletteResult,
         paletteBytesPerEntry,
@@ -76,9 +83,9 @@ describe("Mighty Mike Color Diagnostics", () => {
         let greenCount = 0;
         for (let i = 0; i < count; i++) {
           const o = i * 4;
-          const r = colors[o];
-          const g = colors[o + 1];
-          const b = colors[o + 2];
+          const r = colors[o] ?? 0;
+          const g = colors[o + 1] ?? 0;
+          const b = colors[o + 2] ?? 0;
           sumR += r;
           sumG += g;
           sumB += b;
@@ -123,13 +130,13 @@ describe("Mighty Mike Color Diagnostics", () => {
     try {
       const outDir = join(__dirname, "../../tests-output");
       // Ensure directory exists
-      // eslint-disable-next-line @typescript-eslint/no-var-requires
-      const fs = require("fs");
-      if (!fs.existsSync(outDir)) fs.mkdirSync(outDir, { recursive: true });
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const fsModule = require("fs") as { existsSync: (path: string) => boolean; mkdirSync: (path: string, opts: {recursive: boolean}) => void; writeFileSync: (path: string, content: string) => void };
+      if (!fsModule.existsSync(outDir)) fsModule.mkdirSync(outDir, { recursive: true });
       const outPath = join(outDir, "mighty-mike-palette-diagnostics.json");
-      fs.writeFileSync(outPath, JSON.stringify(sceneStats, null, 2));
+      fsModule.writeFileSync(outPath, JSON.stringify(sceneStats, null, 2));
       console.log(`Wrote palette diagnostics to ${outPath}`);
-    } catch (e) {
+    } catch {
       // Best-effort write; ignore errors in CI
     }
 
@@ -137,19 +144,24 @@ describe("Mighty Mike Color Diagnostics", () => {
     // has the highest greenRatio among scenes (i.e. they look 'correct')
     const ratios: Record<string, number> = {};
     for (const name of Object.keys(sceneStats)) {
-      const s = sceneStats[name];
-      ratios[name] = s.paletteStats ? s.paletteStats.greenRatio : 0;
+      const stats = sceneStats[name];
+      if (stats) {
+        ratios[name] = stats.paletteStats ? stats.paletteStats.greenRatio : 0;
+      }
     }
 
     const entries = Object.entries(ratios);
     entries.sort((a, b) => b[1] - a[1]);
-    const topScene = entries[0][0];
-    console.log("Top greenRatio scene:", topScene, entries[0][1]);
+    const topScene = entries[0]?.[0];
+    console.log("Top greenRatio scene:", topScene, entries[0]?.[1]);
 
     // For now just assert that each scene provided a palette and produced palette stats
     for (const name of Object.keys(sceneStats)) {
-      expect(sceneStats[name].paletteProvided).toBeTruthy();
-      expect(sceneStats[name].paletteStats).not.toBeNull();
+      const stats = sceneStats[name];
+      if (stats) {
+        expect(stats.paletteProvided).toBeTruthy();
+        expect(stats.paletteStats).not.toBeNull();
+      }
     }
   });
 });

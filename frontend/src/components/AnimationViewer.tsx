@@ -132,7 +132,7 @@ export function AnimationViewer({
   };
 
   const handleTimeChange = (newTime: number[]) => {
-    const time = newTime[0];
+    const time = newTime[0] ?? 0;
     if (currentActionRef.current && animationMixer) {
       currentActionRef.current.time = time;
       setCurrentTime(time);
@@ -252,7 +252,7 @@ export function AnimationViewer({
 
             {/* Animation Info */}
             <div className="text-xs text-gray-400 space-y-1">
-              <div>Name: {animations[selectedAnimation].name}</div>
+              <div>Name: {animations[selectedAnimation]?.name}</div>
               <div>Duration: {formatTime(duration)}</div>
               <div>Status: {isPlaying ? "Playing" : "Paused"}</div>
             </div>

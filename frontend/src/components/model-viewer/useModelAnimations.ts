@@ -58,7 +58,8 @@ export function useModelAnimations(
       setAnimationMixer(null);
       if (onAnimationsReady) onAnimationsReady([], null);
     }
-  }, [gltfResult?.scene, gltfResult?.animations, onAnimationsReady]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gltfResult?.scene, gltfResult?.animations]);
 
   return { animationMixer };
 }

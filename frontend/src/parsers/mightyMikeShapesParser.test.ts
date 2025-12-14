@@ -9,8 +9,10 @@ describe("mightyMikeShapesParser", () => {
   beforeAll(() => {
     // Read actual shapes files from filesystem
     // Since vitest runs in Node environment, we can use fs
-    const fs = require("fs");
-    const path = require("path");
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const fs = require("fs") as { readFileSync: (path: string) => Buffer };
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const path = require("path") as { resolve: (...args: string[]) => string; join: (...args: string[]) => string };
 
     const publicDir = path.resolve(__dirname, "../../public");
     const mainPath = path.join(publicDir, "data/mightymike/shapes/main.shapes");
@@ -19,8 +21,8 @@ describe("mightyMikeShapesParser", () => {
     const mainBuffer = fs.readFileSync(mainPath);
     const jurassicBuffer = fs.readFileSync(jurassicPath);
 
-    mainShapesBuffer = mainBuffer.buffer.slice(mainBuffer.byteOffset, mainBuffer.byteOffset + mainBuffer.byteLength);
-    jurassic1Buffer = jurassicBuffer.buffer.slice(jurassicBuffer.byteOffset, jurassicBuffer.byteOffset + jurassicBuffer.byteLength);
+    mainShapesBuffer = mainBuffer.buffer.slice(mainBuffer.byteOffset, mainBuffer.byteOffset + mainBuffer.byteLength) as ArrayBuffer;
+    jurassic1Buffer = jurassicBuffer.buffer.slice(jurassicBuffer.byteOffset, jurassicBuffer.byteOffset + jurassicBuffer.byteLength) as ArrayBuffer;
   });
 
   it("should parse main.shapes file without errors", () => {

@@ -139,7 +139,10 @@ export async function parseLevelForGame(
   }
 
   // Apply preprocessing
-  const preprocessResult = preprocessJson(parseResult.value, gameType);
+  const preprocessResult = preprocessJson(
+    parseResult.value as unknown as Record<string, unknown>,
+    gameType
+  );
   if (isErr(preprocessResult)) {
     return preprocessResult;
   }
