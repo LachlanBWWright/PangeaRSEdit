@@ -204,8 +204,8 @@ export function OttoMaticKonvaView({
         />
       )}
       
-      {/* Tile/Supertiles view - show all layers */}
-      {(view === View.tiles || view === View.supertiles) && (
+      {/* Show all layers except when in tiles view */}
+      {view !== View.tiles && (
         <>
           {liquidData && (
             <WaterBodies

@@ -13,7 +13,7 @@ import type { EditorViewProps } from "./utils/editorViewTypes";
  */
 export function EditorView(props: EditorViewProps) {
   return (
-    <div data-testid="editor-view">
+    <div data-testid="editor-view" className="flex flex-col flex-1 min-h-0">
       <GameEditorView {...props} />
     </div>
   );

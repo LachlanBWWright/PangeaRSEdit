@@ -136,6 +136,8 @@ export function BugdomEditorView({
             headerData={headerData}
             fenceData={fenceData}
             liquidData={null}
+            itemData={itemData}
+            splineData={splineData}
             terrainData={terrainData}
             mapImages={mapImages}
           />

@@ -74,6 +74,7 @@ export type BG3DGltfWorkerResponse =
   | {
       type: "bg3d-parsed-to-glb";
       result: ArrayBuffer;
+      parsed: BG3DParseResult;
     }
   | {
       type: "bg3d-parsed-to-bg3d";
@@ -157,6 +158,7 @@ self.onmessage = async (e: MessageEvent<BG3DGltfWorkerMessage>) => {
       const response: BG3DGltfWorkerResponse = {
         type: "bg3d-parsed-to-glb",
         result: arrBuffer,
+        parsed: msg.parsed,
       };
       self.postMessage.call(self, response);
     } else if (msg.type === "bg3d-parsed-to-bg3d") {

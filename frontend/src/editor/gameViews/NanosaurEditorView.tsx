@@ -112,6 +112,8 @@ export function NanosaurEditorView({
             headerData={headerData}
             fenceData={null}
             liquidData={null}
+            itemData={itemData}
+            splineData={null}
             terrainData={terrainData}
             mapImages={mapImages}
           />

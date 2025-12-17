@@ -1,14 +1,25 @@
 import { Canvas } from "@react-three/fiber";
 import { MapControls } from "@react-three/drei";
 import { TerrainGeometry } from "./Terrain";
-import { FenceGeometry } from "./FenceGeometry"; // Import the new FenceGeometry component
-import { LiquidGeometry } from "./LiquidGeometry"; // Import the new LiquidGeometry component
+import { FenceGeometry } from "./FenceGeometry";
+import { LiquidGeometry } from "./LiquidGeometry";
+import { ItemGeometry } from "./ItemGeometry";
+import { SplineGeometry } from "./SplineGeometry";
+import { SplineItemGeometry } from "./SplineItemGeometry";
 import { useAtomValue } from "jotai";
 import { Globals } from "@/data/globals/globals";
+import {
+  Show3DSplines,
+  Show3DItems,
+  Show3DFences,
+  Show3DLiquid,
+} from "@/data/canvasView/canvasViewAtoms";
 import {
   HeaderData,
   FenceData,
   LiquidData,
+  ItemData,
+  SplineData,
   TerrainData,
 } from "@/python/structSpecs/LevelTypes";
 
@@ -16,16 +27,25 @@ export function ThreeView({
   headerData,
   fenceData,
   liquidData,
+  itemData,
+  splineData,
   terrainData,
   mapImages,
 }: {
   headerData: HeaderData;
   fenceData: FenceData | null;
   liquidData: LiquidData | null;
+  itemData: ItemData | null;
+  splineData: SplineData | null;
   terrainData: TerrainData;
   mapImages: HTMLCanvasElement[];
 }) {
   const globals = useAtomValue(Globals);
+  const show3DSplines = useAtomValue(Show3DSplines);
+  const show3DItems = useAtomValue(Show3DItems);
+  const show3DFences = useAtomValue(Show3DFences);
+  const show3DLiquid = useAtomValue(Show3DLiquid);
+
   const header = headerData.Hedr[1000].obj;
 
   const numWide = header.mapWidth;
@@ -41,6 +61,7 @@ export function ThreeView({
 
   return (
     <Canvas
+      style={{ width: "100%", height: "100%" }}
       camera={{
         fov: 60,
         near: 0.1,
@@ -78,21 +99,42 @@ export function ThreeView({
         terrainData={terrainData}
         mapImages={mapImages}
       />
-      {fenceData && (
+      {fenceData && show3DFences && (
         <FenceGeometry
           fenceData={fenceData}
           headerData={headerData}
           terrainData={terrainData}
         />
       )}
-      {liquidData && (
+      {liquidData && show3DLiquid && (
         <LiquidGeometry
           liquidData={liquidData}
           headerData={headerData}
           terrainData={terrainData}
         />
       )}
-      {/*  <TestGeometry header={header} globals={globals} /> */}
+      {itemData && show3DItems && (
+        <ItemGeometry
+          itemData={itemData}
+          headerData={headerData}
+          terrainData={terrainData}
+        />
+      )}
+      {splineData && show3DSplines && (
+        <SplineGeometry
+          splineData={splineData}
+          headerData={headerData}
+          terrainData={terrainData}
+        />
+      )}
+      {splineData && show3DSplines && (
+        <SplineItemGeometry
+          splineData={splineData}
+          headerData={headerData}
+          terrainData={terrainData}
+        />
+      )}
+      {/*  <TestGeometry header={header} globals={globals} */ }
     </Canvas>
   );
 }

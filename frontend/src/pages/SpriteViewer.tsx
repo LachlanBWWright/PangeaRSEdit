@@ -8,6 +8,7 @@ import {
   ShapesFile,
 } from "@/parsers/mightyMikeShapesParser";
 import { parseTGAToCanvas } from "@/utils/tgaImageParser";
+import { parseTilesetFile, createTilesetGridPreview, rerenderTilesetWithPalette, RGBColor } from "@/parsers/mightyMikeTilesetParser";
 import { isErr } from "@/types/result";
 import { FileUploadPanel } from "./SpriteViewer/components/FileUploadPanel";
 import { MightyMikeAssetBrowser } from "./SpriteViewer/components/MightyMikeAssetBrowser";
@@ -16,6 +17,9 @@ import { DisplayOptionsPanel, DisplayOptions } from "./SpriteViewer/components/D
 import { PaletteSelector } from "./SpriteViewer/components/PaletteSelector";
 import { PaletteEditor } from "./SpriteViewer/components/PaletteEditor";
 import { createPalette, clonePalette, Palette } from "./SpriteViewer/utils/paletteUtils";
+import { TilesetEditor } from "./SpriteViewer/components/TilesetEditor";
+import { MightyMikeTileset } from "@/parsers/mightyMikeTilesetParser";
+import { gMightyMikePalette } from "@/utils/mightyMikePalette";
 
 type FileType = "sprites" | "tga" | "tileset";
 
@@ -33,7 +37,8 @@ type TGAData = {
 
 type TilesetData = {
   type: "tileset";
-  data: HTMLCanvasElement;
+  data: MightyMikeTileset;
+  gridCanvas: HTMLCanvasElement;
   filename: string;
 };
 
@@ -54,11 +59,22 @@ export function SpriteViewer() {
   const [selectedShapeIndex, setSelectedShapeIndex] = useState<number>(0);
   const [selectedFrameIndex, setSelectedFrameIndex] = useState<number>(0);
 
+  // Tileset-specific state
+  const [selectedTileIndex, setSelectedTileIndex] = useState<number | undefined>(undefined);
+  const [currentTilesetScene, setCurrentTilesetScene] = useState<string>("jurassic");
+  const [currentTilesetPaletteScene, setCurrentTilesetPaletteScene] = useState<string>("jurassic");
+
   // Palette state
   const [customPalettes, setCustomPalettes] = useState<Palette[]>([]);
-  const [currentPalette, setCurrentPalette] = useState<Palette>(
-    createPalette("Default"),
-  );
+  const [currentPalette, setCurrentPalette] = useState<Palette>(() => {
+    // Initialize with grayscale palette (matching shapes parser default)
+    const grayscalePalette = createPalette("Default Grayscale");
+    for (let i = 0; i < 256; i++) {
+      const gray = Math.floor((i / 256) * 255);
+      grayscalePalette.colors[i] = { r: gray, g: gray, b: gray };
+    }
+    return grayscalePalette;
+  });
   const [showPaletteEditor, setShowPaletteEditor] = useState(false);
 
   // Display options
@@ -120,13 +136,8 @@ export function SpriteViewer() {
         });
         toast.success("Loaded TGA image");
       } else if (fileType === "tileset") {
-        const canvas = createTilesetPreview(file.name, buffer.byteLength);
-        setLoadedData({
-          type: "tileset",
-          data: canvas,
-          filename: file.name,
-        });
-        toast.success("Loaded tileset file");
+        toast.info("Custom tileset upload not yet fully supported. Use the asset browser to load tilesets.");
+        return;
       }
     } catch (error) {
       console.error("Error loading file:", error);
@@ -213,23 +224,165 @@ export function SpriteViewer() {
   const handleLoadTilesetFile = async (filename: string) => {
     setLoading(true);
     try {
-      const url = `assets/mightyMike/terrain/${filename}.tileset`;
-      const response = await fetch(url);
+      // Map scene names to TGA files
+      const sceneToTga: { [key: string]: string } = {
+        bargain: "bargainscene",
+        candy: "candyscene",
+        clown: "clownscene",
+        fairy: "fairyscene",
+        jurassic: "dinoscene",
+      };
 
-      if (!response.ok) {
-        toast.error(`Failed to load tileset: ${response.statusText}`);
+      const tgaName = sceneToTga[filename] || filename;
+
+      // Load TGA for palette
+      const tgaUrl = `assets/mightyMike/terrain/${tgaName}.tga`;
+      const tgaResponse = await fetch(tgaUrl);
+
+      if (!tgaResponse.ok) {
+        toast.error(`Failed to load palette from TGA: ${tgaResponse.statusText}`);
         return;
       }
 
-      const buffer = await response.arrayBuffer();
-      const canvas = createTilesetPreview(filename, buffer.byteLength);
+      const tgaBuffer = await tgaResponse.arrayBuffer();
+      const tgaCanvasResult = parseTGAToCanvas(tgaBuffer);
+
+      if (isErr(tgaCanvasResult)) {
+        toast.error(`Failed to parse TGA file: ${tgaCanvasResult.error.message}`);
+        return;
+      }
+
+      // Extract palette from TGA buffer and apply proper gamma correction
+      // using MightyMikePaletteManager which matches the C source code
+      const tgaView = new DataView(tgaBuffer);
+
+      // Parse TGA header to find color map
+      const idLength = tgaView.getUint8(0);
+      const colorMapType = tgaView.getUint8(1);
+      const colorMapOrigin = tgaView.getUint16(3, true); // Little-endian
+      const colorMapLength = tgaView.getUint16(5, true); // Little-endian
+      const colorMapDepth = tgaView.getUint8(7); // Bits per color
+      const colorMapBytesPerEntry = colorMapDepth / 8;
+
+      console.log("[TGA Palette] Header info:", {
+        idLength,
+        colorMapType,
+        colorMapOrigin,
+        colorMapLength,
+        colorMapDepth,
+        colorMapBytesPerEntry,
+        tgaBufferSize: tgaBuffer.byteLength,
+        expectedColorMapOffset: 18 + idLength,
+      });
+
+      const palette: RGBColor[] = [];
+
+      if (colorMapType === 1 && colorMapLength >= 256) {
+        // Color map exists, extract it as RGBA for palette manager
+        const colorMapOffset = 18 + idLength;
+
+        console.log("[TGA Palette] Extracting 256 colors from offset", colorMapOffset);
+
+        // Build RGBA array for palette manager
+        const rgbaData = new Uint8Array(1024); // 256 colors × 4 bytes
+        for (let i = 0; i < 256; i++) {
+          const entryOffset = colorMapOffset + (i * colorMapBytesPerEntry);
+
+          // TGA color map is stored as BGR(A)
+          const b = tgaView.getUint8(entryOffset);
+          const g = tgaView.getUint8(entryOffset + 1);
+          const r = tgaView.getUint8(entryOffset + 2);
+          const a = 255; // Opaque
+
+          rgbaData[i * 4 + 0] = r;
+          rgbaData[i * 4 + 1] = g;
+          rgbaData[i * 4 + 2] = b;
+          rgbaData[i * 4 + 3] = a;
+
+          palette.push({ r, g, b });
+
+          // Log first few and last few colors for debugging
+          if (i < 3 || i >= 253) {
+            console.log(`[TGA Palette] Color ${i}: RGB(${r}, ${g}, ${b}) from offset ${entryOffset}`);
+          }
+        }
+
+        // Load palette into MightyMikePaletteManager for gamma correction
+        gMightyMikePalette.loadPaletteFromRGBA(rgbaData);
+
+        console.log("[TGA Palette] Successfully extracted and gamma-corrected palette");
+      } else {
+        console.error("[TGA Palette] Invalid color map:", {
+          colorMapType,
+          colorMapLength,
+          expected: "colorMapType === 1 && colorMapLength >= 256",
+        });
+        toast.error("TGA file does not have a valid color map");
+        return;
+      }
+
+      // Load and parse tileset with gamma-corrected palette
+      const tilesetUrl = `assets/mightyMike/terrain/${filename}.tileset`;
+      const tilesetResponse = await fetch(tilesetUrl);
+
+      if (!tilesetResponse.ok) {
+        toast.error(`Failed to load tileset: ${tilesetResponse.statusText}`);
+        return;
+      }
+
+      const tilesetBuffer = await tilesetResponse.arrayBuffer();
+
+      // Use the gamma-corrected palette from MightyMikePaletteManager for tileset rendering
+      const tilesetPaletteRGBA = gMightyMikePalette.getPaletteAsRGBA();
+      const tilsetPalette: RGBColor[] = [];
+      for (let i = 0; i < 256; i++) {
+        const offset = i * 4;
+        tilsetPalette.push({
+          r: tilesetPaletteRGBA[offset] ?? 0,
+          g: tilesetPaletteRGBA[offset + 1] ?? 0,
+          b: tilesetPaletteRGBA[offset + 2] ?? 0,
+        });
+      }
+
+      const tilesetResult = parseTilesetFile(tilesetBuffer, tilsetPalette);
+
+      if (isErr(tilesetResult)) {
+        toast.error(`Failed to parse tileset: ${tilesetResult.error.message}`);
+        return;
+      }
+
+      // Create grid preview of all tiles
+      const tileset = tilesetResult.value;
+      const gridCanvas = createTilesetGridPreview(tileset);
 
       setLoadedData({
         type: "tileset",
-        data: canvas,
+        data: tileset,
+        gridCanvas,
         filename,
       });
-      toast.success(`Loaded tileset: ${filename}`);
+      setSelectedTileIndex(undefined);
+      setCurrentTilesetScene(filename);
+      setCurrentTilesetPaletteScene(filename);
+
+      // Apply tileset's gamma-corrected palette to current palette for shape rendering
+      // We already have it from the palette manager
+      const tilsetPaletteColors: typeof currentPalette.colors = [];
+      const gammaCorrectectedRGBA = gMightyMikePalette.getPaletteAsRGBA();
+      for (let i = 0; i < 256; i++) {
+        const offset = i * 4;
+        tilsetPaletteColors.push({
+          r: gammaCorrectectedRGBA[offset] ?? 0,
+          g: gammaCorrectectedRGBA[offset + 1] ?? 0,
+          b: gammaCorrectectedRGBA[offset + 2] ?? 0,
+        });
+      }
+
+      const paletteWithScene = createPalette(`${filename} Scene Palette (Gamma-Corrected)`);
+      paletteWithScene.colors = tilsetPaletteColors;
+      setCurrentPalette(paletteWithScene);
+
+      toast.success(`Loaded tileset: ${filename} (${tileset.numTileDefinitions} tiles)`);
     } catch (error) {
       console.error("Error loading tileset:", error);
       toast.error(
@@ -312,13 +465,24 @@ export function SpriteViewer() {
   };
 
   const renderTGAOrTileset = () => {
-    if (
-      (loadedData?.type !== "tga" && loadedData?.type !== "tileset") ||
-      !canvasRef.current
-    )
-      return;
+    if (!canvasRef.current) return;
 
-    const sourceCanvas = loadedData.data;
+    let sourceCanvas: HTMLCanvasElement;
+
+    if (loadedData?.type === "tga") {
+      sourceCanvas = loadedData.data;
+    } else if (loadedData?.type === "tileset") {
+      // If a tile is selected, show that tile; otherwise show grid preview
+      if (selectedTileIndex !== undefined && selectedTileIndex >= 0 && selectedTileIndex < loadedData.data.tileImages.length) {
+        const tileCanvas = loadedData.data.tileImages[selectedTileIndex];
+        sourceCanvas = tileCanvas || loadedData.gridCanvas;
+      } else {
+        sourceCanvas = loadedData.gridCanvas;
+      }
+    } else {
+      return;
+    }
+
     const displayCanvas = canvasRef.current;
     const scaledWidth = sourceCanvas.width * displayOptions.zoomLevel;
     const scaledHeight = sourceCanvas.height * displayOptions.zoomLevel;
@@ -345,7 +509,7 @@ export function SpriteViewer() {
         renderTGAOrTileset();
       }
     }
-  }, [loadedData, selectedShapeIndex, selectedFrameIndex, displayOptions, currentPalette]);
+  }, [loadedData, selectedShapeIndex, selectedFrameIndex, displayOptions, currentPalette, selectedTileIndex]);
 
   // ===== Export =====
 
@@ -388,6 +552,241 @@ export function SpriteViewer() {
     });
   };
 
+  const handleDownloadTile = () => {
+    if (loadedData?.type !== "tileset" || selectedTileIndex === undefined) {
+      toast.error("No tile selected");
+      return;
+    }
+
+    const tileCanvas = loadedData.data.tileImages[selectedTileIndex];
+    if (!tileCanvas) {
+      toast.error("Tile not found");
+      return;
+    }
+
+    const link = document.createElement("a");
+    link.href = tileCanvas.toDataURL("image/png");
+    link.download = `tile_${selectedTileIndex}.png`;
+    link.click();
+    toast.success("Tile downloaded");
+  };
+
+  const handleDownloadTileset = () => {
+    if (loadedData?.type !== "tileset" || !loadedData.gridCanvas) {
+      toast.error("No tileset loaded");
+      return;
+    }
+
+    const link = document.createElement("a");
+    link.href = loadedData.gridCanvas.toDataURL("image/png");
+    link.download = `tileset_${loadedData.filename}.png`;
+    link.click();
+    toast.success("Tileset downloaded");
+  };
+
+  const handleDownloadAllTiles = () => {
+    if (loadedData?.type !== "tileset") {
+      toast.error("No tileset loaded");
+      return;
+    }
+
+    const tileset = loadedData.data;
+    toast.info(`Downloading ${tileset.numTileDefinitions} tiles...`);
+
+    tileset.tileImages.forEach((tileCanvas, tileIdx) => {
+      const link = document.createElement("a");
+      link.href = tileCanvas.toDataURL("image/png");
+      link.download = `tile_${tileIdx}.png`;
+      setTimeout(() => link.click(), tileIdx * 100);
+    });
+
+    toast.success("Tile download started");
+  };
+
+  const handlePaletteSelect = async (palette: Palette) => {
+    // If it's a predefined palette (scene name), load the actual palette from the TGA
+    const sceneNames = ["candy", "bargain", "clown", "fairy", "jurassic"];
+    const sceneName = sceneNames.find(
+      (name) => palette.name.toLowerCase() === name.toLowerCase()
+    );
+
+    if (sceneName) {
+      // Load the actual palette from the TGA file
+      const sceneToTga: { [key: string]: string } = {
+        bargain: "bargainscene",
+        candy: "candyscene",
+        clown: "clownscene",
+        fairy: "fairyscene",
+        jurassic: "dinoscene",
+      };
+
+      const tgaName = sceneToTga[sceneName] || sceneName;
+      const tgaUrl = `assets/mightyMike/terrain/${tgaName}.tga`;
+
+      try {
+        const response = await fetch(tgaUrl);
+        if (!response.ok) {
+          toast.error(`Failed to load palette for ${palette.name}`);
+          return;
+        }
+
+        const buffer = await response.arrayBuffer();
+        const tgaView = new DataView(buffer);
+
+        // Parse TGA header
+        const idLength = tgaView.getUint8(0);
+        const colorMapType = tgaView.getUint8(1);
+        const colorMapLength = tgaView.getUint16(5, true);
+        const colorMapDepth = tgaView.getUint8(7);
+        const colorMapBytesPerEntry = colorMapDepth / 8;
+
+        if (colorMapType === 1 && colorMapLength >= 256) {
+          const colorMapOffset = 18 + idLength;
+
+          // Build RGBA array for palette manager
+          const rgbaData = new Uint8Array(1024);
+          for (let i = 0; i < 256; i++) {
+            const entryOffset = colorMapOffset + (i * colorMapBytesPerEntry);
+            const b = tgaView.getUint8(entryOffset);
+            const g = tgaView.getUint8(entryOffset + 1);
+            const r = tgaView.getUint8(entryOffset + 2);
+            const a = 255;
+
+            rgbaData[i * 4 + 0] = r;
+            rgbaData[i * 4 + 1] = g;
+            rgbaData[i * 4 + 2] = b;
+            rgbaData[i * 4 + 3] = a;
+          }
+
+          // Load into palette manager
+          gMightyMikePalette.loadPaletteFromRGBA(rgbaData);
+
+          // Get gamma-corrected palette
+          const gammaCorrectectedRGBA = gMightyMikePalette.getPaletteAsRGBA();
+          const paletteColors: typeof palette.colors = [];
+          for (let i = 0; i < 256; i++) {
+            const offset = i * 4;
+            paletteColors.push({
+              r: gammaCorrectectedRGBA[offset] ?? 0,
+              g: gammaCorrectectedRGBA[offset + 1] ?? 0,
+              b: gammaCorrectectedRGBA[offset + 2] ?? 0,
+            });
+          }
+
+          const loadedPalette = createPalette(palette.name);
+          loadedPalette.colors = paletteColors;
+          setCurrentPalette(loadedPalette);
+          toast.success(`Loaded ${palette.name} palette`);
+        } else {
+          toast.error("Invalid TGA palette format");
+        }
+      } catch (error) {
+        console.error("Error loading palette:", error);
+        toast.error("Failed to load palette");
+      }
+    } else {
+      // Custom palette - just set it
+      setCurrentPalette(palette);
+    }
+  };
+
+  const handleTilesetPaletteSceneChange = async (sceneName: string) => {
+    setCurrentTilesetPaletteScene(sceneName);
+
+    // Load the palette from the TGA file without changing the tileset
+    const sceneToTga: { [key: string]: string } = {
+      bargain: "bargainscene",
+      candy: "candyscene",
+      clown: "clownscene",
+      fairy: "fairyscene",
+      jurassic: "dinoscene",
+    };
+
+    const tgaName = sceneToTga[sceneName] || sceneName;
+    const tgaUrl = `assets/mightyMike/terrain/${tgaName}.tga`;
+
+    try {
+      const response = await fetch(tgaUrl);
+      if (!response.ok) {
+        toast.error(`Failed to load palette for ${sceneName}`);
+        return;
+      }
+
+      const buffer = await response.arrayBuffer();
+      const tgaView = new DataView(buffer);
+
+      // Parse TGA header
+      const idLength = tgaView.getUint8(0);
+      const colorMapType = tgaView.getUint8(1);
+      const colorMapLength = tgaView.getUint16(5, true);
+      const colorMapDepth = tgaView.getUint8(7);
+      const colorMapBytesPerEntry = colorMapDepth / 8;
+
+      if (colorMapType === 1 && colorMapLength >= 256) {
+        const colorMapOffset = 18 + idLength;
+
+        // Build RGBA array for palette manager
+        const rgbaData = new Uint8Array(1024);
+        for (let i = 0; i < 256; i++) {
+          const entryOffset = colorMapOffset + (i * colorMapBytesPerEntry);
+          const b = tgaView.getUint8(entryOffset);
+          const g = tgaView.getUint8(entryOffset + 1);
+          const r = tgaView.getUint8(entryOffset + 2);
+          const a = 255;
+
+          rgbaData[i * 4 + 0] = r;
+          rgbaData[i * 4 + 1] = g;
+          rgbaData[i * 4 + 2] = b;
+          rgbaData[i * 4 + 3] = a;
+        }
+
+        // Load into palette manager
+        gMightyMikePalette.loadPaletteFromRGBA(rgbaData);
+
+        // Get gamma-corrected palette
+        const gammaCorrectectedRGBA = gMightyMikePalette.getPaletteAsRGBA();
+        const paletteColors: typeof currentPalette.colors = [];
+        for (let i = 0; i < 256; i++) {
+          const offset = i * 4;
+          paletteColors.push({
+            r: gammaCorrectectedRGBA[offset] ?? 0,
+            g: gammaCorrectectedRGBA[offset + 1] ?? 0,
+            b: gammaCorrectectedRGBA[offset + 2] ?? 0,
+          });
+        }
+
+        const loadedPalette = createPalette(`${sceneName} Palette (Mixed)`);
+        loadedPalette.colors = paletteColors;
+        setCurrentPalette(loadedPalette);
+
+        // Re-render the tileset with the new palette
+        if (loadedData?.type === "tileset") {
+          const newTileImages = rerenderTilesetWithPalette(loadedData.data, paletteColors);
+          const newGridCanvas = createTilesetGridPreview({
+            ...loadedData.data,
+            tileImages: newTileImages,
+          });
+
+          setLoadedData({
+            ...loadedData,
+            data: {
+              ...loadedData.data,
+              tileImages: newTileImages,
+            },
+            gridCanvas: newGridCanvas,
+          });
+        }
+
+        toast.success(`Applied ${sceneName} palette to tileset`);
+      } else {
+        toast.error("Invalid TGA palette format");
+      }
+    } catch (error) {
+      console.error("Error loading tileset palette:", error);
+      toast.error("Failed to load palette");
+    }
+  };
+
   return (
     <>
       <div className="h-full flex gap-4 p-4 bg-gray-900 text-white">
@@ -425,7 +824,7 @@ export function SpriteViewer() {
                 palettes={customPalettes}
                 currentPalette={currentPalette}
                 onPaletteSelect={(palette) => {
-                  setCurrentPalette(palette);
+                  handlePaletteSelect(palette);
                   setShowPaletteEditor(false);
                 }}
                 onCreateNew={() => {
@@ -476,6 +875,18 @@ export function SpriteViewer() {
             />
           )}
 
+          {/* Tileset Editor (only for tilesets) */}
+          {loadedData?.type === "tileset" && (
+            <TilesetEditor
+              tileCount={loadedData.data.numTileDefinitions}
+              selectedTileIndex={selectedTileIndex}
+              onSelectTile={setSelectedTileIndex}
+              currentTilesetScene={currentTilesetScene}
+              currentPaletteScene={currentTilesetPaletteScene}
+              onPaletteSceneChange={handleTilesetPaletteSceneChange}
+            />
+          )}
+
           {/* Display Options */}
           {loadedData && (
             <DisplayOptionsPanel
@@ -503,6 +914,37 @@ export function SpriteViewer() {
               >
                 <Download className="w-4 h-4 mr-2" />
                 Download All Frames
+              </Button>
+            </div>
+          )}
+
+          {/* Export Options (only for tilesets) */}
+          {loadedData?.type === "tileset" && (
+            <div className="space-y-2">
+              <Button
+                variant="outline"
+                className="w-full text-white"
+                onClick={handleDownloadTile}
+                disabled={selectedTileIndex === undefined}
+              >
+                <Download className="w-4 h-4 mr-2" />
+                Download Tile
+              </Button>
+              <Button
+                variant="outline"
+                className="w-full text-white"
+                onClick={handleDownloadTileset}
+              >
+                <Download className="w-4 h-4 mr-2" />
+                Download Tileset
+              </Button>
+              <Button
+                variant="outline"
+                className="w-full text-white"
+                onClick={handleDownloadAllTiles}
+              >
+                <Download className="w-4 h-4 mr-2" />
+                Download All Tiles
               </Button>
             </div>
           )}
@@ -537,26 +979,4 @@ export function SpriteViewer() {
       </div>
     </>
   );
-}
-
-// Helper function to create tileset preview canvas
-function createTilesetPreview(filename: string, byteLength: number): HTMLCanvasElement {
-  const canvas = document.createElement("canvas");
-  canvas.width = 256;
-  canvas.height = 256;
-  const ctx = canvas.getContext("2d");
-  if (!ctx) return canvas;
-
-  ctx.fillStyle = "#1a1a2e";
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
-  ctx.fillStyle = "#ffffff";
-  ctx.font = "14px monospace";
-  ctx.fillText(`Tileset: ${filename}`, 10, 30);
-  ctx.fillText(`Size: ${(byteLength / 1024).toFixed(2)} KB`, 10, 60);
-  ctx.fillText(`Format: Binary tileset data`, 10, 90);
-  ctx.fillStyle = "#888888";
-  ctx.font = "12px monospace";
-  ctx.fillText("Tileset preview not yet implemented", 10, 130);
-
-  return canvas;
 }

@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { Canvas } from "@react-three/fiber";
 import { OrbitControls, useGLTF } from "@react-three/drei";
 import { EnhancedModelMesh } from "@/components/EnhancedModelMesh";
@@ -7,6 +8,16 @@ import { useModelAnimations } from "@/components/model-viewer/useModelAnimations
 import { AnimationUpdater } from "@/components/model-viewer/AnimationUpdater";
 
 export function ModelCanvas(props: ModelCanvasProps) {
+  // Memoize camera config to prevent Canvas re-initialization on every render
+  const cameraConfig = useMemo(
+    () => ({
+      position: [0, 0, 50] as const,
+      fov: 110,
+      near: 0.1,
+      far: 10000,
+    }),
+    [],
+  );
   const {
     gltfUrl,
     setModelNodes,
@@ -18,15 +29,14 @@ export function ModelCanvas(props: ModelCanvasProps) {
   } = props;
 
   // Always call hooks unconditionally (must be called in every render in same order)
-  // Use fallback empty string if gltfUrl is falsy
   const gltfResult = useGLTF(gltfUrl || "");
   console.log("gltfresult");
   console.log(gltfResult);
 
-  // Extract model hierarchy (must be called in every render)
+  // Extract model hierarchy
   useModelHierarchy(gltfResult, setModelNodes, onSceneReady);
 
-  // Handle animations (must be called in every render)
+  // Handle animations
   const { animationMixer } = useModelAnimations(gltfResult, onAnimationsReady);
 
   // Validate gltfUrl for rendering (after hooks)
@@ -39,19 +49,13 @@ export function ModelCanvas(props: ModelCanvasProps) {
   return (
     <>
       {/* ModelHierarchy is now rendered in the sidebar by ModelViewer */}
-      <Canvas
-        camera={{
-          position: [0, 0, 50],
-          fov: 110,
-          near: 0.1,
-          far: 10000,
-        }}
-      >
+      <Canvas camera={cameraConfig}>
         <ambientLight intensity={1} color={"#ff0000"} />
         <directionalLight position={[10, 10, 5]} intensity={1} />
         <directionalLight position={[-10, -10, -5]} intensity={1} />
         {gltfResult?.scene && (
           <EnhancedModelMesh
+            key={gltfResult.scene.uuid}
             scene={gltfResult.scene}
             wireframeMode={wireframeMode}
             showSkeleton={showSkeleton}

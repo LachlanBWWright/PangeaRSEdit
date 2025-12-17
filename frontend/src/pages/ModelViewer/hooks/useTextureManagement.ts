@@ -20,6 +20,7 @@ import type {
 } from "../../../modelParsers/bg3dGltfWorker";
 import type { BG3DParseResult } from "../../../modelParsers/parseBG3D";
 import { extractTexturesFromBG3D } from "../utils/textureUtils";
+import { rgba8ToArgb16 } from "../../../modelParsers/image/pngArgb";
 import type { Texture } from "../types";
 
 /**
@@ -72,19 +73,7 @@ export function useTextureManagement(options: UseTextureManagementOptions) {
 
         img.onload = async () => {
           try {
-            // Validate size matches the existing texture
-            if (
-              texture.size &&
-              (img.width !== texture.size.width ||
-                img.height !== texture.size.height)
-            ) {
-              toast.error(
-                `Image size mismatch: Expected ${texture.size.width}×${texture.size.height}, got ${img.width}×${img.height}`,
-              );
-              reject(new Error("Image size mismatch"));
-              return;
-            }
-
+            console.log(`[Texture Replacement] Image loaded: ${img.width}x${img.height}`);
             // Extract material and texture indices from texture name
             const nameMatch = texture.name.match(/Material_(\d+)_Texture_(\d+)/);
             if (!nameMatch) {
@@ -95,6 +84,28 @@ export function useTextureManagement(options: UseTextureManagementOptions) {
 
             const materialIndex = parseInt(nameMatch[1] ?? "0");
             const textureIndex = parseInt(nameMatch[2] ?? "0");
+            console.log(`[Texture Replacement] Replacing Material_${materialIndex}_Texture_${textureIndex}`);
+
+            // Get the existing texture from BG3D data first
+            const existingTexture =
+              bg3dParsed.materials[materialIndex]?.textures[textureIndex];
+            if (!existingTexture) {
+              toast.error("Texture not found in BG3D data");
+              reject(new Error("Texture not found in BG3D data"));
+              return;
+            }
+
+            // Validate size matches the existing texture (using BG3D dimensions as source of truth)
+            if (
+              img.width !== existingTexture.width ||
+              img.height !== existingTexture.height
+            ) {
+              toast.error(
+                `Image size mismatch: Expected ${existingTexture.width}×${existingTexture.height}, got ${img.width}×${img.height}`,
+              );
+              reject(new Error("Image size mismatch"));
+              return;
+            }
 
             // Convert image to canvas and extract pixel data
             const canvas = document.createElement("canvas");
@@ -110,35 +121,38 @@ export function useTextureManagement(options: UseTextureManagementOptions) {
             ctx.drawImage(img, 0, 0);
             const imageData = ctx.getImageData(0, 0, img.width, img.height);
 
-            // Convert to RGB or RGBA pixel array based on existing texture format
-            const existingTexture =
-              bg3dParsed.materials[materialIndex]?.textures[textureIndex];
-            if (!existingTexture) {
-              toast.error("Texture not found in BG3D data");
-              reject(new Error("Texture not found in BG3D data"));
-              return;
-            }
+            // Helper to convert RGBA canvas data to the target pixel format
+            let newPixels: Uint8Array;
 
-            const isRGBA =
-              existingTexture.pixels.length === img.width * img.height * 4;
-            const newPixels = new Uint8Array(
-              isRGBA
-                ? img.width * img.height * 4
-                : img.width * img.height * 3,
-            );
-
-            for (let i = 0; i < imageData.data.length; i += 4) {
-              const pixelIndex = i / 4;
-              if (isRGBA) {
-                newPixels[pixelIndex * 4] = imageData.data[i] ?? 0; // R
-                newPixels[pixelIndex * 4 + 1] = imageData.data[i + 1] ?? 0; // G
-                newPixels[pixelIndex * 4 + 2] = imageData.data[i + 2] ?? 0; // B
-                newPixels[pixelIndex * 4 + 3] = imageData.data[i + 3] ?? 255; // A
-              } else {
+            if (existingTexture.srcPixelFormat === 6407) {
+              // GL_RGB (24-bit) - extract RGB only
+              newPixels = new Uint8Array(img.width * img.height * 3);
+              for (let i = 0; i < imageData.data.length; i += 4) {
+                const pixelIndex = i / 4;
                 newPixels[pixelIndex * 3] = imageData.data[i] ?? 0; // R
                 newPixels[pixelIndex * 3 + 1] = imageData.data[i + 1] ?? 0; // G
                 newPixels[pixelIndex * 3 + 2] = imageData.data[i + 2] ?? 0; // B
               }
+            } else if (existingTexture.srcPixelFormat === 6408) {
+              // GL_RGBA (32-bit) - use RGBA directly
+              newPixels = new Uint8Array(imageData.data);
+            } else if (existingTexture.srcPixelFormat === 33638) {
+              // GL_UNSIGNED_SHORT_1_5_5_5_REV (16-bit ARGB)
+              // Convert RGBA to ARGB16 format
+              const rgba = new Uint8Array(imageData.data);
+              const argb16 = rgba8ToArgb16(rgba);
+              // Create Uint8Array view of the ARGB16 buffer
+              newPixels = new Uint8Array(argb16.buffer, argb16.byteOffset, argb16.byteLength);
+              console.log(`[Texture Replacement] ARGB16 conversion: input RGBA length=${rgba.length}, argb16 count=${argb16.length}, output bytes length=${newPixels.length}`);
+            } else if (existingTexture.isJpeg) {
+              // JPEG textures should not be edited - they have complex format
+              toast.error("JPEG textures cannot be edited directly");
+              reject(new Error("JPEG textures cannot be edited"));
+              return;
+            } else {
+              // Unknown format - default to RGBA
+              toast.warning(`Unknown texture format ${existingTexture.srcPixelFormat}, using RGBA`);
+              newPixels = new Uint8Array(imageData.data);
             }
 
             // Update the BG3D parsed data with a proper deep copy
@@ -150,12 +164,15 @@ export function useTextureManagement(options: UseTextureManagementOptions) {
                     ...material,
                     textures: material.textures.map((tex, texIdx) => {
                       if (texIdx === textureIndex) {
-                        return {
+                        const updatedTexture = {
                           ...existingTexture,
                           pixels: newPixels,
                           width: img.width,
                           height: img.height,
+                          bufferSize: newPixels.byteLength,
                         };
+                        console.log(`[Texture Replacement] Updated texture: format=${updatedTexture.srcPixelFormat}, size=${img.width}x${img.height}, pixelBytes=${newPixels.byteLength}`);
+                        return updatedTexture;
                       }
                       return tex;
                     }),
@@ -164,6 +181,8 @@ export function useTextureManagement(options: UseTextureManagementOptions) {
                 return material;
               }),
             };
+
+            console.log(`[Texture Replacement] Sending to worker: ${updatedBG3D.materials[materialIndex]?.textures[textureIndex]?.width}x${updatedBG3D.materials[materialIndex]?.textures[textureIndex]?.height}`);
 
             // Reset scene state to prevent crashes
             onSceneReset();
@@ -195,23 +214,28 @@ export function useTextureManagement(options: UseTextureManagementOptions) {
             }
 
             if (result.type === "bg3d-parsed-to-glb") {
+              console.log(`[Texture Replacement] Worker returned GLB, parsed data included=${!!result.parsed}`);
               // Clean up old URL first
               if (gltfUrl) {
                 URL.revokeObjectURL(gltfUrl);
               }
 
-              // Update state with new model
-              onBg3dParsedChange(updatedBG3D);
+              // Update state with parsed data from worker (preserves all BG3D state including edited textures)
+              const preservedBG3D = result.parsed || updatedBG3D;
+              console.log(`[Texture Replacement] Using BG3D data: ${preservedBG3D.materials[materialIndex]?.textures[textureIndex]?.width}x${preservedBG3D.materials[materialIndex]?.textures[textureIndex]?.height}`);
+              onBg3dParsedChange(preservedBG3D);
 
               // Create new GLTF URL
               const glbBlob = new Blob([result.result], {
                 type: "model/gltf-binary",
               });
               const newUrl = URL.createObjectURL(glbBlob);
+              console.log(`[Texture Replacement] Created new GLB URL, size=${glbBlob.size}`);
               onGltfUrlChange(newUrl);
 
               // Re-extract textures to update the UI
-              const textures = extractTexturesFromBG3D(updatedBG3D);
+              const textures = await extractTexturesFromBG3D(preservedBG3D);
+              console.log(`[Texture Replacement] Re-extracted ${textures.length} textures`);
               onTexturesChange(textures);
 
               toast.success("Texture replaced successfully");

@@ -1,7 +1,7 @@
 /**
  * Standard Editor Toolbar
  * For Otto Matic, Bugdom 2, Nanosaur 2, Cro-Mag Rally, Billy Frontier
- * 
+ *
  * Features:
  * - All views enabled: Fences, Water, Items, Splines, Tiles, Supertiles
  */
@@ -84,7 +84,7 @@ export function StandardEditorToolbar({
         >
           Supertiles
         </Button>
-        <div className="grid col-span-2 xl:grid-cols-1 grid-cols-4 gap-2">
+        <div className="grid col-span-2  grid-cols-4 gap-2">
           <Button
             variant="zoom"
             disabled={dataHistoryIndex === 0}

@@ -148,6 +148,8 @@ export function StandardEditorView({
             headerData={headerData}
             fenceData={fenceData}
             liquidData={liquidData}
+            itemData={itemData}
+            splineData={splineData}
             terrainData={terrainData}
             mapImages={mapImages}
           />

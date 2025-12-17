@@ -47,6 +47,7 @@ export function Nanosaur1KonvaView({
   setItemData,
   terrainData,
   mapImages,
+  view,
   stage,
   setStage,
 }: Nanosaur1KonvaViewProps) {
@@ -136,9 +137,9 @@ export function Nanosaur1KonvaView({
       
       {/* Nanosaur 1 has no tile attributes or topology editing */}
       {/* Individual tiles are composed into supertiles at render time */}
-      
-      {/* Items - shown in all views */}
-      {itemData && (
+
+      {/* Items - shown except when in tiles view */}
+      {view !== View.tiles && itemData && (
         <Items itemData={itemData} setItemData={setItemDataNotNull} />
       )}
     </Stage>

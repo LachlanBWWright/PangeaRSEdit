@@ -27,6 +27,8 @@ import {
   extractAnimationsFromGLTF,
 } from "./skeletonSystemNew";
 
+import { decodeJpegNode } from "../utils/jpegDecompress";
+
 import { isErr } from "../types/result";
 
 import {
@@ -397,28 +399,57 @@ export function bg3dParsedToGLTF(
         let pngBuffer: Uint8Array<ArrayBufferLike>;
         try {
           if (tex.isJpeg) {
-            // JPEG texture (Nanosaur 2) - store as JPEG directly
-            // Note: glTF supports JPEG directly, so we can use it as-is
-            // The alpha channel would need to be handled separately if needed
-            const texture = doc.createTexture();
-            texture.setMimeType("image/jpeg");
-            texture.setImage(tex.pixels);
-            texture.setExtras({
-              width: tex.width,
-              height: tex.height,
-              srcPixelFormat: tex.srcPixelFormat,
-              dstPixelFormat: tex.dstPixelFormat,
-              bufferSize: tex.bufferSize,
-              isJpeg: true,
-              hasAlpha: !!tex.jpegAlphaData,
-            });
-            if (j === 0) {
-              const gltfMat = gltfMaterials[i];
-              if (gltfMat) {
-                gltfMat.setBaseColorTexture(texture);
+            // JPEG texture (Nanosaur 2) - decompress from QuickTime format and convert to PNG
+            console.log(`[Material ${i}] Processing JPEG texture, bufferSize: ${tex.bufferSize}`);
+
+            try {
+              // Extract payload from QuickTime ImageDescription format
+              const view = new DataView(tex.pixels.buffer, tex.pixels.byteOffset);
+              const offset = view.getInt32(0, false); // big-endian
+              const payloadSize = tex.bufferSize - offset;
+              const payloadView = new Uint8Array(tex.pixels.buffer, tex.pixels.byteOffset + offset, payloadSize);
+
+              console.log(`[Material ${i}] Offset: ${offset}, Payload size: ${payloadSize}`);
+
+              // Copy to new buffer for decodeJpegNode
+              const payloadBuffer = new Uint8Array(payloadSize);
+              payloadBuffer.set(payloadView);
+
+              // Decompress JPEG
+              const imageData = decodeJpegNode(payloadBuffer.buffer);
+              console.log(`[Material ${i}] Decompressed JPEG: ${imageData.width}x${imageData.height}`);
+
+              // Convert to PNG
+              const pngBuffer = rgba8ToPng(new Uint8Array(imageData.data), imageData.width, imageData.height);
+
+              const texture = doc.createTexture();
+              texture.setMimeType("image/png");
+              texture.setImage(pngBuffer);
+              texture.setExtras({
+                width: imageData.width,
+                height: imageData.height,
+                srcPixelFormat: tex.srcPixelFormat,
+                dstPixelFormat: tex.dstPixelFormat,
+                bufferSize: tex.bufferSize,
+                isJpeg: true,
+                hasAlpha: !!tex.jpegAlphaData,
+              });
+              if (j === 0) {
+                const gltfMat = gltfMaterials[i];
+                if (gltfMat) {
+                  gltfMat.setBaseColorTexture(texture);
+                }
               }
+              return; // Skip the rest of the texture processing
+            } catch (error) {
+              console.error(`[Material ${i}] Failed to decompress JPEG texture:`, error);
+              // Fall through to create a gray placeholder
+              pngBuffer = rgba8ToPng(
+                new Uint8Array(tex.width * tex.height * 4).fill(128),
+                tex.width,
+                tex.height
+              );
             }
-            return; // Skip the rest of the texture processing
           } else if (
             tex.srcPixelFormat === PixelFormatSrc.GL_UNSIGNED_SHORT_1_5_5_5_REV
           ) {

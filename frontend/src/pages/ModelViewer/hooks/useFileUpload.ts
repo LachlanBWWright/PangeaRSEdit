@@ -108,9 +108,25 @@ export function useFileUpload(options: UseFileUploadOptions) {
             return;
           }
 
+          // Parse skeleton file if provided
+          let skeletonData: SkeletonResource | undefined;
+          if (skeletonFile) {
+            try {
+              console.log("Parsing skeleton file with TypeScript implementation...");
+              const skeletonBuffer = await skeletonFile.arrayBuffer();
+              skeletonData = parseSkeletonRsrcTS(skeletonBuffer);
+              console.log(
+                `Successfully parsed skeleton with ${Object.keys(skeletonData.Bone || {}).length || 0} bones`,
+              );
+            } catch (error) {
+              console.error("Error parsing skeleton:", error);
+              toast.warning("Failed to load skeleton, continuing without animations");
+            }
+          }
+
           // Store the parsed BG3D data immediately so textures are available
           onBg3dParsedChange(bg3dResult.value);
-          const textures = extractTexturesFromBG3D(bg3dResult.value);
+          const textures = await extractTexturesFromBG3D(bg3dResult.value);
           onTexturesChange(textures);
 
           // Convert the parsed BG3D back to binary format for GLB conversion
@@ -128,10 +144,23 @@ export function useFileUpload(options: UseFileUploadOptions) {
                 reject(e);
                 worker.terminate();
               };
-              worker.postMessage({
-                type: "bg3d-to-glb",
-                buffer: bg3dBuffer,
-              });
+
+              if (skeletonData) {
+                // Send skeleton data with the model
+                const message: BG3DGltfWorkerMessage = {
+                  type: "bg3d-with-skeleton-to-glb",
+                  bg3dBuffer: bg3dBuffer,
+                  skeletonData,
+                };
+                worker.postMessage(message);
+              } else {
+                // Send model only
+                const message: BG3DGltfWorkerMessage = {
+                  type: "bg3d-to-glb",
+                  buffer: bg3dBuffer,
+                };
+                worker.postMessage(message);
+              }
             },
           );
 
@@ -141,7 +170,21 @@ export function useFileUpload(options: UseFileUploadOptions) {
             return;
           }
 
-          if (result.type === "bg3d-to-glb") {
+          if (
+            result.type === "bg3d-to-glb" ||
+            result.type === "bg3d-with-skeleton-to-glb"
+          ) {
+            // Store parsed data for texture operations and editing
+            const enhancedParsed = result.parsed;
+            onBg3dParsedChange(enhancedParsed);
+
+            // Check if skeleton data was preserved
+            if (enhancedParsed.skeleton?.animations?.length) {
+              console.log(
+                `Animation metadata preserved: ${enhancedParsed.skeleton.animations.length} animations detected`,
+              );
+            }
+
             const glbBlob = new Blob([result.result], {
               type: "model/gltf-binary",
             });
@@ -230,7 +273,7 @@ export function useFileUpload(options: UseFileUploadOptions) {
           }
 
           // Extract and display textures
-          const textures = extractTexturesFromBG3D(result.parsed);
+          const textures = await extractTexturesFromBG3D(result.parsed);
           onTexturesChange(textures);
 
           // Create GLB blob and URL

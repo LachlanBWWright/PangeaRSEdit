@@ -179,19 +179,19 @@ export function rlwCompress(decompressedBuffer: ArrayBuffer): ArrayBuffer {
   let inputPos = 0;
   let outputPos = 8;
   
-  while (inputPos < inputSize) {
+  while (inputPos + 2 <= inputSize) {
     // Check for runs of identical words
     const currentWord = input.getUint16(inputPos, false);
     let runLength = 1;
-    
+
     while (
-      inputPos + runLength * 2 < inputSize &&
+      inputPos + runLength * 2 + 2 <= inputSize &&
       runLength < 128 &&
       input.getUint16(inputPos + runLength * 2, false) === currentWord
     ) {
       runLength++;
     }
-    
+
     if (runLength >= 3) {
       // Worth compressing as a run
       outputView.setUint8(outputPos++, 0x80 | (runLength - 1));
@@ -202,24 +202,24 @@ export function rlwCompress(decompressedBuffer: ArrayBuffer): ArrayBuffer {
       // Count literal words until we find a good run
       let literalCount = 1;
       let nextPos = inputPos + 2;
-      
-      while (literalCount < 128 && nextPos < inputSize) {
+
+      while (literalCount < 128 && nextPos + 2 <= inputSize) {
         const word = input.getUint16(nextPos, false);
         let nextRunLength = 1;
-        
+
         while (
-          nextPos + nextRunLength * 2 < inputSize &&
+          nextPos + nextRunLength * 2 + 2 <= inputSize &&
           nextRunLength < 128 &&
           input.getUint16(nextPos + nextRunLength * 2, false) === word
         ) {
           nextRunLength++;
         }
-        
+
         if (nextRunLength >= 3) {
           // Found a good run, stop collecting literals
           break;
         }
-        
+
         literalCount++;
         nextPos += 2;
       }

@@ -175,74 +175,79 @@ export function Bugdom1KonvaView({
       
       {/* Bugdom 1 has no tile attributes editing - individual tiles are composed into supertiles at render time */}
       
-      {/* Fence view - fences are primary */}
-      {view === View.fences && (
+      {/* Show all layers except when in tiles view */}
+      {view !== View.tiles && (
         <>
-          {itemData && (
-            <Items itemData={itemData} setItemData={setItemDataNotNull} />
+          {/* Fence view - fences are primary */}
+          {view === View.fences && (
+            <>
+              {itemData && (
+                <Items itemData={itemData} setItemData={setItemDataNotNull} />
+              )}
+              {splineData && (
+                <Splines
+                  splineData={splineData}
+                  setSplineData={setSplineDataNotNull}
+                />
+              )}
+              {fenceData && (
+                <Fences fenceData={fenceData} setFenceData={setFenceDataNotNull} />
+              )}
+            </>
           )}
-          {splineData && (
-            <Splines
-              splineData={splineData}
-              setSplineData={setSplineDataNotNull}
-            />
+
+          {/* Spline view - splines are primary */}
+          {view === View.splines && (
+            <>
+              {itemData && (
+                <Items itemData={itemData} setItemData={setItemDataNotNull} />
+              )}
+              {fenceData && (
+                <Fences fenceData={fenceData} setFenceData={setFenceDataNotNull} />
+              )}
+              {splineData && (
+                <Splines
+                  splineData={splineData}
+                  setSplineData={setSplineDataNotNull}
+                />
+              )}
+            </>
           )}
-          {fenceData && (
-            <Fences fenceData={fenceData} setFenceData={setFenceDataNotNull} />
+
+          {/* Items view - items are primary */}
+          {view === View.items && (
+            <>
+              {fenceData && (
+                <Fences fenceData={fenceData} setFenceData={setFenceDataNotNull} />
+              )}
+              {splineData && (
+                <Splines
+                  splineData={splineData}
+                  setSplineData={setSplineDataNotNull}
+                />
+              )}
+              {itemData && (
+                <Items itemData={itemData} setItemData={setItemDataNotNull} />
+              )}
+            </>
           )}
-        </>
-      )}
-      
-      {/* Spline view - splines are primary */}
-      {view === View.splines && (
-        <>
-          {itemData && (
-            <Items itemData={itemData} setItemData={setItemDataNotNull} />
-          )}
-          {fenceData && (
-            <Fences fenceData={fenceData} setFenceData={setFenceDataNotNull} />
-          )}
-          {splineData && (
-            <Splines
-              splineData={splineData}
-              setSplineData={setSplineDataNotNull}
-            />
-          )}
-        </>
-      )}
-      
-      {/* Items view - items are primary */}
-      {view === View.items && (
-        <>
-          {fenceData && (
-            <Fences fenceData={fenceData} setFenceData={setFenceDataNotNull} />
-          )}
-          {splineData && (
-            <Splines
-              splineData={splineData}
-              setSplineData={setSplineDataNotNull}
-            />
-          )}
-          {itemData && (
-            <Items itemData={itemData} setItemData={setItemDataNotNull} />
-          )}
-        </>
-      )}
-      
-      {/* Supertiles view - show all */}
-      {view === View.supertiles && (
-        <>
-          {fenceData && (
-            <Fences fenceData={fenceData} setFenceData={setFenceDataNotNull} />
-          )}
-          {itemData && (
-            <Items itemData={itemData} setItemData={setItemDataNotNull} />
-          )}
-          {splineData && (
-            <Splines
-              splineData={splineData}
-              setSplineData={setSplineDataNotNull}
-            />
+
+          {/* Supertiles view - show all */}
+          {view === View.supertiles && (
+            <>
+              {fenceData && (
+                <Fences fenceData={fenceData} setFenceData={setFenceDataNotNull} />
+              )}
+              {itemData && (
+                <Items itemData={itemData} setItemData={setItemDataNotNull} />
+              )}
+              {splineData && (
+                <Splines
+                  splineData={splineData}
+                  setSplineData={setSplineDataNotNull}
+                />
+              )}
+            </>
           )}
         </>
       )}
