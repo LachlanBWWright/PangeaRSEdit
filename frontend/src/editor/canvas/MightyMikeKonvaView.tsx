@@ -1,6 +1,6 @@
 /**
  * Mighty Mike KonvaView - Specialized view for Mighty Mike's 2D tile system
- * 
+ *
  * Features:
  * - Uses 2D tilemaps (32x32 pixel tiles)
  * - No fences support
@@ -49,6 +49,7 @@ export function MightyMikeKonvaView({
   setItemData,
   terrainData,
   mapImages,
+  view,
   stage,
   setStage,
 }: MightyMikeKonvaViewProps) {
@@ -57,7 +58,10 @@ export function MightyMikeKonvaView({
   const showCollisionOverlay = useAtomValue(ShowMightyMikeCollisionOverlay);
 
   const containerRef = useRef<HTMLDivElement>(null);
-  const [containerSize, setContainerSize] = useState({ width: 3000, height: 2000 });
+  const [containerSize, setContainerSize] = useState({
+    width: 3000,
+    height: 2000,
+  });
 
   // Update container size on mount and window resize
   useEffect(() => {
@@ -101,76 +105,79 @@ export function MightyMikeKonvaView({
       <Stage
         width={containerSize.width}
         height={containerSize.height}
-      scaleX={stage.scale}
-      scaleY={stage.scale}
-      x={stage.x}
-      y={stage.y}
-      draggable={true}
-      onClick={(e) => {
-        if (clickToAddItem === undefined) return;
-        const stage = e.target.getStage();
+        scaleX={stage.scale}
+        scaleY={stage.scale}
+        x={stage.x}
+        y={stage.y}
+        draggable={true}
+        onClick={(e) => {
+          if (clickToAddItem === undefined) return;
+          const stage = e.target.getStage();
 
-        const pos = stage?.getRelativePointerPosition();
-        if (!pos) return;
-        const x = Math.round(pos.x);
-        const z = Math.round(pos.y);
+          const pos = stage?.getRelativePointerPosition();
+          if (!pos) return;
+          const x = Math.round(pos.x);
+          const z = Math.round(pos.y);
 
-        setItemDataNotNull((itemData) => {
-          itemData.Itms[1000].obj.push({
-            x: x,
-            z: z,
-            type: clickToAddItem,
-            flags: 0,
-            p0: 0,
-            p1: 0,
-            p2: 0,
-            p3: 0,
+          setItemDataNotNull((itemData) => {
+            itemData.Itms[1000].obj.push({
+              x: x,
+              z: z,
+              type: clickToAddItem,
+              flags: 0,
+              p0: 0,
+              p1: 0,
+              p2: 0,
+              p3: 0,
+            });
           });
-        });
-      }}
-      onDblClick={() => {
-        setSelectedItem(undefined);
-      }}
-      onWheel={(e) => {
-        e.evt.preventDefault();
+        }}
+        onDblClick={() => {
+          setSelectedItem(undefined);
+        }}
+        onWheel={(e) => {
+          e.evt.preventDefault();
 
-        const scaleBy = 1.05;
-        const stage = e.target.getStage();
-        if (!stage) return;
-        const oldScale = stage.scaleX();
-        const pointerPosition = stage.getPointerPosition();
-        if (!pointerPosition) return;
+          const scaleBy = 1.05;
+          const stage = e.target.getStage();
+          if (!stage) return;
+          const oldScale = stage.scaleX();
+          const pointerPosition = stage.getPointerPosition();
+          if (!pointerPosition) return;
 
-        const mousePointTo = {
-          x: pointerPosition.x / oldScale - stage.x() / oldScale,
-          y: pointerPosition.y / oldScale - stage.y() / oldScale,
-        };
+          const mousePointTo = {
+            x: pointerPosition.x / oldScale - stage.x() / oldScale,
+            y: pointerPosition.y / oldScale - stage.y() / oldScale,
+          };
 
-        const newScale =
-          e.evt.deltaY < 0 ? oldScale * scaleBy : oldScale / scaleBy;
+          const newScale =
+            e.evt.deltaY < 0 ? oldScale * scaleBy : oldScale / scaleBy;
 
-        setStage({
-          scale: newScale,
-          x: (pointerPosition.x / newScale - mousePointTo.x) * newScale,
-          y: (pointerPosition.y / newScale - mousePointTo.y) * newScale,
-        });
-      }}
-    >
-      {/* Render 2D tile grid - Mighty Mike uses simple tile mapping, always visible */}
-      {terrainData?.Layr && mapImages.length > 0 && (
-        <MightyMikeSupertiles
-          headerData={headerData}
-          terrainData={terrainData}
-          mapImages={mapImages}
-          showCollisionOverlay={showCollisionOverlay}
-        />
-      )}
+          setStage({
+            scale: newScale,
+            x: (pointerPosition.x / newScale - mousePointTo.x) * newScale,
+            y: (pointerPosition.y / newScale - mousePointTo.y) * newScale,
+          });
+        }}
+      >
+        {/* Render 2D tile grid - Mighty Mike uses simple tile mapping, always visible */}
+        {terrainData?.Layr && mapImages.length > 0 && (
+          <MightyMikeSupertiles
+            headerData={headerData}
+            terrainData={terrainData}
+            mapImages={mapImages}
+            showCollisionOverlay={showCollisionOverlay}
+          />
+        )}
 
-      {/* Items - shown except when in tiles view */}
-      {view !== View.tiles && itemData && (
-        <MightyMikeItems itemData={itemData} setItemData={setItemDataNotNull} />
-      )}
-    </Stage>
+        {/* Items - shown except when in tiles view */}
+        {view !== View.tiles && itemData && (
+          <MightyMikeItems
+            itemData={itemData}
+            setItemData={setItemDataNotNull}
+          />
+        )}
+      </Stage>
     </div>
   );
 }

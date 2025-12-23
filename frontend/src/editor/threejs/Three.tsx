@@ -1,4 +1,4 @@
-import { Canvas } from "@react-three/fiber";
+import { Canvas, useThree } from "@react-three/fiber";
 import { MapControls } from "@react-three/drei";
 import { TerrainGeometry } from "./Terrain";
 import { FenceGeometry } from "./FenceGeometry";
@@ -6,14 +6,16 @@ import { LiquidGeometry } from "./LiquidGeometry";
 import { ItemGeometry } from "./ItemGeometry";
 import { SplineGeometry } from "./SplineGeometry";
 import { SplineItemGeometry } from "./SplineItemGeometry";
-import { useAtomValue } from "jotai";
+import { useAtomValue, useAtom } from "jotai";
 import { Globals } from "@/data/globals/globals";
 import {
   Show3DSplines,
   Show3DItems,
   Show3DFences,
   Show3DLiquid,
+  Export3DScene,
 } from "@/data/canvasView/canvasViewAtoms";
+import { GLTFExporter } from "three/examples/jsm/exporters/GLTFExporter.js";
 import {
   HeaderData,
   FenceData,
@@ -22,6 +24,77 @@ import {
   SplineData,
   TerrainData,
 } from "@/python/structSpecs/LevelTypes";
+
+import { useEffect, useRef } from "react";
+import { toast } from "sonner";
+
+function SceneExporter() {
+  const { scene } = useThree();
+  const [exportCounter] = useAtom(Export3DScene);
+  const last = useRef<number>(exportCounter);
+  const exportToastId = useRef<string | number | undefined>(undefined);
+
+  useEffect(() => {
+    if (exportCounter === last.current) return;
+    last.current = exportCounter;
+
+    const exporter = new GLTFExporter();
+
+    try {
+      // Show a loading toast while the exporter runs
+      exportToastId.current = toast.loading("Exporting 3D map...");
+
+      exporter.parse(
+        scene,
+        (result: any) => {
+          // Dismiss loading toast and show success
+          if (exportToastId.current !== undefined) {
+            toast.dismiss(exportToastId.current);
+            exportToastId.current = undefined;
+          }
+
+          if (result instanceof ArrayBuffer) {
+            const blob = new Blob([result], { type: "model/gltf-binary" });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = "map.glb";
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            URL.revokeObjectURL(url);
+            toast.success("3D map exported (map.glb)");
+          } else {
+            const output = JSON.stringify(result, null, 2);
+            const blob = new Blob([output], { type: "application/json" });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = "map.gltf";
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            URL.revokeObjectURL(url);
+            toast.success("3D map exported (map.gltf)");
+          }
+        },
+        // options: binary glb and embed images for Canvas/Texture serialization
+        { binary: true, embedImages: true } as any,
+      );
+    } catch (err: any) {
+      if (exportToastId.current !== undefined) {
+        toast.dismiss(exportToastId.current);
+        exportToastId.current = undefined;
+      }
+      console.error("Failed to export GLB", err);
+      toast.error("Failed to export 3D map", {
+        description: err?.message || String(err),
+      });
+    }
+  }, [exportCounter, scene]);
+
+  return null;
+}
 
 export function ThreeView({
   headerData,
@@ -94,6 +167,9 @@ export function ThreeView({
         // Start looking at the center of the map
         target={[unitsWide / 2, 0, unitsHigh / 2]}
       />
+
+      {/* Exporter hook component (listens for export triggers) */}
+      <SceneExporter />
       <TerrainGeometry
         headerData={headerData}
         terrainData={terrainData}
@@ -134,7 +210,7 @@ export function ThreeView({
           terrainData={terrainData}
         />
       )}
-      {/*  <TestGeometry header={header} globals={globals} */ }
+      {/*  <TestGeometry header={header} globals={globals} */}
     </Canvas>
   );
 }

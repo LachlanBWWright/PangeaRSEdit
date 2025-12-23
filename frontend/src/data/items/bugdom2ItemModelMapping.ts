@@ -19,8 +19,6 @@
  * - foliage.bg3d (FOLIAGE items)
  */
 
-import { ItemType } from "./bugdom2ItemType";
-
 /**
  * Describes how to load and render a 3D model for a Bugdom 2 item type
  */
@@ -71,34 +69,24 @@ export const BUGDOM2_ITEM_MODEL_MAPPINGS: Record<
 > = {
   // GARDEN level (garden.bg3d, indices 0-17)
   // TODO: Map GARDEN level items using garden.bg3d
-
   // SIDEWALK level (sidewalk.bg3d, indices 0-41)
   // TODO: Map SIDEWALK level items using sidewalk.bg3d
-
   // PLUMBING level (plumbing.bg3d, indices 0-4)
   // TODO: Map PLUMBING level items using plumbing.bg3d
-
   // PLAYROOM level (playroom.bg3d, indices 0-43)
   // TODO: Map PLAYROOM level items using playroom.bg3d
-
   // CLOSET level (closet.bg3d, indices 0-30)
   // TODO: Map CLOSET level items using closet.bg3d
-
   // GUTTER level (gutter.bg3d, indices 0-5)
   // TODO: Map GUTTER level items using gutter.bg3d
-
   // GARBAGE level (garbage.bg3d, indices 0-19)
   // TODO: Map GARBAGE level items using garbage.bg3d
-
   // BALSA level (balsa.bg3d, indices 0-7)
   // TODO: Map BALSA level items using balsa.bg3d
-
   // PARK level (park.bg3d, indices 0-29)
   // TODO: Map PARK level items using park.bg3d
-
   // GLOBAL items (global.bg3d, indices 0-42)
   // TODO: Map GLOBAL items using global.bg3d
-
   // FOLIAGE items (foliage.bg3d, indices 0-12)
   // TODO: Map FOLIAGE items using foliage.bg3d
 };

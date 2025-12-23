@@ -17,8 +17,6 @@
  * - global2.bg3d (GLOBAL2 items)
  */
 
-import { ItemType } from "./bugdomItemType";
-
 /**
  * Describes how to load and render a 3D model for a Bugdom item type
  */
@@ -56,28 +54,20 @@ export const BUGDOM_ITEM_MODEL_MAPPINGS: Record<
 > = {
   // LAWN level objects
   // TODO: Map remaining LAWN level items using lawn1.bg3d indices 0-12
-
   // LAWN 2 level objects
   // TODO: Map remaining LAWN 2 level items using lawn2.bg3d indices 0-9
-
   // POND level objects
   // TODO: Map remaining POND level items using pond.bg3d indices 0-11
-
   // FOREST level objects
   // TODO: Map remaining FOREST level items using forest.bg3d indices 0-12
-
   // HIVE level objects
   // TODO: Map remaining HIVE level items using hive.bg3d indices 0-28
-
   // NIGHT level objects
   // TODO: Map remaining NIGHT level items using night.bg3d indices 0-23
-
   // ANTHILL level objects
   // TODO: Map remaining ANTHILL level items using anthill.bg3d indices 0-6
-
   // GLOBAL 1 items
   // TODO: Map GLOBAL1 items using global1.bg3d indices 0-10
-
   // GLOBAL 2 items
   // TODO: Map GLOBAL2 items using global2.bg3d indices 0-8
 };

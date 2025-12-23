@@ -6,8 +6,6 @@
  * - /games/nanosaur2/Source/Headers/mobjtypes.h
  */
 
-import { ItemType } from "./nanosaur2ItemType";
-
 /**
  * Describes how to load and render a 3D model for a Nanosaur 2 item type
  */

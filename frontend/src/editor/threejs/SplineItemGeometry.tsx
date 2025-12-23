@@ -7,7 +7,6 @@ import {
 import { useAtomValue } from "jotai";
 import { Globals } from "@/data/globals/globals";
 import { getTerrainHeightAtPoint } from "./fenceUtils/getTerrainHeightAtPoint";
-import * as THREE from "three";
 
 interface SplineItemGeometryProps {
   splineData: SplineData;
@@ -37,7 +36,7 @@ export const SplineItemGeometry: React.FC<SplineItemGeometryProps> = ({
     const group: JSX.Element[] = [];
     const scale = globals.TILE_INGAME_SIZE / globals.TILE_SIZE;
 
-    splines.forEach((spline, splineIdx) => {
+    splines.forEach((_, splineIdx) => {
       const itemsKey = 1000 + splineIdx;
       const itemsData = splineItemsBySplineIdx[itemsKey];
 
@@ -67,6 +66,7 @@ export const SplineItemGeometry: React.FC<SplineItemGeometryProps> = ({
             Math.min(pointIdx, pointsData.obj.length - 1),
           );
           const point = pointsData.obj[clampedIdx];
+          if (!point) return;
 
           worldX = point.x * scale;
           worldZ = point.z * scale;
@@ -106,8 +106,13 @@ export const SplineItemGeometry: React.FC<SplineItemGeometryProps> = ({
         const color = colors[item.type % colors.length];
 
         group.push(
-          <mesh key={`spline-item-${splineIdx}-${itemIdx}`} position={[worldX, posY, worldZ]}>
-            <boxGeometry args={[SPLINE_ITEM_SIZE, SPLINE_ITEM_SIZE, SPLINE_ITEM_SIZE]} />
+          <mesh
+            key={`spline-item-${splineIdx}-${itemIdx}`}
+            position={[worldX, posY, worldZ]}
+          >
+            <boxGeometry
+              args={[SPLINE_ITEM_SIZE, SPLINE_ITEM_SIZE, SPLINE_ITEM_SIZE]}
+            />
             <meshStandardMaterial
               color={color}
               wireframe={false}

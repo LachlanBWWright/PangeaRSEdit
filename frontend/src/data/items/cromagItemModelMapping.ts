@@ -6,8 +6,6 @@
  * - /games/cromagrally/Source/Headers/mobjtypes.h
  */
 
-import { ItemType } from "./croMagItemType";
-
 /**
  * Describes how to load and render a 3D model for a Croma Rally item type
  */

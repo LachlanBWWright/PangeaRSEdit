@@ -6,8 +6,6 @@
  * - /games/billyfrontier/Source/Headers/mobjtypes.h
  */
 
-import { ItemType } from "./billyFrontierItemType";
-
 /**
  * Describes how to load and render a 3D model for a Billy Frontier item type
  */

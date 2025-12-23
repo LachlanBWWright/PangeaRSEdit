@@ -10,8 +10,6 @@
  * - MODEL_GROUP_GLOBAL (index 2): global.bg3d for universal items
  */
 
-import { ItemType } from "./nanosaurItemType";
-
 /**
  * Describes how to load and render a 3D model for a Nanosaur item type
  */
@@ -69,7 +67,6 @@ export const NANOSAUR_ITEM_MODEL_MAPPINGS: Record<
   // 25: Spore
   // 26: Fireball
   // TODO: Map LEVEL0 items using level0.bg3d
-
   // GLOBAL items (global.bg3d, indices 0-19)
   // GLOBAL_MObjType enum includes:
   // 0: JetFlame

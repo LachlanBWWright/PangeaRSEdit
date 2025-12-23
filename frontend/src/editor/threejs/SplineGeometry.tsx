@@ -36,7 +36,7 @@ export const SplineGeometry: React.FC<SplineGeometryProps> = ({
     const group: JSX.Element[] = [];
     const scale = globals.TILE_INGAME_SIZE / globals.TILE_SIZE;
 
-    splines.forEach((spline, splineIdx) => {
+    splines.forEach((_, splineIdx) => {
       const pointsKey = 1000 + splineIdx;
       const pointsData = splinePointsBySplineIdx[pointsKey];
 
@@ -106,26 +106,30 @@ export const SplineGeometry: React.FC<SplineGeometryProps> = ({
               dirZ = 0;
             if (nubIdx < nubsData.obj.length - 1) {
               const nextNub = nubsData.obj[nubIdx + 1];
-              const nextWorldX = nextNub.x * scale;
-              const nextWorldZ = nextNub.z * scale;
-              dirX = nextWorldX - worldX;
-              dirZ = nextWorldZ - worldZ;
-              const len = Math.sqrt(dirX * dirX + dirZ * dirZ);
-              if (len > 0) {
-                dirX /= len;
-                dirZ /= len;
+              if (nextNub) {
+                const nextWorldX = nextNub.x * scale;
+                const nextWorldZ = nextNub.z * scale;
+                dirX = nextWorldX - worldX;
+                dirZ = nextWorldZ - worldZ;
+                const len = Math.sqrt(dirX * dirX + dirZ * dirZ);
+                if (len > 0) {
+                  dirX /= len;
+                  dirZ /= len;
+                }
               }
             } else if (nubIdx > 0) {
               // For last nub, use direction from previous nub
               const prevNub = nubsData.obj[nubIdx - 1];
-              const prevWorldX = prevNub.x * scale;
-              const prevWorldZ = prevNub.z * scale;
-              dirX = worldX - prevWorldX;
-              dirZ = worldZ - prevWorldZ;
-              const len = Math.sqrt(dirX * dirX + dirZ * dirZ);
-              if (len > 0) {
-                dirX /= len;
-                dirZ /= len;
+              if (prevNub) {
+                const prevWorldX = prevNub.x * scale;
+                const prevWorldZ = prevNub.z * scale;
+                dirX = worldX - prevWorldX;
+                dirZ = worldZ - prevWorldZ;
+                const len = Math.sqrt(dirX * dirX + dirZ * dirZ);
+                if (len > 0) {
+                  dirX /= len;
+                  dirZ /= len;
+                }
               }
             }
 

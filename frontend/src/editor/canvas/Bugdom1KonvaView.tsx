@@ -1,6 +1,6 @@
 /**
  * Bugdom 1 KonvaView - Specialized view for Bugdom 1's tile system
- * 
+ *
  * Features:
  * - Uses individual 5x5 tiles (32x32 pixels each)
  * - Supports fences
@@ -10,7 +10,7 @@
  */
 
 import { useAtomValue, useSetAtom } from "jotai";
-import { useRef, useCallback } from "react";
+import { useRef, useCallback, useState, useEffect } from "react";
 import { Stage } from "react-konva";
 import { Updater } from "use-immer";
 import { SelectedFence } from "@/data/fences/fenceAtoms";
@@ -70,7 +70,30 @@ export function Bugdom1KonvaView({
   const setSelectedSpline = useSetAtom(SelectedSpline);
   const clickToAddItem = useAtomValue(ClickToAddItem);
 
-  const stageRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [containerSize, setContainerSize] = useState({
+    width: 3000,
+    height: 2000,
+  });
+
+  useEffect(() => {
+    const updateSize = () => {
+      if (containerRef.current) {
+        setContainerSize({
+          width: containerRef.current.offsetWidth,
+          height: containerRef.current.offsetHeight,
+        });
+      }
+    };
+    updateSize();
+    if (typeof ResizeObserver !== "undefined") {
+      const obs = new ResizeObserver(() => updateSize());
+      if (containerRef.current) obs.observe(containerRef.current);
+      return () => obs.disconnect();
+    }
+    window.addEventListener("resize", updateSize);
+    return () => window.removeEventListener("resize", updateSize);
+  }, []);
 
   // Non-null updaters
   const setItemDataNotNull: Updater<ItemData> = useCallback(
@@ -104,153 +127,167 @@ export function Bugdom1KonvaView({
   );
 
   return (
-    <Stage
-      width={stageRef.current?.offsetWidth ?? 3000}
-      height={stageRef.current?.offsetHeight ?? 2000}
-      scaleX={stage.scale}
-      scaleY={stage.scale}
-      x={stage.x}
-      y={stage.y}
-      draggable={true}
-      onClick={(e) => {
-        if (clickToAddItem === undefined) return;
-        const stage = e.target.getStage();
+    <div ref={containerRef} style={{ width: "100%", height: "100%" }}>
+      <Stage
+        width={containerSize.width}
+        height={containerSize.height}
+        scaleX={stage.scale}
+        scaleY={stage.scale}
+        x={stage.x}
+        y={stage.y}
+        draggable={true}
+        onClick={(e) => {
+          if (clickToAddItem === undefined) return;
+          const stage = e.target.getStage();
 
-        const pos = stage?.getRelativePointerPosition();
-        if (!pos) return;
-        const x = Math.round(pos.x);
-        const z = Math.round(pos.y);
+          const pos = stage?.getRelativePointerPosition();
+          if (!pos) return;
+          const x = Math.round(pos.x);
+          const z = Math.round(pos.y);
 
-        setItemDataNotNull((itemData) => {
-          itemData.Itms[1000].obj.push({
-            x: x,
-            z: z,
-            type: clickToAddItem,
-            flags: 0,
-            p0: 0,
-            p1: 0,
-            p2: 0,
-            p3: 0,
+          setItemDataNotNull((itemData) => {
+            itemData.Itms[1000].obj.push({
+              x: x,
+              z: z,
+              type: clickToAddItem,
+              flags: 0,
+              p0: 0,
+              p1: 0,
+              p2: 0,
+              p3: 0,
+            });
           });
-        });
-      }}
-      onDblClick={() => {
-        setSelectedFence(undefined);
-        setSelectedItem(undefined);
-        setSelectedSpline(undefined);
-      }}
-      onWheel={(e) => {
-        e.evt.preventDefault();
+        }}
+        onDblClick={() => {
+          setSelectedFence(undefined);
+          setSelectedItem(undefined);
+          setSelectedSpline(undefined);
+        }}
+        onWheel={(e) => {
+          e.evt.preventDefault();
 
-        const scaleBy = 1.05;
-        const stage = e.target.getStage();
-        if (!stage) return;
-        const oldScale = stage.scaleX();
-        const pointerPosition = stage.getPointerPosition();
-        if (!pointerPosition) return;
+          const scaleBy = 1.05;
+          const stage = e.target.getStage();
+          if (!stage) return;
+          const oldScale = stage.scaleX();
+          const pointerPosition = stage.getPointerPosition();
+          if (!pointerPosition) return;
 
-        const mousePointTo = {
-          x: pointerPosition.x / oldScale - stage.x() / oldScale,
-          y: pointerPosition.y / oldScale - stage.y() / oldScale,
-        };
+          const mousePointTo = {
+            x: pointerPosition.x / oldScale - stage.x() / oldScale,
+            y: pointerPosition.y / oldScale - stage.y() / oldScale,
+          };
 
-        const newScale =
-          e.evt.deltaY < 0 ? oldScale * scaleBy : oldScale / scaleBy;
+          const newScale =
+            e.evt.deltaY < 0 ? oldScale * scaleBy : oldScale / scaleBy;
 
-        setStage({
-          scale: newScale,
-          x: (pointerPosition.x / newScale - mousePointTo.x) * newScale,
-          y: (pointerPosition.y / newScale - mousePointTo.y) * newScale,
-        });
-      }}
-    >
-      {/* Render individual tiles - Bugdom 1 uses 5x5 tile system */}
-      {terrainData && terrainData.Layr && (
-        <IndividualTileSupertiles
-          headerData={headerData}
-          terrainData={terrainData}
-          mapImages={mapImages}
-        />
-      )}
-      
-      {/* Bugdom 1 has no tile attributes editing - individual tiles are composed into supertiles at render time */}
-      
-      {/* Show all layers except when in tiles view */}
-      {view !== View.tiles && (
-        <>
-          {/* Fence view - fences are primary */}
-          {view === View.fences && (
-            <>
-              {itemData && (
-                <Items itemData={itemData} setItemData={setItemDataNotNull} />
-              )}
-              {splineData && (
-                <Splines
-                  splineData={splineData}
-                  setSplineData={setSplineDataNotNull}
-                />
-              )}
-              {fenceData && (
-                <Fences fenceData={fenceData} setFenceData={setFenceDataNotNull} />
-              )}
-            </>
-          )}
+          setStage({
+            scale: newScale,
+            x: (pointerPosition.x / newScale - mousePointTo.x) * newScale,
+            y: (pointerPosition.y / newScale - mousePointTo.y) * newScale,
+          });
+        }}
+      >
+        {/* Render individual tiles - Bugdom 1 uses 5x5 tile system */}
+        {terrainData && terrainData.Layr && (
+          <IndividualTileSupertiles
+            headerData={headerData}
+            terrainData={terrainData}
+            mapImages={mapImages}
+          />
+        )}
 
-          {/* Spline view - splines are primary */}
-          {view === View.splines && (
-            <>
-              {itemData && (
-                <Items itemData={itemData} setItemData={setItemDataNotNull} />
-              )}
-              {fenceData && (
-                <Fences fenceData={fenceData} setFenceData={setFenceDataNotNull} />
-              )}
-              {splineData && (
-                <Splines
-                  splineData={splineData}
-                  setSplineData={setSplineDataNotNull}
-                />
-              )}
-            </>
-          )}
+        {/* Bugdom 1 has no tile attributes editing - individual tiles are composed into supertiles at render time */}
 
-          {/* Items view - items are primary */}
-          {view === View.items && (
-            <>
-              {fenceData && (
-                <Fences fenceData={fenceData} setFenceData={setFenceDataNotNull} />
-              )}
-              {splineData && (
-                <Splines
-                  splineData={splineData}
-                  setSplineData={setSplineDataNotNull}
-                />
-              )}
-              {itemData && (
-                <Items itemData={itemData} setItemData={setItemDataNotNull} />
-              )}
-            </>
-          )}
+        {/* Show all layers except when in tiles view */}
+        {view !== View.tiles && (
+          <>
+            {/* Fence view - fences are primary */}
+            {view === View.fences && (
+              <>
+                {itemData && (
+                  <Items itemData={itemData} setItemData={setItemDataNotNull} />
+                )}
+                {splineData && (
+                  <Splines
+                    splineData={splineData}
+                    setSplineData={setSplineDataNotNull}
+                  />
+                )}
+                {fenceData && (
+                  <Fences
+                    fenceData={fenceData}
+                    setFenceData={setFenceDataNotNull}
+                  />
+                )}
+              </>
+            )}
 
-          {/* Supertiles view - show all */}
-          {view === View.supertiles && (
-            <>
-              {fenceData && (
-                <Fences fenceData={fenceData} setFenceData={setFenceDataNotNull} />
-              )}
-              {itemData && (
-                <Items itemData={itemData} setItemData={setItemDataNotNull} />
-              )}
-              {splineData && (
-                <Splines
-                  splineData={splineData}
-                  setSplineData={setSplineDataNotNull}
-                />
-              )}
-            </>
-          )}
-        </>
-      )}
-    </Stage>
+            {/* Spline view - splines are primary */}
+            {view === View.splines && (
+              <>
+                {itemData && (
+                  <Items itemData={itemData} setItemData={setItemDataNotNull} />
+                )}
+                {fenceData && (
+                  <Fences
+                    fenceData={fenceData}
+                    setFenceData={setFenceDataNotNull}
+                  />
+                )}
+                {splineData && (
+                  <Splines
+                    splineData={splineData}
+                    setSplineData={setSplineDataNotNull}
+                  />
+                )}
+              </>
+            )}
+
+            {/* Items view - items are primary */}
+            {view === View.items && (
+              <>
+                {fenceData && (
+                  <Fences
+                    fenceData={fenceData}
+                    setFenceData={setFenceDataNotNull}
+                  />
+                )}
+                {splineData && (
+                  <Splines
+                    splineData={splineData}
+                    setSplineData={setSplineDataNotNull}
+                  />
+                )}
+                {itemData && (
+                  <Items itemData={itemData} setItemData={setItemDataNotNull} />
+                )}
+              </>
+            )}
+
+            {/* Supertiles view - show all */}
+            {view === View.supertiles && (
+              <>
+                {fenceData && (
+                  <Fences
+                    fenceData={fenceData}
+                    setFenceData={setFenceDataNotNull}
+                  />
+                )}
+                {itemData && (
+                  <Items itemData={itemData} setItemData={setItemDataNotNull} />
+                )}
+                {splineData && (
+                  <Splines
+                    splineData={splineData}
+                    setSplineData={setSplineDataNotNull}
+                  />
+                )}
+              </>
+            )}
+          </>
+        )}
+      </Stage>
+    </div>
   );
 }
