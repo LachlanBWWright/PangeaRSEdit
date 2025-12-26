@@ -146,7 +146,6 @@ export function parseShapesFile(buffer: ArrayBuffer): Result<ShapesFile, Error> 
     const compressionType = readI32BE(view, 4);
 
     // Decompress if necessary
-    let shapeBuffer: ArrayBuffer;
     const compressedData = new Uint8Array(buffer, 8); // data starts at byte 8
 
     let shapeBuffer: ArrayBuffer;
