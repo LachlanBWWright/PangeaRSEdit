@@ -14,7 +14,12 @@ import {
  * Converts a Node.js Buffer to an ArrayBuffer
  */
 function bufferToArrayBuffer(buf: Buffer): ArrayBuffer {
-  return buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength);
+  const ab = new ArrayBuffer(buf.length);
+  const view = new Uint8Array(ab);
+  for (let i = 0; i < buf.length; ++i) {
+    view[i] = buf[i];
+  }
+  return ab;
 }
 
 
@@ -128,7 +133,7 @@ describe("MightyMike Byte-Accurate Roundtrip Tests - All 5 Levels", () => {
         let buffer: Buffer;
         try {
           buffer = readFileSync(path);
-        } catch (e) {
+        } catch {
           console.warn(`Skipping - could not find file ${path}`);
           // Skip this test if tileset file doesn't exist
           expect(true).toBe(true);

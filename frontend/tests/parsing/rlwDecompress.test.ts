@@ -13,7 +13,6 @@ import {
   PACK_TYPE_RLB,
   PACK_TYPE_RLW,
   PACK_TYPE_NONE,
-  DecompressedFile,
 } from "@/utils/rlwDecompress";
 import { isErr } from "@/types/result";
 

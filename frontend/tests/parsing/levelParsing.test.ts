@@ -12,9 +12,7 @@ import {
   compareBuffers,
   compareLevelData,
   parseLevelBuffer,
-  parseNanosaur1Buffer,
   serializeLevelData,
-  performRoundtrip,
 } from "@/data/mapRoundtrip/parseLevel";
 import { LevelData } from "@/python/structSpecs/LevelTypes";
 import { isErr } from "@/types/result";

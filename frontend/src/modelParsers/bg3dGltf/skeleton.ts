@@ -32,7 +32,6 @@ import {
 export function bg3dSkeletonToGltf(
   parsedSkeleton: BG3DSkeleton,
   doc: Document,
-  _baseBuffer: unknown,
 ): Result<{ skin: Skin | null; animations: unknown[] }, Error> {
   console.log("Creating skeleton system with new implementation...");
   console.log(

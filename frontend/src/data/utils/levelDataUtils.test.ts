@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { splitLevelData, combineLevelData, AtomicLevelData } from "./levelDataUtils";
+import { splitLevelData, combineLevelData } from "./levelDataUtils";
 import type { LevelData } from "@/python/structSpecs/LevelTypes";
 
 describe("level data utils", () => {
