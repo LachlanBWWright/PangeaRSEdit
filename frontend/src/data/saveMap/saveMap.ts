@@ -3,6 +3,8 @@ import { LzssMessage, LzssResponse } from "@/utils/lzssWorker";
 import LzssWorker from "../utils/lzssWorker?worker";
 import { LevelData } from "@/python/structSpecs/LevelTypes";
 import { DataType, TileImageFormat, type GlobalsInterface } from "../globals/globals";
+import { validateResourceForkJson } from "../utils/levelDataUtils";
+import { toast } from "../../hooks/use-toast";
 
 /**
  * Save and download map and images as in IntroPrompt
@@ -36,7 +38,7 @@ export async function saveMap({
 
     const bufferList = await compressMapImages(mapImages);
     const imageDownloadBuffer = combineBuffersForDownload(bufferList);
-    downloadBlob(imageDownloadBuffer, mapImagesFile.name, ".ter");
+    downloadBlob(imageDownloadBuffer, mapImagesFile?.name || "images", ".ter");
   }
 
   console.log("TESThhhhhhh\n\n\n\n\n\n\ne\n\n\n\n\n\n\n");
@@ -93,7 +95,7 @@ async function processMapData({
     console.log("saving");
     console.log(data);
     // Validate the JSON before passing to pyodide to avoid uncaught Python assertion errors
-    const validation = validateResourceForkJson(data as Record<string, unknown>);
+    const validation = validateResourceForkJson(data as unknown as Record<string, unknown>);
     if (!validation.ok) {
       console.error("Invalid JSON for resource fork:", validation);
       toast({

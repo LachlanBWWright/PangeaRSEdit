@@ -42,7 +42,7 @@ describe("Exact Byte-for-Byte Roundtrip Validation", () => {
 
     // Step 2: Parse original data
     const originalSkeletonResource = parseSkeletonRsrcTS(
-      originalSkeletonData,
+      originalSkeletonData as unknown as ArrayBuffer,
     );
     const originalBg3dResult = parseBG3D(
       originalBg3dData.buffer.slice(

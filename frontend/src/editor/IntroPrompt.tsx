@@ -210,7 +210,7 @@ export function IntroPrompt({ pyodideWorker }: { pyodideWorker: Worker }) {
     try {
       const loadResPromise = new Promise<ArrayBuffer>((resolve, reject) => {
         // Validate JSON shape expected by rsrcdump.jsonio.json_to_resource_fork
-        const validation = validateResourceForkJson(combinedData as Record<string, unknown>);
+        const validation = validateResourceForkJson(combinedData as unknown as Record<string, unknown>);
         if (!validation.ok) {
           console.error("Invalid JSON for resource fork:", validation);
           toast.error("Download failed", {
@@ -376,7 +376,7 @@ export function IntroPrompt({ pyodideWorker }: { pyodideWorker: Worker }) {
 
     const imageDownloadLink = document.createElement("a");
     imageDownloadLink.href = imageUrl;
-    imageDownloadLink.setAttribute("download", mapImagesFile.name);
+    imageDownloadLink.setAttribute("download", mapImagesFile?.name || "images.ter");
     imageDownloadLink.click();
 
     toast.success("Map Downloaded!");

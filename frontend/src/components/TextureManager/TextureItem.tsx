@@ -30,7 +30,7 @@ interface Props {
   index: number;
   expanded: boolean;
   toggleExpansion: (index: number) => void;
-  fileInputRef: React.RefObject<HTMLInputElement>;
+  fileInputRef: React.RefObject<HTMLInputElement | null>;
   setSelectedTexture: (t: Texture) => void;
   onReplaceTextureAvailable: boolean;
   onTextureEditAvailable: boolean;

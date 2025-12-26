@@ -24,7 +24,7 @@ describe("Skeleton Animation glTF Validation", () => {
     const ottoData = readFileSync(ottoPath);
     const ottoSkeletonData = readFileSync(ottoSkeletonPath);
 
-    const skeleton = parseSkeletonRsrcTS(ottoSkeletonData);
+    const skeleton = parseSkeletonRsrcTS(ottoSkeletonData as unknown as ArrayBuffer);
     const bg3dParseResult = parseBG3D(ottoData.buffer, skeleton);
     if (!bg3dParseResult.ok) {
       throw bg3dParseResult.error;

@@ -144,7 +144,7 @@ export function combineLevelData(
   if (fenceData) Object.assign(combined, fenceData);
   if (splineData) Object.assign(combined, splineData);
 
-  return ok(combined as LevelData);
+  return ok(combined as unknown as LevelData);
 }
 
 /**

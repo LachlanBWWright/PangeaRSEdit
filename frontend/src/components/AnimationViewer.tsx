@@ -29,7 +29,7 @@ export function AnimationViewer({
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
-  const animationRequestRef = useRef<number>();
+  const animationRequestRef = useRef<number | undefined>(undefined);
   const currentActionRef = useRef<THREE.AnimationAction | null>(null);
 
   // Update animation state when mixer or selection changes
