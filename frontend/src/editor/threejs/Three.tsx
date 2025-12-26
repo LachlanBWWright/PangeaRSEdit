@@ -78,8 +78,15 @@ function SceneExporter() {
             toast.success("3D map exported (map.gltf)");
           }
         },
-        // options: binary glb and embed images for Canvas/Texture serialization
-        { binary: true, embedImages: true } as { binary: boolean; embedImages: boolean },
+        (error) => {
+          if (exportToastId.current !== undefined) {
+            toast.dismiss(exportToastId.current);
+            exportToastId.current = undefined;
+          }
+          console.error("Export error:", error);
+          toast.error("Failed to export 3D map");
+        },
+        { binary: true, embedImages: true },
       );
     } catch (err: unknown) {
       if (exportToastId.current !== undefined) {
@@ -88,7 +95,7 @@ function SceneExporter() {
       }
       console.error("Failed to export GLB", err);
       toast.error("Failed to export 3D map", {
-        description: err?.message || String(err),
+        description: err instanceof Error ? err.message : String(err),
       });
     }
   }, [exportCounter, scene]);

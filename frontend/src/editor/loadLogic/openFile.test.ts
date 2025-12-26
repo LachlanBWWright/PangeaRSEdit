@@ -90,7 +90,8 @@ describe("openFile", () => {
     });
 
     expect(setMapImagesFile).toHaveBeenCalled();
-    const fileArg = (setMapImagesFile as unknown as { mock: { calls: Array<[File]> } }).mock.calls[0][0];
+    const fileArg = (setMapImagesFile as unknown as { mock: { calls: Array<[File]> } }).mock.calls[0]?.[0];
+    if (!fileArg) throw new Error("File arg is undefined");
     expect(fileArg.name).toMatch(/_tiles\.bin$/);
     expect(setMapImages).toHaveBeenCalled();
   });

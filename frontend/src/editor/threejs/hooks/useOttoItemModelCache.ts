@@ -82,6 +82,9 @@ export const useOttoItemModelCache = (): UseOttoItemModelCacheReturn => {
 
         // Get the model at the specified index
         const targetModel = groupsContainer.children[modelIndex];
+        if (!targetModel) {
+          return null;
+        }
 
         // Clone the model preserving all geometry and materials
         const clonedModel = targetModel.clone(true);
@@ -91,7 +94,7 @@ export const useOttoItemModelCache = (): UseOttoItemModelCacheReturn => {
         newScene.add(clonedModel);
 
         // Return new gltf with extracted scene, keeping materials reference
-        return { ...gltf, scene: newScene };
+        return { ...gltf, scene: newScene as unknown as THREE.Group };
       } catch (error) {
         console.error(`Error in extractSubgroupByIndex:`, error);
         return null;
@@ -226,9 +229,10 @@ export const useOttoItemModelCache = (): UseOttoItemModelCacheReturn => {
               resolve(gltf);
             },
             undefined,
-            (error: Error) => {
+            (error: unknown) => {
               clearTimeout(timeoutId);
-              reject(new Error(`GLTFLoader error: ${error.message}`));
+              const errorMessage = error instanceof Error ? error.message : String(error);
+              reject(new Error(`GLTFLoader error: ${errorMessage}`));
             }
           );
         });

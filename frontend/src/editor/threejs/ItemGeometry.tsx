@@ -1,4 +1,5 @@
 import React, { useMemo, useEffect } from "react";
+import * as THREE from "three";
 import {
   ItemData,
   HeaderData,
@@ -10,7 +11,7 @@ import { Globals, Game } from "@/data/globals/globals";
 import { Show3DItemModels } from "@/data/canvasView/canvasViewAtoms";
 import { getTerrainHeightAtPoint } from "./fenceUtils/getTerrainHeightAtPoint";
 import { useOttoItemModelCache } from "./hooks/useOttoItemModelCache";
-import { getItemModelMapping } from "@/data/items/ottoItemModelMapping";
+import { getItemModelMapping, type ItemModelMapping } from "@/data/items/ottoItemModelMapping";
 
 interface ItemGeometryProps {
   itemData: ItemData;
@@ -100,7 +101,7 @@ const ItemModel: React.FC<{
   position: [number, number, number];
   itemType: number;
   clonedScene: THREE.Group | null;
-  mapping: Map<number, THREE.Group> | null;
+  mapping: ItemModelMapping | null;
 }> = ({ position, clonedScene }) => {
   if (!clonedScene) {
     return null;
@@ -241,7 +242,7 @@ export const ItemGeometry: React.FC<ItemGeometryProps> = ({
                   position={position}
                   itemType={item.type}
                   clonedScene={clonedScene}
-                  mapping={mapping}
+                  mapping={mapping ?? null}
                 />
               );
             }
