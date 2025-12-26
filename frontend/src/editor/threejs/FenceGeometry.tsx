@@ -95,18 +95,21 @@ const FenceSegmentMesh: React.FC<FenceSegmentMeshProps> = ({
       <bufferGeometry>
         <bufferAttribute
           attach="attributes-position"
+          args={[new Float32Array(geometry.vertices), 3]}
           count={4}
           array={new Float32Array(geometry.vertices)}
           itemSize={3}
         />
         <bufferAttribute
           attach="attributes-uv"
+          args={[new Float32Array(geometry.uvs), 2]}
           count={4}
           array={new Float32Array(geometry.uvs)}
           itemSize={2}
         />
         <bufferAttribute
           attach="index"
+          args={[new Uint16Array(geometry.indices), 1]}
           array={new Uint16Array(geometry.indices)}
           count={geometry.indices.length}
           itemSize={1}
@@ -231,7 +234,7 @@ export const FenceGeometry: React.FC<FenceGeometryProps> = ({
     // Get texture aspect ratio (fallback to 1 if not loaded yet)
     const texture = textures.get(imagePath);
     const textureAspectRatio = texture
-      ? texture.source.data.width / texture.source.data.height
+      ? (texture.source.data as { width: number; height: number }).width / (texture.source.data as { width: number; height: number }).height
       : 1;
 
     const segments = [];
