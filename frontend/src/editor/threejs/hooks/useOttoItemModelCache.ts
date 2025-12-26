@@ -13,9 +13,7 @@ import { useState, useRef, useCallback } from "react";
 import BG3DGltfWorker from "@/modelParsers/bg3dGltfWorker?worker";
 import { getItemModelMapping } from "@/data/items/ottoItemModelMapping";
 import * as THREE from "three";
-import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
-
-type GLTF = any;
+import { GLTFLoader, type GLTF } from "three/examples/jsm/loaders/GLTFLoader.js";
 
 interface CachedModel {
   gltf: GLTF | null;
@@ -223,12 +221,12 @@ export const useOttoItemModelCache = (): UseOttoItemModelCacheReturn => {
 
           loader.load(
             glbUrl,
-            (gltf: any) => {
+            (gltf: GLTF) => {
               clearTimeout(timeoutId);
               resolve(gltf);
             },
             undefined,
-            (error: any) => {
+            (error: Error) => {
               clearTimeout(timeoutId);
               reject(new Error(`GLTFLoader error: ${error.message}`));
             }

@@ -21,7 +21,7 @@ export function MiniThreeView({
     try {
       const base = (import.meta.env?.BASE_URL as string | undefined) ?? "/";
       return base + gltfUrl.replace(/^\//, "");
-    } catch (e) {
+    } catch {
       return null;
     }
   }, [gltfUrl]);

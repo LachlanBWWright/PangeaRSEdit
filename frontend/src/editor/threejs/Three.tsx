@@ -46,7 +46,7 @@ function SceneExporter() {
 
       exporter.parse(
         scene,
-        (result: any) => {
+        (result: ArrayBuffer | { [key: string]: unknown }) => {
           // Dismiss loading toast and show success
           if (exportToastId.current !== undefined) {
             toast.dismiss(exportToastId.current);
@@ -79,9 +79,9 @@ function SceneExporter() {
           }
         },
         // options: binary glb and embed images for Canvas/Texture serialization
-        { binary: true, embedImages: true } as any,
+        { binary: true, embedImages: true } as { binary: boolean; embedImages: boolean },
       );
-    } catch (err: any) {
+    } catch (err: unknown) {
       if (exportToastId.current !== undefined) {
         toast.dismiss(exportToastId.current);
         exportToastId.current = undefined;
