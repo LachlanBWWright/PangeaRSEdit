@@ -122,14 +122,11 @@ export const ItemGeometry: React.FC<ItemGeometryProps> = ({
   const show3DItemModels = useAtomValue(Show3DItemModels);
   const { modelCache, loadModel } = useOttoItemModelCache();
 
-  if (!itemData.Itms || !itemData.Itms[1000]) {
-    return null;
-  }
-
-  const items = itemData.Itms[1000].obj;
+  const items = itemData.Itms?.[1000]?.obj;
 
   // Group items by type for easier processing
   const itemsByType = useMemo(() => {
+    if (!items) return new Map();
     const groups = new Map<number, typeof items>();
     items.forEach((item) => {
       if (!groups.has(item.type)) {
@@ -183,6 +180,11 @@ export const ItemGeometry: React.FC<ItemGeometryProps> = ({
       });
     }
   }, [show3DItemModels, itemsByType, loadModel, globals.GAME_TYPE]);
+
+  // Early return after all hooks
+  if (!items || items.length === 0) {
+    return null;
+  }
 
   return (
     <group name="items">

@@ -24,15 +24,13 @@ export const SplineItemGeometry: React.FC<SplineItemGeometryProps> = ({
 }) => {
   const globals = useAtomValue(Globals);
 
-  if (!splineData.Spln || !splineData.Spln[1000] || !splineData.SpIt) {
-    return null;
-  }
-
-  const splines = splineData.Spln[1000].obj;
+  const splines = splineData.Spln?.[1000]?.obj;
   const splineItemsBySplineIdx = splineData.SpIt;
   const splinePointsBySplineIdx = splineData.SpPt;
+  const hasValidData = !!splines && !!splineItemsBySplineIdx;
 
   const itemsGroup = useMemo(() => {
+    if (!hasValidData || !splines) return [];
     const group: JSX.Element[] = [];
     const scale = globals.TILE_INGAME_SIZE / globals.TILE_SIZE;
 
@@ -126,6 +124,7 @@ export const SplineItemGeometry: React.FC<SplineItemGeometryProps> = ({
 
     return group;
   }, [
+    hasValidData,
     splines,
     splineItemsBySplineIdx,
     splinePointsBySplineIdx,
@@ -133,6 +132,10 @@ export const SplineItemGeometry: React.FC<SplineItemGeometryProps> = ({
     terrainData,
     globals,
   ]);
+
+  if (!hasValidData) {
+    return null;
+  }
 
   return <group name="spline-items">{itemsGroup}</group>;
 };

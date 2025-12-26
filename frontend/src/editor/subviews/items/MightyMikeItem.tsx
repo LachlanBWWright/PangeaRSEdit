@@ -62,7 +62,8 @@ export const MightyMikeItem = memo(function MightyMikeItem({
   // Load item image when toggle is on
   useEffect(() => {
     if (!showItemImages || !item) {
-      setItemImage(null);
+      // Reset state asynchronously
+      Promise.resolve().then(() => setItemImage(null));
       return;
     }
 
