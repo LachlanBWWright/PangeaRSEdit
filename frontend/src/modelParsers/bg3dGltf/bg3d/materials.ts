@@ -56,17 +56,28 @@ export function bg3dTexturesToGltf(
 
         try {
           // Handle JPEG textures (Nanosaur 2)
-          if ((tex as any).isJpeg) {
-            const jpegTex = tex as any;
-            console.log(`[Material ${i}] Processing JPEG texture, bufferSize: ${jpegTex.bufferSize}, expected dimensions: ${jpegTex.width}x${jpegTex.height}`);
+          if (tex.isJpeg) {
+            const jpegTex = tex;
+            console.log(
+              `[Material ${i}] Processing JPEG texture, bufferSize: ${jpegTex.bufferSize}, expected dimensions: ${jpegTex.width}x${jpegTex.height}`,
+            );
 
             // Extract payload from QuickTime ImageDescription format
-            const view = new DataView(jpegTex.pixels.buffer, jpegTex.pixels.byteOffset);
+            const view = new DataView(
+              jpegTex.pixels.buffer,
+              jpegTex.pixels.byteOffset,
+            );
             const offset = view.getInt32(0, false); // big-endian
             const payloadSize = jpegTex.bufferSize - offset;
-            const payloadView = new Uint8Array(jpegTex.pixels.buffer, jpegTex.pixels.byteOffset + offset, payloadSize);
+            const payloadView = new Uint8Array(
+              jpegTex.pixels.buffer,
+              jpegTex.pixels.byteOffset + offset,
+              payloadSize,
+            );
 
-            console.log(`[Material ${i}] Offset: ${offset}, Payload size: ${payloadSize}`);
+            console.log(
+              `[Material ${i}] Offset: ${offset}, Payload size: ${payloadSize}`,
+            );
 
             // Copy to new buffer for decodeJpegNode
             const payloadBuffer = new Uint8Array(payloadSize);
@@ -74,17 +85,29 @@ export function bg3dTexturesToGltf(
 
             // Decompress JPEG
             const imageData = decodeJpegNode(payloadBuffer.buffer);
-            console.log(`[Material ${i}] Decompressed JPEG: ${imageData.width}x${imageData.height}, data length: ${imageData.data.length}`);
-            console.log(`[Material ${i}] BG3D texture metadata: ${jpegTex.width}x${jpegTex.height}`);
+            console.log(
+              `[Material ${i}] Decompressed JPEG: ${imageData.width}x${imageData.height}, data length: ${imageData.data.length}`,
+            );
+            console.log(
+              `[Material ${i}] BG3D texture metadata: ${jpegTex.width}x${jpegTex.height}`,
+            );
 
             // Use decompressed dimensions (JPEG may differ from metadata)
             actualWidth = imageData.width;
             actualHeight = imageData.height;
-            console.log(`[Material ${i}] Using decompressed dimensions: ${actualWidth}x${actualHeight}`);
+            console.log(
+              `[Material ${i}] Using decompressed dimensions: ${actualWidth}x${actualHeight}`,
+            );
 
             // Convert to PNG
-            pngBuffer = rgba8ToPng(new Uint8Array(imageData.data), actualWidth, actualHeight);
-            console.log(`[Material ${i}] PNG buffer created, size: ${pngBuffer.length}`);
+            pngBuffer = rgba8ToPng(
+              new Uint8Array(imageData.data),
+              actualWidth,
+              actualHeight,
+            );
+            console.log(
+              `[Material ${i}] PNG buffer created, size: ${pngBuffer.length}`,
+            );
           } else if (
             tex.srcPixelFormat === PixelFormatSrc.GL_UNSIGNED_SHORT_1_5_5_5_REV
           ) {
@@ -114,14 +137,17 @@ export function bg3dTexturesToGltf(
             const fallbackRgba = new Uint8Array(tex.width * tex.height * 4);
             // Fill with gray color as placeholder
             for (let i = 0; i < fallbackRgba.length; i += 4) {
-              fallbackRgba[i] = 128;      // R
-              fallbackRgba[i + 1] = 128;  // G
-              fallbackRgba[i + 2] = 128;  // B
-              fallbackRgba[i + 3] = 255;  // A
+              fallbackRgba[i] = 128; // R
+              fallbackRgba[i + 1] = 128; // G
+              fallbackRgba[i + 2] = 128; // B
+              fallbackRgba[i + 3] = 255; // A
             }
             pngBuffer = rgba8ToPng(fallbackRgba, tex.width, tex.height);
           } catch (fallbackError) {
-            console.error(`Fallback also failed for material ${i}:`, fallbackError);
+            console.error(
+              `Fallback also failed for material ${i}:`,
+              fallbackError,
+            );
             // Last resort: use original pixels
             pngBuffer = tex.pixels;
           }
@@ -131,14 +157,23 @@ export function bg3dTexturesToGltf(
         texture.setMimeType("image/png");
 
         // Verify PNG header
-        const isPngValid = pngBuffer.length >= 8 &&
+        const isPngValid =
+          pngBuffer.length >= 8 &&
           pngBuffer[0] === 0x89 &&
           pngBuffer[1] === 0x50 &&
           pngBuffer[2] === 0x4e &&
           pngBuffer[3] === 0x47;
 
-        console.log(`[Material ${i}] Texture ${j}: Setting PNG with length ${pngBuffer.length}, valid: ${isPngValid}, dimensions: ${actualWidth}x${actualHeight}`);
-        console.log(`[Material ${i}] Texture ${j}: First 8 bytes: ${Array.from(pngBuffer.slice(0, 8)).map(b => '0x' + b.toString(16).padStart(2, '0')).join(' ')}`);
+        console.log(
+          `[Material ${i}] Texture ${j}: Setting PNG with length ${pngBuffer.length}, valid: ${isPngValid}, dimensions: ${actualWidth}x${actualHeight}`,
+        );
+        console.log(
+          `[Material ${i}] Texture ${j}: First 8 bytes: ${Array.from(
+            pngBuffer.slice(0, 8),
+          )
+            .map((b) => "0x" + b.toString(16).padStart(2, "0"))
+            .join(" ")}`,
+        );
 
         // gltf-transform expects a Buffer or Uint8Array
         // pngBuffer from rgba8ToPng is already a Buffer, so use it directly
@@ -216,15 +251,20 @@ export async function gltfMaterialsToBg3d(
               height: rgbaRes.height,
             };
 
-            const materialExtra = (materialExtras as Array<Record<string, unknown>>)[index]!;
-            const textureExtra = (materialExtra?.textureExtras as unknown[] | undefined)?.[0];
+            const materialExtra = (
+              materialExtras as Array<Record<string, unknown>>
+            )[index]!;
+            const textureExtra = (
+              materialExtra?.textureExtras as unknown[] | undefined
+            )?.[0];
             textures.push({
               pixels: pngRes.data,
               width: pngRes.width,
               height: pngRes.height,
               srcPixelFormat: PixelFormatSrc.GL_RGB, // BG3D default format
               dstPixelFormat:
-                ((textureExtra as Record<string, unknown> | undefined)?.dstPixelFormat as number | undefined) ||
+                ((textureExtra as Record<string, unknown> | undefined)
+                  ?.dstPixelFormat as number | undefined) ||
                 PixelFormatDst.GL_UNSIGNED_SHORT_5_5_5_1,
               bufferSize: pngRes.data.byteLength, // Use actual converted data size
             });

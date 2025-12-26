@@ -54,7 +54,7 @@ export function GameCard({
 
   return (
     <Card className="h-full flex flex-col min-h-0 overflow-hidden bg-gray-800 border-gray-700 text-white">
-      <CardContent className="flex-1 flex flex-col min-h-0 overflow-hidden p-4">
+      <CardContent className="flex-1 flex flex-col min-h-0 overflow-auto p-4">
         <div className="flex-none min-h-[2rem]">
           <h3 className="text-lg font-semibold">{title}</h3>
         </div>
@@ -63,7 +63,7 @@ export function GameCard({
           <MiniThreeView gltfUrl={modelPath} gameType={globals.GAME_TYPE} />
         </div>
 
-        <div className="flex-1 min-h-0 mt-2">{children}</div>
+        <div className="flex-1 min-h-0 mt-2 overflow-auto flex flex-col gap-1 text-2xl min-w-40">{children}</div>
 
         <div className="flex-none pt-2 border-t border-gray-700 mt-2">
           <p className="text-sm text-gray-300">

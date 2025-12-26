@@ -10,6 +10,27 @@
             "request": "launch",
             "program": "${file}",
             "console": "integratedTerminal"
+        },
+        {
+            "name": "Run Frontend (npm: dev)",
+            "type": "node-terminal",
+            "request": "launch",
+            "command": "npm run dev",
+            "cwd": "${workspaceFolder}/frontend"
+        },
+        {
+            "name": "Attach to Vite (Chrome)",
+            "type": "pwa-chrome",
+            "request": "launch",
+            "url": "http://localhost:5173",
+            "webRoot": "${workspaceFolder}/frontend",
+            "userDataDir": "${workspaceFolder}/.vscode/chrome"
+        }
+    ],
+    "compounds": [
+        {
+            "name": "Debug Frontend (dev + Chrome)",
+            "configurations": ["Run Frontend (npm: dev)", "Attach to Vite (Chrome)"]
         }
     ]
 }

@@ -12,7 +12,7 @@ import { EditorView } from "./EditorView";
 import { Button } from "@/components/ui/button";
 import { Updater, useImmer } from "use-immer";
 import { ottoPreprocessor } from "../data/processors/ottoPreprocessor";
-import { Globals } from "../data/globals/globals";
+import { Globals, DataType } from "../data/globals/globals";
 import { useAtom, useAtomValue } from "jotai";
 import { BlockHistoryUpdate } from "../data/globals/history";
 import LzssWorker from "../utils/lzssWorker?worker";
@@ -24,6 +24,7 @@ import {
   splitLevelData,
   combineLevelData,
   isAtomicDataComplete,
+  validateResourceForkJson,
 } from "../data/utils/levelDataUtils";
 import { isOk } from "../types/result";
 
@@ -172,7 +173,7 @@ export function IntroPrompt({ pyodideWorker }: { pyodideWorker: Worker }) {
   };
 
   const saveMap = useCallback(async () => {
-    if (!mapFile || !mapImagesFile) {
+    if (!mapFile || (globals.DATA_TYPE !== DataType.RSRC_FORK && !mapImagesFile)) {
       console.error("Download failed: Map file or images file not loaded");
       toast.error("Download failed", {
         description:
@@ -184,6 +185,7 @@ export function IntroPrompt({ pyodideWorker }: { pyodideWorker: Worker }) {
     toast.loading("Processing map data...");
 
     // Combine atomic data for file I/O
+    // Combine atomic data for serialization; optional sections may be missing
     const combinedDataResult = combineLevelData(getCurrentAtomicData());
 
     if (!isOk(combinedDataResult)) {
@@ -200,11 +202,23 @@ export function IntroPrompt({ pyodideWorker }: { pyodideWorker: Worker }) {
     const combinedData = combinedDataResult.value;
 
     //TODO: Find better solution
-    //remove timg from combinedData - needed to fix bug
-    delete combinedData.Timg;
+    //remove timg from combinedData - needed to fix bug for non-RSRC_FORK games
+    if (globals.DATA_TYPE !== DataType.RSRC_FORK) {
+      delete combinedData.Timg;
+    }
 
     try {
       const loadResPromise = new Promise<ArrayBuffer>((resolve, reject) => {
+        // Validate JSON shape expected by rsrcdump.jsonio.json_to_resource_fork
+        const validation = validateResourceForkJson(combinedData as Record<string, unknown>);
+        if (!validation.ok) {
+          console.error("Invalid JSON for resource fork:", validation);
+          toast.error("Download failed", {
+            description: `Invalid map data structure for resource fork: ${validation.message}`,
+          });
+          return;
+        }
+
         pyodideWorker.postMessage({
           type: "load_bytes_from_json",
           json_blob: combinedData,
@@ -249,6 +263,14 @@ export function IntroPrompt({ pyodideWorker }: { pyodideWorker: Worker }) {
       console.log(
         `Map downloaded successfully: ${mapFile.name} (${loadRes.byteLength} bytes)`,
       );
+
+      // For RSRC_FORK games (e.g., Bugdom 1) the texture data (Timg) is
+      // embedded in the same resource file; skip the separate texture
+      // compression/download flow and finish here.
+      if (globals.DATA_TYPE === DataType.RSRC_FORK) {
+        toast.success("Map Downloaded!");
+        return;
+      }
     } catch (error) {
       console.error("Download failed:", error);
       toast.error("Download failed", {

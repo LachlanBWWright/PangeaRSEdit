@@ -127,29 +127,24 @@ export function combineLevelData(
     terrainData,
   } = atomicData;
 
-  // Ensure all pieces are present before combining
-  if (
-    !headerData ||
-    !itemData ||
-    !liquidData ||
-    !fenceData ||
-    !splineData ||
-    !terrainData
-  ) {
-    return err(
-      new Error("Cannot combine level data: atomic data is incomplete"),
-    );
+  // Header and terrain are critical; optional sections (items, liquids, fences, splines)
+  // are allowed to be missing and will simply not be included in the serialized output.
+  if (!headerData || !terrainData) {
+    return err(new Error("Cannot combine level data: critical header or terrain is missing"));
   }
 
-  // All pieces are non-null here; safe to spread and satisfy the full level type
-  return ok({
+  // Build combined object progressively, only including sections that exist
+  const combined: Record<string, unknown> = {
     ...terrainData,
     ...headerData,
-    ...itemData,
-    ...liquidData,
-    ...fenceData,
-    ...splineData,
-  } satisfies LevelData);
+  };
+
+  if (itemData) Object.assign(combined, itemData);
+  if (liquidData) Object.assign(combined, liquidData);
+  if (fenceData) Object.assign(combined, fenceData);
+  if (splineData) Object.assign(combined, splineData);
+
+  return ok(combined as LevelData);
 }
 
 /**
@@ -165,3 +160,45 @@ export function isAtomicDataComplete(atomicData: AtomicLevelData): boolean {
     atomicData.terrainData !== null
   );
 }
+
+/**
+ * Basic validation to ensure the object conforms to the minimal shape
+ * expected by `rsrcdump.jsonio.json_to_resource_fork`, i.e. keys at
+ * the top level that look like resource type names (length <= 4) map
+ * to object/dict values where each resource id maps to a wrapper dict.
+ */
+export function validateResourceForkJson(json_blob: Record<string, unknown>):
+  | { ok: true }
+  | { ok: false; message: string; badKey?: string; badValueType?: string } {
+  if (typeof json_blob !== "object" || json_blob === null || Array.isArray(json_blob)) {
+    return { ok: false, message: "Top-level JSON blob must be an object" };
+  }
+
+  for (const [key, value] of Object.entries(json_blob)) {
+    if (key.length <= 4) {
+      if (typeof value !== "object" || value === null || Array.isArray(value)) {
+        return {
+          ok: false,
+          message: `Resource type key '${key}' must map to an object/dict of resource records`,
+          badKey: key,
+          badValueType: Array.isArray(value) ? "array" : typeof value,
+        };
+      }
+      // Ensure each inner record maps to objects
+      for (const [resId, resBlob] of Object.entries(value as Record<string, unknown>)) {
+        if (typeof resBlob !== "object" || resBlob === null || Array.isArray(resBlob)) {
+          return {
+            ok: false,
+            message: `Resource record '${resId}' under type '${key}' must be an object/dict`,
+            badKey: key,
+            badValueType: Array.isArray(resBlob) ? "array" : typeof resBlob,
+          };
+        }
+      }
+    }
+  }
+
+  return { ok: true };
+}
+
+

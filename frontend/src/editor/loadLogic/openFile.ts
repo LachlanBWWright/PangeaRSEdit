@@ -198,6 +198,12 @@ export async function openFile({
     } catch (err) {
       console.warn("Failed to create collage:", err);
     }
+    // Create a synthetic images file so download/save code that expects a
+    // separate images file continues to work (e.g., Download validation).
+    // Use the map filename base to create a reasonable tiles filename.
+    const baseName = name ? name.split(".")[0] : "bugdom";
+    const syntheticImagesFile = new File([alignedBuffer], `${baseName}_tiles.bin`);
+    setMapImagesFile(syntheticImagesFile);
     setMapImages(canvases);
   }
 }

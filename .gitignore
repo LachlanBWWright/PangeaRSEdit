@@ -1,0 +1,9 @@
+# Top-level ignore file for the monorepo
+# Ignore vscode temporary profile used by the launch configuration
+.vscode/chrome/
+
+# Common ignores
+.DS_Store
+node_modules/
+dist/
+.env

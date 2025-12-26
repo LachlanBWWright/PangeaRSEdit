@@ -24,7 +24,8 @@ export async function saveMap({
   globals: GlobalsInterface;
   toast: (opts: { title: string; description?: string }) => void;
 }) {
-  if (!mapFile || !mapImagesFile) return;
+  // Allow RSRC_FORK games to save even if a separate images file isn't present
+  if (!mapFile || (globals.DATA_TYPE !== DataType.RSRC_FORK && !mapImagesFile)) return;
 
   // Download Images
   if (mapImages) {
@@ -49,8 +50,14 @@ export async function saveMap({
   }
   //if bugdom 1 (resource fork)
   else if (globals.DATA_TYPE === DataType.RSRC_FORK) {
-    //Should save images here too as Bugdom 1 has terrain and image data in the same file
-    //TODO
+    // For RSRC_FORK (Bugdom 1), Timg should be embedded in `data` and pyodide
+    // should serialize it into the single .ter.rsrc file. Serialize and
+    // download the combined resource fork map file.
+    const mapBuffer = await processMapData({ data, pyodideWorker, globals });
+    downloadBlob(mapBuffer, mapFile.name, ".ter.rsrc");
+    toast({
+      title: "Map Downloaded!",
+    });
   } else if (globals.DATA_TYPE === DataType.TRT_FILE) {
     //TODO: Nanosaur 1 TRT file logic
   } else {
@@ -85,6 +92,17 @@ async function processMapData({
   return new Promise<ArrayBuffer>((resolve, reject) => {
     console.log("saving");
     console.log(data);
+    // Validate the JSON before passing to pyodide to avoid uncaught Python assertion errors
+    const validation = validateResourceForkJson(data as Record<string, unknown>);
+    if (!validation.ok) {
+      console.error("Invalid JSON for resource fork:", validation);
+      toast({
+        title: "Saving failed",
+        description: `Invalid map data structure: ${validation.message}`,
+      });
+      return new ArrayBuffer(0);
+    }
+
     pyodideWorker.postMessage({
       type: "load_bytes_from_json",
       json_blob: data,
