@@ -12,7 +12,13 @@
     "preview": "vite preview",
     "predeploy": "npm run build",
     "deploy": "gh-pages -d dist",
-    "test:browser": "vitest --config=vitest.browser.config.ts"
+    "test:browser": "vitest --config=vitest.browser.config.ts",
+    "find:lines:300": "sh -c \"find src -type f \\( -name '*.ts' -o -name '*.tsx' -o -name '*.js' -o -name '*.jsx' -o -name '*.css' -o -name '*.html' -o -name '*.json' -o -name '*.md' \\) -print0 | xargs -0 -n1 wc -l | awk '$1 > 300 {print $1 \"\\t\" $2}'\"",
+    "find:lines:500": "sh -c \"find src -type f \\( -name '*.ts' -o -name '*.tsx' -o -name '*.js' -o -name '*.jsx' -o -name '*.css' -o -name '*.html' -o -name '*.json' -o -name '*.md' \\) -print0 | xargs -0 -n1 wc -l | awk '$1 > 500 {print $1 \"\\t\" $2}'\"",
+    "find:lines:800": "sh -c \"find src -type f \\( -name '*.ts' -o -name '*.tsx' -o -name '*.js' -o -name '*.jsx' -o -name '*.css' -o -name '*.html' -o -name '*.json' -o -name '*.md' \\) -print0 | xargs -0 -n1 wc -l | awk '$1 > 800 {print $1 \"\\t\" $2}'\"",
+    "find:indent:3": "find src -type f \\( -name '*.ts' -o -name '*.tsx' -o -name '*.js' -o -name '*.jsx' -o -name '*.css' -o -name '*.html' \\) -print0 | xargs -0 -n1 -I{} node -e 'const fs=require(\"fs\"); const f=process.argv[1]; const s=fs.readFileSync(f,\"utf8\").replace(/\\t/g,\"  \"); const max=s.split(\"\\n\").reduce((m,l)=>Math.max(m,(l.match(/^[ \\t]*/)||[\"\"])[0].length),0); const layers=Math.floor((max+1)/2); if(layers>3) console.log(layers+\"\\t\"+f);' {}",
+    "find:indent:5": "find src -type f \\( -name '*.ts' -o -name '*.tsx' -o -name '*.js' -o -name '*.jsx' -o -name '*.css' -o -name '*.html' \\) -print0 | xargs -0 -n1 -I{} node -e 'const fs=require(\"fs\"); const f=process.argv[1]; const s=fs.readFileSync(f,\"utf8\").replace(/\\t/g,\"  \"); const max=s.split(\"\\n\").reduce((m,l)=>Math.max(m,(l.match(/^[ \\t]*/)||[\"\"])[0].length),0); const layers=Math.floor((max+1)/2); if(layers>5) console.log(layers+\"\\t\"+f);' {}",
+    "find:indent:7": "find src -type f \\( -name '*.ts' -o -name '*.tsx' -o -name '*.js' -o -name '*.jsx' -o -name '*.css' -o -name '*.html' \\) -print0 | xargs -0 -n1 -I{} node -e 'const fs=require(\"fs\"); const f=process.argv[1]; const s=fs.readFileSync(f,\"utf8\").replace(/\\t/g,\"  \"); const max=s.split(\"\\n\").reduce((m,l)=>Math.max(m,(l.match(/^[ \\t]*/)||[\"\"])[0].length),0); const layers=Math.floor((max+1)/2); if(layers>7) console.log(layers+\"\\t\"+f);' {}"
   },
   "dependencies": {
     "@gltf-transform/core": "^4.2.1",
