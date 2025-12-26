@@ -64,7 +64,7 @@ describe("openFile", () => {
       parseLevelDataFile: vi.fn(),
     }));
     const { parseLevelDataFile: parseMock } = await import("./parseLevelDataFile");
-    (parseMock as any).mockResolvedValue({ ok: true, value: { Timg: { "1000": { data: hex } } } });
+    (parseMock as unknown as { mockResolvedValue: (v: unknown) => void }).mockResolvedValue({ ok: true, value: { Timg: { "1000": { data: hex } } } });
 
     const setGlobals = vi.fn();
     const setMapFile = vi.fn();
@@ -90,7 +90,7 @@ describe("openFile", () => {
     });
 
     expect(setMapImagesFile).toHaveBeenCalled();
-    const fileArg = (setMapImagesFile as any).mock.calls[0][0];
+    const fileArg = (setMapImagesFile as unknown as { mock: { calls: Array<[File]> } }).mock.calls[0][0];
     expect(fileArg.name).toMatch(/_tiles\.bin$/);
     expect(setMapImages).toHaveBeenCalled();
   });
