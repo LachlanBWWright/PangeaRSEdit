@@ -9,9 +9,9 @@ export function LevelGrid({ title, children }: Props) {
   // Ensure children render as a vertical list of full-width items (Buttons)
   const childrenWithFullWidth = React.Children.map(children, (child) =>
     React.isValidElement(child)
-      ? React.cloneElement(child as React.ReactElement<any>, {
+      ? React.cloneElement(child as React.ReactElement<{ className?: string }>, {
           className: [
-            (child as any).props?.className,
+            (child as React.ReactElement<{ className?: string }>).props?.className,
             "w-full",
           ]
             .filter(Boolean)

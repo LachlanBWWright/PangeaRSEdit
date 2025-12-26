@@ -59,7 +59,7 @@ const LoadingCube: React.FC<{
   position: [number, number, number];
   itemType: number;
 }> = ({ position, itemType }) => {
-  const meshRef = React.useRef<any>(null);
+  const meshRef = React.useRef<THREE.Mesh | null>(null);
 
   useFrame(() => {
     if (meshRef.current) {
@@ -99,8 +99,8 @@ const LoadingCube: React.FC<{
 const ItemModel: React.FC<{
   position: [number, number, number];
   itemType: number;
-  clonedScene: any;
-  mapping: any;
+  clonedScene: THREE.Group | null;
+  mapping: Map<number, THREE.Group> | null;
 }> = ({ position, clonedScene }) => {
   if (!clonedScene) {
     return null;
@@ -140,7 +140,7 @@ export const ItemGeometry: React.FC<ItemGeometryProps> = ({
   // Pre-load models for visible item types when toggle is enabled
   // Also prepare cloned scenes for instancing
   const clonedScenesByType = useMemo(() => {
-    const scenes = new Map<number, any>();
+    const scenes = new Map<number, THREE.Group | null>();
     itemsByType.forEach((_, itemType) => {
       const cachedModel = modelCache.get(itemType);
       if (cachedModel?.gltf && !cachedModel.error) {
