@@ -1,14 +1,10 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
 
 #root {
   padding: 0;
-  background-color: #242424;
 }
 
 :root {
-  background-color: #242424;
   margin: 0;
   padding: 0;
 }
@@ -22,7 +18,7 @@ body {
 
 @layer base {
   :root {
-    --background: #242424;
+    --background: 0 0% 100%;
     --foreground: 0 0% 3.9%;
     --card: 0 0% 100%;
     --card-foreground: 0 0% 3.9%;
@@ -49,7 +45,7 @@ body {
     --radius: 0.5rem;
   }
   .dark {
-    --background: #242424;
+    --background: 0 0% 14.2%;
     --foreground: 0 0% 98%;
     --card: 0 0% 3.9%;
     --card-foreground: 0 0% 98%;
@@ -75,18 +71,6 @@ body {
     --chart-5: 340 75% 55%;
   }
 }
-
-@layer base {
-  * {
-    border-color: hsl(var(--border));
-  }
-  body {
-    background-color: hsl(var(--background));
-    color: hsl(var(--foreground));
-  }
-}
-
-
 
 @layer base {
   * {
