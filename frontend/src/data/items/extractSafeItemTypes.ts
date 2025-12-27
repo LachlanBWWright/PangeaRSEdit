@@ -14,35 +14,40 @@ export interface SafeItemTypesResult {
 /**
  * Extracts all unique item type values from the level data.
  * These are considered "safe" because they were present in the original level.
+ * Accepts either full LevelData or a partial object with just Itms and Spln.
  */
-export function extractSafeItemTypes(levelData: LevelData): SafeItemTypesResult {
+export function extractSafeItemTypes(levelData: Partial<Pick<LevelData, 'Itms' | 'Spln'>>): SafeItemTypesResult {
   const itemTypes = new Set<number>();
   const splineItemTypes = new Set<number>();
 
   // Extract regular item types
   if (levelData.Itms?.[1000]?.obj) {
-    const items = Object.values(levelData.Itms[1000].obj);
-    items.forEach((item) => {
-      if (item && typeof item.type === "number") {
-        itemTypes.add(item.type);
-      }
-    });
+    const itemsObj = levelData.Itms[1000].obj;
+    if (Array.isArray(itemsObj)) {
+      itemsObj.forEach((item) => {
+        if (item && typeof item.type === "number") {
+          itemTypes.add(item.type);
+        }
+      });
+    }
   }
 
   // Extract spline item types
   if (levelData.Spln?.[1000]?.obj) {
-    const splines = Object.values(levelData.Spln[1000].obj);
-    splines.forEach((spline) => {
-      // Check if spline has items
-      if (spline?.items) {
-        const splineItems = Object.values(spline.items);
-        splineItems.forEach((splineItem) => {
-          if (splineItem && typeof splineItem.type === "number") {
-            splineItemTypes.add(splineItem.type);
-          }
-        });
-      }
-    });
+    const splinesObj = levelData.Spln[1000].obj;
+    if (Array.isArray(splinesObj)) {
+      splinesObj.forEach((spline) => {
+        // Check if spline has items
+        if (spline?.items) {
+          const splineItems = Array.isArray(spline.items) ? spline.items : Object.values(spline.items);
+          splineItems.forEach((splineItem) => {
+            if (splineItem && typeof splineItem.type === "number") {
+              splineItemTypes.add(splineItem.type);
+            }
+          });
+        }
+      });
+    }
   }
 
   return { itemTypes, splineItemTypes };

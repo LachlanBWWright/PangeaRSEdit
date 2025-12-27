@@ -32,7 +32,7 @@ describe("level data utils", () => {
     expect(combined.ok).toBe(true);
   });
 
-  it("validateResourceForkJson detects malformed types", () => {
+  it("validateResourceForkJson detects malformed types", async () => {
     const good = {
       _metadata: { file_attributes: 0, junk1: 0, junk2: 0 },
       Hedr: { 1000: { name: "Header", obj: {}, order: 0 } },
@@ -47,6 +47,8 @@ describe("level data utils", () => {
     };
     const res = validateResourceForkJson(bad as unknown as Record<string, unknown>);
     expect(res.ok).toBe(false);
-    expect(res.badKey).toBe("Hedr");
+    if (!res.ok) {
+      expect(res.badKey).toBe("Hedr");
+    }
   });
 });

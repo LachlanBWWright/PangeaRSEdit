@@ -4,6 +4,7 @@ import {
   parseMightyMikeMap,
   parseMightyMikeTileSet,
 } from "@/modelParsers/parseMightyMike";
+import type { MightyMikeTileSet } from "@/python/structSpecs/mightyMikeInterface";
 import { splitLevelData, AtomicLevelData } from "@/data/utils/levelDataUtils";
 import { extractTGAPalette } from "@/utils/tgaParser";
 
@@ -316,7 +317,7 @@ export async function parseMightyMikeFile(
     };
 
     console.log("Final MightyMike level data BEFORE splitLevelData:");
-    const tilesetField = (ottoCompatible as Record<string, unknown>).tileset;
+    const tilesetField = (ottoCompatible as Record<string, unknown>).tileset as MightyMikeTileSet | undefined;
     console.log({
       hasTileset: !!tilesetField,
       tilesetType: tilesetField?.constructor?.name,

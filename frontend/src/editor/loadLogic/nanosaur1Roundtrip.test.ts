@@ -52,10 +52,10 @@ describe("Nanosaur 1 Byte-Accurate Roundtrip Tests", () => {
 
         // Parse the Nanosaur 1 level
         const rawLevelData = parseNanosaur1Level(bufferToArrayBuffer(originalBuffer));
-        console.log(`  Parsed: ${rawLevelData.header.mapWidth}x${rawLevelData.header.mapHeight}`);
-        console.log(`    Items: ${rawLevelData.items.length}`);
-        console.log(`    Terrain tiles: ${rawLevelData.terrain32x32Tiles.length}`);
-        console.log(`    Heightmap tiles: ${rawLevelData.heightmap32x32Tiles.length}`);
+        console.log(`  Parsed: ${rawLevelData.header.width}x${rawLevelData.header.height}`);
+        console.log(`    Objects: ${rawLevelData.objectList.length}`);
+        console.log(`    Texture layer tiles: ${rawLevelData.textureLayer.length}`);
+        console.log(`    Heightmap tiles: ${rawLevelData.heightmapTiles?.length || 0}`);
 
         // Convert to LevelData format
         const compatibleLevel = nanosaur1LevelToLevelData(rawLevelData, 32, 64, 4.0);
@@ -126,23 +126,23 @@ describe("Nanosaur 1 Byte-Accurate Roundtrip Tests", () => {
         const rawLevelData2 = parseNanosaur1Level(compileResult.value);
 
         // Compare structures
-        expect(rawLevelData2.header.mapWidth).toBe(rawLevelData1.header.mapWidth);
-        expect(rawLevelData2.header.mapHeight).toBe(rawLevelData1.header.mapHeight);
-        expect(rawLevelData2.items.length).toBe(rawLevelData1.items.length);
-        expect(rawLevelData2.terrain32x32Tiles.length).toBe(rawLevelData1.terrain32x32Tiles.length);
-        expect(rawLevelData2.heightmap32x32Tiles.length).toBe(rawLevelData1.heightmap32x32Tiles.length);
+        expect(rawLevelData2.header.width).toBe(rawLevelData1.header.width);
+        expect(rawLevelData2.header.height).toBe(rawLevelData1.header.height);
+        expect(rawLevelData2.objectList.length).toBe(rawLevelData1.objectList.length);
+        expect(rawLevelData2.textureLayer.length).toBe(rawLevelData1.textureLayer.length);
+        expect(rawLevelData2.heightmapTiles?.length || 0).toBe(rawLevelData1.heightmapTiles?.length || 0);
 
-        // Compare supertile layer
-        const layer1 = rawLevelData1.supertileLayer;
-        const layer2 = rawLevelData2.supertileLayer;
+        // Compare textureLayer
+        const layer1 = rawLevelData1.textureLayer;
+        const layer2 = rawLevelData2.textureLayer;
         expect(layer2.length).toBe(layer1.length);
         for (let i = 0; i < layer1.length; i++) {
           expect(layer2[i]).toEqual(layer1[i]);
         }
 
         // Compare items
-        for (let i = 0; i < rawLevelData1.items.length; i++) {
-          expect(rawLevelData2.items[i]).toEqual(rawLevelData1.items[i]);
+        for (let i = 0; i < rawLevelData1.objectList.length; i++) {
+          expect(rawLevelData2.objectList[i]).toEqual(rawLevelData1.objectList[i]);
         }
 
         console.log(`  ✓ ${name}: Semantic consistency maintained`);

@@ -37,18 +37,20 @@ export async function parseNanosaurLevelFile(
     }
 
     setData(splitLevelData(compatibleLevel));
-    return ok({
+    
+    // Store raw Nanosaur 1 data in _metadata for roundtrip compilation
+    const result: LevelData = {
       ...compatibleLevel,
       _metadata: {
-        1000: {
-          name: "Metadata",
-          obj: {
-            nanosaur1RawLevel: rawLevelData,
-          },
-          order: 100,
-        },
-      },
-    });
+        file_attributes: 0,
+        junk1: 0,
+        junk2: 0,
+        // Store the raw Nanosaur1 data for roundtrip
+        nanosaur1RawLevel: rawLevelData,
+      } as any, // Use any here as we're extending the metadata
+    };
+    
+    return ok(result);
   } catch (e) {
     return err(e instanceof Error ? e : new Error(String(e)));
   }

@@ -1,5 +1,5 @@
 import { LevelData } from "@/python/structSpecs/LevelTypes";
-import { Nanosaur1RawLevel } from "@/data/processors/classicProprocessor";
+import type { Nanosaur1LevelData } from "@/python/structSpecs/Nanosaur1Types";
 import { Result, ok, err } from "@/types/result";
 
 /**
@@ -11,7 +11,7 @@ import { Result, ok, err } from "@/types/result";
  */
 export function compileNanosaur1Level(
   levelData: LevelData,
-  rawLevelData: Nanosaur1RawLevel
+  rawLevelData: Nanosaur1LevelData
 ): Result<ArrayBuffer, Error> {
   try {
     // Calculate total size
@@ -19,12 +19,15 @@ export function compileNanosaur1Level(
     const numItems = levelData.Itms?.[1000]?.obj?.length || 0;
     const itemsSize = numItems * 16; // Each item is 16 bytes
     
-    const mapWidth = rawLevelData.header.mapWidth;
-    const mapHeight = rawLevelData.header.mapHeight;
+    const mapWidth = rawLevelData.header.width;
+    const mapHeight = rawLevelData.header.height;
     const supertileLayerSize = mapWidth * mapHeight * 2; // 16-bit per tile
     
-    const terrainTileCount = rawLevelData.terrain32x32Tiles.length;
-    const heightmapTileCount = rawLevelData.heightmap32x32Tiles.length;
+    // Get terrain tiles from metadata (should be stored during parse)
+    const terrainTiles = (levelData._metadata as any)?.terrainTiles || [];
+    const heightmapTiles = rawLevelData.heightmapTiles || [];
+    const terrainTileCount = terrainTiles.length;
+    const heightmapTileCount = heightmapTiles.length;
     const terrainDataSize = 4 + (terrainTileCount * 32 * 32 * 2); // count + tiles (16bpp)
     const heightmapDataSize = heightmapTileCount * 32 * 32; // 8bpp, no count prefix
     
@@ -37,9 +40,9 @@ export function compileNanosaur1Level(
     // Write header
     view.setInt32(offset, rawLevelData.header.version, false); // big-endian
     offset += 4;
-    view.setInt32(offset, rawLevelData.header.mapWidth, false);
+    view.setInt32(offset, rawLevelData.header.width, false);
     offset += 4;
-    view.setInt16(offset, rawLevelData.header.mapHeight, false);
+    view.setInt16(offset, rawLevelData.header.height, false);
     offset += 2;
     view.setInt16(offset, numItems, false);
     offset += 2;
@@ -70,9 +73,10 @@ export function compileNanosaur1Level(
     }
 
     // Write supertile layer
+    const supertileLayer = rawLevelData.textureLayer;
     for (let y = 0; y < mapHeight; y++) {
       for (let x = 0; x < mapWidth; x++) {
-        const supertileIndex = rawLevelData.supertileLayer[y * mapWidth + x];
+        const supertileIndex = supertileLayer[y * mapWidth + x];
         if (supertileIndex === undefined) {
           return err(new Error(`Missing supertile at position (${x}, ${y})`));
         }
@@ -84,7 +88,7 @@ export function compileNanosaur1Level(
     // Write terrain tiles (32x32 16bpp ARGB1555)
     view.setInt32(offset, terrainTileCount, false);
     offset += 4;
-    for (const tile of rawLevelData.terrain32x32Tiles) {
+    for (const tile of terrainTiles) {
       for (let i = 0; i < tile.length; i++) {
         const pixelValue = tile[i];
         if (pixelValue === undefined) {
@@ -96,7 +100,7 @@ export function compileNanosaur1Level(
     }
 
     // Write heightmap tiles (32x32 8bpp)
-    for (const tile of rawLevelData.heightmap32x32Tiles) {
+    for (const tile of heightmapTiles) {
       for (let i = 0; i < tile.length; i++) {
         const heightValue = tile[i];
         if (heightValue === undefined) {

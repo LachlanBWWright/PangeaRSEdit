@@ -31,13 +31,17 @@ export function preprocessJson(
   } else if (
     anyJson.Layr &&
     anyJson.Atrb &&
-    anyJson.Layr[1000] &&
-    anyJson.Atrb[1000]
+    typeof anyJson.Layr === 'object' &&
+    typeof anyJson.Atrb === 'object' &&
+    1000 in anyJson.Layr &&
+    1000 in anyJson.Atrb
   ) {
     // Otto Matic and other games: Ensure Layr points to unique Atrb values
     console.log(json);
-    const layrArr = anyJson.Layr[1000].obj;
-    const atrbArr = anyJson.Atrb[1000].obj;
+    const layrRecord = anyJson.Layr as Record<number, { obj: unknown }>;
+    const atrbRecord = anyJson.Atrb as Record<number, { obj: unknown }>;
+    const layrArr = layrRecord[1000].obj;
+    const atrbArr = atrbRecord[1000].obj;
 
     console.log("layrArr", layrArr);
     console.log("atrbArr", atrbArr);
@@ -67,14 +71,15 @@ export function preprocessJson(
 
     console.log("newAtrbArr", newAtrbArr);
     console.log("newLayrArr", newLayrArr);
-    anyJson.Atrb[1000].obj = newAtrbArr;
-    anyJson.Layr[1000].obj = newLayrArr;
+    atrbRecord[1000].obj = newAtrbArr;
+    layrRecord[1000].obj = newLayrArr;
   } else {
     console.warn("Layr or Atrb not found in JSON");
   }
 
-  if (anyJson.Liqd) {
-    const liquidObj = anyJson.Liqd[1000]?.obj;
+  if (anyJson.Liqd && typeof anyJson.Liqd === 'object' && 1000 in anyJson.Liqd) {
+    const liqd = anyJson.Liqd as Record<number, { obj: unknown }>;
+    const liquidObj = liqd[1000]?.obj;
     if (!Array.isArray(liquidObj)) {
       return err(new Error("Liqd[1000].obj is not an array"));
     }
@@ -82,9 +87,10 @@ export function preprocessJson(
       const nubs: [number, number][] = [];
 
       for (let i = 0; i < globals.LIQD_NUBS; i++) {
-        nubs.push([waterItem[`x_${i}`], waterItem[`y_${i}`]]);
+        const item = waterItem as Record<string, number | [number, number][]>;
+        nubs.push([item[`x_${i}`] as number, item[`y_${i}`] as number]);
       }
-      waterItem.nubs = nubs;
+      (waterItem as Record<string, [number, number][]>).nubs = nubs;
     }
   }
 

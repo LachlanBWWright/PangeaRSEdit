@@ -6,7 +6,7 @@ describe("mightyMikeShapesParser", () => {
   let mainShapesBuffer: ArrayBuffer;
   let jurassic1Buffer: ArrayBuffer;
 
-  beforeAll(() => {
+  beforeAll(async () => {
     // Read actual shapes files from filesystem
     // Since vitest runs in Node environment, we can use fs
     const { readFileSync } = await import("fs");

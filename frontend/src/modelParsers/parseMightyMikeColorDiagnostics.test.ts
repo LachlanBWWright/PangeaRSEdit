@@ -127,7 +127,7 @@ describe("Mighty Mike Color Diagnostics", () => {
     }
   });
 
-  it("should detect palette format differences and color statistics", () => {
+  it("should detect palette format differences and color statistics", async () => {
     // Write diagnostics JSON to tests-output for offline inspection
     try {
       const outDir = join(__dirname, "../../tests-output");
