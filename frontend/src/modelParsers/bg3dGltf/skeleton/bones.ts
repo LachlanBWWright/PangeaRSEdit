@@ -193,14 +193,15 @@ export function originalSkeletonBinaryToBg3dBones(
     Object.values(resource.Bone).forEach((boneData) => {
       const boneDataObj = boneData as Record<string, unknown>;
       if (boneDataObj.obj) {
+        const obj = boneDataObj.obj as Record<string, unknown>;
         bones.push({
-          parentBone: boneData.obj.parentBone,
-          name: boneData.obj.name || "",
-          coordX: boneData.obj.coordX || 0,
-          coordY: boneData.obj.coordY || 0,
-          coordZ: boneData.obj.coordZ || 0,
-          numPointsAttachedToBone: boneData.obj.numPointsAttachedToBone || 0,
-          numNormalsAttachedToBone: boneData.obj.numNormalsAttachedToBone || 0,
+          parentBone: (obj.parentBone as number) ?? -1,
+          name: (obj.name as string) || "",
+          coordX: (obj.coordX as number) || 0,
+          coordY: (obj.coordY as number) || 0,
+          coordZ: (obj.coordZ as number) || 0,
+          numPointsAttachedToBone: (obj.numPointsAttachedToBone as number) || 0,
+          numNormalsAttachedToBone: (obj.numNormalsAttachedToBone as number) || 0,
           pointIndices: [], // Initialize as empty array
           normalIndices: [], // Initialize as empty array
         });
