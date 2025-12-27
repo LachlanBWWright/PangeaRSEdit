@@ -187,7 +187,8 @@ self.onmessage = async (e: MessageEvent<BG3DGltfWorkerMessage>) => {
       
       // TODO: Generate skeleton resource file if animations exist
       let skeletonResult: ArrayBuffer | undefined;
-      if ((await parsed).skeleton && (await parsed).skeleton!.animations.length > 0) {
+      const parsedData = await parsed;
+      if (parsedData.skeleton?.animations && parsedData.skeleton.animations.length > 0) {
         // For now, we'll need to implement skeleton generation from BG3D
         console.log("Skeleton generation from glTF not yet implemented");
       }

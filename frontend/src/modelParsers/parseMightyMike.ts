@@ -191,12 +191,18 @@ export function parseMightyMikeTileSet(
     // Offsets parsed; diagnostic tests will collect and log details if needed.
 
     for (let i = 0; i < offsets.length - 1; i++) {
-      if (offsets[i]!.value >= offsets[i + 1]!.value) {
+      const offset1 = offsets[i];
+      const offset2 = offsets[i + 1];
+      if (!offset1 || !offset2) {
         return {
           ok: false,
-          error: `Invalid tileset: offset ${offsets[i]!.name} (${
-            offsets[i]!.value
-          }) >= ${offsets[i + 1]!.name} (${offsets[i + 1]!.value})`,
+          error: `Invalid tileset: missing offset at index ${i}`,
+        };
+      }
+      if (offset1.value >= offset2.value) {
+        return {
+          ok: false,
+          error: `Invalid tileset: offset ${offset1.name} (${offset1.value}) >= ${offset2.name} (${offset2.value})`,
         };
       }
     }

@@ -149,7 +149,11 @@ export function PaletteEditor({
       </Card>
 
       {/* Color Details Editor */}
-      {editingIndex !== null && palette.colors[editingIndex] && (
+      {editingIndex !== null && palette.colors[editingIndex] && (() => {
+        const currentColor = palette.colors[editingIndex];
+        if (!currentColor) return null;
+        
+        return (
         <Card className="bg-gray-800 border-gray-700 border-blue-500">
           <CardHeader>
             <CardTitle className="text-white text-sm">
@@ -160,7 +164,7 @@ export function PaletteEditor({
             <div className="flex gap-2">
               <input
                 type="color"
-                value={rgbToHex(palette.colors[editingIndex]!)}
+                value={rgbToHex(currentColor)}
                 onChange={(e) => handleColorChange(editingIndex, e.target.value)}
                 className="w-12 h-12 cursor-pointer rounded"
               />
@@ -171,13 +175,12 @@ export function PaletteEditor({
                     type="number"
                     min="0"
                     max="255"
-                    value={palette.colors[editingIndex]!.r}
+                    value={currentColor.r}
                     onChange={(e) => {
-                      const color = palette.colors[editingIndex]!;
                       const updated = updatePaletteColor(palette, editingIndex, {
                         r: Math.min(255, Math.max(0, parseInt(e.target.value))),
-                        g: color.g,
-                        b: color.b,
+                        g: currentColor.g,
+                        b: currentColor.b,
                       });
                       onPaletteChange(updated);
                     }}
@@ -190,13 +193,12 @@ export function PaletteEditor({
                     type="number"
                     min="0"
                     max="255"
-                    value={palette.colors[editingIndex]!.g}
+                    value={currentColor.g}
                     onChange={(e) => {
-                      const color = palette.colors[editingIndex]!;
                       const updated = updatePaletteColor(palette, editingIndex, {
-                        r: color.r,
+                        r: currentColor.r,
                         g: Math.min(255, Math.max(0, parseInt(e.target.value))),
-                        b: color.b,
+                        b: currentColor.b,
                       });
                       onPaletteChange(updated);
                     }}
@@ -209,12 +211,11 @@ export function PaletteEditor({
                     type="number"
                     min="0"
                     max="255"
-                    value={palette.colors[editingIndex]!.b}
+                    value={currentColor.b}
                     onChange={(e) => {
-                      const color = palette.colors[editingIndex]!;
                       const updated = updatePaletteColor(palette, editingIndex, {
-                        r: color.r,
-                        g: color.g,
+                        r: currentColor.r,
+                        g: currentColor.g,
                         b: Math.min(255, Math.max(0, parseInt(e.target.value))),
                       });
                       onPaletteChange(updated);
@@ -235,7 +236,8 @@ export function PaletteEditor({
             </Button>
           </CardContent>
         </Card>
-      )}
+        );
+      })()}
     </div>
   );
 }

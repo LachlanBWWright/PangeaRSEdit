@@ -8,16 +8,15 @@ export function handleKeyF(
   hexData: string,
 ) {
   console.log(resourceId, hexData);
+  const castedData = resourceData as { obj?: KeyFRaw[] };
   if (
     resourceData &&
-    (resourceData as { obj?: KeyFRaw[] }).obj &&
-    Array.isArray((resourceData as { obj?: KeyFRaw[] }).obj) &&
-    (resourceData as { obj?: KeyFRaw[] }).obj!.length > 0 &&
-    ((resourceData as { obj?: KeyFRaw[] }).obj![0] as Record<string, unknown>)[
-      "tick"
-    ] !== undefined
+    castedData.obj &&
+    Array.isArray(castedData.obj) &&
+    castedData.obj.length > 0 &&
+    (castedData.obj[0] as Record<string, unknown>)["tick"] !== undefined
   ) {
-    const obj = (resourceData as { obj?: KeyFRaw[] }).obj!;
+    const obj = castedData.obj;
     console.log(
       `KeyF ${resourceName} data from rsrcdump:`,
       obj.length,

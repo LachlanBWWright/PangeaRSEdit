@@ -80,9 +80,9 @@ function NodeItem({
         </span>
       </div>
 
-      {hasChildren && expanded && (
+      {hasChildren && expanded && node.children && (
         <div>
-          {node.children!.map((child) => {
+          {node.children.map((child) => {
             // Use the stored THREE object reference for proper matching
             // This avoids index mismatch issues when bones/joints are filtered out
             const childObject = child.threeObject;

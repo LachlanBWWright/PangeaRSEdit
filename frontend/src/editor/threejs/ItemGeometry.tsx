@@ -133,7 +133,10 @@ export const ItemGeometry: React.FC<ItemGeometryProps> = ({
       if (!groups.has(item.type)) {
         groups.set(item.type, []);
       }
-      groups.get(item.type)!.push(item);
+      const group = groups.get(item.type);
+      if (group) {
+        group.push(item);
+      }
     });
     return groups;
   }, [items]);

@@ -1233,7 +1233,9 @@ export async function gltfToBG3D(doc: Document): Promise<BG3DParseResult> {
             bone.pointIndices = arr.map(
               (p) => (p as Record<string, unknown>).pointIndex as number,
             );
-            bone.numPointsAttachedToBone = bone.pointIndices!.length;
+            if (bone.pointIndices) {
+              bone.numPointsAttachedToBone = bone.pointIndices.length;
+            }
           }
         },
       );
@@ -1248,7 +1250,9 @@ export async function gltfToBG3D(doc: Document): Promise<BG3DParseResult> {
             bone.normalIndices = arr.map(
               (n) => (n as Record<string, unknown>).normal as number,
             );
-            bone.numNormalsAttachedToBone = bone.normalIndices!.length;
+            if (bone.normalIndices) {
+              bone.numNormalsAttachedToBone = bone.normalIndices.length;
+            }
           }
         },
       );

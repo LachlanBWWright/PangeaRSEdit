@@ -387,10 +387,15 @@ export function SupertileMenu({
             setMapImages(canvasArray);
             setTerrainData((data) => {
               if (!data.STgd?.[1000]?.obj) return;
-              const stgdObj = data.STgd[1000]!.obj!;
+              const stgdEntry = data.STgd[1000];
+              if (!stgdEntry?.obj) return;
+              const stgdObj = stgdEntry.obj;
               for (let i = 0; i < stgdObj.length; i++) {
                 //1 is added to i because of the blank
-                stgdObj[i]!.superTileId = i + 1;
+                const entry = stgdObj[i];
+                if (entry) {
+                  entry.superTileId = i + 1;
+                }
               }
             });
             setHeaderData((data) => {

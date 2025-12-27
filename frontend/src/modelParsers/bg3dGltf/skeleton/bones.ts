@@ -220,7 +220,9 @@ export function originalSkeletonBinaryToBg3dBones(
         bone.pointIndices = (bonPObj.obj as unknown[]).map(
           (p) => (p as Record<string, unknown>).pointIndex as number,
         );
-        bone.numPointsAttachedToBone = bone.pointIndices!.length;
+        if (bone.pointIndices) {
+          bone.numPointsAttachedToBone = bone.pointIndices.length;
+        }
       }
     });
   }
@@ -232,7 +234,9 @@ export function originalSkeletonBinaryToBg3dBones(
         bone.normalIndices = (bonNObj.obj as unknown[]).map(
           (n) => (n as Record<string, unknown>).normal as number,
         );
-        bone.numNormalsAttachedToBone = bone.normalIndices!.length;
+        if (bone.normalIndices) {
+          bone.numNormalsAttachedToBone = bone.normalIndices.length;
+        }
       }
     });
   }
