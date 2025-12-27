@@ -5,7 +5,12 @@ import {
 } from "@/python/structSpecs/LevelTypes";
 import { useAtom, useAtomValue } from "jotai";
 import { Button } from "@/components/ui/button";
-import { ClickToAddItem, SelectedItem } from "../../../data/items/itemAtoms";
+import { 
+  ClickToAddItem, 
+  SelectedItem, 
+  SafeItemTypes, 
+  FilterToSafeItems 
+} from "../../../data/items/itemAtoms";
 import { TerrainItemTypeParams, ItemType } from "../../../data/items/ottoItemType";
 import type { ParamDescription, FlagDescription } from "../../../data/items/itemParams";
 import { parseU16, parseU8 } from "../../../utils/numberParsers";
@@ -23,6 +28,7 @@ import { getItemName } from "@/data/items/getItemNames";
 import { Globals } from "@/data/globals/globals";
 import { getItemTypes } from "@/data/items/getItemTypes";
 import { ParamTooltip } from "./ParamTooltip";
+import { Label } from "@/components/ui/label";
 
 export function ItemMenu({
   itemData,
@@ -35,6 +41,8 @@ export function ItemMenu({
 }) {
   const globals = useAtomValue(Globals);
   const [selectedItem, setSelectedItem] = useAtom(SelectedItem);
+  const safeItemTypes = useAtomValue(SafeItemTypes);
+  const [filterToSafe, setFilterToSafe] = useAtom(FilterToSafeItems);
   // Mark unused props as used to satisfy linter; they are intentionally passed in for consistency with parent
 
   if (itemData.Itms === undefined) return null;
@@ -43,11 +51,16 @@ export function ItemMenu({
     selectedItem !== undefined ? itemData.Itms[1000].obj[selectedItem] : null;
 
   const itemTypesResult = getItemTypes(globals);
-  const itemValues = itemTypesResult.ok
+  const allItemValues = itemTypesResult.ok
     ? itemTypesResult.value
         .map((key) => parseInt(key))
         .filter((key) => isNaN(key) === false)
     : [];
+
+  // Filter to safe items if enabled
+  const itemValues = filterToSafe && safeItemTypes.size > 0
+    ? allItemValues.filter((type) => safeItemTypes.has(type))
+    : allItemValues;
 
   return (
     <div className="flex flex-col gap-2">
@@ -93,6 +106,23 @@ export function ItemMenu({
                 ))}
               </SelectContent>
             </Select>
+
+            {/* Safe Items Filter Toggle */}
+            {safeItemTypes.size > 0 && (
+              <div className="flex items-center space-x-2 p-2 bg-blue-50 dark:bg-blue-950 rounded">
+                <Checkbox
+                  id="filter-safe-items"
+                  checked={filterToSafe}
+                  onCheckedChange={(checked) => setFilterToSafe(checked === true)}
+                />
+                <Label 
+                  htmlFor="filter-safe-items" 
+                  className="text-sm cursor-pointer"
+                >
+                  Only show item types found in original level ({safeItemTypes.size} safe types)
+                </Label>
+              </div>
+            )}
 
             <div className="grid grid-cols-[auto_1fr_auto_1fr] gap-2 items-baseline">
               <ParamTooltip

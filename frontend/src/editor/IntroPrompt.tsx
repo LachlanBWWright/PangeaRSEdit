@@ -13,7 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Updater, useImmer } from "use-immer";
 import { ottoPreprocessor } from "../data/processors/ottoPreprocessor";
 import { Globals, DataType } from "../data/globals/globals";
-import { useAtom, useAtomValue } from "jotai";
+import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { BlockHistoryUpdate } from "../data/globals/history";
 import LzssWorker from "../utils/lzssWorker?worker";
 import { LzssMessage, LzssResponse } from "@/utils/lzssWorker";
@@ -27,6 +27,8 @@ import {
   validateResourceForkJson,
 } from "../data/utils/levelDataUtils";
 import { isOk } from "../types/result";
+import { SafeItemTypes, SafeSplineItemTypes } from "../data/items/itemAtoms";
+import { extractSafeItemTypes } from "../data/items/extractSafeItemTypes";
 
 export type DataHistory = {
   items: AtomicLevelData[];
@@ -43,6 +45,10 @@ export function IntroPrompt({ pyodideWorker }: { pyodideWorker: Worker }) {
   const [fenceData, setFenceData] = useImmer<FenceData | null>(null);
   const [splineData, setSplineData] = useImmer<SplineData | null>(null);
   const [terrainData, setTerrainData] = useImmer<TerrainData | null>(null);
+
+  // Safe item types tracking
+  const setSafeItemTypes = useSetAtom(SafeItemTypes);
+  const setSafeSplineItemTypes = useSetAtom(SafeSplineItemTypes);
 
   //History of previous states for undo/redo purposes
   const [dataHistory, setDataHistory] = useImmer<DataHistory>({
@@ -74,14 +80,27 @@ export function IntroPrompt({ pyodideWorker }: { pyodideWorker: Worker }) {
   }, [headerData, itemData, liquidData, fenceData, splineData, terrainData]);
 
   // Helper to set all atomic data from AtomicLevelData
-  const setAllAtomicData = (atomicData: AtomicLevelData) => {
+  const setAllAtomicData = useCallback((atomicData: AtomicLevelData) => {
     setHeaderData(atomicData.headerData);
     setItemData(atomicData.itemData);
     setLiquidData(atomicData.liquidData);
     setFenceData(atomicData.fenceData);
     setSplineData(atomicData.splineData);
     setTerrainData(atomicData.terrainData);
-  };
+
+    // Extract and store safe item types from the loaded level
+    const levelData = {
+      Hedr: atomicData.headerData,
+      Itms: atomicData.itemData?.Itms,
+      Spln: atomicData.splineData?.Spln,
+    };
+
+    const { itemTypes, splineItemTypes } = extractSafeItemTypes(levelData);
+    
+    // Update the atoms
+    setSafeItemTypes(itemTypes);
+    setSafeSplineItemTypes(splineItemTypes);
+  }, [setHeaderData, setItemData, setLiquidData, setFenceData, setSplineData, setTerrainData, setSafeItemTypes, setSafeSplineItemTypes]);
 
   // Wrapper for header which EditorView expects non-null updates for
   const setHeaderDataNonNull: Updater<HeaderData> = useCallback(
