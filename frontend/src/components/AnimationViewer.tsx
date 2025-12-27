@@ -203,7 +203,7 @@ export function AnimationViewer({
                 size="sm"
                 variant="outline"
                 onClick={handlePlay}
-                disabled={!currentActionRef.current}
+                disabled={!hasActiveAction}
                 className="flex-1 text-white"
               >
                 {isPlaying ? (
@@ -216,7 +216,7 @@ export function AnimationViewer({
                 size="sm"
                 variant="outline"
                 onClick={handleStop}
-                disabled={!currentActionRef.current}
+                disabled={!hasActiveAction}
                 className="text-white"
               >
                 <Square className="w-3 h-3" />
@@ -225,7 +225,7 @@ export function AnimationViewer({
                 size="sm"
                 variant="outline"
                 onClick={handleReset}
-                disabled={!currentActionRef.current}
+                disabled={!hasActiveAction}
                 className="text-white"
               >
                 <RotateCcw className="w-3 h-3" />
