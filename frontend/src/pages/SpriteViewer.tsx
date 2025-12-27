@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Download, Maximize2 } from "lucide-react";
 import { toast } from "sonner";
@@ -395,7 +395,7 @@ export function SpriteViewer() {
 
   // ===== Rendering =====
 
-  const renderSprites = () => {
+  const renderSprites = useCallback(() => {
     if (loadedData?.type !== "sprites" || !canvasRef.current) return;
 
     const shapesFile = loadedData.data;
@@ -462,9 +462,9 @@ export function SpriteViewer() {
     // Origin marker
     ctx.fillStyle = "rgba(255, 0, 0, 0.5)";
     ctx.fillRect(10 - 2, 10 - 2, 4, 4);
-  };
+  }, [loadedData, selectedShapeIndex, selectedFrameIndex, currentPalette.colors, displayOptions]);
 
-  const renderTGAOrTileset = () => {
+  const renderTGAOrTileset = useCallback(() => {
     if (!canvasRef.current) return;
 
     let sourceCanvas: HTMLCanvasElement;
@@ -498,7 +498,7 @@ export function SpriteViewer() {
 
     ctx.imageSmoothingEnabled = false;
     ctx.drawImage(sourceCanvas, 0, 0, scaledWidth, scaledHeight);
-  };
+  }, [loadedData, selectedTileIndex, displayOptions]);
 
   // Render on changes
   useEffect(() => {
@@ -509,7 +509,7 @@ export function SpriteViewer() {
         renderTGAOrTileset();
       }
     }
-  }, [loadedData, selectedShapeIndex, selectedFrameIndex, displayOptions, currentPalette, selectedTileIndex]);
+  }, [loadedData, selectedShapeIndex, selectedFrameIndex, displayOptions, currentPalette, selectedTileIndex, renderSprites, renderTGAOrTileset]);
 
   // ===== Export =====
 

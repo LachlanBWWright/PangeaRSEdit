@@ -28,31 +28,28 @@ import {
 } from "@/components/ui/carousel";
 import type { Result } from "@/types/result";
 
-const getLevelComponent = (
-  title: string,
-): React.ComponentType<{
+// Create stable wrapper components for each game type
+const OttoLevelWrapper = ({ openFile }: { openFile: (url: string, gameType: GlobalsInterface) => void }) => <OttoLevels openFile={openFile} />;
+const BugdomLevelWrapper = ({ openFile }: { openFile: (url: string, gameType: GlobalsInterface) => void }) => <BugdomLevels openFile={openFile} />;
+const Bugdom2LevelWrapper = ({ openFile }: { openFile: (url: string, gameType: GlobalsInterface) => void }) => <Bugdom2Levels openFile={openFile} />;
+const CroMagLevelWrapper = ({ openFile }: { openFile: (url: string, gameType: GlobalsInterface) => void }) => <CroMagLevels openFile={openFile} />;
+const NanosaurLevelWrapper = ({ openFile }: { openFile: (url: string, gameType: GlobalsInterface) => void }) => <NanosaurLevels openFile={openFile} />;
+const Nanosaur2LevelWrapper = ({ openFile }: { openFile: (url: string, gameType: GlobalsInterface) => void }) => <Nanosaur2Levels openFile={openFile} />;
+const BillyFrontierLevelWrapper = ({ openFile }: { openFile: (url: string, gameType: GlobalsInterface) => void }) => <BillyFrontierLevels openFile={openFile} />;
+const MightyMikeLevelWrapper = ({ openFile }: { openFile: (url: string, gameType: GlobalsInterface) => void }) => <MightyMikeLevels openFile={openFile} />;
+
+// Map game titles to their components at module level
+const LEVEL_COMPONENTS_MAP: Record<string, React.ComponentType<{
   openFile: (url: string, gameType: GlobalsInterface) => void;
-}> => {
-  switch (title) {
-    case "Otto Matic":
-      return OttoLevels;
-    case "Bugdom":
-      return BugdomLevels;
-    case "Bugdom 2":
-      return Bugdom2Levels;
-    case "Cro-Mag Rally":
-      return CroMagLevels;
-    case "Nanosaur":
-      return NanosaurLevels;
-    case "Nanosaur 2":
-      return Nanosaur2Levels;
-    case "Billy Frontier":
-      return BillyFrontierLevels;
-    case "Mighty Mike":
-      return MightyMikeLevels;
-    default:
-      throw new Error(`Unknown game title: ${title}`);
-  }
+}>> = {
+  "Otto Matic": OttoLevelWrapper,
+  "Bugdom": BugdomLevelWrapper,
+  "Bugdom 2": Bugdom2LevelWrapper,
+  "Cro-Mag Rally": CroMagLevelWrapper,
+  "Nanosaur": NanosaurLevelWrapper,
+  "Nanosaur 2": Nanosaur2LevelWrapper,
+  "Billy Frontier": BillyFrontierLevelWrapper,
+  "Mighty Mike": MightyMikeLevelWrapper,
 };
 
 export function GameCarousel({
@@ -140,7 +137,11 @@ function GameCarouselItem({
   setMapImagesFile: (f: File) => void;
   setMapImages: (images: HTMLCanvasElement[]) => void;
 }) {
-  const Level = getLevelComponent(game.title);
+  // Look up component from module-level map
+  const LevelComponent = LEVEL_COMPONENTS_MAP[game.title];
+  if (!LevelComponent) {
+    throw new Error(`Unknown game title: ${game.title}`);
+  }
 
   return (
     <CarouselItem className="pl-4 md:pl-6 md:basis-1/2 lg:basis-1/3 min-h-0 box-border overflow-hidden">
@@ -152,7 +153,7 @@ function GameCarouselItem({
         setMapImagesFile={setMapImagesFile}
         setMapImages={setMapImages}
       >
-        <Level openFile={handleOpenFile} />
+        <LevelComponent openFile={handleOpenFile} />
       </GameCard>
     </CarouselItem>
   );

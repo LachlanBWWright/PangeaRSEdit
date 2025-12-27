@@ -38,7 +38,7 @@ describe("level data utils", () => {
       Hedr: { 1000: { name: "Header", obj: {}, order: 0 } },
       Atrb: { 1000: { name: "Tile Attribute Data", obj: [], order: 0 } },
     };
-    const { validateResourceForkJson } = require("./levelDataUtils");
+    const { validateResourceForkJson } = await import("./levelDataUtils");
     expect(validateResourceForkJson(good).ok).toBe(true);
 
     const bad = {

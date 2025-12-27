@@ -21,10 +21,9 @@ export function AnimationUpdater({
   const logIntervalRef = useRef(30); // Log every 30 frames (about 2 times per second at 60fps)
   const [bonesTracked, setBonesTracked] = useState<THREE.Bone[]>([]);
 
-  mixerRef.current = animationMixer;
-
   // Find bones to track when mixer changes
   useEffect(() => {
+    mixerRef.current = animationMixer;
     if (mixerRef.current && logBonePositions) {
       const root = mixerRef.current.getRoot() as THREE.Group;
       const bones: THREE.Bone[] = [];
@@ -36,7 +35,7 @@ export function AnimationUpdater({
         }
       });
 
-      setBonesTracked(bones);
+      Promise.resolve().then(() => setBonesTracked(bones));
       frameCountRef.current = 0;
 
       if (bones.length > 0) {
@@ -47,7 +46,7 @@ export function AnimationUpdater({
         );
       }
     } else {
-      setBonesTracked([]);
+      Promise.resolve().then(() => setBonesTracked([]));
     }
   }, [animationMixer, logBonePositions]);
 

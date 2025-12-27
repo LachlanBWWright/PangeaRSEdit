@@ -40,9 +40,11 @@ export function AnimationViewer({
       animations[selectedAnimation]
     ) {
       const animationInfo = animations[selectedAnimation];
-      setDuration(animationInfo.duration);
-      setCurrentTime(0);
-      setIsPlaying(false);
+      Promise.resolve().then(() => {
+        setDuration(animationInfo.duration);
+        setCurrentTime(0);
+        setIsPlaying(false);
+      });
 
       // Stop current animation if any
       if (currentActionRef.current) {
@@ -61,9 +63,11 @@ export function AnimationViewer({
 
       onAnimationChange?.(selectedAnimation);
     } else {
-      setDuration(0);
-      setCurrentTime(0);
-      setIsPlaying(false);
+      Promise.resolve().then(() => {
+        setDuration(0);
+        setCurrentTime(0);
+        setIsPlaying(false);
+      });
       if (currentActionRef.current) {
         currentActionRef.current.stop();
         currentActionRef.current = null;

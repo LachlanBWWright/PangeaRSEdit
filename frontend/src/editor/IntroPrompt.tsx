@@ -392,7 +392,7 @@ export function IntroPrompt({ pyodideWorker }: { pyodideWorker: Worker }) {
   useEffect(() => {
     if (!processed) return;
     saveMap();
-    setProcessed(false);
+    Promise.resolve().then(() => setProcessed(false));
   }, [
     processed,
     headerData,

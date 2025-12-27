@@ -52,8 +52,8 @@ export const MightyMikeItem = memo(function MightyMikeItem({
     [itemIdx, setItemData],
   );
 
-  const itemX = useMemo(() => item?.x ? item.x - ITEM_BOX_OFFSET : 0, [item?.x]);
-  const itemZ = useMemo(() => item?.z ? item.z - ITEM_BOX_OFFSET : 0, [item?.z]);
+  const itemX = useMemo(() => item?.x ? item.x - ITEM_BOX_OFFSET : 0, [item]);
+  const itemZ = useMemo(() => item?.z ? item.z - ITEM_BOX_OFFSET : 0, [item]);
   const itemName = useMemo(
     () => item ? getItemName(globals, item.type) : "",
     [item, globals]
