@@ -55,7 +55,7 @@ export function GameCard({
   return (
     <Card className="h-full flex flex-col min-h-0 overflow-hidden bg-gray-800 border-gray-700 text-white">
       <CardContent className="flex-1 flex flex-col min-h-0 overflow-auto p-4">
-        <div className="flex-none min-h-[2rem]">
+        <div className="flex-none min-h-8">
           <h3 className="text-lg font-semibold">{title}</h3>
         </div>
 

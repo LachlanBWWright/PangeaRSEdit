@@ -57,7 +57,7 @@ export function MiniThreeView({
   return (
     <div
       ref={containerRef}
-      className="w-[25rem] h-[17.5rem] bg-transparent rounded-md overflow-hidden"
+      className="w-100 h-70 bg-transparent rounded-md overflow-hidden"
     >
       <ErrorBoundary>
         <Suspense

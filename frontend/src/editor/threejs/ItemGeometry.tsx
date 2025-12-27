@@ -1,5 +1,6 @@
 import React, { useMemo, useEffect } from "react";
 import * as THREE from "three";
+import { DoubleSide } from "three";
 import {
   ItemData,
   HeaderData,
@@ -12,6 +13,7 @@ import { Show3DItemModels } from "@/data/canvasView/canvasViewAtoms";
 import { getTerrainHeightAtPoint } from "./fenceUtils/getTerrainHeightAtPoint";
 import { useOttoItemModelCache } from "./hooks/useOttoItemModelCache";
 import { getItemModelMapping, type ItemModelMapping } from "@/data/items/ottoItemModelMapping";
+import { getLiquidPatchStyle, getLiquidPatchDimensions, LiquidPatchStyle } from "@/data/items/liquidPatchItems";
 
 interface ItemGeometryProps {
   itemData: ItemData;
@@ -114,6 +116,62 @@ const ItemModel: React.FC<{
   return <primitive object={instanceScene} position={position} />;
 };
 
+/**
+ * Liquid patch plane for rendering water/lava/honey/slime patches in Bugdom 1 and Nanosaur 1.
+ * Rendered as a flat transparent rectangle on the terrain to resemble water bodies.
+ */
+const LiquidPatchPlane: React.FC<{
+  position: [number, number, number];
+  width: number;
+  depth: number;
+  style: LiquidPatchStyle;
+}> = ({ position, width, depth, style }) => {
+  // Slightly raise the plane above terrain to avoid z-fighting
+  const adjustedPosition: [number, number, number] = [
+    position[0],
+    position[1] + 5,
+    position[2],
+  ];
+
+  return (
+    <group position={adjustedPosition}>
+      {/* Main liquid plane */}
+      <mesh rotation={[-Math.PI / 2, 0, 0]}>
+        <planeGeometry args={[width, depth]} />
+        <meshStandardMaterial
+          color={style.color3D}
+          opacity={style.opacity3D}
+          transparent={true}
+          side={DoubleSide}
+        />
+      </mesh>
+      {/* Inner rectangle for visual effect */}
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 1, 0]}>
+        <planeGeometry args={[width * 0.7, depth * 0.7]} />
+        <meshStandardMaterial
+          color={style.color3D}
+          opacity={style.opacity3D * 0.5}
+          transparent={true}
+          side={DoubleSide}
+        />
+      </mesh>
+      {/* Center highlight for lava/hot liquids */}
+      {style.type === "lava" && (
+        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 2, 0]}>
+          <planeGeometry args={[width * 0.3, depth * 0.3]} />
+          <meshStandardMaterial
+            color={0xffaa00}
+            opacity={0.9}
+            transparent={true}
+            emissive={0xff6600}
+            emissiveIntensity={0.5}
+          />
+        </mesh>
+      )}
+    </group>
+  );
+};
+
 export const ItemGeometry: React.FC<ItemGeometryProps> = ({
   itemData,
   headerData,
@@ -212,6 +270,29 @@ export const ItemGeometry: React.FC<ItemGeometryProps> = ({
           terrainY + ITEM_SIZE / 2,
           worldZ,
         ];
+
+        // Check if this is a liquid patch item (water/lava/honey/slime in Bugdom 1/Nanosaur 1)
+        const liquidPatchStyle = getLiquidPatchStyle(globals, item.type);
+        if (liquidPatchStyle) {
+          // Calculate dimensions based on item parameters
+          const dims = getLiquidPatchDimensions(
+            globals,
+            item.type,
+            item.p0,
+            item.p1,
+            item.p2,
+            item.p3
+          );
+          return (
+            <LiquidPatchPlane
+              key={`liquid-patch-${idx}`}
+              position={[worldX, terrainY + dims.yOffset3D, worldZ]}
+              width={dims.width3D}
+              depth={dims.depth3D}
+              style={liquidPatchStyle}
+            />
+          );
+        }
 
         // Render 3D model if enabled and available (Otto Matic only for now)
         if (
