@@ -100,19 +100,16 @@ export function gltfJointsToBg3dBones(joints: Node[], skin: Skin): BG3DBone[] {
 
     // Infer parentBone from node hierarchy (glTF 2.0 compliant)
     let parentBone = -1;
-    // `listParents()` already returns Node instances; no custom constructor extraction needed
-    const jointParents = joint.listParents();
-    if (jointParents.length > 0) {
-      const jointParent = jointParents[0];
-      if (jointParent) {
-        // Check if parent is the skeleton root (Armature), if so, parentBone = -1
-        const skeletonRoot = skin.getSkeleton();
-        if (jointParent !== skeletonRoot) {
-          // Find the index of the parent in the joints list
-          const parentIndex = joints.findIndex((j) => j === (jointParent as Node));
-          if (parentIndex !== -1) {
-            parentBone = parentIndex;
-          }
+    // Get the immediate parent node using getParentNode()
+    const jointParent = joint.getParentNode();
+    if (jointParent) {
+      // Check if parent is the skeleton root (Armature), if so, parentBone = -1
+      const skeletonRoot = skin.getSkeleton();
+      if (jointParent !== skeletonRoot) {
+        // Find the index of the parent in the joints list
+        const parentIndex = joints.findIndex((j) => j === jointParent);
+        if (parentIndex !== -1) {
+          parentBone = parentIndex;
         }
       }
     }
