@@ -49,10 +49,12 @@ export function GameModelSelector({
       (model) => model.category === selectedCategory,
     ) || [];
     
-  // Compute directly without memoization to satisfy React Compiler
-  const availableCategories = selectedGame
-    ? [...new Set(selectedGame.models.map((model) => model.category))]
-    : [];
+  // Memoize to prevent changing on every render
+  const availableCategories = useMemo(() => {
+    return selectedGame
+      ? [...new Set(selectedGame.models.map((model) => model.category))]
+      : [];
+  }, [selectedGame]);
 
 
   useEffect(() => {
