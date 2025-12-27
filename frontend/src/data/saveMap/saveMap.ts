@@ -63,7 +63,6 @@ export async function saveMap({
   } else if (globals.DATA_TYPE === DataType.TRT_FILE) {
     // Nanosaur 1: Compile back to .ter format
     const { compileNanosaur1Level } = await import("@/editor/loadLogic/compileNanosaur1Level");
-    const { parseNanosaur1Level } = await import("@/data/processors/classicProprocessor");
     
     // We need the original raw level data to preserve binary-specific information
     // This should be stored in data._metadata if available

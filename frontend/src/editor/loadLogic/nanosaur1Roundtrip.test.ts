@@ -41,7 +41,7 @@ describe("Nanosaur 1 Byte-Accurate Roundtrip Tests", () => {
         let originalBuffer: Buffer;
         try {
           originalBuffer = readFileSync(path);
-        } catch (e) {
+        } catch {
           console.warn(`Could not find file ${path}, skipping test`);
           return; // Skip if file not found
         }
@@ -102,7 +102,7 @@ describe("Nanosaur 1 Byte-Accurate Roundtrip Tests", () => {
         let originalBuffer: Buffer;
         try {
           originalBuffer = readFileSync(path);
-        } catch (e) {
+        } catch {
           console.warn(`Could not find file ${path}, skipping test`);
           return;
         }
