@@ -39,7 +39,7 @@ describe("Nanosaur 1 - Byte-Accurate Roundtrip", () => {
       
       try {
         originalBuffer = readFileSync(path);
-      } catch (e) {
+      } catch {
         console.warn(`Could not find file ${path}, skipping test`);
         return;
       }
@@ -121,7 +121,7 @@ describe("Mighty Mike - Byte-Accurate Roundtrip", () => {
       
       try {
         originalBuffer = readFileSync(path);
-      } catch (e) {
+      } catch {
         console.warn(`Could not find file ${path}, skipping test`);
         return;
       }

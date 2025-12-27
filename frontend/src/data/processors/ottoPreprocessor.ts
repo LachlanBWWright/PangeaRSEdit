@@ -125,8 +125,10 @@ export function ottoPreprocessor(
     // Cast for backwards compatibility transformation
     // We're accessing Liqd as any since we're doing a transformation
     if (data.Liqd !== undefined) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const liqd = (data as any).Liqd;
       for (const waterItem of liqd?.[1000]?.obj ?? []) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const item = waterItem as Record<string, any>;
         for (let i = 0; i < globals.LIQD_NUBS; i++) {
           const nub = item.nubs?.[i];

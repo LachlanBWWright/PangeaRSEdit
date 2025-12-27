@@ -29,6 +29,7 @@ export function AnimationViewer({
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
+  const [hasActiveAction, setHasActiveAction] = useState(false); // Track if there's an active action
   const animationRequestRef = useRef<number | undefined>(undefined);
   const currentActionRef = useRef<THREE.AnimationAction | null>(null);
 
@@ -50,6 +51,7 @@ export function AnimationViewer({
       if (currentActionRef.current) {
         currentActionRef.current.stop();
         currentActionRef.current = null;
+        Promise.resolve().then(() => setHasActiveAction(false));
       }
 
       // Get the animation clip and create action
@@ -59,6 +61,7 @@ export function AnimationViewer({
         action.reset();
         action.setLoop(THREE.LoopRepeat, Infinity);
         currentActionRef.current = action;
+        Promise.resolve().then(() => setHasActiveAction(true));
       }
 
       onAnimationChange?.(selectedAnimation);
@@ -168,8 +171,6 @@ export function AnimationViewer({
       </Card>
     );
   }
-
-  const hasActiveAction = currentActionRef.current !== null;
 
   return (
     <Card className="bg-gray-800 border-gray-700">

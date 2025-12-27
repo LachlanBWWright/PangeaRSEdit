@@ -47,7 +47,7 @@ export async function parseNanosaurLevelFile(
         junk2: 0,
         // Store the raw Nanosaur1 data for roundtrip
         nanosaur1RawLevel: rawLevelData,
-      } as any, // Use any here as we're extending the metadata
+      } as any, // eslint-disable-line @typescript-eslint/no-explicit-any -- Extended metadata
     };
     
     return ok(result);

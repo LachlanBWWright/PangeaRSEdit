@@ -77,6 +77,7 @@ export async function saveMap({
     }
     
     // Type-cast since we're in a Nanosaur 1 context
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const compileResult = compileNanosaur1Level(data, rawLevelData as any);
     
     if (!compileResult.ok) {
