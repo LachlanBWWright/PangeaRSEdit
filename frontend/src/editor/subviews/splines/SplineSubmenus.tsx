@@ -3,7 +3,10 @@ import { Updater } from "use-immer";
 import { SplineItem } from "@/python/structSpecs/LevelTypes";
 import { SplineData } from "@/python/structSpecs/LevelTypes";
 import { useAtom, useAtomValue } from "jotai";
-import { TerrainItemTypeParams, ItemType } from "../../../data/items/ottoItemType";
+import {
+  TerrainItemTypeParams,
+  ItemType,
+} from "../../../data/items/ottoItemType";
 import { ParamTooltip } from "../items/ParamTooltip";
 import { getParamTooltip } from "../items/getParamTooltip";
 import type { FlagDescription } from "../../../data/items/itemParams";
@@ -25,7 +28,10 @@ import { getSplineItemTypes } from "@/data/splines/getSplineItemTypes";
 import { Globals } from "@/data/globals/globals";
 import { getSplineItemName } from "@/data/splines/getSplineItemNames";
 import { Checkbox } from "@/components/ui/checkbox";
-import { SafeSplineItemTypes, FilterToSafeSplineItems } from "../../../data/items/itemAtoms";
+import {
+  SafeSplineItemTypes,
+  FilterToSafeSplineItems,
+} from "../../../data/items/itemAtoms";
 import { Label } from "@/components/ui/label";
 
 export function AddNewSplineMenu({
@@ -99,9 +105,10 @@ export function EditSplineItemMenu({
     : [];
 
   // Filter to safe spline items if enabled
-  const splineItemValues = filterToSafe && safeSplineItemTypes.size > 0
-    ? allSplineItemValues.filter((type) => safeSplineItemTypes.has(type))
-    : allSplineItemValues;
+  const splineItemValues =
+    filterToSafe && safeSplineItemTypes.size > 0
+      ? allSplineItemValues.filter((type) => safeSplineItemTypes.has(type))
+      : allSplineItemValues;
 
   if (currentSplineItemData === undefined) return <></>;
 
@@ -145,11 +152,12 @@ export function EditSplineItemMenu({
             checked={filterToSafe}
             onCheckedChange={(checked) => setFilterToSafe(checked === true)}
           />
-          <Label 
-            htmlFor="filter-safe-spline-items" 
+          <Label
+            htmlFor="filter-safe-spline-items"
             className="text-sm cursor-pointer"
           >
-            Only show spline item types found in original level ({safeSplineItemTypes.size} safe types)
+            Only show spline item types found in original level (
+            {safeSplineItemTypes.size} safe types)
           </Label>
         </div>
       )}
@@ -184,7 +192,9 @@ export function EditSplineItemMenu({
         {([0, 1, 2, 3] as const).map((i) => {
           const paramKey = `p${i}` as const;
           const param =
-            TerrainItemTypeParams[currentSplineItemData.type as ItemType][paramKey];
+            TerrainItemTypeParams[currentSplineItemData.type as ItemType][
+              paramKey
+            ];
           const value = currentSplineItemData[paramKey];
           const setValue = (v: number) => {
             setSplineData((splineData) => {
