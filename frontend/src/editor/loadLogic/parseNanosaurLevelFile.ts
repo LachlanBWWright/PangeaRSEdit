@@ -37,7 +37,18 @@ export async function parseNanosaurLevelFile(
     }
 
     setData(splitLevelData(compatibleLevel));
-    return ok(compatibleLevel);
+    return ok({
+      ...compatibleLevel,
+      _metadata: {
+        1000: {
+          name: "Metadata",
+          obj: {
+            nanosaur1RawLevel: rawLevelData,
+          },
+          order: 100,
+        },
+      },
+    });
   } catch (e) {
     return err(e instanceof Error ? e : new Error(String(e)));
   }

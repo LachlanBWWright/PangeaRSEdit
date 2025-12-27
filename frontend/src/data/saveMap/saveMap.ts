@@ -61,16 +61,55 @@ export async function saveMap({
       title: "Map Downloaded!",
     });
   } else if (globals.DATA_TYPE === DataType.TRT_FILE) {
-    //TODO: Nanosaur 1 TRT file logic
+    // Nanosaur 1: Compile back to .ter format
+    const { compileNanosaur1Level } = await import("@/editor/loadLogic/compileNanosaur1Level");
+    const { parseNanosaur1Level } = await import("@/data/processors/classicProprocessor");
+    
+    // We need the original raw level data to preserve binary-specific information
+    // This should be stored in data._metadata if available
+    const rawLevelData = (data as unknown as { _metadata?: { 1000?: { obj?: { nanosaur1RawLevel?: unknown } } } })?._metadata?.[1000]?.obj?.nanosaur1RawLevel;
+    
+    if (!rawLevelData) {
+      toast({
+        title: "Cannot save Nanosaur 1 level",
+        description: "Original level data not found in metadata",
+      });
+      return;
+    }
+    
+    const mapBuffer = compileNanosaur1Level(data, rawLevelData as  ReturnType<typeof parseNanosaur1Level>);
+    downloadBlob(mapBuffer, mapFile.name, ".ter");
+    toast({
+      title: "Nanosaur 1 Map Downloaded!",
+    });
+  } else if (globals.GAME_NAME === "Mighty Mike") {
+    // Mighty Mike: Compile back to .map format
+    const { mightyMikeMapToCompressedBinary } = await import("@/modelParsers/parseMightyMike");
+    
+    // Extract Mighty Mike-specific data from metadata
+    const mightyMikeData = (data as unknown as { _metadata?: { 1000?: { obj?: { mightyMikeMapData?: unknown } } } })?._metadata?.[1000]?.obj?.mightyMikeMapData;
+    
+    if (!mightyMikeData) {
+      toast({
+        title: "Cannot save Mighty Mike level",
+        description: "Original level data not found in metadata",
+      });
+      return;
+    }
+    
+    const mapBuffer = mightyMikeMapToCompressedBinary(mightyMikeData as Parameters<typeof mightyMikeMapToCompressedBinary>[0]);
+    downloadBlob(mapBuffer, mapFile.name, ".map");
+    toast({
+      title: "Mighty Mike Map Downloaded!",
+    });
   } else {
     const mapBuffer = await processMapData({ data, pyodideWorker, globals });
     console.log("test\n\n\n");
     downloadBlob(mapBuffer, mapFile.name, ".ter.rsrc");
+    toast({
+      title: "Map Downloaded!",
+    });
   }
-
-  toast({
-    title: "Map Downloaded!",
-  });
 }
 
 function downloadBlob(buffer: ArrayBuffer, filename: string, mime: string) {

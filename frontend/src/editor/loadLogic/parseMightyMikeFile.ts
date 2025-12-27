@@ -348,7 +348,19 @@ export async function parseMightyMikeFile(
       setMapImages(tilesetField.tileImages);
     }
 
-    return ok(ottoCompatible as unknown as LevelData);
+    return ok({
+      ...ottoCompatible,
+      _metadata: {
+        1000: {
+          name: "Metadata",
+          obj: {
+            mightyMikeMapData: mapResult.value,
+            mightyMikeTileValues: mapResult.value.mapImage.flat(),
+          },
+          order: 100,
+        },
+      },
+    } as unknown as LevelData);
   } catch (e) {
     return err(e instanceof Error ? e : new Error(String(e)));
   }
