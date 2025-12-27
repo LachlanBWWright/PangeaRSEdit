@@ -1,4 +1,4 @@
-import { loadPyodide, PyodideInterface } from "pyodide";
+import { loadPyodide, PyodideInterface, version as pyodideVersion } from "pyodide";
 import rsrcDumpUrl from "../assets/rsrcdump-0.1.0-py3-none-any.whl?url";
 
 let pyodide: PyodideInterface | null = null;
@@ -39,8 +39,9 @@ export type PyodideResponse =
 self.onmessage = async (event: MessageEvent<PyodideMessage>) => {
   if (event.data.type === "init") {
     console.log("Initializing Pyodide...");
+    const indexURL = `https://cdn.jsdelivr.net/pyodide/v${pyodideVersion}/full/`;
     const pyodideRes = await loadPyodide({
-      indexURL: "https://cdn.jsdelivr.net/pyodide/v0.26.4/full/",
+      indexURL,
     });
     console.log("Pyodide initialized");
     await pyodideRes.loadPackage(rsrcDumpUrl);
