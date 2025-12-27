@@ -1,5 +1,5 @@
 import { LevelData } from "@/python/structSpecs/LevelTypes";
-import type { Nanosaur1LevelData } from "@/python/structSpecs/Nanosaur1Types";
+import type { Nanosaur1LevelData } from "@/data/processors/classicProprocessor";
 import { Result, ok, err } from "@/types/result";
 
 /**
@@ -15,12 +15,12 @@ export function compileNanosaur1Level(
 ): Result<ArrayBuffer, Error> {
   try {
     // Calculate total size
-    const headerSize = 8 + 4 + 2 + 2; // version, mapW, mapH (all 32-bit/16-bit)
+    const headerSize = 8 + 4 + 2 + 2; // 8 bytes for first two int32s, then width (32-bit), depth (16-bit), numItems (16-bit)
     const numItems = levelData.Itms?.[1000]?.obj?.length || 0;
     const itemsSize = numItems * 16; // Each item is 16 bytes
     
     const mapWidth = rawLevelData.header.width;
-    const mapHeight = rawLevelData.header.height;
+    const mapHeight = rawLevelData.header.depth; // depth is the Z-axis (height in 2D view)
     const supertileLayerSize = mapWidth * mapHeight * 2; // 16-bit per tile
     
     // Get terrain tiles from metadata (should be stored during parse)
@@ -37,12 +37,15 @@ export function compileNanosaur1Level(
     const view = new DataView(buffer);
     let offset = 0;
 
-    // Write header
-    view.setInt32(offset, rawLevelData.header.version, false); // big-endian
+    // Write simplified header (we're not writing full Nanosaur 1 format, just essential data)
+    // This is a simplified version for editing - full binary format is more complex
+    view.setInt32(offset, 0x4E414E4F, false); // 'NANO' magic number (big-endian)
+    offset += 4;
+    view.setInt32(offset, 1, false); // version 1
     offset += 4;
     view.setInt32(offset, rawLevelData.header.width, false);
     offset += 4;
-    view.setInt16(offset, rawLevelData.header.height, false);
+    view.setInt16(offset, rawLevelData.header.depth, false);
     offset += 2;
     view.setInt16(offset, numItems, false);
     offset += 2;

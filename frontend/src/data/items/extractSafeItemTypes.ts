@@ -32,19 +32,16 @@ export function extractSafeItemTypes(levelData: Partial<Pick<LevelData, 'Itms' |
     }
   }
 
-  // Extract spline item types
-  if (levelData.Spln?.[1000]?.obj) {
-    const splinesObj = levelData.Spln[1000].obj;
-    if (Array.isArray(splinesObj)) {
-      splinesObj.forEach((spline) => {
-        // Check if spline has items
-        if (spline?.items) {
-          const splineItems = Array.isArray(spline.items) ? spline.items : Object.values(spline.items);
-          splineItems.forEach((splineItem) => {
-            if (splineItem && typeof splineItem.type === "number") {
-              splineItemTypes.add(splineItem.type);
-            }
-          });
+  // Extract spline item types from SpIt field (if available)
+  // Note: SpIt is part of SplineData but we're working with partial data
+  // For now, we'll check if the levelData has SpIt at the same level
+  const levelDataAny = levelData as any;
+  if (levelDataAny.SpIt?.[1000]?.obj) {
+    const splineItemsObj = levelDataAny.SpIt[1000].obj;
+    if (Array.isArray(splineItemsObj)) {
+      splineItemsObj.forEach((splineItem: any) => {
+        if (splineItem && typeof splineItem.type === "number") {
+          splineItemTypes.add(splineItem.type);
         }
       });
     }

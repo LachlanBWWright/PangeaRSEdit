@@ -93,6 +93,7 @@ export function IntroPrompt({ pyodideWorker }: { pyodideWorker: Worker }) {
       Hedr: atomicData.headerData,
       Itms: atomicData.itemData?.Itms,
       Spln: atomicData.splineData?.Spln,
+      SpIt: atomicData.splineData?.SpIt,
     };
 
     const { itemTypes, splineItemTypes } = extractSafeItemTypes(levelData);

@@ -5,9 +5,6 @@ import { LevelData } from "@/python/structSpecs/LevelTypes";
 import { DataType, TileImageFormat, type GlobalsInterface } from "../globals/globals";
 import { validateResourceForkJson } from "../utils/levelDataUtils";
 import { toast } from "../../hooks/use-toast";
-import { compileNanosaur1Level } from "@/editor/loadLogic/compileNanosaur1Level";
-import type { Nanosaur1LevelData } from "@/data/processors/classicProprocessor";
-import { mightyMikeMapToCompressedBinary } from "@/modelParsers/parseMightyMike";
 
 /**
  * Save and download map and images as in IntroPrompt
@@ -79,7 +76,8 @@ export async function saveMap({
       return;
     }
     
-    const compileResult = compileNanosaur1Level(data, rawLevelData as Nanosaur1LevelData);
+    // Type-cast since we're in a Nanosaur 1 context
+    const compileResult = compileNanosaur1Level(data, rawLevelData as any);
     
     if (!compileResult.ok) {
       toast({

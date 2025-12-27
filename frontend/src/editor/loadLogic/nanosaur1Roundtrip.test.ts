@@ -52,7 +52,7 @@ describe("Nanosaur 1 Byte-Accurate Roundtrip Tests", () => {
 
         // Parse the Nanosaur 1 level
         const rawLevelData = parseNanosaur1Level(bufferToArrayBuffer(originalBuffer));
-        console.log(`  Parsed: ${rawLevelData.header.width}x${rawLevelData.header.height}`);
+        console.log(`  Parsed: ${rawLevelData.header.width}x${rawLevelData.header.depth}`);
         console.log(`    Objects: ${rawLevelData.objectList.length}`);
         console.log(`    Texture layer tiles: ${rawLevelData.textureLayer.length}`);
         console.log(`    Heightmap tiles: ${rawLevelData.heightmapTiles?.length || 0}`);
@@ -127,7 +127,7 @@ describe("Nanosaur 1 Byte-Accurate Roundtrip Tests", () => {
 
         // Compare structures
         expect(rawLevelData2.header.width).toBe(rawLevelData1.header.width);
-        expect(rawLevelData2.header.height).toBe(rawLevelData1.header.height);
+        expect(rawLevelData2.header.depth).toBe(rawLevelData1.header.depth);
         expect(rawLevelData2.objectList.length).toBe(rawLevelData1.objectList.length);
         expect(rawLevelData2.textureLayer.length).toBe(rawLevelData1.textureLayer.length);
         expect(rawLevelData2.heightmapTiles?.length || 0).toBe(rawLevelData1.heightmapTiles?.length || 0);

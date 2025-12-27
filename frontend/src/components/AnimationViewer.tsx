@@ -169,6 +169,8 @@ export function AnimationViewer({
     );
   }
 
+  const hasActiveAction = currentActionRef.current !== null;
+
   return (
     <Card className="bg-gray-800 border-gray-700">
       <CardHeader>

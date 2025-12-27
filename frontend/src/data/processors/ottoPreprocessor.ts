@@ -40,8 +40,13 @@ export function preprocessJson(
     console.log(json);
     const layrRecord = anyJson.Layr as Record<number, { obj: unknown }>;
     const atrbRecord = anyJson.Atrb as Record<number, { obj: unknown }>;
-    const layrArr = layrRecord[1000].obj;
-    const atrbArr = atrbRecord[1000].obj;
+    const layr1000 = layrRecord[1000];
+    const atrb1000 = atrbRecord[1000];
+    if (!layr1000 || !atrb1000) {
+      return err(new Error("Layr[1000] or Atrb[1000] is undefined"));
+    }
+    const layrArr = layr1000.obj;
+    const atrbArr = atrb1000.obj;
 
     console.log("layrArr", layrArr);
     console.log("atrbArr", atrbArr);
@@ -71,8 +76,8 @@ export function preprocessJson(
 
     console.log("newAtrbArr", newAtrbArr);
     console.log("newLayrArr", newLayrArr);
-    atrbRecord[1000].obj = newAtrbArr;
-    layrRecord[1000].obj = newLayrArr;
+    atrb1000.obj = newAtrbArr;
+    layr1000.obj = newLayrArr;
   } else {
     console.warn("Layr or Atrb not found in JSON");
   }
@@ -117,17 +122,21 @@ export function ottoPreprocessor(
       }
     });
 
-    const anyData: Record<string, Record<string, {obj: unknown[]}>| undefined> = data;
-    if (data.Liqd !== undefined)
-      for (const waterItem of anyData.Liqd?.[1000]?.obj ?? []) {
+    // Cast for backwards compatibility transformation
+    // We're accessing Liqd as any since we're doing a transformation
+    if (data.Liqd !== undefined) {
+      const liqd = (data as any).Liqd;
+      for (const waterItem of liqd?.[1000]?.obj ?? []) {
+        const item = waterItem as Record<string, any>;
         for (let i = 0; i < globals.LIQD_NUBS; i++) {
-          const nub = waterItem.nubs[i];
+          const nub = item.nubs?.[i];
           if (nub) {
-            waterItem[`x_${i}`] = nub[0];
-            waterItem[`y_${i}`] = nub[1];
+            item[`x_${i}`] = nub[0];
+            item[`y_${i}`] = nub[1];
           }
         }
       }
+    }
 
     //Fix spline numnubs
     if (data.Spln !== undefined)

@@ -8,7 +8,7 @@ export const ClickToAddItem = atom<number | undefined>(undefined);
  * These are item types that were present when the level was loaded,
  * indicating they won't crash the game when placed.
  */
-export const SafeItemTypes = atom<Set<number>>(new Set());
+export const SafeItemTypes = atom<Set<number>>(new Set<number>());
 
 /**
  * Controls whether the item type dropdown is filtered to only show safe types.
@@ -20,6 +20,6 @@ export const FilterToSafeItems = atom<boolean>(true);
 /**
  * Same concept for spline items
  */
-export const SafeSplineItemTypes = atom<Set<number>>(new Set());
+export const SafeSplineItemTypes = atom<Set<number>>(new Set<number>());
 export const FilterToSafeSplineItems = atom<boolean>(true);
 
