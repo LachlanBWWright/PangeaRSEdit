@@ -19,8 +19,7 @@ export function preprocessJson(
   json: Record<string, unknown>,
   globals: GlobalsInterface,
 ): Result<void, Error> {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const anyJson = json as any;
+  const anyJson = json as Record<string, unknown>;
   console.log(anyJson);
 
   // For games that use Layr as tile indices with flip/rotate bits - DO NOT MODIFY!
@@ -112,10 +111,9 @@ export function ottoPreprocessor(
       }
     });
 
-    // eslint-disable-next-line  @typescript-eslint/no-explicit-any
-    const anyData: any = data;
+    const anyData: Record<string, Record<string, {obj: unknown[]}>| undefined> = data;
     if (data.Liqd !== undefined)
-      for (const waterItem of anyData.Liqd[1000].obj) {
+      for (const waterItem of anyData.Liqd?.[1000]?.obj ?? []) {
         for (let i = 0; i < globals.LIQD_NUBS; i++) {
           const nub = waterItem.nubs[i];
           if (nub) {

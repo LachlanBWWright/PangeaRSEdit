@@ -132,11 +132,10 @@ describe("Mighty Mike Color Diagnostics", () => {
     try {
       const outDir = join(__dirname, "../../tests-output");
       // Ensure directory exists
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
-      const fsModule = require("fs") as { existsSync: (path: string) => boolean; mkdirSync: (path: string, opts: {recursive: boolean}) => void; writeFileSync: (path: string, content: string) => void };
-      if (!fsModule.existsSync(outDir)) fsModule.mkdirSync(outDir, { recursive: true });
+      const { existsSync, mkdirSync, writeFileSync } = await import("fs");
+      if (!existsSync(outDir)) mkdirSync(outDir, { recursive: true });
       const outPath = join(outDir, "mighty-mike-palette-diagnostics.json");
-      fsModule.writeFileSync(outPath, JSON.stringify(sceneStats, null, 2));
+      writeFileSync(outPath, JSON.stringify(sceneStats, null, 2));
       console.log(`Wrote palette diagnostics to ${outPath}`);
     } catch {
       // Best-effort write; ignore errors in CI

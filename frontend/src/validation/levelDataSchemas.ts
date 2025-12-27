@@ -371,8 +371,6 @@ export function validateTileAttributes(
  */
 export function validatePartialLevelDataForSchema(
   data: unknown,
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  _schema: z.ZodTypeAny,
 ): Result<unknown, Error> {
   // Since partial() isn't universally available on all Zod types,
   // we simply validate that data is an object and return it

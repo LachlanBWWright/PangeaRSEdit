@@ -68,6 +68,5 @@ export function useModelHierarchy(
     // Only depend on gltfResult.scene
     // setModelNodes is a stable setState function (doesn't change between renders)
     // onSceneReady callback is memoized in parent component
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [gltfResult?.scene]);
+  }, [gltfResult?.scene, onSceneReady, setModelNodes]);
 }

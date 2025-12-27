@@ -23,7 +23,7 @@ export function useModelAnimations(
         // Handle animations
         if (gltfResult.animations && gltfResult.animations.length > 0) {
           const mixer = new THREE.AnimationMixer(gltfResult.scene);
-          setAnimationMixer(mixer);
+          Promise.resolve().then(() => setAnimationMixer(mixer));
 
           // Extract animation info
           const animationInfos: AnimationInfo[] = gltfResult.animations.map(
@@ -44,22 +44,21 @@ export function useModelAnimations(
             animationInfos,
           );
         } else {
-          setAnimationMixer(null);
+          Promise.resolve().then(() => setAnimationMixer(null));
           if (onAnimationsReady) {
             onAnimationsReady([], null);
           }
         }
       } else {
-        setAnimationMixer(null);
+        Promise.resolve().then(() => setAnimationMixer(null));
         if (onAnimationsReady) onAnimationsReady([], null);
       }
     } catch (error) {
       console.error("Error in useModelAnimations:", error);
-      setAnimationMixer(null);
+      Promise.resolve().then(() => setAnimationMixer(null));
       if (onAnimationsReady) onAnimationsReady([], null);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [gltfResult?.scene, gltfResult?.animations]);
+  }, [gltfResult?.scene, gltfResult?.animations, onAnimationsReady]);
 
   return { animationMixer };
 }

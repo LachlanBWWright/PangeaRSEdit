@@ -316,8 +316,7 @@ export async function parseMightyMikeFile(
     };
 
     console.log("Final MightyMike level data BEFORE splitLevelData:");
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const tilesetField = (ottoCompatible as any).tileset;
+    const tilesetField = (ottoCompatible as Record<string, unknown>).tileset;
     console.log({
       hasTileset: !!tilesetField,
       tilesetType: tilesetField?.constructor?.name,
