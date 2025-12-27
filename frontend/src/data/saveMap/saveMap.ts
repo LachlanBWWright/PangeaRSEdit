@@ -76,8 +76,17 @@ export async function saveMap({
       return;
     }
     
-    const mapBuffer = compileNanosaur1Level(data, rawLevelData as  ReturnType<typeof parseNanosaur1Level>);
-    downloadBlob(mapBuffer, mapFile.name, ".ter");
+    const compileResult = compileNanosaur1Level(data, rawLevelData as ReturnType<typeof parseNanosaur1Level>);
+    
+    if (!compileResult.ok) {
+      toast({
+        title: "Failed to compile Nanosaur 1 level",
+        description: compileResult.error.message,
+      });
+      return;
+    }
+    
+    downloadBlob(compileResult.value, mapFile.name, ".ter");
     toast({
       title: "Nanosaur 1 Map Downloaded!",
     });

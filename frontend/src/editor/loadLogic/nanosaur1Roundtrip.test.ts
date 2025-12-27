@@ -64,8 +64,13 @@ describe("Nanosaur 1 Byte-Accurate Roundtrip Tests", () => {
         expect(compatibleLevel.Layr).toBeDefined();
 
         // Compile back to binary
-        const exportedBuffer = compileNanosaur1Level(compatibleLevel, rawLevelData);
-        const exportedData = new Uint8Array(exportedBuffer);
+        const compileResult = compileNanosaur1Level(compatibleLevel, rawLevelData);
+        
+        if (!compileResult.ok) {
+          throw new Error(`Compilation failed: ${compileResult.error.message}`);
+        }
+        
+        const exportedData = new Uint8Array(compileResult.value);
         console.log(`  Export: ${exportedData.length} bytes`);
 
         // Byte-for-byte comparison
@@ -112,8 +117,13 @@ describe("Nanosaur 1 Byte-Accurate Roundtrip Tests", () => {
         const compatibleLevel = nanosaur1LevelToLevelData(rawLevelData1, 32, 64, 4.0);
 
         // Compile and re-parse
-        const exportedBuffer = compileNanosaur1Level(compatibleLevel, rawLevelData1);
-        const rawLevelData2 = parseNanosaur1Level(exportedBuffer);
+        const compileResult = compileNanosaur1Level(compatibleLevel, rawLevelData1);
+        
+        if (!compileResult.ok) {
+          throw new Error(`Compilation failed: ${compileResult.error.message}`);
+        }
+        
+        const rawLevelData2 = parseNanosaur1Level(compileResult.value);
 
         // Compare structures
         expect(rawLevelData2.header.mapWidth).toBe(rawLevelData1.header.mapWidth);
