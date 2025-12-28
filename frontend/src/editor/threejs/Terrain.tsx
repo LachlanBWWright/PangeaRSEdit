@@ -1,23 +1,29 @@
 import {
   HeaderData,
   TerrainData,
-  ottoHeader,
-} from "@/python/structSpecs/ottoMaticLevelData";
-import { useRef, useMemo } from "react";
+  StandardHeader,
+} from "@/python/structSpecs/LevelTypes";
+import { useRef, useMemo, forwardRef, useEffect } from "react";
 import { CanvasTexture, DoubleSide, Mesh, PlaneGeometry } from "three";
 import { useAtomValue } from "jotai";
 import { Globals } from "@/data/globals/globals";
 import combineMapImages from "./terrainUtils";
 
-export function TerrainGeometry({
-  headerData,
-  terrainData,
-  mapImages,
-}: {
+export const TerrainGeometry = forwardRef<Mesh, {
   headerData: HeaderData;
   terrainData: TerrainData;
   mapImages: HTMLCanvasElement[];
-}) {
+  onPointerDown?: (event: THREE.Event) => void;
+  onPointerMove?: (event: THREE.Event) => void;
+  onPointerUp?: (event: THREE.Event) => void;
+}>(function TerrainGeometry({
+  headerData,
+  terrainData,
+  mapImages,
+  onPointerDown,
+  onPointerMove,
+  onPointerUp,
+}, ref) {
   const globals = useAtomValue(Globals);
 
   const combinedImgResult = useMemo(
@@ -27,13 +33,24 @@ export function TerrainGeometry({
 
   const combinedImg = combinedImgResult.ok ? combinedImgResult.value : null;
 
-  const header: ottoHeader | undefined = headerData.Hedr?.[1000]?.obj;
+  const header: StandardHeader | undefined = headerData.Hedr?.[1000]?.obj;
 
   const numWide = header?.mapWidth ?? 0;
   const numHigh = header?.mapHeight ?? 0;
-  const meshRef = useRef<Mesh>(null);
+  const internalMeshRef = useRef<Mesh>(null);
   const mapTileSize = header?.tileSize ?? 1;
   const yScale = globals.TILE_INGAME_SIZE / Math.max(1, mapTileSize);
+
+  // Combine internal ref with forwarded ref
+  useEffect(() => {
+    if (ref) {
+      if (typeof ref === 'function') {
+        ref(internalMeshRef.current);
+      } else {
+        ref.current = internalMeshRef.current;
+      }
+    }
+  }, [ref]);
 
   // Build geometry with explicit Y from YCrd
   const geometry = useMemo(() => {
@@ -85,7 +102,7 @@ export function TerrainGeometry({
   if (!geometry) return null;
   return (
     <mesh
-      ref={meshRef}
+      ref={internalMeshRef}
       position={[
         (numWide * globals.TILE_INGAME_SIZE) / 2,
         0,
@@ -93,6 +110,9 @@ export function TerrainGeometry({
       ]}
       rotation={[-Math.PI / 2, 0, 0]}
       geometry={geometry}
+      onPointerDown={onPointerDown}
+      onPointerMove={onPointerMove}
+      onPointerUp={onPointerUp}
     >
       <ambientLight intensity={1} />
       <meshStandardMaterial
@@ -102,4 +122,4 @@ export function TerrainGeometry({
       />
     </mesh>
   );
-}
+});

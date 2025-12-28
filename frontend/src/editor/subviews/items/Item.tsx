@@ -1,5 +1,5 @@
 import { Updater } from "use-immer";
-import { ItemData } from "../../../python/structSpecs/ottoMaticLevelData";
+import { ItemData } from "@/python/structSpecs/LevelTypes";
 import { Label, Rect, Tag, Text } from "react-konva";
 import type Konva from "konva";
 import { SelectedItem } from "../../../data/items/itemAtoms";
@@ -8,6 +8,7 @@ import { useState, useCallback, memo } from "react";
 import { Globals } from "@/data/globals/globals";
 import { getItemName } from "@/data/items/getItemNames";
 import { selectItem, updateItem } from "../../../data/selectors";
+import { getLiquidPatchStyle, getLiquidPatchDimensions } from "@/data/items/liquidPatchItems";
 
 const ITEM_BOX_SIZE = 12;
 const ITEM_BOX_OFFSET = ITEM_BOX_SIZE / 2;
@@ -50,6 +51,78 @@ export const Item = memo(function Item({
   const itemZ = item.z - ITEM_BOX_OFFSET;
   const itemName = getItemName(globals, item.type);
 
+  // Check if this is a liquid patch item (water, lava, honey, slime in Bugdom 1/Nanosaur 1)
+  const liquidPatchStyle = getLiquidPatchStyle(globals, item.type);
+
+  // Render liquid patch items as rectangles to resemble water bodies
+  if (liquidPatchStyle) {
+    // Calculate dimensions based on item parameters
+    const dims = getLiquidPatchDimensions(
+      globals,
+      item.type,
+      item.p0,
+      item.p1,
+      item.p2,
+      item.p3
+    );
+
+    // Position is centered on the item coordinates
+    const rectX = item.x - dims.width2D / 2;
+    const rectZ = item.z - dims.depth2D / 2;
+
+    return (
+      <>
+        {/* Main liquid rectangle */}
+        <Rect
+          x={rectX}
+          y={rectZ}
+          width={dims.width2D}
+          height={dims.depth2D}
+          stroke={liquidPatchStyle.color2D}
+          strokeWidth={3}
+          fill={liquidPatchStyle.fill2D}
+          draggable
+          onMouseOver={handleMouseOver}
+          onMouseLeave={handleMouseLeave}
+          onMouseDown={handleMouseDown}
+          onDragStart={handleMouseDown}
+          onDragEnd={(e: Konva.KonvaEventObject<DragEvent>) => {
+            updateItem(setItemData, itemIdx, {
+              x: Math.round(e.target.x() + dims.width2D / 2),
+              z: Math.round(e.target.y() + dims.depth2D / 2),
+            });
+          }}
+        />
+        {/* Inner rectangle for visual effect */}
+        <Rect
+          x={rectX + dims.width2D * 0.15}
+          y={rectZ + dims.depth2D * 0.15}
+          width={dims.width2D * 0.7}
+          height={dims.depth2D * 0.7}
+          stroke={liquidPatchStyle.color2D}
+          strokeWidth={1}
+          listening={false}
+        />
+        {/* Center marker */}
+        <Rect
+          x={item.x - 4}
+          y={item.z - 4}
+          width={8}
+          height={8}
+          fill={liquidPatchStyle.color2D}
+          listening={false}
+        />
+        {hovering && (
+          <Label opacity={1} x={item.x + dims.width2D / 2 + 5} y={item.z}>
+            <Tag fill={liquidPatchStyle.color2D} />
+            <Text text={liquidPatchStyle.name} fontSize={10} fill="white" />
+          </Label>
+        )}
+      </>
+    );
+  }
+
+  // Default rendering for regular items
   return (
     <>
       <Rect

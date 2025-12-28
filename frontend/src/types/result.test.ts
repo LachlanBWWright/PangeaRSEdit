@@ -232,7 +232,7 @@ describe("Result type", () => {
       const result = ok(42);
       const matched = match(result, {
         ok: (v) => `value: ${v}`,
-        err: (e) => `error: ${e!.message}`,
+        err: (e) => `error: ${(e as unknown as Error).message}`,
       });
       expect(matched).toBe("value: 42");
     });

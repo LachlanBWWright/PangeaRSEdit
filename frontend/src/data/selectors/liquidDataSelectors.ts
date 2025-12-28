@@ -1,9 +1,9 @@
-import { ottoMaticLevel } from "../../python/structSpecs/ottoMaticInterface";
+import { LevelData } from "@/python/structSpecs/LevelTypes";
 import {
   LiquidData,
-  ottoLiquid,
+  Liquid,
   HeaderData,
-} from "../../python/structSpecs/ottoMaticLevelData";
+} from "@/python/structSpecs/LevelTypes";
 import { Updater } from "use-immer";
 
 /**
@@ -20,7 +20,7 @@ export function selectLiquidData(levelData: LiquidData): LiquidData | null {
 /**
  * Gets the liquids array directly
  */
-export function selectLiquids(levelData: LiquidData): ottoLiquid[] {
+export function selectLiquids(levelData: LiquidData): Liquid[] {
   return levelData.Liqd?.[1000]?.obj || [];
 }
 
@@ -30,7 +30,7 @@ export function selectLiquids(levelData: LiquidData): ottoLiquid[] {
 export function selectLiquid(
   levelData: LiquidData,
   liquidIdx: number,
-): ottoLiquid | null {
+): Liquid | null {
   const liquids = selectLiquids(levelData);
   return liquids[liquidIdx] || null;
 }
@@ -41,7 +41,7 @@ export function selectLiquid(
 export function updateLiquid(
   setLevelData: Updater<LiquidData>,
   liquidIdx: number,
-  liquidUpdate: Partial<ottoLiquid>,
+  liquidUpdate: Partial<Liquid>,
 ): void {
   setLevelData((draft) => {
     if (draft.Liqd?.[1000]?.obj?.[liquidIdx]) {
@@ -54,9 +54,9 @@ export function updateLiquid(
  * Adds a new liquid to the level data
  */
 export function addLiquid(
-  setLevelData: Updater<ottoMaticLevel>,
+  setLevelData: Updater<LevelData>,
   setHeaderData: Updater<HeaderData>,
-  newLiquid: ottoLiquid,
+  newLiquid: Liquid,
 ): void {
   setLevelData((draft) => {
     if (draft.Liqd?.[1000]?.obj) {
@@ -74,7 +74,7 @@ export function addLiquid(
  * Removes a liquid from the level data
  */
 export function removeLiquid(
-  setLevelData: Updater<ottoMaticLevel>,
+  setLevelData: Updater<LevelData>,
   setHeaderData: Updater<HeaderData>,
   liquidIdx: number,
 ): void {
@@ -103,7 +103,7 @@ export function removeLiquid(
 export function createLiquidUpdater(
   setLevelData: Updater<LiquidData>,
   liquidIdx: number,
-): Updater<ottoLiquid> {
+): Updater<Liquid> {
   return (liquidUpdater) => {
     setLevelData((draft) => {
       if (draft.Liqd?.[1000]?.obj?.[liquidIdx]) {

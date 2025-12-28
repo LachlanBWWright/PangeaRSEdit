@@ -1,8 +1,17 @@
 import { Updater } from "use-immer";
-import { ottoMaticLevel } from "../../python/structSpecs/ottoMaticInterface";
+import { LevelData } from "@/python/structSpecs/LevelTypes";
 import { SPLINE_KEY_BASE } from "../../editor/subviews/splines/splineUtils";
 import { Game, GlobalsInterface } from "../globals/globals";
 import { Result, ok, err } from "../../types/result";
+
+/**
+ * Check if the game uses Layr as direct tile indices with flip/rotate bits
+ * (as opposed to Otto Matic/CroMag which use Layr to index into Atrb)
+ */
+function usesLayrAsTileIndices(globals: GlobalsInterface): boolean {
+  // All games EXCEPT Otto Matic and CroMag use Layr as tile indices
+  return globals.GAME_TYPE !== Game.OTTO_MATIC && globals.GAME_TYPE !== Game.CRO_MAG;
+}
 
 // we intentionally accept a free-form JSON object here — linting for explicit any is suppressed
 
@@ -10,32 +19,34 @@ export function preprocessJson(
   json: Record<string, unknown>,
   globals: GlobalsInterface,
 ): Result<void, Error> {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const anyJson = json as any;
+  const anyJson = json as Record<string, unknown>;
   console.log(anyJson);
 
-  // For Bugdom 1 and Nanosaur 1, Layr contains tile indices with flip/rotate bits - DO NOT MODIFY!
-  // The Layr preprocessing below is only for Otto Matic and other games where Layr contains Atrb indices.
-  if (
-    globals.GAME_TYPE === Game.BUGDOM ||
-    globals.GAME_TYPE === Game.NANOSAUR ||
-    globals.GAME_TYPE === Game.BUGDOM_2 ||
-    globals.GAME_TYPE === Game.NANOSAUR_2 ||
-    globals.GAME_TYPE === Game.BILLY_FRONTIER
-  ) {
+  // For games that use Layr as tile indices with flip/rotate bits - DO NOT MODIFY!
+  // The Layr preprocessing below is only for Otto Matic and CroMag where Layr contains Atrb indices.
+  if (usesLayrAsTileIndices(globals)) {
     console.log(
       `${globals.GAME_NAME}: Skipping Layr/Atrb preprocessing (Layr contains tile indices with flip/rotate bits)`,
     );
   } else if (
     anyJson.Layr &&
     anyJson.Atrb &&
-    anyJson.Layr[1000] &&
-    anyJson.Atrb[1000]
+    typeof anyJson.Layr === 'object' &&
+    typeof anyJson.Atrb === 'object' &&
+    1000 in anyJson.Layr &&
+    1000 in anyJson.Atrb
   ) {
     // Otto Matic and other games: Ensure Layr points to unique Atrb values
     console.log(json);
-    const layrArr = anyJson.Layr[1000].obj;
-    const atrbArr = anyJson.Atrb[1000].obj;
+    const layrRecord = anyJson.Layr as Record<number, { obj: unknown }>;
+    const atrbRecord = anyJson.Atrb as Record<number, { obj: unknown }>;
+    const layr1000 = layrRecord[1000];
+    const atrb1000 = atrbRecord[1000];
+    if (!layr1000 || !atrb1000) {
+      return err(new Error("Layr[1000] or Atrb[1000] is undefined"));
+    }
+    const layrArr = layr1000.obj;
+    const atrbArr = atrb1000.obj;
 
     console.log("layrArr", layrArr);
     console.log("atrbArr", atrbArr);
@@ -65,14 +76,15 @@ export function preprocessJson(
 
     console.log("newAtrbArr", newAtrbArr);
     console.log("newLayrArr", newLayrArr);
-    anyJson.Atrb[1000].obj = newAtrbArr;
-    anyJson.Layr[1000].obj = newLayrArr;
+    atrb1000.obj = newAtrbArr;
+    layr1000.obj = newLayrArr;
   } else {
     console.warn("Layr or Atrb not found in JSON");
   }
 
-  if (anyJson.Liqd) {
-    const liquidObj = anyJson.Liqd[1000]?.obj;
+  if (anyJson.Liqd && typeof anyJson.Liqd === 'object' && 1000 in anyJson.Liqd) {
+    const liqd = anyJson.Liqd as Record<number, { obj: unknown }>;
+    const liquidObj = liqd[1000]?.obj;
     if (!Array.isArray(liquidObj)) {
       return err(new Error("Liqd[1000].obj is not an array"));
     }
@@ -80,9 +92,10 @@ export function preprocessJson(
       const nubs: [number, number][] = [];
 
       for (let i = 0; i < globals.LIQD_NUBS; i++) {
-        nubs.push([waterItem[`x_${i}`], waterItem[`y_${i}`]]);
+        const item = waterItem as Record<string, number | [number, number][]>;
+        nubs.push([item[`x_${i}`] as number, item[`y_${i}`] as number]);
       }
-      waterItem.nubs = nubs;
+      (waterItem as Record<string, [number, number][]>).nubs = nubs;
     }
   }
 
@@ -90,7 +103,7 @@ export function preprocessJson(
 }
 
 export function ottoPreprocessor(
-  setData: Updater<ottoMaticLevel>,
+  setData: Updater<LevelData>,
   globals: GlobalsInterface,
 ) {
   setData((data) => {
@@ -109,18 +122,23 @@ export function ottoPreprocessor(
       }
     });
 
-    // eslint-disable-next-line  @typescript-eslint/no-explicit-any
-    const anyData: any = data;
-    if (data.Liqd !== undefined)
-      for (const waterItem of anyData.Liqd[1000].obj) {
+    // Cast for backwards compatibility transformation
+    // We're accessing Liqd as any since we're doing a transformation
+    if (data.Liqd !== undefined) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const liqd = (data as any).Liqd;
+      for (const waterItem of liqd?.[1000]?.obj ?? []) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const item = waterItem as Record<string, any>;
         for (let i = 0; i < globals.LIQD_NUBS; i++) {
-          const nub = waterItem.nubs[i];
+          const nub = item.nubs?.[i];
           if (nub) {
-            waterItem[`x_${i}`] = nub[0];
-            waterItem[`y_${i}`] = nub[1];
+            item[`x_${i}`] = nub[0];
+            item[`y_${i}`] = nub[1];
           }
         }
       }
+    }
 
     //Fix spline numnubs
     if (data.Spln !== undefined)

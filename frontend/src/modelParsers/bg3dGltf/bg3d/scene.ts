@@ -5,6 +5,15 @@
 import { Node, Scene, Mesh, Document } from "@gltf-transform/core";
 import { BG3DGroup, BG3DGeometry } from "../../parseBG3D";
 
+// Type guards for BG3D types
+function isBG3DGroup(item: BG3DGroup | BG3DGeometry): item is BG3DGroup {
+  return "children" in item;
+}
+
+function isBG3DGeometry(item: BG3DGroup | BG3DGeometry): item is BG3DGeometry {
+  return !("children" in item);
+}
+
 /**
  * Convert BG3D scene hierarchy to glTF scene
  */
@@ -19,7 +28,7 @@ export function bg3dSceneToGltf(
     group: BG3DGroup | BG3DGeometry,
     parentNode?: Node,
   ): Node | null {
-    if ("children" in group) {
+    if (isBG3DGroup(group)) {
       // This is a BG3DGroup
       const node = doc.createNode();
       node.setName("Group");
@@ -41,13 +50,23 @@ export function bg3dSceneToGltf(
       }
 
       return node;
-    } else {
+    } else if (isBG3DGeometry(group)) {
       // This is a BG3DGeometry - find corresponding mesh
       const geometry = group;
-      const meshIndex = bg3dGroups.indexOf(geometry);
+      let meshIndex = -1;
+      for (let i = 0; i < bg3dGroups.length; i++) {
+        const g = bg3dGroups[i];
+        if (g && isBG3DGeometry(g) && g === geometry) {
+          meshIndex = i;
+          break;
+        }
+      }
       if (meshIndex >= 0 && meshIndex < gltfMeshes.length) {
         const node = doc.createNode();
-        node.setMesh(gltfMeshes[meshIndex]);
+        const mesh = gltfMeshes[meshIndex];
+        if (mesh) {
+          node.setMesh(mesh);
+        }
         node.setName(`Geometry_${meshIndex}`);
 
         if (parentNode) {
@@ -86,20 +105,23 @@ export function gltfSceneToBg3d(
       // This is a geometry node
       const meshIndex = scene.listChildren().indexOf(node);
       if (meshIndex >= 0 && meshIndex < geometries.length) {
-        return geometries[meshIndex];
+        const geometry = geometries[meshIndex];
+        if (geometry) {
+          return geometry;
+        }
       }
     }
 
     // This is a group node
-    const group: BG3DGroup = {
-      children: [],
-    };
-
-    // Process children
     const children = node.listChildren();
+    const childResults: Array<BG3DGroup | BG3DGeometry> = [];
     for (const child of children) {
-      group.children!.push(processNode(child));
+      childResults.push(processNode(child));
     }
+
+    const group: BG3DGroup = {
+      children: childResults,
+    };
 
     return group;
   }
@@ -107,7 +129,10 @@ export function gltfSceneToBg3d(
   // Process scene children
   const sceneChildren = scene.listChildren();
   for (const child of sceneChildren) {
-    groups.push(processNode(child) as BG3DGroup);
+    const result = processNode(child);
+    if (isBG3DGroup(result)) {
+      groups.push(result);
+    }
   }
 
   return groups;

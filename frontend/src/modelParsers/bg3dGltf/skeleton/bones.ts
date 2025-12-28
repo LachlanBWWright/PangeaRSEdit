@@ -100,19 +100,16 @@ export function gltfJointsToBg3dBones(joints: Node[], skin: Skin): BG3DBone[] {
 
     // Infer parentBone from node hierarchy (glTF 2.0 compliant)
     let parentBone = -1;
-    // `listParents()` already returns Node instances; no custom constructor extraction needed
-    const jointParents = joint.listParents();
-    if (jointParents.length > 0) {
-      const jointParent = jointParents[0];
-      if (jointParent) {
-        // Check if parent is the skeleton root (Armature), if so, parentBone = -1
-        const skeletonRoot = skin.getSkeleton();
-        if (jointParent !== skeletonRoot) {
-          // Find the index of the parent in the joints list
-          const parentIndex = joints.indexOf(jointParent);
-          if (parentIndex !== -1) {
-            parentBone = parentIndex;
-          }
+    // Get the immediate parent node using getParentNode()
+    const jointParent = joint.getParentNode();
+    if (jointParent) {
+      // Check if parent is the skeleton root (Armature), if so, parentBone = -1
+      const skeletonRoot = skin.getSkeleton();
+      if (jointParent !== skeletonRoot) {
+        // Find the index of the parent in the joints list
+        const parentIndex = joints.findIndex((j) => j === jointParent);
+        if (parentIndex !== -1) {
+          parentBone = parentIndex;
         }
       }
     }
@@ -145,7 +142,7 @@ export function gltfJointsToBg3dBones(joints: Node[], skin: Skin): BG3DBone[] {
       // Convert glTF matrix (column-major) to our Mat4
       localMatrix = createMatrix4();
       for (let i = 0; i < 16; i++) {
-        localMatrix[i] = jointMatrix[i];
+        localMatrix[i] = jointMatrix[i] ?? 0;
       }
     } else {
       // Build matrix from TRS components - simplified for now
@@ -196,14 +193,15 @@ export function originalSkeletonBinaryToBg3dBones(
     Object.values(resource.Bone).forEach((boneData) => {
       const boneDataObj = boneData as Record<string, unknown>;
       if (boneDataObj.obj) {
+        const obj = boneDataObj.obj as Record<string, unknown>;
         bones.push({
-          parentBone: boneData.obj.parentBone,
-          name: boneData.obj.name || "",
-          coordX: boneData.obj.coordX || 0,
-          coordY: boneData.obj.coordY || 0,
-          coordZ: boneData.obj.coordZ || 0,
-          numPointsAttachedToBone: boneData.obj.numPointsAttachedToBone || 0,
-          numNormalsAttachedToBone: boneData.obj.numNormalsAttachedToBone || 0,
+          parentBone: (obj.parentBone as number) ?? -1,
+          name: (obj.name as string) || "",
+          coordX: (obj.coordX as number) || 0,
+          coordY: (obj.coordY as number) || 0,
+          coordZ: (obj.coordZ as number) || 0,
+          numPointsAttachedToBone: (obj.numPointsAttachedToBone as number) || 0,
+          numNormalsAttachedToBone: (obj.numNormalsAttachedToBone as number) || 0,
           pointIndices: [], // Initialize as empty array
           normalIndices: [], // Initialize as empty array
         });
@@ -220,7 +218,9 @@ export function originalSkeletonBinaryToBg3dBones(
         bone.pointIndices = (bonPObj.obj as unknown[]).map(
           (p) => (p as Record<string, unknown>).pointIndex as number,
         );
-        bone.numPointsAttachedToBone = bone.pointIndices!.length;
+        if (bone.pointIndices) {
+          bone.numPointsAttachedToBone = bone.pointIndices.length;
+        }
       }
     });
   }
@@ -232,7 +232,9 @@ export function originalSkeletonBinaryToBg3dBones(
         bone.normalIndices = (bonNObj.obj as unknown[]).map(
           (n) => (n as Record<string, unknown>).normal as number,
         );
-        bone.numNormalsAttachedToBone = bone.normalIndices!.length;
+        if (bone.normalIndices) {
+          bone.numNormalsAttachedToBone = bone.normalIndices.length;
+        }
       }
     });
   }

@@ -10,7 +10,7 @@ import {
   fenceSchema,
   tileAttributeSchema,
 } from "./levelDataSchemas";
-import { ottoMaticLevelSchema } from "./games/ottoMatic";
+import { LevelDataSchema } from "./games/ottoMatic";
 import { validateMightyMikeLevel } from "./games/mightyMike";
 import { isOk, isErr } from "../types/result";
 
@@ -226,7 +226,7 @@ describe("Level Data Zod Schemas", () => {
     });
   });
 
-  describe("ottoMaticLevelSchema", () => {
+  describe("LevelDataSchema", () => {
     it("should allow passthrough of unknown properties", () => {
       const minimalLevel = {
         _metadata: {
@@ -287,7 +287,7 @@ describe("Level Data Zod Schemas", () => {
         unknownProperty: "should be allowed", // passthrough
       };
 
-      const result = ottoMaticLevelSchema.safeParse(minimalLevel);
+      const result = LevelDataSchema.safeParse(minimalLevel);
       expect(result.success).toBe(true);
     });
   });

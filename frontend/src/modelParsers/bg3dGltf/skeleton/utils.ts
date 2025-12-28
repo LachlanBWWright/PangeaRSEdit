@@ -161,7 +161,7 @@ export function invert(m: Mat4): Mat4 {
   }
 
   const invDet = 1.0 / det;
-  for (let i = 0; i < 16; i++) inv[i] *= invDet;
+  for (let i = 0; i < 16; i++) inv[i]! *= invDet;
   return inv as Mat4;
 }
 

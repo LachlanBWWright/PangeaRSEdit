@@ -147,7 +147,9 @@ export function originalSkeletonBinarySkinningToBg3d(
       if (bonPData.obj && bones[boneIndex] !== undefined) {
         const bone = bones[boneIndex];
         bone.pointIndices = bonPData.obj.map((p) => p.pointIndex);
-        bone.numPointsAttachedToBone = bone.pointIndices!.length;
+        if (bone.pointIndices) {
+          bone.numPointsAttachedToBone = bone.pointIndices.length;
+        }
       }
     });
   }
@@ -159,7 +161,9 @@ export function originalSkeletonBinarySkinningToBg3d(
       if (bonNData.obj && bones[boneIndex] !== undefined) {
         const bone = bones[boneIndex];
         bone.normalIndices = bonNData.obj.map((n) => n.normal);
-        bone.numNormalsAttachedToBone = bone.normalIndices!.length;
+        if (bone.normalIndices) {
+          bone.numNormalsAttachedToBone = bone.normalIndices.length;
+        }
       }
     });
   }

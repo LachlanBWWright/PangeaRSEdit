@@ -2,20 +2,175 @@
 // TypeScript parser for MightyMike .map and .tileset files
 
 import type { Result } from "../types/result";
+import { isOk } from "../types/result";
 import type {
   MightyMikeTileSet,
   MightyMikeMap,
   MightyMikeTileAttribute,
   MightyMikeTileAnimation,
   MightyMikeItem,
+  MightyMikeLevel,
 } from "../python/structSpecs/mightyMikeInterface";
+import {
+  rlwDecompress,
+  rlwCompress,
+  rlbDecompress,
+  PACK_TYPE_RLB,
+  PACK_TYPE_RLW,
+} from "../utils/rlwDecompress";
+
+/**
+ * Decompress a Mighty Mike packed file if needed
+ * Tilesets use RLB (type 0), maps use RLW (type 6)
+ */
+function decompressIfNeeded(buffer: ArrayBuffer): ArrayBuffer {
+  const view = new DataView(buffer);
+  const compressionType = view.getUint32(4, false);
+
+  // Check if this looks like a packed file (compression type 0-6)
+  if (compressionType <= 6) {
+    try {
+      if (compressionType === PACK_TYPE_RLB) {
+        // Tileset files use RLB (byte-level) compression
+        const result = rlbDecompress(buffer);
+        if (isOk(result)) {
+          return result.value.data;
+        } else {
+          console.warn(`RLB decompression failed:`, result.error);
+          return buffer;
+        }
+      } else if (compressionType === PACK_TYPE_RLW) {
+        // Map files use RLW (word-level) compression
+        const result = rlwDecompress(buffer);
+        if (isOk(result)) {
+          return result.value.data;
+        } else {
+          console.warn(`RLW decompression failed:`, result.error);
+          return buffer;
+        }
+      } else {
+        // Unknown compression type, return as-is
+        return buffer;
+      }
+    } catch (error) {
+      // If decompression fails, assume it's not compressed
+      console.warn(`Decompression failed for type ${compressionType}:`, error);
+      return buffer;
+    }
+  }
+  return buffer;
+}
+
+/**
+ * Create a default palette (grayscale with better contrast)
+ * This is used when actual palette data is not available
+ */
+function createDefaultPalette(): Uint8Array {
+  const palette = new Uint8Array(256 * 4);
+  for (let i = 0; i < 256; i++) {
+    // Use a slightly improved grayscale with better contrast
+    const value = Math.floor((i / 255) * 255);
+    palette[i * 4 + 0] = value; // R
+    palette[i * 4 + 1] = value; // G
+    palette[i * 4 + 2] = value; // B
+    palette[i * 4 + 3] = 255; // A (fully opaque)
+  }
+  return palette;
+}
+
+/**
+ * Parse tile images from tileset buffer
+ * Mighty Mike tiles are 32x32 pixels, stored as 8-bit indexed color
+ *
+ * IMPORTANT: This function creates canvas snapshots of tiles at the time of parsing.
+ * To match the original C code behavior more closely (where tiles are rendered at
+ * display time with the current palette), tiles should ideally be re-rendered whenever
+ * the palette changes. For now, we snapshot the palette at parse time.
+ *
+ * Transparency handling:
+ * - The transparencyColors array from the tileset is for COLLISION DETECTION only
+ *   (matches gColorMaskArray in Playfield.c), NOT for visual rendering
+ * - For visual rendering, DO NOT mark any pixels as transparent based on palette index
+ * - All pixels are rendered with their palette color as-is
+ */
+function parseTileImages(
+  buffer: ArrayBuffer,
+  offsetToTileDefinitions: number,
+  numTileDefinitions: number,
+  _transparencyColors?: number[], // Note: transparency colors are for collision detection only
+  palette?: Uint8Array,
+): HTMLCanvasElement[] {
+  const tileImages: HTMLCanvasElement[] = [];
+  const TILE_SIZE = 32;
+  const BYTES_PER_TILE = TILE_SIZE * TILE_SIZE; // 32x32 = 1024 bytes per tile (8-bit indexed)
+
+  // Use provided palette or fall back to default grayscale
+  const colorPalette = palette || createDefaultPalette();
+
+  if (!palette && numTileDefinitions > 0) {
+    console.warn(
+      "[TILE RENDER] ⚠️ NO PALETTE PROVIDED - Using default grayscale fallback! This will result in gray tiles!",
+    );
+  }
+
+  // NOTE: In the original C code, transparency colors (gColorMaskArray) are used ONLY
+  // for collision detection via the render engine's collision system.
+  // They are NOT used to make pixels visually transparent.
+  // Every pixel is rendered with its palette color.
+  // Therefore, we do NOT create a colorIsTransparent array for visual rendering.
+
+  const tileData = new Uint8Array(buffer, offsetToTileDefinitions);
+
+  for (let tileIndex = 0; tileIndex < numTileDefinitions; tileIndex++) {
+    const canvas = document.createElement("canvas");
+    canvas.width = TILE_SIZE;
+    canvas.height = TILE_SIZE;
+    const ctx = canvas.getContext("2d");
+
+    if (!ctx) {
+      console.warn(`Failed to get canvas context for tile ${tileIndex}`);
+      continue;
+    }
+
+    const imageData = ctx.createImageData(TILE_SIZE, TILE_SIZE);
+    const offset = tileIndex * BYTES_PER_TILE;
+
+    // Convert indexed color to RGBA
+    // All pixels use their palette color; no special transparency handling
+    for (let i = 0; i < BYTES_PER_TILE; i++) {
+      if (offset + i >= tileData.length) break;
+
+      const colorIndex = tileData[offset + i];
+      const pixelOffset = i * 4;
+
+      // Bounds check for palette access
+      const colorIdx = colorIndex || 0; // Default to 0 if undefined
+      const paletteOffset = (colorIdx & 0xff) * 4;
+      if (paletteOffset + 3 < colorPalette.length) {
+        // Copy RGBA directly from palette
+        imageData.data[pixelOffset + 0] = colorPalette[paletteOffset] ?? 0;
+        imageData.data[pixelOffset + 1] = colorPalette[paletteOffset + 1] ?? 0;
+        imageData.data[pixelOffset + 2] = colorPalette[paletteOffset + 2] ?? 0;
+        imageData.data[pixelOffset + 3] = colorPalette[paletteOffset + 3] ?? 255;
+      }
+    }
+
+    ctx.putImageData(imageData, 0, 0);
+    tileImages.push(canvas);
+  }
+
+  return tileImages;
+}
 
 export function parseMightyMikeTileSet(
   buffer: ArrayBuffer,
+  palette?: Uint8Array,
 ): Result<MightyMikeTileSet, string> {
   try {
-    const data = new DataView(buffer);
-    const dataLength = buffer.byteLength;
+    // Decompress if needed
+    const decompressedBuffer = decompressIfNeeded(buffer);
+    const data = new DataView(decompressedBuffer);
+    const dataLength = decompressedBuffer.byteLength;
 
     // Parse header offsets (big-endian 32-bit integers)
     const offsetToTileDefinitions = data.getUint32(6, false) + 2; // +2 to skip count word
@@ -23,6 +178,34 @@ export function parseMightyMikeTileSet(
     const offsetToTileAttributes = data.getUint32(14, false) + 2;
     const offsetToTileAnimList = data.getUint32(22, false) + 2;
     const offsetToTileXparentList = data.getUint32(26, false) + 2;
+
+    // Verify offsets are in ascending order (like original C code assertions)
+    const offsets = [
+      { name: "TileDefinitions", value: offsetToTileDefinitions },
+      { name: "XlateTable", value: offsetToXlateTable },
+      { name: "TileAttributes", value: offsetToTileAttributes },
+      { name: "TileAnimList", value: offsetToTileAnimList },
+      { name: "TileXparentList", value: offsetToTileXparentList },
+    ];
+
+    // Offsets parsed; diagnostic tests will collect and log details if needed.
+
+    for (let i = 0; i < offsets.length - 1; i++) {
+      const offset1 = offsets[i];
+      const offset2 = offsets[i + 1];
+      if (!offset1 || !offset2) {
+        return {
+          ok: false,
+          error: `Invalid tileset: missing offset at index ${i}`,
+        };
+      }
+      if (offset1.value >= offset2.value) {
+        return {
+          ok: false,
+          error: `Invalid tileset: offset ${offset1.name} (${offset1.value}) >= ${offset2.name} (${offset2.value})`,
+        };
+      }
+    }
 
     // Validate offsets are within bounds
     if (
@@ -62,20 +245,22 @@ export function parseMightyMikeTileSet(
       xlateTable.push(data.getUint16(offset, false));
     }
 
-    // Parse tile attributes (4 bytes each: flags: uint16, p0: int16)
+    // Parse tile attributes (8 bytes each: flags: uint16, parm0: int16, parm1: byte, parm2: byte, padding: 2 bytes)
     const tileAttributes: MightyMikeTileAttribute[] = [];
     for (let i = 0; i < numTileAttributeEntries; i++) {
-      const offset = offsetToTileAttributes + i * 4;
-      if (offset + 4 > dataLength) break;
+      const offset = offsetToTileAttributes + i * 8;
+      if (offset + 8 > dataLength) break;
 
       const flags = data.getUint16(offset, false);
       const p0 = data.getInt16(offset + 2, false);
+      const p1 = data.getUint8(offset + 4);
+      const p2 = data.getUint8(offset + 5);
 
       tileAttributes.push({
         flags,
         p0,
-        p1: 0, // Placeholder - struct may need verification
-        p2: 0,
+        p1,
+        p2,
         p3: 0,
         p4: 0,
       });
@@ -93,14 +278,14 @@ export function parseMightyMikeTileSet(
       currentOffset += 1;
 
       const nameBytes = new Uint8Array(
-        buffer,
+        decompressedBuffer,
         currentOffset,
         Math.min(nameLength, 15),
       );
       const name = new TextDecoder("ascii")
         .decode(nameBytes)
         .replace(/\0/g, "");
-      currentOffset += 16; // Skip to fixed size including padding
+      currentOffset += 15; // Fixed size name field
 
       if (currentOffset + 6 > dataLength) break;
 
@@ -123,11 +308,11 @@ export function parseMightyMikeTileSet(
         speed,
         baseTile,
         numFrames,
-        tile_nums: tileNums,
+        tileNums,
       });
     }
 
-    // Parse transparency colors
+    // Parse transparency colors (used for collision detection, not visual rendering)
     const transparencyColors: number[] = [];
     for (let i = 0; i < numTileXparentColors; i++) {
       const offset = offsetToTileXparentList + i * 2;
@@ -135,16 +320,26 @@ export function parseMightyMikeTileSet(
       transparencyColors.push(data.getUint16(offset, false));
     }
 
+    // Parse tile images from raw pixel data
+    const tileImages = parseTileImages(
+      decompressedBuffer,
+      offsetToTileDefinitions,
+      numTileDefinitions,
+      transparencyColors,
+      palette,
+    );
+
     const tileset: MightyMikeTileSet = {
-      num_tile_definitions: numTileDefinitions,
-      num_xlate_entries: numXlateEntries,
-      num_tile_attribute_entries: numTileAttributeEntries,
-      num_tile_anims: numTileAnims,
-      num_tile_xparent_colors: numTileXparentColors,
-      xlate_table: xlateTable,
-      tile_attributes: tileAttributes,
-      tile_animations: tileAnimations,
-      transparency_colors: transparencyColors,
+      numTileDefinitions,
+      numXlateEntries,
+      numTileAttributeEntries,
+      numTileAnims,
+      numTileXparentColors,
+      xlateTable,
+      tileAttributes,
+      tileAnimations,
+      transparencyColors,
+      tileImages,
     };
 
     return { ok: true, value: tileset };
@@ -157,8 +352,10 @@ export function parseMightyMikeMap(
   buffer: ArrayBuffer,
 ): Result<MightyMikeMap, string> {
   try {
-    const data = new DataView(buffer);
-    const dataLength = buffer.byteLength;
+    // Decompress if needed
+    const decompressedBuffer = decompressIfNeeded(buffer);
+    const data = new DataView(decompressedBuffer);
+    const dataLength = decompressedBuffer.byteLength;
 
     // Parse header offsets (big-endian 32-bit integers)
     const offsetToMapImage = data.getUint32(2, false);
@@ -184,17 +381,43 @@ export function parseMightyMikeMap(
     }
 
     // Parse map image (2D array of 16-bit big-endian integers)
-    const mapImage: number[][] = [];
+    // From Playfield.h bit definitions:
+    // - TILENUM_MASK = 0x07ff (extract only the tile number, bits 0-10)
+    // - TILE_PRIORITY_MASK = 0x8000 (collision type flag, bit 15)
+    // - TILE_PRIORITY_MASK2 = 0x4000 (pixel-accurate collision flag, bit 14)
+    const TILENUM_MASK = 0x07ff;
+    const TILE_PRIORITY_MASK = 0x8000;
+    const TILE_PRIORITY_MASK2 = 0x4000;
+    const mapImage: Array<
+      Array<{
+        rawValue: number;
+        tileIndex: number;
+        hasCollisionMask: boolean;
+        usePixelAccurateCollision: boolean;
+      }>
+    > = [];
     const tilesStart = offsetToMapImage + 4; // Skip width/height
 
     for (let y = 0; y < mapHeight; y++) {
-      const row: number[] = [];
+      const row = [];
       for (let x = 0; x < mapWidth; x++) {
         const offset = tilesStart + (y * mapWidth + x) * 2;
         if (offset + 2 > dataLength) {
-          row.push(0); // Default tile
+          // Default tile with no collision flags
+          row.push({
+            rawValue: 0,
+            tileIndex: 0,
+            hasCollisionMask: false,
+            usePixelAccurateCollision: false,
+          });
         } else {
-          row.push(data.getUint16(offset, false));
+          const rawValue = data.getUint16(offset, false);
+          row.push({
+            rawValue: rawValue,
+            tileIndex: rawValue & TILENUM_MASK,
+            hasCollisionMask: (rawValue & TILE_PRIORITY_MASK) !== 0,
+            usePixelAccurateCollision: (rawValue & TILE_PRIORITY_MASK2) !== 0,
+          });
         }
       }
       mapImage.push(row);
@@ -245,12 +468,12 @@ export function parseMightyMikeMap(
     }
 
     const mapData: MightyMikeMap = {
-      map_width: mapWidth,
-      map_height: mapHeight,
-      num_items: numItems,
-      map_image: mapImage,
+      mapWidth,
+      mapHeight,
+      numItems,
+      mapImage,
       items,
-      alt_map: altMap,
+      altMap,
     };
 
     return { ok: true, value: mapData };
@@ -259,12 +482,38 @@ export function parseMightyMikeMap(
   }
 }
 
+/**
+ * Parse a complete Mighty Mike level (tileset + map)
+ */
+export function parseMightyMikeLevel(
+  tilesetBuffer: ArrayBuffer,
+  mapBuffer: ArrayBuffer,
+): Result<MightyMikeLevel, string> {
+  const tilesetResult = parseMightyMikeTileSet(tilesetBuffer);
+  if (!tilesetResult.ok) {
+    return { ok: false, error: `Tileset error: ${tilesetResult.error}` };
+  }
+
+  const mapResult = parseMightyMikeMap(mapBuffer);
+  if (!mapResult.ok) {
+    return { ok: false, error: `Map error: ${mapResult.error}` };
+  }
+
+  return {
+    ok: true,
+    value: {
+      tileset: tilesetResult.value,
+      map: mapResult.value,
+    },
+  };
+}
+
 export function mightyMikeMapToBinary(map: MightyMikeMap): ArrayBuffer {
-  // Calculate buffer size
-  const headerSize = 14; // 3 offsets (4 bytes each) + 2 padding
-  const mapImageSize = 4 + map.map_width * map.map_height * 2; // width/height + tile data
-  const itemListSize = map.num_items > 0 ? 2 + map.num_items * 14 : 0; // count + items
-  const altMapSize = map.alt_map ? map.map_width * map.map_height : 0;
+  // Calculate uncompressed buffer size
+  const headerSize = 14; // 2 padding + 3 offsets (4 bytes each)
+  const mapImageSize = 4 + map.mapWidth * map.mapHeight * 2; // width/height + tile data
+  const itemListSize = map.numItems > 0 ? 2 + map.numItems * 14 : 2; // count + items
+  const altMapSize = map.altMap ? map.mapWidth * map.mapHeight : 0;
 
   const totalSize = headerSize + mapImageSize + itemListSize + altMapSize;
   const buffer = new ArrayBuffer(totalSize);
@@ -273,56 +522,73 @@ export function mightyMikeMapToBinary(map: MightyMikeMap): ArrayBuffer {
   // Calculate offsets
   const offsetToMapImage = headerSize;
   const offsetToItemList = offsetToMapImage + mapImageSize;
-  const offsetToAltMap = map.alt_map ? offsetToItemList + itemListSize : 0;
+  const offsetToAltMap = map.altMap ? offsetToItemList + itemListSize : 0;
 
-  // Write header offsets (big-endian)
+  // Write header (first 2 bytes are padding/unused)
+  data.setUint16(0, 0, false); // padding
   data.setUint32(2, offsetToMapImage, false); // offset to map image
   data.setUint32(6, offsetToItemList, false); // offset to item list
   data.setUint32(10, offsetToAltMap, false); // offset to alt map
 
   // Write map image
   let offset = offsetToMapImage;
-  data.setUint16(offset, map.map_width, false); // width
-  data.setUint16(offset + 2, map.map_height, false); // height
+  data.setUint16(offset, map.mapWidth, false); // width
+  data.setUint16(offset + 2, map.mapHeight, false); // height
   offset += 4;
 
-  // Write tile data
-  for (let y = 0; y < map.map_height; y++) {
-    for (let x = 0; x < map.map_width; x++) {
-      data.setUint16(offset, map.map_image[y][x], false);
+  // Write tile data (preserving the raw 16-bit values with priority flags)
+  for (let y = 0; y < map.mapHeight; y++) {
+    for (let x = 0; x < map.mapWidth; x++) {
+      const tileValue = map.mapImage[y]?.[x];
+      if (!tileValue) {
+        // Default to 0 if tile value is missing
+        data.setUint16(offset, 0, false);
+      } else {
+        // Write the raw value which preserves priority/collision bits
+        data.setUint16(offset, tileValue.rawValue, false);
+      }
       offset += 2;
     }
   }
 
   // Write item list
-  if (map.num_items > 0) {
-    data.setUint16(offsetToItemList, map.num_items, false);
-    offset = offsetToItemList + 2;
+  data.setUint16(offsetToItemList, map.numItems, false);
+  offset = offsetToItemList + 2;
 
-    for (const item of map.items) {
-      data.setInt32(offset, item.x, false);
-      data.setInt32(offset + 4, item.y, false);
-      data.setInt16(offset + 8, item.type, false);
-      data.setUint8(offset + 10, item.p0);
-      data.setUint8(offset + 11, item.p1);
-      data.setUint8(offset + 12, item.p2);
-      data.setUint8(offset + 13, item.p3);
-      offset += 14;
-    }
+  for (const item of map.items) {
+    data.setInt32(offset, item.x, false);
+    data.setInt32(offset + 4, item.y, false);
+    data.setInt16(offset + 8, item.type, false);
+    data.setUint8(offset + 10, item.p0);
+    data.setUint8(offset + 11, item.p1);
+    data.setUint8(offset + 12, item.p2);
+    data.setUint8(offset + 13, item.p3);
+    offset += 14;
   }
 
   // Write alternate map
-  if (map.alt_map) {
+  if (map.altMap) {
     offset = offsetToAltMap;
-    for (let y = 0; y < map.map_height; y++) {
-      for (let x = 0; x < map.map_width; x++) {
-        data.setUint8(offset, map.alt_map[y][x]);
+    for (let y = 0; y < map.mapHeight; y++) {
+      for (let x = 0; x < map.mapWidth; x++) {
+        const altMapValue = map.altMap[y]?.[x] ?? 0;
+        data.setUint8(offset, altMapValue);
         offset += 1;
       }
     }
   }
 
   return buffer;
+}
+
+/**
+ * Convert map to compressed binary (with RLW compression)
+ */
+export function mightyMikeMapToCompressedBinary(
+  map: MightyMikeMap,
+): ArrayBuffer {
+  const uncompressed = mightyMikeMapToBinary(map);
+  return rlwCompress(uncompressed);
 }
 
 export function mightyMikeTileSetToBinary(

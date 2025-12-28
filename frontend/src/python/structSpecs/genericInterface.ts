@@ -9,7 +9,7 @@ export interface pangeaLevel {
   Atrb: {
     1000: {
       name: "Tile Attribute Data";
-      obj: ottoTileAttribute[];
+      obj: TileAttribute[];
       order: number;
     };
   };
@@ -17,7 +17,7 @@ export interface pangeaLevel {
     //List of contiguous fences
     1000: {
       name: "Fence List";
-      obj: ottoFence[];
+      obj: Fence[];
       order: number;
     };
   };
@@ -25,7 +25,7 @@ export interface pangeaLevel {
     number,
     {
       name: "Fence Nub List";
-      obj: ottoFenceNub[];
+      obj: FenceNub[];
       order: number;
     }
   >;
@@ -39,7 +39,7 @@ export interface pangeaLevel {
   Hedr: {
     1000: {
       name: "Header";
-      obj: ottoHeader;
+      obj: StandardHeader;
       order: 0;
     };
   };
@@ -54,7 +54,7 @@ export interface pangeaLevel {
   Itms: {
     1000: {
       name: "Terrain Items List";
-      obj: ottoItem[];
+      obj: TerrainItem[];
       order: number;
     };
   };
@@ -68,7 +68,7 @@ export interface pangeaLevel {
   Liqd: {
     1000: {
       name: "Water List";
-      obj: ottoLiquid[];
+      obj: Liquid[];
       order: number;
     };
   };
@@ -76,7 +76,7 @@ export interface pangeaLevel {
   STgd: {
     1000: {
       name: "SuperTile Grid";
-      obj: ottoSupertileGrid[];
+      obj: SupertileGridEntry[];
       order: number;
     };
   };
@@ -84,7 +84,7 @@ export interface pangeaLevel {
     number,
     {
       name?: "Spline Item List";
-      obj: ottoSplineItem[];
+      obj: SplineItem[];
       order?: number;
     }
   >;
@@ -92,7 +92,7 @@ export interface pangeaLevel {
     number,
     {
       name?: "Spline Nub List";
-      obj: ottoSplineNub[];
+      obj: SplineNub[];
       order?: number;
     }
   >;
@@ -100,14 +100,14 @@ export interface pangeaLevel {
     number,
     {
       name?: "Spline Point List";
-      obj: ottoSplinePoint[];
+      obj: SplinePoint[];
       order?: number;
     }
   >;
   Spln: {
     1000: {
       name: "Spline List";
-      obj: ottoSpline[];
+      obj: Spline[];
       order: number;
     };
   };
@@ -134,13 +134,13 @@ export interface pangeaLevel {
   };
 }
 
-export type ottoTileAttribute = {
+export type TileAttribute = {
   flags: number;
   p0: number;
   p1: number;
 };
 
-export type ottoFence = {
+export type Fence = {
   fenceType: FenceType;
   numNubs: number;
   junkNubListPtr: number;
@@ -150,9 +150,9 @@ export type ottoFence = {
   bbRight: number;
 };
 
-export type ottoFenceNub = [x: number, y: number];
+export type FenceNub = [x: number, y: number];
 
-export type ottoHeader = {
+export type StandardHeader = {
   version: number;
   numItems: number;
 
@@ -171,7 +171,7 @@ export type ottoHeader = {
   numCheckpoints: number;
 };
 
-export type ottoItem = {
+export type TerrainItem = {
   /* u32 bit  */
   x: number;
   z: number;
@@ -185,8 +185,8 @@ export type ottoItem = {
   p3: number;
 };
 
-export const OTTO_LIQD_NUBS = 100;
-export type ottoLiquid = {
+export const LIQUID_NUBS_COUNT = 100;
+export type Liquid = {
   bBoxBottom: number;
   bBoxLeft: number;
   bBoxRight: number;
@@ -206,13 +206,13 @@ export type ottoLiquid = {
   ][] /* 100 nubs, requires packing-unpacking from rsrcdump json */;
 };
 
-export type ottoSupertileGrid = {
+export type SupertileGridEntry = {
   padByte: string; //TODO: Should be removed
   isEmpty: boolean;
   superTileId: number;
 };
 
-export type ottoSplineItem = {
+export type SplineItem = {
   flags: number;
   p0: number;
   p1: number;
@@ -222,18 +222,18 @@ export type ottoSplineItem = {
   type: SplineItemType;
 };
 
-export type ottoSplineNub = {
+export type SplineNub = {
   x: number;
   z: number;
 };
 
-export type ottoSplinePoint = {
+export type SplinePoint = {
   //These are actually floats
   x: number;
   z: number;
 };
 
-export type ottoSpline = {
+export type Spline = {
   bbBottom: number;
   bbLeft: number;
   bbRight: number;

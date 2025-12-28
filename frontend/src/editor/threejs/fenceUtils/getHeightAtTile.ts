@@ -1,7 +1,7 @@
 import {
   HeaderData,
   TerrainData,
-} from "@/python/structSpecs/ottoMaticLevelData";
+} from "@/python/structSpecs/LevelTypes";
 import { GlobalsInterface } from "@/data/globals/globals";
 import { flattenCoords } from "./flattenCoords";
 

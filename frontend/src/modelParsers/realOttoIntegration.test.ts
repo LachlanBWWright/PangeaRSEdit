@@ -62,8 +62,8 @@ describe("Real Otto Integration", () => {
           if (totalKeyframes > 0) {
             // Calculate duration from keyframes
             let maxTick = 0;
-            Object.values(anim.keyframes).forEach((boneKeyframes: any[]) => {
-              boneKeyframes.forEach((kf: any) => {
+            Object.values(anim.keyframes).forEach((boneKeyframes) => {
+              boneKeyframes.forEach((kf) => {
                 if (kf.tick > maxTick) maxTick = kf.tick;
               });
             });

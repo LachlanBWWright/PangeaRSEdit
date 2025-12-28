@@ -234,7 +234,7 @@ const ottoDefaultParams: OttoItemParams = {
   p3: "Unknown",
 };
 
-export const ottoItemTypeParams: Record<ItemType, OttoItemParams> = {
+export const TerrainItemTypeParams: Record<ItemType, OttoItemParams> = {
   [ItemType.StartCoords]: {
     flags: "Used internally by terrain system",
     p0: {

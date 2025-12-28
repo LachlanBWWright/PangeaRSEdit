@@ -8,6 +8,39 @@ import { billyFrontierSpecs } from "../../python/structSpecs/billyFrontier";
 import { croMagSpecs } from "../../python/structSpecs/croMag";
 import { nanosaur2Specs } from "../../python/structSpecs/nanosaur2";
 import { mightyMikeSpecs } from "../../python/structSpecs/mightyMike";
+
+// Import item type names
+import { itemTypeNames as ottoItemTypeNames } from "../items/ottoItemType";
+import { itemTypeNames as bugdomItemTypeNames } from "../items/bugdomItemType";
+import { itemTypeNames as bugdom2ItemTypeNames } from "../items/bugdom2ItemType";
+import { itemTypeNames as nanosaurItemTypeNames } from "../items/nanosaurItemType";
+import { itemTypeNames as nanosaur2ItemTypeNames } from "../items/nanosaur2ItemType";
+import { itemTypeNames as croMagItemTypeNames } from "../items/croMagItemType";
+import { itemTypeNames as billyItemTypeNames } from "../items/billyFrontierItemType";
+import { itemTypeNames as mightyMikeItemTypeNames } from "../items/mightyMikeItemType";
+
+// Import fence type names
+import { fenceTypeNames as ottoFenceTypeNames } from "../fences/ottoFenceType";
+import { fenceTypeNames as bugdomFenceTypeNames } from "../fences/bugdomFenceType";
+import { fenceTypeNames as bugdom2FenceTypeNames } from "../fences/bugdom2FenceType";
+import { fenceTypeNames as nanosaur2FenceTypeNames } from "../fences/nanosaur2FenceType";
+import { fenceTypeNames as croMagFenceTypeNames } from "../fences/croMagFenceType";
+import { fenceTypeNames as billyFenceTypeNames } from "../fences/billyFrontierFenceType";
+
+// Import water body type names
+import { waterBodyNames as ottoWaterBodyNames } from "../water/ottoWaterBodyType";
+import { waterBodyNames as bugdom2WaterBodyNames } from "../water/bugdom2WaterBodyType";
+import { waterBodyNames as nanosaur2WaterBodyNames } from "../water/nanosaur2WaterBodyType";
+import { waterBodyNames as croMagWaterBodyNames } from "../water/croMagWaterBodyType";
+import { waterBodyNames as billyWaterBodyNames } from "../water/billyFrontierWaterBodyType";
+
+// Import spline item type names
+import { splineItemTypeNames as ottoSplineItemTypeNames } from "../splines/ottoSplineItemType";
+import { splineItemTypeNames as bugdomSplineItemTypeNames } from "../splines/bugdomSplineItemType";
+import { splineItemTypeNames as bugdom2SplineItemTypeNames } from "../splines/bugdom2SplineItemType";
+import { splineItemTypeNames as nanosaur2SplineItemTypeNames } from "../splines/nanosaur2SplineItemType";
+import { splineItemTypeNames as croMagSplineItemTypeNames } from "../splines/croMagSplineItemType";
+import { splineItemTypeNames as billySplineItemTypeNames } from "../splines/billyFrontierSplineItemType";
 export enum Game {
   OTTO_MATIC,
   BUGDOM,
@@ -44,9 +77,12 @@ export interface GlobalsInterface {
   EMPTY_TILE_IDX: number; //The number that indicates that a tile is blank
 
   LIQD_NUBS: number;
-  //RING_BUF_SIZE?
-  //HAS_FENCES: boolean;
-  //HAS_SPLINES: boolean;
+  
+  // Type mappings for game-specific enums
+  ITEM_TYPES: Record<number, string>; // Maps item type number to name
+  FENCE_TYPES?: Record<number, string>; // Maps fence type number to name (optional for games without fences)
+  WATER_TYPES?: Record<number, string>; // Maps water type number to name (optional for games without water)
+  SPLINE_ITEM_TYPES?: Record<number, string>; // Maps spline item type number to name (optional)
 }
 
 export const OttoGlobals: GlobalsInterface = {
@@ -61,6 +97,10 @@ export const OttoGlobals: GlobalsInterface = {
   TILE_INGAME_SIZE: 225.0,
   TILE_SIZE: 16, //How many units each tile is
   LIQD_NUBS: 100,
+  ITEM_TYPES: ottoItemTypeNames,
+  FENCE_TYPES: ottoFenceTypeNames,
+  WATER_TYPES: ottoWaterBodyNames,
+  SPLINE_ITEM_TYPES: ottoSplineItemTypeNames,
 };
 
 // Bugdom 1 uses individual 32x32 tiles that are combined into supertiles at runtime
@@ -78,6 +118,10 @@ export const BugdomGlobals: GlobalsInterface = {
   TILE_INGAME_SIZE: 160.0, // TERRAIN_POLYGON_SIZE from Bugdom source (160 world units per supertile)
   TILE_SIZE: 32, // OREOMAP_TILE_SIZE - pixel size of each individual tile texture
   LIQD_NUBS: 100,
+  ITEM_TYPES: bugdomItemTypeNames,
+  FENCE_TYPES: bugdomFenceTypeNames,
+  SPLINE_ITEM_TYPES: bugdomSplineItemTypeNames,
+  // Bugdom 1 doesn't have water bodies
 };
 
 export const Bugdom2Globals: GlobalsInterface = {
@@ -92,6 +136,10 @@ export const Bugdom2Globals: GlobalsInterface = {
   TILE_INGAME_SIZE: 225.0,
   TILE_SIZE: 16, //How many units each tile is
   LIQD_NUBS: 100,
+  ITEM_TYPES: bugdom2ItemTypeNames,
+  FENCE_TYPES: bugdom2FenceTypeNames,
+  WATER_TYPES: bugdom2WaterBodyNames,
+  SPLINE_ITEM_TYPES: bugdom2SplineItemTypeNames,
 };
 
 //Nanosaur 1 uses individual 32x32 tiles composed into 5x5 supertiles (like Bugdom 1)
@@ -107,6 +155,8 @@ export const NanosaurGlobals: GlobalsInterface = {
   TILE_INGAME_SIZE: 140.0, // TERRAIN_POLYGON_SIZE from Nanosaur source
   TILE_SIZE: 32, // OREOMAP_TILE_SIZE - 32x32 pixel tiles
   LIQD_NUBS: 100, // Not applicable to Nanosaur - Water is just another item
+  ITEM_TYPES: nanosaurItemTypeNames,
+  // Nanosaur 1 doesn't have fences, water bodies, or splines
 };
 
 // Nanosaur 2 uses 256x256 supertile textures (JPG format)
@@ -123,6 +173,10 @@ export const Nanosaur2Globals: GlobalsInterface = {
   TILE_INGAME_SIZE: 210.0, // DEFAULT_TERRAIN_SCALE from terrain.h
   TILE_SIZE: 32, // OREOMAP_TILE_SIZE = SUPERTILE_TEXMAP_SIZE/SUPERTILE_SIZE = 256/8 = 32
   LIQD_NUBS: 100,
+  ITEM_TYPES: nanosaur2ItemTypeNames,
+  FENCE_TYPES: nanosaur2FenceTypeNames,
+  WATER_TYPES: nanosaur2WaterBodyNames,
+  SPLINE_ITEM_TYPES: nanosaur2SplineItemTypeNames,
 };
 
 // Cro-Mag Rally uses similar format to Otto Matic but with numPaths instead of numWaterPatches
@@ -139,6 +193,10 @@ export const CroMagGlobals: GlobalsInterface = {
   TILE_INGAME_SIZE: 800.0, // TERRAIN_POLYGON_SIZE from terrain.h
   TILE_SIZE: 16, // OREOMAP_TILE_SIZE from terrain.h
   LIQD_NUBS: 100,
+  ITEM_TYPES: croMagItemTypeNames,
+  FENCE_TYPES: croMagFenceTypeNames,
+  WATER_TYPES: croMagWaterBodyNames,
+  SPLINE_ITEM_TYPES: croMagSplineItemTypeNames,
 };
 
 // Billy Frontier uses 256x256 supertile textures
@@ -155,6 +213,10 @@ export const BillyFrontierGlobals: GlobalsInterface = {
   TILE_INGAME_SIZE: 125.0, // DEFAULT_TERRAIN_SCALE from terrain.h
   TILE_SIZE: 32, // OREOMAP_TILE_SIZE = SUPERTILE_TEXMAP_SIZE/SUPERTILE_SIZE = 256/8 = 32
   LIQD_NUBS: 100,
+  ITEM_TYPES: billyItemTypeNames,
+  FENCE_TYPES: billyFenceTypeNames,
+  WATER_TYPES: billyWaterBodyNames,
+  SPLINE_ITEM_TYPES: billySplineItemTypeNames,
 };
 
 // MightyMike uses 2D tilemaps instead of 3D terrain
@@ -171,6 +233,8 @@ export const MightyMikeGlobals: GlobalsInterface = {
   TILE_INGAME_SIZE: 32.0, // Each tile is 32 units
   TILE_SIZE: 32, // Tile pixel size
   LIQD_NUBS: 100,
+  ITEM_TYPES: mightyMikeItemTypeNames,
+  // Mighty Mike doesn't have fences, water bodies, or splines
 };
 
 export const Globals = atom<GlobalsInterface>(OttoGlobals);

@@ -334,9 +334,33 @@ export const bugdomItemTypeParams: Record<ItemType, BugdomItemParams> = {
   },
   [ItemType.WaterPatch]: {
     flags: "Unknown",
-    p0: "Unknown",
-    p1: "Unknown",
-    p2: "Unknown",
+    p0: {
+      type: "Integer",
+      description: "Width in tiles (0 = default of 4 tiles)",
+      codeSample: {
+        code: "width = itemPtr->parm[0];\nif (width == 0)\n  width = 4;  // Default 4 tiles",
+        fileName: "src/Items/Liquids.c",
+        lineNumber: 339,
+      },
+    },
+    p1: {
+      type: "Integer",
+      description: "Depth in tiles (0 = default of 4 tiles)",
+      codeSample: {
+        code: "depth = itemPtr->parm[1];\nif (depth == 0)\n  depth = 4;  // Default 4 tiles",
+        fileName: "src/Items/Liquids.c",
+        lineNumber: 341,
+      },
+    },
+    p2: {
+      type: "Integer",
+      description: "Y offset (×4 world units) or Y table index when p3 bit 2 is set",
+      codeSample: {
+        code: "yOff = itemPtr->parm[2] * 4.0f;\ny = GetTerrainHeightAtCoord(x,z,FLOOR) + yOff;",
+        fileName: "src/Items/Liquids.c",
+        lineNumber: 333,
+      },
+    },
     p3: {
       type: "Bit Flags",
       flags: [
@@ -351,11 +375,20 @@ export const bugdomItemTypeParams: Record<ItemType, BugdomItemParams> = {
         },
         {
           index: 1,
-          description: "Put underground flag",
+          description: "Put underground flag (Anthill level)",
           codeSample: {
             code: "putUnderGround = itemPtr->parm[3] & (1<<1); // get underground flag",
             fileName: "src/Items/Liquids.c",
             lineNumber: 281,
+          },
+        },
+        {
+          index: 2,
+          description: "Use indexed Y mode (p2 is table index instead of offset)",
+          codeSample: {
+            code: "if (itemPtr->parm[3] & (1<<2))\n  y = yTable[itemPtr->parm[2]];",
+            fileName: "src/Items/Liquids.c",
+            lineNumber: 273,
           },
         },
       ],
@@ -494,10 +527,47 @@ export const bugdomItemTypeParams: Record<ItemType, BugdomItemParams> = {
   },
   [ItemType.HoneyPatch]: {
     flags: "Unknown",
-    p0: "Unknown",
-    p1: "Unknown",
-    p2: "Unknown",
-    p3: "Unknown",
+    p0: {
+      type: "Integer",
+      description: "Width in tiles (0 = default of 4 tiles)",
+      codeSample: {
+        code: "width = itemPtr->parm[0];\nif (width == 0)\n  width = 4;",
+        fileName: "src/Items/Liquids.c",
+        lineNumber: 819,
+      },
+    },
+    p1: {
+      type: "Integer",
+      description: "Depth in tiles (0 = default of 4 tiles)",
+      codeSample: {
+        code: "depth = itemPtr->parm[1];\nif (depth == 0)\n  depth = 4;",
+        fileName: "src/Items/Liquids.c",
+        lineNumber: 821,
+      },
+    },
+    p2: {
+      type: "Integer",
+      description: "Y offset (×10 world units) or Y table index when p3 bit 0 is set",
+      codeSample: {
+        code: "yOff = itemPtr->parm[2] * 10.0f;\ny = GetTerrainHeightAtCoord(x,z,FLOOR) + yOff;",
+        fileName: "src/Items/Liquids.c",
+        lineNumber: 833,
+      },
+    },
+    p3: {
+      type: "Bit Flags",
+      flags: [
+        {
+          index: 0,
+          description: "Use indexed Y mode (p2 is table index instead of offset)",
+          codeSample: {
+            code: "if (itemPtr->parm[3]&1)\n  y = gLiquidYTable[kind][itemPtr->parm[2]];",
+            fileName: "src/Items/Liquids.c",
+            lineNumber: 830,
+          },
+        },
+      ],
+    },
   },
   [ItemType.Firecracker]: {
     flags: "Unknown",
@@ -804,17 +874,91 @@ export const bugdomItemTypeParams: Record<ItemType, BugdomItemParams> = {
   },
   [ItemType.SlimePatch]: {
     flags: "Unknown",
-    p0: "Unknown",
-    p1: "Unknown",
-    p2: "Unknown",
-    p3: "Unknown",
+    p0: {
+      type: "Integer",
+      description: "Width in tiles (0 = default of 4 tiles)",
+      codeSample: {
+        code: "width = itemPtr->parm[0];\nif (width == 0)\n  width = 4;",
+        fileName: "src/Items/Liquids.c",
+        lineNumber: 819,
+      },
+    },
+    p1: {
+      type: "Integer",
+      description: "Depth in tiles (0 = default of 4 tiles)",
+      codeSample: {
+        code: "depth = itemPtr->parm[1];\nif (depth == 0)\n  depth = 4;",
+        fileName: "src/Items/Liquids.c",
+        lineNumber: 821,
+      },
+    },
+    p2: {
+      type: "Integer",
+      description: "Y offset (×10 world units) or Y table index when p3 bit 0 is set",
+      codeSample: {
+        code: "yOff = itemPtr->parm[2] * 10.0f;\ny = GetTerrainHeightAtCoord(x,z,FLOOR) + yOff;",
+        fileName: "src/Items/Liquids.c",
+        lineNumber: 833,
+      },
+    },
+    p3: {
+      type: "Bit Flags",
+      flags: [
+        {
+          index: 0,
+          description: "Use indexed Y mode (p2 is table index instead of offset)",
+          codeSample: {
+            code: "if (itemPtr->parm[3]&1)\n  y = gLiquidYTable[kind][itemPtr->parm[2]];",
+            fileName: "src/Items/Liquids.c",
+            lineNumber: 830,
+          },
+        },
+      ],
+    },
   },
   [ItemType.LavaPatch]: {
     flags: "Unknown",
-    p0: "Unknown",
-    p1: "Unknown",
-    p2: "Unknown",
-    p3: "Unknown",
+    p0: {
+      type: "Integer",
+      description: "Width in tiles (0 = default of 4 tiles)",
+      codeSample: {
+        code: "width = itemPtr->parm[0];\nif (width == 0)\n  width = 4;",
+        fileName: "src/Items/Liquids.c",
+        lineNumber: 819,
+      },
+    },
+    p1: {
+      type: "Integer",
+      description: "Depth in tiles (0 = default of 4 tiles)",
+      codeSample: {
+        code: "depth = itemPtr->parm[1];\nif (depth == 0)\n  depth = 4;",
+        fileName: "src/Items/Liquids.c",
+        lineNumber: 821,
+      },
+    },
+    p2: {
+      type: "Integer",
+      description: "Y offset (×10 world units) or Y table index when p3 bit 0 is set",
+      codeSample: {
+        code: "yOff = itemPtr->parm[2] * 10.0f;\ny = GetTerrainHeightAtCoord(x,z,FLOOR) + yOff;",
+        fileName: "src/Items/Liquids.c",
+        lineNumber: 833,
+      },
+    },
+    p3: {
+      type: "Bit Flags",
+      flags: [
+        {
+          index: 0,
+          description: "Use indexed Y mode (p2 is table index instead of offset)",
+          codeSample: {
+            code: "if (itemPtr->parm[3]&1)\n  y = gLiquidYTable[kind][itemPtr->parm[2]];",
+            fileName: "src/Items/Liquids.c",
+            lineNumber: 830,
+          },
+        },
+      ],
+    },
   },
   [ItemType.BentAntPipe]: {
     flags: "Unknown",

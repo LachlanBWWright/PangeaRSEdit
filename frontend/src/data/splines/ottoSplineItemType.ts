@@ -53,7 +53,7 @@ export const splineItemTypeNames: Record<SplineItemType, string> = {
 };
 
 // Parameter descriptions for each spline item type
-export const ottoSplineItemTypeParams: Record<SplineItemType, ItemParams> = {
+export const SplineItemTypeParams: Record<SplineItemType, ItemParams> = {
   [SplineItemType.Human]: {
     flags: "Spline item flags",
     p0: {

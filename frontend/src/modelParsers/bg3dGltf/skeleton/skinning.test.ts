@@ -87,11 +87,11 @@ describe("skinning roundtrip", () => {
     gltfSkinningToBg3d(parsedSkeleton.bones, doc);
 
     // After extraction, each bone should have one point assigned
-    expect(parsedSkeleton.bones[0].numPointsAttachedToBone).toBe(1);
-    expect(parsedSkeleton.bones[1].numPointsAttachedToBone).toBe(1);
+    expect(parsedSkeleton.bones[0]?.numPointsAttachedToBone).toBe(1);
+    expect(parsedSkeleton.bones[1]?.numPointsAttachedToBone).toBe(1);
 
     // Verify the point indices match the global vertex indices (0 and 1)
-    expect(parsedSkeleton.bones[0].pointIndices).toEqual([0]);
-    expect(parsedSkeleton.bones[1].pointIndices).toEqual([1]);
+    expect(parsedSkeleton.bones[0]?.pointIndices).toEqual([0]);
+    expect(parsedSkeleton.bones[1]?.pointIndices).toEqual([1]);
   });
 });

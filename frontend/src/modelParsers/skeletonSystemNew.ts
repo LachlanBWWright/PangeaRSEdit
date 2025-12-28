@@ -607,14 +607,14 @@ function createSkin(
 
 /**
  * Check if array values have meaningful variation (not all same)
+ * TODO: This function is not currently used but may be useful for optimization
  */
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-function _hasVariation(values: number[], threshold = 0.001): boolean {
-  if (values.length < 2) return false;
-  const first = values[0];
-  if (first === undefined) return false;
-  return values.some((v) => Math.abs(v - first) > threshold);
-}
+// function _hasVariation(values: number[], threshold = 0.001): boolean {
+//   if (values.length < 2) return false;
+//   const first = values[0];
+//   if (first === undefined) return false;
+//   return values.some((v) => Math.abs(v - first) > threshold);
+// }
 
 /**
  * Process Otto animation data into glTF-compatible format

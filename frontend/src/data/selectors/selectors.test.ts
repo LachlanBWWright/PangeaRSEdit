@@ -10,18 +10,18 @@ import {
   selectFences,
   selectSplines,
 } from "./index";
-import { ottoMaticLevel } from "../../python/structSpecs/ottoMaticInterface";
+import { LevelData } from "@/python/structSpecs/LevelTypes";
 import {
   ItemData,
   LiquidData,
-} from "../../python/structSpecs/ottoMaticLevelData";
+} from "@/python/structSpecs/LevelTypes";
 import { SplineItemType } from "../../data/splines/ottoSplineItemType";
 import { ItemType } from "../../data/items/ottoItemType";
 import { WaterBodyType } from "../../data/water/ottoWaterBodyType";
 import { FenceType } from "../../data/fences/ottoFenceType";
 
 // Mock level data for testing
-const createMockLevelData = (): ottoMaticLevel => ({
+const createMockLevelData = (): LevelData => ({
   Hedr: {
     1000: {
       name: "Header",
@@ -232,7 +232,7 @@ const createMockLevelData = (): ottoMaticLevel => ({
 });
 
 describe("Data Selectors", () => {
-  let mockData: ottoMaticLevel;
+  let mockData: LevelData;
 
   beforeEach(() => {
     mockData = createMockLevelData();
@@ -253,7 +253,7 @@ describe("Data Selectors", () => {
       const emptyData = {
         ...mockData,
         Hedr: undefined,
-      } as unknown as ottoMaticLevel;
+      } as unknown as LevelData;
       const headerData = selectHeaderData(emptyData);
       expect(headerData).toBeNull();
     });

@@ -1,8 +1,8 @@
 import {
   HeaderData,
   TerrainData,
-} from "@/python/structSpecs/ottoMaticLevelData";
-import { GlobalsInterface, Game } from "@/data/globals/globals";
+} from "@/python/structSpecs/LevelTypes";
+import { GlobalsInterface, DataType } from "@/data/globals/globals";
 import { Result, ok, err } from "@/types/result";
 
 export function combineMapImagesFromSTgd(
@@ -85,15 +85,27 @@ export function combineMapImagesFromTiles(
   const layerData = terrainData.Layr[1000].obj;
   const xlatTable = terrainData.Xlat?.[1000]?.obj;
 
+  // Tile bit masks from Bugdom source code
+  const TILENUM_MASK = 0x0fff; // bits 0-11: tile/image number
+  const TILE_FLIPX_MASK = 1 << 15; // bit 15: flip horizontally
+  const TILE_FLIPY_MASK = 1 << 14; // bit 14: flip vertically
+  const TILE_ROTATE_MASK = (1 << 13) | (1 << 12); // bits 12-13: rotation
+  const TILE_ROT1 = 1 << 12; // 90° rotation
+  const TILE_ROT2 = 2 << 12; // 180° rotation
+  const TILE_ROT3 = 3 << 12; // 270° rotation
+
   for (let y = 0; y < numHigh; y++) {
     for (let x = 0; x < numWide; x++) {
       const layerIndex = y * numWide + x;
-      let tileIndex = layerData[layerIndex];
+      const tileValue = layerData[layerIndex];
 
-      if (tileIndex === undefined) continue;
+      if (tileValue === undefined) continue;
+
+      // Extract tile index from tileValue (remove flip/rotate bits)
+      let tileIndex = tileValue & TILENUM_MASK;
 
       // Apply Xlat translation if available
-      if (xlatTable) {
+      if (xlatTable && tileIndex < xlatTable.length) {
         const translatedEntry = xlatTable[tileIndex];
         if (translatedEntry !== undefined) {
           tileIndex = translatedEntry.idx;
@@ -101,9 +113,48 @@ export function combineMapImagesFromTiles(
       }
 
       const tileImg = mapImages[tileIndex];
-      if (tileImg) {
-        ctx.drawImage(tileImg, x * tileSize, y * tileSize, tileSize, tileSize);
+      if (!tileImg) continue;
+
+      // Extract flip and rotation bits
+      const flipX = (tileValue & TILE_FLIPX_MASK) !== 0;
+      const flipY = (tileValue & TILE_FLIPY_MASK) !== 0;
+      const rotation = tileValue & TILE_ROTATE_MASK;
+
+      // Draw tile with transformations
+      const destX = x * tileSize;
+      const destY = y * tileSize;
+
+      ctx.save();
+      ctx.translate(destX + tileSize / 2, destY + tileSize / 2);
+
+      // Apply rotation
+      switch (rotation) {
+        case TILE_ROT1:
+          ctx.rotate(Math.PI / 2);
+          break;
+        case TILE_ROT2:
+          ctx.rotate(Math.PI);
+          break;
+        case TILE_ROT3:
+          ctx.rotate((3 * Math.PI) / 2);
+          break;
       }
+
+      // Apply flips
+      const scaleX = flipX ? -1 : 1;
+      const scaleY = flipY ? -1 : 1;
+      ctx.scale(scaleX, scaleY);
+
+      // Draw the tile
+      ctx.drawImage(
+        tileImg,
+        -tileSize / 2,
+        -tileSize / 2,
+        tileSize,
+        tileSize,
+      );
+
+      ctx.restore();
     }
   }
 
@@ -116,9 +167,10 @@ export function combineMapImages(
   terrainData: TerrainData,
   globals: GlobalsInterface,
 ): Result<HTMLCanvasElement, Error> {
+  // Bugdom 1 and Nanosaur 1 use individual tiles (RSRC_FORK and TRT_FILE)
   if (
-    globals.GAME_TYPE === Game.BUGDOM ||
-    globals.GAME_TYPE === Game.NANOSAUR
+    globals.DATA_TYPE === DataType.RSRC_FORK ||
+    globals.DATA_TYPE === DataType.TRT_FILE
   ) {
     return combineMapImagesFromTiles(
       mapImages,

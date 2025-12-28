@@ -2,7 +2,7 @@ import { Updater } from "use-immer";
 import {
   SplineData,
   HeaderData,
-} from "../../../python/structSpecs/ottoMaticLevelData";
+} from "@/python/structSpecs/LevelTypes";
 import { useAtom, useAtomValue } from "jotai";
 
 import {

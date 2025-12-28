@@ -1,4 +1,4 @@
-import { LiquidData } from "../../python/structSpecs/ottoMaticLevelData";
+import { LiquidData } from "@/python/structSpecs/LevelTypes";
 import { Layer } from "react-konva";
 import { Updater } from "use-immer";
 import { WaterBody } from "./water/WaterBody";

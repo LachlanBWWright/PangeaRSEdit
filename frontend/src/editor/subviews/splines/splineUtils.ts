@@ -1,5 +1,5 @@
 import type { Updater } from "use-immer";
-import type { SplineData } from "../../../python/structSpecs/ottoMaticLevelData";
+import type { SplineData } from "@/python/structSpecs/LevelTypes";
 import { getPoints } from "../../../utils/spline";
 import { selectSplineNubs } from "../../../data/selectors";
 

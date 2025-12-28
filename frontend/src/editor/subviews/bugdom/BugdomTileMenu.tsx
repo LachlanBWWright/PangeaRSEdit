@@ -17,7 +17,7 @@ import { Updater } from "use-immer";
 import {
   HeaderData,
   TerrainData,
-} from "../../../python/structSpecs/ottoMaticLevelData";
+} from "@/python/structSpecs/LevelTypes";
 import { Globals } from "../../../data/globals/globals";
 import { Button } from "@/components/ui/button";
 import { useState, useMemo } from "react";

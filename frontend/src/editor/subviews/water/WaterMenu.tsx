@@ -1,5 +1,5 @@
 import { Updater } from "use-immer";
-import { LiquidData } from "../../../python/structSpecs/ottoMaticLevelData";
+import { LiquidData } from "@/python/structSpecs/LevelTypes";
 import { useAtom, useAtomValue } from "jotai";
 import { Button } from "@/components/ui/button";
 import {

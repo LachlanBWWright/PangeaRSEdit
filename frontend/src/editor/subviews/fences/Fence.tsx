@@ -1,5 +1,5 @@
 import { Updater } from "use-immer";
-import { FenceData } from "../../../python/structSpecs/ottoMaticLevelData";
+import { FenceData } from "@/python/structSpecs/LevelTypes";
 import { Line } from "react-konva";
 import Konva from "konva";
 import { FenceNub } from "./FenceNub";

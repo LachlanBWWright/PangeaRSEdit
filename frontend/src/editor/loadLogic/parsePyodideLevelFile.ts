@@ -1,19 +1,20 @@
-import { ottoMaticLevel } from "@/python/structSpecs/ottoMaticInterface";
+import { LevelData } from "@/python/structSpecs/LevelTypes";
 import { Result, ok, err } from "@/types/result";
 import { preprocessJson } from "@/data/processors/ottoPreprocessor";
 import type { GlobalsInterface } from "@/data/globals/globals";
 import type { PyodideMessage, PyodideResponse } from "@/python/pyodideWorker";
 import { splitLevelData, AtomicLevelData } from "@/data/utils/levelDataUtils";
+import { validateLevelDataForGame } from "@/validation/validateLevelForGame";
 
 export async function parsePyodideLevelFile(
   file: Blob,
   gameType: GlobalsInterface,
   pyodideWorker: Worker,
   setData: (data: AtomicLevelData) => void,
-): Promise<Result<ottoMaticLevel, Error>> {
+): Promise<Result<LevelData, Error>> {
   const levelBuffer = await file.arrayBuffer();
 
-  return new Promise<Result<ottoMaticLevel, Error>>((resolve) => {
+  return new Promise<Result<LevelData, Error>>((resolve) => {
     pyodideWorker.postMessage({
       type: "save_to_json",
       bytes: levelBuffer,
@@ -25,15 +26,42 @@ export async function parsePyodideLevelFile(
     pyodideWorker.onmessage = (event: MessageEvent<PyodideResponse>) => {
       if (event.data.type === "save_to_json") {
         try {
-          const result = event.data.result;
-          // try preprocess result
+          // Validate that result is a plain object
+          if (!event.data.result || typeof event.data.result !== "object") {
+            resolve(err(new Error("Invalid response from pyodide worker: expected object")));
+            return;
+          }
+
+          const result = event.data.result as Record<string, unknown>;
+
+          // Apply preprocessing FIRST (converts liquid nubs from x_0/y_0 format to array format)
           const preprocessResult = preprocessJson(result, gameType);
           if (!preprocessResult.ok) {
             resolve(err(preprocessResult.error));
             return;
           }
-          setData(splitLevelData(result));
-          resolve(ok(result));
+
+          // Validate the preprocessed data using the appropriate game schema
+          // Validation failures now throw errors for type safety
+          const validationResult = validateLevelDataForGame(
+            result,
+            gameType.GAME_TYPE
+          );
+          if (!validationResult.ok) {
+            resolve(
+              err(
+                new Error(
+                  `Level validation failed for ${gameType.GAME_NAME}: ${validationResult.error.message}`
+                )
+              )
+            );
+            return;
+          }
+
+          // After validation, we know the structure matches LevelData
+          const levelData = result as unknown as LevelData;
+          setData(splitLevelData(levelData));
+          resolve(ok(levelData));
         } catch (e) {
           resolve(err(e instanceof Error ? e : new Error(String(e))));
         }

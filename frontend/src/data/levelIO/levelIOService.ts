@@ -8,12 +8,12 @@
  * All functions return Result types instead of throwing errors.
  */
 
-import { Game, GlobalsInterface, DataType } from "../globals/globals";
+import { GlobalsInterface, DataType } from "../globals/globals";
 import { preprocessJson } from "../processors/ottoPreprocessor";
-import { ottoMaticLevel } from "../../python/structSpecs/ottoMaticInterface";
+import { LevelData } from "@/python/structSpecs/LevelTypes";
 import {
   parseNanosaur1Level,
-  nanosaur1LevelToOttoMaticLevel,
+  nanosaur1LevelToLevelData,
   parseNanosaurTerrainTextures,
 } from "../processors/classicProprocessor";
 import { Result, ok, err, fromPromise, isErr } from "../../types/result";
@@ -31,9 +31,9 @@ export interface PyodideRunner {
     structSpecs: string[],
     includeTypes?: string[],
     excludeTypes?: string[],
-  ) => Promise<ottoMaticLevel>;
+  ) => Promise<LevelData>;
   serializeLevel: (
-    levelData: ottoMaticLevel,
+    levelData: LevelData,
     structSpecs: string[],
     onlyTypes?: string[],
     skipTypes?: string[],
@@ -45,9 +45,9 @@ export interface PyodideRunner {
  * Result of a roundtrip test (parse -> serialize -> parse)
  */
 export interface RoundtripResult {
-  original: ottoMaticLevel;
+  original: LevelData;
   serialized: ArrayBuffer;
-  roundtrip: ottoMaticLevel;
+  roundtrip: LevelData;
   bytesMatch: boolean;
   jsonMatch: boolean;
   originalSize: number;
@@ -72,9 +72,9 @@ export async function parseLevelBuffer(
   buffer: ArrayBuffer,
   gameType: GlobalsInterface,
   pyodideRunner?: PyodideRunner,
-): Promise<Result<ottoMaticLevel, Error>> {
-  if (gameType.GAME_TYPE === Game.NANOSAUR) {
-    // Nanosaur 1 uses proprietary binary format
+): Promise<Result<LevelData, Error>> {
+  if (gameType.DATA_TYPE === DataType.TRT_FILE) {
+    // Nanosaur 1 uses proprietary TRT binary format
     const result = parseNanosaur1LevelBuffer(buffer, gameType);
     if (isErr(result)) {
       return result;
@@ -96,7 +96,10 @@ export async function parseLevelBuffer(
   }
 
   // Apply preprocessing (modifies levelData in place)
-  const preprocessResult = preprocessJson(parseResult.value, gameType);
+  const preprocessResult = preprocessJson(
+    parseResult.value as unknown as Record<string, unknown>,
+    gameType
+  );
   if (isErr(preprocessResult)) {
     return preprocessResult;
   }
@@ -111,10 +114,10 @@ export async function parseLevelBuffer(
 export function parseNanosaur1LevelBuffer(
   buffer: ArrayBuffer,
   gameType?: GlobalsInterface,
-): Result<ottoMaticLevel, Error> {
+): Result<LevelData, Error> {
   try {
     const rawLevelData = parseNanosaur1Level(buffer);
-    const converted = nanosaur1LevelToOttoMaticLevel(
+    const converted = nanosaur1LevelToLevelData(
       rawLevelData,
       gameType?.TILE_SIZE ?? 32,
       gameType?.TILE_INGAME_SIZE ?? 140,
@@ -154,14 +157,14 @@ export function parseNanosaur1TextureBuffer(
  * @returns Result with serialized binary buffer or error
  */
 export async function serializeLevelData(
-  levelData: ottoMaticLevel,
+  levelData: LevelData,
   gameType: GlobalsInterface,
   pyodideRunner: PyodideRunner,
 ): Promise<Result<ArrayBuffer, Error>> {
-  if (gameType.GAME_TYPE === Game.NANOSAUR) {
-    // Nanosaur 1 serialization not supported (proprietary format)
+  if (gameType.DATA_TYPE === DataType.TRT_FILE) {
+    // Nanosaur 1 TRT file serialization not supported (proprietary format)
     return err(
-      new Error("Nanosaur 1 level serialization is not yet supported"),
+      new Error("Nanosaur 1 TRT level serialization is not yet supported"),
     );
   }
 
@@ -257,8 +260,8 @@ export async function performRoundtrip(
  * Compare two level data objects deeply
  */
 export function compareLevelDataObjects(
-  original: ottoMaticLevel,
-  roundtrip: ottoMaticLevel,
+  original: LevelData,
+  roundtrip: LevelData,
 ): {
   equal: boolean;
   differences: Array<{ path: string; original: unknown; roundtrip: unknown }>;
@@ -414,7 +417,7 @@ export function compareBuffersDetailed(
  * @returns Result with blob and filename, or error
  */
 export async function createDownloadableLevel(
-  levelData: ottoMaticLevel,
+  levelData: LevelData,
   filename: string,
   gameType: GlobalsInterface,
   pyodideRunner: PyodideRunner,

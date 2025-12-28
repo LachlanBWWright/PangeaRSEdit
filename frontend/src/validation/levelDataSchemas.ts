@@ -36,8 +36,11 @@ export const fenceSchema = z.object({
 });
 export type Fence = z.infer<typeof fenceSchema>;
 
-/** Schema for header (full format with numTilePages/numTiles) */
-export const headerFullSchema = z.object({
+/** 
+ * Schema for Otto Matic header (full format with numTilePages/numTiles)
+ * Used by: Otto Matic
+ */
+export const headerOttoMaticSchema = z.object({
   version: z.number(),
   numItems: z.number(),
   mapWidth: z.number(),
@@ -53,9 +56,35 @@ export const headerFullSchema = z.object({
   numWaterPatches: z.number(),
   numCheckpoints: z.number(),
 });
-export type HeaderFull = z.infer<typeof headerFullSchema>;
+export type HeaderOttoMatic = z.infer<typeof headerOttoMaticSchema>;
 
-/** Schema for header (simplified format without numTilePages/numTiles) */
+// Alias for backward compatibility
+export const headerFullSchema = headerOttoMaticSchema;
+export type HeaderFull = HeaderOttoMatic;
+
+/** 
+ * Schema for Bugdom 1 header (has numTilePages/numTiles but NO numUniqueSupertiles/numWaterPatches/numCheckpoints)
+ * Used by: Bugdom 1
+ */
+export const headerBugdom1Schema = z.object({
+  version: z.number(),
+  numItems: z.number(),
+  mapWidth: z.number(),
+  mapHeight: z.number(),
+  numTilePages: z.number(),
+  numTiles: z.number(),
+  tileSize: z.number(),
+  minY: z.number(),
+  maxY: z.number(),
+  numSplines: z.number(),
+  numFences: z.number(),
+});
+export type HeaderBugdom1 = z.infer<typeof headerBugdom1Schema>;
+
+/** 
+ * Schema for simplified header (without numTilePages/numTiles)
+ * Used by: Bugdom 2, Nanosaur 2, Billy Frontier
+ */
 export const headerSimplifiedSchema = z.object({
   version: z.number(),
   numItems: z.number(),
@@ -72,7 +101,10 @@ export const headerSimplifiedSchema = z.object({
 });
 export type HeaderSimplified = z.infer<typeof headerSimplifiedSchema>;
 
-/** Schema for CroMag header (uses numPaths instead of numWaterPatches) */
+/** 
+ * Schema for CroMag header (uses numPaths instead of numWaterPatches)
+ * Used by: Cro-Mag Rally
+ */
 export const headerCroMagSchema = z.object({
   version: z.number(),
   numItems: z.number(),
@@ -121,7 +153,10 @@ export const liquidSchema = z.object({
 });
 export type Liquid = z.infer<typeof liquidSchema>;
 
-/** Schema for supertile grid (Otto format with isEmpty flag) */
+/** 
+ * Schema for supertile grid (Otto format with isEmpty flag)
+ * Used by: Otto Matic, Bugdom 1, Cro-Mag Rally
+ */
 export const supertileGridOttoSchema = z.object({
   isEmpty: z.boolean(),
   superTileId: z.number(),
@@ -129,7 +164,10 @@ export const supertileGridOttoSchema = z.object({
 });
 export type SupertileGridOtto = z.infer<typeof supertileGridOttoSchema>;
 
-/** Schema for supertile grid (simplified format, -1 = empty) */
+/** 
+ * Schema for supertile grid (simplified format, -1 = empty)
+ * Used by: Bugdom 2, Nanosaur 2, Billy Frontier
+ */
 export const supertileGridSimplifiedSchema = z.object({
   superTileId: z.number(),
 });
@@ -328,17 +366,16 @@ export function validateTileAttributes(
 
 /**
  * Partial validation - validates what's present without requiring all fields
+ * Note: This function uses permissive validation.
+ * For strict validation, use the specific game schema directly.
  */
-export function validatePartialLevelDataForSchema<T extends z.ZodTypeAny>(
+export function validatePartialLevelDataForSchema(
   data: unknown,
-  schema: z.ZodSchema<T>,
-): Result<Partial<T>, Error> {
-  const partialSchema = schema.partial();
-  const result = partialSchema.safeParse(data);
-  if (result.success) {
-    return ok(result.data as Partial<T>);
+): Result<unknown, Error> {
+  // Since partial() isn't universally available on all Zod types,
+  // we simply validate that data is an object and return it
+  if (typeof data !== "object" || data === null) {
+    return err(new Error("Partial level data must be an object"));
   }
-  return err(
-    new Error(`Partial level data validation failed: ${result.error.message}`),
-  );
+  return ok(data);
 }

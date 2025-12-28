@@ -20,8 +20,8 @@ import {
   isBugdomGame,
   usesIndividualTiles,
 } from "./BugdomTileRenderer.utils";
-import { Game } from "@/data/globals/globals";
-import { HeaderData } from "@/python/structSpecs/ottoMaticLevelData";
+import { DataType } from "@/data/globals/globals";
+import { HeaderData } from "@/python/structSpecs/LevelTypes";
 
 describe("Bugdom Tile Constants", () => {
   it("TILENUM_MASK should extract lower 12 bits", () => {
@@ -140,41 +140,38 @@ describe("translateTileIndex", () => {
 });
 
 describe("isBugdomGame", () => {
-  it("should return true for Bugdom game type", () => {
-    expect(isBugdomGame({ GAME_TYPE: Game.BUGDOM })).toBe(true);
+  it("should return true for Bugdom game type (RSRC_FORK)", () => {
+    expect(isBugdomGame({ DATA_TYPE: DataType.RSRC_FORK })).toBe(true);
   });
 
-  it("should return false for Otto Matic game type", () => {
-    expect(isBugdomGame({ GAME_TYPE: Game.OTTO_MATIC })).toBe(false);
+  it("should return false for standard data type", () => {
+    expect(isBugdomGame({ DATA_TYPE: DataType.STANDARD })).toBe(false);
   });
 
-  it("should return false for Bugdom 2 game type", () => {
-    expect(isBugdomGame({ GAME_TYPE: Game.BUGDOM_2 })).toBe(false);
+  it("should return false for TRT file data type", () => {
+    expect(isBugdomGame({ DATA_TYPE: DataType.TRT_FILE })).toBe(false);
   });
 
-  it("should return false for other game types", () => {
-    expect(isBugdomGame({ GAME_TYPE: Game.NANOSAUR })).toBe(false);
-    expect(isBugdomGame({ GAME_TYPE: Game.NANOSAUR_2 })).toBe(false);
-    expect(isBugdomGame({ GAME_TYPE: Game.CRO_MAG })).toBe(false);
-    expect(isBugdomGame({ GAME_TYPE: Game.BILLY_FRONTIER })).toBe(false);
+  it("should return false for Mighty Mike data type", () => {
+    expect(isBugdomGame({ DATA_TYPE: DataType.MIGHTY_MIKE })).toBe(false);
   });
 });
 
 describe("usesIndividualTiles", () => {
-  it("should return true for Bugdom game type", () => {
-    expect(usesIndividualTiles({ GAME_TYPE: Game.BUGDOM })).toBe(true);
+  it("should return true for Bugdom game type (RSRC_FORK)", () => {
+    expect(usesIndividualTiles({ DATA_TYPE: DataType.RSRC_FORK })).toBe(true);
   });
 
-  it("should return true for Nanosaur game type", () => {
-    expect(usesIndividualTiles({ GAME_TYPE: Game.NANOSAUR })).toBe(true);
+  it("should return true for Nanosaur game type (TRT_FILE)", () => {
+    expect(usesIndividualTiles({ DATA_TYPE: DataType.TRT_FILE })).toBe(true);
   });
 
-  it("should return false for other game types", () => {
-    expect(usesIndividualTiles({ GAME_TYPE: Game.OTTO_MATIC })).toBe(false);
-    expect(usesIndividualTiles({ GAME_TYPE: Game.BUGDOM_2 })).toBe(false);
-    expect(usesIndividualTiles({ GAME_TYPE: Game.NANOSAUR_2 })).toBe(false);
-    expect(usesIndividualTiles({ GAME_TYPE: Game.CRO_MAG })).toBe(false);
-    expect(usesIndividualTiles({ GAME_TYPE: Game.BILLY_FRONTIER })).toBe(false);
+  it("should return false for standard data type", () => {
+    expect(usesIndividualTiles({ DATA_TYPE: DataType.STANDARD })).toBe(false);
+  });
+
+  it("should return false for Mighty Mike data type", () => {
+    expect(usesIndividualTiles({ DATA_TYPE: DataType.MIGHTY_MIKE })).toBe(false);
   });
 });
 
