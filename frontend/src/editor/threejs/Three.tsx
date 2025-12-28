@@ -6,7 +6,9 @@ import { LiquidGeometry } from "./LiquidGeometry";
 import { ItemGeometry } from "./ItemGeometry";
 import { SplineGeometry } from "./SplineGeometry";
 import { SplineItemGeometry } from "./SplineItemGeometry";
-import { useAtomValue, useAtom } from "jotai";
+import { TopologyBrush3D } from "./TopologyBrush3D";
+import { TopologyPreview3D } from "./TopologyPreview3D";
+import { useAtomValue, useAtom, useSetAtom } from "jotai";
 import { Globals } from "@/data/globals/globals";
 import {
   Show3DSplines,
@@ -15,6 +17,13 @@ import {
   Show3DLiquid,
   Export3DScene,
 } from "@/data/canvasView/canvasViewAtoms";
+import {
+  TileViewMode,
+  CurrentTopologyBrushMode,
+  TopologyBrushRadius,
+  CurrentTopologyValueMode,
+  TopologyValue,
+} from "@/data/tiles/tileAtoms";
 import { GLTFExporter } from "three/examples/jsm/exporters/GLTFExporter.js";
 import {
   HeaderData,
@@ -25,8 +34,15 @@ import {
   TerrainData,
 } from "@/python/structSpecs/LevelTypes";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { toast } from "sonner";
+import { Raycaster, Vector2, Vector3, Mesh } from "three";
+import {
+  calculateBrushPixels,
+  applyTopologyBrush,
+  worldToTile,
+  PixelType,
+} from "../utils/topologyBrushUtils";
 
 function SceneExporter() {
   const { scene } = useThree();
@@ -125,6 +141,20 @@ export function ThreeView({
   const show3DItems = useAtomValue(Show3DItems);
   const show3DFences = useAtomValue(Show3DFences);
   const show3DLiquid = useAtomValue(Show3DLiquid);
+  
+  // Topology editing state
+  const tileViewMode = useAtomValue(TileViewMode);
+  const brushMode = useAtomValue(CurrentTopologyBrushMode);
+  const brushRadius = useAtomValue(TopologyBrushRadius);
+  const valueMode = useAtomValue(CurrentTopologyValueMode);
+  const topologyValue = useAtomValue(TopologyValue);
+  
+  const terrainMeshRef = useRef<Mesh>(null);
+  const [intersectionPoint, setIntersectionPoint] = useState<{ x: number; y: number; z: number } | null>(null);
+  const [isEditing, setIsEditing] = useState(false);
+  const [affectedPixels, setAffectedPixels] = useState<PixelType[]>([]);
+  
+  const isEditingTopology = tileViewMode === "Topology";
 
   const header = headerData.Hedr[1000].obj;
 
@@ -133,6 +163,106 @@ export function ThreeView({
 
   const unitsWide = numWide * globals.TILE_INGAME_SIZE;
   const unitsHigh = numHigh * globals.TILE_INGAME_SIZE;
+
+  // Raycasting for mouse-to-terrain intersection
+  const raycaster = useRef(new Raycaster());
+  const mouse = useRef(new Vector2());
+
+  const getIntersection = useCallback((event: React.PointerEvent<HTMLCanvasElement>) => {
+    if (!terrainMeshRef.current) return null;
+
+    const canvas = event.currentTarget;
+    const rect = canvas.getBoundingClientRect();
+    
+    // Convert to normalized device coordinates
+    mouse.current.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+    mouse.current.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+
+    // This will be handled by the Canvas component's raycasting
+    return { mouse: mouse.current, terrainMesh: terrainMeshRef.current };
+  }, []);
+
+  const handlePointerMove = useCallback((event: THREE.Event) => {
+    if (!isEditingTopology || !terrainMeshRef.current) return;
+
+    const threeEvent = event as THREE.Event & { point: Vector3 };
+    if (threeEvent.point) {
+      setIntersectionPoint({
+        x: threeEvent.point.x,
+        y: threeEvent.point.y,
+        z: threeEvent.point.z,
+      });
+
+      // Calculate affected pixels for preview
+      const tileCoords = worldToTile(threeEvent.point.x, threeEvent.point.z, globals.TILE_INGAME_SIZE);
+      const radius = (brushRadius - 1) * globals.TILE_INGAME_SIZE;
+      
+      const pixels = calculateBrushPixels({
+        centerX: tileCoords.x * globals.TILE_INGAME_SIZE,
+        centerY: tileCoords.z * globals.TILE_INGAME_SIZE,
+        radius,
+        brushMode,
+        valueMode,
+        value: topologyValue,
+        header,
+        globals,
+        tileSize: globals.TILE_INGAME_SIZE,
+      });
+
+      setAffectedPixels(pixels);
+    }
+  }, [isEditingTopology, brushMode, brushRadius, valueMode, topologyValue, header, globals]);
+
+  const handlePointerDown = useCallback((event: THREE.Event) => {
+    if (!isEditingTopology) return;
+    
+    const threeEvent = event as THREE.Event & { point: Vector3 };
+    if (threeEvent.point && terrainData.YCrd?.[1000]?.obj) {
+      setIsEditing(true);
+      
+      // Apply brush
+      const tileCoords = worldToTile(threeEvent.point.x, threeEvent.point.z, globals.TILE_INGAME_SIZE);
+      const radius = (brushRadius - 1) * globals.TILE_INGAME_SIZE;
+      
+      const pixels = calculateBrushPixels({
+        centerX: tileCoords.x * globals.TILE_INGAME_SIZE,
+        centerY: tileCoords.z * globals.TILE_INGAME_SIZE,
+        radius,
+        brushMode,
+        valueMode,
+        value: topologyValue,
+        header,
+        globals,
+        tileSize: globals.TILE_INGAME_SIZE,
+      });
+
+      applyTopologyBrush(terrainData.YCrd[1000].obj, pixels, {
+        centerX: tileCoords.x * globals.TILE_INGAME_SIZE,
+        centerY: tileCoords.z * globals.TILE_INGAME_SIZE,
+        radius,
+        brushMode,
+        valueMode,
+        value: topologyValue,
+        header,
+        globals,
+        tileSize: globals.TILE_INGAME_SIZE,
+      });
+
+      // Force terrain re-render by updating the geometry
+      if (terrainMeshRef.current && terrainMeshRef.current.geometry) {
+        const geom = terrainMeshRef.current.geometry;
+        const positionAttr = geom.attributes.position;
+        if (positionAttr) {
+          positionAttr.needsUpdate = true;
+          geom.computeVertexNormals();
+        }
+      }
+    }
+  }, [isEditingTopology, brushMode, brushRadius, valueMode, topologyValue, header, globals, terrainData]);
+
+  const handlePointerUp = useCallback(() => {
+    setIsEditing(false);
+  }, []);
 
   // Ensure header is defined before rendering TestGeometry
   if (!header) {
@@ -158,6 +288,8 @@ export function ThreeView({
       <MapControls
         // Make the controls the default camera controls
         makeDefault
+        // Disable controls during editing
+        enabled={!isEditing}
         // Smooth movement
         enableDamping
         dampingFactor={0.08}
@@ -178,10 +310,28 @@ export function ThreeView({
       {/* Exporter hook component (listens for export triggers) */}
       <SceneExporter />
       <TerrainGeometry
+        ref={terrainMeshRef}
         headerData={headerData}
         terrainData={terrainData}
         mapImages={mapImages}
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerUp}
       />
+      {isEditingTopology && (
+        <>
+          <TopologyBrush3D 
+            intersectionPoint={intersectionPoint}
+            visible={!!intersectionPoint}
+          />
+          <TopologyPreview3D
+            headerData={headerData}
+            terrainData={terrainData}
+            affectedPixels={affectedPixels}
+            visible={!!intersectionPoint && affectedPixels.length > 0}
+          />
+        </>
+      )}
       {fenceData && show3DFences && (
         <FenceGeometry
           fenceData={fenceData}
