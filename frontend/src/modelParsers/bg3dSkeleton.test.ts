@@ -252,13 +252,13 @@ describe("BG3D Skeleton Integration", () => {
     // Check that skin is created
     const skins = gltfDoc.getRoot().listSkins();
     expect(skins).toHaveLength(1);
-    expect(skins[0].listJoints()).toHaveLength(3);
+    expect(skins[0]?.listJoints()).toHaveLength(3);
 
     // Check that meshes have joint/weight attributes
     const meshes = gltfDoc.getRoot().listMeshes();
     if (meshes.length > 0) {
-      const primitives = meshes[0].listPrimitives();
-      if (primitives.length > 0) {
+      const primitives = meshes[0]?.listPrimitives();
+      if (primitives && primitives.length > 0) {
         const primitive = primitives[0];
         if (!primitive) return;
         const joints = primitive.getAttribute("JOINTS_0");
@@ -384,8 +384,8 @@ describe("BG3D Skeleton Integration", () => {
 
     // Verify skeleton has animation data
     expect(resultSkeleton.animations).toHaveLength(1);
-    expect(resultSkeleton.animations[0].name).toBe("idle");
-    expect(resultSkeleton.animations[0].keyframes[0]).toHaveLength(2); // 2 keyframes for root bone
+    expect(resultSkeleton.animations[0]?.name).toBe("idle");
+    expect(resultSkeleton.animations[0]?.keyframes[0]).toHaveLength(2); // 2 keyframes for root bone
 
     // Convert to glTF
     const gltfDoc = bg3dParsedToGLTF(resultObj);
@@ -393,15 +393,15 @@ describe("BG3D Skeleton Integration", () => {
     // Check that glTF animations were created
     const gltfAnimations = gltfDoc.getRoot().listAnimations();
     expect(gltfAnimations).toHaveLength(1);
-    expect(gltfAnimations[0].getName()).toBe("idle");
+    expect(gltfAnimations[0]?.getName()).toBe("idle");
 
     // Check animation has channels
-    const channels = gltfAnimations[0].listChannels();
+    const channels = gltfAnimations[0]?.listChannels() ?? [];
     expect(channels.length).toBeGreaterThan(0);
     console.log(`Created ${channels.length} animation channels`);
 
     // Check animation has samplers
-    const samplers = gltfAnimations[0].listSamplers();
+    const samplers = gltfAnimations[0]?.listSamplers() ?? [];
     expect(samplers.length).toBeGreaterThan(0);
     console.log(`Created ${samplers.length} animation samplers`);
 
@@ -414,13 +414,13 @@ describe("BG3D Skeleton Integration", () => {
           const times = input.getArray();
           if (times && times.length > 1) {
             // Check that timing values are reasonable and precise
-            const duration = times[times.length - 1] - times[0];
+            const duration = (times[times.length - 1] ?? 0) - (times[0] ?? 0);
             expect(duration).toBeGreaterThan(0);
             expect(duration).toBeLessThan(10); // Reasonable duration
 
             // Check timing precision (should be very precise)
             for (let i = 1; i < times.length; i++) {
-              expect(times[i]).toBeGreaterThan(times[i - 1]); // Times should be increasing
+              expect(times[i]).toBeGreaterThan(times[i - 1] ?? 0); // Times should be increasing
             }
           }
         }
@@ -434,20 +434,20 @@ describe("BG3D Skeleton Integration", () => {
     if (!roundtrip.skeleton) throw new Error("roundtrip.skeleton missing");
     const roundtripAnimSkeleton = roundtrip.skeleton;
     expect(roundtripAnimSkeleton.animations).toHaveLength(1);
-    expect(roundtripAnimSkeleton.animations[0].name).toBe("idle");
+    expect(roundtripAnimSkeleton.animations[0]?.name).toBe("idle");
 
     // Check that keyframes are preserved with exact precision
-    const originalKeyframes = resultSkeleton.animations[0].keyframes[0];
+    const originalKeyframes = resultSkeleton.animations[0]?.keyframes[0];
     if (!originalKeyframes) throw new Error("originalKeyframes missing");
-    const roundtripKeyframes = roundtripAnimSkeleton.animations[0].keyframes[0];
+    const roundtripKeyframes = roundtripAnimSkeleton.animations[0]?.keyframes[0];
     if (!roundtripKeyframes) throw new Error("roundtripKeyframes missing");
     expect(roundtripKeyframes.length).toBe(originalKeyframes.length);
 
     // Verify keyframe timing precision
     originalKeyframes.forEach((originalKf, index) => {
       const roundtripKf = roundtripKeyframes[index];
-      expect(roundtripKf.tick).toBe(originalKf.tick); // Exact tick preservation
-      expect(roundtripKf.accelerationMode).toBe(originalKf.accelerationMode);
+      expect(roundtripKf?.tick).toBe(originalKf.tick); // Exact tick preservation
+      expect(roundtripKf?.accelerationMode).toBe(originalKf.accelerationMode);
     });
 
     console.log(

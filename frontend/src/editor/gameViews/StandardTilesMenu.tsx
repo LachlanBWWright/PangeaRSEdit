@@ -1,6 +1,6 @@
 /**
  * Standard Tiles Menu
- * 
+ *
  * For games that use standard supertile-based terrain (Bugdom 2, Nanosaur 2, Cro-Mag, Billy Frontier)
  * Has topology editing and empty tile flags, but no electric floor options
  */
@@ -27,7 +27,11 @@ import {
   SelectItem,
   SelectTrigger,
 } from "@/components/ui/select";
-import { CanvasView, CanvasViewMode } from "@/data/canvasView/canvasViewAtoms";
+import {
+  CanvasView,
+  CanvasViewMode,
+  Export3DScene,
+} from "@/data/canvasView/canvasViewAtoms";
 import { useEffect } from "react";
 import { Switch } from "@/components/ui/switch";
 import { HeaderData } from "@/python/structSpecs/LevelTypes";
@@ -47,8 +51,11 @@ export function StandardTilesMenu({
   const [value, setValue] = useAtom(TopologyValue);
   const [toplogyOpacity, setTopologyOpacity] = useAtom(TopologyOpacity);
   const [canvasViewMode, setCanvasViewMode] = useAtom(CanvasViewMode);
-  const [tileEditingEnabled, setTileEditingEnabled] = useAtom(TileEditingEnabled);
-  const [selectedTileBrushType, setSelectedTileBrushType] = useAtom(TileBrushType);
+  const [, setExport3DScene] = useAtom(Export3DScene);
+  const [tileEditingEnabled, setTileEditingEnabled] =
+    useAtom(TileEditingEnabled);
+  const [selectedTileBrushType, setSelectedTileBrushType] =
+    useAtom(TileBrushType);
 
   const header = headerData?.Hedr?.[1000]?.obj;
   const minY = header?.minY || 0;
@@ -107,11 +114,17 @@ export function StandardTilesMenu({
             onValueChange={(e) => setBrushMode(parseInt(e))}
           >
             <SelectTrigger>
-              {brushMode === TopologyBrushMode.CIRCLE_BRUSH ? "Circle Brush" : "Square Brush"}
+              {brushMode === TopologyBrushMode.CIRCLE_BRUSH
+                ? "Circle Brush"
+                : "Square Brush"}
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value={TopologyBrushMode.CIRCLE_BRUSH.toString()}>Circle Brush</SelectItem>
-              <SelectItem value={TopologyBrushMode.SQUARE_BRUSH.toString()}>Square Brush</SelectItem>
+              <SelectItem value={TopologyBrushMode.CIRCLE_BRUSH.toString()}>
+                Circle Brush
+              </SelectItem>
+              <SelectItem value={TopologyBrushMode.SQUARE_BRUSH.toString()}>
+                Square Brush
+              </SelectItem>
             </SelectContent>
           </Select>
 
@@ -123,12 +136,19 @@ export function StandardTilesMenu({
             <SelectTrigger>
               {valueMode === TopologyValueMode.SET_VALUE && "Set To Value"}
               {valueMode === TopologyValueMode.DELTA_VALUE && "Adjust By Value"}
-              {valueMode === TopologyValueMode.DELTA_WITH_DROPOFF && "Adjust By Value (With Dropoff)"}
+              {valueMode === TopologyValueMode.DELTA_WITH_DROPOFF &&
+                "Adjust By Value (With Dropoff)"}
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value={TopologyValueMode.SET_VALUE.toString()}>Set To Value</SelectItem>
-              <SelectItem value={TopologyValueMode.DELTA_VALUE.toString()}>Adjust By Value</SelectItem>
-              <SelectItem value={TopologyValueMode.DELTA_WITH_DROPOFF.toString()}>
+              <SelectItem value={TopologyValueMode.SET_VALUE.toString()}>
+                Set To Value
+              </SelectItem>
+              <SelectItem value={TopologyValueMode.DELTA_VALUE.toString()}>
+                Adjust By Value
+              </SelectItem>
+              <SelectItem
+                value={TopologyValueMode.DELTA_WITH_DROPOFF.toString()}
+              >
                 Adjust By Value (With Dropoff)
               </SelectItem>
             </SelectContent>
@@ -155,14 +175,25 @@ export function StandardTilesMenu({
           <Input
             type="number"
             defaultValue={toplogyOpacity}
-            onChange={(e) => setTopologyOpacity(parseFloat(e.target.value) || 1)}
+            onChange={(e) =>
+              setTopologyOpacity(parseFloat(e.target.value) || 1)
+            }
           />
-          <div className="flex flex-row justify-center gap-2 items-center col-span-2">
-            <p>Show 3D Map (View Only)</p>
-            <Switch
-              checked={canvasViewMode === CanvasView.THREE_D}
-              onCheckedChange={(e) => setCanvasViewMode(e ? CanvasView.THREE_D : CanvasView.TWO_D)}
-            />
+          <div className="flex flex-row justify-between gap-2 items-center col-span-2">
+            <div className="flex items-center gap-2">
+              <p>Show 3D Map (View Only)</p>
+              <Switch
+                checked={canvasViewMode === CanvasView.THREE_D}
+                onCheckedChange={(e) =>
+                  setCanvasViewMode(e ? CanvasView.THREE_D : CanvasView.TWO_D)
+                }
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <Button onClick={() => setExport3DScene((c) => c + 1)}>
+                Download 3D (GLB)
+              </Button>
+            </div>
           </div>
         </div>
       )}
@@ -206,7 +237,8 @@ export function StandardTilesMenu({
           )}
 
           <p className="col-span-4 mt-2">
-            Click on the map to mark tiles as empty (white) or not empty (black).
+            Click on the map to mark tiles as empty (white) or not empty
+            (black).
           </p>
         </div>
       )}

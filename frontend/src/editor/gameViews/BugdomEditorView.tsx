@@ -6,7 +6,7 @@
  */
 
 import { useState, useEffect, useMemo } from "react";
-import { EditorToolbar } from "../EditorToolbar";
+import { Bugdom1EditorToolbar } from "../toolbars/Bugdom1EditorToolbar";
 import { Updater, useImmer } from "use-immer";
 import { useAtomValue } from "jotai";
 import { CanvasView, CanvasViewMode } from "@/data/canvasView/canvasViewAtoms";
@@ -16,7 +16,7 @@ import { ItemMenu } from "../subviews/items/ItemMenu";
 import { SplineMenu } from "../subviews/splines/SplineMenu";
 import { IndividualTilesMenu } from "./IndividualTilesMenu";
 import { BugdomTileMenu } from "../subviews/bugdom/BugdomTileMenu";
-import { KonvaView } from "../canvas/CanvasView";
+import { Bugdom1KonvaView } from "../canvas/Bugdom1KonvaView";
 import { ThreeView } from "../threejs/Three";
 import { View } from "../viewEnum";
 import {
@@ -84,7 +84,7 @@ export function BugdomEditorView({
 
   return (
     <div className="flex flex-col flex-1 w-full gap-2 min-h-0">
-      <EditorToolbar
+      <Bugdom1EditorToolbar
         view={view}
         setView={setView}
         undoData={undoData}
@@ -95,7 +95,6 @@ export function BugdomEditorView({
         dataHistoryLength={dataHistory.items.length}
         terrainHasSTgd={showSupertileMenu}
         hasFenceData={fenceData !== null}
-        hasLiquidData={false} // Bugdom doesn't have water
       />
       <div>
         {view === View.fences && fenceData && (
@@ -117,7 +116,7 @@ export function BugdomEditorView({
             setHeaderData={setHeaderData}
           />
         )}
-        {view === View.tiles && (
+        {view === View.tiles && canvasViewMode !== CanvasView.THREE_D && (
           <IndividualTilesMenu headerData={headerData} setHeaderData={setHeaderData} />
         )}
         {view === View.supertiles && showSupertileMenu && (
@@ -137,16 +136,16 @@ export function BugdomEditorView({
             headerData={headerData}
             fenceData={fenceData}
             liquidData={null}
+            itemData={itemData}
+            splineData={splineData}
             terrainData={terrainData}
             mapImages={mapImages}
           />
         ) : (
-          <KonvaView
+          <Bugdom1KonvaView
             headerData={headerData}
             itemData={itemData}
             setItemData={setItemData}
-            liquidData={null}
-            setLiquidData={() => {}} // No-op for Bugdom
             fenceData={fenceData}
             setFenceData={setFenceData}
             splineData={splineData}

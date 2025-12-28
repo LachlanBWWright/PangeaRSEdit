@@ -12,8 +12,8 @@ import { EditorView } from "./EditorView";
 import { Button } from "@/components/ui/button";
 import { Updater, useImmer } from "use-immer";
 import { ottoPreprocessor } from "../data/processors/ottoPreprocessor";
-import { Globals } from "../data/globals/globals";
-import { useAtom, useAtomValue } from "jotai";
+import { Globals, DataType } from "../data/globals/globals";
+import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { BlockHistoryUpdate } from "../data/globals/history";
 import LzssWorker from "../utils/lzssWorker?worker";
 import { LzssMessage, LzssResponse } from "@/utils/lzssWorker";
@@ -24,8 +24,11 @@ import {
   splitLevelData,
   combineLevelData,
   isAtomicDataComplete,
+  validateResourceForkJson,
 } from "../data/utils/levelDataUtils";
 import { isOk } from "../types/result";
+import { SafeItemTypes, SafeSplineItemTypes } from "../data/items/itemAtoms";
+import { extractSafeItemTypes } from "../data/items/extractSafeItemTypes";
 
 export type DataHistory = {
   items: AtomicLevelData[];
@@ -42,6 +45,10 @@ export function IntroPrompt({ pyodideWorker }: { pyodideWorker: Worker }) {
   const [fenceData, setFenceData] = useImmer<FenceData | null>(null);
   const [splineData, setSplineData] = useImmer<SplineData | null>(null);
   const [terrainData, setTerrainData] = useImmer<TerrainData | null>(null);
+
+  // Safe item types tracking
+  const setSafeItemTypes = useSetAtom(SafeItemTypes);
+  const setSafeSplineItemTypes = useSetAtom(SafeSplineItemTypes);
 
   //History of previous states for undo/redo purposes
   const [dataHistory, setDataHistory] = useImmer<DataHistory>({
@@ -73,14 +80,28 @@ export function IntroPrompt({ pyodideWorker }: { pyodideWorker: Worker }) {
   }, [headerData, itemData, liquidData, fenceData, splineData, terrainData]);
 
   // Helper to set all atomic data from AtomicLevelData
-  const setAllAtomicData = (atomicData: AtomicLevelData) => {
+  const setAllAtomicData = useCallback((atomicData: AtomicLevelData) => {
     setHeaderData(atomicData.headerData);
     setItemData(atomicData.itemData);
     setLiquidData(atomicData.liquidData);
     setFenceData(atomicData.fenceData);
     setSplineData(atomicData.splineData);
     setTerrainData(atomicData.terrainData);
-  };
+
+    // Extract and store safe item types from the loaded level
+    const levelData = {
+      Hedr: atomicData.headerData,
+      Itms: atomicData.itemData?.Itms,
+      Spln: atomicData.splineData?.Spln,
+      SpIt: atomicData.splineData?.SpIt,
+    };
+
+    const { itemTypes, splineItemTypes } = extractSafeItemTypes(levelData);
+    
+    // Update the atoms
+    setSafeItemTypes(itemTypes);
+    setSafeSplineItemTypes(splineItemTypes);
+  }, [setHeaderData, setItemData, setLiquidData, setFenceData, setSplineData, setTerrainData, setSafeItemTypes, setSafeSplineItemTypes]);
 
   // Wrapper for header which EditorView expects non-null updates for
   const setHeaderDataNonNull: Updater<HeaderData> = useCallback(
@@ -172,7 +193,7 @@ export function IntroPrompt({ pyodideWorker }: { pyodideWorker: Worker }) {
   };
 
   const saveMap = useCallback(async () => {
-    if (!mapFile || !mapImagesFile) {
+    if (!mapFile || (globals.DATA_TYPE !== DataType.RSRC_FORK && !mapImagesFile)) {
       console.error("Download failed: Map file or images file not loaded");
       toast.error("Download failed", {
         description:
@@ -184,6 +205,7 @@ export function IntroPrompt({ pyodideWorker }: { pyodideWorker: Worker }) {
     toast.loading("Processing map data...");
 
     // Combine atomic data for file I/O
+    // Combine atomic data for serialization; optional sections may be missing
     const combinedDataResult = combineLevelData(getCurrentAtomicData());
 
     if (!isOk(combinedDataResult)) {
@@ -200,11 +222,23 @@ export function IntroPrompt({ pyodideWorker }: { pyodideWorker: Worker }) {
     const combinedData = combinedDataResult.value;
 
     //TODO: Find better solution
-    //remove timg from combinedData - needed to fix bug
-    delete combinedData.Timg;
+    //remove timg from combinedData - needed to fix bug for non-RSRC_FORK games
+    if (globals.DATA_TYPE !== DataType.RSRC_FORK) {
+      delete combinedData.Timg;
+    }
 
     try {
       const loadResPromise = new Promise<ArrayBuffer>((resolve, reject) => {
+        // Validate JSON shape expected by rsrcdump.jsonio.json_to_resource_fork
+        const validation = validateResourceForkJson(combinedData as unknown as Record<string, unknown>);
+        if (!validation.ok) {
+          console.error("Invalid JSON for resource fork:", validation);
+          toast.error("Download failed", {
+            description: `Invalid map data structure for resource fork: ${validation.message}`,
+          });
+          return;
+        }
+
         pyodideWorker.postMessage({
           type: "load_bytes_from_json",
           json_blob: combinedData,
@@ -249,6 +283,14 @@ export function IntroPrompt({ pyodideWorker }: { pyodideWorker: Worker }) {
       console.log(
         `Map downloaded successfully: ${mapFile.name} (${loadRes.byteLength} bytes)`,
       );
+
+      // For RSRC_FORK games (e.g., Bugdom 1) the texture data (Timg) is
+      // embedded in the same resource file; skip the separate texture
+      // compression/download flow and finish here.
+      if (globals.DATA_TYPE === DataType.RSRC_FORK) {
+        toast.success("Map Downloaded!");
+        return;
+      }
     } catch (error) {
       console.error("Download failed:", error);
       toast.error("Download failed", {
@@ -354,7 +396,7 @@ export function IntroPrompt({ pyodideWorker }: { pyodideWorker: Worker }) {
 
     const imageDownloadLink = document.createElement("a");
     imageDownloadLink.href = imageUrl;
-    imageDownloadLink.setAttribute("download", mapImagesFile.name);
+    imageDownloadLink.setAttribute("download", mapImagesFile?.name || "images.ter");
     imageDownloadLink.click();
 
     toast.success("Map Downloaded!");
@@ -370,7 +412,7 @@ export function IntroPrompt({ pyodideWorker }: { pyodideWorker: Worker }) {
   useEffect(() => {
     if (!processed) return;
     saveMap();
-    setProcessed(false);
+    Promise.resolve().then(() => setProcessed(false));
   }, [
     processed,
     headerData,

@@ -8,7 +8,7 @@
  * All functions return Result types instead of throwing errors.
  */
 
-import { Game, GlobalsInterface, DataType } from "../globals/globals";
+import { GlobalsInterface, DataType } from "../globals/globals";
 import { preprocessJson } from "../processors/ottoPreprocessor";
 import { LevelData } from "@/python/structSpecs/LevelTypes";
 import {
@@ -73,8 +73,8 @@ export async function parseLevelBuffer(
   gameType: GlobalsInterface,
   pyodideRunner?: PyodideRunner,
 ): Promise<Result<LevelData, Error>> {
-  if (gameType.GAME_TYPE === Game.NANOSAUR) {
-    // Nanosaur 1 uses proprietary binary format
+  if (gameType.DATA_TYPE === DataType.TRT_FILE) {
+    // Nanosaur 1 uses proprietary TRT binary format
     const result = parseNanosaur1LevelBuffer(buffer, gameType);
     if (isErr(result)) {
       return result;
@@ -96,7 +96,10 @@ export async function parseLevelBuffer(
   }
 
   // Apply preprocessing (modifies levelData in place)
-  const preprocessResult = preprocessJson(parseResult.value, gameType);
+  const preprocessResult = preprocessJson(
+    parseResult.value as unknown as Record<string, unknown>,
+    gameType
+  );
   if (isErr(preprocessResult)) {
     return preprocessResult;
   }
@@ -158,10 +161,10 @@ export async function serializeLevelData(
   gameType: GlobalsInterface,
   pyodideRunner: PyodideRunner,
 ): Promise<Result<ArrayBuffer, Error>> {
-  if (gameType.GAME_TYPE === Game.NANOSAUR) {
-    // Nanosaur 1 serialization not supported (proprietary format)
+  if (gameType.DATA_TYPE === DataType.TRT_FILE) {
+    // Nanosaur 1 TRT file serialization not supported (proprietary format)
     return err(
-      new Error("Nanosaur 1 level serialization is not yet supported"),
+      new Error("Nanosaur 1 TRT level serialization is not yet supported"),
     );
   }
 

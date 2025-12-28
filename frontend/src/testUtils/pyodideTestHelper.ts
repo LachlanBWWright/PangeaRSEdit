@@ -3,7 +3,7 @@
  * This initializes pyodide directly (not in a worker) for testing purposes
  */
 
-import { loadPyodide, PyodideInterface } from "pyodide";
+import { loadPyodide, PyodideInterface, version as pyodideVersion } from "pyodide";
 import rsrcDumpUrl from "../assets/rsrcdump-0.1.0-py3-none-any.whl?url";
 import { LevelData } from "@/python/structSpecs/LevelTypes";
 
@@ -19,8 +19,9 @@ export async function initPyodide(): Promise<PyodideInterface> {
   }
 
   console.log("Initializing Pyodide for testing...");
+  const indexURL = `https://cdn.jsdelivr.net/pyodide/v${pyodideVersion}/full/`;
   const pyodide = await loadPyodide({
-    indexURL: "https://cdn.jsdelivr.net/pyodide/v0.26.4/full/",
+    indexURL,
   });
 
   console.log("Pyodide initialized, loading rsrcdump package...");

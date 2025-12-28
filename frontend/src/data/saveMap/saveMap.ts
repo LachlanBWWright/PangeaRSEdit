@@ -2,7 +2,9 @@ import { PyodideMessage, PyodideResponse } from "../../python/pyodideWorker";
 import { LzssMessage, LzssResponse } from "@/utils/lzssWorker";
 import LzssWorker from "../utils/lzssWorker?worker";
 import { LevelData } from "@/python/structSpecs/LevelTypes";
-import { Game, type GlobalsInterface } from "../globals/globals";
+import { DataType, TileImageFormat, type GlobalsInterface } from "../globals/globals";
+import { validateResourceForkJson } from "../utils/levelDataUtils";
+import { toast } from "../../hooks/use-toast";
 
 /**
  * Save and download map and images as in IntroPrompt
@@ -24,7 +26,8 @@ export async function saveMap({
   globals: GlobalsInterface;
   toast: (opts: { title: string; description?: string }) => void;
 }) {
-  if (!mapFile || !mapImagesFile) return;
+  // Allow RSRC_FORK games to save even if a separate images file isn't present
+  if (!mapFile || (globals.DATA_TYPE !== DataType.RSRC_FORK && !mapImagesFile)) return;
 
   // Download Images
   if (mapImages) {
@@ -35,7 +38,7 @@ export async function saveMap({
 
     const bufferList = await compressMapImages(mapImages);
     const imageDownloadBuffer = combineBuffersForDownload(bufferList);
-    downloadBlob(imageDownloadBuffer, mapImagesFile.name, ".ter");
+    downloadBlob(imageDownloadBuffer, mapImagesFile?.name || "images", ".ter");
   }
 
   console.log("TESThhhhhhh\n\n\n\n\n\n\ne\n\n\n\n\n\n\n");
@@ -44,24 +47,79 @@ export async function saveMap({
     description: "Processing map data test (THIS FILE IS NOT USED)",
   });
 
-  if (globals.GAME_TYPE === Game.NANOSAUR_2) {
-    //TODO: Nanosaur 2 map logic
+  if (globals.TILE_IMAGE_FORMAT === TileImageFormat.JPG) {
+    //TODO: JPEG-based map logic (e.g., Nanosaur 2)
   }
-  //if bugdom 1
-  else if (globals.GAME_TYPE === Game.BUGDOM) {
-    //Should save images here too as Bugdom 1 has terrain and image data in the same file
-    //TODO
-  } else if (globals.GAME_TYPE === Game.NANOSAUR) {
-    //TODO
+  //if bugdom 1 (resource fork)
+  else if (globals.DATA_TYPE === DataType.RSRC_FORK) {
+    // For RSRC_FORK (Bugdom 1), Timg should be embedded in `data` and pyodide
+    // should serialize it into the single .ter.rsrc file. Serialize and
+    // download the combined resource fork map file.
+    const mapBuffer = await processMapData({ data, pyodideWorker, globals });
+    downloadBlob(mapBuffer, mapFile.name, ".ter.rsrc");
+    toast({
+      title: "Map Downloaded!",
+    });
+  } else if (globals.DATA_TYPE === DataType.TRT_FILE) {
+    // Nanosaur 1: Compile back to .ter format
+    const { compileNanosaur1Level } = await import("@/editor/loadLogic/compileNanosaur1Level");
+    
+    // We need the original raw level data to preserve binary-specific information
+    // This should be stored in data._metadata if available
+    const rawLevelData = (data as unknown as { _metadata?: { 1000?: { obj?: { nanosaur1RawLevel?: unknown } } } })?._metadata?.[1000]?.obj?.nanosaur1RawLevel;
+    
+    if (!rawLevelData) {
+      toast({
+        title: "Cannot save Nanosaur 1 level",
+        description: "Original level data not found in metadata",
+      });
+      return;
+    }
+    
+    // Type-cast since we're in a Nanosaur 1 context
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const compileResult = compileNanosaur1Level(data, rawLevelData as any);
+    
+    if (!compileResult.ok) {
+      toast({
+        title: "Failed to compile Nanosaur 1 level",
+        description: compileResult.error.message,
+      });
+      return;
+    }
+    
+    downloadBlob(compileResult.value, mapFile.name, ".ter");
+    toast({
+      title: "Nanosaur 1 Map Downloaded!",
+    });
+  } else if (globals.GAME_NAME === "Mighty Mike") {
+    // Mighty Mike: Compile back to .map format
+    const { mightyMikeMapToCompressedBinary } = await import("@/modelParsers/parseMightyMike");
+    
+    // Extract Mighty Mike-specific data from metadata
+    const mightyMikeData = (data as unknown as { _metadata?: { 1000?: { obj?: { mightyMikeMapData?: unknown } } } })?._metadata?.[1000]?.obj?.mightyMikeMapData;
+    
+    if (!mightyMikeData) {
+      toast({
+        title: "Cannot save Mighty Mike level",
+        description: "Original level data not found in metadata",
+      });
+      return;
+    }
+    
+    const mapBuffer = mightyMikeMapToCompressedBinary(mightyMikeData as Parameters<typeof mightyMikeMapToCompressedBinary>[0]);
+    downloadBlob(mapBuffer, mapFile.name, ".map");
+    toast({
+      title: "Mighty Mike Map Downloaded!",
+    });
   } else {
     const mapBuffer = await processMapData({ data, pyodideWorker, globals });
     console.log("test\n\n\n");
     downloadBlob(mapBuffer, mapFile.name, ".ter.rsrc");
+    toast({
+      title: "Map Downloaded!",
+    });
   }
-
-  toast({
-    title: "Map Downloaded!",
-  });
 }
 
 function downloadBlob(buffer: ArrayBuffer, filename: string, mime: string) {
@@ -85,6 +143,17 @@ async function processMapData({
   return new Promise<ArrayBuffer>((resolve, reject) => {
     console.log("saving");
     console.log(data);
+    // Validate the JSON before passing to pyodide to avoid uncaught Python assertion errors
+    const validation = validateResourceForkJson(data as unknown as Record<string, unknown>);
+    if (!validation.ok) {
+      console.error("Invalid JSON for resource fork:", validation);
+      toast({
+        title: "Saving failed",
+        description: `Invalid map data structure: ${validation.message}`,
+      });
+      return new ArrayBuffer(0);
+    }
+
     pyodideWorker.postMessage({
       type: "load_bytes_from_json",
       json_blob: data,

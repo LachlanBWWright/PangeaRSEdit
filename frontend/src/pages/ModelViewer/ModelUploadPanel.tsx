@@ -19,7 +19,7 @@ interface Props {
   loading: boolean;
   uploadStep: "select-bg3d" | "select-skeleton" | "completed";
   pendingBg3dFile: File | null;
-  fileInputRef: React.RefObject<HTMLInputElement>;
+  fileInputRef: React.RefObject<HTMLInputElement | null>;
   handleDrop: (e: React.DragEvent) => void;
   handleDragOver: (e: React.DragEvent) => void;
   handleBg3dFileSelect: (f: File) => void;

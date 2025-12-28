@@ -1,19 +1,23 @@
 /**
  * RLW (Run-Length Word) Decompression
- * 
+ *
  * Used by Mighty Mike for map and tileset compression.
  * Format:
  * - First 4 bytes: decompressed size (big-endian)
  * - Next 4 bytes: compression type (big-endian), should be 6 for RLW
  * - Remaining bytes: compressed data
- * 
+ *
  * Compressed format:
  * - 1 byte length indicator
  * - If bit 7 set (0x80): packed stream
  *   - Next 2 bytes (big-endian) are the word to repeat (count & 0x7F) + 1 times
  * - Otherwise: literal stream
  *   - Next (count + 1) * 2 bytes are literal 16-bit words
+ *
+ * All functions return Result types for explicit error handling.
  */
+
+import { Result, ok, err } from "../types/result";
 
 export const PACK_TYPE_RLB = 0;
 export const PACK_TYPE_LZSS = 1;
@@ -30,23 +34,90 @@ export interface DecompressedFile {
 }
 
 /**
- * Decompresses an RLW-compressed file from Mighty Mike
+ * Decompresses an RLB-compressed file from Mighty Mike (byte-level run-length encoding)
  */
-export function rlwDecompress(compressedBuffer: ArrayBuffer): DecompressedFile {
+export function rlbDecompress(compressedBuffer: ArrayBuffer): Result<DecompressedFile> {
   const input = new DataView(compressedBuffer);
-  
+
   // Read header
   const decompressedSize = input.getUint32(0, false); // big-endian
   const compressionType = input.getUint32(4, false); // big-endian
+
+  if (compressionType !== PACK_TYPE_RLB) {
+    return err(new Error(`Expected RLB compression (type 0), got: ${compressionType}`));
+  }
   
+  // Allocate output buffer
+  const output = new Uint8Array(decompressedSize);
+  
+  let sourcePos = 8; // Start after header
+  let outputPos = 0;
+  const sourceEnd = compressedBuffer.byteLength;
+  const inputBytes = new Uint8Array(compressedBuffer);
+  
+  while (sourcePos < sourceEnd && outputPos < decompressedSize) {
+    // Read count byte
+    const countByte = inputBytes[sourcePos++];
+    
+    if (countByte === undefined) {
+      break; // Reached end of input
+    }
+    
+    if (countByte > 0x7F) {
+      // Packed run: repeat the following byte
+      // Count byte is a negative number in two's complement (e.g., 0xFF = -1, 0xFE = -2)
+      // Convert to positive run count: negate and add 1
+      // Reference: games/mightymike/src/Heart/Misc.c line 425: count = (-count)+1;
+      const runCount = (256 - countByte) + 1;
+      const dataByte = inputBytes[sourcePos++];
+      
+      if (dataByte === undefined) {
+        break; // Reached end of input
+      }
+      
+      for (let i = 0; i < runCount && outputPos < decompressedSize; i++) {
+        output[outputPos++] = dataByte;
+      }
+    } else {
+      // Literal run: copy the following bytes
+      const runCount = countByte + 1;
+      
+      for (let i = 0; i < runCount && outputPos < decompressedSize; i++) {
+        const byte = inputBytes[sourcePos++];
+        if (byte === undefined) {
+          break; // Reached end of input
+        }
+        output[outputPos++] = byte;
+      }
+    }
+  }
+
+  return ok({ data: output.buffer, decompressedSize, compressionType });
+}
+
+/**
+ * Decompresses an RLW-compressed file from Mighty Mike
+ */
+export function rlwDecompress(compressedBuffer: ArrayBuffer): Result<DecompressedFile> {
+  const input = new DataView(compressedBuffer);
+
+  // Read header
+  const decompressedSize = input.getUint32(0, false); // big-endian
+  const compressionType = input.getUint32(4, false); // big-endian
+
   // Handle uncompressed files
   if (compressionType === PACK_TYPE_NONE) {
     const data = compressedBuffer.slice(8);
-    return { data, decompressedSize, compressionType };
+    return ok({ data, decompressedSize, compressionType });
   }
-  
+
+  // Handle RLB compression (byte-level run-length)
+  if (compressionType === PACK_TYPE_RLB) {
+    return rlbDecompress(compressedBuffer);
+  }
+
   if (compressionType !== PACK_TYPE_RLW) {
-    throw new Error(`Unsupported compression type: ${compressionType}`);
+    return err(new Error(`Unsupported compression type: ${compressionType}`));
   }
   
   // Allocate output buffer
@@ -85,8 +156,8 @@ export function rlwDecompress(compressedBuffer: ArrayBuffer): DecompressedFile {
       }
     }
   }
-  
-  return { data: output, decompressedSize, compressionType };
+
+  return ok({ data: output, decompressedSize, compressionType });
 }
 
 /**
@@ -108,19 +179,19 @@ export function rlwCompress(decompressedBuffer: ArrayBuffer): ArrayBuffer {
   let inputPos = 0;
   let outputPos = 8;
   
-  while (inputPos < inputSize) {
+  while (inputPos + 2 <= inputSize) {
     // Check for runs of identical words
     const currentWord = input.getUint16(inputPos, false);
     let runLength = 1;
-    
+
     while (
-      inputPos + runLength * 2 < inputSize &&
+      inputPos + runLength * 2 + 2 <= inputSize &&
       runLength < 128 &&
       input.getUint16(inputPos + runLength * 2, false) === currentWord
     ) {
       runLength++;
     }
-    
+
     if (runLength >= 3) {
       // Worth compressing as a run
       outputView.setUint8(outputPos++, 0x80 | (runLength - 1));
@@ -131,24 +202,24 @@ export function rlwCompress(decompressedBuffer: ArrayBuffer): ArrayBuffer {
       // Count literal words until we find a good run
       let literalCount = 1;
       let nextPos = inputPos + 2;
-      
-      while (literalCount < 128 && nextPos < inputSize) {
+
+      while (literalCount < 128 && nextPos + 2 <= inputSize) {
         const word = input.getUint16(nextPos, false);
         let nextRunLength = 1;
-        
+
         while (
-          nextPos + nextRunLength * 2 < inputSize &&
+          nextPos + nextRunLength * 2 + 2 <= inputSize &&
           nextRunLength < 128 &&
           input.getUint16(nextPos + nextRunLength * 2, false) === word
         ) {
           nextRunLength++;
         }
-        
+
         if (nextRunLength >= 3) {
           // Found a good run, stop collecting literals
           break;
         }
-        
+
         literalCount++;
         nextPos += 2;
       }

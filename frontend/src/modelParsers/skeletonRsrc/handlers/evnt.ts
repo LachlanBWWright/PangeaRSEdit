@@ -7,15 +7,15 @@ export function handleEvnt(
   _resourceId: string,
   hexData: string,
 ) {
+  const castedData = resourceData as { obj?: EvntRaw[] };
   if (
     resourceData &&
-    (resourceData as { obj?: EvntRaw[] }).obj &&
-    Array.isArray((resourceData as { obj?: EvntRaw[] }).obj) &&
-    (resourceData as { obj?: EvntRaw[] }).obj!.length > 0 &&
-    ((resourceData as { obj?: EvntRaw[] }).obj![0] as EvntRaw).time !==
-      undefined
+    castedData.obj &&
+    Array.isArray(castedData.obj) &&
+    castedData.obj.length > 0 &&
+    (castedData.obj[0] as EvntRaw).time !== undefined
   ) {
-    const obj = (resourceData as { obj?: EvntRaw[] }).obj!;
+    const obj = castedData.obj;
     console.log(
       `[DEBUG] Using rsrcdump-parsed Evnt data from 'obj' field for ${resourceName}: ${obj.length} events`,
     );

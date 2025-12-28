@@ -8,7 +8,7 @@
  */
 
 import { useState, useEffect, useMemo } from "react";
-import { EditorToolbar } from "../EditorToolbar";
+import { StandardEditorToolbar } from "../toolbars/StandardEditorToolbar";
 import { Updater, useImmer } from "use-immer";
 import { useAtomValue } from "jotai";
 import { CanvasView, CanvasViewMode } from "@/data/canvasView/canvasViewAtoms";
@@ -19,7 +19,7 @@ import { SplineMenu } from "../subviews/splines/SplineMenu";
 import { WaterMenu } from "../subviews/water/WaterMenu";
 import { OttoMaticTilesMenu } from "./OttoMaticTilesMenu";
 import { SupertileMenu } from "../subviews/supertiles/SupertilesMenu";
-import { KonvaView } from "../canvas/CanvasView";
+import { OttoMaticKonvaView } from "../canvas/OttoMaticKonvaView";
 import { ThreeView } from "../threejs/Three";
 import { View } from "../viewEnum";
 import {
@@ -94,7 +94,7 @@ export function OttoMaticEditorView({
 
   return (
     <div className="flex flex-col flex-1 w-full gap-2 min-h-0">
-      <EditorToolbar
+      <StandardEditorToolbar
         view={view}
         setView={setView}
         undoData={undoData}
@@ -150,11 +150,13 @@ export function OttoMaticEditorView({
             headerData={headerData}
             fenceData={fenceData}
             liquidData={liquidData}
+            itemData={itemData}
+            splineData={splineData}
             terrainData={terrainData}
             mapImages={mapImages}
           />
         ) : (
-          <KonvaView
+          <OttoMaticKonvaView
             headerData={headerData}
             itemData={itemData}
             setItemData={setItemData}

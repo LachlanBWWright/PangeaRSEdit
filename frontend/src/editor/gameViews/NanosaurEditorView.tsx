@@ -9,7 +9,7 @@
  */
 
 import { useState, useEffect, useMemo } from "react";
-import { EditorToolbar } from "../EditorToolbar";
+import { Nanosaur1EditorToolbar } from "../toolbars/Nanosaur1EditorToolbar";
 import { Updater, useImmer } from "use-immer";
 import { useAtomValue } from "jotai";
 import { CanvasView, CanvasViewMode } from "@/data/canvasView/canvasViewAtoms";
@@ -17,7 +17,7 @@ import { CanvasView, CanvasViewMode } from "@/data/canvasView/canvasViewAtoms";
 import { ItemMenu } from "../subviews/items/ItemMenu";
 import { IndividualTilesMenu } from "./IndividualTilesMenu";
 import { BugdomTileMenu } from "../subviews/bugdom/BugdomTileMenu";
-import { KonvaView } from "../canvas/CanvasView";
+import { Nanosaur1KonvaView } from "../canvas/Nanosaur1KonvaView";
 import { ThreeView } from "../threejs/Three";
 import { View } from "../viewEnum";
 import {
@@ -72,7 +72,7 @@ export function NanosaurEditorView({
 
   return (
     <div className="flex flex-col flex-1 w-full gap-2 min-h-0">
-      <EditorToolbar
+      <Nanosaur1EditorToolbar
         view={view}
         setView={setView}
         undoData={undoData}
@@ -82,8 +82,6 @@ export function NanosaurEditorView({
         dataHistoryIndex={dataHistory.index}
         dataHistoryLength={dataHistory.items.length}
         terrainHasSTgd={showSupertileMenu}
-        hasFenceData={false} // Nanosaur doesn't have fences
-        hasLiquidData={false} // Nanosaur doesn't have water bodies
       />
       <div>
         {view === View.items && itemData && (
@@ -94,7 +92,7 @@ export function NanosaurEditorView({
             setHeaderData={setHeaderData}
           />
         )}
-        {view === View.tiles && (
+        {view === View.tiles && canvasViewMode !== CanvasView.THREE_D && (
           <IndividualTilesMenu headerData={headerData} setHeaderData={setHeaderData} />
         )}
         {view === View.supertiles && showSupertileMenu && (
@@ -114,20 +112,16 @@ export function NanosaurEditorView({
             headerData={headerData}
             fenceData={null}
             liquidData={null}
+            itemData={itemData}
+            splineData={null}
             terrainData={terrainData}
             mapImages={mapImages}
           />
         ) : (
-          <KonvaView
+          <Nanosaur1KonvaView
             headerData={headerData}
             itemData={itemData}
             setItemData={setItemData}
-            liquidData={null}
-            setLiquidData={() => {}} // No-op for Nanosaur
-            fenceData={null}
-            setFenceData={() => {}} // No-op for Nanosaur
-            splineData={null}
-            setSplineData={() => {}} // No-op for Nanosaur
             terrainData={terrainData}
             setTerrainData={setTerrainData}
             mapImages={mapImages}

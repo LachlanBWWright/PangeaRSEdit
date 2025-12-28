@@ -286,7 +286,7 @@ export class BigEndianWriter {
     if (str.length !== 4) {
       throw new Error(`FourCC must be exactly 4 characters: ${str}`);
     }
-    const value = 
+    const value =
       ((str.charCodeAt(0) & 0xff) << 24) |
       ((str.charCodeAt(1) & 0xff) << 16) |
       ((str.charCodeAt(2) & 0xff) << 8) |

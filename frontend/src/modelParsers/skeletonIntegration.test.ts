@@ -246,10 +246,10 @@ describe("BG3D Skeleton Integration", () => {
     );
 
     expect(animationInfos).toHaveLength(2);
-    expect(animationInfos[0].name).toBe("walk");
-    expect(animationInfos[0].duration).toBe(2.5);
-    expect(animationInfos[1]!.name).toBe("run");
-    expect(animationInfos[1]!.duration).toBe(1.8);
+    expect((animationInfos[0]?.name) ?? "").toBe("walk");
+    expect((animationInfos[0]?.duration) ?? 0).toBe(2.5);
+    expect((animationInfos[1]?.name) ?? "").toBe("run");
+    expect((animationInfos[1]?.duration) ?? 0).toBe(1.8);
   });
 });
 

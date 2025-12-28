@@ -112,14 +112,17 @@ describe("Quaternion/Euler Roundtrip with Float32", () => {
     ];
 
     for (const [rx, ry, rz] of testCases) {
+      const rxVal = rx ?? 0;
+      const ryVal = ry ?? 0;
+      const rzVal = rz ?? 0;
       console.log(
-        `\n=== Testing euler: [${rx.toFixed(6)}, ${ry.toFixed(6)}, ${rz.toFixed(
+        `\n=== Testing euler: [${rxVal.toFixed(6)}, ${ryVal.toFixed(6)}, ${rzVal.toFixed(
           6,
         )}] ===`,
       );
 
       // First roundtrip: euler -> quat -> euler (simulating RT1)
-      const [qx1, qy1, qz1, qw1] = eulerToQuaternion(rx, ry, rz);
+      const [qx1, qy1, qz1, qw1] = eulerToQuaternion(rxVal, ryVal, rzVal);
       const qx1_f32 = toFloat32(qx1),
         qy1_f32 = toFloat32(qy1),
         qz1_f32 = toFloat32(qz1),
@@ -198,14 +201,17 @@ describe("Quaternion/Euler Roundtrip with Float32", () => {
     ];
 
     for (const [rx, ry, rz] of testCases) {
+      const rxVal = rx ?? 0;
+      const ryVal = ry ?? 0;
+      const rzVal = rz ?? 0;
       console.log(
-        `\nTesting euler: [${rx.toFixed(6)}, ${ry.toFixed(6)}, ${rz.toFixed(
+        `\nTesting euler: [${rxVal.toFixed(6)}, ${ryVal.toFixed(6)}, ${rzVal.toFixed(
           6,
         )}]`,
       );
 
       // Forward: euler -> quaternion
-      const [qx, qy, qz, qw] = eulerToQuaternion(rx, ry, rz);
+      const [qx, qy, qz, qw] = eulerToQuaternion(rxVal, ryVal, rzVal);
       console.log(
         `  -> quaternion: [${qx.toFixed(6)}, ${qy.toFixed(6)}, ${qz.toFixed(
           6,
@@ -222,9 +228,9 @@ describe("Quaternion/Euler Roundtrip with Float32", () => {
 
       // Check within tolerance
       const tolerance = 1e-6;
-      expect(Math.abs(rx2 - rx)).toBeLessThan(tolerance);
-      expect(Math.abs(ry2 - ry)).toBeLessThan(tolerance);
-      expect(Math.abs(rz2 - rz)).toBeLessThan(tolerance);
+      expect(Math.abs((rx2 ?? 0) - rxVal)).toBeLessThan(tolerance);
+      expect(Math.abs((ry2 ?? 0) - ryVal)).toBeLessThan(tolerance);
+      expect(Math.abs((rz2 ?? 0) - rzVal)).toBeLessThan(tolerance);
     }
   });
 
@@ -236,19 +242,22 @@ describe("Quaternion/Euler Roundtrip with Float32", () => {
     ];
 
     for (const [rx, ry, rz] of testCases) {
+      const rxVal = rx ?? 0;
+      const ryVal = ry ?? 0;
+      const rzVal = rz ?? 0;
       console.log(
-        `\nTesting double roundtrip for: [${rx.toFixed(6)}, ${ry.toFixed(
+        `\nTesting double roundtrip for: [${rxVal.toFixed(6)}, ${ryVal.toFixed(
           6,
-        )}, ${rz.toFixed(6)}]`,
+        )}, ${rzVal.toFixed(6)}]`,
       );
 
       // First roundtrip: euler -> quat -> euler
-      const [qx1, qy1, qz1, qw1] = eulerToQuaternion(rx, ry, rz);
-      const [rx1, ry1, rz1] = quaternionToEuler(qx1, qy1, qz1, qw1);
+      const [qx1, qy1, qz1, qw1] = eulerToQuaternion(rxVal, ryVal, rzVal);
+      const [rx1, ry1, rz1] = quaternionToEuler(qx1 ?? 0, qy1 ?? 0, qz1 ?? 0, qw1 ?? 0);
 
       // Second roundtrip: euler -> quat -> euler
-      const [qx2, qy2, qz2, qw2] = eulerToQuaternion(rx1, ry1, rz1);
-      const [rx2, ry2, rz2] = quaternionToEuler(qx2, qy2, qz2, qw2);
+      const [qx2, qy2, qz2, qw2] = eulerToQuaternion(rx1 ?? 0, ry1 ?? 0, rz1 ?? 0);
+      const [rx2, ry2, rz2] = quaternionToEuler(qx2 ?? 0, qy2 ?? 0, qz2 ?? 0, qw2 ?? 0);
 
       console.log(
         `  After RT1: [${rx1.toFixed(6)}, ${ry1.toFixed(6)}, ${rz1.toFixed(

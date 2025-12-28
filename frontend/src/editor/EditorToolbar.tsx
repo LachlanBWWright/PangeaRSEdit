@@ -2,7 +2,7 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 
 import { useAtomValue } from "jotai";
-import { Globals, Game } from "../data/globals/globals";
+import { Globals } from "../data/globals/globals";
 import { View } from "./viewEnum";
 
 interface Props {
@@ -34,11 +34,9 @@ export function EditorToolbar({
 }: Props) {
   const globals = useAtomValue(Globals);
 
-  // Nanosaur 1 doesn't have fences or liquid data
-  const gameSupportsFences = globals.GAME_TYPE !== Game.NANOSAUR;
-  // Nanosaur 1 and Bugdom 1 don't have liquid data
-  const gameSupportsLiquids =
-    globals.GAME_TYPE !== Game.NANOSAUR && globals.GAME_TYPE !== Game.BUGDOM;
+  // Check if game supports features based on type mappings
+  const gameSupportsFences = !!globals.FENCE_TYPES;
+  const gameSupportsLiquids = !!globals.WATER_TYPES;
 
   // Only show fences button if game supports fences AND we have fence data (or game supports fences in general)
   const showFences = gameSupportsFences && hasFenceData !== false;

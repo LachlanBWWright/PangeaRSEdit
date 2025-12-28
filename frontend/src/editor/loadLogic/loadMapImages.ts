@@ -5,7 +5,7 @@ import {
   JpegDecompressMessage,
   JpegDecompressResponse,
 } from "@/utils/jpegDecompressWorker";
-import { Game, type GlobalsInterface } from "@/data/globals/globals";
+import { TileImageFormat, type GlobalsInterface } from "@/data/globals/globals";
 import { Result, ok, err } from "@/types/result";
 
 export async function loadMapImages(
@@ -16,8 +16,8 @@ export async function loadMapImages(
 
   const loadPromise: Promise<Result<HTMLCanvasElement[], Error>> = new Promise(
     (resolve) => {
-      if (globals.GAME_TYPE === Game.NANOSAUR_2) {
-        // Nanosaur 2: Each supertile is a JPEG, decompress with jpegDecompressWorker
+      if (globals.TILE_IMAGE_FORMAT === TileImageFormat.JPG) {
+        // Nanosaur 2 and other JPG-based games: Each supertile is a JPEG, decompress with jpegDecompressWorker
         let offset = 0;
         let numSupertiles = 0;
         // First, count the number of JPEGs
@@ -104,13 +104,8 @@ export async function loadMapImages(
           } satisfies JpegDecompressMessage);
         }
         return;
-      } else if (globals.GAME_TYPE === Game.BUGDOM) {
-        //Budgdom 1 Logic - TODO: Not completed
-
-        console.log("Budgdom map image loading not implemented yet");
-        resolve(ok([]));
       }
-      //Read Each - Logic for other games
+      // Standard LZSS-compressed games
       else {
         //Find the number of supertiles
         let numSupertiles = 0;

@@ -8,15 +8,12 @@
  */
 
 import { useState, useEffect, useMemo } from "react";
-import { EditorToolbar } from "../EditorToolbar";
-import { Updater, useImmer } from "use-immer";
-import { useAtomValue } from "jotai";
-import { CanvasView, CanvasViewMode } from "@/data/canvasView/canvasViewAtoms";
+import { useImmer, Updater } from "use-immer";
+import { MightyMikeEditorToolbar } from "../toolbars/MightyMikeEditorToolbar";
 
-import { ItemMenu } from "../subviews/items/ItemMenu";
-import { IndividualTilesMenu } from "./IndividualTilesMenu";
-import { KonvaView } from "../canvas/CanvasView";
-import { ThreeView } from "../threejs/Three";
+import { MightyMikeItemMenu } from "../subviews/items/MightyMikeItemMenu";
+import { MightyMikeTileMenu } from "../subviews/mightymike/MightyMikeTileMenu";
+import { MightyMikeKonvaView } from "../canvas/MightyMikeKonvaView";
 import { View } from "../viewEnum";
 import {
   createNonNullUpdater,
@@ -37,11 +34,11 @@ export function MightyMikeEditorView({
   terrainData,
   setTerrainData,
   mapImages,
+  setMapImages,
   undoData,
   redoData,
   dataHistory,
 }: MightyMikeEditorViewProps) {
-  const canvasViewMode = useAtomValue(CanvasViewMode);
   // Default to items view since MightyMike doesn't have fences
   const [view, setView] = useState<View>(View.items);
   const [stage, setStage] = useImmer({ scale: 1, x: 0, y: 0 });
@@ -66,7 +63,7 @@ export function MightyMikeEditorView({
 
   return (
     <div className="flex flex-col flex-1 w-full gap-2 min-h-0">
-      <EditorToolbar
+      <MightyMikeEditorToolbar
         view={view}
         setView={setView}
         undoData={undoData}
@@ -75,51 +72,48 @@ export function MightyMikeEditorView({
         zoomOut={zoomOut}
         dataHistoryIndex={dataHistory.index}
         dataHistoryLength={dataHistory.items.length}
-        terrainHasSTgd={false} // MightyMike doesn't have supertiles
-        hasFenceData={false} // MightyMike doesn't have fences
-        hasLiquidData={false} // MightyMike doesn't have water bodies
       />
-      <div>
+      <div className="h-80 overflow-y-auto border-b border-gray-600">
         {view === View.items && itemData && (
-          <ItemMenu
+          <MightyMikeItemMenu
             itemData={itemData}
             setItemData={setItemDataNotNull}
             headerData={headerData}
             setHeaderData={setHeaderData}
           />
         )}
-        {view === View.tiles && (
-          <IndividualTilesMenu headerData={headerData} setHeaderData={setHeaderData} />
-        )}
-      </div>
-      <div className="w-full min-h-0 flex-1 border-2 border-black overflow-clip">
-        {canvasViewMode === CanvasView.THREE_D && view === View.tiles ? (
-          <ThreeView
+        {view === View.supertiles && (
+          <MightyMikeTileMenu
             headerData={headerData}
-            fenceData={null}
-            liquidData={null}
-            terrainData={terrainData}
-            mapImages={mapImages}
-          />
-        ) : (
-          <KonvaView
-            headerData={headerData}
-            itemData={itemData}
-            setItemData={setItemData}
-            liquidData={null}
-            setLiquidData={() => {}} // No-op for MightyMike
-            fenceData={null}
-            setFenceData={() => {}} // No-op for MightyMike
-            splineData={null}
-            setSplineData={() => {}} // No-op for MightyMike
+            setHeaderData={setHeaderData}
             terrainData={terrainData}
             setTerrainData={setTerrainData}
             mapImages={mapImages}
-            view={view}
-            stage={stage}
-            setStage={setStage}
+            setMapImages={setMapImages}
           />
         )}
+        {view === View.tiles && (
+          <div className="p-4">
+            <h3 className="font-bold">Tile Attributes</h3>
+            <p className="text-sm text-gray-600">
+              Tile collision and behavior attributes (view only for Mighty Mike).
+            </p>
+          </div>
+        )}
+      </div>
+      <div className="w-full min-h-0 flex-1 border-2 border-black overflow-clip">
+        {/* Mighty Mike is 2D only - no 3D view */}
+        <MightyMikeKonvaView
+          headerData={headerData}
+          itemData={itemData}
+          setItemData={setItemData}
+          terrainData={terrainData}
+          setTerrainData={setTerrainData}
+          mapImages={mapImages}
+          view={view}
+          stage={stage}
+          setStage={setStage}
+        />
       </div>
     </div>
   );

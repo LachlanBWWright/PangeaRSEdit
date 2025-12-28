@@ -24,6 +24,7 @@ import { useMemo } from "react";
 import { createImageCanvas } from "./tiles/tilesUtils";
 import { elevationToRGBA, flattenCoords } from "./tiles/tilesUtils";
 import { KonvaEventObject } from "konva/lib/Node";
+import { calculateBrushPixels, applyTopologyBrush, PixelType } from "../utils/topologyBrushUtils";
 
 /* 
 
@@ -91,7 +92,6 @@ export function Tiles({
     return (
       <EmptyTiles
         headerData={headerData}
-        terrainData={terrainData}
         setTerrainData={setTerrainData}
         tileGrid={tileGrid}
       />
@@ -100,7 +100,6 @@ export function Tiles({
     return (
       <ElectricFloor0Tiles
         headerData={headerData}
-        terrainData={terrainData}
         setTerrainData={setTerrainData}
         tileGrid={tileGrid}
       />
@@ -111,14 +110,11 @@ export function Tiles({
   return (
     <ElectricFloor1Tiles
       headerData={headerData}
-      terrainData={terrainData}
       setTerrainData={setTerrainData}
       tileGrid={tileGrid}
     />
   );
 }
-
-type PixelType = { x: number; y: number; value: number; distance: number };
 
 export function TopologyTiles({
   headerData,
@@ -180,38 +176,18 @@ export function TopologyTiles({
     setTerrainData((data) => {
       if (!data.YCrd?.[1000]?.obj) return;
 
-      for (const pixelData of pixelList) {
-        const { x, y, value, distance } = pixelData;
-
-        if (
-          x < 0 ||
-          x > (header.mapWidth + 1) * globals.TILE_SIZE ||
-          y < 0 ||
-          y > (header.mapHeight + 1) * globals.TILE_SIZE
-        )
-          continue;
-        const flatPos = flattenCoords(x, y, header, globals);
-        if (data.YCrd[1000].obj[flatPos] === undefined) continue;
-
-        if (currentTopologyValueMode === TopologyValueMode.SET_VALUE) {
-          data.YCrd[1000].obj[flatPos] = value;
-        } else if (currentTopologyValueMode === TopologyValueMode.DELTA_VALUE) {
-          data.YCrd[1000].obj[flatPos] = data.YCrd[1000].obj[flatPos] + value;
-        } else if (
-          currentTopologyValueMode === TopologyValueMode.DELTA_WITH_DROPOFF
-        ) {
-          data.YCrd[1000].obj[flatPos] =
-            data.YCrd[1000].obj[flatPos] + value * (1 - distance);
-        }
-
-        //Clamp
-        if (data.YCrd[1000].obj[flatPos] < header.minY) {
-          data.YCrd[1000].obj[flatPos] = header.minY;
-        }
-        if (data.YCrd[1000].obj[flatPos] > header.maxY) {
-          data.YCrd[1000].obj[flatPos] = header.maxY;
-        }
-      }
+      // Use shared brush application utility
+      applyTopologyBrush(data.YCrd[1000].obj, pixelList, {
+        centerX: 0, // Not used in applyTopologyBrush
+        centerY: 0, // Not used in applyTopologyBrush
+        radius: (topologyBrushRadius - 1) * globals.TILE_SIZE,
+        brushMode: currentTopologyBrushMode,
+        valueMode: currentTopologyValueMode,
+        value: topologyValue,
+        header,
+        globals,
+        tileSize: globals.TILE_SIZE,
+      });
     });
   };
 
@@ -232,62 +208,19 @@ export function TopologyTiles({
             const centerX = Math.round(pos.x);
             const centerY = Math.round(pos.y);
             const radius = (topologyBrushRadius - 1) * globals.TILE_SIZE;
-            const pixelList: PixelType[] = [];
-
-            if (currentTopologyBrushMode === TopologyBrushMode.CIRCLE_BRUSH) {
-              // Create a circular brush pattern
-              const baseX = centerX - radius;
-              const baseY = centerY - radius;
-              const diameter = radius * 2;
-
-              for (let i = 0; i <= diameter; i += globals.TILE_SIZE) {
-                for (let j = 0; j <= diameter; j += globals.TILE_SIZE) {
-                  const tileX = baseX + i;
-                  const tileY = baseY + j;
-
-                  // Calculate if this tile is within the circle radius
-                  const distanceSquared =
-                    Math.pow(tileX - centerX, 2) + Math.pow(tileY - centerY, 2);
-
-                  const distance = Math.sqrt(distanceSquared) / radius;
-
-                  if (distanceSquared <= Math.pow(radius, 2)) {
-                    pixelList.push({
-                      x: tileX,
-                      y: tileY,
-                      value: topologyValue,
-                      distance: distance,
-                    });
-                  }
-                }
-              }
-            } else {
-              // Original square brush pattern
-              const baseX = centerX - radius;
-              const baseY = centerY - radius;
-              const size = radius * 2;
-
-              // Calculate distance for square brush (normalized from 0 to 1)
-              // Using Manhattan distance for square pattern feel
-              for (let i = 0; i <= size; i += globals.TILE_SIZE) {
-                for (let j = 0; j <= size; j += globals.TILE_SIZE) {
-                  const tileX = baseX + i;
-                  const tileY = baseY + j;
-
-                  // Calculate distance from center (using max of x,y distance for square pattern feel)
-                  const xDistance = Math.abs(tileX - centerX);
-                  const yDistance = Math.abs(tileY - centerY);
-                  const distance = Math.max(xDistance, yDistance) / radius;
-
-                  pixelList.push({
-                    x: tileX,
-                    y: tileY,
-                    value: topologyValue,
-                    distance: distance,
-                  });
-                }
-              }
-            }
+            
+            // Use shared brush calculation utility
+            const pixelList = calculateBrushPixels({
+              centerX,
+              centerY,
+              radius,
+              brushMode: currentTopologyBrushMode,
+              valueMode: currentTopologyValueMode,
+              value: topologyValue,
+              header,
+              globals,
+              tileSize: globals.TILE_SIZE,
+            });
 
             setPixels(pixelList);
           }}
@@ -409,7 +342,7 @@ export function ElectricFloor0Tiles({
   tileGrid,
 }: {
   headerData: HeaderData;
-  terrainData: TerrainData;
+  terrainData?: TerrainData;
   setTerrainData: Updater<TerrainData>;
   tileGrid: TileAttribute[];
 }) {

@@ -43,21 +43,23 @@ export function GameModelSelector({
   const [loadWithSkeleton, setLoadWithSkeleton] = useState<boolean>(true);
 
   const selectedGame = GAMES.find((game) => game.id === selectedGameId);
+  
   const availableModels =
     selectedGame?.models.filter(
       (model) => model.category === selectedCategory,
     ) || [];
-  const availableCategories = useMemo(
-    () =>
-      selectedGame
-        ? [...new Set(selectedGame.models.map((model) => model.category))]
-        : [],
-    [selectedGame],
-  );
+    
+  // Memoize to prevent changing on every render
+  const availableCategories = useMemo(() => {
+    return selectedGame
+      ? [...new Set(selectedGame.models.map((model) => model.category))]
+      : [];
+  }, [selectedGame]);
+
 
   useEffect(() => {
     // Reset model selection when game or category changes
-    setSelectedModel(null);
+    Promise.resolve().then(() => setSelectedModel(null));
   }, [selectedGameId, selectedCategory]);
 
   useEffect(() => {
@@ -65,7 +67,7 @@ export function GameModelSelector({
     if (selectedGame && availableCategories.length > 0) {
       const firstCategory = availableCategories[0];
       if (firstCategory) {
-        setSelectedCategory(firstCategory);
+        Promise.resolve().then(() => setSelectedCategory(firstCategory));
       }
     }
   }, [selectedGameId, selectedGame, availableCategories]);

@@ -9,7 +9,7 @@ import { argb16ToPng, rgba8ToPng } from "./image/pngArgb";
 function byteSwapUint16Array(arr: Uint16Array): Uint16Array {
   const swapped = new Uint16Array(arr.length);
   for (let i = 0; i < arr.length; i++) {
-    const val = arr[i];
+    const val = arr[i] ?? 0;
     swapped[i] = ((val & 0xff) << 8) | ((val >> 8) & 0xff);
   }
   return swapped;
