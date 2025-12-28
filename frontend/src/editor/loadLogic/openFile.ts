@@ -1,4 +1,3 @@
-import { Buffer } from "buffer";
 import { DataType } from "@/data/globals/globals";
 import { loadMapImages } from "@/editor/loadLogic/loadMapImages";
 import {
@@ -10,6 +9,17 @@ import { combineCanvases } from "@/editor/utils/combineCanvases";
 import type { GlobalsInterface } from "@/data/globals/globals";
 import type { AtomicLevelData } from "@/data/utils/levelDataUtils";
 import { parseLevelDataFile } from "./parseLevelDataFile";
+
+/**
+ * Convert hex string to Uint8Array (browser-compatible)
+ */
+function hexToUint8Array(hexString: string): Uint8Array {
+  const bytes = new Uint8Array(hexString.length / 2);
+  for (let i = 0; i < hexString.length; i += 2) {
+    bytes[i / 2] = parseInt(hexString.substring(i, i + 2), 16);
+  }
+  return bytes;
+}
 
 export type OpenFileArgs = {
   url: string;
@@ -178,7 +188,7 @@ export async function openFile({
       console.error("No image data found");
       return;
     }
-    const imgBuffer = Buffer.from(imgString, "hex");
+    const imgBuffer = hexToUint8Array(imgString);
     const alignedBuffer = new ArrayBuffer(imgBuffer.byteLength);
     new Uint8Array(alignedBuffer).set(imgBuffer);
     const tileCount = imgBuffer.byteLength / 2 / 32 / 32;
