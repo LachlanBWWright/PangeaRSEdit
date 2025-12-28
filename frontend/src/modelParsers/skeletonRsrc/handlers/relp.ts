@@ -16,27 +16,24 @@ export function handleRelP(
       resourceKeys: Object.keys(resourceData || {}),
       hasData:
         resourceData &&
-        resourceData.hasOwnProperty &&
-        resourceData.hasOwnProperty("data"),
+        Object.prototype.hasOwnProperty.call(resourceData, "data"),
       hasObj:
         resourceData &&
-        resourceData.hasOwnProperty &&
-        resourceData.hasOwnProperty("obj"),
+        Object.prototype.hasOwnProperty.call(resourceData, "obj"),
       hasConversionError:
         resourceData &&
-        resourceData.hasOwnProperty &&
-        resourceData.hasOwnProperty("conversionError"),
+        Object.prototype.hasOwnProperty.call(resourceData, "conversionError"),
     },
   );
+  const castedData = resourceData as { obj?: RelPRaw[] };
   if (
     resourceData &&
-    (resourceData as { obj?: RelPRaw[] }).obj &&
-    Array.isArray((resourceData as { obj?: RelPRaw[] }).obj) &&
-    (resourceData as { obj?: RelPRaw[] }).obj!.length > 0 &&
-    ((resourceData as { obj?: RelPRaw[] }).obj![0] as RelPRaw).relOffsetX !==
-      undefined
+    castedData.obj &&
+    Array.isArray(castedData.obj) &&
+    castedData.obj.length > 0 &&
+    (castedData.obj[0] as RelPRaw).relOffsetX !== undefined
   ) {
-    const obj = (resourceData as { obj?: RelPRaw[] }).obj!;
+    const obj = castedData.obj;
     console.log(
       `[DEBUG] Using rsrcdump-parsed RelP data from 'obj' field for ${resourceName}: ${obj.length} points`,
     );

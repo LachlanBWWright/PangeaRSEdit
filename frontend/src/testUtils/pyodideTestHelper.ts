@@ -3,9 +3,9 @@
  * This initializes pyodide directly (not in a worker) for testing purposes
  */
 
-import { loadPyodide, PyodideInterface } from "pyodide";
+import { loadPyodide, PyodideInterface, version as pyodideVersion } from "pyodide";
 import rsrcDumpUrl from "../assets/rsrcdump-0.1.0-py3-none-any.whl?url";
-import { ottoMaticLevel } from "../python/structSpecs/ottoMaticInterface";
+import { LevelData } from "@/python/structSpecs/LevelTypes";
 
 let pyodideInstance: PyodideInterface | null = null;
 
@@ -19,8 +19,9 @@ export async function initPyodide(): Promise<PyodideInterface> {
   }
 
   console.log("Initializing Pyodide for testing...");
+  const indexURL = `https://cdn.jsdelivr.net/pyodide/v${pyodideVersion}/full/`;
   const pyodide = await loadPyodide({
-    indexURL: "https://cdn.jsdelivr.net/pyodide/v0.26.4/full/",
+    indexURL,
   });
 
   console.log("Pyodide initialized, loading rsrcdump package...");
@@ -48,12 +49,15 @@ export async function parseBufferToJson(
   structSpecs: string[],
   includeTypes: string[] = [],
   excludeTypes: string[] = [],
-): Promise<ottoMaticLevel> {
+): Promise<LevelData> {
   const pyodide = await initPyodide();
 
   // Set buffer in global scope for pyodide to access
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  (globalThis as any).testBuffer = buffer;
+  const globalWithTest = globalThis as unknown as {
+    testBuffer?: ArrayBuffer;
+    jsonBuffer?: LevelData;
+  };
+  globalWithTest.testBuffer = buffer;
 
   await pyodide.runPythonAsync(`
     from js import testBuffer
@@ -82,7 +86,7 @@ export async function parseBufferToJson(
  * @returns The serialized binary buffer
  */
 export async function serializeJsonToBuffer(
-  jsonData: ottoMaticLevel,
+  jsonData: LevelData,
   structSpecs: string[],
   onlyTypes: string[] = [],
   skipTypes: string[] = [],
@@ -91,8 +95,11 @@ export async function serializeJsonToBuffer(
   const pyodide = await initPyodide();
 
   // Set JSON in global scope for pyodide to access
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  (globalThis as any).jsonBuffer = jsonData;
+  const globalWithTest = globalThis as unknown as {
+    testBuffer?: ArrayBuffer;
+    jsonBuffer?: LevelData;
+  };
+  globalWithTest.jsonBuffer = jsonData;
 
   await pyodide.runPythonAsync(`
     from js import jsonBuffer
@@ -127,9 +134,9 @@ export async function performRoundtripTest(
   buffer: ArrayBuffer,
   structSpecs: string[],
 ): Promise<{
-  originalJson: ottoMaticLevel;
+  originalJson: LevelData;
   serializedBuffer: ArrayBuffer;
-  roundtripJson: ottoMaticLevel;
+  roundtripJson: LevelData;
   bufferSizeMatch: boolean;
   jsonMatch: boolean;
 }> {

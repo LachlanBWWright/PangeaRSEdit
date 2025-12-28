@@ -12,6 +12,7 @@ import {
   BG3DTexture,
   BG3DSkeleton,
   BG3DBone,
+  BG3DAnimation,
 } from "./parseBG3D";
 
 import {
@@ -26,6 +27,10 @@ import {
   extractAnimationsFromGLTF,
 } from "./skeletonSystemNew";
 
+import { decodeJpegNode } from "../utils/jpegDecompress";
+
+import { isErr } from "../types/result";
+
 import {
   Document,
   Mesh,
@@ -38,6 +43,76 @@ import {
 import { PixelFormatSrc, PixelFormatDst } from "./parseBG3D";
 import { Quaternion } from "three";
 import { parseSkeletonRsrcTS } from "./skeletonRsrc/parseSkeletonRsrcTS";
+
+/**
+ * Type definitions for glTF extras data
+ */
+interface BG3DKeyframeLike {
+  tick: number;
+  accelerationMode: number;
+  coordX: number;
+  coordY: number;
+  coordZ: number;
+  rotationX: number;
+  rotationY: number;
+  rotationZ: number;
+  scaleX: number;
+  scaleY: number;
+  scaleZ: number;
+}
+
+interface KeyframeData {
+  name?: string;
+  keyframes?: { [boneIndex: number]: BG3DKeyframeLike[] };
+}
+
+interface AnimationEventData {
+  name?: string;
+  numAnimEvents?: number;
+  events?: { time: number; type: number; value: number }[];
+}
+
+interface BoneData {
+  parentBone?: number;
+  name?: string;
+  coordX?: number;
+  coordY?: number;
+  coordZ?: number;
+  numPointsAttachedToBone?: number;
+  numNormalsAttachedToBone?: number;
+  pointIndices?: number[];
+  normalIndices?: number[];
+  reserved0?: number;
+  reserved1?: number;
+  reserved2?: number;
+  reserved3?: number;
+  reserved4?: number;
+  reserved5?: number;
+  reserved6?: number;
+  reserved7?: number;
+}
+
+interface HeaderData {
+  version?: number;
+  numAnims?: number;
+  numJoints?: number;
+  num3DMFLimbs?: number;
+}
+
+interface SkeletonExtras {
+  keyframeData?: KeyframeData[];
+  animationEvents?: AnimationEventData[];
+  boneData?: BoneData[];
+  headerData?: HeaderData;
+  relPoints?: unknown[];
+  alisData?: unknown;
+  metadata?: unknown;
+}
+
+interface BG3DFields {
+  materialExtras?: unknown[];
+  skeletonExtras?: SkeletonExtras;
+}
 
 /**
  * Matrix utilities for coordinate transformations
@@ -65,9 +140,9 @@ class Matrix4 {
 
   getTranslation(): { x: number; y: number; z: number } {
     return {
-      x: this.data[12],
-      y: this.data[13],
-      z: this.data[14],
+      x: this.data[12]!,
+      y: this.data[13]!,
+      z: this.data[14]!,
     };
   }
 
@@ -78,119 +153,120 @@ class Matrix4 {
 
     // Calculate matrix inverse using standard algorithm
     inv[0] =
-      m[5] * m[10] * m[15] -
-      m[5] * m[11] * m[14] -
-      m[9] * m[6] * m[15] +
-      m[9] * m[7] * m[14] +
-      m[13] * m[6] * m[11] -
-      m[13] * m[7] * m[10];
+      m[5]! * m[10]! * m[15]! -
+      m[5]! * m[11]! * m[14]! -
+      m[9]! * m[6]! * m[15]! +
+      m[9]! * m[7]! * m[14]! +
+      m[13]! * m[6]! * m[11]! -
+      m[13]! * m[7]! * m[10]!;
     inv[4] =
-      -m[4] * m[10] * m[15] +
-      m[4] * m[11] * m[14] +
-      m[8] * m[6] * m[15] -
-      m[8] * m[7] * m[14] -
-      m[12] * m[6] * m[11] +
-      m[12] * m[7] * m[10];
+      -m[4]! * m[10]! * m[15]! +
+      m[4]! * m[11]! * m[14]! +
+      m[8]! * m[6]! * m[15]! -
+      m[8]! * m[7]! * m[14]! -
+      m[12]! * m[6]! * m[11]! +
+      m[12]! * m[7]! * m[10]!;
     inv[8] =
-      m[4] * m[9] * m[15] -
-      m[4] * m[11] * m[13] -
-      m[8] * m[5] * m[15] +
-      m[8] * m[7] * m[13] +
-      m[12] * m[5] * m[11] -
-      m[12] * m[7] * m[9];
+      m[4]! * m[9]! * m[15]! -
+      m[4]! * m[11]! * m[13]! -
+      m[8]! * m[5]! * m[15]! +
+      m[8]! * m[7]! * m[13]! +
+      m[12]! * m[5]! * m[11]! -
+      m[12]! * m[7]! * m[9]!;
     inv[12] =
-      -m[4] * m[9] * m[14] +
-      m[4] * m[10] * m[13] +
-      m[8] * m[5] * m[14] -
-      m[8] * m[6] * m[13] -
-      m[12] * m[5] * m[10] +
-      m[12] * m[6] * m[9];
+      -m[4]! * m[9]! * m[14]! +
+      m[4]! * m[10]! * m[13]! +
+      m[8]! * m[5]! * m[14]! -
+      m[8]! * m[6]! * m[13]! -
+      m[12]! * m[5]! * m[10]! +
+      m[12]! * m[6]! * m[9]!;
     inv[1] =
-      -m[1] * m[10] * m[15] +
-      m[1] * m[11] * m[14] +
-      m[9] * m[2] * m[15] -
-      m[9] * m[3] * m[14] -
-      m[13] * m[2] * m[11] +
-      m[13] * m[3] * m[10];
+      -m[1]! * m[10]! * m[15]! +
+      m[1]! * m[11]! * m[14]! +
+      m[9]! * m[2]! * m[15]! -
+      m[9]! * m[3]! * m[14]! -
+      m[13]! * m[2]! * m[11]! +
+      m[13]! * m[3]! * m[10]!;
     inv[5] =
-      m[0] * m[10] * m[15] -
-      m[0] * m[11] * m[14] -
-      m[8] * m[2] * m[15] +
-      m[8] * m[3] * m[14] +
-      m[12] * m[2] * m[11] -
-      m[12] * m[3] * m[10];
+      m[0]! * m[10]! * m[15]! -
+      m[0]! * m[11]! * m[14]! -
+      m[8]! * m[2]! * m[15]! +
+      m[8]! * m[3]! * m[14]! +
+      m[12]! * m[2]! * m[11]! -
+      m[12]! * m[3]! * m[10]!;
     inv[9] =
-      -m[0] * m[9] * m[15] +
-      m[0] * m[11] * m[13] +
-      m[8] * m[1] * m[15] -
-      m[8] * m[3] * m[13] -
-      m[12] * m[1] * m[11] +
-      m[12] * m[3] * m[9];
+      -m[0]! * m[9]! * m[15]! +
+      m[0]! * m[11]! * m[13]! +
+      m[8]! * m[1]! * m[15]! -
+      m[8]! * m[3]! * m[13]! -
+      m[12]! * m[1]! * m[11]! +
+      m[12]! * m[3]! * m[9]!;
     inv[13] =
-      m[0] * m[9] * m[14] -
-      m[0] * m[10] * m[13] -
-      m[8] * m[1] * m[14] +
-      m[8] * m[2] * m[13] +
-      m[12] * m[1] * m[10] -
-      m[12] * m[2] * m[9];
+      m[0]! * m[9]! * m[14]! -
+      m[0]! * m[10]! * m[13]! -
+      m[8]! * m[1]! * m[14]! +
+      m[8]! * m[2]! * m[13]! +
+      m[12]! * m[1]! * m[10]! -
+      m[12]! * m[2]! * m[9]!;
     inv[2] =
-      m[1] * m[6] * m[15] -
-      m[1] * m[7] * m[14] -
-      m[5] * m[2] * m[15] +
-      m[5] * m[3] * m[14] +
-      m[13] * m[2] * m[7] -
-      m[13] * m[3] * m[6];
+      m[1]! * m[6]! * m[15]! -
+      m[1]! * m[7]! * m[14]! -
+      m[5]! * m[2]! * m[15]! +
+      m[5]! * m[3]! * m[14]! +
+      m[13]! * m[2]! * m[7]! -
+      m[13]! * m[3]! * m[6]!;
     inv[6] =
-      -m[0] * m[6] * m[15] +
-      m[0] * m[7] * m[14] +
-      m[4] * m[2] * m[15] -
-      m[4] * m[3] * m[14] -
-      m[12] * m[2] * m[7] +
-      m[12] * m[3] * m[6];
+      -m[0]! * m[6]! * m[15]! +
+      m[0]! * m[7]! * m[14]! +
+      m[4]! * m[2]! * m[15]! -
+      m[4]! * m[3]! * m[14]! -
+      m[12]! * m[2]! * m[7]! +
+      m[12]! * m[3]! * m[6]!;
     inv[10] =
-      m[0] * m[5] * m[15] -
-      m[0] * m[7] * m[13] -
-      m[4] * m[1] * m[15] +
-      m[4] * m[3] * m[13] +
-      m[12] * m[1] * m[7] -
-      m[12] * m[3] * m[5];
+      m[0]! * m[5]! * m[15]! -
+      m[0]! * m[7]! * m[13]! -
+      m[4]! * m[1]! * m[15]! +
+      m[4]! * m[3]! * m[13]! +
+      m[12]! * m[1]! * m[7]! -
+      m[12]! * m[3]! * m[5]!;
     inv[14] =
-      -m[0] * m[5] * m[14] +
-      m[0] * m[6] * m[13] +
-      m[4] * m[1] * m[14] -
-      m[4] * m[2] * m[13] -
-      m[12] * m[1] * m[6] +
-      m[12] * m[2] * m[5];
+      -m[0]! * m[5]! * m[14]! +
+      m[0]! * m[6]! * m[13]! +
+      m[4]! * m[1]! * m[14]! -
+      m[4]! * m[2]! * m[13]! -
+      m[12]! * m[1]! * m[6]! +
+      m[12]! * m[2]! * m[5]!;
     inv[3] =
-      -m[1] * m[6] * m[11] +
-      m[1] * m[7] * m[10] +
-      m[5] * m[2] * m[11] -
-      m[5] * m[3] * m[10] -
-      m[9] * m[2] * m[7] +
-      m[9] * m[3] * m[6];
+      -m[1]! * m[6]! * m[11]! +
+      m[1]! * m[7]! * m[10]! +
+      m[5]! * m[2]! * m[11]! -
+      m[5]! * m[3]! * m[10]! -
+      m[9]! * m[2]! * m[7]! +
+      m[9]! * m[3]! * m[6]!;
     inv[7] =
-      m[0] * m[6] * m[11] -
-      m[0] * m[7] * m[10] -
-      m[4] * m[2] * m[11] +
-      m[4] * m[3] * m[10] +
-      m[8] * m[2] * m[7] -
-      m[8] * m[3] * m[6];
+      m[0]! * m[6]! * m[11]! -
+      m[0]! * m[7]! * m[10]! -
+      m[4]! * m[2]! * m[11]! +
+      m[4]! * m[3]! * m[10]! +
+      m[8]! * m[2]! * m[7]! -
+      m[8]! * m[3]! * m[6]!;
     inv[11] =
-      -m[0] * m[5] * m[11] +
-      m[0] * m[7] * m[9] +
-      m[4] * m[1] * m[11] -
-      m[4] * m[3] * m[9] -
-      m[8] * m[1] * m[7] +
-      m[8] * m[3] * m[5];
+      -m[0]! * m[5]! * m[11]! +
+      m[0]! * m[7]! * m[9]! +
+      m[4]! * m[1]! * m[11]! -
+      m[4]! * m[3]! * m[9]! -
+      m[8]! * m[1]! * m[7]! +
+      m[8]! * m[3]! * m[5]!;
     inv[15] =
-      m[0] * m[5] * m[10] -
-      m[0] * m[6] * m[9] -
-      m[4] * m[1] * m[10] +
-      m[4] * m[2] * m[9] +
-      m[8] * m[1] * m[6] -
-      m[8] * m[2] * m[5];
+      m[0]! * m[5]! * m[10]! -
+      m[0]! * m[6]! * m[9]! -
+      m[4]! * m[1]! * m[10]! +
+      m[4]! * m[2]! * m[9]! +
+      m[8]! * m[1]! * m[6]! -
+      m[8]! * m[2]! * m[5]!;
 
-    const det = m[0] * inv[0] + m[1] * inv[4] + m[2] * inv[8] + m[3] * inv[12];
+    const det =
+      m[0]! * inv[0]! + m[1]! * inv[4]! + m[2]! * inv[8]! + m[3]! * inv[12]!;
 
     if (det === 0) {
       console.warn("Matrix is not invertible");
@@ -199,7 +275,7 @@ class Matrix4 {
 
     const invDet = 1.0 / det;
     for (let i = 0; i < 16; i++) {
-      inv[i] *= invDet;
+      inv[i] = inv[i]! * invDet;
     }
 
     return result;
@@ -224,7 +300,7 @@ class Matrix4 {
         // In column-major: result[j*4+i] = sum(a[k*4+i] * b[j*4+k])
         let sum = 0;
         for (let k = 0; k < 4; k++) {
-          sum += a[k * 4 + i] * b[j * 4 + k];
+          sum += a[k * 4 + i]! * b[j * 4 + k]!;
         }
         out[j * 4 + i] = sum;
       }
@@ -306,7 +382,7 @@ export function bg3dParsedToGLTF(
   console.log("=== Starting BG3D to glTF Conversion ===");
 
   // 1. Materials
-  const gltfMaterials: Material[] = parsed.materials.map((mat, i) => {
+  const gltfMaterials: Material[] = (parsed.materials || []).map((mat, i) => {
     const m = doc.createMaterial("BG3DMaterial");
     m.setName(`Material_${i.toString().padStart(4, "0")}`);
     m.setBaseColorFactor(mat.diffuseColor);
@@ -317,31 +393,63 @@ export function bg3dParsedToGLTF(
   });
 
   // 2. Textures/Images
-  parsed.materials.forEach((mat, i) => {
+  (parsed.materials || []).forEach((mat, i) => {
     if (mat.textures && mat.textures.length > 0) {
       mat.textures.forEach((tex, j) => {
         let pngBuffer: Uint8Array<ArrayBufferLike>;
         try {
           if (tex.isJpeg) {
-            // JPEG texture (Nanosaur 2) - store as JPEG directly
-            // Note: glTF supports JPEG directly, so we can use it as-is
-            // The alpha channel would need to be handled separately if needed
-            const texture = doc.createTexture();
-            texture.setMimeType("image/jpeg");
-            texture.setImage(tex.pixels);
-            texture.setExtras({
-              width: tex.width,
-              height: tex.height,
-              srcPixelFormat: tex.srcPixelFormat,
-              dstPixelFormat: tex.dstPixelFormat,
-              bufferSize: tex.bufferSize,
-              isJpeg: true,
-              hasAlpha: !!tex.jpegAlphaData,
-            });
-            if (j === 0) {
-              gltfMaterials[i].setBaseColorTexture(texture);
+            // JPEG texture (Nanosaur 2) - decompress from QuickTime format and convert to PNG
+            console.log(`[Material ${i}] Processing JPEG texture, bufferSize: ${tex.bufferSize}`);
+
+            try {
+              // Extract payload from QuickTime ImageDescription format
+              const view = new DataView(tex.pixels.buffer, tex.pixels.byteOffset);
+              const offset = view.getInt32(0, false); // big-endian
+              const payloadSize = tex.bufferSize - offset;
+              const payloadView = new Uint8Array(tex.pixels.buffer, tex.pixels.byteOffset + offset, payloadSize);
+
+              console.log(`[Material ${i}] Offset: ${offset}, Payload size: ${payloadSize}`);
+
+              // Copy to new buffer for decodeJpegNode
+              const payloadBuffer = new Uint8Array(payloadSize);
+              payloadBuffer.set(payloadView);
+
+              // Decompress JPEG
+              const imageData = decodeJpegNode(payloadBuffer.buffer);
+              console.log(`[Material ${i}] Decompressed JPEG: ${imageData.width}x${imageData.height}`);
+
+              // Convert to PNG
+              const pngBuffer = rgba8ToPng(new Uint8Array(imageData.data), imageData.width, imageData.height);
+
+              const texture = doc.createTexture();
+              texture.setMimeType("image/png");
+              texture.setImage(pngBuffer);
+              texture.setExtras({
+                width: imageData.width,
+                height: imageData.height,
+                srcPixelFormat: tex.srcPixelFormat,
+                dstPixelFormat: tex.dstPixelFormat,
+                bufferSize: tex.bufferSize,
+                isJpeg: true,
+                hasAlpha: !!tex.jpegAlphaData,
+              });
+              if (j === 0) {
+                const gltfMat = gltfMaterials[i];
+                if (gltfMat) {
+                  gltfMat.setBaseColorTexture(texture);
+                }
+              }
+              return; // Skip the rest of the texture processing
+            } catch (error) {
+              console.error(`[Material ${i}] Failed to decompress JPEG texture:`, error);
+              // Fall through to create a gray placeholder
+              pngBuffer = rgba8ToPng(
+                new Uint8Array(tex.width * tex.height * 4).fill(128),
+                tex.width,
+                tex.height
+              );
             }
-            return; // Skip the rest of the texture processing
           } else if (
             tex.srcPixelFormat === PixelFormatSrc.GL_UNSIGNED_SHORT_1_5_5_5_REV
           ) {
@@ -354,7 +462,9 @@ export function bg3dParsedToGLTF(
             const swapped = new Uint16Array(src.length);
             for (let k = 0; k < src.length; k++) {
               const val = src[k];
-              swapped[k] = ((val & 0xff) << 8) | ((val >> 8) & 0xff);
+              if (val !== undefined) {
+                swapped[k] = ((val & 0xff) << 8) | ((val >> 8) & 0xff);
+              }
             }
             pngBuffer = argb16ToPng(swapped, tex.width, tex.height);
           } else if (tex.srcPixelFormat === PixelFormatSrc.GL_RGB) {
@@ -364,7 +474,7 @@ export function bg3dParsedToGLTF(
           } else {
             pngBuffer = tex.pixels;
           }
-        } catch (e) {
+        } catch {
           pngBuffer = tex.pixels;
         }
 
@@ -381,7 +491,10 @@ export function bg3dParsedToGLTF(
 
         // Attach the first texture as baseColorTexture
         if (j === 0) {
-          gltfMaterials[i].setBaseColorTexture(texture);
+          const gltfMat = gltfMaterials[i];
+          if (gltfMat) {
+            gltfMat.setBaseColorTexture(texture);
+          }
         }
       });
     }
@@ -401,20 +514,27 @@ export function bg3dParsedToGLTF(
       `Input skeleton has ${parsed.skeleton.bones.length} bones, ${parsed.skeleton.animations.length} animations`,
     );
 
-    const skeletonSystem = createSkeletonSystem(
+    const skeletonSystemResult = createSkeletonSystem(
       doc,
       parsed.skeleton,
       baseBuffer,
     );
 
-    gltfSkin = skeletonSystem.skin;
-    gltfAnimations = skeletonSystem.animations;
+    if (isErr(skeletonSystemResult)) {
+      console.error(
+        "Failed to create skeleton system:",
+        skeletonSystemResult.error,
+      );
+    } else {
+      gltfSkin = skeletonSystemResult.value.skin;
+      gltfAnimations = skeletonSystemResult.value.animations;
 
-    console.log(
-      `Skeleton system created: skin=${!!gltfSkin}, joints=${
-        gltfSkin?.listJoints().length
-      }, animations=${gltfAnimations.length}`,
-    );
+      console.log(
+        `Skeleton system created: skin=${!!gltfSkin}, joints=${
+          gltfSkin?.listJoints().length
+        }, animations=${gltfAnimations.length}`,
+      );
+    }
   } else {
     console.log("No skeleton data in parsed BG3D");
   }
@@ -425,10 +545,10 @@ export function bg3dParsedToGLTF(
     function traverse(group: BG3DGroup) {
       if (Array.isArray(group.children)) {
         for (const child of group.children) {
-          if (Array.isArray(child.children)) {
-            traverse(child);
+          if ("children" in child && Array.isArray(child.children)) {
+            traverse(child as BG3DGroup);
           } else {
-            result.push(child);
+            result.push(child as BG3DGeometry);
           }
         }
       }
@@ -439,7 +559,7 @@ export function bg3dParsedToGLTF(
     return result;
   }
 
-  const allGeometries = collectGeometries(parsed.groups);
+  const allGeometries = collectGeometries(parsed.groups || []);
   console.log(`Processing ${allGeometries.length} geometries`);
 
   // Build decomposed point list mapping (like Otto's runtime decomposition)
@@ -471,7 +591,11 @@ export function bg3dParsedToGLTF(
       // Check if this vertex matches an existing decomposed point
       let foundIndex = -1;
       for (let i = 0; i < decomposedPointList.length; i++) {
-        if (pointsAreCloseEnough(vertex, decomposedPointList[i].realPoint)) {
+        const decomposedPoint = decomposedPointList[i];
+        if (
+          decomposedPoint &&
+          pointsAreCloseEnough(vertex, decomposedPoint.realPoint)
+        ) {
           foundIndex = i;
           break;
         }
@@ -479,7 +603,10 @@ export function bg3dParsedToGLTF(
 
       if (foundIndex >= 0) {
         // Add another reference to existing decomposed point
-        decomposedPointList[foundIndex].refs.push({ meshIndex, vertexIndex });
+        const existingPoint = decomposedPointList[foundIndex];
+        if (existingPoint) {
+          existingPoint.refs.push({ meshIndex, vertexIndex });
+        }
       } else {
         // Create new decomposed point
         decomposedPointList.push({
@@ -561,6 +688,7 @@ export function bg3dParsedToGLTF(
             // Look up the decomposed point and find all references to this mesh
             if (decomposedIndex < decomposedPointList.length) {
               const decomposedPoint = decomposedPointList[decomposedIndex];
+              if (!decomposedPoint) return;
 
               // Find all references that point to this mesh (index)
               for (const ref of decomposedPoint.refs) {
@@ -572,7 +700,8 @@ export function bg3dParsedToGLTF(
 
                     // Find empty slot for this influence (skip slots already used)
                     for (let slot = 0; slot < 4; slot++) {
-                      if (weights[offset + slot] === 0) {
+                      const weightSlot = weights[offset + slot];
+                      if (weightSlot === 0) {
                         joints[offset + slot] = boneIndex;
                         weights[offset + slot] = 1.0;
                         break;
@@ -592,13 +721,17 @@ export function bg3dParsedToGLTF(
         const offset = i * 4;
         let totalWeight = 0;
         for (let j = 0; j < 4; j++) {
-          totalWeight += weights[offset + j];
+          const w = weights[offset + j];
+          totalWeight += w ?? 0;
         }
 
         if (totalWeight > 0) {
           // Normalize existing weights
           for (let j = 0; j < 4; j++) {
-            weights[offset + j] /= totalWeight;
+            const w = weights[offset + j];
+            if (w !== undefined) {
+              weights[offset + j] = w / totalWeight;
+            }
           }
         } else {
           // No bone influences - assign to root bone
@@ -639,12 +772,15 @@ export function bg3dParsedToGLTF(
       typeof geom.layerMaterialNum === "number" &&
       geom.layerMaterialNum < gltfMaterials.length
     ) {
-      primitive.setMaterial(gltfMaterials[geom.layerMaterialNum]);
+      const material = gltfMaterials[geom.layerMaterialNum];
+      if (material) primitive.setMaterial(material);
     } else if (
       Array.isArray(geom.layerMaterialNum) &&
+      geom.layerMaterialNum[0] !== undefined &&
       geom.layerMaterialNum[0] < gltfMaterials.length
     ) {
-      primitive.setMaterial(gltfMaterials[geom.layerMaterialNum[0]]);
+      const material = gltfMaterials[geom.layerMaterialNum[0]];
+      if (material) primitive.setMaterial(material);
     }
 
     // Store original properties in extras
@@ -663,19 +799,25 @@ export function bg3dParsedToGLTF(
     const geomIndex = allGeometries.indexOf(geom);
     if (geomIndex < 0 || geomIndex >= gltfMeshes.length) return false;
     const mesh = gltfMeshes[geomIndex];
+    if (!mesh) return false;
     const prim = mesh.listPrimitives()[0];
     if (!prim) return false;
     return !!prim.getAttribute("JOINTS_0");
+  }
+
+  // Helper function to check if child is a group
+  function isGroup(child: BG3DGeometry | BG3DGroup): child is BG3DGroup {
+    return "children" in child && Array.isArray(child.children);
   }
 
   // Helper: check whether a group contains any geometry that should be part of the scene hierarchy
   function groupHasNonSkinnedChildren(group: BG3DGroup): boolean {
     if (!Array.isArray(group.children)) return false;
     for (const child of group.children) {
-      if (Array.isArray(child.children)) {
+      if (isGroup(child)) {
         if (groupHasNonSkinnedChildren(child)) return true;
       } else {
-        const geom = child;
+        const geom = child as BG3DGeometry;
         // If this geometry is NOT skinned, it should be part of the group hierarchy
         if (!isGeometrySkinnedByIndex(geom)) return true;
       }
@@ -706,13 +848,15 @@ export function bg3dParsedToGLTF(
   function addSkinnedMeshesFromGroup(group: BG3DGroup) {
     if (!Array.isArray(group.children)) return;
     for (const child of group.children) {
-      if (Array.isArray(child.children)) {
+      if (isGroup(child)) {
         addSkinnedMeshesFromGroup(child);
       } else {
-        const childGeom = child;
+        const childGeom = child as BG3DGeometry;
         const geomIndex = allGeometries.indexOf(childGeom);
         if (geomIndex >= 0 && geomIndex < gltfMeshes.length) {
-          const prim = gltfMeshes[geomIndex].listPrimitives()[0];
+          const mesh = gltfMeshes[geomIndex];
+          if (!mesh) continue;
+          const prim = mesh.listPrimitives()[0];
           const primHasJoints = !!(
             prim &&
             prim.getAttribute &&
@@ -721,7 +865,7 @@ export function bg3dParsedToGLTF(
           if (gltfSkin && primHasJoints) {
             const meshNode = doc.createNode();
             meshNode.setName(`Mesh_${geomIndex.toString().padStart(4, "0")}`);
-            meshNode.setMesh(gltfMeshes[geomIndex]);
+            meshNode.setMesh(mesh);
             meshNode.setSkin(gltfSkin);
 
             // CRITICAL: Add skinned mesh as child of Armature node (skeleton root)
@@ -744,7 +888,7 @@ export function bg3dParsedToGLTF(
     }
   }
 
-  parsed.groups.forEach((group, i) => {
+  (parsed.groups || []).forEach((group, i) => {
     const hasNonSkinned = groupHasNonSkinnedChildren(group);
 
     // If group contains non-skinned geometry, create nodes for hierarchy
@@ -755,7 +899,7 @@ export function bg3dParsedToGLTF(
       function addGeometriesToNode(node: Node, group: BG3DGroup) {
         if (Array.isArray(group.children)) {
           for (const child of group.children) {
-            if (Array.isArray(child.children)) {
+            if (isGroup(child)) {
               const subgroup = child;
               if (groupHasNonSkinnedChildren(subgroup)) {
                 const childNode = doc.createNode();
@@ -764,16 +908,18 @@ export function bg3dParsedToGLTF(
                 node.addChild(childNode);
               }
             } else {
-              const childGeom = child;
+              const childGeom = child as BG3DGeometry;
               const geomIndex = allGeometries.indexOf(childGeom);
               if (geomIndex >= 0 && geomIndex < gltfMeshes.length) {
+                const mesh = gltfMeshes[geomIndex];
+                if (!mesh) continue;
                 const meshNode = doc.createNode();
                 meshNode.setName(
                   `Mesh_${geomIndex.toString().padStart(4, "0")}`,
                 );
-                meshNode.setMesh(gltfMeshes[geomIndex]);
+                meshNode.setMesh(mesh);
 
-                const prim = gltfMeshes[geomIndex].listPrimitives()[0];
+                const prim = mesh.listPrimitives()[0];
                 const primHasJoints = !!(
                   prim &&
                   prim.getAttribute &&
@@ -814,11 +960,11 @@ export function bg3dParsedToGLTF(
   // - metadata - skeleton resource metadata
   // - animation events - sound/effect triggers at specific frames
   // - keyframe accelerationMode - glTF doesn't have this concept
-  const extrasData: any = {
+  const extrasData: Record<string, unknown> = {
     bg3dFields: {
       // Note: Skeleton data (bones, pointIndices, animations) stored in native glTF format
       // Store BG3D-specific material properties
-      materialExtras: parsed.materials.map((mat) => ({
+      materialExtras: (parsed.materials || []).map((mat) => ({
         flags: mat.flags,
         // Store only texture metadata that glTF doesn't natively support
         textureExtras:
@@ -829,7 +975,7 @@ export function bg3dParsedToGLTF(
           })) || [],
       })),
       // Store BG3D-specific geometry organization
-      geometryExtras: parsed.groups.map(() => ({
+      geometryExtras: (parsed.groups || []).map(() => ({
         // Store any BG3D-specific group metadata here if needed
         // The actual geometry data should be represented natively in glTF
       })),
@@ -890,16 +1036,18 @@ export function bg3dParsedToGLTF(
   // Preserve original binary data ONLY when explicitly provided; this is required by some tests/tools
   if (originalBinaryData) {
     try {
-      extrasData.originalBinaries = {};
+      const originalBinaries: Record<string, unknown> = {};
       if (originalBinaryData.bg3dBuffer)
-        extrasData.originalBinaries.bg3d = Array.from(
+        originalBinaries.bg3d = Array.from(
           new Uint8Array(originalBinaryData.bg3dBuffer),
         );
       if (originalBinaryData.skeletonBuffer)
-        extrasData.originalBinaries.skeleton = Array.from(
+        originalBinaries.skeleton = Array.from(
           new Uint8Array(originalBinaryData.skeletonBuffer),
         );
-    } catch (e) {
+      (extrasData as Record<string, unknown>).originalBinaries =
+        originalBinaries;
+    } catch {
       // ignore
     }
   }
@@ -916,10 +1064,13 @@ export async function gltfToBG3D(doc: Document): Promise<BG3DParseResult> {
   console.log("=== Starting glTF to BG3D Conversion ===");
 
   const rootExtras = doc.getRoot().getExtras() || {};
-  const bg3dFields = rootExtras.bg3dFields;
+  const bg3dFields = rootExtras.bg3dFields as BG3DFields | undefined;
 
   // Extract BG3D-specific metadata from extras (only non-glTF-representable data)
-  const materialExtras = bg3dFields?.materialExtras || [];
+  const materialExtras = (bg3dFields?.materialExtras || []) as Array<{
+    flags?: number;
+    textureExtras?: Array<{ dstPixelFormat?: number }>;
+  }>;
 
   // Note: Bone data (pointIndices, normalIndices) will be reconstructed from mesh skinning data
 
@@ -932,14 +1083,19 @@ export async function gltfToBG3D(doc: Document): Promise<BG3DParseResult> {
       let diffuseColor: [number, number, number, number] = [1, 1, 1, 1];
       const baseColor = mat.getBaseColorFactor();
       if (Array.isArray(baseColor) && baseColor.length === 4) {
-        diffuseColor = [baseColor[0], baseColor[1], baseColor[2], baseColor[3]];
+        diffuseColor = [
+          baseColor[0] ?? 1,
+          baseColor[1] ?? 1,
+          baseColor[2] ?? 1,
+          baseColor[3] ?? 1,
+        ];
       }
 
       // Get BG3D-specific flags from extras
       const flags = materialExtras[index]?.flags || 0;
 
       // Restore textures from baseColorTexture
-      let textures: BG3DTexture[] = [];
+      const textures: BG3DTexture[] = [];
       const baseColorTex = mat.getBaseColorTexture();
       if (baseColorTex) {
         const image = baseColorTex.getImage();
@@ -987,9 +1143,12 @@ export async function gltfToBG3D(doc: Document): Promise<BG3DParseResult> {
             const rgbaRes = await pngToRgba8(Buffer.from(image));
             const rgb = new Uint8Array((rgbaRes.data.length / 4) * 3);
             for (let i = 0, j = 0; i < rgbaRes.data.length; i += 4, j += 3) {
-              rgb[j + 0] = rgbaRes.data[i + 0];
-              rgb[j + 1] = rgbaRes.data[i + 1];
-              rgb[j + 2] = rgbaRes.data[i + 2];
+              const r = rgbaRes.data[i + 0];
+              const g = rgbaRes.data[i + 1];
+              const b = rgbaRes.data[i + 2];
+              rgb[j + 0] = r ?? 0;
+              rgb[j + 1] = g ?? 0;
+              rgb[j + 2] = b ?? 0;
             }
             const pngRes = {
               data: rgb,
@@ -1040,66 +1199,85 @@ export async function gltfToBG3D(doc: Document): Promise<BG3DParseResult> {
     // Convert to BG3DSkeleton format (simplified, assuming Otto format)
     const bones: BG3DBone[] = [];
     if (originalSkeletonResource.Bone) {
-      Object.values(originalSkeletonResource.Bone).forEach((boneData: any) => {
-        if (boneData.obj) {
-          bones.push({
-            parentBone: boneData.obj.parentBone,
-            name: boneData.obj.name || "",
-            coordX: boneData.obj.coordX || 0,
-            coordY: boneData.obj.coordY || 0,
-            coordZ: boneData.obj.coordZ || 0,
-            numPointsAttachedToBone: boneData.obj.numPointsAttachedToBone || 0,
-            numNormalsAttachedToBone:
-              boneData.obj.numNormalsAttachedToBone || 0,
-            pointIndices: [], // Initialize as empty array
-            normalIndices: [], // Initialize as empty array
-          });
-        }
-      });
+      Object.values(originalSkeletonResource.Bone).forEach(
+        (boneData: unknown) => {
+          const boneDataObj = boneData as Record<string, unknown>;
+          if (boneDataObj && boneDataObj.obj) {
+            const obj = boneDataObj.obj as Record<string, unknown>;
+            bones.push({
+              parentBone: (obj.parentBone as number) || 0,
+              name: (obj.name as string) || "",
+              coordX: (obj.coordX as number) || 0,
+              coordY: (obj.coordY as number) || 0,
+              coordZ: (obj.coordZ as number) || 0,
+              numPointsAttachedToBone:
+                (obj.numPointsAttachedToBone as number) || 0,
+              numNormalsAttachedToBone:
+                (obj.numNormalsAttachedToBone as number) || 0,
+              pointIndices: [], // Initialize as empty array
+              normalIndices: [], // Initialize as empty array
+            });
+          }
+        },
+      );
     }
 
     // Populate point and normal indices
     if (originalSkeletonResource.BonP) {
       Object.values(originalSkeletonResource.BonP).forEach(
-        (bonPData: any, boneIndex) => {
-          if (bonPData.obj && bones[boneIndex] !== undefined) {
+        (bonPData: unknown, boneIndex) => {
+          const bonPObj = bonPData as Record<string, unknown>;
+          if (bonPObj && bonPObj.obj && bones[boneIndex] !== undefined) {
             const bone = bones[boneIndex];
-            bone.pointIndices = bonPData.obj.map((p: any) => p.pointIndex);
-            bone.numPointsAttachedToBone = bone.pointIndices!.length;
+            const arr = bonPObj.obj as unknown[];
+            bone.pointIndices = arr.map(
+              (p) => (p as Record<string, unknown>).pointIndex as number,
+            );
+            if (bone.pointIndices) {
+              bone.numPointsAttachedToBone = bone.pointIndices.length;
+            }
           }
         },
       );
     }
     if (originalSkeletonResource.BonN) {
       Object.values(originalSkeletonResource.BonN).forEach(
-        (bonNData: any, boneIndex) => {
-          if (bonNData.obj && bones[boneIndex] !== undefined) {
+        (bonNData: unknown, boneIndex) => {
+          const bonNObj = bonNData as Record<string, unknown>;
+          if (bonNObj && bonNObj.obj && bones[boneIndex] !== undefined) {
             const bone = bones[boneIndex];
-            bone.normalIndices = bonNData.obj.map((n: any) => n.normal);
-            bone.numNormalsAttachedToBone = bone.normalIndices!.length;
+            const arr = bonNObj.obj as unknown[];
+            bone.normalIndices = arr.map(
+              (n) => (n as Record<string, unknown>).normal as number,
+            );
+            if (bone.normalIndices) {
+              bone.numNormalsAttachedToBone = bone.normalIndices.length;
+            }
           }
         },
       );
     }
 
     // Extract animations
-    const animations: any[] = [];
+    const animations: unknown[] = [];
     // Get animation IDs to correlate with Evnt resources
     const anHdEntries = Object.entries(originalSkeletonResource.AnHd || {});
-    anHdEntries.forEach(([animId, anHdData]: [string, any], animIndex) => {
-      if (anHdData.obj) {
-        const keyframes: { [boneIndex: string]: any[] } = {};
+    anHdEntries.forEach(([animId, anHdData]: [string, unknown], animIndex) => {
+      const anHdObj = anHdData as Record<string, unknown>;
+      if (anHdObj && anHdObj.obj) {
+        const keyframes: { [boneIndex: string]: unknown[] } = {};
         // Populate keyframes from KeyF
         if (originalSkeletonResource.KeyF) {
           Object.values(originalSkeletonResource.KeyF).forEach(
-            (keyFData: any) => {
-              if (keyFData.obj && keyFData.name) {
+            (keyFData: unknown) => {
+              const keyFObj = keyFData as Record<string, unknown>;
+              if (keyFObj && keyFObj.obj && keyFObj.name) {
                 // Find bone index by name
                 const boneIndex = bones.findIndex(
-                  (b) => b.name === keyFData.name,
+                  (b) => b.name === (keyFObj.name as string),
                 );
                 if (boneIndex >= 0) {
-                  keyframes[boneIndex.toString()] = keyFData.obj;
+                  keyframes[boneIndex.toString()] = keyFObj.obj as unknown[];
                 }
               }
             },
@@ -1107,21 +1285,29 @@ export async function gltfToBG3D(doc: Document): Promise<BG3DParseResult> {
         }
 
         // Extract animation events from Evnt resource using matching animId
-        const events: any[] = [];
-        const evntEntry = (originalSkeletonResource.Evnt as any)?.[animId];
-        if (evntEntry?.obj && Array.isArray(evntEntry.obj)) {
-          evntEntry.obj.forEach((evt: any) => {
+        const events: unknown[] = [];
+        const evntRoot = (originalSkeletonResource as Record<string, unknown>)
+          .Evnt as Record<string, unknown> | undefined;
+        const evntEntry = evntRoot
+          ? (evntRoot[animId] as Record<string, unknown> | undefined)
+          : undefined;
+        if (evntEntry && evntEntry.obj && Array.isArray(evntEntry.obj)) {
+          (evntEntry.obj as unknown[]).forEach((evt) => {
+            const e = evt as Record<string, unknown>;
             events.push({
-              time: evt.time,
-              type: evt.type,
-              value: evt.value,
+              time: e.time,
+              type: e.type,
+              value: e.value,
             });
           });
         }
 
         animations.push({
-          name: anHdData.obj.animName || `Animation_${animIndex}`,
-          numAnimEvents: anHdData.obj.numAnimEvents || 0,
+          name:
+            (anHdObj.obj as Record<string, unknown>).animName ||
+            `Animation_${animIndex}`,
+          numAnimEvents:
+            (anHdObj.obj as Record<string, unknown>).numAnimEvents || 0,
           events, // Now properly populated from Evnt resource
           keyframes,
         });
@@ -1132,13 +1318,17 @@ export async function gltfToBG3D(doc: Document): Promise<BG3DParseResult> {
     const relPoints: { [resourceId: string]: [number, number, number][] } = {};
     if (originalSkeletonResource.RelP) {
       Object.entries(originalSkeletonResource.RelP).forEach(
-        ([rid, rentry]: [string, any]) => {
-          if (rentry.obj && Array.isArray(rentry.obj)) {
-            relPoints[rid] = rentry.obj.map((p: any) => [
-              p.relOffsetX ?? p.x ?? 0,
-              p.relOffsetY ?? p.y ?? 0,
-              p.relOffsetZ ?? p.z ?? 0,
-            ]);
+        ([rid, rentry]: [string, unknown]) => {
+          const rObj = rentry as Record<string, unknown>;
+          if (rObj && rObj.obj && Array.isArray(rObj.obj)) {
+            relPoints[rid] = (rObj.obj as unknown[]).map((p) => {
+              const pp = p as Record<string, unknown>;
+              return [
+                (pp.relOffsetX as number) ?? (pp.x as number) ?? 0,
+                (pp.relOffsetY as number) ?? (pp.y as number) ?? 0,
+                (pp.relOffsetZ as number) ?? (pp.z as number) ?? 0,
+              ];
+            });
           }
         },
       );
@@ -1148,7 +1338,9 @@ export async function gltfToBG3D(doc: Document): Promise<BG3DParseResult> {
     const alisData: { [key: string]: unknown } = {};
     Object.keys(originalSkeletonResource).forEach((key) => {
       if (key.toLowerCase() === "alis") {
-        alisData[key] = (originalSkeletonResource as any)[key];
+        alisData[key] = (originalSkeletonResource as Record<string, unknown>)[
+          key
+        ];
       }
     });
 
@@ -1158,7 +1350,7 @@ export async function gltfToBG3D(doc: Document): Promise<BG3DParseResult> {
       numJoints: bones.length,
       num3DMFLimbs: 0,
       bones,
-      animations,
+      animations: animations as BG3DAnimation[],
       relPoints: Object.keys(relPoints).length > 0 ? relPoints : undefined,
       alisData: Object.keys(alisData).length > 0 ? alisData : undefined,
       metadata: originalSkeletonResource._metadata,
@@ -1169,6 +1361,13 @@ export async function gltfToBG3D(doc: Document): Promise<BG3DParseResult> {
     if (skins.length > 0) {
       console.log("Extracting skeleton from glTF Skin and Animations...");
       const skin = skins[0];
+      if (!skin) {
+        console.warn("No skin found in glTF document");
+        return {
+          groups: [],
+          materials: [],
+        };
+      }
       const joints = skin.listJoints();
 
       console.log(`Skin has ${joints.length} joints`);
@@ -1187,16 +1386,16 @@ export async function gltfToBG3D(doc: Document): Promise<BG3DParseResult> {
 
           if (matrix && matrix.length >= 12) {
             // Matrix is in column-major order, translation is in elements 12, 13, 14
-            coordX = matrix[12] || 0;
-            coordY = matrix[13] || 0;
-            coordZ = matrix[14] || 0;
+            coordX = matrix[12] ?? 0;
+            coordY = matrix[13] ?? 0;
+            coordZ = matrix[14] ?? 0;
             // No coordinate flip needed - both Otto and glTF use compatible right-handed systems
           } else {
             // Fallback to translation if matrix not available
             const translation = joint.getTranslation() || [0, 0, 0];
-            coordX = translation[0];
-            coordY = translation[1];
-            coordZ = translation[2];
+            coordX = translation[0] ?? 0;
+            coordY = translation[1] ?? 0;
+            coordZ = translation[2] ?? 0;
           }
 
           // Infer parentBone from node hierarchy (glTF 2.0 compliant)
@@ -1210,7 +1409,7 @@ export async function gltfToBG3D(doc: Document): Promise<BG3DParseResult> {
             const skeletonRoot = skin.getSkeleton();
             if (jointParent !== skeletonRoot) {
               // Find the index of the parent in the joints list
-              const parentIndex = joints.indexOf(jointParent);
+              const parentIndex = joints.indexOf(jointParent as Node);
               if (parentIndex !== -1) {
                 parentBone = parentIndex;
               }
@@ -1236,6 +1435,7 @@ export async function gltfToBG3D(doc: Document): Promise<BG3DParseResult> {
 
         bones.forEach((bone, index) => {
           const joint = joints[index];
+          if (!joint) return;
 
           // Get the local transform matrix from the joint
           let localMatrix: Matrix4;
@@ -1244,7 +1444,7 @@ export async function gltfToBG3D(doc: Document): Promise<BG3DParseResult> {
             // Convert glTF matrix (column-major) to our Matrix4
             localMatrix = new Matrix4();
             for (let i = 0; i < 16; i++) {
-              localMatrix.data[i] = jointMatrix[i];
+              localMatrix.data[i] = jointMatrix[i] ?? 0;
             }
           } else {
             // Build matrix from TRS components
@@ -1253,34 +1453,51 @@ export async function gltfToBG3D(doc: Document): Promise<BG3DParseResult> {
             const scale = joint.getScale() || [1, 1, 1];
 
             localMatrix = new Matrix4()
-              .setTranslation(translation[0], translation[1], translation[2])
+              .setTranslation(
+                translation[0] ?? 0,
+                translation[1] ?? 0,
+                translation[2] ?? 0,
+              )
               .multiply(
                 new Matrix4().makeRotationFromQuaternion(
                   new Quaternion(
-                    rotation[0],
-                    rotation[1],
-                    rotation[2],
-                    rotation[3],
+                    rotation[0] ?? 0,
+                    rotation[1] ?? 0,
+                    rotation[2] ?? 0,
+                    rotation[3] ?? 1,
                   ),
                 ),
               )
-              .multiply(new Matrix4().makeScale(scale[0], scale[1], scale[2]));
+              .multiply(
+                new Matrix4().makeScale(
+                  scale[0] ?? 1,
+                  scale[1] ?? 1,
+                  scale[2] ?? 1,
+                ),
+              );
           }
 
           // Calculate world transform by composing with parent
           if (bone.parentBone >= 0 && bone.parentBone < bones.length) {
             const parentWorld = worldTransforms[bone.parentBone];
-            worldTransforms[index] = parentWorld.multiply(localMatrix);
+            if (parentWorld) {
+              worldTransforms[index] = parentWorld.multiply(localMatrix);
+            } else {
+              worldTransforms[index] = localMatrix;
+            }
           } else {
             // Root bone
             worldTransforms[index] = localMatrix;
           }
 
           // Extract world translation - no coordinate flip needed
-          const worldTranslation = worldTransforms[index].getTranslation();
-          bone.coordX = worldTranslation.x;
-          bone.coordY = worldTranslation.y;
-          bone.coordZ = worldTranslation.z;
+          const currentWorld = worldTransforms[index];
+          if (currentWorld) {
+            const worldTranslation = currentWorld.getTranslation();
+            bone.coordX = worldTranslation.x;
+            bone.coordY = worldTranslation.y;
+            bone.coordZ = worldTranslation.z;
+          }
         });
 
         // Second pass: extract pointIndices and normalIndices from mesh skinning data
@@ -1319,20 +1536,22 @@ export async function gltfToBG3D(doc: Document): Promise<BG3DParseResult> {
                 const numVertices = posAcc.getCount();
 
                 for (let vi = 0; vi < numVertices; vi++) {
+                  const x = posArray[vi * 3];
+                  const y = posArray[vi * 3 + 1];
+                  const z = posArray[vi * 3 + 2];
                   const vertex: [number, number, number] = [
-                    posArray[vi * 3],
-                    posArray[vi * 3 + 1],
-                    posArray[vi * 3 + 2],
+                    x ?? 0,
+                    y ?? 0,
+                    z ?? 0,
                   ];
 
                   // Check if this vertex matches an existing decomposed point
                   let foundIndex = -1;
                   for (let i = 0; i < reverseDecomposedPointList.length; i++) {
+                    const point = reverseDecomposedPointList[i];
                     if (
-                      reversePointsAreCloseEnough(
-                        vertex,
-                        reverseDecomposedPointList[i].realPoint,
-                      )
+                      point &&
+                      reversePointsAreCloseEnough(vertex, point.realPoint)
                     ) {
                       foundIndex = i;
                       break;
@@ -1342,10 +1561,14 @@ export async function gltfToBG3D(doc: Document): Promise<BG3DParseResult> {
                   const key = `${currentMeshIndex}:${vi}`;
                   if (foundIndex >= 0) {
                     // Add reference to existing decomposed point
-                    reverseDecomposedPointList[foundIndex].refs.push({
-                      meshIndex: currentMeshIndex,
-                      vertexIndex: vi,
-                    });
+                    const existingPoint =
+                      reverseDecomposedPointList[foundIndex];
+                    if (existingPoint) {
+                      existingPoint.refs.push({
+                        meshIndex: currentMeshIndex,
+                        vertexIndex: vi,
+                      });
+                    }
                     vertexToDecomposedIndex.set(key, foundIndex);
                   } else {
                     // Create new decomposed point
@@ -1399,10 +1622,17 @@ export async function gltfToBG3D(doc: Document): Promise<BG3DParseResult> {
                     const weight = weightsArray[vi * 4 + ji];
 
                     // Only consider influences with non-zero weight
-                    if (weight > 0 && jointIndex < bones.length) {
-                      bonePointSets[jointIndex].add(decomposedIndex);
+                    if (
+                      weight !== undefined &&
+                      jointIndex !== undefined &&
+                      weight > 0 &&
+                      jointIndex < bones.length
+                    ) {
+                      const pointSet = bonePointSets[jointIndex];
+                      const normalSet = boneNormalSets[jointIndex];
+                      if (pointSet) pointSet.add(decomposedIndex);
                       // For normals, use same indices as points
-                      boneNormalSets[jointIndex].add(decomposedIndex);
+                      if (normalSet) normalSet.add(decomposedIndex);
                     }
                   }
                 }
@@ -1413,12 +1643,14 @@ export async function gltfToBG3D(doc: Document): Promise<BG3DParseResult> {
 
         // Update bones with calculated data
         bones.forEach((bone, index) => {
-          bone.pointIndices = Array.from(bonePointSets[index]).sort(
-            (a, b) => a - b,
-          );
-          bone.normalIndices = Array.from(boneNormalSets[index]).sort(
-            (a, b) => a - b,
-          );
+          const pointSet = bonePointSets[index];
+          const normalSet = boneNormalSets[index];
+          bone.pointIndices = pointSet
+            ? Array.from(pointSet).sort((a, b) => a - b)
+            : [];
+          bone.normalIndices = normalSet
+            ? Array.from(normalSet).sort((a, b) => a - b)
+            : [];
           bone.numPointsAttachedToBone = bone.pointIndices.length;
           bone.numNormalsAttachedToBone = bone.normalIndices.length;
         });
@@ -1446,16 +1678,20 @@ export async function gltfToBG3D(doc: Document): Promise<BG3DParseResult> {
             "animations",
           );
           animations.forEach((anim, index) => {
+            const keyframeData = skeletonExtras.keyframeData;
+            if (!keyframeData) return;
             const kfData =
-              skeletonExtras.keyframeData.find(
-                (e: any) => e.name === anim.name,
-              ) || skeletonExtras.keyframeData[index];
+              keyframeData.find((e: KeyframeData) => e.name === anim.name) ??
+              keyframeData[index];
             if (kfData?.keyframes) {
               console.log(
                 "[DEBUG] Restored keyframes for animation",
                 anim.name,
               );
-              anim.keyframes = kfData.keyframes;
+              // Cast to the proper type since BG3DKeyframeLike matches BG3DKeyframe
+              anim.keyframes = kfData.keyframes as {
+                [boneIndex: number]: BG3DKeyframeLike[];
+              };
             } else {
               console.log(
                 "[DEBUG] No keyframe data found for animation",
@@ -1470,11 +1706,12 @@ export async function gltfToBG3D(doc: Document): Promise<BG3DParseResult> {
         }
 
         if (skeletonExtras?.animationEvents) {
+          const animEvents = skeletonExtras.animationEvents;
           animations.forEach((anim, index) => {
             const eventData =
-              skeletonExtras.animationEvents.find(
-                (e: any) => e.name === anim.name,
-              ) || skeletonExtras.animationEvents[index];
+              animEvents.find(
+                (e: AnimationEventData) => e.name === anim.name,
+              ) ?? animEvents[index];
             if (eventData) {
               anim.numAnimEvents = eventData.numAnimEvents || 0;
               anim.events = eventData.events || [];
@@ -1487,15 +1724,16 @@ export async function gltfToBG3D(doc: Document): Promise<BG3DParseResult> {
           skeletonExtras?.boneData &&
           Array.isArray(skeletonExtras.boneData)
         ) {
+          const boneDataArray = skeletonExtras.boneData;
           console.log(
             "[DEBUG] Restoring bone data from extras for",
-            skeletonExtras.boneData.length,
+            boneDataArray.length,
             "bones",
           );
           console.log("[DEBUG] Current bones array length:", bones.length);
 
           // If extras has more bones, expand the array
-          while (bones.length < skeletonExtras.boneData.length) {
+          while (bones.length < boneDataArray.length) {
             bones.push({
               parentBone: -1,
               name: "",
@@ -1509,28 +1747,32 @@ export async function gltfToBG3D(doc: Document): Promise<BG3DParseResult> {
             });
           }
 
-          skeletonExtras.boneData.forEach((boneData: any, index: number) => {
+          boneDataArray.forEach((boneData: BoneData, index: number) => {
             if (index < bones.length) {
+              const bone = bones[index];
+              if (!bone) return;
               // Restore exact bone coordinates and all other fields
-              bones[index].parentBone = boneData.parentBone;
-              bones[index].name = boneData.name;
-              bones[index].coordX = boneData.coordX;
-              bones[index].coordY = boneData.coordY;
-              bones[index].coordZ = boneData.coordZ;
-              bones[index].numPointsAttachedToBone =
-                boneData.numPointsAttachedToBone;
-              bones[index].numNormalsAttachedToBone =
-                boneData.numNormalsAttachedToBone;
-              bones[index].pointIndices = boneData.pointIndices || [];
-              bones[index].normalIndices = boneData.normalIndices || [];
-              bones[index].reserved0 = boneData.reserved0;
-              bones[index].reserved1 = boneData.reserved1;
-              bones[index].reserved2 = boneData.reserved2;
-              bones[index].reserved3 = boneData.reserved3;
-              bones[index].reserved4 = boneData.reserved4;
-              bones[index].reserved5 = boneData.reserved5;
-              bones[index].reserved6 = boneData.reserved6;
-              bones[index].reserved7 = boneData.reserved7;
+              bone.parentBone = boneData.parentBone ?? bone.parentBone;
+              bone.name = boneData.name ?? bone.name;
+              bone.coordX = boneData.coordX ?? bone.coordX;
+              bone.coordY = boneData.coordY ?? bone.coordY;
+              bone.coordZ = boneData.coordZ ?? bone.coordZ;
+              bone.numPointsAttachedToBone =
+                boneData.numPointsAttachedToBone ??
+                bone.numPointsAttachedToBone;
+              bone.numNormalsAttachedToBone =
+                boneData.numNormalsAttachedToBone ??
+                bone.numNormalsAttachedToBone;
+              bone.pointIndices = boneData.pointIndices || [];
+              bone.normalIndices = boneData.normalIndices || [];
+              bone.reserved0 = boneData.reserved0;
+              bone.reserved1 = boneData.reserved1;
+              bone.reserved2 = boneData.reserved2;
+              bone.reserved3 = boneData.reserved3;
+              bone.reserved4 = boneData.reserved4;
+              bone.reserved5 = boneData.reserved5;
+              bone.reserved6 = boneData.reserved6;
+              bone.reserved7 = boneData.reserved7;
             }
           });
         }
@@ -1546,9 +1788,15 @@ export async function gltfToBG3D(doc: Document): Promise<BG3DParseResult> {
           bones,
           animations,
           // Restore non-glTF data from extras
-          relPoints: skeletonExtras?.relPoints || {},
-          alisData: skeletonExtras?.alisData || {},
-          metadata: skeletonExtras?.metadata || {},
+          relPoints: (skeletonExtras?.relPoints || undefined) as
+            | { [resourceId: string]: [number, number, number][] }
+            | undefined,
+          alisData: (skeletonExtras?.alisData || undefined) as
+            | { [key: string]: unknown }
+            | undefined,
+          metadata: (skeletonExtras?.metadata || undefined) as
+            | Record<string, unknown>
+            | undefined,
         };
 
         console.log(
@@ -1562,56 +1810,89 @@ export async function gltfToBG3D(doc: Document): Promise<BG3DParseResult> {
   function processMesh(mesh: Mesh): BG3DGeometry {
     const primitives = mesh.listPrimitives();
     const prim = primitives[0]; // Use first primitive
+    if (!prim) {
+      return {
+        vertices: [],
+        normals: [],
+        uvs: [],
+        colors: [],
+        triangles: [],
+        layerMaterialNum: [0, 0, 0, 0],
+        flags: 0,
+        boundingBox: undefined,
+        numMaterials: 0,
+        type: 0,
+        numPoints: 0,
+        numTriangles: 0,
+      };
+    }
     const extras = prim.getExtras() || {};
 
     // Extract geometry data
     const posAcc = prim.getAttribute("POSITION");
     let vertices: [number, number, number][] | undefined = undefined;
     if (posAcc) {
-      const arr = Array.from(posAcc.getArray());
+      const arr = Array.from(posAcc.getArray() ?? []);
       vertices = [];
       for (let i = 0; i < arr.length; i += 3) {
-        vertices.push([arr[i], arr[i + 1], arr[i + 2]]);
+        vertices.push([
+          (arr[i] ?? 0) as number,
+          (arr[i + 1] ?? 0) as number,
+          (arr[i + 2] ?? 0) as number,
+        ]);
       }
     }
 
     const normAcc = prim.getAttribute("NORMAL");
     let normals: [number, number, number][] | undefined = undefined;
     if (normAcc) {
-      const arr = Array.from(normAcc.getArray());
+      const arr = Array.from(normAcc.getArray() ?? []);
       normals = [];
       for (let i = 0; i < arr.length; i += 3) {
-        normals.push([arr[i], arr[i + 1], arr[i + 2]]);
+        normals.push([
+          (arr[i] ?? 0) as number,
+          (arr[i + 1] ?? 0) as number,
+          (arr[i + 2] ?? 0) as number,
+        ]);
       }
     }
 
     const uvAcc = prim.getAttribute("TEXCOORD_0");
     let uvs: [number, number][] | undefined = undefined;
     if (uvAcc) {
-      const arr = Array.from(uvAcc.getArray());
+      const arr = Array.from(uvAcc.getArray() ?? []);
       uvs = [];
       for (let i = 0; i < arr.length; i += 2) {
-        uvs.push([arr[i], arr[i + 1]]);
+        uvs.push([(arr[i] ?? 0) as number, (arr[i + 1] ?? 0) as number]);
       }
     }
 
     const colorAcc = prim.getAttribute("COLOR_0");
     let colors: [number, number, number, number][] | undefined = undefined;
     if (colorAcc) {
-      const arr = Array.from(colorAcc.getArray());
+      const arr = Array.from(colorAcc.getArray() ?? []);
       colors = [];
       for (let i = 0; i < arr.length; i += 4) {
-        colors.push([arr[i], arr[i + 1], arr[i + 2], arr[i + 3]]);
+        colors.push([
+          (arr[i] ?? 0) as number,
+          (arr[i + 1] ?? 0) as number,
+          (arr[i + 2] ?? 0) as number,
+          (arr[i + 3] ?? 0) as number,
+        ]);
       }
     }
 
     const idxAcc = prim.getIndices();
     let triangles: [number, number, number][] | undefined = undefined;
     if (idxAcc) {
-      const arr = Array.from(idxAcc.getArray());
+      const arr = Array.from(idxAcc.getArray() ?? []);
       triangles = [];
       for (let i = 0; i < arr.length; i += 3) {
-        triangles.push([arr[i], arr[i + 1], arr[i + 2]]);
+        triangles.push([
+          (arr[i] ?? 0) as number,
+          (arr[i + 1] ?? 0) as number,
+          (arr[i + 2] ?? 0) as number,
+        ]);
       }
     }
 
@@ -1658,8 +1939,17 @@ export async function gltfToBG3D(doc: Document): Promise<BG3DParseResult> {
 
   // Process scene hierarchy
   const scene = doc.getRoot().listScenes()[0];
+  if (!scene) {
+    return {
+      materials,
+      groups: [],
+      skeleton,
+    };
+  }
   const childNodes = scene.listChildren();
-  const groups: BG3DGroup[] = childNodes.map((node) => processNode(node));
+  const groups: BG3DGroup[] = childNodes.map((node) =>
+    processNode(node),
+  ) as BG3DGroup[];
 
   console.log("=== glTF to BG3D Conversion Complete ===");
 
@@ -1670,13 +1960,25 @@ export async function gltfToBG3D(doc: Document): Promise<BG3DParseResult> {
   };
 }
 
+interface OttoRoundtrip {
+  bg3dBuffer?: number[];
+  skeletonBuffer?: number[];
+}
+
+interface OriginalBinaries {
+  bg3d?: number[];
+  skeleton?: number[];
+}
+
 /**
  * Get original BG3D binary data if preserved in glTF extras
  */
 export function getOriginalBG3DBinary(doc: Document): ArrayBuffer | null {
   const rootExtras = doc.getRoot().getExtras() || {};
-  const ottoRoundtrip = rootExtras.ottoRoundtrip;
-  const originalBinaries = rootExtras.originalBinaries;
+  const ottoRoundtrip = rootExtras.ottoRoundtrip as OttoRoundtrip | undefined;
+  const originalBinaries = rootExtras.originalBinaries as
+    | OriginalBinaries
+    | undefined;
 
   if (ottoRoundtrip?.bg3dBuffer) {
     console.log(
@@ -1702,9 +2004,11 @@ export function getOriginalBG3DBinary(doc: Document): ArrayBuffer | null {
  * Get original skeleton binary data if preserved in glTF extras
  */
 export function getOriginalSkeletonBinary(doc: Document): ArrayBuffer | null {
-  const rootExtras = doc.getRoot().getExtras();
-  const ottoRoundtrip = rootExtras.ottoRoundtrip;
-  const originalBinaries = rootExtras.originalBinaries;
+  const rootExtras = doc.getRoot().getExtras() || {};
+  const ottoRoundtrip = rootExtras.ottoRoundtrip as OttoRoundtrip | undefined;
+  const originalBinaries = rootExtras.originalBinaries as
+    | OriginalBinaries
+    | undefined;
 
   if (ottoRoundtrip?.skeletonBuffer) {
     console.log(

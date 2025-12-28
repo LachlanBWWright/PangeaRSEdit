@@ -1,17 +1,17 @@
-import { ottoMaticLevel } from "../../python/structSpecs/ottoMaticInterface";
+import { LevelData } from "@/python/structSpecs/LevelTypes";
 import { 
   SplineData, 
-  ottoSpline, 
-  ottoSplineNub, 
-  ottoSplinePoint, 
-  ottoSplineItem 
-} from "../../python/structSpecs/ottoMaticLevelData";
+  Spline, 
+  SplineNub, 
+  SplinePoint, 
+  SplineItem 
+} from "@/python/structSpecs/LevelTypes";
 import { Updater } from "use-immer";
 
 /**
  * Selects spline data from the full level data
  */
-export function selectSplineData(levelData: ottoMaticLevel): SplineData | null {
+export function selectSplineData(levelData: LevelData): SplineData | null {
   if (!levelData.Spln || !levelData.SpNb || !levelData.SpPt || !levelData.SpIt) return null;
   
   return {
@@ -25,35 +25,35 @@ export function selectSplineData(levelData: ottoMaticLevel): SplineData | null {
 /**
  * Gets the splines array directly
  */
-export function selectSplines(levelData: ottoMaticLevel): ottoSpline[] {
+export function selectSplines(levelData: LevelData): Spline[] {
   return levelData.Spln?.[1000]?.obj || [];
 }
 
 /**
  * Gets spline nubs for a specific spline ID
  */
-export function selectSplineNubs(levelData: SplineData, splineId: number): ottoSplineNub[] {
+export function selectSplineNubs(levelData: SplineData, splineId: number): SplineNub[] {
   return levelData.SpNb?.[splineId]?.obj || [];
 }
 
 /**
  * Gets spline points for a specific spline ID
  */
-export function selectSplinePoints(levelData: SplineData, splineId: number): ottoSplinePoint[] {
+export function selectSplinePoints(levelData: SplineData, splineId: number): SplinePoint[] {
   return levelData.SpPt?.[splineId]?.obj || [];
 }
 
 /**
  * Gets spline items for a specific spline ID
  */
-export function selectSplineItems(levelData: SplineData, splineId: number): ottoSplineItem[] {
+export function selectSplineItems(levelData: SplineData, splineId: number): SplineItem[] {
   return levelData.SpIt?.[splineId]?.obj || [];
 }
 
 /**
  * Gets a specific spline by index
  */
-export function selectSpline(levelData: ottoMaticLevel, splineIdx: number): ottoSpline | null {
+export function selectSpline(levelData: LevelData, splineIdx: number): Spline | null {
   const splines = selectSplines(levelData);
   return splines[splineIdx] || null;
 }
@@ -62,9 +62,9 @@ export function selectSpline(levelData: ottoMaticLevel, splineIdx: number): otto
  * Updates a specific spline in the full level data
  */
 export function updateSpline(
-  setLevelData: Updater<ottoMaticLevel>,
+  setLevelData: Updater<LevelData>,
   splineIdx: number,
-  splineUpdate: Partial<ottoSpline>
+  splineUpdate: Partial<Spline>
 ): void {
   setLevelData((draft) => {
     if (draft.Spln?.[1000]?.obj?.[splineIdx]) {
@@ -79,7 +79,7 @@ export function updateSpline(
 export function updateSplineNubs(
   setLevelData: Updater<SplineData>,
   splineId: number,
-  nubsUpdate: ottoSplineNub[]
+  nubsUpdate: SplineNub[]
 ): void {
   setLevelData((draft) => {
     if (draft.SpNb?.[splineId]) {
@@ -98,7 +98,7 @@ export function updateSplineNubs(
 export function updateSplinePoints(
   setLevelData: Updater<SplineData>,
   splineId: number,
-  pointsUpdate: ottoSplinePoint[]
+  pointsUpdate: SplinePoint[]
 ): void {
   setLevelData((draft) => {
     if (draft.SpPt?.[splineId]) {
@@ -115,9 +115,9 @@ export function updateSplinePoints(
  * Updates spline items for a specific spline ID
  */
 export function updateSplineItems(
-  setLevelData: Updater<ottoMaticLevel>,
+  setLevelData: Updater<LevelData>,
   splineId: number,
-  itemsUpdate: ottoSplineItem[]
+  itemsUpdate: SplineItem[]
 ): void {
   setLevelData((draft) => {
     if (draft.SpIt?.[splineId]) {
@@ -134,11 +134,11 @@ export function updateSplineItems(
  * Adds a new spline with its associated data to the level
  */
 export function addSpline(
-  setLevelData: Updater<ottoMaticLevel>,
-  newSpline: ottoSpline,
-  nubs: ottoSplineNub[] = [],
-  points: ottoSplinePoint[] = [],
-  items: ottoSplineItem[] = []
+  setLevelData: Updater<LevelData>,
+  newSpline: Spline,
+  nubs: SplineNub[] = [],
+  points: SplinePoint[] = [],
+  items: SplineItem[] = []
 ): void {
   setLevelData((draft) => {
     if (draft.Spln?.[1000]?.obj && draft.SpNb && draft.SpPt && draft.SpIt) {
@@ -183,7 +183,7 @@ export function addSpline(
  * Removes a spline and all its associated data from the level
  */
 export function removeSpline(
-  setLevelData: Updater<ottoMaticLevel>,
+  setLevelData: Updater<LevelData>,
   splineIdx: number
 ): void {
   setLevelData((draft) => {
@@ -213,9 +213,9 @@ export function removeSpline(
  * Creates a spline-specific updater for a single spline
  */
 export function createSplineUpdater(
-  setLevelData: Updater<ottoMaticLevel>,
+  setLevelData: Updater<LevelData>,
   splineIdx: number
-): Updater<ottoSpline> {
+): Updater<Spline> {
   return (splineUpdater) => {
     setLevelData((draft) => {
       if (draft.Spln?.[1000]?.obj?.[splineIdx]) {

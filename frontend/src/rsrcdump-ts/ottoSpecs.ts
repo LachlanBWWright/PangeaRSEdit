@@ -2,6 +2,7 @@
 
 import { StructConverter } from './resconverters';
 import type { ResourceConverter } from './types';
+import { Result, ok, err } from '../types/result';
 
 export const ottoMaticSpecs = [
   //Header
@@ -76,7 +77,7 @@ export const ottoMaticSpecs = [
   "RelP:fff+:relOffsetX,relOffsetY,relOffsetZ",
 ];
 
-export function loadOttoSpecs(specsArray: string[]): Map<string, ResourceConverter> {
+export function loadOttoSpecs(specsArray: string[]): Result<Map<string, ResourceConverter>, Error> {
   const converters = new Map<string, ResourceConverter>();
   
   for (const spec of specsArray) {
@@ -87,39 +88,38 @@ export function loadOttoSpecs(specsArray: string[]): Map<string, ResourceConvert
       continue;
     }
     
-    try {
-      const [converter, restype] = StructConverter.fromTemplateStringWithTypename(trimmedSpec);
-      
-      if (converter && restype) {
-        // Convert resource type bytes to string
-        const restypeString = new TextDecoder().decode(restype).trim();
-        converters.set(restypeString, converter);
-      }
-    } catch (error) {
-      console.warn(`Failed to parse otto spec: ${trimmedSpec}`, error);
+    const converterResult = StructConverter.fromTemplateStringWithTypename(trimmedSpec);
+    if (!converterResult.ok) {
+      console.warn(`Failed to parse otto spec: ${trimmedSpec}`, converterResult.error);
+      continue;
+    }
+    
+    const [converter, restype] = converterResult.value;
+    if (converter && restype) {
+      // Convert resource type bytes to string
+      const restypeString = new TextDecoder().decode(restype).trim();
+      converters.set(restypeString, converter);
     }
   }
   
-  return converters;
+  return ok(converters);
 }
 
-export function loadOttoSpecsFromText(specsText: string): Map<string, ResourceConverter> {
+export function loadOttoSpecsFromText(specsText: string): Result<Map<string, ResourceConverter>, Error> {
   const lines = specsText.split('\n');
   return loadOttoSpecs(lines);
 }
 
-export async function loadOttoSpecsFromFile(filePath: string): Promise<Map<string, ResourceConverter>> {
-  try {
-    const response = await fetch(filePath);
-    const text = await response.text();
-    return loadOttoSpecsFromText(text);
-  } catch (error) {
-    console.error('Failed to load otto specs from file:', error);
-    return new Map();
+export async function loadOttoSpecsFromFile(filePath: string): Promise<Result<Map<string, ResourceConverter>, Error>> {
+  const response = await fetch(filePath);
+  if (!response.ok) {
+    return err(new Error(`Failed to fetch otto specs: ${response.status}`));
   }
+  const text = await response.text();
+  return loadOttoSpecsFromText(text);
 }
 
 // Get the default otto converters
-export function getDefaultOttoConverters(): Map<string, ResourceConverter> {
+export function getDefaultOttoConverters(): Result<Map<string, ResourceConverter>, Error> {
   return loadOttoSpecs(ottoMaticSpecs);
 }

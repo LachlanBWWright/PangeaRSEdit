@@ -3,7 +3,10 @@ import { describe, it, expect } from 'vitest';
 
 describe('StructTemplate parsing', () => {
   it('should handle simple struct without x fields', () => {
-    const template = StructTemplateParser.fromTemplateString('Hi+:version,count');
+    const result = StructTemplateParser.fromTemplateString('Hi+:version,count');
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    const template = result.value;
     
     expect(template.isList).toBe(true);
     expect(template.fieldNames).toEqual(['version', 'count']);
@@ -11,7 +14,10 @@ describe('StructTemplate parsing', () => {
   });
 
   it('should ignore x fields in field mapping', () => {
-    const template = StructTemplateParser.fromTemplateString('H x i+:version,count');
+    const result = StructTemplateParser.fromTemplateString('H x i+:version,count');
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    const template = result.value;
     
     expect(template.isList).toBe(true);
     // Should have 3 field slots but only 2 named fields (x is ignored)
@@ -19,7 +25,10 @@ describe('StructTemplate parsing', () => {
   });
 
   it('should expand array notation x`y[2]', () => {
-    const template = StructTemplateParser.fromTemplateString('H 4f f+:type,x`y[2],extra');
+    const result = StructTemplateParser.fromTemplateString('H 4f f+:type,x`y[2],extra');
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    const template = result.value;
     
     expect(template.isList).toBe(true);
     // H=type, 4f should expand to x_0,y_0,x_1,y_1, f=extra  
@@ -28,7 +37,10 @@ describe('StructTemplate parsing', () => {
 
   it('should parse Liqd format correctly', () => {
     const liqdSpec = 'H x x I i h x x i 200f f f h h h h+:type,flags,height,numNubs,reserved,x`y[100],hotSpotX,hotSpotZ,bBoxTop,bBoxLeft,bBoxBottom,bBoxRight';
-    const template = StructTemplateParser.fromTemplateString(liqdSpec);
+    const result = StructTemplateParser.fromTemplateString(liqdSpec);
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    const template = result.value;
     
     expect(template.isList).toBe(true);
     

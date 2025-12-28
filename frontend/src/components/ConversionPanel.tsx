@@ -52,7 +52,8 @@ export function ConversionPanel({
       });
       
       if (result.type === "error") {
-        throw new Error(result.error);
+        alert(`${title} conversion failed: ${result.error}`);
+        return;
       }
       
       if (result.type === conversionType) {

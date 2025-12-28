@@ -19,7 +19,7 @@ interface Props {
   loading: boolean;
   uploadStep: "select-bg3d" | "select-skeleton" | "completed";
   pendingBg3dFile: File | null;
-  fileInputRef: React.RefObject<HTMLInputElement>;
+  fileInputRef: React.RefObject<HTMLInputElement | null>;
   handleDrop: (e: React.DragEvent) => void;
   handleDragOver: (e: React.DragEvent) => void;
   handleBg3dFileSelect: (f: File) => void;
@@ -30,11 +30,12 @@ interface Props {
   handleFileUpload: (bg3dFile: File, skeletonFile?: File) => Promise<void>;
   handleDownloadBG3D: () => void;
   handleDownloadGLB: () => void;
+  handleDownload3DMF: () => void;
   handleClearModel: () => void;
   onCancelSelection: () => void;
 }
 
-export default function ModelUploadPanel({
+export function ModelUploadPanel({
   gltfUrl,
   useGameSelector,
   setUseGameSelector,
@@ -52,10 +53,11 @@ export default function ModelUploadPanel({
   handleFileUpload,
   handleDownloadBG3D,
   handleDownloadGLB,
+  handleDownload3DMF,
   handleClearModel,
   onCancelSelection,
 }: Props) {
-  const fileAccept = ".bg3d";
+  const fileAccept = ".bg3d,.3dmf";
 
   return (
     <Card className="bg-gray-800 border-gray-700">
@@ -129,10 +131,10 @@ export default function ModelUploadPanel({
                     >
                       <Upload className="w-12 h-12 mx-auto mb-4 text-gray-400" />
                       <p className="text-gray-400 mb-2">
-                        Drop BG3D file here or click to select
+                        Drop model file here or click to select
                       </p>
                       <p className="text-sm text-gray-500">
-                        Upload .bg3d file first, then optionally add skeleton
+                        Upload .bg3d or .3dmf file first, then optionally add skeleton
                       </p>
                     </div>
                     <input
@@ -142,7 +144,7 @@ export default function ModelUploadPanel({
                       className="hidden"
                       onChange={(e) => {
                         const file = e.target.files?.[0];
-                        if (file && file.name.toLowerCase().endsWith(".bg3d")) {
+                        if (file && (file.name.toLowerCase().endsWith(".bg3d") || file.name.toLowerCase().endsWith(".3dmf"))) {
                           handleBg3dFileSelect(file);
                         } else if (file) {
                           /* silent fallback: same as original toast handled upstream */
@@ -155,7 +157,7 @@ export default function ModelUploadPanel({
                 {uploadStep === "select-skeleton" && pendingBg3dFile && (
                   <>
                     <div className="text-sm text-gray-300 mb-3">
-                      BG3D file selected:{" "}
+                      Model file selected:{" "}
                       <strong>{pendingBg3dFile.name}</strong>
                     </div>
                     <div
@@ -228,6 +230,14 @@ export default function ModelUploadPanel({
               >
                 <Download className="w-4 h-4 mr-2" />
                 Download as BG3D
+              </Button>
+              <Button
+                onClick={() => handleDownload3DMF()}
+                variant="outline"
+                className="w-full text-white"
+              >
+                <Download className="w-4 h-4 mr-2" />
+                Download as 3DMF
               </Button>
               <Button
                 onClick={() => handleDownloadGLB()}

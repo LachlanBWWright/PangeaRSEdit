@@ -3,15 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ChevronDown, ChevronRight, Eye, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import * as THREE from "three";
-
-interface ModelNode {
-  name: string;
-  type: "mesh" | "node" | "group";
-  visible: boolean;
-  children?: ModelNode[];
-  meshIndex?: number;
-  nodeIndex?: number;
-}
+import { ModelNode } from "./model-viewer/types";
 
 interface ModelHierarchyProps {
   nodes: ModelNode[];
@@ -88,17 +80,19 @@ function NodeItem({
         </span>
       </div>
 
-      {hasChildren && expanded && (
+      {hasChildren && expanded && node.children && (
         <div>
-          {node.children!.map((child, index) => {
-            const childObject = nodeObject.children[index];
+          {node.children.map((child) => {
+            // Use the stored THREE object reference for proper matching
+            // This avoids index mismatch issues when bones/joints are filtered out
+            const childObject = child.threeObject;
             if (!childObject) {
-              console.warn(`Missing child object at index ${index} for node ${node.name}`);
+              console.warn(`Child node ${child.name} has no THREE object reference`);
               return null;
             }
             return (
               <NodeItem
-                key={`${node.name}-${index}`}
+                key={`${child.name}-${child.nodeIndex}`}
                 node={child}
                 level={level + 1}
                 onVisibilityChange={onVisibilityChange}
@@ -149,17 +143,19 @@ export function ModelHierarchy({
         </div>
       </CardHeader>
       <CardContent className="pt-0 space-y-1 max-h-60 overflow-y-auto">
-        {nodes.map((node, index) => {
-          const nodeObject = clonedScene.children[index];
+        {nodes.map((node) => {
+          // Use the stored THREE object reference for proper matching
+          // This avoids index mismatch issues when bones/joints are filtered out
+          const nodeObject = node.threeObject;
           if (!nodeObject) {
             console.warn(
-              `No corresponding node object found for index ${index}`,
+              `Node ${node.name} has no THREE object reference`,
             );
             return null;
           }
           return (
             <NodeItem
-              key={index}
+              key={`${node.name}-${node.nodeIndex}`}
               node={node}
               onVisibilityChange={onVisibilityChange}
               nodeObject={nodeObject}

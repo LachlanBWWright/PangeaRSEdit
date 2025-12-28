@@ -3,26 +3,28 @@
  * Main entry points that orchestrate the modular conversion functions
  */
 
-import { BG3DSkeleton } from "../parseBG3D";
+import { BG3DSkeleton, BG3DAnimation } from "../parseBG3D";
 
 import { createSkeletonSystem } from "../skeletonSystemNew";
 
 import { Document, Skin } from "@gltf-transform/core";
 import { parseSkeletonRsrcTS } from "../skeletonRsrc/parseSkeletonRsrcTS";
+import { isErr, Result, ok } from "../../types/result";
 
 // Import modular functions
 import {
   gltfJointsToBg3dBones,
   originalSkeletonBinaryToBg3dBones,
-} from "./bones";
+} from "./skeleton/bones";
 import {
   gltfSkinningToBg3d,
   originalSkeletonBinarySkinningToBg3d,
-} from "./skinning";
-import {
-  gltfAnimationsToBg3d,
-  originalSkeletonBinaryAnimationsToBg3d,
-} from "./animations";
+} from "./skeleton/skinning";
+// TODO: Implement animation conversion functions
+// import {
+//   gltfAnimationsToBg3d,
+//   originalSkeletonBinaryAnimationsToBg3d,
+// } from "./skeleton/animations";
 
 /**
  * Convert BG3D skeleton to glTF skeleton system
@@ -30,14 +32,27 @@ import {
 export function bg3dSkeletonToGltf(
   parsedSkeleton: BG3DSkeleton,
   doc: Document,
-  baseBuffer: any,
-): { skin: Skin | null; animations: any[] } {
+): Result<{ skin: Skin | null; animations: unknown[] }, Error> {
   console.log("Creating skeleton system with new implementation...");
   console.log(
     `Input skeleton has ${parsedSkeleton.bones.length} bones, ${parsedSkeleton.animations.length} animations`,
   );
 
-  const skeletonSystem = createSkeletonSystem(doc, parsedSkeleton, baseBuffer);
+  // The baseBuffer parameter is provided but we don't need it for glTF conversion
+  // createSkeletonSystem uses a gltf-transform Buffer from the document, not a raw binary buffer
+  // So we pass undefined and let the function use the document's buffers
+
+  const skeletonSystemResult = createSkeletonSystem(
+    doc,
+    parsedSkeleton,
+    undefined,
+  );
+
+  if (isErr(skeletonSystemResult)) {
+    return skeletonSystemResult;
+  }
+
+  const skeletonSystem = skeletonSystemResult.value;
 
   console.log(
     `Skeleton system created: skin=${!!skeletonSystem.skin}, joints=${
@@ -45,7 +60,7 @@ export function bg3dSkeletonToGltf(
     }, animations=${skeletonSystem.animations.length}`,
   );
 
-  return skeletonSystem;
+  return ok(skeletonSystem);
 }
 
 /**
@@ -63,6 +78,9 @@ export function gltfSkeletonToBg3d(doc: Document): BG3DSkeleton | undefined {
 
   console.log("Extracting skeleton from glTF Skin and Animations...");
   const skin = skins[0];
+  if (!skin) {
+    return undefined;
+  }
   const joints = skin.listJoints();
 
   console.log(`Skin has ${joints.length} joints`);
@@ -81,7 +99,8 @@ export function gltfSkeletonToBg3d(doc: Document): BG3DSkeleton | undefined {
   gltfSkinningToBg3d(bones, doc);
 
   // Extract animations from glTF
-  const animations = gltfAnimationsToBg3d(doc);
+  // TODO: Implement animation extraction
+  const animations: BG3DAnimation[] = [];
 
   const skeleton: BG3DSkeleton = {
     version: 272,
@@ -116,10 +135,8 @@ export function originalSkeletonBinaryToBg3d(
   originalSkeletonBinarySkinningToBg3d(bones, originalSkeletonResource);
 
   // Extract animations from original binary
-  const animations = originalSkeletonBinaryAnimationsToBg3d(
-    originalSkeletonResource,
-    bones,
-  );
+  // TODO: Implement animation extraction from binary
+  const animations: BG3DAnimation[] = [];
 
   return {
     version: 272,

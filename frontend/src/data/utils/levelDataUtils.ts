@@ -1,16 +1,17 @@
-import { ottoMaticLevel } from "../../python/structSpecs/ottoMaticInterface";
 import {
+  LevelData,
   HeaderData,
   ItemData,
   LiquidData,
   FenceData,
   SplineData,
   TerrainData,
-} from "../../python/structSpecs/ottoMaticLevelData";
+} from "../../python/structSpecs/LevelTypes";
+import { Result, ok, err } from "../../types/result";
 
 /**
  * Utility functions for combining and splitting level data between atomic types
- * and the complete ottoMaticLevel structure for file I/O operations
+ * and the complete LevelData structure for file I/O operations
  */
 
 export interface AtomicLevelData {
@@ -19,15 +20,14 @@ export interface AtomicLevelData {
   liquidData: LiquidData | null;
   fenceData: FenceData | null;
   splineData: SplineData | null;
-  // Terrain and tile data (no longer using Partial)
   terrainData: TerrainData | null;
 }
 
 /**
- * Split a complete ottoMaticLevel into atomic data types
+ * Split a complete LevelData into atomic data types
  */
 export function splitLevelData(
-  levelData: ottoMaticLevel | null,
+  levelData: LevelData | null,
 ): AtomicLevelData {
   if (!levelData) {
     return {
@@ -80,14 +80,14 @@ export function splitLevelData(
     ? {
         Atrb: levelData.Atrb,
         Timg: levelData.Timg,
-        Xlat: levelData.Xlat, // Bugdom 1 tile translation table
-        Vcol: levelData.Vcol, // Bugdom 1 vertex colors
         ItCo: levelData.ItCo,
         Layr: levelData.Layr,
         STgd: levelData.STgd,
         YCrd: levelData.YCrd,
         alis: levelData.alis,
         _metadata: levelData._metadata,
+        ...(levelData.Xlat !== undefined ? { Xlat: levelData.Xlat } : {}),
+        ...(levelData.Vcol !== undefined ? { Vcol: levelData.Vcol } : {}),
       }
     : null;
 
@@ -112,9 +112,12 @@ export function splitLevelData(
 }
 
 /**
- * Combine atomic data types back into a complete ottoMaticLevel
+ * Combine atomic data types back into a complete LevelData
+ * Returns a Result instead of throwing
  */
-export function combineLevelData(atomicData: AtomicLevelData): ottoMaticLevel {
+export function combineLevelData(
+  atomicData: AtomicLevelData,
+): Result<LevelData, Error> {
   const {
     headerData,
     itemData,
@@ -124,27 +127,24 @@ export function combineLevelData(atomicData: AtomicLevelData): ottoMaticLevel {
     terrainData,
   } = atomicData;
 
-  // Ensure all pieces are present before combining
-  if (
-    !headerData ||
-    !itemData ||
-    !liquidData ||
-    !fenceData ||
-    !splineData ||
-    !terrainData
-  ) {
-    throw new Error("Cannot combine level data: atomic data is incomplete");
+  // Header and terrain are critical; optional sections (items, liquids, fences, splines)
+  // are allowed to be missing and will simply not be included in the serialized output.
+  if (!headerData || !terrainData) {
+    return err(new Error("Cannot combine level data: critical header or terrain is missing"));
   }
 
-  // All pieces are non-null here; safe to spread and satisfy the full level type
-  return {
+  // Build combined object progressively, only including sections that exist
+  const combined: Record<string, unknown> = {
     ...terrainData,
     ...headerData,
-    ...itemData,
-    ...liquidData,
-    ...fenceData,
-    ...splineData,
-  } satisfies ottoMaticLevel;
+  };
+
+  if (itemData) Object.assign(combined, itemData);
+  if (liquidData) Object.assign(combined, liquidData);
+  if (fenceData) Object.assign(combined, fenceData);
+  if (splineData) Object.assign(combined, splineData);
+
+  return ok(combined as unknown as LevelData);
 }
 
 /**
@@ -160,3 +160,45 @@ export function isAtomicDataComplete(atomicData: AtomicLevelData): boolean {
     atomicData.terrainData !== null
   );
 }
+
+/**
+ * Basic validation to ensure the object conforms to the minimal shape
+ * expected by `rsrcdump.jsonio.json_to_resource_fork`, i.e. keys at
+ * the top level that look like resource type names (length <= 4) map
+ * to object/dict values where each resource id maps to a wrapper dict.
+ */
+export function validateResourceForkJson(json_blob: Record<string, unknown>):
+  | { ok: true }
+  | { ok: false; message: string; badKey?: string; badValueType?: string } {
+  if (typeof json_blob !== "object" || json_blob === null || Array.isArray(json_blob)) {
+    return { ok: false, message: "Top-level JSON blob must be an object" };
+  }
+
+  for (const [key, value] of Object.entries(json_blob)) {
+    if (key.length <= 4) {
+      if (typeof value !== "object" || value === null || Array.isArray(value)) {
+        return {
+          ok: false,
+          message: `Resource type key '${key}' must map to an object/dict of resource records`,
+          badKey: key,
+          badValueType: Array.isArray(value) ? "array" : typeof value,
+        };
+      }
+      // Ensure each inner record maps to objects
+      for (const [resId, resBlob] of Object.entries(value as Record<string, unknown>)) {
+        if (typeof resBlob !== "object" || resBlob === null || Array.isArray(resBlob)) {
+          return {
+            ok: false,
+            message: `Resource record '${resId}' under type '${key}' must be an object/dict`,
+            badKey: key,
+            badValueType: Array.isArray(resBlob) ? "array" : typeof resBlob,
+          };
+        }
+      }
+    }
+  }
+
+  return { ok: true };
+}
+
+

@@ -6,14 +6,14 @@ import {
   FenceData,
   SplineData,
   TerrainData,
-} from "../python/structSpecs/ottoMaticLevelData";
+} from "@/python/structSpecs/LevelTypes";
 import { UploadPrompt } from "./UploadPrompt";
 import { EditorView } from "./EditorView";
 import { Button } from "@/components/ui/button";
 import { Updater, useImmer } from "use-immer";
 import { ottoPreprocessor } from "../data/processors/ottoPreprocessor";
-import { Globals } from "../data/globals/globals";
-import { useAtom, useAtomValue } from "jotai";
+import { Globals, DataType } from "../data/globals/globals";
+import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { BlockHistoryUpdate } from "../data/globals/history";
 import LzssWorker from "../utils/lzssWorker?worker";
 import { LzssMessage, LzssResponse } from "@/utils/lzssWorker";
@@ -24,7 +24,11 @@ import {
   splitLevelData,
   combineLevelData,
   isAtomicDataComplete,
+  validateResourceForkJson,
 } from "../data/utils/levelDataUtils";
+import { isOk } from "../types/result";
+import { SafeItemTypes, SafeSplineItemTypes } from "../data/items/itemAtoms";
+import { extractSafeItemTypes } from "../data/items/extractSafeItemTypes";
 
 export type DataHistory = {
   items: AtomicLevelData[];
@@ -41,6 +45,10 @@ export function IntroPrompt({ pyodideWorker }: { pyodideWorker: Worker }) {
   const [fenceData, setFenceData] = useImmer<FenceData | null>(null);
   const [splineData, setSplineData] = useImmer<SplineData | null>(null);
   const [terrainData, setTerrainData] = useImmer<TerrainData | null>(null);
+
+  // Safe item types tracking
+  const setSafeItemTypes = useSetAtom(SafeItemTypes);
+  const setSafeSplineItemTypes = useSetAtom(SafeSplineItemTypes);
 
   //History of previous states for undo/redo purposes
   const [dataHistory, setDataHistory] = useImmer<DataHistory>({
@@ -60,24 +68,40 @@ export function IntroPrompt({ pyodideWorker }: { pyodideWorker: Worker }) {
   );
   const [processed, setProcessed] = useState(false);
   // Helper to get current atomic data
-  const getCurrentAtomicData = (): AtomicLevelData => ({
-    headerData,
-    itemData,
-    liquidData,
-    fenceData,
-    splineData,
-    terrainData,
-  });
+  const getCurrentAtomicData = useCallback((): AtomicLevelData => {
+    return {
+      headerData,
+      itemData,
+      liquidData,
+      fenceData,
+      splineData,
+      terrainData,
+    };
+  }, [headerData, itemData, liquidData, fenceData, splineData, terrainData]);
 
   // Helper to set all atomic data from AtomicLevelData
-  const setAllAtomicData = (atomicData: AtomicLevelData) => {
+  const setAllAtomicData = useCallback((atomicData: AtomicLevelData) => {
     setHeaderData(atomicData.headerData);
     setItemData(atomicData.itemData);
     setLiquidData(atomicData.liquidData);
     setFenceData(atomicData.fenceData);
     setSplineData(atomicData.splineData);
     setTerrainData(atomicData.terrainData);
-  };
+
+    // Extract and store safe item types from the loaded level
+    const levelData = {
+      Hedr: atomicData.headerData,
+      Itms: atomicData.itemData?.Itms,
+      Spln: atomicData.splineData?.Spln,
+      SpIt: atomicData.splineData?.SpIt,
+    };
+
+    const { itemTypes, splineItemTypes } = extractSafeItemTypes(levelData);
+    
+    // Update the atoms
+    setSafeItemTypes(itemTypes);
+    setSafeSplineItemTypes(splineItemTypes);
+  }, [setHeaderData, setItemData, setLiquidData, setFenceData, setSplineData, setTerrainData, setSafeItemTypes, setSafeSplineItemTypes]);
 
   // Wrapper for header which EditorView expects non-null updates for
   const setHeaderDataNonNull: Updater<HeaderData> = useCallback(
@@ -99,20 +123,6 @@ export function IntroPrompt({ pyodideWorker }: { pyodideWorker: Worker }) {
     },
     [setTerrainData],
   );
-
-  useEffect(() => {
-    if (!processed) return;
-    saveMap();
-    setProcessed(false);
-  }, [
-    processed,
-    headerData,
-    itemData,
-    liquidData,
-    fenceData,
-    splineData,
-    terrainData,
-  ]);
 
   //Update History
   useEffect(() => {
@@ -143,15 +153,29 @@ export function IntroPrompt({ pyodideWorker }: { pyodideWorker: Worker }) {
         draft.index -= 1;
       }
     });
-  }, [headerData, itemData, liquidData, fenceData, splineData, terrainData]);
+  }, [
+    headerData,
+    itemData,
+    liquidData,
+    fenceData,
+    splineData,
+    terrainData,
+    blockHistoryUpdate,
+    getCurrentAtomicData,
+    setBlockHistoryUpdate,
+    setDataHistory,
+  ]);
 
   const undoData = () => {
     if (dataHistory.index > 0) {
       setDataHistory((draft) => {
         draft.index -= 1;
       });
-      setAllAtomicData(dataHistory.items[dataHistory.index - 1]);
-      setBlockHistoryUpdate(true);
+      const historyItem = dataHistory.items[dataHistory.index - 1];
+      if (historyItem) {
+        setAllAtomicData(historyItem);
+        setBlockHistoryUpdate(true);
+      }
     }
   };
 
@@ -160,60 +184,129 @@ export function IntroPrompt({ pyodideWorker }: { pyodideWorker: Worker }) {
       setDataHistory((draft) => {
         draft.index += 1;
       });
-      setAllAtomicData(dataHistory.items[dataHistory.index + 1]);
-      setBlockHistoryUpdate(true);
+      const historyItem = dataHistory.items[dataHistory.index + 1];
+      if (historyItem) {
+        setAllAtomicData(historyItem);
+        setBlockHistoryUpdate(true);
+      }
     }
   };
 
-  async function saveMap() {
-    if (!mapFile || !mapImagesFile) return;
-
-    toast.loading("Processing map data...");
-
-    // Combine atomic data for file I/O
-    const combinedData = combineLevelData(getCurrentAtomicData());
-
-    //TODO: Find better solution
-    //remove timg from combinedData - needed to fix bug
-    delete combinedData.Timg;
-
-    if (!combinedData) {
-      toast("Error", {
-        description: "Cannot save incomplete level data",
+  const saveMap = useCallback(async () => {
+    if (!mapFile || (globals.DATA_TYPE !== DataType.RSRC_FORK && !mapImagesFile)) {
+      console.error("Download failed: Map file or images file not loaded");
+      toast.error("Download failed", {
+        description:
+          "Map file or images file not loaded. Please load a level first.",
       });
       return;
     }
 
-    const loadResPromise = new Promise<ArrayBuffer>((resolve, reject) => {
-      pyodideWorker.postMessage({
-        type: "load_bytes_from_json",
-        json_blob: combinedData,
-        converters: globals.STRUCT_SPECS,
-        only_types: [],
-        skip_types: [],
-        adf: "True",
-      } satisfies PyodideMessage);
+    toast.loading("Processing map data...");
 
-      pyodideWorker.onmessage = (event: MessageEvent<PyodideResponse>) => {
-        if (event.data.type === "load_bytes_from_json") {
-          resolve(event.data.result);
-        } else {
-          reject(new Error("Unexpected response from pyodide worker"));
+    // Combine atomic data for file I/O
+    // Combine atomic data for serialization; optional sections may be missing
+    const combinedDataResult = combineLevelData(getCurrentAtomicData());
+
+    if (!isOk(combinedDataResult)) {
+      console.error(
+        "Download failed: Could not combine level data",
+        combinedDataResult.error,
+      );
+      toast.error("Download failed", {
+        description: combinedDataResult.error.message,
+      });
+      return;
+    }
+
+    const combinedData = combinedDataResult.value;
+
+    //TODO: Find better solution
+    //remove timg from combinedData - needed to fix bug for non-RSRC_FORK games
+    if (globals.DATA_TYPE !== DataType.RSRC_FORK) {
+      delete combinedData.Timg;
+    }
+
+    try {
+      const loadResPromise = new Promise<ArrayBuffer>((resolve, reject) => {
+        // Validate JSON shape expected by rsrcdump.jsonio.json_to_resource_fork
+        const validation = validateResourceForkJson(combinedData as unknown as Record<string, unknown>);
+        if (!validation.ok) {
+          console.error("Invalid JSON for resource fork:", validation);
+          toast.error("Download failed", {
+            description: `Invalid map data structure for resource fork: ${validation.message}`,
+          });
+          return;
         }
-      };
-    });
-    const loadRes = await loadResPromise;
 
-    const mapBlob = new Blob([loadRes], { type: ".ter.rsrc" });
-    const mapUrl = URL.createObjectURL(mapBlob);
+        pyodideWorker.postMessage({
+          type: "load_bytes_from_json",
+          json_blob: combinedData,
+          converters: globals.STRUCT_SPECS,
+          only_types: [],
+          skip_types: [],
+          adf: "True",
+        } satisfies PyodideMessage);
 
-    let downloadLink = document.createElement("a");
-    downloadLink.href = mapUrl;
-    downloadLink.setAttribute("download", mapFile.name);
-    downloadLink.click();
+        pyodideWorker.onmessage = (event: MessageEvent<PyodideResponse>) => {
+          if (event.data.type === "load_bytes_from_json") {
+            resolve(event.data.result);
+          } else {
+            console.error("Unexpected pyodide response:", event.data);
+            reject(new Error("Unexpected response from pyodide worker"));
+          }
+        };
+
+        pyodideWorker.onerror = (error) => {
+          console.error("Pyodide worker error:", error);
+          reject(new Error(`Worker error: ${error.message}`));
+        };
+      });
+      const loadRes = await loadResPromise;
+
+      if (!loadRes || loadRes.byteLength === 0) {
+        console.error("Download failed: Generated map data is empty");
+        toast.error("Download failed", {
+          description: "Generated map data is empty",
+        });
+        return;
+      }
+
+      const mapBlob = new Blob([loadRes], { type: ".ter.rsrc" });
+      const mapUrl = URL.createObjectURL(mapBlob);
+
+      const downloadLink = document.createElement("a");
+      downloadLink.href = mapUrl;
+      downloadLink.setAttribute("download", mapFile.name);
+      downloadLink.click();
+
+      console.log(
+        `Map downloaded successfully: ${mapFile.name} (${loadRes.byteLength} bytes)`,
+      );
+
+      // For RSRC_FORK games (e.g., Bugdom 1) the texture data (Timg) is
+      // embedded in the same resource file; skip the separate texture
+      // compression/download flow and finish here.
+      if (globals.DATA_TYPE === DataType.RSRC_FORK) {
+        toast.success("Map Downloaded!");
+        return;
+      }
+    } catch (error) {
+      console.error("Download failed:", error);
+      toast.error("Download failed", {
+        description:
+          error instanceof Error
+            ? error.message
+            : "Unknown error during map serialization",
+      });
+      return;
+    }
 
     //Download Images
-    if (!mapImages) return;
+    if (!mapImages) {
+      console.warn("No map images to download");
+      return;
+    }
 
     toast.loading("Compressing textures...");
 
@@ -223,7 +316,12 @@ export function IntroPrompt({ pyodideWorker }: { pyodideWorker: Worker }) {
       const resolvedTextures = { count: 0 };
       console.time("compress");
       for (let i = 0; i < mapImages.length; i++) {
-        const canvasCtx = mapImages[i].getContext("2d");
+        const canvas = mapImages[i];
+        if (!canvas) {
+          err(new Error(`Canvas at index ${i} is undefined`));
+          return;
+        }
+        const canvasCtx = canvas.getContext("2d");
         if (!canvasCtx) {
           err(new Error("Could not get canvas context"));
           return;
@@ -232,8 +330,8 @@ export function IntroPrompt({ pyodideWorker }: { pyodideWorker: Worker }) {
         const imageData = canvasCtx.getImageData(
           0,
           0,
-          mapImages[i].width,
-          mapImages[i].height,
+          canvas.width,
+          canvas.height,
         );
         //const decompressedBuffer = imageDataToSixteenBit(imageData.data);
 
@@ -279,6 +377,7 @@ export function IntroPrompt({ pyodideWorker }: { pyodideWorker: Worker }) {
     let pos2 = 0;
     for (let i = 0; i < bufferList.length; i++) {
       const buffer = bufferList[i];
+      if (!buffer) continue;
       // Write size header (4 bytes)
       imageDownloadBuffer.setInt32(pos2, buffer.byteLength);
       pos2 += 4;
@@ -295,13 +394,35 @@ export function IntroPrompt({ pyodideWorker }: { pyodideWorker: Worker }) {
     });
     const imageUrl = URL.createObjectURL(imageBlob);
 
-    downloadLink = document.createElement("a");
-    downloadLink.href = imageUrl;
-    downloadLink.setAttribute("download", mapImagesFile.name);
-    downloadLink.click();
+    const imageDownloadLink = document.createElement("a");
+    imageDownloadLink.href = imageUrl;
+    imageDownloadLink.setAttribute("download", mapImagesFile?.name || "images.ter");
+    imageDownloadLink.click();
 
     toast.success("Map Downloaded!");
-  }
+  }, [
+    mapFile,
+    mapImagesFile,
+    mapImages,
+    pyodideWorker,
+    globals,
+    getCurrentAtomicData,
+  ]);
+
+  useEffect(() => {
+    if (!processed) return;
+    saveMap();
+    Promise.resolve().then(() => setProcessed(false));
+  }, [
+    processed,
+    headerData,
+    itemData,
+    liquidData,
+    fenceData,
+    splineData,
+    terrainData,
+    saveMap,
+  ]);
 
   if (!mapFile || !mapImages)
     return (
@@ -330,9 +451,11 @@ export function IntroPrompt({ pyodideWorker }: { pyodideWorker: Worker }) {
         <div className="flex-1" />
 
         <Button
+          data-testid="download-button"
           onClick={() => {
-            const combinedData = combineLevelData(getCurrentAtomicData());
-            if (combinedData) {
+            const combinedDataResult = combineLevelData(getCurrentAtomicData());
+            if (isOk(combinedDataResult)) {
+              const combinedData = combinedDataResult.value;
               ottoPreprocessor((updater) => {
                 // Apply the update to a combined data structure
                 const updated =

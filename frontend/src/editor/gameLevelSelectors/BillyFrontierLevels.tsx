@@ -1,12 +1,11 @@
-import React from "react";
 import { Button } from "@/components/ui/button";
-import LevelGrid from "../LevelGrid";
+import { LevelGrid } from "../LevelGrid";
 import {
   BillyFrontierGlobals,
   type GlobalsInterface,
 } from "@/data/globals/globals";
 
-export default function BillyFrontierLevels({
+export function BillyFrontierLevels({
   openFile,
 }: {
   openFile: (url: string, gameType: GlobalsInterface) => void;

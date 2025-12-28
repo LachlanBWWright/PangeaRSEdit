@@ -1,11 +1,11 @@
-import { ottoMaticLevel } from "../../python/structSpecs/ottoMaticInterface";
-import { FenceData, ottoFence, ottoFenceNub } from "../../python/structSpecs/ottoMaticLevelData";
+import { LevelData } from "@/python/structSpecs/LevelTypes";
+import { FenceData, Fence, FenceNub } from "@/python/structSpecs/LevelTypes";
 import { Updater } from "use-immer";
 
 /**
  * Selects fence data from the full level data
  */
-export function selectFenceData(levelData: ottoMaticLevel): FenceData | null {
+export function selectFenceData(levelData: LevelData): FenceData | null {
   if (!levelData.Fenc || !levelData.FnNb) return null;
   
   return {
@@ -17,21 +17,21 @@ export function selectFenceData(levelData: ottoMaticLevel): FenceData | null {
 /**
  * Gets the fences array directly
  */
-export function selectFences(levelData: ottoMaticLevel): ottoFence[] {
+export function selectFences(levelData: LevelData): Fence[] {
   return levelData.Fenc?.[1000]?.obj || [];
 }
 
 /**
  * Gets fence nubs for a specific fence ID
  */
-export function selectFenceNubs(levelData: ottoMaticLevel, fenceId: number): ottoFenceNub[] {
+export function selectFenceNubs(levelData: LevelData, fenceId: number): FenceNub[] {
   return levelData.FnNb?.[fenceId]?.obj || [];
 }
 
 /**
  * Gets a specific fence by index
  */
-export function selectFence(levelData: ottoMaticLevel, fenceIdx: number): ottoFence | null {
+export function selectFence(levelData: LevelData, fenceIdx: number): Fence | null {
   const fences = selectFences(levelData);
   return fences[fenceIdx] || null;
 }
@@ -40,9 +40,9 @@ export function selectFence(levelData: ottoMaticLevel, fenceIdx: number): ottoFe
  * Updates a specific fence in the full level data
  */
 export function updateFence(
-  setLevelData: Updater<ottoMaticLevel>,
+  setLevelData: Updater<LevelData>,
   fenceIdx: number,
-  fenceUpdate: Partial<ottoFence>
+  fenceUpdate: Partial<Fence>
 ): void {
   setLevelData((draft) => {
     if (draft.Fenc?.[1000]?.obj?.[fenceIdx]) {
@@ -55,9 +55,9 @@ export function updateFence(
  * Updates fence nubs for a specific fence ID
  */
 export function updateFenceNubs(
-  setLevelData: Updater<ottoMaticLevel>,
+  setLevelData: Updater<LevelData>,
   fenceId: number,
-  nubsUpdate: ottoFenceNub[]
+  nubsUpdate: FenceNub[]
 ): void {
   setLevelData((draft) => {
     if (draft.FnNb?.[fenceId]) {
@@ -77,9 +77,9 @@ export function updateFenceNubs(
  * Adds a new fence with its nubs to the level data
  */
 export function addFence(
-  setLevelData: Updater<ottoMaticLevel>,
-  newFence: ottoFence,
-  nubs: ottoFenceNub[] = []
+  setLevelData: Updater<LevelData>,
+  newFence: Fence,
+  nubs: FenceNub[] = []
 ): void {
   setLevelData((draft) => {
     if (draft.Fenc?.[1000]?.obj && draft.FnNb) {
@@ -105,7 +105,7 @@ export function addFence(
  * Removes a fence and its nubs from the level data
  */
 export function removeFence(
-  setLevelData: Updater<ottoMaticLevel>,
+  setLevelData: Updater<LevelData>,
   fenceIdx: number
 ): void {
   setLevelData((draft) => {
@@ -129,9 +129,9 @@ export function removeFence(
  * Creates a fence-specific updater for a single fence
  */
 export function createFenceUpdater(
-  setLevelData: Updater<ottoMaticLevel>,
+  setLevelData: Updater<LevelData>,
   fenceIdx: number
-): Updater<ottoFence> {
+): Updater<Fence> {
   return (fenceUpdater) => {
     setLevelData((draft) => {
       if (draft.Fenc?.[1000]?.obj?.[fenceIdx]) {

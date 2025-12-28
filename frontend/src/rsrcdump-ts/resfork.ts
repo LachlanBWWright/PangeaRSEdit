@@ -2,22 +2,23 @@
 
 import type { Resource, ResourceFork } from "./types";
 import { sanitizeTypeName } from "./textio";
+import { Result, ok, err } from '../types/result';
 
 export class ResourceForkParser {
-  static fromBytes(data: Uint8Array): ResourceFork {
+  static fromBytes(data: Uint8Array): Result<ResourceFork, Error> {
     if (data.length === 0) {
-      return {
+      return ok({
         resources: new Map(),
         fileAttributes: 0,
         junkNextresmap: 0,
         junkFilerefnum: 0,
-      };
+      });
     }
 
     if (data.length < 16) {
-      throw new Error(
+      return err(new Error(
         "data is too small to contain a valid resource fork header",
-      );
+      ));
     }
 
     const view = new DataView(data.buffer, data.byteOffset);
@@ -32,9 +33,9 @@ export class ResourceForkParser {
       dataOffset + dataLength > data.length ||
       mapOffset + mapLength > data.length
     ) {
-      throw new Error(
+      return err(new Error(
         "Invalid resource fork: offsets/lengths in header are nonsense",
-      );
+      ));
     }
 
     // Create views for data and map sections
@@ -57,13 +58,14 @@ export class ResourceForkParser {
     pos += 2;
     const nameListOffsetInMap = mapView.getUint16(pos, false);
     pos += 2;
-    let numTypes = mapView.getUint16(pos, false) + 1;
-    pos += 2;
+    
+    // Type count is at the start of the type list, not in the map header
+    const numTypes = mapView.getUint16(typeListOffsetInMap, false) + 1;
 
     const resources = new Map<string, Map<number, Resource>>();
 
-    // Read type list - positioned after the map header
-    pos = typeListOffsetInMap + 2; // skip the count we already read
+    // Read type list entries - positioned after the count
+    pos = typeListOffsetInMap + 2;
 
     for (let i = 0; i < numTypes; i++) {
       // Read type entry from main map: 4-byte type, 2-byte count, 2-byte offset
@@ -72,7 +74,13 @@ export class ResourceForkParser {
         mapData.byteOffset + pos,
         4,
       );
-      const typeName = sanitizeTypeName(typeBytes);
+      const typeNameResult = sanitizeTypeName(typeBytes);
+      if (!typeNameResult.ok) {
+        console.warn(`Skipping resource type at position ${pos}: ${typeNameResult.error.message}`);
+        pos += 8;
+        continue;
+      }
+      const typeName = typeNameResult.value;
       const resourceCount = mapView.getUint16(pos + 4, false) + 1;
       const resourceListOffset = mapView.getUint16(pos + 6, false);
 
@@ -127,7 +135,7 @@ export class ResourceForkParser {
           const namePos = nameListOffsetInMap + nameOffset;
           if (namePos < mapLength) {
             const nameLength = mapData[namePos];
-            if (namePos + 1 + nameLength <= mapLength) {
+            if (nameLength !== undefined && namePos + 1 + nameLength <= mapLength) {
               name = new TextDecoder("latin1").decode(
                 mapData.slice(namePos + 1, namePos + 1 + nameLength),
               );
@@ -153,12 +161,12 @@ export class ResourceForkParser {
       }
     }
 
-    return {
+    return ok({
       resources,
       fileAttributes,
       junkNextresmap,
       junkFilerefnum,
-    };
+    });
   }
 
   /**

@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { Document } from "@gltf-transform/core";
 
-import { BG3DSkeleton, BG3DBone } from "../../parseBG3D";
+import { BG3DSkeleton } from "../../parseBG3D";
 import { bg3dBonesToGltf } from "./bones";
 import { bg3dSkinningToGltf, gltfSkinningToBg3d } from "./skinning";
 
@@ -87,11 +87,11 @@ describe("skinning roundtrip", () => {
     gltfSkinningToBg3d(parsedSkeleton.bones, doc);
 
     // After extraction, each bone should have one point assigned
-    expect(parsedSkeleton.bones[0].numPointsAttachedToBone).toBe(1);
-    expect(parsedSkeleton.bones[1].numPointsAttachedToBone).toBe(1);
+    expect(parsedSkeleton.bones[0]?.numPointsAttachedToBone).toBe(1);
+    expect(parsedSkeleton.bones[1]?.numPointsAttachedToBone).toBe(1);
 
     // Verify the point indices match the global vertex indices (0 and 1)
-    expect(parsedSkeleton.bones[0].pointIndices).toEqual([0]);
-    expect(parsedSkeleton.bones[1].pointIndices).toEqual([1]);
+    expect(parsedSkeleton.bones[0]?.pointIndices).toEqual([0]);
+    expect(parsedSkeleton.bones[1]?.pointIndices).toEqual([1]);
   });
 });

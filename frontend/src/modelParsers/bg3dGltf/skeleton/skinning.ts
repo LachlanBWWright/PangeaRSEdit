@@ -50,7 +50,10 @@ export function bg3dSkinningToGltf(
   // Create the skin
   const skin = doc.createSkin();
   // Use first joint as skeleton root (parent lookup omitted for type-safety)
-  skin.setSkeleton(joints[0]);
+  const firstJoint = joints[0];
+  if (firstJoint) {
+    skin.setSkeleton(firstJoint);
+  }
   skin.setInverseBindMatrices(inverseBindMatricesAccessor);
 
   // Add all joints to the skin
@@ -96,10 +99,12 @@ export function gltfSkinningToBg3d(bones: BG3DBone[], doc: Document): void {
               const weight = weightsArray[vi * 4 + ji];
 
               // Only consider influences with non-zero weight
-              if (weight > 0 && jointIndex < bones.length) {
-                bonePointSets[jointIndex].add(globalVertexIndex);
+              if (weight !== undefined && weight > 0 && jointIndex !== undefined && jointIndex < bones.length) {
+                const pointSet = bonePointSets[jointIndex];
+                const normalSet = boneNormalSets[jointIndex];
+                if (pointSet) pointSet.add(globalVertexIndex);
                 // For normals, use same indices as points
-                boneNormalSets[jointIndex].add(globalVertexIndex);
+                if (normalSet) normalSet.add(globalVertexIndex);
               }
             }
           }
@@ -111,10 +116,12 @@ export function gltfSkinningToBg3d(bones: BG3DBone[], doc: Document): void {
 
   // Update bones with calculated vertex influence data
   bones.forEach((bone, index) => {
-    bone.pointIndices = Array.from(bonePointSets[index]).sort((a, b) => a - b);
-    bone.normalIndices = Array.from(boneNormalSets[index]).sort(
+    const pointSet = bonePointSets[index];
+    const normalSet = boneNormalSets[index];
+    bone.pointIndices = pointSet ? Array.from(pointSet).sort((a, b) => a - b) : [];
+    bone.normalIndices = normalSet ? Array.from(normalSet).sort(
       (a, b) => a - b,
-    );
+    ) : [];
     bone.numPointsAttachedToBone = bone.pointIndices.length;
     bone.numNormalsAttachedToBone = bone.normalIndices.length;
   });
@@ -140,7 +147,9 @@ export function originalSkeletonBinarySkinningToBg3d(
       if (bonPData.obj && bones[boneIndex] !== undefined) {
         const bone = bones[boneIndex];
         bone.pointIndices = bonPData.obj.map((p) => p.pointIndex);
-        bone.numPointsAttachedToBone = bone.pointIndices!.length;
+        if (bone.pointIndices) {
+          bone.numPointsAttachedToBone = bone.pointIndices.length;
+        }
       }
     });
   }
@@ -152,7 +161,9 @@ export function originalSkeletonBinarySkinningToBg3d(
       if (bonNData.obj && bones[boneIndex] !== undefined) {
         const bone = bones[boneIndex];
         bone.normalIndices = bonNData.obj.map((n) => n.normal);
-        bone.numNormalsAttachedToBone = bone.normalIndices!.length;
+        if (bone.normalIndices) {
+          bone.numNormalsAttachedToBone = bone.normalIndices.length;
+        }
       }
     });
   }

@@ -1,17 +1,21 @@
 import { Button } from "@/components/ui/button";
 import { Updater } from "use-immer";
-import { ottoSplineItem } from "../../../python/structSpecs/ottoMaticInterface";
-import { SplineData } from "../../../python/structSpecs/ottoMaticLevelData";
+import { SplineItem } from "@/python/structSpecs/LevelTypes";
+import { SplineData } from "@/python/structSpecs/LevelTypes";
 import { useAtom, useAtomValue } from "jotai";
-import { ottoItemTypeParams } from "../../../data/items/ottoItemType";
+import {
+  TerrainItemTypeParams,
+  ItemType,
+} from "../../../data/items/ottoItemType";
 import { ParamTooltip } from "../items/ParamTooltip";
 import { getParamTooltip } from "../items/getParamTooltip";
+import type { FlagDescription } from "../../../data/items/itemParams";
 import { parseU16, parseU8 } from "../../../utils/numberParsers";
 import {
   SelectedSpline,
   SelectedSplineItem,
 } from "../../../data/splines/splineAtoms";
-import { SPLINE_KEY_BASE } from "./Spline";
+import { SPLINE_KEY_BASE } from "./splineUtils";
 import { getPoints } from "../../../utils/spline";
 import { Input } from "@/components/ui/input";
 import {
@@ -24,6 +28,11 @@ import { getSplineItemTypes } from "@/data/splines/getSplineItemTypes";
 import { Globals } from "@/data/globals/globals";
 import { getSplineItemName } from "@/data/splines/getSplineItemNames";
 import { Checkbox } from "@/components/ui/checkbox";
+import {
+  SafeSplineItemTypes,
+  FilterToSafeSplineItems,
+} from "../../../data/items/itemAtoms";
+import { Label } from "@/components/ui/label";
 
 export function AddNewSplineMenu({
   setSplineData,
@@ -74,20 +83,32 @@ export function EditSplineItemMenu({
   splineItemData,
 }: {
   setSplineData: Updater<SplineData>;
-  splineItemData: ottoSplineItem[];
+  splineItemData: SplineItem[];
 }) {
   const selectedSpline = useAtomValue(SelectedSpline);
   const [selectedSplineItem, setSelectedSplineItem] =
     useAtom(SelectedSplineItem);
   const globals = useAtomValue(Globals);
+  const safeSplineItemTypes = useAtomValue(SafeSplineItemTypes);
+  const [filterToSafe, setFilterToSafe] = useAtom(FilterToSafeSplineItems);
+
   if (selectedSpline === undefined) return <p>No Selected Spline</p>;
   if (selectedSplineItem === undefined) return <></>;
 
   const currentSplineItemData = splineItemData.at(selectedSplineItem);
 
-  const splineItemValues = getSplineItemTypes(globals)
-    .map((key) => parseInt(key))
-    .filter((key) => isNaN(key) === false);
+  const splineItemTypesResult = getSplineItemTypes(globals);
+  const allSplineItemValues = splineItemTypesResult.ok
+    ? splineItemTypesResult.value
+        .map((key) => parseInt(key))
+        .filter((key) => isNaN(key) === false)
+    : [];
+
+  // Filter to safe spline items if enabled
+  const splineItemValues =
+    filterToSafe && safeSplineItemTypes.size > 0
+      ? allSplineItemValues.filter((type) => safeSplineItemTypes.has(type))
+      : allSplineItemValues;
 
   if (currentSplineItemData === undefined) return <></>;
 
@@ -102,9 +123,12 @@ export function EditSplineItemMenu({
               selectedSplineItem === undefined
             )
               return;
-            splineData.SpIt[SPLINE_KEY_BASE + selectedSpline].obj[
-              selectedSplineItem
-            ].type = newItemType;
+            const splineItems =
+              splineData.SpIt[SPLINE_KEY_BASE + selectedSpline]?.obj;
+            const item = splineItems?.[selectedSplineItem];
+            if (item) {
+              item.type = newItemType;
+            }
           });
         }}
       >
@@ -120,11 +144,29 @@ export function EditSplineItemMenu({
         </SelectContent>
       </Select>
 
+      {/* Safe Spline Items Filter Toggle */}
+      {safeSplineItemTypes.size > 0 && (
+        <div className="flex items-center space-x-2 p-2 bg-green-50 dark:bg-green-950 rounded">
+          <Checkbox
+            id="filter-safe-spline-items"
+            checked={filterToSafe}
+            onCheckedChange={(checked) => setFilterToSafe(checked === true)}
+          />
+          <Label
+            htmlFor="filter-safe-spline-items"
+            className="text-sm cursor-pointer"
+          >
+            Only show spline item types found in original level (
+            {safeSplineItemTypes.size} safe types)
+          </Label>
+        </div>
+      )}
+
       <div className="grid grid-cols-[auto_1fr_auto_1fr] gap-2 items-center">
         <ParamTooltip
           label={<span>Flags</span>}
           tooltip={getParamTooltip(
-            ottoItemTypeParams[currentSplineItemData.type].flags,
+            TerrainItemTypeParams[currentSplineItemData.type as ItemType].flags,
           )}
         />
         <Input
@@ -137,9 +179,12 @@ export function EditSplineItemMenu({
                 selectedSplineItem === undefined
               )
                 return;
-              splineData.SpIt[SPLINE_KEY_BASE + selectedSpline].obj[
-                selectedSplineItem
-              ].flags = parseU16(e.target.value);
+              const splineItems =
+                splineData.SpIt[SPLINE_KEY_BASE + selectedSpline]?.obj;
+              const item = splineItems?.[selectedSplineItem];
+              if (item) {
+                item.flags = parseU16(e.target.value);
+              }
             });
           }}
         />
@@ -147,7 +192,9 @@ export function EditSplineItemMenu({
         {([0, 1, 2, 3] as const).map((i) => {
           const paramKey = `p${i}` as const;
           const param =
-            ottoItemTypeParams[currentSplineItemData.type][paramKey];
+            TerrainItemTypeParams[currentSplineItemData.type as ItemType][
+              paramKey
+            ];
           const value = currentSplineItemData[paramKey];
           const setValue = (v: number) => {
             setSplineData((splineData) => {
@@ -156,9 +203,12 @@ export function EditSplineItemMenu({
                 selectedSplineItem === undefined
               )
                 return;
-              splineData.SpIt[SPLINE_KEY_BASE + selectedSpline].obj[
-                selectedSplineItem
-              ][paramKey] = v;
+              const splineItems =
+                splineData.SpIt[SPLINE_KEY_BASE + selectedSpline]?.obj;
+              const item = splineItems?.[selectedSplineItem];
+              if (item) {
+                item[paramKey] = v;
+              }
             });
           };
           return [
@@ -173,7 +223,7 @@ export function EditSplineItemMenu({
             Array.isArray(param.flags) ? (
               <div key={`flags-${i}`} className="flex flex-col gap-1">
                 <div className="flex flex-wrap gap-2">
-                  {param.flags.map((flag) => {
+                  {param.flags.map((flag: FlagDescription) => {
                     const checked = (value & (1 << flag.index)) !== 0;
                     return (
                       <label
@@ -191,14 +241,17 @@ export function EditSplineItemMenu({
                               )
                                 return;
                               const mask = 1 << flag.index;
-                              if (checked) {
+                              const splineItems =
                                 splineData.SpIt[
                                   SPLINE_KEY_BASE + selectedSpline
-                                ].obj[selectedSplineItem][paramKey] |= mask;
-                              } else {
-                                splineData.SpIt[
-                                  SPLINE_KEY_BASE + selectedSpline
-                                ].obj[selectedSplineItem][paramKey] &= ~mask;
+                                ]?.obj;
+                              const item = splineItems?.[selectedSplineItem];
+                              if (item) {
+                                if (checked) {
+                                  item[paramKey] |= mask;
+                                } else {
+                                  item[paramKey] &= ~mask;
+                                }
                               }
                             });
                           }}
@@ -246,9 +299,12 @@ export function EditSplineItemMenu({
               if (placement > 1) placement = 1;
               if (isNaN(placement)) placement = 0;
 
-              splineData.SpIt[SPLINE_KEY_BASE + selectedSpline].obj[
-                selectedSplineItem
-              ].placement = placement;
+              const splineItems =
+                splineData.SpIt[SPLINE_KEY_BASE + selectedSpline]?.obj;
+              const item = splineItems?.[selectedSplineItem];
+              if (item) {
+                item.placement = placement;
+              }
             });
           }}
         />
@@ -259,10 +315,16 @@ export function EditSplineItemMenu({
           disabled={selectedSpline === undefined}
           onClick={() => {
             setSplineData((splineData) => {
-              if (selectedSplineItem === undefined) return;
-              splineData.SpIt[SPLINE_KEY_BASE + selectedSpline].obj.splice(
-                selectedSplineItem,
-              );
+              if (
+                selectedSplineItem === undefined ||
+                selectedSpline === undefined
+              )
+                return;
+              const splineItems =
+                splineData.SpIt[SPLINE_KEY_BASE + selectedSpline]?.obj;
+              if (splineItems) {
+                splineItems.splice(selectedSplineItem);
+              }
               setSelectedSplineItem(undefined);
             });
           }}
@@ -289,16 +351,17 @@ export function EditSplineMenu({
           setSplineData((splineData) => {
             if (selectedSpline === undefined) return;
             const splineNubs =
-              splineData.SpNb[SPLINE_KEY_BASE + selectedSpline].obj;
+              splineData.SpNb[SPLINE_KEY_BASE + selectedSpline]?.obj;
+            if (!splineNubs) return;
+            const firstNub = splineNubs[0];
+            if (!firstNub) return;
 
-            splineData.SpNb[SPLINE_KEY_BASE + selectedSpline].obj.splice(1, 0, {
-              x: splineNubs[0].x + 30,
-              z: splineNubs[0].z + 30,
+            splineNubs.splice(1, 0, {
+              x: firstNub.x + 30,
+              z: firstNub.z + 30,
             });
             splineData.SpPt[SPLINE_KEY_BASE + selectedSpline] = {
-              obj: getPoints(
-                splineData.SpNb[SPLINE_KEY_BASE + selectedSpline].obj,
-              ),
+              obj: getPoints(splineNubs),
             };
           });
         }}
@@ -310,20 +373,17 @@ export function EditSplineMenu({
           setSplineData((splineData) => {
             if (selectedSpline === undefined) return;
             const splineNubs =
-              splineData.SpNb[SPLINE_KEY_BASE + selectedSpline].obj;
+              splineData.SpNb[SPLINE_KEY_BASE + selectedSpline]?.obj;
+            if (!splineNubs) return;
+            const lastNub = splineNubs[splineNubs.length - 1];
+            if (!lastNub) return;
 
-            splineData.SpNb[SPLINE_KEY_BASE + selectedSpline].obj.splice(
-              splineNubs.length - 1,
-              0,
-              {
-                x: splineNubs[splineNubs.length - 1].x + 100,
-                z: splineNubs[splineNubs.length - 1].z + 100,
-              },
-            );
+            splineNubs.splice(splineNubs.length - 1, 0, {
+              x: lastNub.x + 100,
+              z: lastNub.z + 100,
+            });
             splineData.SpPt[SPLINE_KEY_BASE + selectedSpline] = {
-              obj: getPoints(
-                splineData.SpNb[SPLINE_KEY_BASE + selectedSpline].obj,
-              ),
+              obj: getPoints(splineNubs),
             };
           });
         }}

@@ -1,10 +1,27 @@
 import { bg3dParsedToBG3D, parseBG3D, BG3DParseResult } from "./parseBG3D";
 import { bg3dParsedToGLTF, gltfToBG3D } from "./parsedBg3dGitfConverter";
 import { parseBG3DWithSkeletonResource } from "./bg3dWithSkeleton";
+import { parse3DMF } from "./parse3dmf";
 // Commented out unused import to fix build error
 // import { bg3dSkeletonToSkeletonResource, skeletonResourceToBinary } from "./skeletonExport";
 import { WebIO } from "@gltf-transform/core";
 import type { SkeletonResource } from "../python/structSpecs/skeleton/skeletonInterface";
+import { isErr, Result } from "../types/result";
+
+// Helper function to detect file format and parse accordingly
+function parseModelBuffer(buffer: ArrayBuffer): Result<BG3DParseResult, Error> {
+  // Check magic number to detect format
+  const view = new DataView(buffer);
+  if (buffer.byteLength >= 4) {
+    const magic = view.getUint32(0, false); // Big-endian
+    // 3DMF magic: '3DMF' = 0x33444d46
+    if (magic === 0x33444d46) {
+      return parse3DMF(buffer);
+    }
+  }
+  // Default to BG3D format
+  return parseBG3D(buffer);
+}
 
 // Message types
 export type BG3DGltfWorkerMessage =
@@ -57,6 +74,7 @@ export type BG3DGltfWorkerResponse =
   | {
       type: "bg3d-parsed-to-glb";
       result: ArrayBuffer;
+      parsed: BG3DParseResult;
     }
   | {
       type: "bg3d-parsed-to-bg3d";
@@ -72,11 +90,20 @@ self.onmessage = async (e: MessageEvent<BG3DGltfWorkerMessage>) => {
   console.log("Worker received message:", msg.type);
   try {
     if (msg.type === "bg3d-to-glb") {
-      console.log("Converting BG3D to GLB");
-      const parsed = parseBG3D(msg.buffer);
-      console.log("Parsed BG3D:", parsed);
+      console.log("Converting model (BG3D/3DMF) to GLB");
+      const parseResult = parseModelBuffer(msg.buffer);
+      if (isErr(parseResult)) {
+        const response: BG3DGltfWorkerResponse = {
+          type: "error",
+          error: parseResult.error.message,
+        };
+        self.postMessage(response);
+        return;
+      }
+      const parsed = parseResult.value;
+      console.log("Parsed model:", parsed);
       const doc = bg3dParsedToGLTF(parsed);
-      console.log("Converting parsed BG3D to GLTF document");
+      console.log("Converting parsed model to GLTF document");
       console.log("GLTF Document:", doc);
       const io = new WebIO();
       const glbBuffer = await io.writeBinary(doc);
@@ -93,7 +120,16 @@ self.onmessage = async (e: MessageEvent<BG3DGltfWorkerMessage>) => {
       console.log("BG3D buffer size:", msg.bg3dBuffer.byteLength);
       console.log("Skeleton data:", msg.skeletonData);
       
-      const parsed = parseBG3DWithSkeletonResource(msg.bg3dBuffer, msg.skeletonData);
+      const parseResult = parseBG3DWithSkeletonResource(msg.bg3dBuffer, msg.skeletonData);
+      if (isErr(parseResult)) {
+        const response: BG3DGltfWorkerResponse = {
+          type: "error",
+          error: parseResult.error.message,
+        };
+        self.postMessage(response);
+        return;
+      }
+      const parsed = parseResult.value;
       console.log("Parsed BG3D with skeleton:", parsed);
       console.log("Skeleton in parsed result:", parsed.skeleton ? `${parsed.skeleton.bones.length} bones, ${parsed.skeleton.animations.length} animations` : "none");
       
@@ -122,6 +158,7 @@ self.onmessage = async (e: MessageEvent<BG3DGltfWorkerMessage>) => {
       const response: BG3DGltfWorkerResponse = {
         type: "bg3d-parsed-to-glb",
         result: arrBuffer,
+        parsed: msg.parsed,
       };
       self.postMessage.call(self, response);
     } else if (msg.type === "bg3d-parsed-to-bg3d") {
@@ -150,7 +187,8 @@ self.onmessage = async (e: MessageEvent<BG3DGltfWorkerMessage>) => {
       
       // TODO: Generate skeleton resource file if animations exist
       let skeletonResult: ArrayBuffer | undefined;
-      if ((await parsed).skeleton && (await parsed).skeleton!.animations.length > 0) {
+      const parsedData = await parsed;
+      if (parsedData.skeleton?.animations && parsedData.skeleton.animations.length > 0) {
         // For now, we'll need to implement skeleton generation from BG3D
         console.log("Skeleton generation from glTF not yet implemented");
       }
@@ -162,7 +200,11 @@ self.onmessage = async (e: MessageEvent<BG3DGltfWorkerMessage>) => {
       };
       self.postMessage.call(self, response);
     } else {
-      throw new Error("Unknown conversion type");
+      const response: BG3DGltfWorkerResponse = {
+        type: "error",
+        error: "Unknown conversion type",
+      };
+      self.postMessage(response);
     }
   } catch (err) {
     const response: BG3DGltfWorkerResponse = {

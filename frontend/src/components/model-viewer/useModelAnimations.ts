@@ -9,9 +9,13 @@ import { AnimationInfo } from "@/components/AnimationViewer";
  */
 export function useModelAnimations(
   gltfResult: GLTFResult | undefined,
-  onAnimationsReady?: (animations: AnimationInfo[], mixer: THREE.AnimationMixer | null) => void
+  onAnimationsReady?: (
+    animations: AnimationInfo[],
+    mixer: THREE.AnimationMixer | null,
+  ) => void,
 ) {
-  const [animationMixer, setAnimationMixer] = useState<THREE.AnimationMixer | null>(null);
+  const [animationMixer, setAnimationMixer] =
+    useState<THREE.AnimationMixer | null>(null);
 
   useEffect(() => {
     try {
@@ -19,37 +23,42 @@ export function useModelAnimations(
         // Handle animations
         if (gltfResult.animations && gltfResult.animations.length > 0) {
           const mixer = new THREE.AnimationMixer(gltfResult.scene);
-          setAnimationMixer(mixer);
+          Promise.resolve().then(() => setAnimationMixer(mixer));
 
           // Extract animation info
-          const animationInfos: AnimationInfo[] = gltfResult.animations.map((clip: THREE.AnimationClip, index: number) => ({
-            name: clip.name || `Animation ${index + 1}`,
-            duration: clip.duration,
-            index: index,
-            clip: clip,
-          }));
+          const animationInfos: AnimationInfo[] = gltfResult.animations.map(
+            (clip: THREE.AnimationClip, index: number) => ({
+              name: clip.name || `Animation ${index + 1}`,
+              duration: clip.duration,
+              index: index,
+              clip: clip,
+            }),
+          );
 
           if (onAnimationsReady) {
             onAnimationsReady(animationInfos, mixer);
           }
 
-          console.log(`Found ${gltfResult.animations.length} animations:`, animationInfos);
+          console.log(
+            `Found ${gltfResult.animations.length} animations:`,
+            animationInfos,
+          );
         } else {
-          setAnimationMixer(null);
+          Promise.resolve().then(() => setAnimationMixer(null));
           if (onAnimationsReady) {
             onAnimationsReady([], null);
           }
         }
       } else {
-        setAnimationMixer(null);
+        Promise.resolve().then(() => setAnimationMixer(null));
         if (onAnimationsReady) onAnimationsReady([], null);
       }
     } catch (error) {
       console.error("Error in useModelAnimations:", error);
-      setAnimationMixer(null);
+      Promise.resolve().then(() => setAnimationMixer(null));
       if (onAnimationsReady) onAnimationsReady([], null);
     }
-  }, [gltfResult?.scene, gltfResult?.animations]);
+  }, [gltfResult?.scene, gltfResult?.animations, onAnimationsReady]);
 
   return { animationMixer };
 }

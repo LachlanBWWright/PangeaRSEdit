@@ -110,5 +110,3 @@ export function ToolsPanel({
     </div>
   );
 }
-
-export default ToolsPanel;

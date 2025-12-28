@@ -16,6 +16,7 @@ import {
   BG3DAnimation,
   BG3DKeyframe,
 } from "./parseBG3D";
+import { Result, ok, err, isErr } from "../types/result";
 
 /**
  * Convert Euler angles (in radians) to quaternion
@@ -102,119 +103,120 @@ class Matrix4 {
 
     // Calculate matrix inverse using standard algorithm
     inv[0] =
-      m[5] * m[10] * m[15] -
-      m[5] * m[11] * m[14] -
-      m[9] * m[6] * m[15] +
-      m[9] * m[7] * m[14] +
-      m[13] * m[6] * m[11] -
-      m[13] * m[7] * m[10];
+      m[5]! * m[10]! * m[15]! -
+      m[5]! * m[11]! * m[14]! -
+      m[9]! * m[6]! * m[15]! +
+      m[9]! * m[7]! * m[14]! +
+      m[13]! * m[6]! * m[11]! -
+      m[13]! * m[7]! * m[10]!;
     inv[4] =
-      -m[4] * m[10] * m[15] +
-      m[4] * m[11] * m[14] +
-      m[8] * m[6] * m[15] -
-      m[8] * m[7] * m[14] -
-      m[12] * m[6] * m[11] +
-      m[12] * m[7] * m[10];
+      -m[4]! * m[10]! * m[15]! +
+      m[4]! * m[11]! * m[14]! +
+      m[8]! * m[6]! * m[15]! -
+      m[8]! * m[7]! * m[14]! -
+      m[12]! * m[6]! * m[11]! +
+      m[12]! * m[7]! * m[10]!;
     inv[8] =
-      m[4] * m[9] * m[15] -
-      m[4] * m[11] * m[13] -
-      m[8] * m[5] * m[15] +
-      m[8] * m[7] * m[13] +
-      m[12] * m[5] * m[11] -
-      m[12] * m[7] * m[9];
+      m[4]! * m[9]! * m[15]! -
+      m[4]! * m[11]! * m[13]! -
+      m[8]! * m[5]! * m[15]! +
+      m[8]! * m[7]! * m[13]! +
+      m[12]! * m[5]! * m[11]! -
+      m[12]! * m[7]! * m[9]!;
     inv[12] =
-      -m[4] * m[9] * m[14] +
-      m[4] * m[10] * m[13] +
-      m[8] * m[5] * m[14] -
-      m[8] * m[6] * m[13] -
-      m[12] * m[5] * m[10] +
-      m[12] * m[6] * m[9];
+      -m[4]! * m[9]! * m[14]! +
+      m[4]! * m[10]! * m[13]! +
+      m[8]! * m[5]! * m[14]! -
+      m[8]! * m[6]! * m[13]! -
+      m[12]! * m[5]! * m[10]! +
+      m[12]! * m[6]! * m[9]!;
     inv[1] =
-      -m[1] * m[10] * m[15] +
-      m[1] * m[11] * m[14] +
-      m[9] * m[2] * m[15] -
-      m[9] * m[3] * m[14] -
-      m[13] * m[2] * m[11] +
-      m[13] * m[3] * m[10];
+      -m[1]! * m[10]! * m[15]! +
+      m[1]! * m[11]! * m[14]! +
+      m[9]! * m[2]! * m[15]! -
+      m[9]! * m[3]! * m[14]! -
+      m[13]! * m[2]! * m[11]! +
+      m[13]! * m[3]! * m[10]!;
     inv[5] =
-      m[0] * m[10] * m[15] -
-      m[0] * m[11] * m[14] -
-      m[8] * m[2] * m[15] +
-      m[8] * m[3] * m[14] +
-      m[12] * m[2] * m[11] -
-      m[12] * m[3] * m[10];
+      m[0]! * m[10]! * m[15]! -
+      m[0]! * m[11]! * m[14]! -
+      m[8]! * m[2]! * m[15]! +
+      m[8]! * m[3]! * m[14]! +
+      m[12]! * m[2]! * m[11]! -
+      m[12]! * m[3]! * m[10]!;
     inv[9] =
-      -m[0] * m[9] * m[15] +
-      m[0] * m[11] * m[13] +
-      m[8] * m[1] * m[15] -
-      m[8] * m[3] * m[13] -
-      m[12] * m[1] * m[11] +
-      m[12] * m[3] * m[9];
+      -m[0]! * m[9]! * m[15]! +
+      m[0]! * m[11]! * m[13]! +
+      m[8]! * m[1]! * m[15]! -
+      m[8]! * m[3]! * m[13]! -
+      m[12]! * m[1]! * m[11]! +
+      m[12]! * m[3]! * m[9]!;
     inv[13] =
-      m[0] * m[9] * m[14] -
-      m[0] * m[10] * m[13] -
-      m[8] * m[1] * m[14] +
-      m[8] * m[2] * m[13] +
-      m[12] * m[1] * m[10] -
-      m[12] * m[2] * m[9];
+      m[0]! * m[9]! * m[14]! -
+      m[0]! * m[10]! * m[13]! -
+      m[8]! * m[1]! * m[14]! +
+      m[8]! * m[2]! * m[13]! +
+      m[12]! * m[1]! * m[10]! -
+      m[12]! * m[2]! * m[9]!;
     inv[2] =
-      m[1] * m[6] * m[15] -
-      m[1] * m[7] * m[14] -
-      m[5] * m[2] * m[15] +
-      m[5] * m[3] * m[14] +
-      m[13] * m[2] * m[7] -
-      m[13] * m[3] * m[6];
+      m[1]! * m[6]! * m[15]! -
+      m[1]! * m[7]! * m[14]! -
+      m[5]! * m[2]! * m[15]! +
+      m[5]! * m[3]! * m[14]! +
+      m[13]! * m[2]! * m[7]! -
+      m[13]! * m[3]! * m[6]!;
     inv[6] =
-      -m[0] * m[6] * m[15] +
-      m[0] * m[7] * m[14] +
-      m[4] * m[2] * m[15] -
-      m[4] * m[3] * m[14] -
-      m[12] * m[2] * m[7] +
-      m[12] * m[3] * m[6];
+      -m[0]! * m[6]! * m[15]! +
+      m[0]! * m[7]! * m[14]! +
+      m[4]! * m[2]! * m[15]! -
+      m[4]! * m[3]! * m[14]! -
+      m[12]! * m[2]! * m[7]! +
+      m[12]! * m[3]! * m[6]!;
     inv[10] =
-      m[0] * m[5] * m[15] -
-      m[0] * m[7] * m[13] -
-      m[4] * m[1] * m[15] +
-      m[4] * m[3] * m[13] +
-      m[12] * m[1] * m[7] -
-      m[12] * m[3] * m[5];
+      m[0]! * m[5]! * m[15]! -
+      m[0]! * m[7]! * m[13]! -
+      m[4]! * m[1]! * m[15]! +
+      m[4]! * m[3]! * m[13]! +
+      m[12]! * m[1]! * m[7]! -
+      m[12]! * m[3]! * m[5]!;
     inv[14] =
-      -m[0] * m[5] * m[14] +
-      m[0] * m[6] * m[13] +
-      m[4] * m[1] * m[14] -
-      m[4] * m[2] * m[13] -
-      m[12] * m[1] * m[6] +
-      m[12] * m[2] * m[5];
+      -m[0]! * m[5]! * m[14]! +
+      m[0]! * m[6]! * m[13]! +
+      m[4]! * m[1]! * m[14]! -
+      m[4]! * m[2]! * m[13]! -
+      m[12]! * m[1]! * m[6]! +
+      m[12]! * m[2]! * m[5]!;
     inv[3] =
-      -m[1] * m[6] * m[11] +
-      m[1] * m[7] * m[10] +
-      m[5] * m[2] * m[11] -
-      m[5] * m[3] * m[10] -
-      m[9] * m[2] * m[7] +
-      m[9] * m[3] * m[6];
+      -m[1]! * m[6]! * m[11]! +
+      m[1]! * m[7]! * m[10]! +
+      m[5]! * m[2]! * m[11]! -
+      m[5]! * m[3]! * m[10]! -
+      m[9]! * m[2]! * m[7]! +
+      m[9]! * m[3]! * m[6]!;
     inv[7] =
-      m[0] * m[6] * m[11] -
-      m[0] * m[7] * m[10] -
-      m[4] * m[2] * m[11] +
-      m[4] * m[3] * m[10] +
-      m[8] * m[2] * m[7] -
-      m[8] * m[3] * m[6];
+      m[0]! * m[6]! * m[11]! -
+      m[0]! * m[7]! * m[10]! -
+      m[4]! * m[2]! * m[11]! +
+      m[4]! * m[3]! * m[10]! +
+      m[8]! * m[2]! * m[7]! -
+      m[8]! * m[3]! * m[6]!;
     inv[11] =
-      -m[0] * m[5] * m[11] +
-      m[0] * m[7] * m[9] +
-      m[4] * m[1] * m[11] -
-      m[4] * m[3] * m[9] -
-      m[8] * m[1] * m[7] +
-      m[8] * m[3] * m[5];
+      -m[0]! * m[5]! * m[11]! +
+      m[0]! * m[7]! * m[9]! +
+      m[4]! * m[1]! * m[11]! -
+      m[4]! * m[3]! * m[9]! -
+      m[8]! * m[1]! * m[7]! +
+      m[8]! * m[3]! * m[5]!;
     inv[15] =
-      m[0] * m[5] * m[10] -
-      m[0] * m[6] * m[9] -
-      m[4] * m[1] * m[10] +
-      m[4] * m[2] * m[9] +
-      m[8] * m[1] * m[6] -
-      m[8] * m[2] * m[5];
+      m[0]! * m[5]! * m[10]! -
+      m[0]! * m[6]! * m[9]! -
+      m[4]! * m[1]! * m[10]! +
+      m[4]! * m[2]! * m[9]! +
+      m[8]! * m[1]! * m[6]! -
+      m[8]! * m[2]! * m[5]!;
 
-    const det = m[0] * inv[0] + m[1] * inv[4] + m[2] * inv[8] + m[3] * inv[12];
+    const det =
+      m[0]! * inv[0]! + m[1]! * inv[4]! + m[2]! * inv[8]! + m[3]! * inv[12]!;
 
     if (det === 0) {
       console.warn("Matrix is not invertible");
@@ -223,7 +225,10 @@ class Matrix4 {
 
     const invDet = 1.0 / det;
     for (let i = 0; i < 16; i++) {
-      inv[i] *= invDet;
+      const val = inv[i];
+      if (val !== undefined) {
+        inv[i] = val * invDet;
+      }
     }
 
     return result;
@@ -248,7 +253,9 @@ class Matrix4 {
         // In column-major: result[j*4+i] = sum(a[k*4+i] * b[j*4+k])
         let sum = 0;
         for (let k = 0; k < 4; k++) {
-          sum += a[k * 4 + i] * b[j * 4 + k];
+          const aVal = a[k * 4 + i] ?? 0;
+          const bVal = b[j * 4 + k] ?? 0;
+          sum += aVal * bVal;
         }
         out[j * 4 + i] = sum;
       }
@@ -270,6 +277,10 @@ function calculateLocalTransform(bone: BG3DBone, bones: BG3DBone[]): Matrix4 {
   // If this bone has a valid parent, calculate relative transform
   if (bone.parentBone >= 0 && bone.parentBone < bones.length) {
     const parentBone = bones[bone.parentBone];
+    if (!parentBone) {
+      // Root bone: use absolute position
+      return new Matrix4().setTranslation(bonePos.x, bonePos.y, bonePos.z);
+    }
     const parentPos = new Vector3(
       parentBone.coordX,
       parentBone.coordY,
@@ -302,59 +313,67 @@ function decomposeMatrix(matrix: Matrix4): {
   const m = matrix.data;
 
   // Extract translation
-  const translation = new Vector3(m[12], m[13], m[14]);
+  const translation = new Vector3(m[12]!, m[13]!, m[14]!);
 
   // Extract scale
-  const sx = Math.sqrt(m[0] * m[0] + m[1] * m[1] + m[2] * m[2]);
-  const sy = Math.sqrt(m[4] * m[4] + m[5] * m[5] + m[6] * m[6]);
-  const sz = Math.sqrt(m[8] * m[8] + m[9] * m[9] + m[10] * m[10]);
+  const sx = Math.sqrt(m[0]! * m[0]! + m[1]! * m[1]! + m[2]! * m[2]!);
+  const sy = Math.sqrt(m[4]! * m[4]! + m[5]! * m[5]! + m[6]! * m[6]!);
+  const sz = Math.sqrt(m[8]! * m[8]! + m[9]! * m[9]! + m[10]! * m[10]!);
   const scale = new Vector3(sx, sy, sz);
 
   // Extract rotation (simplified - assuming no shear)
   // Normalize the rotation matrix
   const rotMatrix = [
-    m[0] / sx,
-    m[1] / sx,
-    m[2] / sx,
-    m[4] / sy,
-    m[5] / sy,
-    m[6] / sy,
-    m[8] / sz,
-    m[9] / sz,
-    m[10] / sz,
+    m[0]! / sx,
+    m[1]! / sx,
+    m[2]! / sx,
+    m[4]! / sy,
+    m[5]! / sy,
+    m[6]! / sy,
+    m[8]! / sz,
+    m[9]! / sz,
+    m[10]! / sz,
   ];
 
+  // Get rotation matrix values safely
+  const r0 = rotMatrix[0] ?? 0;
+  const r1 = rotMatrix[1] ?? 0;
+  const r2 = rotMatrix[2] ?? 0;
+  const r3 = rotMatrix[3] ?? 0;
+  const r4 = rotMatrix[4] ?? 0;
+  const r5 = rotMatrix[5] ?? 0;
+  const r6 = rotMatrix[6] ?? 0;
+  const r7 = rotMatrix[7] ?? 0;
+  const r8 = rotMatrix[8] ?? 0;
+
   // Convert rotation matrix to quaternion
-  const trace = rotMatrix[0] + rotMatrix[4] + rotMatrix[8];
+  const trace = r0 + r4 + r8;
   let qw, qx, qy, qz;
 
   if (trace > 0) {
     const s = 0.5 / Math.sqrt(trace + 1.0);
     qw = 0.25 / s;
-    qx = (rotMatrix[7] - rotMatrix[5]) * s;
-    qy = (rotMatrix[2] - rotMatrix[6]) * s;
-    qz = (rotMatrix[3] - rotMatrix[1]) * s;
+    qx = (r7 - r5) * s;
+    qy = (r2 - r6) * s;
+    qz = (r3 - r1) * s;
   } else {
-    if (rotMatrix[0] > rotMatrix[4] && rotMatrix[0] > rotMatrix[8]) {
-      const s =
-        2.0 * Math.sqrt(1.0 + rotMatrix[0] - rotMatrix[4] - rotMatrix[8]);
-      qw = (rotMatrix[7] - rotMatrix[5]) / s;
+    if (r0 > r4 && r0 > r8) {
+      const s = 2.0 * Math.sqrt(1.0 + r0 - r4 - r8);
+      qw = (r7 - r5) / s;
       qx = 0.25 * s;
-      qy = (rotMatrix[1] + rotMatrix[3]) / s;
-      qz = (rotMatrix[2] + rotMatrix[6]) / s;
-    } else if (rotMatrix[4] > rotMatrix[8]) {
-      const s =
-        2.0 * Math.sqrt(1.0 + rotMatrix[4] - rotMatrix[0] - rotMatrix[8]);
-      qw = (rotMatrix[2] - rotMatrix[6]) / s;
-      qx = (rotMatrix[1] + rotMatrix[3]) / s;
+      qy = (r1 + r3) / s;
+      qz = (r2 + r6) / s;
+    } else if (r4 > r8) {
+      const s = 2.0 * Math.sqrt(1.0 + r4 - r0 - r8);
+      qw = (r2 - r6) / s;
+      qx = (r1 + r3) / s;
       qy = 0.25 * s;
-      qz = (rotMatrix[5] + rotMatrix[7]) / s;
+      qz = (r5 + r7) / s;
     } else {
-      const s =
-        2.0 * Math.sqrt(1.0 + rotMatrix[8] - rotMatrix[0] - rotMatrix[4]);
-      qw = (rotMatrix[3] - rotMatrix[1]) / s;
-      qx = (rotMatrix[2] + rotMatrix[6]) / s;
-      qy = (rotMatrix[5] + rotMatrix[7]) / s;
+      const s = 2.0 * Math.sqrt(1.0 + r8 - r0 - r4);
+      qw = (r3 - r1) / s;
+      qx = (r2 + r6) / s;
+      qy = (r5 + r7) / s;
       qz = 0.25 * s;
     }
   }
@@ -411,10 +430,10 @@ function buildJointHierarchy(
   doc: Document,
   joints: Node[],
   bones: BG3DBone[],
-): Node {
+): Result<Node, Error> {
   if (joints.length !== bones.length) {
-    throw new Error(
-      `Mismatch: ${joints.length} joints vs ${bones.length} bones`,
+    return err(
+      new Error(`Mismatch: ${joints.length} joints vs ${bones.length} bones`),
     );
   }
 
@@ -436,6 +455,11 @@ function buildJointHierarchy(
 
     const bone = bones[boneIndex];
     const joint = joints[boneIndex];
+
+    if (!bone || !joint) {
+      console.warn(`Bone or joint at index ${boneIndex} not found`);
+      return;
+    }
 
     parentNode.addChild(joint);
     addedBones.add(boneIndex);
@@ -464,7 +488,7 @@ function buildJointHierarchy(
 
   console.log(
     `Found ${rootBoneIndices.length} root bones: ${rootBoneIndices
-      .map((i) => bones[i].name)
+      .map((i) => bones[i]?.name ?? "undefined")
       .join(", ")}`,
   );
 
@@ -480,9 +504,10 @@ function buildJointHierarchy(
     );
     // Add any remaining bones as children of Armature to ensure they're in the scene
     bones.forEach((bone, index) => {
-      if (!addedBones.has(index)) {
+      const joint = joints[index];
+      if (!addedBones.has(index) && joint) {
         console.warn(`Adding orphaned bone ${bone.name} directly to Armature`);
-        skeletonRoot.addChild(joints[index]);
+        skeletonRoot.addChild(joint);
         addedBones.add(index);
       }
     });
@@ -496,7 +521,7 @@ function buildJointHierarchy(
   console.log(`✅ Armature added to scene root`);
   console.log(`✅ Satisfies glTF 2.0 common root requirement`);
 
-  return skeletonRoot;
+  return ok(skeletonRoot);
 }
 
 /**
@@ -516,19 +541,26 @@ function calculateInverseBindMatrices(bones: BG3DBone[]): Float32Array {
     // Calculate world transform by composing with parent transforms
     if (bone.parentBone >= 0 && bone.parentBone < bones.length) {
       const parentWorld = worldTransforms[bone.parentBone];
-      worldTransforms[index] = parentWorld.multiply(localTransform);
+      if (parentWorld) {
+        worldTransforms[index] = parentWorld.multiply(localTransform);
+      } else {
+        worldTransforms[index] = localTransform;
+      }
     } else {
       // Root bone
       worldTransforms[index] = localTransform;
     }
 
     // Calculate inverse bind matrix (inverse of world transform)
-    const invBindMatrix = worldTransforms[index].invert();
+    const currentWorld = worldTransforms[index];
+    const invBindMatrix = currentWorld
+      ? currentWorld.invert()
+      : new Matrix4().identity();
 
     // Store in column-major order (glTF requirement)
     const offset = index * 16;
     for (let i = 0; i < 16; i++) {
-      matrices[offset + i] = invBindMatrix.data[i];
+      matrices[offset + i] = invBindMatrix.data[i] ?? 0;
     }
   });
 
@@ -561,7 +593,7 @@ function createSkin(
   // Calculate and set inverse bind matrices
   // These transform vertices from model space to bone space
   const ibmData = calculateInverseBindMatrices(bones);
-  const buffer = doc.getRoot().listBuffers()[0];
+  const buffer = doc.getRoot().listBuffers()[0] ?? null;
   const ibmAccessor = doc
     .createAccessor()
     .setType("MAT4")
@@ -575,12 +607,14 @@ function createSkin(
 
 /**
  * Check if array values have meaningful variation (not all same)
+ * TODO: This function is not currently used but may be useful for optimization
  */
-function hasVariation(values: number[], threshold = 0.001): boolean {
-  if (values.length < 2) return false;
-  const first = values[0];
-  return values.some((v) => Math.abs(v - first) > threshold);
-}
+// function _hasVariation(values: number[], threshold = 0.001): boolean {
+//   if (values.length < 2) return false;
+//   const first = values[0];
+//   if (first === undefined) return false;
+//   return values.some((v) => Math.abs(v - first) > threshold);
+// }
 
 /**
  * Process Otto animation data into glTF-compatible format
@@ -604,6 +638,7 @@ function processOttoAnimations(
 
       if (boneIndex >= 0 && boneIndex < bones.length && keyframes.length > 0) {
         const bone = bones[boneIndex];
+        if (!bone) return;
 
         // Convert timing from Otto's 30 FPS system to seconds
         const times = keyframes.map((kf) => kf.tick / 30.0);
@@ -659,10 +694,11 @@ function processOttoAnimations(
           values: scales,
         });
 
+        const lastTime = times[times.length - 1];
         console.log(
-          `    Bone ${bone.name}: ${keyframes.length} keyframes, ${times[
-            times.length - 1
-          ].toFixed(2)}s`,
+          `    Bone ${bone.name}: ${keyframes.length} keyframes, ${(
+            lastTime ?? 0
+          ).toFixed(2)}s`,
         );
       }
     });
@@ -969,7 +1005,7 @@ export function createSkeletonSystem(
   doc: Document,
   skeleton: BG3DSkeleton,
   buffer?: Buffer,
-): { skin: Skin; animations: Animation[] } {
+): Result<{ skin: Skin; animations: Animation[] }, Error> {
   console.log("=== Creating Skeleton System (glTF 2.0 Compliant) ===");
   console.log(
     `Bones: ${skeleton.bones.length}, Animations: ${skeleton.animations.length}`,
@@ -982,7 +1018,7 @@ export function createSkeletonSystem(
     doc.getRoot().setDefaultScene(newScene);
     scene = doc.getRoot().getDefaultScene();
     if (!scene) {
-      throw new Error("Failed to create default scene in glTF document");
+      return err(new Error("Failed to create default scene in glTF document"));
     }
   } else {
     console.log(`Using existing default scene: "${scene.getName()}"`);
@@ -992,19 +1028,21 @@ export function createSkeletonSystem(
   const joints = createJointNodes(doc, skeleton.bones);
 
   // Step 2: Build hierarchy (returns the skeleton root node)
-  let skeletonRoot: Node;
-  try {
-    skeletonRoot = buildJointHierarchy(doc, joints, skeleton.bones);
-  } catch (e) {
-    console.error("Error building joint hierarchy:", e);
-    throw e; // Don't silently fail - skeleton issues must be fixed
+  const skeletonRootResult = buildJointHierarchy(doc, joints, skeleton.bones);
+  if (isErr(skeletonRootResult)) {
+    console.error("Error building joint hierarchy:", skeletonRootResult.error);
+    return skeletonRootResult;
   }
+  const skeletonRoot = skeletonRootResult.value;
 
   // Step 3: Create skin with proper skeleton root
   const skin = createSkin(doc, joints, skeleton.bones, skeletonRoot);
 
   // Add the skeleton parent to the scene (glTF 2.0 requirement)
-  scene.addChild(skin.getSkeleton()!);
+  const skeleton_root = skin.getSkeleton();
+  if (skeleton_root) {
+    scene.addChild(skeleton_root);
+  }
 
   // Step 4: Process animations
   console.log(`Processing ${skeleton.animations.length} animations...`);
@@ -1034,7 +1072,7 @@ export function createSkeletonSystem(
     `Result: ${joints.length} joints, ${animations.length} animations`,
   );
 
-  return { skin, animations };
+  return ok({ skin, animations });
 }
 
 /**
@@ -1139,7 +1177,8 @@ export function extractAnimationsFromGLTF(
   const skins = doc.getRoot().listSkins();
 
   // We need the joints to map back to bone indices
-  const joints = skins.length > 0 ? skins[0].listJoints() : [];
+  const firstSkin = skins[0];
+  const joints = firstSkin ? firstSkin.listJoints() : [];
 
   return animations.map((anim) => {
     console.log(`Extracting animation "${anim.getName()}" from glTF`);
@@ -1188,10 +1227,14 @@ export function extractAnimationsFromGLTF(
       const bone = bones && boneIndex < bones.length ? bones[boneIndex] : null;
 
       for (let i = 0; i < times.length; i++) {
-        const tick = Math.round(times[i] * 30); // Convert back to 30 FPS
+        const time = times[i];
+        if (time === undefined) continue;
+        const tick = Math.round(time * 30); // Convert back to 30 FPS
 
         // Find or create keyframe for this tick
-        let keyframe = keyframes[boneIndexStr].find((kf) => kf.tick === tick);
+        const boneKeyframes = keyframes[boneIndexStr];
+        if (!boneKeyframes) continue;
+        let keyframe = boneKeyframes.find((kf) => kf.tick === tick);
         if (!keyframe) {
           // Initialize with bone's LOCAL rest position (computed from absolute coords)
           // For root bone: localPos = bone.coord
@@ -1206,9 +1249,11 @@ export function extractAnimationsFromGLTF(
             bone.parentBone < bones.length
           ) {
             const parent = bones[bone.parentBone];
-            localX = bone.coordX - parent.coordX;
-            localY = bone.coordY - parent.coordY;
-            localZ = bone.coordZ - parent.coordZ;
+            if (parent) {
+              localX = bone.coordX - parent.coordX;
+              localY = bone.coordY - parent.coordY;
+              localZ = bone.coordZ - parent.coordZ;
+            }
           }
           keyframe = {
             tick,

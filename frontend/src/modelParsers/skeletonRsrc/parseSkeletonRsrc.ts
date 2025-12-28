@@ -20,8 +20,8 @@ export function parseSkeletonRsrc({
   only_types?: string[];
   skip_types?: string[];
   adf?: "True" | "False";
-}): Promise<any> {
-  return new Promise<any>((resolve, reject) => {
+}): Promise<unknown> {
+  return new Promise<unknown>((resolve, reject) => {
     pyodideWorker.postMessage({
       type: "save_to_json",
       bytes,
@@ -33,7 +33,7 @@ export function parseSkeletonRsrc({
 
     pyodideWorker.onmessage = (event: MessageEvent<PyodideResponse>) => {
       if (event.data.type === "save_to_json") {
-        resolve(event.data.result);
+        resolve(event.data.result as unknown);
       } else {
         reject(new Error("Unexpected response from pyodide worker"));
       }

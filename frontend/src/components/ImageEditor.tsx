@@ -8,10 +8,10 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Save, X, Undo, Redo } from "lucide-react";
-import ToolsPanel from "./ImageEditor/ToolsPanel";
+import { ToolsPanel } from "./ImageEditor/ToolsPanel";
 import { toast } from "sonner";
 import Konva from "konva";
-import type { KonvaEventObject } from "konva/lib/Node";
+// Event typing removed - handlers don't need explicit event param here
 
 interface BrushStroke {
   points: number[];
@@ -111,7 +111,8 @@ export function ImageEditor({
   const undo = () => {
     if (historyIndex > 0) {
       setHistoryIndex(historyIndex - 1);
-      setStrokes([...history[historyIndex - 1]]);
+      const prevStrokes = history[historyIndex - 1];
+      setStrokes(prevStrokes ? [...prevStrokes] : []);
     } else if (historyIndex === 0) {
       setHistoryIndex(-1);
       setStrokes([]);
@@ -121,11 +122,12 @@ export function ImageEditor({
   const redo = () => {
     if (historyIndex < history.length - 1) {
       setHistoryIndex(historyIndex + 1);
-      setStrokes([...history[historyIndex + 1]]);
+      const nextStrokes = history[historyIndex + 1];
+      setStrokes(nextStrokes ? [...nextStrokes] : []);
     }
   };
 
-  const handleMouseDown = (_e: KonvaEventObject<MouseEvent>) => {
+  const handleMouseDown = () => {
     if (tool !== "brush") return;
 
     const stage = stageRef.current;
@@ -144,14 +146,14 @@ export function ImageEditor({
     const newStroke: BrushStroke = {
       points: [adjustedPos.x, adjustedPos.y],
       color: brushColor,
-      size: brushSize[0] / scale, // Adjust brush size for scale
+      size: (brushSize[0] ?? 10) / scale, // Adjust brush size for scale
       shape: brushShape,
     };
 
     setCurrentStroke(newStroke);
   };
 
-  const handleMouseMove = (_e: KonvaEventObject<MouseEvent>) => {
+  const handleMouseMove = () => {
     if (!isDrawing || tool !== "brush" || !currentStroke) return;
 
     const stage = stageRef.current;
@@ -199,7 +201,8 @@ export function ImageEditor({
       const ctx = canvas.getContext("2d");
 
       if (!ctx) {
-        throw new Error("Failed to get canvas context");
+        toast.error("Failed to get canvas context");
+        return;
       }
 
       // Draw the original image
@@ -220,10 +223,14 @@ export function ImageEditor({
         }
 
         ctx.beginPath();
-        ctx.moveTo(stroke.points[0], stroke.points[1]);
+        const startX = stroke.points[0] ?? 0;
+        const startY = stroke.points[1] ?? 0;
+        ctx.moveTo(startX, startY);
 
         for (let i = 2; i < stroke.points.length; i += 2) {
-          ctx.lineTo(stroke.points[i], stroke.points[i + 1]);
+          const x = stroke.points[i] ?? 0;
+          const y = stroke.points[i + 1] ?? 0;
+          ctx.lineTo(x, y);
         }
 
         ctx.stroke();

@@ -2,7 +2,7 @@ import { parseNumKData } from "../parseHelpers";
 import type { NumKRaw } from "../parseSkeletonRsrcTS";
 
 export function handleNumK(
-  resourceName: string,
+  _resourceName: string,
   resourceData: NumKRaw[] | { obj?: NumKRaw[] } | undefined,
   hexData: string,
 ): NumKRaw[] {

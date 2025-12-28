@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import SkeletonSelectionPanel from "./SkeletonConversionPanel/SkeletonSelectionPanel";
+import { SkeletonSelectionPanel } from "./SkeletonConversionPanel/SkeletonSelectionPanel";
 import BG3DGltfWorker from "../modelParsers/bg3dGltfWorker?worker";
 import {
   BG3DGltfWorkerMessage,
@@ -11,7 +11,7 @@ import { bg3dSkeletonToSkeletonResource } from "../modelParsers/skeletonExport";
 import { skeletonResourceToBinary } from "../modelParsers/skeletonBinaryExport";
 import type { SkeletonResource } from "../python/structSpecs/skeleton/skeletonInterface";
 import { toast } from "sonner";
-import DropArea from "./SkeletonConversionPanel/DropArea";
+import { DropArea } from "./SkeletonConversionPanel/DropArea";
 
 interface SkeletonConversionPanelProps {
   title: string;
@@ -85,7 +85,9 @@ export function SkeletonConversionPanel({
       );
 
       if (result.type === "error") {
-        throw new Error(result.error);
+        toast.error(result.error);
+        setLoading(false);
+        return;
       }
 
       if (

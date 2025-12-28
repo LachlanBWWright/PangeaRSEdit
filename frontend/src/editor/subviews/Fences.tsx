@@ -1,4 +1,4 @@
-import { FenceData } from "../../python/structSpecs/ottoMaticLevelData";
+import { FenceData } from "@/python/structSpecs/LevelTypes";
 import { Layer } from "react-konva";
 import { Updater } from "use-immer";
 import { Fence } from "./fences/Fence";

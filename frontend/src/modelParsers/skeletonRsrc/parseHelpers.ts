@@ -77,8 +77,8 @@ export function parseEvntData(
   for (let i = 0; i < bytes.length; i += 4) {
     if (i + 4 <= bytes.length) {
       const time = view.getInt16(i, false); // short (2 bytes, signed)
-      const type = bytes[i + 2]; // byte (1 byte, unsigned)
-      const value = bytes[i + 3]; // byte (1 byte, unsigned)
+      const type = bytes[i + 2] ?? 0; // byte (1 byte, unsigned)
+      const value = bytes[i + 3] ?? 0; // byte (1 byte, unsigned)
       result.push({ time, type, value });
     }
   }
@@ -95,7 +95,7 @@ export function parseNumKData(hexData: string): { numKeyFrames: number }[] {
     bytes[i / 2] = parseInt(hexData.substring(i, i + 2), 16);
   }
   for (let i = 0; i < bytes.length; i++) {
-    result.push({ numKeyFrames: bytes[i] });
+    result.push({ numKeyFrames: bytes[i] ?? 0 });
   }
   return result;
 }
@@ -137,18 +137,18 @@ export function parseBoneDataFallback(
   // Parse Pascal string from 32-byte name field
   let name = "";
   // Check if first byte is a length byte (Pascal string format)
-  const lengthByte = bytes[offset];
+  const lengthByte = bytes[offset] ?? 0;
   if (lengthByte > 0 && lengthByte <= 31) {
     // Pascal string: length byte + up to 31 chars
     for (let i = 1; i <= lengthByte && offset + i < bytes.length; i++) {
-      const char = bytes[offset + i];
+      const char = bytes[offset + i] ?? 0;
       if (char === 0) break;
       name += String.fromCharCode(char);
     }
   } else {
     // Raw null-terminated string
     for (let i = 0; i < 32 && offset + i < bytes.length; i++) {
-      const char = bytes[offset + i];
+      const char = bytes[offset + i] ?? 0;
       if (char === 0) break;
       name += String.fromCharCode(char);
     }

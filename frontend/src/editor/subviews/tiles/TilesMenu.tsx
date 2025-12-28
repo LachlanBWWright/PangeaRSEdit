@@ -13,19 +13,27 @@ import {
   TileEditingEnabled,
   TileBrushType,
 } from "../../../data/tiles/tileAtoms";
-import { useAtom } from "jotai";
+import { useAtom, useAtomValue } from "jotai";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
 } from "@/components/ui/select";
-import { CanvasView, CanvasViewMode } from "@/data/canvasView/canvasViewAtoms";
+import {
+  CanvasView,
+  CanvasViewMode,
+  Show3DSplines,
+  Show3DItems,
+  Show3DFences,
+  Show3DLiquid,
+  Export3DScene,
+} from "@/data/canvasView/canvasViewAtoms";
 import { useEffect } from "react";
 import { Switch } from "@/components/ui/switch";
-import { HeaderData } from "@/python/structSpecs/ottoMaticLevelData";
+import { HeaderData } from "@/python/structSpecs/LevelTypes";
 import { Updater } from "use-immer";
-
+import { Globals, Game } from "../../../data/globals/globals";
 
 export function TilesMenu({
   headerData,
@@ -41,20 +49,40 @@ export function TilesMenu({
   const [value, setValue] = useAtom(TopologyValue);
   const [toplogyOpacity, setTopologyOpacity] = useAtom(TopologyOpacity);
   const [canvasViewMode, setCanvasViewMode] = useAtom(CanvasViewMode);
+  const [show3DSplines, setShow3DSplines] = useAtom(Show3DSplines);
+  const [show3DItems, setShow3DItems] = useAtom(Show3DItems);
+  const [show3DFences, setShow3DFences] = useAtom(Show3DFences);
+  const [show3DLiquid, setShow3DLiquid] = useAtom(Show3DLiquid);
+  const [, setExport3DScene] = useAtom(Export3DScene);
   const [tileEditingEnabled, setTileEditingEnabled] =
     useAtom(TileEditingEnabled);
   const [selectedTileBrushType, setSelectedTileBrushType] =
     useAtom(TileBrushType);
+  const globals = useAtomValue(Globals);
 
   const header = headerData?.Hedr?.[1000]?.obj;
   const minY = header?.minY || 0;
   const maxY = header?.maxY || 0;
 
+  // Determine which tile options are available for this game
+  const gameType = globals.GAME_TYPE;
+
+  // Electric Floor options are only available in Otto Matic
+  const hasElectricFloorOptions = gameType === Game.OTTO_MATIC;
+
+  // Some games may have Atrb data (for tile attribute editing)
+  // Nanosaur 1 and Bugdom 1 use individual tiles, not tile attributes like Otto Matic
+  const usesIndividualTiles =
+    gameType === Game.BUGDOM || gameType === Game.NANOSAUR;
+
+  // Only show tile flags if game uses tile attribute system
+  const hasTileFlags = !usesIndividualTiles;
+
   useEffect(() => {
     if (tileView !== TileViews.Topology) {
       setCanvasViewMode(CanvasView.TWO_D);
     }
-  }, [tileView]);
+  }, [tileView, setCanvasViewMode]);
 
   const handleMinYChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newValue = parseFloat(e.target.value);
@@ -78,37 +106,61 @@ export function TilesMenu({
     });
   };
 
-  // We don't need to define handleTileClick here anymore,
-  // as it's been moved to the tileHandlers.ts file
+  // Calculate grid columns based on available buttons
+  // Use explicit Tailwind classes to ensure they're included in the CSS bundle
+  const buttonCount =
+    1 + (hasTileFlags ? 1 : 0) + (hasElectricFloorOptions ? 2 : 0);
+  const gridColsClass =
+    buttonCount >= 4
+      ? "grid-cols-4"
+      : buttonCount === 3
+      ? "grid-cols-3"
+      : buttonCount === 2
+      ? "grid-cols-2"
+      : "grid-cols-1";
 
   return (
     <div className="flex flex-col gap-2">
-      <div className="grid grid-cols-4 gap-2">
+      <div className={`grid ${gridColsClass} gap-2`}>
         <Button
           selected={tileView === TileViews.Topology}
           onClick={() => setTileView(TileViews.Topology)}
         >
           Topology
         </Button>
-        <Button
-          selected={tileView === TileViews.Flags}
-          onClick={() => setTileView(TileViews.Flags)}
-        >
-          Empty Tiles
-        </Button>
-        <Button
-          selected={tileView === TileViews.ElectricFloor0}
-          onClick={() => setTileView(TileViews.ElectricFloor0)}
-        >
-          Electric Floor 1
-        </Button>
-        <Button
-          selected={tileView === TileViews.ElectricFloor1}
-          onClick={() => setTileView(TileViews.ElectricFloor1)}
-        >
-          Electric Floor 2
-        </Button>
+        {hasTileFlags && (
+          <Button
+            selected={tileView === TileViews.Flags}
+            onClick={() => setTileView(TileViews.Flags)}
+          >
+            Empty Tiles
+          </Button>
+        )}
+        {hasElectricFloorOptions && (
+          <>
+            <Button
+              selected={tileView === TileViews.ElectricFloor0}
+              onClick={() => setTileView(TileViews.ElectricFloor0)}
+            >
+              Electric Floor 1
+            </Button>
+            <Button
+              selected={tileView === TileViews.ElectricFloor1}
+              onClick={() => setTileView(TileViews.ElectricFloor1)}
+            >
+              Electric Floor 2
+            </Button>
+          </>
+        )}
       </div>
+
+      {/* Info message for games without tile attribute editing */}
+      {usesIndividualTiles && tileView !== TileViews.Topology && (
+        <div className="text-sm text-gray-500 p-2 bg-gray-800 rounded">
+          <p>Tile flag editing is not available for {globals.GAME_NAME}.</p>
+          <p>This game uses individual tiles instead of tile attributes.</p>
+        </div>
+      )}
 
       <div className="grid grid-cols-[auto_1fr_auto_1fr] gap-2 items-center"></div>
 
@@ -190,70 +242,117 @@ export function TilesMenu({
               setTopologyOpacity(parseFloat(e.target.value) || 1)
             }
           />
-          <div className="flex flex-row justify-center gap-2 items-center col-span-2">
-            <p>Show 3D Map (View Only)</p>
-            <Switch
-              checked={canvasViewMode === CanvasView.THREE_D}
-              onCheckedChange={(e) => {
-                setCanvasViewMode(e ? CanvasView.THREE_D : CanvasView.TWO_D);
-              }}
-            />
-          </div>
-        </div>
-      )}
-
-      {(tileView === TileViews.Flags ||
-        tileView === TileViews.ElectricFloor0 ||
-        tileView === TileViews.ElectricFloor1) && (
-        <div className="grid grid-cols-[auto_1fr_auto_1fr] gap-2 items-center">
-          <div className="flex flex-row justify-center gap-2 items-center col-span-4">
-            <p>Enable Tile Editing</p>
-            <Switch
-              checked={tileEditingEnabled}
-              onCheckedChange={(e) => {
-                setTileEditingEnabled(e);
-              }}
-            />
-          </div>
-
-          {tileEditingEnabled && (
-            <>
-              <p>Brush Radius</p>
-              <Input
-                type="number"
-                defaultValue={brushRadius}
-                onChange={(e) => setBrushRadius(parseInt(e.target.value) || 0)}
-              />
-              <p>Brush Type</p>
-              <Select
-                value={selectedTileBrushType}
-                onValueChange={(value) => {
-                  if (value === "add" || value === "remove") {
-                    setSelectedTileBrushType(value);
-                  }
+          <div className="flex flex-row justify-between gap-2 items-center col-span-2">
+            <div className="flex items-center gap-2">
+              <p>Show 3D Map (View Only)</p>
+              <Switch
+                checked={canvasViewMode === CanvasView.THREE_D}
+                onCheckedChange={(e) => {
+                  setCanvasViewMode(e ? CanvasView.THREE_D : CanvasView.TWO_D);
                 }}
-              >
-                <SelectTrigger>
-                  {selectedTileBrushType === "add" ? "Add Flag" : "Remove Flag"}
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="add">Add Flag</SelectItem>
-                  <SelectItem value="remove">Remove Flag</SelectItem>
-                </SelectContent>
-              </Select>
+              />
+            </div>
+
+            {/* Download button lives on the same row as the toggle for discoverability */}
+            <div className="flex items-center gap-2">
+              <Button onClick={() => setExport3DScene((c) => c + 1)}>
+                Download 3D (GLB)
+              </Button>
+            </div>
+          </div>
+
+          {canvasViewMode === CanvasView.THREE_D && (
+            <>
+              <div className="flex flex-row justify-center gap-2 items-center col-span-2">
+                <p>Show Splines</p>
+                <Switch
+                  checked={show3DSplines}
+                  onCheckedChange={setShow3DSplines}
+                />
+              </div>
+              <div className="flex flex-row justify-center gap-2 items-center col-span-2">
+                <p>Show Items</p>
+                <Switch
+                  checked={show3DItems}
+                  onCheckedChange={setShow3DItems}
+                />
+              </div>
+              <div className="flex flex-row justify-center gap-2 items-center col-span-2">
+                <p>Show Fences</p>
+                <Switch
+                  checked={show3DFences}
+                  onCheckedChange={setShow3DFences}
+                />
+              </div>
+              <div className="flex flex-row justify-center gap-2 items-center col-span-2">
+                <p>Show Liquid</p>
+                <Switch
+                  checked={show3DLiquid}
+                  onCheckedChange={setShow3DLiquid}
+                />
+              </div>
             </>
           )}
-
-          <p className="col-span-4 mt-2">
-            {tileView === TileViews.Flags &&
-              "Click on the map to mark tiles as empty (white) or not empty (black)."}
-            {tileView === TileViews.ElectricFloor0 &&
-              "Click on the map to mark tiles as Electric Floor 1 (white) or not (black)."}
-            {tileView === TileViews.ElectricFloor1 &&
-              "Click on the map to mark tiles as Electric Floor 2 (white) or not (black)."}
-          </p>
         </div>
       )}
+
+      {hasTileFlags &&
+        (tileView === TileViews.Flags ||
+          tileView === TileViews.ElectricFloor0 ||
+          tileView === TileViews.ElectricFloor1) && (
+          <div className="grid grid-cols-[auto_1fr_auto_1fr] gap-2 items-center">
+            <div className="flex flex-row justify-center gap-2 items-center col-span-4">
+              <p>Enable Tile Editing</p>
+              <Switch
+                checked={tileEditingEnabled}
+                onCheckedChange={(e) => {
+                  setTileEditingEnabled(e);
+                }}
+              />
+            </div>
+
+            {tileEditingEnabled && (
+              <>
+                <p>Brush Radius</p>
+                <Input
+                  type="number"
+                  defaultValue={brushRadius}
+                  onChange={(e) =>
+                    setBrushRadius(parseInt(e.target.value) || 0)
+                  }
+                />
+                <p>Brush Type</p>
+                <Select
+                  value={selectedTileBrushType}
+                  onValueChange={(value) => {
+                    if (value === "add" || value === "remove") {
+                      setSelectedTileBrushType(value);
+                    }
+                  }}
+                >
+                  <SelectTrigger>
+                    {selectedTileBrushType === "add"
+                      ? "Add Flag"
+                      : "Remove Flag"}
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="add">Add Flag</SelectItem>
+                    <SelectItem value="remove">Remove Flag</SelectItem>
+                  </SelectContent>
+                </Select>
+              </>
+            )}
+
+            <p className="col-span-4 mt-2">
+              {tileView === TileViews.Flags &&
+                "Click on the map to mark tiles as empty (white) or not empty (black)."}
+              {tileView === TileViews.ElectricFloor0 &&
+                "Click on the map to mark tiles as Electric Floor 1 (white) or not (black)."}
+              {tileView === TileViews.ElectricFloor1 &&
+                "Click on the map to mark tiles as Electric Floor 2 (white) or not (black)."}
+            </p>
+          </div>
+        )}
     </div>
   );
 }

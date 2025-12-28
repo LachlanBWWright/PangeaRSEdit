@@ -19,7 +19,8 @@ export function LevelEditor() {
         setPyodideWorkerReady(true);
       }
     };
-    setPyodideWorker(newPyodideWorker);
+    // Set worker asynchronously to avoid cascading renders
+    Promise.resolve().then(() => setPyodideWorker(newPyodideWorker));
   }, []);
 
   if (!pyodideWorkerReady || !pyodideWorker)

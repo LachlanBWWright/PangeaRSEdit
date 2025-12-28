@@ -1,6 +1,8 @@
-export function sixteenBitToImageData(data: DataView, imageData: ImageData) {
+import { Result, ok, err } from "../types/result";
+
+export function sixteenBitToImageData(data: DataView, imageData: ImageData): Result<void, Error> {
   if (imageData.data.length !== data.byteLength * 2) {
-    throw new Error("Data length does not match image data length");
+    return err(new Error("Data length does not match image data length"));
   }
 
   for (let i = 0; i < data.byteLength; i += 2) {
@@ -14,22 +16,25 @@ export function sixteenBitToImageData(data: DataView, imageData: ImageData) {
     imageData.data[i * 2 + 2] = b;
     imageData.data[i * 2 + 3] = short & 0x8000 ? 0 : 255;
   }
+  return ok(undefined);
 }
 
-export function canvasDataToSixteenBit(canvas: HTMLCanvasElement): DataView {
+export function canvasDataToSixteenBit(canvas: HTMLCanvasElement): Result<DataView, Error> {
   const canvasCtx = canvas.getContext("2d", { willReadFrequently: true });
-  if (!canvasCtx) throw new Error("Could not get canvas context");
+  if (!canvasCtx) {
+    return err(new Error("Could not get canvas context"));
+  }
   const imageData = canvasCtx.getImageData(0, 0, canvas.width, canvas.height);
-  return imageDataToSixteenBit(imageData.data);
+  return ok(imageDataToSixteenBit(imageData.data));
 }
 
 export function imageDataToSixteenBit(data: Uint8ClampedArray): DataView {
   const output = new DataView(new ArrayBuffer(data.length / 2));
   for (let i = 0; i < data.length; i += 4) {
-    const r = data[i];
-    const g = data[i + 1];
-    const b = data[i + 2];
-    const a = data[i + 3];
+    const r = data[i] ?? 0;
+    const g = data[i + 1] ?? 0;
+    const b = data[i + 2] ?? 0;
+    const a = data[i + 3] ?? 0;
 
     output.setUint16(
       i / 2,

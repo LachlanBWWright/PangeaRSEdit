@@ -1,59 +1,109 @@
 import { Updater } from "use-immer";
-import { ottoMaticLevel } from "../../python/structSpecs/ottoMaticInterface";
-import { SPLINE_KEY_BASE } from "../../editor/subviews/splines/Spline";
+import { LevelData } from "@/python/structSpecs/LevelTypes";
+import { SPLINE_KEY_BASE } from "../../editor/subviews/splines/splineUtils";
 import { Game, GlobalsInterface } from "../globals/globals";
+import { Result, ok, err } from "../../types/result";
 
-// eslint-disable-next-line  @typescript-eslint/no-explicit-any
-export function preprocessJson(json: any, globals: GlobalsInterface) {
-  console.log(json);
+/**
+ * Check if the game uses Layr as direct tile indices with flip/rotate bits
+ * (as opposed to Otto Matic/CroMag which use Layr to index into Atrb)
+ */
+function usesLayrAsTileIndices(globals: GlobalsInterface): boolean {
+  // All games EXCEPT Otto Matic and CroMag use Layr as tile indices
+  return globals.GAME_TYPE !== Game.OTTO_MATIC && globals.GAME_TYPE !== Game.CRO_MAG;
+}
 
-  // For Bugdom 1 and Nanosaur 1, Layr contains tile indices with flip/rotate bits - DO NOT MODIFY!
-  // The Layr preprocessing below is only for Otto Matic and other games where Layr contains Atrb indices.
-  if (
-    globals.GAME_TYPE === Game.BUGDOM ||
-    globals.GAME_TYPE === Game.NANOSAUR
-  ) {
+// we intentionally accept a free-form JSON object here — linting for explicit any is suppressed
+
+export function preprocessJson(
+  json: Record<string, unknown>,
+  globals: GlobalsInterface,
+): Result<void, Error> {
+  const anyJson = json as Record<string, unknown>;
+  console.log(anyJson);
+
+  // For games that use Layr as tile indices with flip/rotate bits - DO NOT MODIFY!
+  // The Layr preprocessing below is only for Otto Matic and CroMag where Layr contains Atrb indices.
+  if (usesLayrAsTileIndices(globals)) {
     console.log(
       `${globals.GAME_NAME}: Skipping Layr/Atrb preprocessing (Layr contains tile indices with flip/rotate bits)`,
     );
-  } else if (json.Layr && json.Atrb && json.Layr[1000] && json.Atrb[1000]) {
+  } else if (
+    anyJson.Layr &&
+    anyJson.Atrb &&
+    typeof anyJson.Layr === 'object' &&
+    typeof anyJson.Atrb === 'object' &&
+    1000 in anyJson.Layr &&
+    1000 in anyJson.Atrb
+  ) {
     // Otto Matic and other games: Ensure Layr points to unique Atrb values
     console.log(json);
-    const layrArr = json.Layr[1000].obj;
-    const atrbArr = json.Atrb[1000].obj;
+    const layrRecord = anyJson.Layr as Record<number, { obj: unknown }>;
+    const atrbRecord = anyJson.Atrb as Record<number, { obj: unknown }>;
+    const layr1000 = layrRecord[1000];
+    const atrb1000 = atrbRecord[1000];
+    if (!layr1000 || !atrb1000) {
+      return err(new Error("Layr[1000] or Atrb[1000] is undefined"));
+    }
+    const layrArr = layr1000.obj;
+    const atrbArr = atrb1000.obj;
 
     console.log("layrArr", layrArr);
     console.log("atrbArr", atrbArr);
+
+    if (!Array.isArray(layrArr)) {
+      return err(new Error("Layr[1000].obj is not an array"));
+    }
+    if (!Array.isArray(atrbArr)) {
+      return err(new Error("Atrb[1000].obj is not an array"));
+    }
+
     const newAtrbArr = [];
     const newLayrArr = [];
 
     for (let i = 0; i < layrArr.length; i++) {
       newLayrArr.push(i);
-      newAtrbArr.push(atrbArr[layrArr[i]]);
+      const layrIndex = layrArr[i];
+      if (layrIndex === undefined) {
+        return err(new Error(`Layr index ${i} is undefined`));
+      }
+      const atrbValue = atrbArr[layrIndex];
+      if (atrbValue === undefined) {
+        return err(new Error(`Atrb index ${layrIndex} is undefined`));
+      }
+      newAtrbArr.push(atrbValue);
     }
 
     console.log("newAtrbArr", newAtrbArr);
     console.log("newLayrArr", newLayrArr);
-    json.Atrb[1000].obj = newAtrbArr;
-    json.Layr[1000].obj = newLayrArr;
+    atrb1000.obj = newAtrbArr;
+    layr1000.obj = newLayrArr;
   } else {
     console.warn("Layr or Atrb not found in JSON");
   }
 
-  if (json.Liqd) {
-    for (const waterItem of json.Liqd[1000].obj) {
+  if (anyJson.Liqd && typeof anyJson.Liqd === 'object' && 1000 in anyJson.Liqd) {
+    const liqd = anyJson.Liqd as Record<number, { obj: unknown }>;
+    const liquidObj = liqd[1000]?.obj;
+    if (!Array.isArray(liquidObj)) {
+      return err(new Error("Liqd[1000].obj is not an array"));
+    }
+    for (const waterItem of liquidObj) {
       const nubs: [number, number][] = [];
 
       for (let i = 0; i < globals.LIQD_NUBS; i++) {
-        nubs.push([waterItem[`x_${i}`], waterItem[`y_${i}`]]);
+        const item = waterItem as Record<string, number | [number, number][]>;
+        nubs.push([item[`x_${i}`] as number, item[`y_${i}`] as number]);
       }
-      waterItem.nubs = nubs;
+      (waterItem as Record<string, [number, number][]>).nubs = nubs;
     }
   }
+
+  return ok(undefined);
 }
 
 export function ottoPreprocessor(
-  setData: Updater<ottoMaticLevel>,
+  setData: Updater<LevelData>,
   globals: GlobalsInterface,
 ) {
   setData((data) => {
@@ -72,29 +122,39 @@ export function ottoPreprocessor(
       }
     });
 
-    // eslint-disable-next-line  @typescript-eslint/no-explicit-any
-    const anyData: any = data;
-    if (data.Liqd !== undefined)
-      for (const waterItem of anyData.Liqd[1000].obj) {
+    // Cast for backwards compatibility transformation
+    // We're accessing Liqd as any since we're doing a transformation
+    if (data.Liqd !== undefined) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const liqd = (data as any).Liqd;
+      for (const waterItem of liqd?.[1000]?.obj ?? []) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const item = waterItem as Record<string, any>;
         for (let i = 0; i < globals.LIQD_NUBS; i++) {
-          waterItem[`x_${i}`] = waterItem.nubs[i][0];
-          waterItem[`y_${i}`] = waterItem.nubs[i][1];
+          const nub = item.nubs?.[i];
+          if (nub) {
+            item[`x_${i}`] = nub[0];
+            item[`y_${i}`] = nub[1];
+          }
         }
       }
+    }
 
     //Fix spline numnubs
-    if (data.Spln! !== undefined)
+    if (data.Spln !== undefined)
       for (let i = 0; i < data.Spln[1000].obj.length; i++) {
         const splineIdx = SPLINE_KEY_BASE + i;
+        const spline = data.Spln[1000].obj[i];
+        if (!spline) continue;
 
         const numPoints = data.SpPt?.[splineIdx]?.obj.length ?? 0;
-        data.Spln[1000].obj[i].numPoints = numPoints;
+        spline.numPoints = numPoints;
 
         const numNubs = data.SpNb?.[splineIdx]?.obj.length ?? 0;
-        data.Spln[1000].obj[i].numNubs = numNubs;
+        spline.numNubs = numNubs;
 
         const numItems = data.SpIt?.[splineIdx]?.obj.length ?? 0;
-        data.Spln[1000].obj[i].numItems = numItems;
+        spline.numItems = numItems;
       }
 
     //TODO: Fence Bounding Boxes
@@ -110,17 +170,22 @@ export function ottoPreprocessor(
 
         if (!waterBody) return;
 
-        let left = waterBody.nubs[0][0];
-        let right = waterBody.nubs[0][0];
-        let top = waterBody.nubs[0][1];
-        let bottom = waterBody.nubs[0][1];
+        const firstNub = waterBody.nubs[0];
+        if (!firstNub) continue;
+
+        let left = firstNub[0];
+        let right = firstNub[0];
+        let top = firstNub[1];
+        let bottom = firstNub[1];
 
         //Update bounding box
         for (let i = 0; i < waterBody.numNubs; i++) {
-          if (waterBody.nubs[i][0] < left) left = waterBody.nubs[i][0];
-          if (waterBody.nubs[i][0] > right) right = waterBody.nubs[i][0];
-          if (waterBody.nubs[i][1] < top) top = waterBody.nubs[i][1];
-          if (waterBody.nubs[i][1] > bottom) bottom = waterBody.nubs[i][1];
+          const nub = waterBody.nubs[i];
+          if (!nub) continue;
+          if (nub[0] < left) left = nub[0];
+          if (nub[0] > right) right = nub[0];
+          if (nub[1] < top) top = nub[1];
+          if (nub[1] > bottom) bottom = nub[1];
         }
 
         waterBody.bBoxLeft = left;

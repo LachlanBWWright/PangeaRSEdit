@@ -1,4 +1,4 @@
-import { ItemData } from "../../python/structSpecs/ottoMaticLevelData";
+import { ItemData } from "@/python/structSpecs/LevelTypes";
 import { Layer, Rect } from "react-konva";
 import { Updater } from "use-immer";
 import { Item } from "./items/Item";

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -30,7 +30,7 @@ export interface GameModelSelectorProps {
   loading: boolean;
 }
 
-import GAMES from "@/data/games";
+import { GAMES } from "@/data/games";
 
 export function GameModelSelector({
   onLoadModel,
@@ -43,25 +43,34 @@ export function GameModelSelector({
   const [loadWithSkeleton, setLoadWithSkeleton] = useState<boolean>(true);
 
   const selectedGame = GAMES.find((game) => game.id === selectedGameId);
+  
   const availableModels =
     selectedGame?.models.filter(
       (model) => model.category === selectedCategory,
     ) || [];
-  const availableCategories = selectedGame
-    ? [...new Set(selectedGame.models.map((model) => model.category))]
-    : [];
+    
+  // Memoize to prevent changing on every render
+  const availableCategories = useMemo(() => {
+    return selectedGame
+      ? [...new Set(selectedGame.models.map((model) => model.category))]
+      : [];
+  }, [selectedGame]);
+
 
   useEffect(() => {
     // Reset model selection when game or category changes
-    setSelectedModel(null);
+    Promise.resolve().then(() => setSelectedModel(null));
   }, [selectedGameId, selectedCategory]);
 
   useEffect(() => {
     // Reset category when game changes
     if (selectedGame && availableCategories.length > 0) {
-      setSelectedCategory(availableCategories[0]);
+      const firstCategory = availableCategories[0];
+      if (firstCategory) {
+        Promise.resolve().then(() => setSelectedCategory(firstCategory));
+      }
     }
-  }, [selectedGameId]);
+  }, [selectedGameId, selectedGame, availableCategories]);
 
   const handleLoadSelectedModel = async () => {
     if (!selectedModel) {
@@ -70,18 +79,24 @@ export function GameModelSelector({
     }
 
     try {
-      // Fetch the BG3D file
+      // Fetch the model file (could be BG3D or 3DMF)
       const bg3dResponse = await fetch(selectedModel.bg3dFile);
       if (!bg3dResponse.ok) {
-        throw new Error(
-          `Failed to fetch ${selectedModel.name}.bg3d: ${bg3dResponse.status}`,
+        toast.error(
+          `Failed to fetch ${selectedModel.name}: ${bg3dResponse.status}`,
         );
+        return;
       }
 
       const bg3dArrayBuffer = await bg3dResponse.arrayBuffer();
+      
+      // Determine file extension from the URL
+      const fileExtension = selectedModel.bg3dFile.endsWith(".3dmf") ? ".3dmf" : ".bg3d";
+      const fileName = `${selectedModel.name}${fileExtension}`;
+      
       const bg3dFile = new File(
         [bg3dArrayBuffer],
-        `${selectedModel.name}.bg3d`,
+        fileName,
         {
           type: "application/octet-stream",
         },
@@ -270,7 +285,7 @@ export function GameModelSelector({
               <strong>Model:</strong> {selectedModel.name}
             </p>
             <p>
-              <strong>BG3D File:</strong>{" "}
+              <strong>Model File:</strong>{" "}
               {selectedModel.bg3dFile.split("/").pop()}
             </p>
             {selectedModel.skeletonFile && (

@@ -8,8 +8,15 @@ export function combineCanvases(
     return collage;
   }
 
-  const tileW = canvases[0].width;
-  const tileH = canvases[0].height;
+  const first = canvases[0];
+  if (!first) {
+    collage.width = 1;
+    collage.height = 1;
+    return collage;
+  }
+
+  const tileW = first.width;
+  const tileH = first.height;
   const count = canvases.length;
   const cols = Math.ceil(Math.sqrt(count));
   const rows = Math.ceil(count / cols);

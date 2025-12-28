@@ -1,6 +1,6 @@
 import type { GameInfo } from "@/components/GameModelSelector";
 
-const ottomatic: GameInfo = {
+export const ottomatic: GameInfo = {
   id: "ottomatic",
   name: "Otto Matic",
   models: [
@@ -247,5 +247,3 @@ const ottomatic: GameInfo = {
     },
   ],
 };
-
-export default ottomatic;

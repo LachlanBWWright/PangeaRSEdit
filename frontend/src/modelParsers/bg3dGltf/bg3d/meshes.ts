@@ -2,9 +2,21 @@
  * Mesh/geometry conversion functions for BG3D ↔ glTF
  */
 
-import { BG3DGeometry, BG3DGroup } from "../../parseBG3D";
+import {
+  BG3DGeometry,
+  BG3DGroup,
+  BG3DSkeleton,
+  BG3DBone,
+} from "../../parseBG3D";
 
-import { Mesh, Material, Node, Accessor } from "@gltf-transform/core";
+import {
+  Mesh,
+  Material,
+  Node,
+  Accessor,
+  Buffer,
+  Document,
+} from "@gltf-transform/core";
 
 /**
  * Convert BG3D geometries to glTF meshes
@@ -12,9 +24,9 @@ import { Mesh, Material, Node, Accessor } from "@gltf-transform/core";
 export function bg3dMeshesToGltf(
   allGeometries: BG3DGeometry[],
   gltfMaterials: Material[],
-  doc: any,
-  baseBuffer: any,
-  parsedSkeleton: any,
+  doc: Document,
+  baseBuffer: Buffer | null,
+  parsedSkeleton?: BG3DSkeleton,
 ): Mesh[] {
   const gltfMeshes: Mesh[] = [];
   allGeometries.forEach((geom, index) => {
@@ -75,7 +87,7 @@ export function bg3dMeshesToGltf(
 
       // Apply bone influences based on Otto's point indices
       // Each vertex can be influenced by multiple bones - we track all influences
-      parsedSkeleton.bones.forEach((bone: any, boneIndex: number) => {
+      parsedSkeleton.bones.forEach((bone: BG3DBone, boneIndex: number) => {
         if (bone.pointIndices) {
           bone.pointIndices.forEach((vertexIndex: number) => {
             if (vertexIndex < numVertices) {
@@ -100,13 +112,13 @@ export function bg3dMeshesToGltf(
         const offset = i * 4;
         let totalWeight = 0;
         for (let j = 0; j < 4; j++) {
-          totalWeight += weights[offset + j];
+          totalWeight += weights[offset + j] ?? 0;
         }
 
         if (totalWeight > 0) {
           // Normalize existing weights
           for (let j = 0; j < 4; j++) {
-            weights[offset + j] /= totalWeight;
+            weights[offset + j] = (weights[offset + j] ?? 0) / totalWeight;
           }
         } else {
           // No bone influences - assign to root bone
@@ -147,12 +159,15 @@ export function bg3dMeshesToGltf(
       typeof geom.layerMaterialNum === "number" &&
       geom.layerMaterialNum < gltfMaterials.length
     ) {
-      primitive.setMaterial(gltfMaterials[geom.layerMaterialNum]);
+      const mat = gltfMaterials[geom.layerMaterialNum];
+      if (mat) primitive.setMaterial(mat);
     } else if (
       Array.isArray(geom.layerMaterialNum) &&
+      geom.layerMaterialNum[0] !== undefined &&
       geom.layerMaterialNum[0] < gltfMaterials.length
     ) {
-      primitive.setMaterial(gltfMaterials[geom.layerMaterialNum[0]]);
+      const mat = gltfMaterials[geom.layerMaterialNum[0]];
+      if (mat) primitive.setMaterial(mat);
     }
 
     // Store original properties in extras
@@ -180,6 +195,7 @@ export function gltfMeshesToBg3d(
   docMeshes.forEach((mesh) => {
     const primitives = mesh.listPrimitives();
     const prim = primitives[0]; // Use first primitive
+    if (!prim) return;
     const extras = prim.getExtras() || {};
 
     // Extract geometry data
@@ -189,7 +205,7 @@ export function gltfMeshesToBg3d(
       const arr = Array.from(posAcc.getArray() as Float32Array);
       vertices = [];
       for (let i = 0; i < arr.length; i += 3) {
-        vertices.push([arr[i], arr[i + 1], arr[i + 2]]);
+        vertices.push([arr[i] ?? 0, arr[i + 1] ?? 0, arr[i + 2] ?? 0]);
       }
     }
 
@@ -199,7 +215,7 @@ export function gltfMeshesToBg3d(
       const arr = Array.from(normAcc.getArray() as Float32Array);
       normals = [];
       for (let i = 0; i < arr.length; i += 3) {
-        normals.push([arr[i], arr[i + 1], arr[i + 2]]);
+        normals.push([arr[i] ?? 0, arr[i + 1] ?? 0, arr[i + 2] ?? 0]);
       }
     }
 
@@ -209,7 +225,7 @@ export function gltfMeshesToBg3d(
       const arr = Array.from(uvAcc.getArray() as Float32Array);
       uvs = [];
       for (let i = 0; i < arr.length; i += 2) {
-        uvs.push([arr[i], arr[i + 1]]);
+        uvs.push([arr[i] ?? 0, arr[i + 1] ?? 0]);
       }
     }
 
@@ -219,7 +235,12 @@ export function gltfMeshesToBg3d(
       const arr = Array.from(colorAcc.getArray() as Uint8Array);
       colors = [];
       for (let i = 0; i < arr.length; i += 4) {
-        colors.push([arr[i], arr[i + 1], arr[i + 2], arr[i + 3]]);
+        colors.push([
+          arr[i] ?? 0,
+          arr[i + 1] ?? 0,
+          arr[i + 2] ?? 0,
+          arr[i + 3] ?? 0,
+        ]);
       }
     }
 
@@ -229,7 +250,7 @@ export function gltfMeshesToBg3d(
       const arr = Array.from(idxAcc.getArray() as Uint32Array);
       triangles = [];
       for (let i = 0; i < arr.length; i += 3) {
-        triangles.push([arr[i], arr[i + 1], arr[i + 2]]);
+        triangles.push([arr[i] ?? 0, arr[i + 1] ?? 0, arr[i + 2] ?? 0]);
       }
     }
 
@@ -277,7 +298,10 @@ export function gltfSceneToBg3dGroups(
     if (mesh) {
       const meshIndex = docMeshes.indexOf(mesh);
       if (meshIndex >= 0 && meshIndex < geometries.length) {
-        return geometries[meshIndex];
+        const geom = geometries[meshIndex];
+        if (geom) {
+          return geom;
+        }
       }
     }
 

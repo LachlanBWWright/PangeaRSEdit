@@ -55,12 +55,24 @@ async function testGame(game: string, filePath: string) {
     // Parse BG3D
     console.log("Parsing BG3D...");
     const parsed = parseBG3D(arrayBuffer);
-    console.log(`✅ Parsed: ${parsed.materials.length} materials`);
+    if (!parsed.ok) {
+      console.error(
+        `❌ Parse failed: ${parsed.error?.message ?? String(parsed.error)}`,
+      );
+      return {
+        game,
+        success: false,
+        error: parsed.error?.message ?? String(parsed.error),
+      };
+    }
+    const parsedValue = parsed.value;
+    console.log(`✅ Parsed: ${parsedValue.materials.length} materials`);
 
     // Count geometries
     let geomCount = 0;
     let hasBoundingBox = false;
-    function countGeoms(groups: any[]) {
+    type GroupChild = { children?: GroupChild[]; boundingBox?: unknown };
+    function countGeoms(groups: GroupChild[]) {
       for (const group of groups) {
         if (Array.isArray(group.children)) {
           for (const child of group.children) {
@@ -74,12 +86,12 @@ async function testGame(game: string, filePath: string) {
         }
       }
     }
-    countGeoms(parsed.groups);
+    countGeoms(parsedValue.groups);
     console.log(`✅ ${geomCount} geometries, bounding box: ${hasBoundingBox}`);
 
     // Convert to glTF
     console.log("Converting to glTF...");
-    const gltfDoc = bg3dParsedToGLTF(parsed, { bg3dBuffer: arrayBuffer });
+    const gltfDoc = bg3dParsedToGLTF(parsedValue, { bg3dBuffer: arrayBuffer });
     console.log(`✅ glTF: ${gltfDoc.getRoot().listMeshes().length} meshes`);
 
     // Convert back to BG3D
@@ -95,10 +107,16 @@ async function testGame(game: string, filePath: string) {
     );
 
     return { game, success: true };
-  } catch (error: any) {
-    console.log(`❌ Error: ${error.message}`);
-    console.log(error.stack);
-    return { game, success: false, error: error.message };
+  } catch (error: unknown) {
+    if (error instanceof Error) {
+      console.log(`❌ Error: ${error.message}`);
+      console.log(error.stack);
+      return { game, success: false, error: error.message };
+    } else {
+      const message = String(error);
+      console.log(`❌ Error: ${message}`);
+      return { game, success: false, error: message };
+    }
   }
 }
 

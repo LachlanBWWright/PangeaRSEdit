@@ -26,6 +26,8 @@ function extractNode(obj: THREE.Object3D, level = 0): ModelNode | null {
     children: [],
     meshIndex: obj instanceof THREE.Mesh ? obj.id : undefined,
     nodeIndex: obj.id,
+    // Store reference to the original THREE object for proper matching later
+    threeObject: obj,
   };
 
   if (obj.children.length > 0) {
@@ -63,5 +65,8 @@ export function useModelHierarchy(
       setModelNodes([]);
       if (onSceneReady) onSceneReady(undefined);
     }
-  }, [gltfResult?.scene, setModelNodes, onSceneReady]);
+    // Only depend on gltfResult.scene
+    // setModelNodes is a stable setState function (doesn't change between renders)
+    // onSceneReady callback is memoized in parent component
+  }, [gltfResult?.scene, onSceneReady, setModelNodes]);
 }

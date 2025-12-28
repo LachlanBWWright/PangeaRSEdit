@@ -18,7 +18,7 @@ export async function decodeJpegBrowser(
     let arrayBuffer: ArrayBuffer;
     if (jpegData instanceof Uint8Array) {
       const tmp = new Uint8Array(jpegData.byteLength);
-      for (let i = 0; i < jpegData.byteLength; i++) tmp[i] = jpegData[i];
+      tmp.set(jpegData);
       arrayBuffer = tmp.buffer;
     } else if (jpegData instanceof ArrayBuffer) {
       const tmp = new Uint8Array(jpegData.byteLength);
@@ -61,11 +61,11 @@ export async function decodeJpegBrowser(
  * @returns ImageData (RGBA)
  */
 export function decodeJpegNode(jpegData: ArrayBuffer): ImageData {
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
+   
   const resData = Jpeg.decode(new Uint8Array(jpegData), { useTArray: true });
   // Copy to a new Uint8ClampedArray backed by a real ArrayBuffer
   const clamped = new Uint8ClampedArray(resData.data.length);
-  for (let i = 0; i < resData.data.length; i++) clamped[i] = resData.data[i];
+  clamped.set(resData.data);
   if (typeof ImageData !== "undefined") {
     return new ImageData(clamped, resData.width, resData.height);
   } else {
@@ -92,7 +92,7 @@ export function bufferToBase64(buffer: ArrayBuffer | Uint8Array): string {
   }
   let binary = "";
   for (let i = 0; i < bytes.length; i++) {
-    binary += String.fromCharCode(bytes[i]);
+    binary += String.fromCharCode(bytes[i] ?? 0);
   }
   return btoa(binary);
 }

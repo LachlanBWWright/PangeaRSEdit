@@ -9,7 +9,7 @@
  */
 
 import { describe, it, expect } from "vitest";
-import { parseBG3D, bg3dParsedToBG3D } from "./parseBG3D";
+import { parseBG3D, bg3dParsedToBG3D, BG3DParseResult } from "./parseBG3D";
 import { bg3dParsedToGLTF, gltfToBG3D } from "./parsedBg3dGitfConverter";
 import * as fs from "fs";
 import * as path from "path";
@@ -70,9 +70,13 @@ function readFileAsArrayBuffer(filePath: string): ArrayBuffer {
   );
 }
 
+// Shared group types
+type GroupChild = { children?: GroupChild[]; boundingBox?: unknown };
+type Group = { children?: GroupChild[] };
+
 describe("BG3D Multi-Game Parsing Tests", () => {
   // Test basic parsing for each game
-  Object.entries(TEST_FIXTURES).forEach(([_gameKey, gameConfig]) => {
+  Object.values(TEST_FIXTURES).forEach((gameConfig) => {
     describe(`${gameConfig.name}`, () => {
       it(`should parse ${gameConfig.name} BG3D file without errors`, () => {
         if (!fileExists(gameConfig.bg3dPath)) {
@@ -85,13 +89,12 @@ describe("BG3D Multi-Game Parsing Tests", () => {
         const buffer = readFileAsArrayBuffer(gameConfig.bg3dPath);
 
         // Parse BG3D - this should not throw
-        let parsed;
-        try {
-          parsed = parseBG3D(buffer);
-        } catch (error) {
-          console.error(`Failed to parse ${gameConfig.name}:`, error);
-          throw error;
+        const parsedRes = parseBG3D(buffer);
+        if (!parsedRes.ok) {
+          console.error(`Failed to parse ${gameConfig.name}:`, parsedRes.error);
+          throw parsedRes.error;
         }
+        const parsed: BG3DParseResult = parsedRes.value;
 
         // Basic validation
         expect(parsed).toBeDefined();
@@ -114,7 +117,9 @@ describe("BG3D Multi-Game Parsing Tests", () => {
         }
 
         const buffer = readFileAsArrayBuffer(gameConfig.bg3dPath);
-        const parsed = parseBG3D(buffer);
+        const parsedRes = parseBG3D(buffer);
+        if (!parsedRes.ok) throw parsedRes.error;
+        const parsed: BG3DParseResult = parsedRes.value;
 
         // Convert to glTF - this should not throw
         let gltfDoc;
@@ -147,7 +152,9 @@ describe("BG3D Multi-Game Parsing Tests", () => {
         const originalArray = new Uint8Array(originalBuffer);
 
         // Parse -> glTF -> BG3D roundtrip
-        const parsed = parseBG3D(originalBuffer);
+        const parsedRes = parseBG3D(originalBuffer);
+        if (!parsedRes.ok) throw parsedRes.error;
+        const parsed: BG3DParseResult = parsedRes.value;
         const gltfDoc = bg3dParsedToGLTF(parsed, {
           bg3dBuffer: originalBuffer,
         });
@@ -177,9 +184,12 @@ describe("BG3D Multi-Game Parsing Tests", () => {
         expect(roundtripParsed.materials.length).toBe(parsed.materials.length);
 
         // Compare geometry counts
-        function countGeometries(groups: any[]): number {
+        type GroupChild = { children?: GroupChild[]; boundingBox?: unknown };
+        type Group = { children?: GroupChild[] };
+
+        function countGeometries(groups: Group[]): number {
           let count = 0;
-          function traverse(group: any) {
+          function traverse(group: GroupChild | Group) {
             if (Array.isArray(group.children)) {
               for (const child of group.children) {
                 if (Array.isArray(child.children)) {
@@ -226,12 +236,14 @@ describe("BG3D Format Difference Tests", () => {
     }
 
     const buffer = readFileAsArrayBuffer(bg3dPath);
-    const parsed = parseBG3D(buffer);
+    const parsedRes = parseBG3D(buffer);
+    if (!parsedRes.ok) throw parsedRes.error;
+    const parsed: BG3DParseResult = parsedRes.value;
 
     // Check if any geometries have bounding boxes (they should after proper parsing)
     let foundBoundingBox = false;
-    function checkGeometries(groups: any[]) {
-      function traverse(group: any) {
+    function checkGeometries(groups: Group[]) {
+      function traverse(group: GroupChild | Group) {
         if (Array.isArray(group.children)) {
           for (const child of group.children) {
             if (Array.isArray(child.children)) {
@@ -266,19 +278,20 @@ describe("BG3D Format Difference Tests", () => {
     const buffer = readFileAsArrayBuffer(bg3dPath);
 
     // This test checks if parsing completes without throwing on JPEG texture tag
-    let parsed;
-    try {
-      parsed = parseBG3D(buffer);
-    } catch (error: any) {
-      // If we get "Unknown BG3D tag: 13", it means JPEG texture support is missing
-      if (error.message && error.message.includes("Unknown BG3D tag: 13")) {
+    const parsedRes = parseBG3D(buffer);
+    if (!parsedRes.ok) {
+      if (
+        parsedRes.error instanceof Error &&
+        parsedRes.error.message.includes("Unknown BG3D tag: 13")
+      ) {
         console.error(
           "JPEG texture tag (13) not supported - need to implement",
         );
         throw new Error("JPEG texture support not implemented for Nanosaur 2");
       }
-      throw error;
+      throw parsedRes.error;
     }
+    const parsed: BG3DParseResult = parsedRes.value;
 
     expect(parsed).toBeDefined();
     console.log(
@@ -312,19 +325,23 @@ describe("BG3D Model File Tests", () => {
 
       const buffer = readFileAsArrayBuffer(modelPath);
 
-      let parsed;
+      let parsed: BG3DParseResult | undefined;
       try {
-        parsed = parseBG3D(buffer);
+        const parsedRes = parseBG3D(buffer);
+        if (!parsedRes.ok) throw parsedRes.error;
+        parsed = parsedRes.value;
       } catch (error) {
         console.error(`Failed to parse ${gameKey} model:`, error);
         throw error;
       }
 
       expect(parsed).toBeDefined();
-      expect(parsed.materials.length).toBeGreaterThan(0);
+      expect(parsed!.materials.length).toBeGreaterThan(0);
 
       console.log(
-        `${gameKey} model: ${parsed.materials.length} materials, groups: ${parsed.groups.length}`,
+        `${gameKey} model: ${parsed!.materials.length} materials, groups: ${
+          parsed!.groups.length
+        }`,
       );
     });
   });

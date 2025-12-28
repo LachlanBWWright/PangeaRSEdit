@@ -1,7 +1,7 @@
 import type {
   HeaderData,
   TerrainData,
-} from "../../../python/structSpecs/ottoMaticLevelData";
+} from "@/python/structSpecs/LevelTypes";
 
 export const downloadSelectedTile = (
   mapImages: HTMLCanvasElement[],
@@ -24,7 +24,12 @@ export const downloadMapImage = (
   globals: { SUPERTILE_TEXMAP_SIZE: number; TILES_PER_SUPERTILE: number },
 ) => {
   const hedr = headerData.Hedr[1000].obj;
-  if (!terrainData.STgd[1000].obj) return;
+
+  const stgd = terrainData.STgd;
+
+  if (!stgd) return;
+
+  if (!stgd[1000].obj) return;
 
   const canvas = document.createElement("canvas");
   canvas.width =
@@ -42,7 +47,9 @@ export const downloadMapImage = (
   for (let i = 0; i < hedr.mapHeight / globals.TILES_PER_SUPERTILE; i++) {
     for (let j = 0; j < hedr.mapWidth / globals.TILES_PER_SUPERTILE; j++) {
       const tileIndex = i * (hedr.mapWidth / globals.TILES_PER_SUPERTILE) + j;
-      const superTileId = terrainData.STgd[1000].obj[tileIndex].superTileId;
+      const stgdEntry = stgd[1000].obj[tileIndex];
+      if (!stgdEntry) continue; // guard against out-of-bounds/undefined
+      const superTileId = stgdEntry.superTileId;
       if (superTileId === 0) continue;
       const tileImage = mapImages[superTileId];
       if (!tileImage) continue;
