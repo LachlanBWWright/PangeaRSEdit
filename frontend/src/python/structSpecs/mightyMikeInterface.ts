@@ -1,13 +1,14 @@
 export interface MightyMikeTileSet {
-  num_tile_definitions: number;
-  num_xlate_entries: number;
-  num_tile_attribute_entries: number;
-  num_tile_anims: number;
-  num_tile_xparent_colors: number;
-  xlate_table: number[];
-  tile_attributes: MightyMikeTileAttribute[];
-  tile_animations: MightyMikeTileAnimation[];
-  transparency_colors: number[];
+  numTileDefinitions: number;
+  numXlateEntries: number;
+  numTileAttributeEntries: number;
+  numTileAnims: number;
+  numTileXparentColors: number;
+  xlateTable: number[];
+  tileAttributes: MightyMikeTileAttribute[];
+  tileAnimations: MightyMikeTileAnimation[];
+  transparencyColors: number[];
+  tileImages?: HTMLCanvasElement[]; // Optional tile images extracted from tileset
 }
 
 export interface MightyMikeTileAttribute {
@@ -22,18 +23,36 @@ export interface MightyMikeTileAttribute {
 export interface MightyMikeTileAnimation {
   name: string;
   speed: number;
-  base_tile: number;
-  num_frames: number;
-  tile_nums: number[];
+  baseTile: number;
+  numFrames: number;
+  tileNums: number[];
+}
+
+/**
+ * Tile value bit structure (16-bit):
+ * - Bit 15 (0x8000): TILE_PRIORITY_MASK - collision type flag
+ * - Bit 14 (0x4000): TILE_PRIORITY_MASK2 - pixel-accurate collision flag
+ * - Bits 0-10 (0x07ff): TILENUM_MASK - actual tile index (0-2047)
+ */
+export interface MightyMikeTileValue {
+  /** Raw 16-bit value from the map file (includes priority/collision flags) */
+  rawValue: number;
+  /** Extracted tile index (0-2047) after applying TILENUM_MASK */
+  tileIndex: number;
+  /** True if this tile has collision masking enabled (TILE_PRIORITY_MASK bit set) */
+  hasCollisionMask: boolean;
+  /** True if pixel-accurate collision detection should be used (TILE_PRIORITY_MASK2 bit set) */
+  usePixelAccurateCollision: boolean;
 }
 
 export interface MightyMikeMap {
-  map_width: number;
-  map_height: number;
-  num_items: number;
-  map_image: number[][];
+  mapWidth: number;
+  mapHeight: number;
+  numItems: number;
+  /** 2D array of tile values with collision flags preserved */
+  mapImage: MightyMikeTileValue[][];
   items: MightyMikeItem[];
-  alt_map: number[][] | null;
+  altMap: number[][] | null;
 }
 
 export interface MightyMikeItem {

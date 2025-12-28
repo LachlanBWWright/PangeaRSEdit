@@ -1,5 +1,5 @@
 import { Updater } from "use-immer";
-import { FenceData } from "../../../python/structSpecs/ottoMaticLevelData";
+import { FenceData } from "@/python/structSpecs/LevelTypes";
 import { SelectedFence } from "../../../data/fences/fenceAtoms";
 import { useAtom, useAtomValue } from "jotai";
 import { Button } from "@/components/ui/button";
@@ -10,7 +10,7 @@ import {
   SelectContent,
   SelectTrigger,
 } from "@/components/ui/select";
-import { Game, Globals } from "@/data/globals/globals";
+import { Globals } from "@/data/globals/globals";
 import { getFenceName } from "@/data/fences/getFenceNames";
 import { getFenceTypes } from "@/data/fences/getFenceTypes";
 import { getFenceImagePath } from "@/data/fences/getFenceImagePath";
@@ -27,8 +27,6 @@ export function FenceMenu({
 }) {
   const globals = useAtomValue(Globals);
   const [selectedFence, setSelectedFence] = useAtom(SelectedFence);
-
-  if (globals.GAME_TYPE === Game.NANOSAUR) return <></>; //No fences in this level
 
   const fenceDataObj =
     selectedFence !== undefined

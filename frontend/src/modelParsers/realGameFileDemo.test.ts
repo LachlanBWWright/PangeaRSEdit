@@ -322,10 +322,10 @@ describe("Real Game File Demo - BrainAlien", () => {
         console.log(`✅ glTF skins created: ${skins.length}`);
 
         if (skins.length > 0) {
-          console.log(`✅ Skin joints: ${skins[0].listJoints().length}`);
+          console.log(`✅ Skin joints: ${(skins[0]?.listJoints() ?? []).length}`);
           console.log(
             `✅ Inverse bind matrices: ${
-              skins[0].getInverseBindMatrices() ? "Yes" : "No"
+              (skins[0]?.getInverseBindMatrices()) ? "Yes" : "No"
             }`,
           );
         }

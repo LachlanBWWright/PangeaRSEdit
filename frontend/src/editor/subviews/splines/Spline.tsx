@@ -1,9 +1,9 @@
 import type { Updater } from "use-immer";
 import type {
-  ottoSplineItem,
-  ottoSplineNub,
-} from "../../../python/structSpecs/ottoMaticInterface";
-import type { SplineData } from "../../../python/structSpecs/ottoMaticLevelData";
+  SplineItem,
+  SplineNub,
+} from "@/python/structSpecs/LevelTypes";
+import type { SplineData } from "@/python/structSpecs/LevelTypes";
 import { Line, Circle, Rect, Label, Tag, Text } from "react-konva";
 import type Konva from "konva";
 import { useAtom, useAtomValue } from "jotai";
@@ -144,7 +144,7 @@ const SplineNub = memo(
     splineIdx,
     setSplineData,
   }: {
-    nub: ottoSplineNub;
+    nub: SplineNub;
     nubIdx: number;
     splineIdx: number;
     setSplineData: Updater<SplineData>;
@@ -251,7 +251,7 @@ const ITEM_BOX_SIZE = 12;
 const ITEM_BOX_OFFSET = ITEM_BOX_SIZE / 2;
 
 const SplineItem = memo(
-  ({ x, z, item }: { x: number; z: number; item: ottoSplineItem }) => {
+  ({ x, z, item }: { x: number; z: number; item: SplineItem }) => {
     const [hovering, setHovering] = useState(false);
     const globals = useAtomValue(Globals);
     return (

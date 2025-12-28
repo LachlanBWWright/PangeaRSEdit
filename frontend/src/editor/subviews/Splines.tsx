@@ -1,4 +1,4 @@
-import { SplineData } from "../../python/structSpecs/ottoMaticLevelData";
+import { SplineData } from "@/python/structSpecs/LevelTypes";
 import { Layer } from "react-konva";
 import { Updater } from "use-immer";
 import { Spline } from "./splines/Spline";

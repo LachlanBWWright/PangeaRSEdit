@@ -5,17 +5,22 @@ import { Updater } from "use-immer";
 import {
   HeaderData,
   TerrainData,
-} from "../../../python/structSpecs/ottoMaticLevelData";
+} from "@/python/structSpecs/LevelTypes";
 import { FileUpload } from "../../../components/FileUpload";
-import { Game, Globals } from "../../../data/globals/globals";
+import { Globals } from "../../../data/globals/globals";
 import { Button } from "@/components/ui/button";
 import { ImageEditor } from "@/components/ImageEditor";
 import { useState } from "react";
 import { Edit } from "lucide-react";
 import { toast } from "sonner";
 import { downloadSelectedTile, downloadMapImage } from "./supertileUtils";
-import { BugdomTileMenu } from "../bugdom/BugdomTileMenu";
 
+/**
+ * Standard Supertile Menu for games with STgd-based terrain
+ * (Otto Matic, Bugdom 2, Nanosaur 2, Cro-Mag Rally, Billy Frontier)
+ * 
+ * For Bugdom 1 and Nanosaur 1 which use individual tiles, use BugdomTileMenu instead.
+ */
 export function SupertileMenu({
   headerData,
   setHeaderData,
@@ -34,63 +39,6 @@ export function SupertileMenu({
   const selectedTile = useAtomValue(SelectedTile);
   const hedr = headerData.Hedr[1000].obj;
   const globals = useAtomValue(Globals);
-
-  // For Bugdom 1 and Nanosaur 1, use the specialized tile-based menu
-  // Both games use individual 32x32 tiles composed into 5x5 supertiles
-  if (
-    globals.GAME_TYPE === Game.BUGDOM ||
-    globals.GAME_TYPE === Game.NANOSAUR
-  ) {
-    return (
-      <BugdomTileMenu
-        headerData={headerData}
-        setHeaderData={setHeaderData}
-        terrainData={terrainData}
-        setTerrainData={setTerrainData}
-        mapImages={mapImages}
-        setMapImages={setMapImages}
-      />
-    );
-  }
-
-  // For other games, use the standard menu
-  return (
-    <StandardSupertileMenu
-      headerData={headerData}
-      setHeaderData={setHeaderData}
-      terrainData={terrainData}
-      setTerrainData={setTerrainData}
-      mapImages={mapImages}
-      setMapImages={setMapImages}
-      selectedTile={selectedTile}
-      hedr={hedr}
-      globals={globals}
-    />
-  );
-}
-
-// Internal component for non-Bugdom games that have STgd
-function StandardSupertileMenu({
-  headerData,
-  setHeaderData,
-  terrainData,
-  setTerrainData,
-  mapImages,
-  setMapImages,
-  selectedTile,
-  hedr,
-  globals,
-}: {
-  mapImages: HTMLCanvasElement[];
-  setMapImages: (newCanvases: HTMLCanvasElement[]) => void;
-  headerData: HeaderData;
-  setHeaderData: Updater<HeaderData>;
-  terrainData: TerrainData;
-  setTerrainData: Updater<TerrainData>;
-  selectedTile: number;
-  hedr: HeaderData["Hedr"][1000]["obj"];
-  globals: ReturnType<typeof useAtomValue<typeof Globals>>;
-}) {
   // State for image editor
   const [isEditingTile, setIsEditingTile] = useState(false);
   const [isEditingMap, setIsEditingMap] = useState(false);
@@ -340,7 +288,7 @@ function StandardSupertileMenu({
         <Stage width={120} height={120} className="mx-auto">
           <Layer>
             <ImageDisplay
-              image={mapImages[stgd[selectedTile]?.superTileId ?? 0]}
+              image={mapImages[stgd[selectedTile]?.superTileId ?? 0] ?? undefined}
             />
           </Layer>
         </Stage>
@@ -439,9 +387,15 @@ function StandardSupertileMenu({
             setMapImages(canvasArray);
             setTerrainData((data) => {
               if (!data.STgd?.[1000]?.obj) return;
-              for (let i = 0; i < data.STgd[1000].obj.length; i++) {
+              const stgdEntry = data.STgd[1000];
+              if (!stgdEntry?.obj) return;
+              const stgdObj = stgdEntry.obj;
+              for (let i = 0; i < stgdObj.length; i++) {
                 //1 is added to i because of the blank
-                data.STgd[1000].obj[i].superTileId = i + 1;
+                const entry = stgdObj[i];
+                if (entry) {
+                  entry.superTileId = i + 1;
+                }
               }
             });
             setHeaderData((data) => {
@@ -518,7 +472,7 @@ function StandardSupertileMenu({
   );
 }
 
-function ImageDisplay({ image }: { image: HTMLCanvasElement }) {
+function ImageDisplay({ image }: { image?: HTMLCanvasElement }) {
   if (!image) return <></>;
 
   return <Image image={image} width={250} height={250} />;

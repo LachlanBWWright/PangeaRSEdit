@@ -75,11 +75,19 @@ export function rgba8ToPng(
   width: number,
   height: number,
 ): Buffer {
-  const png = new PNG({ width, height });
-  console.log("Setting PNG data with length:", rgba.length);
+  const expectedLength = width * height * 4;
+  console.log("Setting PNG data with length:", rgba.length, "expected:", expectedLength);
   console.log("PNG dimensions:", width, "x", height);
+
+  if (rgba.length !== expectedLength) {
+    console.warn(`RGBA data length mismatch: got ${rgba.length}, expected ${expectedLength}`);
+  }
+
+  const png = new PNG({ width, height });
   png.data.set(rgba);
-  return PNG.sync.write(png);
+  const encoded = PNG.sync.write(png);
+  console.log("PNG encoded successfully, size:", encoded.length);
+  return encoded;
 }
 
 // Decode PNG Buffer to RGBA Uint8Array

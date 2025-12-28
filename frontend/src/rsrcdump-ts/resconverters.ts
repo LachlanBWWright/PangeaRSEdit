@@ -112,7 +112,7 @@ export class StructConverter implements ResourceConverter {
 
   pack(obj: unknown): Result<Uint8Array, Error> {
     // Keep `_obj` referenced to satisfy unused-vars rule; actual pack not implemented
-    consolie.log(obj);
+    console.log(obj);
     return err(
       new Error("JSON->Binary packing not implemented in StructConverter"),
     );

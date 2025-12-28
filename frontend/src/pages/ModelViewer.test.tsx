@@ -206,18 +206,23 @@ describe("ModelViewer Two-Step Upload Logic", () => {
 
   test("handles animation detection logic", () => {
     type ParsedWithSkeleton = {
-      skeleton?: { animations?: { name?: string; duration?: number }[] };
+      materials: unknown[];
+      groups: unknown[];
+      skeleton?: {
+        bones?: unknown[];
+        animations?: { name?: string; duration?: number }[];
+      };
     };
     const checkForAnimations = (parsed: ParsedWithSkeleton) => {
       return parsed.skeleton?.animations?.length || 0;
     };
 
-    const parsedWithoutSkeleton = {
+    const parsedWithoutSkeleton: ParsedWithSkeleton = {
       materials: [],
       groups: [],
     };
 
-    const parsedWithEmptyAnimations = {
+    const parsedWithEmptyAnimations: ParsedWithSkeleton = {
       materials: [],
       groups: [],
       skeleton: {
@@ -226,7 +231,7 @@ describe("ModelViewer Two-Step Upload Logic", () => {
       },
     };
 
-    const parsedWithAnimations = {
+    const parsedWithAnimations: ParsedWithSkeleton = {
       materials: [],
       groups: [],
       skeleton: {

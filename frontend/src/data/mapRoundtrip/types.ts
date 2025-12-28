@@ -3,13 +3,13 @@
  * These are used for parsing and serializing terrain/level data
  */
 
-import { ottoMaticLevel } from "../../python/structSpecs/ottoMaticInterface";
+import { LevelData } from "@/python/structSpecs/LevelTypes";
 
 /**
  * Result of parsing a level data file
  */
 export interface ParseLevelResult {
-  levelData: ottoMaticLevel;
+  levelData: LevelData;
   rawBuffer: ArrayBuffer;
 }
 

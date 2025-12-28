@@ -1,4 +1,4 @@
-import { ottoMaticLevel } from "@/python/structSpecs/ottoMaticInterface";
+import { LevelData } from "@/python/structSpecs/LevelTypes";
 import { AtomicLevelData } from "@/data/utils/levelDataUtils";
 import type { GlobalsInterface } from "@/data/globals/globals";
 import { DataType } from "@/data/globals/globals";
@@ -10,13 +10,16 @@ import { parsePyodideLevelFile } from "./parsePyodideLevelFile";
 /**
  * Parse a level data file into an ottoMatic-compatible structure and set
  * the editor state by calling setData.
+ * Also calls setMapImages for Mighty Mike levels (since tileset images aren't in AtomicLevelData).
  */
 export async function parseLevelDataFile(
   file: Blob,
   gameType: GlobalsInterface,
   pyodideWorker: Worker,
   setData: (data: AtomicLevelData) => void,
-): Promise<Result<ottoMaticLevel, Error>> {
+  fileUrl?: string,
+  setMapImages?: (images: HTMLCanvasElement[]) => void,
+): Promise<Result<LevelData, Error>> {
   // Dispatch to game-specific parsers that return Results
 
   // Nanosaur 1 (TRT files) uses classic preprocessor
@@ -33,7 +36,7 @@ export async function parseLevelDataFile(
   // Mighty Mike (map/tile format)
   // DataType.MIGHTY_MIKE is enum value 3, but check by DATA_TYPE since it's stable
   if (gameType.DATA_TYPE === DataType.MIGHTY_MIKE) {
-    return await parseMightyMikeFile(file, setData);
+    return await parseMightyMikeFile(file, setData, fileUrl, setMapImages);
   }
 
   // All other standard games use the pyodide/protobuf flow

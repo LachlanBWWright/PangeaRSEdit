@@ -1,5 +1,5 @@
 import { Updater } from "use-immer";
-import { LiquidData } from "../../../python/structSpecs/ottoMaticLevelData";
+import { LiquidData } from "@/python/structSpecs/LevelTypes";
 import { Circle, Line } from "react-konva";
 import Konva from "konva";
 import { useAtom } from "jotai";

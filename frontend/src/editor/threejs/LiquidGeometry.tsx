@@ -5,7 +5,7 @@ import {
   LiquidData,
   HeaderData,
   TerrainData,
-} from "@/python/structSpecs/ottoMaticLevelData";
+} from "@/python/structSpecs/LevelTypes";
 import { DoubleSide, Shape, Vector2 } from "three";
 import { WaterBodyType } from "@/data/water/ottoWaterBodyType";
 import { getTerrainHeightAtPoint } from "./fenceUtils/getTerrainHeightAtPoint";

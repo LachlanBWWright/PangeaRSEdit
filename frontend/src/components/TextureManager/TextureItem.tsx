@@ -30,7 +30,7 @@ interface Props {
   index: number;
   expanded: boolean;
   toggleExpansion: (index: number) => void;
-  fileInputRef: React.RefObject<HTMLInputElement>;
+  fileInputRef: React.RefObject<HTMLInputElement | null>;
   setSelectedTexture: (t: Texture) => void;
   onReplaceTextureAvailable: boolean;
   onTextureEditAvailable: boolean;
@@ -123,15 +123,6 @@ export function TextureItem({
                   src={texture.url}
                   alt={texture.name}
                   className="max-w-full max-h-96 object-contain border border-gray-600"
-                  onLoad={(e) => {
-                    const img = e.target as HTMLImageElement;
-                    if (!texture.size) {
-                      texture.size = {
-                        width: img.naturalWidth,
-                        height: img.naturalHeight,
-                      };
-                    }
-                  }}
                 />
               </div>
               <div className="flex justify-between items-center pt-2">

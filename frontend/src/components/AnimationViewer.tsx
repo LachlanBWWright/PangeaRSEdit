@@ -29,7 +29,8 @@ export function AnimationViewer({
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
-  const animationRequestRef = useRef<number>();
+  const [hasActiveAction, setHasActiveAction] = useState(false); // Track if there's an active action
+  const animationRequestRef = useRef<number | undefined>(undefined);
   const currentActionRef = useRef<THREE.AnimationAction | null>(null);
 
   // Update animation state when mixer or selection changes
@@ -40,14 +41,17 @@ export function AnimationViewer({
       animations[selectedAnimation]
     ) {
       const animationInfo = animations[selectedAnimation];
-      setDuration(animationInfo.duration);
-      setCurrentTime(0);
-      setIsPlaying(false);
+      Promise.resolve().then(() => {
+        setDuration(animationInfo.duration);
+        setCurrentTime(0);
+        setIsPlaying(false);
+      });
 
       // Stop current animation if any
       if (currentActionRef.current) {
         currentActionRef.current.stop();
         currentActionRef.current = null;
+        Promise.resolve().then(() => setHasActiveAction(false));
       }
 
       // Get the animation clip and create action
@@ -57,13 +61,16 @@ export function AnimationViewer({
         action.reset();
         action.setLoop(THREE.LoopRepeat, Infinity);
         currentActionRef.current = action;
+        Promise.resolve().then(() => setHasActiveAction(true));
       }
 
       onAnimationChange?.(selectedAnimation);
     } else {
-      setDuration(0);
-      setCurrentTime(0);
-      setIsPlaying(false);
+      Promise.resolve().then(() => {
+        setDuration(0);
+        setCurrentTime(0);
+        setIsPlaying(false);
+      });
       if (currentActionRef.current) {
         currentActionRef.current.stop();
         currentActionRef.current = null;
@@ -132,7 +139,7 @@ export function AnimationViewer({
   };
 
   const handleTimeChange = (newTime: number[]) => {
-    const time = newTime[0];
+    const time = newTime[0] ?? 0;
     if (currentActionRef.current && animationMixer) {
       currentActionRef.current.time = time;
       setCurrentTime(time);
@@ -203,7 +210,7 @@ export function AnimationViewer({
                 size="sm"
                 variant="outline"
                 onClick={handlePlay}
-                disabled={!currentActionRef.current}
+                disabled={!hasActiveAction}
                 className="flex-1 text-white"
               >
                 {isPlaying ? (
@@ -216,7 +223,7 @@ export function AnimationViewer({
                 size="sm"
                 variant="outline"
                 onClick={handleStop}
-                disabled={!currentActionRef.current}
+                disabled={!hasActiveAction}
                 className="text-white"
               >
                 <Square className="w-3 h-3" />
@@ -225,7 +232,7 @@ export function AnimationViewer({
                 size="sm"
                 variant="outline"
                 onClick={handleReset}
-                disabled={!currentActionRef.current}
+                disabled={!hasActiveAction}
                 className="text-white"
               >
                 <RotateCcw className="w-3 h-3" />
@@ -252,7 +259,7 @@ export function AnimationViewer({
 
             {/* Animation Info */}
             <div className="text-xs text-gray-400 space-y-1">
-              <div>Name: {animations[selectedAnimation].name}</div>
+              <div>Name: {animations[selectedAnimation]?.name}</div>
               <div>Duration: {formatTime(duration)}</div>
               <div>Status: {isPlaying ? "Playing" : "Paused"}</div>
             </div>

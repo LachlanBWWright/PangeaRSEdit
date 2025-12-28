@@ -1,4 +1,4 @@
-import { ottoMaticLevel } from "@/python/structSpecs/ottoMaticInterface";
+import { LevelData } from "@/python/structSpecs/LevelTypes";
 import { Updater } from "use-immer";
 import {
   TileViews,
@@ -13,7 +13,7 @@ type PixelType = { x: number; y: number };
 export function handleTileClick(
   x: number,
   y: number,
-  setOtherData: Updater<Partial<ottoMaticLevel>>,
+  setOtherData: Updater<Partial<LevelData>>,
   tileView: TileViews,
   tileEditingEnabled: boolean,
   brushType: "add" | "remove",

@@ -43,21 +43,23 @@ export function GameModelSelector({
   const [loadWithSkeleton, setLoadWithSkeleton] = useState<boolean>(true);
 
   const selectedGame = GAMES.find((game) => game.id === selectedGameId);
+  
   const availableModels =
     selectedGame?.models.filter(
       (model) => model.category === selectedCategory,
     ) || [];
-  const availableCategories = useMemo(
-    () =>
-      selectedGame
-        ? [...new Set(selectedGame.models.map((model) => model.category))]
-        : [],
-    [selectedGame],
-  );
+    
+  // Memoize to prevent changing on every render
+  const availableCategories = useMemo(() => {
+    return selectedGame
+      ? [...new Set(selectedGame.models.map((model) => model.category))]
+      : [];
+  }, [selectedGame]);
+
 
   useEffect(() => {
     // Reset model selection when game or category changes
-    setSelectedModel(null);
+    Promise.resolve().then(() => setSelectedModel(null));
   }, [selectedGameId, selectedCategory]);
 
   useEffect(() => {
@@ -65,7 +67,7 @@ export function GameModelSelector({
     if (selectedGame && availableCategories.length > 0) {
       const firstCategory = availableCategories[0];
       if (firstCategory) {
-        setSelectedCategory(firstCategory);
+        Promise.resolve().then(() => setSelectedCategory(firstCategory));
       }
     }
   }, [selectedGameId, selectedGame, availableCategories]);
@@ -77,19 +79,24 @@ export function GameModelSelector({
     }
 
     try {
-      // Fetch the BG3D file
+      // Fetch the model file (could be BG3D or 3DMF)
       const bg3dResponse = await fetch(selectedModel.bg3dFile);
       if (!bg3dResponse.ok) {
         toast.error(
-          `Failed to fetch ${selectedModel.name}.bg3d: ${bg3dResponse.status}`,
+          `Failed to fetch ${selectedModel.name}: ${bg3dResponse.status}`,
         );
         return;
       }
 
       const bg3dArrayBuffer = await bg3dResponse.arrayBuffer();
+      
+      // Determine file extension from the URL
+      const fileExtension = selectedModel.bg3dFile.endsWith(".3dmf") ? ".3dmf" : ".bg3d";
+      const fileName = `${selectedModel.name}${fileExtension}`;
+      
       const bg3dFile = new File(
         [bg3dArrayBuffer],
-        `${selectedModel.name}.bg3d`,
+        fileName,
         {
           type: "application/octet-stream",
         },
@@ -278,7 +285,7 @@ export function GameModelSelector({
               <strong>Model:</strong> {selectedModel.name}
             </p>
             <p>
-              <strong>BG3D File:</strong>{" "}
+              <strong>Model File:</strong>{" "}
               {selectedModel.bg3dFile.split("/").pop()}
             </p>
             {selectedModel.skeletonFile && (

@@ -43,7 +43,7 @@ export function bg3dSkeletonToSkeletonResource(
       | Record<string, unknown>
       | undefined;
     const len = Array.isArray(rEntry?.obj)
-      ? (rEntry!.obj as unknown[]).length
+      ? (rEntry.obj as unknown[]).length
       : 0;
     console.log(`RelP received with ${len} points`);
   } else {

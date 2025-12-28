@@ -24,8 +24,12 @@ describe("Skeleton Animation glTF Validation", () => {
     const ottoData = readFileSync(ottoPath);
     const ottoSkeletonData = readFileSync(ottoSkeletonPath);
 
-    const skeleton = parseSkeletonRsrcTS(new Uint8Array(ottoSkeletonData));
-    const bg3dParsed = parseBG3D(ottoData.buffer, skeleton);
+    const skeleton = parseSkeletonRsrcTS(ottoSkeletonData as unknown as ArrayBuffer);
+    const bg3dParseResult = parseBG3D(ottoData.buffer, skeleton);
+    if (!bg3dParseResult.ok) {
+      throw bg3dParseResult.error;
+    }
+    const bg3dParsed = bg3dParseResult.value;
 
     // Convert to glTF Document
     console.log("\n=== Converting to glTF ===");
@@ -214,7 +218,7 @@ describe("Skeleton Animation glTF Validation", () => {
 
     // Check if all joints from skin are accessible from scene
     const skin = skins[0];
-    const joints = skin.listJoints();
+    const joints = (skin?.listJoints()) ?? [];
 
     let jointsAccessibleFromScene = 0;
 
@@ -274,7 +278,7 @@ describe("Skeleton Animation glTF Validation", () => {
           if (input) {
             const times = input.getArray();
             if (times && times.length > 0) {
-              const lastTime = times[times.length - 1];
+              const lastTime = (times[times.length - 1] as number | undefined) ?? 0;
               maxDuration = Math.max(maxDuration, lastTime);
             }
           }
