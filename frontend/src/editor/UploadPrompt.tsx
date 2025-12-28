@@ -14,14 +14,12 @@ export function UploadPrompt({
   setMapFile,
   setMapImagesFile,
   setMapImages,
-  pyodideWorker,
   setData,
 }: {
   mapFile: File | undefined;
   setMapFile: (file: File) => void;
   setMapImagesFile: (file: File) => void;
   setMapImages: (images: HTMLCanvasElement[]) => void;
-  pyodideWorker: Worker;
   setData: (data: AtomicLevelData) => void;
 }) {
   const [, setGlobals] = useAtom(Globals);
@@ -34,7 +32,6 @@ export function UploadPrompt({
       setMapFile,
       setMapImagesFile,
       setMapImages,
-      pyodideWorker,
       setData,
     });
 
@@ -42,7 +39,6 @@ export function UploadPrompt({
     parseLevelDataFile(
       file,
       gameType,
-      pyodideWorker,
       setData,
       undefined,
       setMapImages,

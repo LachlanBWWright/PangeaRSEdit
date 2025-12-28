@@ -5,7 +5,7 @@ import { DataType } from "@/data/globals/globals";
 import { Result } from "@/types/result";
 import { parseNanosaurLevelFile } from "./parseNanosaurLevelFile";
 import { parseMightyMikeFile } from "./parseMightyMikeFile";
-import { parsePyodideLevelFile } from "./parsePyodideLevelFile";
+import { parseRsrcLevelFile } from "./parseRsrcLevelFile";
 
 /**
  * Parse a level data file into an ottoMatic-compatible structure and set
@@ -15,7 +15,6 @@ import { parsePyodideLevelFile } from "./parsePyodideLevelFile";
 export async function parseLevelDataFile(
   file: Blob,
   gameType: GlobalsInterface,
-  pyodideWorker: Worker,
   setData: (data: AtomicLevelData) => void,
   fileUrl?: string,
   setMapImages?: (images: HTMLCanvasElement[]) => void,
@@ -39,6 +38,6 @@ export async function parseLevelDataFile(
     return await parseMightyMikeFile(file, setData, fileUrl, setMapImages);
   }
 
-  // All other standard games use the pyodide/protobuf flow
-  return await parsePyodideLevelFile(file, gameType, pyodideWorker, setData);
+  // All other standard games use the rsrcdump-ts flow
+  return await parseRsrcLevelFile(file, gameType, setData);
 }

@@ -18,7 +18,6 @@ export type OpenFileArgs = {
   setMapFile: (file: File) => void;
   setMapImagesFile: (file: File) => void;
   setMapImages: (images: HTMLCanvasElement[]) => void;
-  pyodideWorker: Worker;
   setData: (d: AtomicLevelData) => void;
 };
 
@@ -29,7 +28,6 @@ export async function openFile({
   setMapFile,
   setMapImagesFile,
   setMapImages,
-  pyodideWorker,
   setData,
 }: OpenFileArgs) {
   let url = rUrl;
@@ -55,7 +53,6 @@ export async function openFile({
   const parseResult = await parseLevelDataFile(
     file,
     gameType,
-    pyodideWorker,
     setData,
     rsrcName, // Pass the URL for Mighty Mike tileset loading
   );

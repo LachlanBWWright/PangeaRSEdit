@@ -18,7 +18,6 @@ import { BlockHistoryUpdate } from "../data/globals/history";
 import LzssWorker from "../utils/lzssWorker?worker";
 import { LzssMessage, LzssResponse } from "@/utils/lzssWorker";
 import { toast } from "sonner";
-import { PyodideMessage, PyodideResponse } from "@/python/pyodideWorker";
 import {
   AtomicLevelData,
   splitLevelData,
@@ -29,13 +28,14 @@ import {
 import { isOk } from "../types/result";
 import { SafeItemTypes, SafeSplineItemTypes } from "../data/items/itemAtoms";
 import { extractSafeItemTypes } from "../data/items/extractSafeItemTypes";
+import { saveFromJson } from "@lachlanbwwright/rsrcdump-ts";
 
 export type DataHistory = {
   items: AtomicLevelData[];
   index: number;
 };
 
-export function IntroPrompt({ pyodideWorker }: { pyodideWorker: Worker }) {
+export function IntroPrompt() {
   const globals = useAtomValue(Globals);
 
   // Atomic data types instead of monolithic data
@@ -228,41 +228,32 @@ export function IntroPrompt({ pyodideWorker }: { pyodideWorker: Worker }) {
     }
 
     try {
-      const loadResPromise = new Promise<ArrayBuffer>((resolve, reject) => {
-        // Validate JSON shape expected by rsrcdump.jsonio.json_to_resource_fork
-        const validation = validateResourceForkJson(combinedData as unknown as Record<string, unknown>);
-        if (!validation.ok) {
-          console.error("Invalid JSON for resource fork:", validation);
-          toast.error("Download failed", {
-            description: `Invalid map data structure for resource fork: ${validation.message}`,
-          });
-          return;
-        }
+      // Validate JSON shape expected by rsrcdump
+      const validation = validateResourceForkJson(combinedData as unknown as Record<string, unknown>);
+      if (!validation.ok) {
+        console.error("Invalid JSON for resource fork:", validation);
+        toast.error("Download failed", {
+          description: `Invalid map data structure for resource fork: ${validation.message}`,
+        });
+        return;
+      }
 
-        pyodideWorker.postMessage({
-          type: "load_bytes_from_json",
-          json_blob: combinedData,
-          converters: globals.STRUCT_SPECS,
-          only_types: [],
-          skip_types: [],
-          adf: "True",
-        } satisfies PyodideMessage);
+      // Use rsrcdump-ts to convert JSON to binary
+      const saveResult = saveFromJson(
+        combinedData,
+        globals.STRUCT_SPECS,
+        true, // useOttoSpecs
+      );
 
-        pyodideWorker.onmessage = (event: MessageEvent<PyodideResponse>) => {
-          if (event.data.type === "load_bytes_from_json") {
-            resolve(event.data.result);
-          } else {
-            console.error("Unexpected pyodide response:", event.data);
-            reject(new Error("Unexpected response from pyodide worker"));
-          }
-        };
+      if (!saveResult.ok) {
+        console.error("Download failed:", saveResult.error);
+        toast.error("Download failed", {
+          description: saveResult.error.message,
+        });
+        return;
+      }
 
-        pyodideWorker.onerror = (error) => {
-          console.error("Pyodide worker error:", error);
-          reject(new Error(`Worker error: ${error.message}`));
-        };
-      });
-      const loadRes = await loadResPromise;
+      const loadRes = saveResult.value.buffer;
 
       if (!loadRes || loadRes.byteLength === 0) {
         console.error("Download failed: Generated map data is empty");
@@ -404,7 +395,6 @@ export function IntroPrompt({ pyodideWorker }: { pyodideWorker: Worker }) {
     mapFile,
     mapImagesFile,
     mapImages,
-    pyodideWorker,
     globals,
     getCurrentAtomicData,
   ]);
@@ -431,7 +421,6 @@ export function IntroPrompt({ pyodideWorker }: { pyodideWorker: Worker }) {
         setMapFile={setMapFile}
         setMapImagesFile={setMapImagesFile}
         setMapImages={setMapImages}
-        pyodideWorker={pyodideWorker}
         setData={setAllAtomicData}
       />
     );
