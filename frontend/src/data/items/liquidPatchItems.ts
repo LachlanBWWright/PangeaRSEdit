@@ -44,8 +44,10 @@ export interface LiquidPatchDimensions {
   width3D: number;
   /** Depth in world units (3D view) */
   depth3D: number;
-  /** Y offset in world units (added to terrain height) */
-  yOffset3D: number;
+  /** Y value in world units */
+  yValue3D: number;
+  /** If true, yValue3D is an absolute Y position; if false, it's an offset from terrain height */
+  isAbsoluteY: boolean;
 }
 
 /**
@@ -176,10 +178,21 @@ const BUGDOM_LIQUID_Y_TABLE: Record<number, number[]> = {
 };
 
 /**
+ * Default Y offset for Bugdom 1 water when p2 is 0
+ */
+const BUGDOM_WATER_DEFAULT_Y_OFFSET = 3.0;
+
+/**
+ * Default Y offset for Bugdom 1 other liquids when p2 is 0
+ */
+const BUGDOM_OTHER_LIQUID_DEFAULT_Y_OFFSET = 40.0;
+
+/**
  * Get the dimensions of a liquid patch based on game and item parameters.
  *
  * Bugdom 1: p0 = width in tiles, p1 = depth in tiles (default 4 each)
- *           p2 = Y offset (×4 for water, ×10 for others)
+ *           p2 = Y offset (×4 for water, ×10 for others) or Y table index
+ *           p3 bit 2 (water) or bit 0 (others) = use indexed Y mode
  * Nanosaur 1 LavaPatch (type 4): p3 bit 2 = half-size (default 2.0x scale)
  * Nanosaur 1 WaterPatch (type 14): fixed 2.0x scale
  */
@@ -207,39 +220,57 @@ export function getLiquidPatchDimensions(
     const width2D = width3D / coordScale;
     const depth2D = depth3D / coordScale;
 
-    // Y offset calculation
-    // WaterPatch (14): p2 × 4.0 (unless p3 bit 2 = indexed Y mode, then use Y table)
-    // Other liquids: p2 × 10.0 (unless p3 bit 0 = indexed Y mode, then use Y table)
-    let yOffset3D = 0;
+    // Y calculation
+    // WaterPatch (14): p3 bit 2 = indexed Y mode (absolute Y from table)
+    //                  otherwise p2 × 4.0 offset (default 3.0 when p2=0)
+    // Other liquids: p3 bit 0 = indexed Y mode (absolute Y from table)
+    //                otherwise p2 × 10.0 offset (default 40.0 when p2=0)
+    let yValue3D = 0;
+    let isAbsoluteY = false;
+
     if (itemType === 14) {
       // WaterPatch
       const indexedYMode = (p3 & (1 << 2)) !== 0;
       if (indexedYMode) {
-        // Use Y lookup table
+        // Use Y lookup table - these are ABSOLUTE Y positions
         const yTable = BUGDOM_LIQUID_Y_TABLE[itemType];
         if (yTable) {
           const index = Math.min(p2, yTable.length - 1);
-          yOffset3D = yTable[index] ?? 0;
+          yValue3D = yTable[index] ?? 0;
+          isAbsoluteY = true;
         }
       } else {
-        yOffset3D = p2 * 4.0;
+        // Y offset from terrain
+        let yOff = p2 * 4.0;
+        if (yOff === 0) {
+          yOff = BUGDOM_WATER_DEFAULT_Y_OFFSET;
+        }
+        yValue3D = yOff;
+        isAbsoluteY = false;
       }
     } else {
       // HoneyPatch, SlimePatch, LavaPatch
       const indexedYMode = (p3 & 1) !== 0;
       if (indexedYMode) {
-        // Use Y lookup table
+        // Use Y lookup table - these are ABSOLUTE Y positions
         const yTable = BUGDOM_LIQUID_Y_TABLE[itemType];
         if (yTable) {
           const index = Math.min(p2, yTable.length - 1);
-          yOffset3D = yTable[index] ?? 0;
+          yValue3D = yTable[index] ?? 0;
+          isAbsoluteY = true;
         }
       } else {
-        yOffset3D = p2 * 10.0;
+        // Y offset from terrain
+        let yOff = p2 * 10.0;
+        if (yOff === 0) {
+          yOff = BUGDOM_OTHER_LIQUID_DEFAULT_Y_OFFSET;
+        }
+        yValue3D = yOff;
+        isAbsoluteY = false;
       }
     }
 
-    return { width2D, depth2D, width3D, depth3D, yOffset3D };
+    return { width2D, depth2D, width3D, depth3D, yValue3D, isAbsoluteY };
   }
 
   if (globals.GAME_TYPE === Game.NANOSAUR) {
@@ -264,9 +295,10 @@ export function getLiquidPatchDimensions(
     const depth2D = depth3D / coordScale;
 
     // Nanosaur Y offset - not implemented, would need source code analysis
-    const yOffset3D = 0;
+    const yValue3D = 0;
+    const isAbsoluteY = false;
 
-    return { width2D, depth2D, width3D, depth3D, yOffset3D };
+    return { width2D, depth2D, width3D, depth3D, yValue3D, isAbsoluteY };
   }
 
   // Default fallback
@@ -275,6 +307,7 @@ export function getLiquidPatchDimensions(
     depth2D: 100,
     width3D: 400,
     depth3D: 400,
-    yOffset3D: 0,
+    yValue3D: 0,
+    isAbsoluteY: false,
   };
 }

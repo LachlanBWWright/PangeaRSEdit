@@ -283,10 +283,34 @@ export const ItemGeometry: React.FC<ItemGeometryProps> = ({
             item.p2,
             item.p3
           );
+
+          // Bugdom 1 snaps liquid patch positions to tile centers before terrain lookup
+          // This ensures adjacent patches get consistent terrain height lookups
+          const tileSize = globals.TILE_SIZE;
+          const snappedEditorX = Math.floor(item.x / tileSize) * tileSize + tileSize / 2;
+          const snappedEditorZ = Math.floor(item.z / tileSize) * tileSize + tileSize / 2;
+          const snappedWorldX = snappedEditorX * scale;
+          const snappedWorldZ = snappedEditorZ * scale;
+
+          // Get terrain height at snapped position (same as game does)
+          const snappedTerrainY = getTerrainHeightAtPoint(
+            snappedEditorX,
+            snappedEditorZ,
+            headerData,
+            terrainData,
+            globals,
+          );
+
+          // If isAbsoluteY, use yValue3D directly; otherwise add it to terrain height
+          const liquidY = dims.isAbsoluteY ? dims.yValue3D : snappedTerrainY + dims.yValue3D;
+
+          // Debug: log liquid patch Y calculation
+          console.log(`LiquidPatch type=${item.type} p2=${item.p2} p3=${item.p3} isAbsoluteY=${dims.isAbsoluteY} yValue3D=${dims.yValue3D} terrainY=${snappedTerrainY} finalY=${liquidY}`);
+
           return (
             <LiquidPatchPlane
               key={`liquid-patch-${idx}`}
-              position={[worldX, terrainY + dims.yOffset3D, worldZ]}
+              position={[snappedWorldX, liquidY, snappedWorldZ]}
               width={dims.width3D}
               depth={dims.depth3D}
               style={liquidPatchStyle}

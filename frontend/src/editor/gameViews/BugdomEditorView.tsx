@@ -116,7 +116,7 @@ export function BugdomEditorView({
             setHeaderData={setHeaderData}
           />
         )}
-        {view === View.tiles && (
+        {view === View.tiles && canvasViewMode !== CanvasView.THREE_D && (
           <IndividualTilesMenu headerData={headerData} setHeaderData={setHeaderData} />
         )}
         {view === View.supertiles && showSupertileMenu && (
