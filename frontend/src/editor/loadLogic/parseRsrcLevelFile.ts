@@ -4,7 +4,7 @@ import { preprocessJson } from "@/data/processors/ottoPreprocessor";
 import type { GlobalsInterface } from "@/data/globals/globals";
 import { splitLevelData, AtomicLevelData } from "@/data/utils/levelDataUtils";
 import { validateLevelDataForGame } from "@/validation/validateLevelForGame";
-import { saveToJsonObject } from "@lachlanbwwright/rsrcdump-ts";
+import { saveToJson } from "@lachlanbwwright/rsrcdump-ts";
 
 export async function parseRsrcLevelFile(
   file: Blob,
@@ -16,19 +16,18 @@ export async function parseRsrcLevelFile(
     const bytes = new Uint8Array(levelBuffer);
 
     // Use rsrcdump-ts to parse the resource fork
-    const parseResult = saveToJsonObject(
+    const parseResult = await saveToJson(
       bytes,
       gameType.STRUCT_SPECS,
       [], // includeTypes
       [], // excludeTypes
-      true, // useOttoSpecs
     );
 
     if (!parseResult.ok) {
-      return err(parseResult.error);
+      return err(new Error(parseResult.error));
     }
 
-    const result = parseResult.value as Record<string, unknown>;
+    const result = JSON.parse(parseResult.value) as Record<string, unknown>;
 
     // Apply preprocessing FIRST (converts liquid nubs from x_0/y_0 format to array format)
     const preprocessResult = preprocessJson(result, gameType);

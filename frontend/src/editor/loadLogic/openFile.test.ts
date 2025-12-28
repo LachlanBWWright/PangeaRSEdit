@@ -23,7 +23,6 @@ describe("openFile", () => {
     const setMapImagesFile = vi.fn();
     const setMapImages = vi.fn();
     const setData = vi.fn();
-    const pyodideWorker = {} as Worker;
 
     const gameType = {
       DATA_TYPE: "MIGHTY_MIKE",
@@ -37,7 +36,6 @@ describe("openFile", () => {
       setMapFile,
       setMapImagesFile,
       setMapImages,
-      pyodideWorker,
       setData,
     });
 
@@ -71,7 +69,6 @@ describe("openFile", () => {
     const setMapImagesFile = vi.fn();
     const setMapImages = vi.fn();
     const setData = vi.fn();
-    const pyodideWorker = {} as Worker;
 
     const gameType = {
       DATA_TYPE: DataType.RSRC_FORK,
@@ -85,7 +82,6 @@ describe("openFile", () => {
       setMapFile,
       setMapImagesFile,
       setMapImages,
-      pyodideWorker,
       setData,
     });
 

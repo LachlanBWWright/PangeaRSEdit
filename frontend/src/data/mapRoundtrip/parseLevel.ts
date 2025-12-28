@@ -12,7 +12,7 @@ import {
 import { preprocessJson } from "../processors/ottoPreprocessor";
 import { DataType, GlobalsInterface } from "../globals/globals";
 import { Result, ok, err, isErr } from "../../types/result";
-import { saveToJsonObject, saveFromJson } from "@lachlanbwwright/rsrcdump-ts";
+import { saveToJson, loadBytesFromJson } from "@lachlanbwwright/rsrcdump-ts";
 
 /**
  * Parse a level data buffer to JSON using rsrcdump-ts
@@ -30,19 +30,19 @@ export async function parseLevelBuffer(
 
   try {
     const bytes = new Uint8Array(buffer);
-    const parseResult = saveToJsonObject(
+    const parseResult = await saveToJson(
       bytes,
       structSpecs || [],
       includeTypes,
       excludeTypes,
-      true, // useOttoSpecs
     );
 
     if (!parseResult.ok) {
-      return err(parseResult.error);
+      return err(new Error(parseResult.error));
     }
 
-    return ok(parseResult.value as LevelData);
+    const parsed = JSON.parse(parseResult.value);
+    return ok(parsed as LevelData);
   } catch (error) {
     return err(error instanceof Error ? error : new Error(String(error)));
   }
@@ -87,17 +87,19 @@ export async function serializeLevelData(
   const { structSpecs } = options;
 
   try {
-    const saveResult = saveFromJson(
+    const saveResult = loadBytesFromJson(
       levelData,
       structSpecs || [],
-      true, // useOttoSpecs
+      [], // onlyTypes
+      [], // skipTypes
+      true, // adf
     );
 
     if (!saveResult.ok) {
-      return err(saveResult.error);
+      return err(new Error(saveResult.error));
     }
 
-    return ok(saveResult.value.buffer);
+    return ok(saveResult.value.buffer as ArrayBuffer);
   } catch (error) {
     return err(error instanceof Error ? error : new Error(String(error)));
   }

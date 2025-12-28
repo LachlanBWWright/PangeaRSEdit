@@ -1,42 +1,30 @@
 import { skeletonSpecs } from "../../python/structSpecs/skeleton/skeleton";
-
-import type {
-  PyodideMessage,
-  PyodideResponse,
-} from "../../python/pyodideWorker";
+import { saveToJson } from "@lachlanbwwright/rsrcdump-ts";
 
 /**
- * Parse a skeleton resource using the pyodide worker and skeletonSpecs
- * @param pyodideWorker The initialized Pyodide web worker
- * @param bytes The JSON data to parse (object or array)
+ * Parse a skeleton resource using rsrcdump-ts and skeletonSpecs
+ * @param bytes The binary data to parse
  * @returns Promise resolving to the parsed JSON object result
  */
-export function parseSkeletonRsrc({
-  pyodideWorker,
+export async function parseSkeletonRsrc({
   bytes,
 }: {
-  pyodideWorker: Worker;
   bytes: ArrayBuffer;
   only_types?: string[];
   skip_types?: string[];
   adf?: "True" | "False";
 }): Promise<unknown> {
-  return new Promise<unknown>((resolve, reject) => {
-    pyodideWorker.postMessage({
-      type: "save_to_json",
-      bytes,
-      struct_specs: skeletonSpecs,
-      include_types: [],
-      exclude_types: [],
-    } satisfies PyodideMessage);
-    console.log("Sent save_to_json message to pyodide worker");
+  const uint8Array = new Uint8Array(bytes);
+  const parseResult = await saveToJson(
+    uint8Array,
+    skeletonSpecs,
+    [], // includeTypes
+    [], // excludeTypes
+  );
 
-    pyodideWorker.onmessage = (event: MessageEvent<PyodideResponse>) => {
-      if (event.data.type === "save_to_json") {
-        resolve(event.data.result as unknown);
-      } else {
-        reject(new Error("Unexpected response from pyodide worker"));
-      }
-    };
-  });
+  if (!parseResult.ok) {
+    throw new Error(parseResult.error);
+  }
+
+  return JSON.parse(parseResult.value);
 }

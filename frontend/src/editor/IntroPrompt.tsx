@@ -28,7 +28,7 @@ import {
 import { isOk } from "../types/result";
 import { SafeItemTypes, SafeSplineItemTypes } from "../data/items/itemAtoms";
 import { extractSafeItemTypes } from "../data/items/extractSafeItemTypes";
-import { saveFromJson } from "@lachlanbwwright/rsrcdump-ts";
+import { loadBytesFromJson } from "@lachlanbwwright/rsrcdump-ts";
 
 export type DataHistory = {
   items: AtomicLevelData[];
@@ -239,21 +239,23 @@ export function IntroPrompt() {
       }
 
       // Use rsrcdump-ts to convert JSON to binary
-      const saveResult = saveFromJson(
+      const saveResult = loadBytesFromJson(
         combinedData,
         globals.STRUCT_SPECS,
-        true, // useOttoSpecs
+        [], // onlyTypes
+        [], // skipTypes
+        true, // adf
       );
 
       if (!saveResult.ok) {
         console.error("Download failed:", saveResult.error);
         toast.error("Download failed", {
-          description: saveResult.error.message,
+          description: saveResult.error,
         });
         return;
       }
 
-      const loadRes = saveResult.value.buffer;
+      const loadRes = saveResult.value as Uint8Array;
 
       if (!loadRes || loadRes.byteLength === 0) {
         console.error("Download failed: Generated map data is empty");
@@ -263,7 +265,7 @@ export function IntroPrompt() {
         return;
       }
 
-      const mapBlob = new Blob([loadRes], { type: ".ter.rsrc" });
+      const mapBlob = new Blob([loadRes.slice(0)], { type: ".ter.rsrc" });
       const mapUrl = URL.createObjectURL(mapBlob);
 
       const downloadLink = document.createElement("a");
