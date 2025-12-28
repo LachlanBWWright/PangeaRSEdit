@@ -27,3 +27,4 @@ dist-ssr
 screenshots/
 test-results/
 playwright-report/
+coverage/

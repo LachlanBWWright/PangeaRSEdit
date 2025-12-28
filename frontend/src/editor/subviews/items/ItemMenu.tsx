@@ -1,10 +1,18 @@
 import { Updater } from "use-immer";
-import { ItemData, HeaderData } from "../../../python/structSpecs/ottoMaticLevelData";
+import {
+  ItemData,
+  HeaderData,
+} from "@/python/structSpecs/LevelTypes";
 import { useAtom, useAtomValue } from "jotai";
 import { Button } from "@/components/ui/button";
-import { ClickToAddItem, SelectedItem } from "../../../data/items/itemAtoms";
-import { ottoItemTypeParams } from "../../../data/items/ottoItemType";
-import type { ParamDescription } from "../../../data/items/itemParams";
+import { 
+  ClickToAddItem, 
+  SelectedItem, 
+  SafeItemTypes, 
+  FilterToSafeItems 
+} from "../../../data/items/itemAtoms";
+import { TerrainItemTypeParams, ItemType } from "../../../data/items/ottoItemType";
+import type { ParamDescription, FlagDescription } from "../../../data/items/itemParams";
 import { parseU16, parseU8 } from "../../../utils/numberParsers";
 import { useEffect } from "react";
 import { Input } from "@/components/ui/input";
@@ -20,12 +28,11 @@ import { getItemName } from "@/data/items/getItemNames";
 import { Globals } from "@/data/globals/globals";
 import { getItemTypes } from "@/data/items/getItemTypes";
 import { ParamTooltip } from "./ParamTooltip";
+import { Label } from "@/components/ui/label";
 
 export function ItemMenu({
   itemData,
   setItemData,
-  headerData: _headerData,
-  setHeaderData: _setHeaderData,
 }: {
   itemData: ItemData;
   setItemData: Updater<ItemData>;
@@ -34,6 +41,9 @@ export function ItemMenu({
 }) {
   const globals = useAtomValue(Globals);
   const [selectedItem, setSelectedItem] = useAtom(SelectedItem);
+  const safeItemTypes = useAtomValue(SafeItemTypes);
+  const [filterToSafe, setFilterToSafe] = useAtom(FilterToSafeItems);
+  // Mark unused props as used to satisfy linter; they are intentionally passed in for consistency with parent
 
   if (itemData.Itms === undefined) return null;
 
@@ -41,11 +51,16 @@ export function ItemMenu({
     selectedItem !== undefined ? itemData.Itms[1000].obj[selectedItem] : null;
 
   const itemTypesResult = getItemTypes(globals);
-  const itemValues = itemTypesResult.ok
+  const allItemValues = itemTypesResult.ok
     ? itemTypesResult.value
         .map((key) => parseInt(key))
         .filter((key) => isNaN(key) === false)
     : [];
+
+  // Filter to safe items if enabled
+  const itemValues = filterToSafe && safeItemTypes.size > 0
+    ? allItemValues.filter((type) => safeItemTypes.has(type))
+    : allItemValues;
 
   return (
     <div className="flex flex-col gap-2">
@@ -53,7 +68,8 @@ export function ItemMenu({
         <AddItemMenu />
       ) : (
         <p>
-          Item {selectedItemData.type} ({selectedItemData.x},{selectedItemData.z})
+          Item {selectedItemData.type} ({selectedItemData.x},
+          {selectedItemData.z})
         </p>
       )}
 
@@ -74,7 +90,9 @@ export function ItemMenu({
               }}
             >
               <SelectTrigger>
-                <SelectValue>{getItemName(globals, selectedItemData.type)}</SelectValue>
+                <SelectValue>
+                  {getItemName(globals, selectedItemData.type)}
+                </SelectValue>
               </SelectTrigger>
               <SelectContent>
                 {itemValues.map((key) => (
@@ -89,14 +107,32 @@ export function ItemMenu({
               </SelectContent>
             </Select>
 
+            {/* Safe Items Filter Toggle */}
+            {safeItemTypes.size > 0 && (
+              <div className="flex items-center space-x-2 p-2 bg-blue-50 dark:bg-blue-950 rounded">
+                <Checkbox
+                  id="filter-safe-items"
+                  checked={filterToSafe}
+                  onCheckedChange={(checked) => setFilterToSafe(checked === true)}
+                />
+                <Label 
+                  htmlFor="filter-safe-items" 
+                  className="text-sm cursor-pointer"
+                >
+                  Only show item types found in original level ({safeItemTypes.size} safe types)
+                </Label>
+              </div>
+            )}
+
             <div className="grid grid-cols-[auto_1fr_auto_1fr] gap-2 items-baseline">
               <ParamTooltip
                 label={
                   <span className="text-baseline align-text-bottom">Flags</span>
                 }
                 tooltip={
-                  typeof ottoItemTypeParams[selectedItemData.type].flags === "string"
-                    ? ottoItemTypeParams[selectedItemData.type].flags
+                  typeof TerrainItemTypeParams[selectedItemData.type as ItemType].flags ===
+                  "string"
+                    ? TerrainItemTypeParams[selectedItemData.type as ItemType].flags
                     : ""
                 }
               />
@@ -118,7 +154,8 @@ export function ItemMenu({
               {/* Param 0-3, refactored */}
               {([0, 1, 2, 3] as const).map((i) => {
                 const paramKey = `p${i}` as const;
-                const param = ottoItemTypeParams[selectedItemData.type][paramKey];
+                const param =
+                  TerrainItemTypeParams[selectedItemData.type as ItemType][paramKey];
                 const value = selectedItemData[paramKey];
                 const setValue = (v: number) => {
                   setItemData((itemData) => {
@@ -135,20 +172,27 @@ export function ItemMenu({
                     label={<span>{`Parameter ${i}`}</span>}
                     tooltip={getParamTooltip(param)}
                   />,
-                  param && typeof param !== "string" && param.type === "Bit Flags" && Array.isArray(param.flags) ? (
+                  param &&
+                  typeof param !== "string" &&
+                  param.type === "Bit Flags" &&
+                  Array.isArray(param.flags) ? (
                     <div key={`flags-${i}`} className="flex flex-col gap-1">
                       <div className="flex flex-wrap gap-2">
-                        {param.flags.map((flag) => {
+                        {param.flags.map((flag: FlagDescription) => {
                           const checked = (value & (1 << flag.index)) !== 0;
                           return (
-                            <label key={flag.index} className="inline-flex items-center gap-1">
+                            <label
+                              key={flag.index}
+                              className="inline-flex items-center gap-1"
+                            >
                               <Checkbox
-                              className="font-bold"
+                                className="font-bold"
                                 checked={checked}
                                 onCheckedChange={(checked) => {
                                   setItemData((itemData) => {
                                     if (selectedItem === undefined) return;
-                                    const item = itemData.Itms[1000]?.obj?.[selectedItem];
+                                    const item =
+                                      itemData.Itms[1000]?.obj?.[selectedItem];
                                     if (item) {
                                       const mask = 1 << flag.index;
                                       if (checked) {
@@ -166,7 +210,7 @@ export function ItemMenu({
                         })}
                       </div>
                       <div className="flex items-center gap-2 mt-1">
-                        <p >Value:</p>
+                        <p>Value:</p>
                         <Input
                           type="number"
                           className="w-24"
@@ -182,7 +226,7 @@ export function ItemMenu({
                       value={value.toString()}
                       onChange={(e) => setValue(parseU8(e.target.value))}
                     />
-                  )
+                  ),
                 ];
               })}
             </div>
@@ -210,7 +254,7 @@ function AddItemMenu() {
   const [clickToAddItem, setClickToAddItem] = useAtom(ClickToAddItem);
   useEffect(() => {
     return () => setClickToAddItem(undefined);
-  }, []);
+  }, [setClickToAddItem]);
   const globals = useAtomValue(Globals);
 
   const itemTypesResult = getItemTypes(globals);
@@ -247,7 +291,10 @@ function AddItemMenu() {
         </Select>
 
         <p>Click on the Canvas to add the selected item</p>
-        <Button variant="destructive" onClick={() => setClickToAddItem(undefined)}>
+        <Button
+          variant="destructive"
+          onClick={() => setClickToAddItem(undefined)}
+        >
           Stop Adding Items
         </Button>
       </>

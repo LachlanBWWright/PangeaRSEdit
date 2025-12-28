@@ -1,7 +1,7 @@
-import { ottoSplinePoint } from "../python/structSpecs/ottoMaticInterface";
+import { SplinePoint } from "@/python/structSpecs/LevelTypes";
 import { calcQuickDistance } from "./distanceCalc";
 
-export function getPoints(nubs: ottoSplinePoint[]) {
+export function getPoints(nubs: SplinePoint[]) {
   const pointsPerSpan = new Array<number>(nubs.length);
 
   for (let i = 0; i < nubs.length; i++) {
@@ -26,7 +26,7 @@ export function spanPoints(distance: number) {
 }
 
 //Code for creating spline (similar to OreoTerrain)
-export function bakeSpline(nubs: ottoSplinePoint[], pointsPerSpan: number[]) {
+export function bakeSpline(nubs: SplinePoint[], pointsPerSpan: number[]) {
   const numNubs = nubs.length;
   /*     SplinePointType** pointsHandle;
     SplinePointType**space,*points;
@@ -37,11 +37,11 @@ export function bakeSpline(nubs: ottoSplinePoint[], pointsPerSpan: number[]) {
     let 
  */
   // ALLOCATE 2D ARRAY FOR CALCULATIONS
-  const space = new Array<ottoSplinePoint[]>(8);
+  const space = new Array<SplinePoint[]>(8);
   //Init array
   for (let i = 0; i < 8; i++) {
-    space[i] = new Array<ottoSplinePoint>(numNubs);
-    for (let j = 0; j < numNubs; j++) (space[i] as ottoSplinePoint[])[j] = { x: 0, z: 0 };
+    space[i] = new Array<SplinePoint>(numNubs);
+    for (let j = 0; j < numNubs; j++) (space[i] as SplinePoint[])[j] = { x: 0, z: 0 };
   }
 
   // ALLOC POINT ARRAY
@@ -50,21 +50,21 @@ export function bakeSpline(nubs: ottoSplinePoint[], pointsPerSpan: number[]) {
 
   //pointsHandle = (SplinePointType**) AllocHandle(sizeof(SplinePointType) * maxPoints);
   //let points = pointsHandle;
-  let points = new Array<ottoSplinePoint>(maxPoints);
+  let points = new Array<SplinePoint>(maxPoints);
   //Initialise with zeros
   for (let i = 0; i < maxPoints; i++) points[i] = { x: 0, z: 0 };
 
   // DO MAGICAL CUBIC SPLINE CALCULATIONS ON CONTROL PTS
   // These arrays are fully initialized in the loop above, assert them as non-undefined
-  const h0 = space[0] as ottoSplinePoint[];
-  const h1 = space[1] as ottoSplinePoint[];
-  const h2 = space[2] as ottoSplinePoint[];
-  const h3 = space[3] as ottoSplinePoint[];
+  const h0 = space[0] as SplinePoint[];
+  const h1 = space[1] as SplinePoint[];
+  const h2 = space[2] as SplinePoint[];
+  const h3 = space[3] as SplinePoint[];
 
-  const a = space[4] as ottoSplinePoint[];
-  const b = space[5] as ottoSplinePoint[];
-  const c = space[6] as ottoSplinePoint[];
-  const d = space[7] as ottoSplinePoint[];
+  const a = space[4] as SplinePoint[];
+  const b = space[5] as SplinePoint[];
+  const c = space[6] as SplinePoint[];
+  const d = space[7] as SplinePoint[];
 
   // COPY CONTROL POINTS INTO ARRAY
   for (let i = 0; i < numNubs; i++) {

@@ -10,14 +10,14 @@
  * - Edit tile assignments in the layer data
  */
 
-import { useAtomValue, useAtom } from "jotai";
+import { useAtomValue } from "jotai";
 import { Layer, Stage, Image } from "react-konva";
 import { SelectedTile } from "../../../data/supertiles/supertileAtoms";
 import { Updater } from "use-immer";
 import {
   HeaderData,
   TerrainData,
-} from "../../../python/structSpecs/ottoMaticLevelData";
+} from "@/python/structSpecs/LevelTypes";
 import { Globals } from "../../../data/globals/globals";
 import { Button } from "@/components/ui/button";
 import { useState, useMemo } from "react";
@@ -32,7 +32,7 @@ import {
   TILE_ROT2,
   TILE_ROT3,
   translateTileIndex,
-} from "./BugdomTileRenderer";
+} from "./BugdomTileRenderer.utils";
 
 interface BugdomTileMenuProps {
   headerData: HeaderData;
@@ -45,13 +45,14 @@ interface BugdomTileMenuProps {
 
 export function BugdomTileMenu({
   headerData,
-  setHeaderData: _setHeaderData,
+
   terrainData,
   setTerrainData,
   mapImages,
-  setMapImages: _setMapImages,
 }: BugdomTileMenuProps) {
-  const [selectedTile, _setSelectedTile] = useAtom(SelectedTile);
+  // Mark destructured setters as used to satisfy lint rules (component doesn't use them directly)
+
+  const selectedTile = useAtomValue(SelectedTile);
   const hedr = headerData.Hedr[1000].obj;
   const globals = useAtomValue(Globals);
 
@@ -67,40 +68,41 @@ export function BugdomTileMenu({
   const xlatTable = terrainData.Xlat?.[1000]?.obj;
   const numTileImages = mapImages.length;
 
-  // Get info about the selected tile from the layer
-  const getTileInfo = (tileValue: number) => {
-    const tileIndex = tileValue & TILENUM_MASK;
-    const flipX = (tileValue & TILE_FLIPX_MASK) !== 0;
-    const flipY = (tileValue & TILE_FLIPY_MASK) !== 0;
-    const rotation = tileValue & TILE_ROTATE_MASK;
-
-    let rotationDegrees = 0;
-    switch (rotation) {
-      case TILE_ROT1:
-        rotationDegrees = 90;
-        break;
-      case TILE_ROT2:
-        rotationDegrees = 180;
-        break;
-      case TILE_ROT3:
-        rotationDegrees = 270;
-        break;
-    }
-
-    // Get the translated image index
-    const translatedValue = translateTileIndex(
-      tileValue,
-      xlatTable,
-      numTileImages,
-    );
-    const imageIndex = translatedValue & TILENUM_MASK;
-
-    return { tileIndex, flipX, flipY, rotationDegrees, imageIndex };
-  };
+  // NOTE: tile info helper is defined inside useMemo to avoid changing the memo's dependencies
 
   // Calculate which tiles are in the selected supertile
   const tilesInSelectedSupertile = useMemo(() => {
     if (!layerData) return [];
+
+    // Local helper to avoid creating a wide dependency for useMemo
+    const getTileInfo = (tileValue: number) => {
+      const tileIndex = tileValue & TILENUM_MASK;
+      const flipX = (tileValue & TILE_FLIPX_MASK) !== 0;
+      const flipY = (tileValue & TILE_FLIPY_MASK) !== 0;
+      const rotation = tileValue & TILE_ROTATE_MASK;
+
+      let rotationDegrees = 0;
+      switch (rotation) {
+        case TILE_ROT1:
+          rotationDegrees = 90;
+          break;
+        case TILE_ROT2:
+          rotationDegrees = 180;
+          break;
+        case TILE_ROT3:
+          rotationDegrees = 270;
+          break;
+      }
+
+      const translatedValue = translateTileIndex(
+        tileValue,
+        xlatTable,
+        numTileImages,
+      );
+      const imageIndex = translatedValue & TILENUM_MASK;
+
+      return { tileIndex, flipX, flipY, rotationDegrees, imageIndex };
+    };
 
     const tilesPerSupertile = globals.TILES_PER_SUPERTILE;
     const supertilesWide = Math.ceil(hedr.mapWidth / tilesPerSupertile);
@@ -146,6 +148,7 @@ export function BugdomTileMenu({
     hedr.mapWidth,
     hedr.mapHeight,
     globals.TILES_PER_SUPERTILE,
+    numTileImages,
     xlatTable,
   ]);
 

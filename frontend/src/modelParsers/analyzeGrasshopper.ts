@@ -5,7 +5,7 @@
 
 import * as fs from "fs";
 import * as path from "path";
-import { parseBG3D, BG3DTagType } from "./parseBG3D";
+import { parseBG3D } from "./parseBG3D";
 import { isErr } from "../types/result";
 
 const GRASSHOPPER_PATH = path.join(
@@ -51,7 +51,7 @@ function analyzeFile() {
     console.log(`\n❌ Parse error: ${result.error.message}`);
     return;
   }
-  
+
   const parsed = result.value;
   console.log(`\n✅ Successfully parsed!`);
   console.log(`Materials: ${parsed.materials.length}`);
@@ -61,17 +61,18 @@ function analyzeFile() {
   let hasBoundingBox = false;
   let geomCount = 0;
 
-  function inspectGroup(children: any[], depth = 0) {
+  function inspectGroup(children: unknown[], depth = 0) {
     for (const child of children) {
-      if (Array.isArray(child.children)) {
-        inspectGroup(child.children, depth + 1);
+      const c = child as Record<string, unknown>;
+      if (Array.isArray(c.children)) {
+        inspectGroup(c.children as unknown[], depth + 1);
       } else {
         geomCount++;
-        if (child.boundingBox) {
+        if (c.boundingBox !== undefined) {
           hasBoundingBox = true;
           console.log(
             `  Found bounding box in geometry ${geomCount}:`,
-            child.boundingBox,
+            c.boundingBox,
           );
         }
       }

@@ -1,42 +1,42 @@
-import { describe, test, expect, vi } from 'vitest';
-import { analyzeGLTF, splitGLTFByNodes } from './gltfAnalyzer';
+import { describe, test, expect, vi } from "vitest";
+import { analyzeGLTF, splitGLTFByNodes } from "./gltfAnalyzer";
 
 // Mock @gltf-transform/core
-vi.mock('@gltf-transform/core', () => {
+vi.mock("@gltf-transform/core", () => {
   const mockTexture = {
-    getName: () => 'TestTexture',
-    getURI: () => 'data:image/png;base64,test',
-    getMimeType: () => 'image/png',
-    clone: vi.fn().mockReturnThis()
+    getName: () => "TestTexture",
+    getURI: () => "data:image/png;base64,test",
+    getMimeType: () => "image/png",
+    clone: vi.fn().mockReturnThis(),
   };
 
   const mockMaterial = {
-    getName: () => 'TestMaterial',
+    getName: () => "TestMaterial",
     getBaseColorTexture: () => mockTexture,
     getNormalTexture: () => null,
     getMetallicRoughnessTexture: () => null,
     getOcclusionTexture: () => null,
     getEmissiveTexture: () => null,
-    clone: vi.fn().mockReturnThis()
+    clone: vi.fn().mockReturnThis(),
   };
 
   const mockPrimitive = {
-    getMaterial: () => mockMaterial
+    getMaterial: () => mockMaterial,
   };
 
   const mockMesh = {
-    listPrimitives: () => [mockPrimitive]
+    listPrimitives: () => [mockPrimitive],
   };
 
   const mockNode = {
-    getName: () => 'TestNode',
+    getName: () => "TestNode",
     getMesh: () => mockMesh,
     listChildren: () => [],
-    clone: vi.fn().mockReturnThis()
+    clone: vi.fn().mockReturnThis(),
   };
 
   const mockScene = {
-    addChild: vi.fn()
+    addChild: vi.fn(),
   };
 
   const mockRoot = {
@@ -44,56 +44,66 @@ vi.mock('@gltf-transform/core', () => {
     listMeshes: () => [mockMesh],
     listMaterials: () => [mockMaterial],
     listTextures: () => [mockTexture],
-    getDefaultScene: () => mockScene
+    getDefaultScene: () => mockScene,
   };
 
   const mockDocument = {
-    getRoot: () => mockRoot
+    getRoot: () => mockRoot,
   };
 
   const mockWebIO = {
-    readBinary: vi.fn().mockResolvedValue(mockDocument)
+    readBinary: vi.fn().mockResolvedValue(mockDocument),
   };
 
   return {
     Document: vi.fn().mockImplementation(() => mockDocument),
-    WebIO: vi.fn().mockImplementation(() => mockWebIO)
+    WebIO: vi.fn().mockImplementation(() => mockWebIO),
   };
 });
 
-describe('gltfAnalyzer', () => {
-  test('analyzeGLTF should extract GLTF information correctly', async () => {
+describe("gltfAnalyzer", () => {
+  test("analyzeGLTF should extract GLTF information correctly", async () => {
     const mockArrayBuffer = new ArrayBuffer(100);
-    
+
     const analysis = await analyzeGLTF(mockArrayBuffer);
-    
+
     expect(analysis.nodeCount).toBe(1);
     expect(analysis.meshCount).toBe(1);
     expect(analysis.materialCount).toBe(1);
     expect(analysis.textureCount).toBe(1);
-    
+
     expect(analysis.nodes).toHaveLength(1);
-    expect(analysis.nodes[0].name).toBe('TestNode');
-    
+    const node = analysis.nodes[0];
+    if (!node) throw new Error("expected node");
+    expect(node.name).toBe("TestNode");
+
     expect(analysis.materials).toHaveLength(1);
-    expect(analysis.materials[0].name).toBe('TestMaterial');
-    expect(analysis.materials[0].textures).toHaveLength(1);
-    expect(analysis.materials[0].textures[0].type).toBe('baseColor');
-    
+    const material = analysis.materials[0];
+    if (!material) throw new Error("expected material");
+    expect(material.name).toBe("TestMaterial");
+    expect(material.textures).toHaveLength(1);
+    const texInfo = material.textures[0];
+    if (!texInfo) throw new Error("expected texture info");
+    expect(texInfo.type).toBe("baseColor");
+
     expect(analysis.textures).toHaveLength(1);
-    expect(analysis.textures[0].name).toBe('TestTexture');
-    expect(analysis.textures[0].uri).toBe('data:image/png;base64,test');
-    expect(analysis.textures[0].mimeType).toBe('image/png');
+    const texture = analysis.textures[0];
+    if (!texture) throw new Error("expected texture");
+    expect(texture.name).toBe("TestTexture");
+    expect(texture.uri).toBe("data:image/png;base64,test");
+    expect(texture.mimeType).toBe("image/png");
   });
 
-  test('splitGLTFByNodes should create separate documents for each node', async () => {
-    const { Document } = await import('@gltf-transform/core');
+  test("splitGLTFByNodes should create separate documents for each node", async () => {
+    const { Document } = await import("@gltf-transform/core");
     const mockDoc = new Document();
-    
+
     const documents = splitGLTFByNodes(mockDoc);
-    
+
     expect(documents).toHaveLength(1);
-    expect(documents[0]).toHaveProperty('getRoot');
-    expect(typeof documents[0].getRoot).toBe('function');
+    const doc = documents[0];
+    if (!doc) throw new Error("expected document");
+    expect(doc).toHaveProperty("getRoot");
+    expect(typeof doc.getRoot).toBe("function");
   });
 });

@@ -5,11 +5,25 @@ interface Props {
   children?: React.ReactNode;
 }
 
-export default function LevelGrid({ title, children }: Props) {
+export function LevelGrid({ title, children }: Props) {
+  // Ensure children render as a vertical list of full-width items (Buttons)
+  const childrenWithFullWidth = React.Children.map(children, (child) =>
+    React.isValidElement(child)
+      ? React.cloneElement(child as React.ReactElement<{ className?: string }>, {
+          className: [
+            (child as React.ReactElement<{ className?: string }>).props?.className,
+            "w-full",
+          ]
+            .filter(Boolean)
+            .join(" "),
+        })
+      : child,
+  );
+
   return (
-    <div className="grid grid-cols-1 grid-rows-11 grid-flow-col text-2xl gap-1 min-w-40">
+    <div className="flex flex-col gap-1 text-2xl min-w-40">
       <p>{title}</p>
-      {children}
+      {childrenWithFullWidth}
     </div>
   );
 }

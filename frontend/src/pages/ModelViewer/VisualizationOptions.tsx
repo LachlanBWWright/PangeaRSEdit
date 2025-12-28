@@ -10,7 +10,7 @@ interface Props {
   setLogBonePositions: (v: boolean) => void;
 }
 
-export default function VisualizationOptions({
+export function VisualizationOptions({
   wireframeMode,
   setWireframeMode,
   showSkeleton,

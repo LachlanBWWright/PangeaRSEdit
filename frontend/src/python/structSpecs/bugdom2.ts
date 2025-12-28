@@ -4,7 +4,7 @@ export const bugdom2Specs = [
   //Header - simplified format without numTilePages/numTiles
   //Source: games/bugdom2/Source/System/File.c - PlayfieldHeaderType
   "Hedr:4L3f5L40x:version,numItems,mapWidth,mapHeight,tileSize,minY,maxY,numSplines,numFences,numUniqueSupertiles,numWaterPatches,numCheckpoints",
-  
+
   /////////////////////////////////////////////////////////////////
   // Supertiles
   /////////////////////////////////////////////////////////////////

@@ -3,14 +3,14 @@
  * These functions can be used both in React components and in tests
  */
 
-import { ottoMaticLevel } from "../../python/structSpecs/ottoMaticInterface";
+import { LevelData } from "@/python/structSpecs/LevelTypes";
 import { ParseLevelOptions, SerializeLevelOptions } from "./types";
 import {
-  nanosaur1LevelToOttoMaticLevel,
+  nanosaur1LevelToLevelData,
   parseNanosaur1Level,
 } from "../processors/classicProprocessor";
 import { preprocessJson } from "../processors/ottoPreprocessor";
-import { Game, GlobalsInterface } from "../globals/globals";
+import { DataType, GlobalsInterface } from "../globals/globals";
 import { Result, ok, err, isErr } from "../../types/result";
 
 /**
@@ -20,13 +20,13 @@ import { Result, ok, err, isErr } from "../../types/result";
  * @param buffer - The raw binary level data
  * @param options - Parsing options including struct specs
  * @param pyodideRunner - A function that runs pyodide code (can be worker or direct)
- * @returns Result with the parsed level data as ottoMaticLevel
+ * @returns Result with the parsed level data as LevelData
  */
 export async function parseLevelBuffer(
   buffer: ArrayBuffer,
   options: ParseLevelOptions,
   pyodideRunner: (code: string, buffer: ArrayBuffer) => Promise<string>,
-): Promise<Result<ottoMaticLevel, Error>> {
+): Promise<Result<LevelData, Error>> {
   const { structSpecs, includeTypes = [], excludeTypes = [] } = options;
 
   try {
@@ -40,7 +40,7 @@ export async function parseLevelBuffer(
       buffer,
     );
 
-    return ok(JSON.parse(resultJson) as ottoMaticLevel);
+    return ok(JSON.parse(resultJson) as LevelData);
   } catch (error) {
     return err(error instanceof Error ? error : new Error(String(error)));
   }
@@ -50,12 +50,22 @@ export async function parseLevelBuffer(
  * Parse a Nanosaur 1 level file (uses different format than other games)
  *
  * @param buffer - The raw .ter file data
- * @returns Result with the parsed level data converted to ottoMaticLevel format
+ * @returns Result with the parsed level data converted to LevelData format
  */
-export function parseNanosaur1Buffer(buffer: ArrayBuffer): Result<ottoMaticLevel, Error> {
+export function parseNanosaur1Buffer(
+  buffer: ArrayBuffer,
+  gameType?: GlobalsInterface,
+): Result<LevelData, Error> {
   try {
     const rawLevelData = parseNanosaur1Level(buffer);
-    return ok(nanosaur1LevelToOttoMaticLevel(rawLevelData));
+    return ok(
+      nanosaur1LevelToLevelData(
+        rawLevelData,
+        gameType?.TILE_SIZE ?? 32,
+        gameType?.TILE_INGAME_SIZE ?? 140,
+        4.0,
+      ),
+    );
   } catch (error) {
     return err(error instanceof Error ? error : new Error(String(error)));
   }
@@ -70,7 +80,7 @@ export function parseNanosaur1Buffer(buffer: ArrayBuffer): Result<ottoMaticLevel
  * @returns Result with the serialized binary buffer
  */
 export async function serializeLevelData(
-  levelData: ottoMaticLevel,
+  levelData: LevelData,
   options: SerializeLevelOptions,
   pyodideRunner: (code: string, jsonData: object) => Promise<ArrayBuffer>,
 ): Promise<Result<ArrayBuffer, Error>> {
@@ -106,14 +116,14 @@ export async function parseLevelForGame(
   buffer: ArrayBuffer,
   gameType: GlobalsInterface,
   pyodideRunner?: (code: string, buffer: ArrayBuffer) => Promise<string>,
-): Promise<Result<ottoMaticLevel, Error>> {
-  if (gameType.GAME_TYPE === Game.NANOSAUR) {
-    // Nanosaur 1 uses its own parser
-    return parseNanosaur1Buffer(buffer);
+): Promise<Result<LevelData, Error>> {
+  if (gameType.DATA_TYPE === DataType.TRT_FILE) {
+    // Nanosaur 1 uses its own TRT file parser
+    return parseNanosaur1Buffer(buffer, gameType);
   }
 
   if (!pyodideRunner) {
-    return err(new Error("pyodideRunner is required for non-Nanosaur 1 games"));
+    return err(new Error("pyodideRunner is required for non-TRT file games"));
   }
 
   const parseResult = await parseLevelBuffer(
@@ -129,7 +139,10 @@ export async function parseLevelForGame(
   }
 
   // Apply preprocessing
-  const preprocessResult = preprocessJson(parseResult.value, gameType);
+  const preprocessResult = preprocessJson(
+    parseResult.value as unknown as Record<string, unknown>,
+    gameType
+  );
   if (isErr(preprocessResult)) {
     return preprocessResult;
   }
@@ -153,11 +166,16 @@ export async function performRoundtrip(
     parse: (code: string, buffer: ArrayBuffer) => Promise<string>;
     serialize: (code: string, jsonData: object) => Promise<ArrayBuffer>;
   },
-): Promise<Result<{
-  original: ottoMaticLevel;
-  serialized: ArrayBuffer;
-  roundtrip: ottoMaticLevel;
-}, Error>> {
+): Promise<
+  Result<
+    {
+      original: LevelData;
+      serialized: ArrayBuffer;
+      roundtrip: LevelData;
+    },
+    Error
+  >
+> {
   // Parse the original buffer
   const originalResult = await parseLevelForGame(
     buffer,
@@ -166,7 +184,9 @@ export async function performRoundtrip(
   );
 
   if (isErr(originalResult)) {
-    return err(new Error(`Failed to parse original: ${originalResult.error.message}`));
+    return err(
+      new Error(`Failed to parse original: ${originalResult.error.message}`),
+    );
   }
 
   // Serialize back to binary
@@ -179,7 +199,9 @@ export async function performRoundtrip(
   );
 
   if (isErr(serializedResult)) {
-    return err(new Error(`Failed to serialize: ${serializedResult.error.message}`));
+    return err(
+      new Error(`Failed to serialize: ${serializedResult.error.message}`),
+    );
   }
 
   // Parse the serialized buffer
@@ -190,7 +212,9 @@ export async function performRoundtrip(
   );
 
   if (isErr(roundtripResult)) {
-    return err(new Error(`Failed to parse roundtrip: ${roundtripResult.error.message}`));
+    return err(
+      new Error(`Failed to parse roundtrip: ${roundtripResult.error.message}`),
+    );
   }
 
   return ok({
@@ -209,8 +233,8 @@ export async function performRoundtrip(
  * @returns Comparison result with details about any differences
  */
 export function compareLevelData(
-  original: ottoMaticLevel,
-  roundtrip: ottoMaticLevel,
+  original: LevelData,
+  roundtrip: LevelData,
 ): {
   equal: boolean;
   differences: Array<{ path: string; original: unknown; roundtrip: unknown }>;

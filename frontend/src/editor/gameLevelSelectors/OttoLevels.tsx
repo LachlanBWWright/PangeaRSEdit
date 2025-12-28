@@ -1,8 +1,8 @@
 import { Button } from "@/components/ui/button";
-import LevelGrid from "../LevelGrid";
+import { LevelGrid } from "../LevelGrid";
 import { OttoGlobals, type GlobalsInterface } from "@/data/globals/globals";
 
-export default function OttoLevels({
+export function OttoLevels({
   openFile,
 }: {
   openFile: (url: string, gameType: GlobalsInterface) => void;

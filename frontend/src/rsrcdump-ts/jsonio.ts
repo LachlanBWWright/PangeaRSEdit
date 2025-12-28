@@ -8,14 +8,55 @@ import type {
   Resource,
 } from "./types";
 import { Base16Converter } from "./resconverters";
-import { Result, ok, err } from '../types/result';
+import { Result, ok, err } from "../types/result";
+
+// Type guard for Result-like objects
+function isResultLike(obj: unknown): obj is { ok: boolean; value?: unknown; error?: unknown } {
+  if (typeof obj !== "object" || obj === null) {
+    return false;
+  }
+  if (!("ok" in obj)) {
+    return false;
+  }
+  const objRecord = obj as Record<string, unknown>;
+  return typeof objRecord.ok === "boolean";
+}
+
+// Type guard for ConvertedResource maps
+function isConvertedResourceMap(obj: unknown): obj is Record<string, ConvertedResource> {
+  return typeof obj === "object" && obj !== null;
+}
+
+// Extract number from metadata object with fallback
+function getMetadataNumber(
+  metadata: Record<string, unknown>,
+  key: string,
+  legacyKey?: string,
+): number {
+  const value = metadata[key];
+  if (typeof value === "number") {
+    return value;
+  }
+  if (legacyKey) {
+    const legacyValue = metadata[legacyKey];
+    if (typeof legacyValue === "number") {
+      return legacyValue;
+    }
+  }
+  return 0;
+}
+
+// Check if value is Uint8Array
+function isUint8Array(value: unknown): value is Uint8Array {
+  return value instanceof Uint8Array;
+}
 
 export function resourceForkToJson(
   fork: ResourceFork,
   includeTypes: Uint8Array[] = [],
   excludeTypes: Uint8Array[] = [],
   converters: Map<string, ResourceConverter> = new Map(),
-  metadata: any = {},
+  metadata: Record<string, unknown> = {},
   quiet: boolean = false,
 ): Result<string, Error> {
   const jsonBlob: JsonOutput = {};
@@ -25,7 +66,7 @@ export function resourceForkToJson(
     jsonBlob._metadata = {
       junk1: fork.junkNextresmap,
       junk2: fork.junkFilerefnum,
-      file_attributes: fork.fileAttributes || 0,
+      fileAttributes: fork.fileAttributes || 0,
       ...metadata,
     };
   }
@@ -88,28 +129,36 @@ export function resourceForkToJson(
       const obj = converter.unpack(resource, fork);
 
       // Handle Result-returning converters
-      if (obj && typeof obj === 'object' && 'ok' in obj) {
+      if (isResultLike(obj)) {
         if (obj.ok) {
           if (converter instanceof Base16Converter) {
-            wrapper.data = obj.value;
+            wrapper.data = typeof obj.value === "string" ? obj.value : String(obj.value);
           } else {
             wrapper.obj = obj.value;
           }
         } else {
           wrapper.conversionError = String(obj.error);
           // Fall back to base16
-          wrapper.data = new Base16Converter().unpack(resource, fork);
+          const fallbackResult = new Base16Converter().unpack(resource, fork);
+          wrapper.data = typeof fallbackResult === "string" ? fallbackResult : String(fallbackResult);
         }
       } else {
         // Legacy converters that don't return Result
         if (converter instanceof Base16Converter) {
-          wrapper.data = obj;
+          wrapper.data = typeof obj === "string" ? obj : String(obj);
         } else {
           wrapper.obj = obj;
         }
       }
 
-      jsonBlob[typeName][resId.toString()] = wrapper;
+      // Initialize typeName entry if it doesn't exist
+      if (!(typeName in jsonBlob)) {
+        jsonBlob[typeName] = {};
+      }
+      const typeMap = jsonBlob[typeName];
+      if (isConvertedResourceMap(typeMap)) {
+        typeMap[resId.toString()] = wrapper;
+      }
     }
   }
 
@@ -198,28 +247,36 @@ export function resourceForkToJsonObject(
       const obj = converter.unpack(resource, fork);
 
       // Handle Result-returning converters
-      if (obj && typeof obj === 'object' && 'ok' in obj) {
+      if (isResultLike(obj)) {
         if (obj.ok) {
           if (converter instanceof Base16Converter) {
-            wrapper.data = obj.value;
+            wrapper.data = typeof obj.value === "string" ? obj.value : String(obj.value);
           } else {
             wrapper.obj = obj.value;
           }
         } else {
           wrapper.conversionError = String(obj.error);
           // Fall back to base16
-          wrapper.data = new Base16Converter().unpack(resource, fork);
+          const fallbackResult = new Base16Converter().unpack(resource, fork);
+          wrapper.data = typeof fallbackResult === "string" ? fallbackResult : String(fallbackResult);
         }
       } else {
         // Legacy converters that don't return Result
         if (converter instanceof Base16Converter) {
-          wrapper.data = obj;
+          wrapper.data = typeof obj === "string" ? obj : String(obj);
         } else {
           wrapper.obj = obj;
         }
       }
 
-      jsonBlob[typeName][resId.toString()] = wrapper;
+      // Initialize typeName entry if it doesn't exist
+      if (!(typeName in jsonBlob)) {
+        jsonBlob[typeName] = {};
+      }
+      const typeMap = jsonBlob[typeName];
+      if (isConvertedResourceMap(typeMap)) {
+        typeMap[resId.toString()] = wrapper;
+      }
     }
   }
 
@@ -236,25 +293,29 @@ export function jsonToResourceFork(
 ): Result<ResourceFork, Error> {
   const resources = new Map<string, Map<number, Resource>>();
 
-  // Extract metadata
-  const metadata = jsonData._metadata || {};
+  // Extract metadata - convert typed metadata to Record<string, unknown>
+  const metadataObj = jsonData._metadata || {};
+  const metadata: Record<string, unknown> = {
+    junk1: metadataObj.junk1,
+    junk2: metadataObj.junk2,
+    fileAttributes: metadataObj.fileAttributes,
+  };
   // Support both 'fileAttributes' and legacy 'file_attributes' property names
-  const fileAttributes =
-    (metadata.fileAttributes as number) ||
-    ((metadata as Record<string, unknown>)['file_attributes'] as number) ||
-    0;
-  const junkNextresmap = (metadata.junk1 as number) || 0;
-  const junkFilerefnum = (metadata.junk2 as number) || 0;
+  const fileAttributes = getMetadataNumber(metadata, "fileAttributes", "file_attributes");
+  const junkNextresmap = getMetadataNumber(metadata, "junk1");
+  const junkFilerefnum = getMetadataNumber(metadata, "junk2");
 
   // Process each resource type
   for (const [typeName, typeData] of Object.entries(jsonData)) {
     if (typeName === "_metadata") continue;
 
+    if (!isConvertedResourceMap(typeData)) {
+      continue;
+    }
+
     const typeResources = new Map<number, Resource>();
 
-    for (const [idStr, resourceData] of Object.entries(
-      typeData as Record<string, ConvertedResource>,
-    )) {
+    for (const [idStr, resourceData] of Object.entries(typeData)) {
       const id = parseInt(idStr, 10);
 
       // Convert resource data back to binary
@@ -266,19 +327,31 @@ export function jsonToResourceFork(
         if (converter && converter.pack) {
           const packResult = converter.pack(resourceData.obj);
           // Handle Result-returning pack functions
-          if (packResult && typeof packResult === 'object' && 'ok' in packResult) {
+          if (
+            packResult &&
+            typeof packResult === "object" &&
+            "ok" in packResult
+          ) {
             if (packResult.ok) {
               data = packResult.value;
             } else {
               return err(packResult.error);
             }
+          } else if (isUint8Array(packResult)) {
+            data = packResult;
           } else {
-            data = packResult as Uint8Array;
+            return err(
+              new Error(
+                `Pack function returned unexpected type for resource type ${typeName}`,
+              ),
+            );
           }
         } else {
-          return err(new Error(
-            `No pack function available for resource type ${typeName}`,
-          ));
+          return err(
+            new Error(
+              `No pack function available for resource type ${typeName}`,
+            ),
+          );
         }
       } else if (resourceData.data !== undefined) {
         // Convert hex string back to binary
@@ -289,9 +362,11 @@ export function jsonToResourceFork(
         }
         data = bytes;
       } else {
-        return err(new Error(
-          `Resource ${typeName}:${id} has neither obj nor data field`,
-        ));
+        return err(
+          new Error(
+            `Resource ${typeName}:${id} has neither obj nor data field`,
+          ),
+        );
       }
 
       const resource: Resource = {

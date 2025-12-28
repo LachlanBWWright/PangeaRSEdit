@@ -1,8 +1,9 @@
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { View } from "./EditorView";
+
 import { useAtomValue } from "jotai";
-import { Globals, Game } from "../data/globals/globals";
+import { Globals } from "../data/globals/globals";
+import { View } from "./viewEnum";
 
 interface Props {
   view: View;
@@ -18,7 +19,7 @@ interface Props {
   hasLiquidData?: boolean;
 }
 
-export default function EditorToolbar({
+export function EditorToolbar({
   view,
   setView,
   undoData,
@@ -32,17 +33,16 @@ export default function EditorToolbar({
   hasLiquidData,
 }: Props) {
   const globals = useAtomValue(Globals);
-  
-  // Nanosaur 1 doesn't have fences or liquid data
-  const gameSupportsFences = globals.GAME_TYPE !== Game.NANOSAUR;
-  // Nanosaur 1 and Bugdom 1 don't have liquid data
-  const gameSupportsLiquids = globals.GAME_TYPE !== Game.NANOSAUR && globals.GAME_TYPE !== Game.BUGDOM;
-  
+
+  // Check if game supports features based on type mappings
+  const gameSupportsFences = !!globals.FENCE_TYPES;
+  const gameSupportsLiquids = !!globals.WATER_TYPES;
+
   // Only show fences button if game supports fences AND we have fence data (or game supports fences in general)
-  const showFences = gameSupportsFences && (hasFenceData !== false);
+  const showFences = gameSupportsFences && hasFenceData !== false;
   // Only show water button if game supports liquids AND we have liquid data (or game supports liquids in general)
-  const showWater = gameSupportsLiquids && (hasLiquidData !== false);
-  
+  const showWater = gameSupportsLiquids && hasLiquidData !== false;
+
   return (
     <>
       <div className="grid grid-cols-4 xl:grid-cols-7 gap-2 w-full overflow-clip">

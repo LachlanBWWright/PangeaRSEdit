@@ -1,11 +1,11 @@
-import { ottoMaticLevel } from "../../python/structSpecs/ottoMaticInterface";
-import { HeaderData, ottoHeader } from "../../python/structSpecs/ottoMaticLevelData";
+import { LevelData } from "@/python/structSpecs/LevelTypes";
+import { HeaderData, StandardHeader } from "@/python/structSpecs/LevelTypes";
 import { Updater } from "use-immer";
 
 /**
  * Selects header data from the full level data
  */
-export function selectHeaderData(levelData: ottoMaticLevel): HeaderData | null {
+export function selectHeaderData(levelData: LevelData): HeaderData | null {
   if (!levelData.Hedr) return null;
   
   return {
@@ -16,7 +16,7 @@ export function selectHeaderData(levelData: ottoMaticLevel): HeaderData | null {
 /**
  * Gets the header object directly
  */
-export function selectHeader(levelData: ottoMaticLevel): ottoHeader | null {
+export function selectHeader(levelData: LevelData): StandardHeader | null {
   return levelData.Hedr?.[1000]?.obj || null;
 }
 
@@ -24,8 +24,8 @@ export function selectHeader(levelData: ottoMaticLevel): ottoHeader | null {
  * Updates header data in the full level data
  */
 export function updateHeaderData(
-  setLevelData: Updater<ottoMaticLevel>,
-  headerUpdate: Partial<ottoHeader>
+  setLevelData: Updater<LevelData>,
+  headerUpdate: Partial<StandardHeader>
 ): void {
   setLevelData((draft) => {
     if (draft.Hedr?.[1000]?.obj) {
@@ -38,8 +38,8 @@ export function updateHeaderData(
  * Creates a header data updater that only works with header data
  */
 export function createHeaderDataUpdater(
-  setLevelData: Updater<ottoMaticLevel>
-): Updater<ottoHeader> {
+  setLevelData: Updater<LevelData>
+): Updater<StandardHeader> {
   return (headerUpdater) => {
     setLevelData((draft) => {
       if (draft.Hedr?.[1000]?.obj) {

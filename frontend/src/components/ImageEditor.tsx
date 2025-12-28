@@ -8,10 +8,10 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Save, X, Undo, Redo } from "lucide-react";
-import ToolsPanel from "./ImageEditor/ToolsPanel";
+import { ToolsPanel } from "./ImageEditor/ToolsPanel";
 import { toast } from "sonner";
 import Konva from "konva";
-import type { KonvaEventObject } from "konva/lib/Node";
+// Event typing removed - handlers don't need explicit event param here
 
 interface BrushStroke {
   points: number[];
@@ -127,7 +127,7 @@ export function ImageEditor({
     }
   };
 
-  const handleMouseDown = (_e: KonvaEventObject<MouseEvent>) => {
+  const handleMouseDown = () => {
     if (tool !== "brush") return;
 
     const stage = stageRef.current;
@@ -153,7 +153,7 @@ export function ImageEditor({
     setCurrentStroke(newStroke);
   };
 
-  const handleMouseMove = (_e: KonvaEventObject<MouseEvent>) => {
+  const handleMouseMove = () => {
     if (!isDrawing || tool !== "brush" || !currentStroke) return;
 
     const stage = stageRef.current;

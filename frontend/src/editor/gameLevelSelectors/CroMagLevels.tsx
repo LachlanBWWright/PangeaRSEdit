@@ -1,8 +1,8 @@
 import { Button } from "@/components/ui/button";
-import LevelGrid from "../LevelGrid";
+import { LevelGrid } from "../LevelGrid";
 import { CroMagGlobals, type GlobalsInterface } from "@/data/globals/globals";
 
-export default function CroMagLevels({
+export function CroMagLevels({
   openFile,
 }: {
   openFile: (url: string, gameType: GlobalsInterface) => void;

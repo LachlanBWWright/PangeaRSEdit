@@ -117,7 +117,7 @@ describe("Otto Matic Map Roundtrip", () => {
 
     // Preprocessing should not throw
     expect(() => {
-      preprocessJson(jsonData as any, OttoGlobals);
+      preprocessJson(jsonData as Record<string, unknown>, OttoGlobals);
     }).not.toThrow();
 
     // After preprocessing, Layr should have sequential indices
@@ -137,7 +137,7 @@ describe("Otto Matic Map Roundtrip", () => {
     expect(jsonResult1.ok).toBe(true);
     if (!jsonResult1.ok) return;
     const jsonData1 = jsonResult1.value;
-    
+
     console.log("jsonData1 keys:", Object.keys(jsonData1));
 
     // Convert back to binary
@@ -148,13 +148,18 @@ describe("Otto Matic Map Roundtrip", () => {
     expect(forkResult.ok).toBe(true);
     if (!forkResult.ok) return;
     const fork = forkResult.value;
-    
+
     console.log("fork resources size:", fork.resources.size);
     console.log("fork resources keys:", Array.from(fork.resources.keys()));
-    
+
     const binaryData2 = saveToBytes(fork);
     console.log("binaryData2 length:", binaryData2.length);
-    console.log("First 16 bytes:", Array.from(binaryData2.slice(0, 16)).map(b => b.toString(16).padStart(2, '0')).join(' '));
+    console.log(
+      "First 16 bytes:",
+      Array.from(binaryData2.slice(0, 16))
+        .map((b) => b.toString(16).padStart(2, "0"))
+        .join(" "),
+    );
 
     // Parse the new binary
     console.log("About to parse binary of length:", binaryData2.length);
@@ -165,21 +170,15 @@ describe("Otto Matic Map Roundtrip", () => {
       console.log("Loaded fork has", loadResult.value.resources.size, "types");
       console.log("Types:", Array.from(loadResult.value.resources.keys()));
     }
-    
-    const jsonResult2 = saveToJsonObject(
-      binaryData2,
-      [],
-      [],
-      [],
-      false,
-    );
+
+    const jsonResult2 = saveToJsonObject(binaryData2, [], [], [], false);
     if (!jsonResult2.ok) {
       console.error("saveToJsonObject error 2:", jsonResult2.error);
     }
     expect(jsonResult2.ok).toBe(true);
     if (!jsonResult2.ok) return;
     const jsonData2 = jsonResult2.value;
-    
+
     console.log("jsonData2 keys:", Object.keys(jsonData2));
 
     // Compare metadata

@@ -1,8 +1,8 @@
 import { Button } from "@/components/ui/button";
-import LevelGrid from "../LevelGrid";
+import { LevelGrid } from "../LevelGrid";
 import { Bugdom2Globals, type GlobalsInterface } from "@/data/globals/globals";
 
-export default function Bugdom2Levels({
+export function Bugdom2Levels({
   openFile,
 }: {
   openFile: (url: string, gameType: GlobalsInterface) => void;
