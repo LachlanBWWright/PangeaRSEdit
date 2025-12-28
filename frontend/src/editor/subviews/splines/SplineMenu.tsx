@@ -2,14 +2,14 @@ import { Updater } from "use-immer";
 import {
   SplineData,
   HeaderData,
-} from "../../../python/structSpecs/ottoMaticLevelData";
+} from "@/python/structSpecs/LevelTypes";
 import { useAtom, useAtomValue } from "jotai";
 
 import {
   SelectedSpline,
   SelectedSplineItem,
 } from "../../../data/splines/splineAtoms";
-import { SPLINE_KEY_BASE } from "./Spline";
+import { SPLINE_KEY_BASE } from "./splineUtils";
 import { useEffect } from "react";
 import {
   AddNewSplineMenu,
@@ -29,8 +29,6 @@ import { getSplineItemName } from "@/data/splines/getSplineItemNames";
 export function SplineMenu({
   splineData,
   setSplineData,
-  headerData: _headerData,
-  setHeaderData: _setHeaderData,
 }: {
   splineData: SplineData;
   setSplineData: Updater<SplineData>;
@@ -41,9 +39,10 @@ export function SplineMenu({
   const [selectedSplineItem, setSelectedSplineItem] =
     useAtom(SelectedSplineItem);
   const globals = useAtomValue(Globals);
+
   useEffect(() => {
     setSelectedSplineItem(undefined);
-  }, [selectedSpline]);
+  }, [selectedSpline, setSelectedSplineItem]);
 
   if (splineData.Spln === undefined) return null;
 
@@ -73,7 +72,7 @@ export function SplineMenu({
             {selectedSplineItem !== undefined
               ? `#${selectedSplineItem} ${getSplineItemName(
                   globals,
-                  currentSplineData[selectedSplineItem].type,
+                  currentSplineData?.[selectedSplineItem]?.type ?? 0,
                 )}`
               : "No Item Selected"}
           </SelectTrigger>

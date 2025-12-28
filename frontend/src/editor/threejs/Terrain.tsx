@@ -1,102 +1,60 @@
 import {
   HeaderData,
   TerrainData,
-} from "@/python/structSpecs/ottoMaticLevelData";
-import { useRef, useMemo } from "react";
+  StandardHeader,
+} from "@/python/structSpecs/LevelTypes";
+import { useRef, useMemo, forwardRef, useEffect } from "react";
 import { CanvasTexture, DoubleSide, Mesh, PlaneGeometry } from "three";
 import { useAtomValue } from "jotai";
-import { Globals, GlobalsInterface } from "@/data/globals/globals";
-import { Result, ok, err } from "@/types/result";
+import { Globals } from "@/data/globals/globals";
+import combineMapImages from "./terrainUtils";
 
-// Utility function to combine mapImages into a single image
-export function combineMapImages(
-  mapImages: HTMLCanvasElement[],
-  headerData: HeaderData,
-  terrainData: TerrainData,
-  globals: GlobalsInterface,
-): Result<HTMLCanvasElement, Error> {
-  if (mapImages.length === 0) {
-    return err(new Error("No map images to combine"));
-  }
-
-  const header = headerData.Hedr?.[1000]?.obj;
-  if (!header || !terrainData.STgd?.[1000]?.obj) {
-    return err(new Error("Missing header or supertile data"));
-  }
-
-  const numWide = header.mapWidth;
-  const numHigh = header.mapHeight;
-
-  // Combine vertically (can be adjusted as needed)
-  const combinedCanvas = document.createElement("canvas");
-  combinedCanvas.width =
-    (globals.SUPERTILE_TEXMAP_SIZE / globals.TILES_PER_SUPERTILE) * numWide;
-  console.log(
-    "width",
-    (globals.SUPERTILE_TEXMAP_SIZE / globals.TILES_PER_SUPERTILE) * numWide,
-  );
-  combinedCanvas.height =
-    (globals.SUPERTILE_TEXMAP_SIZE / globals.TILES_PER_SUPERTILE) * numHigh;
-  const ctx = combinedCanvas.getContext("2d");
-  if (!ctx) return err(new Error("Could not get canvas context"));
-
-  const supertilesWide = numWide / globals.TILES_PER_SUPERTILE;
-  const supertilesHigh = numHigh / globals.TILES_PER_SUPERTILE;
-
-  const stgdObj = terrainData.STgd[1000].obj;
-  for (let i = 0; i < supertilesWide; i++) {
-    for (let j = 0; j < supertilesHigh; j++) {
-      const stgdEntry = stgdObj[i + j * supertilesWide];
-      if (!stgdEntry) continue;
-      const tileId = stgdEntry.superTileId;
-      const tileImg = mapImages[tileId];
-      if (tileImg) {
-        ctx.drawImage(
-          tileImg,
-          i * globals.SUPERTILE_TEXMAP_SIZE,
-          j * globals.SUPERTILE_TEXMAP_SIZE,
-        );
-      }
-    }
-  }
-
-  return ok(combinedCanvas);
-}
-
-export function TerrainGeometry({
-  headerData,
-  terrainData,
-  mapImages,
-}: {
+export const TerrainGeometry = forwardRef<Mesh, {
   headerData: HeaderData;
   terrainData: TerrainData;
   mapImages: HTMLCanvasElement[];
-}) {
+  onPointerDown?: (event: THREE.Event) => void;
+  onPointerMove?: (event: THREE.Event) => void;
+  onPointerUp?: (event: THREE.Event) => void;
+}>(function TerrainGeometry({
+  headerData,
+  terrainData,
+  mapImages,
+  onPointerDown,
+  onPointerMove,
+  onPointerUp,
+}, ref) {
   const globals = useAtomValue(Globals);
+
   const combinedImgResult = useMemo(
     () => combineMapImages(mapImages, headerData, terrainData, globals),
     [mapImages, headerData, terrainData, globals],
   );
-  
-  // Handle error case by returning null (no terrain rendered)
-  if (!combinedImgResult.ok) {
-    console.error("Failed to combine map images:", combinedImgResult.error.message);
-    return null;
-  }
-  const combinedImg = combinedImgResult.value;
-  
-  const header = headerData.Hedr?.[1000]?.obj;
-  if (!header) return null;
 
-  const numWide = header.mapWidth;
-  const numHigh = header.mapHeight;
-  const meshRef = useRef<Mesh>(null);
-  const mapTileSize = header.tileSize;
-  const yScale = globals.TILE_INGAME_SIZE / mapTileSize;
+  const combinedImg = combinedImgResult.ok ? combinedImgResult.value : null;
+
+  const header: StandardHeader | undefined = headerData.Hedr?.[1000]?.obj;
+
+  const numWide = header?.mapWidth ?? 0;
+  const numHigh = header?.mapHeight ?? 0;
+  const internalMeshRef = useRef<Mesh>(null);
+  const mapTileSize = header?.tileSize ?? 1;
+  const yScale = globals.TILE_INGAME_SIZE / Math.max(1, mapTileSize);
+
+  // Combine internal ref with forwarded ref
+  useEffect(() => {
+    if (ref) {
+      if (typeof ref === 'function') {
+        ref(internalMeshRef.current);
+      } else {
+        ref.current = internalMeshRef.current;
+      }
+    }
+  }, [ref]);
 
   // Build geometry with explicit Y from YCrd
   const geometry = useMemo(() => {
-    if (!terrainData.YCrd?.[1000]?.obj) return null;
+    if (!terrainData.YCrd?.[1000]?.obj || !header) return null;
 
     // PlaneGeometry: width, height, widthSegments, heightSegments
     const geom = new PlaneGeometry(
@@ -106,29 +64,45 @@ export function TerrainGeometry({
       numHigh,
     );
 
+    const positionAttr = geom.attributes.position;
+    if (!positionAttr) return null;
+
     const ycrd = terrainData.YCrd[1000].obj;
-    for (let i = 0; i < geom.attributes.position.count; i++) {
-      // TODO: Change this to use Y and update the rotation of the plane?
+    for (let i = 0; i < positionAttr.count; i++) {
       const ycrdValue = ycrd[i];
       if (ycrdValue !== undefined) {
-        geom.attributes.position.setZ(i, ycrdValue * yScale);
+        positionAttr.setZ(i, ycrdValue * yScale);
       }
     }
     geom.computeVertexNormals();
-    geom.attributes.position.needsUpdate = true;
+    positionAttr.needsUpdate = true;
     return geom;
-  }, [terrainData.YCrd, numWide, numHigh, yScale]);
+  }, [
+    terrainData.YCrd,
+    numWide,
+    numHigh,
+    yScale,
+    globals.TILE_INGAME_SIZE,
+    header,
+  ]);
 
-  const combinedTexture = useMemo(
-    () => new CanvasTexture(combinedImg),
-    [combinedImg],
-  );
+  const combinedTexture = useMemo(() => {
+    if (!combinedImg) return null;
+    return new CanvasTexture(combinedImg);
+  }, [combinedImg]);
 
+  if (!combinedImgResult.ok) {
+    console.error(
+      "Failed to combine map images:",
+      combinedImgResult.error.message,
+    );
+    return null;
+  }
+  if (!header) return null;
   if (!geometry) return null;
-
   return (
     <mesh
-      ref={meshRef}
+      ref={internalMeshRef}
       position={[
         (numWide * globals.TILE_INGAME_SIZE) / 2,
         0,
@@ -136,6 +110,9 @@ export function TerrainGeometry({
       ]}
       rotation={[-Math.PI / 2, 0, 0]}
       geometry={geometry}
+      onPointerDown={onPointerDown}
+      onPointerMove={onPointerMove}
+      onPointerUp={onPointerUp}
     >
       <ambientLight intensity={1} />
       <meshStandardMaterial
@@ -145,4 +122,4 @@ export function TerrainGeometry({
       />
     </mesh>
   );
-}
+});

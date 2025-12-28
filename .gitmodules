@@ -25,3 +25,7 @@
 [submodule "frontend/src/rsrcdump"]
 	path = frontend/src/rsrcdump
 	url = https://github.com/LachlanBWWright/rsrcdump.git
+
+[submodule "games/mightymike"]
+	path = games/mightymike
+	url = https://github.com/jorio/MightyMike

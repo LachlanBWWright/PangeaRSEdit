@@ -1,8 +1,8 @@
 import {
   ItemData,
-  ottoItem,
+  TerrainItem,
   HeaderData,
-} from "../../python/structSpecs/ottoMaticLevelData";
+} from "@/python/structSpecs/LevelTypes";
 import { Updater } from "use-immer";
 
 /**
@@ -19,7 +19,7 @@ export function selectItemData(levelData: ItemData): ItemData | null {
 /**
  * Gets the items array directly
  */
-export function selectItems(levelData: ItemData): ottoItem[] {
+export function selectItems(levelData: ItemData): TerrainItem[] {
   return levelData.Itms?.[1000]?.obj || [];
 }
 
@@ -29,7 +29,7 @@ export function selectItems(levelData: ItemData): ottoItem[] {
 export function selectItem(
   levelData: ItemData,
   itemIdx: number,
-): ottoItem | null {
+): TerrainItem | null {
   const items = selectItems(levelData);
   return items[itemIdx] || null;
 }
@@ -40,7 +40,7 @@ export function selectItem(
 export function updateItem(
   setLevelData: Updater<ItemData>,
   itemIdx: number,
-  itemUpdate: Partial<ottoItem>,
+  itemUpdate: Partial<TerrainItem>,
 ): void {
   setLevelData((draft) => {
     if (draft.Itms?.[1000]?.obj?.[itemIdx]) {
@@ -55,7 +55,7 @@ export function updateItem(
 export function addItem(
   setLevelData: Updater<ItemData>,
   setHeaderData: Updater<HeaderData>,
-  newItem: ottoItem,
+  newItem: TerrainItem,
 ): void {
   setLevelData((draft) => {
     if (draft.Itms?.[1000]?.obj) {
@@ -103,7 +103,7 @@ export function removeItem(
 export function createItemUpdater(
   setLevelData: Updater<ItemData>,
   itemIdx: number,
-): Updater<ottoItem> {
+): Updater<TerrainItem> {
   return (itemUpdater) => {
     setLevelData((draft) => {
       if (draft.Itms?.[1000]?.obj?.[itemIdx]) {

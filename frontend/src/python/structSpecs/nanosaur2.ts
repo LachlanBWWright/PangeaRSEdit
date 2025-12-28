@@ -12,8 +12,8 @@ export const nanosaur2Specs = [
   //Tile Attribute Resource (tileAttribType)
   "Atrb:HBB+:flags,p0,p1",
 
-  //Supertile Grid Matrix (SuperTileGridType) - uses isEmpty flag like Otto Matic
-  "STgd:x?H+:isEmpty,superTileId",
+  //Supertile Grid Matrix - signed short, -1 = empty
+  "STgd:h+:superTileId",
 
   //Map Layer Resources - 2D Array of tile indices
   "Layr:H+",

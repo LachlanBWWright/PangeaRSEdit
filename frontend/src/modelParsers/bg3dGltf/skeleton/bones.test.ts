@@ -46,11 +46,11 @@ describe("skeleton bones roundtrip", () => {
 
     expect(bonesBack.length).toBe(parsedSkeleton.bones.length);
     // Parent relationship should be preserved
-    expect(bonesBack[1].parentBone).toBe(0);
+    expect(bonesBack[1]?.parentBone).toBe(0);
 
     // Coordinates should roundtrip approximately (allow small float differences)
-    expect(bonesBack[1].coordX).toBeCloseTo(parsedSkeleton.bones[1].coordX, 5);
-    expect(bonesBack[1].coordY).toBeCloseTo(parsedSkeleton.bones[1].coordY, 5);
-    expect(bonesBack[1].coordZ).toBeCloseTo(parsedSkeleton.bones[1].coordZ, 5);
+    expect(bonesBack[1]?.coordX).toBeCloseTo(parsedSkeleton.bones[1]?.coordX ?? 0, 5);
+    expect(bonesBack[1]?.coordY).toBeCloseTo(parsedSkeleton.bones[1]?.coordY ?? 0, 5);
+    expect(bonesBack[1]?.coordZ).toBeCloseTo(parsedSkeleton.bones[1]?.coordZ ?? 0, 5);
   });
 });

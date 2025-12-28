@@ -9,8 +9,9 @@ import {
   itemSchema,
   fenceSchema,
   tileAttributeSchema,
-  ottoMaticLevelSchema,
 } from "./levelDataSchemas";
+import { LevelDataSchema } from "./games/ottoMatic";
+import { validateMightyMikeLevel } from "./games/mightyMike";
 import { isOk, isErr } from "../types/result";
 
 describe("Level Data Zod Schemas", () => {
@@ -225,7 +226,7 @@ describe("Level Data Zod Schemas", () => {
     });
   });
 
-  describe("ottoMaticLevelSchema", () => {
+  describe("LevelDataSchema", () => {
     it("should allow passthrough of unknown properties", () => {
       const minimalLevel = {
         _metadata: {
@@ -286,8 +287,51 @@ describe("Level Data Zod Schemas", () => {
         unknownProperty: "should be allowed", // passthrough
       };
 
-      const result = ottoMaticLevelSchema.safeParse(minimalLevel);
+      const result = LevelDataSchema.safeParse(minimalLevel);
       expect(result.success).toBe(true);
+    });
+  });
+
+  describe("mightyMikeLevelSchema (temporary expected-to-fail schema)", () => {
+    it("should return Err for typical level data missing TEMP_MIGHTY_MIKE_FLAG", () => {
+      const minimalLevel = {
+        _metadata: {
+          file_attributes: 0,
+          junk1: 0,
+          junk2: 0,
+        },
+        Hedr: {
+          "1000": {
+            name: "Header",
+            obj: {
+              version: 1,
+              numItems: 0,
+              mapWidth: 64,
+              mapHeight: 64,
+              numTilePages: 1,
+              numTiles: 16,
+              tileSize: 32,
+              minY: 0,
+              maxY: 100,
+              numSplines: 0,
+              numFences: 0,
+              numUniqueSupertiles: 1,
+              numWaterPatches: 0,
+              numCheckpoints: 0,
+            },
+            order: 0,
+          },
+        },
+      };
+
+      const result = validateMightyMikeLevel(minimalLevel);
+      expect(isErr(result)).toBe(true);
+    });
+
+    it("should return Ok when TEMP_MIGHTY_MIKE_FLAG is present and true", () => {
+      const validLevel = { TEMP_MIGHTY_MIKE_FLAG: true };
+      const result = validateMightyMikeLevel(validLevel);
+      expect(isOk(result)).toBe(true);
     });
   });
 });

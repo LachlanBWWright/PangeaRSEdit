@@ -1,5 +1,5 @@
 import { Updater } from "use-immer";
-import { LiquidData } from "../../../python/structSpecs/ottoMaticLevelData";
+import { LiquidData } from "@/python/structSpecs/LevelTypes";
 import { useAtom, useAtomValue } from "jotai";
 import { Button } from "@/components/ui/button";
 import {
@@ -102,8 +102,11 @@ export function WaterMenu({
               onValueChange={(e) => {
                 const newItemType = parseInt(e);
                 setLiquidData((liquidData) => {
-                  if (selectedWaterBody === null) return; // Add null check
-                  liquidData.Liqd[1000].obj[selectedWaterBody].type = newItemType;
+                  if (selectedWaterBody === null) return;
+                  const waterObj = liquidData.Liqd[1000]?.obj?.[selectedWaterBody];
+                  if (waterObj) {
+                    waterObj.type = newItemType;
+                  }
                 });
               }}
             >
@@ -143,8 +146,10 @@ export function WaterMenu({
                       if (isNaN(newValue)) return;
                       setLiquidData((draft) => {
                         if (selectedWaterBody === null) return;
-                        draft.Liqd[1000].obj[selectedWaterBody].hotSpotX =
-                          newValue;
+                        const waterObj = draft.Liqd[1000]?.obj?.[selectedWaterBody];
+                        if (waterObj) {
+                          waterObj.hotSpotX = newValue;
+                        }
                       });
                     }}
                     placeholder="X"
@@ -164,8 +169,10 @@ export function WaterMenu({
                       if (isNaN(newValue)) return;
                       setLiquidData((draft) => {
                         if (selectedWaterBody === null) return;
-                        draft.Liqd[1000].obj[selectedWaterBody].hotSpotZ =
-                          newValue;
+                        const waterObj = draft.Liqd[1000]?.obj?.[selectedWaterBody];
+                        if (waterObj) {
+                          waterObj.hotSpotZ = newValue;
+                        }
                       });
                     }}
                     placeholder="Z"
@@ -195,9 +202,11 @@ export function WaterMenu({
                             selectedWaterNub === null
                           )
                             return;
-                          draft.Liqd[1000].obj[selectedWaterBody].nubs[
-                            selectedWaterNub
-                          ][0] = newValue;
+                          const waterObj = draft.Liqd[1000]?.obj?.[selectedWaterBody];
+                          const nub = waterObj?.nubs?.[selectedWaterNub];
+                          if (nub) {
+                            nub[0] = newValue;
+                          }
                         });
                       }}
                       placeholder="X"
@@ -218,9 +227,11 @@ export function WaterMenu({
                             selectedWaterNub === null
                           )
                             return;
-                          draft.Liqd[1000].obj[selectedWaterBody].nubs[
-                            selectedWaterNub
-                          ][1] = newValue;
+                          const waterObj = draft.Liqd[1000]?.obj?.[selectedWaterBody];
+                          const nub = waterObj?.nubs?.[selectedWaterNub];
+                          if (nub) {
+                            nub[1] = newValue;
+                          }
                         });
                       }}
                       placeholder="Y"
@@ -233,21 +244,14 @@ export function WaterMenu({
               <Button
                 onClick={() =>
                   setLiquidData((liquidData) => {
-                    if (selectedWaterBody === null) return; // Add null check
-                    if (
-                      liquidData.Liqd[1000].obj[selectedWaterBody].numNubs ===
-                      globals.LIQD_NUBS
-                    )
-                      return;
-                    const prevNub =
-                      liquidData.Liqd[1000].obj[selectedWaterBody].nubs[
-                        liquidData.Liqd[1000].obj[selectedWaterBody].numNubs - 1
-                      ];
+                    if (selectedWaterBody === null) return;
+                    const waterObj = liquidData.Liqd[1000]?.obj?.[selectedWaterBody];
+                    if (!waterObj) return;
+                    if (waterObj.numNubs === globals.LIQD_NUBS) return;
+                    const prevNub = waterObj.nubs?.[waterObj.numNubs - 1];
                     if (!prevNub) return;
-                    liquidData.Liqd[1000].obj[selectedWaterBody].nubs[
-                      liquidData.Liqd[1000].obj[selectedWaterBody].numNubs
-                    ] = [prevNub[0] + 50, prevNub[1] + 50];
-                    liquidData.Liqd[1000].obj[selectedWaterBody].numNubs++;
+                    waterObj.nubs[waterObj.numNubs] = [prevNub[0] + 50, prevNub[1] + 50];
+                    waterObj.numNubs++;
                   })
                 }
               >
@@ -258,14 +262,14 @@ export function WaterMenu({
                 disabled={
                   selectedWaterBody === null ||
                   (selectedWaterBody !== null &&
-                    liquidData.Liqd[1000].obj[selectedWaterBody].numNubs <= 3)
+                    (liquidData.Liqd[1000]?.obj?.[selectedWaterBody]?.numNubs ?? 0) <= 3)
                 }
                 onClick={() => {
                   setLiquidData((liquidData) => {
                     if (selectedWaterBody === null) return;
-                    if (liquidData.Liqd[1000].obj[selectedWaterBody].numNubs <= 3)
-                      return;
-                    liquidData.Liqd[1000].obj[selectedWaterBody].numNubs--;
+                    const waterObj = liquidData.Liqd[1000]?.obj?.[selectedWaterBody];
+                    if (!waterObj || waterObj.numNubs <= 3) return;
+                    waterObj.numNubs--;
                   });
                 }}
               >

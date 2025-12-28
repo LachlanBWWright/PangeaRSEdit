@@ -30,5 +30,3 @@ export function DropArea({
     </div>
   );
 }
-
-export default DropArea;

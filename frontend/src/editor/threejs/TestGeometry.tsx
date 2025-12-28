@@ -1,8 +1,8 @@
 import { GlobalsInterface } from "@/data/globals/globals";
-import { ottoHeader } from "@/python/structSpecs/ottoMaticInterface";
+import { StandardHeader } from "@/python/structSpecs/LevelTypes";
 
 interface TestGeometryProps {
-  header: ottoHeader;
+  header: StandardHeader;
   globals: GlobalsInterface;
 }
 

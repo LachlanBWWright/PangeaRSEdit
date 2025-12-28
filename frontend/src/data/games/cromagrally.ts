@@ -1,6 +1,6 @@
 import type { GameInfo } from "@/components/GameModelSelector";
 
-const cromagrally: GameInfo = {
+export const cromagrally: GameInfo = {
   id: "cromagrally",
   name: "Cro-Mag Rally",
   models: [
@@ -135,5 +135,3 @@ const cromagrally: GameInfo = {
     },
   ],
 };
-
-export default cromagrally;

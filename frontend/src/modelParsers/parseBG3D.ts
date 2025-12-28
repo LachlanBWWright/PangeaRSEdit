@@ -217,12 +217,13 @@ export function parseBG3D(
   // Main parse state
   // Material and group lists
   const materials: BG3DMaterial[] = [];
-  const groups: BG3DGroup[] = [{ children: [] }]; // Start with a top-level group
+  const rootGroup: BG3DGroup = { children: [] };
+  const groups: BG3DGroup[] = [rootGroup]; // Start with a top-level group
   let done = false;
   // Group stack for nested group support
-  const groupStack: BG3DGroup[] = [groups[0]];
+  const groupStack: BG3DGroup[] = [rootGroup];
   // Track the current group for children insertion
-  let currentGroup: BG3DGroup = groups[0];
+  let currentGroup: BG3DGroup = rootGroup;
   // Track the current geometry for array tags
   let currentGeometry: BG3DGeometry | null = null;
 
@@ -368,9 +369,11 @@ export function parseBG3D(
       case BG3DTagType.GROUPEND: {
         // End current group and pop from stack
         if (groupStack.length === 0) {
-          return err(new Error(
-            `GROUPEND tag found with no open group at offset ${tagOffset}`,
-          ));
+          return err(
+            new Error(
+              `GROUPEND tag found with no open group at offset ${tagOffset}`,
+            ),
+          );
         }
         if (groupStack.length > 0) {
           groupStack.pop();
@@ -389,9 +392,11 @@ export function parseBG3D(
       case BG3DTagType.GEOMETRY: {
         // Geometry header: type (4), numMaterials (4), layerMaterialNum[4] (only 2 read by otto) (16), flags (4), numPoints (4), numTriangles (4)
         if (!currentGroup) {
-          return err(new Error(
-            `GEOMETRY tag found outside of a group at offset ${tagOffset}`,
-          ));
+          return err(
+            new Error(
+              `GEOMETRY tag found outside of a group at offset ${tagOffset}`,
+            ),
+          );
         }
         const type = view.getUint32(offset, false);
         offset += 4;
@@ -552,16 +557,20 @@ export function parseBG3D(
         break;
       }
       default: {
-        return err(new Error(`Unknown BG3D tag: ${tag} at offset ${offset - 4}`));
+        return err(
+          new Error(`Unknown BG3D tag: ${tag} at offset ${offset - 4}`),
+        );
       }
     }
   }
 
   // Step 2: Validate that all groups are closed (groupStack should just have the base group)
   if (groupStack.length !== 1) {
-    return err(new Error(
-      `Unbalanced group tags: ${groupStack.length} group(s) at end of file`,
-    ));
+    return err(
+      new Error(
+        `Unbalanced group tags: ${groupStack.length} group(s) at end of file`,
+      ),
+    );
   }
 
   // Step 3: Validate that all geometry objects reference valid material indices
@@ -576,10 +585,15 @@ export function parseBG3D(
         if (geom.layerMaterialNum) {
           for (let i = 0; i < geom.numMaterials; i++) {
             const matIdx = geom.layerMaterialNum[i];
-            if (matIdx !== undefined && (matIdx < 0 || matIdx >= materials.length)) {
-              return err(new Error(
-                `Geometry references invalid material index ${matIdx} (materials length: ${materials.length}) in group validation`,
-              ));
+            if (
+              matIdx !== undefined &&
+              (matIdx < 0 || matIdx >= materials.length)
+            ) {
+              return err(
+                new Error(
+                  `Geometry references invalid material index ${matIdx} (materials length: ${materials.length}) in group validation`,
+                ),
+              );
             }
           }
         }
@@ -653,7 +667,7 @@ function convertSkeletonResourceToBG3D(
 
     bones.push({
       parentBone: boneObj.parentBone,
-      name: boneEntry.name, // Use resource name, not obj.name (which may have Pascal string prefix)
+      name: boneObj.name || boneEntry.name, // Use obj.name (actual bone name), fallback to resource name
       coordX: boneObj.coordX,
       coordY: boneObj.coordY,
       coordZ: boneObj.coordZ,
@@ -757,30 +771,37 @@ function convertSkeletonResourceToBG3D(
             const firstKeyframe = keyframeEntry.obj[0];
             const lastKeyframe =
               keyframeEntry.obj[keyframeEntry.obj.length - 1];
-            console.log(
-              `  First keyframe: tick=${firstKeyframe.tick}, coord=[${firstKeyframe.coordX}, ${firstKeyframe.coordY}, ${firstKeyframe.coordZ}]`,
-            );
-            console.log(
-              `  Last keyframe: tick=${lastKeyframe.tick}, coord=[${lastKeyframe.coordX}, ${lastKeyframe.coordY}, ${lastKeyframe.coordZ}]`,
-            );
+            if (firstKeyframe) {
+              console.log(
+                `  First keyframe: tick=${firstKeyframe.tick}, coord=[${firstKeyframe.coordX}, ${firstKeyframe.coordY}, ${firstKeyframe.coordZ}]`,
+              );
+            }
+            if (lastKeyframe) {
+              console.log(
+                `  Last keyframe: tick=${lastKeyframe.tick}, coord=[${lastKeyframe.coordX}, ${lastKeyframe.coordY}, ${lastKeyframe.coordZ}]`,
+              );
+            }
           }
         }
 
-        keyframeEntry.obj.forEach((keyframe) => {
-          keyframes[boneIndex].push({
-            tick: keyframe.tick,
-            accelerationMode: keyframe.accelerationMode,
-            coordX: keyframe.coordX,
-            coordY: keyframe.coordY,
-            coordZ: keyframe.coordZ,
-            rotationX: keyframe.rotationX,
-            rotationY: keyframe.rotationY,
-            rotationZ: keyframe.rotationZ,
-            scaleX: keyframe.scaleX,
-            scaleY: keyframe.scaleY,
-            scaleZ: keyframe.scaleZ,
+        const boneKeyframes = keyframes[boneIndex];
+        if (boneKeyframes) {
+          keyframeEntry.obj.forEach((keyframe) => {
+            boneKeyframes.push({
+              tick: keyframe.tick,
+              accelerationMode: keyframe.accelerationMode,
+              coordX: keyframe.coordX,
+              coordY: keyframe.coordY,
+              coordZ: keyframe.coordZ,
+              rotationX: keyframe.rotationX,
+              rotationY: keyframe.rotationY,
+              rotationZ: keyframe.rotationZ,
+              scaleX: keyframe.scaleX,
+              scaleY: keyframe.scaleY,
+              scaleZ: keyframe.scaleZ,
+            });
           });
-        });
+        }
       } else if (forEachIndex < 3) {
         const objInfo = keyframeEntry?.obj
           ? `obj type: ${typeof keyframeEntry.obj}, is array: ${Array.isArray(
@@ -820,15 +841,32 @@ function convertSkeletonResourceToBG3D(
     try {
       const arr = rentry.obj;
       if (Array.isArray(arr)) {
-        relPointsMap[rid] = arr.map((p: any) => [
-          typeof p.relOffsetX === "number" ? p.relOffsetX : p.x ?? 0,
-          typeof p.relOffsetY === "number" ? p.relOffsetY : p.y ?? 0,
-          typeof p.relOffsetZ === "number" ? p.relOffsetZ : p.z ?? 0,
-        ]);
+        relPointsMap[rid] = arr.map((p: unknown) => {
+          const obj = p as Record<string, unknown>;
+          const relOffsetX =
+            typeof obj.relOffsetX === "number"
+              ? obj.relOffsetX
+              : typeof obj.x === "number"
+              ? obj.x
+              : 0;
+          const relOffsetY =
+            typeof obj.relOffsetY === "number"
+              ? obj.relOffsetY
+              : typeof obj.y === "number"
+              ? obj.y
+              : 0;
+          const relOffsetZ =
+            typeof obj.relOffsetZ === "number"
+              ? obj.relOffsetZ
+              : typeof obj.z === "number"
+              ? obj.z
+              : 0;
+          return [relOffsetX, relOffsetY, relOffsetZ];
+        });
       } else {
         relPointsMap[rid] = [];
       }
-    } catch (e) {
+    } catch {
       relPointsMap[rid] = [];
     }
   });
@@ -896,7 +934,7 @@ export function bg3dParsedToBG3D(parsed: BG3DParseResult): ArrayBuffer {
     view.setUint32(offset, BG3DTagType.MATERIALDIFFUSECOLOR, false);
     offset += 4;
     for (let i = 0; i < 4; i++) {
-      view.setFloat32(offset, material.diffuseColor[i], false);
+      view.setFloat32(offset, material.diffuseColor[i] ?? 0, false);
       offset += 4;
     }
     // TEXTUREMAP(s) or JPEGTEXTURE(s)

@@ -58,13 +58,14 @@ export class ResourceForkParser {
     pos += 2;
     const nameListOffsetInMap = mapView.getUint16(pos, false);
     pos += 2;
-    let numTypes = mapView.getUint16(pos, false) + 1;
-    pos += 2;
+    
+    // Type count is at the start of the type list, not in the map header
+    const numTypes = mapView.getUint16(typeListOffsetInMap, false) + 1;
 
     const resources = new Map<string, Map<number, Resource>>();
 
-    // Read type list - positioned after the map header
-    pos = typeListOffsetInMap + 2; // skip the count we already read
+    // Read type list entries - positioned after the count
+    pos = typeListOffsetInMap + 2;
 
     for (let i = 0; i < numTypes; i++) {
       // Read type entry from main map: 4-byte type, 2-byte count, 2-byte offset

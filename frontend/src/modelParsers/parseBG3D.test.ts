@@ -9,7 +9,7 @@ import { argb16ToPng, rgba8ToPng } from "./image/pngArgb";
 function byteSwapUint16Array(arr: Uint16Array): Uint16Array {
   const swapped = new Uint16Array(arr.length);
   for (let i = 0; i < arr.length; i++) {
-    const val = arr[i];
+    const val = arr[i] ?? 0;
     swapped[i] = ((val & 0xff) << 8) | ((val >> 8) & 0xff);
   }
   return swapped;
@@ -26,17 +26,19 @@ const BILLY_BG3D_PATH = path.join(__dirname, "./testSkeletons/Billy.bg3d");
 const BROG_BG3D_PATH = path.join(__dirname, "./testSkeletons/Brog.bg3d");
 
 // Helper to count geometries and check for bounding boxes
-function analyzeGroups(groups: any[]): {
+type GroupChild = { children?: GroupChild[]; boundingBox?: unknown };
+
+function analyzeGroups(groups: GroupChild[]): {
   geomCount: number;
   boundingBoxCount: number;
 } {
   let geomCount = 0;
   let boundingBoxCount = 0;
-  function traverse(group: any) {
+  function traverse(group: GroupChild) {
     if (Array.isArray(group.children)) {
-      for (const child of group.children) {
+      for (const child of group.children ?? []) {
         if (Array.isArray(child.children)) {
-          traverse(child);
+          traverse(child as GroupChild);
         } else {
           geomCount++;
           if (child.boundingBox) boundingBoxCount++;
@@ -64,7 +66,9 @@ describe("parseBG3D - Multi-Game Support", () => {
     );
 
     // Parse BG3D - should not throw
-    const parsed = parseBG3D(arrayBuffer);
+    const parsedRes = parseBG3D(arrayBuffer);
+    if (!parsedRes.ok) throw parsedRes.error;
+    const parsed = parsedRes.value;
     expect(parsed).toBeDefined();
     expect(parsed.materials.length).toBeGreaterThan(0);
 
@@ -101,7 +105,9 @@ describe("parseBG3D - Multi-Game Support", () => {
     );
 
     // Parse BG3D - should not throw
-    const parsed = parseBG3D(arrayBuffer);
+    const parsedRes = parseBG3D(arrayBuffer);
+    if (!parsedRes.ok) throw parsedRes.error;
+    const parsed = parsedRes.value;
     expect(parsed).toBeDefined();
     expect(parsed.materials.length).toBeGreaterThan(0);
 
@@ -136,7 +142,9 @@ describe("parseBG3D - Multi-Game Support", () => {
     );
 
     // Parse BG3D - should not throw (this was failing before the fix)
-    const parsed = parseBG3D(arrayBuffer);
+    const parsedRes = parseBG3D(arrayBuffer);
+    if (!parsedRes.ok) throw parsedRes.error;
+    const parsed = parsedRes.value;
     expect(parsed).toBeDefined();
     expect(parsed.materials.length).toBeGreaterThan(0);
 
@@ -164,7 +172,9 @@ describe("parseBG3DAndUnparse", () => {
     const arrayBuffer = fileBuffer.buffer;
 
     // Step 1: Parse BG3D
-    const parsed = parseBG3D(arrayBuffer);
+    const parsedRes = parseBG3D(arrayBuffer);
+    if (!parsedRes.ok) throw parsedRes.error;
+    const parsed = parsedRes.value;
     expect(parsed).toBeDefined();
     //expect(Array.isArray(parsed.materials)).toBe(true);
     expect(Array.isArray(parsed.groups)).toBe(true);

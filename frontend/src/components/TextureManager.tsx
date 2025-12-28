@@ -43,7 +43,9 @@ export function TextureManager({
     try {
       await onReplaceTexture(texture, file);
       toast.success(`Successfully replaced ${texture.name}`);
-    } catch (error) {
+    } catch (_error) {
+      // Log and notify but keep UI message the same
+      console.error("Failed to replace texture:", _error);
       toast.error("Failed to replace texture");
     }
   };
@@ -161,8 +163,28 @@ export function TextureManager({
         className="hidden"
         onChange={async (e) => {
           const file = e.target.files?.[0];
-          if (file && selectedTexture) {
-            await handleReplaceTexture(selectedTexture, file);
+          // Use selectedTexture from closure - it's captured at event handler time
+          // This avoids race conditions with React state updates
+          const textureToReplace = selectedTexture;
+          if (file && textureToReplace) {
+            try {
+              await handleReplaceTexture(textureToReplace, file);
+            } catch (error) {
+              console.error(`Failed to replace texture ${textureToReplace.name}:`, error);
+              toast.error(`Failed to replace texture: ${error instanceof Error ? error.message : 'Unknown error'}`);
+            }
+            // Reset input value to allow re-selecting the same file
+            e.target.value = "";
+            // Clear selected texture after replacement
+            setSelectedTexture(null);
+          } else {
+            if (!textureToReplace) {
+              console.error("No texture selected for replacement");
+              toast.error("No texture selected");
+            }
+            if (!file) {
+              console.error("No file selected");
+            }
             e.target.value = "";
           }
         }}

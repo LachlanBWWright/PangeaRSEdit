@@ -1,6 +1,6 @@
 import type { GameInfo } from "@/components/GameModelSelector";
 
-const billyfrontier: GameInfo = {
+export const billyfrontier: GameInfo = {
   id: "billyfrontier",
   name: "Billy Frontier",
   models: [
@@ -95,5 +95,3 @@ const billyfrontier: GameInfo = {
     },
   ],
 };
-
-export default billyfrontier;

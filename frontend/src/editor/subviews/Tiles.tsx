@@ -1,8 +1,8 @@
-import { ottoTileAttribute } from "../../python/structSpecs/ottoMaticInterface";
+import { TileAttribute } from "@/python/structSpecs/LevelTypes";
 import {
   TerrainData,
   HeaderData,
-} from "../../python/structSpecs/ottoMaticLevelData";
+} from "@/python/structSpecs/LevelTypes";
 import { Layer, Image } from "react-konva";
 import { Updater } from "use-immer";
 import {
@@ -19,10 +19,12 @@ import {
   TileBrushType,
 } from "../../data/tiles/tileAtoms";
 import { useAtomValue } from "jotai";
-import { Game, Globals } from "../../data/globals/globals";
+import { Globals } from "../../data/globals/globals";
 import { useMemo } from "react";
 import { createImageCanvas } from "./tiles/tilesUtils";
+import { elevationToRGBA, flattenCoords } from "./tiles/tilesUtils";
 import { KonvaEventObject } from "konva/lib/Node";
+import { calculateBrushPixels, applyTopologyBrush, PixelType } from "../utils/topologyBrushUtils";
 
 /* 
 
@@ -46,26 +48,22 @@ export function Tiles({
   isEditingTopology: boolean;
 }) {
   const tileViewMode = useAtomValue(TileViewMode);
-  const globals = useAtomValue(Globals);
 
-  // For games that use individual tiles (Bugdom, Nanosaur), Layr contains tile indices
-  // not Atrb references. Return null for tile views that don't apply.
-  const usesIndividualTiles =
-    globals.GAME_TYPE === Game.BUGDOM || globals.GAME_TYPE === Game.NANOSAUR;
+  // Check data structure to determine tile type rather than game type
+  // Games with individual tiles have Layr containing tile indices but no Atrb tile attributes
+  // Standard games have Atrb with tile flags
+  const hasAtrbData = Boolean(terrainData.Atrb?.[1000]?.obj?.length);
+  const hasLayrData = Boolean(terrainData.Layr?.[1000]?.obj);
 
   const tileGrid = useMemo(() => {
-    // For individual tile games, Layr doesn't reference Atrb, so return empty array
-    if (
-      usesIndividualTiles ||
-      !terrainData.Atrb?.[1000]?.obj?.length ||
-      !terrainData.Layr?.[1000]?.obj
-    ) {
+    // If no Atrb data or Layr doesn't reference Atrb, return empty array
+    if (!hasAtrbData || !hasLayrData) {
       return [];
     }
-    return terrainData.Layr[1000].obj
-      .map((atrbIdx: number) => terrainData.Atrb[1000].obj[atrbIdx])
-      .filter((tile): tile is ottoTileAttribute => tile !== undefined);
-  }, [terrainData.Layr, terrainData.Atrb, usesIndividualTiles]);
+    return terrainData.Layr![1000].obj
+      .map((atrbIdx: number) => terrainData.Atrb![1000].obj[atrbIdx])
+      .filter((tile): tile is TileAttribute => tile !== undefined);
+  }, [terrainData.Layr, terrainData.Atrb, hasAtrbData, hasLayrData]);
 
   // For Topology view, check if YCrd data exists
   if (tileViewMode === TileViews.Topology) {
@@ -94,7 +92,6 @@ export function Tiles({
     return (
       <EmptyTiles
         headerData={headerData}
-        terrainData={terrainData}
         setTerrainData={setTerrainData}
         tileGrid={tileGrid}
       />
@@ -103,7 +100,6 @@ export function Tiles({
     return (
       <ElectricFloor0Tiles
         headerData={headerData}
-        terrainData={terrainData}
         setTerrainData={setTerrainData}
         tileGrid={tileGrid}
       />
@@ -114,14 +110,11 @@ export function Tiles({
   return (
     <ElectricFloor1Tiles
       headerData={headerData}
-      terrainData={terrainData}
       setTerrainData={setTerrainData}
       tileGrid={tileGrid}
     />
   );
 }
-
-type PixelType = { x: number; y: number; value: number; distance: number };
 
 export function TopologyTiles({
   headerData,
@@ -146,30 +139,14 @@ export function TopologyTiles({
   // Guard against missing or empty YCrd data
   const yCrdData = terrainData.YCrd?.[1000]?.obj;
 
-  const elevationToRGBA = (elevation: number) => {
-    // Avoid division by zero
-    const range = header.maxY - header.minY;
-    if (range === 0) return [128, 128, 128, 255];
-    return [
-      ((elevation - header.minY) / range) * 255,
-      ((elevation - header.minY) / range) * 255,
-      ((elevation - header.minY) / range) * 255,
-      255,
-    ];
-  };
-  const flattenCoords = (x: number, y: number) => {
-    x = Math.floor(x / globals.TILE_SIZE);
-
-    y = Math.floor(y / globals.TILE_SIZE);
-    return y * (header.mapWidth + 1) + x;
-  };
+  // Use pure helper functions from tilesUtils to avoid recreating closures
 
   const coordColours = useMemo(() => {
     if (!yCrdData || yCrdData.length === 0) {
       // Return a minimal valid array for empty data
       return [128, 128, 128, 255];
     }
-    return yCrdData.flatMap(elevationToRGBA);
+    return yCrdData.flatMap((e) => elevationToRGBA(header, e));
   }, [yCrdData, header]);
 
   const imgCanvas = useMemo(() => {
@@ -190,7 +167,7 @@ export function TopologyTiles({
       return null;
     }
     return result.value;
-  }, [header, yCrdData, coordColours]);
+  }, [header, coordColours, yCrdData]);
 
   const setPixels = (pixelList: PixelType[]) => {
     // Guard against missing YCrd data
@@ -199,38 +176,18 @@ export function TopologyTiles({
     setTerrainData((data) => {
       if (!data.YCrd?.[1000]?.obj) return;
 
-      for (const pixelData of pixelList) {
-        const { x, y, value, distance } = pixelData;
-
-        if (
-          x < 0 ||
-          x > (header.mapWidth + 1) * globals.TILE_SIZE ||
-          y < 0 ||
-          y > (header.mapHeight + 1) * globals.TILE_SIZE
-        )
-          continue;
-        const flatPos = flattenCoords(x, y);
-        if (data.YCrd[1000].obj[flatPos] === undefined) continue;
-
-        if (currentTopologyValueMode === TopologyValueMode.SET_VALUE) {
-          data.YCrd[1000].obj[flatPos] = value;
-        } else if (currentTopologyValueMode === TopologyValueMode.DELTA_VALUE) {
-          data.YCrd[1000].obj[flatPos] = data.YCrd[1000].obj[flatPos] + value;
-        } else if (
-          currentTopologyValueMode === TopologyValueMode.DELTA_WITH_DROPOFF
-        ) {
-          data.YCrd[1000].obj[flatPos] =
-            data.YCrd[1000].obj[flatPos] + value * (1 - distance);
-        }
-
-        //Clamp
-        if (data.YCrd[1000].obj[flatPos] < header.minY) {
-          data.YCrd[1000].obj[flatPos] = header.minY;
-        }
-        if (data.YCrd[1000].obj[flatPos] > header.maxY) {
-          data.YCrd[1000].obj[flatPos] = header.maxY;
-        }
-      }
+      // Use shared brush application utility
+      applyTopologyBrush(data.YCrd[1000].obj, pixelList, {
+        centerX: 0, // Not used in applyTopologyBrush
+        centerY: 0, // Not used in applyTopologyBrush
+        radius: (topologyBrushRadius - 1) * globals.TILE_SIZE,
+        brushMode: currentTopologyBrushMode,
+        valueMode: currentTopologyValueMode,
+        value: topologyValue,
+        header,
+        globals,
+        tileSize: globals.TILE_SIZE,
+      });
     });
   };
 
@@ -251,62 +208,19 @@ export function TopologyTiles({
             const centerX = Math.round(pos.x);
             const centerY = Math.round(pos.y);
             const radius = (topologyBrushRadius - 1) * globals.TILE_SIZE;
-            const pixelList: PixelType[] = [];
-
-            if (currentTopologyBrushMode === TopologyBrushMode.CIRCLE_BRUSH) {
-              // Create a circular brush pattern
-              const baseX = centerX - radius;
-              const baseY = centerY - radius;
-              const diameter = radius * 2;
-
-              for (let i = 0; i <= diameter; i += globals.TILE_SIZE) {
-                for (let j = 0; j <= diameter; j += globals.TILE_SIZE) {
-                  const tileX = baseX + i;
-                  const tileY = baseY + j;
-
-                  // Calculate if this tile is within the circle radius
-                  const distanceSquared =
-                    Math.pow(tileX - centerX, 2) + Math.pow(tileY - centerY, 2);
-
-                  const distance = Math.sqrt(distanceSquared) / radius;
-
-                  if (distanceSquared <= Math.pow(radius, 2)) {
-                    pixelList.push({
-                      x: tileX,
-                      y: tileY,
-                      value: topologyValue,
-                      distance: distance,
-                    });
-                  }
-                }
-              }
-            } else {
-              // Original square brush pattern
-              const baseX = centerX - radius;
-              const baseY = centerY - radius;
-              const size = radius * 2;
-
-              // Calculate distance for square brush (normalized from 0 to 1)
-              // Using Manhattan distance for square pattern feel
-              for (let i = 0; i <= size; i += globals.TILE_SIZE) {
-                for (let j = 0; j <= size; j += globals.TILE_SIZE) {
-                  const tileX = baseX + i;
-                  const tileY = baseY + j;
-
-                  // Calculate distance from center (using max of x,y distance for square pattern feel)
-                  const xDistance = Math.abs(tileX - centerX);
-                  const yDistance = Math.abs(tileY - centerY);
-                  const distance = Math.max(xDistance, yDistance) / radius;
-
-                  pixelList.push({
-                    x: tileX,
-                    y: tileY,
-                    value: topologyValue,
-                    distance: distance,
-                  });
-                }
-              }
-            }
+            
+            // Use shared brush calculation utility
+            const pixelList = calculateBrushPixels({
+              centerX,
+              centerY,
+              radius,
+              brushMode: currentTopologyBrushMode,
+              valueMode: currentTopologyValueMode,
+              value: topologyValue,
+              header,
+              globals,
+              tileSize: globals.TILE_SIZE,
+            });
 
             setPixels(pixelList);
           }}
@@ -319,14 +233,12 @@ export function TopologyTiles({
 
 export function EmptyTiles({
   headerData,
-  terrainData: _terrainData,
   setTerrainData,
   tileGrid,
 }: {
   headerData: HeaderData;
-  terrainData: TerrainData;
   setTerrainData: Updater<TerrainData>;
-  tileGrid: ottoTileAttribute[];
+  tileGrid: TileAttribute[];
 }) {
   const globals = useAtomValue(Globals);
   // Use Jotai atoms for tile editing state
@@ -348,13 +260,17 @@ export function EmptyTiles({
 
   const imgCanvas = useMemo(() => {
     if (!header) return null;
-    const result = createImageCanvas(header.mapWidth, header.mapHeight, coordColours);
+    const result = createImageCanvas(
+      header.mapWidth,
+      header.mapHeight,
+      coordColours,
+    );
     if (!result.ok) {
       console.error("Failed to create image canvas:", result.error.message);
       return null;
     }
     return result.value;
-  }, [header?.mapWidth, header?.mapHeight, coordColours]);
+  }, [header, coordColours]);
 
   const handleTileClickEvent = (e: KonvaEventObject<MouseEvent>) => {
     if (!tileEditingEnabled) return;
@@ -422,14 +338,13 @@ export function EmptyTiles({
 
 export function ElectricFloor0Tiles({
   headerData,
-  terrainData: _terrainData,
   setTerrainData,
   tileGrid,
 }: {
   headerData: HeaderData;
-  terrainData: TerrainData;
+  terrainData?: TerrainData;
   setTerrainData: Updater<TerrainData>;
-  tileGrid: ottoTileAttribute[];
+  tileGrid: TileAttribute[];
 }) {
   const globals = useAtomValue(Globals);
   // Use Jotai atoms for tile editing state
@@ -451,13 +366,17 @@ export function ElectricFloor0Tiles({
 
   const imgCanvas = useMemo(() => {
     if (!header) return null;
-    const result = createImageCanvas(header.mapWidth, header.mapHeight, coordColours);
+    const result = createImageCanvas(
+      header.mapWidth,
+      header.mapHeight,
+      coordColours,
+    );
     if (!result.ok) {
       console.error("Failed to create image canvas:", result.error.message);
       return null;
     }
     return result.value;
-  }, [header?.mapWidth, header?.mapHeight, coordColours]);
+  }, [header, coordColours]);
 
   const handleTileClickEvent = (e: KonvaEventObject<MouseEvent>) => {
     if (!tileEditingEnabled) return;
@@ -525,16 +444,15 @@ export function ElectricFloor0Tiles({
 
 export function ElectricFloor1Tiles({
   headerData,
-  terrainData: _terrainData,
   setTerrainData,
   tileGrid,
 }: {
   headerData: HeaderData;
-  terrainData: TerrainData;
   setTerrainData: Updater<TerrainData>;
-  tileGrid: ottoTileAttribute[];
+  tileGrid: TileAttribute[];
 }) {
   const globals = useAtomValue(Globals);
+
   // Use Jotai atoms for tile editing state
   const tileEditingEnabled = useAtomValue(TileEditingEnabled);
   const brushType = useAtomValue(TileBrushType);
@@ -554,13 +472,17 @@ export function ElectricFloor1Tiles({
 
   const imgCanvas = useMemo(() => {
     if (!header) return null;
-    const result = createImageCanvas(header.mapWidth, header.mapHeight, coordColours);
+    const result = createImageCanvas(
+      header.mapWidth,
+      header.mapHeight,
+      coordColours,
+    );
     if (!result.ok) {
       console.error("Failed to create image canvas:", result.error.message);
       return null;
     }
     return result.value;
-  }, [header?.mapWidth, header?.mapHeight, coordColours]);
+  }, [header, coordColours]);
 
   const handleTileClickEvent = (e: KonvaEventObject<MouseEvent>) => {
     if (!tileEditingEnabled) return;

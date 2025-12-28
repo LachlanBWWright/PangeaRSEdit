@@ -1,6 +1,6 @@
 import type { GameInfo } from "@/components/GameModelSelector";
 
-const nanosaur2: GameInfo = {
+export const nanosaur2: GameInfo = {
   id: "nanosaur2",
   name: "Nanosaur 2",
   models: [
@@ -79,5 +79,3 @@ const nanosaur2: GameInfo = {
     },
   ],
 };
-
-export default nanosaur2;

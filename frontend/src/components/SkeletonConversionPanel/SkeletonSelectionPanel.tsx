@@ -1,7 +1,7 @@
 import React from "react";
 import { Button } from "@/components/ui/button";
 import { X } from "lucide-react";
-import DropArea from "./DropArea";
+import { DropArea } from "./DropArea";
 
 interface Props {
   pendingBg3dFileName: string;
@@ -13,7 +13,7 @@ interface Props {
   loading: boolean;
 }
 
-export default function SkeletonSelectionPanel({
+export function SkeletonSelectionPanel({
   pendingBg3dFileName,
   inputId,
   onDrop,

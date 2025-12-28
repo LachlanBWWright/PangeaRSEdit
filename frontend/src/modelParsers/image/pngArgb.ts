@@ -10,9 +10,9 @@ export async function pngToRgb8(pngBuffer: ArrayBuffer): Promise<{
   const { data: rgba, width, height } = await pngToRgba8(pngBuffer);
   const rgb = new Uint8Array((rgba.length / 4) * 3);
   for (let i = 0, j = 0; i < rgba.length; i += 4, j += 3) {
-    rgb[j + 0] = rgba[i + 0];
-    rgb[j + 1] = rgba[i + 1];
-    rgb[j + 2] = rgba[i + 2];
+    rgb[j + 0] = rgba[i + 0] ?? 0;
+    rgb[j + 1] = rgba[i + 1] ?? 0;
+    rgb[j + 2] = rgba[i + 2] ?? 0;
   }
   return { data: rgb, width, height };
 }
@@ -30,9 +30,9 @@ export function rgb24ToPng(
 export function rgb24ToRgba8(rgb: Uint8Array): Uint8Array {
   const out = new Uint8Array((rgb.length / 3) * 4);
   for (let i = 0, j = 0; i < rgb.length; i += 3, j += 4) {
-    out[j + 0] = rgb[i + 0]; // R
-    out[j + 1] = rgb[i + 1]; // G
-    out[j + 2] = rgb[i + 2]; // B
+    out[j + 0] = rgb[i + 0] ?? 0; // R
+    out[j + 1] = rgb[i + 1] ?? 0; // G
+    out[j + 2] = rgb[i + 2] ?? 0; // B
     out[j + 3] = 255; // A
   }
   return out;
@@ -42,7 +42,7 @@ export function rgb24ToRgba8(rgb: Uint8Array): Uint8Array {
 export function argb16ToRgba8(argb16: Uint16Array): Uint8Array {
   const out = new Uint8Array(argb16.length * 4);
   for (let i = 0; i < argb16.length; i++) {
-    const v = argb16[i];
+    const v = argb16[i] ?? 0;
     // ARGB1555: 1 bit alpha, 5 bits red, 5 bits green, 5 bits blue
     const a = (v >> 15) & 0x1 ? 255 : 0;
     const r = (((v >> 10) & 0x1f) * 255) / 31;
@@ -60,10 +60,10 @@ export function argb16ToRgba8(argb16: Uint16Array): Uint8Array {
 export function rgba8ToArgb16(rgba: Uint8Array): Uint16Array {
   const out = new Uint16Array(rgba.length / 4);
   for (let i = 0; i < out.length; i++) {
-    const r = Math.round((rgba[i * 4 + 0] / 255) * 31) & 0x1f;
-    const g = Math.round((rgba[i * 4 + 1] / 255) * 31) & 0x1f;
-    const b = Math.round((rgba[i * 4 + 2] / 255) * 31) & 0x1f;
-    const a = rgba[i * 4 + 3] >= 128 ? 1 : 0;
+    const r = Math.round(((rgba[i * 4 + 0] ?? 0) / 255) * 31) & 0x1f;
+    const g = Math.round(((rgba[i * 4 + 1] ?? 0) / 255) * 31) & 0x1f;
+    const b = Math.round(((rgba[i * 4 + 2] ?? 0) / 255) * 31) & 0x1f;
+    const a = (rgba[i * 4 + 3] ?? 0) >= 128 ? 1 : 0;
     out[i] = (a << 15) | (r << 10) | (g << 5) | b;
   }
   return out;
@@ -75,11 +75,19 @@ export function rgba8ToPng(
   width: number,
   height: number,
 ): Buffer {
-  const png = new PNG({ width, height });
-  console.log("Setting PNG data with length:", rgba.length);
+  const expectedLength = width * height * 4;
+  console.log("Setting PNG data with length:", rgba.length, "expected:", expectedLength);
   console.log("PNG dimensions:", width, "x", height);
+
+  if (rgba.length !== expectedLength) {
+    console.warn(`RGBA data length mismatch: got ${rgba.length}, expected ${expectedLength}`);
+  }
+
+  const png = new PNG({ width, height });
   png.data.set(rgba);
-  return PNG.sync.write(png);
+  const encoded = PNG.sync.write(png);
+  console.log("PNG encoded successfully, size:", encoded.length);
+  return encoded;
 }
 
 // Decode PNG Buffer to RGBA Uint8Array

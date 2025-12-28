@@ -2,7 +2,7 @@ import { parseBonNData } from "../parseHelpers";
 import type { BonNRaw } from "../parseSkeletonRsrcTS";
 
 export function handleBonN(
-  resourceName: string,
+  _resourceName: string,
   resourceData: BonNRaw[] | { obj?: BonNRaw[] } | undefined,
   hexData: string,
 ): BonNRaw[] {
