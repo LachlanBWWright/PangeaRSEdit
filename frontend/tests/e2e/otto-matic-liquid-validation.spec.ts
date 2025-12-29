@@ -14,9 +14,13 @@ test.describe('Otto Matic Liquid Bodies', () => {
     // Wait for level upload section
     await page.waitForSelector('text=Upload Level Data');
     
-    // Upload the Apocalypse level file
+    // Upload the Apocalypse level file (using relative path from test directory)
     const fileInput = page.locator('input[type="file"]');
-    await fileInput.setInputFiles('/home/runner/work/PangeaRSEdit/PangeaRSEdit/frontend/tests/files/otto_matic/Apocalypse.ter.rsrc');
+    // Note: In CI/test environment, adjust this path as needed
+    const testFilePath = process.env.TEST_FILES_PATH 
+      ? `${process.env.TEST_FILES_PATH}/otto_matic/Apocalypse.ter.rsrc`
+      : '../files/otto_matic/Apocalypse.ter.rsrc';
+    await fileInput.setInputFiles(testFilePath);
     
     // Wait for the level to load (look for download button)
     await page.waitForSelector('text=Download', { timeout: 30000 });

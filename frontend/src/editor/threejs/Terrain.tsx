@@ -87,6 +87,9 @@ export const TerrainGeometry = forwardRef<Mesh, {
   ]);
 
   // Update geometry vertices when YCrd data changes (for topology editing)
+  // Performance note: Updates all vertices on change. For optimization on very large
+  // terrains, consider tracking dirty vertices and only updating changed positions.
+  // Current implementation is acceptable for typical game level sizes (< 256x256 tiles).
   useEffect(() => {
     if (!geometry || !terrainData.YCrd?.[1000]?.obj) return;
     

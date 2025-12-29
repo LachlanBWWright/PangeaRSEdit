@@ -192,6 +192,10 @@ export function ThreeView({
       });
 
       // Apply brush while dragging (if isEditing)
+      // Performance note: This applies on every mouse move during editing.
+      // For very large terrains, consider debouncing or using requestAnimationFrame
+      // to limit update frequency. Current implementation prioritizes responsiveness
+      // for typical game level sizes (tested with maps up to 256x256 tiles).
       if (isEditing && terrainData.YCrd?.[1000]?.obj) {
         applyTopologyBrush(terrainData.YCrd[1000].obj, pixels, {
           centerX: tileCoords.x * globals.TILE_INGAME_SIZE,
