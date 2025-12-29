@@ -112,8 +112,8 @@ export function preprocessJson(
       if (hasAnyNubFields) {
         item.nubs = nubs;
       } else if (!item.nubs) {
-        // No nubs data at all - initialize empty
-        item.nubs = Array(globals.LIQD_NUBS).fill([0, 0]);
+        // No nubs data at all - initialize empty with unique arrays for each element
+        item.nubs = Array.from({ length: globals.LIQD_NUBS }, () => [0, 0]);
       }
     }
   }
