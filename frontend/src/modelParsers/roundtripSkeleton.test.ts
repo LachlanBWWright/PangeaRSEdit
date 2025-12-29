@@ -140,7 +140,7 @@ describe("BG3D + Skeleton Roundtrip Tests with FULL ACCURACY", () => {
       Object.keys(roundtrip1Result.skeleton!.relPoints || {}).length,
     );
 
-    const roundtrip1SkeletonBinaryResult = skeletonResourceToBinary(
+    const _ = skeletonResourceToBinary(
       roundtrip1SkeletonResource,
     );
 
@@ -209,7 +209,7 @@ describe("BG3D + Skeleton Roundtrip Tests with FULL ACCURACY", () => {
       ),
     );
 
-    const roundtrip2SkeletonBinaryResult = skeletonResourceToBinary(
+    const _ = skeletonResourceToBinary(
       roundtrip2SkeletonResource,
     );
 
