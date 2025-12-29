@@ -171,6 +171,13 @@ export function TilesMenu({
       <div className="grid grid-cols-[auto_1fr_auto_1fr] gap-2 items-center"></div>
 
       {tileView === TileViews.Topology && (
+        <>
+          <div className="text-sm text-blue-400 p-3 bg-blue-950/30 rounded border border-blue-800/50 mb-3">
+            <p className="font-semibold mb-1">✨ Topology Editing</p>
+            <p>• Hover over the 3D view to see brush radius (green circle)</p>
+            <p>• Click and drag to paint height changes directly onto terrain</p>
+            <p>• Changes apply immediately to the heightmap</p>
+          </div>
         <div className="grid grid-cols-[auto_1fr_auto_1fr] gap-2 items-center">
           <p>Brush Mode</p>
           <Select
@@ -338,6 +345,7 @@ export function TilesMenu({
             </>
           )}
         </div>
+        </>
       )}
 
       {hasTileFlags &&
