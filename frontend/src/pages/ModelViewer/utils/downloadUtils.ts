@@ -84,9 +84,14 @@ export async function downloadBG3DModel(
               );
 
               // Convert to binary .rsrc format
-              const skeletonBinary = await skeletonResourceToBinary(
+              const skeletonBinaryResult = skeletonResourceToBinary(
                 skeletonResource,
               );
+              if (!skeletonBinaryResult.ok) {
+                console.error("Failed to convert skeleton to binary:", skeletonBinaryResult.error);
+                return;
+              }
+              const skeletonBinary = skeletonBinaryResult.value;
               const skeletonBlob = new Blob([skeletonBinary], {
                 type: "application/octet-stream",
               });

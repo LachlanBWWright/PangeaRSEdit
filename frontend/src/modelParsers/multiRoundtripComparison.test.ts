@@ -148,7 +148,7 @@ describe("Multi-Roundtrip Semantic Accuracy", () => {
         const skeletonResource = bg3dSkeletonToSkeletonResource(
           bg3dParsedBack.skeleton!,
         );
-        const skeletonBinary = await skeletonResourceToBinary(
+        const skeletonBinaryResult = skeletonResourceToBinary(
           skeletonResource,
           {
             usePyodide: false,

@@ -114,9 +114,9 @@ export function useFileUpload(options: UseFileUploadOptions) {
             try {
               console.log("Parsing skeleton file with TypeScript implementation...");
               const skeletonBuffer = await skeletonFile.arrayBuffer();
-              skeletonData = parseSkeletonRsrc(skeletonBuffer);
+              skeletonData = await parseSkeletonRsrc(skeletonBuffer);
               console.log(
-                `Successfully parsed skeleton with ${Object.keys(skeletonData.Bone || {}).length || 0} bones`,
+                `Successfully parsed skeleton with ${Object.keys(skeletonData?.Bone || {}).length || 0} bones`,
               );
             } catch (error) {
               console.error("Error parsing skeleton:", error);
@@ -207,9 +207,9 @@ export function useFileUpload(options: UseFileUploadOptions) {
           try {
             console.log("Parsing skeleton file with TypeScript implementation...");
             const skeletonBuffer = await skeletonFile.arrayBuffer();
-            skeletonData = parseSkeletonRsrc(skeletonBuffer);
+            skeletonData = await parseSkeletonRsrc(skeletonBuffer);
             console.log(
-              `Successfully parsed skeleton with ${Object.keys(skeletonData.Bone || {}).length || 0} bones`,
+              `Successfully parsed skeleton with ${Object.keys(skeletonData?.Bone || {}).length || 0} bones`,
             );
           } catch (error) {
             console.error("Error parsing skeleton:", error);

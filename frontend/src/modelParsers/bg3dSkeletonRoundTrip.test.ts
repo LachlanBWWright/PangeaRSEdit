@@ -184,7 +184,7 @@ describe("BG3D Skeleton Round-trip with FULL ACCURACY", () => {
     const roundtripSkeletonResource = bg3dSkeletonToSkeletonResource(
       roundtripBg3d.skeleton!,
     );
-    const reparsedSkeletonBinary = await skeletonResourceToBinary(
+    const reparsedSkeletonBinaryResult = skeletonResourceToBinary(
       roundtripSkeletonResource,
     );
     const reparsedSkeletonResource = parseSkeletonRsrc(
