@@ -20,14 +20,11 @@ export function preprocessJson(
   globals: GlobalsInterface,
 ): Result<void, Error> {
   const anyJson = json as Record<string, unknown>;
-  console.log(anyJson);
 
   // For games that use Layr as tile indices with flip/rotate bits - DO NOT MODIFY!
   // The Layr preprocessing below is only for Otto Matic and CroMag where Layr contains Atrb indices.
   if (usesLayrAsTileIndices(globals)) {
-    console.log(
-      `${globals.GAME_NAME}: Skipping Layr/Atrb preprocessing (Layr contains tile indices with flip/rotate bits)`,
-    );
+    // Skip preprocessing for games that use Layr as direct tile indices
   } else if (
     anyJson.Layr &&
     anyJson.Atrb &&
@@ -37,7 +34,6 @@ export function preprocessJson(
     1000 in anyJson.Atrb
   ) {
     // Otto Matic and other games: Ensure Layr points to unique Atrb values
-    console.log(json);
     const layrRecord = anyJson.Layr as Record<number, { obj: unknown }>;
     const atrbRecord = anyJson.Atrb as Record<number, { obj: unknown }>;
     const layr1000 = layrRecord[1000];
@@ -47,9 +43,6 @@ export function preprocessJson(
     }
     const layrArr = layr1000.obj;
     const atrbArr = atrb1000.obj;
-
-    console.log("layrArr", layrArr);
-    console.log("atrbArr", atrbArr);
 
     if (!Array.isArray(layrArr)) {
       return err(new Error("Layr[1000].obj is not an array"));
@@ -74,12 +67,8 @@ export function preprocessJson(
       newAtrbArr.push(atrbValue);
     }
 
-    console.log("newAtrbArr", newAtrbArr);
-    console.log("newLayrArr", newLayrArr);
     atrb1000.obj = newAtrbArr;
     layr1000.obj = newLayrArr;
-  } else {
-    console.warn("Layr or Atrb not found in JSON");
   }
 
   if (anyJson.Liqd && typeof anyJson.Liqd === 'object' && 1000 in anyJson.Liqd) {
