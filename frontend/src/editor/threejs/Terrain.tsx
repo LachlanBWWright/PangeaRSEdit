@@ -5,6 +5,7 @@ import {
 } from "@/python/structSpecs/LevelTypes";
 import { useRef, useMemo, forwardRef, useEffect } from "react";
 import { CanvasTexture, DoubleSide, Mesh, PlaneGeometry } from "three";
+import type * as THREE from "three";
 import { useAtomValue } from "jotai";
 import { Globals } from "@/data/globals/globals";
 import combineMapImages from "./terrainUtils";

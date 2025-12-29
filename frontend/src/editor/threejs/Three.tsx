@@ -8,7 +8,7 @@ import { SplineGeometry } from "./SplineGeometry";
 import { SplineItemGeometry } from "./SplineItemGeometry";
 import { TopologyBrush3D } from "./TopologyBrush3D";
 import { TopologyPreview3D } from "./TopologyPreview3D";
-import { useAtomValue, useAtom, useSetAtom } from "jotai";
+import { useAtomValue, useAtom } from "jotai";
 import { Globals } from "@/data/globals/globals";
 import {
   Show3DSplines,
@@ -19,6 +19,7 @@ import {
 } from "@/data/canvasView/canvasViewAtoms";
 import {
   TileViewMode,
+  TileViews,
   CurrentTopologyBrushMode,
   TopologyBrushRadius,
   CurrentTopologyValueMode,
@@ -36,7 +37,8 @@ import {
 
 import { useEffect, useRef, useState, useCallback } from "react";
 import { toast } from "sonner";
-import { Raycaster, Vector2, Vector3, Mesh } from "three";
+import { Vector3, Mesh } from "three";
+import type * as THREE from "three";
 import {
   calculateBrushPixels,
   applyTopologyBrush,
@@ -154,7 +156,7 @@ export function ThreeView({
   const [isEditing, setIsEditing] = useState(false);
   const [affectedPixels, setAffectedPixels] = useState<PixelType[]>([]);
   
-  const isEditingTopology = tileViewMode === "Topology";
+  const isEditingTopology = tileViewMode === TileViews.Topology;
 
   const header = headerData.Hedr[1000].obj;
 
@@ -163,24 +165,6 @@ export function ThreeView({
 
   const unitsWide = numWide * globals.TILE_INGAME_SIZE;
   const unitsHigh = numHigh * globals.TILE_INGAME_SIZE;
-
-  // Raycasting for mouse-to-terrain intersection
-  const raycaster = useRef(new Raycaster());
-  const mouse = useRef(new Vector2());
-
-  const getIntersection = useCallback((event: React.PointerEvent<HTMLCanvasElement>) => {
-    if (!terrainMeshRef.current) return null;
-
-    const canvas = event.currentTarget;
-    const rect = canvas.getBoundingClientRect();
-    
-    // Convert to normalized device coordinates
-    mouse.current.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
-    mouse.current.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
-
-    // This will be handled by the Canvas component's raycasting
-    return { mouse: mouse.current, terrainMesh: terrainMeshRef.current };
-  }, []);
 
   const handlePointerMove = useCallback((event: THREE.Event) => {
     if (!isEditingTopology || !terrainMeshRef.current) return;

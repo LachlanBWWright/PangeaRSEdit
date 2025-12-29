@@ -241,12 +241,10 @@ export async function gltfMaterialsToBg3d(
             let imageBuffer: ArrayBuffer;
             if (image.buffer instanceof ArrayBuffer) {
               imageBuffer = image.buffer;
-            } else if (image.buffer instanceof SharedArrayBuffer) {
-              const temp = new Uint8Array(image.buffer);
-              imageBuffer = temp.buffer.slice(temp.byteOffset, temp.byteOffset + temp.byteLength);
             } else {
+              // Handle SharedArrayBuffer or other ArrayBufferLike types
               const temp = new Uint8Array(image.buffer);
-              imageBuffer = temp.buffer.slice(temp.byteOffset, temp.byteOffset + temp.byteLength);
+              imageBuffer = temp.slice().buffer;
             }
             const rgbaRes = await pngToRgba8(imageBuffer);
             const rgb = new Uint8Array((rgbaRes.data.length / 4) * 3);

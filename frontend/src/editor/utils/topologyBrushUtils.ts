@@ -1,5 +1,5 @@
 import { TopologyBrushMode, TopologyValueMode } from "@/data/tiles/tileAtoms";
-import { Globals } from "@/data/globals/globals";
+import type { GlobalsInterface } from "@/data/globals/globals";
 import { StandardHeader } from "@/python/structSpecs/LevelTypes";
 
 export interface PixelType {
@@ -17,7 +17,7 @@ export interface BrushParams {
   valueMode: TopologyValueMode;
   value: number;
   header: StandardHeader;
-  globals: Globals;
+  globals: GlobalsInterface;
   tileSize: number; // For 2D use globals.TILE_SIZE, for 3D use 1 (tile units)
 }
 
@@ -90,11 +90,11 @@ export function calculateBrushPixels(params: BrushParams): PixelType[] {
  * Apply brush modifications to the terrain height array
  */
 export function applyTopologyBrush(
-  ycrdArray: Int16Array,
+  ycrdArray: Int16Array | number[],
   pixels: PixelType[],
   params: BrushParams
 ): void {
-  const { valueMode, header, globals } = params;
+  const { valueMode, header } = params;
   const mapWidth = header.mapWidth;
   const mapHeight = header.mapHeight;
 
@@ -113,6 +113,7 @@ export function applyTopologyBrush(
     if (index < 0 || index >= ycrdArray.length) return;
 
     const currentValue = ycrdArray[index];
+    if (currentValue === undefined) return;
 
     let newValue: number;
     switch (valueMode) {
@@ -124,11 +125,12 @@ export function applyTopologyBrush(
         newValue = currentValue + pixel.value;
         break;
 
-      case TopologyValueMode.DELTA_WITH_DROPOFF:
+      case TopologyValueMode.DELTA_WITH_DROPOFF: {
         // Apply falloff: full effect at center (distance=0), no effect at edge (distance=1)
         const falloff = 1 - pixel.distance;
         newValue = currentValue + pixel.value * falloff;
         break;
+      }
 
       default:
         newValue = currentValue;

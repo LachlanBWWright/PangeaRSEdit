@@ -1,6 +1,6 @@
 import { useAtomValue } from "jotai";
 import { useMemo } from "react";
-import { PlaneGeometry, MeshBasicMaterial, DoubleSide, BufferAttribute } from "three";
+import { PlaneGeometry, MeshBasicMaterial, DoubleSide } from "three";
 import { Globals } from "@/data/globals/globals";
 import {
   CurrentTopologyValueMode,
@@ -77,10 +77,11 @@ export function TopologyPreview3D({
             case TopologyValueMode.DELTA_VALUE:
               newValue = currentValue + topologyValue;
               break;
-            case TopologyValueMode.DELTA_WITH_DROPOFF:
+            case TopologyValueMode.DELTA_WITH_DROPOFF: {
               const falloff = 1 - pixel.distance;
               newValue = currentValue + topologyValue * falloff;
               break;
+            }
             default:
               newValue = currentValue;
           }
