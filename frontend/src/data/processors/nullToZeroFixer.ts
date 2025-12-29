@@ -1,12 +1,17 @@
 /**
  * Fix null and undefined values in parsed rsrcdump-ts output
  * 
- * rsrcdump-ts v1.0.5 STILL has a bug where it returns null/undefined for numeric zero values
- * AND it returns undefined for empty arrays in resource entries
- * This function recursively converts null/undefined to 0 for all numeric fields
- * and converts undefined obj arrays in resource entries to empty arrays
+ * HISTORY:
+ * - rsrcdump-ts v1.0.4 and v1.0.5 had a bug where they returned null/undefined for numeric zero values
+ * - rsrcdump-ts v1.0.6 fixed these bugs
  * 
- * This is a workaround until the package is fixed
+ * This function is kept as a safety net for:
+ * 1. Backwards compatibility with older rsrcdump-ts versions
+ * 2. Edge cases in preprocessing that may create undefined values
+ * 3. Defensive programming to ensure data quality
+ * 
+ * It recursively converts null/undefined to 0 for all numeric fields
+ * and converts undefined obj arrays in resource entries to empty arrays
  */
 
 /**
