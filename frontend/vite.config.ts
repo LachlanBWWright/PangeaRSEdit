@@ -23,13 +23,7 @@ export default defineConfig({
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
-      buffer: "buffer/",
-      // Stub out Node.js modules that rsrcdump-ts imports but doesn't use in browser
-      "fs/promises": path.resolve(__dirname, "./src/utils/fs-stub.ts"),
     },
-  },
-  define: {
-    "global.Buffer": ["buffer", "Buffer"],
   },
   base: "/PangeaRSEdit/",
   build: {
