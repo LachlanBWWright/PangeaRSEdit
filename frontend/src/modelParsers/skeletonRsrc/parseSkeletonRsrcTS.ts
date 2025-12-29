@@ -176,16 +176,16 @@ function transformToSkeletonResource(
 /**
  * Parse skeleton resource using TypeScript parser
  */
-export function parseSkeletonRsrc(bytes: ArrayBuffer): SkeletonResource {
-  const parsed = parseSkeletonRsrcJson(bytes);
+export async function parseSkeletonRsrc(bytes: ArrayBuffer): Promise<SkeletonResource> {
+  const parsed = await parseSkeletonRsrcJson(bytes);
   return transformToSkeletonResource(parsed);
 }
 
-export function parseSkeletonRsrcJson(bytes: ArrayBuffer): ParsedSkeleton {
+export async function parseSkeletonRsrcJson(bytes: ArrayBuffer): Promise<ParsedSkeleton> {
   const uint8Array = new Uint8Array(bytes);
-  const result = saveToJson(uint8Array, skeletonSpecs, [], [], false);
+  const result = await saveToJson(uint8Array, skeletonSpecs, [], []);
   if (!isOk(result)) {
-    throw result.error;
+    return Promise.reject(result.error);
   }
   const parsed = JSON.parse(result.value) as ParsedSkeleton;
   return parsed;

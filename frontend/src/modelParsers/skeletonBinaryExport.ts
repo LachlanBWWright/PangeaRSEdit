@@ -2,8 +2,9 @@
 // Converts SkeletonResource JSON back to binary .rsrc format
 
 import type { SkeletonResource } from "../python/structSpecs/skeleton/skeletonInterface";
-import { loadBytesFromJson } from "@lachlanbwwright/rsrcdump-ts";
+import { loadBytesFromJson, isOk } from "@lachlanbwwright/rsrcdump-ts";
 import { skeletonSpecs } from "../python/structSpecs/skeleton/skeleton";
+import { ok, err, type Result } from "../types/result";
 
 // Global storage for Finder Info to preserve during round-trip
 let globalFinderInfo: Uint8Array | undefined = undefined;
@@ -19,11 +20,11 @@ export function getFinderInfo(): Uint8Array | undefined {
 /**
  * Convert SkeletonResource JSON to binary .rsrc format
  * @param skeletonResource The skeleton resource to convert
- * @returns ArrayBuffer
+ * @returns Result<ArrayBuffer, Error>
  */
 export function skeletonResourceToBinary(
   skeletonResource: SkeletonResource,
-): ArrayBuffer {
+): Result<ArrayBuffer, Error> {
   console.log(
     "Converting SkeletonResource to binary format using rsrcdump-ts...",
   );
@@ -37,9 +38,9 @@ export function skeletonResourceToBinary(
     true // includeFinderInfo
   );
 
-  if (!result.ok) {
-    throw new Error(`Failed to serialize skeleton: ${result.error}`);
+  if (!isOk(result)) {
+    return err(new Error(`Failed to serialize skeleton: ${result.error}`));
   }
 
-  return result.value.buffer as ArrayBuffer;
+  return ok(result.value.buffer as ArrayBuffer);
 }
