@@ -120,7 +120,9 @@ export function TopologyPreview3D({
       transparent: true,
       opacity: 0.5, // Semi-transparent to see terrain beneath
       side: DoubleSide,
-      depthWrite: false, // Prevent z-fighting with terrain
+      // Prevent z-fighting (visual artifacts when surfaces overlap at same depth)
+      // by not writing to depth buffer, allowing terrain to show through correctly
+      depthWrite: false,
     });
   }, []);
 

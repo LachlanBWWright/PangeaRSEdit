@@ -2,6 +2,10 @@ import { TopologyBrushMode, TopologyValueMode } from "@/data/tiles/tileAtoms";
 import type { GlobalsInterface } from "@/data/globals/globals";
 import { StandardHeader } from "@/python/structSpecs/LevelTypes";
 
+// Minimum vertical distance between roof and floor (in game units)
+// Ensures roof is always above floor with reasonable separation
+export const MIN_ROOF_FLOOR_DISTANCE = 10;
+
 export interface PixelType {
   x: number;
   y: number;
@@ -211,11 +215,10 @@ export function applyDualTopologyBrush(
     const newFloor = newCenter + floorDistance;
     const newRoof = newCenter + roofDistance;
 
-    // Ensure roof >= floor (minimum distance of 10 units)
-    const minDistance = 10;
+    // Ensure roof >= floor with minimum separation
     const clampedFloor = Math.max(-32768, Math.min(32767, Math.round(newFloor)));
     const clampedRoof = Math.max(
-      clampedFloor + minDistance,
+      clampedFloor + MIN_ROOF_FLOOR_DISTANCE,
       Math.min(32767, Math.round(newRoof))
     );
 
