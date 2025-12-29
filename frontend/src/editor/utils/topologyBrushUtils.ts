@@ -145,6 +145,86 @@ export function applyTopologyBrush(
 }
 
 /**
+ * Apply dual floor/roof editing - maintains equal distance from center elevation
+ * Ensures roof is always >= floor
+ */
+export function applyDualTopologyBrush(
+  floorArray: Int16Array | number[],
+  roofArray: Int16Array | number[] | undefined,
+  pixels: PixelType[],
+  params: BrushParams,
+  centerElevation: number
+): void {
+  if (!roofArray) {
+    // No roof data, just edit floor
+    applyTopologyBrush(floorArray, pixels, params);
+    return;
+  }
+
+  const { valueMode, header } = params;
+  const mapWidth = header.mapWidth;
+  const mapHeight = header.mapHeight;
+
+  pixels.forEach((pixel) => {
+    // Convert pixel coordinates to tile coordinates
+    const xTile = Math.floor(pixel.x / params.tileSize);
+    const yTile = Math.floor(pixel.y / params.tileSize);
+
+    // Boundary check
+    if (xTile < 0 || xTile >= mapWidth || yTile < 0 || yTile >= mapHeight) {
+      return;
+    }
+
+    // Flatten coordinate to array index
+    const index = yTile * (mapWidth + 1) + xTile;
+    if (index < 0 || index >= floorArray.length || index >= roofArray.length) return;
+
+    const currentFloor = floorArray[index];
+    const currentRoof = roofArray[index];
+    if (currentFloor === undefined || currentRoof === undefined) return;
+
+    // Calculate distance from center for each
+    const floorDistance = currentFloor - centerElevation;
+    const roofDistance = currentRoof - centerElevation;
+
+    let newCenter: number;
+    switch (valueMode) {
+      case TopologyValueMode.SET_VALUE:
+        newCenter = pixel.value;
+        break;
+
+      case TopologyValueMode.DELTA_VALUE:
+        newCenter = centerElevation + pixel.value;
+        break;
+
+      case TopologyValueMode.DELTA_WITH_DROPOFF: {
+        const falloff = 1 - pixel.distance;
+        newCenter = centerElevation + pixel.value * falloff;
+        break;
+      }
+
+      default:
+        newCenter = centerElevation;
+    }
+
+    // Apply distances to new center
+    const newFloor = newCenter + floorDistance;
+    const newRoof = newCenter + roofDistance;
+
+    // Ensure roof >= floor (minimum distance of 10 units)
+    const minDistance = 10;
+    const clampedFloor = Math.max(-32768, Math.min(32767, Math.round(newFloor)));
+    const clampedRoof = Math.max(
+      clampedFloor + minDistance,
+      Math.min(32767, Math.round(newRoof))
+    );
+
+    floorArray[index] = clampedFloor;
+    roofArray[index] = clampedRoof;
+  });
+}
+
+/**
  * Convert world position to tile coordinates
  */
 export function worldToTile(

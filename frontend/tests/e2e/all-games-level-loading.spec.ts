@@ -9,32 +9,32 @@ import { test, expect } from "@playwright/test";
 const GAMES = [
   {
     name: "Otto Matic",
-    cardTitle: "Otto Matic Levels",
+    cardTitle: "Otto Matic",
     levelFile: "Apocalypse.ter.rsrc",
   },
   {
     name: "Bugdom",
-    cardTitle: "Bugdom Levels",
+    cardTitle: "Bugdom",
     levelFile: "Lawn.ter.rsrc",
   },
   {
     name: "Bugdom 2",
-    cardTitle: "Bugdom 2 Levels",
+    cardTitle: "Bugdom 2",
     levelFile: "Level1_Garden.ter.rsrc",
   },
   {
     name: "Cro-Mag Rally",
-    cardTitle: "Cro-Mag Rally Levels",
+    cardTitle: "Cro-Mag Rally",
     levelFile: "Jungle.ter.rsrc",
   },
   {
     name: "Nanosaur 2",
-    cardTitle: "Nanosaur 2 Levels",
+    cardTitle: "Nanosaur 2",
     levelFile: "level1.ter.rsrc",
   },
   {
     name: "Billy Frontier",
-    cardTitle: "Billy Frontier Levels",
+    cardTitle: "Billy Frontier",
     levelFile: "town_duel.ter.rsrc",
   },
 ];
