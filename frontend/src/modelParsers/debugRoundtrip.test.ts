@@ -26,7 +26,7 @@ describe("Debug Skeleton Roundtrip", () => {
     const bg3dData = readFileSync(ottoBg3dPath);
     const skeletonData = readFileSync(ottoSkeletonPath);
 
-    const skeletonResource = parseSkeletonRsrc(
+    const skeletonResource = await parseSkeletonRsrc(
       skeletonData.buffer.slice(
         skeletonData.byteOffset,
         skeletonData.byteOffset + skeletonData.byteLength,
@@ -115,7 +115,7 @@ describe("Debug Skeleton Roundtrip", () => {
     const bg3dData = readFileSync(ottoBg3dPath);
     const skeletonData = readFileSync(ottoSkeletonPath);
 
-    const skeletonResource = parseSkeletonRsrc(
+    const skeletonResource = await parseSkeletonRsrc(
       skeletonData.buffer.slice(
         skeletonData.byteOffset,
         skeletonData.byteOffset + skeletonData.byteLength,

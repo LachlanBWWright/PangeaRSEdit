@@ -121,12 +121,12 @@ export function gltfSkeletonToBg3d(doc: Document): BG3DSkeleton | undefined {
 /**
  * Convert original skeleton binary back to BG3D skeleton
  */
-export function originalSkeletonBinaryToBg3d(
+export async function originalSkeletonBinaryToBg3d(
   originalSkeletonBinary: ArrayBuffer,
-): BG3DSkeleton {
+): Promise<BG3DSkeleton> {
   console.log("Using original skeleton binary for exact roundtrip");
   // Parse the original skeleton binary to get exact skeleton data
-  const originalSkeletonResource = parseSkeletonRsrc(originalSkeletonBinary);
+  const originalSkeletonResource = await parseSkeletonRsrc(originalSkeletonBinary);
 
   // Extract bones from original binary
   const bones = originalSkeletonBinaryToBg3dBones(originalSkeletonResource);

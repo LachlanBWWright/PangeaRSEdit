@@ -27,7 +27,7 @@ describe("Debug Conversion", () => {
     const originalSkeletonData = readFileSync(ottoSkeletonPath);
 
     // Parse original files
-    const originalSkeletonResource = parseSkeletonRsrc(
+    const originalSkeletonResource = await parseSkeletonRsrc(
       originalSkeletonData.buffer.slice(
         originalSkeletonData.byteOffset,
         originalSkeletonData.byteOffset + originalSkeletonData.byteLength,

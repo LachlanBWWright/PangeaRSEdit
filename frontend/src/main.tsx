@@ -6,7 +6,7 @@ import { Buffer } from "buffer";
 
 // Polyfill Buffer for browser compatibility
 if (typeof window !== "undefined") {
-  (window as any).Buffer = Buffer;
+  (window as typeof window & { Buffer: typeof Buffer }).Buffer = Buffer;
 }
 
 // Enable dark mode

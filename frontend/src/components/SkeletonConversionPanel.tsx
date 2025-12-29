@@ -40,7 +40,7 @@ export function SkeletonConversionPanel({
       if (skeletonFile) {
         console.log("Parsing skeleton file for conversion with TypeScript...");
         const skeletonArrayBuffer = await skeletonFile.arrayBuffer();
-        skeletonData = parseSkeletonRsrc(skeletonArrayBuffer);
+        skeletonData = await parseSkeletonRsrc(skeletonArrayBuffer);
         console.log("Skeleton data parsed for conversion:", skeletonData);
       }
 
