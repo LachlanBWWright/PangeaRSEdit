@@ -42,7 +42,7 @@ import {
 } from "@gltf-transform/core";
 import { PixelFormatSrc, PixelFormatDst } from "./parseBG3D";
 import { Quaternion } from "three";
-import { parseSkeletonRsrc } from "./skeletonRsrc/parseSkeletonRsrc";
+import { parseSkeletonRsrc } from "./skeletonRsrc/parseSkeletonRsrcTS";
 
 /**
  * Type definitions for glTF extras data

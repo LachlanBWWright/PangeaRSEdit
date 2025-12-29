@@ -19,7 +19,7 @@ import type {
   BG3DGltfWorkerResponse,
 } from "../../../modelParsers/bg3dGltfWorker";
 import type { BG3DParseResult } from "../../../modelParsers/parseBG3D";
-import { parseSkeletonRsrc } from "../../../modelParsers/skeletonRsrc/parseSkeletonRsrc";
+import { parseSkeletonRsrc } from "../../../modelParsers/skeletonRsrc/parseSkeletonRsrcTS";
 import type { SkeletonResource } from "../../../python/structSpecs/skeleton/skeletonInterface";
 import { extractTexturesFromBG3D } from "../utils/textureUtils";
 import type { Texture } from "../types";

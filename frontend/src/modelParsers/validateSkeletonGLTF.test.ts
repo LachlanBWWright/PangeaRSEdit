@@ -1,7 +1,7 @@
 // Comprehensive validation test for skeleton animations in glTF output
 import { describe, it, expect } from "vitest";
 import { parseBG3D } from "./parseBG3D";
-import { parseSkeletonRsrc } from "./skeletonRsrc/parseSkeletonRsrc";
+import { parseSkeletonRsrc } from "./skeletonRsrc/parseSkeletonRsrcTS";
 import { bg3dParsedToGLTF } from "./parsedBg3dGitfConverter";
 import { readFileSync } from "fs";
 import { join } from "path";
@@ -24,7 +24,7 @@ describe("Skeleton Animation glTF Validation", () => {
     const ottoData = readFileSync(ottoPath);
     const ottoSkeletonData = readFileSync(ottoSkeletonPath);
 
-    const skeleton = parseSkeletonRsrc(ottoSkeletonData as unknown as ArrayBuffer);
+    const skeleton = await parseSkeletonRsrc(ottoSkeletonData as unknown as ArrayBuffer);
     const bg3dParseResult = parseBG3D(ottoData.buffer, skeleton);
     if (!bg3dParseResult.ok) {
       throw bg3dParseResult.error;

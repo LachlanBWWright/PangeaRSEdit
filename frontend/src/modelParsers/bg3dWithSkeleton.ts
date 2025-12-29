@@ -3,7 +3,7 @@
 
 import { parseBG3D, BG3DParseResult } from "./parseBG3D";
 import { parse3DMF } from "./parse3dmf";
-import { parseSkeletonRsrc } from "./skeletonRsrc/parseSkeletonRsrc";
+import { parseSkeletonRsrc } from "./skeletonRsrc/parseSkeletonRsrcTS";
 import type { SkeletonResource } from "../python/structSpecs/skeleton/skeletonInterface";
 import { Result, err, isErr, ok } from "../types/result";
 

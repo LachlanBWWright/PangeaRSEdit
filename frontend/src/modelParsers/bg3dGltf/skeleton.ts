@@ -8,7 +8,7 @@ import { BG3DSkeleton, BG3DAnimation } from "../parseBG3D";
 import { createSkeletonSystem } from "../skeletonSystemNew";
 
 import { Document, Skin } from "@gltf-transform/core";
-import { parseSkeletonRsrc } from "../skeletonRsrc/parseSkeletonRsrc";
+import { parseSkeletonRsrc } from "../skeletonRsrc/parseSkeletonRsrcTS";
 import { isErr, Result, ok } from "../../types/result";
 
 // Import modular functions

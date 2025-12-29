@@ -7,7 +7,7 @@ import { AtomicLevelData } from "../data/utils/levelDataUtils";
 import { IntroText } from "./IntroText";
 import { GameCarousel } from "./gameCards/GameCarousel";
 /* import { Separator } from "@/components/ui/separator";
-import { parseSkeletonRsrc } from "@/modelParsers/skeletonRsrc/parseSkeletonRsrc";
+import { parseSkeletonRsrc } from "@/modelParsers/skeletonRsrc/parseSkeletonRsrcTS";
 import BG3DGltfWorker from "../modelParsers/bg3dGltfWorker?worker"; //"../utils/bg3dGltfWorker.ts?worker"; */
 
 export function UploadPrompt({

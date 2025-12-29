@@ -6,7 +6,7 @@ import {
   BG3DGltfWorkerMessage,
   BG3DGltfWorkerResponse,
 } from "../modelParsers/bg3dGltfWorker";
-import { parseSkeletonRsrc } from "../modelParsers/skeletonRsrc/parseSkeletonRsrc";
+import { parseSkeletonRsrc } from "../modelParsers/skeletonRsrc/parseSkeletonRsrcTS";
 import { bg3dSkeletonToSkeletonResource } from "../modelParsers/skeletonExport";
 import { skeletonResourceToBinary } from "../modelParsers/skeletonBinaryExport";
 import type { SkeletonResource } from "../python/structSpecs/skeleton/skeletonInterface";

@@ -1,5 +1,5 @@
 import { parseNumKData } from "../parseHelpers";
-import type { NumKRaw } from "../parseSkeletonRsrc";
+import type { NumKRaw } from "../parseSkeletonRsrcTS";
 
 export function handleNumK(
   _resourceName: string,

@@ -7,7 +7,7 @@
 
 import { describe, it, expect } from "vitest";
 import { parseBG3D, bg3dParsedToBG3D, BG3DParseResult } from "./parseBG3D";
-import { parseSkeletonRsrc } from "./skeletonRsrc/parseSkeletonRsrc";
+import { parseSkeletonRsrc } from "./skeletonRsrc/parseSkeletonRsrcTS";
 import type { SkeletonResource } from "../python/structSpecs/skeleton/skeletonInterface";
 import type { BoneEntry } from "../python/structSpecs/skeleton/skeletonInterface";
 import { bg3dSkeletonToSkeletonResource } from "./skeletonExport";

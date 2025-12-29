@@ -1,5 +1,5 @@
 import { parseEvntData } from "../parseHelpers";
-import type { EvntRaw } from "../parseSkeletonRsrc";
+import type { EvntRaw } from "../parseSkeletonRsrcTS";
 
 export function handleEvnt(
   resourceName: string,

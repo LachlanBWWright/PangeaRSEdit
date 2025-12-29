@@ -1,5 +1,5 @@
 import { parseRelPData } from "../parseHelpers";
-import type { RelPRaw } from "../parseSkeletonRsrc";
+import type { RelPRaw } from "../parseSkeletonRsrcTS";
 
 export function handleRelP(
   resourceName: string,

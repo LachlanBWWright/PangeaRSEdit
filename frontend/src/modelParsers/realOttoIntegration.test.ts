@@ -1,6 +1,6 @@
 // Test real Otto skeleton integration
 import { describe, it } from "vitest";
-import { parseSkeletonRsrc } from "./skeletonRsrc/parseSkeletonRsrc";
+import { parseSkeletonRsrc } from "./skeletonRsrc/parseSkeletonRsrcTS";
 import { parseBG3D } from "./parseBG3D";
 import { unwrap } from "../types/result";
 import fs from "fs";

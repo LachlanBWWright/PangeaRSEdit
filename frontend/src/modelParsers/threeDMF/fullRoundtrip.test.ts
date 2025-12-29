@@ -10,7 +10,7 @@ import { parse3DMFToMetaFile } from "./parse3DMF";
 import { write3DMFFromMetaFile } from "./write3DMF";
 import { metaFileToBG3DParseResult, bg3dParseResultToMetaFile } from "./convert";
 import { bg3dParsedToGLTF, gltfToBG3D } from "../parsedBg3dGitfConverter";
-import { parseSkeletonRsrc } from "../skeletonRsrc/parseSkeletonRsrc";
+import { parseSkeletonRsrc } from "../skeletonRsrc/parseSkeletonRsrcTS";
 import { bg3dSkeletonToSkeletonResource } from "../skeletonExport";
 // import { skeletonResourceToBinary } from "../skeletonExport"; // Requires Worker, not available in tests
 import { parseBG3DWithSkeletonResource } from "../bg3dWithSkeleton";
@@ -327,7 +327,7 @@ describe("3DMF TRUE Full Roundtrip Tests (3DMF → glTF → 3DMF)", () => {
         console.log(`Original skeleton size: ${originalSkeletonBuffer.byteLength} bytes`);
 
         // Step 1: Parse original skeleton resource
-        const originalSkeletonResource = parseSkeletonRsrc(originalSkeletonBuffer);
+        const originalSkeletonResource = await parseSkeletonRsrc(originalSkeletonBuffer);
         expect(originalSkeletonResource).toBeDefined();
         console.log(`Parsed skeleton: ${Object.keys(originalSkeletonResource.Bone || {}).length} bone resources`);
 

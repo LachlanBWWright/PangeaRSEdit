@@ -1,5 +1,5 @@
 import { parseBoneDataFallback } from "../parseHelpers";
-import type { BoneRaw } from "../parseSkeletonRsrc";
+import type { BoneRaw } from "../parseSkeletonRsrcTS";
 
 export function handleBone(
   resourceName: string,

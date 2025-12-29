@@ -2,7 +2,7 @@
 import { describe, it, expect } from "vitest";
 import { parseBG3D } from "./parseBG3D";
 import { unwrap } from "../types/result";
-import { parseSkeletonRsrc } from "./skeletonRsrc/parseSkeletonRsrc";
+import { parseSkeletonRsrc } from "./skeletonRsrc/parseSkeletonRsrcTS";
 import { bg3dSkeletonToSkeletonResource } from "./skeletonExport";
 import { skeletonResourceToBinary } from "./skeletonBinaryExport";
 import {
