@@ -30,7 +30,7 @@ export async function parseRsrcLevelFile(
 
     const result = JSON.parse(parseResult.value) as Record<string, unknown>;
 
-    // Fix null values from rsrcdump-ts v1.0.4 bug (returns null for numeric zeros)
+    // Fix null values from rsrcdump-ts v1.0.5 bug (STILL returns null for numeric zeros)
     fixNullToZero(result);
 
     // Apply preprocessing FIRST (converts liquid nubs from x_0/y_0 format to array format)
@@ -38,6 +38,9 @@ export async function parseRsrcLevelFile(
     if (!preprocessResult.ok) {
       return err(preprocessResult.error);
     }
+
+    // Fix null values AGAIN after preprocessing (the array conversion creates more undefined values)
+    fixNullToZero(result);
 
     // Validate the preprocessed data using the appropriate game schema
     const validationResult = validateLevelDataForGame(

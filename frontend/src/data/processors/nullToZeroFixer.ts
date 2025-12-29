@@ -1,14 +1,16 @@
 /**
  * Fix null and undefined values in parsed rsrcdump-ts output
  * 
- * rsrcdump-ts v1.0.4 has a bug where it returns null/undefined for numeric zero values
+ * rsrcdump-ts v1.0.5 STILL has a bug where it returns null/undefined for numeric zero values
+ * AND it returns undefined for empty arrays in resource entries
  * This function recursively converts null/undefined to 0 for all numeric fields
+ * and converts undefined obj arrays in resource entries to empty arrays
  * 
  * This is a workaround until the package is fixed
  */
 
 /**
- * Recursively fix null and undefined values in an object, converting them to 0
+ * Recursively fix null and undefined values in an object, converting them to 0 or []
  * 
  * @param obj - The object to fix (will be mutated in place)
  * @returns The fixed object (same reference)
@@ -34,6 +36,12 @@ export function fixNullToZero(obj: unknown): unknown {
   if (typeof obj === 'object') {
     for (const [key, value] of Object.entries(obj)) {
       if (value === null || value === undefined) {
+        // Special case: resource entry 'obj' field should be an empty array if undefined
+        if (key === 'obj') {
+          (obj as Record<string, unknown>)[key] = [];
+          continue;
+        }
+
         // Common numeric field names that should be 0 instead of null/undefined
         const numericFieldPatterns = [
           /^(x|y|z|w)$/i,

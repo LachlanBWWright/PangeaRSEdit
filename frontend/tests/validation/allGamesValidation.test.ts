@@ -107,7 +107,7 @@ describe("All Games Validation Tests", () => {
 
           const parsed = JSON.parse(parseResult.value) as Record<string, unknown>;
 
-          // Apply nullToZero fix (fixes rsrcdump-ts v1.0.4 bug)
+          // Apply nullToZero fix BEFORE preprocessing (fixes rsrcdump-ts v1.0.5 bug)
           fixNullToZero(parsed);
 
           // Apply preprocessing
@@ -120,6 +120,9 @@ describe("All Games Validation Tests", () => {
             );
             return;
           }
+
+          // Apply nullToZero fix AFTER preprocessing (preprocessing creates arrays with undefined elements)
+          fixNullToZero(parsed);
 
           // Validate against Zod schema
           const validationResult = validateLevelDataForGame(
