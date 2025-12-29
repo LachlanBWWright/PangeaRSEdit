@@ -5,7 +5,6 @@ import type { SkeletonResource } from "../python/structSpecs/skeleton/skeletonIn
 import type { ResourceFork, Resource } from "../rsrcdump-ts/types";
 import { packAdf } from "../rsrcdump-ts/adf";
 import { packResourceFork } from "../rsrcdump-ts/resforkPack";
-import { skeletonResourceToBinary as skeletonResourceToBinaryPyodide } from "./skeletonExport";
 
 // Global storage for Finder Info to preserve during round-trip
 let globalFinderInfo: Uint8Array | undefined = undefined;
@@ -19,44 +18,11 @@ export function getFinderInfo(): Uint8Array | undefined {
 }
 
 /**
- * Convert SkeletonResource JSON to binary .rsrc format with configurable converter
+ * Convert SkeletonResource JSON to binary .rsrc format
  * @param skeletonResource The skeleton resource to convert
- * @param options Conversion options
- * @returns ArrayBuffer (sync) or Promise<ArrayBuffer> (async with Pyodide)
+ * @returns ArrayBuffer
  */
-export async function skeletonResourceToBinary(
-  skeletonResource: SkeletonResource,
-  options?: {
-    usePyodide?: boolean;
-    pyodideWorker?: Worker;
-  },
-): Promise<ArrayBuffer> {
-  // Default to TypeScript for test compatibility (no Worker in Node.js)
-  // Browser code should explicitly pass usePyodide: true with a worker
-  const usePyodide = options?.usePyodide ?? false;
-
-  if (usePyodide) {
-    if (!options?.pyodideWorker) {
-      // When pyodide is required but not provided, fall back to TS implementation
-      console.warn(
-        "Pyodide worker not provided, falling back to TS implementation",
-      );
-      return skeletonResourceToBinaryTS(skeletonResource);
-    }
-    return skeletonResourceToBinaryPyodide(
-      skeletonResource,
-      options.pyodideWorker,
-    );
-  }
-
-  return skeletonResourceToBinaryTS(skeletonResource);
-}
-
-/**
- * Convert SkeletonResource JSON to binary .rsrc format using TypeScript implementation
- * Uses the resforkPack module which matches Python rsrcdump byte-for-byte
- */
-export function skeletonResourceToBinaryTS(
+export function skeletonResourceToBinary(
   skeletonResource: SkeletonResource,
 ): ArrayBuffer {
   console.log(
