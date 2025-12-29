@@ -43,7 +43,6 @@ import {
   calculateBrushPixels,
   applyTopologyBrush,
   worldToTile,
-  PixelType,
 } from "../utils/topologyBrushUtils";
 
 function SceneExporter() {
@@ -154,7 +153,6 @@ export function ThreeView({
   const terrainMeshRef = useRef<Mesh>(null);
   const [intersectionPoint, setIntersectionPoint] = useState<{ x: number; y: number; z: number } | null>(null);
   const [isEditing, setIsEditing] = useState(false);
-  const [affectedPixels, setAffectedPixels] = useState<PixelType[]>([]);
   
   const isEditingTopology = tileViewMode === TileViews.Topology;
 
@@ -193,8 +191,6 @@ export function ThreeView({
         tileSize: globals.TILE_INGAME_SIZE,
       });
 
-      setAffectedPixels(pixels);
-      
       // Apply brush while dragging (if isEditing)
       if (isEditing && terrainData.YCrd?.[1000]?.obj) {
         applyTopologyBrush(terrainData.YCrd[1000].obj, pixels, {
@@ -343,12 +339,7 @@ export function ThreeView({
             intersectionPoint={intersectionPoint}
             visible={!!intersectionPoint}
           />
-          <TopologyPreview3D
-            headerData={headerData}
-            terrainData={terrainData}
-            affectedPixels={affectedPixels}
-            visible={!!intersectionPoint && affectedPixels.length > 0}
-          />
+          <TopologyPreview3D />
         </>
       )}
       {fenceData && show3DFences && (

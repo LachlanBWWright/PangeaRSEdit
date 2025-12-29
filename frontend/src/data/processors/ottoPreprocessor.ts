@@ -88,9 +88,9 @@ export function preprocessJson(
         // Validate each nub is a proper [number, number] tuple
         const validatedNubs: [number, number][] = [];
         for (let i = 0; i < globals.LIQD_NUBS; i++) {
-          if (i < existingNubs.length && Array.isArray(existingNubs[i])) {
+          if (i < existingNubs.length && existingNubs[i] && Array.isArray(existingNubs[i])) {
             const nub = existingNubs[i];
-            if (nub.length >= 2 && typeof nub[0] === 'number' && typeof nub[1] === 'number') {
+            if (nub && nub.length >= 2 && typeof nub[0] === 'number' && typeof nub[1] === 'number') {
               validatedNubs.push([nub[0], nub[1]]);
             } else {
               validatedNubs.push([0, 0]);
