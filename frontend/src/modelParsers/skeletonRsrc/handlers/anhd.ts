@@ -1,4 +1,4 @@
-import type { AnHdRaw } from "../parseSkeletonRsrcTS";
+import type { AnHdRaw } from "../parseSkeletonRsrc";
 
 export function handleAnHd(
   resourceName: string,

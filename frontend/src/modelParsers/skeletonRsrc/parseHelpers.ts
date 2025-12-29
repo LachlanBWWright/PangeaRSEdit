@@ -1,7 +1,7 @@
 /**
- * Parsing helper utilities extracted from parseSkeletonRsrcTS
+ * Parsing helper utilities extracted from parseSkeletonRsrc
  */
-import type { BoneRaw, KeyFRaw } from "./parseSkeletonRsrcTS";
+import type { BoneRaw, KeyFRaw } from "./parseSkeletonRsrc";
 
 export function parseBonPData(hexData: string): { pointIndex: number }[] {
   if (!hexData || hexData.length === 0) return [];

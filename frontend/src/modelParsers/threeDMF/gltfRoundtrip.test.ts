@@ -7,7 +7,7 @@
 import { describe, it, expect } from "vitest";
 import { parse3DMF } from "../parse3dmf";
 import { bg3dParsedToGLTF, gltfToBG3D } from "../parsedBg3dGitfConverter";
-import { parseSkeletonRsrcTS } from "../skeletonRsrc/parseSkeletonRsrcTS";
+import { parseSkeletonRsrc } from "../skeletonRsrc/parseSkeletonRsrc";
 import { parseBG3DWithSkeletonResource } from "../bg3dWithSkeleton";
 import { BG3DParseResult } from "../parseBG3D";
 import { readFileSync } from "fs";
@@ -272,7 +272,7 @@ describe("3DMF glTF Full Roundtrip Tests", () => {
         console.log(`\n=== Testing ${modelName} + ${skeletonName} glTF Roundtrip ===`);
 
         // Step 1: Parse skeleton resource
-        const skeletonResource = parseSkeletonRsrcTS(skeletonBuffer);
+        const skeletonResource = parseSkeletonRsrc(skeletonBuffer);
         expect(skeletonResource).toBeDefined();
         console.log(`Parsed skeleton: ${Object.keys(skeletonResource.Bone || {}).length} bones`);
 

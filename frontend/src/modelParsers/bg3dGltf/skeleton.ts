@@ -8,7 +8,7 @@ import { BG3DSkeleton, BG3DAnimation } from "../parseBG3D";
 import { createSkeletonSystem } from "../skeletonSystemNew";
 
 import { Document, Skin } from "@gltf-transform/core";
-import { parseSkeletonRsrcTS } from "../skeletonRsrc/parseSkeletonRsrcTS";
+import { parseSkeletonRsrc } from "../skeletonRsrc/parseSkeletonRsrc";
 import { isErr, Result, ok } from "../../types/result";
 
 // Import modular functions
@@ -126,7 +126,7 @@ export function originalSkeletonBinaryToBg3d(
 ): BG3DSkeleton {
   console.log("Using original skeleton binary for exact roundtrip");
   // Parse the original skeleton binary to get exact skeleton data
-  const originalSkeletonResource = parseSkeletonRsrcTS(originalSkeletonBinary);
+  const originalSkeletonResource = parseSkeletonRsrc(originalSkeletonBinary);
 
   // Extract bones from original binary
   const bones = originalSkeletonBinaryToBg3dBones(originalSkeletonResource);

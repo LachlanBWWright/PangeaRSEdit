@@ -1,5 +1,5 @@
 import { parseKeyFData } from "../parseHelpers";
-import type { KeyFRaw } from "../parseSkeletonRsrcTS";
+import type { KeyFRaw } from "../parseSkeletonRsrc";
 
 export function handleKeyF(
   resourceName: string,

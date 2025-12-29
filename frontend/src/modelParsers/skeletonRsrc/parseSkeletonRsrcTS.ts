@@ -1,4 +1,4 @@
-import { saveToJson } from "../../rsrcdump-ts/rsrcdump";
+import { saveToJson } from "@lachlanbwwright/rsrcdump-ts";
 import { isOk } from "../../types/result";
 import type { 
   SkeletonResource,

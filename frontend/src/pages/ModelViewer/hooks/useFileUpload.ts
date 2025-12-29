@@ -19,7 +19,7 @@ import type {
   BG3DGltfWorkerResponse,
 } from "../../../modelParsers/bg3dGltfWorker";
 import type { BG3DParseResult } from "../../../modelParsers/parseBG3D";
-import { parseSkeletonRsrcTS } from "../../../modelParsers/skeletonRsrc/parseSkeletonRsrcTS";
+import { parseSkeletonRsrc } from "../../../modelParsers/skeletonRsrc/parseSkeletonRsrc";
 import type { SkeletonResource } from "../../../python/structSpecs/skeleton/skeletonInterface";
 import { extractTexturesFromBG3D } from "../utils/textureUtils";
 import type { Texture } from "../types";
@@ -114,7 +114,7 @@ export function useFileUpload(options: UseFileUploadOptions) {
             try {
               console.log("Parsing skeleton file with TypeScript implementation...");
               const skeletonBuffer = await skeletonFile.arrayBuffer();
-              skeletonData = parseSkeletonRsrcTS(skeletonBuffer);
+              skeletonData = parseSkeletonRsrc(skeletonBuffer);
               console.log(
                 `Successfully parsed skeleton with ${Object.keys(skeletonData.Bone || {}).length || 0} bones`,
               );
@@ -207,7 +207,7 @@ export function useFileUpload(options: UseFileUploadOptions) {
           try {
             console.log("Parsing skeleton file with TypeScript implementation...");
             const skeletonBuffer = await skeletonFile.arrayBuffer();
-            skeletonData = parseSkeletonRsrcTS(skeletonBuffer);
+            skeletonData = parseSkeletonRsrc(skeletonBuffer);
             console.log(
               `Successfully parsed skeleton with ${Object.keys(skeletonData.Bone || {}).length || 0} bones`,
             );

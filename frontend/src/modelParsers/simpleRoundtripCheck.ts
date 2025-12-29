@@ -5,11 +5,11 @@
 
 import { readFileSync } from "fs";
 import { join } from "path";
-import { parseSkeletonRsrcTS } from "./skeletonRsrc/parseSkeletonRsrcTS";
+import { parseSkeletonRsrc } from "./skeletonRsrc/parseSkeletonRsrc";
 import { bg3dParsedToGLTF, gltfToBG3D } from "./parsedBg3dGitfConverter";
 import { parseBG3D, bg3dParsedToBG3D } from "./parseBG3D";
 import { bg3dSkeletonToSkeletonResource } from "./skeletonExport";
-import { skeletonResourceToBinaryTS } from "./skeletonBinaryExport";
+import { skeletonResourceToBinary } from "./skeletonBinaryExport";
 import { isErr } from "../types/result";
 
 async function main() {
@@ -24,7 +24,7 @@ async function main() {
   console.log(`Original Skeleton: ${originalSkeletonData.length} bytes`);
 
   // Parse original
-  const originalSkeletonResource = parseSkeletonRsrcTS(
+  const originalSkeletonResource = parseSkeletonRsrc(
     originalSkeletonData.buffer.slice(
       originalSkeletonData.byteOffset,
       originalSkeletonData.byteOffset + originalSkeletonData.byteLength,
@@ -83,7 +83,7 @@ async function main() {
     roundtrip1Result.skeleton!,
   );
   const roundtrip1Bg3dBinary = bg3dParsedToBG3D(roundtrip1Result);
-  const roundtrip1SkeletonBinary = skeletonResourceToBinaryTS(
+  const roundtrip1SkeletonBinary = skeletonResourceToBinary(
     roundtrip1SkeletonResource,
   );
 
@@ -93,7 +93,7 @@ async function main() {
 
   // Parse back and do second roundtrip
   console.log("\n=== SECOND ROUNDTRIP ===");
-  const roundtrip1SkeletonResourceParsed = parseSkeletonRsrcTS(
+  const roundtrip1SkeletonResourceParsed = parseSkeletonRsrc(
     roundtrip1SkeletonBinary,
   );
   const roundtrip1Bg3dParsedResult = parseBG3D(
@@ -130,7 +130,7 @@ async function main() {
   const roundtrip2SkeletonResource = bg3dSkeletonToSkeletonResource(
     roundtrip2Result.skeleton!,
   );
-  const roundtrip2SkeletonBinary = skeletonResourceToBinaryTS(
+  const roundtrip2SkeletonBinary = skeletonResourceToBinary(
     roundtrip2SkeletonResource,
   );
 

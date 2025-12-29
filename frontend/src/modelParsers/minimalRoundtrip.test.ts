@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { parseSkeletonRsrcTS } from "./skeletonRsrc/parseSkeletonRsrcTS";
+import { parseSkeletonRsrc } from "./skeletonRsrc/parseSkeletonRsrc";
 import { bg3dParsedToGLTF, gltfToBG3D } from "./parsedBg3dGitfConverter";
 import { parseBG3D } from "./parseBG3D";
 import { bg3dSkeletonToSkeletonResource } from "./skeletonExport";
@@ -30,7 +30,7 @@ describe("Minimal Skeleton Roundtrip Tests", () => {
     const originalSkeletonData = readFileSync(ottoSkeletonPath);
 
     // Parse original files
-    const originalSkeletonResource = parseSkeletonRsrcTS(
+    const originalSkeletonResource = parseSkeletonRsrc(
       originalSkeletonData.buffer.slice(
         originalSkeletonData.byteOffset,
         originalSkeletonData.byteOffset + originalSkeletonData.byteLength,
@@ -76,7 +76,7 @@ describe("Minimal Skeleton Roundtrip Tests", () => {
     );
 
     // Parse RT1 output
-    const rt1SkeletonParsed = parseSkeletonRsrcTS(rt1SkeletonBinary);
+    const rt1SkeletonParsed = parseSkeletonRsrc(rt1SkeletonBinary);
     const rt1ParsedResult = parseBG3D(rt1Binary, rt1SkeletonParsed);
 
     // Handle Result type
@@ -155,7 +155,7 @@ describe("Minimal Skeleton Roundtrip Tests", () => {
     const originalSkeletonData = readFileSync(ottoSkeletonPath);
 
     // Parse original files
-    const originalSkeletonResource = parseSkeletonRsrcTS(
+    const originalSkeletonResource = parseSkeletonRsrc(
       originalSkeletonData.buffer.slice(
         originalSkeletonData.byteOffset,
         originalSkeletonData.byteOffset + originalSkeletonData.byteLength,
@@ -227,7 +227,7 @@ describe("Minimal Skeleton Roundtrip Tests", () => {
     );
 
     // Parse RT1 output
-    const rt1SkeletonParsed = parseSkeletonRsrcTS(rt1SkeletonBinary);
+    const rt1SkeletonParsed = parseSkeletonRsrc(rt1SkeletonBinary);
     const rt1ParsedResult = parseBG3D(rt1Binary, rt1SkeletonParsed);
 
     // Handle Result type

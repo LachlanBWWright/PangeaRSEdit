@@ -1,6 +1,6 @@
 // Test real Otto skeleton integration
 import { describe, it } from "vitest";
-import { parseSkeletonRsrcTS } from "./skeletonRsrc/parseSkeletonRsrcTS";
+import { parseSkeletonRsrc } from "./skeletonRsrc/parseSkeletonRsrc";
 import { parseBG3D } from "./parseBG3D";
 import { unwrap } from "../types/result";
 import fs from "fs";
@@ -24,7 +24,7 @@ describe("Real Otto Integration", () => {
     // Parse skeleton
     const skeletonBuffer = fs.readFileSync(skeletonPath);
     console.log("1. Parsing skeleton file...");
-    const skeleton = parseSkeletonRsrcTS(skeletonBuffer.buffer);
+    const skeleton = parseSkeletonRsrc(skeletonBuffer.buffer);
 
     console.log(
       `2. Skeleton parsed: ${Object.keys(skeleton.Bone || {}).length} bones, ${

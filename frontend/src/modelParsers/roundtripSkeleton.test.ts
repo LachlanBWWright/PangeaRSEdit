@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { parseSkeletonRsrcTS } from "./skeletonRsrc/parseSkeletonRsrcTS";
+import { parseSkeletonRsrc } from "./skeletonRsrc/parseSkeletonRsrc";
 import { bg3dParsedToGLTF, gltfToBG3D } from "./parsedBg3dGitfConverter";
 import { parseBG3D } from "./parseBG3D";
 import { bg3dSkeletonToSkeletonResource } from "./skeletonExport";
@@ -39,7 +39,7 @@ describe("BG3D + Skeleton Roundtrip Tests with FULL ACCURACY", () => {
     console.log("\n=== FIRST ROUNDTRIP ===");
 
     // Parse original files
-    const originalSkeletonResource = parseSkeletonRsrcTS(
+    const originalSkeletonResource = parseSkeletonRsrc(
       originalSkeletonData.buffer.slice(
         originalSkeletonData.byteOffset,
         originalSkeletonData.byteOffset + originalSkeletonData.byteLength,
@@ -155,7 +155,7 @@ describe("BG3D + Skeleton Roundtrip Tests with FULL ACCURACY", () => {
     console.log("\n=== SECOND ROUNDTRIP ===");
 
     // Parse first roundtrip output
-    const roundtrip1SkeletonResourceParsed = parseSkeletonRsrcTS(
+    const roundtrip1SkeletonResourceParsed = parseSkeletonRsrc(
       roundtrip1SkeletonBinary,
     );
     const roundtrip1Bg3dParsed = parseBG3D(
@@ -485,7 +485,7 @@ describe("BG3D + Skeleton Roundtrip Tests with FULL ACCURACY", () => {
     const skeletonData = readFileSync(ottoSkeletonPath);
 
     // Parse original files with skeleton integrated
-    const originalSkeletonResource = parseSkeletonRsrcTS(
+    const originalSkeletonResource = parseSkeletonRsrc(
       skeletonData.buffer.slice(
         skeletonData.byteOffset,
         skeletonData.byteOffset + skeletonData.byteLength,
@@ -562,7 +562,7 @@ describe("BG3D + Skeleton Roundtrip Tests with FULL ACCURACY", () => {
     const bg3dData = readFileSync(ottoBg3dPath);
     const skeletonData = readFileSync(ottoSkeletonPath);
 
-    const originalSkeletonResource = parseSkeletonRsrcTS(
+    const originalSkeletonResource = parseSkeletonRsrc(
       skeletonData.buffer.slice(
         skeletonData.byteOffset,
         skeletonData.byteOffset + skeletonData.byteLength,

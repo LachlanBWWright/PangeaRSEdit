@@ -6,7 +6,7 @@ import {
   BG3DGltfWorkerMessage,
   BG3DGltfWorkerResponse,
 } from "../modelParsers/bg3dGltfWorker";
-import { parseSkeletonRsrcTS } from "../modelParsers/skeletonRsrc/parseSkeletonRsrcTS";
+import { parseSkeletonRsrc } from "../modelParsers/skeletonRsrc/parseSkeletonRsrc";
 import { bg3dSkeletonToSkeletonResource } from "../modelParsers/skeletonExport";
 import { skeletonResourceToBinary } from "../modelParsers/skeletonBinaryExport";
 import type { SkeletonResource } from "../python/structSpecs/skeleton/skeletonInterface";
@@ -40,7 +40,7 @@ export function SkeletonConversionPanel({
       if (skeletonFile) {
         console.log("Parsing skeleton file for conversion with TypeScript...");
         const skeletonArrayBuffer = await skeletonFile.arrayBuffer();
-        skeletonData = parseSkeletonRsrcTS(skeletonArrayBuffer);
+        skeletonData = parseSkeletonRsrc(skeletonArrayBuffer);
         console.log("Skeleton data parsed for conversion:", skeletonData);
       }
 

@@ -14,7 +14,7 @@
 
 import { describe, it, expect } from "vitest";
 import { parseBG3D } from "./parseBG3D";
-import { parseSkeletonRsrcTS } from "./skeletonRsrc/parseSkeletonRsrcTS";
+import { parseSkeletonRsrc } from "./skeletonRsrc/parseSkeletonRsrc";
 import { bg3dParsedToGLTF, gltfToBG3D } from "./parsedBg3dGitfConverter";
 import { readFileSync } from "fs";
 import { join } from "path";
@@ -67,7 +67,7 @@ describe("Comprehensive Skeleton Value Validation", () => {
     const originalSkeletonData = readFileSync(ottoSkeletonPath);
 
     // Parse original
-    const originalSkeletonResource = parseSkeletonRsrcTS(
+    const originalSkeletonResource = parseSkeletonRsrc(
       originalSkeletonData as unknown as ArrayBuffer,
     );
     const originalBg3dRes = parseBG3D(
@@ -371,7 +371,7 @@ describe("Comprehensive Skeleton Value Validation", () => {
     const originalBg3dData = readFileSync(ottoBg3dPath);
     const originalSkeletonData = readFileSync(ottoSkeletonPath);
 
-    const originalSkeletonResource = parseSkeletonRsrcTS(
+    const originalSkeletonResource = parseSkeletonRsrc(
       originalSkeletonData as unknown as ArrayBuffer,
     );
     const originalBg3dResLocal = parseBG3D(
@@ -466,7 +466,7 @@ describe("Comprehensive Skeleton Value Validation", () => {
     const originalBg3dData = readFileSync(ottoBg3dPath);
     const originalSkeletonData = readFileSync(ottoSkeletonPath);
 
-    const originalSkeletonResource = parseSkeletonRsrcTS(
+    const originalSkeletonResource = parseSkeletonRsrc(
       originalSkeletonData as unknown as ArrayBuffer,
     );
     const originalBg3dResLocal2 = parseBG3D(

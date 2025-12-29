@@ -2,7 +2,7 @@
 // This test specifically validates the EXACT match requirement
 import { describe, it, expect } from "vitest";
 import { parseBG3D, bg3dParsedToBG3D } from "./parseBG3D";
-import { parseSkeletonRsrcTS } from "./skeletonRsrc/parseSkeletonRsrcTS";
+import { parseSkeletonRsrc } from "./skeletonRsrc/parseSkeletonRsrc";
 import { bg3dSkeletonToSkeletonResource } from "./skeletonExport";
 import { skeletonResourceToBinary } from "./skeletonBinaryExport";
 import {
@@ -41,7 +41,7 @@ describe("Exact Byte-for-Byte Roundtrip Validation", () => {
     console.log(`Original skeleton: ${originalSkeletonData.length} bytes`);
 
     // Step 2: Parse original data
-    const originalSkeletonResource = parseSkeletonRsrcTS(
+    const originalSkeletonResource = parseSkeletonRsrc(
       originalSkeletonData as unknown as ArrayBuffer,
     );
     const originalBg3dResult = parseBG3D(

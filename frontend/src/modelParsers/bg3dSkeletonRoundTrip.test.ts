@@ -2,7 +2,7 @@
 import { describe, it, expect } from "vitest";
 import { parseBG3D } from "./parseBG3D";
 import { unwrap } from "../types/result";
-import { parseSkeletonRsrcTS } from "./skeletonRsrc/parseSkeletonRsrcTS";
+import { parseSkeletonRsrc } from "./skeletonRsrc/parseSkeletonRsrc";
 import { bg3dSkeletonToSkeletonResource } from "./skeletonExport";
 import { skeletonResourceToBinary } from "./skeletonBinaryExport";
 import {
@@ -39,7 +39,7 @@ describe("BG3D Skeleton Round-trip with FULL ACCURACY", () => {
     console.log(`Original Skeleton: ${originalSkeletonData.length} bytes`);
 
     // Step 2: Parse original files
-    const originalSkeletonResource = parseSkeletonRsrcTS(
+    const originalSkeletonResource = parseSkeletonRsrc(
       originalSkeletonData.buffer.slice(
         originalSkeletonData.byteOffset,
         originalSkeletonData.byteOffset + originalSkeletonData.byteLength,
@@ -187,7 +187,7 @@ describe("BG3D Skeleton Round-trip with FULL ACCURACY", () => {
     const reparsedSkeletonBinary = await skeletonResourceToBinary(
       roundtripSkeletonResource,
     );
-    const reparsedSkeletonResource = parseSkeletonRsrcTS(
+    const reparsedSkeletonResource = parseSkeletonRsrc(
       reparsedSkeletonBinary,
     );
 
@@ -242,7 +242,7 @@ describe("BG3D Skeleton Round-trip with FULL ACCURACY", () => {
     const bg3dData = readFileSync(ottoBg3dPath);
     const skeletonData = readFileSync(ottoSkeletonPath);
 
-    const skeleton = parseSkeletonRsrcTS(
+    const skeleton = parseSkeletonRsrc(
       skeletonData.buffer.slice(
         skeletonData.byteOffset,
         skeletonData.byteOffset + skeletonData.byteLength,
@@ -348,7 +348,7 @@ describe("BG3D Skeleton Round-trip with FULL ACCURACY", () => {
     const bg3dData = readFileSync(ottoBg3dPath);
     const skeletonData = readFileSync(ottoSkeletonPath);
 
-    const skeleton = parseSkeletonRsrcTS(
+    const skeleton = parseSkeletonRsrc(
       skeletonData.buffer.slice(
         skeletonData.byteOffset,
         skeletonData.byteOffset + skeletonData.byteLength,
@@ -414,7 +414,7 @@ describe("BG3D Skeleton Round-trip with FULL ACCURACY", () => {
     const bg3dData = readFileSync(ottoBg3dPath);
     const skeletonData = readFileSync(ottoSkeletonPath);
 
-    const skeleton = parseSkeletonRsrcTS(
+    const skeleton = parseSkeletonRsrc(
       skeletonData.buffer.slice(
         skeletonData.byteOffset,
         skeletonData.byteOffset + skeletonData.byteLength,

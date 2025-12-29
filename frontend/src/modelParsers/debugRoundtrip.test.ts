@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { parseSkeletonRsrcTS } from "./skeletonRsrc/parseSkeletonRsrcTS";
+import { parseSkeletonRsrc } from "./skeletonRsrc/parseSkeletonRsrc";
 import { bg3dParsedToGLTF, gltfToBG3D } from "./parsedBg3dGitfConverter";
 import { parseBG3D } from "./parseBG3D";
 import { readFileSync, existsSync } from "fs";
@@ -26,7 +26,7 @@ describe("Debug Skeleton Roundtrip", () => {
     const bg3dData = readFileSync(ottoBg3dPath);
     const skeletonData = readFileSync(ottoSkeletonPath);
 
-    const skeletonResource = parseSkeletonRsrcTS(
+    const skeletonResource = parseSkeletonRsrc(
       skeletonData.buffer.slice(
         skeletonData.byteOffset,
         skeletonData.byteOffset + skeletonData.byteLength,
@@ -115,7 +115,7 @@ describe("Debug Skeleton Roundtrip", () => {
     const bg3dData = readFileSync(ottoBg3dPath);
     const skeletonData = readFileSync(ottoSkeletonPath);
 
-    const skeletonResource = parseSkeletonRsrcTS(
+    const skeletonResource = parseSkeletonRsrc(
       skeletonData.buffer.slice(
         skeletonData.byteOffset,
         skeletonData.byteOffset + skeletonData.byteLength,

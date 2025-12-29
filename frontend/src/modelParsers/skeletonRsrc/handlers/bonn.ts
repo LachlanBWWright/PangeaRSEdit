@@ -1,5 +1,5 @@
 import { parseBonNData } from "../parseHelpers";
-import type { BonNRaw } from "../parseSkeletonRsrcTS";
+import type { BonNRaw } from "../parseSkeletonRsrc";
 
 export function handleBonN(
   _resourceName: string,

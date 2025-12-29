@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { parseSkeletonRsrcTS } from "./skeletonRsrc/parseSkeletonRsrcTS";
+import { parseSkeletonRsrc } from "./skeletonRsrc/parseSkeletonRsrc";
 import { bg3dParsedToGLTF, gltfToBG3D } from "./parsedBg3dGitfConverter";
 import { parseBG3D } from "./parseBG3D";
 import { readFileSync, existsSync } from "fs";
@@ -27,7 +27,7 @@ describe("Debug Conversion", () => {
     const originalSkeletonData = readFileSync(ottoSkeletonPath);
 
     // Parse original files
-    const originalSkeletonResource = parseSkeletonRsrcTS(
+    const originalSkeletonResource = parseSkeletonRsrc(
       originalSkeletonData.buffer.slice(
         originalSkeletonData.byteOffset,
         originalSkeletonData.byteOffset + originalSkeletonData.byteLength,
