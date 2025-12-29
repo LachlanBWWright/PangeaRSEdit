@@ -185,7 +185,8 @@ export async function parseSkeletonRsrcJson(bytes: ArrayBuffer): Promise<ParsedS
   const uint8Array = new Uint8Array(bytes);
   const result = await saveToJson(uint8Array, skeletonSpecs, [], []);
   if (!isOk(result)) {
-    return Promise.reject(result.error);
+    const errorMessage = result.ok ? "" : result.error;
+    return Promise.reject(errorMessage);
   }
   const parsed = JSON.parse(result.value) as ParsedSkeleton;
   return parsed;

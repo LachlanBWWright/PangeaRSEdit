@@ -24,7 +24,7 @@ async function main() {
   console.log(`Original Skeleton: ${originalSkeletonData.length} bytes`);
 
   // Parse original
-  const originalSkeletonResource = parseSkeletonRsrc(
+  const originalSkeletonResource = await parseSkeletonRsrc(
     originalSkeletonData.buffer.slice(
       originalSkeletonData.byteOffset,
       originalSkeletonData.byteOffset + originalSkeletonData.byteLength,
@@ -83,9 +83,15 @@ async function main() {
     roundtrip1Result.skeleton!,
   );
   const roundtrip1Bg3dBinary = bg3dParsedToBG3D(roundtrip1Result);
-  const roundtrip1SkeletonBinary = skeletonResourceToBinary(
+  const roundtrip1SkeletonBinaryResult = skeletonResourceToBinary(
     roundtrip1SkeletonResource,
   );
+
+  if (!roundtrip1SkeletonBinaryResult.ok) {
+    console.error("Failed to convert skeleton to binary:", roundtrip1SkeletonBinaryResult.error);
+    return;
+  }
+  const roundtrip1SkeletonBinary = roundtrip1SkeletonBinaryResult.value;
 
   console.log(
     `RT1 Skeleton Binary: ${roundtrip1SkeletonBinary.byteLength} bytes`,
@@ -93,7 +99,7 @@ async function main() {
 
   // Parse back and do second roundtrip
   console.log("\n=== SECOND ROUNDTRIP ===");
-  const roundtrip1SkeletonResourceParsed = parseSkeletonRsrc(
+  const roundtrip1SkeletonResourceParsed = await parseSkeletonRsrc(
     roundtrip1SkeletonBinary,
   );
   const roundtrip1Bg3dParsedResult = parseBG3D(
@@ -130,9 +136,15 @@ async function main() {
   const roundtrip2SkeletonResource = bg3dSkeletonToSkeletonResource(
     roundtrip2Result.skeleton!,
   );
-  const roundtrip2SkeletonBinary = skeletonResourceToBinary(
+  const roundtrip2SkeletonBinaryResult = skeletonResourceToBinary(
     roundtrip2SkeletonResource,
   );
+
+  if (!roundtrip2SkeletonBinaryResult.ok) {
+    console.error("Failed to convert skeleton to binary:", roundtrip2SkeletonBinaryResult.error);
+    return;
+  }
+  const roundtrip2SkeletonBinary = roundtrip2SkeletonBinaryResult.value;
 
   console.log(
     `RT2 Skeleton Binary: ${roundtrip2SkeletonBinary.byteLength} bytes`,

@@ -39,7 +39,7 @@ describe("BG3D + Skeleton Roundtrip Tests with FULL ACCURACY", () => {
     console.log("\n=== FIRST ROUNDTRIP ===");
 
     // Parse original files
-    const originalSkeletonResource = parseSkeletonRsrc(
+    const originalSkeletonResource = await parseSkeletonRsrc(
       originalSkeletonData.buffer.slice(
         originalSkeletonData.byteOffset,
         originalSkeletonData.byteOffset + originalSkeletonData.byteLength,
@@ -155,7 +155,7 @@ describe("BG3D + Skeleton Roundtrip Tests with FULL ACCURACY", () => {
     console.log("\n=== SECOND ROUNDTRIP ===");
 
     // Parse first roundtrip output
-    const roundtrip1SkeletonResourceParsed = parseSkeletonRsrc(
+    const roundtrip1SkeletonResourceParsed = await parseSkeletonRsrc(
       roundtrip1SkeletonBinary,
     );
     const roundtrip1Bg3dParsed = parseBG3D(
@@ -485,7 +485,7 @@ describe("BG3D + Skeleton Roundtrip Tests with FULL ACCURACY", () => {
     const skeletonData = readFileSync(ottoSkeletonPath);
 
     // Parse original files with skeleton integrated
-    const originalSkeletonResource = parseSkeletonRsrc(
+    const originalSkeletonResource = await parseSkeletonRsrc(
       skeletonData.buffer.slice(
         skeletonData.byteOffset,
         skeletonData.byteOffset + skeletonData.byteLength,
@@ -562,7 +562,7 @@ describe("BG3D + Skeleton Roundtrip Tests with FULL ACCURACY", () => {
     const bg3dData = readFileSync(ottoBg3dPath);
     const skeletonData = readFileSync(ottoSkeletonPath);
 
-    const originalSkeletonResource = parseSkeletonRsrc(
+    const originalSkeletonResource = await parseSkeletonRsrc(
       skeletonData.buffer.slice(
         skeletonData.byteOffset,
         skeletonData.byteOffset + skeletonData.byteLength,
