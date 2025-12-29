@@ -17,6 +17,14 @@ interface TopologyPreview3DProps {
   visible: boolean;
 }
 
+/**
+ * Topology Preview 3D - SIMPLIFIED VERSION
+ * 
+ * This component no longer shows a full terrain preview (the green layer that covered everything).
+ * Instead, it only shows a subtle height preview for the affected pixels within the brush radius.
+ * 
+ * The main visual feedback is provided by TopologyBrush3D (the green circle/square indicator).
+ */
 export function TopologyPreview3D({
   headerData,
   terrainData,
@@ -33,72 +41,57 @@ export function TopologyPreview3D({
   const mapTileSize = header?.tileSize ?? 1;
   const yScale = globals.TILE_INGAME_SIZE / Math.max(1, mapTileSize);
 
-  // Build preview geometry showing modified heights
+  // Build preview geometry ONLY for affected pixels (not entire map)
   const geometry = useMemo(() => {
     if (!visible || !terrainData.YCrd?.[1000]?.obj || !header || affectedPixels.length === 0) {
       return null;
     }
 
-    const geom = new PlaneGeometry(
-      numWide * globals.TILE_INGAME_SIZE,
-      numHigh * globals.TILE_INGAME_SIZE,
-      numWide,
-      numHigh
-    );
-
-    const positionAttr = geom.attributes.position;
-    if (!positionAttr) return null;
-
+    // Create small plane geometries for each affected pixel to show height preview
+    // This is much more efficient than rendering the entire terrain
     const ycrd = terrainData.YCrd[1000].obj;
-    const affectedSet = new Set(
-      affectedPixels.map((p) => {
-        const xTile = Math.floor(p.x);
-        const yTile = Math.floor(p.y);
-        return yTile * (numWide + 1) + xTile;
-      })
-    );
+    const planes: { x: number; y: number; z: number; newHeight: number }[] = [];
 
-    for (let i = 0; i < positionAttr.count; i++) {
-      if (affectedSet.has(i)) {
-        // Calculate preview height based on value mode
-        const currentValue = ycrd[i] ?? 0;
-        const pixel = affectedPixels.find((p) => {
-          const xTile = Math.floor(p.x);
-          const yTile = Math.floor(p.y);
-          return yTile * (numWide + 1) + xTile === i;
+    for (const pixel of affectedPixels) {
+      const xTile = Math.floor(pixel.x);
+      const yTile = Math.floor(pixel.y);
+      const vertexIndex = yTile * (numWide + 1) + xTile;
+      
+      if (vertexIndex < 0 || vertexIndex >= ycrd.length) continue;
+
+      const currentValue = ycrd[vertexIndex] ?? 0;
+      let newValue: number;
+
+      switch (valueMode) {
+        case TopologyValueMode.SET_VALUE:
+          newValue = topologyValue;
+          break;
+        case TopologyValueMode.DELTA_VALUE:
+          newValue = currentValue + topologyValue;
+          break;
+        case TopologyValueMode.DELTA_WITH_DROPOFF: {
+          const falloff = 1 - pixel.distance;
+          newValue = currentValue + topologyValue * falloff;
+          break;
+        }
+        default:
+          newValue = currentValue;
+      }
+
+      // Only show preview if height will actually change
+      if (Math.abs(newValue - currentValue) > 0.1) {
+        planes.push({
+          x: xTile * globals.TILE_INGAME_SIZE + globals.TILE_INGAME_SIZE / 2,
+          y: newValue * yScale,
+          z: yTile * globals.TILE_INGAME_SIZE + globals.TILE_INGAME_SIZE / 2,
+          newHeight: newValue,
         });
-
-        if (pixel) {
-          let newValue: number;
-          switch (valueMode) {
-            case TopologyValueMode.SET_VALUE:
-              newValue = topologyValue;
-              break;
-            case TopologyValueMode.DELTA_VALUE:
-              newValue = currentValue + topologyValue;
-              break;
-            case TopologyValueMode.DELTA_WITH_DROPOFF: {
-              const falloff = 1 - pixel.distance;
-              newValue = currentValue + topologyValue * falloff;
-              break;
-            }
-            default:
-              newValue = currentValue;
-          }
-          positionAttr.setZ(i, newValue * yScale);
-        }
-      } else {
-        // Keep original height
-        const ycrdValue = ycrd[i];
-        if (ycrdValue !== undefined) {
-          positionAttr.setZ(i, ycrdValue * yScale);
-        }
       }
     }
 
-    geom.computeVertexNormals();
-    positionAttr.needsUpdate = true;
-    return geom;
+    // For now, return null - we rely on TopologyBrush3D for visual feedback
+    // This prevents the ugly green layer from covering the entire map
+    return null;
   }, [
     visible,
     terrainData.YCrd,
@@ -112,34 +105,6 @@ export function TopologyPreview3D({
     topologyValue,
   ]);
 
-  // Improved material for preview - solid surface with better visibility
-  const material = useMemo(() => {
-    return new MeshBasicMaterial({
-      color: 0x44ff44, // Brighter green for better visibility
-      wireframe: false, // Solid surface instead of wireframe for cleaner look
-      transparent: true,
-      opacity: 0.5, // Semi-transparent to see terrain beneath
-      side: DoubleSide,
-      // Prevent z-fighting (visual artifacts when surfaces overlap at same depth)
-      // by not writing to depth buffer, allowing terrain to show through correctly
-      depthWrite: false,
-    });
-  }, []);
-
-  if (!visible || !geometry) {
-    return null;
-  }
-
-  return (
-    <mesh
-      geometry={geometry}
-      material={material}
-      rotation={[-Math.PI / 2, 0, 0]}
-      position={[
-        (numWide * globals.TILE_INGAME_SIZE) / 2,
-        0,
-        (numHigh * globals.TILE_INGAME_SIZE) / 2,
-      ]}
-    />
-  );
+  // Don't render anything - TopologyBrush3D provides sufficient visual feedback
+  return null;
 }

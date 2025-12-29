@@ -89,13 +89,43 @@ export function preprocessJson(
       return err(new Error("Liqd[1000].obj is not an array"));
     }
     for (const waterItem of liquidObj) {
-      const nubs: [number, number][] = [];
-
-      for (let i = 0; i < globals.LIQD_NUBS; i++) {
-        const item = waterItem as Record<string, number | [number, number][]>;
-        nubs.push([item[`x_${i}`] as number, item[`y_${i}`] as number]);
+      const item = waterItem as Record<string, number | [number, number][] | undefined>;
+      
+      // Check if nubs array already exists (new rsrcdump format with macro)
+      if (item.nubs && Array.isArray(item.nubs)) {
+        // Already in new format, validate it has the expected structure
+        const nubs = item.nubs as [number, number][];
+        if (nubs.length === globals.LIQD_NUBS) {
+          continue; // Already processed correctly
+        }
       }
-      (waterItem as Record<string, [number, number][]>).nubs = nubs;
+      
+      // Build nubs array from x_0, y_0, x_1, y_1, etc. fields (old format)
+      const nubs: [number, number][] = [];
+      let hasAnyNubFields = false;
+      
+      for (let i = 0; i < globals.LIQD_NUBS; i++) {
+        const xKey = `x_${i}`;
+        const yKey = `y_${i}`;
+        const xVal = item[xKey];
+        const yVal = item[yKey];
+        
+        if (xVal !== undefined && yVal !== undefined) {
+          hasAnyNubFields = true;
+          nubs.push([xVal as number, yVal as number]);
+        } else {
+          // Missing individual fields, use 0,0 as fallback
+          nubs.push([0, 0]);
+        }
+      }
+      
+      // Only set nubs if we found individual fields (for backwards compatibility)
+      if (hasAnyNubFields) {
+        item.nubs = nubs;
+      } else if (!item.nubs) {
+        // No nubs data at all - initialize empty
+        item.nubs = Array(globals.LIQD_NUBS).fill([0, 0]);
+      }
     }
   }
 
