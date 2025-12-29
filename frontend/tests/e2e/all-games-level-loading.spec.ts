@@ -44,8 +44,8 @@ test.describe("All Games - First Level Loading", () => {
     test(`${game.name} - should load first level successfully`, async ({
       page,
     }) => {
-      // Navigate to the editor
-      await page.goto("/");
+      // Navigate to the editor (using correct base path from vite.config.ts)
+      await page.goto("/PangeaRSEdit/");
 
       // Wait for the page to load and find the game card
       const gameCard = page.getByRole("heading", { name: game.cardTitle });

@@ -112,14 +112,15 @@ export function TopologyPreview3D({
     topologyValue,
   ]);
 
-  // Wireframe material for preview
+  // Improved material for preview - solid surface with better visibility
   const material = useMemo(() => {
     return new MeshBasicMaterial({
-      color: 0x00ffff,
-      wireframe: true,
+      color: 0x44ff44, // Brighter green for better visibility
+      wireframe: false, // Solid surface instead of wireframe for cleaner look
       transparent: true,
-      opacity: 0.6,
+      opacity: 0.5, // Semi-transparent to see terrain beneath
       side: DoubleSide,
+      depthWrite: false, // Prevent z-fighting with terrain
     });
   }, []);
 
