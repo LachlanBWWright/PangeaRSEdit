@@ -79,13 +79,30 @@ export const TerrainGeometry = forwardRef<Mesh, {
     positionAttr.needsUpdate = true;
     return geom;
   }, [
-    terrainData.YCrd,
     numWide,
     numHigh,
     yScale,
     globals.TILE_INGAME_SIZE,
     header,
   ]);
+
+  // Update geometry vertices when YCrd data changes (for topology editing)
+  useEffect(() => {
+    if (!geometry || !terrainData.YCrd?.[1000]?.obj) return;
+    
+    const positionAttr = geometry.attributes.position;
+    if (!positionAttr) return;
+    
+    const ycrd = terrainData.YCrd[1000].obj;
+    for (let i = 0; i < positionAttr.count; i++) {
+      const ycrdValue = ycrd[i];
+      if (ycrdValue !== undefined) {
+        positionAttr.setZ(i, ycrdValue * yScale);
+      }
+    }
+    geometry.computeVertexNormals();
+    positionAttr.needsUpdate = true;
+  }, [terrainData.YCrd, geometry, yScale]);
 
   const combinedTexture = useMemo(() => {
     if (!combinedImg) return null;

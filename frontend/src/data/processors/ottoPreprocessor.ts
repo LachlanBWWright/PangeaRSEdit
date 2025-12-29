@@ -82,11 +82,25 @@ export function preprocessJson(
       
       // Check if nubs array already exists (new rsrcdump format with macro)
       if (item.nubs && Array.isArray(item.nubs)) {
-        // Already in new format, validate it has the expected structure
-        const nubs = item.nubs as [number, number][];
-        if (nubs.length === globals.LIQD_NUBS) {
-          continue; // Already processed correctly
+        // Already in new format - validate and ensure proper structure
+        const existingNubs = item.nubs as [number, number][];
+        
+        // Validate each nub is a proper [number, number] tuple
+        const validatedNubs: [number, number][] = [];
+        for (let i = 0; i < globals.LIQD_NUBS; i++) {
+          if (i < existingNubs.length && Array.isArray(existingNubs[i])) {
+            const nub = existingNubs[i];
+            if (nub.length >= 2 && typeof nub[0] === 'number' && typeof nub[1] === 'number') {
+              validatedNubs.push([nub[0], nub[1]]);
+            } else {
+              validatedNubs.push([0, 0]);
+            }
+          } else {
+            validatedNubs.push([0, 0]);
+          }
         }
+        item.nubs = validatedNubs;
+        continue; // Already processed
       }
       
       // Build nubs array from x_0, y_0, x_1, y_1, etc. fields (old format)
@@ -108,10 +122,10 @@ export function preprocessJson(
         }
       }
       
-      // Only set nubs if we found individual fields (for backwards compatibility)
+      // Set nubs - prefer found fields, otherwise initialize empty
       if (hasAnyNubFields) {
         item.nubs = nubs;
-      } else if (!item.nubs) {
+      } else {
         // No nubs data at all - initialize empty with unique arrays for each element
         item.nubs = Array.from({ length: globals.LIQD_NUBS }, () => [0, 0]);
       }

@@ -194,8 +194,43 @@ export function ThreeView({
       });
 
       setAffectedPixels(pixels);
+      
+      // Apply brush while dragging (if isEditing)
+      if (isEditing && terrainData.YCrd?.[1000]?.obj) {
+        applyTopologyBrush(terrainData.YCrd[1000].obj, pixels, {
+          centerX: tileCoords.x * globals.TILE_INGAME_SIZE,
+          centerY: tileCoords.z * globals.TILE_INGAME_SIZE,
+          radius,
+          brushMode,
+          valueMode,
+          value: topologyValue,
+          header,
+          globals,
+          tileSize: globals.TILE_INGAME_SIZE,
+        });
+
+        // Trigger geometry update
+        if (terrainMeshRef.current && terrainMeshRef.current.geometry) {
+          const geom = terrainMeshRef.current.geometry;
+          const positionAttr = geom.attributes.position;
+          if (positionAttr) {
+            const ycrd = terrainData.YCrd[1000].obj;
+            const mapTileSize = header.tileSize ?? 1;
+            const yScale = globals.TILE_INGAME_SIZE / Math.max(1, mapTileSize);
+            
+            for (let i = 0; i < positionAttr.count; i++) {
+              const ycrdValue = ycrd[i];
+              if (ycrdValue !== undefined) {
+                positionAttr.setZ(i, ycrdValue * yScale);
+              }
+            }
+            geom.computeVertexNormals();
+            positionAttr.needsUpdate = true;
+          }
+        }
+      }
     }
-  }, [isEditingTopology, brushMode, brushRadius, valueMode, topologyValue, header, globals]);
+  }, [isEditingTopology, isEditing, brushMode, brushRadius, valueMode, topologyValue, header, globals, terrainData]);
 
   const handlePointerDown = useCallback((event: THREE.Event) => {
     if (!isEditingTopology) return;
