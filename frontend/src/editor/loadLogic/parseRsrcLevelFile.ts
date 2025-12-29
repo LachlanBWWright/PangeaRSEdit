@@ -1,6 +1,7 @@
 import { LevelData } from "@/python/structSpecs/LevelTypes";
 import { Result, ok, err } from "@/types/result";
 import { preprocessJson } from "@/data/processors/ottoPreprocessor";
+import { fixNullToZero } from "@/data/processors/nullToZeroFixer";
 import type { GlobalsInterface } from "@/data/globals/globals";
 import { splitLevelData, AtomicLevelData } from "@/data/utils/levelDataUtils";
 import { validateLevelDataForGame } from "@/validation/validateLevelForGame";
@@ -28,6 +29,9 @@ export async function parseRsrcLevelFile(
     }
 
     const result = JSON.parse(parseResult.value) as Record<string, unknown>;
+
+    // Fix null values from rsrcdump-ts v1.0.4 bug (returns null for numeric zeros)
+    fixNullToZero(result);
 
     // Apply preprocessing FIRST (converts liquid nubs from x_0/y_0 format to array format)
     const preprocessResult = preprocessJson(result, gameType);

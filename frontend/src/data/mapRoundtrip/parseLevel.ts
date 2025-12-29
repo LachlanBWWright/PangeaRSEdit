@@ -10,6 +10,7 @@ import {
   parseNanosaur1Level,
 } from "../processors/classicProprocessor";
 import { preprocessJson } from "../processors/ottoPreprocessor";
+import { fixNullToZero } from "../processors/nullToZeroFixer";
 import { DataType, GlobalsInterface } from "../globals/globals";
 import { Result, ok, err, isErr } from "../../types/result";
 import { saveToJson, loadBytesFromJson } from "@lachlanbwwright/rsrcdump-ts";
@@ -42,6 +43,10 @@ export async function parseLevelBuffer(
     }
 
     const parsed = JSON.parse(parseResult.value);
+    
+    // Fix null values from rsrcdump-ts v1.0.4 bug (returns null for numeric zeros)
+    fixNullToZero(parsed);
+    
     return ok(parsed as LevelData);
   } catch (error) {
     return err(error instanceof Error ? error : new Error(String(error)));

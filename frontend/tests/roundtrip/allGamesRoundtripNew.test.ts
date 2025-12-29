@@ -38,7 +38,7 @@ const GAMES: GameTestConfig[] = [
   {
     name: "Bugdom 2",
     globals: Bugdom2Globals,
-    testFile: "public/assets/bugdom2/terrain/Level1_Playroom.ter.rsrc",
+    testFile: "public/assets/bugdom2/terrain/Level1_Garden.ter.rsrc",
   },
   {
     name: "Cro-Mag Rally",
