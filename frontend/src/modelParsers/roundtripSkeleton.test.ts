@@ -140,9 +140,14 @@ describe("BG3D + Skeleton Roundtrip Tests with FULL ACCURACY", () => {
       Object.keys(roundtrip1Result.skeleton!.relPoints || {}).length,
     );
 
-    const _ = skeletonResourceToBinary(
+    const roundtrip1SkeletonBinaryResult = skeletonResourceToBinary(
       roundtrip1SkeletonResource,
     );
+    if (!roundtrip1SkeletonBinaryResult.ok) {
+      console.error("Failed to convert skeleton to binary:", roundtrip1SkeletonBinaryResult.error);
+      return;
+    }
+    const roundtrip1SkeletonBinary = roundtrip1SkeletonBinaryResult.value;
 
     console.log(
       `First roundtrip BG3D: ${roundtrip1Bg3dBinary.byteLength} bytes`,
@@ -209,9 +214,14 @@ describe("BG3D + Skeleton Roundtrip Tests with FULL ACCURACY", () => {
       ),
     );
 
-    const _ = skeletonResourceToBinary(
+    const roundtrip2SkeletonBinaryResult = skeletonResourceToBinary(
       roundtrip2SkeletonResource,
     );
+    if (!roundtrip2SkeletonBinaryResult.ok) {
+      console.error("Failed to convert skeleton to binary:", roundtrip2SkeletonBinaryResult.error);
+      return;
+    }
+    const roundtrip2SkeletonBinary = roundtrip2SkeletonBinaryResult.value;
 
     console.log(
       `Second roundtrip BG3D: ${roundtrip2Bg3dBinary.byteLength} bytes`,

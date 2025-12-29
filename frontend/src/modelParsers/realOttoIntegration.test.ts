@@ -24,7 +24,7 @@ describe("Real Otto Integration", () => {
     // Parse skeleton
     const skeletonBuffer = fs.readFileSync(skeletonPath);
     console.log("1. Parsing skeleton file...");
-    const skeleton = parseSkeletonRsrc(skeletonBuffer.buffer);
+    const skeleton = await parseSkeletonRsrc(skeletonBuffer.buffer);
 
     console.log(
       `2. Skeleton parsed: ${Object.keys(skeleton.Bone || {}).length} bones, ${

@@ -71,12 +71,17 @@ describe("Minimal Skeleton Roundtrip Tests", () => {
 
     const rt1Binary = bg3dParsedToBG3D(rt1);
     const rt1SkeletonResource = bg3dSkeletonToSkeletonResource(rt1.skeleton);
-    const _ = skeletonResourceToBinary(
+    const rt1SkeletonBinaryResult = skeletonResourceToBinary(
       rt1SkeletonResource,
     );
+    if (!rt1SkeletonBinaryResult.ok) {
+      console.error("Failed to convert RT1 skeleton to binary:", rt1SkeletonBinaryResult.error);
+      return;
+    }
+    const rt1SkeletonBinary = rt1SkeletonBinaryResult.value;
 
     // Parse RT1 output
-    const rt1SkeletonParsed = parseSkeletonRsrc(rt1SkeletonBinary);
+    const rt1SkeletonParsed = await parseSkeletonRsrc(rt1SkeletonBinary);
     const rt1ParsedResult = parseBG3D(rt1Binary, rt1SkeletonParsed);
 
     // Handle Result type
@@ -155,7 +160,7 @@ describe("Minimal Skeleton Roundtrip Tests", () => {
     const originalSkeletonData = readFileSync(ottoSkeletonPath);
 
     // Parse original files
-    const originalSkeletonResource = parseSkeletonRsrc(
+    const originalSkeletonResource = await parseSkeletonRsrc(
       originalSkeletonData.buffer.slice(
         originalSkeletonData.byteOffset,
         originalSkeletonData.byteOffset + originalSkeletonData.byteLength,
@@ -222,12 +227,17 @@ describe("Minimal Skeleton Roundtrip Tests", () => {
 
     const rt1Binary = bg3dParsedToBG3D(rt1);
     const rt1SkeletonResource = bg3dSkeletonToSkeletonResource(rt1.skeleton);
-    const _ = skeletonResourceToBinary(
+    const rt1SkeletonBinaryResult = skeletonResourceToBinary(
       rt1SkeletonResource,
     );
+    if (!rt1SkeletonBinaryResult.ok) {
+      console.error("Failed to convert RT1 skeleton to binary:", rt1SkeletonBinaryResult.error);
+      return;
+    }
+    const rt1SkeletonBinary = rt1SkeletonBinaryResult.value;
 
     // Parse RT1 output
-    const rt1SkeletonParsed = parseSkeletonRsrc(rt1SkeletonBinary);
+    const rt1SkeletonParsed = await parseSkeletonRsrc(rt1SkeletonBinary);
     const rt1ParsedResult = parseBG3D(rt1Binary, rt1SkeletonParsed);
 
     // Handle Result type

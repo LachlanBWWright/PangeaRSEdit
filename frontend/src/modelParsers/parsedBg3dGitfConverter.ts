@@ -1140,7 +1140,13 @@ export async function gltfToBG3D(doc: Document): Promise<BG3DParseResult> {
             // BG3D textures are typically RGB format (no alpha channel)
             // Even if PNG is stored as RGBA in glTF (due to pngjs library limitations),
             // we convert back to RGB to match original format and prevent file size inflation
-            const imageBuffer = image.buffer instanceof ArrayBuffer ? image.buffer : image.buffer.slice(0);
+            const imageBuffer = (() => {
+              const buf = image.buffer;
+              if (buf instanceof ArrayBuffer) return buf;
+              // Convert SharedArrayBuffer to ArrayBuffer
+              const u8 = new Uint8Array(buf);
+              return u8.buffer as unknown as ArrayBuffer;
+            })();
             const rgbaRes = await pngToRgba8(imageBuffer);
             const rgb = new Uint8Array((rgbaRes.data.length / 4) * 3);
             for (let i = 0, j = 0; i < rgbaRes.data.length; i += 4, j += 3) {
@@ -1194,7 +1200,7 @@ export async function gltfToBG3D(doc: Document): Promise<BG3DParseResult> {
   if (originalSkeletonBinary) {
     console.log("Using original skeleton binary for exact roundtrip");
     // Parse the original skeleton binary to get exact skeleton data
-    const originalSkeletonResource = parseSkeletonRsrc(
+    const originalSkeletonResource = await parseSkeletonRsrc(
       originalSkeletonBinary,
     );
     // Convert to BG3DSkeleton format (simplified, assuming Otto format)
