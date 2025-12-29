@@ -12,6 +12,9 @@ import {
   TopologyValueMode,
   TileEditingEnabled,
   TileBrushType,
+  ShowRoofInTopology,
+  EditRoofAndFloorTogether,
+  RoofFloorElevation,
 } from "../../../data/tiles/tileAtoms";
 import { useAtom, useAtomValue } from "jotai";
 import {
@@ -58,6 +61,9 @@ export function TilesMenu({
     useAtom(TileEditingEnabled);
   const [selectedTileBrushType, setSelectedTileBrushType] =
     useAtom(TileBrushType);
+  const [showRoof, setShowRoof] = useAtom(ShowRoofInTopology);
+  const [editTogether, setEditTogether] = useAtom(EditRoofAndFloorTogether);
+  const [roofFloorElevation, setRoofFloorElevation] = useAtom(RoofFloorElevation);
   const globals = useAtomValue(Globals);
 
   const header = headerData?.Hedr?.[1000]?.obj;
@@ -242,6 +248,44 @@ export function TilesMenu({
               setTopologyOpacity(parseFloat(e.target.value) || 1)
             }
           />
+
+          {/* Roof support controls (for games with YCrd 1001 like Bugdom 1) */}
+          <div className="flex flex-row justify-center gap-2 items-center col-span-2 mt-2 p-2 bg-gray-800 rounded">
+            <p>Show Roof (YCrd 1001)</p>
+            <Switch
+              checked={showRoof}
+              onCheckedChange={setShowRoof}
+            />
+          </div>
+
+          {showRoof && (
+            <>
+              <div className="flex flex-row justify-center gap-2 items-center col-span-2">
+                <p>Edit Floor &amp; Roof Together</p>
+                <Switch
+                  checked={editTogether}
+                  onCheckedChange={setEditTogether}
+                />
+              </div>
+              {editTogether && (
+                <>
+                  <p>Center Elevation</p>
+                  <Input
+                    type="number"
+                    value={roofFloorElevation}
+                    onChange={(e) => 
+                      setRoofFloorElevation(parseInt(e.target.value) || 100)
+                    }
+                  />
+                  <p className="col-span-2 text-sm text-gray-400">
+                    Edits will maintain distance from this center elevation.
+                    Roof will always be above floor.
+                  </p>
+                </>
+              )}
+            </>
+          )}
+
           <div className="flex flex-row justify-between gap-2 items-center col-span-2">
             <div className="flex items-center gap-2">
               <p>Show 3D Map (View Only)</p>

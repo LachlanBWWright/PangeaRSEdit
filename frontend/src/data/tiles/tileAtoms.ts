@@ -33,6 +33,11 @@ export const TopologyValue = atom<number>(0);
 
 export const TopologyOpacity = atom<number>(1);
 
+// Roof support atoms (for Bugdom 1 and games with YCrd 1001)
+export const ShowRoofInTopology = atom<boolean>(false);
+export const EditRoofAndFloorTogether = atom<boolean>(false);
+export const RoofFloorElevation = atom<number>(100); // Center elevation for dual editing
+
 // Tile editing atoms
 export const TileEditingEnabled = atom<boolean>(false);
 export const TileBrushType = atom<"add" | "remove">("add");
