@@ -83,14 +83,6 @@ export function preprocessJson(
       // Check if nubs array already exists (new rsrcdump format with macro)
       if (item.nubs && Array.isArray(item.nubs)) {
         // Already in new format - validate and ensure proper structure
-        // Use type guard instead of assertion for better type safety
-        const isValidNubsArray = (nubs: unknown): nubs is [number, number][] => {
-          return Array.isArray(nubs) && nubs.every(nub =>
-            Array.isArray(nub) && nub.length >= 2 && 
-            typeof nub[0] === 'number' && typeof nub[1] === 'number'
-          );
-        };
-        
         const existingNubs = item.nubs;
         
         // Validate each nub is a proper [number, number] tuple
@@ -98,6 +90,7 @@ export function preprocessJson(
         for (let i = 0; i < globals.LIQD_NUBS; i++) {
           if (i < existingNubs.length && existingNubs[i] && Array.isArray(existingNubs[i])) {
             const nub = existingNubs[i];
+            // Type guard: validate nub structure before using
             if (nub && nub.length >= 2 && typeof nub[0] === 'number' && typeof nub[1] === 'number') {
               validatedNubs.push([nub[0] as number, nub[1] as number]);
             } else {
