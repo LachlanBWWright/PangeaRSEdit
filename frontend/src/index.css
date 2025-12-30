@@ -74,12 +74,24 @@ body {
 
 @layer base {
   * {
-    border-color: hsl(var(--border));
+    @apply border-border;
     outline-color: hsl(var(--ring) / 0.5);
   }
   body {
-    background-color: hsl(var(--background));
-    color: hsl(var(--foreground));
+    @apply bg-background text-foreground;
+  }
+}
+
+/* Ensure shadcn components have proper backgrounds in dark mode */
+@layer components {
+  .dark [data-radix-popper-content-wrapper] {
+    @apply bg-popover text-popover-foreground;
+  }
+  
+  .dark [role="menu"],
+  .dark [role="dialog"],
+  .dark [role="alertdialog"] {
+    @apply bg-popover text-popover-foreground;
   }
 }
 

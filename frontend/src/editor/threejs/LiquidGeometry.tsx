@@ -49,16 +49,30 @@ export const LiquidGeometry: React.FC<LiquidGeometryProps> = ({
   const globals = useAtomValue(Globals);
 
   if (!liquidData.Liqd?.[1000]?.obj) {
+    console.log("[LiquidGeometry] No liquid data found");
     return null;
   }
 
   const liquidPatches = liquidData.Liqd[1000].obj;
+  console.log(`[LiquidGeometry] Found ${liquidPatches.length} liquid patches`);
 
   return (
     <group>
       {liquidPatches.map((patch, index) => {
+        console.log(`[LiquidGeometry] Patch ${index}:`, {
+          numNubs: patch.numNubs,
+          nubs: patch.nubs,
+          type: patch.type,
+        });
+        
         if (!patch || patch.numNubs < 3) {
           // A polygon needs at least 3 vertices
+          console.log(`[LiquidGeometry] Patch ${index} skipped: insufficient nubs`);
+          return null;
+        }
+
+        if (!patch.nubs || !Array.isArray(patch.nubs)) {
+          console.log(`[LiquidGeometry] Patch ${index} skipped: nubs not an array`);
           return null;
         }
 
@@ -68,10 +82,19 @@ export const LiquidGeometry: React.FC<LiquidGeometryProps> = ({
 
         const points = patch.nubs
           .slice(0, patch.numNubs)
-          .map((nub) => new Vector2(nub[0] * scale, nub[1] * scale));
+          .map((nub, i) => {
+            if (!nub || !Array.isArray(nub) || nub.length < 2) {
+              console.warn(`[LiquidGeometry] Patch ${index} nub ${i} is invalid:`, nub);
+              return new Vector2(0, 0);
+            }
+            const x = nub[0] ?? 0;
+            const y = nub[1] ?? 0;
+            return new Vector2(x * scale, y * scale);
+          });
 
         // Ensure we still have enough points after slicing and potential filtering if any
         if (points.length < 3) {
+          console.log(`[LiquidGeometry] Patch ${index} skipped: insufficient points after processing`);
           return null;
         }
 
@@ -87,7 +110,7 @@ export const LiquidGeometry: React.FC<LiquidGeometryProps> = ({
             globals,
           ) + 100; //patch.height;
 
-        console.log("Patch height", liquidLevelY);
+        console.log(`[LiquidGeometry] Rendering patch ${index} at Y=${liquidLevelY}`);
         return (
           <React.Fragment key={`liquid-fragment-${index}`}>
             <mesh
