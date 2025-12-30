@@ -1,6 +1,7 @@
 import { Canvas, useThree } from "@react-three/fiber";
 import { MapControls } from "@react-three/drei";
 import { TerrainGeometry } from "./Terrain";
+import { RoofGeometry } from "./RoofGeometry";
 import { FenceGeometry } from "./FenceGeometry";
 import { LiquidGeometry } from "./LiquidGeometry";
 import { ItemGeometry } from "./ItemGeometry";
@@ -24,6 +25,8 @@ import {
   TopologyBrushRadius,
   CurrentTopologyValueMode,
   TopologyValue,
+  EditRoofAndFloorTogether,
+  RoofFloorElevation,
 } from "@/data/tiles/tileAtoms";
 import { GLTFExporter } from "three/examples/jsm/exporters/GLTFExporter.js";
 import {
@@ -42,6 +45,7 @@ import type * as THREE from "three";
 import {
   calculateBrushPixels,
   applyTopologyBrush,
+  applyDualTopologyBrush,
   worldToTile,
 } from "../utils/topologyBrushUtils";
 
@@ -149,6 +153,8 @@ export function ThreeView({
   const brushRadius = useAtomValue(TopologyBrushRadius);
   const valueMode = useAtomValue(CurrentTopologyValueMode);
   const topologyValue = useAtomValue(TopologyValue);
+  const editRoofAndFloor = useAtomValue(EditRoofAndFloorTogether);
+  const roofFloorElevation = useAtomValue(RoofFloorElevation);
   
   const terrainMeshRef = useRef<Mesh>(null);
   const [intersectionPoint, setIntersectionPoint] = useState<{ x: number; y: number; z: number } | null>(null);
@@ -197,17 +203,43 @@ export function ThreeView({
       // to limit update frequency. Current implementation prioritizes responsiveness
       // for typical game level sizes (tested with maps up to 256x256 tiles).
       if (isEditing && terrainData.YCrd?.[1000]?.obj) {
-        applyTopologyBrush(terrainData.YCrd[1000].obj, pixels, {
-          centerX: tileCoords.x * globals.TILE_INGAME_SIZE,
-          centerY: tileCoords.z * globals.TILE_INGAME_SIZE,
-          radius,
-          brushMode,
-          valueMode,
-          value: topologyValue,
-          header,
-          globals,
-          tileSize: globals.TILE_INGAME_SIZE,
-        });
+        // Check if we should use dual editing mode (floor + roof)
+        const hasRoof = terrainData.YCrd?.[1001]?.obj !== undefined;
+        const useDualMode = editRoofAndFloor && hasRoof;
+
+        if (useDualMode && terrainData.YCrd[1001]) {
+          // Apply dual brush (affects both floor and roof)
+          applyDualTopologyBrush(
+            terrainData.YCrd[1000].obj,
+            terrainData.YCrd[1001].obj,
+            pixels,
+            {
+              centerX: tileCoords.x * globals.TILE_INGAME_SIZE,
+              centerY: tileCoords.z * globals.TILE_INGAME_SIZE,
+              radius,
+              brushMode,
+              valueMode,
+              value: topologyValue,
+              header,
+              globals,
+              tileSize: globals.TILE_INGAME_SIZE,
+            },
+            roofFloorElevation
+          );
+        } else {
+          // Apply single brush (floor only)
+          applyTopologyBrush(terrainData.YCrd[1000].obj, pixels, {
+            centerX: tileCoords.x * globals.TILE_INGAME_SIZE,
+            centerY: tileCoords.z * globals.TILE_INGAME_SIZE,
+            radius,
+            brushMode,
+            valueMode,
+            value: topologyValue,
+            header,
+            globals,
+            tileSize: globals.TILE_INGAME_SIZE,
+          });
+        }
 
         // Trigger geometry update
         if (terrainMeshRef.current && terrainMeshRef.current.geometry) {
@@ -230,7 +262,7 @@ export function ThreeView({
         }
       }
     }
-  }, [isEditingTopology, isEditing, brushMode, brushRadius, valueMode, topologyValue, header, globals, terrainData]);
+  }, [isEditingTopology, isEditing, brushMode, brushRadius, valueMode, topologyValue, header, globals, terrainData, editRoofAndFloor, roofFloorElevation]);
 
   const handlePointerDown = useCallback((event: THREE.Event) => {
     if (!isEditingTopology) return;
@@ -255,17 +287,43 @@ export function ThreeView({
         tileSize: globals.TILE_INGAME_SIZE,
       });
 
-      applyTopologyBrush(terrainData.YCrd[1000].obj, pixels, {
-        centerX: tileCoords.x * globals.TILE_INGAME_SIZE,
-        centerY: tileCoords.z * globals.TILE_INGAME_SIZE,
-        radius,
-        brushMode,
-        valueMode,
-        value: topologyValue,
-        header,
-        globals,
-        tileSize: globals.TILE_INGAME_SIZE,
-      });
+      // Check if we should use dual editing mode
+      const hasRoof = terrainData.YCrd?.[1001]?.obj !== undefined;
+      const useDualMode = editRoofAndFloor && hasRoof;
+
+      if (useDualMode && terrainData.YCrd[1001]) {
+        // Apply dual brush
+        applyDualTopologyBrush(
+          terrainData.YCrd[1000].obj,
+          terrainData.YCrd[1001].obj,
+          pixels,
+          {
+            centerX: tileCoords.x * globals.TILE_INGAME_SIZE,
+            centerY: tileCoords.z * globals.TILE_INGAME_SIZE,
+            radius,
+            brushMode,
+            valueMode,
+            value: topologyValue,
+            header,
+            globals,
+            tileSize: globals.TILE_INGAME_SIZE,
+          },
+          roofFloorElevation
+        );
+      } else {
+        // Apply single brush
+        applyTopologyBrush(terrainData.YCrd[1000].obj, pixels, {
+          centerX: tileCoords.x * globals.TILE_INGAME_SIZE,
+          centerY: tileCoords.z * globals.TILE_INGAME_SIZE,
+          radius,
+          brushMode,
+          valueMode,
+          value: topologyValue,
+          header,
+          globals,
+          tileSize: globals.TILE_INGAME_SIZE,
+        });
+      }
 
       // Force terrain re-render by updating the geometry
       if (terrainMeshRef.current && terrainMeshRef.current.geometry) {
@@ -277,7 +335,7 @@ export function ThreeView({
         }
       }
     }
-  }, [isEditingTopology, brushMode, brushRadius, valueMode, topologyValue, header, globals, terrainData]);
+  }, [isEditingTopology, brushMode, brushRadius, valueMode, topologyValue, header, globals, terrainData, editRoofAndFloor, roofFloorElevation]);
 
   const handlePointerUp = useCallback(() => {
     setIsEditing(false);
@@ -333,6 +391,14 @@ export function ThreeView({
         headerData={headerData}
         terrainData={terrainData}
         mapImages={mapImages}
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerUp}
+      />
+      {/* Roof geometry (Bugdom 1 and games with YCrd 1001) */}
+      <RoofGeometry
+        headerData={headerData}
+        terrainData={terrainData}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
