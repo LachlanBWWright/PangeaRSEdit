@@ -14,7 +14,7 @@
 
 import { describe, it, expect } from "vitest";
 import { parseBG3D } from "./parseBG3D";
-import { parseSkeletonRsrcTS } from "./skeletonRsrc/parseSkeletonRsrcTS";
+import { parseSkeletonRsrc } from "./skeletonRsrc/parseSkeletonRsrcTS";
 import { bg3dParsedToGLTF, gltfToBG3D } from "./parsedBg3dGitfConverter";
 import { readFileSync } from "fs";
 import { join } from "path";
@@ -67,7 +67,7 @@ describe("Comprehensive Skeleton Value Validation", () => {
     const originalSkeletonData = readFileSync(ottoSkeletonPath);
 
     // Parse original
-    const originalSkeletonResource = parseSkeletonRsrcTS(
+    const originalSkeletonResource = await parseSkeletonRsrc(
       originalSkeletonData as unknown as ArrayBuffer,
     );
     const originalBg3dRes = parseBG3D(
@@ -364,14 +364,14 @@ describe("Comprehensive Skeleton Value Validation", () => {
     expect(result.gltfCompliance).toBe(true);
   });
 
-  it("should expose vertex binding weight calculation issues", () => {
+  it("should expose vertex binding weight calculation issues", async () => {
     console.log("=== VERTEX BINDING WEIGHT ANALYSIS ===");
 
     // Load and parse original
     const originalBg3dData = readFileSync(ottoBg3dPath);
     const originalSkeletonData = readFileSync(ottoSkeletonPath);
 
-    const originalSkeletonResource = parseSkeletonRsrcTS(
+    const originalSkeletonResource = await parseSkeletonRsrc(
       originalSkeletonData as unknown as ArrayBuffer,
     );
     const originalBg3dResLocal = parseBG3D(
@@ -459,14 +459,14 @@ describe("Comprehensive Skeleton Value Validation", () => {
     expect(verticesWithUniformWeights).toBe(0); // Should be 0 when fixed
   });
 
-  it("should expose bone hierarchy coordinate issues", () => {
+  it("should expose bone hierarchy coordinate issues", async () => {
     console.log("=== BONE HIERARCHY COORDINATE ANALYSIS ===");
 
     // Load and parse original
     const originalBg3dData = readFileSync(ottoBg3dPath);
     const originalSkeletonData = readFileSync(ottoSkeletonPath);
 
-    const originalSkeletonResource = parseSkeletonRsrcTS(
+    const originalSkeletonResource = await parseSkeletonRsrc(
       originalSkeletonData as unknown as ArrayBuffer,
     );
     const originalBg3dResLocal2 = parseBG3D(

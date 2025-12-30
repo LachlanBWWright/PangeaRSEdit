@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { parseSkeletonRsrcTS } from "./skeletonRsrc/parseSkeletonRsrcTS";
+import { parseSkeletonRsrc } from "./skeletonRsrc/parseSkeletonRsrcTS";
 import { bg3dParsedToGLTF, gltfToBG3D } from "./parsedBg3dGitfConverter";
 import { parseBG3D } from "./parseBG3D";
 import { bg3dSkeletonToSkeletonResource } from "./skeletonExport";
@@ -39,7 +39,7 @@ describe("BG3D + Skeleton Roundtrip Tests with FULL ACCURACY", () => {
     console.log("\n=== FIRST ROUNDTRIP ===");
 
     // Parse original files
-    const originalSkeletonResource = parseSkeletonRsrcTS(
+    const originalSkeletonResource = await parseSkeletonRsrc(
       originalSkeletonData.buffer.slice(
         originalSkeletonData.byteOffset,
         originalSkeletonData.byteOffset + originalSkeletonData.byteLength,
@@ -140,9 +140,14 @@ describe("BG3D + Skeleton Roundtrip Tests with FULL ACCURACY", () => {
       Object.keys(roundtrip1Result.skeleton!.relPoints || {}).length,
     );
 
-    const roundtrip1SkeletonBinary = await skeletonResourceToBinary(
+    const roundtrip1SkeletonBinaryResult = skeletonResourceToBinary(
       roundtrip1SkeletonResource,
     );
+    if (!roundtrip1SkeletonBinaryResult.ok) {
+      console.error("Failed to convert skeleton to binary:", roundtrip1SkeletonBinaryResult.error);
+      return;
+    }
+    const roundtrip1SkeletonBinary = roundtrip1SkeletonBinaryResult.value;
 
     console.log(
       `First roundtrip BG3D: ${roundtrip1Bg3dBinary.byteLength} bytes`,
@@ -155,7 +160,7 @@ describe("BG3D + Skeleton Roundtrip Tests with FULL ACCURACY", () => {
     console.log("\n=== SECOND ROUNDTRIP ===");
 
     // Parse first roundtrip output
-    const roundtrip1SkeletonResourceParsed = parseSkeletonRsrcTS(
+    const roundtrip1SkeletonResourceParsed = await parseSkeletonRsrc(
       roundtrip1SkeletonBinary,
     );
     const roundtrip1Bg3dParsed = parseBG3D(
@@ -209,9 +214,14 @@ describe("BG3D + Skeleton Roundtrip Tests with FULL ACCURACY", () => {
       ),
     );
 
-    const roundtrip2SkeletonBinary = await skeletonResourceToBinary(
+    const roundtrip2SkeletonBinaryResult = skeletonResourceToBinary(
       roundtrip2SkeletonResource,
     );
+    if (!roundtrip2SkeletonBinaryResult.ok) {
+      console.error("Failed to convert skeleton to binary:", roundtrip2SkeletonBinaryResult.error);
+      return;
+    }
+    const roundtrip2SkeletonBinary = roundtrip2SkeletonBinaryResult.value;
 
     console.log(
       `Second roundtrip BG3D: ${roundtrip2Bg3dBinary.byteLength} bytes`,
@@ -485,7 +495,7 @@ describe("BG3D + Skeleton Roundtrip Tests with FULL ACCURACY", () => {
     const skeletonData = readFileSync(ottoSkeletonPath);
 
     // Parse original files with skeleton integrated
-    const originalSkeletonResource = parseSkeletonRsrcTS(
+    const originalSkeletonResource = await parseSkeletonRsrc(
       skeletonData.buffer.slice(
         skeletonData.byteOffset,
         skeletonData.byteOffset + skeletonData.byteLength,
@@ -562,7 +572,7 @@ describe("BG3D + Skeleton Roundtrip Tests with FULL ACCURACY", () => {
     const bg3dData = readFileSync(ottoBg3dPath);
     const skeletonData = readFileSync(ottoSkeletonPath);
 
-    const originalSkeletonResource = parseSkeletonRsrcTS(
+    const originalSkeletonResource = await parseSkeletonRsrc(
       skeletonData.buffer.slice(
         skeletonData.byteOffset,
         skeletonData.byteOffset + skeletonData.byteLength,

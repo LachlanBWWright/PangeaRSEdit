@@ -10,37 +10,44 @@ import {
   parseNanosaur1Level,
 } from "../processors/classicProprocessor";
 import { preprocessJson } from "../processors/ottoPreprocessor";
+import { fixNullToZero } from "../processors/nullToZeroFixer";
 import { DataType, GlobalsInterface } from "../globals/globals";
 import { Result, ok, err, isErr } from "../../types/result";
+import { saveToJson, loadBytesFromJson } from "@lachlanbwwright/rsrcdump-ts";
 
 /**
- * Parse a level data buffer to JSON using pyodide
- * This is the core parsing function that wraps the pyodide worker call
+ * Parse a level data buffer to JSON using rsrcdump-ts
+ * This is the core parsing function that wraps the rsrcdump-ts library
  *
  * @param buffer - The raw binary level data
  * @param options - Parsing options including struct specs
- * @param pyodideRunner - A function that runs pyodide code (can be worker or direct)
  * @returns Result with the parsed level data as LevelData
  */
 export async function parseLevelBuffer(
   buffer: ArrayBuffer,
   options: ParseLevelOptions,
-  pyodideRunner: (code: string, buffer: ArrayBuffer) => Promise<string>,
 ): Promise<Result<LevelData, Error>> {
   const { structSpecs, includeTypes = [], excludeTypes = [] } = options;
 
   try {
-    const resultJson = await pyodideRunner(
-      `rsrcdump.save_to_json(
-        buffer,
-        ${JSON.stringify(structSpecs)},
-        ${JSON.stringify(includeTypes)},
-        ${JSON.stringify(excludeTypes)}
-      )`,
-      buffer,
+    const bytes = new Uint8Array(buffer);
+    const parseResult = await saveToJson(
+      bytes,
+      structSpecs || [],
+      includeTypes,
+      excludeTypes,
     );
 
-    return ok(JSON.parse(resultJson) as LevelData);
+    if (!parseResult.ok) {
+      return err(new Error(parseResult.error));
+    }
+
+    const parsed = JSON.parse(parseResult.value);
+    
+    // Fix null values from rsrcdump-ts v1.0.4 bug (returns null for numeric zeros)
+    fixNullToZero(parsed);
+    
+    return ok(parsed as LevelData);
   } catch (error) {
     return err(error instanceof Error ? error : new Error(String(error)));
   }
@@ -72,32 +79,32 @@ export function parseNanosaur1Buffer(
 }
 
 /**
- * Serialize level data back to binary format using pyodide
+ * Serialize level data back to binary format using rsrcdump-ts
  *
  * @param levelData - The level data to serialize
  * @param options - Serialization options including struct specs
- * @param pyodideRunner - A function that runs pyodide code
  * @returns Result with the serialized binary buffer
  */
 export async function serializeLevelData(
   levelData: LevelData,
   options: SerializeLevelOptions,
-  pyodideRunner: (code: string, jsonData: object) => Promise<ArrayBuffer>,
 ): Promise<Result<ArrayBuffer, Error>> {
-  const { structSpecs, onlyTypes = [], skipTypes = [], adf = true } = options;
+  const { structSpecs } = options;
 
   try {
-    const result = await pyodideRunner(
-      `rsrcdump.load_bytes_from_json(
-        json_buffer,
-        ${JSON.stringify(structSpecs)},
-        ${JSON.stringify(onlyTypes)},
-        ${JSON.stringify(skipTypes)},
-        ${adf ? "True" : "False"}
-      )`,
+    const saveResult = loadBytesFromJson(
       levelData,
+      structSpecs || [],
+      [], // onlyTypes
+      [], // skipTypes
+      true, // adf
     );
-    return ok(result);
+
+    if (!saveResult.ok) {
+      return err(new Error(saveResult.error));
+    }
+
+    return ok(saveResult.value.buffer as ArrayBuffer);
   } catch (error) {
     return err(error instanceof Error ? error : new Error(String(error)));
   }
@@ -105,25 +112,19 @@ export async function serializeLevelData(
 
 /**
  * Parse a level file based on game type
- * Handles both pyodide-based parsing and Nanosaur 1 special case
+ * Handles both rsrcdump-ts parsing and Nanosaur 1 special case
  *
  * @param buffer - The raw binary level data
  * @param gameType - The game type configuration
- * @param pyodideRunner - A function that runs pyodide code (optional for Nanosaur 1)
  * @returns Result with the parsed level data
  */
 export async function parseLevelForGame(
   buffer: ArrayBuffer,
   gameType: GlobalsInterface,
-  pyodideRunner?: (code: string, buffer: ArrayBuffer) => Promise<string>,
 ): Promise<Result<LevelData, Error>> {
   if (gameType.DATA_TYPE === DataType.TRT_FILE) {
     // Nanosaur 1 uses its own TRT file parser
     return parseNanosaur1Buffer(buffer, gameType);
-  }
-
-  if (!pyodideRunner) {
-    return err(new Error("pyodideRunner is required for non-TRT file games"));
   }
 
   const parseResult = await parseLevelBuffer(
@@ -131,7 +132,6 @@ export async function parseLevelForGame(
     {
       structSpecs: gameType.STRUCT_SPECS,
     },
-    pyodideRunner,
   );
 
   if (isErr(parseResult)) {
@@ -156,16 +156,11 @@ export async function parseLevelForGame(
  *
  * @param buffer - The raw binary level data
  * @param gameType - The game type configuration
- * @param pyodideRunner - Functions for running pyodide code
  * @returns Result with object containing original, serialized, and re-parsed data
  */
 export async function performRoundtrip(
   buffer: ArrayBuffer,
   gameType: GlobalsInterface,
-  pyodideRunner: {
-    parse: (code: string, buffer: ArrayBuffer) => Promise<string>;
-    serialize: (code: string, jsonData: object) => Promise<ArrayBuffer>;
-  },
 ): Promise<
   Result<
     {
@@ -180,7 +175,6 @@ export async function performRoundtrip(
   const originalResult = await parseLevelForGame(
     buffer,
     gameType,
-    pyodideRunner.parse,
   );
 
   if (isErr(originalResult)) {
@@ -195,7 +189,6 @@ export async function performRoundtrip(
     {
       structSpecs: gameType.STRUCT_SPECS,
     },
-    pyodideRunner.serialize,
   );
 
   if (isErr(serializedResult)) {
@@ -208,7 +201,6 @@ export async function performRoundtrip(
   const roundtripResult = await parseLevelForGame(
     serializedResult.value,
     gameType,
-    pyodideRunner.parse,
   );
 
   if (isErr(roundtripResult)) {

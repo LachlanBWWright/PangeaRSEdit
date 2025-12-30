@@ -7,21 +7,19 @@ import { AtomicLevelData } from "../data/utils/levelDataUtils";
 import { IntroText } from "./IntroText";
 import { GameCarousel } from "./gameCards/GameCarousel";
 /* import { Separator } from "@/components/ui/separator";
-import { parseSkeletonRsrc } from "@/modelParsers/skeletonRsrc/parseSkeletonRsrc";
+import { parseSkeletonRsrc } from "@/modelParsers/skeletonRsrc/parseSkeletonRsrcTS";
 import BG3DGltfWorker from "../modelParsers/bg3dGltfWorker?worker"; //"../utils/bg3dGltfWorker.ts?worker"; */
 
 export function UploadPrompt({
   setMapFile,
   setMapImagesFile,
   setMapImages,
-  pyodideWorker,
   setData,
 }: {
   mapFile: File | undefined;
   setMapFile: (file: File) => void;
   setMapImagesFile: (file: File) => void;
   setMapImages: (images: HTMLCanvasElement[]) => void;
-  pyodideWorker: Worker;
   setData: (data: AtomicLevelData) => void;
 }) {
   const [, setGlobals] = useAtom(Globals);
@@ -34,7 +32,6 @@ export function UploadPrompt({
       setMapFile,
       setMapImagesFile,
       setMapImages,
-      pyodideWorker,
       setData,
     });
 
@@ -42,7 +39,6 @@ export function UploadPrompt({
     parseLevelDataFile(
       file,
       gameType,
-      pyodideWorker,
       setData,
       undefined,
       setMapImages,

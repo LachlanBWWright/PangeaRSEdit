@@ -1,4 +1,4 @@
-import { saveToJson } from "../../rsrcdump-ts/rsrcdump";
+import { saveToJson } from "@lachlanbwwright/rsrcdump-ts";
 import { isOk } from "../../types/result";
 import type { 
   SkeletonResource,
@@ -174,83 +174,19 @@ function transformToSkeletonResource(
 }
 
 /**
- * Parse skeleton resource synchronously using TypeScript parser
+ * Parse skeleton resource using TypeScript parser
  */
-export function parseSkeletonRsrcTS(bytes: ArrayBuffer): SkeletonResource {
-  const parsed = parseSkeletonRsrcJson(bytes);
+export async function parseSkeletonRsrc(bytes: ArrayBuffer): Promise<SkeletonResource> {
+  const parsed = await parseSkeletonRsrcJson(bytes);
   return transformToSkeletonResource(parsed);
 }
 
-/**
- * Parse skeleton resource using Pyodide worker (async)
- * @param bytes Skeleton resource binary data
- * @param pyodideWorker Initialized Pyodide worker
- * @returns Promise resolving to parsed SkeletonResource
- */
-export async function parseSkeletonRsrcPyodide(
-  bytes: ArrayBuffer,
-  pyodideWorker: Worker,
-): Promise<SkeletonResource> {
-  return new Promise((resolve, reject) => {
-    const handleMessage = (event: MessageEvent) => {
-      if (event.data.type === "save_to_json") {
-        pyodideWorker.removeEventListener("message", handleMessage);
-        pyodideWorker.removeEventListener("error", handleError);
-        resolve(event.data.result as SkeletonResource);
-      }
-    };
-
-    const handleError = (error: ErrorEvent) => {
-      pyodideWorker.removeEventListener("message", handleMessage);
-      pyodideWorker.removeEventListener("error", handleError);
-      reject(error);
-    };
-
-    pyodideWorker.addEventListener("message", handleMessage);
-    pyodideWorker.addEventListener("error", handleError);
-
-    pyodideWorker.postMessage({
-      type: "save_to_json",
-      bytes,
-      struct_specs: skeletonSpecs,
-      include_types: [],
-      exclude_types: [],
-    });
-  });
-}
-
-/**
- * Parse skeleton resource with configurable parser
- * @param bytes Skeleton resource binary data
- * @param options Parser options
- * @returns SkeletonResource (sync) or Promise<SkeletonResource> (async with Pyodide)
- */
-export function parseSkeletonRsrc(
-  bytes: ArrayBuffer,
-  options?: {
-    usePyodide?: boolean;
-    pyodideWorker?: Worker;
-  },
-): SkeletonResource | Promise<SkeletonResource> {
-  const usePyodide = options?.usePyodide ?? true; // Default to Pyodide
-
-  if (usePyodide) {
-    if (!options?.pyodideWorker) {
-      // When pyodide is required but not provided, fall back to TS implementation
-      console.warn("Pyodide worker not provided, falling back to TS implementation");
-      return parseSkeletonRsrcTS(bytes);
-    }
-    return parseSkeletonRsrcPyodide(bytes, options.pyodideWorker);
-  }
-
-  return parseSkeletonRsrcTS(bytes);
-}
-
-export function parseSkeletonRsrcJson(bytes: ArrayBuffer): ParsedSkeleton {
+export async function parseSkeletonRsrcJson(bytes: ArrayBuffer): Promise<ParsedSkeleton> {
   const uint8Array = new Uint8Array(bytes);
-  const result = saveToJson(uint8Array, skeletonSpecs, [], [], false);
+  const result = await saveToJson(uint8Array, skeletonSpecs, [], []);
   if (!isOk(result)) {
-    throw result.error;
+    const errorMessage = result.ok ? "" : result.error;
+    return Promise.reject(errorMessage);
   }
   const parsed = JSON.parse(result.value) as ParsedSkeleton;
   return parsed;

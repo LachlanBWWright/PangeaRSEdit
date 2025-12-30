@@ -20,14 +20,11 @@ export function preprocessJson(
   globals: GlobalsInterface,
 ): Result<void, Error> {
   const anyJson = json as Record<string, unknown>;
-  console.log(anyJson);
 
   // For games that use Layr as tile indices with flip/rotate bits - DO NOT MODIFY!
   // The Layr preprocessing below is only for Otto Matic and CroMag where Layr contains Atrb indices.
   if (usesLayrAsTileIndices(globals)) {
-    console.log(
-      `${globals.GAME_NAME}: Skipping Layr/Atrb preprocessing (Layr contains tile indices with flip/rotate bits)`,
-    );
+    // Skip preprocessing for games that use Layr as direct tile indices
   } else if (
     anyJson.Layr &&
     anyJson.Atrb &&
@@ -37,7 +34,6 @@ export function preprocessJson(
     1000 in anyJson.Atrb
   ) {
     // Otto Matic and other games: Ensure Layr points to unique Atrb values
-    console.log(json);
     const layrRecord = anyJson.Layr as Record<number, { obj: unknown }>;
     const atrbRecord = anyJson.Atrb as Record<number, { obj: unknown }>;
     const layr1000 = layrRecord[1000];
@@ -47,9 +43,6 @@ export function preprocessJson(
     }
     const layrArr = layr1000.obj;
     const atrbArr = atrb1000.obj;
-
-    console.log("layrArr", layrArr);
-    console.log("atrbArr", atrbArr);
 
     if (!Array.isArray(layrArr)) {
       return err(new Error("Layr[1000].obj is not an array"));
@@ -74,12 +67,8 @@ export function preprocessJson(
       newAtrbArr.push(atrbValue);
     }
 
-    console.log("newAtrbArr", newAtrbArr);
-    console.log("newLayrArr", newLayrArr);
     atrb1000.obj = newAtrbArr;
     layr1000.obj = newLayrArr;
-  } else {
-    console.warn("Layr or Atrb not found in JSON");
   }
 
   if (anyJson.Liqd && typeof anyJson.Liqd === 'object' && 1000 in anyJson.Liqd) {
@@ -89,13 +78,85 @@ export function preprocessJson(
       return err(new Error("Liqd[1000].obj is not an array"));
     }
     for (const waterItem of liquidObj) {
-      const nubs: [number, number][] = [];
-
-      for (let i = 0; i < globals.LIQD_NUBS; i++) {
-        const item = waterItem as Record<string, number | [number, number][]>;
-        nubs.push([item[`x_${i}`] as number, item[`y_${i}`] as number]);
+      const item = waterItem as Record<string, number | { x: number; y: number }[] | [number, number][] | undefined>;
+      
+      // HANDLE NEW RSRCDUMP-TS v1.0.6 FORMAT WITH BACKTICK MACRO
+      // rsrcdump-ts outputs x`y[100] as an array of {x, y} objects
+      if (item['x`y'] && Array.isArray(item['x`y'])) {
+        const xyArray = item['x`y'] as { x: number; y: number }[];
+        // Convert from [{x, y}, ...] to [[x, y], ...]
+        const nubs: [number, number][] = [];
+        for (let i = 0; i < globals.LIQD_NUBS; i++) {
+          if (i < xyArray.length && xyArray[i]) {
+            const coord = xyArray[i];
+            if (coord) {  // Type guard
+              nubs.push([coord.x ?? 0, coord.y ?? 0]);
+            } else {
+              nubs.push([0, 0]);
+            }
+          } else {
+            nubs.push([0, 0]);
+          }
+        }
+        item.nubs = nubs;
+        // Remove the x`y field to avoid confusion
+        delete item['x`y'];
+        continue;
       }
-      (waterItem as Record<string, [number, number][]>).nubs = nubs;
+      
+      // Check if nubs array already exists (should be rare now with v1.0.6)
+      if (item.nubs && Array.isArray(item.nubs)) {
+        // Already in new format - validate and ensure proper structure
+        const existingNubs = item.nubs as ([number, number] | { x: number; y: number })[];
+        
+        // Validate each nub is a proper [number, number] tuple
+        const validatedNubs: [number, number][] = [];
+        for (let i = 0; i < globals.LIQD_NUBS; i++) {
+          if (i < existingNubs.length && existingNubs[i]) {
+            const nub = existingNubs[i];
+            // Handle both array tuple and object format
+            if (Array.isArray(nub) && nub.length >= 2 && typeof nub[0] === 'number' && typeof nub[1] === 'number') {
+              validatedNubs.push([nub[0], nub[1]]);
+            } else if (typeof nub === 'object' && 'x' in nub && 'y' in nub) {
+              // Handle {x, y} object format
+              validatedNubs.push([nub.x ?? 0, nub.y ?? 0]);
+            } else {
+              validatedNubs.push([0, 0]);
+            }
+          } else {
+            validatedNubs.push([0, 0]);
+          }
+        }
+        item.nubs = validatedNubs;
+        continue; // Already processed
+      }
+      
+      // Build nubs array from x_0, y_0, x_1, y_1, etc. fields (old format - should be very rare)
+      const nubs: [number, number][] = [];
+      let hasAnyNubFields = false;
+      
+      for (let i = 0; i < globals.LIQD_NUBS; i++) {
+        const xKey = `x_${i}`;
+        const yKey = `y_${i}`;
+        const xVal = item[xKey];
+        const yVal = item[yKey];
+        
+        if (xVal !== undefined && yVal !== undefined) {
+          hasAnyNubFields = true;
+          nubs.push([xVal as number, yVal as number]);
+        } else {
+          // Missing individual fields, use 0,0 as fallback
+          nubs.push([0, 0]);
+        }
+      }
+      
+      // Set nubs - prefer found fields, otherwise initialize empty
+      if (hasAnyNubFields) {
+        item.nubs = nubs;
+      } else {
+        // No nubs data at all - initialize empty with unique arrays for each element
+        item.nubs = Array.from({ length: globals.LIQD_NUBS }, () => [0, 0]);
+      }
     }
   }
 

@@ -14,7 +14,6 @@ export default defineConfig({
     "**/*.map-3",
   ],
   optimizeDeps: {
-    exclude: ["pyodide"],
     esbuildOptions: {
       target: "es2022",
     },
@@ -24,7 +23,11 @@ export default defineConfig({
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
+      buffer: "buffer/",
     },
+  },
+  define: {
+    "global.Buffer": ["buffer", "Buffer"],
   },
   base: "/PangeaRSEdit/",
   build: {

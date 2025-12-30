@@ -2,7 +2,7 @@
 // This test specifically validates the EXACT match requirement
 import { describe, it, expect } from "vitest";
 import { parseBG3D, bg3dParsedToBG3D } from "./parseBG3D";
-import { parseSkeletonRsrcTS } from "./skeletonRsrc/parseSkeletonRsrcTS";
+import { parseSkeletonRsrc } from "./skeletonRsrc/parseSkeletonRsrcTS";
 import { bg3dSkeletonToSkeletonResource } from "./skeletonExport";
 import { skeletonResourceToBinary } from "./skeletonBinaryExport";
 import {
@@ -41,7 +41,7 @@ describe("Exact Byte-for-Byte Roundtrip Validation", () => {
     console.log(`Original skeleton: ${originalSkeletonData.length} bytes`);
 
     // Step 2: Parse original data
-    const originalSkeletonResource = parseSkeletonRsrcTS(
+    const originalSkeletonResource = await parseSkeletonRsrc(
       originalSkeletonData as unknown as ArrayBuffer,
     );
     const originalBg3dResult = parseBG3D(
@@ -87,9 +87,16 @@ describe("Exact Byte-for-Byte Roundtrip Validation", () => {
 
     const roundtripBg3dBinary =
       exactBg3dBinary || bg3dParsedToBG3D(roundtripBg3d);
-    const roundtripSkeletonBinary =
-      exactSkeletonBinary ||
-      await skeletonResourceToBinary(roundtripSkeletonResource);
+    
+    const roundtripSkeletonBinaryResult = exactSkeletonBinary 
+      ? { ok: true as const, value: exactSkeletonBinary }
+      : skeletonResourceToBinary(roundtripSkeletonResource);
+    
+    if (!roundtripSkeletonBinaryResult.ok) {
+      console.error("Failed to convert skeleton to binary:", roundtripSkeletonBinaryResult.error);
+      return;
+    }
+    const roundtripSkeletonBinary = roundtripSkeletonBinaryResult.value;
 
     console.log(`Roundtrip BG3D: ${roundtripBg3dBinary.byteLength} bytes`);
     console.log(

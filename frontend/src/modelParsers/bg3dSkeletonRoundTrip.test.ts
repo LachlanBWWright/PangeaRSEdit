@@ -2,7 +2,7 @@
 import { describe, it, expect } from "vitest";
 import { parseBG3D } from "./parseBG3D";
 import { unwrap } from "../types/result";
-import { parseSkeletonRsrcTS } from "./skeletonRsrc/parseSkeletonRsrcTS";
+import { parseSkeletonRsrc } from "./skeletonRsrc/parseSkeletonRsrcTS";
 import { bg3dSkeletonToSkeletonResource } from "./skeletonExport";
 import { skeletonResourceToBinary } from "./skeletonBinaryExport";
 import {
@@ -39,7 +39,7 @@ describe("BG3D Skeleton Round-trip with FULL ACCURACY", () => {
     console.log(`Original Skeleton: ${originalSkeletonData.length} bytes`);
 
     // Step 2: Parse original files
-    const originalSkeletonResource = parseSkeletonRsrcTS(
+    const originalSkeletonResource = await parseSkeletonRsrc(
       originalSkeletonData.buffer.slice(
         originalSkeletonData.byteOffset,
         originalSkeletonData.byteOffset + originalSkeletonData.byteLength,
@@ -116,9 +116,13 @@ describe("BG3D Skeleton Round-trip with FULL ACCURACY", () => {
       const roundtripSkeletonResource = bg3dSkeletonToSkeletonResource(
         roundtripBg3d.skeleton!,
       );
-      roundtripSkeletonBinary = await skeletonResourceToBinary(
+      const roundtripSkeletonResult = await skeletonResourceToBinary(
         roundtripSkeletonResource,
       );
+      if (!roundtripSkeletonResult.ok) {
+        throw roundtripSkeletonResult.error;
+      }
+      roundtripSkeletonBinary = roundtripSkeletonResult.value;
     }
 
     // Step 7: BYTE-FOR-BYTE ACCURACY VERIFICATION
@@ -181,14 +185,8 @@ describe("BG3D Skeleton Round-trip with FULL ACCURACY", () => {
     );
 
     // Skeleton accuracy check (structural comparison since binary format may differ)
-    const roundtripSkeletonResource = bg3dSkeletonToSkeletonResource(
-      roundtripBg3d.skeleton!,
-    );
-    const reparsedSkeletonBinary = await skeletonResourceToBinary(
-      roundtripSkeletonResource,
-    );
-    const reparsedSkeletonResource = parseSkeletonRsrcTS(
-      reparsedSkeletonBinary,
+    const reparsedSkeletonResource = await parseSkeletonRsrc(
+      roundtripSkeletonBinary,
     );
 
     // Compare key structural elements
@@ -242,7 +240,7 @@ describe("BG3D Skeleton Round-trip with FULL ACCURACY", () => {
     const bg3dData = readFileSync(ottoBg3dPath);
     const skeletonData = readFileSync(ottoSkeletonPath);
 
-    const skeleton = parseSkeletonRsrcTS(
+    const skeleton = await parseSkeletonRsrc(
       skeletonData.buffer.slice(
         skeletonData.byteOffset,
         skeletonData.byteOffset + skeletonData.byteLength,
@@ -348,7 +346,7 @@ describe("BG3D Skeleton Round-trip with FULL ACCURACY", () => {
     const bg3dData = readFileSync(ottoBg3dPath);
     const skeletonData = readFileSync(ottoSkeletonPath);
 
-    const skeleton = parseSkeletonRsrcTS(
+    const skeleton = await parseSkeletonRsrc(
       skeletonData.buffer.slice(
         skeletonData.byteOffset,
         skeletonData.byteOffset + skeletonData.byteLength,
@@ -414,7 +412,7 @@ describe("BG3D Skeleton Round-trip with FULL ACCURACY", () => {
     const bg3dData = readFileSync(ottoBg3dPath);
     const skeletonData = readFileSync(ottoSkeletonPath);
 
-    const skeleton = parseSkeletonRsrcTS(
+    const skeleton = await parseSkeletonRsrc(
       skeletonData.buffer.slice(
         skeletonData.byteOffset,
         skeletonData.byteOffset + skeletonData.byteLength,

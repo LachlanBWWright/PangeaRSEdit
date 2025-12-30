@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { parseSkeletonRsrcTS } from "./skeletonRsrc/parseSkeletonRsrcTS";
+import { parseSkeletonRsrc } from "./skeletonRsrc/parseSkeletonRsrcTS";
 import { bg3dParsedToGLTF, gltfToBG3D } from "./parsedBg3dGitfConverter";
 import { parseBG3D } from "./parseBG3D";
 import { bg3dSkeletonToSkeletonResource } from "./skeletonExport";
@@ -30,7 +30,7 @@ describe("Minimal Skeleton Roundtrip Tests", () => {
     const originalSkeletonData = readFileSync(ottoSkeletonPath);
 
     // Parse original files
-    const originalSkeletonResource = parseSkeletonRsrcTS(
+    const originalSkeletonResource = await parseSkeletonRsrc(
       originalSkeletonData.buffer.slice(
         originalSkeletonData.byteOffset,
         originalSkeletonData.byteOffset + originalSkeletonData.byteLength,
@@ -71,12 +71,17 @@ describe("Minimal Skeleton Roundtrip Tests", () => {
 
     const rt1Binary = bg3dParsedToBG3D(rt1);
     const rt1SkeletonResource = bg3dSkeletonToSkeletonResource(rt1.skeleton);
-    const rt1SkeletonBinary = await skeletonResourceToBinary(
+    const rt1SkeletonBinaryResult = skeletonResourceToBinary(
       rt1SkeletonResource,
     );
+    if (!rt1SkeletonBinaryResult.ok) {
+      console.error("Failed to convert RT1 skeleton to binary:", rt1SkeletonBinaryResult.error);
+      return;
+    }
+    const rt1SkeletonBinary = rt1SkeletonBinaryResult.value;
 
     // Parse RT1 output
-    const rt1SkeletonParsed = parseSkeletonRsrcTS(rt1SkeletonBinary);
+    const rt1SkeletonParsed = await parseSkeletonRsrc(rt1SkeletonBinary);
     const rt1ParsedResult = parseBG3D(rt1Binary, rt1SkeletonParsed);
 
     // Handle Result type
@@ -155,7 +160,7 @@ describe("Minimal Skeleton Roundtrip Tests", () => {
     const originalSkeletonData = readFileSync(ottoSkeletonPath);
 
     // Parse original files
-    const originalSkeletonResource = parseSkeletonRsrcTS(
+    const originalSkeletonResource = await parseSkeletonRsrc(
       originalSkeletonData.buffer.slice(
         originalSkeletonData.byteOffset,
         originalSkeletonData.byteOffset + originalSkeletonData.byteLength,
@@ -222,12 +227,17 @@ describe("Minimal Skeleton Roundtrip Tests", () => {
 
     const rt1Binary = bg3dParsedToBG3D(rt1);
     const rt1SkeletonResource = bg3dSkeletonToSkeletonResource(rt1.skeleton);
-    const rt1SkeletonBinary = await skeletonResourceToBinary(
+    const rt1SkeletonBinaryResult = skeletonResourceToBinary(
       rt1SkeletonResource,
     );
+    if (!rt1SkeletonBinaryResult.ok) {
+      console.error("Failed to convert RT1 skeleton to binary:", rt1SkeletonBinaryResult.error);
+      return;
+    }
+    const rt1SkeletonBinary = rt1SkeletonBinaryResult.value;
 
     // Parse RT1 output
-    const rt1SkeletonParsed = parseSkeletonRsrcTS(rt1SkeletonBinary);
+    const rt1SkeletonParsed = await parseSkeletonRsrc(rt1SkeletonBinary);
     const rt1ParsedResult = parseBG3D(rt1Binary, rt1SkeletonParsed);
 
     // Handle Result type

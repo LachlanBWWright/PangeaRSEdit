@@ -383,6 +383,11 @@ export interface TerrainData<
       obj: number[];
       order: number;
     };
+    1001?: {
+      name: "Roof Y Coords";
+      obj: number[];
+      order: number;
+    };
   };
   Vcol?: Record<
     number,

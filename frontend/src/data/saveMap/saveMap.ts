@@ -1,10 +1,10 @@
-import { PyodideMessage, PyodideResponse } from "../../python/pyodideWorker";
 import { LzssMessage, LzssResponse } from "@/utils/lzssWorker";
 import LzssWorker from "../utils/lzssWorker?worker";
 import { LevelData } from "@/python/structSpecs/LevelTypes";
 import { DataType, TileImageFormat, type GlobalsInterface } from "../globals/globals";
 import { validateResourceForkJson } from "../utils/levelDataUtils";
 import { toast } from "../../hooks/use-toast";
+import { loadBytesFromJson } from "@lachlanbwwright/rsrcdump-ts";
 
 /**
  * Save and download map and images as in IntroPrompt
@@ -14,7 +14,6 @@ export async function saveMap({
   mapImagesFile,
   mapImages,
   data,
-  pyodideWorker,
   globals,
   toast,
 }: {
@@ -22,7 +21,6 @@ export async function saveMap({
   mapImagesFile: File | undefined;
   mapImages: HTMLCanvasElement[] | undefined;
   data: LevelData;
-  pyodideWorker: Worker;
   globals: GlobalsInterface;
   toast: (opts: { title: string; description?: string }) => void;
 }) {
@@ -55,7 +53,7 @@ export async function saveMap({
     // For RSRC_FORK (Bugdom 1), Timg should be embedded in `data` and pyodide
     // should serialize it into the single .ter.rsrc file. Serialize and
     // download the combined resource fork map file.
-    const mapBuffer = await processMapData({ data, pyodideWorker, globals });
+    const mapBuffer = await processMapData({ data, globals });
     downloadBlob(mapBuffer, mapFile.name, ".ter.rsrc");
     toast({
       title: "Map Downloaded!",
@@ -113,7 +111,7 @@ export async function saveMap({
       title: "Mighty Mike Map Downloaded!",
     });
   } else {
-    const mapBuffer = await processMapData({ data, pyodideWorker, globals });
+    const mapBuffer = await processMapData({ data, globals });
     console.log("test\n\n\n");
     downloadBlob(mapBuffer, mapFile.name, ".ter.rsrc");
     toast({
@@ -133,44 +131,42 @@ function downloadBlob(buffer: ArrayBuffer, filename: string, mime: string) {
 
 async function processMapData({
   data,
-  pyodideWorker,
   globals,
 }: {
   data: LevelData;
-  pyodideWorker: Worker;
   globals: GlobalsInterface;
 }): Promise<ArrayBuffer> {
-  return new Promise<ArrayBuffer>((resolve, reject) => {
-    console.log("saving");
-    console.log(data);
-    // Validate the JSON before passing to pyodide to avoid uncaught Python assertion errors
-    const validation = validateResourceForkJson(data as unknown as Record<string, unknown>);
-    if (!validation.ok) {
-      console.error("Invalid JSON for resource fork:", validation);
-      toast({
-        title: "Saving failed",
-        description: `Invalid map data structure: ${validation.message}`,
-      });
-      return new ArrayBuffer(0);
-    }
+  console.log("saving");
+  console.log(data);
+  // Validate the JSON before passing to rsrcdump to avoid uncaught errors
+  const validation = validateResourceForkJson(data as unknown as Record<string, unknown>);
+  if (!validation.ok) {
+    console.error("Invalid JSON for resource fork:", validation);
+    toast({
+      title: "Saving failed",
+      description: `Invalid map data structure: ${validation.message}`,
+    });
+    return new ArrayBuffer(0);
+  }
 
-    pyodideWorker.postMessage({
-      type: "load_bytes_from_json",
-      json_blob: data,
-      converters: globals.STRUCT_SPECS,
-      only_types: [],
-      skip_types: [],
-      adf: "True",
-    } satisfies PyodideMessage);
+  const saveResult = loadBytesFromJson(
+    data,
+    globals.STRUCT_SPECS,
+    [], // onlyTypes
+    [], // skipTypes
+    true, // adf
+  );
 
-    pyodideWorker.onmessage = (event: MessageEvent<PyodideResponse>) => {
-      if (event.data.type === "load_bytes_from_json") {
-        resolve(event.data.result);
-      } else {
-        reject(new Error("Unexpected response from pyodide worker"));
-      }
-    };
-  });
+  if (!saveResult.ok) {
+    console.error("Failed to serialize:", saveResult.error);
+    toast({
+      title: "Saving failed",
+      description: saveResult.error,
+    });
+    return new ArrayBuffer(0);
+  }
+
+  return saveResult.value.buffer as ArrayBuffer;
 }
 
 async function compressMapImages(

@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -49,12 +49,10 @@ export function GameModelSelector({
       (model) => model.category === selectedCategory,
     ) || [];
     
-  // Memoize to prevent changing on every render
-  const availableCategories = useMemo(() => {
-    return selectedGame
-      ? [...new Set(selectedGame.models.map((model) => model.category))]
-      : [];
-  }, [selectedGame]);
+  // Derive categories directly (no need to memoize simple derivations)
+  const availableCategories = selectedGame
+    ? [...new Set(selectedGame.models.map((model) => model.category))]
+    : [];
 
 
   useEffect(() => {

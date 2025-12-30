@@ -12,7 +12,7 @@ export function App() {
   return (
     <TooltipProvider>
       <HashRouter>
-        <div className="flex flex-col h-screen bg-gray-900">
+        <div className="dark flex flex-col h-screen bg-gray-900">
           <Navigation />
           <div className="flex-1 min-h-0 overflow-auto">
             <Routes>

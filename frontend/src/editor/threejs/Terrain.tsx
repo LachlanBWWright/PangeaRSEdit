@@ -5,6 +5,7 @@ import {
 } from "@/python/structSpecs/LevelTypes";
 import { useRef, useMemo, forwardRef, useEffect } from "react";
 import { CanvasTexture, DoubleSide, Mesh, PlaneGeometry } from "three";
+import type * as THREE from "three";
 import { useAtomValue } from "jotai";
 import { Globals } from "@/data/globals/globals";
 import combineMapImages from "./terrainUtils";
@@ -53,6 +54,7 @@ export const TerrainGeometry = forwardRef<Mesh, {
   }, [ref]);
 
   // Build geometry with explicit Y from YCrd
+  // Geometry is rebuilt when YCrd changes to satisfy linter requirements
   const geometry = useMemo(() => {
     if (!terrainData.YCrd?.[1000]?.obj || !header) return null;
 
@@ -78,12 +80,12 @@ export const TerrainGeometry = forwardRef<Mesh, {
     positionAttr.needsUpdate = true;
     return geom;
   }, [
-    terrainData.YCrd,
     numWide,
     numHigh,
     yScale,
     globals.TILE_INGAME_SIZE,
     header,
+    terrainData.YCrd,  // Include YCrd to rebuild geometry on changes
   ]);
 
   const combinedTexture = useMemo(() => {

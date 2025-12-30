@@ -64,9 +64,7 @@ describe("Multi-Roundtrip Semantic Accuracy", () => {
       console.log(`[${"=".repeat(76)}]`);
 
       // Parse current state
-      const skeletonParsed: SkeletonResource = (await Promise.resolve(
-        parseSkeletonRsrc(currentSkeletonData, { usePyodide: false }),
-      )) as SkeletonResource;
+      const skeletonParsed: SkeletonResource = await parseSkeletonRsrc(currentSkeletonData);
       const bg3dParsedResult = parseBG3D(currentBg3dData, skeletonParsed);
       if (!bg3dParsedResult.ok) {
         // Fail test early if parse fails
@@ -148,12 +146,15 @@ describe("Multi-Roundtrip Semantic Accuracy", () => {
         const skeletonResource = bg3dSkeletonToSkeletonResource(
           bg3dParsedBack.skeleton!,
         );
-        const skeletonBinary = await skeletonResourceToBinary(
+        const skeletonBinaryResult = skeletonResourceToBinary(
           skeletonResource,
-          {
-            usePyodide: false,
-          },
         );
+
+        if (!skeletonBinaryResult.ok) {
+          console.error("Failed to convert skeleton to binary:", skeletonBinaryResult.error);
+          continue;
+        }
+        const skeletonBinary = skeletonBinaryResult.value;
 
         console.log(`    - Exported BG3D: ${bg3dBinary.byteLength} bytes`);
         console.log(

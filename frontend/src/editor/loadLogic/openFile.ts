@@ -1,4 +1,3 @@
-import { Buffer } from "buffer";
 import { DataType } from "@/data/globals/globals";
 import { loadMapImages } from "@/editor/loadLogic/loadMapImages";
 import {
@@ -11,6 +10,17 @@ import type { GlobalsInterface } from "@/data/globals/globals";
 import type { AtomicLevelData } from "@/data/utils/levelDataUtils";
 import { parseLevelDataFile } from "./parseLevelDataFile";
 
+/**
+ * Convert hex string to Uint8Array (browser-compatible)
+ */
+function hexToUint8Array(hexString: string): Uint8Array {
+  const bytes = new Uint8Array(hexString.length / 2);
+  for (let i = 0; i < hexString.length; i += 2) {
+    bytes[i / 2] = parseInt(hexString.substring(i, i + 2), 16);
+  }
+  return bytes;
+}
+
 export type OpenFileArgs = {
   url: string;
   gameType: GlobalsInterface;
@@ -18,7 +28,6 @@ export type OpenFileArgs = {
   setMapFile: (file: File) => void;
   setMapImagesFile: (file: File) => void;
   setMapImages: (images: HTMLCanvasElement[]) => void;
-  pyodideWorker: Worker;
   setData: (d: AtomicLevelData) => void;
 };
 
@@ -29,7 +38,6 @@ export async function openFile({
   setMapFile,
   setMapImagesFile,
   setMapImages,
-  pyodideWorker,
   setData,
 }: OpenFileArgs) {
   let url = rUrl;
@@ -55,7 +63,6 @@ export async function openFile({
   const parseResult = await parseLevelDataFile(
     file,
     gameType,
-    pyodideWorker,
     setData,
     rsrcName, // Pass the URL for Mighty Mike tileset loading
   );
@@ -181,7 +188,7 @@ export async function openFile({
       console.error("No image data found");
       return;
     }
-    const imgBuffer = Buffer.from(imgString, "hex");
+    const imgBuffer = hexToUint8Array(imgString);
     const alignedBuffer = new ArrayBuffer(imgBuffer.byteLength);
     new Uint8Array(alignedBuffer).set(imgBuffer);
     const tileCount = imgBuffer.byteLength / 2 / 32 / 32;

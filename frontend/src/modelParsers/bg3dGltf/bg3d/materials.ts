@@ -238,7 +238,15 @@ export async function gltfMaterialsToBg3d(
             // BG3D textures are typically RGB format (no alpha channel)
             // Even if PNG is stored as RGBA in glTF (due to pngjs library limitations),
             // we convert back to RGB to match original format and prevent file size inflation
-            const rgbaRes = await pngToRgba8(Buffer.from(image));
+            let imageBuffer: ArrayBuffer;
+            if (image.buffer instanceof ArrayBuffer) {
+              imageBuffer = image.buffer;
+            } else {
+              // Handle SharedArrayBuffer or other ArrayBufferLike types
+              const temp = new Uint8Array(image.buffer);
+              imageBuffer = temp.slice().buffer;
+            }
+            const rgbaRes = await pngToRgba8(imageBuffer);
             const rgb = new Uint8Array((rgbaRes.data.length / 4) * 3);
             for (let i = 0, j = 0; i < rgbaRes.data.length; i += 4, j += 3) {
               rgb[j + 0] = rgbaRes.data[i + 0] ?? 0;

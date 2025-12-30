@@ -1,5 +1,5 @@
 /**
- * Parsing helper utilities extracted from parseSkeletonRsrcTS
+ * Parsing helper utilities extracted from parseSkeletonRsrc
  */
 import type { BoneRaw, KeyFRaw } from "./parseSkeletonRsrcTS";
 

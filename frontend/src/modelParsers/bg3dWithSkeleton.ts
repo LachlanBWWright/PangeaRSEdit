@@ -3,7 +3,7 @@
 
 import { parseBG3D, BG3DParseResult } from "./parseBG3D";
 import { parse3DMF } from "./parse3dmf";
-import { parseSkeletonRsrc } from "./skeletonRsrc/parseSkeletonRsrc";
+import { parseSkeletonRsrc } from "./skeletonRsrc/parseSkeletonRsrcTS";
 import type { SkeletonResource } from "../python/structSpecs/skeleton/skeletonInterface";
 import { Result, err, isErr, ok } from "../types/result";
 
@@ -22,26 +22,20 @@ function is3DMFBuffer(buffer: ArrayBuffer): boolean {
  * Parse a BG3D or 3DMF file along with its associated skeleton file
  * @param modelBuffer ArrayBuffer containing the .bg3d or .3dmf file
  * @param skeletonBuffer ArrayBuffer containing the .skeleton.rsrc file
- * @param pyodideWorker Initialized Pyodide worker for skeleton parsing
  * @returns Promise<Result<BG3DParseResult, Error>> with skeleton data included
  */
 export async function parseBG3DWithSkeleton(
   modelBuffer: ArrayBuffer,
   skeletonBuffer: ArrayBuffer,
-  pyodideWorker: Worker,
 ): Promise<Result<BG3DParseResult, Error>> {
   console.log("Parsing skeleton resource...");
 
   try {
     // Parse skeleton data using the existing skeleton parser
-    const skeletonArrayBuffer = await parseSkeletonRsrc({
-      pyodideWorker,
-      bytes: skeletonBuffer,
-    });
+    const skeletonData = await parseSkeletonRsrc(skeletonBuffer);
 
-    // Convert ArrayBuffer to SkeletonResource
-    const skeletonJson = new TextDecoder().decode(skeletonArrayBuffer as AllowSharedBufferSource);
-    const skeleton: SkeletonResource = JSON.parse(skeletonJson);
+    // skeletonData is already the parsed JSON object
+    const skeleton: SkeletonResource = skeletonData as SkeletonResource;
 
     console.log("Parsing model with skeleton data...");
 

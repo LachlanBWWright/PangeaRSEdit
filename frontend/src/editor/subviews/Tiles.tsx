@@ -10,11 +10,9 @@ import {
   CurrentTopologyValueMode,
   TileViewMode,
   TileViews,
-  TopologyBrushMode,
   TopologyBrushRadius,
   TopologyOpacity,
   TopologyValue,
-  TopologyValueMode,
   TileEditingEnabled,
   TileBrushType,
 } from "../../data/tiles/tileAtoms";
@@ -22,7 +20,7 @@ import { useAtomValue } from "jotai";
 import { Globals } from "../../data/globals/globals";
 import { useMemo } from "react";
 import { createImageCanvas } from "./tiles/tilesUtils";
-import { elevationToRGBA, flattenCoords } from "./tiles/tilesUtils";
+import { elevationToRGBA } from "./tiles/tilesUtils";
 import { KonvaEventObject } from "konva/lib/Node";
 import { calculateBrushPixels, applyTopologyBrush, PixelType } from "../utils/topologyBrushUtils";
 
