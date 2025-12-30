@@ -7,11 +7,15 @@ import tseslint from 'typescript-eslint'
 export default tseslint.config(
   { ignores: ['dist', 'coverage'] },
   {
-    extends: [js.configs.recommended, ...tseslint.configs.recommended],
+    extends: [js.configs.recommended, ...tseslint.configs.strictTypeChecked],
     files: ['**/*.{ts,tsx}'],
     languageOptions: {
       ecmaVersion: 2020,
       globals: globals.browser,
+      parserOptions: {
+        project: ['./tsconfig.app.json', './tsconfig.node.json'],
+        tsconfigRootDir: import.meta.dirname,
+      },
     },
     plugins: {
       'react-hooks': reactHooks,
@@ -23,11 +27,24 @@ export default tseslint.config(
         'warn',
         { allowConstantExport: true },
       ],
-      // Ban "as unknown as Type" double assertions - these bypass type safety
+      // Strict type safety rules - ban 'any' and type assertions
+      '@typescript-eslint/no-explicit-any': 'error',
+      '@typescript-eslint/no-unsafe-assignment': 'error',
+      '@typescript-eslint/no-unsafe-member-access': 'error',
+      '@typescript-eslint/no-unsafe-call': 'error',
+      '@typescript-eslint/no-unsafe-return': 'error',
+      '@typescript-eslint/no-unsafe-argument': 'error',
+      // Ban all type assertions (as Type)
+      '@typescript-eslint/consistent-type-assertions': [
+        'error',
+        {
+          assertionStyle: 'never',
+        },
+      ],
+      // Ban "as unknown as Type" double assertions
       'no-restricted-syntax': [
         'error',
         {
-          // Match: expr as unknown as Type (nested TSAsExpression where inner is TSUnknownKeyword)
           selector: 'TSAsExpression > TSAsExpression > TSUnknownKeyword',
           message: 'Avoid "as unknown as Type" double assertions. Use proper type guards, generics, or fix the underlying type issue instead.',
         },
