@@ -64,15 +64,9 @@ export function MightyMikeTileMenu({
   const xlatTable = terrainData.Xlat?.[1000]?.obj;
 
   // Get collision data from Mighty Mike metadata
-  const rawTerrainData = terrainData as unknown as Record<string, unknown>;
-  const mightyMikeTileValuesData =
-    (rawTerrainData?._metadata as Record<string, unknown>)?.[1000] as Record<
-      string,
-      unknown
-    > | undefined;
-  const mightyMikeTileValuesArray =
-    ((mightyMikeTileValuesData?.obj as Record<string, unknown>)
-      ?.mightyMikeTileValues as unknown[]) || [];
+  // Access mightyMikeTileValues from the _metadata field which has an index signature
+  const mightyMikeTileValuesArray = 
+    (terrainData._metadata?.mightyMikeTileValues as unknown[]) || [];
 
   const mapWidth = header.mapWidth;
   const mapHeight = header.mapHeight;

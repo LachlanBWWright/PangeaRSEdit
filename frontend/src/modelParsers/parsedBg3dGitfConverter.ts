@@ -1143,9 +1143,11 @@ export async function gltfToBG3D(doc: Document): Promise<BG3DParseResult> {
             const imageBuffer = (() => {
               const buf = image.buffer;
               if (buf instanceof ArrayBuffer) return buf;
-              // Convert SharedArrayBuffer to ArrayBuffer
+              // Convert SharedArrayBuffer to ArrayBuffer by copying data
               const u8 = new Uint8Array(buf);
-              return u8.buffer as unknown as ArrayBuffer;
+              const copy = new ArrayBuffer(u8.byteLength);
+              new Uint8Array(copy).set(u8);
+              return copy;
             })();
             const rgbaRes = await pngToRgba8(imageBuffer);
             const rgb = new Uint8Array((rgbaRes.data.length / 4) * 3);

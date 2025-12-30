@@ -10,6 +10,7 @@ import type {
   EvntEntry,
   NumKEntry,
   KeyFEntry,
+  KeyFObj,
   RelPEntry,
 } from "../python/structSpecs/skeleton/skeletonInterface";
 import type { BG3DSkeleton } from "./parseBG3D";
@@ -165,7 +166,8 @@ export function bg3dSkeletonToSkeletonResource(
         order: keyFResourceId,
         obj: (keyframes as unknown[]).map((kf) => {
           const kv = kf as Record<string, unknown>;
-          return {
+          // Create KeyFObj with proper type - all fields have explicit types
+          const keyFObj: KeyFObj = {
             tick: (kv.tick as number) || 0,
             accelerationMode: (kv.accelerationMode as number) || 0,
             coordX: (kv.coordX as number) || 0,
@@ -177,7 +179,8 @@ export function bg3dSkeletonToSkeletonResource(
             scaleX: (kv.scaleX as number) || 1,
             scaleY: (kv.scaleY as number) || 1,
             scaleZ: (kv.scaleZ as number) || 1,
-          } as unknown as import("../python/structSpecs/skeleton/skeletonInterface").KeyFObj;
+          };
+          return keyFObj;
         }),
       };
     });
@@ -201,7 +204,7 @@ export function bg3dSkeletonToSkeletonResource(
     Bone: bones,
     BonP: bonP,
     BonN: bonN,
-    RelP: (effectiveRelP as unknown as { [key: string]: RelPEntry }) || {}, // Include RelP if provided or from skeleton, otherwise empty
+    RelP: (effectiveRelP as Record<string, RelPEntry>) || {}, // Include RelP if provided or from skeleton, otherwise empty
     AnHd: anHd,
     Evnt: evnt,
     NumK: numK,

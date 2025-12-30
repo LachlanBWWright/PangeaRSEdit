@@ -8,7 +8,8 @@ interface EnhancedModelMeshProps {
 }
 
 function EnhancedModelMeshComponent({ scene, wireframeMode = false, showSkeleton = false }: EnhancedModelMeshProps) {
-  const skeletonHelpersRef = useRef<(THREE.SkeletonHelper | THREE.Mesh)[]>([]);
+  // Track skeleton helper objects - can be SkeletonHelper, Mesh (for bone spheres), or Line (for bone tubes)
+  const skeletonHelpersRef = useRef<THREE.Object3D[]>([]);
 
   useEffect(() => {
     if (!scene) return;
@@ -43,9 +44,8 @@ function EnhancedModelMeshComponent({ scene, wireframeMode = false, showSkeleton
         }
       }
       // Dispose if available
-      const helperObj = helper as unknown as { dispose?: () => void };
-      if (helperObj && typeof helperObj.dispose === "function") {
-        helperObj.dispose();
+      if (helper && "dispose" in helper && typeof helper.dispose === "function") {
+        helper.dispose();
       }
       // Dispose geometry and material if it's a mesh
       if (helper instanceof THREE.Mesh) {
@@ -76,7 +76,7 @@ function EnhancedModelMeshComponent({ scene, wireframeMode = false, showSkeleton
             boneMesh.position.set(0, 0, 0);
             boneMesh.scale.setScalar(0.3); // Small spheres at joints
             bone.add(boneMesh);
-            skeletonHelpersRef.current.push(boneMesh as unknown as THREE.SkeletonHelper);
+            skeletonHelpersRef.current.push(boneMesh);
           });
 
           // Create bone connection tubes (only connect parent to child bones in skeleton)
@@ -113,7 +113,7 @@ function EnhancedModelMeshComponent({ scene, wireframeMode = false, showSkeleton
 
                   // Add tube as child of parent bone so it moves with skeleton animation
                   bone.add(tube);
-                  skeletonHelpersRef.current.push(tube as unknown as THREE.SkeletonHelper);
+                  skeletonHelpersRef.current.push(tube);
                 }
               }
             });

@@ -30,17 +30,10 @@ const MightyMikeSupertilesComponent = ({
   const layr = terrainData.Layr?.[1000]?.obj || [];
   const xlatTable = terrainData.Xlat?.[1000]?.obj;
 
-  // Access Mighty Mike tile values from the raw terrainData if available
-  // These are stored as a keyed object during parsing, containing collision info
-  const rawTerrainData = terrainData as unknown as Record<string, unknown>;
-  const mightyMikeTileValues =
-    (rawTerrainData?._metadata as Record<string, unknown>)?.[1000] as Record<
-      string,
-      unknown
-    > | undefined;
+  // Access Mighty Mike tile values from the _metadata field if available
+  // These are stored during parsing and contain collision info
   const mightyMikeTileValuesArray =
-    ((mightyMikeTileValues?.obj as Record<string, unknown>)
-      ?.mightyMikeTileValues as unknown[]) || [];
+    (terrainData._metadata?.mightyMikeTileValues as unknown[]) || [];
 
   const TILE_SIZE = 32;
   const mapWidth = header.mapWidth;

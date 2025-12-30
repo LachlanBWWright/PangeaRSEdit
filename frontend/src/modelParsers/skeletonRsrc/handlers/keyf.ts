@@ -38,11 +38,12 @@ export function handleKeyF(
   } else {
     console.log(`KeyF ${resourceName} raw resourceData:`, resourceData);
     console.log(`KeyF ${resourceName} resourceData type:`, typeof resourceData);
+    const resourceRecord = resourceData as Record<string, unknown> | null | undefined;
     console.log(
       `KeyF ${resourceName} resourceData.keys:`,
-      Object.keys((resourceData as unknown as Record<string, unknown>) || {}),
+      Object.keys(resourceRecord || {}),
     );
-    const hex = (resourceData as unknown as { data?: string })?.data || "";
+    const hex = (resourceRecord as { data?: string } | undefined)?.data || "";
     console.log(`KeyF ${resourceName} hex data length:`, hex.length);
     const obj = parseKeyFData(hex);
     console.log(

@@ -156,16 +156,17 @@ function transformToSkeletonResource(
         obj,
       };
 
-      // Cast entries to their proper types
-      if (typeName === "Hedr") result.Hedr[resourceId] = baseEntry as unknown as HedrEntry;
-      else if (typeName === "Bone") result.Bone[resourceId] = baseEntry as unknown as BoneEntry;
-      else if (typeName === "BonP") result.BonP[resourceId] = baseEntry as unknown as BonPEntry;
-      else if (typeName === "BonN") result.BonN[resourceId] = baseEntry as unknown as BonNEntry;
-      else if (typeName === "RelP") result.RelP![resourceId] = baseEntry as unknown as RelPEntry;
-      else if (typeName === "AnHd") result.AnHd[resourceId] = baseEntry as unknown as AnHdEntry;
-      else if (typeName === "Evnt") result.Evnt[resourceId] = baseEntry as unknown as EvntEntry;
-      else if (typeName === "NumK") result.NumK[resourceId] = baseEntry as unknown as NumKEntry;
-      else if (typeName === "KeyF") result.KeyF[resourceId] = baseEntry as unknown as KeyFEntry;
+      // Assign entries to their proper record fields
+      // The obj type is validated by the struct specs during parsing
+      if (typeName === "Hedr") result.Hedr[resourceId] = baseEntry as HedrEntry;
+      else if (typeName === "Bone") result.Bone[resourceId] = baseEntry as BoneEntry;
+      else if (typeName === "BonP") result.BonP[resourceId] = baseEntry as BonPEntry;
+      else if (typeName === "BonN") result.BonN[resourceId] = baseEntry as BonNEntry;
+      else if (typeName === "RelP") result.RelP![resourceId] = baseEntry as RelPEntry;
+      else if (typeName === "AnHd") result.AnHd[resourceId] = baseEntry as AnHdEntry;
+      else if (typeName === "Evnt") result.Evnt[resourceId] = baseEntry as EvntEntry;
+      else if (typeName === "NumK") result.NumK[resourceId] = baseEntry as NumKEntry;
+      else if (typeName === "KeyF") result.KeyF[resourceId] = baseEntry as KeyFEntry;
       else result[typeName] = typeData;
     }
   }

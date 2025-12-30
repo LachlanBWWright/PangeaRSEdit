@@ -89,12 +89,13 @@ export const useOttoItemModelCache = (): UseOttoItemModelCacheReturn => {
         // Clone the model preserving all geometry and materials
         const clonedModel = targetModel.clone(true);
 
-        // Create new scene with the extracted model
-        const newScene = new THREE.Scene();
+        // Create new scene with the extracted model - use Group instead of Scene
+        // GLTF type expects scene to be a THREE.Group, and Scene extends Group
+        const newScene = new THREE.Group();
         newScene.add(clonedModel);
 
-        // Return new gltf with extracted scene, keeping materials reference
-        return { ...gltf, scene: newScene as unknown as THREE.Group };
+        // Return new gltf with extracted scene
+        return { ...gltf, scene: newScene };
       } catch (error) {
         console.error(`Error in extractSubgroupByIndex:`, error);
         return null;
