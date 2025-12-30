@@ -16,7 +16,9 @@ export interface SafeItemTypesResult {
  * These are considered "safe" because they were present in the original level.
  * Accepts either full LevelData or a partial object with just Itms and Spln.
  */
-export function extractSafeItemTypes(levelData: Partial<Pick<LevelData, 'Itms' | 'Spln'>>): SafeItemTypesResult {
+export function extractSafeItemTypes(
+  levelData: Partial<Pick<LevelData, "Itms" | "Spln" | "SpIt">>,
+): SafeItemTypesResult {
   const itemTypes = new Set<number>();
   const splineItemTypes = new Set<number>();
 
@@ -32,10 +34,11 @@ export function extractSafeItemTypes(levelData: Partial<Pick<LevelData, 'Itms' |
     }
   }
 
-  if (levelData.SpIt?.[1000]?.obj && Array.isArray(levelData.SpIt[1000].obj)) {
-    levelData.SpIt[1000].obj.forEach((splineItem) => {
-      if (splineItem && typeof splineItem.type === "number") {
-        splineItemTypes.add(splineItem.type);
+  const splineItems = levelData.SpIt?.[1000]?.obj;
+  if (Array.isArray(splineItems)) {
+    splineItems.forEach((splineItem) => {
+      if (splineItem && typeof (splineItem as { type?: unknown }).type === "number") {
+        splineItemTypes.add((splineItem as { type: number }).type);
       }
     });
   }

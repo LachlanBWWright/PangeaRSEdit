@@ -69,9 +69,6 @@ function getMightyMikeMapData(
   const nestedMap = nested?.mightyMikeMapData;
   return isMightyMikeMap(nestedMap) ? nestedMap : undefined;
 }
-import type { Nanosaur1LevelData } from "@/data/processors/classicProprocessor";
-import type { MightyMikeMap } from "@/python/structSpecs/mightyMikeInterface";
-
 /**
  * Save and download map and images as in IntroPrompt
  */
