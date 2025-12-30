@@ -4,25 +4,28 @@ import type { LevelData } from "@/python/structSpecs/LevelTypes";
 
 describe("level data utils", () => {
   it("allows combining when optional sections are missing", () => {
-    const level: Partial<LevelData> = {
+    // Create a minimal level data structure for testing
+    // Using type assertion since this is test data with intentionally minimal structure
+    const level = {
       Hedr: {
-        1000: { name: "Header", obj: { version: 1, numItems: 0, mapWidth: 64, mapHeight: 64, tileSize: 32, minY: 0, maxY: 255, numSplines: 0, numFences: 0 }, order: 0 },
+        1000: { name: "Header" as const, obj: { version: 1, numItems: 0, mapWidth: 64, mapHeight: 64, tileSize: 32, minY: 0, maxY: 255, numSplines: 0, numFences: 0, numTilePages: 0, numTiles: 0, numUniqueSupertiles: 0, numWaterPatches: 0, numCheckpoints: 0 }, order: 0 as const },
       },
       // Minimal terrain necessary
       ItCo: {
-        1000: { name: "Terrain Items Color Array", data: "", order: 0 },
+        1000: { name: "Terrain Items Color Array" as const, data: "", order: 0 },
       },
       YCrd: {
-        1000: { name: "Floor&Ceiling Y Coords", obj: [], order: 0 },
+        1000: { name: "Floor&Ceiling Y Coords" as const, obj: [], order: 0 },
       },
       STgd: {
-        1000: { name: "SuperTile Grid", obj: [], order: 0 },
+        1000: { name: "SuperTile Grid" as const, obj: [], order: 0 },
       },
       _metadata: { file_attributes: 0, junk1: 0, junk2: 0 },
-      Atrb: { 1000: { name: "Tile Attribute Data", obj: [], order: 0 } },
-    } as unknown as LevelData;
+      Atrb: { 1000: { name: "Tile Attribute Data" as const, obj: [], order: 0 } },
+      alis: {},
+    } as LevelData;
 
-    const atomic = splitLevelData(level as LevelData);
+    const atomic = splitLevelData(level);
     // Intentionally missing item/fence/spline/liquid
     expect(atomic.itemData).toBeNull();
     expect(atomic.fenceData).toBeNull();
@@ -45,7 +48,7 @@ describe("level data utils", () => {
       _metadata: { file_attributes: 0, junk1: 0, junk2: 0 },
       Hedr: "not-an-object",
     };
-    const res = validateResourceForkJson(bad as unknown as Record<string, unknown>);
+    const res = validateResourceForkJson(bad as Record<string, unknown>);
     expect(res.ok).toBe(false);
     if (!res.ok) {
       expect(res.badKey).toBe("Hedr");

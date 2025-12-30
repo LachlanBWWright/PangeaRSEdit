@@ -161,7 +161,7 @@ export function createMapRoundtripTestSuite(config: {
 
       // This should not throw; for the preprocessor we only need a Record-like shape
       expect(() => {
-        preprocessJson(jsonData as unknown as Record<string, unknown>, globals);
+        preprocessJson(jsonData, globals);
       }).not.toThrow();
     });
 
