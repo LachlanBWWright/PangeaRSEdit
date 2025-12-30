@@ -89,7 +89,11 @@ export function preprocessJson(
         for (let i = 0; i < globals.LIQD_NUBS; i++) {
           if (i < xyArray.length && xyArray[i]) {
             const coord = xyArray[i];
-            nubs.push([coord.x ?? 0, coord.y ?? 0]);
+            if (coord) {  // Type guard
+              nubs.push([coord.x ?? 0, coord.y ?? 0]);
+            } else {
+              nubs.push([0, 0]);
+            }
           } else {
             nubs.push([0, 0]);
           }
@@ -103,16 +107,19 @@ export function preprocessJson(
       // Check if nubs array already exists (should be rare now with v1.0.6)
       if (item.nubs && Array.isArray(item.nubs)) {
         // Already in new format - validate and ensure proper structure
-        const existingNubs = item.nubs;
+        const existingNubs = item.nubs as ([number, number] | { x: number; y: number })[];
         
         // Validate each nub is a proper [number, number] tuple
         const validatedNubs: [number, number][] = [];
         for (let i = 0; i < globals.LIQD_NUBS; i++) {
-          if (i < existingNubs.length && existingNubs[i] && Array.isArray(existingNubs[i])) {
+          if (i < existingNubs.length && existingNubs[i]) {
             const nub = existingNubs[i];
-            // Type guard: validate nub structure before using
-            if (nub && nub.length >= 2 && typeof nub[0] === 'number' && typeof nub[1] === 'number') {
-              validatedNubs.push([nub[0] as number, nub[1] as number]);
+            // Handle both array tuple and object format
+            if (Array.isArray(nub) && nub.length >= 2 && typeof nub[0] === 'number' && typeof nub[1] === 'number') {
+              validatedNubs.push([nub[0], nub[1]]);
+            } else if (typeof nub === 'object' && 'x' in nub && 'y' in nub) {
+              // Handle {x, y} object format
+              validatedNubs.push([nub.x ?? 0, nub.y ?? 0]);
             } else {
               validatedNubs.push([0, 0]);
             }
