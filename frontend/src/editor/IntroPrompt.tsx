@@ -24,6 +24,7 @@ import {
   combineLevelData,
   isAtomicDataComplete,
   validateResourceForkJson,
+  sanitizeResourceForkJson,
 } from "../data/utils/levelDataUtils";
 import { isOk } from "../types/result";
 import { SafeItemTypes, SafeSplineItemTypes } from "../data/items/itemAtoms";
@@ -229,7 +230,9 @@ export function IntroPrompt() {
 
     try {
       // Validate JSON shape expected by rsrcdump
-      const validation = validateResourceForkJson(combinedData as unknown as Record<string, unknown>);
+      const validation = validateResourceForkJson(
+        sanitizeResourceForkJson(combinedData),
+      );
       if (!validation.ok) {
         console.error("Invalid JSON for resource fork:", validation);
         toast.error("Download failed", {

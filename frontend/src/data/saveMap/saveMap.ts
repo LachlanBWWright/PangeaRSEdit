@@ -7,6 +7,7 @@ import { toast } from "../../hooks/use-toast";
 import { loadBytesFromJson } from "@lachlanbwwright/rsrcdump-ts";
 import type { Nanosaur1LevelData } from "@/data/processors/classicProprocessor";
 import type { MightyMikeMap } from "@/python/structSpecs/mightyMikeInterface";
+import { sanitizeResourceForkJson } from "../utils/levelDataUtils";
 
 function isRecord(value: unknown): value is Record<string | number, unknown> {
   return typeof value === "object" && value !== null;
@@ -193,7 +194,8 @@ async function processMapData({
   console.log("saving");
   console.log(data);
   // Validate the JSON before passing to rsrcdump to avoid uncaught errors
-  const validation = validateResourceForkJson(data as unknown as Record<string, unknown>);
+  const sanitized = sanitizeResourceForkJson(data);
+  const validation = validateResourceForkJson(sanitized);
   if (!validation.ok) {
     console.error("Invalid JSON for resource fork:", validation);
     toast({
@@ -203,13 +205,7 @@ async function processMapData({
     return new ArrayBuffer(0);
   }
 
-  const saveResult = loadBytesFromJson(
-    data,
-    globals.STRUCT_SPECS,
-    [], // onlyTypes
-    [], // skipTypes
-    true, // adf
-  );
+  const saveResult = loadBytesFromJson(sanitized, globals.STRUCT_SPECS, [], [], true);
 
   if (!saveResult.ok) {
     console.error("Failed to serialize:", saveResult.error);
