@@ -78,9 +78,29 @@ export function preprocessJson(
       return err(new Error("Liqd[1000].obj is not an array"));
     }
     for (const waterItem of liquidObj) {
-      const item = waterItem as Record<string, number | [number, number][] | undefined>;
+      const item = waterItem as Record<string, number | { x: number; y: number }[] | [number, number][] | undefined>;
       
-      // Check if nubs array already exists (new rsrcdump format with macro)
+      // HANDLE NEW RSRCDUMP-TS v1.0.6 FORMAT WITH BACKTICK MACRO
+      // rsrcdump-ts outputs x`y[100] as an array of {x, y} objects
+      if (item['x`y'] && Array.isArray(item['x`y'])) {
+        const xyArray = item['x`y'] as { x: number; y: number }[];
+        // Convert from [{x, y}, ...] to [[x, y], ...]
+        const nubs: [number, number][] = [];
+        for (let i = 0; i < globals.LIQD_NUBS; i++) {
+          if (i < xyArray.length && xyArray[i]) {
+            const coord = xyArray[i];
+            nubs.push([coord.x ?? 0, coord.y ?? 0]);
+          } else {
+            nubs.push([0, 0]);
+          }
+        }
+        item.nubs = nubs;
+        // Remove the x`y field to avoid confusion
+        delete item['x`y'];
+        continue;
+      }
+      
+      // Check if nubs array already exists (should be rare now with v1.0.6)
       if (item.nubs && Array.isArray(item.nubs)) {
         // Already in new format - validate and ensure proper structure
         const existingNubs = item.nubs;
@@ -104,7 +124,7 @@ export function preprocessJson(
         continue; // Already processed
       }
       
-      // Build nubs array from x_0, y_0, x_1, y_1, etc. fields (old format)
+      // Build nubs array from x_0, y_0, x_1, y_1, etc. fields (old format - should be very rare)
       const nubs: [number, number][] = [];
       let hasAnyNubFields = false;
       
