@@ -1,6 +1,13 @@
 /**
  * Comprehensive roundtrip tests for ALL games
  * Tests byte-for-byte accuracy of parse -> serialize -> parse cycles
+ * 
+ * These tests verify:
+ * 1. Parsing with game-specific struct specs
+ * 2. Preprocessing (liquid nubs conversion, Layr/Atrb normalization)
+ * 3. Type validation using game-specific Zod schemas
+ * 4. Serialization back to binary
+ * 5. Re-parsing to verify roundtrip accuracy
  */
 
 import { describe, it, expect, beforeAll } from "vitest";
@@ -12,10 +19,12 @@ import {
   BugdomGlobals,
   Bugdom2Globals,
   CroMagGlobals,
-  Nanosaur1Globals,
+  NanosaurGlobals,
   Nanosaur2Globals,
   BillyFrontierGlobals,
 } from "../../src/data/globals/globals";
+import { preprocessJson } from "../../src/data/processors/ottoPreprocessor";
+import { validateLevelDataForGame } from "../../src/validation/validateLevelForGame";
 
 interface GameTestConfig {
   name: string;
@@ -47,7 +56,7 @@ const GAMES: GameTestConfig[] = [
   },
   {
     name: "Nanosaur 1",
-    globals: Nanosaur1Globals,
+    globals: NanosaurGlobals,
     testFile: "public/assets/nanosaur/terrain/Level1.ter",
     skipRoundtrip: true, // Different format
   },
@@ -111,6 +120,63 @@ describe("All Games Roundtrip Tests", () => {
         expect(jsonData._metadata).toBeDefined();
         
         console.log(`✅ ${game.name} parsed successfully`);
+      });
+
+      it("should apply preprocessing without errors", async () => {
+        if (!fileExists || game.skipRoundtrip) {
+          console.warn(`Skipping ${game.name} preprocess test`);
+          return;
+        }
+
+        const parseResult = await saveToJson(
+          new Uint8Array(originalData),
+          game.globals.STRUCT_SPECS,
+          [],
+          []
+        );
+        expect(parseResult.ok).toBe(true);
+        if (!parseResult.ok) return;
+
+        const jsonData = JSON.parse(parseResult.value);
+
+        // Apply preprocessing (converts liquid nubs, normalizes Layr/Atrb)
+        const preprocessResult = preprocessJson(jsonData, game.globals);
+        expect(preprocessResult.ok).toBe(true);
+        if (!preprocessResult.ok) {
+          console.error(`${game.name} preprocess error:`, preprocessResult.error);
+        }
+
+        console.log(`✅ ${game.name} preprocessing applied successfully`);
+      });
+
+      it("should pass type validation", async () => {
+        if (!fileExists || game.skipRoundtrip) {
+          console.warn(`Skipping ${game.name} validation test`);
+          return;
+        }
+
+        const parseResult = await saveToJson(
+          new Uint8Array(originalData),
+          game.globals.STRUCT_SPECS,
+          [],
+          []
+        );
+        expect(parseResult.ok).toBe(true);
+        if (!parseResult.ok) return;
+
+        const jsonData = JSON.parse(parseResult.value);
+
+        // Apply preprocessing first
+        preprocessJson(jsonData, game.globals);
+
+        // Validate against game-specific schema
+        const validationResult = validateLevelDataForGame(jsonData, game.globals.GAME_TYPE);
+        expect(validationResult.ok).toBe(true);
+        if (!validationResult.ok) {
+          console.error(`${game.name} validation error:`, validationResult.error.message);
+        }
+
+        console.log(`✅ ${game.name} validation passed`);
       });
 
       it("should serialize JSON back to binary", async () => {
