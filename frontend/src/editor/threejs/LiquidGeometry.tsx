@@ -18,6 +18,9 @@ interface LiquidGeometryProps {
   // liquidType?: 'water' | 'lava' | 'acid';
 }
 
+// Debug flag - set to false in production
+const DEBUG_LIQUID_RENDERING = true;
+
 const getLiquidProperties = (type: WaterBodyType) => {
   switch (type) {
     case WaterBodyType.BLUEWATER:
@@ -49,30 +52,40 @@ export const LiquidGeometry: React.FC<LiquidGeometryProps> = ({
   const globals = useAtomValue(Globals);
 
   if (!liquidData.Liqd?.[1000]?.obj) {
-    console.log("[LiquidGeometry] No liquid data found");
+    if (DEBUG_LIQUID_RENDERING) {
+      console.log("[LiquidGeometry] No liquid data found");
+    }
     return null;
   }
 
   const liquidPatches = liquidData.Liqd[1000].obj;
-  console.log(`[LiquidGeometry] Found ${liquidPatches.length} liquid patches`);
+  if (DEBUG_LIQUID_RENDERING) {
+    console.log(`[LiquidGeometry] Found ${liquidPatches.length} liquid patches`);
+  }
 
   return (
     <group>
       {liquidPatches.map((patch, index) => {
-        console.log(`[LiquidGeometry] Patch ${index}:`, {
-          numNubs: patch.numNubs,
-          nubs: patch.nubs,
-          type: patch.type,
-        });
+        if (DEBUG_LIQUID_RENDERING) {
+          console.log(`[LiquidGeometry] Patch ${index}:`, {
+            numNubs: patch.numNubs,
+            nubs: patch.nubs,
+            type: patch.type,
+          });
+        }
         
         if (!patch || patch.numNubs < 3) {
           // A polygon needs at least 3 vertices
-          console.log(`[LiquidGeometry] Patch ${index} skipped: insufficient nubs`);
+          if (DEBUG_LIQUID_RENDERING) {
+            console.log(`[LiquidGeometry] Patch ${index} skipped: insufficient nubs`);
+          }
           return null;
         }
 
         if (!patch.nubs || !Array.isArray(patch.nubs)) {
-          console.log(`[LiquidGeometry] Patch ${index} skipped: nubs not an array`);
+          if (DEBUG_LIQUID_RENDERING) {
+            console.log(`[LiquidGeometry] Patch ${index} skipped: nubs not an array`);
+          }
           return null;
         }
 
@@ -84,7 +97,9 @@ export const LiquidGeometry: React.FC<LiquidGeometryProps> = ({
           .slice(0, patch.numNubs)
           .map((nub, i) => {
             if (!nub || !Array.isArray(nub) || nub.length < 2) {
-              console.warn(`[LiquidGeometry] Patch ${index} nub ${i} is invalid:`, nub);
+              if (DEBUG_LIQUID_RENDERING) {
+                console.warn(`[LiquidGeometry] Patch ${index} nub ${i} is invalid:`, nub);
+              }
               return new Vector2(0, 0);
             }
             const x = nub[0] ?? 0;
@@ -94,7 +109,9 @@ export const LiquidGeometry: React.FC<LiquidGeometryProps> = ({
 
         // Ensure we still have enough points after slicing and potential filtering if any
         if (points.length < 3) {
-          console.log(`[LiquidGeometry] Patch ${index} skipped: insufficient points after processing`);
+          if (DEBUG_LIQUID_RENDERING) {
+            console.log(`[LiquidGeometry] Patch ${index} skipped: insufficient points after processing`);
+          }
           return null;
         }
 
@@ -110,7 +127,9 @@ export const LiquidGeometry: React.FC<LiquidGeometryProps> = ({
             globals,
           ) + 100; //patch.height;
 
-        console.log(`[LiquidGeometry] Rendering patch ${index} at Y=${liquidLevelY}`);
+        if (DEBUG_LIQUID_RENDERING) {
+          console.log(`[LiquidGeometry] Rendering patch ${index} at Y=${liquidLevelY}`);
+        }
         return (
           <React.Fragment key={`liquid-fragment-${index}`}>
             <mesh
