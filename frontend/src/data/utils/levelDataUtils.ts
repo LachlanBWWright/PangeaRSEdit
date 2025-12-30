@@ -176,6 +176,9 @@ export function validateResourceForkJson(json_blob: Record<string, unknown>):
 
   for (const [key, value] of Object.entries(json_blob)) {
     if (key.length <= 4) {
+      if (value === undefined || value === null) {
+        continue; // Optional/absent resource sections are allowed
+      }
       if (typeof value !== "object" || value === null || Array.isArray(value)) {
         return {
           ok: false,
@@ -200,5 +203,4 @@ export function validateResourceForkJson(json_blob: Record<string, unknown>):
 
   return { ok: true };
 }
-
 
