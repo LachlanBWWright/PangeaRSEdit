@@ -492,7 +492,14 @@ export function bg3dParseResultToMetaFile(
     };
 
     // Extract all geometries from the group
-    const geometries = extractGeometries(group);
+    // Check if this is actually a group with children, or just a single geometry
+    let geometries: BG3DGeometry[];
+    if ("children" in group && Array.isArray(group.children)) {
+      geometries = extractGeometries(group as BG3DGroup);
+    } else {
+      // It's a single geometry, not a group
+      geometries = [group as BG3DGeometry];
+    }
 
     for (const geometry of geometries) {
       // Get material/texture index
