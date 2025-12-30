@@ -416,6 +416,12 @@ function isBG3DGroup(obj: BG3DGeometry | BG3DGroup): obj is BG3DGroup {
 function extractGeometries(group: BG3DGroup): BG3DGeometry[] {
   const geometries: BG3DGeometry[] = [];
 
+  // Ensure children is actually an array before iterating
+  if (!Array.isArray(group.children)) {
+    console.warn("extractGeometries: group.children is not an array", group);
+    return geometries;
+  }
+
   for (const child of group.children) {
     if (isBG3DGroup(child)) {
       geometries.push(...extractGeometries(child));

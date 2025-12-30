@@ -7,7 +7,7 @@ vi.mock("@gltf-transform/core", () => {
     getName: () => "TestTexture",
     getURI: () => "data:image/png;base64,test",
     getMimeType: () => "image/png",
-    clone: vi.fn().mockReturnThis(),
+    clone: vi.fn(function(this: unknown) { return this; }),
   };
 
   const mockMaterial = {
@@ -17,7 +17,7 @@ vi.mock("@gltf-transform/core", () => {
     getMetallicRoughnessTexture: () => null,
     getOcclusionTexture: () => null,
     getEmissiveTexture: () => null,
-    clone: vi.fn().mockReturnThis(),
+    clone: vi.fn(function(this: unknown) { return this; }),
   };
 
   const mockPrimitive = {
@@ -32,7 +32,7 @@ vi.mock("@gltf-transform/core", () => {
     getName: () => "TestNode",
     getMesh: () => mockMesh,
     listChildren: () => [],
-    clone: vi.fn().mockReturnThis(),
+    clone: vi.fn(function(this: unknown) { return this; }),
   };
 
   const mockScene = {
