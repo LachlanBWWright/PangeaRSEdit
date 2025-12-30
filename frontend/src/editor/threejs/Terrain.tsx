@@ -54,6 +54,7 @@ export const TerrainGeometry = forwardRef<Mesh, {
   }, [ref]);
 
   // Build geometry with explicit Y from YCrd
+  // Geometry is rebuilt when YCrd changes to satisfy linter requirements
   const geometry = useMemo(() => {
     if (!terrainData.YCrd?.[1000]?.obj || !header) return null;
 
@@ -84,31 +85,8 @@ export const TerrainGeometry = forwardRef<Mesh, {
     yScale,
     globals.TILE_INGAME_SIZE,
     header,
+    terrainData.YCrd,  // Include YCrd to rebuild geometry on changes
   ]);
-
-  // Update geometry vertices when YCrd data changes (for topology editing)
-  // Performance note: Updates all vertices on change. For optimization on very large
-  // terrains, consider tracking dirty vertices and only updating changed positions.
-  // Current implementation is acceptable for typical game level sizes (< 256x256 tiles).
-  // Update geometry when terrain height data changes
-  useEffect(() => {
-    if (!geometry || !terrainData.YCrd?.[1000]?.obj) return;
-    
-    const positionAttr = geometry.attributes.position;
-    if (!positionAttr) return;
-    
-    // Note: Mutating geometry attributes is acceptable for real-time terrain editing performance
-    // The needsUpdate flag signals Three.js to upload changes to GPU
-    const ycrd = terrainData.YCrd[1000].obj;
-    for (let i = 0; i < positionAttr.count; i++) {
-      const ycrdValue = ycrd[i];
-      if (ycrdValue !== undefined) {
-        positionAttr.setZ(i, ycrdValue * yScale);
-      }
-    }
-    geometry.computeVertexNormals();
-    positionAttr.needsUpdate = true;
-  }, [terrainData.YCrd, geometry, yScale]);
 
   const combinedTexture = useMemo(() => {
     if (!combinedImg) return null;
