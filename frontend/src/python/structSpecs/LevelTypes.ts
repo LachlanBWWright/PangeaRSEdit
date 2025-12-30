@@ -229,6 +229,10 @@ export interface LevelMetadata {
   file_attributes: number;
   junk1: number;
   junk2: number;
+  nanosaur1RawLevel?: unknown;
+  terrainTiles?: unknown;
+  mightyMikeMapData?: unknown;
+  [key: string]: unknown;
 }
 
 /**

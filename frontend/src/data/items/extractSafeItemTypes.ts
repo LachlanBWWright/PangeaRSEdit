@@ -16,7 +16,9 @@ export interface SafeItemTypesResult {
  * These are considered "safe" because they were present in the original level.
  * Accepts either full LevelData or a partial object with just Itms and Spln.
  */
-export function extractSafeItemTypes(levelData: Partial<Pick<LevelData, 'Itms' | 'Spln'>>): SafeItemTypesResult {
+export function extractSafeItemTypes(
+  levelData: Partial<Pick<LevelData, "Itms" | "Spln" | "SpIt">>,
+): SafeItemTypesResult {
   const itemTypes = new Set<number>();
   const splineItemTypes = new Set<number>();
 
@@ -32,21 +34,13 @@ export function extractSafeItemTypes(levelData: Partial<Pick<LevelData, 'Itms' |
     }
   }
 
-  // Extract spline item types from SpIt field (if available)
-  // Note: SpIt is part of SplineData but we're working with partial data
-  // For now, we'll check if the levelData has SpIt at the same level
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const levelDataAny = levelData as any;
-  if (levelDataAny.SpIt?.[1000]?.obj) {
-    const splineItemsObj = levelDataAny.SpIt[1000].obj;
-    if (Array.isArray(splineItemsObj)) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      splineItemsObj.forEach((splineItem: any) => {
-        if (splineItem && typeof splineItem.type === "number") {
-          splineItemTypes.add(splineItem.type);
-        }
-      });
-    }
+  const splineItems = levelData.SpIt?.[1000]?.obj;
+  if (Array.isArray(splineItems)) {
+    splineItems.forEach((splineItem) => {
+      if (splineItem && typeof (splineItem as { type?: unknown }).type === "number") {
+        splineItemTypes.add((splineItem as { type: number }).type);
+      }
+    });
   }
 
   return { itemTypes, splineItemTypes };

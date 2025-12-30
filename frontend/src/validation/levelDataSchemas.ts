@@ -225,11 +225,13 @@ export const checkpointSchema = z.object({
 export type Checkpoint = z.infer<typeof checkpointSchema>;
 
 /** Schema for metadata */
-export const metadataSchema = z.object({
-  file_attributes: z.number(),
-  junk1: z.number(),
-  junk2: z.number(),
-});
+export const metadataSchema = z
+  .object({
+    file_attributes: z.number(),
+    junk1: z.number(),
+    junk2: z.number(),
+  })
+  .passthrough();
 export type Metadata = z.infer<typeof metadataSchema>;
 
 // ============================================================================

@@ -176,6 +176,9 @@ export function validateResourceForkJson(json_blob: Record<string, unknown>):
 
   for (const [key, value] of Object.entries(json_blob)) {
     if (key.length <= 4) {
+      if (value === undefined || value === null) {
+        continue; // Optional/absent resource sections are allowed
+      }
       if (typeof value !== "object" || value === null || Array.isArray(value)) {
         return {
           ok: false,
@@ -201,4 +204,30 @@ export function validateResourceForkJson(json_blob: Record<string, unknown>):
   return { ok: true };
 }
 
-
+/**
+ * Return a shallow copy of the level data with any malformed resource sections removed,
+ * so downstream validation/serialization doesn't fail on stray arrays or primitives.
+ */
+export function sanitizeResourceForkJson(data: unknown): Record<string, unknown> {
+  if (typeof data !== "object" || data === null) {
+    return {};
+  }
+  const source = data as Record<string, unknown>;
+  const sanitized: Record<string, unknown> = { ...source };
+  for (const [key, value] of Object.entries(source)) {
+    if (key.length > 4) continue;
+    if (value === undefined || value === null) continue;
+    if (typeof value !== "object" || Array.isArray(value)) {
+      delete sanitized[key];
+      continue;
+    }
+    const entry = value as Record<string, unknown>;
+    for (const [resId, resVal] of Object.entries(entry)) {
+      if (resVal === undefined || resVal === null) continue;
+      if (typeof resVal !== "object" || Array.isArray(resVal)) {
+        delete entry[resId];
+      }
+    }
+  }
+  return sanitized;
+}

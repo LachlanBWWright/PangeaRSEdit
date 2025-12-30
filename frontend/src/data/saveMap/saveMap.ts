@@ -1,11 +1,75 @@
 import { LzssMessage, LzssResponse } from "@/utils/lzssWorker";
 import LzssWorker from "../utils/lzssWorker?worker";
-import { LevelData } from "@/python/structSpecs/LevelTypes";
+import { LevelData, type LevelMetadata } from "@/python/structSpecs/LevelTypes";
 import { DataType, TileImageFormat, type GlobalsInterface } from "../globals/globals";
 import { validateResourceForkJson } from "../utils/levelDataUtils";
 import { toast } from "../../hooks/use-toast";
 import { loadBytesFromJson } from "@lachlanbwwright/rsrcdump-ts";
+import type { Nanosaur1LevelData } from "@/data/processors/classicProprocessor";
+import type { MightyMikeMap } from "@/python/structSpecs/mightyMikeInterface";
+import { sanitizeResourceForkJson } from "../utils/levelDataUtils";
 
+function isRecord(value: unknown): value is Record<string | number, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+function getNestedMetadata(
+  metadata: LevelMetadata | undefined,
+  key: string,
+): Record<string, unknown> | undefined {
+  const entry = metadata?.[key];
+  if (isRecord(entry) && "obj" in entry) {
+    const obj = (entry as Record<string, unknown>).obj;
+    if (isRecord(obj)) {
+      return obj;
+    }
+  }
+  return undefined;
+}
+
+function isNanosaur1LevelData(value: unknown): value is Nanosaur1LevelData {
+  return (
+    isRecord(value) &&
+    "header" in value &&
+    "textureLayer" in value &&
+    "objectList" in value
+  );
+}
+
+function isMightyMikeMap(value: unknown): value is MightyMikeMap {
+  return (
+    isRecord(value) &&
+    "mapWidth" in value &&
+    "mapHeight" in value &&
+    "mapImage" in value
+  );
+}
+
+function getNanosaurRawLevel(
+  metadata: LevelMetadata | undefined,
+): Nanosaur1LevelData | undefined {
+  const direct = (metadata as Record<string, unknown> | undefined)
+    ?.nanosaur1RawLevel;
+  if (isNanosaur1LevelData(direct)) {
+    return direct;
+  }
+  const nested = getNestedMetadata(metadata, "1000");
+  const nestedRaw = nested?.nanosaur1RawLevel;
+  return isNanosaur1LevelData(nestedRaw) ? nestedRaw : undefined;
+}
+
+function getMightyMikeMapData(
+  metadata: LevelMetadata | undefined,
+): MightyMikeMap | undefined {
+  const direct = (metadata as Record<string, unknown> | undefined)
+    ?.mightyMikeMapData;
+  if (isMightyMikeMap(direct)) {
+    return direct;
+  }
+  const nested = getNestedMetadata(metadata, "1000");
+  const nestedMap = nested?.mightyMikeMapData;
+  return isMightyMikeMap(nestedMap) ? nestedMap : undefined;
+}
 /**
  * Save and download map and images as in IntroPrompt
  */
@@ -39,12 +103,6 @@ export async function saveMap({
     downloadBlob(imageDownloadBuffer, mapImagesFile?.name || "images", ".ter");
   }
 
-  console.log("TESThhhhhhh\n\n\n\n\n\n\ne\n\n\n\n\n\n\n");
-  toast({
-    title: "Saving Map",
-    description: "Processing map data test (THIS FILE IS NOT USED)",
-  });
-
   if (globals.TILE_IMAGE_FORMAT === TileImageFormat.JPG) {
     //TODO: JPEG-based map logic (e.g., Nanosaur 2)
   }
@@ -61,11 +119,10 @@ export async function saveMap({
   } else if (globals.DATA_TYPE === DataType.TRT_FILE) {
     // Nanosaur 1: Compile back to .ter format
     const { compileNanosaur1Level } = await import("@/editor/loadLogic/compileNanosaur1Level");
-    
+
     // We need the original raw level data to preserve binary-specific information
-    // This should be stored in data._metadata if available
-    const rawLevelData = (data as unknown as { _metadata?: { 1000?: { obj?: { nanosaur1RawLevel?: unknown } } } })?._metadata?.[1000]?.obj?.nanosaur1RawLevel;
-    
+    const rawLevelData = getNanosaurRawLevel(data._metadata);
+
     if (!rawLevelData) {
       toast({
         title: "Cannot save Nanosaur 1 level",
@@ -73,11 +130,9 @@ export async function saveMap({
       });
       return;
     }
-    
-    // Type-cast since we're in a Nanosaur 1 context
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const compileResult = compileNanosaur1Level(data, rawLevelData as any);
-    
+
+    const compileResult = compileNanosaur1Level(data, rawLevelData);
+
     if (!compileResult.ok) {
       toast({
         title: "Failed to compile Nanosaur 1 level",
@@ -85,7 +140,7 @@ export async function saveMap({
       });
       return;
     }
-    
+
     downloadBlob(compileResult.value, mapFile.name, ".ter");
     toast({
       title: "Nanosaur 1 Map Downloaded!",
@@ -93,10 +148,10 @@ export async function saveMap({
   } else if (globals.GAME_NAME === "Mighty Mike") {
     // Mighty Mike: Compile back to .map format
     const { mightyMikeMapToCompressedBinary } = await import("@/modelParsers/parseMightyMike");
-    
+
     // Extract Mighty Mike-specific data from metadata
-    const mightyMikeData = (data as unknown as { _metadata?: { 1000?: { obj?: { mightyMikeMapData?: unknown } } } })?._metadata?.[1000]?.obj?.mightyMikeMapData;
-    
+    const mightyMikeData = getMightyMikeMapData(data._metadata);
+
     if (!mightyMikeData) {
       toast({
         title: "Cannot save Mighty Mike level",
@@ -104,8 +159,8 @@ export async function saveMap({
       });
       return;
     }
-    
-    const mapBuffer = mightyMikeMapToCompressedBinary(mightyMikeData as Parameters<typeof mightyMikeMapToCompressedBinary>[0]);
+
+    const mapBuffer = mightyMikeMapToCompressedBinary(mightyMikeData);
     downloadBlob(mapBuffer, mapFile.name, ".map");
     toast({
       title: "Mighty Mike Map Downloaded!",
@@ -139,7 +194,8 @@ async function processMapData({
   console.log("saving");
   console.log(data);
   // Validate the JSON before passing to rsrcdump to avoid uncaught errors
-  const validation = validateResourceForkJson(data as unknown as Record<string, unknown>);
+  const sanitized = sanitizeResourceForkJson(data);
+  const validation = validateResourceForkJson(sanitized);
   if (!validation.ok) {
     console.error("Invalid JSON for resource fork:", validation);
     toast({
@@ -149,13 +205,7 @@ async function processMapData({
     return new ArrayBuffer(0);
   }
 
-  const saveResult = loadBytesFromJson(
-    data,
-    globals.STRUCT_SPECS,
-    [], // onlyTypes
-    [], // skipTypes
-    true, // adf
-  );
+  const saveResult = loadBytesFromJson(sanitized, globals.STRUCT_SPECS, [], [], true);
 
   if (!saveResult.ok) {
     console.error("Failed to serialize:", saveResult.error);
