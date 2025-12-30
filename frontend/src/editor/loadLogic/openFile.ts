@@ -8,6 +8,7 @@ import {
 import { combineCanvases } from "@/editor/utils/combineCanvases";
 import type { GlobalsInterface } from "@/data/globals/globals";
 import type { AtomicLevelData } from "@/data/utils/levelDataUtils";
+import type { LevelData } from "@/python/structSpecs/LevelTypes";
 import { parseLevelDataFile } from "./parseLevelDataFile";
 
 /**
@@ -89,22 +90,17 @@ export async function openFile({
 
     // Extract tile images from tileset data
     // The tileset field is at the root level of the LevelData structure
-    interface MightyMikeLevelData {
-      tileset?: {
-        tileImages?: HTMLCanvasElement[];
-        numTileDefinitions?: number;
-        numTileAttributeEntries?: number;
-      };
-      Hedr?: {
-        1000?: {
-          obj: {
-            numTiles?: number;
-          };
-        };
-      };
+    // For MightyMike, jsonData may have additional fields beyond standard LevelData
+    interface MightyMikeTileset {
+      tileImages?: HTMLCanvasElement[];
+      numTileDefinitions?: number;
+      numTileAttributeEntries?: number;
     }
-    const tilesetData = (jsonData as unknown as MightyMikeLevelData).tileset;
-    const headerObj = (jsonData as unknown as MightyMikeLevelData).Hedr?.[1000]?.obj;
+    
+    // Type guard to safely access MightyMike-specific fields
+    const mightyMikeData = jsonData as LevelData & { tileset?: MightyMikeTileset };
+    const tilesetData = mightyMikeData.tileset;
+    const headerObj = mightyMikeData.Hedr?.[1000]?.obj;
     const tileImages = tilesetData?.tileImages || [];
 
     console.log("Tileset data:", tilesetData);
@@ -180,10 +176,8 @@ export async function openFile({
     setMapImages(mapImagesResult.value);
   } else {
     // Bugdom 1-specific - The image data is within the Resource Fork
-    // Dynamic JSON structure from parse result; coerce to Record types (keep safe cast)
-    const imgString = (
-      jsonData as unknown as { Timg?: Record<string, { data?: string }> }
-    ).Timg?.["1000"]?.data as string | undefined;
+    // TerrainData has Timg with data as a string
+    const imgString = jsonData.Timg?.["1000"]?.data;
     if (!imgString) {
       console.error("No image data found");
       return;

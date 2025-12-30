@@ -1,4 +1,4 @@
-import { LevelData } from "@/python/structSpecs/LevelTypes";
+import { LevelData, LevelMetadata } from "@/python/structSpecs/LevelTypes";
 import { Result, ok, err } from "@/types/result";
 import {
   parseMightyMikeMap,
@@ -7,6 +7,59 @@ import {
 import type { MightyMikeTileSet } from "@/python/structSpecs/mightyMikeInterface";
 import { splitLevelData, AtomicLevelData } from "@/data/utils/levelDataUtils";
 import { extractTGAPalette } from "@/utils/tgaParser";
+
+/**
+ * MightyMike-specific level data type
+ * This game uses a 2D tile map format instead of 3D terrain, so we need
+ * flexible types for fields that have different structures than standard LevelData
+ */
+interface MightyMikeLevelData {
+  Hedr: LevelData["Hedr"];
+  tileset?: MightyMikeTileSet;
+  _metadata: LevelMetadata;
+  // Flexible types for MightyMike-specific data formats
+  Layr?: {
+    1000: {
+      name: string;
+      obj: number[];
+      order: number;
+    };
+  };
+  // MightyMike uses hex data string like standard LevelData
+  ItCo?: {
+    1000: {
+      name: string;
+      data: string;
+      order: number;
+    };
+  };
+  YCrd?: {
+    1000: {
+      name: string;
+      obj: number[];
+      order: number;
+    };
+  };
+  // Empty alis record required by LevelData
+  alis?: Record<number, { name: string; data: string; order: number }>;
+  // Empty Atrb required by LevelData  
+  Atrb?: {
+    1000: {
+      name: string;
+      obj: Array<{ flags: number; p0: number; p1: number }>;
+      order: number;
+    };
+  };
+  Itms?: LevelData["Itms"];
+  Xlat?: {
+    1000: {
+      name: string;
+      obj: Array<{ idx: number }>;
+    };
+  };
+  // Allow additional properties that may come from tileset or other sources
+  [key: string]: unknown;
+}
 
 /**
  * Get the scene name from the map file URL
@@ -224,8 +277,8 @@ export async function parseMightyMikeFile(
 
     // Mighty Mike is a 2D game - only include relevant fields, no 3D/heightmap data
     // Create a header object that's compatible with StandardHeader format
-    // Note: We cast to unknown and back to allow the tileset property which isn't in the base LevelData type
-    const ottoCompatible = {
+    // Use MightyMikeLevelData type which extends LevelData with tileset property
+    const ottoCompatible: MightyMikeLevelData = {
       Hedr: {
         1000: {
           name: "Header",
@@ -263,29 +316,36 @@ export async function parseMightyMikeFile(
       // Required for splitLevelData to create terrainData
       ItCo: {
         1000: {
-          name: "Item Coordinates",
-          obj: new Array(mapResult.value.numItems).fill(0),
+          name: "Terrain Items Color Array",
+          data: "", // Empty hex string for MightyMike
           order: 3,
         },
       },
       YCrd: {
         1000: {
-          name: "Y Coordinates",
+          name: "Floor&Ceiling Y Coords",
           obj: new Array(
             mapResult.value.mapWidth * mapResult.value.mapHeight,
           ).fill(0),
           order: 4,
         },
       },
-      _metadata: {
+      // Empty Atrb required by LevelData structure
+      Atrb: {
         1000: {
-          name: "Metadata",
-          obj: {
-            // Store full Mighty Mike tile values for round-trip preservation
-            mightyMikeTileValues: mapResult.value.mapImage.flat(),
-          },
+          name: "Tile Attribute Data",
+          obj: [],
           order: 5,
         },
+      },
+      // Empty alis required by LevelData structure
+      alis: {},
+      _metadata: {
+        file_attributes: 0,
+        junk1: 0,
+        junk2: 0,
+        // Store full Mighty Mike tile values for round-trip preservation
+        mightyMikeTileValues: mapResult.value.mapImage.flat(),
       },
       Itms: {
         1000: {
@@ -317,7 +377,7 @@ export async function parseMightyMikeFile(
     };
 
     console.log("Final MightyMike level data BEFORE splitLevelData:");
-    const tilesetField = (ottoCompatible as Record<string, unknown>).tileset as MightyMikeTileSet | undefined;
+    const tilesetField = ottoCompatible.tileset;
     console.log({
       hasTileset: !!tilesetField,
       tilesetType: tilesetField?.constructor?.name,
@@ -327,10 +387,10 @@ export async function parseMightyMikeFile(
       numTilesInHeader: ottoCompatible.Hedr[1000].obj.numTiles,
       mapWidth: ottoCompatible.Hedr[1000].obj.mapWidth,
       mapHeight: ottoCompatible.Hedr[1000].obj.mapHeight,
-      layrLength: ottoCompatible.Layr[1000].obj.length,
+      layrLength: ottoCompatible.Layr?.[1000].obj.length,
     });
 
-    const atomicData = splitLevelData(ottoCompatible as unknown as LevelData);
+    const atomicData = splitLevelData(ottoCompatible as LevelData);
     console.log("MightyMike atomicData AFTER splitLevelData:", atomicData);
 
     setData(atomicData);
@@ -349,19 +409,21 @@ export async function parseMightyMikeFile(
       setMapImages(tilesetField.tileImages);
     }
 
-    return ok({
+    // Return the level data with metadata
+    // MightyMike data structure is compatible with LevelData for the purposes of splitLevelData and serialization
+    const result: MightyMikeLevelData = {
       ...ottoCompatible,
       _metadata: {
-        1000: {
-          name: "Metadata",
-          obj: {
-            mightyMikeMapData: mapResult.value,
-            mightyMikeTileValues: mapResult.value.mapImage.flat(),
-          },
-          order: 100,
-        },
+        file_attributes: 0,
+        junk1: 0,
+        junk2: 0,
+        mightyMikeMapData: mapResult.value,
+        mightyMikeTileValues: mapResult.value.mapImage.flat(),
       },
-    } as unknown as LevelData);
+    };
+    // The MightyMikeLevelData type is structurally compatible with LevelData
+    // for the fields we need - safe to use single assertion
+    return ok(result as LevelData);
   } catch (e) {
     return err(e instanceof Error ? e : new Error(String(e)));
   }

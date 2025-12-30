@@ -52,6 +52,7 @@ export interface ValidationResult<T> {
 /**
  * Validate level data using the appropriate schema for the given game type.
  * Returns a Result with the validated data or an error.
+ * The caller can safely cast the result to LevelData after validation succeeds.
  *
  * @param data - The raw level data to validate
  * @param gameType - The game type (from Game enum)

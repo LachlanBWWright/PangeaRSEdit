@@ -57,8 +57,10 @@ export async function parseRsrcLevelFile(
       );
     }
 
-    // After validation, we know the structure matches LevelData
-    const levelData = result as unknown as LevelData;
+    // After validation, we can use the validated value
+    // The validation ensures the shape is correct, but validationResult.value is typed as unknown
+    // We use a type assertion here as the validation guarantees the structure matches LevelData
+    const levelData = validationResult.value as LevelData;
     setData(splitLevelData(levelData));
     return ok(levelData);
   } catch (e) {

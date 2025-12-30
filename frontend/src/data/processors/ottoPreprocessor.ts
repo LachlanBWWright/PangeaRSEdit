@@ -13,10 +13,11 @@ function usesLayrAsTileIndices(globals: GlobalsInterface): boolean {
   return globals.GAME_TYPE !== Game.OTTO_MATIC && globals.GAME_TYPE !== Game.CRO_MAG;
 }
 
-// we intentionally accept a free-form JSON object here — linting for explicit any is suppressed
+// Type for JSON data that can be preprocessed - allows both LevelData and generic record types
+type PreprocessableJson = LevelData | Record<string, unknown>;
 
 export function preprocessJson(
-  json: Record<string, unknown>,
+  json: PreprocessableJson,
   globals: GlobalsInterface,
 ): Result<void, Error> {
   const anyJson = json as Record<string, unknown>;

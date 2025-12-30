@@ -97,7 +97,7 @@ export async function parseLevelBuffer(
 
   // Apply preprocessing (modifies levelData in place)
   const preprocessResult = preprocessJson(
-    parseResult.value as unknown as Record<string, unknown>,
+    parseResult.value,
     gameType
   );
   if (isErr(preprocessResult)) {

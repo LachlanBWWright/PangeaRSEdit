@@ -133,18 +133,18 @@ export function combineLevelData(
     return err(new Error("Cannot combine level data: critical header or terrain is missing"));
   }
 
-  // Build combined object progressively, only including sections that exist
-  const combined: Record<string, unknown> = {
+  // Build combined LevelData progressively using spread
+  // LevelData extends TerrainData and HeaderData, plus has optional Partial<> for other types
+  const combined: LevelData = {
     ...terrainData,
     ...headerData,
+    ...(itemData ?? {}),
+    ...(liquidData ?? {}),
+    ...(fenceData ?? {}),
+    ...(splineData ?? {}),
   };
 
-  if (itemData) Object.assign(combined, itemData);
-  if (liquidData) Object.assign(combined, liquidData);
-  if (fenceData) Object.assign(combined, fenceData);
-  if (splineData) Object.assign(combined, splineData);
-
-  return ok(combined as unknown as LevelData);
+  return ok(combined);
 }
 
 /**
