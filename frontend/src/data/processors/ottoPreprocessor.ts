@@ -1,5 +1,5 @@
 import { Updater } from "use-immer";
-import { LevelData } from "@/python/structSpecs/LevelTypes";
+import { LevelData, type Liquid } from "@/python/structSpecs/LevelTypes";
 import { SPLINE_KEY_BASE } from "../../editor/subviews/splines/splineUtils";
 import { Game, GlobalsInterface } from "../globals/globals";
 import { Result, ok, err } from "../../types/result";
@@ -183,14 +183,9 @@ export function ottoPreprocessor(
       }
     });
 
-    // Cast for backwards compatibility transformation
-    // We're accessing Liqd as any since we're doing a transformation
-    if (data.Liqd !== undefined) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const liqd = (data as any).Liqd;
-      for (const waterItem of liqd?.[1000]?.obj ?? []) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const item = waterItem as Record<string, any>;
+    if (Array.isArray(data.Liqd?.[1000]?.obj)) {
+      for (const waterItem of data.Liqd[1000].obj) {
+        const item = waterItem as Liquid & Record<string, unknown>;
         for (let i = 0; i < globals.LIQD_NUBS; i++) {
           const nub = item.nubs?.[i];
           if (nub) {

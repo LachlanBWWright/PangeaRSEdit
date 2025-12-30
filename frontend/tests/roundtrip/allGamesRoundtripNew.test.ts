@@ -150,15 +150,17 @@ describe("All Games Roundtrip Tests", () => {
         console.log(`✅ ${game.name} serialized successfully`);
       });
 
-      it("should produce byte-for-byte identical output (JSON roundtrip)", async () => {
+      it("should produce byte-for-byte identical output (binary roundtrip)", async () => {
         if (!fileExists || game.skipRoundtrip) {
           console.warn(`Skipping ${game.name} roundtrip test`);
           return;
         }
 
+        const originalBytes = new Uint8Array(originalData);
+
         // Parse original
         const parseResult1 = await saveToJson(
-          new Uint8Array(originalData),
+          originalBytes,
           game.globals.STRUCT_SPECS,
           [],
           []
@@ -179,37 +181,9 @@ describe("All Games Roundtrip Tests", () => {
         if (!serializeResult.ok) return;
         const serializedData = serializeResult.value;
 
-        // Parse again
-        const parseResult2 = await saveToJson(
-          serializedData,
-          game.globals.STRUCT_SPECS,
-          [],
-          []
-        );
-        expect(parseResult2.ok).toBe(true);
-        if (!parseResult2.ok) return;
-        const jsonData2 = JSON.parse(parseResult2.value);
-
-        // Compare JSON structures
-        const json1Str = JSON.stringify(jsonData1, null, 2);
-        const json2Str = JSON.stringify(jsonData2, null, 2);
-
-        if (json1Str !== json2Str) {
-          console.error(`${game.name} JSON mismatch detected`);
-          // Find first difference
-          const minLen = Math.min(json1Str.length, json2Str.length);
-          for (let i = 0; i < minLen; i++) {
-            if (json1Str[i] !== json2Str[i]) {
-              console.error(`First difference at position ${i}:`);
-              console.error(`Original: ${json1Str.substring(i, i + 100)}`);
-              console.error(`Roundtrip: ${json2Str.substring(i, i + 100)}`);
-              break;
-            }
-          }
-        }
-
-        expect(json1Str).toBe(json2Str);
-        console.log(`✅ ${game.name} JSON roundtrip successful (byte-for-byte)`);
+        expect(serializedData.byteLength).toBe(originalBytes.byteLength);
+        expect(serializedData).toEqual(originalBytes);
+        console.log(`✅ ${game.name} binary roundtrip successful (byte-for-byte)`);
       });
 
       it("should produce similar binary size", async () => {

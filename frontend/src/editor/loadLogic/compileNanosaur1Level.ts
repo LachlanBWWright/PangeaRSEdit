@@ -24,8 +24,12 @@ export function compileNanosaur1Level(
     const supertileLayerSize = mapWidth * mapHeight * 2; // 16-bit per tile
     
     // Get terrain tiles from metadata (should be stored during parse)
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const terrainTiles = (levelData._metadata as any)?.terrainTiles || [];
+    const metadataTiles = levelData._metadata?.terrainTiles;
+    const terrainTiles = Array.isArray(metadataTiles)
+      ? metadataTiles.filter(
+          (tile): tile is Uint16Array => tile instanceof Uint16Array,
+        )
+      : [];
     const heightmapTiles = rawLevelData.heightmapTiles || [];
     const terrainTileCount = terrainTiles.length;
     const heightmapTileCount = heightmapTiles.length;

@@ -1,4 +1,4 @@
-import { LevelData } from "@/python/structSpecs/LevelTypes";
+import { LevelData, type LevelMetadata } from "@/python/structSpecs/LevelTypes";
 import { Result, ok, err } from "@/types/result";
 import {
   parseNanosaur1Level,
@@ -39,15 +39,16 @@ export async function parseNanosaurLevelFile(
     setData(splitLevelData(compatibleLevel));
     
     // Store raw Nanosaur 1 data in _metadata for roundtrip compilation
+    const metadata: LevelMetadata = {
+      file_attributes: 0,
+      junk1: 0,
+      junk2: 0,
+      nanosaur1RawLevel: rawLevelData,
+    };
+
     const result: LevelData = {
       ...compatibleLevel,
-      _metadata: {
-        file_attributes: 0,
-        junk1: 0,
-        junk2: 0,
-        // Store the raw Nanosaur1 data for roundtrip
-        nanosaur1RawLevel: rawLevelData,
-      } as any, // eslint-disable-line @typescript-eslint/no-explicit-any -- Extended metadata
+      _metadata: metadata,
     };
     
     return ok(result);
