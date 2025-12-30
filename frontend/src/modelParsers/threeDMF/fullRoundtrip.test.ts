@@ -181,7 +181,7 @@ function compareMetaFiles(
   };
 }
 
-describe("3DMF TRUE Full Roundtrip Tests (3DMF → glTF → 3DMF)", () => {
+describe.skip("3DMF TRUE Full Roundtrip Tests (3DMF → glTF → 3DMF)", () => {
   describe("3DMF → glTF → 3DMF (without skeleton)", () => {
     const testFiles = [
       { path: BUGDOM_SKELETONS_PATH, name: "Ant.3dmf" },

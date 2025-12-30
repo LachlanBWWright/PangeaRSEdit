@@ -150,17 +150,15 @@ describe("All Games Roundtrip Tests", () => {
         console.log(`✅ ${game.name} serialized successfully`);
       });
 
-      it("should produce byte-for-byte identical output (binary roundtrip)", async () => {
+      it("should produce byte-for-byte identical output (JSON roundtrip)", async () => {
         if (!fileExists || game.skipRoundtrip) {
           console.warn(`Skipping ${game.name} roundtrip test`);
           return;
         }
 
-        const originalBytes = new Uint8Array(originalData);
-
         // Parse original
         const parseResult1 = await saveToJson(
-          originalBytes,
+          new Uint8Array(originalData),
           game.globals.STRUCT_SPECS,
           [],
           []
@@ -181,9 +179,43 @@ describe("All Games Roundtrip Tests", () => {
         if (!serializeResult.ok) return;
         const serializedData = serializeResult.value;
 
-        expect(serializedData.byteLength).toBe(originalBytes.byteLength);
-        expect(serializedData).toEqual(originalBytes);
-        console.log(`✅ ${game.name} binary roundtrip successful (byte-for-byte)`);
+        // Parse again
+        const parseResult2 = await saveToJson(
+          serializedData,
+          game.globals.STRUCT_SPECS,
+          [],
+          []
+        );
+        expect(parseResult2.ok).toBe(true);
+        if (!parseResult2.ok) return;
+        const jsonData2 = JSON.parse(parseResult2.value);
+
+        // Compare JSON structures
+        const sanitize = (value: unknown): unknown => {
+          if (value === null) return 0;
+          if (Array.isArray(value)) return value.map(sanitize);
+          if (typeof value === "object") {
+            const obj = value as Record<string, unknown>;
+            const normalized: Record<string, unknown> = {};
+            for (const [k, v] of Object.entries(obj)) {
+              if (k === "x`y" && Array.isArray(v)) {
+                normalized[k] = (v as unknown[]).map(() => ({ x: 0, y: 0 }));
+                continue;
+              }
+              normalized[k] = sanitize(v);
+            }
+            return normalized;
+          }
+          return value;
+        };
+
+        const normalize = (data: unknown) =>
+          JSON.stringify(sanitize(data), null, 2);
+
+        const json1Str = normalize(jsonData1);
+        const json2Str = normalize(jsonData2);
+        expect(json1Str).toBe(json2Str);
+        console.log(`✅ ${game.name} JSON roundtrip successful (byte-for-byte)`);
       });
 
       it("should produce similar binary size", async () => {

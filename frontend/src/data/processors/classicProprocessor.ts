@@ -332,6 +332,9 @@ export function nanosaur1LevelToLevelData(
   return ottoLevel;
 }
 
+// Backward-compatible export name expected by tests
+export const nanosaur1LevelToOttoMaticLevel = nanosaur1LevelToLevelData;
+
 // TypeScript representation of the Nanosaur 1 C struct (TerrainItemEntryType)
 export interface TerrainItemEntryType {
   x: number; // UInt16
