@@ -6,6 +6,7 @@
     "test:run": "vitest run"
   },
   "dependencies": {
+    "eslint": "^9.39.2",
     "gltf-validator": "^2.0.0-dev.3.10"
   },
   "devDependencies": {

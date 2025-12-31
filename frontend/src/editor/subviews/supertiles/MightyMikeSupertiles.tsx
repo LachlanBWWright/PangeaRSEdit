@@ -33,7 +33,7 @@ const MightyMikeSupertilesComponent = ({
   // Access Mighty Mike tile values from the _metadata field if available
   // These are stored during parsing and contain collision info
   const mightyMikeTileValuesArray =
-    (terrainData._metadata?.mightyMikeTileValues) || []; 
+    terrainData._metadata?.mightyMikeTileValues || [];
 
   const TILE_SIZE = 32;
   const mapWidth = header.mapWidth;
@@ -54,16 +54,28 @@ const MightyMikeSupertilesComponent = ({
     const sampleCanvas = mapImages[0];
     const ctx = sampleCanvas?.getContext("2d");
     if (ctx && sampleCanvas) {
-      const imageData = ctx.getImageData(0, 0, Math.min(4, sampleCanvas.width), Math.min(4, sampleCanvas.height));
+      const imageData = ctx.getImageData(
+        0,
+        0,
+        Math.min(4, sampleCanvas.width),
+        Math.min(4, sampleCanvas.height),
+      );
       const pixels = imageData.data;
       // Sample first few pixels
       const samples = [];
       for (let i = 0; i < Math.min(4 * 4, pixels.length); i += 4) {
         if (i + 3 < pixels.length) {
-          samples.push(`Pixel${i/4}: RGBA(${pixels[i]},${pixels[i+1]},${pixels[i+2]},${pixels[i+3]})`);
+          samples.push(
+            `Pixel${i / 4}: RGBA(${pixels[i]},${pixels[i + 1]},${
+              pixels[i + 2]
+            },${pixels[i + 3]})`,
+          );
         }
       }
-      console.log("[TILE CANVAS] First tile canvas (tile 0) sample pixels:", samples);
+      console.log(
+        "[TILE CANVAS] First tile canvas (tile 0) sample pixels:",
+        samples,
+      );
     }
   }
 
@@ -156,7 +168,9 @@ const MightyMikeSupertilesComponent = ({
           <Fragment key={i}>
             <Image
               image={img}
-              onClick={() => { setSelectedTile(i); }}
+              onClick={() => {
+                setSelectedTile(i);
+              }}
               x={x}
               y={y}
               width={TILE_SIZE}
@@ -165,7 +179,9 @@ const MightyMikeSupertilesComponent = ({
             {isSelected && (
               <Image
                 image={img}
-                onClick={() => { setSelectedTile(i); }}
+                onClick={() => {
+                  setSelectedTile(i);
+                }}
                 x={x}
                 y={y}
                 width={TILE_SIZE}
@@ -176,15 +192,13 @@ const MightyMikeSupertilesComponent = ({
             )}
             {showCollisionOverlay &&
               mightyMikeTileValuesArray.length > 0 &&
-              i < mightyMikeTileValuesArray.length && (() => {
+              i < mightyMikeTileValuesArray.length &&
+              (() => {
                 const tileValue = mightyMikeTileValuesArray[i];
-                  string,
-                  unknown
-                >;
-                const hasCollisionMask =
-                  (tileValue?.hasCollisionMask) || false;
+
+                const hasCollisionMask = tileValue?.hasCollisionMask || false;
                 const usePixelAccurateCollision =
-                  (tileValue?.usePixelAccurateCollision) || false;
+                  tileValue?.usePixelAccurateCollision || false;
 
                 if (!hasCollisionMask) return null;
 

@@ -20,7 +20,7 @@
         },
         {
             "name": "Attach to Vite (Chrome)",
-            "type": "pwa-chrome",
+            "type": "chrome",
             "request": "launch",
             "url": "http://localhost:5173",
             "webRoot": "${workspaceFolder}/frontend",

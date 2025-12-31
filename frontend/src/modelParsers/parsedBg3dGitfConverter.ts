@@ -400,16 +400,27 @@ export function bg3dParsedToGLTF(
         try {
           if (tex.isJpeg) {
             // JPEG texture (Nanosaur 2) - decompress from QuickTime format and convert to PNG
-            console.log(`[Material ${i}] Processing JPEG texture, bufferSize: ${tex.bufferSize}`);
+            console.log(
+              `[Material ${i}] Processing JPEG texture, bufferSize: ${tex.bufferSize}`,
+            );
 
             try {
               // Extract payload from QuickTime ImageDescription format
-              const view = new DataView(tex.pixels.buffer, tex.pixels.byteOffset);
+              const view = new DataView(
+                tex.pixels.buffer,
+                tex.pixels.byteOffset,
+              );
               const offset = view.getInt32(0, false); // big-endian
               const payloadSize = tex.bufferSize - offset;
-              const payloadView = new Uint8Array(tex.pixels.buffer, tex.pixels.byteOffset + offset, payloadSize);
+              const payloadView = new Uint8Array(
+                tex.pixels.buffer,
+                tex.pixels.byteOffset + offset,
+                payloadSize,
+              );
 
-              console.log(`[Material ${i}] Offset: ${offset}, Payload size: ${payloadSize}`);
+              console.log(
+                `[Material ${i}] Offset: ${offset}, Payload size: ${payloadSize}`,
+              );
 
               // Copy to new buffer for decodeJpegNode
               const payloadBuffer = new Uint8Array(payloadSize);
@@ -417,10 +428,16 @@ export function bg3dParsedToGLTF(
 
               // Decompress JPEG
               const imageData = decodeJpegNode(payloadBuffer.buffer);
-              console.log(`[Material ${i}] Decompressed JPEG: ${imageData.width}x${imageData.height}`);
+              console.log(
+                `[Material ${i}] Decompressed JPEG: ${imageData.width}x${imageData.height}`,
+              );
 
               // Convert to PNG
-              const pngBuffer = rgba8ToPng(new Uint8Array(imageData.data), imageData.width, imageData.height);
+              const pngBuffer = rgba8ToPng(
+                new Uint8Array(imageData.data),
+                imageData.width,
+                imageData.height,
+              );
 
               const texture = doc.createTexture();
               texture.setMimeType("image/png");
@@ -442,12 +459,15 @@ export function bg3dParsedToGLTF(
               }
               return; // Skip the rest of the texture processing
             } catch (error) {
-              console.error(`[Material ${i}] Failed to decompress JPEG texture:`, error);
+              console.error(
+                `[Material ${i}] Failed to decompress JPEG texture:`,
+                error,
+              );
               // Fall through to create a gray placeholder
               pngBuffer = rgba8ToPng(
                 new Uint8Array(tex.width * tex.height * 4).fill(128),
                 tex.width,
-                tex.height
+                tex.height,
               );
             }
           } else if (
@@ -1045,8 +1065,7 @@ export function bg3dParsedToGLTF(
         originalBinaries.skeleton = Array.from(
           new Uint8Array(originalBinaryData.skeletonBuffer),
         );
-      (extrasData).originalBinaries =
-        originalBinaries;
+      extrasData.originalBinaries = originalBinaries;
     } catch {
       // ignore
     }
@@ -1067,7 +1086,7 @@ export async function gltfToBG3D(doc: Document): Promise<BG3DParseResult> {
   const bg3dFields = rootExtras.bg3dFields;
 
   // Extract BG3D-specific metadata from extras (only non-glTF-representable data)
-  const materialExtras = bg3dFields?.materialExtras || []; 
+  const materialExtras = bg3dFields?.materialExtras || [];
 
   // Note: Bone data (pointIndices, normalIndices) will be reconstructed from mesh skinning data
 
@@ -1096,10 +1115,7 @@ export async function gltfToBG3D(doc: Document): Promise<BG3DParseResult> {
       const baseColorTex = mat.getBaseColorTexture();
       if (baseColorTex) {
         const image = baseColorTex.getImage();
-        const texExtras = baseColorTex.getExtras()
-          string,
-          unknown
-        > | null;
+        const texExtras = baseColorTex.getExtras();
 
         if (image instanceof Uint8Array) {
           // Check for JPEG signature (0xFF 0xD8)
@@ -1211,15 +1227,13 @@ export async function gltfToBG3D(doc: Document): Promise<BG3DParseResult> {
           if (boneDataObj && boneDataObj.obj) {
             const obj = boneDataObj.obj;
             bones.push({
-              parentBone: (obj.parentBone) || 0,
-              name: (obj.name) || "",
-              coordX: (obj.coordX) || 0,
-              coordY: (obj.coordY) || 0,
-              coordZ: (obj.coordZ) || 0,
-              numPointsAttachedToBone:
-                (obj.numPointsAttachedToBone) || 0,
-              numNormalsAttachedToBone:
-                (obj.numNormalsAttachedToBone) || 0,
+              parentBone: obj.parentBone || 0,
+              name: obj.name || "",
+              coordX: obj.coordX || 0,
+              coordY: obj.coordY || 0,
+              coordZ: obj.coordZ || 0,
+              numPointsAttachedToBone: obj.numPointsAttachedToBone || 0,
+              numNormalsAttachedToBone: obj.numNormalsAttachedToBone || 0,
               pointIndices: [], // Initialize as empty array
               normalIndices: [], // Initialize as empty array
             });
@@ -1236,9 +1250,7 @@ export async function gltfToBG3D(doc: Document): Promise<BG3DParseResult> {
           if (bonPObj && bonPObj.obj && bones[boneIndex] !== undefined) {
             const bone = bones[boneIndex];
             const arr = bonPObj.obj;
-            bone.pointIndices = arr.map(
-              (p) => p.pointIndex,
-            );
+            bone.pointIndices = arr.map((p) => p.pointIndex);
             if (bone.pointIndices) {
               bone.numPointsAttachedToBone = bone.pointIndices.length;
             }
@@ -1253,9 +1265,7 @@ export async function gltfToBG3D(doc: Document): Promise<BG3DParseResult> {
           if (bonNObj && bonNObj.obj && bones[boneIndex] !== undefined) {
             const bone = bones[boneIndex];
             const arr = bonNObj.obj;
-            bone.normalIndices = arr.map(
-              (n) => n.normal,
-            );
+            bone.normalIndices = arr.map((n) => n.normal);
             if (bone.normalIndices) {
               bone.numNormalsAttachedToBone = bone.normalIndices.length;
             }
@@ -1280,7 +1290,7 @@ export async function gltfToBG3D(doc: Document): Promise<BG3DParseResult> {
               if (keyFObj && keyFObj.obj && keyFObj.name) {
                 // Find bone index by name
                 const boneIndex = bones.findIndex(
-                  (b) => b.name === (keyFObj.name),
+                  (b) => b.name === keyFObj.name,
                 );
                 if (boneIndex >= 0) {
                   keyframes[boneIndex.toString()] = keyFObj.obj;
@@ -1306,11 +1316,8 @@ export async function gltfToBG3D(doc: Document): Promise<BG3DParseResult> {
         }
 
         animations.push({
-          name:
-            (anHdObj.obj).animName ||
-            `Animation_${animIndex}`,
-          numAnimEvents:
-            (anHdObj.obj).numAnimEvents || 0,
+          name: anHdObj.obj.animName || `Animation_${animIndex}`,
+          numAnimEvents: anHdObj.obj.numAnimEvents || 0,
           events, // Now properly populated from Evnt resource
           keyframes,
         });
@@ -1324,12 +1331,12 @@ export async function gltfToBG3D(doc: Document): Promise<BG3DParseResult> {
         ([rid, rentry]: [string, unknown]) => {
           const rObj = rentry;
           if (rObj && rObj.obj && Array.isArray(rObj.obj)) {
-            relPoints[rid] = (rObj.obj).map((p) => {
+            relPoints[rid] = rObj.obj.map((p) => {
               const pp = p;
               return [
-                (pp.relOffsetX) ?? (pp.x) ?? 0,
-                (pp.relOffsetY) ?? (pp.y) ?? 0,
-                (pp.relOffsetZ) ?? (pp.z) ?? 0,
+                pp.relOffsetX ?? pp.x ?? 0,
+                pp.relOffsetY ?? pp.y ?? 0,
+                pp.relOffsetZ ?? pp.z ?? 0,
               ];
             });
           }
@@ -1834,11 +1841,7 @@ export async function gltfToBG3D(doc: Document): Promise<BG3DParseResult> {
       const arr = Array.from(posAcc.getArray() ?? []);
       vertices = [];
       for (let i = 0; i < arr.length; i += 3) {
-        vertices.push([
-          (arr[i] ?? 0),
-          (arr[i + 1] ?? 0),
-          (arr[i + 2] ?? 0),
-        ]);
+        vertices.push([arr[i] ?? 0, arr[i + 1] ?? 0, arr[i + 2] ?? 0]);
       }
     }
 
@@ -1848,11 +1851,7 @@ export async function gltfToBG3D(doc: Document): Promise<BG3DParseResult> {
       const arr = Array.from(normAcc.getArray() ?? []);
       normals = [];
       for (let i = 0; i < arr.length; i += 3) {
-        normals.push([
-          (arr[i] ?? 0),
-          (arr[i + 1] ?? 0),
-          (arr[i + 2] ?? 0),
-        ]);
+        normals.push([arr[i] ?? 0, arr[i + 1] ?? 0, arr[i + 2] ?? 0]);
       }
     }
 
@@ -1862,7 +1861,7 @@ export async function gltfToBG3D(doc: Document): Promise<BG3DParseResult> {
       const arr = Array.from(uvAcc.getArray() ?? []);
       uvs = [];
       for (let i = 0; i < arr.length; i += 2) {
-        uvs.push([(arr[i] ?? 0), (arr[i + 1] ?? 0)]);
+        uvs.push([arr[i] ?? 0, arr[i + 1] ?? 0]);
       }
     }
 
@@ -1873,10 +1872,10 @@ export async function gltfToBG3D(doc: Document): Promise<BG3DParseResult> {
       colors = [];
       for (let i = 0; i < arr.length; i += 4) {
         colors.push([
-          (arr[i] ?? 0),
-          (arr[i + 1] ?? 0),
-          (arr[i + 2] ?? 0),
-          (arr[i + 3] ?? 0),
+          arr[i] ?? 0,
+          arr[i + 1] ?? 0,
+          arr[i + 2] ?? 0,
+          arr[i + 3] ?? 0,
         ]);
       }
     }
@@ -1887,11 +1886,7 @@ export async function gltfToBG3D(doc: Document): Promise<BG3DParseResult> {
       const arr = Array.from(idxAcc.getArray() ?? []);
       triangles = [];
       for (let i = 0; i < arr.length; i += 3) {
-        triangles.push([
-          (arr[i] ?? 0),
-          (arr[i + 1] ?? 0),
-          (arr[i + 2] ?? 0),
-        ]);
+        triangles.push([arr[i] ?? 0, arr[i + 1] ?? 0, arr[i + 2] ?? 0]);
       }
     }
 
@@ -1946,9 +1941,7 @@ export async function gltfToBG3D(doc: Document): Promise<BG3DParseResult> {
     };
   }
   const childNodes = scene.listChildren();
-  const groups: BG3DGroup[] = childNodes.map((node) =>
-    processNode(node),
-  );
+  const groups: BG3DGroup[] = childNodes.map((node) => processNode(node));
 
   console.log("=== glTF to BG3D Conversion Complete ===");
 
