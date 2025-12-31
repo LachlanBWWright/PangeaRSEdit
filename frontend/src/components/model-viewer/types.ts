@@ -14,7 +14,7 @@ export interface ModelNode {
   threeObject?: THREE.Object3D;
 }
 
-export type ModelCanvasProps = {
+export interface ModelCanvasProps {
   gltfUrl: string;
   setModelNodes: (nodes: ModelNode[]) => void;
   onSceneReady?: (scene: THREE.Group | undefined) => void;
@@ -26,4 +26,4 @@ export type ModelCanvasProps = {
   showSkeleton?: boolean;
   logBonePositions?: boolean;
   gameType?: Game;
-};
+}

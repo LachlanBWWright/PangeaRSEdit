@@ -274,8 +274,7 @@ function combineBuffersForDownload(bufferList: DataView[]): ArrayBuffer {
   }
   const imageDownloadBuffer = new DataView(new ArrayBuffer(totalSize));
   let pos2 = 0;
-  for (let i = 0; i < bufferList.length; i++) {
-    const buffer = bufferList[i];
+  for (const buffer of bufferList) {
     if (!buffer) continue;
     imageDownloadBuffer.setInt32(pos2, buffer.byteLength);
     pos2 += 4;

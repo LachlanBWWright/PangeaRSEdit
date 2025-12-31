@@ -40,21 +40,21 @@ describe("Comprehensive Skeleton Value Validation", () => {
     gltfCompliance: boolean;
     details: {
       boneCount: { original: number; roundtrip: number };
-      coordinateErrors: Array<{
+      coordinateErrors: {
         bone: string;
         original: [number, number, number];
         roundtrip: [number, number, number];
-      }>;
-      vertexBindingErrors: Array<{
+      }[];
+      vertexBindingErrors: {
         bone: string;
         originalCount: number;
         roundtripCount: number;
-      }>;
-      animationErrors: Array<{
+      }[];
+      animationErrors: {
         anim: string;
         originalChannels: number;
         roundtripChannels: number;
-      }>;
+      }[];
       gltfValidationErrors: number;
     };
   }

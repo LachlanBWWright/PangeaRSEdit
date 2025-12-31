@@ -57,7 +57,7 @@ export function compareJsonObjects(
   roundtrip: ottoMaticLevel,
 ): {
   equal: boolean;
-  differences: Array<{ path: string; original: unknown; roundtrip: unknown }>;
+  differences: { path: string; original: unknown; roundtrip: unknown }[];
 } {
   return compareLevelData(original, roundtrip);
 }

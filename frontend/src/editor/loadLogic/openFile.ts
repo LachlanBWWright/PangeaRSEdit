@@ -21,7 +21,7 @@ function hexToUint8Array(hexString: string): Uint8Array {
   return bytes;
 }
 
-export type OpenFileArgs = {
+export interface OpenFileArgs {
   url: string;
   gameType: GlobalsInterface;
   setGlobals: (t: GlobalsInterface) => void;
@@ -29,7 +29,7 @@ export type OpenFileArgs = {
   setMapImagesFile: (file: File) => void;
   setMapImages: (images: HTMLCanvasElement[]) => void;
   setData: (d: AtomicLevelData) => void;
-};
+}
 
 export async function openFile({
   url: rUrl,

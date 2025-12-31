@@ -218,14 +218,14 @@ export function sanitizeResourceForkJson(data: unknown): Record<string, unknown>
     if (key.length > 4) continue;
     if (value === undefined || value === null) continue;
     if (typeof value !== "object" || Array.isArray(value)) {
-      delete sanitized[key];
+      Reflect.deleteProperty(sanitized, key);
       continue;
     }
     const entry = value as Record<string, unknown>;
     for (const [resId, resVal] of Object.entries(entry)) {
       if (resVal === undefined || resVal === null) continue;
       if (typeof resVal !== "object" || Array.isArray(resVal)) {
-        delete entry[resId];
+        Reflect.deleteProperty(entry, resId);
       }
     }
   }

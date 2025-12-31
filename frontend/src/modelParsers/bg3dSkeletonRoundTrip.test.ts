@@ -256,9 +256,7 @@ describe("BG3D Skeleton Round-trip with FULL ACCURACY", () => {
     expect(animations.length).toBeGreaterThan(0);
 
     // Collect original timing data from parsed BG3D
-    const originalTimingData: {
-      [animName: string]: { [boneName: string]: number[] };
-    } = {};
+    const originalTimingData: Record<string, Record<string, number[]>> = {};
 
     bg3dParsed.skeleton!.animations.forEach((anim) => {
       // Ensure the structure exists for this animation
@@ -275,9 +273,7 @@ describe("BG3D Skeleton Round-trip with FULL ACCURACY", () => {
     });
 
     // Collect glTF timing data
-    const gltfTimingData: {
-      [animName: string]: { [boneName: string]: number[] };
-    } = {};
+    const gltfTimingData: Record<string, Record<string, number[]>> = {};
 
     animations.forEach((animation) => {
       const animName = animation.getName() || "unnamed";

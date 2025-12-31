@@ -217,14 +217,8 @@ export function ottoPreprocessor(
 
     //Update Water Bounding Boxes
     if (data.Liqd !== undefined) {
-      for (
-        let waterBodyIdx = 0;
-        waterBodyIdx < data.Liqd[1000].obj.length;
-        waterBodyIdx++
-      ) {
-        const waterBody = data.Liqd[1000].obj[waterBodyIdx];
-
-        if (!waterBody) return;
+      for (const waterBody of data.Liqd[1000].obj) {
+        if (!waterBody) continue;
 
         const firstNub = waterBody.nubs[0];
         if (!firstNub) continue;

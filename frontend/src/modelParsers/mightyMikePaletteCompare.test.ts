@@ -8,7 +8,7 @@ describe("Mighty Mike TGA palette raw dump", () => {
     setApplyColorCorrection(false);
 
     const scenes = ["jurassic", "bargain", "fairy", "candy", "clown"];
-    const results: Record<string, Array<number[] | null>> = {};
+    const results: Record<string, (number[] | null)[]> = {};
 
     for (const name of scenes) {
       const fp = path.join(
@@ -30,7 +30,7 @@ describe("Mighty Mike TGA palette raw dump", () => {
       const pal = extractTGAPalette(arrBuf as ArrayBuffer);
       if (!pal) throw new Error(`Failed to extract palette for ${name}`);
 
-      const triplets: Array<number[] | null> = [];
+      const triplets: (number[] | null)[] = [];
       for (let i = 0; i < 256; i++) {
         const off = i * 4;
         if (off + 2 < pal.colors.length) {

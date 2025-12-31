@@ -52,7 +52,7 @@ export interface RoundtripResult {
   jsonMatch: boolean;
   originalSize: number;
   roundtripSize: number;
-  differences: Array<{ path: string; original: unknown; roundtrip: unknown }>;
+  differences: { path: string; original: unknown; roundtrip: unknown }[];
 }
 
 // ============================================================================
@@ -264,13 +264,13 @@ export function compareLevelDataObjects(
   roundtrip: LevelData,
 ): {
   equal: boolean;
-  differences: Array<{ path: string; original: unknown; roundtrip: unknown }>;
+  differences: { path: string; original: unknown; roundtrip: unknown }[];
 } {
-  const differences: Array<{
+  const differences: {
     path: string;
     original: unknown;
     roundtrip: unknown;
-  }> = [];
+  }[] = [];
 
   function compare(obj1: unknown, obj2: unknown, path: string): void {
     if (obj1 === obj2) return;

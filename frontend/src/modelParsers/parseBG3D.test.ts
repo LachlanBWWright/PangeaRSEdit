@@ -26,7 +26,7 @@ const BILLY_BG3D_PATH = path.join(__dirname, "./testSkeletons/Billy.bg3d");
 const BROG_BG3D_PATH = path.join(__dirname, "./testSkeletons/Brog.bg3d");
 
 // Helper to count geometries and check for bounding boxes
-type GroupChild = { children?: GroupChild[]; boundingBox?: unknown };
+interface GroupChild { children?: GroupChild[]; boundingBox?: unknown }
 
 function analyzeGroups(groups: GroupChild[]): {
   geomCount: number;

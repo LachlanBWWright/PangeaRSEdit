@@ -75,7 +75,7 @@ const ITEM_DISPLAY_SIZE = 12; // Size to scale item sprites to (in pixels)
 async function loadShapeFrame(
   shapesFilename: string,
   shapeIndex: number,
-  frameIndex: number = 0
+  frameIndex = 0
 ): Promise<Result<HTMLCanvasElement>> {
   const cacheKey = getFrameCacheKey(shapesFilename, shapeIndex, frameIndex);
 

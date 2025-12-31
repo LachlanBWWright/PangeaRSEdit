@@ -1183,7 +1183,7 @@ export function extractAnimationsFromGLTF(
   return animations.map((anim) => {
     console.log(`Extracting animation "${anim.getName()}" from glTF`);
 
-    const keyframes: { [boneIndex: string]: BG3DKeyframe[] } = {};
+    const keyframes: Record<string, BG3DKeyframe[]> = {};
 
     // Process each channel in the animation
     const channels = anim.listChannels();

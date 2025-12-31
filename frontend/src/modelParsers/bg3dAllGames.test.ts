@@ -71,8 +71,8 @@ function readFileAsArrayBuffer(filePath: string): ArrayBuffer {
 }
 
 // Shared group types
-type GroupChild = { children?: GroupChild[]; boundingBox?: unknown };
-type Group = { children?: GroupChild[] };
+interface GroupChild { children?: GroupChild[]; boundingBox?: unknown }
+interface Group { children?: GroupChild[] }
 
 describe("BG3D Multi-Game Parsing Tests", () => {
   // Test basic parsing for each game
@@ -184,8 +184,8 @@ describe("BG3D Multi-Game Parsing Tests", () => {
         expect(roundtripParsed.materials.length).toBe(parsed.materials.length);
 
         // Compare geometry counts
-        type GroupChild = { children?: GroupChild[]; boundingBox?: unknown };
-        type Group = { children?: GroupChild[] };
+        interface GroupChild { children?: GroupChild[]; boundingBox?: unknown }
+        interface Group { children?: GroupChild[] }
 
         function countGeometries(groups: Group[]): number {
           let count = 0;

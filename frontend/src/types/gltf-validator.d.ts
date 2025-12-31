@@ -38,7 +38,7 @@ declare module "gltf-validator" {
     maxIssues?: number; // 0 for unlimited
     ignoredIssues?: string[];
     onlyIssues?: string[]; // cannot be used with ignoredIssues
-    severityOverrides?: { [issueCode: string]: number };
+    severityOverrides?: Record<string, number>;
   }
 
   // Validate bytes (Uint8Array) with optional options

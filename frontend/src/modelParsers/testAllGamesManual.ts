@@ -71,7 +71,7 @@ async function testGame(game: string, filePath: string) {
     // Count geometries
     let geomCount = 0;
     let hasBoundingBox = false;
-    type GroupChild = { children?: GroupChild[]; boundingBox?: unknown };
+    interface GroupChild { children?: GroupChild[]; boundingBox?: unknown }
     function countGeoms(groups: GroupChild[]) {
       for (const group of groups) {
         if (Array.isArray(group.children)) {

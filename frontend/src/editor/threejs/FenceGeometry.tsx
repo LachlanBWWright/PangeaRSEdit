@@ -131,10 +131,10 @@ const FenceSegmentMesh: React.FC<FenceSegmentMeshProps> = ({
 interface FenceGroupData {
   fenceIdx: number;
   fenceType: number;
-  segments: Array<{
+  segments: {
     index: number;
     geometry: FenceSegmentGeometryData;
-  }>;
+  }[];
 }
 
 export const FenceGeometry: React.FC<FenceGeometryProps> = ({

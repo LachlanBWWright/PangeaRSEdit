@@ -5,23 +5,23 @@ export interface GLTFAnalysis {
   meshCount: number;
   materialCount: number;
   textureCount: number;
-  nodes: Array<{
+  nodes: {
     name: string;
     meshes: number[];
     children: number[];
-  }>;
-  materials: Array<{
+  }[];
+  materials: {
     name: string;
-    textures: Array<{
+    textures: {
       type: string;
       uri?: string;
-    }>;
-  }>;
-  textures: Array<{
+    }[];
+  }[];
+  textures: {
     name: string;
     uri?: string;
     mimeType?: string;
-  }>;
+  }[];
 }
 
 export async function analyzeGLTF(
@@ -63,15 +63,15 @@ export async function analyzeGLTF(
     .forEach((material, index) => {
       const materialData = {
         name: material.getName() || `Material_${index}`,
-        textures: [] as Array<{ type: string; uri?: string }>,
+        textures: [] as { type: string; uri?: string }[],
       };
 
       // Check for different texture types using the Material's texture getters
       // Material from @gltf-transform/core has these methods defined
-      const textureGetters: Array<{
+      const textureGetters: {
         getter: () => { getURI: () => string } | null;
         type: string;
-      }> = [
+      }[] = [
         { getter: () => material.getBaseColorTexture(), type: "baseColor" },
         { getter: () => material.getNormalTexture(), type: "normal" },
         { getter: () => material.getMetallicRoughnessTexture(), type: "metallicRoughness" },

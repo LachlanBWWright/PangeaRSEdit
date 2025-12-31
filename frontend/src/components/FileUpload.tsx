@@ -1,9 +1,9 @@
-type Props = {
+interface Props {
   className?: string;
   acceptType: string;
   disabled?: boolean;
   handleOnChange: (e: React.ChangeEvent<HTMLInputElement>) => Promise<void>;
-};
+}
 
 export function FileUpload({
   className,

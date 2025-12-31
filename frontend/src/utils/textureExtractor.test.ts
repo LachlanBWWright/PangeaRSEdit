@@ -1,7 +1,7 @@
 import { describe, test, expect, vi, beforeEach } from "vitest";
 
 // Mock Three.js objects
-type MockTexture = {
+interface MockTexture {
   image: {
     src?: string;
     width?: number;
@@ -9,9 +9,9 @@ type MockTexture = {
     data?: Uint8Array;
   };
   source?: { uri?: string | null };
-};
+}
 
-type MockMaterial = {
+interface MockMaterial {
   name: string;
   map?: MockTexture | null;
   normalMap?: MockTexture | null;
@@ -23,24 +23,24 @@ type MockMaterial = {
   alphaMap?: MockTexture | null;
   bumpMap?: MockTexture | null;
   displacementMap?: MockTexture | null;
-};
+}
 
-type MockMesh = {
+interface MockMesh {
   id: number;
   name: string;
   visible: boolean;
   material: MockMaterial | MockMaterial[];
   children: MockMesh[];
   traverse?: (cb: (child: MockMesh) => void) => void;
-};
+}
 
-type MockGroup = {
+interface MockGroup {
   id: number;
   name: string;
   visible: boolean;
   children: MockMesh[];
   traverse: (cb: (child: MockMesh) => void) => void;
-};
+}
 const createMockTexture = (url: string, width?: number, height?: number) => ({
   image: {
     src: url,
@@ -96,13 +96,13 @@ const createMockGroup = (children: MockMesh[]): MockGroup => ({
 
 describe("Enhanced Texture Extraction", () => {
   let mockScene: MockGroup | null = null;
-  type ExtractedTexture = {
+  interface ExtractedTexture {
     name: string;
     url: string;
     type: "diffuse" | "normal" | "other";
     material: string;
     size?: { width: number; height: number };
-  };
+  }
   let extractedTextures: ExtractedTexture[];
 
   beforeEach(() => {

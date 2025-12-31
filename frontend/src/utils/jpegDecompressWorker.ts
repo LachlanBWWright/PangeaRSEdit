@@ -1,16 +1,16 @@
 import {  decodeJpegNode } from "./jpegDecompress";
 
-export type JpegDecompressMessage = {
+export interface JpegDecompressMessage {
   id: number;
   type: "decompress";
   jpegData: ArrayBuffer;
-};
+}
 
-export type JpegDecompressResponse = {
+export interface JpegDecompressResponse {
   id: number;
   type: "decompressRes";
   imageData: ImageData;
-};
+}
 
 onmessage = async (event: MessageEvent<JpegDecompressMessage>) => {
   if (event.data.type === "decompress") {

@@ -203,7 +203,7 @@ export function bg3dTexturesToGltf(
  */
 export async function gltfMaterialsToBg3d(
   docMaterials: Material[],
-  materialExtras: Array<Record<string, unknown>>,
+  materialExtras: Record<string, unknown>[],
 ): Promise<BG3DMaterial[]> {
   const materials: BG3DMaterial[] = await Promise.all(
     docMaterials.map(async (mat, index) => {
@@ -260,7 +260,7 @@ export async function gltfMaterialsToBg3d(
             };
 
             const materialExtra = (
-              materialExtras as Array<Record<string, unknown>>
+              materialExtras as Record<string, unknown>[]
             )[index]!;
             const textureExtra = (
               materialExtra?.textureExtras as unknown[] | undefined

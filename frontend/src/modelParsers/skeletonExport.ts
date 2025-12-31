@@ -59,7 +59,7 @@ export function bg3dSkeletonToSkeletonResource(
   };
 
   // Convert bones - use resource IDs starting from 1000
-  const bones: { [key: string]: BoneEntry } = {};
+  const bones: Record<string, BoneEntry> = {};
   skeleton.bones.forEach((bone, index) => {
     const resourceId = 1000 + index;
     bones[resourceId.toString()] = {
@@ -87,7 +87,7 @@ export function bg3dSkeletonToSkeletonResource(
 
   // Convert bone point attachments - use resource IDs matching bone IDs (1000+)
   // Create resources for ALL bones, even if empty (size 0)
-  const bonP: { [key: string]: BonPEntry } = {};
+  const bonP: Record<string, BonPEntry> = {};
   skeleton.bones.forEach((bone, index) => {
     const resourceId = 1000 + index;
     bonP[resourceId.toString()] = {
@@ -99,7 +99,7 @@ export function bg3dSkeletonToSkeletonResource(
 
   // Convert bone normal attachments - use resource IDs matching bone IDs (1000+)
   // Create resources for ALL bones, even if empty (size 0)
-  const bonN: { [key: string]: BonNEntry } = {};
+  const bonN: Record<string, BonNEntry> = {};
   skeleton.bones.forEach((bone, index) => {
     const resourceId = 1000 + index;
     bonN[resourceId.toString()] = {
@@ -110,12 +110,12 @@ export function bg3dSkeletonToSkeletonResource(
   });
 
   // Convert animations
-  const anHd: { [key: string]: AnHdEntry } = {};
+  const anHd: Record<string, AnHdEntry> = {};
   // Use provided evntData if available, otherwise create empty
-  const evnt: { [key: string]: EvntEntry } =
-    (evntData as { [key: string]: EvntEntry }) || {};
-  const numK: { [key: string]: NumKEntry } = {};
-  const keyF: { [key: string]: KeyFEntry } = {};
+  const evnt: Record<string, EvntEntry> =
+    (evntData as Record<string, EvntEntry>) || {};
+  const numK: Record<string, NumKEntry> = {};
+  const keyF: Record<string, KeyFEntry> = {};
 
   skeleton.animations.forEach((animation, animIndex) => {
     const animResourceId = 1000 + animIndex;
@@ -201,7 +201,7 @@ export function bg3dSkeletonToSkeletonResource(
     Bone: bones,
     BonP: bonP,
     BonN: bonN,
-    RelP: (effectiveRelP as unknown as { [key: string]: RelPEntry }) || {}, // Include RelP if provided or from skeleton, otherwise empty
+    RelP: (effectiveRelP as unknown as Record<string, RelPEntry>) || {}, // Include RelP if provided or from skeleton, otherwise empty
     AnHd: anHd,
     Evnt: evnt,
     NumK: numK,
@@ -217,14 +217,12 @@ export function bg3dSkeletonToSkeletonResource(
 /**
  * Helper function to convert relPoints format to RelP resource format
  */
-function convertRelPointsToRelPFormat(relPoints?: {
-  [resourceId: string]: [number, number, number][];
-}): Record<string, unknown> | undefined {
+function convertRelPointsToRelPFormat(relPoints?: Record<string, [number, number, number][]>): Record<string, unknown> | undefined {
   if (!relPoints || Object.keys(relPoints).length === 0) {
     return undefined;
   }
 
-  const relP: { [key: string]: RelPEntry } = {};
+  const relP: Record<string, RelPEntry> = {};
   Object.entries(relPoints).forEach(([resourceId, points]) => {
     relP[resourceId] = {
       name: `RelP_${resourceId}`,

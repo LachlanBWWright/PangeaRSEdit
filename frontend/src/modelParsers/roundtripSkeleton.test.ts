@@ -594,9 +594,7 @@ describe("BG3D + Skeleton Roundtrip Tests with FULL ACCURACY", () => {
     const animations = gltfResult.getRoot().listAnimations();
 
     // Collect original timing data from parsed BG3D
-    const originalTimingData: {
-      [animName: string]: { [boneName: string]: number[] };
-    } = {};
+    const originalTimingData: Record<string, Record<string, number[]>> = {};
 
     originalBg3dParsed.skeleton!.animations.forEach((anim) => {
       originalTimingData[anim.name] = {};
@@ -605,20 +603,16 @@ describe("BG3D + Skeleton Roundtrip Tests with FULL ACCURACY", () => {
         const boneIndex = parseInt(boneIndexStr);
         const bone = originalBg3dParsed.skeleton!.bones[boneIndex];
         if (bone) {
-          const kfArray = keyframes as unknown as Array<{ tick: number }>;
+          const kfArray = keyframes as unknown as { tick: number }[];
           originalTimingData[anim.name] = originalTimingData[anim.name] || {};
-          const animTiming = originalTimingData[anim.name] as {
-            [boneName: string]: number[];
-          };
+          const animTiming = originalTimingData[anim.name] as Record<string, number[]>;
           animTiming[bone.name] = kfArray.map((kf) => kf.tick / 30.0); // Convert to seconds
         }
       });
     });
 
     // Collect glTF timing data
-    const gltfTimingData: {
-      [animName: string]: { [boneName: string]: number[] };
-    } = {};
+    const gltfTimingData: Record<string, Record<string, number[]>> = {};
 
     animations.forEach((animation) => {
       const animName = animation.getName() || "unnamed";
@@ -635,9 +629,7 @@ describe("BG3D + Skeleton Roundtrip Tests with FULL ACCURACY", () => {
             const times = input.getArray();
             if (times) {
               gltfTimingData[animName] = gltfTimingData[animName] || {};
-              const animBones = gltfTimingData[animName] as {
-                [boneName: string]: number[];
-              };
+              const animBones = gltfTimingData[animName] as Record<string, number[]>;
               animBones[boneName] = Array.from(times as unknown as number[]);
             }
           }

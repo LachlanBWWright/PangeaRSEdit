@@ -1,4 +1,4 @@
-export type nanosaur2Header = {
+export interface nanosaur2Header {
   version: number;
   numItems: number;
   mapWidth: number;
@@ -11,4 +11,4 @@ export type nanosaur2Header = {
   numUniqueSupertiles: number;
   numWaterPatches: number;
   numCheckpoints: number;
-};
+}

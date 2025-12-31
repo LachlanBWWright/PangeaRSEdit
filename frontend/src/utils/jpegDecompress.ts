@@ -91,8 +91,8 @@ export function bufferToBase64(buffer: ArrayBuffer | Uint8Array): string {
     bytes = new Uint8Array(buffer);
   }
   let binary = "";
-  for (let i = 0; i < bytes.length; i++) {
-    binary += String.fromCharCode(bytes[i] ?? 0);
+  for (const byte of bytes) {
+    binary += String.fromCharCode(byte ?? 0);
   }
   return btoa(binary);
 }

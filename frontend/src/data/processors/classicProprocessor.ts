@@ -99,9 +99,9 @@ import { LevelData } from "@/python/structSpecs/LevelTypes";
 // This allows the editor to use Nanosaur 1 levels in the same way as Otto Matic levels
 export function nanosaur1LevelToLevelData(
   level: Nanosaur1LevelData,
-  tileSize: number = 32,
-  tileIngameSize: number = 140,
-  heightExtrudeFactor: number = 4.0,
+  tileSize = 32,
+  tileIngameSize = 140,
+  heightExtrudeFactor = 4.0,
 ): LevelData {
   // Map Nanosaur 1 data to LevelData structure
   const width = level.header.width;

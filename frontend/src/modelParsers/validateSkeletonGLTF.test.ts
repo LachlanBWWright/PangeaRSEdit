@@ -223,7 +223,7 @@ describe("Skeleton Animation glTF Validation", () => {
     let jointsAccessibleFromScene = 0;
 
     // Helper to check if node is in scene hierarchy
-    type SceneOrNode = { listChildren: () => Node[] };
+    interface SceneOrNode { listChildren: () => Node[] }
     function isNodeInHierarchy(node: Node, root: SceneOrNode): boolean {
       if (root === node) return true;
 

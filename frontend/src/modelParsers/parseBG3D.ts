@@ -66,12 +66,12 @@ export enum BG3DTagType {
 
 export enum BG3DMaterialFlags {
   BG3D_MATERIALFLAG_TEXTURED = 1,
-  BG3D_MATERIALFLAG_ALWAYSBLEND = 1 << 1, // set if always want to GL_BLEND this texture when drawn
-  BG3D_MATERIALFLAG_CLAMP_U = 1 << 2, // Block horizontal texture tiling?
-  BG3D_MATERIALFLAG_CLAMP_V = 1 << 3, // Block vertical texture tiling?
-  BG3D_MATERIALFLAG_MULTITEXTURE = 1 << 4,
-  BG3D_MATERIALFLAG_CLAMP_U_TRUE = 1 << 5, // Nanosaur 2 only, no idea what this does
-  BG3D_MATERIALFLAG_CLAMP_V_TRUE = 1 << 6, // Nanosaur 2 only, no idea what this does
+  BG3D_MATERIALFLAG_ALWAYSBLEND = 2, // set if always want to GL_BLEND this texture when drawn
+  BG3D_MATERIALFLAG_CLAMP_U = 4, // Block horizontal texture tiling?
+  BG3D_MATERIALFLAG_CLAMP_V = 8, // Block vertical texture tiling?
+  BG3D_MATERIALFLAG_MULTITEXTURE = 16,
+  BG3D_MATERIALFLAG_CLAMP_U_TRUE = 32, // Nanosaur 2 only, no idea what this does
+  BG3D_MATERIALFLAG_CLAMP_V_TRUE = 64, // Nanosaur 2 only, no idea what this does
 }
 //Raw Data that gets parsed into BG3DParseResult
 
@@ -162,7 +162,7 @@ export interface BG3DAnimation {
   name: string;
   numAnimEvents: number;
   events: BG3DAnimationEvent[];
-  keyframes: { [boneIndex: number]: BG3DKeyframe[] }; // Keyframes per bone
+  keyframes: Record<number, BG3DKeyframe[]>; // Keyframes per bone
 }
 
 export interface BG3DSkeleton {
@@ -174,9 +174,9 @@ export interface BG3DSkeleton {
   animations: BG3DAnimation[];
   // Relative point lists (RelP) parsed from SkeletonResource.RelP
   // Keyed by original resource id (e.g. "1000") with array of [x,y,z] points
-  relPoints?: { [resourceId: string]: [number, number, number][] };
+  relPoints?: Record<string, [number, number, number][]>;
   // alis resource data for roundtrip preservation (not used in glTF but needed for binary export)
-  alisData?: { [key: string]: unknown };
+  alisData?: Record<string, unknown>;
   // Original skeleton resource metadata for roundtrip preservation
   metadata?: Record<string, unknown>;
 }
@@ -717,7 +717,7 @@ function convertSkeletonResourceToBG3D(
     }
 
     // Get keyframes for all bones in this animation
-    const keyframes: { [boneIndex: number]: BG3DKeyframe[] } = {};
+    const keyframes: Record<number, BG3DKeyframe[]> = {};
 
     // Initialize keyframes arrays for all bones
     for (let boneIndex = 0; boneIndex < bones.length; boneIndex++) {
@@ -836,7 +836,7 @@ function convertSkeletonResourceToBG3D(
   });
 
   // Build RelP map from SkeletonResource (if present)
-  const relPointsMap: { [resourceId: string]: [number, number, number][] } = {};
+  const relPointsMap: Record<string, [number, number, number][]> = {};
   Object.entries(skeleton.RelP || {}).forEach(([rid, rentry]) => {
     try {
       const arr = rentry.obj;
@@ -873,11 +873,11 @@ function convertSkeletonResourceToBG3D(
 
   // Extract alis data from skeleton resource (stored at skeleton.alis = { "1000": {...} })
   // We want to preserve just the inner structure { "1000": { name: "alis", order: 1000, data: "..." } }
-  let alisData: { [key: string]: unknown } | undefined = undefined;
+  let alisData: Record<string, unknown> | undefined = undefined;
   Object.keys(skeleton).forEach((key) => {
     if (key.toLowerCase() === "alis") {
       // Store the inner structure directly, not wrapped in another object
-      alisData = skeleton[key] as { [key: string]: unknown };
+      alisData = skeleton[key] as Record<string, unknown>;
     }
   });
 

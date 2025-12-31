@@ -67,7 +67,7 @@ function SceneExporter() {
 
       exporter.parse(
         scene,
-        (result: ArrayBuffer | { [key: string]: unknown }) => {
+        (result: ArrayBuffer | Record<string, unknown>) => {
           // Dismiss loading toast and show success
           if (exportToastId.current !== undefined) {
             toast.dismiss(exportToastId.current);

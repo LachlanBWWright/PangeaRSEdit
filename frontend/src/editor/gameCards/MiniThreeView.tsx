@@ -70,9 +70,9 @@ export function MiniThreeView({
           {mounted && resolvedGltfUrl ? (
             <ModelCanvas
               gltfUrl={resolvedGltfUrl}
-              setModelNodes={() => {}}
-              onSceneReady={() => {}}
-              onAnimationsReady={() => {}}
+              setModelNodes={() => { /* no-op in mini view */ }}
+              onSceneReady={() => { /* no-op in mini view */ }}
+              onAnimationsReady={() => { /* no-op in mini view */ }}
               wireframeMode={false}
               showSkeleton={false}
               logBonePositions={false}

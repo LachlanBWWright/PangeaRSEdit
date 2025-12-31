@@ -14,7 +14,7 @@ export const TILE_ROT3 = 3 << 12; // 270° rotation
 export interface BugdomLevelData {
   Xlat?: {
     1000: {
-      obj: Array<{ idx: number }>;
+      obj: { idx: number }[];
       order: number;
     };
   };
@@ -38,8 +38,8 @@ export function drawTileIntoBuffer(
   destCtx: CanvasRenderingContext2D,
   destX: number,
   destY: number,
-  tileSize: number = 32,
-  debugLog: boolean = false,
+  tileSize = 32,
+  debugLog = false,
 ): void {
   const flipRotBits = tileValue & (TILE_FLIPXY_MASK | TILE_ROTATE_MASK);
   const texMapNum = tileValue & TILENUM_MASK;
@@ -106,9 +106,9 @@ export function drawTileIntoBuffer(
 
 export function translateTileIndex(
   tileValue: number,
-  xlatTable: Array<{ idx: number }> | undefined,
+  xlatTable: { idx: number }[] | undefined,
   numTileImages: number,
-  logWarnings: boolean = false,
+  logWarnings = false,
 ): number {
   if (!xlatTable) return tileValue;
 
@@ -148,11 +148,11 @@ export function buildSupertileFromTiles(
   mapWidth: number,
   mapHeight: number,
   layerData: number[],
-  xlatTable: Array<{ idx: number }> | undefined,
+  xlatTable: { idx: number }[] | undefined,
   tileImages: HTMLCanvasElement[],
-  tilesPerSupertile: number = 5,
-  tileSize: number = 32,
-  debugFirstSupertile: boolean = false,
+  tilesPerSupertile = 5,
+  tileSize = 32,
+  debugFirstSupertile = false,
 ): HTMLCanvasElement {
   const supertilePixelSize = tilesPerSupertile * tileSize;
   const canvas = document.createElement("canvas");
@@ -218,10 +218,10 @@ export function buildSupertileFromTiles(
 export function buildAllBugdomSupertiles(
   headerData: HeaderData,
   layerData: number[],
-  xlatTable: Array<{ idx: number }> | undefined,
+  xlatTable: { idx: number }[] | undefined,
   tileImages: HTMLCanvasElement[],
-  tilesPerSupertile: number = 5,
-  tileSize: number = 32,
+  tilesPerSupertile = 5,
+  tileSize = 32,
 ): HTMLCanvasElement[] {
   const header = headerData.Hedr[1000].obj;
   const mapWidth = header.mapWidth;

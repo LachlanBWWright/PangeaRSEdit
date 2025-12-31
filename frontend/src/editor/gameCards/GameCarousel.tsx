@@ -70,7 +70,7 @@ export function GameCarousel({
   setMapImagesFile: (f: File) => void;
   setMapImages: (images: HTMLCanvasElement[]) => void;
 }) {
-  const games: Array<{ title: string; globals: GlobalsInterface }> = [
+  const games: { title: string; globals: GlobalsInterface }[] = [
     {
       title: "Otto Matic",
       globals: OttoGlobals,

@@ -15,8 +15,8 @@ import {
 
 function findTerrainFiles(
   gamesRoot: string,
-): Array<{ game: string; path: string }> {
-  const results: Array<{ game: string; path: string }> = [];
+): { game: string; path: string }[] {
+  const results: { game: string; path: string }[] = [];
   if (!existsSync(gamesRoot)) return results;
 
   const entries = readdirSync(gamesRoot, { withFileTypes: true });

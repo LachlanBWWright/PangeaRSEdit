@@ -45,13 +45,13 @@ describe("Multi-Roundtrip Semantic Accuracy", () => {
     let currentBg3dData = originalBg3dData.buffer;
     let currentSkeletonData = originalSkeletonData.buffer;
 
-    const parsedStates: Array<{
+    const parsedStates: {
       roundtrip: number;
       bg3dParsed: BG3DParseResult;
       skeletonParsed: SkeletonResource;
       bg3dBytes: number;
       skeletonBytes: number;
-    }> = [];
+    }[] = [];
 
     // Perform 3 roundtrips
     for (let i = 0; i <= 3; i++) {

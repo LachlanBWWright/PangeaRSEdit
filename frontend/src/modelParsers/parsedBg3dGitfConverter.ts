@@ -63,7 +63,7 @@ interface BG3DKeyframeLike {
 
 interface KeyframeData {
   name?: string;
-  keyframes?: { [boneIndex: number]: BG3DKeyframeLike[] };
+  keyframes?: Record<number, BG3DKeyframeLike[]>;
 }
 
 interface AnimationEventData {
@@ -1067,10 +1067,10 @@ export async function gltfToBG3D(doc: Document): Promise<BG3DParseResult> {
   const bg3dFields = rootExtras.bg3dFields as BG3DFields | undefined;
 
   // Extract BG3D-specific metadata from extras (only non-glTF-representable data)
-  const materialExtras = (bg3dFields?.materialExtras || []) as Array<{
+  const materialExtras = (bg3dFields?.materialExtras || []) as {
     flags?: number;
-    textureExtras?: Array<{ dstPixelFormat?: number }>;
-  }>;
+    textureExtras?: { dstPixelFormat?: number }[];
+  }[];
 
   // Note: Bone data (pointIndices, normalIndices) will be reconstructed from mesh skinning data
 
@@ -1272,7 +1272,7 @@ export async function gltfToBG3D(doc: Document): Promise<BG3DParseResult> {
     anHdEntries.forEach(([animId, anHdData]: [string, unknown], animIndex) => {
       const anHdObj = anHdData as Record<string, unknown>;
       if (anHdObj && anHdObj.obj) {
-        const keyframes: { [boneIndex: string]: unknown[] } = {};
+        const keyframes: Record<string, unknown[]> = {};
         // Populate keyframes from KeyF
         if (originalSkeletonResource.KeyF) {
           Object.values(originalSkeletonResource.KeyF).forEach(
@@ -1322,7 +1322,7 @@ export async function gltfToBG3D(doc: Document): Promise<BG3DParseResult> {
     });
 
     // Extract RelP data
-    const relPoints: { [resourceId: string]: [number, number, number][] } = {};
+    const relPoints: Record<string, [number, number, number][]> = {};
     if (originalSkeletonResource.RelP) {
       Object.entries(originalSkeletonResource.RelP).forEach(
         ([rid, rentry]: [string, unknown]) => {
@@ -1342,7 +1342,7 @@ export async function gltfToBG3D(doc: Document): Promise<BG3DParseResult> {
     }
 
     // Extract alis data
-    const alisData: { [key: string]: unknown } = {};
+    const alisData: Record<string, unknown> = {};
     Object.keys(originalSkeletonResource).forEach((key) => {
       if (key.toLowerCase() === "alis") {
         alisData[key] = (originalSkeletonResource as Record<string, unknown>)[
@@ -1696,9 +1696,7 @@ export async function gltfToBG3D(doc: Document): Promise<BG3DParseResult> {
                 anim.name,
               );
               // Cast to the proper type since BG3DKeyframeLike matches BG3DKeyframe
-              anim.keyframes = kfData.keyframes as {
-                [boneIndex: number]: BG3DKeyframeLike[];
-              };
+              anim.keyframes = kfData.keyframes as Record<number, BG3DKeyframeLike[]>;
             } else {
               console.log(
                 "[DEBUG] No keyframe data found for animation",
@@ -1796,10 +1794,10 @@ export async function gltfToBG3D(doc: Document): Promise<BG3DParseResult> {
           animations,
           // Restore non-glTF data from extras
           relPoints: (skeletonExtras?.relPoints || undefined) as
-            | { [resourceId: string]: [number, number, number][] }
+            | Record<string, [number, number, number][]>
             | undefined,
           alisData: (skeletonExtras?.alisData || undefined) as
-            | { [key: string]: unknown }
+            | Record<string, unknown>
             | undefined,
           metadata: (skeletonExtras?.metadata || undefined) as
             | Record<string, unknown>
