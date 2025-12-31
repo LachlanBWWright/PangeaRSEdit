@@ -115,6 +115,15 @@ interface BG3DFields {
 }
 
 /**
+ * Safe accessor for typed array elements.
+ * Float32Array always returns a number, but TypeScript's noUncheckedIndexedAccess
+ * makes it return `number | undefined`. This helper ensures type safety.
+ */
+function atF32(arr: Float32Array, index: number): number {
+  return arr[index] ?? 0;
+}
+
+/**
  * Matrix utilities for coordinate transformations
  */
 class Matrix4 {
@@ -123,6 +132,13 @@ class Matrix4 {
   constructor() {
     this.data = new Float32Array(16);
     this.identity();
+  }
+
+  /**
+   * Safe accessor for this matrix's data.
+   */
+  private at(index: number): number {
+    return this.data[index] ?? 0;
   }
 
   identity(): Matrix4 {
@@ -140,133 +156,132 @@ class Matrix4 {
 
   getTranslation(): { x: number; y: number; z: number } {
     return {
-      x: this.data[12]!,
-      y: this.data[13]!,
-      z: this.data[14]!,
+      x: this.at(12),
+      y: this.at(13),
+      z: this.at(14),
     };
   }
 
   invert(): Matrix4 {
     const result = new Matrix4();
-    const m = this.data;
     const inv = result.data;
 
     // Calculate matrix inverse using standard algorithm
     inv[0] =
-      m[5]! * m[10]! * m[15]! -
-      m[5]! * m[11]! * m[14]! -
-      m[9]! * m[6]! * m[15]! +
-      m[9]! * m[7]! * m[14]! +
-      m[13]! * m[6]! * m[11]! -
-      m[13]! * m[7]! * m[10]!;
+      this.at(5) * this.at(10) * this.at(15) -
+      this.at(5) * this.at(11) * this.at(14) -
+      this.at(9) * this.at(6) * this.at(15) +
+      this.at(9) * this.at(7) * this.at(14) +
+      this.at(13) * this.at(6) * this.at(11) -
+      this.at(13) * this.at(7) * this.at(10);
     inv[4] =
-      -m[4]! * m[10]! * m[15]! +
-      m[4]! * m[11]! * m[14]! +
-      m[8]! * m[6]! * m[15]! -
-      m[8]! * m[7]! * m[14]! -
-      m[12]! * m[6]! * m[11]! +
-      m[12]! * m[7]! * m[10]!;
+      -this.at(4) * this.at(10) * this.at(15) +
+      this.at(4) * this.at(11) * this.at(14) +
+      this.at(8) * this.at(6) * this.at(15) -
+      this.at(8) * this.at(7) * this.at(14) -
+      this.at(12) * this.at(6) * this.at(11) +
+      this.at(12) * this.at(7) * this.at(10);
     inv[8] =
-      m[4]! * m[9]! * m[15]! -
-      m[4]! * m[11]! * m[13]! -
-      m[8]! * m[5]! * m[15]! +
-      m[8]! * m[7]! * m[13]! +
-      m[12]! * m[5]! * m[11]! -
-      m[12]! * m[7]! * m[9]!;
+      this.at(4) * this.at(9) * this.at(15) -
+      this.at(4) * this.at(11) * this.at(13) -
+      this.at(8) * this.at(5) * this.at(15) +
+      this.at(8) * this.at(7) * this.at(13) +
+      this.at(12) * this.at(5) * this.at(11) -
+      this.at(12) * this.at(7) * this.at(9);
     inv[12] =
-      -m[4]! * m[9]! * m[14]! +
-      m[4]! * m[10]! * m[13]! +
-      m[8]! * m[5]! * m[14]! -
-      m[8]! * m[6]! * m[13]! -
-      m[12]! * m[5]! * m[10]! +
-      m[12]! * m[6]! * m[9]!;
+      -this.at(4) * this.at(9) * this.at(14) +
+      this.at(4) * this.at(10) * this.at(13) +
+      this.at(8) * this.at(5) * this.at(14) -
+      this.at(8) * this.at(6) * this.at(13) -
+      this.at(12) * this.at(5) * this.at(10) +
+      this.at(12) * this.at(6) * this.at(9);
     inv[1] =
-      -m[1]! * m[10]! * m[15]! +
-      m[1]! * m[11]! * m[14]! +
-      m[9]! * m[2]! * m[15]! -
-      m[9]! * m[3]! * m[14]! -
-      m[13]! * m[2]! * m[11]! +
-      m[13]! * m[3]! * m[10]!;
+      -this.at(1) * this.at(10) * this.at(15) +
+      this.at(1) * this.at(11) * this.at(14) +
+      this.at(9) * this.at(2) * this.at(15) -
+      this.at(9) * this.at(3) * this.at(14) -
+      this.at(13) * this.at(2) * this.at(11) +
+      this.at(13) * this.at(3) * this.at(10);
     inv[5] =
-      m[0]! * m[10]! * m[15]! -
-      m[0]! * m[11]! * m[14]! -
-      m[8]! * m[2]! * m[15]! +
-      m[8]! * m[3]! * m[14]! +
-      m[12]! * m[2]! * m[11]! -
-      m[12]! * m[3]! * m[10]!;
+      this.at(0) * this.at(10) * this.at(15) -
+      this.at(0) * this.at(11) * this.at(14) -
+      this.at(8) * this.at(2) * this.at(15) +
+      this.at(8) * this.at(3) * this.at(14) +
+      this.at(12) * this.at(2) * this.at(11) -
+      this.at(12) * this.at(3) * this.at(10);
     inv[9] =
-      -m[0]! * m[9]! * m[15]! +
-      m[0]! * m[11]! * m[13]! +
-      m[8]! * m[1]! * m[15]! -
-      m[8]! * m[3]! * m[13]! -
-      m[12]! * m[1]! * m[11]! +
-      m[12]! * m[3]! * m[9]!;
+      -this.at(0) * this.at(9) * this.at(15) +
+      this.at(0) * this.at(11) * this.at(13) +
+      this.at(8) * this.at(1) * this.at(15) -
+      this.at(8) * this.at(3) * this.at(13) -
+      this.at(12) * this.at(1) * this.at(11) +
+      this.at(12) * this.at(3) * this.at(9);
     inv[13] =
-      m[0]! * m[9]! * m[14]! -
-      m[0]! * m[10]! * m[13]! -
-      m[8]! * m[1]! * m[14]! +
-      m[8]! * m[2]! * m[13]! +
-      m[12]! * m[1]! * m[10]! -
-      m[12]! * m[2]! * m[9]!;
+      this.at(0) * this.at(9) * this.at(14) -
+      this.at(0) * this.at(10) * this.at(13) -
+      this.at(8) * this.at(1) * this.at(14) +
+      this.at(8) * this.at(2) * this.at(13) +
+      this.at(12) * this.at(1) * this.at(10) -
+      this.at(12) * this.at(2) * this.at(9);
     inv[2] =
-      m[1]! * m[6]! * m[15]! -
-      m[1]! * m[7]! * m[14]! -
-      m[5]! * m[2]! * m[15]! +
-      m[5]! * m[3]! * m[14]! +
-      m[13]! * m[2]! * m[7]! -
-      m[13]! * m[3]! * m[6]!;
+      this.at(1) * this.at(6) * this.at(15) -
+      this.at(1) * this.at(7) * this.at(14) -
+      this.at(5) * this.at(2) * this.at(15) +
+      this.at(5) * this.at(3) * this.at(14) +
+      this.at(13) * this.at(2) * this.at(7) -
+      this.at(13) * this.at(3) * this.at(6);
     inv[6] =
-      -m[0]! * m[6]! * m[15]! +
-      m[0]! * m[7]! * m[14]! +
-      m[4]! * m[2]! * m[15]! -
-      m[4]! * m[3]! * m[14]! -
-      m[12]! * m[2]! * m[7]! +
-      m[12]! * m[3]! * m[6]!;
+      -this.at(0) * this.at(6) * this.at(15) +
+      this.at(0) * this.at(7) * this.at(14) +
+      this.at(4) * this.at(2) * this.at(15) -
+      this.at(4) * this.at(3) * this.at(14) -
+      this.at(12) * this.at(2) * this.at(7) +
+      this.at(12) * this.at(3) * this.at(6);
     inv[10] =
-      m[0]! * m[5]! * m[15]! -
-      m[0]! * m[7]! * m[13]! -
-      m[4]! * m[1]! * m[15]! +
-      m[4]! * m[3]! * m[13]! +
-      m[12]! * m[1]! * m[7]! -
-      m[12]! * m[3]! * m[5]!;
+      this.at(0) * this.at(5) * this.at(15) -
+      this.at(0) * this.at(7) * this.at(13) -
+      this.at(4) * this.at(1) * this.at(15) +
+      this.at(4) * this.at(3) * this.at(13) +
+      this.at(12) * this.at(1) * this.at(7) -
+      this.at(12) * this.at(3) * this.at(5);
     inv[14] =
-      -m[0]! * m[5]! * m[14]! +
-      m[0]! * m[6]! * m[13]! +
-      m[4]! * m[1]! * m[14]! -
-      m[4]! * m[2]! * m[13]! -
-      m[12]! * m[1]! * m[6]! +
-      m[12]! * m[2]! * m[5]!;
+      -this.at(0) * this.at(5) * this.at(14) +
+      this.at(0) * this.at(6) * this.at(13) +
+      this.at(4) * this.at(1) * this.at(14) -
+      this.at(4) * this.at(2) * this.at(13) -
+      this.at(12) * this.at(1) * this.at(6) +
+      this.at(12) * this.at(2) * this.at(5);
     inv[3] =
-      -m[1]! * m[6]! * m[11]! +
-      m[1]! * m[7]! * m[10]! +
-      m[5]! * m[2]! * m[11]! -
-      m[5]! * m[3]! * m[10]! -
-      m[9]! * m[2]! * m[7]! +
-      m[9]! * m[3]! * m[6]!;
+      -this.at(1) * this.at(6) * this.at(11) +
+      this.at(1) * this.at(7) * this.at(10) +
+      this.at(5) * this.at(2) * this.at(11) -
+      this.at(5) * this.at(3) * this.at(10) -
+      this.at(9) * this.at(2) * this.at(7) +
+      this.at(9) * this.at(3) * this.at(6);
     inv[7] =
-      m[0]! * m[6]! * m[11]! -
-      m[0]! * m[7]! * m[10]! -
-      m[4]! * m[2]! * m[11]! +
-      m[4]! * m[3]! * m[10]! +
-      m[8]! * m[2]! * m[7]! -
-      m[8]! * m[3]! * m[6]!;
+      this.at(0) * this.at(6) * this.at(11) -
+      this.at(0) * this.at(7) * this.at(10) -
+      this.at(4) * this.at(2) * this.at(11) +
+      this.at(4) * this.at(3) * this.at(10) +
+      this.at(8) * this.at(2) * this.at(7) -
+      this.at(8) * this.at(3) * this.at(6);
     inv[11] =
-      -m[0]! * m[5]! * m[11]! +
-      m[0]! * m[7]! * m[9]! +
-      m[4]! * m[1]! * m[11]! -
-      m[4]! * m[3]! * m[9]! -
-      m[8]! * m[1]! * m[7]! +
-      m[8]! * m[3]! * m[5]!;
+      -this.at(0) * this.at(5) * this.at(11) +
+      this.at(0) * this.at(7) * this.at(9) +
+      this.at(4) * this.at(1) * this.at(11) -
+      this.at(4) * this.at(3) * this.at(9) -
+      this.at(8) * this.at(1) * this.at(7) +
+      this.at(8) * this.at(3) * this.at(5);
     inv[15] =
-      m[0]! * m[5]! * m[10]! -
-      m[0]! * m[6]! * m[9]! -
-      m[4]! * m[1]! * m[10]! +
-      m[4]! * m[2]! * m[9]! +
-      m[8]! * m[1]! * m[6]! -
-      m[8]! * m[2]! * m[5]!;
+      this.at(0) * this.at(5) * this.at(10) -
+      this.at(0) * this.at(6) * this.at(9) -
+      this.at(4) * this.at(1) * this.at(10) +
+      this.at(4) * this.at(2) * this.at(9) +
+      this.at(8) * this.at(1) * this.at(6) -
+      this.at(8) * this.at(2) * this.at(5);
 
     const det =
-      m[0]! * inv[0]! + m[1]! * inv[4]! + m[2]! * inv[8]! + m[3]! * inv[12]!;
+      this.at(0) * (inv[0] ?? 0) + this.at(1) * (inv[4] ?? 0) + this.at(2) * (inv[8] ?? 0) + this.at(3) * (inv[12] ?? 0);
 
     if (det === 0) {
       console.warn("Matrix is not invertible");
