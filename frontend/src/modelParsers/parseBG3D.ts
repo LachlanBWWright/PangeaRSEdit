@@ -4,6 +4,11 @@
 import type { SkeletonResource } from "../python/structSpecs/skeleton/skeletonInterface";
 import { Result, ok, err } from "../types/result";
 
+// Type guard helper
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
 //https://registry.khronos.org/OpenGL-Refpages/gl4/html/glTexImage2D.xhtml
 export enum PixelFormatSrc {
   GL_UNSIGNED_SHORT_1_5_5_5_REV = 33638, // 1a 5r 5g 5b 0x8366 33638
@@ -580,8 +585,8 @@ export function parseBG3D(
       if (isBG3DGroup(child) && Array.isArray(child.children)) {
         const result = validateGeometryMaterials(child);
         if (!result.ok) return result;
-      } else {
-        const geom = child as BG3DGeometry;
+      } else if (isBG3DGeometry(child)) {
+        const geom = child;
         if (geom.layerMaterialNum) {
           for (let i = 0; i < geom.numMaterials; i++) {
             const matIdx = geom.layerMaterialNum[i];
@@ -842,7 +847,8 @@ function convertSkeletonResourceToBG3D(
       const arr = rentry.obj;
       if (Array.isArray(arr)) {
         relPointsMap[rid] = arr.map((p: unknown) => {
-          const obj = p as Record<string, unknown>;
+          if (!isRecord(p)) return [0, 0, 0];
+          const obj = p;
           const relOffsetX =
             typeof obj.relOffsetX === "number"
               ? obj.relOffsetX
@@ -877,7 +883,10 @@ function convertSkeletonResourceToBG3D(
   Object.keys(skeleton).forEach((key) => {
     if (key.toLowerCase() === "alis") {
       // Store the inner structure directly, not wrapped in another object
-      alisData = skeleton[key] as Record<string, unknown>;
+      const skelKey = skeleton[key as keyof typeof skeleton];
+      if (isRecord(skelKey)) {
+        alisData = skelKey;
+      }
     }
   });
 
@@ -1159,6 +1168,14 @@ function isBG3DGroup(obj: BG3DGeometry | BG3DGroup): obj is BG3DGroup {
     typeof obj === "object" &&
     "children" in obj &&
     Array.isArray(obj.children)
+  );
+}
+
+function isBG3DGeometry(obj: BG3DGeometry | BG3DGroup): obj is BG3DGeometry {
+  return (
+    obj !== null &&
+    typeof obj === "object" &&
+    "layerMaterialNum" in obj
   );
 }
 
