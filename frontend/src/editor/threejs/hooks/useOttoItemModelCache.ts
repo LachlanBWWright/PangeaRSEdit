@@ -12,7 +12,7 @@
 import { useState, useRef, useCallback } from "react";
 import BG3DGltfWorker from "@/modelParsers/bg3dGltfWorker?worker";
 import { getItemModelMapping } from "@/data/items/ottoItemModelMapping";
-import * as THREE from "three";
+import { Group } from "three";
 import { GLTFLoader, type GLTF } from "three/examples/jsm/loaders/GLTFLoader.js";
 
 interface CachedModel {
@@ -90,8 +90,8 @@ export const useOttoItemModelCache = (): UseOttoItemModelCacheReturn => {
         const clonedModel = targetModel.clone(true);
 
         // Create new scene with the extracted model - use Group instead of Scene
-        // GLTF type expects scene to be a THREE.Group, and Scene extends Group
-        const newScene = new THREE.Group();
+        // GLTF type expects scene to be a Group, and Scene extends Group
+        const newScene = new Group();
         newScene.add(clonedModel);
 
         // Return new gltf with extracted scene
