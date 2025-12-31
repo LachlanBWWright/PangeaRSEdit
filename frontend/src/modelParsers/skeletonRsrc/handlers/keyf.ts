@@ -1,55 +1,65 @@
 import { parseKeyFData } from "../parseHelpers";
 import type { KeyFRaw } from "../parseSkeletonRsrcTS";
 
+// Type guard for checking if value is a record
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+// Type guard for KeyFRaw
+function isKeyFRaw(value: unknown): value is KeyFRaw {
+  return isRecord(value) && typeof value.tick === "number";
+}
+
 export function handleKeyF(
   resourceName: string,
   resourceData: KeyFRaw[] | { obj?: KeyFRaw[] } | undefined,
   resourceId: string,
   hexData: string,
-) {
+): KeyFRaw[] {
   console.log(resourceId, hexData);
-  const castedData = resourceData as { obj?: KeyFRaw[] };
-  if (
-    resourceData &&
-    castedData.obj &&
-    Array.isArray(castedData.obj) &&
-    castedData.obj.length > 0 &&
-    (castedData.obj[0] as Record<string, unknown>)["tick"] !== undefined
-  ) {
-    const obj = castedData.obj;
-    console.log(
-      `KeyF ${resourceName} data from rsrcdump:`,
-      obj.length,
-      "keyframes",
-    );
-    return obj;
-  } else if (
-    resourceData &&
-    (resourceData as { obj?: KeyFRaw[] }).obj &&
-    Array.isArray((resourceData as { obj?: KeyFRaw[] }).obj)
-  ) {
-    const obj = (resourceData as { obj?: KeyFRaw[] }).obj!;
+  
+  // Check if resourceData has obj field (rsrcdump format)
+  if (isRecord(resourceData) && "obj" in resourceData && Array.isArray(resourceData.obj)) {
+    const objArr = resourceData.obj;
+    if (objArr.length > 0 && isKeyFRaw(objArr[0])) {
+      console.log(
+        `KeyF ${resourceName} data from rsrcdump:`,
+        objArr.length,
+        "keyframes",
+      );
+      return objArr.filter(isKeyFRaw);
+    }
+    // Handle empty or malformed obj array
     console.log(
       `KeyF ${resourceName} empty/malformed from rsrcdump:`,
-      obj.length,
+      objArr.length,
       "keyframes",
     );
-    return obj;
-  } else {
-    console.log(`KeyF ${resourceName} raw resourceData:`, resourceData);
-    console.log(`KeyF ${resourceName} resourceData type:`, typeof resourceData);
-    console.log(
-      `KeyF ${resourceName} resourceData.keys:`,
-      Object.keys((resourceData as unknown as Record<string, unknown>) || {}),
-    );
-    const hex = (resourceData as unknown as { data?: string })?.data || "";
-    console.log(`KeyF ${resourceName} hex data length:`, hex.length);
-    const obj = parseKeyFData(hex);
-    console.log(
-      `KeyF ${resourceName} parsed from hex:`,
-      obj.length,
-      "keyframes",
-    );
-    return obj;
+    return objArr.filter(isKeyFRaw);
   }
+  
+  // Handle array format directly
+  if (Array.isArray(resourceData) && resourceData.length > 0 && isKeyFRaw(resourceData[0])) {
+    return resourceData.filter(isKeyFRaw);
+  }
+  
+  // Fallback to hex parsing
+  console.log(`KeyF ${resourceName} raw resourceData:`, resourceData);
+  console.log(`KeyF ${resourceName} resourceData type:`, typeof resourceData);
+  console.log(
+    `KeyF ${resourceName} resourceData.keys:`,
+    isRecord(resourceData) ? Object.keys(resourceData) : [],
+  );
+  const hex = isRecord(resourceData) && typeof resourceData.data === "string" 
+    ? resourceData.data 
+    : "";
+  console.log(`KeyF ${resourceName} hex data length:`, hex.length);
+  const obj = parseKeyFData(hex);
+  console.log(
+    `KeyF ${resourceName} parsed from hex:`,
+    obj.length,
+    "keyframes",
+  );
+  return obj;
 }
