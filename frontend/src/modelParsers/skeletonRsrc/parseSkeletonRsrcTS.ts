@@ -189,6 +189,6 @@ export async function parseSkeletonRsrcJson(bytes: ArrayBuffer): Promise<ParsedS
 // Type guard for ParsedSkeleton
 function isParsedSkeleton(value: unknown): value is ParsedSkeleton {
   if (!isRecord(value)) return false;
-  // Basic structure check - it should have skeleton resource type keys
-  return true;
+  // Check for at least one expected skeleton resource key
+  return 'Hedr' in value || 'Bone' in value || 'AnHd' in value;
 }
