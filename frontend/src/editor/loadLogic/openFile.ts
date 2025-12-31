@@ -87,24 +87,18 @@ export async function openFile({
     const hasTileset = 'tileset' in jsonData;
     console.log("Has tileset property:", hasTileset);
 
-    // Extract tile images from tileset data
+    // Extract tile images from tileset data using type guard
     // The tileset field is at the root level of the LevelData structure
-    interface MightyMikeLevelData {
-      tileset?: {
-        tileImages?: HTMLCanvasElement[];
-        numTileDefinitions?: number;
-        numTileAttributeEntries?: number;
-      };
-      Hedr?: {
-        1000?: {
-          obj: {
-            numTiles?: number;
-          };
-        };
-      };
+    function isMightyMikeLevelData(data: unknown): data is { 
+      tileset?: { tileImages?: HTMLCanvasElement[]; numTileDefinitions?: number; numTileAttributeEntries?: number };
+      Hedr?: Record<string, { obj?: { numTiles?: number } }>;
+    } {
+      return typeof data === 'object' && data !== null;
     }
-    const tilesetData = (jsonData as unknown as MightyMikeLevelData).tileset;
-    const headerObj = (jsonData as unknown as MightyMikeLevelData).Hedr?.[1000]?.obj;
+    
+    const mmData = isMightyMikeLevelData(jsonData) ? jsonData : null;
+    const tilesetData = mmData?.tileset;
+    const headerObj = mmData?.Hedr?.[1000]?.obj;
     const tileImages = tilesetData?.tileImages || [];
 
     console.log("Tileset data:", tilesetData);
@@ -181,9 +175,18 @@ export async function openFile({
   } else {
     // Bugdom 1-specific - The image data is within the Resource Fork
     // Dynamic JSON structure from parse result; coerce to Record types (keep safe cast)
-    const imgString = (
-      jsonData as unknown as { Timg?: Record<string, { data?: string }> }
-    ).Timg?.["1000"]?.data as string | undefined;
+    // Helper to safely access Timg data
+    function isRecord(value: unknown): value is Record<string, unknown> {
+      return typeof value === 'object' && value !== null && !Array.isArray(value);
+    }
+    
+    let imgString: string | undefined;
+    if (isRecord(jsonData) && isRecord(jsonData.Timg) && isRecord(jsonData.Timg["1000"])) {
+      const data = jsonData.Timg["1000"].data;
+      if (typeof data === 'string') {
+        imgString = data;
+      }
+    }
     if (!imgString) {
       console.error("No image data found");
       return;
