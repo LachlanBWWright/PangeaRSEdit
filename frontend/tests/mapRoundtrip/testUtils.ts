@@ -121,7 +121,9 @@ export function createMapRoundtripTestSuite(config: {
     it("should have valid terrain data file", () => {
       if (terrainRsrcPath) {
         expect(terrainRsrcBuffer).not.toBeNull();
-        expect(terrainRsrcBuffer!.byteLength).toBeGreaterThan(0);
+        if (terrainRsrcBuffer) {
+          expect(terrainRsrcBuffer.byteLength).toBeGreaterThan(0);
+        }
       }
     });
 
