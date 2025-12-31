@@ -202,55 +202,70 @@ export function gltfMeshesToBg3d(
     const posAcc = prim.getAttribute("POSITION");
     let vertices: [number, number, number][] | undefined = undefined;
     if (posAcc) {
-      const arr = Array.from(posAcc.getArray() as Float32Array);
-      vertices = [];
-      for (let i = 0; i < arr.length; i += 3) {
-        vertices.push([arr[i] ?? 0, arr[i + 1] ?? 0, arr[i + 2] ?? 0]);
+      const rawArr = posAcc.getArray();
+      if (rawArr instanceof Float32Array) {
+        const arr = Array.from(rawArr);
+        vertices = [];
+        for (let i = 0; i < arr.length; i += 3) {
+          vertices.push([arr[i] ?? 0, arr[i + 1] ?? 0, arr[i + 2] ?? 0]);
+        }
       }
     }
 
     const normAcc = prim.getAttribute("NORMAL");
     let normals: [number, number, number][] | undefined = undefined;
     if (normAcc) {
-      const arr = Array.from(normAcc.getArray() as Float32Array);
-      normals = [];
-      for (let i = 0; i < arr.length; i += 3) {
-        normals.push([arr[i] ?? 0, arr[i + 1] ?? 0, arr[i + 2] ?? 0]);
+      const rawArr = normAcc.getArray();
+      if (rawArr instanceof Float32Array) {
+        const arr = Array.from(rawArr);
+        normals = [];
+        for (let i = 0; i < arr.length; i += 3) {
+          normals.push([arr[i] ?? 0, arr[i + 1] ?? 0, arr[i + 2] ?? 0]);
+        }
       }
     }
 
     const uvAcc = prim.getAttribute("TEXCOORD_0");
     let uvs: [number, number][] | undefined = undefined;
     if (uvAcc) {
-      const arr = Array.from(uvAcc.getArray() as Float32Array);
-      uvs = [];
-      for (let i = 0; i < arr.length; i += 2) {
-        uvs.push([arr[i] ?? 0, arr[i + 1] ?? 0]);
+      const rawArr = uvAcc.getArray();
+      if (rawArr instanceof Float32Array) {
+        const arr = Array.from(rawArr);
+        uvs = [];
+        for (let i = 0; i < arr.length; i += 2) {
+          uvs.push([arr[i] ?? 0, arr[i + 1] ?? 0]);
+        }
       }
     }
 
     const colorAcc = prim.getAttribute("COLOR_0");
     let colors: [number, number, number, number][] | undefined = undefined;
     if (colorAcc) {
-      const arr = Array.from(colorAcc.getArray() as Uint8Array);
-      colors = [];
-      for (let i = 0; i < arr.length; i += 4) {
-        colors.push([
-          arr[i] ?? 0,
-          arr[i + 1] ?? 0,
-          arr[i + 2] ?? 0,
-          arr[i + 3] ?? 0,
-        ]);
+      const rawArr = colorAcc.getArray();
+      if (rawArr instanceof Uint8Array) {
+        const arr = Array.from(rawArr);
+        colors = [];
+        for (let i = 0; i < arr.length; i += 4) {
+          colors.push([
+            arr[i] ?? 0,
+            arr[i + 1] ?? 0,
+            arr[i + 2] ?? 0,
+            arr[i + 3] ?? 0,
+          ]);
+        }
       }
     }
 
     const idxAcc = prim.getIndices();
     let triangles: [number, number, number][] | undefined = undefined;
     if (idxAcc) {
-      const arr = Array.from(idxAcc.getArray() as Uint32Array);
-      triangles = [];
-      for (let i = 0; i < arr.length; i += 3) {
-        triangles.push([arr[i] ?? 0, arr[i + 1] ?? 0, arr[i + 2] ?? 0]);
+      const rawArr = idxAcc.getArray();
+      if (rawArr instanceof Uint32Array || rawArr instanceof Uint16Array) {
+        const arr = Array.from(rawArr);
+        triangles = [];
+        for (let i = 0; i < arr.length; i += 3) {
+          triangles.push([arr[i] ?? 0, arr[i + 1] ?? 0, arr[i + 2] ?? 0]);
+        }
       }
     }
 
@@ -270,9 +285,7 @@ export function gltfMeshesToBg3d(
       triangles,
       layerMaterialNum: [materialIndex, 0, 0, 0], // BG3D expects array format
       flags: typeof extras.flags === "number" ? extras.flags : 0,
-      boundingBox: extras.boundingBox as
-        | { min: [number, number, number]; max: [number, number, number] }
-        | undefined,
+      boundingBox: isValidBoundingBox(extras.boundingBox) ? extras.boundingBox : undefined,
       numMaterials: 1,
       type: typeof extras.type === "number" ? extras.type : 0,
       numPoints: vertices ? vertices.length : 0,
@@ -283,6 +296,25 @@ export function gltfMeshesToBg3d(
   });
 
   return geometries;
+}
+
+// Helper to check if value is a record
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+// Type guard for bounding box
+function isValidBoundingBox(value: unknown): value is { min: [number, number, number]; max: [number, number, number] } {
+  if (!isRecord(value)) return false;
+  if (!Array.isArray(value.min) || !Array.isArray(value.max)) return false;
+  if (value.min.length !== 3 || value.max.length !== 3) return false;
+  return value.min.every(n => typeof n === 'number') && value.max.every(n => typeof n === 'number');
+}
+
+// Type guard for BG3DGroup
+function isBG3DGroup(value: unknown): value is BG3DGroup {
+  if (!isRecord(value)) return false;
+  return 'children' in value || 'materialNum' in value;
 }
 
 /**
@@ -317,7 +349,7 @@ export function gltfSceneToBg3dGroups(
   // Process scene hierarchy
   const groups: BG3DGroup[] = sceneNodes.map((node) =>
     processNode(node),
-  ) as BG3DGroup[];
+  ).filter(isBG3DGroup);
 
   return groups;
 }

@@ -99,30 +99,57 @@ function parseModelWithSkeletonResource(
       const numAnims = animEntries.length ?? 0;
       const numJoints = boneEntries.length;
 
+      // Type guard helper
+      function isRecord(value: unknown): value is Record<string, unknown> {
+        return typeof value === 'object' && value !== null && !Array.isArray(value);
+      }
+      
+      function getNumberArray(value: unknown): number[] {
+        if (Array.isArray(value) && value.every(v => typeof v === 'number')) {
+          return value;
+        }
+        return [];
+      }
+
       result.skeleton = {
         version: 1, // Default version for 3DMF skeletons
         numAnims,
         numJoints,
         num3DMFLimbs: numJoints, // Typically same as numJoints for 3DMF
         bones: boneEntries.map((bone: unknown, index: number) => {
-          const boneObj = bone as Record<string, unknown>;
-          const coord = boneObj.coord as Record<string, number> || { x: 0, y: 0, z: 0 };
+          if (!isRecord(bone)) {
+            return {
+              parentBone: -1,
+              name: `bone_${index}`,
+              coordX: 0,
+              coordY: 0,
+              coordZ: 0,
+              numPointsAttachedToBone: 0,
+              numNormalsAttachedToBone: 0,
+              pointIndices: [],
+              normalIndices: [],
+            };
+          }
+          const boneObj = bone;
+          const coord = isRecord(boneObj.coord) ? boneObj.coord : { x: 0, y: 0, z: 0 };
+          const pointList = getNumberArray(boneObj.pointList);
+          const normalList = getNumberArray(boneObj.normalList);
           return {
-            parentBone: typeof boneObj.parentBone === 'number' ? (boneObj.parentBone as number) : -1,
-            name: (boneObj.name as string) || `bone_${index}`,
-            coordX: coord.x ?? 0,
-            coordY: coord.y ?? 0,
-            coordZ: coord.z ?? 0,
-            numPointsAttachedToBone: ((boneObj.pointList as number[]) || []).length,
-            numNormalsAttachedToBone: ((boneObj.normalList as number[]) || []).length,
-            pointIndices: (boneObj.pointList as number[]) || [],
-            normalIndices: (boneObj.normalList as number[]) || [],
+            parentBone: typeof boneObj.parentBone === 'number' ? boneObj.parentBone : -1,
+            name: typeof boneObj.name === 'string' ? boneObj.name : `bone_${index}`,
+            coordX: typeof coord.x === 'number' ? coord.x : 0,
+            coordY: typeof coord.y === 'number' ? coord.y : 0,
+            coordZ: typeof coord.z === 'number' ? coord.z : 0,
+            numPointsAttachedToBone: pointList.length,
+            numNormalsAttachedToBone: normalList.length,
+            pointIndices: pointList,
+            normalIndices: normalList,
           };
         }),
         animations: animEntries.length > 0 ? animEntries.map((anim: unknown, animIndex: number) => {
-          const animObj = anim as Record<string, unknown>;
+          const animName = isRecord(anim) && typeof anim.name === 'string' ? anim.name : `anim_${animIndex}`;
           return {
-            name: (animObj.name as string) || `anim_${animIndex}`,
+            name: animName,
             numAnimEvents: 0,
             events: [],
             keyframes: {},
