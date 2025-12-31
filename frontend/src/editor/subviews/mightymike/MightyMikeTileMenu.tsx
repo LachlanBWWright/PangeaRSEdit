@@ -30,6 +30,19 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
+// Type guard helpers
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function isArray(value: unknown): value is unknown[] {
+  return Array.isArray(value);
+}
+
+function getBoolean(value: unknown, defaultValue = false): boolean {
+  return typeof value === 'boolean' ? value : defaultValue;
+}
+
 interface MightyMikeTileMenuProps {
   headerData: HeaderData;
   setHeaderData: Updater<HeaderData>;
@@ -63,16 +76,13 @@ export function MightyMikeTileMenu({
   const layr = terrainData.Layr?.[1000]?.obj || [];
   const xlatTable = terrainData.Xlat?.[1000]?.obj;
 
-  // Get collision data from Mighty Mike metadata
-  const rawTerrainData = terrainData as unknown as Record<string, unknown>;
-  const mightyMikeTileValuesData =
-    (rawTerrainData?._metadata as Record<string, unknown>)?.[1000] as Record<
-      string,
-      unknown
-    > | undefined;
-  const mightyMikeTileValuesArray =
-    ((mightyMikeTileValuesData?.obj as Record<string, unknown>)
-      ?.mightyMikeTileValues as unknown[]) || [];
+  // Get collision data from Mighty Mike metadata using type guards
+  const metadata = isRecord(terrainData._metadata) ? terrainData._metadata : undefined;
+  const metadataEntry = metadata && isRecord(metadata[1000]) ? metadata[1000] : undefined;
+  const metadataObj = metadataEntry && isRecord(metadataEntry.obj) ? metadataEntry.obj : undefined;
+  const mightyMikeTileValuesArray = metadataObj && isArray(metadataObj.mightyMikeTileValues) 
+    ? metadataObj.mightyMikeTileValues 
+    : [];
 
   const mapWidth = header.mapWidth;
   const mapHeight = header.mapHeight;
@@ -90,14 +100,11 @@ export function MightyMikeTileMenu({
       return null;
     }
 
-    const tileValue = mightyMikeTileValuesArray[selectedTile] as Record<
-      string,
-      unknown
-    >;
+    const tileValue = mightyMikeTileValuesArray[selectedTile];
+    if (!isRecord(tileValue)) return null;
     return {
-      hasCollisionMask: (tileValue?.hasCollisionMask as boolean) || false,
-      usePixelAccurateCollision:
-        (tileValue?.usePixelAccurateCollision as boolean) || false,
+      hasCollisionMask: getBoolean(tileValue.hasCollisionMask),
+      usePixelAccurateCollision: getBoolean(tileValue.usePixelAccurateCollision),
     };
   };
 
@@ -269,11 +276,8 @@ export function MightyMikeTileMenu({
     }
 
     // Update the tile value in the array
-    const tileValue = mightyMikeTileValuesArray[selectedTile] as Record<
-      string,
-      unknown
-    >;
-    if (!tileValue) return;
+    const tileValue = mightyMikeTileValuesArray[selectedTile];
+    if (!isRecord(tileValue)) return;
 
     tileValue[property] = value;
 
