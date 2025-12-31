@@ -468,9 +468,9 @@ export function IntroPrompt() {
       </div>
       <hr />
       {/* Render editor when we have images; allow some atomic pieces to be null. */}
-      {mapImages ? (
+      {mapImages && headerData && terrainData ? (
         <EditorView
-          headerData={headerData!}
+          headerData={headerData}
           setHeaderData={setHeaderDataNonNull}
           itemData={itemData}
           setItemData={setItemData}
@@ -480,7 +480,7 @@ export function IntroPrompt() {
           setFenceData={setFenceData}
           splineData={splineData}
           setSplineData={setSplineData}
-          terrainData={terrainData!}
+          terrainData={terrainData}
           setTerrainData={setTerrainDataNonNull}
           mapImages={mapImages}
           setMapImages={setMapImages}

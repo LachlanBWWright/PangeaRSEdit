@@ -125,8 +125,9 @@ export const WaterBody = memo(
                     const newX = Math.round(e.target.x());
                     const newY = Math.round(e.target.y());
 
-                    if (nubRafRefs.current[nubIdx])
-                      cancelAnimationFrame(nubRafRefs.current[nubIdx]!);
+                    const existingRafId = nubRafRefs.current[nubIdx];
+                    if (existingRafId !== undefined)
+                      cancelAnimationFrame(existingRafId);
                     nubRafRefs.current[nubIdx] = requestAnimationFrame(() => {
                       setLiquidData((liquidData) => {
                         const wb = liquidData.Liqd[1000].obj[waterBodyIdx];
@@ -139,8 +140,9 @@ export const WaterBody = memo(
                     });
                   }}
                   onDragEnd={(e: Konva.KonvaEventObject<DragEvent>) => {
-                    if (nubRafRefs.current[nubIdx])
-                      cancelAnimationFrame(nubRafRefs.current[nubIdx]!);
+                    const existingRafIdEnd = nubRafRefs.current[nubIdx];
+                    if (existingRafIdEnd !== undefined)
+                      cancelAnimationFrame(existingRafIdEnd);
                     setLiquidData((liquidData) => {
                       const wb = liquidData.Liqd[1000].obj[waterBodyIdx];
                       const nubToUpdate = wb?.nubs[nubIdx];

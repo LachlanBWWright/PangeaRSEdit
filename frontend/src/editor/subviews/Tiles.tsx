@@ -55,13 +55,15 @@ export function Tiles({
 
   const tileGrid = useMemo(() => {
     // If no Atrb data or Layr doesn't reference Atrb, return empty array
-    if (!hasAtrbData || !hasLayrData) {
+    const layrData = terrainData.Layr?.[1000]?.obj;
+    const atrbData = terrainData.Atrb?.[1000]?.obj;
+    if (!atrbData || !layrData) {
       return [];
     }
-    return terrainData.Layr![1000].obj
-      .map((atrbIdx: number) => terrainData.Atrb![1000].obj[atrbIdx])
+    return layrData
+      .map((atrbIdx: number) => atrbData[atrbIdx])
       .filter((tile): tile is TileAttribute => tile !== undefined);
-  }, [terrainData.Layr, terrainData.Atrb, hasAtrbData, hasLayrData]);
+  }, [terrainData.Layr, terrainData.Atrb]);
 
   // For Topology view, check if YCrd data exists
   if (tileViewMode === TileViews.Topology) {
