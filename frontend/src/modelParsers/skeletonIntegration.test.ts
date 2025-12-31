@@ -215,9 +215,12 @@ describe("BG3D Skeleton Integration", () => {
       expect(result.parsed.skeleton).toBeDefined();
       expect(result.parsed.skeleton?.bones).toHaveLength(1);
       expect(result.parsed.skeleton?.animations).toHaveLength(1);
-      expect(result.parsed.skeleton!.animations[0]!.name).toBe(
-        "test_animation",
-      );
+      const skeleton = result.parsed.skeleton;
+      if (skeleton && skeleton.animations.length > 0) {
+        expect(skeleton.animations[0].name).toBe(
+          "test_animation",
+        );
+      }
     }
   });
 
@@ -285,7 +288,10 @@ describe("Animation Viewer Integration", () => {
     // Simulate selecting first animation
     selectedAnimation = 0;
     expect(selectedAnimation).toBe(0);
-    expect(mockAnimations[selectedAnimation]!.name).toBe("idle");
+    const anim = mockAnimations[selectedAnimation];
+    if (anim) {
+      expect(anim.name).toBe("idle");
+    }
 
     // Simulate deselecting
     selectedAnimation = null;

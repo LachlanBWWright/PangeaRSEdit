@@ -143,8 +143,12 @@ describe("Multi-Roundtrip Semantic Accuracy", () => {
 
         // Export back to binary
         const bg3dBinary = bg3dParsedToBG3D(bg3dParsedBack);
+        const skeleton = bg3dParsedBack.skeleton;
+        if (!skeleton) {
+          throw new Error("No skeleton found in parsed data");
+        }
         const skeletonResource = bg3dSkeletonToSkeletonResource(
-          bg3dParsedBack.skeleton!,
+          skeleton,
         );
         const skeletonBinaryResult = skeletonResourceToBinary(
           skeletonResource,
@@ -172,10 +176,16 @@ describe("Multi-Roundtrip Semantic Accuracy", () => {
     console.log("SEMANTIC COMPARISON ACROSS ROUNDTRIPS");
     console.log("=".repeat(80));
 
-    const original = parsedStates[0]!;
+    const original = parsedStates[0];
+    if (!original) {
+      throw new Error("No original parsed state found");
+    }
 
     for (let i = 1; i < parsedStates.length; i++) {
-      const current = parsedStates[i]!;
+      const current = parsedStates[i];
+      if (!current) {
+        throw new Error(`No parsed state found at index ${i}`);
+      }
       console.log(`\n[Comparing Original vs Roundtrip ${i}]`);
 
       // Compare skeleton resource counts

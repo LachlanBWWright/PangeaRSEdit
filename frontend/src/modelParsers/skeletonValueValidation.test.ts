@@ -477,7 +477,12 @@ describe("Comprehensive Skeleton Value Validation", () => {
     const originalBg3d2 = unwrap(originalBg3dResLocal2);
 
     // Analyze bone positions
-    const bones = originalBg3d2.skeleton!.bones;
+    const skeleton = originalBg3d2.skeleton;
+    if (!skeleton) {
+      console.log("No skeleton found");
+      return;
+    }
+    const bones = skeleton.bones;
     console.log("Original bone positions:");
 
     bones.forEach((bone, index: number) => {

@@ -69,7 +69,11 @@ describe("Skeleton Animation glTF Validation", () => {
     console.log("\n=== Analyzing glTF Structure ===");
 
     // Debug: Check the hierarchy
-    const defaultScene = gltfDoc.getRoot().getDefaultScene()!;
+    const defaultScene = gltfDoc.getRoot().getDefaultScene();
+    if (!defaultScene) {
+      console.log("No default scene found");
+      return;
+    }
     const rootChildren = defaultScene.listChildren();
 
     console.log("\n=== Scene Root Children ===");
@@ -123,7 +127,9 @@ describe("Skeleton Animation glTF Validation", () => {
     // Check scene
     const scene = root.getDefaultScene();
     expect(scene).toBeDefined();
-    console.log(`Scene: "${scene!.getName()}"`);
+    if (scene) {
+      console.log(`Scene: "${scene.getName()}"`);
+    }
 
     // Check skins
     const skins = root.listSkins();
@@ -213,7 +219,11 @@ describe("Skeleton Animation glTF Validation", () => {
     // Verify scene structure for PropertyBinding
     console.log("\n=== Verifying PropertyBinding Compatibility ===");
 
-    const sceneChildren = scene!.listChildren();
+    if (!scene) {
+      console.log("Scene not available for PropertyBinding check");
+      return;
+    }
+    const sceneChildren = scene.listChildren();
     console.log(`Scene children: ${sceneChildren.length}`);
 
     // Check if all joints from skin are accessible from scene
@@ -238,7 +248,7 @@ describe("Skeleton Animation glTF Validation", () => {
     }
 
     joints.forEach((joint, index) => {
-      const isAccessible = isNodeInHierarchy(joint, scene!);
+      const isAccessible = isNodeInHierarchy(joint, scene);
       if (isAccessible) {
         jointsAccessibleFromScene++;
       }

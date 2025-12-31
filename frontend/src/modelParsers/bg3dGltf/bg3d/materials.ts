@@ -261,7 +261,7 @@ export async function gltfMaterialsToBg3d(
 
             const materialExtra = (
               materialExtras
-            )[index]!;
+            )[index];
             const textureExtra = (
               materialExtra?.textureExtras
             )?.[0];

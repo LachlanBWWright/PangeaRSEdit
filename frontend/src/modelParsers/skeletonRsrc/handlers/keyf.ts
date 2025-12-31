@@ -29,7 +29,7 @@ export function handleKeyF(
     resourceData.obj &&
     Array.isArray(resourceData.obj)
   ) {
-    const obj = resourceData.obj!;
+    const obj = resourceData.obj;
     console.log(
       `KeyF ${resourceName} empty/malformed from rsrcdump:`,
       obj.length,

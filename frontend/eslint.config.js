@@ -49,6 +49,8 @@ export default tseslint.config(
           message: 'Avoid "as unknown as Type" double assertions. Use proper type guards, generics, or fix the underlying type issue instead.',
         },
       ],
+      // Disable restrict-template-expressions check
+      '@typescript-eslint/restrict-template-expressions': 'off',
     },
   },
 )

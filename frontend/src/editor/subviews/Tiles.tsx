@@ -58,7 +58,7 @@ export function Tiles({
     if (!hasAtrbData || !hasLayrData) {
       return [];
     }
-    return terrainData.Layr![1000].obj
+    return terrainData.Layr[1000].obj
       .map((atrbIdx: number) => terrainData.Atrb[1000].obj[atrbIdx])
       .filter((tile): tile is TileAttribute => tile !== undefined);
   }, [terrainData.Layr, terrainData.Atrb, hasAtrbData, hasLayrData]);

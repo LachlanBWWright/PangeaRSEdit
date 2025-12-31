@@ -79,9 +79,11 @@ async function main() {
   );
 
   // Convert to skeleton resource and binary
-  const roundtrip1SkeletonResource = bg3dSkeletonToSkeletonResource(
-    roundtrip1Result.skeleton!,
-  );
+  const skel1 = roundtrip1Result.skeleton;
+  if (!skel1) {
+    throw new Error("No skeleton in roundtrip1Result");
+  }
+  const roundtrip1SkeletonResource = bg3dSkeletonToSkeletonResource(skel1);
   const roundtrip1Bg3dBinary = bg3dParsedToBG3D(roundtrip1Result);
   const roundtrip1SkeletonBinaryResult = skeletonResourceToBinary(
     roundtrip1SkeletonResource,
@@ -133,9 +135,11 @@ async function main() {
   );
 
   // Convert to binary
-  const roundtrip2SkeletonResource = bg3dSkeletonToSkeletonResource(
-    roundtrip2Result.skeleton!,
-  );
+  const skel2 = roundtrip2Result.skeleton;
+  if (!skel2) {
+    throw new Error("No skeleton in roundtrip2Result");
+  }
+  const roundtrip2SkeletonResource = bg3dSkeletonToSkeletonResource(skel2);
   const roundtrip2SkeletonBinaryResult = skeletonResourceToBinary(
     roundtrip2SkeletonResource,
   );

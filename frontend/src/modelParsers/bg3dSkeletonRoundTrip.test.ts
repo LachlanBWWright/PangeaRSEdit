@@ -113,8 +113,12 @@ describe("BG3D Skeleton Round-trip with FULL ACCURACY", () => {
         "Converting from glTF structures (original binary not available)",
       );
       roundtripBg3dBinary = bg3dParsedToBG3D(roundtripBg3d);
+      const skeleton = roundtripBg3d.skeleton;
+      if (!skeleton) {
+        throw new Error("No skeleton found in roundtrip data");
+      }
       const roundtripSkeletonResource = bg3dSkeletonToSkeletonResource(
-        roundtripBg3d.skeleton!,
+        skeleton,
       );
       const roundtripSkeletonResult = await skeletonResourceToBinary(
         roundtripSkeletonResource,
@@ -260,19 +264,22 @@ describe("BG3D Skeleton Round-trip with FULL ACCURACY", () => {
       [animName: string]: { [boneName: string]: number[] };
     } = {};
 
-    bg3dParsed.skeleton!.animations.forEach((anim) => {
-      // Ensure the structure exists for this animation
-      const animEntry = (originalTimingData[anim.name] =
-        originalTimingData[anim.name] || {});
+    const skeleton = bg3dParsed.skeleton;
+    if (skeleton) {
+      skeleton.animations.forEach((anim) => {
+        // Ensure the structure exists for this animation
+        const animEntry = (originalTimingData[anim.name] =
+          originalTimingData[anim.name] || {});
 
-      Object.entries(anim.keyframes).forEach(([boneIndexStr, keyframes]) => {
-        const boneIndex = parseInt(boneIndexStr);
-        const bone = bg3dParsed.skeleton!.bones[boneIndex];
-        if (bone) {
-          animEntry[bone.name] = keyframes.map((kf) => kf.tick / 30.0); // seconds
-        }
+        Object.entries(anim.keyframes).forEach(([boneIndexStr, keyframes]) => {
+          const boneIndex = parseInt(boneIndexStr);
+          const bone = skeleton.bones[boneIndex];
+          if (bone) {
+            animEntry[bone.name] = keyframes.map((kf) => kf.tick / 30.0); // seconds
+          }
+        });
       });
-    });
+    }
 
     // Collect glTF timing data
     const gltfTimingData: {
@@ -370,8 +377,13 @@ describe("BG3D Skeleton Round-trip with FULL ACCURACY", () => {
     const roundtripBg3d = await gltfToBG3D(gltfDocument);
 
     // Compare bone structures with 100% accuracy
-    const originalBones = originalBg3d.skeleton!.bones;
-    const roundtripBones = roundtripBg3d.skeleton!.bones;
+    const originalSkeleton = originalBg3d.skeleton;
+    const roundtripSkeleton = roundtripBg3d.skeleton;
+    if (!originalSkeleton || !roundtripSkeleton) {
+      throw new Error("Missing skeleton data");
+    }
+    const originalBones = originalSkeleton.bones;
+    const roundtripBones = roundtripSkeleton.bones;
 
     expect(roundtripBones.length).toBe(originalBones.length);
 
@@ -400,7 +412,9 @@ describe("BG3D Skeleton Round-trip with FULL ACCURACY", () => {
 
     expect(originalRoot).toBeDefined();
     expect(roundtripRoot).toBeDefined();
-    expect(roundtripRoot!.name).toBe(originalRoot!.name);
+    if (roundtripRoot && originalRoot) {
+      expect(roundtripRoot.name).toBe(originalRoot.name);
+    }
 
     console.log("=== BONE HIERARCHY AND COORDINATE ACCURACY TEST PASSED ===");
   });

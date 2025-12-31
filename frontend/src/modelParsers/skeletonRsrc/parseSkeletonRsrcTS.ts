@@ -162,7 +162,7 @@ function transformToSkeletonResource(
       else if (typeName === "Bone") result.Bone[resourceId] = baseEntry;
       else if (typeName === "BonP") result.BonP[resourceId] = baseEntry;
       else if (typeName === "BonN") result.BonN[resourceId] = baseEntry;
-      else if (typeName === "RelP") result.RelP![resourceId] = baseEntry;
+      else if (typeName === "RelP") result.RelP[resourceId] = baseEntry;
       else if (typeName === "AnHd") result.AnHd[resourceId] = baseEntry;
       else if (typeName === "Evnt") result.Evnt[resourceId] = baseEntry;
       else if (typeName === "NumK") result.NumK[resourceId] = baseEntry;
