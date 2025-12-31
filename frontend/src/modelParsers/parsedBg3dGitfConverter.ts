@@ -1104,13 +1104,12 @@ export async function gltfToBG3D(doc: Document): Promise<BG3DParseResult> {
   console.log("=== Starting glTF to BG3D Conversion ===");
 
   const rootExtras = doc.getRoot().getExtras() || {};
-  const bg3dFields = rootExtras.bg3dFields as BG3DFields | undefined;
+  const bg3dFieldsRaw = isRecord(rootExtras) ? rootExtras.bg3dFields : undefined;
+  const bg3dFields = isRecord(bg3dFieldsRaw) ? bg3dFieldsRaw : undefined;
 
   // Extract BG3D-specific metadata from extras (only non-glTF-representable data)
-  const materialExtras = (bg3dFields?.materialExtras || []) as {
-    flags?: number;
-    textureExtras?: { dstPixelFormat?: number }[];
-  }[];
+  const materialExtrasRaw = bg3dFields?.materialExtras;
+  const materialExtras = isArray(materialExtrasRaw) ? materialExtrasRaw : [];
 
   // Note: Bone data (pointIndices, normalIndices) will be reconstructed from mesh skinning data
 
@@ -1164,8 +1163,8 @@ export async function gltfToBG3D(doc: Document): Promise<BG3DParseResult> {
           if (isJPEG || texExtras?.isJpeg) {
             // JPEG texture (Nanosaur 2) - preserve as-is
             console.log(`Preserving JPEG texture for material ${index}`);
-            const width = (texExtras?.width as number) || 128;
-            const height = (texExtras?.height as number) || 128;
+            const width = getNumber(texExtras?.width, 128);
+            const height = getNumber(texExtras?.height, 128);
             textures.push({
               pixels: image,
               width,
@@ -1185,7 +1184,7 @@ export async function gltfToBG3D(doc: Document): Promise<BG3DParseResult> {
               if (buf instanceof ArrayBuffer) return buf;
               // Convert SharedArrayBuffer to ArrayBuffer
               const u8 = new Uint8Array(buf);
-              return u8.buffer as unknown as ArrayBuffer;
+              return u8.buffer.slice(0) as ArrayBuffer;
             })();
             const rgbaRes = await pngToRgba8(imageBuffer);
             const rgb = new Uint8Array((rgbaRes.data.length / 4) * 3);
