@@ -10,6 +10,24 @@ import { join } from "path";
 import { NodeIO } from "@gltf-transform/core";
 import { validateBytes } from "gltf-validator";
 
+// Type guard helper functions
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function isArray(value: unknown): value is unknown[] {
+  return Array.isArray(value);
+}
+
+function getString(value: unknown, defaultValue = ''): string {
+  return typeof value === 'string' ? value : defaultValue;
+}
+
+// Helper to safely get skeleton from result
+function getSkeleton(result: { skeleton?: { bones: unknown[]; animations: unknown[]; alisData?: unknown; relPoints?: unknown } | null }) {
+  return result.skeleton;
+}
+
 describe("BG3D + Skeleton Roundtrip Tests with FULL ACCURACY", () => {
   // Test data paths - relative to this test file
   const ottoBg3dPath = join(
@@ -61,20 +79,15 @@ describe("BG3D + Skeleton Roundtrip Tests with FULL ACCURACY", () => {
     // Convert to glTF WITHOUT storing original binary (no extras!)
     const gltf1 = await bg3dParsedToGLTF(originalBg3dParsed);
 
-    // Debug: Check what extras were stored
-    const gltf1Extras = gltf1.getRoot().getExtras() as
-      | Record<string, unknown>
-      | undefined;
-    const bg3dFields =
-      (gltf1Extras && (gltf1Extras["bg3dFields"] as Record<string, unknown>)) ||
-      undefined;
-    const skeletonExtras =
-      (bg3dFields &&
-        (bg3dFields["skeletonExtras"] as Record<string, unknown>)) ||
-      undefined;
-    const keyframeData =
-      (skeletonExtras && (skeletonExtras["keyframeData"] as unknown[])) ||
-      undefined;
+    // Debug: Check what extras were stored using type guards
+    const gltf1ExtrasRaw = gltf1.getRoot().getExtras();
+    const gltf1Extras = isRecord(gltf1ExtrasRaw) ? gltf1ExtrasRaw : undefined;
+    const bg3dFieldsRaw = gltf1Extras?.["bg3dFields"];
+    const bg3dFields = isRecord(bg3dFieldsRaw) ? bg3dFieldsRaw : undefined;
+    const skeletonExtrasRaw = bg3dFields?.["skeletonExtras"];
+    const skeletonExtras = isRecord(skeletonExtrasRaw) ? skeletonExtrasRaw : undefined;
+    const keyframeDataRaw = skeletonExtras?.["keyframeData"];
+    const keyframeData = isArray(keyframeDataRaw) ? keyframeDataRaw : undefined;
 
     const hasSkeletonExtras = !!skeletonExtras;
     const hasKeyframeData = !!keyframeData;
@@ -100,8 +113,13 @@ describe("BG3D + Skeleton Roundtrip Tests with FULL ACCURACY", () => {
     // Convert back to BG3D (first roundtrip output)
     const roundtrip1Result = await gltfToBG3D(gltf1);
     const roundtrip1Bg3dBinary = bg3dParsedToBG3D(roundtrip1Result);
+    const roundtrip1Skeleton = getSkeleton(roundtrip1Result);
+    if (!roundtrip1Skeleton) {
+      console.error("Roundtrip 1 result has no skeleton");
+      return;
+    }
     const roundtrip1SkeletonResource = bg3dSkeletonToSkeletonResource(
-      roundtrip1Result.skeleton!,
+      roundtrip1Skeleton,
     );
 
     // Debug: Check resource counts in RT1 skeleton
@@ -133,11 +151,11 @@ describe("BG3D + Skeleton Roundtrip Tests with FULL ACCURACY", () => {
     // Debug: Show BG3DSkeleton data
     console.log(
       "RT1 skeleton.alisData keys:",
-      Object.keys(roundtrip1Result.skeleton!.alisData || {}).length,
+      Object.keys(roundtrip1Skeleton.alisData || {}).length,
     );
     console.log(
       "RT1 skeleton.relPoints keys:",
-      Object.keys(roundtrip1Result.skeleton!.relPoints || {}).length,
+      Object.keys(roundtrip1Skeleton.relPoints || {}).length,
     );
 
     const roundtrip1SkeletonBinaryResult = skeletonResourceToBinary(
@@ -183,8 +201,13 @@ describe("BG3D + Skeleton Roundtrip Tests with FULL ACCURACY", () => {
     // Convert back to BG3D (second roundtrip output)
     const roundtrip2Result = await gltfToBG3D(gltf2);
     const roundtrip2Bg3dBinary = bg3dParsedToBG3D(roundtrip2Result);
+    const rt2SkeletonTemp = getSkeleton(roundtrip2Result);
+    if (!rt2SkeletonTemp) {
+      console.error("Roundtrip 2 result has no skeleton");
+      return;
+    }
     const roundtrip2SkeletonResource = bg3dSkeletonToSkeletonResource(
-      roundtrip2Result.skeleton!,
+      rt2SkeletonTemp,
     );
 
     // Debug: Check resource counts in RT2 skeleton
@@ -258,10 +281,15 @@ describe("BG3D + Skeleton Roundtrip Tests with FULL ACCURACY", () => {
     console.log("\n=== COMPARING ROUNDTRIP 1 vs ROUNDTRIP 2 ===");
 
     // Debug: Compare skeleton structures
-    const rt1BoneCount = roundtrip1Result.skeleton!.bones.length;
-    const rt2BoneCount = roundtrip2Result.skeleton!.bones.length;
-    const rt1AnimCount = roundtrip1Result.skeleton!.animations.length;
-    const rt2AnimCount = roundtrip2Result.skeleton!.animations.length;
+    const rt2Skeleton = getSkeleton(roundtrip2Result);
+    if (!rt2Skeleton) {
+      console.error("Roundtrip 2 result has no skeleton");
+      return;
+    }
+    const rt1BoneCount = roundtrip1Skeleton.bones.length;
+    const rt2BoneCount = rt2Skeleton.bones.length;
+    const rt1AnimCount = roundtrip1Skeleton.animations.length;
+    const rt2AnimCount = rt2Skeleton.animations.length;
     console.log(
       `RT1 Skeleton: ${rt1BoneCount} bones, ${rt1AnimCount} animations`,
     );
@@ -272,8 +300,8 @@ describe("BG3D + Skeleton Roundtrip Tests with FULL ACCURACY", () => {
     // Debug: Compare bone rest positions
     console.log(`\n=== BONE REST POSITION COMPARISON ===`);
     for (let i = 0; i < Math.min(3, rt1BoneCount); i++) {
-      const rt1Bone = roundtrip1Result.skeleton!.bones[i];
-      const rt2Bone = roundtrip2Result.skeleton!.bones[i];
+      const rt1Bone = roundtrip1Skeleton.bones[i];
+      const rt2Bone = rt2Skeleton.bones[i];
       if (!rt1Bone || !rt2Bone) continue;
       console.log(`Bone ${i} (${rt1Bone.name}):`);
       console.log(
@@ -302,8 +330,8 @@ describe("BG3D + Skeleton Roundtrip Tests with FULL ACCURACY", () => {
 
     // Check animation keyframe counts
     if (rt1AnimCount > 0 && rt2AnimCount > 0) {
-      const rt1Anim = roundtrip1Result.skeleton!.animations[0];
-      const rt2Anim = roundtrip2Result.skeleton!.animations[0];
+      const rt1Anim = roundtrip1Skeleton.animations[0];
+      const rt2Anim = rt2Skeleton.animations[0];
       if (!rt1Anim || !rt2Anim) return;
       const rt1BoneWithKfCount = Object.keys(rt1Anim.keyframes).length;
       const rt2BoneWithKfCount = Object.keys(rt2Anim.keyframes).length;
@@ -334,12 +362,12 @@ describe("BG3D + Skeleton Roundtrip Tests with FULL ACCURACY", () => {
 
       // Compare first 3 bones in detail
       for (let bi = 0; bi < Math.min(3, rt1BoneKeys.length); bi++) {
-        const boneKey = rt1BoneKeys[bi] as string;
+        const boneKey = getString(rt1BoneKeys[bi]);
         const rt1Kfs = rt1Anim.keyframes[parseInt(boneKey)];
         const rt2Kfs = rt2Anim.keyframes[parseInt(boneKey)];
         if (!rt1Kfs || !rt2Kfs) continue;
         const boneName =
-          roundtrip1Result.skeleton!.bones[parseInt(boneKey)]?.name ||
+          roundtrip1Skeleton.bones[parseInt(boneKey)]?.name ||
           `bone_${boneKey}`;
 
         console.log(`\nBone ${boneKey} (${boneName}):`);
@@ -459,16 +487,18 @@ describe("BG3D + Skeleton Roundtrip Tests with FULL ACCURACY", () => {
       console.log("\n=== FIRST 10 SKELETON BYTE MISMATCHES ===");
       let mismatchCount = 0;
       for (let i = 0; i < minSkeletonLength && mismatchCount < 10; i++) {
+        const rt1Byte = rt1SkeletonArray[i];
+        const rt2Byte = rt2SkeletonArray[i];
         if (
-          rt1SkeletonArray[i] !== undefined &&
-          rt2SkeletonArray[i] !== undefined &&
-          rt1SkeletonArray[i] !== rt2SkeletonArray[i]
+          rt1Byte !== undefined &&
+          rt2Byte !== undefined &&
+          rt1Byte !== rt2Byte
         ) {
           console.log(
-            `  Byte ${i}: RT1=0x${rt1SkeletonArray[i]!.toString(16).padStart(
+            `  Byte ${i}: RT1=0x${rt1Byte.toString(16).padStart(
               2,
               "0",
-            )} RT2=0x${rt2SkeletonArray[i]!.toString(16).padStart(2, "0")}`,
+            )} RT2=0x${rt2Byte.toString(16).padStart(2, "0")}`,
           );
           mismatchCount++;
         }
@@ -525,42 +555,52 @@ describe("BG3D + Skeleton Roundtrip Tests with FULL ACCURACY", () => {
     });
     const roundtripResult = await gltfToBG3D(gltfResult);
 
+    // Get skeletons with null checks
+    const originalSkeleton = getSkeleton(originalBg3dParsed);
+    const roundtripSkeleton = getSkeleton(roundtripResult);
+    if (!originalSkeleton || !roundtripSkeleton) {
+      console.error("Missing skeleton in original or roundtrip result");
+      return;
+    }
+
     // Verify bone count matches
-    expect(roundtripResult.skeleton!.bones.length).toBe(
-      originalBg3dParsed.skeleton!.bones.length,
+    expect(roundtripSkeleton.bones.length).toBe(
+      originalSkeleton.bones.length,
     );
 
     // Verify bone hierarchy and coordinates with 100% accuracy
-    for (let i = 0; i < originalBg3dParsed.skeleton!.bones.length; i++) {
-      const originalBone = originalBg3dParsed.skeleton!.bones[i];
-      const roundtripBone = roundtripResult.skeleton!.bones[i];
+    for (let i = 0; i < originalSkeleton.bones.length; i++) {
+      const originalBone = originalSkeleton.bones[i];
+      const roundtripBone = roundtripSkeleton.bones[i];
       if (!originalBone || !roundtripBone) continue;
 
       // Exact name match
-      expect(roundtripBone!.name).toBe(originalBone!.name);
+      expect(roundtripBone.name).toBe(originalBone.name);
 
       // Exact parent relationship
-      expect(roundtripBone!.parentBone).toBe(originalBone!.parentBone);
+      expect(roundtripBone.parentBone).toBe(originalBone.parentBone);
 
       // Coordinate precision (should be exact when using preserved binary)
-      expect(roundtripBone!.coordX).toBeCloseTo(originalBone!.coordX, 5);
-      expect(roundtripBone!.coordY).toBeCloseTo(originalBone!.coordY, 5);
-      expect(roundtripBone!.coordZ).toBeCloseTo(originalBone!.coordZ, 5);
+      expect(roundtripBone.coordX).toBeCloseTo(originalBone.coordX, 5);
+      expect(roundtripBone.coordY).toBeCloseTo(originalBone.coordY, 5);
+      expect(roundtripBone.coordZ).toBeCloseTo(originalBone.coordZ, 5);
 
-      console.log(`Bone "${originalBone!.name}": hierarchy and coordinates ✅`);
+      console.log(`Bone "${originalBone.name}": hierarchy and coordinates ✅`);
     }
 
     // Verify root bone exists and has correct parent
-    const originalRoot = originalBg3dParsed.skeleton!.bones.find(
+    const originalRoot = originalSkeleton.bones.find(
       (b) => b.parentBone === -1,
     );
-    const roundtripRoot = roundtripResult.skeleton!.bones.find(
+    const roundtripRoot = roundtripSkeleton.bones.find(
       (b) => b.parentBone === -1,
     );
 
     expect(originalRoot).toBeDefined();
     expect(roundtripRoot).toBeDefined();
-    expect(roundtripRoot!.name).toBe(originalRoot!.name);
+    if (roundtripRoot && originalRoot) {
+      expect(roundtripRoot.name).toBe(originalRoot.name);
+    }
 
     console.log(
       "✅ Bone hierarchy and coordinates preserved with 100% accuracy",
@@ -593,20 +633,33 @@ describe("BG3D + Skeleton Roundtrip Tests with FULL ACCURACY", () => {
     const gltfResult = await bg3dParsedToGLTF(originalBg3dParsed);
     const animations = gltfResult.getRoot().listAnimations();
 
+    // Get skeleton with null check
+    const originalParsedSkeleton = getSkeleton(originalBg3dParsed);
+    if (!originalParsedSkeleton) {
+      console.error("No skeleton in parsed BG3D");
+      return;
+    }
+
     // Collect original timing data from parsed BG3D
     const originalTimingData: Record<string, Record<string, number[]>> = {};
 
-    originalBg3dParsed.skeleton!.animations.forEach((anim) => {
+    originalParsedSkeleton.animations.forEach((anim) => {
       originalTimingData[anim.name] = {};
 
       Object.entries(anim.keyframes).forEach(([boneIndexStr, keyframes]) => {
         const boneIndex = parseInt(boneIndexStr);
-        const bone = originalBg3dParsed.skeleton!.bones[boneIndex];
-        if (bone) {
-          const kfArray = keyframes as unknown as { tick: number }[];
+        const bone = originalParsedSkeleton.bones[boneIndex];
+        if (bone && isArray(keyframes)) {
           originalTimingData[anim.name] = originalTimingData[anim.name] || {};
-          const animTiming = originalTimingData[anim.name] as Record<string, number[]>;
-          animTiming[bone.name] = kfArray.map((kf) => kf.tick / 30.0); // Convert to seconds
+          const animTiming = originalTimingData[anim.name];
+          if (animTiming) {
+            animTiming[bone.name] = keyframes.map((kf) => {
+              if (isRecord(kf) && typeof kf.tick === 'number') {
+                return kf.tick / 30.0;
+              }
+              return 0;
+            });
+          }
         }
       });
     });
@@ -629,8 +682,17 @@ describe("BG3D + Skeleton Roundtrip Tests with FULL ACCURACY", () => {
             const times = input.getArray();
             if (times) {
               gltfTimingData[animName] = gltfTimingData[animName] || {};
-              const animBones = gltfTimingData[animName] as Record<string, number[]>;
-              animBones[boneName] = Array.from(times as unknown as number[]);
+              const animBones = gltfTimingData[animName];
+              if (animBones) {
+                // Convert TypedArray to number array safely
+                const timesArr: number[] = [];
+                for (const t of times) {
+                  if (typeof t === 'number') {
+                    timesArr.push(t);
+                  }
+                }
+                animBones[boneName] = timesArr;
+              }
             }
           }
         }
