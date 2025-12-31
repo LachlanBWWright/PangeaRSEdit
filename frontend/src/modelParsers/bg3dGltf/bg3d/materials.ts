@@ -19,6 +19,11 @@ import {
 import { Material, Document } from "@gltf-transform/core";
 import { decodeJpegNode } from "../../../utils/jpegDecompress";
 
+// Type guard helper
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
 /**
  * Convert BG3D materials to glTF materials
  */
@@ -214,7 +219,10 @@ export async function gltfMaterialsToBg3d(
       }
 
       // Get BG3D-specific flags from extras
-      const flags = (materialExtras[index]?.flags as number) || 0;
+      const materialExtra = materialExtras[index];
+      const flags = isRecord(materialExtra) && typeof materialExtra.flags === 'number' 
+        ? materialExtra.flags 
+        : 0;
 
       // Restore textures from baseColorTexture
       const textures: BG3DTexture[] = [];
@@ -259,21 +267,20 @@ export async function gltfMaterialsToBg3d(
               height: rgbaRes.height,
             };
 
-            const materialExtra = (
-              materialExtras as Record<string, unknown>[]
-            )[index]!;
-            const textureExtra = (
-              materialExtra?.textureExtras as unknown[] | undefined
-            )?.[0];
+            // Extract texture extras safely
+            const textureExtras = isRecord(materialExtra) && Array.isArray(materialExtra.textureExtras) 
+              ? materialExtra.textureExtras 
+              : [];
+            const textureExtra = textureExtras[0];
+            const dstPixelFormat = isRecord(textureExtra) && typeof textureExtra.dstPixelFormat === 'number'
+              ? textureExtra.dstPixelFormat
+              : PixelFormatDst.GL_UNSIGNED_SHORT_5_5_5_1;
             textures.push({
               pixels: pngRes.data,
               width: pngRes.width,
               height: pngRes.height,
               srcPixelFormat: PixelFormatSrc.GL_RGB, // BG3D default format
-              dstPixelFormat:
-                ((textureExtra as Record<string, unknown> | undefined)
-                  ?.dstPixelFormat as number | undefined) ||
-                PixelFormatDst.GL_UNSIGNED_SHORT_5_5_5_1,
+              dstPixelFormat,
               bufferSize: pngRes.data.byteLength, // Use actual converted data size
             });
           } else {
