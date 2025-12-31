@@ -61,17 +61,6 @@ interface BG3DKeyframeLike {
   scaleZ: number;
 }
 
-interface KeyframeData {
-  name?: string;
-  keyframes?: Record<number, BG3DKeyframeLike[]>;
-}
-
-interface AnimationEventData {
-  name?: string;
-  numAnimEvents?: number;
-  events?: { time: number; type: number; value: number }[];
-}
-
 interface BoneData {
   parentBone?: number;
   name?: string;
@@ -90,28 +79,6 @@ interface BoneData {
   reserved5?: number;
   reserved6?: number;
   reserved7?: number;
-}
-
-interface HeaderData {
-  version?: number;
-  numAnims?: number;
-  numJoints?: number;
-  num3DMFLimbs?: number;
-}
-
-interface SkeletonExtras {
-  keyframeData?: KeyframeData[];
-  animationEvents?: AnimationEventData[];
-  boneData?: BoneData[];
-  headerData?: HeaderData;
-  relPoints?: unknown[];
-  alisData?: unknown;
-  metadata?: unknown;
-}
-
-interface BG3DFields {
-  materialExtras?: unknown[];
-  skeletonExtras?: SkeletonExtras;
 }
 
 /**
@@ -138,6 +105,18 @@ function getRecordProp(obj: unknown, key: string): unknown {
     return obj[key];
   }
   return undefined;
+}
+
+// Type guard for BG3DAnimation
+function isBG3DAnimation(value: unknown): value is BG3DAnimation {
+  if (!isRecord(value)) return false;
+  return typeof value.name === 'string' && typeof value.numAnimEvents === 'number';
+}
+
+// Type guard for BG3DGroup 
+function isBG3DGroup(value: unknown): value is BG3DGroup {
+  if (!isRecord(value)) return false;
+  return typeof value.materialNum === 'number';
 }
 
 /**
@@ -1184,7 +1163,12 @@ export async function gltfToBG3D(doc: Document): Promise<BG3DParseResult> {
               if (buf instanceof ArrayBuffer) return buf;
               // Convert SharedArrayBuffer to ArrayBuffer
               const u8 = new Uint8Array(buf);
-              return u8.buffer.slice(0) as ArrayBuffer;
+              const newBuffer = u8.buffer.slice(0);
+              // slice(0) returns ArrayBuffer, but TypeScript can't infer it from SharedArrayBuffer
+              if (!(newBuffer instanceof ArrayBuffer)) {
+                throw new Error("Failed to convert to ArrayBuffer");
+              }
+              return newBuffer;
             })();
             const rgbaRes = await pngToRgba8(imageBuffer);
             const rgb = new Uint8Array((rgbaRes.data.length / 4) * 3);
@@ -1302,7 +1286,8 @@ export async function gltfToBG3D(doc: Document): Promise<BG3DParseResult> {
     // Get animation IDs to correlate with Evnt resources
     const anHdEntries = Object.entries(originalSkeletonResource.AnHd || {});
     anHdEntries.forEach(([animId, anHdData]: [string, unknown], animIndex) => {
-      const anHdObj = anHdData as Record<string, unknown>;
+      if (!isRecord(anHdData)) return;
+      const anHdObj = anHdData;
       if (anHdObj && anHdObj.obj) {
         const keyframes: Record<string, unknown[]> = {};
         // Populate keyframes from KeyF
@@ -1383,7 +1368,7 @@ export async function gltfToBG3D(doc: Document): Promise<BG3DParseResult> {
       numJoints: bones.length,
       num3DMFLimbs: 0,
       bones,
-      animations: animations as BG3DAnimation[],
+      animations: animations.filter(isBG3DAnimation),
       relPoints: Object.keys(relPoints).length > 0 ? relPoints : undefined,
       alisData: Object.keys(alisData).length > 0 ? alisData : undefined,
       metadata: originalSkeletonResource._metadata,
@@ -1435,14 +1420,14 @@ export async function gltfToBG3D(doc: Document): Promise<BG3DParseResult> {
           let parentBone = -1;
           const jointParents = joint
             .listParents()
-            .filter((p) => p instanceof Node);
+            .filter((p): p is Node => p instanceof Node);
           if (jointParents.length > 0) {
             const jointParent = jointParents[0];
             // Check if parent is the skeleton root (Armature), if so, parentBone = -1
             const skeletonRoot = skin.getSkeleton();
-            if (jointParent !== skeletonRoot) {
+            if (jointParent && jointParent !== skeletonRoot) {
               // Find the index of the parent in the joints list
-              const parentIndex = joints.indexOf(jointParent as Node);
+              const parentIndex = joints.indexOf(jointParent);
               if (parentIndex !== -1) {
                 parentBone = parentIndex;
               }
@@ -1565,7 +1550,12 @@ export async function gltfToBG3D(doc: Document): Promise<BG3DParseResult> {
             mesh.listPrimitives().forEach((prim) => {
               const posAcc = prim.getAttribute("POSITION");
               if (posAcc) {
-                const posArray = posAcc.getArray() as Float32Array;
+                const posArrayRaw = posAcc.getArray();
+                if (!(posArrayRaw instanceof Float32Array)) {
+                  console.warn("Position array is not Float32Array");
+                  return;
+                }
+                const posArray = posArrayRaw;
                 const numVertices = posAcc.getCount();
 
                 for (let vi = 0; vi < numVertices; vi++) {
@@ -1639,8 +1629,14 @@ export async function gltfToBG3D(doc: Document): Promise<BG3DParseResult> {
               const posAcc = prim.getAttribute("POSITION");
 
               if (jointsAcc && weightsAcc && posAcc) {
-                const jointsArray = jointsAcc.getArray() as Uint16Array;
-                const weightsArray = weightsAcc.getArray() as Float32Array;
+                const jointsArrayRaw = jointsAcc.getArray();
+                const weightsArrayRaw = weightsAcc.getArray();
+                if (!(jointsArrayRaw instanceof Uint16Array) || !(weightsArrayRaw instanceof Float32Array)) {
+                  console.warn("Joints or weights array type mismatch");
+                  return;
+                }
+                const jointsArray = jointsArrayRaw;
+                const weightsArray = weightsArrayRaw;
                 const numVertices = posAcc.getCount();
 
                 for (let vi = 0; vi < numVertices; vi++) {
@@ -1714,15 +1710,28 @@ export async function gltfToBG3D(doc: Document): Promise<BG3DParseResult> {
             const keyframeData = skeletonExtras.keyframeData;
             if (!keyframeData) return;
             const kfData =
-              keyframeData.find((e: KeyframeData) => e.name === anim.name) ??
+              keyframeData.find((e) => isRecord(e) && e.name === anim.name) ??
               keyframeData[index];
-            if (kfData?.keyframes) {
+            if (isRecord(kfData) && kfData.keyframes) {
               console.log(
                 "[DEBUG] Restored keyframes for animation",
                 anim.name,
               );
-              // Cast to the proper type since BG3DKeyframeLike matches BG3DKeyframe
-              anim.keyframes = kfData.keyframes as Record<number, BG3DKeyframeLike[]>;
+              // Use type guard to verify the keyframes structure
+              const kfKeyframes = kfData.keyframes;
+              if (isRecord(kfKeyframes)) {
+                // Convert each entry to the proper type
+                const typedKeyframes: Record<number, BG3DKeyframeLike[]> = {};
+                for (const [key, value] of Object.entries(kfKeyframes)) {
+                  const boneIdx = parseInt(key);
+                  if (!isNaN(boneIdx) && Array.isArray(value)) {
+                    typedKeyframes[boneIdx] = value.filter((v): v is BG3DKeyframeLike => 
+                      isRecord(v) && typeof v.tick === 'number'
+                    );
+                  }
+                }
+                anim.keyframes = typedKeyframes;
+              }
             } else {
               console.log(
                 "[DEBUG] No keyframe data found for animation",
@@ -1741,11 +1750,15 @@ export async function gltfToBG3D(doc: Document): Promise<BG3DParseResult> {
           animations.forEach((anim, index) => {
             const eventData =
               animEvents.find(
-                (e: AnimationEventData) => e.name === anim.name,
+                (e) => isRecord(e) && e.name === anim.name,
               ) ?? animEvents[index];
-            if (eventData) {
-              anim.numAnimEvents = eventData.numAnimEvents || 0;
-              anim.events = eventData.events || [];
+            if (isRecord(eventData)) {
+              anim.numAnimEvents = typeof eventData.numAnimEvents === 'number' ? eventData.numAnimEvents : 0;
+              anim.events = Array.isArray(eventData.events) 
+                ? eventData.events.filter((ev): ev is BG3DAnimationEvent => 
+                    isRecord(ev) && typeof ev.time === 'number' && typeof ev.type === 'number' && typeof ev.value === 'number'
+                  )
+                : [];
             }
           });
         }
@@ -1811,6 +1824,41 @@ export async function gltfToBG3D(doc: Document): Promise<BG3DParseResult> {
         // Restore header data from extras if available
         const headerData = skeletonExtras?.headerData;
 
+        // Safely extract relPoints, alisData, metadata with type guards
+        const relPointsRaw = skeletonExtras?.relPoints;
+        let relPoints: Record<string, [number, number, number][]> | undefined = undefined;
+        if (isRecord(relPointsRaw)) {
+          // Validate each entry is an array of [number, number, number]
+          const validated: Record<string, [number, number, number][]> = {};
+          let isValid = true;
+          for (const [key, value] of Object.entries(relPointsRaw)) {
+            if (Array.isArray(value)) {
+              const validPoints: [number, number, number][] = [];
+              for (const point of value) {
+                if (Array.isArray(point) && point.length === 3 &&
+                    typeof point[0] === 'number' && 
+                    typeof point[1] === 'number' && 
+                    typeof point[2] === 'number') {
+                  validPoints.push([point[0], point[1], point[2]]);
+                }
+              }
+              validated[key] = validPoints;
+            } else {
+              isValid = false;
+              break;
+            }
+          }
+          if (isValid) {
+            relPoints = validated;
+          }
+        }
+        
+        const alisDataRaw = skeletonExtras?.alisData;
+        const alisData = isRecord(alisDataRaw) ? alisDataRaw : undefined;
+        
+        const metadataRaw = skeletonExtras?.metadata;
+        const metadata = isRecord(metadataRaw) ? metadataRaw : undefined;
+
         skeleton = {
           version: headerData?.version ?? 272,
           numAnims: headerData?.numAnims ?? animations.length,
@@ -1818,16 +1866,10 @@ export async function gltfToBG3D(doc: Document): Promise<BG3DParseResult> {
           num3DMFLimbs: headerData?.num3DMFLimbs ?? 0,
           bones,
           animations,
-          // Restore non-glTF data from extras
-          relPoints: (skeletonExtras?.relPoints || undefined) as
-            | Record<string, [number, number, number][]>
-            | undefined,
-          alisData: (skeletonExtras?.alisData || undefined) as
-            | Record<string, unknown>
-            | undefined,
-          metadata: (skeletonExtras?.metadata || undefined) as
-            | Record<string, unknown>
-            | undefined,
+          // Restore non-glTF data from extras (already validated by type guards)
+          relPoints,
+          alisData,
+          metadata,
         };
 
         console.log(
@@ -1943,9 +1985,22 @@ export async function gltfToBG3D(doc: Document): Promise<BG3DParseResult> {
       triangles,
       layerMaterialNum: [materialIndex, 0, 0, 0], // BG3D expects array format
       flags: typeof extras.flags === "number" ? extras.flags : 0,
-      boundingBox: extras.boundingBox as
-        | { min: [number, number, number]; max: [number, number, number] }
-        | undefined,
+      boundingBox: isRecord(extras.boundingBox) && 
+        Array.isArray(extras.boundingBox.min) && 
+        Array.isArray(extras.boundingBox.max) 
+        ? { 
+            min: [
+              typeof extras.boundingBox.min[0] === 'number' ? extras.boundingBox.min[0] : 0,
+              typeof extras.boundingBox.min[1] === 'number' ? extras.boundingBox.min[1] : 0,
+              typeof extras.boundingBox.min[2] === 'number' ? extras.boundingBox.min[2] : 0,
+            ] as [number, number, number],
+            max: [
+              typeof extras.boundingBox.max[0] === 'number' ? extras.boundingBox.max[0] : 0,
+              typeof extras.boundingBox.max[1] === 'number' ? extras.boundingBox.max[1] : 0,
+              typeof extras.boundingBox.max[2] === 'number' ? extras.boundingBox.max[2] : 0,
+            ] as [number, number, number],
+          }
+        : undefined,
       numMaterials: 1,
       type: typeof extras.type === "number" ? extras.type : 0,
       numPoints: vertices ? vertices.length : 0,
@@ -1980,7 +2035,7 @@ export async function gltfToBG3D(doc: Document): Promise<BG3DParseResult> {
   const childNodes = scene.listChildren();
   const groups: BG3DGroup[] = childNodes.map((node) =>
     processNode(node),
-  ) as BG3DGroup[];
+  ).filter(isBG3DGroup);
 
   console.log("=== glTF to BG3D Conversion Complete ===");
 
@@ -2001,15 +2056,33 @@ interface OriginalBinaries {
   skeleton?: number[];
 }
 
+// Type guard for OttoRoundtrip
+function isOttoRoundtrip(value: unknown): value is OttoRoundtrip {
+  if (!isRecord(value)) return false;
+  return (
+    (value.bg3dBuffer === undefined || Array.isArray(value.bg3dBuffer)) &&
+    (value.skeletonBuffer === undefined || Array.isArray(value.skeletonBuffer))
+  );
+}
+
+// Type guard for OriginalBinaries
+function isOriginalBinaries(value: unknown): value is OriginalBinaries {
+  if (!isRecord(value)) return false;
+  return (
+    (value.bg3d === undefined || Array.isArray(value.bg3d)) &&
+    (value.skeleton === undefined || Array.isArray(value.skeleton))
+  );
+}
+
 /**
  * Get original BG3D binary data if preserved in glTF extras
  */
 export function getOriginalBG3DBinary(doc: Document): ArrayBuffer | null {
   const rootExtras = doc.getRoot().getExtras() || {};
-  const ottoRoundtrip = rootExtras.ottoRoundtrip as OttoRoundtrip | undefined;
-  const originalBinaries = rootExtras.originalBinaries as
-    | OriginalBinaries
-    | undefined;
+  const ottoRoundtripRaw = isRecord(rootExtras) ? rootExtras.ottoRoundtrip : undefined;
+  const ottoRoundtrip = isOttoRoundtrip(ottoRoundtripRaw) ? ottoRoundtripRaw : undefined;
+  const originalBinariesRaw = isRecord(rootExtras) ? rootExtras.originalBinaries : undefined;
+  const originalBinaries = isOriginalBinaries(originalBinariesRaw) ? originalBinariesRaw : undefined;
 
   if (ottoRoundtrip?.bg3dBuffer) {
     console.log(
@@ -2036,10 +2109,10 @@ export function getOriginalBG3DBinary(doc: Document): ArrayBuffer | null {
  */
 export function getOriginalSkeletonBinary(doc: Document): ArrayBuffer | null {
   const rootExtras = doc.getRoot().getExtras() || {};
-  const ottoRoundtrip = rootExtras.ottoRoundtrip as OttoRoundtrip | undefined;
-  const originalBinaries = rootExtras.originalBinaries as
-    | OriginalBinaries
-    | undefined;
+  const ottoRoundtripRaw = isRecord(rootExtras) ? rootExtras.ottoRoundtrip : undefined;
+  const ottoRoundtrip = isOttoRoundtrip(ottoRoundtripRaw) ? ottoRoundtripRaw : undefined;
+  const originalBinariesRaw = isRecord(rootExtras) ? rootExtras.originalBinaries : undefined;
+  const originalBinaries = isOriginalBinaries(originalBinariesRaw) ? originalBinariesRaw : undefined;
 
   if (ottoRoundtrip?.skeletonBuffer) {
     console.log(
