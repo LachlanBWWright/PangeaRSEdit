@@ -21,7 +21,7 @@ export function DropArea({
       id={id}
       className="border-2 border-dashed border-gray-600 rounded-lg p-8 text-center cursor-pointer hover:border-gray-500 transition-colors"
       onDrop={onDrop}
-      onDragOver={(e) => e.preventDefault()}
+      onDragOver={(e) => { e.preventDefault(); }}
       onClick={onClick}
     >
       <Upload className="w-12 h-12 mx-auto mb-4 text-gray-400" />

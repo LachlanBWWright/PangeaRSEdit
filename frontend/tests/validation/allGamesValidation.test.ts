@@ -105,7 +105,7 @@ describe("All Games Validation Tests", () => {
             return;
           }
 
-          const parsed = JSON.parse(parseResult.value) as Record<string, unknown>;
+          const parsed = JSON.parse(parseResult.value);
 
           // Apply nullToZero fix BEFORE preprocessing (fixes rsrcdump-ts v1.0.5 bug)
           fixNullToZero(parsed);

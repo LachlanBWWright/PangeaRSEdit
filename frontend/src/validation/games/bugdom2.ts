@@ -36,7 +36,9 @@ export const bugdom2LevelSchema = z
     Layr: z
       .record(z.string(), resourceEntrySchema(z.array(z.number())))
       .optional(),
-    YCrd: z.record(z.string(), resourceEntrySchema(z.array(z.number()))).optional(),
+    YCrd: z
+      .record(z.string(), resourceEntrySchema(z.array(z.number())))
+      .optional(),
     Itms: z
       .record(z.string(), resourceEntrySchema(z.array(itemSchema)))
       .optional(),
@@ -65,7 +67,7 @@ export const bugdom2LevelSchema = z
       .record(z.string(), resourceEntrySchema(z.array(checkpointSchema)))
       .optional(),
   })
-  .passthrough();
+  .loose();
 
 export type Bugdom2LevelData = z.infer<typeof bugdom2LevelSchema>;
 

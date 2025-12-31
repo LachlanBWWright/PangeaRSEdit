@@ -158,15 +158,15 @@ function transformToSkeletonResource(
 
       // Assign entries to their proper record fields
       // The obj type is validated by the struct specs during parsing
-      if (typeName === "Hedr") result.Hedr[resourceId] = baseEntry as HedrEntry;
-      else if (typeName === "Bone") result.Bone[resourceId] = baseEntry as BoneEntry;
-      else if (typeName === "BonP") result.BonP[resourceId] = baseEntry as BonPEntry;
-      else if (typeName === "BonN") result.BonN[resourceId] = baseEntry as BonNEntry;
-      else if (typeName === "RelP") result.RelP![resourceId] = baseEntry as RelPEntry;
-      else if (typeName === "AnHd") result.AnHd[resourceId] = baseEntry as AnHdEntry;
-      else if (typeName === "Evnt") result.Evnt[resourceId] = baseEntry as EvntEntry;
-      else if (typeName === "NumK") result.NumK[resourceId] = baseEntry as NumKEntry;
-      else if (typeName === "KeyF") result.KeyF[resourceId] = baseEntry as KeyFEntry;
+      if (typeName === "Hedr") result.Hedr[resourceId] = baseEntry;
+      else if (typeName === "Bone") result.Bone[resourceId] = baseEntry;
+      else if (typeName === "BonP") result.BonP[resourceId] = baseEntry;
+      else if (typeName === "BonN") result.BonN[resourceId] = baseEntry;
+      else if (typeName === "RelP") result.RelP![resourceId] = baseEntry;
+      else if (typeName === "AnHd") result.AnHd[resourceId] = baseEntry;
+      else if (typeName === "Evnt") result.Evnt[resourceId] = baseEntry;
+      else if (typeName === "NumK") result.NumK[resourceId] = baseEntry;
+      else if (typeName === "KeyF") result.KeyF[resourceId] = baseEntry;
       else result[typeName] = typeData;
     }
   }
@@ -189,6 +189,6 @@ export async function parseSkeletonRsrcJson(bytes: ArrayBuffer): Promise<ParsedS
     const errorMessage = result.ok ? "" : result.error;
     return Promise.reject(errorMessage);
   }
-  const parsed = JSON.parse(result.value) as ParsedSkeleton;
+  const parsed = JSON.parse(result.value);
   return parsed;
 }

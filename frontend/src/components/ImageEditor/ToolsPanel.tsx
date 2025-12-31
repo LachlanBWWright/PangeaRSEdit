@@ -50,7 +50,7 @@ export function ToolsPanel({
         </label>
         <Select
           value={brushShape}
-          onValueChange={(value: "circle" | "square") => setBrushShape(value)}
+          onValueChange={(value: "circle" | "square") => { setBrushShape(value); }}
         >
           <SelectTrigger className="w-full">
             <SelectValue />
@@ -81,7 +81,7 @@ export function ToolsPanel({
             <input
               type="color"
               value={brushColor}
-              onChange={(e) => setBrushColor(e.target.value)}
+              onChange={(e) => { setBrushColor(e.target.value); }}
               className="flex-1 h-10 rounded border border-gray-600"
             />
             <Button
@@ -101,7 +101,7 @@ export function ToolsPanel({
                   brushColor === color ? "border-white" : "border-gray-600"
                 }`}
                 style={{ backgroundColor: color }}
-                onClick={() => setBrushColor(color)}
+                onClick={() => { setBrushColor(color); }}
               />
             ))}
           </div>

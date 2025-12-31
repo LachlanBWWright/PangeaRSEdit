@@ -74,6 +74,6 @@ export const FIXTURE_PATHS = {
     ),
     name: "town_duel",
   },
-} as const;
+};
 
 export type GameName = keyof typeof FIXTURE_PATHS;

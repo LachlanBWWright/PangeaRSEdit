@@ -21,7 +21,9 @@ export async function loadOttoTestModel(): Promise<{
   ]);
 
   if (!bg3dResponse.ok) {
-    throw new Error(`Failed to fetch Otto.bg3d: ${bg3dResponse.status}`);
+    throw new Error(
+      "Failed to fetch Otto.bg3d: " + String(bg3dResponse.status),
+    );
   }
 
   const bg3dArrayBuffer = await bg3dResponse.arrayBuffer();
@@ -37,9 +39,7 @@ export async function loadOttoTestModel(): Promise<{
     });
     console.log("Loaded Otto skeleton file");
   } else {
-    console.warn(
-      "Otto skeleton file not found, loading without animations",
-    );
+    console.warn("Otto skeleton file not found, loading without animations");
   }
 
   return { bg3dFile, skeletonFile };
@@ -59,7 +59,9 @@ export async function loadOttoTestModelWithoutSkeleton(): Promise<File> {
   );
 
   if (!bg3dResponse.ok) {
-    throw new Error(`Failed to fetch Otto.bg3d: ${bg3dResponse.status}`);
+    throw new Error(
+      "Failed to fetch Otto.bg3d: " + String(bg3dResponse.status),
+    );
   }
 
   const bg3dArrayBuffer = await bg3dResponse.arrayBuffer();

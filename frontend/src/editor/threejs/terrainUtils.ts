@@ -10,7 +10,7 @@ export function combineMapImagesFromSTgd(
   headerData: HeaderData,
   terrainData: TerrainData,
   globals: GlobalsInterface,
-): Result<HTMLCanvasElement, Error> {
+): Result<HTMLCanvasElement> {
   if (mapImages.length === 0) {
     return err(new Error("No map images to combine"));
   }
@@ -61,7 +61,7 @@ export function combineMapImagesFromTiles(
   headerData: HeaderData,
   terrainData: TerrainData,
   globals: GlobalsInterface,
-): Result<HTMLCanvasElement, Error> {
+): Result<HTMLCanvasElement> {
   if (mapImages.length === 0) {
     return err(new Error("No tile images to combine"));
   }
@@ -166,7 +166,7 @@ export function combineMapImages(
   headerData: HeaderData,
   terrainData: TerrainData,
   globals: GlobalsInterface,
-): Result<HTMLCanvasElement, Error> {
+): Result<HTMLCanvasElement> {
   // Bugdom 1 and Nanosaur 1 use individual tiles (RSRC_FORK and TRT_FILE)
   if (
     globals.DATA_TYPE === DataType.RSRC_FORK ||

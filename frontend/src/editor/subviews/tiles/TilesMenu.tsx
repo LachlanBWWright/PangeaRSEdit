@@ -130,14 +130,14 @@ export function TilesMenu({
       <div className={`grid ${gridColsClass} gap-2`}>
         <Button
           selected={tileView === TileViews.Topology}
-          onClick={() => setTileView(TileViews.Topology)}
+          onClick={() => { setTileView(TileViews.Topology); }}
         >
           Topology
         </Button>
         {hasTileFlags && (
           <Button
             selected={tileView === TileViews.Flags}
-            onClick={() => setTileView(TileViews.Flags)}
+            onClick={() => { setTileView(TileViews.Flags); }}
           >
             Empty Tiles
           </Button>
@@ -146,13 +146,13 @@ export function TilesMenu({
           <>
             <Button
               selected={tileView === TileViews.ElectricFloor0}
-              onClick={() => setTileView(TileViews.ElectricFloor0)}
+              onClick={() => { setTileView(TileViews.ElectricFloor0); }}
             >
               Electric Floor 1
             </Button>
             <Button
               selected={tileView === TileViews.ElectricFloor1}
-              onClick={() => setTileView(TileViews.ElectricFloor1)}
+              onClick={() => { setTileView(TileViews.ElectricFloor1); }}
             >
               Electric Floor 2
             </Button>
@@ -234,13 +234,13 @@ export function TilesMenu({
           <Input
             type="number"
             defaultValue={brushRadius}
-            onChange={(e) => setBrushRadius(parseInt(e.target.value) || 0)}
+            onChange={(e) => { setBrushRadius(parseInt(e.target.value) || 0); }}
           />
           <p>Height Value</p>
           <Input
             type="number"
             defaultValue={value}
-            onChange={(e) => setValue(parseInt(e.target.value) || 0)}
+            onChange={(e) => { setValue(parseInt(e.target.value) || 0); }}
           />
 
           <p>Min Height</p>
@@ -252,7 +252,7 @@ export function TilesMenu({
             type="number"
             defaultValue={toplogyOpacity}
             onChange={(e) =>
-              setTopologyOpacity(parseFloat(e.target.value) || 1)
+              { setTopologyOpacity(parseFloat(e.target.value) || 1); }
             }
           />
 
@@ -281,7 +281,7 @@ export function TilesMenu({
                     type="number"
                     value={roofFloorElevation}
                     onChange={(e) => 
-                      setRoofFloorElevation(parseInt(e.target.value) || 100)
+                      { setRoofFloorElevation(parseInt(e.target.value) || 100); }
                     }
                   />
                   <p className="col-span-2 text-sm text-gray-400">
@@ -306,7 +306,7 @@ export function TilesMenu({
 
             {/* Download button lives on the same row as the toggle for discoverability */}
             <div className="flex items-center gap-2">
-              <Button onClick={() => setExport3DScene((c) => c + 1)}>
+              <Button onClick={() => { setExport3DScene((c) => c + 1); }}>
                 Download 3D (GLB)
               </Button>
             </div>
@@ -370,7 +370,7 @@ export function TilesMenu({
                   type="number"
                   defaultValue={brushRadius}
                   onChange={(e) =>
-                    setBrushRadius(parseInt(e.target.value) || 0)
+                    { setBrushRadius(parseInt(e.target.value) || 0); }
                   }
                 />
                 <p>Brush Type</p>

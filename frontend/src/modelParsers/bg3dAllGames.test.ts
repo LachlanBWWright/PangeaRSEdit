@@ -11,17 +11,17 @@
 import { describe, it, expect } from "vitest";
 import { parseBG3D, bg3dParsedToBG3D, BG3DParseResult } from "./parseBG3D";
 import { bg3dParsedToGLTF, gltfToBG3D } from "./parsedBg3dGitfConverter";
-import * as fs from "fs";
-import * as path from "path";
+import { accessSync, constants, readFileSync } from "fs";
+import { join } from "path";
 
 // Game paths relative to workspace root
-const GAMES_ROOT = path.join(__dirname, "../../../../games");
+const GAMES_ROOT = join(__dirname, "../../../../games");
 
 // Test fixtures - one model from each game type
 const TEST_FIXTURES = {
   ottomatic: {
     name: "Otto Matic",
-    bg3dPath: path.join(GAMES_ROOT, "ottomatic/Data/Skeletons/Otto.bg3d"),
+    bg3dPath: join(GAMES_ROOT, "ottomatic/Data/Skeletons/Otto.bg3d"),
     supportsBoundingBox: false,
     supportsJpegTextures: false,
   },
@@ -54,7 +54,7 @@ const TEST_FIXTURES = {
 // Helper to check if file exists
 function fileExists(filePath: string): boolean {
   try {
-    fs.accessSync(filePath, fs.constants.F_OK);
+    accessSync(filePath, constants.F_OK);
     return true;
   } catch {
     return false;
@@ -63,7 +63,7 @@ function fileExists(filePath: string): boolean {
 
 // Helper to read file as ArrayBuffer
 function readFileAsArrayBuffer(filePath: string): ArrayBuffer {
-  const buffer = fs.readFileSync(filePath);
+  const buffer = readFileSync(filePath);
   return buffer.buffer.slice(
     buffer.byteOffset,
     buffer.byteOffset + buffer.byteLength,
@@ -77,7 +77,7 @@ type Group = { children?: GroupChild[] };
 describe("BG3D Multi-Game Parsing Tests", () => {
   // Test basic parsing for each game
   Object.values(TEST_FIXTURES).forEach((gameConfig) => {
-    describe(`${gameConfig.name}`, () => {
+    describe(gameConfig.name, () => {
       it(`should parse ${gameConfig.name} BG3D file without errors`, () => {
         if (!fileExists(gameConfig.bg3dPath)) {
           console.warn(
@@ -336,11 +336,11 @@ describe("BG3D Model File Tests", () => {
       }
 
       expect(parsed).toBeDefined();
-      expect(parsed!.materials.length).toBeGreaterThan(0);
+      expect(parsed.materials.length).toBeGreaterThan(0);
 
       console.log(
-        `${gameKey} model: ${parsed!.materials.length} materials, groups: ${
-          parsed!.groups.length
+        `${gameKey} model: ${parsed.materials.length} materials, groups: ${
+          parsed.groups.length
         }`,
       );
     });

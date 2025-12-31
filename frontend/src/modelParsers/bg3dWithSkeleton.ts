@@ -27,7 +27,7 @@ function is3DMFBuffer(buffer: ArrayBuffer): boolean {
 export async function parseBG3DWithSkeleton(
   modelBuffer: ArrayBuffer,
   skeletonBuffer: ArrayBuffer,
-): Promise<Result<BG3DParseResult, Error>> {
+): Promise<Result<BG3DParseResult>> {
   console.log("Parsing skeleton resource...");
 
   try {
@@ -35,7 +35,7 @@ export async function parseBG3DWithSkeleton(
     const skeletonData = await parseSkeletonRsrc(skeletonBuffer);
 
     // skeletonData is already the parsed JSON object
-    const skeleton: SkeletonResource = skeletonData as SkeletonResource;
+    const skeleton: SkeletonResource = skeletonData;
 
     console.log("Parsing model with skeleton data...");
 
@@ -69,7 +69,7 @@ export async function parseBG3DWithSkeleton(
 export function parseBG3DWithSkeletonResource(
   modelBuffer: ArrayBuffer,
   skeleton: SkeletonResource,
-): Result<BG3DParseResult, Error> {
+): Result<BG3DParseResult> {
   return parseModelWithSkeletonResource(modelBuffer, skeleton);
 }
 
@@ -79,7 +79,7 @@ export function parseBG3DWithSkeletonResource(
 function parseModelWithSkeletonResource(
   modelBuffer: ArrayBuffer,
   skeleton: SkeletonResource,
-): Result<BG3DParseResult, Error> {
+): Result<BG3DParseResult> {
   if (is3DMFBuffer(modelBuffer)) {
     // Parse 3DMF file - note: 3DMF models with skeletons may need special handling
     // For now, parse the model and add skeleton data manually
@@ -87,11 +87,11 @@ function parseModelWithSkeletonResource(
     if (isErr(modelResult)) {
       return modelResult;
     }
-    
+
     // Add skeleton data if available
     // Note: 3DMF skeleton data needs conversion from SkeletonResource format to BG3DSkeleton format
     const result = modelResult.value;
-    
+
     if (skeleton && skeleton.Bone) {
       // Extract header info
       const boneEntries = Object.values(skeleton.Bone || {});
@@ -105,32 +105,36 @@ function parseModelWithSkeletonResource(
         numJoints,
         num3DMFLimbs: numJoints, // Typically same as numJoints for 3DMF
         bones: boneEntries.map((bone: unknown, index: number) => {
-          const boneObj = bone as Record<string, unknown>;
-          const coord = boneObj.coord as Record<string, number> || { x: 0, y: 0, z: 0 };
+          const boneObj = bone;
+          const coord = boneObj.coord || { x: 0, y: 0, z: 0 };
           return {
-            parentBone: typeof boneObj.parentBone === 'number' ? (boneObj.parentBone as number) : -1,
-            name: (boneObj.name as string) || `bone_${index}`,
+            parentBone:
+              typeof boneObj.parentBone === "number" ? boneObj.parentBone : -1,
+            name: boneObj.name || `bone_${index}`,
             coordX: coord.x ?? 0,
             coordY: coord.y ?? 0,
             coordZ: coord.z ?? 0,
-            numPointsAttachedToBone: ((boneObj.pointList as number[]) || []).length,
-            numNormalsAttachedToBone: ((boneObj.normalList as number[]) || []).length,
-            pointIndices: (boneObj.pointList as number[]) || [],
-            normalIndices: (boneObj.normalList as number[]) || [],
+            numPointsAttachedToBone: (boneObj.pointList || []).length,
+            numNormalsAttachedToBone: (boneObj.normalList || []).length,
+            pointIndices: boneObj.pointList || [],
+            normalIndices: boneObj.normalList || [],
           };
         }),
-        animations: animEntries.length > 0 ? animEntries.map((anim: unknown, animIndex: number) => {
-          const animObj = anim as Record<string, unknown>;
-          return {
-            name: (animObj.name as string) || `anim_${animIndex}`,
-            numAnimEvents: 0,
-            events: [],
-            keyframes: {},
-          };
-        }) : [],
+        animations:
+          animEntries.length > 0
+            ? animEntries.map((anim: unknown, animIndex: number) => {
+                const animObj = anim;
+                return {
+                  name: animObj.name || `anim_${animIndex}`,
+                  numAnimEvents: 0,
+                  events: [],
+                  keyframes: {},
+                };
+              })
+            : [],
       };
     }
-    
+
     return ok(result);
   } else {
     // Parse BG3D file

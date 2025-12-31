@@ -29,7 +29,7 @@ export function PaletteSelector({
             {Object.values(PREDEFINED_PALETTES).map((palette) => (
               <button
                 key={palette.name}
-                onClick={() => onPaletteSelect(palette)}
+                onClick={() => { onPaletteSelect(palette); }}
                 className={`w-full text-left px-3 py-2 rounded text-sm transition ${
                   currentPalette.name === palette.name
                     ? "bg-blue-600 text-white"
@@ -48,7 +48,7 @@ export function PaletteSelector({
               {palettes.map((palette) => (
                 <button
                   key={palette.name}
-                  onClick={() => onPaletteSelect(palette)}
+                  onClick={() => { onPaletteSelect(palette); }}
                   className={`w-full text-left px-3 py-2 rounded text-sm transition ${
                     currentPalette.name === palette.name
                       ? "bg-blue-600 text-white"

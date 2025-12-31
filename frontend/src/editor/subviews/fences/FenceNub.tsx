@@ -33,7 +33,7 @@ export const FenceNub = memo(
         fill={strokeColor}
         stroke={"black"}
         strokeWidth={2}
-        onMouseDown={() => setSelectedFence(idx)}
+        onMouseDown={() => { setSelectedFence(idx); }}
         onDragStart={() => {
           setSelectedFence(idx);
         }}

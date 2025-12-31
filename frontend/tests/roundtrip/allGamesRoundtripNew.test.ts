@@ -261,11 +261,11 @@ describe("All Games Roundtrip Tests", () => {
           if (value === null) return 0;
           if (Array.isArray(value)) return value.map(sanitize);
           if (typeof value === "object") {
-            const obj = value as Record<string, unknown>;
+            const obj = value;
             const normalized: Record<string, unknown> = {};
             for (const [k, v] of Object.entries(obj)) {
               if (k === "x`y" && Array.isArray(v)) {
-                normalized[k] = (v as unknown[]).map(() => ({ x: 0, y: 0 }));
+                normalized[k] = (v).map(() => ({ x: 0, y: 0 }));
                 continue;
               }
               normalized[k] = sanitize(v);

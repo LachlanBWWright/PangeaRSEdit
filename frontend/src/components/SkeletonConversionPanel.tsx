@@ -116,7 +116,7 @@ export function SkeletonConversionPanel({
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
-        setTimeout(() => URL.revokeObjectURL(url), 1000);
+        setTimeout(() => { URL.revokeObjectURL(url); }, 1000);
 
         // If we converted BG3D to GLB and we have animations, also generate skeleton file
         if (
@@ -158,7 +158,7 @@ export function SkeletonConversionPanel({
             document.body.appendChild(skeletonLink);
             skeletonLink.click();
             document.body.removeChild(skeletonLink);
-            setTimeout(() => URL.revokeObjectURL(skeletonUrl), 1000);
+            setTimeout(() => { URL.revokeObjectURL(skeletonUrl); }, 1000);
 
             toast.success(`${title} conversion completed with skeleton file`);
           } catch (error) {

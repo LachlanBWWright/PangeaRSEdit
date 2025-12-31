@@ -257,7 +257,7 @@ describe.skip("3DMF TRUE Full Roundtrip Tests (3DMF → glTF → 3DMF)", () => {
         
         if (comparison.differences.length > 0) {
           console.log(`Semantic differences found:`);
-          comparison.differences.slice(0, 10).forEach(d => console.log(`  - ${d}`));
+          comparison.differences.slice(0, 10).forEach(d => { console.log(`  - ${d}`); });
           if (comparison.differences.length > 10) {
             console.log(`  ... and ${comparison.differences.length - 10} more`);
           }
@@ -477,7 +477,7 @@ describe.skip("3DMF TRUE Full Roundtrip Tests (3DMF → glTF → 3DMF)", () => {
         
         if (comparison.differences.length > 0) {
           console.log(`Differences found:`);
-          comparison.differences.slice(0, 10).forEach(d => console.log(`  - ${d}`));
+          comparison.differences.slice(0, 10).forEach(d => { console.log(`  - ${d}`); });
         }
         
         expect(comparison.match).toBe(true);
@@ -555,7 +555,7 @@ describe.skip("3DMF TRUE Full Roundtrip Tests (3DMF → glTF → 3DMF)", () => {
       
       if (comparison.differences.length > 0) {
         console.log(`Differences between RT1 and RT2:`);
-        comparison.differences.forEach(d => console.log(`  - ${d}`));
+        comparison.differences.forEach(d => { console.log(`  - ${d}`); });
       }
       
       expect(comparison.match).toBe(true);

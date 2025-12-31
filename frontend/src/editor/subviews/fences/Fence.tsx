@@ -45,7 +45,7 @@ export const Fence = memo(
               : getFenceColor(globals, fenceType, fenceIdx)
           }
           strokeWidth={fenceIdx === selectedFence ? 5 : 2}
-          onClick={() => setSelectedFence(fenceIdx)}
+          onClick={() => { setSelectedFence(fenceIdx); }}
           draggable // Make the line draggable
           onDragStart={() => {
             // Store the initial positions of the nubs when dragging starts

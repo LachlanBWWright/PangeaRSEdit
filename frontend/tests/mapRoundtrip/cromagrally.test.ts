@@ -116,7 +116,7 @@ describe("Cro-Mag Rally Map Roundtrip", () => {
     const jsonData = jsonResult.value;
 
     expect(() => {
-      preprocessJson(jsonData as Record<string, unknown>, CroMagGlobals);
+      preprocessJson(jsonData, CroMagGlobals);
     }).not.toThrow();
   });
 

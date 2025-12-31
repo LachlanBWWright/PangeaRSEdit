@@ -202,7 +202,7 @@ export function gltfMeshesToBg3d(
     const posAcc = prim.getAttribute("POSITION");
     let vertices: [number, number, number][] | undefined = undefined;
     if (posAcc) {
-      const arr = Array.from(posAcc.getArray() as Float32Array);
+      const arr = Array.from(posAcc.getArray());
       vertices = [];
       for (let i = 0; i < arr.length; i += 3) {
         vertices.push([arr[i] ?? 0, arr[i + 1] ?? 0, arr[i + 2] ?? 0]);
@@ -212,7 +212,7 @@ export function gltfMeshesToBg3d(
     const normAcc = prim.getAttribute("NORMAL");
     let normals: [number, number, number][] | undefined = undefined;
     if (normAcc) {
-      const arr = Array.from(normAcc.getArray() as Float32Array);
+      const arr = Array.from(normAcc.getArray());
       normals = [];
       for (let i = 0; i < arr.length; i += 3) {
         normals.push([arr[i] ?? 0, arr[i + 1] ?? 0, arr[i + 2] ?? 0]);
@@ -222,7 +222,7 @@ export function gltfMeshesToBg3d(
     const uvAcc = prim.getAttribute("TEXCOORD_0");
     let uvs: [number, number][] | undefined = undefined;
     if (uvAcc) {
-      const arr = Array.from(uvAcc.getArray() as Float32Array);
+      const arr = Array.from(uvAcc.getArray());
       uvs = [];
       for (let i = 0; i < arr.length; i += 2) {
         uvs.push([arr[i] ?? 0, arr[i + 1] ?? 0]);
@@ -232,7 +232,7 @@ export function gltfMeshesToBg3d(
     const colorAcc = prim.getAttribute("COLOR_0");
     let colors: [number, number, number, number][] | undefined = undefined;
     if (colorAcc) {
-      const arr = Array.from(colorAcc.getArray() as Uint8Array);
+      const arr = Array.from(colorAcc.getArray());
       colors = [];
       for (let i = 0; i < arr.length; i += 4) {
         colors.push([
@@ -247,7 +247,7 @@ export function gltfMeshesToBg3d(
     const idxAcc = prim.getIndices();
     let triangles: [number, number, number][] | undefined = undefined;
     if (idxAcc) {
-      const arr = Array.from(idxAcc.getArray() as Uint32Array);
+      const arr = Array.from(idxAcc.getArray());
       triangles = [];
       for (let i = 0; i < arr.length; i += 3) {
         triangles.push([arr[i] ?? 0, arr[i + 1] ?? 0, arr[i + 2] ?? 0]);
@@ -317,7 +317,7 @@ export function gltfSceneToBg3dGroups(
   // Process scene hierarchy
   const groups: BG3DGroup[] = sceneNodes.map((node) =>
     processNode(node),
-  ) as BG3DGroup[];
+  );
 
   return groups;
 }

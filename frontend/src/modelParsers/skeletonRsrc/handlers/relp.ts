@@ -25,13 +25,13 @@ export function handleRelP(
         Object.prototype.hasOwnProperty.call(resourceData, "conversionError"),
     },
   );
-  const castedData = resourceData as { obj?: RelPRaw[] };
+  const castedData = resourceData;
   if (
     resourceData &&
     castedData.obj &&
     Array.isArray(castedData.obj) &&
     castedData.obj.length > 0 &&
-    (castedData.obj[0] as RelPRaw).relOffsetX !== undefined
+    castedData.obj[0].relOffsetX !== undefined
   ) {
     const obj = castedData.obj;
     console.log(
@@ -41,7 +41,7 @@ export function handleRelP(
   } else if (
     Array.isArray(resourceData) &&
     resourceData.length > 0 &&
-    (resourceData[0] as RelPRaw).relOffsetX !== undefined
+    resourceData[0].relOffsetX !== undefined
   ) {
     console.log(
       `[DEBUG] Using rsrcdump-parsed RelP data (array format) for ${resourceName}: ${resourceData.length} points`,

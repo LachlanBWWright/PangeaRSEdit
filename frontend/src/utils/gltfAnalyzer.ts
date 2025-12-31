@@ -45,11 +45,10 @@ export async function analyzeGLTF(
     .getRoot()
     .listNodes()
     .forEach((node, index) => {
+      const nodeMesh = node.getMesh();
       analysis.nodes.push({
-        name: node.getName() || `Node_${index}`,
-        meshes: node.getMesh()
-          ? [doc.getRoot().listMeshes().indexOf(node.getMesh()!)]
-          : [],
+        name: node.getName() || `Node_${String(index)}`,
+        meshes: nodeMesh ? [doc.getRoot().listMeshes().indexOf(nodeMesh)] : [],
         children: node
           .listChildren()
           .map((child) => doc.getRoot().listNodes().indexOf(child)),
@@ -62,8 +61,8 @@ export async function analyzeGLTF(
     .listMaterials()
     .forEach((material, index) => {
       const materialData = {
-        name: material.getName() || `Material_${index}`,
-        textures: [] as Array<{ type: string; uri?: string }>,
+        name: material.getName() || `Material_${String(index)}`,
+        textures: [],
       };
 
       // Check for different texture types using the Material's texture getters
@@ -74,7 +73,10 @@ export async function analyzeGLTF(
       }> = [
         { getter: () => material.getBaseColorTexture(), type: "baseColor" },
         { getter: () => material.getNormalTexture(), type: "normal" },
-        { getter: () => material.getMetallicRoughnessTexture(), type: "metallicRoughness" },
+        {
+          getter: () => material.getMetallicRoughnessTexture(),
+          type: "metallicRoughness",
+        },
         { getter: () => material.getOcclusionTexture(), type: "occlusion" },
         { getter: () => material.getEmissiveTexture(), type: "emissive" },
       ];
@@ -98,7 +100,7 @@ export async function analyzeGLTF(
     .listTextures()
     .forEach((texture, index) => {
       analysis.textures.push({
-        name: texture.getName() || `Texture_${index}`,
+        name: texture.getName() || `Texture_${String(index)}`,
         uri: texture.getURI(),
         mimeType: texture.getMimeType(),
       });

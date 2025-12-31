@@ -41,7 +41,7 @@ export function bakeSpline(nubs: SplinePoint[], pointsPerSpan: number[]) {
   //Init array
   for (let i = 0; i < 8; i++) {
     space[i] = new Array<SplinePoint>(numNubs);
-    for (let j = 0; j < numNubs; j++) (space[i] as SplinePoint[])[j] = { x: 0, z: 0 };
+    for (let j = 0; j < numNubs; j++) space[i][j] = { x: 0, z: 0 };
   }
 
   // ALLOC POINT ARRAY
@@ -56,15 +56,15 @@ export function bakeSpline(nubs: SplinePoint[], pointsPerSpan: number[]) {
 
   // DO MAGICAL CUBIC SPLINE CALCULATIONS ON CONTROL PTS
   // These arrays are fully initialized in the loop above, assert them as non-undefined
-  const h0 = space[0] as SplinePoint[];
-  const h1 = space[1] as SplinePoint[];
-  const h2 = space[2] as SplinePoint[];
-  const h3 = space[3] as SplinePoint[];
+  const h0 = space[0];
+  const h1 = space[1];
+  const h2 = space[2];
+  const h3 = space[3];
 
-  const a = space[4] as SplinePoint[];
-  const b = space[5] as SplinePoint[];
-  const c = space[6] as SplinePoint[];
-  const d = space[7] as SplinePoint[];
+  const a = space[4];
+  const b = space[5];
+  const c = space[6];
+  const d = space[7];
 
   // COPY CONTROL POINTS INTO ARRAY
   for (let i = 0; i < numNubs; i++) {

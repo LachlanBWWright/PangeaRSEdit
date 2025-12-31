@@ -12,7 +12,7 @@ import { Result, ok, err } from "@/types/result";
 export function compileNanosaur1Level(
   levelData: LevelData,
   rawLevelData: Nanosaur1LevelData
-): Result<ArrayBuffer, Error> {
+): Result<ArrayBuffer> {
   try {
     // Calculate total size
     const headerSize = 8 + 4 + 2 + 2; // 8 bytes for first two int32s, then width (32-bit), depth (16-bit), numItems (16-bit)

@@ -61,7 +61,7 @@ export class BigEndianReader {
   /**
    * Read a uint8
    */
-  readUint8(): Result<number, Error> {
+  readUint8(): Result<number> {
     if (this.offset + 1 > this.buffer.byteLength) {
       return err(new Error(`EOF reading uint8 at offset ${this.offset}`));
     }
@@ -73,7 +73,7 @@ export class BigEndianReader {
   /**
    * Read a uint16 (big-endian)
    */
-  readUint16(): Result<number, Error> {
+  readUint16(): Result<number> {
     if (this.offset + 2 > this.buffer.byteLength) {
       return err(new Error(`EOF reading uint16 at offset ${this.offset}`));
     }
@@ -85,7 +85,7 @@ export class BigEndianReader {
   /**
    * Read a uint32 (big-endian)
    */
-  readUint32(): Result<number, Error> {
+  readUint32(): Result<number> {
     if (this.offset + 4 > this.buffer.byteLength) {
       return err(new Error(`EOF reading uint32 at offset ${this.offset}`));
     }
@@ -104,7 +104,7 @@ export class BigEndianReader {
    * 
    * @returns Result<number, Error> The 64-bit integer as a JavaScript number
    */
-  readUint64(): Result<number, Error> {
+  readUint64(): Result<number> {
     if (this.offset + 8 > this.buffer.byteLength) {
       return err(new Error(`EOF reading uint64 at offset ${this.offset}`));
     }
@@ -119,7 +119,7 @@ export class BigEndianReader {
   /**
    * Read a float32 (big-endian)
    */
-  readFloat32(): Result<number, Error> {
+  readFloat32(): Result<number> {
     if (this.offset + 4 > this.buffer.byteLength) {
       return err(new Error(`EOF reading float32 at offset ${this.offset}`));
     }
@@ -131,7 +131,7 @@ export class BigEndianReader {
   /**
    * Read raw bytes
    */
-  readBytes(count: number): Result<Uint8Array, Error> {
+  readBytes(count: number): Result<Uint8Array> {
     if (this.offset + count > this.buffer.byteLength) {
       return err(new Error(`EOF reading ${count} bytes at offset ${this.offset}`));
     }
@@ -143,7 +143,7 @@ export class BigEndianReader {
   /**
    * Read a FourCC code as a string
    */
-  readFourCC(): Result<string, Error> {
+  readFourCC(): Result<string> {
     const result = this.readUint32();
     if (!result.ok) {
       return err(result.error);

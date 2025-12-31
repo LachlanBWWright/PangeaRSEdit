@@ -155,7 +155,7 @@ describe("Billy Frontier Map Roundtrip", () => {
     // Preprocessing should not throw
     expect(() => {
       // The JSON object here is untyped by design; use a typed record for preprocessing in tests
-      preprocessJson(jsonData as Record<string, unknown>, BillyFrontierGlobals);
+      preprocessJson(jsonData, BillyFrontierGlobals);
     }).not.toThrow();
 
     // After preprocessing, verify header data is still present

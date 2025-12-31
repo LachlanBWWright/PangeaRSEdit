@@ -51,7 +51,7 @@ export async function downloadBG3DModel(
   return new Promise((resolve, reject) => {
     const worker = new BG3DGltfWorker();
 
-    worker.onmessage = async (e: MessageEvent<BG3DGltfWorkerResponse>) => {
+    worker.onmessage = (e: MessageEvent<BG3DGltfWorkerResponse>) => {
       try {
         const result = e.data;
         if (result.type === "error") {
@@ -104,16 +104,16 @@ export async function downloadBG3DModel(
               skeletonLink.click();
               document.body.removeChild(skeletonLink);
               URL.revokeObjectURL(skeletonUrl);
-            } catch (error) {
-              console.error("Error exporting skeleton:", error);
+            } catch (err) {
+              console.error("Error exporting skeleton:", err);
               // Don't reject if skeleton export fails, model was already downloaded
             }
           }
 
           resolve();
         }
-      } catch (error) {
-        reject(error);
+      } catch (err) {
+        reject(err instanceof Error ? err : new Error(String(err)));
       } finally {
         worker.terminate();
       }

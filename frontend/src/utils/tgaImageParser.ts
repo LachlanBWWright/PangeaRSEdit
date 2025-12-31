@@ -51,7 +51,9 @@ function parseTGAHeader(data: DataView): TGAHeader {
  * - RLE compressed RGB/RGBA (types 10, 11)
  * - RLE compressed indexed color (type 9)
  */
-export function parseTGAToCanvas(buffer: ArrayBuffer): Result<HTMLCanvasElement> {
+export function parseTGAToCanvas(
+  buffer: ArrayBuffer,
+): Result<HTMLCanvasElement> {
   const data = new DataView(buffer);
   const header = parseTGAHeader(data);
 
@@ -79,8 +81,10 @@ export function parseTGAToCanvas(buffer: ArrayBuffer): Result<HTMLCanvasElement>
   if (!isRLE && !isUncompressed) {
     return err(
       new Error(
-        `Unsupported TGA image type: ${header.imageType} (only types 2, 3, 9, 10, 11 supported)`,
-      )
+        `Unsupported TGA image type: ${String(
+          header.imageType,
+        )} (only types 2, 3, 9, 10, 11 supported)`,
+      ),
     );
   }
 
@@ -92,8 +96,10 @@ export function parseTGAToCanvas(buffer: ArrayBuffer): Result<HTMLCanvasElement>
     if (header.pixelDepth !== 8) {
       return err(
         new Error(
-          `Unsupported pixel depth for indexed color: ${header.pixelDepth} bits (must be 8)`,
-        )
+          `Unsupported pixel depth for indexed color: ${String(
+            header.pixelDepth,
+          )} bits (must be 8)`,
+        ),
       );
     }
     bytesPerPixel = 1; // indexed color is 1 byte per pixel
@@ -101,8 +107,10 @@ export function parseTGAToCanvas(buffer: ArrayBuffer): Result<HTMLCanvasElement>
     if (bytesPerPixel !== 3 && bytesPerPixel !== 4) {
       return err(
         new Error(
-          `Unsupported pixel depth: ${header.pixelDepth} bits (must be 24 or 32)`,
-        )
+          `Unsupported pixel depth: ${String(
+            header.pixelDepth,
+          )} bits (must be 24 or 32)`,
+        ),
       );
     }
   }

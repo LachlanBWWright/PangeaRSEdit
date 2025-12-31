@@ -30,9 +30,7 @@ export function TilesetEditor({
   const filteredTiles = tileSearchFilter
     ? Array.from({ length: tileCount })
         .map((_, i) => i)
-        .filter((i) =>
-          i.toString().includes(tileSearchFilter.toLowerCase())
-        )
+        .filter((i) => i.toString().includes(tileSearchFilter.toLowerCase()))
     : Array.from({ length: tileCount }).map((_, i) => i);
 
   return (
@@ -46,33 +44,49 @@ export function TilesetEditor({
           {/* Palette Scene Selector */}
           {onPaletteSceneChange && (
             <div>
-              <label className="text-xs text-gray-400 block mb-2">Render Palette</label>
+              <label className="text-xs text-gray-400 block mb-2">
+                Render Palette
+              </label>
               <select
                 value={currentPaletteScene || ""}
-                onChange={(e) => onPaletteSceneChange(e.target.value)}
+                onChange={(e) => {
+                  onPaletteSceneChange(e.target.value);
+                }}
                 className="w-full bg-gray-700 text-white rounded px-2 py-1 text-sm"
               >
                 {sceneNames.map((scene) => (
-                  <option key={scene} value={scene} style={{ backgroundColor: "#1a1a2e", color: "white" }}>
+                  <option
+                    key={scene}
+                    value={scene}
+                    style={{ backgroundColor: "#1a1a2e", color: "white" }}
+                  >
                     {scene.charAt(0).toUpperCase() + scene.slice(1)}
                   </option>
                 ))}
               </select>
               <p className="text-xs text-gray-500 mt-1">
-                Tileset: {currentTilesetScene ? currentTilesetScene.charAt(0).toUpperCase() + currentTilesetScene.slice(1) : "None"}
+                Tileset:{" "}
+                {currentTilesetScene
+                  ? currentTilesetScene.charAt(0).toUpperCase() +
+                    currentTilesetScene.slice(1)
+                  : "None"}
               </p>
             </div>
           )}
 
           {/* View Mode Selector */}
           <div>
-            <label className="text-xs text-gray-400 block mb-2">View Mode</label>
+            <label className="text-xs text-gray-400 block mb-2">
+              View Mode
+            </label>
             <div className="flex gap-2">
               <Button
                 size="sm"
                 variant={viewMode === "grid" ? "default" : "outline"}
                 className={viewMode === "grid" ? "" : "text-white"}
-                onClick={() => setViewMode("grid")}
+                onClick={() => {
+                  setViewMode("grid");
+                }}
               >
                 Grid View
               </Button>
@@ -80,7 +94,9 @@ export function TilesetEditor({
                 size="sm"
                 variant={viewMode === "individual" ? "default" : "outline"}
                 className={viewMode === "individual" ? "" : "text-white"}
-                onClick={() => setViewMode("individual")}
+                onClick={() => {
+                  setViewMode("individual");
+                }}
               >
                 Details
               </Button>
@@ -96,7 +112,9 @@ export function TilesetEditor({
               type="text"
               placeholder="Filter by tile number..."
               value={tileSearchFilter}
-              onChange={(e) => setTileSearchFilter(e.target.value)}
+              onChange={(e) => {
+                setTileSearchFilter(e.target.value);
+              }}
               className="w-full bg-gray-700 text-white rounded px-2 py-1 text-xs placeholder-gray-500"
             />
             <p className="text-xs text-gray-500 mt-1">
@@ -110,7 +128,9 @@ export function TilesetEditor({
               <input
                 type="checkbox"
                 checked={highlightTransparent}
-                onChange={(e) => setHighlightTransparent(e.target.checked)}
+                onChange={(e) => {
+                  setHighlightTransparent(e.target.checked);
+                }}
                 className="w-4 h-4"
               />
               <span className="text-white">Highlight Transparent</span>
@@ -124,7 +144,7 @@ export function TilesetEditor({
               variant="outline"
               className="text-white"
               onClick={() => {
-                toast.info(`Total tiles: ${tileCount}`);
+                toast.info("Total tiles: " + String(tileCount));
               }}
             >
               <RotateCw className="w-3 h-3 mr-1" />
@@ -150,7 +170,7 @@ export function TilesetEditor({
         <Card className="bg-gray-800 border-gray-700 border-blue-500">
           <CardHeader>
             <CardTitle className="text-white text-sm">
-              Tile #{selectedTileIndex}
+              {"Tile #" + String(selectedTileIndex)}
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
@@ -181,7 +201,7 @@ export function TilesetEditor({
                   variant="outline"
                   className="text-white"
                   onClick={() => {
-                    toast.info(`Copy tile ${selectedTileIndex}`);
+                    toast.info("Copy tile " + String(selectedTileIndex));
                   }}
                 >
                   <Copy className="w-3 h-3 mr-1" />
@@ -192,7 +212,7 @@ export function TilesetEditor({
                   variant="outline"
                   className="text-white"
                   onClick={() => {
-                    toast.info(`Replace tile ${selectedTileIndex}`);
+                    toast.info("Replace tile " + String(selectedTileIndex));
                   }}
                 >
                   <RotateCw className="w-3 h-3 mr-1" />
@@ -226,7 +246,7 @@ export function TilesetEditor({
                       : "border-gray-600 bg-gray-700 text-gray-400 hover:border-gray-500 hover:bg-gray-600"
                   }`}
                   onClick={() => onSelectTile?.(tileNum)}
-                  title={`Tile ${tileNum}`}
+                  title={"Tile " + String(tileNum)}
                 >
                   {tileNum}
                 </div>
@@ -241,13 +261,14 @@ export function TilesetEditor({
         <Card className="bg-gray-800 border-gray-700">
           <CardHeader>
             <CardTitle className="text-white text-xs">
-              Tile Details: #{selectedTileIndex}
+              {"Tile Details: #" + String(selectedTileIndex)}
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
             <div className="text-xs space-y-2 text-gray-300">
               <p>
-                <span className="text-gray-400">Tile Index:</span> {selectedTileIndex}
+                <span className="text-gray-400">Tile Index:</span>{" "}
+                {selectedTileIndex}
               </p>
               <p>
                 <span className="text-gray-400">Dimensions:</span> 32×32 pixels
@@ -275,7 +296,9 @@ export function TilesetEditor({
                   variant="outline"
                   className="w-full text-white"
                   onClick={() => {
-                    toast.info(`Duplicating tile ${selectedTileIndex}...`);
+                    toast.info(
+                      "Duplicating tile " + String(selectedTileIndex) + "...",
+                    );
                   }}
                 >
                   Duplicate Tile
@@ -285,7 +308,9 @@ export function TilesetEditor({
                   variant="outline"
                   className="w-full text-white"
                   onClick={() => {
-                    toast.info(`Exporting tile ${selectedTileIndex}...`);
+                    toast.info(
+                      "Exporting tile " + String(selectedTileIndex) + "...",
+                    );
                   }}
                 >
                   Export as PNG

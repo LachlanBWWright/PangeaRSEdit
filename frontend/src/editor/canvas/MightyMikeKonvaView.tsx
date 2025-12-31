@@ -75,7 +75,7 @@ export function MightyMikeKonvaView({
     };
     updateSize();
     window.addEventListener("resize", updateSize);
-    return () => window.removeEventListener("resize", updateSize);
+    return () => { window.removeEventListener("resize", updateSize); };
   }, []);
 
   // Non-null updater for items

@@ -24,7 +24,7 @@ export function getFinderInfo(): Uint8Array | undefined {
  */
 export function skeletonResourceToBinary(
   skeletonResource: SkeletonResource,
-): Result<ArrayBuffer, Error> {
+): Result<ArrayBuffer> {
   console.log(
     "Converting SkeletonResource to binary format using rsrcdump-ts...",
   );
@@ -42,5 +42,5 @@ export function skeletonResourceToBinary(
     return err(new Error(`Failed to serialize skeleton: ${result.error}`));
   }
 
-  return ok(result.value.buffer as ArrayBuffer);
+  return ok(result.value.buffer);
 }

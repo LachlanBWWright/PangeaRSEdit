@@ -197,7 +197,7 @@ export interface BG3DParseResult {
 export function parseBG3D(
   buffer: ArrayBuffer,
   skeleton?: SkeletonResource,
-): Result<BG3DParseResult, Error> {
+): Result<BG3DParseResult> {
   const view = new DataView(buffer);
   let offset = 0;
   // Read header (first 4 bytes should be 'BG3D')
@@ -575,13 +575,13 @@ export function parseBG3D(
 
   // Step 3: Validate that all geometry objects reference valid material indices
   // Recursively check all groups and their children
-  function validateGeometryMaterials(group: BG3DGroup): Result<void, Error> {
+  function validateGeometryMaterials(group: BG3DGroup): Result<void> {
     for (const child of group.children) {
       if (isBG3DGroup(child) && Array.isArray(child.children)) {
         const result = validateGeometryMaterials(child);
         if (!result.ok) return result;
       } else {
-        const geom = child as BG3DGeometry;
+        const geom = child;
         if (geom.layerMaterialNum) {
           for (let i = 0; i < geom.numMaterials; i++) {
             const matIdx = geom.layerMaterialNum[i];
@@ -842,7 +842,7 @@ function convertSkeletonResourceToBG3D(
       const arr = rentry.obj;
       if (Array.isArray(arr)) {
         relPointsMap[rid] = arr.map((p: unknown) => {
-          const obj = p as Record<string, unknown>;
+          const obj = p;
           const relOffsetX =
             typeof obj.relOffsetX === "number"
               ? obj.relOffsetX
@@ -877,7 +877,7 @@ function convertSkeletonResourceToBG3D(
   Object.keys(skeleton).forEach((key) => {
     if (key.toLowerCase() === "alis") {
       // Store the inner structure directly, not wrapped in another object
-      alisData = skeleton[key] as { [key: string]: unknown };
+      alisData = skeleton[key];
     }
   });
 

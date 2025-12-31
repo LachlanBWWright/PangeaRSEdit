@@ -24,7 +24,7 @@ describe("Skeleton Animation glTF Validation", () => {
     const ottoData = readFileSync(ottoPath);
     const ottoSkeletonData = readFileSync(ottoSkeletonPath);
 
-    const skeleton = await parseSkeletonRsrc(ottoSkeletonData as unknown as ArrayBuffer);
+    const skeleton = await parseSkeletonRsrc(ottoSkeletonData);
     const bg3dParseResult = parseBG3D(ottoData.buffer, skeleton);
     if (!bg3dParseResult.ok) {
       throw bg3dParseResult.error;
@@ -278,7 +278,7 @@ describe("Skeleton Animation glTF Validation", () => {
           if (input) {
             const times = input.getArray();
             if (times && times.length > 0) {
-              const lastTime = (times[times.length - 1] as number | undefined) ?? 0;
+              const lastTime = times[times.length - 1] ?? 0;
               maxDuration = Math.max(maxDuration, lastTime);
             }
           }

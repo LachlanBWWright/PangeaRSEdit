@@ -128,7 +128,7 @@ function readI32BE(view: DataView, offset: number): number {
 /**
  * Parse a Mighty Mike .shapes file
  */
-export function parseShapesFile(buffer: ArrayBuffer): Result<ShapesFile, Error> {
+export function parseShapesFile(buffer: ArrayBuffer): Result<ShapesFile> {
   try {
     const view = new DataView(buffer);
 
@@ -154,12 +154,12 @@ export function parseShapesFile(buffer: ArrayBuffer): Result<ShapesFile, Error> 
       const decompressed = decompressRLB(compressedData, decompSize);
       shapeBuffer = (decompressed.buffer instanceof SharedArrayBuffer
         ? decompressed.buffer.slice(0)
-        : decompressed.buffer) as ArrayBuffer;
+        : decompressed.buffer);
     } else if (compressionType === 2) {
       // Uncompressed (PACK_TYPE_NONE)
       shapeBuffer = buffer.slice(8);
     } else {
-      return err(new Error(`Unsupported compression type: ${compressionType}`));
+      return err(new Error("Unsupported compression type: " + String(compressionType)));
     }
 
     const shapeView = new DataView(shapeBuffer);
@@ -199,7 +199,14 @@ export function parseShapesFile(buffer: ArrayBuffer): Result<ShapesFile, Error> 
       offsetToShapeList
     );
     if (!shapesResult.success) {
-      const errorMsg = shapesResult.error instanceof Error ? shapesResult.error.message : String(shapesResult.error || "Unknown error");
+      let errorMsg: string;
+      if (shapesResult.error instanceof Error) {
+        errorMsg = shapesResult.error.message;
+      } else if (typeof shapesResult.error === "string") {
+        errorMsg = shapesResult.error;
+      } else {
+        errorMsg = "Unknown error";
+      }
       return err(new Error(errorMsg));
     }
 
@@ -232,7 +239,7 @@ function parseShapeList(
       return {
         success: false,
         shapes: [],
-        error: new Error(`Invalid shape count: ${shapeCount}`),
+        error: new Error(`Invalid shape count: ${String(shapeCount)}`),
       };
     }
 
@@ -265,7 +272,7 @@ function parseShapeList(
           success: false,
           shapes: [],
           error: new Error(
-            `Invalid shape header offset at shape ${i}: ${shapeBase}`
+            `Invalid shape header offset at shape ${String(i)}: ${String(shapeBase)}`
           ),
         };
       }
@@ -277,7 +284,7 @@ function parseShapeList(
           success: false,
           shapes: [],
           error: new Error(
-            `Invalid frame list offset in shape ${i}: ${frameListOffset}`
+            `Invalid frame list offset in shape ${String(i)}: ${String(frameListOffset)}`
           ),
         };
       }
@@ -290,7 +297,7 @@ function parseShapeList(
           success: false,
           shapes: [],
           error: new Error(
-            `Invalid frame count in shape ${i}: ${frameCount}`
+            `Invalid frame count in shape ${String(i)}: ${String(frameCount)}`
           ),
         };
       }
@@ -306,7 +313,7 @@ function parseShapeList(
             success: false,
             shapes: [],
             error: new Error(
-              `Unexpected end of frame offset list in shape ${i}`
+              `Unexpected end of frame offset list in shape ${String(i)}`
             ),
           };
         }
@@ -322,7 +329,7 @@ function parseShapeList(
             success: false,
             shapes: [],
             error: new Error(
-              `Frame offset ${f} not found in frame list for shape ${i}`
+              `Frame offset ${String(f)} not found in frame list for shape ${String(i)}`
             ),
           };
         }
@@ -334,7 +341,7 @@ function parseShapeList(
             success: false,
             shapes: [],
             error: new Error(
-              `Invalid frame header in shape ${i}, frame ${f}`
+              `Invalid frame header in shape ${String(i)}, frame ${String(f)}`
             ),
           };
         }
@@ -355,7 +362,7 @@ function parseShapeList(
             success: false,
             shapes: [],
             error: new Error(
-              `Invalid frame dimensions in shape ${i}, frame ${f}: ${header.width}x${header.height}`
+              `Invalid frame dimensions in shape ${String(i)}, frame ${String(f)}: ${String(header.width)}x${String(header.height)}`
             ),
           };
         }
@@ -369,7 +376,7 @@ function parseShapeList(
             success: false,
             shapes: [],
             error: new Error(
-              `Pixel data out of bounds in shape ${i}, frame ${f}`
+              `Pixel data out of bounds in shape ${String(i)}, frame ${String(f)}`
             ),
           };
         }

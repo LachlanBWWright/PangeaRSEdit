@@ -29,10 +29,10 @@ export const Item = memo(function Item({
   const [hovering, setHovering] = useState(false);
   const globals = useAtomValue(Globals);
 
-  const handleMouseOver = useCallback(() => setHovering(true), []);
-  const handleMouseLeave = useCallback(() => setHovering(false), []);
+  const handleMouseOver = useCallback(() => { setHovering(true); }, []);
+  const handleMouseLeave = useCallback(() => { setHovering(false); }, []);
   const handleMouseDown = useCallback(
-    () => setSelectedItem(itemIdx),
+    () => { setSelectedItem(itemIdx); },
     [itemIdx, setSelectedItem],
   );
   const handleDragEnd = useCallback(

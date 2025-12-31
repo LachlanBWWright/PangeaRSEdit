@@ -19,7 +19,7 @@ export function handleAnHd(
   // Fallback: keep minimal structure
   return {
     animName:
-      (resourceData as { name?: string; order?: number })?.name || resourceName,
+      resourceData?.name || resourceName,
     numAnimEvents: 0,
   };
 }

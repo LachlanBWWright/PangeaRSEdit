@@ -173,7 +173,7 @@ export function ThreeView({
   const handlePointerMove = useCallback((event: THREE.Event) => {
     if (!isEditingTopology || !terrainMeshRef.current) return;
 
-    const threeEvent = event as THREE.Event & { point: Vector3 };
+    const threeEvent = event;
     if (threeEvent.point) {
       setIntersectionPoint({
         x: threeEvent.point.x,
@@ -267,7 +267,7 @@ export function ThreeView({
   const handlePointerDown = useCallback((event: THREE.Event) => {
     if (!isEditingTopology) return;
     
-    const threeEvent = event as THREE.Event & { point: Vector3 };
+    const threeEvent = event;
     if (threeEvent.point && terrainData.YCrd?.[1000]?.obj) {
       setIsEditing(true);
       

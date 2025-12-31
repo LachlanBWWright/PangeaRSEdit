@@ -9,7 +9,7 @@ import type { SkeletonResource } from "../python/structSpecs/skeleton/skeletonIn
 import { isErr, Result } from "../types/result";
 
 // Helper function to detect file format and parse accordingly
-function parseModelBuffer(buffer: ArrayBuffer): Result<BG3DParseResult, Error> {
+function parseModelBuffer(buffer: ArrayBuffer): Result<BG3DParseResult> {
   // Check magic number to detect format
   const view = new DataView(buffer);
   if (buffer.byteLength >= 4) {

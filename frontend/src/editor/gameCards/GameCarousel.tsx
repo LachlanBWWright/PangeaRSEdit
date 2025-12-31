@@ -65,7 +65,7 @@ export function GameCarousel({
   handleParseLevelDataFile: (
     file: Blob,
     gameType: GlobalsInterface,
-  ) => Promise<Result<unknown, Error>>;
+  ) => Promise<Result<unknown>>;
   setMapFile: (f: File) => void;
   setMapImagesFile: (f: File) => void;
   setMapImages: (images: HTMLCanvasElement[]) => void;
@@ -132,7 +132,7 @@ function GameCarouselItem({
   handleParseLevelDataFile: (
     file: Blob,
     gameType: GlobalsInterface,
-  ) => Promise<Result<unknown, Error>>;
+  ) => Promise<Result<unknown>>;
   setMapFile: (f: File) => void;
   setMapImagesFile: (f: File) => void;
   setMapImages: (images: HTMLCanvasElement[]) => void;

@@ -110,7 +110,7 @@ describe("Debug Conversion", () => {
           console.log(`    Output values: ${outputAcc?.getCount()} values`);
 
           if (path === "rotation" && outputAcc) {
-            const values = Array.from(outputAcc.getArray() as Float32Array).slice(
+            const values = Array.from(outputAcc.getArray()).slice(
               0,
               4,
             );

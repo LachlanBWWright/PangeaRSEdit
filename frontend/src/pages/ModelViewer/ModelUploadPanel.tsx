@@ -71,7 +71,7 @@ export function ModelUploadPanel({
           <>
             <div className="flex space-x-2 mb-4">
               <Button
-                onClick={() => setUseGameSelector(true)}
+                onClick={() => { setUseGameSelector(true); }}
                 variant={useGameSelector ? "default" : "outline"}
                 size="sm"
                 className={`flex-1 ${
@@ -81,7 +81,7 @@ export function ModelUploadPanel({
                 Game Models
               </Button>
               <Button
-                onClick={() => setUseGameSelector(false)}
+                onClick={() => { setUseGameSelector(false); }}
                 variant={!useGameSelector ? "default" : "outline"}
                 size="sm"
                 className={`flex-1 ${
@@ -201,7 +201,7 @@ export function ModelUploadPanel({
                         Skip Skeleton
                       </Button>
                       <Button
-                        onClick={() => onCancelSelection()}
+                        onClick={() => { onCancelSelection(); }}
                         variant="ghost"
                         className="flex-1 text-gray-400 hover:text-white"
                       >
@@ -224,7 +224,7 @@ export function ModelUploadPanel({
             </div>
             <div className="space-y-2">
               <Button
-                onClick={() => handleDownloadBG3D()}
+                onClick={() => { handleDownloadBG3D(); }}
                 variant="outline"
                 className="w-full text-white"
               >
@@ -232,7 +232,7 @@ export function ModelUploadPanel({
                 Download as BG3D
               </Button>
               <Button
-                onClick={() => handleDownload3DMF()}
+                onClick={() => { handleDownload3DMF(); }}
                 variant="outline"
                 className="w-full text-white"
               >
@@ -240,7 +240,7 @@ export function ModelUploadPanel({
                 Download as 3DMF
               </Button>
               <Button
-                onClick={() => handleDownloadGLB()}
+                onClick={() => { handleDownloadGLB(); }}
                 variant="outline"
                 className="w-full text-white"
               >
@@ -248,7 +248,7 @@ export function ModelUploadPanel({
                 Download as GLB
               </Button>
               <Button
-                onClick={() => handleClearModel()}
+                onClick={() => { handleClearModel(); }}
                 variant="outline"
                 className="w-full text-red-400 hover:text-red-300 border-red-600 hover:border-red-500"
               >

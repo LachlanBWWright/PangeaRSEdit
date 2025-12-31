@@ -19,11 +19,11 @@ export function createNonNullUpdater<T>(
   return (updater) => {
     setter((current) => {
       if (!current) return current;
-      // Cast to satisfy TypeScript's type inference for Draft types
-      const result = typeof updater === "function" 
-        ? (updater as (val: Draft<T>) => Draft<T> | void)(current as Draft<T>) 
+      // Use updater directly; type assertions removed
+      const result = typeof updater === "function"
+        ? updater(current)
         : updater;
-      return result as T | null;
+      return result;
     });
   };
 }

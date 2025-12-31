@@ -231,7 +231,7 @@ export const metadataSchema = z
     junk1: z.number(),
     junk2: z.number(),
   })
-  .passthrough();
+  .loose();
 export type Metadata = z.infer<typeof metadataSchema>;
 
 // ============================================================================
@@ -239,7 +239,7 @@ export type Metadata = z.infer<typeof metadataSchema>;
 // ============================================================================
 
 /** Create a resource entry schema with a specific object schema */
-export function resourceEntrySchema<T extends z.ZodTypeAny>(objSchema: T) {
+export function resourceEntrySchema<T extends z.ZodType>(objSchema: T) {
   return z.object({
     name: z.string().optional(),
     obj: objSchema,
@@ -272,8 +272,8 @@ export const hexDataEntrySchema = z.object({
  */
 export function validateLevelData<T>(
   data: unknown,
-  schema: z.ZodSchema<T>,
-): Result<T, Error> {
+  schema: z.ZodType<T>,
+): Result<T> {
   const result = schema.safeParse(data);
   if (result.success) {
     return ok(result.data);
@@ -293,7 +293,7 @@ export function validateLevelData<T>(
 export function validateHeader(
   data: unknown,
   simplified: boolean = false,
-): Result<HeaderFull | HeaderSimplified, Error> {
+): Result<HeaderFull | HeaderSimplified> {
   const schema = simplified ? headerSimplifiedSchema : headerFullSchema;
   const result = schema.safeParse(data);
   if (result.success) {
@@ -305,7 +305,7 @@ export function validateHeader(
 /**
  * Validate items array
  */
-export function validateItems(data: unknown): Result<Item[], Error> {
+export function validateItems(data: unknown): Result<Item[]> {
   const schema = z.array(itemSchema);
   const result = schema.safeParse(data);
   if (result.success) {
@@ -317,7 +317,7 @@ export function validateItems(data: unknown): Result<Item[], Error> {
 /**
  * Validate fences array
  */
-export function validateFences(data: unknown): Result<Fence[], Error> {
+export function validateFences(data: unknown): Result<Fence[]> {
   const schema = z.array(fenceSchema);
   const result = schema.safeParse(data);
   if (result.success) {
@@ -329,7 +329,7 @@ export function validateFences(data: unknown): Result<Fence[], Error> {
 /**
  * Validate splines array
  */
-export function validateSplines(data: unknown): Result<Spline[], Error> {
+export function validateSplines(data: unknown): Result<Spline[]> {
   const schema = z.array(splineSchema);
   const result = schema.safeParse(data);
   if (result.success) {
@@ -341,7 +341,7 @@ export function validateSplines(data: unknown): Result<Spline[], Error> {
 /**
  * Validate liquids array
  */
-export function validateLiquids(data: unknown): Result<Liquid[], Error> {
+export function validateLiquids(data: unknown): Result<Liquid[]> {
   const schema = z.array(liquidSchema);
   const result = schema.safeParse(data);
   if (result.success) {
@@ -355,7 +355,7 @@ export function validateLiquids(data: unknown): Result<Liquid[], Error> {
  */
 export function validateTileAttributes(
   data: unknown,
-): Result<TileAttribute[], Error> {
+): Result<TileAttribute[]> {
   const schema = z.array(tileAttributeSchema);
   const result = schema.safeParse(data);
   if (result.success) {
@@ -373,7 +373,7 @@ export function validateTileAttributes(
  */
 export function validatePartialLevelDataForSchema(
   data: unknown,
-): Result<unknown, Error> {
+): Result<unknown> {
   // Since partial() isn't universally available on all Zod types,
   // we simply validate that data is an object and return it
   if (typeof data !== "object" || data === null) {

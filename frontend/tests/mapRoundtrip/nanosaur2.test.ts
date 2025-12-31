@@ -119,7 +119,7 @@ describe("Nanosaur 2 Map Roundtrip", () => {
 
     // Preprocessing should not throw
     expect(() => {
-      preprocessJson(jsonData as Record<string, unknown>, Nanosaur2Globals);
+      preprocessJson(jsonData, Nanosaur2Globals);
     }).not.toThrow();
 
     // After preprocessing, verify header data is still present

@@ -160,8 +160,8 @@ const SplineNub = memo(
           radius={10}
           draggable
           fill={selectedSpline === splineIdx ? "red" : "blue"}
-          onMouseDown={() => setSelectedSpline(splineIdx)}
-          onDragStart={() => setSelectedSpline(splineIdx)}
+          onMouseDown={() => { setSelectedSpline(splineIdx); }}
+          onDragStart={() => { setSelectedSpline(splineIdx); }}
           onDragMove={(e: Konva.KonvaEventObject<DragEvent>) => {
             const newX = Math.round(e.target.x());
             const newZ = Math.round(e.target.y());
@@ -229,8 +229,8 @@ const SplineNub = memo(
 
             updateSplinePointsFromNubs(splineIdx, setSplineData);
           }}
-          onMouseOver={() => setHovering(true)}
-          onMouseLeave={() => setHovering(false)}
+          onMouseOver={() => { setHovering(true); }}
+          onMouseLeave={() => { setHovering(false); }}
         />
         <Text
           x={nub.x - 4}
@@ -238,8 +238,8 @@ const SplineNub = memo(
           text={nubIdx.toString()}
           fill="white"
           opacity={0.8}
-          onMouseOver={() => setHovering(true)}
-          onMouseLeave={() => setHovering(false)}
+          onMouseOver={() => { setHovering(true); }}
+          onMouseLeave={() => { setHovering(false); }}
           visible={!hovering}
         />
       </>
@@ -263,8 +263,8 @@ const SplineItem = memo(
           height={ITEM_BOX_SIZE}
           stroke="blue"
           fill="blue"
-          onMouseOver={() => setHovering(true)}
-          onMouseLeave={() => setHovering(false)}
+          onMouseOver={() => { setHovering(true); }}
+          onMouseLeave={() => { setHovering(false); }}
         />
 
         <Text
@@ -275,8 +275,8 @@ const SplineItem = memo(
           y={z - ITEM_BOX_OFFSET}
           draggable
           fontSize={8}
-          onMouseOver={() => setHovering(true)}
-          onMouseLeave={() => setHovering(false)}
+          onMouseOver={() => { setHovering(true); }}
+          onMouseLeave={() => { setHovering(false); }}
         />
 
         <Label opacity={1} visible={hovering} x={x + 15} y={z}>

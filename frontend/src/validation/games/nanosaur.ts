@@ -21,7 +21,9 @@ export const nanosaurLevelSchema = z
     Atrb: z
       .record(z.string(), resourceEntrySchema(z.array(z.any()))) // Nanosaur Atrb has different fields
       .optional(),
-    YCrd: z.record(z.string(), resourceEntrySchema(z.array(z.number()))).optional(),
+    YCrd: z
+      .record(z.string(), resourceEntrySchema(z.array(z.number())))
+      .optional(),
     Itms: z
       .record(z.string(), resourceEntrySchema(z.array(z.any()))) // Nanosaur items have different fields
       .optional(),
@@ -29,12 +31,20 @@ export const nanosaurLevelSchema = z
     ItCo: z.record(z.string(), hexDataEntrySchema).optional(),
     alis: z.record(z.string(), hexDataEntrySchema).optional(),
     // Nanosaur 1 does not have fences/splines/liquids but we include empty records
-    Fenc: z.record(z.string(), resourceEntrySchema(z.array(z.any()))).optional(),
-    Liqd: z.record(z.string(), resourceEntrySchema(z.array(z.any()))).optional(),
-    Spln: z.record(z.string(), resourceEntrySchema(z.array(z.any()))).optional(),
-    STgd: z.record(z.string(), resourceEntrySchema(z.array(z.any()))).optional(),
+    Fenc: z
+      .record(z.string(), resourceEntrySchema(z.array(z.any())))
+      .optional(),
+    Liqd: z
+      .record(z.string(), resourceEntrySchema(z.array(z.any())))
+      .optional(),
+    Spln: z
+      .record(z.string(), resourceEntrySchema(z.array(z.any())))
+      .optional(),
+    STgd: z
+      .record(z.string(), resourceEntrySchema(z.array(z.any())))
+      .optional(),
   })
-  .passthrough();
+  .loose();
 
 export type NanosaurLevelData = z.infer<typeof nanosaurLevelSchema>;
 

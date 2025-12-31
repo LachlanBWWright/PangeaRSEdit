@@ -8,15 +8,27 @@ import {
   ShapesFile,
 } from "@/parsers/mightyMikeShapesParser";
 import { parseTGAToCanvas } from "@/utils/tgaImageParser";
-import { parseTilesetFile, createTilesetGridPreview, rerenderTilesetWithPalette, RGBColor } from "@/parsers/mightyMikeTilesetParser";
+import {
+  parseTilesetFile,
+  createTilesetGridPreview,
+  rerenderTilesetWithPalette,
+  RGBColor,
+} from "@/parsers/mightyMikeTilesetParser";
 import { isErr } from "@/types/result";
 import { FileUploadPanel } from "./SpriteViewer/components/FileUploadPanel";
 import { MightyMikeAssetBrowser } from "./SpriteViewer/components/MightyMikeAssetBrowser";
 import { SpriteControls } from "./SpriteViewer/components/SpriteControls";
-import { DisplayOptionsPanel, DisplayOptions } from "./SpriteViewer/components/DisplayOptionsPanel";
+import {
+  DisplayOptionsPanel,
+  DisplayOptions,
+} from "./SpriteViewer/components/DisplayOptionsPanel";
 import { PaletteSelector } from "./SpriteViewer/components/PaletteSelector";
 import { PaletteEditor } from "./SpriteViewer/components/PaletteEditor";
-import { createPalette, clonePalette, Palette } from "./SpriteViewer/utils/paletteUtils";
+import {
+  createPalette,
+  clonePalette,
+  Palette,
+} from "./SpriteViewer/utils/paletteUtils";
 import { TilesetEditor } from "./SpriteViewer/components/TilesetEditor";
 import { MightyMikeTileset } from "@/parsers/mightyMikeTilesetParser";
 import { gMightyMikePalette } from "@/utils/mightyMikePalette";
@@ -60,9 +72,13 @@ export function SpriteViewer() {
   const [selectedFrameIndex, setSelectedFrameIndex] = useState<number>(0);
 
   // Tileset-specific state
-  const [selectedTileIndex, setSelectedTileIndex] = useState<number | undefined>(undefined);
-  const [currentTilesetScene, setCurrentTilesetScene] = useState<string>("jurassic");
-  const [currentTilesetPaletteScene, setCurrentTilesetPaletteScene] = useState<string>("jurassic");
+  const [selectedTileIndex, setSelectedTileIndex] = useState<
+    number | undefined
+  >(undefined);
+  const [currentTilesetScene, setCurrentTilesetScene] =
+    useState<string>("jurassic");
+  const [currentTilesetPaletteScene, setCurrentTilesetPaletteScene] =
+    useState<string>("jurassic");
 
   // Palette state
   const [customPalettes, setCustomPalettes] = useState<Palette[]>([]);
@@ -122,7 +138,9 @@ export function SpriteViewer() {
         });
         setSelectedShapeIndex(0);
         setSelectedFrameIndex(0);
-        toast.success(`Loaded: ${result.value.shapes.length} shapes`);
+        toast.success(
+          "Loaded: " + String(result.value.shapes.length) + " shapes",
+        );
       } else if (fileType === "tga") {
         const result = parseTGAToCanvas(buffer);
         if (isErr(result)) {
@@ -136,7 +154,9 @@ export function SpriteViewer() {
         });
         toast.success("Loaded TGA image");
       } else if (fileType === "tileset") {
-        toast.info("Custom tileset upload not yet fully supported. Use the asset browser to load tilesets.");
+        toast.info(
+          "Custom tileset upload not yet fully supported. Use the asset browser to load tilesets.",
+        );
         return;
       }
     } catch (error) {
@@ -175,7 +195,13 @@ export function SpriteViewer() {
       });
       setSelectedShapeIndex(0);
       setSelectedFrameIndex(0);
-      toast.success(`Loaded ${filename}: ${result.value.shapes.length} shapes`);
+      toast.success(
+        "Loaded " +
+          filename +
+          ": " +
+          String(result.value.shapes.length) +
+          " shapes",
+      );
     } catch (error) {
       console.error("Error loading sprites:", error);
       toast.error(
@@ -240,7 +266,9 @@ export function SpriteViewer() {
       const tgaResponse = await fetch(tgaUrl);
 
       if (!tgaResponse.ok) {
-        toast.error(`Failed to load palette from TGA: ${tgaResponse.statusText}`);
+        toast.error(
+          `Failed to load palette from TGA: ${tgaResponse.statusText}`,
+        );
         return;
       }
 
@@ -248,7 +276,9 @@ export function SpriteViewer() {
       const tgaCanvasResult = parseTGAToCanvas(tgaBuffer);
 
       if (isErr(tgaCanvasResult)) {
-        toast.error(`Failed to parse TGA file: ${tgaCanvasResult.error.message}`);
+        toast.error(
+          `Failed to parse TGA file: ${tgaCanvasResult.error.message}`,
+        );
         return;
       }
 
@@ -281,12 +311,15 @@ export function SpriteViewer() {
         // Color map exists, extract it as RGBA for palette manager
         const colorMapOffset = 18 + idLength;
 
-        console.log("[TGA Palette] Extracting 256 colors from offset", colorMapOffset);
+        console.log(
+          "[TGA Palette] Extracting 256 colors from offset",
+          colorMapOffset,
+        );
 
         // Build RGBA array for palette manager
         const rgbaData = new Uint8Array(1024); // 256 colors × 4 bytes
         for (let i = 0; i < 256; i++) {
-          const entryOffset = colorMapOffset + (i * colorMapBytesPerEntry);
+          const entryOffset = colorMapOffset + i * colorMapBytesPerEntry;
 
           // TGA color map is stored as BGR(A)
           const b = tgaView.getUint8(entryOffset);
@@ -303,14 +336,27 @@ export function SpriteViewer() {
 
           // Log first few and last few colors for debugging
           if (i < 3 || i >= 253) {
-            console.log(`[TGA Palette] Color ${i}: RGB(${r}, ${g}, ${b}) from offset ${entryOffset}`);
+            console.log(
+              "[TGA Palette] Color " +
+                String(i) +
+                ": RGB(" +
+                String(r) +
+                ", " +
+                String(g) +
+                ", " +
+                String(b) +
+                ") from offset " +
+                String(entryOffset),
+            );
           }
         }
 
         // Load palette into MightyMikePaletteManager for gamma correction
         gMightyMikePalette.loadPaletteFromRGBA(rgbaData);
 
-        console.log("[TGA Palette] Successfully extracted and gamma-corrected palette");
+        console.log(
+          "[TGA Palette] Successfully extracted and gamma-corrected palette",
+        );
       } else {
         console.error("[TGA Palette] Invalid color map:", {
           colorMapType,
@@ -378,11 +424,19 @@ export function SpriteViewer() {
         });
       }
 
-      const paletteWithScene = createPalette(`${filename} Scene Palette (Gamma-Corrected)`);
+      const paletteWithScene = createPalette(
+        `${filename} Scene Palette (Gamma-Corrected)`,
+      );
       paletteWithScene.colors = tilsetPaletteColors;
       setCurrentPalette(paletteWithScene);
 
-      toast.success(`Loaded tileset: ${filename} (${tileset.numTileDefinitions} tiles)`);
+      toast.success(
+        "Loaded tileset: " +
+          filename +
+          " (" +
+          String(tileset.numTileDefinitions) +
+          " tiles)",
+      );
     } catch (error) {
       console.error("Error loading tileset:", error);
       toast.error(
@@ -462,7 +516,13 @@ export function SpriteViewer() {
     // Origin marker
     ctx.fillStyle = "rgba(255, 0, 0, 0.5)";
     ctx.fillRect(10 - 2, 10 - 2, 4, 4);
-  }, [loadedData, selectedShapeIndex, selectedFrameIndex, currentPalette.colors, displayOptions]);
+  }, [
+    loadedData,
+    selectedShapeIndex,
+    selectedFrameIndex,
+    currentPalette.colors,
+    displayOptions,
+  ]);
 
   const renderTGAOrTileset = useCallback(() => {
     if (!canvasRef.current) return;
@@ -473,7 +533,11 @@ export function SpriteViewer() {
       sourceCanvas = loadedData.data;
     } else if (loadedData?.type === "tileset") {
       // If a tile is selected, show that tile; otherwise show grid preview
-      if (selectedTileIndex !== undefined && selectedTileIndex >= 0 && selectedTileIndex < loadedData.data.tileImages.length) {
+      if (
+        selectedTileIndex !== undefined &&
+        selectedTileIndex >= 0 &&
+        selectedTileIndex < loadedData.data.tileImages.length
+      ) {
         const tileCanvas = loadedData.data.tileImages[selectedTileIndex];
         sourceCanvas = tileCanvas || loadedData.gridCanvas;
       } else {
@@ -509,7 +573,16 @@ export function SpriteViewer() {
         renderTGAOrTileset();
       }
     }
-  }, [loadedData, selectedShapeIndex, selectedFrameIndex, displayOptions, currentPalette, selectedTileIndex, renderSprites, renderTGAOrTileset]);
+  }, [
+    loadedData,
+    selectedShapeIndex,
+    selectedFrameIndex,
+    displayOptions,
+    currentPalette,
+    selectedTileIndex,
+    renderSprites,
+    renderTGAOrTileset,
+  ]);
 
   // ===== Export =====
 
@@ -520,7 +593,12 @@ export function SpriteViewer() {
     }
     const link = document.createElement("a");
     link.href = canvasRef.current.toDataURL("image/png");
-    link.download = `shape_${selectedShapeIndex}_frame_${selectedFrameIndex}.png`;
+    link.download =
+      "shape_" +
+      String(selectedShapeIndex) +
+      "_frame_" +
+      String(selectedFrameIndex) +
+      ".png";
     link.click();
     toast.success("Frame downloaded");
   };
@@ -546,8 +624,15 @@ export function SpriteViewer() {
       if (!isErr(frameCanvasResult)) {
         const link = document.createElement("a");
         link.href = frameCanvasResult.value.toDataURL("image/png");
-        link.download = `shape_${selectedShapeIndex}_frame_${frameIdx}.png`;
-        setTimeout(() => link.click(), frameIdx * 200);
+        link.download =
+          "shape_" +
+          String(selectedShapeIndex) +
+          "_frame_" +
+          String(frameIdx) +
+          ".png";
+        setTimeout(() => {
+          link.click();
+        }, frameIdx * 200);
       }
     });
   };
@@ -566,7 +651,7 @@ export function SpriteViewer() {
 
     const link = document.createElement("a");
     link.href = tileCanvas.toDataURL("image/png");
-    link.download = `tile_${selectedTileIndex}.png`;
+    link.download = "tile_" + String(selectedTileIndex) + ".png";
     link.click();
     toast.success("Tile downloaded");
   };
@@ -591,13 +676,17 @@ export function SpriteViewer() {
     }
 
     const tileset = loadedData.data;
-    toast.info(`Downloading ${tileset.numTileDefinitions} tiles...`);
+    toast.info(
+      "Downloading " + String(tileset.numTileDefinitions) + " tiles...",
+    );
 
     tileset.tileImages.forEach((tileCanvas, tileIdx) => {
       const link = document.createElement("a");
       link.href = tileCanvas.toDataURL("image/png");
-      link.download = `tile_${tileIdx}.png`;
-      setTimeout(() => link.click(), tileIdx * 100);
+      link.download = "tile_" + String(tileIdx) + ".png";
+      setTimeout(() => {
+        link.click();
+      }, tileIdx * 100);
     });
 
     toast.success("Tile download started");
@@ -607,7 +696,7 @@ export function SpriteViewer() {
     // If it's a predefined palette (scene name), load the actual palette from the TGA
     const sceneNames = ["candy", "bargain", "clown", "fairy", "jurassic"];
     const sceneName = sceneNames.find(
-      (name) => palette.name.toLowerCase() === name.toLowerCase()
+      (name) => palette.name.toLowerCase() === name.toLowerCase(),
     );
 
     if (sceneName) {
@@ -646,7 +735,7 @@ export function SpriteViewer() {
           // Build RGBA array for palette manager
           const rgbaData = new Uint8Array(1024);
           for (let i = 0; i < 256; i++) {
-            const entryOffset = colorMapOffset + (i * colorMapBytesPerEntry);
+            const entryOffset = colorMapOffset + i * colorMapBytesPerEntry;
             const b = tgaView.getUint8(entryOffset);
             const g = tgaView.getUint8(entryOffset + 1);
             const r = tgaView.getUint8(entryOffset + 2);
@@ -728,7 +817,7 @@ export function SpriteViewer() {
         // Build RGBA array for palette manager
         const rgbaData = new Uint8Array(1024);
         for (let i = 0; i < 256; i++) {
-          const entryOffset = colorMapOffset + (i * colorMapBytesPerEntry);
+          const entryOffset = colorMapOffset + i * colorMapBytesPerEntry;
           const b = tgaView.getUint8(entryOffset);
           const g = tgaView.getUint8(entryOffset + 1);
           const r = tgaView.getUint8(entryOffset + 2);
@@ -761,7 +850,10 @@ export function SpriteViewer() {
 
         // Re-render the tileset with the new palette
         if (loadedData?.type === "tileset") {
-          const newTileImages = rerenderTilesetWithPalette(loadedData.data, paletteColors);
+          const newTileImages = rerenderTilesetWithPalette(
+            loadedData.data,
+            paletteColors,
+          );
           const newGridCanvas = createTilesetGridPreview({
             ...loadedData.data,
             tileImages: newTileImages,
@@ -806,11 +898,11 @@ export function SpriteViewer() {
             onTypeChange={setAssetFileType}
             onAssetSelect={(filename) => {
               if (assetFileType === "sprites") {
-                handleLoadSpritesFile(filename);
+                void handleLoadSpritesFile(filename);
               } else if (assetFileType === "tga") {
-                handleLoadTGAFile(filename);
+                void handleLoadTGAFile(filename);
               } else if (assetFileType === "tileset") {
-                handleLoadTilesetFile(filename);
+                void handleLoadTilesetFile(filename);
               }
             }}
             loading={loading}
@@ -828,7 +920,9 @@ export function SpriteViewer() {
                   setShowPaletteEditor(false);
                 }}
                 onCreateNew={() => {
-                  const newPalette = createPalette(`Custom ${customPalettes.length + 1}`);
+                  const newPalette = createPalette(
+                    "Custom " + String(customPalettes.length + 1),
+                  );
                   setCustomPalettes([...customPalettes, newPalette]);
                   setCurrentPalette(newPalette);
                   setShowPaletteEditor(true);

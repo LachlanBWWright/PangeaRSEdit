@@ -253,7 +253,7 @@ describe("Data Selectors", () => {
       const emptyData = {
         ...mockData,
         Hedr: undefined,
-      } as unknown as LevelData;
+      };
       const headerData = selectHeaderData(emptyData);
       expect(headerData).toBeNull();
     });
@@ -261,7 +261,7 @@ describe("Data Selectors", () => {
 
   describe("Item Data Selectors", () => {
     it("should select item data correctly", () => {
-      const itemData = selectItemData(mockData as ItemData);
+      const itemData = selectItemData(mockData);
       expect(itemData).toBeTruthy();
       if (!itemData) throw new Error("item data missing");
       const itmsEntry = itemData.Itms[1000];
@@ -270,7 +270,7 @@ describe("Data Selectors", () => {
     });
 
     it("should select items array correctly", () => {
-      const items = selectItems(mockData as ItemData);
+      const items = selectItems(mockData);
       expect(items).toHaveLength(2);
       if (items.length < 2) throw new Error("items missing");
       const [firstItem, secondItem] = items;
@@ -280,7 +280,7 @@ describe("Data Selectors", () => {
     });
 
     it("should return empty array when no items exist", () => {
-      const emptyData = { ...mockData, Itms: undefined } as unknown as ItemData;
+      const emptyData = { ...mockData, Itms: undefined };
       const items = selectItems(emptyData);
       expect(items).toEqual([]);
     });
@@ -288,7 +288,7 @@ describe("Data Selectors", () => {
 
   describe("Liquid Data Selectors", () => {
     it("should select liquid data correctly", () => {
-      const liquidData = selectLiquidData(mockData as LiquidData);
+      const liquidData = selectLiquidData(mockData);
       expect(liquidData).toBeTruthy();
       if (!liquidData) throw new Error("liquid data missing");
       const liqdEntry = liquidData.Liqd[1000];
@@ -297,7 +297,7 @@ describe("Data Selectors", () => {
     });
 
     it("should select liquids array correctly", () => {
-      const liquids = selectLiquids(mockData as LiquidData);
+      const liquids = selectLiquids(mockData);
       expect(liquids).toHaveLength(1);
       if (liquids.length < 1) throw new Error("liquids missing");
       const [firstLiquid] = liquids;

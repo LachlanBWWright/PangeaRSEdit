@@ -254,7 +254,7 @@ export const BugdomSupertiles = memo(
             <Fragment key={i}>
               <Image
                 image={img}
-                onClick={() => setSelectedTile(i)}
+                onClick={() => { setSelectedTile(i); }}
                 x={col * supertilePixelSize}
                 y={row * supertilePixelSize}
                 width={supertilePixelSize}
@@ -262,7 +262,7 @@ export const BugdomSupertiles = memo(
               />
               {isSelected && (
                 <Rect
-                  onClick={() => setSelectedTile(i)}
+                  onClick={() => { setSelectedTile(i); }}
                   x={col * supertilePixelSize}
                   y={row * supertilePixelSize}
                   width={supertilePixelSize}

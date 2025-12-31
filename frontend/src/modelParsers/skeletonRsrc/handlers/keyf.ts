@@ -8,13 +8,14 @@ export function handleKeyF(
   hexData: string,
 ) {
   console.log(resourceId, hexData);
-  const castedData = resourceData as { obj?: KeyFRaw[] };
+  const castedData = resourceData;
   if (
     resourceData &&
+    castedData &&
     castedData.obj &&
     Array.isArray(castedData.obj) &&
     castedData.obj.length > 0 &&
-    (castedData.obj[0] as Record<string, unknown>)["tick"] !== undefined
+    castedData.obj[0]["tick"] !== undefined
   ) {
     const obj = castedData.obj;
     console.log(
@@ -25,10 +26,10 @@ export function handleKeyF(
     return obj;
   } else if (
     resourceData &&
-    (resourceData as { obj?: KeyFRaw[] }).obj &&
-    Array.isArray((resourceData as { obj?: KeyFRaw[] }).obj)
+    resourceData.obj &&
+    Array.isArray(resourceData.obj)
   ) {
-    const obj = (resourceData as { obj?: KeyFRaw[] }).obj!;
+    const obj = resourceData.obj!;
     console.log(
       `KeyF ${resourceName} empty/malformed from rsrcdump:`,
       obj.length,
@@ -38,12 +39,12 @@ export function handleKeyF(
   } else {
     console.log(`KeyF ${resourceName} raw resourceData:`, resourceData);
     console.log(`KeyF ${resourceName} resourceData type:`, typeof resourceData);
-    const resourceRecord = resourceData as Record<string, unknown> | null | undefined;
+    const resourceRecord = resourceData;
     console.log(
       `KeyF ${resourceName} resourceData.keys:`,
       Object.keys(resourceRecord || {}),
     );
-    const hex = (resourceRecord as { data?: string } | undefined)?.data || "";
+    const hex = (resourceRecord && resourceRecord.data) || "";
     console.log(`KeyF ${resourceName} hex data length:`, hex.length);
     const obj = parseKeyFData(hex);
     console.log(

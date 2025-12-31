@@ -51,7 +51,9 @@ export function loadMightyMikePalette(paletteRGBA: Uint8Array): void {
 export function setMightyMikeTileTransparency(colorIndices: number[]): void {
   gMightyMikePalette.setTransparencyColors(colorIndices);
   console.log(
-    `[PALETTE] Set ${colorIndices.length} transparency colors for collision`
+    "[PALETTE] Set " +
+      String(colorIndices.length) +
+      " transparency colors for collision",
   );
 }
 
@@ -64,7 +66,7 @@ export function setMightyMikeTileTransparency(colorIndices: number[]): void {
  */
 export function renderTileWithDynamicPalette(
   tileData: Uint8Array,
-  tileSize: number = 32
+  tileSize: number = 32,
 ): Result<HTMLCanvasElement> {
   const canvas = document.createElement("canvas");
   canvas.width = tileSize;
@@ -104,7 +106,7 @@ export function renderTileWithDynamicPalette(
 export function rerenderAllTilesWithCurrentPalette(
   tileDataBuffer: Uint8Array,
   numTiles: number,
-  tileSize: number = 32
+  tileSize: number = 32,
 ): Result<HTMLCanvasElement[]> {
   const canvases: HTMLCanvasElement[] = [];
   const bytesPerTile = tileSize * tileSize;
@@ -113,11 +115,18 @@ export function rerenderAllTilesWithCurrentPalette(
     const tileDataOffset = tileIndex * bytesPerTile;
     const tileSlice = tileDataBuffer.slice(
       tileDataOffset,
-      tileDataOffset + bytesPerTile
+      tileDataOffset + bytesPerTile,
     );
     const canvasResult = renderTileWithDynamicPalette(tileSlice, tileSize);
     if (!canvasResult.ok) {
-      return err(new Error(`Failed to render tile ${tileIndex}: ${canvasResult.error.message}`));
+      return err(
+        new Error(
+          "Failed to render tile " +
+            String(tileIndex) +
+            ": " +
+            canvasResult.error.message,
+        ),
+      );
     }
     canvases.push(canvasResult.value);
   }
@@ -131,7 +140,7 @@ export function rerenderAllTilesWithCurrentPalette(
  */
 export async function fadeInPalette(
   durationMs: number = 500,
-  updateCallback?: (brightness: number) => void
+  updateCallback?: (brightness: number) => void,
 ): Promise<void> {
   gMightyMikePalette.makeBackUpPalette();
   const startTime = Date.now();
@@ -164,7 +173,7 @@ export async function fadeInPalette(
  */
 export async function fadeOutPalette(
   durationMs: number = 500,
-  updateCallback?: (brightness: number) => void
+  updateCallback?: (brightness: number) => void,
 ): Promise<void> {
   gMightyMikePalette.makeBackUpPalette();
   const startTime = Date.now();

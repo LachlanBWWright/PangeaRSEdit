@@ -258,7 +258,7 @@ export function IntroPrompt() {
         return;
       }
 
-      const loadRes = saveResult.value as Uint8Array;
+      const loadRes = saveResult.value;
 
       if (!loadRes || loadRes.byteLength === 0) {
         console.error("Download failed: Generated map data is empty");
@@ -407,7 +407,7 @@ export function IntroPrompt() {
   useEffect(() => {
     if (!processed) return;
     saveMap();
-    Promise.resolve().then(() => setProcessed(false));
+    Promise.resolve().then(() => { setProcessed(false); });
   }, [
     processed,
     headerData,

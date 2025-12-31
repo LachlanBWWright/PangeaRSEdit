@@ -262,7 +262,7 @@ describe("Level Parsing - Pure Functions", () => {
         Tram: undefined,
         Heig: undefined,
         Fenc: undefined,
-      } as unknown as LevelData;
+      };
 
       const level2 = {
         Hedr: { height: 100, width: 100 },
@@ -280,7 +280,7 @@ describe("Level Parsing - Pure Functions", () => {
         Tram: undefined,
         Heig: undefined,
         Fenc: undefined,
-      } as unknown as LevelData;
+      };
 
       const result = compareLevelData(level1, level2);
 

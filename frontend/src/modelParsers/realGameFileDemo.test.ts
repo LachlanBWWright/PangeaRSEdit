@@ -6,8 +6,8 @@ import { parseBG3DWithSkeletonResource } from "./bg3dWithSkeleton";
 import { bg3dParsedToGLTF } from "./parsedBg3dGitfConverter";
 import { unwrap } from "../types/result";
 import type { SkeletonResource } from "../python/structSpecs/skeleton/skeletonInterface";
-import * as fs from "fs";
-import * as path from "path";
+import { existsSync, readFileSync, statSync, readdirSync } from "fs";
+import { join, dirname } from "path";
 
 // Simplified skeleton data based on the actual BrainAlien structure
 const brainAlienSkeletonDemo: SkeletonResource = {
@@ -249,7 +249,7 @@ const brainAlienSkeletonDemo: SkeletonResource = {
 };
 
 describe("Real Game File Demo - BrainAlien", () => {
-  const BG3D_PATH = path.join(
+  const BG3D_PATH = join(
     __dirname,
     "./testSkeletons/EliteBrainAlien.bg3d",
   );
@@ -261,7 +261,7 @@ describe("Real Game File Demo - BrainAlien", () => {
         "EliteBrainAlien.bg3d not found, creating demo with available file",
       );
       // Use the available level4_apocalypse.bg3d file instead
-      const fallbackPath = path.join(
+      const fallbackPath = join(
         __dirname,
         "./testSkeletons/level4_apocalypse.bg3d",
       );
@@ -271,7 +271,7 @@ describe("Real Game File Demo - BrainAlien", () => {
         return;
       }
 
-      const bg3dBuffer = fs.readFileSync(fallbackPath);
+      const bg3dBuffer = readFileSync(fallbackPath);
       const result = parseBG3DWithSkeletonResource(
         bg3dBuffer.buffer.slice(
           bg3dBuffer.byteOffset,
@@ -365,7 +365,7 @@ describe("Real Game File Demo - BrainAlien", () => {
     }
 
     // If the actual BrainAlien file exists, use it
-    const bg3dBuffer = fs.readFileSync(BG3D_PATH);
+    const bg3dBuffer = readFileSync(BG3D_PATH);
     const result = parseBG3DWithSkeletonResource(
       bg3dBuffer.buffer.slice(
         bg3dBuffer.byteOffset,
@@ -386,27 +386,27 @@ describe("Real Game File Demo - BrainAlien", () => {
   });
 
   it("shows file sizes and validates game file availability", () => {
-    const bg3dPath = path.join(
+    const bg3dPath = join(
       __dirname,
       "./testSkeletons/EliteBrainAlien.bg3d",
     );
-    const skeletonPath = path.join(
+    const skeletonPath = join(
       __dirname,
       "./skeletonRsrc/testSkeletons/EliteBrainAlien.skeleton.rsrc",
     );
 
     console.log("\n📁 Game File Availability Check:");
 
-    if (fs.existsSync(bg3dPath)) {
-      const size = fs.statSync(bg3dPath).size;
+    if (existsSync(bg3dPath)) {
+      const size = statSync(bg3dPath).size;
       console.log(`✅ EliteBrainAlien.bg3d: ${size} bytes`);
       expect(size).toBeGreaterThan(1000);
     } else {
       console.log("❌ EliteBrainAlien.bg3d: Not found");
     }
 
-    if (fs.existsSync(skeletonPath)) {
-      const size = fs.statSync(skeletonPath).size;
+    if (existsSync(skeletonPath)) {
+      const size = statSync(skeletonPath).size;
       console.log(`✅ EliteBrainAlien.skeleton.rsrc: ${size} bytes`);
       expect(size).toBeGreaterThan(100);
     } else {

@@ -37,8 +37,8 @@ export function extractSafeItemTypes(
   const splineItems = levelData.SpIt?.[1000]?.obj;
   if (Array.isArray(splineItems)) {
     splineItems.forEach((splineItem) => {
-      if (splineItem && typeof (splineItem as { type?: unknown }).type === "number") {
-        splineItemTypes.add((splineItem as { type: number }).type);
+      if (splineItem && typeof splineItem.type === "number") {
+        splineItemTypes.add(splineItem.type);
       }
     });
   }

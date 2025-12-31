@@ -7,13 +7,14 @@ export function handleEvnt(
   _resourceId: string,
   hexData: string,
 ) {
-  const castedData = resourceData as { obj?: EvntRaw[] };
+  const castedData = resourceData;
   if (
     resourceData &&
+    castedData &&
     castedData.obj &&
     Array.isArray(castedData.obj) &&
     castedData.obj.length > 0 &&
-    (castedData.obj[0] as EvntRaw).time !== undefined
+    castedData.obj[0].time !== undefined
   ) {
     const obj = castedData.obj;
     console.log(
@@ -23,12 +24,12 @@ export function handleEvnt(
   } else if (
     Array.isArray(resourceData) &&
     resourceData.length > 0 &&
-    (resourceData[0] as EvntRaw).time !== undefined
+    resourceData[0].time !== undefined
   ) {
     console.log(
       `[DEBUG] Using rsrcdump-parsed Evnt data (array format) for ${resourceName}: ${resourceData.length} events`,
     );
-    return resourceData as EvntRaw[];
+    return resourceData;
   } else {
     console.log(
       `[DEBUG] Fallback: parsing Evnt ${resourceName} from hexData (${

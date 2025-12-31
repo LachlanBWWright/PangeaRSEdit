@@ -36,10 +36,10 @@ export function DisplayOptionsPanel({
               size="sm"
               className="text-white flex-1"
               onClick={() =>
-                onOptionsChange({
+                { onOptionsChange({
                   ...options,
                   zoomLevel: Math.max(0.5, options.zoomLevel - 0.5),
-                })
+                }); }
               }
             >
               −
@@ -48,7 +48,7 @@ export function DisplayOptionsPanel({
               variant="outline"
               size="sm"
               className="text-white flex-1"
-              onClick={() => onOptionsChange({ ...options, zoomLevel: 1 })}
+              onClick={() => { onOptionsChange({ ...options, zoomLevel: 1 }); }}
             >
               1x
             </Button>
@@ -56,7 +56,7 @@ export function DisplayOptionsPanel({
               variant="outline"
               size="sm"
               className="text-white flex-1"
-              onClick={() => onOptionsChange({ ...options, zoomLevel: 4 })}
+              onClick={() => { onOptionsChange({ ...options, zoomLevel: 4 }); }}
             >
               4x
             </Button>
@@ -65,10 +65,10 @@ export function DisplayOptionsPanel({
               size="sm"
               className="text-white flex-1"
               onClick={() =>
-                onOptionsChange({
+                { onOptionsChange({
                   ...options,
                   zoomLevel: options.zoomLevel + 0.5,
-                })
+                }); }
               }
             >
               +
@@ -85,10 +85,10 @@ export function DisplayOptionsPanel({
                   type="checkbox"
                   checked={options.showGrid}
                   onChange={(e) =>
-                    onOptionsChange({
+                    { onOptionsChange({
                       ...options,
                       showGrid: e.target.checked,
-                    })
+                    }); }
                   }
                   className="w-4 h-4"
                 />
@@ -102,10 +102,10 @@ export function DisplayOptionsPanel({
                   type="checkbox"
                   checked={options.showBounds}
                   onChange={(e) =>
-                    onOptionsChange({
+                    { onOptionsChange({
                       ...options,
                       showBounds: e.target.checked,
-                    })
+                    }); }
                   }
                   className="w-4 h-4"
                 />
@@ -129,10 +129,10 @@ export function DisplayOptionsPanel({
                     options.backgroundColor === color ? "#00ff00" : "transparent",
                 }}
                 onClick={() =>
-                  onOptionsChange({
+                  { onOptionsChange({
                     ...options,
                     backgroundColor: color,
-                  })
+                  }); }
                 }
               />
             ))}

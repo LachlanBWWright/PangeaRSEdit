@@ -66,7 +66,7 @@ class MockBG3DGltfWorker {
               },
             },
           };
-          this.onmessage?.({ data: response } as MessageEvent);
+          this.onmessage?.({ data: response });
         } else if (message.type === "bg3d-to-glb") {
           // Mock regular BG3D processing
           const response: BG3DGltfWorkerResponse = {
@@ -77,14 +77,14 @@ class MockBG3DGltfWorker {
               groups: [],
             },
           };
-          this.onmessage?.({ data: response } as MessageEvent);
+          this.onmessage?.({ data: response });
         }
       } catch (error) {
         const errorResponse: BG3DGltfWorkerResponse = {
           type: "error",
           error: error instanceof Error ? error.message : "Unknown error",
         };
-        this.onmessage?.({ data: errorResponse } as MessageEvent);
+        this.onmessage?.({ data: errorResponse });
       }
     }, 10);
   }
@@ -241,7 +241,7 @@ describe("BG3D Skeleton Integration", () => {
         name: clip.name,
         duration: clip.duration,
         index: index,
-        clip: clip as MockAnimationClip, // Mock THREE.AnimationClip
+        clip: clip, // Mock THREE.AnimationClip
       }),
     );
 
@@ -276,8 +276,8 @@ describe("Animation Viewer Integration", () => {
       index: number;
       clip: MockAnimationClip;
     }[] = [
-      { name: "idle", duration: 3.0, index: 0, clip: {} as MockAnimationClip },
-      { name: "walk", duration: 2.5, index: 1, clip: {} as MockAnimationClip },
+      { name: "idle", duration: 3.0, index: 0, clip: {} },
+      { name: "walk", duration: 2.5, index: 1, clip: {} },
     ];
 
     let selectedAnimation: number | null = null;
@@ -285,7 +285,7 @@ describe("Animation Viewer Integration", () => {
     // Simulate selecting first animation
     selectedAnimation = 0;
     expect(selectedAnimation).toBe(0);
-    expect(mockAnimations[selectedAnimation!]!.name).toBe("idle");
+    expect(mockAnimations[selectedAnimation]!.name).toBe("idle");
 
     // Simulate deselecting
     selectedAnimation = null;

@@ -1,4 +1,4 @@
-import {  decodeJpegNode } from "./jpegDecompress";
+import { decodeJpegNode } from "./jpegDecompress";
 
 export type JpegDecompressMessage = {
   id: number;
@@ -12,13 +12,26 @@ export type JpegDecompressResponse = {
   imageData: ImageData;
 };
 
-onmessage = async (event: MessageEvent<JpegDecompressMessage>) => {
-  if (event.data.type === "decompress") {
-    const imageData = await decodeJpegNode(event.data.jpegData);
-    postMessage({
-      id: event.data.id,
+onmessage = (event: MessageEvent<unknown>) => {
+  const payload = event.data;
+  const isDecompressMessage = (p: unknown): p is JpegDecompressMessage => {
+    if (typeof p !== "object" || p === null) return false;
+    const obj = p as Record<string, unknown>;
+    return (
+      obj.type === "decompress" &&
+      typeof obj.id === "number" &&
+      obj.jpegData instanceof ArrayBuffer
+    );
+  };
+
+  if (isDecompressMessage(payload)) {
+    const data = payload;
+    const imageData = decodeJpegNode(data.jpegData);
+    const response: JpegDecompressResponse = {
+      id: data.id,
       type: "decompressRes",
       imageData,
-    } satisfies JpegDecompressResponse);
+    };
+    postMessage(response);
   }
 };

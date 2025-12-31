@@ -9,18 +9,18 @@ describe("mightyMikeShapesParser", () => {
   beforeAll(async () => {
     // Read actual shapes files from filesystem
     // Since vitest runs in Node environment, we can use fs
-    const { readFileSync } = await import("fs");
-    const { resolve, join } = await import("path");
+    const fs = await import("fs");
+    const path = await import("path");
 
-    const publicDir = resolve(__dirname, "../../public");
-    const mainPath = join(publicDir, "data/mightymike/shapes/main.shapes");
-    const jurassicPath = join(publicDir, "data/mightymike/shapes/jurassic1.shapes");
+    const publicDir = path.resolve(__dirname, "../../public");
+    const mainPath = path.join(publicDir, "data/mightymike/shapes/main.shapes");
+    const jurassicPath = path.join(publicDir, "data/mightymike/shapes/jurassic1.shapes");
 
-    const mainBuffer = readFileSync(mainPath);
-    const jurassicBuffer = readFileSync(jurassicPath);
+    const mainBuffer = fs.readFileSync(mainPath);
+    const jurassicBuffer = fs.readFileSync(jurassicPath);
 
-    mainShapesBuffer = mainBuffer.buffer.slice(mainBuffer.byteOffset, mainBuffer.byteOffset + mainBuffer.byteLength) as ArrayBuffer;
-    jurassic1Buffer = jurassicBuffer.buffer.slice(jurassicBuffer.byteOffset, jurassicBuffer.byteOffset + jurassicBuffer.byteLength) as ArrayBuffer;
+    mainShapesBuffer = mainBuffer.buffer.slice(mainBuffer.byteOffset, mainBuffer.byteOffset + mainBuffer.byteLength);
+    jurassic1Buffer = jurassicBuffer.buffer.slice(jurassicBuffer.byteOffset, jurassicBuffer.byteOffset + jurassicBuffer.byteLength);
   });
 
   it("should parse main.shapes file without errors", () => {
@@ -32,7 +32,7 @@ describe("mightyMikeShapesParser", () => {
     if (isOk(result)) {
       expect(result.value.colorTable.length).toBeGreaterThan(0);
       expect(result.value.shapes.length).toBeGreaterThan(0);
-      console.log(`main.shapes: ${result.value.shapes.length} shapes, ${result.value.colorTable.length} colors`);
+      console.log(`main.shapes: ${String(result.value.shapes.length)} shapes, ${String(result.value.colorTable.length)} colors`);
     }
   });
 
@@ -42,7 +42,7 @@ describe("mightyMikeShapesParser", () => {
     if (isOk(result)) {
       expect(result.value.colorTable.length).toBeGreaterThan(0);
       expect(result.value.shapes.length).toBeGreaterThan(0);
-      console.log(`jurassic1.shapes: ${result.value.shapes.length} shapes, ${result.value.colorTable.length} colors`);
+      console.log(`jurassic1.shapes: ${String(result.value.shapes.length)} shapes, ${String(result.value.colorTable.length)} colors`);
     }
   });
 
@@ -68,7 +68,7 @@ describe("mightyMikeShapesParser", () => {
           expect(firstFrame.pixels.length).toBeGreaterThan(0);
           expect(firstFrame.pixels.length).toBe(firstFrame.header.width * firstFrame.header.height);
 
-          console.log(`First frame: ${firstFrame.header.width}x${firstFrame.header.height}, ${firstFrame.pixels.length} pixels`);
+          console.log(`First frame: ${String(firstFrame.header.width)}x${String(firstFrame.header.height)}, ${String(firstFrame.pixels.length)} pixels`);
         }
       }
     }

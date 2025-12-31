@@ -456,7 +456,7 @@ function writeMeshContainer(
  * @param metaFile The parsed 3DMF data structure
  * @returns Result<ArrayBuffer, Error> The 3DMF file as an ArrayBuffer
  */
-export function write3DMFFromMetaFile(metaFile: TQ3MetaFile): Result<ArrayBuffer, Error> {
+export function write3DMFFromMetaFile(metaFile: TQ3MetaFile): Result<ArrayBuffer> {
   const writer = new BigEndianWriter(1024 * 1024); // 1MB initial capacity (grows dynamically)
   const textureOffsets = new Map<number, number>();
   

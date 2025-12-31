@@ -146,9 +146,9 @@ function triMeshToBG3DGeometry(mesh: TQ3TriMeshData): BG3DGeometry {
 
   // Convert bounding box
   const boundingBox = {
-    min: [mesh.bBox.min.x, mesh.bBox.min.y, mesh.bBox.min.z] as [number, number, number],
-    max: [mesh.bBox.max.x, mesh.bBox.max.y, mesh.bBox.max.z] as [number, number, number],
-  };
+    min: [mesh.bBox.min.x, mesh.bBox.min.y, mesh.bBox.min.z],
+    max: [mesh.bBox.max.x, mesh.bBox.max.y, mesh.bBox.max.z],
+  }; 
 
   return {
     type: 0,
@@ -173,7 +173,7 @@ function triMeshToBG3DGeometry(mesh: TQ3TriMeshData): BG3DGeometry {
  */
 export function metaFileToBG3DParseResult(
   metaFile: TQ3MetaFile
-): Result<BG3DParseResult, Error> {
+): Result<BG3DParseResult> {
   // Build materials from textures
   // Each unique texture becomes a material
   const materials: BG3DMaterial[] = [];
@@ -440,7 +440,7 @@ function extractGeometries(group: BG3DGroup): BG3DGeometry[] {
  */
 export function bg3dParseResultToMetaFile(
   parsed: BG3DParseResult
-): Result<TQ3MetaFile, Error> {
+): Result<TQ3MetaFile> {
   const metaFile: TQ3MetaFile = {
     numTextures: 0,
     textures: [],
@@ -483,7 +483,7 @@ export function bg3dParseResultToMetaFile(
   }
 
   const hasChildren = (candidate: BG3DGroup | BG3DGeometry): candidate is BG3DGroup =>
-    Array.isArray((candidate as BG3DGroup).children);
+    Array.isArray(candidate.children);
 
   // Process groups
   for (const group of parsed.groups) {

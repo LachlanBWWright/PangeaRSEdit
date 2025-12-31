@@ -88,7 +88,7 @@ export function IndividualTilesMenu({
       <div className="grid grid-cols-1 gap-2">
         <Button
           selected={tileView === TileViews.Topology}
-          onClick={() => setTileView(TileViews.Topology)}
+          onClick={() => { setTileView(TileViews.Topology); }}
         >
           Topology
         </Button>
@@ -104,7 +104,7 @@ export function IndividualTilesMenu({
           <p>Brush Mode</p>
           <Select
             value={brushMode.toString()}
-            onValueChange={(e) => setBrushMode(parseInt(e))}
+            onValueChange={(e) => { setBrushMode(parseInt(e)); }}
           >
             <SelectTrigger>
               {brushMode === TopologyBrushMode.CIRCLE_BRUSH
@@ -124,7 +124,7 @@ export function IndividualTilesMenu({
           <p>Adjustment Mode</p>
           <Select
             value={valueMode.toString()}
-            onValueChange={(e) => setValueMode(parseInt(e))}
+            onValueChange={(e) => { setValueMode(parseInt(e)); }}
           >
             <SelectTrigger>
               {valueMode === TopologyValueMode.SET_VALUE && "Set To Value"}
@@ -151,13 +151,13 @@ export function IndividualTilesMenu({
           <Input
             type="number"
             defaultValue={brushRadius}
-            onChange={(e) => setBrushRadius(parseInt(e.target.value) || 0)}
+            onChange={(e) => { setBrushRadius(parseInt(e.target.value) || 0); }}
           />
           <p>Height Value</p>
           <Input
             type="number"
             defaultValue={value}
-            onChange={(e) => setValue(parseInt(e.target.value) || 0)}
+            onChange={(e) => { setValue(parseInt(e.target.value) || 0); }}
           />
 
           <p>Min Height</p>
@@ -169,7 +169,7 @@ export function IndividualTilesMenu({
             type="number"
             defaultValue={toplogyOpacity}
             onChange={(e) =>
-              setTopologyOpacity(parseFloat(e.target.value) || 1)
+              { setTopologyOpacity(parseFloat(e.target.value) || 1); }
             }
           />
           <div className="flex flex-row justify-between gap-2 items-center col-span-2">
@@ -178,12 +178,12 @@ export function IndividualTilesMenu({
               <Switch
                 checked={canvasViewMode === CanvasView.THREE_D}
                 onCheckedChange={(e) =>
-                  setCanvasViewMode(e ? CanvasView.THREE_D : CanvasView.TWO_D)
+                  { setCanvasViewMode(e ? CanvasView.THREE_D : CanvasView.TWO_D); }
                 }
               />
             </div>
             <div className="flex items-center gap-2">
-              <Button onClick={() => setExport3DScene((c) => c + 1)}>
+              <Button onClick={() => { setExport3DScene((c) => c + 1); }}>
                 Download 3D (GLB)
               </Button>
             </div>

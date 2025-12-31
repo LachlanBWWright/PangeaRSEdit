@@ -57,7 +57,7 @@ export function NanosaurEditorView({
 
   useEffect(() => {
     window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
+    return () => { window.removeEventListener("keydown", handleKeyDown); };
   }, [handleKeyDown]);
 
   const zoomIn = useMemo(() => createZoomInHandler(setStage), [setStage]);

@@ -42,7 +42,7 @@ interface MightyMikeLevelData {
   };
   // Empty alis record required by LevelData
   alis?: Record<number, { name: string; data: string; order: number }>;
-  // Empty Atrb required by LevelData  
+  // Empty Atrb required by LevelData
   Atrb?: {
     1000: {
       name: string;
@@ -163,7 +163,7 @@ export async function parseMightyMikeFile(
   setData: (data: AtomicLevelData) => void,
   mapFileUrl?: string,
   setMapImages?: (images: HTMLCanvasElement[]) => void,
-): Promise<Result<LevelData, Error>> {
+): Promise<Result<LevelData>> {
   try {
     const levelBuffer = await file.arrayBuffer();
     const mapResult = parseMightyMikeMap(levelBuffer);
@@ -390,7 +390,7 @@ export async function parseMightyMikeFile(
       layrLength: ottoCompatible.Layr?.[1000].obj.length,
     });
 
-    const atomicData = splitLevelData(ottoCompatible as LevelData);
+    const atomicData = splitLevelData(ottoCompatible);
     console.log("MightyMike atomicData AFTER splitLevelData:", atomicData);
 
     setData(atomicData);
@@ -422,8 +422,8 @@ export async function parseMightyMikeFile(
       },
     };
     // The MightyMikeLevelData type is structurally compatible with LevelData
-    // for the fields we need - safe to use single assertion
-    return ok(result as LevelData);
+    // for the fields we need
+    return ok(result);
   } catch (e) {
     return err(e instanceof Error ? e : new Error(String(e)));
   }

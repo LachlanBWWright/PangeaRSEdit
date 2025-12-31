@@ -295,7 +295,7 @@ describe("BG3D Skeleton Round-trip with FULL ACCURACY", () => {
           if (input) {
             const times = input.getArray();
             if (times) {
-              animEntry[boneName] = Array.from(times as unknown as number[]);
+              animEntry[boneName] = Array.from(times);
             }
           }
         }

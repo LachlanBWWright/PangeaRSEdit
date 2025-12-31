@@ -38,19 +38,19 @@ export function MightyMikeEditorToolbar({
       <div className="grid grid-cols-5 gap-2 w-full overflow-clip">
         <Button
           selected={view === View.items}
-          onClick={() => setView(View.items)}
+          onClick={() => { setView(View.items); }}
         >
           Items
         </Button>
         <Button
           selected={view === View.supertiles}
-          onClick={() => setView(View.supertiles)}
+          onClick={() => { setView(View.supertiles); }}
         >
           Supertiles
         </Button>
         <Button
           selected={view === View.tiles}
-          onClick={() => setView(View.tiles)}
+          onClick={() => { setView(View.tiles); }}
         >
           Tiles
         </Button>

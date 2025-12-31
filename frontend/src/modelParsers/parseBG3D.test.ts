@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { parseBG3D, bg3dParsedToBG3D } from "./parseBG3D";
-import * as fs from "fs";
-import * as path from "path";
+import { readFileSync, existsSync } from "fs";
+import { join } from "path";
 
 import { argb16ToPng, rgba8ToPng } from "./image/pngArgb";
 
@@ -16,14 +16,14 @@ function byteSwapUint16Array(arr: Uint16Array): Uint16Array {
 }
 
 // Adjust the path to your testSkeletons folder and BG3D file name
-const TEST_BG3D_PATH = path.join(
+const TEST_BG3D_PATH = join(
   __dirname,
   "./testSkeletons/level4_apocalypse.bg3d",
 );
 
 // Test files for games with bounding boxes (Billy Frontier, Cro Mag)
-const BILLY_BG3D_PATH = path.join(__dirname, "./testSkeletons/Billy.bg3d");
-const BROG_BG3D_PATH = path.join(__dirname, "./testSkeletons/Brog.bg3d");
+const BILLY_BG3D_PATH = join(__dirname, "./testSkeletons/Billy.bg3d");
+const BROG_BG3D_PATH = join(__dirname, "./testSkeletons/Brog.bg3d");
 
 // Helper to count geometries and check for bounding boxes
 type GroupChild = { children?: GroupChild[]; boundingBox?: unknown };
@@ -38,7 +38,7 @@ function analyzeGroups(groups: GroupChild[]): {
     if (Array.isArray(group.children)) {
       for (const child of group.children ?? []) {
         if (Array.isArray(child.children)) {
-          traverse(child as GroupChild);
+          traverse(child);
         } else {
           geomCount++;
           if (child.boundingBox) boundingBoxCount++;
@@ -54,12 +54,12 @@ function analyzeGroups(groups: GroupChild[]): {
 
 describe("parseBG3D - Multi-Game Support", () => {
   it("parses Billy Frontier BG3D file with bounding boxes", () => {
-    if (!fs.existsSync(BILLY_BG3D_PATH)) {
+    if (!existsSync(BILLY_BG3D_PATH)) {
       console.warn("Skipping: Billy.bg3d not found in testSkeletons");
       return;
     }
 
-    const fileBuffer = fs.readFileSync(BILLY_BG3D_PATH);
+    const fileBuffer = readFileSync(BILLY_BG3D_PATH);
     const arrayBuffer = fileBuffer.buffer.slice(
       fileBuffer.byteOffset,
       fileBuffer.byteOffset + fileBuffer.byteLength,
@@ -126,16 +126,16 @@ describe("parseBG3D - Multi-Game Support", () => {
   });
 
   it("parses Bugdom 2 BG3D file with bounding boxes (Grasshopper)", () => {
-    const grasshopperPath = path.join(
+    const grasshopperPath = join(
       __dirname,
       "./testSkeletons/Grasshopper.bg3d",
     );
-    if (!fs.existsSync(grasshopperPath)) {
+    if (!existsSync(grasshopperPath)) {
       console.warn("Skipping: Grasshopper.bg3d not found in testSkeletons");
       return;
     }
 
-    const fileBuffer = fs.readFileSync(grasshopperPath);
+    const fileBuffer = readFileSync(grasshopperPath);
     const arrayBuffer = fileBuffer.buffer.slice(
       fileBuffer.byteOffset,
       fileBuffer.byteOffset + fileBuffer.byteLength,

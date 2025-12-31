@@ -1,5 +1,5 @@
 // Types for model hierarchy and node management
-import * as THREE from "three";
+import { Object3D, Group, AnimationMixer } from "three";
 import { AnimationInfo } from "@/components/AnimationViewer";
 import { Game } from "@/data/globals/globals";
 
@@ -11,16 +11,16 @@ export interface ModelNode {
   meshIndex?: number;
   nodeIndex?: number;
   // Reference to the original THREE.Object3D for proper matching
-  threeObject?: THREE.Object3D;
+  threeObject?: Object3D;
 }
 
 export type ModelCanvasProps = {
   gltfUrl: string;
   setModelNodes: (nodes: ModelNode[]) => void;
-  onSceneReady?: (scene: THREE.Group | undefined) => void;
+  onSceneReady?: (scene: Group | undefined) => void;
   onAnimationsReady?: (
     animations: AnimationInfo[],
-    mixer: THREE.AnimationMixer | null,
+    mixer: AnimationMixer | null,
   ) => void;
   wireframeMode?: boolean;
   showSkeleton?: boolean;

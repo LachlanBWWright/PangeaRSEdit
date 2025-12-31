@@ -110,7 +110,7 @@ describe("Bugdom 2 Map Roundtrip", () => {
     const jsonData = jsonResult.value;
 
     expect(() => {
-      preprocessJson(jsonData as Record<string, unknown>, Bugdom2Globals);
+      preprocessJson(jsonData, Bugdom2Globals);
     }).not.toThrow();
   });
 

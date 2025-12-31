@@ -72,7 +72,7 @@ export const LevelDataSchema = z
       .record(z.string(), resourceEntrySchema(z.array(checkpointSchema)))
       .optional(),
   })
-  .passthrough();
+  .loose();
 
 export type OttoMaticLevelData = z.infer<typeof LevelDataSchema>;
 

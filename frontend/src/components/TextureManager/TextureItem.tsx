@@ -86,7 +86,7 @@ export function TextureItem({
           <Button
             size="sm"
             variant="ghost"
-            onClick={() => toggleExpansion(index)}
+            onClick={() => { toggleExpansion(index); }}
             className="w-8 h-8 p-0"
             title={expanded ? "Hide preview" : "Show preview"}
           >
@@ -146,7 +146,7 @@ export function TextureItem({
                     <Button
                       size="sm"
                       variant="outline"
-                      onClick={() => onEditTexture(texture)}
+                      onClick={() => { onEditTexture(texture); }}
                     >
                       <Edit className="w-4 h-4 mr-2" />
                       Edit
@@ -156,7 +156,7 @@ export function TextureItem({
                 <Button
                   size="sm"
                   variant="outline"
-                  onClick={() => onDownloadTexture(texture)}
+                  onClick={() => { onDownloadTexture(texture); }}
                 >
                   <Download className="w-4 h-4 mr-2" />
                   Download
@@ -170,7 +170,7 @@ export function TextureItem({
           <Button
             size="sm"
             variant="ghost"
-            onClick={() => onDownloadTexture(texture)}
+            onClick={() => { onDownloadTexture(texture); }}
             className="w-8 h-8 p-0"
             title="Download texture"
           >

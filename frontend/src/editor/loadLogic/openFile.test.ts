@@ -27,7 +27,7 @@ describe("openFile", () => {
     const gameType = {
       DATA_TYPE: "MIGHTY_MIKE",
       GAME_TYPE: "MIGHTY_MIKE",
-    } as unknown as GlobalsInterface;
+    };
 
     await openFile({
       url: "assets/mightyMike/terrain/candy.map-1",
@@ -62,7 +62,7 @@ describe("openFile", () => {
       parseLevelDataFile: vi.fn(),
     }));
     const { parseLevelDataFile: parseMock } = await import("./parseLevelDataFile");
-    (parseMock as unknown as { mockResolvedValue: (v: unknown) => void }).mockResolvedValue({ ok: true, value: { Timg: { "1000": { data: hex } } } });
+    (parseMock).mockResolvedValue({ ok: true, value: { Timg: { "1000": { data: hex } } } });
 
     const setGlobals = vi.fn();
     const setMapFile = vi.fn();
@@ -73,7 +73,7 @@ describe("openFile", () => {
     const gameType = {
       DATA_TYPE: DataType.RSRC_FORK,
       GAME_TYPE: "BUGDOM",
-    } as unknown as GlobalsInterface;
+    };
 
     await openFile({
       url: "Training.ter",
@@ -86,7 +86,7 @@ describe("openFile", () => {
     });
 
     expect(setMapImagesFile).toHaveBeenCalled();
-    const fileArg = (setMapImagesFile as unknown as { mock: { calls: Array<[File]> } }).mock.calls[0]?.[0];
+    const fileArg = (setMapImagesFile).mock.calls[0]?.[0];
     if (!fileArg) throw new Error("File arg is undefined");
     expect(fileArg.name).toMatch(/_tiles\.bin$/);
     expect(setMapImages).toHaveBeenCalled();

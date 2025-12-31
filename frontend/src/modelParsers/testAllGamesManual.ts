@@ -5,15 +5,15 @@
 
 import { parseBG3D, bg3dParsedToBG3D } from "./parseBG3D";
 import { bg3dParsedToGLTF, gltfToBG3D } from "./parsedBg3dGitfConverter";
-import * as fs from "fs";
-import * as path from "path";
+import { existsSync, readFileSync } from "fs";
+import { join } from "path";
 
-const GAMES_ROOT = path.join(__dirname, "../../../../games");
+const GAMES_ROOT = join(__dirname, "../../../../games");
 
 const TEST_FILES = [
   {
     game: "Otto Matic",
-    path: path.join(GAMES_ROOT, "ottomatic/Data/Skeletons/Otto.bg3d"),
+    path: join(GAMES_ROOT, "ottomatic/Data/Skeletons/Otto.bg3d"),
   },
   {
     game: "Cro Mag Rally",
@@ -39,14 +39,14 @@ async function testGame(game: string, filePath: string) {
   console.log(`File: ${filePath}`);
   console.log("=".repeat(60));
 
-  if (!fs.existsSync(filePath)) {
+  if (!existsSync(filePath)) {
     console.log(`❌ File not found: ${filePath}`);
     return { game, success: false, error: "File not found" };
   }
 
   try {
     // Read file
-    const buffer = fs.readFileSync(filePath);
+    const buffer = readFileSync(filePath);
     const arrayBuffer = buffer.buffer.slice(
       buffer.byteOffset,
       buffer.byteOffset + buffer.byteLength,

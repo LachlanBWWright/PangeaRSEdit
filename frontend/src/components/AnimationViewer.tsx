@@ -3,18 +3,19 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Slider } from "@/components/ui/slider";
 import { Play, Pause, Square, RotateCcw } from "lucide-react";
-import * as THREE from "three";
+import { LoopRepeat } from "three";
+import type { AnimationClip, AnimationMixer, AnimationAction } from "three";
 
 export interface AnimationInfo {
   name: string;
   duration: number;
   index: number;
-  clip: THREE.AnimationClip;
+  clip: AnimationClip;
 }
 
 interface AnimationViewerProps {
   animations: AnimationInfo[];
-  animationMixer: THREE.AnimationMixer | null;
+  animationMixer: AnimationMixer | null;
   onAnimationChange?: (animationIndex: number | null) => void;
 }
 
@@ -31,7 +32,7 @@ export function AnimationViewer({
   const [duration, setDuration] = useState(0);
   const [hasActiveAction, setHasActiveAction] = useState(false); // Track if there's an active action
   const animationRequestRef = useRef<number | undefined>(undefined);
-  const currentActionRef = useRef<THREE.AnimationAction | null>(null);
+  const currentActionRef = useRef<AnimationAction | null>(null);
 
   // Update animation state when mixer or selection changes
   useEffect(() => {
@@ -51,7 +52,7 @@ export function AnimationViewer({
       if (currentActionRef.current) {
         currentActionRef.current.stop();
         currentActionRef.current = null;
-        Promise.resolve().then(() => setHasActiveAction(false));
+        Promise.resolve().then(() => { setHasActiveAction(false); });
       }
 
       // Get the animation clip and create action
@@ -59,9 +60,9 @@ export function AnimationViewer({
       if (clip) {
         const action = animationMixer.clipAction(clip);
         action.reset();
-        action.setLoop(THREE.LoopRepeat, Infinity);
+        action.setLoop(LoopRepeat, Infinity);
         currentActionRef.current = action;
-        Promise.resolve().then(() => setHasActiveAction(true));
+        Promise.resolve().then(() => { setHasActiveAction(true); });
       }
 
       onAnimationChange?.(selectedAnimation);
@@ -187,9 +188,9 @@ export function AnimationViewer({
             className="w-full bg-gray-700 text-white border border-gray-600 rounded px-2 py-1 text-sm"
             value={selectedAnimation ?? ""}
             onChange={(e) =>
-              setSelectedAnimation(
+              { setSelectedAnimation(
                 e.target.value ? parseInt(e.target.value) : null,
-              )
+              ); }
             }
           >
             <option value="">-- Select Animation --</option>

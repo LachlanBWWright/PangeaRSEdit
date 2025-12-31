@@ -68,7 +68,7 @@ describe("Comprehensive Skeleton Value Validation", () => {
 
     // Parse original
     const originalSkeletonResource = await parseSkeletonRsrc(
-      originalSkeletonData as unknown as ArrayBuffer,
+      originalSkeletonData,
     );
     const originalBg3dRes = parseBG3D(
       originalBg3dData.buffer.slice(
@@ -372,7 +372,7 @@ describe("Comprehensive Skeleton Value Validation", () => {
     const originalSkeletonData = readFileSync(ottoSkeletonPath);
 
     const originalSkeletonResource = await parseSkeletonRsrc(
-      originalSkeletonData as unknown as ArrayBuffer,
+      originalSkeletonData,
     );
     const originalBg3dResLocal = parseBG3D(
       originalBg3dData.buffer.slice(
@@ -401,9 +401,7 @@ describe("Comprehensive Skeleton Value Validation", () => {
           const weightsAcc = prim.getAttribute("WEIGHTS_0");
 
           if (jointsAcc && weightsAcc) {
-            const weightsArray = weightsAcc.getArray() as
-              | Float32Array
-              | undefined;
+            const weightsArray = weightsAcc.getArray();
             if (!weightsArray) return;
             const numVertices = weightsAcc.getCount();
 
@@ -467,7 +465,7 @@ describe("Comprehensive Skeleton Value Validation", () => {
     const originalSkeletonData = readFileSync(ottoSkeletonPath);
 
     const originalSkeletonResource = await parseSkeletonRsrc(
-      originalSkeletonData as unknown as ArrayBuffer,
+      originalSkeletonData,
     );
     const originalBg3dResLocal2 = parseBG3D(
       originalBg3dData.buffer.slice(

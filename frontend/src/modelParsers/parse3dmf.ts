@@ -14,7 +14,7 @@ import {
  * @param buffer ArrayBuffer containing the 3DMF file
  * @returns Result<BG3DParseResult, Error>
  */
-export function parse3DMF(buffer: ArrayBuffer): Result<BG3DParseResult, Error> {
+export function parse3DMF(buffer: ArrayBuffer): Result<BG3DParseResult> {
   // Parse 3DMF to native format, then convert to BG3D format
   return andThen(parse3DMFToMetaFile(buffer), metaFileToBG3DParseResult);
 }
@@ -26,7 +26,7 @@ export function parse3DMF(buffer: ArrayBuffer): Result<BG3DParseResult, Error> {
  */
 export function bg3dParsedTo3DMF(
   parsed: BG3DParseResult,
-): Result<ArrayBuffer, Error> {
+): Result<ArrayBuffer> {
   // Convert BG3D format to native 3DMF format, then write
   return andThen(bg3dParseResultToMetaFile(parsed), write3DMFFromMetaFile);
 }
@@ -37,7 +37,7 @@ export function bg3dParsedTo3DMF(
  * @param buffer ArrayBuffer containing the 3DMF file
  * @returns Result<TQ3MetaFile, Error>
  */
-export function parse3DMFNative(buffer: ArrayBuffer): Result<TQ3MetaFile, Error> {
+export function parse3DMFNative(buffer: ArrayBuffer): Result<TQ3MetaFile> {
   return parse3DMFToMetaFile(buffer);
 }
 
@@ -46,7 +46,7 @@ export function parse3DMFNative(buffer: ArrayBuffer): Result<TQ3MetaFile, Error>
  * @param metaFile TQ3MetaFile structure
  * @returns Result<ArrayBuffer, Error>
  */
-export function write3DMFNative(metaFile: TQ3MetaFile): Result<ArrayBuffer, Error> {
+export function write3DMFNative(metaFile: TQ3MetaFile): Result<ArrayBuffer> {
   return write3DMFFromMetaFile(metaFile);
 }
 

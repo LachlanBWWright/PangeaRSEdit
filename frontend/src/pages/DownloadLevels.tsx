@@ -84,7 +84,7 @@ function LevelCard({ level }: LevelCardProps) {
       <CardContent>
         <Button
           variant="ghost"
-          onClick={() => setIsExpanded(!isExpanded)}
+          onClick={() => { setIsExpanded(!isExpanded); }}
           className="w-full justify-between text-gray-300 hover:text-white hover:bg-gray-700 p-3 mb-3"
         >
           <span>Details</span>

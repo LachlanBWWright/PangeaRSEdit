@@ -42,7 +42,7 @@ export const WaterBody = memo(
             waterBodyIdx === selectedWaterBody ? "#9999FFDD" : "#9999FF77"
           }
           strokeWidth={waterBodyIdx === selectedWaterBody ? 5 : 2}
-          onClick={() => setSelectedWaterBody(waterBodyIdx)}
+          onClick={() => { setSelectedWaterBody(waterBodyIdx); }}
           closed
           fill={waterBodyIdx === selectedWaterBody ? "#9999FFDD" : "#9999FF77"}
           draggable
@@ -126,7 +126,7 @@ export const WaterBody = memo(
                     const newY = Math.round(e.target.y());
 
                     if (nubRafRefs.current[nubIdx])
-                      cancelAnimationFrame(nubRafRefs.current[nubIdx]!);
+                      cancelAnimationFrame(nubRafRefs.current[nubIdx]);
                     nubRafRefs.current[nubIdx] = requestAnimationFrame(() => {
                       setLiquidData((liquidData) => {
                         const wb = liquidData.Liqd[1000].obj[waterBodyIdx];
@@ -140,7 +140,7 @@ export const WaterBody = memo(
                   }}
                   onDragEnd={(e: Konva.KonvaEventObject<DragEvent>) => {
                     if (nubRafRefs.current[nubIdx])
-                      cancelAnimationFrame(nubRafRefs.current[nubIdx]!);
+                      cancelAnimationFrame(nubRafRefs.current[nubIdx]);
                     setLiquidData((liquidData) => {
                       const wb = liquidData.Liqd[1000].obj[waterBodyIdx];
                       const nubToUpdate = wb?.nubs[nubIdx];
@@ -162,12 +162,12 @@ export const WaterBody = memo(
             fill="orange"
             draggable
             onDragEnd={(e) =>
-              setLiquidData((liquidData) => {
+              { setLiquidData((liquidData) => {
                 const wb = liquidData.Liqd[1000].obj[waterBodyIdx];
                 if (!wb) return;
                 wb.hotSpotX = Math.round(e.target.x());
                 wb.hotSpotZ = Math.round(e.target.y());
-              })
+              }); }
             }
           />
         )}

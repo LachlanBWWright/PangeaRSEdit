@@ -117,7 +117,7 @@ describe("Otto Matic Map Roundtrip", () => {
 
     // Preprocessing should not throw
     expect(() => {
-      preprocessJson(jsonData as Record<string, unknown>, OttoGlobals);
+      preprocessJson(jsonData, OttoGlobals);
     }).not.toThrow();
 
     // After preprocessing, Layr should have sequential indices

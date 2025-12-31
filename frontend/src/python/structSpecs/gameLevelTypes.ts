@@ -557,7 +557,7 @@ export interface CheckpointSection<TCheckpoint = Bugdom2Checkpoint> {
  */
 export type OttoMaticLevelData = BaseLevelData &
   HeaderSection<OttoMaticHeader> &
-  TerrainSection<BaseTileAttribute, OttoMaticSupertileGrid> &
+  TerrainSection &
   ItemSection<OttoMaticItem> &
   SplineSection &
   FenceSection &
@@ -568,7 +568,7 @@ export type OttoMaticLevelData = BaseLevelData &
  */
 export type BugdomLevelData = BaseLevelData &
   HeaderSection<BugdomHeader> &
-  TerrainSection<BugdomTileAttribute, OttoMaticSupertileGrid> &
+  TerrainSection<BugdomTileAttribute> &
   ItemSection<BugdomItem> &
   SplineSection &
   FenceSection &
@@ -584,14 +584,14 @@ export type Bugdom2LevelData = BaseLevelData &
   SplineSection &
   FenceSection &
   LiquidSection &
-  CheckpointSection<Bugdom2Checkpoint>;
+  CheckpointSection;
 
 /**
  * Nanosaur 2 level data
  */
 export type Nanosaur2LevelData = BaseLevelData &
   HeaderSection<Nanosaur2Header> &
-  TerrainSection<BaseTileAttribute, OttoMaticSupertileGrid> &
+  TerrainSection &
   ItemSection<Nanosaur2Item> &
   SplineSection &
   FenceSection &
@@ -603,7 +603,7 @@ export type Nanosaur2LevelData = BaseLevelData &
  */
 export type CroMagLevelData = BaseLevelData &
   HeaderSection<CroMagHeader> &
-  TerrainSection<BaseTileAttribute, CroMagSupertileGrid> &
+  TerrainSection &
   ItemSection<CroMagItem> &
   SplineSection &
   FenceSection &

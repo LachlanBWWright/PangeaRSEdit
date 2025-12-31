@@ -13,28 +13,42 @@ export type JpegCompressResponse = {
   jpegData: ArrayBuffer;
 };
 
-onmessage = async (event: MessageEvent<JpegCompressMessage>) => {
-  if (event.data.type === "compress") {
+onmessage = async (event: MessageEvent<unknown>) => {
+  const payload = event.data;
+  const isCompressMessage = (p: unknown): p is JpegCompressMessage => {
+    if (typeof p !== "object" || p === null) return false;
+    const obj = p as Record<string, unknown>;
+    return obj.type === "compress" && typeof obj.id === "number";
+  };
+
+  if (isCompressMessage(payload)) {
+    const data = payload;
     let imageData: ImageData;
-    if (event.data.input instanceof ImageData) {
-      imageData = event.data.input;
+    if (data.input instanceof ImageData) {
+      imageData = data.input;
     } else {
       // Reconstruct ImageData if sent as plain object
+      const input = data.input as {
+        width: number;
+        height: number;
+        data: Uint8ClampedArray;
+      };
       imageData = new ImageData(
-        new Uint8ClampedArray(event.data.input.data),
-        event.data.input.width,
-        event.data.input.height,
+        new Uint8ClampedArray(input.data),
+        input.width,
+        input.height,
       );
     }
-    const jpegResult = await jpegCompress(imageData, event.data.quality);
+    const jpegResult = await jpegCompress(imageData, data.quality);
     if (!jpegResult.ok) {
       console.error("Failed to compress JPEG:", jpegResult.error);
       return;
     }
-    postMessage({
-      id: event.data.id,
+    const response: JpegCompressResponse = {
+      id: data.id,
       type: "compressRes",
       jpegData: jpegResult.value,
-    } satisfies JpegCompressResponse);
+    };
+    postMessage(response);
   }
 };

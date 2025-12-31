@@ -26,7 +26,7 @@ import { saveToJson, loadBytesFromJson } from "@lachlanbwwright/rsrcdump-ts";
 export async function parseLevelBuffer(
   buffer: ArrayBuffer,
   options: ParseLevelOptions,
-): Promise<Result<LevelData, Error>> {
+): Promise<Result<LevelData>> {
   const { structSpecs, includeTypes = [], excludeTypes = [] } = options;
 
   try {
@@ -43,11 +43,11 @@ export async function parseLevelBuffer(
     }
 
     const parsed = JSON.parse(parseResult.value);
-    
+
     // Fix null values from rsrcdump-ts v1.0.4 bug (returns null for numeric zeros)
     fixNullToZero(parsed);
-    
-    return ok(parsed as LevelData);
+
+    return ok(parsed);
   } catch (error) {
     return err(error instanceof Error ? error : new Error(String(error)));
   }
@@ -62,7 +62,7 @@ export async function parseLevelBuffer(
 export function parseNanosaur1Buffer(
   buffer: ArrayBuffer,
   gameType?: GlobalsInterface,
-): Result<LevelData, Error> {
+): Result<LevelData> {
   try {
     const rawLevelData = parseNanosaur1Level(buffer);
     return ok(
@@ -88,7 +88,7 @@ export function parseNanosaur1Buffer(
 export async function serializeLevelData(
   levelData: LevelData,
   options: SerializeLevelOptions,
-): Promise<Result<ArrayBuffer, Error>> {
+): Promise<Result<ArrayBuffer>> {
   const { structSpecs } = options;
 
   try {
@@ -104,7 +104,7 @@ export async function serializeLevelData(
       return err(new Error(saveResult.error));
     }
 
-    return ok(saveResult.value.buffer as ArrayBuffer);
+    return ok(saveResult.value.buffer);
   } catch (error) {
     return err(error instanceof Error ? error : new Error(String(error)));
   }
@@ -121,28 +121,22 @@ export async function serializeLevelData(
 export async function parseLevelForGame(
   buffer: ArrayBuffer,
   gameType: GlobalsInterface,
-): Promise<Result<LevelData, Error>> {
+): Promise<Result<LevelData>> {
   if (gameType.DATA_TYPE === DataType.TRT_FILE) {
     // Nanosaur 1 uses its own TRT file parser
     return parseNanosaur1Buffer(buffer, gameType);
   }
 
-  const parseResult = await parseLevelBuffer(
-    buffer,
-    {
-      structSpecs: gameType.STRUCT_SPECS,
-    },
-  );
+  const parseResult = await parseLevelBuffer(buffer, {
+    structSpecs: gameType.STRUCT_SPECS,
+  });
 
   if (isErr(parseResult)) {
     return parseResult;
   }
 
   // Apply preprocessing
-  const preprocessResult = preprocessJson(
-    parseResult.value,
-    gameType
-  );
+  const preprocessResult = preprocessJson(parseResult.value, gameType);
   if (isErr(preprocessResult)) {
     return preprocessResult;
   }
@@ -162,20 +156,14 @@ export async function performRoundtrip(
   buffer: ArrayBuffer,
   gameType: GlobalsInterface,
 ): Promise<
-  Result<
-    {
-      original: LevelData;
-      serialized: ArrayBuffer;
-      roundtrip: LevelData;
-    },
-    Error
-  >
+  Result<{
+    original: LevelData;
+    serialized: ArrayBuffer;
+    roundtrip: LevelData;
+  }>
 > {
   // Parse the original buffer
-  const originalResult = await parseLevelForGame(
-    buffer,
-    gameType,
-  );
+  const originalResult = await parseLevelForGame(buffer, gameType);
 
   if (isErr(originalResult)) {
     return err(
@@ -184,12 +172,9 @@ export async function performRoundtrip(
   }
 
   // Serialize back to binary
-  const serializedResult = await serializeLevelData(
-    originalResult.value,
-    {
-      structSpecs: gameType.STRUCT_SPECS,
-    },
-  );
+  const serializedResult = await serializeLevelData(originalResult.value, {
+    structSpecs: gameType.STRUCT_SPECS,
+  });
 
   if (isErr(serializedResult)) {
     return err(
@@ -268,16 +253,12 @@ export function compareLevelData(
     }
 
     if (typeof obj1 === "object" && typeof obj2 === "object") {
-      const keys1 = Object.keys(obj1 as object);
-      const keys2 = Object.keys(obj2 as object);
+      const keys1 = Object.keys(obj1);
+      const keys2 = Object.keys(obj2);
       const allKeys = new Set([...keys1, ...keys2]);
 
       for (const key of allKeys) {
-        compare(
-          (obj1 as Record<string, unknown>)[key],
-          (obj2 as Record<string, unknown>)[key],
-          `${path}.${key}`,
-        );
+        compare(obj1[key], obj2[key], `${path}.${key}`);
       }
       return;
     }

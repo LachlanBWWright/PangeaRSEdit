@@ -117,7 +117,7 @@ export function splitLevelData(
  */
 export function combineLevelData(
   atomicData: AtomicLevelData,
-): Result<LevelData, Error> {
+): Result<LevelData> {
   const {
     headerData,
     itemData,
@@ -188,7 +188,7 @@ export function validateResourceForkJson(json_blob: Record<string, unknown>):
         };
       }
       // Ensure each inner record maps to objects
-      for (const [resId, resBlob] of Object.entries(value as Record<string, unknown>)) {
+      for (const [resId, resBlob] of Object.entries(value)) {
         if (typeof resBlob !== "object" || resBlob === null || Array.isArray(resBlob)) {
           return {
             ok: false,
@@ -212,7 +212,7 @@ export function sanitizeResourceForkJson(data: unknown): Record<string, unknown>
   if (typeof data !== "object" || data === null) {
     return {};
   }
-  const source = data as Record<string, unknown>;
+  const source = data;
   const sanitized: Record<string, unknown> = { ...source };
   for (const [key, value] of Object.entries(source)) {
     if (key.length > 4) continue;
@@ -221,7 +221,7 @@ export function sanitizeResourceForkJson(data: unknown): Record<string, unknown>
       delete sanitized[key];
       continue;
     }
-    const entry = value as Record<string, unknown>;
+    const entry = value;
     for (const [resId, resVal] of Object.entries(entry)) {
       if (resVal === undefined || resVal === null) continue;
       if (typeof resVal !== "object" || Array.isArray(resVal)) {

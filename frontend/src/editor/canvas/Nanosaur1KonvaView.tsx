@@ -71,12 +71,12 @@ export function Nanosaur1KonvaView({
     };
     updateSize();
     if (typeof ResizeObserver !== "undefined") {
-      const obs = new ResizeObserver(() => updateSize());
+      const obs = new ResizeObserver(() => { updateSize(); });
       if (containerRef.current) obs.observe(containerRef.current);
-      return () => obs.disconnect();
+      return () => { obs.disconnect(); };
     }
     window.addEventListener("resize", updateSize);
-    return () => window.removeEventListener("resize", updateSize);
+    return () => { window.removeEventListener("resize", updateSize); };
   }, []);
 
   // Non-null updater for items

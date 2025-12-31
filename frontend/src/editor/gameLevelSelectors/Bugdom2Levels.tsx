@@ -11,21 +11,21 @@ export function Bugdom2Levels({
     <LevelGrid title="Bugdom 2 Levels">
       <Button
         onClick={() =>
-          openFile("assets/bugdom2/terrain/Level1_Garden.ter", Bugdom2Globals)
+          { openFile("assets/bugdom2/terrain/Level1_Garden.ter", Bugdom2Globals); }
         }
       >
         Level 1
       </Button>
       <Button
         onClick={() =>
-          openFile("assets/bugdom2/terrain/Level2_SideWalk.ter", Bugdom2Globals)
+          { openFile("assets/bugdom2/terrain/Level2_SideWalk.ter", Bugdom2Globals); }
         }
       >
         Level 2
       </Button>
       <Button
         onClick={() =>
-          openFile("assets/bugdom2/terrain/Level3_DogHair.ter", Bugdom2Globals)
+          { openFile("assets/bugdom2/terrain/Level3_DogHair.ter", Bugdom2Globals); }
         }
       >
         Level 3
@@ -33,14 +33,14 @@ export function Bugdom2Levels({
       <Button disabled>Level 4</Button>
       <Button
         onClick={() =>
-          openFile("assets/bugdom2/terrain/Level5_Playroom.ter", Bugdom2Globals)
+          { openFile("assets/bugdom2/terrain/Level5_Playroom.ter", Bugdom2Globals); }
         }
       >
         Level 5
       </Button>
       <Button
         onClick={() =>
-          openFile("assets/bugdom2/terrain/Level6_Closet.ter", Bugdom2Globals)
+          { openFile("assets/bugdom2/terrain/Level6_Closet.ter", Bugdom2Globals); }
         }
       >
         Level 6
@@ -48,21 +48,21 @@ export function Bugdom2Levels({
       <Button disabled>Level 7</Button>
       <Button
         onClick={() =>
-          openFile("assets/bugdom2/terrain/Level8_Garbage.ter", Bugdom2Globals)
+          { openFile("assets/bugdom2/terrain/Level8_Garbage.ter", Bugdom2Globals); }
         }
       >
         Level 8
       </Button>
       <Button
         onClick={() =>
-          openFile("assets/bugdom2/terrain/Level9_Balsa.ter", Bugdom2Globals)
+          { openFile("assets/bugdom2/terrain/Level9_Balsa.ter", Bugdom2Globals); }
         }
       >
         Level 9
       </Button>
       <Button
         onClick={() =>
-          openFile("assets/bugdom2/terrain/Level10_Park.ter", Bugdom2Globals)
+          { openFile("assets/bugdom2/terrain/Level10_Park.ter", Bugdom2Globals); }
         }
       >
         Level 10

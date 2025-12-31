@@ -98,7 +98,7 @@ export async function openFile({
     }
     
     // Type guard to safely access MightyMike-specific fields
-    const mightyMikeData = jsonData as LevelData & { tileset?: MightyMikeTileset };
+    const mightyMikeData = jsonData;
     const tilesetData = mightyMikeData.tileset;
     const headerObj = mightyMikeData.Hedr?.[1000]?.obj;
     const tileImages = tilesetData?.tileImages || [];

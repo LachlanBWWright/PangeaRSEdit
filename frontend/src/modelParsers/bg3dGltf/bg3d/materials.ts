@@ -214,7 +214,7 @@ export async function gltfMaterialsToBg3d(
       }
 
       // Get BG3D-specific flags from extras
-      const flags = (materialExtras[index]?.flags as number) || 0;
+      const flags = (materialExtras[index]?.flags) || 0;
 
       // Restore textures from baseColorTexture
       const textures: BG3DTexture[] = [];
@@ -260,20 +260,17 @@ export async function gltfMaterialsToBg3d(
             };
 
             const materialExtra = (
-              materialExtras as Array<Record<string, unknown>>
+              materialExtras
             )[index]!;
             const textureExtra = (
-              materialExtra?.textureExtras as unknown[] | undefined
+              materialExtra?.textureExtras
             )?.[0];
             textures.push({
               pixels: pngRes.data,
               width: pngRes.width,
               height: pngRes.height,
               srcPixelFormat: PixelFormatSrc.GL_RGB, // BG3D default format
-              dstPixelFormat:
-                ((textureExtra as Record<string, unknown> | undefined)
-                  ?.dstPixelFormat as number | undefined) ||
-                PixelFormatDst.GL_UNSIGNED_SHORT_5_5_5_1,
+              dstPixelFormat: (textureExtra?.dstPixelFormat) ?? PixelFormatDst.GL_UNSIGNED_SHORT_5_5_5_1,
               bufferSize: pngRes.data.byteLength, // Use actual converted data size
             });
           } else {

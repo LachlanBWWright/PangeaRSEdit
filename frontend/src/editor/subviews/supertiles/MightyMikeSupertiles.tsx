@@ -33,7 +33,7 @@ const MightyMikeSupertilesComponent = ({
   // Access Mighty Mike tile values from the _metadata field if available
   // These are stored during parsing and contain collision info
   const mightyMikeTileValuesArray =
-    (terrainData._metadata?.mightyMikeTileValues as unknown[]) || [];
+    (terrainData._metadata?.mightyMikeTileValues) || []; 
 
   const TILE_SIZE = 32;
   const mapWidth = header.mapWidth;
@@ -156,7 +156,7 @@ const MightyMikeSupertilesComponent = ({
           <Fragment key={i}>
             <Image
               image={img}
-              onClick={() => setSelectedTile(i)}
+              onClick={() => { setSelectedTile(i); }}
               x={x}
               y={y}
               width={TILE_SIZE}
@@ -165,7 +165,7 @@ const MightyMikeSupertilesComponent = ({
             {isSelected && (
               <Image
                 image={img}
-                onClick={() => setSelectedTile(i)}
+                onClick={() => { setSelectedTile(i); }}
                 x={x}
                 y={y}
                 width={TILE_SIZE}
@@ -177,14 +177,14 @@ const MightyMikeSupertilesComponent = ({
             {showCollisionOverlay &&
               mightyMikeTileValuesArray.length > 0 &&
               i < mightyMikeTileValuesArray.length && (() => {
-                const tileValue = mightyMikeTileValuesArray[i] as Record<
+                const tileValue = mightyMikeTileValuesArray[i];
                   string,
                   unknown
                 >;
                 const hasCollisionMask =
-                  (tileValue?.hasCollisionMask as boolean) || false;
+                  (tileValue?.hasCollisionMask) || false;
                 const usePixelAccurateCollision =
-                  (tileValue?.usePixelAccurateCollision as boolean) || false;
+                  (tileValue?.usePixelAccurateCollision) || false;
 
                 if (!hasCollisionMask) return null;
 

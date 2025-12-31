@@ -6,7 +6,7 @@ import { Buffer } from "buffer";
 
 // Polyfill Buffer for rsrcdump-ts v1.0.4 (still requires Buffer in browser)
 if (typeof window !== "undefined") {
-  (window as typeof window & { Buffer: typeof Buffer }).Buffer = Buffer;
+  window.Buffer = Buffer;
 }
 
 // Enable dark mode

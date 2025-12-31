@@ -36,14 +36,14 @@ export const StandardSupertiles = memo(
       ).fill(null);
       
       for (let idx = 0; idx < superTileGrid.length; idx++) {
-        const supertile = superTileGrid[idx] as unknown;
+        const supertile = superTileGrid[idx];
         // supertile may be an object { superTileId } or a number in simplified format
         const id =
           typeof supertile === "object" &&
           supertile !== null &&
-          "superTileId" in (supertile as Record<string, unknown>)
-            ? (supertile as { superTileId: number }).superTileId
-            : (supertile as number);
+          "superTileId" in supertile
+            ? supertile.superTileId
+            : supertile;
         const img = mapImages[id] ?? null;
         imageArray[idx] = img;
       }
@@ -66,7 +66,7 @@ export const StandardSupertiles = memo(
               {img ? (
                 <Image
                   image={img}
-                  onClick={() => setSelectedTile(i)}
+                  onClick={() => { setSelectedTile(i); }}
                   x={
                     (i * globals.SUPERTILE_TEXMAP_SIZE) %
                     (globals.SUPERTILE_TEXMAP_SIZE * supertilesWide)
@@ -81,7 +81,7 @@ export const StandardSupertiles = memo(
                 />
               ) : (
                 <Rect
-                  onClick={() => setSelectedTile(i)}
+                  onClick={() => { setSelectedTile(i); }}
                   x={
                     (i * globals.SUPERTILE_TEXMAP_SIZE) %
                     (globals.SUPERTILE_TEXMAP_SIZE * supertilesWide)
@@ -97,7 +97,7 @@ export const StandardSupertiles = memo(
               )}
               {isSelected && (
                 <Rect
-                  onClick={() => setSelectedTile(i)}
+                  onClick={() => { setSelectedTile(i); }}
                   x={
                     (i * globals.SUPERTILE_TEXMAP_SIZE) %
                     (globals.SUPERTILE_TEXMAP_SIZE * supertilesWide)

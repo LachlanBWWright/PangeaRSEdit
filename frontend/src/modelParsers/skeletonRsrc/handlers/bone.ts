@@ -16,16 +16,16 @@ export function handleBone(
   );
 
   // Check if data is in the obj field (rsrcdump format)
-  const boneData = (resourceData as { obj?: BoneRaw })?.obj || resourceData;
+  const boneData = resourceData?.obj || resourceData;
 
   if (
     boneData &&
-    (boneData as BoneRaw).parentBone !== undefined &&
-    (boneData as BoneRaw).coordX !== undefined &&
-    (boneData as BoneRaw).coordY !== undefined &&
-    (boneData as BoneRaw).coordZ !== undefined
+    boneData.parentBone !== undefined &&
+    boneData.coordX !== undefined &&
+    boneData.coordY !== undefined &&
+    boneData.coordZ !== undefined
   ) {
-    const rd = boneData as BoneRaw;
+    const rd = boneData;
     // Handle Pascal string format: 1 byte length + name characters (up to 31 bytes)
     // The name field is 32 bytes total in File_BoneDefinitionType
     let cleanName = rd.name || resourceName;
@@ -79,10 +79,10 @@ export function handleBone(
       `Bone ${resourceName} (${resourceId}) falling back to manual parsing. resourceData:`,
       resourceData,
     );
-    const hex = (resourceData as { data?: string })?.data || hexData || "";
+    const hex = resourceData?.data || hexData || "";
     const obj = parseBoneDataFallback(
       hex,
-      (resourceData as { name?: string })?.name || resourceName,
+      resourceData?.name || resourceName,
     );
     console.log(
       `Bone ${obj.name} coordinates from fallback: [${obj.coordX}, ${obj.coordY}, ${obj.coordZ}], parentBone: ${obj.parentBone}`,

@@ -42,7 +42,7 @@ describe("Exact Byte-for-Byte Roundtrip Validation", () => {
 
     // Step 2: Parse original data
     const originalSkeletonResource = await parseSkeletonRsrc(
-      originalSkeletonData as unknown as ArrayBuffer,
+      originalSkeletonData,
     );
     const originalBg3dResult = parseBG3D(
       originalBg3dData.buffer.slice(
@@ -89,7 +89,7 @@ describe("Exact Byte-for-Byte Roundtrip Validation", () => {
       exactBg3dBinary || bg3dParsedToBG3D(roundtripBg3d);
     
     const roundtripSkeletonBinaryResult = exactSkeletonBinary 
-      ? { ok: true as const, value: exactSkeletonBinary }
+      ? { ok: true, value: exactSkeletonBinary }
       : skeletonResourceToBinary(roundtripSkeletonResource);
     
     if (!roundtripSkeletonBinaryResult.ok) {

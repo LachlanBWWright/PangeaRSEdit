@@ -39,7 +39,7 @@ export function err<E = Error>(error: E): Err<E> {
 /**
  * Create an error result from a string message
  */
-export function errMsg(message: string): Err<Error> {
+export function errMsg(message: string): Err {
   return { ok: false, error: new Error(message) };
 }
 
@@ -47,14 +47,14 @@ export function errMsg(message: string): Err<Error> {
  * Type guard to check if a result is Ok
  */
 export function isOk<T, E>(result: Result<T, E>): result is Ok<T> {
-  return result.ok === true;
+  return result.ok;
 }
 
 /**
  * Type guard to check if a result is Err
  */
 export function isErr<T, E>(result: Result<T, E>): result is Err<E> {
-  return result.ok === false;
+  return !result.ok;
 }
 
 /**
@@ -65,7 +65,7 @@ export function unwrap<T, E>(result: Result<T, E>): T {
   if (result.ok) {
     return result.value;
   }
-  throw result.error;
+  throw result.error instanceof Error ? result.error : new Error(String(result.error));
 }
 
 /**
@@ -114,7 +114,7 @@ export function andThen<T, U, E>(
 /**
  * Convert a Promise that might reject to a Promise that returns a Result
  */
-export async function fromPromise<T>(promise: Promise<T>): Promise<Result<T, Error>> {
+export async function fromPromise<T>(promise: Promise<T>): Promise<Result<T>> {
   try {
     const value = await promise;
     return ok(value);
@@ -126,7 +126,7 @@ export async function fromPromise<T>(promise: Promise<T>): Promise<Result<T, Err
 /**
  * Wrap a function that might throw into one that returns a Result
  */
-export function tryFn<T>(fn: () => T): Result<T, Error> {
+export function tryFn<T>(fn: () => T): Result<T> {
   try {
     return ok(fn());
   } catch (error) {
@@ -138,15 +138,15 @@ export function tryFn<T>(fn: () => T): Result<T, Error> {
  * Safely access an array element by index
  * Returns Err if index is out of bounds or element is undefined (for sparse arrays)
  */
-export function safeIndex<T>(arr: readonly T[], index: number): Result<T, Error> {
+export function safeIndex<T>(arr: readonly T[], index: number): Result<T> {
   if (index < 0 || index >= arr.length) {
-    return err(new Error(`Index ${index} out of bounds for array of length ${arr.length}`));
+    return err(new Error(`Index ${String(index)} out of bounds for array of length ${String(arr.length)}`));
   }
   // With noUncheckedIndexedAccess, arr[index] is T | undefined
   // The undefined check handles sparse arrays where a valid index may still be undefined
   const value = arr[index];
   if (value === undefined) {
-    return err(new Error(`Array element at index ${index} is undefined`));
+    return err(new Error(`Array element at index ${String(index)} is undefined`));
   }
   return ok(value);
 }
@@ -158,12 +158,12 @@ export function safeIndex<T>(arr: readonly T[], index: number): Result<T, Error>
 export function safeGet<T extends object, K extends keyof T>(
   obj: T,
   key: K
-): Result<NonNullable<T[K]>, Error> {
+): Result<NonNullable<T[K]>> {
   const value = obj[key];
   if (value === undefined || value === null) {
     return err(new Error(`Property '${String(key)}' is not defined`));
   }
-  return ok(value as NonNullable<T[K]>);
+  return ok(value);
 }
 
 /**
@@ -173,10 +173,10 @@ export function safeGet<T extends object, K extends keyof T>(
 export function safeRecordGet<V>(
   record: Record<string | number, V>,
   key: string | number
-): Result<V, Error> {
+): Result<V> {
   const value = record[key];
   if (value === undefined) {
-    return err(new Error(`Key '${key}' not found in record`));
+    return err(new Error(`Key '${String(key)}' not found in record`));
   }
   return ok(value);
 }

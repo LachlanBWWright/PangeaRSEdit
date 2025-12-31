@@ -28,23 +28,48 @@ export type LzssResponse =
       imageData: ImageData;
     };
 
-onmessage = async (event: MessageEvent<LzssMessage>) => {
-  if (event.data.type === "compress") {
-    const decompressedDataView = imageDataToSixteenBit(event.data.uIntArray);
+onmessage = (event: MessageEvent<unknown>) => {
+  const payload = event.data;
+
+  const isCompress = (p: unknown): p is LzssMessage & { type: "compress" } => {
+    if (typeof p !== "object" || p === null) return false;
+    const obj = p as Record<string, unknown>;
+    return (
+      obj.type === "compress" &&
+      obj.uIntArray instanceof Uint8ClampedArray &&
+      typeof obj.id === "number"
+    );
+  };
+
+  const isDecompress = (
+    p: unknown,
+  ): p is LzssMessage & { type: "decompress" } => {
+    if (typeof p !== "object" || p === null) return false;
+    const obj = p as Record<string, unknown>;
+    return (
+      obj.type === "decompress" &&
+      typeof obj.outputSize === "number" &&
+      typeof obj.width === "number" &&
+      typeof obj.height === "number"
+    );
+  };
+
+  if (isCompress(payload)) {
+    const data = payload;
+    const decompressedDataView = imageDataToSixteenBit(data.uIntArray);
 
     const compressedDataView = lzssCompress(decompressedDataView);
-    postMessage(
-      {
-        id: event.data.id,
-        type: "compressRes",
-        dataBuffer: compressedDataView.buffer,
-      } satisfies LzssResponse,
-      //event.origin,
-      /* [compressedDataView.buffer], */
-    );
+    const response: LzssResponse = {
+      id: data.id,
+      type: "compressRes",
+      dataBuffer: compressedDataView.buffer,
+    };
+    postMessage(response);
   }
-  if (event.data.type === "decompress") {
-    const { compressedDataView, outputSize, width, height } = event.data;
+
+  if (isDecompress(payload)) {
+    const data = payload;
+    const { compressedDataView, outputSize, width, height } = data;
     const decompressedDataView = lzssDecompress(compressedDataView, outputSize);
 
     const imgCanvas = new OffscreenCanvas(width, height); //document.createElement("canvas");
@@ -69,10 +94,11 @@ onmessage = async (event: MessageEvent<LzssMessage>) => {
       return;
     }
 
-    postMessage({
-      id: event.data.id,
+    const response: LzssResponse = {
+      id: data.id,
       type: "decompressRes",
       imageData: imageData,
-    } satisfies LzssResponse);
+    };
+    postMessage(response);
   }
 };

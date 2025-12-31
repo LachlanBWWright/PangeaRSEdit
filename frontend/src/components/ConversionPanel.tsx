@@ -67,7 +67,7 @@ export function ConversionPanel({
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
-        setTimeout(() => URL.revokeObjectURL(url), 1000);
+        setTimeout(() => { URL.revokeObjectURL(url); }, 1000);
       }
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : String(err);
@@ -105,7 +105,7 @@ export function ConversionPanel({
         <div
           className="border-2 border-dashed border-gray-600 rounded-lg p-8 text-center cursor-pointer hover:border-gray-500 transition-colors"
           onDrop={handleDrop}
-          onDragOver={(e) => e.preventDefault()}
+          onDragOver={(e) => { e.preventDefault(); }}
           onClick={() => document.getElementById(inputId)?.click()}
         >
           <Upload className="w-12 h-12 mx-auto mb-4 text-gray-400" />

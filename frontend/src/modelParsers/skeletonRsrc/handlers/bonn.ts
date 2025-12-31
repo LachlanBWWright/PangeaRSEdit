@@ -7,14 +7,14 @@ export function handleBonN(
   hexData: string,
 ): BonNRaw[] {
   // Check if resourceData has obj field (rsrcdump format)
-  const actualData = (resourceData as { obj?: BonNRaw[] })?.obj || resourceData;
+  const actualData = (resourceData && resourceData.obj) ? resourceData.obj : resourceData;
   
   if (
     Array.isArray(actualData) &&
     actualData.length > 0 &&
-    (actualData[0] as BonNRaw).normal !== undefined
+    actualData[0].normal !== undefined
   ) {
-    return actualData as BonNRaw[];
+    return actualData;
   }
   
   // Fallback to hex parsing if needed

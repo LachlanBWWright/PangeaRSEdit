@@ -19,7 +19,7 @@ function getNestedMetadata(
 ): Record<string, unknown> | undefined {
   const entry = metadata?.[key];
   if (isRecord(entry) && "obj" in entry) {
-    const obj = (entry as Record<string, unknown>).obj;
+    const obj = entry.obj;
     if (isRecord(obj)) {
       return obj;
     }
@@ -48,8 +48,7 @@ function isMightyMikeMap(value: unknown): value is MightyMikeMap {
 function getNanosaurRawLevel(
   metadata: LevelMetadata | undefined,
 ): Nanosaur1LevelData | undefined {
-  const direct = (metadata as Record<string, unknown> | undefined)
-    ?.nanosaur1RawLevel;
+  const direct = metadata?.nanosaur1RawLevel;
   if (isNanosaur1LevelData(direct)) {
     return direct;
   }
@@ -61,8 +60,7 @@ function getNanosaurRawLevel(
 function getMightyMikeMapData(
   metadata: LevelMetadata | undefined,
 ): MightyMikeMap | undefined {
-  const direct = (metadata as Record<string, unknown> | undefined)
-    ?.mightyMikeMapData;
+  const direct = metadata?.mightyMikeMapData;
   if (isMightyMikeMap(direct)) {
     return direct;
   }
@@ -216,7 +214,7 @@ async function processMapData({
     return new ArrayBuffer(0);
   }
 
-  return saveResult.value.buffer as ArrayBuffer;
+  return saveResult.value.buffer;
 }
 
 async function compressMapImages(

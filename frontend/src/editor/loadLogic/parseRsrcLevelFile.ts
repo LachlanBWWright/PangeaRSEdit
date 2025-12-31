@@ -11,7 +11,7 @@ export async function parseRsrcLevelFile(
   file: Blob,
   gameType: GlobalsInterface,
   setData: (data: AtomicLevelData) => void,
-): Promise<Result<LevelData, Error>> {
+): Promise<Result<LevelData>> {
   try {
     const levelBuffer = await file.arrayBuffer();
     const bytes = new Uint8Array(levelBuffer);
@@ -28,7 +28,7 @@ export async function parseRsrcLevelFile(
       return err(new Error(parseResult.error));
     }
 
-    const result = JSON.parse(parseResult.value) as Record<string, unknown>;
+    const result = JSON.parse(parseResult.value);
 
     // Fix null values from rsrcdump-ts (safety net for backwards compatibility)
     // v1.0.6 should have fixed null/undefined bugs, but we keep this as a safety measure
@@ -47,20 +47,20 @@ export async function parseRsrcLevelFile(
     // Validate the preprocessed data using the appropriate game schema
     const validationResult = validateLevelDataForGame(
       result,
-      gameType.GAME_TYPE
+      gameType.GAME_TYPE,
     );
     if (!validationResult.ok) {
       return err(
         new Error(
-          `Level validation failed for ${gameType.GAME_NAME}: ${validationResult.error.message}`
-        )
+          `Level validation failed for ${gameType.GAME_NAME}: ${validationResult.error.message}`,
+        ),
       );
     }
 
     // After validation, we can use the validated value
     // The validation ensures the shape is correct, but validationResult.value is typed as unknown
-    // We use a type assertion here as the validation guarantees the structure matches LevelData
-    const levelData = validationResult.value as LevelData;
+    // Validation guarantees the structure matches LevelData at runtime
+    const levelData = validationResult.value;
     setData(splitLevelData(levelData));
     return ok(levelData);
   } catch (e) {

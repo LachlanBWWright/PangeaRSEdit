@@ -9,9 +9,9 @@ export function handleNumK(
   if (
     Array.isArray(resourceData) &&
     resourceData.length > 0 &&
-    (resourceData[0] as NumKRaw).numKeyFrames !== undefined
+    resourceData[0].numKeyFrames !== undefined
   ) {
-    return resourceData as NumKRaw[];
+    return resourceData;
   }
   return parseNumKData(hexData);
 }

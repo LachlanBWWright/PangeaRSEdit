@@ -37,7 +37,7 @@ export function FenceMenu({
   const fenceValues = fenceTypesResult.ok
     ? fenceTypesResult.value
         .map((key) => parseInt(key))
-        .filter((key) => isNaN(key) === false)
+        .filter((key) => !isNaN(key))
     : [];
 
   return (

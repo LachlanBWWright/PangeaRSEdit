@@ -29,7 +29,7 @@ export function createImageCanvas(
   width: number,
   height: number,
   coordColours: number[],
-): Result<HTMLCanvasElement, Error> {
+): Result<HTMLCanvasElement> {
   const imgCanvas = document.createElement("canvas");
   imgCanvas.width = width;
   imgCanvas.height = height;

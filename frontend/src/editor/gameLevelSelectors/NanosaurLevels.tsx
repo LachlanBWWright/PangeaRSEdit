@@ -11,14 +11,14 @@ export function NanosaurLevels({
     <LevelGrid title="Nanosaur Levels">
       <Button
         onClick={() =>
-          openFile("assets/nanosaur/terrain/Level1.ter", NanosaurGlobals)
+          { openFile("assets/nanosaur/terrain/Level1.ter", NanosaurGlobals); }
         }
       >
         Default
       </Button>
       <Button
         onClick={() =>
-          openFile("assets/nanosaur/terrain/Level1Pro.ter", NanosaurGlobals)
+          { openFile("assets/nanosaur/terrain/Level1Pro.ter", NanosaurGlobals); }
         }
       >
         Extreme

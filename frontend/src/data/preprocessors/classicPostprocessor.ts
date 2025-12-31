@@ -10,7 +10,7 @@ import { Result, ok, err } from "../../types/result";
  */
 export function classicPostprocessor(
   canvases: HTMLCanvasElement[],
-): Result<ArrayBuffer, Error> {
+): Result<ArrayBuffer> {
   const TILE_SIZE = 32;
   const BYTES_PER_TILE = TILE_SIZE * TILE_SIZE * 2;
   const tileCount = canvases.length;

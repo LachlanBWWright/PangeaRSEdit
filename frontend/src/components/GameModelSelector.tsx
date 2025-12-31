@@ -57,7 +57,7 @@ export function GameModelSelector({
 
   useEffect(() => {
     // Reset model selection when game or category changes
-    Promise.resolve().then(() => setSelectedModel(null));
+    Promise.resolve().then(() => { setSelectedModel(null); });
   }, [selectedGameId, selectedCategory]);
 
   useEffect(() => {
@@ -65,7 +65,7 @@ export function GameModelSelector({
     if (selectedGame && availableCategories.length > 0) {
       const firstCategory = availableCategories[0];
       if (firstCategory) {
-        Promise.resolve().then(() => setSelectedCategory(firstCategory));
+        Promise.resolve().then(() => { setSelectedCategory(firstCategory); });
       }
     }
   }, [selectedGameId, selectedGame, availableCategories]);
@@ -243,7 +243,7 @@ export function GameModelSelector({
                   type="radio"
                   name="skeletonOption"
                   checked={loadWithSkeleton}
-                  onChange={() => setLoadWithSkeleton(true)}
+                  onChange={() => { setLoadWithSkeleton(true); }}
                   className="text-blue-500"
                 />
                 <span className="text-sm text-white">
@@ -255,7 +255,7 @@ export function GameModelSelector({
                   type="radio"
                   name="skeletonOption"
                   checked={!loadWithSkeleton}
-                  onChange={() => setLoadWithSkeleton(false)}
+                  onChange={() => { setLoadWithSkeleton(false); }}
                   className="text-blue-500"
                 />
                 <span className="text-sm text-white">

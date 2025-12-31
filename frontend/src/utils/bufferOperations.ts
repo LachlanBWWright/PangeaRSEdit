@@ -12,7 +12,7 @@ import { Result, ok, err } from "../types/result";
  */
 export function readUint32BE(
   buffer: ArrayBuffer,
-  offset: number
+  offset: number,
 ): Result<number> {
   if (offset < 0 || offset + 4 > buffer.byteLength) {
     return err(new Error("Buffer too small for uint32 read"));
@@ -26,7 +26,7 @@ export function readUint32BE(
  */
 export function readUint32LE(
   buffer: ArrayBuffer,
-  offset: number
+  offset: number,
 ): Result<number> {
   if (offset + 4 > buffer.byteLength) {
     return err(new Error("Buffer too small for uint32 read"));
@@ -40,7 +40,7 @@ export function readUint32LE(
  */
 export function readUint16BE(
   buffer: ArrayBuffer,
-  offset: number
+  offset: number,
 ): Result<number> {
   if (offset + 2 > buffer.byteLength) {
     return err(new Error("Buffer too small for uint16 read"));
@@ -54,7 +54,7 @@ export function readUint16BE(
  */
 export function readUint16LE(
   buffer: ArrayBuffer,
-  offset: number
+  offset: number,
 ): Result<number> {
   if (offset + 2 > buffer.byteLength) {
     return err(new Error("Buffer too small for uint16 read"));
@@ -100,12 +100,15 @@ export function writeUint32LE(value: number): ArrayBuffer {
 export function sliceBuffer(
   buffer: ArrayBuffer,
   start: number,
-  end?: number
+  end?: number,
 ): Result<ArrayBuffer> {
   if (start < 0 || start > buffer.byteLength) {
     return err(new Error("Invalid start offset"));
   }
-  if (end !== undefined && (end < 0 || end > buffer.byteLength || end < start)) {
+  if (
+    end !== undefined &&
+    (end < 0 || end > buffer.byteLength || end < start)
+  ) {
     return err(new Error("Invalid end offset"));
   }
   return ok(buffer.slice(start, end));
@@ -117,13 +120,15 @@ export function sliceBuffer(
 export function copyBuffer(
   buffer: ArrayBuffer,
   offset: number,
-  length: number
+  length: number,
 ): Result<ArrayBuffer> {
   if (offset + length > buffer.byteLength) {
     return err(
       new Error(
-        `Invalid copy range: offset=${offset}, length=${length}, buffer size=${buffer.byteLength}`
-      )
+        `Invalid copy range: offset=${String(offset)}, length=${String(
+          length,
+        )}, buffer size=${String(buffer.byteLength)}`,
+      ),
     );
   }
   const source = new Uint8Array(buffer, offset, length);
@@ -136,7 +141,6 @@ export function copyBuffer(
  * Concatenate multiple buffers into a single buffer
  */
 export function concatBuffers(buffers: ArrayBuffer[]): ArrayBuffer {
-
   const totalLength = buffers.reduce((sum, buf) => sum + buf.byteLength, 0);
   const result = new Uint8Array(totalLength);
 
@@ -155,7 +159,7 @@ export function concatBuffers(buffers: ArrayBuffer[]): ArrayBuffer {
  */
 export function findFirstDifference(
   buffer1: ArrayBuffer,
-  buffer2: ArrayBuffer
+  buffer2: ArrayBuffer,
 ): {
   equal: boolean;
   offset: number | null;
@@ -181,7 +185,10 @@ export function findFirstDifference(
 /**
  * Create a buffer filled with repeated byte value
  */
-export function createFilledBuffer(length: number, fillValue: number): ArrayBuffer {
+export function createFilledBuffer(
+  length: number,
+  fillValue: number,
+): ArrayBuffer {
   const buffer = new Uint8Array(length);
   buffer.fill(fillValue);
   return buffer.buffer;
@@ -192,7 +199,9 @@ export function createFilledBuffer(length: number, fillValue: number): ArrayBuff
  */
 export function bufferToHex(buffer: ArrayBuffer): string {
   const view = new Uint8Array(buffer);
-  return Array.from(view).map((b) => b.toString(16).padStart(2, "0")).join("");
+  return Array.from(view)
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
 }
 
 /**
@@ -206,16 +215,25 @@ export function hexToBuffer(hex: string): Result<ArrayBuffer> {
   try {
     const bytes = new Uint8Array(hex.length / 2);
     for (let i = 0; i < hex.length; i += 2) {
-      const byte = parseInt(hex.substr(i, 2), 16);
+      const byte = parseInt(hex.substring(i, i + 2), 16);
       if (isNaN(byte)) {
-        return err(new Error(`Invalid hex characters at position ${i}: ${hex.substr(i, 2)}`));
+        return err(
+          new Error(
+            `Invalid hex characters at position ${String(i)}: ${hex.substring(
+              i,
+              i + 2,
+            )}`,
+          ),
+        );
       }
       bytes[i / 2] = byte;
     }
     return ok(bytes.buffer);
   } catch (e) {
     return err(
-      new Error(`Invalid hex string: ${e instanceof Error ? e.message : String(e)}`)
+      new Error(
+        `Invalid hex string: ${e instanceof Error ? e.message : String(e)}`,
+      ),
     );
   }
 }

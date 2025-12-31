@@ -51,7 +51,7 @@ export const MightyMikeItemMenu = memo(function MightyMikeItemMenu({
   const itemValues = itemTypesResult.ok
     ? itemTypesResult.value
         .map((key) => parseInt(key))
-        .filter((key) => isNaN(key) === false)
+        .filter((key) => !isNaN(key))
     : [];
 
   return (
@@ -60,7 +60,7 @@ export const MightyMikeItemMenu = memo(function MightyMikeItemMenu({
       <Button
         size="sm"
         variant={showItemImages ? "default" : "outline"}
-        onClick={() => setShowItemImages(!showItemImages)}
+        onClick={() => { setShowItemImages(!showItemImages); }}
         className="gap-2 w-full"
       >
         {showItemImages ? (
@@ -136,8 +136,8 @@ export const MightyMikeItemMenu = memo(function MightyMikeItemMenu({
                 }}
               />
 
-              {([0, 1, 2, 3] as const).map((i) => {
-                const paramKey = `p${i}` as const;
+              {[0, 1, 2, 3].map((i) => {
+                const paramKey = `p${i}`;
                 const value = selectedItemData[paramKey];
                 const setValue = (v: number) => {
                   setItemData((itemData) => {
@@ -156,7 +156,7 @@ export const MightyMikeItemMenu = memo(function MightyMikeItemMenu({
                     key={`input-${i}`}
                     type="number"
                     value={value.toString()}
-                    onChange={(e) => setValue(parseU8(e.target.value))}
+                    onChange={(e) => { setValue(parseU8(e.target.value)); }}
                   />,
                 ];
               })}
@@ -185,7 +185,7 @@ export const MightyMikeItemMenu = memo(function MightyMikeItemMenu({
 function AddItemMenu() {
   const [clickToAddItem, setClickToAddItem] = useAtom(ClickToAddItem);
   useEffect(() => {
-    return () => setClickToAddItem(undefined);
+    return () => { setClickToAddItem(undefined); };
   }, [setClickToAddItem]);
   const globals = useAtomValue(Globals);
 
@@ -193,7 +193,7 @@ function AddItemMenu() {
   const itemValues = itemTypesResult.ok
     ? itemTypesResult.value
         .map((key) => parseInt(key))
-        .filter((key) => isNaN(key) === false)
+        .filter((key) => !isNaN(key))
     : [];
 
   if (clickToAddItem !== undefined)
@@ -225,12 +225,12 @@ function AddItemMenu() {
         <p className="text-sm">Click on the Canvas to add the selected item</p>
         <Button
           variant="destructive"
-          onClick={() => setClickToAddItem(undefined)}
+          onClick={() => { setClickToAddItem(undefined); }}
         >
           Stop Adding Items
         </Button>
       </>
     );
 
-  return <Button onClick={() => setClickToAddItem(0)}>Add Items</Button>;
+  return <Button onClick={() => { setClickToAddItem(0); }}>Add Items</Button>;
 }

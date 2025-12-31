@@ -9,7 +9,7 @@ import { Globals, GlobalsInterface } from "@/data/globals/globals";
 import { getFenceColor } from "@/data/fences/getFenceColor";
 import { getFenceImagePath } from "@/data/fences/getFenceImagePath";
 import { getFenceHeight } from "@/data/fences/getFenceHeight";
-import * as THREE from "three";
+import { TextureLoader, RepeatWrapping, ClampToEdgeWrapping, LinearFilter, LinearMipmapLinearFilter, DoubleSide, Texture } from "three";
 
 interface FenceGeometryProps {
   fenceData: FenceData;
@@ -81,7 +81,7 @@ function calculateFenceSegmentGeometry(
 
 interface FenceSegmentMeshProps {
   geometry: FenceSegmentGeometryData;
-  texture: THREE.Texture | null;
+  texture: Texture | null;
   fenceColor: string;
 }
 
@@ -118,11 +118,11 @@ const FenceSegmentMesh: React.FC<FenceSegmentMeshProps> = ({
       {texture ? (
         <meshBasicMaterial
           map={texture}
-          side={THREE.DoubleSide}
+          side={DoubleSide}
           transparent={true}
         />
       ) : (
-        <meshStandardMaterial color={fenceColor} side={THREE.DoubleSide} />
+        <meshStandardMaterial color={fenceColor} side={DoubleSide} />
       )}
     </mesh>
   );
@@ -169,7 +169,7 @@ export const FenceGeometry: React.FC<FenceGeometryProps> = ({
     });
 
     // Load all textures
-    const textureLoader = new THREE.TextureLoader();
+    const textureLoader = new TextureLoader();
     const loadedTextures = new Map<string, THREE.Texture>();
     let loadedCount = 0;
 
@@ -178,10 +178,10 @@ export const FenceGeometry: React.FC<FenceGeometryProps> = ({
         url,
         (texture) => {
           // Configure texture wrapping
-          texture.wrapS = THREE.RepeatWrapping; // U: wrap horizontally
-          texture.wrapT = THREE.ClampToEdgeWrapping; // V: clamp vertically
-          texture.magFilter = THREE.LinearFilter;
-          texture.minFilter = THREE.LinearMipmapLinearFilter;
+          texture.wrapS = RepeatWrapping; // U: wrap horizontally
+          texture.wrapT = ClampToEdgeWrapping; // V: clamp vertically
+          texture.magFilter = LinearFilter;
+          texture.minFilter = LinearMipmapLinearFilter;
 
           loadedTextures.set(url, texture);
           loadedCount++;
@@ -234,7 +234,7 @@ export const FenceGeometry: React.FC<FenceGeometryProps> = ({
     // Get texture aspect ratio (fallback to 1 if not loaded yet)
     const texture = textures.get(imagePath);
     const textureAspectRatio = texture
-      ? (texture.source.data as { width: number; height: number }).width / (texture.source.data as { width: number; height: number }).height
+      ? texture.source.data.width / texture.source.data.height
       : 1;
 
     const segments = [];

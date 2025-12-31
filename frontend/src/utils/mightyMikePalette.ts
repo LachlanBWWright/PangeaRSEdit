@@ -18,7 +18,7 @@ const gLinearToSRGB = buildLinearToSRGBTable();
 
 function buildAppleRGBToLinearTable(): Uint16Array {
   const table = new Uint16Array(1 << 16);
-  for (let i = 0; i < (1 << 16); i++) {
+  for (let i = 0; i < 1 << 16; i++) {
     const linearScale = i / 0xffff;
     const appleRGBToLinear = Math.pow(linearScale, 1.8);
     table[i] = Math.floor(appleRGBToLinear * 65535 + 0.5);
@@ -28,7 +28,7 @@ function buildAppleRGBToLinearTable(): Uint16Array {
 
 function buildLinearToSRGBTable(): Uint8Array {
   const table = new Uint8Array(1 << 16);
-  for (let i = 0; i < (1 << 16); i++) {
+  for (let i = 0; i < 1 << 16; i++) {
     const linearScale = i / 0xffff;
     let srgbIntensity: number;
     if (linearScale < 0.0031308) {
@@ -46,9 +46,9 @@ function buildLinearToSRGBTable(): Uint8Array {
  * Each component is 16-bit (0-65535) for precision
  */
 export interface RGBColor {
-  red: number;   // 0-65535
+  red: number; // 0-65535
   green: number; // 0-65535
-  blue: number;  // 0-65535
+  blue: number; // 0-65535
 }
 
 /**
@@ -82,7 +82,11 @@ export class GamePalette {
     for (let i = 0; i < 256; i++) {
       const color = this.baseColors[i];
       if (color) {
-        copy.baseColors[i] = { red: color.red, green: color.green, blue: color.blue };
+        copy.baseColors[i] = {
+          red: color.red,
+          green: color.green,
+          blue: color.blue,
+        };
       }
       copy.finalColors32[i] = this.finalColors32[i] ?? 0x000000ff;
       copy.finalColors16[i] = this.finalColors16[i] ?? 0x0000;
@@ -162,7 +166,9 @@ export class MightyMikePaletteManager {
   loadPaletteFromRGBA(paletteData: Uint8Array): void {
     if (paletteData.length !== 1024) {
       console.warn(
-        `[PALETTE] Invalid palette size: ${paletteData.length}, expected 1024`
+        `[PALETTE] Invalid palette size: ${String(
+          paletteData.length,
+        )}, expected 1024`,
       );
       return;
     }
@@ -175,7 +181,7 @@ export class MightyMikePaletteManager {
 
       // Convert 8-bit to 16-bit for baseColors storage
       const rColor: RGBColor = {
-        red: r8 * 257,   // 0-255 -> 0-65535
+        red: r8 * 257, // 0-255 -> 0-65535
         green: g8 * 257,
         blue: b8 * 257,
       };
@@ -207,10 +213,8 @@ export class MightyMikePaletteManager {
 
       // Apply sRGB matrix transformation
       let srgbRed = argbRed * 17510 - argbGreen * 1288 + argbBlue * 162 + 8192;
-      let srgbGreen =
-        argbRed * 395 + argbGreen * 15730 + argbBlue * 259 + 8192;
-      let srgbBlue =
-        argbRed * 29 + argbGreen * 487 + argbBlue * 15868 + 8192;
+      let srgbGreen = argbRed * 395 + argbGreen * 15730 + argbBlue * 259 + 8192;
+      let srgbBlue = argbRed * 29 + argbGreen * 487 + argbBlue * 15868 + 8192;
 
       // Clamp negative values
       if (srgbRed < 0) srgbRed = 0;

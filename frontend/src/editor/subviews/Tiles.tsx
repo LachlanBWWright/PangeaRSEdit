@@ -59,7 +59,7 @@ export function Tiles({
       return [];
     }
     return terrainData.Layr![1000].obj
-      .map((atrbIdx: number) => terrainData.Atrb![1000].obj[atrbIdx])
+      .map((atrbIdx: number) => terrainData.Atrb[1000].obj[atrbIdx])
       .filter((tile): tile is TileAttribute => tile !== undefined);
   }, [terrainData.Layr, terrainData.Atrb, hasAtrbData, hasLayrData]);
 

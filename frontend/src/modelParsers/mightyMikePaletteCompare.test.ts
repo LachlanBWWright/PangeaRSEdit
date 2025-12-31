@@ -27,7 +27,7 @@ describe("Mighty Mike TGA palette raw dump", () => {
         buf.byteOffset + buf.byteLength,
       );
 
-      const pal = extractTGAPalette(arrBuf as ArrayBuffer);
+      const pal = extractTGAPalette(arrBuf);
       if (!pal) throw new Error(`Failed to extract palette for ${name}`);
 
       const triplets: Array<number[] | null> = [];

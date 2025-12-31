@@ -72,7 +72,7 @@ export async function parseLevelBuffer(
   buffer: ArrayBuffer,
   gameType: GlobalsInterface,
   pyodideRunner?: PyodideRunner,
-): Promise<Result<LevelData, Error>> {
+): Promise<Result<LevelData>> {
   if (gameType.DATA_TYPE === DataType.TRT_FILE) {
     // Nanosaur 1 uses proprietary TRT binary format
     const result = parseNanosaur1LevelBuffer(buffer, gameType);
@@ -96,10 +96,7 @@ export async function parseLevelBuffer(
   }
 
   // Apply preprocessing (modifies levelData in place)
-  const preprocessResult = preprocessJson(
-    parseResult.value,
-    gameType
-  );
+  const preprocessResult = preprocessJson(parseResult.value, gameType);
   if (isErr(preprocessResult)) {
     return preprocessResult;
   }
@@ -114,7 +111,7 @@ export async function parseLevelBuffer(
 export function parseNanosaur1LevelBuffer(
   buffer: ArrayBuffer,
   gameType?: GlobalsInterface,
-): Result<LevelData, Error> {
+): Result<LevelData> {
   try {
     const rawLevelData = parseNanosaur1Level(buffer);
     const converted = nanosaur1LevelToLevelData(
@@ -135,7 +132,7 @@ export function parseNanosaur1LevelBuffer(
  */
 export function parseNanosaur1TextureBuffer(
   buffer: ArrayBuffer,
-): Result<Uint16Array[], Error> {
+): Result<Uint16Array[]> {
   try {
     const textures = parseNanosaurTerrainTextures(buffer);
     return ok(textures);
@@ -160,7 +157,7 @@ export async function serializeLevelData(
   levelData: LevelData,
   gameType: GlobalsInterface,
   pyodideRunner: PyodideRunner,
-): Promise<Result<ArrayBuffer, Error>> {
+): Promise<Result<ArrayBuffer>> {
   if (gameType.DATA_TYPE === DataType.TRT_FILE) {
     // Nanosaur 1 TRT file serialization not supported (proprietary format)
     return err(
@@ -196,7 +193,7 @@ export async function performRoundtrip(
   buffer: ArrayBuffer,
   gameType: GlobalsInterface,
   pyodideRunner: PyodideRunner,
-): Promise<Result<RoundtripResult, Error>> {
+): Promise<Result<RoundtripResult>> {
   // Parse original
   const originalResult = await parseLevelBuffer(
     buffer,
@@ -303,16 +300,12 @@ export function compareLevelDataObjects(
     }
 
     if (typeof obj1 === "object" && typeof obj2 === "object") {
-      const keys1 = Object.keys(obj1 as object);
-      const keys2 = Object.keys(obj2 as object);
+      const keys1 = Object.keys(obj1);
+      const keys2 = Object.keys(obj2);
       const allKeys = new Set([...keys1, ...keys2]);
 
       for (const key of allKeys) {
-        compare(
-          (obj1 as Record<string, unknown>)[key],
-          (obj2 as Record<string, unknown>)[key],
-          path ? `${path}.${key}` : key,
-        );
+        compare(obj1[key], obj2[key], path ? `${path}.${key}` : key);
       }
       return;
     }
@@ -421,7 +414,7 @@ export async function createDownloadableLevel(
   filename: string,
   gameType: GlobalsInterface,
   pyodideRunner: PyodideRunner,
-): Promise<Result<{ blob: Blob; filename: string }, Error>> {
+): Promise<Result<{ blob: Blob; filename: string }>> {
   const result = await serializeLevelData(levelData, gameType, pyodideRunner);
   if (isErr(result)) {
     return err(new Error(`Failed to serialize level: ${result.error.message}`));
@@ -454,7 +447,7 @@ export function triggerDownload(blob: Blob, filename: string): void {
  */
 export async function fetchLevelFile(
   url: string,
-): Promise<Result<ArrayBuffer, Error>> {
+): Promise<Result<ArrayBuffer>> {
   try {
     const response = await fetch(url);
     if (!response.ok) {

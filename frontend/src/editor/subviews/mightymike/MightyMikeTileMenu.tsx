@@ -50,7 +50,7 @@ export function MightyMikeTileMenu({
 }: MightyMikeTileMenuProps) {
   const selectedTile = useAtomValue(SelectedTile);
   const [showCollisionOverlay, setShowCollisionOverlay] = useAtom(
-    ShowMightyMikeCollisionOverlay
+    ShowMightyMikeCollisionOverlay,
   );
 
   // Local state
@@ -65,8 +65,8 @@ export function MightyMikeTileMenu({
 
   // Get collision data from Mighty Mike metadata
   // Access mightyMikeTileValues from the _metadata field which has an index signature
-  const mightyMikeTileValuesArray = 
-    (terrainData._metadata?.mightyMikeTileValues as unknown[]) || [];
+  const mightyMikeTileValuesArray =
+    terrainData._metadata?.mightyMikeTileValues || [];
 
   const mapWidth = header.mapWidth;
   const mapHeight = header.mapHeight;
@@ -77,21 +77,14 @@ export function MightyMikeTileMenu({
     hasCollisionMask: boolean;
     usePixelAccurateCollision: boolean;
   } | null => {
-    if (
-      selectedTile < 0 ||
-      selectedTile >= mightyMikeTileValuesArray.length
-    ) {
+    if (selectedTile < 0 || selectedTile >= mightyMikeTileValuesArray.length) {
       return null;
     }
 
-    const tileValue = mightyMikeTileValuesArray[selectedTile] as Record<
-      string,
-      unknown
-    >;
+    const tileValue = mightyMikeTileValuesArray[selectedTile];
     return {
-      hasCollisionMask: (tileValue?.hasCollisionMask as boolean) || false,
-      usePixelAccurateCollision:
-        (tileValue?.usePixelAccurateCollision as boolean) || false,
+      hasCollisionMask: tileValue?.hasCollisionMask || false,
+      usePixelAccurateCollision: tileValue?.usePixelAccurateCollision || false,
     };
   };
 
@@ -104,11 +97,7 @@ export function MightyMikeTileMenu({
 
     let imageIndex: number = tileIndexValue;
 
-    if (
-      xlatTable &&
-      tileIndexValue >= 0 &&
-      tileIndexValue < xlatTable.length
-    ) {
+    if (xlatTable && tileIndexValue >= 0 && tileIndexValue < xlatTable.length) {
       const xlatEntry = xlatTable[tileIndexValue];
       if (xlatEntry && typeof xlatEntry === "object" && "idx" in xlatEntry) {
         imageIndex = xlatEntry.idx;
@@ -126,7 +115,9 @@ export function MightyMikeTileMenu({
   const findTileIndexForImage = (imageIndex: number): number | null => {
     if (!xlatTable) {
       // No translation table - direct mapping
-      return imageIndex >= 0 && imageIndex < mapImages.length ? imageIndex : null;
+      return imageIndex >= 0 && imageIndex < mapImages.length
+        ? imageIndex
+        : null;
     }
 
     // Search through Xlat to find logical index that maps to this image
@@ -255,7 +246,7 @@ export function MightyMikeTileMenu({
   // Handler: Update collision properties
   const handleUpdateCollisionProperty = (
     property: "hasCollisionMask" | "usePixelAccurateCollision",
-    value: boolean
+    value: boolean,
   ) => {
     if (selectedTile < 0 || selectedTile >= mightyMikeTileValuesArray.length) {
       toast.error("Invalid tile selected");
@@ -263,10 +254,7 @@ export function MightyMikeTileMenu({
     }
 
     // Update the tile value in the array
-    const tileValue = mightyMikeTileValuesArray[selectedTile] as Record<
-      string,
-      unknown
-    >;
+    const tileValue = mightyMikeTileValuesArray[selectedTile];
     if (!tileValue) return;
 
     tileValue[property] = value;
@@ -282,7 +270,7 @@ export function MightyMikeTileMenu({
     });
 
     toast.success(
-      `Collision ${property === "hasCollisionMask" ? "mask" : "type"} updated`
+      `Collision ${property === "hasCollisionMask" ? "mask" : "type"} updated`,
     );
   };
 
@@ -329,7 +317,9 @@ export function MightyMikeTileMenu({
       toast.success("Tile image replaced");
     } catch (error) {
       toast.error(
-        `Failed to upload tile: ${error instanceof Error ? error.message : "Unknown error"}`
+        `Failed to upload tile: ${
+          error instanceof Error ? error.message : "Unknown error"
+        }`,
       );
     }
   };
@@ -355,7 +345,9 @@ export function MightyMikeTileMenu({
         <Button
           size="sm"
           variant={showCollisionOverlay ? "default" : "outline"}
-          onClick={() => setShowCollisionOverlay(!showCollisionOverlay)}
+          onClick={() => {
+            setShowCollisionOverlay(!showCollisionOverlay);
+          }}
           title={
             showCollisionOverlay
               ? "Hide collision mask overlay"
@@ -368,178 +360,191 @@ export function MightyMikeTileMenu({
 
       {/* Main Content Grid */}
       <div className="grid grid-cols-3 gap-2 p-2 flex-1 overflow-y-auto">
-      {/* Left Column: Selected Tile Operations */}
-      <div className="flex flex-col gap-2">
-        <p className="font-bold">Selected Tile #{selectedTile}</p>
+        {/* Left Column: Selected Tile Operations */}
+        <div className="flex flex-col gap-2">
+          <p className="font-bold">Selected Tile #{selectedTile}</p>
 
-        {/* Tile Preview */}
-        <Stage width={120} height={120} className="mx-auto border border-gray-600">
-          <Layer>
-            {currentTileCanvas && <TileImage image={currentTileCanvas} />}
-          </Layer>
-        </Stage>
+          {/* Tile Preview */}
+          <Stage
+            width={120}
+            height={120}
+            className="mx-auto border border-gray-600"
+          >
+            <Layer>
+              {currentTileCanvas && <TileImage image={currentTileCanvas} />}
+            </Layer>
+          </Stage>
 
-        {/* Upload Button */}
-        <div>
-          <p className="text-sm mb-1">Replace Tile Image</p>
-          <FileUpload
-            acceptType="image"
-            disabled={currentImageIndex === null}
-            handleOnChange={handleUploadTile}
-          />
-        </div>
-
-        {/* Edit Button */}
-        <Button
-          size="sm"
-          variant="outline"
-          onClick={handleEditTile}
-          disabled={currentImageIndex === null}
-        >
-          <Edit className="w-4 h-4 mr-1" />
-          Edit
-        </Button>
-
-        {/* Download Button */}
-        <Button
-          size="sm"
-          variant="outline"
-          onClick={handleDownloadTile}
-          disabled={currentImageIndex === null}
-        >
-          <Download className="w-4 h-4 mr-1" />
-          Download
-        </Button>
-      </div>
-
-      {/* Middle Column: Tile Information */}
-      <div className="flex flex-col gap-2 text-sm overflow-y-auto">
-        <div>
-          <p className="font-bold">Tile Information</p>
-          <div className="space-y-1">
-            <p>Map Size: {mapWidth} × {mapHeight}</p>
-            <p>Total Tiles: {totalTiles}</p>
-            <p>Available Images: {mapImages.length}</p>
-            <p>Selected Pos: {selectedTile}</p>
-            <p>
-              Logical Index:{" "}
-              {selectedTile < layr.length ? layr[selectedTile] : "N/A"}
-            </p>
-            <p>Physical Index: {currentImageIndex ?? "N/A"}</p>
-            <p>Has Xlat: {xlatTable ? "Yes" : "No"}</p>
+          {/* Upload Button */}
+          <div>
+            <p className="text-sm mb-1">Replace Tile Image</p>
+            <FileUpload
+              acceptType="image"
+              disabled={currentImageIndex === null}
+              handleOnChange={handleUploadTile}
+            />
           </div>
+
+          {/* Edit Button */}
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={handleEditTile}
+            disabled={currentImageIndex === null}
+          >
+            <Edit className="w-4 h-4 mr-1" />
+            Edit
+          </Button>
+
+          {/* Download Button */}
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={handleDownloadTile}
+            disabled={currentImageIndex === null}
+          >
+            <Download className="w-4 h-4 mr-1" />
+            Download
+          </Button>
         </div>
 
-        {/* Collision Properties Section */}
-        {mightyMikeTileValuesArray.length > 0 && (() => {
-          const collisionProps = getCollisionProperties();
-          return (
-            <div className="border-t border-gray-600 pt-2">
-              <p className="font-bold">Collision Properties</p>
-              {collisionProps ? (
-                <div className="space-y-2">
-                  {/* Collision Mask Toggle */}
-                  <div className="flex items-center justify-between">
-                    <span>Collision Mask:</span>
-                    <Select
-                      value={
-                        collisionProps.hasCollisionMask ? "enabled" : "disabled"
-                      }
-                      onValueChange={(value) =>
-                        handleUpdateCollisionProperty(
-                          "hasCollisionMask",
-                          value === "enabled"
-                        )
-                      }
-                    >
-                      <SelectTrigger className="w-24 h-7 text-xs">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="enabled">Enabled</SelectItem>
-                        <SelectItem value="disabled">Disabled</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
+        {/* Middle Column: Tile Information */}
+        <div className="flex flex-col gap-2 text-sm overflow-y-auto">
+          <div>
+            <p className="font-bold">Tile Information</p>
+            <div className="space-y-1">
+              <p>
+                Map Size: {mapWidth} × {mapHeight}
+              </p>
+              <p>Total Tiles: {totalTiles}</p>
+              <p>Available Images: {mapImages.length}</p>
+              <p>Selected Pos: {selectedTile}</p>
+              <p>
+                Logical Index:{" "}
+                {selectedTile < layr.length ? layr[selectedTile] : "N/A"}
+              </p>
+              <p>Physical Index: {currentImageIndex ?? "N/A"}</p>
+              <p>Has Xlat: {xlatTable ? "Yes" : "No"}</p>
+            </div>
+          </div>
 
-                  {/* Collision Type Selector */}
-                  {collisionProps.hasCollisionMask && (
-                    <div className="flex items-center justify-between text-xs">
-                      <span>Collision Type:</span>
-                      <Select
-                        value={
-                          collisionProps.usePixelAccurateCollision
-                            ? "pixel"
-                            : "tile"
-                        }
-                        onValueChange={(value) =>
-                          handleUpdateCollisionProperty(
-                            "usePixelAccurateCollision",
-                            value === "pixel"
-                          )
-                        }
-                      >
-                        <SelectTrigger className="w-24 h-7 text-xs">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="pixel">Pixel-Accurate</SelectItem>
-                          <SelectItem value="tile">Tile-Based</SelectItem>
-                        </SelectContent>
-                      </Select>
+          {/* Collision Properties Section */}
+          {mightyMikeTileValuesArray.length > 0 &&
+            (() => {
+              const collisionProps = getCollisionProperties();
+              return (
+                <div className="border-t border-gray-600 pt-2">
+                  <p className="font-bold">Collision Properties</p>
+                  {collisionProps ? (
+                    <div className="space-y-2">
+                      {/* Collision Mask Toggle */}
+                      <div className="flex items-center justify-between">
+                        <span>Collision Mask:</span>
+                        <Select
+                          value={
+                            collisionProps.hasCollisionMask
+                              ? "enabled"
+                              : "disabled"
+                          }
+                          onValueChange={(value) => {
+                            handleUpdateCollisionProperty(
+                              "hasCollisionMask",
+                              value === "enabled",
+                            );
+                          }}
+                        >
+                          <SelectTrigger className="w-24 h-7 text-xs">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="enabled">Enabled</SelectItem>
+                            <SelectItem value="disabled">Disabled</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      {/* Collision Type Selector */}
+                      {collisionProps.hasCollisionMask && (
+                        <div className="flex items-center justify-between text-xs">
+                          <span>Collision Type:</span>
+                          <Select
+                            value={
+                              collisionProps.usePixelAccurateCollision
+                                ? "pixel"
+                                : "tile"
+                            }
+                            onValueChange={(value) => {
+                              handleUpdateCollisionProperty(
+                                "usePixelAccurateCollision",
+                                value === "pixel",
+                              );
+                            }}
+                          >
+                            <SelectTrigger className="w-24 h-7 text-xs">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="pixel">
+                                Pixel-Accurate
+                              </SelectItem>
+                              <SelectItem value="tile">Tile-Based</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      )}
                     </div>
+                  ) : (
+                    <p className="text-gray-500 text-xs">
+                      No collision data available
+                    </p>
                   )}
                 </div>
-              ) : (
-                <p className="text-gray-500 text-xs">
-                  No collision data available
-                </p>
-              )}
-            </div>
-          );
-        })()}
-      </div>
-
-      {/* Right Column: Tile Palette */}
-      <div className="flex flex-col gap-2">
-        <p className="font-bold">Tile Palette</p>
-
-        {/* Scrollable Tile Grid */}
-        <div className="flex-1 overflow-y-auto border border-gray-600 p-2">
-          <div className="grid grid-cols-4 gap-1">
-            {mapImages.map((img, idx) => (
-              <div
-                key={idx}
-                onClick={() => setSelectedPaletteTile(idx)}
-                className={`cursor-pointer transition-all ${
-                  selectedPaletteTile === idx
-                    ? "ring-2 ring-green-500 rounded"
-                    : "hover:ring-1 hover:ring-blue-500 rounded"
-                }`}
-                title={`Tile #${idx}`}
-              >
-                <Stage width={32} height={32} className="bg-black">
-                  <Layer>
-                    <TileImage image={img} />
-                  </Layer>
-                </Stage>
-              </div>
-            ))}
-          </div>
+              );
+            })()}
         </div>
 
-        {/* Replace Button */}
-        <Button
-          size="sm"
-          onClick={handleReplaceTile}
-          disabled={
-            selectedPaletteTile < 0 || selectedPaletteTile >= mapImages.length
-          }
-        >
-          <Upload className="w-4 h-4 mr-1" />
-          Replace with Palette #{selectedPaletteTile}
-        </Button>
-      </div>
+        {/* Right Column: Tile Palette */}
+        <div className="flex flex-col gap-2">
+          <p className="font-bold">Tile Palette</p>
+
+          {/* Scrollable Tile Grid */}
+          <div className="flex-1 overflow-y-auto border border-gray-600 p-2">
+            <div className="grid grid-cols-4 gap-1">
+              {mapImages.map((img, idx) => (
+                <div
+                  key={idx}
+                  onClick={() => {
+                    setSelectedPaletteTile(idx);
+                  }}
+                  className={`cursor-pointer transition-all ${
+                    selectedPaletteTile === idx
+                      ? "ring-2 ring-green-500 rounded"
+                      : "hover:ring-1 hover:ring-blue-500 rounded"
+                  }`}
+                  title={`Tile #${idx}`}
+                >
+                  <Stage width={32} height={32} className="bg-black">
+                    <Layer>
+                      <TileImage image={img} />
+                    </Layer>
+                  </Stage>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Replace Button */}
+          <Button
+            size="sm"
+            onClick={handleReplaceTile}
+            disabled={
+              selectedPaletteTile < 0 || selectedPaletteTile >= mapImages.length
+            }
+          >
+            <Upload className="w-4 h-4 mr-1" />
+            Replace with Palette #{selectedPaletteTile}
+          </Button>
+        </div>
       </div>
 
       {/* Image Editor Modal */}

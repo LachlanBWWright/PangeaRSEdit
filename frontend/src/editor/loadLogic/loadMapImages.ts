@@ -11,10 +11,10 @@ import { Result, ok, err } from "@/types/result";
 export async function loadMapImages(
   dataView: DataView,
   globals: GlobalsInterface,
-): Promise<Result<HTMLCanvasElement[], Error>> {
+): Promise<Result<HTMLCanvasElement[]>> {
   let offset = 0;
 
-  const loadPromise: Promise<Result<HTMLCanvasElement[], Error>> = new Promise(
+  const loadPromise: Promise<Result<HTMLCanvasElement[]>> = new Promise(
     (resolve) => {
       if (globals.TILE_IMAGE_FORMAT === TileImageFormat.JPG) {
         // Nanosaur 2 and other JPG-based games: Each supertile is a JPEG, decompress with jpegDecompressWorker

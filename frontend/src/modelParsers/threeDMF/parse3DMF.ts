@@ -109,7 +109,7 @@ function readTriangleVertexIndices(
   numTriangles: number,
   numVertices: number,
   triangles: TQ3TriMeshTriangleData[]
-): Result<void, Error> {
+): Result<void> {
   for (let i = 0; i < numTriangles; i++) {
     let v0: number, v1: number, v2: number;
     
@@ -162,7 +162,7 @@ function readTriangleVertexIndices(
 function parseTmsh(
   state: ParserState,
   chunkSize: number
-): Result<void, Error> {
+): Result<void> {
   const { reader } = state;
 
   if (chunkSize < 52) {
@@ -278,7 +278,7 @@ function parseTmsh(
 function parseAtar(
   state: ParserState,
   chunkSize: number
-): Result<void, Error> {
+): Result<void> {
   const { reader } = state;
 
   if (chunkSize < 20) {
@@ -409,7 +409,7 @@ function parsePixmap(
   state: ParserState,
   chunkType: number,
   chunkSize: number
-): Result<TQ3Pixmap, Error> {
+): Result<TQ3Pixmap> {
   const { reader } = state;
 
   const isMipmap = chunkType === CHUNK_TXMM;
@@ -540,7 +540,7 @@ function parsePixmap(
 /**
  * Get the current texture shader being built
  */
-function getCurrentTextureShader(state: ParserState): Result<TQ3TextureShader, Error> {
+function getCurrentTextureShader(state: ParserState): Result<TQ3TextureShader> {
   if (state.metaFile.numTextures === 0) {
     return err(new Error("No texture shader opened"));
   }
@@ -555,7 +555,7 @@ function getCurrentTextureShader(state: ParserState): Result<TQ3TextureShader, E
  * Parse a single chunk
  * Returns the chunk type that was parsed
  */
-function parseOneChunk(state: ParserState): Result<number, Error> {
+function parseOneChunk(state: ParserState): Result<number> {
   const { reader } = state;
 
   if (state.currentDepth < 0) {
@@ -776,8 +776,8 @@ function parseOneChunk(state: ParserState): Result<number, Error> {
       if (!boundaryUResult.ok) return err(boundaryUResult.error);
       if (!boundaryVResult.ok) return err(boundaryVResult.error);
 
-      shaderResult.value.boundaryU = boundaryUResult.value as ShaderUVBoundary;
-      shaderResult.value.boundaryV = boundaryVResult.value as ShaderUVBoundary;
+      shaderResult.value.boundaryU = boundaryUResult.value;
+      shaderResult.value.boundaryV = boundaryVResult.value;
       break;
     }
 
@@ -826,7 +826,7 @@ function parseOneChunk(state: ParserState): Result<number, Error> {
 /**
  * Read the 3DMF file header and TOC
  */
-function readHeaderAndTOC(state: ParserState): Result<void, Error> {
+function readHeaderAndTOC(state: ParserState): Result<void> {
   const { reader } = state;
 
   // Read magic number
@@ -927,7 +927,7 @@ function readHeaderAndTOC(state: ParserState): Result<void, Error> {
  * @param buffer ArrayBuffer containing the 3DMF file
  * @returns Result<TQ3MetaFile, Error>
  */
-export function parse3DMFToMetaFile(buffer: ArrayBuffer): Result<TQ3MetaFile, Error> {
+export function parse3DMFToMetaFile(buffer: ArrayBuffer): Result<TQ3MetaFile> {
   const reader = new BigEndianReader(buffer);
   const state: ParserState = {
     reader,

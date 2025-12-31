@@ -22,8 +22,10 @@ export function lzssDecompress(
   const ringBuffer = new DataView(
     new ArrayBuffer(RING_BUFF_SIZE + MAX_SIZE - 1),
   ); //Len - RING_BUFF_SIZE + MAX_SIZE - 1
-  for (let i = 0; i < RING_BUFF_SIZE - MAX_SIZE; i++)
-    ringBuffer.setInt8(i, " ".charCodeAt(0));
+  const SPACE_CHAR_CODE = 32;
+  for (let i = 0; i < RING_BUFF_SIZE - MAX_SIZE; i++) {
+    ringBuffer.setInt8(i, SPACE_CHAR_CODE);
+  }
 
   let flags = 0;
   while (true) {
@@ -31,10 +33,11 @@ export function lzssDecompress(
     flags = Math.floor(flags / 2);
 
     //Get the next 8 flags
-    if (flags < 256) {
+    // When the low-byte is exhausted we need to fetch the next flag byte
+    if ((flags & 0xff) === 0) {
       if (--sourceSize < 0) break;
       const flagByte = compressedDataView.getUint8(sourceBufferPos++);
-      //The 0xff keeps keeps the flags < 256 from triggering until 8 cycles (8 bits) have been used
+      //Load the new flag byte into the high byte so we can shift bits out
       flags = flagByte | 0xff00;
     }
 

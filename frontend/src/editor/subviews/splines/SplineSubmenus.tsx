@@ -101,7 +101,7 @@ export function EditSplineItemMenu({
   const allSplineItemValues = splineItemTypesResult.ok
     ? splineItemTypesResult.value
         .map((key) => parseInt(key))
-        .filter((key) => isNaN(key) === false)
+        .filter((key) => !isNaN(key))
     : [];
 
   // Filter to safe spline items if enabled
@@ -150,7 +150,9 @@ export function EditSplineItemMenu({
           <Checkbox
             id="filter-safe-spline-items"
             checked={filterToSafe}
-            onCheckedChange={(checked) => setFilterToSafe(checked === true)}
+            onCheckedChange={(checked) => {
+              setFilterToSafe(checked === true);
+            }}
           />
           <Label
             htmlFor="filter-safe-spline-items"
@@ -166,7 +168,7 @@ export function EditSplineItemMenu({
         <ParamTooltip
           label={<span>Flags</span>}
           tooltip={getParamTooltip(
-            TerrainItemTypeParams[currentSplineItemData.type as ItemType].flags,
+            TerrainItemTypeParams[currentSplineItemData.type].flags,
           )}
         />
         <Input
@@ -189,12 +191,10 @@ export function EditSplineItemMenu({
           }}
         />
 
-        {([0, 1, 2, 3] as const).map((i) => {
-          const paramKey = `p${i}` as const;
+        {[0, 1, 2, 3].map((i) => {
+          const paramKey = `p${i}`;
           const param =
-            TerrainItemTypeParams[currentSplineItemData.type as ItemType][
-              paramKey
-            ];
+            TerrainItemTypeParams[currentSplineItemData.type][paramKey];
           const value = currentSplineItemData[paramKey];
           const setValue = (v: number) => {
             setSplineData((splineData) => {
@@ -267,7 +267,9 @@ export function EditSplineItemMenu({
                     type="number"
                     className="w-24"
                     value={value.toString()}
-                    onChange={(e) => setValue(parseU8(e.target.value))}
+                    onChange={(e) => {
+                      setValue(parseU8(e.target.value));
+                    }}
                   />
                 </div>
               </div>
@@ -276,7 +278,9 @@ export function EditSplineItemMenu({
                 key={`input-${i}`}
                 type="number"
                 value={value.toString()}
-                onChange={(e) => setValue(parseU8(e.target.value))}
+                onChange={(e) => {
+                  setValue(parseU8(e.target.value));
+                }}
               />
             ),
           ];

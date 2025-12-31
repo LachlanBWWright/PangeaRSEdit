@@ -16,30 +16,30 @@ export function MightyMikeLevels({
         {/* Prehistoric Plaza */}
         <Button
           onClick={() =>
-            openFile(
+            { openFile(
               "assets/mightyMike/terrain/jurassic.map-1",
               MightyMikeGlobals,
-            )
+            ); }
           }
         >
           Prehistoric Plaza 1
         </Button>
         <Button
           onClick={() =>
-            openFile(
+            { openFile(
               "assets/mightyMike/terrain/jurassic.map-2",
               MightyMikeGlobals,
-            )
+            ); }
           }
         >
           Prehistoric Plaza 2
         </Button>
         <Button
           onClick={() =>
-            openFile(
+            { openFile(
               "assets/mightyMike/terrain/jurassic.map-3",
               MightyMikeGlobals,
-            )
+            ); }
           }
         >
           Prehistoric Plaza 3
@@ -48,21 +48,21 @@ export function MightyMikeLevels({
         {/* Candy Cane Lane */}
         <Button
           onClick={() =>
-            openFile("assets/mightyMike/terrain/candy.map-1", MightyMikeGlobals)
+            { openFile("assets/mightyMike/terrain/candy.map-1", MightyMikeGlobals); }
           }
         >
           Candy Cane Lane 1
         </Button>
         <Button
           onClick={() =>
-            openFile("assets/mightyMike/terrain/candy.map-2", MightyMikeGlobals)
+            { openFile("assets/mightyMike/terrain/candy.map-2", MightyMikeGlobals); }
           }
         >
           Candy Cane Lane 2
         </Button>
         <Button
           onClick={() =>
-            openFile("assets/mightyMike/terrain/candy.map-3", MightyMikeGlobals)
+            { openFile("assets/mightyMike/terrain/candy.map-3", MightyMikeGlobals); }
           }
         >
           Candy Cane Lane 3
@@ -71,21 +71,21 @@ export function MightyMikeLevels({
         {/* Fairy Tale Trail */}
         <Button
           onClick={() =>
-            openFile("assets/mightyMike/terrain/fairy.map-1", MightyMikeGlobals)
+            { openFile("assets/mightyMike/terrain/fairy.map-1", MightyMikeGlobals); }
           }
         >
           Fairy Tale Trail 1
         </Button>
         <Button
           onClick={() =>
-            openFile("assets/mightyMike/terrain/fairy.map-2", MightyMikeGlobals)
+            { openFile("assets/mightyMike/terrain/fairy.map-2", MightyMikeGlobals); }
           }
         >
           Fairy Tale Trail 2
         </Button>
         <Button
           onClick={() =>
-            openFile("assets/mightyMike/terrain/fairy.map-3", MightyMikeGlobals)
+            { openFile("assets/mightyMike/terrain/fairy.map-3", MightyMikeGlobals); }
           }
         >
           Fairy Tale Trail 3
@@ -94,21 +94,21 @@ export function MightyMikeLevels({
         {/* Magic Funhouse */}
         <Button
           onClick={() =>
-            openFile("assets/mightyMike/terrain/clown.map-1", MightyMikeGlobals)
+            { openFile("assets/mightyMike/terrain/clown.map-1", MightyMikeGlobals); }
           }
         >
           Magic Funhouse 1
         </Button>
         <Button
           onClick={() =>
-            openFile("assets/mightyMike/terrain/clown.map-2", MightyMikeGlobals)
+            { openFile("assets/mightyMike/terrain/clown.map-2", MightyMikeGlobals); }
           }
         >
           Magic Funhouse 2
         </Button>
         <Button
           onClick={() =>
-            openFile("assets/mightyMike/terrain/clown.map-3", MightyMikeGlobals)
+            { openFile("assets/mightyMike/terrain/clown.map-3", MightyMikeGlobals); }
           }
         >
           Magic Funhouse 3
@@ -117,30 +117,30 @@ export function MightyMikeLevels({
         {/* Bargain Bin */}
         <Button
           onClick={() =>
-            openFile(
+            { openFile(
               "assets/mightyMike/terrain/bargain.map-1",
               MightyMikeGlobals,
-            )
+            ); }
           }
         >
           Bargain Bin 1
         </Button>
         <Button
           onClick={() =>
-            openFile(
+            { openFile(
               "assets/mightyMike/terrain/bargain.map-2",
               MightyMikeGlobals,
-            )
+            ); }
           }
         >
           Bargain Bin 2
         </Button>
         <Button
           onClick={() =>
-            openFile(
+            { openFile(
               "assets/mightyMike/terrain/bargain.map-3",
               MightyMikeGlobals,
-            )
+            ); }
           }
         >
           Bargain Bin 3

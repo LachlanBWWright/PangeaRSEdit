@@ -26,7 +26,7 @@ export const croMagLevelSchema = z
       .record(z.string(), resourceEntrySchema(z.array(itemSchema)))
       .optional(),
   })
-  .passthrough();
+  .loose();
 
 export type CroMagLevelData = z.infer<typeof croMagLevelSchema>;
 

@@ -83,13 +83,13 @@ class Matrix4 {
     this.identity();
   }
 
-  identity(): Matrix4 {
+  identity(): this {
     this.data.fill(0);
     this.data[0] = this.data[5] = this.data[10] = this.data[15] = 1;
     return this;
   }
 
-  setTranslation(x: number, y: number, z: number): Matrix4 {
+  setTranslation(x: number, y: number, z: number): this {
     this.data[12] = x;
     this.data[13] = y;
     this.data[14] = z;
@@ -216,7 +216,7 @@ class Matrix4 {
       m[8]! * m[2]! * m[5]!;
 
     const det =
-      m[0]! * inv[0]! + m[1]! * inv[4]! + m[2]! * inv[8]! + m[3]! * inv[12]!;
+      m[0]! * inv[0] + m[1]! * inv[4] + m[2]! * inv[8] + m[3]! * inv[12];
 
     if (det === 0) {
       console.warn("Matrix is not invertible");
@@ -313,7 +313,7 @@ function decomposeMatrix(matrix: Matrix4): {
   const m = matrix.data;
 
   // Extract translation
-  const translation = new Vector3(m[12]!, m[13]!, m[14]!);
+  const translation = new Vector3(m[12], m[13], m[14]);
 
   // Extract scale
   const sx = Math.sqrt(m[0]! * m[0]! + m[1]! * m[1]! + m[2]! * m[2]!);
@@ -430,7 +430,7 @@ function buildJointHierarchy(
   doc: Document,
   joints: Node[],
   bones: BG3DBone[],
-): Result<Node, Error> {
+): Result<Node> {
   if (joints.length !== bones.length) {
     return err(
       new Error(`Mismatch: ${joints.length} joints vs ${bones.length} bones`),
@@ -1005,7 +1005,7 @@ export function createSkeletonSystem(
   doc: Document,
   skeleton: BG3DSkeleton,
   buffer?: Buffer,
-): Result<{ skin: Skin; animations: Animation[] }, Error> {
+): Result<{ skin: Skin; animations: Animation[] }> {
   console.log("=== Creating Skeleton System (glTF 2.0 Compliant) ===");
   console.log(
     `Bones: ${skeleton.bones.length}, Animations: ${skeleton.animations.length}`,
@@ -1206,8 +1206,8 @@ export function extractAnimationsFromGLTF(
 
       if (!inputAccessor || !outputAccessor) return;
 
-      const times = Array.from(inputAccessor.getArray() as Float32Array);
-      const values = Array.from(outputAccessor.getArray() as Float32Array);
+      const times = Array.from(inputAccessor.getArray());
+      const values = Array.from(outputAccessor.getArray());
 
       // Initialize keyframes for this bone if not exists
       if (!keyframes[boneIndexStr]) {

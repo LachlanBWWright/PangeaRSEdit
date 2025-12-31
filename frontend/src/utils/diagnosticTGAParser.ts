@@ -32,7 +32,10 @@ export function parseTGAHeaderDiagnostic(buffer: ArrayBuffer): {
   };
 }
 
-export function extractPaletteFromTGA(buffer: ArrayBuffer, colorCount: number = 256): Uint8Array {
+export function extractPaletteFromTGA(
+  buffer: ArrayBuffer,
+  colorCount: number = 256,
+): Uint8Array {
   const header = parseTGAHeaderDiagnostic(buffer);
   const paletteBytesPerEntry = header.colorMapDepth / 8;
 
@@ -68,15 +71,25 @@ export function analyzePalette(buffer: ArrayBuffer, sceneName: string): void {
         const b = paletteData[offset];
         const g = paletteData[offset + 1];
         const r = paletteData[offset + 2];
-        const rgb = `RGB(${r},${g},${b})`;
-        console.log(`  Color ${colorIdx}: BGR(${b},${g},${r}) -> ${rgb}`);
+        const rgb = `RGB(${String(r)},${String(g)},${String(b)})`;
+        console.log(
+          `  Color ${String(colorIdx)}: BGR(${String(b)},${String(g)},${String(
+            r,
+          )}) -> ${rgb}`,
+        );
       } else if (paletteBytesPerEntry === 4) {
         const b = paletteData[offset];
         const g = paletteData[offset + 1];
         const r = paletteData[offset + 2];
         const a = paletteData[offset + 3];
-        const rgba = `RGBA(${r},${g},${b},${a})`;
-        console.log(`  Color ${colorIdx}: BGRA(${b},${g},${r},${a}) -> ${rgba}`);
+        const rgba = `RGBA(${String(r)},${String(g)},${String(b)},${String(
+          a,
+        )})`;
+        console.log(
+          `  Color ${String(colorIdx)}: BGRA(${String(b)},${String(g)},${String(
+            r,
+          )},${String(a)}) -> ${rgba}`,
+        );
       }
     }
   }

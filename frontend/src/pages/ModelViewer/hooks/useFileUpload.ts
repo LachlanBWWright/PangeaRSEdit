@@ -116,7 +116,7 @@ export function useFileUpload(options: UseFileUploadOptions) {
               const skeletonBuffer = await skeletonFile.arrayBuffer();
               skeletonData = await parseSkeletonRsrc(skeletonBuffer);
               console.log(
-                `Successfully parsed skeleton with ${Object.keys(skeletonData?.Bone || {}).length || 0} bones`,
+                "Successfully parsed skeleton with " + String(Object.keys(skeletonData?.Bone || {}).length || 0) + " bones",
               );
             } catch (error) {
               console.error("Error parsing skeleton:", error);
@@ -181,7 +181,7 @@ export function useFileUpload(options: UseFileUploadOptions) {
             // Check if skeleton data was preserved
             if (enhancedParsed.skeleton?.animations?.length) {
               console.log(
-                `Animation metadata preserved: ${enhancedParsed.skeleton.animations.length} animations detected`,
+                "Animation metadata preserved: " + String(enhancedParsed.skeleton.animations.length) + " animations detected",
               );
             }
 
@@ -209,7 +209,7 @@ export function useFileUpload(options: UseFileUploadOptions) {
             const skeletonBuffer = await skeletonFile.arrayBuffer();
             skeletonData = await parseSkeletonRsrc(skeletonBuffer);
             console.log(
-              `Successfully parsed skeleton with ${Object.keys(skeletonData?.Bone || {}).length || 0} bones`,
+                "Successfully parsed skeleton with " + String(Object.keys(skeletonData?.Bone || {}).length || 0) + " bones",
             );
           } catch (error) {
             console.error("Error parsing skeleton:", error);

@@ -126,7 +126,7 @@ describe("Bugdom Map Roundtrip", () => {
 
     // Preprocessing should not throw
     expect(() => {
-      preprocessJson(jsonData as Record<string, unknown>, BugdomGlobals);
+      preprocessJson(jsonData, BugdomGlobals);
     }).not.toThrow();
   });
 

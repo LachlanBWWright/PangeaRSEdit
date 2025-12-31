@@ -188,20 +188,20 @@ export function originalSkeletonBinaryToBg3dBones(
   console.log("Extracting bones from original skeleton binary");
 
   const bones: BG3DBone[] = [];
-  const resource = originalSkeletonResource as Record<string, unknown>;
+  const resource = originalSkeletonResource;
   if (resource.Bone) {
     Object.values(resource.Bone).forEach((boneData) => {
-      const boneDataObj = boneData as Record<string, unknown>;
+      const boneDataObj = boneData;
       if (boneDataObj.obj) {
-        const obj = boneDataObj.obj as Record<string, unknown>;
+        const obj = boneDataObj.obj;
         bones.push({
-          parentBone: (obj.parentBone as number) ?? -1,
-          name: (obj.name as string) || "",
-          coordX: (obj.coordX as number) || 0,
-          coordY: (obj.coordY as number) || 0,
-          coordZ: (obj.coordZ as number) || 0,
-          numPointsAttachedToBone: (obj.numPointsAttachedToBone as number) || 0,
-          numNormalsAttachedToBone: (obj.numNormalsAttachedToBone as number) || 0,
+          parentBone: (obj.parentBone) ?? -1,
+          name: (obj.name) || "",
+          coordX: (obj.coordX) || 0,
+          coordY: (obj.coordY) || 0,
+          coordZ: (obj.coordZ) || 0,
+          numPointsAttachedToBone: (obj.numPointsAttachedToBone) || 0,
+          numNormalsAttachedToBone: (obj.numNormalsAttachedToBone) || 0,
           pointIndices: [], // Initialize as empty array
           normalIndices: [], // Initialize as empty array
         });
@@ -212,11 +212,11 @@ export function originalSkeletonBinaryToBg3dBones(
   // Populate point and normal indices
   if (resource.BonP) {
     Object.values(resource.BonP).forEach((bonPData: unknown, boneIndex) => {
-      const bonPObj = bonPData as Record<string, unknown>;
+      const bonPObj = bonPData;
       if (bonPObj.obj && bones[boneIndex] !== undefined) {
         const bone = bones[boneIndex];
-        bone.pointIndices = (bonPObj.obj as unknown[]).map(
-          (p) => (p as Record<string, unknown>).pointIndex as number,
+        bone.pointIndices = (bonPObj.obj).map(
+          (p) => p.pointIndex,
         );
         if (bone.pointIndices) {
           bone.numPointsAttachedToBone = bone.pointIndices.length;
@@ -226,11 +226,11 @@ export function originalSkeletonBinaryToBg3dBones(
   }
   if (resource.BonN) {
     Object.values(resource.BonN).forEach((bonNData: unknown, boneIndex) => {
-      const bonNObj = bonNData as Record<string, unknown>;
+      const bonNObj = bonNData;
       if (bonNObj.obj && bones[boneIndex] !== undefined) {
         const bone = bones[boneIndex];
-        bone.normalIndices = (bonNObj.obj as unknown[]).map(
-          (n) => (n as Record<string, unknown>).normal as number,
+        bone.normalIndices = (bonNObj.obj).map(
+          (n) => n.normal,
         );
         if (bone.normalIndices) {
           bone.numNormalsAttachedToBone = bone.normalIndices.length;

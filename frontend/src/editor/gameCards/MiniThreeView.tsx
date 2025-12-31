@@ -11,7 +11,7 @@ export function MiniThreeView({
   gameType: Game;
 }) {
   // Prevent unnecessary reinitialization
-  useMemo(() => ({ position: [0, 0, 50] as const }), []);
+  useMemo(() => ({ position: [0, 0, 50] }), []);
 
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [mounted, setMounted] = useState(false);
@@ -19,7 +19,7 @@ export function MiniThreeView({
   const resolvedGltfUrl = useMemo(() => {
     if (!gltfUrl) return null;
     try {
-      const base = (import.meta.env?.BASE_URL as string | undefined) ?? "/";
+      const base = (import.meta.env?.BASE_URL) ?? "/";
       return base + gltfUrl.replace(/^\//, "");
     } catch {
       return null;
@@ -36,7 +36,7 @@ export function MiniThreeView({
         if (!entry) return;
         if (entry.isIntersecting) {
           // Delay mount slightly to avoid rapid mount/unmount during scrolling
-          mountedTimeout = window.setTimeout(() => setMounted(true), 150);
+          mountedTimeout = window.setTimeout(() => { setMounted(true); }, 150);
         } else {
           if (mountedTimeout) {
             clearTimeout(mountedTimeout);

@@ -10,7 +10,9 @@ import { Result, ok, err } from "../../types/result";
  */
 function usesLayrAsTileIndices(globals: GlobalsInterface): boolean {
   // All games EXCEPT Otto Matic and CroMag use Layr as tile indices
-  return globals.GAME_TYPE !== Game.OTTO_MATIC && globals.GAME_TYPE !== Game.CRO_MAG;
+  return (
+    globals.GAME_TYPE !== Game.OTTO_MATIC && globals.GAME_TYPE !== Game.CRO_MAG
+  );
 }
 
 // Type for JSON data that can be preprocessed - allows both LevelData and generic record types
@@ -19,8 +21,8 @@ type PreprocessableJson = LevelData | Record<string, unknown>;
 export function preprocessJson(
   json: PreprocessableJson,
   globals: GlobalsInterface,
-): Result<void, Error> {
-  const anyJson = json as Record<string, unknown>;
+): Result<void> {
+  const anyJson = json;
 
   // For games that use Layr as tile indices with flip/rotate bits - DO NOT MODIFY!
   // The Layr preprocessing below is only for Otto Matic and CroMag where Layr contains Atrb indices.
@@ -29,14 +31,14 @@ export function preprocessJson(
   } else if (
     anyJson.Layr &&
     anyJson.Atrb &&
-    typeof anyJson.Layr === 'object' &&
-    typeof anyJson.Atrb === 'object' &&
+    typeof anyJson.Layr === "object" &&
+    typeof anyJson.Atrb === "object" &&
     1000 in anyJson.Layr &&
     1000 in anyJson.Atrb
   ) {
     // Otto Matic and other games: Ensure Layr points to unique Atrb values
-    const layrRecord = anyJson.Layr as Record<number, { obj: unknown }>;
-    const atrbRecord = anyJson.Atrb as Record<number, { obj: unknown }>;
+    const layrRecord = anyJson.Layr;
+    const atrbRecord = anyJson.Atrb;
     const layr1000 = layrRecord[1000];
     const atrb1000 = atrbRecord[1000];
     if (!layr1000 || !atrb1000) {
@@ -72,25 +74,29 @@ export function preprocessJson(
     layr1000.obj = newLayrArr;
   }
 
-  if (anyJson.Liqd && typeof anyJson.Liqd === 'object' && 1000 in anyJson.Liqd) {
-    const liqd = anyJson.Liqd as Record<number, { obj: unknown }>;
+  if (
+    anyJson.Liqd &&
+    typeof anyJson.Liqd === "object" &&
+    1000 in anyJson.Liqd
+  ) {
+    const liqd = anyJson.Liqd;
     const liquidObj = liqd[1000]?.obj;
     if (!Array.isArray(liquidObj)) {
       return err(new Error("Liqd[1000].obj is not an array"));
     }
     for (const waterItem of liquidObj) {
-      const item = waterItem as Record<string, number | { x: number; y: number }[] | [number, number][] | undefined>;
-      
+      const item = waterItem;
       // HANDLE NEW RSRCDUMP-TS v1.0.6 FORMAT WITH BACKTICK MACRO
       // rsrcdump-ts outputs x`y[100] as an array of {x, y} objects
-      if (item['x`y'] && Array.isArray(item['x`y'])) {
-        const xyArray = item['x`y'] as { x: number; y: number }[];
+      if (item["x`y"] && Array.isArray(item["x`y"])) {
+        const xyArray = item["x`y"];
         // Convert from [{x, y}, ...] to [[x, y], ...]
         const nubs: [number, number][] = [];
         for (let i = 0; i < globals.LIQD_NUBS; i++) {
           if (i < xyArray.length && xyArray[i]) {
             const coord = xyArray[i];
-            if (coord) {  // Type guard
+            if (coord) {
+              // Type guard
               nubs.push([coord.x ?? 0, coord.y ?? 0]);
             } else {
               nubs.push([0, 0]);
@@ -101,24 +107,32 @@ export function preprocessJson(
         }
         item.nubs = nubs;
         // Remove the x`y field to avoid confusion
-        delete item['x`y'];
+        delete item["x`y"];
         continue;
       }
-      
+
       // Check if nubs array already exists (should be rare now with v1.0.6)
       if (item.nubs && Array.isArray(item.nubs)) {
         // Already in new format - validate and ensure proper structure
-        const existingNubs = item.nubs as ([number, number] | { x: number; y: number })[];
-        
+        const existingNubs = item.nubs as (
+          | [number, number]
+          | { x: number; y: number }
+        )[];
+
         // Validate each nub is a proper [number, number] tuple
         const validatedNubs: [number, number][] = [];
         for (let i = 0; i < globals.LIQD_NUBS; i++) {
           if (i < existingNubs.length && existingNubs[i]) {
             const nub = existingNubs[i];
             // Handle both array tuple and object format
-            if (Array.isArray(nub) && nub.length >= 2 && typeof nub[0] === 'number' && typeof nub[1] === 'number') {
+            if (
+              Array.isArray(nub) &&
+              nub.length >= 2 &&
+              typeof nub[0] === "number" &&
+              typeof nub[1] === "number"
+            ) {
               validatedNubs.push([nub[0], nub[1]]);
-            } else if (typeof nub === 'object' && 'x' in nub && 'y' in nub) {
+            } else if (typeof nub === "object" && "x" in nub && "y" in nub) {
               // Handle {x, y} object format
               validatedNubs.push([nub.x ?? 0, nub.y ?? 0]);
             } else {
@@ -131,26 +145,26 @@ export function preprocessJson(
         item.nubs = validatedNubs;
         continue; // Already processed
       }
-      
+
       // Build nubs array from x_0, y_0, x_1, y_1, etc. fields (old format - should be very rare)
       const nubs: [number, number][] = [];
       let hasAnyNubFields = false;
-      
+
       for (let i = 0; i < globals.LIQD_NUBS; i++) {
         const xKey = `x_${i}`;
         const yKey = `y_${i}`;
         const xVal = item[xKey];
         const yVal = item[yKey];
-        
+
         if (xVal !== undefined && yVal !== undefined) {
           hasAnyNubFields = true;
-          nubs.push([xVal as number, yVal as number]);
+          nubs.push([xVal, yVal]);
         } else {
           // Missing individual fields, use 0,0 as fallback
           nubs.push([0, 0]);
         }
       }
-      
+
       // Set nubs - prefer found fields, otherwise initialize empty
       if (hasAnyNubFields) {
         item.nubs = nubs;
@@ -186,7 +200,7 @@ export function ottoPreprocessor(
 
     if (Array.isArray(data.Liqd?.[1000]?.obj)) {
       for (const waterItem of data.Liqd[1000].obj) {
-        const item = waterItem as Liquid & Record<string, unknown>;
+        const item = waterItem;
         for (let i = 0; i < globals.LIQD_NUBS; i++) {
           const nub = item.nubs?.[i];
           if (nub) {

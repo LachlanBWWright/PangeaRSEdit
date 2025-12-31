@@ -218,7 +218,7 @@ describe.skip("3DMF glTF Full Roundtrip Tests", () => {
         
         if (comparison.differences.length > 0) {
           console.log(`Differences found:`);
-          comparison.differences.forEach(d => console.log(`  - ${d}`));
+          comparison.differences.forEach(d => { console.log(`  - ${d}`); });
         }
         
         // Expect semantic equivalence
@@ -314,7 +314,7 @@ describe.skip("3DMF glTF Full Roundtrip Tests", () => {
         
         if (comparison.differences.length > 0) {
           console.log(`Differences found:`);
-          comparison.differences.slice(0, 10).forEach(d => console.log(`  - ${d}`));
+          comparison.differences.slice(0, 10).forEach(d => { console.log(`  - ${d}`); });
           if (comparison.differences.length > 10) {
             console.log(`  ... and ${comparison.differences.length - 10} more`);
           }
@@ -371,7 +371,7 @@ describe.skip("3DMF glTF Full Roundtrip Tests", () => {
       
       if (comparison.differences.length > 0) {
         console.log(`Differences between RT1 and RT2:`);
-        comparison.differences.forEach(d => console.log(`  - ${d}`));
+        comparison.differences.forEach(d => { console.log(`  - ${d}`); });
       }
       
       expect(comparison.match).toBe(true);
@@ -430,7 +430,7 @@ describe.skip("3DMF glTF Full Roundtrip Tests", () => {
         
         if (comparison.differences.length > 0) {
           console.log(`Differences found:`);
-          comparison.differences.slice(0, 10).forEach(d => console.log(`  - ${d}`));
+          comparison.differences.slice(0, 10).forEach(d => { console.log(`  - ${d}`); });
         }
         
         expect(comparison.match).toBe(true);

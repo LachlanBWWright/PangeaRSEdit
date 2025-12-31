@@ -421,7 +421,7 @@ export function SupertileMenu({
         <Button
           size="sm"
           onClick={() =>
-            downloadMapImage(mapImages, headerData, terrainData, globals)
+            { downloadMapImage(mapImages, headerData, terrainData, globals); }
           }
         >
           Download

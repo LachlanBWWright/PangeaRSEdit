@@ -25,7 +25,7 @@ describe("LZSS Compression Algorithm", () => {
 
       // Log compression ratio for information
       const ratio = compressedDataView.byteLength / inputDataView.byteLength;
-      console.log(`Random data compression ratio: ${ratio.toFixed(2)}`);
+      console.log('Random data compression ratio: ' + ratio.toFixed(2));
     });
 
     test("compress and decompress multiple times (idempotence)", () => {
@@ -67,7 +67,7 @@ describe("LZSS Compression Algorithm", () => {
 
       // Log compression ratio for information
       const ratio = compressedDataView.byteLength / inputDataView.byteLength;
-      console.log(`All zeros compression ratio: ${ratio.toFixed(2)}`);
+      console.log('All zeros compression ratio: ' + ratio.toFixed(2));
     });
 
     test("compress and decompress all 255s", () => {
@@ -88,7 +88,7 @@ describe("LZSS Compression Algorithm", () => {
 
       // Log compression ratio
       const ratio = compressedDataView.byteLength / inputDataView.byteLength;
-      console.log(`All 255s compression ratio: ${ratio.toFixed(2)}`);
+      console.log('All 255s compression ratio: ' + ratio.toFixed(2));
     });
 
     test("compress and decompress mixed data (half zeros, half random)", () => {
@@ -112,7 +112,7 @@ describe("LZSS Compression Algorithm", () => {
 
       // Log compression ratio
       const ratio = compressedDataView.byteLength / inputDataView.byteLength;
-      console.log(`Mixed data compression ratio: ${ratio.toFixed(2)}`);
+      console.log('Mixed data compression ratio: ' + ratio.toFixed(2));
     });
 
     test("compress and decompress small data (1 byte)", () => {
@@ -154,7 +154,7 @@ describe("LZSS Compression Algorithm", () => {
 
       // Log compression ratio
       const ratio = compressedDataView.byteLength / inputDataView.byteLength;
-      console.log(`Repeating pattern compression ratio: ${ratio.toFixed(2)}`);
+      console.log('Repeating pattern compression ratio: ' + ratio.toFixed(2));
     });
 
     test("compress and decompress alternating bytes", () => {
@@ -175,7 +175,7 @@ describe("LZSS Compression Algorithm", () => {
 
       // Log compression ratio
       const ratio = compressedDataView.byteLength / inputDataView.byteLength;
-      console.log(`Alternating bytes compression ratio: ${ratio.toFixed(2)}`);
+      console.log('Alternating bytes compression ratio: ' + ratio.toFixed(2));
     });
   });
 
@@ -211,7 +211,7 @@ describe("LZSS Compression Algorithm", () => {
 
       // Log compression ratio
       const ratio = compressed.byteLength / initDataView.byteLength;
-      console.log(`PNG image compression ratio: ${ratio.toFixed(2)}`);
+      console.log('PNG image compression ratio: ' + ratio.toFixed(2));
     });
     test("Existinig image data (problem tile 2)", () => {
       const hexStr =
@@ -220,7 +220,7 @@ describe("LZSS Compression Algorithm", () => {
       const hex = hexStr.replace("0x", "");
 
       const hexLength = hex.length;
-      console.log(`Hex length: ${hexLength}`);
+      console.log('Hex length: ' + String(hexLength));
 
       // Properly convert hex string to buffer
       for (let i = 0; i < hex.length; i += 2) {
@@ -246,7 +246,7 @@ describe("LZSS Compression Algorithm", () => {
 
       // Log compression ratio
       const ratio = compressed.byteLength / initDataView.byteLength;
-      console.log(`PNG image compression ratio: ${ratio.toFixed(2)}`);
+      console.log('PNG image compression ratio: ' + ratio.toFixed(2));
     });
 
     test("compress and decompress text data", () => {
@@ -275,7 +275,7 @@ describe("LZSS Compression Algorithm", () => {
 
       // Log compression ratio
       const ratio = compressedDataView.byteLength / inputDataView.byteLength;
-      console.log(`Text data compression ratio: ${ratio.toFixed(2)}`);
+      console.log('Text data compression ratio: ' + ratio.toFixed(2));
     });
   });
 
@@ -301,7 +301,7 @@ describe("LZSS Compression Algorithm", () => {
 
       // Log compression ratio
       const ratio = compressedDataView.byteLength / inputDataView.byteLength;
-      console.log(`Gradient pattern compression ratio: ${ratio.toFixed(2)}`);
+      console.log('Gradient pattern compression ratio: ' + ratio.toFixed(2));
     });
 
     test("compress and decompress realistic data blocks with repeating sections", () => {
@@ -341,7 +341,7 @@ describe("LZSS Compression Algorithm", () => {
 
       // Log compression ratio
       const ratio = compressedDataView.byteLength / inputDataView.byteLength;
-      console.log(`Block pattern compression ratio: ${ratio.toFixed(2)}`);
+      console.log('Block pattern compression ratio: ' + ratio.toFixed(2));
     });
 
     test("compress and decompress realistic file header with data", () => {
@@ -1043,11 +1043,7 @@ describe("LZSS Compression Algorithm", () => {
 
       // Log compression ratio
       const ratio = compressedDataView.byteLength / inputDataView.byteLength;
-      console.log(
-        `Level data with mixed structures compression ratio: ${ratio.toFixed(
-          2,
-        )}`,
-      );
+      console.log('Level data with mixed structures compression ratio: ' + ratio.toFixed(2));
     });
   });
 });

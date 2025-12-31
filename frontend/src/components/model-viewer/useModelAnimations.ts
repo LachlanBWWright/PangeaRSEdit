@@ -1,6 +1,6 @@
 // Hook for managing animations in the model viewer
 import { useEffect, useState } from "react";
-import * as THREE from "three";
+import { AnimationMixer, AnimationClip } from "three";
 import { GLTF as GLTFResult } from "three-stdlib";
 import { AnimationInfo } from "@/components/AnimationViewer";
 
@@ -11,23 +11,23 @@ export function useModelAnimations(
   gltfResult: GLTFResult | undefined,
   onAnimationsReady?: (
     animations: AnimationInfo[],
-    mixer: THREE.AnimationMixer | null,
+    mixer: AnimationMixer | null,
   ) => void,
 ) {
   const [animationMixer, setAnimationMixer] =
-    useState<THREE.AnimationMixer | null>(null);
+    useState<AnimationMixer | null>(null);
 
   useEffect(() => {
     try {
       if (gltfResult?.scene) {
         // Handle animations
         if (gltfResult.animations && gltfResult.animations.length > 0) {
-          const mixer = new THREE.AnimationMixer(gltfResult.scene);
-          Promise.resolve().then(() => setAnimationMixer(mixer));
+          const mixer = new AnimationMixer(gltfResult.scene);
+          Promise.resolve().then(() => { setAnimationMixer(mixer); });
 
           // Extract animation info
           const animationInfos: AnimationInfo[] = gltfResult.animations.map(
-            (clip: THREE.AnimationClip, index: number) => ({
+            (clip: AnimationClip, index: number) => ({
               name: clip.name || `Animation ${index + 1}`,
               duration: clip.duration,
               index: index,
@@ -44,18 +44,18 @@ export function useModelAnimations(
             animationInfos,
           );
         } else {
-          Promise.resolve().then(() => setAnimationMixer(null));
+          Promise.resolve().then(() => { setAnimationMixer(null); });
           if (onAnimationsReady) {
             onAnimationsReady([], null);
           }
         }
       } else {
-        Promise.resolve().then(() => setAnimationMixer(null));
+        Promise.resolve().then(() => { setAnimationMixer(null); });
         if (onAnimationsReady) onAnimationsReady([], null);
       }
     } catch (error) {
       console.error("Error in useModelAnimations:", error);
-      Promise.resolve().then(() => setAnimationMixer(null));
+      Promise.resolve().then(() => { setAnimationMixer(null); });
       if (onAnimationsReady) onAnimationsReady([], null);
     }
   }, [gltfResult?.scene, gltfResult?.animations, onAnimationsReady]);

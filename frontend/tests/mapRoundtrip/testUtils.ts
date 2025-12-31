@@ -3,7 +3,7 @@
  */
 
 import { describe, expect, it, beforeAll } from "vitest";
-import * as fs from "fs/promises";
+import { readFile, access } from "fs/promises";
 import { ottoMaticLevel } from "../../src/python/structSpecs/ottoMaticInterface";
 import { preprocessJson } from "../../src/data/processors/ottoPreprocessor";
 import { GlobalsInterface } from "../../src/data/globals/globals";
@@ -16,7 +16,7 @@ import {
  * Read a file as ArrayBuffer
  */
 export async function readFileAsBuffer(filePath: string): Promise<ArrayBuffer> {
-  const buffer = await fs.readFile(filePath);
+  const buffer = await readFile(filePath);
   const arrayBuffer = new ArrayBuffer(buffer.byteLength);
   const view = new Uint8Array(arrayBuffer);
   view.set(new Uint8Array(buffer.buffer, buffer.byteOffset, buffer.byteLength));
@@ -28,7 +28,7 @@ export async function readFileAsBuffer(filePath: string): Promise<ArrayBuffer> {
  */
 export async function fileExists(filePath: string): Promise<boolean> {
   try {
-    await fs.access(filePath);
+    await access(filePath);
     return true;
   } catch {
     return false;

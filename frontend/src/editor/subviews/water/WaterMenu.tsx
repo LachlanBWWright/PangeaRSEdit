@@ -50,7 +50,7 @@ export function WaterMenu({
   const waterBodyValues = waterTypesResult.ok
     ? waterTypesResult.value
         .map((key) => parseInt(key))
-        .filter((key) => isNaN(key) === false)
+        .filter((key) => !isNaN(key))
     : [];
 
   return (
@@ -58,7 +58,7 @@ export function WaterMenu({
       {waterBodyData === null || waterBodyData === undefined ? (
         <Button
           onClick={() =>
-            setLiquidData((liquidData) => {
+            { setLiquidData((liquidData) => {
               liquidData.Liqd[1000].obj.push({
                 type: 0,
                 nubs: [
@@ -83,7 +83,7 @@ export function WaterMenu({
               for (let i = 4; i < globals.LIQD_NUBS; i++) {
                 liquidData.Liqd[1000].obj.at(-1)?.nubs.push([0, 0]);
               }
-            })
+            }); }
           }
         >
           Add New Water Body
@@ -120,7 +120,7 @@ export function WaterMenu({
                     className="text-black"
                     value={key.toString()}
                   >
-                    {waterBodyNames[key as WaterBodyType]}
+                    {waterBodyNames[key]}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -243,7 +243,7 @@ export function WaterMenu({
             <div className="grid grid-cols-3 gap-2">
               <Button
                 onClick={() =>
-                  setLiquidData((liquidData) => {
+                  { setLiquidData((liquidData) => {
                     if (selectedWaterBody === null) return;
                     const waterObj = liquidData.Liqd[1000]?.obj?.[selectedWaterBody];
                     if (!waterObj) return;
@@ -252,7 +252,7 @@ export function WaterMenu({
                     if (!prevNub) return;
                     waterObj.nubs[waterObj.numNubs] = [prevNub[0] + 50, prevNub[1] + 50];
                     waterObj.numNubs++;
-                  })
+                  }); }
                 }
               >
                 Add Nub

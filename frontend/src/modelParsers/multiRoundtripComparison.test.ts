@@ -102,11 +102,11 @@ describe("Multi-Roundtrip Semantic Accuracy", () => {
         let total = 0;
         function traverse(group: BG3DGroup) {
           for (const child of group.children) {
-            if ((child as BG3DGeometry).type !== undefined) {
-              const geom = child as BG3DGeometry;
+            if ((child).type !== undefined) {
+              const geom = child;
               if (Array.isArray(geom.vertices)) total += geom.vertices.length;
             } else {
-              traverse(child as BG3DGroup);
+              traverse(child);
             }
           }
         }
@@ -209,10 +209,10 @@ describe("Multi-Roundtrip Semantic Accuracy", () => {
       // Compare bone names
       console.log(`\n  Checking bone names...`);
       const origBoneNames = (
-        Object.values(origSkel.Bone || {}) as BoneEntry[]
+        Object.values(origSkel.Bone || {})
       ).map((b) => b.obj.name);
       const currBoneNames = (
-        Object.values(currSkel.Bone || {}) as BoneEntry[]
+        Object.values(currSkel.Bone || {})
       ).map((b) => b.obj.name);
       let boneNameMismatches = 0;
       origBoneNames.forEach((name: string, idx: number) => {
@@ -232,10 +232,10 @@ describe("Multi-Roundtrip Semantic Accuracy", () => {
       // Compare bone coordinates
       console.log(`\n  Checking bone coordinates...`);
       const origBoneCoords = (
-        Object.values(origSkel.Bone || {}) as BoneEntry[]
+        Object.values(origSkel.Bone || {})
       ).map((b) => [b.obj.coordX, b.obj.coordY, b.obj.coordZ]);
       const currBoneCoords = (
-        Object.values(currSkel.Bone || {}) as BoneEntry[]
+        Object.values(currSkel.Bone || {})
       ).map((b) => [b.obj.coordX, b.obj.coordY, b.obj.coordZ]);
       let coordMismatches = 0;
       origBoneCoords.forEach((coords: number[], idx: number) => {
@@ -250,7 +250,7 @@ describe("Multi-Roundtrip Semantic Accuracy", () => {
           // Allow small floating point tolerance
           console.log(
             `    ✗ Bone ${idx}: [${coords.join(", ")}] → [${(
-              currCoords || ([] as number[])
+              currCoords || []
             ).join(", ")}] (diff: ${maxDiff.toFixed(4)})`,
           );
           coordMismatches++;

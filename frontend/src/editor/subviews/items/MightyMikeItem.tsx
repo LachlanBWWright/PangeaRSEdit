@@ -36,10 +36,10 @@ export const MightyMikeItem = memo(function MightyMikeItem({
   const currentScene = useAtomValue(CurrentScene);
   const [itemImage, setItemImage] = useState<HTMLCanvasElement | null>(null);
 
-  const handleMouseOver = useCallback(() => setHovering(true), []);
-  const handleMouseLeave = useCallback(() => setHovering(false), []);
+  const handleMouseOver = useCallback(() => { setHovering(true); }, []);
+  const handleMouseLeave = useCallback(() => { setHovering(false); }, []);
   const handleMouseDown = useCallback(
-    () => setSelectedItem(itemIdx),
+    () => { setSelectedItem(itemIdx); },
     [itemIdx, setSelectedItem],
   );
   const handleDragEnd = useCallback(
@@ -63,7 +63,7 @@ export const MightyMikeItem = memo(function MightyMikeItem({
   useEffect(() => {
     if (!showItemImages || !item) {
       // Reset state asynchronously
-      Promise.resolve().then(() => setItemImage(null));
+      Promise.resolve().then(() => { setItemImage(null); });
       return;
     }
 

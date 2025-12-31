@@ -7,14 +7,14 @@ export function handleBonP(
   hexData: string,
 ): BonPRaw[] {
   // Check if resourceData has obj field (rsrcdump format)
-  const actualData = (resourceData as { obj?: BonPRaw[] })?.obj || resourceData;
+  const actualData = resourceData?.obj || resourceData;
   
   if (
     Array.isArray(actualData) &&
     actualData.length > 0 &&
-    (actualData[0] as BonPRaw).pointIndex !== undefined
+    actualData[0].pointIndex !== undefined
   ) {
-    return actualData as BonPRaw[];
+    return actualData;
   }
   
   // Fallback to hex parsing if needed

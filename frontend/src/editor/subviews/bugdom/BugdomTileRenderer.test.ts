@@ -199,7 +199,7 @@ function createMockCanvas(width: number, height: number): HTMLCanvasElement {
       putImageData: () => {},
     }),
     toDataURL: () => "data:image/png;base64,mock",
-  } as unknown as HTMLCanvasElement;
+  };
   return canvas;
 }
 

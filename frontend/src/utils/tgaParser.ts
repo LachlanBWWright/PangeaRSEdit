@@ -133,7 +133,7 @@ export function extractTGAPalette(buffer: ArrayBuffer): TGAPalette | null {
   // Validate color-mapped image type (type 1 = uncompressed, type 9 = RLE compressed)
   if (header.imageType !== 1 && header.imageType !== 9) {
     console.warn(
-      `TGA file must be color-mapped (type 1 or 9), got type ${header.imageType}`,
+      "TGA file must be color-mapped (type " + String(header.imageType) + ")",
     );
     return null;
   }
@@ -147,7 +147,9 @@ export function extractTGAPalette(buffer: ArrayBuffer): TGAPalette | null {
   // Validate that pixel depth is 8-bit indexed color
   if (header.pixelDepth !== 8) {
     console.warn(
-      `Unsupported pixel depth: ${header.pixelDepth} bits. Must be 8-bit indexed color.`,
+      "Unsupported pixel depth: " +
+        String(header.pixelDepth) +
+        " bits. Must be 8-bit indexed color.",
     );
     return null;
   }
@@ -162,7 +164,11 @@ export function extractTGAPalette(buffer: ArrayBuffer): TGAPalette | null {
   // Support 2 (RGB555), 3 (BGR), or 4 (BGRA) byte palette entries
   if (![2, 3, 4].includes(paletteBytesPerEntry)) {
     console.warn(
-      `Unsupported palette depth: ${header.colorMapDepth} bits (${paletteBytesPerEntry} bytes per entry)`,
+      "Unsupported palette depth: " +
+        String(header.colorMapDepth) +
+        " bits (" +
+        String(paletteBytesPerEntry) +
+        " bytes per entry)",
     );
     return null;
   }
@@ -176,7 +182,11 @@ export function extractTGAPalette(buffer: ArrayBuffer): TGAPalette | null {
   const entriesAvailable = Math.max(0, paletteEntryCount - origin);
   if (entriesAvailable <= 0) {
     console.warn(
-      `No palette entries available (origin=${origin}, length=${paletteEntryCount})`,
+      "No palette entries available (origin=" +
+        String(origin) +
+        ", length=" +
+        String(paletteEntryCount) +
+        ")",
     );
     return null;
   }

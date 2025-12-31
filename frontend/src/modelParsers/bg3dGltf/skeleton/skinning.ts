@@ -86,8 +86,8 @@ export function gltfSkinningToBg3d(bones: BG3DBone[], doc: Document): void {
         const posAcc = prim.getAttribute("POSITION");
 
         if (jointsAcc && weightsAcc && posAcc) {
-          const jointsArray = jointsAcc.getArray() as Uint16Array;
-          const weightsArray = weightsAcc.getArray() as Float32Array;
+          const jointsArray = jointsAcc.getArray();
+          const weightsArray = weightsAcc.getArray();
           const numVertices = posAcc.getCount();
 
           for (let vi = 0; vi < numVertices; vi++) {
@@ -140,9 +140,7 @@ export function originalSkeletonBinarySkinningToBg3d(
 
   // Populate point and normal indices from original binary
   if (originalSkeletonResource.BonP) {
-    const bonPArray = Object.values(originalSkeletonResource.BonP) as {
-      obj?: { pointIndex: number }[];
-    }[];
+    const bonPArray = Object.values(originalSkeletonResource.BonP);
     bonPArray.forEach((bonPData, boneIndex) => {
       if (bonPData.obj && bones[boneIndex] !== undefined) {
         const bone = bones[boneIndex];
@@ -154,9 +152,7 @@ export function originalSkeletonBinarySkinningToBg3d(
     });
   }
   if (originalSkeletonResource.BonN) {
-    const bonNArray = Object.values(originalSkeletonResource.BonN) as {
-      obj?: { normal: number }[];
-    }[];
+    const bonNArray = Object.values(originalSkeletonResource.BonN);
     bonNArray.forEach((bonNData, boneIndex) => {
       if (bonNData.obj && bones[boneIndex] !== undefined) {
         const bone = bones[boneIndex];

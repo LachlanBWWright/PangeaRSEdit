@@ -46,7 +46,7 @@ export function StandardEditorToolbar({
         {showFences && (
           <Button
             selected={view === View.fences}
-            onClick={() => setView(View.fences)}
+            onClick={() => { setView(View.fences); }}
           >
             Fences
           </Button>
@@ -54,33 +54,33 @@ export function StandardEditorToolbar({
         {showWater && (
           <Button
             selected={view === View.water}
-            onClick={() => setView(View.water)}
+            onClick={() => { setView(View.water); }}
           >
             Water
           </Button>
         )}
         <Button
           selected={view === View.items}
-          onClick={() => setView(View.items)}
+          onClick={() => { setView(View.items); }}
         >
           Items
         </Button>
         <Button
           selected={view === View.splines}
-          onClick={() => setView(View.splines)}
+          onClick={() => { setView(View.splines); }}
         >
           Splines
         </Button>
         <Button
           selected={view === View.tiles}
-          onClick={() => setView(View.tiles)}
+          onClick={() => { setView(View.tiles); }}
         >
           Tiles
         </Button>
         <Button
           disabled={!terrainHasSTgd}
           selected={view === View.supertiles}
-          onClick={() => setView(View.supertiles)}
+          onClick={() => { setView(View.supertiles); }}
         >
           Supertiles
         </Button>

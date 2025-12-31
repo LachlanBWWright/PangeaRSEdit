@@ -154,7 +154,7 @@ export function invert(m: Mat4): Mat4 {
     a[8]! * a[1]! * a[6]! -
     a[8]! * a[2]! * a[5]!;
 
-  const det = a[0]! * inv[0]! + a[1]! * inv[4]! + a[2]! * inv[8]! + a[3]! * inv[12]!;
+  const det = a[0]! * inv[0] + a[1]! * inv[4] + a[2]! * inv[8] + a[3]! * inv[12];
   if (det === 0) {
     // Return identity to match former behavior
     return createMatrix4();
@@ -162,7 +162,7 @@ export function invert(m: Mat4): Mat4 {
 
   const invDet = 1.0 / det;
   for (let i = 0; i < 16; i++) inv[i]! *= invDet;
-  return inv as Mat4;
+  return inv;
 }
 
 export function multiply(a: Mat4, b: Mat4): Mat4 {
@@ -219,7 +219,7 @@ export function multiply(a: Mat4, b: Mat4): Mat4 {
   out[14] = a30 * b02 + a31 * b12 + a32 * b22 + a33 * b32;
   out[15] = a30 * b03 + a31 * b13 + a32 * b23 + a33 * b33;
 
-  return out as Mat4;
+  return out;
 }
 
 export function makeRotationFromQuaternion(

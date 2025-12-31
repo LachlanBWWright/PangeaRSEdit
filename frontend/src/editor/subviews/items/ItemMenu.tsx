@@ -54,7 +54,7 @@ export function ItemMenu({
   const allItemValues = itemTypesResult.ok
     ? itemTypesResult.value
         .map((key) => parseInt(key))
-        .filter((key) => isNaN(key) === false)
+        .filter((key) => !isNaN(key))
     : [];
 
   // Filter to safe items if enabled
@@ -113,7 +113,7 @@ export function ItemMenu({
                 <Checkbox
                   id="filter-safe-items"
                   checked={filterToSafe}
-                  onCheckedChange={(checked) => setFilterToSafe(checked === true)}
+                  onCheckedChange={(checked) => { setFilterToSafe(checked === true); }}
                 />
                 <Label 
                   htmlFor="filter-safe-items" 
@@ -130,9 +130,9 @@ export function ItemMenu({
                   <span className="text-baseline align-text-bottom">Flags</span>
                 }
                 tooltip={
-                  typeof TerrainItemTypeParams[selectedItemData.type as ItemType].flags ===
+                  typeof TerrainItemTypeParams[selectedItemData.type].flags ===
                   "string"
-                    ? TerrainItemTypeParams[selectedItemData.type as ItemType].flags
+                    ? TerrainItemTypeParams[selectedItemData.type].flags
                     : ""
                 }
               />
@@ -152,10 +152,10 @@ export function ItemMenu({
               />
 
               {/* Param 0-3, refactored */}
-              {([0, 1, 2, 3] as const).map((i) => {
-                const paramKey = `p${i}` as const;
+              {[0, 1, 2, 3].map((i) => {
+                const paramKey = `p${i}`;
                 const param =
-                  TerrainItemTypeParams[selectedItemData.type as ItemType][paramKey];
+                  TerrainItemTypeParams[selectedItemData.type][paramKey];
                 const value = selectedItemData[paramKey];
                 const setValue = (v: number) => {
                   setItemData((itemData) => {
@@ -215,7 +215,7 @@ export function ItemMenu({
                           type="number"
                           className="w-24"
                           value={value.toString()}
-                          onChange={(e) => setValue(parseU8(e.target.value))}
+                          onChange={(e) => { setValue(parseU8(e.target.value)); }}
                         />
                       </div>
                     </div>
@@ -224,7 +224,7 @@ export function ItemMenu({
                       key={`input-${i}`}
                       type="number"
                       value={value.toString()}
-                      onChange={(e) => setValue(parseU8(e.target.value))}
+                      onChange={(e) => { setValue(parseU8(e.target.value)); }}
                     />
                   ),
                 ];
@@ -253,7 +253,7 @@ export function ItemMenu({
 function AddItemMenu() {
   const [clickToAddItem, setClickToAddItem] = useAtom(ClickToAddItem);
   useEffect(() => {
-    return () => setClickToAddItem(undefined);
+    return () => { setClickToAddItem(undefined); };
   }, [setClickToAddItem]);
   const globals = useAtomValue(Globals);
 
@@ -261,7 +261,7 @@ function AddItemMenu() {
   const itemValues = itemTypesResult.ok
     ? itemTypesResult.value
         .map((key) => parseInt(key))
-        .filter((key) => isNaN(key) === false)
+        .filter((key) => !isNaN(key))
     : [];
 
   if (clickToAddItem !== undefined)
@@ -293,14 +293,14 @@ function AddItemMenu() {
         <p>Click on the Canvas to add the selected item</p>
         <Button
           variant="destructive"
-          onClick={() => setClickToAddItem(undefined)}
+          onClick={() => { setClickToAddItem(undefined); }}
         >
           Stop Adding Items
         </Button>
       </>
     );
 
-  return <Button onClick={() => setClickToAddItem(0)}>Add Items</Button>;
+  return <Button onClick={() => { setClickToAddItem(0); }}>Add Items</Button>;
 }
 
 function getParamTooltip(param: ParamDescription): string {

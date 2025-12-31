@@ -62,7 +62,7 @@ describe("Result type", () => {
 
     it("unwrap should throw for Err results", () => {
       const result = err(new Error("test error"));
-      expect(() => unwrap(result)).toThrow("test error");
+      expect(() => { unwrap(result); }).toThrow("test error");
     });
 
     it("unwrapOr should return value for Ok results", () => {
@@ -71,7 +71,7 @@ describe("Result type", () => {
     });
 
     it("unwrapOr should return default for Err results", () => {
-      const result: Result<number, Error> = err(new Error("test"));
+      const result: Result<number> = err(new Error("test"));
       expect(unwrapOr(result, 0)).toBe(0);
     });
   });
@@ -89,8 +89,8 @@ describe("Result type", () => {
 
     it("map should pass through Err values", () => {
       const error = new Error("test");
-      const result: Result<number, Error> = err(error);
-      const mapped = map(result, (x) => x! * 2);
+      const result: Result<number> = err(error);
+      const mapped = map<number>(result, (x) => x * 2);
       if (isErr(mapped)) {
         expect(mapped.error).toBe(error);
       } else {
@@ -131,8 +131,8 @@ describe("Result type", () => {
     });
 
     it("should short-circuit on error", () => {
-      const result: Result<number, Error> = err(new Error("first error"));
-      const chained = andThen(result, (x) => ok(x! * 2));
+      const result: Result<number> = err(new Error("first error"));
+      const chained = andThen<number>(result, (x) => ok(x * 2));
       if (isErr(chained)) {
         expect(chained.error.message).toBe("first error");
       } else {
@@ -213,7 +213,7 @@ describe("Result type", () => {
     });
 
     it("should return first error", () => {
-      const results: Result<number, Error>[] = [
+      const results: Result<number>[] = [
         ok(1),
         err(new Error("error")),
         ok(3),
@@ -231,8 +231,8 @@ describe("Result type", () => {
     it("should call ok handler for Ok results", () => {
       const result = ok(42);
       const matched = match(result, {
-        ok: (v) => `value: ${v}`,
-        err: (e) => `error: ${(e as unknown as Error).message}`,
+        ok: (v) => `value: ${String(v)}`,
+        err: (e: Error) => `error: ${e.message}`,
       });
       expect(matched).toBe("value: 42");
     });
@@ -240,7 +240,7 @@ describe("Result type", () => {
     it("should call err handler for Err results", () => {
       const result = err(new Error("test"));
       const matched = match(result, {
-        ok: (v) => `value: ${v}`,
+        ok: (v) => `value: ${String(v)}`,
         err: (e) => `error: ${e.message}`,
       });
       expect(matched).toBe("error: test");

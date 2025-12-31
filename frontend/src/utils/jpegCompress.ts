@@ -9,7 +9,7 @@ import { Result, ok, err } from "../types/result";
 export async function jpegCompress(
   input: HTMLCanvasElement | ImageData,
   quality = 0.92,
-): Promise<Result<ArrayBuffer, Error>> {
+): Promise<Result<ArrayBuffer>> {
   let canvas: HTMLCanvasElement;
   if (input instanceof HTMLCanvasElement) {
     canvas = input;
@@ -24,7 +24,7 @@ export async function jpegCompress(
     }
     ctx.putImageData(input, 0, 0);
   }
-  return new Promise<Result<ArrayBuffer, Error>>((resolve) => {
+  return new Promise<Result<ArrayBuffer>>((resolve) => {
     canvas.toBlob(
       (blob) => {
         if (!blob) {
@@ -33,7 +33,7 @@ export async function jpegCompress(
         }
         const reader = new FileReader();
         reader.onload = () => {
-          resolve(ok(reader.result as ArrayBuffer));
+          resolve(ok(reader.result));
         };
         reader.onerror = () => {
           resolve(err(new Error("Failed to read JPEG blob")));

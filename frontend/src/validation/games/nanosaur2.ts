@@ -24,7 +24,10 @@ export const nanosaur2LevelSchema = z
     _metadata: metadataSchema,
     Hedr: z.record(z.string(), resourceEntrySchema(headerSimplifiedSchema)),
     STgd: z
-      .record(z.string(), resourceEntrySchema(z.array(supertileGridSimplifiedSchema)))
+      .record(
+        z.string(),
+        resourceEntrySchema(z.array(supertileGridSimplifiedSchema)),
+      )
       .optional(),
     Timg: z.record(z.string(), hexDataEntrySchema).optional(),
     Atrb: z
@@ -36,7 +39,9 @@ export const nanosaur2LevelSchema = z
     Layr: z
       .record(z.string(), resourceEntrySchema(z.array(z.number())))
       .optional(),
-    YCrd: z.record(z.string(), resourceEntrySchema(z.array(z.number()))).optional(),
+    YCrd: z
+      .record(z.string(), resourceEntrySchema(z.array(z.number())))
+      .optional(),
     CkPt: z
       .record(z.string(), resourceEntrySchema(z.array(checkpointSchema)))
       .optional(),
@@ -62,7 +67,7 @@ export const nanosaur2LevelSchema = z
       .record(z.string(), resourceEntrySchema(z.array(liquidSchema)))
       .optional(),
   })
-  .passthrough();
+  .loose();
 
 export type Nanosaur2LevelData = z.infer<typeof nanosaur2LevelSchema>;
 

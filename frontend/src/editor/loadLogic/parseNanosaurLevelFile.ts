@@ -12,7 +12,7 @@ export async function parseNanosaurLevelFile(
   file: Blob,
   gameType: GlobalsInterface,
   setData: (data: AtomicLevelData) => void,
-): Promise<Result<LevelData, Error>> {
+): Promise<Result<LevelData>> {
   try {
     const levelBuffer = await file.arrayBuffer();
     const rawLevelData = parseNanosaur1Level(levelBuffer);

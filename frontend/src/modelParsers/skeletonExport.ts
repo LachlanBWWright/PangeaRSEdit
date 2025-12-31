@@ -38,14 +38,12 @@ export function bg3dSkeletonToSkeletonResource(
   const effectiveMetadata = metadata || skeleton.metadata;
 
   // Debug: Check what RelP data we received
-  const effectiveRelPObj = effectiveRelP as Record<string, unknown> | undefined;
+  const effectiveRelPObj = effectiveRelP;
   if (effectiveRelPObj && effectiveRelPObj["1000"]) {
     const rEntry = effectiveRelPObj["1000"] as
       | Record<string, unknown>
       | undefined;
-    const len = Array.isArray(rEntry?.obj)
-      ? (rEntry.obj as unknown[]).length
-      : 0;
+    const len = Array.isArray(rEntry?.obj) ? rEntry.obj.length : 0;
     console.log(`RelP received with ${len} points`);
   } else {
     console.log("No RelP data received");
@@ -113,8 +111,7 @@ export function bg3dSkeletonToSkeletonResource(
   // Convert animations
   const anHd: { [key: string]: AnHdEntry } = {};
   // Use provided evntData if available, otherwise create empty
-  const evnt: { [key: string]: EvntEntry } =
-    (evntData as { [key: string]: EvntEntry }) || {};
+  const evnt: { [key: string]: EvntEntry } = evntData || {};
   const numK: { [key: string]: NumKEntry } = {};
   const keyF: { [key: string]: KeyFEntry } = {};
 
@@ -164,21 +161,21 @@ export function bg3dSkeletonToSkeletonResource(
       keyF[keyFResourceId.toString()] = {
         name: boneName, // Use bone name, not generic "Keyframes"
         order: keyFResourceId,
-        obj: (keyframes as unknown[]).map((kf) => {
-          const kv = kf as Record<string, unknown>;
+        obj: keyframes.map((kf) => {
+          const kv = kf;
           // Create KeyFObj with proper type - all fields have explicit types
           const keyFObj: KeyFObj = {
-            tick: (kv.tick as number) || 0,
-            accelerationMode: (kv.accelerationMode as number) || 0,
-            coordX: (kv.coordX as number) || 0,
-            coordY: (kv.coordY as number) || 0,
-            coordZ: (kv.coordZ as number) || 0,
-            rotationX: (kv.rotationX as number) || 0,
-            rotationY: (kv.rotationY as number) || 0,
-            rotationZ: (kv.rotationZ as number) || 0,
-            scaleX: (kv.scaleX as number) || 1,
-            scaleY: (kv.scaleY as number) || 1,
-            scaleZ: (kv.scaleZ as number) || 1,
+            tick: kv.tick || 0,
+            accelerationMode: kv.accelerationMode || 0,
+            coordX: kv.coordX || 0,
+            coordY: kv.coordY || 0,
+            coordZ: kv.coordZ || 0,
+            rotationX: kv.rotationX || 0,
+            rotationY: kv.rotationY || 0,
+            rotationZ: kv.rotationZ || 0,
+            scaleX: kv.scaleX || 1,
+            scaleY: kv.scaleY || 1,
+            scaleZ: kv.scaleZ || 1,
           };
           return keyFObj;
         }),
@@ -204,7 +201,7 @@ export function bg3dSkeletonToSkeletonResource(
     Bone: bones,
     BonP: bonP,
     BonN: bonN,
-    RelP: (effectiveRelP as Record<string, RelPEntry>) || {}, // Include RelP if provided or from skeleton, otherwise empty
+    RelP: effectiveRelP || {}, // Include RelP if provided or from skeleton, otherwise empty
     AnHd: anHd,
     Evnt: evnt,
     NumK: numK,
@@ -213,7 +210,7 @@ export function bg3dSkeletonToSkeletonResource(
       effectiveAlisData && Object.keys(effectiveAlisData).length > 0
         ? effectiveAlisData
         : { "1000": { name: "alis", order: 1000, data: "00" } }, // Ensure alis resource exists (placeholder hex data if missing)
-    _metadata: (effectiveMetadata as Record<string, unknown>) || {}, // Include metadata if provided or from skeleton, otherwise empty
+    _metadata: effectiveMetadata || {}, // Include metadata if provided or from skeleton, otherwise empty
   };
 }
 

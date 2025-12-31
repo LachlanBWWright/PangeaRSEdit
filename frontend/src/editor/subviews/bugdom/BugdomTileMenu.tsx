@@ -331,7 +331,7 @@ export function BugdomTileMenu({
                     : "border border-gray-700 hover:border-gray-500"
                 }`}
                 title={`Tile ${tile.info.tileIndex}, Image ${tile.info.imageIndex}, Rot: ${tile.info.rotationDegrees}°, FlipX: ${tile.info.flipX}, FlipY: ${tile.info.flipY}`}
-                onClick={() => setSelectedTileInSupertile(idx)}
+                onClick={() => { setSelectedTileInSupertile(idx); }}
               >
                 <Stage width={32} height={32}>
                   <Layer>
@@ -397,7 +397,7 @@ export function BugdomTileMenu({
               <Button
                 size="sm"
                 variant="outline"
-                onClick={() => handleRotateTile(currentFlatIndex)}
+                onClick={() => { handleRotateTile(currentFlatIndex); }}
                 title="Rotate 90°"
               >
                 <RotateCw className="w-4 h-4 mr-1" />
@@ -406,7 +406,7 @@ export function BugdomTileMenu({
               <Button
                 size="sm"
                 variant="outline"
-                onClick={() => handleFlipX(currentFlatIndex)}
+                onClick={() => { handleFlipX(currentFlatIndex); }}
                 title="Flip Horizontal"
               >
                 <FlipHorizontal className="w-4 h-4 mr-1" />
@@ -415,7 +415,7 @@ export function BugdomTileMenu({
               <Button
                 size="sm"
                 variant="outline"
-                onClick={() => handleFlipY(currentFlatIndex)}
+                onClick={() => { handleFlipY(currentFlatIndex); }}
                 title="Flip Vertical"
               >
                 <FlipVertical className="w-4 h-4 mr-1" />
@@ -480,7 +480,7 @@ export function BugdomTileMenu({
                     ? "ring-2 ring-green-500 ring-offset-1 ring-offset-gray-900"
                     : "border border-gray-700 hover:border-gray-500"
                 }`}
-                onClick={() => setSelectedPaletteTile(idx)}
+                onClick={() => { setSelectedPaletteTile(idx); }}
                 title={`Tile #${idx}`}
               >
                 <Stage width={32} height={32}>

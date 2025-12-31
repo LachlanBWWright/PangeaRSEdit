@@ -20,7 +20,7 @@ export interface Palette {
 export function createPalette(name: string, colors?: PaletteColor[]): Palette {
   return {
     name,
-    colors: colors || Array(256).fill({ r: 0, g: 0, b: 0 }),
+    colors: colors || Array.from({ length: 256 }, () => ({ r: 0, g: 0, b: 0 })),
   };
 }
 
@@ -130,15 +130,32 @@ export function serializePalette(palette: Palette): string {
  */
 export function deserializePalette(json: string): Palette | null {
   try {
-    const data = JSON.parse(json);
-    if (data.name && Array.isArray(data.colors)) {
-      return data as Palette;
+    const parsed: unknown = JSON.parse(json);
+    if (typeof parsed === "object" && parsed !== null) {
+      const obj = parsed as Record<string, unknown>;
+      const maybeName = obj.name;
+      const maybeColors = obj.colors;
+
+      if (typeof maybeName === "string" && Array.isArray(maybeColors)) {
+        const colors = maybeColors.map((c: unknown) => {
+          if (typeof c === "object" && c !== null) {
+            const cc = c as Record<string, unknown>;
+            return {
+              r: Number(cc.r ?? 0),
+              g: Number(cc.g ?? 0),
+              b: Number(cc.b ?? 0),
+            };
+          }
+          return { r: 0, g: 0, b: 0 };
+        });
+        return { name: maybeName, colors };
+      }
     }
   } catch (e) {
     console.error("Failed to deserialize palette:", e);
   }
   return null;
-}
+} 
 
 /**
  * Export palette as downloadable file

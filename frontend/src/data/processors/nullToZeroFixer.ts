@@ -43,7 +43,7 @@ export function fixNullToZero(obj: unknown): unknown {
       if (value === null || value === undefined) {
         // Special case: resource entry 'obj' field should be an empty array if undefined
         if (key === 'obj') {
-          (obj as Record<string, unknown>)[key] = [];
+          obj[key] = []; 
           continue;
         }
 
@@ -73,7 +73,7 @@ export function fixNullToZero(obj: unknown): unknown {
         );
 
         if (isLikelyNumeric) {
-          (obj as Record<string, unknown>)[key] = 0;
+          obj[key] = 0; 
         }
       } else if (typeof value === 'object') {
         fixNullToZero(value);

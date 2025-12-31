@@ -37,7 +37,9 @@ export const bugdomLevelSchema = z
     Itms: z
       .record(z.string(), resourceEntrySchema(z.array(itemSchema)))
       .optional(),
-    YCrd: z.record(z.string(), resourceEntrySchema(z.array(z.number()))).optional(),
+    YCrd: z
+      .record(z.string(), resourceEntrySchema(z.array(z.number())))
+      .optional(),
     Fenc: z
       .record(z.string(), resourceEntrySchema(z.array(fenceSchema)))
       .optional(),
@@ -60,7 +62,7 @@ export const bugdomLevelSchema = z
       .record(z.string(), resourceEntrySchema(z.array(liquidSchema)))
       .optional(),
   })
-  .passthrough();
+  .loose();
 
 export type BugdomLevelData = z.infer<typeof bugdomLevelSchema>;
 
