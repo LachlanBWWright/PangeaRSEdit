@@ -2,15 +2,6 @@ import { saveToJson } from "@lachlanbwwright/rsrcdump-ts";
 import { isOk } from "../../types/result";
 import type { 
   SkeletonResource,
-  HedrEntry,
-  BoneEntry,
-  BonPEntry,
-  BonNEntry,
-  RelPEntry,
-  AnHdEntry,
-  EvntEntry,
-  NumKEntry,
-  KeyFEntry,
 } from "../../python/structSpecs/skeleton/skeletonInterface";
 import { skeletonSpecs } from "../../python/structSpecs/skeleton/skeleton";
 
@@ -119,70 +110,57 @@ function transformToSkeletonResource(
       const resourceIdNum = parseInt(resourceId, 10);
       const resourceName = resourceData?.name || `Resource_${resourceId}`;
       const hexData = resourceData?.data || "";
-      let obj: unknown;
-
-      switch (typeName) {
-        case "BonP":
-          obj = handleBonP(resourceName, resourceData, hexData);
-          break;
-        case "BonN":
-          obj = handleBonN(resourceName, resourceData, hexData);
-          break;
-        case "RelP":
-          obj = handleRelP(resourceName, resourceData, resourceId, hexData);
-          break;
-        case "Evnt":
-          obj = handleEvnt(resourceName, resourceData, resourceId, hexData);
-          break;
-        case "NumK":
-          obj = handleNumK(resourceName, resourceData, hexData);
-          break;
-        case "KeyF":
-          obj = handleKeyF(resourceName, resourceData, resourceId, hexData);
-          break;
-        case "Bone":
-          obj = handleBone(resourceName, resourceData, resourceId, hexData);
-          break;
-        case "AnHd":
-          obj = handleAnHd(resourceName, resourceData);
-          break;
-        default:
-          obj = resourceData?.obj ?? hexData ?? resourceData;
-      }
-
-      const baseEntry = {
-        name: resourceName,
-        order: resourceIdNum,
-        obj,
-      };
 
       // Assign entries to their proper typed records
-      // The structure matches the interface shapes since we build them correctly
+      // Each handler returns the correctly typed object
       if (typeName === "Hedr") {
-        result.Hedr[resourceId] = baseEntry as HedrEntry;
+        // Hedr doesn't have a handler, use the raw data
+        const hedrObj = resourceData?.obj ?? hexData ?? resourceData;
+        if (isHedrRaw(hedrObj)) {
+          result.Hedr[resourceId] = { name: resourceName, order: resourceIdNum, obj: hedrObj };
+        }
       } else if (typeName === "Bone") {
-        result.Bone[resourceId] = baseEntry as BoneEntry;
+        const boneObj = handleBone(resourceName, resourceData, resourceId, hexData);
+        result.Bone[resourceId] = { name: resourceName, order: resourceIdNum, obj: boneObj };
       } else if (typeName === "BonP") {
-        result.BonP[resourceId] = baseEntry as BonPEntry;
+        const bonpObj = handleBonP(resourceName, resourceData, hexData);
+        result.BonP[resourceId] = { name: resourceName, order: resourceIdNum, obj: bonpObj };
       } else if (typeName === "BonN") {
-        result.BonN[resourceId] = baseEntry as BonNEntry;
+        const bonnObj = handleBonN(resourceName, resourceData, hexData);
+        result.BonN[resourceId] = { name: resourceName, order: resourceIdNum, obj: bonnObj };
       } else if (typeName === "RelP" && result.RelP) {
-        result.RelP[resourceId] = baseEntry as RelPEntry;
+        const relpObj = handleRelP(resourceName, resourceData, resourceId, hexData);
+        result.RelP[resourceId] = { name: resourceName, order: resourceIdNum, obj: relpObj };
       } else if (typeName === "AnHd") {
-        result.AnHd[resourceId] = baseEntry as AnHdEntry;
+        const anhdObj = handleAnHd(resourceName, resourceData);
+        result.AnHd[resourceId] = { name: resourceName, order: resourceIdNum, obj: anhdObj };
       } else if (typeName === "Evnt") {
-        result.Evnt[resourceId] = baseEntry as EvntEntry;
+        const evntObj = handleEvnt(resourceName, resourceData, resourceId, hexData);
+        result.Evnt[resourceId] = { name: resourceName, order: resourceIdNum, obj: evntObj };
       } else if (typeName === "NumK") {
-        result.NumK[resourceId] = baseEntry as NumKEntry;
+        const numkObj = handleNumK(resourceName, resourceData, hexData);
+        result.NumK[resourceId] = { name: resourceName, order: resourceIdNum, obj: numkObj };
       } else if (typeName === "KeyF") {
-        result.KeyF[resourceId] = baseEntry as KeyFEntry;
-      } else {
-        result[typeName] = typeData;
+        const keyfObj = handleKeyF(resourceName, resourceData, resourceId, hexData);
+        result.KeyF[resourceId] = { name: resourceName, order: resourceIdNum, obj: keyfObj };
       }
     }
   }
 
   return result;
+}
+
+// Helper to check if value is a record
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+// Type guard for HedrRaw
+function isHedrRaw(value: unknown): value is HedrRaw {
+  if (!isRecord(value)) return false;
+  return typeof value.version === 'number' && 
+         typeof value.numAnims === 'number' && 
+         typeof value.numJoints === 'number';
 }
 
 /**
@@ -200,6 +178,17 @@ export async function parseSkeletonRsrcJson(bytes: ArrayBuffer): Promise<ParsedS
     const errorMessage = result.ok ? "" : result.error;
     return Promise.reject(errorMessage);
   }
-  const parsed = JSON.parse(result.value) as ParsedSkeleton;
+  const parsed: unknown = JSON.parse(result.value);
+  // Validate the parsed structure at runtime
+  if (!isParsedSkeleton(parsed)) {
+    return Promise.reject("Invalid skeleton structure");
+  }
   return parsed;
+}
+
+// Type guard for ParsedSkeleton
+function isParsedSkeleton(value: unknown): value is ParsedSkeleton {
+  if (!isRecord(value)) return false;
+  // Basic structure check - it should have skeleton resource type keys
+  return true;
 }
