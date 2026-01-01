@@ -6,12 +6,6 @@ import tseslint from "typescript-eslint";
 import reactHooks from "eslint-plugin-react-hooks";
 
 export default defineConfig(
-  [
-    eslint.configs.recommended,
-    tseslint.configs.strict,
-    tseslint.configs.stylistic,
-    reactHooks.configs.flat.recommended,
-  ],
   {
     ignores: [
       "eslint.config.js",
@@ -19,7 +13,16 @@ export default defineConfig(
       "tailwind.config.js",
       "playwright.config.ts",
       "debug-liquid-rsrcdump.js",
+      "dist/**",
     ],
+  },
+  [
+    eslint.configs.recommended,
+    tseslint.configs.strict,
+    tseslint.configs.stylistic,
+    reactHooks.configs.flat.recommended,
+  ],
+  {
     plugins: {
       "typescript-eslint": tseslint,
     },
