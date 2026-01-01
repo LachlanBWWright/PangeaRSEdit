@@ -233,9 +233,15 @@ export const FenceGeometry: React.FC<FenceGeometryProps> = ({
 
     // Get texture aspect ratio (fallback to 1 if not loaded yet)
     const texture = textures.get(imagePath);
-    const textureAspectRatio = texture
-      ? (texture.source.data as { width: number; height: number }).width / (texture.source.data as { width: number; height: number }).height
-      : 1;
+    let textureAspectRatio = 1;
+    if (texture?.source?.data && typeof texture.source.data === "object" && texture.source.data !== null) {
+      const sourceData = texture.source.data;
+      if ("width" in sourceData && "height" in sourceData && 
+          typeof sourceData.width === "number" && typeof sourceData.height === "number" && 
+          sourceData.height > 0) {
+        textureAspectRatio = sourceData.width / sourceData.height;
+      }
+    }
 
     const segments = [];
     for (let i = 0; i < nubs.length - 1; i++) {

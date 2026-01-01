@@ -13,6 +13,13 @@ export default defineConfig(
     reactHooks.configs.flat.recommended,
   ],
   {
+    ignores: [
+      "eslint.config.js",
+      "postcss.config.js",
+      "tailwind.config.js",
+      "playwright.config.ts",
+      "debug-liquid-rsrcdump.js",
+    ],
     plugins: {
       "typescript-eslint": tseslint,
     },

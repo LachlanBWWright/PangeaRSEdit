@@ -50,8 +50,8 @@ export function Tiles({
   // Check data structure to determine tile type rather than game type
   // Games with individual tiles have Layr containing tile indices but no Atrb tile attributes
   // Standard games have Atrb with tile flags
-  const hasAtrbData = Boolean(terrainData.Atrb?.[1000]?.obj?.length);
-  const hasLayrData = Boolean(terrainData.Layr?.[1000]?.obj);
+  const _hasAtrbData = Boolean(terrainData.Atrb?.[1000]?.obj?.length);
+  const _hasLayrData = Boolean(terrainData.Layr?.[1000]?.obj);
 
   const tileGrid = useMemo(() => {
     // If no Atrb data or Layr doesn't reference Atrb, return empty array
