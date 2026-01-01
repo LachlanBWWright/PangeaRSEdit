@@ -66,7 +66,10 @@ class MockBG3DGltfWorker {
               },
             },
           };
-          this.onmessage?.({ data: response } as MessageEvent);
+          if (this.onmessage) {
+            const event = new MessageEvent("message", { data: response });
+            this.onmessage(event);
+          }
         } else if (message.type === "bg3d-to-glb") {
           // Mock regular BG3D processing
           const response: BG3DGltfWorkerResponse = {
@@ -77,14 +80,20 @@ class MockBG3DGltfWorker {
               groups: [],
             },
           };
-          this.onmessage?.({ data: response } as MessageEvent);
+          if (this.onmessage) {
+            const event = new MessageEvent("message", { data: response });
+            this.onmessage(event);
+          }
         }
       } catch (error) {
         const errorResponse: BG3DGltfWorkerResponse = {
           type: "error",
           error: error instanceof Error ? error.message : "Unknown error",
         };
-        this.onmessage?.({ data: errorResponse } as MessageEvent);
+        if (this.onmessage) {
+          const event = new MessageEvent("message", { data: errorResponse });
+          this.onmessage(event);
+        }
       }
     }, 10);
   }
@@ -215,9 +224,9 @@ describe("BG3D Skeleton Integration", () => {
       expect(result.parsed.skeleton).toBeDefined();
       expect(result.parsed.skeleton?.bones).toHaveLength(1);
       expect(result.parsed.skeleton?.animations).toHaveLength(1);
-      expect(result.parsed.skeleton!.animations[0]!.name).toBe(
-        "test_animation",
-      );
+      const skeleton = result.parsed.skeleton;
+      const firstAnim = skeleton?.animations?.[0];
+      expect(firstAnim?.name ?? "").toBe("test_animation");
     }
   });
 
@@ -276,8 +285,8 @@ describe("Animation Viewer Integration", () => {
       index: number;
       clip: MockAnimationClip;
     }[] = [
-      { name: "idle", duration: 3.0, index: 0, clip: {} as MockAnimationClip },
-      { name: "walk", duration: 2.5, index: 1, clip: {} as MockAnimationClip },
+      { name: "idle", duration: 3.0, index: 0, clip: {} },
+      { name: "walk", duration: 2.5, index: 1, clip: {} },
     ];
 
     let selectedAnimation: number | null = null;
@@ -285,7 +294,8 @@ describe("Animation Viewer Integration", () => {
     // Simulate selecting first animation
     selectedAnimation = 0;
     expect(selectedAnimation).toBe(0);
-    expect(mockAnimations[selectedAnimation!]!.name).toBe("idle");
+    const selectedAnim = mockAnimations[selectedAnimation];
+    expect(selectedAnim?.name ?? "").toBe("idle");
 
     // Simulate deselecting
     selectedAnimation = null;

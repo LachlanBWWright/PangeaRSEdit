@@ -67,16 +67,16 @@ describe("Comprehensive Skeleton Value Validation", () => {
     const originalSkeletonData = readFileSync(ottoSkeletonPath);
 
     // Parse original
-    const originalSkeletonResource = await parseSkeletonRsrc(
-      originalSkeletonData as unknown as ArrayBuffer,
+    const skeletonBuffer = originalSkeletonData.buffer.slice(
+      originalSkeletonData.byteOffset,
+      originalSkeletonData.byteOffset + originalSkeletonData.byteLength,
     );
-    const originalBg3dRes = parseBG3D(
-      originalBg3dData.buffer.slice(
-        originalBg3dData.byteOffset,
-        originalBg3dData.byteOffset + originalBg3dData.byteLength,
-      ),
-      originalSkeletonResource,
+    const originalSkeletonResource = await parseSkeletonRsrc(skeletonBuffer);
+    const bg3dBuffer = originalBg3dData.buffer.slice(
+      originalBg3dData.byteOffset,
+      originalBg3dData.byteOffset + originalBg3dData.byteLength,
     );
+    const originalBg3dRes = parseBG3D(bg3dBuffer, originalSkeletonResource);
     const originalBg3d = unwrap(originalBg3dRes);
 
     // Execute roundtrip
@@ -371,16 +371,16 @@ describe("Comprehensive Skeleton Value Validation", () => {
     const originalBg3dData = readFileSync(ottoBg3dPath);
     const originalSkeletonData = readFileSync(ottoSkeletonPath);
 
-    const originalSkeletonResource = await parseSkeletonRsrc(
-      originalSkeletonData as unknown as ArrayBuffer,
+    const skeletonBuffer2 = originalSkeletonData.buffer.slice(
+      originalSkeletonData.byteOffset,
+      originalSkeletonData.byteOffset + originalSkeletonData.byteLength,
     );
-    const originalBg3dResLocal = parseBG3D(
-      originalBg3dData.buffer.slice(
-        originalBg3dData.byteOffset,
-        originalBg3dData.byteOffset + originalBg3dData.byteLength,
-      ),
-      originalSkeletonResource,
+    const originalSkeletonResource = await parseSkeletonRsrc(skeletonBuffer2);
+    const bg3dBuffer2 = originalBg3dData.buffer.slice(
+      originalBg3dData.byteOffset,
+      originalBg3dData.byteOffset + originalBg3dData.byteLength,
     );
+    const originalBg3dResLocal = parseBG3D(bg3dBuffer2, originalSkeletonResource);
     const originalBg3d = unwrap(originalBg3dResLocal);
 
     // Convert to glTF
@@ -401,9 +401,9 @@ describe("Comprehensive Skeleton Value Validation", () => {
           const weightsAcc = prim.getAttribute("WEIGHTS_0");
 
           if (jointsAcc && weightsAcc) {
-            const weightsArray = weightsAcc.getArray() as
-              | Float32Array
-              | undefined;
+            const weightsArrayRaw = weightsAcc.getArray();
+            const weightsArray =
+              weightsArrayRaw instanceof Float32Array ? weightsArrayRaw : null;
             if (!weightsArray) return;
             const numVertices = weightsAcc.getCount();
 
@@ -466,20 +466,23 @@ describe("Comprehensive Skeleton Value Validation", () => {
     const originalBg3dData = readFileSync(ottoBg3dPath);
     const originalSkeletonData = readFileSync(ottoSkeletonPath);
 
-    const originalSkeletonResource = await parseSkeletonRsrc(
-      originalSkeletonData as unknown as ArrayBuffer,
+    const skeletonBuffer3 = originalSkeletonData.buffer.slice(
+      originalSkeletonData.byteOffset,
+      originalSkeletonData.byteOffset + originalSkeletonData.byteLength,
     );
-    const originalBg3dResLocal2 = parseBG3D(
-      originalBg3dData.buffer.slice(
-        originalBg3dData.byteOffset,
-        originalBg3dData.byteOffset + originalBg3dData.byteLength,
-      ),
-      originalSkeletonResource,
+    const originalSkeletonResource = await parseSkeletonRsrc(skeletonBuffer3);
+    const bg3dBuffer3 = originalBg3dData.buffer.slice(
+      originalBg3dData.byteOffset,
+      originalBg3dData.byteOffset + originalBg3dData.byteLength,
     );
+    const originalBg3dResLocal2 = parseBG3D(bg3dBuffer3, originalSkeletonResource);
     const originalBg3d2 = unwrap(originalBg3dResLocal2);
 
     // Analyze bone positions
-    const bones = originalBg3d2.skeleton!.bones;
+    if (!originalBg3d2.skeleton) {
+      throw new Error("Expected skeleton to be defined");
+    }
+    const bones = originalBg3d2.skeleton.bones;
     console.log("Original bone positions:");
 
     bones.forEach((bone, index: number) => {
