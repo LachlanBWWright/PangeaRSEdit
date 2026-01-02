@@ -11,41 +11,41 @@
 import { describe, it, expect } from "vitest";
 import { parseBG3D, bg3dParsedToBG3D, BG3DParseResult } from "./parseBG3D";
 import { bg3dParsedToGLTF, gltfToBG3D } from "./parsedBg3dGitfConverter";
-import * as fs from "fs";
-import * as path from "path";
+import { accessSync, constants, readFileSync } from "fs";
+import { join } from "path";
 
 // Game paths relative to workspace root
-const GAMES_ROOT = path.join(__dirname, "../../../../games");
+const GAMES_ROOT = join(__dirname, "../../../../games");
 
 // Test fixtures - one model from each game type
 const TEST_FIXTURES = {
   ottomatic: {
     name: "Otto Matic",
-    bg3dPath: path.join(GAMES_ROOT, "ottomatic/Data/Skeletons/Otto.bg3d"),
+    bg3dPath: join(GAMES_ROOT, "ottomatic/Data/Skeletons/Otto.bg3d"),
     supportsBoundingBox: false,
     supportsJpegTextures: false,
   },
   cromagrally: {
     name: "Cro Mag Rally",
-    bg3dPath: path.join(GAMES_ROOT, "cromagrally/Data/Skeletons/Brog.bg3d"),
+    bg3dPath: join(GAMES_ROOT, "cromagrally/Data/Skeletons/Brog.bg3d"),
     supportsBoundingBox: false,
     supportsJpegTextures: false,
   },
   bugdom2: {
     name: "Bugdom 2",
-    bg3dPath: path.join(GAMES_ROOT, "bugdom2/Data/Skeletons/Ant.bg3d"),
+    bg3dPath: join(GAMES_ROOT, "bugdom2/Data/Skeletons/Ant.bg3d"),
     supportsBoundingBox: true,
     supportsJpegTextures: false,
   },
   nanosaur2: {
     name: "Nanosaur 2",
-    bg3dPath: path.join(GAMES_ROOT, "nanosaur2/Data/Skeletons/nano.bg3d"),
+    bg3dPath: join(GAMES_ROOT, "nanosaur2/Data/Skeletons/nano.bg3d"),
     supportsBoundingBox: true,
     supportsJpegTextures: true, // May have JPEG textures
   },
   billyfrontier: {
     name: "Billy Frontier",
-    bg3dPath: path.join(GAMES_ROOT, "billyfrontier/Data/Skeletons/Billy.bg3d"),
+    bg3dPath: join(GAMES_ROOT, "billyfrontier/Data/Skeletons/Billy.bg3d"),
     supportsBoundingBox: true,
     supportsJpegTextures: false,
   },
@@ -54,7 +54,7 @@ const TEST_FIXTURES = {
 // Helper to check if file exists
 function fileExists(filePath: string): boolean {
   try {
-    fs.accessSync(filePath, fs.constants.F_OK);
+    accessSync(filePath, constants.F_OK);
     return true;
   } catch {
     return false;
@@ -63,7 +63,7 @@ function fileExists(filePath: string): boolean {
 
 // Helper to read file as ArrayBuffer
 function readFileAsArrayBuffer(filePath: string): ArrayBuffer {
-  const buffer = fs.readFileSync(filePath);
+  const buffer = readFileSync(filePath);
   return buffer.buffer.slice(
     buffer.byteOffset,
     buffer.byteOffset + buffer.byteLength,

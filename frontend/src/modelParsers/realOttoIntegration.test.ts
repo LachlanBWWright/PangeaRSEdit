@@ -3,18 +3,18 @@ import { describe, it } from "vitest";
 import { parseSkeletonRsrc } from "./skeletonRsrc/parseSkeletonRsrcTS";
 import { parseBG3D } from "./parseBG3D";
 import { unwrap } from "../types/result";
-import fs from "fs";
-import path from "path";
+import { existsSync, readFileSync } from "fs";
+import { join } from "path";
 
 describe("Real Otto Integration", () => {
   it("should test real Otto BG3D + skeleton parsing", async () => {
-    const bg3dPath = path.join(__dirname, "../../public/Otto.bg3d");
-    const skeletonPath = path.join(
+    const bg3dPath = join(__dirname, "../../public/Otto.bg3d");
+    const skeletonPath = join(
       __dirname,
       "../../public/Otto.skeleton.rsrc",
     );
 
-    if (!fs.existsSync(bg3dPath) || !fs.existsSync(skeletonPath)) {
+    if (!existsSync(bg3dPath) || !existsSync(skeletonPath)) {
       console.log("Otto files not found, skipping real integration test");
       return;
     }
@@ -22,7 +22,7 @@ describe("Real Otto Integration", () => {
     console.log("=== REAL OTTO INTEGRATION TEST ===");
 
     // Parse skeleton
-    const skeletonBuffer = fs.readFileSync(skeletonPath);
+    const skeletonBuffer = readFileSync(skeletonPath);
     console.log("1. Parsing skeleton file...");
     const skeleton = await parseSkeletonRsrc(skeletonBuffer.buffer);
 
@@ -36,7 +36,7 @@ describe("Real Otto Integration", () => {
     );
 
     // Parse BG3D with skeleton
-    const bg3dBuffer = fs.readFileSync(bg3dPath);
+    const bg3dBuffer = readFileSync(bg3dPath);
     console.log("4. Parsing BG3D with skeleton...");
 
     try {

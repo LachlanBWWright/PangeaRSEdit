@@ -77,7 +77,7 @@ export function fixNullToZero(obj: unknown): unknown {
         );
 
         if (isLikelyNumeric) {
-          (obj as Record<string, unknown>)[key] = 0;
+          obj[key] = 0;
         }
       } else if (typeof value === 'object') {
         fixNullToZero(value);

@@ -1,10 +1,10 @@
 // Component for updating animation mixer each frame
 import { useRef, useState, useEffect } from "react";
 import { useFrame } from "@react-three/fiber";
-import * as THREE from "three";
+import { AnimationMixer, Bone, SkinnedMesh, Vector3 } from "three";
 
 interface AnimationUpdaterProps {
-  animationMixer: THREE.AnimationMixer | null;
+  animationMixer: AnimationMixer | null;
   logBonePositions?: boolean;
 }
 
@@ -19,7 +19,7 @@ export function AnimationUpdater({
   const mixerRef = useRef(animationMixer);
   const frameCountRef = useRef(0);
   const logIntervalRef = useRef(30); // Log every 30 frames (about 2 times per second at 60fps)
-  const [bonesTracked, setBonesTracked] = useState<THREE.Bone[]>([]);
+  const [bonesTracked, setBonesTracked] = useState<Bone[]>([]);
 
   // Find bones to track when mixer changes
   useEffect(() => {
@@ -27,10 +27,10 @@ export function AnimationUpdater({
     if (mixerRef.current && logBonePositions) {
       const root = mixerRef.current.getRoot();
       if (!root) return;
-      const bones: THREE.Bone[] = [];
+      const bones: Bone[] = [];
 
       root.traverse((object) => {
-        if (object instanceof THREE.SkinnedMesh && object.skeleton) {
+        if (object instanceof SkinnedMesh && object.skeleton) {
           // Track first 3 bones for logging (to avoid console spam)
           bones.push(...object.skeleton.bones.slice(0, 3));
         }
@@ -68,7 +68,7 @@ export function AnimationUpdater({
           );
 
           bonesTracked.forEach((bone) => {
-            const worldPos = new THREE.Vector3();
+            const worldPos = new Vector3();
             bone.getWorldPosition(worldPos);
 
             console.log(`${bone.name}:`, {

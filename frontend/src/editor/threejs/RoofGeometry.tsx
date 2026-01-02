@@ -5,7 +5,7 @@ import {
 } from "@/python/structSpecs/LevelTypes";
 import { useRef, useMemo, forwardRef, useEffect } from "react";
 import { Mesh, PlaneGeometry, DoubleSide } from "three";
-import type * as THREE from "three";
+import type { Event } from "three";
 import { useAtomValue } from "jotai";
 import { Globals } from "@/data/globals/globals";
 import { ShowRoofInTopology } from "@/data/tiles/tileAtoms";
@@ -19,9 +19,9 @@ export const RoofGeometry = forwardRef<
   {
     headerData: HeaderData;
     terrainData: TerrainData;
-    onPointerDown?: (event: THREE.Event) => void;
-    onPointerMove?: (event: THREE.Event) => void;
-    onPointerUp?: (event: THREE.Event) => void;
+    onPointerDown?: (event: Event) => void;
+    onPointerMove?: (event: Event) => void;
+    onPointerUp?: (event: Event) => void;
   }
 >(function RoofGeometry(
   { headerData, terrainData, onPointerDown, onPointerMove, onPointerUp },

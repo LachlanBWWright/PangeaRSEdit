@@ -6,8 +6,8 @@ import { parseBG3DWithSkeletonResource } from "./bg3dWithSkeleton";
 import { bg3dParsedToGLTF, gltfToBG3D } from "./parsedBg3dGitfConverter";
 import { convertBG3DToSkeletonResource } from "./parseBG3D";
 import type { SkeletonResource } from "../python/structSpecs/skeleton/skeletonInterface";
-import * as fs from "fs";
-import * as path from "path";
+import { readFileSync } from "fs";
+import { join } from "path";
 import { unwrap } from "../types/result";
 
 // Test skeleton data (simplified version of the sample)
@@ -178,7 +178,7 @@ const testSkeleton: SkeletonResource = {
 };
 
 describe("BG3D Skeleton Integration", () => {
-  const TEST_BG3D_PATH = path.join(
+  const TEST_BG3D_PATH = join(
     __dirname,
     "./testSkeletons/level4_apocalypse.bg3d",
   );
@@ -186,7 +186,7 @@ describe("BG3D Skeleton Integration", () => {
   let testBG3DBuffer: ArrayBuffer;
 
   beforeAll(() => {
-    const fileBuffer = fs.readFileSync(TEST_BG3D_PATH);
+    const fileBuffer = readFileSync(TEST_BG3D_PATH);
     testBG3DBuffer = fileBuffer.buffer.slice(
       fileBuffer.byteOffset,
       fileBuffer.byteOffset + fileBuffer.byteLength,

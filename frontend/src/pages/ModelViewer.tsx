@@ -13,7 +13,7 @@ import { VisualizationOptions } from "./ModelViewer/VisualizationOptions";
 import { SkeletonConversionPanel } from "@/components/SkeletonConversionPanel";
 import { BG3DParseResult } from "../modelParsers/parseBG3D";
 import { toast } from "sonner";
-import * as THREE from "three";
+import { AnimationMixer, Group, Object3D } from "three";
 import {
   downloadTexture,
   downloadBG3DModel,
@@ -37,7 +37,7 @@ export function ModelViewer() {
   const [textures, setTextures] = useState<Texture[]>([]);
   const [animations, setAnimations] = useState<AnimationInfo[]>([]);
   const [animationMixer, setAnimationMixer] =
-    useState<THREE.AnimationMixer | null>(null);
+    useState<AnimationMixer | null>(null);
   const [uploadStep, setUploadStep] = useState<
     "select-bg3d" | "select-skeleton" | "completed"
   >("select-bg3d");
@@ -47,7 +47,7 @@ export function ModelViewer() {
   const [showSkeleton, setShowSkeleton] = useState<boolean>(false);
   const [logBonePositions, setLogBonePositions] = useState<boolean>(false);
 
-  const [scene, setScene] = useState<THREE.Group | undefined>(undefined);
+  const [scene, setScene] = useState<Group | undefined>(undefined);
   const [modelNodes, setModelNodes] = useState<ModelNode[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -166,7 +166,7 @@ export function ModelViewer() {
   // Removed handleClonedSceneUpdate, handled in ModelCanvas
 
   const onVisibilityChange = useCallback(
-    (nodeObject: THREE.Object3D, visible: boolean) => {
+    (nodeObject: Object3D, visible: boolean) => {
       nodeObject.visible = visible;
       // ModelCanvas will update model nodes after visibility change
       console.log("Visibility change:", {

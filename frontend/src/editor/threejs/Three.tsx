@@ -41,14 +41,14 @@ import {
 import { useEffect, useRef, useState, useCallback } from "react";
 import { toast } from "sonner";
 import { Vector3, Mesh } from "three";
-import type * as THREE from "three";
+import type { Event } from "three";
 
 // Type guard for THREE events with point
-interface ThreeEventWithPoint extends THREE.Event<string, unknown> {
+interface ThreeEventWithPoint extends Event<string, unknown> {
   point: Vector3;
 }
 
-function hasPointProperty(event: THREE.Event<string, unknown>): event is ThreeEventWithPoint {
+function hasPointProperty(event: Event<string, unknown>): event is ThreeEventWithPoint {
   return "point" in event && event.point instanceof Vector3;
 }
 

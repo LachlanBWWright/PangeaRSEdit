@@ -3,8 +3,8 @@
  */
 
 import { test, expect } from '@playwright/test';
-import * as path from 'path';
-import * as fs from 'fs';
+import { join } from 'path';
+import { existsSync } from 'fs';
 import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -22,8 +22,8 @@ test.describe('Quick Game Verification', () => {
 
   for (const game of games) {
     test(`${game.name} loads successfully`, async ({ page }) => {
-      const levelPath = path.join(__dirname, game.file);
-      if (!fs.existsSync(levelPath)) {
+      const levelPath = join(__dirname, game.file);
+      if (!existsSync(levelPath)) {
         console.log(`Skip ${game.name} - no file`);
         test.skip();
         return;

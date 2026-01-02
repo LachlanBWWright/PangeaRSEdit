@@ -35,7 +35,7 @@ export async function parseBG3DWithSkeleton(
     const skeletonData = await parseSkeletonRsrc(skeletonBuffer);
 
     // skeletonData is already the parsed JSON object
-    const skeleton: SkeletonResource = skeletonData as SkeletonResource;
+    const skeleton = skeletonData;
 
     console.log("Parsing model with skeleton data...");
 

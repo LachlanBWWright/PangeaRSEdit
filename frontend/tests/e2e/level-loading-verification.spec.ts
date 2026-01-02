@@ -4,8 +4,8 @@
  */
 
 import { test, expect } from '@playwright/test';
-import * as path from 'path';
-import * as fs from 'fs';
+import { join } from 'path';
+import { existsSync } from 'fs';
 import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -15,19 +15,19 @@ const __dirname = path.dirname(__filename);
 const gameTests = [
   {
     name: 'Otto Matic',
-    levelPath: path.join(__dirname, '../../public/assets/ottoMatic/terrain/EarthFarm.ter.rsrc'),
+    levelPath: join(__dirname, '../../public/assets/ottoMatic/terrain/EarthFarm.ter.rsrc'),
   },
   {
     name: 'Bugdom',
-    levelPath: path.join(__dirname, '../../public/assets/bugdom/terrain/Lawn.ter.rsrc'),
+    levelPath: join(__dirname, '../../public/assets/bugdom/terrain/Lawn.ter.rsrc'),
   },
   {
     name: 'Bugdom 2',
-    levelPath: path.join(__dirname, '../../public/assets/bugdom2/terrain/Level1_Playroom.ter.rsrc'),
+    levelPath: join(__dirname, '../../public/assets/bugdom2/terrain/Level1_Playroom.ter.rsrc'),
   },
   {
     name: 'Cro-Mag Rally',
-    levelPath: path.join(__dirname, '../../public/assets/croMag/terrain/StoneAge_Jungle.ter.rsrc'),
+    levelPath: join(__dirname, '../../public/assets/croMag/terrain/StoneAge_Jungle.ter.rsrc'),
   },
 ];
 
@@ -37,7 +37,7 @@ test.describe('Level Loading Verification', () => {
   for (const game of gameTests) {
     test(`${game.name} - should load level and show editor UI`, async ({ page }) => {
       // Check if test file exists
-      if (!fs.existsSync(game.levelPath)) {
+      if (!existsSync(game.levelPath)) {
         console.log(`Skipping ${game.name} - level file not found`);
         test.skip();
         return;

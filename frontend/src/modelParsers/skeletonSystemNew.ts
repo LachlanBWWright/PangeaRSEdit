@@ -233,7 +233,10 @@ class Matrix4 {
       this.at(8) * this.at(2) * this.at(5);
 
     const det =
-      this.at(0) * (inv[0] ?? 0) + this.at(1) * (inv[4] ?? 0) + this.at(2) * (inv[8] ?? 0) + this.at(3) * (inv[12] ?? 0);
+      this.at(0) * (inv[0] ?? 0) +
+      this.at(1) * (inv[4] ?? 0) +
+      this.at(2) * (inv[8] ?? 0) +
+      this.at(3) * (inv[12] ?? 0);
 
     if (det === 0) {
       console.warn("Matrix is not invertible");
@@ -333,9 +336,21 @@ function decomposeMatrix(matrix: Matrix4): {
   const translation = new Vector3(atF32(m, 12), atF32(m, 13), atF32(m, 14));
 
   // Extract scale
-  const sx = Math.sqrt(atF32(m, 0) * atF32(m, 0) + atF32(m, 1) * atF32(m, 1) + atF32(m, 2) * atF32(m, 2));
-  const sy = Math.sqrt(atF32(m, 4) * atF32(m, 4) + atF32(m, 5) * atF32(m, 5) + atF32(m, 6) * atF32(m, 6));
-  const sz = Math.sqrt(atF32(m, 8) * atF32(m, 8) + atF32(m, 9) * atF32(m, 9) + atF32(m, 10) * atF32(m, 10));
+  const sx = Math.sqrt(
+    atF32(m, 0) * atF32(m, 0) +
+      atF32(m, 1) * atF32(m, 1) +
+      atF32(m, 2) * atF32(m, 2),
+  );
+  const sy = Math.sqrt(
+    atF32(m, 4) * atF32(m, 4) +
+      atF32(m, 5) * atF32(m, 5) +
+      atF32(m, 6) * atF32(m, 6),
+  );
+  const sz = Math.sqrt(
+    atF32(m, 8) * atF32(m, 8) +
+      atF32(m, 9) * atF32(m, 9) +
+      atF32(m, 10) * atF32(m, 10),
+  );
   const scale = new Vector3(sx, sy, sz);
 
   // Extract rotation (simplified - assuming no shear)
@@ -441,7 +456,7 @@ function createJointNodes(doc: Document, bones: BG3DBone[]): Node[] {
  * added as children of the Armature (or as siblings, but descendant of scene).
  *
  * Note: Three.js PropertyBinding can find joints by name even when they're nested,
- * as long as they're in the scene hierarchy.
+ * so long as they're in the scene hierarchy.
  */
 function buildJointHierarchy(
   doc: Document,
@@ -1225,9 +1240,9 @@ export function extractAnimationsFromGLTF(
 
       const inputArray = inputAccessor.getArray();
       const outputArray = outputAccessor.getArray();
-      
+
       if (!inputArray || !outputArray) return;
-      
+
       const times = Array.from(inputArray);
       const values = Array.from(outputArray);
 

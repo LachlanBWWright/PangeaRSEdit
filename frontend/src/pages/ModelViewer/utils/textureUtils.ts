@@ -111,7 +111,7 @@ export async function extractTexturesFromBG3D(
           // Use decodeJpegNode to decompress the payload
           // (it can handle JPEG and other image formats that stbi supports)
           const decompressedImageData = decodeJpegNode(payloadBuffer.buffer);
-          imageData = decompressedImageData as ImageData;
+          imageData = decompressedImageData;
 
           // If there's separate alpha data, blend it in
           if (texture.jpegAlphaData && texture.jpegAlphaData.length === expectedPixelCount) {

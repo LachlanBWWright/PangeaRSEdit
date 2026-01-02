@@ -3,12 +3,12 @@
  * Run with: npx tsx src/modelParsers/analyzeGrasshopper.ts
  */
 
-import * as fs from "fs";
-import * as path from "path";
+import { existsSync, readFileSync } from "fs";
+import { join } from "path";
 import { parseBG3D } from "./parseBG3D";
 import { isErr } from "../types/result";
 
-const GRASSHOPPER_PATH = path.join(
+const GRASSHOPPER_PATH = join(
   __dirname,
   "./testSkeletons/Grasshopper.bg3d",
 );
@@ -17,13 +17,13 @@ function analyzeFile() {
   console.log("Analyzing Grasshopper.bg3d");
   console.log("==========================\n");
 
-  if (!fs.existsSync(GRASSHOPPER_PATH)) {
+  if (!existsSync(GRASSHOPPER_PATH)) {
     console.log(`❌ File not found: ${GRASSHOPPER_PATH}`);
     return;
   }
 
   // Read the raw bytes
-  const buffer = fs.readFileSync(GRASSHOPPER_PATH);
+  const buffer = readFileSync(GRASSHOPPER_PATH);
   console.log(`File size: ${buffer.length} bytes`);
 
   // Print first 100 bytes as hex

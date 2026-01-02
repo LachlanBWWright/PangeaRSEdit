@@ -9,8 +9,8 @@
  */
 
 import { test, expect, Page } from '@playwright/test';
-import * as path from 'path';
-import * as fs from 'fs';
+import { join } from 'path';
+import { accessSync, constants, readFileSync } from 'fs';
 
 // Game configuration for testing
 const gameConfigs = [
@@ -66,13 +66,13 @@ const gameConfigs = [
 
 // Helper to get file path
 function getFilePath(terrainDir: string, fileName: string): string {
-  return path.join(__dirname, '../../..', terrainDir, fileName);
+  return join(__dirname, '../../..', terrainDir, fileName);
 }
 
 // Check if file exists
 function fileExists(filePath: string): boolean {
   try {
-    fs.accessSync(filePath, fs.constants.R_OK);
+    accessSync(filePath, constants.R_OK);
     return true;
   } catch {
     return false;
@@ -165,8 +165,8 @@ test.describe('Level Round-Trip Tests', () => {
         await download.saveAs(downloadPath);
 
         // Read both files
-        const originalBuffer = fs.readFileSync(terrainPath);
-        const downloadedBuffer = fs.readFileSync(downloadPath);
+        const originalBuffer = readFileSync(terrainPath);
+        const downloadedBuffer = readFileSync(downloadPath);
 
         // Compare file sizes
         console.log(`${game.name} - Original size: ${originalBuffer.length}, Downloaded: ${downloadedBuffer.length}`);

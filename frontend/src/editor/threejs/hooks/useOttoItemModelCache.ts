@@ -12,7 +12,7 @@
 import { useState, useRef, useCallback } from "react";
 import BG3DGltfWorker from "@/modelParsers/bg3dGltfWorker?worker";
 import { getItemModelMapping } from "@/data/items/ottoItemModelMapping";
-import * as THREE from "three";
+import { Scene } from "three";
 import {
   GLTFLoader,
   type GLTF,
@@ -96,7 +96,7 @@ export const useOttoItemModelCache = (): UseOttoItemModelCacheReturn => {
         const clonedModel = targetModel.clone(true);
 
         // Create new scene with the extracted model
-        const newScene = new THREE.Scene();
+        const newScene = new Scene();
         newScene.add(clonedModel);
 
         // Return new gltf with extracted scene, keeping materials reference

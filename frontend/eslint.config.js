@@ -14,6 +14,7 @@ export default defineConfig(
       "playwright.config.ts",
       "debug-liquid-rsrcdump.js",
       "dist/**",
+      "coverage/**",
     ],
   },
   [
@@ -33,6 +34,7 @@ export default defineConfig(
     },
     rules: {
       "@typescript-eslint/no-unsafe-type-assertion": "error",
+      "@typescript-eslint/no-unnecessary-type-assertion": "error",
     },
   },
 );

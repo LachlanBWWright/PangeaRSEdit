@@ -4,8 +4,8 @@
  */
 
 import { test, expect } from '@playwright/test';
-import * as path from 'path';
-import * as fs from 'fs';
+import { join } from 'path';
+import { existsSync, statSync } from 'fs';
 import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -49,10 +49,10 @@ test.describe('All Games - Level Loading and Download', () => {
 
   for (const game of gameConfigs) {
     test(`${game.name} - Complete workflow`, async ({ page }) => {
-      const levelPath = path.join(__dirname, game.levelFile);
+      const levelPath = join(__dirname, game.levelFile);
       
       // Skip if file doesn't exist
-      if (!fs.existsSync(levelPath)) {
+      if (!existsSync(levelPath)) {
         console.log(`⏭️  Skipping ${game.name} - level file not found`);
         test.skip();
         return;
@@ -124,8 +124,8 @@ test.describe('All Games - Level Loading and Download', () => {
         await download.saveAs(downloadPath);
         
         // Verify download
-        const downloadedSize = fs.statSync(downloadPath).size;
-        const originalSize = fs.statSync(levelPath).size;
+        const downloadedSize = statSync(downloadPath).size;
+        const originalSize = statSync(levelPath).size;
         console.log(`  ✓ Downloaded (${downloadedSize} bytes, original: ${originalSize} bytes)`);
         
         // Size should be within 20% for now

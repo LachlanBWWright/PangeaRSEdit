@@ -9,7 +9,7 @@ import { Globals, GlobalsInterface } from "@/data/globals/globals";
 import { getFenceColor } from "@/data/fences/getFenceColor";
 import { getFenceImagePath } from "@/data/fences/getFenceImagePath";
 import { getFenceHeight } from "@/data/fences/getFenceHeight";
-import * as THREE from "three";
+import { Texture, DoubleSide, TextureLoader, RepeatWrapping, ClampToEdgeWrapping, LinearFilter, LinearMipmapLinearFilter } from "three";
 
 interface FenceGeometryProps {
   fenceData: FenceData;
@@ -81,9 +81,9 @@ function calculateFenceSegmentGeometry(
 
 interface FenceSegmentMeshProps {
   geometry: FenceSegmentGeometryData;
-  texture: THREE.Texture | null;
+  texture: Texture | null;
   fenceColor: string;
-}
+} 
 
 const FenceSegmentMesh: React.FC<FenceSegmentMeshProps> = ({
   geometry,
@@ -118,11 +118,11 @@ const FenceSegmentMesh: React.FC<FenceSegmentMeshProps> = ({
       {texture ? (
         <meshBasicMaterial
           map={texture}
-          side={THREE.DoubleSide}
+          side={DoubleSide}
           transparent={true}
         />
       ) : (
-        <meshStandardMaterial color={fenceColor} side={THREE.DoubleSide} />
+        <meshStandardMaterial color={fenceColor} side={DoubleSide} />
       )}
     </mesh>
   );
@@ -169,8 +169,8 @@ export const FenceGeometry: React.FC<FenceGeometryProps> = ({
     });
 
     // Load all textures
-    const textureLoader = new THREE.TextureLoader();
-    const loadedTextures = new Map<string, THREE.Texture>();
+    const textureLoader = new TextureLoader();
+    const loadedTextures = new Map<string, Texture>();
     let loadedCount = 0;
 
     textureUrls.forEach((url) => {
@@ -178,10 +178,10 @@ export const FenceGeometry: React.FC<FenceGeometryProps> = ({
         url,
         (texture) => {
           // Configure texture wrapping
-          texture.wrapS = THREE.RepeatWrapping; // U: wrap horizontally
-          texture.wrapT = THREE.ClampToEdgeWrapping; // V: clamp vertically
-          texture.magFilter = THREE.LinearFilter;
-          texture.minFilter = THREE.LinearMipmapLinearFilter;
+          texture.wrapS = RepeatWrapping; // U: wrap horizontally
+          texture.wrapT = ClampToEdgeWrapping; // V: clamp vertically
+          texture.magFilter = LinearFilter;
+          texture.minFilter = LinearMipmapLinearFilter;
 
           loadedTextures.set(url, texture);
           loadedCount++;

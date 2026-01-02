@@ -71,15 +71,11 @@ const createMockMesh = (materials: MockMaterial[]): MockMesh => ({
   id: 1,
   name: "TestMesh",
   visible: true,
-  material: (materials.length === 1
-    ? materials[0] ?? createMockMaterial()
-    : materials.length > 0
-    ? materials
-    : createMockMaterial()) as MockMaterial | MockMaterial[],
-  children: [],
-});
-
-const createMockGroup = (children: MockMesh[]): MockGroup => ({
+    material: materials.length === 1
+      ? materials[0] ?? createMockMaterial()
+      : materials.length > 0
+      ? materials
+      : createMockMaterial(),
   id: 2,
   name: "TestGroup",
   visible: true,

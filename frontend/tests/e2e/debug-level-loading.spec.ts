@@ -3,7 +3,7 @@
  */
 
 import { test, expect } from '@playwright/test';
-import * as path from 'path';
+import { join } from 'path';
 import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -41,7 +41,7 @@ test('Otto Matic level loads successfully with rsrcdump-ts', async ({ page }) =>
   console.log('✓ Found Otto Matic card');
 
   // Upload level file
-  const levelPath = path.join(__dirname, '../../public/assets/ottoMatic/terrain/EarthFarm.ter.rsrc');
+  const levelPath = join(__dirname, '../../public/assets/ottoMatic/terrain/EarthFarm.ter.rsrc');
   const fileInput = page.locator('input[type="file"]').first();
   
   consoleMessages.length = 0;

@@ -1,4 +1,4 @@
-import * as React from "react";
+import React, { forwardRef } from "react";
 import { Slot } from "@radix-ui/react-slot";
 import { type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
@@ -11,7 +11,7 @@ export interface ButtonProps
   selected?: boolean;
 }
 
-const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
+const Button = forwardRef<HTMLButtonElement, ButtonProps>(
   (
     { className, variant, size, asChild = false, selected = false, ...props },
     ref,

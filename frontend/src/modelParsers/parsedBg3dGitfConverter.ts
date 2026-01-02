@@ -854,16 +854,20 @@ export function bg3dParsedToGLTF(
     return "children" in child && Array.isArray(child.children);
   }
 
+  // Helper function to check if child is a geometry
+  function isGeometry(child: BG3DGeometry | BG3DGroup): child is BG3DGeometry {
+    return "type" in child;
+  }
+
   // Helper: check whether a group contains any geometry that should be part of the scene hierarchy
   function groupHasNonSkinnedChildren(group: BG3DGroup): boolean {
     if (!Array.isArray(group.children)) return false;
     for (const child of group.children) {
       if (isGroup(child)) {
         if (groupHasNonSkinnedChildren(child)) return true;
-      } else {
-        const geom = child as BG3DGeometry;
+      } else if (isGeometry(child)) {
         // If this geometry is NOT skinned, it should be part of the group hierarchy
-        if (!isGeometrySkinnedByIndex(geom)) return true;
+        if (!isGeometrySkinnedByIndex(child)) return true;
       }
     }
     return false;
@@ -895,8 +899,7 @@ export function bg3dParsedToGLTF(
       if (isGroup(child)) {
         addSkinnedMeshesFromGroup(child);
       } else {
-        const childGeom = child as BG3DGeometry;
-        const geomIndex = allGeometries.indexOf(childGeom);
+        const geomIndex = allGeometries.indexOf(child);
         if (geomIndex >= 0 && geomIndex < gltfMeshes.length) {
           const mesh = gltfMeshes[geomIndex];
           if (!mesh) continue;
@@ -951,9 +954,8 @@ export function bg3dParsedToGLTF(
                 addGeometriesToNode(childNode, subgroup);
                 node.addChild(childNode);
               }
-            } else {
-              const childGeom = child as BG3DGeometry;
-              const geomIndex = allGeometries.indexOf(childGeom);
+            } else if (isGeometry(child)) {
+              const geomIndex = allGeometries.indexOf(child);
               if (geomIndex >= 0 && geomIndex < gltfMeshes.length) {
                 const mesh = gltfMeshes[geomIndex];
                 if (!mesh) continue;
@@ -1089,8 +1091,7 @@ export function bg3dParsedToGLTF(
         originalBinaries.skeleton = Array.from(
           new Uint8Array(originalBinaryData.skeletonBuffer),
         );
-      (extrasData as Record<string, unknown>).originalBinaries =
-        originalBinaries;
+      extrasData.originalBinaries = originalBinaries;
     } catch {
       // ignore
     }
@@ -1960,9 +1961,9 @@ export async function gltfToBG3D(doc: Document): Promise<BG3DParseResult> {
       vertices = [];
       for (let i = 0; i < arr.length; i += 3) {
         vertices.push([
-          (arr[i] ?? 0) as number,
-          (arr[i + 1] ?? 0) as number,
-          (arr[i + 2] ?? 0) as number,
+          (arr[i] ?? 0),
+          (arr[i + 1] ?? 0),
+          (arr[i + 2] ?? 0),
         ]);
       }
     }
@@ -1974,9 +1975,9 @@ export async function gltfToBG3D(doc: Document): Promise<BG3DParseResult> {
       normals = [];
       for (let i = 0; i < arr.length; i += 3) {
         normals.push([
-          (arr[i] ?? 0) as number,
-          (arr[i + 1] ?? 0) as number,
-          (arr[i + 2] ?? 0) as number,
+          (arr[i] ?? 0),
+          (arr[i + 1] ?? 0),
+          (arr[i + 2] ?? 0),
         ]);
       }
     }
@@ -1987,7 +1988,7 @@ export async function gltfToBG3D(doc: Document): Promise<BG3DParseResult> {
       const arr = Array.from(uvAcc.getArray() ?? []);
       uvs = [];
       for (let i = 0; i < arr.length; i += 2) {
-        uvs.push([(arr[i] ?? 0) as number, (arr[i + 1] ?? 0) as number]);
+        uvs.push([(arr[i] ?? 0), (arr[i + 1] ?? 0)]);
       }
     }
 
@@ -1999,9 +2000,9 @@ export async function gltfToBG3D(doc: Document): Promise<BG3DParseResult> {
       for (let i = 0; i < arr.length; i += 4) {
         colors.push([
           arr[i] ?? 0,
-          (arr[i + 1] ?? 0) as number,
-          (arr[i + 2] ?? 0) as number,
-          (arr[i + 3] ?? 0) as number,
+          (arr[i + 1] ?? 0),
+          (arr[i + 2] ?? 0),
+          (arr[i + 3] ?? 0),
         ]);
       }
     }
@@ -2013,9 +2014,9 @@ export async function gltfToBG3D(doc: Document): Promise<BG3DParseResult> {
       triangles = [];
       for (let i = 0; i < arr.length; i += 3) {
         triangles.push([
-          (arr[i] ?? 0) as number,
-          (arr[i + 1] ?? 0) as number,
-          (arr[i + 2] ?? 0) as number,
+          (arr[i] ?? 0),
+          (arr[i + 1] ?? 0),
+          (arr[i + 2] ?? 0),
         ]);
       }
     }

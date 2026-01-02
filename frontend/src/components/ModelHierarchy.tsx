@@ -2,14 +2,14 @@ import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ChevronDown, ChevronRight, Eye, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import * as THREE from "three";
+import { Group, Object3D } from "three";
 import { ModelNode } from "./model-viewer/types";
 
 interface ModelHierarchyProps {
   nodes: ModelNode[];
-  clonedScene: THREE.Group;
-  onVisibilityChange: (nodeObject: THREE.Object3D, visible: boolean) => void;
-}
+  clonedScene: Group;
+  onVisibilityChange: (nodeObject: Object3D, visible: boolean) => void;
+} 
 
 function NodeItem({
   node,
@@ -19,8 +19,8 @@ function NodeItem({
 }: {
   node: ModelNode;
   level?: number;
-  onVisibilityChange: (nodeObject: THREE.Object3D, visible: boolean) => void;
-  nodeObject: THREE.Object3D;
+  onVisibilityChange: (nodeObject: Object3D, visible: boolean) => void;
+  nodeObject: Object3D;
 }) {
   const [expanded, setExpanded] = useState(true);
   const [visible, setVisible] = useState(true);

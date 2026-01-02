@@ -1,6 +1,5 @@
-import React, { useMemo, useEffect } from "react";
-import * as THREE from "three";
-import { DoubleSide } from "three";
+import React, { useMemo, useEffect, useRef } from "react";
+import { Mesh, Group, DoubleSide } from "three";
 import {
   ItemData,
   HeaderData,
@@ -62,7 +61,7 @@ const LoadingCube: React.FC<{
   position: [number, number, number];
   itemType: number;
 }> = ({ position, itemType }) => {
-  const meshRef = React.useRef<THREE.Mesh | null>(null);
+  const meshRef = useRef<Mesh | null>(null);
 
   useFrame(() => {
     if (meshRef.current) {
@@ -102,7 +101,7 @@ const LoadingCube: React.FC<{
 const ItemModel: React.FC<{
   position: [number, number, number];
   itemType: number;
-  clonedScene: THREE.Group | null;
+  clonedScene: Group | null;
   mapping: ItemModelMapping | null;
 }> = ({ position, clonedScene }) => {
   if (!clonedScene) {
@@ -202,7 +201,7 @@ export const ItemGeometry: React.FC<ItemGeometryProps> = ({
   // Pre-load models for visible item types when toggle is enabled
   // Also prepare cloned scenes for instancing
   const clonedScenesByType = useMemo(() => {
-    const scenes = new Map<number, THREE.Group | null>();
+    const scenes = new Map<number, Group | null>();
     itemsByType.forEach((_, itemType) => {
       const cachedModel = modelCache.get(itemType);
       if (cachedModel?.gltf && !cachedModel.error) {

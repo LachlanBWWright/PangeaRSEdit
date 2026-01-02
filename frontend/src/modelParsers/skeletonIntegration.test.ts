@@ -250,7 +250,7 @@ describe("BG3D Skeleton Integration", () => {
         name: clip.name,
         duration: clip.duration,
         index: index,
-        clip: clip as MockAnimationClip, // Mock THREE.AnimationClip
+        clip: clip, // Mock THREE.AnimationClip
       }),
     );
 
