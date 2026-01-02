@@ -1960,11 +1960,7 @@ export async function gltfToBG3D(doc: Document): Promise<BG3DParseResult> {
       const arr = Array.from(posAcc.getArray() ?? []);
       vertices = [];
       for (let i = 0; i < arr.length; i += 3) {
-        vertices.push([
-          (arr[i] ?? 0),
-          (arr[i + 1] ?? 0),
-          (arr[i + 2] ?? 0),
-        ]);
+        vertices.push([arr[i] ?? 0, arr[i + 1] ?? 0, arr[i + 2] ?? 0]);
       }
     }
 
@@ -1974,11 +1970,7 @@ export async function gltfToBG3D(doc: Document): Promise<BG3DParseResult> {
       const arr = Array.from(normAcc.getArray() ?? []);
       normals = [];
       for (let i = 0; i < arr.length; i += 3) {
-        normals.push([
-          (arr[i] ?? 0),
-          (arr[i + 1] ?? 0),
-          (arr[i + 2] ?? 0),
-        ]);
+        normals.push([arr[i] ?? 0, arr[i + 1] ?? 0, arr[i + 2] ?? 0]);
       }
     }
 
@@ -1988,7 +1980,7 @@ export async function gltfToBG3D(doc: Document): Promise<BG3DParseResult> {
       const arr = Array.from(uvAcc.getArray() ?? []);
       uvs = [];
       for (let i = 0; i < arr.length; i += 2) {
-        uvs.push([(arr[i] ?? 0), (arr[i + 1] ?? 0)]);
+        uvs.push([arr[i] ?? 0, arr[i + 1] ?? 0]);
       }
     }
 
@@ -2000,9 +1992,9 @@ export async function gltfToBG3D(doc: Document): Promise<BG3DParseResult> {
       for (let i = 0; i < arr.length; i += 4) {
         colors.push([
           arr[i] ?? 0,
-          (arr[i + 1] ?? 0),
-          (arr[i + 2] ?? 0),
-          (arr[i + 3] ?? 0),
+          arr[i + 1] ?? 0,
+          arr[i + 2] ?? 0,
+          arr[i + 3] ?? 0,
         ]);
       }
     }
@@ -2013,11 +2005,7 @@ export async function gltfToBG3D(doc: Document): Promise<BG3DParseResult> {
       const arr = Array.from(idxAcc.getArray() ?? []);
       triangles = [];
       for (let i = 0; i < arr.length; i += 3) {
-        triangles.push([
-          (arr[i] ?? 0),
-          (arr[i + 1] ?? 0),
-          (arr[i + 2] ?? 0),
-        ]);
+        triangles.push([arr[i] ?? 0, arr[i + 1] ?? 0, arr[i + 2] ?? 0]);
       }
     }
 

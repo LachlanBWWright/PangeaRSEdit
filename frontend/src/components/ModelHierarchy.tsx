@@ -9,7 +9,7 @@ interface ModelHierarchyProps {
   nodes: ModelNode[];
   clonedScene: Group;
   onVisibilityChange: (nodeObject: Object3D, visible: boolean) => void;
-} 
+}
 
 function NodeItem({
   node,
@@ -87,7 +87,9 @@ function NodeItem({
             // This avoids index mismatch issues when bones/joints are filtered out
             const childObject = child.threeObject;
             if (!childObject) {
-              console.warn(`Child node ${child.name} has no THREE object reference`);
+              console.warn(
+                `Child node ${child.name} has no THREE object reference`,
+              );
               return null;
             }
             return (
@@ -148,9 +150,7 @@ export function ModelHierarchy({
           // This avoids index mismatch issues when bones/joints are filtered out
           const nodeObject = node.threeObject;
           if (!nodeObject) {
-            console.warn(
-              `Node ${node.name} has no THREE object reference`,
-            );
+            console.warn(`Node ${node.name} has no THREE object reference`);
             return null;
           }
           return (

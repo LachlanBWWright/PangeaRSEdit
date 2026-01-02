@@ -87,11 +87,11 @@ function parseModelWithSkeletonResource(
     if (isErr(modelResult)) {
       return modelResult;
     }
-    
+
     // Add skeleton data if available
     // Note: 3DMF skeleton data needs conversion from SkeletonResource format to BG3DSkeleton format
     const result = modelResult.value;
-    
+
     if (skeleton && skeleton.Bone) {
       // Extract header info
       const boneEntries = Object.values(skeleton.Bone || {});
@@ -101,11 +101,13 @@ function parseModelWithSkeletonResource(
 
       // Type guard helper
       function isRecord(value: unknown): value is Record<string, unknown> {
-        return typeof value === 'object' && value !== null && !Array.isArray(value);
+        return (
+          typeof value === "object" && value !== null && !Array.isArray(value)
+        );
       }
-      
+
       function getNumberArray(value: unknown): number[] {
-        if (Array.isArray(value) && value.every(v => typeof v === 'number')) {
+        if (Array.isArray(value) && value.every((v) => typeof v === "number")) {
           return value;
         }
         return [];
@@ -131,33 +133,43 @@ function parseModelWithSkeletonResource(
             };
           }
           const boneObj = bone;
-          const coord = isRecord(boneObj.coord) ? boneObj.coord : { x: 0, y: 0, z: 0 };
+          const coord = isRecord(boneObj.coord)
+            ? boneObj.coord
+            : { x: 0, y: 0, z: 0 };
           const pointList = getNumberArray(boneObj.pointList);
           const normalList = getNumberArray(boneObj.normalList);
           return {
-            parentBone: typeof boneObj.parentBone === 'number' ? boneObj.parentBone : -1,
-            name: typeof boneObj.name === 'string' ? boneObj.name : `bone_${index}`,
-            coordX: typeof coord.x === 'number' ? coord.x : 0,
-            coordY: typeof coord.y === 'number' ? coord.y : 0,
-            coordZ: typeof coord.z === 'number' ? coord.z : 0,
+            parentBone:
+              typeof boneObj.parentBone === "number" ? boneObj.parentBone : -1,
+            name:
+              typeof boneObj.name === "string" ? boneObj.name : `bone_${index}`,
+            coordX: typeof coord.x === "number" ? coord.x : 0,
+            coordY: typeof coord.y === "number" ? coord.y : 0,
+            coordZ: typeof coord.z === "number" ? coord.z : 0,
             numPointsAttachedToBone: pointList.length,
             numNormalsAttachedToBone: normalList.length,
             pointIndices: pointList,
             normalIndices: normalList,
           };
         }),
-        animations: animEntries.length > 0 ? animEntries.map((anim: unknown, animIndex: number) => {
-          const animName = isRecord(anim) && typeof anim.name === 'string' ? anim.name : `anim_${animIndex}`;
-          return {
-            name: animName,
-            numAnimEvents: 0,
-            events: [],
-            keyframes: {},
-          };
-        }) : [],
+        animations:
+          animEntries.length > 0
+            ? animEntries.map((anim: unknown, animIndex: number) => {
+                const animName =
+                  isRecord(anim) && typeof anim.name === "string"
+                    ? anim.name
+                    : `anim_${animIndex}`;
+                return {
+                  name: animName,
+                  numAnimEvents: 0,
+                  events: [],
+                  keyframes: {},
+                };
+              })
+            : [],
       };
     }
-    
+
     return ok(result);
   } else {
     // Parse BG3D file

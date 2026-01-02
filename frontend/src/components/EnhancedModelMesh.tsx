@@ -1,4 +1,14 @@
-import { Group, SkeletonHelper, Mesh, Object3D, SkinnedMesh, SphereGeometry, MeshBasicMaterial, Vector3, CylinderGeometry } from "three";
+import {
+  Group,
+  SkeletonHelper,
+  Mesh,
+  Object3D,
+  SkinnedMesh,
+  SphereGeometry,
+  MeshBasicMaterial,
+  Vector3,
+  CylinderGeometry,
+} from "three";
 import { useEffect, useRef, memo } from "react";
 
 interface EnhancedModelMeshProps {
