@@ -86,8 +86,33 @@ export function gltfSkinningToBg3d(bones: BG3DBone[], doc: Document): void {
         const posAcc = prim.getAttribute("POSITION");
 
         if (jointsAcc && weightsAcc && posAcc) {
-          const jointsArray = jointsAcc.getArray() as Uint16Array;
-          const weightsArray = weightsAcc.getArray() as Float32Array;
+          const jointsArrayRaw = jointsAcc.getArray();
+          const weightsArrayRaw = weightsAcc.getArray();
+          // Normalize typed array views to expected element types
+          const jointsArray = jointsArrayRaw instanceof Uint16Array
+            ? jointsArrayRaw
+            : ArrayBuffer.isView(jointsArrayRaw)
+              ? new Uint16Array(
+                  (jointsArrayRaw as ArrayBufferView).buffer,
+                  (jointsArrayRaw as ArrayBufferView).byteOffset || 0,
+                  (jointsArrayRaw as ArrayBufferView).byteLength / Uint16Array.BYTES_PER_ELEMENT,
+                )
+              : Array.isArray(jointsArrayRaw)
+                ? new Uint16Array(jointsArrayRaw as number[])
+                : new Uint16Array(0);
+
+          const weightsArray = weightsArrayRaw instanceof Float32Array
+            ? weightsArrayRaw
+            : ArrayBuffer.isView(weightsArrayRaw)
+              ? new Float32Array(
+                  (weightsArrayRaw as ArrayBufferView).buffer,
+                  (weightsArrayRaw as ArrayBufferView).byteOffset || 0,
+                  (weightsArrayRaw as ArrayBufferView).byteLength / Float32Array.BYTES_PER_ELEMENT,
+                )
+              : Array.isArray(weightsArrayRaw)
+                ? new Float32Array(weightsArrayRaw as number[])
+                : new Float32Array(0);
+
           const numVertices = posAcc.getCount();
 
           for (let vi = 0; vi < numVertices; vi++) {

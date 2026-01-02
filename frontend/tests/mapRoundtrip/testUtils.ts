@@ -162,8 +162,17 @@ export function createMapRoundtripTestSuite(config: {
       );
 
       // This should not throw; for the preprocessor we only need a Record-like shape
+      function assertIsRecord(
+        x: unknown,
+      ): asserts x is Record<string, unknown> {
+        if (typeof x !== "object" || x === null) {
+          throw new Error("Parsed data is not an object");
+        }
+      }
       expect(() => {
-        preprocessJson(jsonData as unknown as Record<string, unknown>, globals);
+        const jsonUnknown: unknown = jsonData as unknown;
+        assertIsRecord(jsonUnknown);
+        preprocessJson(jsonUnknown, globals);
       }).not.toThrow();
     });
 

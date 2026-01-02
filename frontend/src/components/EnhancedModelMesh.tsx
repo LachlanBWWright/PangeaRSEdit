@@ -7,7 +7,11 @@ interface EnhancedModelMeshProps {
   showSkeleton?: boolean;
 }
 
-function EnhancedModelMeshComponent({ scene, wireframeMode = false, showSkeleton = false }: EnhancedModelMeshProps) {
+function EnhancedModelMeshComponent({
+  scene,
+  wireframeMode = false,
+  showSkeleton = false,
+}: EnhancedModelMeshProps) {
   const skeletonHelpersRef = useRef<(THREE.SkeletonHelper | THREE.Mesh)[]>([]);
 
   useEffect(() => {
@@ -32,6 +36,15 @@ function EnhancedModelMeshComponent({ scene, wireframeMode = false, showSkeleton
   useEffect(() => {
     if (!scene) return;
 
+    function hasDispose(x: unknown): x is { dispose: () => void } {
+      return (
+        typeof x === "object" &&
+        x !== null &&
+        "dispose" in x &&
+        typeof (x as Record<string, unknown>)["dispose"] === "function"
+      );
+    }
+
     // Clean up previous skeleton helpers
     skeletonHelpersRef.current.forEach((helper) => {
       // Handle both SkeletonHelper and Mesh objects
@@ -43,9 +56,8 @@ function EnhancedModelMeshComponent({ scene, wireframeMode = false, showSkeleton
         }
       }
       // Dispose if available
-      const helperObj = helper as unknown as { dispose?: () => void };
-      if (helperObj && typeof helperObj.dispose === "function") {
-        helperObj.dispose();
+      if (hasDispose(helper)) {
+        helper.dispose();
       }
       // Dispose geometry and material if it's a mesh
       if (helper instanceof THREE.Mesh) {
@@ -76,7 +88,7 @@ function EnhancedModelMeshComponent({ scene, wireframeMode = false, showSkeleton
             boneMesh.position.set(0, 0, 0);
             boneMesh.scale.setScalar(0.3); // Small spheres at joints
             bone.add(boneMesh);
-            skeletonHelpersRef.current.push(boneMesh as unknown as THREE.SkeletonHelper);
+            skeletonHelpersRef.current.push(boneMesh);
           });
 
           // Create bone connection tubes (only connect parent to child bones in skeleton)
@@ -90,8 +102,15 @@ function EnhancedModelMeshComponent({ scene, wireframeMode = false, showSkeleton
 
                 if (distance > 0.001) {
                   // Create tube connecting parent to child bone
-                  const tubeGeometry = new THREE.CylinderGeometry(0.08, 0.08, distance, 4);
-                  const tubeMaterial = new THREE.MeshBasicMaterial({ color: 0xffff00 });
+                  const tubeGeometry = new THREE.CylinderGeometry(
+                    0.08,
+                    0.08,
+                    distance,
+                    4,
+                  );
+                  const tubeMaterial = new THREE.MeshBasicMaterial({
+                    color: 0xffff00,
+                  });
                   const tube = new THREE.Mesh(tubeGeometry, tubeMaterial);
 
                   // Position tube at midpoint between origin and child (since we're in parent bone space)
@@ -105,15 +124,19 @@ function EnhancedModelMeshComponent({ scene, wireframeMode = false, showSkeleton
                   // If direction is already pointing up, no rotation needed
                   if (Math.abs(direction.dot(yAxis)) < 0.9999) {
                     // Calculate rotation axis as cross product of Y and direction
-                    const axis = new THREE.Vector3().crossVectors(yAxis, direction).normalize();
+                    const axis = new THREE.Vector3()
+                      .crossVectors(yAxis, direction)
+                      .normalize();
                     // Calculate angle between Y and direction
-                    const angle = Math.acos(Math.min(1, Math.max(-1, yAxis.dot(direction))));
+                    const angle = Math.acos(
+                      Math.min(1, Math.max(-1, yAxis.dot(direction))),
+                    );
                     tube.quaternion.setFromAxisAngle(axis, angle);
                   }
 
                   // Add tube as child of parent bone so it moves with skeleton animation
                   bone.add(tube);
-                  skeletonHelpersRef.current.push(tube as unknown as THREE.SkeletonHelper);
+                  skeletonHelpersRef.current.push(tube);
                 }
               }
             });
@@ -165,9 +188,7 @@ function EnhancedModelMeshComponent({ scene, wireframeMode = false, showSkeleton
     return null;
   }
 
-  return (
-    <primitive object={scene} />
-  );
+  return <primitive object={scene} />;
 }
 
 export const EnhancedModelMesh = memo(EnhancedModelMeshComponent);

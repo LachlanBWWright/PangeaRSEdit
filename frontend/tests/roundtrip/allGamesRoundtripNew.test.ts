@@ -191,11 +191,14 @@ describe("All Games Roundtrip Tests", () => {
         const jsonData2 = JSON.parse(parseResult2.value);
 
         // Compare JSON structures
+        const isRecord = (x: unknown): x is Record<string, unknown> => {
+          return typeof x === 'object' && x !== null;
+        };
         const sanitize = (value: unknown): unknown => {
           if (value === null) return 0;
           if (Array.isArray(value)) return value.map(sanitize);
-          if (typeof value === "object") {
-            const obj = value as Record<string, unknown>;
+          if (isRecord(value)) {
+            const obj = value;
             const normalized: Record<string, unknown> = {};
             for (const [k, v] of Object.entries(obj)) {
               if (k === "x`y" && Array.isArray(v)) {

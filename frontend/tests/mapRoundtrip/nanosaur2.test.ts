@@ -118,8 +118,14 @@ describe("Nanosaur 2 Map Roundtrip", () => {
     const jsonData = jsonResult.value;
 
     // Preprocessing should not throw
+    function assertIsRecord(x: unknown): asserts x is Record<string, unknown> {
+      if (typeof x !== 'object' || x === null) {
+        throw new Error('Parsed data is not an object');
+      }
+    }
     expect(() => {
-      preprocessJson(jsonData as Record<string, unknown>, Nanosaur2Globals);
+      assertIsRecord(jsonData);
+      preprocessJson(jsonData, Nanosaur2Globals);
     }).not.toThrow();
 
     // After preprocessing, verify header data is still present

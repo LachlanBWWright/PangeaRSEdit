@@ -482,9 +482,6 @@ export function bg3dParseResultToMetaFile(
     metaFile.numTextures++;
   }
 
-  const hasChildren = (candidate: BG3DGroup | BG3DGeometry): candidate is BG3DGroup =>
-    Array.isArray((candidate as BG3DGroup).children);
-
   // Process groups
   for (const group of parsed.groups) {
     if (!group) continue;
@@ -496,7 +493,7 @@ export function bg3dParseResultToMetaFile(
 
     // Extract all geometries from the group
     // Check if this is actually a group with children, or just a single geometry
-    const geometries: BG3DGeometry[] = hasChildren(group)
+    const geometries: BG3DGeometry[] = isBG3DGroup(group)
       ? extractGeometries(group)
       : [group];
 

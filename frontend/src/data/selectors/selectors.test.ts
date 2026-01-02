@@ -234,6 +234,24 @@ const createMockLevelData = (): LevelData => ({
 describe("Data Selectors", () => {
   let mockData: LevelData;
 
+  function assertIsLevel(x: unknown): asserts x is LevelData {
+    if (typeof x !== 'object' || x === null || !('Hedr' in x)) {
+      throw new Error('Value is not a LevelData');
+    }
+  }
+
+  function assertIsItemData(x: unknown): asserts x is ItemData {
+    if (typeof x !== 'object' || x === null || !('Itms' in x)) {
+      throw new Error('Value is not ItemData');
+    }
+  }
+
+  function assertIsLiquidData(x: unknown): asserts x is LiquidData {
+    if (typeof x !== 'object' || x === null || !('Liqd' in x)) {
+      throw new Error('Value is not LiquidData');
+    }
+  }
+
   beforeEach(() => {
     mockData = createMockLevelData();
   });
@@ -250,18 +268,20 @@ describe("Data Selectors", () => {
     });
 
     it("should return null when no header data exists", () => {
-      const emptyData = {
+      const emptyDataUnknown: unknown = {
         ...mockData,
         Hedr: undefined,
-      } as unknown as LevelData;
-      const headerData = selectHeaderData(emptyData);
+      };
+      assertIsLevel(emptyDataUnknown);
+      const headerData = selectHeaderData(emptyDataUnknown);
       expect(headerData).toBeNull();
     });
   });
 
   describe("Item Data Selectors", () => {
     it("should select item data correctly", () => {
-      const itemData = selectItemData(mockData as ItemData);
+      assertIsItemData(mockData);
+      const itemData = selectItemData(mockData);
       expect(itemData).toBeTruthy();
       if (!itemData) throw new Error("item data missing");
       const itmsEntry = itemData.Itms[1000];
@@ -270,7 +290,8 @@ describe("Data Selectors", () => {
     });
 
     it("should select items array correctly", () => {
-      const items = selectItems(mockData as ItemData);
+      assertIsItemData(mockData);
+      const items = selectItems(mockData);
       expect(items).toHaveLength(2);
       if (items.length < 2) throw new Error("items missing");
       const [firstItem, secondItem] = items;
@@ -280,15 +301,17 @@ describe("Data Selectors", () => {
     });
 
     it("should return empty array when no items exist", () => {
-      const emptyData = { ...mockData, Itms: undefined } as unknown as ItemData;
-      const items = selectItems(emptyData);
+      const emptyDataUnknown: unknown = { ...mockData, Itms: undefined };
+      assertIsItemData(emptyDataUnknown);
+      const items = selectItems(emptyDataUnknown);
       expect(items).toEqual([]);
     });
   });
 
   describe("Liquid Data Selectors", () => {
     it("should select liquid data correctly", () => {
-      const liquidData = selectLiquidData(mockData as LiquidData);
+      assertIsLiquidData(mockData);
+      const liquidData = selectLiquidData(mockData);
       expect(liquidData).toBeTruthy();
       if (!liquidData) throw new Error("liquid data missing");
       const liqdEntry = liquidData.Liqd[1000];
@@ -297,7 +320,8 @@ describe("Data Selectors", () => {
     });
 
     it("should select liquids array correctly", () => {
-      const liquids = selectLiquids(mockData as LiquidData);
+      assertIsLiquidData(mockData);
+      const liquids = selectLiquids(mockData);
       expect(liquids).toHaveLength(1);
       if (liquids.length < 1) throw new Error("liquids missing");
       const [firstLiquid] = liquids;

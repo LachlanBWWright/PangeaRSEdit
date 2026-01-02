@@ -100,11 +100,21 @@ describe("Multi-Roundtrip Semantic Accuracy", () => {
       );
       function countVertices(groups: BG3DGroup[]): number {
         let total = 0;
+        function hasVertices(x: unknown): x is { vertices: unknown[] } {
+          return (
+            typeof x === 'object' &&
+            x !== null &&
+            'vertices' in x &&
+            Array.isArray((x as Record<string, unknown>)['vertices'])
+          );
+        }
         function traverse(group: BG3DGroup) {
           for (const child of group.children) {
-            if ((child as BG3DGeometry).type !== undefined) {
+            if ('type' in child) {
               const geom = child as BG3DGeometry;
-              if (Array.isArray(geom.vertices)) total += geom.vertices.length;
+              if (hasVertices(geom)) {
+                total += geom.vertices.length;
+              }
             } else {
               traverse(child as BG3DGroup);
             }
@@ -143,8 +153,12 @@ describe("Multi-Roundtrip Semantic Accuracy", () => {
 
         // Export back to binary
         const bg3dBinary = bg3dParsedToBG3D(bg3dParsedBack);
+        if (!bg3dParsedBack.skeleton) {
+          console.error("No skeleton found after GLTF->BG3D conversion");
+          continue;
+        }
         const skeletonResource = bg3dSkeletonToSkeletonResource(
-          bg3dParsedBack.skeleton!,
+          bg3dParsedBack.skeleton,
         );
         const skeletonBinaryResult = skeletonResourceToBinary(
           skeletonResource,
@@ -172,10 +186,12 @@ describe("Multi-Roundtrip Semantic Accuracy", () => {
     console.log("SEMANTIC COMPARISON ACROSS ROUNDTRIPS");
     console.log("=".repeat(80));
 
-    const original = parsedStates[0]!;
+    const original = parsedStates[0];
+    if (!original) throw new Error("No parsed states available");
 
     for (let i = 1; i < parsedStates.length; i++) {
-      const current = parsedStates[i]!;
+      const current = parsedStates[i];
+      if (!current) continue;
       console.log(`\n[Comparing Original vs Roundtrip ${i}]`);
 
       // Compare skeleton resource counts

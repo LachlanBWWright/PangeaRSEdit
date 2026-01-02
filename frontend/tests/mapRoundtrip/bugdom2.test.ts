@@ -109,8 +109,14 @@ describe("Bugdom 2 Map Roundtrip", () => {
     if (!jsonResult.ok) return;
     const jsonData = jsonResult.value;
 
+    function assertIsRecord(x: unknown): asserts x is Record<string, unknown> {
+      if (typeof x !== 'object' || x === null) {
+        throw new Error('Parsed data is not an object');
+      }
+    }
     expect(() => {
-      preprocessJson(jsonData as Record<string, unknown>, Bugdom2Globals);
+      assertIsRecord(jsonData);
+      preprocessJson(jsonData, Bugdom2Globals);
     }).not.toThrow();
   });
 

@@ -1,6 +1,6 @@
 import { saveToJson } from "@lachlanbwwright/rsrcdump-ts";
 import { isOk } from "../../types/result";
-import type { 
+import type {
   SkeletonResource,
 } from "../../python/structSpecs/skeleton/skeletonInterface";
 import { skeletonSpecs } from "../../python/structSpecs/skeleton/skeleton";
@@ -166,12 +166,16 @@ function isHedrRaw(value: unknown): value is HedrRaw {
 /**
  * Parse skeleton resource using TypeScript parser
  */
-export async function parseSkeletonRsrc(bytes: ArrayBuffer): Promise<SkeletonResource> {
+export async function parseSkeletonRsrc(
+  bytes: ArrayBuffer,
+): Promise<SkeletonResource> {
   const parsed = await parseSkeletonRsrcJson(bytes);
   return transformToSkeletonResource(parsed);
 }
 
-export async function parseSkeletonRsrcJson(bytes: ArrayBuffer): Promise<ParsedSkeleton> {
+export async function parseSkeletonRsrcJson(
+  bytes: ArrayBuffer,
+): Promise<ParsedSkeleton> {
   const uint8Array = new Uint8Array(bytes);
   const result = await saveToJson(uint8Array, skeletonSpecs, [], []);
   if (!isOk(result)) {

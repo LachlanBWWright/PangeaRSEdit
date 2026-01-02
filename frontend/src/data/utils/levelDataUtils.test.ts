@@ -20,9 +20,16 @@ describe("level data utils", () => {
       },
       _metadata: { file_attributes: 0, junk1: 0, junk2: 0 },
       Atrb: { 1000: { name: "Tile Attribute Data", obj: [], order: 0 } },
-    } as unknown as LevelData;
+    } as unknown;
 
-    const atomic = splitLevelData(level as LevelData);
+    function assertIsLevel(x: unknown): asserts x is LevelData {
+      if (typeof x !== 'object' || x === null || !('Hedr' in x)) {
+        throw new Error('Value is not a LevelData');
+      }
+    }
+
+    assertIsLevel(level);
+    const atomic = splitLevelData(level);
     // Intentionally missing item/fence/spline/liquid
     expect(atomic.itemData).toBeNull();
     expect(atomic.fenceData).toBeNull();
@@ -45,7 +52,14 @@ describe("level data utils", () => {
       _metadata: { file_attributes: 0, junk1: 0, junk2: 0 },
       Hedr: "not-an-object",
     };
-    const res = validateResourceForkJson(bad as unknown as Record<string, unknown>);
+    const badUnknown: unknown = bad;
+    function assertIsRecord(x: unknown): asserts x is Record<string, unknown> {
+      if (typeof x !== 'object' || x === null) {
+        throw new Error('Value is not a record');
+      }
+    }
+    assertIsRecord(badUnknown);
+    const res = validateResourceForkJson(badUnknown);
     expect(res.ok).toBe(false);
     if (!res.ok) {
       expect(res.badKey).toBe("Hedr");

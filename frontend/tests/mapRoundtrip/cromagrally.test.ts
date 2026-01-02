@@ -115,8 +115,14 @@ describe("Cro-Mag Rally Map Roundtrip", () => {
     if (!jsonResult.ok) return;
     const jsonData = jsonResult.value;
 
+    function assertIsRecord(x: unknown): asserts x is Record<string, unknown> {
+      if (typeof x !== 'object' || x === null) {
+        throw new Error('Parsed data is not an object');
+      }
+    }
     expect(() => {
-      preprocessJson(jsonData as Record<string, unknown>, CroMagGlobals);
+      assertIsRecord(jsonData);
+      preprocessJson(jsonData, CroMagGlobals);
     }).not.toThrow();
   });
 

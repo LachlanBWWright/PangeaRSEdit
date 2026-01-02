@@ -13,7 +13,10 @@ import { useState, useRef, useCallback } from "react";
 import BG3DGltfWorker from "@/modelParsers/bg3dGltfWorker?worker";
 import { getItemModelMapping } from "@/data/items/ottoItemModelMapping";
 import * as THREE from "three";
-import { GLTFLoader, type GLTF } from "three/examples/jsm/loaders/GLTFLoader.js";
+import {
+  GLTFLoader,
+  type GLTF,
+} from "three/examples/jsm/loaders/GLTFLoader.js";
 
 interface CachedModel {
   gltf: GLTF | null;
@@ -66,16 +69,19 @@ export const useOttoItemModelCache = (): UseOttoItemModelCacheReturn => {
 
         if (!groupsContainer) {
           console.warn(
-            `Could not find groups container. Scene has ${gltf.scene.children?.length || 0} children`,
+            `Could not find groups container. Scene has ${
+              gltf.scene.children?.length || 0
+            } children`,
           );
           return null;
         }
 
-
         // Validate model index
         if (modelIndex >= groupsContainer.children.length) {
           console.warn(
-            `Model index ${modelIndex} out of range (max ${groupsContainer.children.length - 1})`,
+            `Model index ${modelIndex} out of range (max ${
+              groupsContainer.children.length - 1
+            })`,
           );
           return null;
         }
@@ -94,7 +100,7 @@ export const useOttoItemModelCache = (): UseOttoItemModelCacheReturn => {
         newScene.add(clonedModel);
 
         // Return new gltf with extracted scene, keeping materials reference
-        return { ...gltf, scene: newScene as unknown as THREE.Group };
+        return { ...gltf, scene: newScene };
       } catch (error) {
         console.error(`Error in extractSubgroupByIndex:`, error);
         return null;
@@ -159,59 +165,68 @@ export const useOttoItemModelCache = (): UseOttoItemModelCacheReturn => {
         const buffer = await response.arrayBuffer();
 
         // Convert via worker (no skeleton data - static poses only)
-        const glbArrayBuffer = await new Promise<ArrayBuffer>((resolve, reject) => {
-          const worker = getWorker();
-          let resolved = false;
+        const glbArrayBuffer = await new Promise<ArrayBuffer>(
+          (resolve, reject) => {
+            const worker = getWorker();
+            let resolved = false;
 
-          const handleMessage = (e: MessageEvent) => {
-            // Worker responds with type "bg3d-with-skeleton-to-glb" and result property
-            if (e.data.type === "bg3d-with-skeleton-to-glb" && e.data.result) {
-              resolved = true;
-              worker.removeEventListener("message", handleMessage);
-              worker.removeEventListener("error", handleError);
-              resolve(e.data.result);
-            } else if (e.data.type === "error") {
-              resolved = true;
-              worker.removeEventListener("message", handleMessage);
-              worker.removeEventListener("error", handleError);
-              reject(new Error(`Worker error: ${e.data.error}`));
-            }
-          };
+            const handleMessage = (e: MessageEvent) => {
+              // Worker responds with type "bg3d-with-skeleton-to-glb" and result property
+              if (
+                e.data.type === "bg3d-with-skeleton-to-glb" &&
+                e.data.result
+              ) {
+                resolved = true;
+                worker.removeEventListener("message", handleMessage);
+                worker.removeEventListener("error", handleError);
+                resolve(e.data.result);
+              } else if (e.data.type === "error") {
+                resolved = true;
+                worker.removeEventListener("message", handleMessage);
+                worker.removeEventListener("error", handleError);
+                reject(new Error(`Worker error: ${e.data.error}`));
+              }
+            };
 
-          const handleError = (error: ErrorEvent) => {
-            if (!resolved) {
-              resolved = true;
-              worker.removeEventListener("message", handleMessage);
-              worker.removeEventListener("error", handleError);
-              reject(
-                new Error(`Worker error: ${error.message || "Unknown error"}`),
-              );
-            }
-          };
+            const handleError = (error: ErrorEvent) => {
+              if (!resolved) {
+                resolved = true;
+                worker.removeEventListener("message", handleMessage);
+                worker.removeEventListener("error", handleError);
+                reject(
+                  new Error(
+                    `Worker error: ${error.message || "Unknown error"}`,
+                  ),
+                );
+              }
+            };
 
-          worker.addEventListener("message", handleMessage);
-          worker.addEventListener("error", handleError);
+            worker.addEventListener("message", handleMessage);
+            worker.addEventListener("error", handleError);
 
-          // Post message to worker (no skeleton data)
-          worker.postMessage({
-            type: "bg3d-with-skeleton-to-glb",
-            bg3dBuffer: buffer,
-            skeletonData: undefined,
-          });
+            // Post message to worker (no skeleton data)
+            worker.postMessage({
+              type: "bg3d-with-skeleton-to-glb",
+              bg3dBuffer: buffer,
+              skeletonData: undefined,
+            });
 
-          // Timeout after 60 seconds for large files
-          setTimeout(() => {
-            if (!resolved) {
-              resolved = true;
-              worker.removeEventListener("message", handleMessage);
-              worker.removeEventListener("error", handleError);
-              reject(new Error("Model loading timeout (60s)"));
-            }
-          }, 60000);
-        });
+            // Timeout after 60 seconds for large files
+            setTimeout(() => {
+              if (!resolved) {
+                resolved = true;
+                worker.removeEventListener("message", handleMessage);
+                worker.removeEventListener("error", handleError);
+                reject(new Error("Model loading timeout (60s)"));
+              }
+            }, 60000);
+          },
+        );
 
         // Convert ArrayBuffer to Blob
-        const glbBlob = new Blob([glbArrayBuffer], { type: "model/gltf-binary" });
+        const glbBlob = new Blob([glbArrayBuffer], {
+          type: "model/gltf-binary",
+        });
 
         // Load GLB using Three.js GLTFLoader
         const glbUrl = URL.createObjectURL(glbBlob);
@@ -231,9 +246,10 @@ export const useOttoItemModelCache = (): UseOttoItemModelCacheReturn => {
             undefined,
             (error: unknown) => {
               clearTimeout(timeoutId);
-              const errorMessage = error instanceof Error ? error.message : String(error);
+              const errorMessage =
+                error instanceof Error ? error.message : String(error);
               reject(new Error(`GLTFLoader error: ${errorMessage}`));
-            }
+            },
           );
         });
 

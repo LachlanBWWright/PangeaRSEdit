@@ -28,7 +28,14 @@ export async function parseRsrcLevelFile(
       return err(new Error(parseResult.error));
     }
 
-    const result = JSON.parse(parseResult.value) as Record<string, unknown>;
+    const parsedUnknown: unknown = JSON.parse(parseResult.value);
+    function assertIsRecord(x: unknown): asserts x is Record<string, unknown> {
+      if (typeof x !== "object" || x === null) {
+        throw new Error("Parsed level data is not an object");
+      }
+    }
+    assertIsRecord(parsedUnknown);
+    const result = parsedUnknown;
 
     // Fix null values from rsrcdump-ts (safety net for backwards compatibility)
     // v1.0.6 should have fixed null/undefined bugs, but we keep this as a safety measure
@@ -47,18 +54,24 @@ export async function parseRsrcLevelFile(
     // Validate the preprocessed data using the appropriate game schema
     const validationResult = validateLevelDataForGame(
       result,
-      gameType.GAME_TYPE
+      gameType.GAME_TYPE,
     );
     if (!validationResult.ok) {
       return err(
         new Error(
-          `Level validation failed for ${gameType.GAME_NAME}: ${validationResult.error.message}`
-        )
+          `Level validation failed for ${gameType.GAME_NAME}: ${validationResult.error.message}`,
+        ),
       );
     }
 
     // After validation, we know the structure matches LevelData
-    const levelData = result as unknown as LevelData;
+    function assertIsLevelData(x: unknown): asserts x is LevelData {
+      if (typeof x !== "object" || x === null || !("Hedr" in x)) {
+        throw new Error("Parsed level data is not LevelData");
+      }
+    }
+    assertIsLevelData(result);
+    const levelData = result;
     setData(splitLevelData(levelData));
     return ok(levelData);
   } catch (e) {

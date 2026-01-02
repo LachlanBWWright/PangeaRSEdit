@@ -25,7 +25,8 @@ export function AnimationUpdater({
   useEffect(() => {
     mixerRef.current = animationMixer;
     if (mixerRef.current && logBonePositions) {
-      const root = mixerRef.current.getRoot() as THREE.Group;
+      const root = mixerRef.current.getRoot();
+      if (!root) return;
       const bones: THREE.Bone[] = [];
 
       root.traverse((object) => {

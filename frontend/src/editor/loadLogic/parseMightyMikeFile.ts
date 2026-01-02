@@ -10,7 +10,7 @@ import { extractTGAPalette } from "@/utils/tgaParser";
 
 // Type guard helper
 function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 // Type guard for MightyMikeTileSet
@@ -328,8 +328,12 @@ export async function parseMightyMikeFile(
     };
 
     console.log("Final MightyMike level data BEFORE splitLevelData:");
-    const tilesetRaw = isRecord(ottoCompatible) ? ottoCompatible.tileset : undefined;
-    const tilesetField = isMightyMikeTileSet(tilesetRaw) ? tilesetRaw : undefined;
+    const tilesetRaw = isRecord(ottoCompatible)
+      ? ottoCompatible.tileset
+      : undefined;
+    const tilesetField = isMightyMikeTileSet(tilesetRaw)
+      ? tilesetRaw
+      : undefined;
     console.log({
       hasTileset: !!tilesetField,
       tilesetType: tilesetField?.constructor?.name,
@@ -376,7 +380,13 @@ export async function parseMightyMikeFile(
       },
     };
     // The structure is validated at build time via the spread from ottoCompatible
-    return ok(finalData as LevelData);
+    function assertIsLevelData(x: unknown): asserts x is LevelData {
+      if (typeof x !== "object" || x === null || !("Hedr" in x)) {
+        throw new Error("Final data is not LevelData");
+      }
+    }
+    assertIsLevelData(finalData);
+    return ok(finalData);
   } catch (e) {
     return err(e instanceof Error ? e : new Error(String(e)));
   }

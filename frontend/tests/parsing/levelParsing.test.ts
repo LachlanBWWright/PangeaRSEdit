@@ -246,7 +246,13 @@ describe("Level Parsing - Pure Functions", () => {
     });
 
     it("should handle deeply nested structures", () => {
-      const level1 = {
+      function assertIsLevel(x: unknown): asserts x is LevelData {
+        if (typeof x !== 'object' || x === null || !('Hedr' in x)) {
+          throw new Error('Value is not a LevelData');
+        }
+      }
+
+      const level1Unknown: unknown = {
         Hedr: { height: 100, width: 100 },
         Itms: {
           1000: {
@@ -262,9 +268,9 @@ describe("Level Parsing - Pure Functions", () => {
         Tram: undefined,
         Heig: undefined,
         Fenc: undefined,
-      } as unknown as LevelData;
+      };
 
-      const level2 = {
+      const level2Unknown: unknown = {
         Hedr: { height: 100, width: 100 },
         Itms: {
           1000: {
@@ -280,9 +286,12 @@ describe("Level Parsing - Pure Functions", () => {
         Tram: undefined,
         Heig: undefined,
         Fenc: undefined,
-      } as unknown as LevelData;
+      };
 
-      const result = compareLevelData(level1, level2);
+      assertIsLevel(level1Unknown);
+      assertIsLevel(level2Unknown);
+
+      const result = compareLevelData(level1Unknown, level2Unknown);
 
       expect(result.equal).toBe(false);
       expect(result.differences.some((d) => d.path.includes("deep.value"))).toBe(

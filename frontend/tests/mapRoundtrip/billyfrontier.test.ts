@@ -153,9 +153,15 @@ describe("Billy Frontier Map Roundtrip", () => {
     const jsonData = jsonResult.value;
 
     // Preprocessing should not throw
+    function assertIsRecord(x: unknown): asserts x is Record<string, unknown> {
+      if (typeof x !== 'object' || x === null) {
+        throw new Error('Parsed data is not an object');
+      }
+    }
     expect(() => {
       // The JSON object here is untyped by design; use a typed record for preprocessing in tests
-      preprocessJson(jsonData as Record<string, unknown>, BillyFrontierGlobals);
+      assertIsRecord(jsonData);
+      preprocessJson(jsonData, BillyFrontierGlobals);
     }).not.toThrow();
 
     // After preprocessing, verify header data is still present

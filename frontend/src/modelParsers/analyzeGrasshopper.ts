@@ -61,18 +61,23 @@ function analyzeFile() {
   let hasBoundingBox = false;
   let geomCount = 0;
 
+  function isRecord(x: unknown): x is Record<string, unknown> {
+    return typeof x === "object" && x !== null;
+  }
+
   function inspectGroup(children: unknown[], depth = 0) {
     for (const child of children) {
-      const c = child as Record<string, unknown>;
-      if (Array.isArray(c.children)) {
-        inspectGroup(c.children as unknown[], depth + 1);
+      if (!isRecord(child)) continue;
+
+      if (Array.isArray(child.children)) {
+        inspectGroup(child.children as unknown[], depth + 1);
       } else {
         geomCount++;
-        if (c.boundingBox !== undefined) {
+        if (child['boundingBox'] !== undefined) {
           hasBoundingBox = true;
           console.log(
             `  Found bounding box in geometry ${geomCount}:`,
-            c.boundingBox,
+            child['boundingBox'],
           );
         }
       }
