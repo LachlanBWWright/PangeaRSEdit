@@ -8,16 +8,19 @@
 import { describe, it, expect, beforeAll } from "vitest";
 import { readFileSync, existsSync } from "fs";
 import { join } from "path";
-import { load } from "@lachlanbwwright/rsrcdump-ts";
-import { saveToJsonObject, loadFromJson, saveToBytes, saveFromJson } from "@/rsrcdump-ts/rsrcdump";
+import {
+  load,
+  saveToJson,
+  loadBytesFromJsonAsync,
+} from "@lachlanbwwright/rsrcdump-ts";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 function assertIsRecord(x: unknown): asserts x is Record<string, unknown> {
   if (!isRecord(x)) {
-    throw new Error('Parsed data is not an object');
+    throw new Error("Parsed data is not an object");
   }
 }
 import { bugdom2Specs } from "../../src/python/structSpecs/bugdom2";
@@ -71,19 +74,19 @@ describe("Bugdom 2 Map Roundtrip", () => {
   it("should parse to JSON with bugdom2 specs", async () => {
     if (!fileExists) return;
 
-    const jsonResult = await saveToJsonObject(
-      originalData,
+    const jsonStringResult = await saveToJson(
+      new Uint8Array(originalData),
       bugdom2Specs,
       [],
       [],
-      true,
     );
-    expect(jsonResult.ok).toBe(true);
-    if (!jsonResult.ok) return;
-    const jsonData = jsonResult.value;
+    expect(jsonStringResult.ok).toBe(true);
+    if (!jsonStringResult.ok) return;
+    const jsonData = JSON.parse(jsonStringResult.value);
 
     function assertIsRecord(x: unknown): asserts x is Record<string, unknown> {
-      if (typeof x !== 'object' || x === null) throw new Error('Parsed data is not an object');
+      if (typeof x !== "object" || x === null)
+        throw new Error("Parsed data is not an object");
     }
     assertIsRecord(jsonData);
     assertIsRecord(jsonData.Hedr);
@@ -111,20 +114,19 @@ describe("Bugdom 2 Map Roundtrip", () => {
   it("should apply preprocessing correctly", async () => {
     if (!fileExists) return;
 
-    const jsonResult = await saveToJsonObject(
-      originalData,
+    const jsonStringResult = await saveToJson(
+      new Uint8Array(originalData),
       bugdom2Specs,
       [],
       [],
-      true,
     );
-    expect(jsonResult.ok).toBe(true);
-    if (!jsonResult.ok) return;
-    const jsonData = jsonResult.value;
+    expect(jsonStringResult.ok).toBe(true);
+    if (!jsonStringResult.ok) return;
+    const jsonData = JSON.parse(jsonStringResult.value);
 
     function assertIsRecord(x: unknown): asserts x is Record<string, unknown> {
-      if (typeof x !== 'object' || x === null) {
-        throw new Error('Parsed data is not an object');
+      if (typeof x !== "object" || x === null) {
+        throw new Error("Parsed data is not an object");
       }
     }
     expect(() => {
@@ -137,36 +139,33 @@ describe("Bugdom 2 Map Roundtrip", () => {
     if (!fileExists) return;
 
     // Parse without specs (hex data only)
-    const jsonResult1 = await saveToJsonObject(originalData, [], [], [], false);
-    expect(jsonResult1.ok).toBe(true);
-    if (!jsonResult1.ok) return;
-    const jsonData1 = jsonResult1.value;
+    const jsonStringResult1 = await saveToJson(
+      new Uint8Array(originalData),
+      [],
+      [],
+      [],
+    );
+    expect(jsonStringResult1.ok).toBe(true);
+    if (!jsonStringResult1.ok) return;
+    const jsonData1 = JSON.parse(jsonStringResult1.value);
     assertIsRecord(jsonData1);
 
     // Convert back to binary
-    const forkResult = loadFromJson(jsonData1, [], false);
-    expect(forkResult.ok).toBe(true);
-    if (!forkResult.ok) return;
-    const fork = forkResult.value;
-
-    const binaryData2 = saveToBytes(fork);
+    const bytesResult = await loadBytesFromJsonAsync(jsonData1, [], [], []);
+    expect(bytesResult.ok).toBe(true);
+    if (!bytesResult.ok) return;
+    const binaryData2 = bytesResult.value;
 
     // Parse the new binary
-    const jsonResult2 = await saveToJsonObject(
-      new Uint8Array(binaryData2),
-      [],
-      [],
-      [],
-      false,
-    );
-    expect(jsonResult2.ok).toBe(true);
-    if (!jsonResult2.ok) return;
-    const jsonData2 = jsonResult2.value;
+    const jsonStringResult2 = await saveToJson(binaryData2, [], [], []);
+    expect(jsonStringResult2.ok).toBe(true);
+    if (!jsonStringResult2.ok) return;
+    const jsonData2 = JSON.parse(jsonStringResult2.value);
     assertIsRecord(jsonData2);
     assertIsRecord(jsonData1);
 
-    const meta1 = (jsonData1 as Record<string, unknown>)._metadata;
-    const meta2 = (jsonData2 as Record<string, unknown>)._metadata;
+    const meta1 = jsonData1._metadata;
+    const meta2 = jsonData2._metadata;
     if (isRecord(meta1) && isRecord(meta2)) {
       expect(meta2.junk1).toBe(meta1.junk1);
     }
@@ -182,7 +181,12 @@ describe("Bugdom 2 Map Roundtrip", () => {
     // Compare hex data for header safely
     const hd1 = jsonData1.Hedr;
     const hd2 = jsonData2.Hedr;
-    if (isRecord(hd1) && isRecord(hd2) && isRecord(hd1["1000"]) && isRecord(hd2["1000"])) {
+    if (
+      isRecord(hd1) &&
+      isRecord(hd2) &&
+      isRecord(hd1["1000"]) &&
+      isRecord(hd2["1000"])
+    ) {
       expect(hd2["1000"].data).toBe(hd1["1000"].data);
     }
 
@@ -196,15 +200,20 @@ describe("Bugdom 2 Map Roundtrip", () => {
   it("should produce similar binary size", async () => {
     if (!fileExists) return;
 
-    const jsonResult = await saveToJsonObject(originalData, [], [], [], false);
-    expect(jsonResult.ok).toBe(true);
-    if (!jsonResult.ok) return;
-    const jsonData = jsonResult.value;
+    const jsonStringResult = await saveToJson(
+      new Uint8Array(originalData),
+      [],
+      [],
+      [],
+    );
+    expect(jsonStringResult.ok).toBe(true);
+    if (!jsonStringResult.ok) return;
+    const jsonData = JSON.parse(jsonStringResult.value);
 
-    const binaryResult = saveFromJson(jsonData, [], false);
-    expect(binaryResult.ok).toBe(true);
-    if (!binaryResult.ok) return;
-    const binaryData2 = binaryResult.value;
+    const bytesResult = await loadBytesFromJsonAsync(jsonData, [], [], []);
+    expect(bytesResult.ok).toBe(true);
+    if (!bytesResult.ok) return;
+    const binaryData2 = bytesResult.value;
 
     const sizeRatio = binaryData2.length / originalData.length;
 

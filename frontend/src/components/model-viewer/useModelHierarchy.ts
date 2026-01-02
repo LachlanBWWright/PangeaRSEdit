@@ -17,11 +17,7 @@ function extractNode(obj: Object3D, level = 0): ModelNode | null {
   const node: ModelNode = {
     name: obj.name || `Node_${obj.id}`,
     type:
-      obj instanceof Mesh
-        ? "mesh"
-        : obj instanceof Group
-        ? "group"
-        : "node",
+      obj instanceof Mesh ? "mesh" : obj instanceof Group ? "group" : "node",
     visible: obj.visible,
     children: [],
     meshIndex: obj instanceof Mesh ? obj.id : undefined,
@@ -45,13 +41,13 @@ function extractNode(obj: Object3D, level = 0): ModelNode | null {
 export function useModelHierarchy(
   gltfResult: GLTFResult | undefined,
   setModelNodes: (nodes: ModelNode[]) => void,
-  onSceneReady?: (scene: THREE.Group | undefined) => void,
+  onSceneReady?: (scene: Group | undefined) => void,
 ) {
   useEffect(() => {
     try {
       if (gltfResult?.scene) {
         const nodes = gltfResult.scene.children
-          .map((child: THREE.Object3D) => extractNode(child))
+          .map((child: Object3D) => extractNode(child))
           .filter((node): node is ModelNode => node !== null);
 
         setModelNodes(nodes);

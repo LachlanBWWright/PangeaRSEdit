@@ -8,14 +8,11 @@ import { describe, it, expect } from "vitest";
 import { readdirSync, readFileSync, existsSync } from "fs";
 import { join } from "path";
 import {
-  saveToJsonObject,
-  loadFromJson,
-  saveToBytes,
-} from "@/rsrcdump-ts/rsrcdump";
+  saveToJson,
+  loadBytesFromJsonAsync,
+} from "@lachlanbwwright/rsrcdump-ts";
 
-function findTerrainFiles(
-  gamesRoot: string,
-): { game: string; path: string }[] {
+function findTerrainFiles(gamesRoot: string): { game: string; path: string }[] {
   const results: { game: string; path: string }[] = [];
   if (!existsSync(gamesRoot)) return results;
 
@@ -83,19 +80,17 @@ describe("Per-level roundtrip for all games' terrain files", () => {
       expect(orig.length).toBeGreaterThan(0);
 
       // Parse into JSON using hex-only (no struct specs) to ensure roundtrip works at resource-fork level
-      const jsonRes = await saveToJsonObject(orig, [], [], [], false);
-      expect(jsonRes.ok).toBe(true);
-      if (!jsonRes.ok) return;
-      const json1 = jsonRes.value as Record<string, unknown>;
+      const jsonStringRes = await saveToJson(new Uint8Array(orig), [], [], []);
+      expect(jsonStringRes.ok).toBe(true);
+      if (!jsonStringRes.ok) return;
+      const json1 = JSON.parse(jsonStringRes.value);
 
-      // Recreate resource fork from JSON
-      const forkRes = loadFromJson(json1, [], false);
-      expect(forkRes.ok).toBe(true);
-      if (!forkRes.ok) return;
-      const fork = forkRes.value;
+      // Recreate bytes from JSON
+      const bytesRes = await loadBytesFromJsonAsync(json1, [], [], []);
+      expect(bytesRes.ok).toBe(true);
+      if (!bytesRes.ok) return;
+      const bytes = bytesRes.value;
 
-      // Serialize back to bytes
-      const bytes = saveToBytes(fork);
       expect(bytes).toBeDefined();
       expect(bytes.length).toBeGreaterThan(0);
 

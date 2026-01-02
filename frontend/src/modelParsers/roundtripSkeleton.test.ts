@@ -42,10 +42,10 @@ function isBG3DKeyframe(value: unknown): value is BG3DKeyframe {
 function isBG3DAnimation(value: unknown): value is BG3DAnimation {
   if (!isRecord(value)) return false;
   if (typeof value.name !== "string") return false;
-  const kf = (value as Record<string, unknown>).keyframes;
+  const kf = value.keyframes;
   if (!isRecord(kf) && typeof kf !== "object") return false;
   // Ensure keyframes values are arrays of valid keyframes
-  for (const [_, arr] of Object.entries(kf || {})) {
+  for (const arr of Object.values(kf || {})) {
     if (!Array.isArray(arr)) return false;
     for (const item of arr) {
       if (!isBG3DKeyframe(item)) return false;
@@ -76,7 +76,7 @@ function isBG3DSkeleton(value: unknown): value is BG3DSkeleton {
 // Helper to safely get skeleton from a conversion result and narrow it
 function getSkeleton(result: unknown): BG3DSkeleton | undefined {
   if (!isRecord(result)) return undefined;
-  const sk = (result as Record<string, unknown>).skeleton;
+  const sk = result.skeleton;
   return isBG3DSkeleton(sk) ? sk : undefined;
 }
 

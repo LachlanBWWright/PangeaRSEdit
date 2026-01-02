@@ -1736,18 +1736,10 @@ export async function gltfToBG3D(doc: Document): Promise<BG3DParseResult> {
         const animations = extractAnimationsFromGLTF(doc, bones);
 
         // Restore animation data from extras if available (more accurate than glTF conversion)
-        type SkeletonExtras = {
-          keyframeData?: unknown[];
-          animationEvents?: unknown[];
-          boneData?: unknown;
-          headerData?: unknown;
-          relPoints?: unknown;
-          alisData?: unknown;
-          metadata?: unknown;
-        };
+
         const skeletonExtrasRaw = bg3dFields?.skeletonExtras;
         const skeletonExtras = isRecord(skeletonExtrasRaw)
-          ? (skeletonExtrasRaw as SkeletonExtras)
+          ? skeletonExtrasRaw
           : undefined;
         console.log("[DEBUG] skeletonExtras available:", !!skeletonExtras);
         console.log(
@@ -1756,7 +1748,7 @@ export async function gltfToBG3D(doc: Document): Promise<BG3DParseResult> {
         );
         console.log(
           "[DEBUG] skeletonExtras.keyframeData length:",
-          skeletonExtras?.keyframeData?.length || 0,
+          skeletonExtras?.keyframeData || 0,
         );
 
         if (skeletonExtras && Array.isArray(skeletonExtras.keyframeData)) {

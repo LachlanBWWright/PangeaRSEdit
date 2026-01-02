@@ -8,8 +8,11 @@
 import { describe, it, expect, beforeAll } from "vitest";
 import { readFileSync, existsSync } from "fs";
 import { join } from "path";
-import { load } from "@lachlanbwwright/rsrcdump-ts";
-import { saveToJsonObject, loadFromJson, saveToBytes, saveFromJson } from "@/rsrcdump-ts/rsrcdump";
+import {
+  load,
+  saveToJson,
+  loadBytesFromJsonAsync,
+} from "@lachlanbwwright/rsrcdump-ts";
 import { ottoMaticSpecs } from "../../src/python/structSpecs/ottoMatic";
 import { OttoGlobals } from "../../src/data/globals/globals";
 import { preprocessJson } from "../../src/data/processors/ottoPreprocessor";
@@ -60,20 +63,20 @@ describe("Otto Matic Map Roundtrip", () => {
   it("should parse to JSON with otto specs", async () => {
     if (!fileExists) return;
 
-    const jsonResult = await saveToJsonObject(
-      originalData,
+    const jsonStringResult = await saveToJson(
+      new Uint8Array(originalData),
       ottoMaticSpecs,
       [],
       [],
-      true,
     );
 
-    expect(jsonResult.ok).toBe(true);
-    if (!jsonResult.ok) return;
+    expect(jsonStringResult.ok).toBe(true);
+    if (!jsonStringResult.ok) return;
 
-    const jsonData = jsonResult.value;
+    const jsonData = JSON.parse(jsonStringResult.value);
     function assertIsRecord(x: unknown): asserts x is Record<string, unknown> {
-      if (typeof x !== 'object' || x === null) throw new Error('Parsed data is not an object');
+      if (typeof x !== "object" || x === null)
+        throw new Error("Parsed data is not an object");
     }
     assertIsRecord(jsonData);
     assertIsRecord(jsonData.Hedr);
@@ -105,23 +108,22 @@ describe("Otto Matic Map Roundtrip", () => {
   it("should apply preprocessing correctly", async () => {
     if (!fileExists) return;
 
-    const jsonResult = await saveToJsonObject(
-      originalData,
+    const jsonStringResult = await saveToJson(
+      new Uint8Array(originalData),
       ottoMaticSpecs,
       [],
       [],
-      true,
     );
 
-    expect(jsonResult.ok).toBe(true);
-    if (!jsonResult.ok) return;
+    expect(jsonStringResult.ok).toBe(true);
+    if (!jsonStringResult.ok) return;
 
-    const jsonData = jsonResult.value;
+    const jsonData = JSON.parse(jsonStringResult.value);
 
     // Preprocessing should not throw
     function assertIsRecord(x: unknown): asserts x is Record<string, unknown> {
-      if (typeof x !== 'object' || x === null) {
-        throw new Error('Parsed data is not an object');
+      if (typeof x !== "object" || x === null) {
+        throw new Error("Parsed data is not an object");
       }
     }
     expect(() => {
@@ -143,31 +145,44 @@ describe("Otto Matic Map Roundtrip", () => {
     if (!fileExists) return;
 
     // Parse without otto specs (hex data only) for simpler roundtrip
-    const jsonResult1 = await saveToJsonObject(originalData, [], [], [], false);
-    expect(jsonResult1.ok).toBe(true);
-    if (!jsonResult1.ok) return;
-    const jsonData1 = jsonResult1.value;
+    const jsonStringResult1 = await saveToJson(
+      new Uint8Array(originalData),
+      [],
+      [],
+      [],
+    );
+    expect(jsonStringResult1.ok).toBe(true);
+    if (!jsonStringResult1.ok) return;
+    const jsonData1 = JSON.parse(jsonStringResult1.value);
 
     function assertIsRecord(x: unknown): asserts x is Record<string, unknown> {
-      if (typeof x !== 'object' || x === null) throw new Error('Parsed data is not an object');
+      if (typeof x !== "object" || x === null)
+        throw new Error("Parsed data is not an object");
     }
     assertIsRecord(jsonData1);
 
     console.log("jsonData1 keys:", Object.keys(jsonData1));
 
     // Convert back to binary
-    const forkResult = loadFromJson(jsonData1);
-    if (!forkResult.ok) {
-      console.error("loadFromJson error:", forkResult.error);
+    const bytesResult = await loadBytesFromJsonAsync(jsonData1);
+    if (!bytesResult.ok) {
+      console.error("loadBytesFromJsonAsync error:", bytesResult.error);
     }
-    expect(forkResult.ok).toBe(true);
-    if (!forkResult.ok) return;
-    const fork = forkResult.value;
+    expect(bytesResult.ok).toBe(true);
+    if (!bytesResult.ok) return;
+    const binaryData2 = bytesResult.value;
 
-    console.log("fork resources size:", fork.tree.size);
-    console.log("fork resources keys:", Array.from(fork.tree.keys()));
-
-    const binaryData2 = saveToBytes(fork);
+    const loadResult2 = load(binaryData2);
+    console.log(
+      "fork resources size:",
+      loadResult2.ok ? loadResult2.value.tree.size : "failed to load",
+    );
+    console.log(
+      "fork resources keys:",
+      loadResult2.ok
+        ? Array.from(loadResult2.value.tree.keys())
+        : "failed to load",
+    );
     console.log("binaryData2 length:", binaryData2.length);
     console.log(
       "First 16 bytes:",
@@ -186,13 +201,13 @@ describe("Otto Matic Map Roundtrip", () => {
       console.log("Types:", Array.from(loadResult.value.tree.keys()));
     }
 
-    const jsonResult2 = await saveToJsonObject(binaryData2, [], [], [], false);
-    if (!jsonResult2.ok) {
-      console.error("saveToJsonObject error 2:", jsonResult2.error);
+    const jsonStringResult2 = await saveToJson(binaryData2, [], [], []);
+    if (!jsonStringResult2.ok) {
+      console.error("saveToJson error 2:", jsonStringResult2.error);
     }
-    expect(jsonResult2.ok).toBe(true);
-    if (!jsonResult2.ok) return;
-    const jsonData2 = jsonResult2.value;
+    expect(jsonStringResult2.ok).toBe(true);
+    if (!jsonStringResult2.ok) return;
+    const jsonData2 = JSON.parse(jsonStringResult2.value);
 
     assertIsRecord(jsonData2);
     console.log("jsonData2 keys:", Object.keys(jsonData2));
@@ -201,7 +216,9 @@ describe("Otto Matic Map Roundtrip", () => {
     const meta1 = jsonData1._metadata;
     const meta2 = jsonData2._metadata;
     function isRecord(value: unknown): value is Record<string, unknown> {
-      return typeof value === 'object' && value !== null && !Array.isArray(value);
+      return (
+        typeof value === "object" && value !== null && !Array.isArray(value)
+      );
     }
     if (isRecord(meta1) && isRecord(meta2)) {
       expect(meta2.junk1).toBe(meta1.junk1);
@@ -220,12 +237,22 @@ describe("Otto Matic Map Roundtrip", () => {
     // Compare hex data for a few key resources safely
     const hd1 = jsonData1.Hedr;
     const hd2 = jsonData2.Hedr;
-    if (isRecord(hd1) && isRecord(hd2) && isRecord(hd1["1000"]) && isRecord(hd2["1000"])) {
+    if (
+      isRecord(hd1) &&
+      isRecord(hd2) &&
+      isRecord(hd1["1000"]) &&
+      isRecord(hd2["1000"])
+    ) {
       expect(hd2["1000"].data).toBe(hd1["1000"].data);
     }
     const al1 = jsonData1.alis;
     const al2 = jsonData2.alis;
-    if (isRecord(al1) && isRecord(al2) && isRecord(al1["1000"]) && isRecord(al2["1000"])) {
+    if (
+      isRecord(al1) &&
+      isRecord(al2) &&
+      isRecord(al1["1000"]) &&
+      isRecord(al2["1000"])
+    ) {
       expect(al2["1000"].data).toBe(al1["1000"].data);
     }
 
@@ -238,41 +265,46 @@ describe("Otto Matic Map Roundtrip", () => {
     if (!fileExists) return;
 
     // Parse with otto specs
-    const jsonResult1 = await saveToJsonObject(
-      originalData,
+    const jsonStringResult1 = await saveToJson(
+      new Uint8Array(originalData),
       ottoMaticSpecs,
       [],
       [],
-      true,
     );
-    expect(jsonResult1.ok).toBe(true);
-    if (!jsonResult1.ok) return;
-    const jsonData1 = jsonResult1.value;
+    expect(jsonStringResult1.ok).toBe(true);
+    if (!jsonStringResult1.ok) return;
+    const jsonData1 = JSON.parse(jsonStringResult1.value);
 
     // Convert back to binary
-    const binaryResult = saveFromJson(jsonData1, ottoMaticSpecs, true);
+    const binaryResult = await loadBytesFromJsonAsync(
+      jsonData1,
+      ottoMaticSpecs,
+      [],
+      [],
+    );
     if (!binaryResult.ok) {
-      console.error("saveFromJson error:", binaryResult.error);
+      console.error("loadBytesFromJsonAsync error:", binaryResult.error);
     }
     expect(binaryResult.ok).toBe(true);
     if (!binaryResult.ok) return;
     const binaryData2 = binaryResult.value;
 
     // Parse the new binary
-    const jsonResult2 = await saveToJsonObject(
-      new Uint8Array(binaryData2),
+    const jsonStringResult2 = await saveToJson(
+      binaryData2,
       ottoMaticSpecs,
       [],
       [],
-      true,
     );
-    expect(jsonResult2.ok).toBe(true);
-    if (!jsonResult2.ok) return;
-    const jsonData2 = jsonResult2.value;
+    expect(jsonStringResult2.ok).toBe(true);
+    if (!jsonStringResult2.ok) return;
+    const jsonData2 = JSON.parse(jsonStringResult2.value);
 
     // Compare header values safely
     function isRecord(value: unknown): value is Record<string, unknown> {
-      return typeof value === 'object' && value !== null && !Array.isArray(value);
+      return (
+        typeof value === "object" && value !== null && !Array.isArray(value)
+      );
     }
 
     let header1: Record<string, unknown> | undefined;
@@ -280,9 +312,14 @@ describe("Otto Matic Map Roundtrip", () => {
     if (isRecord(jsonData1) && isRecord(jsonData2)) {
       const h1 = jsonData1.Hedr;
       const h2 = jsonData2.Hedr;
-      if (isRecord(h1) && isRecord(h2) && isRecord(h1["1000"]) && isRecord(h2["1000"])) {
-        header1 = h1["1000"].obj as Record<string, unknown>;
-        header2 = h2["1000"].obj as Record<string, unknown>;
+      if (
+        isRecord(h1) &&
+        isRecord(h2) &&
+        isRecord(h1["1000"]) &&
+        isRecord(h2["1000"])
+      ) {
+        header1 = h1["1000"].obj;
+        header2 = h2["1000"].obj;
       }
     }
 
@@ -297,9 +334,14 @@ describe("Otto Matic Map Roundtrip", () => {
     if (isRecord(jsonData1) && isRecord(jsonData2)) {
       const i1 = jsonData1.Itms;
       const i2 = jsonData2.Itms;
-      if (isRecord(i1) && isRecord(i2) && isRecord(i1["1000"]) && isRecord(i2["1000"])) {
-        items1 = i1["1000"].obj as unknown[];
-        items2 = i2["1000"].obj as unknown[];
+      if (
+        isRecord(i1) &&
+        isRecord(i2) &&
+        isRecord(i1["1000"]) &&
+        isRecord(i2["1000"])
+      ) {
+        items1 = i1["1000"].obj;
+        items2 = i2["1000"].obj;
       }
     }
 
@@ -308,11 +350,20 @@ describe("Otto Matic Map Roundtrip", () => {
 
       // Compare first item
       if (items1.length > 0 && items2.length > 0) {
-        function assertIsItem(x: unknown): asserts x is { x: number; z: number; type: number } {
-          if (typeof x !== 'object' || x === null) throw new Error('Item is not an object');
-          const r = x as Record<string, unknown>;
-          if (typeof r.x !== 'number' || typeof r.z !== 'number' || typeof r.type !== 'number') {
-            throw new Error('Item is missing numeric fields');
+        function assertIsItem(
+          x: unknown,
+        ): asserts x is { x: number; z: number; type: number } {
+          if (typeof x !== "object" || x === null)
+            throw new Error("Item is not an object");
+          const xProp = Reflect.get(x, "x");
+          const zProp = Reflect.get(x, "z");
+          const typeProp = Reflect.get(x, "type");
+          if (
+            typeof xProp !== "number" ||
+            typeof zProp !== "number" ||
+            typeof typeProp !== "number"
+          ) {
+            throw new Error("Item is missing numeric fields");
           }
         }
         assertIsItem(items1[0]);
@@ -326,12 +377,17 @@ describe("Otto Matic Map Roundtrip", () => {
   it("should produce similar binary size", async () => {
     if (!fileExists) return;
 
-    const jsonResult = await saveToJsonObject(originalData, [], [], [], false);
-    expect(jsonResult.ok).toBe(true);
-    if (!jsonResult.ok) return;
-    const jsonData = jsonResult.value;
+    const jsonStringResult = await saveToJson(
+      new Uint8Array(originalData),
+      [],
+      [],
+      [],
+    );
+    expect(jsonStringResult.ok).toBe(true);
+    if (!jsonStringResult.ok) return;
+    const jsonData = JSON.parse(jsonStringResult.value);
 
-    const binaryResult = saveFromJson(jsonData, [], false);
+    const binaryResult = await loadBytesFromJsonAsync(jsonData, [], [], []);
     expect(binaryResult.ok).toBe(true);
     if (!binaryResult.ok) return;
     const binaryData2 = binaryResult.value;
@@ -354,18 +410,22 @@ describe("Otto Matic Map Roundtrip", () => {
     // This test will pass once pack() is implemented
     if (!fileExists) return;
 
-    const jsonResult1 = await saveToJsonObject(
-      originalData,
+    const jsonStringResult1 = await saveToJson(
+      new Uint8Array(originalData),
       ottoMaticSpecs,
       [],
       [],
-      true,
     );
-    expect(jsonResult1.ok).toBe(true);
-    if (!jsonResult1.ok) return;
-    const jsonData1 = jsonResult1.value;
+    expect(jsonStringResult1.ok).toBe(true);
+    if (!jsonStringResult1.ok) return;
+    const jsonData1 = JSON.parse(jsonStringResult1.value);
 
-    const binaryResult = saveFromJson(jsonData1, ottoMaticSpecs, true);
+    const binaryResult = await loadBytesFromJsonAsync(
+      jsonData1,
+      ottoMaticSpecs,
+      [],
+      [],
+    );
     expect(binaryResult.ok).toBe(true);
     if (!binaryResult.ok) return;
     const binaryData2 = binaryResult.value;

@@ -69,13 +69,19 @@ describe("Nanosaur 1 Byte-Accurate Roundtrip Tests", () => {
         let exportedData: Uint8Array;
         if (compileResult instanceof ArrayBuffer) {
           exportedData = new Uint8Array(compileResult);
-        } else if ((compileResult as any)?.ok) {
-          if (!(compileResult as any).ok) {
-            throw new Error(`Compilation failed: ${(compileResult as any).error}`);
+        } else if (typeof compileResult === "object" && compileResult !== null && "ok" in compileResult) {
+          // result-like object; use runtime checks and ignore TS for now
+          // @ts-expect-error - dynamic runtime check
+          if (!compileResult.ok) {
+            // @ts-expect-error - dynamic runtime check
+            throw new Error(`Compilation failed: ${compileResult.error}`);
           }
-          exportedData = new Uint8Array((compileResult as any).value);
+          // @ts-expect-error - dynamic runtime check
+          exportedData = new Uint8Array(compileResult.value);
         } else {
-          exportedData = new Uint8Array(compileResult as unknown as ArrayBuffer);
+          // assume ArrayBuffer
+          // @ts-expect-error - dynamic runtime check
+          exportedData = new Uint8Array(compileResult);
         }
         console.log(`  Export: ${exportedData.length} bytes`);
 
@@ -128,13 +134,17 @@ describe("Nanosaur 1 Byte-Accurate Roundtrip Tests", () => {
         let compiledBuffer: ArrayBuffer;
         if (compileResult instanceof ArrayBuffer) {
           compiledBuffer = compileResult;
-        } else if ((compileResult as any)?.ok) {
-          if (!(compileResult as any).ok) {
-            throw new Error(`Compilation failed: ${(compileResult as any).error}`);
+        } else if (typeof compileResult === "object" && compileResult !== null && "ok" in compileResult) {
+          // @ts-expect-error - dynamic runtime check
+          if (!compileResult.ok) {
+            // @ts-expect-error - dynamic runtime check
+            throw new Error(`Compilation failed: ${compileResult.error}`);
           }
-          compiledBuffer = (compileResult as any).value;
+          // @ts-expect-error - dynamic runtime check
+          compiledBuffer = compileResult.value;
         } else {
-          compiledBuffer = compileResult as unknown as ArrayBuffer;
+          // @ts-expect-error - dynamic runtime check
+          compiledBuffer = compileResult;
         }
 
         const rawLevelData2 = parseNanosaur1Level(compiledBuffer);

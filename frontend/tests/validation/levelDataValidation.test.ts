@@ -7,7 +7,7 @@
 import { describe, it, expect } from "vitest";
 import { readFileSync, existsSync } from "fs";
 import { join } from "path";
-import { saveToJsonObject } from "@/rsrcdump-ts/rsrcdump";
+import { saveToJson } from "@lachlanbwwright/rsrcdump-ts";
 
 // Import game specs
 import { ottoMaticSpecs } from "../../src/python/structSpecs/ottoMatic";
@@ -102,21 +102,20 @@ describe("Level Data Validation", () => {
         const originalData = readFileSync(filePath);
 
         // Parse with game specs
-        const jsonResult = await saveToJsonObject(
-          originalData,
+        const jsonStringResult = await saveToJson(
+          new Uint8Array(originalData),
           config.specs,
           [],
-          [],
-          true
+          []
         );
 
-        expect(jsonResult.ok).toBe(true);
-        if (!jsonResult.ok) {
-          console.error(`Failed to parse ${config.name}:`, jsonResult.error);
+        expect(jsonStringResult.ok).toBe(true);
+        if (!jsonStringResult.ok) {
+          console.error(`Failed to parse ${config.name}:`, jsonStringResult.error);
           return;
         }
 
-        const jsonData = jsonResult.value;
+        const jsonData = JSON.parse(jsonStringResult.value);
         expect(jsonData).toBeDefined();
 
         function assertIsRecord(x: unknown): asserts x is Record<string, unknown> {
@@ -155,17 +154,16 @@ describe("Level Data Validation", () => {
         if (!fileExists) return;
 
         const originalData = readFileSync(filePath);
-        const jsonResult = await saveToJsonObject(
-          originalData,
+        const jsonStringResult = await saveToJson(
+          new Uint8Array(originalData),
           config.specs,
           [],
-          [],
-          true
+          []
         );
 
-        if (!jsonResult.ok) return;
+        if (!jsonStringResult.ok) return;
 
-        const jsonData = jsonResult.value;
+        const jsonData = JSON.parse(jsonStringResult.value);
         function assertIsRecord(x: unknown): asserts x is Record<string, unknown> {
           if (typeof x !== 'object' || x === null) throw new Error('Parsed data is not an object');
         }
