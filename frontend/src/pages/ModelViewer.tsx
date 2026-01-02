@@ -143,7 +143,7 @@ export function ModelViewer() {
   const handleAnimationsReady = useCallback(
     (
       animationInfos: AnimationInfo[],
-      mixer: THREE.AnimationMixer | null,
+      mixer: AnimationMixer | null,
     ) => {
       // Use glTF animations from the model
       setAnimations(animationInfos);

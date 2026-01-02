@@ -13,23 +13,23 @@ const GAMES_ROOT = join(__dirname, "../../../../games");
 const TEST_FILES = [
   {
     game: "Otto Matic",
-    path: path.join(GAMES_ROOT, "ottomatic/Data/Skeletons/Otto.bg3d"),
+    path: join(GAMES_ROOT, "ottomatic/Data/Skeletons/Otto.bg3d"),
   },
   {
     game: "Cro Mag Rally",
-    path: path.join(GAMES_ROOT, "cromagrally/Data/Skeletons/Brog.bg3d"),
+    path: join(GAMES_ROOT, "cromagrally/Data/Skeletons/Brog.bg3d"),
   },
   {
     game: "Bugdom 2",
-    path: path.join(GAMES_ROOT, "bugdom2/Data/Skeletons/Ant.bg3d"),
+    path: join(GAMES_ROOT, "bugdom2/Data/Skeletons/Ant.bg3d"),
   },
   {
     game: "Nanosaur 2",
-    path: path.join(GAMES_ROOT, "nanosaur2/Data/Skeletons/nano.bg3d"),
+    path: join(GAMES_ROOT, "nanosaur2/Data/Skeletons/nano.bg3d"),
   },
   {
     game: "Billy Frontier",
-    path: path.join(GAMES_ROOT, "billyfrontier/Data/Skeletons/Billy.bg3d"),
+    path: join(GAMES_ROOT, "billyfrontier/Data/Skeletons/Billy.bg3d"),
   },
 ];
 

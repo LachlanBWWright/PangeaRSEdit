@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import {
   FenceData,
   HeaderData,
@@ -143,9 +143,7 @@ export const FenceGeometry: React.FC<FenceGeometryProps> = ({
   terrainData,
 }) => {
   const globals = useAtomValue(Globals);
-  const [textures, setTextures] = useState<Map<string, THREE.Texture>>(
-    new Map(),
-  );
+  const [textures, setTextures] = useState<Map<string, Texture>>(new Map());
 
   // Load textures for all fence types on mount
   useEffect(() => {

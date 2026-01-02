@@ -17,7 +17,7 @@ import { saveToJson, loadBytesFromJson } from "@lachlanbwwright/rsrcdump-ts";
 
 // Type guard helper
 function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 /**
@@ -48,7 +48,7 @@ export async function parseLevelBuffer(
     }
 
     const parsed: unknown = JSON.parse(parseResult.value);
-    
+
     // Fix null values from rsrcdump-ts v1.0.4 bug (returns null for numeric zeros)
     if (isRecord(parsed)) {
       fixNullToZero(parsed);
@@ -65,10 +65,9 @@ export async function parseLevelBuffer(
 }
 
 // Type guard for LevelData - checks basic structure
-function isLevelDataLike(value: Record<string, unknown>): value is LevelData {
-  // LevelData is a generic type with optional fields, so we just need to verify it's a record
-  // The actual structure is validated by rsrcdump-ts based on the struct specs
-  return true;
+function isLevelDataLike(value: unknown): value is LevelData {
+  // LevelData is a generic type with optional fields, so a basic record check is sufficient here
+  return isRecord(value);
 }
 
 /**
@@ -149,22 +148,19 @@ export async function parseLevelForGame(
     return parseNanosaur1Buffer(buffer, gameType);
   }
 
-  const parseResult = await parseLevelBuffer(
-    buffer,
-    {
-      structSpecs: gameType.STRUCT_SPECS,
-    },
-  );
+  const parseResult = await parseLevelBuffer(buffer, {
+    structSpecs: gameType.STRUCT_SPECS,
+  });
 
   if (isErr(parseResult)) {
     return parseResult;
   }
 
-  // Apply preprocessing (LevelData is a Record<string, unknown> compatible type)
-  const preprocessResult = preprocessJson(
-    parseResult.value,
-    gameType
-  );
+  // Apply preprocessing (LevelData must be a record for preprocessJson)
+  if (!isRecord(parseResult.value)) {
+    return err(new Error("Parsed data is not an object"));
+  }
+  const preprocessResult = preprocessJson(parseResult.value, gameType);
   if (isErr(preprocessResult)) {
     return preprocessResult;
   }
@@ -194,10 +190,7 @@ export async function performRoundtrip(
   >
 > {
   // Parse the original buffer
-  const originalResult = await parseLevelForGame(
-    buffer,
-    gameType,
-  );
+  const originalResult = await parseLevelForGame(buffer, gameType);
 
   if (isErr(originalResult)) {
     return err(
@@ -206,12 +199,9 @@ export async function performRoundtrip(
   }
 
   // Serialize back to binary
-  const serializedResult = await serializeLevelData(
-    originalResult.value,
-    {
-      structSpecs: gameType.STRUCT_SPECS,
-    },
-  );
+  const serializedResult = await serializeLevelData(originalResult.value, {
+    structSpecs: gameType.STRUCT_SPECS,
+  });
 
   if (isErr(serializedResult)) {
     return err(
@@ -295,11 +285,7 @@ export function compareLevelData(
       const allKeys = new Set([...keys1, ...keys2]);
 
       for (const key of allKeys) {
-        compare(
-          obj1[key],
-          obj2[key],
-          `${path}.${key}`,
-        );
+        compare(obj1[key], obj2[key], `${path}.${key}`);
       }
       return;
     }

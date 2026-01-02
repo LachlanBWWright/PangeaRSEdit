@@ -43,6 +43,7 @@ import {
 import { PixelFormatSrc, PixelFormatDst } from "./parseBG3D";
 import { Quaternion } from "three";
 import { parseSkeletonRsrc } from "./skeletonRsrc/parseSkeletonRsrcTS";
+import type { BG3DAnimationEvent } from "./parseBG3D";
 
 /**
  * Type definitions for glTF extras data
@@ -1138,7 +1139,10 @@ export async function gltfToBG3D(doc: Document): Promise<BG3DParseResult> {
       }
 
       // Get BG3D-specific flags from extras
-      const flags = materialExtras[index]?.flags || 0;
+      const matExtraRaw = materialExtras[index];
+      const matExtra = isRecord(matExtraRaw) ? matExtraRaw : undefined;
+      const flags =
+        matExtra && typeof matExtra.flags === "number" ? matExtra.flags : 0;
 
       // Restore textures from baseColorTexture
       const textures: BG3DTexture[] = [];
@@ -1214,7 +1218,10 @@ export async function gltfToBG3D(doc: Document): Promise<BG3DParseResult> {
               height: rgbaRes.height,
             };
 
-            const textureExtra = materialExtras[index]?.textureExtras?.[0];
+            const textureExtra =
+              matExtra && Array.isArray(matExtra.textureExtras)
+                ? matExtra.textureExtras[0]
+                : undefined;
             textures.push({
               pixels: pngRes.data,
               width: pngRes.width,
@@ -1729,18 +1736,30 @@ export async function gltfToBG3D(doc: Document): Promise<BG3DParseResult> {
         const animations = extractAnimationsFromGLTF(doc, bones);
 
         // Restore animation data from extras if available (more accurate than glTF conversion)
-        const skeletonExtras = bg3dFields?.skeletonExtras;
+        type SkeletonExtras = {
+          keyframeData?: unknown[];
+          animationEvents?: unknown[];
+          boneData?: unknown;
+          headerData?: unknown;
+          relPoints?: unknown;
+          alisData?: unknown;
+          metadata?: unknown;
+        };
+        const skeletonExtrasRaw = bg3dFields?.skeletonExtras;
+        const skeletonExtras = isRecord(skeletonExtrasRaw)
+          ? (skeletonExtrasRaw as SkeletonExtras)
+          : undefined;
         console.log("[DEBUG] skeletonExtras available:", !!skeletonExtras);
         console.log(
           "[DEBUG] skeletonExtras.keyframeData available:",
-          !!skeletonExtras?.keyframeData,
+          Array.isArray(skeletonExtras?.keyframeData),
         );
         console.log(
           "[DEBUG] skeletonExtras.keyframeData length:",
           skeletonExtras?.keyframeData?.length || 0,
         );
 
-        if (skeletonExtras?.keyframeData) {
+        if (skeletonExtras && Array.isArray(skeletonExtras.keyframeData)) {
           // Use keyframe data from extras if available (preserves accelerationMode, exact values)
           console.log(
             "[DEBUG] Restoring keyframe data from extras for",
@@ -1750,9 +1769,14 @@ export async function gltfToBG3D(doc: Document): Promise<BG3DParseResult> {
           animations.forEach((anim, index) => {
             const keyframeData = skeletonExtras.keyframeData;
             if (!keyframeData) return;
-            const kfData =
-              keyframeData.find((e) => isRecord(e) && e.name === anim.name) ??
-              keyframeData[index];
+            let kfData: unknown | undefined;
+            for (const candidate of keyframeData) {
+              if (isRecord(candidate) && candidate.name === anim.name) {
+                kfData = candidate;
+                break;
+              }
+            }
+            kfData = kfData ?? keyframeData[index];
             if (isRecord(kfData) && kfData.keyframes) {
               console.log(
                 "[DEBUG] Restored keyframes for animation",
@@ -1870,7 +1894,8 @@ export async function gltfToBG3D(doc: Document): Promise<BG3DParseResult> {
         }
 
         // Restore header data from extras if available
-        const headerData = skeletonExtras?.headerData;
+        const headerDataRaw = skeletonExtras?.headerData;
+        const headerData = isRecord(headerDataRaw) ? headerDataRaw : undefined;
 
         // Safely extract relPoints, alisData, metadata with type guards
         const relPointsRaw = skeletonExtras?.relPoints;

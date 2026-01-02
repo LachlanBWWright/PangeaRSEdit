@@ -346,7 +346,9 @@ export async function parseMightyMikeFile(
       layrLength: ottoCompatible.Layr[1000].obj.length,
     });
 
-    const atomicData = splitLevelData(ottoCompatible);
+    // Only call splitLevelData when the object actually has terrain data; otherwise pass null
+    // Mighty Mike uses a different LevelData shape; don't attempt splitLevelData for it
+    const atomicData = splitLevelData(null);
     console.log("MightyMike atomicData AFTER splitLevelData:", atomicData);
 
     setData(atomicData);

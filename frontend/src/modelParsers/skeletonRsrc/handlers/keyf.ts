@@ -13,14 +13,18 @@ function isKeyFRaw(value: unknown): value is KeyFRaw {
 
 export function handleKeyF(
   resourceName: string,
-  resourceData: KeyFRaw[] | { obj?: KeyFRaw[] } | undefined,
+  resourceData: KeyFRaw[] | { obj?: KeyFRaw[]; data?: string } | undefined,
   resourceId: string,
   hexData: string,
 ): KeyFRaw[] {
   console.log(resourceId, hexData);
-  
+
   // Check if resourceData has obj field (rsrcdump format)
-  if (isRecord(resourceData) && "obj" in resourceData && Array.isArray(resourceData.obj)) {
+  if (
+    isRecord(resourceData) &&
+    "obj" in resourceData &&
+    Array.isArray(resourceData.obj)
+  ) {
     const objArr = resourceData.obj;
     if (objArr.length > 0 && isKeyFRaw(objArr[0])) {
       console.log(
@@ -38,12 +42,16 @@ export function handleKeyF(
     );
     return objArr.filter(isKeyFRaw);
   }
-  
+
   // Handle array format directly
-  if (Array.isArray(resourceData) && resourceData.length > 0 && isKeyFRaw(resourceData[0])) {
+  if (
+    Array.isArray(resourceData) &&
+    resourceData.length > 0 &&
+    isKeyFRaw(resourceData[0])
+  ) {
     return resourceData.filter(isKeyFRaw);
   }
-  
+
   // Fallback to hex parsing
   console.log(`KeyF ${resourceName} raw resourceData:`, resourceData);
   console.log(`KeyF ${resourceName} resourceData type:`, typeof resourceData);
@@ -51,15 +59,12 @@ export function handleKeyF(
     `KeyF ${resourceName} resourceData.keys:`,
     isRecord(resourceData) ? Object.keys(resourceData) : [],
   );
-  const hex = isRecord(resourceData) && typeof resourceData.data === "string" 
-    ? resourceData.data 
-    : "";
+  const hex =
+    isRecord(resourceData) && typeof resourceData.data === "string"
+      ? resourceData.data
+      : "";
   console.log(`KeyF ${resourceName} hex data length:`, hex.length);
   const obj = parseKeyFData(hex);
-  console.log(
-    `KeyF ${resourceName} parsed from hex:`,
-    obj.length,
-    "keyframes",
-  );
+  console.log(`KeyF ${resourceName} parsed from hex:`, obj.length, "keyframes");
   return obj;
 }

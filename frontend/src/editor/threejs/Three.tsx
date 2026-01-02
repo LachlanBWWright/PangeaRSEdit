@@ -180,7 +180,7 @@ export function ThreeView({
   const unitsWide = numWide * globals.TILE_INGAME_SIZE;
   const unitsHigh = numHigh * globals.TILE_INGAME_SIZE;
 
-  const handlePointerMove = useCallback((event: THREE.Event<string, unknown>) => {
+  const handlePointerMove = useCallback((event: Event<string, unknown>) => {
     if (!isEditingTopology || !terrainMeshRef.current) return;
 
     if (hasPointProperty(event)) {
@@ -273,7 +273,7 @@ export function ThreeView({
     }
   }, [isEditingTopology, isEditing, brushMode, brushRadius, valueMode, topologyValue, header, globals, terrainData, editRoofAndFloor, roofFloorElevation]);
 
-  const handlePointerDown = useCallback((event: THREE.Event<string, unknown>) => {
+  const handlePointerDown = useCallback((event: Event<string, unknown>) => {
     if (!isEditingTopology) return;
     
     if (hasPointProperty(event) && terrainData.YCrd?.[1000]?.obj) {

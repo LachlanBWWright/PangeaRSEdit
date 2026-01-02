@@ -15,8 +15,8 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 // Type guard for LevelData - basic structure check
-function isLevelDataLike(value: Record<string, unknown>): value is LevelData {
-  return true; // LevelData is a generic type, basic record check is sufficient
+function isLevelDataLike(value: unknown): value is LevelData {
+  return isRecord(value);
 }
 
 /**
