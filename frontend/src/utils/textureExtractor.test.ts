@@ -67,26 +67,38 @@ const createMockMaterial = (
   displacementMap: textures.displacement || null,
 });
 
-const createMockMesh = (materials: MockMaterial[]): MockMesh => ({
-  id: 1,
-  name: "TestMesh",
+const createMockMesh = (
+  materials: MockMaterial[] = [],
+  children: MockMesh[] = [],
+  id = 1,
+  name = "TestMesh",
+): MockMesh => ({
+  id,
+  name,
   visible: true,
-    material: materials.length === 1
+  material:
+    materials.length === 1
       ? materials[0] ?? createMockMaterial()
       : materials.length > 0
       ? materials
       : createMockMaterial(),
-  id: 2,
-  name: "TestGroup",
+  children,
+  traverse: vi.fn((callback: (child: MockMesh) => void) => {
+    children.forEach(callback);
+  }),
+});
+
+const createMockGroup = (
+  children: MockMesh[],
+  id = 2,
+  name = "TestGroup",
+): MockGroup => ({
+  id,
+  name,
   visible: true,
   children,
   traverse: vi.fn((callback: (child: MockMesh) => void) => {
-    if (children[0]) {
-      callback(children[0]);
-      if (children[0].children) {
-        children[0].children.forEach(callback);
-      }
-    }
+    children.forEach(callback);
   }),
 });
 
@@ -137,7 +149,7 @@ describe("Enhanced Texture Extraction", () => {
             const arrayBuffer =
               dataBuffer instanceof ArrayBuffer
                 ? dataBuffer
-                : dataBuffer.slice(0);
+                : new Uint8Array(dataBuffer).slice().buffer;
             const blob = new Blob([arrayBuffer], {
               type: "image/png",
             });
@@ -362,7 +374,7 @@ describe("Enhanced Texture Extraction", () => {
             const arrayBuffer =
               dataBuffer instanceof ArrayBuffer
                 ? dataBuffer
-                : dataBuffer.slice(0);
+                : new Uint8Array(dataBuffer).slice().buffer;
             const blob = new Blob([arrayBuffer], {
               type: "image/png",
             });

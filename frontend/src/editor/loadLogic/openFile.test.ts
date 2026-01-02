@@ -45,7 +45,7 @@ describe("openFile", () => {
       setData,
     });
 
-    expect(setGlobals).toHaveBeenCalledWith(gameType);
+    expect(setGlobals).toHaveBeenCalledWith(gameTypeUnknown);
     expect(setMapFile).toHaveBeenCalled();
     expect(setMapImages).toHaveBeenCalledWith([]);
     // parseLevelDataFile should have been called

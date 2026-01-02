@@ -1,7 +1,7 @@
 // Component for updating animation mixer each frame
 import { useRef, useState, useEffect } from "react";
 import { useFrame } from "@react-three/fiber";
-import { AnimationMixer, Bone, SkinnedMesh, Vector3 } from "three";
+import { AnimationMixer, Bone, SkinnedMesh, Vector3, Object3D } from "three";
 
 interface AnimationUpdaterProps {
   animationMixer: AnimationMixer | null;
@@ -29,12 +29,14 @@ export function AnimationUpdater({
       if (!root) return;
       const bones: Bone[] = [];
 
-      root.traverse((object) => {
-        if (object instanceof SkinnedMesh && object.skeleton) {
-          // Track first 3 bones for logging (to avoid console spam)
-          bones.push(...object.skeleton.bones.slice(0, 3));
-        }
-      });
+      if (root instanceof Object3D) {
+        root.traverse((object: Object3D) => {
+          if (object instanceof SkinnedMesh && object.skeleton) {
+            // Track first 3 bones for logging (to avoid console spam)
+            bones.push(...object.skeleton.bones.slice(0, 3));
+          }
+        });
+      }
 
       Promise.resolve().then(() => setBonesTracked(bones));
       frameCountRef.current = 0;

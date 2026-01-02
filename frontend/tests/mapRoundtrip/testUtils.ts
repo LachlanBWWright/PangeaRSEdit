@@ -4,7 +4,7 @@
 
 import { describe, expect, it, beforeAll } from "vitest";
 import { readFile, access } from "fs/promises";
-import { ottoMaticLevel } from "../../src/python/structSpecs/ottoMaticInterface";
+import { OttoMaticLevelData } from "@/python/structSpecs/gameLevelTypes";
 import { preprocessJson } from "../../src/data/processors/ottoPreprocessor";
 import { GlobalsInterface } from "../../src/data/globals/globals";
 import {
@@ -42,9 +42,9 @@ export interface MockPyodideRunner {
   parseBuffer: (
     buffer: ArrayBuffer,
     specs: string[],
-  ) => Promise<ottoMaticLevel>;
+  ) => Promise<OttoMaticLevelData>;
   serializeJson: (
-    json: ottoMaticLevel,
+    json: OttoMaticLevelData,
     specs: string[],
   ) => Promise<ArrayBuffer>;
 }
@@ -52,9 +52,11 @@ export interface MockPyodideRunner {
 /**
  * Compare two JSON objects and return differences
  */
+import { LevelData } from "@/python/structSpecs/LevelTypes";
+
 export function compareJsonObjects(
-  original: ottoMaticLevel,
-  roundtrip: ottoMaticLevel,
+  original: LevelData,
+  roundtrip: LevelData,
 ): {
   equal: boolean;
   differences: { path: string; original: unknown; roundtrip: unknown }[];
@@ -89,9 +91,9 @@ export function createMapRoundtripTestSuite(config: {
   parseBuffer: (
     buffer: ArrayBuffer,
     specs: string[],
-  ) => Promise<ottoMaticLevel>;
+  ) => Promise<OttoMaticLevelData>;
   serializeJson: (
-    json: ottoMaticLevel,
+    json: OttoMaticLevelData,
     specs: string[],
   ) => Promise<ArrayBuffer>;
   skipRoundtrip?: boolean; // Some games may not support full roundtrip yet

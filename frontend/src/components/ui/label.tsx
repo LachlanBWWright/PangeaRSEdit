@@ -1,4 +1,4 @@
-import React, { forwardRef, type ComponentPropsWithoutRef, type ElementRef } from "react"
+import { forwardRef, type ComponentPropsWithoutRef, type ElementRef } from "react"
 import { Root as LabelRoot } from "@radix-ui/react-label"
 import { cva, type VariantProps } from "class-variance-authority"
 

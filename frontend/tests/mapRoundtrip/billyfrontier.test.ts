@@ -10,12 +10,8 @@
 import { describe, it, expect, beforeAll } from "vitest";
 import { readFileSync, existsSync } from "fs";
 import { join } from "path";
-import {
-  load,
-  saveToJsonObject,
-  loadFromJson,
-  saveToBytes,
-} from "../../src/rsrcdump-ts/rsrcdump";
+import { load } from "@lachlanbwwright/rsrcdump-ts";
+import { saveToJsonObject, loadFromJson, saveToBytes } from "@/rsrcdump-ts/rsrcdump";
 import { billyFrontierSpecs } from "../../src/python/structSpecs/billyFrontier";
 import { BillyFrontierGlobals } from "../../src/data/globals/globals";
 import { preprocessJson } from "../../src/data/processors/ottoPreprocessor";
@@ -49,28 +45,28 @@ describe("Billy Frontier Map Roundtrip", () => {
     const fork = forkResult.value;
 
     expect(fork).toBeDefined();
-    expect(fork.resources).toBeDefined();
-    expect(fork.resources.size).toBeGreaterThan(0);
+    expect(fork.tree).toBeDefined();
+    expect(fork.tree.size).toBeGreaterThan(0);
 
     // Check for expected resource types (not all files have all types)
     const expectedTypes = ["Hedr", "STgd", "YCrd", "Itms"];
     for (const expectedType of expectedTypes) {
       expect(
-        fork.resources.has(expectedType),
+        fork.tree.has(expectedType),
         `Missing resource type: ${expectedType}`,
       ).toBe(true);
     }
 
     console.log(
       "Billy Frontier resource types:",
-      Array.from(fork.resources.keys()),
+      Array.from(fork.tree.keys()),
     );
   });
 
-  it("should parse to JSON with billyFrontier specs", () => {
+    it("should parse to JSON with billyFrontier specs", async () => {
     if (!fileExists) return;
 
-    const jsonResult = saveToJsonObject(
+    const jsonResult = await saveToJsonObject(
       originalData,
       billyFrontierSpecs,
       [],
@@ -85,15 +81,20 @@ describe("Billy Frontier Map Roundtrip", () => {
     expect(typeof jsonData).toBe("object");
 
     // Check expected structure
+    function assertIsRecord(x: unknown): asserts x is Record<string, unknown> {
+      if (typeof x !== 'object' || x === null) throw new Error('Parsed data is not an object');
+    }
+    assertIsRecord(jsonData);
+
     expect(jsonData.Hedr).toBeDefined();
 
     console.log("Billy Frontier parsed JSON keys:", Object.keys(jsonData));
   });
 
-  it("should parse header data correctly", () => {
+  it("should parse header data correctly", async () => {
     if (!fileExists) return;
 
-    const jsonResult = saveToJsonObject(
+    const jsonResult = await saveToJsonObject(
       originalData,
       billyFrontierSpecs,
       [],
@@ -104,11 +105,35 @@ describe("Billy Frontier Map Roundtrip", () => {
     if (!jsonResult.ok) return;
     const jsonData = jsonResult.value;
 
+    function assertIsRecord(x: unknown): asserts x is Record<string, unknown> {
+      if (typeof x !== 'object' || x === null) throw new Error('Parsed data is not an object');
+    }
+    assertIsRecord(jsonData);
+    assertIsRecord(jsonData.Hedr);
+    assertIsRecord(jsonData.Hedr[1000]);
+    assertIsRecord(jsonData.Hedr[1000].obj);
+
     expect(jsonData.Hedr).toBeDefined();
     expect(jsonData.Hedr[1000]).toBeDefined();
     expect(jsonData.Hedr[1000].obj).toBeDefined();
 
+    function assertIsHeader(x: unknown): asserts x is { mapWidth: number; mapHeight: number; version: number; numItems: number; numSplines: number; numFences: number } {
+      if (typeof x !== 'object' || x === null) throw new Error('Header is not an object');
+      const r = x as Record<string, unknown>;
+      if (
+        typeof r.mapWidth !== 'number' ||
+        typeof r.mapHeight !== 'number' ||
+        typeof r.version !== 'number' ||
+        typeof r.numItems !== 'number' ||
+        typeof r.numSplines !== 'number' ||
+        typeof r.numFences !== 'number'
+      ) {
+        throw new Error('Header missing expected numeric fields');
+      }
+    }
+
     const header = jsonData.Hedr[1000].obj;
+    assertIsHeader(header);
     expect(header.mapWidth).toBeGreaterThan(0);
     expect(header.mapHeight).toBeGreaterThan(0);
 
@@ -138,10 +163,10 @@ describe("Billy Frontier Map Roundtrip", () => {
     // Skip: StructConverter.pack not implemented
   });
 
-  it("should preprocess JSON correctly with Billy Frontier globals", () => {
+  it("should preprocess JSON correctly with Billy Frontier globals", async () => {
     if (!fileExists) return;
 
-    const jsonResult = saveToJsonObject(
+    const jsonResult = await saveToJsonObject(
       originalData,
       billyFrontierSpecs,
       [],
@@ -165,10 +190,15 @@ describe("Billy Frontier Map Roundtrip", () => {
     }).not.toThrow();
 
     // After preprocessing, verify header data is still present
+    assertIsRecord(jsonData);
+    assertIsRecord(jsonData.Hedr);
+    assertIsRecord(jsonData.Hedr[1000]);
+
     expect(jsonData.Hedr).toBeDefined();
     expect(jsonData.Hedr[1000]?.obj).toBeDefined();
 
     const header = jsonData.Hedr[1000].obj;
+    assertIsHeader(header);
     expect(header.mapWidth).toBeGreaterThan(0);
     expect(header.mapHeight).toBeGreaterThan(0);
 
@@ -180,17 +210,17 @@ describe("Billy Frontier Map Roundtrip", () => {
     });
   });
 
-  it("should roundtrip without specs (raw resource fork)", () => {
+  it("should roundtrip without specs (raw resource fork)", async () => {
     if (!fileExists) return;
 
     // Parse without specs (hex data only)
-    const jsonResult1 = saveToJsonObject(originalData, [], [], [], false);
+    const jsonResult1 = await saveToJsonObject(originalData, [], [], [], false);
     expect(jsonResult1.ok).toBe(true);
     if (!jsonResult1.ok) return;
-    const jsonData1 = jsonResult1.value;
+    const jsonData1 = jsonResult1.value as Record<string, unknown>;
 
     // Convert back to binary
-    const forkResult = loadFromJson(jsonData1, [], false);
+    const forkResult = loadFromJson(jsonData1);
     expect(forkResult.ok).toBe(true);
     if (!forkResult.ok) return;
     const fork = forkResult.value;
@@ -198,7 +228,7 @@ describe("Billy Frontier Map Roundtrip", () => {
     const binaryData2 = saveToBytes(fork);
 
     // Parse the new binary
-    const jsonResult2 = saveToJsonObject(
+    const jsonResult2 = await saveToJsonObject(
       new Uint8Array(binaryData2),
       [],
       [],
@@ -207,10 +237,17 @@ describe("Billy Frontier Map Roundtrip", () => {
     );
     expect(jsonResult2.ok).toBe(true);
     if (!jsonResult2.ok) return;
-    const jsonData2 = jsonResult2.value;
+    const jsonData2 = jsonResult2.value as Record<string, unknown>;
 
-    // Compare metadata
-    expect(jsonData2._metadata?.junk1).toBe(jsonData1._metadata?.junk1);
+    // Compare metadata safely
+    function isRecord(value: unknown): value is Record<string, unknown> {
+      return typeof value === 'object' && value !== null && !Array.isArray(value);
+    }
+    const meta1 = (jsonData1 as Record<string, unknown>)._metadata;
+    const meta2 = (jsonData2 as Record<string, unknown>)._metadata;
+    if (isRecord(meta1) && isRecord(meta2)) {
+      expect(meta2.junk1).toBe(meta1.junk1);
+    }
 
     // Compare resource types
     const types1 = Object.keys(jsonData1)
@@ -221,8 +258,18 @@ describe("Billy Frontier Map Roundtrip", () => {
       .sort();
     expect(types2).toEqual(types1);
 
-    // Compare hex data for header
-    expect(jsonData2.Hedr?.["1000"]?.data).toBe(jsonData1.Hedr?.["1000"]?.data);
+    // Compare hex data for header using optional chaining
+    let hed1: unknown = undefined;
+    let hed2: unknown = undefined;
+    if (isRecord(jsonData1.Hedr) && isRecord((jsonData1.Hedr as Record<string, unknown>)["1000"])) {
+      hed1 = (jsonData1.Hedr as Record<string, unknown>)["1000"];
+    }
+    if (isRecord(jsonData2.Hedr) && isRecord((jsonData2.Hedr as Record<string, unknown>)["1000"])) {
+      hed2 = (jsonData2.Hedr as Record<string, unknown>)["1000"];
+    }
+    if (isRecord(hed1) && isRecord(hed2)) {
+      expect(hed2.data).toBe(hed1.data);
+    }
 
     console.log("✅ Billy Frontier hex data roundtrip successful");
   });
@@ -244,7 +291,7 @@ describe("Billy Frontier Multiple Levels", () => {
   );
 
   for (const levelFile of levelsToTest) {
-    it(`should parse ${levelFile}`, () => {
+    it(`should parse ${levelFile}`, async () => {
       const filePath = join(basePath, levelFile);
 
       if (!existsSync(filePath)) {
@@ -255,7 +302,7 @@ describe("Billy Frontier Multiple Levels", () => {
       const data = readFileSync(filePath);
 
       // Parse to JSON
-      const json1Result = saveToJsonObject(
+      const json1Result = await saveToJsonObject(
         data,
         billyFrontierSpecs,
         [],
@@ -265,6 +312,11 @@ describe("Billy Frontier Multiple Levels", () => {
       expect(json1Result.ok).toBe(true);
       if (!json1Result.ok) return;
       const json1 = json1Result.value;
+
+      function assertIsRecord(x: unknown): asserts x is Record<string, unknown> {
+        if (typeof x !== 'object' || x === null) throw new Error('Parsed data is not an object');
+      }
+      assertIsRecord(json1);
 
       expect(json1).toBeDefined();
       expect(json1.Hedr).toBeDefined();

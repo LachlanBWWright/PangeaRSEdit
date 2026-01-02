@@ -303,14 +303,14 @@ describe("BG3D Format Difference Tests", () => {
 describe("BG3D Model File Tests", () => {
   // Test regular model files (non-skeleton) from each game
   const MODEL_FIXTURES = {
-    ottomatic: path.join(GAMES_ROOT, "ottomatic/Data/Models/level1_farm.bg3d"),
-    cromagrally: path.join(
+    ottomatic: join(GAMES_ROOT, "ottomatic/Data/Models/level1_farm.bg3d"),
+    cromagrally: join(
       GAMES_ROOT,
       "cromagrally/Data/Models/Level_Aztec.bg3d",
     ),
-    bugdom2: path.join(GAMES_ROOT, "bugdom2/Data/Models/Level1_Garden.bg3d"),
-    nanosaur2: path.join(GAMES_ROOT, "nanosaur2/Data/Models/global.bg3d"),
-    billyfrontier: path.join(
+    bugdom2: join(GAMES_ROOT, "bugdom2/Data/Models/Level1_Garden.bg3d"),
+    nanosaur2: join(GAMES_ROOT, "nanosaur2/Data/Models/global.bg3d"),
+    billyfrontier: join(
       GAMES_ROOT,
       "billyfrontier/Data/Models/global.bg3d",
     ),

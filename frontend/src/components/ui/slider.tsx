@@ -1,4 +1,4 @@
-import React, { forwardRef, type ComponentPropsWithoutRef, type ElementRef } from "react"
+import { forwardRef, type ComponentPropsWithoutRef, type ElementRef } from "react"
 import { Root as SliderRoot, Track as SliderTrack, Range as SliderRange, Thumb as SliderThumb } from "@radix-ui/react-slider"
 
 import { cn } from "@/lib/utils"

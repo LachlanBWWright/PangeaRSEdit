@@ -60,15 +60,14 @@ describe("Nanosaur 1 - Byte-Accurate Roundtrip", () => {
       expect(levelData).toBeDefined();
 
       // Store metadata for roundtrip
-      levelData._metadata = { rawLevelData: parsed };
+      levelData._metadata = { rawLevelData: parsed, file_attributes: 0, junk1: 0, junk2: 0 };
 
       // Compile back
-      const result = compileNanosaur1Level(levelData);
-      
-      if (!result.ok) {
-        throw new Error(`Compilation failed: ${result.error.message}`);
-      }
+      const result = compileNanosaur1Level(levelData, parsed);
 
+      if (!result.ok) {
+        throw new Error(`Compilation failed: ${String(result.error)}`);
+      }
       const recompiledData = new Uint8Array(result.value);
 
       // Byte comparison
@@ -134,14 +133,14 @@ describe("Mighty Mike - Byte-Accurate Roundtrip", () => {
       const parsed = parseMightyMikeMap(originalAB);
       
       if (!parsed.ok) {
-        throw new Error(`Parse failed: ${parsed.error.message}`);
+        throw new Error(`Parse failed: ${String(parsed.error)}`);
       }
 
       // Compile back
       const result = mightyMikeMapToCompressedBinary(parsed.value);
       
       if (!result.ok) {
-        throw new Error(`Compilation failed: ${result.error.message}`);
+        throw new Error(`Compilation failed: ${String(result.error)}`);
       }
 
       const recompiledData = new Uint8Array(result.value);

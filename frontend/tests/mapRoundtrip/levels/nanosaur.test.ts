@@ -7,11 +7,7 @@
 import { describe, it, expect } from "vitest";
 import { readFileSync } from "fs";
 import { join } from "path";
-import {
-  saveToJsonObject,
-  loadFromJson,
-  saveToBytes,
-} from "../../../src/rsrcdump-ts/rsrcdump";
+import { saveToJsonObject, loadFromJson, saveToBytes } from "@/rsrcdump-ts/rsrcdump";
 // Note: Nanosaur may not have specs defined yet
 // import { nanosaurSpecs } from "../../../src/python/structSpecs/nanosaur";
 
@@ -23,12 +19,12 @@ describe("Nanosaur Level Roundtrip", () => {
   const levelFiles = ["Level1.ter", "Level1Pro.ter"];
 
   for (const levelFile of levelFiles) {
-    it(`should roundtrip ${levelFile} byte-for-byte`, () => {
+    it(`should roundtrip ${levelFile} byte-for-byte`, async () => {
       const filePath = join(terrainDir, levelFile);
       const originalData = readFileSync(filePath);
 
       // Parse to JSON (hex data only for byte accuracy)
-      const jsonResult = saveToJsonObject(originalData, [], [], [], false);
+      const jsonResult = await saveToJsonObject(originalData, [], [], [], false);
       expect(jsonResult.ok).toBe(true);
       if (!jsonResult.ok) {
         console.error(`Failed to parse ${levelFile}:`, jsonResult.error);

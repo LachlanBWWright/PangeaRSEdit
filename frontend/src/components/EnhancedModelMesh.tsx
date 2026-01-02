@@ -180,7 +180,7 @@ function EnhancedModelMeshComponent({
           helper.dispose();
         }
         // Dispose geometry and material if it's a mesh
-        if (helper instanceof THREE.Mesh) {
+        if (helper instanceof Mesh) {
           if (helper.geometry) helper.geometry.dispose();
           if (Array.isArray(helper.material)) {
             helper.material.forEach((mat) => mat.dispose());

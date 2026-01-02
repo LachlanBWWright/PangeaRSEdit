@@ -12,7 +12,7 @@ import {
   BugdomGlobals,
   Bugdom2Globals,
   CroMagGlobals,
-  Nanosaur1Globals,
+  NanosaurGlobals,
   Nanosaur2Globals,
   BillyFrontierGlobals,
 } from "../../src/data/globals/globals";
@@ -47,7 +47,7 @@ const GAMES: GameTestConfig[] = [
   },
   {
     name: "Nanosaur 1",
-    globals: Nanosaur1Globals,
+    globals: NanosaurGlobals,
     testFile: "public/assets/nanosaur/terrain/Level1.ter",
     skipRoundtrip: true, // Different format
   },

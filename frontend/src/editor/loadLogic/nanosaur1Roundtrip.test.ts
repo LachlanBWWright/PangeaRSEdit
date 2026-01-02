@@ -65,12 +65,18 @@ describe("Nanosaur 1 Byte-Accurate Roundtrip Tests", () => {
 
         // Compile back to binary
         const compileResult = compileNanosaur1Level(compatibleLevel, rawLevelData);
-        
-        if (!compileResult.ok) {
-          throw new Error(`Compilation failed: ${compileResult.error.message}`);
+
+        let exportedData: Uint8Array;
+        if (compileResult instanceof ArrayBuffer) {
+          exportedData = new Uint8Array(compileResult);
+        } else if ((compileResult as any)?.ok) {
+          if (!(compileResult as any).ok) {
+            throw new Error(`Compilation failed: ${(compileResult as any).error}`);
+          }
+          exportedData = new Uint8Array((compileResult as any).value);
+        } else {
+          exportedData = new Uint8Array(compileResult as unknown as ArrayBuffer);
         }
-        
-        const exportedData = new Uint8Array(compileResult.value);
         console.log(`  Export: ${exportedData.length} bytes`);
 
         // Byte-for-byte comparison
@@ -118,12 +124,20 @@ describe("Nanosaur 1 Byte-Accurate Roundtrip Tests", () => {
 
         // Compile and re-parse
         const compileResult = compileNanosaur1Level(compatibleLevel, rawLevelData1);
-        
-        if (!compileResult.ok) {
-          throw new Error(`Compilation failed: ${compileResult.error.message}`);
+
+        let compiledBuffer: ArrayBuffer;
+        if (compileResult instanceof ArrayBuffer) {
+          compiledBuffer = compileResult;
+        } else if ((compileResult as any)?.ok) {
+          if (!(compileResult as any).ok) {
+            throw new Error(`Compilation failed: ${(compileResult as any).error}`);
+          }
+          compiledBuffer = (compileResult as any).value;
+        } else {
+          compiledBuffer = compileResult as unknown as ArrayBuffer;
         }
-        
-        const rawLevelData2 = parseNanosaur1Level(compileResult.value);
+
+        const rawLevelData2 = parseNanosaur1Level(compiledBuffer);
 
         // Compare structures
         expect(rawLevelData2.header.width).toBe(rawLevelData1.header.width);

@@ -1,5 +1,17 @@
-import React, { forwardRef, type ComponentPropsWithoutRef, type ElementRef } from "react";
-import { Provider as ToastProviderPrimitive, Viewport as ToastViewportPrimitive, Root as ToastRoot, Action as ToastActionPrimitive, Close as ToastClosePrimitive, Title as ToastTitlePrimitive, Description as ToastDescriptionPrimitive } from "@radix-ui/react-toast";
+import React, {
+  forwardRef,
+  type ComponentPropsWithoutRef,
+  type ElementRef,
+} from "react";
+import {
+  Provider as ToastProviderPrimitive,
+  Viewport as ToastViewportPrimitive,
+  Root as ToastRoot,
+  Action as ToastActionPrimitive,
+  Close as ToastClosePrimitive,
+  Title as ToastTitlePrimitive,
+  Description as ToastDescriptionPrimitive,
+} from "@radix-ui/react-toast";
 import { cva, type VariantProps } from "class-variance-authority";
 import { X } from "lucide-react";
 
@@ -14,7 +26,7 @@ const ToastViewport = forwardRef<
   <ToastViewportPrimitive
     ref={ref}
     className={cn(
-      "fixed top-0 z-[100] flex max-h-screen w-full flex-col-reverse p-4 sm:bottom-0 sm:right-0 sm:top-auto sm:flex-col md:max-w-[420px]",
+      "fixed top-0 z-100 flex max-h-screen w-full flex-col-reverse p-4 sm:bottom-0 sm:right-0 sm:top-auto sm:flex-col md:max-w-105",
       className,
     )}
     {...props}

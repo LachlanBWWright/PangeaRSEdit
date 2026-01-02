@@ -1,4 +1,4 @@
-import React, { forwardRef, type ComponentPropsWithoutRef, type ElementRef } from "react"
+import { forwardRef, type ComponentPropsWithoutRef, type ElementRef } from "react"
 import { Provider as TooltipPrimitiveProvider, Root as TooltipPrimitiveRoot, Trigger as TooltipPrimitiveTrigger, Portal as TooltipPrimitivePortal, Content as TooltipPrimitiveContent } from "@radix-ui/react-tooltip"
 
 import { cn } from "@/lib/utils"

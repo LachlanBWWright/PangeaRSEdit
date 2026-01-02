@@ -3,12 +3,12 @@
  */
 
 import { test, expect } from "@playwright/test";
-import { join } from "path";
+import { join, dirname } from "path";
 import { existsSync } from "fs";
 import { fileURLToPath } from "url";
 
 const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+const __dirname = dirname(__filename);
 
 const games = [
   {
@@ -67,7 +67,7 @@ test.describe("Quick Game Verification", () => {
 
       // Check for Buffer error
       const bodyText = await page.textContent("body").catch(() => "");
-      if (bodyText.includes("Buffer is not defined")) {
+      if (bodyText && bodyText.includes("Buffer is not defined")) {
         throw new Error("Buffer is not defined error detected!");
       }
 

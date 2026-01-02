@@ -7,7 +7,7 @@
 import { describe, it, expect } from "vitest";
 import { readFileSync, existsSync } from "fs";
 import { join } from "path";
-import { saveToJsonObject } from "../../src/rsrcdump-ts/rsrcdump";
+import { saveToJsonObject } from "@/rsrcdump-ts/rsrcdump";
 
 // Import game specs
 import { ottoMaticSpecs } from "../../src/python/structSpecs/ottoMatic";
@@ -96,13 +96,13 @@ describe("Level Data Validation", () => {
         expect(fileExists).toBe(true);
       });
 
-      it("should parse and validate level data", () => {
+      it("should parse and validate level data", async () => {
         if (!fileExists) return;
 
         const originalData = readFileSync(filePath);
 
         // Parse with game specs
-        const jsonResult = saveToJsonObject(
+        const jsonResult = await saveToJsonObject(
           originalData,
           config.specs,
           [],
@@ -118,6 +118,11 @@ describe("Level Data Validation", () => {
 
         const jsonData = jsonResult.value;
         expect(jsonData).toBeDefined();
+
+        function assertIsRecord(x: unknown): asserts x is Record<string, unknown> {
+          if (typeof x !== 'object' || x === null) throw new Error('Parsed data is not an object');
+        }
+        assertIsRecord(jsonData);
 
         // Validate using Zod schema
         const validationResult = config.validator(jsonData);
@@ -146,11 +151,11 @@ describe("Level Data Validation", () => {
         }
       });
 
-      it("should have valid header structure", () => {
+      it("should have valid header structure", async () => {
         if (!fileExists) return;
 
         const originalData = readFileSync(filePath);
-        const jsonResult = saveToJsonObject(
+        const jsonResult = await saveToJsonObject(
           originalData,
           config.specs,
           [],
@@ -161,6 +166,13 @@ describe("Level Data Validation", () => {
         if (!jsonResult.ok) return;
 
         const jsonData = jsonResult.value;
+        function assertIsRecord(x: unknown): asserts x is Record<string, unknown> {
+          if (typeof x !== 'object' || x === null) throw new Error('Parsed data is not an object');
+        }
+        assertIsRecord(jsonData);
+        assertIsRecord(jsonData.Hedr);
+        assertIsRecord(jsonData.Hedr["1000"]);
+        assertIsRecord(jsonData.Hedr["1000"].obj);
 
         // Check basic header structure
         expect(jsonData.Hedr).toBeDefined();

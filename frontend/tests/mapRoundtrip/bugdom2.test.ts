@@ -8,13 +8,18 @@
 import { describe, it, expect, beforeAll } from "vitest";
 import { readFileSync, existsSync } from "fs";
 import { join } from "path";
-import {
-  load,
-  saveToJsonObject,
-  loadFromJson,
-  saveToBytes,
-  saveFromJson,
-} from "../../src/rsrcdump-ts/rsrcdump";
+import { load } from "@lachlanbwwright/rsrcdump-ts";
+import { saveToJsonObject, loadFromJson, saveToBytes, saveFromJson } from "@/rsrcdump-ts/rsrcdump";
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function assertIsRecord(x: unknown): asserts x is Record<string, unknown> {
+  if (!isRecord(x)) {
+    throw new Error('Parsed data is not an object');
+  }
+}
 import { bugdom2Specs } from "../../src/python/structSpecs/bugdom2";
 import { Bugdom2Globals } from "../../src/data/globals/globals";
 import { preprocessJson } from "../../src/data/processors/ottoPreprocessor";
@@ -48,25 +53,25 @@ describe("Bugdom 2 Map Roundtrip", () => {
     const fork = forkResult.value;
 
     expect(fork).toBeDefined();
-    expect(fork.resources).toBeDefined();
-    expect(fork.resources.size).toBeGreaterThan(0);
+    expect(fork.tree).toBeDefined();
+    expect(fork.tree.size).toBeGreaterThan(0);
 
     // Check for expected resource types (Atrb may not exist in all files)
     const expectedTypes = ["Hedr", "STgd", "Layr", "YCrd", "Itms"];
     for (const expectedType of expectedTypes) {
       expect(
-        fork.resources.has(expectedType),
+        fork.tree.has(expectedType),
         `Missing resource type: ${expectedType}`,
       ).toBe(true);
     }
 
-    console.log("Bugdom 2 resource types:", Array.from(fork.resources.keys()));
+    console.log("Bugdom 2 resource types:", Array.from(fork.tree.keys()));
   });
 
-  it("should parse to JSON with bugdom2 specs", () => {
+  it("should parse to JSON with bugdom2 specs", async () => {
     if (!fileExists) return;
 
-    const jsonResult = saveToJsonObject(
+    const jsonResult = await saveToJsonObject(
       originalData,
       bugdom2Specs,
       [],
@@ -76,6 +81,14 @@ describe("Bugdom 2 Map Roundtrip", () => {
     expect(jsonResult.ok).toBe(true);
     if (!jsonResult.ok) return;
     const jsonData = jsonResult.value;
+
+    function assertIsRecord(x: unknown): asserts x is Record<string, unknown> {
+      if (typeof x !== 'object' || x === null) throw new Error('Parsed data is not an object');
+    }
+    assertIsRecord(jsonData);
+    assertIsRecord(jsonData.Hedr);
+    assertIsRecord(jsonData.Hedr["1000"]);
+    assertIsRecord(jsonData.Hedr["1000"].obj);
 
     expect(jsonData).toBeDefined();
     expect(jsonData._metadata).toBeDefined();
@@ -95,10 +108,10 @@ describe("Bugdom 2 Map Roundtrip", () => {
     });
   });
 
-  it("should apply preprocessing correctly", () => {
+  it("should apply preprocessing correctly", async () => {
     if (!fileExists) return;
 
-    const jsonResult = saveToJsonObject(
+    const jsonResult = await saveToJsonObject(
       originalData,
       bugdom2Specs,
       [],
@@ -120,14 +133,15 @@ describe("Bugdom 2 Map Roundtrip", () => {
     }).not.toThrow();
   });
 
-  it("should roundtrip without specs (raw resource fork)", () => {
+  it("should roundtrip without specs (raw resource fork)", async () => {
     if (!fileExists) return;
 
     // Parse without specs (hex data only)
-    const jsonResult1 = saveToJsonObject(originalData, [], [], [], false);
+    const jsonResult1 = await saveToJsonObject(originalData, [], [], [], false);
     expect(jsonResult1.ok).toBe(true);
     if (!jsonResult1.ok) return;
     const jsonData1 = jsonResult1.value;
+    assertIsRecord(jsonData1);
 
     // Convert back to binary
     const forkResult = loadFromJson(jsonData1, [], false);
@@ -138,7 +152,7 @@ describe("Bugdom 2 Map Roundtrip", () => {
     const binaryData2 = saveToBytes(fork);
 
     // Parse the new binary
-    const jsonResult2 = saveToJsonObject(
+    const jsonResult2 = await saveToJsonObject(
       new Uint8Array(binaryData2),
       [],
       [],
@@ -148,8 +162,14 @@ describe("Bugdom 2 Map Roundtrip", () => {
     expect(jsonResult2.ok).toBe(true);
     if (!jsonResult2.ok) return;
     const jsonData2 = jsonResult2.value;
+    assertIsRecord(jsonData2);
+    assertIsRecord(jsonData1);
 
-    expect(jsonData2._metadata?.junk1).toBe(jsonData1._metadata?.junk1);
+    const meta1 = (jsonData1 as Record<string, unknown>)._metadata;
+    const meta2 = (jsonData2 as Record<string, unknown>)._metadata;
+    if (isRecord(meta1) && isRecord(meta2)) {
+      expect(meta2.junk1).toBe(meta1.junk1);
+    }
 
     const types1 = Object.keys(jsonData1)
       .filter((k) => k !== "_metadata")
@@ -159,7 +179,12 @@ describe("Bugdom 2 Map Roundtrip", () => {
       .sort();
     expect(types2).toEqual(types1);
 
-    expect(jsonData2.Hedr?.["1000"]?.data).toBe(jsonData1.Hedr?.["1000"]?.data);
+    // Compare hex data for header safely
+    const hd1 = jsonData1.Hedr;
+    const hd2 = jsonData2.Hedr;
+    if (isRecord(hd1) && isRecord(hd2) && isRecord(hd1["1000"]) && isRecord(hd2["1000"])) {
+      expect(hd2["1000"].data).toBe(hd1["1000"].data);
+    }
 
     console.log("✅ Bugdom 2 hex data roundtrip successful");
   });
@@ -168,10 +193,10 @@ describe("Bugdom 2 Map Roundtrip", () => {
     // Skip: StructConverter.pack not implemented
   });
 
-  it("should produce similar binary size", () => {
+  it("should produce similar binary size", async () => {
     if (!fileExists) return;
 
-    const jsonResult = saveToJsonObject(originalData, [], [], [], false);
+    const jsonResult = await saveToJsonObject(originalData, [], [], [], false);
     expect(jsonResult.ok).toBe(true);
     if (!jsonResult.ok) return;
     const jsonData = jsonResult.value;

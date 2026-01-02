@@ -11,7 +11,7 @@ import {
   saveToJsonObject,
   loadFromJson,
   saveToBytes,
-} from "../../../src/rsrcdump-ts/rsrcdump";
+} from "@/rsrcdump-ts/rsrcdump";
 import { croMagSpecs } from "../../../src/python/structSpecs/croMag";
 
 describe("Cro-Mag Rally Level Roundtrip", () => {
@@ -40,18 +40,18 @@ describe("Cro-Mag Rally Level Roundtrip", () => {
   ];
 
   for (const levelFile of levelFiles) {
-    it(`should roundtrip ${levelFile} byte-for-byte`, () => {
+    it(`should roundtrip ${levelFile} byte-for-byte`, async () => {
       const filePath = join(terrainDir, levelFile);
       const originalData = readFileSync(filePath);
 
       // Parse to JSON (hex data only for byte accuracy)
-      const jsonResult = saveToJsonObject(originalData, [], [], [], false);
+      const jsonResult = await saveToJsonObject(originalData, [], [], [], false);
       expect(jsonResult.ok).toBe(true);
       if (!jsonResult.ok) {
         console.error(`Failed to parse ${levelFile}:`, jsonResult.error);
         return;
       }
-      const jsonData = jsonResult.value;
+      const jsonData = jsonResult.value as Record<string, unknown>;
 
       // Serialize back to binary
       const forkResult = loadFromJson(jsonData, [], false);
@@ -86,12 +86,12 @@ describe("Cro-Mag Rally Level Roundtrip", () => {
       expect(firstDiff).toBe(-1); // No differences
     });
 
-    it(`should parse ${levelFile} to JSON with croMag specs`, () => {
+    it(`should parse ${levelFile} to JSON with croMag specs`, async () => {
       const filePath = join(terrainDir, levelFile);
       const originalData = readFileSync(filePath);
 
       // Parse with specs (structured data)
-      const jsonResult = saveToJsonObject(
+      const jsonResult = await saveToJsonObject(
         originalData,
         croMagSpecs,
         [],
@@ -108,6 +108,12 @@ describe("Cro-Mag Rally Level Roundtrip", () => {
       }
 
       const jsonData = jsonResult.value;
+
+      function assertIsRecord(x: unknown): asserts x is Record<string, unknown> {
+        if (typeof x !== 'object' || x === null) throw new Error('Parsed data is not an object');
+      }
+      assertIsRecord(jsonData);
+
       expect(jsonData).toBeDefined();
       expect(jsonData.Hedr).toBeDefined();
     });

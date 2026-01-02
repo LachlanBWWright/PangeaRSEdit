@@ -11,7 +11,7 @@ import {
   saveToJsonObject,
   loadFromJson,
   saveToBytes,
-} from "../../../src/rsrcdump-ts/rsrcdump";
+} from "@/rsrcdump-ts/rsrcdump";
 
 function findTerrainFiles(
   gamesRoot: string,
@@ -77,16 +77,16 @@ describe("Per-level roundtrip for all games' terrain files", () => {
     it(`${game} - ${path.replace(
       /.*Data\/Terrain\//,
       "",
-    )}: byte-for-byte hex roundtrip`, () => {
+    )}: byte-for-byte hex roundtrip`, async () => {
       expect(existsSync(path)).toBe(true);
       const orig = readFileSync(path);
       expect(orig.length).toBeGreaterThan(0);
 
       // Parse into JSON using hex-only (no struct specs) to ensure roundtrip works at resource-fork level
-      const jsonRes = saveToJsonObject(orig, [], [], [], false);
+      const jsonRes = await saveToJsonObject(orig, [], [], [], false);
       expect(jsonRes.ok).toBe(true);
       if (!jsonRes.ok) return;
-      const json1 = jsonRes.value;
+      const json1 = jsonRes.value as Record<string, unknown>;
 
       // Recreate resource fork from JSON
       const forkRes = loadFromJson(json1, [], false);
@@ -105,11 +105,7 @@ describe("Per-level roundtrip for all games' terrain files", () => {
         orig.byteOffset,
         orig.byteLength,
       );
-      const newArr = new Uint8Array(
-        bytes.buffer ? bytes.buffer : bytes,
-        0,
-        bytes.length,
-      );
+      const newArr = new Uint8Array(bytes);
 
       const { offset, count } = firstDifference(origArr, newArr);
       const equal = count === 0;

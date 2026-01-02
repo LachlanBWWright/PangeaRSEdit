@@ -1,4 +1,4 @@
-import React, { forwardRef, type ComponentPropsWithoutRef, type ElementRef } from "react";
+import { forwardRef, type ComponentPropsWithoutRef, type ElementRef } from "react";
 import { Root as SwitchRoot, Thumb as SwitchThumb } from "@radix-ui/react-switch";
 
 import { cn } from "@/lib/utils";

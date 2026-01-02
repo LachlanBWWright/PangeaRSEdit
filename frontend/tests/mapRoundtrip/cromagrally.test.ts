@@ -11,13 +11,8 @@
 import { describe, it, expect, beforeAll } from "vitest";
 import { readFileSync, existsSync } from "fs";
 import { join } from "path";
-import {
-  load,
-  saveToJsonObject,
-  loadFromJson,
-  saveToBytes,
-  saveFromJson,
-} from "../../src/rsrcdump-ts/rsrcdump";
+import { load } from "@lachlanbwwright/rsrcdump-ts";
+import { saveToJsonObject, loadFromJson, saveToBytes, saveFromJson } from "@/rsrcdump-ts/rsrcdump";
 import { croMagSpecs } from "../../src/python/structSpecs/croMag";
 import { CroMagGlobals } from "../../src/data/globals/globals";
 import { preprocessJson } from "../../src/data/processors/ottoPreprocessor";
@@ -51,28 +46,28 @@ describe("Cro-Mag Rally Map Roundtrip", () => {
     const fork = forkResult.value;
 
     expect(fork).toBeDefined();
-    expect(fork.resources).toBeDefined();
-    expect(fork.resources.size).toBeGreaterThan(0);
+    expect(fork.tree).toBeDefined();
+    expect(fork.tree.size).toBeGreaterThan(0);
 
     // Check for expected resource types
     const expectedTypes = ["Hedr", "Atrb", "STgd", "Layr", "YCrd", "Itms"];
     for (const expectedType of expectedTypes) {
       expect(
-        fork.resources.has(expectedType),
+        fork.tree.has(expectedType),
         `Missing resource type: ${expectedType}`,
       ).toBe(true);
     }
 
     console.log(
       "Cro-Mag Rally resource types:",
-      Array.from(fork.resources.keys()),
+      Array.from(fork.tree.keys()),
     );
   });
 
-  it("should parse to JSON with cro-mag specs", () => {
+  it("should parse to JSON with cro-mag specs", async () => {
     if (!fileExists) return;
 
-    const jsonResult = saveToJsonObject(
+    const jsonResult = await saveToJsonObject(
       originalData,
       croMagSpecs,
       [],
@@ -82,6 +77,14 @@ describe("Cro-Mag Rally Map Roundtrip", () => {
     expect(jsonResult.ok).toBe(true);
     if (!jsonResult.ok) return;
     const jsonData = jsonResult.value;
+
+    function assertIsRecord(x: unknown): asserts x is Record<string, unknown> {
+      if (typeof x !== 'object' || x === null) throw new Error('Parsed data is not an object');
+    }
+    assertIsRecord(jsonData);
+    assertIsRecord(jsonData.Hedr);
+    assertIsRecord(jsonData.Hedr["1000"]);
+    assertIsRecord(jsonData.Hedr["1000"].obj);
 
     expect(jsonData).toBeDefined();
     expect(jsonData._metadata).toBeDefined();
@@ -101,10 +104,10 @@ describe("Cro-Mag Rally Map Roundtrip", () => {
     });
   });
 
-  it("should apply preprocessing correctly", () => {
+  it("should apply preprocessing correctly", async () => {
     if (!fileExists) return;
 
-    const jsonResult = saveToJsonObject(
+    const jsonResult = await saveToJsonObject(
       originalData,
       croMagSpecs,
       [],
@@ -126,11 +129,11 @@ describe("Cro-Mag Rally Map Roundtrip", () => {
     }).not.toThrow();
   });
 
-  it("should roundtrip without specs (raw resource fork)", () => {
+  it("should roundtrip without specs (raw resource fork)", async () => {
     if (!fileExists) return;
 
     // Parse without specs (hex data only)
-    const jsonResult1 = saveToJsonObject(originalData, [], [], [], false);
+    const jsonResult1 = await saveToJsonObject(originalData, [], [], [], false);
     expect(jsonResult1.ok).toBe(true);
     if (!jsonResult1.ok) return;
     const jsonData1 = jsonResult1.value;
@@ -144,7 +147,7 @@ describe("Cro-Mag Rally Map Roundtrip", () => {
     const binaryData2 = saveToBytes(fork);
 
     // Parse the new binary
-    const jsonResult2 = saveToJsonObject(
+    const jsonResult2 = await saveToJsonObject(
       new Uint8Array(binaryData2),
       [],
       [],
@@ -155,17 +158,32 @@ describe("Cro-Mag Rally Map Roundtrip", () => {
     if (!jsonResult2.ok) return;
     const jsonData2 = jsonResult2.value;
 
-    expect(jsonData2._metadata?.junk1).toBe(jsonData1._metadata?.junk1);
+    // Compare metadata safely
+    function isRecord(value: unknown): value is Record<string, unknown> {
+      return typeof value === 'object' && value !== null && !Array.isArray(value);
+    }
+    if (isRecord(jsonData1) && isRecord(jsonData2)) {
+      const meta1 = jsonData1._metadata;
+      const meta2 = jsonData2._metadata;
+      if (isRecord(meta1) && isRecord(meta2)) {
+        expect(meta2.junk1).toBe(meta1.junk1);
+      }
 
-    const types1 = Object.keys(jsonData1)
-      .filter((k) => k !== "_metadata")
-      .sort();
-    const types2 = Object.keys(jsonData2)
-      .filter((k) => k !== "_metadata")
-      .sort();
-    expect(types2).toEqual(types1);
+      const types1 = Object.keys(jsonData1)
+        .filter((k) => k !== "_metadata")
+        .sort();
+      const types2 = Object.keys(jsonData2)
+        .filter((k) => k !== "_metadata")
+        .sort();
+      expect(types2).toEqual(types1);
 
-    expect(jsonData2.Hedr?.["1000"]?.data).toBe(jsonData1.Hedr?.["1000"]?.data);
+      // Compare hex data for header safely
+    const hd1 = jsonData1.Hedr;
+    const hd2 = jsonData2.Hedr;
+    if (isRecord(hd1) && isRecord(hd2) && isRecord(hd1["1000"]) && isRecord(hd2["1000"])) {
+      expect(hd2["1000"].data).toBe(hd1["1000"].data);
+    }
+    }
 
     console.log("✅ Cro-Mag Rally hex data roundtrip successful");
   });
@@ -174,10 +192,10 @@ describe("Cro-Mag Rally Map Roundtrip", () => {
     // Skip: StructConverter.pack not implemented
   });
 
-  it("should produce similar binary size", () => {
+  it("should produce similar binary size", async () => {
     if (!fileExists) return;
 
-    const jsonResult = saveToJsonObject(originalData, [], [], [], false);
+    const jsonResult = await saveToJsonObject(originalData, [], [], [], false);
     expect(jsonResult.ok).toBe(true);
     if (!jsonResult.ok) return;
     const jsonData = jsonResult.value;

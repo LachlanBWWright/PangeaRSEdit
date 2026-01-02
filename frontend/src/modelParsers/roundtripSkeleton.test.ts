@@ -11,21 +11,73 @@ import { NodeIO } from "@gltf-transform/core";
 import { validateBytes } from "gltf-validator";
 
 // Type guard helper functions
+import type { BG3DSkeleton, BG3DBone, BG3DAnimation, BG3DKeyframe } from "./parseBG3D";
+
 function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 function isArray(value: unknown): value is unknown[] {
   return Array.isArray(value);
 }
 
-function getString(value: unknown, defaultValue = ''): string {
-  return typeof value === 'string' ? value : defaultValue;
+function getString(value: unknown, defaultValue = ""): string {
+  return typeof value === "string" ? value : defaultValue;
 }
 
-// Helper to safely get skeleton from result
-function getSkeleton(result: { skeleton?: { bones: unknown[]; animations: unknown[]; alisData?: unknown; relPoints?: unknown } | null }) {
-  return result.skeleton;
+// Narrowing helpers for BG3D skeleton structures
+function isBG3DKeyframe(value: unknown): value is BG3DKeyframe {
+  return (
+    isRecord(value) &&
+    typeof value.tick === "number" &&
+    typeof value.coordX === "number" &&
+    typeof value.coordY === "number" &&
+    typeof value.coordZ === "number" &&
+    typeof value.rotationX === "number" &&
+    typeof value.rotationY === "number" &&
+    typeof value.rotationZ === "number"
+  );
+}
+
+function isBG3DAnimation(value: unknown): value is BG3DAnimation {
+  if (!isRecord(value)) return false;
+  if (typeof value.name !== "string") return false;
+  const kf = (value as Record<string, unknown>).keyframes;
+  if (!isRecord(kf) && typeof kf !== "object") return false;
+  // Ensure keyframes values are arrays of valid keyframes
+  for (const [_, arr] of Object.entries(kf || {})) {
+    if (!Array.isArray(arr)) return false;
+    for (const item of arr) {
+      if (!isBG3DKeyframe(item)) return false;
+    }
+  }
+  return true;
+}
+
+function isBG3DBone(value: unknown): value is BG3DBone {
+  return (
+    isRecord(value) &&
+    typeof value.name === "string" &&
+    typeof value.parentBone === "number" &&
+    typeof value.coordX === "number" &&
+    typeof value.coordY === "number" &&
+    typeof value.coordZ === "number"
+  );
+}
+
+function isBG3DSkeleton(value: unknown): value is BG3DSkeleton {
+  if (!isRecord(value)) return false;
+  if (typeof value.version !== "number") return false;
+  if (!Array.isArray(value.bones) || !value.bones.every(isBG3DBone)) return false;
+  if (!Array.isArray(value.animations) || !value.animations.every(isBG3DAnimation)) return false;
+  return true;
+}
+
+// Helper to safely get skeleton from a conversion result and narrow it
+function getSkeleton(result: unknown): BG3DSkeleton | undefined {
+  if (!isRecord(result)) return undefined;
+  const sk = (result as Record<string, unknown>).skeleton;
+  return isBG3DSkeleton(sk) ? sk : undefined;
 }
 
 describe("BG3D + Skeleton Roundtrip Tests with FULL ACCURACY", () => {

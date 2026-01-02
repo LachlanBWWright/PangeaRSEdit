@@ -6,7 +6,7 @@ import { parseBG3DWithSkeletonResource } from "./bg3dWithSkeleton";
 import { bg3dParsedToGLTF, gltfToBG3D } from "./parsedBg3dGitfConverter";
 import { convertBG3DToSkeletonResource } from "./parseBG3D";
 import type { SkeletonResource } from "../python/structSpecs/skeleton/skeletonInterface";
-import { readFileSync } from "fs";
+import { readFileSync, existsSync } from "fs";
 import { join } from "path";
 import { unwrap } from "../types/result";
 
@@ -461,24 +461,24 @@ describe("BG3D Skeleton Integration", () => {
 
 // Integration test with real files
 describe("BG3D Skeleton Real File Integration", () => {
-  const BG3D_PATH = path.join(
+  const BG3D_PATH = join(
     __dirname,
     "./testSkeletons/EliteBrainAlien.bg3d",
   );
-  const SKELETON_PATH = path.join(
+  const SKELETON_PATH = join(
     __dirname,
     "./skeletonRsrc/testSkeletons/EliteBrainAlien.skeleton.rsrc",
   );
 
   it("should handle real BrainAlien files if they exist", () => {
     // Check if test files exist
-    if (!fs.existsSync(BG3D_PATH) || !fs.existsSync(SKELETON_PATH)) {
+    if (!existsSync(BG3D_PATH) || !existsSync(SKELETON_PATH)) {
       console.log("Real test files not found, skipping real file test");
       return;
     }
 
-    const bg3dBuffer = fs.readFileSync(BG3D_PATH);
-    const skeletonBuffer = fs.readFileSync(SKELETON_PATH);
+    const bg3dBuffer = readFileSync(BG3D_PATH);
+    const skeletonBuffer = readFileSync(SKELETON_PATH);
 
     expect(bg3dBuffer.length).toBeGreaterThan(0);
     expect(skeletonBuffer.length).toBeGreaterThan(0);

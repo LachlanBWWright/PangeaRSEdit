@@ -88,6 +88,10 @@ describe("All Games Validation Tests", () => {
           }
 
           const fileName = terrainFiles[i];
+          if (!fileName) {
+            console.warn(`Skipping ${game.name} level ${i + 1} - file not found`);
+            return;
+          }
           const filePath = join(terrainDir, fileName);
           const fileData = readFileSync(filePath);
 

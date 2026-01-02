@@ -4,12 +4,12 @@
  */
 
 import { test, expect } from "@playwright/test";
-import { join } from "path";
+import { join, dirname } from "path";
 import { existsSync } from "fs";
 import { fileURLToPath } from "url";
 
 const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+const __dirname = dirname(__filename);
 
 // Test configuration for each game
 const gameTests = [

@@ -4,7 +4,7 @@ import type { LevelData } from "@/python/structSpecs/LevelTypes";
 
 describe("level data utils", () => {
   it("allows combining when optional sections are missing", () => {
-    const level: Partial<LevelData> = {
+    const levelUnknown: unknown = {
       Hedr: {
         1000: { name: "Header", obj: { version: 1, numItems: 0, mapWidth: 64, mapHeight: 64, tileSize: 32, minY: 0, maxY: 255, numSplines: 0, numFences: 0 }, order: 0 },
       },
@@ -20,7 +20,7 @@ describe("level data utils", () => {
       },
       _metadata: { file_attributes: 0, junk1: 0, junk2: 0 },
       Atrb: { 1000: { name: "Tile Attribute Data", obj: [], order: 0 } },
-    } as unknown;
+    };
 
     function assertIsLevel(x: unknown): asserts x is LevelData {
       if (typeof x !== 'object' || x === null || !('Hedr' in x)) {
@@ -28,7 +28,8 @@ describe("level data utils", () => {
       }
     }
 
-    assertIsLevel(level);
+    assertIsLevel(levelUnknown);
+    const level: LevelData = levelUnknown;
     const atomic = splitLevelData(level);
     // Intentionally missing item/fence/spline/liquid
     expect(atomic.itemData).toBeNull();

@@ -261,7 +261,7 @@ describe("Real Game File Demo - BrainAlien", () => {
         "EliteBrainAlien.bg3d not found, creating demo with available file",
       );
       // Use the available level4_apocalypse.bg3d file instead
-      const fallbackPath = path.join(
+      const fallbackPath = join(
         __dirname,
         "./testSkeletons/level4_apocalypse.bg3d",
       );
@@ -387,11 +387,11 @@ describe("Real Game File Demo - BrainAlien", () => {
   });
 
   it("shows file sizes and validates game file availability", () => {
-    const bg3dPath = path.join(
+    const bg3dPath = join(
       __dirname,
       "./testSkeletons/EliteBrainAlien.bg3d",
     );
-    const skeletonPath = path.join(
+    const skeletonPath = join(
       __dirname,
       "./skeletonRsrc/testSkeletons/EliteBrainAlien.skeleton.rsrc",
     );
@@ -415,12 +415,12 @@ describe("Real Game File Demo - BrainAlien", () => {
     }
 
     // Check for any available BG3D files
-    const testDir = path.join(__dirname, "./testSkeletons");
+    const testDir = join(__dirname, "./testSkeletons");
     if (existsSync(testDir)) {
       const files = readdirSync(testDir).filter((f) => f.endsWith(".bg3d"));
       console.log(`📂 Available BG3D files: ${files.length}`);
       files.forEach((file) => {
-        const filePath = path.join(testDir, file);
+        const filePath = join(testDir, file);
         const size = statSync(filePath).size;
         console.log(`   - ${file}: ${size} bytes`);
       });

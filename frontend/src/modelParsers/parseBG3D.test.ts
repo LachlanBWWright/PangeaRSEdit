@@ -22,8 +22,8 @@ const TEST_BG3D_PATH = join(
 );
 
 // Test files for games with bounding boxes (Billy Frontier, Cro Mag)
-const BILLY_BG3D_PATH = path.join(__dirname, "./testSkeletons/Billy.bg3d");
-const BROG_BG3D_PATH = path.join(__dirname, "./testSkeletons/Brog.bg3d");
+const BILLY_BG3D_PATH = join(__dirname, "./testSkeletons/Billy.bg3d");
+const BROG_BG3D_PATH = join(__dirname, "./testSkeletons/Brog.bg3d");
 
 // Helper to count geometries and check for bounding boxes
 interface GroupChild { children?: GroupChild[]; boundingBox?: unknown }
@@ -126,7 +126,7 @@ describe("parseBG3D - Multi-Game Support", () => {
   });
 
   it("parses Bugdom 2 BG3D file with bounding boxes (Grasshopper)", () => {
-    const grasshopperPath = path.join(
+    const grasshopperPath = join(
       __dirname,
       "./testSkeletons/Grasshopper.bg3d",
     );
@@ -205,7 +205,7 @@ describe("parseBG3DAndUnparse", () => {
           console.log(tex.pixels, tex.width, tex.height);
           pngBuffer = rgba8ToPng(tex.pixels, tex.width, tex.height);
         }
-        const pngPath = path.join(
+        const pngPath = join(
           __dirname,
           `./testSkeletons/output/level4_apocalypse.material${i}.texture${j}.png`,
         );
@@ -222,7 +222,7 @@ describe("parseBG3DAndUnparse", () => {
     expect(outputArray.length).toBeGreaterThan(0);
 
     // Save the new BG3D file for inspection
-    const roundtripPath = path.join(
+    const roundtripPath = join(
       __dirname,
       "./testSkeletons/output/level4_apocalypse.roundtrip1.bg3d",
     );

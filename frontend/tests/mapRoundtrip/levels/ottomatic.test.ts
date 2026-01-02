@@ -7,11 +7,7 @@
 import { describe, it, expect } from "vitest";
 import { readFileSync } from "fs";
 import { join } from "path";
-import {
-  saveToJsonObject,
-  loadFromJson,
-  saveToBytes,
-} from "../../../src/rsrcdump-ts/rsrcdump";
+import { saveToJsonObject, loadFromJson, saveToBytes } from "@/rsrcdump-ts/rsrcdump";
 import { ottoMaticSpecs } from "../../../src/python/structSpecs/ottoMatic";
 
 describe("Otto Matic Level Roundtrip", () => {
@@ -38,12 +34,12 @@ describe("Otto Matic Level Roundtrip", () => {
   ];
 
   for (const levelFile of levelFiles) {
-    it(`should roundtrip ${levelFile} byte-for-byte`, () => {
+    it(`should roundtrip ${levelFile} byte-for-byte`, async () => {
       const filePath = join(terrainDir, levelFile);
       const originalData = readFileSync(filePath);
 
       // Parse to JSON (hex data only for byte accuracy)
-      const jsonResult = saveToJsonObject(originalData, [], [], [], false);
+      const jsonResult = await saveToJsonObject(originalData, [], [], [], false);
       expect(jsonResult.ok).toBe(true);
       if (!jsonResult.ok) {
         console.error(`Failed to parse ${levelFile}:`, jsonResult.error);
@@ -84,12 +80,12 @@ describe("Otto Matic Level Roundtrip", () => {
       expect(firstDiff).toBe(-1); // No differences
     });
 
-    it(`should parse ${levelFile} to JSON with ottoMatic specs`, () => {
+    it(`should parse ${levelFile} to JSON with ottoMatic specs`, async () => {
       const filePath = join(terrainDir, levelFile);
       const originalData = readFileSync(filePath);
 
       // Parse with specs (structured data)
-      const jsonResult = saveToJsonObject(
+      const jsonResult = await saveToJsonObject(
         originalData,
         ottoMaticSpecs,
         [],
@@ -106,6 +102,10 @@ describe("Otto Matic Level Roundtrip", () => {
       }
 
       const jsonData = jsonResult.value;
+      function assertIsRecord(x: unknown): asserts x is Record<string, unknown> {
+        if (typeof x !== 'object' || x === null) throw new Error('Parsed data is not an object');
+      }
+      assertIsRecord(jsonData);
       expect(jsonData).toBeDefined();
       expect(jsonData.Hedr).toBeDefined();
     });
