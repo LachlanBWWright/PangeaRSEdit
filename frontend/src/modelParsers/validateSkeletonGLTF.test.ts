@@ -69,7 +69,10 @@ describe("Skeleton Animation glTF Validation", () => {
     console.log("\n=== Analyzing glTF Structure ===");
 
     // Debug: Check the hierarchy
-    const defaultScene = gltfDoc.getRoot().getDefaultScene()!;
+    const defaultScene = gltfDoc.getRoot().getDefaultScene();
+    if (!defaultScene) {
+      throw new Error("No default scene found in glTF document");
+    }
     const rootChildren = defaultScene.listChildren();
 
     console.log("\n=== Scene Root Children ===");
@@ -123,8 +126,9 @@ describe("Skeleton Animation glTF Validation", () => {
     // Check scene
     const scene = root.getDefaultScene();
     expect(scene).toBeDefined();
-    console.log(`Scene: "${scene!.getName()}"`);
-
+    if (scene) {
+      console.log(`Scene: "${scene.getName()}"`);
+    }
     // Check skins
     const skins = root.listSkins();
     expect(skins.length).toBeGreaterThan(0);

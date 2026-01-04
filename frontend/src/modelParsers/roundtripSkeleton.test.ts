@@ -100,8 +100,11 @@ describe("BG3D + Skeleton Roundtrip Tests with FULL ACCURACY", () => {
     // Convert back to BG3D (first roundtrip output)
     const roundtrip1Result = await gltfToBG3D(gltf1);
     const roundtrip1Bg3dBinary = bg3dParsedToBG3D(roundtrip1Result);
+    if (!roundtrip1Result.skeleton) {
+      throw new Error("Roundtrip 1 result has no skeleton");
+    }
     const roundtrip1SkeletonResource = bg3dSkeletonToSkeletonResource(
-      roundtrip1Result.skeleton!,
+      roundtrip1Result.skeleton,
     );
 
     // Debug: Check resource counts in RT1 skeleton
@@ -133,11 +136,11 @@ describe("BG3D + Skeleton Roundtrip Tests with FULL ACCURACY", () => {
     // Debug: Show BG3DSkeleton data
     console.log(
       "RT1 skeleton.alisData keys:",
-      Object.keys(roundtrip1Result.skeleton!.alisData || {}).length,
+      Object.keys(roundtrip1Result.skeleton?.alisData || {}).length,
     );
     console.log(
       "RT1 skeleton.relPoints keys:",
-      Object.keys(roundtrip1Result.skeleton!.relPoints || {}).length,
+      Object.keys(roundtrip1Result.skeleton?.relPoints || {}).length,
     );
 
     const roundtrip1SkeletonBinaryResult = skeletonResourceToBinary(

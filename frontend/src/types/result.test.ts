@@ -90,7 +90,7 @@ describe("Result type", () => {
     it("map should pass through Err values", () => {
       const error = new Error("test");
       const result: Result<number, Error> = err(error);
-      const mapped = map(result, (x) => x! * 2);
+      const mapped = map(result, (x) => (x ?? 0) * 2);
       if (isErr(mapped)) {
         expect(mapped.error).toBe(error);
       } else {
@@ -132,7 +132,7 @@ describe("Result type", () => {
 
     it("should short-circuit on error", () => {
       const result: Result<number, Error> = err(new Error("first error"));
-      const chained = andThen(result, (x) => ok(x! * 2));
+      const chained = andThen(result, (x) => ok((x ?? 0) * 2));
       if (isErr(chained)) {
         expect(chained.error.message).toBe("first error");
       } else {

@@ -359,7 +359,9 @@ describe("Real Game File Demo - BrainAlien", () => {
       expect(parsed.materials.length).toBeGreaterThan(0);
       expect(parsed.groups.length).toBeGreaterThan(0);
       expect(parsed.skeleton).toBeDefined();
-      expect(parsed.skeleton!.bones.length).toBe(3);
+      if (parsed.skeleton) {
+        expect(parsed.skeleton.bones.length).toBe(3);
+      }
 
       return;
     }

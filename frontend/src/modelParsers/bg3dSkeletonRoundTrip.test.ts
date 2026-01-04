@@ -113,8 +113,11 @@ describe("BG3D Skeleton Round-trip with FULL ACCURACY", () => {
         "Converting from glTF structures (original binary not available)",
       );
       roundtripBg3dBinary = bg3dParsedToBG3D(roundtripBg3d);
+      if (!roundtripBg3d.skeleton) {
+        throw new Error("Roundtrip BG3D has no skeleton");
+      }
       const roundtripSkeletonResource = bg3dSkeletonToSkeletonResource(
-        roundtripBg3d.skeleton!,
+        roundtripBg3d.skeleton,
       );
       const roundtripSkeletonResult = await skeletonResourceToBinary(
         roundtripSkeletonResource,
@@ -260,19 +263,21 @@ describe("BG3D Skeleton Round-trip with FULL ACCURACY", () => {
       [animName: string]: { [boneName: string]: number[] };
     } = {};
 
-    bg3dParsed.skeleton!.animations.forEach((anim) => {
-      // Ensure the structure exists for this animation
-      const animEntry = (originalTimingData[anim.name] =
-        originalTimingData[anim.name] || {});
+    if (bg3dParsed.skeleton) {
+      bg3dParsed.skeleton.animations.forEach((anim) => {
+        // Ensure the structure exists for this animation
+        const animEntry = (originalTimingData[anim.name] =
+          originalTimingData[anim.name] || {});
 
-      Object.entries(anim.keyframes).forEach(([boneIndexStr, keyframes]) => {
-        const boneIndex = parseInt(boneIndexStr);
-        const bone = bg3dParsed.skeleton!.bones[boneIndex];
-        if (bone) {
-          animEntry[bone.name] = keyframes.map((kf) => kf.tick / 30.0); // seconds
-        }
+        Object.entries(anim.keyframes).forEach(([boneIndexStr, keyframes]) => {
+          const boneIndex = parseInt(boneIndexStr);
+          const bone = bg3dParsed.skeleton?.bones[boneIndex];
+          if (bone) {
+            animEntry[bone.name] = keyframes.map((kf) => kf.tick / 30.0); // seconds
+          }
+        });
       });
-    });
+    }
 
     // Collect glTF timing data
     const gltfTimingData: {

@@ -336,13 +336,15 @@ describe("BG3D Model File Tests", () => {
       }
 
       expect(parsed).toBeDefined();
-      expect(parsed!.materials.length).toBeGreaterThan(0);
+      if (parsed) {
+        expect(parsed.materials.length).toBeGreaterThan(0);
 
-      console.log(
-        `${gameKey} model: ${parsed!.materials.length} materials, groups: ${
-          parsed!.groups.length
-        }`,
-      );
+        console.log(
+          `${gameKey} model: ${parsed.materials.length} materials, groups: ${
+            parsed.groups.length
+          }`,
+        );
+      }
     });
   });
 });

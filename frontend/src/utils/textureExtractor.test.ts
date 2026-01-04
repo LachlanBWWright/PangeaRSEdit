@@ -188,10 +188,13 @@ describe("Enhanced Texture Extraction", () => {
 
     expect(mockScene).toBeDefined();
     expect(extractedTextures).toHaveLength(1);
-    expect(extractedTextures[0]!.name).toBe("TestMaterial_Diffuse");
-    expect(extractedTextures[0]!.url).toBe("data:image/png;base64,test123");
-    expect(extractedTextures[0]!.type).toBe("diffuse");
-    expect(extractedTextures[0]!.size).toEqual({ width: 512, height: 512 });
+    const firstTexture = extractedTextures[0];
+    if (firstTexture) {
+      expect(firstTexture.name).toBe("TestMaterial_Diffuse");
+      expect(firstTexture.url).toBe("data:image/png;base64,test123");
+      expect(firstTexture.type).toBe("diffuse");
+      expect(firstTexture.size).toEqual({ width: 512, height: 512 });
+    }
   });
 
   test("should extract multiple texture types from single material", () => {

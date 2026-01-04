@@ -215,9 +215,10 @@ describe("BG3D Skeleton Integration", () => {
       expect(result.parsed.skeleton).toBeDefined();
       expect(result.parsed.skeleton?.bones).toHaveLength(1);
       expect(result.parsed.skeleton?.animations).toHaveLength(1);
-      expect(result.parsed.skeleton!.animations[0]!.name).toBe(
-        "test_animation",
-      );
+      const firstAnim = result.parsed.skeleton?.animations[0];
+      if (firstAnim) {
+        expect(firstAnim.name).toBe("test_animation");
+      }
     }
   });
 
