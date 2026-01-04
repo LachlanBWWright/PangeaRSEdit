@@ -8,7 +8,12 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 // Type guard for RelPRaw
 function isRelPRaw(value: unknown): value is RelPRaw {
-  return isRecord(value) && typeof value.relOffsetX === "number";
+  return (
+    isRecord(value) &&
+    typeof value.relOffsetX === "number" &&
+    typeof value.relOffsetY === "number" &&
+    typeof value.relOffsetZ === "number"
+  );
 }
 
 export function handleRelP(

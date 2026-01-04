@@ -8,7 +8,20 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 // Type guard for KeyFRaw
 function isKeyFRaw(value: unknown): value is KeyFRaw {
-  return isRecord(value) && typeof value.tick === "number";
+  return (
+    isRecord(value) &&
+    typeof value.tick === "number" &&
+    typeof value.accelerationMode === "number" &&
+    typeof value.coordX === "number" &&
+    typeof value.coordY === "number" &&
+    typeof value.coordZ === "number" &&
+    typeof value.rotationX === "number" &&
+    typeof value.rotationY === "number" &&
+    typeof value.rotationZ === "number" &&
+    typeof value.scaleX === "number" &&
+    typeof value.scaleY === "number" &&
+    typeof value.scaleZ === "number"
+  );
 }
 
 export function handleKeyF(

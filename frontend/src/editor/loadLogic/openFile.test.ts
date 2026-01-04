@@ -2,9 +2,65 @@ import { describe, it, expect, vi } from "vitest";
 import { openFile } from "./openFile";
 import type { GlobalsInterface } from "@/data/globals/globals";
 import { DataType } from "@/data/globals/globals";
+import type { LevelData, StandardHeader, TileAttribute, SupertileGridEntry, TerrainItem, SplineItem } from "@/python/structSpecs/LevelTypes";
 
 vi.mock("./parseLevelDataFile", () => ({ parseLevelDataFile: vi.fn() }));
 import * as parseModule from "./parseLevelDataFile";
+
+// Helper to create minimal valid LevelData mock
+function createMockLevelData(): LevelData<StandardHeader, TerrainItem<number>, TileAttribute, SupertileGridEntry, SplineItem<number>> {
+  return {
+    Hedr: {
+      1000: {
+        name: "Header",
+        obj: {
+          version: 1,
+          numItems: 0,
+          mapWidth: 1,
+          mapHeight: 1,
+          tileSize: 32,
+          minY: 0,
+          maxY: 100,
+          numSplines: 0,
+          numFences: 0,
+          numTilePages: 1,
+          numTiles: 1,
+          numUniqueSupertiles: 1,
+          numWaterPatches: 0,
+          numCheckpoints: 0,
+        },
+        order: 0,
+      },
+    },
+    Atrb: {
+      1000: {
+        name: "Tile Attribute Data",
+        obj: [],
+        order: 1,
+      },
+    },
+    ItCo: {
+      1000: {
+        name: "Terrain Items Color Array",
+        data: "",
+        order: 2,
+      },
+    },
+    YCrd: {
+      1000: {
+        name: "Floor&Ceiling Y Coords",
+        obj: [],
+        order: 3,
+      },
+    },
+    alis: {},
+    _metadata: {
+      file_attributes: 0,
+      junk1: 0,
+      junk2: 0,
+    },
+  };
+}
 
 describe("openFile", () => {
   it("should fetch resource and call setters for MIGHTY_MIKE", async () => {
@@ -16,7 +72,7 @@ describe("openFile", () => {
 
     // Use the hoisted mock and configure its return value for this test
     const _parse = vi.mocked(parseModule.parseLevelDataFile);
-    _parse.mockResolvedValueOnce({ ok: true, value: {} });
+    _parse.mockResolvedValueOnce({ ok: true, value: createMockLevelData() });
 
     const setGlobals = vi.fn();
     const setMapFile = vi.fn();
@@ -65,10 +121,16 @@ describe("openFile", () => {
     const tileBytes = 2 * 32 * 32;
     const hex = "00".repeat(tileBytes);
 
+    const baseMockData = createMockLevelData();
+    const mockDataWithTimg: LevelData<StandardHeader, TerrainItem<number>, TileAttribute, SupertileGridEntry, SplineItem<number>> = {
+      ...baseMockData,
+      Timg: { "1000": { name: "Extracted Tile Image Data 32x32/16bit", data: hex, order: 0 } },
+    };
+
     const _parse = vi.mocked(parseModule.parseLevelDataFile);
     _parse.mockResolvedValueOnce({
       ok: true,
-      value: { Timg: { "1000": { data: hex } } },
+      value: mockDataWithTimg,
     });
 
     const setGlobals = vi.fn();
