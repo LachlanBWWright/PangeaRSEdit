@@ -46,10 +46,13 @@ export function bg3dBonesToGltf(
 
   // Set up parent-child relationships
   parsedSkeleton.bones.forEach((bone, boneIndex) => {
-    const joint = boneToJointMap.get(boneIndex)!;
+    const joint = boneToJointMap.get(boneIndex);
+    if (!joint) return;
     if (bone.parentBone >= 0 && bone.parentBone < joints.length) {
-      const parentJoint = boneToJointMap.get(bone.parentBone)!;
-      parentJoint.addChild(joint);
+      const parentJoint = boneToJointMap.get(bone.parentBone);
+      if (parentJoint) {
+        parentJoint.addChild(joint);
+      }
     }
   });
 
@@ -60,8 +63,10 @@ export function bg3dBonesToGltf(
   // Add root bones (bones with no parent) to skeleton root
   parsedSkeleton.bones.forEach((bone, boneIndex) => {
     if (bone.parentBone < 0) {
-      const joint = boneToJointMap.get(boneIndex)!;
-      skeletonRoot.addChild(joint);
+      const joint = boneToJointMap.get(boneIndex);
+      if (joint) {
+        skeletonRoot.addChild(joint);
+      }
     }
   });
 

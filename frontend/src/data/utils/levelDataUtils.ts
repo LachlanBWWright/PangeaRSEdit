@@ -213,21 +213,36 @@ export function sanitizeResourceForkJson(data: unknown): Record<string, unknown>
     return {};
   }
   const source = data as Record<string, unknown>;
-  const sanitized: Record<string, unknown> = { ...source };
+  const sanitized: Record<string, unknown> = {};
+  
   for (const [key, value] of Object.entries(source)) {
-    if (key.length > 4) continue;
-    if (value === undefined || value === null) continue;
-    if (typeof value !== "object" || Array.isArray(value)) {
-      delete sanitized[key];
+    // Copy keys with length > 4 or non-resource entries as-is
+    if (key.length > 4) {
+      sanitized[key] = value;
       continue;
     }
-    const entry = value as Record<string, unknown>;
-    for (const [resId, resVal] of Object.entries(entry)) {
-      if (resVal === undefined || resVal === null) continue;
-      if (typeof resVal !== "object" || Array.isArray(resVal)) {
-        delete entry[resId];
-      }
+    if (value === undefined || value === null) {
+      sanitized[key] = value;
+      continue;
     }
+    if (typeof value !== "object" || Array.isArray(value)) {
+      // Skip malformed resource sections (arrays or primitives)
+      continue;
+    }
+    // For resource entries, filter out invalid sub-entries
+    const entry = value as Record<string, unknown>;
+    const filteredEntry: Record<string, unknown> = {};
+    for (const [resId, resVal] of Object.entries(entry)) {
+      if (resVal === undefined || resVal === null) {
+        filteredEntry[resId] = resVal;
+        continue;
+      }
+      if (typeof resVal === "object" && !Array.isArray(resVal)) {
+        filteredEntry[resId] = resVal;
+      }
+      // Skip arrays and primitives
+    }
+    sanitized[key] = filteredEntry;
   }
   return sanitized;
 }

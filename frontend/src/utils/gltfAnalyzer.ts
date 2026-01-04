@@ -45,10 +45,11 @@ export async function analyzeGLTF(
     .getRoot()
     .listNodes()
     .forEach((node, index) => {
+      const mesh = node.getMesh();
       analysis.nodes.push({
         name: node.getName() || `Node_${index}`,
-        meshes: node.getMesh()
-          ? [doc.getRoot().listMeshes().indexOf(node.getMesh()!)]
+        meshes: mesh
+          ? [doc.getRoot().listMeshes().indexOf(mesh)]
           : [],
         children: node
           .listChildren()

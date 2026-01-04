@@ -190,15 +190,15 @@ export function removeSpline(
     if (draft.Spln?.[1000]?.obj && splineIdx >= 0 && splineIdx < draft.Spln[1000].obj.length) {
       draft.Spln[1000].obj.splice(splineIdx, 1);
       
-      // Remove associated data
+      // Remove associated data using Reflect.deleteProperty
       if (draft.SpNb?.[splineIdx]) {
-        delete draft.SpNb[splineIdx];
+        Reflect.deleteProperty(draft.SpNb, splineIdx);
       }
       if (draft.SpPt?.[splineIdx]) {
-        delete draft.SpPt[splineIdx];
+        Reflect.deleteProperty(draft.SpPt, splineIdx);
       }
       if (draft.SpIt?.[splineIdx]) {
-        delete draft.SpIt[splineIdx];
+        Reflect.deleteProperty(draft.SpIt, splineIdx);
       }
       
       // Update header count

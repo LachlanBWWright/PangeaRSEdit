@@ -20,10 +20,13 @@ export function createNonNullUpdater<T>(
     setter((current) => {
       if (!current) return current;
       // Cast to satisfy TypeScript's type inference for Draft types
-      const result = typeof updater === "function" 
-        ? (updater as (val: Draft<T>) => Draft<T> | void)(current as Draft<T>) 
-        : updater;
-      return result as T | null;
+      if (typeof updater === "function") {
+        const recipe = updater as (val: Draft<T>) => Draft<T> | undefined;
+        const result = recipe(current as Draft<T>);
+        // If recipe returns undefined, Immer assumes mutation in place
+        return result === undefined ? current : (result as T | null);
+      }
+      return updater;
     });
   };
 }

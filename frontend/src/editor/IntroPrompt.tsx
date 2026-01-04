@@ -468,10 +468,10 @@ export function IntroPrompt() {
         </Button>
       </div>
       <hr />
-      {/* Render editor when we have images; allow some atomic pieces to be null. */}
-      {mapImages ? (
+      {/* Render editor when we have images and required data. */}
+      {mapImages && headerData && terrainData ? (
         <EditorView
-          headerData={headerData!}
+          headerData={headerData}
           setHeaderData={setHeaderDataNonNull}
           itemData={itemData}
           setItemData={setItemData}
@@ -481,7 +481,7 @@ export function IntroPrompt() {
           setFenceData={setFenceData}
           splineData={splineData}
           setSplineData={setSplineData}
-          terrainData={terrainData!}
+          terrainData={terrainData}
           setTerrainData={setTerrainDataNonNull}
           mapImages={mapImages}
           setMapImages={setMapImages}

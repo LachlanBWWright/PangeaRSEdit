@@ -58,8 +58,13 @@ export function Tiles({
     if (!hasAtrbData || !hasLayrData) {
       return [];
     }
-    return terrainData.Layr![1000].obj
-      .map((atrbIdx: number) => terrainData.Atrb![1000].obj[atrbIdx])
+    const layrData = terrainData.Layr?.[1000]?.obj;
+    const atrbData = terrainData.Atrb?.[1000]?.obj;
+    if (!layrData || !atrbData) {
+      return [];
+    }
+    return layrData
+      .map((atrbIdx: number) => atrbData[atrbIdx])
       .filter((tile): tile is TileAttribute => tile !== undefined);
   }, [terrainData.Layr, terrainData.Atrb, hasAtrbData, hasLayrData]);
 

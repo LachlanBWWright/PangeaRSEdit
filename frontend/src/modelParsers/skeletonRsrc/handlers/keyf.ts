@@ -28,13 +28,17 @@ export function handleKeyF(
     (resourceData as { obj?: KeyFRaw[] }).obj &&
     Array.isArray((resourceData as { obj?: KeyFRaw[] }).obj)
   ) {
-    const obj = (resourceData as { obj?: KeyFRaw[] }).obj!;
+    const objData = (resourceData as { obj?: KeyFRaw[] }).obj;
+    if (!objData) {
+      console.log(`KeyF ${resourceName} has no obj array`);
+      return [];
+    }
     console.log(
       `KeyF ${resourceName} empty/malformed from rsrcdump:`,
-      obj.length,
+      objData.length,
       "keyframes",
     );
-    return obj;
+    return objData;
   } else {
     console.log(`KeyF ${resourceName} raw resourceData:`, resourceData);
     console.log(`KeyF ${resourceName} resourceData type:`, typeof resourceData);

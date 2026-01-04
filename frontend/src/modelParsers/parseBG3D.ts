@@ -66,12 +66,12 @@ export enum BG3DTagType {
 
 export enum BG3DMaterialFlags {
   BG3D_MATERIALFLAG_TEXTURED = 1,
-  BG3D_MATERIALFLAG_ALWAYSBLEND = 1 << 1, // set if always want to GL_BLEND this texture when drawn
-  BG3D_MATERIALFLAG_CLAMP_U = 1 << 2, // Block horizontal texture tiling?
-  BG3D_MATERIALFLAG_CLAMP_V = 1 << 3, // Block vertical texture tiling?
-  BG3D_MATERIALFLAG_MULTITEXTURE = 1 << 4,
-  BG3D_MATERIALFLAG_CLAMP_U_TRUE = 1 << 5, // Nanosaur 2 only, no idea what this does
-  BG3D_MATERIALFLAG_CLAMP_V_TRUE = 1 << 6, // Nanosaur 2 only, no idea what this does
+  BG3D_MATERIALFLAG_ALWAYSBLEND = 2, // set if always want to GL_BLEND this texture when drawn
+  BG3D_MATERIALFLAG_CLAMP_U = 4, // Block horizontal texture tiling?
+  BG3D_MATERIALFLAG_CLAMP_V = 8, // Block vertical texture tiling?
+  BG3D_MATERIALFLAG_MULTITEXTURE = 16,
+  BG3D_MATERIALFLAG_CLAMP_U_TRUE = 32, // Nanosaur 2 only, no idea what this does
+  BG3D_MATERIALFLAG_CLAMP_V_TRUE = 64, // Nanosaur 2 only, no idea what this does
 }
 //Raw Data that gets parsed into BG3DParseResult
 

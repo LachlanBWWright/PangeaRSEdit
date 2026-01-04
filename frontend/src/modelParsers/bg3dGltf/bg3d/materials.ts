@@ -261,21 +261,25 @@ export async function gltfMaterialsToBg3d(
 
             const materialExtra = (
               materialExtras as Array<Record<string, unknown>>
-            )[index]!;
-            const textureExtra = (
-              materialExtra?.textureExtras as unknown[] | undefined
-            )?.[0];
-            textures.push({
-              pixels: pngRes.data,
-              width: pngRes.width,
-              height: pngRes.height,
-              srcPixelFormat: PixelFormatSrc.GL_RGB, // BG3D default format
-              dstPixelFormat:
-                ((textureExtra as Record<string, unknown> | undefined)
-                  ?.dstPixelFormat as number | undefined) ||
-                PixelFormatDst.GL_UNSIGNED_SHORT_5_5_5_1,
-              bufferSize: pngRes.data.byteLength, // Use actual converted data size
-            });
+            )[index];
+            if (materialExtra) {
+              const textureExtra = (
+                materialExtra?.textureExtras as unknown[] | undefined
+              )?.[0];
+              textures.push({
+                pixels: pngRes.data,
+                width: pngRes.width,
+                height: pngRes.height,
+                srcPixelFormat: PixelFormatSrc.GL_RGB, // BG3D default format
+                dstPixelFormat:
+                  ((textureExtra as Record<string, unknown> | undefined)
+                    ?.dstPixelFormat as number | undefined) ||
+                  PixelFormatDst.GL_UNSIGNED_SHORT_5_5_5_1,
+                bufferSize: pngRes.data.byteLength, // Use actual converted data size
+              });
+            } else {
+              console.warn("Material extra not found for index", index);
+            }
           } else {
             console.warn(
               "Image data from glTF is not valid PNG, skipping texture for material",

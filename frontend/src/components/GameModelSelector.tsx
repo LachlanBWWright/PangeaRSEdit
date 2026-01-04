@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -42,17 +42,22 @@ export function GameModelSelector({
   const [selectedModel, setSelectedModel] = useState<GameModel | null>(null);
   const [loadWithSkeleton, setLoadWithSkeleton] = useState<boolean>(true);
 
-  const selectedGame = GAMES.find((game) => game.id === selectedGameId);
+  // Memoize selectedGame to get stable reference
+  const selectedGame = useMemo(() => {
+    return GAMES.find((game) => game.id === selectedGameId);
+  }, [selectedGameId]);
   
   const availableModels =
     selectedGame?.models.filter(
       (model) => model.category === selectedCategory,
     ) || [];
     
-  // Derive categories directly (no need to memoize simple derivations)
-  const availableCategories = selectedGame
-    ? [...new Set(selectedGame.models.map((model) => model.category))]
-    : [];
+  // Derive categories with stable selectedGame reference
+  const availableCategories = useMemo(() => {
+    return selectedGame
+      ? [...new Set(selectedGame.models.map((model) => model.category))]
+      : [];
+  }, [selectedGame]);
 
 
   useEffect(() => {

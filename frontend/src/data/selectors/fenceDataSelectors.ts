@@ -112,9 +112,9 @@ export function removeFence(
     if (draft.Fenc?.[1000]?.obj && fenceIdx >= 0 && fenceIdx < draft.Fenc[1000].obj.length) {
       draft.Fenc[1000].obj.splice(fenceIdx, 1);
       
-      // Remove corresponding nubs
+      // Remove corresponding nubs using Reflect.deleteProperty
       if (draft.FnNb?.[fenceIdx]) {
-        delete draft.FnNb[fenceIdx];
+        Reflect.deleteProperty(draft.FnNb, fenceIdx);
       }
       
       // Update header count

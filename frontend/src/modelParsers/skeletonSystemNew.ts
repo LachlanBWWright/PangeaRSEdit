@@ -83,6 +83,16 @@ class Matrix4 {
     this.identity();
   }
 
+  // Safe array access that returns 0 for undefined values (satisfies noUncheckedIndexedAccess)
+  private m(index: number): number {
+    return this.data[index] ?? 0;
+  }
+
+  // Public accessor for matrix elements
+  get(index: number): number {
+    return this.data[index] ?? 0;
+  }
+
   identity(): Matrix4 {
     this.data.fill(0);
     this.data[0] = this.data[5] = this.data[10] = this.data[15] = 1;
@@ -98,125 +108,125 @@ class Matrix4 {
 
   invert(): Matrix4 {
     const result = new Matrix4();
-    const m = this.data;
+    const m = this.m.bind(this);
     const inv = result.data;
 
     // Calculate matrix inverse using standard algorithm
     inv[0] =
-      m[5]! * m[10]! * m[15]! -
-      m[5]! * m[11]! * m[14]! -
-      m[9]! * m[6]! * m[15]! +
-      m[9]! * m[7]! * m[14]! +
-      m[13]! * m[6]! * m[11]! -
-      m[13]! * m[7]! * m[10]!;
+      m(5) * m(10) * m(15) -
+      m(5) * m(11) * m(14) -
+      m(9) * m(6) * m(15) +
+      m(9) * m(7) * m(14) +
+      m(13) * m(6) * m(11) -
+      m(13) * m(7) * m(10);
     inv[4] =
-      -m[4]! * m[10]! * m[15]! +
-      m[4]! * m[11]! * m[14]! +
-      m[8]! * m[6]! * m[15]! -
-      m[8]! * m[7]! * m[14]! -
-      m[12]! * m[6]! * m[11]! +
-      m[12]! * m[7]! * m[10]!;
+      -m(4) * m(10) * m(15) +
+      m(4) * m(11) * m(14) +
+      m(8) * m(6) * m(15) -
+      m(8) * m(7) * m(14) -
+      m(12) * m(6) * m(11) +
+      m(12) * m(7) * m(10);
     inv[8] =
-      m[4]! * m[9]! * m[15]! -
-      m[4]! * m[11]! * m[13]! -
-      m[8]! * m[5]! * m[15]! +
-      m[8]! * m[7]! * m[13]! +
-      m[12]! * m[5]! * m[11]! -
-      m[12]! * m[7]! * m[9]!;
+      m(4) * m(9) * m(15) -
+      m(4) * m(11) * m(13) -
+      m(8) * m(5) * m(15) +
+      m(8) * m(7) * m(13) +
+      m(12) * m(5) * m(11) -
+      m(12) * m(7) * m(9);
     inv[12] =
-      -m[4]! * m[9]! * m[14]! +
-      m[4]! * m[10]! * m[13]! +
-      m[8]! * m[5]! * m[14]! -
-      m[8]! * m[6]! * m[13]! -
-      m[12]! * m[5]! * m[10]! +
-      m[12]! * m[6]! * m[9]!;
+      -m(4) * m(9) * m(14) +
+      m(4) * m(10) * m(13) +
+      m(8) * m(5) * m(14) -
+      m(8) * m(6) * m(13) -
+      m(12) * m(5) * m(10) +
+      m(12) * m(6) * m(9);
     inv[1] =
-      -m[1]! * m[10]! * m[15]! +
-      m[1]! * m[11]! * m[14]! +
-      m[9]! * m[2]! * m[15]! -
-      m[9]! * m[3]! * m[14]! -
-      m[13]! * m[2]! * m[11]! +
-      m[13]! * m[3]! * m[10]!;
+      -m(1) * m(10) * m(15) +
+      m(1) * m(11) * m(14) +
+      m(9) * m(2) * m(15) -
+      m(9) * m(3) * m(14) -
+      m(13) * m(2) * m(11) +
+      m(13) * m(3) * m(10);
     inv[5] =
-      m[0]! * m[10]! * m[15]! -
-      m[0]! * m[11]! * m[14]! -
-      m[8]! * m[2]! * m[15]! +
-      m[8]! * m[3]! * m[14]! +
-      m[12]! * m[2]! * m[11]! -
-      m[12]! * m[3]! * m[10]!;
+      m(0) * m(10) * m(15) -
+      m(0) * m(11) * m(14) -
+      m(8) * m(2) * m(15) +
+      m(8) * m(3) * m(14) +
+      m(12) * m(2) * m(11) -
+      m(12) * m(3) * m(10);
     inv[9] =
-      -m[0]! * m[9]! * m[15]! +
-      m[0]! * m[11]! * m[13]! +
-      m[8]! * m[1]! * m[15]! -
-      m[8]! * m[3]! * m[13]! -
-      m[12]! * m[1]! * m[11]! +
-      m[12]! * m[3]! * m[9]!;
+      -m(0) * m(9) * m(15) +
+      m(0) * m(11) * m(13) +
+      m(8) * m(1) * m(15) -
+      m(8) * m(3) * m(13) -
+      m(12) * m(1) * m(11) +
+      m(12) * m(3) * m(9);
     inv[13] =
-      m[0]! * m[9]! * m[14]! -
-      m[0]! * m[10]! * m[13]! -
-      m[8]! * m[1]! * m[14]! +
-      m[8]! * m[2]! * m[13]! +
-      m[12]! * m[1]! * m[10]! -
-      m[12]! * m[2]! * m[9]!;
+      m(0) * m(9) * m(14) -
+      m(0) * m(10) * m(13) -
+      m(8) * m(1) * m(14) +
+      m(8) * m(2) * m(13) +
+      m(12) * m(1) * m(10) -
+      m(12) * m(2) * m(9);
     inv[2] =
-      m[1]! * m[6]! * m[15]! -
-      m[1]! * m[7]! * m[14]! -
-      m[5]! * m[2]! * m[15]! +
-      m[5]! * m[3]! * m[14]! +
-      m[13]! * m[2]! * m[7]! -
-      m[13]! * m[3]! * m[6]!;
+      m(1) * m(6) * m(15) -
+      m(1) * m(7) * m(14) -
+      m(5) * m(2) * m(15) +
+      m(5) * m(3) * m(14) +
+      m(13) * m(2) * m(7) -
+      m(13) * m(3) * m(6);
     inv[6] =
-      -m[0]! * m[6]! * m[15]! +
-      m[0]! * m[7]! * m[14]! +
-      m[4]! * m[2]! * m[15]! -
-      m[4]! * m[3]! * m[14]! -
-      m[12]! * m[2]! * m[7]! +
-      m[12]! * m[3]! * m[6]!;
+      -m(0) * m(6) * m(15) +
+      m(0) * m(7) * m(14) +
+      m(4) * m(2) * m(15) -
+      m(4) * m(3) * m(14) -
+      m(12) * m(2) * m(7) +
+      m(12) * m(3) * m(6);
     inv[10] =
-      m[0]! * m[5]! * m[15]! -
-      m[0]! * m[7]! * m[13]! -
-      m[4]! * m[1]! * m[15]! +
-      m[4]! * m[3]! * m[13]! +
-      m[12]! * m[1]! * m[7]! -
-      m[12]! * m[3]! * m[5]!;
+      m(0) * m(5) * m(15) -
+      m(0) * m(7) * m(13) -
+      m(4) * m(1) * m(15) +
+      m(4) * m(3) * m(13) +
+      m(12) * m(1) * m(7) -
+      m(12) * m(3) * m(5);
     inv[14] =
-      -m[0]! * m[5]! * m[14]! +
-      m[0]! * m[6]! * m[13]! +
-      m[4]! * m[1]! * m[14]! -
-      m[4]! * m[2]! * m[13]! -
-      m[12]! * m[1]! * m[6]! +
-      m[12]! * m[2]! * m[5]!;
+      -m(0) * m(5) * m(14) +
+      m(0) * m(6) * m(13) +
+      m(4) * m(1) * m(14) -
+      m(4) * m(2) * m(13) -
+      m(12) * m(1) * m(6) +
+      m(12) * m(2) * m(5);
     inv[3] =
-      -m[1]! * m[6]! * m[11]! +
-      m[1]! * m[7]! * m[10]! +
-      m[5]! * m[2]! * m[11]! -
-      m[5]! * m[3]! * m[10]! -
-      m[9]! * m[2]! * m[7]! +
-      m[9]! * m[3]! * m[6]!;
+      -m(1) * m(6) * m(11) +
+      m(1) * m(7) * m(10) +
+      m(5) * m(2) * m(11) -
+      m(5) * m(3) * m(10) -
+      m(9) * m(2) * m(7) +
+      m(9) * m(3) * m(6);
     inv[7] =
-      m[0]! * m[6]! * m[11]! -
-      m[0]! * m[7]! * m[10]! -
-      m[4]! * m[2]! * m[11]! +
-      m[4]! * m[3]! * m[10]! +
-      m[8]! * m[2]! * m[7]! -
-      m[8]! * m[3]! * m[6]!;
+      m(0) * m(6) * m(11) -
+      m(0) * m(7) * m(10) -
+      m(4) * m(2) * m(11) +
+      m(4) * m(3) * m(10) +
+      m(8) * m(2) * m(7) -
+      m(8) * m(3) * m(6);
     inv[11] =
-      -m[0]! * m[5]! * m[11]! +
-      m[0]! * m[7]! * m[9]! +
-      m[4]! * m[1]! * m[11]! -
-      m[4]! * m[3]! * m[9]! -
-      m[8]! * m[1]! * m[7]! +
-      m[8]! * m[3]! * m[5]!;
+      -m(0) * m(5) * m(11) +
+      m(0) * m(7) * m(9) +
+      m(4) * m(1) * m(11) -
+      m(4) * m(3) * m(9) -
+      m(8) * m(1) * m(7) +
+      m(8) * m(3) * m(5);
     inv[15] =
-      m[0]! * m[5]! * m[10]! -
-      m[0]! * m[6]! * m[9]! -
-      m[4]! * m[1]! * m[10]! +
-      m[4]! * m[2]! * m[9]! +
-      m[8]! * m[1]! * m[6]! -
-      m[8]! * m[2]! * m[5]!;
+      m(0) * m(5) * m(10) -
+      m(0) * m(6) * m(9) -
+      m(4) * m(1) * m(10) +
+      m(4) * m(2) * m(9) +
+      m(8) * m(1) * m(6) -
+      m(8) * m(2) * m(5);
 
     const det =
-      m[0]! * inv[0]! + m[1]! * inv[4]! + m[2]! * inv[8]! + m[3]! * inv[12]!;
+      m(0) * (inv[0] ?? 0) + m(1) * (inv[4] ?? 0) + m(2) * (inv[8] ?? 0) + m(3) * (inv[12] ?? 0);
 
     if (det === 0) {
       console.warn("Matrix is not invertible");
@@ -310,29 +320,29 @@ function decomposeMatrix(matrix: Matrix4): {
   rotation: [number, number, number, number];
   scale: Vector3;
 } {
-  const m = matrix.data;
+  const g = matrix.get.bind(matrix);
 
   // Extract translation
-  const translation = new Vector3(m[12]!, m[13]!, m[14]!);
+  const translation = new Vector3(g(12), g(13), g(14));
 
   // Extract scale
-  const sx = Math.sqrt(m[0]! * m[0]! + m[1]! * m[1]! + m[2]! * m[2]!);
-  const sy = Math.sqrt(m[4]! * m[4]! + m[5]! * m[5]! + m[6]! * m[6]!);
-  const sz = Math.sqrt(m[8]! * m[8]! + m[9]! * m[9]! + m[10]! * m[10]!);
+  const sx = Math.sqrt(g(0) * g(0) + g(1) * g(1) + g(2) * g(2));
+  const sy = Math.sqrt(g(4) * g(4) + g(5) * g(5) + g(6) * g(6));
+  const sz = Math.sqrt(g(8) * g(8) + g(9) * g(9) + g(10) * g(10));
   const scale = new Vector3(sx, sy, sz);
 
   // Extract rotation (simplified - assuming no shear)
   // Normalize the rotation matrix
   const rotMatrix = [
-    m[0]! / sx,
-    m[1]! / sx,
-    m[2]! / sx,
-    m[4]! / sy,
-    m[5]! / sy,
-    m[6]! / sy,
-    m[8]! / sz,
-    m[9]! / sz,
-    m[10]! / sz,
+    g(0) / sx,
+    g(1) / sx,
+    g(2) / sx,
+    g(4) / sy,
+    g(5) / sy,
+    g(6) / sy,
+    g(8) / sz,
+    g(9) / sz,
+    g(10) / sz,
   ];
 
   // Get rotation matrix values safely
