@@ -119,7 +119,7 @@ class BinaryReader {
   }
 
   readBytes(length: number): Uint8Array {
-    const bytes = new Uint8Array(this.view.buffer, this.offset, length);
+    const bytes = new Uint8Array(this.view.buffer.slice(this.offset, this.offset + length));
     this.offset += length;
     return bytes;
   }
