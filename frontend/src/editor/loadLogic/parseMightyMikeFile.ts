@@ -3,8 +3,9 @@ import { Result, ok, err } from "@/types/result";
 import {
   parseMightyMikeMap,
   parseMightyMikeTileSet,
+  mightyMikeMapToCompressedBinary,
 } from "@/modelParsers/parseMightyMike";
-import type { MightyMikeTileSet } from "@/python/structSpecs/mightyMikeInterface";
+import type { MightyMikeTileSet, MightyMikeMap } from "@/python/structSpecs/mightyMikeInterface";
 import { splitLevelData, AtomicLevelData } from "@/data/utils/levelDataUtils";
 import { extractTGAPalette } from "@/utils/tgaParser";
 
@@ -346,9 +347,8 @@ export async function parseMightyMikeFile(
       layrLength: ottoCompatible.Layr[1000].obj.length,
     });
 
-    // Only call splitLevelData when the object actually has terrain data; otherwise pass null
-    // Mighty Mike uses a different LevelData shape; don't attempt splitLevelData for it
-    const atomicData = splitLevelData(null);
+    // Use ottoCompatible to populate AtomicLevelData
+    const atomicData = splitLevelData(ottoCompatible as unknown as LevelData);
     console.log("MightyMike atomicData AFTER splitLevelData:", atomicData);
 
     setData(atomicData);
@@ -371,6 +371,9 @@ export async function parseMightyMikeFile(
     const finalData = {
       ...ottoCompatible,
       _metadata: {
+        file_attributes: 0,
+        junk1: 0,
+        junk2: 0,
         1000: {
           name: "Metadata",
           obj: {
@@ -392,4 +395,80 @@ export async function parseMightyMikeFile(
   } catch (e) {
     return err(e instanceof Error ? e : new Error(String(e)));
   }
+}
+
+/**
+ * Serialize a Mighty Mike level back to binary .map format
+ */
+export function serializeMightyMikeLevel(levelData: LevelData): ArrayBuffer {
+  // 1. Get metadata
+  const metadataRaw = levelData._metadata?.[1000];
+
+  if (!isRecord(metadataRaw) || !isRecord(metadataRaw.obj)) {
+    throw new Error("Missing Mighty Mike metadata structure (1000.obj) for serialization");
+  }
+
+  const metadata = metadataRaw.obj;
+
+  if (!metadata.mightyMikeMapData || !metadata.mightyMikeTileValues) {
+    throw new Error("Missing Mighty Mike metadata fields (mapData/tileValues) for serialization");
+  }
+
+  const mapData = metadata.mightyMikeMapData as MightyMikeMap;
+  const tileValues = metadata.mightyMikeTileValues as any[]; // Array of tile objects
+
+  // 2. Update Items
+  const items = levelData.Itms?.[1000]?.obj || [];
+  mapData.items = items.map((item: any) => ({
+    x: item.x,
+    y: item.z, // Note: LevelData uses x,z but MightyMike uses x,y
+    type: item.type,
+    p0: item.p0 ?? 0,
+    p1: item.p1 ?? 0,
+    p2: item.p2 ?? 0,
+    p3: item.p3 ?? 0,
+  }));
+  mapData.numItems = mapData.items.length;
+
+  // 3. Update Tiles
+  const layr = levelData.Layr?.[1000]?.obj || [];
+
+  if (layr.length !== tileValues.length) {
+      console.warn(`Layer length (${layr.length}) does not match metadata tile values length (${tileValues.length}). Map size might have changed?`);
+  }
+
+  // Update tileValues with new indices from Layr
+  const TILENUM_MASK = 0x07ff;
+
+  layr.forEach((newTileIndex: number, i: number) => {
+      if (i < tileValues.length) {
+          const tile = tileValues[i];
+          tile.tileIndex = newTileIndex;
+          // Update rawValue: clear old index bits and set new index bits
+          // Preserve high bits (flags)
+          tile.rawValue = (tile.rawValue & ~TILENUM_MASK) | (newTileIndex & TILENUM_MASK);
+      }
+  });
+
+  // Reconstruct mapImage (2D array)
+  const mapImage = [];
+  const width = mapData.mapWidth;
+  const height = mapData.mapHeight;
+
+  for (let y = 0; y < height; y++) {
+      const row = [];
+      for (let x = 0; x < width; x++) {
+          const i = y * width + x;
+          if (i < tileValues.length) {
+              row.push(tileValues[i]);
+          } else {
+              row.push({ rawValue: 0, tileIndex: 0, hasCollisionMask: false, usePixelAccurateCollision: false });
+          }
+      }
+      mapImage.push(row);
+  }
+  mapData.mapImage = mapImage;
+
+  // 4. Compress and return
+  return mightyMikeMapToCompressedBinary(mapData);
 }
