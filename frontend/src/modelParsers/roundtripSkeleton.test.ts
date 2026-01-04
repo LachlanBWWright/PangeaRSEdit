@@ -186,8 +186,11 @@ describe("BG3D + Skeleton Roundtrip Tests with FULL ACCURACY", () => {
     // Convert back to BG3D (second roundtrip output)
     const roundtrip2Result = await gltfToBG3D(gltf2);
     const roundtrip2Bg3dBinary = bg3dParsedToBG3D(roundtrip2Result);
+    if (!roundtrip2Result.skeleton) {
+      throw new Error("Roundtrip 2 result has no skeleton");
+    }
     const roundtrip2SkeletonResource = bg3dSkeletonToSkeletonResource(
-      roundtrip2Result.skeleton!,
+      roundtrip2Result.skeleton,
     );
 
     // Debug: Check resource counts in RT2 skeleton
@@ -261,10 +264,15 @@ describe("BG3D + Skeleton Roundtrip Tests with FULL ACCURACY", () => {
     console.log("\n=== COMPARING ROUNDTRIP 1 vs ROUNDTRIP 2 ===");
 
     // Debug: Compare skeleton structures
-    const rt1BoneCount = roundtrip1Result.skeleton!.bones.length;
-    const rt2BoneCount = roundtrip2Result.skeleton!.bones.length;
-    const rt1AnimCount = roundtrip1Result.skeleton!.animations.length;
-    const rt2AnimCount = roundtrip2Result.skeleton!.animations.length;
+    const rt1Skeleton = roundtrip1Result.skeleton;
+    const rt2Skeleton = roundtrip2Result.skeleton;
+    if (!rt1Skeleton || !rt2Skeleton) {
+      throw new Error("Missing skeleton in roundtrip results");
+    }
+    const rt1BoneCount = rt1Skeleton.bones.length;
+    const rt2BoneCount = rt2Skeleton.bones.length;
+    const rt1AnimCount = rt1Skeleton.animations.length;
+    const rt2AnimCount = rt2Skeleton.animations.length;
     console.log(
       `RT1 Skeleton: ${rt1BoneCount} bones, ${rt1AnimCount} animations`,
     );
@@ -275,8 +283,8 @@ describe("BG3D + Skeleton Roundtrip Tests with FULL ACCURACY", () => {
     // Debug: Compare bone rest positions
     console.log(`\n=== BONE REST POSITION COMPARISON ===`);
     for (let i = 0; i < Math.min(3, rt1BoneCount); i++) {
-      const rt1Bone = roundtrip1Result.skeleton!.bones[i];
-      const rt2Bone = roundtrip2Result.skeleton!.bones[i];
+      const rt1Bone = rt1Skeleton.bones[i];
+      const rt2Bone = rt2Skeleton.bones[i];
       if (!rt1Bone || !rt2Bone) continue;
       console.log(`Bone ${i} (${rt1Bone.name}):`);
       console.log(
@@ -305,8 +313,8 @@ describe("BG3D + Skeleton Roundtrip Tests with FULL ACCURACY", () => {
 
     // Check animation keyframe counts
     if (rt1AnimCount > 0 && rt2AnimCount > 0) {
-      const rt1Anim = roundtrip1Result.skeleton!.animations[0];
-      const rt2Anim = roundtrip2Result.skeleton!.animations[0];
+      const rt1Anim = rt1Skeleton.animations[0];
+      const rt2Anim = rt2Skeleton.animations[0];
       if (!rt1Anim || !rt2Anim) return;
       const rt1BoneWithKfCount = Object.keys(rt1Anim.keyframes).length;
       const rt2BoneWithKfCount = Object.keys(rt2Anim.keyframes).length;
@@ -337,12 +345,13 @@ describe("BG3D + Skeleton Roundtrip Tests with FULL ACCURACY", () => {
 
       // Compare first 3 bones in detail
       for (let bi = 0; bi < Math.min(3, rt1BoneKeys.length); bi++) {
-        const boneKey = rt1BoneKeys[bi] as string;
+        const boneKey = rt1BoneKeys[bi];
+        if (!boneKey) continue;
         const rt1Kfs = rt1Anim.keyframes[parseInt(boneKey)];
         const rt2Kfs = rt2Anim.keyframes[parseInt(boneKey)];
         if (!rt1Kfs || !rt2Kfs) continue;
         const boneName =
-          roundtrip1Result.skeleton!.bones[parseInt(boneKey)]?.name ||
+          rt1Skeleton.bones[parseInt(boneKey)]?.name ||
           `bone_${boneKey}`;
 
         console.log(`\nBone ${boneKey} (${boneName}):`);

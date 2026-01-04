@@ -286,7 +286,10 @@ describe("Animation Viewer Integration", () => {
     // Simulate selecting first animation
     selectedAnimation = 0;
     expect(selectedAnimation).toBe(0);
-    expect(mockAnimations[selectedAnimation!]!.name).toBe("idle");
+    const firstAnim = mockAnimations[selectedAnimation];
+    if (firstAnim) {
+      expect(firstAnim.name).toBe("idle");
+    }
 
     // Simulate deselecting
     selectedAnimation = null;

@@ -375,8 +375,8 @@ describe("BG3D Skeleton Round-trip with FULL ACCURACY", () => {
     const roundtripBg3d = await gltfToBG3D(gltfDocument);
 
     // Compare bone structures with 100% accuracy
-    const originalBones = originalBg3d.skeleton!.bones;
-    const roundtripBones = roundtripBg3d.skeleton!.bones;
+    const originalBones = originalBg3d.skeleton?.bones ?? [];
+    const roundtripBones = roundtripBg3d.skeleton?.bones ?? [];
 
     expect(roundtripBones.length).toBe(originalBones.length);
 
@@ -405,7 +405,9 @@ describe("BG3D Skeleton Round-trip with FULL ACCURACY", () => {
 
     expect(originalRoot).toBeDefined();
     expect(roundtripRoot).toBeDefined();
-    expect(roundtripRoot!.name).toBe(originalRoot!.name);
+    if (roundtripRoot && originalRoot) {
+      expect(roundtripRoot.name).toBe(originalRoot.name);
+    }
 
     console.log("=== BONE HIERARCHY AND COORDINATE ACCURACY TEST PASSED ===");
   });

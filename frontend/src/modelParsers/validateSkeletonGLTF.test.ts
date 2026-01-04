@@ -217,7 +217,10 @@ describe("Skeleton Animation glTF Validation", () => {
     // Verify scene structure for PropertyBinding
     console.log("\n=== Verifying PropertyBinding Compatibility ===");
 
-    const sceneChildren = scene!.listChildren();
+    if (!scene) {
+      throw new Error("No scene found in glTF document");
+    }
+    const sceneChildren = scene.listChildren();
     console.log(`Scene children: ${sceneChildren.length}`);
 
     // Check if all joints from skin are accessible from scene
@@ -242,7 +245,7 @@ describe("Skeleton Animation glTF Validation", () => {
     }
 
     joints.forEach((joint, index) => {
-      const isAccessible = isNodeInHierarchy(joint, scene!);
+      const isAccessible = isNodeInHierarchy(joint, scene);
       if (isAccessible) {
         jointsAccessibleFromScene++;
       }
