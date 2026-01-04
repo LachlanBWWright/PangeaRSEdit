@@ -5,6 +5,7 @@ import { LevelEditor } from "./pages/LevelEditor";
 import { ModelViewer } from "./pages/ModelViewer";
 import { SpriteViewer } from "./pages/SpriteViewer";
 import { DownloadLevels } from "./pages/DownloadLevels";
+import { TunnelEditorPage } from "./pages/TunnelEditor";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "./components/ui/sonner";
 
@@ -20,6 +21,7 @@ export function App() {
               <Route path="/model-viewer" element={<ModelViewer />} />
               <Route path="/sprite-viewer" element={<SpriteViewer />} />
               <Route path="/download-levels" element={<DownloadLevels />} />
+              <Route path="/tunnel-editor" element={<TunnelEditorPage />} />
               <Route path="*" element={<LevelEditor />} />
             </Routes>
           </div>
