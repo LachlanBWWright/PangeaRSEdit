@@ -19,6 +19,35 @@ import { billyFrontierSpecs } from "../../src/python/structSpecs/billyFrontier";
 import { BillyFrontierGlobals } from "../../src/data/globals/globals";
 import { preprocessJson } from "../../src/data/processors/ottoPreprocessor";
 
+function assertIsHeader(
+  x: unknown,
+): asserts x is {
+  mapWidth: number;
+  mapHeight: number;
+  version: number;
+  numItems: number;
+  numSplines: number;
+  numFences: number;
+} {
+  if (typeof x !== "object" || x === null) throw new Error("Header is not an object");
+  const mapWidth = Reflect.get(x, "mapWidth");
+  const mapHeight = Reflect.get(x, "mapHeight");
+  const version = Reflect.get(x, "version");
+  const numItems = Reflect.get(x, "numItems");
+  const numSplines = Reflect.get(x, "numSplines");
+  const numFences = Reflect.get(x, "numFences");
+  if (
+    typeof mapWidth !== "number" ||
+    typeof mapHeight !== "number" ||
+    typeof version !== "number" ||
+    typeof numItems !== "number" ||
+    typeof numSplines !== "number" ||
+    typeof numFences !== "number"
+  ) {
+    throw new Error("Header missing expected numeric fields");
+  }
+}
+
 describe("Billy Frontier Map Roundtrip", () => {
   const testFilePath = join(
     __dirname,

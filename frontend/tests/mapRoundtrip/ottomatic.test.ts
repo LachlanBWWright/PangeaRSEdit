@@ -126,18 +126,29 @@ describe("Otto Matic Map Roundtrip", () => {
         throw new Error("Parsed data is not an object");
       }
     }
+    function isRecord(x: unknown): x is Record<string, unknown> {
+      return typeof x === "object" && x !== null && !Array.isArray(x);
+    }
+
     expect(() => {
       assertIsRecord(jsonData);
       preprocessJson(jsonData, OttoGlobals);
     }).not.toThrow();
 
     // After preprocessing, Layr should have sequential indices
-    assertIsRecord(jsonData);
-    if (jsonData.Layr && jsonData.Layr["1000"]?.obj) {
-      const layrArr = jsonData.Layr["1000"].obj;
-      // First few should be sequential after preprocessing
-      expect(layrArr[0]).toBe(0);
-      expect(layrArr[1]).toBe(1);
+    if (isRecord(jsonData.Layr)) {
+      const layrEntry = jsonData.Layr["1000"];
+      if (isRecord(layrEntry)) {
+      const objVal = layrEntry.obj;
+      if (
+        Array.isArray(objVal) &&
+        objVal.every((v): v is number => typeof v === "number")
+      ) {
+        // First few should be sequential after preprocessing
+        expect(objVal[0]).toBe(0);
+        expect(objVal[1]).toBe(1);
+      }
+    }
     }
   });
 
@@ -312,14 +323,17 @@ describe("Otto Matic Map Roundtrip", () => {
     if (isRecord(jsonData1) && isRecord(jsonData2)) {
       const h1 = jsonData1.Hedr;
       const h2 = jsonData2.Hedr;
-      if (
-        isRecord(h1) &&
-        isRecord(h2) &&
-        isRecord(h1["1000"]) &&
-        isRecord(h2["1000"])
-      ) {
-        header1 = h1["1000"].obj;
-        header2 = h2["1000"].obj;
+      if (isRecord(h1)) {
+        const entry1 = h1["1000"];
+        if (isRecord(entry1) && isRecord(entry1.obj)) {
+          header1 = entry1.obj;
+        }
+      }
+      if (isRecord(h2)) {
+        const entry2 = h2["1000"];
+        if (isRecord(entry2) && isRecord(entry2.obj)) {
+          header2 = entry2.obj;
+        }
       }
     }
 
@@ -332,16 +346,19 @@ describe("Otto Matic Map Roundtrip", () => {
     let items1: unknown[] | undefined;
     let items2: unknown[] | undefined;
     if (isRecord(jsonData1) && isRecord(jsonData2)) {
-      const i1 = jsonData1.Itms;
-      const i2 = jsonData2.Itms;
-      if (
-        isRecord(i1) &&
-        isRecord(i2) &&
-        isRecord(i1["1000"]) &&
-        isRecord(i2["1000"])
-      ) {
-        items1 = i1["1000"].obj;
-        items2 = i2["1000"].obj;
+      const it1 = jsonData1.Itms;
+      const it2 = jsonData2.Itms;
+      if (isRecord(it1)) {
+        const entry = it1["1000"];
+        if (isRecord(entry) && Array.isArray(entry.obj)) {
+          items1 = entry.obj;
+        }
+      }
+      if (isRecord(it2)) {
+        const entry = it2["1000"];
+        if (isRecord(entry) && Array.isArray(entry.obj)) {
+          items2 = entry.obj;
+        }
       }
     }
 

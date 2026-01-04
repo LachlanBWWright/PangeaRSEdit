@@ -17,6 +17,51 @@ import {
 import { LevelData } from "@/python/structSpecs/LevelTypes";
 import { isErr } from "@/types/result";
 
+// Helper to construct a minimal valid LevelData object for tests
+function minimalLevelData(base: Partial<LevelData> = {}): LevelData {
+  return {
+    Hedr: base.Hedr ?? {
+      1000: {
+        name: "Header",
+        obj: {
+          version: 0,
+          numItems: 0,
+          mapWidth: 0,
+          mapHeight: 0,
+          tileSize: 0,
+          minY: 0,
+          maxY: 0,
+          numSplines: 0,
+          numFences: 0,
+          numTilePages: 0,
+          numTiles: 0,
+          numUniqueSupertiles: 0,
+          numWaterPatches: 0,
+          numCheckpoints: 0,
+        },
+        order: 0,
+      },
+    },
+    Atrb: base.Atrb ?? { 1000: { name: "Tile Attribute Data", obj: [], order: 0 } },
+    ItCo: base.ItCo ?? { 1000: { name: "Terrain Items Color Array", data: "", order: 0 } },
+    YCrd: base.YCrd ?? { 1000: { name: "Floor&Ceiling Y Coords", obj: [], order: 0 } },
+    alis: base.alis ?? {},
+    _metadata: base._metadata ?? { file_attributes: 0, junk1: 0, junk2: 0 },
+    Itms: base.Itms,
+    Fenc: base.Fenc,
+    SpNb: base.SpNb,
+    SpPt: base.SpPt,
+    SpIt: base.SpIt,
+    Spln: base.Spln,
+    Liqd: base.Liqd,
+    Timg: base.Timg,
+    Xlat: base.Xlat,
+    Layr: base.Layr,
+    STgd: base.STgd,
+    Vcol: base.Vcol,
+  };
+}
+
 describe("Level Parsing - Pure Functions", () => {
   describe("compareBuffers - Binary comparison", () => {
     it("should identify identical buffers", () => {
@@ -86,7 +131,7 @@ describe("Level Parsing - Pure Functions", () => {
 
   describe("compareLevelData - Structure comparison", () => {
     it("should identify identical level data", () => {
-      const levelData: LevelData = {
+      const levelData = minimalLevelData({
         Hedr: {
           1000: {
             name: "Header",
@@ -110,9 +155,9 @@ describe("Level Parsing - Pure Functions", () => {
           },
         },
         Itms: undefined,
-        Heig: undefined,
+
         Fenc: undefined,
-      };
+      });
 
       const result = compareLevelData(levelData, levelData);
 
@@ -121,7 +166,7 @@ describe("Level Parsing - Pure Functions", () => {
     });
 
     it("should detect differences in simple fields", () => {
-      const levelData1: LevelData = {
+      const levelData1 = minimalLevelData({
         Hedr: {
           1000: {
             name: "Header",
@@ -145,12 +190,11 @@ describe("Level Parsing - Pure Functions", () => {
           },
         },
         Itms: undefined,
-        Tram: undefined,
-        Heig: undefined,
-        Fenc: undefined,
-      };
 
-      const levelData2: LevelData = {
+        Fenc: undefined,
+      });
+
+      const levelData2 = minimalLevelData({
         Hedr: {
           1000: {
             name: "Header",
@@ -174,21 +218,20 @@ describe("Level Parsing - Pure Functions", () => {
           },
         },
         Itms: undefined,
-        Tram: undefined,
-        Heig: undefined,
+
         Fenc: undefined,
-      };
+      });
 
       const result = compareLevelData(levelData1, levelData2);
 
       expect(result.equal).toBe(false);
       expect(result.differences).toBeDefined();
       expect(result.differences.length).toBeGreaterThan(0);
-      expect(result.differences[0].path).toContain("width");
+      expect(result.differences[0]?.path).toContain("width");
     });
 
     it("should detect differences in nested arrays", () => {
-      const levelData1: LevelData = {
+      const levelData1 = minimalLevelData({
         Hedr: {
           1000: {
             name: "Header",
@@ -211,13 +254,20 @@ describe("Level Parsing - Pure Functions", () => {
             order: 0,
           },
         },
-        Itms: { 1000: { obj: [{ type: 1, x: 10, z: 20, flags: 0, p0: 0, p1: 0, p2: 0, p3: 0 }] } },
-        Tram: undefined,
-        Heig: undefined,
-        Fenc: undefined,
-      };
+        Itms: {
+          1000: {
+            name: "Terrain Items List",
+            obj: [
+              { type: 1, x: 10, z: 20, flags: 0, p0: 0, p1: 0, p2: 0, p3: 0 },
+            ],
+            order: 0,
+          },
+        },
 
-      const levelData2: LevelData = {
+        Fenc: undefined,
+      });
+
+      const levelData2 = minimalLevelData({
         Hedr: {
           1000: {
             name: "Header",
@@ -240,10 +290,18 @@ describe("Level Parsing - Pure Functions", () => {
             order: 0,
           },
         },
-        Itms: { 1000: { name: "Terrain Items List", obj: [{ type: 1, x: 10, z: 30, flags: 0, p0: 0, p1: 0, p2: 0, p3: 0 }], order: 0 } },
-        Heig: undefined,
+        Itms: {
+          1000: {
+            name: "Terrain Items List",
+            obj: [
+              { type: 1, x: 10, z: 30, flags: 0, p0: 0, p1: 0, p2: 0, p3: 0 },
+            ],
+            order: 0,
+          },
+        },
+
         Fenc: undefined,
-      };
+      });
 
       const result = compareLevelData(levelData1, levelData2);
 
@@ -252,7 +310,7 @@ describe("Level Parsing - Pure Functions", () => {
     });
 
     it("should detect array length differences", () => {
-      const levelData1: LevelData = {
+      const levelData1 = minimalLevelData({
         Hedr: {
           1000: {
             name: "Header",
@@ -275,13 +333,20 @@ describe("Level Parsing - Pure Functions", () => {
             order: 0,
           },
         },
-        Itms: { 1000: { obj: [{ type: 1, x: 10, z: 20, flags: 0, p0: 0, p1: 0, p2: 0, p3: 0 }] } },
-        Tram: undefined,
-        Heig: undefined,
-        Fenc: undefined,
-      };
+        Itms: {
+          1000: {
+            name: "Terrain Items List",
+            obj: [
+              { type: 1, x: 10, z: 20, flags: 0, p0: 0, p1: 0, p2: 0, p3: 0 },
+            ],
+            order: 0,
+          },
+        },
 
-      const levelData2: LevelData = {
+        Fenc: undefined,
+      });
+
+      const levelData2 = minimalLevelData({
         Hedr: {
           1000: {
             name: "Header",
@@ -305,84 +370,91 @@ describe("Level Parsing - Pure Functions", () => {
           },
         },
         Itms: {
-          1000: { name: "Terrain Items List", obj: [{ type: 1, x: 10, z: 20, flags: 0, p0: 0, p1: 0, p2: 0, p3: 0 }, { type: 2, x: 30, z: 40, flags: 0, p0: 0, p1: 0, p2: 0, p3: 0 }], order: 0 },
+          1000: {
+            name: "Terrain Items List",
+            obj: [
+              { type: 1, x: 10, z: 20, flags: 0, p0: 0, p1: 0, p2: 0, p3: 0 },
+              { type: 2, x: 30, z: 40, flags: 0, p0: 0, p1: 0, p2: 0, p3: 0 },
+            ],
+            order: 0,
+          },
         },
-        Heig: undefined,
+
         Fenc: undefined,
-      };
+      });
 
       const result = compareLevelData(levelData1, levelData2);
 
       expect(result.equal).toBe(false);
       expect(result.differences.some((d) => d.path.includes("length"))).toBe(
-        true
+        true,
       );
     });
 
     it("should handle null/undefined differences", () => {
       // Use unknown to create a null/undefined case that still satisfies runtime checks
       function assertIsLevel(x: unknown): asserts x is LevelData {
-        if (typeof x !== 'object' || x === null || !('Hedr' in x)) {
-          throw new Error('Value is not a LevelData');
+        if (typeof x !== "object" || x === null || !("Hedr" in x)) {
+          throw new Error("Value is not a LevelData");
         }
       }
 
       const levelData1Unknown: unknown = {
-        Hedr: {
-          1000: {
-            name: "Header",
-            obj: {
-              version: 1,
-              numItems: 0,
-              mapWidth: 100,
-              mapHeight: 100,
-              tileSize: 0,
-              minY: 0,
-              maxY: 0,
-              numSplines: 0,
-              numFences: 0,
-              numTilePages: 0,
-              numTiles: 0,
-              numUniqueSupertiles: 0,
-              numWaterPatches: 0,
-              numCheckpoints: 0,
+        ...(minimalLevelData({
+          Hedr: {
+            1000: {
+              name: "Header",
+              obj: {
+                version: 1,
+                numItems: 0,
+                mapWidth: 100,
+                mapHeight: 100,
+                tileSize: 0,
+                minY: 0,
+                maxY: 0,
+                numSplines: 0,
+                numFences: 0,
+                numTilePages: 0,
+                numTiles: 0,
+                numUniqueSupertiles: 0,
+                numWaterPatches: 0,
+                numCheckpoints: 0,
+              },
+              order: 0,
             },
-            order: 0,
           },
-        },
+          Fenc: undefined,
+        })),
         Itms: null,
-        Tram: undefined,
-        Heig: undefined,
-        Fenc: undefined,
       };
 
       const levelData2Unknown: unknown = {
-        Hedr: {
-          1000: {
-            name: "Header",
-            obj: {
-              version: 1,
-              numItems: 0,
-              mapWidth: 100,
-              mapHeight: 100,
-              tileSize: 0,
-              minY: 0,
-              maxY: 0,
-              numSplines: 0,
-              numFences: 0,
-              numTilePages: 0,
-              numTiles: 0,
-              numUniqueSupertiles: 0,
-              numWaterPatches: 0,
-              numCheckpoints: 0,
+        ...(minimalLevelData({
+          Hedr: {
+            1000: {
+              name: "Header",
+              obj: {
+                version: 1,
+                numItems: 0,
+                mapWidth: 100,
+                mapHeight: 100,
+                tileSize: 0,
+                minY: 0,
+                maxY: 0,
+                numSplines: 0,
+                numFences: 0,
+                numTilePages: 0,
+                numTiles: 0,
+                numUniqueSupertiles: 0,
+                numWaterPatches: 0,
+                numCheckpoints: 0,
+              },
+              order: 0,
             },
-            order: 0,
           },
-        },
+          Fenc: undefined,
+        })),
         Itms: undefined,
-        Tram: undefined,
-        Heig: undefined,
-        Fenc: undefined,
       };
 
       assertIsLevel(levelData1Unknown);
@@ -395,7 +467,7 @@ describe("Level Parsing - Pure Functions", () => {
     });
 
     it("should allow small floating point differences", () => {
-      const levelData1: LevelData = {
+      const levelData1 = minimalLevelData({
         Hedr: {
           1000: {
             name: "Header",
@@ -419,12 +491,11 @@ describe("Level Parsing - Pure Functions", () => {
           },
         },
         Itms: undefined,
-        Tram: undefined,
-        Heig: undefined,
-        Fenc: undefined,
-      };
 
-      const levelData2: LevelData = {
+        Fenc: undefined,
+      });
+
+      const levelData2 = minimalLevelData({
         Hedr: {
           1000: {
             name: "Header",
@@ -448,10 +519,9 @@ describe("Level Parsing - Pure Functions", () => {
           },
         },
         Itms: undefined,
-        Tram: undefined,
-        Heig: undefined,
+
         Fenc: undefined,
-      };
+      });
 
       const result = compareLevelData(levelData1, levelData2);
 
@@ -460,7 +530,7 @@ describe("Level Parsing - Pure Functions", () => {
     });
 
     it("should detect large floating point differences", () => {
-      const levelData1: LevelData = {
+      const levelData1 = minimalLevelData({
         Hedr: {
           1000: {
             name: "Header",
@@ -484,12 +554,11 @@ describe("Level Parsing - Pure Functions", () => {
           },
         },
         Itms: undefined,
-        Tram: undefined,
-        Heig: undefined,
-        Fenc: undefined,
-      };
 
-      const levelData2: LevelData = {
+        Fenc: undefined,
+      });
+
+      const levelData2 = minimalLevelData({
         Hedr: {
           1000: {
             name: "Header",
@@ -513,23 +582,22 @@ describe("Level Parsing - Pure Functions", () => {
           },
         },
         Itms: undefined,
-        Tram: undefined,
-        Heig: undefined,
+
         Fenc: undefined,
-      };
+      });
 
       const result = compareLevelData(levelData1, levelData2);
 
       expect(result.equal).toBe(false);
       expect(result.differences.some((d) => d.path.includes("mapWidth"))).toBe(
-        true
+        true,
       );
     });
 
     it("should handle deeply nested structures", () => {
       function assertIsLevel(x: unknown): asserts x is LevelData {
-        if (typeof x !== 'object' || x === null || !('Hedr' in x)) {
-          throw new Error('Value is not a LevelData');
+        if (typeof x !== "object" || x === null || !("Hedr" in x)) {
+          throw new Error("Value is not a LevelData");
         }
       }
 
@@ -573,8 +641,7 @@ describe("Level Parsing - Pure Functions", () => {
             ],
           },
         },
-        Tram: undefined,
-        Heig: undefined,
+
         Fenc: undefined,
       };
 
@@ -618,8 +685,7 @@ describe("Level Parsing - Pure Functions", () => {
             ],
           },
         },
-        Tram: undefined,
-        Heig: undefined,
+
         Fenc: undefined,
       };
 
@@ -629,19 +695,16 @@ describe("Level Parsing - Pure Functions", () => {
       const result = compareLevelData(level1Unknown, level2Unknown);
 
       expect(result.equal).toBe(false);
-      expect(result.differences.some((d) => d.path.includes("deep.value"))).toBe(
-        true
-      );
+      expect(
+        result.differences.some((d) => d.path.includes("deep.value")),
+      ).toBe(true);
     });
   });
 
   describe("parseLevelBuffer - Async parsing with rsrcdump-ts", () => {
     it("should parse level buffer successfully", async () => {
       const buffer = new ArrayBuffer(100);
-      const result = await parseLevelBuffer(
-        buffer,
-        { structSpecs: [] },
-      );
+      const result = await parseLevelBuffer(buffer, { structSpecs: [] });
 
       // Since we're passing an invalid buffer, it should return an error
       expect(isErr(result)).toBe(true);
@@ -650,18 +713,35 @@ describe("Level Parsing - Pure Functions", () => {
 
   describe("serializeLevelData - Async serialization with rsrcdump-ts", () => {
     it("should handle serialization with valid data structure", async () => {
-      const levelData: LevelData = {
-        Hedr: { 1000: { name: "Header", obj: { version: 1, numItems: 0, mapWidth: 100, mapHeight: 100, tileSize: 0, minY: 0, maxY: 0, numSplines: 0, numFences: 0, numTilePages: 0, numTiles: 0, numUniqueSupertiles: 0, numWaterPatches: 0, numCheckpoints: 0 }, order: 0 } },
+      const levelData = minimalLevelData({
+        Hedr: {
+          1000: {
+            name: "Header",
+            obj: {
+              version: 1,
+              numItems: 0,
+              mapWidth: 100,
+              mapHeight: 100,
+              tileSize: 0,
+              minY: 0,
+              maxY: 0,
+              numSplines: 0,
+              numFences: 0,
+              numTilePages: 0,
+              numTiles: 0,
+              numUniqueSupertiles: 0,
+              numWaterPatches: 0,
+              numCheckpoints: 0,
+            },
+            order: 0,
+          },
+        },
         Itms: undefined,
-        Tram: undefined,
-        Heig: undefined,
-        Fenc: undefined,
-      };
 
-      const result = await serializeLevelData(
-        levelData,
-        { structSpecs: [] },
-      );
+        Fenc: undefined,
+      });
+
+      const result = await serializeLevelData(levelData, { structSpecs: [] });
 
       // The actual behavior depends on rsrcdump-ts implementation
       // For now, just verify it returns a result

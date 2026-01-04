@@ -202,7 +202,7 @@ describe("All Games Roundtrip Tests", () => {
             const normalized: Record<string, unknown> = {};
             for (const [k, v] of Object.entries(obj)) {
               if (k === "x`y" && Array.isArray(v)) {
-                normalized[k] = (v as unknown[]).map(() => ({ x: 0, y: 0 }));
+                normalized[k] = Array.isArray(v) ? v.map(() => ({ x: 0, y: 0 })) : [];
                 continue;
               }
               normalized[k] = sanitize(v);

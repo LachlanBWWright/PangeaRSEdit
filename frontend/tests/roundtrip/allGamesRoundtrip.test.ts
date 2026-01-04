@@ -138,12 +138,31 @@ describe("Mighty Mike - Byte-Accurate Roundtrip", () => {
 
       // Compile back
       const result = mightyMikeMapToCompressedBinary(parsed.value);
-      
-      if (!result.ok) {
-        throw new Error(`Compilation failed: ${String(result.error)}`);
+
+      function isResultLike(x: unknown): x is { ok: boolean; value?: unknown; error?: unknown } {
+        return typeof x === "object" && x !== null && "ok" in x;
       }
 
-      const recompiledData = new Uint8Array(result.value);
+      let recompiledData: Uint8Array;
+      if (isResultLike(result)) {
+        if (!result.ok) {
+          throw new Error(`Compilation failed: ${String(result.error)}`);
+        }
+        if (result.value instanceof ArrayBuffer) {
+          recompiledData = new Uint8Array(result.value);
+        } else if (ArrayBuffer.isView(result.value)) {
+          // Convert array-like view to a real Uint8Array without type assertions by using Array.prototype.slice
+          recompiledData = new Uint8Array(Array.prototype.slice.call(result.value));
+        } else {
+          throw new Error("Unexpected result.value type");
+        }
+      } else if (result instanceof ArrayBuffer) {
+        recompiledData = new Uint8Array(result);
+      } else if (ArrayBuffer.isView(result)) {
+        recompiledData = new Uint8Array(Array.prototype.slice.call(result));
+      } else {
+        throw new Error("Unexpected compilation result type");
+      }
 
       // Byte comparison
       expect(recompiledData.length).toBe(originalData.length);

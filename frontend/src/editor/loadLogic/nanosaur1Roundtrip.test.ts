@@ -51,50 +51,79 @@ describe("Nanosaur 1 Byte-Accurate Roundtrip Tests", () => {
         console.log(`\n${name}.ter: Loading ${originalData.length} bytes`);
 
         // Parse the Nanosaur 1 level
-        const rawLevelData = parseNanosaur1Level(bufferToArrayBuffer(originalBuffer));
-        console.log(`  Parsed: ${rawLevelData.header.width}x${rawLevelData.header.depth}`);
+        const rawLevelData = parseNanosaur1Level(
+          bufferToArrayBuffer(originalBuffer),
+        );
+        console.log(
+          `  Parsed: ${rawLevelData.header.width}x${rawLevelData.header.depth}`,
+        );
         console.log(`    Objects: ${rawLevelData.objectList.length}`);
-        console.log(`    Texture layer tiles: ${rawLevelData.textureLayer.length}`);
-        console.log(`    Heightmap tiles: ${rawLevelData.heightmapTiles?.length || 0}`);
+        console.log(
+          `    Texture layer tiles: ${rawLevelData.textureLayer.length}`,
+        );
+        console.log(
+          `    Heightmap tiles: ${rawLevelData.heightmapTiles?.length || 0}`,
+        );
 
         // Convert to LevelData format
-        const compatibleLevel = nanosaur1LevelToLevelData(rawLevelData, 32, 64, 4.0);
+        const compatibleLevel = nanosaur1LevelToLevelData(
+          rawLevelData,
+          32,
+          64,
+          4.0,
+        );
         expect(compatibleLevel).toBeDefined();
         expect(compatibleLevel.Hedr).toBeDefined();
         expect(compatibleLevel.Layr).toBeDefined();
 
         // Compile back to binary
-        const compileResult = compileNanosaur1Level(compatibleLevel, rawLevelData);
+        const compileResult = compileNanosaur1Level(
+          compatibleLevel,
+          rawLevelData,
+        );
 
         let exportedData: Uint8Array;
+        function isResultLike(
+          x: unknown,
+        ): x is { ok: boolean; value?: unknown; error?: unknown } {
+          return typeof x === "object" && x !== null && "ok" in x;
+        }
+
         if (compileResult instanceof ArrayBuffer) {
           exportedData = new Uint8Array(compileResult);
-        } else if (typeof compileResult === "object" && compileResult !== null && "ok" in compileResult) {
-          // result-like object; use runtime checks and ignore TS for now
-          // @ts-expect-error - dynamic runtime check
-          if (!compileResult.ok) {
-            // @ts-expect-error - dynamic runtime check
-            throw new Error(`Compilation failed: ${compileResult.error}`);
+        } else if (isResultLike(compileResult)) {
+          if (!compileResult.ok)
+            throw new Error(
+              `Compilation failed: ${String(compileResult.error)}`,
+            );
+          if (compileResult.value instanceof ArrayBuffer) {
+            exportedData = new Uint8Array(compileResult.value);
+          } else if (ArrayBuffer.isView(compileResult.value)) {
+            exportedData = new Uint8Array(
+              Array.prototype.slice.call(compileResult.value),
+            );
+          } else {
+            throw new Error("Unexpected compilation result value type");
           }
-          // @ts-expect-error - dynamic runtime check
-          exportedData = new Uint8Array(compileResult.value);
+        } else if (ArrayBuffer.isView(compileResult)) {
+          exportedData = new Uint8Array(
+            Array.prototype.slice.call(compileResult),
+          );
         } else {
-          // assume ArrayBuffer
-          // @ts-expect-error - dynamic runtime check
-          exportedData = new Uint8Array(compileResult);
+          throw new Error("Unexpected compilation result type");
         }
         console.log(`  Export: ${exportedData.length} bytes`);
 
         // Byte-for-byte comparison
         expect(exportedData.length).toBe(originalData.length);
-        
+
         let differenceCount = 0;
         const maxDiffsToLog = 10;
         for (let i = 0; i < originalData.length; i++) {
           if (originalData[i] !== exportedData[i]) {
             if (differenceCount < maxDiffsToLog) {
               console.log(
-                `  Diff at byte ${i}: orig=${originalData[i]} export=${exportedData[i]}`
+                `  Diff at byte ${i}: orig=${originalData[i]} export=${exportedData[i]}`,
               );
             }
             differenceCount++;
@@ -107,7 +136,7 @@ describe("Nanosaur 1 Byte-Accurate Roundtrip Tests", () => {
 
         // Expect byte-for-byte identity
         expect(exportedData).toEqual(originalData);
-        
+
         console.log(`  ✓ ${name}: Byte-for-byte match achieved`);
       });
     });
@@ -125,26 +154,43 @@ describe("Nanosaur 1 Byte-Accurate Roundtrip Tests", () => {
         }
 
         // Parse original
-        const rawLevelData1 = parseNanosaur1Level(bufferToArrayBuffer(originalBuffer));
-        const compatibleLevel = nanosaur1LevelToLevelData(rawLevelData1, 32, 64, 4.0);
+        const rawLevelData1 = parseNanosaur1Level(
+          bufferToArrayBuffer(originalBuffer),
+        );
+        const compatibleLevel = nanosaur1LevelToLevelData(
+          rawLevelData1,
+          32,
+          64,
+          4.0,
+        );
 
         // Compile and re-parse
-        const compileResult = compileNanosaur1Level(compatibleLevel, rawLevelData1);
+        const compileResult = compileNanosaur1Level(
+          compatibleLevel,
+          rawLevelData1,
+        );
 
         let compiledBuffer: ArrayBuffer;
+        function isResultLike(
+          x: unknown,
+        ): x is { ok: boolean; value?: unknown; error?: unknown } {
+          return typeof x === "object" && x !== null && "ok" in x;
+        }
+
         if (compileResult instanceof ArrayBuffer) {
           compiledBuffer = compileResult;
-        } else if (typeof compileResult === "object" && compileResult !== null && "ok" in compileResult) {
-          // @ts-expect-error - dynamic runtime check
-          if (!compileResult.ok) {
-            // @ts-expect-error - dynamic runtime check
-            throw new Error(`Compilation failed: ${compileResult.error}`);
+        } else if (isResultLike(compileResult)) {
+          if (!compileResult.ok)
+            throw new Error(
+              `Compilation failed: ${String(compileResult.error)}`,
+            );
+          if (compileResult.value instanceof ArrayBuffer) {
+            compiledBuffer = compileResult.value;
+          } else {
+            throw new Error("Unexpected compilation result value type");
           }
-          // @ts-expect-error - dynamic runtime check
-          compiledBuffer = compileResult.value;
         } else {
-          // @ts-expect-error - dynamic runtime check
-          compiledBuffer = compileResult;
+          throw new Error("Unexpected compilation result type");
         }
 
         const rawLevelData2 = parseNanosaur1Level(compiledBuffer);
@@ -152,9 +198,15 @@ describe("Nanosaur 1 Byte-Accurate Roundtrip Tests", () => {
         // Compare structures
         expect(rawLevelData2.header.width).toBe(rawLevelData1.header.width);
         expect(rawLevelData2.header.depth).toBe(rawLevelData1.header.depth);
-        expect(rawLevelData2.objectList.length).toBe(rawLevelData1.objectList.length);
-        expect(rawLevelData2.textureLayer.length).toBe(rawLevelData1.textureLayer.length);
-        expect(rawLevelData2.heightmapTiles?.length || 0).toBe(rawLevelData1.heightmapTiles?.length || 0);
+        expect(rawLevelData2.objectList.length).toBe(
+          rawLevelData1.objectList.length,
+        );
+        expect(rawLevelData2.textureLayer.length).toBe(
+          rawLevelData1.textureLayer.length,
+        );
+        expect(rawLevelData2.heightmapTiles?.length || 0).toBe(
+          rawLevelData1.heightmapTiles?.length || 0,
+        );
 
         // Compare textureLayer
         const layer1 = rawLevelData1.textureLayer;
@@ -166,7 +218,9 @@ describe("Nanosaur 1 Byte-Accurate Roundtrip Tests", () => {
 
         // Compare items
         for (let i = 0; i < rawLevelData1.objectList.length; i++) {
-          expect(rawLevelData2.objectList[i]).toEqual(rawLevelData1.objectList[i]);
+          expect(rawLevelData2.objectList[i]).toEqual(
+            rawLevelData1.objectList[i],
+          );
         }
 
         console.log(`  ✓ ${name}: Semantic consistency maintained`);
