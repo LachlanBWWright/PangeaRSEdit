@@ -313,8 +313,11 @@ describe("Enhanced Texture Extraction", () => {
 
     expect(mockScene).toBeDefined();
     expect(extractedTextures).toHaveLength(1);
-    expect(extractedTextures[0]!.url).toContain("data:image/jpeg;base64");
-    expect(extractedTextures[0]!.type).toBe("diffuse");
+    const firstTexture = extractedTextures[0];
+    if (firstTexture) {
+      expect(firstTexture.url).toContain("data:image/jpeg;base64");
+      expect(firstTexture.type).toBe("diffuse");
+    }
   });
 
   test("should handle textures with raw data (ArrayBuffer/Uint8Array)", () => {
@@ -391,8 +394,11 @@ describe("Enhanced Texture Extraction", () => {
 
     expect(mockScene).toBeDefined();
     expect(extractedTextures).toHaveLength(1);
-    expect(extractedTextures[0]!.url).toBe(mockObjectURL);
-    expect(extractedTextures[0]!.size).toEqual({ width: 2, height: 1 });
+    const firstTexture = extractedTextures[0];
+    if (firstTexture) {
+      expect(firstTexture.url).toBe(mockObjectURL);
+      expect(firstTexture.size).toEqual({ width: 2, height: 1 });
+    }
     expect(global.URL.createObjectURL).toHaveBeenCalledWith(expect.any(Blob));
   });
 
@@ -445,6 +451,9 @@ describe("Enhanced Texture Extraction", () => {
 
     expect(mockScene).toBeDefined();
     expect(extractedTextures).toHaveLength(1); // Should only have one texture despite being used in two materials
-    expect(extractedTextures[0]!.url).toBe("shared.png");
+    const firstTexture = extractedTextures[0];
+    if (firstTexture) {
+      expect(firstTexture.url).toBe("shared.png");
+    }
   });
 });
