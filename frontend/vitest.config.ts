@@ -4,7 +4,7 @@ export default defineConfig({
   root: import.meta.dirname,
   test: {
     dir: import.meta.dirname,
-    include: ["tests/roundtrip/allGamesRoundtripNew.test.ts"],
+    include: ["tests/roundtrip/allGamesRoundtripNew.test.ts", "tests/roundtrip/mightyMikeRoundtrip.test.ts"],
     exclude: [
       "tests/e2e/**",
       "src/modelParsers/**/parseMightyMikeRoundtrip.test.ts",

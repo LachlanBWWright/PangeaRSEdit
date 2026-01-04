@@ -1,13 +1,13 @@
-import { LevelData } from "@/python/structSpecs/LevelTypes";
-import { Result, ok, err } from "@/types/result";
+import { LevelData } from "../../python/structSpecs/LevelTypes";
+import { Result, ok, err } from "../../types/result";
 import {
   parseMightyMikeMap,
   parseMightyMikeTileSet,
   mightyMikeMapToCompressedBinary,
-} from "@/modelParsers/parseMightyMike";
-import type { MightyMikeTileSet, MightyMikeMap } from "@/python/structSpecs/mightyMikeInterface";
-import { splitLevelData, AtomicLevelData } from "@/data/utils/levelDataUtils";
-import { extractTGAPalette } from "@/utils/tgaParser";
+} from "../../modelParsers/parseMightyMike";
+import type { MightyMikeTileSet, MightyMikeMap } from "../../python/structSpecs/mightyMikeInterface";
+import { splitLevelData, AtomicLevelData } from "../../data/utils/levelDataUtils";
+import { extractTGAPalette } from "../../utils/tgaParser";
 
 // Type guard helper
 function isRecord(value: unknown): value is Record<string, unknown> {
