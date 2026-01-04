@@ -41,7 +41,17 @@ import {
 import { useEffect, useRef, useState, useCallback } from "react";
 import { toast } from "sonner";
 import { Vector3, Mesh } from "three";
-import type * as THREE from "three";
+import type { Event } from "three";
+
+// Type guard for THREE events with point
+interface ThreeEventWithPoint extends Event<string, unknown> {
+  point: Vector3;
+}
+
+function hasPointProperty(event: Event<string, unknown>): event is ThreeEventWithPoint {
+  return "point" in event && event.point instanceof Vector3;
+}
+
 import {
   calculateBrushPixels,
   applyTopologyBrush,
@@ -67,7 +77,7 @@ function SceneExporter() {
 
       exporter.parse(
         scene,
-        (result: ArrayBuffer | { [key: string]: unknown }) => {
+        (result: ArrayBuffer | Record<string, unknown>) => {
           // Dismiss loading toast and show success
           if (exportToastId.current !== undefined) {
             toast.dismiss(exportToastId.current);
@@ -170,19 +180,18 @@ export function ThreeView({
   const unitsWide = numWide * globals.TILE_INGAME_SIZE;
   const unitsHigh = numHigh * globals.TILE_INGAME_SIZE;
 
-  const handlePointerMove = useCallback((event: THREE.Event) => {
+  const handlePointerMove = useCallback((event: Event<string, unknown>) => {
     if (!isEditingTopology || !terrainMeshRef.current) return;
 
-    const threeEvent = event as THREE.Event & { point: Vector3 };
-    if (threeEvent.point) {
+    if (hasPointProperty(event)) {
       setIntersectionPoint({
-        x: threeEvent.point.x,
-        y: threeEvent.point.y,
-        z: threeEvent.point.z,
+        x: event.point.x,
+        y: event.point.y,
+        z: event.point.z,
       });
 
       // Calculate affected pixels for preview
-      const tileCoords = worldToTile(threeEvent.point.x, threeEvent.point.z, globals.TILE_INGAME_SIZE);
+      const tileCoords = worldToTile(event.point.x, event.point.z, globals.TILE_INGAME_SIZE);
       const radius = (brushRadius - 1) * globals.TILE_INGAME_SIZE;
       
       const pixels = calculateBrushPixels({
@@ -264,15 +273,14 @@ export function ThreeView({
     }
   }, [isEditingTopology, isEditing, brushMode, brushRadius, valueMode, topologyValue, header, globals, terrainData, editRoofAndFloor, roofFloorElevation]);
 
-  const handlePointerDown = useCallback((event: THREE.Event) => {
+  const handlePointerDown = useCallback((event: Event<string, unknown>) => {
     if (!isEditingTopology) return;
     
-    const threeEvent = event as THREE.Event & { point: Vector3 };
-    if (threeEvent.point && terrainData.YCrd?.[1000]?.obj) {
+    if (hasPointProperty(event) && terrainData.YCrd?.[1000]?.obj) {
       setIsEditing(true);
       
       // Apply brush
-      const tileCoords = worldToTile(threeEvent.point.x, threeEvent.point.z, globals.TILE_INGAME_SIZE);
+      const tileCoords = worldToTile(event.point.x, event.point.z, globals.TILE_INGAME_SIZE);
       const radius = (brushRadius - 1) * globals.TILE_INGAME_SIZE;
       
       const pixels = calculateBrushPixels({

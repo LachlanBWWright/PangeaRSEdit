@@ -10,7 +10,7 @@ export class BigEndianReader {
   private offset: number;
   private buffer: ArrayBuffer;
 
-  constructor(buffer: ArrayBuffer, initialOffset: number = 0) {
+  constructor(buffer: ArrayBuffer, initialOffset = 0) {
     this.buffer = buffer;
     this.view = new DataView(buffer);
     this.offset = initialOffset;

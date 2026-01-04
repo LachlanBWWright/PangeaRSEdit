@@ -41,8 +41,12 @@ describe("Exact Byte-for-Byte Roundtrip Validation", () => {
     console.log(`Original skeleton: ${originalSkeletonData.length} bytes`);
 
     // Step 2: Parse original data
+    const originalSkeletonArrayBuffer = originalSkeletonData.buffer.slice(
+      originalSkeletonData.byteOffset,
+      originalSkeletonData.byteOffset + originalSkeletonData.byteLength,
+    );
     const originalSkeletonResource = await parseSkeletonRsrc(
-      originalSkeletonData as unknown as ArrayBuffer,
+      originalSkeletonArrayBuffer,
     );
     const originalBg3dResult = parseBG3D(
       originalBg3dData.buffer.slice(

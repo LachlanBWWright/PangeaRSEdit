@@ -38,12 +38,16 @@ export function fixNullToZero(obj: unknown): unknown {
     return obj;
   }
 
-  if (typeof obj === 'object') {
+  function isRecord(x: unknown): x is Record<string, unknown> {
+    return typeof x === 'object' && x !== null && !Array.isArray(x);
+  }
+
+  if (isRecord(obj)) {
     for (const [key, value] of Object.entries(obj)) {
       if (value === null || value === undefined) {
         // Special case: resource entry 'obj' field should be an empty array if undefined
         if (key === 'obj') {
-          (obj as Record<string, unknown>)[key] = [];
+          obj[key] = [];
           continue;
         }
 
@@ -73,7 +77,7 @@ export function fixNullToZero(obj: unknown): unknown {
         );
 
         if (isLikelyNumeric) {
-          (obj as Record<string, unknown>)[key] = 0;
+          obj[key] = 0;
         }
       } else if (typeof value === 'object') {
         fixNullToZero(value);

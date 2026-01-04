@@ -128,11 +128,26 @@ export function serializePalette(palette: Palette): string {
 /**
  * Deserialize palette from JSON
  */
+export function isRecord(x: unknown): x is Record<string, unknown> {
+  return typeof x === "object" && x !== null;
+}
+
+export function isPalette(x: unknown): x is Palette {
+  if (!isRecord(x)) return false;
+  if (typeof x.name !== "string") return false;
+  if (!Array.isArray(x.colors)) return false;
+  for (const c of x.colors) {
+    if (!isRecord(c)) return false;
+    if (typeof c.r !== "number" || typeof c.g !== "number" || typeof c.b !== "number") return false;
+  }
+  return true;
+}
+
 export function deserializePalette(json: string): Palette | null {
   try {
     const data = JSON.parse(json);
-    if (data.name && Array.isArray(data.colors)) {
-      return data as Palette;
+    if (isPalette(data)) {
+      return data;
     }
   } catch (e) {
     console.error("Failed to deserialize palette:", e);

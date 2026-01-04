@@ -3,6 +3,9 @@ import { openFile } from "./openFile";
 import type { GlobalsInterface } from "@/data/globals/globals";
 import { DataType } from "@/data/globals/globals";
 
+vi.mock("./parseLevelDataFile", () => ({ parseLevelDataFile: vi.fn() }));
+import * as parseModule from "./parseLevelDataFile";
+
 describe("openFile", () => {
   it("should fetch resource and call setters for MIGHTY_MIKE", async () => {
     const fakeBlob = new Blob(["dummy"], { type: "application/octet-stream" });
@@ -11,12 +14,9 @@ describe("openFile", () => {
       vi.fn().mockResolvedValueOnce({ blob: async () => fakeBlob }),
     );
 
-    // mock parseLevelDataFile so we don't run complex parsing
-    vi.mock("./parseLevelDataFile", () => ({
-      parseLevelDataFile: vi.fn().mockResolvedValue({ ok: true, value: {} }),
-    }));
-    // Import after mocking to ensure mock is applied
-    const { parseLevelDataFile: _parse } = await import("./parseLevelDataFile");
+    // Use the hoisted mock and configure its return value for this test
+    const _parse = vi.mocked(parseModule.parseLevelDataFile);
+    _parse.mockResolvedValueOnce({ ok: true, value: {} });
 
     const setGlobals = vi.fn();
     const setMapFile = vi.fn();
@@ -24,14 +24,20 @@ describe("openFile", () => {
     const setMapImages = vi.fn();
     const setData = vi.fn();
 
-    const gameType = {
+    const gameTypeUnknown: unknown = {
       DATA_TYPE: "MIGHTY_MIKE",
       GAME_TYPE: "MIGHTY_MIKE",
-    } as unknown as GlobalsInterface;
+    };
+    function assertIsGlobals(x: unknown): asserts x is GlobalsInterface {
+      if (typeof x !== "object" || x === null || !("DATA_TYPE" in x)) {
+        throw new Error("Invalid gameType");
+      }
+    }
+    assertIsGlobals(gameTypeUnknown);
 
     await openFile({
       url: "assets/mightyMike/terrain/candy.map-1",
-      gameType,
+      gameType: gameTypeUnknown,
       setGlobals,
       setMapFile,
       setMapImagesFile,
@@ -39,7 +45,7 @@ describe("openFile", () => {
       setData,
     });
 
-    expect(setGlobals).toHaveBeenCalledWith(gameType);
+    expect(setGlobals).toHaveBeenCalledWith(gameTypeUnknown);
     expect(setMapFile).toHaveBeenCalled();
     expect(setMapImages).toHaveBeenCalledWith([]);
     // parseLevelDataFile should have been called
@@ -47,7 +53,8 @@ describe("openFile", () => {
   });
 
   it("should set a synthetic images file and canvases for RSRC_FORK (Bugdom 1)", async () => {
-    vi.resetModules();
+    // Reset mocks and stub fetch
+    vi.clearAllMocks();
     const fakeBlob = new Blob(["dummy"], { type: "application/octet-stream" });
     vi.stubGlobal(
       "fetch",
@@ -58,11 +65,11 @@ describe("openFile", () => {
     const tileBytes = 2 * 32 * 32;
     const hex = "00".repeat(tileBytes);
 
-    vi.mock("./parseLevelDataFile", () => ({
-      parseLevelDataFile: vi.fn(),
-    }));
-    const { parseLevelDataFile: parseMock } = await import("./parseLevelDataFile");
-    (parseMock as unknown as { mockResolvedValue: (v: unknown) => void }).mockResolvedValue({ ok: true, value: { Timg: { "1000": { data: hex } } } });
+    const _parse = vi.mocked(parseModule.parseLevelDataFile);
+    _parse.mockResolvedValueOnce({
+      ok: true,
+      value: { Timg: { "1000": { data: hex } } },
+    });
 
     const setGlobals = vi.fn();
     const setMapFile = vi.fn();
@@ -70,14 +77,20 @@ describe("openFile", () => {
     const setMapImages = vi.fn();
     const setData = vi.fn();
 
-    const gameType = {
+    const gameTypeUnknown: unknown = {
       DATA_TYPE: DataType.RSRC_FORK,
       GAME_TYPE: "BUGDOM",
-    } as unknown as GlobalsInterface;
+    };
+    function assertIsGlobals(x: unknown): asserts x is GlobalsInterface {
+      if (typeof x !== "object" || x === null || !("DATA_TYPE" in x)) {
+        throw new Error("Invalid gameType");
+      }
+    }
+    assertIsGlobals(gameTypeUnknown);
 
     await openFile({
       url: "Training.ter",
-      gameType,
+      gameType: gameTypeUnknown,
       setGlobals,
       setMapFile,
       setMapImagesFile,
@@ -86,9 +99,25 @@ describe("openFile", () => {
     });
 
     expect(setMapImagesFile).toHaveBeenCalled();
-    const fileArg = (setMapImagesFile as unknown as { mock: { calls: Array<[File]> } }).mock.calls[0]?.[0];
-    if (!fileArg) throw new Error("File arg is undefined");
-    expect(fileArg.name).toMatch(/_tiles\.bin$/);
+    const maybeMock = setMapImagesFile as unknown;
+    if (typeof maybeMock === "object" && maybeMock && "mock" in maybeMock) {
+      // @ts-expect-error - inspect mock calls
+      const calls = maybeMock.mock?.calls;
+      const fileArg =
+        Array.isArray(calls) && calls[0] && Array.isArray(calls[0])
+          ? calls[0][0]
+          : undefined;
+      if (!fileArg) throw new Error("File arg is undefined");
+      function hasName(x: unknown): x is { name: unknown } {
+        return typeof x === "object" && x !== null && "name" in x;
+      }
+      const maybeName = hasName(fileArg) ? fileArg.name : undefined;
+      if (typeof maybeName !== "string")
+        throw new Error("File arg missing name");
+      expect(maybeName).toMatch(/_tiles\.bin$/);
+    } else {
+      throw new Error("setMapImagesFile is not a mock");
+    }
     expect(setMapImages).toHaveBeenCalled();
   });
 });

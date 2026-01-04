@@ -31,10 +31,10 @@ import { SafeItemTypes, SafeSplineItemTypes } from "../data/items/itemAtoms";
 import { extractSafeItemTypes } from "../data/items/extractSafeItemTypes";
 import { loadBytesFromJson } from "@lachlanbwwright/rsrcdump-ts";
 
-export type DataHistory = {
+export interface DataHistory {
   items: AtomicLevelData[];
   index: number;
-};
+}
 
 export function IntroPrompt() {
   const globals = useAtomValue(Globals);
@@ -258,7 +258,7 @@ export function IntroPrompt() {
         return;
       }
 
-      const loadRes = saveResult.value as Uint8Array;
+      const loadRes = saveResult.value;
 
       if (!loadRes || loadRes.byteLength === 0) {
         console.error("Download failed: Generated map data is empty");
@@ -307,7 +307,7 @@ export function IntroPrompt() {
     toast.loading("Compressing textures...");
 
     //Webworker promise
-    const compressTextures: Promise<DataView[]> = new Promise((res, err) => {
+    const compressTextures = new Promise<DataView[]>((res, err) => {
       const compressedTextures: DataView[] = new Array(mapImages.length);
       const resolvedTextures = { count: 0 };
       console.time("compress");
@@ -371,8 +371,7 @@ export function IntroPrompt() {
     const imageDownloadBuffer = new DataView(new ArrayBuffer(totalSize));
     // Fill imageDownloadBuffer with data from bufferList
     let pos2 = 0;
-    for (let i = 0; i < bufferList.length; i++) {
-      const buffer = bufferList[i];
+    for (const buffer of bufferList) {
       if (!buffer) continue;
       // Write size header (4 bytes)
       imageDownloadBuffer.setInt32(pos2, buffer.byteLength);
@@ -469,9 +468,9 @@ export function IntroPrompt() {
       </div>
       <hr />
       {/* Render editor when we have images; allow some atomic pieces to be null. */}
-      {mapImages ? (
+      {mapImages && headerData && terrainData ? (
         <EditorView
-          headerData={headerData!}
+          headerData={headerData}
           setHeaderData={setHeaderDataNonNull}
           itemData={itemData}
           setItemData={setItemData}
@@ -481,7 +480,7 @@ export function IntroPrompt() {
           setFenceData={setFenceData}
           splineData={splineData}
           setSplineData={setSplineData}
-          terrainData={terrainData!}
+          terrainData={terrainData}
           setTerrainData={setTerrainDataNonNull}
           mapImages={mapImages}
           setMapImages={setMapImages}

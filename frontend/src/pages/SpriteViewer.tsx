@@ -23,24 +23,24 @@ import { gMightyMikePalette } from "@/utils/mightyMikePalette";
 
 type FileType = "sprites" | "tga" | "tileset";
 
-type SpriteData = {
+interface SpriteData {
   type: "sprites";
   data: ShapesFile;
   filename: string;
-};
+}
 
-type TGAData = {
+interface TGAData {
   type: "tga";
   data: HTMLCanvasElement;
   filename: string;
-};
+}
 
-type TilesetData = {
+interface TilesetData {
   type: "tileset";
   data: MightyMikeTileset;
   gridCanvas: HTMLCanvasElement;
   filename: string;
-};
+}
 
 type LoadedData = SpriteData | TGAData | TilesetData | null;
 
@@ -225,7 +225,7 @@ export function SpriteViewer() {
     setLoading(true);
     try {
       // Map scene names to TGA files
-      const sceneToTga: { [key: string]: string } = {
+      const sceneToTga: Record<string, string> = {
         bargain: "bargainscene",
         candy: "candyscene",
         clown: "clownscene",
@@ -612,7 +612,7 @@ export function SpriteViewer() {
 
     if (sceneName) {
       // Load the actual palette from the TGA file
-      const sceneToTga: { [key: string]: string } = {
+      const sceneToTga: Record<string, string> = {
         bargain: "bargainscene",
         candy: "candyscene",
         clown: "clownscene",
@@ -694,7 +694,7 @@ export function SpriteViewer() {
     setCurrentTilesetPaletteScene(sceneName);
 
     // Load the palette from the TGA file without changing the tileset
-    const sceneToTga: { [key: string]: string } = {
+    const sceneToTga: Record<string, string> = {
       bargain: "bargainscene",
       candy: "candyscene",
       clown: "clownscene",

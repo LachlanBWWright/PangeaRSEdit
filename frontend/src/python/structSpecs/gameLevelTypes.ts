@@ -493,7 +493,7 @@ export interface TerrainSection<
   };
   // Bugdom 1 specific - tile index translation table
   Xlat?: {
-    1000: ResourceEntry<Array<{ idx: number }>>;
+    1000: ResourceEntry<{ idx: number }[]>;
   };
   // Bugdom 1 specific - vertex colors
   Vcol?: Record<number, HexResourceEntry>;

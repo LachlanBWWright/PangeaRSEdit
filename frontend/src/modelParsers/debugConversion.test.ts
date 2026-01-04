@@ -110,15 +110,13 @@ describe("Debug Conversion", () => {
           console.log(`    Output values: ${outputAcc?.getCount()} values`);
 
           if (path === "rotation" && outputAcc) {
-            const values = Array.from(outputAcc.getArray() as Float32Array).slice(
-              0,
-              4,
-            );
-            console.log(
-              `    First quaternion: [${values
-                .map((v) => v.toFixed(6))
-                .join(", ")}]`,
-            );
+            const raw = outputAcc.getArray();
+            if (raw instanceof Float32Array) {
+              const values = Array.from(raw).slice(0, 4);
+              console.log(
+                `    First quaternion: [${values.map((v) => v.toFixed(6)).join(", ")} ]`
+              );
+            }
           }
         }
       }

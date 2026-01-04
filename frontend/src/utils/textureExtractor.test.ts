@@ -1,7 +1,7 @@
 import { describe, test, expect, vi, beforeEach } from "vitest";
 
 // Mock Three.js objects
-type MockTexture = {
+interface MockTexture {
   image: {
     src?: string;
     width?: number;
@@ -9,9 +9,9 @@ type MockTexture = {
     data?: Uint8Array;
   };
   source?: { uri?: string | null };
-};
+}
 
-type MockMaterial = {
+interface MockMaterial {
   name: string;
   map?: MockTexture | null;
   normalMap?: MockTexture | null;
@@ -23,24 +23,24 @@ type MockMaterial = {
   alphaMap?: MockTexture | null;
   bumpMap?: MockTexture | null;
   displacementMap?: MockTexture | null;
-};
+}
 
-type MockMesh = {
+interface MockMesh {
   id: number;
   name: string;
   visible: boolean;
   material: MockMaterial | MockMaterial[];
   children: MockMesh[];
   traverse?: (cb: (child: MockMesh) => void) => void;
-};
+}
 
-type MockGroup = {
+interface MockGroup {
   id: number;
   name: string;
   visible: boolean;
   children: MockMesh[];
   traverse: (cb: (child: MockMesh) => void) => void;
-};
+}
 const createMockTexture = (url: string, width?: number, height?: number) => ({
   image: {
     src: url,
@@ -67,42 +67,50 @@ const createMockMaterial = (
   displacementMap: textures.displacement || null,
 });
 
-const createMockMesh = (materials: MockMaterial[]): MockMesh => ({
-  id: 1,
-  name: "TestMesh",
+const createMockMesh = (
+  materials: MockMaterial[] = [],
+  children: MockMesh[] = [],
+  id = 1,
+  name = "TestMesh",
+): MockMesh => ({
+  id,
+  name,
   visible: true,
-  material: (materials.length === 1
-    ? materials[0] ?? createMockMaterial()
-    : materials.length > 0
-    ? materials
-    : createMockMaterial()) as MockMaterial | MockMaterial[],
-  children: [],
+  material:
+    materials.length === 1
+      ? materials[0] ?? createMockMaterial()
+      : materials.length > 0
+      ? materials
+      : createMockMaterial(),
+  children,
+  traverse: vi.fn((callback: (child: MockMesh) => void) => {
+    children.forEach(callback);
+  }),
 });
 
-const createMockGroup = (children: MockMesh[]): MockGroup => ({
-  id: 2,
-  name: "TestGroup",
+const createMockGroup = (
+  children: MockMesh[],
+  id = 2,
+  name = "TestGroup",
+): MockGroup => ({
+  id,
+  name,
   visible: true,
   children,
   traverse: vi.fn((callback: (child: MockMesh) => void) => {
-    if (children[0]) {
-      callback(children[0]);
-      if (children[0].children) {
-        children[0].children.forEach(callback);
-      }
-    }
+    children.forEach(callback);
   }),
 });
 
 describe("Enhanced Texture Extraction", () => {
   let mockScene: MockGroup | null = null;
-  type ExtractedTexture = {
+  interface ExtractedTexture {
     name: string;
     url: string;
     type: "diffuse" | "normal" | "other";
     material: string;
     size?: { width: number; height: number };
-  };
+  }
   let extractedTextures: ExtractedTexture[];
 
   beforeEach(() => {
@@ -137,7 +145,12 @@ describe("Enhanced Texture Extraction", () => {
           if (texture.image.src) {
             url = texture.image.src;
           } else if (texture.image.data instanceof Uint8Array) {
-            const blob = new Blob([texture.image.data.buffer as ArrayBuffer], {
+            const dataBuffer = texture.image.data.buffer;
+            const arrayBuffer =
+              dataBuffer instanceof ArrayBuffer
+                ? dataBuffer
+                : new Uint8Array(dataBuffer).slice().buffer;
+            const blob = new Blob([arrayBuffer], {
               type: "image/png",
             });
             url = URL.createObjectURL(blob);
@@ -188,10 +201,14 @@ describe("Enhanced Texture Extraction", () => {
 
     expect(mockScene).toBeDefined();
     expect(extractedTextures).toHaveLength(1);
-    expect(extractedTextures[0]!.name).toBe("TestMaterial_Diffuse");
-    expect(extractedTextures[0]!.url).toBe("data:image/png;base64,test123");
-    expect(extractedTextures[0]!.type).toBe("diffuse");
-    expect(extractedTextures[0]!.size).toEqual({ width: 512, height: 512 });
+    const firstTexture = extractedTextures[0];
+    expect(firstTexture).toBeDefined();
+    if (firstTexture) {
+      expect(firstTexture.name).toBe("TestMaterial_Diffuse");
+      expect(firstTexture.url).toBe("data:image/png;base64,test123");
+      expect(firstTexture.type).toBe("diffuse");
+      expect(firstTexture.size).toEqual({ width: 512, height: 512 });
+    }
   });
 
   test("should extract multiple texture types from single material", () => {
@@ -310,8 +327,12 @@ describe("Enhanced Texture Extraction", () => {
 
     expect(mockScene).toBeDefined();
     expect(extractedTextures).toHaveLength(1);
-    expect(extractedTextures[0]!.url).toContain("data:image/jpeg;base64");
-    expect(extractedTextures[0]!.type).toBe("diffuse");
+    const firstTexture = extractedTextures[0];
+    expect(firstTexture).toBeDefined();
+    if (firstTexture) {
+      expect(firstTexture.url).toContain("data:image/jpeg;base64");
+      expect(firstTexture.type).toBe("diffuse");
+    }
   });
 
   test("should handle textures with raw data (ArrayBuffer/Uint8Array)", () => {
@@ -349,7 +370,12 @@ describe("Enhanced Texture Extraction", () => {
           if (texture.image.src) {
             url = texture.image.src;
           } else if (texture.image.data instanceof Uint8Array) {
-            const blob = new Blob([texture.image.data.buffer as ArrayBuffer], {
+            const dataBuffer = texture.image.data.buffer;
+            const arrayBuffer =
+              dataBuffer instanceof ArrayBuffer
+                ? dataBuffer
+                : new Uint8Array(dataBuffer).slice().buffer;
+            const blob = new Blob([arrayBuffer], {
               type: "image/png",
             });
             url = URL.createObjectURL(blob);
@@ -388,8 +414,12 @@ describe("Enhanced Texture Extraction", () => {
 
     expect(mockScene).toBeDefined();
     expect(extractedTextures).toHaveLength(1);
-    expect(extractedTextures[0]!.url).toBe(mockObjectURL);
-    expect(extractedTextures[0]!.size).toEqual({ width: 2, height: 1 });
+    const firstTexture = extractedTextures[0];
+    expect(firstTexture).toBeDefined();
+    if (firstTexture) {
+      expect(firstTexture.url).toBe(mockObjectURL);
+      expect(firstTexture.size).toEqual({ width: 2, height: 1 });
+    }
     expect(global.URL.createObjectURL).toHaveBeenCalledWith(expect.any(Blob));
   });
 
@@ -442,6 +472,10 @@ describe("Enhanced Texture Extraction", () => {
 
     expect(mockScene).toBeDefined();
     expect(extractedTextures).toHaveLength(1); // Should only have one texture despite being used in two materials
-    expect(extractedTextures[0]!.url).toBe("shared.png");
+    const firstTexture = extractedTextures[0];
+    expect(firstTexture).toBeDefined();
+    if (firstTexture) {
+      expect(firstTexture.url).toBe("shared.png");
+    }
   });
 });

@@ -12,7 +12,7 @@
 import { describe, it, expect, beforeAll } from "vitest";
 import { readFileSync, existsSync } from "fs";
 import { join } from "path";
-import { load, saveToJsonObject } from "../../src/rsrcdump-ts/rsrcdump";
+import { load, saveToJson } from "@lachlanbwwright/rsrcdump-ts";
 import { nanosaur2Specs } from "../../src/python/structSpecs/nanosaur2";
 import { Nanosaur2Globals } from "../../src/data/globals/globals";
 import { preprocessJson } from "../../src/data/processors/ottoPreprocessor";
@@ -46,43 +46,74 @@ describe("Nanosaur 2 Map Roundtrip", () => {
     const fork = forkResult.value;
 
     expect(fork).toBeDefined();
-    expect(fork.resources).toBeDefined();
-    expect(fork.resources.size).toBeGreaterThan(0);
+    expect(fork.tree).toBeDefined();
+    expect(fork.tree.size).toBeGreaterThan(0);
 
     // Check for expected resource types (not all files have all types)
     const expectedTypes = ["Hedr", "STgd", "YCrd", "Itms"];
     for (const expectedType of expectedTypes) {
       expect(
-        fork.resources.has(expectedType),
+        fork.tree.has(expectedType),
         `Missing resource type: ${expectedType}`,
       ).toBe(true);
     }
 
-    console.log(
-      "Nanosaur 2 resource types:",
-      Array.from(fork.resources.keys()),
-    );
+    console.log("Nanosaur 2 resource types:", Array.from(fork.tree.keys()));
   });
 
-  it("should parse to JSON with bugdom2 specs", () => {
+  it("should parse to JSON with bugdom2 specs", async () => {
     if (!fileExists) return;
 
-    const jsonResult = saveToJsonObject(
-      originalData,
+    const jsonStringResult = await saveToJson(
+      new Uint8Array(originalData),
       nanosaur2Specs,
       [],
       [],
-      true,
     );
-    expect(jsonResult.ok).toBe(true);
-    if (!jsonResult.ok) return;
-    const jsonData = jsonResult.value;
+    expect(jsonStringResult.ok).toBe(true);
+    if (!jsonStringResult.ok) return;
+    const jsonData = JSON.parse(jsonStringResult.value);
 
     expect(jsonData).toBeDefined();
     expect(typeof jsonData).toBe("object");
 
     // Check expected structure
+    function assertIsRecord(x: unknown): asserts x is Record<string, unknown> {
+      if (typeof x !== "object" || x === null)
+        throw new Error("Parsed data is not an object");
+    }
+    assertIsRecord(jsonData);
+    assertIsRecord(jsonData.Hedr);
+    assertIsRecord(jsonData.Hedr["1000"]);
+    assertIsRecord(jsonData.Hedr["1000"].obj);
+
     expect(jsonData.Hedr).toBeDefined();
+
+    const header = jsonData.Hedr["1000"].obj;
+    function assertIsHeader(
+      x: unknown,
+    ): asserts x is {
+      mapWidth: number;
+      mapHeight: number;
+      version: number;
+      numItems: number;
+    } {
+      if (typeof x !== "object" || x === null)
+        throw new Error("Header is not an object");
+      const mapWidth = Reflect.get(x, "mapWidth");
+      const mapHeight = Reflect.get(x, "mapHeight");
+      const version = Reflect.get(x, "version");
+      const numItems = Reflect.get(x, "numItems");
+      if (
+        typeof mapWidth !== "number" ||
+        typeof mapHeight !== "number" ||
+        typeof version !== "number" ||
+        typeof numItems !== "number"
+      ) {
+        throw new Error("Header missing expected numeric fields");
+      }
+    }
+    assertIsHeader(header);
 
     console.log("Nanosaur 2 parsed JSON keys:", Object.keys(jsonData));
   });
@@ -103,23 +134,28 @@ describe("Nanosaur 2 Map Roundtrip", () => {
     // Skip: StructConverter.pack not implemented
   });
 
-  it("should preprocess JSON correctly with Nanosaur 2 globals", () => {
+  it("should preprocess JSON correctly with Nanosaur 2 globals", async () => {
     if (!fileExists) return;
 
-    const jsonResult = saveToJsonObject(
-      originalData,
+    const jsonStringResult = await saveToJson(
+      new Uint8Array(originalData),
       nanosaur2Specs,
       [],
       [],
-      true,
     );
-    expect(jsonResult.ok).toBe(true);
-    if (!jsonResult.ok) return;
-    const jsonData = jsonResult.value;
+    expect(jsonStringResult.ok).toBe(true);
+    if (!jsonStringResult.ok) return;
+    const jsonData = JSON.parse(jsonStringResult.value);
 
     // Preprocessing should not throw
+    function assertIsRecord(x: unknown): asserts x is Record<string, unknown> {
+      if (typeof x !== "object" || x === null) {
+        throw new Error("Parsed data is not an object");
+      }
+    }
     expect(() => {
-      preprocessJson(jsonData as Record<string, unknown>, Nanosaur2Globals);
+      assertIsRecord(jsonData);
+      preprocessJson(jsonData, Nanosaur2Globals);
     }).not.toThrow();
 
     // After preprocessing, verify header data is still present
@@ -152,7 +188,7 @@ describe("Nanosaur 2 Multiple Levels", () => {
   const basePath = join(__dirname, "../../../games/nanosaur2/Data/Terrain/");
 
   for (const levelFile of levelsToTest) {
-    it(`should parse and roundtrip ${levelFile}`, () => {
+    it(`should parse and roundtrip ${levelFile}`, async () => {
       const filePath = join(basePath, levelFile);
 
       if (!existsSync(filePath)) {
@@ -163,10 +199,15 @@ describe("Nanosaur 2 Multiple Levels", () => {
       const data = readFileSync(filePath);
 
       // Parse to JSON
-      const json1Result = saveToJsonObject(data, nanosaur2Specs, [], [], true);
-      expect(json1Result.ok).toBe(true);
-      if (!json1Result.ok) return;
-      const json1 = json1Result.value;
+      const jsonStringResult = await saveToJson(
+        new Uint8Array(data),
+        nanosaur2Specs,
+        [],
+        [],
+      );
+      expect(jsonStringResult.ok).toBe(true);
+      if (!jsonStringResult.ok) return;
+      const json1 = JSON.parse(jsonStringResult.value);
 
       expect(json1).toBeDefined();
       expect(json1.Hedr).toBeDefined();

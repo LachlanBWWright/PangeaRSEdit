@@ -356,7 +356,7 @@ export interface TerrainData<
   Xlat?: {
     1000: {
       name: "Tile Index Translation Table";
-      obj: Array<{ idx: number }>;
+      obj: { idx: number }[];
       order: number;
     };
   };

@@ -4,6 +4,11 @@
 import type { SkeletonResource } from "../python/structSpecs/skeleton/skeletonInterface";
 import { Result, ok, err } from "../types/result";
 
+// Type guard helper
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
 //https://registry.khronos.org/OpenGL-Refpages/gl4/html/glTexImage2D.xhtml
 export enum PixelFormatSrc {
   GL_UNSIGNED_SHORT_1_5_5_5_REV = 33638, // 1a 5r 5g 5b 0x8366 33638
@@ -66,12 +71,12 @@ export enum BG3DTagType {
 
 export enum BG3DMaterialFlags {
   BG3D_MATERIALFLAG_TEXTURED = 1,
-  BG3D_MATERIALFLAG_ALWAYSBLEND = 1 << 1, // set if always want to GL_BLEND this texture when drawn
-  BG3D_MATERIALFLAG_CLAMP_U = 1 << 2, // Block horizontal texture tiling?
-  BG3D_MATERIALFLAG_CLAMP_V = 1 << 3, // Block vertical texture tiling?
-  BG3D_MATERIALFLAG_MULTITEXTURE = 1 << 4,
-  BG3D_MATERIALFLAG_CLAMP_U_TRUE = 1 << 5, // Nanosaur 2 only, no idea what this does
-  BG3D_MATERIALFLAG_CLAMP_V_TRUE = 1 << 6, // Nanosaur 2 only, no idea what this does
+  BG3D_MATERIALFLAG_ALWAYSBLEND = 2, // set if always want to GL_BLEND this texture when drawn
+  BG3D_MATERIALFLAG_CLAMP_U = 4, // Block horizontal texture tiling?
+  BG3D_MATERIALFLAG_CLAMP_V = 8, // Block vertical texture tiling?
+  BG3D_MATERIALFLAG_MULTITEXTURE = 16,
+  BG3D_MATERIALFLAG_CLAMP_U_TRUE = 32, // Nanosaur 2 only, no idea what this does
+  BG3D_MATERIALFLAG_CLAMP_V_TRUE = 64, // Nanosaur 2 only, no idea what this does
 }
 //Raw Data that gets parsed into BG3DParseResult
 
@@ -162,7 +167,7 @@ export interface BG3DAnimation {
   name: string;
   numAnimEvents: number;
   events: BG3DAnimationEvent[];
-  keyframes: { [boneIndex: number]: BG3DKeyframe[] }; // Keyframes per bone
+  keyframes: Record<number, BG3DKeyframe[]>; // Keyframes per bone
 }
 
 export interface BG3DSkeleton {
@@ -174,9 +179,9 @@ export interface BG3DSkeleton {
   animations: BG3DAnimation[];
   // Relative point lists (RelP) parsed from SkeletonResource.RelP
   // Keyed by original resource id (e.g. "1000") with array of [x,y,z] points
-  relPoints?: { [resourceId: string]: [number, number, number][] };
+  relPoints?: Record<string, [number, number, number][]>;
   // alis resource data for roundtrip preservation (not used in glTF but needed for binary export)
-  alisData?: { [key: string]: unknown };
+  alisData?: Record<string, unknown>;
   // Original skeleton resource metadata for roundtrip preservation
   metadata?: Record<string, unknown>;
 }
@@ -580,8 +585,8 @@ export function parseBG3D(
       if (isBG3DGroup(child) && Array.isArray(child.children)) {
         const result = validateGeometryMaterials(child);
         if (!result.ok) return result;
-      } else {
-        const geom = child as BG3DGeometry;
+      } else if (isBG3DGeometry(child)) {
+        const geom = child;
         if (geom.layerMaterialNum) {
           for (let i = 0; i < geom.numMaterials; i++) {
             const matIdx = geom.layerMaterialNum[i];
@@ -717,7 +722,7 @@ function convertSkeletonResourceToBG3D(
     }
 
     // Get keyframes for all bones in this animation
-    const keyframes: { [boneIndex: number]: BG3DKeyframe[] } = {};
+    const keyframes: Record<number, BG3DKeyframe[]> = {};
 
     // Initialize keyframes arrays for all bones
     for (let boneIndex = 0; boneIndex < bones.length; boneIndex++) {
@@ -836,13 +841,14 @@ function convertSkeletonResourceToBG3D(
   });
 
   // Build RelP map from SkeletonResource (if present)
-  const relPointsMap: { [resourceId: string]: [number, number, number][] } = {};
+  const relPointsMap: Record<string, [number, number, number][]> = {};
   Object.entries(skeleton.RelP || {}).forEach(([rid, rentry]) => {
     try {
       const arr = rentry.obj;
       if (Array.isArray(arr)) {
         relPointsMap[rid] = arr.map((p: unknown) => {
-          const obj = p as Record<string, unknown>;
+          if (!isRecord(p)) return [0, 0, 0];
+          const obj = p;
           const relOffsetX =
             typeof obj.relOffsetX === "number"
               ? obj.relOffsetX
@@ -873,11 +879,14 @@ function convertSkeletonResourceToBG3D(
 
   // Extract alis data from skeleton resource (stored at skeleton.alis = { "1000": {...} })
   // We want to preserve just the inner structure { "1000": { name: "alis", order: 1000, data: "..." } }
-  let alisData: { [key: string]: unknown } | undefined = undefined;
+  let alisData: Record<string, unknown> | undefined = undefined;
   Object.keys(skeleton).forEach((key) => {
     if (key.toLowerCase() === "alis") {
       // Store the inner structure directly, not wrapped in another object
-      alisData = skeleton[key] as { [key: string]: unknown };
+      const skelKey = skeleton[key as keyof typeof skeleton];
+      if (isRecord(skelKey)) {
+        alisData = skelKey;
+      }
     }
   });
 
@@ -1159,6 +1168,14 @@ function isBG3DGroup(obj: BG3DGeometry | BG3DGroup): obj is BG3DGroup {
     typeof obj === "object" &&
     "children" in obj &&
     Array.isArray(obj.children)
+  );
+}
+
+function isBG3DGeometry(obj: BG3DGeometry | BG3DGroup): obj is BG3DGeometry {
+  return (
+    obj !== null &&
+    typeof obj === "object" &&
+    "layerMaterialNum" in obj
   );
 }
 

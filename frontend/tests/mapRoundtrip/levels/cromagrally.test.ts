@@ -8,10 +8,9 @@ import { describe, it, expect } from "vitest";
 import { readFileSync } from "fs";
 import { join } from "path";
 import {
-  saveToJsonObject,
-  loadFromJson,
-  saveToBytes,
-} from "../../../src/rsrcdump-ts/rsrcdump";
+  saveToJson,
+  loadBytesFromJsonAsync,
+} from "@lachlanbwwright/rsrcdump-ts";
 import { croMagSpecs } from "../../../src/python/structSpecs/croMag";
 
 describe("Cro-Mag Rally Level Roundtrip", () => {
@@ -40,31 +39,35 @@ describe("Cro-Mag Rally Level Roundtrip", () => {
   ];
 
   for (const levelFile of levelFiles) {
-    it(`should roundtrip ${levelFile} byte-for-byte`, () => {
+    it(`should roundtrip ${levelFile} byte-for-byte`, async () => {
       const filePath = join(terrainDir, levelFile);
       const originalData = readFileSync(filePath);
 
       // Parse to JSON (hex data only for byte accuracy)
-      const jsonResult = saveToJsonObject(originalData, [], [], [], false);
-      expect(jsonResult.ok).toBe(true);
-      if (!jsonResult.ok) {
-        console.error(`Failed to parse ${levelFile}:`, jsonResult.error);
+      const jsonStringResult = await saveToJson(
+        new Uint8Array(originalData),
+        [],
+        [],
+        [],
+      );
+      expect(jsonStringResult.ok).toBe(true);
+      if (!jsonStringResult.ok) {
+        console.error(`Failed to parse ${levelFile}:`, jsonStringResult.error);
         return;
       }
-      const jsonData = jsonResult.value;
+      const jsonData = JSON.parse(jsonStringResult.value);
 
       // Serialize back to binary
-      const forkResult = loadFromJson(jsonData, [], false);
-      expect(forkResult.ok).toBe(true);
-      if (!forkResult.ok) {
+      const bytesResult = await loadBytesFromJsonAsync(jsonData, [], [], []);
+      expect(bytesResult.ok).toBe(true);
+      if (!bytesResult.ok) {
         console.error(
           `Failed to load from JSON ${levelFile}:`,
-          forkResult.error,
+          bytesResult.error,
         );
         return;
       }
-      const fork = forkResult.value;
-      const roundtripData = saveToBytes(fork);
+      const roundtripData = bytesResult.value;
 
       // Compare byte-for-byte
       expect(roundtripData.length).toBe(originalData.length);
@@ -86,28 +89,36 @@ describe("Cro-Mag Rally Level Roundtrip", () => {
       expect(firstDiff).toBe(-1); // No differences
     });
 
-    it(`should parse ${levelFile} to JSON with croMag specs`, () => {
+    it(`should parse ${levelFile} to JSON with croMag specs`, async () => {
       const filePath = join(terrainDir, levelFile);
       const originalData = readFileSync(filePath);
 
       // Parse with specs (structured data)
-      const jsonResult = saveToJsonObject(
-        originalData,
+      const jsonStringResult = await saveToJson(
+        new Uint8Array(originalData),
         croMagSpecs,
         [],
         [],
-        true,
       );
-      expect(jsonResult.ok).toBe(true);
-      if (!jsonResult.ok) {
+      expect(jsonStringResult.ok).toBe(true);
+      if (!jsonStringResult.ok) {
         console.error(
           `Failed to parse ${levelFile} with specs:`,
-          jsonResult.error,
+          jsonStringResult.error,
         );
         return;
       }
 
-      const jsonData = jsonResult.value;
+      const jsonData = JSON.parse(jsonStringResult.value);
+
+      function assertIsRecord(
+        x: unknown,
+      ): asserts x is Record<string, unknown> {
+        if (typeof x !== "object" || x === null)
+          throw new Error("Parsed data is not an object");
+      }
+      assertIsRecord(jsonData);
+
       expect(jsonData).toBeDefined();
       expect(jsonData.Hedr).toBeDefined();
     });

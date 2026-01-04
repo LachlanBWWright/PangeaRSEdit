@@ -25,11 +25,11 @@ import {
 } from "@/python/structSpecs/LevelTypes";
 import { View } from "../viewEnum";
 
-export type StageData = {
+export interface StageData {
   scale: number;
   x: number;
   y: number;
-};
+}
 
 interface MightyMikeKonvaViewProps {
   headerData: HeaderData;

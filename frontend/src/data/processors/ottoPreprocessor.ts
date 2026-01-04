@@ -4,6 +4,17 @@ import { SPLINE_KEY_BASE } from "../../editor/subviews/splines/splineUtils";
 import { Game, GlobalsInterface } from "../globals/globals";
 import { Result, ok, err } from "../../types/result";
 
+// Type guard helper
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+// Type guard for obj records
+function isObjRecord(value: unknown): value is Record<number, { obj: unknown }> {
+  if (!isRecord(value)) return false;
+  return true; // We just need it to be a record
+}
+
 /**
  * Check if the game uses Layr as direct tile indices with flip/rotate bits
  * (as opposed to Otto Matic/CroMag which use Layr to index into Atrb)
@@ -19,7 +30,7 @@ export function preprocessJson(
   json: Record<string, unknown>,
   globals: GlobalsInterface,
 ): Result<void, Error> {
-  const anyJson = json as Record<string, unknown>;
+  const anyJson = json;
 
   // For games that use Layr as tile indices with flip/rotate bits - DO NOT MODIFY!
   // The Layr preprocessing below is only for Otto Matic and CroMag where Layr contains Atrb indices.
@@ -28,18 +39,18 @@ export function preprocessJson(
   } else if (
     anyJson.Layr &&
     anyJson.Atrb &&
-    typeof anyJson.Layr === 'object' &&
-    typeof anyJson.Atrb === 'object' &&
+    isObjRecord(anyJson.Layr) &&
+    isObjRecord(anyJson.Atrb) &&
     1000 in anyJson.Layr &&
     1000 in anyJson.Atrb
   ) {
     // Otto Matic and other games: Ensure Layr points to unique Atrb values
-    const layrRecord = anyJson.Layr as Record<number, { obj: unknown }>;
-    const atrbRecord = anyJson.Atrb as Record<number, { obj: unknown }>;
+    const layrRecord = anyJson.Layr;
+    const atrbRecord = anyJson.Atrb;
     const layr1000 = layrRecord[1000];
     const atrb1000 = atrbRecord[1000];
-    if (!layr1000 || !atrb1000) {
-      return err(new Error("Layr[1000] or Atrb[1000] is undefined"));
+    if (!layr1000 || !atrb1000 || !isRecord(layr1000) || !isRecord(atrb1000)) {
+      return err(new Error("Layr[1000] or Atrb[1000] is undefined or invalid"));
     }
     const layrArr = layr1000.obj;
     const atrbArr = atrb1000.obj;
@@ -71,26 +82,31 @@ export function preprocessJson(
     layr1000.obj = newLayrArr;
   }
 
-  if (anyJson.Liqd && typeof anyJson.Liqd === 'object' && 1000 in anyJson.Liqd) {
-    const liqd = anyJson.Liqd as Record<number, { obj: unknown }>;
-    const liquidObj = liqd[1000]?.obj;
+  if (anyJson.Liqd && isObjRecord(anyJson.Liqd) && 1000 in anyJson.Liqd) {
+    const liqd = anyJson.Liqd;
+    const liqd1000 = liqd[1000];
+    if (!liqd1000 || !isRecord(liqd1000)) {
+      return err(new Error("Liqd[1000] is undefined or invalid"));
+    }
+    const liquidObj = liqd1000.obj;
     if (!Array.isArray(liquidObj)) {
       return err(new Error("Liqd[1000].obj is not an array"));
     }
     for (const waterItem of liquidObj) {
-      const item = waterItem as Record<string, number | { x: number; y: number }[] | [number, number][] | undefined>;
+      if (!isRecord(waterItem)) continue;
+      const item = waterItem;
       
       // HANDLE NEW RSRCDUMP-TS v1.0.6 FORMAT WITH BACKTICK MACRO
       // rsrcdump-ts outputs x`y[100] as an array of {x, y} objects
       if (item['x`y'] && Array.isArray(item['x`y'])) {
-        const xyArray = item['x`y'] as { x: number; y: number }[];
+        const xyArray = item['x`y'];
         // Convert from [{x, y}, ...] to [[x, y], ...]
         const nubs: [number, number][] = [];
         for (let i = 0; i < globals.LIQD_NUBS; i++) {
           if (i < xyArray.length && xyArray[i]) {
             const coord = xyArray[i];
-            if (coord) {  // Type guard
-              nubs.push([coord.x ?? 0, coord.y ?? 0]);
+            if (isRecord(coord) && typeof coord.x === 'number' && typeof coord.y === 'number') {
+              nubs.push([coord.x, coord.y]);
             } else {
               nubs.push([0, 0]);
             }
@@ -100,14 +116,14 @@ export function preprocessJson(
         }
         item.nubs = nubs;
         // Remove the x`y field to avoid confusion
-        delete item['x`y'];
+        Reflect.deleteProperty(item, 'x`y');
         continue;
       }
       
       // Check if nubs array already exists (should be rare now with v1.0.6)
       if (item.nubs && Array.isArray(item.nubs)) {
         // Already in new format - validate and ensure proper structure
-        const existingNubs = item.nubs as ([number, number] | { x: number; y: number })[];
+        const existingNubs = item.nubs;
         
         // Validate each nub is a proper [number, number] tuple
         const validatedNubs: [number, number][] = [];
@@ -117,9 +133,9 @@ export function preprocessJson(
             // Handle both array tuple and object format
             if (Array.isArray(nub) && nub.length >= 2 && typeof nub[0] === 'number' && typeof nub[1] === 'number') {
               validatedNubs.push([nub[0], nub[1]]);
-            } else if (typeof nub === 'object' && 'x' in nub && 'y' in nub) {
+            } else if (isRecord(nub) && typeof nub.x === 'number' && typeof nub.y === 'number') {
               // Handle {x, y} object format
-              validatedNubs.push([nub.x ?? 0, nub.y ?? 0]);
+              validatedNubs.push([nub.x, nub.y]);
             } else {
               validatedNubs.push([0, 0]);
             }
@@ -141,9 +157,9 @@ export function preprocessJson(
         const xVal = item[xKey];
         const yVal = item[yKey];
         
-        if (xVal !== undefined && yVal !== undefined) {
+        if (typeof xVal === 'number' && typeof yVal === 'number') {
           hasAnyNubFields = true;
-          nubs.push([xVal as number, yVal as number]);
+          nubs.push([xVal, yVal]);
         } else {
           // Missing individual fields, use 0,0 as fallback
           nubs.push([0, 0]);
@@ -217,14 +233,8 @@ export function ottoPreprocessor(
 
     //Update Water Bounding Boxes
     if (data.Liqd !== undefined) {
-      for (
-        let waterBodyIdx = 0;
-        waterBodyIdx < data.Liqd[1000].obj.length;
-        waterBodyIdx++
-      ) {
-        const waterBody = data.Liqd[1000].obj[waterBodyIdx];
-
-        if (!waterBody) return;
+      for (const waterBody of data.Liqd[1000].obj) {
+        if (!waterBody) continue;
 
         const firstNub = waterBody.nubs[0];
         if (!firstNub) continue;

@@ -35,15 +35,23 @@ export const StandardSupertiles = memo(
         superTileGrid.length,
       ).fill(null);
       
+      function isSuperTileObj(x: unknown): x is { superTileId: number } {
+        return (
+          typeof x === 'object' &&
+          x !== null &&
+          'superTileId' in x &&
+          typeof (x as Record<string, unknown>)['superTileId'] === 'number'
+        );
+      }
+
       for (let idx = 0; idx < superTileGrid.length; idx++) {
-        const supertile = superTileGrid[idx] as unknown;
-        // supertile may be an object { superTileId } or a number in simplified format
-        const id =
-          typeof supertile === "object" &&
-          supertile !== null &&
-          "superTileId" in (supertile as Record<string, unknown>)
-            ? (supertile as { superTileId: number }).superTileId
-            : (supertile as number);
+        const supertile = superTileGrid[idx];
+        let id = -1;
+        if (isSuperTileObj(supertile)) {
+          id = supertile.superTileId;
+        } else if (typeof supertile === 'number') {
+          id = supertile;
+        }
         const img = mapImages[id] ?? null;
         imageArray[idx] = img;
       }

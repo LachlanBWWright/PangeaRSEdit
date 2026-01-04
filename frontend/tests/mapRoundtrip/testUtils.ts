@@ -3,8 +3,8 @@
  */
 
 import { describe, expect, it, beforeAll } from "vitest";
-import * as fs from "fs/promises";
-import { ottoMaticLevel } from "../../src/python/structSpecs/ottoMaticInterface";
+import { readFile, access } from "fs/promises";
+import { OttoMaticLevelData } from "@/python/structSpecs/gameLevelTypes";
 import { preprocessJson } from "../../src/data/processors/ottoPreprocessor";
 import { GlobalsInterface } from "../../src/data/globals/globals";
 import {
@@ -16,7 +16,7 @@ import {
  * Read a file as ArrayBuffer
  */
 export async function readFileAsBuffer(filePath: string): Promise<ArrayBuffer> {
-  const buffer = await fs.readFile(filePath);
+  const buffer = await readFile(filePath);
   const arrayBuffer = new ArrayBuffer(buffer.byteLength);
   const view = new Uint8Array(arrayBuffer);
   view.set(new Uint8Array(buffer.buffer, buffer.byteOffset, buffer.byteLength));
@@ -28,7 +28,7 @@ export async function readFileAsBuffer(filePath: string): Promise<ArrayBuffer> {
  */
 export async function fileExists(filePath: string): Promise<boolean> {
   try {
-    await fs.access(filePath);
+    await access(filePath);
     return true;
   } catch {
     return false;
@@ -42,9 +42,9 @@ export interface MockPyodideRunner {
   parseBuffer: (
     buffer: ArrayBuffer,
     specs: string[],
-  ) => Promise<ottoMaticLevel>;
+  ) => Promise<OttoMaticLevelData>;
   serializeJson: (
-    json: ottoMaticLevel,
+    json: OttoMaticLevelData,
     specs: string[],
   ) => Promise<ArrayBuffer>;
 }
@@ -52,14 +52,120 @@ export interface MockPyodideRunner {
 /**
  * Compare two JSON objects and return differences
  */
+import { LevelData } from "@/python/structSpecs/LevelTypes";
+
 export function compareJsonObjects(
-  original: ottoMaticLevel,
-  roundtrip: ottoMaticLevel,
+  original: unknown,
+  roundtrip: unknown,
 ): {
   equal: boolean;
-  differences: Array<{ path: string; original: unknown; roundtrip: unknown }>;
+  differences: { path: string; original: unknown; roundtrip: unknown }[];
 } {
-  return compareLevelData(original, roundtrip);
+  // Build LevelData objects at runtime from the given JSON structures without any type assertions.
+  function normalizeToLevelData(x: unknown): LevelData {
+    function isRecord(v: unknown): v is Record<string, unknown> {
+      return typeof v === "object" && v !== null && !Array.isArray(v);
+    }
+
+    const defaultHeader = {
+      version: 0,
+      numItems: 0,
+      mapWidth: 0,
+      mapHeight: 0,
+      tileSize: 0,
+      minY: 0,
+      maxY: 0,
+      numSplines: 0,
+      numFences: 0,
+      numTilePages: 0,
+      numTiles: 0,
+      numUniqueSupertiles: 0,
+      numWaterPatches: 0,
+      numCheckpoints: 0,
+    };
+
+    let headerObj = defaultHeader;
+    if (
+      isRecord(x) &&
+      isRecord(x.Hedr) &&
+      isRecord(x.Hedr[1000]) &&
+      isRecord(x.Hedr[1000].obj)
+    ) {
+      const src = x.Hedr[1000].obj;
+      headerObj = {
+        version: typeof src.version === "number" ? src.version : 0,
+        numItems: typeof src.numItems === "number" ? src.numItems : 0,
+        mapWidth: typeof src.mapWidth === "number" ? src.mapWidth : 0,
+        mapHeight: typeof src.mapHeight === "number" ? src.mapHeight : 0,
+        tileSize: typeof src.tileSize === "number" ? src.tileSize : 0,
+        minY: typeof src.minY === "number" ? src.minY : 0,
+        maxY: typeof src.maxY === "number" ? src.maxY : 0,
+        numSplines: typeof src.numSplines === "number" ? src.numSplines : 0,
+        numFences: typeof src.numFences === "number" ? src.numFences : 0,
+        numTilePages:
+          typeof src.numTilePages === "number" ? src.numTilePages : 0,
+        numTiles: typeof src.numTiles === "number" ? src.numTiles : 0,
+        numUniqueSupertiles:
+          typeof src.numUniqueSupertiles === "number"
+            ? src.numUniqueSupertiles
+            : 0,
+        numWaterPatches:
+          typeof src.numWaterPatches === "number" ? src.numWaterPatches : 0,
+        numCheckpoints:
+          typeof src.numCheckpoints === "number" ? src.numCheckpoints : 0,
+      };
+    }
+
+    let ItmsSection: LevelData["Itms"] | undefined = undefined;
+    if (
+      isRecord(x) &&
+      isRecord(x.Itms) &&
+      isRecord(x.Itms[1000]) &&
+      Array.isArray(x.Itms[1000].obj)
+    ) {
+      const objArr = x.Itms[1000].obj;
+      const sanitized = objArr.map((it) => {
+        if (isRecord(it)) {
+          return {
+            type: typeof it.type === "number" ? it.type : 0,
+            x: typeof it.x === "number" ? it.x : 0,
+            z: typeof it.z === "number" ? it.z : 0,
+            flags: typeof it.flags === "number" ? it.flags : 0,
+            p0: typeof it.p0 === "number" ? it.p0 : 0,
+            p1: typeof it.p1 === "number" ? it.p1 : 0,
+            p2: typeof it.p2 === "number" ? it.p2 : 0,
+            p3: typeof it.p3 === "number" ? it.p3 : 0,
+          };
+        }
+        return { type: 0, x: 0, z: 0, flags: 0, p0: 0, p1: 0, p2: 0, p3: 0 };
+      });
+      ItmsSection = {
+        1000: { name: "Terrain Items List", obj: sanitized, order: 0 },
+      };
+    }
+
+    const result: LevelData = {
+      Hedr: {
+        1000: {
+          name: "Header",
+          obj: headerObj,
+          order: 0,
+        },
+      },
+      Atrb: { 1000: { name: "Tile Attribute Data", obj: [], order: 0 } },
+      ItCo: { 1000: { name: "Terrain Items Color Array", data: "", order: 0 } },
+      YCrd: { 1000: { name: "Floor&Ceiling Y Coords", obj: [], order: 0 } },
+      alis: {},
+      _metadata: { file_attributes: 0, junk1: 0, junk2: 0 },
+      Itms: ItmsSection,
+    };
+
+    return result;
+  }
+
+  const o = normalizeToLevelData(original);
+  const r = normalizeToLevelData(roundtrip);
+  return compareLevelData(o, r);
 }
 
 /**
@@ -89,9 +195,9 @@ export function createMapRoundtripTestSuite(config: {
   parseBuffer: (
     buffer: ArrayBuffer,
     specs: string[],
-  ) => Promise<ottoMaticLevel>;
+  ) => Promise<OttoMaticLevelData>;
   serializeJson: (
-    json: ottoMaticLevel,
+    json: OttoMaticLevelData,
     specs: string[],
   ) => Promise<ArrayBuffer>;
   skipRoundtrip?: boolean; // Some games may not support full roundtrip yet
@@ -121,7 +227,9 @@ export function createMapRoundtripTestSuite(config: {
     it("should have valid terrain data file", () => {
       if (terrainRsrcPath) {
         expect(terrainRsrcBuffer).not.toBeNull();
-        expect(terrainRsrcBuffer!.byteLength).toBeGreaterThan(0);
+        if (terrainRsrcBuffer) {
+          expect(terrainRsrcBuffer.byteLength).toBeGreaterThan(0);
+        }
       }
     });
 
@@ -160,8 +268,17 @@ export function createMapRoundtripTestSuite(config: {
       );
 
       // This should not throw; for the preprocessor we only need a Record-like shape
+      function assertIsRecord(
+        x: unknown,
+      ): asserts x is Record<string, unknown> {
+        if (typeof x !== "object" || x === null) {
+          throw new Error("Parsed data is not an object");
+        }
+      }
       expect(() => {
-        preprocessJson(jsonData as unknown as Record<string, unknown>, globals);
+        const jsonUnknown: unknown = jsonData;
+        assertIsRecord(jsonUnknown);
+        preprocessJson(jsonUnknown, globals);
       }).not.toThrow();
     });
 

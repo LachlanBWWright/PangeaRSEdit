@@ -5,31 +5,31 @@
 
 import { parseBG3D, bg3dParsedToBG3D } from "./parseBG3D";
 import { bg3dParsedToGLTF, gltfToBG3D } from "./parsedBg3dGitfConverter";
-import * as fs from "fs";
-import * as path from "path";
+import { existsSync, readFileSync } from "fs";
+import { join } from "path";
 
-const GAMES_ROOT = path.join(__dirname, "../../../../games");
+const GAMES_ROOT = join(__dirname, "../../../../games");
 
 const TEST_FILES = [
   {
     game: "Otto Matic",
-    path: path.join(GAMES_ROOT, "ottomatic/Data/Skeletons/Otto.bg3d"),
+    path: join(GAMES_ROOT, "ottomatic/Data/Skeletons/Otto.bg3d"),
   },
   {
     game: "Cro Mag Rally",
-    path: path.join(GAMES_ROOT, "cromagrally/Data/Skeletons/Brog.bg3d"),
+    path: join(GAMES_ROOT, "cromagrally/Data/Skeletons/Brog.bg3d"),
   },
   {
     game: "Bugdom 2",
-    path: path.join(GAMES_ROOT, "bugdom2/Data/Skeletons/Ant.bg3d"),
+    path: join(GAMES_ROOT, "bugdom2/Data/Skeletons/Ant.bg3d"),
   },
   {
     game: "Nanosaur 2",
-    path: path.join(GAMES_ROOT, "nanosaur2/Data/Skeletons/nano.bg3d"),
+    path: join(GAMES_ROOT, "nanosaur2/Data/Skeletons/nano.bg3d"),
   },
   {
     game: "Billy Frontier",
-    path: path.join(GAMES_ROOT, "billyfrontier/Data/Skeletons/Billy.bg3d"),
+    path: join(GAMES_ROOT, "billyfrontier/Data/Skeletons/Billy.bg3d"),
   },
 ];
 
@@ -39,14 +39,14 @@ async function testGame(game: string, filePath: string) {
   console.log(`File: ${filePath}`);
   console.log("=".repeat(60));
 
-  if (!fs.existsSync(filePath)) {
+  if (!existsSync(filePath)) {
     console.log(`❌ File not found: ${filePath}`);
     return { game, success: false, error: "File not found" };
   }
 
   try {
     // Read file
-    const buffer = fs.readFileSync(filePath);
+    const buffer = readFileSync(filePath);
     const arrayBuffer = buffer.buffer.slice(
       buffer.byteOffset,
       buffer.byteOffset + buffer.byteLength,
@@ -71,7 +71,7 @@ async function testGame(game: string, filePath: string) {
     // Count geometries
     let geomCount = 0;
     let hasBoundingBox = false;
-    type GroupChild = { children?: GroupChild[]; boundingBox?: unknown };
+    interface GroupChild { children?: GroupChild[]; boundingBox?: unknown }
     function countGeoms(groups: GroupChild[]) {
       for (const group of groups) {
         if (Array.isArray(group.children)) {

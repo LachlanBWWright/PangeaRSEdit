@@ -9,7 +9,10 @@
  */
 
 import { BG3DParseResult } from "../../../modelParsers/parseBG3D";
-import { argb16ToRgba8, rgb24ToRgba8 } from "../../../modelParsers/image/pngArgb";
+import {
+  argb16ToRgba8,
+  rgb24ToRgba8,
+} from "../../../modelParsers/image/pngArgb";
 import { decodeJpegNode } from "../../../utils/jpegDecompress";
 import type { Texture } from "../types";
 
@@ -20,7 +23,7 @@ import type { Texture } from "../types";
  * @returns Promise resolving to array of Texture objects with canvas image data URLs
  */
 export async function extractTexturesFromBG3D(
-  bg3dParsed: BG3DParseResult | null
+  bg3dParsed: BG3DParseResult | null,
 ): Promise<Texture[]> {
   if (!bg3dParsed) {
     return [];
@@ -97,12 +100,19 @@ export async function extractTexturesFromBG3D(
 
         try {
           // Read the offset from the first 4 bytes (big-endian)
-          const view = new DataView(texture.pixels.buffer, texture.pixels.byteOffset);
+          const view = new DataView(
+            texture.pixels.buffer,
+            texture.pixels.byteOffset,
+          );
           const offset = view.getInt32(0, false); // false = big-endian
 
           // Extract the actual compressed image data
           const payloadSize = texture.bufferSize - offset;
-          const payloadView = new Uint8Array(texture.pixels.buffer, texture.pixels.byteOffset + offset, payloadSize);
+          const payloadView = new Uint8Array(
+            texture.pixels.buffer,
+            texture.pixels.byteOffset + offset,
+            payloadSize,
+          );
 
           // Copy payload to a new buffer (required for decodeJpegNode)
           const payloadBuffer = new Uint8Array(payloadSize);
@@ -111,10 +121,13 @@ export async function extractTexturesFromBG3D(
           // Use decodeJpegNode to decompress the payload
           // (it can handle JPEG and other image formats that stbi supports)
           const decompressedImageData = decodeJpegNode(payloadBuffer.buffer);
-          imageData = decompressedImageData as ImageData;
+          imageData = decompressedImageData;
 
           // If there's separate alpha data, blend it in
-          if (texture.jpegAlphaData && texture.jpegAlphaData.length === expectedPixelCount) {
+          if (
+            texture.jpegAlphaData &&
+            texture.jpegAlphaData.length === expectedPixelCount
+          ) {
             for (let i = 0; i < expectedPixelCount; i++) {
               imageData.data[i * 4 + 3] = texture.jpegAlphaData[i] ?? 255;
             }
@@ -144,7 +157,10 @@ export async function extractTexturesFromBG3D(
       }
 
       // Adjust canvas size to match imageData dimensions (important for JPEG which may have different dimensions)
-      if (canvas.width !== imageData.width || canvas.height !== imageData.height) {
+      if (
+        canvas.width !== imageData.width ||
+        canvas.height !== imageData.height
+      ) {
         canvas.width = imageData.width;
         canvas.height = imageData.height;
       }

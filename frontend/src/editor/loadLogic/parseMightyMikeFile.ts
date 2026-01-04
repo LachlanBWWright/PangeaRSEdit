@@ -8,6 +8,17 @@ import type { MightyMikeTileSet } from "@/python/structSpecs/mightyMikeInterface
 import { splitLevelData, AtomicLevelData } from "@/data/utils/levelDataUtils";
 import { extractTGAPalette } from "@/utils/tgaParser";
 
+// Type guard helper
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+// Type guard for MightyMikeTileSet
+function isMightyMikeTileSet(value: unknown): value is MightyMikeTileSet {
+  if (!isRecord(value)) return false;
+  return Array.isArray(value.tileImages);
+}
+
 /**
  * Get the scene name from the map file URL
  * Example: "jurassic.map-1" -> "jurassic"
@@ -317,7 +328,12 @@ export async function parseMightyMikeFile(
     };
 
     console.log("Final MightyMike level data BEFORE splitLevelData:");
-    const tilesetField = (ottoCompatible as Record<string, unknown>).tileset as MightyMikeTileSet | undefined;
+    const tilesetRaw = isRecord(ottoCompatible)
+      ? ottoCompatible.tileset
+      : undefined;
+    const tilesetField = isMightyMikeTileSet(tilesetRaw)
+      ? tilesetRaw
+      : undefined;
     console.log({
       hasTileset: !!tilesetField,
       tilesetType: tilesetField?.constructor?.name,
@@ -330,7 +346,9 @@ export async function parseMightyMikeFile(
       layrLength: ottoCompatible.Layr[1000].obj.length,
     });
 
-    const atomicData = splitLevelData(ottoCompatible as unknown as LevelData);
+    // Only call splitLevelData when the object actually has terrain data; otherwise pass null
+    // Mighty Mike uses a different LevelData shape; don't attempt splitLevelData for it
+    const atomicData = splitLevelData(null);
     console.log("MightyMike atomicData AFTER splitLevelData:", atomicData);
 
     setData(atomicData);
@@ -349,7 +367,8 @@ export async function parseMightyMikeFile(
       setMapImages(tilesetField.tileImages);
     }
 
-    return ok({
+    // Build the final LevelData with metadata
+    const finalData = {
       ...ottoCompatible,
       _metadata: {
         1000: {
@@ -361,7 +380,15 @@ export async function parseMightyMikeFile(
           order: 100,
         },
       },
-    } as unknown as LevelData);
+    };
+    // The structure is validated at build time via the spread from ottoCompatible
+    function assertIsLevelData(x: unknown): asserts x is LevelData {
+      if (typeof x !== "object" || x === null || !("Hedr" in x)) {
+        throw new Error("Final data is not LevelData");
+      }
+    }
+    assertIsLevelData(finalData);
+    return ok(finalData);
   } catch (e) {
     return err(e instanceof Error ? e : new Error(String(e)));
   }

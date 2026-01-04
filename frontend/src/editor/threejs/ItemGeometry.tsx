@@ -1,6 +1,5 @@
-import React, { useMemo, useEffect } from "react";
-import * as THREE from "three";
-import { DoubleSide } from "three";
+import React, { useMemo, useEffect, useRef } from "react";
+import { Mesh, Group, DoubleSide } from "three";
 import {
   ItemData,
   HeaderData,
@@ -12,8 +11,15 @@ import { Globals, Game } from "@/data/globals/globals";
 import { Show3DItemModels } from "@/data/canvasView/canvasViewAtoms";
 import { getTerrainHeightAtPoint } from "./fenceUtils/getTerrainHeightAtPoint";
 import { useOttoItemModelCache } from "./hooks/useOttoItemModelCache";
-import { getItemModelMapping, type ItemModelMapping } from "@/data/items/ottoItemModelMapping";
-import { getLiquidPatchStyle, getLiquidPatchDimensions, LiquidPatchStyle } from "@/data/items/liquidPatchItems";
+import {
+  getItemModelMapping,
+  type ItemModelMapping,
+} from "@/data/items/ottoItemModelMapping";
+import {
+  getLiquidPatchStyle,
+  getLiquidPatchDimensions,
+  LiquidPatchStyle,
+} from "@/data/items/liquidPatchItems";
 
 interface ItemGeometryProps {
   itemData: ItemData;
@@ -62,7 +68,7 @@ const LoadingCube: React.FC<{
   position: [number, number, number];
   itemType: number;
 }> = ({ position, itemType }) => {
-  const meshRef = React.useRef<THREE.Mesh | null>(null);
+  const meshRef = useRef<Mesh | null>(null);
 
   useFrame(() => {
     if (meshRef.current) {
@@ -102,7 +108,7 @@ const LoadingCube: React.FC<{
 const ItemModel: React.FC<{
   position: [number, number, number];
   itemType: number;
-  clonedScene: THREE.Group | null;
+  clonedScene: Group | null;
   mapping: ItemModelMapping | null;
 }> = ({ position, clonedScene }) => {
   if (!clonedScene) {
@@ -202,7 +208,7 @@ export const ItemGeometry: React.FC<ItemGeometryProps> = ({
   // Pre-load models for visible item types when toggle is enabled
   // Also prepare cloned scenes for instancing
   const clonedScenesByType = useMemo(() => {
-    const scenes = new Map<number, THREE.Group | null>();
+    const scenes = new Map<number, Group | null>();
     itemsByType.forEach((_, itemType) => {
       const cachedModel = modelCache.get(itemType);
       if (cachedModel?.gltf && !cachedModel.error) {
@@ -234,10 +240,7 @@ export const ItemGeometry: React.FC<ItemGeometryProps> = ({
       // Load models for all unique item types in the level
       itemsByType.forEach((_, itemType) => {
         loadModel(itemType).catch((err) => {
-          console.error(
-            `Failed to load model for item type ${itemType}:`,
-            err,
-          );
+          console.error(`Failed to load model for item type ${itemType}:`, err);
         });
       });
     }
@@ -281,14 +284,16 @@ export const ItemGeometry: React.FC<ItemGeometryProps> = ({
             item.p0,
             item.p1,
             item.p2,
-            item.p3
+            item.p3,
           );
 
           // Bugdom 1 snaps liquid patch positions to tile centers before terrain lookup
           // This ensures adjacent patches get consistent terrain height lookups
           const tileSize = globals.TILE_SIZE;
-          const snappedEditorX = Math.floor(item.x / tileSize) * tileSize + tileSize / 2;
-          const snappedEditorZ = Math.floor(item.z / tileSize) * tileSize + tileSize / 2;
+          const snappedEditorX =
+            Math.floor(item.x / tileSize) * tileSize + tileSize / 2;
+          const snappedEditorZ =
+            Math.floor(item.z / tileSize) * tileSize + tileSize / 2;
           const snappedWorldX = snappedEditorX * scale;
           const snappedWorldZ = snappedEditorZ * scale;
 
@@ -302,10 +307,14 @@ export const ItemGeometry: React.FC<ItemGeometryProps> = ({
           );
 
           // If isAbsoluteY, use yValue3D directly; otherwise add it to terrain height
-          const liquidY = dims.isAbsoluteY ? dims.yValue3D : snappedTerrainY + dims.yValue3D;
+          const liquidY = dims.isAbsoluteY
+            ? dims.yValue3D
+            : snappedTerrainY + dims.yValue3D;
 
           // Debug: log liquid patch Y calculation
-          console.log(`LiquidPatch type=${item.type} p2=${item.p2} p3=${item.p3} isAbsoluteY=${dims.isAbsoluteY} yValue3D=${dims.yValue3D} terrainY=${snappedTerrainY} finalY=${liquidY}`);
+          console.log(
+            `LiquidPatch type=${item.type} p2=${item.p2} p3=${item.p3} isAbsoluteY=${dims.isAbsoluteY} yValue3D=${dims.yValue3D} terrainY=${snappedTerrainY} finalY=${liquidY}`,
+          );
 
           return (
             <LiquidPatchPlane
@@ -319,10 +328,7 @@ export const ItemGeometry: React.FC<ItemGeometryProps> = ({
         }
 
         // Render 3D model if enabled and available (Otto Matic only for now)
-        if (
-          show3DItemModels &&
-          globals.GAME_TYPE === Game.OTTO_MATIC
-        ) {
+        if (show3DItemModels && globals.GAME_TYPE === Game.OTTO_MATIC) {
           const cachedModel = modelCache.get(item.type);
           const modelGltf = cachedModel?.gltf;
           const isLoading = cachedModel?.loading ?? false;

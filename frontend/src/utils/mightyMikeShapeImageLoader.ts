@@ -22,8 +22,9 @@ const frameCanvasCache = new Map<string, HTMLCanvasElement>();
  */
 async function loadShapesFile(shapesFilename: string): Promise<Result<ShapesFile>> {
   // Check cache first
-  if (shapesFileCache.has(shapesFilename)) {
-    return ok(shapesFileCache.get(shapesFilename)!);
+  const cached = shapesFileCache.get(shapesFilename);
+  if (cached) {
+    return ok(cached);
   }
 
   const url = `${SHAPES_BASE_PATH}/${shapesFilename}`;
@@ -75,13 +76,14 @@ const ITEM_DISPLAY_SIZE = 12; // Size to scale item sprites to (in pixels)
 async function loadShapeFrame(
   shapesFilename: string,
   shapeIndex: number,
-  frameIndex: number = 0
+  frameIndex = 0
 ): Promise<Result<HTMLCanvasElement>> {
   const cacheKey = getFrameCacheKey(shapesFilename, shapeIndex, frameIndex);
 
   // Check cache first
-  if (frameCanvasCache.has(cacheKey)) {
-    return ok(frameCanvasCache.get(cacheKey)!);
+  const cached = frameCanvasCache.get(cacheKey);
+  if (cached) {
+    return ok(cached);
   }
 
   try {

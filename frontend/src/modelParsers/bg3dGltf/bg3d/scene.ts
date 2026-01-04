@@ -114,7 +114,7 @@ export function gltfSceneToBg3d(
 
     // This is a group node
     const children = node.listChildren();
-    const childResults: Array<BG3DGroup | BG3DGeometry> = [];
+    const childResults: (BG3DGroup | BG3DGeometry)[] = [];
     for (const child of children) {
       childResults.push(processNode(child));
     }

@@ -235,7 +235,7 @@ export function FenceMenu({
                     console.error("Missing Final Nubkey");
                     return;
                   }
-                  delete fenceData.FnNb[parseInt(lastKey)];
+                  Reflect.deleteProperty(fenceData.FnNb, parseInt(lastKey));
                 });
                 setSelectedFence(undefined);
               }}

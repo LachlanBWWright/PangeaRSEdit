@@ -32,7 +32,7 @@ export function parseTGAHeaderDiagnostic(buffer: ArrayBuffer): {
   };
 }
 
-export function extractPaletteFromTGA(buffer: ArrayBuffer, colorCount: number = 256): Uint8Array {
+export function extractPaletteFromTGA(buffer: ArrayBuffer, colorCount = 256): Uint8Array {
   const header = parseTGAHeaderDiagnostic(buffer);
   const paletteBytesPerEntry = header.colorMapDepth / 8;
 

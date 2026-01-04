@@ -52,7 +52,7 @@ export interface RoundtripResult {
   jsonMatch: boolean;
   originalSize: number;
   roundtripSize: number;
-  differences: Array<{ path: string; original: unknown; roundtrip: unknown }>;
+  differences: { path: string; original: unknown; roundtrip: unknown }[];
 }
 
 // ============================================================================
@@ -96,10 +96,14 @@ export async function parseLevelBuffer(
   }
 
   // Apply preprocessing (modifies levelData in place)
-  const preprocessResult = preprocessJson(
-    parseResult.value as unknown as Record<string, unknown>,
-    gameType
-  );
+  const parsedUnknown: unknown = parseResult.value;
+  function isRecord(x: unknown): x is Record<string, unknown> {
+    return typeof x === "object" && x !== null && !Array.isArray(x);
+  }
+  if (!isRecord(parsedUnknown)) {
+    return err(new Error("Parsed level data is not an object"));
+  }
+  const preprocessResult = preprocessJson(parsedUnknown, gameType);
   if (isErr(preprocessResult)) {
     return preprocessResult;
   }
@@ -264,13 +268,13 @@ export function compareLevelDataObjects(
   roundtrip: LevelData,
 ): {
   equal: boolean;
-  differences: Array<{ path: string; original: unknown; roundtrip: unknown }>;
+  differences: { path: string; original: unknown; roundtrip: unknown }[];
 } {
-  const differences: Array<{
+  const differences: {
     path: string;
     original: unknown;
     roundtrip: unknown;
-  }> = [];
+  }[] = [];
 
   function compare(obj1: unknown, obj2: unknown, path: string): void {
     if (obj1 === obj2) return;
@@ -302,17 +306,17 @@ export function compareLevelDataObjects(
       return;
     }
 
-    if (typeof obj1 === "object" && typeof obj2 === "object") {
-      const keys1 = Object.keys(obj1 as object);
-      const keys2 = Object.keys(obj2 as object);
+    function isRecord(x: unknown): x is Record<string, unknown> {
+      return typeof x === "object" && x !== null && !Array.isArray(x);
+    }
+
+    if (isRecord(obj1) && isRecord(obj2)) {
+      const keys1 = Object.keys(obj1);
+      const keys2 = Object.keys(obj2);
       const allKeys = new Set([...keys1, ...keys2]);
 
       for (const key of allKeys) {
-        compare(
-          (obj1 as Record<string, unknown>)[key],
-          (obj2 as Record<string, unknown>)[key],
-          path ? `${path}.${key}` : key,
-        );
+        compare(obj1[key], obj2[key], path ? `${path}.${key}` : key);
       }
       return;
     }

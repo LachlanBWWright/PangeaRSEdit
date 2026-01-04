@@ -388,14 +388,12 @@ export function parseMightyMikeMap(
     const TILENUM_MASK = 0x07ff;
     const TILE_PRIORITY_MASK = 0x8000;
     const TILE_PRIORITY_MASK2 = 0x4000;
-    const mapImage: Array<
-      Array<{
+    const mapImage: {
         rawValue: number;
         tileIndex: number;
         hasCollisionMask: boolean;
         usePixelAccurateCollision: boolean;
-      }>
-    > = [];
+      }[][] = [];
     const tilesStart = offsetToMapImage + 4; // Skip width/height
 
     for (let y = 0; y < mapHeight; y++) {

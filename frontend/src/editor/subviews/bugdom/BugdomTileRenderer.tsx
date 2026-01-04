@@ -42,7 +42,7 @@ export const BugdomSupertiles = memo(
     headerData: HeaderData;
     terrainData: TerrainData;
     tileImages: HTMLCanvasElement[];
-    xlatTable?: Array<{ idx: number }>;
+    xlatTable?: { idx: number }[];
   }) => {
     const globals = useAtomValue(Globals);
     const [selectedTile, setSelectedTile] = useAtom(SelectedTile);
@@ -120,8 +120,7 @@ export const BugdomSupertiles = memo(
             let maxIdx = 0;
             let minIdx = Infinity;
 
-            for (let i = 0; i < xlatTable.length; i++) {
-              const entry = xlatTable[i];
+            for (const entry of xlatTable) {
               if (!entry) continue;
               const idx = entry.idx;
               if (idx < 0) negativeCount++;

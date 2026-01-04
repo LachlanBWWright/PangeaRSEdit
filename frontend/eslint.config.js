@@ -6,6 +6,17 @@ import tseslint from "typescript-eslint";
 import reactHooks from "eslint-plugin-react-hooks";
 
 export default defineConfig(
+  {
+    ignores: [
+      "eslint.config.js",
+      "postcss.config.js",
+      "tailwind.config.js",
+      "playwright.config.ts",
+      "debug-liquid-rsrcdump.js",
+      "dist/**",
+      "coverage/**",
+    ],
+  },
   [
     eslint.configs.recommended,
     tseslint.configs.strict,
@@ -23,6 +34,7 @@ export default defineConfig(
     },
     rules: {
       "@typescript-eslint/no-unsafe-type-assertion": "error",
+      "@typescript-eslint/no-unnecessary-type-assertion": "error",
     },
   },
 );

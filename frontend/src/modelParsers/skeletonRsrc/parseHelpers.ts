@@ -94,8 +94,8 @@ export function parseNumKData(hexData: string): { numKeyFrames: number }[] {
   for (let i = 0; i < hexData.length; i += 2) {
     bytes[i / 2] = parseInt(hexData.substring(i, i + 2), 16);
   }
-  for (let i = 0; i < bytes.length; i++) {
-    result.push({ numKeyFrames: bytes[i] ?? 0 });
+  for (const byte of bytes) {
+    result.push({ numKeyFrames: byte ?? 0 });
   }
   return result;
 }

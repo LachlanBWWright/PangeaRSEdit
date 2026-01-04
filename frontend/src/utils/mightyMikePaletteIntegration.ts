@@ -64,7 +64,7 @@ export function setMightyMikeTileTransparency(colorIndices: number[]): void {
  */
 export function renderTileWithDynamicPalette(
   tileData: Uint8Array,
-  tileSize: number = 32
+  tileSize = 32
 ): Result<HTMLCanvasElement> {
   const canvas = document.createElement("canvas");
   canvas.width = tileSize;
@@ -104,7 +104,7 @@ export function renderTileWithDynamicPalette(
 export function rerenderAllTilesWithCurrentPalette(
   tileDataBuffer: Uint8Array,
   numTiles: number,
-  tileSize: number = 32
+  tileSize = 32
 ): Result<HTMLCanvasElement[]> {
   const canvases: HTMLCanvasElement[] = [];
   const bytesPerTile = tileSize * tileSize;
@@ -130,7 +130,7 @@ export function rerenderAllTilesWithCurrentPalette(
  * Gradually increases brightness from 0 to 100%
  */
 export async function fadeInPalette(
-  durationMs: number = 500,
+  durationMs = 500,
   updateCallback?: (brightness: number) => void
 ): Promise<void> {
   gMightyMikePalette.makeBackUpPalette();
@@ -163,7 +163,7 @@ export async function fadeInPalette(
  * Gradually decreases brightness from 100% to 0
  */
 export async function fadeOutPalette(
-  durationMs: number = 500,
+  durationMs = 500,
   updateCallback?: (brightness: number) => void
 ): Promise<void> {
   gMightyMikePalette.makeBackUpPalette();

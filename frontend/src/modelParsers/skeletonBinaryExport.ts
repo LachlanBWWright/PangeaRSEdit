@@ -39,8 +39,21 @@ export function skeletonResourceToBinary(
   );
 
   if (!isOk(result)) {
-    return err(new Error(`Failed to serialize skeleton: ${result.error}`));
+    const msg = result.error instanceof Error ? result.error.message : String(result.error);
+    return err(new Error(`Failed to serialize skeleton: ${msg}`));
   }
 
-  return ok(result.value.buffer as ArrayBuffer);
+  const out = result.value;
+  // Handle typed array views (Uint8Array, DataView, etc.)
+  if (ArrayBuffer.isView(out)) {
+    const view = out as ArrayBufferView & { byteOffset?: number; byteLength?: number };
+    return ok(
+      view.buffer.slice(view.byteOffset ?? 0, (view.byteOffset ?? 0) + (view.byteLength ?? view.buffer.byteLength)),
+    );
+  }
+  // If it's directly an ArrayBuffer
+  if (out instanceof ArrayBuffer) {
+    return ok(out);
+  }
+  return err(new Error("Unexpected binary output from rsrcdump"));
 }

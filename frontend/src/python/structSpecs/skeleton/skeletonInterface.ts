@@ -118,14 +118,14 @@ export interface HedrEntry {
 
 export interface SkeletonResource {
   _metadata?: Record<string, unknown>;
-  Hedr: { [key: string]: HedrEntry };
-  Bone: { [key: string]: BoneEntry };
-  BonP: { [key: string]: BonPEntry };
-  BonN: { [key: string]: BonNEntry };
-  RelP?: { [key: string]: RelPEntry };
-  AnHd: { [key: string]: AnHdEntry };
-  Evnt: { [key: string]: EvntEntry };
-  NumK: { [key: string]: NumKEntry };
-  KeyF: { [key: string]: KeyFEntry };
+  Hedr: Record<string, HedrEntry>;
+  Bone: Record<string, BoneEntry>;
+  BonP: Record<string, BonPEntry>;
+  BonN: Record<string, BonNEntry>;
+  RelP?: Record<string, RelPEntry>;
+  AnHd: Record<string, AnHdEntry>;
+  Evnt: Record<string, EvntEntry>;
+  NumK: Record<string, NumKEntry>;
+  KeyF: Record<string, KeyFEntry>;
   [key: string]: unknown;
 }

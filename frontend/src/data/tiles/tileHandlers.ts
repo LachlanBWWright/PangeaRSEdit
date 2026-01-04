@@ -8,7 +8,7 @@ import {
 } from "./tileAtoms";
 
 // Type definition for tile operations
-type PixelType = { x: number; y: number };
+interface PixelType { x: number; y: number }
 
 export function handleTileClick(
   x: number,
@@ -18,7 +18,7 @@ export function handleTileClick(
   tileEditingEnabled: boolean,
   brushType: "add" | "remove",
   tileSize: number,
-  brushRadius: number = 1,
+  brushRadius = 1,
 ) {
   if (!tileEditingEnabled) return;
 
