@@ -76,7 +76,7 @@ async function loadScenePalette(
       tgaUrl = dirPath + tgaFilename;
     } else {
       // basePath is just a filename or empty, use the default asset path
-      tgaUrl = `/PangeaRSEdit/assets/mightyMike/terrain/${tgaFilename}`;
+      tgaUrl = `${import.meta.env.BASE_URL}assets/mightyMike/terrain/${tgaFilename}`;
     }
     console.log(`[PALETTE] Loading palette for scene "${sceneName}"`);
     console.log(`[PALETTE]   TGA filename expected: ${tgaFilename}`);
@@ -313,6 +313,17 @@ export async function parseMightyMikeFile(
             flags: 0,
           })),
           order: 2,
+        },
+      },
+      Atrb: {
+        1000: {
+          name: "Tile Attribute Data",
+          obj: new Array(tilesetData?.numTileDefinitions || 100).fill({
+            flags: 0,
+            p0: 0,
+            p1: 0,
+          }),
+          order: 6,
         },
       },
       // Include tileset data if available
