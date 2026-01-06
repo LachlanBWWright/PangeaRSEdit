@@ -64,7 +64,8 @@ export function compileNanosaur1Level(
 
     // Heightmap Tiles (32x32 bytes each)
     const heightmapTiles = rawLevelData.heightmapTiles || [];
-    const heightmapTilesSize = heightmapTiles.length * 32 * 32;
+    const heightmapPaddingSize = rawLevelData.heightmapPadding?.length || 0;
+    const heightmapTilesSize = (heightmapTiles.length * 32 * 32) + heightmapPaddingSize;
 
     // Texture Attributes
     // Struct size: 8 bytes
@@ -80,6 +81,10 @@ export function compileNanosaur1Level(
     // For now, let's use the ones from LevelData.Atrb or rawLevelData
     const textureAttribs = levelData.Atrb?.[1000]?.obj || [];
     const textureAttribsSize = textureAttribs.length * 8;
+
+    // Tile Anim Data (Preserved blob)
+    const tileAnimData = rawLevelData.tileAnimData || new Uint8Array(0);
+    const tileAnimDataSize = tileAnimData.length;
 
     // Calculate Offsets
     // Order based on standard Nanosaur files seems to vary, but we can enforce a safe order.
@@ -113,9 +118,22 @@ export function compileNanosaur1Level(
     // So tileAnimDataOffset must mark the END of the attribs section.
     const tileAnimDataOffset = currentOffset;
 
+    currentOffset += tileAnimDataSize;
+
     // Total size
     const totalSize = currentOffset;
-    
+
+    console.log(`[Compile] Calculated sizes:`);
+    console.log(`  Header: ${headerSize}`);
+    console.log(`  TextureLayer: ${textureLayerSize}`);
+    console.log(`  HeightmapLayer: ${heightmapLayerSize}`);
+    console.log(`  PathLayer: ${pathLayerSize}`);
+    console.log(`  ObjectList: ${objectListSize}`);
+    console.log(`  HeightmapTiles: ${heightmapTilesSize} (Tiles: ${heightmapTiles.length}, Padding: ${heightmapPaddingSize})`);
+    console.log(`  TextureAttribs: ${textureAttribsSize}`);
+    console.log(`  TileAnimData: ${tileAnimDataSize}`);
+    console.log(`  Total: ${totalSize}`);
+
     // 2. Write Data
     const buffer = new ArrayBuffer(totalSize);
     const view = new DataView(buffer);
@@ -226,6 +244,14 @@ export function compileNanosaur1Level(
                 writePtr++;
             }
         }
+
+        // Write preserved heightmap padding if any
+        if (rawLevelData.heightmapPadding && rawLevelData.heightmapPadding.length > 0) {
+            for (let i = 0; i < rawLevelData.heightmapPadding.length; i++) {
+                view.setUint8(writePtr, rawLevelData.heightmapPadding[i]);
+                writePtr++;
+            }
+        }
     }
 
     // -- Texture Attributes --
@@ -245,6 +271,14 @@ export function compileNanosaur1Level(
              view.setUint8(writePtr + 5, rawAttr.parm2 || 0);
              view.setInt16(writePtr + 6, rawAttr.undefined || 0, false);
              writePtr += 8;
+        }
+    }
+
+    // -- Tile Anim Data --
+    if (tileAnimDataSize > 0) {
+        writePtr = tileAnimDataOffset;
+        for (let i = 0; i < tileAnimDataSize; i++) {
+            view.setUint8(writePtr + i, tileAnimData[i]);
         }
     }
 
