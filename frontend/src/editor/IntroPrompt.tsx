@@ -30,6 +30,9 @@ import { isOk } from "../types/result";
 import { SafeItemTypes, SafeSplineItemTypes } from "../data/items/itemAtoms";
 import { extractSafeItemTypes } from "../data/items/extractSafeItemTypes";
 import { loadBytesFromJson } from "@lachlanbwwright/rsrcdump-ts";
+import { compileNanosaur1Level } from "./loadLogic/compileNanosaur1Level";
+import { serializeMightyMikeLevel } from "./loadLogic/parseMightyMikeFile";
+import type { Nanosaur1LevelData } from "@/data/processors/classicProprocessor";
 
 export interface DataHistory {
   items: AtomicLevelData[];
@@ -229,46 +232,77 @@ export function IntroPrompt() {
     }
 
     try {
-      // Validate JSON shape expected by rsrcdump
-      const validation = validateResourceForkJson(
-        sanitizeResourceForkJson(combinedData),
-      );
-      if (!validation.ok) {
-        console.error("Invalid JSON for resource fork:", validation);
-        toast.error("Download failed", {
-          description: `Invalid map data structure for resource fork: ${validation.message}`,
-        });
-        return;
+      let mapBlob: Blob;
+      let byteLength = 0;
+
+      // Handle custom binary formats based on Game type
+      if (globals.GAME_TYPE === Game.NANOSAUR) {
+        // Nanosaur 1: Use custom compiler
+        const rawLevelData = combinedData._metadata?.nanosaur1RawLevel as Nanosaur1LevelData;
+        if (!rawLevelData) {
+          throw new Error("Missing original Nanosaur 1 raw data needed for compilation");
+        }
+
+        const result = compileNanosaur1Level(combinedData, rawLevelData);
+        if (!result.ok) {
+          throw new Error(`Nanosaur compilation failed: ${result.error.message}`);
+        }
+
+        mapBlob = new Blob([result.value], { type: ".ter" });
+        byteLength = result.value.byteLength;
+
+      } else if (globals.GAME_TYPE === Game.MIGHTY_MIKE) {
+        // Mighty Mike: Use custom serializer
+        const result = serializeMightyMikeLevel(combinedData);
+        mapBlob = new Blob([result], { type: ".map" });
+        byteLength = result.byteLength;
+
+      } else {
+        // Standard Resource Fork games: Use rsrcdump-ts
+
+        // Validate JSON shape expected by rsrcdump
+        const validation = validateResourceForkJson(
+          sanitizeResourceForkJson(combinedData),
+        );
+        if (!validation.ok) {
+          console.error("Invalid JSON for resource fork:", validation);
+          toast.error("Download failed", {
+            description: `Invalid map data structure for resource fork: ${validation.message}`,
+          });
+          return;
+        }
+
+        // Use rsrcdump-ts to convert JSON to binary
+        const saveResult = loadBytesFromJson(
+          combinedData,
+          globals.STRUCT_SPECS,
+          [], // onlyTypes
+          [], // skipTypes
+          true, // adf
+        );
+
+        if (!saveResult.ok) {
+          console.error("Download failed:", saveResult.error);
+          toast.error("Download failed", {
+            description: saveResult.error,
+          });
+          return;
+        }
+
+        const loadRes = saveResult.value;
+
+        if (!loadRes || loadRes.byteLength === 0) {
+          console.error("Download failed: Generated map data is empty");
+          toast.error("Download failed", {
+            description: "Generated map data is empty",
+          });
+          return;
+        }
+
+        mapBlob = new Blob([loadRes.slice(0)], { type: ".ter.rsrc" });
+        byteLength = loadRes.byteLength;
       }
 
-      // Use rsrcdump-ts to convert JSON to binary
-      const saveResult = loadBytesFromJson(
-        combinedData,
-        globals.STRUCT_SPECS,
-        [], // onlyTypes
-        [], // skipTypes
-        true, // adf
-      );
-
-      if (!saveResult.ok) {
-        console.error("Download failed:", saveResult.error);
-        toast.error("Download failed", {
-          description: saveResult.error,
-        });
-        return;
-      }
-
-      const loadRes = saveResult.value;
-
-      if (!loadRes || loadRes.byteLength === 0) {
-        console.error("Download failed: Generated map data is empty");
-        toast.error("Download failed", {
-          description: "Generated map data is empty",
-        });
-        return;
-      }
-
-      const mapBlob = new Blob([loadRes.slice(0)], { type: ".ter.rsrc" });
       const mapUrl = URL.createObjectURL(mapBlob);
 
       const downloadLink = document.createElement("a");
@@ -277,13 +311,17 @@ export function IntroPrompt() {
       downloadLink.click();
 
       console.log(
-        `Map downloaded successfully: ${mapFile.name} (${loadRes.byteLength} bytes)`,
+        `Map downloaded successfully: ${mapFile.name} (${byteLength} bytes)`,
       );
 
       // For RSRC_FORK games (e.g., Bugdom 1) the texture data (Timg) is
       // embedded in the same resource file; skip the separate texture
       // compression/download flow and finish here.
-      if (globals.DATA_TYPE === DataType.RSRC_FORK) {
+      // Also skip image download for Mighty Mike (2D game) and Nanosaur (TRT file handles images differently? No, wait)
+      // Nanosaur 1 uses .trt files which are separate but not handled here.
+      // But standard .ter download is done.
+      // Mighty Mike doesn't use mapImages in the same way (tileset).
+      if (globals.DATA_TYPE === DataType.RSRC_FORK || globals.DATA_TYPE === DataType.MIGHTY_MIKE) {
         toast.success("Map Downloaded!");
         return;
       }
