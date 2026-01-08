@@ -12,7 +12,7 @@ import { EditorView } from "./EditorView";
 import { Button } from "@/components/ui/button";
 import { Updater, useImmer } from "use-immer";
 import { ottoPreprocessor } from "../data/processors/ottoPreprocessor";
-import { Globals, DataType, Game } from "../data/globals/globals";
+import { Globals, DataType } from "../data/globals/globals";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { BlockHistoryUpdate } from "../data/globals/history";
 import LzssWorker from "../utils/lzssWorker?worker";
