@@ -341,7 +341,8 @@ export async function parseMightyMikeFile(
 
     console.log("Final MightyMike level data BEFORE splitLevelData:");
     const tilesetRaw = isRecord(ottoCompatible)
-      ? ottoCompatible.tileset
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-type-assertion
+      ? (ottoCompatible as any).tileset
       : undefined;
     const tilesetField = isMightyMikeTileSet(tilesetRaw)
       ? tilesetRaw
@@ -359,6 +360,7 @@ export async function parseMightyMikeFile(
     });
 
     // Use ottoCompatible to populate AtomicLevelData
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion
     const atomicData = splitLevelData(ottoCompatible as unknown as LevelData);
     console.log("MightyMike atomicData AFTER splitLevelData:", atomicData);
 
@@ -411,34 +413,47 @@ export async function parseMightyMikeFile(
 /**
  * Serialize a Mighty Mike level back to binary .map format
  */
-export function serializeMightyMikeLevel(levelData: LevelData): ArrayBuffer {
+export function serializeMightyMikeLevel(levelData: LevelData): Result<ArrayBuffer, Error> {
   // 1. Get metadata
   const metadataRaw = levelData._metadata?.[1000];
 
   if (!isRecord(metadataRaw) || !isRecord(metadataRaw.obj)) {
-    throw new Error("Missing Mighty Mike metadata structure (1000.obj) for serialization");
+    return err(new Error("Missing Mighty Mike metadata structure (1000.obj) for serialization"));
   }
 
   const metadata = metadataRaw.obj;
 
   if (!metadata.mightyMikeMapData || !metadata.mightyMikeTileValues) {
-    throw new Error("Missing Mighty Mike metadata fields (mapData/tileValues) for serialization");
+    return err(new Error("Missing Mighty Mike metadata fields (mapData/tileValues) for serialization"));
   }
 
-  const mapData = metadata.mightyMikeMapData as MightyMikeMap;
-  const tileValues = metadata.mightyMikeTileValues as any[]; // Array of tile objects
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion
+  const mapData = metadata.mightyMikeMapData as unknown as MightyMikeMap;
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion
+  const tileValues = metadata.mightyMikeTileValues as unknown as Record<string, unknown>[]; // Array of tile objects
 
   // 2. Update Items
   const items = levelData.Itms?.[1000]?.obj || [];
-  mapData.items = items.map((item: any) => ({
-    x: item.x,
-    y: item.z, // Note: LevelData uses x,z but MightyMike uses x,y
-    type: item.type,
-    p0: item.p0 ?? 0,
-    p1: item.p1 ?? 0,
-    p2: item.p2 ?? 0,
-    p3: item.p3 ?? 0,
-  }));
+  mapData.items = items.map((item: unknown) => {
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion
+    const it = item as Record<string, unknown>;
+    return {
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion
+      x: it.x as number,
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion
+      y: it.z as number, // Note: LevelData uses x,z but MightyMike uses x,y
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion
+      type: it.type as number,
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion
+      p0: (it.p0 as number) ?? 0,
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion
+      p1: (it.p1 as number) ?? 0,
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion
+      p2: (it.p2 as number) ?? 0,
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion
+      p3: (it.p3 as number) ?? 0,
+    };
+  });
   mapData.numItems = mapData.items.length;
 
   // 3. Update Tiles
@@ -454,10 +469,12 @@ export function serializeMightyMikeLevel(levelData: LevelData): ArrayBuffer {
   layr.forEach((newTileIndex: number, i: number) => {
       if (i < tileValues.length) {
           const tile = tileValues[i];
-          tile.tileIndex = newTileIndex;
+          tile["tileIndex"] = newTileIndex;
           // Update rawValue: clear old index bits and set new index bits
           // Preserve high bits (flags)
-          tile.rawValue = (tile.rawValue & ~TILENUM_MASK) | (newTileIndex & TILENUM_MASK);
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion
+          const rawValue = (tile["rawValue"] as number);
+          tile["rawValue"] = (rawValue & ~TILENUM_MASK) | (newTileIndex & TILENUM_MASK);
       }
   });
 
@@ -481,5 +498,5 @@ export function serializeMightyMikeLevel(levelData: LevelData): ArrayBuffer {
   mapData.mapImage = mapImage;
 
   // 4. Compress and return
-  return mightyMikeMapToCompressedBinary(mapData);
+  return ok(mightyMikeMapToCompressedBinary(mapData));
 }

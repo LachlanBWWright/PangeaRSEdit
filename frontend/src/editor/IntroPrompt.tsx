@@ -32,7 +32,7 @@ import { extractSafeItemTypes } from "../data/items/extractSafeItemTypes";
 import { loadBytesFromJson } from "@lachlanbwwright/rsrcdump-ts";
 import { compileNanosaur1Level } from "./loadLogic/compileNanosaur1Level";
 import { serializeMightyMikeLevel } from "./loadLogic/parseMightyMikeFile";
-import type { Nanosaur1LevelData } from "@/data/processors/classicProprocessor";
+import { isNanosaur1LevelData } from "./loadLogic/typeGuards";
 
 export interface DataHistory {
   items: AtomicLevelData[];
@@ -238,14 +238,18 @@ export function IntroPrompt() {
       // Handle custom binary formats based on Game type
       if (globals.GAME_TYPE === Game.NANOSAUR) {
         // Nanosaur 1: Use custom compiler
-        const rawLevelData = combinedData._metadata?.nanosaur1RawLevel as Nanosaur1LevelData;
-        if (!rawLevelData) {
-          throw new Error("Missing original Nanosaur 1 raw data needed for compilation");
+        const rawLevelData = combinedData._metadata?.nanosaur1RawLevel;
+        if (!isNanosaur1LevelData(rawLevelData)) {
+          console.error("Missing raw Nanosaur 1 level data");
+          toast.error("Download failed", { description: "Missing original raw data. Please reload the level." });
+          return;
         }
 
         const result = compileNanosaur1Level(combinedData, rawLevelData);
         if (!result.ok) {
-          throw new Error(`Nanosaur compilation failed: ${result.error.message}`);
+           console.error("Nanosaur compilation failed:", result.error);
+           toast.error("Download failed", { description: result.error.message });
+           return;
         }
 
         mapBlob = new Blob([result.value], { type: ".ter" });
@@ -254,8 +258,13 @@ export function IntroPrompt() {
       } else if (globals.GAME_TYPE === Game.MIGHTY_MIKE) {
         // Mighty Mike: Use custom serializer
         const result = serializeMightyMikeLevel(combinedData);
-        mapBlob = new Blob([result], { type: ".map" });
-        byteLength = result.byteLength;
+        if (!result.ok) {
+            console.error("Mighty Mike serialization failed:", result.error);
+            toast.error("Download failed", { description: result.error.message });
+            return;
+        }
+        mapBlob = new Blob([result.value], { type: ".map" });
+        byteLength = result.value.byteLength;
 
       } else {
         // Standard Resource Fork games: Use rsrcdump-ts

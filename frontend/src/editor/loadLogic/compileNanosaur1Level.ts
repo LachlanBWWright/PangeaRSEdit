@@ -1,6 +1,8 @@
 import { LevelData } from "../../python/structSpecs/LevelTypes";
 import type { Nanosaur1LevelData } from "../../data/processors/classicProprocessor";
 import { Result, ok, err } from "../../types/result";
+import { RawNanosaurItem } from "./nanosaurInterfaces";
+import { isRawNanosaurItem, isRawNanosaurAttribute } from "./typeGuards";
 
 /**
  * Compile a Nanosaur 1 level from LevelData back to binary format
@@ -188,32 +190,43 @@ export function compileNanosaur1Level(
     const items = levelData.Itms?.[1000]?.obj || [];
     for (let i = 0; i < numItems; i++) {
       const item = items[i];
-      // Type guard or cast needed?
-      // LevelData item: TerrainItem<TItemType = number>
-      // We need to merge with preserved raw data for fields not in TerrainItem?
-      // Actually LevelData has: x, z, type, flags, p0, p1, p2, p3
-      // Nanosaur 1 needs: x, y, type, parm[4], flags, prevItemIdx, nextItemIdx
-      //
-      // Mapping:
-      // x -> x
-      // z -> y
-      // type -> type
-      // flags -> flags
-      // parm -> p0..p3 ?? No, parm is byte[4].
-      // LevelData doesn't seem to natively support byte array params cleanly in TerrainItem unless we map them.
-      // nanosaur1LevelToLevelData maps parm to what?
-      // It sets parm: item.parm on the obj, but TerrainItem interface might not strict check it?
-      // Let's check how we stored it in nanosaur1LevelToLevelData:
-      //     type: item.type,
-      //     parm: item.parm,  <-- Stored directly!
-      //     flags: item.flags,
-      //     prevItemIdx: item.prevItemIdx,
-      //     nextItemIdx: item.nextItemIdx,
-      
-      const rawItem = item as any; // Cast to access custom fields preserved
+      // We stored non-standard fields in nanosaur1LevelToLevelData
+      // so we use a type guard to access them safely.
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion
+      const rawItem = isRawNanosaurItem(item) ? item : (item as unknown as RawNanosaurItem);
 
-      view.setUint16(writePtr, Math.round(rawItem.x), false);
-      view.setUint16(writePtr + 2, Math.round(rawItem.y ?? rawItem.z), false); // Prefer y if preserved, else z
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion, @typescript-eslint/no-explicit-any
+      const x = isRawNanosaurItem(item) ? item.x : (item as any).x || 0;
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion, @typescript-eslint/no-explicit-any
+      const y = isRawNanosaurItem(item) ? (item.y ?? item.z) : (item as any).z || 0;
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion, @typescript-eslint/no-explicit-any
+      const type = isRawNanosaurItem(item) ? item.type : (item as any).type || 0;
+      const parm = isRawNanosaurItem(item) ? item.parm : undefined;
+      const flags = isRawNanosaurItem(item) ? item.flags : 0;
+      const prev = isRawNanosaurItem(item) ? item.prevItemIdx : -1;
+      const next = isRawNanosaurItem(item) ? item.nextItemIdx : -1;
+
+
+      view.setUint16(writePtr, Math.round(x), false);
+      view.setUint16(writePtr + 2, Math.round(y ?? 0), false);
+      view.setUint16(writePtr + 4, type, false);
+      
+      if (parm && Array.isArray(parm)) {
+          view.setUint8(writePtr + 6, parm[0]);
+          view.setUint8(writePtr + 7, parm[1]);
+          view.setUint8(writePtr + 8, parm[2]);
+          view.setUint8(writePtr + 9, parm[3]);
+      } else {
+          view.setUint8(writePtr + 6, 0);
+          view.setUint8(writePtr + 7, 0);
+          view.setUint8(writePtr + 8, 0);
+          view.setUint8(writePtr + 9, 0);
+      }
+
+      view.setUint16(writePtr + 10, flags || 0, false);
+      view.setInt32(writePtr + 12, prev ?? -1, false);
+      view.setInt32(writePtr + 16, next ?? -1, false);
+      view.setUint16(writePtr + 2, Math.round(rawItem.y ?? rawItem.z ?? 0), false); // Prefer y if preserved, else z
       view.setUint16(writePtr + 4, rawItem.type, false);
 
       if (rawItem.parm && Array.isArray(rawItem.parm)) {
@@ -239,16 +252,16 @@ export function compileNanosaur1Level(
     if (heightmapTilesOffset > 0) {
         writePtr = heightmapTilesOffset;
         for (const tile of heightmapTiles) {
-            for(let i=0; i<tile.length; i++) {
-                view.setUint8(writePtr, tile[i]);
+            for(const byte of tile) {
+                view.setUint8(writePtr, byte);
                 writePtr++;
             }
         }
 
         // Write preserved heightmap padding if any
         if (rawLevelData.heightmapPadding && rawLevelData.heightmapPadding.length > 0) {
-            for (let i = 0; i < rawLevelData.heightmapPadding.length; i++) {
-                view.setUint8(writePtr, rawLevelData.heightmapPadding[i]);
+            for (const byte of rawLevelData.heightmapPadding) {
+                view.setUint8(writePtr, byte);
                 writePtr++;
             }
         }
@@ -258,18 +271,25 @@ export function compileNanosaur1Level(
     if (textureAttribOffset > 0) {
         writePtr = textureAttribOffset;
         for (const attr of textureAttribs) {
-             const rawAttr = attr as any; // Cast to access preserved Nanosaur fields
-             // bits: number; // UInt16
-             // parm0: number; // short
-             // parm1: number; // Byte
-             // parm2: number; // Byte
-             // undefined: number; // short
+             let bits = 0;
+             let parm0 = 0;
+             let parm1 = 0;
+             let parm2 = 0;
+             let undef = 0;
 
-             view.setUint16(writePtr, rawAttr.bits || 0, false);
-             view.setInt16(writePtr + 2, rawAttr.parm0 || 0, false);
-             view.setUint8(writePtr + 4, rawAttr.parm1 || 0);
-             view.setUint8(writePtr + 5, rawAttr.parm2 || 0);
-             view.setInt16(writePtr + 6, rawAttr.undefined || 0, false);
+             if (isRawNanosaurAttribute(attr)) {
+                 bits = attr.bits || 0;
+                 parm0 = attr.parm0 || 0;
+                 parm1 = attr.parm1 || 0;
+                 parm2 = attr.parm2 || 0;
+                 undef = attr.undefined || 0;
+             }
+
+             view.setUint16(writePtr, bits, false);
+             view.setInt16(writePtr + 2, parm0, false);
+             view.setUint8(writePtr + 4, parm1);
+             view.setUint8(writePtr + 5, parm2);
+             view.setInt16(writePtr + 6, undef, false);
              writePtr += 8;
         }
     }
