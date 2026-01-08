@@ -357,6 +357,9 @@ export function parseMightyMikeMap(
     const data = new DataView(decompressedBuffer);
     const dataLength = decompressedBuffer.byteLength;
 
+    // Parse padding (first 2 bytes)
+    const padding = data.getUint16(0, false);
+
     // Parse header offsets (big-endian 32-bit integers)
     const offsetToMapImage = data.getUint32(2, false);
     const offsetToItemList = data.getUint32(6, false);
@@ -472,6 +475,7 @@ export function parseMightyMikeMap(
       mapImage,
       items,
       altMap,
+      padding,
     };
 
     return { ok: true, value: mapData };
@@ -523,7 +527,7 @@ export function mightyMikeMapToBinary(map: MightyMikeMap): ArrayBuffer {
   const offsetToAltMap = map.altMap ? offsetToItemList + itemListSize : 0;
 
   // Write header (first 2 bytes are padding/unused)
-  data.setUint16(0, 0, false); // padding
+  data.setUint16(0, map.padding ?? 0, false); // padding
   data.setUint32(2, offsetToMapImage, false); // offset to map image
   data.setUint32(6, offsetToItemList, false); // offset to item list
   data.setUint32(10, offsetToAltMap, false); // offset to alt map

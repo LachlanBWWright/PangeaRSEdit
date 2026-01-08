@@ -92,7 +92,7 @@ describe("Nanosaur 1 - Byte-Accurate Roundtrip", () => {
 /**
  * Mighty Mike Roundtrip Tests
  */
-describe("Mighty Mike - Semantic Roundtrip", () => {
+describe("Mighty Mike - Byte-Accurate Roundtrip", () => {
   const levelsDir = join(__dirname, "mightymike/levels");
   
   const levels = [
@@ -114,7 +114,7 @@ describe("Mighty Mike - Semantic Roundtrip", () => {
   ];
 
   levels.forEach((filename) => {
-    it(`${filename}: semantic accuracy check`, () => {
+    it(`${filename}: byte-for-byte accuracy`, () => {
       const path = join(levelsDir, filename);
       let originalBuffer: Buffer;
       
@@ -151,7 +151,6 @@ describe("Mighty Mike - Semantic Roundtrip", () => {
         if (result.value instanceof ArrayBuffer) {
           recompiledData = new Uint8Array(result.value);
         } else if (ArrayBuffer.isView(result.value)) {
-          // Convert array-like view to a real Uint8Array without type assertions by using Array.prototype.slice
           recompiledData = new Uint8Array(Array.prototype.slice.call(result.value));
         } else {
           throw new Error("Unexpected result.value type");
@@ -164,46 +163,21 @@ describe("Mighty Mike - Semantic Roundtrip", () => {
         throw new Error("Unexpected compilation result type");
       }
 
-      // Semantic Roundtrip Check
-      // We check that the recompiled data parses back to the same structure as the original
+      // Byte comparison
+      expect(recompiledData.length).toBe(originalData.length);
       
-      // 1. Basic size check (within 5% is acceptable for compression variance)
-      const sizeDiff = Math.abs(recompiledData.length - originalData.length);
-      const sizeRatio = sizeDiff / originalData.length;
-      if (sizeRatio > 0.05) {
-        console.warn(`Mighty Mike ${filename}: Size mismatch > 5% (${recompiledData.length} vs ${originalData.length})`);
+      // Check for differences
+      let diffCount = 0;
+      for (let i = 0; i < originalData.length; i++) {
+        if (originalData[i] !== recompiledData[i]) {
+          diffCount++;
+          if (diffCount <= 5) {
+            console.log(`Byte ${i}: original=${originalData[i]}, recompiled=${recompiledData[i]}`);
+          }
+        }
       }
 
-      // 2. Re-Parse
-      const recompiledAB = recompiledData.buffer.slice(recompiledData.byteOffset, recompiledData.byteOffset + recompiledData.byteLength);
-      const reParsed = parseMightyMikeMap(recompiledAB);
-
-      if (!reParsed.ok) {
-        throw new Error(`Failed to parse recompiled data: ${String(reParsed.error)}`);
-      }
-
-      // Compare map dimensions
-      expect(reParsed.value.mapWidth).toBe(parsed.value.mapWidth);
-      expect(reParsed.value.mapHeight).toBe(parsed.value.mapHeight);
-      expect(reParsed.value.numItems).toBe(parsed.value.numItems);
-
-      // Compare items
-      expect(reParsed.value.items.length).toBe(parsed.value.items.length);
-      for(let i=0; i<parsed.value.items.length; i++) {
-          const item1 = parsed.value.items[i];
-          const item2 = reParsed.value.items[i];
-          expect(item2).toEqual(item1);
-      }
-
-      // Compare tiles (sample)
-      if (parsed.value.mapImage.length > 0) {
-          expect(reParsed.value.mapImage.length).toBe(parsed.value.mapImage.length);
-          // Check first row
-          expect(reParsed.value.mapImage[0]).toEqual(parsed.value.mapImage[0]);
-          // Check last row
-          const lastIdx = parsed.value.mapImage.length - 1;
-          expect(reParsed.value.mapImage[lastIdx]).toEqual(parsed.value.mapImage[lastIdx]);
-      }
+      expect(diffCount).toBe(0);
     });
   });
 });

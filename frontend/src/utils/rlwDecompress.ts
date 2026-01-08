@@ -192,8 +192,8 @@ export function rlwCompress(decompressedBuffer: ArrayBuffer): ArrayBuffer {
       runLength++;
     }
 
-    if (runLength >= 3) {
-      // Worth compressing as a run
+    if (runLength >= 2) {
+      // Worth compressing as a run (Run of 2 = 3 bytes vs 2 literals = 5 bytes)
       outputView.setUint8(outputPos++, 0x80 | (runLength - 1));
       outputView.setUint16(outputPos, currentWord, false);
       outputPos += 2;
@@ -215,7 +215,7 @@ export function rlwCompress(decompressedBuffer: ArrayBuffer): ArrayBuffer {
           nextRunLength++;
         }
 
-        if (nextRunLength >= 3) {
+        if (nextRunLength >= 2) {
           // Found a good run, stop collecting literals
           break;
         }
