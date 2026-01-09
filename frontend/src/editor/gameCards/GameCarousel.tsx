@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useCallback } from "react";
 import {
   OttoGlobals,
   BugdomGlobals,
@@ -27,21 +27,28 @@ import {
   CarouselNext,
 } from "@/components/ui/carousel";
 import type { Result } from "@/types/result";
+import type { TunnelData } from "@/data/tunnelParser/types";
+
+// Level component props type
+interface LevelComponentProps {
+  openFile: (url: string, gameType: GlobalsInterface) => void;
+  onTunnelLoad?: (data: TunnelData, fileName: string) => void;
+}
 
 // Create stable wrapper components for each game type
-const OttoLevelWrapper = ({ openFile }: { openFile: (url: string, gameType: GlobalsInterface) => void }) => <OttoLevels openFile={openFile} />;
-const BugdomLevelWrapper = ({ openFile }: { openFile: (url: string, gameType: GlobalsInterface) => void }) => <BugdomLevels openFile={openFile} />;
-const Bugdom2LevelWrapper = ({ openFile }: { openFile: (url: string, gameType: GlobalsInterface) => void }) => <Bugdom2Levels openFile={openFile} />;
-const CroMagLevelWrapper = ({ openFile }: { openFile: (url: string, gameType: GlobalsInterface) => void }) => <CroMagLevels openFile={openFile} />;
-const NanosaurLevelWrapper = ({ openFile }: { openFile: (url: string, gameType: GlobalsInterface) => void }) => <NanosaurLevels openFile={openFile} />;
-const Nanosaur2LevelWrapper = ({ openFile }: { openFile: (url: string, gameType: GlobalsInterface) => void }) => <Nanosaur2Levels openFile={openFile} />;
-const BillyFrontierLevelWrapper = ({ openFile }: { openFile: (url: string, gameType: GlobalsInterface) => void }) => <BillyFrontierLevels openFile={openFile} />;
-const MightyMikeLevelWrapper = ({ openFile }: { openFile: (url: string, gameType: GlobalsInterface) => void }) => <MightyMikeLevels openFile={openFile} />;
+const OttoLevelWrapper = ({ openFile }: LevelComponentProps) => <OttoLevels openFile={openFile} />;
+const BugdomLevelWrapper = ({ openFile }: LevelComponentProps) => <BugdomLevels openFile={openFile} />;
+const Bugdom2LevelWrapper = ({ openFile, onTunnelLoad }: LevelComponentProps) => (
+  <Bugdom2Levels openFile={openFile} onTunnelLoad={onTunnelLoad} />
+);
+const CroMagLevelWrapper = ({ openFile }: LevelComponentProps) => <CroMagLevels openFile={openFile} />;
+const NanosaurLevelWrapper = ({ openFile }: LevelComponentProps) => <NanosaurLevels openFile={openFile} />;
+const Nanosaur2LevelWrapper = ({ openFile }: LevelComponentProps) => <Nanosaur2Levels openFile={openFile} />;
+const BillyFrontierLevelWrapper = ({ openFile }: LevelComponentProps) => <BillyFrontierLevels openFile={openFile} />;
+const MightyMikeLevelWrapper = ({ openFile }: LevelComponentProps) => <MightyMikeLevels openFile={openFile} />;
 
 // Map game titles to their components at module level
-const LEVEL_COMPONENTS_MAP: Record<string, React.ComponentType<{
-  openFile: (url: string, gameType: GlobalsInterface) => void;
-}>> = {
+const LEVEL_COMPONENTS_MAP: Record<string, React.ComponentType<LevelComponentProps>> = {
   "Otto Matic": OttoLevelWrapper,
   "Bugdom": BugdomLevelWrapper,
   "Bugdom 2": Bugdom2LevelWrapper,
@@ -71,7 +78,7 @@ export function GameCarousel({
   setMapFile: (f: File) => void;
   setMapImagesFile: (f: File) => void;
   setMapImages: (images: HTMLCanvasElement[]) => void;
-  setTunnelData: (data: import("@/data/tunnelParser/types").TunnelData | null) => void;
+  setTunnelData: (data: TunnelData | null) => void;
   setTunnelFileName: (name: string) => void;
 }) {
   const games: { title: string; globals: GlobalsInterface }[] = [
@@ -144,7 +151,7 @@ function GameCarouselItem({
   setMapFile: (f: File) => void;
   setMapImagesFile: (f: File) => void;
   setMapImages: (images: HTMLCanvasElement[]) => void;
-  setTunnelData: (data: import("@/data/tunnelParser/types").TunnelData | null) => void;
+  setTunnelData: (data: TunnelData | null) => void;
   setTunnelFileName: (name: string) => void;
 }) {
   // Look up component from module-level map
@@ -152,6 +159,12 @@ function GameCarouselItem({
   if (!LevelComponent) {
     throw new Error(`Unknown game title: ${game.title}`);
   }
+
+  // Create tunnel load handler
+  const handleTunnelLoad = useCallback((data: TunnelData, fileName: string) => {
+    setTunnelFileName(fileName);
+    setTunnelData(data);
+  }, [setTunnelData, setTunnelFileName]);
 
   return (
     <CarouselItem className="pl-4 md:pl-6 md:basis-1/2 lg:basis-1/3 min-h-0 box-border overflow-hidden">
@@ -165,7 +178,7 @@ function GameCarouselItem({
         setTunnelData={setTunnelData}
         setTunnelFileName={setTunnelFileName}
       >
-        <LevelComponent openFile={handleOpenFile} />
+        <LevelComponent openFile={handleOpenFile} onTunnelLoad={handleTunnelLoad} />
       </GameCard>
     </CarouselItem>
   );
