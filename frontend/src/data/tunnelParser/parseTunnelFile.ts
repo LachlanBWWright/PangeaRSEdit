@@ -275,13 +275,25 @@ function parseSection(reader: BinaryReader): TunnelSection {
  */
 export function parseTunnelFile(buffer: ArrayBuffer): Result<TunnelData, Error> {
   try {
+    if (buffer.byteLength < 92) {
+      return err(new Error(`File too small: ${buffer.byteLength} bytes (minimum 92 bytes required for header)`));
+    }
+
     const reader = new BinaryReader(buffer);
 
     // Parse header (88 bytes)
     const header = parseHeader(reader);
 
+    // Validate header values
+    if (header.numNubs < 0 || header.numSplinePoints < 0 || header.numSections < 0 || header.numItems < 0) {
+      return err(new Error(`Invalid header: negative counts (nubs=${header.numNubs}, splinePoints=${header.numSplinePoints}, sections=${header.numSections}, items=${header.numItems})`));
+    }
+
     // Skip alias data (legacy Mac file alias)
     const aliasSize = reader.readInt32();
+    if (aliasSize < 0 || aliasSize > buffer.byteLength) {
+      return err(new Error(`Invalid alias size: ${aliasSize}`));
+    }
     reader.skip(aliasSize);
 
     // Parse spline nubs (control points)
