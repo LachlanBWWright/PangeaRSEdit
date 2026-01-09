@@ -43,34 +43,48 @@ class BinaryReader {
   }
 
   skip(bytes: number): void {
+    if (this.offset + bytes > this.view.byteLength) {
+      throw new Error(`Skip out of bounds: offset ${this.offset}, skip ${bytes}, buffer size ${this.view.byteLength}`);
+    }
     this.offset += bytes;
   }
 
+  private checkBounds(size: number, operation: string): void {
+    if (this.offset + size > this.view.byteLength) {
+      throw new Error(`${operation} out of bounds at offset ${this.offset}, need ${size} bytes, buffer size ${this.view.byteLength}`);
+    }
+  }
+
   readUint8(): number {
+    this.checkBounds(1, "readUint8");
     const value = this.view.getUint8(this.offset);
     this.offset += 1;
     return value;
   }
 
   readUint16(): number {
+    this.checkBounds(2, "readUint16");
     const value = this.view.getUint16(this.offset, false); // big-endian
     this.offset += 2;
     return value;
   }
 
   readInt32(): number {
+    this.checkBounds(4, "readInt32");
     const value = this.view.getInt32(this.offset, false); // big-endian
     this.offset += 4;
     return value;
   }
 
   readUint32(): number {
+    this.checkBounds(4, "readUint32");
     const value = this.view.getUint32(this.offset, false); // big-endian
     this.offset += 4;
     return value;
   }
 
   readFloat32(): number {
+    this.checkBounds(4, "readFloat32");
     const value = this.view.getFloat32(this.offset, false); // big-endian
     this.offset += 4;
     return value;
@@ -119,6 +133,9 @@ class BinaryReader {
   }
 
   readBytes(length: number): Uint8Array {
+    if (this.offset + length > this.view.byteLength) {
+      throw new Error(`Read out of bounds: offset ${this.offset}, length ${length}, buffer size ${this.view.byteLength}`);
+    }
     const bytes = new Uint8Array(this.view.buffer.slice(this.offset, this.offset + length));
     this.offset += length;
     return bytes;
