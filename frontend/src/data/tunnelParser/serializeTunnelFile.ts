@@ -120,7 +120,7 @@ class BinaryWriter {
     this.writePoint3D(box.min);
     this.writePoint3D(box.max);
     this.writeBoolean(box.isEmpty);
-    this.writePadding(3); // padding after Boolean
+    this.writePadding(3); // 3-byte padding to align to 4-byte boundaries (C struct alignment)
   }
 
   writeBytes(data: Uint8Array): void {

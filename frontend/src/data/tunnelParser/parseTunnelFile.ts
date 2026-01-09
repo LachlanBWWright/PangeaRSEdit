@@ -129,7 +129,7 @@ class BinaryReader {
     const min = this.readPoint3D();
     const max = this.readPoint3D();
     const isEmpty = this.readBoolean();
-    this.skip(3); // padding after Boolean
+    this.skip(3); // 3-byte padding to align to 4-byte boundaries (C struct alignment)
     return { min, max, isEmpty };
   }
 
