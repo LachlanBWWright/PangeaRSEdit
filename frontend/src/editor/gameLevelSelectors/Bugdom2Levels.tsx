@@ -1,4 +1,4 @@
-import { useRef, useCallback } from "react";
+import { useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { LevelGrid } from "../LevelGrid";
 import { Bugdom2Globals, type GlobalsInterface } from "@/data/globals/globals";
@@ -13,53 +13,42 @@ export function Bugdom2Levels({
   openFile: (url: string, gameType: GlobalsInterface) => void;
   onTunnelLoad?: (data: TunnelData, fileName: string) => void;
 }) {
-  const tunnelInputRef = useRef<HTMLInputElement>(null);
-  const pendingLevelRef = useRef<string>("");
+  const loadTunnelLevel = useCallback(
+    async (tunnelPath: string, fileName: string) => {
+      if (!onTunnelLoad) return;
 
-  const handleTunnelFileChange = useCallback(
-    async (e: React.ChangeEvent<HTMLInputElement>) => {
-      const file = e.target.files?.[0];
-      if (!file || !onTunnelLoad) return;
+      try {
+        const response = await fetch(tunnelPath);
+        if (!response.ok) {
+          toast.error(`Failed to fetch ${fileName}`, {
+            description: `HTTP ${response.status}: ${response.statusText}`,
+          });
+          return;
+        }
 
-      const buffer = await file.arrayBuffer();
-      const result = parseTunnelFile(buffer);
+        const buffer = await response.arrayBuffer();
+        const result = parseTunnelFile(buffer);
 
-      if (!result.ok) {
-        toast.error("Failed to parse tunnel file", {
-          description: result.error.message,
+        if (!result.ok) {
+          toast.error("Failed to parse tunnel file", {
+            description: result.error.message,
+          });
+          return;
+        }
+
+        onTunnelLoad(result.value, fileName);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        toast.error("Failed to load tunnel level", {
+          description: message,
         });
-        return;
       }
-
-      // Use the pending level name if set, otherwise use actual filename
-      const fileName = pendingLevelRef.current || file.name;
-      onTunnelLoad(result.value, fileName);
-      
-      // Reset the input so the same file can be selected again
-      if (tunnelInputRef.current) {
-        tunnelInputRef.current.value = "";
-      }
-      pendingLevelRef.current = "";
     },
     [onTunnelLoad]
   );
 
-  const openTunnelDialog = useCallback((levelName: string) => {
-    pendingLevelRef.current = levelName;
-    tunnelInputRef.current?.click();
-  }, []);
-
   return (
     <LevelGrid title="Bugdom 2 Levels">
-      {/* Hidden file input for tunnel uploads */}
-      <input
-        ref={tunnelInputRef}
-        type="file"
-        accept=".tun"
-        onChange={handleTunnelFileChange}
-        className="hidden"
-      />
-      
       <Button
         onClick={() =>
           openFile("assets/bugdom2/terrain/Level1_Garden.ter", Bugdom2Globals)
@@ -82,11 +71,9 @@ export function Bugdom2Levels({
         Level 3
       </Button>
       <Button
-        variant="outline"
-        onClick={() => openTunnelDialog("Plumbing.tun")}
-        title="Click to upload Plumbing.tun"
+        onClick={() => loadTunnelLevel("games/bugdom2/tunnels/Plumbing.tun", "Plumbing.tun")}
       >
-        Level 4 (Tunnel)
+        Level 4 (Plumbing)
       </Button>
       <Button
         onClick={() =>
@@ -103,11 +90,9 @@ export function Bugdom2Levels({
         Level 6
       </Button>
       <Button
-        variant="outline"
-        onClick={() => openTunnelDialog("Gutter.tun")}
-        title="Click to upload Gutter.tun"
+        onClick={() => loadTunnelLevel("games/bugdom2/tunnels/Gutter.tun", "Gutter.tun")}
       >
-        Level 7 (Tunnel)
+        Level 7 (Gutter)
       </Button>
       <Button
         onClick={() =>

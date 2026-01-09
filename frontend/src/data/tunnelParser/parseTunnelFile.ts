@@ -126,10 +126,11 @@ class BinaryReader {
   }
 
   readBoundingBox(): BoundingBox {
-    return {
-      min: this.readPoint3D(),
-      max: this.readPoint3D(),
-    };
+    const min = this.readPoint3D();
+    const max = this.readPoint3D();
+    const isEmpty = this.readBoolean();
+    this.skip(3); // padding after Boolean
+    return { min, max, isEmpty };
   }
 
   readBytes(length: number): Uint8Array {

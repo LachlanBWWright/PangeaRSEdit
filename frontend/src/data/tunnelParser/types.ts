@@ -43,10 +43,13 @@ export interface TriangleIndices {
 
 /**
  * Bounding box (OGLBoundingBox equivalent)
+ * Note: OGLBoundingBox in the game includes an isEmpty boolean field
+ * that takes 4 bytes with padding (1 byte + 3 padding)
  */
 export interface BoundingBox {
   min: Point3D;
   max: Point3D;
+  isEmpty: boolean;
 }
 
 /**

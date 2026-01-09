@@ -119,6 +119,8 @@ class BinaryWriter {
   writeBoundingBox(box: BoundingBox): void {
     this.writePoint3D(box.min);
     this.writePoint3D(box.max);
+    this.writeBoolean(box.isEmpty);
+    this.writePadding(3); // padding after Boolean
   }
 
   writeBytes(data: Uint8Array): void {

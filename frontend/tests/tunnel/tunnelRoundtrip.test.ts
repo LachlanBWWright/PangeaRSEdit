@@ -40,6 +40,7 @@ function createMinimalTunnelData(): TunnelData {
       bBox: {
         min: { x: -10, y: -10, z: -10 },
         max: { x: 10, y: 10, z: 10 },
+        isEmpty: false,
       },
       numPoints: 3,
       numTriangles: 1,
@@ -64,6 +65,7 @@ function createMinimalTunnelData(): TunnelData {
       bBox: {
         min: { x: -5, y: -1, z: -5 },
         max: { x: 5, y: 1, z: 5 },
+        isEmpty: false,
       },
       numPoints: 4,
       numTriangles: 2,
