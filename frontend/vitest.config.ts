@@ -1,10 +1,16 @@
 import { defineConfig } from "vitest/config";
+import path from "path";
 
 export default defineConfig({
   root: import.meta.dirname,
+  resolve: {
+    alias: {
+      "@": path.resolve(import.meta.dirname, "./src"),
+    },
+  },
   test: {
     dir: import.meta.dirname,
-    include: ["tests/roundtrip/allGamesRoundtripNew.test.ts"],
+    include: ["tests/roundtrip/allGamesRoundtripNew.test.ts", "tests/tunnel/**/*.test.ts"],
     exclude: [
       "tests/e2e/**",
       "src/modelParsers/**/parseMightyMikeRoundtrip.test.ts",

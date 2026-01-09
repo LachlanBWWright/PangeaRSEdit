@@ -30,7 +30,13 @@ export function Bugdom2Levels({
       >
         Level 3
       </Button>
-      <Button disabled>Level 4</Button>
+      <Button
+        variant="outline"
+        disabled
+        title="Level 4 (Plumbing) is a tunnel level - upload a .tun file below"
+      >
+        Level 4 (Tunnel)
+      </Button>
       <Button
         onClick={() =>
           openFile("assets/bugdom2/terrain/Level5_Playroom.ter", Bugdom2Globals)
@@ -45,7 +51,13 @@ export function Bugdom2Levels({
       >
         Level 6
       </Button>
-      <Button disabled>Level 7</Button>
+      <Button
+        variant="outline"
+        disabled
+        title="Level 7 (Gutter) is a tunnel level - upload a .tun file below"
+      >
+        Level 7 (Tunnel)
+      </Button>
       <Button
         onClick={() =>
           openFile("assets/bugdom2/terrain/Level8_Garbage.ter", Bugdom2Globals)

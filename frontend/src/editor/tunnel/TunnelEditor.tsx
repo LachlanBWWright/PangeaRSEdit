@@ -278,26 +278,66 @@ function TunnelUploadPrompt({
 
 /**
  * Main tunnel editor component
+ * Can be used in two ways:
+ * 1. Controlled: Pass tunnelData and other props to manage state externally
+ * 2. Standalone: Use without props for self-contained file upload and management
  */
-export function TunnelEditor() {
-  const [tunnelData, setTunnelData] = useState<TunnelData | null>(null);
-  const [fileName, setFileName] = useState<string>("");
-  const [isPlumbing, setIsPlumbing] = useState<boolean>(true);
+export interface TunnelEditorProps {
+  tunnelData?: TunnelData;
+  fileName?: string;
+  isPlumbing?: boolean;
+  onUpdateTunnelData?: (data: TunnelData) => void;
+  onClose?: () => void;
+}
+
+export function TunnelEditor({
+  tunnelData: externalTunnelData,
+  fileName: externalFileName,
+  isPlumbing: externalIsPlumbing,
+  onUpdateTunnelData: externalOnUpdate,
+  onClose: externalOnClose,
+}: TunnelEditorProps = {}) {
+  // Internal state for standalone mode
+  const [internalTunnelData, setInternalTunnelData] = useState<TunnelData | null>(null);
+  const [internalFileName, setInternalFileName] = useState<string>("");
+  const [internalIsPlumbing, setInternalIsPlumbing] = useState<boolean>(true);
+
+  // Use external props if provided, otherwise use internal state
+  const tunnelData = externalTunnelData ?? internalTunnelData;
+  const fileName = externalFileName ?? internalFileName;
+  const isPlumbing = externalIsPlumbing ?? internalIsPlumbing;
+  
+  const handleUpdate = useCallback((data: TunnelData) => {
+    if (externalOnUpdate) {
+      externalOnUpdate(data);
+    } else {
+      setInternalTunnelData(data);
+    }
+  }, [externalOnUpdate]);
+
+  const handleClose = useCallback(() => {
+    if (externalOnClose) {
+      externalOnClose();
+    } else {
+      setInternalTunnelData(null);
+      setInternalFileName("");
+    }
+  }, [externalOnClose]);
 
   const handleFileLoaded = useCallback(
     (data: TunnelData, name: string, plumbing: boolean) => {
-      setTunnelData(data);
-      setFileName(name);
-      setIsPlumbing(plumbing);
+      if (externalOnUpdate) {
+        externalOnUpdate(data);
+      } else {
+        setInternalTunnelData(data);
+        setInternalFileName(name);
+        setInternalIsPlumbing(plumbing);
+      }
     },
-    []
+    [externalOnUpdate]
   );
 
-  const handleClose = useCallback(() => {
-    setTunnelData(null);
-    setFileName("");
-  }, []);
-
+  // If no data is available, show upload prompt (standalone mode only)
   if (!tunnelData) {
     return <TunnelUploadPrompt onFileLoaded={handleFileLoaded} />;
   }
@@ -307,7 +347,7 @@ export function TunnelEditor() {
       tunnelData={tunnelData}
       fileName={fileName}
       isPlumbing={isPlumbing}
-      onUpdateTunnelData={setTunnelData}
+      onUpdateTunnelData={handleUpdate}
       onClose={handleClose}
     />
   );

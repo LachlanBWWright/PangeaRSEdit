@@ -1,6 +1,6 @@
 import { Link, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Map, Box, Image, Download, Cylinder } from "lucide-react";
+import { Map, Box, Image, Download } from "lucide-react";
 
 export function Navigation() {
   const location = useLocation();
@@ -17,16 +17,6 @@ export function Navigation() {
           <Link to="/" className="text-white">
             <Map className="w-4 h-4" />
             Level Editor
-          </Link>
-        </Button>
-        <Button
-          asChild
-          variant={location.pathname === "/tunnel-editor" ? "default" : "ghost"}
-          className="flex items-center gap-2"
-        >
-          <Link to="/tunnel-editor" className="text-white">
-            <Cylinder className="w-4 h-4" />
-            Tunnel Editor
           </Link>
         </Button>
         <Button
