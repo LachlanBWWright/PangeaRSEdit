@@ -356,4 +356,15 @@ describe("Tunnel Parser Roundtrip Tests", () => {
       expect(item.parms[0]).toBe(100);
     }
   });
+
+  it("should reject files that are too small", () => {
+    // Create a buffer that's too small to contain the header
+    const tooSmall = new ArrayBuffer(50);
+    const result = parseTunnelFile(tooSmall);
+    
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error.message).toContain("too small");
+    }
+  });
 });
