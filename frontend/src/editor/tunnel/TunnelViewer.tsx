@@ -267,6 +267,8 @@ export function TunnelViewer({
           makeDefault
           position={[center.x + 500, center.y + 500, center.z + 500]}
           fov={60}
+          near={1}
+          far={100000}
         />
         <OrbitControls target={center} />
         <ambientLight intensity={0.5} />

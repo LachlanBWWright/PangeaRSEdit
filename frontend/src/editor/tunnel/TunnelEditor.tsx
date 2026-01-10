@@ -5,18 +5,49 @@
  */
 
 import { useState, useCallback, useRef } from "react";
-import type { TunnelData, TunnelItem } from "@/data/tunnelParser/types";
+import type { TunnelData, TunnelItem, TunnelSection, TunnelSectionMesh, BoundingBox } from "@/data/tunnelParser/types";
 import { parseTunnelFile } from "@/data/tunnelParser/parseTunnelFile";
 import { serializeTunnelFile } from "@/data/tunnelParser/serializeTunnelFile";
 import { TunnelViewer } from "./TunnelViewer";
 import { TunnelItemEditor } from "./TunnelItemEditor";
 import { SectionInspector } from "./SectionInspector";
+import { SplineEditor } from "./SplineEditor";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 
 type EditorTab = "items" | "sections" | "spline";
+
+/**
+ * Create an empty section mesh
+ */
+function createEmptySectionMesh(): TunnelSectionMesh {
+  const emptyBBox: BoundingBox = {
+    min: { x: 0, y: 0, z: 0 },
+    max: { x: 0, y: 0, z: 0 },
+    isEmpty: true,
+  };
+  return {
+    bBox: emptyBBox,
+    numPoints: 0,
+    numTriangles: 0,
+    points: [],
+    normals: [],
+    uvs: [],
+    triangles: [],
+  };
+}
+
+/**
+ * Create an empty section
+ */
+function createEmptySection(): TunnelSection {
+  return {
+    tunnelMesh: createEmptySectionMesh(),
+    waterMesh: createEmptySectionMesh(),
+  };
+}
 
 interface TunnelEditorViewProps {
   tunnelData: TunnelData;
@@ -77,6 +108,88 @@ function TunnelEditorView({
         header: { ...tunnelData.header, numItems: newItems.length },
       });
       setSelectedItemIndex(newItems.length - 1);
+    },
+    [tunnelData, onUpdateTunnelData]
+  );
+
+  const handleAddSection = useCallback(
+    (afterIndex?: number) => {
+      const newSection = createEmptySection();
+      const insertIndex = afterIndex !== undefined ? afterIndex + 1 : tunnelData.sections.length;
+      const newSections = [
+        ...tunnelData.sections.slice(0, insertIndex),
+        newSection,
+        ...tunnelData.sections.slice(insertIndex),
+      ];
+      onUpdateTunnelData({
+        ...tunnelData,
+        sections: newSections,
+        header: { ...tunnelData.header, numSections: newSections.length },
+      });
+      setSelectedSection(insertIndex);
+      toast.success(`Added section at position ${insertIndex}`);
+    },
+    [tunnelData, onUpdateTunnelData]
+  );
+
+  const handleDeleteSection = useCallback(
+    (index: number) => {
+      if (tunnelData.sections.length <= 1) {
+        toast.error("Cannot delete the last section");
+        return;
+      }
+      const newSections = tunnelData.sections.filter((_, i) => i !== index);
+      // Update items that reference sections after this one
+      const newItems = tunnelData.items.map((item) => {
+        if (item.sectionNum > index) {
+          return { ...item, sectionNum: item.sectionNum - 1 };
+        } else if (item.sectionNum === index) {
+          return { ...item, sectionNum: Math.max(0, index - 1) };
+        }
+        return item;
+      });
+      onUpdateTunnelData({
+        ...tunnelData,
+        sections: newSections,
+        items: newItems,
+        header: { ...tunnelData.header, numSections: newSections.length },
+      });
+      setSelectedSection(null);
+      toast.success(`Deleted section ${index}`);
+    },
+    [tunnelData, onUpdateTunnelData]
+  );
+
+  const handleDuplicateSection = useCallback(
+    (index: number) => {
+      const sectionToDuplicate = tunnelData.sections[index];
+      if (!sectionToDuplicate) return;
+      
+      // Deep clone the section
+      const clonedSection: TunnelSection = JSON.parse(JSON.stringify(sectionToDuplicate));
+      
+      const newSections = [
+        ...tunnelData.sections.slice(0, index + 1),
+        clonedSection,
+        ...tunnelData.sections.slice(index + 1),
+      ];
+      
+      // Update items that reference sections after this one
+      const newItems = tunnelData.items.map((item) => {
+        if (item.sectionNum > index) {
+          return { ...item, sectionNum: item.sectionNum + 1 };
+        }
+        return item;
+      });
+      
+      onUpdateTunnelData({
+        ...tunnelData,
+        sections: newSections,
+        items: newItems,
+        header: { ...tunnelData.header, numSections: newSections.length },
+      });
+      setSelectedSection(index + 1);
+      toast.success(`Duplicated section ${index}`);
     },
     [tunnelData, onUpdateTunnelData]
   );
@@ -171,6 +284,16 @@ function TunnelEditorView({
             </button>
             <button
               className={`flex-1 px-4 py-2 text-sm ${
+                activeTab === "spline"
+                  ? "bg-gray-800 text-white"
+                  : "text-gray-400 hover:text-white"
+              }`}
+              onClick={() => setActiveTab("spline")}
+            >
+              Spline
+            </button>
+            <button
+              className={`flex-1 px-4 py-2 text-sm ${
                 activeTab === "sections"
                   ? "bg-gray-800 text-white"
                   : "text-gray-400 hover:text-white"
@@ -194,11 +317,23 @@ function TunnelEditorView({
                 onAddItem={handleAddItem}
               />
             )}
+            {activeTab === "spline" && (
+              <SplineEditor
+                tunnelData={tunnelData}
+                isPlumbing={isPlumbing}
+                selectedItemIndex={selectedItemIndex}
+                onSelectItem={setSelectedItemIndex}
+                onUpdateItem={handleUpdateItem}
+              />
+            )}
             {activeTab === "sections" && (
               <SectionInspector
                 tunnelData={tunnelData}
                 selectedSection={selectedSection}
                 onSelectSection={setSelectedSection}
+                onAddSection={handleAddSection}
+                onDeleteSection={handleDeleteSection}
+                onDuplicateSection={handleDuplicateSection}
               />
             )}
           </div>

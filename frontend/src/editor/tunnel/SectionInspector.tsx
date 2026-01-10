@@ -1,15 +1,20 @@
 /**
  * Section Inspector Component
  *
- * Displays information about tunnel geometry sections.
+ * Displays information about tunnel geometry sections and allows
+ * adding, removing, and duplicating sections.
  */
 
 import type { TunnelData, TunnelSection } from "@/data/tunnelParser/types";
+import { Button } from "@/components/ui/button";
 
 interface SectionInspectorProps {
   tunnelData: TunnelData;
   selectedSection: number | null;
   onSelectSection: (index: number | null) => void;
+  onAddSection?: (afterIndex?: number) => void;
+  onDeleteSection?: (index: number) => void;
+  onDuplicateSection?: (index: number) => void;
 }
 
 /**
@@ -45,6 +50,9 @@ export function SectionInspector({
   tunnelData,
   selectedSection,
   onSelectSection,
+  onAddSection,
+  onDeleteSection,
+  onDuplicateSection,
 }: SectionInspectorProps) {
   // Calculate total statistics
   const totalStats = tunnelData.sections.reduce(
@@ -66,7 +74,14 @@ export function SectionInspector({
 
   return (
     <div className="flex flex-col h-full bg-gray-800 p-4 rounded-lg">
-      <h2 className="text-lg font-bold text-white mb-4">Geometry Sections</h2>
+      <div className="flex justify-between items-center mb-4">
+        <h2 className="text-lg font-bold text-white">Geometry Sections</h2>
+        {onAddSection && (
+          <Button size="sm" onClick={() => onAddSection()}>
+            + Add Section
+          </Button>
+        )}
+      </div>
 
       {/* Summary */}
       <div className="bg-gray-700 p-3 rounded mb-4">
@@ -113,9 +128,44 @@ export function SectionInspector({
       {/* Selected section details */}
       {selectedStats && selectedSectionData && selectedSection !== null && (
         <div className="border-t border-gray-600 pt-4">
-          <h3 className="text-sm font-bold text-white mb-3">
-            Section #{selectedSection} Details
-          </h3>
+          <div className="flex justify-between items-center mb-3">
+            <h3 className="text-sm font-bold text-white">
+              Section #{selectedSection} Details
+            </h3>
+          </div>
+
+          {/* Section actions */}
+          {(onAddSection || onDeleteSection || onDuplicateSection) && (
+            <div className="flex gap-2 mb-3">
+              {onDuplicateSection && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => onDuplicateSection(selectedSection)}
+                >
+                  Duplicate
+                </Button>
+              )}
+              {onAddSection && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => onAddSection(selectedSection)}
+                >
+                  Insert After
+                </Button>
+              )}
+              {onDeleteSection && tunnelData.sections.length > 1 && (
+                <Button
+                  size="sm"
+                  variant="destructive"
+                  onClick={() => onDeleteSection(selectedSection)}
+                >
+                  Delete
+                </Button>
+              )}
+            </div>
+          )}
 
           <div className="space-y-3">
             {/* Tunnel mesh */}

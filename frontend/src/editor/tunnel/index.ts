@@ -8,3 +8,4 @@ export { TunnelEditor } from "./TunnelEditor";
 export { TunnelViewer } from "./TunnelViewer";
 export { TunnelItemEditor } from "./TunnelItemEditor";
 export { SectionInspector } from "./SectionInspector";
+export { SplineEditor } from "./SplineEditor";
