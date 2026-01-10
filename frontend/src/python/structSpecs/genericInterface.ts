@@ -134,13 +134,13 @@ export interface pangeaLevel {
   };
 }
 
-export type TileAttribute = {
+export interface TileAttribute {
   flags: number;
   p0: number;
   p1: number;
-};
+}
 
-export type Fence = {
+export interface Fence {
   fenceType: FenceType;
   numNubs: number;
   junkNubListPtr: number;
@@ -148,11 +148,11 @@ export type Fence = {
   bbBottom: number;
   bbLeft: number;
   bbRight: number;
-};
+}
 
 export type FenceNub = [x: number, y: number];
 
-export type StandardHeader = {
+export interface StandardHeader {
   version: number;
   numItems: number;
 
@@ -169,9 +169,9 @@ export type StandardHeader = {
   numUniqueSupertiles: number;
   numWaterPatches: number;
   numCheckpoints: number;
-};
+}
 
-export type TerrainItem = {
+export interface TerrainItem {
   /* u32 bit  */
   x: number;
   z: number;
@@ -183,10 +183,10 @@ export type TerrainItem = {
   p1: number;
   p2: number;
   p3: number;
-};
+}
 
 export const LIQUID_NUBS_COUNT = 100;
-export type Liquid = {
+export interface Liquid {
   bBoxBottom: number;
   bBoxLeft: number;
   bBoxRight: number;
@@ -204,15 +204,15 @@ export type Liquid = {
     number,
     number,
   ][] /* 100 nubs, requires packing-unpacking from rsrcdump json */;
-};
+}
 
-export type SupertileGridEntry = {
+export interface SupertileGridEntry {
   padByte: string; //TODO: Should be removed
   isEmpty: boolean;
   superTileId: number;
-};
+}
 
-export type SplineItem = {
+export interface SplineItem {
   flags: number;
   p0: number;
   p1: number;
@@ -220,20 +220,20 @@ export type SplineItem = {
   p3: number;
   placement: number;
   type: SplineItemType;
-};
+}
 
-export type SplineNub = {
+export interface SplineNub {
   x: number;
   z: number;
-};
+}
 
-export type SplinePoint = {
+export interface SplinePoint {
   //These are actually floats
   x: number;
   z: number;
-};
+}
 
-export type Spline = {
+export interface Spline {
   bbBottom: number;
   bbLeft: number;
   bbRight: number;
@@ -241,4 +241,4 @@ export type Spline = {
   numItems: number;
   numNubs: number;
   numPoints: number;
-};
+}

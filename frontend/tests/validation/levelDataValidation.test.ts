@@ -7,7 +7,7 @@
 import { describe, it, expect } from "vitest";
 import { readFileSync, existsSync } from "fs";
 import { join } from "path";
-import { saveToJsonObject } from "../../src/rsrcdump-ts/rsrcdump";
+import { saveToJson } from "@lachlanbwwright/rsrcdump-ts";
 
 // Import game specs
 import { ottoMaticSpecs } from "../../src/python/structSpecs/ottoMatic";
@@ -96,28 +96,32 @@ describe("Level Data Validation", () => {
         expect(fileExists).toBe(true);
       });
 
-      it("should parse and validate level data", () => {
+      it("should parse and validate level data", async () => {
         if (!fileExists) return;
 
         const originalData = readFileSync(filePath);
 
         // Parse with game specs
-        const jsonResult = saveToJsonObject(
-          originalData,
+        const jsonStringResult = await saveToJson(
+          new Uint8Array(originalData),
           config.specs,
           [],
-          [],
-          true
+          []
         );
 
-        expect(jsonResult.ok).toBe(true);
-        if (!jsonResult.ok) {
-          console.error(`Failed to parse ${config.name}:`, jsonResult.error);
+        expect(jsonStringResult.ok).toBe(true);
+        if (!jsonStringResult.ok) {
+          console.error(`Failed to parse ${config.name}:`, jsonStringResult.error);
           return;
         }
 
-        const jsonData = jsonResult.value;
+        const jsonData = JSON.parse(jsonStringResult.value);
         expect(jsonData).toBeDefined();
+
+        function assertIsRecord(x: unknown): asserts x is Record<string, unknown> {
+          if (typeof x !== 'object' || x === null) throw new Error('Parsed data is not an object');
+        }
+        assertIsRecord(jsonData);
 
         // Validate using Zod schema
         const validationResult = config.validator(jsonData);
@@ -146,21 +150,27 @@ describe("Level Data Validation", () => {
         }
       });
 
-      it("should have valid header structure", () => {
+      it("should have valid header structure", async () => {
         if (!fileExists) return;
 
         const originalData = readFileSync(filePath);
-        const jsonResult = saveToJsonObject(
-          originalData,
+        const jsonStringResult = await saveToJson(
+          new Uint8Array(originalData),
           config.specs,
           [],
-          [],
-          true
+          []
         );
 
-        if (!jsonResult.ok) return;
+        if (!jsonStringResult.ok) return;
 
-        const jsonData = jsonResult.value;
+        const jsonData = JSON.parse(jsonStringResult.value);
+        function assertIsRecord(x: unknown): asserts x is Record<string, unknown> {
+          if (typeof x !== 'object' || x === null) throw new Error('Parsed data is not an object');
+        }
+        assertIsRecord(jsonData);
+        assertIsRecord(jsonData.Hedr);
+        assertIsRecord(jsonData.Hedr["1000"]);
+        assertIsRecord(jsonData.Hedr["1000"].obj);
 
         // Check basic header structure
         expect(jsonData.Hedr).toBeDefined();

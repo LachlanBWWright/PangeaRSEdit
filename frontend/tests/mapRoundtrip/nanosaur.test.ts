@@ -150,8 +150,8 @@ describe("Nanosaur 1 Map Roundtrip", () => {
 
       // Check first item matches
       if (items.length > 0 && levelData.objectList.length > 0) {
-        expect(items[0].x).toBe(levelData.objectList[0].x);
-        expect(items[0].type).toBe(levelData.objectList[0].type);
+        expect(items[0]?.x).toBe(levelData.objectList[0]?.x);
+        expect(items[0]?.type).toBe(levelData.objectList[0]?.type);
       }
     }
 

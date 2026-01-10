@@ -11,41 +11,41 @@
 import { describe, it, expect } from "vitest";
 import { parseBG3D, bg3dParsedToBG3D, BG3DParseResult } from "./parseBG3D";
 import { bg3dParsedToGLTF, gltfToBG3D } from "./parsedBg3dGitfConverter";
-import * as fs from "fs";
-import * as path from "path";
+import { accessSync, constants, readFileSync } from "fs";
+import { join } from "path";
 
 // Game paths relative to workspace root
-const GAMES_ROOT = path.join(__dirname, "../../../../games");
+const GAMES_ROOT = join(__dirname, "../../../../games");
 
 // Test fixtures - one model from each game type
 const TEST_FIXTURES = {
   ottomatic: {
     name: "Otto Matic",
-    bg3dPath: path.join(GAMES_ROOT, "ottomatic/Data/Skeletons/Otto.bg3d"),
+    bg3dPath: join(GAMES_ROOT, "ottomatic/Data/Skeletons/Otto.bg3d"),
     supportsBoundingBox: false,
     supportsJpegTextures: false,
   },
   cromagrally: {
     name: "Cro Mag Rally",
-    bg3dPath: path.join(GAMES_ROOT, "cromagrally/Data/Skeletons/Brog.bg3d"),
+    bg3dPath: join(GAMES_ROOT, "cromagrally/Data/Skeletons/Brog.bg3d"),
     supportsBoundingBox: false,
     supportsJpegTextures: false,
   },
   bugdom2: {
     name: "Bugdom 2",
-    bg3dPath: path.join(GAMES_ROOT, "bugdom2/Data/Skeletons/Ant.bg3d"),
+    bg3dPath: join(GAMES_ROOT, "bugdom2/Data/Skeletons/Ant.bg3d"),
     supportsBoundingBox: true,
     supportsJpegTextures: false,
   },
   nanosaur2: {
     name: "Nanosaur 2",
-    bg3dPath: path.join(GAMES_ROOT, "nanosaur2/Data/Skeletons/nano.bg3d"),
+    bg3dPath: join(GAMES_ROOT, "nanosaur2/Data/Skeletons/nano.bg3d"),
     supportsBoundingBox: true,
     supportsJpegTextures: true, // May have JPEG textures
   },
   billyfrontier: {
     name: "Billy Frontier",
-    bg3dPath: path.join(GAMES_ROOT, "billyfrontier/Data/Skeletons/Billy.bg3d"),
+    bg3dPath: join(GAMES_ROOT, "billyfrontier/Data/Skeletons/Billy.bg3d"),
     supportsBoundingBox: true,
     supportsJpegTextures: false,
   },
@@ -54,7 +54,7 @@ const TEST_FIXTURES = {
 // Helper to check if file exists
 function fileExists(filePath: string): boolean {
   try {
-    fs.accessSync(filePath, fs.constants.F_OK);
+    accessSync(filePath, constants.F_OK);
     return true;
   } catch {
     return false;
@@ -63,7 +63,7 @@ function fileExists(filePath: string): boolean {
 
 // Helper to read file as ArrayBuffer
 function readFileAsArrayBuffer(filePath: string): ArrayBuffer {
-  const buffer = fs.readFileSync(filePath);
+  const buffer = readFileSync(filePath);
   return buffer.buffer.slice(
     buffer.byteOffset,
     buffer.byteOffset + buffer.byteLength,
@@ -71,8 +71,8 @@ function readFileAsArrayBuffer(filePath: string): ArrayBuffer {
 }
 
 // Shared group types
-type GroupChild = { children?: GroupChild[]; boundingBox?: unknown };
-type Group = { children?: GroupChild[] };
+interface GroupChild { children?: GroupChild[]; boundingBox?: unknown }
+interface Group { children?: GroupChild[] }
 
 describe("BG3D Multi-Game Parsing Tests", () => {
   // Test basic parsing for each game
@@ -184,8 +184,8 @@ describe("BG3D Multi-Game Parsing Tests", () => {
         expect(roundtripParsed.materials.length).toBe(parsed.materials.length);
 
         // Compare geometry counts
-        type GroupChild = { children?: GroupChild[]; boundingBox?: unknown };
-        type Group = { children?: GroupChild[] };
+        interface GroupChild { children?: GroupChild[]; boundingBox?: unknown }
+        interface Group { children?: GroupChild[] }
 
         function countGeometries(groups: Group[]): number {
           let count = 0;
@@ -303,14 +303,14 @@ describe("BG3D Format Difference Tests", () => {
 describe("BG3D Model File Tests", () => {
   // Test regular model files (non-skeleton) from each game
   const MODEL_FIXTURES = {
-    ottomatic: path.join(GAMES_ROOT, "ottomatic/Data/Models/level1_farm.bg3d"),
-    cromagrally: path.join(
+    ottomatic: join(GAMES_ROOT, "ottomatic/Data/Models/level1_farm.bg3d"),
+    cromagrally: join(
       GAMES_ROOT,
       "cromagrally/Data/Models/Level_Aztec.bg3d",
     ),
-    bugdom2: path.join(GAMES_ROOT, "bugdom2/Data/Models/Level1_Garden.bg3d"),
-    nanosaur2: path.join(GAMES_ROOT, "nanosaur2/Data/Models/global.bg3d"),
-    billyfrontier: path.join(
+    bugdom2: join(GAMES_ROOT, "bugdom2/Data/Models/Level1_Garden.bg3d"),
+    nanosaur2: join(GAMES_ROOT, "nanosaur2/Data/Models/global.bg3d"),
+    billyfrontier: join(
       GAMES_ROOT,
       "billyfrontier/Data/Models/global.bg3d",
     ),
@@ -336,11 +336,12 @@ describe("BG3D Model File Tests", () => {
       }
 
       expect(parsed).toBeDefined();
-      expect(parsed!.materials.length).toBeGreaterThan(0);
+      if (!parsed) throw new Error("Expected parsed to be defined");
+      expect(parsed.materials.length).toBeGreaterThan(0);
 
       console.log(
-        `${gameKey} model: ${parsed!.materials.length} materials, groups: ${
-          parsed!.groups.length
+        `${gameKey} model: ${parsed.materials.length} materials, groups: ${
+          parsed.groups.length
         }`,
       );
     });

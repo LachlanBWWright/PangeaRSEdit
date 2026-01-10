@@ -5,39 +5,46 @@
  * These functions are parameterized to receive all required data as arguments.
  */
 
-import { Updater } from "use-immer";
-import { Draft } from "immer";
-import type { ItemData, LiquidData, FenceData, SplineData } from "@/python/structSpecs/LevelTypes";
+import type { Draft } from "immer";
+import type { Updater } from "use-immer";
+import type {
+  ItemData,
+  LiquidData,
+  FenceData,
+  SplineData,
+} from "@/python/structSpecs/LevelTypes";
+
+type DraftFunction<T> = (draft: Draft<T>) => void;
 
 /**
  * Creates an Updater wrapper that only applies updates when data is non-null.
  * This is useful for menus that expect non-null data.
  */
-export function createNonNullUpdater<T>(
-  setter: Updater<T | null>
-): Updater<T> {
-  return (updater) => {
+export function createNonNullUpdater<T extends object>(setter: Updater<T | null>): Updater<T> {
+  return (updater: T | DraftFunction<T>) => {
     setter((current) => {
       if (!current) return current;
-      // Cast to satisfy TypeScript's type inference for Draft types
-      const result = typeof updater === "function" 
-        ? (updater as (val: Draft<T>) => Draft<T> | void)(current as Draft<T>) 
-        : updater;
-      return result as T | null;
+      if (typeof updater === "function") {
+        // Since T extends object, we know updater is a DraftFunction<T> here
+        const draftFn: DraftFunction<T> = updater;
+        draftFn(current);
+        return current;
+      }
+      return updater;
     });
   };
 }
 
 /**
  * Creates keyboard event handler for undo/redo functionality.
- * 
+ *
  * @param undoData - Function to call for undo action
  * @param redoData - Function to call for redo action
  * @returns Event handler function for keydown events
  */
 export function createUndoRedoKeyHandler(
   undoData: () => void,
-  redoData: () => void
+  redoData: () => void,
 ): (e: KeyboardEvent) => void {
   return (e: KeyboardEvent) => {
     if (
@@ -80,7 +87,9 @@ export function createZoomInHandler(setStage: Updater<StageState>): () => void {
 /**
  * Creates a zoom out handler that decreases scale by 10%
  */
-export function createZoomOutHandler(setStage: Updater<StageState>): () => void {
+export function createZoomOutHandler(
+  setStage: Updater<StageState>,
+): () => void {
   return () => {
     setStage((stage) => {
       stage.scale = Math.min(5, stage.scale * 0.9);
@@ -92,10 +101,12 @@ export function createZoomOutHandler(setStage: Updater<StageState>): () => void 
  * Check if terrain has supertile grid data (STgd) or layer data (Layr)
  * This determines whether the supertiles view is available.
  */
-export function terrainHasSupertileData(terrainData: {
-  STgd?: { 1000?: unknown } | null;
-  Layr?: { 1000?: unknown } | null;
-} | null): boolean {
+export function terrainHasSupertileData(
+  terrainData: {
+    STgd?: { 1000?: unknown } | null;
+    Layr?: { 1000?: unknown } | null;
+  } | null,
+): boolean {
   if (!terrainData) return false;
   return (
     (terrainData.STgd !== undefined && terrainData.STgd !== null) ||

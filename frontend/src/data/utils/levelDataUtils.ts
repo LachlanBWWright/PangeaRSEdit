@@ -9,6 +9,16 @@ import {
 } from "../../python/structSpecs/LevelTypes";
 import { Result, ok, err } from "../../types/result";
 
+// Type guard helper
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+// Type guard for LevelData - basic structure check
+function isLevelDataLike(value: unknown): value is LevelData {
+  return isRecord(value);
+}
+
 /**
  * Utility functions for combining and splitting level data between atomic types
  * and the complete LevelData structure for file I/O operations
@@ -144,7 +154,11 @@ export function combineLevelData(
   if (fenceData) Object.assign(combined, fenceData);
   if (splineData) Object.assign(combined, splineData);
 
-  return ok(combined as unknown as LevelData);
+  // Validate and return as LevelData
+  if (isLevelDataLike(combined)) {
+    return ok(combined);
+  }
+  return err(new Error("Combined data is not valid LevelData"));
 }
 
 /**
@@ -188,14 +202,16 @@ export function validateResourceForkJson(json_blob: Record<string, unknown>):
         };
       }
       // Ensure each inner record maps to objects
-      for (const [resId, resBlob] of Object.entries(value as Record<string, unknown>)) {
-        if (typeof resBlob !== "object" || resBlob === null || Array.isArray(resBlob)) {
-          return {
-            ok: false,
-            message: `Resource record '${resId}' under type '${key}' must be an object/dict`,
-            badKey: key,
-            badValueType: Array.isArray(resBlob) ? "array" : typeof resBlob,
-          };
+      if (isRecord(value)) {
+        for (const [resId, resBlob] of Object.entries(value)) {
+          if (typeof resBlob !== "object" || resBlob === null || Array.isArray(resBlob)) {
+            return {
+              ok: false,
+              message: `Resource record '${resId}' under type '${key}' must be an object/dict`,
+              badKey: key,
+              badValueType: Array.isArray(resBlob) ? "array" : typeof resBlob,
+            };
+          }
         }
       }
     }
@@ -209,23 +225,23 @@ export function validateResourceForkJson(json_blob: Record<string, unknown>):
  * so downstream validation/serialization doesn't fail on stray arrays or primitives.
  */
 export function sanitizeResourceForkJson(data: unknown): Record<string, unknown> {
-  if (typeof data !== "object" || data === null) {
+  if (!isRecord(data)) {
     return {};
   }
-  const source = data as Record<string, unknown>;
+  const source = data;
   const sanitized: Record<string, unknown> = { ...source };
   for (const [key, value] of Object.entries(source)) {
     if (key.length > 4) continue;
     if (value === undefined || value === null) continue;
-    if (typeof value !== "object" || Array.isArray(value)) {
-      delete sanitized[key];
+    if (!isRecord(value)) {
+      Reflect.deleteProperty(sanitized, key);
       continue;
     }
-    const entry = value as Record<string, unknown>;
+    const entry = value;
     for (const [resId, resVal] of Object.entries(entry)) {
       if (resVal === undefined || resVal === null) continue;
-      if (typeof resVal !== "object" || Array.isArray(resVal)) {
-        delete entry[resId];
+      if (!isRecord(resVal)) {
+        Reflect.deleteProperty(entry, resId);
       }
     }
   }

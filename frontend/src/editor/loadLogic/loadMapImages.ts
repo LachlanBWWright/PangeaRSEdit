@@ -14,7 +14,7 @@ export async function loadMapImages(
 ): Promise<Result<HTMLCanvasElement[], Error>> {
   let offset = 0;
 
-  const loadPromise: Promise<Result<HTMLCanvasElement[], Error>> = new Promise(
+  const loadPromise = new Promise<Result<HTMLCanvasElement[], Error>>(
     (resolve) => {
       if (globals.TILE_IMAGE_FORMAT === TileImageFormat.JPG) {
         // Nanosaur 2 and other JPG-based games: Each supertile is a JPEG, decompress with jpegDecompressWorker

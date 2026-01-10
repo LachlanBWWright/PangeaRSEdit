@@ -24,7 +24,11 @@ describe("Skeleton Animation glTF Validation", () => {
     const ottoData = readFileSync(ottoPath);
     const ottoSkeletonData = readFileSync(ottoSkeletonPath);
 
-    const skeleton = await parseSkeletonRsrc(ottoSkeletonData as unknown as ArrayBuffer);
+    const ottoSkeletonArrayBuffer = ottoSkeletonData.buffer.slice(
+      ottoSkeletonData.byteOffset,
+      ottoSkeletonData.byteOffset + ottoSkeletonData.byteLength,
+    );
+    const skeleton = await parseSkeletonRsrc(ottoSkeletonArrayBuffer);
     const bg3dParseResult = parseBG3D(ottoData.buffer, skeleton);
     if (!bg3dParseResult.ok) {
       throw bg3dParseResult.error;
@@ -69,7 +73,8 @@ describe("Skeleton Animation glTF Validation", () => {
     console.log("\n=== Analyzing glTF Structure ===");
 
     // Debug: Check the hierarchy
-    const defaultScene = gltfDoc.getRoot().getDefaultScene()!;
+    const defaultScene = gltfDoc.getRoot().getDefaultScene();
+    if (!defaultScene) throw new Error("Default scene missing");
     const rootChildren = defaultScene.listChildren();
 
     console.log("\n=== Scene Root Children ===");
@@ -123,7 +128,8 @@ describe("Skeleton Animation glTF Validation", () => {
     // Check scene
     const scene = root.getDefaultScene();
     expect(scene).toBeDefined();
-    console.log(`Scene: "${scene!.getName()}"`);
+    if (!scene) throw new Error("Scene missing");
+    console.log(`Scene: "${scene.getName()}"`);
 
     // Check skins
     const skins = root.listSkins();
@@ -213,7 +219,8 @@ describe("Skeleton Animation glTF Validation", () => {
     // Verify scene structure for PropertyBinding
     console.log("\n=== Verifying PropertyBinding Compatibility ===");
 
-    const sceneChildren = scene!.listChildren();
+    if (!scene) throw new Error("Scene missing");
+    const sceneChildren = scene.listChildren();
     console.log(`Scene children: ${sceneChildren.length}`);
 
     // Check if all joints from skin are accessible from scene
@@ -223,7 +230,7 @@ describe("Skeleton Animation glTF Validation", () => {
     let jointsAccessibleFromScene = 0;
 
     // Helper to check if node is in scene hierarchy
-    type SceneOrNode = { listChildren: () => Node[] };
+    interface SceneOrNode { listChildren: () => Node[] }
     function isNodeInHierarchy(node: Node, root: SceneOrNode): boolean {
       if (root === node) return true;
 
@@ -238,7 +245,7 @@ describe("Skeleton Animation glTF Validation", () => {
     }
 
     joints.forEach((joint, index) => {
-      const isAccessible = isNodeInHierarchy(joint, scene!);
+      const isAccessible = isNodeInHierarchy(joint, scene);
       if (isAccessible) {
         jointsAccessibleFromScene++;
       }

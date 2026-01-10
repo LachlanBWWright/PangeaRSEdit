@@ -15,11 +15,9 @@ import { readFileSync, existsSync } from "fs";
 import { join } from "path";
 import {
   load,
-  saveToJsonObject,
-  loadFromJson,
-  saveToBytes,
-  saveFromJson,
-} from "../../src/rsrcdump-ts/rsrcdump";
+  saveToJson,
+  loadBytesFromJsonAsync,
+} from "@lachlanbwwright/rsrcdump-ts";
 import { bugdomSpecs } from "../../src/python/structSpecs/bugdom";
 import { BugdomGlobals } from "../../src/data/globals/globals";
 import { preprocessJson } from "../../src/data/processors/ottoPreprocessor";
@@ -53,38 +51,47 @@ describe("Bugdom Map Roundtrip", () => {
 
     const fork = forkResult.value;
     expect(fork).toBeDefined();
-    expect(fork.resources).toBeDefined();
-    expect(fork.resources.size).toBeGreaterThan(0);
+    expect(fork.tree).toBeDefined();
+    expect(fork.tree.size).toBeGreaterThan(0);
 
     // Check for Bugdom-specific resource types
     const expectedTypes = ["Hedr", "Atrb", "Layr", "YCrd", "Itms"];
     for (const expectedType of expectedTypes) {
       expect(
-        fork.resources.has(expectedType),
+        fork.tree.has(expectedType),
         `Missing resource type: ${expectedType}`,
       ).toBe(true);
     }
 
     // Bugdom should have Xlat (tile translation table) and Timg (tile images)
-    console.log("Bugdom resource types:", Array.from(fork.resources.keys()));
+    console.log("Bugdom resource types:", Array.from(fork.tree.keys()));
   });
 
-  it("should parse to JSON with bugdom specs", () => {
+  it("should parse to JSON with bugdom specs", async () => {
     if (!fileExists) return;
 
-    const jsonResult = saveToJsonObject(
-      originalData,
+    const jsonStringResult = await saveToJson(
+      new Uint8Array(originalData),
       bugdomSpecs,
       [],
       [],
-      true,
     );
-    expect(jsonResult.ok).toBe(true);
-    if (!jsonResult.ok) return;
+    expect(jsonStringResult.ok).toBe(true);
+    if (!jsonStringResult.ok) return;
 
-    const jsonData = jsonResult.value;
+    const jsonData = JSON.parse(jsonStringResult.value);
+    function assertIsRecord(x: unknown): asserts x is Record<string, unknown> {
+      if (typeof x !== "object" || x === null)
+        throw new Error("Parsed data is not an object");
+    }
+    assertIsRecord(jsonData);
     expect(jsonData).toBeDefined();
     expect(jsonData._metadata).toBeDefined();
+
+    assertIsRecord(jsonData.Hedr);
+    assertIsRecord(jsonData.Hedr["1000"]);
+    assertIsRecord(jsonData.Hedr["1000"].obj);
+
     expect(jsonData.Hedr).toBeDefined();
     expect(jsonData.Hedr["1000"]).toBeDefined();
     expect(jsonData.Hedr["1000"].obj).toBeDefined();
@@ -109,70 +116,92 @@ describe("Bugdom Map Roundtrip", () => {
     }
   });
 
-  it("should apply preprocessing correctly", () => {
+  it("should apply preprocessing correctly", async () => {
     if (!fileExists) return;
 
-    const jsonResult = saveToJsonObject(
-      originalData,
+    const jsonStringResult = await saveToJson(
+      new Uint8Array(originalData),
       bugdomSpecs,
       [],
       [],
-      true,
     );
-    expect(jsonResult.ok).toBe(true);
-    if (!jsonResult.ok) return;
+    expect(jsonStringResult.ok).toBe(true);
+    if (!jsonStringResult.ok) return;
 
-    const jsonData = jsonResult.value;
+    const jsonData = JSON.parse(jsonStringResult.value);
 
     // Preprocessing should not throw
+    function assertIsRecord(x: unknown): asserts x is Record<string, unknown> {
+      if (typeof x !== "object" || x === null) {
+        throw new Error("Parsed data is not an object");
+      }
+    }
     expect(() => {
-      preprocessJson(jsonData as Record<string, unknown>, BugdomGlobals);
+      assertIsRecord(jsonData);
+      preprocessJson(jsonData, BugdomGlobals);
     }).not.toThrow();
   });
 
-  it("should roundtrip without specs (raw resource fork)", () => {
+  it("should roundtrip without specs (raw resource fork)", async () => {
     if (!fileExists) return;
 
     // Parse without specs (hex data only)
-    const jsonResult1 = saveToJsonObject(originalData, [], [], [], false);
-    expect(jsonResult1.ok).toBe(true);
-    if (!jsonResult1.ok) return;
-    const jsonData1 = jsonResult1.value;
+    const jsonStringResult1 = await saveToJson(
+      new Uint8Array(originalData),
+      [],
+      [],
+      [],
+    );
+    expect(jsonStringResult1.ok).toBe(true);
+    if (!jsonStringResult1.ok) return;
+    const jsonData1 = JSON.parse(jsonStringResult1.value);
 
     // Convert back to binary
-    const forkResult = loadFromJson(jsonData1, [], false);
-    expect(forkResult.ok).toBe(true);
-    if (!forkResult.ok) return;
-    const fork = forkResult.value;
-
-    const binaryData2 = saveToBytes(fork);
+    const bytesResult = await loadBytesFromJsonAsync(jsonData1, [], [], []);
+    expect(bytesResult.ok).toBe(true);
+    if (!bytesResult.ok) return;
+    const binaryData2 = bytesResult.value;
 
     // Parse the new binary
-    const jsonResult2 = saveToJsonObject(
-      new Uint8Array(binaryData2),
-      [],
-      [],
-      [],
-      false,
-    );
-    expect(jsonResult2.ok).toBe(true);
-    if (!jsonResult2.ok) return;
-    const jsonData2 = jsonResult2.value;
+    const jsonStringResult2 = await saveToJson(binaryData2, [], [], []);
+    expect(jsonStringResult2.ok).toBe(true);
+    if (!jsonStringResult2.ok) return;
+    const jsonData2 = JSON.parse(jsonStringResult2.value);
 
-    // Compare metadata
-    expect(jsonData2._metadata?.junk1).toBe(jsonData1._metadata?.junk1);
+    // Compare metadata safely
+    function isRecord(value: unknown): value is Record<string, unknown> {
+      return (
+        typeof value === "object" && value !== null && !Array.isArray(value)
+      );
+    }
+    if (isRecord(jsonData1) && isRecord(jsonData2)) {
+      const meta1 = jsonData1._metadata;
+      const meta2 = jsonData2._metadata;
+      if (isRecord(meta1) && isRecord(meta2)) {
+        expect(meta2.junk1).toBe(meta1.junk1);
+      }
 
-    // Compare resource types
-    const types1 = Object.keys(jsonData1)
-      .filter((k) => k !== "_metadata")
-      .sort();
-    const types2 = Object.keys(jsonData2)
-      .filter((k) => k !== "_metadata")
-      .sort();
-    expect(types2).toEqual(types1);
+      // Compare resource types
+      const types1 = Object.keys(jsonData1)
+        .filter((k) => k !== "_metadata")
+        .sort();
+      const types2 = Object.keys(jsonData2)
+        .filter((k) => k !== "_metadata")
+        .sort();
+      expect(types2).toEqual(types1);
 
-    // Compare hex data for header
-    expect(jsonData2.Hedr?.["1000"]?.data).toBe(jsonData1.Hedr?.["1000"]?.data);
+      // Compare hex data for header safely
+      const hd1 = jsonData1.Hedr;
+      const hd2 = jsonData2.Hedr;
+      if (
+        isRecord(hd1) &&
+        isRecord(hd2) &&
+        isRecord(hd1["1000"]) &&
+        isRecord(hd2["1000"])
+      ) {
+        expect(hd2["1000"].data).toBe(hd1["1000"].data);
+      }
+    }
 
     console.log("✅ Bugdom hex data roundtrip successful");
   });
@@ -181,18 +210,23 @@ describe("Bugdom Map Roundtrip", () => {
     // Skip: StructConverter.pack not implemented
   });
 
-  it("should produce similar binary size", () => {
+  it("should produce similar binary size", async () => {
     if (!fileExists) return;
 
-    const jsonResult = saveToJsonObject(originalData, [], [], [], false);
-    expect(jsonResult.ok).toBe(true);
-    if (!jsonResult.ok) return;
-    const jsonData = jsonResult.value;
+    const jsonStringResult = await saveToJson(
+      new Uint8Array(originalData),
+      [],
+      [],
+      [],
+    );
+    expect(jsonStringResult.ok).toBe(true);
+    if (!jsonStringResult.ok) return;
+    const jsonData = JSON.parse(jsonStringResult.value);
 
-    const binaryResult = saveFromJson(jsonData, [], false);
-    expect(binaryResult.ok).toBe(true);
-    if (!binaryResult.ok) return;
-    const binaryData2 = binaryResult.value;
+    const bytesResult = await loadBytesFromJsonAsync(jsonData, [], [], []);
+    expect(bytesResult.ok).toBe(true);
+    if (!bytesResult.ok) return;
+    const binaryData2 = bytesResult.value;
 
     const sizeRatio = binaryData2.length / originalData.length;
 

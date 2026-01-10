@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import {
   FenceData,
   HeaderData,
@@ -9,7 +9,7 @@ import { Globals, GlobalsInterface } from "@/data/globals/globals";
 import { getFenceColor } from "@/data/fences/getFenceColor";
 import { getFenceImagePath } from "@/data/fences/getFenceImagePath";
 import { getFenceHeight } from "@/data/fences/getFenceHeight";
-import * as THREE from "three";
+import { Texture, DoubleSide, TextureLoader, RepeatWrapping, ClampToEdgeWrapping, LinearFilter, LinearMipmapLinearFilter } from "three";
 
 interface FenceGeometryProps {
   fenceData: FenceData;
@@ -81,9 +81,9 @@ function calculateFenceSegmentGeometry(
 
 interface FenceSegmentMeshProps {
   geometry: FenceSegmentGeometryData;
-  texture: THREE.Texture | null;
+  texture: Texture | null;
   fenceColor: string;
-}
+} 
 
 const FenceSegmentMesh: React.FC<FenceSegmentMeshProps> = ({
   geometry,
@@ -118,11 +118,11 @@ const FenceSegmentMesh: React.FC<FenceSegmentMeshProps> = ({
       {texture ? (
         <meshBasicMaterial
           map={texture}
-          side={THREE.DoubleSide}
+          side={DoubleSide}
           transparent={true}
         />
       ) : (
-        <meshStandardMaterial color={fenceColor} side={THREE.DoubleSide} />
+        <meshStandardMaterial color={fenceColor} side={DoubleSide} />
       )}
     </mesh>
   );
@@ -131,10 +131,10 @@ const FenceSegmentMesh: React.FC<FenceSegmentMeshProps> = ({
 interface FenceGroupData {
   fenceIdx: number;
   fenceType: number;
-  segments: Array<{
+  segments: {
     index: number;
     geometry: FenceSegmentGeometryData;
-  }>;
+  }[];
 }
 
 export const FenceGeometry: React.FC<FenceGeometryProps> = ({
@@ -143,9 +143,7 @@ export const FenceGeometry: React.FC<FenceGeometryProps> = ({
   terrainData,
 }) => {
   const globals = useAtomValue(Globals);
-  const [textures, setTextures] = useState<Map<string, THREE.Texture>>(
-    new Map(),
-  );
+  const [textures, setTextures] = useState<Map<string, Texture>>(new Map());
 
   // Load textures for all fence types on mount
   useEffect(() => {
@@ -169,8 +167,8 @@ export const FenceGeometry: React.FC<FenceGeometryProps> = ({
     });
 
     // Load all textures
-    const textureLoader = new THREE.TextureLoader();
-    const loadedTextures = new Map<string, THREE.Texture>();
+    const textureLoader = new TextureLoader();
+    const loadedTextures = new Map<string, Texture>();
     let loadedCount = 0;
 
     textureUrls.forEach((url) => {
@@ -178,10 +176,10 @@ export const FenceGeometry: React.FC<FenceGeometryProps> = ({
         url,
         (texture) => {
           // Configure texture wrapping
-          texture.wrapS = THREE.RepeatWrapping; // U: wrap horizontally
-          texture.wrapT = THREE.ClampToEdgeWrapping; // V: clamp vertically
-          texture.magFilter = THREE.LinearFilter;
-          texture.minFilter = THREE.LinearMipmapLinearFilter;
+          texture.wrapS = RepeatWrapping; // U: wrap horizontally
+          texture.wrapT = ClampToEdgeWrapping; // V: clamp vertically
+          texture.magFilter = LinearFilter;
+          texture.minFilter = LinearMipmapLinearFilter;
 
           loadedTextures.set(url, texture);
           loadedCount++;
@@ -233,9 +231,15 @@ export const FenceGeometry: React.FC<FenceGeometryProps> = ({
 
     // Get texture aspect ratio (fallback to 1 if not loaded yet)
     const texture = textures.get(imagePath);
-    const textureAspectRatio = texture
-      ? (texture.source.data as { width: number; height: number }).width / (texture.source.data as { width: number; height: number }).height
-      : 1;
+    let textureAspectRatio = 1;
+    if (texture?.source?.data && typeof texture.source.data === "object" && texture.source.data !== null) {
+      const sourceData = texture.source.data;
+      if ("width" in sourceData && "height" in sourceData && 
+          typeof sourceData.width === "number" && typeof sourceData.height === "number" && 
+          sourceData.height > 0) {
+        textureAspectRatio = sourceData.width / sourceData.height;
+      }
+    }
 
     const segments = [];
     for (let i = 0; i < nubs.length - 1; i++) {

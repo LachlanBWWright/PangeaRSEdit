@@ -176,7 +176,7 @@ describe("usesIndividualTiles", () => {
 });
 
 // Mock canvas for testing in Node environment
-function createMockCanvas(width: number, height: number): HTMLCanvasElement {
+function createMockCanvas(width: number, height: number): unknown {
   // This is a simplified mock for testing
   // In browser environment, this would be a real canvas
   const canvas = {
@@ -184,28 +184,28 @@ function createMockCanvas(width: number, height: number): HTMLCanvasElement {
     height,
     getContext: () => ({
       fillStyle: "",
-      fillRect: () => {},
-      save: () => {},
-      restore: () => {},
-      translate: () => {},
-      scale: () => {},
-      rotate: () => {},
-      drawImage: () => {},
+      fillRect: () => { /* mock */ },
+      save: () => { /* mock */ },
+      restore: () => { /* mock */ },
+      translate: () => { /* mock */ },
+      scale: () => { /* mock */ },
+      rotate: () => { /* mock */ },
+      drawImage: () => { /* mock */ },
       createImageData: (w: number, h: number) => ({
         data: new Uint8ClampedArray(w * h * 4),
         width: w,
         height: h,
       }),
-      putImageData: () => {},
+      putImageData: () => { /* mock */ },
     }),
     toDataURL: () => "data:image/png;base64,mock",
-  } as unknown as HTMLCanvasElement;
+  };
   return canvas;
 }
 
 describe("buildAllBugdomSupertiles", () => {
   let mockHeaderData: HeaderData;
-  let mockTileImages: HTMLCanvasElement[];
+  let mockTileImages: any[]; // eslint-disable-line @typescript-eslint/no-explicit-any
 
   beforeEach(() => {
     mockHeaderData = {
@@ -316,7 +316,7 @@ describe("buildAllBugdomSupertiles", () => {
 });
 
 describe("buildSupertileFromTiles", () => {
-  let mockTileImages: HTMLCanvasElement[];
+  let mockTileImages: any[]; // eslint-disable-line @typescript-eslint/no-explicit-any
 
   beforeEach(() => {
     mockTileImages = [];

@@ -88,6 +88,10 @@ describe("All Games Validation Tests", () => {
           }
 
           const fileName = terrainFiles[i];
+          if (!fileName) {
+            console.warn(`Skipping ${game.name} level ${i + 1} - file not found`);
+            return;
+          }
           const filePath = join(terrainDir, fileName);
           const fileData = readFileSync(filePath);
 
@@ -105,7 +109,15 @@ describe("All Games Validation Tests", () => {
             return;
           }
 
-          const parsed = JSON.parse(parseResult.value) as Record<string, unknown>;
+          function assertIsRecord(x: unknown): asserts x is Record<string, unknown> {
+            if (typeof x !== "object" || x === null) {
+              throw new Error(`${fileName} parseResult did not return an object`);
+            }
+          }
+
+          const parsedUnknown: unknown = JSON.parse(parseResult.value);
+          assertIsRecord(parsedUnknown);
+          const parsed = parsedUnknown;
 
           // Apply nullToZero fix BEFORE preprocessing (fixes rsrcdump-ts v1.0.5 bug)
           fixNullToZero(parsed);

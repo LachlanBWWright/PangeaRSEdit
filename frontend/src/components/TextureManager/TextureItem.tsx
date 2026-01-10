@@ -17,13 +17,13 @@ import {
   ChevronUp,
 } from "lucide-react";
 
-type Texture = {
+interface Texture {
   name: string;
   url: string;
   type: "diffuse" | "normal" | "other";
   material?: string;
   size?: { width: number; height: number };
-};
+}
 
 interface Props {
   texture: Texture;

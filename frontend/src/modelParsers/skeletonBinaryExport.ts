@@ -39,8 +39,18 @@ export function skeletonResourceToBinary(
   );
 
   if (!isOk(result)) {
-    return err(new Error(`Failed to serialize skeleton: ${result.error}`));
+    const msg = typeof result.error === "string" ? result.error : String(result.error);
+    return err(new Error(`Failed to serialize skeleton: ${msg}`));
   }
 
-  return ok(result.value.buffer as ArrayBuffer);
+  // loadBytesFromJson returns Uint8Array on success
+  const out = result.value;
+  const buffer = out.buffer;
+  if (buffer instanceof ArrayBuffer) {
+    return ok(buffer.slice(out.byteOffset, out.byteOffset + out.byteLength));
+  }
+  // Handle SharedArrayBuffer by copying to ArrayBuffer
+  const copy = new ArrayBuffer(out.byteLength);
+  new Uint8Array(copy).set(new Uint8Array(buffer, out.byteOffset, out.byteLength));
+  return ok(copy);
 }

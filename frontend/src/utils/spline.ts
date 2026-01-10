@@ -1,6 +1,13 @@
 import { SplinePoint } from "@/python/structSpecs/LevelTypes";
 import { calcQuickDistance } from "./distanceCalc";
 
+/**
+ * Helper function to safely get array element with default
+ */
+function getSplineArray(arr: SplinePoint[][], index: number): SplinePoint[] {
+  return arr[index] ?? [];
+}
+
 export function getPoints(nubs: SplinePoint[]) {
   const pointsPerSpan = new Array<number>(nubs.length);
 
@@ -37,11 +44,14 @@ export function bakeSpline(nubs: SplinePoint[], pointsPerSpan: number[]) {
     let 
  */
   // ALLOCATE 2D ARRAY FOR CALCULATIONS
-  const space = new Array<SplinePoint[]>(8);
+  const space: SplinePoint[][] = [];
   //Init array
   for (let i = 0; i < 8; i++) {
-    space[i] = new Array<SplinePoint>(numNubs);
-    for (let j = 0; j < numNubs; j++) (space[i] as SplinePoint[])[j] = { x: 0, z: 0 };
+    const row: SplinePoint[] = [];
+    for (let j = 0; j < numNubs; j++) {
+      row.push({ x: 0, z: 0 });
+    }
+    space.push(row);
   }
 
   // ALLOC POINT ARRAY
@@ -55,16 +65,16 @@ export function bakeSpline(nubs: SplinePoint[], pointsPerSpan: number[]) {
   for (let i = 0; i < maxPoints; i++) points[i] = { x: 0, z: 0 };
 
   // DO MAGICAL CUBIC SPLINE CALCULATIONS ON CONTROL PTS
-  // These arrays are fully initialized in the loop above, assert them as non-undefined
-  const h0 = space[0] as SplinePoint[];
-  const h1 = space[1] as SplinePoint[];
-  const h2 = space[2] as SplinePoint[];
-  const h3 = space[3] as SplinePoint[];
+  // These arrays are fully initialized in the loop above
+  const h0 = getSplineArray(space, 0);
+  const h1 = getSplineArray(space, 1);
+  const h2 = getSplineArray(space, 2);
+  const h3 = getSplineArray(space, 3);
 
-  const a = space[4] as SplinePoint[];
-  const b = space[5] as SplinePoint[];
-  const c = space[6] as SplinePoint[];
-  const d = space[7] as SplinePoint[];
+  const a = getSplineArray(space, 4);
+  const b = getSplineArray(space, 5);
+  const c = getSplineArray(space, 6);
+  const d = getSplineArray(space, 7);
 
   // COPY CONTROL POINTS INTO ARRAY
   for (let i = 0; i < numNubs; i++) {

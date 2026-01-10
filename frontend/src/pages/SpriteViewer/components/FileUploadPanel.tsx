@@ -41,7 +41,14 @@ export function FileUploadPanel({
           <label className="text-xs text-gray-400 block mb-2">File Type</label>
           <select
             value={selectedType}
-            onChange={(e) => onTypeChange(e.target.value as FileType)}
+            onChange={(e) => {
+              const v = e.target.value;
+              if (v === "sprites" || v === "tga" || v === "tileset") {
+                onTypeChange(v);
+              } else {
+                console.warn("Unknown file type selected:", v);
+              }
+            }}
             className="w-full bg-gray-700 text-white rounded px-2 py-2 text-sm border border-gray-600"
           >
             <option value="sprites" style={{ color: "white", backgroundColor: "#1a1a2e" }}>Sprites (.shapes)</option>

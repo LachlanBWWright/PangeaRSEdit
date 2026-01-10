@@ -292,7 +292,7 @@ export function validateLevelData<T>(
  */
 export function validateHeader(
   data: unknown,
-  simplified: boolean = false,
+  simplified = false,
 ): Result<HeaderFull | HeaderSimplified, Error> {
   const schema = simplified ? headerSimplifiedSchema : headerFullSchema;
   const result = schema.safeParse(data);

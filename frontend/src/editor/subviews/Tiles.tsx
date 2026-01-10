@@ -50,18 +50,21 @@ export function Tiles({
   // Check data structure to determine tile type rather than game type
   // Games with individual tiles have Layr containing tile indices but no Atrb tile attributes
   // Standard games have Atrb with tile flags
-  const hasAtrbData = Boolean(terrainData.Atrb?.[1000]?.obj?.length);
-  const hasLayrData = Boolean(terrainData.Layr?.[1000]?.obj);
+  // NOTE: These variables are intentionally unused but kept for documentation
+  // const hasAtrbData = Boolean(terrainData.Atrb?.[1000]?.obj?.length);
+  // const hasLayrData = Boolean(terrainData.Layr?.[1000]?.obj);
 
   const tileGrid = useMemo(() => {
     // If no Atrb data or Layr doesn't reference Atrb, return empty array
-    if (!hasAtrbData || !hasLayrData) {
+    const layrData = terrainData.Layr?.[1000]?.obj;
+    const atrbData = terrainData.Atrb?.[1000]?.obj;
+    if (!atrbData || !layrData) {
       return [];
     }
-    return terrainData.Layr![1000].obj
-      .map((atrbIdx: number) => terrainData.Atrb![1000].obj[atrbIdx])
+    return layrData
+      .map((atrbIdx: number) => atrbData[atrbIdx])
       .filter((tile): tile is TileAttribute => tile !== undefined);
-  }, [terrainData.Layr, terrainData.Atrb, hasAtrbData, hasLayrData]);
+  }, [terrainData.Layr, terrainData.Atrb]);
 
   // For Topology view, check if YCrd data exists
   if (tileViewMode === TileViews.Topology) {

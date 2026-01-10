@@ -1,6 +1,7 @@
 import { Toaster as Sonner } from "sonner"
+import type { ComponentProps } from "react";
 
-type ToasterProps = React.ComponentProps<typeof Sonner>
+type ToasterProps = ComponentProps<typeof Sonner>
 
 // Toast duration in milliseconds
 const TOAST_DURATION_MS = 4000;

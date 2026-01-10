@@ -1,6 +1,22 @@
 import { parseBoneDataFallback } from "../parseHelpers";
 import type { BoneRaw } from "../parseSkeletonRsrcTS";
 
+// Type guard for checking if value is a record
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+// Type guard for BoneRaw
+function isBoneRaw(value: unknown): value is BoneRaw {
+  if (!isRecord(value)) return false;
+  return (
+    typeof value.parentBone === "number" &&
+    typeof value.coordX === "number" &&
+    typeof value.coordY === "number" &&
+    typeof value.coordZ === "number"
+  );
+}
+
 export function handleBone(
   resourceName: string,
   resourceData:
@@ -16,16 +32,13 @@ export function handleBone(
   );
 
   // Check if data is in the obj field (rsrcdump format)
-  const boneData = (resourceData as { obj?: BoneRaw })?.obj || resourceData;
+  let boneData: unknown = resourceData;
+  if (isRecord(resourceData) && "obj" in resourceData) {
+    boneData = resourceData.obj;
+  }
 
-  if (
-    boneData &&
-    (boneData as BoneRaw).parentBone !== undefined &&
-    (boneData as BoneRaw).coordX !== undefined &&
-    (boneData as BoneRaw).coordY !== undefined &&
-    (boneData as BoneRaw).coordZ !== undefined
-  ) {
-    const rd = boneData as BoneRaw;
+  if (isBoneRaw(boneData)) {
+    const rd = boneData;
     // Handle Pascal string format: 1 byte length + name characters (up to 31 bytes)
     // The name field is 32 bytes total in File_BoneDefinitionType
     let cleanName = rd.name || resourceName;
@@ -79,11 +92,13 @@ export function handleBone(
       `Bone ${resourceName} (${resourceId}) falling back to manual parsing. resourceData:`,
       resourceData,
     );
-    const hex = (resourceData as { data?: string })?.data || hexData || "";
-    const obj = parseBoneDataFallback(
-      hex,
-      (resourceData as { name?: string })?.name || resourceName,
-    );
+    const hex = isRecord(resourceData) && typeof resourceData.data === "string"
+      ? resourceData.data
+      : hexData || "";
+    const name = isRecord(resourceData) && typeof resourceData.name === "string"
+      ? resourceData.name
+      : resourceName;
+    const obj = parseBoneDataFallback(hex, name);
     console.log(
       `Bone ${obj.name} coordinates from fallback: [${obj.coordX}, ${obj.coordY}, ${obj.coordZ}], parentBone: ${obj.parentBone}`,
     );

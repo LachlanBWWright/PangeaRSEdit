@@ -12,6 +12,19 @@ import { useAtom } from "jotai";
 import { SelectedTile } from "@/data/supertiles/supertileAtoms";
 import { TerrainData, HeaderData } from "@/python/structSpecs/LevelTypes";
 
+// Type guard helpers
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function isArray(value: unknown): value is unknown[] {
+  return Array.isArray(value);
+}
+
+function getBoolean(value: unknown, defaultValue = false): boolean {
+  return typeof value === 'boolean' ? value : defaultValue;
+}
+
 interface MightyMikeSupertilesProps {
   headerData: HeaderData;
   terrainData: TerrainData;
@@ -32,15 +45,12 @@ const MightyMikeSupertilesComponent = ({
 
   // Access Mighty Mike tile values from the raw terrainData if available
   // These are stored as a keyed object during parsing, containing collision info
-  const rawTerrainData = terrainData as unknown as Record<string, unknown>;
-  const mightyMikeTileValues =
-    (rawTerrainData?._metadata as Record<string, unknown>)?.[1000] as Record<
-      string,
-      unknown
-    > | undefined;
-  const mightyMikeTileValuesArray =
-    ((mightyMikeTileValues?.obj as Record<string, unknown>)
-      ?.mightyMikeTileValues as unknown[]) || [];
+  const metadata = isRecord(terrainData._metadata) ? terrainData._metadata : undefined;
+  const metadataEntry = metadata && isRecord(metadata[1000]) ? metadata[1000] : undefined;
+  const metadataObj = metadataEntry && isRecord(metadataEntry.obj) ? metadataEntry.obj : undefined;
+  const mightyMikeTileValuesArray = metadataObj && isArray(metadataObj.mightyMikeTileValues)
+    ? metadataObj.mightyMikeTileValues
+    : [];
 
   const TILE_SIZE = 32;
   const mapWidth = header.mapWidth;
@@ -184,14 +194,10 @@ const MightyMikeSupertilesComponent = ({
             {showCollisionOverlay &&
               mightyMikeTileValuesArray.length > 0 &&
               i < mightyMikeTileValuesArray.length && (() => {
-                const tileValue = mightyMikeTileValuesArray[i] as Record<
-                  string,
-                  unknown
-                >;
-                const hasCollisionMask =
-                  (tileValue?.hasCollisionMask as boolean) || false;
-                const usePixelAccurateCollision =
-                  (tileValue?.usePixelAccurateCollision as boolean) || false;
+                const tileValue = mightyMikeTileValuesArray[i];
+                if (!isRecord(tileValue)) return null;
+                const hasCollisionMask = getBoolean(tileValue.hasCollisionMask);
+                const usePixelAccurateCollision = getBoolean(tileValue.usePixelAccurateCollision);
 
                 if (!hasCollisionMask) return null;
 

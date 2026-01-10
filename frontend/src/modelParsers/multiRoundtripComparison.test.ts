@@ -13,7 +13,7 @@ import type { BoneEntry } from "../python/structSpecs/skeleton/skeletonInterface
 import { bg3dSkeletonToSkeletonResource } from "./skeletonExport";
 import { skeletonResourceToBinary } from "./skeletonBinaryExport";
 import { bg3dParsedToGLTF, gltfToBG3D } from "./parsedBg3dGitfConverter";
-import type { BG3DGroup, BG3DGeometry } from "./parseBG3D";
+import type { BG3DGroup } from "./parseBG3D";
 import { readFileSync } from "fs";
 import { join } from "path";
 import { NodeIO } from "@gltf-transform/core";
@@ -45,13 +45,13 @@ describe("Multi-Roundtrip Semantic Accuracy", () => {
     let currentBg3dData = originalBg3dData.buffer;
     let currentSkeletonData = originalSkeletonData.buffer;
 
-    const parsedStates: Array<{
+    const parsedStates: {
       roundtrip: number;
       bg3dParsed: BG3DParseResult;
       skeletonParsed: SkeletonResource;
       bg3dBytes: number;
       skeletonBytes: number;
-    }> = [];
+    }[] = [];
 
     // Perform 3 roundtrips
     for (let i = 0; i <= 3; i++) {
@@ -100,13 +100,22 @@ describe("Multi-Roundtrip Semantic Accuracy", () => {
       );
       function countVertices(groups: BG3DGroup[]): number {
         let total = 0;
+        function hasVertices(x: unknown): x is { vertices: unknown[] } {
+          if (typeof x !== 'object' || x === null) return false;
+          const maybe = x as { vertices?: unknown };
+          return Array.isArray(maybe.vertices);
+        }
+        function isGroup(x: unknown): x is BG3DGroup {
+          if (typeof x !== 'object' || x === null) return false;
+          const maybe = x as { children?: unknown };
+          return Array.isArray(maybe.children);
+        }
         function traverse(group: BG3DGroup) {
           for (const child of group.children) {
-            if ((child as BG3DGeometry).type !== undefined) {
-              const geom = child as BG3DGeometry;
-              if (Array.isArray(geom.vertices)) total += geom.vertices.length;
-            } else {
-              traverse(child as BG3DGroup);
+            if (hasVertices(child)) {
+              total += child.vertices.length;
+            } else if (isGroup(child)) {
+              traverse(child);
             }
           }
         }
@@ -143,8 +152,12 @@ describe("Multi-Roundtrip Semantic Accuracy", () => {
 
         // Export back to binary
         const bg3dBinary = bg3dParsedToBG3D(bg3dParsedBack);
+        if (!bg3dParsedBack.skeleton) {
+          console.error("No skeleton found after GLTF->BG3D conversion");
+          continue;
+        }
         const skeletonResource = bg3dSkeletonToSkeletonResource(
-          bg3dParsedBack.skeleton!,
+          bg3dParsedBack.skeleton,
         );
         const skeletonBinaryResult = skeletonResourceToBinary(
           skeletonResource,
@@ -172,10 +185,12 @@ describe("Multi-Roundtrip Semantic Accuracy", () => {
     console.log("SEMANTIC COMPARISON ACROSS ROUNDTRIPS");
     console.log("=".repeat(80));
 
-    const original = parsedStates[0]!;
+    const original = parsedStates[0];
+    if (!original) throw new Error("No parsed states available");
 
     for (let i = 1; i < parsedStates.length; i++) {
-      const current = parsedStates[i]!;
+      const current = parsedStates[i];
+      if (!current) continue;
       console.log(`\n[Comparing Original vs Roundtrip ${i}]`);
 
       // Compare skeleton resource counts
@@ -208,12 +223,11 @@ describe("Multi-Roundtrip Semantic Accuracy", () => {
 
       // Compare bone names
       console.log(`\n  Checking bone names...`);
-      const origBoneNames = (
-        Object.values(origSkel.Bone || {}) as BoneEntry[]
-      ).map((b) => b.obj.name);
-      const currBoneNames = (
-        Object.values(currSkel.Bone || {}) as BoneEntry[]
-      ).map((b) => b.obj.name);
+          function getBoneNames(skel: SkeletonResource) {
+        return Object.values(skel.Bone || {}).map((b) => b.obj.name);
+      }
+      const origBoneNames = getBoneNames(origSkel);
+      const currBoneNames = getBoneNames(currSkel);
       let boneNameMismatches = 0;
       origBoneNames.forEach((name: string, idx: number) => {
         if (name !== currBoneNames[idx]) {
@@ -231,12 +245,11 @@ describe("Multi-Roundtrip Semantic Accuracy", () => {
 
       // Compare bone coordinates
       console.log(`\n  Checking bone coordinates...`);
-      const origBoneCoords = (
-        Object.values(origSkel.Bone || {}) as BoneEntry[]
-      ).map((b) => [b.obj.coordX, b.obj.coordY, b.obj.coordZ]);
-      const currBoneCoords = (
-        Object.values(currSkel.Bone || {}) as BoneEntry[]
-      ).map((b) => [b.obj.coordX, b.obj.coordY, b.obj.coordZ]);
+      function getBoneCoords(skel: SkeletonResource) {
+        return Object.values(skel.Bone || {}).map((b: BoneEntry) => [b.obj.coordX, b.obj.coordY, b.obj.coordZ]);
+      }
+      const origBoneCoords = getBoneCoords(origSkel);
+      const currBoneCoords = getBoneCoords(currSkel);
       let coordMismatches = 0;
       origBoneCoords.forEach((coords: number[], idx: number) => {
         const currCoords = currBoneCoords[idx];

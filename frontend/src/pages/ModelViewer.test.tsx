@@ -205,14 +205,14 @@ describe("ModelViewer Two-Step Upload Logic", () => {
   });
 
   test("handles animation detection logic", () => {
-    type ParsedWithSkeleton = {
+    interface ParsedWithSkeleton {
       materials: unknown[];
       groups: unknown[];
       skeleton?: {
         bones?: unknown[];
         animations?: { name?: string; duration?: number }[];
       };
-    };
+    }
     const checkForAnimations = (parsed: ParsedWithSkeleton) => {
       return parsed.skeleton?.animations?.length || 0;
     };

@@ -208,15 +208,25 @@ async function processMapData({
   const saveResult = loadBytesFromJson(sanitized, globals.STRUCT_SPECS, [], [], true);
 
   if (!saveResult.ok) {
-    console.error("Failed to serialize:", saveResult.error);
+    const saveErrorMsg = typeof saveResult.error === "string" ? saveResult.error : String(saveResult.error);
+    console.error("Failed to serialize:", saveErrorMsg);
     toast({
       title: "Saving failed",
-      description: saveResult.error,
+      description: saveErrorMsg,
     });
     return new ArrayBuffer(0);
   }
 
-  return saveResult.value.buffer as ArrayBuffer;
+  // loadBytesFromJson returns Uint8Array on success
+  const out = saveResult.value;
+  const buffer = out.buffer;
+  if (buffer instanceof ArrayBuffer) {
+    return buffer.slice(out.byteOffset, out.byteOffset + out.byteLength);
+  }
+  // Handle SharedArrayBuffer by copying to ArrayBuffer
+  const copy = new ArrayBuffer(out.byteLength);
+  new Uint8Array(copy).set(new Uint8Array(buffer, out.byteOffset, out.byteLength));
+  return copy;
 }
 
 async function compressMapImages(
@@ -274,8 +284,7 @@ function combineBuffersForDownload(bufferList: DataView[]): ArrayBuffer {
   }
   const imageDownloadBuffer = new DataView(new ArrayBuffer(totalSize));
   let pos2 = 0;
-  for (let i = 0; i < bufferList.length; i++) {
-    const buffer = bufferList[i];
+  for (const buffer of bufferList) {
     if (!buffer) continue;
     imageDownloadBuffer.setInt32(pos2, buffer.byteLength);
     pos2 += 4;

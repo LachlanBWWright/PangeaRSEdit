@@ -152,9 +152,10 @@ export function parseShapesFile(buffer: ArrayBuffer): Result<ShapesFile, Error> 
     if (compressionType === 0) {
       // RLB compressed (PACK_TYPE_RLB)
       const decompressed = decompressRLB(compressedData, decompSize);
-      shapeBuffer = (decompressed.buffer instanceof SharedArrayBuffer
-        ? decompressed.buffer.slice(0)
-        : decompressed.buffer) as ArrayBuffer;
+      const maybeBuffer = decompressed.buffer;
+      // Make a defensive copy so we always have an ArrayBuffer (avoid SharedArrayBuffer incompatibilities)
+      const copied = new Uint8Array(maybeBuffer).slice();
+      shapeBuffer = copied.buffer;
     } else if (compressionType === 2) {
       // Uncompressed (PACK_TYPE_NONE)
       shapeBuffer = buffer.slice(8);

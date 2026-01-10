@@ -99,9 +99,9 @@ import { LevelData } from "@/python/structSpecs/LevelTypes";
 // This allows the editor to use Nanosaur 1 levels in the same way as Otto Matic levels
 export function nanosaur1LevelToLevelData(
   level: Nanosaur1LevelData,
-  tileSize: number = 32,
-  tileIngameSize: number = 140,
-  heightExtrudeFactor: number = 4.0,
+  tileSize = 32,
+  tileIngameSize = 140,
+  heightExtrudeFactor = 4.0,
 ): LevelData {
   // Map Nanosaur 1 data to LevelData structure
   const width = level.header.width;
@@ -169,7 +169,7 @@ export function nanosaur1LevelToLevelData(
           Array.isArray(level.heightmapTiles) &&
           tileNum < level.heightmapTiles.length
         ) {
-          const tileArr = level.heightmapTiles![tileNum];
+          const tileArr = level.heightmapTiles[tileNum];
           if (tileArr && tileArr.length > 0) {
             const idx = offy * HMTILE_SIZE + offx;
             heightVal = tileArr[idx] ?? 0;
@@ -520,18 +520,19 @@ export function parseNanosaur1Level(buffer: ArrayBuffer): Nanosaur1LevelData {
     );
   }
 
-  // Heightmap tiles (32x32 bytes each)
+  // Heightmap tiles (32x32 bytes each) and padding
   let heightmapTiles: Uint8Array[] | null = null;
+  let heightmapPadding: Uint8Array | null = null;
+
   if (
     header.heightmapTilesOffset > 0 &&
     header.textureAttribOffset > header.heightmapTilesOffset
   ) {
     const HMTILE_SIZE = 32;
     const BYTES_PER_HMTILE = HMTILE_SIZE * HMTILE_SIZE;
-    const tileCount = Math.floor(
-      (header.textureAttribOffset - header.heightmapTilesOffset) /
-        BYTES_PER_HMTILE,
-    );
+    const dataSize = header.textureAttribOffset - header.heightmapTilesOffset;
+    const tileCount = Math.floor(dataSize / BYTES_PER_HMTILE);
+
     if (tileCount > 0) {
       heightmapTiles = parseNanosaurHeightmapTiles(
         buffer,
@@ -539,10 +540,29 @@ export function parseNanosaur1Level(buffer: ArrayBuffer): Nanosaur1LevelData {
         header.heightmapTilesOffset,
       );
     }
+
+    // Check for padding/extra bytes
+    const consumedBytes = tileCount * BYTES_PER_HMTILE;
+    if (consumedBytes < dataSize) {
+        const paddingSize = dataSize - consumedBytes;
+        const paddingOffset = header.heightmapTilesOffset + consumedBytes;
+        // slice of ArrayBuffer
+        const paddingBuffer = buffer.slice(paddingOffset, paddingOffset + paddingSize);
+        heightmapPadding = new Uint8Array(paddingBuffer);
+    }
+  }
+
+  // Tile Anim Data (from offset to EOF)
+  let tileAnimData: Uint8Array | null = null;
+  if (header.tileAnimDataOffset > 0 && header.tileAnimDataOffset < buffer.byteLength) {
+      const animSize = buffer.byteLength - header.tileAnimDataOffset;
+      const animOffset = header.tileAnimDataOffset;
+      const animBuffer = buffer.slice(animOffset, animOffset + animSize);
+      tileAnimData = new Uint8Array(animBuffer);
   }
 
   // Return all parsed data
-  const parsedData = {
+  return {
     header,
     textureLayer,
     heightmapLayer,
@@ -550,9 +570,7 @@ export function parseNanosaur1Level(buffer: ArrayBuffer): Nanosaur1LevelData {
     objectList,
     textureAttributes,
     heightmapTiles: heightmapTiles,
+    heightmapPadding: heightmapPadding,
+    tileAnimData: tileAnimData
   };
-
-  console.log(parsedData);
-
-  return parsedData;
 }

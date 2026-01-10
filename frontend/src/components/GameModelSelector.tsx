@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -43,17 +43,19 @@ export function GameModelSelector({
   const [loadWithSkeleton, setLoadWithSkeleton] = useState<boolean>(true);
 
   const selectedGame = GAMES.find((game) => game.id === selectedGameId);
-  
+
   const availableModels =
     selectedGame?.models.filter(
       (model) => model.category === selectedCategory,
     ) || [];
-    
-  // Derive categories directly (no need to memoize simple derivations)
-  const availableCategories = selectedGame
-    ? [...new Set(selectedGame.models.map((model) => model.category))]
-    : [];
 
+  // Derive categories and memoize to keep stable identity across renders
+  const availableCategories = useMemo(() => {
+    const game = GAMES.find((g) => g.id === selectedGameId);
+    return game
+      ? Array.from(new Set(game.models.map((model) => model.category)))
+      : [];
+  }, [selectedGameId]);
 
   useEffect(() => {
     // Reset model selection when game or category changes
@@ -87,18 +89,16 @@ export function GameModelSelector({
       }
 
       const bg3dArrayBuffer = await bg3dResponse.arrayBuffer();
-      
+
       // Determine file extension from the URL
-      const fileExtension = selectedModel.bg3dFile.endsWith(".3dmf") ? ".3dmf" : ".bg3d";
+      const fileExtension = selectedModel.bg3dFile.endsWith(".3dmf")
+        ? ".3dmf"
+        : ".bg3d";
       const fileName = `${selectedModel.name}${fileExtension}`;
-      
-      const bg3dFile = new File(
-        [bg3dArrayBuffer],
-        fileName,
-        {
-          type: "application/octet-stream",
-        },
-      );
+
+      const bg3dFile = new File([bg3dArrayBuffer], fileName, {
+        type: "application/octet-stream",
+      });
 
       let skeletonFile: File | undefined;
 

@@ -1,14 +1,19 @@
 /**
  * Utility functions for BG3D ↔ glTF conversion (functional API)
  * We use Float32Array(16) as the Mat4 representation.
- * 
- * Note: This file uses non-null assertions (!) for typed array access.
- * TypeScript's noUncheckedIndexedAccess treats typed array access as `number | undefined`,
- * but Float32Array always returns a number (defaulting to 0 for out-of-bounds).
- * All matrices in this file are created with fixed size 16, so index access is safe.
  */
 
 export type Mat4 = Float32Array;
+
+/**
+ * Safe accessor for typed array elements.
+ * TypeScript's noUncheckedIndexedAccess treats typed array access as `number | undefined`,
+ * but Float32Array always returns a number (defaulting to 0 for out-of-bounds).
+ * This helper ensures type safety while acknowledging the runtime behavior.
+ */
+function at(arr: Float32Array, index: number): number {
+  return arr[index] ?? 0;
+}
 
 export function createMatrix4(): Mat4 {
   const m = new Float32Array(16);
@@ -34,7 +39,7 @@ export function setTranslation(
 }
 
 export function getTranslation(m: Mat4): { x: number; y: number; z: number } {
-  return { x: m[12]!, y: m[13]!, z: m[14]! };
+  return { x: at(m, 12), y: at(m, 13), z: at(m, 14) };
 }
 
 export function invert(m: Mat4): Mat4 {
@@ -42,165 +47,170 @@ export function invert(m: Mat4): Mat4 {
   const a = m;
 
   inv[0] =
-    a[5]! * a[10]! * a[15]! -
-    a[5]! * a[11]! * a[14]! -
-    a[9]! * a[6]! * a[15]! +
-    a[9]! * a[7]! * a[14]! +
-    a[13]! * a[6]! * a[11]! -
-    a[13]! * a[7]! * a[10]!;
+    at(a, 5) * at(a, 10) * at(a, 15) -
+    at(a, 5) * at(a, 11) * at(a, 14) -
+    at(a, 9) * at(a, 6) * at(a, 15) +
+    at(a, 9) * at(a, 7) * at(a, 14) +
+    at(a, 13) * at(a, 6) * at(a, 11) -
+    at(a, 13) * at(a, 7) * at(a, 10);
   inv[4] =
-    -a[4]! * a[10]! * a[15]! +
-    a[4]! * a[11]! * a[14]! +
-    a[8]! * a[6]! * a[15]! -
-    a[8]! * a[7]! * a[14]! -
-    a[12]! * a[6]! * a[11]! +
-    a[12]! * a[7]! * a[10]!;
+    -at(a, 4) * at(a, 10) * at(a, 15) +
+    at(a, 4) * at(a, 11) * at(a, 14) +
+    at(a, 8) * at(a, 6) * at(a, 15) -
+    at(a, 8) * at(a, 7) * at(a, 14) -
+    at(a, 12) * at(a, 6) * at(a, 11) +
+    at(a, 12) * at(a, 7) * at(a, 10);
   inv[8] =
-    a[4]! * a[9]! * a[15]! -
-    a[4]! * a[11]! * a[13]! -
-    a[8]! * a[5]! * a[15]! +
-    a[8]! * a[7]! * a[13]! +
-    a[12]! * a[5]! * a[11]! -
-    a[12]! * a[7]! * a[9]!;
+    at(a, 4) * at(a, 9) * at(a, 15) -
+    at(a, 4) * at(a, 11) * at(a, 13) -
+    at(a, 8) * at(a, 5) * at(a, 15) +
+    at(a, 8) * at(a, 7) * at(a, 13) +
+    at(a, 12) * at(a, 5) * at(a, 11) -
+    at(a, 12) * at(a, 7) * at(a, 9);
   inv[12] =
-    -a[4]! * a[9]! * a[14]! +
-    a[4]! * a[10]! * a[13]! +
-    a[8]! * a[5]! * a[14]! -
-    a[8]! * a[6]! * a[13]! -
-    a[12]! * a[5]! * a[10]! +
-    a[12]! * a[6]! * a[9]!;
+    -at(a, 4) * at(a, 9) * at(a, 14) +
+    at(a, 4) * at(a, 10) * at(a, 13) +
+    at(a, 8) * at(a, 5) * at(a, 14) -
+    at(a, 8) * at(a, 6) * at(a, 13) -
+    at(a, 12) * at(a, 5) * at(a, 10) +
+    at(a, 12) * at(a, 6) * at(a, 9);
   inv[1] =
-    -a[1]! * a[10]! * a[15]! +
-    a[1]! * a[11]! * a[14]! +
-    a[9]! * a[2]! * a[15]! -
-    a[9]! * a[3]! * a[14]! -
-    a[13]! * a[2]! * a[11]! +
-    a[13]! * a[3]! * a[10]!;
+    -at(a, 1) * at(a, 10) * at(a, 15) +
+    at(a, 1) * at(a, 11) * at(a, 14) +
+    at(a, 9) * at(a, 2) * at(a, 15) -
+    at(a, 9) * at(a, 3) * at(a, 14) -
+    at(a, 13) * at(a, 2) * at(a, 11) +
+    at(a, 13) * at(a, 3) * at(a, 10);
   inv[5] =
-    a[0]! * a[10]! * a[15]! -
-    a[0]! * a[11]! * a[14]! -
-    a[8]! * a[2]! * a[15]! +
-    a[8]! * a[3]! * a[14]! +
-    a[12]! * a[2]! * a[11]! -
-    a[12]! * a[3]! * a[10]!;
+    at(a, 0) * at(a, 10) * at(a, 15) -
+    at(a, 0) * at(a, 11) * at(a, 14) -
+    at(a, 8) * at(a, 2) * at(a, 15) +
+    at(a, 8) * at(a, 3) * at(a, 14) +
+    at(a, 12) * at(a, 2) * at(a, 11) -
+    at(a, 12) * at(a, 3) * at(a, 10);
   inv[9] =
-    -a[0]! * a[9]! * a[15]! +
-    a[0]! * a[11]! * a[13]! +
-    a[8]! * a[1]! * a[15]! -
-    a[8]! * a[3]! * a[13]! -
-    a[12]! * a[1]! * a[11]! +
-    a[12]! * a[3]! * a[9]!;
+    -at(a, 0) * at(a, 9) * at(a, 15) +
+    at(a, 0) * at(a, 11) * at(a, 13) +
+    at(a, 8) * at(a, 1) * at(a, 15) -
+    at(a, 8) * at(a, 3) * at(a, 13) -
+    at(a, 12) * at(a, 1) * at(a, 11) +
+    at(a, 12) * at(a, 3) * at(a, 9);
   inv[13] =
-    a[0]! * a[9]! * a[14]! -
-    a[0]! * a[10]! * a[13]! -
-    a[8]! * a[1]! * a[14]! +
-    a[8]! * a[2]! * a[13]! +
-    a[12]! * a[1]! * a[10]! -
-    a[12]! * a[2]! * a[9]!;
+    at(a, 0) * at(a, 9) * at(a, 14) -
+    at(a, 0) * at(a, 10) * at(a, 13) -
+    at(a, 8) * at(a, 1) * at(a, 14) +
+    at(a, 8) * at(a, 2) * at(a, 13) +
+    at(a, 12) * at(a, 1) * at(a, 10) -
+    at(a, 12) * at(a, 2) * at(a, 9);
   inv[2] =
-    a[1]! * a[6]! * a[15]! -
-    a[1]! * a[7]! * a[14]! -
-    a[5]! * a[2]! * a[15]! +
-    a[5]! * a[3]! * a[14]! +
-    a[13]! * a[2]! * a[7]! -
-    a[13]! * a[3]! * a[6]!;
+    at(a, 1) * at(a, 6) * at(a, 15) -
+    at(a, 1) * at(a, 7) * at(a, 14) -
+    at(a, 5) * at(a, 2) * at(a, 15) +
+    at(a, 5) * at(a, 3) * at(a, 14) +
+    at(a, 13) * at(a, 2) * at(a, 7) -
+    at(a, 13) * at(a, 3) * at(a, 6);
   inv[6] =
-    -a[0]! * a[6]! * a[15]! +
-    a[0]! * a[7]! * a[14]! +
-    a[4]! * a[2]! * a[15]! -
-    a[4]! * a[3]! * a[14]! -
-    a[12]! * a[2]! * a[7]! +
-    a[12]! * a[3]! * a[6]!;
+    -at(a, 0) * at(a, 6) * at(a, 15) +
+    at(a, 0) * at(a, 7) * at(a, 14) +
+    at(a, 4) * at(a, 2) * at(a, 15) -
+    at(a, 4) * at(a, 3) * at(a, 14) -
+    at(a, 12) * at(a, 2) * at(a, 7) +
+    at(a, 12) * at(a, 3) * at(a, 6);
   inv[10] =
-    a[0]! * a[5]! * a[15]! -
-    a[0]! * a[7]! * a[13]! -
-    a[4]! * a[1]! * a[15]! +
-    a[4]! * a[3]! * a[13]! +
-    a[12]! * a[1]! * a[7]! -
-    a[12]! * a[3]! * a[5]!;
+    at(a, 0) * at(a, 5) * at(a, 15) -
+    at(a, 0) * at(a, 7) * at(a, 13) -
+    at(a, 4) * at(a, 1) * at(a, 15) +
+    at(a, 4) * at(a, 3) * at(a, 13) +
+    at(a, 12) * at(a, 1) * at(a, 7) -
+    at(a, 12) * at(a, 3) * at(a, 5);
   inv[14] =
-    -a[0]! * a[5]! * a[14]! +
-    a[0]! * a[6]! * a[13]! +
-    a[4]! * a[1]! * a[14]! -
-    a[4]! * a[2]! * a[13]! -
-    a[12]! * a[1]! * a[6]! +
-    a[12]! * a[2]! * a[5]!;
+    -at(a, 0) * at(a, 5) * at(a, 14) +
+    at(a, 0) * at(a, 6) * at(a, 13) +
+    at(a, 4) * at(a, 1) * at(a, 14) -
+    at(a, 4) * at(a, 2) * at(a, 13) -
+    at(a, 12) * at(a, 1) * at(a, 6) +
+    at(a, 12) * at(a, 2) * at(a, 5);
   inv[3] =
-    -a[1]! * a[6]! * a[11]! +
-    a[1]! * a[7]! * a[10]! +
-    a[5]! * a[2]! * a[11]! -
-    a[5]! * a[3]! * a[10]! -
-    a[9]! * a[2]! * a[7]! +
-    a[9]! * a[3]! * a[6]!;
+    -at(a, 1) * at(a, 6) * at(a, 11) +
+    at(a, 1) * at(a, 7) * at(a, 10) +
+    at(a, 5) * at(a, 2) * at(a, 11) -
+    at(a, 5) * at(a, 3) * at(a, 10) -
+    at(a, 9) * at(a, 2) * at(a, 7) +
+    at(a, 9) * at(a, 3) * at(a, 6);
   inv[7] =
-    a[0]! * a[6]! * a[11]! -
-    a[0]! * a[7]! * a[10]! -
-    a[4]! * a[2]! * a[11]! +
-    a[4]! * a[3]! * a[10]! +
-    a[8]! * a[2]! * a[7]! -
-    a[8]! * a[3]! * a[6]!;
+    at(a, 0) * at(a, 6) * at(a, 11) -
+    at(a, 0) * at(a, 7) * at(a, 10) -
+    at(a, 4) * at(a, 2) * at(a, 11) +
+    at(a, 4) * at(a, 3) * at(a, 10) +
+    at(a, 8) * at(a, 2) * at(a, 7) -
+    at(a, 8) * at(a, 3) * at(a, 6);
   inv[11] =
-    -a[0]! * a[5]! * a[11]! +
-    a[0]! * a[7]! * a[9]! +
-    a[4]! * a[1]! * a[11]! -
-    a[4]! * a[3]! * a[9]! -
-    a[8]! * a[1]! * a[7]! +
-    a[8]! * a[3]! * a[5]!;
+    -at(a, 0) * at(a, 5) * at(a, 11) +
+    at(a, 0) * at(a, 7) * at(a, 9) +
+    at(a, 4) * at(a, 1) * at(a, 11) -
+    at(a, 4) * at(a, 3) * at(a, 9) -
+    at(a, 8) * at(a, 1) * at(a, 7) +
+    at(a, 8) * at(a, 3) * at(a, 5);
   inv[15] =
-    a[0]! * a[5]! * a[10]! -
-    a[0]! * a[6]! * a[9]! -
-    a[4]! * a[1]! * a[10]! +
-    a[4]! * a[2]! * a[9]! +
-    a[8]! * a[1]! * a[6]! -
-    a[8]! * a[2]! * a[5]!;
+    at(a, 0) * at(a, 5) * at(a, 10) -
+    at(a, 0) * at(a, 6) * at(a, 9) -
+    at(a, 4) * at(a, 1) * at(a, 10) +
+    at(a, 4) * at(a, 2) * at(a, 9) +
+    at(a, 8) * at(a, 1) * at(a, 6) -
+    at(a, 8) * at(a, 2) * at(a, 5);
 
-  const det = a[0]! * inv[0]! + a[1]! * inv[4]! + a[2]! * inv[8]! + a[3]! * inv[12]!;
+  const det = at(a, 0) * at(inv, 0) + at(a, 1) * at(inv, 4) + at(a, 2) * at(inv, 8) + at(a, 3) * at(inv, 12);
   if (det === 0) {
     // Return identity to match former behavior
     return createMatrix4();
   }
 
   const invDet = 1.0 / det;
-  for (let i = 0; i < 16; i++) inv[i]! *= invDet;
-  return inv as Mat4;
+  for (let i = 0; i < 16; i++) {
+    const val = inv[i];
+    if (val !== undefined) {
+      inv[i] = val * invDet;
+    }
+  }
+  return inv;
 }
 
 export function multiply(a: Mat4, b: Mat4): Mat4 {
   const out = new Float32Array(16);
 
-  const a00 = a[0]!,
-    a01 = a[1]!,
-    a02 = a[2]!,
-    a03 = a[3]!;
-  const a10 = a[4]!,
-    a11 = a[5]!,
-    a12 = a[6]!,
-    a13 = a[7]!;
-  const a20 = a[8]!,
-    a21 = a[9]!,
-    a22 = a[10]!,
-    a23 = a[11]!;
-  const a30 = a[12]!,
-    a31 = a[13]!,
-    a32 = a[14]!,
-    a33 = a[15]!;
+  const a00 = at(a, 0),
+    a01 = at(a, 1),
+    a02 = at(a, 2),
+    a03 = at(a, 3);
+  const a10 = at(a, 4),
+    a11 = at(a, 5),
+    a12 = at(a, 6),
+    a13 = at(a, 7);
+  const a20 = at(a, 8),
+    a21 = at(a, 9),
+    a22 = at(a, 10),
+    a23 = at(a, 11);
+  const a30 = at(a, 12),
+    a31 = at(a, 13),
+    a32 = at(a, 14),
+    a33 = at(a, 15);
 
-  const b00 = b[0]!,
-    b01 = b[1]!,
-    b02 = b[2]!,
-    b03 = b[3]!;
-  const b10 = b[4]!,
-    b11 = b[5]!,
-    b12 = b[6]!,
-    b13 = b[7]!;
-  const b20 = b[8]!,
-    b21 = b[9]!,
-    b22 = b[10]!,
-    b23 = b[11]!;
-  const b30 = b[12]!,
-    b31 = b[13]!,
-    b32 = b[14]!,
-    b33 = b[15]!;
+  const b00 = at(b, 0),
+    b01 = at(b, 1),
+    b02 = at(b, 2),
+    b03 = at(b, 3);
+  const b10 = at(b, 4),
+    b11 = at(b, 5),
+    b12 = at(b, 6),
+    b13 = at(b, 7);
+  const b20 = at(b, 8),
+    b21 = at(b, 9),
+    b22 = at(b, 10),
+    b23 = at(b, 11);
+  const b30 = at(b, 12),
+    b31 = at(b, 13),
+    b32 = at(b, 14),
+    b33 = at(b, 15);
 
   out[0] = a00 * b00 + a01 * b10 + a02 * b20 + a03 * b30;
   out[1] = a00 * b01 + a01 * b11 + a02 * b21 + a03 * b31;
@@ -219,7 +229,7 @@ export function multiply(a: Mat4, b: Mat4): Mat4 {
   out[14] = a30 * b02 + a31 * b12 + a32 * b22 + a33 * b32;
   out[15] = a30 * b03 + a31 * b13 + a32 * b23 + a33 * b33;
 
-  return out as Mat4;
+  return out;
 }
 
 export function makeRotationFromQuaternion(

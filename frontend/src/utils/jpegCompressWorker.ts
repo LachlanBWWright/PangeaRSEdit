@@ -1,17 +1,17 @@
 import { jpegCompress } from "./jpegCompress";
 
-export type JpegCompressMessage = {
+export interface JpegCompressMessage {
   id: number;
   type: "compress";
   input: ImageData | { width: number; height: number; data: Uint8ClampedArray };
   quality?: number;
-};
+}
 
-export type JpegCompressResponse = {
+export interface JpegCompressResponse {
   id: number;
   type: "compressRes";
   jpegData: ArrayBuffer;
-};
+}
 
 onmessage = async (event: MessageEvent<JpegCompressMessage>) => {
   if (event.data.type === "compress") {

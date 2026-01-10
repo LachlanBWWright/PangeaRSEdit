@@ -7,7 +7,7 @@ import {
 import { useAtomValue } from "jotai";
 import { Globals } from "@/data/globals/globals";
 import { getTerrainHeightAtPoint } from "./fenceUtils/getTerrainHeightAtPoint";
-import * as THREE from "three";
+import { Vector3, CatmullRomCurve3, TubeGeometry } from "three";
 
 interface SplineGeometryProps {
   splineData: SplineData;
@@ -45,7 +45,7 @@ export const SplineGeometry: React.FC<SplineGeometryProps> = ({
       const points = pointsData.obj;
 
       // Create line through spline points
-      const linePoints: THREE.Vector3[] = [];
+      const linePoints: Vector3[] = []; 
 
       points.forEach((point) => {
         const worldX = point.x * scale;
@@ -61,12 +61,12 @@ export const SplineGeometry: React.FC<SplineGeometryProps> = ({
         );
 
         const posY = terrainY + SPLINE_HEIGHT_ABOVE_TERRAIN;
-        linePoints.push(new THREE.Vector3(worldX, posY, worldZ));
+        linePoints.push(new Vector3(worldX, posY, worldZ));
       });
 
       // Create TubeGeometry for the spline line
-      const curve = new THREE.CatmullRomCurve3(linePoints);
-      const geometry = new THREE.TubeGeometry(
+      const curve = new CatmullRomCurve3(linePoints);
+      const geometry = new TubeGeometry(
         curve,
         Math.max(20, Math.min(100, linePoints.length * 2)),
         SPLINE_LINE_WIDTH / 2,

@@ -1,8 +1,9 @@
 import { describe, it, expect } from "vitest";
 import { readFileSync } from "fs";
 import { join } from "path";
-import parseNanosaurLevelFile from "@/editor/loadLogic/parseNanosaurLevelFile";
+import { parseNanosaurLevelFile } from "@/editor/loadLogic/parseNanosaurLevelFile";
 import { NanosaurGlobals } from "@/data/globals/globals";
+import type { AtomicLevelData } from "@/data/utils/levelDataUtils";
 
 describe("Nanosaur 1 heightmap parsing", () => {
   it("should create YCrd values that are within reasonable bounds", async () => {
@@ -14,7 +15,7 @@ describe("Nanosaur 1 heightmap parsing", () => {
     const fileData = readFileSync(filePath);
     const blob = new Blob([fileData]);
 
-    const setData = (_data: Record<string, unknown>): void => {
+    const setData = (_data: AtomicLevelData): void => {
       void _data;
     };
     const result = await parseNanosaurLevelFile(blob, NanosaurGlobals, setData);

@@ -1,4 +1,4 @@
-export type bugdom2Header = {
+export interface bugdom2Header {
   version: number;
   numItems: number;
   mapWidth: number;
@@ -11,4 +11,4 @@ export type bugdom2Header = {
   numUniqueSupertiles: number;
   numWaterPatches: number;
   numCheckpoints: number;
-};
+}

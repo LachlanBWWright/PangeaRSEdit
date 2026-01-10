@@ -15,6 +15,29 @@ import type {
 import type { BG3DSkeleton } from "./parseBG3D";
 
 /**
+ * Type guard helper functions for safe extraction from unknown values
+ */
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function isArray(value: unknown): value is unknown[] {
+  return Array.isArray(value);
+}
+
+function getNumber(value: unknown, defaultValue = 0): number {
+  return typeof value === 'number' ? value : defaultValue;
+}
+
+function isEvntEntry(value: unknown): value is EvntEntry {
+  return isRecord(value) && 'name' in value && 'order' in value && 'obj' in value;
+}
+
+function isRelPEntry(value: unknown): value is RelPEntry {
+  return isRecord(value) && 'name' in value && 'order' in value && 'obj' in value;
+}
+
+/**
  * Convert BG3D skeleton data to SkeletonResource format
  * @param skeleton BG3D skeleton data
  * @param relP Optional RelP data from original skeleton resource (uses skeleton.relPoints if not provided)
@@ -37,13 +60,11 @@ export function bg3dSkeletonToSkeletonResource(
   const effectiveMetadata = metadata || skeleton.metadata;
 
   // Debug: Check what RelP data we received
-  const effectiveRelPObj = effectiveRelP as Record<string, unknown> | undefined;
+  const effectiveRelPObj = isRecord(effectiveRelP) ? effectiveRelP : undefined;
   if (effectiveRelPObj && effectiveRelPObj["1000"]) {
-    const rEntry = effectiveRelPObj["1000"] as
-      | Record<string, unknown>
-      | undefined;
-    const len = Array.isArray(rEntry?.obj)
-      ? (rEntry.obj as unknown[]).length
+    const rEntry = isRecord(effectiveRelPObj["1000"]) ? effectiveRelPObj["1000"] : undefined;
+    const len = rEntry && isArray(rEntry.obj)
+      ? rEntry.obj.length
       : 0;
     console.log(`RelP received with ${len} points`);
   } else {
@@ -59,7 +80,7 @@ export function bg3dSkeletonToSkeletonResource(
   };
 
   // Convert bones - use resource IDs starting from 1000
-  const bones: { [key: string]: BoneEntry } = {};
+  const bones: Record<string, BoneEntry> = {};
   skeleton.bones.forEach((bone, index) => {
     const resourceId = 1000 + index;
     bones[resourceId.toString()] = {
@@ -87,7 +108,7 @@ export function bg3dSkeletonToSkeletonResource(
 
   // Convert bone point attachments - use resource IDs matching bone IDs (1000+)
   // Create resources for ALL bones, even if empty (size 0)
-  const bonP: { [key: string]: BonPEntry } = {};
+  const bonP: Record<string, BonPEntry> = {};
   skeleton.bones.forEach((bone, index) => {
     const resourceId = 1000 + index;
     bonP[resourceId.toString()] = {
@@ -99,7 +120,7 @@ export function bg3dSkeletonToSkeletonResource(
 
   // Convert bone normal attachments - use resource IDs matching bone IDs (1000+)
   // Create resources for ALL bones, even if empty (size 0)
-  const bonN: { [key: string]: BonNEntry } = {};
+  const bonN: Record<string, BonNEntry> = {};
   skeleton.bones.forEach((bone, index) => {
     const resourceId = 1000 + index;
     bonN[resourceId.toString()] = {
@@ -110,12 +131,19 @@ export function bg3dSkeletonToSkeletonResource(
   });
 
   // Convert animations
-  const anHd: { [key: string]: AnHdEntry } = {};
+  const anHd: Record<string, AnHdEntry> = {};
   // Use provided evntData if available, otherwise create empty
-  const evnt: { [key: string]: EvntEntry } =
-    (evntData as { [key: string]: EvntEntry }) || {};
-  const numK: { [key: string]: NumKEntry } = {};
-  const keyF: { [key: string]: KeyFEntry } = {};
+  const evnt: Record<string, EvntEntry> = {};
+  if (isRecord(evntData)) {
+    // Copy the evntData entries safely
+    Object.entries(evntData).forEach(([key, value]) => {
+      if (isEvntEntry(value)) {
+        evnt[key] = value;
+      }
+    });
+  }
+  const numK: Record<string, NumKEntry> = {};
+  const keyF: Record<string, KeyFEntry> = {};
 
   skeleton.animations.forEach((animation, animIndex) => {
     const animResourceId = 1000 + animIndex;
@@ -163,21 +191,35 @@ export function bg3dSkeletonToSkeletonResource(
       keyF[keyFResourceId.toString()] = {
         name: boneName, // Use bone name, not generic "Keyframes"
         order: keyFResourceId,
-        obj: (keyframes as unknown[]).map((kf) => {
-          const kv = kf as Record<string, unknown>;
+        obj: keyframes.map((kf) => {
+          if (isRecord(kf)) {
+            return {
+              tick: getNumber(kf.tick),
+              accelerationMode: getNumber(kf.accelerationMode),
+              coordX: getNumber(kf.coordX),
+              coordY: getNumber(kf.coordY),
+              coordZ: getNumber(kf.coordZ),
+              rotationX: getNumber(kf.rotationX),
+              rotationY: getNumber(kf.rotationY),
+              rotationZ: getNumber(kf.rotationZ),
+              scaleX: getNumber(kf.scaleX, 1),
+              scaleY: getNumber(kf.scaleY, 1),
+              scaleZ: getNumber(kf.scaleZ, 1),
+            };
+          }
           return {
-            tick: (kv.tick as number) || 0,
-            accelerationMode: (kv.accelerationMode as number) || 0,
-            coordX: (kv.coordX as number) || 0,
-            coordY: (kv.coordY as number) || 0,
-            coordZ: (kv.coordZ as number) || 0,
-            rotationX: (kv.rotationX as number) || 0,
-            rotationY: (kv.rotationY as number) || 0,
-            rotationZ: (kv.rotationZ as number) || 0,
-            scaleX: (kv.scaleX as number) || 1,
-            scaleY: (kv.scaleY as number) || 1,
-            scaleZ: (kv.scaleZ as number) || 1,
-          } as unknown as import("../python/structSpecs/skeleton/skeletonInterface").KeyFObj;
+            tick: 0,
+            accelerationMode: 0,
+            coordX: 0,
+            coordY: 0,
+            coordZ: 0,
+            rotationX: 0,
+            rotationY: 0,
+            rotationZ: 0,
+            scaleX: 1,
+            scaleY: 1,
+            scaleZ: 1,
+          };
         }),
       };
     });
@@ -190,6 +232,16 @@ export function bg3dSkeletonToSkeletonResource(
     };
   });
 
+  // Build RelP safely without type assertions
+  const relPResult: Record<string, RelPEntry> = {};
+  if (isRecord(effectiveRelP)) {
+    Object.entries(effectiveRelP).forEach(([key, value]) => {
+      if (isRelPEntry(value)) {
+        relPResult[key] = value;
+      }
+    });
+  }
+
   return {
     Hedr: {
       "1000": {
@@ -201,7 +253,7 @@ export function bg3dSkeletonToSkeletonResource(
     Bone: bones,
     BonP: bonP,
     BonN: bonN,
-    RelP: (effectiveRelP as unknown as { [key: string]: RelPEntry }) || {}, // Include RelP if provided or from skeleton, otherwise empty
+    RelP: relPResult, // Include RelP if provided or from skeleton, otherwise empty
     AnHd: anHd,
     Evnt: evnt,
     NumK: numK,
@@ -210,21 +262,19 @@ export function bg3dSkeletonToSkeletonResource(
       effectiveAlisData && Object.keys(effectiveAlisData).length > 0
         ? effectiveAlisData
         : { "1000": { name: "alis", order: 1000, data: "00" } }, // Ensure alis resource exists (placeholder hex data if missing)
-    _metadata: (effectiveMetadata as Record<string, unknown>) || {}, // Include metadata if provided or from skeleton, otherwise empty
+    _metadata: isRecord(effectiveMetadata) ? effectiveMetadata : {}, // Include metadata if provided or from skeleton, otherwise empty
   };
 }
 
 /**
  * Helper function to convert relPoints format to RelP resource format
  */
-function convertRelPointsToRelPFormat(relPoints?: {
-  [resourceId: string]: [number, number, number][];
-}): Record<string, unknown> | undefined {
+function convertRelPointsToRelPFormat(relPoints?: Record<string, [number, number, number][]>): Record<string, unknown> | undefined {
   if (!relPoints || Object.keys(relPoints).length === 0) {
     return undefined;
   }
 
-  const relP: { [key: string]: RelPEntry } = {};
+  const relP: Record<string, RelPEntry> = {};
   Object.entries(relPoints).forEach(([resourceId, points]) => {
     relP[resourceId] = {
       name: `RelP_${resourceId}`,

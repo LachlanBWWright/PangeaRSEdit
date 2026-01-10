@@ -5,7 +5,7 @@ import {
 } from "@/python/structSpecs/LevelTypes";
 import { useRef, useMemo, forwardRef, useEffect } from "react";
 import { CanvasTexture, DoubleSide, Mesh, PlaneGeometry } from "three";
-import type * as THREE from "three";
+import type { Event } from "three";
 import { useAtomValue } from "jotai";
 import { Globals } from "@/data/globals/globals";
 import combineMapImages from "./terrainUtils";
@@ -14,9 +14,9 @@ export const TerrainGeometry = forwardRef<Mesh, {
   headerData: HeaderData;
   terrainData: TerrainData;
   mapImages: HTMLCanvasElement[];
-  onPointerDown?: (event: THREE.Event) => void;
-  onPointerMove?: (event: THREE.Event) => void;
-  onPointerUp?: (event: THREE.Event) => void;
+  onPointerDown?: (event: Event) => void;
+  onPointerMove?: (event: Event) => void;
+  onPointerUp?: (event: Event) => void;
 }>(function TerrainGeometry({
   headerData,
   terrainData,

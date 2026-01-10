@@ -30,11 +30,11 @@ enum View {
   supertiles,
 }
 
-export type StageData = {
+export interface StageData {
   scale: number;
   x: number;
   y: number;
-};
+}
 
 export function KonvaView({
   headerData,

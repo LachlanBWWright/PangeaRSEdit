@@ -33,7 +33,12 @@ export async function jpegCompress(
         }
         const reader = new FileReader();
         reader.onload = () => {
-          resolve(ok(reader.result as ArrayBuffer));
+          const res = reader.result;
+          if (res instanceof ArrayBuffer) {
+            resolve(ok(res));
+          } else {
+            resolve(err(new Error("Unexpected JPEG reader result type")));
+          }
         };
         reader.onerror = () => {
           resolve(err(new Error("Failed to read JPEG blob")));

@@ -15,6 +15,11 @@ import { DataType, GlobalsInterface } from "../globals/globals";
 import { Result, ok, err, isErr } from "../../types/result";
 import { saveToJson, loadBytesFromJson } from "@lachlanbwwright/rsrcdump-ts";
 
+// Type guard helper
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
 /**
  * Parse a level data buffer to JSON using rsrcdump-ts
  * This is the core parsing function that wraps the rsrcdump-ts library
@@ -42,15 +47,27 @@ export async function parseLevelBuffer(
       return err(new Error(parseResult.error));
     }
 
-    const parsed = JSON.parse(parseResult.value);
-    
+    const parsed: unknown = JSON.parse(parseResult.value);
+
     // Fix null values from rsrcdump-ts v1.0.4 bug (returns null for numeric zeros)
-    fixNullToZero(parsed);
-    
-    return ok(parsed as LevelData);
+    if (isRecord(parsed)) {
+      fixNullToZero(parsed);
+      // Validate the parsed structure has the expected LevelData shape
+      if (isLevelDataLike(parsed)) {
+        return ok(parsed);
+      }
+      return err(new Error("Parsed data does not match LevelData structure"));
+    }
+    return err(new Error("Parsed data is not an object"));
   } catch (error) {
     return err(error instanceof Error ? error : new Error(String(error)));
   }
+}
+
+// Type guard for LevelData - checks basic structure
+function isLevelDataLike(value: unknown): value is LevelData {
+  // LevelData is a generic type with optional fields, so a basic record check is sufficient here
+  return isRecord(value);
 }
 
 /**
@@ -104,7 +121,11 @@ export async function serializeLevelData(
       return err(new Error(saveResult.error));
     }
 
-    return ok(saveResult.value.buffer as ArrayBuffer);
+    const resultBuffer = saveResult.value.buffer;
+    if (!(resultBuffer instanceof ArrayBuffer)) {
+      return err(new Error("Result buffer is not an ArrayBuffer"));
+    }
+    return ok(resultBuffer);
   } catch (error) {
     return err(error instanceof Error ? error : new Error(String(error)));
   }
@@ -127,22 +148,19 @@ export async function parseLevelForGame(
     return parseNanosaur1Buffer(buffer, gameType);
   }
 
-  const parseResult = await parseLevelBuffer(
-    buffer,
-    {
-      structSpecs: gameType.STRUCT_SPECS,
-    },
-  );
+  const parseResult = await parseLevelBuffer(buffer, {
+    structSpecs: gameType.STRUCT_SPECS,
+  });
 
   if (isErr(parseResult)) {
     return parseResult;
   }
 
-  // Apply preprocessing
-  const preprocessResult = preprocessJson(
-    parseResult.value as unknown as Record<string, unknown>,
-    gameType
-  );
+  // Apply preprocessing (LevelData must be a record for preprocessJson)
+  if (!isRecord(parseResult.value)) {
+    return err(new Error("Parsed data is not an object"));
+  }
+  const preprocessResult = preprocessJson(parseResult.value, gameType);
   if (isErr(preprocessResult)) {
     return preprocessResult;
   }
@@ -172,10 +190,7 @@ export async function performRoundtrip(
   >
 > {
   // Parse the original buffer
-  const originalResult = await parseLevelForGame(
-    buffer,
-    gameType,
-  );
+  const originalResult = await parseLevelForGame(buffer, gameType);
 
   if (isErr(originalResult)) {
     return err(
@@ -184,12 +199,9 @@ export async function performRoundtrip(
   }
 
   // Serialize back to binary
-  const serializedResult = await serializeLevelData(
-    originalResult.value,
-    {
-      structSpecs: gameType.STRUCT_SPECS,
-    },
-  );
+  const serializedResult = await serializeLevelData(originalResult.value, {
+    structSpecs: gameType.STRUCT_SPECS,
+  });
 
   if (isErr(serializedResult)) {
     return err(
@@ -229,13 +241,13 @@ export function compareLevelData(
   roundtrip: LevelData,
 ): {
   equal: boolean;
-  differences: Array<{ path: string; original: unknown; roundtrip: unknown }>;
+  differences: { path: string; original: unknown; roundtrip: unknown }[];
 } {
-  const differences: Array<{
+  const differences: {
     path: string;
     original: unknown;
     roundtrip: unknown;
-  }> = [];
+  }[] = [];
 
   function compare(obj1: unknown, obj2: unknown, path: string): void {
     if (obj1 === obj2) return;
@@ -267,17 +279,13 @@ export function compareLevelData(
       return;
     }
 
-    if (typeof obj1 === "object" && typeof obj2 === "object") {
-      const keys1 = Object.keys(obj1 as object);
-      const keys2 = Object.keys(obj2 as object);
+    if (isRecord(obj1) && isRecord(obj2)) {
+      const keys1 = Object.keys(obj1);
+      const keys2 = Object.keys(obj2);
       const allKeys = new Set([...keys1, ...keys2]);
 
       for (const key of allKeys) {
-        compare(
-          (obj1 as Record<string, unknown>)[key],
-          (obj2 as Record<string, unknown>)[key],
-          `${path}.${key}`,
-        );
+        compare(obj1[key], obj2[key], `${path}.${key}`);
       }
       return;
     }

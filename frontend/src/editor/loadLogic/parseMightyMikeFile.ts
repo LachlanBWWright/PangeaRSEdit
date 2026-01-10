@@ -1,12 +1,24 @@
-import { LevelData } from "@/python/structSpecs/LevelTypes";
-import { Result, ok, err } from "@/types/result";
+import { LevelData } from "../../python/structSpecs/LevelTypes";
+import { Result, ok, err } from "../../types/result";
 import {
   parseMightyMikeMap,
   parseMightyMikeTileSet,
-} from "@/modelParsers/parseMightyMike";
-import type { MightyMikeTileSet } from "@/python/structSpecs/mightyMikeInterface";
-import { splitLevelData, AtomicLevelData } from "@/data/utils/levelDataUtils";
-import { extractTGAPalette } from "@/utils/tgaParser";
+  mightyMikeMapToCompressedBinary,
+} from "../../modelParsers/parseMightyMike";
+import type { MightyMikeTileSet, MightyMikeMap } from "../../python/structSpecs/mightyMikeInterface";
+import { splitLevelData, AtomicLevelData } from "../../data/utils/levelDataUtils";
+import { extractTGAPalette } from "../../utils/tgaParser";
+
+// Type guard helper
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+// Type guard for MightyMikeTileSet
+function isMightyMikeTileSet(value: unknown): value is MightyMikeTileSet {
+  if (!isRecord(value)) return false;
+  return Array.isArray(value.tileImages);
+}
 
 /**
  * Get the scene name from the map file URL
@@ -64,7 +76,7 @@ async function loadScenePalette(
       tgaUrl = dirPath + tgaFilename;
     } else {
       // basePath is just a filename or empty, use the default asset path
-      tgaUrl = `/PangeaRSEdit/assets/mightyMike/terrain/${tgaFilename}`;
+      tgaUrl = `${import.meta.env.BASE_URL}assets/mightyMike/terrain/${tgaFilename}`;
     }
     console.log(`[PALETTE] Loading palette for scene "${sceneName}"`);
     console.log(`[PALETTE]   TGA filename expected: ${tgaFilename}`);
@@ -303,6 +315,17 @@ export async function parseMightyMikeFile(
           order: 2,
         },
       },
+      Atrb: {
+        1000: {
+          name: "Tile Attribute Data",
+          obj: new Array(tilesetData?.numTileDefinitions || 100).fill({
+            flags: 0,
+            p0: 0,
+            p1: 0,
+          }),
+          order: 6,
+        },
+      },
       // Include tileset data if available
       ...(tilesetData && { tileset: tilesetData }),
       // Include xlate table if available (for tile translation)
@@ -317,7 +340,13 @@ export async function parseMightyMikeFile(
     };
 
     console.log("Final MightyMike level data BEFORE splitLevelData:");
-    const tilesetField = (ottoCompatible as Record<string, unknown>).tileset as MightyMikeTileSet | undefined;
+    const tilesetRaw = isRecord(ottoCompatible)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-type-assertion
+      ? (ottoCompatible as any).tileset
+      : undefined;
+    const tilesetField = isMightyMikeTileSet(tilesetRaw)
+      ? tilesetRaw
+      : undefined;
     console.log({
       hasTileset: !!tilesetField,
       tilesetType: tilesetField?.constructor?.name,
@@ -330,6 +359,8 @@ export async function parseMightyMikeFile(
       layrLength: ottoCompatible.Layr[1000].obj.length,
     });
 
+    // Use ottoCompatible to populate AtomicLevelData
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion
     const atomicData = splitLevelData(ottoCompatible as unknown as LevelData);
     console.log("MightyMike atomicData AFTER splitLevelData:", atomicData);
 
@@ -349,9 +380,13 @@ export async function parseMightyMikeFile(
       setMapImages(tilesetField.tileImages);
     }
 
-    return ok({
+    // Build the final LevelData with metadata
+    const finalData = {
       ...ottoCompatible,
       _metadata: {
+        file_attributes: 0,
+        junk1: 0,
+        junk2: 0,
         1000: {
           name: "Metadata",
           obj: {
@@ -361,8 +396,107 @@ export async function parseMightyMikeFile(
           order: 100,
         },
       },
-    } as unknown as LevelData);
+    };
+    // The structure is validated at build time via the spread from ottoCompatible
+    function assertIsLevelData(x: unknown): asserts x is LevelData {
+      if (typeof x !== "object" || x === null || !("Hedr" in x)) {
+        throw new Error("Final data is not LevelData");
+      }
+    }
+    assertIsLevelData(finalData);
+    return ok(finalData);
   } catch (e) {
     return err(e instanceof Error ? e : new Error(String(e)));
   }
+}
+
+/**
+ * Serialize a Mighty Mike level back to binary .map format
+ */
+export function serializeMightyMikeLevel(levelData: LevelData): Result<ArrayBuffer, Error> {
+  // 1. Get metadata
+  const metadataRaw = levelData._metadata?.[1000];
+
+  if (!isRecord(metadataRaw) || !isRecord(metadataRaw.obj)) {
+    return err(new Error("Missing Mighty Mike metadata structure (1000.obj) for serialization"));
+  }
+
+  const metadata = metadataRaw.obj;
+
+  if (!metadata.mightyMikeMapData || !metadata.mightyMikeTileValues) {
+    return err(new Error("Missing Mighty Mike metadata fields (mapData/tileValues) for serialization"));
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion
+  const mapData = metadata.mightyMikeMapData as unknown as MightyMikeMap;
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion
+  const tileValues = metadata.mightyMikeTileValues as unknown as Record<string, unknown>[]; // Array of tile objects
+
+  // 2. Update Items
+  const items = levelData.Itms?.[1000]?.obj || [];
+  mapData.items = items.map((item: unknown) => {
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion
+    const it = item as Record<string, unknown>;
+    return {
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion
+      x: it.x as number,
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion
+      y: it.z as number, // Note: LevelData uses x,z but MightyMike uses x,y
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion
+      type: it.type as number,
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion
+      p0: (it.p0 as number) ?? 0,
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion
+      p1: (it.p1 as number) ?? 0,
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion
+      p2: (it.p2 as number) ?? 0,
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion
+      p3: (it.p3 as number) ?? 0,
+    };
+  });
+  mapData.numItems = mapData.items.length;
+
+  // 3. Update Tiles
+  const layr = levelData.Layr?.[1000]?.obj || [];
+
+  if (layr.length !== tileValues.length) {
+      console.warn(`Layer length (${layr.length}) does not match metadata tile values length (${tileValues.length}). Map size might have changed?`);
+  }
+
+  // Update tileValues with new indices from Layr
+  const TILENUM_MASK = 0x07ff;
+
+  layr.forEach((newTileIndex: number, i: number) => {
+      if (i < tileValues.length) {
+          const tile = tileValues[i];
+          tile["tileIndex"] = newTileIndex;
+          // Update rawValue: clear old index bits and set new index bits
+          // Preserve high bits (flags)
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion
+          const rawValue = (tile["rawValue"] as number);
+          tile["rawValue"] = (rawValue & ~TILENUM_MASK) | (newTileIndex & TILENUM_MASK);
+      }
+  });
+
+  // Reconstruct mapImage (2D array)
+  const mapImage = [];
+  const width = mapData.mapWidth;
+  const height = mapData.mapHeight;
+
+  for (let y = 0; y < height; y++) {
+      const row = [];
+      for (let x = 0; x < width; x++) {
+          const i = y * width + x;
+          if (i < tileValues.length) {
+              row.push(tileValues[i]);
+          } else {
+              row.push({ rawValue: 0, tileIndex: 0, hasCollisionMask: false, usePixelAccurateCollision: false });
+          }
+      }
+      mapImage.push(row);
+  }
+  mapData.mapImage = mapImage;
+
+  // 4. Compress and return
+  return ok(mightyMikeMapToCompressedBinary(mapData));
 }
