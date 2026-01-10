@@ -214,9 +214,10 @@ export function SplineEditor({
                 <Input
                   type="number"
                   value={radToDeg(selectedItem.rot.x).toFixed(1)}
-                  onChange={(e) =>
-                    handleRotationChange("x", parseFloat(e.target.value) || 0)
-                  }
+                  onChange={(e) => {
+                    const parsed = parseFloat(e.target.value);
+                    handleRotationChange("x", !isNaN(parsed) ? parsed : 0);
+                  }}
                 />
               </div>
               <div>
@@ -224,9 +225,10 @@ export function SplineEditor({
                 <Input
                   type="number"
                   value={radToDeg(selectedItem.rot.y).toFixed(1)}
-                  onChange={(e) =>
-                    handleRotationChange("y", parseFloat(e.target.value) || 0)
-                  }
+                  onChange={(e) => {
+                    const parsed = parseFloat(e.target.value);
+                    handleRotationChange("y", !isNaN(parsed) ? parsed : 0);
+                  }}
                 />
               </div>
               <div>
@@ -234,9 +236,10 @@ export function SplineEditor({
                 <Input
                   type="number"
                   value={radToDeg(selectedItem.rot.z).toFixed(1)}
-                  onChange={(e) =>
-                    handleRotationChange("z", parseFloat(e.target.value) || 0)
-                  }
+                  onChange={(e) => {
+                    const parsed = parseFloat(e.target.value);
+                    handleRotationChange("z", !isNaN(parsed) ? parsed : 0);
+                  }}
                 />
               </div>
             </div>
@@ -252,9 +255,10 @@ export function SplineEditor({
                   type="number"
                   step="1"
                   value={selectedItem.positionOffset.x.toFixed(1)}
-                  onChange={(e) =>
-                    handleOffsetChange("x", parseFloat(e.target.value) || 0)
-                  }
+                  onChange={(e) => {
+                    const parsed = parseFloat(e.target.value);
+                    handleOffsetChange("x", !isNaN(parsed) ? parsed : 0);
+                  }}
                 />
               </div>
               <div>
@@ -263,9 +267,10 @@ export function SplineEditor({
                   type="number"
                   step="1"
                   value={selectedItem.positionOffset.y.toFixed(1)}
-                  onChange={(e) =>
-                    handleOffsetChange("y", parseFloat(e.target.value) || 0)
-                  }
+                  onChange={(e) => {
+                    const parsed = parseFloat(e.target.value);
+                    handleOffsetChange("y", !isNaN(parsed) ? parsed : 0);
+                  }}
                 />
               </div>
               <div>
@@ -274,9 +279,10 @@ export function SplineEditor({
                   type="number"
                   step="1"
                   value={selectedItem.positionOffset.z.toFixed(1)}
-                  onChange={(e) =>
-                    handleOffsetChange("z", parseFloat(e.target.value) || 0)
-                  }
+                  onChange={(e) => {
+                    const parsed = parseFloat(e.target.value);
+                    handleOffsetChange("z", !isNaN(parsed) ? parsed : 0);
+                  }}
                 />
               </div>
             </div>
