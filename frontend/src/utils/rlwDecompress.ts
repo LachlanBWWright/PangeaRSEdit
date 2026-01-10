@@ -164,8 +164,18 @@ export function rlwDecompress(compressedBuffer: ArrayBuffer): Result<Decompresse
  * Compresses data using RLW compression
  */
 export function rlwCompress(decompressedBuffer: ArrayBuffer): ArrayBuffer {
-  const input = new DataView(decompressedBuffer);
-  const inputSize = decompressedBuffer.byteLength;
+  // Handle odd-sized buffers by padding with a zero byte
+  // This matches the behavior of the original Mighty Mike compressor (e.g. clown.map-3)
+  let bufferToCompress = decompressedBuffer;
+  if (decompressedBuffer.byteLength % 2 !== 0) {
+    const padded = new Uint8Array(decompressedBuffer.byteLength + 1);
+    padded.set(new Uint8Array(decompressedBuffer));
+    // Last byte is already 0 by allocation
+    bufferToCompress = padded.buffer;
+  }
+
+  const input = new DataView(bufferToCompress);
+  const inputSize = bufferToCompress.byteLength;
   
   // Worst case: no compression + header (each word gets 1 length byte)
   const maxOutputSize = 8 + (inputSize / 2) * 3;
@@ -173,7 +183,7 @@ export function rlwCompress(decompressedBuffer: ArrayBuffer): ArrayBuffer {
   const outputView = new DataView(output);
   
   // Write header
-  outputView.setUint32(0, inputSize, false); // decompressed size
+  outputView.setUint32(0, decompressedBuffer.byteLength, false); // decompressed size (original, not padded)
   outputView.setUint32(4, PACK_TYPE_RLW, false); // compression type
   
   let inputPos = 0;
@@ -192,8 +202,8 @@ export function rlwCompress(decompressedBuffer: ArrayBuffer): ArrayBuffer {
       runLength++;
     }
 
-    if (runLength >= 3) {
-      // Worth compressing as a run
+    if (runLength >= 2) {
+      // Worth compressing as a run (Run of 2 = 3 bytes vs 2 literals = 5 bytes)
       outputView.setUint8(outputPos++, 0x80 | (runLength - 1));
       outputView.setUint16(outputPos, currentWord, false);
       outputPos += 2;
@@ -215,7 +225,7 @@ export function rlwCompress(decompressedBuffer: ArrayBuffer): ArrayBuffer {
           nextRunLength++;
         }
 
-        if (nextRunLength >= 3) {
+        if (nextRunLength >= 2) {
           // Found a good run, stop collecting literals
           break;
         }

@@ -49,9 +49,9 @@ export interface BonNRaw {
 }
 export interface RelPRaw {
   relOffsetX: number;
-  relOffsetY?: number;
-  relOffsetZ?: number;
-} // often stored as numeric fields per entry
+  relOffsetY: number;
+  relOffsetZ: number;
+}
 export interface AnHdRaw {
   animName: string;
   numAnimEvents: number;
@@ -64,8 +64,20 @@ export interface EvntRaw {
 export interface NumKRaw {
   numKeyFrames: number;
 }
-// KeyF entries are typically arrays of keyframe objects or numeric arrays; keep loose typing
-export type KeyFRaw = Record<string, unknown>;
+// KeyF: Keyframe entry - matches KeyFObj from skeletonInterface
+export interface KeyFRaw {
+  tick: number;
+  accelerationMode: number;
+  coordX: number;
+  coordY: number;
+  coordZ: number;
+  rotationX: number;
+  rotationY: number;
+  rotationZ: number;
+  scaleX: number;
+  scaleY: number;
+  scaleZ: number;
+}
 
 export interface ParsedSkeleton {
   _metadata?: Record<string, unknown>;

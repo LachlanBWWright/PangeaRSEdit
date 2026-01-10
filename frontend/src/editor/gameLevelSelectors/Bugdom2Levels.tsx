@@ -1,12 +1,52 @@
+import { useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { LevelGrid } from "../LevelGrid";
 import { Bugdom2Globals, type GlobalsInterface } from "@/data/globals/globals";
+import { parseTunnelFile } from "@/data/tunnelParser/parseTunnelFile";
+import type { TunnelData } from "@/data/tunnelParser/types";
+import { toast } from "sonner";
 
 export function Bugdom2Levels({
   openFile,
+  onTunnelLoad,
 }: {
   openFile: (url: string, gameType: GlobalsInterface) => void;
+  onTunnelLoad?: (data: TunnelData, fileName: string) => void;
 }) {
+  const loadTunnelLevel = useCallback(
+    async (tunnelPath: string, fileName: string) => {
+      if (!onTunnelLoad) return;
+
+      try {
+        const response = await fetch(tunnelPath);
+        if (!response.ok) {
+          toast.error(`Failed to fetch ${fileName}`, {
+            description: `HTTP ${response.status}: ${response.statusText}`,
+          });
+          return;
+        }
+
+        const buffer = await response.arrayBuffer();
+        const result = parseTunnelFile(buffer);
+
+        if (!result.ok) {
+          toast.error("Failed to parse tunnel file", {
+            description: result.error.message,
+          });
+          return;
+        }
+
+        onTunnelLoad(result.value, fileName);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        toast.error("Failed to load tunnel level", {
+          description: message,
+        });
+      }
+    },
+    [onTunnelLoad]
+  );
+
   return (
     <LevelGrid title="Bugdom 2 Levels">
       <Button
@@ -30,7 +70,11 @@ export function Bugdom2Levels({
       >
         Level 3
       </Button>
-      <Button disabled>Level 4</Button>
+      <Button
+        onClick={() => loadTunnelLevel("games/bugdom2/tunnels/Plumbing.tun", "Plumbing.tun")}
+      >
+        Level 4 (Plumbing)
+      </Button>
       <Button
         onClick={() =>
           openFile("assets/bugdom2/terrain/Level5_Playroom.ter", Bugdom2Globals)
@@ -45,7 +89,11 @@ export function Bugdom2Levels({
       >
         Level 6
       </Button>
-      <Button disabled>Level 7</Button>
+      <Button
+        onClick={() => loadTunnelLevel("games/bugdom2/tunnels/Gutter.tun", "Gutter.tun")}
+      >
+        Level 7 (Gutter)
+      </Button>
       <Button
         onClick={() =>
           openFile("assets/bugdom2/terrain/Level8_Garbage.ter", Bugdom2Globals)

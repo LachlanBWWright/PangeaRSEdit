@@ -6,6 +6,7 @@ import { useAtom } from "jotai";
 import { AtomicLevelData } from "../data/utils/levelDataUtils";
 import { IntroText } from "./IntroText";
 import { GameCarousel } from "./gameCards/GameCarousel";
+import type { TunnelData } from "@/data/tunnelParser/types";
 /* import { Separator } from "@/components/ui/separator";
 import { parseSkeletonRsrc } from "@/modelParsers/skeletonRsrc/parseSkeletonRsrcTS";
 import BG3DGltfWorker from "../modelParsers/bg3dGltfWorker?worker"; //"../utils/bg3dGltfWorker.ts?worker"; */
@@ -15,12 +16,16 @@ export function UploadPrompt({
   setMapImagesFile,
   setMapImages,
   setData,
+  setTunnelData,
+  setTunnelFileName,
 }: {
   mapFile: File | undefined;
   setMapFile: (file: File) => void;
   setMapImagesFile: (file: File) => void;
   setMapImages: (images: HTMLCanvasElement[]) => void;
   setData: (data: AtomicLevelData) => void;
+  setTunnelData: (data: TunnelData | null) => void;
+  setTunnelFileName: (name: string) => void;
 }) {
   const [, setGlobals] = useAtom(Globals);
 
@@ -59,6 +64,8 @@ export function UploadPrompt({
             setMapFile={setMapFile}
             setMapImagesFile={setMapImagesFile}
             setMapImages={setMapImages}
+            setTunnelData={setTunnelData}
+            setTunnelFileName={setTunnelFileName}
           />
         </div>
       </div>

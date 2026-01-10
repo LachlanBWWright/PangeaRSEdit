@@ -53,6 +53,7 @@ export interface MightyMikeMap {
   mapImage: MightyMikeTileValue[][];
   items: MightyMikeItem[];
   altMap: number[][] | null;
+  padding?: number; // First 2 bytes of the map file
 }
 
 export interface MightyMikeItem {

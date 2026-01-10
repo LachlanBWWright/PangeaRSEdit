@@ -9,10 +9,11 @@ import {
 } from "@/python/structSpecs/LevelTypes";
 import { UploadPrompt } from "./UploadPrompt";
 import { EditorView } from "./EditorView";
+import { TunnelEditor } from "./tunnel/TunnelEditor";
 import { Button } from "@/components/ui/button";
 import { Updater, useImmer } from "use-immer";
 import { ottoPreprocessor } from "../data/processors/ottoPreprocessor";
-import { Globals, DataType } from "../data/globals/globals";
+import { Globals, DataType, Game } from "../data/globals/globals";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { BlockHistoryUpdate } from "../data/globals/history";
 import LzssWorker from "../utils/lzssWorker?worker";
@@ -30,6 +31,10 @@ import { isOk } from "../types/result";
 import { SafeItemTypes, SafeSplineItemTypes } from "../data/items/itemAtoms";
 import { extractSafeItemTypes } from "../data/items/extractSafeItemTypes";
 import { loadBytesFromJson } from "@lachlanbwwright/rsrcdump-ts";
+import { compileNanosaur1Level } from "./loadLogic/compileNanosaur1Level";
+import { serializeMightyMikeLevel } from "./loadLogic/parseMightyMikeFile";
+import { isNanosaur1LevelData } from "./loadLogic/typeGuards";
+import type { TunnelData } from "@/data/tunnelParser/types";
 
 export interface DataHistory {
   items: AtomicLevelData[];
@@ -46,6 +51,10 @@ export function IntroPrompt() {
   const [fenceData, setFenceData] = useImmer<FenceData | null>(null);
   const [splineData, setSplineData] = useImmer<SplineData | null>(null);
   const [terrainData, setTerrainData] = useImmer<TerrainData | null>(null);
+
+  // Tunnel data for Bugdom 2 tunnel levels
+  const [tunnelData, setTunnelData] = useState<TunnelData | null>(null);
+  const [tunnelFileName, setTunnelFileName] = useState<string>("");
 
   // Safe item types tracking
   const setSafeItemTypes = useSetAtom(SafeItemTypes);
@@ -81,28 +90,40 @@ export function IntroPrompt() {
   }, [headerData, itemData, liquidData, fenceData, splineData, terrainData]);
 
   // Helper to set all atomic data from AtomicLevelData
-  const setAllAtomicData = useCallback((atomicData: AtomicLevelData) => {
-    setHeaderData(atomicData.headerData);
-    setItemData(atomicData.itemData);
-    setLiquidData(atomicData.liquidData);
-    setFenceData(atomicData.fenceData);
-    setSplineData(atomicData.splineData);
-    setTerrainData(atomicData.terrainData);
+  const setAllAtomicData = useCallback(
+    (atomicData: AtomicLevelData) => {
+      setHeaderData(atomicData.headerData);
+      setItemData(atomicData.itemData);
+      setLiquidData(atomicData.liquidData);
+      setFenceData(atomicData.fenceData);
+      setSplineData(atomicData.splineData);
+      setTerrainData(atomicData.terrainData);
 
-    // Extract and store safe item types from the loaded level
-    const levelData = {
-      Hedr: atomicData.headerData,
-      Itms: atomicData.itemData?.Itms,
-      Spln: atomicData.splineData?.Spln,
-      SpIt: atomicData.splineData?.SpIt,
-    };
+      // Extract and store safe item types from the loaded level
+      const levelData = {
+        Hedr: atomicData.headerData,
+        Itms: atomicData.itemData?.Itms,
+        Spln: atomicData.splineData?.Spln,
+        SpIt: atomicData.splineData?.SpIt,
+      };
 
-    const { itemTypes, splineItemTypes } = extractSafeItemTypes(levelData);
-    
-    // Update the atoms
-    setSafeItemTypes(itemTypes);
-    setSafeSplineItemTypes(splineItemTypes);
-  }, [setHeaderData, setItemData, setLiquidData, setFenceData, setSplineData, setTerrainData, setSafeItemTypes, setSafeSplineItemTypes]);
+      const { itemTypes, splineItemTypes } = extractSafeItemTypes(levelData);
+
+      // Update the atoms
+      setSafeItemTypes(itemTypes);
+      setSafeSplineItemTypes(splineItemTypes);
+    },
+    [
+      setHeaderData,
+      setItemData,
+      setLiquidData,
+      setFenceData,
+      setSplineData,
+      setTerrainData,
+      setSafeItemTypes,
+      setSafeSplineItemTypes,
+    ],
+  );
 
   // Wrapper for header which EditorView expects non-null updates for
   const setHeaderDataNonNull: Updater<HeaderData> = useCallback(
@@ -194,7 +215,10 @@ export function IntroPrompt() {
   };
 
   const saveMap = useCallback(async () => {
-    if (!mapFile || (globals.DATA_TYPE !== DataType.RSRC_FORK && !mapImagesFile)) {
+    if (
+      !mapFile ||
+      (globals.DATA_TYPE !== DataType.RSRC_FORK && !mapImagesFile)
+    ) {
       console.error("Download failed: Map file or images file not loaded");
       toast.error("Download failed", {
         description:
@@ -229,46 +253,86 @@ export function IntroPrompt() {
     }
 
     try {
-      // Validate JSON shape expected by rsrcdump
-      const validation = validateResourceForkJson(
-        sanitizeResourceForkJson(combinedData),
-      );
-      if (!validation.ok) {
-        console.error("Invalid JSON for resource fork:", validation);
-        toast.error("Download failed", {
-          description: `Invalid map data structure for resource fork: ${validation.message}`,
-        });
-        return;
+      let mapBlob: Blob;
+      let byteLength = 0;
+
+      // Handle custom binary formats based on Game type
+      if (globals.GAME_TYPE === Game.NANOSAUR) {
+        // Nanosaur 1: Use custom compiler
+        const rawLevelData = combinedData._metadata?.nanosaur1RawLevel;
+        if (!isNanosaur1LevelData(rawLevelData)) {
+          console.error("Missing raw Nanosaur 1 level data");
+          toast.error("Download failed", {
+            description: "Missing original raw data. Please reload the level.",
+          });
+          return;
+        }
+
+        const result = compileNanosaur1Level(combinedData, rawLevelData);
+        if (!result.ok) {
+          console.error("Nanosaur compilation failed:", result.error);
+          toast.error("Download failed", { description: result.error.message });
+          return;
+        }
+
+        mapBlob = new Blob([result.value], { type: ".ter" });
+        byteLength = result.value.byteLength;
+      } else if (globals.GAME_TYPE === Game.MIGHTY_MIKE) {
+        // Mighty Mike: Use custom serializer
+        const result = serializeMightyMikeLevel(combinedData);
+        if (!result.ok) {
+          console.error("Mighty Mike serialization failed:", result.error);
+          toast.error("Download failed", { description: result.error.message });
+          return;
+        }
+        mapBlob = new Blob([result.value], { type: ".map" });
+        byteLength = result.value.byteLength;
+      } else {
+        // Standard Resource Fork games: Use rsrcdump-ts
+
+        // Validate JSON shape expected by rsrcdump
+        const validation = validateResourceForkJson(
+          sanitizeResourceForkJson(combinedData),
+        );
+        if (!validation.ok) {
+          console.error("Invalid JSON for resource fork:", validation);
+          toast.error("Download failed", {
+            description: `Invalid map data structure for resource fork: ${validation.message}`,
+          });
+          return;
+        }
+
+        // Use rsrcdump-ts to convert JSON to binary
+        const saveResult = loadBytesFromJson(
+          combinedData,
+          globals.STRUCT_SPECS,
+          [], // onlyTypes
+          [], // skipTypes
+          true, // adf
+        );
+
+        if (!saveResult.ok) {
+          console.error("Download failed:", saveResult.error);
+          toast.error("Download failed", {
+            description: saveResult.error,
+          });
+          return;
+        }
+
+        const loadRes = saveResult.value;
+
+        if (!loadRes || loadRes.byteLength === 0) {
+          console.error("Download failed: Generated map data is empty");
+          toast.error("Download failed", {
+            description: "Generated map data is empty",
+          });
+          return;
+        }
+
+        mapBlob = new Blob([loadRes.slice(0)], { type: ".ter.rsrc" });
+        byteLength = loadRes.byteLength;
       }
 
-      // Use rsrcdump-ts to convert JSON to binary
-      const saveResult = loadBytesFromJson(
-        combinedData,
-        globals.STRUCT_SPECS,
-        [], // onlyTypes
-        [], // skipTypes
-        true, // adf
-      );
-
-      if (!saveResult.ok) {
-        console.error("Download failed:", saveResult.error);
-        toast.error("Download failed", {
-          description: saveResult.error,
-        });
-        return;
-      }
-
-      const loadRes = saveResult.value;
-
-      if (!loadRes || loadRes.byteLength === 0) {
-        console.error("Download failed: Generated map data is empty");
-        toast.error("Download failed", {
-          description: "Generated map data is empty",
-        });
-        return;
-      }
-
-      const mapBlob = new Blob([loadRes.slice(0)], { type: ".ter.rsrc" });
       const mapUrl = URL.createObjectURL(mapBlob);
 
       const downloadLink = document.createElement("a");
@@ -277,13 +341,20 @@ export function IntroPrompt() {
       downloadLink.click();
 
       console.log(
-        `Map downloaded successfully: ${mapFile.name} (${loadRes.byteLength} bytes)`,
+        `Map downloaded successfully: ${mapFile.name} (${byteLength} bytes)`,
       );
 
       // For RSRC_FORK games (e.g., Bugdom 1) the texture data (Timg) is
       // embedded in the same resource file; skip the separate texture
       // compression/download flow and finish here.
-      if (globals.DATA_TYPE === DataType.RSRC_FORK) {
+      // Also skip image download for Mighty Mike (2D game) and Nanosaur (TRT file handles images differently? No, wait)
+      // Nanosaur 1 uses .trt files which are separate but not handled here.
+      // But standard .ter download is done.
+      // Mighty Mike doesn't use mapImages in the same way (tileset).
+      if (
+        globals.DATA_TYPE === DataType.RSRC_FORK ||
+        globals.DATA_TYPE === DataType.MIGHTY_MIKE
+      ) {
         toast.success("Map Downloaded!");
         return;
       }
@@ -391,17 +462,14 @@ export function IntroPrompt() {
 
     const imageDownloadLink = document.createElement("a");
     imageDownloadLink.href = imageUrl;
-    imageDownloadLink.setAttribute("download", mapImagesFile?.name || "images.ter");
+    imageDownloadLink.setAttribute(
+      "download",
+      mapImagesFile?.name || "images.ter",
+    );
     imageDownloadLink.click();
 
     toast.success("Map Downloaded!");
-  }, [
-    mapFile,
-    mapImagesFile,
-    mapImages,
-    globals,
-    getCurrentAtomicData,
-  ]);
+  }, [mapFile, mapImagesFile, mapImages, globals, getCurrentAtomicData]);
 
   useEffect(() => {
     if (!processed) return;
@@ -418,6 +486,39 @@ export function IntroPrompt() {
     saveMap,
   ]);
 
+  // Clear all state helper
+  const clearAllState = useCallback(() => {
+    setMapFile(undefined);
+    setAllAtomicData(splitLevelData(null));
+    setMapImages(undefined);
+    setMapImagesFile(undefined);
+    setTunnelData(null);
+    setTunnelFileName("");
+  }, [setAllAtomicData]);
+
+  // Handle tunnel data updates
+  const handleTunnelDataUpdate = useCallback((data: TunnelData) => {
+    setTunnelData(data);
+  }, []);
+
+  // Handle tunnel editor close
+  const handleTunnelClose = useCallback(() => {
+    clearAllState();
+  }, [clearAllState]);
+
+  // If we have tunnel data, show the tunnel editor
+  if (tunnelData) {
+    return (
+      <TunnelEditor
+        tunnelData={tunnelData}
+        fileName={tunnelFileName}
+        isPlumbing={tunnelFileName.toLowerCase().includes("plumb")}
+        onUpdateTunnelData={handleTunnelDataUpdate}
+        onClose={handleTunnelClose}
+      />
+    );
+  }
+
   if (!mapFile || !mapImages)
     return (
       <UploadPrompt
@@ -426,21 +527,14 @@ export function IntroPrompt() {
         setMapImagesFile={setMapImagesFile}
         setMapImages={setMapImages}
         setData={setAllAtomicData}
+        setTunnelData={setTunnelData}
+        setTunnelFileName={setTunnelFileName}
       />
     );
   return (
     <div className="flex flex-col gap-2 text-white overflow-clip min-w-full p-2 md:p-6 h-[calc(100vh-56px)]">
       <div className="flex flex-row items-center justify-center gap-2 mx-auto w-full">
-        <Button
-          onClick={() => {
-            setMapFile(undefined);
-            setAllAtomicData(splitLevelData(null));
-            setMapImages(undefined);
-            setMapImagesFile(undefined);
-          }}
-        >
-          ←New Map
-        </Button>
+        <Button onClick={clearAllState}>←New Map</Button>
         <div className="flex-1" />
 
         <Button

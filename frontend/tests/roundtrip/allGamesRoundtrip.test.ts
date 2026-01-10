@@ -5,9 +5,9 @@
 import { describe, it, expect } from "vitest";
 import { readFileSync } from "fs";
 import { join } from "path";
-import { parseNanosaur1Level, nanosaur1LevelToLevelData } from "@/data/processors/classicProprocessor";
-import { compileNanosaur1Level } from "@/editor/loadLogic/compileNanosaur1Level";
-import { parseMightyMikeMap, mightyMikeMapToCompressedBinary } from "@/modelParsers/parseMightyMike";
+import { parseNanosaur1Level, nanosaur1LevelToLevelData } from "../../src/data/processors/classicProprocessor";
+import { compileNanosaur1Level } from "../../src/editor/loadLogic/compileNanosaur1Level";
+import { parseMightyMikeMap, mightyMikeMapToCompressedBinary } from "../../src/modelParsers/parseMightyMike";
 
 /**
  * Converts a Node.js Buffer to an ArrayBuffer
@@ -151,7 +151,6 @@ describe("Mighty Mike - Byte-Accurate Roundtrip", () => {
         if (result.value instanceof ArrayBuffer) {
           recompiledData = new Uint8Array(result.value);
         } else if (ArrayBuffer.isView(result.value)) {
-          // Convert array-like view to a real Uint8Array without type assertions by using Array.prototype.slice
           recompiledData = new Uint8Array(Array.prototype.slice.call(result.value));
         } else {
           throw new Error("Unexpected result.value type");

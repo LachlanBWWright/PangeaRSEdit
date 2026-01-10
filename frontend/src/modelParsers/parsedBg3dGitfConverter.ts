@@ -1751,7 +1751,10 @@ export async function gltfToBG3D(doc: Document): Promise<BG3DParseResult> {
           skeletonExtras?.keyframeData || 0,
         );
 
-        if (skeletonExtras && Array.isArray(skeletonExtras.keyframeData)) {
+        const keyframeDataArray = skeletonExtras && Array.isArray(skeletonExtras.keyframeData) 
+          ? (skeletonExtras.keyframeData as unknown[])
+          : undefined;
+        if (keyframeDataArray) {
           // Use keyframe data from extras if available (preserves accelerationMode, exact values)
           console.log(
             "[DEBUG] Restoring keyframe data from extras for",
@@ -1759,16 +1762,15 @@ export async function gltfToBG3D(doc: Document): Promise<BG3DParseResult> {
             "animations",
           );
           animations.forEach((anim, index) => {
-            const keyframeData = skeletonExtras.keyframeData;
-            if (!keyframeData) return;
+            if (!keyframeDataArray) return;
             let kfData: unknown | undefined;
-            for (const candidate of keyframeData) {
+            for (const candidate of keyframeDataArray) {
               if (isRecord(candidate) && candidate.name === anim.name) {
                 kfData = candidate;
                 break;
               }
             }
-            kfData = kfData ?? keyframeData[index];
+            kfData = kfData ?? keyframeDataArray[index];
             if (isRecord(kfData) && kfData.keyframes) {
               console.log(
                 "[DEBUG] Restored keyframes for animation",
@@ -1803,12 +1805,14 @@ export async function gltfToBG3D(doc: Document): Promise<BG3DParseResult> {
           );
         }
 
-        if (skeletonExtras?.animationEvents) {
-          const animEvents = skeletonExtras.animationEvents;
+        const animEventsArray = skeletonExtras && Array.isArray(skeletonExtras.animationEvents)
+          ? (skeletonExtras.animationEvents as unknown[])
+          : undefined;
+        if (animEventsArray) {
           animations.forEach((anim, index) => {
             const eventData =
-              animEvents.find((e) => isRecord(e) && e.name === anim.name) ??
-              animEvents[index];
+              animEventsArray.find((e) => isRecord(e) && e.name === anim.name) ??
+              animEventsArray[index];
             if (isRecord(eventData)) {
               anim.numAnimEvents =
                 typeof eventData.numAnimEvents === "number"
@@ -1928,11 +1932,17 @@ export async function gltfToBG3D(doc: Document): Promise<BG3DParseResult> {
         const metadataRaw = skeletonExtras?.metadata;
         const metadata = isRecord(metadataRaw) ? metadataRaw : undefined;
 
+        // Safely extract header values with type checking
+        const headerVersion = typeof headerData?.version === "number" ? headerData.version : 272;
+        const headerNumAnims = typeof headerData?.numAnims === "number" ? headerData.numAnims : animations.length;
+        const headerNumJoints = typeof headerData?.numJoints === "number" ? headerData.numJoints : bones.length;
+        const headerNum3DMFLimbs = typeof headerData?.num3DMFLimbs === "number" ? headerData.num3DMFLimbs : 0;
+
         skeleton = {
-          version: headerData?.version ?? 272,
-          numAnims: headerData?.numAnims ?? animations.length,
-          numJoints: headerData?.numJoints ?? bones.length,
-          num3DMFLimbs: headerData?.num3DMFLimbs ?? 0,
+          version: headerVersion,
+          numAnims: headerNumAnims,
+          numJoints: headerNumJoints,
+          num3DMFLimbs: headerNum3DMFLimbs,
           bones,
           animations,
           // Restore non-glTF data from extras (already validated by type guards)
