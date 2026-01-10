@@ -20,7 +20,10 @@ import { toast } from "sonner";
 type EditorTab = "items" | "sections" | "spline";
 
 /**
- * Create an empty section mesh
+ * Create an empty section mesh for use when adding new tunnel sections.
+ * Returns a mesh with no geometry (0 points, 0 triangles) and an empty bounding box.
+ * Used by createEmptySection() for section management operations.
+ * @returns An empty TunnelSectionMesh ready to be populated with geometry
  */
 function createEmptySectionMesh(): TunnelSectionMesh {
   const emptyBBox: BoundingBox = {
@@ -40,7 +43,9 @@ function createEmptySectionMesh(): TunnelSectionMesh {
 }
 
 /**
- * Create an empty section
+ * Create an empty tunnel section containing empty tunnel and water meshes.
+ * Used when adding new sections to the tunnel via the section management UI.
+ * @returns An empty TunnelSection with both tunnel and water meshes initialized
  */
 function createEmptySection(): TunnelSection {
   return {
@@ -165,8 +170,8 @@ function TunnelEditorView({
       const sectionToDuplicate = tunnelData.sections[index];
       if (!sectionToDuplicate) return;
       
-      // Deep clone the section
-      const clonedSection: TunnelSection = JSON.parse(JSON.stringify(sectionToDuplicate));
+      // Deep clone the section using structuredClone for better performance
+      const clonedSection: TunnelSection = structuredClone(sectionToDuplicate);
       
       const newSections = [
         ...tunnelData.sections.slice(0, index + 1),

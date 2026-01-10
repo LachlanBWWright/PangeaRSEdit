@@ -290,11 +290,14 @@ export function SplineEditor({
               step="0.1"
               value={selectedItem.scale}
               onChange={(e) => {
-                const newScale = parseFloat(e.target.value) || 1;
-                onUpdateItem(selectedItemIndex, {
-                  ...selectedItem,
-                  scale: newScale,
-                });
+                const parsed = parseFloat(e.target.value);
+                // Only update if the input is a valid number, otherwise keep previous value
+                if (!isNaN(parsed) && parsed > 0) {
+                  onUpdateItem(selectedItemIndex, {
+                    ...selectedItem,
+                    scale: parsed,
+                  });
+                }
               }}
             />
           </div>
