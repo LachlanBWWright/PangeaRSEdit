@@ -194,9 +194,12 @@ export function TunnelItemEditor({
             <Input
               type="number"
               value={selectedItem.splineIndex}
-              onChange={(e) =>
-                handleUpdateField("splineIndex", parseInt(e.target.value) || 0)
-              }
+              onChange={(e) => {
+                const parsed = parseInt(e.target.value);
+                if (!isNaN(parsed) && parsed >= 0 && parsed < tunnelData.splinePoints.length) {
+                  handleUpdateField("splineIndex", parsed);
+                }
+              }}
               min={0}
               max={tunnelData.splinePoints.length - 1}
             />
@@ -208,10 +211,14 @@ export function TunnelItemEditor({
             <Input
               type="number"
               value={selectedItem.sectionNum}
-              onChange={(e) =>
-                handleUpdateField("sectionNum", parseInt(e.target.value) || 0)
-              }
-              min={0}
+              onChange={(e) => {
+                const parsed = parseInt(e.target.value);
+                // Allow -1 for items not assigned to a specific section
+                if (!isNaN(parsed) && parsed >= -1 && parsed < tunnelData.sections.length) {
+                  handleUpdateField("sectionNum", parsed);
+                }
+              }}
+              min={-1}
               max={tunnelData.sections.length - 1}
             />
           </div>
@@ -223,9 +230,12 @@ export function TunnelItemEditor({
               type="number"
               step="0.1"
               value={selectedItem.scale}
-              onChange={(e) =>
-                handleUpdateField("scale", parseFloat(e.target.value) || 1)
-              }
+              onChange={(e) => {
+                const parsed = parseFloat(e.target.value);
+                if (!isNaN(parsed) && parsed > 0) {
+                  handleUpdateField("scale", parsed);
+                }
+              }}
             />
           </div>
 

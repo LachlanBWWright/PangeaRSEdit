@@ -43,10 +43,13 @@ export interface TriangleIndices {
 
 /**
  * Bounding box (OGLBoundingBox equivalent)
+ * Note: OGLBoundingBox in the game includes an isEmpty boolean field
+ * that takes 4 bytes with padding (1 byte + 3 padding)
  */
 export interface BoundingBox {
   min: Point3D;
   max: Point3D;
+  isEmpty: boolean;
 }
 
 /**
@@ -182,6 +185,7 @@ export enum GutterItemType {
   PINE_CONE = 0,
   LEAF = 1,
   SPRAY = 2,
+  RING = 3,
 }
 
 /**
@@ -215,6 +219,8 @@ export function getGutterItemName(type: number): string {
       return "Leaf";
     case GutterItemType.SPRAY:
       return "Spray";
+    case GutterItemType.RING:
+      return "Ring";
     default:
       return `Unknown (${type})`;
   }

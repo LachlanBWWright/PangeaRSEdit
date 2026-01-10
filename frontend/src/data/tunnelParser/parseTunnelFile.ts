@@ -43,34 +43,48 @@ class BinaryReader {
   }
 
   skip(bytes: number): void {
+    if (this.offset + bytes > this.view.byteLength) {
+      throw new Error(`Skip out of bounds: offset ${this.offset}, skip ${bytes}, buffer size ${this.view.byteLength}`);
+    }
     this.offset += bytes;
   }
 
+  private checkBounds(size: number, operation: string): void {
+    if (this.offset + size > this.view.byteLength) {
+      throw new Error(`${operation} out of bounds at offset ${this.offset}, need ${size} bytes, buffer size ${this.view.byteLength}`);
+    }
+  }
+
   readUint8(): number {
+    this.checkBounds(1, "readUint8");
     const value = this.view.getUint8(this.offset);
     this.offset += 1;
     return value;
   }
 
   readUint16(): number {
+    this.checkBounds(2, "readUint16");
     const value = this.view.getUint16(this.offset, false); // big-endian
     this.offset += 2;
     return value;
   }
 
   readInt32(): number {
+    this.checkBounds(4, "readInt32");
     const value = this.view.getInt32(this.offset, false); // big-endian
     this.offset += 4;
     return value;
   }
 
   readUint32(): number {
+    this.checkBounds(4, "readUint32");
     const value = this.view.getUint32(this.offset, false); // big-endian
     this.offset += 4;
     return value;
   }
 
   readFloat32(): number {
+    this.checkBounds(4, "readFloat32");
     const value = this.view.getFloat32(this.offset, false); // big-endian
     this.offset += 4;
     return value;
@@ -112,13 +126,17 @@ class BinaryReader {
   }
 
   readBoundingBox(): BoundingBox {
-    return {
-      min: this.readPoint3D(),
-      max: this.readPoint3D(),
-    };
+    const min = this.readPoint3D();
+    const max = this.readPoint3D();
+    const isEmpty = this.readBoolean();
+    this.skip(3); // 3-byte padding to align to 4-byte boundaries (C struct alignment)
+    return { min, max, isEmpty };
   }
 
   readBytes(length: number): Uint8Array {
+    if (this.offset + length > this.view.byteLength) {
+      throw new Error(`Read out of bounds: offset ${this.offset}, length ${length}, buffer size ${this.view.byteLength}`);
+    }
     const bytes = new Uint8Array(this.view.buffer.slice(this.offset, this.offset + length));
     this.offset += length;
     return bytes;
@@ -275,13 +293,25 @@ function parseSection(reader: BinaryReader): TunnelSection {
  */
 export function parseTunnelFile(buffer: ArrayBuffer): Result<TunnelData, Error> {
   try {
+    if (buffer.byteLength < 92) {
+      return err(new Error(`File too small: ${buffer.byteLength} bytes (minimum 92 bytes required for header)`));
+    }
+
     const reader = new BinaryReader(buffer);
 
     // Parse header (88 bytes)
     const header = parseHeader(reader);
 
+    // Validate header values
+    if (header.numNubs < 0 || header.numSplinePoints < 0 || header.numSections < 0 || header.numItems < 0) {
+      return err(new Error(`Invalid header: negative counts (nubs=${header.numNubs}, splinePoints=${header.numSplinePoints}, sections=${header.numSections}, items=${header.numItems})`));
+    }
+
     // Skip alias data (legacy Mac file alias)
     const aliasSize = reader.readInt32();
+    if (aliasSize < 0 || aliasSize > buffer.byteLength) {
+      return err(new Error(`Invalid alias size: ${aliasSize}`));
+    }
     reader.skip(aliasSize);
 
     // Parse spline nubs (control points)

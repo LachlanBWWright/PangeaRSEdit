@@ -6,6 +6,8 @@ import { DataType, Game, type GlobalsInterface } from "@/data/globals/globals";
 import { MiniThreeView } from "./MiniThreeView";
 import { Card, CardContent } from "@/components/ui/card";
 import type { Result } from "@/types/result";
+import { parseTunnelFile } from "@/data/tunnelParser/parseTunnelFile";
+import type { TunnelData } from "@/data/tunnelParser/types";
 
 const getModelPath = (gameType: Game): string | undefined => {
   switch (gameType) {
@@ -38,6 +40,8 @@ export function GameCard({
   setMapFile,
   setMapImagesFile,
   setMapImages,
+  setTunnelData,
+  setTunnelFileName,
 }: {
   title: string;
   children: React.ReactNode;
@@ -49,8 +53,11 @@ export function GameCard({
   setMapFile: (f: File) => void;
   setMapImagesFile: (f: File) => void;
   setMapImages: (images: HTMLCanvasElement[]) => void;
+  setTunnelData: (data: TunnelData | null) => void;
+  setTunnelFileName: (name: string) => void;
 }) {
   const modelPath = getModelPath(globals.GAME_TYPE);
+  const isBugdom2 = globals.GAME_TYPE === Game.BUGDOM_2;
 
   return (
     <Card className="h-full flex flex-col min-h-0 overflow-hidden bg-gray-800 border-gray-700 text-white">
@@ -124,6 +131,36 @@ export function GameCard({
                   }
                   setMapImagesFile(mapImagesFile);
                   setMapImages(mapImagesResult.value);
+                }}
+              />
+            </>
+          )}
+
+          {/* Tunnel file upload for Bugdom 2 */}
+          {isBugdom2 && (
+            <>
+              <p className="text-sm text-gray-300 mt-2">
+                Upload Tunnel Level (.tun)
+              </p>
+              <FileUpload
+                className="text-sm"
+                acceptType=".tun"
+                handleOnChange={async (e) => {
+                  if (!e.target?.files?.[0]) return;
+                  const file = e.target.files[0];
+                  const buffer = await file.arrayBuffer();
+                  const result = parseTunnelFile(buffer);
+                  
+                  if (!result.ok) {
+                    console.error("Failed to parse tunnel file:", result.error.message);
+                    toast.error("Failed to parse tunnel file", {
+                      description: result.error.message,
+                    });
+                    return;
+                  }
+                  
+                  setTunnelFileName(file.name);
+                  setTunnelData(result.value);
                 }}
               />
             </>

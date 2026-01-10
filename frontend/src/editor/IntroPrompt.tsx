@@ -9,6 +9,7 @@ import {
 } from "@/python/structSpecs/LevelTypes";
 import { UploadPrompt } from "./UploadPrompt";
 import { EditorView } from "./EditorView";
+import { TunnelEditor } from "./tunnel/TunnelEditor";
 import { Button } from "@/components/ui/button";
 import { Updater, useImmer } from "use-immer";
 import { ottoPreprocessor } from "../data/processors/ottoPreprocessor";
@@ -33,6 +34,7 @@ import { loadBytesFromJson } from "@lachlanbwwright/rsrcdump-ts";
 import { compileNanosaur1Level } from "./loadLogic/compileNanosaur1Level";
 import { serializeMightyMikeLevel } from "./loadLogic/parseMightyMikeFile";
 import { isNanosaur1LevelData } from "./loadLogic/typeGuards";
+import type { TunnelData } from "@/data/tunnelParser/types";
 
 export interface DataHistory {
   items: AtomicLevelData[];
@@ -49,6 +51,10 @@ export function IntroPrompt() {
   const [fenceData, setFenceData] = useImmer<FenceData | null>(null);
   const [splineData, setSplineData] = useImmer<SplineData | null>(null);
   const [terrainData, setTerrainData] = useImmer<TerrainData | null>(null);
+
+  // Tunnel data for Bugdom 2 tunnel levels
+  const [tunnelData, setTunnelData] = useState<TunnelData | null>(null);
+  const [tunnelFileName, setTunnelFileName] = useState<string>("");
 
   // Safe item types tracking
   const setSafeItemTypes = useSetAtom(SafeItemTypes);
@@ -480,6 +486,39 @@ export function IntroPrompt() {
     saveMap,
   ]);
 
+  // Clear all state helper
+  const clearAllState = useCallback(() => {
+    setMapFile(undefined);
+    setAllAtomicData(splitLevelData(null));
+    setMapImages(undefined);
+    setMapImagesFile(undefined);
+    setTunnelData(null);
+    setTunnelFileName("");
+  }, [setAllAtomicData]);
+
+  // Handle tunnel data updates
+  const handleTunnelDataUpdate = useCallback((data: TunnelData) => {
+    setTunnelData(data);
+  }, []);
+
+  // Handle tunnel editor close
+  const handleTunnelClose = useCallback(() => {
+    clearAllState();
+  }, [clearAllState]);
+
+  // If we have tunnel data, show the tunnel editor
+  if (tunnelData) {
+    return (
+      <TunnelEditor
+        tunnelData={tunnelData}
+        fileName={tunnelFileName}
+        isPlumbing={tunnelFileName.toLowerCase().includes("plumb")}
+        onUpdateTunnelData={handleTunnelDataUpdate}
+        onClose={handleTunnelClose}
+      />
+    );
+  }
+
   if (!mapFile || !mapImages)
     return (
       <UploadPrompt
@@ -488,21 +527,14 @@ export function IntroPrompt() {
         setMapImagesFile={setMapImagesFile}
         setMapImages={setMapImages}
         setData={setAllAtomicData}
+        setTunnelData={setTunnelData}
+        setTunnelFileName={setTunnelFileName}
       />
     );
   return (
     <div className="flex flex-col gap-2 text-white overflow-clip min-w-full p-2 md:p-6 h-[calc(100vh-56px)]">
       <div className="flex flex-row items-center justify-center gap-2 mx-auto w-full">
-        <Button
-          onClick={() => {
-            setMapFile(undefined);
-            setAllAtomicData(splitLevelData(null));
-            setMapImages(undefined);
-            setMapImagesFile(undefined);
-          }}
-        >
-          ←New Map
-        </Button>
+        <Button onClick={clearAllState}>←New Map</Button>
         <div className="flex-1" />
 
         <Button
