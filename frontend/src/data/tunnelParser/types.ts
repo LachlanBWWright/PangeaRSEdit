@@ -185,6 +185,7 @@ export enum GutterItemType {
   PINE_CONE = 0,
   LEAF = 1,
   SPRAY = 2,
+  RING = 3,
 }
 
 /**
@@ -218,6 +219,8 @@ export function getGutterItemName(type: number): string {
       return "Leaf";
     case GutterItemType.SPRAY:
       return "Spray";
+    case GutterItemType.RING:
+      return "Ring";
     default:
       return `Unknown (${type})`;
   }
