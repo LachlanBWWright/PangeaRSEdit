@@ -43,7 +43,7 @@ export function Bugdom1EditorToolbar({
 
   return (
     <>
-      <div className="grid grid-cols-4 xl:grid-cols-7 gap-2 w-full overflow-clip">
+      <div className="grid grid-cols-5 lg:grid-cols-9 gap-2 w-full overflow-clip">
         {showFences && (
           <Button
             selected={view === View.fences}
@@ -52,24 +52,9 @@ export function Bugdom1EditorToolbar({
             Fences
           </Button>
         )}
-        <Button
-          selected={view === View.items}
-          onClick={() => setView(View.items)}
-        >
-          Items
-        </Button>
-        <Button
-          selected={view === View.splines}
-          onClick={() => setView(View.splines)}
-        >
-          Splines
-        </Button>
-        <Button
-          selected={view === View.tiles}
-          onClick={() => setView(View.tiles)}
-        >
-          Tiles
-        </Button>
+        <Button className="w-full" selected={view === View.items} onClick={() => setView(View.items)}>Items</Button>
+        <Button className="w-full" selected={view === View.splines} onClick={() => setView(View.splines)}>Splines</Button>
+        <Button className="w-full" selected={view === View.tiles} onClick={() => setView(View.tiles)}>Tiles</Button>
         <Button
           disabled={!terrainHasSTgd}
           selected={view === View.supertiles}
@@ -77,29 +62,11 @@ export function Bugdom1EditorToolbar({
         >
           Supertiles
         </Button>
-        <div className="grid col-span-2 xl:col-span-1 grid-cols-4 gap-2">
-          <Button
-            variant="zoom"
-            disabled={dataHistoryIndex === 0}
-            onClick={undoData}
-          >
-            ↩
-          </Button>
-          <Button
-            variant="zoom"
-            disabled={dataHistoryIndex === dataHistoryLength - 1}
-            onClick={redoData}
-          >
-            ↪
-          </Button>
+        <Button className="w-full" variant="zoom" disabled={dataHistoryIndex === 0} onClick={undoData}>↩</Button>
+        <Button className="w-full" variant="zoom" disabled={dataHistoryIndex === dataHistoryLength - 1} onClick={redoData}>↪</Button>
 
-          <Button variant="zoom" onClick={zoomOut}>
-            -
-          </Button>
-          <Button variant="zoom" onClick={zoomIn}>
-            +
-          </Button>
-        </div>
+        <Button className="w-full" variant="zoom" onClick={zoomOut}>-</Button>
+        <Button className="w-full" variant="zoom" onClick={zoomIn}>+</Button>
       </div>
       <Separator />
     </>
