@@ -41,6 +41,20 @@ Currently in `Spline.tsx`, the first nub is hidden:
 
 This works for circular splines but breaks editing for non-circular splines.
 
+### Issue 4: Spline Point Generation Assumes Circular
+
+In `frontend/src/utils/spline.ts`, the `getPoints()` function assumes circular:
+```typescript
+for (let i = 0; i < nubs.length; i++) {
+  const currentNub = nubs[i];
+  const nextNub = nubs[(i + 1) % nubs.length];  // <-- Wraps around!
+  ...
+}
+```
+
+This `% nubs.length` wrap causes the last segment to always connect back to the first nub,
+which is wrong for open splines.
+
 ---
 
 ## Analysis
