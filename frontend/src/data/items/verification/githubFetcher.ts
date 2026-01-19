@@ -9,7 +9,7 @@ export async function fetchGitHubFile(
   owner: string,
   repo: string,
   path: string,
-  branch: string = "master",
+  branch = "master",
 ): Promise<Result<FetchedFile, Error>> {
   const url = `https://raw.githubusercontent.com/${owner}/${repo}/${branch}/${path}`;
 

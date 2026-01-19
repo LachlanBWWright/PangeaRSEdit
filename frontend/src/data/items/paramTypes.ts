@@ -3,7 +3,7 @@
  * These provide standardized descriptions for frequently-used parameter patterns.
  */
 
-import type { ParamDescription, FlagDescription } from "./itemParams";
+import type { ParamDescription } from "./itemParams";
 
 // ============================================================================
 // Rotation Parameter Types
@@ -81,7 +81,7 @@ export function createTypeSelector(
   variants: string[],
   fileName: string,
   lineNumber: number,
-  paramIndex: number = 0,
+  paramIndex = 0,
 ): ParamDescription {
   const variantStr = variants.map((v, i) => `${i}=${v}`).join(", ");
   return {
@@ -181,7 +181,7 @@ export function createPowerupFlags(
 export function createScaleMultiplier(
   fileName: string,
   lineNumber: number,
-  paramIndex: number = 0,
+  paramIndex = 0,
 ): ParamDescription {
   return {
     type: "Integer",
@@ -206,7 +206,7 @@ export function createIdParameter(
   maxValue: number,
   fileName: string,
   lineNumber: number,
-  paramIndex: number = 0,
+  paramIndex = 0,
 ): ParamDescription {
   return {
     type: "Integer",

@@ -53,7 +53,7 @@ export function getPoints(
     pointsPerSpan[i] = spanPoints(distance);
   }
 
-  return bakeSpline(nubs, pointsPerSpan, circular);
+  return bakeSpline(nubs, pointsPerSpan);
 }
 
 export function spanPoints(distance: number) {
@@ -64,7 +64,6 @@ export function spanPoints(distance: number) {
 export function bakeSpline(
   nubs: SplinePoint[],
   pointsPerSpan: number[],
-  circular: boolean = true,
 ): SplinePoint[] {
   const numNubs = nubs.length;
   /*     SplinePointType** pointsHandle;

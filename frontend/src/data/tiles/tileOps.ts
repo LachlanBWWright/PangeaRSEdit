@@ -10,8 +10,8 @@ export function setTile(
   x: number,
   z: number,
   tileId: number,
-  flipH: boolean = false,
-  flipV: boolean = false,
+  flipH = false,
+  flipV = false,
   rotation: 0 | 90 | 180 | 270 = 0,
 ): TileOpResult<{ levelData: LevelData }> {
   const layerData = levelData.Layr?.[1000]?.obj;
@@ -66,7 +66,11 @@ export function getTile(
     return { success: false, error: "Invalid tile coordinates" };
   }
 
-  const tileValue = layerData[idx] as number;
+  const arrayLayerData = layerData;
+  const tileValue = arrayLayerData[idx];
+  if (typeof tileValue !== "number") {
+    return { success: false, error: "Invalid tile value" };
+  }
   const { tileId, flipH, flipV, rotation } = decodeTileValue(tileValue);
 
   return {
@@ -96,7 +100,8 @@ export function swapTiles(
   }
 
   let swapCount = 0;
-  const newLayerData = (layerData as number[]).map((tileValue) => {
+  const newLayerData = layerData.map((tileValue) => {
+    if (typeof tileValue !== "number") return tileValue;
     const decoded = decodeTileValue(tileValue);
     if (decoded.tileId === fromTileId) {
       swapCount++;
@@ -138,8 +143,8 @@ export function fillTileArea(
   endX: number,
   endZ: number,
   tileId: number,
-  flipH: boolean = false,
-  flipV: boolean = false,
+  flipH = false,
+  flipV = false,
   rotation: 0 | 90 | 180 | 270 = 0,
 ): TileOpResult<{ levelData: LevelData; fillCount: number }> {
   const layerData = levelData.Layr?.[1000]?.obj;
@@ -195,7 +200,8 @@ export function countTileUsage(
   }
 
   const counts = new Map<number, number>();
-  for (const tileValue of layerData as number[]) {
+  for (const tileValue of layerData) {
+    if (typeof tileValue !== "number") continue;
     const { tileId } = decodeTileValue(tileValue);
     counts.set(tileId, (counts.get(tileId) ?? 0) + 1);
   }
@@ -220,6 +226,8 @@ export function encodeTileValue(
   return value;
 }
 
+const ROTATION_LOOKUP: (0 | 90 | 180 | 270)[] = [0, 90, 180, 270];
+
 /**
  * Decode tile value into components
  */
@@ -233,7 +241,7 @@ export function decodeTileValue(value: number): {
   const flipH = (value & 0x1000) !== 0;
   const flipV = (value & 0x2000) !== 0;
   const rotationIndex = (value >> 14) & 0x03;
-  const rotation = (rotationIndex * 90) as 0 | 90 | 180 | 270;
+  const rotation = ROTATION_LOOKUP[rotationIndex] ?? 0;
 
   return { tileId, flipH, flipV, rotation };
 }

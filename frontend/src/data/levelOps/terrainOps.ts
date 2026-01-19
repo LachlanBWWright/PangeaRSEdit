@@ -75,7 +75,9 @@ export function getTerrainHeight(
   const idx = tileZ * (mapWidth + 1) + tileX;
   if (idx < 0 || idx >= heights.length) return undefined;
 
-  return heights[idx] as number;
+  const height = heights[idx];
+  if (typeof height !== "number") return undefined;
+  return height;
 }
 
 /**
@@ -152,7 +154,22 @@ export function getTileAttribute(
   const idx = tileZ * mapWidth + tileX;
   if (idx < 0 || idx >= attrs.length) return undefined;
 
-  return attrs[idx] as { flags: number; p0: number; p1: number };
+  const attr = attrs[idx];
+  if (!attr || typeof attr !== "object") {
+    return undefined;
+  }
+  const attrObj = attr;
+  if (
+    !("flags" in attrObj) ||
+    !("p0" in attrObj) ||
+    !("p1" in attrObj) ||
+    typeof attrObj.flags !== "number" ||
+    typeof attrObj.p0 !== "number" ||
+    typeof attrObj.p1 !== "number"
+  ) {
+    return undefined;
+  }
+  return { flags: attrObj.flags, p0: attrObj.p0, p1: attrObj.p1 };
 }
 
 /**

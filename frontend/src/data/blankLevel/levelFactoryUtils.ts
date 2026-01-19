@@ -7,10 +7,10 @@ import type { BlankLevelOptions } from "./types";
 export function createHeightArray(
   mapWidth: number,
   mapHeight: number,
-  defaultHeight: number = 0,
+  defaultHeight = 0,
 ): number[] {
   const size = (mapWidth + 1) * (mapHeight + 1);
-  return new Array(size).fill(defaultHeight);
+  return new Array<number>(size).fill(defaultHeight);
 }
 
 /**
@@ -20,12 +20,12 @@ export function createHeightArray(
 export function createAttributeArray(
   mapWidth: number,
   mapHeight: number,
-  defaultFlags: number = 0,
-  defaultP0: number = 0,
-  defaultP1: number = 0,
-): Array<{ flags: number; p0: number; p1: number }> {
+  defaultFlags = 0,
+  defaultP0 = 0,
+  defaultP1 = 0,
+): { flags: number; p0: number; p1: number }[] {
   const size = mapWidth * mapHeight;
-  return new Array(size).fill(null).map(() => ({
+  return new Array<{ flags: number; p0: number; p1: number }>(size).fill({ flags: 0, p0: 0, p1: 0 }).map(() => ({
     flags: defaultFlags,
     p0: defaultP0,
     p1: defaultP1,
@@ -40,13 +40,13 @@ export function createSupertileGrid(
   mapWidth: number,
   mapHeight: number,
   tilesPerSupertile: number,
-  emptyValue: number = -1,
-): Array<{ superTileId: number }> {
+  emptyValue = -1,
+): { superTileId: number }[] {
   const gridWidth = Math.floor(mapWidth / tilesPerSupertile);
   const gridHeight = Math.floor(mapHeight / tilesPerSupertile);
   const size = gridWidth * gridHeight;
 
-  return new Array(size).fill(null).map(() => ({
+  return new Array<{ superTileId: number }>(size).fill({ superTileId: 0 }).map(() => ({
     superTileId: emptyValue,
   }));
 }
@@ -57,10 +57,10 @@ export function createSupertileGrid(
 export function createLayerArray(
   mapWidth: number,
   mapHeight: number,
-  defaultTile: number = 0,
+  defaultTile = 0,
 ): number[] {
   const size = mapWidth * mapHeight;
-  return new Array(size).fill(defaultTile);
+  return new Array<number>(size).fill(defaultTile);
 }
 
 /**

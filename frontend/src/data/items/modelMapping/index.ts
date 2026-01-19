@@ -14,6 +14,34 @@ import { getCroMagItemModelMapping } from "../cromagItemModelMapping";
 import { getBillyFrontierItemModelMapping } from "../billyFrontierItemModelMapping";
 
 /**
+ * Convert game-specific mapping to unified ItemModelMapping
+ */
+function toItemModelMapping(
+  mapping:
+    | {
+        modelFile: string;
+        modelPath: string;
+        modelIndex: number;
+        requiresSkeleton?: boolean;
+        skeletonFile?: string;
+        scale?: number;
+        rotationY?: number;
+      }
+    | undefined,
+): ItemModelMapping | undefined {
+  if (!mapping) return undefined;
+  return {
+    modelFile: mapping.modelFile,
+    modelPath: mapping.modelPath,
+    modelIndex: mapping.modelIndex,
+    requiresSkeleton: mapping.requiresSkeleton,
+    skeletonFile: mapping.skeletonFile,
+    scale: mapping.scale,
+    rotationY: mapping.rotationY,
+  };
+}
+
+/**
  * Get the model mapping for a specific item type in the given game
  */
 export function getItemModelMappingForGame(
@@ -25,34 +53,22 @@ export function getItemModelMappingForGame(
       return getOttoModelMapping(itemType);
 
     case Game.BUGDOM:
-      return getBugdomItemModelMapping(itemType) as
-        | ItemModelMapping
-        | undefined;
+      return toItemModelMapping(getBugdomItemModelMapping(itemType));
 
     case Game.BUGDOM_2:
-      return getBugdom2ItemModelMapping(itemType) as
-        | ItemModelMapping
-        | undefined;
+      return toItemModelMapping(getBugdom2ItemModelMapping(itemType));
 
     case Game.NANOSAUR:
-      return getNanosaurItemModelMapping(itemType) as
-        | ItemModelMapping
-        | undefined;
+      return toItemModelMapping(getNanosaurItemModelMapping(itemType));
 
     case Game.NANOSAUR_2:
-      return getNanosaur2ItemModelMapping(itemType) as
-        | ItemModelMapping
-        | undefined;
+      return toItemModelMapping(getNanosaur2ItemModelMapping(itemType));
 
     case Game.CRO_MAG:
-      return getCroMagItemModelMapping(itemType) as
-        | ItemModelMapping
-        | undefined;
+      return toItemModelMapping(getCroMagItemModelMapping(itemType));
 
     case Game.BILLY_FRONTIER:
-      return getBillyFrontierItemModelMapping(itemType) as
-        | ItemModelMapping
-        | undefined;
+      return toItemModelMapping(getBillyFrontierItemModelMapping(itemType));
 
     case Game.MIGHTY_MIKE:
       // Mighty Mike is 2D, no 3D models

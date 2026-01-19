@@ -11,7 +11,7 @@ export function verifyCitation(
   itemName: string,
   paramName: "flags" | "p0" | "p1" | "p2" | "p3",
   flagIndex?: number,
-  fuzzyMatch: boolean = true,
+  fuzzyMatch = true,
 ): VerificationResult {
   const lineIndex = citation.lineNumber - 1; // 0-indexed
 
@@ -105,7 +105,7 @@ function fuzzyLineMatch(expected: string, actual: string): boolean {
 function getLineContext(
   lines: string[],
   index: number,
-  context: number = 2,
+  context = 2,
 ): { before: string[]; actual: string; after: string[] } {
   return {
     before: lines.slice(Math.max(0, index - context), index),

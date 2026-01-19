@@ -15,7 +15,7 @@ export interface SplineCircularInfo {
  */
 export function isSplineCircular(
   nubs: SplinePoint[],
-  threshold: number = 1.0,
+  threshold = 1.0,
 ): boolean {
   if (nubs.length < 2) return false;
 
@@ -35,7 +35,7 @@ export function isSplineCircular(
  */
 export function getSplineCircularInfo(
   nubs: SplinePoint[],
-  threshold: number = 1.0,
+  threshold = 1.0,
 ): SplineCircularInfo {
   if (nubs.length < 2) {
     return { isCircular: false, endpointDistance: 0 };
