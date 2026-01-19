@@ -25,7 +25,7 @@ import {
   SelectTrigger,
 } from "@/components/ui/select";
 import { getSplineItemTypes } from "@/data/splines/getSplineItemTypes";
-import { Globals } from "@/data/globals/globals";
+import { Globals, Game } from "@/data/globals/globals";
 import { getSplineItemName } from "@/data/splines/getSplineItemNames";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -33,6 +33,8 @@ import {
   FilterToSafeSplineItems,
 } from "../../../data/items/itemAtoms";
 import { Label } from "@/components/ui/label";
+import { detectSplineType, SplineType } from "@/data/splines/splineTypeDetection";
+import { selectSplineNubs } from "../../../data/selectors";
 
 export function AddNewSplineMenu({
   setSplineData,
@@ -337,12 +339,19 @@ export function EditSplineItemMenu({
 }
 
 export function EditSplineMenu({
+  splineData,
   setSplineData,
 }: {
   splineData: SplineData;
   setSplineData: Updater<SplineData>;
 }) {
   const selectedSpline = useAtomValue(SelectedSpline);
+  const globals = useAtomValue(Globals);
+
+  const nubs = selectedSpline !== undefined
+    ? selectSplineNubs(splineData, SPLINE_KEY_BASE + selectedSpline)
+    : [];
+  const splineType = detectSplineType(nubs);
 
   return (
     <div className="grid grid-cols-6 gap-2">
@@ -390,6 +399,60 @@ export function EditSplineMenu({
       >
         Add Back Nub
       </Button>
+
+      {globals.GAME_TYPE === Game.BILLY_FRONTIER && (
+        <div className="col-span-6 flex items-center gap-2 mt-2">
+           <Label>Spline Type:</Label>
+           <Select
+             value={splineType}
+             onValueChange={(val) => {
+               setSplineData((draft) => {
+                 if (selectedSpline === undefined) return;
+                 const nubs = draft.SpNb[SPLINE_KEY_BASE + selectedSpline]?.obj;
+                 if (!nubs) return;
+
+                 const targetType = val as SplineType;
+                 const currentType = detectSplineType(nubs);
+
+                 if (currentType === targetType) return;
+
+                 if (targetType === SplineType.CIRCULAR) {
+                    // Make circular: Append duplicate of first nub
+                    nubs.push({ x: nubs[0].x, z: nubs[0].z });
+                 } else {
+                    // Make open: Remove last nub if it duplicates first
+                    const first = nubs[0];
+                    const last = nubs[nubs.length - 1];
+                    if (nubs.length > 1 && Math.abs(first.x - last.x) < 5 && Math.abs(first.z - last.z) < 5) {
+                       nubs.pop();
+                    }
+                 }
+
+                 // Update points
+                 draft.SpPt[SPLINE_KEY_BASE + selectedSpline] = {
+                   obj: getPoints(nubs, targetType),
+                 };
+                 // Update numNubs/numPoints in Spln
+                 const spln = draft.Spln?.[1000]?.obj?.[SPLINE_KEY_BASE + selectedSpline];
+                 if (spln) {
+                   spln.numNubs = nubs.length;
+                   if (draft.SpPt[SPLINE_KEY_BASE + selectedSpline]) {
+                     spln.numPoints = draft.SpPt[SPLINE_KEY_BASE + selectedSpline]!.obj.length;
+                   }
+                 }
+               });
+             }}
+           >
+             <SelectTrigger className="w-[180px]">
+               {splineType === SplineType.CIRCULAR ? "Circular (Loop)" : "Open (Linear)"}
+             </SelectTrigger>
+             <SelectContent>
+               <SelectItem value={SplineType.CIRCULAR}>Circular (Loop)</SelectItem>
+               <SelectItem value={SplineType.OPEN}>Open (Linear)</SelectItem>
+             </SelectContent>
+           </Select>
+        </div>
+      )}
     </div>
   );
 }

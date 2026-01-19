@@ -2,6 +2,7 @@ import type { Updater } from "use-immer";
 import type { SplineData } from "@/python/structSpecs/LevelTypes";
 import { getPoints } from "../../../utils/spline";
 import { selectSplineNubs } from "../../../data/selectors";
+import { detectSplineType } from "@/data/splines/splineTypeDetection";
 
 export const SPLINE_KEY_BASE = 1000;
 
@@ -13,10 +14,14 @@ export function updateSplinePointsFromNubs(
   setSplineData((draft) => {
     const nubs = selectSplineNubs(draft, SPLINE_KEY_BASE + splineIdx);
     const firstNub = nubs[0];
+
+    // Detect spline type from nubs
+    const splineType = detectSplineType(nubs);
+
     const newPoints =
       nubs.length === 1 && firstNub
         ? [{ x: firstNub.x, z: firstNub.z }]
-        : getPoints(nubs);
+        : getPoints(nubs, splineType);
 
     const spPt = draft.SpPt?.[SPLINE_KEY_BASE + splineIdx];
     if (spPt) {

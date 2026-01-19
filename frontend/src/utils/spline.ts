@@ -1,4 +1,5 @@
 import { SplinePoint } from "@/python/structSpecs/LevelTypes";
+import { SplineType } from "@/data/splines/splineTypeDetection";
 import { calcQuickDistance } from "./distanceCalc";
 
 /**
@@ -8,47 +9,89 @@ function getSplineArray(arr: SplinePoint[][], index: number): SplinePoint[] {
   return arr[index] ?? [];
 }
 
-export function getPoints(nubs: SplinePoint[]) {
-  const pointsPerSpan = new Array<number>(nubs.length);
+/**
+ * Generate spline points from nubs
+ * @param nubs Control points
+ * @param splineType Whether spline is circular or open
+ */
+export function getPoints(
+  nubs: SplinePoint[],
+  splineType: SplineType = SplineType.CIRCULAR,
+): SplinePoint[] {
+  if (nubs.length < 2) {
+    return nubs.length === 1 ? [{ x: nubs[0].x, z: nubs[0].z }] : [];
+  }
 
-  for (let i = 0; i < nubs.length; i++) {
-    //Get distance
+  const pointsPerSpan = calculatePointsPerSpan(nubs, splineType);
+  return bakeSpline(nubs, pointsPerSpan, splineType);
+}
+
+/**
+ * Calculate how many points each span should have
+ */
+function calculatePointsPerSpan(
+  nubs: SplinePoint[],
+  splineType: SplineType,
+): number[] {
+  const numSpans = splineType === SplineType.CIRCULAR
+    ? nubs.length  // Circular: includes segment from last to first
+    : nubs.length - 1;  // Open: no wrap-around
+
+  const pointsPerSpan = new Array<number>(numSpans);
+
+  for (let i = 0; i < numSpans; i++) {
     const currentNub = nubs[i];
     const nextNub = nubs[(i + 1) % nubs.length];
-    if (!currentNub || !nextNub) continue;
+
+    if (!currentNub || !nextNub) {
+      pointsPerSpan[i] = 1;
+      continue;
+    }
+
     const distance = calcQuickDistance(
-      currentNub.x,
-      currentNub.z,
-      nextNub.x,
-      nextNub.z,
+      currentNub.x, currentNub.z,
+      nextNub.x, nextNub.z,
     );
     pointsPerSpan[i] = spanPoints(distance);
   }
 
-  return bakeSpline(nubs, pointsPerSpan);
+  return pointsPerSpan;
 }
 
-export function spanPoints(distance: number) {
+export function spanPoints(distance: number): number {
   return Math.round(3.0 * distance);
 }
 
-//Code for creating spline (similar to OreoTerrain)
-export function bakeSpline(nubs: SplinePoint[], pointsPerSpan: number[]) {
-  const numNubs = nubs.length;
-  /*     SplinePointType** pointsHandle;
-    SplinePointType**space,*points;
-    SplinePointType*a, *b, *c, *d;
-    SplinePointType*h0, *h1, *h2, *h3, *hi_a;
-    int			numPoints;
-
-    let 
+/**
+ * Bake spline from nubs to interpolated points
+ *
+ * For circular splines: Wraps around so last segment curves properly
+ * For open splines: Standard cubic spline with natural boundary conditions
  */
+export function bakeSpline(
+  nubs: SplinePoint[],
+  pointsPerSpan: number[],
+  splineType: SplineType = SplineType.CIRCULAR,
+): SplinePoint[] {
+  const numNubs = nubs.length;
+
+  if (numNubs < 2) {
+    return nubs.map(n => ({ x: n.x, z: n.z }));
+  }
+
+  // For circular splines, create a working array that wraps around
+  const workingNubs = splineType === SplineType.CIRCULAR
+    ? createCircularNubArray(nubs)
+    : nubs;
+
+  const workingNumNubs = workingNubs.length;
+
   // ALLOCATE 2D ARRAY FOR CALCULATIONS
   const space: SplinePoint[][] = [];
   //Init array
   for (let i = 0; i < 8; i++) {
     const row: SplinePoint[] = [];
-    for (let j = 0; j < numNubs; j++) {
+    for (let j = 0; j < workingNumNubs; j++) {
       row.push({ x: 0, z: 0 });
     }
     space.push(row);
@@ -56,16 +99,16 @@ export function bakeSpline(nubs: SplinePoint[], pointsPerSpan: number[]) {
 
   // ALLOC POINT ARRAY
   let maxPoints = 0;
-  for (let i = 0; i < numNubs; i++) maxPoints += pointsPerSpan[i] ?? 0;
+  for (let i = 0; i < pointsPerSpan.length; i++) maxPoints += pointsPerSpan[i] ?? 0;
 
-  //pointsHandle = (SplinePointType**) AllocHandle(sizeof(SplinePointType) * maxPoints);
-  //let points = pointsHandle;
+  // Add some buffer for safety
+  maxPoints += 10;
+
   let points = new Array<SplinePoint>(maxPoints);
   //Initialise with zeros
   for (let i = 0; i < maxPoints; i++) points[i] = { x: 0, z: 0 };
 
   // DO MAGICAL CUBIC SPLINE CALCULATIONS ON CONTROL PTS
-  // These arrays are fully initialized in the loop above
   const h0 = getSplineArray(space, 0);
   const h1 = getSplineArray(space, 1);
   const h2 = getSplineArray(space, 2);
@@ -77,12 +120,12 @@ export function bakeSpline(nubs: SplinePoint[], pointsPerSpan: number[]) {
   const d = getSplineArray(space, 7);
 
   // COPY CONTROL POINTS INTO ARRAY
-  for (let i = 0; i < numNubs; i++) {
-    const nub = nubs[i];
-    if (nub) d[i] = nub;
+  for (let i = 0; i < workingNumNubs; i++) {
+    const nub = workingNubs[i];
+    if (nub) d[i] = { x: nub.x, z: nub.z };
   }
 
-  for (let i = 0, imax = numNubs - 2; i < imax; i++) {
+  for (let i = 0, imax = workingNumNubs - 2; i < imax; i++) {
     const h2i = h2[i];
     const h3i = h3[i];
     const di = d[i];
@@ -95,7 +138,7 @@ export function bakeSpline(nubs: SplinePoint[], pointsPerSpan: number[]) {
       h3i.z = 3 * (di2.z - 2 * di1.z + di.z);
     }
   }
-  const h2LastIdx = h2[numNubs - 3];
+  const h2LastIdx = h2[workingNumNubs - 3];
   if (h2LastIdx) {
     h2LastIdx.x = 0;
     h2LastIdx.z = 0;
@@ -111,7 +154,7 @@ export function bakeSpline(nubs: SplinePoint[], pointsPerSpan: number[]) {
     h10.z = h30.z / a0.z;
   }
 
-  for (let i = 1, i1 = 0, imax = numNubs - 2; i < imax; i++, i1++) {
+  for (let i = 1, i1 = 0, imax = workingNumNubs - 2; i < imax; i++, i1++) {
     const h0i1 = h0[i1];
     const h1i = h1[i];
     const h1i1 = h1[i1];
@@ -131,12 +174,12 @@ export function bakeSpline(nubs: SplinePoint[], pointsPerSpan: number[]) {
     }
   }
 
-  const h1Last = h1[numNubs - 3];
+  const h1Last = h1[workingNumNubs - 3];
   if (h1Last) {
-    b[numNubs - 3] = h1Last;
+    b[workingNumNubs - 3] = h1Last;
   }
 
-  for (let i = numNubs - 4; i >= 0; i--) {
+  for (let i = workingNumNubs - 4; i >= 0; i--) {
     const bi = b[i];
     const bi1 = b[i + 1];
     const h0i = h0[i];
@@ -147,13 +190,13 @@ export function bakeSpline(nubs: SplinePoint[], pointsPerSpan: number[]) {
     }
   }
 
-  for (let i = numNubs - 2; i >= 1; i--) {
+  for (let i = workingNumNubs - 2; i >= 1; i--) {
     const prevB = b[i - 1];
     if (prevB) b[i] = prevB;
   }
 
   const b0 = b[0];
-  const bLast = b[numNubs - 1];
+  const bLast = b[workingNumNubs - 1];
   if (b0) {
     b0.x = 0;
     b0.z = 0;
@@ -163,10 +206,7 @@ export function bakeSpline(nubs: SplinePoint[], pointsPerSpan: number[]) {
     bLast.z = 0;
   }
 
-  //Pointer arithm
-  //hi_a = a + numNubs - 1;
-
-  for (let i = 0; i < numNubs - 1; i++ /*  a++, b++, c++, d++ */) {
+  for (let i = 0; i < workingNumNubs - 1; i++) {
     const ai = a[i];
     const bi = b[i];
     const bi1 = b[i + 1];
@@ -184,190 +224,81 @@ export function bakeSpline(nubs: SplinePoint[], pointsPerSpan: number[]) {
   }
 
   // NOW CALCULATE THE SPLINE POINTS
-  //Not needed - not using pointer arithm
-  /*   a = space[4];
-  b = space[5];
-  c = space[6];
-  d = space[7]; */
-
+  const numSpans = splineType === SplineType.CIRCULAR ? numNubs : numNubs - 1;
   let numPoints = 0;
-  for (let i = 0; i < numNubs - 1; i++) {
-    //GAME_ASSERT(nub < numNubs - 1);
 
-    const subdivisions = pointsPerSpan[i] ?? 0;
-    const ai = a[i];
-    const bi = b[i];
-    const ci = c[i];
-    const di = d[i];
+  for (let span = 0; span < numSpans; span++) {
+    // For circular splines with phantom points, we need to pick the correct span indices
+    // createCircularNubArray adds 1 point at start, so original index 0 is at index 1 in working array
+    const idx = splineType === SplineType.CIRCULAR ? span + 1 : span;
+
+    const subdivisions = pointsPerSpan[span] ?? 1;
+    const ai = a[idx], bi = b[idx], ci = c[idx], di = d[idx];
     
     if (!ai || !bi || !ci || !di) continue;
 
-    // CALC THIS SPAN
-
     for (let spanPoint = 0; spanPoint < subdivisions; spanPoint++) {
-      //GAME_ASSERT(numPoints < maxPoints);										// see if overflow
       const t = spanPoint / subdivisions;
       const point = points[numPoints];
       if (!point) continue;
-      point.x = ((ai.x * t + bi.x) * t + ci.x) * t + di.x; // save point
+      point.x = ((ai.x * t + bi.x) * t + ci.x) * t + di.x;
       point.z = ((ai.z * t + bi.z) * t + ci.z) * t + di.z;
       numPoints++;
     }
   }
-
-  // ADD FINAL NUB AS POINT IF REQUIRED
-  const lastPointsPerSpan = pointsPerSpan[numNubs - 1];
-  const lastNub = nubs[numNubs - 1];
-  const lastPoint = points[numPoints];
   
-  if (lastPointsPerSpan === 1 && lastNub && lastPoint) {
-    // see if overflow
-    lastPoint.x = lastNub.x;
-    lastPoint.z = lastNub.z;
-    numPoints++;
+  // ADD FINAL NUB AS POINT IF REQUIRED
+  // For open splines, we want to include the very last point
+  if (splineType === SplineType.OPEN) {
+    const lastNub = nubs[numNubs - 1];
+    const lastPoint = points[numPoints];
+
+    // We can add the last nub as a point to ensure we reach the end exactly
+    // Or we can rely on the last interpolation reaching it.
+    // The original code had logic to add it if pointsPerSpan was 1.
+    // Let's add it if we haven't overflowed
+    if (lastNub && lastPoint) {
+       lastPoint.x = lastNub.x;
+       lastPoint.z = lastNub.z;
+       numPoints++;
+    }
   }
 
   points = points.slice(0, numPoints);
 
   return points;
 }
-/* static SplinePointType** BakeSpline(int numNubs, const SplinePointType *nubs, const int* pointsPerSpan)
-{
-    SplinePointType** pointsHandle;
-    SplinePointType**space,*points;
-    SplinePointType*a, *b, *c, *d;
-    SplinePointType*h0, *h1, *h2, *h3, *hi_a;
-    int			numPoints;
 
+/**
+ * For circular splines, create array with phantom points for smooth wrap-around
+ */
+function createCircularNubArray(nubs: SplinePoint[]): SplinePoint[] {
+  // Add phantom points before first and after last for proper wrapping
+  // We want the spline to pass through all points and loop smoothly.
+  // The 'phantom' points are essentially copies of the neighbors to simulate the loop context.
+  // Since nubs[0] == nubs[n-1] in the data for circular splines (usually),
+  // we effectively have:
+  // [last-1, first, second, ..., last-1, last(==first), second]
 
-				// ALLOCATE 2D ARRAY FOR CALCULATIONS 
+  const n = nubs.length;
+  if (n < 2) return [...nubs];
 
-	Alloc_2d_array(SplinePointType, space, 8, numNubs);
+  // Assuming nubs[0] and nubs[n-1] are the same point (or very close)
+  // We want to construct an array that lets the cubic spline algorithm
+  // see the continuity.
 
+  // Spline logic expects p[i-1], p[i], p[i+1], p[i+2] basically.
 
-				// ALLOC POINT ARRAY 
+  // Let's try to pad with:
+  // [n-2] -> [0] -> [1] ... [n-2] -> [0] -> [1]
+  // But wait, the standard algorithm iterates from 0 to numNubs-2.
 
-	int maxPoints = 0;
-	for (int i = 0; i < numNubs; i++)
-		maxPoints += pointsPerSpan[i];
+  // If we just add one point at the beginning (the one before start)
+  // and one point at the end (the one after end)
 
-	pointsHandle = (SplinePointType**) AllocHandle(sizeof(SplinePointType) * maxPoints);
-	points = *pointsHandle;
-
-
-		// DO MAGICAL CUBIC SPLINE CALCULATIONS ON CONTROL PTS 
-
-	h0 = space[0];
-	h1 = space[1];
-	h2 = space[2];
-	h3 = space[3];
-
-	a = space[4];
-	b = space[5];
-	c = space[6];
-	d = space[7];
-
-
-				// COPY CONTROL POINTS INTO ARRAY 
-
-	for (int i = 0; i < numNubs; i++)
-		d[i] = nubs[i];
-
-
-	for (int i = 0, imax = numNubs - 2; i < imax; i++)
-	{
-		h2[i].x = 1;
-		h2[i].z = 1;
-		h3[i].x = 3 * (d[i + 2].x - 2 * d[i + 1].x + d[i].x);
-		h3[i].z = 3 * (d[i + 2].z - 2 * d[i + 1].z + d[i].z);
-	}
-	h2[numNubs - 3].x = 0;
-	h2[numNubs - 3].z = 0;
-
-	a[0].x = 4;
-	a[0].z = 4;
-	h1[0].x = h3[0].x / a[0].x;
-	h1[0].z = h3[0].z / a[0].z;
-
-	for (int i = 1, i1 = 0, imax = numNubs - 2; i < imax; i++, i1++)
-	{
-		h0[i1].x = h2[i1].x / a[i1].x;
-		a[i].x = 4.0f - h0[i1].x;
-		h1[i].x = (h3[i].x - h1[i1].x) / a[i].x;
-
-		h0[i1].z = h2[i1].z / a[i1].z;
-		a[i].z = 4.0f - h0[i1].z;
-		h1[i].z = (h3[i].z - h1[i1].z) / a[i].z;
-	}
-
-	b[numNubs - 3] = h1[numNubs - 3];
-
-	for (int i = numNubs - 4; i >= 0; i--)
-	{
- 		b[i].x = h1[i].x - h0[i].x * b[i+ 1].x;
- 		b[i].z = h1[i].z - h0[i].z * b[i+ 1].z;
- 	}
-
-	for (int i = numNubs - 2; i >= 1; i--)
-		b[i] = b[i - 1];
-
-	b[0].x = 0;
-	b[0].z = 0;
-	b[numNubs - 1].x = 0;
-	b[numNubs - 1].z = 0;
-	hi_a = a + numNubs - 1;
-
-	for (; a < hi_a; a++, b++, c++, d++)
-	{
-		c->x = ((d+1)->x - d->x) -(2.0f * b->x + (b+1)->x) * (1.0f/3.0f);
-		a->x = ((b+1)->x - b->x) * (1.0f/3.0f);
-
-		c->z = ((d+1)->z - d->z) -(2.0f * b->z + (b+1)->z) * (1.0f/3.0f);
-		a->z = ((b+1)->z - b->z) * (1.0f/3.0f);
-	}
-
-		// NOW CALCULATE THE SPLINE POINTS 
-
-	a = space[4];
-	b = space[5];
-	c = space[6];
-	d = space[7];
-
-  	numPoints = 0;
-	for (int nub = 0; a < hi_a; a++, b++, c++, d++, nub++)
-	{
-		GAME_ASSERT(nub < numNubs - 1);
-
-		int subdivisions = pointsPerSpan[nub];
-
-				// CALC THIS SPAN
-
-		for (int spanPoint = 0; spanPoint < subdivisions; spanPoint++)
-		{
-			GAME_ASSERT(numPoints < maxPoints);										// see if overflow
-			float t = spanPoint / (float) subdivisions;
-			points[numPoints].x = ((a->x * t + b->x) * t + c->x) * t + d->x;		// save point
-			points[numPoints].z = ((a->z * t + b->z) * t + c->z) * t + d->z;
-			numPoints++;
-		}
-	}
-
-
-		// ADD FINAL NUB AS POINT IF REQUIRED 
-
-
-
-	if (pointsPerSpan[numNubs - 1] == 1)
-	{
-								// see if overflow
-		points[numPoints].x = nubs[numNubs - 1].x;
-		points[numPoints].z = nubs[numNubs - 1].z;
-		numPoints++;
-	}
-
-
-
-
-
-	return pointsHandle;
-} */
+  return [
+    nubs[n - 2],   // Point before first (wrapping around)
+    ...nubs,       // The actual nubs (where 0 and n-1 are same)
+    nubs[1],       // Point after last (wrapping around)
+  ];
+}

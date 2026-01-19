@@ -4,7 +4,7 @@ import type {
   SplineNub,
 } from "@/python/structSpecs/LevelTypes";
 import type { SplineData } from "@/python/structSpecs/LevelTypes";
-import { Line, Circle, Rect, Label, Tag, Text } from "react-konva";
+import { Line, Circle, Rect, Label, Tag, Text, Group } from "react-konva";
 import type Konva from "konva";
 import { useAtom, useAtomValue } from "jotai";
 import { memo, useMemo, useState, useRef } from "react";
@@ -18,6 +18,7 @@ import {
   selectSplineItems,
 } from "../../../data/selectors";
 import { updateSplinePointsFromNubs, SPLINE_KEY_BASE } from "./splineUtils";
+import { detectSplineType, SplineType } from "@/data/splines/splineTypeDetection";
 
 export const Spline = memo(
   ({
@@ -44,6 +45,14 @@ export const Spline = memo(
     const points = useMemo(() => {
       return splinePoints.flatMap((point) => [point.x, point.z]);
     }, [splinePoints]);
+
+    // Detect spline type
+    const splineType = useMemo(
+      () => detectSplineType(nubs),
+      [nubs]
+    );
+
+    const isCircular = splineType === SplineType.CIRCULAR;
 
     return (
       <>
@@ -103,17 +112,30 @@ export const Spline = memo(
           }}
         />
         {nubs.map((nub, nubIdx) => {
-          if (nubIdx === 0) return null;
+          // For circular splines: hide nub 0 (merged with last)
+          // For open splines: show all nubs
+          if (isCircular && nubIdx === 0) return null;
+
           return (
             <SplineNub
               key={nubIdx}
               nub={nub}
               nubIdx={nubIdx}
               splineIdx={splineIdx}
+              splineType={splineType}
               setSplineData={setSplineData}
             />
           );
         })}
+
+        {/* Show indicator for circular vs open */}
+        {!isCircular && nubs.length > 0 && (
+          <>
+            <StartEndpointMarker nub={nubs[0]} label="Start" />
+            <StartEndpointMarker nub={nubs[nubs.length - 1]} label="End" />
+          </>
+        )}
+
         {items.map((item, itemIdx) => {
           //Get approx nub
           let pointIdx = Math.floor(
@@ -142,16 +164,20 @@ const SplineNub = memo(
     nub,
     nubIdx,
     splineIdx,
+    splineType,
     setSplineData,
   }: {
     nub: SplineNub;
     nubIdx: number;
     splineIdx: number;
+    splineType: SplineType;
     setSplineData: Updater<SplineData>;
   }) => {
     const [selectedSpline, setSelectedSpline] = useAtom(SelectedSpline);
     const [hovering, setHovering] = useState(false);
     const nubRafRef = useRef<number | null>(null);
+    const isCircular = splineType === SplineType.CIRCULAR;
+
     return (
       <>
         <Circle
@@ -174,9 +200,15 @@ const SplineNub = memo(
                 const updatedNubs = [...currentNubs];
                 updatedNubs[nubIdx] = { x: newX, z: newZ };
 
-                //Modify "hidden" final nub, which is to be in the same position as the first nub
-                if (nubIdx === currentNubs.length - 1) {
-                  updatedNubs[0] = { x: newX, z: newZ };
+                // Only sync first/last for circular splines
+                if (isCircular) {
+                  //Modify "hidden" final nub, which is to be in the same position as the first nub
+                  if (nubIdx === currentNubs.length - 1) {
+                    updatedNubs[0] = { x: newX, z: newZ };
+                  } else if (nubIdx === 0) {
+                     // If we were editing 0 (hidden usually), update last too
+                    updatedNubs[currentNubs.length - 1] = { x: newX, z: newZ };
+                  }
                 }
 
                 const spNb = draft.SpNb?.[SPLINE_KEY_BASE + splineIdx];
@@ -188,7 +220,7 @@ const SplineNub = memo(
                 const newPoints =
                   updatedNubs.length === 1 && firstNub
                     ? [{ x: firstNub.x, z: firstNub.z }]
-                    : getPoints(updatedNubs);
+                    : getPoints(updatedNubs, splineType);
 
                 const spPt = draft.SpPt?.[SPLINE_KEY_BASE + splineIdx];
                 if (spPt) {
@@ -215,9 +247,13 @@ const SplineNub = memo(
               const updatedNubs = [...currentNubs];
               updatedNubs[nubIdx] = { x: newX, z: newZ };
 
-              //Modify "hidden" final nub, which is to be in the same position as the first nub
-              if (nubIdx === currentNubs.length - 1) {
-                updatedNubs[0] = { x: newX, z: newZ };
+              // Only sync first/last for circular splines
+              if (isCircular) {
+                if (nubIdx === currentNubs.length - 1) {
+                  updatedNubs[0] = { x: newX, z: newZ };
+                } else if (nubIdx === 0) {
+                   updatedNubs[currentNubs.length - 1] = { x: newX, z: newZ };
+                }
               }
 
               const spNbEntry = draft.SpNb?.[SPLINE_KEY_BASE + splineIdx];
@@ -245,6 +281,31 @@ const SplineNub = memo(
       </>
     );
   },
+);
+
+const StartEndpointMarker: React.FC<{ nub: SplineNub; label: string }> = ({
+  nub,
+  label,
+}) => (
+  <Group>
+    <Circle
+      x={nub.x}
+      y={nub.z}
+      radius={15}
+      stroke={label === "Start" ? "#00ff00" : "#ff0000"}
+      strokeWidth={3}
+      fill="transparent"
+      listening={false}
+    />
+    <Text
+      x={nub.x + 10}
+      y={nub.z - 10}
+      text={label}
+      fill={label === "Start" ? "#00ff00" : "#ff0000"}
+      fontSize={12}
+      listening={false}
+    />
+  </Group>
 );
 
 const ITEM_BOX_SIZE = 12;
