@@ -38,6 +38,24 @@ export const ShowRoofInTopology = atom<boolean>(false);
 export const EditRoofAndFloorTogether = atom<boolean>(false);
 export const RoofFloorElevation = atom<number>(100); // Center elevation for dual editing
 
+export enum TopologyEditTarget {
+  FLOOR = 'floor',
+  ROOF = 'roof',
+  BOTH = 'both',
+}
+
+export const TopologyEditTargetAtom = atom<TopologyEditTarget>(TopologyEditTarget.FLOOR);
+
+export enum ConstraintMode {
+  PUSH_ROOF = 'push_roof',
+  PUSH_FLOOR = 'push_floor',
+  BLOCK = 'block',
+}
+
+export const TopologyConstraintModeAtom = atom<ConstraintMode>(ConstraintMode.PUSH_ROOF);
+
+export const TopologyMaintainSymmetryAtom = atom<boolean>(true);
+
 // Tile editing atoms
 export const TileEditingEnabled = atom<boolean>(false);
 export const TileBrushType = atom<"add" | "remove">("add");

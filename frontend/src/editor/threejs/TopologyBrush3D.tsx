@@ -11,9 +11,10 @@ import {
 interface TopologyBrush3DProps {
   intersectionPoint: { x: number; y: number; z: number } | null;
   visible: boolean;
+  color?: number | string;
 }
 
-export function TopologyBrush3D({ intersectionPoint, visible }: TopologyBrush3DProps) {
+export function TopologyBrush3D({ intersectionPoint, visible, color = 0x00ff00 }: TopologyBrush3DProps) {
   const globals = useAtomValue(Globals);
   const brushMode = useAtomValue(CurrentTopologyBrushMode);
   const brushRadius = useAtomValue(TopologyBrushRadius);
@@ -37,13 +38,13 @@ export function TopologyBrush3D({ intersectionPoint, visible }: TopologyBrush3DP
   // Semi-transparent material for brush indicator
   const material = useMemo(() => {
     return new MeshBasicMaterial({
-      color: 0x00ff00,
+      color: color,
       transparent: true,
       opacity: 0.3,
       side: DoubleSide,
       depthWrite: false,
     });
-  }, []);
+  }, [color]);
 
   if (!visible || !intersectionPoint) {
     return null;

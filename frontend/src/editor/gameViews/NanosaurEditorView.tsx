@@ -93,7 +93,12 @@ export function NanosaurEditorView({
           />
         )}
         {view === View.tiles && canvasViewMode !== CanvasView.THREE_D && (
-          <IndividualTilesMenu headerData={headerData} setHeaderData={setHeaderData} />
+          <IndividualTilesMenu
+            headerData={headerData}
+            setHeaderData={setHeaderData}
+            terrainData={terrainData}
+            setTerrainData={setTerrainData}
+          />
         )}
         {view === View.supertiles && showSupertileMenu && (
           <BugdomTileMenu

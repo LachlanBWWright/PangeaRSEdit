@@ -19,12 +19,24 @@ export const RoofGeometry = forwardRef<
   {
     headerData: HeaderData;
     terrainData: TerrainData;
+    opacity?: number;
+    wireframe?: boolean;
+    color?: string;
     onPointerDown?: (event: Event) => void;
     onPointerMove?: (event: Event) => void;
     onPointerUp?: (event: Event) => void;
   }
 >(function RoofGeometry(
-  { headerData, terrainData, onPointerDown, onPointerMove, onPointerUp },
+  {
+    headerData,
+    terrainData,
+    opacity = 0.7,
+    wireframe = false,
+    color = "#88ccff",
+    onPointerDown,
+    onPointerMove,
+    onPointerUp
+  },
   ref
 ) {
   const globals = useAtomValue(Globals);
@@ -111,10 +123,11 @@ export const RoofGeometry = forwardRef<
       <meshStandardMaterial
         side={DoubleSide}
         needsUpdate={true}
-        color="#88ccff" // Light blue/cyan tint to distinguish roof from floor
+        color={color} // Light blue/cyan tint to distinguish roof from floor
         transparent={true}
-        opacity={0.7} // Semi-transparent so you can see floor through it
-        wireframe={false}
+        opacity={opacity} // Semi-transparent so you can see floor through it
+        wireframe={wireframe}
+        depthWrite={false}
       />
     </mesh>
   );

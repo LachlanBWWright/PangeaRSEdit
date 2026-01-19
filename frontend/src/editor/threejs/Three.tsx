@@ -9,6 +9,7 @@ import { SplineGeometry } from "./SplineGeometry";
 import { SplineItemGeometry } from "./SplineItemGeometry";
 import { TopologyBrush3D } from "./TopologyBrush3D";
 import { TopologyPreview3D } from "./TopologyPreview3D";
+import { FloorRoofDistanceViz } from "./FloorRoofDistanceViz";
 import { useAtomValue, useAtom } from "jotai";
 import { Globals } from "@/data/globals/globals";
 import {
@@ -27,6 +28,9 @@ import {
   TopologyValue,
   EditRoofAndFloorTogether,
   RoofFloorElevation,
+  TopologyEditTargetAtom,
+  TopologyConstraintModeAtom,
+  TopologyMaintainSymmetryAtom,
 } from "@/data/tiles/tileAtoms";
 import { GLTFExporter } from "three/examples/jsm/exporters/GLTFExporter.js";
 import {
@@ -54,8 +58,7 @@ function hasPointProperty(event: Event<string, unknown>): event is ThreeEventWit
 
 import {
   calculateBrushPixels,
-  applyTopologyBrush,
-  applyDualTopologyBrush,
+  applyTopologyBrushWithTarget,
   worldToTile,
 } from "../utils/topologyBrushUtils";
 
@@ -165,10 +168,15 @@ export function ThreeView({
   const topologyValue = useAtomValue(TopologyValue);
   const editRoofAndFloor = useAtomValue(EditRoofAndFloorTogether);
   const roofFloorElevation = useAtomValue(RoofFloorElevation);
+  const editTarget = useAtomValue(TopologyEditTargetAtom);
+  const constraintMode = useAtomValue(TopologyConstraintModeAtom);
+  const maintainSymmetry = useAtomValue(TopologyMaintainSymmetryAtom);
   
   const terrainMeshRef = useRef<Mesh>(null);
   const [intersectionPoint, setIntersectionPoint] = useState<{ x: number; y: number; z: number } | null>(null);
   const [isEditing, setIsEditing] = useState(false);
+  const [brushColor, setBrushColor] = useState<number | string>(0x00ff00);
+  const [brushUpdateCounter, setBrushUpdateCounter] = useState(0);
   
   const isEditingTopology = tileViewMode === TileViews.Topology;
 
@@ -212,32 +220,11 @@ export function ThreeView({
       // to limit update frequency. Current implementation prioritizes responsiveness
       // for typical game level sizes (tested with maps up to 256x256 tiles).
       if (isEditing && terrainData.YCrd?.[1000]?.obj) {
-        // Check if we should use dual editing mode (floor + roof)
-        const hasRoof = terrainData.YCrd?.[1001]?.obj !== undefined;
-        const useDualMode = editRoofAndFloor && hasRoof;
-
-        if (useDualMode && terrainData.YCrd[1001]) {
-          // Apply dual brush (affects both floor and roof)
-          applyDualTopologyBrush(
-            terrainData.YCrd[1000].obj,
-            terrainData.YCrd[1001].obj,
-            pixels,
-            {
-              centerX: tileCoords.x * globals.TILE_INGAME_SIZE,
-              centerY: tileCoords.z * globals.TILE_INGAME_SIZE,
-              radius,
-              brushMode,
-              valueMode,
-              value: topologyValue,
-              header,
-              globals,
-              tileSize: globals.TILE_INGAME_SIZE,
-            },
-            roofFloorElevation
-          );
-        } else {
-          // Apply single brush (floor only)
-          applyTopologyBrush(terrainData.YCrd[1000].obj, pixels, {
+        const { hasViolation } = applyTopologyBrushWithTarget(
+          terrainData.YCrd[1000].obj,
+          terrainData.YCrd[1001]?.obj,
+          pixels,
+          {
             centerX: tileCoords.x * globals.TILE_INGAME_SIZE,
             centerY: tileCoords.z * globals.TILE_INGAME_SIZE,
             radius,
@@ -247,8 +234,15 @@ export function ThreeView({
             header,
             globals,
             tileSize: globals.TILE_INGAME_SIZE,
-          });
-        }
+          },
+          editTarget,
+          constraintMode,
+          roofFloorElevation,
+          maintainSymmetry
+        );
+
+        setBrushColor(hasViolation ? 0xff4444 : 0x00ff00);
+        setBrushUpdateCounter(c => c + 1);
 
         // Trigger geometry update
         if (terrainMeshRef.current && terrainMeshRef.current.geometry) {
@@ -271,7 +265,7 @@ export function ThreeView({
         }
       }
     }
-  }, [isEditingTopology, isEditing, brushMode, brushRadius, valueMode, topologyValue, header, globals, terrainData, editRoofAndFloor, roofFloorElevation]);
+  }, [isEditingTopology, isEditing, brushMode, brushRadius, valueMode, topologyValue, header, globals, terrainData, editRoofAndFloor, roofFloorElevation, editTarget, constraintMode, maintainSymmetry]);
 
   const handlePointerDown = useCallback((event: Event<string, unknown>) => {
     if (!isEditingTopology) return;
@@ -295,32 +289,11 @@ export function ThreeView({
         tileSize: globals.TILE_INGAME_SIZE,
       });
 
-      // Check if we should use dual editing mode
-      const hasRoof = terrainData.YCrd?.[1001]?.obj !== undefined;
-      const useDualMode = editRoofAndFloor && hasRoof;
-
-      if (useDualMode && terrainData.YCrd[1001]) {
-        // Apply dual brush
-        applyDualTopologyBrush(
-          terrainData.YCrd[1000].obj,
-          terrainData.YCrd[1001].obj,
-          pixels,
-          {
-            centerX: tileCoords.x * globals.TILE_INGAME_SIZE,
-            centerY: tileCoords.z * globals.TILE_INGAME_SIZE,
-            radius,
-            brushMode,
-            valueMode,
-            value: topologyValue,
-            header,
-            globals,
-            tileSize: globals.TILE_INGAME_SIZE,
-          },
-          roofFloorElevation
-        );
-      } else {
-        // Apply single brush
-        applyTopologyBrush(terrainData.YCrd[1000].obj, pixels, {
+      const { hasViolation } = applyTopologyBrushWithTarget(
+        terrainData.YCrd[1000].obj,
+        terrainData.YCrd[1001]?.obj,
+        pixels,
+        {
           centerX: tileCoords.x * globals.TILE_INGAME_SIZE,
           centerY: tileCoords.z * globals.TILE_INGAME_SIZE,
           radius,
@@ -330,8 +303,15 @@ export function ThreeView({
           header,
           globals,
           tileSize: globals.TILE_INGAME_SIZE,
-        });
-      }
+        },
+        editTarget,
+        constraintMode,
+        roofFloorElevation,
+        maintainSymmetry
+      );
+
+      setBrushColor(hasViolation ? 0xff4444 : 0x00ff00);
+      setBrushUpdateCounter(c => c + 1);
 
       // Force terrain re-render by updating the geometry
       if (terrainMeshRef.current && terrainMeshRef.current.geometry) {
@@ -343,10 +323,11 @@ export function ThreeView({
         }
       }
     }
-  }, [isEditingTopology, brushMode, brushRadius, valueMode, topologyValue, header, globals, terrainData, editRoofAndFloor, roofFloorElevation]);
+  }, [isEditingTopology, brushMode, brushRadius, valueMode, topologyValue, header, globals, terrainData, editRoofAndFloor, roofFloorElevation, editTarget, constraintMode, maintainSymmetry]);
 
   const handlePointerUp = useCallback(() => {
     setIsEditing(false);
+    setBrushColor(0x00ff00);
   }, []);
 
   // Ensure header is defined before rendering TestGeometry
@@ -411,11 +392,21 @@ export function ThreeView({
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
       />
+      {terrainData.YCrd?.[1000]?.obj && terrainData.YCrd?.[1001]?.obj && (
+        <FloorRoofDistanceViz
+           floorData={terrainData.YCrd[1000].obj}
+           roofData={terrainData.YCrd[1001].obj}
+           mapWidth={numWide}
+           mapHeight={numHigh}
+           version={brushUpdateCounter}
+        />
+      )}
       {isEditingTopology && (
         <>
           <TopologyBrush3D 
             intersectionPoint={intersectionPoint}
             visible={!!intersectionPoint}
+            color={brushColor}
           />
           <TopologyPreview3D />
         </>

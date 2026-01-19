@@ -1,4 +1,9 @@
-import { TopologyBrushMode, TopologyValueMode } from "@/data/tiles/tileAtoms";
+import {
+  TopologyBrushMode,
+  TopologyValueMode,
+  TopologyEditTarget,
+  ConstraintMode
+} from "@/data/tiles/tileAtoms";
 import type { GlobalsInterface } from "@/data/globals/globals";
 import { StandardHeader } from "@/python/structSpecs/LevelTypes";
 
@@ -149,25 +154,27 @@ export function applyTopologyBrush(
 }
 
 /**
- * Apply dual floor/roof editing - maintains equal distance from center elevation
- * Ensures roof is always >= floor
+ * Helper to clamp values to Int16 range
  */
-export function applyDualTopologyBrush(
+function clampInt16(val: number): number {
+  return Math.max(-32768, Math.min(32767, Math.round(val)));
+}
+
+/**
+ * Apply symmetric floor/roof editing
+ */
+export function applySymmetricTopologyBrush(
   floorArray: Int16Array | number[],
-  roofArray: Int16Array | number[] | undefined,
+  roofArray: Int16Array | number[],
   pixels: PixelType[],
   params: BrushParams,
-  centerElevation: number
-): void {
-  if (!roofArray) {
-    // No roof data, just edit floor
-    applyTopologyBrush(floorArray, pixels, params);
-    return;
-  }
-
+  centerElevation: number,
+  maintainSymmetry: boolean = true
+): { hasViolation: boolean } {
   const { valueMode, header } = params;
   const mapWidth = header.mapWidth;
   const mapHeight = header.mapHeight;
+  let hasViolation = false;
 
   pixels.forEach((pixel) => {
     // Convert pixel coordinates to tile coordinates
@@ -187,44 +194,129 @@ export function applyDualTopologyBrush(
     const currentRoof = roofArray[index];
     if (currentFloor === undefined || currentRoof === undefined) return;
 
-    // Calculate distance from center for each
-    const floorDistance = currentFloor - centerElevation;
-    const roofDistance = currentRoof - centerElevation;
+    const currentCenter = (currentFloor + currentRoof) / 2;
+    const currentDistance = (currentRoof - currentFloor) / 2;
 
     let newCenter: number;
     switch (valueMode) {
       case TopologyValueMode.SET_VALUE:
         newCenter = pixel.value;
         break;
-
       case TopologyValueMode.DELTA_VALUE:
-        newCenter = centerElevation + pixel.value;
+        newCenter = currentCenter + pixel.value;
         break;
-
-      case TopologyValueMode.DELTA_WITH_DROPOFF: {
+      case TopologyValueMode.DELTA_WITH_DROPOFF:
         const falloff = 1 - pixel.distance;
-        newCenter = centerElevation + pixel.value * falloff;
+        newCenter = currentCenter + pixel.value * falloff;
         break;
-      }
-
       default:
-        newCenter = centerElevation;
+        newCenter = currentCenter;
     }
 
-    // Apply distances to new center
-    const newFloor = newCenter + floorDistance;
-    const newRoof = newCenter + roofDistance;
+    if (maintainSymmetry) {
+      // Keep same distance from center
+      floorArray[index] = clampInt16(newCenter - currentDistance);
+      roofArray[index] = clampInt16(newCenter + currentDistance);
+    } else {
+      const floorDist = centerElevation - currentFloor;
+      const roofDist = currentRoof - centerElevation;
+      floorArray[index] = clampInt16(newCenter - floorDist);
+      roofArray[index] = clampInt16(newCenter + roofDist);
+    }
 
-    // Ensure roof >= floor with minimum separation
-    const clampedFloor = Math.max(-32768, Math.min(32767, Math.round(newFloor)));
-    const clampedRoof = Math.max(
-      clampedFloor + MIN_ROOF_FLOOR_DISTANCE,
-      Math.min(32767, Math.round(newRoof))
-    );
-
-    floorArray[index] = clampedFloor;
-    roofArray[index] = clampedRoof;
+    // Enforce minimum distance
+    if (roofArray[index] - floorArray[index] < MIN_ROOF_FLOOR_DISTANCE) {
+      hasViolation = true;
+      const mid = (floorArray[index] + roofArray[index]) / 2;
+      floorArray[index] = clampInt16(mid - MIN_ROOF_FLOOR_DISTANCE / 2);
+      roofArray[index] = clampInt16(mid + MIN_ROOF_FLOOR_DISTANCE / 2);
+    }
   });
+
+  return { hasViolation };
+}
+
+/**
+ * Apply brush with target support and constraints
+ */
+export function applyTopologyBrushWithTarget(
+  floorArray: Int16Array | number[],
+  roofArray: Int16Array | number[] | undefined,
+  pixels: PixelType[],
+  params: BrushParams,
+  target: TopologyEditTarget,
+  constraintMode: ConstraintMode,
+  centerElevation?: number,
+  maintainSymmetry: boolean = true
+): { hasViolation: boolean } {
+  const mapWidth = params.header.mapWidth;
+  const mapHeight = params.header.mapHeight;
+  let hasViolation = false;
+
+  if (target === TopologyEditTarget.BOTH && roofArray) {
+    return applySymmetricTopologyBrush(floorArray, roofArray, pixels, params, centerElevation ?? 0, maintainSymmetry);
+  }
+
+  // Single target editing
+  if (target === TopologyEditTarget.FLOOR) {
+    applyTopologyBrush(floorArray, pixels, params);
+
+    // Check constraints if roof exists
+    if (roofArray) {
+       pixels.forEach(pixel => {
+         const xTile = Math.floor(pixel.x / params.tileSize);
+         const yTile = Math.floor(pixel.y / params.tileSize);
+
+         if (xTile < 0 || xTile >= mapWidth || yTile < 0 || yTile >= mapHeight) return;
+
+         const idx = yTile * (mapWidth + 1) + xTile;
+         if (idx >= 0 && idx < floorArray.length) {
+            const floor = floorArray[idx];
+            const roof = roofArray[idx];
+
+            if (floor !== undefined && roof !== undefined && floor + MIN_ROOF_FLOOR_DISTANCE > roof) {
+               hasViolation = true;
+               if (constraintMode === ConstraintMode.PUSH_ROOF) {
+                 roofArray[idx] = clampInt16(floor + MIN_ROOF_FLOOR_DISTANCE);
+               } else if (constraintMode === ConstraintMode.PUSH_FLOOR) {
+                  floorArray[idx] = clampInt16(roof - MIN_ROOF_FLOOR_DISTANCE);
+               } else if (constraintMode === ConstraintMode.BLOCK) {
+                  floorArray[idx] = clampInt16(roof - MIN_ROOF_FLOOR_DISTANCE);
+               }
+            }
+         }
+       });
+    }
+  } else if (target === TopologyEditTarget.ROOF && roofArray) {
+    applyTopologyBrush(roofArray, pixels, params);
+
+    // Check constraints against floor
+    pixels.forEach(pixel => {
+         const xTile = Math.floor(pixel.x / params.tileSize);
+         const yTile = Math.floor(pixel.y / params.tileSize);
+
+         if (xTile < 0 || xTile >= mapWidth || yTile < 0 || yTile >= mapHeight) return;
+
+         const idx = yTile * (mapWidth + 1) + xTile;
+         if (idx >= 0 && idx < roofArray.length) {
+            const floor = floorArray[idx];
+            const roof = roofArray[idx];
+
+            if (floor !== undefined && roof !== undefined && roof - MIN_ROOF_FLOOR_DISTANCE < floor) {
+               hasViolation = true;
+               if (constraintMode === ConstraintMode.PUSH_FLOOR) {
+                 floorArray[idx] = clampInt16(roof - MIN_ROOF_FLOOR_DISTANCE);
+               } else if (constraintMode === ConstraintMode.PUSH_ROOF) {
+                 roofArray[idx] = clampInt16(floor + MIN_ROOF_FLOOR_DISTANCE);
+               } else if (constraintMode === ConstraintMode.BLOCK) {
+                 roofArray[idx] = clampInt16(floor + MIN_ROOF_FLOOR_DISTANCE);
+               }
+            }
+         }
+    });
+  }
+
+  return { hasViolation };
 }
 
 /**

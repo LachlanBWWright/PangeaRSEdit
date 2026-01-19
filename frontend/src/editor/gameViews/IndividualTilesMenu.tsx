@@ -17,8 +17,16 @@ import {
   TopologyOpacity,
   TopologyValue,
   TopologyValueMode,
+  ShowRoofInTopology,
+  TopologyEditTargetAtom,
+  TopologyConstraintModeAtom,
+  TopologyMaintainSymmetryAtom,
+  TopologyEditTarget,
+  ConstraintMode,
+  RoofFloorElevation,
 } from "../../data/tiles/tileAtoms";
 import { useAtom } from "jotai";
+import { copyFloorToRoof } from "../utils/roofDataUtils";
 import {
   Select,
   SelectContent,
@@ -32,15 +40,19 @@ import {
 } from "@/data/canvasView/canvasViewAtoms";
 import { useEffect } from "react";
 import { Switch } from "@/components/ui/switch";
-import { HeaderData } from "@/python/structSpecs/LevelTypes";
+import { HeaderData, TerrainData } from "@/python/structSpecs/LevelTypes";
 import { Updater } from "use-immer";
 
 export function IndividualTilesMenu({
   headerData,
   setHeaderData,
+  terrainData,
+  setTerrainData,
 }: {
   headerData: HeaderData;
   setHeaderData: Updater<HeaderData>;
+  terrainData: TerrainData;
+  setTerrainData: Updater<TerrainData>;
 }) {
   const [tileView, setTileView] = useAtom(TileViewMode);
   const [brushMode, setBrushMode] = useAtom(CurrentTopologyBrushMode);
@@ -50,6 +62,15 @@ export function IndividualTilesMenu({
   const [toplogyOpacity, setTopologyOpacity] = useAtom(TopologyOpacity);
   const [canvasViewMode, setCanvasViewMode] = useAtom(CanvasViewMode);
   const [, setExport3DScene] = useAtom(Export3DScene);
+
+  // Roof editing atoms
+  const [showRoof, setShowRoof] = useAtom(ShowRoofInTopology);
+  const [editTarget, setEditTarget] = useAtom(TopologyEditTargetAtom);
+  const [constraintMode, setConstraintMode] = useAtom(TopologyConstraintModeAtom);
+  const [maintainSymmetry, setMaintainSymmetry] = useAtom(TopologyMaintainSymmetryAtom);
+  const [centerElevation, setCenterElevation] = useAtom(RoofFloorElevation);
+
+  const hasRoofData = terrainData.YCrd?.[1001] !== undefined;
 
   const header = headerData?.Hedr?.[1000]?.obj;
   const minY = header?.minY || 0;
@@ -172,6 +193,86 @@ export function IndividualTilesMenu({
               setTopologyOpacity(parseFloat(e.target.value) || 1)
             }
           />
+
+          {/* Roof Editing Controls */}
+          <div className="col-span-2 mt-2 p-3 bg-gray-800 rounded-lg border border-gray-700">
+            <h4 className="text-sm font-semibold mb-3 text-blue-400">Roof Editing (YCrd 1001)</h4>
+
+            {!hasRoofData ? (
+               <Button
+                 className="w-full"
+                 onClick={() => {
+                   setTerrainData(current => copyFloorToRoof(current, 100));
+                 }}
+               >
+                 Create Roof Layer
+               </Button>
+             ) : (
+                <div className="flex flex-col gap-3">
+                  {/* Visibility Toggle */}
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm">Show Roof in 3D View</span>
+                    <Switch checked={showRoof} onCheckedChange={setShowRoof} />
+                  </div>
+
+                  {/* Edit Target Selection */}
+                  <div className="grid grid-cols-[auto_1fr] gap-2 items-center">
+                    <label className="text-sm">Edit Target</label>
+                    <Select value={editTarget} onValueChange={(v) => setEditTarget(v as TopologyEditTarget)}>
+                      <SelectTrigger>
+                        {editTarget === TopologyEditTarget.FLOOR && "Floor Only"}
+                        {editTarget === TopologyEditTarget.ROOF && "Roof Only"}
+                        {editTarget === TopologyEditTarget.BOTH && "Both (Symmetric)"}
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value={TopologyEditTarget.FLOOR}>Floor Only</SelectItem>
+                        <SelectItem value={TopologyEditTarget.ROOF}>Roof Only</SelectItem>
+                        <SelectItem value={TopologyEditTarget.BOTH}>Both (Symmetric)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Symmetric Editing Options */}
+                  {editTarget === TopologyEditTarget.BOTH && (
+                    <div className="flex flex-col gap-2 p-2 bg-gray-900 rounded">
+                      <div className="grid grid-cols-[auto_1fr] gap-2 items-center">
+                        <label className="text-sm">Center Elevation</label>
+                        <Input
+                          type="number"
+                          value={centerElevation}
+                          onChange={(e) => setCenterElevation(Number(e.target.value))}
+                          className="h-8"
+                        />
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs text-gray-400">Maintain Current Distances</span>
+                        <Switch checked={maintainSymmetry} onCheckedChange={setMaintainSymmetry} />
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Constraint Mode */}
+                  {editTarget !== TopologyEditTarget.BOTH && (
+                    <div className="grid grid-cols-[auto_1fr] gap-2 items-center">
+                      <label className="text-sm">When Constraint Violated</label>
+                      <Select value={constraintMode} onValueChange={(v) => setConstraintMode(v as ConstraintMode)}>
+                        <SelectTrigger className="text-xs">
+                          {constraintMode === ConstraintMode.PUSH_ROOF && "Push Roof Up"}
+                          {constraintMode === ConstraintMode.PUSH_FLOOR && "Push Floor Down"}
+                          {constraintMode === ConstraintMode.BLOCK && "Block Edit"}
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value={ConstraintMode.PUSH_ROOF}>Push Roof Up</SelectItem>
+                          <SelectItem value={ConstraintMode.PUSH_FLOOR}>Push Floor Down</SelectItem>
+                          <SelectItem value={ConstraintMode.BLOCK}>Block Edit</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+                </div>
+             )}
+          </div>
+
           <div className="flex flex-row justify-between gap-2 items-center col-span-2">
             <div className="flex items-center gap-2">
               <p>Show 3D Map (View Only)</p>
