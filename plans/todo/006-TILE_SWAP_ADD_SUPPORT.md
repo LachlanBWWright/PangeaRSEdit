@@ -2,16 +2,19 @@
 
 ## Overview
 
-This plan describes implementing the ability to swap and add new tiles for the tile-based games: Bugdom 1, Billy Frontier, and Nanosaur 1. These games use individual 32x32 pixel tiles that are composed into supertiles, unlike the newer Pangea games that use pre-composed supertile textures.
+This plan describes implementing the ability to swap and add new tiles for the tile-based games: Bugdom 1 and Nanosaur 1. These games use individual 32x32 pixel tiles that are composed into supertiles, unlike the newer Pangea games that use pre-composed supertile textures.
+
+**Note:** Billy Frontier uses pre-composed 256x256 supertile textures (like Otto Matic), not individual tiles, so it is NOT covered in this plan.
 
 ## Problem Statement
 
 ### Current Limitations
 
 The editor currently supports:
-- Editing tile attributes (flags, parameters)
+- Editing tile attributes (flags, parameters) via `tileHandlers.ts`
 - Modifying terrain height (YCrd values)
-- Viewing individual tiles
+- Viewing individual tiles via `IndividualTileSupertiles.tsx` and `BugdomTileRenderer.tsx`
+- Tile flag masks (TILENUM_MASK, TILE_FLIPX_MASK, etc.) via `BugdomTileRenderer.utils.ts`
 
 But it does NOT support:
 - Replacing one tile with another tile from the tileset
@@ -21,36 +24,44 @@ But it does NOT support:
 
 ### How Tile-Based Games Work
 
-**Bugdom 1, Nanosaur 1, and Billy Frontier** use a tile-based terrain system:
+**Bugdom 1 and Nanosaur 1** use a tile-based terrain system:
 
-1. **Tiles**: Individual 32x32 pixel textures stored in the resource file
+1. **Tiles**: Individual 32x32 pixel textures stored in 'Timg' resource (16-bit ARGB1555)
 2. **Tile Attributes (Atrb)**: Flags and parameters for each unique tile
 3. **Tile Layer (Layr)**: 2D array mapping each map cell to a tile attribute index
 4. **Translation Table (Xlat)**: Maps tile indices to actual texture data
-5. **Supertiles**: 5x5 (Bugdom/Nanosaur) or 8x8 (Billy) tiles composed at runtime
+5. **Supertiles**: 5x5 tiles composed at runtime (160x160 pixels)
 
-The workflow:
+The workflow (from `BugdomTileRenderer.tsx`):
 ```
 Map Cell → Layr[index] → Atrb[attrIndex] → Xlat[tileIndex] → Tile Texture
 ```
 
 ### Data Structures
 
+From `frontend/src/editor/subviews/bugdom/BugdomTileRenderer.utils.ts`:
 ```typescript
-// From the game files
-interface TileAttribute {
-  flags: number;  // Collision, properties, etc.
-  p0: number;     // Game-specific parameter
-  p1: number;     // Game-specific parameter
-}
+// Mask for tile number (lower bits)
+export const TILENUM_MASK = 0b0000111111111111;  // Bits 0-11
+// Flip/rotate masks
+export const TILE_FLIPX_MASK = 0b0001000000000000;   // Bit 12
+export const TILE_FLIPY_MASK = 0b0010000000000000;   // Bit 13
+export const TILE_FLIPXY_MASK = 0b0100000000000000;  // Bit 14
+export const TILE_ROTATE_MASK = 0b1000000000000000;  // Bit 15
+```
 
-// Tile translation table
-interface TileTranslation {
-  idx: number;  // Index into the tile image data
+From `frontend/src/python/structSpecs/gameLevelTypes.ts`:
+```typescript
+interface BugdomTileAttribute {
+  bits: number; // UInt16
+  parm0: number; // short
+  parm1: number; // Byte
+  parm2: number; // Byte
+  undefined: number; // short
+  flags: number;
+  p0: number;
+  p1: number;
 }
-
-// Terrain layer (maps cells to attributes)
-type TerrainLayer = number[];  // Array of attribute indices
 ```
 
 ---

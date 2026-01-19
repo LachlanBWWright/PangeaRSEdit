@@ -7,33 +7,48 @@ This plan describes adding filter options overlaid on the map view (both 2D canv
 ## Current State
 
 The editor currently shows all items simultaneously:
-- 2D view: Items rendered in `Items.tsx` component within Konva canvas
-- 3D view: Items rendered in `ItemGeometry.tsx` using Three.js
 
-There are basic toggle atoms for 3D view layers in `canvasViewAtoms.ts`:
+### 2D Canvas View (Konva)
+- **Items Component**: `frontend/src/editor/subviews/Items.tsx`
+  - Renders all items using `selectItems()` selector
+  - No filtering capability - iterates over all items
+- **Individual Item**: `frontend/src/editor/subviews/items/Item.tsx`
+  - Renders each item with position and type-based styling
+
+### 3D View (Three.js)  
+- **Item Geometry**: `frontend/src/editor/threejs/ItemGeometry.tsx`
+  - Uses `Show3DItems` toggle from `canvasViewAtoms.ts`
+  - Groups items by type for efficient batching
+  - No per-type filtering
+
+### Existing Layer Toggles
+From `frontend/src/data/canvasView/canvasViewAtoms.ts`:
 ```typescript
 export const Show3DSplines = atom<boolean>(true);
-export const Show3DItems = atom<boolean>(true);
+export const Show3DItems = atom<boolean>(true);        // All-or-nothing
 export const Show3DFences = atom<boolean>(true);
 export const Show3DLiquid = atom<boolean>(true);
+export const Show3DItemModels = atom<boolean>(false);  // Otto only
 ```
-
-But there's no way to filter *which* items are shown beyond all-or-nothing.
 
 ## Problem Statement
 
-Levels can have hundreds of items across many types:
-- Enemies (various types)
-- Powerups and pickups
-- Environmental decorations
-- Triggers and checkpoints
-- Spawn points
+Levels can have hundreds of items across many types. Approximate counts per game:
+- **Otto Matic**: ~109 item types (327 references in code)
+- **Bugdom 2**: ~86 item types (172 references)
+- **Cro-Mag Rally**: ~67 item types (134 references)
+- **Bugdom 1**: ~64 item types (128 references)
+- **Nanosaur 2**: ~49 item types (98 references)
+- **Billy Frontier**: ~37 item types (74 references)
+- **Mighty Mike**: ~28 item types (56 references)
+- **Nanosaur 1**: ~20 item types (40 references)
 
-When editing, users often want to:
-1. Focus on only one type of item (e.g., "show me all enemies")
-2. Hide decorative items that clutter the view
-3. Find specific items by filtering to their type
-4. See items by category (all triggers, all powerups, etc.)
+Item naming patterns suggest natural categories:
+- `Enemy_*` - Enemies (Enemy_Squooshy, Enemy_BrainAlien, etc.)
+- `Powerup*` - Powerups and pickups
+- `Trigger*`, `Checkpoint*` - Triggers and checkpoints  
+- `StartCoords`, `ExitRocket` - Spawn/exit points
+- Decorative items (plants, rocks, structures)
 
 ## Goals
 

@@ -26,10 +26,22 @@ Currently, the editor requires loading an existing level file to begin editing. 
 
 ### 1.1 Game-Specific Level Structures
 
-Each game has different requirements for a valid level file:
+Each game has different requirements for a valid level file. Configuration data is already defined in
+`frontend/src/data/globals/globals.ts` which provides key parameters:
+
+| Game | DataType | TileFormat | SupertileSize | TilesPerSupertile | TileIngameSize |
+|------|----------|------------|---------------|-------------------|----------------|
+| Otto Matic | STANDARD | LZSS_16_BIT | 128 | 8 | 225.0 |
+| Bugdom 2 | STANDARD | LZSS_16_BIT | 128 | 8 | 225.0 |
+| Bugdom 1 | RSRC_FORK | LZSS_16_BIT | 160 | 5 | 160.0 |
+| Nanosaur 1 | TRT_FILE | LZSS_16_BIT | 160 | 5 | 140.0 |
+| Nanosaur 2 | STANDARD | JPG | 256 | 8 | 210.0 |
+| Cro-Mag Rally | STANDARD | LZSS_16_BIT | 128 | 8 | 800.0 |
+| Billy Frontier | STANDARD | LZSS_16_BIT | 256 | 8 | 125.0 |
+| Mighty Mike | MIGHTY_MIKE | LZSS_16_BIT | 32 | 1 | 32.0 |
 
 #### Otto Matic
-- Header with standard fields
+- Header with standard fields (from `OttoMaticHeader` type)
 - Supertile grid (8x8 tiles per supertile)
 - Terrain height data (YCrd)
 - Tile attributes (Atrb)
@@ -39,42 +51,45 @@ Each game has different requirements for a valid level file:
 
 #### Bugdom 2
 - Similar to Otto Matic
-- Different item types
-- Different fence types
+- Different item types (`bugdom2ItemTypeNames`)
+- Different fence types (`bugdom2FenceTypeNames`)
 - Different water body types
 
 #### Bugdom 1
-- Uses resource fork format (RSRC_FORK)
+- Uses resource fork format (DataType.RSRC_FORK)
 - Individual 32x32 tiles instead of supertiles
-- 5x5 tiles per supertile
-- Floor AND Roof terrain (two YCrd arrays)
-- Different tile attribute structure
+- 5x5 tiles per supertile (SUPERTILE_SIZE = 5)
+- Floor AND Roof terrain (two YCrd arrays: 1000 and 1001)
+- Extended tile attribute structure (`BugdomTileAttribute`)
 
 #### Nanosaur 1
-- TRT file format
+- TRT file format (DataType.TRT_FILE)
 - Individual 32x32 tiles
 - 5x5 tiles per supertile
-- Simplified structure
+- Simplified structure - no fences, water, or splines
 
 #### Nanosaur 2
-- JPG texture format
+- JPG texture format (TileImageFormat.JPG)
 - 8x8 tiles per supertile
+- 256x256 supertile textures
 - Standard header structure
 
 #### Cro-Mag Rally
-- Uses numPaths instead of numWaterPatches
+- Uses numPaths instead of numWaterPatches in header
 - Racing track specific items
 - Checkpoint system
+- TILE_INGAME_SIZE = 800.0 (largest scale)
 
 #### Billy Frontier
-- Scene-based levels
-- Different supertile sizes
-- Open splines (non-circular)
+- 256x256 supertile textures
+- Scene-based levels (shootout, duel, stampede)
+- Open splines (non-circular) - covered in Plan 004
 
 #### Mighty Mike
-- 2D tilemap, not 3D terrain
+- 2D tilemap, not 3D terrain (DataType.MIGHTY_MIKE)
 - .tileset and .map files
-- Different structure entirely
+- Direct tile mapping (TILES_PER_SUPERTILE = 1)
+- No fences, water, or splines
 
 ### 1.2 Minimum Valid Level Requirements
 

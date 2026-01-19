@@ -67,15 +67,42 @@ These splines:
 
 ### Current Spline Nub Editing Logic
 
-From `Spline.tsx` lines 175-181:
+From `frontend/src/editor/subviews/splines/Spline.tsx`:
+
+**onDragMove handler (lines 177-180):**
 ```typescript
-// Modify "hidden" final nub, which is to be in the same position as the first nub
+//Modify "hidden" final nub, which is to be in the same position as the first nub
+if (nubIdx === currentNubs.length - 1) {
+  updatedNubs[0] = { x: newX, z: newZ };
+}
+```
+
+**onDragEnd handler (lines 218-220):**
+```typescript
+//Modify "hidden" final nub, which is to be in the same position as the first nub
 if (nubIdx === currentNubs.length - 1) {
   updatedNubs[0] = { x: newX, z: newZ };
 }
 ```
 
 This assumes all splines are circular, which is incorrect for Billy Frontier.
+
+### Current Spline Rendering
+
+**2D View** (`Spline.tsx`): Uses `getPoints()` from `utils/spline.ts` which doesn't handle open splines.
+
+**3D View** (`SplineGeometry.tsx`):
+```typescript
+const curve = new CatmullRomCurve3(linePoints);
+const geometry = new TubeGeometry(
+  curve,
+  Math.max(20, Math.min(100, linePoints.length * 2)),
+  SPLINE_LINE_WIDTH / 2,
+  4,
+  false,  // <-- 'closed' parameter is always false
+);
+```
+The closed parameter is hardcoded to `false`, which may cause the last segment to render incorrectly for circular splines.
 
 ---
 

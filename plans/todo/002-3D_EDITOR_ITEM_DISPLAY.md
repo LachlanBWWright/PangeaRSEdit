@@ -6,16 +6,35 @@ This plan describes extending the 3D editor view to display items for all suppor
 
 ## Current State
 
-Currently, 3D item display is partially implemented for **Otto Matic only** in `frontend/src/editor/threejs/ItemGeometry.tsx`. The implementation:
-- Uses `useOttoItemModelCache` hook to load BG3D models
-- Maps item types to models via `ottoItemModelMapping.ts`
-- Displays colored cubes as fallback for unmapped items
-- Supports liquid patches for Bugdom 1 and Nanosaur 1
+Currently, 3D item display is **partially implemented for Otto Matic only**:
 
-Other games have model mapping files created but are mostly empty:
-- `bugdom2ItemModelMapping.ts` - TODOs for all levels
-- `bugdomItemModelMapping.ts` - Partial coverage
-- Similar files for other games
+### Existing Infrastructure (Otto Matic)
+- **Item Geometry Component**: `frontend/src/editor/threejs/ItemGeometry.tsx`
+  - Uses `useOttoItemModelCache` hook to load BG3D models
+  - Maps item types to models via `ottoItemModelMapping.ts`
+  - Displays colored cubes as fallback for unmapped items
+  - Supports liquid patches for Bugdom 1 and Nanosaur 1
+  
+- **Model Loading Hook**: `frontend/src/editor/threejs/hooks/useOttoItemModelCache.ts`
+  - Uses Web Worker to convert BG3D → glTF off main thread
+  - Caches converted models in memory
+  - Extracts specific meshes from multi-geometry BG3D files
+  
+- **Model Mapping**: `frontend/src/data/items/ottoItemModelMapping.ts`
+  - Maps item types to `{ modelFile, modelIndex, scale?, rotationY? }`
+  - Uses `Game.OTTO_MATIC` check to limit to Otto only
+  
+- **Toggle UI**: `Show3DItemModels` atom in `canvasViewAtoms.ts`
+  - Toggle in `OttoMaticTilesMenu.tsx`
+  - Off by default
+
+### Placeholder Mapping Files (Empty/Incomplete)
+- `bugdom2ItemModelMapping.ts` - TODOs for all 11 level types
+- `bugdomItemModelMapping.ts` - Partial coverage (~50 items)
+- `billyFrontierItemModelMapping.ts` - Structure defined, no mappings
+- `nanosaurItemModelMapping.ts` - Not created yet
+- `nanosaur2ItemModelMapping.ts` - Not created yet
+- `cromagItemModelMapping.ts` - Not created yet
 
 ## Goals
 

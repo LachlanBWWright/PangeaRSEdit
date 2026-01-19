@@ -12,10 +12,15 @@ This plan describes refactoring logic out of closures into functions with inject
 
 2. **Implicit Dependencies**: Functions rely on global atoms, context, and component state rather than explicit parameters.
 
-3. **No Edit Roundtrip Tests**: There's no automated verification that:
-   - Loading → Editing → Saving → Loading produces consistent results
-   - Multiple edit operations can be applied and reverted
-   - The final saved output matches the original byte-for-byte
+3. **Existing Roundtrip Tests**: The project has extensive roundtrip testing for parsing and serialization:
+   - `frontend/tests/mapRoundtrip/*.test.ts` - Per-game roundtrip tests
+   - `frontend/tests/roundtrip/*.test.ts` - General roundtrip tests
+   - `frontend/tests/validation/*.test.ts` - Data validation tests
+   
+   **However**, these tests verify parsing → serializing → parsing equality, NOT:
+   - Loading → **Editing** → Saving → Loading consistency
+   - Multiple edit operations being reversible
+   - Byte-for-byte accuracy after edit + revert cycles
 
 ### Example of Current Pattern (Problematic)
 

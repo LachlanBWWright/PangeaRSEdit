@@ -7,10 +7,24 @@ This plan describes a system for verifying the accuracy of item parameter descri
 ## Problem Statement
 
 The codebase contains detailed documentation for item parameters in files like:
-- `frontend/src/data/items/ottoItemType.ts`
-- `frontend/src/data/items/bugdom2ItemType.ts`
-- `frontend/src/data/items/billyFrontierItemType.ts`
-- `frontend/src/data/splines/*SplineItemType.ts`
+- `frontend/src/data/items/ottoItemType.ts` - TerrainItemTypeParams (109 items)
+- `frontend/src/data/items/bugdom2ItemType.ts` - bugdom2ItemTypeParams (86 items)
+- `frontend/src/data/items/bugdomItemType.ts` - BugdomItemTypeParams
+- `frontend/src/data/items/billyFrontierItemType.ts` - billyFrontierItemTypeParams
+- `frontend/src/data/items/nanosaurItemType.ts` - nanosaurItemTypeParams
+- `frontend/src/data/items/nanosaur2ItemType.ts` - nanosaur2ItemTypeParams
+- `frontend/src/data/items/croMagItemType.ts` - croMagItemTypeParams
+- `frontend/src/data/items/mightyMikeItemType.ts` - mightyMikeItemTypeParams
+- `frontend/src/data/splines/*SplineItemType.ts` - Spline item params for each game
+
+The parameter type system is defined in `frontend/src/data/items/itemParams.ts`:
+```typescript
+export type ParamDescription =
+  | { type: "Integer"; description: string; codeSample: CodeSample }
+  | { type: "Bit Flags"; flags: FlagDescription[] }
+  | "Unused"
+  | "Unknown";
+```
 
 Each parameter description includes a `CodeSample` object with:
 ```typescript
