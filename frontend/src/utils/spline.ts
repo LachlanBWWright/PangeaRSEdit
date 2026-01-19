@@ -2,19 +2,47 @@ import { SplinePoint } from "@/python/structSpecs/LevelTypes";
 import { calcQuickDistance } from "./distanceCalc";
 
 /**
+ * Options for spline interpolation
+ */
+export interface SplineOptions {
+  /** If true, the spline wraps from last nub back to first (default: true) */
+  circular?: boolean;
+}
+
+/**
  * Helper function to safely get array element with default
  */
 function getSplineArray(arr: SplinePoint[][], index: number): SplinePoint[] {
   return arr[index] ?? [];
 }
 
-export function getPoints(nubs: SplinePoint[]) {
+/**
+ * Calculate interpolated points along a spline defined by control nubs.
+ * 
+ * @param nubs - Array of control points (nubs) defining the spline
+ * @param options - Options for spline interpolation
+ * @returns Array of interpolated points along the spline curve
+ */
+export function getPoints(
+  nubs: SplinePoint[],
+  options: SplineOptions = {},
+): SplinePoint[] {
+  const { circular = true } = options;
+
+  if (nubs.length < 2) {
+    return nubs.map(n => ({ x: n.x, z: n.z }));
+  }
+
+  // For circular splines, the original code assumes first/last nubs are the same
+  // For non-circular splines, we need to calculate the final span differently
+  const numSpans = circular ? nubs.length : nubs.length - 1;
   const pointsPerSpan = new Array<number>(nubs.length);
 
-  for (let i = 0; i < nubs.length; i++) {
-    //Get distance
+  for (let i = 0; i < numSpans; i++) {
     const currentNub = nubs[i];
-    const nextNub = nubs[(i + 1) % nubs.length];
+    const nextNub = circular 
+      ? nubs[(i + 1) % nubs.length]
+      : nubs[i + 1];
     if (!currentNub || !nextNub) continue;
     const distance = calcQuickDistance(
       currentNub.x,
@@ -25,7 +53,7 @@ export function getPoints(nubs: SplinePoint[]) {
     pointsPerSpan[i] = spanPoints(distance);
   }
 
-  return bakeSpline(nubs, pointsPerSpan);
+  return bakeSpline(nubs, pointsPerSpan, circular);
 }
 
 export function spanPoints(distance: number) {
@@ -33,7 +61,11 @@ export function spanPoints(distance: number) {
 }
 
 //Code for creating spline (similar to OreoTerrain)
-export function bakeSpline(nubs: SplinePoint[], pointsPerSpan: number[]) {
+export function bakeSpline(
+  nubs: SplinePoint[],
+  pointsPerSpan: number[],
+  circular: boolean = true,
+): SplinePoint[] {
   const numNubs = nubs.length;
   /*     SplinePointType** pointsHandle;
     SplinePointType**space,*points;
