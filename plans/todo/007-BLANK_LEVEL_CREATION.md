@@ -91,7 +91,18 @@ Each game has different requirements for a valid level file. Configuration data 
 - Direct tile mapping (TILES_PER_SUPERTILE = 1)
 - No fences, water, or splines
 
-### 1.2 Minimum Valid Level Requirements
+### 1.2 Header Schema Reference
+
+The existing Zod schemas in `frontend/src/validation/levelDataSchemas.ts` define header types:
+
+| Header Schema | Used By | Has numTilePages | Has numWaterPatches | Has numPaths |
+|--------------|---------|------------------|---------------------|--------------|
+| `headerOttoMaticSchema` | Otto Matic | Yes | Yes | No |
+| `headerBugdom1Schema` | Bugdom 1 | Yes | No | No |
+| `headerSimplifiedSchema` | Bugdom 2, Nanosaur 2, Billy Frontier | No | Yes | No |
+| `headerCroMagSchema` | Cro-Mag Rally | Yes | No | Yes (instead of numWaterPatches) |
+
+### 1.3 Minimum Valid Level Requirements
 
 **File:** `frontend/src/data/levelTemplates/levelRequirements.ts`
 
