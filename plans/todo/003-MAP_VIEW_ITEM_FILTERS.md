@@ -60,9 +60,34 @@ Item naming patterns suggest natural categories:
 
 ---
 
-## Phase 1: Filter State Management
+## Phase 1: Item Categorization
 
-### 1.1 Define Filter State Atoms
+### 1.1 Analyze Item Naming Patterns
+
+Enemy items per game (items containing "Enemy_"):
+| Game | Enemy Count |
+|------|-------------|
+| Otto Matic | 82 enemies |
+| Bugdom 2 | 64 enemies |
+| Bugdom 1 | 54 enemies |
+| Nanosaur 1 | 21 enemies |
+| Billy Frontier | 12 enemies |
+| Nanosaur 2 | 10 enemies |
+| Cro-Mag Rally | 0 enemies (racing) |
+| Mighty Mike | 0 (different naming) |
+
+Other common patterns:
+- `Powerup*`, `PowerupPod` - Powerup items
+- `StartCoords`, `ExitRocket`, `Checkpoint` - Player spawn/exit
+- `Trigger*`, `Zone*` - Triggers and zones
+- `Gate*`, `Door*` - Obstacles and doors
+- Plants, rocks, structures - Environmental
+
+---
+
+## Phase 2: Filter State Management
+
+### 2.1 Define Filter State Atoms
 
 **File:** `frontend/src/data/items/itemFilterAtoms.ts`
 

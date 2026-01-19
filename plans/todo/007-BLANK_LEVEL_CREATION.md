@@ -1192,6 +1192,15 @@ function adjustColor(hex: string, amount: number): string {
 
 ### 5.1 Level Validation
 
+**Note:** The project already has comprehensive Zod-based validation in `frontend/src/validation/`:
+- `validateLevelForGame.ts` - Central dispatcher
+- `games/ottoMatic.ts`, `games/bugdom.ts`, etc. - Per-game Zod schemas
+
+The new level generator should produce data that passes these existing validators. The approach:
+
+1. **Use existing validators** for initial validation
+2. **Add level template-specific checks** for dimension constraints
+
 **File:** `frontend/src/data/levelTemplates/levelValidator.ts`
 
 ```typescript

@@ -57,34 +57,45 @@ Each game organizes models differently. Analysis needed:
 - **Organization**: Level-specific files (`level1_farm.bg3d`, `level2_slime.bg3d`, etc.)
 - **Global items**: `global.bg3d`
 - **Skeletons**: Separate `.bg3d` and `.skeleton.rsrc` files
+- **Current mapping**: ~83 items mapped in `ottoItemModelMapping.ts`
 
 #### Bugdom 2
 - **Models path**: `models/` and `skeletons/`
 - **Organization**: Level files (`garden.bg3d`, `sidewalk.bg3d`, `playroom.bg3d`, etc.)
 - **Global items**: `global.bg3d`, `foliage.bg3d`
 - **Complexity**: Items are level-specific (same item type = different model per level)
+- **Level model files**: 11 level-specific BG3D files defined
+- **Current mapping**: ~12 items/TODOs in `bugdom2ItemModelMapping.ts`
 
 #### Bugdom 1
 - **Models path**: `models/` and `skeletons/`
 - **Organization**: Level files (`lawn1.bg3d`, `lawn2.bg3d`, `pond.bg3d`, etc.)
 - **Global items**: `global1.bg3d`, `global2.bg3d`
+- **Current mapping**: Partial coverage in `bugdomItemModelMapping.ts`
 
 #### Nanosaur 1
 - **Models path**: `models/`
 - **Organization**: Single model files per enemy/item
-- **Simpler structure**: Fewer item types
+- **Simpler structure**: ~20 item types
+- **Current mapping**: No mapping file exists yet
 
 #### Nanosaur 2
 - **Models path**: `models/` and `skeletons/`
 - **Organization**: Similar to Otto Matic
+- **Current mapping**: No mapping file exists yet
 
 #### Cro-Mag Rally
 - **Models path**: `models/` and `skeletons/`
 - **Organization**: Track-specific and global models
+- **Current mapping**: No mapping file exists yet
 
 #### Billy Frontier
 - **Models path**: `models/` and `skeletons/`
 - **Organization**: Scene-specific models
+- **Current mapping**: Structure defined but empty
+
+#### Mighty Mike
+- **2D game**: No 3D models (uses sprites)
 
 ### 1.2 Create Game Model Registry
 
