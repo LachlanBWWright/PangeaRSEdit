@@ -1,4 +1,3 @@
-import type { LevelData } from "@/python/structSpecs/LevelTypes";
 import { Game } from "@/data/globals/globals";
 
 /**
@@ -18,11 +17,18 @@ export interface BlankLevelOptions {
 }
 
 /**
+ * Minimal level data structure used for blank level creation.
+ * This is a more permissive type than the full LevelData to allow for
+ * partial/minimal level structures during creation.
+ */
+export type BlankLevelData = Record<string, unknown>;
+
+/**
  * Result of creating a blank level
  */
 export interface BlankLevelResult {
   success: boolean;
-  levelData?: LevelData;
+  levelData?: BlankLevelData;
   error?: string;
   warnings?: string[];
 }

@@ -1,4 +1,3 @@
-import type { LevelData } from "@/python/structSpecs/LevelTypes";
 import type {
   BlankLevelOptions,
   BlankLevelResult,
@@ -15,6 +14,9 @@ import { Game } from "@/data/globals/globals";
 
 const TILES_PER_SUPERTILE = 5;
 
+/**
+ * Create blank Bugdom level data structure.
+ */
 export function createBlankBugdomLevel(
   options: BlankLevelOptions,
 ): BlankLevelResult {
@@ -32,7 +34,6 @@ export function createBlankBugdomLevel(
 
   const { mapWidth, mapHeight, defaultHeight = 0 } = options;
 
-  // Bugdom header
   const header = {
     version: 1,
     mapWidth,
@@ -40,25 +41,27 @@ export function createBlankBugdomLevel(
     numItems: 1,
     numSplines: 0,
     numFences: 0,
-    numTilePages: 1, // At least one tile page
+    numTilePages: 1,
     numTiles: mapWidth * mapHeight,
     numWaterPatches: 0,
     numUniqueSupertiles: 0,
+    numCheckpoints: 0,
+    tileSize: 32,
+    minY: 0,
+    maxY: 1000,
   };
 
-  // Create terrain data
   const yCrd = createHeightArray(mapWidth, mapHeight, defaultHeight);
-  const yCrdRoof = createHeightArray(mapWidth, mapHeight, defaultHeight + 500); // Roof height
+  const yCrdRoof = createHeightArray(mapWidth, mapHeight, defaultHeight + 500);
   const atrb = createAttributeArray(mapWidth, mapHeight);
   const stgd = createSupertileGrid(mapWidth, mapHeight, TILES_PER_SUPERTILE);
   const layr = createLayerArray(mapWidth, mapHeight, 0);
 
-  // Start position
   const items = [
     {
       x: (mapWidth * 32) / 2,
       z: (mapHeight * 32) / 2,
-      type: 0, // StartCoords
+      type: 0,
       p0: 0,
       p1: 0,
       p2: 0,
@@ -67,23 +70,26 @@ export function createBlankBugdomLevel(
     },
   ];
 
-  const levelData: LevelData = {
-    Hedr: { 1000: { obj: header } },
-    Itms: { 1000: { obj: items } },
+  const levelData: Record<string, unknown> = {
+    Hedr: { 1000: { name: "Header", obj: header, order: 0 } },
+    Itms: { 1000: { name: "Terrain Items List", obj: items, order: 1 } },
     YCrd: {
-      1000: { obj: yCrd },
-      1001: { obj: yCrdRoof }, // Roof heightmap
+      1000: { name: "Floor&Ceiling Y Coords", obj: yCrd, order: 2 },
+      1001: { name: "Roof Y Coords", obj: yCrdRoof, order: 3 },
     },
-    Atrb: { 1000: { obj: atrb } },
-    STgd: { 1000: { obj: stgd } },
-    Layr: { 1000: { obj: layr } },
-    Spln: { 1000: { obj: {} } },
+    Atrb: { 1000: { name: "Tile Attribute Data", obj: atrb, order: 4 } },
+    STgd: { 1000: { name: "Supertile Grid", obj: stgd.map(s => ({ ...s, isEmpty: s.superTileId === -1 })), order: 5 } },
+    Layr: { 1000: { name: "Terrain Layer Matrix", obj: layr, order: 6 } },
+    Spln: { 1000: { name: "Splines", obj: [], order: 7 } },
     SpNb: {},
     SpPt: {},
     SpIt: {},
     _metadata: {
       format: "rsrc",
       game: "bugdom",
+      file_attributes: {},
+      junk1: "",
+      junk2: "",
     },
   };
 

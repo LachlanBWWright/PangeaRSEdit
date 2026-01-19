@@ -33,13 +33,14 @@ export function getPoints(
     return nubs.map(n => ({ x: n.x, z: n.z }));
   }
 
-  // For circular splines, the original code assumes first/last nubs are the same
-  // For non-circular splines, we need to calculate the final span differently
+  // Circular splines include a span from last nub wrapping back to first (N spans for N nubs).
+  // Non-circular splines stop at the last nub with no wrap (N-1 spans for N nubs).
   const numSpans = circular ? nubs.length : nubs.length - 1;
   const pointsPerSpan = new Array<number>(nubs.length);
 
   for (let i = 0; i < numSpans; i++) {
     const currentNub = nubs[i];
+    // For circular splines, use modulo to wrap back to first nub
     const nextNub = circular 
       ? nubs[(i + 1) % nubs.length]
       : nubs[i + 1];

@@ -10,7 +10,7 @@ import { getBugdomItemModelMapping } from "../bugdomItemModelMapping";
 import { getBugdom2ItemModelMapping } from "../bugdom2ItemModelMapping";
 import { getNanosaurItemModelMapping } from "../nanosaurItemModelMapping";
 import { getNanosaur2ItemModelMapping } from "../nanosaur2ItemModelMapping";
-import { getCroMagItemModelMapping } from "../cromagItemModelMapping";
+import { getCromagItemModelMapping } from "../cromagItemModelMapping";
 import { getBillyFrontierItemModelMapping } from "../billyFrontierItemModelMapping";
 
 /**
@@ -65,7 +65,7 @@ export function getItemModelMappingForGame(
       return toItemModelMapping(getNanosaur2ItemModelMapping(itemType));
 
     case Game.CRO_MAG:
-      return toItemModelMapping(getCroMagItemModelMapping(itemType));
+      return toItemModelMapping(getCromagItemModelMapping(itemType));
 
     case Game.BILLY_FRONTIER:
       return toItemModelMapping(getBillyFrontierItemModelMapping(itemType));

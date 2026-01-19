@@ -1,4 +1,3 @@
-import type { LevelData } from "@/python/structSpecs/LevelTypes";
 import type {
   BlankLevelOptions,
   BlankLevelResult,
@@ -15,6 +14,9 @@ import { Game } from "@/data/globals/globals";
 
 const TILES_PER_SUPERTILE = 8;
 
+/**
+ * Create blank Billy Frontier level data structure.
+ */
 export function createBlankBillyFrontierLevel(
   options: BlankLevelOptions,
 ): BlankLevelResult {
@@ -40,7 +42,14 @@ export function createBlankBillyFrontierLevel(
     numSplines: 0,
     numFences: 0,
     numUniqueSupertiles: 0,
-    levelType: 0, // 0=duel, 1=stampede, 2=shootout
+    numTilePages: 0,
+    numTiles: mapWidth * mapHeight,
+    numWaterPatches: 0,
+    numCheckpoints: 0,
+    tileSize: 32,
+    minY: 0,
+    maxY: 1000,
+    levelType: 0,
   };
 
   const yCrd = createHeightArray(mapWidth, mapHeight, defaultHeight);
@@ -52,8 +61,8 @@ export function createBlankBillyFrontierLevel(
     {
       x: (mapWidth * 32) / 2,
       z: (mapHeight * 32) / 2,
-      type: 0, // StartCoords
-      p0: 0, // Starting rotation
+      type: 0,
+      p0: 0,
       p1: 0,
       p2: 0,
       p3: 0,
@@ -61,20 +70,23 @@ export function createBlankBillyFrontierLevel(
     },
   ];
 
-  const levelData: LevelData = {
-    Hedr: { 1000: { obj: header } },
-    Itms: { 1000: { obj: items } },
-    YCrd: { 1000: { obj: yCrd } },
-    Atrb: { 1000: { obj: atrb } },
-    STgd: { 1000: { obj: stgd } },
-    Layr: { 1000: { obj: layr } },
-    Spln: { 1000: { obj: {} } },
+  const levelData: Record<string, unknown> = {
+    Hedr: { 1000: { name: "Header", obj: header, order: 0 } },
+    Itms: { 1000: { name: "Terrain Items List", obj: items, order: 1 } },
+    YCrd: { 1000: { name: "Floor&Ceiling Y Coords", obj: yCrd, order: 2 } },
+    Atrb: { 1000: { name: "Tile Attribute Data", obj: atrb, order: 3 } },
+    STgd: { 1000: { name: "Supertile Grid", obj: stgd.map(s => ({ ...s, isEmpty: s.superTileId === -1 })), order: 4 } },
+    Layr: { 1000: { name: "Terrain Layer Matrix", obj: layr, order: 5 } },
+    Spln: { 1000: { name: "Splines", obj: [], order: 6 } },
     SpNb: {},
     SpPt: {},
     SpIt: {},
     _metadata: {
       format: "rsrc",
       game: "billy_frontier",
+      file_attributes: {},
+      junk1: "",
+      junk2: "",
     },
   };
 

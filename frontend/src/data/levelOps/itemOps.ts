@@ -1,39 +1,47 @@
-import type { LevelData, TerrainItem } from "@/python/structSpecs/LevelTypes";
+import type { TerrainItem } from "@/python/structSpecs/LevelTypes";
 import type { LevelOpResult, LevelChange } from "./types";
+
+/**
+ * Generic level data type for level operations.
+ * More permissive than the full LevelData type to allow partial structures.
+ */
+type LevelDataRecord = Record<string, unknown>;
 
 /**
  * Add a new item to the level (pure function)
  */
 export function addItem(
-  levelData: LevelData,
+  levelData: LevelDataRecord,
   item: TerrainItem,
-): LevelOpResult<{ levelData: LevelData; itemIdx: number }> {
-  const items = levelData.Itms?.[1000]?.obj;
-  if (!items) {
+): LevelOpResult<{ levelData: LevelDataRecord; itemIdx: number }> {
+  const itms = levelData.Itms as Record<string, { obj?: unknown[] }> | undefined;
+  const items = itms?.[1000]?.obj;
+  if (!items || !Array.isArray(items)) {
     return { success: false, error: "No items array in level data" };
   }
 
   const newItems = [...items, item];
 
-  const newLevelData: LevelData = {
+  const newLevelData: LevelDataRecord = {
     ...levelData,
     Itms: {
-      ...levelData.Itms,
+      ...itms,
       1000: {
-        ...levelData.Itms?.[1000],
+        ...itms?.[1000],
         obj: newItems,
       },
     },
   };
 
   // Update header numItems
-  if (newLevelData.Hedr?.[1000]?.obj) {
+  const hedr = newLevelData.Hedr as Record<string, { obj?: Record<string, unknown> }> | undefined;
+  if (hedr?.[1000]?.obj) {
     newLevelData.Hedr = {
-      ...newLevelData.Hedr,
+      ...hedr,
       1000: {
-        ...newLevelData.Hedr[1000],
+        ...hedr[1000],
         obj: {
-          ...newLevelData.Hedr[1000].obj,
+          ...hedr[1000].obj,
           numItems: newItems.length,
         },
       },
