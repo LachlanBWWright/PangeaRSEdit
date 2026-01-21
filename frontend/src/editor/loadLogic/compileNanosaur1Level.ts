@@ -206,9 +206,11 @@ export function compileNanosaur1Level(
       const prev = isRawNanosaurItem(item) ? item.prevItemIdx : -1;
       const next = isRawNanosaurItem(item) ? item.nextItemIdx : -1;
 
+      const safeX: number = typeof x === 'number' ? x : 0;
+      const safeY: number = typeof y === 'number' ? y : 0;
 
-      view.setUint16(writePtr, Math.round(x), false);
-      view.setUint16(writePtr + 2, Math.round(y ?? 0), false);
+      view.setUint16(writePtr, Math.round(safeX), false);
+      view.setUint16(writePtr + 2, Math.round(safeY), false);
       view.setUint16(writePtr + 4, type, false);
       
       if (parm && Array.isArray(parm)) {
@@ -226,7 +228,9 @@ export function compileNanosaur1Level(
       view.setUint16(writePtr + 10, flags || 0, false);
       view.setInt32(writePtr + 12, prev ?? -1, false);
       view.setInt32(writePtr + 16, next ?? -1, false);
-      view.setUint16(writePtr + 2, Math.round(rawItem.y ?? rawItem.z ?? 0), false); // Prefer y if preserved, else z
+
+      const safeRawY: number = typeof rawItem.y === 'number' ? rawItem.y : (typeof rawItem.z === 'number' ? rawItem.z : 0);
+      view.setUint16(writePtr + 2, Math.round(safeRawY), false); // Prefer y if preserved, else z
       view.setUint16(writePtr + 4, rawItem.type, false);
 
       if (rawItem.parm && Array.isArray(rawItem.parm)) {
@@ -287,9 +291,9 @@ export function compileNanosaur1Level(
 
              view.setUint16(writePtr, bits, false);
              view.setInt16(writePtr + 2, parm0, false);
-             view.setUint8(writePtr + 4, parm1);
-             view.setUint8(writePtr + 5, parm2);
-             view.setInt16(writePtr + 6, undef, false);
+             view.setUint8(writePtr + 4, (parm1 || 0) as number);
+             view.setUint8(writePtr + 5, (parm2 || 0) as number);
+             view.setInt16(writePtr + 6, (undef || 0) as number, false);
              writePtr += 8;
         }
     }

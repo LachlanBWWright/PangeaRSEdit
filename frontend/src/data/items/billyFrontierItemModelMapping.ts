@@ -1,58 +1,190 @@
-/**
- * Billy Frontier Item Type to 3D Model Mapping
- *
- * Maps each item type to its corresponding BG3D model file and mesh information.
- * Extracted from Billy Frontier source code:
- * - /games/billyfrontier/Source/Headers/mobjtypes.h
- */
+import { ItemType } from "./billyFrontierItemType";
 
-/**
- * Describes how to load and render a 3D model for a Billy Frontier item type
- */
 export interface BillyFrontierItemModelMapping {
-  /** BG3D filename */
+  // Use same structure as UniversalItemModelMapping
   modelFile: string;
-
-  /** Subdirectory in /games/billyfrontier/ */
   modelPath: "models" | "skeletons";
-
-  /** Model index within the BG3D file (0-indexed, maps to Subgroup_N) */
   modelIndex: number;
-
-  /** True if model requires skeleton data for rigging */
   requiresSkeleton?: boolean;
-
-  /** Skeleton .rsrc filename if applicable */
   skeletonFile?: string;
-
-  /** Scale multiplier for the model (default: 1.0) */
   scale?: number;
-
-  /** Y-axis rotation offset in radians (default: 0) */
   rotationY?: number;
+  levelRestriction?: number;
+  variants?: Record<number, { modelFile?: string; modelIndex: number }>;
 }
 
-/**
- * Comprehensive mapping of all Billy Frontier item types to their 3D models
- *
- * Reference: /games/billyfrontier/Source/Headers/mobjtypes.h
- * Current coverage: 0+/100+ items
- */
 export const BILLY_FRONTIER_ITEM_MODEL_MAPPINGS: Record<
   number,
   BillyFrontierItemModelMapping | undefined
 > = {
-  // TODO: Extract enum structure from billyfrontier/mobjtypes.h
-  // TODO: Map all Billy Frontier item types to their model indices
-};
+  // Global
+  [ItemType.Barrel]: {
+    modelFile: "global.bg3d",
+    modelPath: "models",
+    modelIndex: 10, // GLOBAL_ObjType_Barrel
+    variants: {
+      0: { modelIndex: 10 },
+      1: { modelIndex: 11 }, // BarrelTNT
+      2: { modelIndex: 12 }, // FrogBarrel
+    }
+  },
+  [ItemType.WoodCrate]: { // Corrected from Crate to WoodCrate (ItemType value is 10, mapped to WoodCrate)
+    modelFile: "global.bg3d",
+    modelPath: "models",
+    modelIndex: 13, // GLOBAL_ObjType_Crate
+    variants: {
+      0: { modelIndex: 13 },
+      1: { modelIndex: 14 }, // CrateStack
+      2: { modelIndex: 15 }, // MetalCrate
+      3: { modelIndex: 16 }, // MetalCrateStack
+    }
+  },
+  [ItemType.HayBale]: {
+    modelFile: "global.bg3d",
+    modelPath: "models",
+    modelIndex: 17, // GLOBAL_ObjType_HayBale
+    variants: {
+      0: { modelIndex: 17 },
+      1: { modelIndex: 18 }, // HayBaleStack
+    }
+  },
+  [ItemType.Tumbleweed]: {
+    modelFile: "global.bg3d",
+    modelPath: "models",
+    modelIndex: 28, // GLOBAL_ObjType_Tumbleweed
+  },
+  [ItemType.FreeLifePOW]: {
+    modelFile: "global.bg3d",
+    modelPath: "models",
+    modelIndex: 31, // GLOBAL_ObjType_FreeLifePOW
+  },
+  [ItemType.Post]: {
+    modelFile: "global.bg3d",
+    modelPath: "models",
+    modelIndex: 33, // GLOBAL_ObjType_WoodPost
+  },
+  [ItemType.Boost]: {
+    modelFile: "global.bg3d",
+    modelPath: "models",
+    modelIndex: 35, // GLOBAL_ObjType_Boost
+  },
 
-/**
- * Get the model mapping for a specific Billy Frontier item type
- * @param itemType Item type ID
- * @returns Mapping if available, undefined otherwise
- */
-export const getBillyFrontierItemModelMapping = (
-  itemType: number,
-): BillyFrontierItemModelMapping | undefined => {
-  return BILLY_FRONTIER_ITEM_MODEL_MAPPINGS[itemType];
+  // Town (level 1)
+  [ItemType.HeadStone]: {
+    modelFile: "town.bg3d",
+    modelPath: "models",
+    modelIndex: 1, // TOWN_ObjType_Headstone1
+    levelRestriction: 1,
+    variants: {
+      0: { modelIndex: 1 },
+      1: { modelIndex: 2 },
+      2: { modelIndex: 3 },
+      3: { modelIndex: 4 },
+      4: { modelIndex: 5 },
+    }
+  },
+  [ItemType.Plant]: {
+    modelFile: "town.bg3d",
+    modelPath: "models",
+    modelIndex: 6, // TOWN_ObjType_Cactus
+    // Note: Same item ID might be used for Swamp mushroom? Need to check if IDs overlap or are distinct.
+    // Assuming ItemType.Plant maps to generic plant, but source suggests different IDs might be used or dynamic mapping.
+    // For now, mapping to Town Cactus.
+  },
+  [ItemType.DeadTree]: {
+    modelFile: "town.bg3d",
+    modelPath: "models",
+    modelIndex: 7, // TOWN_ObjType_DeadTree
+    levelRestriction: 1,
+  },
+  [ItemType.DuelRockWall]: {
+    modelFile: "town.bg3d",
+    modelPath: "models",
+    modelIndex: 9, // TOWN_ObjType_RockWall
+    levelRestriction: 1,
+  },
+  [ItemType.Coffin]: {
+    modelFile: "town.bg3d",
+    modelPath: "models",
+    modelIndex: 10, // TOWN_ObjType_Coffin
+    levelRestriction: 1,
+  },
+  [ItemType.Rock]: {
+    modelFile: "town.bg3d",
+    modelPath: "models",
+    modelIndex: 12, // TOWN_ObjType_TallRock1
+    levelRestriction: 1,
+  },
+  [ItemType.ShootoutAlley]: {
+    modelFile: "town.bg3d",
+    modelPath: "models",
+    modelIndex: 16, // TOWN_ObjType_Alley
+    levelRestriction: 1,
+  },
+  [ItemType.Table]: {
+    modelFile: "town.bg3d",
+    modelPath: "models",
+    modelIndex: 17, // TOWN_ObjType_Table
+    levelRestriction: 1,
+  },
+  [ItemType.Chair]: {
+    modelFile: "town.bg3d",
+    modelPath: "models",
+    modelIndex: 18, // TOWN_ObjType_Chair
+    levelRestriction: 1,
+  },
+
+  // Swamp (level 2)
+  [ItemType.SwampCabin]: {
+    modelFile: "swamp.bg3d",
+    modelPath: "models",
+    modelIndex: 1, // SWAMP_ObjType_Cabin
+    levelRestriction: 2,
+  },
+  [ItemType.TremorGrave]: {
+    modelFile: "swamp.bg3d",
+    modelPath: "models",
+    modelIndex: 11, // SWAMP_ObjType_Grave
+    levelRestriction: 2,
+  },
+  [ItemType.TeePee]: {
+    modelFile: "swamp.bg3d",
+    modelPath: "models",
+    modelIndex: 12, // SWAMP_ObjType_TeePee
+    levelRestriction: 2,
+  },
+  [ItemType.SpearSkull]: {
+    modelFile: "swamp.bg3d",
+    modelPath: "models",
+    modelIndex: 13, // SWAMP_ObjType_SpearSkull
+    levelRestriction: 2,
+  },
+  [ItemType.ElectricFence]: {
+    modelFile: "swamp.bg3d",
+    modelPath: "models",
+    modelIndex: 14, // SWAMP_ObjType_ElectricFence
+    levelRestriction: 2,
+  },
+
+  // Buildings (buildings.bg3d)
+  [ItemType.Building]: {
+    modelFile: "buildings.bg3d",
+    modelPath: "models",
+    modelIndex: 0, // BUILDING_ObjType_Saloon
+    variants: {
+      0: { modelIndex: 0 },
+      1: { modelIndex: 1 },
+      2: { modelIndex: 2 },
+      3: { modelIndex: 3 },
+      4: { modelIndex: 4 },
+      5: { modelIndex: 5 },
+      6: { modelIndex: 6 },
+      7: { modelIndex: 7 },
+    }
+  },
+  [ItemType.ShootoutSaloon]: {
+    modelFile: "buildings.bg3d",
+    modelPath: "models",
+    modelIndex: 16, // BUILDING_ObjType_SaloonInside
+  },
 };

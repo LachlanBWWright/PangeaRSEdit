@@ -7,19 +7,16 @@ import {
 } from "@/python/structSpecs/LevelTypes";
 import { useAtomValue } from "jotai";
 import { useFrame } from "@react-three/fiber";
-import { Globals, Game } from "@/data/globals/globals";
+import { Globals } from "@/data/globals/globals";
 import { Show3DItemModels } from "@/data/canvasView/canvasViewAtoms";
 import { getTerrainHeightAtPoint } from "./fenceUtils/getTerrainHeightAtPoint";
-import { useOttoItemModelCache } from "./hooks/useOttoItemModelCache";
-import {
-  getItemModelMapping,
-  type ItemModelMapping,
-} from "@/data/items/ottoItemModelMapping";
+import { useItemModelCache, createGameMapper } from "./hooks/useItemModelCache";
 import {
   getLiquidPatchStyle,
   getLiquidPatchDimensions,
   LiquidPatchStyle,
 } from "@/data/items/liquidPatchItems";
+import { StandardParamType } from "@/data/items/standardParamTypes";
 
 interface ItemGeometryProps {
   itemData: ItemData;
@@ -109,15 +106,21 @@ const ItemModel: React.FC<{
   position: [number, number, number];
   itemType: number;
   clonedScene: Group | null;
-  mapping: ItemModelMapping | null;
-}> = ({ position, clonedScene }) => {
+  rotation?: number;
+  scale?: number;
+}> = ({ position, clonedScene, rotation = 0, scale = 1 }) => {
   if (!clonedScene) {
     return null;
   }
 
   // Clone the pre-cloned scene for this specific instance so each item gets its own copy
   // This prevents position/rotation conflicts when using the same scene multiple times
-  const instanceScene = clonedScene.clone(true);
+  const instanceScene = useMemo(() => {
+      const s = clonedScene.clone(true);
+      if (rotation) s.rotateY(rotation);
+      if (scale && scale !== 1) s.scale.multiplyScalar(scale);
+      return s;
+  }, [clonedScene, rotation, scale]);
 
   return <primitive object={instanceScene} position={position} />;
 };
@@ -178,6 +181,17 @@ const LiquidPatchPlane: React.FC<{
   );
 };
 
+// Calculate rotation based on standard param type
+function calculateRotation(value: number, type: StandardParamType): number {
+    if (type.type === "Rotation") {
+        const division = Math.PI * 2 / type.divisions;
+        // Check multiplier format to guess logic if not strictly divisions
+        // Simplified: value * (2PI / divisions)
+        return value * division;
+    }
+    return 0;
+}
+
 export const ItemGeometry: React.FC<ItemGeometryProps> = ({
   itemData,
   headerData,
@@ -185,66 +199,37 @@ export const ItemGeometry: React.FC<ItemGeometryProps> = ({
 }) => {
   const globals = useAtomValue(Globals);
   const show3DItemModels = useAtomValue(Show3DItemModels);
-  const { modelCache, loadModel } = useOttoItemModelCache();
+
+  // Create mapper and load cache
+  const mapper = useMemo(() => createGameMapper(globals.GAME_TYPE), [globals.GAME_TYPE]);
+  const { loadModel, getModel } = useItemModelCache(globals.GAME_TYPE);
+
+  // Extract level number from header if available (typically p0 or version in Hedr)
+  // For most games, level number isn't explicitly in header but inferred from filename or context.
+  // For now, we'll pass undefined and let mappers handle global/level logic if they can infer or default.
+  // Ideally, GlobalState should hold "currentLevelNumber".
+  // Assuming 1 for now if not found, logic should be robust enough.
+  const levelNum = 1;
 
   const items = itemData.Itms?.[1000]?.obj;
 
-  // Group items by type for easier processing
-  const itemsByType = useMemo(() => {
-    if (!items) return new Map();
-    const groups = new Map<number, typeof items>();
-    items.forEach((item) => {
-      if (!groups.has(item.type)) {
-        groups.set(item.type, []);
-      }
-      const group = groups.get(item.type);
-      if (group) {
-        group.push(item);
-      }
-    });
-    return groups;
-  }, [items]);
-
-  // Pre-load models for visible item types when toggle is enabled
-  // Also prepare cloned scenes for instancing
-  const clonedScenesByType = useMemo(() => {
-    const scenes = new Map<number, Group | null>();
-    itemsByType.forEach((_, itemType) => {
-      const cachedModel = modelCache.get(itemType);
-      if (cachedModel?.gltf && !cachedModel.error) {
-        const mapping = getItemModelMapping(itemType);
-        if (mapping && cachedModel.gltf.scene) {
-          // The cached gltf.scene should already be the extracted subgroup
-          // Just clone it once per item type for instancing
-          const cloned = cachedModel.gltf.scene.clone(true); // true = recursive deep clone
-
-          // Apply scale if specified
-          if (mapping.scale && mapping.scale !== 1) {
-            cloned.scale.set(mapping.scale, mapping.scale, mapping.scale);
-          }
-
-          // Apply rotation if specified
-          if (mapping.rotationY) {
-            cloned.rotateY(mapping.rotationY);
-          }
-
-          scenes.set(itemType, cloned);
-        }
-      }
-    });
-    return scenes;
-  }, [modelCache, itemsByType]);
-
+  // Pre-load models for visible item types
   useEffect(() => {
-    if (show3DItemModels && globals.GAME_TYPE === Game.OTTO_MATIC) {
-      // Load models for all unique item types in the level
-      itemsByType.forEach((_, itemType) => {
-        loadModel(itemType).catch((err) => {
-          console.error(`Failed to load model for item type ${itemType}:`, err);
-        });
+    if (show3DItemModels && items) {
+      items.forEach((item) => {
+        const mapping = mapper.getMapping(
+            item.type,
+            levelNum,
+            { p0: item.p0, p1: item.p1, p2: item.p2, p3: item.p3 }
+        );
+        if (mapping) {
+          loadModel(mapping).catch((err: unknown) => {
+            console.error(`Failed to load model for item type ${item.type}:`, err);
+          });
+        }
       });
     }
-  }, [show3DItemModels, itemsByType, loadModel, globals.GAME_TYPE]);
+  }, [show3DItemModels, items, loadModel, mapper, levelNum]);
 
   // Early return after all hooks
   if (!items || items.length === 0) {
@@ -274,10 +259,9 @@ export const ItemGeometry: React.FC<ItemGeometryProps> = ({
           worldZ,
         ];
 
-        // Check if this is a liquid patch item (water/lava/honey/slime in Bugdom 1/Nanosaur 1)
+        // Check if this is a liquid patch item
         const liquidPatchStyle = getLiquidPatchStyle(globals, item.type);
         if (liquidPatchStyle) {
-          // Calculate dimensions based on item parameters
           const dims = getLiquidPatchDimensions(
             globals,
             item.type,
@@ -287,17 +271,12 @@ export const ItemGeometry: React.FC<ItemGeometryProps> = ({
             item.p3,
           );
 
-          // Bugdom 1 snaps liquid patch positions to tile centers before terrain lookup
-          // This ensures adjacent patches get consistent terrain height lookups
           const tileSize = globals.TILE_SIZE;
-          const snappedEditorX =
-            Math.floor(item.x / tileSize) * tileSize + tileSize / 2;
-          const snappedEditorZ =
-            Math.floor(item.z / tileSize) * tileSize + tileSize / 2;
+          const snappedEditorX = Math.floor(item.x / tileSize) * tileSize + tileSize / 2;
+          const snappedEditorZ = Math.floor(item.z / tileSize) * tileSize + tileSize / 2;
           const snappedWorldX = snappedEditorX * scale;
           const snappedWorldZ = snappedEditorZ * scale;
 
-          // Get terrain height at snapped position (same as game does)
           const snappedTerrainY = getTerrainHeightAtPoint(
             snappedEditorX,
             snappedEditorZ,
@@ -306,15 +285,7 @@ export const ItemGeometry: React.FC<ItemGeometryProps> = ({
             globals,
           );
 
-          // If isAbsoluteY, use yValue3D directly; otherwise add it to terrain height
-          const liquidY = dims.isAbsoluteY
-            ? dims.yValue3D
-            : snappedTerrainY + dims.yValue3D;
-
-          // Debug: log liquid patch Y calculation
-          console.log(
-            `LiquidPatch type=${item.type} p2=${item.p2} p3=${item.p3} isAbsoluteY=${dims.isAbsoluteY} yValue3D=${dims.yValue3D} terrainY=${snappedTerrainY} finalY=${liquidY}`,
-          );
+          const liquidY = dims.isAbsoluteY ? dims.yValue3D : snappedTerrainY + dims.yValue3D;
 
           return (
             <LiquidPatchPlane
@@ -327,39 +298,52 @@ export const ItemGeometry: React.FC<ItemGeometryProps> = ({
           );
         }
 
-        // Render 3D model if enabled and available (Otto Matic only for now)
-        if (show3DItemModels && globals.GAME_TYPE === Game.OTTO_MATIC) {
-          const cachedModel = modelCache.get(item.type);
-          const modelGltf = cachedModel?.gltf;
-          const isLoading = cachedModel?.loading ?? false;
-          const hasError = !!cachedModel?.error;
+        // Render 3D model if enabled
+        if (show3DItemModels) {
+          const mapping = mapper.getMapping(
+              item.type,
+              levelNum,
+              { p0: item.p0, p1: item.p1, p2: item.p2, p3: item.p3 }
+          );
 
-          // Show spinning cube while loading
-          if (isLoading) {
-            return (
-              <LoadingCube
-                key={`item-loading-${idx}`}
-                position={position}
-                itemType={item.type}
-              />
-            );
-          }
+          if (mapping) {
+              const cachedModel = getModel(mapping);
+              const modelGltf = cachedModel?.gltf;
+              const isLoading = cachedModel?.loading ?? false;
+              const hasError = !!cachedModel?.error;
 
-          // Show loaded model if available and not errored
-          if (modelGltf && !hasError) {
-            const clonedScene = clonedScenesByType.get(item.type);
-            if (clonedScene) {
-              const mapping = getItemModelMapping(item.type);
-              return (
-                <ItemModel
-                  key={`item-model-${idx}`}
-                  position={position}
-                  itemType={item.type}
-                  clonedScene={clonedScene}
-                  mapping={mapping ?? null}
-                />
-              );
-            }
+              if (isLoading) {
+                return (
+                  <LoadingCube
+                    key={`item-loading-${idx}`}
+                    position={position}
+                    itemType={item.type}
+                  />
+                );
+              }
+
+              if (modelGltf && !hasError) {
+                // Calculate dynamic rotation/scale
+                let rotation = mapping.rotationY ?? 0;
+                let scaleVal = mapping.scale ?? 1;
+
+                if (mapping.rotationParam) {
+                    const paramVal = item[`p${mapping.rotationParam.paramIndex}` as keyof typeof item] as number;
+                    rotation += calculateRotation(paramVal, mapping.rotationParam.rotationType);
+                }
+
+                // Use the base scene from the cached GLTF
+                return (
+                    <ItemModel
+                      key={`item-model-${idx}`}
+                      position={position}
+                      itemType={item.type}
+                      clonedScene={modelGltf.scene}
+                      rotation={rotation}
+                      scale={scaleVal}
+                    />
+                );
+              }
           }
         }
 

@@ -367,8 +367,10 @@ export interface Nanosaur1LevelData {
   heightmapLayer: number[] | null;
   pathLayer: number[] | null;
   heightmapTiles?: Uint8Array[] | null;
+  heightmapPadding?: Uint8Array | null;
   objectList: TerrainItemEntryType[];
   textureAttributes: TileAttribType[];
+  tileAnimData?: Uint8Array | null;
   // Add more fields as needed
 }
 

@@ -9,6 +9,13 @@ import type { MightyMikeTileSet, MightyMikeMap } from "../../python/structSpecs/
 import { splitLevelData, AtomicLevelData } from "../../data/utils/levelDataUtils";
 import { extractTGAPalette } from "../../utils/tgaParser";
 
+interface MightyMikeTileValue {
+  rawValue: number;
+  tileIndex: number;
+  hasCollisionMask: boolean;
+  usePixelAccurateCollision: boolean;
+}
+
 // Type guard helper
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -430,7 +437,7 @@ export function serializeMightyMikeLevel(levelData: LevelData): Result<ArrayBuff
   // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion
   const mapData = metadata.mightyMikeMapData as unknown as MightyMikeMap;
   // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion
-  const tileValues = metadata.mightyMikeTileValues as unknown as Record<string, unknown>[]; // Array of tile objects
+  const tileValues = metadata.mightyMikeTileValues as unknown as MightyMikeTileValue[];
 
   // 2. Update Items
   const items = levelData.Itms?.[1000]?.obj || [];
@@ -469,12 +476,13 @@ export function serializeMightyMikeLevel(levelData: LevelData): Result<ArrayBuff
   layr.forEach((newTileIndex: number, i: number) => {
       if (i < tileValues.length) {
           const tile = tileValues[i];
-          tile["tileIndex"] = newTileIndex;
-          // Update rawValue: clear old index bits and set new index bits
-          // Preserve high bits (flags)
-          // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion
-          const rawValue = (tile["rawValue"] as number);
-          tile["rawValue"] = (rawValue & ~TILENUM_MASK) | (newTileIndex & TILENUM_MASK);
+          if (tile) {
+            tile.tileIndex = newTileIndex;
+            // Update rawValue: clear old index bits and set new index bits
+            // Preserve high bits (flags)
+            const rawValue = tile.rawValue;
+            tile.rawValue = (rawValue & ~TILENUM_MASK) | (newTileIndex & TILENUM_MASK);
+          }
       }
   });
 
@@ -487,8 +495,9 @@ export function serializeMightyMikeLevel(levelData: LevelData): Result<ArrayBuff
       const row = [];
       for (let x = 0; x < width; x++) {
           const i = y * width + x;
-          if (i < tileValues.length) {
-              row.push(tileValues[i]);
+          if (i < tileValues.length && tileValues[i]) {
+              // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+              row.push(tileValues[i]!);
           } else {
               row.push({ rawValue: 0, tileIndex: 0, hasCollisionMask: false, usePixelAccurateCollision: false });
           }
