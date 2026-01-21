@@ -28,32 +28,32 @@ const GAMES: GameTestConfig[] = [
   {
     name: "Otto Matic",
     globals: OttoGlobals,
-    testFile: "games/ottomatic/Data/Terrain/Level1_Farm.ter.rsrc"
+    testFile: "games/ottomatic/Data/Terrain/EarthFarm.ter.rsrc"
   },
   {
     name: "Bugdom 2",
     globals: Bugdom2Globals,
-    testFile: "games/bugdom2/Data/Terrain/Level1.ter.rsrc"
+    testFile: "games/bugdom2/Data/Terrain/Level1_Garden.ter.rsrc"
   },
   {
     name: "Bugdom",
     globals: BugdomGlobals,
-    testFile: "games/bugdom/Data/Terrain/lawn.ter"
+    testFile: "games/bugdom/Data/Terrain/Lawn.ter.rsrc"
   },
   {
     name: "Nanosaur 2",
     globals: Nanosaur2Globals,
-    testFile: "games/nanosaur2/Data/Terrain/Level1.ter.rsrc"
+    testFile: "games/nanosaur2/Data/Terrain/level1.ter.rsrc"
   },
   {
     name: "Cro-Mag Rally",
     globals: CroMagGlobals,
-    testFile: "games/cromagrally/Data/Terrain/Track1.ter.rsrc"
+    testFile: "games/cromagrally/Data/Terrain/StoneAge_Desert.ter.rsrc"
   },
   {
     name: "Billy Frontier",
     globals: BillyFrontierGlobals,
-    testFile: "games/billyfrontier/Data/Terrain/Level1.ter.rsrc"
+    testFile: "games/billyfrontier/Data/Terrain/town_duel.ter.rsrc"
   },
 ];
 
@@ -61,10 +61,12 @@ describe("Edit Roundtrip Tests", () => {
   for (const game of GAMES) {
     describe(game.name, () => {
       // Adjust path relative to this test file location: frontend/tests/levelEdit/
+      // __dirname is frontend/tests/levelEdit
+      // ../../../ points to repo root
       const filePath = join(__dirname, "../../../", game.testFile);
 
       if (!existsSync(filePath)) {
-        it.skip(`should have test file: ${game.testFile}`, () => {});
+        it.skip(`should have test file: ${game.testFile} (path: ${filePath})`, () => {});
         return;
       }
 
