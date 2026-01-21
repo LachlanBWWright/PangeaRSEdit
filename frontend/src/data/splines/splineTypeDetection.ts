@@ -1,5 +1,4 @@
 import { SplineNub } from "@/python/structSpecs/LevelTypes";
-import { Game } from "@/data/globals/globals";
 
 /**
  * Threshold for considering two points "the same" position

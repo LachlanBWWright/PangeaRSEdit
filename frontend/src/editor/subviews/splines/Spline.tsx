@@ -53,6 +53,7 @@ export const Spline = memo(
     );
 
     const isCircular = splineType === SplineType.CIRCULAR;
+    const lastNub = nubs[nubs.length - 1];
 
     return (
       <>
@@ -131,8 +132,8 @@ export const Spline = memo(
         {/* Show indicator for circular vs open */}
         {!isCircular && nubs.length > 0 && (
           <>
-            <StartEndpointMarker nub={nubs[0]} label="Start" />
-            <StartEndpointMarker nub={nubs[nubs.length - 1]} label="End" />
+            {nubs[0] ? <StartEndpointMarker nub={nubs[0]} label="Start" /> : null}
+            {lastNub ? <StartEndpointMarker nub={lastNub} label="End" /> : null}
           </>
         )}
 

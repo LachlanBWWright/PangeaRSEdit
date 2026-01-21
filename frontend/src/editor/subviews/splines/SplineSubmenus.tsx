@@ -400,7 +400,7 @@ export function EditSplineMenu({
         Add Back Nub
       </Button>
 
-      {globals.GAME_TYPE === Game.BILLY_FRONTIER && (
+      {globals.GAME_TYPE === Game.BILLY_FRONTIER && nubs && nubs.length > 0 && (
         <div className="col-span-6 flex items-center gap-2 mt-2">
            <Label>Spline Type:</Label>
            <Select
@@ -409,21 +409,22 @@ export function EditSplineMenu({
                setSplineData((draft) => {
                  if (selectedSpline === undefined) return;
                  const nubs = draft.SpNb[SPLINE_KEY_BASE + selectedSpline]?.obj;
-                 if (!nubs) return;
+                 if (!nubs || nubs.length < 1) return;
 
                  const targetType = val as SplineType;
                  const currentType = detectSplineType(nubs);
 
                  if (currentType === targetType) return;
 
+                 const first = nubs[0];
+
                  if (targetType === SplineType.CIRCULAR) {
                     // Make circular: Append duplicate of first nub
-                    nubs.push({ x: nubs[0].x, z: nubs[0].z });
+                    if (first) nubs.push({ x: first.x, z: first.z });
                  } else {
                     // Make open: Remove last nub if it duplicates first
-                    const first = nubs[0];
                     const last = nubs[nubs.length - 1];
-                    if (nubs.length > 1 && Math.abs(first.x - last.x) < 5 && Math.abs(first.z - last.z) < 5) {
+                    if (nubs.length > 1 && first && last && Math.abs(first.x - last.x) < 5 && Math.abs(first.z - last.z) < 5) {
                        nubs.pop();
                     }
                  }

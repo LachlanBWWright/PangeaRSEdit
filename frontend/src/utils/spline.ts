@@ -19,10 +19,11 @@ export function getPoints(
   splineType: SplineType = SplineType.CIRCULAR,
 ): SplinePoint[] {
   if (nubs.length < 2) {
-    return nubs.length === 1 ? [{ x: nubs[0].x, z: nubs[0].z }] : [];
+    const nub = nubs[0];
+    return nub ? [{ x: nub.x, z: nub.z }] : [];
   }
 
-  const pointsPerSpan = calculatePointsPerSpan(nubs, splineType);
+  const pointsPerSpan = calculatePointsPerSpan(nubs);
   return bakeSpline(nubs, pointsPerSpan, splineType);
 }
 
@@ -31,17 +32,14 @@ export function getPoints(
  */
 function calculatePointsPerSpan(
   nubs: SplinePoint[],
-  splineType: SplineType,
 ): number[] {
-  const numSpans = splineType === SplineType.CIRCULAR
-    ? nubs.length  // Circular: includes segment from last to first
-    : nubs.length - 1;  // Open: no wrap-around
+  let numSpans = nubs.length - 1;
 
   const pointsPerSpan = new Array<number>(numSpans);
 
   for (let i = 0; i < numSpans; i++) {
     const currentNub = nubs[i];
-    const nextNub = nubs[(i + 1) % nubs.length];
+    const nextNub = nubs[i + 1];
 
     if (!currentNub || !nextNub) {
       pointsPerSpan[i] = 1;
@@ -79,10 +77,40 @@ export function bakeSpline(
     return nubs.map(n => ({ x: n.x, z: n.z }));
   }
 
-  // For circular splines, create a working array that wraps around
-  const workingNubs = splineType === SplineType.CIRCULAR
-    ? createCircularNubArray(nubs)
-    : nubs;
+  // Determine working array and offset
+  let workingNubs = nubs;
+  let startSpanIndex = 0;
+
+  if (splineType === SplineType.CIRCULAR) {
+    // Remove the duplicate last point to get the unique loop points
+    // (Assuming nubs[0] approx nubs[last], which is true for CIRCULAR)
+    const loopNubs = nubs.slice(0, -1);
+
+    if (loopNubs.length < 2) {
+      // Degenerate case, fallback to simple copy
+       return nubs.map(n => ({ x: n.x, z: n.z }));
+    }
+
+    const firstLoopNub = loopNubs[0];
+    if (!firstLoopNub) return nubs.map(n => ({ x: n.x, z: n.z })); // Should not happen given length check
+
+    // Create triple loop to isolate boundary conditions
+    // [Loop, Loop, Loop, Start]
+    workingNubs = [
+        ...loopNubs,
+        ...loopNubs,
+        ...loopNubs,
+        firstLoopNub
+    ];
+
+    // We want to extract points for the middle loop
+    // The middle loop starts after the first 'loopNubs' set.
+    startSpanIndex = loopNubs.length;
+  } else {
+    // Open spline
+    workingNubs = nubs;
+    startSpanIndex = 0;
+  }
 
   const workingNumNubs = workingNubs.length;
 
@@ -98,6 +126,7 @@ export function bakeSpline(
   }
 
   // ALLOC POINT ARRAY
+  // We only generate points for the requested spans (pointsPerSpan)
   let maxPoints = 0;
   for (let i = 0; i < pointsPerSpan.length; i++) maxPoints += pointsPerSpan[i] ?? 0;
 
@@ -224,15 +253,12 @@ export function bakeSpline(
   }
 
   // NOW CALCULATE THE SPLINE POINTS
-  const numSpans = splineType === SplineType.CIRCULAR ? numNubs : numNubs - 1;
   let numPoints = 0;
 
-  for (let span = 0; span < numSpans; span++) {
-    // For circular splines with phantom points, we need to pick the correct span indices
-    // createCircularNubArray adds 1 point at start, so original index 0 is at index 1 in working array
-    const idx = splineType === SplineType.CIRCULAR ? span + 1 : span;
+  for (let i = 0; i < pointsPerSpan.length; i++) {
+    const idx = startSpanIndex + i;
+    const subdivisions = pointsPerSpan[i] ?? 1;
 
-    const subdivisions = pointsPerSpan[span] ?? 1;
     const ai = a[idx], bi = b[idx], ci = c[idx], di = d[idx];
     
     if (!ai || !bi || !ci || !di) continue;
@@ -254,9 +280,6 @@ export function bakeSpline(
     const lastPoint = points[numPoints];
 
     // We can add the last nub as a point to ensure we reach the end exactly
-    // Or we can rely on the last interpolation reaching it.
-    // The original code had logic to add it if pointsPerSpan was 1.
-    // Let's add it if we haven't overflowed
     if (lastNub && lastPoint) {
        lastPoint.x = lastNub.x;
        lastPoint.z = lastNub.z;
@@ -267,38 +290,4 @@ export function bakeSpline(
   points = points.slice(0, numPoints);
 
   return points;
-}
-
-/**
- * For circular splines, create array with phantom points for smooth wrap-around
- */
-function createCircularNubArray(nubs: SplinePoint[]): SplinePoint[] {
-  // Add phantom points before first and after last for proper wrapping
-  // We want the spline to pass through all points and loop smoothly.
-  // The 'phantom' points are essentially copies of the neighbors to simulate the loop context.
-  // Since nubs[0] == nubs[n-1] in the data for circular splines (usually),
-  // we effectively have:
-  // [last-1, first, second, ..., last-1, last(==first), second]
-
-  const n = nubs.length;
-  if (n < 2) return [...nubs];
-
-  // Assuming nubs[0] and nubs[n-1] are the same point (or very close)
-  // We want to construct an array that lets the cubic spline algorithm
-  // see the continuity.
-
-  // Spline logic expects p[i-1], p[i], p[i+1], p[i+2] basically.
-
-  // Let's try to pad with:
-  // [n-2] -> [0] -> [1] ... [n-2] -> [0] -> [1]
-  // But wait, the standard algorithm iterates from 0 to numNubs-2.
-
-  // If we just add one point at the beginning (the one before start)
-  // and one point at the end (the one after end)
-
-  return [
-    nubs[n - 2],   // Point before first (wrapping around)
-    ...nubs,       // The actual nubs (where 0 and n-1 are same)
-    nubs[1],       // Point after last (wrapping around)
-  ];
 }
