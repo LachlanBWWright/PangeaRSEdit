@@ -50,6 +50,7 @@
     "pngjs": "^7.0.0",
     "react": "^19.2.3",
     "react-dom": "^19.2.3",
+    "react-dropzone": "^14.3.8",
     "react-konva": "^19.2.1",
     "react-router-dom": "^7.11.0",
     "react-zoom-pan-pinch": "^3.7.0",
