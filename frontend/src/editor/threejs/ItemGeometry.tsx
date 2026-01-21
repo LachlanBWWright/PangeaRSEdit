@@ -20,6 +20,8 @@ import {
   getLiquidPatchDimensions,
   LiquidPatchStyle,
 } from "@/data/items/liquidPatchItems";
+import { ItemFilterState } from "../../data/items/itemFilterAtoms";
+import { filterItems } from "../../data/items/itemFilterUtils";
 
 interface ItemGeometryProps {
   itemData: ItemData;
@@ -187,7 +189,18 @@ export const ItemGeometry: React.FC<ItemGeometryProps> = ({
   const show3DItemModels = useAtomValue(Show3DItemModels);
   const { modelCache, loadModel } = useOttoItemModelCache();
 
-  const items = itemData.Itms?.[1000]?.obj;
+  const filterState = useAtomValue(ItemFilterState);
+
+  // Use raw items from data, 1000 is the standard ID for items in Pangea games
+  const rawItems = itemData.Itms?.[1000]?.obj;
+
+  // Apply filtering
+  const items = useMemo(() => {
+    if (!rawItems) return [];
+    // Map raw items to include index for stable filtering
+    const itemsWithIndex = rawItems.map((item, index) => ({ ...item, index }));
+    return filterItems(itemsWithIndex, filterState, globals.GAME_TYPE);
+  }, [rawItems, filterState, globals.GAME_TYPE]);
 
   // Group items by type for easier processing
   const itemsByType = useMemo(() => {
@@ -253,7 +266,7 @@ export const ItemGeometry: React.FC<ItemGeometryProps> = ({
 
   return (
     <group name="items">
-      {items.map((item, idx) => {
+      {items.map((item) => {
         // Convert editor coordinates to world coordinates
         const scale = globals.TILE_INGAME_SIZE / globals.TILE_SIZE;
         const worldX = item.x * scale;
@@ -312,13 +325,13 @@ export const ItemGeometry: React.FC<ItemGeometryProps> = ({
             : snappedTerrainY + dims.yValue3D;
 
           // Debug: log liquid patch Y calculation
-          console.log(
-            `LiquidPatch type=${item.type} p2=${item.p2} p3=${item.p3} isAbsoluteY=${dims.isAbsoluteY} yValue3D=${dims.yValue3D} terrainY=${snappedTerrainY} finalY=${liquidY}`,
-          );
+          // console.log(
+          //   `LiquidPatch type=${item.type} p2=${item.p2} p3=${item.p3} isAbsoluteY=${dims.isAbsoluteY} yValue3D=${dims.yValue3D} terrainY=${snappedTerrainY} finalY=${liquidY}`,
+          // );
 
           return (
             <LiquidPatchPlane
-              key={`liquid-patch-${idx}`}
+              key={`liquid-patch-${item.index}`} // Use original index
               position={[snappedWorldX, liquidY, snappedWorldZ]}
               width={dims.width3D}
               depth={dims.depth3D}
@@ -338,7 +351,7 @@ export const ItemGeometry: React.FC<ItemGeometryProps> = ({
           if (isLoading) {
             return (
               <LoadingCube
-                key={`item-loading-${idx}`}
+                key={`item-loading-${item.index}`}
                 position={position}
                 itemType={item.type}
               />
@@ -352,7 +365,7 @@ export const ItemGeometry: React.FC<ItemGeometryProps> = ({
               const mapping = getItemModelMapping(item.type);
               return (
                 <ItemModel
-                  key={`item-model-${idx}`}
+                  key={`item-model-${item.index}`}
                   position={position}
                   itemType={item.type}
                   clonedScene={clonedScene}
@@ -366,7 +379,7 @@ export const ItemGeometry: React.FC<ItemGeometryProps> = ({
         // Default: colored cube
         return (
           <ColoredCube
-            key={`item-cube-${idx}`}
+            key={`item-cube-${item.index}`}
             position={position}
             itemType={item.type}
           />

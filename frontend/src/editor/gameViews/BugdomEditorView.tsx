@@ -17,6 +17,7 @@ import { SplineMenu } from "../subviews/splines/SplineMenu";
 import { IndividualTilesMenu } from "./IndividualTilesMenu";
 import { BugdomTileMenu } from "../subviews/bugdom/BugdomTileMenu";
 import { Bugdom1KonvaView } from "../canvas/Bugdom1KonvaView";
+import { CanvasOverlay } from "../subviews/filters/CanvasOverlay";
 import { ThreeView } from "../threejs/Three";
 import { View } from "../viewEnum";
 import {
@@ -130,7 +131,8 @@ export function BugdomEditorView({
           />
         )}
       </div>
-      <div className="w-full min-h-0 flex-1 border-2 border-black overflow-clip">
+      <div className="w-full min-h-0 flex-1 border-2 border-black overflow-clip relative">
+        <CanvasOverlay itemData={itemData} />
         {canvasViewMode === CanvasView.THREE_D && view === View.tiles ? (
           <ThreeView
             headerData={headerData}

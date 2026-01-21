@@ -14,6 +14,7 @@ import { MightyMikeEditorToolbar } from "../toolbars/MightyMikeEditorToolbar";
 import { MightyMikeItemMenu } from "../subviews/items/MightyMikeItemMenu";
 import { MightyMikeTileMenu } from "../subviews/mightymike/MightyMikeTileMenu";
 import { MightyMikeKonvaView } from "../canvas/MightyMikeKonvaView";
+import { CanvasOverlay } from "../subviews/filters/CanvasOverlay";
 import { View } from "../viewEnum";
 import {
   createNonNullUpdater,
@@ -101,7 +102,8 @@ export function MightyMikeEditorView({
           </div>
         )}
       </div>
-      <div className="w-full min-h-0 flex-1 border-2 border-black overflow-clip">
+      <div className="w-full min-h-0 flex-1 border-2 border-black overflow-clip relative">
+        <CanvasOverlay itemData={itemData} />
         {/* Mighty Mike is 2D only - no 3D view */}
         <MightyMikeKonvaView
           headerData={headerData}

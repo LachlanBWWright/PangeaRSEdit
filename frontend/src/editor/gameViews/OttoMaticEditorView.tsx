@@ -20,6 +20,7 @@ import { WaterMenu } from "../subviews/water/WaterMenu";
 import { OttoMaticTilesMenu } from "./OttoMaticTilesMenu";
 import { SupertileMenu } from "../subviews/supertiles/SupertilesMenu";
 import { OttoMaticKonvaView } from "../canvas/OttoMaticKonvaView";
+import { CanvasOverlay } from "../subviews/filters/CanvasOverlay";
 import { ThreeView } from "../threejs/Three";
 import { View } from "../viewEnum";
 import {
@@ -144,7 +145,8 @@ export function OttoMaticEditorView({
           />
         )}
       </div>
-      <div className="w-full min-h-0 flex-1 border-2 border-black overflow-clip">
+      <div className="w-full min-h-0 flex-1 border-2 border-black overflow-clip relative">
+        <CanvasOverlay itemData={itemData} />
         {canvasViewMode === CanvasView.THREE_D && view === View.tiles ? (
           <ThreeView
             headerData={headerData}
