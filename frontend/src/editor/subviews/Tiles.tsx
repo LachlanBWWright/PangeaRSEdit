@@ -215,7 +215,7 @@ export function TopologyTiles({
 
           setPixels(pixelList);
         }}
-        image={imgCanvas}
+        image={imgCanvas ?? undefined}
       />
     </Layer>
   );
@@ -317,7 +317,7 @@ export function EmptyTiles({
         y={0}
         width={header.mapWidth * globals.TILE_SIZE}
         height={header.mapHeight * globals.TILE_SIZE}
-        image={imgCanvas}
+        image={imgCanvas ?? undefined}
         onClick={handleTileClickEvent}
       />
     </Layer>
@@ -420,7 +420,7 @@ export function ElectricFloor0Tiles({
         y={0}
         width={header.mapWidth * globals.TILE_SIZE}
         height={header.mapHeight * globals.TILE_SIZE}
-        image={imgCanvas}
+        image={imgCanvas ?? undefined}
         onClick={handleTileClickEvent}
       />
     </Layer>
@@ -524,7 +524,7 @@ export function ElectricFloor1Tiles({
         y={0}
         width={header.mapWidth * globals.TILE_SIZE}
         height={header.mapHeight * globals.TILE_SIZE}
-        image={imgCanvas}
+        image={imgCanvas ?? undefined}
         onClick={handleTileClickEvent}
       />
     </Layer>

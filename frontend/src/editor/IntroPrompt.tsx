@@ -23,7 +23,6 @@ import {
   AtomicLevelData,
   splitLevelData,
   combineLevelData,
-  isAtomicDataComplete,
   validateResourceForkJson,
   sanitizeResourceForkJson,
 } from "../data/utils/levelDataUtils";
@@ -149,7 +148,7 @@ export function IntroPrompt() {
   //Update History
   useEffect(() => {
     //Wipe history for new map
-    if (!data) {
+    if (!headerData) {
       setDataHistory(() => ({ items: [], index: 0 }));
     }
     /*
@@ -162,10 +161,11 @@ export function IntroPrompt() {
     }
 
     setDataHistory((draft) => {
-      if (!data) return;
+      if (!headerData) return;
+      const currentData = getCurrentAtomicData();
       //Remove subsequent history
       draft.items.splice(draft.index + 1, draft.items.length - draft.index - 1);
-      draft.items.push(data);
+      draft.items.push(currentData);
       draft.index = draft.items.length - 1;
 
       //Limit history size
@@ -374,10 +374,7 @@ export function IntroPrompt() {
       return;
     }
 
-    toast({
-      title: "Saving Map",
-      description: "Compressing textures",
-    });
+    toast.loading("Saving Map - Compressing textures");
 
     //Webworker promise
     const compressTextures = new Promise<DataView[]>((res, err) => {

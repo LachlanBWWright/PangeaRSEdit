@@ -13,7 +13,7 @@ interface PixelType { x: number; y: number }
 export function handleTileClick(
   x: number,
   y: number,
-  setOtherData: Updater<Partial<LevelData>>,
+  setTerrainData: Updater<Partial<LevelData>>,
   tileView: TileViews,
   tileEditingEnabled: boolean,
   brushType: "add" | "remove",
@@ -22,7 +22,7 @@ export function handleTileClick(
 ) {
   if (!tileEditingEnabled) return;
 
-  setData((draft) => {
+  setTerrainData((draft) => {
     const header = draft.Hedr?.[1000]?.obj;
     if (!header) return;
 

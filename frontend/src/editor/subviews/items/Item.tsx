@@ -36,12 +36,11 @@ export const Item = memo(function Item({
   const handleDragEnd = useCallback(
     (e: Konva.KonvaEventObject<DragEvent>) => {
       setItemData((data) => {
-        data.Itms[1000].obj[itemIdx].x = Math.round(
-          e.target.x() + ITEM_BOX_OFFSET,
-        );
-        data.Itms[1000].obj[itemIdx].z = Math.round(
-          e.target.y() + ITEM_BOX_OFFSET,
-        );
+        const item = data.Itms[1000].obj[itemIdx];
+        if (item) {
+          item.x = Math.round(e.target.x() + ITEM_BOX_OFFSET);
+          item.z = Math.round(e.target.y() + ITEM_BOX_OFFSET);
+        }
       });
     },
     [itemIdx, setItemData],
