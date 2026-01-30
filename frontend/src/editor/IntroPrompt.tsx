@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 import { useEffect, useState, useCallback } from "react";
 import {
   HeaderData,
@@ -7,6 +8,10 @@ import {
   SplineData,
   TerrainData,
 } from "@/python/structSpecs/LevelTypes";
+=======
+import { useEffect, useState } from "react";
+import { ottoMaticLevel } from "../python/structSpecs/ottoMaticInterface";
+>>>>>>> origin/main
 import { UploadPrompt } from "./UploadPrompt";
 import { EditorView } from "./EditorView";
 import { TunnelEditor } from "./tunnel/TunnelEditor";
@@ -18,6 +23,7 @@ import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { BlockHistoryUpdate } from "../data/globals/history";
 import LzssWorker from "../utils/lzssWorker?worker";
 import { LzssMessage, LzssResponse } from "@/utils/lzssWorker";
+<<<<<<< HEAD
 import { toast } from "sonner";
 import {
   AtomicLevelData,
@@ -38,11 +44,19 @@ import type { TunnelData } from "@/data/tunnelParser/types";
 
 export interface DataHistory {
   items: AtomicLevelData[];
+=======
+import { useToast } from "@/hooks/use-toast";
+import { PyodideMessage, PyodideResponse } from "@/python/pyodideWorker";
+
+export type DataHistory = {
+  items: ottoMaticLevel[];
+>>>>>>> origin/main
   index: number;
 }
 
 export function IntroPrompt() {
   const globals = useAtomValue(Globals);
+<<<<<<< HEAD
 
   // Atomic data types instead of monolithic data
   const [headerData, setHeaderData] = useImmer<HeaderData | null>(null);
@@ -60,6 +74,9 @@ export function IntroPrompt() {
   const setSafeItemTypes = useSetAtom(SafeItemTypes);
   const setSafeSplineItemTypes = useSetAtom(SafeSplineItemTypes);
 
+=======
+  const [data, setData] = useImmer<ottoMaticLevel | null>(null);
+>>>>>>> origin/main
   //History of previous states for undo/redo purposes
   const [dataHistory, setDataHistory] = useImmer<DataHistory>({
     items: [],
@@ -77,6 +94,7 @@ export function IntroPrompt() {
     undefined,
   );
   const [processed, setProcessed] = useState(false);
+<<<<<<< HEAD
   // Helper to get current atomic data
   const getCurrentAtomicData = useCallback((): AtomicLevelData => {
     return {
@@ -146,11 +164,20 @@ export function IntroPrompt() {
     [setTerrainData],
   );
 
+=======
+  const { toast } = useToast();
+
+  useEffect(() => {
+    if (!processed) return;
+    saveMap();
+    setProcessed(false);
+  }, [processed, data]);
+
+>>>>>>> origin/main
   //Update History
   useEffect(() => {
-    const currentData = getCurrentAtomicData();
     //Wipe history for new map
-    if (!isAtomicDataComplete(currentData)) {
+    if (!data) {
       setDataHistory(() => ({ items: [], index: 0 }));
     }
     /*
@@ -163,10 +190,10 @@ export function IntroPrompt() {
     }
 
     setDataHistory((draft) => {
-      if (!isAtomicDataComplete(currentData)) return;
+      if (!data) return;
       //Remove subsequent history
       draft.items.splice(draft.index + 1, draft.items.length - draft.index - 1);
-      draft.items.push(currentData);
+      draft.items.push(data);
       draft.index = draft.items.length - 1;
 
       //Limit history size
@@ -175,6 +202,7 @@ export function IntroPrompt() {
         draft.index -= 1;
       }
     });
+<<<<<<< HEAD
   }, [
     headerData,
     itemData,
@@ -187,17 +215,25 @@ export function IntroPrompt() {
     setBlockHistoryUpdate,
     setDataHistory,
   ]);
+=======
+  }, [data]);
+>>>>>>> origin/main
 
   const undoData = () => {
     if (dataHistory.index > 0) {
       setDataHistory((draft) => {
         draft.index -= 1;
       });
+<<<<<<< HEAD
       const historyItem = dataHistory.items[dataHistory.index - 1];
       if (historyItem) {
         setAllAtomicData(historyItem);
         setBlockHistoryUpdate(true);
       }
+=======
+      setData(dataHistory.items[dataHistory.index - 1]);
+      setBlockHistoryUpdate(true);
+>>>>>>> origin/main
     }
   };
 
@@ -206,6 +242,7 @@ export function IntroPrompt() {
       setDataHistory((draft) => {
         draft.index += 1;
       });
+<<<<<<< HEAD
       const historyItem = dataHistory.items[dataHistory.index + 1];
       if (historyItem) {
         setAllAtomicData(historyItem);
@@ -228,6 +265,30 @@ export function IntroPrompt() {
     }
 
     toast.loading("Processing map data...");
+=======
+      setData(dataHistory.items[dataHistory.index + 1]);
+      setBlockHistoryUpdate(true);
+    }
+  };
+
+  async function saveMap() {
+    if (!mapFile || !mapImagesFile) return;
+
+    toast({
+      title: "Saving Map",
+      description: "Processing map data",
+    });
+
+    const loadResPromise = new Promise<ArrayBuffer>((resolve, reject) => {
+      pyodideWorker.postMessage({
+        type: "load_bytes_from_json",
+        json_blob: data,
+        converters: globals.STRUCT_SPECS,
+        only_types: [],
+        skip_types: [],
+        adf: "True",
+      } satisfies PyodideMessage);
+>>>>>>> origin/main
 
     // Combine atomic data for file I/O
     // Combine atomic data for serialization; optional sections may be missing
@@ -375,7 +436,10 @@ export function IntroPrompt() {
       return;
     }
 
-    toast.loading("Compressing textures...");
+    toast({
+      title: "Saving Map",
+      description: "Compressing textures",
+    });
 
     //Webworker promise
     const compressTextures = new Promise<DataView[]>((res, err) => {
@@ -468,6 +532,7 @@ export function IntroPrompt() {
     );
     imageDownloadLink.click();
 
+<<<<<<< HEAD
     toast.success("Map Downloaded!");
   }, [mapFile, mapImagesFile, mapImages, globals, getCurrentAtomicData]);
 
@@ -517,6 +582,11 @@ export function IntroPrompt() {
         onClose={handleTunnelClose}
       />
     );
+=======
+    toast({
+      title: "Map Downloaded!",
+    });
+>>>>>>> origin/main
   }
 
   if (!mapFile || !mapImages)
@@ -526,20 +596,39 @@ export function IntroPrompt() {
         setMapFile={setMapFile}
         setMapImagesFile={setMapImagesFile}
         setMapImages={setMapImages}
+<<<<<<< HEAD
         setData={setAllAtomicData}
         setTunnelData={setTunnelData}
         setTunnelFileName={setTunnelFileName}
+=======
+        pyodideWorker={pyodideWorker}
+        setData={setData}
+>>>>>>> origin/main
       />
     );
   return (
     <div className="flex flex-col gap-2 text-white overflow-clip min-w-full p-2 md:p-6 h-[calc(100vh-56px)]">
       <div className="flex flex-row items-center justify-center gap-2 mx-auto w-full">
+<<<<<<< HEAD
         <Button onClick={clearAllState}>←New Map</Button>
+=======
+        <Button
+          onClick={() => {
+            setMapFile(undefined);
+            setData(null);
+            setMapImages(undefined);
+            setMapImagesFile(undefined);
+          }}
+        >
+          ←New Map
+        </Button>
+>>>>>>> origin/main
         <div className="flex-1" />
 
         <Button
           data-testid="download-button"
           onClick={() => {
+<<<<<<< HEAD
             const combinedDataResult = combineLevelData(getCurrentAtomicData());
             if (isOk(combinedDataResult)) {
               const combinedData = combinedDataResult.value;
@@ -553,6 +642,9 @@ export function IntroPrompt() {
                 setAllAtomicData(splitLevelData(updated));
               }, globals);
             }
+=======
+            ottoPreprocessor(setData as Updater<ottoMaticLevel>, globals);
+>>>>>>> origin/main
             setBlockHistoryUpdate(true);
             setProcessed(true); //Trigger useEffect for downloading
           }}
@@ -561,6 +653,7 @@ export function IntroPrompt() {
         </Button>
       </div>
       <hr />
+<<<<<<< HEAD
       {/* Render editor when we have images; allow some atomic pieces to be null. */}
       {mapImages && headerData && terrainData ? (
         <EditorView
@@ -576,6 +669,12 @@ export function IntroPrompt() {
           setSplineData={setSplineData}
           terrainData={terrainData}
           setTerrainData={setTerrainDataNonNull}
+=======
+      {data !== null && data !== undefined && mapImages ? (
+        <EditorView
+          data={data}
+          setData={setData as Updater<ottoMaticLevel>}
+>>>>>>> origin/main
           mapImages={mapImages}
           setMapImages={setMapImages}
           undoData={undoData}

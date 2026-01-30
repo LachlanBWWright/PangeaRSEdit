@@ -13,7 +13,11 @@ interface PixelType { x: number; y: number }
 export function handleTileClick(
   x: number,
   y: number,
+<<<<<<< HEAD
   setOtherData: Updater<Partial<LevelData>>,
+=======
+  setData: Updater<ottoMaticLevel>,
+>>>>>>> origin/main
   tileView: TileViews,
   tileEditingEnabled: boolean,
   brushType: "add" | "remove",
@@ -22,9 +26,9 @@ export function handleTileClick(
 ) {
   if (!tileEditingEnabled) return;
 
-  setOtherData((draft) => {
+  setData((draft) => {
     const header = draft.Hedr?.[1000]?.obj;
-    if (!header || !draft.Layr?.[1000]?.obj || !draft.Atrb?.[1000]?.obj) return;
+    if (!header) return;
 
     const centerX = Math.floor(x / tileSize);
     const centerY = Math.floor(y / tileSize);

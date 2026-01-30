@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 /**
  * Supertiles.tsx
  * 
@@ -11,16 +12,24 @@ import { TerrainData, HeaderData } from "@/python/structSpecs/LevelTypes";
 import { IndividualTileSupertiles } from "./supertiles/IndividualTileSupertiles";
 import { StandardSupertiles } from "./supertiles/StandardSupertiles";
 
+=======
+import { ottoMaticLevel } from "../../python/structSpecs/ottoMaticInterface";
+import { Layer, Image, Rect } from "react-konva";
+import { Fragment, memo, useMemo } from "react";
+import { SelectedTile } from "../../data/supertiles/supertileAtoms";
+import { useAtom, useAtomValue } from "jotai";
+import { Globals } from "../../data/globals/globals";
+
+>>>>>>> origin/main
 export const Supertiles = memo(
   ({
-    headerData,
-    terrainData,
+    data,
     mapImages,
   }: {
-    headerData: HeaderData;
-    terrainData: TerrainData;
+    data: ottoMaticLevel;
     mapImages: HTMLCanvasElement[];
   }) => {
+<<<<<<< HEAD
     // Detect tile system based on data structure, not game type
     // Individual tile games (Bugdom 1, Nanosaur 1) have Layr data and possibly Xlat
     // Standard games have STgd with supertile grid data
@@ -51,6 +60,21 @@ export const Supertiles = memo(
     if (!terrainData.STgd?.[1000]?.obj) {
       return null; // No supertile grid available
     }
+=======
+    //if (!data.Itms) return <></>;\
+    const globals = useAtomValue(Globals);
+    const [selectedTile, setSelectedTile] = useAtom(SelectedTile);
+    const header = data.Hedr[1000].obj;
+    const supertilesWide = header.mapWidth / globals.TILES_PER_SUPERTILE;
+    const superTileGrid = data.STgd[1000].obj;
+    const imageGrid = useMemo(() => {
+      const imageArray: HTMLCanvasElement[] = [];
+      for (const supertile of superTileGrid) {
+        imageArray.push(mapImages[supertile.superTileId ?? supertile]);
+      }
+      return imageArray;
+    }, [data.Hedr, data.STgd, mapImages]);
+>>>>>>> origin/main
 
     return (
       <StandardSupertiles
