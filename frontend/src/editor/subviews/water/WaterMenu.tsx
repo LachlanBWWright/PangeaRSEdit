@@ -22,21 +22,21 @@ import { getWaterBodyTypes } from "@/data/water/getWaterBodyTypes";
 import { Input } from "@/components/ui/input";
 
 export function WaterMenu({
-  data,
-  setData,
+  liquidData,
+  setLiquidData,
 }: {
-  data: ottoMaticLevel;
-  setData: Updater<ottoMaticLevel>;
+  liquidData: LiquidData;
+  setLiquidData: Updater<LiquidData>;
 }) {
   const [selectedWaterBody, setSelectedWaterBody] = useAtom(SelectedWaterBody);
   const [selectedWaterNub, setSelectedWaterNub] = useAtom(SelectedWaterNub);
   const globals = useAtomValue(Globals);
 
-  if (data.Liqd === undefined) return;
+  if (liquidData.Liqd === undefined) return null;
 
   const waterBodyData =
-    selectedWaterBody !== null // Ensure selectedWaterBody is not null
-      ? data.Liqd[1000].obj[selectedWaterBody]
+    selectedWaterBody !== null
+      ? liquidData.Liqd[1000].obj[selectedWaterBody]
       : null;
 
   const selectedNubData =
@@ -58,8 +58,8 @@ export function WaterMenu({
       {waterBodyData === null || waterBodyData === undefined ? (
         <Button
           onClick={() =>
-            setData((data) => {
-              data.Liqd[1000].obj.push({
+            setLiquidData((data) => {
+              liquidData.Liqd[1000].obj.push({
                 type: 0,
                 nubs: [
                   [100, 100],
@@ -81,7 +81,7 @@ export function WaterMenu({
 
               //Push additional water nubs
               for (let i = 4; i < globals.LIQD_NUBS; i++) {
-                data.Liqd[1000].obj.at(-1)?.nubs.push([0, 0]);
+                liquidData.Liqd[1000].obj.at(-1)?.nubs.push([0, 0]);
               }
             })
           }
@@ -144,7 +144,7 @@ export function WaterMenu({
                     onChange={(e) => {
                       const newValue = parseInt(e.target.value);
                       if (isNaN(newValue)) return;
-                      setData((draft) => {
+                      setLiquidData((draft) => {
                         if (selectedWaterBody === null) return;
                         const waterObj = draft.Liqd[1000]?.obj?.[selectedWaterBody];
                         if (waterObj) {
@@ -167,7 +167,7 @@ export function WaterMenu({
                     onChange={(e) => {
                       const newValue = parseInt(e.target.value);
                       if (isNaN(newValue)) return;
-                      setData((draft) => {
+                      setLiquidData((draft) => {
                         if (selectedWaterBody === null) return;
                         const waterObj = draft.Liqd[1000]?.obj?.[selectedWaterBody];
                         if (waterObj) {
@@ -196,7 +196,7 @@ export function WaterMenu({
                       onChange={(e) => {
                         const newValue = parseInt(e.target.value);
                         if (isNaN(newValue)) return;
-                        setData((draft) => {
+                        setLiquidData((draft) => {
                           if (
                             selectedWaterBody === null ||
                             selectedWaterNub === null
@@ -221,7 +221,7 @@ export function WaterMenu({
                       onChange={(e) => {
                         const newValue = parseInt(e.target.value);
                         if (isNaN(newValue)) return;
-                        setData((draft) => {
+                        setLiquidData((draft) => {
                           if (
                             selectedWaterBody === null ||
                             selectedWaterNub === null
@@ -265,7 +265,7 @@ export function WaterMenu({
                     (liquidData.Liqd[1000]?.obj?.[selectedWaterBody]?.numNubs ?? 0) <= 3)
                 }
                 onClick={() => {
-                  setData((data) => {
+                  setLiquidData((data) => {
                     if (selectedWaterBody === null) return;
                     const waterObj = liquidData.Liqd[1000]?.obj?.[selectedWaterBody];
                     if (!waterObj || waterObj.numNubs <= 3) return;
@@ -280,8 +280,8 @@ export function WaterMenu({
                 disabled={selectedWaterBody === null}
                 onClick={() => {
                   if (selectedWaterBody === null) return;
-                  setData((data) => {
-                    data.Liqd[1000].obj.splice(selectedWaterBody, 1);
+                  setLiquidData((data) => {
+                    liquidData.Liqd[1000].obj.splice(selectedWaterBody, 1);
                   });
                   setSelectedWaterBody(null);
                   setSelectedWaterNub(null);

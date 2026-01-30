@@ -9,7 +9,7 @@ import {
 import { FileUpload } from "../../../components/FileUpload";
 import { Globals } from "../../../data/globals/globals";
 import { Button } from "@/components/ui/button";
-import { ImageEditor } from "@/components/ImageEditor";
+// import { ImageEditor } from "@/components/ImageEditor";
 import { useState } from "react";
 import { Edit } from "lucide-react";
 import { toast } from "sonner";
@@ -22,23 +22,27 @@ import { downloadSelectedTile, downloadMapImage } from "./supertileUtils";
  * For Bugdom 1 and Nanosaur 1 which use individual tiles, use BugdomTileMenu instead.
  */
 export function SupertileMenu({
-  data,
-  setData,
+  headerData,
+  setHeaderData,
+  terrainData,
+  setTerrainData,
   mapImages,
   setMapImages,
 }: {
   mapImages: HTMLCanvasElement[];
   setMapImages: (newCanvases: HTMLCanvasElement[]) => void;
-  data: ottoMaticLevel;
-  setData: Updater<ottoMaticLevel>;
+  headerData: HeaderData;
+  setHeaderData: Updater<HeaderData>;
+  terrainData: TerrainData;
+  setTerrainData: Updater<TerrainData>;
 }) {
   const selectedTile = useAtomValue(SelectedTile);
-  const hedr = data.Hedr[1000].obj;
+  const hedr = headerData.Hedr[1000].obj;
   const globals = useAtomValue(Globals);
   // State for image editor
-  const [isEditingTile, setIsEditingTile] = useState(false);
-  const [isEditingMap, setIsEditingMap] = useState(false);
-  const [editingImageUrl, setEditingImageUrl] = useState<string | null>(null);
+  const [_isEditingTile, _setIsEditingTile] = useState(false);
+  const [_isEditingMap, _setIsEditingMap] = useState(false);
+  const [_editingImageUrl, _setEditingImageUrl] = useState<string | null>(null);
 
   // Check if STgd exists
   if (!terrainData.STgd?.[1000]?.obj) {

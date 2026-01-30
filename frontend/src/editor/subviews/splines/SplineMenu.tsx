@@ -29,9 +29,13 @@ import { getSplineItemName } from "@/data/splines/getSplineItemNames";
 export function SplineMenu({
   splineData,
   setSplineData,
+  headerData,
+  setHeaderData,
 }: {
-  data: ottoMaticLevel;
-  setData: Updater<ottoMaticLevel>;
+  splineData: SplineData;
+  setSplineData: Updater<SplineData>;
+  headerData: HeaderData;
+  setHeaderData: Updater<HeaderData>;
 }) {
   const selectedSpline = useAtomValue(SelectedSpline);
   const [selectedSplineItem, setSelectedSplineItem] =
@@ -42,9 +46,9 @@ export function SplineMenu({
     setSelectedSplineItem(undefined);
   }, [selectedSpline, setSelectedSplineItem]);
 
-  const splineData =
+  const splineItemData =
     selectedSpline !== undefined
-      ? data.SpIt[SPLINE_KEY_BASE + selectedSpline].obj
+      ? splineData.SpIt?.[SPLINE_KEY_BASE + selectedSpline]?.obj
       : null;
 
   return (
@@ -68,7 +72,7 @@ export function SplineMenu({
             {selectedSplineItem !== undefined
               ? `#${selectedSplineItem} ${getSplineItemName(
                   globals,
-                  currentSplineData?.[selectedSplineItem]?.type ?? 0,
+                  splineItemData?.[selectedSplineItem]?.type ?? 0,
                 )}`
               : "No Item Selected"}
           </SelectTrigger>
@@ -84,13 +88,13 @@ export function SplineMenu({
       )}
 
       <div className="flex flex-col gap-2">
-        {currentSplineData && (
+        {splineItemData && (
           <EditSplineItemMenu
-            splineItemData={currentSplineData}
+            splineItemData={splineItemData}
             setSplineData={setSplineData}
           />
         )}
-        {currentSplineData !== null && currentSplineData !== undefined && (
+        {splineItemData !== null && splineItemData !== undefined && (
           <EditSplineMenu
             splineData={splineData}
             setSplineData={setSplineData}

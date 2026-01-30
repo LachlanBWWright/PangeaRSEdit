@@ -33,18 +33,21 @@ import { Label } from "@/components/ui/label";
 export function ItemMenu({
   itemData,
   setItemData,
+  headerData,
+  setHeaderData,
 }: {
-  data: ottoMaticLevel;
-  setData: Updater<ottoMaticLevel>;
+  itemData: ItemData;
+  setItemData: Updater<ItemData>;
+  headerData: HeaderData;
+  setHeaderData: Updater<HeaderData>;
 }) {
   const globals = useAtomValue(Globals);
   const [selectedItem, setSelectedItem] = useAtom(SelectedItem);
   const safeItemTypes = useAtomValue(SafeItemTypes);
   const [filterToSafe, setFilterToSafe] = useAtom(FilterToSafeItems);
-  // Mark unused props as used to satisfy linter; they are intentionally passed in for consistency with parent
 
-  const itemData =
-    selectedItem !== undefined ? data.Itms[1000].obj[selectedItem] : null;
+  const selectedItemData =
+    selectedItem !== undefined ? itemData.Itms[1000].obj[selectedItem] : null;
 
   const itemTypesResult = getItemTypes(globals);
   const allItemValues = itemTypesResult.ok
@@ -60,7 +63,7 @@ export function ItemMenu({
 
   return (
     <div className="flex flex-col gap-2">
-      {itemData === null || itemData === undefined ? (
+      {selectedItemData === null || selectedItemData === undefined ? (
         <AddItemMenu />
       ) : (
         <p>
@@ -70,13 +73,13 @@ export function ItemMenu({
       )}
 
       <div className="flex flex-col gap-2">
-        {itemData !== null && itemData !== undefined && (
+        {selectedItemData !== null && selectedItemData !== undefined && (
           <>
             <Select
-              value={itemData.type.toString() ?? ""}
+              value={selectedItemData.type.toString() ?? ""}
               onValueChange={(e) => {
                 const newItemType = parseInt(e);
-                setData((data) => {
+                setItemData((data) => {
                   if (selectedItem === undefined) return;
                   const item = itemData.Itms[1000]?.obj?.[selectedItem];
                   if (item) {
@@ -135,9 +138,9 @@ export function ItemMenu({
               <Input
                 type="number"
                 className="col-span-3"
-                value={itemData.flags.toString()}
+                value={selectedItemData.flags.toString()}
                 onChange={(e) => {
-                  setData((data) => {
+                  setItemData((data) => {
                     if (selectedItem === undefined) return;
                     const item = itemData.Itms[1000]?.obj?.[selectedItem];
                     if (item) {
@@ -154,7 +157,7 @@ export function ItemMenu({
                   TerrainItemTypeParams[selectedItemData.type as ItemType][paramKey];
                 const value = selectedItemData[paramKey];
                 const setValue = (v: number) => {
-                  setData((data) => {
+                  setItemData((data) => {
                     if (selectedItem === undefined) return;
                     const item = itemData.Itms[1000]?.obj?.[selectedItem];
                     if (item) {
@@ -185,7 +188,7 @@ export function ItemMenu({
                                 className="font-bold"
                                 checked={checked}
                                 onCheckedChange={(checked) => {
-                                  setData((data) => {
+                                  setItemData((data) => {
                                     if (selectedItem === undefined) return;
                                     const item =
                                       itemData.Itms[1000]?.obj?.[selectedItem];
@@ -231,8 +234,8 @@ export function ItemMenu({
               disabled={selectedItem === undefined}
               onClick={() => {
                 if (selectedItem === undefined) return;
-                setData((data) => {
-                  data.Itms[1000].obj.splice(selectedItem, 1);
+                setItemData((data) => {
+                  itemData.Itms[1000].obj.splice(selectedItem, 1);
                 });
                 setSelectedItem(undefined);
               }}

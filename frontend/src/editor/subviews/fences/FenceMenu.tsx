@@ -13,16 +13,15 @@ import {
 import { Globals } from "@/data/globals/globals";
 import { getFenceName } from "@/data/fences/getFenceNames";
 import { getFenceTypes } from "@/data/fences/getFenceTypes";
-//import { SelectContent, SelectTrigger } from "@radix-ui/react-select";
 
 const NUB_KEY_BASE = 1000;
 
 export function FenceMenu({
-  data,
-  setData,
+  fenceData,
+  setFenceData,
 }: {
-  data: ottoMaticLevel;
-  setData: Updater<ottoMaticLevel>;
+  fenceData: FenceData;
+  setFenceData: Updater<FenceData>;
 }) {
   const globals = useAtomValue(Globals);
   const [selectedFence, setSelectedFence] = useAtom(SelectedFence);
@@ -41,16 +40,15 @@ export function FenceMenu({
 
   return (
     <div className="flex flex-col gap-2">
-      {fenceData === null ? (
+      {fenceDataObj === null ? (
         <Button
           onClick={() => {
-            setData((data) => {
+            setFenceData((data) => {
               const keys = Object.keys(data.Fenc[1000].obj);
-              const lastStr = keys.length !== 0 ? keys[keys.length - 1] : "999"; //Minimum is 1000
-              const last = parseInt(lastStr ?? "999") + 1; //Get key of new last
+              const lastStr = keys.length !== 0 ? keys[keys.length - 1] : "999";
+              const last = parseInt(lastStr ?? "999") + 1;
 
-              //Add Fenc object
-              data.Fenc[1000].obj[last] = {
+              data.Fenc[1000].obj.push({
                 fenceType: 0,
                 numNubs: 2,
                 junkNubListPtr: 0,
@@ -58,23 +56,16 @@ export function FenceMenu({
                 bbBottom: 0,
                 bbLeft: 0,
                 bbRight: 0,
-              };
+              });
 
               data.FnNb[last + NUB_KEY_BASE] = {
-                name: "Fence Nub List", //Is this needed?
+                name: "Fence Nub List",
                 obj: [
                   [0, 0],
                   [1000, 1000],
                 ],
-                order: 999, //Doesn't matter
+                order: 999,
               };
-
-              //Add fence nubs
-              const nubList = fenceData.FnNb[last + NUB_KEY_BASE];
-              if (nubList) {
-                nubList.obj[0] = [0, 0];
-                nubList.obj[1] = [1000, 1000];
-              }
             });
           }}
         >
@@ -90,31 +81,20 @@ export function FenceMenu({
         <div className="flex flex-col">
           {fenceDataObj !== null && fenceDataObj !== undefined && (
             <>
-              <img
-                src={
-                  /* TODO: Previews for other games */
-                  globals.GAME_TYPE === Game.OTTO_MATIC
-                    ? `assets/ottoMatic/fences/fence${String(
-                        fenceData.fenceType,
-                      ).padStart(3, "0")}.png`
-                    : ""
-                }
-                className="max-h-56 mx-auto"
-              />
               <Select
-                value={getFenceName(globals, fenceData.fenceType)}
+                value={getFenceName(globals, fenceDataObj.fenceType)}
                 onValueChange={(e) => {
                   const newFenceType = parseInt(e);
-                  setData((data) => {
+                  setFenceData((data) => {
                     if (selectedFence === undefined) return;
-                    const fence = fenceData.Fenc[1000].obj[selectedFence];
+                    const fence = data.Fenc[1000].obj[selectedFence];
                     if (fence) fence.fenceType = newFenceType;
                   });
                 }}
               >
                 <SelectTrigger>
                   <SelectValue>
-                    {getFenceName(globals, fenceData.fenceType)}
+                    {getFenceName(globals, fenceDataObj.fenceType)}
                   </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
@@ -132,123 +112,114 @@ export function FenceMenu({
             </>
           )}
         </div>
-        {fenceData && (
-          <div className="flex flex-col gap-2">
-            <Button
-              disabled={selectedFence === undefined}
-              onClick={() => {
-                setData((data) => {
-                  if (selectedFence === undefined) return;
-
-                  const fence = fenceData.Fenc[1000].obj[selectedFence];
-                  if (!fence) return;
-                  fence.numNubs++;
-
-                  const nubList = fenceData.FnNb[selectedFence + NUB_KEY_BASE];
-                  if (!nubList?.obj) return;
-                  const firstNub = nubList.obj[0];
-                  if (!firstNub) return;
-                  
-                  nubList.obj.unshift([
-                    firstNub[0] - 25,
-                    firstNub[1] - 25,
-                  ]);
-                });
-              }}
-            >
-              Add Front Nub
-            </Button>
-            <Button
-              disabled={selectedFence === undefined}
-              onClick={() => {
-                setData((data) => {
-                  if (selectedFence === undefined) return;
-                  const nubList = fenceData.FnNb[selectedFence + NUB_KEY_BASE];
-                  if (!nubList?.obj) return;
-                  const lastIdx = nubList.obj.length - 1;
-                  const fence = fenceData.Fenc[1000].obj[selectedFence];
-                  if (!fence) return;
-                  fence.numNubs++;
-
-                  //Adds new nub close to the last
-                  const lastNub = nubList.obj[lastIdx];
-                  if (!lastNub) return;
-                  nubList.obj.push([
-                    lastNub[0] + 25,
-                    lastNub[1] + 25,
-                  ]);
-                });
-              }}
-            >
-              Add Back Nub
-            </Button>
-            <Button
-              variant="destructive"
-              disabled={
-                selectedFence === undefined ||
-                (fenceData.Fenc[1000].obj[selectedFence]?.numNubs ?? 0) <= 1
-              }
-              onClick={() => {
-                setFenceData((fenceData) => {
-                  if (selectedFence === undefined) return;
-                  const fence = fenceData.Fenc[1000].obj[selectedFence];
-                  if (!fence || fence.numNubs <= 1) return;
-                  fence.numNubs--;
-                  const nubList = fenceData.FnNb[selectedFence + NUB_KEY_BASE];
-                  nubList?.obj.shift();
-                });
-              }}
-            >
-              Remove Front Nub
-            </Button>
-            <Button
-              variant="destructive"
-              disabled={
-                selectedFence === undefined ||
-                (fenceData.Fenc[1000].obj[selectedFence]?.numNubs ?? 0) <= 1
-              }
-              onClick={() => {
-                setFenceData((fenceData) => {
-                  if (selectedFence === undefined) return;
-                  const fence = fenceData.Fenc[1000].obj[selectedFence];
-                  if (!fence || fence.numNubs <= 1) return;
-                  fence.numNubs--;
-                  fenceData.FnNb[selectedFence + NUB_KEY_BASE]?.obj.pop();
-                });
-              }}
-            >
-              Remove Back Nub
-            </Button>
-            <Button
-              variant="destructive"
-              disabled={selectedFence === undefined}
-              onClick={() => {
+        <div className="flex flex-col gap-2">
+          <Button
+            disabled={selectedFence === undefined}
+            onClick={() => {
+              setFenceData((data) => {
                 if (selectedFence === undefined) return;
-                setData((data) => {
-                  data.Fenc[1000].obj.splice(selectedFence, 1);
-                  let lastKey: string | undefined = undefined;
-                  for (const nubKey of Object.keys(data.FnNb)) {
-                    lastKey = nubKey;
-                    if (parseInt(nubKey) > selectedFence + NUB_KEY_BASE) {
-                      const currentNub = fenceData.FnNb[parseInt(nubKey)];
-                      if (currentNub) {
-                        fenceData.FnNb[parseInt(nubKey) - 1] = currentNub;
-                      }
+
+                const fence = data.Fenc[1000].obj[selectedFence];
+                if (!fence) return;
+                fence.numNubs++;
+
+                const nubList = data.FnNb[selectedFence + NUB_KEY_BASE];
+                if (!nubList?.obj) return;
+                const firstNub = nubList.obj[0];
+                if (!firstNub) return;
+
+                nubList.obj.unshift([firstNub[0] - 25, firstNub[1] - 25]);
+              });
+            }}
+          >
+            Add Front Nub
+          </Button>
+          <Button
+            disabled={selectedFence === undefined}
+            onClick={() => {
+              setFenceData((data) => {
+                if (selectedFence === undefined) return;
+                const nubList = data.FnNb[selectedFence + NUB_KEY_BASE];
+                if (!nubList?.obj) return;
+                const lastIdx = nubList.obj.length - 1;
+                const fence = data.Fenc[1000].obj[selectedFence];
+                if (!fence) return;
+                fence.numNubs++;
+
+                const lastNub = nubList.obj[lastIdx];
+                if (!lastNub) return;
+                nubList.obj.push([lastNub[0] + 25, lastNub[1] + 25]);
+              });
+            }}
+          >
+            Add Back Nub
+          </Button>
+          <Button
+            variant="destructive"
+            disabled={
+              selectedFence === undefined ||
+              (fenceData.Fenc[1000].obj[selectedFence]?.numNubs ?? 0) <= 1
+            }
+            onClick={() => {
+              setFenceData((data) => {
+                if (selectedFence === undefined) return;
+                const fence = data.Fenc[1000].obj[selectedFence];
+                if (!fence || fence.numNubs <= 1) return;
+                fence.numNubs--;
+                const nubList = data.FnNb[selectedFence + NUB_KEY_BASE];
+                nubList?.obj.shift();
+              });
+            }}
+          >
+            Remove Front Nub
+          </Button>
+          <Button
+            variant="destructive"
+            disabled={
+              selectedFence === undefined ||
+              (fenceData.Fenc[1000].obj[selectedFence]?.numNubs ?? 0) <= 1
+            }
+            onClick={() => {
+              setFenceData((data) => {
+                if (selectedFence === undefined) return;
+                const fence = data.Fenc[1000].obj[selectedFence];
+                if (!fence || fence.numNubs <= 1) return;
+                fence.numNubs--;
+                data.FnNb[selectedFence + NUB_KEY_BASE]?.obj.pop();
+              });
+            }}
+          >
+            Remove Back Nub
+          </Button>
+          <Button
+            variant="destructive"
+            disabled={selectedFence === undefined}
+            onClick={() => {
+              if (selectedFence === undefined) return;
+              setFenceData((data) => {
+                data.Fenc[1000].obj.splice(selectedFence, 1);
+                let lastKey: string | undefined = undefined;
+                for (const nubKey of Object.keys(data.FnNb)) {
+                  lastKey = nubKey;
+                  if (parseInt(nubKey) > selectedFence + NUB_KEY_BASE) {
+                    const currentNub = data.FnNb[parseInt(nubKey)];
+                    if (currentNub) {
+                      data.FnNb[parseInt(nubKey) - 1] = currentNub;
                     }
                   }
-                  if (lastKey === undefined) {
-                    console.error("Missing Final Nubkey");
-                    return;
-                  }
-                  Reflect.deleteProperty(fenceData.FnNb, parseInt(lastKey));
-                });
-                setSelectedFence(undefined);
-              }}
-            >
-              Delete Fence
-            </Button>
-          </div>
-        )}
+                }
+                if (lastKey === undefined) {
+                  console.error("Missing Final Nubkey");
+                  return;
+                }
+                Reflect.deleteProperty(data.FnNb, parseInt(lastKey));
+              });
+              setSelectedFence(undefined);
+            }}
+          >
+            Delete Fence
+          </Button>
+        </div>
       </div>
     </div>
   );
