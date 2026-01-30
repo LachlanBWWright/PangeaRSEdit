@@ -74,6 +74,7 @@ export function handleTileClick(
     // Apply the changes to all pixels in the brush area
     for (const pixel of pixelList) {
       const tileIndex = pixel.y * header.mapWidth + pixel.x;
+      if (!draft.Layr?.[1000]?.obj || !draft.Atrb?.[1000]?.obj) continue;
       const attrIndex = draft.Layr[1000].obj[tileIndex];
 
       if (attrIndex === undefined) continue;

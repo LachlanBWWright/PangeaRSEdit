@@ -185,11 +185,11 @@ export function ottoPreprocessor(
 ) {
   setData((data) => {
     data.Hedr[1000].obj.numFences = data.Fenc?.[1000].obj.length ?? 0;
-    data.Hedr[1000].obj.numItems = data.Itms?.[1000].obj.length ?? 0;
-    data.Hedr[1000].obj.numWaterPatches = data.Liqd?.[1000].obj.length ?? 0;
-    data.Hedr[1000].obj.numSplines = data.Spln?.[1000].obj.length ?? 0;
+    data.Hedr[1000].obj.numItems = data.Itms?.[1000]?.obj?.length ?? 0;
+    data.Hedr[1000].obj.numWaterPatches = data.Liqd?.[1000]?.obj?.length ?? 0;
+    data.Hedr[1000].obj.numSplines = data.Spln?.[1000]?.obj?.length ?? 0;
 
-    data.Itms[1000].obj.sort((a, b) => {
+    data.Itms?.[1000]?.obj?.sort((a, b) => {
       if (a.x > b.x) return 1;
       else if (a.x < b.x) return -1;
       else {

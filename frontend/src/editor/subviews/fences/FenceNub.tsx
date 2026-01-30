@@ -1,8 +1,8 @@
-import { useAtom, useAtomValue } from "jotai";
+import { useAtom } from "jotai";
 import { Circle } from "react-konva";
 import { SelectedFence } from "../../../data/fences/fenceAtoms";
 import { memo, useRef } from "react";
-import { Globals } from "../../../data/globals/globals";
+// import { Globals } from "../../../data/globals/globals";
 import { getColour } from "./Fence";
 
 export const FenceNub = memo(
@@ -17,7 +17,7 @@ export const FenceNub = memo(
   }) => {
     const [selectedFence, setSelectedFence] = useAtom(SelectedFence);
     const nubRafRef = useRef<number | null>(null);
-    const _globals = useAtomValue(Globals);
+    // Globals kept for potential future use
 
     return (
       <Circle

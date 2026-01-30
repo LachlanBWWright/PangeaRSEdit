@@ -33,8 +33,8 @@ import { Label } from "@/components/ui/label";
 export function ItemMenu({
   itemData,
   setItemData,
-  headerData,
-  setHeaderData,
+  headerData: _headerData,
+  setHeaderData: _setHeaderData,
 }: {
   itemData: ItemData;
   setItemData: Updater<ItemData>;
@@ -79,7 +79,7 @@ export function ItemMenu({
               value={selectedItemData.type.toString() ?? ""}
               onValueChange={(e) => {
                 const newItemType = parseInt(e);
-                setItemData((data) => {
+                setItemData((_data) => {
                   if (selectedItem === undefined) return;
                   const item = itemData.Itms[1000]?.obj?.[selectedItem];
                   if (item) {
@@ -140,7 +140,7 @@ export function ItemMenu({
                 className="col-span-3"
                 value={selectedItemData.flags.toString()}
                 onChange={(e) => {
-                  setItemData((data) => {
+                  setItemData((_data) => {
                     if (selectedItem === undefined) return;
                     const item = itemData.Itms[1000]?.obj?.[selectedItem];
                     if (item) {
@@ -157,7 +157,7 @@ export function ItemMenu({
                   TerrainItemTypeParams[selectedItemData.type as ItemType][paramKey];
                 const value = selectedItemData[paramKey];
                 const setValue = (v: number) => {
-                  setItemData((data) => {
+                  setItemData((_data) => {
                     if (selectedItem === undefined) return;
                     const item = itemData.Itms[1000]?.obj?.[selectedItem];
                     if (item) {
@@ -188,7 +188,7 @@ export function ItemMenu({
                                 className="font-bold"
                                 checked={checked}
                                 onCheckedChange={(checked) => {
-                                  setItemData((data) => {
+                                  setItemData((_data) => {
                                     if (selectedItem === undefined) return;
                                     const item =
                                       itemData.Itms[1000]?.obj?.[selectedItem];
@@ -234,7 +234,7 @@ export function ItemMenu({
               disabled={selectedItem === undefined}
               onClick={() => {
                 if (selectedItem === undefined) return;
-                setItemData((data) => {
+                setItemData((_data) => {
                   itemData.Itms[1000].obj.splice(selectedItem, 1);
                 });
                 setSelectedItem(undefined);

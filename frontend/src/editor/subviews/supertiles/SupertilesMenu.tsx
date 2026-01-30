@@ -39,10 +39,10 @@ export function SupertileMenu({
   const selectedTile = useAtomValue(SelectedTile);
   const hedr = headerData.Hedr[1000].obj;
   const globals = useAtomValue(Globals);
-  // State for image editor
-  const [_isEditingTile, _setIsEditingTile] = useState(false);
-  const [_isEditingMap, _setIsEditingMap] = useState(false);
-  const [_editingImageUrl, _setEditingImageUrl] = useState<string | null>(null);
+  // State for image editor - unused but kept for future implementation
+  const [isEditingTile, setIsEditingTile] = useState(false);
+  const [isEditingMap, setIsEditingMap] = useState(false);
+  const [editingImageUrl, setEditingImageUrl] = useState<string | null>(null);
 
   // Check if STgd exists
   if (!terrainData.STgd?.[1000]?.obj) {

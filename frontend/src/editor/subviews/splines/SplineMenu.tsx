@@ -29,8 +29,8 @@ import { getSplineItemName } from "@/data/splines/getSplineItemNames";
 export function SplineMenu({
   splineData,
   setSplineData,
-  headerData,
-  setHeaderData,
+  headerData: _headerData,
+  setHeaderData: _setHeaderData,
 }: {
   splineData: SplineData;
   setSplineData: Updater<SplineData>;
@@ -53,15 +53,10 @@ export function SplineMenu({
 
   return (
     <div className="flex flex-col gap-2">
-      {splineData === null || splineData === undefined ? (
-        <AddNewSplineMenu setData={setData} />
+      {splineItemData === null || splineItemData === undefined ? (
+        <AddNewSplineMenu setSplineData={setSplineData} />
       ) : (
         <Select
-          /*           value={
-            selectedSplineItem !== undefined
-              ? splineItemTypeNames[splineData[selectedSplineItem].type]
-              : "No Item Selected"
-          } */
           onValueChange={(e) => {
             if (e === "NoneSelected") {
               setSelectedSplineItem(undefined);
@@ -78,7 +73,7 @@ export function SplineMenu({
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="NoneSelected">No Item Selected</SelectItem>
-            {splineData.map((item, itemIdx) => (
+            {splineItemData.map((item, itemIdx) => (
               <SelectItem key={itemIdx} value={itemIdx.toString()}>
                 #{itemIdx} ({getSplineItemName(globals, item.type)})
               </SelectItem>
