@@ -12,7 +12,9 @@ import { getFenceHeight } from "@/data/fences/getFenceHeight";
 import { Texture, DoubleSide, TextureLoader, RepeatWrapping, ClampToEdgeWrapping, LinearFilter, LinearMipmapLinearFilter } from "three";
 
 interface FenceGeometryProps {
-  data: ottoMaticLevel;
+  fenceData: FenceData;
+  headerData: HeaderData;
+  terrainData: TerrainData;
 }
 
 // Import helper functions from separate files to avoid Fast Refresh warnings
@@ -135,7 +137,7 @@ interface FenceGroupData {
   }[];
 }
 
-export const FenceGeometry: React.FC<FenceGeometryProps> = ({ data }) => {
+export const FenceGeometry: React.FC<FenceGeometryProps> = ({ fenceData, headerData, terrainData }) => {
   const globals = useAtomValue(Globals);
   const [textures, setTextures] = useState<Map<string, Texture>>(new Map());
 
@@ -195,17 +197,17 @@ export const FenceGeometry: React.FC<FenceGeometryProps> = ({ data }) => {
   }, [fenceData, globals]);
 
   if (
-    !data.Fenc ||
-    !data.Fenc[1000] ||
-    !data.FnNb ||
-    !data.Hedr?.[1000]?.obj ||
-    !data.YCrd?.[1000]?.obj
+    !fenceData.Fenc ||
+    !fenceData.Fenc[1000] ||
+    !fenceData.FnNb ||
+    !headerData.Hedr?.[1000]?.obj ||
+    !terrainData.YCrd?.[1000]?.obj
   ) {
     return null;
   }
 
-  const fences = data.Fenc[1000].obj;
-  const fenceNubsByFenceIdx = data.FnNb;
+  const fences = fenceData.Fenc[1000].obj;
+  const fenceNubsByFenceIdx = fenceData.FnNb;
 
   // Pre-calculate all fence data (don't render until textures loaded or timeout)
   const fenceGroups: FenceGroupData[] = [];

@@ -11,9 +11,9 @@ import { WaterBodyType } from "@/data/water/ottoWaterBodyType";
 import { getTerrainHeightAtPoint } from "./fenceUtils/getTerrainHeightAtPoint";
 
 interface LiquidGeometryProps {
-  data: ottoMaticLevel;
-  // Potentially add a prop for liquid type if colors/properties need to vary
-  // liquidType?: 'water' | 'lava' | 'acid';
+  liquidData: LiquidData;
+  headerData: HeaderData;
+  terrainData: TerrainData;
 }
 
 // Debug flag - set to false in production
@@ -42,7 +42,7 @@ const getLiquidProperties = (type: WaterBodyType) => {
   }
 };
 
-export const LiquidGeometry: React.FC<LiquidGeometryProps> = ({ data }) => {
+export const LiquidGeometry: React.FC<LiquidGeometryProps> = ({ liquidData, headerData, terrainData }) => {
   const globals = useAtomValue(Globals);
 
   if (!liquidData.Liqd?.[1000]?.obj) {
