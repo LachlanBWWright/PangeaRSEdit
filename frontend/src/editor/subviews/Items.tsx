@@ -1,8 +1,4 @@
-<<<<<<< HEAD
 import { ItemData } from "@/python/structSpecs/LevelTypes";
-=======
-import { ottoMaticLevel } from "../../python/structSpecs/ottoMaticInterface";
->>>>>>> origin/main
 import { Layer, Rect } from "react-konva";
 import { Updater } from "use-immer";
 import { Item } from "./items/Item";
@@ -10,19 +6,19 @@ import { memo } from "react";
 
 export const Items = memo(
   ({
-    data,
-    setData,
+    itemData,
+    setItemData,
   }: {
-    data: ottoMaticLevel;
-    setData: Updater<ottoMaticLevel>;
+    itemData: ItemData;
+    setItemData: Updater<ItemData>;
   }) => {
-    if (!data.Itms) return <></>;
+    if (!itemData.Itms) return <></>;
 
     return (
       <Layer>
         <Rect />
-        {data.Itms[1000].obj.map((_, itemIdx) => (
-          <Item key={itemIdx} data={data} setData={setData} itemIdx={itemIdx} />
+        {itemData.Itms[1000].obj.map((_, itemIdx) => (
+          <Item key={itemIdx} itemData={itemData} setItemData={setItemData} itemIdx={itemIdx} />
         ))}
       </Layer>
     );

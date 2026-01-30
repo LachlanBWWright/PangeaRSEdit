@@ -1,16 +1,9 @@
-<<<<<<< HEAD
 import React, { forwardRef, type ComponentPropsWithoutRef, type ElementRef } from "react";
 import { Root as DialogRoot, Trigger as DialogTriggerPrimitive, Portal as DialogPortalPrimitive, Close as DialogClosePrimitive, Overlay as DialogOverlayPrimitive, Content as DialogContentPrimitive, Title as DialogTitlePrimitive, Description as DialogDescriptionPrimitive } from "@radix-ui/react-dialog";
 import { X } from "lucide-react";
-=======
-import * as React from "react"
-import * as DialogPrimitive from "@radix-ui/react-dialog"
-import { X } from "lucide-react"
->>>>>>> origin/main
 
 import { cn } from "@/lib/utils"
 
-<<<<<<< HEAD
 const Dialog = DialogRoot;
 
 const DialogTrigger = DialogTriggerPrimitive;
@@ -18,15 +11,6 @@ const DialogTrigger = DialogTriggerPrimitive;
 const DialogPortal = DialogPortalPrimitive;
 
 const DialogClose = DialogClosePrimitive;
-=======
-const Dialog = DialogPrimitive.Root
-
-const DialogTrigger = DialogPrimitive.Trigger
-
-const DialogPortal = DialogPrimitive.Portal
-
-const DialogClose = DialogPrimitive.Close
->>>>>>> origin/main
 
 const DialogOverlay = forwardRef<
   ElementRef<typeof DialogOverlayPrimitive>,
@@ -40,13 +24,8 @@ const DialogOverlay = forwardRef<
     )}
     {...props}
   />
-<<<<<<< HEAD
 ));
 DialogOverlay.displayName = DialogOverlayPrimitive.displayName;
-=======
-))
-DialogOverlay.displayName = DialogPrimitive.Overlay.displayName
->>>>>>> origin/main
 
 const DialogContent = forwardRef<
   ElementRef<typeof DialogContentPrimitive>,
@@ -69,13 +48,8 @@ const DialogContent = forwardRef<
       </DialogClosePrimitive>
     </DialogContentPrimitive>
   </DialogPortal>
-<<<<<<< HEAD
 ));
 DialogContent.displayName = DialogContentPrimitive.displayName;
-=======
-))
-DialogContent.displayName = DialogPrimitive.Content.displayName
->>>>>>> origin/main
 
 const DialogHeader = ({
   className,
@@ -117,13 +91,8 @@ const DialogTitle = forwardRef<
     )}
     {...props}
   />
-<<<<<<< HEAD
 ));
 DialogTitle.displayName = DialogTitlePrimitive.displayName;
-=======
-))
-DialogTitle.displayName = DialogPrimitive.Title.displayName
->>>>>>> origin/main
 
 const DialogDescription = forwardRef<
   ElementRef<typeof DialogDescriptionPrimitive>,
@@ -134,13 +103,8 @@ const DialogDescription = forwardRef<
     className={cn("text-sm text-muted-foreground", className)}
     {...props}
   />
-<<<<<<< HEAD
 ));
 DialogDescription.displayName = DialogDescriptionPrimitive.displayName;
-=======
-))
-DialogDescription.displayName = DialogPrimitive.Description.displayName
->>>>>>> origin/main
 
 export {
   Dialog,

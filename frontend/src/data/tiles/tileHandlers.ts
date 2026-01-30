@@ -13,11 +13,7 @@ interface PixelType { x: number; y: number }
 export function handleTileClick(
   x: number,
   y: number,
-<<<<<<< HEAD
   setOtherData: Updater<Partial<LevelData>>,
-=======
-  setData: Updater<ottoMaticLevel>,
->>>>>>> origin/main
   tileView: TileViews,
   tileEditingEnabled: boolean,
   brushType: "add" | "remove",

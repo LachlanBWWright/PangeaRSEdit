@@ -1,9 +1,5 @@
 import { Updater } from "use-immer";
-<<<<<<< HEAD
 import { LiquidData } from "@/python/structSpecs/LevelTypes";
-=======
-import { ottoMaticLevel } from "../../../python/structSpecs/ottoMaticInterface";
->>>>>>> origin/main
 import { Circle, Line } from "react-konva";
 import Konva from "konva";
 import { useAtom } from "jotai";
@@ -54,16 +50,8 @@ export const WaterBody = memo(
             const waterBody = liquidData.Liqd[1000].obj[waterBodyIdx];
             if (!waterBody) return;
             setInitialDragState(
-<<<<<<< HEAD
               waterBody.nubs
                 .filter((_, nubIdx) => nubIdx < waterBody.numNubs)
-=======
-              data.Liqd[1000].obj[waterBodyIdx].nubs
-                .filter(
-                  (_, nubIdx) =>
-                    nubIdx < data.Liqd[1000].obj[waterBodyIdx].numNubs,
-                )
->>>>>>> origin/main
                 .map((nub) => [nub[0], nub[1]]),
             );
             setSelectedWaterBody(waterBodyIdx);
@@ -77,15 +65,10 @@ export const WaterBody = memo(
             const dragDx = e.target.x();
             const dragDz = e.target.y();
 
-<<<<<<< HEAD
             setLiquidData((draft) => {
               const waterBody = draft.Liqd[1000].obj[waterBodyIdx];
               if (!waterBody) return;
               const currentNubs = waterBody.nubs;
-=======
-            setData((draft) => {
-              const currentNubs = draft.Liqd[1000].obj[waterBodyIdx].nubs;
->>>>>>> origin/main
               for (let i = 0; i < initialDragState.length; i++) {
                 const nub = currentNubs[i];
                 const initNub = initialDragState[i];
@@ -106,16 +89,11 @@ export const WaterBody = memo(
           }}
         />
         {waterBodyIdx === selectedWaterBody &&
-<<<<<<< HEAD
           (() => {
             const waterBody = liquidData.Liqd[1000].obj[waterBodyIdx];
             if (!waterBody) return null;
             return waterBody.nubs.map((nub, nubIdx) => {
               if (waterBody.numNubs <= nubIdx) return null;
-=======
-          data.Liqd[1000].obj[waterBodyIdx].nubs.map((nub, nubIdx) => {
-            if (data.Liqd[1000].obj[waterBodyIdx].numNubs <= nubIdx) return;
->>>>>>> origin/main
 
               return (
                 <Circle
@@ -143,7 +121,6 @@ export const WaterBody = memo(
                     setSelectedWaterBody(waterBodyIdx);
                     setSelectedWaterNub(nubIdx); // Set selected nub on drag start
                   }}
-<<<<<<< HEAD
                   onDragMove={(e: Konva.KonvaEventObject<DragEvent>) => {
                     const newX = Math.round(e.target.x());
                     const newY = Math.round(e.target.y());
@@ -173,14 +150,6 @@ export const WaterBody = memo(
                         nubToUpdate[0] = Math.round(e.target.x());
                         nubToUpdate[1] = Math.round(e.target.y());
                       }
-=======
-                  onDragEnd={(e) => {
-                    setData((data) => {
-                      data.Liqd[1000].obj[waterBodyIdx].nubs[nubIdx][0] =
-                        Math.round(e.target.x());
-                      data.Liqd[1000].obj[waterBodyIdx].nubs[nubIdx][1] =
-                        Math.round(e.target.y());
->>>>>>> origin/main
                     });
                   }}
                 />
@@ -195,21 +164,11 @@ export const WaterBody = memo(
             fill="orange"
             draggable
             onDragEnd={(e) =>
-<<<<<<< HEAD
               setLiquidData((liquidData) => {
                 const wb = liquidData.Liqd[1000].obj[waterBodyIdx];
                 if (!wb) return;
                 wb.hotSpotX = Math.round(e.target.x());
                 wb.hotSpotZ = Math.round(e.target.y());
-=======
-              setData((data) => {
-                data.Liqd[1000].obj[waterBodyIdx].hotSpotX = Math.round(
-                  e.target.x(),
-                );
-                data.Liqd[1000].obj[waterBodyIdx].hotSpotZ = Math.round(
-                  e.target.y(),
-                );
->>>>>>> origin/main
               })
             }
           />

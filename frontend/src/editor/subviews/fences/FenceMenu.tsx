@@ -1,9 +1,5 @@
 import { Updater } from "use-immer";
-<<<<<<< HEAD
 import { FenceData } from "@/python/structSpecs/LevelTypes";
-=======
-import { ottoMaticLevel } from "../../../python/structSpecs/ottoMaticInterface";
->>>>>>> origin/main
 import { SelectedFence } from "../../../data/fences/fenceAtoms";
 import { useAtom, useAtomValue } from "jotai";
 import { Button } from "@/components/ui/button";
@@ -31,17 +27,10 @@ export function FenceMenu({
   const globals = useAtomValue(Globals);
   const [selectedFence, setSelectedFence] = useAtom(SelectedFence);
 
-<<<<<<< HEAD
   const fenceDataObj =
     selectedFence !== undefined
       ? fenceData.Fenc[1000].obj[selectedFence]
       : null;
-=======
-  if (globals.GAME_TYPE === Game.NANOSAUR) return <></>; //No fences in this level
-
-  const fenceData =
-    selectedFence !== undefined ? data.Fenc[1000].obj[selectedFence] : null;
->>>>>>> origin/main
 
   const fenceTypesResult = getFenceTypes(globals);
   const fenceValues = fenceTypesResult.ok
@@ -81,16 +70,11 @@ export function FenceMenu({
               };
 
               //Add fence nubs
-<<<<<<< HEAD
               const nubList = fenceData.FnNb[last + NUB_KEY_BASE];
               if (nubList) {
                 nubList.obj[0] = [0, 0];
                 nubList.obj[1] = [1000, 1000];
               }
-=======
-              data.FnNb[last + NUB_KEY_BASE].obj[0] = [0, 0];
-              data.FnNb[last + NUB_KEY_BASE].obj[1] = [1000, 1000];
->>>>>>> origin/main
             });
           }}
         >
@@ -98,21 +82,13 @@ export function FenceMenu({
         </Button>
       ) : (
         <p>
-<<<<<<< HEAD
           Fence {selectedFence} ({fenceDataObj?.numNubs ?? 0} points)
-=======
-          Fence {selectedFence} ({fenceData.numNubs} points)
->>>>>>> origin/main
         </p>
       )}
 
       <div className="grid grid-cols-[2fr_1fr] gap-2 w-full">
         <div className="flex flex-col">
-<<<<<<< HEAD
           {fenceDataObj !== null && fenceDataObj !== undefined && (
-=======
-          {fenceData !== null && (
->>>>>>> origin/main
             <>
               <img
                 src={
@@ -131,12 +107,8 @@ export function FenceMenu({
                   const newFenceType = parseInt(e);
                   setData((data) => {
                     if (selectedFence === undefined) return;
-<<<<<<< HEAD
                     const fence = fenceData.Fenc[1000].obj[selectedFence];
                     if (fence) fence.fenceType = newFenceType;
-=======
-                    data.Fenc[1000].obj[selectedFence].fenceType = newFenceType;
->>>>>>> origin/main
                   });
                 }}
               >
@@ -168,7 +140,6 @@ export function FenceMenu({
                 setData((data) => {
                   if (selectedFence === undefined) return;
 
-<<<<<<< HEAD
                   const fence = fenceData.Fenc[1000].obj[selectedFence];
                   if (!fence) return;
                   fence.numNubs++;
@@ -181,13 +152,6 @@ export function FenceMenu({
                   nubList.obj.unshift([
                     firstNub[0] - 25,
                     firstNub[1] - 25,
-=======
-                  data.Fenc[1000].obj[selectedFence].numNubs++;
-
-                  data.FnNb[selectedFence + NUB_KEY_BASE].obj.unshift([
-                    data.FnNb[selectedFence + NUB_KEY_BASE].obj[0][0] - 25,
-                    data.FnNb[selectedFence + NUB_KEY_BASE].obj[0][1] - 25,
->>>>>>> origin/main
                   ]);
                 });
               }}
@@ -199,7 +163,6 @@ export function FenceMenu({
               onClick={() => {
                 setData((data) => {
                   if (selectedFence === undefined) return;
-<<<<<<< HEAD
                   const nubList = fenceData.FnNb[selectedFence + NUB_KEY_BASE];
                   if (!nubList?.obj) return;
                   const lastIdx = nubList.obj.length - 1;
@@ -213,18 +176,6 @@ export function FenceMenu({
                   nubList.obj.push([
                     lastNub[0] + 25,
                     lastNub[1] + 25,
-=======
-                  const lastIdx =
-                    data.FnNb[selectedFence + NUB_KEY_BASE].obj.length - 1;
-                  data.Fenc[1000].obj[selectedFence].numNubs++;
-
-                  //Adds new nub close to the last
-                  data.FnNb[selectedFence + NUB_KEY_BASE].obj.push([
-                    data.FnNb[selectedFence + NUB_KEY_BASE].obj[lastIdx][0] +
-                      25,
-                    data.FnNb[selectedFence + NUB_KEY_BASE].obj[lastIdx][1] +
-                      25,
->>>>>>> origin/main
                   ]);
                 });
               }}
@@ -235,7 +186,6 @@ export function FenceMenu({
               variant="destructive"
               disabled={
                 selectedFence === undefined ||
-<<<<<<< HEAD
                 (fenceData.Fenc[1000].obj[selectedFence]?.numNubs ?? 0) <= 1
               }
               onClick={() => {
@@ -246,19 +196,6 @@ export function FenceMenu({
                   fence.numNubs--;
                   const nubList = fenceData.FnNb[selectedFence + NUB_KEY_BASE];
                   nubList?.obj.shift();
-=======
-                data.Fenc[1000].obj[selectedFence].numNubs <= 1
-              }
-              onClick={() => {
-                setData((data) => {
-                  if (
-                    selectedFence === undefined ||
-                    data.Fenc[1000].obj[selectedFence].numNubs <= 1
-                  )
-                    return;
-                  data.Fenc[1000].obj[selectedFence].numNubs--;
-                  data.FnNb[selectedFence + NUB_KEY_BASE].obj.shift();
->>>>>>> origin/main
                 });
               }}
             >
@@ -268,7 +205,6 @@ export function FenceMenu({
               variant="destructive"
               disabled={
                 selectedFence === undefined ||
-<<<<<<< HEAD
                 (fenceData.Fenc[1000].obj[selectedFence]?.numNubs ?? 0) <= 1
               }
               onClick={() => {
@@ -278,19 +214,6 @@ export function FenceMenu({
                   if (!fence || fence.numNubs <= 1) return;
                   fence.numNubs--;
                   fenceData.FnNb[selectedFence + NUB_KEY_BASE]?.obj.pop();
-=======
-                data.Fenc[1000].obj[selectedFence].numNubs <= 1
-              }
-              onClick={() => {
-                setData((data) => {
-                  if (
-                    selectedFence === undefined ||
-                    data.Fenc[1000].obj[selectedFence].numNubs <= 1
-                  )
-                    return;
-                  data.Fenc[1000].obj[selectedFence].numNubs--;
-                  data.FnNb[selectedFence + NUB_KEY_BASE].obj.pop();
->>>>>>> origin/main
                 });
               }}
             >
@@ -307,7 +230,6 @@ export function FenceMenu({
                   for (const nubKey of Object.keys(data.FnNb)) {
                     lastKey = nubKey;
                     if (parseInt(nubKey) > selectedFence + NUB_KEY_BASE) {
-<<<<<<< HEAD
                       const currentNub = fenceData.FnNb[parseInt(nubKey)];
                       if (currentNub) {
                         fenceData.FnNb[parseInt(nubKey) - 1] = currentNub;
@@ -319,15 +241,6 @@ export function FenceMenu({
                     return;
                   }
                   Reflect.deleteProperty(fenceData.FnNb, parseInt(lastKey));
-=======
-                      data.FnNb[parseInt(nubKey) - 1] =
-                        data.FnNb[parseInt(nubKey)];
-                    }
-                  }
-                  if (lastKey === undefined)
-                    throw new Error("Missing Final Nubkey");
-                  delete data.FnNb[parseInt(lastKey)];
->>>>>>> origin/main
                 });
                 setSelectedFence(undefined);
               }}

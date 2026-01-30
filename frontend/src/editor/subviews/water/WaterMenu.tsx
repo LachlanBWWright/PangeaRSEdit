@@ -1,9 +1,5 @@
 import { Updater } from "use-immer";
-<<<<<<< HEAD
 import { LiquidData } from "@/python/structSpecs/LevelTypes";
-=======
-import { ottoMaticLevel } from "../../../python/structSpecs/ottoMaticInterface";
->>>>>>> origin/main
 import { useAtom, useAtomValue } from "jotai";
 import { Button } from "@/components/ui/button";
 import {
@@ -105,18 +101,12 @@ export function WaterMenu({
               value={waterBodyData.type.toString()}
               onValueChange={(e) => {
                 const newItemType = parseInt(e);
-<<<<<<< HEAD
                 setLiquidData((liquidData) => {
                   if (selectedWaterBody === null) return;
                   const waterObj = liquidData.Liqd[1000]?.obj?.[selectedWaterBody];
                   if (waterObj) {
                     waterObj.type = newItemType;
                   }
-=======
-                setData((data) => {
-                  if (selectedWaterBody === null) return; // Add null check
-                  data.Liqd[1000].obj[selectedWaterBody].type = newItemType;
->>>>>>> origin/main
                 });
               }}
             >
@@ -253,7 +243,6 @@ export function WaterMenu({
             <div className="grid grid-cols-3 gap-2">
               <Button
                 onClick={() =>
-<<<<<<< HEAD
                   setLiquidData((liquidData) => {
                     if (selectedWaterBody === null) return;
                     const waterObj = liquidData.Liqd[1000]?.obj?.[selectedWaterBody];
@@ -263,24 +252,6 @@ export function WaterMenu({
                     if (!prevNub) return;
                     waterObj.nubs[waterObj.numNubs] = [prevNub[0] + 50, prevNub[1] + 50];
                     waterObj.numNubs++;
-=======
-                  setData((data) => {
-                    if (selectedWaterBody === null) return; // Add null check
-                    if (
-                      data.Liqd[1000].obj[selectedWaterBody].numNubs ===
-                      globals.LIQD_NUBS
-                    )
-                      return;
-                    const prevNub =
-                      data.Liqd[1000].obj[selectedWaterBody].nubs[
-                        data.Liqd[1000].obj[selectedWaterBody].numNubs - 1
-                      ];
-                    if (!prevNub) return;
-                    data.Liqd[1000].obj[selectedWaterBody].nubs[
-                      data.Liqd[1000].obj[selectedWaterBody].numNubs
-                    ] = [prevNub[0] + 50, prevNub[1] + 50];
-                    data.Liqd[1000].obj[selectedWaterBody].numNubs++;
->>>>>>> origin/main
                   })
                 }
               >
@@ -291,24 +262,14 @@ export function WaterMenu({
                 disabled={
                   selectedWaterBody === null ||
                   (selectedWaterBody !== null &&
-<<<<<<< HEAD
                     (liquidData.Liqd[1000]?.obj?.[selectedWaterBody]?.numNubs ?? 0) <= 3)
-=======
-                    data.Liqd[1000].obj[selectedWaterBody].numNubs <= 3)
->>>>>>> origin/main
                 }
                 onClick={() => {
                   setData((data) => {
                     if (selectedWaterBody === null) return;
-<<<<<<< HEAD
                     const waterObj = liquidData.Liqd[1000]?.obj?.[selectedWaterBody];
                     if (!waterObj || waterObj.numNubs <= 3) return;
                     waterObj.numNubs--;
-=======
-                    if (data.Liqd[1000].obj[selectedWaterBody].numNubs <= 3)
-                      return;
-                    data.Liqd[1000].obj[selectedWaterBody].numNubs--;
->>>>>>> origin/main
                   });
                 }}
               >

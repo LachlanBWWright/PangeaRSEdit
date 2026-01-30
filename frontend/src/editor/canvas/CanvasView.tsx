@@ -3,11 +3,7 @@ import { ClickToAddItem, SelectedItem } from "@/data/items/itemAtoms";
 import { SelectedSpline } from "@/data/splines/splineAtoms";
 import { SelectedWaterBody } from "@/data/water/waterAtoms";
 import { useAtomValue, useSetAtom } from "jotai";
-<<<<<<< HEAD
 import { useRef, useCallback, useState, useEffect } from "react";
-=======
-import { useRef } from "react";
->>>>>>> origin/main
 import { Stage } from "react-konva";
 import { Updater } from "use-immer";
 import { Items } from "../subviews/Items";
@@ -16,7 +12,6 @@ import { Splines } from "../subviews/Splines";
 import { WaterBodies } from "../subviews/WaterBodies";
 import { Tiles } from "../subviews/Tiles";
 import { Supertiles } from "../subviews/Supertiles";
-<<<<<<< HEAD
 import {
   HeaderData,
   ItemData,
@@ -25,9 +20,6 @@ import {
   SplineData,
   TerrainData,
 } from "@/python/structSpecs/LevelTypes";
-=======
-import { ottoMaticLevel } from "@/python/structSpecs/ottoMaticInterface";
->>>>>>> origin/main
 
 enum View {
   fences,
@@ -109,7 +101,6 @@ export function KonvaView({
           const x = Math.round(pos.x);
           const z = Math.round(pos.y);
 
-<<<<<<< HEAD
           // Use non-null updater so child components can rely on non-null shape
           setItemDataNotNull((itemData) => {
             itemData.Itms[1000].obj.push({
@@ -122,18 +113,6 @@ export function KonvaView({
               p2: 0,
               p3: 0,
             });
-=======
-        setData((data) => {
-          data.Itms[1000].obj.push({
-            x: x,
-            z: z,
-            type: clickToAddItem,
-            flags: 0,
-            p0: 0,
-            p1: 0,
-            p2: 0,
-            p3: 0,
->>>>>>> origin/main
           });
         }}
         onDblClick={() => {
@@ -161,7 +140,6 @@ export function KonvaView({
           const newScale =
             e.evt.deltaY < 0 ? oldScale * scaleBy : oldScale / scaleBy;
 
-<<<<<<< HEAD
           setStage({
             scale: newScale,
             x: (pointerPosition.x / newScale - mousePointTo.x) * newScale,
@@ -313,64 +291,5 @@ export function KonvaView({
         )}
       </Stage>
     </div>
-=======
-        setStage({
-          scale: newScale,
-          x: (pointerPosition.x / newScale - mousePointTo.x) * newScale,
-          y: (pointerPosition.y / newScale - mousePointTo.y) * newScale,
-        });
-      }}
-    >
-      {data.STgd && <Supertiles data={data} mapImages={mapImages} />}
-      {view === View.tiles && (
-        <Tiles
-          data={data}
-          setData={setData}
-          isEditingTopology={view === View.tiles}
-        />
-      )}
-      {view === View.tiles ||
-        (view === View.supertiles && (
-          <>
-            <WaterBodies data={data} setData={setData} />
-            <Fences data={data} setData={setData} />
-            <Items data={data} setData={setData} />
-            <Splines data={data} setData={setData} />
-          </>
-        ))}
-      {view === View.fences && (
-        <>
-          <WaterBodies data={data} setData={setData} />
-          <Items data={data} setData={setData} />
-          <Splines data={data} setData={setData} />
-          <Fences data={data} setData={setData} />
-        </>
-      )}
-      {view === View.water && (
-        <>
-          <Fences data={data} setData={setData} />
-          <Items data={data} setData={setData} />
-          <Splines data={data} setData={setData} />
-          <WaterBodies data={data} setData={setData} />
-        </>
-      )}
-      {view === View.splines && (
-        <>
-          <WaterBodies data={data} setData={setData} />
-          <Items data={data} setData={setData} />
-          <Fences data={data} setData={setData} />
-          <Splines data={data} setData={setData} />
-        </>
-      )}
-      {view === View.items && (
-        <>
-          <WaterBodies data={data} setData={setData} />
-          <Splines data={data} setData={setData} />
-          <Fences data={data} setData={setData} />
-          <Items data={data} setData={setData} />
-        </>
-      )}
-    </Stage>
->>>>>>> origin/main
   );
 }

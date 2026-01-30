@@ -1,9 +1,5 @@
 import { Updater } from "use-immer";
-<<<<<<< HEAD
 import { ItemData } from "@/python/structSpecs/LevelTypes";
-=======
-import { ottoMaticLevel } from "../../../python/structSpecs/ottoMaticInterface";
->>>>>>> origin/main
 import { Label, Rect, Tag, Text } from "react-konva";
 import type Konva from "konva";
 import { SelectedItem } from "../../../data/items/itemAtoms";
@@ -11,26 +7,23 @@ import { useAtomValue, useSetAtom } from "jotai";
 import { useState, useCallback, memo } from "react";
 import { Globals } from "@/data/globals/globals";
 import { getItemName } from "@/data/items/getItemNames";
-<<<<<<< HEAD
-import { selectItem, updateItem } from "../../../data/selectors";
+import { updateItem } from "../../../data/selectors";
 import { getLiquidPatchStyle, getLiquidPatchDimensions } from "@/data/items/liquidPatchItems";
-=======
->>>>>>> origin/main
 
 const ITEM_BOX_SIZE = 12;
 const ITEM_BOX_OFFSET = ITEM_BOX_SIZE / 2;
 
 export const Item = memo(function Item({
-  data,
-  setData,
+  itemData,
+  setItemData,
   itemIdx,
 }: {
-  data: ottoMaticLevel;
-  setData: Updater<ottoMaticLevel>;
+  itemData: ItemData;
+  setItemData: Updater<ItemData>;
   itemIdx: number;
 }) {
   const setSelectedItem = useSetAtom(SelectedItem);
-  const item = data.Itms[1000].obj[itemIdx];
+  const item = itemData.Itms[1000].obj[itemIdx];
   const [hovering, setHovering] = useState(false);
   const globals = useAtomValue(Globals);
 
@@ -42,7 +35,7 @@ export const Item = memo(function Item({
   );
   const handleDragEnd = useCallback(
     (e: Konva.KonvaEventObject<DragEvent>) => {
-      setData((data) => {
+      setItemData((data) => {
         data.Itms[1000].obj[itemIdx].x = Math.round(
           e.target.x() + ITEM_BOX_OFFSET,
         );
@@ -51,7 +44,7 @@ export const Item = memo(function Item({
         );
       });
     },
-    [itemIdx, setData],
+    [itemIdx, setItemData],
   );
   if (item === null || item === undefined) return null;
 
@@ -169,6 +162,3 @@ export const Item = memo(function Item({
     </>
   );
 });
-
-// Color function renamed to follow naming conventions
-// getColour moved to ./itemUtils

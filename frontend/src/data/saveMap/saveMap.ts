@@ -84,12 +84,7 @@ export async function saveMap({
   mapFile: File | undefined;
   mapImagesFile: File | undefined;
   mapImages: HTMLCanvasElement[] | undefined;
-<<<<<<< HEAD
   data: LevelData;
-=======
-  data: ottoMaticLevel | null;
-  pyodideWorker: Worker;
->>>>>>> origin/main
   globals: GlobalsInterface;
   toast: (opts: { title: string; description?: string }) => void;
 }) {
@@ -108,18 +103,8 @@ export async function saveMap({
     downloadBlob(imageDownloadBuffer, mapImagesFile?.name || "images", ".ter");
   }
 
-<<<<<<< HEAD
   if (globals.TILE_IMAGE_FORMAT === TileImageFormat.JPG) {
     //TODO: JPEG-based map logic (e.g., Nanosaur 2)
-=======
-  toast({
-    title: "Saving Map",
-    description: "Processing map data",
-  });
-
-  if (globals.GAME_TYPE === Game.NANOSAUR_2) {
-    //TODO: Nanosaur 2 map logic
->>>>>>> origin/main
   }
   //if bugdom 1 (resource fork)
   else if (globals.DATA_TYPE === DataType.RSRC_FORK) {
@@ -181,12 +166,8 @@ export async function saveMap({
       title: "Mighty Mike Map Downloaded!",
     });
   } else {
-<<<<<<< HEAD
     const mapBuffer = await processMapData({ data, globals });
     console.log("test\n\n\n");
-=======
-    const mapBuffer = await processMapData({ data, pyodideWorker, globals });
->>>>>>> origin/main
     downloadBlob(mapBuffer, mapFile.name, ".ter.rsrc");
     toast({
       title: "Map Downloaded!",
@@ -207,7 +188,6 @@ async function processMapData({
   data,
   globals,
 }: {
-<<<<<<< HEAD
   data: LevelData;
   globals: GlobalsInterface;
 }): Promise<ArrayBuffer> {
@@ -224,21 +204,6 @@ async function processMapData({
     });
     return new ArrayBuffer(0);
   }
-=======
-  data: ottoMaticLevel | null;
-  pyodideWorker: Worker;
-  globals: GlobalsInterface;
-}): Promise<ArrayBuffer> {
-  return new Promise<ArrayBuffer>((resolve, reject) => {
-    pyodideWorker.postMessage({
-      type: "load_bytes_from_json",
-      json_blob: data,
-      converters: globals.STRUCT_SPECS,
-      only_types: [],
-      skip_types: [],
-      adf: "True",
-    } satisfies PyodideMessage);
->>>>>>> origin/main
 
   const saveResult = loadBytesFromJson(sanitized, globals.STRUCT_SPECS, [], [], true);
 

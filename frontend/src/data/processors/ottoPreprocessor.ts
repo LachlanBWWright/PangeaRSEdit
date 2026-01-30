@@ -219,7 +219,6 @@ export function ottoPreprocessor(
         const spline = data.Spln[1000].obj[i];
         if (!spline) continue;
 
-<<<<<<< HEAD
         const numPoints = data.SpPt?.[splineIdx]?.obj.length ?? 0;
         spline.numPoints = numPoints;
 
@@ -228,16 +227,6 @@ export function ottoPreprocessor(
 
         const numItems = data.SpIt?.[splineIdx]?.obj.length ?? 0;
         spline.numItems = numItems;
-=======
-        const numPoints = data.SpPt[splineIdx].obj.length;
-        data.Spln[1000].obj[i].numPoints = numPoints;
-
-        const numNubs = data.SpNb[splineIdx].obj.length;
-        data.Spln[1000].obj[i].numNubs = numNubs;
-
-        const numItems = data.SpIt[splineIdx].obj.length;
-        data.Spln[1000].obj[i].numItems = numItems;
->>>>>>> origin/main
       }
 
     //TODO: Fence Bounding Boxes

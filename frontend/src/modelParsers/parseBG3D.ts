@@ -1,7 +1,6 @@
 // parseBG3D.ts
 // Full BG3D file parser for Otto Matic and related games
 
-<<<<<<< HEAD
 import type { SkeletonResource } from "../python/structSpecs/skeleton/skeletonInterface";
 import { Result, ok, err } from "../types/result";
 
@@ -10,8 +9,6 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
-=======
->>>>>>> origin/main
 //https://registry.khronos.org/OpenGL-Refpages/gl4/html/glTexImage2D.xhtml
 export enum PixelFormatSrc {
   GL_UNSIGNED_SHORT_1_5_5_5_REV = 33638, // 1a 5r 5g 5b 0x8366 33638
@@ -124,7 +121,6 @@ export interface BG3DGroup {
   children: (BG3DGeometry | BG3DGroup)[];
 }
 
-<<<<<<< HEAD
 // Skeleton data structures for BG3D
 export interface BG3DBone {
   parentBone: number; // -1 if no parent, otherwise index of parent bone
@@ -190,8 +186,6 @@ export interface BG3DSkeleton {
   metadata?: Record<string, unknown>;
 }
 
-=======
->>>>>>> origin/main
 export interface BG3DParseResult {
   materials: BG3DMaterial[];
   groups: BG3DGroup[];
@@ -201,7 +195,6 @@ export interface BG3DParseResult {
 /**
  * Parse a .bg3d file from an ArrayBuffer
  * @param buffer ArrayBuffer containing the .bg3d file
-<<<<<<< HEAD
  * @param skeleton Optional skeleton data to include in the result
  * @returns Result<BG3DParseResult, Error>
  */
@@ -209,12 +202,6 @@ export function parseBG3D(
   buffer: ArrayBuffer,
   skeleton?: SkeletonResource,
 ): Result<BG3DParseResult, Error> {
-=======
- * @param gameType Which game this BG3D is from (Game enum)
- * @returns BG3DParseResult
- */
-export function parseBG3D(buffer: ArrayBuffer): BG3DParseResult {
->>>>>>> origin/main
   const view = new DataView(buffer);
   let offset = 0;
   // Read header (first 4 bytes should be 'BG3D')
@@ -636,7 +623,6 @@ export function parseBG3D(buffer: ArrayBuffer): BG3DParseResult {
   return ok({
     materials,
     groups,
-<<<<<<< HEAD
     skeleton: skeleton ? convertSkeletonResourceToBG3D(skeleton) : undefined,
   });
 }
@@ -914,8 +900,6 @@ function convertSkeletonResourceToBG3D(
     alisData:
       alisData && Object.keys(alisData).length > 0 ? alisData : undefined,
     metadata: skeleton._metadata,
-=======
->>>>>>> origin/main
   };
 }
 
@@ -1185,7 +1169,6 @@ function isBG3DGroup(obj: BG3DGeometry | BG3DGroup): obj is BG3DGroup {
   );
 }
 
-<<<<<<< HEAD
 function isBG3DGeometry(obj: BG3DGeometry | BG3DGroup): obj is BG3DGeometry {
   return (
     obj !== null &&
@@ -1312,8 +1295,6 @@ export function convertBG3DToSkeletonResource(
   return skeletonResource;
 }
 
-=======
->>>>>>> origin/main
 /* function isBG3DGeometry(obj: BG3DGeometry | BG3DGroup): obj is BG3DGeometry {
   return !!obj && !Array.isArray((obj ).children);
 }

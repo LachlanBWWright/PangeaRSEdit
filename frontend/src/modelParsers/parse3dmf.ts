@@ -14,16 +14,9 @@ import {
  * @param buffer ArrayBuffer containing the 3DMF file
  * @returns Result<BG3DParseResult, Error>
  */
-<<<<<<< HEAD
 export function parse3DMF(buffer: ArrayBuffer): Result<BG3DParseResult, Error> {
   // Parse 3DMF to native format, then convert to BG3D format
   return andThen(parse3DMFToMetaFile(buffer), metaFileToBG3DParseResult);
-=======
-export function parse3DMF(buffer: ArrayBuffer): BG3DParseResult {
-  // TODO: Implement real 3DMF parsing logic
-  console.log("parse3DMF called with buffer length:", buffer.byteLength);
-  throw new Error("parse3DMF is not yet implemented");
->>>>>>> origin/main
 }
 
 /**

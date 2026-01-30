@@ -1,11 +1,5 @@
-<<<<<<< HEAD
 import { Canvas, useThree } from "@react-three/fiber";
 import { MapControls } from "@react-three/drei";
-=======
-import { ottoMaticLevel } from "@/python/structSpecs/ottoMaticInterface";
-import { Canvas } from "@react-three/fiber";
-import { TrackballControls } from "@react-three/drei";
->>>>>>> origin/main
 import { TerrainGeometry } from "./Terrain";
 import { RoofGeometry } from "./RoofGeometry";
 import { FenceGeometry } from "./FenceGeometry";
@@ -17,7 +11,6 @@ import { TopologyBrush3D } from "./TopologyBrush3D";
 import { TopologyPreview3D } from "./TopologyPreview3D";
 import { useAtomValue, useAtom } from "jotai";
 import { Globals } from "@/data/globals/globals";
-<<<<<<< HEAD
 import {
   Show3DSplines,
   Show3DItems,
@@ -180,18 +173,6 @@ export function ThreeView({
   const isEditingTopology = tileViewMode === TileViews.Topology;
 
   const header = headerData.Hedr[1000].obj;
-=======
-
-export function ThreeView({
-  data,
-  mapImages,
-}: {
-  data: ottoMaticLevel;
-  mapImages: HTMLCanvasElement[];
-}) {
-  const globals = useAtomValue(Globals);
-  const header = data.Hedr[1000].obj;
->>>>>>> origin/main
 
   const numWide = header.mapWidth;
   const numHigh = header.mapHeight;
@@ -389,7 +370,6 @@ export function ThreeView({
         ],
       }}
     >
-<<<<<<< HEAD
       <MapControls
         // Make the controls the default camera controls
         makeDefault
@@ -476,13 +456,6 @@ export function ThreeView({
         />
       )}
       {/*  <TestGeometry header={header} globals={globals} */}
-=======
-      <TrackballControls />
-      <TerrainGeometry data={data} mapImages={mapImages} />
-      <FenceGeometry data={data} />
-      <LiquidGeometry data={data} />
-      {/*  <TestGeometry header={header} globals={globals} /> */}
->>>>>>> origin/main
     </Canvas>
   );
 }

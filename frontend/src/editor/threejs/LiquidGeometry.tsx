@@ -1,15 +1,11 @@
 import React from "react";
 import { useAtomValue } from "jotai";
 import { Globals } from "@/data/globals/globals";
-<<<<<<< HEAD
 import {
   LiquidData,
   HeaderData,
   TerrainData,
 } from "@/python/structSpecs/LevelTypes";
-=======
-import { ottoMaticLevel } from "@/python/structSpecs/ottoMaticInterface";
->>>>>>> origin/main
 import { DoubleSide, Shape, Vector2 } from "three";
 import { WaterBodyType } from "@/data/water/ottoWaterBodyType";
 import { getTerrainHeightAtPoint } from "./fenceUtils/getTerrainHeightAtPoint";
@@ -49,7 +45,6 @@ const getLiquidProperties = (type: WaterBodyType) => {
 export const LiquidGeometry: React.FC<LiquidGeometryProps> = ({ data }) => {
   const globals = useAtomValue(Globals);
 
-<<<<<<< HEAD
   if (!liquidData.Liqd?.[1000]?.obj) {
     if (DEBUG_LIQUID_RENDERING) {
       console.log("[LiquidGeometry] No liquid data found");
@@ -61,13 +56,6 @@ export const LiquidGeometry: React.FC<LiquidGeometryProps> = ({ data }) => {
   if (DEBUG_LIQUID_RENDERING) {
     console.log(`[LiquidGeometry] Found ${liquidPatches.length} liquid patches`);
   }
-=======
-  if (!data.Liqd?.[1000]?.obj) {
-    return null;
-  }
-
-  const liquidPatches = data.Liqd[1000].obj;
->>>>>>> origin/main
 
   return (
     <group>

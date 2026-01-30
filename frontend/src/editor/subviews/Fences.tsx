@@ -1,8 +1,4 @@
-<<<<<<< HEAD
 import { FenceData } from "@/python/structSpecs/LevelTypes";
-=======
-import { ottoMaticLevel } from "../../python/structSpecs/ottoMaticInterface";
->>>>>>> origin/main
 import { Layer } from "react-konva";
 import { Updater } from "use-immer";
 import { Fence } from "./fences/Fence";
@@ -10,31 +6,31 @@ import { useAtomValue } from "jotai";
 import { SelectedFence } from "@/data/fences/fenceAtoms";
 
 export function Fences({
-  data,
-  setData,
+  fenceData,
+  setFenceData,
 }: {
-  data: ottoMaticLevel;
-  setData: Updater<ottoMaticLevel>;
+  fenceData: FenceData;
+  setFenceData: Updater<FenceData>;
 }) {
   const selectedFence = useAtomValue(SelectedFence);
-  if (!data.Fenc) return <></>;
+  if (!fenceData.Fenc) return <></>;
 
   return (
     <Layer>
-      {data.Fenc[1000].obj.map((_, fenceIdx) => {
-        if (selectedFence === fenceIdx) return;
+      {fenceData.Fenc[1000].obj.map((_, fenceIdx) => {
+        if (selectedFence === fenceIdx) return null;
 
         return (
           <Fence
             key={fenceIdx}
-            data={data}
-            setData={setData}
+            fenceData={fenceData}
+            setFenceData={setFenceData}
             fenceIdx={fenceIdx}
           />
         );
       })}
       {selectedFence !== undefined && (
-        <Fence data={data} setData={setData} fenceIdx={selectedFence} />
+        <Fence fenceData={fenceData} setFenceData={setFenceData} fenceIdx={selectedFence} />
       )}
     </Layer>
   );

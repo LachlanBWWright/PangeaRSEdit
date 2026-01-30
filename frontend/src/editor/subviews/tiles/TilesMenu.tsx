@@ -34,11 +34,7 @@ import {
 } from "@/data/canvasView/canvasViewAtoms";
 import { useEffect } from "react";
 import { Switch } from "@/components/ui/switch";
-<<<<<<< HEAD
 import { HeaderData } from "@/python/structSpecs/LevelTypes";
-=======
-import { ottoMaticLevel } from "@/python/structSpecs/ottoMaticInterface";
->>>>>>> origin/main
 import { Updater } from "use-immer";
 import { Globals, Game } from "../../../data/globals/globals";
 
