@@ -2,7 +2,7 @@ import {
   StandardHeader,
   LevelData,
 } from "@/python/structSpecs/LevelTypes";
-import { HeaderData } from "@/python/structSpecs/LevelTypes";
+import { HeaderData, TerrainData } from "@/python/structSpecs/LevelTypes";
 import { useMemo } from "react";
 
 const elevationToRGBA = (elevation: number, header: StandardHeader) => {
@@ -14,15 +14,18 @@ const elevationToRGBA = (elevation: number, header: StandardHeader) => {
   ];
 };
 
-export function useHeightImg(headerData: HeaderData, otherData: Partial<LevelData>) {
+export function useHeightImg(headerData: HeaderData, terrainData: TerrainData) {
   const header = useMemo(() => headerData.Hedr?.[1000]?.obj, [headerData.Hedr]);
 
-  const coordColours = useMemo(
-    () => data.YCrd[1000].obj.flatMap((e) => elevationToRGBA(e, header)),
-    [data.YCrd[1000].obj],
-  );
+  const yCrdData = terrainData.YCrd?.[1000]?.obj;
+  
+  const coordColours = useMemo(() => {
+    if (!yCrdData || !header) return [];
+    return yCrdData.flatMap((e) => elevationToRGBA(e, header));
+  }, [yCrdData, header]);
 
   const imgCanvas = useMemo(() => {
+    if (!header) return null;
     const imgCanvas = document.createElement("canvas");
     imgCanvas.width = header.mapWidth + 1;
     imgCanvas.height = header.mapHeight + 1;
@@ -42,7 +45,7 @@ export function useHeightImg(headerData: HeaderData, otherData: Partial<LevelDat
       0,
     );
     return imgCanvas;
-  }, [header, data.YCrd[1000].obj]);
+  }, [header, coordColours]);
   return { heightImg: imgCanvas };
 }
 
@@ -55,16 +58,18 @@ const elevationToRGBAUnscaled = (elevation: number, header: StandardHeader) => {
   ];
 };
 
-export function useUnscaledHeightImg(headerData: HeaderData, otherData: Partial<LevelData>) {
+export function useUnscaledHeightImg(headerData: HeaderData, terrainData: TerrainData) {
   const header = useMemo(() => headerData.Hedr?.[1000]?.obj, [headerData.Hedr]);
 
-  const coordColours = useMemo(
-    () =>
-      data.YCrd[1000].obj.flatMap((e) => elevationToRGBAUnscaled(e, header)),
-    [data.YCrd[1000].obj],
-  );
+  const yCrdData = terrainData.YCrd?.[1000]?.obj;
+  
+  const coordColours = useMemo(() => {
+    if (!yCrdData || !header) return [];
+    return yCrdData.flatMap((e) => elevationToRGBAUnscaled(e, header));
+  }, [yCrdData, header]);
 
   const imgCanvas = useMemo(() => {
+    if (!header) return null;
     const imgCanvas = document.createElement("canvas");
     imgCanvas.width = header.mapWidth + 1;
     imgCanvas.height = header.mapHeight + 1;
@@ -84,6 +89,6 @@ export function useUnscaledHeightImg(headerData: HeaderData, otherData: Partial<
       0,
     );
     return imgCanvas;
-  }, [header, data.YCrd[1000].obj]);
+  }, [header, coordColours]);
   return { heightImg: imgCanvas };
 }

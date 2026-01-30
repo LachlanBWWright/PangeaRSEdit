@@ -399,13 +399,16 @@ export function SupertileMenu({
                   entry.superTileId = i + 1;
                 }
               }
-              data.Hedr[1000].obj.numUniqueSupertiles = canvasArray.length; //Blanks counted as unique supertile
+            });
+            // Update header in a separate call
+            setHeaderData((draft) => {
+              draft.Hedr[1000].obj.numUniqueSupertiles = canvasArray.length;
             });
           }}
         />
         <div className="flex-1" />
         <p>Download Image For Whole Map</p>
-        <Button size="sm" onClick={() => downloadMapImage(mapImages, data, globals)}>
+        <Button size="sm" onClick={() => downloadMapImage(mapImages, headerData, terrainData, globals)}>
           Download
         </Button>
       </div>

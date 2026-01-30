@@ -39,11 +39,11 @@ import { Updater } from "use-immer";
 import { Globals, Game } from "../../../data/globals/globals";
 
 export function TilesMenu({
-  data,
-  setData,
+  headerData,
+  setHeaderData,
 }: {
-  data: ottoMaticLevel;
-  setData: Updater<ottoMaticLevel>;
+  headerData: HeaderData;
+  setHeaderData: Updater<HeaderData>;
 }) {
   const [tileView, setTileView] = useAtom(TileViewMode);
   const [brushMode, setBrushMode] = useAtom(CurrentTopologyBrushMode);
@@ -66,7 +66,7 @@ export function TilesMenu({
   const [roofFloorElevation, setRoofFloorElevation] = useAtom(RoofFloorElevation);
   const globals = useAtomValue(Globals);
 
-  const header = data?.Hedr?.[1000]?.obj;
+  const header = headerData?.Hedr?.[1000]?.obj;
   const minY = header?.minY || 0;
   const maxY = header?.maxY || 0;
 
@@ -94,7 +94,7 @@ export function TilesMenu({
     const newValue = parseFloat(e.target.value);
     if (isNaN(newValue)) return;
 
-    setData((draft) => {
+    setHeaderData((draft) => {
       draft.Hedr[1000].obj.minY = newValue;
     });
   };
@@ -103,7 +103,7 @@ export function TilesMenu({
     const newValue = parseFloat(e.target.value);
     if (isNaN(newValue)) return;
 
-    setData((draft) => {
+    setHeaderData((draft) => {
       draft.Hedr[1000].obj.maxY = newValue;
     });
   };

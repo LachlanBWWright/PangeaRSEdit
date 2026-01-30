@@ -58,7 +58,7 @@ export function WaterMenu({
       {waterBodyData === null || waterBodyData === undefined ? (
         <Button
           onClick={() =>
-            setLiquidData((data) => {
+            setLiquidData((liquidDraft) => {
               liquidData.Liqd[1000].obj.push({
                 type: 0,
                 nubs: [
@@ -265,7 +265,7 @@ export function WaterMenu({
                     (liquidData.Liqd[1000]?.obj?.[selectedWaterBody]?.numNubs ?? 0) <= 3)
                 }
                 onClick={() => {
-                  setLiquidData((data) => {
+                  setLiquidData((liquidDraft) => {
                     if (selectedWaterBody === null) return;
                     const waterObj = liquidData.Liqd[1000]?.obj?.[selectedWaterBody];
                     if (!waterObj || waterObj.numNubs <= 3) return;
@@ -280,7 +280,7 @@ export function WaterMenu({
                 disabled={selectedWaterBody === null}
                 onClick={() => {
                   if (selectedWaterBody === null) return;
-                  setLiquidData((data) => {
+                  setLiquidData((liquidDraft) => {
                     liquidData.Liqd[1000].obj.splice(selectedWaterBody, 1);
                   });
                   setSelectedWaterBody(null);
