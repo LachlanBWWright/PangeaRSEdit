@@ -6,23 +6,23 @@ import { useAtom } from "jotai";
 import {
   SelectedWaterBody,
   SelectedWaterNub,
-} from "../../../data/water/waterAtoms"; // Import SelectedWaterNub
+} from "../../../data/water/waterAtoms";
 import { memo, useState, useRef } from "react";
 
 export const WaterBody = memo(
   ({
-    data,
-    setData,
+    liquidData,
+    setLiquidData,
     waterBodyIdx,
   }: {
-    data: ottoMaticLevel;
-    setData: Updater<ottoMaticLevel>;
+    liquidData: LiquidData;
+    setLiquidData: Updater<LiquidData>;
     waterBodyIdx: number;
   }) => {
     const [selectedWaterBody, setSelectedWaterBody] =
       useAtom(SelectedWaterBody);
-    const [selectedWaterNub, setSelectedWaterNub] = useAtom(SelectedWaterNub); // Use SelectedWaterNub atom
-    const waterBody = data.Liqd[1000].obj[waterBodyIdx];
+    const [selectedWaterNub, setSelectedWaterNub] = useAtom(SelectedWaterNub);
+    const waterBody = liquidData.Liqd[1000].obj[waterBodyIdx];
     const [initialDragState, setInitialDragState] = useState<
       [number, number][] | null
     >(null);
@@ -82,7 +82,6 @@ export const WaterBody = memo(
               e.target.x(0);
               e.target.y(0);
             } catch (err) {
-              // Best-effort: reset node transform. Log for debug but do not alter behavior
               console.warn("Failed to reset Konva node transform:", err);
             }
             setInitialDragState(null);
@@ -99,27 +98,27 @@ export const WaterBody = memo(
                 <Circle
                   x={nub[0]}
                   y={nub[1]}
-                  key={waterBodyIdx + "-" + nubIdx} // More specific key
+                  key={waterBodyIdx + "-" + nubIdx}
                   radius={
                     selectedWaterNub === nubIdx &&
                     selectedWaterBody === waterBodyIdx
                       ? 8
                       : 5
-                  } // Highlight selected nub
+                  }
                   fill={
                     selectedWaterNub === nubIdx &&
                     selectedWaterBody === waterBodyIdx
                       ? "#FF99FFDD"
                       : "#9999FFDD"
-                  } // Different color for selected nub
+                  }
                   draggable={true}
                   onClick={() => {
                     setSelectedWaterBody(waterBodyIdx);
-                    setSelectedWaterNub(nubIdx); // Set selected nub on click
+                    setSelectedWaterNub(nubIdx);
                   }}
                   onDragStart={() => {
                     setSelectedWaterBody(waterBodyIdx);
-                    setSelectedWaterNub(nubIdx); // Set selected nub on drag start
+                    setSelectedWaterNub(nubIdx);
                   }}
                   onDragMove={(e: Konva.KonvaEventObject<DragEvent>) => {
                     const newX = Math.round(e.target.x());

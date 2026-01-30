@@ -13,10 +13,12 @@ import { StandardSupertiles } from "./supertiles/StandardSupertiles";
 
 export const Supertiles = memo(
   ({
-    data,
+    headerData,
+    terrainData,
     mapImages,
   }: {
-    data: ottoMaticLevel;
+    headerData: HeaderData;
+    terrainData: TerrainData;
     mapImages: HTMLCanvasElement[];
   }) => {
     // Detect tile system based on data structure, not game type
@@ -25,13 +27,6 @@ export const Supertiles = memo(
     const hasLayr = Boolean(terrainData.Layr?.[1000]?.obj);
     const hasSTgd = Boolean(terrainData.STgd?.[1000]?.obj);
     const usesIndividualTiles = hasLayr && !hasSTgd;
-
-    console.log("Supertiles dispatcher:", {
-      usesIndividualTiles,
-      hasLayr,
-      hasSTgd,
-      mapImagesCount: mapImages.length,
-    });
 
     // For individual tile games (Bugdom 1, Nanosaur 1), use IndividualTileSupertiles
     // which constructs supertiles from individual 32x32 tiles

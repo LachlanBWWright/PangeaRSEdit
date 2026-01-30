@@ -4,19 +4,17 @@ import { Line } from "react-konva";
 import Konva from "konva";
 import { FenceNub } from "./FenceNub";
 import { SelectedFence } from "../../../data/fences/fenceAtoms";
-import { useAtom, useAtomValue } from "jotai";
+import { useAtom } from "jotai";
 import { memo, useState } from "react";
-import { Globals } from "../../../data/globals/globals";
-import { getFenceColor } from "../../../data/fences/getFenceColor";
 
 export const Fence = memo(
   ({
-    data,
-    setData,
+    fenceData,
+    setFenceData,
     fenceIdx,
   }: {
-    data: ottoMaticLevel;
-    setData: Updater<ottoMaticLevel>;
+    fenceData: FenceData;
+    setFenceData: Updater<FenceData>;
     fenceIdx: number;
   }) => {
     const [selectedFence, setSelectedFence] = useAtom(SelectedFence);
@@ -29,10 +27,6 @@ export const Fence = memo(
     if (!fenceNubs) return null;
 
     const lines = fenceNubs.flatMap((nub) => [nub[0], nub[1]]);
-
-    // Get fence type from fence data
-    const fenceDef = fenceData.Fenc[1000]?.obj[fenceIdx];
-    const fenceType = fenceDef?.fenceType ?? 0;
 
     return (
       <>

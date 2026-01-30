@@ -1,9 +1,9 @@
 import type { Updater } from "use-immer";
 import type {
-  SplineItem,
-  SplineNub,
+  SplineItem as SplineItemType,
+  SplineNub as SplineNubType,
+  SplineData,
 } from "@/python/structSpecs/LevelTypes";
-import type { SplineData } from "@/python/structSpecs/LevelTypes";
 import { Line, Circle, Rect, Label, Tag, Text } from "react-konva";
 import type Konva from "konva";
 import { useAtom, useAtomValue } from "jotai";
@@ -21,12 +21,12 @@ import { updateSplinePointsFromNubs, SPLINE_KEY_BASE } from "./splineUtils";
 
 export const Spline = memo(
   ({
-    data,
-    setData,
+    splineData,
+    setSplineData,
     splineIdx,
   }: {
-    data: ottoMaticLevel;
-    setData: Updater<ottoMaticLevel>;
+    splineData: SplineData;
+    setSplineData: Updater<SplineData>;
     splineIdx: number;
   }) => {
     const selectedSpline = useAtomValue(SelectedSpline);
@@ -36,17 +36,18 @@ export const Spline = memo(
 
     const nubs = selectSplineNubs(splineData, SPLINE_KEY_BASE + splineIdx);
     const items = selectSplineItems(splineData, SPLINE_KEY_BASE + splineIdx);
-    const splinePoints = selectSplinePoints(
-      splineData,
-      SPLINE_KEY_BASE + splineIdx,
-    );
 
+    const splinePts = splineData.SpPt?.[SPLINE_KEY_BASE + splineIdx]?.obj;
+    
     const points = useMemo(() => {
-      return data.SpPt[SPLINE_KEY_BASE + splineIdx].obj.flatMap((point) => [
+      if (!splinePts) return [];
+      return splinePts.flatMap((point) => [
         point.x,
         point.z,
       ]);
-    }, [data.SpPt[SPLINE_KEY_BASE + splineIdx].obj]);
+    }, [splinePts]);
+
+    if (!splinePts) return null;
 
     return (
       <>
@@ -86,7 +87,7 @@ export const Spline = memo(
                 spNb.obj = updatedNubs;
               }
               const spln =
-                draft.Spln?.[1000]?.obj?.[SPLINE_KEY_BASE + splineIdx];
+                draft.Spln?.[1000]?.obj?.[splineIdx];
               if (spln) {
                 spln.numNubs = updatedNubs.length;
               }
@@ -113,7 +114,7 @@ export const Spline = memo(
               nub={nub}
               nubIdx={nubIdx}
               splineIdx={splineIdx}
-              setData={setData}
+              setSplineData={setSplineData}
             />
           );
         })}
@@ -145,12 +146,12 @@ const SplineNub = memo(
     nub,
     nubIdx,
     splineIdx,
-    setData,
+    setSplineData,
   }: {
-    nub: SplineNub;
+    nub: SplineNubType;
     nubIdx: number;
     splineIdx: number;
-    setData: Updater<ottoMaticLevel>;
+    setSplineData: Updater<SplineData>;
   }) => {
     const [selectedSpline, setSelectedSpline] = useAtom(SelectedSpline);
     const [hovering, setHovering] = useState(false);
@@ -199,7 +200,7 @@ const SplineNub = memo(
                 }
 
                 const spln =
-                  draft.Spln?.[1000]?.obj?.[SPLINE_KEY_BASE + splineIdx];
+                  draft.Spln?.[1000]?.obj?.[splineIdx];
                 if (spln) {
                   spln.numNubs = updatedNubs.length;
                   spln.numPoints = newPoints.length;
@@ -226,7 +227,7 @@ const SplineNub = memo(
               const spNbEntry = draft.SpNb?.[SPLINE_KEY_BASE + splineIdx];
               if (spNbEntry) spNbEntry.obj = updatedNubs;
               const splnEntry =
-                draft.Spln?.[1000]?.obj?.[SPLINE_KEY_BASE + splineIdx];
+                draft.Spln?.[1000]?.obj?.[splineIdx];
               if (splnEntry) splnEntry.numNubs = updatedNubs.length;
             });
 
@@ -254,7 +255,7 @@ const ITEM_BOX_SIZE = 12;
 const ITEM_BOX_OFFSET = ITEM_BOX_SIZE / 2;
 
 const SplineItem = memo(
-  ({ x, z, item }: { x: number; z: number; item: SplineItem }) => {
+  ({ x, z, item }: { x: number; z: number; item: SplineItemType }) => {
     const [hovering, setHovering] = useState(false);
     const globals = useAtomValue(Globals);
     return (
@@ -285,12 +286,7 @@ const SplineItem = memo(
         <Label opacity={1} visible={hovering} x={x + 15} y={z}>
           <Tag fill="blue" />
           <Text
-            text={
-              getSplineItemName(
-                globals,
-                item.type,
-              ) /* splineItemTypeNames[item.type] */
-            }
+            text={getSplineItemName(globals, item.type)}
             fontSize={8}
             fill="white"
           />
@@ -299,5 +295,3 @@ const SplineItem = memo(
     );
   },
 );
-
-// SPLINE_KEY_BASE is now exported from splineUtils.ts
