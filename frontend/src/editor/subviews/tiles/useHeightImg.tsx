@@ -1,6 +1,5 @@
 import {
   StandardHeader,
-  LevelData,
 } from "@/python/structSpecs/LevelTypes";
 import { HeaderData, TerrainData } from "@/python/structSpecs/LevelTypes";
 import { useMemo } from "react";

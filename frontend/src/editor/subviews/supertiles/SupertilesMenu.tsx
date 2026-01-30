@@ -40,9 +40,9 @@ export function SupertileMenu({
   const hedr = headerData.Hedr[1000].obj;
   const globals = useAtomValue(Globals);
   // State for image editor - unused but kept for future implementation
-  const [isEditingTile, setIsEditingTile] = useState(false);
-  const [isEditingMap, setIsEditingMap] = useState(false);
-  const [editingImageUrl, setEditingImageUrl] = useState<string | null>(null);
+  const [_isEditingTile, setIsEditingTile] = useState(false);
+  const [_isEditingMap, setIsEditingMap] = useState(false);
+  const [_editingImageUrl, setEditingImageUrl] = useState<string | null>(null);
 
   // Check if STgd exists
   if (!terrainData.STgd?.[1000]?.obj) {
@@ -80,7 +80,7 @@ export function SupertileMenu({
   };
 
   // Handle editing whole map texture
-  const handleEditMapTexture = () => {
+  const _handleEditMapTexture = () => {
     // Create the full map canvas for editing
     const canvas = document.createElement("canvas");
     canvas.width =
@@ -126,7 +126,7 @@ export function SupertileMenu({
   };
 
   // Handle saving edited tile texture
-  const handleSaveTileEdit = async (
+  const _handleSaveTileEdit = async (
     editedImageData: ImageData,
   ): Promise<void> => {
     const selectedTileData = stgd[selectedTile];
@@ -158,7 +158,7 @@ export function SupertileMenu({
   };
 
   // Handle saving edited map texture
-  const handleSaveMapEdit = async (
+  const _handleSaveMapEdit = async (
     editedImageData: ImageData,
   ): Promise<void> => {
     // Create canvas from edited image data

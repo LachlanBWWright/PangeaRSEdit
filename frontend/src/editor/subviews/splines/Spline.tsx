@@ -14,7 +14,7 @@ import { getSplineItemName } from "@/data/splines/getSplineItemNames";
 import { Globals } from "@/data/globals/globals";
 import {
   selectSplineNubs,
-  selectSplinePoints,
+  // selectSplinePoints,
   selectSplineItems,
 } from "../../../data/selectors";
 import { updateSplinePointsFromNubs, SPLINE_KEY_BASE } from "./splineUtils";

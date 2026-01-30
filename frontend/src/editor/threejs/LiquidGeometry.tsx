@@ -42,7 +42,7 @@ const getLiquidProperties = (type: WaterBodyType) => {
   }
 };
 
-export const LiquidGeometry: React.FC<LiquidGeometryProps> = ({ liquidData, headerData, terrainData }) => {
+export const LiquidGeometry: React.FC<LiquidGeometryProps> = ({ liquidData, _headerData, _terrainData }) => {
   const globals = useAtomValue(Globals);
 
   if (!liquidData.Liqd?.[1000]?.obj) {

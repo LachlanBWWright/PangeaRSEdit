@@ -309,7 +309,7 @@ export function ModelViewer() {
                     f.name.toLowerCase().endsWith(".glb"),
                   );
                   if (file) {
-                    let downloadName = file.name.replace(/\.glb$/, ".bg3d");
+                    const downloadName = file.name.replace(/\.glb$/, ".bg3d");
                     try {
                       const buffer = await file.arrayBuffer();
                       const worker = new BG3DGltfWorker();
@@ -368,7 +368,7 @@ export function ModelViewer() {
                 onChange={async (e) => {
                   const file = e.target.files?.[0];
                   if (!file) return;
-                  let downloadName = file.name.replace(/\.glb$/, ".bg3d");
+                  const downloadName = file.name.replace(/\.glb$/, ".bg3d");
                   try {
                     const buffer = await file.arrayBuffer();
                     const worker = new BG3DGltfWorker();
