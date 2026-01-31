@@ -112,6 +112,16 @@ describe("Game Item Mappers", () => {
       expect(typeof counts).toBe("object");
       expect(counts["OTTO_MATIC"]).toBeGreaterThan(0);
     });
+    
+    it("new mappers should have reasonable counts", () => {
+      const counts = getAllMappingCounts();
+      // Check the mappers we created in this session
+      expect(counts["OTTO_MATIC"]).toBeGreaterThanOrEqual(50);
+      expect(counts["NANOSAUR"]).toBeGreaterThanOrEqual(10);
+      expect(counts["NANOSAUR_2"]).toBeGreaterThanOrEqual(10);
+      expect(counts["CRO_MAG"]).toBeGreaterThanOrEqual(10);
+      expect(counts["BILLY_FRONTIER"]).toBeGreaterThanOrEqual(10);
+    });
   });
   
   describe("getTotalMappedItems", () => {
