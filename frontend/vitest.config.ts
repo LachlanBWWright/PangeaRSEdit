@@ -18,6 +18,7 @@ export default defineConfig({
       "tests/tiles/**/*.test.ts",
       "tests/items/**/*.test.ts",
       "tests/validation/**/*.test.ts",
+      "tests/splines/**/*.test.ts",
       "src/types/*.test.ts",
     ],
     exclude: [
