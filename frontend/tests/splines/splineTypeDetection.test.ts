@@ -52,6 +52,67 @@ describe("Spline Type Detection", () => {
       ];
       expect(detectSplineType(nubs)).toBe(SplineType.OPEN);
     });
+    
+    it("should detect circular spline with exactly 2 nubs at same position", () => {
+      const nubs = [
+        { x: 100, z: 200 },
+        { x: 100, z: 200 }, // Same as first
+      ];
+      expect(detectSplineType(nubs)).toBe(SplineType.CIRCULAR);
+    });
+    
+    it("should detect open spline with exactly 2 nubs at different positions", () => {
+      const nubs = [
+        { x: 100, z: 200 },
+        { x: 300, z: 400 }, // Different from first
+      ];
+      expect(detectSplineType(nubs)).toBe(SplineType.OPEN);
+    });
+    
+    it("should handle long splines correctly", () => {
+      // Circular long spline
+      const circularNubs = [
+        { x: 0, z: 0 },
+        { x: 100, z: 0 },
+        { x: 200, z: 50 },
+        { x: 250, z: 100 },
+        { x: 200, z: 150 },
+        { x: 100, z: 200 },
+        { x: 50, z: 150 },
+        { x: 0, z: 100 },
+        { x: 0, z: 0 }, // Back to start
+      ];
+      expect(detectSplineType(circularNubs)).toBe(SplineType.CIRCULAR);
+      
+      // Open long spline
+      const openNubs = [
+        { x: 0, z: 0 },
+        { x: 100, z: 50 },
+        { x: 200, z: 100 },
+        { x: 300, z: 150 },
+        { x: 400, z: 200 },
+      ];
+      expect(detectSplineType(openNubs)).toBe(SplineType.OPEN);
+    });
+    
+    it("should handle negative coordinates", () => {
+      const nubs = [
+        { x: -100, z: -200 },
+        { x: 0, z: 0 },
+        { x: 100, z: 200 },
+        { x: -100, z: -200 }, // Back to start
+      ];
+      expect(detectSplineType(nubs)).toBe(SplineType.CIRCULAR);
+    });
+    
+    it("should handle very large coordinates", () => {
+      const nubs = [
+        { x: 100000, z: 200000 },
+        { x: 150000, z: 250000 },
+        { x: 200000, z: 300000 },
+      ];
+      expect(detectSplineType(nubs)).toBe(SplineType.OPEN);
+    });
   });
 
   describe("gameUsesNonCircularSplines", () => {
