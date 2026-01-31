@@ -43,14 +43,15 @@ export function spanPoints(distance: number) {
  * Bake a spline from control nubs into a series of points.
  * @param nubs - Array of control points
  * @param pointsPerSpan - Number of interpolated points per segment
- * @param circular - If true, creates a closed loop (default: true for backward compatibility)
- *                   Note: Currently this parameter affects distance calculation in getPoints;
- *                   the baking algorithm always produces a continuous spline.
+ * @param circular - Reserved for future use. The circular parameter affects
+ *                   distance calculation in getPoints(); this baking function
+ *                   will be enhanced to properly handle circular vs open splines.
  */
 export function bakeSpline(nubs: SplinePoint[], pointsPerSpan: number[], circular?: boolean) {
-  // TODO: Implement circular-aware baking to properly close the loop for circular splines
-  // The circular parameter is used by getPoints() to determine segment count
-  // The bakeSpline algorithm produces a continuous curve regardless
+  // TODO(Plan-004): Implement circular-aware baking to properly close the loop
+  // for circular splines. Currently, the spline curve generation always produces
+  // a continuous curve - the circular behavior is handled by getPoints() which
+  // controls segment count and by Spline.tsx which handles nub synchronization.
   void circular;
   const numNubs = nubs.length;
   /*     SplinePointType** pointsHandle;

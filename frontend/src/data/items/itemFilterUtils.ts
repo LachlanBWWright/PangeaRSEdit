@@ -58,12 +58,12 @@ export function isItemVisible(
 }
 
 /**
- * Check if an item matches the current search query.
+ * Check if an item matches the current search query for highlighting.
  * 
  * @param itemType - The numeric item type ID
  * @param filter - Current filter state
  * @param getTypeName - Function to get the display name for an item type
- * @returns true if the item matches the search query (or if no query is active)
+ * @returns true if the item matches the search query, false if no match or no active search
  */
 export function itemMatchesSearch(
   itemType: number,
@@ -71,7 +71,7 @@ export function itemMatchesSearch(
   getTypeName: GetItemTypeName,
 ): boolean {
   if (!filter.searchQuery) {
-    return false; // No active search
+    return false; // No active search - no items should be highlighted
   }
 
   const typeName = getTypeName(itemType);
