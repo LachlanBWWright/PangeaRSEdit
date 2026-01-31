@@ -13,7 +13,6 @@ import {
   getByStatus,
   VerificationStatus,
   type VerificationResult,
-  type VerificationSummary,
 } from "../../src/validation/citationVerifier";
 import type { Citation } from "../../src/validation/citationExtractor";
 
@@ -140,7 +139,7 @@ describe("citationVerifier", () => {
       sourceFile: "test.ts",
     });
     
-    const createMockResult = (status: VerificationStatus, game: string = "ottomatic"): VerificationResult => ({
+    const createMockResult = (status: VerificationStatus, game = "ottomatic"): VerificationResult => ({
       citation: createMockCitation(game),
       status,
     });

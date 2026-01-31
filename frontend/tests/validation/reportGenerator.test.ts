@@ -14,7 +14,7 @@ import { VerificationStatus, type VerificationResult } from "../../src/validatio
 import type { Citation } from "../../src/validation/citationExtractor";
 
 describe("reportGenerator", () => {
-  const createMockCitation = (game: string = "ottomatic", itemType: string = "TestItem"): Citation => ({
+  const createMockCitation = (game = "ottomatic", itemType = "TestItem"): Citation => ({
     game,
     itemType,
     itemTypeNumber: 1,
