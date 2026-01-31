@@ -11,6 +11,7 @@ import { bugdomItemMapper, BugdomItemMapper } from "./bugdomItemMapper";
 import { bugdom2ItemMapper, Bugdom2ItemMapper } from "./bugdom2ItemMapper";
 import { nanosaur2ItemMapper, Nanosaur2ItemMapper } from "./nanosaur2ItemMapper";
 import { croMagItemMapper, CroMagItemMapper } from "./croMagItemMapper";
+import { billyFrontierItemMapper, BillyFrontierItemMapper } from "./billyFrontierItemMapper";
 
 /**
  * Registry of all game mappers
@@ -21,8 +22,7 @@ const MAPPER_REGISTRY: Partial<Record<Game, GameItemModelMapper>> = {
   [Game.BUGDOM_2]: bugdom2ItemMapper,
   [Game.NANOSAUR_2]: nanosaur2ItemMapper,
   [Game.CRO_MAG]: croMagItemMapper,
-  // TODO: Add other mappers as they are implemented
-  // [Game.BILLY_FRONTIER]: billyFrontierItemMapper,
+  [Game.BILLY_FRONTIER]: billyFrontierItemMapper,
 };
 
 /**
@@ -66,4 +66,11 @@ export function getAllMappingCounts(): Record<string, number> {
 }
 
 // Re-export mapper classes for direct use if needed
-export { OttoItemMapper, BugdomItemMapper, Bugdom2ItemMapper, Nanosaur2ItemMapper, CroMagItemMapper };
+export { 
+  OttoItemMapper, 
+  BugdomItemMapper, 
+  Bugdom2ItemMapper, 
+  Nanosaur2ItemMapper, 
+  CroMagItemMapper,
+  BillyFrontierItemMapper,
+};
