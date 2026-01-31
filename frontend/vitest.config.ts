@@ -21,6 +21,7 @@ export default defineConfig({
       "tests/splines/**/*.test.ts",
       "src/types/*.test.ts",
       "src/data/utils/*.test.ts",
+      "src/data/selectors/*.test.ts",
     ],
     exclude: [
       "tests/e2e/**",
