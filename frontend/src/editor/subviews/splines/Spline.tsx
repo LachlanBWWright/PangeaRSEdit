@@ -18,6 +18,11 @@ import {
   selectSplineItems,
 } from "../../../data/selectors";
 import { updateSplinePointsFromNubs, SPLINE_KEY_BASE } from "./splineUtils";
+import {
+  detectSplineType,
+  shouldShowFirstNub,
+  shouldSyncFirstAndLastNubs,
+} from "@/data/splines/splineTypeDetection";
 
 export const Spline = memo(
   ({
@@ -38,6 +43,11 @@ export const Spline = memo(
     const items = selectSplineItems(splineData, SPLINE_KEY_BASE + splineIdx);
 
     const splinePts = splineData.SpPt?.[SPLINE_KEY_BASE + splineIdx]?.obj;
+    
+    // Detect if this spline is circular (closed loop) or open (distinct start/end)
+    const splineType = useMemo(() => detectSplineType(nubs), [nubs]);
+    const showFirstNub = shouldShowFirstNub(splineType);
+    const syncFirstAndLast = shouldSyncFirstAndLastNubs(splineType);
     
     const points = useMemo(() => {
       if (!splinePts) return [];
@@ -107,7 +117,9 @@ export const Spline = memo(
           }}
         />
         {nubs.map((nub, nubIdx) => {
-          if (nubIdx === 0) return null;
+          // For circular splines, hide the first nub (it's merged with the last)
+          // For open splines (Billy Frontier), show both endpoints
+          if (nubIdx === 0 && !showFirstNub) return null;
           return (
             <SplineNub
               key={nubIdx}
@@ -115,6 +127,7 @@ export const Spline = memo(
               nubIdx={nubIdx}
               splineIdx={splineIdx}
               setSplineData={setSplineData}
+              syncFirstAndLast={syncFirstAndLast}
             />
           );
         })}
@@ -147,11 +160,13 @@ const SplineNub = memo(
     nubIdx,
     splineIdx,
     setSplineData,
+    syncFirstAndLast,
   }: {
     nub: SplineNubType;
     nubIdx: number;
     splineIdx: number;
     setSplineData: Updater<SplineData>;
+    syncFirstAndLast: boolean;
   }) => {
     const [selectedSpline, setSelectedSpline] = useAtom(SelectedSpline);
     const [hovering, setHovering] = useState(false);
@@ -178,8 +193,8 @@ const SplineNub = memo(
                 const updatedNubs = [...currentNubs];
                 updatedNubs[nubIdx] = { x: newX, z: newZ };
 
-                //Modify "hidden" final nub, which is to be in the same position as the first nub
-                if (nubIdx === currentNubs.length - 1) {
+                // For circular splines, sync first and last nub positions
+                if (syncFirstAndLast && nubIdx === currentNubs.length - 1) {
                   updatedNubs[0] = { x: newX, z: newZ };
                 }
 
@@ -219,8 +234,8 @@ const SplineNub = memo(
               const updatedNubs = [...currentNubs];
               updatedNubs[nubIdx] = { x: newX, z: newZ };
 
-              //Modify "hidden" final nub, which is to be in the same position as the first nub
-              if (nubIdx === currentNubs.length - 1) {
+              // For circular splines, sync first and last nub positions
+              if (syncFirstAndLast && nubIdx === currentNubs.length - 1) {
                 updatedNubs[0] = { x: newX, z: newZ };
               }
 
