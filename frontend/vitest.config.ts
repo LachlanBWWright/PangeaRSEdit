@@ -19,6 +19,7 @@ export default defineConfig({
       "tests/items/**/*.test.ts",
       "tests/validation/**/*.test.ts",
       "tests/splines/**/*.test.ts",
+      "tests/utils/**/*.test.ts",
       "src/types/*.test.ts",
       "src/data/utils/*.test.ts",
       "src/data/selectors/*.test.ts",
