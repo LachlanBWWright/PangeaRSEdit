@@ -42,7 +42,7 @@ const getLiquidProperties = (type: WaterBodyType) => {
   }
 };
 
-export const LiquidGeometry: React.FC<LiquidGeometryProps> = ({ liquidData, _headerData, _terrainData }) => {
+export const LiquidGeometry: React.FC<LiquidGeometryProps> = ({ liquidData, headerData, terrainData }) => {
   const globals = useAtomValue(Globals);
 
   if (!liquidData.Liqd?.[1000]?.obj) {
@@ -116,7 +116,8 @@ export const LiquidGeometry: React.FC<LiquidGeometryProps> = ({ liquidData, _hea
           getTerrainHeightAtPoint(
             patch.hotSpotX,
             patch.hotSpotZ,
-            data,
+            headerData,
+            terrainData,
             globals,
           ) + 100; //patch.height;
 

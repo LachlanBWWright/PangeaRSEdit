@@ -1,9 +1,7 @@
-import { bg3dParsedToBG3D, parseBG3D } from "./parseBG3D";
+import { bg3dParsedToBG3D, parseBG3D, type BG3DParseResult } from "./parseBG3D";
 import { bg3dParsedToGLTF, gltfToBG3D } from "./parsedBg3dGitfConverter";
 import { parseBG3DWithSkeletonResource } from "./bg3dWithSkeleton";
 import { parse3DMF } from "./parse3dmf";
-// Commented out unused import to fix build error
-// import { bg3dSkeletonToSkeletonResource, skeletonResourceToBinary } from "./skeletonExport";
 import { WebIO } from "@gltf-transform/core";
 import type { SkeletonResource } from "../python/structSpecs/skeleton/skeletonInterface";
 import { isErr, Result } from "../types/result";
@@ -32,12 +30,30 @@ export type BG3DGltfWorkerMessage =
   | {
       type: "glb-to-bg3d";
       buffer: ArrayBuffer;
+    }
+  | {
+      type: "glb-to-bg3d-with-skeleton";
+      buffer: ArrayBuffer;
+    }
+  | {
+      type: "bg3d-with-skeleton-to-glb";
+      bg3dBuffer: ArrayBuffer;
+      skeletonData: SkeletonResource;
+    }
+  | {
+      type: "bg3d-parsed-to-glb";
+      parsed: BG3DParseResult;
+    }
+  | {
+      type: "bg3d-parsed-to-bg3d";
+      parsed: BG3DParseResult;
     };
 
 export type BG3DGltfWorkerResponse =
   | {
       type: "bg3d-to-glb";
       result: ArrayBuffer;
+      parsed?: BG3DParseResult;
     }
   | {
       type: "glb-to-bg3d";
@@ -47,6 +63,11 @@ export type BG3DGltfWorkerResponse =
       type: "glb-to-bg3d-with-skeleton";
       bg3dResult: ArrayBuffer;
       skeletonResult?: ArrayBuffer;
+    }
+  | {
+      type: "bg3d-with-skeleton-to-glb";
+      result: ArrayBuffer;
+      parsed?: BG3DParseResult;
     }
   | {
       type: "bg3d-parsed-to-glb";

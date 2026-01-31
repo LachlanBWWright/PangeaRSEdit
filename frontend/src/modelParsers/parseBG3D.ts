@@ -189,7 +189,7 @@ export interface BG3DSkeleton {
 export interface BG3DParseResult {
   materials: BG3DMaterial[];
   groups: BG3DGroup[];
-  // ...other global properties as needed
+  skeleton?: BG3DSkeleton;
 }
 
 /**
