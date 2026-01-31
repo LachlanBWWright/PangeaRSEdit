@@ -20,6 +20,7 @@ export default defineConfig({
       "tests/validation/**/*.test.ts",
       "tests/splines/**/*.test.ts",
       "src/types/*.test.ts",
+      "src/data/utils/*.test.ts",
     ],
     exclude: [
       "tests/e2e/**",
