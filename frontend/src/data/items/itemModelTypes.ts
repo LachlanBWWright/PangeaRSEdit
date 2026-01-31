@@ -173,8 +173,8 @@ export const GAME_MODEL_REGISTRIES: Partial<Record<Game, GameModelRegistry>> = {
       3: ["level3.bg3d"],
     },
   },
-  [Game.CRO_MAG_RALLY]: {
-    game: Game.CRO_MAG_RALLY,
+  [Game.CRO_MAG]: {
+    game: Game.CRO_MAG,
     modelBasePath: "games/cromag/models",
     skeletonBasePath: "games/cromag/skeletons",
     globalModels: ["global.bg3d"],

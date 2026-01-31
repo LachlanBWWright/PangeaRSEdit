@@ -97,7 +97,7 @@ describe("itemModelTypes", () => {
     it("should return true for games with registries", () => {
       expect(gameHasModelSupport(Game.OTTO_MATIC)).toBe(true);
       expect(gameHasModelSupport(Game.BUGDOM_2)).toBe(true);
-      expect(gameHasModelSupport(Game.CRO_MAG_RALLY)).toBe(true);
+      expect(gameHasModelSupport(Game.CRO_MAG)).toBe(true);
     });
     
     it("should return false for games without registries", () => {
