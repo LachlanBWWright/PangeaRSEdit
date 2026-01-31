@@ -490,8 +490,17 @@ export function serializeMightyMikeLevel(levelData: LevelData): Result<ArrayBuff
       for (let x = 0; x < width; x++) {
           const i = y * width + x;
           const tile = tileValues[i];
-          if (tile && typeof tile.rawValue === 'number') {
-              row.push(tile as MightyMikeTileValue);
+          if (tile && typeof tile.rawValue === 'number' && 
+              typeof tile.tileIndex === 'number' &&
+              typeof tile.hasCollisionMask === 'boolean' &&
+              typeof tile.usePixelAccurateCollision === 'boolean') {
+              // We've verified all fields exist with correct types
+              row.push({
+                rawValue: tile.rawValue as number,
+                tileIndex: tile.tileIndex as number,
+                hasCollisionMask: tile.hasCollisionMask as boolean,
+                usePixelAccurateCollision: tile.usePixelAccurateCollision as boolean
+              });
           } else {
               row.push({ rawValue: 0, tileIndex: 0, hasCollisionMask: false, usePixelAccurateCollision: false });
           }

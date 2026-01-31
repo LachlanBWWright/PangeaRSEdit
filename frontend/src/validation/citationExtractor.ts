@@ -29,12 +29,16 @@ export interface Citation {
 }
 
 // Generic type for any item params object that we can extract citations from
-type GenericItemParams = Record<number | string, Record<string, ParamDescription | undefined>>;
+// Uses 'unknown' to accept any record structure, with runtime type checking
+type GameItemParamsEntry = {
+  params: unknown;
+  sourceFile: string;
+};
 
 /**
  * Map of game names to their item type param definitions
  */
-const GAME_ITEM_PARAMS: Record<string, { params: GenericItemParams; sourceFile: string }> = {
+const GAME_ITEM_PARAMS: Record<string, GameItemParamsEntry> = {
   ottomatic: {
     params: TerrainItemTypeParams,
     sourceFile: "frontend/src/data/items/ottoItemType.ts",

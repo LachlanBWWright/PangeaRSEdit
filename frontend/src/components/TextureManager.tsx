@@ -13,6 +13,8 @@ interface Texture {
 interface TextureManagerProps {
   textures: Texture[];
   onDownloadTexture: (texture: Texture) => void;
+  onReplaceTexture?: (texture: Texture, file: File) => Promise<void>;
+  onTextureEdit?: (texture: Texture, editedImageData: ImageData) => Promise<void>;
 }
 
 export function TextureManager({

@@ -402,7 +402,7 @@ export function bg3dParsedToGLTF(
 ): Document {
   const doc = new Document();
   console.log("Creating new glTF Document");
-  doc.createBuffer("Basebuffer");
+  const baseBuffer = doc.createBuffer("Basebuffer");
   console.log("Created base buffer for glTF Document");
 
   // 1. Materials
@@ -678,7 +678,7 @@ export function bg3dParsedToGLTF(
 
   // 4. Meshes and Primitives
   const gltfMeshes: Mesh[] = [];
-  allGeometries.forEach((geom) => {
+  allGeometries.forEach((geom, meshIndex) => {
     const mesh = doc.createMesh();
 
     mesh.setName(`Item_${gltfMeshes.length.toString().padStart(4, "0")}`);
@@ -741,9 +741,9 @@ export function bg3dParsedToGLTF(
               const decomposedPoint = decomposedPointList[decomposedIndex];
               if (!decomposedPoint) return;
 
-              // Find all references that point to this mesh (index)
+              // Find all references that point to this mesh (meshIndex)
               for (const ref of decomposedPoint.refs) {
-                if (ref.meshIndex === index) {
+                if (ref.meshIndex === meshIndex) {
                   // This decomposed point maps to vertex ref.vertexIndex in this mesh
                   const localVertexIndex = ref.vertexIndex;
                   if (localVertexIndex < numVertices) {
@@ -1243,7 +1243,7 @@ export async function gltfToBG3D(doc: Document): Promise<BG3DParseResult> {
           }
         }
       } else {
-        console.log(`Material[${i}]: No baseColorTexture found.`);
+        console.log(`Material[${index}]: No baseColorTexture found.`);
       }
 
       return {
@@ -2094,11 +2094,10 @@ export async function gltfToBG3D(doc: Document): Promise<BG3DParseResult> {
   }
 
   function processNode(node: Node): BG3DGroup | BG3DGeometry {
-    const children: (BG3DGroup | BG3DGeometry)[] = [];
     const mesh = node.getMesh();
     if (mesh) {
       // Use processMesh to extract geometry from mesh
-      return processMesh(mesh, 0);
+      return processMesh(mesh);
     }
 
     // Process child nodes
@@ -2128,12 +2127,9 @@ export async function gltfToBG3D(doc: Document): Promise<BG3DParseResult> {
 
   return {
     materials,
-    //TODO: Fix any use
-    groups: processedNodes as any as BG3DGroup[], //groups,
-    //groups,
+    groups,
+    skeleton,
   };
-  console.log("gltfToBG3D: Final BG3DParseResult:", result);
-  return result;
 }
 
 interface OttoRoundtrip {
