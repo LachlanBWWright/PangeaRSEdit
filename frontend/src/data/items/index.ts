@@ -21,9 +21,12 @@ export {
 export {
   FilterMode,
   type ItemFilterState,
+  type FilterPreset,
   itemFilterStateAtom,
   savedFiltersAtom,
-  BUILT_IN_FILTER_PRESETS,
+  isFilterActiveAtom,
+  FILTER_PRESETS,
+  DEFAULT_FILTER_STATE,
 } from "./itemFilterAtoms";
 
 export {
@@ -31,6 +34,7 @@ export {
   itemMatchesSearch,
   getVisibleItemTypes,
   countItemsByCategory,
+  createDefaultFilter,
   applyFilterPreset,
 } from "./itemFilterUtils";
 
@@ -98,4 +102,8 @@ export {
   OttoItemMapper,
   BugdomItemMapper,
   Bugdom2ItemMapper,
+  Nanosaur1ItemMapper,
+  Nanosaur2ItemMapper,
+  CroMagItemMapper,
+  BillyFrontierItemMapper,
 } from "./mappers";
