@@ -96,5 +96,6 @@ export {
   getGamesWithMappers,
   getAllMappingCounts,
   OttoItemMapper,
+  BugdomItemMapper,
   Bugdom2ItemMapper,
 } from "./mappers";

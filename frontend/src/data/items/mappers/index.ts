@@ -7,6 +7,7 @@
 import { Game } from "../../globals/globals";
 import { type GameItemModelMapper } from "../itemModelTypes";
 import { ottoItemMapper, OttoItemMapper } from "./ottoItemMapper";
+import { bugdomItemMapper, BugdomItemMapper } from "./bugdomItemMapper";
 import { bugdom2ItemMapper, Bugdom2ItemMapper } from "./bugdom2ItemMapper";
 
 /**
@@ -14,9 +15,9 @@ import { bugdom2ItemMapper, Bugdom2ItemMapper } from "./bugdom2ItemMapper";
  */
 const MAPPER_REGISTRY: Partial<Record<Game, GameItemModelMapper>> = {
   [Game.OTTO_MATIC]: ottoItemMapper,
+  [Game.BUGDOM]: bugdomItemMapper,
   [Game.BUGDOM_2]: bugdom2ItemMapper,
   // TODO: Add other mappers as they are implemented
-  // [Game.BUGDOM]: bugdomItemMapper,
   // [Game.NANOSAUR_2]: nanosaur2ItemMapper,
   // [Game.CRO_MAG_RALLY]: croMagItemMapper,
   // [Game.BILLY_FRONTIER]: billyFrontierItemMapper,
@@ -63,4 +64,4 @@ export function getAllMappingCounts(): Record<string, number> {
 }
 
 // Re-export mapper classes for direct use if needed
-export { OttoItemMapper, Bugdom2ItemMapper };
+export { OttoItemMapper, BugdomItemMapper, Bugdom2ItemMapper };
