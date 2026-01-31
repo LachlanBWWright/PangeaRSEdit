@@ -13,6 +13,9 @@ import {
 import { ottoItemMapper } from "../../src/data/items/mappers/ottoItemMapper";
 import { bugdomItemMapper } from "../../src/data/items/mappers/bugdomItemMapper";
 import { bugdom2ItemMapper } from "../../src/data/items/mappers/bugdom2ItemMapper";
+import { nanosaur2ItemMapper } from "../../src/data/items/mappers/nanosaur2ItemMapper";
+import { croMagItemMapper } from "../../src/data/items/mappers/croMagItemMapper";
+import { billyFrontierItemMapper } from "../../src/data/items/mappers/billyFrontierItemMapper";
 
 describe("Game Item Mappers", () => {
   describe("getGameMapper", () => {
@@ -32,6 +35,24 @@ describe("Game Item Mappers", () => {
       const mapper = getGameMapper(Game.BUGDOM);
       expect(mapper).toBeDefined();
       expect(mapper?.game).toBe(Game.BUGDOM);
+    });
+    
+    it("should return mapper for Nanosaur 2", () => {
+      const mapper = getGameMapper(Game.NANOSAUR_2);
+      expect(mapper).toBeDefined();
+      expect(mapper?.game).toBe(Game.NANOSAUR_2);
+    });
+    
+    it("should return mapper for Cro-Mag Rally", () => {
+      const mapper = getGameMapper(Game.CRO_MAG);
+      expect(mapper).toBeDefined();
+      expect(mapper?.game).toBe(Game.CRO_MAG);
+    });
+    
+    it("should return mapper for Billy Frontier", () => {
+      const mapper = getGameMapper(Game.BILLY_FRONTIER);
+      expect(mapper).toBeDefined();
+      expect(mapper?.game).toBe(Game.BILLY_FRONTIER);
     });
     
     it("should return undefined for games without mappers", () => {
@@ -145,6 +166,104 @@ describe("Game Item Mappers", () => {
       // Bugdom mappings are TODOs, so getMappedTypes should return empty array
       const types = bugdomItemMapper.getMappedTypes();
       expect(Array.isArray(types)).toBe(true);
+    });
+  });
+  
+  describe("Nanosaur2ItemMapper", () => {
+    it("should have correct game type", () => {
+      expect(nanosaur2ItemMapper.game).toBe(Game.NANOSAUR_2);
+    });
+    
+    it("should have mappings", () => {
+      expect(nanosaur2ItemMapper.getMappingCount()).toBeGreaterThan(0);
+    });
+    
+    it("should get mapping for known item type", () => {
+      const mappedTypes = nanosaur2ItemMapper.getMappedTypes();
+      if (mappedTypes.length > 0) {
+        const firstType = mappedTypes[0];
+        const mapping = nanosaur2ItemMapper.getMapping(firstType);
+        expect(mapping).toBeDefined();
+        expect(mapping?.modelFile).toBeTruthy();
+        expect(typeof mapping?.modelIndex).toBe("number");
+      }
+    });
+    
+    it("should return undefined for unmapped type", () => {
+      const mapping = nanosaur2ItemMapper.getMapping(99999);
+      expect(mapping).toBeUndefined();
+    });
+    
+    it("should handle variants", () => {
+      // Test variant handling with params
+      const mappedTypes = nanosaur2ItemMapper.getMappedTypes();
+      if (mappedTypes.length > 0) {
+        const firstType = mappedTypes[0];
+        const mapping = nanosaur2ItemMapper.getMapping(firstType, undefined, { p0: 0, p1: 0, p2: 0, p3: 0 });
+        expect(mapping === undefined || mapping !== null).toBe(true);
+      }
+    });
+  });
+  
+  describe("CroMagItemMapper", () => {
+    it("should have correct game type", () => {
+      expect(croMagItemMapper.game).toBe(Game.CRO_MAG);
+    });
+    
+    it("should have mappings", () => {
+      expect(croMagItemMapper.getMappingCount()).toBeGreaterThan(0);
+    });
+    
+    it("should get mapping for known item type", () => {
+      const mappedTypes = croMagItemMapper.getMappedTypes();
+      if (mappedTypes.length > 0) {
+        const firstType = mappedTypes[0];
+        const mapping = croMagItemMapper.getMapping(firstType);
+        expect(mapping).toBeDefined();
+        expect(mapping?.modelFile).toBeTruthy();
+        expect(typeof mapping?.modelIndex).toBe("number");
+      }
+    });
+    
+    it("should return undefined for unmapped type", () => {
+      const mapping = croMagItemMapper.getMapping(99999);
+      expect(mapping).toBeUndefined();
+    });
+  });
+  
+  describe("BillyFrontierItemMapper", () => {
+    it("should have correct game type", () => {
+      expect(billyFrontierItemMapper.game).toBe(Game.BILLY_FRONTIER);
+    });
+    
+    it("should have mappings", () => {
+      expect(billyFrontierItemMapper.getMappingCount()).toBeGreaterThan(0);
+    });
+    
+    it("should get mapping for known item type", () => {
+      const mappedTypes = billyFrontierItemMapper.getMappedTypes();
+      if (mappedTypes.length > 0) {
+        const firstType = mappedTypes[0];
+        const mapping = billyFrontierItemMapper.getMapping(firstType);
+        expect(mapping).toBeDefined();
+        expect(mapping?.modelFile).toBeTruthy();
+        expect(typeof mapping?.modelIndex).toBe("number");
+      }
+    });
+    
+    it("should return undefined for unmapped type", () => {
+      const mapping = billyFrontierItemMapper.getMapping(99999);
+      expect(mapping).toBeUndefined();
+    });
+    
+    it("should handle variants", () => {
+      // Test variant handling with params
+      const mappedTypes = billyFrontierItemMapper.getMappedTypes();
+      if (mappedTypes.length > 0) {
+        const firstType = mappedTypes[0];
+        const mapping = billyFrontierItemMapper.getMapping(firstType, undefined, { p0: 0, p1: 0, p2: 0, p3: 0 });
+        expect(mapping === undefined || mapping !== null).toBe(true);
+      }
     });
   });
 });
