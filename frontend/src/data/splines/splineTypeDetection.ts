@@ -55,15 +55,6 @@ export function gameUsesNonCircularSplines(game: Game): boolean {
 }
 
 /**
- * Get effective spline type considering game defaults and actual nub positions.
- */
-export function getEffectiveSplineType(
-  nubs: SplineNubPosition[],
-): SplineType {
-  return detectSplineType(nubs);
-}
-
-/**
  * Check if the first nub should be visible based on spline type.
  * For circular splines, the first nub is hidden (merged with last).
  * For open splines, both endpoints should be visible.

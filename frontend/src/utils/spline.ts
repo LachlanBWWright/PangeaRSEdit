@@ -8,13 +8,20 @@ function getSplineArray(arr: SplinePoint[][], index: number): SplinePoint[] {
   return arr[index] ?? [];
 }
 
-export function getPoints(nubs: SplinePoint[]) {
-  const pointsPerSpan = new Array<number>(nubs.length);
+/**
+ * Generate points along a spline from control nubs.
+ * @param nubs - Array of control points (nubs)
+ * @param circular - If true, the spline is a closed loop (last nub connects to first)
+ */
+export function getPoints(nubs: SplinePoint[], circular = true) {
+  const numNubs = circular ? nubs.length : nubs.length - 1;
+  const pointsPerSpan = new Array<number>(numNubs);
 
-  for (let i = 0; i < nubs.length; i++) {
+  for (let i = 0; i < numNubs; i++) {
     //Get distance
     const currentNub = nubs[i];
-    const nextNub = nubs[(i + 1) % nubs.length];
+    const nextIndex = circular ? (i + 1) % nubs.length : i + 1;
+    const nextNub = nubs[nextIndex];
     if (!currentNub || !nextNub) continue;
     const distance = calcQuickDistance(
       currentNub.x,
@@ -25,15 +32,26 @@ export function getPoints(nubs: SplinePoint[]) {
     pointsPerSpan[i] = spanPoints(distance);
   }
 
-  return bakeSpline(nubs, pointsPerSpan);
+  return bakeSpline(nubs, pointsPerSpan, circular);
 }
 
 export function spanPoints(distance: number) {
   return Math.round(3.0 * distance);
 }
 
-//Code for creating spline (similar to OreoTerrain)
-export function bakeSpline(nubs: SplinePoint[], pointsPerSpan: number[]) {
+/**
+ * Bake a spline from control nubs into a series of points.
+ * @param nubs - Array of control points
+ * @param pointsPerSpan - Number of interpolated points per segment
+ * @param circular - If true, creates a closed loop (default: true for backward compatibility)
+ *                   Note: Currently this parameter affects distance calculation in getPoints;
+ *                   the baking algorithm always produces a continuous spline.
+ */
+export function bakeSpline(nubs: SplinePoint[], pointsPerSpan: number[], circular?: boolean) {
+  // TODO: Implement circular-aware baking to properly close the loop for circular splines
+  // The circular parameter is used by getPoints() to determine segment count
+  // The bakeSpline algorithm produces a continuous curve regardless
+  void circular;
   const numNubs = nubs.length;
   /*     SplinePointType** pointsHandle;
     SplinePointType**space,*points;
