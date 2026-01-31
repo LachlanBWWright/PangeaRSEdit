@@ -1,9 +1,18 @@
 import { skeletonSpecs } from "../../python/structSpecs/skeleton/skeleton";
 
-import type {
-  PyodideMessage,
-  PyodideResponse,
-} from "../../python/pyodideWorker";
+// Type definitions for PyodideWorker messages (originally from ../../python/pyodideWorker)
+interface PyodideMessage {
+  type: "save_to_json";
+  bytes: ArrayBuffer;
+  struct_specs: unknown;
+  include_types: string[];
+  exclude_types: string[];
+}
+
+interface PyodideResponse {
+  type: "save_to_json";
+  result: ArrayBuffer;
+}
 
 /**
  * Parse a skeleton resource using the pyodide worker and skeletonSpecs

@@ -122,7 +122,7 @@ export function SkeletonConversionPanel({
         if (
           conversionType === "bg3d-to-glb" &&
           result.type === "bg3d-with-skeleton-to-glb" &&
-          result.parsed.skeleton
+          result.parsed?.skeleton
         ) {
           try {
             console.log(

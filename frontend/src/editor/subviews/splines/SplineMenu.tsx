@@ -29,13 +29,11 @@ import { getSplineItemName } from "@/data/splines/getSplineItemNames";
 export function SplineMenu({
   splineData,
   setSplineData,
-  headerData: _headerData,
-  setHeaderData: _setHeaderData,
 }: {
   splineData: SplineData;
   setSplineData: Updater<SplineData>;
-  headerData: HeaderData;
-  setHeaderData: Updater<HeaderData>;
+  headerData?: HeaderData;
+  setHeaderData?: Updater<HeaderData>;
 }) {
   const selectedSpline = useAtomValue(SelectedSpline);
   const [selectedSplineItem, setSelectedSplineItem] =

@@ -496,10 +496,10 @@ export function serializeMightyMikeLevel(levelData: LevelData): Result<ArrayBuff
               typeof tile.usePixelAccurateCollision === 'boolean') {
               // We've verified all fields exist with correct types
               row.push({
-                rawValue: tile.rawValue as number,
-                tileIndex: tile.tileIndex as number,
-                hasCollisionMask: tile.hasCollisionMask as boolean,
-                usePixelAccurateCollision: tile.usePixelAccurateCollision as boolean
+                rawValue: tile.rawValue,
+                tileIndex: tile.tileIndex,
+                hasCollisionMask: tile.hasCollisionMask,
+                usePixelAccurateCollision: tile.usePixelAccurateCollision
               });
           } else {
               row.push({ rawValue: 0, tileIndex: 0, hasCollisionMask: false, usePixelAccurateCollision: false });

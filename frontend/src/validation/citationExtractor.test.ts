@@ -4,7 +4,6 @@ import {
   extractAllCitations,
   getGamesWithItemParams,
   getCitationCount,
-  getAllCitationCounts,
 } from "./citationExtractor";
 import {
   getKnownGames,

@@ -9,11 +9,12 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { ModelUploadPanel } from "./ModelViewer/ModelUploadPanel";
 import { VisualizationOptions } from "./ModelViewer/VisualizationOptions";
 
-// ...existing code...
 import { SkeletonConversionPanel } from "@/components/SkeletonConversionPanel";
 import { BG3DParseResult } from "../modelParsers/parseBG3D";
 import { toast, Toaster } from "sonner";
-import { AnimationMixer, Group, Object3D } from "three";
+import { AnimationMixer, Group } from "three";
+import BG3DGltfWorker from "../modelParsers/bg3dGltfWorker?worker";
+import type { BG3DGltfWorkerResponse } from "../modelParsers/bg3dGltfWorker";
 import {
   downloadTexture,
   downloadBG3DModel,
@@ -44,8 +45,8 @@ export function ModelViewer() {
   const [showSkeleton, setShowSkeleton] = useState<boolean>(false);
   const [logBonePositions, setLogBonePositions] = useState<boolean>(false);
 
-  const [scene, setScene] = useState<Group | undefined>(undefined);
-  const [modelNodes, setModelNodes] = useState<ModelNode[]>([]);
+  const [, setScene] = useState<Group | undefined>(undefined);
+  const [, setModelNodes] = useState<ModelNode[]>([]);
   const [bg3dParsed, setBg3dParsed] = useState<BG3DParseResult | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -74,6 +75,26 @@ export function ModelViewer() {
   // Wrapper that delegates to the hook
   const handleFileUpload = (bg3dFile: File, skeletonFile?: File) => {
     return uploadFile(bg3dFile, skeletonFile);
+  };
+
+  // Handle BG3D file selection (step 1 of two-step flow)
+  const handleBg3dFileSelect = (file: File) => {
+    setPendingBg3dFile(file);
+    setUploadStep("select-skeleton");
+  };
+
+  // Handle skeleton file selection (step 2 of two-step flow)
+  const handleSkeletonFileSelect = (file?: File) => {
+    if (pendingBg3dFile) {
+      handleFileUpload(pendingBg3dFile, file);
+    }
+  };
+
+  // Skip skeleton selection and proceed with just the BG3D file
+  const handleSkipSkeleton = () => {
+    if (pendingBg3dFile) {
+      handleFileUpload(pendingBg3dFile);
+    }
   };
 
   function handleDrop(e: React.DragEvent) {
@@ -145,18 +166,6 @@ export function ModelViewer() {
   // Removed unused handleTexturesExtracted and handleNodesExtracted
 
   // Removed handleClonedSceneUpdate, handled in ModelCanvas
-
-  const onVisibilityChange = useCallback(
-    (nodeObject: Object3D, visible: boolean) => {
-      nodeObject.visible = visible;
-      // ModelCanvas will update model nodes after visibility change
-      console.log("Visibility change:", {
-        nodeName: nodeObject.name,
-        visible,
-      });
-    },
-    [],
-  );
 
   async function handleDownloadTexture(texture: Texture) {
     try {
@@ -316,7 +325,7 @@ export function ModelViewer() {
                       worker.postMessage({ type: "glb-to-bg3d", buffer }, [
                         buffer,
                       ]);
-                      worker.onmessage = (event) => {
+                      worker.onmessage = (event: MessageEvent<BG3DGltfWorkerResponse>) => {
                         if (event.data.type === "error") {
                           alert(
                             "GLB to BG3D conversion failed: " +
@@ -375,7 +384,7 @@ export function ModelViewer() {
                     worker.postMessage({ type: "glb-to-bg3d", buffer }, [
                       buffer,
                     ]);
-                    worker.onmessage = (event) => {
+                    worker.onmessage = (event: MessageEvent<BG3DGltfWorkerResponse>) => {
                       if (event.data.type === "error") {
                         alert(
                           "GLB to BG3D conversion failed: " + event.data.error,

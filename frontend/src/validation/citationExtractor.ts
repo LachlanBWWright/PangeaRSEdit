@@ -30,10 +30,10 @@ export interface Citation {
 
 // Generic type for any item params object that we can extract citations from
 // Uses 'unknown' to accept any record structure, with runtime type checking
-type GameItemParamsEntry = {
+interface GameItemParamsEntry {
   params: unknown;
   sourceFile: string;
-};
+}
 
 /**
  * Map of game names to their item type param definitions
@@ -102,9 +102,17 @@ export function extractCitations(game: string): Citation[] {
   const citations: Citation[] = [];
   const { params, sourceFile } = gameData;
 
-  for (const [itemTypeKey, itemParams] of Object.entries(params)) {
+  // Type guard to check if params is a record-like object we can iterate
+  if (typeof params !== 'object' || params === null) {
+    return [];
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion -- We validate each property at runtime before use
+  const paramsRecord = params as Record<string, Record<string, ParamDescription | undefined> | undefined>;
+
+  for (const [itemTypeKey, itemParams] of Object.entries(paramsRecord)) {
     const itemTypeNumber = parseInt(itemTypeKey);
-    if (isNaN(itemTypeNumber)) continue;
+    if (isNaN(itemTypeNumber) || !itemParams) continue;
 
     const paramNames = ["p0", "p1", "p2", "p3", "flags"] as const;
     

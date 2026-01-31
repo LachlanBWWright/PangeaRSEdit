@@ -33,13 +33,11 @@ import { Label } from "@/components/ui/label";
 export function ItemMenu({
   itemData,
   setItemData,
-  headerData: _headerData,
-  setHeaderData: _setHeaderData,
 }: {
   itemData: ItemData;
   setItemData: Updater<ItemData>;
-  headerData: HeaderData;
-  setHeaderData: Updater<HeaderData>;
+  headerData?: HeaderData;
+  setHeaderData?: Updater<HeaderData>;
 }) {
   const globals = useAtomValue(Globals);
   const [selectedItem, setSelectedItem] = useAtom(SelectedItem);
@@ -79,9 +77,9 @@ export function ItemMenu({
               value={selectedItemData.type.toString() ?? ""}
               onValueChange={(e) => {
                 const newItemType = parseInt(e);
-                setItemData((_data) => {
+                setItemData((draft) => {
                   if (selectedItem === undefined) return;
-                  const item = itemData.Itms[1000]?.obj?.[selectedItem];
+                  const item = draft.Itms[1000]?.obj?.[selectedItem];
                   if (item) {
                     item.type = newItemType;
                   }
@@ -140,9 +138,9 @@ export function ItemMenu({
                 className="col-span-3"
                 value={selectedItemData.flags.toString()}
                 onChange={(e) => {
-                  setItemData((_data) => {
+                  setItemData((draft) => {
                     if (selectedItem === undefined) return;
-                    const item = itemData.Itms[1000]?.obj?.[selectedItem];
+                    const item = draft.Itms[1000]?.obj?.[selectedItem];
                     if (item) {
                       item.flags = parseU16(e.target.value);
                     }
@@ -157,9 +155,9 @@ export function ItemMenu({
                   TerrainItemTypeParams[selectedItemData.type as ItemType][paramKey];
                 const value = selectedItemData[paramKey];
                 const setValue = (v: number) => {
-                  setItemData((_data) => {
+                  setItemData((draft) => {
                     if (selectedItem === undefined) return;
-                    const item = itemData.Itms[1000]?.obj?.[selectedItem];
+                    const item = draft.Itms[1000]?.obj?.[selectedItem];
                     if (item) {
                       item[paramKey] = v;
                     }
@@ -188,10 +186,10 @@ export function ItemMenu({
                                 className="font-bold"
                                 checked={checked}
                                 onCheckedChange={(checked) => {
-                                  setItemData((_data) => {
+                                  setItemData((draft) => {
                                     if (selectedItem === undefined) return;
                                     const item =
-                                      itemData.Itms[1000]?.obj?.[selectedItem];
+                                      draft.Itms[1000]?.obj?.[selectedItem];
                                     if (item) {
                                       const mask = 1 << flag.index;
                                       if (checked) {
