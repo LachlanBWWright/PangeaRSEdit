@@ -36,11 +36,19 @@ export const ItemFilterPanel: React.FC<ItemFilterPanelProps> = ({
 }) => {
   const [filter, setFilter] = useAtom(itemFilterStateAtom);
 
+  // Build default categories object with explicit typing to avoid type assertion
+  const defaultCategories: Record<ItemCategory, boolean> = {
+    [ItemCategory.ENEMY]: true,
+    [ItemCategory.POWERUP]: true,
+    [ItemCategory.ENVIRONMENTAL]: true,
+    [ItemCategory.TRIGGER]: true,
+    [ItemCategory.PLAYER]: true,
+    [ItemCategory.UNKNOWN]: true,
+  };
+
   const defaultState: ItemFilterState = {
     mode: FilterMode.SHOW_ALL,
-    categories: Object.fromEntries(
-      getAllCategories().map(c => [c, true])
-    ) as Record<ItemCategory, boolean>,
+    categories: defaultCategories,
     itemTypes: {},
     searchQuery: "",
     highlightedTypes: [],

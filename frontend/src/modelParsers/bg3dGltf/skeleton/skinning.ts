@@ -96,6 +96,7 @@ export function gltfSkinningToBg3d(bones: BG3DBone[], doc: Document): void {
           const jointsArrayRaw = jointsAcc.getArray();
           const weightsArrayRaw = weightsAcc.getArray();
           // Normalize typed array views to expected element types
+          // Note: byteOffset is guaranteed to be present on ArrayBufferView (defaults to 0)
           const jointsArray = jointsArrayRaw instanceof Uint16Array
             ? jointsArrayRaw
             : isArrayBufferView(jointsArrayRaw)
