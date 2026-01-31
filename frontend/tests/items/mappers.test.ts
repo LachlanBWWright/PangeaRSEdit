@@ -11,6 +11,7 @@ import {
   getAllMappingCounts,
   getTotalMappedItems,
   getMapperCoverageSummary,
+  getMapperCoverageReport,
 } from "../../src/data/items/mappers";
 import { ottoItemMapper } from "../../src/data/items/mappers/ottoItemMapper";
 import { bugdomItemMapper } from "../../src/data/items/mappers/bugdomItemMapper";
@@ -147,6 +148,17 @@ describe("Game Item Mappers", () => {
           summary.gameDetails[i].itemCount
         );
       }
+    });
+  });
+  
+  describe("getMapperCoverageReport", () => {
+    it("should return formatted text report", () => {
+      const report = getMapperCoverageReport();
+      expect(typeof report).toBe("string");
+      expect(report).toContain("Item Model Mapper Coverage Report");
+      expect(report).toContain("Games with mappers:");
+      expect(report).toContain("Total mapped items:");
+      expect(report).toContain("OTTO_MATIC:");
     });
   });
   

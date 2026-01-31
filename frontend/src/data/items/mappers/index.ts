@@ -94,6 +94,23 @@ export function getMapperCoverageSummary(): {
   };
 }
 
+/**
+ * Generate a text report of mapper coverage
+ */
+export function getMapperCoverageReport(): string {
+  const summary = getMapperCoverageSummary();
+  const lines = [
+    `Item Model Mapper Coverage Report`,
+    `=================================`,
+    `Games with mappers: ${summary.gamesWithMappers}`,
+    `Total mapped items: ${summary.totalMappedItems}`,
+    ``,
+    `By Game:`,
+    ...summary.gameDetails.map(g => `  - ${g.game}: ${g.itemCount} items`),
+  ];
+  return lines.join('\n');
+}
+
 // Re-export mapper classes for direct use if needed
 export { 
   OttoItemMapper, 

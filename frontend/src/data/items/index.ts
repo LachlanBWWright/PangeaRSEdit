@@ -101,6 +101,7 @@ export {
   getAllMappingCounts,
   getTotalMappedItems,
   getMapperCoverageSummary,
+  getMapperCoverageReport,
   OttoItemMapper,
   BugdomItemMapper,
   Bugdom2ItemMapper,
