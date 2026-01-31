@@ -16,6 +16,8 @@ export default defineConfig({
       "tests/levelEdit/**/*.test.ts",
       "tests/levelTemplates/**/*.test.ts",
       "tests/tiles/**/*.test.ts",
+      "tests/items/**/*.test.ts",
+      "tests/validation/**/*.test.ts",
       "src/types/*.test.ts",
     ],
     exclude: [

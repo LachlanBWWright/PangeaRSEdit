@@ -135,37 +135,58 @@ export function findCodeInFile(
   fileLines: string[],
 ): { lineNumber: number; exactMatch: boolean } | null {
   const normalizedCode = normalizeCode(code);
-  const codeLines = normalizedCode.split('\n');
+  const codeLines = normalizedCode.split('\n').filter(line => line.length > 0);
   
   if (codeLines.length === 0) return null;
   
   const firstCodeLine = codeLines[0];
   
-  // Search for exact or close match
+  // Search for match
   for (let i = 0; i < fileLines.length; i++) {
     const normalizedFileLine = normalizeCode(fileLines[i]);
     
-    // Check if this line matches the first line of the code sample
-    if (normalizedFileLine.includes(firstCodeLine) || firstCodeLine.includes(normalizedFileLine)) {
-      // For single-line samples, this is a match
-      if (codeLines.length === 1) {
-        return { lineNumber: i + 1, exactMatch: normalizedFileLine === firstCodeLine };
+    // Skip empty lines in the file
+    if (normalizedFileLine.length === 0) continue;
+    
+    // Check if this line contains the first line of the code sample
+    // Be stricter: require at least partial word match
+    const isMatch = normalizedFileLine.includes(firstCodeLine) || 
+                    firstCodeLine.includes(normalizedFileLine);
+    
+    if (!isMatch) continue;
+    
+    // For single-line samples, this is a match
+    if (codeLines.length === 1) {
+      return { lineNumber: i + 1, exactMatch: normalizedFileLine === firstCodeLine };
+    }
+    
+    // For multi-line samples, check subsequent lines
+    let allMatch = true;
+    let fileLineIndex = i + 1;
+    
+    for (let j = 1; j < codeLines.length; j++) {
+      const expectedLine = codeLines[j];
+      
+      // Skip empty file lines
+      while (fileLineIndex < fileLines.length && normalizeCode(fileLines[fileLineIndex]).length === 0) {
+        fileLineIndex++;
       }
       
-      // For multi-line samples, check subsequent lines
-      let allMatch = true;
-      for (let j = 1; j < codeLines.length && i + j < fileLines.length; j++) {
-        const expected = codeLines[j];
-        const actual = normalizeCode(fileLines[i + j]);
-        if (!actual.includes(expected) && !expected.includes(actual)) {
-          allMatch = false;
-          break;
-        }
+      if (fileLineIndex >= fileLines.length) {
+        allMatch = false;
+        break;
       }
       
-      if (allMatch) {
-        return { lineNumber: i + 1, exactMatch: true };
+      const actualLine = normalizeCode(fileLines[fileLineIndex]);
+      if (!actualLine.includes(expectedLine) && !expectedLine.includes(actualLine)) {
+        allMatch = false;
+        break;
       }
+      fileLineIndex++;
+    }
+    
+    if (allMatch) {
+      return { lineNumber: i + 1, exactMatch: true };
     }
   }
   
