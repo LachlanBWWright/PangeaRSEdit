@@ -33,3 +33,19 @@ export {
   createUpdateItemParamsOperation,
   createMoveSplineNubOperation,
 } from "./applyEdit";
+
+export {
+  type EditableLevelData,
+  type HistoryEntry,
+  type LevelEditorState,
+  createEditorState,
+  applyEdit,
+  undoEdit,
+  redoEdit,
+  canUndo,
+  canRedo,
+  clearHistory,
+  applyBatchEdit,
+  getUndoCount,
+  getRedoCount,
+} from "./levelEditorService";

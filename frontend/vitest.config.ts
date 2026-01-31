@@ -10,7 +10,12 @@ export default defineConfig({
   },
   test: {
     dir: import.meta.dirname,
-    include: ["tests/roundtrip/allGamesRoundtripNew.test.ts", "tests/tunnel/**/*.test.ts"],
+    include: [
+      "tests/roundtrip/allGamesRoundtripNew.test.ts",
+      "tests/tunnel/**/*.test.ts",
+      "tests/levelEdit/**/*.test.ts",
+      "tests/levelTemplates/**/*.test.ts",
+    ],
     exclude: [
       "tests/e2e/**",
       "src/modelParsers/**/parseMightyMikeRoundtrip.test.ts",
