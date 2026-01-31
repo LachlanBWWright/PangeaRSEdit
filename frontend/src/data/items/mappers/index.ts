@@ -9,6 +9,7 @@ import { type GameItemModelMapper } from "../itemModelTypes";
 import { ottoItemMapper, OttoItemMapper } from "./ottoItemMapper";
 import { bugdomItemMapper, BugdomItemMapper } from "./bugdomItemMapper";
 import { bugdom2ItemMapper, Bugdom2ItemMapper } from "./bugdom2ItemMapper";
+import { nanosaur1ItemMapper, Nanosaur1ItemMapper } from "./nanosaur1ItemMapper";
 import { nanosaur2ItemMapper, Nanosaur2ItemMapper } from "./nanosaur2ItemMapper";
 import { croMagItemMapper, CroMagItemMapper } from "./croMagItemMapper";
 import { billyFrontierItemMapper, BillyFrontierItemMapper } from "./billyFrontierItemMapper";
@@ -20,6 +21,7 @@ const MAPPER_REGISTRY: Partial<Record<Game, GameItemModelMapper>> = {
   [Game.OTTO_MATIC]: ottoItemMapper,
   [Game.BUGDOM]: bugdomItemMapper,
   [Game.BUGDOM_2]: bugdom2ItemMapper,
+  [Game.NANOSAUR]: nanosaur1ItemMapper,
   [Game.NANOSAUR_2]: nanosaur2ItemMapper,
   [Game.CRO_MAG]: croMagItemMapper,
   [Game.BILLY_FRONTIER]: billyFrontierItemMapper,
@@ -70,6 +72,7 @@ export {
   OttoItemMapper, 
   BugdomItemMapper, 
   Bugdom2ItemMapper, 
+  Nanosaur1ItemMapper,
   Nanosaur2ItemMapper, 
   CroMagItemMapper,
   BillyFrontierItemMapper,

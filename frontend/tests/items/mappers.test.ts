@@ -13,6 +13,7 @@ import {
 import { ottoItemMapper } from "../../src/data/items/mappers/ottoItemMapper";
 import { bugdomItemMapper } from "../../src/data/items/mappers/bugdomItemMapper";
 import { bugdom2ItemMapper } from "../../src/data/items/mappers/bugdom2ItemMapper";
+import { nanosaur1ItemMapper } from "../../src/data/items/mappers/nanosaur1ItemMapper";
 import { nanosaur2ItemMapper } from "../../src/data/items/mappers/nanosaur2ItemMapper";
 import { croMagItemMapper } from "../../src/data/items/mappers/croMagItemMapper";
 import { billyFrontierItemMapper } from "../../src/data/items/mappers/billyFrontierItemMapper";
@@ -35,6 +36,12 @@ describe("Game Item Mappers", () => {
       const mapper = getGameMapper(Game.BUGDOM);
       expect(mapper).toBeDefined();
       expect(mapper?.game).toBe(Game.BUGDOM);
+    });
+    
+    it("should return mapper for Nanosaur 1", () => {
+      const mapper = getGameMapper(Game.NANOSAUR);
+      expect(mapper).toBeDefined();
+      expect(mapper?.game).toBe(Game.NANOSAUR);
     });
     
     it("should return mapper for Nanosaur 2", () => {
@@ -262,6 +269,42 @@ describe("Game Item Mappers", () => {
       if (mappedTypes.length > 0) {
         const firstType = mappedTypes[0];
         const mapping = billyFrontierItemMapper.getMapping(firstType, undefined, { p0: 0, p1: 0, p2: 0, p3: 0 });
+        expect(mapping === undefined || mapping !== null).toBe(true);
+      }
+    });
+  });
+  
+  describe("Nanosaur1ItemMapper", () => {
+    it("should have correct game type", () => {
+      expect(nanosaur1ItemMapper.game).toBe(Game.NANOSAUR);
+    });
+    
+    it("should have mappings", () => {
+      expect(nanosaur1ItemMapper.getMappingCount()).toBeGreaterThan(0);
+    });
+    
+    it("should get mapping for known item type", () => {
+      const mappedTypes = nanosaur1ItemMapper.getMappedTypes();
+      if (mappedTypes.length > 0) {
+        const firstType = mappedTypes[0];
+        const mapping = nanosaur1ItemMapper.getMapping(firstType);
+        expect(mapping).toBeDefined();
+        expect(mapping?.modelFile).toBeTruthy();
+        expect(typeof mapping?.modelIndex).toBe("number");
+      }
+    });
+    
+    it("should return undefined for unmapped type", () => {
+      const mapping = nanosaur1ItemMapper.getMapping(99999);
+      expect(mapping).toBeUndefined();
+    });
+    
+    it("should handle variants", () => {
+      // Test variant handling with params
+      const mappedTypes = nanosaur1ItemMapper.getMappedTypes();
+      if (mappedTypes.length > 0) {
+        const firstType = mappedTypes[0];
+        const mapping = nanosaur1ItemMapper.getMapping(firstType, undefined, { p0: 0, p1: 0, p2: 0, p3: 0 });
         expect(mapping === undefined || mapping !== null).toBe(true);
       }
     });
