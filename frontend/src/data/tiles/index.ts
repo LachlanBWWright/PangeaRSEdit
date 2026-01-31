@@ -47,3 +47,13 @@ export {
   isTileSelectedAtom,
   resetTileSelectionAtom,
 } from "./tileSelectionAtoms";
+
+export {
+  type TilePaintResult,
+  paintTileAtPosition,
+  paintTileBrush,
+  floodFillTile,
+  pickTileAtPosition,
+  replaceAllTiles,
+  getSelectedTileRegion,
+} from "./tilePaintHandler";
