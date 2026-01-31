@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback } from "react";
 import { ModelCanvas } from "./ModelCanvas";
-import { ModelHierarchy } from "@/components/ModelHierarchy";
+// import { ModelHierarchy } from "@/components/ModelHierarchy";
 import { AnimationViewer, AnimationInfo } from "@/components/AnimationViewer";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Upload } from "lucide-react";
