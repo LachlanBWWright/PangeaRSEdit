@@ -15,6 +15,7 @@ export default defineConfig({
       "tests/tunnel/**/*.test.ts",
       "tests/levelEdit/**/*.test.ts",
       "tests/levelTemplates/**/*.test.ts",
+      "tests/tiles/**/*.test.ts",
     ],
     exclude: [
       "tests/e2e/**",
