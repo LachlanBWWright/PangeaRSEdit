@@ -9,6 +9,8 @@ import {
   hasGameMapper, 
   getGamesWithMappers, 
   getAllMappingCounts,
+  getTotalMappedItems,
+  getMapperCoverageSummary,
 } from "../../src/data/items/mappers";
 import { ottoItemMapper } from "../../src/data/items/mappers/ottoItemMapper";
 import { bugdomItemMapper } from "../../src/data/items/mappers/bugdomItemMapper";
@@ -109,6 +111,32 @@ describe("Game Item Mappers", () => {
       const counts = getAllMappingCounts();
       expect(typeof counts).toBe("object");
       expect(counts["OTTO_MATIC"]).toBeGreaterThan(0);
+    });
+  });
+  
+  describe("getTotalMappedItems", () => {
+    it("should return positive total", () => {
+      const total = getTotalMappedItems();
+      expect(total).toBeGreaterThan(100); // We have 300+ items mapped
+    });
+  });
+  
+  describe("getMapperCoverageSummary", () => {
+    it("should return summary with correct structure", () => {
+      const summary = getMapperCoverageSummary();
+      expect(summary.gamesWithMappers).toBe(7);
+      expect(summary.totalMappedItems).toBeGreaterThan(100);
+      expect(Array.isArray(summary.gameDetails)).toBe(true);
+      expect(summary.gameDetails.length).toBe(7);
+    });
+    
+    it("should sort games by item count descending", () => {
+      const summary = getMapperCoverageSummary();
+      for (let i = 1; i < summary.gameDetails.length; i++) {
+        expect(summary.gameDetails[i - 1].itemCount).toBeGreaterThanOrEqual(
+          summary.gameDetails[i].itemCount
+        );
+      }
     });
   });
   

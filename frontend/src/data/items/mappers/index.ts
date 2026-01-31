@@ -67,6 +67,33 @@ export function getAllMappingCounts(): Record<string, number> {
   return counts;
 }
 
+/**
+ * Get total mapped item count across all games
+ */
+export function getTotalMappedItems(): number {
+  return Object.values(getAllMappingCounts()).reduce((sum, count) => sum + count, 0);
+}
+
+/**
+ * Get summary of mapper coverage
+ */
+export function getMapperCoverageSummary(): {
+  gamesWithMappers: number;
+  totalMappedItems: number;
+  gameDetails: Array<{ game: string; itemCount: number }>;
+} {
+  const counts = getAllMappingCounts();
+  const gameDetails = Object.entries(counts)
+    .map(([game, itemCount]) => ({ game, itemCount }))
+    .sort((a, b) => b.itemCount - a.itemCount);
+  
+  return {
+    gamesWithMappers: Object.keys(counts).length,
+    totalMappedItems: Object.values(counts).reduce((sum, c) => sum + c, 0),
+    gameDetails,
+  };
+}
+
 // Re-export mapper classes for direct use if needed
 export { 
   OttoItemMapper, 

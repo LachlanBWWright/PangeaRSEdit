@@ -99,6 +99,8 @@ export {
   hasGameMapper,
   getGamesWithMappers,
   getAllMappingCounts,
+  getTotalMappedItems,
+  getMapperCoverageSummary,
   OttoItemMapper,
   BugdomItemMapper,
   Bugdom2ItemMapper,
