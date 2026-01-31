@@ -28,36 +28,39 @@ export interface Citation {
   sourceFile: string;        // Full path in this codebase
 }
 
+// Generic type for any item params object that we can extract citations from
+type GenericItemParams = Record<number | string, Record<string, ParamDescription | undefined>>;
+
 /**
  * Map of game names to their item type param definitions
  */
-const GAME_ITEM_PARAMS: Record<string, { params: Record<number, Record<string, ParamDescription | undefined>>; sourceFile: string }> = {
+const GAME_ITEM_PARAMS: Record<string, { params: GenericItemParams; sourceFile: string }> = {
   ottomatic: {
-    params: TerrainItemTypeParams as Record<number, Record<string, ParamDescription | undefined>>,
+    params: TerrainItemTypeParams,
     sourceFile: "frontend/src/data/items/ottoItemType.ts",
   },
   bugdom2: {
-    params: bugdom2ItemTypeParams as Record<number, Record<string, ParamDescription | undefined>>,
+    params: bugdom2ItemTypeParams,
     sourceFile: "frontend/src/data/items/bugdom2ItemType.ts",
   },
   bugdom: {
-    params: bugdomItemTypeParams as Record<number, Record<string, ParamDescription | undefined>>,
+    params: bugdomItemTypeParams,
     sourceFile: "frontend/src/data/items/bugdomItemType.ts",
   },
   billyfrontier: {
-    params: billyFrontierItemTypeParams as Record<number, Record<string, ParamDescription | undefined>>,
+    params: billyFrontierItemTypeParams,
     sourceFile: "frontend/src/data/items/billyFrontierItemType.ts",
   },
   nanosaur: {
-    params: nanosaurItemTypeParams as Record<number, Record<string, ParamDescription | undefined>>,
+    params: nanosaurItemTypeParams,
     sourceFile: "frontend/src/data/items/nanosaurItemType.ts",
   },
   nanosaur2: {
-    params: nanosaur2ItemTypeParams as Record<number, Record<string, ParamDescription | undefined>>,
+    params: nanosaur2ItemTypeParams,
     sourceFile: "frontend/src/data/items/nanosaur2ItemType.ts",
   },
   cromag: {
-    params: croMagItemTypeParams as Record<number, Record<string, ParamDescription | undefined>>,
+    params: croMagItemTypeParams,
     sourceFile: "frontend/src/data/items/croMagItemType.ts",
   },
 };
