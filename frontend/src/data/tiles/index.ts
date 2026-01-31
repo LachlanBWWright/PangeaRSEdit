@@ -57,3 +57,12 @@ export {
   replaceAllTiles,
   getSelectedTileRegion,
 } from "./tilePaintHandler";
+
+export {
+  type TileOptimizationResult,
+  analyzeUnusedTiles,
+  computeCompactedIndexMapping,
+  compactTileIndices,
+  validateOptimization,
+  getOptimizationStats,
+} from "./tileOptimization";
