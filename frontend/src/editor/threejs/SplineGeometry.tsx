@@ -8,6 +8,7 @@ import { useAtomValue } from "jotai";
 import { Globals } from "@/data/globals/globals";
 import { getTerrainHeightAtPoint } from "./fenceUtils/getTerrainHeightAtPoint";
 import { Vector3, CatmullRomCurve3, TubeGeometry } from "three";
+import { detectSplineType, SplineType } from "@/data/splines/splineTypeDetection";
 
 interface SplineGeometryProps {
   splineData: SplineData;
@@ -36,13 +37,20 @@ export const SplineGeometry: React.FC<SplineGeometryProps> = ({
 
     splines.forEach((_, splineIdx) => {
       const pointsKey = 1000 + splineIdx;
+      const nubsKey = 1000 + splineIdx;
       const pointsData = splinePointsBySplineIdx[pointsKey];
+      const nubsData = splineData.SpNb?.[nubsKey];
 
       if (!pointsData || !pointsData.obj || pointsData.obj.length < 2) {
         return;
       }
 
       const points = pointsData.obj;
+      
+      // Detect if this spline is circular or open based on nub positions
+      const nubs = nubsData?.obj ?? [];
+      const splineType = detectSplineType(nubs);
+      const isCircular = splineType === SplineType.CIRCULAR;
 
       // Create line through spline points
       const linePoints: Vector3[] = []; 
@@ -65,13 +73,14 @@ export const SplineGeometry: React.FC<SplineGeometryProps> = ({
       });
 
       // Create TubeGeometry for the spline line
-      const curve = new CatmullRomCurve3(linePoints);
+      // For circular splines, use the 'closed' parameter to properly connect end to start
+      const curve = new CatmullRomCurve3(linePoints, isCircular);
       const geometry = new TubeGeometry(
         curve,
         Math.max(20, Math.min(100, linePoints.length * 2)),
         SPLINE_LINE_WIDTH / 2,
         4,
-        false,
+        isCircular, // closed parameter - true for circular splines
       );
 
       group.push(
@@ -81,11 +90,8 @@ export const SplineGeometry: React.FC<SplineGeometryProps> = ({
       );
 
       // Add arrows at control points (nubs) to show direction
-      const nubsKey = 1000 + splineIdx;
-      if (splineData.SpNb && splineData.SpNb[nubsKey]) {
-        const nubsData = splineData.SpNb[nubsKey];
-        if (nubsData.obj) {
-          nubsData.obj.forEach((nub, nubIdx) => {
+      if (nubsData && nubsData.obj) {
+        nubsData.obj.forEach((nub, nubIdx) => {
             const worldX = nub.x * scale;
             const worldZ = nub.z * scale;
 
@@ -161,7 +167,6 @@ export const SplineGeometry: React.FC<SplineGeometryProps> = ({
               </group>,
             );
           });
-        }
       }
     });
 
