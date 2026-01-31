@@ -234,8 +234,8 @@ export function ItemMenu({
               disabled={selectedItem === undefined}
               onClick={() => {
                 if (selectedItem === undefined) return;
-                setItemData((_data) => {
-                  itemData.Itms[1000].obj.splice(selectedItem, 1);
+                setItemData((draft) => {
+                  draft.Itms[1000].obj.splice(selectedItem, 1);
                 });
                 setSelectedItem(undefined);
               }}
