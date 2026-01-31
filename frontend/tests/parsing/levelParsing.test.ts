@@ -4,7 +4,7 @@
  * These test the core parsing logic including:
  * - Buffer comparison (pure function)
  * - Level data comparison (pure function)
- * - Async parsing with mocked pyodide
+ * - Async parsing with rsrcdump-ts
  */
 
 import { describe, it, expect } from "vitest";

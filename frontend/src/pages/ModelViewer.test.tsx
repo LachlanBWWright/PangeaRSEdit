@@ -148,11 +148,11 @@ describe("ModelViewer Two-Step Upload Logic", () => {
 
   test("handles worker readiness state correctly", () => {
     let isWorkerReady = false;
-    let pyodideWorker: Worker | { postMessage: (m: unknown) => void } | null =
+    let gltfWorker: Worker | { postMessage: (m: unknown) => void } | null =
       null;
 
     const canProcessSkeleton = (skeletonFile: File | undefined) => {
-      return !!(skeletonFile && pyodideWorker && isWorkerReady);
+      return !!(skeletonFile && gltfWorker && isWorkerReady);
     };
 
     const mockSkeletonFile = new File(["skeleton"], "test.skeleton.rsrc", {
@@ -163,7 +163,7 @@ describe("ModelViewer Two-Step Upload Logic", () => {
     expect(canProcessSkeleton(mockSkeletonFile)).toBe(false);
 
     // Worker exists but not ready
-    pyodideWorker = { postMessage: vi.fn() };
+    gltfWorker = { postMessage: vi.fn() };
     expect(canProcessSkeleton(mockSkeletonFile)).toBe(false);
 
     // Worker ready

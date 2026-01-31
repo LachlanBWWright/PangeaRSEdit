@@ -108,8 +108,8 @@ export async function saveMap({
   }
   //if bugdom 1 (resource fork)
   else if (globals.DATA_TYPE === DataType.RSRC_FORK) {
-    // For RSRC_FORK (Bugdom 1), Timg should be embedded in `data` and pyodide
-    // should serialize it into the single .ter.rsrc file. Serialize and
+    // For RSRC_FORK (Bugdom 1), Timg should be embedded in `data` and rsrcdump-ts
+    // serializes it into the single .ter.rsrc file. Serialize and
     // download the combined resource fork map file.
     const mapBuffer = await processMapData({ data, globals });
     downloadBlob(mapBuffer, mapFile.name, ".ter.rsrc");

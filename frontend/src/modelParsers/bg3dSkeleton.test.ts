@@ -486,8 +486,7 @@ describe("BG3D Skeleton Real File Integration", () => {
     console.log(`BG3D file size: ${bg3dBuffer.length} bytes`);
     console.log(`Skeleton file size: ${skeletonBuffer.length} bytes`);
 
-    // We can't fully test without a Pyodide worker, but we can verify files exist
-    // and have reasonable sizes
+    // Verify files exist and have reasonable sizes
     expect(bg3dBuffer.length).toBeGreaterThan(1000); // Should be substantial
     expect(skeletonBuffer.length).toBeGreaterThan(100); // Should have some data
   });

@@ -36,9 +36,9 @@ export async function fileExists(filePath: string): Promise<boolean> {
 }
 
 /**
- * Interface for mock pyodide runner for testing
+ * Interface for mock rsrcdump-ts runner for testing
  */
-export interface MockPyodideRunner {
+export interface MockParserRunner {
   parseBuffer: (
     buffer: ArrayBuffer,
     specs: string[],

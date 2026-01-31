@@ -12,6 +12,13 @@ interface SkeletonResourceLike {
 }
 
 /**
+ * Type guard to check if a value is an ArrayBufferView
+ */
+function isArrayBufferView(value: unknown): value is ArrayBufferView {
+  return ArrayBuffer.isView(value);
+}
+
+/**
  * Create glTF skinning data from BG3D bone influences (part of bg3dSkeletonToGltf)
  */
 export function bg3dSkinningToGltf(
@@ -91,26 +98,26 @@ export function gltfSkinningToBg3d(bones: BG3DBone[], doc: Document): void {
           // Normalize typed array views to expected element types
           const jointsArray = jointsArrayRaw instanceof Uint16Array
             ? jointsArrayRaw
-            : ArrayBuffer.isView(jointsArrayRaw)
+            : isArrayBufferView(jointsArrayRaw)
               ? new Uint16Array(
-                  (jointsArrayRaw as ArrayBufferView).buffer,
-                  (jointsArrayRaw as ArrayBufferView).byteOffset || 0,
-                  (jointsArrayRaw as ArrayBufferView).byteLength / Uint16Array.BYTES_PER_ELEMENT,
+                  jointsArrayRaw.buffer,
+                  jointsArrayRaw.byteOffset,
+                  jointsArrayRaw.byteLength / Uint16Array.BYTES_PER_ELEMENT,
                 )
               : Array.isArray(jointsArrayRaw)
-                ? new Uint16Array(jointsArrayRaw as number[])
+                ? new Uint16Array(jointsArrayRaw)
                 : new Uint16Array(0);
 
           const weightsArray = weightsArrayRaw instanceof Float32Array
             ? weightsArrayRaw
-            : ArrayBuffer.isView(weightsArrayRaw)
+            : isArrayBufferView(weightsArrayRaw)
               ? new Float32Array(
-                  (weightsArrayRaw as ArrayBufferView).buffer,
-                  (weightsArrayRaw as ArrayBufferView).byteOffset || 0,
-                  (weightsArrayRaw as ArrayBufferView).byteLength / Float32Array.BYTES_PER_ELEMENT,
+                  weightsArrayRaw.buffer,
+                  weightsArrayRaw.byteOffset,
+                  weightsArrayRaw.byteLength / Float32Array.BYTES_PER_ELEMENT,
                 )
               : Array.isArray(weightsArrayRaw)
-                ? new Float32Array(weightsArrayRaw as number[])
+                ? new Float32Array(weightsArrayRaw)
                 : new Float32Array(0);
 
           const numVertices = posAcc.getCount();
