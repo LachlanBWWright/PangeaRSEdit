@@ -71,6 +71,11 @@ describe("Game Item Mappers", () => {
     it("should return true for games with mappers", () => {
       expect(hasGameMapper(Game.OTTO_MATIC)).toBe(true);
       expect(hasGameMapper(Game.BUGDOM_2)).toBe(true);
+      expect(hasGameMapper(Game.BUGDOM)).toBe(true);
+      expect(hasGameMapper(Game.NANOSAUR)).toBe(true);
+      expect(hasGameMapper(Game.NANOSAUR_2)).toBe(true);
+      expect(hasGameMapper(Game.CRO_MAG)).toBe(true);
+      expect(hasGameMapper(Game.BILLY_FRONTIER)).toBe(true);
     });
     
     it("should return false for games without mappers", () => {
@@ -84,6 +89,18 @@ describe("Game Item Mappers", () => {
       expect(Array.isArray(games)).toBe(true);
       expect(games.length).toBeGreaterThan(0);
       expect(games).toContain(Game.OTTO_MATIC);
+    });
+    
+    it("should return all 7 mapped games", () => {
+      const games = getGamesWithMappers();
+      expect(games).toContain(Game.OTTO_MATIC);
+      expect(games).toContain(Game.BUGDOM);
+      expect(games).toContain(Game.BUGDOM_2);
+      expect(games).toContain(Game.NANOSAUR);
+      expect(games).toContain(Game.NANOSAUR_2);
+      expect(games).toContain(Game.CRO_MAG);
+      expect(games).toContain(Game.BILLY_FRONTIER);
+      expect(games).not.toContain(Game.MIGHTY_MIKE);
     });
   });
   
