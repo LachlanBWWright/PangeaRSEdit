@@ -7,7 +7,7 @@ import {
 } from "@/python/structSpecs/LevelTypes";
 import { useAtomValue } from "jotai";
 import { useFrame } from "@react-three/fiber";
-import { Globals, Game } from "@/data/globals/globals";
+import { Globals } from "@/data/globals/globals";
 import { Show3DItemModels } from "@/data/canvasView/canvasViewAtoms";
 import { getTerrainHeightAtPoint } from "./fenceUtils/getTerrainHeightAtPoint";
 import { useOttoItemModelCache } from "./hooks/useOttoItemModelCache";
@@ -15,6 +15,7 @@ import {
   getItemModelMapping,
   type ItemModelMapping,
 } from "@/data/items/ottoItemModelMapping";
+import { getGameMapper, hasGameMapper } from "@/data/items/mappers";
 import {
   getLiquidPatchStyle,
   getLiquidPatchDimensions,
@@ -236,7 +237,8 @@ export const ItemGeometry: React.FC<ItemGeometryProps> = ({
   }, [modelCache, itemsByType]);
 
   useEffect(() => {
-    if (show3DItemModels && globals.GAME_TYPE === Game.OTTO_MATIC) {
+    // Load models for games that have mappers (not just Otto Matic)
+    if (show3DItemModels && hasGameMapper(globals.GAME_TYPE)) {
       // Load models for all unique item types in the level
       itemsByType.forEach((_, itemType) => {
         loadModel(itemType).catch((err) => {
@@ -327,8 +329,8 @@ export const ItemGeometry: React.FC<ItemGeometryProps> = ({
           );
         }
 
-        // Render 3D model if enabled and available (Otto Matic only for now)
-        if (show3DItemModels && globals.GAME_TYPE === Game.OTTO_MATIC) {
+        // Render 3D model if enabled and available (works for all games with mappers)
+        if (show3DItemModels && hasGameMapper(globals.GAME_TYPE)) {
           const cachedModel = modelCache.get(item.type);
           const modelGltf = cachedModel?.gltf;
           const isLoading = cachedModel?.loading ?? false;
@@ -349,7 +351,9 @@ export const ItemGeometry: React.FC<ItemGeometryProps> = ({
           if (modelGltf && !hasError) {
             const clonedScene = clonedScenesByType.get(item.type);
             if (clonedScene) {
-              const mapping = getItemModelMapping(item.type);
+              // Use game-specific mapper if available, fallback to Otto mapping
+              const gameMapper = getGameMapper(globals.GAME_TYPE);
+              const mapping = gameMapper?.getMapping(item.type) ?? getItemModelMapping(item.type);
               return (
                 <ItemModel
                   key={`item-model-${idx}`}
