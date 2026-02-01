@@ -68,6 +68,7 @@ export function GameCarousel({
   setMapImages,
   setTunnelData,
   setTunnelFileName,
+  onCreateBlankLevel,
 }: {
   showAllGames: boolean;
   handleOpenFile: (url: string, gameType: GlobalsInterface) => void;
@@ -80,6 +81,7 @@ export function GameCarousel({
   setMapImages: (images: HTMLCanvasElement[]) => void;
   setTunnelData: (data: TunnelData | null) => void;
   setTunnelFileName: (name: string) => void;
+  onCreateBlankLevel: (gameType: GlobalsInterface) => void;
 }) {
   const games: { title: string; globals: GlobalsInterface }[] = [
     {
@@ -123,6 +125,7 @@ export function GameCarousel({
             setMapImages={setMapImages}
             setTunnelData={setTunnelData}
             setTunnelFileName={setTunnelFileName}
+            onCreateBlankLevel={onCreateBlankLevel}
           />
         ))}
       </CarouselContent>
@@ -141,6 +144,7 @@ function GameCarouselItem({
   setMapImages,
   setTunnelData,
   setTunnelFileName,
+  onCreateBlankLevel,
 }: {
   game: { title: string; globals: GlobalsInterface };
   handleOpenFile: (url: string, gameType: GlobalsInterface) => void;
@@ -153,6 +157,7 @@ function GameCarouselItem({
   setMapImages: (images: HTMLCanvasElement[]) => void;
   setTunnelData: (data: TunnelData | null) => void;
   setTunnelFileName: (name: string) => void;
+  onCreateBlankLevel: (gameType: GlobalsInterface) => void;
 }) {
   // Look up component from module-level map
   const LevelComponent = LEVEL_COMPONENTS_MAP[game.title];
@@ -177,6 +182,7 @@ function GameCarouselItem({
         setMapImages={setMapImages}
         setTunnelData={setTunnelData}
         setTunnelFileName={setTunnelFileName}
+        onCreateBlankLevel={onCreateBlankLevel}
       >
         <LevelComponent openFile={handleOpenFile} onTunnelLoad={handleTunnelLoad} />
       </GameCard>

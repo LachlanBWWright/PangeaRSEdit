@@ -8,6 +8,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import type { Result } from "@/types/result";
 import { parseTunnelFile } from "@/data/tunnelParser/parseTunnelFile";
 import type { TunnelData } from "@/data/tunnelParser/types";
+import { Button } from "@/components/ui/button";
 
 const getModelPath = (gameType: Game): string | undefined => {
   switch (gameType) {
@@ -42,6 +43,7 @@ export function GameCard({
   setMapImages,
   setTunnelData,
   setTunnelFileName,
+  onCreateBlankLevel,
 }: {
   title: string;
   children: React.ReactNode;
@@ -55,6 +57,7 @@ export function GameCard({
   setMapImages: (images: HTMLCanvasElement[]) => void;
   setTunnelData: (data: TunnelData | null) => void;
   setTunnelFileName: (name: string) => void;
+  onCreateBlankLevel: (gameType: GlobalsInterface) => void;
 }) {
   const modelPath = getModelPath(globals.GAME_TYPE);
   const isBugdom2 = globals.GAME_TYPE === Game.BUGDOM_2;
@@ -73,6 +76,12 @@ export function GameCard({
         <div className="flex-1 min-h-0 mt-2 overflow-auto flex flex-col gap-1 text-2xl min-w-40">{children}</div>
 
         <div className="flex-none pt-2 border-t border-gray-700 mt-2">
+          <Button
+            className="w-full mb-2"
+            onClick={() => onCreateBlankLevel(globals)}
+          >
+            Create Blank Level
+          </Button>
           <p className="text-sm text-gray-300">
             Upload Level Data (
             {globals.DATA_TYPE === DataType.MIGHTY_MIKE ? ".map" : ".ter.rsrc"})

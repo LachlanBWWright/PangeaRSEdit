@@ -119,7 +119,6 @@ export function IntroPrompt() {
   const [mapImages, setMapImages] = useState<HTMLCanvasElement[] | undefined>(
     undefined,
   );
-  const [blankLevelError, setBlankLevelError] = useState<string | null>(null);
   const [processed, setProcessed] = useState(false);
   // Helper to get current atomic data
   const getCurrentAtomicData = useCallback((): AtomicLevelData => {
@@ -540,16 +539,13 @@ export function IntroPrompt() {
     setMapImagesFile(undefined);
     setTunnelData(null);
     setTunnelFileName("");
-    setBlankLevelError(null);
   }, [setAllAtomicData]);
 
   const handleCreateBlankLevel = useCallback((gameType: GlobalsInterface) => {
-    setBlankLevelError(null);
     setGlobals(gameType);
     const dimensions = getDefaultDimensions(gameType.GAME_TYPE);
     const result = createBlankLevel(gameType.GAME_TYPE, dimensions);
     if (!result.ok) {
-      setBlankLevelError(result.error.message);
       toast.error("Failed to create blank level", {
         description: result.error.message,
       });
@@ -626,7 +622,6 @@ export function IntroPrompt() {
         setTunnelData={setTunnelData}
         setTunnelFileName={setTunnelFileName}
         onCreateBlankLevel={handleCreateBlankLevel}
-        blankLevelError={blankLevelError}
       />
     );
   return (
