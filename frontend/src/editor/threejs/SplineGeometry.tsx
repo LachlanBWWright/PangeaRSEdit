@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useMemo } from "react";
 import {
   SplineData,
   HeaderData,
@@ -30,7 +30,11 @@ export const SplineGeometry: React.FC<SplineGeometryProps> = ({
   const splinePointsBySplineIdx = splineData.SpPt;
   const hasValidData = !!splines && !!splinePointsBySplineIdx;
 
-  const splineGroup = (() => {
+  // Extract YCrd array for dependency tracking - terrain height changes should trigger re-render
+  const yCrdData = terrainData.YCrd?.[1000]?.obj;
+  
+  // Use useMemo to properly track terrain height changes and recompute spline geometry
+  const splineGroup = useMemo(() => {
     if (!hasValidData || !splines) return [];
     const group: React.ReactElement[] = [];
     const scale = globals.TILE_INGAME_SIZE / globals.TILE_SIZE;
@@ -171,7 +175,7 @@ export const SplineGeometry: React.FC<SplineGeometryProps> = ({
     });
 
     return group;
-  })();
+  }, [hasValidData, splines, splinePointsBySplineIdx, splineData.SpNb, headerData, terrainData, globals, yCrdData]);
 
   if (!hasValidData) {
     return null;
