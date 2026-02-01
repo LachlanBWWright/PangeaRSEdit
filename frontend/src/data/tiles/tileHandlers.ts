@@ -13,11 +13,7 @@ interface PixelType { x: number; y: number }
 export function handleTileClick(
   x: number,
   y: number,
-<<<<<<< HEAD
-  setOtherData: Updater<Partial<LevelData>>,
-=======
-  setData: Updater<ottoMaticLevel>,
->>>>>>> origin/main
+  setTerrainData: Updater<Partial<LevelData>>,
   tileView: TileViews,
   tileEditingEnabled: boolean,
   brushType: "add" | "remove",
@@ -26,7 +22,7 @@ export function handleTileClick(
 ) {
   if (!tileEditingEnabled) return;
 
-  setData((draft) => {
+  setTerrainData((draft) => {
     const header = draft.Hedr?.[1000]?.obj;
     if (!header) return;
 
@@ -78,6 +74,7 @@ export function handleTileClick(
     // Apply the changes to all pixels in the brush area
     for (const pixel of pixelList) {
       const tileIndex = pixel.y * header.mapWidth + pixel.x;
+      if (!draft.Layr?.[1000]?.obj || !draft.Atrb?.[1000]?.obj) continue;
       const attrIndex = draft.Layr[1000].obj[tileIndex];
 
       if (attrIndex === undefined) continue;

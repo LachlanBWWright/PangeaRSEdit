@@ -369,7 +369,8 @@ export interface Nanosaur1LevelData {
   heightmapTiles?: Uint8Array[] | null;
   objectList: TerrainItemEntryType[];
   textureAttributes: TileAttribType[];
-  // Add more fields as needed
+  heightmapPadding?: Uint8Array | null;
+  tileAnimData?: Uint8Array | null;
 }
 
 // TypeScript representation of the Nanosaur 1 C struct (TileAttribType)

@@ -2,6 +2,7 @@ import type { Updater } from "use-immer";
 import type { SplineData } from "@/python/structSpecs/LevelTypes";
 import { getPoints } from "../../../utils/spline";
 import { selectSplineNubs } from "../../../data/selectors";
+import { detectSplineType, SplineType } from "@/data/splines/splineTypeDetection";
 
 export const SPLINE_KEY_BASE = 1000;
 
@@ -13,10 +14,15 @@ export function updateSplinePointsFromNubs(
   setSplineData((draft) => {
     const nubs = selectSplineNubs(draft, SPLINE_KEY_BASE + splineIdx);
     const firstNub = nubs[0];
+    
+    // Detect if this spline is circular or open
+    const splineType = detectSplineType(nubs);
+    const isCircular = splineType === SplineType.CIRCULAR;
+    
     const newPoints =
       nubs.length === 1 && firstNub
         ? [{ x: firstNub.x, z: firstNub.z }]
-        : getPoints(nubs);
+        : getPoints(nubs, isCircular);
 
     const spPt = draft.SpPt?.[SPLINE_KEY_BASE + splineIdx];
     if (spPt) {

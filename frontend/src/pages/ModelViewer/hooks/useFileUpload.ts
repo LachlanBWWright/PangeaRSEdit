@@ -176,13 +176,15 @@ export function useFileUpload(options: UseFileUploadOptions) {
           ) {
             // Store parsed data for texture operations and editing
             const enhancedParsed = result.parsed;
-            onBg3dParsedChange(enhancedParsed);
+            if (enhancedParsed) {
+              onBg3dParsedChange(enhancedParsed);
 
-            // Check if skeleton data was preserved
-            if (enhancedParsed.skeleton?.animations?.length) {
-              console.log(
-                `Animation metadata preserved: ${enhancedParsed.skeleton.animations.length} animations detected`,
-              );
+              // Check if skeleton data was preserved
+              if (enhancedParsed.skeleton?.animations?.length) {
+                console.log(
+                  `Animation metadata preserved: ${enhancedParsed.skeleton.animations.length} animations detected`,
+                );
+              }
             }
 
             const glbBlob = new Blob([result.result], {
@@ -261,20 +263,20 @@ export function useFileUpload(options: UseFileUploadOptions) {
         ) {
           // Store parsed data for texture operations and editing
           const enhancedParsed = result.parsed;
-          onBg3dParsedChange(enhancedParsed);
+          if (enhancedParsed) {
+            onBg3dParsedChange(enhancedParsed);
 
-          // Check if skeleton data was preserved
-          if (enhancedParsed.skeleton?.animations?.length) {
-            console.log(
-              `Animation metadata preserved: ${enhancedParsed.skeleton.animations.length} animations detected`,
-            );
-          } else {
-            onBg3dParsedChange(result.parsed);
+            // Check if skeleton data was preserved
+            if (enhancedParsed.skeleton?.animations?.length) {
+              console.log(
+                `Animation metadata preserved: ${enhancedParsed.skeleton.animations.length} animations detected`,
+              );
+            }
+
+            // Extract and display textures
+            const textures = await extractTexturesFromBG3D(enhancedParsed);
+            onTexturesChange(textures);
           }
-
-          // Extract and display textures
-          const textures = await extractTexturesFromBG3D(result.parsed);
-          onTexturesChange(textures);
 
           // Create GLB blob and URL
           const glbBlob = new Blob([result.result], {

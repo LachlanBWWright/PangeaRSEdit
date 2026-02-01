@@ -1,12 +1,8 @@
 import { Updater } from "use-immer";
-<<<<<<< HEAD
 import {
   ItemData,
   HeaderData,
 } from "@/python/structSpecs/LevelTypes";
-=======
-import { ottoMaticLevel } from "../../../python/structSpecs/ottoMaticInterface";
->>>>>>> origin/main
 import { useAtom, useAtomValue } from "jotai";
 import { Button } from "@/components/ui/button";
 import { 
@@ -35,25 +31,21 @@ import { ParamTooltip } from "./ParamTooltip";
 import { Label } from "@/components/ui/label";
 
 export function ItemMenu({
-<<<<<<< HEAD
   itemData,
   setItemData,
-=======
-  data,
-  setData,
->>>>>>> origin/main
 }: {
-  data: ottoMaticLevel;
-  setData: Updater<ottoMaticLevel>;
+  itemData: ItemData;
+  setItemData: Updater<ItemData>;
+  headerData?: HeaderData;
+  setHeaderData?: Updater<HeaderData>;
 }) {
   const globals = useAtomValue(Globals);
   const [selectedItem, setSelectedItem] = useAtom(SelectedItem);
   const safeItemTypes = useAtomValue(SafeItemTypes);
   const [filterToSafe, setFilterToSafe] = useAtom(FilterToSafeItems);
-  // Mark unused props as used to satisfy linter; they are intentionally passed in for consistency with parent
 
-  const itemData =
-    selectedItem !== undefined ? data.Itms[1000].obj[selectedItem] : null;
+  const selectedItemData =
+    selectedItem !== undefined ? itemData.Itms[1000].obj[selectedItem] : null;
 
   const itemTypesResult = getItemTypes(globals);
   const allItemValues = itemTypesResult.ok
@@ -69,47 +61,35 @@ export function ItemMenu({
 
   return (
     <div className="flex flex-col gap-2">
-      {itemData === null || itemData === undefined ? (
+      {selectedItemData === null || selectedItemData === undefined ? (
         <AddItemMenu />
       ) : (
         <p>
-<<<<<<< HEAD
           Item {selectedItemData.type} ({selectedItemData.x},
           {selectedItemData.z})
-=======
-          Item {itemData.type} ({itemData.x},{itemData.z})
->>>>>>> origin/main
         </p>
       )}
 
       <div className="flex flex-col gap-2">
-        {itemData !== null && itemData !== undefined && (
+        {selectedItemData !== null && selectedItemData !== undefined && (
           <>
             <Select
-              value={itemData.type.toString() ?? ""}
+              value={selectedItemData.type.toString() ?? ""}
               onValueChange={(e) => {
                 const newItemType = parseInt(e);
-                setData((data) => {
+                setItemData((draft) => {
                   if (selectedItem === undefined) return;
-<<<<<<< HEAD
-                  const item = itemData.Itms[1000]?.obj?.[selectedItem];
+                  const item = draft.Itms[1000]?.obj?.[selectedItem];
                   if (item) {
                     item.type = newItemType;
                   }
-=======
-                  data.Itms[1000].obj[selectedItem].type = newItemType;
->>>>>>> origin/main
                 });
               }}
             >
               <SelectTrigger>
-<<<<<<< HEAD
                 <SelectValue>
                   {getItemName(globals, selectedItemData.type)}
                 </SelectValue>
-=======
-                <SelectValue>{getItemName(globals, itemData.type)}</SelectValue>
->>>>>>> origin/main
               </SelectTrigger>
               <SelectContent>
                 {itemValues.map((key) => (
@@ -147,34 +127,23 @@ export function ItemMenu({
                   <span className="text-baseline align-text-bottom">Flags</span>
                 }
                 tooltip={
-<<<<<<< HEAD
                   typeof TerrainItemTypeParams[selectedItemData.type as ItemType].flags ===
                   "string"
                     ? TerrainItemTypeParams[selectedItemData.type as ItemType].flags
-=======
-                  typeof ottoItemTypeParams[itemData.type].flags === "string"
-                    ? ottoItemTypeParams[itemData.type].flags
->>>>>>> origin/main
                     : ""
                 }
               />
               <Input
                 type="number"
                 className="col-span-3"
-                value={itemData.flags.toString()}
+                value={selectedItemData.flags.toString()}
                 onChange={(e) => {
-                  setData((data) => {
+                  setItemData((draft) => {
                     if (selectedItem === undefined) return;
-<<<<<<< HEAD
-                    const item = itemData.Itms[1000]?.obj?.[selectedItem];
+                    const item = draft.Itms[1000]?.obj?.[selectedItem];
                     if (item) {
                       item.flags = parseU16(e.target.value);
                     }
-=======
-                    data.Itms[1000].obj[selectedItem].flags = parseU16(
-                      e.target.value,
-                    );
->>>>>>> origin/main
                   });
                 }}
               />
@@ -182,25 +151,16 @@ export function ItemMenu({
               {/* Param 0-3, refactored */}
               {([0, 1, 2, 3] as const).map((i) => {
                 const paramKey = `p${i}` as const;
-<<<<<<< HEAD
                 const param =
                   TerrainItemTypeParams[selectedItemData.type as ItemType][paramKey];
                 const value = selectedItemData[paramKey];
-=======
-                const param = ottoItemTypeParams[itemData.type][paramKey];
-                const value = itemData[paramKey];
->>>>>>> origin/main
                 const setValue = (v: number) => {
-                  setData((data) => {
+                  setItemData((draft) => {
                     if (selectedItem === undefined) return;
-<<<<<<< HEAD
-                    const item = itemData.Itms[1000]?.obj?.[selectedItem];
+                    const item = draft.Itms[1000]?.obj?.[selectedItem];
                     if (item) {
                       item[paramKey] = v;
                     }
-=======
-                    data.Itms[1000].obj[selectedItem][paramKey] = v;
->>>>>>> origin/main
                   });
                 };
                 return [
@@ -226,11 +186,10 @@ export function ItemMenu({
                                 className="font-bold"
                                 checked={checked}
                                 onCheckedChange={(checked) => {
-                                  setData((data) => {
+                                  setItemData((draft) => {
                                     if (selectedItem === undefined) return;
-<<<<<<< HEAD
                                     const item =
-                                      itemData.Itms[1000]?.obj?.[selectedItem];
+                                      draft.Itms[1000]?.obj?.[selectedItem];
                                     if (item) {
                                       const mask = 1 << flag.index;
                                       if (checked) {
@@ -238,13 +197,6 @@ export function ItemMenu({
                                       } else {
                                         item[paramKey] &= ~mask;
                                       }
-=======
-                                    const mask = 1 << flag.index;
-                                    if (checked) {
-                                      data.Itms[1000].obj[selectedItem][paramKey] |= mask;
-                                    } else {
-                                      data.Itms[1000].obj[selectedItem][paramKey] &= ~mask;
->>>>>>> origin/main
                                     }
                                   });
                                 }}
@@ -280,8 +232,8 @@ export function ItemMenu({
               disabled={selectedItem === undefined}
               onClick={() => {
                 if (selectedItem === undefined) return;
-                setData((data) => {
-                  data.Itms[1000].obj.splice(selectedItem, 1);
+                setItemData((draft) => {
+                  draft.Itms[1000].obj.splice(selectedItem, 1);
                 });
                 setSelectedItem(undefined);
               }}

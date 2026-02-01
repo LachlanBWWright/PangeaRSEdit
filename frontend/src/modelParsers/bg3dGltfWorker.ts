@@ -1,10 +1,7 @@
-import { bg3dParsedToBG3D, parseBG3D } from "./parseBG3D";
+import { bg3dParsedToBG3D, parseBG3D, type BG3DParseResult } from "./parseBG3D";
 import { bg3dParsedToGLTF, gltfToBG3D } from "./parsedBg3dGitfConverter";
-<<<<<<< HEAD
 import { parseBG3DWithSkeletonResource } from "./bg3dWithSkeleton";
 import { parse3DMF } from "./parse3dmf";
-// Commented out unused import to fix build error
-// import { bg3dSkeletonToSkeletonResource, skeletonResourceToBinary } from "./skeletonExport";
 import { WebIO } from "@gltf-transform/core";
 import type { SkeletonResource } from "../python/structSpecs/skeleton/skeletonInterface";
 import { isErr, Result } from "../types/result";
@@ -23,9 +20,6 @@ function parseModelBuffer(buffer: ArrayBuffer): Result<BG3DParseResult, Error> {
   // Default to BG3D format
   return parseBG3D(buffer);
 }
-=======
-import { WebIO } from "@gltf-transform/core";
->>>>>>> origin/main
 
 // Message types
 export type BG3DGltfWorkerMessage =
@@ -36,22 +30,44 @@ export type BG3DGltfWorkerMessage =
   | {
       type: "glb-to-bg3d";
       buffer: ArrayBuffer;
+    }
+  | {
+      type: "glb-to-bg3d-with-skeleton";
+      buffer: ArrayBuffer;
+    }
+  | {
+      type: "bg3d-with-skeleton-to-glb";
+      bg3dBuffer: ArrayBuffer;
+      skeletonData: SkeletonResource;
+    }
+  | {
+      type: "bg3d-parsed-to-glb";
+      parsed: BG3DParseResult;
+    }
+  | {
+      type: "bg3d-parsed-to-bg3d";
+      parsed: BG3DParseResult;
     };
 
 export type BG3DGltfWorkerResponse =
   | {
       type: "bg3d-to-glb";
       result: ArrayBuffer;
+      parsed?: BG3DParseResult;
     }
   | {
       type: "glb-to-bg3d";
       result: ArrayBuffer;
     }
   | {
-<<<<<<< HEAD
       type: "glb-to-bg3d-with-skeleton";
       bg3dResult: ArrayBuffer;
       skeletonResult?: ArrayBuffer;
+    }
+  | {
+      type: "bg3d-with-skeleton-to-glb";
+      result: ArrayBuffer;
+      parsed?: BG3DParseResult;
     }
   | {
       type: "bg3d-parsed-to-glb";
@@ -63,8 +79,6 @@ export type BG3DGltfWorkerResponse =
       result: ArrayBuffer;
     }
   | {
-=======
->>>>>>> origin/main
       type: "error";
       error: string;
     };
@@ -96,7 +110,6 @@ self.onmessage = async (e: MessageEvent<BG3DGltfWorkerMessage>) => {
       const response: BG3DGltfWorkerResponse = {
         type: "bg3d-to-glb",
         result: arrBuffer,
-<<<<<<< HEAD
         parsed: parsed,
       };
       self.postMessage.call(self, response);
@@ -152,8 +165,6 @@ self.onmessage = async (e: MessageEvent<BG3DGltfWorkerMessage>) => {
       const response: BG3DGltfWorkerResponse = {
         type: "bg3d-parsed-to-bg3d",
         result: bg3dBuffer,
-=======
->>>>>>> origin/main
       };
       self.postMessage.call(self, response);
     } else if (msg.type === "glb-to-bg3d") {
@@ -166,7 +177,6 @@ self.onmessage = async (e: MessageEvent<BG3DGltfWorkerMessage>) => {
         result: bg3d,
       };
       self.postMessage.call(self, response);
-<<<<<<< HEAD
     } else if (msg.type === "glb-to-bg3d-with-skeleton") {
       const io = new WebIO();
       const doc = await io.readBinary(new Uint8Array(msg.buffer));
@@ -187,8 +197,6 @@ self.onmessage = async (e: MessageEvent<BG3DGltfWorkerMessage>) => {
         skeletonResult,
       };
       self.postMessage.call(self, response);
-=======
->>>>>>> origin/main
     } else {
       const response: BG3DGltfWorkerResponse = {
         type: "error",

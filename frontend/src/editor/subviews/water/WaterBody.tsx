@@ -1,32 +1,28 @@
 import { Updater } from "use-immer";
-<<<<<<< HEAD
 import { LiquidData } from "@/python/structSpecs/LevelTypes";
-=======
-import { ottoMaticLevel } from "../../../python/structSpecs/ottoMaticInterface";
->>>>>>> origin/main
 import { Circle, Line } from "react-konva";
 import Konva from "konva";
 import { useAtom } from "jotai";
 import {
   SelectedWaterBody,
   SelectedWaterNub,
-} from "../../../data/water/waterAtoms"; // Import SelectedWaterNub
+} from "../../../data/water/waterAtoms";
 import { memo, useState, useRef } from "react";
 
 export const WaterBody = memo(
   ({
-    data,
-    setData,
+    liquidData,
+    setLiquidData,
     waterBodyIdx,
   }: {
-    data: ottoMaticLevel;
-    setData: Updater<ottoMaticLevel>;
+    liquidData: LiquidData;
+    setLiquidData: Updater<LiquidData>;
     waterBodyIdx: number;
   }) => {
     const [selectedWaterBody, setSelectedWaterBody] =
       useAtom(SelectedWaterBody);
-    const [selectedWaterNub, setSelectedWaterNub] = useAtom(SelectedWaterNub); // Use SelectedWaterNub atom
-    const waterBody = data.Liqd[1000].obj[waterBodyIdx];
+    const [selectedWaterNub, setSelectedWaterNub] = useAtom(SelectedWaterNub);
+    const waterBody = liquidData.Liqd[1000].obj[waterBodyIdx];
     const [initialDragState, setInitialDragState] = useState<
       [number, number][] | null
     >(null);
@@ -54,16 +50,8 @@ export const WaterBody = memo(
             const waterBody = liquidData.Liqd[1000].obj[waterBodyIdx];
             if (!waterBody) return;
             setInitialDragState(
-<<<<<<< HEAD
               waterBody.nubs
                 .filter((_, nubIdx) => nubIdx < waterBody.numNubs)
-=======
-              data.Liqd[1000].obj[waterBodyIdx].nubs
-                .filter(
-                  (_, nubIdx) =>
-                    nubIdx < data.Liqd[1000].obj[waterBodyIdx].numNubs,
-                )
->>>>>>> origin/main
                 .map((nub) => [nub[0], nub[1]]),
             );
             setSelectedWaterBody(waterBodyIdx);
@@ -77,15 +65,10 @@ export const WaterBody = memo(
             const dragDx = e.target.x();
             const dragDz = e.target.y();
 
-<<<<<<< HEAD
             setLiquidData((draft) => {
               const waterBody = draft.Liqd[1000].obj[waterBodyIdx];
               if (!waterBody) return;
               const currentNubs = waterBody.nubs;
-=======
-            setData((draft) => {
-              const currentNubs = draft.Liqd[1000].obj[waterBodyIdx].nubs;
->>>>>>> origin/main
               for (let i = 0; i < initialDragState.length; i++) {
                 const nub = currentNubs[i];
                 const initNub = initialDragState[i];
@@ -99,51 +82,44 @@ export const WaterBody = memo(
               e.target.x(0);
               e.target.y(0);
             } catch (err) {
-              // Best-effort: reset node transform. Log for debug but do not alter behavior
               console.warn("Failed to reset Konva node transform:", err);
             }
             setInitialDragState(null);
           }}
         />
         {waterBodyIdx === selectedWaterBody &&
-<<<<<<< HEAD
           (() => {
             const waterBody = liquidData.Liqd[1000].obj[waterBodyIdx];
             if (!waterBody) return null;
             return waterBody.nubs.map((nub, nubIdx) => {
               if (waterBody.numNubs <= nubIdx) return null;
-=======
-          data.Liqd[1000].obj[waterBodyIdx].nubs.map((nub, nubIdx) => {
-            if (data.Liqd[1000].obj[waterBodyIdx].numNubs <= nubIdx) return;
->>>>>>> origin/main
 
               return (
                 <Circle
                   x={nub[0]}
                   y={nub[1]}
-                  key={waterBodyIdx + "-" + nubIdx} // More specific key
+                  key={waterBodyIdx + "-" + nubIdx}
                   radius={
                     selectedWaterNub === nubIdx &&
                     selectedWaterBody === waterBodyIdx
                       ? 8
                       : 5
-                  } // Highlight selected nub
+                  }
                   fill={
                     selectedWaterNub === nubIdx &&
                     selectedWaterBody === waterBodyIdx
                       ? "#FF99FFDD"
                       : "#9999FFDD"
-                  } // Different color for selected nub
+                  }
                   draggable={true}
                   onClick={() => {
                     setSelectedWaterBody(waterBodyIdx);
-                    setSelectedWaterNub(nubIdx); // Set selected nub on click
+                    setSelectedWaterNub(nubIdx);
                   }}
                   onDragStart={() => {
                     setSelectedWaterBody(waterBodyIdx);
-                    setSelectedWaterNub(nubIdx); // Set selected nub on drag start
+                    setSelectedWaterNub(nubIdx);
                   }}
-<<<<<<< HEAD
                   onDragMove={(e: Konva.KonvaEventObject<DragEvent>) => {
                     const newX = Math.round(e.target.x());
                     const newY = Math.round(e.target.y());
@@ -173,14 +149,6 @@ export const WaterBody = memo(
                         nubToUpdate[0] = Math.round(e.target.x());
                         nubToUpdate[1] = Math.round(e.target.y());
                       }
-=======
-                  onDragEnd={(e) => {
-                    setData((data) => {
-                      data.Liqd[1000].obj[waterBodyIdx].nubs[nubIdx][0] =
-                        Math.round(e.target.x());
-                      data.Liqd[1000].obj[waterBodyIdx].nubs[nubIdx][1] =
-                        Math.round(e.target.y());
->>>>>>> origin/main
                     });
                   }}
                 />
@@ -195,21 +163,11 @@ export const WaterBody = memo(
             fill="orange"
             draggable
             onDragEnd={(e) =>
-<<<<<<< HEAD
               setLiquidData((liquidData) => {
                 const wb = liquidData.Liqd[1000].obj[waterBodyIdx];
                 if (!wb) return;
                 wb.hotSpotX = Math.round(e.target.x());
                 wb.hotSpotZ = Math.round(e.target.y());
-=======
-              setData((data) => {
-                data.Liqd[1000].obj[waterBodyIdx].hotSpotX = Math.round(
-                  e.target.x(),
-                );
-                data.Liqd[1000].obj[waterBodyIdx].hotSpotZ = Math.round(
-                  e.target.y(),
-                );
->>>>>>> origin/main
               })
             }
           />

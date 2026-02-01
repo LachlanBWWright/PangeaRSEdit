@@ -5,7 +5,7 @@ import {
   parseMightyMikeTileSet,
   mightyMikeMapToCompressedBinary,
 } from "../../modelParsers/parseMightyMike";
-import type { MightyMikeTileSet, MightyMikeMap } from "../../python/structSpecs/mightyMikeInterface";
+import type { MightyMikeTileSet, MightyMikeMap, MightyMikeTileValue } from "../../python/structSpecs/mightyMikeInterface";
 import { splitLevelData, AtomicLevelData } from "../../data/utils/levelDataUtils";
 import { extractTGAPalette } from "../../utils/tgaParser";
 
@@ -469,26 +469,38 @@ export function serializeMightyMikeLevel(levelData: LevelData): Result<ArrayBuff
   layr.forEach((newTileIndex: number, i: number) => {
       if (i < tileValues.length) {
           const tile = tileValues[i];
-          tile["tileIndex"] = newTileIndex;
-          // Update rawValue: clear old index bits and set new index bits
-          // Preserve high bits (flags)
-          // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion
-          const rawValue = (tile["rawValue"] as number);
-          tile["rawValue"] = (rawValue & ~TILENUM_MASK) | (newTileIndex & TILENUM_MASK);
+          if (tile) {
+            tile["tileIndex"] = newTileIndex;
+            // Update rawValue: clear old index bits and set new index bits
+            // Preserve high bits (flags)
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion
+            const rawValue = (tile["rawValue"] as number);
+            tile["rawValue"] = (rawValue & ~TILENUM_MASK) | (newTileIndex & TILENUM_MASK);
+          }
       }
   });
 
   // Reconstruct mapImage (2D array)
-  const mapImage = [];
+  const mapImage: MightyMikeTileValue[][] = [];
   const width = mapData.mapWidth;
   const height = mapData.mapHeight;
 
   for (let y = 0; y < height; y++) {
-      const row = [];
+      const row: MightyMikeTileValue[] = [];
       for (let x = 0; x < width; x++) {
           const i = y * width + x;
-          if (i < tileValues.length) {
-              row.push(tileValues[i]);
+          const tile = tileValues[i];
+          if (tile && typeof tile.rawValue === 'number' && 
+              typeof tile.tileIndex === 'number' &&
+              typeof tile.hasCollisionMask === 'boolean' &&
+              typeof tile.usePixelAccurateCollision === 'boolean') {
+              // We've verified all fields exist with correct types
+              row.push({
+                rawValue: tile.rawValue,
+                tileIndex: tile.tileIndex,
+                hasCollisionMask: tile.hasCollisionMask,
+                usePixelAccurateCollision: tile.usePixelAccurateCollision
+              });
           } else {
               row.push({ rawValue: 0, tileIndex: 0, hasCollisionMask: false, usePixelAccurateCollision: false });
           }

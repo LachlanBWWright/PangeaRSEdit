@@ -3,11 +3,7 @@ import { ClickToAddItem, SelectedItem } from "@/data/items/itemAtoms";
 import { SelectedSpline } from "@/data/splines/splineAtoms";
 import { SelectedWaterBody } from "@/data/water/waterAtoms";
 import { useAtomValue, useSetAtom } from "jotai";
-<<<<<<< HEAD
-import { useRef, useCallback, useState, useEffect } from "react";
-=======
-import { useRef } from "react";
->>>>>>> origin/main
+import { useRef, useState, useEffect } from "react";
 import { Stage } from "react-konva";
 import { Updater } from "use-immer";
 import { Items } from "../subviews/Items";
@@ -16,7 +12,6 @@ import { Splines } from "../subviews/Splines";
 import { WaterBodies } from "../subviews/WaterBodies";
 import { Tiles } from "../subviews/Tiles";
 import { Supertiles } from "../subviews/Supertiles";
-<<<<<<< HEAD
 import {
   HeaderData,
   ItemData,
@@ -25,9 +20,6 @@ import {
   SplineData,
   TerrainData,
 } from "@/python/structSpecs/LevelTypes";
-=======
-import { ottoMaticLevel } from "@/python/structSpecs/ottoMaticInterface";
->>>>>>> origin/main
 
 enum View {
   fences,
@@ -45,15 +37,33 @@ export interface StageData {
 }
 
 export function KonvaView({
-  data,
-  setData,
+  headerData,
+  terrainData,
+  setTerrainData,
+  itemData,
+  setItemData,
+  liquidData,
+  setLiquidData,
+  fenceData,
+  setFenceData,
+  splineData,
+  setSplineData,
   mapImages,
   view,
   stage,
   setStage,
 }: {
-  data: ottoMaticLevel;
-  setData: Updater<ottoMaticLevel>;
+  headerData: HeaderData;
+  terrainData: TerrainData;
+  setTerrainData: Updater<TerrainData>;
+  itemData: ItemData | null;
+  setItemData: Updater<ItemData | null>;
+  liquidData: LiquidData | null;
+  setLiquidData: Updater<LiquidData | null>;
+  fenceData: FenceData | null;
+  setFenceData: Updater<FenceData | null>;
+  splineData: SplineData | null;
+  setSplineData: Updater<SplineData | null>;
   mapImages: HTMLCanvasElement[];
   view: View;
   stage: StageData;
@@ -90,6 +100,47 @@ export function KonvaView({
     return () => window.removeEventListener("resize", updateSize);
   }, []);
 
+  // Create wrapper setters that handle null
+  const safeSetItemData: Updater<ItemData> = (updater) => {
+    setItemData((data) => {
+      if (data) {
+        if (typeof updater === 'function') {
+          updater(data);
+        }
+      }
+    });
+  };
+  
+  const safeSetLiquidData: Updater<LiquidData> = (updater) => {
+    setLiquidData((data) => {
+      if (data) {
+        if (typeof updater === 'function') {
+          updater(data);
+        }
+      }
+    });
+  };
+  
+  const safeSetFenceData: Updater<FenceData> = (updater) => {
+    setFenceData((data) => {
+      if (data) {
+        if (typeof updater === 'function') {
+          updater(data);
+        }
+      }
+    });
+  };
+  
+  const safeSetSplineData: Updater<SplineData> = (updater) => {
+    setSplineData((data) => {
+      if (data) {
+        if (typeof updater === 'function') {
+          updater(data);
+        }
+      }
+    });
+  };
+
   return (
     <div ref={containerRef} style={{ width: "100%", height: "100%" }}>
       <Stage
@@ -109,9 +160,7 @@ export function KonvaView({
           const x = Math.round(pos.x);
           const z = Math.round(pos.y);
 
-<<<<<<< HEAD
-          // Use non-null updater so child components can rely on non-null shape
-          setItemDataNotNull((itemData) => {
+          safeSetItemData((itemData) => {
             itemData.Itms[1000].obj.push({
               x: x,
               z: z,
@@ -122,18 +171,6 @@ export function KonvaView({
               p2: 0,
               p3: 0,
             });
-=======
-        setData((data) => {
-          data.Itms[1000].obj.push({
-            x: x,
-            z: z,
-            type: clickToAddItem,
-            flags: 0,
-            p0: 0,
-            p1: 0,
-            p2: 0,
-            p3: 0,
->>>>>>> origin/main
           });
         }}
         onDblClick={() => {
@@ -143,7 +180,6 @@ export function KonvaView({
           setSelectedWaterBody(null);
         }}
         onWheel={(e) => {
-          /*from https://stackoverflow.com/questions/52054848/how-to-react-konva-zooming-on-scroll */
           e.evt.preventDefault();
 
           const scaleBy = 1.05;
@@ -161,7 +197,6 @@ export function KonvaView({
           const newScale =
             e.evt.deltaY < 0 ? oldScale * scaleBy : oldScale / scaleBy;
 
-<<<<<<< HEAD
           setStage({
             scale: newScale,
             x: (pointerPosition.x / newScale - mousePointTo.x) * newScale,
@@ -191,22 +226,22 @@ export function KonvaView({
               {liquidData && (
                 <WaterBodies
                   liquidData={liquidData}
-                  setLiquidData={setLiquidDataNotNull}
+                  setLiquidData={safeSetLiquidData}
                 />
               )}
               {fenceData && (
                 <Fences
                   fenceData={fenceData}
-                  setFenceData={setFenceDataNotNull}
+                  setFenceData={safeSetFenceData}
                 />
               )}
               {itemData && (
-                <Items itemData={itemData} setItemData={setItemDataNotNull} />
+                <Items itemData={itemData} setItemData={safeSetItemData} />
               )}
               {splineData && (
                 <Splines
                   splineData={splineData}
-                  setSplineData={setSplineDataNotNull}
+                  setSplineData={safeSetSplineData}
                 />
               )}
             </>
@@ -216,22 +251,22 @@ export function KonvaView({
             {liquidData && (
               <WaterBodies
                 liquidData={liquidData}
-                setLiquidData={setLiquidDataNotNull}
+                setLiquidData={safeSetLiquidData}
               />
             )}
             {itemData && (
-              <Items itemData={itemData} setItemData={setItemDataNotNull} />
+              <Items itemData={itemData} setItemData={safeSetItemData} />
             )}
             {splineData && (
               <Splines
                 splineData={splineData}
-                setSplineData={setSplineDataNotNull}
+                setSplineData={safeSetSplineData}
               />
             )}
             {fenceData && (
               <Fences
                 fenceData={fenceData}
-                setFenceData={setFenceDataNotNull}
+                setFenceData={safeSetFenceData}
               />
             )}
           </>
@@ -241,22 +276,22 @@ export function KonvaView({
             {fenceData && (
               <Fences
                 fenceData={fenceData}
-                setFenceData={setFenceDataNotNull}
+                setFenceData={safeSetFenceData}
               />
             )}
             {itemData && (
-              <Items itemData={itemData} setItemData={setItemDataNotNull} />
+              <Items itemData={itemData} setItemData={safeSetItemData} />
             )}
             {splineData && (
               <Splines
                 splineData={splineData}
-                setSplineData={setSplineDataNotNull}
+                setSplineData={safeSetSplineData}
               />
             )}
             {liquidData && (
               <WaterBodies
                 liquidData={liquidData}
-                setLiquidData={setLiquidDataNotNull}
+                setLiquidData={safeSetLiquidData}
               />
             )}
           </>
@@ -266,22 +301,22 @@ export function KonvaView({
             {liquidData && (
               <WaterBodies
                 liquidData={liquidData}
-                setLiquidData={setLiquidDataNotNull}
+                setLiquidData={safeSetLiquidData}
               />
             )}
             {itemData && (
-              <Items itemData={itemData} setItemData={setItemDataNotNull} />
+              <Items itemData={itemData} setItemData={safeSetItemData} />
             )}
             {fenceData && (
               <Fences
                 fenceData={fenceData}
-                setFenceData={setFenceDataNotNull}
+                setFenceData={safeSetFenceData}
               />
             )}
             {splineData && (
               <Splines
                 splineData={splineData}
-                setSplineData={setSplineDataNotNull}
+                setSplineData={safeSetSplineData}
               />
             )}
           </>
@@ -291,86 +326,27 @@ export function KonvaView({
             {liquidData && (
               <WaterBodies
                 liquidData={liquidData}
-                setLiquidData={setLiquidDataNotNull}
+                setLiquidData={safeSetLiquidData}
               />
             )}
             {splineData && (
               <Splines
                 splineData={splineData}
-                setSplineData={setSplineDataNotNull}
+                setSplineData={safeSetSplineData}
               />
             )}
             {fenceData && (
               <Fences
                 fenceData={fenceData}
-                setFenceData={setFenceDataNotNull}
+                setFenceData={safeSetFenceData}
               />
             )}
             {itemData && (
-              <Items itemData={itemData} setItemData={setItemDataNotNull} />
+              <Items itemData={itemData} setItemData={safeSetItemData} />
             )}
           </>
         )}
       </Stage>
     </div>
-=======
-        setStage({
-          scale: newScale,
-          x: (pointerPosition.x / newScale - mousePointTo.x) * newScale,
-          y: (pointerPosition.y / newScale - mousePointTo.y) * newScale,
-        });
-      }}
-    >
-      {data.STgd && <Supertiles data={data} mapImages={mapImages} />}
-      {view === View.tiles && (
-        <Tiles
-          data={data}
-          setData={setData}
-          isEditingTopology={view === View.tiles}
-        />
-      )}
-      {view === View.tiles ||
-        (view === View.supertiles && (
-          <>
-            <WaterBodies data={data} setData={setData} />
-            <Fences data={data} setData={setData} />
-            <Items data={data} setData={setData} />
-            <Splines data={data} setData={setData} />
-          </>
-        ))}
-      {view === View.fences && (
-        <>
-          <WaterBodies data={data} setData={setData} />
-          <Items data={data} setData={setData} />
-          <Splines data={data} setData={setData} />
-          <Fences data={data} setData={setData} />
-        </>
-      )}
-      {view === View.water && (
-        <>
-          <Fences data={data} setData={setData} />
-          <Items data={data} setData={setData} />
-          <Splines data={data} setData={setData} />
-          <WaterBodies data={data} setData={setData} />
-        </>
-      )}
-      {view === View.splines && (
-        <>
-          <WaterBodies data={data} setData={setData} />
-          <Items data={data} setData={setData} />
-          <Fences data={data} setData={setData} />
-          <Splines data={data} setData={setData} />
-        </>
-      )}
-      {view === View.items && (
-        <>
-          <WaterBodies data={data} setData={setData} />
-          <Splines data={data} setData={setData} />
-          <Fences data={data} setData={setData} />
-          <Items data={data} setData={setData} />
-        </>
-      )}
-    </Stage>
->>>>>>> origin/main
   );
 }

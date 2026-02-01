@@ -1,18 +1,9 @@
-<<<<<<< HEAD
 import type { Updater } from "use-immer";
 import type {
-  SplineItem,
-  SplineNub,
+  SplineItem as SplineItemType,
+  SplineNub as SplineNubType,
+  SplineData,
 } from "@/python/structSpecs/LevelTypes";
-import type { SplineData } from "@/python/structSpecs/LevelTypes";
-=======
-import { Updater } from "use-immer";
-import {
-  ottoMaticLevel,
-  ottoSplineItem,
-  ottoSplineNub,
-} from "../../../python/structSpecs/ottoMaticInterface";
->>>>>>> origin/main
 import { Line, Circle, Rect, Label, Tag, Text } from "react-konva";
 import type Konva from "konva";
 import { useAtom, useAtomValue } from "jotai";
@@ -21,42 +12,26 @@ import { getPoints } from "../../../utils/spline";
 import { SelectedSpline } from "../../../data/splines/splineAtoms";
 import { getSplineItemName } from "@/data/splines/getSplineItemNames";
 import { Globals } from "@/data/globals/globals";
-<<<<<<< HEAD
 import {
   selectSplineNubs,
-  selectSplinePoints,
+  // selectSplinePoints,
   selectSplineItems,
 } from "../../../data/selectors";
 import { updateSplinePointsFromNubs, SPLINE_KEY_BASE } from "./splineUtils";
-=======
-
-export function updateSplinePoints(
-  splineIdx: number,
-  setData: Updater<ottoMaticLevel>,
-) {
-  setData((data) => {
-    const newPoints =
-      data.SpNb[SPLINE_KEY_BASE + splineIdx].obj.length === 1
-        ? [
-            {
-              x: data.SpNb[SPLINE_KEY_BASE + splineIdx].obj[0].x,
-              z: data.SpNb[SPLINE_KEY_BASE + splineIdx].obj[0].z,
-            },
-          ]
-        : getPoints(data.SpNb[SPLINE_KEY_BASE + splineIdx].obj);
-    data.SpPt[SPLINE_KEY_BASE + splineIdx].obj = newPoints;
-  });
-}
->>>>>>> origin/main
+import {
+  detectSplineType,
+  shouldShowFirstNub,
+  shouldSyncFirstAndLastNubs,
+} from "@/data/splines/splineTypeDetection";
 
 export const Spline = memo(
   ({
-    data,
-    setData,
+    splineData,
+    setSplineData,
     splineIdx,
   }: {
-    data: ottoMaticLevel;
-    setData: Updater<ottoMaticLevel>;
+    splineData: SplineData;
+    setSplineData: Updater<SplineData>;
     splineIdx: number;
   }) => {
     const selectedSpline = useAtomValue(SelectedSpline);
@@ -64,24 +39,25 @@ export const Spline = memo(
       { x: number; z: number }[] | null
     >(null);
 
-<<<<<<< HEAD
     const nubs = selectSplineNubs(splineData, SPLINE_KEY_BASE + splineIdx);
     const items = selectSplineItems(splineData, SPLINE_KEY_BASE + splineIdx);
-    const splinePoints = selectSplinePoints(
-      splineData,
-      SPLINE_KEY_BASE + splineIdx,
-    );
-=======
-    const nubs = data.SpNb[SPLINE_KEY_BASE + splineIdx].obj;
-    const items = data.SpIt[SPLINE_KEY_BASE + splineIdx].obj;
->>>>>>> origin/main
 
+    const splinePts = splineData.SpPt?.[SPLINE_KEY_BASE + splineIdx]?.obj;
+    
+    // Detect if this spline is circular (closed loop) or open (distinct start/end)
+    const splineType = useMemo(() => detectSplineType(nubs), [nubs]);
+    const showFirstNub = shouldShowFirstNub(splineType);
+    const syncFirstAndLast = shouldSyncFirstAndLastNubs(splineType);
+    
     const points = useMemo(() => {
-      return data.SpPt[SPLINE_KEY_BASE + splineIdx].obj.flatMap((point) => [
+      if (!splinePts) return [];
+      return splinePts.flatMap((point) => [
         point.x,
         point.z,
       ]);
-    }, [data.SpPt[SPLINE_KEY_BASE + splineIdx].obj]);
+    }, [splinePts]);
+
+    if (!splinePts) return null;
 
     return (
       <>
@@ -93,11 +69,7 @@ export const Spline = memo(
           onDragStart={() => {
             // Store the initial positions of the nubs when dragging starts
             setInitialDragState(
-<<<<<<< HEAD
               nubs.map((nub) => ({
-=======
-              data.SpNb[SPLINE_KEY_BASE + splineIdx].obj.map((nub) => ({
->>>>>>> origin/main
                 x: nub.x,
                 z: nub.z,
               })),
@@ -113,7 +85,6 @@ export const Spline = memo(
             const dragDx = e.target.x();
             const dragDz = e.target.y();
 
-<<<<<<< HEAD
             const updatedNubs = initialDragState.map((initPos) => ({
               x: initPos.x + dragDx,
               z: initPos.z + dragDz,
@@ -126,7 +97,7 @@ export const Spline = memo(
                 spNb.obj = updatedNubs;
               }
               const spln =
-                draft.Spln?.[1000]?.obj?.[SPLINE_KEY_BASE + splineIdx];
+                draft.Spln?.[1000]?.obj?.[splineIdx];
               if (spln) {
                 spln.numNubs = updatedNubs.length;
               }
@@ -143,30 +114,20 @@ export const Spline = memo(
               console.warn("Failed to reset Konva node transform:", err);
             }
             setInitialDragState(null);
-=======
-            setData((draft) => {
-              const currentNubs = draft.SpNb[SPLINE_KEY_BASE + splineIdx].obj;
-              for (let i = 0; i < currentNubs.length; i++) {
-                currentNubs[i].x = initialDragState[i].x + dragDx;
-                currentNubs[i].z = initialDragState[i].z + dragDz;
-              }
-            });
-            updateSplinePoints(splineIdx, setData);
-            e.target.x(0); // Reset line position after dragging nubs
-            e.target.y(0); // Reset line position after dragging nubs
-            setInitialDragState(null); // Clear initial drag state
->>>>>>> origin/main
           }}
         />
         {nubs.map((nub, nubIdx) => {
-          if (nubIdx === 0) return null;
+          // For circular splines, hide the first nub (it's merged with the last)
+          // For open splines (Billy Frontier), show both endpoints
+          if (nubIdx === 0 && !showFirstNub) return null;
           return (
             <SplineNub
               key={nubIdx}
               nub={nub}
               nubIdx={nubIdx}
               splineIdx={splineIdx}
-              setData={setData}
+              setSplineData={setSplineData}
+              syncFirstAndLast={syncFirstAndLast}
             />
           );
         })}
@@ -198,12 +159,14 @@ const SplineNub = memo(
     nub,
     nubIdx,
     splineIdx,
-    setData,
+    setSplineData,
+    syncFirstAndLast,
   }: {
-    nub: SplineNub;
+    nub: SplineNubType;
     nubIdx: number;
     splineIdx: number;
-    setData: Updater<ottoMaticLevel>;
+    setSplineData: Updater<SplineData>;
+    syncFirstAndLast: boolean;
   }) => {
     const [selectedSpline, setSelectedSpline] = useAtom(SelectedSpline);
     const [hovering, setHovering] = useState(false);
@@ -218,7 +181,6 @@ const SplineNub = memo(
           fill={selectedSpline === splineIdx ? "red" : "blue"}
           onMouseDown={() => setSelectedSpline(splineIdx)}
           onDragStart={() => setSelectedSpline(splineIdx)}
-<<<<<<< HEAD
           onDragMove={(e: Konva.KonvaEventObject<DragEvent>) => {
             const newX = Math.round(e.target.x());
             const newZ = Math.round(e.target.y());
@@ -231,8 +193,8 @@ const SplineNub = memo(
                 const updatedNubs = [...currentNubs];
                 updatedNubs[nubIdx] = { x: newX, z: newZ };
 
-                //Modify "hidden" final nub, which is to be in the same position as the first nub
-                if (nubIdx === currentNubs.length - 1) {
+                // For circular splines, sync first and last nub positions
+                if (syncFirstAndLast && nubIdx === currentNubs.length - 1) {
                   updatedNubs[0] = { x: newX, z: newZ };
                 }
 
@@ -253,7 +215,7 @@ const SplineNub = memo(
                 }
 
                 const spln =
-                  draft.Spln?.[1000]?.obj?.[SPLINE_KEY_BASE + splineIdx];
+                  draft.Spln?.[1000]?.obj?.[splineIdx];
                 if (spln) {
                   spln.numNubs = updatedNubs.length;
                   spln.numPoints = newPoints.length;
@@ -272,40 +234,19 @@ const SplineNub = memo(
               const updatedNubs = [...currentNubs];
               updatedNubs[nubIdx] = { x: newX, z: newZ };
 
-              //Modify "hidden" final nub, which is to be in the same position as the first nub
-              if (nubIdx === currentNubs.length - 1) {
+              // For circular splines, sync first and last nub positions
+              if (syncFirstAndLast && nubIdx === currentNubs.length - 1) {
                 updatedNubs[0] = { x: newX, z: newZ };
               }
 
               const spNbEntry = draft.SpNb?.[SPLINE_KEY_BASE + splineIdx];
               if (spNbEntry) spNbEntry.obj = updatedNubs;
               const splnEntry =
-                draft.Spln?.[1000]?.obj?.[SPLINE_KEY_BASE + splineIdx];
+                draft.Spln?.[1000]?.obj?.[splineIdx];
               if (splnEntry) splnEntry.numNubs = updatedNubs.length;
             });
 
             updateSplinePointsFromNubs(splineIdx, setSplineData);
-=======
-          onDragEnd={(e) => {
-            setData((data) => {
-              data.SpNb[SPLINE_KEY_BASE + splineIdx].obj[nubIdx] = {
-                x: Math.round(e.target.x()),
-                z: Math.round(e.target.y()),
-              };
-
-              //Modify "hidden" final nub, which is to be in the same position as the first nub
-              if (
-                nubIdx ===
-                data.SpNb[SPLINE_KEY_BASE + splineIdx].obj.length - 1
-              ) {
-                data.SpNb[SPLINE_KEY_BASE + splineIdx].obj[0] = {
-                  x: Math.round(e.target.x()),
-                  z: Math.round(e.target.y()),
-                };
-              }
-            });
-            updateSplinePoints(splineIdx, setData);
->>>>>>> origin/main
           }}
           onMouseOver={() => setHovering(true)}
           onMouseLeave={() => setHovering(false)}
@@ -329,7 +270,7 @@ const ITEM_BOX_SIZE = 12;
 const ITEM_BOX_OFFSET = ITEM_BOX_SIZE / 2;
 
 const SplineItem = memo(
-  ({ x, z, item }: { x: number; z: number; item: SplineItem }) => {
+  ({ x, z, item }: { x: number; z: number; item: SplineItemType }) => {
     const [hovering, setHovering] = useState(false);
     const globals = useAtomValue(Globals);
     return (
@@ -360,12 +301,7 @@ const SplineItem = memo(
         <Label opacity={1} visible={hovering} x={x + 15} y={z}>
           <Tag fill="blue" />
           <Text
-            text={
-              getSplineItemName(
-                globals,
-                item.type,
-              ) /* splineItemTypeNames[item.type] */
-            }
+            text={getSplineItemName(globals, item.type)}
             fontSize={8}
             fill="white"
           />
@@ -374,5 +310,3 @@ const SplineItem = memo(
     );
   },
 );
-
-// SPLINE_KEY_BASE is now exported from splineUtils.ts

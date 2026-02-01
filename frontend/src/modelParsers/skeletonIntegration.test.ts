@@ -198,7 +198,7 @@ describe("BG3D Skeleton Integration", () => {
     expect(result.type).toBe("bg3d-to-glb");
     if (result.type === "bg3d-to-glb") {
       expect(result.parsed).toBeDefined();
-      expect(result.parsed.skeleton).toBeUndefined();
+      expect(result.parsed?.skeleton).toBeUndefined();
     }
   });
 
@@ -221,10 +221,10 @@ describe("BG3D Skeleton Integration", () => {
     expect(result.type).toBe("bg3d-with-skeleton-to-glb");
     if (result.type === "bg3d-with-skeleton-to-glb") {
       expect(result.parsed).toBeDefined();
-      expect(result.parsed.skeleton).toBeDefined();
-      expect(result.parsed.skeleton?.bones).toHaveLength(1);
-      expect(result.parsed.skeleton?.animations).toHaveLength(1);
-      const skeleton = result.parsed.skeleton;
+      expect(result.parsed?.skeleton).toBeDefined();
+      expect(result.parsed?.skeleton?.bones).toHaveLength(1);
+      expect(result.parsed?.skeleton?.animations).toHaveLength(1);
+      const skeleton = result.parsed?.skeleton;
       const firstAnim = skeleton?.animations?.[0];
       expect(firstAnim?.name ?? "").toBe("test_animation");
     }

@@ -19,6 +19,7 @@ import { BugdomTileMenu } from "../subviews/bugdom/BugdomTileMenu";
 import { Bugdom1KonvaView } from "../canvas/Bugdom1KonvaView";
 import { ThreeView } from "../threejs/Three";
 import { View } from "../viewEnum";
+import { ItemFilterToggle } from "../subviews/filters/ItemFilterToggle";
 import {
   createNonNullUpdater,
   createUndoRedoKeyHandler,
@@ -130,7 +131,13 @@ export function BugdomEditorView({
           />
         )}
       </div>
-      <div className="w-full min-h-0 flex-1 border-2 border-black overflow-clip">
+      <div className="w-full min-h-0 flex-1 border-2 border-black overflow-clip relative">
+        {/* Item Filter Toggle - Top Right */}
+        {itemData && (
+          <div className="absolute top-2 right-2 z-10">
+            <ItemFilterToggle />
+          </div>
+        )}
         {canvasViewMode === CanvasView.THREE_D && view === View.tiles ? (
           <ThreeView
             headerData={headerData}

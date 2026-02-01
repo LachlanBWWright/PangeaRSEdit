@@ -163,14 +163,14 @@ export function compileNanosaur1Level(
 
     let writePtr = textureLayerOffset;
     for(let i=0; i<textureLayer.length; i++) {
-        view.setUint16(writePtr + (i*2), textureLayer[i], false);
+        view.setUint16(writePtr + (i*2), textureLayer[i] ?? 0, false);
     }
 
     // -- Heightmap Layer --
     if (heightmapLayerOffset > 0 && rawLevelData.heightmapLayer) {
         writePtr = heightmapLayerOffset;
         for(let i=0; i<rawLevelData.heightmapLayer.length; i++) {
-            view.setUint16(writePtr + (i*2), rawLevelData.heightmapLayer[i], false);
+            view.setUint16(writePtr + (i*2), rawLevelData.heightmapLayer[i] ?? 0, false);
         }
     }
 
@@ -178,7 +178,7 @@ export function compileNanosaur1Level(
     if (pathLayerOffset > 0 && rawLevelData.pathLayer) {
         writePtr = pathLayerOffset;
         for(let i=0; i<rawLevelData.pathLayer.length; i++) {
-            view.setUint16(writePtr + (i*2), rawLevelData.pathLayer[i], false);
+            view.setUint16(writePtr + (i*2), rawLevelData.pathLayer[i] ?? 0, false);
         }
     }
 
@@ -298,7 +298,7 @@ export function compileNanosaur1Level(
     if (tileAnimDataSize > 0) {
         writePtr = tileAnimDataOffset;
         for (let i = 0; i < tileAnimDataSize; i++) {
-            view.setUint8(writePtr + i, tileAnimData[i]);
+            view.setUint8(writePtr + i, tileAnimData[i] ?? 0);
         }
     }
 

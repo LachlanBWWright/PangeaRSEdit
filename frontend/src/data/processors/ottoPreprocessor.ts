@@ -185,11 +185,11 @@ export function ottoPreprocessor(
 ) {
   setData((data) => {
     data.Hedr[1000].obj.numFences = data.Fenc?.[1000].obj.length ?? 0;
-    data.Hedr[1000].obj.numItems = data.Itms?.[1000].obj.length ?? 0;
-    data.Hedr[1000].obj.numWaterPatches = data.Liqd?.[1000].obj.length ?? 0;
-    data.Hedr[1000].obj.numSplines = data.Spln?.[1000].obj.length ?? 0;
+    data.Hedr[1000].obj.numItems = data.Itms?.[1000]?.obj?.length ?? 0;
+    data.Hedr[1000].obj.numWaterPatches = data.Liqd?.[1000]?.obj?.length ?? 0;
+    data.Hedr[1000].obj.numSplines = data.Spln?.[1000]?.obj?.length ?? 0;
 
-    data.Itms[1000].obj.sort((a, b) => {
+    data.Itms?.[1000]?.obj?.sort((a, b) => {
       if (a.x > b.x) return 1;
       else if (a.x < b.x) return -1;
       else {
@@ -219,7 +219,6 @@ export function ottoPreprocessor(
         const spline = data.Spln[1000].obj[i];
         if (!spline) continue;
 
-<<<<<<< HEAD
         const numPoints = data.SpPt?.[splineIdx]?.obj.length ?? 0;
         spline.numPoints = numPoints;
 
@@ -228,16 +227,6 @@ export function ottoPreprocessor(
 
         const numItems = data.SpIt?.[splineIdx]?.obj.length ?? 0;
         spline.numItems = numItems;
-=======
-        const numPoints = data.SpPt[splineIdx].obj.length;
-        data.Spln[1000].obj[i].numPoints = numPoints;
-
-        const numNubs = data.SpNb[splineIdx].obj.length;
-        data.Spln[1000].obj[i].numNubs = numNubs;
-
-        const numItems = data.SpIt[splineIdx].obj.length;
-        data.Spln[1000].obj[i].numItems = numItems;
->>>>>>> origin/main
       }
 
     //TODO: Fence Bounding Boxes
