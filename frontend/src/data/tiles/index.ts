@@ -80,3 +80,16 @@ export {
   getSupportedImageFormats,
   getTileImportFileFilter,
 } from "./tileImport";
+
+export {
+  type TileExportConfig,
+  type TileExportResult,
+  canExportTiles,
+  exportSingleTile,
+  calculatePaletteGrid,
+  exportTilePalette,
+  downloadTileExport,
+  getExportFileExtension,
+  generateTileFilename,
+  generatePaletteFilename,
+} from "./tileExport";
