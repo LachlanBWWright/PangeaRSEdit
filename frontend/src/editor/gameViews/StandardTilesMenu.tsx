@@ -99,6 +99,12 @@ export function StandardTilesMenu({
         <Button onClick={() => onResize("left", 1)}>Add Column Left</Button>
         <Button onClick={() => onResize("right", 1)}>Add Column Right</Button>
       </div>
+      <div className="grid grid-cols-4 gap-2">
+        <Button variant="destructive" onClick={() => onResize("top", -1)}>Remove Row Top</Button>
+        <Button variant="destructive" onClick={() => onResize("bottom", -1)}>Remove Row Bottom</Button>
+        <Button variant="destructive" onClick={() => onResize("left", -1)}>Remove Column Left</Button>
+        <Button variant="destructive" onClick={() => onResize("right", -1)}>Remove Column Right</Button>
+      </div>
       <div className="grid grid-cols-2 gap-2">
         <Button
           selected={tileView === TileViews.Topology}
