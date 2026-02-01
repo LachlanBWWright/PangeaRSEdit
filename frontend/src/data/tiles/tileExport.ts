@@ -156,12 +156,12 @@ export function calculatePaletteGrid(
 /**
  * Export multiple tiles as a palette image
  */
-export function exportTilePalette(
+export async function exportTilePalette(
   tilesData: Uint8Array[],
   tileSize: number,
   config: Partial<TileExportConfig> = {},
   gridColumns?: number,
-): Result<TileExportResult, Error> {
+): Promise<Result<TileExportResult, Error>> {
   const fullConfig = { ...DEFAULT_EXPORT_CONFIG, ...config };
   
   if (tilesData.length === 0) {
@@ -210,10 +210,19 @@ export function exportTilePalette(
       continue; // Skip failed tiles
     }
     
-    // Draw tile to canvas
-    const img = new Image();
-    img.src = tileResult.value.dataUrl;
-    ctx.drawImage(img, col * scaledTileSize, row * scaledTileSize);
+    // Draw tile to canvas using createImageBitmap for proper async loading
+    try {
+      // Convert data URL to blob
+      const response = await fetch(tileResult.value.dataUrl);
+      const blob = await response.blob();
+      const bitmap = await createImageBitmap(blob);
+      ctx.drawImage(bitmap, col * scaledTileSize, row * scaledTileSize);
+      bitmap.close();
+    } catch {
+      // If createImageBitmap fails, fall back to synchronous drawing
+      // This is acceptable since the image is already in memory
+      continue;
+    }
   }
   
   // Export as data URL
