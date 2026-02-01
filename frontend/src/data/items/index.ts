@@ -110,3 +110,14 @@ export {
   CroMagItemMapper,
   BillyFrontierItemMapper,
 } from "./mappers";
+
+// Item model utilities
+export {
+  getGameMappingSummary,
+  validateGameMappings,
+  findDuplicateMappings,
+  getUniqueModelFiles,
+  generateMappingCoverageReport,
+  isItemTypeMapped,
+  getItemMapping,
+} from "./itemModelUtils";
