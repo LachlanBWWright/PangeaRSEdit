@@ -13,7 +13,6 @@ export function updateSplinePointsFromNubs(
   // Compute points from current nubs and write them directly into the draft
   setSplineData((draft) => {
     const nubs = selectSplineNubs(draft, SPLINE_KEY_BASE + splineIdx);
-    const firstNub = nubs[0];
     
     // Detect if this spline is circular or open
     const splineType = detectSplineType(nubs);

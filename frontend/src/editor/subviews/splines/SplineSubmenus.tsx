@@ -167,18 +167,11 @@ export function EditSplineItemMenu({
       <div className="grid grid-cols-[auto_1fr_auto_1fr] gap-2 items-center">
         <ParamTooltip
           label={<span>Flags</span>}
-          tooltip={getParamTooltip(
-            TerrainItemTypeParams[currentSplineItemData.type as ItemType].flags,
-          )}
-          codeSample={
-            typeof TerrainItemTypeParams[currentSplineItemData.type as ItemType].flags ===
-            "string"
-              ? undefined
-              : "codeSample" in TerrainItemTypeParams[currentSplineItemData.type as ItemType].flags
-              ? TerrainItemTypeParams[currentSplineItemData.type as ItemType].flags.codeSample
-              : undefined
+          tooltip={
+            TerrainItemTypeParams[currentSplineItemData.type as ItemType].flags
           }
-          citationGame={citationGame}
+          codeSample={undefined}
+          citationGame={citationGame ?? undefined}
         />
         <Input
           type="number"
@@ -232,7 +225,7 @@ export function EditSplineItemMenu({
                   ? undefined
                   : param.codeSample
               }
-              citationGame={citationGame}
+              citationGame={citationGame ?? undefined}
             />,
             param &&
             typeof param !== "string" &&

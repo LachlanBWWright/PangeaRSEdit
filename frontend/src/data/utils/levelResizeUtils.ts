@@ -242,7 +242,7 @@ function resizeItems(
   };
 }
 
-function resizeItCo(data: TerrainData, header: { mapWidth: number; mapHeight: number }): TerrainData {
+function resizeItCo(data: TerrainData, _header: { mapWidth: number; mapHeight: number }): TerrainData {
   const itco = data.ItCo?.[1000];
   if (!itco) return data;
   const updated = {

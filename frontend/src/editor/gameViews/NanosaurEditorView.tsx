@@ -91,9 +91,9 @@ export function NanosaurEditorView({
       },
     );
     if (result.ok) {
-      setHeaderData(result.data.headerData);
-      setItemData(result.data.itemData);
-      setTerrainData(result.data.terrainData);
+      if (result.data.headerData) setHeaderData(result.data.headerData);
+      if (result.data.itemData !== undefined) setItemData(result.data.itemData);
+      if (result.data.terrainData) setTerrainData(result.data.terrainData);
     }
   };
 

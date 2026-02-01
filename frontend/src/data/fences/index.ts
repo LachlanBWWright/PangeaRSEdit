@@ -10,16 +10,16 @@
 export { SelectedFence } from "./fenceAtoms";
 
 // Fence utilities
-export { getFenceNames, getFenceNameFromType } from "./getFenceNames";
-export { getFenceType } from "./getFenceTypes";
-export { getFenceColor, getDefaultFenceColor } from "./getFenceColor";
-export { getFenceHeight, getDefaultFenceHeight } from "./getFenceHeight";
+export { getFenceName } from "./getFenceNames";
+export { getFenceTypes } from "./getFenceTypes";
+export { getFenceColor } from "./getFenceColor";
+export { getFenceHeight } from "./getFenceHeight";
 export { getFenceImagePath } from "./getFenceImagePath";
 
-// Game-specific fence types
-export * from "./ottoFenceType";
-export * from "./bugdomFenceType";
-export * from "./bugdom2FenceType";
-export * from "./billyFrontierFenceType";
-export * from "./nanosaur2FenceType";
-export * from "./croMagFenceType";
+// Game-specific fence types - export with explicit names to avoid conflicts
+export { FenceType as OttoFenceType, fenceTypeNames as ottoFenceTypeNames } from "./ottoFenceType";
+export { FenceType as BugdomFenceType, fenceTypeNames as bugdomFenceTypeNames } from "./bugdomFenceType";
+export { FenceType as Bugdom2FenceType, fenceTypeNames as bugdom2FenceTypeNames } from "./bugdom2FenceType";
+export { FenceType as BillyFrontierFenceType, fenceTypeNames as billyFrontierFenceTypeNames } from "./billyFrontierFenceType";
+export { FenceType as Nanosaur2FenceType, fenceTypeNames as nanosaur2FenceTypeNames } from "./nanosaur2FenceType";
+export { FenceType as CroMagFenceType, fenceTypeNames as croMagFenceTypeNames } from "./croMagFenceType";

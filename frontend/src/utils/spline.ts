@@ -252,17 +252,22 @@ export function bakeSpline(
 
   if (allowClosingSegment && circular && nubs.length > 2) {
     const firstNub = nubs[0];
-    const lastSegmentNubs = [nubs[numNubs - 2], nubs[numNubs - 1], firstNub];
-    const lastSegmentPoints = lastSegmentNubs.map(() => spanPoints(1));
-    const closingPoints = bakeSpline(
-      lastSegmentNubs,
-      lastSegmentPoints,
-      false,
-      false,
-    );
-    if (closingPoints.length > 1) {
-      points = points.concat(closingPoints.slice(1));
-      numPoints = points.length;
+    const secondLastNub = nubs[numNubs - 2];
+    const lastNub = nubs[numNubs - 1];
+    
+    if (firstNub && secondLastNub && lastNub) {
+      const lastSegmentNubs = [secondLastNub, lastNub, firstNub];
+      const lastSegmentPoints = lastSegmentNubs.map(() => spanPoints(1));
+      const closingPoints = bakeSpline(
+        lastSegmentNubs,
+        lastSegmentPoints,
+        false,
+        false,
+      );
+      if (closingPoints.length > 1) {
+        points = points.concat(closingPoints.slice(1));
+        numPoints = points.length;
+      }
     }
   }
 

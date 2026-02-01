@@ -74,7 +74,10 @@ export class Bugdom2ItemMapper implements GameItemModelMapper {
   getMappedTypes(): number[] {
     const globalTypes = Object.keys(GLOBAL_ITEM_MAPPINGS).map(Number);
     const levelTypes = Object.keys(LEVEL_ITEM_MAPPINGS)
-      .map(key => parseInt(key.split("_")[1]))
+      .map(key => {
+        const parts = key.split("_");
+        return parts[1] !== undefined ? parseInt(parts[1]) : NaN;
+      })
       .filter(n => !isNaN(n));
     
     return [...new Set([...globalTypes, ...levelTypes])];

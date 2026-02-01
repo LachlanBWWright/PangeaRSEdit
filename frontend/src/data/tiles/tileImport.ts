@@ -161,10 +161,10 @@ export function convertImageTo16BitTileData(
   const tileData = new Uint8Array(width * height * 2);
   
   for (let i = 0, j = 0; i < pixels.length; i += 4, j += 2) {
-    const r = pixels[i];
-    const g = pixels[i + 1];
-    const b = pixels[i + 2];
-    const a = pixels[i + 3];
+    const r = pixels[i] ?? 0;
+    const g = pixels[i + 1] ?? 0;
+    const b = pixels[i + 2] ?? 0;
+    const a = pixels[i + 3] ?? 255;
     
     // Convert to 5-bit per channel
     const r5 = (r >> 3) & 0x1F;
@@ -214,7 +214,9 @@ export function convertTileDataToPreview(
   
   for (let i = 0, j = 0; i < tileData.length; i += 2, j += 4) {
     // Read big endian 16-bit value
-    const packed = (tileData[i] << 8) | tileData[i + 1];
+    const byte1 = tileData[i] ?? 0;
+    const byte2 = tileData[i + 1] ?? 0;
+    const packed = (byte1 << 8) | byte2;
     
     // Extract ARGB1555 components
     const a1 = (packed >> 15) & 0x01;
