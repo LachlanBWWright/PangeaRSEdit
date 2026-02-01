@@ -6,8 +6,8 @@
  */
 
 import { Result, ok, err } from "@/types/result";
-import { GlobalsInterface, Game } from "@/data/globals/globals";
-import { isTileBasedGame, TILE_GAME_CONFIGS } from "./tileStructures";
+import { Game } from "@/data/globals/globals";
+import { isTileBasedGame } from "./tileStructures";
 
 /**
  * Configuration for tile export
@@ -171,9 +171,10 @@ export async function exportTilePalette(
   // Validate all tiles
   const expectedLength = tileSize * tileSize * 2;
   for (let i = 0; i < tilesData.length; i++) {
-    if (tilesData[i].length !== expectedLength) {
+    const tile = tilesData[i];
+    if (!tile || tile.length !== expectedLength) {
       return err(new Error(
-        `Tile ${i} has invalid data length: ${tilesData[i].length}. Expected ${expectedLength}.`
+        `Tile ${i} has invalid data length: ${tile?.length ?? 0}. Expected ${expectedLength}.`
       ));
     }
   }

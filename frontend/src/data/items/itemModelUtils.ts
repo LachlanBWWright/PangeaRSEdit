@@ -8,13 +8,11 @@
 import { Game } from "@/data/globals/globals";
 import { 
   getGameMapper, 
-  hasGameMapper, 
   getGamesWithMappers,
-  getAllMappingCounts,
   getTotalMappedItems,
   getMapperCoverageSummary,
 } from "./mappers";
-import { UniversalItemModelMapping, getCategoryColor, ItemCategory } from "./itemModelTypes";
+import { UniversalItemModelMapping, ItemCategory } from "./itemModelTypes";
 import { Result, ok, err } from "@/types/result";
 
 /**
@@ -46,6 +44,7 @@ export function getGameMappingSummary(game: Game): Result<{
     environmental: 0,
     trigger: 0,
     player: 0,
+    decoration: 0,
     unknown: 0,
   };
   
