@@ -66,3 +66,17 @@ export {
   validateOptimization,
   getOptimizationStats,
 } from "./tileOptimization";
+
+export {
+  type TileImportResult,
+  type TileImportConfig,
+  canImportTiles,
+  getTileImportRequirements,
+  loadAndValidateImage,
+  convertImageTo16BitTileData,
+  convertTileDataToPreview,
+  prepareTileFromImage,
+  validateTileImportBatch,
+  getSupportedImageFormats,
+  getTileImportFileFilter,
+} from "./tileImport";
