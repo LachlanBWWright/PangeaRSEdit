@@ -36,7 +36,7 @@ export function getPoints(nubs: SplinePoint[], circular = true) {
 }
 
 export function spanPoints(distance: number) {
-  return Math.round(3.0 * distance);
+  return Math.max(1, Math.round(3.0 * distance));
 }
 
 /**
@@ -47,12 +47,16 @@ export function spanPoints(distance: number) {
  *                   distance calculation in getPoints(); this baking function
  *                   will be enhanced to properly handle circular vs open splines.
  */
-export function bakeSpline(nubs: SplinePoint[], pointsPerSpan: number[], circular?: boolean) {
+export function bakeSpline(
+  nubs: SplinePoint[],
+  pointsPerSpan: number[],
+  circular = true,
+  allowClosingSegment = true,
+) {
   // TODO(Plan-004): Implement circular-aware baking to properly close the loop
   // for circular splines. Currently, the spline curve generation always produces
   // a continuous curve - the circular behavior is handled by getPoints() which
   // controls segment count and by Spline.tsx which handles nub synchronization.
-  void circular;
   const numNubs = nubs.length;
   /*     SplinePointType** pointsHandle;
     SplinePointType**space,*points;
@@ -238,12 +242,28 @@ export function bakeSpline(nubs: SplinePoint[], pointsPerSpan: number[], circula
   const lastPointsPerSpan = pointsPerSpan[numNubs - 1];
   const lastNub = nubs[numNubs - 1];
   const lastPoint = points[numPoints];
-  
-  if (lastPointsPerSpan === 1 && lastNub && lastPoint) {
-    // see if overflow
+  const shouldAddFinalPoint = lastPointsPerSpan === 1 && !!lastNub && !!lastPoint;
+
+  if (shouldAddFinalPoint) {
     lastPoint.x = lastNub.x;
     lastPoint.z = lastNub.z;
     numPoints++;
+  }
+
+  if (allowClosingSegment && circular && nubs.length > 2) {
+    const firstNub = nubs[0];
+    const lastSegmentNubs = [nubs[numNubs - 2], nubs[numNubs - 1], firstNub];
+    const lastSegmentPoints = lastSegmentNubs.map(() => spanPoints(1));
+    const closingPoints = bakeSpline(
+      lastSegmentNubs,
+      lastSegmentPoints,
+      false,
+      false,
+    );
+    if (closingPoints.length > 1) {
+      points = points.concat(closingPoints.slice(1));
+      numPoints = points.length;
+    }
   }
 
   points = points.slice(0, numPoints);

@@ -51,10 +51,7 @@ export const Spline = memo(
     
     const points = useMemo(() => {
       if (!splinePts) return [];
-      return splinePts.flatMap((point) => [
-        point.x,
-        point.z,
-      ]);
+      return splinePts.flatMap((point) => [point.x, point.z]);
     }, [splinePts]);
 
     if (!splinePts) return null;
@@ -103,8 +100,8 @@ export const Spline = memo(
               }
             });
 
-            updateSplinePointsFromNubs(splineIdx, setSplineData);
-            // Reset Konva node transform after committing
+             updateSplinePointsFromNubs(splineIdx, setSplineData);
+             // Reset Konva node transform after committing
             try {
               e.target.x(0);
               e.target.y(0);
@@ -128,6 +125,7 @@ export const Spline = memo(
               splineIdx={splineIdx}
               setSplineData={setSplineData}
               syncFirstAndLast={syncFirstAndLast}
+              onNubChange={() => updateSplinePointsFromNubs(splineIdx, setSplineData)}
             />
           );
         })}
@@ -161,12 +159,14 @@ const SplineNub = memo(
     splineIdx,
     setSplineData,
     syncFirstAndLast,
+    onNubChange,
   }: {
     nub: SplineNubType;
     nubIdx: number;
     splineIdx: number;
     setSplineData: Updater<SplineData>;
     syncFirstAndLast: boolean;
+    onNubChange: () => void;
   }) => {
     const [selectedSpline, setSelectedSpline] = useAtom(SelectedSpline);
     const [hovering, setHovering] = useState(false);
@@ -204,10 +204,14 @@ const SplineNub = memo(
                 }
 
                 const firstNub = updatedNubs[0];
+                const workingNubs =
+                  updatedNubs.length > 1 && syncFirstAndLast
+                    ? updatedNubs.slice(0, -1)
+                    : updatedNubs;
                 const newPoints =
-                  updatedNubs.length === 1 && firstNub
+                  workingNubs.length === 1 && firstNub
                     ? [{ x: firstNub.x, z: firstNub.z }]
-                    : getPoints(updatedNubs);
+                    : getPoints(workingNubs);
 
                 const spPt = draft.SpPt?.[SPLINE_KEY_BASE + splineIdx];
                 if (spPt) {
@@ -246,7 +250,7 @@ const SplineNub = memo(
               if (splnEntry) splnEntry.numNubs = updatedNubs.length;
             });
 
-            updateSplinePointsFromNubs(splineIdx, setSplineData);
+            onNubChange();
           }}
           onMouseOver={() => setHovering(true)}
           onMouseLeave={() => setHovering(false)}

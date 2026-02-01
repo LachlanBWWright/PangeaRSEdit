@@ -18,11 +18,14 @@ export function updateSplinePointsFromNubs(
     // Detect if this spline is circular or open
     const splineType = detectSplineType(nubs);
     const isCircular = splineType === SplineType.CIRCULAR;
-    
+    const workingNubs =
+      isCircular && nubs.length > 1 ? nubs.slice(0, -1) : nubs;
+    const workingFirstNub = workingNubs[0];
+
     const newPoints =
-      nubs.length === 1 && firstNub
-        ? [{ x: firstNub.x, z: firstNub.z }]
-        : getPoints(nubs, isCircular);
+      workingNubs.length === 1 && workingFirstNub
+        ? [{ x: workingFirstNub.x, z: workingFirstNub.z }]
+        : getPoints(workingNubs, isCircular);
 
     const spPt = draft.SpPt?.[SPLINE_KEY_BASE + splineIdx];
     if (spPt) {

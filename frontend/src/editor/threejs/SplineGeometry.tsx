@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React from "react";
 import {
   SplineData,
   HeaderData,
@@ -30,7 +30,7 @@ export const SplineGeometry: React.FC<SplineGeometryProps> = ({
   const splinePointsBySplineIdx = splineData.SpPt;
   const hasValidData = !!splines && !!splinePointsBySplineIdx;
 
-  const splineGroup = useMemo(() => {
+  const splineGroup = (() => {
     if (!hasValidData || !splines) return [];
     const group: React.ReactElement[] = [];
     const scale = globals.TILE_INGAME_SIZE / globals.TILE_SIZE;
@@ -171,7 +171,7 @@ export const SplineGeometry: React.FC<SplineGeometryProps> = ({
     });
 
     return group;
-  }, [hasValidData, splines, splinePointsBySplineIdx, headerData, terrainData, globals, splineData.SpNb]);
+  })();
 
   if (!hasValidData) {
     return null;

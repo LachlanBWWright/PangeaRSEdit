@@ -13,7 +13,7 @@ import { TunnelEditor } from "./tunnel/TunnelEditor";
 import { Button } from "@/components/ui/button";
 import { Updater, useImmer } from "use-immer";
 import { ottoPreprocessor } from "../data/processors/ottoPreprocessor";
-import { Globals, DataType, Game } from "../data/globals/globals";
+import { Globals, DataType, Game, type GlobalsInterface } from "../data/globals/globals";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { BlockHistoryUpdate } from "../data/globals/history";
 import LzssWorker from "../utils/lzssWorker?worker";
@@ -27,6 +27,7 @@ import {
   sanitizeResourceForkJson,
 } from "../data/utils/levelDataUtils";
 import { isOk } from "../types/result";
+import { createBlankLevel, getDefaultDimensions } from "@/data/levelTemplates";
 import { SafeItemTypes, SafeSplineItemTypes } from "../data/items/itemAtoms";
 import { extractSafeItemTypes } from "../data/items/extractSafeItemTypes";
 import { loadBytesFromJson } from "@lachlanbwwright/rsrcdump-ts";
@@ -40,8 +41,51 @@ export interface DataHistory {
   index: number;
 }
 
+function createBlankCanvas(size: number): HTMLCanvasElement {
+  const canvas = document.createElement("canvas");
+  canvas.width = size;
+  canvas.height = size;
+  const ctx = canvas.getContext("2d");
+  if (ctx) {
+    ctx.fillStyle = "#000000";
+    ctx.fillRect(0, 0, size, size);
+  }
+  return canvas;
+}
+
+function createBlankMapImagesForGame(
+  globals: GlobalsInterface,
+  headerData: HeaderData,
+  terrainData: TerrainData,
+): HTMLCanvasElement[] {
+  const header = headerData.Hedr?.[1000]?.obj;
+  if (!header) return [];
+  const tileSize =
+    globals.DATA_TYPE === DataType.STANDARD
+      ? globals.SUPERTILE_TEXMAP_SIZE
+      : globals.TILE_SIZE;
+  if (globals.DATA_TYPE === DataType.STANDARD) {
+    const supertileCount = terrainData.STgd?.[1000]?.obj.length ?? 1;
+    return new Array(Math.max(supertileCount, 1))
+      .fill(null)
+      .map(() => createBlankCanvas(tileSize));
+  }
+  if (globals.DATA_TYPE === DataType.MIGHTY_MIKE) {
+    const tileCount = header.mapWidth * header.mapHeight;
+    return new Array(Math.max(tileCount, 1))
+      .fill(null)
+      .map(() => createBlankCanvas(tileSize));
+  }
+  const tileCount =
+    terrainData.Xlat?.[1000]?.obj.length ?? header.mapWidth * header.mapHeight;
+  return new Array(Math.max(tileCount, 1))
+    .fill(null)
+    .map(() => createBlankCanvas(tileSize));
+}
+
 export function IntroPrompt() {
   const globals = useAtomValue(Globals);
+  const setGlobals = useSetAtom(Globals);
 
   // Atomic data types instead of monolithic data
   const [headerData, setHeaderData] = useImmer<HeaderData | null>(null);
@@ -75,6 +119,7 @@ export function IntroPrompt() {
   const [mapImages, setMapImages] = useState<HTMLCanvasElement[] | undefined>(
     undefined,
   );
+  const [blankLevelError, setBlankLevelError] = useState<string | null>(null);
   const [processed, setProcessed] = useState(false);
   // Helper to get current atomic data
   const getCurrentAtomicData = useCallback((): AtomicLevelData => {
@@ -216,7 +261,9 @@ export function IntroPrompt() {
   const saveMap = useCallback(async () => {
     if (
       !mapFile ||
-      (globals.DATA_TYPE !== DataType.RSRC_FORK && !mapImagesFile)
+      (globals.DATA_TYPE !== DataType.RSRC_FORK &&
+        globals.DATA_TYPE !== DataType.MIGHTY_MIKE &&
+        !mapImagesFile)
     ) {
       console.error("Download failed: Map file or images file not loaded");
       toast.error("Download failed", {
@@ -350,13 +397,13 @@ export function IntroPrompt() {
       // Nanosaur 1 uses .trt files which are separate but not handled here.
       // But standard .ter download is done.
       // Mighty Mike doesn't use mapImages in the same way (tileset).
-      if (
-        globals.DATA_TYPE === DataType.RSRC_FORK ||
-        globals.DATA_TYPE === DataType.MIGHTY_MIKE
-      ) {
-        toast.success("Map Downloaded!");
-        return;
-      }
+    if (
+      globals.DATA_TYPE === DataType.RSRC_FORK ||
+      globals.DATA_TYPE === DataType.MIGHTY_MIKE
+    ) {
+      toast.success("Map Downloaded!");
+      return;
+    }
     } catch (error) {
       console.error("Download failed:", error);
       toast.error("Download failed", {
@@ -493,7 +540,57 @@ export function IntroPrompt() {
     setMapImagesFile(undefined);
     setTunnelData(null);
     setTunnelFileName("");
+    setBlankLevelError(null);
   }, [setAllAtomicData]);
+
+  const handleCreateBlankLevel = useCallback((gameType: GlobalsInterface) => {
+    setBlankLevelError(null);
+    setGlobals(gameType);
+    const dimensions = getDefaultDimensions(gameType.GAME_TYPE);
+    const result = createBlankLevel(gameType.GAME_TYPE, dimensions);
+    if (!result.ok) {
+      setBlankLevelError(result.error.message);
+      toast.error("Failed to create blank level", {
+        description: result.error.message,
+      });
+      return;
+    }
+    const blankLevel = result.value;
+    const blankAtomicData: AtomicLevelData = {
+      headerData: blankLevel.headerData,
+      itemData: blankLevel.itemData,
+      fenceData: blankLevel.fenceData,
+      splineData: blankLevel.splineData,
+      liquidData: blankLevel.liquidData,
+      terrainData: blankLevel.terrainData,
+    };
+    setAllAtomicData(blankAtomicData);
+    const baseName = gameType.GAME_NAME.replace(/\s+/g, "");
+    const fileExtension =
+      gameType.DATA_TYPE === DataType.MIGHTY_MIKE ? "map" : "ter";
+    const blankMapFile = new File([], `${baseName}.${fileExtension}`);
+    setMapFile(blankMapFile);
+    const imageExtension =
+      gameType.DATA_TYPE === DataType.MIGHTY_MIKE ? "tileset" : "ter";
+    const blankImagesFile = new File([], `${baseName}.${imageExtension}`);
+    setMapImagesFile(blankImagesFile);
+    const mapImagesArray = createBlankMapImagesForGame(
+      gameType,
+      blankLevel.headerData,
+      blankLevel.terrainData,
+    );
+    setMapImages(mapImagesArray);
+    setDataHistory(() => ({ items: [blankAtomicData], index: 0 }));
+    setBlockHistoryUpdate(true);
+  }, [
+    setGlobals,
+    setAllAtomicData,
+    setBlockHistoryUpdate,
+    setDataHistory,
+    setMapFile,
+    setMapImages,
+    setMapImagesFile,
+  ]);
 
   // Handle tunnel data updates
   const handleTunnelDataUpdate = useCallback((data: TunnelData) => {
@@ -528,6 +625,8 @@ export function IntroPrompt() {
         setData={setAllAtomicData}
         setTunnelData={setTunnelData}
         setTunnelFileName={setTunnelFileName}
+        onCreateBlankLevel={handleCreateBlankLevel}
+        blankLevelError={blankLevelError}
       />
     );
   return (

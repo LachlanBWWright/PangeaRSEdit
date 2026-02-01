@@ -37,7 +37,7 @@ export interface BlankLevelOptions {
  * Complete blank level data
  */
 export interface BlankLevelData {
-  headerData: HeaderData<StandardHeader | CroMagHeader>;
+  headerData: HeaderData;
   terrainData: TerrainData<TileAttribute, SupertileGridEntry>;
   itemData: ItemData;
   fenceData: FenceData | null;
@@ -96,7 +96,7 @@ function createBlankHeader(
   game: Game,
   width: number,
   height: number,
-): HeaderData<StandardHeader | CroMagHeader> {
+): HeaderData {
   // Base fields required by BaseHeader
   const baseFields = {
     version: 1,
@@ -136,29 +136,16 @@ function createBlankHeader(
     };
   }
 
-  if (game === Game.BUGDOM_2 || game === Game.NANOSAUR_2 || game === Game.BILLY_FRONTIER) {
-    const simplifiedHeader = {
-      ...baseFields,
-      numUniqueSupertiles: 1,
-      numWaterPatches: 0,
-      numCheckpoints: 0,
-    };
-    return {
-      Hedr: {
-        1000: {
-          name: "Header",
-          obj: simplifiedHeader,
-          order: 0,
-        },
-      },
-    };
-  }
-
-  // Standard header for Otto Matic and Bugdom 1
+  const usesSimplifiedHeader =
+    game === Game.BUGDOM_2 ||
+    game === Game.NANOSAUR_2 ||
+    game === Game.BILLY_FRONTIER;
   const standardHeader: StandardHeader = {
     ...baseFields,
     ...standardExtension,
     numWaterPatches: 0,
+    numTilePages: usesSimplifiedHeader ? 0 : standardExtension.numTilePages,
+    numTiles: usesSimplifiedHeader ? 0 : standardExtension.numTiles,
   };
 
   return {
@@ -380,7 +367,7 @@ function createBlankNanosaurLevel(
   height: number,
   defaultHeight: number,
 ): Result<BlankLevelData, Error> {
-  const headerData = createBlankHeader(Game.OTTO_MATIC, width, height);
+  const headerData = createBlankHeader(Game.NANOSAUR, width, height);
   const terrainData = createBlankTerrain(Game.NANOSAUR, width, height, defaultHeight);
   const itemData = createBlankItemData();
   const fenceData = null;
@@ -420,6 +407,11 @@ function createBlankNanosaurLevel(
     textureAttributes: tileAttributes,
     heightmapPadding: null,
     tileAnimData: null,
+  };
+
+  terrainData._metadata = {
+    ...terrainData._metadata,
+    nanosaur1RawLevel: blankLevel,
   };
 
   return ok({
@@ -485,6 +477,18 @@ function createBlankMightyMikeLevel(
     ],
     tileAnimations: [],
     transparencyColors: [],
+  };
+
+  terrainData._metadata = {
+    ...terrainData._metadata,
+    1000: {
+      name: "Metadata",
+      obj: {
+        mightyMikeMapData: blankMap,
+        mightyMikeTileValues: flatTileValues,
+      },
+      order: 100,
+    },
   };
 
   return ok({

@@ -29,6 +29,7 @@ import { Globals } from "@/data/globals/globals";
 import { getItemTypes } from "@/data/items/getItemTypes";
 import { ParamTooltip } from "./ParamTooltip";
 import { Label } from "@/components/ui/label";
+import { getGameKeyFromName } from "@/validation/gameRepositories";
 
 export function ItemMenu({
   itemData,
@@ -43,6 +44,7 @@ export function ItemMenu({
   const [selectedItem, setSelectedItem] = useAtom(SelectedItem);
   const safeItemTypes = useAtomValue(SafeItemTypes);
   const [filterToSafe, setFilterToSafe] = useAtom(FilterToSafeItems);
+  const citationGame = getGameKeyFromName(globals.GAME_NAME);
 
   const selectedItemData =
     selectedItem !== undefined ? itemData.Itms[1000].obj[selectedItem] : null;
@@ -95,7 +97,7 @@ export function ItemMenu({
                 {itemValues.map((key) => (
                   <SelectItem
                     key={key}
-                    className="text-black"
+                    className="text-white"
                     value={key.toString()}
                   >
                     {getItemName(globals, key)}
@@ -132,6 +134,15 @@ export function ItemMenu({
                     ? TerrainItemTypeParams[selectedItemData.type as ItemType].flags
                     : ""
                 }
+                codeSample={
+                  typeof TerrainItemTypeParams[selectedItemData.type as ItemType].flags ===
+                  "string"
+                    ? undefined
+                    : "codeSample" in TerrainItemTypeParams[selectedItemData.type as ItemType].flags
+                    ? TerrainItemTypeParams[selectedItemData.type as ItemType].flags.codeSample
+                    : undefined
+                }
+                citationGame={citationGame}
               />
               <Input
                 type="number"
@@ -168,6 +179,12 @@ export function ItemMenu({
                     key={`tooltip-${i}`}
                     label={<span>{`Parameter ${i}`}</span>}
                     tooltip={getParamTooltip(param)}
+                    codeSample={
+                      typeof param === "string" || !param || param.type !== "Integer"
+                        ? undefined
+                        : param.codeSample
+                    }
+                    citationGame={citationGame}
                   />,
                   param &&
                   typeof param !== "string" &&
@@ -278,7 +295,7 @@ function AddItemMenu() {
             {itemValues.map((key) => (
               <SelectItem
                 key={key}
-                className="text-black"
+                className="text-white"
                 value={key.toString()}
               >
                 {getItemName(globals, key)}

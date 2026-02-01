@@ -63,6 +63,17 @@ export const GAME_REPOSITORIES: Record<string, GameRepository> = {
   },
 };
 
+export function getGameKeyFromName(gameName: string): string | null {
+  const normalizedName = gameName.replace(/[^a-z0-9]/gi, "").toLowerCase();
+  for (const [key, repo] of Object.entries(GAME_REPOSITORIES)) {
+    const normalizedRepo = repo.repo.replace(/[^a-z0-9]/gi, "").toLowerCase();
+    if (normalizedRepo === normalizedName) {
+      return key;
+    }
+  }
+  return null;
+}
+
 /**
  * Get the GitHub raw content URL for a file in a game's repository
  */
