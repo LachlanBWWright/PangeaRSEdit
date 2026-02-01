@@ -18,6 +18,7 @@ export function UploadPrompt({
   setData,
   setTunnelData,
   setTunnelFileName,
+  onCreateBlankLevel,
 }: {
   mapFile: File | undefined;
   setMapFile: (file: File) => void;
@@ -26,6 +27,7 @@ export function UploadPrompt({
   setData: (data: AtomicLevelData) => void;
   setTunnelData: (data: TunnelData | null) => void;
   setTunnelFileName: (name: string) => void;
+  onCreateBlankLevel: (gameType: GlobalsInterface) => void;
 }) {
   const [, setGlobals] = useAtom(Globals);
 
@@ -66,6 +68,7 @@ export function UploadPrompt({
             setMapImages={setMapImages}
             setTunnelData={setTunnelData}
             setTunnelFileName={setTunnelFileName}
+            onCreateBlankLevel={onCreateBlankLevel}
           />
         </div>
       </div>

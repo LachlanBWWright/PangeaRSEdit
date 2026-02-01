@@ -22,6 +22,9 @@ import {
   createZoomInHandler,
   createZoomOutHandler,
 } from "../utils/editorViewUtils";
+import { applyResizeToAtomicData } from "../utils/levelResizeHandlers";
+import { Globals } from "@/data/globals/globals";
+import { useAtomValue } from "jotai";
 import type { MightyMikeEditorViewProps } from "../utils/editorViewTypes";
 import {
   ItemData,
@@ -40,6 +43,7 @@ export function MightyMikeEditorView({
   redoData,
   dataHistory,
 }: MightyMikeEditorViewProps) {
+  const globals = useAtomValue(Globals);
   // Default to items view since MightyMike doesn't have fences
   const [view, setView] = useState<View>(View.items);
   const [stage, setStage] = useImmer({ scale: 1, x: 0, y: 0 });
@@ -61,6 +65,30 @@ export function MightyMikeEditorView({
     () => createNonNullUpdater(setItemData),
     [setItemData]
   );
+
+  const handleResize = (direction: "top" | "bottom" | "left" | "right", tileCount: number) => {
+    const result = applyResizeToAtomicData(
+      {
+        headerData,
+        itemData,
+        liquidData: null,
+        fenceData: null,
+        splineData: null,
+        terrainData,
+      },
+      globals,
+      {
+        direction,
+        tileCount,
+        defaultHeight: headerData.Hedr[1000].obj.minY ?? 0,
+      },
+    );
+    if (result.ok) {
+      setHeaderData(result.data.headerData);
+      setItemData(result.data.itemData);
+      setTerrainData(result.data.terrainData);
+    }
+  };
 
   return (
     <div className="flex flex-col flex-1 w-full gap-2 min-h-0">
@@ -91,6 +119,7 @@ export function MightyMikeEditorView({
             setTerrainData={setTerrainData}
             mapImages={mapImages}
             setMapImages={setMapImages}
+            onResize={handleResize}
           />
         )}
         {view === View.tiles && (

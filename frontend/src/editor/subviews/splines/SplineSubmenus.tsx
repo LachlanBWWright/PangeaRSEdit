@@ -26,6 +26,7 @@ import {
 } from "@/components/ui/select";
 import { getSplineItemTypes } from "@/data/splines/getSplineItemTypes";
 import { Globals } from "@/data/globals/globals";
+import { getGameKeyFromName } from "@/validation/gameRepositories";
 import { getSplineItemName } from "@/data/splines/getSplineItemNames";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -91,6 +92,7 @@ export function EditSplineItemMenu({
   const globals = useAtomValue(Globals);
   const safeSplineItemTypes = useAtomValue(SafeSplineItemTypes);
   const [filterToSafe, setFilterToSafe] = useAtom(FilterToSafeSplineItems);
+  const citationGame = getGameKeyFromName(globals.GAME_NAME);
 
   if (selectedSpline === undefined) return <p>No Selected Spline</p>;
   if (selectedSplineItem === undefined) return <></>;
@@ -137,7 +139,7 @@ export function EditSplineItemMenu({
         </SelectTrigger>
         <SelectContent>
           {splineItemValues.map((key) => (
-            <SelectItem key={key} className="text-black" value={key.toString()}>
+            <SelectItem key={key} className="text-white" value={key.toString()}>
               {getSplineItemName(globals, key)}
             </SelectItem>
           ))}
@@ -168,6 +170,15 @@ export function EditSplineItemMenu({
           tooltip={getParamTooltip(
             TerrainItemTypeParams[currentSplineItemData.type as ItemType].flags,
           )}
+          codeSample={
+            typeof TerrainItemTypeParams[currentSplineItemData.type as ItemType].flags ===
+            "string"
+              ? undefined
+              : "codeSample" in TerrainItemTypeParams[currentSplineItemData.type as ItemType].flags
+              ? TerrainItemTypeParams[currentSplineItemData.type as ItemType].flags.codeSample
+              : undefined
+          }
+          citationGame={citationGame}
         />
         <Input
           type="number"
@@ -216,6 +227,12 @@ export function EditSplineItemMenu({
               key={`tooltip-${i}`}
               label={<span>{`Parameter ${i}`}</span>}
               tooltip={getParamTooltip(param)}
+              codeSample={
+                typeof param === "string" || !param || param.type !== "Integer"
+                  ? undefined
+                  : param.codeSample
+              }
+              citationGame={citationGame}
             />,
             param &&
             typeof param !== "string" &&

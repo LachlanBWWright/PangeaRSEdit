@@ -117,7 +117,7 @@ export function WaterMenu({
                 {waterBodyValues.map((key) => (
                   <SelectItem
                     key={key}
-                    className="text-black"
+                    className="text-white"
                     value={key.toString()}
                   >
                     {waterBodyNames[key as WaterBodyType]}

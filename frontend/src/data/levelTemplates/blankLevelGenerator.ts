@@ -21,6 +21,8 @@ import type {
 } from "@/python/structSpecs/LevelTypes";
 import { LEVEL_REQUIREMENTS, validateDimensions } from "./levelRequirements";
 import { type Result, ok, err } from "@/types/result";
+import type { Nanosaur1LevelData, TileAttribType } from "@/data/processors/classicProprocessor";
+import type { MightyMikeMap, MightyMikeTileValue, MightyMikeTileSet } from "@/python/structSpecs/mightyMikeInterface";
 
 /**
  * Options for creating a blank level
@@ -35,12 +37,16 @@ export interface BlankLevelOptions {
  * Complete blank level data
  */
 export interface BlankLevelData {
-  headerData: HeaderData<StandardHeader | CroMagHeader>;
+  headerData: HeaderData;
   terrainData: TerrainData<TileAttribute, SupertileGridEntry>;
   itemData: ItemData;
   fenceData: FenceData | null;
   splineData: SplineData | null;
   liquidData: LiquidData | null;
+  nanosaur1RawLevel?: Nanosaur1LevelData;
+  mightyMikeMapData?: MightyMikeMap;
+  mightyMikeTileValues?: MightyMikeTileValue[];
+  mightyMikeTileSet?: MightyMikeTileSet;
 }
 
 /**
@@ -57,6 +63,14 @@ export function createBlankLevel(
 
   const req = LEVEL_REQUIREMENTS[game];
   const defaultHeight = options.defaultTerrainHeight ?? req.defaultTerrainHeight;
+
+  if (game === Game.NANOSAUR) {
+    return createBlankNanosaurLevel(options.width, options.height, defaultHeight);
+  }
+
+  if (game === Game.MIGHTY_MIKE) {
+    return createBlankMightyMikeLevel(options.width, options.height, defaultHeight);
+  }
 
   const headerData = createBlankHeader(game, options.width, options.height);
   const terrainData = createBlankTerrain(game, options.width, options.height, defaultHeight);
@@ -82,7 +96,7 @@ function createBlankHeader(
   game: Game,
   width: number,
   height: number,
-): HeaderData<StandardHeader | CroMagHeader> {
+): HeaderData {
   // Base fields required by BaseHeader
   const baseFields = {
     version: 1,
@@ -122,11 +136,16 @@ function createBlankHeader(
     };
   }
 
-  // Standard header for most games
+  const usesSimplifiedHeader =
+    game === Game.BUGDOM_2 ||
+    game === Game.NANOSAUR_2 ||
+    game === Game.BILLY_FRONTIER;
   const standardHeader: StandardHeader = {
     ...baseFields,
     ...standardExtension,
     numWaterPatches: 0,
+    numTilePages: usesSimplifiedHeader ? 0 : standardExtension.numTilePages,
+    numTiles: usesSimplifiedHeader ? 0 : standardExtension.numTiles,
   };
 
   return {
@@ -163,6 +182,7 @@ function createBlankTerrain(
   };
 
   // Build terrain data with required fields
+  const heightmapTotal = (width + 1) * (height + 1);
   const terrainData: TerrainData<TileAttribute, SupertileGridEntry> = {
     // Atrb - Tile attributes (required)
     Atrb: {
@@ -186,7 +206,7 @@ function createBlankTerrain(
     YCrd: {
       1000: {
         name: "Floor&Ceiling Y Coords",
-        obj: new Array(totalTiles).fill(defaultHeight),
+        obj: new Array(heightmapTotal).fill(defaultHeight),
         order: 3,
       },
     },
@@ -207,7 +227,7 @@ function createBlankTerrain(
   if (req.supportsRoof) {
     terrainData.YCrd[1001] = {
       name: "Roof Y Coords",
-      obj: new Array(totalTiles).fill(defaultHeight + 100),
+      obj: new Array(heightmapTotal).fill(defaultHeight + 100),
       order: 4,
     };
   }
@@ -340,4 +360,146 @@ export function getBlankLevelDescription(game: Game): string {
   if (req.supportsWater) features.push("water bodies");
 
   return `Creates a blank level with: ${features.join(", ")}`;
+}
+
+function createBlankNanosaurLevel(
+  width: number,
+  height: number,
+  defaultHeight: number,
+): Result<BlankLevelData, Error> {
+  const headerData = createBlankHeader(Game.NANOSAUR, width, height);
+  const terrainData = createBlankTerrain(Game.NANOSAUR, width, height, defaultHeight);
+  const itemData = createBlankItemData();
+  const fenceData = null;
+  const splineData = null;
+  const liquidData = null;
+
+  const tileAttributes: TileAttribType[] = [];
+  for (let i = 0; i < width * height; i++) {
+    tileAttributes.push({
+      bits: 0,
+      parm0: 0,
+      parm1: 0,
+      parm2: 0,
+      undefined: 0,
+    });
+  }
+
+  const blankLevel: Nanosaur1LevelData = {
+    header: {
+      textureLayerOffset: 0,
+      heightmapLayerOffset: 0,
+      pathLayerOffset: 0,
+      objectListOffset: 0,
+      unknown1: 0,
+      heightmapTilesOffset: 0,
+      unknown2: 0,
+      width,
+      depth: height,
+      textureAttribOffset: 0,
+      tileAnimDataOffset: 0,
+    },
+    textureLayer: new Array(width * height).fill(0),
+    heightmapLayer: new Array(width * height).fill(defaultHeight),
+    pathLayer: new Array(width * height).fill(0),
+    heightmapTiles: null,
+    objectList: [],
+    textureAttributes: tileAttributes,
+    heightmapPadding: null,
+    tileAnimData: null,
+  };
+
+  terrainData._metadata = {
+    ...terrainData._metadata,
+    nanosaur1RawLevel: blankLevel,
+  };
+
+  return ok({
+    headerData,
+    terrainData,
+    itemData,
+    fenceData,
+    splineData,
+    liquidData,
+    nanosaur1RawLevel: blankLevel,
+  });
+}
+
+function createBlankMightyMikeLevel(
+  width: number,
+  height: number,
+  defaultHeight: number,
+): Result<BlankLevelData, Error> {
+  const headerData = createBlankHeader(Game.MIGHTY_MIKE, width, height);
+  const terrainData = createBlankTerrain(Game.MIGHTY_MIKE, width, height, defaultHeight);
+  const itemData = createBlankItemData();
+  const fenceData = null;
+  const splineData = null;
+  const liquidData = null;
+
+  const tileValue: MightyMikeTileValue = {
+    rawValue: 0,
+    tileIndex: 0,
+    hasCollisionMask: false,
+    usePixelAccurateCollision: false,
+  };
+  const mapImage: MightyMikeTileValue[][] = new Array(height)
+    .fill(null)
+    .map(() => new Array(width).fill(null).map(() => ({ ...tileValue })));
+  const flatTileValues = mapImage.flat().map((value) => ({ ...value }));
+
+  const blankMap: MightyMikeMap = {
+    mapWidth: width,
+    mapHeight: height,
+    numItems: 0,
+    mapImage,
+    items: [],
+    altMap: null,
+    padding: 0,
+  };
+
+  const blankTileSet: MightyMikeTileSet = {
+    numTileDefinitions: 1,
+    numXlateEntries: 1,
+    numTileAttributeEntries: 1,
+    numTileAnims: 0,
+    numTileXparentColors: 0,
+    xlateTable: [0],
+    tileAttributes: [
+      {
+        flags: 0,
+        p0: 0,
+        p1: 0,
+        p2: 0,
+        p3: 0,
+        p4: 0,
+      },
+    ],
+    tileAnimations: [],
+    transparencyColors: [],
+  };
+
+  terrainData._metadata = {
+    ...terrainData._metadata,
+    1000: {
+      name: "Metadata",
+      obj: {
+        mightyMikeMapData: blankMap,
+        mightyMikeTileValues: flatTileValues,
+      },
+      order: 100,
+    },
+  };
+
+  return ok({
+    headerData,
+    terrainData,
+    itemData,
+    fenceData,
+    splineData,
+    liquidData,
+    mightyMikeMapData: blankMap,
+    mightyMikeTileValues: flatTileValues,
+    mightyMikeTileSet: blankTileSet,
+  });
 }

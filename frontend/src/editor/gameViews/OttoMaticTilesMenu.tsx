@@ -44,9 +44,11 @@ import { useAtom } from "jotai";
 export function OttoMaticTilesMenu({
   headerData,
   setHeaderData,
+  onResize,
 }: {
   headerData: HeaderData;
   setHeaderData: Updater<HeaderData>;
+  onResize: (direction: "top" | "bottom" | "left" | "right", tileCount: number) => void;
 }) {
   const [tileView, setTileView] = useAtom(TileViewMode);
   const [brushMode, setBrushMode] = useAtom(CurrentTopologyBrushMode);
@@ -100,6 +102,12 @@ export function OttoMaticTilesMenu({
 
   return (
     <div className="flex flex-col gap-2">
+      <div className="grid grid-cols-4 gap-2">
+        <Button onClick={() => onResize("top", 1)}>Add Row Top</Button>
+        <Button onClick={() => onResize("bottom", 1)}>Add Row Bottom</Button>
+        <Button onClick={() => onResize("left", 1)}>Add Column Left</Button>
+        <Button onClick={() => onResize("right", 1)}>Add Column Right</Button>
+      </div>
       <div className="grid grid-cols-4 gap-2">
         <Button
           selected={tileView === TileViews.Topology}

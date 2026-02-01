@@ -57,7 +57,7 @@ export const ItemFilterPanel: React.FC<ItemFilterPanelProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="absolute top-4 right-16 w-80 bg-gray-900/95 rounded-lg shadow-xl z-50 border border-gray-700 max-h-[80vh] overflow-y-auto">
+    <div className="absolute top-4 right-16 w-80 max-w-[calc(100%-2rem)] bg-gray-900/95 rounded-lg shadow-xl z-50 border border-gray-700 max-h-[80vh] overflow-y-auto">
       <div className="p-4">
         <div className="flex justify-between items-center mb-4">
           <h3 className="text-lg font-semibold text-white">Item Filters</h3>
@@ -75,12 +75,18 @@ export const ItemFilterPanel: React.FC<ItemFilterPanelProps> = ({
           <label className="block text-sm text-gray-400 mb-2">Filter Mode</label>
           <select
             value={filter.mode}
-            onChange={(e) =>
+            onChange={(e) => {
+              const selectedMode =
+                e.target.value === FilterMode.SHOW_ALL
+                  ? FilterMode.SHOW_ALL
+                  : e.target.value === FilterMode.SHOW_SELECTED
+                  ? FilterMode.SHOW_SELECTED
+                  : FilterMode.HIDE_SELECTED;
               setFilter({
                 ...filter,
-                mode: e.target.value as FilterMode,
-              })
-            }
+                mode: selectedMode,
+              });
+            }}
             className="w-full bg-gray-800 text-white rounded p-2 border border-gray-600 focus:border-blue-500 focus:outline-none"
           >
             <option value={FilterMode.SHOW_ALL}>Show All Items</option>

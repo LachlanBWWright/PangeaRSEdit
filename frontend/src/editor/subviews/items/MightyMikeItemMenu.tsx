@@ -110,7 +110,7 @@ export const MightyMikeItemMenu = memo(function MightyMikeItemMenu({
                 {itemValues.map((key) => (
                   <SelectItem
                     key={key}
-                    className="text-black"
+                    className="text-white"
                     value={key.toString()}
                   >
                     {getItemName(globals, key)}
@@ -213,7 +213,7 @@ function AddItemMenu() {
             {itemValues.map((key) => (
               <SelectItem
                 key={key}
-                className="text-black"
+                className="text-white"
                 value={key.toString()}
               >
                 {getItemName(globals, key)}
