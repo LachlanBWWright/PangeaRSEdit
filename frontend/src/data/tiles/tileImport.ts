@@ -89,7 +89,7 @@ export async function loadAndValidateImage(
   
   // Load image
   const image = await loadImageFile(file);
-  if (!image.success) {
+  if (!image.ok) {
     return image;
   }
   
@@ -253,7 +253,7 @@ export async function prepareTileFromImage(
   
   // Load and validate image
   const imageResult = await loadAndValidateImage(file, globals);
-  if (!imageResult.success) {
+  if (!imageResult.ok) {
     return imageResult;
   }
   
@@ -261,7 +261,7 @@ export async function prepareTileFromImage(
   
   // Convert to 16-bit tile data
   const tileDataResult = convertImageTo16BitTileData(image, config);
-  if (!tileDataResult.success) {
+  if (!tileDataResult.ok) {
     return tileDataResult;
   }
   
@@ -269,7 +269,7 @@ export async function prepareTileFromImage(
   
   // Generate preview
   const previewResult = convertTileDataToPreview(tileData, gameConfig.tileSize);
-  if (!previewResult.success) {
+  if (!previewResult.ok) {
     return previewResult;
   }
   
@@ -299,7 +299,7 @@ export async function validateTileImportBatch(
   
   for (const file of files) {
     const result = await loadAndValidateImage(file, globals);
-    if (result.success) {
+    if (result.ok) {
       validFiles.push(file);
     } else {
       invalidFiles.push({ file, reason: result.error.message });
