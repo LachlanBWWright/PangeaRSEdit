@@ -50,6 +50,7 @@ interface MightyMikeTileMenuProps {
   setTerrainData: Updater<TerrainData>;
   mapImages: HTMLCanvasElement[];
   setMapImages: (newCanvases: HTMLCanvasElement[]) => void;
+  onResize: (direction: "top" | "bottom" | "left" | "right", tileCount: number) => void;
 }
 
 const TILE_SIZE = 32;
@@ -60,6 +61,7 @@ export function MightyMikeTileMenu({
   setTerrainData,
   mapImages,
   setMapImages,
+  onResize,
 }: MightyMikeTileMenuProps) {
   const selectedTile = useAtomValue(SelectedTile);
   const [showCollisionOverlay, setShowCollisionOverlay] = useAtom(
@@ -359,6 +361,12 @@ export function MightyMikeTileMenu({
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
+      <div className="grid grid-cols-4 gap-2 p-2 border-b border-gray-600">
+        <Button onClick={() => onResize("top", 1)}>Add Row Top</Button>
+        <Button onClick={() => onResize("bottom", 1)}>Add Row Bottom</Button>
+        <Button onClick={() => onResize("left", 1)}>Add Column Left</Button>
+        <Button onClick={() => onResize("right", 1)}>Add Column Right</Button>
+      </div>
       {/* Collision Overlay Toggle */}
       <div className="p-2 border-b border-gray-600 flex items-center justify-between">
         <span className="text-sm font-semibold">Collision Overlay</span>
