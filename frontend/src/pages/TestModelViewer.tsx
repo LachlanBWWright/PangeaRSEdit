@@ -25,6 +25,16 @@ import type { BG3DGltfWorkerResponse } from "@/modelParsers/bg3dGltfWorker";
 import { GLTFLoader, type GLTF } from "three/examples/jsm/loaders/GLTFLoader.js";
 
 /**
+ * Describes a model file with its path and label
+ */
+interface ModelFileEntry {
+  filename: string;
+  path: string;
+  label: string;
+  isSkeleton: boolean;
+}
+
+/**
  * Game configuration for model loading
  */
 interface GameConfig {
@@ -366,9 +376,40 @@ function extractSubgroupByIndex(gltf: GLTF, modelIndex: number): Group | null {
   }
 }
 
+/**
+ * Get all available files for a game (combines models and skeletons)
+ */
+function getAllFilesForGame(config: GameConfig): ModelFileEntry[] {
+  const files: ModelFileEntry[] = [];
+  
+  // Add model files
+  config.modelFiles.forEach(filename => {
+    files.push({
+      filename,
+      path: `${config.basePath}/${filename}`,
+      label: filename,
+      isSkeleton: false,
+    });
+  });
+  
+  // Add skeleton files if available
+  if (config.skeletonPath && config.skeletonFiles) {
+    config.skeletonFiles.forEach(filename => {
+      files.push({
+        filename,
+        path: `${config.skeletonPath}/${filename}`,
+        label: `[Skeleton] ${filename}`,
+        isSkeleton: true,
+      });
+    });
+  }
+  
+  return files;
+}
+
 export function TestModelViewer() {
   const [selectedGame, setSelectedGame] = useState<string>("");
-  const [selectedFile, setSelectedFile] = useState<string>("");
+  const [selectedFileKey, setSelectedFileKey] = useState<string>("");
   const [modelIndex, setModelIndex] = useState<number>(0);
   const [maxIndex, setMaxIndex] = useState<number>(0);
   const [loading, setLoading] = useState<boolean>(false);
@@ -376,23 +417,19 @@ export function TestModelViewer() {
   const [gltfScene, setGltfScene] = useState<Group | null>(null);
   const [fullGltf, setFullGltf] = useState<GLTF | null>(null);
   const [status, setStatus] = useState<string>("Select a game and model file to begin");
-  const [showSkeletons, setShowSkeletons] = useState<boolean>(false);
   const [modelStats, setModelStats] = useState<{ vertices: number; faces: number } | null>(null);
+  const [modelNames, setModelNames] = useState<string[]>([]);
   
   const workerRef = useRef<Worker | null>(null);
   
   // Get the current game config
   const gameConfig = GAME_CONFIGS.find(g => g.id === selectedGame);
   
-  // Get the list of files to show based on skeleton toggle
-  const availableFiles = showSkeletons && gameConfig?.skeletonFiles 
-    ? gameConfig.skeletonFiles 
-    : gameConfig?.modelFiles ?? [];
+  // Get all files for the selected game (models + skeletons combined)
+  const allFiles = gameConfig ? getAllFilesForGame(gameConfig) : [];
   
-  // Get the base path based on skeleton toggle
-  const basePath = showSkeletons && gameConfig?.skeletonPath 
-    ? gameConfig.skeletonPath 
-    : gameConfig?.basePath ?? "";
+  // Get the selected file entry
+  const selectedFileEntry = allFiles.find(f => f.path === selectedFileKey);
   
   // Initialize worker
   const getWorker = useCallback(() => {
@@ -402,19 +439,45 @@ export function TestModelViewer() {
     return workerRef.current;
   }, []);
   
+  // Reset model index when file selection changes
+  const handleFileChange = useCallback((fileKey: string) => {
+    setSelectedFileKey(fileKey);
+    setModelIndex(0);
+    setMaxIndex(0);
+    setFullGltf(null);
+    setGltfScene(null);
+    setModelNames([]);
+    setModelStats(null);
+    setStatus("File selected. Click 'Load Model' to load.");
+  }, []);
+  
+  // Reset everything when game changes
+  const handleGameChange = useCallback((gameId: string) => {
+    setSelectedGame(gameId);
+    setSelectedFileKey("");
+    setModelIndex(0);
+    setMaxIndex(0);
+    setFullGltf(null);
+    setGltfScene(null);
+    setModelNames([]);
+    setModelStats(null);
+    setStatus("Select a model file to continue");
+  }, []);
+  
   // Load model file
   const loadModelFile = useCallback(async () => {
-    if (!gameConfig || !selectedFile) {
+    if (!gameConfig || !selectedFileEntry) {
       setError("Please select a game and model file");
       return;
     }
     
     setLoading(true);
     setError(null);
+    setModelIndex(0); // Reset index when loading new file
     setStatus("Fetching model file...");
     
     try {
-      const url = `${basePath}/${selectedFile}`;
+      const url = selectedFileEntry.path;
       console.log(`Loading model from: ${url}`);
       
       const response = await fetch(url);
@@ -494,17 +557,27 @@ export function TestModelViewer() {
       // Store full GLTF for extraction
       setFullGltf(gltf);
       
-      // Count models in the file
+      // Count models in the file and extract their names
       const groupsContainer = gltf.scene.children[0];
       const numModels = groupsContainer?.children.length ?? 0;
       setMaxIndex(Math.max(0, numModels - 1));
       
-      // Extract the requested model index
-      const extracted = extractSubgroupByIndex(gltf, modelIndex);
+      // Extract model names from the group children
+      const names: string[] = [];
+      if (groupsContainer?.children) {
+        groupsContainer.children.forEach((child, idx) => {
+          names.push(child.name || `Model ${idx}`);
+        });
+      }
+      setModelNames(names);
+      
+      // Extract the first model (index 0 since we reset)
+      const extracted = extractSubgroupByIndex(gltf, 0);
       setGltfScene(extracted);
       setModelStats(calculateModelStats(extracted));
       
-      setStatus(`Loaded! File contains ${numModels} model(s). Showing index ${modelIndex}.`);
+      const currentName = names[0] || `Model 0`;
+      setStatus(`Loaded! File contains ${numModels} model(s). Showing: ${currentName}`);
       
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : String(err);
@@ -514,7 +587,7 @@ export function TestModelViewer() {
     } finally {
       setLoading(false);
     }
-  }, [gameConfig, selectedFile, modelIndex, getWorker, basePath]);
+  }, [gameConfig, selectedFileEntry, getWorker]);
   
   // Update displayed model when index changes (if we have a loaded GLTF)
   useEffect(() => {
@@ -522,9 +595,10 @@ export function TestModelViewer() {
       const extracted = extractSubgroupByIndex(fullGltf, modelIndex);
       setGltfScene(extracted);
       setModelStats(calculateModelStats(extracted));
-      setStatus(`Showing model index ${modelIndex} of ${maxIndex}`);
+      const modelName = modelNames[modelIndex] || `Model ${modelIndex}`;
+      setStatus(`Showing: ${modelName} (index ${modelIndex} of ${maxIndex})`);
     }
-  }, [modelIndex, fullGltf, maxIndex]);
+  }, [modelIndex, fullGltf, maxIndex, modelNames]);
   
   // Navigate to next/previous model
   const nextModel = () => {
@@ -550,7 +624,7 @@ export function TestModelViewer() {
           {/* Game Selector */}
           <div className="space-y-2">
             <Label className="text-gray-300">Game</Label>
-            <Select value={selectedGame} onValueChange={setSelectedGame}>
+            <Select value={selectedGame} onValueChange={handleGameChange}>
               <SelectTrigger className="bg-gray-700 border-gray-600 text-white">
                 <SelectValue placeholder="Select a game" />
               </SelectTrigger>
@@ -568,93 +642,79 @@ export function TestModelViewer() {
             </Select>
           </div>
           
-          {/* Skeleton Toggle - only show if game has skeletons */}
-          {gameConfig?.skeletonFiles && gameConfig.skeletonFiles.length > 0 && (
-            <div className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                id="showSkeletons"
-                checked={showSkeletons}
-                onChange={(e) => {
-                  setShowSkeletons(e.target.checked);
-                  setSelectedFile("");  // Reset file selection when toggling
-                }}
-                className="w-4 h-4"
-              />
-              <Label htmlFor="showSkeletons" className="text-gray-300 cursor-pointer">
-                Show Skeleton Characters
-              </Label>
-            </div>
-          )}
-          
-          {/* Model File Selector */}
+          {/* Model File Selector - Combined models and skeletons */}
           <div className="space-y-2">
-            <Label className="text-gray-300">
-              {showSkeletons ? "Skeleton File" : "Model File"}
-            </Label>
+            <Label className="text-gray-300">Model File</Label>
             <Select 
-              value={selectedFile} 
-              onValueChange={setSelectedFile}
-              disabled={!gameConfig || availableFiles.length === 0}
+              value={selectedFileKey} 
+              onValueChange={handleFileChange}
+              disabled={!gameConfig || allFiles.length === 0}
             >
               <SelectTrigger className="bg-gray-700 border-gray-600 text-white">
-                <SelectValue placeholder={availableFiles.length ? "Select a file" : "No files available"} />
+                <SelectValue placeholder={allFiles.length ? "Select a file" : "No files available"} />
               </SelectTrigger>
-              <SelectContent className="bg-gray-700 border-gray-600 max-h-60">
-                {availableFiles.map(file => (
+              <SelectContent className="bg-gray-700 border-gray-600 max-h-80">
+                {allFiles.map(file => (
                   <SelectItem 
-                    key={file} 
-                    value={file}
-                    className="text-white hover:bg-gray-600"
+                    key={file.path} 
+                    value={file.path}
+                    className={`text-white hover:bg-gray-600 ${file.isSkeleton ? "text-purple-300" : ""}`}
                   >
-                    {file}
+                    {file.label}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
           
-          {/* Model Index */}
-          <div className="space-y-2">
-            <Label className="text-gray-300">Model Index (0-{maxIndex})</Label>
-            <div className="flex gap-2">
-              <Button 
-                variant="outline" 
-                size="sm"
-                onClick={prevModel}
-                disabled={modelIndex <= 0 || !fullGltf}
-                className="bg-gray-700 border-gray-600 text-white hover:bg-gray-600"
-              >
-                ←
-              </Button>
-              <Input
-                type="number"
-                min={0}
-                max={maxIndex}
-                value={modelIndex}
-                onChange={(e) => setModelIndex(Math.max(0, Math.min(maxIndex, parseInt(e.target.value) || 0)))}
-                className="bg-gray-700 border-gray-600 text-white text-center"
-              />
-              <Button 
-                variant="outline" 
-                size="sm"
-                onClick={nextModel}
-                disabled={modelIndex >= maxIndex || !fullGltf}
-                className="bg-gray-700 border-gray-600 text-white hover:bg-gray-600"
-              >
-                →
-              </Button>
-            </div>
-          </div>
-          
-          {/* Load Button */}
+          {/* Load Button - MOVED ABOVE index controls */}
           <Button 
             onClick={loadModelFile}
-            disabled={loading || !selectedGame || !selectedFile}
+            disabled={loading || !selectedGame || !selectedFileEntry}
             className="w-full bg-blue-600 hover:bg-blue-700 text-white"
           >
             {loading ? "Loading..." : "Load Model"}
           </Button>
+          
+          {/* Model Index - only show after loading */}
+          {fullGltf && (
+            <div className="space-y-2">
+              <Label className="text-gray-300">
+                Model Index (0-{maxIndex})
+                {modelNames[modelIndex] && (
+                  <span className="ml-2 text-blue-400">{modelNames[modelIndex]}</span>
+                )}
+              </Label>
+              <div className="flex gap-2">
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={prevModel}
+                  disabled={modelIndex <= 0}
+                  className="bg-gray-700 border-gray-600 text-white hover:bg-gray-600"
+                >
+                  ←
+                </Button>
+                <Input
+                  type="number"
+                  min={0}
+                  max={maxIndex}
+                  value={modelIndex}
+                  onChange={(e) => setModelIndex(Math.max(0, Math.min(maxIndex, parseInt(e.target.value) || 0)))}
+                  className="bg-gray-700 border-gray-600 text-white text-center"
+                />
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={nextModel}
+                  disabled={modelIndex >= maxIndex}
+                  className="bg-gray-700 border-gray-600 text-white hover:bg-gray-600"
+                >
+                  →
+                </Button>
+              </div>
+            </div>
+          )}
           
           {/* Status */}
           <div className="p-3 bg-gray-700 rounded text-sm text-gray-300">
@@ -680,16 +740,16 @@ export function TestModelViewer() {
           <div className="text-xs text-gray-500 space-y-1">
             <p>• Select a game to see available model files</p>
             <p>• BG3D files contain multiple sub-models</p>
-            <p>• Use index selector to browse models</p>
-            <p>• 3DMF files are from older games (Bugdom, Nanosaur)</p>
+            <p>• Use index selector to browse models after loading</p>
+            <p>• Purple items are skeleton/character files</p>
           </div>
         </CardContent>
       </Card>
       
-      {/* 3D Canvas */}
+      {/* 3D Canvas - Fixed camera far plane for clipping */}
       <div className="flex-1 bg-gray-800 rounded-lg overflow-hidden">
         <Canvas
-          camera={{ position: [300, 200, 300], fov: 50 }}
+          camera={{ position: [300, 200, 300], fov: 50, near: 1, far: 50000 }}
           style={{ background: "#1a1a2e" }}
         >
           <ambientLight intensity={0.5} />
