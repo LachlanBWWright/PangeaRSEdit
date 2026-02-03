@@ -239,7 +239,6 @@ export function sanitizeResourceForkJson(data: unknown): Record<string, unknown>
       continue;
     }
     const entry = value;
-    let hasNonEmptyResources = false;
     for (const [resId, resVal] of Object.entries(entry)) {
       if (resVal === undefined || resVal === null) continue;
       if (!isRecord(resVal)) {
@@ -254,10 +253,9 @@ export function sanitizeResourceForkJson(data: unknown): Record<string, unknown>
         Reflect.deleteProperty(entry, resId);
         continue;
       }
-      hasNonEmptyResources = true;
     }
     // If all resources in this type were empty, remove the entire type
-    if (!hasNonEmptyResources && Object.keys(entry).length === 0) {
+    if (Object.keys(entry).length === 0) {
       Reflect.deleteProperty(sanitized, key);
     }
   }
