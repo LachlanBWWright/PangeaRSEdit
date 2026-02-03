@@ -223,6 +223,7 @@ export function validateResourceForkJson(json_blob: Record<string, unknown>):
 /**
  * Return a shallow copy of the level data with any malformed resource sections removed,
  * so downstream validation/serialization doesn't fail on stray arrays or primitives.
+ * Also removes resource types with empty arrays (rsrcdump-ts throws on 0 resources).
  */
 export function sanitizeResourceForkJson(data: unknown): Record<string, unknown> {
   if (!isRecord(data)) {
@@ -238,11 +239,26 @@ export function sanitizeResourceForkJson(data: unknown): Record<string, unknown>
       continue;
     }
     const entry = value;
+    let hasNonEmptyResources = false;
     for (const [resId, resVal] of Object.entries(entry)) {
       if (resVal === undefined || resVal === null) continue;
       if (!isRecord(resVal)) {
         Reflect.deleteProperty(entry, resId);
+        continue;
       }
+      // Check if the resource entry has a non-empty obj array
+      const resEntry = resVal as Record<string, unknown>;
+      const obj = resEntry.obj;
+      if (Array.isArray(obj) && obj.length === 0) {
+        // Skip empty array resources - rsrcdump throws on 0 resources
+        Reflect.deleteProperty(entry, resId);
+        continue;
+      }
+      hasNonEmptyResources = true;
+    }
+    // If all resources in this type were empty, remove the entire type
+    if (!hasNonEmptyResources && Object.keys(entry).length === 0) {
+      Reflect.deleteProperty(sanitized, key);
     }
   }
   return sanitized;

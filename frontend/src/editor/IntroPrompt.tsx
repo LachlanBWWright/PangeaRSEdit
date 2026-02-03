@@ -335,10 +335,11 @@ export function IntroPrompt() {
       } else {
         // Standard Resource Fork games: Use rsrcdump-ts
 
+        // Sanitize JSON to remove empty resource arrays (rsrcdump-ts throws on 0 resources)
+        const sanitizedData = sanitizeResourceForkJson(combinedData);
+
         // Validate JSON shape expected by rsrcdump
-        const validation = validateResourceForkJson(
-          sanitizeResourceForkJson(combinedData),
-        );
+        const validation = validateResourceForkJson(sanitizedData);
         if (!validation.ok) {
           console.error("Invalid JSON for resource fork:", validation);
           toast.error("Download failed", {
@@ -349,7 +350,7 @@ export function IntroPrompt() {
 
         // Use rsrcdump-ts to convert JSON to binary
         const saveResult = loadBytesFromJson(
-          combinedData,
+          sanitizedData,
           globals.STRUCT_SPECS,
           [], // onlyTypes
           [], // skipTypes
