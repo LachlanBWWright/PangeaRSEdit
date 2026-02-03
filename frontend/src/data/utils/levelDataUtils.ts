@@ -250,7 +250,6 @@ export function sanitizeResourceForkJson(data: unknown): Record<string, unknown>
       if (Array.isArray(obj) && obj.length === 0) {
         // Skip empty array resources - rsrcdump throws on 0 resources
         Reflect.deleteProperty(entry, resId);
-        continue;
       }
     }
     // If all resources in this type were empty, remove the entire type
