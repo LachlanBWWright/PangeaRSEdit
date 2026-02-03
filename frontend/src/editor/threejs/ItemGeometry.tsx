@@ -7,7 +7,7 @@ import {
 } from "@/python/structSpecs/LevelTypes";
 import { useAtomValue } from "jotai";
 import { useFrame } from "@react-three/fiber";
-import { Globals } from "@/data/globals/globals";
+import { Globals, Game } from "@/data/globals/globals";
 import { Show3DItemModels } from "@/data/canvasView/canvasViewAtoms";
 import { getTerrainHeightAtPoint } from "./fenceUtils/getTerrainHeightAtPoint";
 import { useOttoItemModelCache } from "./hooks/useOttoItemModelCache";
@@ -15,7 +15,6 @@ import {
   getItemModelMapping,
   type ItemModelMapping,
 } from "@/data/items/ottoItemModelMapping";
-import { getGameMapper, hasGameMapper } from "@/data/items/mappers";
 import {
   getLiquidPatchStyle,
   getLiquidPatchDimensions,
@@ -236,9 +235,12 @@ export const ItemGeometry: React.FC<ItemGeometryProps> = ({
     return scenes;
   }, [modelCache, itemsByType]);
 
+  // Check if current game is Otto Matic (the only game with full 3D model support)
+  const isOttoMatic = globals.GAME_TYPE === Game.OTTO_MATIC;
+
   useEffect(() => {
-    // Load models for games that have mappers (not just Otto Matic)
-    if (show3DItemModels && hasGameMapper(globals.GAME_TYPE)) {
+    // Only load 3D models for Otto Matic since useOttoItemModelCache is Otto-specific
+    if (show3DItemModels && isOttoMatic) {
       // Load models for all unique item types in the level
       itemsByType.forEach((_, itemType) => {
         loadModel(itemType).catch((err) => {
@@ -246,7 +248,7 @@ export const ItemGeometry: React.FC<ItemGeometryProps> = ({
         });
       });
     }
-  }, [show3DItemModels, itemsByType, loadModel, globals.GAME_TYPE]);
+  }, [show3DItemModels, itemsByType, loadModel, isOttoMatic]);
 
   // Early return after all hooks
   if (!items || items.length === 0) {
@@ -329,8 +331,8 @@ export const ItemGeometry: React.FC<ItemGeometryProps> = ({
           );
         }
 
-        // Render 3D model if enabled and available (works for all games with mappers)
-        if (show3DItemModels && hasGameMapper(globals.GAME_TYPE)) {
+        // Render 3D model if enabled and available (only for Otto Matic currently)
+        if (show3DItemModels && isOttoMatic) {
           const cachedModel = modelCache.get(item.type);
           const modelGltf = cachedModel?.gltf;
           const isLoading = cachedModel?.loading ?? false;
@@ -351,9 +353,7 @@ export const ItemGeometry: React.FC<ItemGeometryProps> = ({
           if (modelGltf && !hasError) {
             const clonedScene = clonedScenesByType.get(item.type);
             if (clonedScene) {
-              // Use game-specific mapper if available, fallback to Otto mapping
-              const gameMapper = getGameMapper(globals.GAME_TYPE);
-              const mapping = gameMapper?.getMapping(item.type) ?? getItemModelMapping(item.type);
+              const mapping = getItemModelMapping(item.type);
               return (
                 <ItemModel
                   key={`item-model-${idx}`}
