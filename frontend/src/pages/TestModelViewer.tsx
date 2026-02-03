@@ -8,7 +8,7 @@
 import React, { useState, useCallback, useRef, useEffect } from "react";
 import { Canvas } from "@react-three/fiber";
 import { OrbitControls, Grid } from "@react-three/drei";
-import { Group } from "three";
+import { Group, Mesh, BufferGeometry } from "three";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { 
@@ -247,6 +247,36 @@ const ModelDisplay: React.FC<{ gltfScene: Group | null }> = ({ gltfScene }) => {
 };
 
 /**
+ * Calculate model statistics (vertices, faces)
+ */
+function calculateModelStats(scene: Group | null): { vertices: number; faces: number } {
+  let vertices = 0;
+  let faces = 0;
+  
+  if (!scene) return { vertices, faces };
+  
+  scene.traverse((object) => {
+    if (object instanceof Mesh) {
+      const geometry = object.geometry;
+      if (geometry instanceof BufferGeometry) {
+        const position = geometry.getAttribute("position");
+        if (position) {
+          vertices += position.count;
+        }
+        const index = geometry.getIndex();
+        if (index) {
+          faces += index.count / 3;
+        } else if (position) {
+          faces += position.count / 3;
+        }
+      }
+    }
+  });
+  
+  return { vertices, faces };
+}
+
+/**
  * Extract a specific subgroup from a GLTF scene by index
  */
 function extractSubgroupByIndex(gltf: GLTF, modelIndex: number): Group | null {
@@ -293,6 +323,7 @@ export function TestModelViewer() {
   const [fullGltf, setFullGltf] = useState<GLTF | null>(null);
   const [status, setStatus] = useState<string>("Select a game and model file to begin");
   const [showSkeletons, setShowSkeletons] = useState<boolean>(false);
+  const [modelStats, setModelStats] = useState<{ vertices: number; faces: number } | null>(null);
   
   const workerRef = useRef<Worker | null>(null);
   
@@ -417,6 +448,7 @@ export function TestModelViewer() {
       // Extract the requested model index
       const extracted = extractSubgroupByIndex(gltf, modelIndex);
       setGltfScene(extracted);
+      setModelStats(calculateModelStats(extracted));
       
       setStatus(`Loaded! File contains ${numModels} model(s). Showing index ${modelIndex}.`);
       
@@ -435,6 +467,7 @@ export function TestModelViewer() {
     if (fullGltf) {
       const extracted = extractSubgroupByIndex(fullGltf, modelIndex);
       setGltfScene(extracted);
+      setModelStats(calculateModelStats(extracted));
       setStatus(`Showing model index ${modelIndex} of ${maxIndex}`);
     }
   }, [modelIndex, fullGltf, maxIndex]);
@@ -573,6 +606,14 @@ export function TestModelViewer() {
           <div className="p-3 bg-gray-700 rounded text-sm text-gray-300">
             {status}
           </div>
+          
+          {/* Model Stats */}
+          {modelStats && (
+            <div className="p-3 bg-gray-700/50 rounded text-sm text-gray-400 flex gap-4">
+              <span>Vertices: {modelStats.vertices.toLocaleString()}</span>
+              <span>Faces: {Math.round(modelStats.faces).toLocaleString()}</span>
+            </div>
+          )}
           
           {/* Error */}
           {error && (
