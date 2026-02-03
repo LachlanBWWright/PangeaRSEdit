@@ -246,8 +246,7 @@ export function sanitizeResourceForkJson(data: unknown): Record<string, unknown>
         continue;
       }
       // Check if the resource entry has a non-empty obj array
-      const resEntry = resVal as Record<string, unknown>;
-      const obj = resEntry.obj;
+      const obj = resVal.obj;
       if (Array.isArray(obj) && obj.length === 0) {
         // Skip empty array resources - rsrcdump throws on 0 resources
         Reflect.deleteProperty(entry, resId);
