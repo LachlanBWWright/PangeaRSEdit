@@ -44,10 +44,15 @@ Animated characters use:
 
 ## Game-Specific Documentation
 
-- [Otto Matic](./ottomatic/README.md)
-- [Bugdom](./bugdom/README.md)
-- [Bugdom 2](./bugdom2/README.md)
-- [Nanosaur](./nanosaur/README.md)
+| Game | Format | Documentation |
+|------|--------|---------------|
+| Otto Matic | BG3D | [README](./ottomatic/README.md) · [Item Mapping](./ottomatic/ITEM_TYPE_MAPPING.md) |
+| Bugdom | 3DMF | [README](./bugdom/README.md) |
+| Bugdom 2 | BG3D | [README](./bugdom2/README.md) · [Item Mapping](./bugdom2/ITEM_TYPE_MAPPING.md) |
+| Nanosaur | 3DMF | [README](./nanosaur/README.md) |
+| Nanosaur 2 | BG3D | [Nanosaur 2](./nanosaur/NANOSAUR2.md) |
+| Cro-Mag Rally | BG3D | [README](./cromagrally/README.md) |
+| Billy Frontier | BG3D | [README](./billyfrontier/README.md) |
 
 ## Loading Pipeline
 
@@ -57,3 +62,16 @@ Animated characters use:
 4. **Convert to glTF** for Three.js rendering
 5. **Apply transformations** (scale, rotation)
 6. **Cache for reuse**
+
+## Test Model Viewer
+
+The application includes a Test Model Viewer (`/#/test-models`) that allows:
+- Selecting any game
+- Browsing model files (both regular and skeleton)
+- Navigating through model indices within a file
+- Viewing models in 3D with orbit controls
+
+This is useful for:
+- Discovering model indices for item type mappings
+- Verifying model loading works correctly
+- Exploring game assets
