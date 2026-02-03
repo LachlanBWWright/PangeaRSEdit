@@ -32,6 +32,8 @@ interface GameConfig {
   name: string;
   basePath: string;
   modelFiles: string[];
+  skeletonPath?: string;
+  skeletonFiles?: string[];
   format: "bg3d" | "3dmf";
 }
 
@@ -40,6 +42,7 @@ const GAME_CONFIGS: GameConfig[] = [
     id: "ottomatic",
     name: "Otto Matic",
     basePath: "/PangeaRSEdit/games/ottomatic/models",
+    skeletonPath: "/PangeaRSEdit/games/ottomatic/skeletons",
     modelFiles: [
       "global.bg3d",
       "level1_farm.bg3d",
@@ -51,6 +54,34 @@ const GAME_CONFIGS: GameConfig[] = [
       "level8_fireice.bg3d",
       "level9_saucer.bg3d",
       "level10_brainboss.bg3d",
+    ],
+    skeletonFiles: [
+      "BeeWoman.bg3d",
+      "Blob.bg3d",
+      "BrainAlien.bg3d",
+      "Clown.bg3d",
+      "ClownFish.bg3d",
+      "Corn.bg3d",
+      "EliteBrainAlien.bg3d",
+      "Farmer.bg3d",
+      "Flamester.bg3d",
+      "FlyTrap.bg3d",
+      "GiantLizard.bg3d",
+      "HammerBot.bg3d",
+      "JawsBot.bg3d",
+      "MagnetMonster.bg3d",
+      "Mantis.bg3d",
+      "Mutant.bg3d",
+      "MutantRobot.bg3d",
+      "Onion.bg3d",
+      "Otto.bg3d",
+      "Pitchfork.bg3d",
+      "PodGuy.bg3d",
+      "Scientist.bg3d",
+      "Squooshy.bg3d",
+      "StrongBox.bg3d",
+      "SwingerBot.bg3d",
+      "Tomato.bg3d",
     ],
     format: "bg3d",
   },
@@ -187,11 +218,22 @@ export function TestModelViewer() {
   const [gltfScene, setGltfScene] = useState<Group | null>(null);
   const [fullGltf, setFullGltf] = useState<GLTF | null>(null);
   const [status, setStatus] = useState<string>("Select a game and model file to begin");
+  const [showSkeletons, setShowSkeletons] = useState<boolean>(false);
   
   const workerRef = useRef<Worker | null>(null);
   
   // Get the current game config
   const gameConfig = GAME_CONFIGS.find(g => g.id === selectedGame);
+  
+  // Get the list of files to show based on skeleton toggle
+  const availableFiles = showSkeletons && gameConfig?.skeletonFiles 
+    ? gameConfig.skeletonFiles 
+    : gameConfig?.modelFiles ?? [];
+  
+  // Get the base path based on skeleton toggle
+  const basePath = showSkeletons && gameConfig?.skeletonPath 
+    ? gameConfig.skeletonPath 
+    : gameConfig?.basePath ?? "";
   
   // Initialize worker
   const getWorker = useCallback(() => {
@@ -213,7 +255,7 @@ export function TestModelViewer() {
     setStatus("Fetching model file...");
     
     try {
-      const url = `${gameConfig.basePath}/${selectedFile}`;
+      const url = `${basePath}/${selectedFile}`;
       console.log(`Loading model from: ${url}`);
       
       const response = await fetch(url);
@@ -312,7 +354,7 @@ export function TestModelViewer() {
     } finally {
       setLoading(false);
     }
-  }, [gameConfig, selectedFile, modelIndex, getWorker]);
+  }, [gameConfig, selectedFile, modelIndex, getWorker, basePath]);
   
   // Update displayed model when index changes (if we have a loaded GLTF)
   useEffect(() => {
@@ -365,19 +407,40 @@ export function TestModelViewer() {
             </Select>
           </div>
           
+          {/* Skeleton Toggle - only show if game has skeletons */}
+          {gameConfig?.skeletonFiles && gameConfig.skeletonFiles.length > 0 && (
+            <div className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                id="showSkeletons"
+                checked={showSkeletons}
+                onChange={(e) => {
+                  setShowSkeletons(e.target.checked);
+                  setSelectedFile("");  // Reset file selection when toggling
+                }}
+                className="w-4 h-4"
+              />
+              <Label htmlFor="showSkeletons" className="text-gray-300 cursor-pointer">
+                Show Skeleton Characters
+              </Label>
+            </div>
+          )}
+          
           {/* Model File Selector */}
           <div className="space-y-2">
-            <Label className="text-gray-300">Model File</Label>
+            <Label className="text-gray-300">
+              {showSkeletons ? "Skeleton File" : "Model File"}
+            </Label>
             <Select 
               value={selectedFile} 
               onValueChange={setSelectedFile}
-              disabled={!gameConfig || gameConfig.modelFiles.length === 0}
+              disabled={!gameConfig || availableFiles.length === 0}
             >
               <SelectTrigger className="bg-gray-700 border-gray-600 text-white">
-                <SelectValue placeholder={gameConfig?.modelFiles.length ? "Select a file" : "No files available"} />
+                <SelectValue placeholder={availableFiles.length ? "Select a file" : "No files available"} />
               </SelectTrigger>
               <SelectContent className="bg-gray-700 border-gray-600 max-h-60">
-                {gameConfig?.modelFiles.map(file => (
+                {availableFiles.map(file => (
                   <SelectItem 
                     key={file} 
                     value={file}
