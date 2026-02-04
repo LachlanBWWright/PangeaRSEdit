@@ -196,6 +196,44 @@ describe("Game Item Mappers", () => {
       }
       expect(ottoItemMapper.hasModel(99999)).toBe(false);
     });
+    
+    it("should handle param-dependent Human mapping", () => {
+      // Human (type 4) should use different models based on p1 param
+      const farmerMapping = ottoItemMapper.getMapping(4, undefined, { p0: 0, p1: 0, p2: 0, p3: 0 });
+      expect(farmerMapping).toBeDefined();
+      expect(farmerMapping?.modelFile).toBe("Farmer.bg3d");
+      expect(farmerMapping?.skeletonFile).toBe("Farmer.skeleton.rsrc");
+      
+      const beeWomanMapping = ottoItemMapper.getMapping(4, undefined, { p0: 0, p1: 1, p2: 0, p3: 0 });
+      expect(beeWomanMapping).toBeDefined();
+      expect(beeWomanMapping?.modelFile).toBe("BeeWoman.bg3d");
+      expect(beeWomanMapping?.skeletonFile).toBe("BeeWoman.skeleton.rsrc");
+      
+      const scientistMapping = ottoItemMapper.getMapping(4, undefined, { p0: 0, p1: 2, p2: 0, p3: 0 });
+      expect(scientistMapping).toBeDefined();
+      expect(scientistMapping?.modelFile).toBe("Scientist.bg3d");
+      expect(scientistMapping?.skeletonFile).toBe("Scientist.skeleton.rsrc");
+      
+      const skirtLadyMapping = ottoItemMapper.getMapping(4, undefined, { p0: 0, p1: 3, p2: 0, p3: 0 });
+      expect(skirtLadyMapping).toBeDefined();
+      expect(skirtLadyMapping?.modelFile).toBe("SkirtLady.bg3d");
+      expect(skirtLadyMapping?.skeletonFile).toBe("SkirtLady.skeleton.rsrc");
+    });
+    
+    it("should default to Farmer for Human with no params", () => {
+      const mapping = ottoItemMapper.getMapping(4);
+      expect(mapping).toBeDefined();
+      expect(mapping?.modelFile).toBe("Farmer.bg3d");
+    });
+    
+    it("should always report Human as having a model", () => {
+      expect(ottoItemMapper.hasModel(4)).toBe(true);
+    });
+    
+    it("should include Human in mapped types", () => {
+      const mappedTypes = ottoItemMapper.getMappedTypes();
+      expect(mappedTypes).toContain(4); // Human type
+    });
   });
   
   describe("Bugdom2ItemMapper", () => {
