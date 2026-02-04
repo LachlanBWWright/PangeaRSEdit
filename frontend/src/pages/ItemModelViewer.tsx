@@ -55,6 +55,17 @@ const GRID_SECTION_SIZE = 200;
 const GRID_FADE_DISTANCE = 2000;
 
 /**
+ * Worker timeout configuration
+ */
+const WORKER_TIMEOUT_MS = 60000; // 60 seconds for large model files
+
+/**
+ * Model directory names
+ */
+const MODEL_DIR = "models";
+const SKELETON_DIR = "skeletons";
+
+/**
  * Game configuration with globals reference
  */
 interface GameOption {
@@ -118,6 +129,17 @@ interface ItemInfo {
   hasMapping: boolean;
   mapping: UniversalItemModelMapping | undefined;
   isSplineItem: boolean;
+}
+
+/**
+ * Format item display string with indicators
+ * @param item - The item info
+ * @returns Formatted string like "4: Human ✓ ↺"
+ */
+function formatItemDisplay(item: ItemInfo): string {
+  const modelIndicator = item.hasMapping ? " ✓" : "";
+  const splineIndicator = item.isSplineItem ? " ↺" : "";
+  return `${item.type}: ${item.name}${modelIndicator}${splineIndicator}`;
 }
 
 /**
@@ -309,9 +331,9 @@ export function ItemModelViewer() {
     setStatus(`Loading model for ${selectedItem.name}...`);
     
     try {
-      // Construct the model path
-      const modelDir = mapping.modelPath === "skeletons" ? "skeletons" : "models";
-      const modelPath = `${selectedGame.basePath}/${modelDir}/${mapping.modelFile}`;
+      // Construct the model path using the mapping's directory
+      const modelDir = mapping.modelPath === SKELETON_DIR ? SKELETON_DIR : MODEL_DIR;
+      const modelPath = [selectedGame.basePath, modelDir, mapping.modelFile].join("/");
       
       console.log(`Loading model from: ${modelPath}, index: ${mapping.modelIndex}`);
       setStatus(`Fetching ${mapping.modelFile}...`);
@@ -369,7 +391,7 @@ export function ItemModelViewer() {
             worker.removeEventListener("error", handleError);
             reject(new Error("Conversion timeout"));
           }
-        }, 60000);
+        }, WORKER_TIMEOUT_MS);
       });
       
       setStatus("Loading GLB into Three.js...");
@@ -476,7 +498,7 @@ export function ItemModelViewer() {
                         item.hasMapping ? "text-green-300" : "text-gray-400"
                       }`}
                     >
-                      {item.type}: {item.name} {item.hasMapping ? "✓" : ""}{item.isSplineItem ? " ↺" : ""}
+                      {formatItemDisplay(item)}
                     </SelectItem>
                   ))}
                 </SelectContent>
