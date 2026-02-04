@@ -6,7 +6,7 @@
  * Uses the item mappers to find the correct model file and index for each item.
  */
 
-import React, { useState, useCallback, useRef, useEffect, useMemo } from "react";
+import React, { useState, useCallback, useRef, useMemo } from "react";
 import { Canvas } from "@react-three/fiber";
 import { OrbitControls, Grid } from "@react-three/drei";
 import { Group, Mesh, BufferGeometry } from "three";
