@@ -276,8 +276,9 @@ export function ItemModelViewer() {
   // Get the selected item info
   const selectedItem = gameItems.find(i => i.type === selectedItemType);
   
-  // Count items with mappings
+  // Count items with mappings and spline items
   const mappedItemCount = gameItems.filter(i => i.hasMapping).length;
+  const splineItemCount = gameItems.filter(i => i.isSplineItem).length;
   
   // Initialize worker
   const getWorker = useCallback(() => {
@@ -480,7 +481,7 @@ export function ItemModelViewer() {
           {selectedGame && (
             <div className="space-y-2">
               <Label className="text-gray-300">
-                Item ({mappedItemCount}/{gameItems.length} have models)
+                Item ({mappedItemCount}/{gameItems.length} have models{splineItemCount > 0 ? `, ${splineItemCount} spline` : ""})
               </Label>
               <Select 
                 value={selectedItemType !== null ? String(selectedItemType) : ""} 
