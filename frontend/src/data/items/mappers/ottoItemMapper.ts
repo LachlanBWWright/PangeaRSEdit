@@ -110,6 +110,36 @@ export class OttoItemMapper implements GameItemModelMapper {
   }
   
   /**
+   * Check if an item type has param-dependent model selection.
+   * For param-dependent items, the model varies based on item parameters.
+   */
+  isParamDependent(itemType: number): boolean {
+    return itemType === ItemType.Human;
+  }
+  
+  /**
+   * Get param-dependent options for display.
+   * Returns undefined if the item type is not param-dependent.
+   */
+  getParamDependentOptions(itemType: number): {
+    paramIndex: number;
+    options: { value: number; label: string }[];
+  } | undefined {
+    if (itemType === ItemType.Human) {
+      return {
+        paramIndex: 1,
+        options: [
+          { value: 0, label: "Farmer" },
+          { value: 1, label: "Bee Woman" },
+          { value: 2, label: "Scientist" },
+          { value: 3, label: "Skirt Lady" },
+        ],
+      };
+    }
+    return undefined;
+  }
+  
+  /**
    * Get human type names for display
    */
   getHumanTypeNames(): Record<number, string> {

@@ -35,6 +35,7 @@ import {
   type GlobalsInterface,
 } from "@/data/globals/globals";
 import { getGameMapper } from "@/data/items/mappers";
+import { ottoItemMapper } from "@/data/items/mappers/ottoItemMapper";
 import type { UniversalItemModelMapping } from "@/data/items/itemModelTypes";
 
 /**
@@ -220,25 +221,6 @@ function extractSubgroupByIndex(gltf: GLTF, modelIndex: number): Group | null {
   }
 }
 
-/**
- * Param-dependent item types for Otto Matic
- * These items have models that change based on their parameters
- */
-const OTTO_PARAM_DEPENDENT_ITEMS: Record<number, {
-  paramIndex: 0 | 1 | 2 | 3;
-  options: Array<{ value: number; name: string }>;
-}> = {
-  4: { // Human
-    paramIndex: 1,
-    options: [
-      { value: 0, name: "Farmer" },
-      { value: 1, name: "Bee Woman" },
-      { value: 2, name: "Scientist" },
-      { value: 3, name: "Skirt Lady" },
-    ],
-  },
-};
-
 export function ItemModelViewer() {
   const [selectedGameId, setSelectedGameId] = useState<Game | null>(null);
   const [selectedItemType, setSelectedItemType] = useState<number | null>(null);
@@ -254,6 +236,17 @@ export function ItemModelViewer() {
     p0: 0, p1: 0, p2: 0, p3: 0,
   });
   
+  // Helper to get param value by index
+  const getParamValue = (paramIndex: number): number => {
+    switch (paramIndex) {
+      case 0: return itemParams.p0;
+      case 1: return itemParams.p1;
+      case 2: return itemParams.p2;
+      case 3: return itemParams.p3;
+      default: return 0;
+    }
+  };
+  
   const workerRef = useRef<Worker | null>(null);
   
   // Get the current game option
@@ -265,7 +258,19 @@ export function ItemModelViewer() {
   // Check if current item is param-dependent
   const paramDependentInfo = useMemo(() => {
     if (selectedGameId !== Game.OTTO_MATIC || selectedItemType === null) return null;
-    return OTTO_PARAM_DEPENDENT_ITEMS[selectedItemType] ?? null;
+    const options = ottoItemMapper.getParamDependentOptions(selectedItemType);
+    if (!options) return null;
+    
+    // Validate paramIndex is 0-3
+    const paramIndex = options.paramIndex;
+    if (paramIndex !== 0 && paramIndex !== 1 && paramIndex !== 2 && paramIndex !== 3) {
+      return null;
+    }
+    
+    return {
+      paramIndex,
+      options: options.options.map(opt => ({ value: opt.value, name: opt.label })),
+    };
   }, [selectedGameId, selectedItemType]);
   
   // Get current mapping based on params
@@ -281,6 +286,7 @@ export function ItemModelViewer() {
     const itemTypes = selectedGame.globals.ITEM_TYPES;
     const splineItemTypes = selectedGame.globals.SPLINE_ITEM_TYPES;
     const items: ItemInfo[] = [];
+    const isOttoMatic = selectedGame.id === Game.OTTO_MATIC;
     
     for (const [typeStr, name] of Object.entries(itemTypes)) {
       const type = parseInt(typeStr);
@@ -291,9 +297,8 @@ export function ItemModelViewer() {
       const mapping = mapper?.getMapping(type);
       // Check if this item type can be used as a spline item
       const isSplineItem = splineItemTypes !== undefined && type in splineItemTypes;
-      // Check if this is a param-dependent item
-      const isParamDependent = selectedGame.id === Game.OTTO_MATIC && 
-        OTTO_PARAM_DEPENDENT_ITEMS[type] !== undefined;
+      // Check if this is a param-dependent item using the Otto mapper
+      const isParamDependent = isOttoMatic ? ottoItemMapper.isParamDependent(type) : false;
       
       items.push({
         type,
@@ -563,7 +568,7 @@ export function ItemModelViewer() {
                 <span aria-hidden="true">⚙</span> Model Variant (p{paramDependentInfo.paramIndex})
               </div>
               <Select 
-                value={String(itemParams[`p${paramDependentInfo.paramIndex}` as keyof typeof itemParams])} 
+                value={String(getParamValue(paramDependentInfo.paramIndex))} 
                 onValueChange={(val) => handleParamChange(`p${paramDependentInfo.paramIndex}`, parseInt(val))}
               >
                 <SelectTrigger className="bg-gray-700 border-gray-600 text-white">
