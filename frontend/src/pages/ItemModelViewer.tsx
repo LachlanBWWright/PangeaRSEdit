@@ -60,12 +60,6 @@ const GRID_FADE_DISTANCE = 2000;
 const WORKER_TIMEOUT_MS = 60000; // 60 seconds for large model files
 
 /**
- * Model directory names
- */
-const MODEL_DIR = "models";
-const SKELETON_DIR = "skeletons";
-
-/**
  * Game configuration with globals reference
  */
 interface GameOption {
@@ -332,9 +326,8 @@ export function ItemModelViewer() {
     setStatus(`Loading model for ${selectedItem.name}...`);
     
     try {
-      // Construct the model path using the mapping's directory
-      const modelDir = mapping.modelPath === SKELETON_DIR ? SKELETON_DIR : MODEL_DIR;
-      const modelPath = [selectedGame.basePath, modelDir, mapping.modelFile].join("/");
+      // Construct the model path using the mapping's directory (either "models" or "skeletons")
+      const modelPath = [selectedGame.basePath, mapping.modelPath, mapping.modelFile].join("/");
       
       console.log(`Loading model from: ${modelPath}, index: ${mapping.modelIndex}`);
       setStatus(`Fetching ${mapping.modelFile}...`);
@@ -481,7 +474,7 @@ export function ItemModelViewer() {
           {selectedGame && (
             <div className="space-y-2">
               <Label className="text-gray-300">
-                Item ({mappedItemCount}/{gameItems.length} have models{splineItemCount > 0 ? `, ${splineItemCount} spline` : ""})
+                Item ({mappedItemCount}/{gameItems.length} have models{splineItemCount > 0 ? `; ${splineItemCount} spline items` : ""})
               </Label>
               <Select 
                 value={selectedItemType !== null ? String(selectedItemType) : ""} 
