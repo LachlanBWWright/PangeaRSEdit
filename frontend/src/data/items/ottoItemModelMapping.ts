@@ -104,6 +104,28 @@ export const OTTO_ITEM_MODEL_MAPPINGS: Record<
     requiresSkeleton: true,
     skeletonFile: "BrainAlien.skeleton.rsrc",
   },
+  // Farm enemies (Onion, Corn, Tomato) - skeletal characters
+  [ItemType.Enemy_Onion]: {
+    modelFile: "Onion.bg3d",
+    modelPath: "skeletons",
+    modelIndex: 0,
+    requiresSkeleton: true,
+    skeletonFile: "Onion.skeleton.rsrc",
+  },
+  [ItemType.Enemy_Corn]: {
+    modelFile: "Corn.bg3d",
+    modelPath: "skeletons",
+    modelIndex: 0,
+    requiresSkeleton: true,
+    skeletonFile: "Corn.skeleton.rsrc",
+  },
+  [ItemType.Enemy_Tomato]: {
+    modelFile: "Tomato.bg3d",
+    modelPath: "skeletons",
+    modelIndex: 0,
+    requiresSkeleton: true,
+    skeletonFile: "Tomato.skeleton.rsrc",
+  },
   [ItemType.Checkpoint]: {
     modelFile: "global.bg3d",
     modelPath: "models",
@@ -466,6 +488,14 @@ export const OTTO_ITEM_MODEL_MAPPINGS: Record<
     modelPath: "models",
     modelIndex: 14, // GeneratorBumper
   },
+  // Strongman enemy (type 81)
+  [ItemType.Enemy_StrongMan]: {
+    modelFile: "Strongman.bg3d",
+    modelPath: "skeletons",
+    modelIndex: 0,
+    requiresSkeleton: true,
+    skeletonFile: "Strongman.skeleton.rsrc",
+  },
   [ItemType.CloudPlatform]: {
     modelFile: "level5_cloud.bg3d",
     modelPath: "models",
@@ -518,6 +548,14 @@ export const OTTO_ITEM_MODEL_MAPPINGS: Record<
   },
 
   // 92-108: Saucer/Brain boss items
+  // IceCube enemy (type 92)
+  [ItemType.Enemy_IceCube]: {
+    modelFile: "IceCube.bg3d",
+    modelPath: "skeletons",
+    modelIndex: 0,
+    requiresSkeleton: true,
+    skeletonFile: "IceCube.skeleton.rsrc",
+  },
   [ItemType.RadarDish]: {
     modelFile: "level9_saucer.bg3d",
     modelPath: "models",
