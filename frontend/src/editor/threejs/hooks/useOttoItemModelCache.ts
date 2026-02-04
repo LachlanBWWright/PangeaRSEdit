@@ -7,11 +7,13 @@
  * - Uses Web Worker to convert BG3D → glTF off main thread
  * - Extracts specific meshes from multi-geometry BG3D files
  * - Gracefully handles loading errors with fallback behavior
+ * - Supports param-dependent models (e.g., Human types)
  */
 
 import { useState, useRef, useCallback } from "react";
 import BG3DGltfWorker from "@/modelParsers/bg3dGltfWorker?worker";
-import { getItemModelMapping } from "@/data/items/ottoItemModelMapping";
+import { getGameMapper } from "@/data/items/mappers";
+import { Game } from "@/data/globals/globals";
 import { Group } from "three";
 import {
   GLTFLoader,
@@ -24,18 +26,40 @@ interface CachedModel {
   error?: Error;
 }
 
+/**
+ * Item parameters that can affect model selection
+ */
+interface ItemParams {
+  p0: number;
+  p1: number;
+  p2: number;
+  p3: number;
+}
+
 interface UseOttoItemModelCacheReturn {
-  modelCache: Map<number, CachedModel>;
-  loadModel: (itemType: number) => Promise<GLTF | null>;
-  isLoading: (itemType: number) => boolean;
-  hasError: (itemType: number) => boolean;
+  modelCache: Map<string, CachedModel>;
+  loadModel: (itemType: number, params?: ItemParams) => Promise<GLTF | null>;
+  isLoading: (itemType: number, params?: ItemParams) => boolean;
+  hasError: (itemType: number, params?: ItemParams) => boolean;
+}
+
+/**
+ * Generate a cache key that includes item type and relevant params
+ */
+function getCacheKey(itemType: number, params?: ItemParams): string {
+  // For most items, just use itemType
+  // For param-dependent items like Human (type 4), include the relevant param
+  if (itemType === 4 && params) {
+    return `${itemType}_p1_${params.p1}`;
+  }
+  return String(itemType);
 }
 
 /**
  * Hook for managing Otto Matic item model loading and caching
  */
 export const useOttoItemModelCache = (): UseOttoItemModelCacheReturn => {
-  const [modelCache, setModelCache] = useState<Map<number, CachedModel>>(
+  const [modelCache, setModelCache] = useState<Map<string, CachedModel>>(
     new Map(),
   );
   const workerRef = useRef<Worker | null>(null);
@@ -112,12 +136,16 @@ export const useOttoItemModelCache = (): UseOttoItemModelCacheReturn => {
   /**
    * Load a 3D model for an item type
    * Uses lazy loading - only fetches when called
+   * @param itemType - The item type ID
+   * @param params - Item parameters (affects model selection for param-dependent items)
    */
   const loadModel = useCallback(
-    async (itemType: number): Promise<GLTF | null> => {
+    async (itemType: number, params?: ItemParams): Promise<GLTF | null> => {
+      const cacheKey = getCacheKey(itemType, params);
+      
       // Check if already cached with no error
-      if (modelCache.has(itemType)) {
-        const cached = modelCache.get(itemType);
+      if (modelCache.has(cacheKey)) {
+        const cached = modelCache.get(cacheKey);
         if (!cached?.loading && !cached?.error) {
           return cached?.gltf || null;
         }
@@ -125,7 +153,7 @@ export const useOttoItemModelCache = (): UseOttoItemModelCacheReturn => {
           // Already loading, wait a bit and return
           return new Promise((resolve) => {
             const checkInterval = setInterval(() => {
-              const updated = modelCache.get(itemType);
+              const updated = modelCache.get(cacheKey);
               if (!updated?.loading) {
                 clearInterval(checkInterval);
                 resolve(updated?.gltf || null);
@@ -138,8 +166,9 @@ export const useOttoItemModelCache = (): UseOttoItemModelCacheReturn => {
         }
       }
 
-      // Get mapping for this item type
-      const mapping = getItemModelMapping(itemType);
+      // Get mapping using the game mapper (which supports params)
+      const mapper = getGameMapper(Game.OTTO_MATIC);
+      const mapping = mapper?.getMapping(itemType, undefined, params);
       if (!mapping) {
         // No mapping, item will use colored cube fallback
         return null;
@@ -148,7 +177,7 @@ export const useOttoItemModelCache = (): UseOttoItemModelCacheReturn => {
       // Mark as loading
       setModelCache((prev) => {
         const updated = new Map(prev);
-        updated.set(itemType, { gltf: null, loading: true });
+        updated.set(cacheKey, { gltf: null, loading: true });
         return updated;
       });
 
@@ -273,7 +302,7 @@ export const useOttoItemModelCache = (): UseOttoItemModelCacheReturn => {
         // Cache the result
         setModelCache((prev) => {
           const updated = new Map(prev);
-          updated.set(itemType, { gltf: finalGltf, loading: false });
+          updated.set(cacheKey, { gltf: finalGltf, loading: false });
           return updated;
         });
 
@@ -284,7 +313,7 @@ export const useOttoItemModelCache = (): UseOttoItemModelCacheReturn => {
         // Cache the error
         setModelCache((prev) => {
           const updated = new Map(prev);
-          updated.set(itemType, { gltf: null, loading: false, error: err });
+          updated.set(cacheKey, { gltf: null, loading: false, error: err });
           return updated;
         });
 
@@ -295,12 +324,18 @@ export const useOttoItemModelCache = (): UseOttoItemModelCacheReturn => {
   );
 
   const isLoading = useCallback(
-    (itemType: number) => modelCache.get(itemType)?.loading ?? false,
+    (itemType: number, params?: ItemParams) => {
+      const cacheKey = getCacheKey(itemType, params);
+      return modelCache.get(cacheKey)?.loading ?? false;
+    },
     [modelCache],
   );
 
   const hasError = useCallback(
-    (itemType: number) => !!modelCache.get(itemType)?.error,
+    (itemType: number, params?: ItemParams) => {
+      const cacheKey = getCacheKey(itemType, params);
+      return !!modelCache.get(cacheKey)?.error;
+    },
     [modelCache],
   );
 

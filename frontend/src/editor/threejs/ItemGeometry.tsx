@@ -11,10 +11,7 @@ import { Globals, Game } from "@/data/globals/globals";
 import { Show3DItemModels } from "@/data/canvasView/canvasViewAtoms";
 import { getTerrainHeightAtPoint } from "./fenceUtils/getTerrainHeightAtPoint";
 import { useOttoItemModelCache } from "./hooks/useOttoItemModelCache";
-import {
-  getItemModelMapping,
-  type ItemModelMapping,
-} from "@/data/items/ottoItemModelMapping";
+import { getGameMapper } from "@/data/items/mappers";
 import {
   getLiquidPatchStyle,
   getLiquidPatchDimensions,
@@ -109,7 +106,6 @@ const ItemModel: React.FC<{
   position: [number, number, number];
   itemType: number;
   clonedScene: Group | null;
-  mapping: ItemModelMapping | null;
 }> = ({ position, clonedScene }) => {
   if (!clonedScene) {
     return null;
@@ -188,16 +184,30 @@ export const ItemGeometry: React.FC<ItemGeometryProps> = ({
   const { modelCache, loadModel } = useOttoItemModelCache();
 
   const items = itemData.Itms?.[1000]?.obj;
+  
+  // Get the Otto Matic mapper for model lookups
+  const mapper = useMemo(() => getGameMapper(Game.OTTO_MATIC), []);
 
-  // Group items by type for easier processing
-  const itemsByType = useMemo(() => {
-    if (!items) return new Map();
-    const groups = new Map<number, typeof items>();
+  // Generate a cache key for an item including its params
+  const getItemCacheKey = (itemType: number, p0: number, p1: number, p2: number, p3: number): string => {
+    // For param-dependent items like Human (type 4), include the relevant param
+    if (itemType === 4) {
+      return `${itemType}_p1_${p1}`;
+    }
+    return String(itemType);
+  };
+
+  // Group items by cache key for easier processing
+  // This handles param-dependent items by grouping by the full key
+  const itemsByCacheKey = useMemo(() => {
+    if (!items) return new Map<string, typeof items>();
+    const groups = new Map<string, typeof items>();
     items.forEach((item) => {
-      if (!groups.has(item.type)) {
-        groups.set(item.type, []);
+      const cacheKey = getItemCacheKey(item.type, item.p0, item.p1, item.p2, item.p3);
+      if (!groups.has(cacheKey)) {
+        groups.set(cacheKey, []);
       }
-      const group = groups.get(item.type);
+      const group = groups.get(cacheKey);
       if (group) {
         group.push(item);
       }
@@ -207,15 +217,19 @@ export const ItemGeometry: React.FC<ItemGeometryProps> = ({
 
   // Pre-load models for visible item types when toggle is enabled
   // Also prepare cloned scenes for instancing
-  const clonedScenesByType = useMemo(() => {
-    const scenes = new Map<number, Group | null>();
-    itemsByType.forEach((_, itemType) => {
-      const cachedModel = modelCache.get(itemType);
+  const clonedScenesByCacheKey = useMemo(() => {
+    const scenes = new Map<string, Group | null>();
+    itemsByCacheKey.forEach((itemsInGroup, cacheKey) => {
+      const firstItem = itemsInGroup[0];
+      if (!firstItem) return;
+      
+      const cachedModel = modelCache.get(cacheKey);
       if (cachedModel?.gltf && !cachedModel.error) {
-        const mapping = getItemModelMapping(itemType);
+        const params = { p0: firstItem.p0, p1: firstItem.p1, p2: firstItem.p2, p3: firstItem.p3 };
+        const mapping = mapper?.getMapping(firstItem.type, undefined, params);
         if (mapping && cachedModel.gltf.scene) {
           // The cached gltf.scene should already be the extracted subgroup
-          // Just clone it once per item type for instancing
+          // Just clone it once per cache key for instancing
           const cloned = cachedModel.gltf.scene.clone(true); // true = recursive deep clone
 
           // Apply scale if specified
@@ -228,12 +242,12 @@ export const ItemGeometry: React.FC<ItemGeometryProps> = ({
             cloned.rotateY(mapping.rotationY);
           }
 
-          scenes.set(itemType, cloned);
+          scenes.set(cacheKey, cloned);
         }
       }
     });
     return scenes;
-  }, [modelCache, itemsByType]);
+  }, [modelCache, itemsByCacheKey, mapper]);
 
   // Check if current game is Otto Matic (the only game with full 3D model support)
   const isOttoMatic = globals.GAME_TYPE === Game.OTTO_MATIC;
@@ -241,14 +255,18 @@ export const ItemGeometry: React.FC<ItemGeometryProps> = ({
   useEffect(() => {
     // Only load 3D models for Otto Matic since useOttoItemModelCache is Otto-specific
     if (show3DItemModels && isOttoMatic) {
-      // Load models for all unique item types in the level
-      itemsByType.forEach((_, itemType) => {
-        loadModel(itemType).catch((err) => {
-          console.error(`Failed to load model for item type ${itemType}:`, err);
+      // Load models for all unique item cache keys in the level
+      itemsByCacheKey.forEach((itemsInGroup, _cacheKey) => {
+        const firstItem = itemsInGroup[0];
+        if (!firstItem) return;
+        
+        const params = { p0: firstItem.p0, p1: firstItem.p1, p2: firstItem.p2, p3: firstItem.p3 };
+        loadModel(firstItem.type, params).catch((err) => {
+          console.error(`Failed to load model for item type ${firstItem.type}:`, err);
         });
       });
     }
-  }, [show3DItemModels, itemsByType, loadModel, isOttoMatic]);
+  }, [show3DItemModels, itemsByCacheKey, loadModel, isOttoMatic]);
 
   // Early return after all hooks
   if (!items || items.length === 0) {
@@ -333,7 +351,8 @@ export const ItemGeometry: React.FC<ItemGeometryProps> = ({
 
         // Render 3D model if enabled and available (only for Otto Matic currently)
         if (show3DItemModels && isOttoMatic) {
-          const cachedModel = modelCache.get(item.type);
+          const itemCacheKey = getItemCacheKey(item.type, item.p0, item.p1, item.p2, item.p3);
+          const cachedModel = modelCache.get(itemCacheKey);
           const modelGltf = cachedModel?.gltf;
           const isLoading = cachedModel?.loading ?? false;
           const hasError = !!cachedModel?.error;
@@ -351,16 +370,14 @@ export const ItemGeometry: React.FC<ItemGeometryProps> = ({
 
           // Show loaded model if available and not errored
           if (modelGltf && !hasError) {
-            const clonedScene = clonedScenesByType.get(item.type);
+            const clonedScene = clonedScenesByCacheKey.get(itemCacheKey);
             if (clonedScene) {
-              const mapping = getItemModelMapping(item.type);
               return (
                 <ItemModel
                   key={`item-model-${idx}`}
                   position={position}
                   itemType={item.type}
                   clonedScene={clonedScene}
-                  mapping={mapping ?? null}
                 />
               );
             }
