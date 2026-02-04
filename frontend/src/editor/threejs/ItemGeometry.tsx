@@ -12,6 +12,7 @@ import { Show3DItemModels } from "@/data/canvasView/canvasViewAtoms";
 import { getTerrainHeightAtPoint } from "./fenceUtils/getTerrainHeightAtPoint";
 import { useOttoItemModelCache } from "./hooks/useOttoItemModelCache";
 import { getGameMapper } from "@/data/items/mappers";
+import { ItemType } from "@/data/items/ottoItemType";
 import {
   getLiquidPatchStyle,
   getLiquidPatchDimensions,
@@ -190,8 +191,8 @@ export const ItemGeometry: React.FC<ItemGeometryProps> = ({
 
   // Generate a cache key for an item including its params
   const getItemCacheKey = (itemType: number, p0: number, p1: number, p2: number, p3: number): string => {
-    // For param-dependent items like Human (type 4), include the relevant param
-    if (itemType === 4) {
+    // For param-dependent items like Human, include the relevant param
+    if (itemType === ItemType.Human) {
       return `${itemType}_p1_${p1}`;
     }
     return String(itemType);

@@ -100,9 +100,7 @@ export class OttoItemMapper implements GameItemModelMapper {
       .filter(k => !isNaN(k) && OTTO_ITEM_MODEL_MAPPINGS[k] !== undefined);
     
     // Add Human type since it's param-dependent and not in static mappings
-    staticTypes.push(ItemType.Human);
-    
-    return staticTypes.sort((a, b) => a - b);
+    return [...staticTypes, ItemType.Human].sort((a, b) => a - b);
   }
   
   getMappingCount(): number {

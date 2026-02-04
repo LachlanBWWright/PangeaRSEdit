@@ -13,6 +13,7 @@
 import { useState, useRef, useCallback } from "react";
 import BG3DGltfWorker from "@/modelParsers/bg3dGltfWorker?worker";
 import { getGameMapper } from "@/data/items/mappers";
+import { ItemType } from "@/data/items/ottoItemType";
 import { Game } from "@/data/globals/globals";
 import { Group } from "three";
 import {
@@ -48,8 +49,8 @@ interface UseOttoItemModelCacheReturn {
  */
 function getCacheKey(itemType: number, params?: ItemParams): string {
   // For most items, just use itemType
-  // For param-dependent items like Human (type 4), include the relevant param
-  if (itemType === 4 && params) {
+  // For param-dependent items like Human, include the relevant param
+  if (itemType === ItemType.Human && params) {
     return `${itemType}_p1_${params.p1}`;
   }
   return String(itemType);
