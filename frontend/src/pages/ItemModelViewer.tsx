@@ -38,6 +38,23 @@ import { getGameMapper } from "@/data/items/mappers";
 import type { UniversalItemModelMapping } from "@/data/items/itemModelTypes";
 
 /**
+ * Camera configuration for optimal model viewing
+ * Position values based on typical Pangea game model scales (~100-500 units)
+ */
+const CAMERA_POSITION: [number, number, number] = [300, 200, 300];
+const CAMERA_FOV = 50;
+const CAMERA_NEAR = 1;
+const CAMERA_FAR = 50000; // Large far plane to prevent clipping on large models
+
+/**
+ * Grid configuration
+ */
+const GRID_SIZE = 1000;
+const GRID_CELL_SIZE = 50;
+const GRID_SECTION_SIZE = 200;
+const GRID_FADE_DISTANCE = 2000;
+
+/**
  * Game configuration with globals reference
  */
 interface GameOption {
@@ -399,11 +416,6 @@ export function ItemModelViewer() {
     }
   }, [selectedGame, selectedItemType, selectedItem, getWorker]);
   
-  // Auto-load when item with mapping is selected
-  useEffect(() => {
-    // Don't auto-load - require explicit click
-  }, [selectedItem]);
-  
   return (
     <div className="flex h-full gap-4 p-4 bg-gray-900">
       {/* Controls Panel */}
@@ -541,7 +553,7 @@ export function ItemModelViewer() {
       {/* 3D Canvas */}
       <div className="flex-1 bg-gray-800 rounded-lg overflow-hidden">
         <Canvas
-          camera={{ position: [300, 200, 300], fov: 50, near: 1, far: 50000 }}
+          camera={{ position: CAMERA_POSITION, fov: CAMERA_FOV, near: CAMERA_NEAR, far: CAMERA_FAR }}
           style={{ background: "#1a1a2e" }}
         >
           <ambientLight intensity={0.5} />
@@ -552,14 +564,14 @@ export function ItemModelViewer() {
           
           <OrbitControls />
           <Grid 
-            args={[1000, 1000]} 
-            cellSize={50}
+            args={[GRID_SIZE, GRID_SIZE]} 
+            cellSize={GRID_CELL_SIZE}
             cellThickness={0.5}
             cellColor="#3a3a5a"
-            sectionSize={200}
+            sectionSize={GRID_SECTION_SIZE}
             sectionThickness={1}
             sectionColor="#5a5a8a"
-            fadeDistance={2000}
+            fadeDistance={GRID_FADE_DISTANCE}
             fadeStrength={1}
           />
           <axesHelper args={[100]} />
