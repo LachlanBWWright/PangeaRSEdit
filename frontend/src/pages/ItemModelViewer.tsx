@@ -117,6 +117,7 @@ interface ItemInfo {
   name: string;
   hasMapping: boolean;
   mapping: UniversalItemModelMapping | undefined;
+  isSplineItem: boolean;
 }
 
 /**
@@ -224,6 +225,7 @@ export function ItemModelViewer() {
     if (!selectedGame) return [];
     
     const itemTypes = selectedGame.globals.ITEM_TYPES;
+    const splineItemTypes = selectedGame.globals.SPLINE_ITEM_TYPES;
     const items: ItemInfo[] = [];
     
     for (const [typeStr, name] of Object.entries(itemTypes)) {
@@ -231,11 +233,15 @@ export function ItemModelViewer() {
       if (isNaN(type)) continue;
       
       const mapping = mapper?.getMapping(type);
+      // Check if this item type can be used as a spline item
+      const isSplineItem = splineItemTypes !== undefined && type in splineItemTypes;
+      
       items.push({
         type,
         name,
         hasMapping: mapping !== undefined,
         mapping,
+        isSplineItem,
       });
     }
     
@@ -470,7 +476,7 @@ export function ItemModelViewer() {
                         item.hasMapping ? "text-green-300" : "text-gray-400"
                       }`}
                     >
-                      {item.type}: {item.name} {item.hasMapping ? "✓" : ""}
+                      {item.type}: {item.name} {item.hasMapping ? "✓" : ""}{item.isSplineItem ? " ↺" : ""}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -483,6 +489,9 @@ export function ItemModelViewer() {
             <div className="p-3 bg-gray-700/50 rounded text-sm space-y-1">
               <div className="text-white font-medium">{selectedItem.name}</div>
               <div className="text-gray-400">Type: {selectedItem.type}</div>
+              {selectedItem.isSplineItem && (
+                <div className="text-cyan-300">↺ Can be a spline item</div>
+              )}
               {selectedItem.mapping && (
                 <>
                   <div className="text-blue-300">
@@ -544,6 +553,7 @@ export function ItemModelViewer() {
           {/* Info */}
           <div className="text-xs text-gray-500 space-y-1">
             <p>• Green items (✓) have 3D model mappings</p>
+            <p>• Cyan items (↺) can be placed on splines</p>
             <p>• Gray items don't have models defined yet</p>
             <p>• Model mappings are based on game source code analysis</p>
           </div>
