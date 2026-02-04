@@ -559,8 +559,8 @@ export function ItemModelViewer() {
           {/* Param Selector for param-dependent items */}
           {paramDependentInfo && selectedItem && (
             <div className="p-3 bg-purple-900/30 border border-purple-700 rounded space-y-2">
-              <div className="text-purple-300 text-sm font-medium">
-                ⚙ Model Variant (p{paramDependentInfo.paramIndex})
+              <div className="text-purple-300 text-sm font-medium" aria-label="Model variant selector - model varies by parameter">
+                <span aria-hidden="true">⚙</span> Model Variant (p{paramDependentInfo.paramIndex})
               </div>
               <Select 
                 value={String(itemParams[`p${paramDependentInfo.paramIndex}` as keyof typeof itemParams])} 
