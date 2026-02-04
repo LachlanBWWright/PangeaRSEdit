@@ -123,6 +123,7 @@ interface ItemInfo {
   hasMapping: boolean;
   mapping: UniversalItemModelMapping | undefined;
   isSplineItem: boolean;
+  isParamDependent?: boolean; // True if this item's model depends on params
 }
 
 /**
@@ -133,7 +134,8 @@ interface ItemInfo {
 function formatItemDisplay(item: ItemInfo): string {
   const modelIndicator = item.hasMapping ? " ✓" : "";
   const splineIndicator = item.isSplineItem ? " ↺" : "";
-  return `${item.type}: ${item.name}${modelIndicator}${splineIndicator}`;
+  const paramIndicator = item.isParamDependent ? " ⚙" : "";
+  return `${item.type}: ${item.name}${modelIndicator}${splineIndicator}${paramIndicator}`;
 }
 
 /**
@@ -218,6 +220,25 @@ function extractSubgroupByIndex(gltf: GLTF, modelIndex: number): Group | null {
   }
 }
 
+/**
+ * Param-dependent item types for Otto Matic
+ * These items have models that change based on their parameters
+ */
+const OTTO_PARAM_DEPENDENT_ITEMS: Record<number, {
+  paramIndex: 0 | 1 | 2 | 3;
+  options: Array<{ value: number; name: string }>;
+}> = {
+  4: { // Human
+    paramIndex: 1,
+    options: [
+      { value: 0, name: "Farmer" },
+      { value: 1, name: "Bee Woman" },
+      { value: 2, name: "Scientist" },
+      { value: 3, name: "Skirt Lady" },
+    ],
+  },
+};
+
 export function ItemModelViewer() {
   const [selectedGameId, setSelectedGameId] = useState<Game | null>(null);
   const [selectedItemType, setSelectedItemType] = useState<number | null>(null);
@@ -228,6 +249,11 @@ export function ItemModelViewer() {
   const [modelStats, setModelStats] = useState<{ vertices: number; faces: number } | null>(null);
   const [loadedModelInfo, setLoadedModelInfo] = useState<{ file: string; index: number } | null>(null);
   
+  // Params state for param-dependent items
+  const [itemParams, setItemParams] = useState<{ p0: number; p1: number; p2: number; p3: number }>({
+    p0: 0, p1: 0, p2: 0, p3: 0,
+  });
+  
   const workerRef = useRef<Worker | null>(null);
   
   // Get the current game option
@@ -235,6 +261,18 @@ export function ItemModelViewer() {
   
   // Get item mapper for the selected game
   const mapper = selectedGameId !== null ? getGameMapper(selectedGameId) : undefined;
+  
+  // Check if current item is param-dependent
+  const paramDependentInfo = useMemo(() => {
+    if (selectedGameId !== Game.OTTO_MATIC || selectedItemType === null) return null;
+    return OTTO_PARAM_DEPENDENT_ITEMS[selectedItemType] ?? null;
+  }, [selectedGameId, selectedItemType]);
+  
+  // Get current mapping based on params
+  const currentMapping = useMemo(() => {
+    if (selectedItemType === null || !mapper) return undefined;
+    return mapper.getMapping(selectedItemType, undefined, itemParams);
+  }, [selectedItemType, mapper, itemParams]);
   
   // Get all items for the selected game with their mapping status
   const gameItems = useMemo<ItemInfo[]>(() => {
@@ -248,16 +286,22 @@ export function ItemModelViewer() {
       const type = parseInt(typeStr);
       if (isNaN(type)) continue;
       
+      // Use hasModel which accounts for param-dependent items
+      const hasMapping = mapper?.hasModel(type) ?? false;
       const mapping = mapper?.getMapping(type);
       // Check if this item type can be used as a spline item
       const isSplineItem = splineItemTypes !== undefined && type in splineItemTypes;
+      // Check if this is a param-dependent item
+      const isParamDependent = selectedGame.id === Game.OTTO_MATIC && 
+        OTTO_PARAM_DEPENDENT_ITEMS[type] !== undefined;
       
       items.push({
         type,
         name,
-        hasMapping: mapping !== undefined,
+        hasMapping,
         mapping,
         isSplineItem,
+        isParamDependent,
       });
     }
     
@@ -291,6 +335,7 @@ export function ItemModelViewer() {
     setModelStats(null);
     setLoadedModelInfo(null);
     setError(null);
+    setItemParams({ p0: 0, p1: 0, p2: 0, p3: 0 });
     setStatus("Select an item to load its 3D model");
   }, []);
   
@@ -302,10 +347,11 @@ export function ItemModelViewer() {
     setModelStats(null);
     setLoadedModelInfo(null);
     setError(null);
+    setItemParams({ p0: 0, p1: 0, p2: 0, p3: 0 }); // Reset params
     
     const item = gameItems.find(i => i.type === itemType);
     if (item) {
-      if (item.hasMapping) {
+      if (item.hasMapping || item.isParamDependent) {
         setStatus(`Selected: ${item.name} - Click "Load Model" to view`);
       } else {
         setStatus(`Selected: ${item.name} - No model mapping available`);
@@ -313,17 +359,25 @@ export function ItemModelViewer() {
     }
   }, [gameItems]);
   
+  // Handle param change for param-dependent items
+  const handleParamChange = useCallback((paramName: string, value: number) => {
+    setItemParams(prev => ({ ...prev, [paramName]: value }));
+    setGltfScene(null); // Clear loaded model when param changes
+    setLoadedModelInfo(null);
+  }, []);
+  
   // Load the model for the selected item
   const loadItemModel = useCallback(async () => {
-    if (!selectedGame || selectedItemType === null || !selectedItem?.mapping) {
+    // Use currentMapping which accounts for params
+    if (!selectedGame || selectedItemType === null || !currentMapping) {
       setError("No model mapping available for this item");
       return;
     }
     
-    const mapping = selectedItem.mapping;
+    const mapping = currentMapping;
     setLoading(true);
     setError(null);
-    setStatus(`Loading model for ${selectedItem.name}...`);
+    setStatus(`Loading model for ${selectedItem?.name ?? "item"}...`);
     
     try {
       // Construct the model path using the mapping's directory (either "models" or "skeletons")
@@ -426,17 +480,19 @@ export function ItemModelViewer() {
       setModelStats(calculateModelStats(extracted));
       setLoadedModelInfo({ file: mapping.modelFile, index: mapping.modelIndex });
       
-      setStatus(`Loaded: ${selectedItem.name} (${mapping.modelFile} @ index ${mapping.modelIndex})`);
+      const itemName = selectedItem?.name ?? "item";
+      setStatus(`Loaded: ${itemName} (${mapping.modelFile} @ index ${mapping.modelIndex})`);
       
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : String(err);
       setError(errorMsg);
-      setStatus(`Error loading ${selectedItem.name}: ${errorMsg}`);
+      const itemName = selectedItem?.name ?? "item";
+      setStatus(`Error loading ${itemName}: ${errorMsg}`);
       console.error("Model load error:", err);
     } finally {
       setLoading(false);
     }
-  }, [selectedGame, selectedItemType, selectedItem, getWorker]);
+  }, [selectedGame, selectedItemType, selectedItem, currentMapping, getWorker]);
   
   return (
     <div className="flex h-full gap-4 p-4 bg-gray-900">
@@ -500,6 +556,34 @@ export function ItemModelViewer() {
             </div>
           )}
           
+          {/* Param Selector for param-dependent items */}
+          {paramDependentInfo && selectedItem && (
+            <div className="p-3 bg-purple-900/30 border border-purple-700 rounded space-y-2">
+              <div className="text-purple-300 text-sm font-medium">
+                ⚙ Model Variant (p{paramDependentInfo.paramIndex})
+              </div>
+              <Select 
+                value={String(itemParams[`p${paramDependentInfo.paramIndex}` as keyof typeof itemParams])} 
+                onValueChange={(val) => handleParamChange(`p${paramDependentInfo.paramIndex}`, parseInt(val))}
+              >
+                <SelectTrigger className="bg-gray-700 border-gray-600 text-white">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="bg-gray-700 border-gray-600">
+                  {paramDependentInfo.options.map(opt => (
+                    <SelectItem 
+                      key={opt.value} 
+                      value={String(opt.value)}
+                      className="text-white hover:bg-gray-600"
+                    >
+                      {opt.value}: {opt.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+          
           {/* Selected Item Info */}
           {selectedItem && (
             <div className="p-3 bg-gray-700/50 rounded text-sm space-y-1">
@@ -508,22 +592,25 @@ export function ItemModelViewer() {
               {selectedItem.isSplineItem && (
                 <div className="text-cyan-300">↺ Can be a spline item</div>
               )}
-              {selectedItem.mapping && (
+              {selectedItem.isParamDependent && (
+                <div className="text-purple-300">⚙ Model varies by parameter</div>
+              )}
+              {currentMapping && (
                 <>
                   <div className="text-blue-300">
-                    File: {selectedItem.mapping.modelFile}
+                    File: {currentMapping.modelFile}
                   </div>
                   <div className="text-blue-300">
-                    Index: {selectedItem.mapping.modelIndex}
+                    Index: {currentMapping.modelIndex}
                   </div>
-                  {selectedItem.mapping.requiresSkeleton && (
+                  {currentMapping.requiresSkeleton && (
                     <div className="text-purple-300">
-                      Requires skeleton: {selectedItem.mapping.skeletonFile}
+                      Requires skeleton: {currentMapping.skeletonFile}
                     </div>
                   )}
                 </>
               )}
-              {!selectedItem.mapping && (
+              {!currentMapping && !selectedItem.isParamDependent && (
                 <div className="text-yellow-400">No model mapping defined</div>
               )}
             </div>
@@ -532,7 +619,7 @@ export function ItemModelViewer() {
           {/* Load Button */}
           <Button 
             onClick={loadItemModel}
-            disabled={loading || !selectedItem?.hasMapping}
+            disabled={loading || !currentMapping}
             className="w-full bg-blue-600 hover:bg-blue-700 text-white"
           >
             {loading ? "Loading..." : "Load Model"}
@@ -570,6 +657,7 @@ export function ItemModelViewer() {
           <div className="text-xs text-gray-500 space-y-1">
             <p>• Green items (✓) have 3D model mappings</p>
             <p>• Cyan items (↺) can be placed on splines</p>
+            <p>• Purple items (⚙) have param-dependent models</p>
             <p>• Gray items don't have models defined yet</p>
             <p>• Model mappings are based on game source code analysis</p>
           </div>

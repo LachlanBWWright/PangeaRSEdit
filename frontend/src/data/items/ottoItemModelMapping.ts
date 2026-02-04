@@ -81,13 +81,12 @@ export const OTTO_ITEM_MODEL_MAPPINGS: Record<
     requiresSkeleton: true,
     skeletonFile: "Squooshy.skeleton.rsrc",
   },
-  [ItemType.Human]: {
-    modelFile: "Otto.bg3d",
-    modelPath: "skeletons",
-    modelIndex: 0,
-    requiresSkeleton: true,
-    skeletonFile: "Otto.skeleton.rsrc",
-  },
+  // Human (type 4) is a PARAM-DEPENDENT item!
+  // The model file changes based on p1 parameter:
+  // p1=0: Farmer, p1=1: BeeWoman, p1=2: Scientist, p1=3: SkirtLady
+  // This mapping serves as a fallback - actual selection happens in OttoItemMapper.getMapping()
+  // See: Items/Humans.c - MakeHuman() function uses itemPtr->parm[1] for type
+  [ItemType.Human]: undefined, // Param-dependent - handled by mapper
   [ItemType.Atom]: {
     modelFile: "global.bg3d",
     modelPath: "models",
@@ -354,12 +353,15 @@ export const OTTO_ITEM_MODEL_MAPPINGS: Record<
     requiresSkeleton: true,
     skeletonFile: "MutantRobot.skeleton.rsrc",
   },
+  // HumanScientist (type 61) always uses Scientist skeleton
+  // Different from Human which is param-dependent
+  // See: Items/HumanScientist.c
   [ItemType.HumanScientist]: {
-    modelFile: "Otto.bg3d",
+    modelFile: "Scientist.bg3d",
     modelPath: "skeletons",
     modelIndex: 0,
     requiresSkeleton: true,
-    skeletonFile: "Otto.skeleton.rsrc",
+    skeletonFile: "Scientist.skeleton.rsrc",
   },
   [ItemType.ProximityMine]: {
     modelFile: "level4_apocalypse.bg3d",
