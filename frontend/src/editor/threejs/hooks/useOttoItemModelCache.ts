@@ -1,5 +1,5 @@
 /**
- * Hook for lazy-loading and caching Otto Matic item 3D models
+ * Hook for lazy-loading and caching item 3D models
  *
  * Features:
  * - Lazy loads models only for item types present in the current level
@@ -8,6 +8,7 @@
  * - Extracts specific meshes from multi-geometry BG3D files
  * - Gracefully handles loading errors with fallback behavior
  * - Supports param-dependent models (e.g., Human types)
+ * - Supports multiple games (Otto Matic, Bugdom 2, etc.)
  */
 
 import { useState, useRef, useCallback } from "react";
@@ -37,7 +38,7 @@ interface ItemParams {
   p3: number;
 }
 
-interface UseOttoItemModelCacheReturn {
+interface UseItemModelCacheReturn {
   modelCache: Map<string, CachedModel>;
   loadModel: (itemType: number, params?: ItemParams) => Promise<GLTF | null>;
   isLoading: (itemType: number, params?: ItemParams) => boolean;
@@ -45,29 +46,45 @@ interface UseOttoItemModelCacheReturn {
 }
 
 /**
- * Generate a cache key that includes item type and relevant params
+ * Map game enum to the base URL path for model files
+ */
+const GAME_BASE_PATHS: Record<Game, string> = {
+  [Game.OTTO_MATIC]: "/PangeaRSEdit/games/ottomatic",
+  [Game.BUGDOM]: "/PangeaRSEdit/games/bugdom1",
+  [Game.BUGDOM_2]: "/PangeaRSEdit/games/bugdom2",
+  [Game.NANOSAUR]: "/PangeaRSEdit/games/nanosaur1",
+  [Game.NANOSAUR_2]: "/PangeaRSEdit/games/nanosaur2",
+  [Game.CRO_MAG]: "/PangeaRSEdit/games/cromagrally",
+  [Game.BILLY_FRONTIER]: "/PangeaRSEdit/games/billyfrontier",
+  [Game.MIGHTY_MIKE]: "/PangeaRSEdit/games/mightymike",
+};
+
+/**
+ * Generate a cache key that includes game, item type, and relevant params
  * Uses the mapper to determine which items are param-dependent
  */
-function getCacheKey(itemType: number, params?: ItemParams): string {
-  // Use the mapper to check if this item is param-dependent
-  const mapper = getGameMapper(Game.OTTO_MATIC);
+function getCacheKey(game: Game, itemType: number, params?: ItemParams): string {
+  const mapper = getGameMapper(game);
+  const gamePrefix = `g${game}_`;
+  
   if (mapper?.isParamDependent?.(itemType) && params) {
     // Get the param config to know which param index to use
     const config = mapper.getParamDependentConfig?.(itemType);
     if (config) {
       const paramValue = getParamByIndex(params, config.paramIndex);
-      return `${itemType}_p${config.paramIndex}_${paramValue}`;
+      return `${gamePrefix}${itemType}_p${config.paramIndex}_${paramValue}`;
     }
     // Fallback: use p1 for backwards compatibility
-    return `${itemType}_p1_${params.p1}`;
+    return `${gamePrefix}${itemType}_p1_${params.p1}`;
   }
-  return String(itemType);
+  return `${gamePrefix}${itemType}`;
 }
 
 /**
- * Hook for managing Otto Matic item model loading and caching
+ * Hook for managing item model loading and caching
+ * @param game - The game to load models for (default: OTTO_MATIC)
  */
-export const useOttoItemModelCache = (): UseOttoItemModelCacheReturn => {
+export const useItemModelCache = (game: Game = Game.OTTO_MATIC): UseItemModelCacheReturn => {
   const [modelCache, setModelCache] = useState<Map<string, CachedModel>>(
     new Map(),
   );
@@ -150,7 +167,7 @@ export const useOttoItemModelCache = (): UseOttoItemModelCacheReturn => {
    */
   const loadModel = useCallback(
     async (itemType: number, params?: ItemParams): Promise<GLTF | null> => {
-      const cacheKey = getCacheKey(itemType, params);
+      const cacheKey = getCacheKey(game, itemType, params);
       
       // Check if already cached with no error
       if (modelCache.has(cacheKey)) {
@@ -176,7 +193,7 @@ export const useOttoItemModelCache = (): UseOttoItemModelCacheReturn => {
       }
 
       // Get mapping using the game mapper (which supports params)
-      const mapper = getGameMapper(Game.OTTO_MATIC);
+      const mapper = getGameMapper(game);
       const mapping = mapper?.getMapping(itemType, undefined, params);
       if (!mapping) {
         // No mapping, item will use colored cube fallback
@@ -191,8 +208,8 @@ export const useOttoItemModelCache = (): UseOttoItemModelCacheReturn => {
       });
 
       try {
-        // Build URLs
-        const baseUrl = `/PangeaRSEdit/games/ottomatic`;
+        // Build URLs using game-specific base path
+        const baseUrl = GAME_BASE_PATHS[game];
         const bg3dUrl = `${baseUrl}/${mapping.modelPath}/${mapping.modelFile}`;
 
         // Fetch BG3D file
@@ -329,24 +346,27 @@ export const useOttoItemModelCache = (): UseOttoItemModelCacheReturn => {
         return null;
       }
     },
-    [modelCache, getWorker, extractSubgroupByIndex],
+    [game, modelCache, getWorker, extractSubgroupByIndex],
   );
 
   const isLoading = useCallback(
     (itemType: number, params?: ItemParams) => {
-      const cacheKey = getCacheKey(itemType, params);
+      const cacheKey = getCacheKey(game, itemType, params);
       return modelCache.get(cacheKey)?.loading ?? false;
     },
-    [modelCache],
+    [game, modelCache],
   );
 
   const hasError = useCallback(
     (itemType: number, params?: ItemParams) => {
-      const cacheKey = getCacheKey(itemType, params);
+      const cacheKey = getCacheKey(game, itemType, params);
       return !!modelCache.get(cacheKey)?.error;
     },
-    [modelCache],
+    [game, modelCache],
   );
 
   return { modelCache, loadModel, isLoading, hasError };
 };
+
+// Export alias for backward compatibility
+export const useOttoItemModelCache = () => useItemModelCache(Game.OTTO_MATIC);

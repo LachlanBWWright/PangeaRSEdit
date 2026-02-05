@@ -7,10 +7,10 @@ import {
 } from "@/python/structSpecs/LevelTypes";
 import { useAtomValue } from "jotai";
 import { useFrame } from "@react-three/fiber";
-import { Globals, Game } from "@/data/globals/globals";
+import { Globals, Game, DataType } from "@/data/globals/globals";
 import { Show3DItemModels } from "@/data/canvasView/canvasViewAtoms";
 import { getTerrainHeightAtPoint } from "./fenceUtils/getTerrainHeightAtPoint";
-import { useOttoItemModelCache } from "./hooks/useOttoItemModelCache";
+import { useItemModelCache } from "./hooks/useOttoItemModelCache";
 import { getGameMapper } from "@/data/items/mappers";
 import { getParamByIndex } from "@/data/items/standardParamTypes";
 import {
@@ -182,29 +182,45 @@ export const ItemGeometry: React.FC<ItemGeometryProps> = ({
 }) => {
   const globals = useAtomValue(Globals);
   const show3DItemModels = useAtomValue(Show3DItemModels);
-  const { modelCache, loadModel } = useOttoItemModelCache();
+  
+  // Determine the current game from DATA_TYPE
+  const currentGame = useMemo((): Game => {
+    switch (globals.DATA_TYPE) {
+      case DataType.OTTO_MATIC: return Game.OTTO_MATIC;
+      case DataType.BUGDOM_2: return Game.BUGDOM_2;
+      case DataType.BUGDOM_1: return Game.BUGDOM;
+      case DataType.NANOSAUR_1: return Game.NANOSAUR;
+      case DataType.NANOSAUR_2: return Game.NANOSAUR_2;
+      case DataType.CRO_MAG: return Game.CRO_MAG;
+      case DataType.BILLY_FRONTIER: return Game.BILLY_FRONTIER;
+      default: return Game.OTTO_MATIC;
+    }
+  }, [globals.DATA_TYPE]);
+  
+  const { modelCache, loadModel } = useItemModelCache(currentGame);
 
   const items = itemData.Itms?.[1000]?.obj;
   
-  // Get the Otto Matic mapper for model lookups
-  const mapper = useMemo(() => getGameMapper(Game.OTTO_MATIC), []);
+  // Get the mapper for the current game
+  const mapper = useMemo(() => getGameMapper(currentGame), [currentGame]);
 
   // Generate a cache key for an item including its params
   // Uses the mapper to determine which items are param-dependent
   const getItemCacheKey = useCallback((itemType: number, p0: number, p1: number, p2: number, p3: number): string => {
     // Use the mapper to check if this item is param-dependent
+    const gamePrefix = `g${currentGame}_`;
     if (mapper?.isParamDependent?.(itemType)) {
       const config = mapper.getParamDependentConfig?.(itemType);
       if (config) {
         const params = { p0, p1, p2, p3 };
         const paramValue = getParamByIndex(params, config.paramIndex);
-        return `${itemType}_p${config.paramIndex}_${paramValue}`;
+        return `${gamePrefix}${itemType}_p${config.paramIndex}_${paramValue}`;
       }
       // Fallback: use p1 for backwards compatibility
-      return `${itemType}_p1_${p1}`;
+      return `${gamePrefix}${itemType}_p1_${p1}`;
     }
-    return String(itemType);
-  }, [mapper]);
+    return `${gamePrefix}${itemType}`;
+  }, [currentGame, mapper]);
 
   // Group items by cache key for easier processing
   // This handles param-dependent items by grouping by the full key
