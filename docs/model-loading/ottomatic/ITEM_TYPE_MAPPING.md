@@ -16,7 +16,7 @@ This document maps item types (from terrain data) to their corresponding model i
 | 1 | BasicPlant | level1_farm.bg3d | 21 | Tree model |
 | 2 | SpacePodGenerator | level4_apocalypse.bg3d | 5 | SpacePod |
 | 3 | Enemy_Squooshy | Squooshy.bg3d | 0 | Skeleton model |
-| 4 | Human | Otto.bg3d | 0 | Player character (skeleton) |
+| 4 | Human | Farmer.bg3d / BeeWoman.bg3d / Scientist.bg3d / SkirtLady.bg3d | 0 | Param-dependent (p1): 0=Farmer, 1=BeeWoman, 2=Scientist, 3=SkirtLady |
 | 5 | Atom | global.bg3d | 0 | Ripple effect |
 | 6 | PowerupPod | global.bg3d | 1 | PowerupOrb |
 | 7 | Enemy_BrainAlien | BrainAlien.bg3d | 0 | Skeleton model |
@@ -130,6 +130,16 @@ Contains lava and ice themed objects.
 ### Level 9 - Saucer (level9_saucer.bg3d)
 Contains UFO/saucer level objects.
 
+## Param-Dependent Models
+
+Some items select different 3D models based on their parameter values. The model is determined by a specific parameter (usually p0 or p1).
+
+| Item Type | Parameter | Options |
+|-----------|-----------|---------|
+| Human (4) | p1 | 0: Farmer.bg3d, 1: BeeWoman.bg3d, 2: Scientist.bg3d, 3: SkirtLady.bg3d |
+
+These param-dependent items are defined in `standardParamTypes.ts` using the `TypeSelectorParam` interface with `modelVariants`.
+
 ## Skeleton Models
 
 Skeleton models are in the `skeletons/` directory and always use index 0.
@@ -137,7 +147,11 @@ Each skeleton model requires its corresponding `.skeleton.rsrc` file for animati
 
 | Model File | Character |
 |------------|-----------|
-| Otto.bg3d | Player/Human |
+| Otto.bg3d | Player (Otto) |
+| Farmer.bg3d | Human (Farmer variant) |
+| BeeWoman.bg3d | Human (Bee Woman variant) |
+| Scientist.bg3d | Human (Scientist variant) |
+| SkirtLady.bg3d | Human (Skirt Lady variant) |
 | Squooshy.bg3d | Squooshy enemy |
 | Blob.bg3d | Blob enemy |
 | BrainAlien.bg3d | Brain Alien |
