@@ -13,7 +13,6 @@
 import { useState, useRef, useCallback } from "react";
 import BG3DGltfWorker from "@/modelParsers/bg3dGltfWorker?worker";
 import { getGameMapper } from "@/data/items/mappers";
-import { ItemType } from "@/data/items/ottoItemType";
 import { Game } from "@/data/globals/globals";
 import { Group } from "three";
 import {
@@ -46,11 +45,19 @@ interface UseOttoItemModelCacheReturn {
 
 /**
  * Generate a cache key that includes item type and relevant params
+ * Uses the mapper to determine which items are param-dependent
  */
 function getCacheKey(itemType: number, params?: ItemParams): string {
-  // For most items, just use itemType
-  // For param-dependent items like Human, include the relevant param
-  if (itemType === ItemType.Human && params) {
+  // Use the mapper to check if this item is param-dependent
+  const mapper = getGameMapper(Game.OTTO_MATIC);
+  if (mapper?.isParamDependent?.(itemType) && params) {
+    // Get the param config to know which param index to use
+    const config = mapper.getParamDependentConfig?.(itemType);
+    if (config) {
+      const paramKey = `p${config.paramIndex}` as keyof ItemParams;
+      return `${itemType}_${paramKey}_${params[paramKey]}`;
+    }
+    // Fallback: use p1 for backwards compatibility
     return `${itemType}_p1_${params.p1}`;
   }
   return String(itemType);

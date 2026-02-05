@@ -12,7 +12,6 @@ import { Show3DItemModels } from "@/data/canvasView/canvasViewAtoms";
 import { getTerrainHeightAtPoint } from "./fenceUtils/getTerrainHeightAtPoint";
 import { useOttoItemModelCache } from "./hooks/useOttoItemModelCache";
 import { getGameMapper } from "@/data/items/mappers";
-import { ItemType } from "@/data/items/ottoItemType";
 import {
   getLiquidPatchStyle,
   getLiquidPatchDimensions,
@@ -190,9 +189,17 @@ export const ItemGeometry: React.FC<ItemGeometryProps> = ({
   const mapper = useMemo(() => getGameMapper(Game.OTTO_MATIC), []);
 
   // Generate a cache key for an item including its params
-  const getItemCacheKey = (itemType: number, _p0: number, p1: number, _p2: number, _p3: number): string => {
-    // For param-dependent items like Human, include the relevant param
-    if (itemType === ItemType.Human) {
+  // Uses the mapper to determine which items are param-dependent
+  const getItemCacheKey = (itemType: number, p0: number, p1: number, p2: number, p3: number): string => {
+    // Use the mapper to check if this item is param-dependent
+    if (mapper?.isParamDependent?.(itemType)) {
+      const config = mapper.getParamDependentConfig?.(itemType);
+      if (config) {
+        const params = { p0, p1, p2, p3 };
+        const paramKey = `p${config.paramIndex}` as keyof typeof params;
+        return `${itemType}_${paramKey}_${params[paramKey]}`;
+      }
+      // Fallback: use p1 for backwards compatibility
       return `${itemType}_p1_${p1}`;
     }
     return String(itemType);
