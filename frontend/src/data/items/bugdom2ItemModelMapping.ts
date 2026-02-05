@@ -107,8 +107,6 @@ export const BUGDOM2_ITEM_MODEL_MAPPINGS: Record<
   // Non-enemy skeleton models
   // 42: Mouse Trap (animated)
   42: { modelFile: "MouseTrap.bg3d", modelPath: "skeletons", modelIndex: 0, requiresSkeleton: true, skeletonFile: "MouseTrap.skeleton.rsrc" },
-  // Checkpoint (used in multiple levels)
-  // Not directly in item types - uses Checkpoint.bg3d
 
   // Garden level items (Level1_Garden.bg3d)
   // 5: Daisy

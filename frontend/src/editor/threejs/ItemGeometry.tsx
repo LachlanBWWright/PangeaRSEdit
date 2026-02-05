@@ -7,7 +7,7 @@ import {
 } from "@/python/structSpecs/LevelTypes";
 import { useAtomValue } from "jotai";
 import { useFrame } from "@react-three/fiber";
-import { Globals, Game, DataType } from "@/data/globals/globals";
+import { Globals, Game } from "@/data/globals/globals";
 import { Show3DItemModels } from "@/data/canvasView/canvasViewAtoms";
 import { getTerrainHeightAtPoint } from "./fenceUtils/getTerrainHeightAtPoint";
 import { useItemModelCache } from "./hooks/useOttoItemModelCache";
@@ -183,19 +183,8 @@ export const ItemGeometry: React.FC<ItemGeometryProps> = ({
   const globals = useAtomValue(Globals);
   const show3DItemModels = useAtomValue(Show3DItemModels);
   
-  // Determine the current game from DATA_TYPE
-  const currentGame = useMemo((): Game => {
-    switch (globals.DATA_TYPE) {
-      case DataType.OTTO_MATIC: return Game.OTTO_MATIC;
-      case DataType.BUGDOM_2: return Game.BUGDOM_2;
-      case DataType.BUGDOM_1: return Game.BUGDOM;
-      case DataType.NANOSAUR_1: return Game.NANOSAUR;
-      case DataType.NANOSAUR_2: return Game.NANOSAUR_2;
-      case DataType.CRO_MAG: return Game.CRO_MAG;
-      case DataType.BILLY_FRONTIER: return Game.BILLY_FRONTIER;
-      default: return Game.OTTO_MATIC;
-    }
-  }, [globals.DATA_TYPE]);
+  // Use GAME_TYPE directly from globals
+  const currentGame = globals.GAME_TYPE;
   
   const { modelCache, loadModel } = useItemModelCache(currentGame);
 
