@@ -1,30 +1,29 @@
 /**
  * Bugdom Item Type to 3D Model Mapping
  *
- * Maps each item type to its corresponding BG3D model file and mesh information.
- * Extracted from Bugdom source code:
- * - /games/bugdom/Source/Headers/mobjtypes.h
+ * NOTE: This file is NOT CURRENTLY USED because Bugdom 1 uses 3DMF model format,
+ * not BG3D. The mappings here are placeholders for when a 3DMF parser is implemented.
  *
- * Bugdom organizes models into several level-specific files:
- * - lawn1.bg3d (LAWN level)
- * - lawn2.bg3d (LAWN 2 level)
- * - pond.bg3d (POND level)
- * - forest.bg3d (FOREST level)
- * - hive.bg3d (HIVE level)
- * - night.bg3d (NIGHT level)
- * - anthill.bg3d (ANTHILL level)
- * - global1.bg3d (GLOBAL1 items)
- * - global2.bg3d (GLOBAL2 items)
+ * Model files available (3DMF format):
+ * - /models/Lawn_Models1.3dmf, Lawn_Models2.3dmf
+ * - /models/Pond_Models.3dmf
+ * - /models/Forest_Models.3dmf
+ * - /models/BeeHive_Models.3dmf
+ * - /models/Night_Models.3dmf
+ * - /models/AntHill_Models.3dmf
+ * - /models/Global_Models1.3dmf, Global_Models2.3dmf
+ * - /skeletons/*.3dmf - Character skeletons
  */
 
 /**
  * Describes how to load and render a 3D model for a Bugdom item type
+ * (Currently unused - 3DMF format not supported)
  */
 export interface BugdomItemModelMapping {
-  /** BG3D filename (e.g., "lawn1.bg3d", "global1.bg3d") */
+  /** 3DMF filename (e.g., "Lawn_Models1.3dmf") */
   modelFile: string;
 
-  /** Subdirectory in /games/bugdom/ */
+  /** Subdirectory in /games/bugdom1/ */
   modelPath: "models" | "skeletons";
 
   /** Model index within the BG3D file (0-indexed, maps to Subgroup_N) */
