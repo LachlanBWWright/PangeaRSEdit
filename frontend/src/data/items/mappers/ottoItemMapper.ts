@@ -6,6 +6,7 @@
  * 
  * Supports param-dependent model selection for items like Human where
  * the p1 parameter determines which skeleton model to use.
+ * Uses the standardized TypeSelectorParam with modelVariants for param-based model selection.
  */
 
 import { Game } from "../../globals/globals";
@@ -15,17 +16,48 @@ import {
 } from "../itemModelTypes";
 import { OTTO_ITEM_MODEL_MAPPINGS, type ItemModelMapping } from "../ottoItemModelMapping";
 import { ItemType } from "../ottoItemType";
+import { 
+  OTTO_HUMAN_TYPE, 
+  type ModelVariant,
+  type TypeSelectorParam,
+  getModelVariant,
+  hasModelVariants,
+} from "../standardParamTypes";
 
 /**
- * Human type variants based on p1 parameter
- * From Items/Humans.c - MakeHuman() uses itemPtr->parm[1]
+ * Configuration for items with param-dependent models
+ * Maps item type to the param index and TypeSelectorParam defining the model variants
  */
-const HUMAN_TYPE_MODELS: Record<number, { modelFile: string; skeletonFile: string }> = {
-  0: { modelFile: "Farmer.bg3d", skeletonFile: "Farmer.skeleton.rsrc" },
-  1: { modelFile: "BeeWoman.bg3d", skeletonFile: "BeeWoman.skeleton.rsrc" },
-  2: { modelFile: "Scientist.bg3d", skeletonFile: "Scientist.skeleton.rsrc" },
-  3: { modelFile: "SkirtLady.bg3d", skeletonFile: "SkirtLady.skeleton.rsrc" },
+interface ParamDependentConfig {
+  paramIndex: 0 | 1 | 2 | 3;
+  paramType: TypeSelectorParam;
+}
+
+/**
+ * Registry of items with param-dependent model selection
+ * The key is the item type, value describes which param controls the model variant
+ */
+const PARAM_DEPENDENT_ITEMS: Record<number, ParamDependentConfig> = {
+  [ItemType.Human]: {
+    paramIndex: 1, // p1 controls human type
+    paramType: OTTO_HUMAN_TYPE,
+  },
 };
+
+/**
+ * Convert ModelVariant to UniversalItemModelMapping
+ */
+function convertModelVariant(variant: ModelVariant): UniversalItemModelMapping {
+  return {
+    modelFile: variant.modelFile,
+    modelPath: variant.modelPath,
+    modelIndex: variant.modelIndex,
+    requiresSkeleton: variant.requiresSkeleton,
+    skeletonFile: variant.skeletonFile,
+    scale: variant.scale,
+    rotationY: variant.rotationY,
+  };
+}
 
 /**
  * Convert Otto-specific mapping to universal format
@@ -43,21 +75,22 @@ function convertToUniversal(mapping: ItemModelMapping): UniversalItemModelMappin
 }
 
 /**
- * Get Human model based on p1 parameter
+ * Get param-dependent model mapping using the standardized param type system
  */
-function getHumanMapping(
+function getParamDependentMapping(
+  config: ParamDependentConfig,
   params?: { p0: number; p1: number; p2: number; p3: number },
-): UniversalItemModelMapping {
-  const humanType = params?.p1 ?? 0;
-  const modelInfo = HUMAN_TYPE_MODELS[humanType] ?? HUMAN_TYPE_MODELS[0];
+): UniversalItemModelMapping | undefined {
+  const paramValue = params?.[`p${config.paramIndex}` as keyof typeof params] ?? 0;
+  const variant = getModelVariant(paramValue, config.paramType);
   
-  return {
-    modelFile: modelInfo.modelFile,
-    modelPath: "skeletons",
-    modelIndex: 0,
-    requiresSkeleton: true,
-    skeletonFile: modelInfo.skeletonFile,
-  };
+  if (!variant) {
+    // Fall back to first variant if param value is out of range
+    const firstVariant = getModelVariant(0, config.paramType);
+    return firstVariant ? convertModelVariant(firstVariant) : undefined;
+  }
+  
+  return convertModelVariant(variant);
 }
 
 /**
@@ -71,9 +104,10 @@ export class OttoItemMapper implements GameItemModelMapper {
     _levelNum?: number,
     params?: { p0: number; p1: number; p2: number; p3: number },
   ): UniversalItemModelMapping | undefined {
-    // Handle param-dependent item types
-    if (itemType === ItemType.Human) {
-      return getHumanMapping(params);
+    // Check for param-dependent items first
+    const paramConfig = PARAM_DEPENDENT_ITEMS[itemType];
+    if (paramConfig) {
+      return getParamDependentMapping(paramConfig, params);
     }
     
     // Standard mapping lookup
@@ -85,12 +119,15 @@ export class OttoItemMapper implements GameItemModelMapper {
   
   /**
    * Check if an item type has a model mapping.
-   * Note: Human (type 4) is param-dependent and always has a model.
+   * Includes both static mappings and param-dependent items.
    */
   hasModel(itemType: number): boolean {
-    if (itemType === ItemType.Human) {
-      return true; // Always has model (param-dependent)
+    // Check param-dependent items first
+    const paramConfig = PARAM_DEPENDENT_ITEMS[itemType];
+    if (paramConfig && hasModelVariants(paramConfig.paramType)) {
+      return true;
     }
+    
     return OTTO_ITEM_MODEL_MAPPINGS[itemType] !== undefined;
   }
   
@@ -99,8 +136,14 @@ export class OttoItemMapper implements GameItemModelMapper {
       .map(Number)
       .filter(k => !isNaN(k) && OTTO_ITEM_MODEL_MAPPINGS[k] !== undefined);
     
-    // Add Human type since it's param-dependent and not in static mappings
-    return [...staticTypes, ItemType.Human].sort((a, b) => a - b);
+    // Add param-dependent types
+    const paramDependentTypes = Object.keys(PARAM_DEPENDENT_ITEMS)
+      .map(Number)
+      .filter(k => !isNaN(k));
+    
+    // Combine and deduplicate
+    const allTypes = new Set([...staticTypes, ...paramDependentTypes]);
+    return Array.from(allTypes).sort((a, b) => a - b);
   }
   
   getMappingCount(): number {
@@ -112,7 +155,15 @@ export class OttoItemMapper implements GameItemModelMapper {
    * For param-dependent items, the model varies based on item parameters.
    */
   isParamDependent(itemType: number): boolean {
-    return itemType === ItemType.Human;
+    return itemType in PARAM_DEPENDENT_ITEMS;
+  }
+  
+  /**
+   * Get the param-dependent configuration for an item type.
+   * Returns undefined if the item type is not param-dependent.
+   */
+  getParamDependentConfig(itemType: number): ParamDependentConfig | undefined {
+    return PARAM_DEPENDENT_ITEMS[itemType];
   }
   
   /**
@@ -123,29 +174,17 @@ export class OttoItemMapper implements GameItemModelMapper {
     paramIndex: number;
     options: { value: number; label: string }[];
   } | undefined {
-    if (itemType === ItemType.Human) {
-      return {
-        paramIndex: 1,
-        options: [
-          { value: 0, label: "Farmer" },
-          { value: 1, label: "Bee Woman" },
-          { value: 2, label: "Scientist" },
-          { value: 3, label: "Skirt Lady" },
-        ],
-      };
-    }
-    return undefined;
-  }
-  
-  /**
-   * Get human type names for display
-   */
-  getHumanTypeNames(): Record<number, string> {
+    const config = PARAM_DEPENDENT_ITEMS[itemType];
+    if (!config) return undefined;
+    
+    const options = Object.entries(config.paramType.options).map(([value, label]) => ({
+      value: Number(value),
+      label,
+    }));
+    
     return {
-      0: "Farmer",
-      1: "Bee Woman",
-      2: "Scientist", 
-      3: "Skirt Lady",
+      paramIndex: config.paramIndex,
+      options,
     };
   }
 }

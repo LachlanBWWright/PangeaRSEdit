@@ -46,12 +46,35 @@ export interface ScaleParam extends BaseStandardParam {
 }
 
 /**
+ * Model variant mapping for param-dependent model selection
+ */
+export interface ModelVariant {
+  /** BG3D filename */
+  modelFile: string;
+  /** Path type */
+  modelPath: "models" | "skeletons";
+  /** Model index within the BG3D file */
+  modelIndex: number;
+  /** True if model requires skeleton data */
+  requiresSkeleton?: boolean;
+  /** Skeleton .rsrc filename */
+  skeletonFile?: string;
+  /** Scale multiplier */
+  scale?: number;
+  /** Y-axis rotation offset in radians */
+  rotationY?: number;
+}
+
+/**
  * Type selector parameter - chooses between discrete options
+ * Can optionally include model variants for param-dependent model selection
  */
 export interface TypeSelectorParam extends BaseStandardParam {
   type: "TypeSelector";
   /** Mapping of param values to type names */
   options: Record<number, string>;
+  /** Optional mapping of param values to model variants (for param-dependent models) */
+  modelVariants?: Record<number, ModelVariant>;
 }
 
 /**
@@ -253,6 +276,55 @@ export const TRIGGER_FLAGS: BitFlagsParam = {
 };
 
 // ============================================================================
+// Pre-defined Type Selectors with Model Variants
+// ============================================================================
+
+/**
+ * Otto Matic Human type selector with model variants
+ * p1 parameter determines which human model to use
+ */
+export const OTTO_HUMAN_TYPE: TypeSelectorParam = {
+  type: "TypeSelector",
+  description: "Human character type (determines 3D model)",
+  options: {
+    0: "Farmer",
+    1: "Bee Woman",
+    2: "Scientist",
+    3: "Skirt Lady",
+  },
+  modelVariants: {
+    0: {
+      modelFile: "Farmer.bg3d",
+      modelPath: "skeletons",
+      modelIndex: 0,
+      requiresSkeleton: true,
+      skeletonFile: "Farmer.skeleton.rsrc",
+    },
+    1: {
+      modelFile: "BeeWoman.bg3d",
+      modelPath: "skeletons",
+      modelIndex: 0,
+      requiresSkeleton: true,
+      skeletonFile: "BeeWoman.skeleton.rsrc",
+    },
+    2: {
+      modelFile: "Scientist.bg3d",
+      modelPath: "skeletons",
+      modelIndex: 0,
+      requiresSkeleton: true,
+      skeletonFile: "Scientist.skeleton.rsrc",
+    },
+    3: {
+      modelFile: "SkirtLady.bg3d",
+      modelPath: "skeletons",
+      modelIndex: 0,
+      requiresSkeleton: true,
+      skeletonFile: "SkirtLady.skeleton.rsrc",
+    },
+  },
+};
+
+// ============================================================================
 // Pre-defined Standard ID Parameters
 // ============================================================================
 
@@ -380,4 +452,22 @@ export function isSpeedParam(param: StandardParamType): param is SpeedParam {
 
 export function isCoordinateParam(param: StandardParamType): param is CoordinateParam {
   return param.type === "Coordinate";
+}
+
+/**
+ * Get model variant from a type selector param for a given param value
+ */
+export function getModelVariant(
+  paramValue: number, 
+  typeSelector: TypeSelectorParam
+): ModelVariant | undefined {
+  return typeSelector.modelVariants?.[paramValue];
+}
+
+/**
+ * Check if a type selector param has model variants
+ */
+export function hasModelVariants(typeSelector: TypeSelectorParam): boolean {
+  return typeSelector.modelVariants !== undefined && 
+         Object.keys(typeSelector.modelVariants).length > 0;
 }

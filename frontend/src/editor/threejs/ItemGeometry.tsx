@@ -190,7 +190,7 @@ export const ItemGeometry: React.FC<ItemGeometryProps> = ({
   const mapper = useMemo(() => getGameMapper(Game.OTTO_MATIC), []);
 
   // Generate a cache key for an item including its params
-  const getItemCacheKey = (itemType: number, p0: number, p1: number, p2: number, p3: number): string => {
+  const getItemCacheKey = (itemType: number, _p0: number, p1: number, _p2: number, _p3: number): string => {
     // For param-dependent items like Human, include the relevant param
     if (itemType === ItemType.Human) {
       return `${itemType}_p1_${p1}`;
