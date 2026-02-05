@@ -7,7 +7,7 @@ import {
 } from "@/python/structSpecs/LevelTypes";
 import { useAtomValue } from "jotai";
 import { useFrame } from "@react-three/fiber";
-import { Globals, Game } from "@/data/globals/globals";
+import { Globals } from "@/data/globals/globals";
 import { Show3DItemModels } from "@/data/canvasView/canvasViewAtoms";
 import { getTerrainHeightAtPoint } from "./fenceUtils/getTerrainHeightAtPoint";
 import { useItemModelCache } from "./hooks/useOttoItemModelCache";
@@ -263,12 +263,10 @@ export const ItemGeometry: React.FC<ItemGeometryProps> = ({
     return scenes;
   }, [modelCache, itemsByCacheKey, mapper]);
 
-  // Check if current game is Otto Matic (the only game with full 3D model support)
-  const isOttoMatic = globals.GAME_TYPE === Game.OTTO_MATIC;
-
   useEffect(() => {
-    // Only load 3D models for Otto Matic since useOttoItemModelCache is Otto-specific
-    if (show3DItemModels && isOttoMatic) {
+    // Load 3D models for all games that have model support
+    // The worker automatically handles both BG3D and 3DMF formats
+    if (show3DItemModels) {
       // Load models for all unique item cache keys in the level
       itemsByCacheKey.forEach((itemsInGroup) => {
         const firstItem = itemsInGroup[0];
@@ -280,7 +278,7 @@ export const ItemGeometry: React.FC<ItemGeometryProps> = ({
         });
       });
     }
-  }, [show3DItemModels, itemsByCacheKey, loadModel, isOttoMatic]);
+  }, [show3DItemModels, itemsByCacheKey, loadModel]);
 
   // Early return after all hooks
   if (!items || items.length === 0) {
@@ -363,8 +361,8 @@ export const ItemGeometry: React.FC<ItemGeometryProps> = ({
           );
         }
 
-        // Render 3D model if enabled and available (only for Otto Matic currently)
-        if (show3DItemModels && isOttoMatic) {
+        // Render 3D model if enabled and available (now supports all games)
+        if (show3DItemModels) {
           const itemCacheKey = getItemCacheKey(item.type, item.p0, item.p1, item.p2, item.p3);
           const cachedModel = modelCache.get(itemCacheKey);
           const modelGltf = cachedModel?.gltf;

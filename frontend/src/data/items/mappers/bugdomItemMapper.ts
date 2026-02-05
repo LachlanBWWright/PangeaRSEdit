@@ -1,8 +1,7 @@
 /**
  * Bugdom 1 Item Model Mapper
  * 
- * NOTE: Bugdom 1 uses 3DMF model format (not BG3D), which is not currently supported.
- * This mapper returns empty results until a 3DMF parser is implemented.
+ * Bugdom 1 uses 3DMF model format which is supported by the worker (auto-detected by magic number).
  * 
  * Model files available:
  * - /models/*.3dmf - Level model files (e.g., Lawn_Models1.3dmf, Forest_Models.3dmf)
@@ -14,40 +13,50 @@ import {
   type GameItemModelMapper, 
   type UniversalItemModelMapping,
 } from "../itemModelTypes";
+import { BUGDOM_ITEM_MODEL_MAPPINGS, getBugdomItemModelMapping } from "../bugdomItemModelMapping";
 
 /**
  * Bugdom 1 item model mapper
  * 
- * Currently returns no mappings since 3DMF format is not supported.
- * Models exist as 3DMF files but require a separate parser.
+ * Uses 3DMF format which is automatically detected and parsed by the worker.
  */
 export class BugdomItemMapper implements GameItemModelMapper {
   readonly game = Game.BUGDOM;
   
   /**
-   * Model format not supported - always returns undefined
+   * Get model mapping for a Bugdom item
    */
   getMapping(
-    _itemType: number,
+    itemType: number,
     _levelNum?: number,
     _params?: { p0: number; p1: number; p2: number; p3: number },
   ): UniversalItemModelMapping | undefined {
-    // 3DMF format not supported yet
-    return undefined;
+    const mapping = getBugdomItemModelMapping(itemType);
+    if (!mapping) return undefined;
+    
+    return {
+      modelFile: mapping.modelFile,
+      modelPath: mapping.modelPath,
+      modelIndex: mapping.modelIndex,
+      requiresSkeleton: mapping.requiresSkeleton,
+      skeletonFile: mapping.skeletonFile,
+      scale: mapping.scale,
+      rotationY: mapping.rotationY,
+    };
   }
   
   getMappedTypes(): number[] {
-    // No mappings until 3DMF parser is implemented
-    return [];
+    return Object.keys(BUGDOM_ITEM_MODEL_MAPPINGS)
+      .map(Number)
+      .filter(key => BUGDOM_ITEM_MODEL_MAPPINGS[key] !== undefined);
   }
   
-  hasModel(_itemType: number): boolean {
-    // 3DMF format not supported yet
-    return false;
+  hasModel(itemType: number): boolean {
+    return BUGDOM_ITEM_MODEL_MAPPINGS[itemType] !== undefined;
   }
   
   getMappingCount(): number {
-    return 0;
+    return this.getMappedTypes().length;
   }
 }
 

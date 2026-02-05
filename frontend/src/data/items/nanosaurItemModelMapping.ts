@@ -1,8 +1,7 @@
 /**
  * Nanosaur Item Type to 3D Model Mapping
  *
- * NOTE: This file is NOT CURRENTLY USED because Nanosaur 1 uses 3DMF model format,
- * not BG3D. The mappings here are placeholders for when a 3DMF parser is implemented.
+ * Nanosaur 1 uses 3DMF model format which is supported by the worker (auto-detected by magic number).
  *
  * Model files available (3DMF format):
  * - /models/Level1_Models.3dmf
@@ -12,7 +11,6 @@
 
 /**
  * Describes how to load and render a 3D model for a Nanosaur item type
- * (Currently unused - 3DMF format not supported)
  */
 export interface NanosaurItemModelMapping {
   /** 3DMF filename (e.g., "Level1_Models.3dmf", "Global_Models.3dmf") */
@@ -38,21 +36,38 @@ export interface NanosaurItemModelMapping {
 }
 
 /**
- * Placeholder mapping - not used until 3DMF parser is implemented
- * 
- * Note: Nanosaur 1 has ~50+ items but all use 3DMF format which is not supported.
+ * Nanosaur item model mappings
  */
 export const NANOSAUR_ITEM_MODEL_MAPPINGS: Record<
   number,
   NanosaurItemModelMapping | undefined
 > = {
-  // Empty - 3DMF format not supported
+  // Enemy skeletons
+  2: { modelFile: "Tricer.3dmf", modelPath: "skeletons", modelIndex: 0, requiresSkeleton: true, skeletonFile: "Tricer.skeleton.rsrc" }, // Triceratops enemy
+  3: { modelFile: "Rex.3dmf", modelPath: "skeletons", modelIndex: 0, requiresSkeleton: true, skeletonFile: "Rex.skeleton.rsrc" }, // Rex enemy
+  7: { modelFile: "Ptera.3dmf", modelPath: "skeletons", modelIndex: 0, requiresSkeleton: true, skeletonFile: "Ptera.skeleton.rsrc" }, // Pteranodon enemy
+  8: { modelFile: "Stego.3dmf", modelPath: "skeletons", modelIndex: 0, requiresSkeleton: true, skeletonFile: "Stego.skeleton.rsrc" }, // Stegosaurus enemy
+  16: { modelFile: "Diloph.3dmf", modelPath: "skeletons", modelIndex: 0, requiresSkeleton: true, skeletonFile: "Diloph.skeleton.rsrc" }, // Spitter enemy (Dilophosaurus)
+  
+  // Level models
+  1: { modelFile: "Global_Models.3dmf", modelPath: "models", modelIndex: 0 }, // PowerUp
+  5: { modelFile: "Level1_Models.3dmf", modelPath: "models", modelIndex: 0 }, // Egg
+  6: { modelFile: "Level1_Models.3dmf", modelPath: "models", modelIndex: 1 }, // Gas vent
+  9: { modelFile: "Global_Models.3dmf", modelPath: "models", modelIndex: 1 }, // Time portal
+  10: { modelFile: "Level1_Models.3dmf", modelPath: "models", modelIndex: 2 }, // Tree
+  11: { modelFile: "Level1_Models.3dmf", modelPath: "models", modelIndex: 3 }, // Boulder
+  12: { modelFile: "Level1_Models.3dmf", modelPath: "models", modelIndex: 4 }, // Mushroom
+  13: { modelFile: "Level1_Models.3dmf", modelPath: "models", modelIndex: 5 }, // Bush
+  15: { modelFile: "Level1_Models.3dmf", modelPath: "models", modelIndex: 6 }, // Crystal
+  17: { modelFile: "Level1_Models.3dmf", modelPath: "models", modelIndex: 7 }, // Step stone
+  18: { modelFile: "Level1_Models.3dmf", modelPath: "models", modelIndex: 8 }, // Rolling boulder
+  19: { modelFile: "Level1_Models.3dmf", modelPath: "models", modelIndex: 9 }, // Spore pod
 };
 
 /**
  * Get the model mapping for a specific Nanosaur item type
  * @param itemType Item type ID
- * @returns Mapping if available, undefined otherwise (always undefined for 3DMF games)
+ * @returns Mapping if available, undefined otherwise
  */
 export const getNanosaurItemModelMapping = (
   itemType: number,
