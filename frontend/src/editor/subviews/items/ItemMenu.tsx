@@ -129,20 +129,10 @@ export function ItemMenu({
                   <span className="text-baseline align-text-bottom">Flags</span>
                 }
                 tooltip={
-                  typeof TerrainItemTypeParams[selectedItemData.type as ItemType].flags ===
-                  "string"
-                    ? TerrainItemTypeParams[selectedItemData.type as ItemType].flags
-                    : ""
+                  TerrainItemTypeParams[selectedItemData.type as ItemType].flags
                 }
-                codeSample={
-                  typeof TerrainItemTypeParams[selectedItemData.type as ItemType].flags ===
-                  "string"
-                    ? undefined
-                    : "codeSample" in TerrainItemTypeParams[selectedItemData.type as ItemType].flags
-                    ? TerrainItemTypeParams[selectedItemData.type as ItemType].flags.codeSample
-                    : undefined
-                }
-                citationGame={citationGame}
+                codeSample={undefined}
+                citationGame={citationGame ?? undefined}
               />
               <Input
                 type="number"
@@ -184,7 +174,7 @@ export function ItemMenu({
                         ? undefined
                         : param.codeSample
                     }
-                    citationGame={citationGame}
+                    citationGame={citationGame ?? undefined}
                   />,
                   param &&
                   typeof param !== "string" &&

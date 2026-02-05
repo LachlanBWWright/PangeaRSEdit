@@ -113,12 +113,12 @@ export function OttoMaticEditorView({
       },
     );
     if (result.ok) {
-      setHeaderData(result.data.headerData);
-      setItemData(result.data.itemData);
-      setLiquidData(result.data.liquidData);
-      setFenceData(result.data.fenceData);
-      setSplineData(result.data.splineData);
-      setTerrainData(result.data.terrainData);
+      if (result.data.headerData) setHeaderData(result.data.headerData);
+      if (result.data.itemData !== undefined) setItemData(result.data.itemData);
+      if (result.data.liquidData !== undefined) setLiquidData(result.data.liquidData);
+      if (result.data.fenceData !== undefined) setFenceData(result.data.fenceData);
+      if (result.data.splineData !== undefined) setSplineData(result.data.splineData);
+      if (result.data.terrainData) setTerrainData(result.data.terrainData);
     }
   };
 

@@ -5,6 +5,8 @@ import { LevelEditor } from "./pages/LevelEditor";
 import { ModelViewer } from "./pages/ModelViewer";
 import { SpriteViewer } from "./pages/SpriteViewer";
 import { DownloadLevels } from "./pages/DownloadLevels";
+import { TestModelViewer } from "./pages/TestModelViewer";
+import { ItemModelViewer } from "./pages/ItemModelViewer";
 import { TooltipProvider } from "@/components/ui/tooltip";
 
 export function App() {
@@ -19,6 +21,8 @@ export function App() {
               <Route path="/model-viewer" element={<ModelViewer />} />
               <Route path="/sprite-viewer" element={<SpriteViewer />} />
               <Route path="/download-levels" element={<DownloadLevels />} />
+              <Route path="/test-models" element={<TestModelViewer />} />
+              <Route path="/item-models" element={<ItemModelViewer />} />
               <Route path="*" element={<LevelEditor />} />
             </Routes>
           </div>

@@ -148,7 +148,7 @@ const BILLY_BASE_MAPPINGS: Record<number, UniversalItemModelMapping> = {
 
   // Shootout enemies
   [ItemType.FrogMan_Shootout]: {
-    modelFile: "frogman.bg3d",
+    modelFile: "FrogMan.bg3d",
     modelPath: "skeletons",
     modelIndex: 0,
     requiresSkeleton: true,
@@ -166,7 +166,7 @@ const BILLY_BASE_MAPPINGS: Record<number, UniversalItemModelMapping> = {
   },
 
   [ItemType.Bandito_Shootout]: {
-    modelFile: "bandito.bg3d",
+    modelFile: "Bandito.bg3d",
     modelPath: "skeletons",
     modelIndex: 0,
     requiresSkeleton: true,
@@ -184,7 +184,7 @@ const BILLY_BASE_MAPPINGS: Record<number, UniversalItemModelMapping> = {
   },
 
   [ItemType.Shorty_Shootout]: {
-    modelFile: "shorty.bg3d",
+    modelFile: "Shorty.bg3d",
     modelPath: "skeletons",
     modelIndex: 0,
     requiresSkeleton: true,
@@ -314,7 +314,7 @@ const BILLY_BASE_MAPPINGS: Record<number, UniversalItemModelMapping> = {
 
   // Animals
   [ItemType.SceneryKangaCow]: {
-    modelFile: "kangacow.bg3d",
+    modelFile: "KangaCow.bg3d",
     modelPath: "skeletons",
     modelIndex: 0,
     requiresSkeleton: true,
@@ -333,7 +333,7 @@ const BILLY_BASE_MAPPINGS: Record<number, UniversalItemModelMapping> = {
   },
 
   [ItemType.StampedeKangarex]: {
-    modelFile: "kangarex.bg3d",
+    modelFile: "KangaRex.bg3d",
     modelPath: "skeletons",
     modelIndex: 0,
     requiresSkeleton: true,
@@ -357,7 +357,7 @@ const BILLY_BASE_MAPPINGS: Record<number, UniversalItemModelMapping> = {
 
   // Walker enemy
   [ItemType.Wallker]: {
-    modelFile: "walker.bg3d",
+    modelFile: "Walker.bg3d",
     modelPath: "skeletons",
     modelIndex: 0,
     requiresSkeleton: true,
@@ -405,7 +405,7 @@ const BILLY_BASE_MAPPINGS: Record<number, UniversalItemModelMapping> = {
   },
 
   [ItemType.TremorAlien_Shootout]: {
-    modelFile: "tremoralien.bg3d",
+    modelFile: "TremorAlien.bg3d",
     modelPath: "skeletons",
     modelIndex: 0,
     requiresSkeleton: true,

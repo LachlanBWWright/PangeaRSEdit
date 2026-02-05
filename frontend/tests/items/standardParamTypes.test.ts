@@ -28,6 +28,7 @@ import {
   isTimerParam,
   isSpeedParam,
   isCoordinateParam,
+  getParamByIndex,
   type TypeSelectorParam,
   type TimerParam,
   type CountParam,
@@ -314,5 +315,25 @@ describe("standardParamTypes", () => {
       expect(isCoordinateParam(coord)).toBe(true);
       expect(isCoordinateParam(ROTATION_4_WAY)).toBe(false);
     });
+  });
+});
+
+describe("getParamByIndex", () => {
+  const testParams = { p0: 10, p1: 20, p2: 30, p3: 40 };
+
+  it("should return p0 when index is 0", () => {
+    expect(getParamByIndex(testParams, 0)).toBe(10);
+  });
+
+  it("should return p1 when index is 1", () => {
+    expect(getParamByIndex(testParams, 1)).toBe(20);
+  });
+
+  it("should return p2 when index is 2", () => {
+    expect(getParamByIndex(testParams, 2)).toBe(30);
+  });
+
+  it("should return p3 when index is 3", () => {
+    expect(getParamByIndex(testParams, 3)).toBe(40);
   });
 });

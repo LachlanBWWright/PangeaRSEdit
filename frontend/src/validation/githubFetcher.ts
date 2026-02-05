@@ -6,7 +6,7 @@
  */
 
 import { Result, ok, err } from "../types/result";
-import { GAME_REPOSITORIES, getGitHubRawUrl, type GameRepository } from "./gameRepositories";
+import { GAME_REPOSITORIES, type GameRepository } from "./gameRepositories";
 
 /**
  * Result of fetching a file from GitHub
@@ -323,8 +323,9 @@ export class GitHubFileCache {
     for (const key of this.cache.keys()) {
       // Extract repo name from key
       const parts = key.split('/');
-      if (parts.length >= 2) {
-        games.add(parts[1]);
+      const repoName = parts[1];
+      if (parts.length >= 2 && repoName !== undefined) {
+        games.add(repoName);
       }
     }
     

@@ -14,7 +14,6 @@ import type {
   SplineData,
   LiquidData,
   StandardHeader,
-  CroMagHeader,
   TileAttribute,
   SupertileGridEntry,
   LevelMetadata,
@@ -120,9 +119,11 @@ function createBlankHeader(
 
   if (game === Game.CRO_MAG) {
     // Cro-Mag uses numPaths instead of numWaterPatches
-    const croMagHeader: CroMagHeader = {
+    // For blank levels, we add numWaterPatches with value 0 for type compatibility
+    const croMagHeader: StandardHeader & { numPaths: number } = {
       ...baseFields,
       ...standardExtension,
+      numWaterPatches: 0,
       numPaths: 0,
     };
     return {

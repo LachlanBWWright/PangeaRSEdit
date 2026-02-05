@@ -90,6 +90,33 @@ export interface GameItemModelMapper {
    * Get the total number of item types with mappings
    */
   getMappingCount(): number;
+  
+  /**
+   * Check if an item type has param-dependent model selection.
+   * For param-dependent items, the model varies based on item parameters.
+   */
+  isParamDependent?(itemType: number): boolean;
+  
+  /**
+   * Get the param-dependent configuration for an item type.
+   * Returns undefined if the item type is not param-dependent.
+   */
+  getParamDependentConfig?(itemType: number): {
+    paramIndex: 0 | 1 | 2 | 3;
+    paramType: {
+      options: Record<number, string>;
+      modelVariants?: Record<number, unknown>;
+    };
+  } | undefined;
+  
+  /**
+   * Get param-dependent options for display.
+   * Returns undefined if the item type is not param-dependent.
+   */
+  getParamDependentOptions?(itemType: number): {
+    paramIndex: number;
+    options: { value: number; label: string }[];
+  } | undefined;
 }
 
 /**

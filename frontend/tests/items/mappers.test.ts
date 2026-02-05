@@ -118,10 +118,15 @@ describe("Game Item Mappers", () => {
       const counts = getAllMappingCounts();
       // Check the mappers we created in this session
       expect(counts["OTTO_MATIC"]).toBeGreaterThanOrEqual(50);
+      // Nanosaur 1 uses 3DMF format which is now supported
       expect(counts["NANOSAUR"]).toBeGreaterThanOrEqual(10);
       expect(counts["NANOSAUR_2"]).toBeGreaterThanOrEqual(10);
       expect(counts["CRO_MAG"]).toBeGreaterThanOrEqual(10);
       expect(counts["BILLY_FRONTIER"]).toBeGreaterThanOrEqual(10);
+      // Bugdom 1 uses 3DMF format which is now supported
+      expect(counts["BUGDOM"]).toBeGreaterThanOrEqual(30);
+      // Bugdom 2 has BG3D models and should have mappings
+      expect(counts["BUGDOM_2"]).toBeGreaterThanOrEqual(50);
     });
   });
   
@@ -196,6 +201,44 @@ describe("Game Item Mappers", () => {
       }
       expect(ottoItemMapper.hasModel(99999)).toBe(false);
     });
+    
+    it("should handle param-dependent Human mapping", () => {
+      // Human (type 4) should use different models based on p1 param
+      const farmerMapping = ottoItemMapper.getMapping(4, undefined, { p0: 0, p1: 0, p2: 0, p3: 0 });
+      expect(farmerMapping).toBeDefined();
+      expect(farmerMapping?.modelFile).toBe("Farmer.bg3d");
+      expect(farmerMapping?.skeletonFile).toBe("Farmer.skeleton.rsrc");
+      
+      const beeWomanMapping = ottoItemMapper.getMapping(4, undefined, { p0: 0, p1: 1, p2: 0, p3: 0 });
+      expect(beeWomanMapping).toBeDefined();
+      expect(beeWomanMapping?.modelFile).toBe("BeeWoman.bg3d");
+      expect(beeWomanMapping?.skeletonFile).toBe("BeeWoman.skeleton.rsrc");
+      
+      const scientistMapping = ottoItemMapper.getMapping(4, undefined, { p0: 0, p1: 2, p2: 0, p3: 0 });
+      expect(scientistMapping).toBeDefined();
+      expect(scientistMapping?.modelFile).toBe("Scientist.bg3d");
+      expect(scientistMapping?.skeletonFile).toBe("Scientist.skeleton.rsrc");
+      
+      const skirtLadyMapping = ottoItemMapper.getMapping(4, undefined, { p0: 0, p1: 3, p2: 0, p3: 0 });
+      expect(skirtLadyMapping).toBeDefined();
+      expect(skirtLadyMapping?.modelFile).toBe("SkirtLady.bg3d");
+      expect(skirtLadyMapping?.skeletonFile).toBe("SkirtLady.skeleton.rsrc");
+    });
+    
+    it("should default to Farmer for Human with no params", () => {
+      const mapping = ottoItemMapper.getMapping(4);
+      expect(mapping).toBeDefined();
+      expect(mapping?.modelFile).toBe("Farmer.bg3d");
+    });
+    
+    it("should always report Human as having a model", () => {
+      expect(ottoItemMapper.hasModel(4)).toBe(true);
+    });
+    
+    it("should include Human in mapped types", () => {
+      const mappedTypes = ottoItemMapper.getMappedTypes();
+      expect(mappedTypes).toContain(4); // Human type
+    });
   });
   
   describe("Bugdom2ItemMapper", () => {
@@ -204,9 +247,23 @@ describe("Game Item Mappers", () => {
     });
     
     it("should have getLevelModelFile method", () => {
-      expect(bugdom2ItemMapper.getLevelModelFile(0)).toBe("garden.bg3d");
-      expect(bugdom2ItemMapper.getLevelModelFile(3)).toBe("playroom.bg3d");
+      // Level file names match actual files in /games/bugdom2/models/
+      expect(bugdom2ItemMapper.getLevelModelFile(0)).toBe("Level1_Garden.bg3d");
+      expect(bugdom2ItemMapper.getLevelModelFile(3)).toBe("Level5_Playroom.bg3d");
       expect(bugdom2ItemMapper.getLevelModelFile(99)).toBeUndefined();
+    });
+    
+    it("should have model mappings", () => {
+      // Snail (type 1) has a skeleton model
+      const snailMapping = bugdom2ItemMapper.getMapping(1);
+      expect(snailMapping).toBeDefined();
+      expect(snailMapping?.modelFile).toBe("Snail.bg3d");
+      expect(snailMapping?.modelPath).toBe("skeletons");
+      
+      // Gnome enemy (type 4) has a skeleton model
+      const gnomeMapping = bugdom2ItemMapper.getMapping(4);
+      expect(gnomeMapping).toBeDefined();
+      expect(gnomeMapping?.modelFile).toBe("Gnome.bg3d");
     });
     
     it("should handle level-specific lookups", () => {
@@ -222,24 +279,24 @@ describe("Game Item Mappers", () => {
       expect(bugdomItemMapper.game).toBe(Game.BUGDOM);
     });
     
-    it("should have getLevelModelFile method", () => {
-      expect(bugdomItemMapper.getLevelModelFile(0)).toBe("lawn1.bg3d");
-      expect(bugdomItemMapper.getLevelModelFile(2)).toBe("pond.bg3d");
-      expect(bugdomItemMapper.getLevelModelFile(5)).toBe("night.bg3d");
-      expect(bugdomItemMapper.getLevelModelFile(99)).toBeUndefined();
+    it("should have mappings (3DMF is now supported)", () => {
+      // Bugdom 1 uses 3DMF format which is now supported
+      expect(bugdomItemMapper.getMappingCount()).toBeGreaterThan(0);
+      expect(bugdomItemMapper.getMappedTypes().length).toBeGreaterThan(0);
     });
     
-    it("should handle lookups gracefully", () => {
-      // Even if no mappings exist yet, it shouldn't crash
-      const mapping = bugdomItemMapper.getMapping(1);
-      // Will be undefined until mappings are added
-      expect(mapping === undefined || mapping !== null).toBe(true);
+    it("should get mapping for enemy type", () => {
+      // Spider enemy (type 36)
+      const mapping = bugdomItemMapper.getMapping(36);
+      expect(mapping).toBeDefined();
+      expect(mapping?.modelFile).toBe("Spider.3dmf");
+      expect(mapping?.modelPath).toBe("skeletons");
+      expect(mapping?.requiresSkeleton).toBe(true);
     });
     
-    it("should return empty array when no mappings exist", () => {
-      // Bugdom mappings are TODOs, so getMappedTypes should return empty array
-      const types = bugdomItemMapper.getMappedTypes();
-      expect(Array.isArray(types)).toBe(true);
+    it("should return undefined for unmapped type", () => {
+      const mapping = bugdomItemMapper.getMapping(99999);
+      expect(mapping).toBeUndefined();
     });
   });
   
@@ -346,34 +403,24 @@ describe("Game Item Mappers", () => {
       expect(nanosaur1ItemMapper.game).toBe(Game.NANOSAUR);
     });
     
-    it("should have mappings", () => {
+    it("should have mappings (3DMF is now supported)", () => {
+      // Nanosaur 1 uses 3DMF format which is now supported
       expect(nanosaur1ItemMapper.getMappingCount()).toBeGreaterThan(0);
+      expect(nanosaur1ItemMapper.getMappedTypes().length).toBeGreaterThan(0);
     });
     
-    it("should get mapping for known item type", () => {
-      const mappedTypes = nanosaur1ItemMapper.getMappedTypes();
-      if (mappedTypes.length > 0) {
-        const firstType = mappedTypes[0];
-        const mapping = nanosaur1ItemMapper.getMapping(firstType);
-        expect(mapping).toBeDefined();
-        expect(mapping?.modelFile).toBeTruthy();
-        expect(typeof mapping?.modelIndex).toBe("number");
-      }
+    it("should get mapping for enemy type", () => {
+      // Rex enemy (type 3)
+      const mapping = nanosaur1ItemMapper.getMapping(3);
+      expect(mapping).toBeDefined();
+      expect(mapping?.modelFile).toBe("Rex.3dmf");
+      expect(mapping?.modelPath).toBe("skeletons");
+      expect(mapping?.requiresSkeleton).toBe(true);
     });
     
     it("should return undefined for unmapped type", () => {
       const mapping = nanosaur1ItemMapper.getMapping(99999);
       expect(mapping).toBeUndefined();
-    });
-    
-    it("should handle variants", () => {
-      // Test variant handling with params
-      const mappedTypes = nanosaur1ItemMapper.getMappedTypes();
-      if (mappedTypes.length > 0) {
-        const firstType = mappedTypes[0];
-        const mapping = nanosaur1ItemMapper.getMapping(firstType, undefined, { p0: 0, p1: 0, p2: 0, p3: 0 });
-        expect(mapping === undefined || mapping !== null).toBe(true);
-      }
     });
   });
 });

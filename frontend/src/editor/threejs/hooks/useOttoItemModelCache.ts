@@ -1,5 +1,5 @@
 /**
- * Hook for lazy-loading and caching Otto Matic item 3D models
+ * Hook for lazy-loading and caching item 3D models
  *
  * Features:
  * - Lazy loads models only for item types present in the current level
@@ -7,11 +7,15 @@
  * - Uses Web Worker to convert BG3D → glTF off main thread
  * - Extracts specific meshes from multi-geometry BG3D files
  * - Gracefully handles loading errors with fallback behavior
+ * - Supports param-dependent models (e.g., Human types)
+ * - Supports multiple games (Otto Matic, Bugdom 2, etc.)
  */
 
 import { useState, useRef, useCallback } from "react";
 import BG3DGltfWorker from "@/modelParsers/bg3dGltfWorker?worker";
-import { getItemModelMapping } from "@/data/items/ottoItemModelMapping";
+import { getGameMapper } from "@/data/items/mappers";
+import { Game } from "@/data/globals/globals";
+import { getParamByIndex } from "@/data/items/standardParamTypes";
 import { Group } from "three";
 import {
   GLTFLoader,
@@ -24,18 +28,64 @@ interface CachedModel {
   error?: Error;
 }
 
-interface UseOttoItemModelCacheReturn {
-  modelCache: Map<number, CachedModel>;
-  loadModel: (itemType: number) => Promise<GLTF | null>;
-  isLoading: (itemType: number) => boolean;
-  hasError: (itemType: number) => boolean;
+/**
+ * Item parameters that can affect model selection
+ */
+interface ItemParams {
+  p0: number;
+  p1: number;
+  p2: number;
+  p3: number;
+}
+
+interface UseItemModelCacheReturn {
+  modelCache: Map<string, CachedModel>;
+  loadModel: (itemType: number, params?: ItemParams) => Promise<GLTF | null>;
+  isLoading: (itemType: number, params?: ItemParams) => boolean;
+  hasError: (itemType: number, params?: ItemParams) => boolean;
 }
 
 /**
- * Hook for managing Otto Matic item model loading and caching
+ * Map game enum to the base URL path for model files
  */
-export const useOttoItemModelCache = (): UseOttoItemModelCacheReturn => {
-  const [modelCache, setModelCache] = useState<Map<number, CachedModel>>(
+const GAME_BASE_PATHS: Record<Game, string> = {
+  [Game.OTTO_MATIC]: "/PangeaRSEdit/games/ottomatic",
+  [Game.BUGDOM]: "/PangeaRSEdit/games/bugdom1",
+  [Game.BUGDOM_2]: "/PangeaRSEdit/games/bugdom2",
+  [Game.NANOSAUR]: "/PangeaRSEdit/games/nanosaur1",
+  [Game.NANOSAUR_2]: "/PangeaRSEdit/games/nanosaur2",
+  [Game.CRO_MAG]: "/PangeaRSEdit/games/cromagrally",
+  [Game.BILLY_FRONTIER]: "/PangeaRSEdit/games/billyfrontier",
+  [Game.MIGHTY_MIKE]: "/PangeaRSEdit/games/mightymike",
+};
+
+/**
+ * Generate a cache key that includes game, item type, and relevant params
+ * Uses the mapper to determine which items are param-dependent
+ */
+function getCacheKey(game: Game, itemType: number, params?: ItemParams): string {
+  const mapper = getGameMapper(game);
+  const gamePrefix = `g${game}_`;
+  
+  if (mapper?.isParamDependent?.(itemType) && params) {
+    // Get the param config to know which param index to use
+    const config = mapper.getParamDependentConfig?.(itemType);
+    if (config) {
+      const paramValue = getParamByIndex(params, config.paramIndex);
+      return `${gamePrefix}${itemType}_p${config.paramIndex}_${paramValue}`;
+    }
+    // Fallback: use p1 for backwards compatibility
+    return `${gamePrefix}${itemType}_p1_${params.p1}`;
+  }
+  return `${gamePrefix}${itemType}`;
+}
+
+/**
+ * Hook for managing item model loading and caching
+ * @param game - The game to load models for (default: OTTO_MATIC)
+ */
+export const useItemModelCache = (game: Game = Game.OTTO_MATIC): UseItemModelCacheReturn => {
+  const [modelCache, setModelCache] = useState<Map<string, CachedModel>>(
     new Map(),
   );
   const workerRef = useRef<Worker | null>(null);
@@ -112,12 +162,16 @@ export const useOttoItemModelCache = (): UseOttoItemModelCacheReturn => {
   /**
    * Load a 3D model for an item type
    * Uses lazy loading - only fetches when called
+   * @param itemType - The item type ID
+   * @param params - Item parameters (affects model selection for param-dependent items)
    */
   const loadModel = useCallback(
-    async (itemType: number): Promise<GLTF | null> => {
+    async (itemType: number, params?: ItemParams): Promise<GLTF | null> => {
+      const cacheKey = getCacheKey(game, itemType, params);
+      
       // Check if already cached with no error
-      if (modelCache.has(itemType)) {
-        const cached = modelCache.get(itemType);
+      if (modelCache.has(cacheKey)) {
+        const cached = modelCache.get(cacheKey);
         if (!cached?.loading && !cached?.error) {
           return cached?.gltf || null;
         }
@@ -125,7 +179,7 @@ export const useOttoItemModelCache = (): UseOttoItemModelCacheReturn => {
           // Already loading, wait a bit and return
           return new Promise((resolve) => {
             const checkInterval = setInterval(() => {
-              const updated = modelCache.get(itemType);
+              const updated = modelCache.get(cacheKey);
               if (!updated?.loading) {
                 clearInterval(checkInterval);
                 resolve(updated?.gltf || null);
@@ -138,8 +192,9 @@ export const useOttoItemModelCache = (): UseOttoItemModelCacheReturn => {
         }
       }
 
-      // Get mapping for this item type
-      const mapping = getItemModelMapping(itemType);
+      // Get mapping using the game mapper (which supports params)
+      const mapper = getGameMapper(game);
+      const mapping = mapper?.getMapping(itemType, undefined, params);
       if (!mapping) {
         // No mapping, item will use colored cube fallback
         return null;
@@ -148,19 +203,20 @@ export const useOttoItemModelCache = (): UseOttoItemModelCacheReturn => {
       // Mark as loading
       setModelCache((prev) => {
         const updated = new Map(prev);
-        updated.set(itemType, { gltf: null, loading: true });
+        updated.set(cacheKey, { gltf: null, loading: true });
         return updated;
       });
 
       try {
-        // Build URLs
-        const baseUrl = `/PangeaRSEdit/games/ottomatic`;
+        // Build URLs using game-specific base path
+        const baseUrl = GAME_BASE_PATHS[game];
         const bg3dUrl = `${baseUrl}/${mapping.modelPath}/${mapping.modelFile}`;
 
         // Fetch BG3D file
+        console.log(`[ItemModelCache] Loading model: ${bg3dUrl} (index: ${mapping.modelIndex})`);
         const response = await fetch(bg3dUrl);
         if (!response.ok) {
-          throw new Error(`Failed to fetch BG3D file: ${response.statusText}`);
+          throw new Error(`Failed to fetch BG3D file: ${response.statusText} (URL: ${bg3dUrl})`);
         }
         const buffer = await response.arrayBuffer();
 
@@ -273,36 +329,46 @@ export const useOttoItemModelCache = (): UseOttoItemModelCacheReturn => {
         // Cache the result
         setModelCache((prev) => {
           const updated = new Map(prev);
-          updated.set(itemType, { gltf: finalGltf, loading: false });
+          updated.set(cacheKey, { gltf: finalGltf, loading: false });
           return updated;
         });
 
         return finalGltf;
       } catch (error) {
         const err = error instanceof Error ? error : new Error(String(error));
+        console.error(`[ItemModelCache] Error loading model for item type ${itemType}:`, err.message);
 
         // Cache the error
         setModelCache((prev) => {
           const updated = new Map(prev);
-          updated.set(itemType, { gltf: null, loading: false, error: err });
+          updated.set(cacheKey, { gltf: null, loading: false, error: err });
           return updated;
         });
 
         return null;
       }
     },
-    [modelCache, getWorker, extractSubgroupByIndex],
+    [game, modelCache, getWorker, extractSubgroupByIndex],
   );
 
   const isLoading = useCallback(
-    (itemType: number) => modelCache.get(itemType)?.loading ?? false,
-    [modelCache],
+    (itemType: number, params?: ItemParams) => {
+      const cacheKey = getCacheKey(game, itemType, params);
+      return modelCache.get(cacheKey)?.loading ?? false;
+    },
+    [game, modelCache],
   );
 
   const hasError = useCallback(
-    (itemType: number) => !!modelCache.get(itemType)?.error,
-    [modelCache],
+    (itemType: number, params?: ItemParams) => {
+      const cacheKey = getCacheKey(game, itemType, params);
+      return !!modelCache.get(cacheKey)?.error;
+    },
+    [game, modelCache],
   );
 
   return { modelCache, loadModel, isLoading, hasError };
 };
+
+// Export alias for backward compatibility
+export const useOttoItemModelCache = () => useItemModelCache(Game.OTTO_MATIC);

@@ -94,7 +94,9 @@ export function exportSingleTile(
   
   for (let i = 0, j = 0; i < tileData.length; i += 2, j += 4) {
     // Read big endian 16-bit value (ARGB1555)
-    const packed = (tileData[i] << 8) | tileData[i + 1];
+    const byte1 = tileData[i] ?? 0;
+    const byte2 = tileData[i + 1] ?? 0;
+    const packed = (byte1 << 8) | byte2;
     
     // Extract components
     const a1 = (packed >> 15) & 0x01;
@@ -206,7 +208,10 @@ export async function exportTilePalette(
     const row = Math.floor(i / grid.columns);
     
     // Export individual tile
-    const tileResult = exportSingleTile(tilesData[i], tileSize, fullConfig);
+    const tileData = tilesData[i];
+    if (!tileData) continue; // Skip if no tile data
+    
+    const tileResult = exportSingleTile(tileData, tileSize, fullConfig);
     if (!tileResult.ok) {
       continue; // Skip failed tiles
     }

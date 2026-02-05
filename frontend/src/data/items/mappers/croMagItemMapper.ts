@@ -26,12 +26,12 @@ import { ItemType } from "../croMagItemType";
  * Track-specific model files (for future use with level-aware loading)
  */
 export const CROMAG_TRACK_MODEL_FILES: Record<number, string> = {
-  0: "stoneage.bg3d",
-  1: "bronzeage.bg3d",
-  2: "iceage.bg3d",
+  0: "stonehenge.bg3d",
+  1: "egypt.bg3d",
+  2: "ice.bg3d",
   3: "crete.bg3d",
   4: "china.bg3d",
-  5: "viking.bg3d",
+  5: "Viking.bg3d",
   6: "jungle.bg3d",
   7: "atlantis.bg3d",
 };
@@ -42,7 +42,7 @@ export const CROMAG_TRACK_MODEL_FILES: Record<number, string> = {
 const CROMAG_BASE_MAPPINGS: Record<number, UniversalItemModelMapping> = {
   // Environmental - Cacti (Desert/Stone Age)
   [ItemType.Cactus]: {
-    modelFile: "stoneage.bg3d",
+    modelFile: "stonehenge.bg3d",
     modelPath: "models",
     modelIndex: 0,
     scale: 1.0,
@@ -133,7 +133,7 @@ const CROMAG_BASE_MAPPINGS: Record<number, UniversalItemModelMapping> = {
 
   // Decorative Items
   [ItemType.Vase]: {
-    modelFile: "bronzeage.bg3d",
+    modelFile: "egypt.bg3d",
     modelPath: "models",
     modelIndex: 0,
     scale: 0.8,
@@ -170,7 +170,7 @@ const CROMAG_BASE_MAPPINGS: Record<number, UniversalItemModelMapping> = {
 
   // Easter Island
   [ItemType.EasterHead]: {
-    modelFile: "stoneage.bg3d",
+    modelFile: "stonehenge.bg3d",
     modelPath: "models",
     modelIndex: 2,
     scale: 1.2,
@@ -178,21 +178,21 @@ const CROMAG_BASE_MAPPINGS: Record<number, UniversalItemModelMapping> = {
 
   // Ice Age
   [ItemType.SnoMan]: {
-    modelFile: "iceage.bg3d",
+    modelFile: "ice.bg3d",
     modelPath: "models",
     modelIndex: 0,
     scale: 1.0,
   },
 
   [ItemType.CampFire]: {
-    modelFile: "iceage.bg3d",
+    modelFile: "ice.bg3d",
     modelPath: "models",
     modelIndex: 1,
     scale: 0.8,
   },
 
   [ItemType.Yeti]: {
-    modelFile: "yeti.bg3d",
+    modelFile: "Yeti.bg3d",
     modelPath: "skeletons",
     modelIndex: 0,
     requiresSkeleton: true,
@@ -202,28 +202,28 @@ const CROMAG_BASE_MAPPINGS: Record<number, UniversalItemModelMapping> = {
 
   // Egypt/Bronze Age
   [ItemType.Pillar]: {
-    modelFile: "bronzeage.bg3d",
+    modelFile: "egypt.bg3d",
     modelPath: "models",
     modelIndex: 1,
     scale: 1.0,
   },
 
   [ItemType.Pylon]: {
-    modelFile: "bronzeage.bg3d",
+    modelFile: "egypt.bg3d",
     modelPath: "models",
     modelIndex: 2,
     scale: 1.0,
   },
 
   [ItemType.Boat]: {
-    modelFile: "bronzeage.bg3d",
+    modelFile: "egypt.bg3d",
     modelPath: "models",
     modelIndex: 3,
     scale: 1.2,
   },
 
   [ItemType.Sphinx]: {
-    modelFile: "bronzeage.bg3d",
+    modelFile: "egypt.bg3d",
     modelPath: "models",
     modelIndex: 4,
     scale: 1.5,
@@ -278,21 +278,21 @@ const CROMAG_BASE_MAPPINGS: Record<number, UniversalItemModelMapping> = {
 
   // Stone Age/Prehistoric
   [ItemType.BrontoNeck]: {
-    modelFile: "stoneage.bg3d",
+    modelFile: "stonehenge.bg3d",
     modelPath: "models",
     modelIndex: 3,
     scale: 1.5,
   },
 
   [ItemType.RockOverhang]: {
-    modelFile: "stoneage.bg3d",
+    modelFile: "stonehenge.bg3d",
     modelPath: "models",
     modelIndex: 4,
     scale: 1.0,
   },
 
   [ItemType.TarPatch]: {
-    modelFile: "stoneage.bg3d",
+    modelFile: "stonehenge.bg3d",
     modelPath: "models",
     modelIndex: 5,
     scale: 1.0,
@@ -329,49 +329,49 @@ const CROMAG_BASE_MAPPINGS: Record<number, UniversalItemModelMapping> = {
 
   // Viking/Celtic
   [ItemType.CastleTower]: {
-    modelFile: "viking.bg3d",
+    modelFile: "Viking.bg3d",
     modelPath: "models",
     modelIndex: 0,
     scale: 1.5,
   },
 
   [ItemType.Catapult]: {
-    modelFile: "viking.bg3d",
+    modelFile: "Viking.bg3d",
     modelPath: "models",
     modelIndex: 1,
     scale: 1.0,
   },
 
   [ItemType.Baracade]: {
-    modelFile: "viking.bg3d",
+    modelFile: "Viking.bg3d",
     modelPath: "models",
     modelIndex: 2,
     scale: 1.0,
   },
 
   [ItemType.VikingFlag]: {
-    modelFile: "viking.bg3d",
+    modelFile: "Viking.bg3d",
     modelPath: "models",
     modelIndex: 3,
     scale: 0.8,
   },
 
   [ItemType.WeaponsRack]: {
-    modelFile: "viking.bg3d",
+    modelFile: "Viking.bg3d",
     modelPath: "models",
     modelIndex: 4,
     scale: 1.0,
   },
 
   [ItemType.StoneHenge]: {
-    modelFile: "viking.bg3d",
+    modelFile: "Viking.bg3d",
     modelPath: "models",
     modelIndex: 5,
     scale: 1.5,
   },
 
   [ItemType.Druid]: {
-    modelFile: "druid.bg3d",
+    modelFile: "Druid.bg3d",
     modelPath: "skeletons",
     modelIndex: 0,
     requiresSkeleton: true,
@@ -388,7 +388,7 @@ const CROMAG_BASE_MAPPINGS: Record<number, UniversalItemModelMapping> = {
   },
 
   [ItemType.Dragon]: {
-    modelFile: "dragon.bg3d",
+    modelFile: "Dragon.bg3d",
     modelPath: "skeletons",
     modelIndex: 0,
     requiresSkeleton: true,
@@ -441,7 +441,7 @@ const CROMAG_BASE_MAPPINGS: Record<number, UniversalItemModelMapping> = {
   },
 
   [ItemType.Cauldron]: {
-    modelFile: "viking.bg3d",
+    modelFile: "Viking.bg3d",
     modelPath: "models",
     modelIndex: 6,
     scale: 0.8,
@@ -506,14 +506,14 @@ const CROMAG_BASE_MAPPINGS: Record<number, UniversalItemModelMapping> = {
   },
 
   [ItemType.LavaGenerator]: {
-    modelFile: "stoneage.bg3d",
+    modelFile: "stonehenge.bg3d",
     modelPath: "models",
     modelIndex: 6,
     scale: 1.0,
   },
 
   [ItemType.Volcano]: {
-    modelFile: "stoneage.bg3d",
+    modelFile: "stonehenge.bg3d",
     modelPath: "models",
     modelIndex: 7,
     scale: 2.0,
@@ -535,7 +535,7 @@ const CROMAG_BASE_MAPPINGS: Record<number, UniversalItemModelMapping> = {
 
   // Spline-based creatures (animated along paths)
   [ItemType.CamelSpline]: {
-    modelFile: "camel.bg3d",
+    modelFile: "Camel.bg3d",
     modelPath: "skeletons",
     modelIndex: 0,
     requiresSkeleton: true,
@@ -544,7 +544,7 @@ const CROMAG_BASE_MAPPINGS: Record<number, UniversalItemModelMapping> = {
   },
 
   [ItemType.BeetleSpline]: {
-    modelFile: "beetle.bg3d",
+    modelFile: "Beetle.bg3d",
     modelPath: "skeletons",
     modelIndex: 0,
     requiresSkeleton: true,
@@ -553,7 +553,7 @@ const CROMAG_BASE_MAPPINGS: Record<number, UniversalItemModelMapping> = {
   },
 
   [ItemType.SharkSpline]: {
-    modelFile: "shark.bg3d",
+    modelFile: "Shark.bg3d",
     modelPath: "skeletons",
     modelIndex: 0,
     requiresSkeleton: true,
@@ -562,7 +562,7 @@ const CROMAG_BASE_MAPPINGS: Record<number, UniversalItemModelMapping> = {
   },
 
   [ItemType.TrollSpline]: {
-    modelFile: "troll.bg3d",
+    modelFile: "Troll.bg3d",
     modelPath: "skeletons",
     modelIndex: 0,
     requiresSkeleton: true,
@@ -571,7 +571,7 @@ const CROMAG_BASE_MAPPINGS: Record<number, UniversalItemModelMapping> = {
   },
 
   [ItemType.PteradactylSpline]: {
-    modelFile: "pteradactyl.bg3d",
+    modelFile: "Pterodactyl.bg3d",
     modelPath: "skeletons",
     modelIndex: 0,
     requiresSkeleton: true,
@@ -580,7 +580,7 @@ const CROMAG_BASE_MAPPINGS: Record<number, UniversalItemModelMapping> = {
   },
 
   [ItemType.MummySpline]: {
-    modelFile: "mummy.bg3d",
+    modelFile: "Mummy.bg3d",
     modelPath: "skeletons",
     modelIndex: 0,
     requiresSkeleton: true,
@@ -589,7 +589,7 @@ const CROMAG_BASE_MAPPINGS: Record<number, UniversalItemModelMapping> = {
   },
 
   [ItemType.PolarBearSpline]: {
-    modelFile: "polarbear.bg3d",
+    modelFile: "PolarBear.bg3d",
     modelPath: "skeletons",
     modelIndex: 0,
     requiresSkeleton: true,

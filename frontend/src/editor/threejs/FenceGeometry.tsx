@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import {
   FenceData,
   HeaderData,
@@ -196,87 +196,97 @@ export const FenceGeometry: React.FC<FenceGeometryProps> = ({ fenceData, headerD
     });
   }, [fenceData, globals]);
 
-  if (
-    !fenceData.Fenc ||
-    !fenceData.Fenc[1000] ||
-    !fenceData.FnNb ||
-    !headerData.Hedr?.[1000]?.obj ||
-    !terrainData.YCrd?.[1000]?.obj
-  ) {
+  // Extract YCrd array for dependency tracking - terrain height changes should trigger re-render
+  const yCrdData = terrainData.YCrd?.[1000]?.obj;
+  
+  // Memoize fence geometry calculations to properly track terrain height changes
+  const fenceGroups = useMemo(() => {
+    if (
+      !fenceData.Fenc ||
+      !fenceData.Fenc[1000] ||
+      !fenceData.FnNb ||
+      !headerData.Hedr?.[1000]?.obj ||
+      !terrainData.YCrd?.[1000]?.obj
+    ) {
+      return null;
+    }
+
+    const fences = fenceData.Fenc[1000].obj;
+    const fenceNubsByFenceIdx = fenceData.FnNb;
+    const groups: FenceGroupData[] = [];
+
+    fences.forEach((fence, fenceIdx) => {
+      const nubListKey = 1000 + fenceIdx;
+      const nubsData = fenceNubsByFenceIdx[nubListKey];
+
+      if (!nubsData || !nubsData.obj || nubsData.obj.length < 2) {
+        return;
+      }
+
+      const nubs = nubsData.obj;
+      const fenceType = fence?.fenceType || 0;
+      const fenceHeight = getFenceHeight(globals, fenceType);
+      const imagePath = getFenceImagePath(globals, fenceType);
+
+      // Get texture aspect ratio (fallback to 1 if not loaded yet)
+      const texture = textures.get(imagePath);
+      let textureAspectRatio = 1;
+      if (texture?.source?.data && typeof texture.source.data === "object" && texture.source.data !== null) {
+        const sourceData = texture.source.data;
+        if ("width" in sourceData && "height" in sourceData && 
+            typeof sourceData.width === "number" && typeof sourceData.height === "number" && 
+            sourceData.height > 0) {
+          textureAspectRatio = sourceData.width / sourceData.height;
+        }
+      }
+
+      const segments = [];
+      for (let i = 0; i < nubs.length - 1; i++) {
+        const nubA_raw = nubs[i];
+        const nubB_raw = nubs[i + 1];
+        if (!nubA_raw || !nubB_raw) continue;
+
+        const terrainY1 = getTerrainHeightAtPoint(
+          nubA_raw[0],
+          nubA_raw[1],
+          headerData,
+          terrainData,
+          globals,
+        );
+        const terrainY2 = getTerrainHeightAtPoint(
+          nubB_raw[0],
+          nubB_raw[1],
+          headerData,
+          terrainData,
+          globals,
+        );
+
+        const geometry = calculateFenceSegmentGeometry(
+          nubA_raw,
+          nubB_raw,
+          terrainY1,
+          terrainY2,
+          fenceHeight,
+          textureAspectRatio,
+          globals,
+        );
+
+        segments.push({ index: i, geometry });
+      }
+
+      groups.push({
+        fenceIdx,
+        fenceType,
+        segments,
+      });
+    });
+
+    return groups;
+  }, [fenceData, headerData, terrainData, globals, textures, yCrdData]);
+
+  if (!fenceGroups) {
     return null;
   }
-
-  const fences = fenceData.Fenc[1000].obj;
-  const fenceNubsByFenceIdx = fenceData.FnNb;
-
-  // Pre-calculate all fence data (don't render until textures loaded or timeout)
-  const fenceGroups: FenceGroupData[] = [];
-
-  fences.forEach((fence, fenceIdx) => {
-    const nubListKey = 1000 + fenceIdx;
-    const nubsData = fenceNubsByFenceIdx[nubListKey];
-
-    if (!nubsData || !nubsData.obj || nubsData.obj.length < 2) {
-      return;
-    }
-
-    const nubs = nubsData.obj;
-    const fenceType = fence?.fenceType || 0;
-    const fenceHeight = getFenceHeight(globals, fenceType);
-    const imagePath = getFenceImagePath(globals, fenceType);
-
-    // Get texture aspect ratio (fallback to 1 if not loaded yet)
-    const texture = textures.get(imagePath);
-    let textureAspectRatio = 1;
-    if (texture?.source?.data && typeof texture.source.data === "object" && texture.source.data !== null) {
-      const sourceData = texture.source.data;
-      if ("width" in sourceData && "height" in sourceData && 
-          typeof sourceData.width === "number" && typeof sourceData.height === "number" && 
-          sourceData.height > 0) {
-        textureAspectRatio = sourceData.width / sourceData.height;
-      }
-    }
-
-    const segments = [];
-    for (let i = 0; i < nubs.length - 1; i++) {
-      const nubA_raw = nubs[i];
-      const nubB_raw = nubs[i + 1];
-      if (!nubA_raw || !nubB_raw) continue;
-
-      const terrainY1 = getTerrainHeightAtPoint(
-        nubA_raw[0],
-        nubA_raw[1],
-        headerData,
-        terrainData,
-        globals,
-      );
-      const terrainY2 = getTerrainHeightAtPoint(
-        nubB_raw[0],
-        nubB_raw[1],
-        headerData,
-        terrainData,
-        globals,
-      );
-
-      const geometry = calculateFenceSegmentGeometry(
-        nubA_raw,
-        nubB_raw,
-        terrainY1,
-        terrainY2,
-        fenceHeight,
-        textureAspectRatio,
-        globals,
-      );
-
-      segments.push({ index: i, geometry });
-    }
-
-    fenceGroups.push({
-      fenceIdx,
-      fenceType,
-      segments,
-    });
-  });
 
   return (
     <group name="fences">

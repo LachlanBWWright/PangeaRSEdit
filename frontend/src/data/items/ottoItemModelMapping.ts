@@ -81,13 +81,12 @@ export const OTTO_ITEM_MODEL_MAPPINGS: Record<
     requiresSkeleton: true,
     skeletonFile: "Squooshy.skeleton.rsrc",
   },
-  [ItemType.Human]: {
-    modelFile: "Otto.bg3d",
-    modelPath: "skeletons",
-    modelIndex: 0,
-    requiresSkeleton: true,
-    skeletonFile: "Otto.skeleton.rsrc",
-  },
+  // Human (type 4) is a PARAM-DEPENDENT item!
+  // The model file changes based on p1 parameter:
+  // p1=0: Farmer, p1=1: BeeWoman, p1=2: Scientist, p1=3: SkirtLady
+  // This mapping serves as a fallback - actual selection happens in OttoItemMapper.getMapping()
+  // See: Items/Humans.c - MakeHuman() function uses itemPtr->parm[1] for type
+  [ItemType.Human]: undefined, // Param-dependent - handled by mapper
   [ItemType.Atom]: {
     modelFile: "global.bg3d",
     modelPath: "models",
@@ -104,6 +103,28 @@ export const OTTO_ITEM_MODEL_MAPPINGS: Record<
     modelIndex: 0,
     requiresSkeleton: true,
     skeletonFile: "BrainAlien.skeleton.rsrc",
+  },
+  // Farm enemies (Onion, Corn, Tomato) - skeletal characters
+  [ItemType.Enemy_Onion]: {
+    modelFile: "Onion.bg3d",
+    modelPath: "skeletons",
+    modelIndex: 0,
+    requiresSkeleton: true,
+    skeletonFile: "Onion.skeleton.rsrc",
+  },
+  [ItemType.Enemy_Corn]: {
+    modelFile: "Corn.bg3d",
+    modelPath: "skeletons",
+    modelIndex: 0,
+    requiresSkeleton: true,
+    skeletonFile: "Corn.skeleton.rsrc",
+  },
+  [ItemType.Enemy_Tomato]: {
+    modelFile: "Tomato.bg3d",
+    modelPath: "skeletons",
+    modelIndex: 0,
+    requiresSkeleton: true,
+    skeletonFile: "Tomato.skeleton.rsrc",
   },
   [ItemType.Checkpoint]: {
     modelFile: "global.bg3d",
@@ -354,12 +375,15 @@ export const OTTO_ITEM_MODEL_MAPPINGS: Record<
     requiresSkeleton: true,
     skeletonFile: "MutantRobot.skeleton.rsrc",
   },
+  // HumanScientist (type 61) always uses Scientist skeleton
+  // Different from Human which is param-dependent
+  // See: Items/HumanScientist.c
   [ItemType.HumanScientist]: {
-    modelFile: "Otto.bg3d",
+    modelFile: "Scientist.bg3d",
     modelPath: "skeletons",
     modelIndex: 0,
     requiresSkeleton: true,
-    skeletonFile: "Otto.skeleton.rsrc",
+    skeletonFile: "Scientist.skeleton.rsrc",
   },
   [ItemType.ProximityMine]: {
     modelFile: "level4_apocalypse.bg3d",
@@ -464,6 +488,14 @@ export const OTTO_ITEM_MODEL_MAPPINGS: Record<
     modelPath: "models",
     modelIndex: 14, // GeneratorBumper
   },
+  // Strongman enemy (type 81)
+  [ItemType.Enemy_StrongMan]: {
+    modelFile: "Strongman.bg3d",
+    modelPath: "skeletons",
+    modelIndex: 0,
+    requiresSkeleton: true,
+    skeletonFile: "Strongman.skeleton.rsrc",
+  },
   [ItemType.CloudPlatform]: {
     modelFile: "level5_cloud.bg3d",
     modelPath: "models",
@@ -516,6 +548,14 @@ export const OTTO_ITEM_MODEL_MAPPINGS: Record<
   },
 
   // 92-108: Saucer/Brain boss items
+  // IceCube enemy (type 92)
+  [ItemType.Enemy_IceCube]: {
+    modelFile: "IceCube.bg3d",
+    modelPath: "skeletons",
+    modelIndex: 0,
+    requiresSkeleton: true,
+    skeletonFile: "IceCube.skeleton.rsrc",
+  },
   [ItemType.RadarDish]: {
     modelFile: "level9_saucer.bg3d",
     modelPath: "models",
@@ -527,5 +567,111 @@ export const OTTO_ITEM_MODEL_MAPPINGS: Record<
     modelIndex: 0,
     requiresSkeleton: true,
     skeletonFile: "Beemer.skeleton.rsrc",
+  },
+  
+  // Additional mappings for items that have models
+  // Farm level items
+  [ItemType.MetalTub]: {
+    modelFile: "level1_farm.bg3d",
+    modelPath: "models",
+    modelIndex: 12, // MetalTub
+  },
+  [ItemType.OutHouse]: {
+    modelFile: "level1_farm.bg3d",
+    modelPath: "models",
+    modelIndex: 13, // OutHouse
+  },
+  [ItemType.Hay]: {
+    modelFile: "level1_farm.bg3d",
+    modelPath: "models",
+    modelIndex: 14, // HayBale
+  },
+  
+  // Fire/Ice level items
+  [ItemType.LavaStone]: {
+    modelFile: "level8_fireice.bg3d",
+    modelPath: "models",
+    modelIndex: 4, // LavaStone
+  },
+  [ItemType.Snowball]: {
+    modelFile: "level8_fireice.bg3d",
+    modelPath: "models",
+    modelIndex: 10, // Snowball
+  },
+  [ItemType.LavaPlatform]: {
+    modelFile: "level8_fireice.bg3d",
+    modelPath: "models",
+    modelIndex: 6, // LavaPlatform
+  },
+  [ItemType.IceSaucer]: {
+    modelFile: "level8_fireice.bg3d",
+    modelPath: "models",
+    modelIndex: 8, // IceSaucer
+  },
+  [ItemType.Smoker]: {
+    modelFile: "level8_fireice.bg3d",
+    modelPath: "models",
+    modelIndex: 12, // Smoker
+  },
+  
+  // Saucer level items
+  [ItemType.PeopleHut]: {
+    modelFile: "level9_saucer.bg3d",
+    modelPath: "models",
+    modelIndex: 4, // PeopleHut
+  },
+  [ItemType.Railgun]: {
+    modelFile: "level9_saucer.bg3d",
+    modelPath: "models",
+    modelIndex: 12, // Railgun
+  },
+  [ItemType.Turret]: {
+    modelFile: "level9_saucer.bg3d",
+    modelPath: "models",
+    modelIndex: 14, // Turret
+  },
+  [ItemType.RunwayLights]: {
+    modelFile: "level9_saucer.bg3d",
+    modelPath: "models",
+    modelIndex: 16, // RunwayLights
+  },
+  
+  // Cloud level items
+  [ItemType.TrapDoor]: {
+    modelFile: "level5_cloud.bg3d",
+    modelPath: "models",
+    modelIndex: 18, // TrapDoor
+  },
+  [ItemType.ZigZagSlats]: {
+    modelFile: "level5_cloud.bg3d",
+    modelPath: "models",
+    modelIndex: 20, // ZigZagSlats
+  },
+  [ItemType.BumperCarGate]: {
+    modelFile: "level5_cloud.bg3d",
+    modelPath: "models",
+    modelIndex: 16, // BumperCarGate
+  },
+  
+  // Brain boss level items
+  [ItemType.Enemy_BrainBoss]: {
+    modelFile: "level10_brainboss.bg3d",
+    modelPath: "models",
+    modelIndex: 0, // BrainBoss
+  },
+  [ItemType.BlobArrow]: {
+    modelFile: "level10_brainboss.bg3d",
+    modelPath: "models",
+    modelIndex: 2, // BlobArrow
+  },
+  [ItemType.NeuronStrand]: {
+    modelFile: "level10_brainboss.bg3d",
+    modelPath: "models",
+    modelIndex: 4, // NeuronStrand
+  },
+  [ItemType.BrainPort]: {
+    modelFile: "level10_brainboss.bg3d",
+    modelPath: "models",
+    modelIndex: 6, // BrainPort
   },
 };

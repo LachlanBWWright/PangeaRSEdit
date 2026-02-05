@@ -8,10 +8,16 @@ export {
   Game,
   DataType,
   type GlobalsInterface,
-  GLOBALS_PRESETS,
   Globals,
-  GlobalsProvider,
+  OttoGlobals,
+  BugdomGlobals,
+  Bugdom2Globals,
+  NanosaurGlobals,
+  Nanosaur2Globals,
+  CroMagGlobals,
+  BillyFrontierGlobals,
+  MightyMikeGlobals,
 } from "./globals";
 
 export { LevelNumber } from "./levelNumber";
-export { UndoHistory, RedoHistory } from "./history";
+export { BlockHistoryUpdate } from "./history";

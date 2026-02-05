@@ -2,10 +2,13 @@
  * Nanosaur 2 Item Model Mapper
  *
  * Maps Nanosaur 2 item types to their corresponding 3D models.
- * Nanosaur 2 uses level-specific BG3D files similar to Otto Matic.
+ * Nanosaur 2 uses level-specific BG3D files.
  *
- * Note: Most models in Nanosaur 2 are stored in level-specific files like
- * level1.bg3d, level2.bg3d, etc. Some global models exist in global.bg3d.
+ * Note: Models are stored in themed files:
+ * - forest.bg3d - Forest level items
+ * - swamp.bg3d - Swamp level items
+ * - desert.bg3d - Desert level items
+ * - global.bg3d - Global items used across all levels
  */
 
 import { Game } from "../../globals/globals";
@@ -19,11 +22,9 @@ import { ItemType } from "../nanosaur2ItemType";
  * Level-specific model files for Nanosaur 2 (for future use with level-aware loading)
  */
 export const NANOSAUR2_LEVEL_MODEL_FILES: Record<number, string> = {
-  1: "level1.bg3d",
-  2: "level2.bg3d",
-  3: "level3.bg3d",
-  4: "level4.bg3d",
-  5: "level5.bg3d",
+  0: "forest.bg3d",    // Forest level
+  1: "swamp.bg3d",     // Swamp level
+  2: "desert.bg3d",    // Desert level
 };
 
 /**
@@ -33,7 +34,7 @@ export const NANOSAUR2_LEVEL_MODEL_FILES: Record<number, string> = {
 const NANOSAUR2_BASE_MAPPINGS: Record<number, UniversalItemModelMapping> = {
   // Trees (Level 1 - Forest)
   [ItemType.BirchTree]: {
-    modelFile: "level1.bg3d",
+    modelFile: "forest.bg3d",
     modelPath: "models",
     modelIndex: 0,
     scale: 1.0,
@@ -46,7 +47,7 @@ const NANOSAUR2_BASE_MAPPINGS: Record<number, UniversalItemModelMapping> = {
   },
 
   [ItemType.PineTree]: {
-    modelFile: "level1.bg3d",
+    modelFile: "forest.bg3d",
     modelPath: "models",
     modelIndex: 4,
     scale: 1.0,
@@ -59,14 +60,14 @@ const NANOSAUR2_BASE_MAPPINGS: Record<number, UniversalItemModelMapping> = {
   },
 
   [ItemType.SmallTree]: {
-    modelFile: "level1.bg3d",
+    modelFile: "forest.bg3d",
     modelPath: "models",
     modelIndex: 8,
     scale: 0.8,
   },
 
   [ItemType.FallenTree]: {
-    modelFile: "level1.bg3d",
+    modelFile: "forest.bg3d",
     modelPath: "models",
     modelIndex: 10,
     scale: 1.0,
@@ -81,7 +82,7 @@ const NANOSAUR2_BASE_MAPPINGS: Record<number, UniversalItemModelMapping> = {
   },
 
   [ItemType.TreeStump]: {
-    modelFile: "level1.bg3d",
+    modelFile: "forest.bg3d",
     modelPath: "models",
     modelIndex: 11,
     scale: 0.6,
@@ -89,28 +90,28 @@ const NANOSAUR2_BASE_MAPPINGS: Record<number, UniversalItemModelMapping> = {
 
   // Vegetation (Level 1)
   [ItemType.Grass]: {
-    modelFile: "level1.bg3d",
+    modelFile: "forest.bg3d",
     modelPath: "models",
     modelIndex: 12,
     scale: 0.5,
   },
 
   [ItemType.Fern]: {
-    modelFile: "level1.bg3d",
+    modelFile: "forest.bg3d",
     modelPath: "models",
     modelIndex: 13,
     scale: 0.7,
   },
 
   [ItemType.BerryBush]: {
-    modelFile: "level1.bg3d",
+    modelFile: "forest.bg3d",
     modelPath: "models",
     modelIndex: 14,
     scale: 0.8,
   },
 
   [ItemType.CatTail]: {
-    modelFile: "level1.bg3d",
+    modelFile: "forest.bg3d",
     modelPath: "models",
     modelIndex: 15,
     scale: 0.6,
@@ -118,7 +119,7 @@ const NANOSAUR2_BASE_MAPPINGS: Record<number, UniversalItemModelMapping> = {
 
   // Rocks
   [ItemType.Rock]: {
-    modelFile: "level1.bg3d",
+    modelFile: "forest.bg3d",
     modelPath: "models",
     modelIndex: 16,
     scale: 1.0,
@@ -130,7 +131,7 @@ const NANOSAUR2_BASE_MAPPINGS: Record<number, UniversalItemModelMapping> = {
   },
 
   [ItemType.RiverRock]: {
-    modelFile: "level1.bg3d",
+    modelFile: "forest.bg3d",
     modelPath: "models",
     modelIndex: 19,
     scale: 0.8,
@@ -216,7 +217,7 @@ const NANOSAUR2_BASE_MAPPINGS: Record<number, UniversalItemModelMapping> = {
   },
 
   [ItemType.GasMound]: {
-    modelFile: "level1.bg3d",
+    modelFile: "forest.bg3d",
     modelPath: "models",
     modelIndex: 20,
     scale: 1.0,
@@ -231,7 +232,7 @@ const NANOSAUR2_BASE_MAPPINGS: Record<number, UniversalItemModelMapping> = {
 
   // Forest Door system
   [ItemType.ForestDoor]: {
-    modelFile: "level1.bg3d",
+    modelFile: "forest.bg3d",
     modelPath: "models",
     modelIndex: 21,
     scale: 1.0,
@@ -246,7 +247,7 @@ const NANOSAUR2_BASE_MAPPINGS: Record<number, UniversalItemModelMapping> = {
   },
 
   [ItemType.ForestDoorKey]: {
-    modelFile: "level1.bg3d",
+    modelFile: "forest.bg3d",
     modelPath: "models",
     modelIndex: 22,
     scale: 0.5,
@@ -262,7 +263,7 @@ const NANOSAUR2_BASE_MAPPINGS: Record<number, UniversalItemModelMapping> = {
 
   // Desert Level (Level 2)
   [ItemType.DesertTree]: {
-    modelFile: "level2.bg3d",
+    modelFile: "swamp.bg3d",
     modelPath: "models",
     modelIndex: 0,
     scale: 1.0,
@@ -276,7 +277,7 @@ const NANOSAUR2_BASE_MAPPINGS: Record<number, UniversalItemModelMapping> = {
   },
 
   [ItemType.DesertBush]: {
-    modelFile: "level2.bg3d",
+    modelFile: "swamp.bg3d",
     modelPath: "models",
     modelIndex: 5,
     scale: 0.8,
@@ -287,7 +288,7 @@ const NANOSAUR2_BASE_MAPPINGS: Record<number, UniversalItemModelMapping> = {
   },
 
   [ItemType.Cactus]: {
-    modelFile: "level2.bg3d",
+    modelFile: "swamp.bg3d",
     modelPath: "models",
     modelIndex: 7,
     scale: 1.0,
@@ -299,14 +300,14 @@ const NANOSAUR2_BASE_MAPPINGS: Record<number, UniversalItemModelMapping> = {
   },
 
   [ItemType.Crystal]: {
-    modelFile: "level2.bg3d",
+    modelFile: "swamp.bg3d",
     modelPath: "models",
     modelIndex: 10,
     scale: 0.6,
   },
 
   [ItemType.PalmTree]: {
-    modelFile: "level2.bg3d",
+    modelFile: "swamp.bg3d",
     modelPath: "models",
     modelIndex: 11,
     scale: 1.0,
@@ -317,7 +318,7 @@ const NANOSAUR2_BASE_MAPPINGS: Record<number, UniversalItemModelMapping> = {
   },
 
   [ItemType.PalmBush]: {
-    modelFile: "level2.bg3d",
+    modelFile: "swamp.bg3d",
     modelPath: "models",
     modelIndex: 13,
     scale: 0.7,
@@ -328,7 +329,7 @@ const NANOSAUR2_BASE_MAPPINGS: Record<number, UniversalItemModelMapping> = {
   },
 
   [ItemType.BurntDesertTree]: {
-    modelFile: "level2.bg3d",
+    modelFile: "swamp.bg3d",
     modelPath: "models",
     modelIndex: 15,
     scale: 1.0,
@@ -336,7 +337,7 @@ const NANOSAUR2_BASE_MAPPINGS: Record<number, UniversalItemModelMapping> = {
 
   // Swamp Level (Level 3)
   [ItemType.SwampFallenTree]: {
-    modelFile: "level3.bg3d",
+    modelFile: "desert.bg3d",
     modelPath: "models",
     modelIndex: 0,
     scale: 1.0,
@@ -347,49 +348,49 @@ const NANOSAUR2_BASE_MAPPINGS: Record<number, UniversalItemModelMapping> = {
   },
 
   [ItemType.SwampStump]: {
-    modelFile: "level3.bg3d",
+    modelFile: "desert.bg3d",
     modelPath: "models",
     modelIndex: 2,
     scale: 0.6,
   },
 
   [ItemType.HydraTree]: {
-    modelFile: "level3.bg3d",
+    modelFile: "desert.bg3d",
     modelPath: "models",
     modelIndex: 3,
     scale: 1.0,
   },
 
   [ItemType.OddTree]: {
-    modelFile: "level3.bg3d",
+    modelFile: "desert.bg3d",
     modelPath: "models",
     modelIndex: 4,
     scale: 1.0,
   },
 
   [ItemType.GeckoPlant]: {
-    modelFile: "level3.bg3d",
+    modelFile: "desert.bg3d",
     modelPath: "models",
     modelIndex: 5,
     scale: 0.8,
   },
 
   [ItemType.SproutPlant]: {
-    modelFile: "level3.bg3d",
+    modelFile: "desert.bg3d",
     modelPath: "models",
     modelIndex: 6,
     scale: 0.6,
   },
 
   [ItemType.Ivy]: {
-    modelFile: "level3.bg3d",
+    modelFile: "desert.bg3d",
     modelPath: "models",
     modelIndex: 7,
     scale: 0.7,
   },
 
   [ItemType.Hole]: {
-    modelFile: "level3.bg3d",
+    modelFile: "desert.bg3d",
     modelPath: "models",
     modelIndex: 8,
     scale: 1.0,
@@ -462,7 +463,7 @@ const NANOSAUR2_BASE_MAPPINGS: Record<number, UniversalItemModelMapping> = {
 
   // Special items
   [ItemType.BentPineTree]: {
-    modelFile: "level1.bg3d",
+    modelFile: "forest.bg3d",
     modelPath: "models",
     modelIndex: 23,
     scale: 1.0,

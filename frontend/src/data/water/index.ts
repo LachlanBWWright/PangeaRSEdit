@@ -13,10 +13,10 @@ export { SelectedWaterBody } from "./waterAtoms";
 export { getWaterBodyTypes } from "./getWaterBodyTypes";
 export { getWaterBodyTypeName } from "./getWaterBodyTypeName";
 
-// Game-specific water body types
-export * from "./ottoWaterBodyType";
-export * from "./bugdomWaterBodyType";
-export * from "./bugdom2WaterBodyType";
-export * from "./billyFrontierWaterBodyType";
-export * from "./nanosaur2WaterBodyType";
-export * from "./croMagWaterBodyType";
+// Game-specific water body types - export with explicit names to avoid conflicts
+export { WaterBodyType as OttoWaterBodyType, waterBodyNames as ottoWaterBodyNames } from "./ottoWaterBodyType";
+export { WaterBodyType as BugdomWaterBodyType, waterBodyNames as bugdomWaterBodyNames } from "./bugdomWaterBodyType";
+export { WaterBodyType as Bugdom2WaterBodyType, waterBodyNames as bugdom2WaterBodyNames } from "./bugdom2WaterBodyType";
+export { WaterBodyType as BillyFrontierWaterBodyType, waterBodyNames as billyFrontierWaterBodyNames } from "./billyFrontierWaterBodyType";
+export { WaterBodyType as Nanosaur2WaterBodyType, waterBodyNames as nanosaur2WaterBodyNames } from "./nanosaur2WaterBodyType";
+export { WaterBodyType as CroMagWaterBodyType, waterBodyNames as croMagWaterBodyNames } from "./croMagWaterBodyType";

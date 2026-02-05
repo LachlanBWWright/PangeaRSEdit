@@ -5,8 +5,8 @@
  * the actual source code in the GitHub repositories.
  */
 
-import { Result, ok, err } from "../types/result";
-import { Citation, extractCitations, extractAllCitations } from "./citationExtractor";
+import { extractCitations, extractAllCitations } from "./citationExtractor";
+import type { Citation } from "./citationExtractor";
 import { GitHubFileCache } from "./githubFetcher";
 import { GAME_REPOSITORIES } from "./gameRepositories";
 
@@ -139,11 +139,14 @@ export function findCodeInFile(
   
   if (codeLines.length === 0) return null;
   
-  const firstCodeLine = codeLines[0];
+  const firstCodeLine = codeLines[0] ?? "";
   
   // Search for match
   for (let i = 0; i < fileLines.length; i++) {
-    const normalizedFileLine = normalizeCode(fileLines[i]);
+    const fileLine = fileLines[i];
+    if (fileLine === undefined) continue;
+    
+    const normalizedFileLine = normalizeCode(fileLine);
     
     // Skip empty lines in the file
     if (normalizedFileLine.length === 0) continue;
@@ -165,10 +168,12 @@ export function findCodeInFile(
     let fileLineIndex = i + 1;
     
     for (let j = 1; j < codeLines.length; j++) {
-      const expectedLine = codeLines[j];
+      const expectedLine = codeLines[j] ?? "";
       
       // Skip empty file lines
-      while (fileLineIndex < fileLines.length && normalizeCode(fileLines[fileLineIndex]).length === 0) {
+      while (fileLineIndex < fileLines.length) {
+        const checkLine = fileLines[fileLineIndex];
+        if (checkLine !== undefined && normalizeCode(checkLine).length > 0) break;
         fileLineIndex++;
       }
       
@@ -177,7 +182,12 @@ export function findCodeInFile(
         break;
       }
       
-      const actualLine = normalizeCode(fileLines[fileLineIndex]);
+      const actualFileLine = fileLines[fileLineIndex];
+      if (actualFileLine === undefined) {
+        allMatch = false;
+        break;
+      }
+      const actualLine = normalizeCode(actualFileLine);
       if (!actualLine.includes(expectedLine) && !expectedLine.includes(actualLine)) {
         allMatch = false;
         break;
@@ -298,7 +308,10 @@ export async function verifyGameCitations(
   const results: VerificationResult[] = [];
   
   for (let i = 0; i < citations.length; i++) {
-    const result = await verifyCitation(citations[i], cache);
+    const citation = citations[i];
+    if (!citation) continue;
+    
+    const result = await verifyCitation(citation, cache);
     results.push(result);
     
     if (progressCallback) {
@@ -369,40 +382,43 @@ export function summarizeResults(results: VerificationResult[]): VerificationSum
   };
   
   for (const result of results) {
+    const game = result.citation.game;
     // Update game-specific stats
-    if (!summary.byGame[result.citation.game]) {
-      summary.byGame[result.citation.game] = { total: 0, verified: 0, failures: 0 };
+    let gameStats = summary.byGame[game];
+    if (!gameStats) {
+      gameStats = { total: 0, verified: 0, failures: 0 };
+      summary.byGame[game] = gameStats;
     }
-    summary.byGame[result.citation.game].total++;
+    gameStats.total++;
     
     switch (result.status) {
       case VerificationStatus.VERIFIED:
         summary.verified++;
-        summary.byGame[result.citation.game].verified++;
+        gameStats.verified++;
         break;
       case VerificationStatus.PARTIAL_MATCH:
         summary.partialMatches++;
-        summary.byGame[result.citation.game].failures++;
+        gameStats.failures++;
         break;
       case VerificationStatus.CODE_CHANGED:
         summary.codeChanged++;
-        summary.byGame[result.citation.game].failures++;
+        gameStats.failures++;
         break;
       case VerificationStatus.FILE_NOT_FOUND:
         summary.fileNotFound++;
-        summary.byGame[result.citation.game].failures++;
+        gameStats.failures++;
         break;
       case VerificationStatus.LINE_NOT_FOUND:
         summary.lineNotFound++;
-        summary.byGame[result.citation.game].failures++;
+        gameStats.failures++;
         break;
       case VerificationStatus.NETWORK_ERROR:
         summary.networkErrors++;
-        summary.byGame[result.citation.game].failures++;
+        gameStats.failures++;
         break;
       case VerificationStatus.NO_REPOSITORY:
         summary.noRepository++;
-        summary.byGame[result.citation.game].failures++;
+        gameStats.failures++;
         break;
     }
   }

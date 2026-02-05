@@ -1,30 +1,27 @@
 /**
  * Bugdom Item Type to 3D Model Mapping
  *
- * Maps each item type to its corresponding BG3D model file and mesh information.
- * Extracted from Bugdom source code:
- * - /games/bugdom/Source/Headers/mobjtypes.h
+ * Bugdom 1 uses 3DMF model format which is supported by the worker (auto-detected by magic number).
  *
- * Bugdom organizes models into several level-specific files:
- * - lawn1.bg3d (LAWN level)
- * - lawn2.bg3d (LAWN 2 level)
- * - pond.bg3d (POND level)
- * - forest.bg3d (FOREST level)
- * - hive.bg3d (HIVE level)
- * - night.bg3d (NIGHT level)
- * - anthill.bg3d (ANTHILL level)
- * - global1.bg3d (GLOBAL1 items)
- * - global2.bg3d (GLOBAL2 items)
+ * Model files available (3DMF format):
+ * - /models/Lawn_Models1.3dmf, Lawn_Models2.3dmf
+ * - /models/Pond_Models.3dmf
+ * - /models/Forest_Models.3dmf
+ * - /models/BeeHive_Models.3dmf
+ * - /models/Night_Models.3dmf
+ * - /models/AntHill_Models.3dmf
+ * - /models/Global_Models1.3dmf, Global_Models2.3dmf
+ * - /skeletons/*.3dmf - Character skeletons
  */
 
 /**
  * Describes how to load and render a 3D model for a Bugdom item type
  */
 export interface BugdomItemModelMapping {
-  /** BG3D filename (e.g., "lawn1.bg3d", "global1.bg3d") */
+  /** 3DMF filename (e.g., "Lawn_Models1.3dmf") */
   modelFile: string;
 
-  /** Subdirectory in /games/bugdom/ */
+  /** Subdirectory in /games/bugdom1/ */
   modelPath: "models" | "skeletons";
 
   /** Model index within the BG3D file (0-indexed, maps to Subgroup_N) */
@@ -52,24 +49,59 @@ export const BUGDOM_ITEM_MODEL_MAPPINGS: Record<
   number,
   BugdomItemModelMapping | undefined
 > = {
-  // LAWN level objects
-  // TODO: Map remaining LAWN level items using lawn1.bg3d indices 0-12
-  // LAWN 2 level objects
-  // TODO: Map remaining LAWN 2 level items using lawn2.bg3d indices 0-9
-  // POND level objects
-  // TODO: Map remaining POND level items using pond.bg3d indices 0-11
-  // FOREST level objects
-  // TODO: Map remaining FOREST level items using forest.bg3d indices 0-12
-  // HIVE level objects
-  // TODO: Map remaining HIVE level items using hive.bg3d indices 0-28
-  // NIGHT level objects
-  // TODO: Map remaining NIGHT level items using night.bg3d indices 0-23
-  // ANTHILL level objects
-  // TODO: Map remaining ANTHILL level items using anthill.bg3d indices 0-6
-  // GLOBAL 1 items
-  // TODO: Map GLOBAL1 items using global1.bg3d indices 0-10
-  // GLOBAL 2 items
-  // TODO: Map GLOBAL2 items using global2.bg3d indices 0-8
+  // Enemy skeletons
+  1: { modelFile: "LadyBug.3dmf", modelPath: "skeletons", modelIndex: 0, requiresSkeleton: true, skeletonFile: "LadyBug.skeleton.rsrc" }, // LadyBug Bonus
+  3: { modelFile: "BoxerFly.3dmf", modelPath: "skeletons", modelIndex: 0, requiresSkeleton: true, skeletonFile: "BoxerFly.skeleton.rsrc" }, // ENEMY: BOXERFLY
+  8: { modelFile: "Slug.3dmf", modelPath: "skeletons", modelIndex: 0, requiresSkeleton: true, skeletonFile: "Slug.skeleton.rsrc" }, // Slug enemy
+  9: { modelFile: "Ant.3dmf", modelPath: "skeletons", modelIndex: 0, requiresSkeleton: true, skeletonFile: "Ant.skeleton.rsrc" }, // Ant
+  15: { modelFile: "WingedFireAnt.3dmf", modelPath: "skeletons", modelIndex: 0, requiresSkeleton: true, skeletonFile: "WingedFireAnt.skeleton.rsrc" }, // FireAnt
+  16: { modelFile: "WaterBug.3dmf", modelPath: "skeletons", modelIndex: 0, requiresSkeleton: true, skeletonFile: "WaterBug.skeleton.rsrc" }, // WaterBug
+  18: { modelFile: "DragonFly.3dmf", modelPath: "skeletons", modelIndex: 0, requiresSkeleton: true, skeletonFile: "DragonFly.skeleton.rsrc" }, // Dragonfly
+  25: { modelFile: "PondFish.3dmf", modelPath: "skeletons", modelIndex: 0, requiresSkeleton: true, skeletonFile: "PondFish.skeleton.rsrc" }, // Pond Fish Enemy
+  31: { modelFile: "Mosquito.3dmf", modelPath: "skeletons", modelIndex: 0, requiresSkeleton: true, skeletonFile: "Mosquito.skeleton.rsrc" }, // Mosquito Enemy
+  35: { modelFile: "Foot.3dmf", modelPath: "skeletons", modelIndex: 0, requiresSkeleton: true, skeletonFile: "Foot.skeleton.rsrc" }, // Foot
+  36: { modelFile: "Spider.3dmf", modelPath: "skeletons", modelIndex: 0, requiresSkeleton: true, skeletonFile: "Spider.skeleton.rsrc" }, // ENEMY: SPIDER
+  37: { modelFile: "Caterpillar.3dmf", modelPath: "skeletons", modelIndex: 0, requiresSkeleton: true, skeletonFile: "Caterpillar.skeleton.rsrc" }, // ENEMY: CATERPILLER
+  38: { modelFile: "FireFly.3dmf", modelPath: "skeletons", modelIndex: 0, requiresSkeleton: true, skeletonFile: "FireFly.skeleton.rsrc" }, // Firefly
+  40: { modelFile: "RootSwing.3dmf", modelPath: "skeletons", modelIndex: 0, requiresSkeleton: true, skeletonFile: "RootSwing.skeleton.rsrc" }, // Root swing
+  46: { modelFile: "Larva.3dmf", modelPath: "skeletons", modelIndex: 0, requiresSkeleton: true, skeletonFile: "Larva.skeleton.rsrc" }, // ENEMY: LARVA
+  47: { modelFile: "FlyingBee.3dmf", modelPath: "skeletons", modelIndex: 0, requiresSkeleton: true, skeletonFile: "FlyingBee.skeleton.rsrc" }, // ENEMY: FLYING BEE
+  48: { modelFile: "WorkerBee.3dmf", modelPath: "skeletons", modelIndex: 0, requiresSkeleton: true, skeletonFile: "WorkerBee.skeleton.rsrc" }, // ENEMY: WORKER BEE
+  49: { modelFile: "QueenBee.3dmf", modelPath: "skeletons", modelIndex: 0, requiresSkeleton: true, skeletonFile: "QueenBee.skeleton.rsrc" }, // ENEMY: QUEEN BEE
+  53: { modelFile: "Roach.3dmf", modelPath: "skeletons", modelIndex: 0, requiresSkeleton: true, skeletonFile: "Roach.skeleton.rsrc" }, // ENEMY: ROACH
+  54: { modelFile: "Skippy.3dmf", modelPath: "skeletons", modelIndex: 0, requiresSkeleton: true, skeletonFile: "Skippy.skeleton.rsrc" }, // ENEMY: SKIPPY (player character)
+  59: { modelFile: "AntKing.3dmf", modelPath: "skeletons", modelIndex: 0, requiresSkeleton: true, skeletonFile: "AntKing.skeleton.rsrc" }, // ENEMY: KING ANT
+
+  // Level models - note: these need model indices from actual file examination
+  // For now, map to first model (index 0) as placeholder
+  2: { modelFile: "Global_Models1.3dmf", modelPath: "models", modelIndex: 0 }, // Nut
+  4: { modelFile: "Lawn_Models1.3dmf", modelPath: "models", modelIndex: 0 }, // Rock
+  5: { modelFile: "Lawn_Models1.3dmf", modelPath: "models", modelIndex: 1 }, // Clover
+  6: { modelFile: "Lawn_Models1.3dmf", modelPath: "models", modelIndex: 2 }, // Grass
+  7: { modelFile: "Lawn_Models1.3dmf", modelPath: "models", modelIndex: 3 }, // Weed
+  10: { modelFile: "Lawn_Models1.3dmf", modelPath: "models", modelIndex: 4 }, // Sunflower
+  11: { modelFile: "Lawn_Models1.3dmf", modelPath: "models", modelIndex: 5 }, // Cosmo
+  12: { modelFile: "Lawn_Models1.3dmf", modelPath: "models", modelIndex: 6 }, // Poppy
+  17: { modelFile: "Pond_Models.3dmf", modelPath: "models", modelIndex: 0 }, // Tree (flight level)
+  19: { modelFile: "Pond_Models.3dmf", modelPath: "models", modelIndex: 1 }, // Cat Tail
+  20: { modelFile: "Pond_Models.3dmf", modelPath: "models", modelIndex: 2 }, // Duck Weed
+  21: { modelFile: "Pond_Models.3dmf", modelPath: "models", modelIndex: 3 }, // Lily Flower
+  22: { modelFile: "Pond_Models.3dmf", modelPath: "models", modelIndex: 4 }, // Lily Pad
+  23: { modelFile: "Pond_Models.3dmf", modelPath: "models", modelIndex: 5 }, // Pond Grass
+  24: { modelFile: "Pond_Models.3dmf", modelPath: "models", modelIndex: 6 }, // Reed
+  26: { modelFile: "BeeHive_Models.3dmf", modelPath: "models", modelIndex: 0 }, // Honeycomb platform
+  28: { modelFile: "Night_Models.3dmf", modelPath: "models", modelIndex: 0 }, // Firecracker
+  32: { modelFile: "Global_Models1.3dmf", modelPath: "models", modelIndex: 1 }, // Checkpoint
+  39: { modelFile: "Forest_Models.3dmf", modelPath: "models", modelIndex: 0 }, // Exit Log
+  41: { modelFile: "Forest_Models.3dmf", modelPath: "models", modelIndex: 1 }, // Thorn Bush
+  50: { modelFile: "Forest_Models.3dmf", modelPath: "models", modelIndex: 2 }, // Rock Ledge
+  51: { modelFile: "Forest_Models.3dmf", modelPath: "models", modelIndex: 3 }, // Stump
+  52: { modelFile: "Night_Models.3dmf", modelPath: "models", modelIndex: 1 }, // Rolling Boulder
+  57: { modelFile: "AntHill_Models.3dmf", modelPath: "models", modelIndex: 0 }, // Bent Ant Pipe
+  58: { modelFile: "AntHill_Models.3dmf", modelPath: "models", modelIndex: 1 }, // Horiz Ant Pipe
+  61: { modelFile: "AntHill_Models.3dmf", modelPath: "models", modelIndex: 2 }, // Wooden Post
+  62: { modelFile: "AntHill_Models.3dmf", modelPath: "models", modelIndex: 3 }, // Floor Spike
+  63: { modelFile: "AntHill_Models.3dmf", modelPath: "models", modelIndex: 4 }, // King Water Pipe
 };
 
 /**
