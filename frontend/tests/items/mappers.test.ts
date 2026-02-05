@@ -242,9 +242,23 @@ describe("Game Item Mappers", () => {
     });
     
     it("should have getLevelModelFile method", () => {
-      expect(bugdom2ItemMapper.getLevelModelFile(0)).toBe("garden.bg3d");
-      expect(bugdom2ItemMapper.getLevelModelFile(3)).toBe("playroom.bg3d");
+      // Level file names match actual files in /games/bugdom2/models/
+      expect(bugdom2ItemMapper.getLevelModelFile(0)).toBe("Level1_Garden.bg3d");
+      expect(bugdom2ItemMapper.getLevelModelFile(3)).toBe("Level5_Playroom.bg3d");
       expect(bugdom2ItemMapper.getLevelModelFile(99)).toBeUndefined();
+    });
+    
+    it("should have model mappings", () => {
+      // Snail (type 1) has a skeleton model
+      const snailMapping = bugdom2ItemMapper.getMapping(1);
+      expect(snailMapping).toBeDefined();
+      expect(snailMapping?.modelFile).toBe("Snail.bg3d");
+      expect(snailMapping?.modelPath).toBe("skeletons");
+      
+      // Gnome enemy (type 4) has a skeleton model
+      const gnomeMapping = bugdom2ItemMapper.getMapping(4);
+      expect(gnomeMapping).toBeDefined();
+      expect(gnomeMapping?.modelFile).toBe("Gnome.bg3d");
     });
     
     it("should handle level-specific lookups", () => {
