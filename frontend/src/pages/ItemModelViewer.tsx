@@ -79,7 +79,7 @@ const GAME_OPTIONS: GameOption[] = [
   },
   { 
     id: Game.BUGDOM, 
-    name: "Bugdom", 
+    name: "Bugdom (3DMF - not supported)", 
     globals: BugdomGlobals,
     basePath: "/PangeaRSEdit/games/bugdom1",
   },
@@ -91,7 +91,7 @@ const GAME_OPTIONS: GameOption[] = [
   },
   { 
     id: Game.NANOSAUR, 
-    name: "Nanosaur", 
+    name: "Nanosaur (3DMF - not supported)", 
     globals: NanosaurGlobals,
     basePath: "/PangeaRSEdit/games/nanosaur1",
   },
