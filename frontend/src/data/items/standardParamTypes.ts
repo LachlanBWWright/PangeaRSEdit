@@ -471,3 +471,18 @@ export function hasModelVariants(typeSelector: TypeSelectorParam): boolean {
   return typeSelector.modelVariants !== undefined && 
          Object.keys(typeSelector.modelVariants).length > 0;
 }
+
+/**
+ * Get a parameter value from params by index (0-3)
+ */
+export function getParamByIndex(
+  params: { p0: number; p1: number; p2: number; p3: number },
+  index: 0 | 1 | 2 | 3
+): number {
+  switch (index) {
+    case 0: return params.p0;
+    case 1: return params.p1;
+    case 2: return params.p2;
+    case 3: return params.p3;
+  }
+}

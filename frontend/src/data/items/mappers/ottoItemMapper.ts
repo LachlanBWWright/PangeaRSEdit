@@ -22,6 +22,7 @@ import {
   type TypeSelectorParam,
   getModelVariant,
   hasModelVariants,
+  getParamByIndex,
 } from "../standardParamTypes";
 
 /**
@@ -81,7 +82,7 @@ function getParamDependentMapping(
   config: ParamDependentConfig,
   params?: { p0: number; p1: number; p2: number; p3: number },
 ): UniversalItemModelMapping | undefined {
-  const paramValue = params?.[`p${config.paramIndex}` as keyof typeof params] ?? 0;
+  const paramValue = params ? getParamByIndex(params, config.paramIndex) : 0;
   const variant = getModelVariant(paramValue, config.paramType);
   
   if (!variant) {

@@ -12,6 +12,7 @@ import { Show3DItemModels } from "@/data/canvasView/canvasViewAtoms";
 import { getTerrainHeightAtPoint } from "./fenceUtils/getTerrainHeightAtPoint";
 import { useOttoItemModelCache } from "./hooks/useOttoItemModelCache";
 import { getGameMapper } from "@/data/items/mappers";
+import { getParamByIndex } from "@/data/items/standardParamTypes";
 import {
   getLiquidPatchStyle,
   getLiquidPatchDimensions,
@@ -196,8 +197,8 @@ export const ItemGeometry: React.FC<ItemGeometryProps> = ({
       const config = mapper.getParamDependentConfig?.(itemType);
       if (config) {
         const params = { p0, p1, p2, p3 };
-        const paramKey = `p${config.paramIndex}` as keyof typeof params;
-        return `${itemType}_${paramKey}_${params[paramKey]}`;
+        const paramValue = getParamByIndex(params, config.paramIndex);
+        return `${itemType}_p${config.paramIndex}_${paramValue}`;
       }
       // Fallback: use p1 for backwards compatibility
       return `${itemType}_p1_${p1}`;

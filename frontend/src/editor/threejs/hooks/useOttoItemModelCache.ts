@@ -14,6 +14,7 @@ import { useState, useRef, useCallback } from "react";
 import BG3DGltfWorker from "@/modelParsers/bg3dGltfWorker?worker";
 import { getGameMapper } from "@/data/items/mappers";
 import { Game } from "@/data/globals/globals";
+import { getParamByIndex } from "@/data/items/standardParamTypes";
 import { Group } from "three";
 import {
   GLTFLoader,
@@ -54,8 +55,8 @@ function getCacheKey(itemType: number, params?: ItemParams): string {
     // Get the param config to know which param index to use
     const config = mapper.getParamDependentConfig?.(itemType);
     if (config) {
-      const paramKey = `p${config.paramIndex}` as keyof ItemParams;
-      return `${itemType}_${paramKey}_${params[paramKey]}`;
+      const paramValue = getParamByIndex(params, config.paramIndex);
+      return `${itemType}_p${config.paramIndex}_${paramValue}`;
     }
     // Fallback: use p1 for backwards compatibility
     return `${itemType}_p1_${params.p1}`;
