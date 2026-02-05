@@ -213,9 +213,10 @@ export const useItemModelCache = (game: Game = Game.OTTO_MATIC): UseItemModelCac
         const bg3dUrl = `${baseUrl}/${mapping.modelPath}/${mapping.modelFile}`;
 
         // Fetch BG3D file
+        console.log(`[ItemModelCache] Loading model: ${bg3dUrl} (index: ${mapping.modelIndex})`);
         const response = await fetch(bg3dUrl);
         if (!response.ok) {
-          throw new Error(`Failed to fetch BG3D file: ${response.statusText}`);
+          throw new Error(`Failed to fetch BG3D file: ${response.statusText} (URL: ${bg3dUrl})`);
         }
         const buffer = await response.arrayBuffer();
 
@@ -335,6 +336,7 @@ export const useItemModelCache = (game: Game = Game.OTTO_MATIC): UseItemModelCac
         return finalGltf;
       } catch (error) {
         const err = error instanceof Error ? error : new Error(String(error));
+        console.error(`[ItemModelCache] Error loading model for item type ${itemType}:`, err.message);
 
         // Cache the error
         setModelCache((prev) => {
