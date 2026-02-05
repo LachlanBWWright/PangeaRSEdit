@@ -1,4 +1,4 @@
-import React, { useMemo, useEffect, useRef } from "react";
+import React, { useMemo, useEffect, useRef, useCallback } from "react";
 import { Mesh, Group, DoubleSide } from "three";
 import {
   ItemData,
@@ -191,7 +191,7 @@ export const ItemGeometry: React.FC<ItemGeometryProps> = ({
 
   // Generate a cache key for an item including its params
   // Uses the mapper to determine which items are param-dependent
-  const getItemCacheKey = (itemType: number, p0: number, p1: number, p2: number, p3: number): string => {
+  const getItemCacheKey = useCallback((itemType: number, p0: number, p1: number, p2: number, p3: number): string => {
     // Use the mapper to check if this item is param-dependent
     if (mapper?.isParamDependent?.(itemType)) {
       const config = mapper.getParamDependentConfig?.(itemType);
@@ -204,7 +204,7 @@ export const ItemGeometry: React.FC<ItemGeometryProps> = ({
       return `${itemType}_p1_${p1}`;
     }
     return String(itemType);
-  };
+  }, [mapper]);
 
   // Group items by cache key for easier processing
   // This handles param-dependent items by grouping by the full key
@@ -222,7 +222,7 @@ export const ItemGeometry: React.FC<ItemGeometryProps> = ({
       }
     });
     return groups;
-  }, [items]);
+  }, [items, getItemCacheKey]);
 
   // Pre-load models for visible item types when toggle is enabled
   // Also prepare cloned scenes for instancing
@@ -265,7 +265,7 @@ export const ItemGeometry: React.FC<ItemGeometryProps> = ({
     // Only load 3D models for Otto Matic since useOttoItemModelCache is Otto-specific
     if (show3DItemModels && isOttoMatic) {
       // Load models for all unique item cache keys in the level
-      itemsByCacheKey.forEach((itemsInGroup, _cacheKey) => {
+      itemsByCacheKey.forEach((itemsInGroup) => {
         const firstItem = itemsInGroup[0];
         if (!firstItem) return;
         
