@@ -568,4 +568,110 @@ export const OTTO_ITEM_MODEL_MAPPINGS: Record<
     requiresSkeleton: true,
     skeletonFile: "Beemer.skeleton.rsrc",
   },
+  
+  // Additional mappings for items that have models
+  // Farm level items
+  [ItemType.MetalTub]: {
+    modelFile: "level1_farm.bg3d",
+    modelPath: "models",
+    modelIndex: 12, // MetalTub
+  },
+  [ItemType.OutHouse]: {
+    modelFile: "level1_farm.bg3d",
+    modelPath: "models",
+    modelIndex: 13, // OutHouse
+  },
+  [ItemType.Hay]: {
+    modelFile: "level1_farm.bg3d",
+    modelPath: "models",
+    modelIndex: 14, // HayBale
+  },
+  
+  // Fire/Ice level items
+  [ItemType.LavaStone]: {
+    modelFile: "level8_fireice.bg3d",
+    modelPath: "models",
+    modelIndex: 4, // LavaStone
+  },
+  [ItemType.Snowball]: {
+    modelFile: "level8_fireice.bg3d",
+    modelPath: "models",
+    modelIndex: 10, // Snowball
+  },
+  [ItemType.LavaPlatform]: {
+    modelFile: "level8_fireice.bg3d",
+    modelPath: "models",
+    modelIndex: 6, // LavaPlatform
+  },
+  [ItemType.IceSaucer]: {
+    modelFile: "level8_fireice.bg3d",
+    modelPath: "models",
+    modelIndex: 8, // IceSaucer
+  },
+  [ItemType.Smoker]: {
+    modelFile: "level8_fireice.bg3d",
+    modelPath: "models",
+    modelIndex: 12, // Smoker
+  },
+  
+  // Saucer level items
+  [ItemType.PeopleHut]: {
+    modelFile: "level9_saucer.bg3d",
+    modelPath: "models",
+    modelIndex: 4, // PeopleHut
+  },
+  [ItemType.Railgun]: {
+    modelFile: "level9_saucer.bg3d",
+    modelPath: "models",
+    modelIndex: 12, // Railgun
+  },
+  [ItemType.Turret]: {
+    modelFile: "level9_saucer.bg3d",
+    modelPath: "models",
+    modelIndex: 14, // Turret
+  },
+  [ItemType.RunwayLights]: {
+    modelFile: "level9_saucer.bg3d",
+    modelPath: "models",
+    modelIndex: 16, // RunwayLights
+  },
+  
+  // Cloud level items
+  [ItemType.TrapDoor]: {
+    modelFile: "level5_cloud.bg3d",
+    modelPath: "models",
+    modelIndex: 18, // TrapDoor
+  },
+  [ItemType.ZigZagSlats]: {
+    modelFile: "level5_cloud.bg3d",
+    modelPath: "models",
+    modelIndex: 20, // ZigZagSlats
+  },
+  [ItemType.BumperCarGate]: {
+    modelFile: "level5_cloud.bg3d",
+    modelPath: "models",
+    modelIndex: 16, // BumperCarGate
+  },
+  
+  // Brain boss level items
+  [ItemType.Enemy_BrainBoss]: {
+    modelFile: "level10_brainboss.bg3d",
+    modelPath: "models",
+    modelIndex: 0, // BrainBoss
+  },
+  [ItemType.BlobArrow]: {
+    modelFile: "level10_brainboss.bg3d",
+    modelPath: "models",
+    modelIndex: 2, // BlobArrow
+  },
+  [ItemType.NeuronStrand]: {
+    modelFile: "level10_brainboss.bg3d",
+    modelPath: "models",
+    modelIndex: 4, // NeuronStrand
+  },
+  [ItemType.BrainPort]: {
+    modelFile: "level10_brainboss.bg3d",
+    modelPath: "models",
+    modelIndex: 6, // BrainPort
+  },
 };
