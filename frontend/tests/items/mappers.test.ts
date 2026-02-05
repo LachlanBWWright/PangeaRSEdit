@@ -118,13 +118,13 @@ describe("Game Item Mappers", () => {
       const counts = getAllMappingCounts();
       // Check the mappers we created in this session
       expect(counts["OTTO_MATIC"]).toBeGreaterThanOrEqual(50);
-      // Nanosaur 1 uses 3DMF format (not BG3D) - no mappings until 3DMF parser is added
-      expect(counts["NANOSAUR"]).toBe(0);
+      // Nanosaur 1 uses 3DMF format which is now supported
+      expect(counts["NANOSAUR"]).toBeGreaterThanOrEqual(10);
       expect(counts["NANOSAUR_2"]).toBeGreaterThanOrEqual(10);
       expect(counts["CRO_MAG"]).toBeGreaterThanOrEqual(10);
       expect(counts["BILLY_FRONTIER"]).toBeGreaterThanOrEqual(10);
-      // Bugdom 1 uses 3DMF format (not BG3D) - no mappings until 3DMF parser is added
-      expect(counts["BUGDOM"]).toBe(0);
+      // Bugdom 1 uses 3DMF format which is now supported
+      expect(counts["BUGDOM"]).toBeGreaterThanOrEqual(30);
       // Bugdom 2 has BG3D models and should have mappings
       expect(counts["BUGDOM_2"]).toBeGreaterThanOrEqual(50);
     });
@@ -279,14 +279,24 @@ describe("Game Item Mappers", () => {
       expect(bugdomItemMapper.game).toBe(Game.BUGDOM);
     });
     
-    it("should return no mappings for 3DMF-based game", () => {
-      // Bugdom 1 uses 3DMF format, not BG3D, so no mappings are available
-      const mapping = bugdomItemMapper.getMapping(1);
+    it("should have mappings (3DMF is now supported)", () => {
+      // Bugdom 1 uses 3DMF format which is now supported
+      expect(bugdomItemMapper.getMappingCount()).toBeGreaterThan(0);
+      expect(bugdomItemMapper.getMappedTypes().length).toBeGreaterThan(0);
+    });
+    
+    it("should get mapping for enemy type", () => {
+      // Spider enemy (type 36)
+      const mapping = bugdomItemMapper.getMapping(36);
+      expect(mapping).toBeDefined();
+      expect(mapping?.modelFile).toBe("Spider.3dmf");
+      expect(mapping?.modelPath).toBe("skeletons");
+      expect(mapping?.requiresSkeleton).toBe(true);
+    });
+    
+    it("should return undefined for unmapped type", () => {
+      const mapping = bugdomItemMapper.getMapping(99999);
       expect(mapping).toBeUndefined();
-      
-      expect(bugdomItemMapper.hasModel(1)).toBe(false);
-      expect(bugdomItemMapper.getMappingCount()).toBe(0);
-      expect(bugdomItemMapper.getMappedTypes()).toEqual([]);
     });
   });
   
@@ -393,14 +403,24 @@ describe("Game Item Mappers", () => {
       expect(nanosaur1ItemMapper.game).toBe(Game.NANOSAUR);
     });
     
-    it("should return no mappings for 3DMF-based game", () => {
-      // Nanosaur 1 uses 3DMF format, not BG3D, so no mappings are available
-      const mapping = nanosaur1ItemMapper.getMapping(1);
+    it("should have mappings (3DMF is now supported)", () => {
+      // Nanosaur 1 uses 3DMF format which is now supported
+      expect(nanosaur1ItemMapper.getMappingCount()).toBeGreaterThan(0);
+      expect(nanosaur1ItemMapper.getMappedTypes().length).toBeGreaterThan(0);
+    });
+    
+    it("should get mapping for enemy type", () => {
+      // Rex enemy (type 3)
+      const mapping = nanosaur1ItemMapper.getMapping(3);
+      expect(mapping).toBeDefined();
+      expect(mapping?.modelFile).toBe("Rex.3dmf");
+      expect(mapping?.modelPath).toBe("skeletons");
+      expect(mapping?.requiresSkeleton).toBe(true);
+    });
+    
+    it("should return undefined for unmapped type", () => {
+      const mapping = nanosaur1ItemMapper.getMapping(99999);
       expect(mapping).toBeUndefined();
-      
-      expect(nanosaur1ItemMapper.hasModel(1)).toBe(false);
-      expect(nanosaur1ItemMapper.getMappingCount()).toBe(0);
-      expect(nanosaur1ItemMapper.getMappedTypes()).toEqual([]);
     });
   });
 });
