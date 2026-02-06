@@ -121,13 +121,13 @@ export const BUGDOM2_ITEM_MODEL_MAPPINGS: Record<
 
   // Garden level items (Level1_Garden.bg3d - MODEL_GROUP_LEVELSPECIFIC)
   // 11: Scarecrow (GARDEN_ObjType_ScarecrowBody = 8, + Shirt + Head)
-  11: { modelFile: "Level1_Garden.bg3d", modelPath: "models", modelIndex: 8 },
+  11: { modelFile: "Level1_Garden.bg3d", modelPath: "models", modelIndex: 8, groupSize: 3 },
   // 29: Rose (FOLIAGE_ObjType_Rose = 11)
   29: { modelFile: "Foliage.bg3d", modelPath: "models", modelIndex: 11 },
   // 30: Tulip Pot (SIDEWALK_ObjType_TulipPot = 30)
   30: { modelFile: "Level2_Sidewalk.bg3d", modelPath: "models", modelIndex: 30 },
-  // 28: Windmill (SIDEWALK_ObjType_WindmillBase = 28)
-  28: { modelFile: "Level2_Sidewalk.bg3d", modelPath: "models", modelIndex: 28 },
+  // 28: Windmill (SIDEWALK_ObjType_WindmillBase = 28, + Blades)
+  28: { modelFile: "Level2_Sidewalk.bg3d", modelPath: "models", modelIndex: 28, groupSize: 2 },
 
   // Sidewalk level items (Level2_Sidewalk.bg3d - MODEL_GROUP_LEVELSPECIFIC)
   // 17: Brick (SIDEWALK_ObjType_Brick = 8)
@@ -237,6 +237,8 @@ export const BUGDOM2_ITEM_MODEL_MAPPINGS: Record<
   13: { modelFile: "Level1_Garden.bg3d", modelPath: "models", modelIndex: 5 },
   // 20: Shrub Root (FOLIAGE_ObjType_ShrubRoot = 10)
   20: { modelFile: "Foliage.bg3d", modelPath: "models", modelIndex: 10 },
+  // 26: Squish Berry (SIDEWALK_ObjType_SquishBerry = 25)
+  26: { modelFile: "Level2_Sidewalk.bg3d", modelPath: "models", modelIndex: 25 },
   // 35: POW / Powerup (GLOBAL_ObjType_HealthPOW = 13)
   35: { modelFile: "Global.bg3d", modelPath: "models", modelIndex: 13 },
   // 36: Firecracker (GLOBAL_ObjType_Firecracker = 30)
