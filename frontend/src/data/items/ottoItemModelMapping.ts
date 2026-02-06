@@ -332,7 +332,7 @@ export const OTTO_ITEM_MODEL_MAPPINGS: Record<
     modelPath: "skeletons",
     modelIndex: 0,
     requiresSkeleton: true,
-    skeletonFile: "FlyTrap.skeleton.rsrc",
+    skeletonFile: "VenusFlytrap.skeleton.rsrc",
   },
   [ItemType.Enemy_Mantis]: {
     modelFile: "Mantis.bg3d",
@@ -342,14 +342,16 @@ export const OTTO_ITEM_MODEL_MAPPINGS: Record<
     skeletonFile: "Mantis.skeleton.rsrc",
   },
   [ItemType.TurtlePlatform]: {
-    modelFile: "level6_jungle.bg3d",
-    modelPath: "models",
-    modelIndex: 9, // LeafPlatform0
+    modelFile: "Turtle.bg3d",
+    modelPath: "skeletons",
+    modelIndex: 0,
+    requiresSkeleton: true,
+    skeletonFile: "Turtle.skeleton.rsrc",
   },
   [ItemType.Smashable]: {
     modelFile: "level6_jungle.bg3d",
     modelPath: "models",
-    modelIndex: 9, // LeafPlatform0
+    modelIndex: 5, // JUNGLE_ObjType_Hut (default smashable)
   },
   [ItemType.LeafPlatform]: {
     modelFile: "level6_jungle.bg3d",
@@ -458,7 +460,8 @@ export const OTTO_ITEM_MODEL_MAPPINGS: Record<
   [ItemType.PitcherPod]: {
     modelFile: "level6_jungle.bg3d",
     modelPath: "models",
-    modelIndex: 20, // PitcherPod_Pod
+    modelIndex: 19, // PitcherPod_Stem + Pod
+    groupSize: 2,
   },
   [ItemType.TractorBeamPost]: {
     modelFile: "level6_jungle.bg3d",
@@ -634,12 +637,14 @@ export const OTTO_ITEM_MODEL_MAPPINGS: Record<
   [ItemType.Railgun]: {
     modelFile: "level9_saucer.bg3d",
     modelPath: "models",
-    modelIndex: 4, // SAUCER_ObjType_RailGun
+    modelIndex: 4, // SAUCER_ObjType_RailGun + RailGunBeam
+    groupSize: 2,
   },
   [ItemType.Turret]: {
     modelFile: "level9_saucer.bg3d",
     modelPath: "models",
-    modelIndex: 7, // SAUCER_ObjType_Turret
+    modelIndex: 6, // SAUCER_ObjType_TurretBase + Turret
+    groupSize: 2,
   },
   
   // Cloud level items (indices from CLOUD_ObjType enum in mobjtypes.h)
