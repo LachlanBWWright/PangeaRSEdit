@@ -32,6 +32,9 @@ export interface Bugdom2ItemModelMapping {
   /** Model index within the BG3D file (0-indexed, maps to Subgroup_N) */
   modelIndex: number;
 
+  /** Number of consecutive subgroups to include (default: 1) */
+  groupSize?: number;
+
   /** True if model requires skeleton data for rigging */
   requiresSkeleton?: boolean;
 
@@ -224,6 +227,8 @@ export const BUGDOM2_ITEM_MODEL_MAPPINGS: Record<
   78: { modelFile: "Level10_Park.bg3d", modelPath: "models", modelIndex: 25 },
 
   // Global items (Global.bg3d - MODEL_GROUP_GLOBAL)
+  // 2: Sprinkler Head (GARDEN_ObjType_SprinklerBase = 1 on Garden level)
+  2: { modelFile: "Level1_Garden.bg3d", modelPath: "models", modelIndex: 1 },
   // 7: Snail Shell (GLOBAL_ObjType_SnailShell = 26)
   7: { modelFile: "Global.bg3d", modelPath: "models", modelIndex: 26 },
   // 9: Acorn (GLOBAL_ObjType_Acorn = 25)
@@ -242,8 +247,8 @@ export const BUGDOM2_ITEM_MODEL_MAPPINGS: Record<
   44: { modelFile: "Level5_Playroom.bg3d", modelPath: "models", modelIndex: 10 },
   // 53: Cloud (BALSA_ObjType_Cloud = 4)
   53: { modelFile: "Level9_Balsa.bg3d", modelPath: "models", modelIndex: 4 },
-  // 56: Trampoline
-  56: { modelFile: "Global.bg3d", modelPath: "models", modelIndex: 13 },
+  // 56: Trampoline (CLOSET_ObjType_TrampolineBase = 7)
+  56: { modelFile: "Level6_Closet.bg3d", modelPath: "models", modelIndex: 7 },
 
   // Foliage items (Foliage.bg3d)
   // Various plants and foliage elements used across levels
