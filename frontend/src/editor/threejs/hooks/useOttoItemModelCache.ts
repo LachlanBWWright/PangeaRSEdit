@@ -300,15 +300,15 @@ export const useItemModelCache = (game: Game = Game.OTTO_MATIC): UseItemModelCac
     async (itemType: number, params?: ItemParams): Promise<GLTF | null> => {
       const cacheKey = getCacheKey(game, itemType, params);
 
-      // Check if already loaded or in-flight using the ref
-      // (avoids stale closure issues with modelCache state)
+      // Skip if already in-flight (avoids stale closure issues)
       if (inFlightRef.current.has(cacheKey)) {
         return null;
       }
 
-      // Check if already in the cache (using latest state via callback)
+      // Check if already in the cache
       const alreadyCached = modelCache.get(cacheKey);
       if (alreadyCached && !alreadyCached.loading) {
+        // Already loaded (success or error) - don't retry
         return alreadyCached.gltf;
       }
 
