@@ -26,27 +26,33 @@ export type BG3DGltfWorkerMessage =
   | {
       type: "bg3d-to-glb";
       buffer: ArrayBuffer;
+      requestId?: string;
     }
   | {
       type: "glb-to-bg3d";
       buffer: ArrayBuffer;
+      requestId?: string;
     }
   | {
       type: "glb-to-bg3d-with-skeleton";
       buffer: ArrayBuffer;
+      requestId?: string;
     }
   | {
       type: "bg3d-with-skeleton-to-glb";
       bg3dBuffer: ArrayBuffer;
       skeletonData: SkeletonResource;
+      requestId?: string;
     }
   | {
       type: "bg3d-parsed-to-glb";
       parsed: BG3DParseResult;
+      requestId?: string;
     }
   | {
       type: "bg3d-parsed-to-bg3d";
       parsed: BG3DParseResult;
+      requestId?: string;
     };
 
 export type BG3DGltfWorkerResponse =
@@ -54,37 +60,45 @@ export type BG3DGltfWorkerResponse =
       type: "bg3d-to-glb";
       result: ArrayBuffer;
       parsed?: BG3DParseResult;
+      requestId?: string;
     }
   | {
       type: "glb-to-bg3d";
       result: ArrayBuffer;
+      requestId?: string;
     }
   | {
       type: "glb-to-bg3d-with-skeleton";
       bg3dResult: ArrayBuffer;
       skeletonResult?: ArrayBuffer;
+      requestId?: string;
     }
   | {
       type: "bg3d-with-skeleton-to-glb";
       result: ArrayBuffer;
       parsed?: BG3DParseResult;
+      requestId?: string;
     }
   | {
       type: "bg3d-parsed-to-glb";
       result: ArrayBuffer;
       parsed: BG3DParseResult;
+      requestId?: string;
     }
   | {
       type: "bg3d-parsed-to-bg3d";
       result: ArrayBuffer;
+      requestId?: string;
     }
   | {
       type: "error";
       error: string;
+      requestId?: string;
     };
 
 self.onmessage = async (e: MessageEvent<BG3DGltfWorkerMessage>) => {
   const msg = e.data;
+  const requestId = msg.requestId;
   console.log("Worker received message:", msg.type);
   try {
     if (msg.type === "bg3d-to-glb") {
@@ -94,6 +108,7 @@ self.onmessage = async (e: MessageEvent<BG3DGltfWorkerMessage>) => {
         const response: BG3DGltfWorkerResponse = {
           type: "error",
           error: parseResult.error.message,
+          requestId,
         };
         self.postMessage(response);
         return;
@@ -111,6 +126,7 @@ self.onmessage = async (e: MessageEvent<BG3DGltfWorkerMessage>) => {
         type: "bg3d-to-glb",
         result: arrBuffer,
         parsed: parsed,
+        requestId,
       };
       self.postMessage.call(self, response);
     } else if (msg.type === "bg3d-with-skeleton-to-glb") {
@@ -123,6 +139,7 @@ self.onmessage = async (e: MessageEvent<BG3DGltfWorkerMessage>) => {
         const response: BG3DGltfWorkerResponse = {
           type: "error",
           error: parseResult.error.message,
+          requestId,
         };
         self.postMessage(response);
         return;
@@ -144,6 +161,7 @@ self.onmessage = async (e: MessageEvent<BG3DGltfWorkerMessage>) => {
         type: "bg3d-with-skeleton-to-glb",
         result: arrBuffer,
         parsed: parsed,
+        requestId,
       };
       self.postMessage.call(self, response);
     } else if (msg.type === "bg3d-parsed-to-glb") {
@@ -157,6 +175,7 @@ self.onmessage = async (e: MessageEvent<BG3DGltfWorkerMessage>) => {
         type: "bg3d-parsed-to-glb",
         result: arrBuffer,
         parsed: msg.parsed,
+        requestId,
       };
       self.postMessage.call(self, response);
     } else if (msg.type === "bg3d-parsed-to-bg3d") {
@@ -165,6 +184,7 @@ self.onmessage = async (e: MessageEvent<BG3DGltfWorkerMessage>) => {
       const response: BG3DGltfWorkerResponse = {
         type: "bg3d-parsed-to-bg3d",
         result: bg3dBuffer,
+        requestId,
       };
       self.postMessage.call(self, response);
     } else if (msg.type === "glb-to-bg3d") {
@@ -175,6 +195,7 @@ self.onmessage = async (e: MessageEvent<BG3DGltfWorkerMessage>) => {
       const response: BG3DGltfWorkerResponse = {
         type: "glb-to-bg3d",
         result: bg3d,
+        requestId,
       };
       self.postMessage.call(self, response);
     } else if (msg.type === "glb-to-bg3d-with-skeleton") {
@@ -195,12 +216,14 @@ self.onmessage = async (e: MessageEvent<BG3DGltfWorkerMessage>) => {
         type: "glb-to-bg3d-with-skeleton",
         bg3dResult: bg3d,
         skeletonResult,
+        requestId,
       };
       self.postMessage.call(self, response);
     } else {
       const response: BG3DGltfWorkerResponse = {
         type: "error",
         error: "Unknown conversion type",
+        requestId,
       };
       self.postMessage(response);
     }
@@ -208,6 +231,7 @@ self.onmessage = async (e: MessageEvent<BG3DGltfWorkerMessage>) => {
     const response: BG3DGltfWorkerResponse = {
       type: "error",
       error: err instanceof Error ? err.message : String(err),
+      requestId,
     };
     self.postMessage(response);
   }
