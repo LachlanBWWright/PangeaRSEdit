@@ -328,7 +328,7 @@ export const OTTO_ITEM_MODEL_MAPPINGS: Record<
     skeletonFile: "GiantLizard.skeleton.rsrc",
   },
   [ItemType.Enemy_FlyTrap]: {
-    modelFile: "FlyTrap.bg3d",
+    modelFile: "VenusFlytrap.bg3d",
     modelPath: "skeletons",
     modelIndex: 0,
     requiresSkeleton: true,
@@ -507,7 +507,7 @@ export const OTTO_ITEM_MODEL_MAPPINGS: Record<
   },
   // Strongman enemy (type 81)
   [ItemType.Enemy_StrongMan]: {
-    modelFile: "StrongMan.bg3d",
+    modelFile: "Strongman.bg3d",
     modelPath: "skeletons",
     modelIndex: 0,
     requiresSkeleton: true,
