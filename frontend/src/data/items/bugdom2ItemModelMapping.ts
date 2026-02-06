@@ -108,152 +108,140 @@ export const BUGDOM2_ITEM_MODEL_MAPPINGS: Record<
   // 42: Mouse Trap (animated)
   42: { modelFile: "MouseTrap.bg3d", modelPath: "skeletons", modelIndex: 0, requiresSkeleton: true, skeletonFile: "MouseTrap.skeleton.rsrc" },
 
-  // Garden level items (Level1_Garden.bg3d)
-  // 5: Daisy
-  5: { modelFile: "Level1_Garden.bg3d", modelPath: "models", modelIndex: 0 },
-  // 6: Grass
-  6: { modelFile: "Level1_Garden.bg3d", modelPath: "models", modelIndex: 1 },
-  // 8: Tulip
-  8: { modelFile: "Level1_Garden.bg3d", modelPath: "models", modelIndex: 2 },
-  // 11: Scarecrow
-  11: { modelFile: "Level1_Garden.bg3d", modelPath: "models", modelIndex: 3 },
-  // 29: Rose
-  29: { modelFile: "Level1_Garden.bg3d", modelPath: "models", modelIndex: 4 },
-  // 30: Tulip Pot
-  30: { modelFile: "Level1_Garden.bg3d", modelPath: "models", modelIndex: 5 },
-  // 28: Windmill
-  28: { modelFile: "Level1_Garden.bg3d", modelPath: "models", modelIndex: 6 },
+  // Foliage items (Foliage.bg3d - MODEL_GROUP_FOLIAGE)
+  // 5: Daisy (FOLIAGE_ObjType_Daisy1 = 0, param selects Daisy1-3)
+  5: { modelFile: "Foliage.bg3d", modelPath: "models", modelIndex: 0 },
+  // 6: Grass (FOLIAGE_ObjType_Grass1 = 7, param selects Grass1-3)
+  6: { modelFile: "Foliage.bg3d", modelPath: "models", modelIndex: 7 },
+  // 8: Tulip (FOLIAGE_ObjType_Tulip1 = 3, param selects Tulip1-4)
+  8: { modelFile: "Foliage.bg3d", modelPath: "models", modelIndex: 3 },
 
-  // Sidewalk level items (Level2_Sidewalk.bg3d)
-  // 17: Brick
-  17: { modelFile: "Level2_Sidewalk.bg3d", modelPath: "models", modelIndex: 0 },
-  // 18: Post
-  18: { modelFile: "Level2_Sidewalk.bg3d", modelPath: "models", modelIndex: 1 },
-  // 21: Pebble
-  21: { modelFile: "Level2_Sidewalk.bg3d", modelPath: "models", modelIndex: 2 },
-  // 23: Pool Coping
-  23: { modelFile: "Level2_Sidewalk.bg3d", modelPath: "models", modelIndex: 3 },
-  // 24: Pool Leaf
-  24: { modelFile: "Level2_Sidewalk.bg3d", modelPath: "models", modelIndex: 4 },
-  // 27: Dog House
-  27: { modelFile: "Level2_Sidewalk.bg3d", modelPath: "models", modelIndex: 5 },
-  // 31: Beach Ball
-  31: { modelFile: "Level2_Sidewalk.bg3d", modelPath: "models", modelIndex: 6 },
-  // 32: Chlorine Float
-  32: { modelFile: "Level2_Sidewalk.bg3d", modelPath: "models", modelIndex: 7 },
-  // 33: Pool Ring Float
-  33: { modelFile: "Level2_Sidewalk.bg3d", modelPath: "models", modelIndex: 8 },
-  // 34: Drain Pipe
-  34: { modelFile: "Level2_Sidewalk.bg3d", modelPath: "models", modelIndex: 9 },
+  // Garden level items (Level1_Garden.bg3d - MODEL_GROUP_LEVELSPECIFIC)
+  // 11: Scarecrow (GARDEN_ObjType_ScarecrowBody = 8, + Shirt + Head)
+  11: { modelFile: "Level1_Garden.bg3d", modelPath: "models", modelIndex: 8 },
+  // 29: Rose (FOLIAGE_ObjType_Rose = 11)
+  29: { modelFile: "Foliage.bg3d", modelPath: "models", modelIndex: 11 },
+  // 30: Tulip Pot (SIDEWALK_ObjType_TulipPot = 30)
+  30: { modelFile: "Level2_Sidewalk.bg3d", modelPath: "models", modelIndex: 30 },
+  // 28: Windmill (SIDEWALK_ObjType_WindmillBase = 28)
+  28: { modelFile: "Level2_Sidewalk.bg3d", modelPath: "models", modelIndex: 28 },
 
-  // Playroom level items (Level5_Playroom.bg3d)
-  // 14: Ride Ball
-  14: { modelFile: "Level5_Playroom.bg3d", modelPath: "models", modelIndex: 0 },
-  // 15: Bowling Marble
-  15: { modelFile: "Level5_Playroom.bg3d", modelPath: "models", modelIndex: 1 },
-  // 16: Bowling Pins
-  16: { modelFile: "Level5_Playroom.bg3d", modelPath: "models", modelIndex: 2 },
-  // 40: Slot Car
-  40: { modelFile: "Level5_Playroom.bg3d", modelPath: "models", modelIndex: 3 },
-  // 41: Letter Block
-  41: { modelFile: "Level5_Playroom.bg3d", modelPath: "models", modelIndex: 4 },
-  // 46: Puzzle
-  46: { modelFile: "Level5_Playroom.bg3d", modelPath: "models", modelIndex: 5 },
-  // 47: Lego Wall
-  47: { modelFile: "Level5_Playroom.bg3d", modelPath: "models", modelIndex: 6 },
+  // Sidewalk level items (Level2_Sidewalk.bg3d - MODEL_GROUP_LEVELSPECIFIC)
+  // 17: Brick (SIDEWALK_ObjType_Brick = 8)
+  17: { modelFile: "Level2_Sidewalk.bg3d", modelPath: "models", modelIndex: 8 },
+  // 18: Post (SIDEWALK_ObjType_Post_Brick = 12)
+  18: { modelFile: "Level2_Sidewalk.bg3d", modelPath: "models", modelIndex: 12 },
+  // 21: Pebble (SIDEWALK_ObjType_LargeStone = 9)
+  21: { modelFile: "Level2_Sidewalk.bg3d", modelPath: "models", modelIndex: 9 },
+  // 23: Pool Coping (SIDEWALK_ObjType_Coping = 20)
+  23: { modelFile: "Level2_Sidewalk.bg3d", modelPath: "models", modelIndex: 20 },
+  // 24: Pool Leaf (SIDEWALK_ObjType_PoolLeaf1 = 16)
+  24: { modelFile: "Level2_Sidewalk.bg3d", modelPath: "models", modelIndex: 16 },
+  // 27: Dog House (SIDEWALK_ObjType_DogHouse = 27)
+  27: { modelFile: "Level2_Sidewalk.bg3d", modelPath: "models", modelIndex: 27 },
+  // 31: Beach Ball (SIDEWALK_ObjType_BeachBall = 22)
+  31: { modelFile: "Level2_Sidewalk.bg3d", modelPath: "models", modelIndex: 22 },
+  // 32: Chlorine Float (SIDEWALK_ObjType_ChlorineFloat = 23)
+  32: { modelFile: "Level2_Sidewalk.bg3d", modelPath: "models", modelIndex: 23 },
+  // 33: Pool Ring Float (SIDEWALK_ObjType_PoolRingFloat = 24)
+  33: { modelFile: "Level2_Sidewalk.bg3d", modelPath: "models", modelIndex: 24 },
+  // 34: Drain Pipe (SIDEWALK_ObjType_DrainPipe = 31)
+  34: { modelFile: "Level2_Sidewalk.bg3d", modelPath: "models", modelIndex: 31 },
 
-  // Closet level items (Level6_Closet.bg3d)
-  // 48: Flashlight
+  // Playroom level items (Level5_Playroom.bg3d - MODEL_GROUP_LEVELSPECIFIC)
+  // 14: Ride Ball (SIDEWALK_ObjType_RideBall = 15 on Sidewalk level)
+  14: { modelFile: "Level2_Sidewalk.bg3d", modelPath: "models", modelIndex: 15 },
+  // 15: Bowling Marble (PLAYROOM_ObjType_MarbleShell = 6)
+  15: { modelFile: "Level5_Playroom.bg3d", modelPath: "models", modelIndex: 6 },
+  // 41: Letter Block (PLAYROOM_ObjType_LetterBlock1 = 1)
+  41: { modelFile: "Level5_Playroom.bg3d", modelPath: "models", modelIndex: 1 },
+  // 40: Slot Car (PLAYROOM_ObjType_SlotCarRed = 11)
+  40: { modelFile: "Level5_Playroom.bg3d", modelPath: "models", modelIndex: 11 },
+  // 46: Puzzle (PLAYROOM_ObjType_PuzzleMain = 20)
+  46: { modelFile: "Level5_Playroom.bg3d", modelPath: "models", modelIndex: 20 },
+  // 47: Lego Wall (PLAYROOM_ObjType_LegoWall = 24)
+  47: { modelFile: "Level5_Playroom.bg3d", modelPath: "models", modelIndex: 24 },
+
+  // Closet level items (Level6_Closet.bg3d - MODEL_GROUP_LEVELSPECIFIC)
+  // 48: Flashlight (CLOSET_ObjType_FlashLight = 0)
   48: { modelFile: "Level6_Closet.bg3d", modelPath: "models", modelIndex: 0 },
-  // 49: D-Cell battery
-  49: { modelFile: "Level6_Closet.bg3d", modelPath: "models", modelIndex: 1 },
-  // 50: Crayon
-  50: { modelFile: "Level6_Closet.bg3d", modelPath: "models", modelIndex: 2 },
-  // 55: Cardboard Box
-  55: { modelFile: "Level6_Closet.bg3d", modelPath: "models", modelIndex: 3 },
-  // 57: Moth Ball
-  57: { modelFile: "Level6_Closet.bg3d", modelPath: "models", modelIndex: 4 },
-  // 58: Vacuum
-  58: { modelFile: "Level6_Closet.bg3d", modelPath: "models", modelIndex: 5 },
-  // 59: Closet Wall / PCI Card
-  59: { modelFile: "Level6_Closet.bg3d", modelPath: "models", modelIndex: 6 },
-  // 62: Silicon Part
-  62: { modelFile: "Level6_Closet.bg3d", modelPath: "models", modelIndex: 7 },
-  // 64: Book Stack
-  64: { modelFile: "Level6_Closet.bg3d", modelPath: "models", modelIndex: 8 },
-  // 66: Shoe Box
-  66: { modelFile: "Level6_Closet.bg3d", modelPath: "models", modelIndex: 9 },
-  // 67: Picture Frame
-  67: { modelFile: "Level6_Closet.bg3d", modelPath: "models", modelIndex: 10 },
+  // 49: D-Cell battery (CLOSET_ObjType_Battery = 24)
+  49: { modelFile: "Level6_Closet.bg3d", modelPath: "models", modelIndex: 24 },
+  // 50: Crayon - Playroom item (PLAYROOM_ObjType_Crayon = 19)
+  50: { modelFile: "Level5_Playroom.bg3d", modelPath: "models", modelIndex: 19 },
+  // 55: Cardboard Box (CLOSET_ObjType_CardboardBox1 = 2)
+  55: { modelFile: "Level6_Closet.bg3d", modelPath: "models", modelIndex: 2 },
+  // 57: Moth Ball (CLOSET_ObjType_MothBall = 10)
+  57: { modelFile: "Level6_Closet.bg3d", modelPath: "models", modelIndex: 10 },
+  // 58: Vacuum (CLOSET_ObjType_Vacuume = 11)
+  58: { modelFile: "Level6_Closet.bg3d", modelPath: "models", modelIndex: 11 },
+  // 59: Closet Wall / PCI Card (CLOSET_ObjType_PCICard = 13)
+  59: { modelFile: "Level6_Closet.bg3d", modelPath: "models", modelIndex: 13 },
+  // 62: Silicon Part (CLOSET_ObjType_SiliconDoor = 21)
+  62: { modelFile: "Level6_Closet.bg3d", modelPath: "models", modelIndex: 21 },
+  // 64: Book Stack (CLOSET_ObjType_BookStack = 17)
+  64: { modelFile: "Level6_Closet.bg3d", modelPath: "models", modelIndex: 17 },
+  // 66: Shoe Box (CLOSET_ObjType_ShoeBox = 6)
+  66: { modelFile: "Level6_Closet.bg3d", modelPath: "models", modelIndex: 6 },
+  // 67: Picture Frame (CLOSET_ObjType_PictureFrame_Brian = 28)
+  67: { modelFile: "Level6_Closet.bg3d", modelPath: "models", modelIndex: 28 },
 
   // Gutter level items (Level7_Gutter.bg3d)
   // Items specific to gutter level
 
-  // Garbage level items (Level8_Garbage.bg3d)
-  // 79: Soda Can
-  79: { modelFile: "Level8_Garbage.bg3d", modelPath: "models", modelIndex: 0 },
-  // 81: Jar
-  81: { modelFile: "Level8_Garbage.bg3d", modelPath: "models", modelIndex: 1 },
-  // 82: Tin Can
-  82: { modelFile: "Level8_Garbage.bg3d", modelPath: "models", modelIndex: 2 },
-  // 83: Detergent
-  83: { modelFile: "Level8_Garbage.bg3d", modelPath: "models", modelIndex: 3 },
+  // Garbage level items (Level8_Garbage.bg3d - MODEL_GROUP_LEVELSPECIFIC)
+  // 79: Soda Can (GARBAGE_ObjType_Can = 1)
+  79: { modelFile: "Level8_Garbage.bg3d", modelPath: "models", modelIndex: 1 },
+  // 81: Jar (GARBAGE_ObjType_Jar = 8)
+  81: { modelFile: "Level8_Garbage.bg3d", modelPath: "models", modelIndex: 8 },
+  // 82: Tin Can (GARBAGE_ObjType_TinCan = 10)
+  82: { modelFile: "Level8_Garbage.bg3d", modelPath: "models", modelIndex: 10 },
+  // 83: Detergent (GARBAGE_ObjType_Detergent = 11)
+  83: { modelFile: "Level8_Garbage.bg3d", modelPath: "models", modelIndex: 11 },
 
-  // Balsa level items (Level9_Balsa.bg3d)
-  // 84: Box Wall
-  84: { modelFile: "Level9_Balsa.bg3d", modelPath: "models", modelIndex: 0 },
-  // 85: Glider Part
-  85: { modelFile: "Level9_Balsa.bg3d", modelPath: "models", modelIndex: 1 },
+  // Balsa level items (Level9_Balsa.bg3d - MODEL_GROUP_LEVELSPECIFIC)
+  // 51: Ant Hill (BALSA_ObjType_AntHill = 3)
+  51: { modelFile: "Level9_Balsa.bg3d", modelPath: "models", modelIndex: 3 },
+  // 84: Box Wall (GARBAGE_ObjType_BoxWall = 12)
+  84: { modelFile: "Level8_Garbage.bg3d", modelPath: "models", modelIndex: 12 },
+  // 85: Glider Part (GARBAGE_ObjType_Glider = 15)
+  85: { modelFile: "Level8_Garbage.bg3d", modelPath: "models", modelIndex: 15 },
 
-  // Park level items (Level10_Park.bg3d)
-  // 70: Lily Pad
-  70: { modelFile: "Level10_Park.bg3d", modelPath: "models", modelIndex: 0 },
-  // 71: Cat Tail
-  71: { modelFile: "Level10_Park.bg3d", modelPath: "models", modelIndex: 1 },
-  // 72: Bubbler
-  72: { modelFile: "Level10_Park.bg3d", modelPath: "models", modelIndex: 2 },
-  // 73: Platform Flower
-  73: { modelFile: "Level10_Park.bg3d", modelPath: "models", modelIndex: 3 },
-  // 74: Fishing Lure
-  74: { modelFile: "Level10_Park.bg3d", modelPath: "models", modelIndex: 4 },
-  // 75: Silverware
-  75: { modelFile: "Level10_Park.bg3d", modelPath: "models", modelIndex: 5 },
-  // 76: Picnic Basket
-  76: { modelFile: "Level10_Park.bg3d", modelPath: "models", modelIndex: 6 },
-  // 77: Kindling
-  77: { modelFile: "Level10_Park.bg3d", modelPath: "models", modelIndex: 7 },
-  // 78: Bee Hive
-  78: { modelFile: "Level10_Park.bg3d", modelPath: "models", modelIndex: 8 },
-  // 80: Veggie
-  80: { modelFile: "Level10_Park.bg3d", modelPath: "models", modelIndex: 9 },
+  // Park level items (Level10_Park.bg3d - MODEL_GROUP_LEVELSPECIFIC)
+  // 70: Lily Pad (PARK_ObjType_LilyPad = 4)
+  70: { modelFile: "Level10_Park.bg3d", modelPath: "models", modelIndex: 4 },
+  // 71: Cat Tail (PARK_ObjType_CatTail = 5)
+  71: { modelFile: "Level10_Park.bg3d", modelPath: "models", modelIndex: 5 },
+  // 73: Platform Flower (PARK_ObjType_ShortFlower = 6)
+  73: { modelFile: "Level10_Park.bg3d", modelPath: "models", modelIndex: 6 },
+  // 74: Fishing Lure (PARK_ObjType_Lure = 9)
+  74: { modelFile: "Level10_Park.bg3d", modelPath: "models", modelIndex: 9 },
+  // 75: Silverware (PARK_ObjType_Fork = 10)
+  75: { modelFile: "Level10_Park.bg3d", modelPath: "models", modelIndex: 10 },
+  // 76: Picnic Basket (PARK_ObjType_PicnicBasket = 13)
+  76: { modelFile: "Level10_Park.bg3d", modelPath: "models", modelIndex: 13 },
+  // 78: Bee Hive (PARK_ObjType_Hive = 25)
+  78: { modelFile: "Level10_Park.bg3d", modelPath: "models", modelIndex: 25 },
 
-  // Global items (Global.bg3d)
-  // 2: Sprinkler Head
-  2: { modelFile: "Global.bg3d", modelPath: "models", modelIndex: 0 },
-  // 3: Butterfly
-  3: { modelFile: "Global.bg3d", modelPath: "models", modelIndex: 1 },
-  // 7: Snail Shell
-  7: { modelFile: "Global.bg3d", modelPath: "models", modelIndex: 2 },
-  // 9: Acorn
-  9: { modelFile: "Global.bg3d", modelPath: "models", modelIndex: 3 },
-  // 13: Door
-  13: { modelFile: "Global.bg3d", modelPath: "models", modelIndex: 4 },
-  // 20: Shrub Root
-  20: { modelFile: "Global.bg3d", modelPath: "models", modelIndex: 5 },
-  // 26: Squish Berry
-  26: { modelFile: "Global.bg3d", modelPath: "models", modelIndex: 6 },
-  // 35: POW / Powerup
-  35: { modelFile: "Global.bg3d", modelPath: "models", modelIndex: 7 },
-  // 36: Firecracker
-  36: { modelFile: "Global.bg3d", modelPath: "models", modelIndex: 8 },
+  // Global items (Global.bg3d - MODEL_GROUP_GLOBAL)
+  // 7: Snail Shell (GLOBAL_ObjType_SnailShell = 26)
+  7: { modelFile: "Global.bg3d", modelPath: "models", modelIndex: 26 },
+  // 9: Acorn (GLOBAL_ObjType_Acorn = 25)
+  9: { modelFile: "Global.bg3d", modelPath: "models", modelIndex: 25 },
+  // 13: Door (level-specific, uses GARDEN_ObjType_RedDoor = 5 on Garden)
+  13: { modelFile: "Level1_Garden.bg3d", modelPath: "models", modelIndex: 5 },
+  // 20: Shrub Root (FOLIAGE_ObjType_ShrubRoot = 10)
+  20: { modelFile: "Foliage.bg3d", modelPath: "models", modelIndex: 10 },
+  // 35: POW / Powerup (GLOBAL_ObjType_HealthPOW = 13)
+  35: { modelFile: "Global.bg3d", modelPath: "models", modelIndex: 13 },
+  // 36: Firecracker (GLOBAL_ObjType_Firecracker = 30)
+  36: { modelFile: "Global.bg3d", modelPath: "models", modelIndex: 30 },
   // 37: Glass Bottle
-  37: { modelFile: "Global.bg3d", modelPath: "models", modelIndex: 9 },
-  // 44: Finish Line
-  44: { modelFile: "Global.bg3d", modelPath: "models", modelIndex: 10 },
-  // 51: Ant Hill
-  51: { modelFile: "Global.bg3d", modelPath: "models", modelIndex: 11 },
-  // 53: Cloud
-  53: { modelFile: "Global.bg3d", modelPath: "models", modelIndex: 12 },
+  37: { modelFile: "Global.bg3d", modelPath: "models", modelIndex: 27 },
+  // 44: Finish Line (PLAYROOM_ObjType_FinishLine = 10)
+  44: { modelFile: "Level5_Playroom.bg3d", modelPath: "models", modelIndex: 10 },
+  // 53: Cloud (BALSA_ObjType_Cloud = 4)
+  53: { modelFile: "Level9_Balsa.bg3d", modelPath: "models", modelIndex: 4 },
   // 56: Trampoline
   56: { modelFile: "Global.bg3d", modelPath: "models", modelIndex: 13 },
 
