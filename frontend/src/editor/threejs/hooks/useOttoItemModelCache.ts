@@ -286,6 +286,11 @@ export const useItemModelCache = (game: Game = Game.OTTO_MATIC): UseItemModelCac
   // Use a ref to track in-flight requests (avoids stale closure issues)
   const inFlightRef = useRef<Set<string>>(new Set());
 
+  // Mirror modelCache in a ref so loadModel can read latest state
+  // without needing modelCache in its dependency array
+  const modelCacheRef = useRef<Map<string, CachedModel>>(modelCache);
+  modelCacheRef.current = modelCache;
+
   const getWorker = useCallback(() => {
     if (!workerRef.current) {
       workerRef.current = new BG3DGltfWorker();
@@ -306,7 +311,7 @@ export const useItemModelCache = (game: Game = Game.OTTO_MATIC): UseItemModelCac
       }
 
       // Check if already in the cache
-      const alreadyCached = modelCache.get(cacheKey);
+      const alreadyCached = modelCacheRef.current.get(cacheKey);
       if (alreadyCached && !alreadyCached.loading) {
         // Already loaded (success or error) - don't retry
         return alreadyCached.gltf;
@@ -383,7 +388,7 @@ export const useItemModelCache = (game: Game = Game.OTTO_MATIC): UseItemModelCac
         inFlightRef.current.delete(cacheKey);
       }
     },
-    [game, modelCache, getWorker],
+    [game, getWorker],
   );
 
   const isLoading = useCallback(
