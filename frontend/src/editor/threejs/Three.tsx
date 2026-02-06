@@ -392,8 +392,7 @@ export function ThreeView({
         target={[unitsWide / 2, 0, unitsHigh / 2]}
       />
 
-      {/* Lighting for 3D item models and terrain */}
-      <ambientLight intensity={0.6} />
+      {/* Directional lighting for 3D item models */}
       <directionalLight position={[1, 1, 0.5]} intensity={1} />
       <directionalLight position={[-1, -0.5, -0.5]} intensity={0.3} />
 
