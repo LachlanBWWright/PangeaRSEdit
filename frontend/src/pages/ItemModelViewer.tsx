@@ -614,6 +614,9 @@ export function ItemModelViewer() {
                   </div>
                   <div className="text-blue-300">
                     Index: {currentMapping.modelIndex}
+                    {currentMapping.groupSize && currentMapping.groupSize > 1
+                      ? ` (${currentMapping.groupSize} groups)`
+                      : ""}
                   </div>
                   {currentMapping.requiresSkeleton && (
                     <div className="text-purple-300">
