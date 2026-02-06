@@ -618,7 +618,8 @@ export const OTTO_ITEM_MODEL_MAPPINGS: Record<
   [ItemType.IceSaucer]: {
     modelFile: "level8_fireice.bg3d",
     modelPath: "models",
-    modelIndex: 6, // FIREICE_ObjType_SaucerIce
+    modelIndex: 6, // FIREICE_ObjType_SaucerIce + Saucer + Hatch
+    groupSize: 3,
   },
   
   // Saucer level items (indices from SAUCER_ObjType enum in mobjtypes.h)
