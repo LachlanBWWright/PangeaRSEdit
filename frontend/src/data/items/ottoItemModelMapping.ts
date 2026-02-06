@@ -247,11 +247,10 @@ export const OTTO_ITEM_MODEL_MAPPINGS: Record<
     modelIndex: 26, // SlimeTree_Big
   },
   [ItemType.MagnetMonster]: {
-    modelFile: "MagnetMonster.bg3d",
-    modelPath: "skeletons",
-    modelIndex: 0,
-    requiresSkeleton: true,
-    skeletonFile: "MagnetMonster.skeleton.rsrc",
+    modelFile: "level2_slime.bg3d",
+    modelPath: "models",
+    modelIndex: 21, // SLIME_ObjType_MagnetMonster + Prop
+    groupSize: 2,
   },
   [ItemType.FallingSlimePlatform]: {
     modelFile: "level2_slime.bg3d",
@@ -537,32 +536,28 @@ export const OTTO_ITEM_MODEL_MAPPINGS: Record<
     modelIndex: 1, // LavaPillar_Full
   },
   [ItemType.JawsBot]: {
-    modelFile: "JawsBot.bg3d",
-    modelPath: "skeletons",
-    modelIndex: 0,
-    requiresSkeleton: true,
-    skeletonFile: "JawsBot.skeleton.rsrc",
+    modelFile: "level8_fireice.bg3d",
+    modelPath: "models",
+    modelIndex: 10, // FIREICE_ObjType_JawsBot_Body + Jaw + Wheels
+    groupSize: 3,
   },
   [ItemType.HammerBot]: {
-    modelFile: "HammerBot.bg3d",
-    modelPath: "skeletons",
-    modelIndex: 0,
-    requiresSkeleton: true,
-    skeletonFile: "HammerBot.skeleton.rsrc",
+    modelFile: "level8_fireice.bg3d",
+    modelPath: "models",
+    modelIndex: 16, // FIREICE_ObjType_HammerBot_Body + Hammer + Wheels
+    groupSize: 3,
   },
   [ItemType.DrillBot]: {
-    modelFile: "DrillBot.bg3d",
-    modelPath: "skeletons",
-    modelIndex: 0,
-    requiresSkeleton: true,
-    skeletonFile: "DrillBot.skeleton.rsrc",
+    modelFile: "level8_fireice.bg3d",
+    modelPath: "models",
+    modelIndex: 22, // FIREICE_ObjType_DrillBot_Body + Drill + Wheels
+    groupSize: 3,
   },
   [ItemType.SwingerBot]: {
-    modelFile: "SwingerBot.bg3d",
-    modelPath: "skeletons",
-    modelIndex: 0,
-    requiresSkeleton: true,
-    skeletonFile: "SwingerBot.skeleton.rsrc",
+    modelFile: "level8_fireice.bg3d",
+    modelPath: "models",
+    modelIndex: 27, // FIREICE_ObjType_SwingerBot_Body + Treads + Pivot + SmallGear + Mace
+    groupSize: 5,
   },
 
   // 92-108: Saucer/Brain boss items
@@ -581,11 +576,9 @@ export const OTTO_ITEM_MODEL_MAPPINGS: Record<
     groupSize: 2,
   },
   [ItemType.Beemer]: {
-    modelFile: "Beemer.bg3d",
-    modelPath: "skeletons",
-    modelIndex: 0,
-    requiresSkeleton: true,
-    skeletonFile: "Beemer.skeleton.rsrc",
+    modelFile: "level9_saucer.bg3d",
+    modelPath: "models",
+    modelIndex: 2, // SAUCER_ObjType_Beemer
   },
   
   // Additional mappings for items that have models
