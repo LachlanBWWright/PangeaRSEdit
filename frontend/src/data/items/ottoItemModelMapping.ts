@@ -27,6 +27,11 @@ export interface ItemModelMapping {
   /** Model index within the BG3D file (0-indexed) */
   modelIndex: number;
 
+  /** Number of consecutive subgroups to include (default: 1).
+   *  Some items are composed of multiple consecutive subgroups in the BG3D file
+   *  (e.g., Windmill base + propeller, TeleportBase + dish). */
+  groupSize?: number;
+
   /** True if model requires skeleton data for rigging */
   requiresSkeleton?: boolean;
 
@@ -129,7 +134,8 @@ export const OTTO_ITEM_MODEL_MAPPINGS: Record<
   [ItemType.Checkpoint]: {
     modelFile: "global.bg3d",
     modelPath: "models",
-    modelIndex: 31, // TeleportBase
+    modelIndex: 31, // TeleportBase + TeleportDish
+    groupSize: 2,
   },
 
   // 11-27: Farm level and global items
@@ -161,7 +167,8 @@ export const OTTO_ITEM_MODEL_MAPPINGS: Record<
   [ItemType.Tractor]: {
     modelFile: "level1_farm.bg3d",
     modelPath: "models",
-    modelIndex: 11, // Tractor
+    modelIndex: 11, // Tractor body + 4 wheels
+    groupSize: 5,
   },
   [ItemType.CornStalk]: {
     modelFile: "level1_farm.bg3d",
@@ -186,7 +193,8 @@ export const OTTO_ITEM_MODEL_MAPPINGS: Record<
   [ItemType.Windmill]: {
     modelFile: "level1_farm.bg3d",
     modelPath: "models",
-    modelIndex: 23, // Windmill
+    modelIndex: 23, // Windmill + Propeller
+    groupSize: 2,
   },
   [ItemType.Rock]: {
     modelFile: "level1_farm.bg3d",
@@ -196,7 +204,8 @@ export const OTTO_ITEM_MODEL_MAPPINGS: Record<
   [ItemType.ExitRocket]: {
     modelFile: "global.bg3d",
     modelPath: "models",
-    modelIndex: 27, // Rocket (correct!)
+    modelIndex: 27, // Rocket + RocketDoor
+    groupSize: 2,
   },
 
   // 28-42: Slime level items
@@ -252,7 +261,8 @@ export const OTTO_ITEM_MODEL_MAPPINGS: Record<
   [ItemType.BubblePump]: {
     modelFile: "level2_slime.bg3d",
     modelPath: "models",
-    modelIndex: 19, // BubblePump
+    modelIndex: 19, // BubblePump + Plunger
+    groupSize: 2,
   },
   [ItemType.SlimeMech]: {
     modelFile: "level2_slime.bg3d",
@@ -504,7 +514,8 @@ export const OTTO_ITEM_MODEL_MAPPINGS: Record<
   [ItemType.CloudTunnel]: {
     modelFile: "level5_cloud.bg3d",
     modelPath: "models",
-    modelIndex: 6, // CloudTunnel_Frame
+    modelIndex: 6, // CloudTunnel_Frame + Tube
+    groupSize: 2,
   },
   [ItemType.RocketSled]: {
     modelFile: "level5_cloud.bg3d",
@@ -559,7 +570,8 @@ export const OTTO_ITEM_MODEL_MAPPINGS: Record<
   [ItemType.RadarDish]: {
     modelFile: "level9_saucer.bg3d",
     modelPath: "models",
-    modelIndex: 8, // DishBase
+    modelIndex: 8, // DishBase + Dish
+    groupSize: 2,
   },
   [ItemType.Beemer]: {
     modelFile: "Beemer.bg3d",

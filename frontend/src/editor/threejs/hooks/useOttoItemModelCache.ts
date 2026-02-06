@@ -107,9 +107,11 @@ export const useItemModelCache = (game: Game = Game.OTTO_MATIC): UseItemModelCac
    * - gltf.scene.children[0] is the groups container
    * - gltf.scene.children[0].children[N] is the model at index N
    * - gltf.materials contains all materials with textures
+   *
+   * When groupSize > 1, extracts consecutive subgroups and combines them.
    */
   const extractSubgroupByIndex = useCallback(
-    (gltf: GLTF, modelIndex: number): GLTF | null => {
+    (gltf: GLTF, modelIndex: number, groupSize: number = 1): GLTF | null => {
       try {
         // Get the groups container (first child of scene)
         const groupsContainer =
@@ -136,18 +138,20 @@ export const useItemModelCache = (game: Game = Game.OTTO_MATIC): UseItemModelCac
           return null;
         }
 
-        // Get the model at the specified index
-        const targetModel = groupsContainer.children[modelIndex];
-        if (!targetModel) {
-          return null;
+        // Create new Group with the extracted model(s)
+        const newScene = new Group();
+        const endIndex = Math.min(modelIndex + groupSize, groupsContainer.children.length);
+
+        for (let i = modelIndex; i < endIndex; i++) {
+          const targetModel = groupsContainer.children[i];
+          if (targetModel) {
+            newScene.add(targetModel.clone(true));
+          }
         }
 
-        // Clone the model preserving all geometry and materials
-        const clonedModel = targetModel.clone(true);
-
-        // Create new Group with the extracted model (Group satisfies GLTF.scene typing)
-        const newScene = new Group();
-        newScene.add(clonedModel);
+        if (newScene.children.length === 0) {
+          return null;
+        }
 
         // Return new gltf with extracted scene, keeping materials reference
         return { ...gltf, scene: newScene };
@@ -315,7 +319,7 @@ export const useItemModelCache = (game: Game = Game.OTTO_MATIC): UseItemModelCac
         // Extract the specific model for this item type
         let finalGltf = gltf;
         if (mapping.modelIndex !== undefined) {
-          const extracted = extractSubgroupByIndex(gltf, mapping.modelIndex);
+          const extracted = extractSubgroupByIndex(gltf, mapping.modelIndex, mapping.groupSize ?? 1);
           if (extracted) {
             finalGltf = extracted;
           } else {

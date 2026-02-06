@@ -55,6 +55,8 @@ export interface ModelVariant {
   modelPath: "models" | "skeletons";
   /** Model index within the BG3D file */
   modelIndex: number;
+  /** Number of consecutive subgroups to include (default: 1) */
+  groupSize?: number;
   /** True if model requires skeleton data */
   requiresSkeleton?: boolean;
   /** Skeleton .rsrc filename */

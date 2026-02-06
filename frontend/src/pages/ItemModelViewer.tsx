@@ -186,9 +186,10 @@ function calculateModelStats(scene: Group | null): { vertices: number; faces: nu
 }
 
 /**
- * Extract a specific subgroup from a GLTF scene by index
+ * Extract a specific subgroup from a GLTF scene by index.
+ * When groupSize > 1, extracts consecutive subgroups and combines them.
  */
-function extractSubgroupByIndex(gltf: GLTF, modelIndex: number): Group | null {
+function extractSubgroupByIndex(gltf: GLTF, modelIndex: number, groupSize: number = 1): Group | null {
   try {
     const groupsContainer = 
       gltf.scene.children && gltf.scene.children.length > 0
@@ -205,14 +206,19 @@ function extractSubgroupByIndex(gltf: GLTF, modelIndex: number): Group | null {
       return null;
     }
     
-    const targetModel = groupsContainer.children[modelIndex];
-    if (!targetModel) {
-      return null;
+    const newScene = new Group();
+    const endIndex = Math.min(modelIndex + groupSize, groupsContainer.children.length);
+    
+    for (let i = modelIndex; i < endIndex; i++) {
+      const targetModel = groupsContainer.children[i];
+      if (targetModel) {
+        newScene.add(targetModel.clone(true));
+      }
     }
     
-    const clonedModel = targetModel.clone(true);
-    const newScene = new Group();
-    newScene.add(clonedModel);
+    if (newScene.children.length === 0) {
+      return null;
+    }
     
     return newScene;
   } catch (error) {
@@ -466,8 +472,9 @@ export function ItemModelViewer() {
       URL.revokeObjectURL(blobUrl);
       
       // Extract the specific model by index
-      setStatus(`Extracting model at index ${mapping.modelIndex}...`);
-      const extracted = extractSubgroupByIndex(gltf, mapping.modelIndex);
+      const groupSize = mapping.groupSize ?? 1;
+      setStatus(`Extracting model at index ${mapping.modelIndex}${groupSize > 1 ? ` (${groupSize} groups)` : ""}...`);
+      const extracted = extractSubgroupByIndex(gltf, mapping.modelIndex, groupSize);
       
       if (!extracted) {
         throw new Error(`Could not extract model at index ${mapping.modelIndex}`);

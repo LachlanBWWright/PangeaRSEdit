@@ -22,6 +22,10 @@ export interface UniversalItemModelMapping {
   /** Model index within the BG3D file (maps to Subgroup_N) */
   modelIndex: number;
   
+  /** Number of consecutive subgroups to include (default: 1).
+   *  Some items are composed of multiple consecutive subgroups. */
+  groupSize?: number;
+  
   /** Alternative models for variants (indexed by p0 value) */
   variants?: Record<number, {
     modelFile?: string;  // Optional different file
