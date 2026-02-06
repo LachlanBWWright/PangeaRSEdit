@@ -106,17 +106,11 @@ const LoadingCube: React.FC<{
 const ItemModel: React.FC<{
   position: [number, number, number];
   itemType: number;
-  clonedScene: Group | null;
+  clonedScene: Group;
 }> = ({ position, clonedScene }) => {
-  if (!clonedScene) {
-    return null;
-  }
+  const instanceScene = useMemo(() => clonedScene.clone(true), [clonedScene]);
 
-  // Clone the pre-cloned scene for this specific instance so each item gets its own copy
-  // This prevents position/rotation conflicts when using the same scene multiple times
-  const instanceScene = clonedScene.clone(true);
-
-  return <primitive object={instanceScene} position={position} />;
+  return <primitive object={instanceScene} position={position} dispose={null} />;
 };
 
 /**

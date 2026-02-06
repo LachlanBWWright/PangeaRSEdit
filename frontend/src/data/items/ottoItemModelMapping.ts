@@ -477,11 +477,11 @@ export const OTTO_ITEM_MODEL_MAPPINGS: Record<
     skeletonFile: "Clown.skeleton.rsrc",
   },
   [ItemType.Clownfish]: {
-    modelFile: "Clownfish.bg3d",
+    modelFile: "ClownFish.bg3d",
     modelPath: "skeletons",
     modelIndex: 0,
     requiresSkeleton: true,
-    skeletonFile: "Clownfish.skeleton.rsrc",
+    skeletonFile: "ClownFish.skeleton.rsrc",
   },
   [ItemType.BumperCarPowerPost]: {
     modelFile: "level5_cloud.bg3d",
@@ -490,11 +490,11 @@ export const OTTO_ITEM_MODEL_MAPPINGS: Record<
   },
   // Strongman enemy (type 81)
   [ItemType.Enemy_StrongMan]: {
-    modelFile: "Strongman.bg3d",
+    modelFile: "StrongMan.bg3d",
     modelPath: "skeletons",
     modelIndex: 0,
     requiresSkeleton: true,
-    skeletonFile: "Strongman.skeleton.rsrc",
+    skeletonFile: "StrongMan.skeleton.rsrc",
   },
   [ItemType.CloudPlatform]: {
     modelFile: "level5_cloud.bg3d",
@@ -570,108 +570,98 @@ export const OTTO_ITEM_MODEL_MAPPINGS: Record<
   },
   
   // Additional mappings for items that have models
-  // Farm level items
+  // Farm level items (indices from FARM_ObjType enum in mobjtypes.h)
   [ItemType.MetalTub]: {
     modelFile: "level1_farm.bg3d",
     modelPath: "models",
-    modelIndex: 12, // MetalTub
+    modelIndex: 25, // FARM_ObjType_MetalTub
   },
   [ItemType.OutHouse]: {
     modelFile: "level1_farm.bg3d",
     modelPath: "models",
-    modelIndex: 13, // OutHouse
+    modelIndex: 26, // FARM_ObjType_OutHouse
   },
   [ItemType.Hay]: {
     modelFile: "level1_farm.bg3d",
     modelPath: "models",
-    modelIndex: 14, // HayBale
+    modelIndex: 30, // FARM_ObjType_HayBrick
   },
   
-  // Fire/Ice level items
+  // Fire/Ice level items (indices from FIREICE_ObjType enum in mobjtypes.h)
   [ItemType.LavaStone]: {
     modelFile: "level8_fireice.bg3d",
     modelPath: "models",
-    modelIndex: 4, // LavaStone
+    modelIndex: 40, // FIREICE_ObjType_Stone_Blance
   },
   [ItemType.Snowball]: {
     modelFile: "level8_fireice.bg3d",
     modelPath: "models",
-    modelIndex: 10, // Snowball
+    modelIndex: 4, // FIREICE_ObjType_SnowBall
   },
   [ItemType.LavaPlatform]: {
     modelFile: "level8_fireice.bg3d",
     modelPath: "models",
-    modelIndex: 6, // LavaPlatform
+    modelIndex: 54, // FIREICE_ObjType_LavaPlatform
   },
   [ItemType.IceSaucer]: {
     modelFile: "level8_fireice.bg3d",
     modelPath: "models",
-    modelIndex: 8, // IceSaucer
-  },
-  [ItemType.Smoker]: {
-    modelFile: "level8_fireice.bg3d",
-    modelPath: "models",
-    modelIndex: 12, // Smoker
+    modelIndex: 6, // FIREICE_ObjType_SaucerIce
   },
   
-  // Saucer level items
+  // Saucer level items (indices from SAUCER_ObjType enum in mobjtypes.h)
   [ItemType.PeopleHut]: {
     modelFile: "level9_saucer.bg3d",
     modelPath: "models",
-    modelIndex: 4, // PeopleHut
+    modelIndex: 1, // SAUCER_ObjType_PeopleHut
   },
   [ItemType.Railgun]: {
     modelFile: "level9_saucer.bg3d",
     modelPath: "models",
-    modelIndex: 12, // Railgun
+    modelIndex: 4, // SAUCER_ObjType_RailGun
   },
   [ItemType.Turret]: {
     modelFile: "level9_saucer.bg3d",
     modelPath: "models",
-    modelIndex: 14, // Turret
-  },
-  [ItemType.RunwayLights]: {
-    modelFile: "level9_saucer.bg3d",
-    modelPath: "models",
-    modelIndex: 16, // RunwayLights
+    modelIndex: 7, // SAUCER_ObjType_Turret
   },
   
-  // Cloud level items
+  // Cloud level items (indices from CLOUD_ObjType enum in mobjtypes.h)
   [ItemType.TrapDoor]: {
     modelFile: "level5_cloud.bg3d",
     modelPath: "models",
-    modelIndex: 18, // TrapDoor
+    modelIndex: 27, // CLOUD_ObjType_TrapDoor
   },
   [ItemType.ZigZagSlats]: {
     modelFile: "level5_cloud.bg3d",
     modelPath: "models",
-    modelIndex: 20, // ZigZagSlats
+    modelIndex: 28, // CLOUD_ObjType_ZigZag_Blue
   },
   [ItemType.BumperCarGate]: {
     modelFile: "level5_cloud.bg3d",
     modelPath: "models",
-    modelIndex: 16, // BumperCarGate
+    modelIndex: 15, // CLOUD_ObjType_BumperGatePosts
   },
   
-  // Brain boss level items
+  // Brain boss level items (indices from BRAINBOSS_ObjType enum in mobjtypes.h)
   [ItemType.Enemy_BrainBoss]: {
     modelFile: "level10_brainboss.bg3d",
     modelPath: "models",
-    modelIndex: 0, // BrainBoss
+    modelIndex: 1, // BRAINBOSS_ObjType_BrainCore
   },
   [ItemType.BlobArrow]: {
-    modelFile: "level10_brainboss.bg3d",
+    modelFile: "level2_slime.bg3d",
     modelPath: "models",
-    modelIndex: 2, // BlobArrow
+    modelIndex: 29, // SLIME_ObjType_BlobArrow
   },
   [ItemType.NeuronStrand]: {
     modelFile: "level10_brainboss.bg3d",
     modelPath: "models",
-    modelIndex: 4, // NeuronStrand
+    modelIndex: 4, // BRAINBOSS_ObjType_NeuronStrand
   },
   [ItemType.BrainPort]: {
     modelFile: "level10_brainboss.bg3d",
     modelPath: "models",
-    modelIndex: 6, // BrainPort
+    modelIndex: 5, // BRAINBOSS_ObjType_BrainPort
   },
 };
