@@ -224,11 +224,11 @@ export const BUGDOM2_ITEM_MODEL_MAPPINGS: Record<
   // 76: Picnic Basket (PARK_ObjType_PicnicBasket = 13)
   76: { modelFile: "Level10_Park.bg3d", modelPath: "models", modelIndex: 13 },
   // 78: Bee Hive (PARK_ObjType_Hive = 25)
-  78: { modelFile: "Level10_Park.bg3d", modelPath: "models", modelIndex: 25 },
+  78: { modelFile: "Level10_Park.bg3d", modelPath: "models", modelIndex: 25, groupSize: 2 },
 
   // Global items (Global.bg3d - MODEL_GROUP_GLOBAL)
   // 2: Sprinkler Head (GARDEN_ObjType_SprinklerBase = 1 on Garden level)
-  2: { modelFile: "Level1_Garden.bg3d", modelPath: "models", modelIndex: 1 },
+  2: { modelFile: "Level1_Garden.bg3d", modelPath: "models", modelIndex: 1, groupSize: 2 },
   // 7: Snail Shell (GLOBAL_ObjType_SnailShell = 26)
   7: { modelFile: "Global.bg3d", modelPath: "models", modelIndex: 26 },
   // 9: Acorn (GLOBAL_ObjType_Acorn = 25)
