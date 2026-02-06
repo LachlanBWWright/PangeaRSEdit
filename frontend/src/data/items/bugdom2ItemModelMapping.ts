@@ -243,8 +243,8 @@ export const BUGDOM2_ITEM_MODEL_MAPPINGS: Record<
   35: { modelFile: "Global.bg3d", modelPath: "models", modelIndex: 13 },
   // 36: Firecracker (GLOBAL_ObjType_Firecracker = 30)
   36: { modelFile: "Global.bg3d", modelPath: "models", modelIndex: 30 },
-  // 37: Glass Bottle
-  37: { modelFile: "Global.bg3d", modelPath: "models", modelIndex: 27 },
+  // 37: Glass Bottle (SIDEWALK_ObjType_Bottle = 33)
+  37: { modelFile: "Level2_Sidewalk.bg3d", modelPath: "models", modelIndex: 33 },
   // 44: Finish Line (PLAYROOM_ObjType_FinishLine = 10)
   44: { modelFile: "Level5_Playroom.bg3d", modelPath: "models", modelIndex: 10 },
   // 53: Cloud (BALSA_ObjType_Cloud = 4)
