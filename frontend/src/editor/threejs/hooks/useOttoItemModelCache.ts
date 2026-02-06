@@ -111,7 +111,7 @@ export const useItemModelCache = (game: Game = Game.OTTO_MATIC): UseItemModelCac
    * When groupSize > 1, extracts consecutive subgroups and combines them.
    */
   const extractSubgroupByIndex = useCallback(
-    (gltf: GLTF, modelIndex: number, groupSize: number = 1): GLTF | null => {
+    (gltf: GLTF, modelIndex: number, groupSize = 1): GLTF | null => {
       try {
         // Get the groups container (first child of scene)
         const groupsContainer =

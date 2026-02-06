@@ -189,7 +189,7 @@ function calculateModelStats(scene: Group | null): { vertices: number; faces: nu
  * Extract a specific subgroup from a GLTF scene by index.
  * When groupSize > 1, extracts consecutive subgroups and combines them.
  */
-function extractSubgroupByIndex(gltf: GLTF, modelIndex: number, groupSize: number = 1): Group | null {
+function extractSubgroupByIndex(gltf: GLTF, modelIndex: number, groupSize = 1): Group | null {
   try {
     const groupsContainer = 
       gltf.scene.children && gltf.scene.children.length > 0

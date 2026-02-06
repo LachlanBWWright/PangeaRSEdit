@@ -267,7 +267,8 @@ export const OTTO_ITEM_MODEL_MAPPINGS: Record<
   [ItemType.SlimeMech]: {
     modelFile: "level2_slime.bg3d",
     modelPath: "models",
-    modelIndex: 7, // Mech_OnAStick_Pole
+    modelIndex: 7, // Mech_OnAStick_Pole + Top
+    groupSize: 2,
   },
   [ItemType.SpinningPlatform]: {
     modelFile: "level3_blobboss.bg3d",
@@ -304,7 +305,8 @@ export const OTTO_ITEM_MODEL_MAPPINGS: Record<
   [ItemType.CrunchDoor]: {
     modelFile: "level4_apocalypse.bg3d",
     modelPath: "models",
-    modelIndex: 1, // CrunchDoor_Bottom
+    modelIndex: 1, // CrunchDoor_Bottom + Top + Post
+    groupSize: 3,
   },
   [ItemType.Manhole]: {
     modelFile: "level4_apocalypse.bg3d",
@@ -369,7 +371,8 @@ export const OTTO_ITEM_MODEL_MAPPINGS: Record<
   [ItemType.ZipLinePost]: {
     modelFile: "level4_apocalypse.bg3d",
     modelPath: "models",
-    modelIndex: 20, // ZipLinePost
+    modelIndex: 20, // ZipLinePost + ZipLinePully
+    groupSize: 2,
   },
   [ItemType.Enemy_Mutant]: {
     modelFile: "Mutant.bg3d",
@@ -465,7 +468,8 @@ export const OTTO_ITEM_MODEL_MAPPINGS: Record<
   [ItemType.Cannon]: {
     modelFile: "level5_cloud.bg3d",
     modelPath: "models",
-    modelIndex: 8, // Cannon
+    modelIndex: 8, // Cannon + Pedestal
+    groupSize: 2,
   },
 
   // 76-90: Cloud level items
@@ -652,7 +656,8 @@ export const OTTO_ITEM_MODEL_MAPPINGS: Record<
   [ItemType.BumperCarGate]: {
     modelFile: "level5_cloud.bg3d",
     modelPath: "models",
-    modelIndex: 15, // CLOUD_ObjType_BumperGatePosts
+    modelIndex: 15, // CLOUD_ObjType_BumperGatePosts + Beams
+    groupSize: 2,
   },
   
   // Brain boss level items (indices from BRAINBOSS_ObjType enum in mobjtypes.h)
