@@ -437,8 +437,10 @@ export const OTTO_ITEM_MODEL_MAPPINGS: Record<
   [ItemType.ZipLinePost]: {
     modelFile: "level4_apocalypse.bg3d",
     modelPath: "models",
-    modelIndex: 20, // ZipLinePost + ZipLinePully
+    modelIndex: 20,
     groupSize: 2,
+    scale: 1.5,
+    citations: [{ file: "src/Items/ZipLine.c", line: 209, description: "scale = 1.5" }],
   },
   [ItemType.Enemy_Mutant]: {
     modelFile: "Mutant.bg3d",
@@ -619,7 +621,12 @@ export const OTTO_ITEM_MODEL_MAPPINGS: Record<
   [ItemType.RocketSled]: {
     modelFile: "level5_cloud.bg3d",
     modelPath: "models",
-    modelIndex: 26, // RocketSled
+    modelIndex: 26,
+    scale: 1.3,
+    citations: [
+      { file: "src/Items/RocketSled.c", line: 27, description: "#define ROCKETSLED_SCALE 1.3f" },
+      { file: "src/Items/RocketSled.c", line: 68, description: "scale = ROCKETSLED_SCALE" },
+    ],
   },
 
   // 83-90: Fire/Ice level items
@@ -665,13 +672,20 @@ export const OTTO_ITEM_MODEL_MAPPINGS: Record<
   [ItemType.RadarDish]: {
     modelFile: "level9_saucer.bg3d",
     modelPath: "models",
-    modelIndex: 8, // DishBase + Dish
+    modelIndex: 8,
     groupSize: 2,
+    scale: 1.0,
+    citations: [{ file: "src/Items/items2.c", line: 383, description: "scale = 1.0" }],
   },
   [ItemType.Beemer]: {
     modelFile: "level9_saucer.bg3d",
     modelPath: "models",
-    modelIndex: 2, // SAUCER_ObjType_Beemer
+    modelIndex: 2,
+    scale: 1.3,
+    citations: [
+      { file: "src/Items/Traps2.c", line: 31, description: "#define BEEMER_SCALE 1.3f" },
+      { file: "src/Items/Traps2.c", line: 72, description: "scale = BEEMER_SCALE" },
+    ],
   },
   
   // Additional mappings for items that have models
@@ -702,7 +716,12 @@ export const OTTO_ITEM_MODEL_MAPPINGS: Record<
   [ItemType.LavaStone]: {
     modelFile: "level8_fireice.bg3d",
     modelPath: "models",
-    modelIndex: 40, // FIREICE_ObjType_Stone_Blance
+    modelIndex: 40,
+    scale: 2.5,
+    citations: [
+      { file: "src/Items/items2.c", line: 31, description: "#define LAVA_STONE_SCALE 2.5f" },
+      { file: "src/Items/items2.c", line: 288, description: "scale = LAVA_STONE_SCALE" },
+    ],
   },
   [ItemType.Snowball]: {
     modelFile: "level8_fireice.bg3d",
@@ -742,14 +761,24 @@ export const OTTO_ITEM_MODEL_MAPPINGS: Record<
   [ItemType.Railgun]: {
     modelFile: "level9_saucer.bg3d",
     modelPath: "models",
-    modelIndex: 4, // SAUCER_ObjType_RailGun + RailGunBeam
+    modelIndex: 4,
     groupSize: 2,
+    scale: 1.0,
+    citations: [
+      { file: "src/Items/Traps2.c", line: 33, description: "#define RAIL_GUN_SCALE 1.0f" },
+      { file: "src/Items/Traps2.c", line: 204, description: "scale = RAIL_GUN_SCALE" },
+    ],
   },
   [ItemType.Turret]: {
     modelFile: "level9_saucer.bg3d",
     modelPath: "models",
-    modelIndex: 6, // SAUCER_ObjType_TurretBase + Turret
+    modelIndex: 6,
     groupSize: 2,
+    scale: 1.0,
+    citations: [
+      { file: "src/Items/Traps2.c", line: 35, description: "#define TURRET_SCALE 1.0f" },
+      { file: "src/Items/Traps2.c", line: 360, description: "scale = TURRET_SCALE" },
+    ],
   },
   
   // Cloud level items (indices from CLOUD_ObjType enum in mobjtypes.h)
@@ -761,7 +790,9 @@ export const OTTO_ITEM_MODEL_MAPPINGS: Record<
   [ItemType.ZigZagSlats]: {
     modelFile: "level5_cloud.bg3d",
     modelPath: "models",
-    modelIndex: 28, // CLOUD_ObjType_ZigZag_Blue
+    modelIndex: 28,
+    scale: 3.0,
+    citations: [{ file: "src/Items/items2.c", line: 75, description: "scale = 3" }],
   },
   [ItemType.BumperCarGate]: {
     modelFile: "level5_cloud.bg3d",
@@ -781,12 +812,16 @@ export const OTTO_ITEM_MODEL_MAPPINGS: Record<
   [ItemType.BlobArrow]: {
     modelFile: "level2_slime.bg3d",
     modelPath: "models",
-    modelIndex: 29, // SLIME_ObjType_BlobArrow
+    modelIndex: 29,
+    scale: 1.6,
+    citations: [{ file: "src/Items/items2.c", line: 444, description: "scale = 1.6" }],
   },
   [ItemType.NeuronStrand]: {
     modelFile: "level10_brainboss.bg3d",
     modelPath: "models",
-    modelIndex: 4, // BRAINBOSS_ObjType_NeuronStrand
+    modelIndex: 4,
+    scale: 9.0,
+    citations: [{ file: "src/Items/items2.c", line: 476, description: "scale = 9.0" }],
   },
   [ItemType.BrainPort]: {
     modelFile: "level10_brainboss.bg3d",
