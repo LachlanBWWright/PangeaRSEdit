@@ -85,12 +85,18 @@ export const OTTO_ITEM_MODEL_MAPPINGS: Record<
   [ItemType.BasicPlant]: {
     modelFile: "level1_farm.bg3d",
     modelPath: "models",
-    modelIndex: 21, // Tree
+    modelIndex: 21,
+    scale: 3.0,
+    citations: [
+      { file: "src/Items/Items.c", line: 401, endLine: 445, description: "scale varies 2.0-4.5 by type, using ~3.0 average" },
+    ],
   },
   [ItemType.SpacePodGenerator]: {
     modelFile: "level4_apocalypse.bg3d",
     modelPath: "models",
-    modelIndex: 5, // SpacePod
+    modelIndex: 5,
+    scale: 2.0,
+    citations: [{ file: "src/Items/SpacePods.c", line: 137, description: "scale = 2.0" }],
   },
   [ItemType.Enemy_Squooshy]: {
     modelFile: "Squooshy.bg3d",
@@ -108,7 +114,9 @@ export const OTTO_ITEM_MODEL_MAPPINGS: Record<
   [ItemType.Atom]: {
     modelFile: "global.bg3d",
     modelPath: "models",
-    modelIndex: 0, // Ripple
+    modelIndex: 0,
+    scale: 1.0,
+    citations: [{ file: "src/Items/Powerups.c", line: 179, description: "scale = 1.0" }],
   },
   [ItemType.PowerupPod]: {
     modelFile: "global.bg3d",
@@ -176,7 +184,12 @@ export const OTTO_ITEM_MODEL_MAPPINGS: Record<
   [ItemType.WoodenGate]: {
     modelFile: "level1_farm.bg3d",
     modelPath: "models",
-    modelIndex: 3, // WoodGate
+    modelIndex: 3,
+    scale: 1.5,
+    citations: [
+      { file: "src/Items/Triggers.c", line: 49, description: "#define WOODFENCE_SCALE 1.5f" },
+      { file: "src/Items/Triggers.c", line: 206, description: "scale = WOODFENCE_SCALE" },
+    ],
   },
   [ItemType.MetalGate]: {
     modelFile: "level1_farm.bg3d",
@@ -196,8 +209,13 @@ export const OTTO_ITEM_MODEL_MAPPINGS: Record<
   [ItemType.Tractor]: {
     modelFile: "level1_farm.bg3d",
     modelPath: "models",
-    modelIndex: 11, // Tractor body + 4 wheels
+    modelIndex: 11,
     groupSize: 5,
+    scale: 1.0,
+    citations: [
+      { file: "src/Enemies/Farm/Enemy_Tractor.c", line: 31, description: "#define TRACTOR_SCALE 1.0f" },
+      { file: "src/Enemies/Farm/Enemy_Tractor.c", line: 78, description: "scale = TRACTOR_SCALE" },
+    ],
   },
   [ItemType.CornStalk]: {
     modelFile: "level1_farm.bg3d",
@@ -241,13 +259,20 @@ export const OTTO_ITEM_MODEL_MAPPINGS: Record<
   [ItemType.Rock]: {
     modelFile: "level1_farm.bg3d",
     modelPath: "models",
-    modelIndex: 27, // Rock_Small
+    modelIndex: 27,
+    scale: 2.0,
+    citations: [{ file: "src/Items/Items.c", line: 577, description: "scale = 2.0 + sin(x)" }],
   },
   [ItemType.ExitRocket]: {
     modelFile: "global.bg3d",
     modelPath: "models",
-    modelIndex: 27, // Rocket + RocketDoor
+    modelIndex: 27,
     groupSize: 2,
+    scale: 0.8,
+    citations: [
+      { file: "src/Player/Player.c", line: 40, description: "#define ROCKET_SCALE .8f" },
+      { file: "src/Player/Player.c", line: 604, description: "scale = ROCKET_SCALE" },
+    ],
   },
 
   // 28-42: Slime level items
@@ -341,7 +366,9 @@ export const OTTO_ITEM_MODEL_MAPPINGS: Record<
   [ItemType.SpinningPlatform]: {
     modelFile: "level3_blobboss.bg3d",
     modelPath: "models",
-    modelIndex: 5, // CircularPlatform_Blue
+    modelIndex: 5,
+    scale: 2.0,
+    citations: [{ file: "src/Items/Triggers.c", line: 1357, description: "scale = s = 2.0f" }],
   },
   [ItemType.MovingPlatform]: {
     modelFile: "level3_blobboss.bg3d",
@@ -432,7 +459,9 @@ export const OTTO_ITEM_MODEL_MAPPINGS: Record<
   [ItemType.Smashable]: {
     modelFile: "level6_jungle.bg3d",
     modelPath: "models",
-    modelIndex: 5, // JUNGLE_ObjType_Hut (default smashable)
+    modelIndex: 5,
+    scale: 3.0,
+    citations: [{ file: "src/Items/Triggers2.c", line: 366, description: "scale = 3.0" }],
   },
   [ItemType.LeafPlatform]: {
     modelFile: "level6_jungle.bg3d",
@@ -556,23 +585,34 @@ export const OTTO_ITEM_MODEL_MAPPINGS: Record<
   [ItemType.TentacleGenerator]: {
     modelFile: "level6_jungle.bg3d",
     modelPath: "models",
-    modelIndex: 18, // TentacleGenerator
+    modelIndex: 18,
+    scale: 5.0,
+    citations: [{ file: "src/Enemies/Jungle/PitcherPlantBoss.c", line: 218, description: "scale = 5.0" }],
   },
   [ItemType.PitcherPlantBoss]: {
     modelFile: "level6_jungle.bg3d",
     modelPath: "models",
-    modelIndex: 20, // PitcherPod_Pod
+    modelIndex: 20,
+    scale: 9.5,
+    citations: [
+      { file: "src/Enemies/Jungle/PitcherPlantBoss.c", line: 96, description: "#define PITCHER_PLANT_SCALE 9.5f" },
+      { file: "src/Enemies/Jungle/PitcherPlantBoss.c", line: 686, description: "scale = PITCHER_PLANT_SCALE" },
+    ],
   },
   [ItemType.PitcherPod]: {
     modelFile: "level6_jungle.bg3d",
     modelPath: "models",
-    modelIndex: 19, // PitcherPod_Stem + Pod
+    modelIndex: 19,
     groupSize: 2,
+    scale: 2.5,
+    citations: [{ file: "src/Enemies/Jungle/PitcherPlantBoss.c", line: 935, description: "scale = 2.5f + Random" }],
   },
   [ItemType.TractorBeamPost]: {
     modelFile: "level6_jungle.bg3d",
     modelPath: "models",
-    modelIndex: 26, // TractorBeamPost
+    modelIndex: 26,
+    scale: 1.2,
+    citations: [{ file: "src/Enemies/Jungle/PitcherPlantBoss.c", line: 1331, description: "scale = 1.2" }],
   },
   [ItemType.Cannon]: {
     modelFile: "level5_cloud.bg3d",
