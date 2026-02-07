@@ -72,7 +72,16 @@ export function GameCard({
           <h3 className="text-lg font-semibold">{title}</h3>
         </div>
 
-        <div className="flex-none mt-3 flex justify-center">
+        {/* Add extra vertical spacing for Otto Matic to match other cards */}
+        {title === "Otto Matic" && <div className="h-4" />}
+
+        <div className="flex-none mt-3 flex flex-col items-center">
+          {!isOttoMatic && (
+            <p className="text-xs text-gray-400 text-center mb-1">
+              (Not Functional)
+            </p>
+          )}
+
           {isMightyMike ? (
             <div className="w-100 h-70 flex items-center justify-center">
               <img
@@ -83,9 +92,6 @@ export function GameCard({
             </div>
           ) : (
             <MiniThreeView gltfUrl={modelPath} gameType={globals.GAME_TYPE} />
-          )}
-          {!isOttoMatic && (
-            <p className="text-xs text-gray-400 text-center mt-1">(Not Functional)</p>
           )}
         </div>
 
@@ -98,7 +104,9 @@ export function GameCard({
           </Button>
         </div>
 
-        <div className="flex-1 min-h-0 mt-2 overflow-auto flex flex-col gap-1 text-2xl min-w-40">{children}</div>
+        <div className="flex-1 min-h-0 mt-2 overflow-auto flex flex-col gap-1 text-2xl min-w-40">
+          {children}
+        </div>
 
         <div className="flex-none pt-2 border-t border-gray-700 mt-2">
           <p className="text-sm text-gray-300">
@@ -178,15 +186,18 @@ export function GameCard({
                   const file = e.target.files[0];
                   const buffer = await file.arrayBuffer();
                   const result = parseTunnelFile(buffer);
-                  
+
                   if (!result.ok) {
-                    console.error("Failed to parse tunnel file:", result.error.message);
+                    console.error(
+                      "Failed to parse tunnel file:",
+                      result.error.message,
+                    );
                     toast.error("Failed to parse tunnel file", {
                       description: result.error.message,
                     });
                     return;
                   }
-                  
+
                   setTunnelFileName(file.name);
                   setTunnelData(result.value);
                 }}

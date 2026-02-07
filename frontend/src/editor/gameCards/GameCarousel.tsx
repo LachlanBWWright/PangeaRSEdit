@@ -36,24 +36,44 @@ interface LevelComponentProps {
 }
 
 // Create stable wrapper components for each game type
-const OttoLevelWrapper = ({ openFile }: LevelComponentProps) => <OttoLevels openFile={openFile} />;
-const BugdomLevelWrapper = ({ openFile }: LevelComponentProps) => <BugdomLevels openFile={openFile} />;
-const Bugdom2LevelWrapper = ({ openFile, onTunnelLoad }: LevelComponentProps) => (
+const OttoLevelWrapper = ({ openFile }: LevelComponentProps) => (
+  <OttoLevels openFile={openFile} />
+);
+const BugdomLevelWrapper = ({ openFile }: LevelComponentProps) => (
+  <BugdomLevels openFile={openFile} />
+);
+const Bugdom2LevelWrapper = ({
+  openFile,
+  onTunnelLoad,
+}: LevelComponentProps) => (
   <Bugdom2Levels openFile={openFile} onTunnelLoad={onTunnelLoad} />
 );
-const CroMagLevelWrapper = ({ openFile }: LevelComponentProps) => <CroMagLevels openFile={openFile} />;
-const NanosaurLevelWrapper = ({ openFile }: LevelComponentProps) => <NanosaurLevels openFile={openFile} />;
-const Nanosaur2LevelWrapper = ({ openFile }: LevelComponentProps) => <Nanosaur2Levels openFile={openFile} />;
-const BillyFrontierLevelWrapper = ({ openFile }: LevelComponentProps) => <BillyFrontierLevels openFile={openFile} />;
-const MightyMikeLevelWrapper = ({ openFile }: LevelComponentProps) => <MightyMikeLevels openFile={openFile} />;
+const CroMagLevelWrapper = ({ openFile }: LevelComponentProps) => (
+  <CroMagLevels openFile={openFile} />
+);
+const NanosaurLevelWrapper = ({ openFile }: LevelComponentProps) => (
+  <NanosaurLevels openFile={openFile} />
+);
+const Nanosaur2LevelWrapper = ({ openFile }: LevelComponentProps) => (
+  <Nanosaur2Levels openFile={openFile} />
+);
+const BillyFrontierLevelWrapper = ({ openFile }: LevelComponentProps) => (
+  <BillyFrontierLevels openFile={openFile} />
+);
+const MightyMikeLevelWrapper = ({ openFile }: LevelComponentProps) => (
+  <MightyMikeLevels openFile={openFile} />
+);
 
 // Map game titles to their components at module level
-const LEVEL_COMPONENTS_MAP: Record<string, React.ComponentType<LevelComponentProps>> = {
+const LEVEL_COMPONENTS_MAP: Record<
+  string,
+  React.ComponentType<LevelComponentProps>
+> = {
   "Otto Matic": OttoLevelWrapper,
-  "Bugdom": BugdomLevelWrapper,
+  Bugdom: BugdomLevelWrapper,
   "Bugdom 2": Bugdom2LevelWrapper,
   "Cro-Mag Rally": CroMagLevelWrapper,
-  "Nanosaur": NanosaurLevelWrapper,
+  Nanosaur: NanosaurLevelWrapper,
   "Nanosaur 2": Nanosaur2LevelWrapper,
   "Billy Frontier": BillyFrontierLevelWrapper,
   "Mighty Mike": MightyMikeLevelWrapper,
@@ -106,7 +126,7 @@ export function GameCarousel({
 
   return (
     <Carousel
-      className="mx-auto w-full max-w-[1400px] h-[60vh] lg:h-[70vh] overflow-hidden px-12"
+      className="mx-auto w-full max-w-[1400px] min-h-0 h-full max-h-[70vh] lg:max-h-[80vh] overflow-hidden px-12"
       opts={{ align: showAllGames ? "start" : "center", skipSnaps: true }}
     >
       <CarouselContent
@@ -166,10 +186,13 @@ function GameCarouselItem({
   }
 
   // Create tunnel load handler
-  const handleTunnelLoad = useCallback((data: TunnelData, fileName: string) => {
-    setTunnelFileName(fileName);
-    setTunnelData(data);
-  }, [setTunnelData, setTunnelFileName]);
+  const handleTunnelLoad = useCallback(
+    (data: TunnelData, fileName: string) => {
+      setTunnelFileName(fileName);
+      setTunnelData(data);
+    },
+    [setTunnelData, setTunnelFileName],
+  );
 
   return (
     <CarouselItem className="pl-4 md:pl-6 md:basis-1/2 lg:basis-1/3 min-h-0 box-border overflow-hidden">
@@ -184,7 +207,10 @@ function GameCarouselItem({
         setTunnelFileName={setTunnelFileName}
         onCreateBlankLevel={onCreateBlankLevel}
       >
-        <LevelComponent openFile={handleOpenFile} onTunnelLoad={handleTunnelLoad} />
+        <LevelComponent
+          openFile={handleOpenFile}
+          onTunnelLoad={handleTunnelLoad}
+        />
       </GameCard>
     </CarouselItem>
   );
