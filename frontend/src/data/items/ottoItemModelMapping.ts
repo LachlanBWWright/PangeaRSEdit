@@ -357,8 +357,10 @@ export const OTTO_ITEM_MODEL_MAPPINGS: Record<
   [ItemType.MagnetMonster]: {
     modelFile: "level2_slime.bg3d",
     modelPath: "models",
-    modelIndex: 21, // SLIME_ObjType_MagnetMonster + Prop
+    modelIndex: 21,
     groupSize: 2,
+    scale: 4.0,
+    citations: [{ file: "src/Items/Traps.c", line: 865, description: "scale = 4.0" }],
   },
   [ItemType.FallingSlimePlatform]: {
     modelFile: "level2_slime.bg3d",
@@ -393,12 +395,16 @@ export const OTTO_ITEM_MODEL_MAPPINGS: Record<
   [ItemType.MovingPlatform]: {
     modelFile: "level3_blobboss.bg3d",
     modelPath: "models",
-    modelIndex: 21, // MovingPlatform_Blue
+    modelIndex: 21,
+    scale: 2.0,
+    citations: [{ file: "src/Items/Items.c", line: 1602, description: "scale = s = 2.0" }],
   },
   [ItemType.MachineBoss]: {
     modelFile: "level2_slime.bg3d",
     modelPath: "models",
-    modelIndex: 9, // Mech_Boiler
+    modelIndex: 9,
+    scale: 2.5,
+    citations: [{ file: "src/Items/Items.c", line: 1198, description: "scale = s = 2.5f" }],
   },
 
   // 43-54: Cloud/Jungle/Apocalypse level items
@@ -549,6 +555,11 @@ export const OTTO_ITEM_MODEL_MAPPINGS: Record<
     modelIndex: 0,
     requiresSkeleton: true,
     skeletonFile: "Scientist.skeleton.rsrc",
+    scale: 2.0,
+    citations: [
+      { file: "src/Items/Humans.c", line: 35, description: "#define HUMAN_SCALE (2.0f * gHumanScaleRatio)" },
+      { file: "src/Items/Humans.c", line: 267, description: "scale = HUMAN_SCALE" },
+    ],
   },
   [ItemType.ProximityMine]: {
     modelFile: "level4_apocalypse.bg3d",
@@ -693,6 +704,8 @@ export const OTTO_ITEM_MODEL_MAPPINGS: Record<
     modelIndex: 0,
     requiresSkeleton: true,
     skeletonFile: "ClownFish.skeleton.rsrc",
+    scale: 2.0,
+    citations: [{ file: "src/Enemies/Cloud/Enemy_ClownFish.c", line: 39, description: "#define CLOWNFISH_SCALE 2.0f" }],
   },
   [ItemType.BumperCarPowerPost]: {
     modelFile: "level5_cloud.bg3d",
