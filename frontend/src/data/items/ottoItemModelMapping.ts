@@ -204,7 +204,12 @@ export const OTTO_ITEM_MODEL_MAPPINGS: Record<
   [ItemType.FencePost]: {
     modelFile: "level1_farm.bg3d",
     modelPath: "models",
-    modelIndex: 9, // WoodPost
+    modelIndex: 9,
+    scale: 1.2,
+    citations: [
+      { file: "src/Items/Items.c", line: 630, endLine: 641, description: "scale varies by type: 1.2 (wood), 0.9 (metal), 4.0 (jungle), etc." },
+      { file: "src/Items/Items.c", line: 669, description: "scale = scale[type]" },
+    ],
   },
   [ItemType.Tractor]: {
     modelFile: "level1_farm.bg3d",
