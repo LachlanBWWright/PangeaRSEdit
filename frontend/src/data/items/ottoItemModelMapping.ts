@@ -671,26 +671,46 @@ export const OTTO_ITEM_MODEL_MAPPINGS: Record<
   [ItemType.JawsBot]: {
     modelFile: "level8_fireice.bg3d",
     modelPath: "models",
-    modelIndex: 10, // FIREICE_ObjType_JawsBot_Body + Jaw + Wheels
+    modelIndex: 10,
     groupSize: 3,
+    scale: 15.0,
+    citations: [
+      { file: "src/Enemies/FireIce/Enemy_JawsBot.c", line: 40, description: "#define JAWSBOT_SCALE 15.0f" },
+      { file: "src/Enemies/FireIce/Enemy_JawsBot.c", line: 116, description: "scale = JAWSBOT_SCALE" },
+    ],
   },
   [ItemType.HammerBot]: {
     modelFile: "level8_fireice.bg3d",
     modelPath: "models",
-    modelIndex: 16, // FIREICE_ObjType_HammerBot_Body + Hammer + Wheels
+    modelIndex: 16,
     groupSize: 3,
+    scale: 2.5,
+    citations: [
+      { file: "src/Enemies/FireIce/Enemy_HammerBot.c", line: 42, description: "#define HAMMERBOT_SCALE 2.5f" },
+      { file: "src/Enemies/FireIce/Enemy_HammerBot.c", line: 124, description: "scale = HAMMERBOT_SCALE" },
+    ],
   },
   [ItemType.DrillBot]: {
     modelFile: "level8_fireice.bg3d",
     modelPath: "models",
-    modelIndex: 22, // FIREICE_ObjType_DrillBot_Body + Drill + Wheels
+    modelIndex: 22,
     groupSize: 3,
+    scale: 1.5,
+    citations: [
+      { file: "src/Enemies/FireIce/Enemy_DrillBot.c", line: 42, description: "#define DRILLBOT_SCALE 1.5f" },
+      { file: "src/Enemies/FireIce/Enemy_DrillBot.c", line: 128, description: "scale = DRILLBOT_SCALE" },
+    ],
   },
   [ItemType.SwingerBot]: {
     modelFile: "level8_fireice.bg3d",
     modelPath: "models",
-    modelIndex: 27, // FIREICE_ObjType_SwingerBot_Body + Treads + Pivot + SmallGear + Mace
+    modelIndex: 27,
     groupSize: 5,
+    scale: 1.0,
+    citations: [
+      { file: "src/Enemies/FireIce/Enemy_SwingerBot.c", line: 41, description: "#define SWINGERBOT_SCALE 1.0f" },
+      { file: "src/Enemies/FireIce/Enemy_SwingerBot.c", line: 123, description: "scale = SWINGERBOT_SCALE" },
+    ],
   },
 
   // 92-108: Saucer/Brain boss items
