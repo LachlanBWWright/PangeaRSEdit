@@ -5,22 +5,20 @@ test.describe("Level Download", () => {
     page,
   }) => {
     await page.goto("/");
+    await page.waitForLoadState("networkidle");
 
     // Find and click the Bugdom "Level 1" button (Training.ter)
     const bugdomLevel1 = page.getByRole("button", { name: "Level 1" }).first();
     await bugdomLevel1.click();
 
-    // Wait for editor to load
-    await page.waitForTimeout(3000);
-
-    // Look for the download/save button
+    // Wait for editor to load by checking for the download button to appear
     const downloadButton = page
       .getByRole("button", { name: /download|save/i })
       .first();
+    await downloadButton.waitFor({ state: "visible", timeout: 15000 });
 
-    // Set up download listener
+    // Set up download listener before clicking
     const downloadPromise = page.waitForEvent("download", { timeout: 15000 });
-
     await downloadButton.click();
 
     // Verify download was triggered
@@ -32,37 +30,33 @@ test.describe("Level Download", () => {
     page,
   }) => {
     await page.goto("/");
+    await page.waitForLoadState("networkidle");
 
     // Navigate to Nanosaur section and click Default level
-    // The carousel may need scrolling to reach Nanosaur
     const nanosaurDefault = page
       .getByRole("button", { name: "Default" })
       .first();
 
-    // If not visible, try scrolling
+    // If not visible, scroll the carousel to find it
     if (!(await nanosaurDefault.isVisible())) {
-      // Scroll the carousel
       const nextButton = page.getByRole("button", { name: /next/i }).first();
       for (let i = 0; i < 5; i++) {
         if (await nanosaurDefault.isVisible()) break;
         await nextButton.click();
-        await page.waitForTimeout(500);
+        await nextButton.waitFor({ state: "visible" });
       }
     }
 
     await nanosaurDefault.click();
 
-    // Wait for editor to load
-    await page.waitForTimeout(3000);
-
-    // Look for the download/save button
+    // Wait for editor to load by checking for the download button
     const downloadButton = page
       .getByRole("button", { name: /download|save/i })
       .first();
+    await downloadButton.waitFor({ state: "visible", timeout: 15000 });
 
-    // Set up download listener
+    // Set up download listener before clicking
     const downloadPromise = page.waitForEvent("download", { timeout: 15000 });
-
     await downloadButton.click();
 
     // Verify download was triggered
