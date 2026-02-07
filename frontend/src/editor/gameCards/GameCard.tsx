@@ -62,6 +62,9 @@ export function GameCard({
   const modelPath = getModelPath(globals.GAME_TYPE);
   const isBugdom2 = globals.GAME_TYPE === Game.BUGDOM_2;
 
+  const isOttoMatic = globals.GAME_TYPE === Game.OTTO_MATIC;
+  const isMightyMike = globals.GAME_TYPE === Game.MIGHTY_MIKE;
+
   return (
     <Card className="h-full flex flex-col min-h-0 overflow-hidden bg-gray-800 border-gray-700 text-white">
       <CardContent className="flex-1 flex flex-col min-h-0 overflow-auto p-4">
@@ -70,18 +73,34 @@ export function GameCard({
         </div>
 
         <div className="flex-none mt-3 flex justify-center">
-          <MiniThreeView gltfUrl={modelPath} gameType={globals.GAME_TYPE} />
+          {isMightyMike ? (
+            <div className="w-100 h-70 flex items-center justify-center">
+              <img
+                src="https://raw.githubusercontent.com/jorio/MightyMike/refs/heads/master/packaging/MightyMikeRaw.png"
+                alt="Mighty Mike"
+                className="max-w-full max-h-full object-contain"
+              />
+            </div>
+          ) : (
+            <MiniThreeView gltfUrl={modelPath} gameType={globals.GAME_TYPE} />
+          )}
+          {!isOttoMatic && (
+            <p className="text-xs text-gray-400 text-center mt-1">(Not Functional)</p>
+          )}
         </div>
 
-        <div className="flex-1 min-h-0 mt-2 overflow-auto flex flex-col gap-1 text-2xl min-w-40">{children}</div>
-
-        <div className="flex-none pt-2 border-t border-gray-700 mt-2">
+        <div className="flex-none pt-2 mt-2">
           <Button
             className="w-full mb-2"
             onClick={() => onCreateBlankLevel(globals)}
           >
             Create Blank Level
           </Button>
+        </div>
+
+        <div className="flex-1 min-h-0 mt-2 overflow-auto flex flex-col gap-1 text-2xl min-w-40">{children}</div>
+
+        <div className="flex-none pt-2 border-t border-gray-700 mt-2">
           <p className="text-sm text-gray-300">
             Upload Level Data (
             {globals.DATA_TYPE === DataType.MIGHTY_MIKE ? ".map" : ".ter.rsrc"})

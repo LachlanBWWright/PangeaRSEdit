@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useEffect } from "react";
 import { Canvas } from "@react-three/fiber";
 import { OrbitControls, useGLTF } from "@react-three/drei";
 import { EnhancedModelMesh } from "@/components/EnhancedModelMesh";
@@ -7,6 +7,7 @@ import { useModelHierarchy } from "@/components/model-viewer/useModelHierarchy";
 import { useModelAnimations } from "@/components/model-viewer/useModelAnimations";
 import { AnimationUpdater } from "@/components/model-viewer/AnimationUpdater";
 import { Game } from "@/data/globals/globals";
+import { Box3, Vector3 } from "three";
 
 export function ModelCanvas(props: ModelCanvasProps) {
   // Memoize camera config to prevent Canvas re-initialization on every render
@@ -61,6 +62,16 @@ export function ModelCanvas(props: ModelCanvasProps) {
 
   // Handle animations
   const { animationMixer } = useModelAnimations(gltfResult, onAnimationsReady);
+
+  // Shift Bugdom 1 model down by half its bounding box height so it appears grounded
+  useEffect(() => {
+    if (props.gameType === Game.BUGDOM && gltfResult?.scene) {
+      const box = new Box3().setFromObject(gltfResult.scene);
+      const size = new Vector3();
+      box.getSize(size);
+      gltfResult.scene.position.y = -size.y / 2;
+    }
+  }, [gltfResult, props.gameType]);
 
   // Validate gltfUrl for rendering (after hooks)
   const isValidUrl = gltfUrl && typeof gltfUrl === "string";

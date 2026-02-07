@@ -12,6 +12,8 @@ export default defineConfig({
     dir: import.meta.dirname,
     include: [
       "tests/roundtrip/allGamesRoundtripNew.test.ts",
+      "tests/roundtrip/nanosaurBinaryRoundtrip.test.ts",
+      "tests/roundtrip/bugdomSpecsRoundtrip.test.ts",
       "tests/tunnel/**/*.test.ts",
       "tests/levelEdit/**/*.test.ts",
       "tests/levelTemplates/**/*.test.ts",

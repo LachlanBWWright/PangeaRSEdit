@@ -73,7 +73,7 @@ export function Bugdom2Levels({
       <Button
         onClick={() => loadTunnelLevel("games/bugdom2/tunnels/Plumbing.tun", "Plumbing.tun")}
       >
-        Level 4 (Plumbing)
+        Level 4 (Tunnel)
       </Button>
       <Button
         onClick={() =>
@@ -92,7 +92,7 @@ export function Bugdom2Levels({
       <Button
         onClick={() => loadTunnelLevel("games/bugdom2/tunnels/Gutter.tun", "Gutter.tun")}
       >
-        Level 7 (Gutter)
+        Level 7 (Tunnel)
       </Button>
       <Button
         onClick={() =>
