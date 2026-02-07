@@ -152,8 +152,10 @@ export const OTTO_ITEM_MODEL_MAPPINGS: Record<
   [ItemType.Checkpoint]: {
     modelFile: "global.bg3d",
     modelPath: "models",
-    modelIndex: 31, // TeleportBase + TeleportDish
+    modelIndex: 31,
     groupSize: 2,
+    scale: 5.0,
+    citations: [{ file: "src/Items/Triggers.c", line: 691, description: "scale = 5.0" }],
   },
 
   // 11-27: Farm level and global items
@@ -179,7 +181,12 @@ export const OTTO_ITEM_MODEL_MAPPINGS: Record<
   [ItemType.MetalGate]: {
     modelFile: "level1_farm.bg3d",
     modelPath: "models",
-    modelIndex: 6, // MetalGate
+    modelIndex: 6,
+    scale: 1.3,
+    citations: [
+      { file: "src/Items/Triggers.c", line: 50, description: "#define METALFENCE_SCALE 1.3f" },
+      { file: "src/Items/Triggers.c", line: 444, description: "scale = METALFENCE_SCALE" },
+    ],
   },
   [ItemType.FencePost]: {
     modelFile: "level1_farm.bg3d",
@@ -271,7 +278,12 @@ export const OTTO_ITEM_MODEL_MAPPINGS: Record<
   [ItemType.BumperBubble]: {
     modelFile: "level2_slime.bg3d",
     modelPath: "models",
-    modelIndex: 16, // BumperBubble
+    modelIndex: 16,
+    scale: 1.5,
+    citations: [
+      { file: "src/Items/Triggers.c", line: 46, description: "#define BUMPERBUBBLE_SCALE 1.5f" },
+      { file: "src/Items/Triggers.c", line: 944, description: "scale = BUMPERBUBBLE_SCALE" },
+    ],
   },
   [ItemType.BasicCrystal]: {
     modelFile: "level2_slime.bg3d",
@@ -306,7 +318,9 @@ export const OTTO_ITEM_MODEL_MAPPINGS: Record<
   [ItemType.FallingSlimePlatform]: {
     modelFile: "level2_slime.bg3d",
     modelPath: "models",
-    modelIndex: 24, // FallingSlimePlatform_Small
+    modelIndex: 24,
+    scale: 2.0,
+    citations: [{ file: "src/Items/Triggers.c", line: 1102, description: "scale = s = 2.0f" }],
   },
   [ItemType.BubblePump]: {
     modelFile: "level2_slime.bg3d",
@@ -358,7 +372,12 @@ export const OTTO_ITEM_MODEL_MAPPINGS: Record<
   [ItemType.JungleGate]: {
     modelFile: "level6_jungle.bg3d",
     modelPath: "models",
-    modelIndex: 1, // Gate
+    modelIndex: 1,
+    scale: 3.0,
+    citations: [
+      { file: "src/Items/Triggers2.c", line: 36, description: "#define JUNGLEGATE_SCALE 3.0f" },
+      { file: "src/Items/Triggers2.c", line: 77, description: "scale = JUNGLEGATE_SCALE" },
+    ],
   },
   [ItemType.CrunchDoor]: {
     modelFile: "level4_apocalypse.bg3d",
@@ -418,7 +437,9 @@ export const OTTO_ITEM_MODEL_MAPPINGS: Record<
   [ItemType.LeafPlatform]: {
     modelFile: "level6_jungle.bg3d",
     modelPath: "models",
-    modelIndex: 9, // LeafPlatform0
+    modelIndex: 9,
+    scale: 4.0,
+    citations: [{ file: "src/Items/Triggers2.c", line: 431, description: "scale = 4.0" }],
   },
 
   // 56-62: Mixed level items
@@ -485,7 +506,12 @@ export const OTTO_ITEM_MODEL_MAPPINGS: Record<
   [ItemType.DebrisGate]: {
     modelFile: "level4_apocalypse.bg3d",
     modelPath: "models",
-    modelIndex: 27, // DebrisGate_Open
+    modelIndex: 27,
+    scale: 2.5,
+    citations: [
+      { file: "src/Items/Triggers2.c", line: 38, description: "#define DEBRISGATE_SCALE 2.5f" },
+      { file: "src/Items/Triggers2.c", line: 599, description: "scale = DEBRISGATE_SCALE" },
+    ],
   },
   [ItemType.GraveStone]: {
     modelFile: "level4_apocalypse.bg3d",
@@ -504,7 +530,9 @@ export const OTTO_ITEM_MODEL_MAPPINGS: Record<
   [ItemType.ChainReactingMine]: {
     modelFile: "level4_apocalypse.bg3d",
     modelPath: "models",
-    modelIndex: 22, // ProximityMine
+    modelIndex: 22,
+    scale: 0.6,
+    citations: [{ file: "src/Items/Triggers2.c", line: 766, description: "scale = s = .6" }],
   },
   [ItemType.Rubble]: {
     modelFile: "level4_apocalypse.bg3d",
@@ -633,7 +661,12 @@ export const OTTO_ITEM_MODEL_MAPPINGS: Record<
   [ItemType.LavaPillar]: {
     modelFile: "level8_fireice.bg3d",
     modelPath: "models",
-    modelIndex: 1, // LavaPillar_Full
+    modelIndex: 1,
+    scale: 8.0,
+    citations: [
+      { file: "src/Items/Volcano.c", line: 39, description: "#define LAVA_PILLAR_SCALE 8.0f" },
+      { file: "src/Items/Volcano.c", line: 68, description: "scale = LAVA_PILLAR_SCALE" },
+    ],
   },
   [ItemType.JawsBot]: {
     modelFile: "level8_fireice.bg3d",
@@ -736,7 +769,9 @@ export const OTTO_ITEM_MODEL_MAPPINGS: Record<
   [ItemType.LavaPlatform]: {
     modelFile: "level8_fireice.bg3d",
     modelPath: "models",
-    modelIndex: 54, // FIREICE_ObjType_LavaPlatform
+    modelIndex: 54,
+    scale: 4.2,
+    citations: [{ file: "src/Items/Volcano.c", line: 756, description: "scale = 4.2f" }],
   },
   [ItemType.IceSaucer]: {
     modelFile: "level8_fireice.bg3d",
@@ -785,7 +820,9 @@ export const OTTO_ITEM_MODEL_MAPPINGS: Record<
   [ItemType.TrapDoor]: {
     modelFile: "level5_cloud.bg3d",
     modelPath: "models",
-    modelIndex: 27, // CLOUD_ObjType_TrapDoor
+    modelIndex: 27,
+    scale: 225.0,
+    citations: [{ file: "src/Items/Triggers2.c", line: 1076, description: "scale = TERRAIN_POLYGON_SIZE (225.0f)" }],
   },
   [ItemType.ZigZagSlats]: {
     modelFile: "level5_cloud.bg3d",
@@ -807,7 +844,12 @@ export const OTTO_ITEM_MODEL_MAPPINGS: Record<
   [ItemType.Enemy_BrainBoss]: {
     modelFile: "level10_brainboss.bg3d",
     modelPath: "models",
-    modelIndex: 1, // BRAINBOSS_ObjType_BrainCore
+    modelIndex: 1,
+    scale: 5.0,
+    citations: [
+      { file: "src/Enemies/Enemy_BrainBoss.c", line: 46, description: "#define BRAINBOSS_SCALE 5.0f" },
+      { file: "src/Enemies/Enemy_BrainBoss.c", line: 185, description: "scale = BRAINBOSS_SCALE" },
+    ],
   },
   [ItemType.BlobArrow]: {
     modelFile: "level2_slime.bg3d",
@@ -826,6 +868,8 @@ export const OTTO_ITEM_MODEL_MAPPINGS: Record<
   [ItemType.BrainPort]: {
     modelFile: "level10_brainboss.bg3d",
     modelPath: "models",
-    modelIndex: 5, // BRAINBOSS_ObjType_BrainPort
+    modelIndex: 5,
+    scale: 3.5,
+    citations: [{ file: "src/Enemies/Enemy_BrainBoss.c", line: 995, description: "scale = 3.5" }],
   },
 };
