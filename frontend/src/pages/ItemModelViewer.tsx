@@ -37,6 +37,7 @@ import {
 import { getGameMapper } from "@/data/items/mappers";
 import { ottoItemMapper } from "@/data/items/mappers/ottoItemMapper";
 import type { UniversalItemModelMapping } from "@/data/items/itemModelTypes";
+import { getCitationPermalink } from "@/data/items/itemModelTypes";
 
 /**
  * Camera configuration for optimal model viewing
@@ -235,7 +236,7 @@ export function ItemModelViewer() {
   const [gltfScene, setGltfScene] = useState<Group | null>(null);
   const [status, setStatus] = useState<string>("Select a game and item to begin");
   const [modelStats, setModelStats] = useState<{ vertices: number; faces: number } | null>(null);
-  const [loadedModelInfo, setLoadedModelInfo] = useState<{ file: string; index: number } | null>(null);
+  const [loadedModelInfo, setLoadedModelInfo] = useState<{ file: string; index: number; mapping?: UniversalItemModelMapping } | null>(null);
   
   // Params state for param-dependent items
   const [itemParams, setItemParams] = useState<{ p0: number; p1: number; p2: number; p3: number }>({
@@ -480,17 +481,27 @@ export function ItemModelViewer() {
         throw new Error(`Could not extract model at index ${mapping.modelIndex}`);
       }
       
-      // Apply scale and rotation if specified
-      if (mapping.scale && mapping.scale !== 1) {
-        extracted.scale.set(mapping.scale, mapping.scale, mapping.scale);
-      }
+      // Apply scaling: uniform scale, then per-axis overrides
+      const baseScale = mapping.scale ?? 1;
+      const sx = baseScale * (mapping.scaleXZ ?? 1);
+      const sy = baseScale * (mapping.scaleY ?? 1);
+      const sz = baseScale * (mapping.scaleXZ ?? 1);
+      extracted.scale.set(sx, sy, sz);
+
       if (mapping.rotationY) {
         extracted.rotateY(mapping.rotationY);
+      }
+      if (mapping.positionOffset) {
+        extracted.position.set(
+          mapping.positionOffset[0],
+          mapping.positionOffset[1],
+          mapping.positionOffset[2],
+        );
       }
       
       setGltfScene(extracted);
       setModelStats(calculateModelStats(extracted));
-      setLoadedModelInfo({ file: mapping.modelFile, index: mapping.modelIndex });
+      setLoadedModelInfo({ file: mapping.modelFile, index: mapping.modelIndex, mapping });
       
       const itemName = selectedItem?.name ?? "item";
       setStatus(`Loaded: ${itemName} (${mapping.modelFile} @ index ${mapping.modelIndex})`);
@@ -647,9 +658,35 @@ export function ItemModelViewer() {
           
           {/* Loaded Model Info */}
           {loadedModelInfo && (
-            <div className="p-3 bg-green-900/30 border border-green-700 rounded text-sm text-green-300">
+            <div className="p-3 bg-green-900/30 border border-green-700 rounded text-sm text-green-300 space-y-1">
               <div>Loaded from: {loadedModelInfo.file}</div>
               <div>Model index: {loadedModelInfo.index}</div>
+              {loadedModelInfo.mapping?.scale && (
+                <div>Scale: {loadedModelInfo.mapping.scale}</div>
+              )}
+              {loadedModelInfo.mapping?.groupSize && loadedModelInfo.mapping.groupSize > 1 && (
+                <div>Group size: {loadedModelInfo.mapping.groupSize}</div>
+              )}
+              {loadedModelInfo.mapping?.citations && loadedModelInfo.mapping.citations.length > 0 && selectedGameId !== undefined && (
+                <div className="mt-2 pt-2 border-t border-green-700/50">
+                  <div className="text-xs text-green-400 font-semibold mb-1">Source Citations:</div>
+                  {loadedModelInfo.mapping.citations.map((cite, i) => {
+                    const permalink = getCitationPermalink(selectedGameId, cite);
+                    return (
+                      <div key={i} className="text-xs text-green-400/80">
+                        {permalink ? (
+                          <a href={permalink} target="_blank" rel="noopener noreferrer" className="underline hover:text-green-300">
+                            {cite.file}:{cite.line}
+                          </a>
+                        ) : (
+                          <span>{cite.file}:{cite.line}</span>
+                        )}
+                        {" — "}{cite.description}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           )}
           
