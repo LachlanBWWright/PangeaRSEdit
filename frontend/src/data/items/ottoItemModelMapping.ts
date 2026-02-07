@@ -13,6 +13,7 @@
  */
 
 import { ItemType } from "./ottoItemType";
+import type { SourceCitation } from "./itemModelTypes";
 
 /**
  * Describes how to load and render a 3D model for an item type
@@ -38,11 +39,23 @@ export interface ItemModelMapping {
   /** Skeleton .rsrc filename */
   skeletonFile?: string;
 
-  /** Scale multiplier for the model (default: 1.0) */
+  /** Uniform scale multiplier (default: 1.0) */
   scale?: number;
+
+  /** Horizontal scale multiplier (X/Z axes, default: 1.0) */
+  scaleXZ?: number;
+
+  /** Vertical scale multiplier (Y axis, default: 1.0) */
+  scaleY?: number;
 
   /** Y-axis rotation offset in radians (default: 0) */
   rotationY?: number;
+
+  /** Position offset in world units [x, y, z] */
+  positionOffset?: [number, number, number];
+
+  /** Source code citations for this mapping */
+  citations?: SourceCitation[];
 }
 
 /**
@@ -100,7 +113,12 @@ export const OTTO_ITEM_MODEL_MAPPINGS: Record<
   [ItemType.PowerupPod]: {
     modelFile: "global.bg3d",
     modelPath: "models",
-    modelIndex: 1, // PowerupOrb
+    modelIndex: 1,
+    scale: 1.8,
+    citations: [
+      { file: "src/Items/Powerups.c", line: 52, description: "#define POD_SCALE 1.8f" },
+      { file: "src/Items/Powerups.c", line: 619, description: "scale = POD_SCALE" },
+    ],
   },
   [ItemType.Enemy_BrainAlien]: {
     modelFile: "BrainAlien.bg3d",
@@ -142,12 +160,16 @@ export const OTTO_ITEM_MODEL_MAPPINGS: Record<
   [ItemType.Barn]: {
     modelFile: "level1_farm.bg3d",
     modelPath: "models",
-    modelIndex: 1, // Barn
+    modelIndex: 1,
+    scale: 1.5,
+    citations: [{ file: "src/Items/Items.c", line: 146, description: "scale = 1.5" }],
   },
   [ItemType.Silo]: {
     modelFile: "level1_farm.bg3d",
     modelPath: "models",
-    modelIndex: 2, // Silo
+    modelIndex: 2,
+    scale: 2.5,
+    citations: [{ file: "src/Items/Items.c", line: 177, description: "scale = 2.5" }],
   },
   [ItemType.WoodenGate]: {
     modelFile: "level1_farm.bg3d",
@@ -173,28 +195,41 @@ export const OTTO_ITEM_MODEL_MAPPINGS: Record<
   [ItemType.CornStalk]: {
     modelFile: "level1_farm.bg3d",
     modelPath: "models",
-    modelIndex: 16, // CornStalk
+    modelIndex: 16,
+    scale: 2.0,
+    citations: [{ file: "src/Items/Items.c", line: 340, description: "scale = 2.0" }],
   },
   [ItemType.Sprout]: {
     modelFile: "level1_farm.bg3d",
     modelPath: "models",
-    modelIndex: 17, // CornSprout (first sprout)
+    modelIndex: 17,
+    scale: 0.5,
+    citations: [{ file: "src/Items/Items.c", line: 246, description: "scale = .5" }],
   },
   [ItemType.BigLeafPlant]: {
     modelFile: "level1_farm.bg3d",
     modelPath: "models",
-    modelIndex: 20, // BigLeafPlant
+    modelIndex: 20,
+    scale: 2.5,
+    citations: [{ file: "src/Items/Items.c", line: 371, description: "scale = 2.5" }],
   },
   [ItemType.PhonePole]: {
     modelFile: "level1_farm.bg3d",
     modelPath: "models",
-    modelIndex: 22, // PhonePole
+    modelIndex: 22,
+    scale: 4.0,
+    citations: [{ file: "src/Items/Items.c", line: 208, description: "scale = 4.0" }],
   },
   [ItemType.Windmill]: {
     modelFile: "level1_farm.bg3d",
     modelPath: "models",
-    modelIndex: 23, // Windmill + Propeller
+    modelIndex: 23,
     groupSize: 2,
+    scale: 4.0,
+    citations: [
+      { file: "src/Items/Items.c", line: 44, description: "#define WINDMILL_SCALE 4.0f" },
+      { file: "src/Items/Items.c", line: 709, description: "scale = WINDMILL_SCALE" },
+    ],
   },
   [ItemType.Rock]: {
     modelFile: "level1_farm.bg3d",
@@ -213,11 +248,18 @@ export const OTTO_ITEM_MODEL_MAPPINGS: Record<
     modelFile: "level2_slime.bg3d",
     modelPath: "models",
     modelIndex: 0, // SlimeTube_FancyJ
+    scale: 2.0,
+    citations: [{ file: "src/Items/Items.c", line: 775, description: "scale = s = 2.0" }],
   },
   [ItemType.FallingCrystal]: {
     modelFile: "level2_slime.bg3d",
     modelPath: "models",
-    modelIndex: 14, // FallingCrystal_Blue
+    modelIndex: 14,
+    scale: 2.5,
+    citations: [
+      { file: "src/Items/Traps.c", line: 57, description: "#define FALLING_CRYSTAL_SCALE 2.5f" },
+      { file: "src/Items/Traps.c", line: 125, description: "scale = FALLING_CRYSTAL_SCALE" },
+    ],
   },
   [ItemType.Enemy_Blob]: {
     modelFile: "Blob.bg3d",
@@ -234,7 +276,9 @@ export const OTTO_ITEM_MODEL_MAPPINGS: Record<
   [ItemType.BasicCrystal]: {
     modelFile: "level2_slime.bg3d",
     modelPath: "models",
-    modelIndex: 10, // CrystalCluster_Blue
+    modelIndex: 10,
+    scale: 3.0,
+    citations: [{ file: "src/Items/Items.c", line: 1345, description: "scale = s = 3.0" }],
   },
   [ItemType.InertBubble]: {
     modelFile: "level2_slime.bg3d",
@@ -244,7 +288,12 @@ export const OTTO_ITEM_MODEL_MAPPINGS: Record<
   [ItemType.SlimeTree]: {
     modelFile: "level2_slime.bg3d",
     modelPath: "models",
-    modelIndex: 26, // SlimeTree_Big
+    modelIndex: 26,
+    scale: 6.0,
+    citations: [
+      { file: "src/Items/Items.c", line: 46, description: "#define SLIME_TREE_SCALE 6.0f" },
+      { file: "src/Items/Items.c", line: 1400, description: "scale = SLIME_TREE_SCALE" },
+    ],
   },
   [ItemType.MagnetMonster]: {
     modelFile: "level2_slime.bg3d",
@@ -260,14 +309,18 @@ export const OTTO_ITEM_MODEL_MAPPINGS: Record<
   [ItemType.BubblePump]: {
     modelFile: "level2_slime.bg3d",
     modelPath: "models",
-    modelIndex: 19, // BubblePump + Plunger
+    modelIndex: 19,
     groupSize: 2,
+    scale: 2.0,
+    citations: [{ file: "src/Items/Traps.c", line: 440, description: "scale = 2.0" }],
   },
   [ItemType.SlimeMech]: {
     modelFile: "level2_slime.bg3d",
     modelPath: "models",
-    modelIndex: 7, // Mech_OnAStick_Pole + Top
+    modelIndex: 7,
     groupSize: 2,
+    scale: 2.5,
+    citations: [{ file: "src/Items/Items.c", line: 1161, description: "scale = s = 2.5f" }],
   },
   [ItemType.SpinningPlatform]: {
     modelFile: "level3_blobboss.bg3d",
@@ -304,13 +357,17 @@ export const OTTO_ITEM_MODEL_MAPPINGS: Record<
   [ItemType.CrunchDoor]: {
     modelFile: "level4_apocalypse.bg3d",
     modelPath: "models",
-    modelIndex: 1, // CrunchDoor_Bottom + Top + Post
+    modelIndex: 1,
     groupSize: 3,
+    scale: 5.0,
+    citations: [{ file: "src/Items/Traps.c", line: 1204, description: "scale = 5.0" }],
   },
   [ItemType.Manhole]: {
     modelFile: "level4_apocalypse.bg3d",
     modelPath: "models",
-    modelIndex: 4, // Manhole
+    modelIndex: 4,
+    scale: 0.5,
+    citations: [{ file: "src/Items/Traps.c", line: 1506, description: "scale = .5" }],
   },
   [ItemType.Enemy_Flamester]: {
     modelFile: "Flamester.bg3d",
@@ -367,7 +424,9 @@ export const OTTO_ITEM_MODEL_MAPPINGS: Record<
   [ItemType.Teleporter]: {
     modelFile: "level4_apocalypse.bg3d",
     modelPath: "models",
-    modelIndex: 6, // Teleporter
+    modelIndex: 6,
+    scale: 1.5,
+    citations: [{ file: "src/Items/Teleporter.c", line: 110, description: "scale = 1.5" }],
   },
   [ItemType.ZipLinePost]: {
     modelFile: "level4_apocalypse.bg3d",
@@ -587,16 +646,22 @@ export const OTTO_ITEM_MODEL_MAPPINGS: Record<
     modelFile: "level1_farm.bg3d",
     modelPath: "models",
     modelIndex: 25, // FARM_ObjType_MetalTub
+    scale: 5.0,
+    citations: [{ file: "src/Items/Items.c", line: 516, description: "scale = 5.0f" }],
   },
   [ItemType.OutHouse]: {
     modelFile: "level1_farm.bg3d",
     modelPath: "models",
     modelIndex: 26, // FARM_ObjType_OutHouse
+    scale: 2.3,
+    citations: [{ file: "src/Items/Items.c", line: 546, description: "scale = 2.3f" }],
   },
   [ItemType.Hay]: {
     modelFile: "level1_farm.bg3d",
     modelPath: "models",
     modelIndex: 30, // FARM_ObjType_HayBrick
+    scale: 1.3,
+    citations: [{ file: "src/Items/Items.c", line: 607, description: "scale = 1.3" }],
   },
   
   // Fire/Ice level items (indices from FIREICE_ObjType enum in mobjtypes.h)

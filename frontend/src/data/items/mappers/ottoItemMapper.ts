@@ -73,7 +73,11 @@ function convertToUniversal(mapping: ItemModelMapping): UniversalItemModelMappin
     requiresSkeleton: mapping.requiresSkeleton,
     skeletonFile: mapping.skeletonFile,
     scale: mapping.scale,
+    scaleXZ: mapping.scaleXZ,
+    scaleY: mapping.scaleY,
     rotationY: mapping.rotationY,
+    positionOffset: mapping.positionOffset,
+    citations: mapping.citations,
   };
 }
 

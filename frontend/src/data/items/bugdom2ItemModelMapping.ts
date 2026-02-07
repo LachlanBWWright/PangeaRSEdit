@@ -19,6 +19,8 @@
  * - foliage.bg3d (FOLIAGE items)
  */
 
+import type { SourceCitation } from "./itemModelTypes";
+
 /**
  * Describes how to load and render a 3D model for a Bugdom 2 item type
  */
@@ -41,11 +43,23 @@ export interface Bugdom2ItemModelMapping {
   /** Skeleton .rsrc filename if applicable */
   skeletonFile?: string;
 
-  /** Scale multiplier for the model (default: 1.0) */
+  /** Uniform scale multiplier (default: 1.0) */
   scale?: number;
+
+  /** Horizontal scale multiplier (X/Z axes, default: 1.0) */
+  scaleXZ?: number;
+
+  /** Vertical scale multiplier (Y axis, default: 1.0) */
+  scaleY?: number;
 
   /** Y-axis rotation offset in radians (default: 0) */
   rotationY?: number;
+
+  /** Position offset in world units [x, y, z] */
+  positionOffset?: [number, number, number];
+
+  /** Source code citations for this mapping */
+  citations?: SourceCitation[];
 }
 
 /**

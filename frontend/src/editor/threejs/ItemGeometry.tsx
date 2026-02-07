@@ -236,18 +236,27 @@ export const ItemGeometry: React.FC<ItemGeometryProps> = ({
         const params = { p0: firstItem.p0, p1: firstItem.p1, p2: firstItem.p2, p3: firstItem.p3 };
         const mapping = mapper?.getMapping(firstItem.type, undefined, params);
         if (mapping && cachedModel.gltf.scene) {
-          // The cached gltf.scene should already be the extracted subgroup
-          // Just clone it once per cache key for instancing
-          const cloned = cachedModel.gltf.scene.clone(true); // true = recursive deep clone
+          const cloned = cachedModel.gltf.scene.clone(true);
 
-          // Apply scale if specified
-          if (mapping.scale && mapping.scale !== 1) {
-            cloned.scale.set(mapping.scale, mapping.scale, mapping.scale);
-          }
+          // Apply scaling: uniform scale, then optionally override per-axis
+          const baseScale = mapping.scale ?? 1;
+          const sx = baseScale * (mapping.scaleXZ ?? 1);
+          const sy = baseScale * (mapping.scaleY ?? 1);
+          const sz = baseScale * (mapping.scaleXZ ?? 1);
+          cloned.scale.set(sx, sy, sz);
 
           // Apply rotation if specified
           if (mapping.rotationY) {
             cloned.rotateY(mapping.rotationY);
+          }
+
+          // Apply position offset if specified
+          if (mapping.positionOffset) {
+            cloned.position.set(
+              mapping.positionOffset[0],
+              mapping.positionOffset[1],
+              mapping.positionOffset[2],
+            );
           }
 
           scenes.set(cacheKey, cloned);
