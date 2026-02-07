@@ -104,6 +104,8 @@ export const OTTO_ITEM_MODEL_MAPPINGS: Record<
     modelIndex: 0,
     requiresSkeleton: true,
     skeletonFile: "Squooshy.skeleton.rsrc",
+    scale: 2.5,
+    citations: [{ file: "src/Enemies/FireIce/Enemy_Squooshy.c", line: 46, description: "#define SQUOOSHY_SCALE 2.5f" }],
   },
   // Human (type 4) is a PARAM-DEPENDENT item!
   // The model file changes based on p1 parameter:
@@ -134,6 +136,8 @@ export const OTTO_ITEM_MODEL_MAPPINGS: Record<
     modelIndex: 0,
     requiresSkeleton: true,
     skeletonFile: "BrainAlien.skeleton.rsrc",
+    scale: 1.7,
+    citations: [{ file: "src/Enemies/Enemy_BrainAlien.c", line: 43, description: "#define BRAINALIEN_SCALE 1.7f" }],
   },
   // Farm enemies (Onion, Corn, Tomato) - skeletal characters
   [ItemType.Enemy_Onion]: {
@@ -142,6 +146,8 @@ export const OTTO_ITEM_MODEL_MAPPINGS: Record<
     modelIndex: 0,
     requiresSkeleton: true,
     skeletonFile: "Onion.skeleton.rsrc",
+    scale: 2.0,
+    citations: [{ file: "src/Enemies/Farm/Enemy_Onion.c", line: 47, description: "#define ONION_SCALE 2.0f" }],
   },
   [ItemType.Enemy_Corn]: {
     modelFile: "Corn.bg3d",
@@ -149,6 +155,8 @@ export const OTTO_ITEM_MODEL_MAPPINGS: Record<
     modelIndex: 0,
     requiresSkeleton: true,
     skeletonFile: "Corn.skeleton.rsrc",
+    scale: 1.7,
+    citations: [{ file: "src/Enemies/Farm/Enemy_Corn.c", line: 47, description: "#define CORN_SCALE 1.7f" }],
   },
   [ItemType.Enemy_Tomato]: {
     modelFile: "Tomato.bg3d",
@@ -156,6 +164,8 @@ export const OTTO_ITEM_MODEL_MAPPINGS: Record<
     modelIndex: 0,
     requiresSkeleton: true,
     skeletonFile: "Tomato.skeleton.rsrc",
+    scale: 1.3,
+    citations: [{ file: "src/Enemies/Farm/Enemy_Tomato.c", line: 46, description: "#define TOMATO_SCALE 1.3f" }],
   },
   [ItemType.Checkpoint]: {
     modelFile: "global.bg3d",
@@ -304,6 +314,11 @@ export const OTTO_ITEM_MODEL_MAPPINGS: Record<
     modelIndex: 0,
     requiresSkeleton: true,
     skeletonFile: "Blob.skeleton.rsrc",
+    scale: 2.4,
+    citations: [
+      { file: "src/Enemies/Slime/Enemy_Blob.c", line: 37, description: "#define BLOB_SCALE 2.4f" },
+      { file: "src/Enemies/Slime/Enemy_Blob.c", line: 120, description: "scale = BLOB_SCALE" },
+    ],
   },
   [ItemType.BumperBubble]: {
     modelFile: "level2_slime.bg3d",
@@ -432,6 +447,8 @@ export const OTTO_ITEM_MODEL_MAPPINGS: Record<
     modelIndex: 0,
     requiresSkeleton: true,
     skeletonFile: "Flamester.skeleton.rsrc",
+    scale: 2.1,
+    citations: [{ file: "src/Enemies/FireIce/Enemy_Flamester.c", line: 43, description: "#define FLAMESTER_SCALE_NORMAL 2.1f" }],
   },
   [ItemType.Enemy_GiantLizard]: {
     modelFile: "GiantLizard.bg3d",
@@ -439,6 +456,8 @@ export const OTTO_ITEM_MODEL_MAPPINGS: Record<
     modelIndex: 0,
     requiresSkeleton: true,
     skeletonFile: "GiantLizard.skeleton.rsrc",
+    scale: 2.5,
+    citations: [{ file: "src/Enemies/Jungle/Enemy_GiantLizard.c", line: 53, description: "#define GIANTLIZARD_SCALE 2.5f" }],
   },
   [ItemType.Enemy_FlyTrap]: {
     modelFile: "VenusFlytrap.bg3d",
@@ -446,6 +465,8 @@ export const OTTO_ITEM_MODEL_MAPPINGS: Record<
     modelIndex: 0,
     requiresSkeleton: true,
     skeletonFile: "VenusFlytrap.skeleton.rsrc",
+    scale: 2.6,
+    citations: [{ file: "src/Enemies/Jungle/Enemy_Flytrap.c", line: 36, description: "#define FLYTRAP_SCALE 2.6f" }],
   },
   [ItemType.Enemy_Mantis]: {
     modelFile: "Mantis.bg3d",
@@ -453,6 +474,8 @@ export const OTTO_ITEM_MODEL_MAPPINGS: Record<
     modelIndex: 0,
     requiresSkeleton: true,
     skeletonFile: "Mantis.skeleton.rsrc",
+    scale: 2.1,
+    citations: [{ file: "src/Enemies/Jungle/Enemy_Mantis.c", line: 45, description: "#define MANTIS_SCALE 2.1f" }],
   },
   [ItemType.TurtlePlatform]: {
     modelFile: "Turtle.bg3d",
@@ -460,6 +483,8 @@ export const OTTO_ITEM_MODEL_MAPPINGS: Record<
     modelIndex: 0,
     requiresSkeleton: true,
     skeletonFile: "Turtle.skeleton.rsrc",
+    scale: 2.5,
+    citations: [{ file: "src/Items/Triggers2.c", line: 266, description: "scale = 2.5" }],
   },
   [ItemType.Smashable]: {
     modelFile: "level6_jungle.bg3d",
@@ -503,6 +528,8 @@ export const OTTO_ITEM_MODEL_MAPPINGS: Record<
     modelIndex: 0,
     requiresSkeleton: true,
     skeletonFile: "Mutant.skeleton.rsrc",
+    scale: 1.2,
+    citations: [{ file: "src/Enemies/Apocalypse/Enemy_Mutant.c", line: 46, description: "#define MUTANT_SCALE 1.2f" }],
   },
   [ItemType.Enemy_MutantRobot]: {
     modelFile: "MutantRobot.bg3d",
@@ -510,6 +537,8 @@ export const OTTO_ITEM_MODEL_MAPPINGS: Record<
     modelIndex: 0,
     requiresSkeleton: true,
     skeletonFile: "MutantRobot.skeleton.rsrc",
+    scale: 1.9,
+    citations: [{ file: "src/Enemies/Apocalypse/Enemy_MutantRobot.c", line: 46, description: "#define MUTANTROBOT_SCALE 1.9f" }],
   },
   // HumanScientist (type 61) always uses Scientist skeleton
   // Different from Human which is param-dependent
@@ -655,6 +684,8 @@ export const OTTO_ITEM_MODEL_MAPPINGS: Record<
     modelIndex: 0,
     requiresSkeleton: true,
     skeletonFile: "Clown.skeleton.rsrc",
+    scale: 2.2,
+    citations: [{ file: "src/Enemies/Cloud/Enemy_Clown.c", line: 48, description: "#define CLOWN_SCALE 2.2f" }],
   },
   [ItemType.Clownfish]: {
     modelFile: "ClownFish.bg3d",
@@ -677,6 +708,8 @@ export const OTTO_ITEM_MODEL_MAPPINGS: Record<
     modelIndex: 0,
     requiresSkeleton: true,
     skeletonFile: "StrongMan.skeleton.rsrc",
+    scale: 2.0,
+    citations: [{ file: "src/Enemies/Cloud/Enemy_StrongMan.c", line: 45, description: "#define STRONGMAN_SCALE 2.0f" }],
   },
   [ItemType.CloudPlatform]: {
     modelFile: "level5_cloud.bg3d",
@@ -766,6 +799,8 @@ export const OTTO_ITEM_MODEL_MAPPINGS: Record<
     modelIndex: 0,
     requiresSkeleton: true,
     skeletonFile: "IceCube.skeleton.rsrc",
+    scale: 2.5,
+    citations: [{ file: "src/Enemies/FireIce/Enemy_IceCube.c", line: 54, description: "#define ICECUBE_SCALE_NORMAL 2.5f" }],
   },
   [ItemType.RadarDish]: {
     modelFile: "level9_saucer.bg3d",
