@@ -667,7 +667,7 @@ export function ItemModelViewer() {
               {loadedModelInfo.mapping?.groupSize && loadedModelInfo.mapping.groupSize > 1 && (
                 <div>Group size: {loadedModelInfo.mapping.groupSize}</div>
               )}
-              {loadedModelInfo.mapping?.citations && loadedModelInfo.mapping.citations.length > 0 && selectedGameId !== undefined && (
+              {loadedModelInfo.mapping?.citations && loadedModelInfo.mapping.citations.length > 0 && selectedGameId !== null && (
                 <div className="mt-2 pt-2 border-t border-green-700/50">
                   <div className="text-xs text-green-400 font-semibold mb-1">Source Citations:</div>
                   {loadedModelInfo.mapping.citations.map((cite, i) => {
