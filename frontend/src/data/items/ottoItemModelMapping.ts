@@ -283,7 +283,9 @@ export const OTTO_ITEM_MODEL_MAPPINGS: Record<
   [ItemType.InertBubble]: {
     modelFile: "level2_slime.bg3d",
     modelPath: "models",
-    modelIndex: 17, // SoapBubble
+    modelIndex: 17,
+    scale: 0.5,
+    citations: [{ file: "src/Items/Traps.c", line: 377, description: "scale = .5" }],
   },
   [ItemType.SlimeTree]: {
     modelFile: "level2_slime.bg3d",
@@ -342,12 +344,16 @@ export const OTTO_ITEM_MODEL_MAPPINGS: Record<
   [ItemType.BlobBossTube]: {
     modelFile: "level3_blobboss.bg3d",
     modelPath: "models",
-    modelIndex: 31, // Tube_Bent
+    modelIndex: 31,
+    scale: 3.0,
+    citations: [{ file: "src/Items/Items.c", line: 1683, description: "scale = s = 3.0" }],
   },
   [ItemType.ScaffoldingPost]: {
     modelFile: "level5_cloud.bg3d",
     modelPath: "models",
-    modelIndex: 1, // Post0
+    modelIndex: 1,
+    scale: 10.0,
+    citations: [{ file: "src/Items/Items.c", line: 1718, description: "scale = 10.0" }],
   },
   [ItemType.JungleGate]: {
     modelFile: "level6_jungle.bg3d",
@@ -461,14 +467,18 @@ export const OTTO_ITEM_MODEL_MAPPINGS: Record<
   [ItemType.ProximityMine]: {
     modelFile: "level4_apocalypse.bg3d",
     modelPath: "models",
-    modelIndex: 22, // ProximityMine
+    modelIndex: 22,
+    scale: 0.6,
+    citations: [{ file: "src/Items/Traps.c", line: 1779, description: "scale = .6" }],
   },
 
   // 63-76: Apocalypse/Cloud level items
   [ItemType.LampPost]: {
     modelFile: "level4_apocalypse.bg3d",
     modelPath: "models",
-    modelIndex: 24, // LampPost
+    modelIndex: 24,
+    scale: 0.8,
+    citations: [{ file: "src/Items/Items.c", line: 1833, description: "scale = .8" }],
   },
   [ItemType.DebrisGate]: {
     modelFile: "level4_apocalypse.bg3d",
@@ -478,12 +488,16 @@ export const OTTO_ITEM_MODEL_MAPPINGS: Record<
   [ItemType.GraveStone]: {
     modelFile: "level4_apocalypse.bg3d",
     modelPath: "models",
-    modelIndex: 34, // GraveStone
+    modelIndex: 34,
+    scale: 0.6,
+    citations: [{ file: "src/Items/Items.c", line: 2110, description: "scale = .6" }],
   },
   [ItemType.CrashedShip]: {
     modelFile: "level4_apocalypse.bg3d",
     modelPath: "models",
-    modelIndex: 40, // CrashedSaucer
+    modelIndex: 40,
+    scale: 1.4,
+    citations: [{ file: "src/Items/Items.c", line: 1873, description: "scale = 1.4" }],
   },
   [ItemType.ChainReactingMine]: {
     modelFile: "level4_apocalypse.bg3d",
@@ -493,12 +507,16 @@ export const OTTO_ITEM_MODEL_MAPPINGS: Record<
   [ItemType.Rubble]: {
     modelFile: "level4_apocalypse.bg3d",
     modelPath: "models",
-    modelIndex: 43, // Rubble0
+    modelIndex: 43,
+    scale: 2.0,
+    citations: [{ file: "src/Items/Items.c", line: 1912, description: "scale = 2.0" }],
   },
   [ItemType.TeleporterMap]: {
     modelFile: "level4_apocalypse.bg3d",
     modelPath: "models",
-    modelIndex: 50, // TeleporterMap0
+    modelIndex: 50,
+    scale: 2.0,
+    citations: [{ file: "src/Items/Items.c", line: 1955, description: "scale = 2.0" }],
   },
   [ItemType.GreenSteam]: {
     modelFile: "level4_apocalypse.bg3d",
@@ -529,20 +547,32 @@ export const OTTO_ITEM_MODEL_MAPPINGS: Record<
   [ItemType.Cannon]: {
     modelFile: "level5_cloud.bg3d",
     modelPath: "models",
-    modelIndex: 8, // Cannon + Pedestal
+    modelIndex: 8,
     groupSize: 2,
+    scale: 1.9,
+    citations: [
+      { file: "src/Items/HumanCannonball.c", line: 25, description: "#define CANNON_SCALE 1.9f" },
+      { file: "src/Items/HumanCannonball.c", line: 56, description: "scale = CANNON_SCALE" },
+    ],
   },
 
   // 76-90: Cloud level items
   [ItemType.BumperCar]: {
     modelFile: "level5_cloud.bg3d",
     modelPath: "models",
-    modelIndex: 10, // BumperCar
+    modelIndex: 10,
+    scale: 1.8,
+    citations: [
+      { file: "src/Items/BumperCar.c", line: 31, description: "#define BUMPERCAR_SCALE 1.8f" },
+      { file: "src/Items/BumperCar.c", line: 192, description: "scale = BUMPERCAR_SCALE" },
+    ],
   },
   [ItemType.TireBumperStrip]: {
     modelFile: "level5_cloud.bg3d",
     modelPath: "models",
-    modelIndex: 12, // TireBumper
+    modelIndex: 12,
+    scale: 2.0,
+    citations: [{ file: "src/Items/BumperCar.c", line: 839, description: "scale = 2.0" }],
   },
   [ItemType.Enemy_Clown]: {
     modelFile: "Clown.bg3d",
@@ -561,7 +591,9 @@ export const OTTO_ITEM_MODEL_MAPPINGS: Record<
   [ItemType.BumperCarPowerPost]: {
     modelFile: "level5_cloud.bg3d",
     modelPath: "models",
-    modelIndex: 14, // GeneratorBumper
+    modelIndex: 14,
+    scale: 1.1,
+    citations: [{ file: "src/Items/BumperCar.c", line: 936, description: "scale = 1.1" }],
   },
   // Strongman enemy (type 81)
   [ItemType.Enemy_StrongMan]: {
@@ -579,8 +611,10 @@ export const OTTO_ITEM_MODEL_MAPPINGS: Record<
   [ItemType.CloudTunnel]: {
     modelFile: "level5_cloud.bg3d",
     modelPath: "models",
-    modelIndex: 6, // CloudTunnel_Frame + Tube
+    modelIndex: 6,
     groupSize: 2,
+    scale: 8.0,
+    citations: [{ file: "src/Items/Items.c", line: 1778, description: "scale = 8.0" }],
   },
   [ItemType.RocketSled]: {
     modelFile: "level5_cloud.bg3d",
@@ -673,7 +707,12 @@ export const OTTO_ITEM_MODEL_MAPPINGS: Record<
   [ItemType.Snowball]: {
     modelFile: "level8_fireice.bg3d",
     modelPath: "models",
-    modelIndex: 4, // FIREICE_ObjType_SnowBall
+    modelIndex: 4,
+    scale: 1.5,
+    citations: [
+      { file: "src/Items/Traps.c", line: 61, description: "#define SNOWBALL_SCALE_START 1.5f" },
+      { file: "src/Items/Traps.c", line: 2091, description: "scale = SNOWBALL_SCALE_START" },
+    ],
   },
   [ItemType.LavaPlatform]: {
     modelFile: "level8_fireice.bg3d",
@@ -683,15 +722,22 @@ export const OTTO_ITEM_MODEL_MAPPINGS: Record<
   [ItemType.IceSaucer]: {
     modelFile: "level8_fireice.bg3d",
     modelPath: "models",
-    modelIndex: 6, // FIREICE_ObjType_SaucerIce + Saucer + Hatch
+    modelIndex: 6,
     groupSize: 3,
+    scale: 2.7,
+    citations: [
+      { file: "src/Items/IceSaucer.c", line: 29, description: "#define ICE_SAUCER_SCALE 2.7f" },
+      { file: "src/Items/IceSaucer.c", line: 72, description: "scale = ICE_SAUCER_SCALE" },
+    ],
   },
   
   // Saucer level items (indices from SAUCER_ObjType enum in mobjtypes.h)
   [ItemType.PeopleHut]: {
     modelFile: "level9_saucer.bg3d",
     modelPath: "models",
-    modelIndex: 1, // SAUCER_ObjType_PeopleHut
+    modelIndex: 1,
+    scale: 2.0,
+    citations: [{ file: "src/Items/Humans.c", line: 1083, description: "scale = 2.0" }],
   },
   [ItemType.Railgun]: {
     modelFile: "level9_saucer.bg3d",
@@ -720,8 +766,10 @@ export const OTTO_ITEM_MODEL_MAPPINGS: Record<
   [ItemType.BumperCarGate]: {
     modelFile: "level5_cloud.bg3d",
     modelPath: "models",
-    modelIndex: 15, // CLOUD_ObjType_BumperGatePosts + Beams
+    modelIndex: 15,
     groupSize: 2,
+    scale: 3.5,
+    citations: [{ file: "src/Items/BumperCar.c", line: 1240, description: "scale = 3.5" }],
   },
   
   // Brain boss level items (indices from BRAINBOSS_ObjType enum in mobjtypes.h)
