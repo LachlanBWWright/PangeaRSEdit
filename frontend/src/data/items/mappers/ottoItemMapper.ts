@@ -57,7 +57,11 @@ function convertModelVariant(variant: ModelVariant): UniversalItemModelMapping {
     requiresSkeleton: variant.requiresSkeleton,
     skeletonFile: variant.skeletonFile,
     scale: variant.scale,
+    scaleXZ: variant.scaleXZ,
+    scaleY: variant.scaleY,
     rotationY: variant.rotationY,
+    positionOffset: variant.positionOffset,
+    citations: variant.citations,
   };
 }
 
