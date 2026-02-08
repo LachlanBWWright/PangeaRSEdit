@@ -189,15 +189,17 @@ export function ottoPreprocessor(
     data.Hedr[1000].obj.numWaterPatches = data.Liqd?.[1000]?.obj?.length ?? 0;
     data.Hedr[1000].obj.numSplines = data.Spln?.[1000]?.obj?.length ?? 0;
 
-    data.Itms?.[1000]?.obj?.sort((a, b) => {
-      if (a.x > b.x) return 1;
-      else if (a.x < b.x) return -1;
-      else {
-        if (a.z > b.z) return 1;
-        else if (a.z < b.z) return -1;
-        else return 0;
-      }
-    });
+    if (data.Itms?.[1000]?.obj) {
+      data.Itms[1000].obj = data.Itms[1000].obj.toSorted((a, b) => {
+        if (a.x > b.x) return 1;
+        else if (a.x < b.x) return -1;
+        else {
+          if (a.z > b.z) return 1;
+          else if (a.z < b.z) return -1;
+          else return 0;
+        }
+      });
+    }
 
     if (Array.isArray(data.Liqd?.[1000]?.obj)) {
       for (const waterItem of data.Liqd[1000].obj) {
