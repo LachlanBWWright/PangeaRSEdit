@@ -20,20 +20,26 @@ This document maps item types (from terrain data) to their corresponding model i
 | 5 | Atom | global.bg3d | 0 | Ripple effect |
 | 6 | PowerupPod | global.bg3d | 1 | PowerupOrb |
 | 7 | Enemy_BrainAlien | BrainAlien.bg3d | 0 | Skeleton model |
-| 8 | Checkpoint | global.bg3d | 31 | TeleportBase |
+| 8 | Enemy_Onion | Onion.bg3d | 0 | Skeleton model |
+| 9 | Enemy_Corn | Corn.bg3d | 0 | Skeleton model |
+| 10 | Enemy_Tomato | Tomato.bg3d | 0 | Skeleton model |
 | 11 | Barn | level1_farm.bg3d | 1 | Barn building |
 | 12 | Silo | level1_farm.bg3d | 2 | Silo structure |
 | 13 | WoodenGate | level1_farm.bg3d | 3 | WoodGate |
-| 14 | MetalGate | level1_farm.bg3d | 6 | MetalGate |
-| 15 | FencePost | level1_farm.bg3d | 9 | WoodPost |
-| 16 | Tractor | level1_farm.bg3d | 11 | Tractor vehicle |
-| 17 | CornStalk | level1_farm.bg3d | 16 | CornStalk plant |
-| 18 | Sprout | level1_farm.bg3d | 17 | CornSprout |
-| 19 | BigLeafPlant | level1_farm.bg3d | 20 | BigLeafPlant |
-| 20 | PhonePole | level1_farm.bg3d | 22 | PhonePole |
-| 21 | Windmill | level1_farm.bg3d | 23 | Windmill |
-| 22 | Rock | level1_farm.bg3d | 27 | Rock_Small |
-| 23 | ExitRocket | global.bg3d | 27 | Rocket |
+| 14 | PhonePole | level1_farm.bg3d | 22 | PhonePole |
+| 15 | Tractor | level1_farm.bg3d | 11 | Tractor (groupSize: 5, includes wheels) |
+| 16 | Sprout | level1_farm.bg3d | 17 | CornSprout |
+| 17 | CornStalk | level1_farm.bg3d | 16 | CornStalk |
+| 18 | BigLeafPlant | level1_farm.bg3d | 20 | BigLeafPlant |
+| 19 | MetalGate | level1_farm.bg3d | 6 | MetalGate |
+| 20 | FencePost | level1_farm.bg3d | 9 | WoodPost |
+| 21 | Windmill | level1_farm.bg3d | 23 | Windmill (groupSize: 2, includes propeller) |
+| 22 | MetalTub | level1_farm.bg3d | 25 | MetalTub |
+| 23 | OutHouse | level1_farm.bg3d | 26 | OutHouse |
+| 24 | Rock | level1_farm.bg3d | 27 | Rock_Small |
+| 25 | Hay | level1_farm.bg3d | 30 | HayBrick |
+| 26 | ExitRocket | global.bg3d | 27 | Rocket (groupSize: 2, includes door) |
+| 27 | Checkpoint | global.bg3d | 31 | TeleportBase (groupSize: 2, includes dish) |
 | 28 | SlimePipe | level2_slime.bg3d | 0 | SlimeTube_FancyJ |
 | 29 | FallingCrystal | level2_slime.bg3d | 14 | FallingCrystal_Blue |
 | 30 | Enemy_Blob | Blob.bg3d | 0 | Skeleton model |
@@ -83,18 +89,32 @@ This document maps item types (from terrain data) to their corresponding model i
 | 76 | BumperCar | level5_cloud.bg3d | 10 | BumperCar |
 | 77 | TireBumperStrip | level5_cloud.bg3d | 12 | TireBumper |
 | 78 | Enemy_Clown | Clown.bg3d | 0 | Skeleton model |
-| 79 | Clownfish | Clownfish.bg3d | 0 | Skeleton model |
+| 79 | Clownfish | ClownFish.bg3d | 0 | Skeleton model |
 | 80 | BumperCarPowerPost | level5_cloud.bg3d | 14 | GeneratorBumper |
-| 81 | CloudPlatform | level5_cloud.bg3d | 5 | CloudPlatform |
-| 82 | CloudTunnel | level5_cloud.bg3d | 6 | CloudTunnel_Frame |
+| 81 | Enemy_StrongMan | StrongMan.bg3d | 0 | Skeleton model |
+| 82 | BumperCarGate | level5_cloud.bg3d | 15 | BumperGatePosts |
 | 83 | RocketSled | level5_cloud.bg3d | 26 | RocketSled |
-| 84 | LavaPillar | level8_fireice.bg3d | 1 | LavaPillar_Full |
-| 85 | JawsBot | JawsBot.bg3d | 0 | Skeleton model |
-| 86 | HammerBot | HammerBot.bg3d | 0 | Skeleton model |
-| 87 | DrillBot | DrillBot.bg3d | 0 | Skeleton model |
-| 88 | SwingerBot | SwingerBot.bg3d | 0 | Skeleton model |
-| 92 | RadarDish | level9_saucer.bg3d | 8 | DishBase |
-| 93 | Beemer | Beemer.bg3d | 0 | Skeleton model |
+| 84 | TrapDoor | level5_cloud.bg3d | 27 | TrapDoor |
+| 85 | ZigZagSlats | level5_cloud.bg3d | 28 | ZigZag_Blue |
+| 87 | LavaPillar | level8_fireice.bg3d | 1 | LavaPillar_Full |
+| 89 | JawsBot | JawsBot.bg3d | 0 | Skeleton model |
+| 90 | IceSaucer | level8_fireice.bg3d | 6 | SaucerIce |
+| 92 | Enemy_IceCube | IceCube.bg3d | 0 | Skeleton model |
+| 93 | HammerBot | HammerBot.bg3d | 0 | Skeleton model |
+| 94 | DrillBot | DrillBot.bg3d | 0 | Skeleton model |
+| 95 | SwingerBot | SwingerBot.bg3d | 0 | Skeleton model |
+| 96 | LavaStone | level8_fireice.bg3d | 40 | Stone_Blance |
+| 97 | Snowball | level8_fireice.bg3d | 4 | SnowBall |
+| 98 | LavaPlatform | level8_fireice.bg3d | 54 | LavaPlatform |
+| 100 | RadarDish | level9_saucer.bg3d | 8 | DishBase + Dish (groupSize: 2) |
+| 101 | PeopleHut | level9_saucer.bg3d | 1 | PeopleHut |
+| 102 | Beemer | Beemer.bg3d | 0 | Skeleton model |
+| 103 | Railgun | level9_saucer.bg3d | 4 | RailGun |
+| 104 | Turret | level9_saucer.bg3d | 7 | Turret |
+| 105 | Enemy_BrainBoss | level10_brainboss.bg3d | 1 | BrainCore |
+| 106 | BlobArrow | level2_slime.bg3d | 29 | BlobArrow |
+| 107 | NeuronStrand | level10_brainboss.bg3d | 4 | NeuronStrand |
+| 108 | BrainPort | level10_brainboss.bg3d | 5 | BrainPort |
 
 ## Model File Summary
 

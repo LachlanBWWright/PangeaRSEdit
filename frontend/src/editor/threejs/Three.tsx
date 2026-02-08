@@ -357,9 +357,10 @@ export function ThreeView({
   return (
     <Canvas
       style={{ width: "100%", height: "100%" }}
+      gl={{ logarithmicDepthBuffer: true }}
       camera={{
         fov: 60,
-        near: 0.1,
+        near: 1,
         far: 100000,
         // Place the camera above the map and slightly to the side, so it's easier
         // to orbit and pan while keeping a top-down editing view
@@ -391,6 +392,11 @@ export function ThreeView({
         // Start looking at the center of the map
         target={[unitsWide / 2, 0, unitsHigh / 2]}
       />
+
+      {/* Lighting for 3D item models and terrain */}
+      <ambientLight intensity={0.6} />
+      <directionalLight position={[1, 1, 0.5]} intensity={1} />
+      <directionalLight position={[-1, -0.5, -0.5]} intensity={0.3} />
 
       {/* Exporter hook component (listens for export triggers) */}
       <SceneExporter />

@@ -53,10 +53,15 @@ function convertModelVariant(variant: ModelVariant): UniversalItemModelMapping {
     modelFile: variant.modelFile,
     modelPath: variant.modelPath,
     modelIndex: variant.modelIndex,
+    groupSize: variant.groupSize,
     requiresSkeleton: variant.requiresSkeleton,
     skeletonFile: variant.skeletonFile,
     scale: variant.scale,
+    scaleXZ: variant.scaleXZ,
+    scaleY: variant.scaleY,
     rotationY: variant.rotationY,
+    positionOffset: variant.positionOffset,
+    citations: variant.citations,
   };
 }
 
@@ -68,10 +73,15 @@ function convertToUniversal(mapping: ItemModelMapping): UniversalItemModelMappin
     modelFile: mapping.modelFile,
     modelPath: mapping.modelPath,
     modelIndex: mapping.modelIndex,
+    groupSize: mapping.groupSize,
     requiresSkeleton: mapping.requiresSkeleton,
     skeletonFile: mapping.skeletonFile,
     scale: mapping.scale,
+    scaleXZ: mapping.scaleXZ,
+    scaleY: mapping.scaleY,
     rotationY: mapping.rotationY,
+    positionOffset: mapping.positionOffset,
+    citations: mapping.citations,
   };
 }
 

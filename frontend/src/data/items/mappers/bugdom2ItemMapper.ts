@@ -35,10 +35,15 @@ function convertToUniversal(mapping: Bugdom2ItemModelMapping): UniversalItemMode
     modelFile: mapping.modelFile,
     modelPath: mapping.modelPath,
     modelIndex: mapping.modelIndex,
+    groupSize: mapping.groupSize,
     requiresSkeleton: mapping.requiresSkeleton,
     skeletonFile: mapping.skeletonFile,
     scale: mapping.scale,
+    scaleXZ: mapping.scaleXZ,
+    scaleY: mapping.scaleY,
     rotationY: mapping.rotationY,
+    positionOffset: mapping.positionOffset,
+    citations: mapping.citations,
   };
 }
 

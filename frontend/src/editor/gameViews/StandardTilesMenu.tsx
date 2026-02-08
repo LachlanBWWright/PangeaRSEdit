@@ -31,6 +31,11 @@ import {
   CanvasView,
   CanvasViewMode,
   Export3DScene,
+  Show3DSplines,
+  Show3DItems,
+  Show3DFences,
+  Show3DLiquid,
+  Show3DItemModels,
 } from "@/data/canvasView/canvasViewAtoms";
 import { useEffect } from "react";
 import { Switch } from "@/components/ui/switch";
@@ -54,6 +59,11 @@ export function StandardTilesMenu({
   const [toplogyOpacity, setTopologyOpacity] = useAtom(TopologyOpacity);
   const [canvasViewMode, setCanvasViewMode] = useAtom(CanvasViewMode);
   const [, setExport3DScene] = useAtom(Export3DScene);
+  const [show3DSplines, setShow3DSplines] = useAtom(Show3DSplines);
+  const [show3DItems, setShow3DItems] = useAtom(Show3DItems);
+  const [show3DFences, setShow3DFences] = useAtom(Show3DFences);
+  const [show3DLiquid, setShow3DLiquid] = useAtom(Show3DLiquid);
+  const [show3DItemModels, setShow3DItemModels] = useAtom(Show3DItemModels);
   const [tileEditingEnabled, setTileEditingEnabled] =
     useAtom(TileEditingEnabled);
   const [selectedTileBrushType, setSelectedTileBrushType] =
@@ -209,6 +219,45 @@ export function StandardTilesMenu({
               </Button>
             </div>
           </div>
+          {canvasViewMode === CanvasView.THREE_D && (
+            <>
+              <div className="flex flex-row justify-center gap-2 items-center col-span-2">
+                <p>Show Splines</p>
+                <Switch
+                  checked={show3DSplines}
+                  onCheckedChange={setShow3DSplines}
+                />
+              </div>
+              <div className="flex flex-row justify-center gap-2 items-center col-span-2">
+                <p>Show Items</p>
+                <Switch
+                  checked={show3DItems}
+                  onCheckedChange={setShow3DItems}
+                />
+              </div>
+              <div className="flex flex-row justify-center gap-2 items-center col-span-2">
+                <p>Show Fences</p>
+                <Switch
+                  checked={show3DFences}
+                  onCheckedChange={setShow3DFences}
+                />
+              </div>
+              <div className="flex flex-row justify-center gap-2 items-center col-span-2">
+                <p>Show Liquid</p>
+                <Switch
+                  checked={show3DLiquid}
+                  onCheckedChange={setShow3DLiquid}
+                />
+              </div>
+              <div className="flex flex-row justify-center gap-2 items-center col-span-2">
+                <p>Show 3D Models</p>
+                <Switch
+                  checked={show3DItemModels}
+                  onCheckedChange={setShow3DItemModels}
+                />
+              </div>
+            </>
+          )}
         </div>
       )}
 

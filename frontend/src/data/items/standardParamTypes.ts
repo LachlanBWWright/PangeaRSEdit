@@ -55,14 +55,24 @@ export interface ModelVariant {
   modelPath: "models" | "skeletons";
   /** Model index within the BG3D file */
   modelIndex: number;
+  /** Number of consecutive subgroups to include (default: 1) */
+  groupSize?: number;
   /** True if model requires skeleton data */
   requiresSkeleton?: boolean;
   /** Skeleton .rsrc filename */
   skeletonFile?: string;
   /** Scale multiplier */
   scale?: number;
+  /** Horizontal (XZ) scale factor applied on top of uniform scale */
+  scaleXZ?: number;
+  /** Vertical (Y) scale factor applied on top of uniform scale */
+  scaleY?: number;
   /** Y-axis rotation offset in radians */
   rotationY?: number;
+  /** Position offset [x, y, z] relative to the item's terrain position */
+  positionOffset?: [number, number, number];
+  /** References to game source code that define this mapping */
+  citations?: ReadonlyArray<import("./itemModelTypes").SourceCitation>;
 }
 
 /**

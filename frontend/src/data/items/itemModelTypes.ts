@@ -10,6 +10,67 @@ import { Game } from "../globals/globals";
 import type { StandardParamType } from "./standardParamTypes";
 
 /**
+ * A citation to a specific line or range of lines in a game's source code repository.
+ * Used to document which game source code defines an item's model, scale, type, etc.
+ */
+export interface SourceCitation {
+  /** The source file path relative to the game repository root (e.g. "src/Items/Items.c") */
+  file: string;
+  /** The starting line number in the source file */
+  line: number;
+  /** Optional ending line number for multi-line citations */
+  endLine?: number;
+  /** Brief description of what this citation demonstrates (e.g. "scale = 2.5", "model type enum") */
+  description: string;
+}
+
+/**
+ * Game repository info for constructing citation URLs
+ */
+export interface GameRepository {
+  /** GitHub owner (e.g. "jorio") */
+  owner: string;
+  /** GitHub repo name (e.g. "ottomatic") */
+  repo: string;
+  /** Git commit SHA or branch for stable links */
+  commitHash: string;
+}
+
+/**
+ * Repository info for each supported game
+ */
+export const GAME_REPOSITORIES: Partial<Record<Game, GameRepository>> = {
+  [Game.OTTO_MATIC]: { owner: "jorio", repo: "ottomatic", commitHash: "636056a92c1f276a5af5c3dc7df5c3cb952fd47a" },
+  [Game.BUGDOM]: { owner: "jorio", repo: "bugdom", commitHash: "7d7ad9979a86a7a149a85611bb01b06a339f4805" },
+  [Game.BUGDOM_2]: { owner: "jorio", repo: "bugdom2", commitHash: "a0e59762400447706c2a15e052837c1f9a7e8dae" },
+  [Game.NANOSAUR]: { owner: "jorio", repo: "nanosaur", commitHash: "f6020d31d28768893afffa06a991290cc2999d66" },
+  [Game.NANOSAUR_2]: { owner: "jorio", repo: "nanosaur2", commitHash: "1ab4f4c9aeac26c6959271279590721968ead799" },
+  [Game.CRO_MAG]: { owner: "jorio", repo: "cromagrally", commitHash: "370fc175466d6ced3612afb7b171c958cb6b76e1" },
+  [Game.BILLY_FRONTIER]: { owner: "jorio", repo: "billyfrontier", commitHash: "04c92dc9b8867e63d728a58df4300a6b47a363a9" },
+};
+
+/**
+ * Construct a raw GitHub URL for a source citation
+ */
+export function getCitationRawUrl(game: Game, citation: SourceCitation): string {
+  const repo = GAME_REPOSITORIES[game];
+  if (!repo) return "";
+  return `https://raw.githubusercontent.com/${repo.owner}/${repo.repo}/${repo.commitHash}/${citation.file}`;
+}
+
+/**
+ * Construct a GitHub permalink URL for a source citation
+ */
+export function getCitationPermalink(game: Game, citation: SourceCitation): string {
+  const repo = GAME_REPOSITORIES[game];
+  if (!repo) return "";
+  const lineRef = citation.endLine 
+    ? `#L${citation.line}-L${citation.endLine}` 
+    : `#L${citation.line}`;
+  return `https://github.com/${repo.owner}/${repo.repo}/blob/${repo.commitHash}/${citation.file}${lineRef}`;
+}
+
+/**
  * Universal model mapping that works across all games
  */
 export interface UniversalItemModelMapping {
@@ -21,6 +82,10 @@ export interface UniversalItemModelMapping {
   
   /** Model index within the BG3D file (maps to Subgroup_N) */
   modelIndex: number;
+  
+  /** Number of consecutive subgroups to include (default: 1).
+   *  Some items are composed of multiple consecutive subgroups. */
+  groupSize?: number;
   
   /** Alternative models for variants (indexed by p0 value) */
   variants?: Record<number, {
@@ -34,11 +99,20 @@ export interface UniversalItemModelMapping {
   /** Skeleton file */
   skeletonFile?: string;
   
-  /** Base scale multiplier */
+  /** Uniform scale multiplier (default: 1.0) */
   scale?: number;
   
-  /** Rotation offset (radians) */
+  /** Horizontal scale multiplier (X/Z axes, default: 1.0) */
+  scaleXZ?: number;
+  
+  /** Vertical scale multiplier (Y axis, default: 1.0) */
+  scaleY?: number;
+  
+  /** Rotation offset (radians) around Y axis */
   rotationY?: number;
+  
+  /** Position offset in world units [x, y, z] */
+  positionOffset?: [number, number, number];
   
   /** Which parameter controls rotation */
   rotationParam?: {
@@ -55,6 +129,9 @@ export interface UniversalItemModelMapping {
   
   /** Level restriction (undefined = all levels, -1 = not available) */
   levelRestriction?: number;
+  
+  /** Source code citations for this mapping */
+  citations?: SourceCitation[];
 }
 
 /**

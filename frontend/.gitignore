@@ -28,3 +28,6 @@ screenshots/
 test-results/
 playwright-report/
 coverage/
+
+# Build artifacts
+*.tsbuildinfo
