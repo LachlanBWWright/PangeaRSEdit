@@ -52,9 +52,9 @@ export function UploadPrompt({
     );
 
   return (
-    <div className="flex text-white m-auto flex-1 gap-8 flex-col items-stretch justify-start p-8 min-h-0">
-      <div className="w-full flex flex-col gap-4 items-center">
-        <div className="flex flex-col gap-2 items-center w-full lg:w-3/4">
+    <div className="flex text-white flex-col items-stretch justify-start p-8 h-full overflow-hidden">
+      <div className="w-full flex flex-col gap-4 items-center flex-1 min-h-0">
+        <div className="flex-none flex flex-col gap-2 items-center w-full lg:w-3/4">
           <IntroText />
         </div>
 
