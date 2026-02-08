@@ -23,26 +23,9 @@ export async function parseNanosaurLevelFile(
       4.0,
     );
 
-    // Validate the converted level data - fail on error for type safety
-    const validationResult = validateLevelDataForGame(
-      compatibleLevel,
-      gameType.GAME_TYPE
-    );
-    if (!validationResult.ok) {
-      return err(
-        new Error(
-          `Level validation failed for ${gameType.GAME_NAME}: ${validationResult.error.message}`
-        )
-      );
-    }
-
-    setData(splitLevelData(compatibleLevel));
-    
     // Store raw Nanosaur 1 data in _metadata for roundtrip compilation
     const metadata: LevelMetadata = {
-      file_attributes: 0,
-      junk1: 0,
-      junk2: 0,
+      ...compatibleLevel._metadata,
       nanosaur1RawLevel: rawLevelData,
     };
 
@@ -50,7 +33,23 @@ export async function parseNanosaurLevelFile(
       ...compatibleLevel,
       _metadata: metadata,
     };
-    
+
+    // Validate the converted level data
+    const validationResult = validateLevelDataForGame(
+      result,
+      gameType.GAME_TYPE,
+    );
+    if (!validationResult.ok) {
+      return err(
+        new Error(
+          `Level validation failed for ${gameType.GAME_NAME}: ${validationResult.error.message}`,
+        ),
+      );
+    }
+
+    // Split AFTER attaching metadata so rawLevelData survives in terrainData._metadata
+    setData(splitLevelData(result));
+
     return ok(result);
   } catch (e) {
     return err(e instanceof Error ? e : new Error(String(e)));
