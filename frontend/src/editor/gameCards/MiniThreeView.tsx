@@ -18,12 +18,8 @@ export function MiniThreeView({
 
   const resolvedGltfUrl = useMemo(() => {
     if (!gltfUrl) return null;
-    try {
-      const base = (import.meta.env?.BASE_URL as string | undefined) ?? "/";
-      return base + gltfUrl.replace(/^\//, "");
-    } catch {
-      return null;
-    }
+    const base = (import.meta.env?.BASE_URL as string | undefined) ?? "/";
+    return base + gltfUrl.replace(/^\//, "");
   }, [gltfUrl]);
 
   useEffect(() => {

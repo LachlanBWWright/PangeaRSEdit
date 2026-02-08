@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/select";
 import { Play } from "lucide-react";
 import { toast } from "sonner";
+import { fromPromise } from "@/types/result";
 
 export interface GameModel {
   name: string;
@@ -25,8 +26,10 @@ export interface GameInfo {
   models: GameModel[];
 }
 
+import type { Result } from "@/types/result";
+
 export interface GameModelSelectorProps {
-  onLoadModel: (bg3dFile: File, skeletonFile?: File) => Promise<void>;
+  onLoadModel: (bg3dFile: File, skeletonFile?: File) => Promise<Result<void, Error>>;
   loading: boolean;
 }
 
@@ -78,43 +81,75 @@ export function GameModelSelector({
       return;
     }
 
-    try {
-      // Fetch the model file (could be BG3D or 3DMF)
-      const bg3dResponse = await fetch(selectedModel.bg3dFile);
-      if (!bg3dResponse.ok) {
-        toast.error(
-          `Failed to fetch ${selectedModel.name}: ${bg3dResponse.status}`,
+    // Fetch the model file (could be BG3D or 3DMF)
+    const bg3dFetchResult = await fromPromise(fetch(selectedModel.bg3dFile));
+    if (!bg3dFetchResult.ok) {
+      console.error("Error loading selected model:", bg3dFetchResult.error);
+      toast.error(`Failed to load ${selectedModel.name}`);
+      return;
+    }
+
+    const bg3dResponse = bg3dFetchResult.value;
+    if (!bg3dResponse.ok) {
+      toast.error(
+        `Failed to fetch ${selectedModel.name}: ${bg3dResponse.status}`,
+      );
+      return;
+    }
+
+    const bg3dBufferResult = await fromPromise(bg3dResponse.arrayBuffer());
+    if (!bg3dBufferResult.ok) {
+      console.error("Error loading selected model:", bg3dBufferResult.error);
+      toast.error(`Failed to load ${selectedModel.name}`);
+      return;
+    }
+
+    const bg3dArrayBuffer = bg3dBufferResult.value;
+
+    // Determine file extension from the URL
+    const fileExtension = selectedModel.bg3dFile.endsWith(".3dmf")
+      ? ".3dmf"
+      : ".bg3d";
+    const fileName = `${selectedModel.name}${fileExtension}`;
+
+    const bg3dFile = new File([bg3dArrayBuffer], fileName, {
+      type: "application/octet-stream",
+    });
+
+    let skeletonFile: File | undefined;
+
+    // If skeleton file exists and user wants to load it
+    if (selectedModel.skeletonFile && loadWithSkeleton) {
+      const skeletonFetchResult = await fromPromise(fetch(selectedModel.skeletonFile));
+      if (!skeletonFetchResult.ok) {
+        console.warn(
+          `${selectedModel.name} skeleton file fetch failed, loading without animations`,
         );
-        return;
-      }
-
-      const bg3dArrayBuffer = await bg3dResponse.arrayBuffer();
-
-      // Determine file extension from the URL
-      const fileExtension = selectedModel.bg3dFile.endsWith(".3dmf")
-        ? ".3dmf"
-        : ".bg3d";
-      const fileName = `${selectedModel.name}${fileExtension}`;
-
-      const bg3dFile = new File([bg3dArrayBuffer], fileName, {
-        type: "application/octet-stream",
-      });
-
-      let skeletonFile: File | undefined;
-
-      // If skeleton file exists and user wants to load it
-      if (selectedModel.skeletonFile && loadWithSkeleton) {
-        const skeletonResponse = await fetch(selectedModel.skeletonFile);
+        toast.warning(
+          "Skeleton file not found, loading model without animations",
+        );
+      } else {
+        const skeletonResponse = skeletonFetchResult.value;
         if (skeletonResponse.ok) {
-          const skeletonArrayBuffer = await skeletonResponse.arrayBuffer();
-          skeletonFile = new File(
-            [skeletonArrayBuffer],
-            `${selectedModel.name}.skeleton.rsrc`,
-            {
-              type: "application/octet-stream",
-            },
-          );
-          console.log(`Loaded ${selectedModel.name} skeleton file`);
+          const skeletonBufferResult = await fromPromise(skeletonResponse.arrayBuffer());
+          if (!skeletonBufferResult.ok) {
+            console.warn(
+              `${selectedModel.name} skeleton file read failed, loading without animations`,
+            );
+            toast.warning(
+              "Failed to read skeleton file, loading model without animations",
+            );
+          } else {
+            const skeletonArrayBuffer = skeletonBufferResult.value;
+            skeletonFile = new File(
+              [skeletonArrayBuffer],
+              `${selectedModel.name}.skeleton.rsrc`,
+              {
+                type: "application/octet-stream",
+              },
+            );
+            console.log(`Loaded ${selectedModel.name} skeleton file`);
+          }
         } else {
           console.warn(
             `${selectedModel.name} skeleton file not found, loading without animations`,
@@ -124,10 +159,11 @@ export function GameModelSelector({
           );
         }
       }
+    }
 
-      await onLoadModel(bg3dFile, skeletonFile);
-    } catch (error) {
-      console.error("Error loading selected model:", error);
+    const loadResult = await onLoadModel(bg3dFile, skeletonFile);
+    if (!loadResult.ok) {
+      console.error("Error loading selected model:", loadResult.error);
       toast.error(`Failed to load ${selectedModel.name}`);
     }
   };

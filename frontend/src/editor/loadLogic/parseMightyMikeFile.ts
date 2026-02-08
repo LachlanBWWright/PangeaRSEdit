@@ -1,5 +1,5 @@
 import { LevelData } from "../../python/structSpecs/LevelTypes";
-import { Result, ok, err } from "../../types/result";
+import { Result, ok, err, fromPromise } from "../../types/result";
 import {
   parseMightyMikeMap,
   parseMightyMikeTileSet,
@@ -47,65 +47,73 @@ async function loadScenePalette(
   console.log(
     `[PALETTE] loadScenePalette called with sceneName="${sceneName}", basePath="${basePath}"`,
   );
-  try {
-    // Map scene names to TGA filenames
-    const sceneToTGA: Record<string, string> = {
-      jurassic: "dinoscene.tga",
-      candy: "candyscene.tga",
-      fairy: "fairyscene.tga",
-      clown: "clownscene.tga",
-      bargain: "bargainscene.tga",
-    };
 
-    const tgaFilename = sceneToTGA[sceneName.toLowerCase()];
-    console.log(
-      `[PALETTE] Scene name lookup: "${sceneName}" -> "${
-        tgaFilename || "NOT FOUND"
-      }"`,
-    );
-    if (!tgaFilename) {
-      console.warn(`[PALETTE] ✗ Unknown scene name: ${sceneName}`);
-      return null;
-    }
+  // Map scene names to TGA filenames
+  const sceneToTGA: Record<string, string> = {
+    jurassic: "dinoscene.tga",
+    candy: "candyscene.tga",
+    fairy: "fairyscene.tga",
+    clown: "clownscene.tga",
+    bargain: "bargainscene.tga",
+  };
 
-    // Derive TGA path from basePath (mapFileUrl) if provided, otherwise use default
-    let tgaUrl: string;
-    if (basePath && basePath.includes("/")) {
-      // basePath has a directory, use it
-      const dirPath = basePath.substring(0, basePath.lastIndexOf("/") + 1);
-      tgaUrl = dirPath + tgaFilename;
-    } else {
-      // basePath is just a filename or empty, use the default asset path
-      tgaUrl = `${import.meta.env.BASE_URL}assets/mightyMike/terrain/${tgaFilename}`;
-    }
-    console.log(`[PALETTE] Loading palette for scene "${sceneName}"`);
-    console.log(`[PALETTE]   TGA filename expected: ${tgaFilename}`);
-    console.log(`[PALETTE]   TGA URL: ${tgaUrl}`);
-
-    const response = await fetch(tgaUrl);
-    if (!response.ok) {
-      console.warn(
-        `[PALETTE] Failed to fetch TGA file: ${response.status} ${response.statusText}`,
-      );
-      return null;
-    }
-
-    const tgaBuffer = await response.arrayBuffer();
-    const paletteResult = extractTGAPalette(tgaBuffer);
-
-    if (!paletteResult) {
-      console.warn("[PALETTE] Failed to extract palette from TGA file");
-      return null;
-    }
-
-    // Convert to Uint8Array for later use
-    const paletteArray = new Uint8Array(paletteResult.colors);
-
-    return paletteArray;
-  } catch (error) {
-    console.warn("[PALETTE] Error loading palette:", error);
+  const tgaFilename = sceneToTGA[sceneName.toLowerCase()];
+  console.log(
+    `[PALETTE] Scene name lookup: "${sceneName}" -> "${
+      tgaFilename || "NOT FOUND"
+    }"`,
+  );
+  if (!tgaFilename) {
+    console.warn(`[PALETTE] ✗ Unknown scene name: ${sceneName}`);
     return null;
   }
+
+  // Derive TGA path from basePath (mapFileUrl) if provided, otherwise use default
+  let tgaUrl: string;
+  if (basePath && basePath.includes("/")) {
+    // basePath has a directory, use it
+    const dirPath = basePath.substring(0, basePath.lastIndexOf("/") + 1);
+    tgaUrl = dirPath + tgaFilename;
+  } else {
+    // basePath is just a filename or empty, use the default asset path
+    tgaUrl = `${import.meta.env.BASE_URL}assets/mightyMike/terrain/${tgaFilename}`;
+  }
+  console.log(`[PALETTE] Loading palette for scene "${sceneName}"`);
+  console.log(`[PALETTE]   TGA filename expected: ${tgaFilename}`);
+  console.log(`[PALETTE]   TGA URL: ${tgaUrl}`);
+
+  const fetchResult = await fromPromise(fetch(tgaUrl));
+  if (!fetchResult.ok) {
+    console.warn(`[PALETTE] Error fetching TGA file: ${fetchResult.error.message}`);
+    return null;
+  }
+
+  const response = fetchResult.value;
+  if (!response.ok) {
+    console.warn(
+      `[PALETTE] Failed to fetch TGA file: ${response.status} ${response.statusText}`,
+    );
+    return null;
+  }
+
+  const bufferResult = await fromPromise(response.arrayBuffer());
+  if (!bufferResult.ok) {
+    console.warn(`[PALETTE] Error reading TGA buffer: ${bufferResult.error.message}`);
+    return null;
+  }
+
+  const tgaBuffer = bufferResult.value;
+  const paletteResult = extractTGAPalette(tgaBuffer);
+
+  if (!paletteResult) {
+    console.warn("[PALETTE] Failed to extract palette from TGA file");
+    return null;
+  }
+
+  // Convert to Uint8Array for later use
+  const paletteArray = new Uint8Array(paletteResult.colors);
+
+  return paletteArray;
 }
 
 /**
@@ -123,116 +131,120 @@ export async function parseMightyMikeFile(
   mapFileUrl?: string,
   setMapImages?: (images: HTMLCanvasElement[]) => void,
 ): Promise<Result<LevelData, Error>> {
-  try {
-    const levelBuffer = await file.arrayBuffer();
-    const mapResult = parseMightyMikeMap(levelBuffer);
-    if (!mapResult.ok) {
-      return err(
-        new Error(`Failed to parse MightyMike map: ${mapResult.error}`),
+  const bufferResult = await fromPromise(file.arrayBuffer());
+  if (!bufferResult.ok) {
+    return err(new Error(`Failed to read file buffer: ${bufferResult.error.message}`));
+  }
+
+  const levelBuffer = bufferResult.value;
+  const mapResult = parseMightyMikeMap(levelBuffer);
+  if (!mapResult.ok) {
+    return err(
+      new Error(`Failed to parse MightyMike map: ${mapResult.error}`),
+    );
+  }
+
+  console.log("MightyMike map parsed successfully:", {
+    mapWidth: mapResult.value.mapWidth,
+    mapHeight: mapResult.value.mapHeight,
+    numItems: mapResult.value.numItems,
+    items: mapResult.value.items,
+  });
+
+  // Try to load the tileset file
+  let tilesetData = null;
+  let paletteData: Uint8Array | null = null;
+
+  // Load tileset if we have a URL
+  if (mapFileUrl) {
+    // Get the scene name to load the corresponding palette
+    const sceneName = getSceneNameFromUrl(mapFileUrl);
+    console.log(
+      `[PALETTE LOAD] Extracted scene name from URL: "${sceneName}" (from ${mapFileUrl})`,
+    );
+
+    if (sceneName) {
+      paletteData = await loadScenePalette(sceneName, mapFileUrl);
+      console.log(
+        `[PALETTE LOAD] Scene: ${sceneName}, Loaded: ${!!paletteData}, Length: ${
+          paletteData?.length || 0
+        }`,
+      );
+
+      if (paletteData) {
+        // Check if palette has color variation
+        const colors = new Set();
+        for (let i = 0; i < Math.min(paletteData.length, 100); i += 4) {
+          const r = paletteData[i];
+          const g = paletteData[i + 1];
+          const b = paletteData[i + 2];
+          colors.add(`${r},${g},${b}`);
+        }
+        console.log(
+          `[PALETTE LOAD] ✓ Palette loaded successfully with color variation:`,
+          {
+            uniqueColorsInFirst25: colors.size,
+            sampleColors: Array.from(colors).slice(0, 5),
+            paletteLength: paletteData.length,
+            isUint8Array: paletteData instanceof Uint8Array,
+          },
+        );
+      } else {
+        console.warn(
+          `[PALETTE LOAD] ✗ Failed to load palette for scene "${sceneName}" - will use grayscale fallback!`,
+        );
+      }
+    } else {
+      console.warn(
+        `[PALETTE LOAD] ✗ Could not extract scene name from URL: ${mapFileUrl}`,
       );
     }
 
-    console.log("MightyMike map parsed successfully:", {
-      mapWidth: mapResult.value.mapWidth,
-      mapHeight: mapResult.value.mapHeight,
-      numItems: mapResult.value.numItems,
-      items: mapResult.value.items,
-    });
+    // Replace .map-N with .tileset
+    const tilesetUrl = mapFileUrl.replace(/\.map-\d+$/, ".tileset");
+    console.log(`Attempting to load tileset from: ${tilesetUrl}`);
 
-    // Try to load the tileset file
-    let tilesetData = null;
-    let paletteData: Uint8Array | null = null;
-
-    // Load tileset if we have a URL
-    if (mapFileUrl) {
-      try {
-        // Get the scene name to load the corresponding palette
-        const sceneName = getSceneNameFromUrl(mapFileUrl);
-        console.log(
-          `[PALETTE LOAD] Extracted scene name from URL: "${sceneName}" (from ${mapFileUrl})`,
-        );
-
-        if (sceneName) {
-          paletteData = await loadScenePalette(sceneName, mapFileUrl);
+    const tilesetFetchResult = await fromPromise(fetch(tilesetUrl));
+    if (tilesetFetchResult.ok && tilesetFetchResult.value.ok) {
+      const tilesetBufferResult = await fromPromise(tilesetFetchResult.value.arrayBuffer());
+      if (tilesetBufferResult.ok) {
+        const tilesetBuffer = tilesetBufferResult.value;
+        // Parse with the loaded palette if available
+        if (paletteData) {
+          const paletteColor17 = `RGB(${paletteData[17 * 4]},${
+            paletteData[17 * 4 + 1]
+          },${paletteData[17 * 4 + 2]})`;
           console.log(
-            `[PALETTE LOAD] Scene: ${sceneName}, Loaded: ${!!paletteData}, Length: ${
-              paletteData?.length || 0
-            }`,
+            `[TILESET] ✓ Parsing WITH palette (color17=${paletteColor17}), size: ${paletteData.length} bytes`,
           );
-
-          if (paletteData) {
-            // Check if palette has color variation
-            const colors = new Set();
-            for (let i = 0; i < Math.min(paletteData.length, 100); i += 4) {
-              const r = paletteData[i];
-              const g = paletteData[i + 1];
-              const b = paletteData[i + 2];
-              colors.add(`${r},${g},${b}`);
-            }
-            console.log(
-              `[PALETTE LOAD] ✓ Palette loaded successfully with color variation:`,
-              {
-                uniqueColorsInFirst25: colors.size,
-                sampleColors: Array.from(colors).slice(0, 5),
-                paletteLength: paletteData.length,
-                isUint8Array: paletteData instanceof Uint8Array,
-              },
-            );
-          } else {
-            console.warn(
-              `[PALETTE LOAD] ✗ Failed to load palette for scene "${sceneName}" - will use grayscale fallback!`,
-            );
-          }
         } else {
           console.warn(
-            `[PALETTE LOAD] ✗ Could not extract scene name from URL: ${mapFileUrl}`,
+            `[TILESET] ✗ Parsing WITHOUT palette - will use grayscale fallback!`,
           );
         }
+        const tilesetResult = parseMightyMikeTileSet(
+          tilesetBuffer,
+          paletteData || undefined,
+        );
 
-        // Replace .map-N with .tileset
-        const tilesetUrl = mapFileUrl.replace(/\.map-\d+$/, ".tileset");
-        console.log(`Attempting to load tileset from: ${tilesetUrl}`);
-
-        const tilesetResponse = await fetch(tilesetUrl);
-        if (tilesetResponse.ok) {
-          const tilesetBuffer = await tilesetResponse.arrayBuffer();
-          // Parse with the loaded palette if available
-          if (paletteData) {
-            const paletteColor17 = `RGB(${paletteData[17 * 4]},${
-              paletteData[17 * 4 + 1]
-            },${paletteData[17 * 4 + 2]})`;
-            console.log(
-              `[TILESET] ✓ Parsing WITH palette (color17=${paletteColor17}), size: ${paletteData.length} bytes`,
-            );
-          } else {
-            console.warn(
-              `[TILESET] ✗ Parsing WITHOUT palette - will use grayscale fallback!`,
-            );
-          }
-          const tilesetResult = parseMightyMikeTileSet(
-            tilesetBuffer,
-            paletteData || undefined,
-          );
-
-          if (tilesetResult.ok) {
-            tilesetData = tilesetResult.value;
-            console.log("MightyMike tileset parsed successfully:", {
-              numTileDefinitions: tilesetData.numTileDefinitions,
-              numTileAttributeEntries: tilesetData.numTileAttributeEntries,
-              numTileAnims: tilesetData.numTileAnims,
-              paletteLoaded: !!paletteData,
-            });
-          } else {
-            console.warn(`Failed to parse tileset: ${tilesetResult.error}`);
-          }
+        if (tilesetResult.ok) {
+          tilesetData = tilesetResult.value;
+          console.log("MightyMike tileset parsed successfully:", {
+            numTileDefinitions: tilesetData.numTileDefinitions,
+            numTileAttributeEntries: tilesetData.numTileAttributeEntries,
+            numTileAnims: tilesetData.numTileAnims,
+            paletteLoaded: !!paletteData,
+          });
         } else {
-          console.warn(`Tileset file not found at ${tilesetUrl}`);
+          console.warn(`Failed to parse tileset: ${tilesetResult.error}`);
         }
-      } catch (tilesetError) {
-        console.warn("Error loading tileset:", tilesetError);
-        // Continue without tileset data
+      } else {
+        console.warn("Failed to load tileset buffer");
       }
+    } else {
+      console.warn(`Tileset file not found at ${tilesetUrl}`);
     }
+  }
 
     // Mighty Mike is a 2D game - only include relevant fields, no 3D/heightmap data
     // Create a header object that's compatible with StandardHeader format
@@ -380,34 +392,30 @@ export async function parseMightyMikeFile(
       setMapImages(tilesetField.tileImages);
     }
 
-    // Build the final LevelData with metadata
-    const finalData = {
-      ...ottoCompatible,
-      _metadata: {
-        file_attributes: 0,
-        junk1: 0,
-        junk2: 0,
-        1000: {
-          name: "Metadata",
-          obj: {
-            mightyMikeMapData: mapResult.value,
-            mightyMikeTileValues: mapResult.value.mapImage.flat(),
-          },
-          order: 100,
+  // Build the final LevelData with metadata
+  const finalData = {
+    ...ottoCompatible,
+    _metadata: {
+      file_attributes: 0,
+      junk1: 0,
+      junk2: 0,
+      1000: {
+        name: "Metadata",
+        obj: {
+          mightyMikeMapData: mapResult.value,
+          mightyMikeTileValues: mapResult.value.mapImage.flat(),
         },
+        order: 100,
       },
-    };
-    // The structure is validated at build time via the spread from ottoCompatible
-    function assertIsLevelData(x: unknown): asserts x is LevelData {
-      if (typeof x !== "object" || x === null || !("Hedr" in x)) {
-        throw new Error("Final data is not LevelData");
-      }
-    }
-    assertIsLevelData(finalData);
-    return ok(finalData);
-  } catch (e) {
-    return err(e instanceof Error ? e : new Error(String(e)));
+    },
+  };
+
+  // Validate the structure
+  if (typeof finalData !== "object" || finalData === null || !("Hedr" in finalData)) {
+    return err(new Error("Final data is not LevelData"));
   }
+
+  return ok(finalData as LevelData);
 }
 
 /**

@@ -1,0 +1,667 @@
+
+> frontend@0.0.0 lint
+> eslint .
+
+
+/home/lachl/documents/pangearsedit/frontend/src/components/ConversionPanel.tsx
+  31:5  warning  Unexpected try-catch, this pattern is not functional  functional/no-try-statements
+
+/home/lachl/documents/pangearsedit/frontend/src/components/GameModelSelector.tsx
+  81:5  warning  Unexpected try-catch, this pattern is not functional  functional/no-try-statements
+
+/home/lachl/documents/pangearsedit/frontend/src/components/ImageEditor.tsx
+  196:5  warning  Unexpected try-catch, this pattern is not functional  functional/no-try-statements
+
+/home/lachl/documents/pangearsedit/frontend/src/components/SkeletonConversionPanel.tsx
+   35:5   warning  Unexpected try-catch, this pattern is not functional  functional/no-try-statements
+  127:11  warning  Unexpected try-catch, this pattern is not functional  functional/no-try-statements
+
+/home/lachl/documents/pangearsedit/frontend/src/components/TextureManager.tsx
+   38:5   warning  Unexpected try-catch, this pattern is not functional  functional/no-try-statements
+   56:5   warning  Unexpected try-catch, this pattern is not functional  functional/no-try-statements
+  161:13  warning  Unexpected try-catch, this pattern is not functional  functional/no-try-statements
+
+/home/lachl/documents/pangearsedit/frontend/src/components/model-viewer/useModelAnimations.ts
+  21:5  warning  Unexpected try-catch, this pattern is not functional  functional/no-try-statements
+
+/home/lachl/documents/pangearsedit/frontend/src/components/model-viewer/useModelHierarchy.ts
+  47:5  warning  Unexpected try-catch, this pattern is not functional  functional/no-try-statements
+
+/home/lachl/documents/pangearsedit/frontend/src/components/ui/carousel.tsx
+  37:5  warning  Unexpected throw, throwing exceptions is not functional  functional/no-throw-statements
+
+/home/lachl/documents/pangearsedit/frontend/src/data/items/itemModelUtils.ts
+  165:15  error  Array type using 'Array<T>' is forbidden. Use 'T[]' instead  @typescript-eslint/array-type
+  188:21  error  Array type using 'Array<T>' is forbidden. Use 'T[]' instead  @typescript-eslint/array-type
+
+/home/lachl/documents/pangearsedit/frontend/src/data/items/mappers/bugdom2ItemMapper.ts
+  58:5  error  '_levelNum' is defined but never used  @typescript-eslint/no-unused-vars
+  59:5  error  '_params' is defined but never used    @typescript-eslint/no-unused-vars
+
+/home/lachl/documents/pangearsedit/frontend/src/data/items/mappers/bugdomItemMapper.ts
+  31:5  error  '_levelNum' is defined but never used  @typescript-eslint/no-unused-vars
+  32:5  error  '_params' is defined but never used    @typescript-eslint/no-unused-vars
+
+/home/lachl/documents/pangearsedit/frontend/src/data/items/mappers/index.ts
+  83:16  error  Array type using 'Array<T>' is forbidden. Use 'T[]' instead  @typescript-eslint/array-type
+
+/home/lachl/documents/pangearsedit/frontend/src/data/items/mappers/nanosaur1ItemMapper.ts
+  31:5  error  '_levelNum' is defined but never used  @typescript-eslint/no-unused-vars
+  32:5  error  '_params' is defined but never used    @typescript-eslint/no-unused-vars
+
+/home/lachl/documents/pangearsedit/frontend/src/data/items/standardParamTypes.ts
+  75:15  error  Array type using 'ReadonlyArray<T>' is forbidden. Use 'readonly T[]' instead  @typescript-eslint/array-type
+
+/home/lachl/documents/pangearsedit/frontend/src/data/levelEdit/applyEdit.ts
+  249:9  error  Array type using 'Array<T>' is forbidden. Use 'T[]' instead  @typescript-eslint/array-type
+
+/home/lachl/documents/pangearsedit/frontend/src/data/levelEdit/editOperations.ts
+  319:39  warning  Unexpected throw, throwing exceptions is not functional  functional/no-throw-statements
+  331:9   warning  Unexpected throw, throwing exceptions is not functional  functional/no-throw-statements
+  341:9   warning  Unexpected throw, throwing exceptions is not functional  functional/no-throw-statements
+  354:9   warning  Unexpected throw, throwing exceptions is not functional  functional/no-throw-statements
+  367:9   warning  Unexpected throw, throwing exceptions is not functional  functional/no-throw-statements
+  379:9   warning  Unexpected throw, throwing exceptions is not functional  functional/no-throw-statements
+  389:7   warning  Unexpected throw, throwing exceptions is not functional  functional/no-throw-statements
+
+/home/lachl/documents/pangearsedit/frontend/src/data/levelTemplates/blankLevelGenerator.ts
+  346:37  error  '_game' is defined but never used  @typescript-eslint/no-unused-vars
+
+/home/lachl/documents/pangearsedit/frontend/src/data/mapRoundtrip/parseLevel.ts
+   37:3  warning  Unexpected try-catch, this pattern is not functional  functional/no-try-statements
+   83:3  warning  Unexpected try-catch, this pattern is not functional  functional/no-try-statements
+  111:3  warning  Unexpected try-catch, this pattern is not functional  functional/no-try-statements
+
+/home/lachl/documents/pangearsedit/frontend/src/data/selectors/selectors.test.ts
+  239:7   warning  Unexpected throw, throwing exceptions is not functional  functional/no-throw-statements
+  245:7   warning  Unexpected throw, throwing exceptions is not functional  functional/no-throw-statements
+  251:7   warning  Unexpected throw, throwing exceptions is not functional  functional/no-throw-statements
+  263:24  warning  Unexpected throw, throwing exceptions is not functional  functional/no-throw-statements
+  265:17  warning  Unexpected throw, throwing exceptions is not functional  functional/no-throw-statements
+  286:22  warning  Unexpected throw, throwing exceptions is not functional  functional/no-throw-statements
+  288:23  warning  Unexpected throw, throwing exceptions is not functional  functional/no-throw-statements
+  296:29  warning  Unexpected throw, throwing exceptions is not functional  functional/no-throw-statements
+  298:38  warning  Unexpected throw, throwing exceptions is not functional  functional/no-throw-statements
+  316:24  warning  Unexpected throw, throwing exceptions is not functional  functional/no-throw-statements
+  318:23  warning  Unexpected throw, throwing exceptions is not functional  functional/no-throw-statements
+  326:31  warning  Unexpected throw, throwing exceptions is not functional  functional/no-throw-statements
+  328:25  warning  Unexpected throw, throwing exceptions is not functional  functional/no-throw-statements
+  337:23  warning  Unexpected throw, throwing exceptions is not functional  functional/no-throw-statements
+  339:23  warning  Unexpected throw, throwing exceptions is not functional  functional/no-throw-statements
+  341:23  warning  Unexpected throw, throwing exceptions is not functional  functional/no-throw-statements
+  349:30  warning  Unexpected throw, throwing exceptions is not functional  functional/no-throw-statements
+  351:24  warning  Unexpected throw, throwing exceptions is not functional  functional/no-throw-statements
+  360:24  warning  Unexpected throw, throwing exceptions is not functional  functional/no-throw-statements
+  362:23  warning  Unexpected throw, throwing exceptions is not functional  functional/no-throw-statements
+  364:23  warning  Unexpected throw, throwing exceptions is not functional  functional/no-throw-statements
+  366:23  warning  Unexpected throw, throwing exceptions is not functional  functional/no-throw-statements
+  368:23  warning  Unexpected throw, throwing exceptions is not functional  functional/no-throw-statements
+  378:31  warning  Unexpected throw, throwing exceptions is not functional  functional/no-throw-statements
+  380:25  warning  Unexpected throw, throwing exceptions is not functional  functional/no-throw-statements
+
+/home/lachl/documents/pangearsedit/frontend/src/data/tiles/tileDataExtractor.ts
+   43:3   error  '_headerData' is defined but never used                      @typescript-eslint/no-unused-vars
+  185:4   error  Array type using 'Array<T>' is forbidden. Use 'T[]' instead  @typescript-eslint/array-type
+  186:20  error  Array type using 'Array<T>' is forbidden. Use 'T[]' instead  @typescript-eslint/array-type
+
+/home/lachl/documents/pangearsedit/frontend/src/data/tiles/tileExport.ts
+  150:3  error    Type number trivially inferred from a number literal, remove type annotation  @typescript-eslint/no-inferrable-types
+  220:5  warning  Unexpected try-catch, this pattern is not functional                          functional/no-try-statements
+
+/home/lachl/documents/pangearsedit/frontend/src/data/tiles/tileOptimization.ts
+   81:3  error  '_headerData' is defined but never used  @typescript-eslint/no-unused-vars
+  131:5  error  Forbidden non-null assertion             @typescript-eslint/no-non-null-assertion
+  162:3  error  '_headerData' is defined but never used  @typescript-eslint/no-unused-vars
+
+/home/lachl/documents/pangearsedit/frontend/src/data/tiles/tilePaintHandler.ts
+  119:3   error  Type number trivially inferred from a number literal, remove type annotation  @typescript-eslint/no-inferrable-types
+  147:16  error  Array type using 'Array<T>' is forbidden. Use 'T[]' instead                   @typescript-eslint/array-type
+  209:3   error  '_headerData' is defined but never used                                       @typescript-eslint/no-unused-vars
+
+/home/lachl/documents/pangearsedit/frontend/src/data/tiles/tileStructures.ts
+  118:3  error  Type boolean trivially inferred from a boolean literal, remove type annotation  @typescript-eslint/no-inferrable-types
+  119:3  error  Type boolean trivially inferred from a boolean literal, remove type annotation  @typescript-eslint/no-inferrable-types
+  120:3  error  Type boolean trivially inferred from a boolean literal, remove type annotation  @typescript-eslint/no-inferrable-types
+  121:3  error  Type boolean trivially inferred from a boolean literal, remove type annotation  @typescript-eslint/no-inferrable-types
+
+/home/lachl/documents/pangearsedit/frontend/src/data/tunnelParser/parseTunnelFile.ts
+   47:7  warning  Unexpected throw, throwing exceptions is not functional  functional/no-throw-statements
+   54:7  warning  Unexpected throw, throwing exceptions is not functional  functional/no-throw-statements
+  138:7  warning  Unexpected throw, throwing exceptions is not functional  functional/no-throw-statements
+  295:3  warning  Unexpected try-catch, this pattern is not functional     functional/no-try-statements
+
+/home/lachl/documents/pangearsedit/frontend/src/data/tunnelParser/serializeTunnelFile.ts
+  217:3  warning  Unexpected try-catch, this pattern is not functional  functional/no-try-statements
+
+/home/lachl/documents/pangearsedit/frontend/src/data/utils/levelDataUtils.test.ts
+  27:9  warning  Unexpected throw, throwing exceptions is not functional  functional/no-throw-statements
+  59:9  warning  Unexpected throw, throwing exceptions is not functional  functional/no-throw-statements
+
+/home/lachl/documents/pangearsedit/frontend/src/data/utils/levelResizeUtils.ts
+  245:40  error  '_header' is defined but never used  @typescript-eslint/no-unused-vars
+
+/home/lachl/documents/pangearsedit/frontend/src/editor/IntroPrompt.tsx
+  305:5  warning  Unexpected try-catch, this pattern is not functional  functional/no-try-statements
+
+/home/lachl/documents/pangearsedit/frontend/src/editor/gameCards/GameCarousel.tsx
+  185:5  warning  Unexpected throw, throwing exceptions is not functional  functional/no-throw-statements
+
+/home/lachl/documents/pangearsedit/frontend/src/editor/gameCards/MiniThreeView.tsx
+  21:5  warning  Unexpected try-catch, this pattern is not functional  functional/no-try-statements
+
+/home/lachl/documents/pangearsedit/frontend/src/editor/gameLevelSelectors/Bugdom2Levels.tsx
+  20:7  warning  Unexpected try-catch, this pattern is not functional  functional/no-try-statements
+
+/home/lachl/documents/pangearsedit/frontend/src/editor/loadLogic/compileNanosaur1Level.ts
+  17:3  warning  Unexpected try-catch, this pattern is not functional  functional/no-try-statements
+
+/home/lachl/documents/pangearsedit/frontend/src/editor/loadLogic/openFile.test.ts
+   89:9   warning  Unexpected throw, throwing exceptions is not functional  functional/no-throw-statements
+  148:9   warning  Unexpected throw, throwing exceptions is not functional  functional/no-throw-statements
+  172:21  warning  Unexpected throw, throwing exceptions is not functional  functional/no-throw-statements
+  178:9   warning  Unexpected throw, throwing exceptions is not functional  functional/no-throw-statements
+  181:7   warning  Unexpected throw, throwing exceptions is not functional  functional/no-throw-statements
+
+/home/lachl/documents/pangearsedit/frontend/src/editor/loadLogic/openFile.ts
+  115:9  warning  Unexpected try-catch, this pattern is not functional  functional/no-try-statements
+  151:5  warning  Unexpected try-catch, this pattern is not functional  functional/no-try-statements
+  205:5  warning  Unexpected try-catch, this pattern is not functional  functional/no-try-statements
+
+/home/lachl/documents/pangearsedit/frontend/src/editor/loadLogic/parseMightyMikeFile.ts
+   50:3  warning  Unexpected try-catch, this pattern is not functional     functional/no-try-statements
+  126:3  warning  Unexpected try-catch, this pattern is not functional     functional/no-try-statements
+  148:7  warning  Unexpected try-catch, this pattern is not functional     functional/no-try-statements
+  403:9  warning  Unexpected throw, throwing exceptions is not functional  functional/no-throw-statements
+
+/home/lachl/documents/pangearsedit/frontend/src/editor/loadLogic/parseNanosaurLevelFile.ts
+  16:3  warning  Unexpected try-catch, this pattern is not functional  functional/no-try-statements
+
+/home/lachl/documents/pangearsedit/frontend/src/editor/loadLogic/parseRsrcLevelFile.ts
+  15:3  warning  Unexpected try-catch, this pattern is not functional     functional/no-try-statements
+  34:9  warning  Unexpected throw, throwing exceptions is not functional  functional/no-throw-statements
+  70:9  warning  Unexpected throw, throwing exceptions is not functional  functional/no-throw-statements
+
+/home/lachl/documents/pangearsedit/frontend/src/editor/subviews/fences/Fence.tsx
+  68:13  warning  Unexpected try-catch, this pattern is not functional  functional/no-try-statements
+
+/home/lachl/documents/pangearsedit/frontend/src/editor/subviews/mightymike/MightyMikeTileMenu.tsx
+  312:5  warning  Unexpected try-catch, this pattern is not functional  functional/no-try-statements
+
+/home/lachl/documents/pangearsedit/frontend/src/editor/subviews/splines/Spline.tsx
+  105:13  warning  Unexpected try-catch, this pattern is not functional  functional/no-try-statements
+
+/home/lachl/documents/pangearsedit/frontend/src/editor/subviews/water/WaterBody.tsx
+  81:13  warning  Unexpected try-catch, this pattern is not functional  functional/no-try-statements
+
+/home/lachl/documents/pangearsedit/frontend/src/editor/threejs/FenceGeometry.tsx
+  285:6  warning  React Hook useMemo has an unnecessary dependency: 'yCrdData'. Either exclude it or remove the dependency array  react-hooks/exhaustive-deps
+
+/home/lachl/documents/pangearsedit/frontend/src/editor/threejs/SplineGeometry.tsx
+  178:6  warning  React Hook useMemo has an unnecessary dependency: 'yCrdData'. Either exclude it or remove the dependency array  react-hooks/exhaustive-deps
+
+/home/lachl/documents/pangearsedit/frontend/src/editor/threejs/Three.tsx
+  74:5  warning  Unexpected try-catch, this pattern is not functional  functional/no-try-statements
+
+/home/lachl/documents/pangearsedit/frontend/src/editor/threejs/hooks/useOttoItemModelCache.ts
+  166:7   warning  Unexpected throw, throwing exceptions is not functional  functional/no-throw-statements
+  228:3   warning  Unexpected try-catch, this pattern is not functional     functional/no-try-statements
+  337:7   warning  Unexpected try-catch, this pattern is not functional     functional/no-try-statements
+  359:13  warning  Unexpected throw, throwing exceptions is not functional  functional/no-throw-statements
+
+/home/lachl/documents/pangearsedit/frontend/src/main.tsx
+  17:3  warning  Unexpected throw, throwing exceptions is not functional  functional/no-throw-statements
+
+/home/lachl/documents/pangearsedit/frontend/src/modelParsers/bg3dAllGames.test.ts
+   56:3   warning  Unexpected try-catch, this pattern is not functional     functional/no-try-statements
+   95:11  warning  Unexpected throw, throwing exceptions is not functional  functional/no-throw-statements
+  121:28  warning  Unexpected throw, throwing exceptions is not functional  functional/no-throw-statements
+  126:9   warning  Unexpected try-catch, this pattern is not functional     functional/no-try-statements
+  130:11  warning  Unexpected throw, throwing exceptions is not functional  functional/no-throw-statements
+  156:28  warning  Unexpected throw, throwing exceptions is not functional  functional/no-throw-statements
+  164:9   warning  Unexpected try-catch, this pattern is not functional     functional/no-try-statements
+  171:11  warning  Unexpected throw, throwing exceptions is not functional  functional/no-throw-statements
+  240:24  warning  Unexpected throw, throwing exceptions is not functional  functional/no-throw-statements
+  290:9   warning  Unexpected throw, throwing exceptions is not functional  functional/no-throw-statements
+  292:7   warning  Unexpected throw, throwing exceptions is not functional  functional/no-throw-statements
+  329:7   warning  Unexpected try-catch, this pattern is not functional     functional/no-try-statements
+  331:28  warning  Unexpected throw, throwing exceptions is not functional  functional/no-throw-statements
+  335:9   warning  Unexpected throw, throwing exceptions is not functional  functional/no-throw-statements
+  339:20  warning  Unexpected throw, throwing exceptions is not functional  functional/no-throw-statements
+
+/home/lachl/documents/pangearsedit/frontend/src/modelParsers/bg3dGltf/bg3d/materials.ts
+   62:9   warning  Unexpected try-catch, this pattern is not functional  functional/no-try-statements
+  141:11  warning  Unexpected try-catch, this pattern is not functional  functional/no-try-statements
+
+/home/lachl/documents/pangearsedit/frontend/src/modelParsers/bg3dGltfWorker.ts
+  103:3  warning  Unexpected try-catch, this pattern is not functional  functional/no-try-statements
+
+/home/lachl/documents/pangearsedit/frontend/src/modelParsers/bg3dSkeleton.test.ts
+  201:7   warning  Unexpected throw, throwing exceptions is not functional  functional/no-throw-statements
+  210:20  warning  Unexpected throw, throwing exceptions is not functional  functional/no-throw-statements
+  216:22  warning  Unexpected throw, throwing exceptions is not functional  functional/no-throw-statements
+  223:21  warning  Unexpected throw, throwing exceptions is not functional  functional/no-throw-statements
+  302:7   warning  Unexpected throw, throwing exceptions is not functional  functional/no-throw-statements
+  304:7   warning  Unexpected throw, throwing exceptions is not functional  functional/no-throw-statements
+  321:24  warning  Unexpected throw, throwing exceptions is not functional  functional/no-throw-statements
+  322:25  warning  Unexpected throw, throwing exceptions is not functional  functional/no-throw-statements
+  330:9   warning  Unexpected throw, throwing exceptions is not functional  functional/no-throw-statements
+  348:30  warning  Unexpected throw, throwing exceptions is not functional  functional/no-throw-statements
+  361:18  warning  Unexpected throw, throwing exceptions is not functional  functional/no-throw-statements
+  369:20  warning  Unexpected throw, throwing exceptions is not functional  functional/no-throw-statements
+  382:30  warning  Unexpected throw, throwing exceptions is not functional  functional/no-throw-statements
+  434:30  warning  Unexpected throw, throwing exceptions is not functional  functional/no-throw-statements
+  441:29  warning  Unexpected throw, throwing exceptions is not functional  functional/no-throw-statements
+  443:30  warning  Unexpected throw, throwing exceptions is not functional  functional/no-throw-statements
+
+/home/lachl/documents/pangearsedit/frontend/src/modelParsers/bg3dSkeletonRoundTrip.test.ts
+  117:9   warning  Unexpected throw, throwing exceptions is not functional  functional/no-throw-statements
+  126:9   warning  Unexpected throw, throwing exceptions is not functional  functional/no-throw-statements
+  265:7   warning  Unexpected throw, throwing exceptions is not functional  functional/no-throw-statements
+  314:9   warning  Unexpected throw, throwing exceptions is not functional  functional/no-throw-statements
+  323:11  warning  Unexpected throw, throwing exceptions is not functional  functional/no-throw-statements
+  332:13  warning  Unexpected throw, throwing exceptions is not functional  functional/no-throw-statements
+  377:7   warning  Unexpected throw, throwing exceptions is not functional  functional/no-throw-statements
+  380:7   warning  Unexpected throw, throwing exceptions is not functional  functional/no-throw-statements
+  390:9   warning  Unexpected throw, throwing exceptions is not functional  functional/no-throw-statements
+  413:7   warning  Unexpected throw, throwing exceptions is not functional  functional/no-throw-statements
+
+/home/lachl/documents/pangearsedit/frontend/src/modelParsers/bg3dWithSkeleton.ts
+  33:3  warning  Unexpected try-catch, this pattern is not functional  functional/no-try-statements
+
+/home/lachl/documents/pangearsedit/frontend/src/modelParsers/mightyMikePaletteCompare.test.ts
+  23:28  warning  Unexpected throw, throwing exceptions is not functional  functional/no-throw-statements
+  31:17  warning  Unexpected throw, throwing exceptions is not functional  functional/no-throw-statements
+
+/home/lachl/documents/pangearsedit/frontend/src/modelParsers/multiRoundtripComparison.test.ts
+   71:9   warning  Unexpected throw, throwing exceptions is not functional  functional/no-throw-statements
+  189:20  warning  Unexpected throw, throwing exceptions is not functional  functional/no-throw-statements
+
+/home/lachl/documents/pangearsedit/frontend/src/modelParsers/parseBG3D.test.ts
+   70:24  warning  Unexpected throw, throwing exceptions is not functional  functional/no-throw-statements
+  109:24  warning  Unexpected throw, throwing exceptions is not functional  functional/no-throw-statements
+  146:24  warning  Unexpected throw, throwing exceptions is not functional  functional/no-throw-statements
+  176:24  warning  Unexpected throw, throwing exceptions is not functional  functional/no-throw-statements
+
+/home/lachl/documents/pangearsedit/frontend/src/modelParsers/parseBG3D.ts
+  845:5  warning  Unexpected try-catch, this pattern is not functional  functional/no-try-statements
+
+/home/lachl/documents/pangearsedit/frontend/src/modelParsers/parseMightyMike.ts
+   32:5  warning  Unexpected try-catch, this pattern is not functional  functional/no-try-statements
+  169:3  warning  Unexpected try-catch, this pattern is not functional  functional/no-try-statements
+  354:3  warning  Unexpected try-catch, this pattern is not functional  functional/no-try-statements
+
+/home/lachl/documents/pangearsedit/frontend/src/modelParsers/parseMightyMikeColorDiagnostics.test.ts
+  135:5  warning  Unexpected try-catch, this pattern is not functional  functional/no-try-statements
+
+/home/lachl/documents/pangearsedit/frontend/src/modelParsers/parseMightyMikeRoundtrip.test.ts
+   45:9   warning  Unexpected try-catch, this pattern is not functional     functional/no-try-statements
+   49:11  warning  Unexpected throw, throwing exceptions is not functional  functional/no-throw-statements
+  108:15  warning  Unexpected throw, throwing exceptions is not functional  functional/no-throw-statements
+  137:9   warning  Unexpected try-catch, this pattern is not functional     functional/no-try-statements
+  178:9   warning  Unexpected try-catch, this pattern is not functional     functional/no-try-statements
+  182:11  warning  Unexpected throw, throwing exceptions is not functional  functional/no-throw-statements
+  247:9   warning  Unexpected try-catch, this pattern is not functional     functional/no-try-statements
+  251:11  warning  Unexpected throw, throwing exceptions is not functional  functional/no-throw-statements
+  296:15  warning  Unexpected throw, throwing exceptions is not functional  functional/no-throw-statements
+
+/home/lachl/documents/pangearsedit/frontend/src/modelParsers/parsed3dmfGltfConverter.ts
+   9:3  warning  Unexpected throw, throwing exceptions is not functional  functional/no-throw-statements
+  22:3  warning  Unexpected throw, throwing exceptions is not functional  functional/no-throw-statements
+
+/home/lachl/documents/pangearsedit/frontend/src/modelParsers/parsedBg3dGitfConverter.ts
+   426:9   warning  Unexpected try-catch, this pattern is not functional     functional/no-try-statements
+   433:13  warning  Unexpected try-catch, this pattern is not functional     functional/no-try-statements
+  1091:5   warning  Unexpected try-catch, this pattern is not functional     functional/no-try-statements
+  1204:17  warning  Unexpected throw, throwing exceptions is not functional  functional/no-throw-statements
+
+/home/lachl/documents/pangearsedit/frontend/src/modelParsers/realGameFileDemo.test.ts
+  362:29  warning  Unexpected throw, throwing exceptions is not functional  functional/no-throw-statements
+
+/home/lachl/documents/pangearsedit/frontend/src/modelParsers/realOttoIntegration.test.ts
+  42:5  warning  Unexpected try-catch, this pattern is not functional     functional/no-try-statements
+  85:7  warning  Unexpected throw, throwing exceptions is not functional  functional/no-throw-statements
+
+/home/lachl/documents/pangearsedit/frontend/src/modelParsers/simpleRoundtripCheck.ts
+   82:35  warning  Unexpected throw, throwing exceptions is not functional  functional/no-throw-statements
+  137:35  warning  Unexpected throw, throwing exceptions is not functional  functional/no-throw-statements
+
+/home/lachl/documents/pangearsedit/frontend/src/modelParsers/skeletonIntegration.test.ts
+  17:7  warning  Unexpected try-catch, this pattern is not functional  functional/no-try-statements
+
+/home/lachl/documents/pangearsedit/frontend/src/modelParsers/skeletonSystemNew.ts
+  863:7  warning  Unexpected try-catch, this pattern is not functional  functional/no-try-statements
+  912:7  warning  Unexpected try-catch, this pattern is not functional  functional/no-try-statements
+  939:7  warning  Unexpected try-catch, this pattern is not functional  functional/no-try-statements
+  965:7  warning  Unexpected try-catch, this pattern is not functional  functional/no-try-statements
+  990:7  warning  Unexpected try-catch, this pattern is not functional  functional/no-try-statements
+
+/home/lachl/documents/pangearsedit/frontend/src/modelParsers/skeletonValueValidation.test.ts
+  483:7  warning  Unexpected throw, throwing exceptions is not functional  functional/no-throw-statements
+
+/home/lachl/documents/pangearsedit/frontend/src/modelParsers/testAllGamesManual.ts
+  47:3  warning  Unexpected try-catch, this pattern is not functional  functional/no-try-statements
+
+/home/lachl/documents/pangearsedit/frontend/src/modelParsers/threeDMF/binaryUtils.ts
+  287:7  warning  Unexpected throw, throwing exceptions is not functional  functional/no-throw-statements
+
+/home/lachl/documents/pangearsedit/frontend/src/modelParsers/threeDMF/fullRoundtrip.test.ts
+  199:9  warning  Unexpected try-catch, this pattern is not functional  functional/no-try-statements
+  314:9  warning  Unexpected try-catch, this pattern is not functional  functional/no-try-statements
+  425:9  warning  Unexpected try-catch, this pattern is not functional  functional/no-try-statements
+  499:7  warning  Unexpected try-catch, this pattern is not functional  functional/no-try-statements
+
+/home/lachl/documents/pangearsedit/frontend/src/modelParsers/threeDMF/gltfRoundtrip.test.ts
+  181:9  warning  Unexpected try-catch, this pattern is not functional  functional/no-try-statements
+  261:9  warning  Unexpected try-catch, this pattern is not functional  functional/no-try-statements
+  343:7  warning  Unexpected try-catch, this pattern is not functional  functional/no-try-statements
+  393:9  warning  Unexpected try-catch, this pattern is not functional  functional/no-try-statements
+
+/home/lachl/documents/pangearsedit/frontend/src/modelParsers/threeDMF/parse3DMF.test.ts
+   36:7  warning  Unexpected try-catch, this pattern is not functional  functional/no-try-statements
+   56:7  warning  Unexpected try-catch, this pattern is not functional  functional/no-try-statements
+   76:7  warning  Unexpected try-catch, this pattern is not functional  functional/no-try-statements
+  104:7  warning  Unexpected try-catch, this pattern is not functional  functional/no-try-statements
+  129:7  warning  Unexpected try-catch, this pattern is not functional  functional/no-try-statements
+  151:7  warning  Unexpected try-catch, this pattern is not functional  functional/no-try-statements
+  209:7  warning  Unexpected try-catch, this pattern is not functional  functional/no-try-statements
+  261:9  warning  Unexpected try-catch, this pattern is not functional  functional/no-try-statements
+  281:9  warning  Unexpected try-catch, this pattern is not functional  functional/no-try-statements
+
+/home/lachl/documents/pangearsedit/frontend/src/modelParsers/threeDMF/roundtrip.test.ts
+   41:7  warning  Unexpected try-catch, this pattern is not functional  functional/no-try-statements
+   97:7  warning  Unexpected try-catch, this pattern is not functional  functional/no-try-statements
+  142:7  warning  Unexpected try-catch, this pattern is not functional  functional/no-try-statements
+  190:7  warning  Unexpected try-catch, this pattern is not functional  functional/no-try-statements
+  239:7  warning  Unexpected try-catch, this pattern is not functional  functional/no-try-statements
+  282:7  warning  Unexpected try-catch, this pattern is not functional  functional/no-try-statements
+  332:9  warning  Unexpected try-catch, this pattern is not functional  functional/no-try-statements
+
+/home/lachl/documents/pangearsedit/frontend/src/modelParsers/validateSkeletonGLTF.test.ts
+   34:7   warning  Unexpected throw, throwing exceptions is not functional  functional/no-throw-statements
+   77:24  warning  Unexpected throw, throwing exceptions is not functional  functional/no-throw-statements
+  131:17  warning  Unexpected throw, throwing exceptions is not functional  functional/no-throw-statements
+  222:17  warning  Unexpected throw, throwing exceptions is not functional  functional/no-throw-statements
+
+/home/lachl/documents/pangearsedit/frontend/src/pages/ItemModelViewer.tsx
+  194:3  warning  Unexpected try-catch, this pattern is not functional     functional/no-try-statements
+  394:5  warning  Unexpected try-catch, this pattern is not functional     functional/no-try-statements
+  403:9  warning  Unexpected throw, throwing exceptions is not functional  functional/no-throw-statements
+  481:9  warning  Unexpected throw, throwing exceptions is not functional  functional/no-throw-statements
+
+/home/lachl/documents/pangearsedit/frontend/src/pages/ModelCanvas.tsx
+  72:7  error  Error: This value cannot be modified
+
+Modifying a value returned from a hook is not allowed. Consider moving the modification into the hook where the value is constructed.
+
+/home/lachl/documents/pangearsedit/frontend/src/pages/ModelCanvas.tsx:72:7
+  70 |       const size = new Vector3();
+  71 |       box.getSize(size);
+> 72 |       gltfResult.scene.position.y = -size.y / 2;
+     |       ^^^^^^^^^^^^^^^^^^^^^^^^^ `gltfResult` cannot be modified
+  73 |     }
+  74 |   }, [gltfResult, props.gameType]);
+  75 |  react-hooks/immutability
+
+/home/lachl/documents/pangearsedit/frontend/src/pages/ModelViewer.tsx
+  171:5   warning  Unexpected try-catch, this pattern is not functional  functional/no-try-statements
+  190:5   warning  Unexpected try-catch, this pattern is not functional  functional/no-try-statements
+  207:5   warning  Unexpected try-catch, this pattern is not functional  functional/no-try-statements
+  222:5   warning  Unexpected try-catch, this pattern is not functional  functional/no-try-statements
+  253:5   warning  Unexpected try-catch, this pattern is not functional  functional/no-try-statements
+  263:5   warning  Unexpected try-catch, this pattern is not functional  functional/no-try-statements
+  322:21  warning  Unexpected try-catch, this pattern is not functional  functional/no-try-statements
+  381:19  warning  Unexpected try-catch, this pattern is not functional  functional/no-try-statements
+
+/home/lachl/documents/pangearsedit/frontend/src/pages/ModelViewer/hooks/useFileUpload.ts
+   87:7   warning  Unexpected try-catch, this pattern is not functional  functional/no-try-statements
+  114:13  warning  Unexpected try-catch, this pattern is not functional  functional/no-try-statements
+  209:11  warning  Unexpected try-catch, this pattern is not functional  functional/no-try-statements
+
+/home/lachl/documents/pangearsedit/frontend/src/pages/ModelViewer/hooks/useTextureManagement.ts
+   68:9   warning  Unexpected throw, throwing exceptions is not functional  functional/no-throw-statements
+   75:11  warning  Unexpected try-catch, this pattern is not functional     functional/no-try-statements
+  270:7   warning  Unexpected try-catch, this pattern is not functional     functional/no-try-statements
+  277:11  warning  Unexpected throw, throwing exceptions is not functional  functional/no-throw-statements
+  304:9   warning  Unexpected throw, throwing exceptions is not functional  functional/no-throw-statements
+
+/home/lachl/documents/pangearsedit/frontend/src/pages/ModelViewer/utils/downloadUtils.ts
+   55:7   warning  Unexpected try-catch, this pattern is not functional     functional/no-try-statements
+   81:13  warning  Unexpected try-catch, this pattern is not functional     functional/no-try-statements
+  174:5   warning  Unexpected throw, throwing exceptions is not functional  functional/no-throw-statements
+  179:5   warning  Unexpected throw, throwing exceptions is not functional  functional/no-throw-statements
+
+/home/lachl/documents/pangearsedit/frontend/src/pages/ModelViewer/utils/testModelLoaders.ts
+  24:5  warning  Unexpected throw, throwing exceptions is not functional  functional/no-throw-statements
+  62:5  warning  Unexpected throw, throwing exceptions is not functional  functional/no-throw-statements
+
+/home/lachl/documents/pangearsedit/frontend/src/pages/ModelViewer/utils/textureUtils.ts
+  101:9  warning  Unexpected try-catch, this pattern is not functional  functional/no-try-statements
+
+/home/lachl/documents/pangearsedit/frontend/src/pages/SpriteViewer.tsx
+  109:5  warning  Unexpected try-catch, this pattern is not functional  functional/no-try-statements
+  154:5  warning  Unexpected try-catch, this pattern is not functional  functional/no-try-statements
+  191:5  warning  Unexpected try-catch, this pattern is not functional  functional/no-try-statements
+  226:5  warning  Unexpected try-catch, this pattern is not functional  functional/no-try-statements
+  626:7  warning  Unexpected try-catch, this pattern is not functional  functional/no-try-statements
+  708:5  warning  Unexpected try-catch, this pattern is not functional  functional/no-try-statements
+
+/home/lachl/documents/pangearsedit/frontend/src/pages/SpriteViewer/utils/paletteUtils.ts
+  147:3  warning  Unexpected try-catch, this pattern is not functional  functional/no-try-statements
+
+/home/lachl/documents/pangearsedit/frontend/src/pages/TestModelViewer.tsx
+  347:3  warning  Unexpected try-catch, this pattern is not functional     functional/no-try-statements
+  479:5  warning  Unexpected try-catch, this pattern is not functional     functional/no-try-statements
+  485:9  warning  Unexpected throw, throwing exceptions is not functional  functional/no-throw-statements
+
+/home/lachl/documents/pangearsedit/frontend/src/parsers/mightyMikeShapesParser.ts
+  132:3  warning  Unexpected try-catch, this pattern is not functional  functional/no-try-statements
+  229:3  warning  Unexpected try-catch, this pattern is not functional  functional/no-try-statements
+
+/home/lachl/documents/pangearsedit/frontend/src/parsers/mightyMikeTilesetParser.ts
+  40:3  warning  Unexpected try-catch, this pattern is not functional  functional/no-try-statements
+
+/home/lachl/documents/pangearsedit/frontend/src/types/result.test.ts
+   86:9  warning  Unexpected throw, throwing exceptions is not functional  functional/no-throw-statements
+   97:9  warning  Unexpected throw, throwing exceptions is not functional  functional/no-throw-statements
+  107:9  warning  Unexpected throw, throwing exceptions is not functional  functional/no-throw-statements
+  117:9  warning  Unexpected throw, throwing exceptions is not functional  functional/no-throw-statements
+  129:9  warning  Unexpected throw, throwing exceptions is not functional  functional/no-throw-statements
+  139:9  warning  Unexpected throw, throwing exceptions is not functional  functional/no-throw-statements
+  149:9  warning  Unexpected throw, throwing exceptions is not functional  functional/no-throw-statements
+  211:9  warning  Unexpected throw, throwing exceptions is not functional  functional/no-throw-statements
+  225:9  warning  Unexpected throw, throwing exceptions is not functional  functional/no-throw-statements
+
+/home/lachl/documents/pangearsedit/frontend/src/utils/bufferOperations.ts
+  206:3  warning  Unexpected try-catch, this pattern is not functional  functional/no-try-statements
+
+/home/lachl/documents/pangearsedit/frontend/src/utils/gltfAnalyzer.test.ts
+   77:16  warning  Unexpected throw, throwing exceptions is not functional  functional/no-throw-statements
+   82:20  warning  Unexpected throw, throwing exceptions is not functional  functional/no-throw-statements
+   86:19  warning  Unexpected throw, throwing exceptions is not functional  functional/no-throw-statements
+   91:19  warning  Unexpected throw, throwing exceptions is not functional  functional/no-throw-statements
+  105:15  warning  Unexpected throw, throwing exceptions is not functional  functional/no-throw-statements
+
+/home/lachl/documents/pangearsedit/frontend/src/utils/imageConverter.test.ts
+  19:19  warning  Unexpected throw, throwing exceptions is not functional  functional/no-throw-statements
+
+/home/lachl/documents/pangearsedit/frontend/src/utils/mightyMikeShapeImageLoader.ts
+   32:3  warning  Unexpected try-catch, this pattern is not functional  functional/no-try-statements
+   89:3  warning  Unexpected try-catch, this pattern is not functional  functional/no-try-statements
+  174:3  warning  Unexpected try-catch, this pattern is not functional  functional/no-try-statements
+
+/home/lachl/documents/pangearsedit/frontend/src/validation/githubFetcher.ts
+  50:5  warning  Unexpected try-catch, this pattern is not functional  functional/no-try-statements
+
+/home/lachl/documents/pangearsedit/frontend/tests/items/integration.test.ts
+   14:26  error  'ItemCategory' is defined but never used       @typescript-eslint/no-unused-vars
+   22:3   error  'ENEMY_SPAWN_FLAGS' is defined but never used  @typescript-eslint/no-unused-vars
+  180:11  error  'maxGame' is assigned a value but never used   @typescript-eslint/no-unused-vars
+
+/home/lachl/documents/pangearsedit/frontend/tests/items/itemModelTypes.test.ts
+  126:22  warning  Unexpected throw, throwing exceptions is not functional  functional/no-throw-statements
+  134:22  warning  Unexpected throw, throwing exceptions is not functional  functional/no-throw-statements
+  142:22  warning  Unexpected throw, throwing exceptions is not functional  functional/no-throw-statements
+
+/home/lachl/documents/pangearsedit/frontend/tests/levelEdit/applyEdit.test.ts
+  156:25  warning  Unexpected throw, throwing exceptions is not functional  functional/no-throw-statements
+  178:25  warning  Unexpected throw, throwing exceptions is not functional  functional/no-throw-statements
+
+/home/lachl/documents/pangearsedit/frontend/tests/levelEdit/editOperations.test.ts
+   36:15  error  Unsafe type assertion: type 'MoveItemOperation' is more narrow than the original type          @typescript-eslint/no-unsafe-type-assertion
+   37:15  error  Unsafe type assertion: type 'MoveItemOperation' is more narrow than the original type          @typescript-eslint/no-unsafe-type-assertion
+   38:15  error  Unsafe type assertion: type 'MoveItemOperation' is more narrow than the original type          @typescript-eslint/no-unsafe-type-assertion
+   39:15  error  Unsafe type assertion: type 'MoveItemOperation' is more narrow than the original type          @typescript-eslint/no-unsafe-type-assertion
+   53:15  error  Unsafe type assertion: type 'UpdateItemParamsOperation' is more narrow than the original type  @typescript-eslint/no-unsafe-type-assertion
+   60:15  error  Unsafe type assertion: type 'UpdateItemParamsOperation' is more narrow than the original type  @typescript-eslint/no-unsafe-type-assertion
+  167:22  error  Unsafe type assertion: type 'MoveItemOperation' is more narrow than the original type          @typescript-eslint/no-unsafe-type-assertion
+  197:22  error  Unsafe type assertion: type 'MoveSplineNubOperation' is more narrow than the original type     @typescript-eslint/no-unsafe-type-assertion
+
+/home/lachl/documents/pangearsedit/frontend/tests/levelEdit/integration.test.ts
+   7:8  error  'EditOperation' is defined but never used                 @typescript-eslint/no-unused-vars
+  11:8  error  'MoveSplineNubOperation' is defined but never used        @typescript-eslint/no-unused-vars
+  12:8  error  'UpdateTerrainHeightOperation' is defined but never used  @typescript-eslint/no-unused-vars
+
+/home/lachl/documents/pangearsedit/frontend/tests/levelEdit/reversal.test.ts
+  11:8  error  'EditOperation' is defined but never used                 @typescript-eslint/no-unused-vars
+  16:8  error  'MoveSplineNubOperation' is defined but never used        @typescript-eslint/no-unused-vars
+  17:8  error  'UpdateTerrainHeightOperation' is defined but never used  @typescript-eslint/no-unused-vars
+
+/home/lachl/documents/pangearsedit/frontend/tests/levelTemplates/integration.test.ts
+  33:19  error  'game' is assigned a value but never used                                   @typescript-eslint/no-unused-vars
+  79:26  error  Unsafe type assertion: type 'Game[]' is more narrow than the original type  @typescript-eslint/no-unsafe-type-assertion
+
+/home/lachl/documents/pangearsedit/frontend/tests/mapRoundtrip/billyfrontier.test.ts
+   32:44  warning  Unexpected throw, throwing exceptions is not functional  functional/no-throw-statements
+   47:5   warning  Unexpected throw, throwing exceptions is not functional  functional/no-throw-statements
+  114:9   warning  Unexpected throw, throwing exceptions is not functional  functional/no-throw-statements
+  138:9   warning  Unexpected throw, throwing exceptions is not functional  functional/no-throw-statements
+  160:9   warning  Unexpected throw, throwing exceptions is not functional  functional/no-throw-statements
+  175:9   warning  Unexpected throw, throwing exceptions is not functional  functional/no-throw-statements
+  226:9   warning  Unexpected throw, throwing exceptions is not functional  functional/no-throw-statements
+  361:11  warning  Unexpected throw, throwing exceptions is not functional  functional/no-throw-statements
+
+/home/lachl/documents/pangearsedit/frontend/tests/mapRoundtrip/bugdom.test.ts
+   85:9  warning  Unexpected throw, throwing exceptions is not functional  functional/no-throw-statements
+  136:9  warning  Unexpected throw, throwing exceptions is not functional  functional/no-throw-statements
+
+/home/lachl/documents/pangearsedit/frontend/tests/mapRoundtrip/bugdom2.test.ts
+   23:5  warning  Unexpected throw, throwing exceptions is not functional  functional/no-throw-statements
+   89:9  warning  Unexpected throw, throwing exceptions is not functional  functional/no-throw-statements
+  129:9  warning  Unexpected throw, throwing exceptions is not functional  functional/no-throw-statements
+
+/home/lachl/documents/pangearsedit/frontend/tests/mapRoundtrip/cromagrally.test.ts
+   82:9  warning  Unexpected throw, throwing exceptions is not functional  functional/no-throw-statements
+  122:9  warning  Unexpected throw, throwing exceptions is not functional  functional/no-throw-statements
+
+/home/lachl/documents/pangearsedit/frontend/tests/mapRoundtrip/levelRoundtripAll.test.ts
+  25:5  warning  Unexpected try-catch, this pattern is not functional  functional/no-try-statements
+
+/home/lachl/documents/pangearsedit/frontend/tests/mapRoundtrip/levels/billyfrontier.test.ts
+  107:11  warning  Unexpected throw, throwing exceptions is not functional  functional/no-throw-statements
+
+/home/lachl/documents/pangearsedit/frontend/tests/mapRoundtrip/levels/bugdom.test.ts
+  110:11  warning  Unexpected throw, throwing exceptions is not functional  functional/no-throw-statements
+
+/home/lachl/documents/pangearsedit/frontend/tests/mapRoundtrip/levels/bugdom2.test.ts
+  110:11  warning  Unexpected throw, throwing exceptions is not functional  functional/no-throw-statements
+
+/home/lachl/documents/pangearsedit/frontend/tests/mapRoundtrip/levels/cromagrally.test.ts
+  118:11  warning  Unexpected throw, throwing exceptions is not functional  functional/no-throw-statements
+
+/home/lachl/documents/pangearsedit/frontend/tests/mapRoundtrip/levels/nanosaur2.test.ts
+  110:11  warning  Unexpected throw, throwing exceptions is not functional  functional/no-throw-statements
+
+/home/lachl/documents/pangearsedit/frontend/tests/mapRoundtrip/levels/ottomatic.test.ts
+  115:11  warning  Unexpected throw, throwing exceptions is not functional  functional/no-throw-statements
+
+/home/lachl/documents/pangearsedit/frontend/tests/mapRoundtrip/nanosaur2.test.ts
+   83:9  warning  Unexpected throw, throwing exceptions is not functional  functional/no-throw-statements
+  102:9  warning  Unexpected throw, throwing exceptions is not functional  functional/no-throw-statements
+  113:9  warning  Unexpected throw, throwing exceptions is not functional  functional/no-throw-statements
+  153:9  warning  Unexpected throw, throwing exceptions is not functional  functional/no-throw-statements
+
+/home/lachl/documents/pangearsedit/frontend/tests/mapRoundtrip/ottomatic.test.ts
+   79:9   warning  Unexpected throw, throwing exceptions is not functional  functional/no-throw-statements
+  126:9   warning  Unexpected throw, throwing exceptions is not functional  functional/no-throw-statements
+  171:9   warning  Unexpected throw, throwing exceptions is not functional  functional/no-throw-statements
+  374:13  warning  Unexpected throw, throwing exceptions is not functional  functional/no-throw-statements
+  383:13  warning  Unexpected throw, throwing exceptions is not functional  functional/no-throw-statements
+
+/home/lachl/documents/pangearsedit/frontend/tests/mapRoundtrip/testUtils.ts
+   30:3   warning  Unexpected try-catch, this pattern is not functional     functional/no-try-statements
+  275:11  warning  Unexpected throw, throwing exceptions is not functional  functional/no-throw-statements
+
+/home/lachl/documents/pangearsedit/frontend/tests/parsing/levelParsing.test.ts
+  398:11  warning  Unexpected throw, throwing exceptions is not functional  functional/no-throw-statements
+  600:11  warning  Unexpected throw, throwing exceptions is not functional  functional/no-throw-statements
+
+/home/lachl/documents/pangearsedit/frontend/tests/roundtrip/allGamesRoundtrip.test.ts
+   40:7   warning  Unexpected try-catch, this pattern is not functional     functional/no-try-statements
+   56:9   warning  Unexpected throw, throwing exceptions is not functional  functional/no-throw-statements
+   69:9   warning  Unexpected throw, throwing exceptions is not functional  functional/no-throw-statements
+  121:7   warning  Unexpected try-catch, this pattern is not functional     functional/no-try-statements
+  136:9   warning  Unexpected throw, throwing exceptions is not functional  functional/no-throw-statements
+  149:11  warning  Unexpected throw, throwing exceptions is not functional  functional/no-throw-statements
+  156:11  warning  Unexpected throw, throwing exceptions is not functional  functional/no-throw-statements
+  163:9   warning  Unexpected throw, throwing exceptions is not functional  functional/no-throw-statements
+
+/home/lachl/documents/pangearsedit/frontend/tests/roundtrip/bugdomNanosaurParsing.test.ts
+   74:26  warning  Unexpected throw, throwing exceptions is not functional                                      functional/no-throw-statements
+   79:24  warning  Unexpected throw, throwing exceptions is not functional                                      functional/no-throw-statements
+   83:24  warning  Unexpected throw, throwing exceptions is not functional                                      functional/no-throw-statements
+   85:34  error    Unsafe type assertion: type 'never' is more narrow than the original type                    @typescript-eslint/no-unsafe-type-assertion
+   87:25  warning  Unexpected throw, throwing exceptions is not functional                                      functional/no-throw-statements
+   91:24  warning  Unexpected throw, throwing exceptions is not functional                                      functional/no-throw-statements
+  170:34  error    Unsafe type assertion: type 'never' is more narrow than the original type                    @typescript-eslint/no-unsafe-type-assertion
+  202:17  error    This assertion is unnecessary since it does not change the type of the expression            @typescript-eslint/no-unnecessary-type-assertion
+  205:9   error    Unsafe type assertion: type 'Record<string, unknown>' is more narrow than the original type  @typescript-eslint/no-unsafe-type-assertion
+  205:10  error    This assertion is unnecessary since it does not change the type of the expression            @typescript-eslint/no-unnecessary-type-assertion
+  234:34  error    Unsafe type assertion: type 'never' is more narrow than the original type                    @typescript-eslint/no-unsafe-type-assertion
+  262:17  error    This assertion is unnecessary since it does not change the type of the expression            @typescript-eslint/no-unnecessary-type-assertion
+  265:9   error    Unsafe type assertion: type 'Record<string, unknown>' is more narrow than the original type  @typescript-eslint/no-unsafe-type-assertion
+  265:10  error    This assertion is unnecessary since it does not change the type of the expression            @typescript-eslint/no-unnecessary-type-assertion
+  318:7   warning  Unexpected throw, throwing exceptions is not functional                                      functional/no-throw-statements
+  324:7   warning  Unexpected throw, throwing exceptions is not functional                                      functional/no-throw-statements
+  331:7   warning  Unexpected throw, throwing exceptions is not functional                                      functional/no-throw-statements
+  336:7   error    Unsafe type assertion: type 'Nanosaur1LevelData' is more narrow than the original type       @typescript-eslint/no-unsafe-type-assertion
+  339:7   warning  Unexpected throw, throwing exceptions is not functional                                      functional/no-throw-statements
+  392:10  error    Unsafe type assertion: type 'Record<string, unknown>' is more narrow than the original type  @typescript-eslint/no-unsafe-type-assertion
+  461:7   error    Unsafe type assertion: type 'Nanosaur1LevelData' is more narrow than the original type       @typescript-eslint/no-unsafe-type-assertion
+  521:7   error    Unsafe type assertion: type 'Nanosaur1LevelData' is more narrow than the original type       @typescript-eslint/no-unsafe-type-assertion
+
+/home/lachl/documents/pangearsedit/frontend/tests/roundtrip/bugdomSpecsRoundtrip.test.ts
+   59:11  warning  Unexpected throw, throwing exceptions is not functional  functional/no-throw-statements
+  120:11  warning  Unexpected throw, throwing exceptions is not functional  functional/no-throw-statements
+
+/home/lachl/documents/pangearsedit/frontend/tests/tiles/tileImport.test.ts
+   6:16  error  'DataType' is defined but never used                     @typescript-eslint/no-unused-vars
+  10:3   error  'convertImageTo16BitTileData' is defined but never used  @typescript-eslint/no-unused-vars
+
+/home/lachl/documents/pangearsedit/frontend/tests/tiles/tileOptimization.test.ts
+  165:14  error  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  166:14  error  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  184:14  error  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  186:14  error  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  188:14  error  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  226:14  error  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  227:14  error  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  228:14  error  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+
+/home/lachl/documents/pangearsedit/frontend/tests/validation/allGamesValidation.test.ts
+  114:15  warning  Unexpected throw, throwing exceptions is not functional  functional/no-throw-statements
+
+/home/lachl/documents/pangearsedit/frontend/tests/validation/integration.test.ts
+   31:19  error  'game' is assigned a value but never used   @typescript-eslint/no-unused-vars
+   79:19  error  '_game' is assigned a value but never used  @typescript-eslint/no-unused-vars
+   86:19  error  '_game' is assigned a value but never used  @typescript-eslint/no-unused-vars
+   93:19  error  '_game' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  102:19  error  '_game' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  108:19  error  '_game' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+/home/lachl/documents/pangearsedit/frontend/tests/validation/levelDataValidation.test.ts
+  122:52  warning  Unexpected throw, throwing exceptions is not functional  functional/no-throw-statements
+  168:52  warning  Unexpected throw, throwing exceptions is not functional  functional/no-throw-statements
+
+✖ 400 problems (76 errors, 324 warnings)
+  18 errors and 0 warnings potentially fixable with the `--fix` option.
+

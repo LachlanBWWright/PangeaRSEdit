@@ -5,7 +5,7 @@
  */
 
 import type { Result } from "@/types/result";
-import { ok, err } from "@/types/result";
+import { ok, err, tryFn } from "@/types/result";
 import type {
   TunnelData,
   TunnelSplinePoint,
@@ -214,7 +214,8 @@ function serializeSection(writer: BinaryWriter, section: TunnelSection): void {
  * @returns Result containing the binary ArrayBuffer or an error
  */
 export function serializeTunnelFile(data: TunnelData): Result<ArrayBuffer, Error> {
-  try {
+  // Use tryFn to convert BinaryWriter throws to Result
+  const serializeResult = tryFn(() => {
     const writer = new BinaryWriter();
 
     // Write header (88 bytes)
@@ -257,9 +258,12 @@ export function serializeTunnelFile(data: TunnelData): Result<ArrayBuffer, Error
       serializeSection(writer, section);
     }
 
-    return ok(writer.getBuffer());
-  } catch (e) {
-    const message = e instanceof Error ? e.message : String(e);
-    return err(new Error(`Failed to serialize tunnel file: ${message}`));
+    return writer.getBuffer();
+  });
+
+  if (!serializeResult.ok) {
+    return err(new Error(`Failed to serialize tunnel file: ${serializeResult.error.message}`));
   }
+
+  return ok(serializeResult.value);
 }

@@ -112,19 +112,15 @@ export async function openFile({
 
       // Create and log tile images as a collage
       if (tileImages.length > 0) {
-        try {
-          const collage = combineCanvases(tileImages);
-          const collageUrl = collage.toDataURL("image/png");
-          console.log(`MightyMike tile collage: ${tileImages.length} tiles in color`, collageUrl);
+        const collage = combineCanvases(tileImages);
+        const collageUrl = collage.toDataURL("image/png");
+        console.log(`MightyMike tile collage: ${tileImages.length} tiles in color`, collageUrl);
 
-          // Also create an image element to visualize in console
-          const img = new Image();
-          img.src = collageUrl;
-          console.log("%cMightyMike Tile Collage Preview", "font-size: 16px; font-weight: bold; color: #4CAF50;");
-          console.log(img);
-        } catch (err) {
-          console.warn("Failed to create MightyMike tile collage:", err);
-        }
+        // Also create an image element to visualize in console
+        const img = new Image();
+        img.src = collageUrl;
+        console.log("%cMightyMike Tile Collage Preview", "font-size: 16px; font-weight: bold; color: #4CAF50;");
+        console.log(img);
       }
 
       if (tileImages.length === 0) {
@@ -148,12 +144,8 @@ export async function openFile({
 
     const tiles = parseNanosaurTerrainTextures(imgBuffer);
     const canvases = tiles.map(createCanvasFromTile);
-    try {
-      const collage = combineCanvases(canvases);
-      console.log("Collage dataURL:", collage.toDataURL("image/png"));
-    } catch (err) {
-      console.warn("Failed to create collage:", err);
-    }
+    const collage = combineCanvases(canvases);
+    console.log("Collage dataURL:", collage.toDataURL("image/png"));
     setMapImagesFile(imgFile);
     setMapImages(canvases);
   } else if (gameType.DATA_TYPE !== DataType.RSRC_FORK) {
@@ -202,12 +194,8 @@ export async function openFile({
       32 * 32 * 2,
     );
     const canvases = tiles.map(createCanvasFromTile);
-    try {
-      const collage = combineCanvases(canvases);
-      console.log(collage.toDataURL("image/png"));
-    } catch (err) {
-      console.warn("Failed to create collage:", err);
-    }
+    const collage = combineCanvases(canvases);
+    console.log(collage.toDataURL("image/png"));
     // Create a synthetic images file so download/save code that expects a
     // separate images file continues to work (e.g., Download validation).
     // Use the map filename base to create a reasonable tiles filename.

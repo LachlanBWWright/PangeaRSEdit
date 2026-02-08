@@ -8,6 +8,7 @@ import { TextureManager } from "@/components/TextureManager";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { ModelUploadPanel } from "./ModelViewer/ModelUploadPanel";
 import { VisualizationOptions } from "./ModelViewer/VisualizationOptions";
+import { fromPromise } from "@/types/result";
 
 import { SkeletonConversionPanel } from "@/components/SkeletonConversionPanel";
 import { BG3DParseResult } from "../modelParsers/parseBG3D";
@@ -168,13 +169,13 @@ export function ModelViewer() {
   // Removed handleClonedSceneUpdate, handled in ModelCanvas
 
   async function handleDownloadTexture(texture: Texture) {
-    try {
-      await downloadTexture(texture, texture.name);
-      toast.success(`${texture.name} has been downloaded`);
-    } catch (error) {
-      console.error("Error downloading texture:", error);
+    const result = await fromPromise(downloadTexture(texture, texture.name));
+    if (!result.ok) {
+      console.error("Error downloading texture:", result.error);
       toast.error("Failed to download texture");
+      return;
     }
+    toast.success(`${texture.name} has been downloaded`);
   }
 
   const handleReplaceTexture = (texture: Texture, newFile: File) => {
@@ -187,15 +188,13 @@ export function ModelViewer() {
       return;
     }
 
-    try {
-      await downloadBG3DModel(bg3dParsed);
-      toast.success("BG3D model downloaded");
-    } catch (error) {
-      console.error("Error downloading BG3D:", error);
-      toast.error(
-        error instanceof Error ? error.message : "Failed to download BG3D model",
-      );
+    const result = await fromPromise(downloadBG3DModel(bg3dParsed));
+    if (!result.ok) {
+      console.error("Error downloading BG3D:", result.error);
+      toast.error(result.error.message);
+      return;
     }
+    toast.success("BG3D model downloaded");
   };
 
   const handleDownloadGLB = () => {
@@ -204,13 +203,8 @@ export function ModelViewer() {
       return;
     }
 
-    try {
-      downloadGLBModel(gltfUrl);
-      toast.success("GLB model downloaded");
-    } catch (error) {
-      console.error("Error downloading GLB:", error);
-      toast.error("Failed to download GLB model");
-    }
+    downloadGLBModel(gltfUrl);
+    toast.success("GLB model downloaded");
   };
 
   const handleDownload3DMF = async () => {
@@ -219,15 +213,13 @@ export function ModelViewer() {
       return;
     }
 
-    try {
-      await download3DMFModel(bg3dParsed);
-      toast.success("3DMF model downloaded");
-    } catch (error) {
-      console.error("Error downloading 3DMF:", error);
-      toast.error(
-        error instanceof Error ? error.message : "Failed to download 3DMF model",
-      );
+    const result = await fromPromise(download3DMFModel(bg3dParsed));
+    if (!result.ok) {
+      console.error("Error downloading 3DMF:", result.error);
+      toast.error(result.error.message);
+      return;
     }
+    toast.success("3DMF model downloaded");
   };
 
   const handleTextureEdit = (
@@ -250,22 +242,40 @@ export function ModelViewer() {
   };
 
   const loadTestModel = async () => {
-    try {
-      const { bg3dFile, skeletonFile } = await loadOttoTestModel();
-      await handleFileUpload(bg3dFile, skeletonFile);
-    } catch (error) {
-      console.error("Error loading sample model:", error);
+    const result = await loadOttoTestModel();
+    if (!result.ok) {
+      console.error("Error loading sample model:", result.error);
       toast.error("Failed to load Otto sample files");
+      return;
+    }
+
+    const { bg3dFile, skeletonFile } = result.value;
+    const uploadResult = await handleFileUpload(bg3dFile, skeletonFile);
+    if (!uploadResult?.ok) {
+      console.error("Error uploading sample model:", uploadResult?.error);
+      toast.error(
+        uploadResult?.error?.message || "Failed to load Otto sample files",
+      );
+      return;
     }
   };
 
   const loadTestModelWithoutSkeleton = async () => {
-    try {
-      const bg3dFile = await loadOttoTestModelWithoutSkeleton();
-      await handleFileUpload(bg3dFile);
-    } catch (error) {
-      console.error("Error loading sample model without skeleton:", error);
+    const result = await loadOttoTestModelWithoutSkeleton();
+    if (!result.ok) {
+      console.error("Error loading sample model without skeleton:", result.error);
       toast.error("Failed to load Otto sample file");
+      return;
+    }
+
+    const bg3dFile = result.value;
+    const uploadResult = await handleFileUpload(bg3dFile);
+    if (!uploadResult?.ok) {
+      console.error("Error uploading sample model:", uploadResult?.error);
+      toast.error(
+        uploadResult?.error?.message || "Failed to load Otto sample file",
+      );
+      return;
     }
   };
 
@@ -319,43 +329,44 @@ export function ModelViewer() {
                   );
                   if (file) {
                     const downloadName = file.name.replace(/\.glb$/, ".bg3d");
-                    try {
-                      const buffer = await file.arrayBuffer();
-                      const worker = new BG3DGltfWorker();
-                      worker.postMessage({ type: "glb-to-bg3d", buffer }, [
-                        buffer,
-                      ]);
-                      worker.onmessage = (event: MessageEvent<BG3DGltfWorkerResponse>) => {
-                        if (event.data.type === "error") {
-                          alert(
-                            "GLB to BG3D conversion failed: " +
-                              event.data.error,
-                          );
-                          worker.terminate();
-                          return;
-                        }
-                        if (event.data.type === "glb-to-bg3d") {
-                          const result = event.data.result;
-                          const convertedBlob = new Blob([result], {
-                            type: "application/octet-stream",
-                          });
-                          const url = URL.createObjectURL(convertedBlob);
-                          const a = document.createElement("a");
-                          a.href = url;
-                          a.download = downloadName;
-                          document.body.appendChild(a);
-                          a.click();
-                          document.body.removeChild(a);
-                          setTimeout(() => URL.revokeObjectURL(url), 1000);
-                          worker.terminate();
-                        }
-                      };
-                    } catch (err) {
+                    const bufferResult = await fromPromise(file.arrayBuffer());
+                    if (!bufferResult.ok) {
                       alert(
                         "GLB to BG3D conversion failed: " +
-                          (err instanceof Error ? err.message : err),
+                          bufferResult.error.message,
                       );
+                      return;
                     }
+                    const buffer = bufferResult.value;
+                    const worker = new BG3DGltfWorker();
+                    worker.postMessage({ type: "glb-to-bg3d", buffer }, [
+                      buffer,
+                    ]);
+                    worker.onmessage = (event: MessageEvent<BG3DGltfWorkerResponse>) => {
+                      if (event.data.type === "error") {
+                        alert(
+                          "GLB to BG3D conversion failed: " +
+                            event.data.error,
+                        );
+                        worker.terminate();
+                        return;
+                      }
+                      if (event.data.type === "glb-to-bg3d") {
+                        const result = event.data.result;
+                        const convertedBlob = new Blob([result], {
+                          type: "application/octet-stream",
+                        });
+                        const url = URL.createObjectURL(convertedBlob);
+                        const a = document.createElement("a");
+                        a.href = url;
+                        a.download = downloadName;
+                        document.body.appendChild(a);
+                        a.click();
+                        document.body.removeChild(a);
+                        setTimeout(() => URL.revokeObjectURL(url), 1000);
+                        worker.terminate();
+                      }
+                    };
                   }
                 }}
                 onDragOver={(e) => e.preventDefault()}
@@ -378,42 +389,43 @@ export function ModelViewer() {
                   const file = e.target.files?.[0];
                   if (!file) return;
                   const downloadName = file.name.replace(/\.glb$/, ".bg3d");
-                  try {
-                    const buffer = await file.arrayBuffer();
-                    const worker = new BG3DGltfWorker();
-                    worker.postMessage({ type: "glb-to-bg3d", buffer }, [
-                      buffer,
-                    ]);
-                    worker.onmessage = (event: MessageEvent<BG3DGltfWorkerResponse>) => {
-                      if (event.data.type === "error") {
-                        alert(
-                          "GLB to BG3D conversion failed: " + event.data.error,
-                        );
-                        worker.terminate();
-                        return;
-                      }
-                      if (event.data.type === "glb-to-bg3d") {
-                        const result = event.data.result;
-                        const convertedBlob = new Blob([result], {
-                          type: "application/octet-stream",
-                        });
-                        const url = URL.createObjectURL(convertedBlob);
-                        const a = document.createElement("a");
-                        a.href = url;
-                        a.download = downloadName;
-                        document.body.appendChild(a);
-                        a.click();
-                        document.body.removeChild(a);
-                        setTimeout(() => URL.revokeObjectURL(url), 1000);
-                        worker.terminate();
-                      }
-                    };
-                  } catch (err) {
+                  const bufferResult = await fromPromise(file.arrayBuffer());
+                  if (!bufferResult.ok) {
                     alert(
                       "GLB to BG3D conversion failed: " +
-                        (err instanceof Error ? err.message : err),
+                        bufferResult.error.message,
                     );
+                    return;
                   }
+                  const buffer = bufferResult.value;
+                  const worker = new BG3DGltfWorker();
+                  worker.postMessage({ type: "glb-to-bg3d", buffer }, [
+                    buffer,
+                  ]);
+                  worker.onmessage = (event: MessageEvent<BG3DGltfWorkerResponse>) => {
+                    if (event.data.type === "error") {
+                      alert(
+                        "GLB to BG3D conversion failed: " + event.data.error,
+                      );
+                      worker.terminate();
+                      return;
+                    }
+                    if (event.data.type === "glb-to-bg3d") {
+                      const result = event.data.result;
+                      const convertedBlob = new Blob([result], {
+                        type: "application/octet-stream",
+                      });
+                      const url = URL.createObjectURL(convertedBlob);
+                      const a = document.createElement("a");
+                      a.href = url;
+                      a.download = downloadName;
+                      document.body.appendChild(a);
+                      a.click();
+                      document.body.removeChild(a);
+                      setTimeout(() => URL.revokeObjectURL(url), 1000);
+                      worker.terminate();
+                    }
+                  };
                 }}
               />
             </CardContent>

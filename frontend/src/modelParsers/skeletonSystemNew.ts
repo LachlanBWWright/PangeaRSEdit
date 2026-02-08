@@ -859,37 +859,26 @@ function createGltfAnimations(
       }
 
       // Create time accessor with additional validation
-      let timeAccessor;
-      try {
-        // Debug: Check the time data
-        console.log(
-          `        Time data for ${joint.getName()}.${
-            channelData.path
-          }: [${channelData.times.slice(0, 3).join(", ")}...] (${
-            channelData.times.length
-          } values)`,
-        );
+      // Debug: Check the time data
+      console.log(
+        `        Time data for ${joint.getName()}.${
+          channelData.path
+        }: [${channelData.times.slice(0, 3).join(", ")}...] (${
+          channelData.times.length
+        } values)`,
+      );
 
-        timeAccessor = doc
-          .createAccessor()
-          .setType("SCALAR")
-          .setArray(new Float32Array(channelData.times))
-          .setBuffer(targetBuffer);
+      const timeAccessor = doc
+        .createAccessor()
+        .setType("SCALAR")
+        .setArray(new Float32Array(channelData.times))
+        .setBuffer(targetBuffer);
 
-        if (!timeAccessor) {
-          console.warn(
-            `Failed to create time accessor for joint ${joint.getName()} path ${
-              channelData.path
-            }`,
-          );
-          return;
-        }
-      } catch (error) {
+      if (!timeAccessor) {
         console.warn(
-          `Error creating time accessor for joint ${joint.getName()} path ${
+          `Failed to create time accessor for joint ${joint.getName()} path ${
             channelData.path
-          }:`,
-          error,
+          }`,
         );
         return;
       }
@@ -908,101 +897,59 @@ function createGltfAnimations(
           valueType = "VEC3";
       }
 
-      let valueAccessor;
-      try {
-        valueAccessor = doc
-          .createAccessor()
-          .setType(valueType)
-          .setArray(new Float32Array(channelData.values))
-          .setBuffer(targetBuffer);
+      const valueAccessor = doc
+        .createAccessor()
+        .setType(valueType)
+        .setArray(new Float32Array(channelData.values))
+        .setBuffer(targetBuffer);
 
-        if (!valueAccessor) {
-          console.warn(
-            `Failed to create value accessor for joint ${joint.getName()} path ${
-              channelData.path
-            }`,
-          );
-          return;
-        }
-      } catch (error) {
+      if (!valueAccessor) {
         console.warn(
-          `Error creating value accessor for joint ${joint.getName()} path ${
+          `Failed to create value accessor for joint ${joint.getName()} path ${
             channelData.path
-          }:`,
-          error,
+          }`,
         );
         return;
       }
 
       // Create sampler with robust error handling
-      let sampler;
-      try {
-        sampler = doc
-          .createAnimationSampler()
-          .setInput(timeAccessor)
-          .setOutput(valueAccessor)
-          .setInterpolation("LINEAR");
+      const sampler = doc
+        .createAnimationSampler()
+        .setInput(timeAccessor)
+        .setOutput(valueAccessor)
+        .setInterpolation("LINEAR");
 
-        if (!sampler) {
-          console.warn(
-            `Failed to create sampler for joint ${joint.getName()} path ${
-              channelData.path
-            }`,
-          );
-          return;
-        }
-      } catch (error) {
+      if (!sampler) {
         console.warn(
-          `Error creating sampler for joint ${joint.getName()} path ${
+          `Failed to create sampler for joint ${joint.getName()} path ${
             channelData.path
-          }:`,
-          error,
+          }`,
         );
         return;
       }
       // Create channel with robust error handling
-      let channel;
-      try {
-        channel = doc
-          .createAnimationChannel()
-          .setTargetNode(joint) // Joint is now properly in scene graph
-          .setTargetPath(channelData.path)
-          .setSampler(sampler);
+      const channel = doc
+        .createAnimationChannel()
+        .setTargetNode(joint) // Joint is now properly in scene graph
+        .setTargetPath(channelData.path)
+        .setSampler(sampler);
 
-        if (!channel) {
-          console.warn(
-            `Failed to create channel for joint ${joint.getName()} path ${
-              channelData.path
-            }`,
-          );
-          return;
-        }
-      } catch (error) {
+      if (!channel) {
         console.warn(
-          `Error creating channel for joint ${joint.getName()} path ${
+          `Failed to create channel for joint ${joint.getName()} path ${
             channelData.path
-          }:`,
-          error,
+          }`,
         );
         return;
       }
 
-      try {
-        gltfAnimation.addSampler(sampler).addChannel(channel);
-        successfulChannels++;
-        console.log(
-          `    Added sampler and channel: ${joint.getName()}.${
-            channelData.path
-          }`,
-        );
-      } catch (error) {
-        console.warn(
-          `Error adding sampler and channel for joint ${joint.getName()} path ${
-            channelData.path
-          }:`,
-          error,
-        );
-      }
+      gltfAnimation.addSampler(sampler).addChannel(channel);
+      successfulChannels++;
+      console.log(
+        `    Added sampler and channel: ${joint.getName()}.${
+          channelData.path
+        }`,
+      );
     });
 
     // Debug: Check if the animation has samplers after adding channels

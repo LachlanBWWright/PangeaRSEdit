@@ -285,7 +285,10 @@ export function ottoPreprocessor(
         const newIdx = atrbValueToIndex.get(
           JSON.stringify(data.Atrb[1000].obj[layr]),
         );
-        if (newIdx === undefined) throw new Error("Invalid Atrb index");
+        if (newIdx === undefined) {
+          console.error("Invalid Atrb index");
+          continue;
+        }
         // Update the Layr index to point to the new Atrb index
         data.Layr[1000].obj[layr] = newIdx;
       }

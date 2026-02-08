@@ -27,7 +27,7 @@ interface Props {
   handleSkipSkeleton: () => void;
   loadTestModel: () => Promise<void>;
   loadTestModelWithoutSkeleton: () => Promise<void>;
-  handleFileUpload: (bg3dFile: File, skeletonFile?: File) => Promise<void>;
+  handleFileUpload: (bg3dFile: File, skeletonFile?: File) => Promise<import("@/types/result").Result<void, Error>>;
   handleDownloadBG3D: () => void;
   handleDownloadGLB: () => void;
   handleDownload3DMF: () => void;

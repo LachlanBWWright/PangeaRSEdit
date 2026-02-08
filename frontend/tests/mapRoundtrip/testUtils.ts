@@ -11,6 +11,7 @@ import {
   compareLevelData,
   compareBuffers,
 } from "../../src/data/mapRoundtrip/parseLevel";
+import { fromPromise } from "../../src/types/result";
 
 /**
  * Read a file as ArrayBuffer
@@ -27,12 +28,8 @@ export async function readFileAsBuffer(filePath: string): Promise<ArrayBuffer> {
  * Check if a file exists
  */
 export async function fileExists(filePath: string): Promise<boolean> {
-  try {
-    await access(filePath);
-    return true;
-  } catch {
-    return false;
-  }
+  const result = await fromPromise(access(filePath));
+  return result.ok;
 }
 
 /**

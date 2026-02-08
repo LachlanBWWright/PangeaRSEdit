@@ -12,7 +12,7 @@ import {
 import { preprocessJson } from "../processors/ottoPreprocessor";
 import { fixNullToZero } from "../processors/nullToZeroFixer";
 import { DataType, GlobalsInterface } from "../globals/globals";
-import { Result, ok, err, isErr } from "../../types/result";
+import { Result, ok, err, isErr, tryFn } from "../../types/result";
 import { saveToJson, loadBytesFromJson } from "@lachlanbwwright/rsrcdump-ts";
 
 // Type guard helper
@@ -34,34 +34,35 @@ export async function parseLevelBuffer(
 ): Promise<Result<LevelData, Error>> {
   const { structSpecs, includeTypes = [], excludeTypes = [] } = options;
 
-  try {
-    const bytes = new Uint8Array(buffer);
-    const parseResult = await saveToJson(
-      bytes,
-      structSpecs || [],
-      includeTypes,
-      excludeTypes,
-    );
+  const bytes = new Uint8Array(buffer);
+  const parseResult = await saveToJson(
+    bytes,
+    structSpecs || [],
+    includeTypes,
+    excludeTypes,
+  );
 
-    if (!parseResult.ok) {
-      return err(new Error(parseResult.error));
-    }
-
-    const parsed: unknown = JSON.parse(parseResult.value);
-
-    // Fix null values from rsrcdump-ts v1.0.4 bug (returns null for numeric zeros)
-    if (isRecord(parsed)) {
-      fixNullToZero(parsed);
-      // Validate the parsed structure has the expected LevelData shape
-      if (isLevelDataLike(parsed)) {
-        return ok(parsed);
-      }
-      return err(new Error("Parsed data does not match LevelData structure"));
-    }
-    return err(new Error("Parsed data is not an object"));
-  } catch (error) {
-    return err(error instanceof Error ? error : new Error(String(error)));
+  if (!parseResult.ok) {
+    return err(new Error(parseResult.error));
   }
+
+  const jsonParseResult = tryFn(() => JSON.parse(parseResult.value));
+  if (!jsonParseResult.ok) {
+    return err(new Error(`JSON parse failed: ${jsonParseResult.error.message}`));
+  }
+
+  const parsed: unknown = jsonParseResult.value;
+
+  // Fix null values from rsrcdump-ts v1.0.4 bug (returns null for numeric zeros)
+  if (isRecord(parsed)) {
+    fixNullToZero(parsed);
+    // Validate the parsed structure has the expected LevelData shape
+    if (isLevelDataLike(parsed)) {
+      return ok(parsed);
+    }
+    return err(new Error("Parsed data does not match LevelData structure"));
+  }
+  return err(new Error("Parsed data is not an object"));
 }
 
 // Type guard for LevelData - checks basic structure
@@ -80,19 +81,21 @@ export function parseNanosaur1Buffer(
   buffer: ArrayBuffer,
   gameType?: GlobalsInterface,
 ): Result<LevelData, Error> {
-  try {
+  const parseResult = tryFn(() => {
     const rawLevelData = parseNanosaur1Level(buffer);
-    return ok(
-      nanosaur1LevelToLevelData(
-        rawLevelData,
-        gameType?.TILE_SIZE ?? 32,
-        gameType?.TILE_INGAME_SIZE ?? 140,
-        4.0,
-      ),
+    return nanosaur1LevelToLevelData(
+      rawLevelData,
+      gameType?.TILE_SIZE ?? 32,
+      gameType?.TILE_INGAME_SIZE ?? 140,
+      4.0,
     );
-  } catch (error) {
-    return err(error instanceof Error ? error : new Error(String(error)));
+  });
+
+  if (!parseResult.ok) {
+    return err(parseResult.error);
   }
+
+  return ok(parseResult.value);
 }
 
 /**
@@ -108,27 +111,23 @@ export async function serializeLevelData(
 ): Promise<Result<ArrayBuffer, Error>> {
   const { structSpecs } = options;
 
-  try {
-    const saveResult = loadBytesFromJson(
-      levelData,
-      structSpecs || [],
-      [], // onlyTypes
-      [], // skipTypes
-      true, // adf
-    );
+  const saveResult = loadBytesFromJson(
+    levelData,
+    structSpecs || [],
+    [], // onlyTypes
+    [], // skipTypes
+    true, // adf
+  );
 
-    if (!saveResult.ok) {
-      return err(new Error(saveResult.error));
-    }
-
-    const resultBuffer = saveResult.value.buffer;
-    if (!(resultBuffer instanceof ArrayBuffer)) {
-      return err(new Error("Result buffer is not an ArrayBuffer"));
-    }
-    return ok(resultBuffer);
-  } catch (error) {
-    return err(error instanceof Error ? error : new Error(String(error)));
+  if (!saveResult.ok) {
+    return err(new Error(saveResult.error));
   }
+
+  const resultBuffer = saveResult.value.buffer;
+  if (!(resultBuffer instanceof ArrayBuffer)) {
+    return err(new Error("Result buffer is not an ArrayBuffer"));
+  }
+  return ok(resultBuffer);
 }
 
 /**

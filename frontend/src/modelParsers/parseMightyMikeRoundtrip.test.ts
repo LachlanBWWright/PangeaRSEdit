@@ -3,7 +3,7 @@
 // Tests: parse → export → compare all 5 levels to original binary
 
 import { describe, it, expect } from "vitest";
-import { readFileSync } from "fs";
+import { existsSync, readFileSync } from "fs";
 import { join } from "path";
 import {
   parseMightyMikeMap,
@@ -41,13 +41,7 @@ describe("MightyMike Byte-Accurate Roundtrip Tests - All 5 Levels", () => {
     levels.forEach(({ name, path }) => {
       it(`${name}: byte-for-byte accuracy check`, () => {
         // Load original file
-        let originalBuffer: Buffer;
-        try {
-          originalBuffer = readFileSync(path);
-        } catch (e) {
-          console.warn(`Could not find file ${path}`);
-          throw e;
-        }
+        const originalBuffer = readFileSync(path);
         const originalData = new Uint8Array(originalBuffer);
 
         expect(originalData.length).toBeGreaterThan(0);
@@ -133,15 +127,11 @@ describe("MightyMike Byte-Accurate Roundtrip Tests - All 5 Levels", () => {
 
     tilesets.forEach(({ name, path }) => {
       it(`${name}.tileset: file integrity check`, () => {
-        let buffer: Buffer;
-        try {
-          buffer = readFileSync(path);
-        } catch {
+        if (!existsSync(path)) {
           console.warn(`Skipping - could not find file ${path}`);
-          // Skip this test if tileset file doesn't exist
-          expect(true).toBe(true);
           return;
         }
+        const buffer = readFileSync(path);
         const data = new Uint8Array(bufferToArrayBuffer(buffer));
 
         console.log(`\n${name}.tileset: ${data.length} bytes`);
@@ -174,13 +164,7 @@ describe("MightyMike Byte-Accurate Roundtrip Tests - All 5 Levels", () => {
   describe("Map Structure Validation - All 5 Levels", () => {
     levels.forEach(({ name, path }) => {
       it(`${name}: map structure and integrity`, () => {
-        let buffer: Buffer;
-        try {
-          buffer = readFileSync(path);
-        } catch (e) {
-          console.warn(`Could not find file ${path}`);
-          throw e;
-        }
+        const buffer = readFileSync(path);
         const result = parseMightyMikeMap(bufferToArrayBuffer(buffer));
 
         expect(result.ok).toBe(true);
@@ -243,13 +227,7 @@ describe("MightyMike Byte-Accurate Roundtrip Tests - All 5 Levels", () => {
 
     allVariants.forEach((filePath) => {
       it(`${filePath.split("/").pop()}: byte-accurate roundtrip`, () => {
-        let originalBuffer: Buffer;
-        try {
-          originalBuffer = readFileSync(filePath);
-        } catch (e) {
-          console.warn(`Could not find file ${filePath}`);
-          throw e;
-        }
+        const originalBuffer = readFileSync(filePath);
 
         const parseResult = parseMightyMikeMap(bufferToArrayBuffer(originalBuffer));
         expect(parseResult.ok).toBe(true);

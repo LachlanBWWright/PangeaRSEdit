@@ -20,6 +20,7 @@ import { Button } from "@/components/ui/button";
 import { ImageEditor } from "@/components/ImageEditor";
 import { Edit, Download, Upload, Shield } from "lucide-react";
 import { toast } from "sonner";
+import { fromPromise } from "@/types/result";
 import { useAtom } from "jotai";
 import { ShowMightyMikeCollisionOverlay } from "@/data/game/gameAtoms";
 import {
@@ -309,41 +310,43 @@ export function MightyMikeTileMenu({
       return;
     }
 
-    try {
-      // Create 32x32 canvas for the tile
-      const canvas = document.createElement("canvas");
-      canvas.width = TILE_SIZE;
-      canvas.height = TILE_SIZE;
-      const context = canvas.getContext("2d");
+    // Create 32x32 canvas for the tile
+    const canvas = document.createElement("canvas");
+    canvas.width = TILE_SIZE;
+    canvas.height = TILE_SIZE;
+    const context = canvas.getContext("2d");
 
-      if (!context) {
-        toast.error("Failed to create canvas context");
-        return;
-      }
+    if (!context) {
+      toast.error("Failed to create canvas context");
+      return;
+    }
 
-      context.fillStyle = "black";
-      context.fillRect(0, 0, canvas.width, canvas.height);
+    context.fillStyle = "black";
+    context.fillRect(0, 0, canvas.width, canvas.height);
 
-      // Resize and draw image
-      const imageBitmap = await createImageBitmap(file, {
+    // Resize and draw image
+    const bitmapResult = await fromPromise(
+      createImageBitmap(file, {
         resizeWidth: TILE_SIZE,
         resizeHeight: TILE_SIZE,
         resizeQuality: "high",
-      });
+      })
+    );
 
-      context.drawImage(imageBitmap, 0, 0);
-
-      // Update mapImages
-      const newMapImages = [...mapImages];
-      newMapImages[imageIndex] = canvas;
-      setMapImages(newMapImages);
-
-      toast.success("Tile image replaced");
-    } catch (error) {
-      toast.error(
-        `Failed to upload tile: ${error instanceof Error ? error.message : "Unknown error"}`
-      );
+    if (!bitmapResult.ok) {
+      toast.error(`Failed to upload tile: ${bitmapResult.error.message}`);
+      return;
     }
+
+    const imageBitmap = bitmapResult.value;
+    context.drawImage(imageBitmap, 0, 0);
+
+    // Update mapImages
+    const newMapImages = [...mapImages];
+    newMapImages[imageIndex] = canvas;
+    setMapImages(newMapImages);
+
+    toast.success("Tile image replaced");
   };
 
   // Validate selected tile is in bounds

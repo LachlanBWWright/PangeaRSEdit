@@ -1,6 +1,6 @@
 import { LevelData } from "../../python/structSpecs/LevelTypes";
 import type { Nanosaur1LevelData } from "../../data/processors/classicProprocessor";
-import { Result, ok, err } from "../../types/result";
+import { Result, ok } from "../../types/result";
 import { isRawNanosaurAttribute, isRawNanosaurItem } from "./typeGuards";
 
 /**
@@ -14,8 +14,7 @@ export function compileNanosaur1Level(
   levelData: LevelData,
   rawLevelData: Nanosaur1LevelData,
 ): Result<ArrayBuffer, Error> {
-  try {
-    const header = rawLevelData.header;
+  const header = rawLevelData.header;
     const mapWidth = header.width;
     const mapHeight = header.depth;
     const layerSizeInTiles = mapWidth * mapHeight;
@@ -186,8 +185,5 @@ export function compileNanosaur1Level(
       }
     }
 
-    return ok(buffer);
-  } catch (error) {
-    return err(error instanceof Error ? error : new Error(String(error)));
-  }
+  return ok(buffer);
 }

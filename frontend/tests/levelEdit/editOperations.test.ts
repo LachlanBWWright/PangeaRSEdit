@@ -164,8 +164,11 @@ describe("Edit Operations", () => {
         newZ: 300,
       };
 
-      const merged = mergeOperations(first, second) as MoveItemOperation;
+      const mergeResult = mergeOperations(first, second);
+      expect(mergeResult.ok).toBe(true);
+      if (!mergeResult.ok) return; // Type guard
 
+      const merged = mergeResult.value as MoveItemOperation;
       expect(merged.type).toBe("MoveItem");
       expect(merged.itemIndex).toBe(0);
       expect(merged.oldX).toBe(100); // From first
@@ -194,8 +197,11 @@ describe("Edit Operations", () => {
         newZ: 20,
       };
 
-      const merged = mergeOperations(first, second) as MoveSplineNubOperation;
+      const mergeResult = mergeOperations(first, second);
+      expect(mergeResult.ok).toBe(true);
+      if (!mergeResult.ok) return; // Type guard
 
+      const merged = mergeResult.value as MoveSplineNubOperation;
       expect(merged.oldX).toBe(0);
       expect(merged.oldZ).toBe(0);
       expect(merged.newX).toBe(20);

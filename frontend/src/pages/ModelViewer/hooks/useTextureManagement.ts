@@ -22,6 +22,7 @@ import type { BG3DParseResult } from "../../../modelParsers/parseBG3D";
 import { extractTexturesFromBG3D } from "../utils/textureUtils";
 import { rgba8ToArgb16 } from "../../../modelParsers/image/pngArgb";
 import type { Texture } from "../types";
+import { fromPromise } from "@/types/result";
 
 /**
  * Configuration for the useTextureManagement hook
@@ -65,15 +66,14 @@ export function useTextureManagement(options: UseTextureManagementOptions) {
     async (texture: Texture, newFile: File): Promise<void> => {
       if (!bg3dParsed) {
         toast.error("No BG3D data available for texture replacement");
-        throw new Error("No BG3D data available");
+        return;
       }
 
       return new Promise((resolve, reject) => {
         const img = new Image();
 
         img.onload = async () => {
-          try {
-            console.log(`[Texture Replacement] Image loaded: ${img.width}x${img.height}`);
+          console.log(`[Texture Replacement] Image loaded: ${img.width}x${img.height}`);
             // Extract material and texture indices from texture name
             const nameMatch = texture.name.match(/Material_(\d+)_Texture_(\d+)/);
             if (!nameMatch) {
@@ -241,9 +241,6 @@ export function useTextureManagement(options: UseTextureManagementOptions) {
               toast.success("Texture replaced successfully");
               resolve();
             }
-          } catch (error) {
-            reject(error);
-          }
         };
 
         img.onerror = () => {
@@ -267,20 +264,23 @@ export function useTextureManagement(options: UseTextureManagementOptions) {
    */
   const editTexture = useCallback(
     async (texture: Texture, editedImageData: ImageData): Promise<void> => {
-      try {
-        // Convert ImageData back to canvas and then to File
-        const canvas = document.createElement("canvas");
-        canvas.width = editedImageData.width;
-        canvas.height = editedImageData.height;
-        const ctx = canvas.getContext("2d");
-        if (!ctx) {
-          throw new Error("Failed to get canvas context");
-        }
+      // Convert ImageData back to canvas and then to File
+      const canvas = document.createElement("canvas");
+      canvas.width = editedImageData.width;
+      canvas.height = editedImageData.height;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) {
+        const error = new Error("Failed to get canvas context");
+        console.error("Error editing texture:", error);
+        toast.error(error.message);
+        return;
+      }
 
-        ctx.putImageData(editedImageData, 0, 0);
+      ctx.putImageData(editedImageData, 0, 0);
 
-        // Convert canvas to blob and create File
-        const blob = await new Promise<Blob>((resolve, reject) => {
+      // Convert canvas to blob and create File
+      const blobResult = await fromPromise(
+        new Promise<Blob>((resolve, reject) => {
           canvas.toBlob((b) => {
             if (b) {
               resolve(b);
@@ -288,20 +288,26 @@ export function useTextureManagement(options: UseTextureManagementOptions) {
               reject(new Error("Failed to convert canvas to blob"));
             }
           }, "image/png");
-        });
+        })
+      );
 
-        const file = new File([blob], `${texture.name}.png`, {
-          type: "image/png",
-        });
+      if (!blobResult.ok) {
+        console.error("Error editing texture:", blobResult.error);
+        toast.error(blobResult.error.message);
+        return;
+      }
 
-        // Use the existing replaceTexture function
-        await replaceTexture(texture, file);
-      } catch (error) {
-        console.error("Error editing texture:", error);
-        toast.error(
-          error instanceof Error ? error.message : "Failed to edit texture",
-        );
-        throw error;
+      const blob = blobResult.value;
+      const file = new File([blob], `${texture.name}.png`, {
+        type: "image/png",
+      });
+
+      // Use the existing replaceTexture function
+      const replaceResult = await fromPromise(replaceTexture(texture, file));
+      if (!replaceResult.ok) {
+        console.error("Error editing texture:", replaceResult.error);
+        toast.error(replaceResult.error.message);
+        return;
       }
     },
     [replaceTexture],

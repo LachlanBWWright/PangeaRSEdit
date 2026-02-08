@@ -4,7 +4,7 @@ import { parseBG3DWithSkeletonResource } from "./bg3dWithSkeleton";
 import { parse3DMF } from "./parse3dmf";
 import { WebIO } from "@gltf-transform/core";
 import type { SkeletonResource } from "../python/structSpecs/skeleton/skeletonInterface";
-import { isErr, Result } from "../types/result";
+import { isErr, Result, fromPromise } from "../types/result";
 
 // Helper function to detect file format and parse accordingly
 function parseModelBuffer(buffer: ArrayBuffer): Result<BG3DParseResult, Error> {
@@ -100,7 +100,7 @@ self.onmessage = async (e: MessageEvent<BG3DGltfWorkerMessage>) => {
   const msg = e.data;
   const requestId = msg.requestId;
   console.log("Worker received message:", msg.type);
-  try {
+  const result = await fromPromise((async () => {
     if (msg.type === "bg3d-to-glb") {
       console.log("Converting model (BG3D/3DMF) to GLB");
       const parseResult = parseModelBuffer(msg.buffer);
@@ -227,10 +227,11 @@ self.onmessage = async (e: MessageEvent<BG3DGltfWorkerMessage>) => {
       };
       self.postMessage(response);
     }
-  } catch (err) {
+  })());
+  if (!result.ok) {
     const response: BG3DGltfWorkerResponse = {
       type: "error",
-      error: err instanceof Error ? err.message : String(err),
+      error: result.error instanceof Error ? result.error.message : String(result.error),
       requestId,
     };
     self.postMessage(response);

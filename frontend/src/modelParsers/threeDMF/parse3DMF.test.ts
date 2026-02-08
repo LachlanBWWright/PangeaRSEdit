@@ -8,7 +8,7 @@ import { parse3DMFToMetaFile } from "./parse3DMF";
 import { write3DMFFromMetaFile } from "./write3DMF";
 import { metaFileToBG3DParseResult } from "./convert";
 import { parse3DMF, bg3dParsedTo3DMF } from "../parse3dmf";
-import { readFileSync } from "fs";
+import { existsSync, readFileSync } from "fs";
 import { join } from "path";
 
 // Path to test 3DMF files
@@ -31,14 +31,11 @@ describe("3DMF Parser", () => {
   describe("parse3DMFToMetaFile", () => {
     it("should successfully parse a simple 3DMF file", async () => {
       const testFile = join(TEST_DATA_PATH, "MainMenu.3dmf");
-      let fileBuffer: ArrayBuffer;
-      
-      try {
-        fileBuffer = readFileSync(testFile).buffer;
-      } catch {
+      if (!existsSync(testFile)) {
         console.log("Test file not available, skipping test");
         return;
       }
+      const fileBuffer = readFileSync(testFile).buffer;
 
       const result = parse3DMFToMetaFile(fileBuffer);
 
@@ -51,14 +48,11 @@ describe("3DMF Parser", () => {
 
     it("should parse skeleton 3DMF files", async () => {
       const testFile = join(SKELETON_PATH, "Ant.3dmf");
-      let fileBuffer: ArrayBuffer;
-      
-      try {
-        fileBuffer = readFileSync(testFile).buffer;
-      } catch {
+      if (!existsSync(testFile)) {
         console.log("Test file not available, skipping test");
         return;
       }
+      const fileBuffer = readFileSync(testFile).buffer;
 
       const result = parse3DMFToMetaFile(fileBuffer);
 
@@ -71,14 +65,11 @@ describe("3DMF Parser", () => {
 
     it("should parse Nanosaur model files", async () => {
       const testFile = join(NANOSAUR_MODELS_PATH, "Global_Models.3dmf");
-      let fileBuffer: ArrayBuffer;
-      
-      try {
-        fileBuffer = readFileSync(testFile).buffer;
-      } catch {
+      if (!existsSync(testFile)) {
         console.log("Test file not available, skipping test");
         return;
       }
+      const fileBuffer = readFileSync(testFile).buffer;
 
       const result = parse3DMFToMetaFile(fileBuffer);
 
@@ -99,14 +90,11 @@ describe("3DMF Parser", () => {
   describe("metaFileToBG3DParseResult", () => {
     it("should convert TQ3MetaFile to BG3DParseResult", async () => {
       const testFile = join(TEST_DATA_PATH, "MainMenu.3dmf");
-      let fileBuffer: ArrayBuffer;
-      
-      try {
-        fileBuffer = readFileSync(testFile).buffer;
-      } catch {
+      if (!existsSync(testFile)) {
         console.log("Test file not available, skipping test");
         return;
       }
+      const fileBuffer = readFileSync(testFile).buffer;
 
       const parseResult = parse3DMFToMetaFile(fileBuffer);
       expect(parseResult.ok).toBe(true);
@@ -124,14 +112,11 @@ describe("3DMF Parser", () => {
   describe("parse3DMF (high-level API)", () => {
     it("should parse 3DMF directly to BG3DParseResult", async () => {
       const testFile = join(TEST_DATA_PATH, "MainMenu.3dmf");
-      let fileBuffer: ArrayBuffer;
-      
-      try {
-        fileBuffer = readFileSync(testFile).buffer;
-      } catch {
+      if (!existsSync(testFile)) {
         console.log("Test file not available, skipping test");
         return;
       }
+      const fileBuffer = readFileSync(testFile).buffer;
 
       const result = parse3DMF(fileBuffer);
 
@@ -146,14 +131,11 @@ describe("3DMF Parser", () => {
   describe("Roundtrip Conversion", () => {
     it("should roundtrip a 3DMF file with minimal data loss", async () => {
       const testFile = join(SKELETON_PATH, "Ant.3dmf");
-      let originalBuffer: ArrayBuffer;
-      
-      try {
-        originalBuffer = readFileSync(testFile).buffer;
-      } catch {
+      if (!existsSync(testFile)) {
         console.log("Test file not available, skipping test");
         return;
       }
+      const originalBuffer = readFileSync(testFile).buffer;
 
       // Parse original
       const parseResult = parse3DMFToMetaFile(originalBuffer);
@@ -204,14 +186,11 @@ describe("3DMF Parser", () => {
 
     it("should roundtrip through BG3D format", async () => {
       const testFile = join(SKELETON_PATH, "Ant.3dmf");
-      let originalBuffer: ArrayBuffer;
-      
-      try {
-        originalBuffer = readFileSync(testFile).buffer;
-      } catch {
+      if (!existsSync(testFile)) {
         console.log("Test file not available, skipping test");
         return;
       }
+      const originalBuffer = readFileSync(testFile).buffer;
 
       // Parse to BG3D format
       const parseResult = parse3DMF(originalBuffer);
@@ -256,14 +235,11 @@ describe("3DMF Parser", () => {
     bugdomModelFiles.forEach((filename) => {
       it(`should parse Bugdom model: ${filename}`, async () => {
         const testFile = join(TEST_DATA_PATH, filename);
-        let fileBuffer: ArrayBuffer;
-        
-        try {
-          fileBuffer = readFileSync(testFile).buffer;
-        } catch {
+        if (!existsSync(testFile)) {
           console.log(`${filename} not available, skipping`);
           return;
         }
+        const fileBuffer = readFileSync(testFile).buffer;
 
         const result = parse3DMFToMetaFile(fileBuffer);
         expect(result.ok).toBe(true);
@@ -276,14 +252,11 @@ describe("3DMF Parser", () => {
     bugdomSkeletonFiles.forEach((filename) => {
       it(`should parse Bugdom skeleton: ${filename}`, async () => {
         const testFile = join(SKELETON_PATH, filename);
-        let fileBuffer: ArrayBuffer;
-        
-        try {
-          fileBuffer = readFileSync(testFile).buffer;
-        } catch {
+        if (!existsSync(testFile)) {
           console.log(`${filename} not available, skipping`);
           return;
         }
+        const fileBuffer = readFileSync(testFile).buffer;
 
         const result = parse3DMFToMetaFile(fileBuffer);
         expect(result.ok).toBe(true);

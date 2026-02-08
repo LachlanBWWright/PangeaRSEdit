@@ -5,7 +5,7 @@
  * Includes caching to avoid rate limiting and retry logic for reliability.
  */
 
-import { Result, ok, err } from "../types/result";
+import { Result, ok, err, fromPromise } from "../types/result";
 import { GAME_REPOSITORIES, type GameRepository } from "./gameRepositories";
 
 /**
@@ -45,41 +45,49 @@ export async function fetchGitHubFile(
   const url = `https://raw.githubusercontent.com/${owner}/${repo}/${branch}/${path}`;
   
   let lastError: Error | null = null;
-  
+
   for (let attempt = 0; attempt < rateLimitConfig.maxRetries; attempt++) {
-    try {
-      if (attempt > 0) {
-        // Wait before retry with exponential backoff
-        await delay(rateLimitConfig.retryDelay * Math.pow(2, attempt - 1));
-      }
-      
-      const response = await fetch(url);
-      
-      if (!response.ok) {
-        if (response.status === 404) {
-          return err(new Error(`File not found: ${path}`));
-        }
-        if (response.status === 403) {
-          // Rate limited - wait longer
-          await delay(rateLimitConfig.retryDelay * 10);
-          continue;
-        }
-        return err(new Error(`HTTP ${response.status}: ${response.statusText}`));
-      }
-      
-      const content = await response.text();
-      const lines = content.split('\n');
-      
-      return ok({
-        content,
-        lines,
-        totalLines: lines.length,
-      });
-    } catch (e) {
-      lastError = e instanceof Error ? e : new Error(String(e));
+    if (attempt > 0) {
+      // Wait before retry with exponential backoff
+      await delay(rateLimitConfig.retryDelay * Math.pow(2, attempt - 1));
     }
+
+    const fetchResult = await fromPromise(fetch(url));
+    if (!fetchResult.ok) {
+      lastError = fetchResult.error;
+      continue;
+    }
+
+    const response = fetchResult.value;
+
+    if (!response.ok) {
+      if (response.status === 404) {
+        return err(new Error(`File not found: ${path}`));
+      }
+      if (response.status === 403) {
+        // Rate limited - wait longer
+        await delay(rateLimitConfig.retryDelay * 10);
+        continue;
+      }
+      return err(new Error(`HTTP ${response.status}: ${response.statusText}`));
+    }
+
+    const textResult = await fromPromise(response.text());
+    if (!textResult.ok) {
+      lastError = textResult.error;
+      continue;
+    }
+
+    const content = textResult.value;
+    const lines = content.split('\n');
+
+    return ok({
+      content,
+      lines,
+      totalLines: lines.length,
+    });
   }
-  
+
   return err(lastError ?? new Error('Unknown fetch error'));
 }
 
