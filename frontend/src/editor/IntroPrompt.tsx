@@ -13,7 +13,12 @@ import { TunnelEditor } from "./tunnel/TunnelEditor";
 import { Button } from "@/components/ui/button";
 import { Updater, useImmer } from "use-immer";
 import { ottoPreprocessor } from "../data/processors/ottoPreprocessor";
-import { Globals, DataType, Game, type GlobalsInterface } from "../data/globals/globals";
+import {
+  Globals,
+  DataType,
+  Game,
+  type GlobalsInterface,
+} from "../data/globals/globals";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { BlockHistoryUpdate } from "../data/globals/history";
 import LzssWorker from "../utils/lzssWorker?worker";
@@ -397,13 +402,13 @@ export function IntroPrompt() {
       // Nanosaur 1 uses .trt files which are separate but not handled here.
       // But standard .ter download is done.
       // Mighty Mike doesn't use mapImages in the same way (tileset).
-    if (
-      globals.DATA_TYPE === DataType.RSRC_FORK ||
-      globals.DATA_TYPE === DataType.MIGHTY_MIKE
-    ) {
-      toast.success("Map Downloaded!");
-      return;
-    }
+      if (
+        globals.DATA_TYPE === DataType.RSRC_FORK ||
+        globals.DATA_TYPE === DataType.MIGHTY_MIKE
+      ) {
+        toast.success("Map Downloaded!");
+        return;
+      }
     } catch (error) {
       console.error("Download failed:", error);
       toast.error("Download failed", {
@@ -542,52 +547,55 @@ export function IntroPrompt() {
     setTunnelFileName("");
   }, [setAllAtomicData]);
 
-  const handleCreateBlankLevel = useCallback((gameType: GlobalsInterface) => {
-    setGlobals(gameType);
-    const dimensions = getDefaultDimensions(gameType.GAME_TYPE);
-    const result = createBlankLevel(gameType.GAME_TYPE, dimensions);
-    if (!result.ok) {
-      toast.error("Failed to create blank level", {
-        description: result.error.message,
-      });
-      return;
-    }
-    const blankLevel = result.value;
-    const blankAtomicData: AtomicLevelData = {
-      headerData: blankLevel.headerData,
-      itemData: blankLevel.itemData,
-      fenceData: blankLevel.fenceData,
-      splineData: blankLevel.splineData,
-      liquidData: blankLevel.liquidData,
-      terrainData: blankLevel.terrainData,
-    };
-    setAllAtomicData(blankAtomicData);
-    const baseName = gameType.GAME_NAME.replace(/\s+/g, "");
-    const fileExtension =
-      gameType.DATA_TYPE === DataType.MIGHTY_MIKE ? "map" : "ter";
-    const blankMapFile = new File([], `${baseName}.${fileExtension}`);
-    setMapFile(blankMapFile);
-    const imageExtension =
-      gameType.DATA_TYPE === DataType.MIGHTY_MIKE ? "tileset" : "ter";
-    const blankImagesFile = new File([], `${baseName}.${imageExtension}`);
-    setMapImagesFile(blankImagesFile);
-    const mapImagesArray = createBlankMapImagesForGame(
-      gameType,
-      blankLevel.headerData,
-      blankLevel.terrainData,
-    );
-    setMapImages(mapImagesArray);
-    setDataHistory(() => ({ items: [blankAtomicData], index: 0 }));
-    setBlockHistoryUpdate(true);
-  }, [
-    setGlobals,
-    setAllAtomicData,
-    setBlockHistoryUpdate,
-    setDataHistory,
-    setMapFile,
-    setMapImages,
-    setMapImagesFile,
-  ]);
+  const handleCreateBlankLevel = useCallback(
+    (gameType: GlobalsInterface) => {
+      setGlobals(gameType);
+      const dimensions = getDefaultDimensions(gameType.GAME_TYPE);
+      const result = createBlankLevel(gameType.GAME_TYPE, dimensions);
+      if (!result.ok) {
+        toast.error("Failed to create blank level", {
+          description: result.error.message,
+        });
+        return;
+      }
+      const blankLevel = result.value;
+      const blankAtomicData: AtomicLevelData = {
+        headerData: blankLevel.headerData,
+        itemData: blankLevel.itemData,
+        fenceData: blankLevel.fenceData,
+        splineData: blankLevel.splineData,
+        liquidData: blankLevel.liquidData,
+        terrainData: blankLevel.terrainData,
+      };
+      setAllAtomicData(blankAtomicData);
+      const baseName = gameType.GAME_NAME.replace(/\s+/g, "");
+      const fileExtension =
+        gameType.DATA_TYPE === DataType.MIGHTY_MIKE ? "map" : "ter";
+      const blankMapFile = new File([], `${baseName}.${fileExtension}`);
+      setMapFile(blankMapFile);
+      const imageExtension =
+        gameType.DATA_TYPE === DataType.MIGHTY_MIKE ? "tileset" : "ter";
+      const blankImagesFile = new File([], `${baseName}.${imageExtension}`);
+      setMapImagesFile(blankImagesFile);
+      const mapImagesArray = createBlankMapImagesForGame(
+        gameType,
+        blankLevel.headerData,
+        blankLevel.terrainData,
+      );
+      setMapImages(mapImagesArray);
+      setDataHistory(() => ({ items: [blankAtomicData], index: 0 }));
+      setBlockHistoryUpdate(true);
+    },
+    [
+      setGlobals,
+      setAllAtomicData,
+      setBlockHistoryUpdate,
+      setDataHistory,
+      setMapFile,
+      setMapImages,
+      setMapImagesFile,
+    ],
+  );
 
   // Handle tunnel data updates
   const handleTunnelDataUpdate = useCallback((data: TunnelData) => {
@@ -641,7 +649,7 @@ export function IntroPrompt() {
                 // Apply the update to a combined data structure
                 const updated =
                   typeof updater === "function"
-                    ? updater(combinedData) ?? combinedData
+                    ? (updater(combinedData) ?? combinedData)
                     : updater;
                 // Split back into atomic data
                 setAllAtomicData(splitLevelData(updated));
