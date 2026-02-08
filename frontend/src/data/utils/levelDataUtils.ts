@@ -86,6 +86,22 @@ export function splitLevelData(
     levelData.YCrd &&
     levelData._metadata;
 
+  // Collect extra resource types not handled by named atomic sections
+  // (e.g. Splt, Liqd hex data) so they survive the split/combine cycle
+  const knownKeys = new Set([
+    "Hedr", "Itms", "Liqd", "Fenc", "FnNb", "Spln", "SpNb", "SpPt", "SpIt",
+    "Atrb", "Timg", "ItCo", "Layr", "STgd", "YCrd", "alis", "Xlat", "Vcol",
+    "_metadata",
+  ]);
+  const extraResources: Record<string, unknown> = {};
+  if (isRecord(levelData)) {
+    for (const [key, value] of Object.entries(levelData)) {
+      if (!knownKeys.has(key) && value !== undefined) {
+        extraResources[key] = value;
+      }
+    }
+  }
+
   const terrainData: TerrainData | null = hasTerrainData
     ? {
         Atrb: levelData.Atrb,
@@ -95,7 +111,12 @@ export function splitLevelData(
         STgd: levelData.STgd,
         YCrd: levelData.YCrd,
         alis: levelData.alis,
-        _metadata: levelData._metadata,
+        _metadata: {
+          ...levelData._metadata,
+          ...(Object.keys(extraResources).length > 0
+            ? { _extraResources: extraResources }
+            : {}),
+        },
         ...(levelData.Xlat !== undefined ? { Xlat: levelData.Xlat } : {}),
         ...(levelData.Vcol !== undefined ? { Vcol: levelData.Vcol } : {}),
       }
@@ -153,6 +174,20 @@ export function combineLevelData(
   if (liquidData) Object.assign(combined, liquidData);
   if (fenceData) Object.assign(combined, fenceData);
   if (splineData) Object.assign(combined, splineData);
+
+  // Restore extra resource types preserved in _metadata._extraResources
+  if (isRecord(combined._metadata)) {
+    const metadata = combined._metadata;
+    const extra = metadata._extraResources;
+    if (isRecord(extra)) {
+      for (const [key, value] of Object.entries(extra)) {
+        if (!(key in combined) && value !== undefined) {
+          combined[key] = value;
+        }
+      }
+      Reflect.deleteProperty(metadata, "_extraResources");
+    }
+  }
 
   // Validate and return as LevelData
   if (isLevelDataLike(combined)) {
@@ -233,7 +268,10 @@ export function sanitizeResourceForkJson(data: unknown): Record<string, unknown>
   const sanitized: Record<string, unknown> = { ...source };
   for (const [key, value] of Object.entries(source)) {
     if (key.length > 4) continue;
-    if (value === undefined || value === null) continue;
+    if (value === undefined || value === null) {
+      Reflect.deleteProperty(sanitized, key);
+      continue;
+    }
     if (!isRecord(value)) {
       Reflect.deleteProperty(sanitized, key);
       continue;
