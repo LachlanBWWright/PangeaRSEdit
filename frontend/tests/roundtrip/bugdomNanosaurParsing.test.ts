@@ -101,6 +101,7 @@ describe("Bugdom 1 Full Save Pipeline", () => {
     it("should complete full pipeline for " + levelFile, async () => {
       const { original, serialized } = await runBugdomPipeline(levelFile);
       const sizeDiff = Math.abs(serialized.length - original.length);
+      // rsrcdump-ts resource fork serialization has a known 44-byte header discrepancy
       expect(sizeDiff).toBeLessThanOrEqual(44);
     });
 
