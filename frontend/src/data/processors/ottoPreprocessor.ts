@@ -219,8 +219,8 @@ export function ottoPreprocessor(
     }
 
     if (Array.isArray(data.Liqd?.[1000]?.obj)) {
-      for (const waterItem of data.Liqd[1000].obj) {
-        const item = waterItem as Liquid & Record<string, unknown>;
+      data.Liqd[1000].obj = data.Liqd[1000].obj.map((waterItem) => {
+        const item = { ...waterItem } as Liquid & Record<string, unknown>;
         for (let i = 0; i < globals.LIQD_NUBS; i++) {
           const nub = item.nubs?.[i];
           if (nub) {
@@ -228,7 +228,8 @@ export function ottoPreprocessor(
             item[`y_${i}`] = nub[1];
           }
         }
-      }
+        return item;
+      });
     }
 
     //Fix spline numnubs
