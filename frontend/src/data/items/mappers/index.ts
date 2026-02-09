@@ -80,7 +80,7 @@ export function getTotalMappedItems(): number {
 export function getMapperCoverageSummary(): {
   gamesWithMappers: number;
   totalMappedItems: number;
-  gameDetails: Array<{ game: string; itemCount: number }>;
+  gameDetails: { game: string; itemCount: number }[];
 } {
   const counts = getAllMappingCounts();
   const gameDetails = Object.entries(counts)

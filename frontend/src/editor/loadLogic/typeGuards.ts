@@ -8,15 +8,20 @@ import { RawNanosaurItem, RawNanosaurAttribute } from "./nanosaurInterfaces";
 export function isNanosaur1LevelData(
   data: unknown,
 ): data is Nanosaur1LevelData {
-  if (typeof data !== "object" || data === null) return false;
-  // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion
-  const d = data as Nanosaur1LevelData;
-  return (
-    "header" in d &&
-    "textureLayer" in d &&
-    typeof d.header === "object" &&
-    Array.isArray(d.textureLayer)
-  );
+  if (!isRecord(data)) return false;
+  const d = data; // narrowed by isRecord(data)
+  if (!("header" in d && "textureLayer" in d)) return false;
+  if (!isRecord(d.header)) return false;
+  if (!Array.isArray(d.textureLayer)) return false;
+  // textureLayer should be a 2D array of numbers (basic sanity check)
+  if (
+    !d.textureLayer.every(
+      (row: unknown) =>
+        Array.isArray(row) && row.every((v: unknown) => typeof v === "number"),
+    )
+  )
+    return false;
+  return true;
 }
 
 /**
@@ -24,8 +29,7 @@ export function isNanosaur1LevelData(
  */
 export function isRawNanosaurItem(item: unknown): item is RawNanosaurItem {
   if (typeof item !== "object" || item === null) return false;
-  // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion
-  const i = item as RawNanosaurItem;
+  const i = item;
   // We check for the specific field 'parm' which distinguishes it from standard TerrainItem
   // Nanosaur items must have 'type' and 'x'
   return "type" in i && "x" in i; // Basic check, we assume if it's in the list it's correct
@@ -45,12 +49,29 @@ export function isRawNanosaurAttribute(
  * Type guard for MightyMikeMap
  */
 export function isMightyMikeMap(data: unknown): data is MightyMikeMap {
-  if (typeof data !== "object" || data === null) return false;
-  // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion
-  const d = data as MightyMikeMap;
-  return (
-    "version" in d && "mapWidth" in d && "mapHeight" in d && "mapImage" in d
-  );
+  if (!isRecord(data)) return false;
+  const d = data;
+  if (typeof d.mapWidth !== "number" || typeof d.mapHeight !== "number")
+    return false;
+  if (!Array.isArray(d.mapImage)) return false;
+
+  // mapImage should be a 2D array of tile value objects with numeric fields
+  if (
+    !d.mapImage.every(
+      (row: unknown) =>
+        Array.isArray(row) &&
+        row.every((tile: unknown) => {
+          if (!isRecord(tile)) return false;
+          const t = tile; // narrowed by isRecord(tile)
+          return (
+            typeof t.rawValue === "number" && typeof t.tileIndex === "number"
+          );
+        }),
+    )
+  )
+    return false;
+
+  return true;
 }
 
 /**

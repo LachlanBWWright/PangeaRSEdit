@@ -1,3 +1,73 @@
+import {
+  isLevelDataLike,
+  isRecord,
+  validateResourceForkJson,
+  sanitizeResourceForkJson,
+} from "./levelDataUtils";
+
+describe("type guards and validation helpers", () => {
+  it("isRecord returns true for plain objects and false for arrays/null/primitives", () => {
+    expect(isRecord({})).toBe(true);
+    expect(isRecord({ a: 1 })).toBe(true);
+    expect(isRecord([])).toBe(false);
+    expect(isRecord(null)).toBe(false);
+    expect(isRecord(42)).toBe(false);
+    expect(isRecord("str")).toBe(false);
+  });
+
+  it("isLevelDataLike returns true for valid LevelData shape", () => {
+    const valid = {
+      Hedr: {},
+      _metadata: {},
+      ItCo: {},
+      YCrd: {},
+      STgd: {},
+    };
+    expect(isLevelDataLike(valid)).toBe(true);
+    // Accepts Layr instead of STgd
+    const validLayr = { ...valid };
+    delete validLayr.STgd;
+    validLayr.Layr = {};
+    expect(isLevelDataLike(validLayr)).toBe(true);
+  });
+
+  it("isLevelDataLike returns false for missing required keys", () => {
+    expect(isLevelDataLike({})).toBe(false);
+    expect(isLevelDataLike({ Hedr: {}, _metadata: {} })).toBe(false);
+    expect(
+      isLevelDataLike({ Hedr: {}, _metadata: {}, ItCo: {}, YCrd: {} }),
+    ).toBe(false);
+  });
+
+  it("validateResourceForkJson detects missing obj in resource records", () => {
+    const bad = {
+      Hedr: { 1000: { name: "Header", order: 0 } },
+      _metadata: {},
+      ItCo: {},
+      YCrd: {},
+      STgd: {},
+    };
+    const res = validateResourceForkJson(bad);
+    expect(res.ok).toBe(false);
+    if (!res.ok) {
+      expect(res.badValueType).toBe("missing_obj");
+    }
+  });
+
+  it("sanitizeResourceForkJson removes malformed and empty resource sections", () => {
+    const input = {
+      Hedr: { 1000: { name: "Header", obj: [], order: 0 }, bad: 42 },
+      BadType: 123,
+      Empty: { 1000: { name: "Empty", obj: [], order: 0 } },
+      _metadata: {},
+    };
+    const sanitized = sanitizeResourceForkJson(input);
+    expect("BadType" in sanitized).toBe(false);
+    expect("Empty" in sanitized).toBe(false);
+    expect("Hedr" in sanitized).toBe(true);
+    expect("_metadata" in sanitized).toBe(true);
+  });
+});
 import { describe, it, expect } from "vitest";
 import { splitLevelData, combineLevelData } from "./levelDataUtils";
 import type { LevelData } from "@/python/structSpecs/LevelTypes";
@@ -6,7 +76,21 @@ describe("level data utils", () => {
   it("allows combining when optional sections are missing", () => {
     const levelUnknown: unknown = {
       Hedr: {
-        1000: { name: "Header", obj: { version: 1, numItems: 0, mapWidth: 64, mapHeight: 64, tileSize: 32, minY: 0, maxY: 255, numSplines: 0, numFences: 0 }, order: 0 },
+        1000: {
+          name: "Header",
+          obj: {
+            version: 1,
+            numItems: 0,
+            mapWidth: 64,
+            mapHeight: 64,
+            tileSize: 32,
+            minY: 0,
+            maxY: 255,
+            numSplines: 0,
+            numFences: 0,
+          },
+          order: 0,
+        },
       },
       // Minimal terrain necessary
       ItCo: {
@@ -23,8 +107,8 @@ describe("level data utils", () => {
     };
 
     function assertIsLevel(x: unknown): asserts x is LevelData {
-      if (typeof x !== 'object' || x === null || !('Hedr' in x)) {
-        throw new Error('Value is not a LevelData');
+      if (typeof x !== "object" || x === null || !("Hedr" in x)) {
+        throw new Error("Value is not a LevelData");
       }
     }
 
@@ -55,8 +139,8 @@ describe("level data utils", () => {
     };
     const badUnknown: unknown = bad;
     function assertIsRecord(x: unknown): asserts x is Record<string, unknown> {
-      if (typeof x !== 'object' || x === null) {
-        throw new Error('Value is not a record');
+      if (typeof x !== "object" || x === null) {
+        throw new Error("Value is not a record");
       }
     }
     assertIsRecord(badUnknown);

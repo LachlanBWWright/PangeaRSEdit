@@ -4,12 +4,9 @@
 
 import { describe, it, expect } from "vitest";
 import {
-  type EditOperation,
   type MoveItemOperation,
   type AddItemOperation,
   type DeleteItemOperation,
-  type MoveSplineNubOperation,
-  type UpdateTerrainHeightOperation,
   reverseOperation,
   canMergeOperations,
   mergeOperations,

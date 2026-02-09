@@ -5,7 +5,7 @@
  * and defragmenting the tile index space.
  */
 
-import type { TerrainData, HeaderData } from "@/python/structSpecs/LevelTypes";
+import type { TerrainData } from "@/python/structSpecs/LevelTypes";
 import type { Draft } from "immer";
 import { extractTileInfo } from "./tileDataExtractor";
 
@@ -25,13 +25,12 @@ export interface TileOptimizationResult {
  */
 export function analyzeUnusedTiles(
   terrainData: TerrainData,
-  headerData: HeaderData,
 ): {
   unusedIndices: number[];
   canOptimize: boolean;
   estimatedSavings: number;
 } {
-  const tiles = extractTileInfo(terrainData, headerData);
+  const tiles = extractTileInfo(terrainData);
   const unusedTiles = tiles.filter(t => t.usageCount === 0);
   
   return {
@@ -47,9 +46,8 @@ export function analyzeUnusedTiles(
  */
 export function computeCompactedIndexMapping(
   terrainData: TerrainData,
-  headerData: HeaderData,
 ): Map<number, number> {
-  const tiles = extractTileInfo(terrainData, headerData);
+  const tiles = extractTileInfo(terrainData);
   const usedIndices = new Set(
     tiles
       .filter(t => t.usageCount > 0)
@@ -78,7 +76,6 @@ export function computeCompactedIndexMapping(
  */
 export function compactTileIndices(
   terrainDraft: Draft<TerrainData>,
-  _headerData: HeaderData,
 ): TileOptimizationResult {
   const result: TileOptimizationResult = {
     success: false,
@@ -128,7 +125,10 @@ export function compactTileIndices(
   // Filter xlat table if it exists
   if (xlat) {
     const newXlat = xlat.filter((_, idx) => usedIndices.has(idx));
-    terrainDraft.Xlat![1000].obj = newXlat;
+    const xlatEntry = terrainDraft.Xlat?.[1000];
+    if (xlatEntry) {
+      xlatEntry.obj = newXlat;
+    }
   }
   
   // Remap layer indices
@@ -159,7 +159,6 @@ export function compactTileIndices(
  */
 export function validateOptimization(
   terrainData: TerrainData,
-  _headerData: HeaderData,
 ): string[] {
   const warnings: string[] = [];
   
@@ -192,14 +191,13 @@ export function validateOptimization(
  */
 export function getOptimizationStats(
   terrainData: TerrainData,
-  headerData: HeaderData,
 ): {
   totalTiles: number;
   usedTiles: number;
   unusedTiles: number;
   percentageUnused: number;
 } {
-  const tiles = extractTileInfo(terrainData, headerData);
+  const tiles = extractTileInfo(terrainData);
   const usedCount = tiles.filter(t => t.usageCount > 0).length;
   const unusedCount = tiles.length - usedCount;
   

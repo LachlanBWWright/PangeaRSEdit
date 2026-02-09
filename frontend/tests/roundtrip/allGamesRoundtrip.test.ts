@@ -35,13 +35,12 @@ describe("Nanosaur 1 - Byte-Accurate Roundtrip", () => {
   levels.forEach((filename) => {
     it(`${filename}: byte-for-byte accuracy`, () => {
       const path = join(levelsDir, filename);
-      let originalBuffer: Buffer;
       
       if (!existsSync(path)) {
         console.warn(`Could not find file ${path}, skipping test`);
         return;
       }
-      originalBuffer = readFileSync(path);
+      const originalBuffer = readFileSync(path);
 
       const originalData = new Uint8Array(originalBuffer);
       expect(originalData.length).toBeGreaterThan(0);
@@ -115,13 +114,12 @@ describe("Mighty Mike - Byte-Accurate Roundtrip", () => {
   levels.forEach((filename) => {
     it(`${filename}: byte-for-byte accuracy`, () => {
       const path = join(levelsDir, filename);
-      let originalBuffer: Buffer;
       
       if (!existsSync(path)) {
         console.warn(`Could not find file ${path}, skipping test`);
         return;
       }
-      originalBuffer = readFileSync(path);
+      const originalBuffer = readFileSync(path);
 
       const originalData = new Uint8Array(originalBuffer);
       expect(originalData.length).toBeGreaterThan(0);

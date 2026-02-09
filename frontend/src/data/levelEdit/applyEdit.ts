@@ -246,7 +246,7 @@ function applyDeleteSplineNub(
 function updateSplinePoints(
   draft: Draft<SplineData>,
   splineIndex: number,
-  nubs: Array<{ x: number; z: number }>,
+  nubs: { x: number; z: number }[],
 ): void {
   const splineKey = SPLINE_KEY_BASE + splineIndex;
   const spPt = draft.SpPt?.[splineKey];

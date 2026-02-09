@@ -10,19 +10,13 @@
  */
 
 import { describe, it, expect } from "vitest";
-import { readFileSync } from "fs";
+import { readFileSync, existsSync } from "fs";
 import { join } from "path";
-import {
-  saveToJson,
-  loadBytesFromJson,
-} from "@lachlanbwwright/rsrcdump-ts";
+import { saveToJson, loadBytesFromJson } from "@lachlanbwwright/rsrcdump-ts";
 import { bugdomSpecs } from "../../src/python/structSpecs/bugdom";
 
 describe("Bugdom 1 Roundtrip", () => {
-  const terrainDir = join(
-    __dirname,
-    "../../public/assets/bugdom/terrain",
-  );
+  const terrainDir = join(__dirname, "../../public/assets/bugdom/terrain");
   const levelFiles = [
     "AntHill.ter.rsrc",
     "AntKing.ter.rsrc",
@@ -37,8 +31,9 @@ describe("Bugdom 1 Roundtrip", () => {
   ];
 
   for (const levelFile of levelFiles) {
-    it(`should parse and serialize ${levelFile} with specs`, async () => {
-      const filePath = join(terrainDir, levelFile);
+    const filePath = join(terrainDir, levelFile);
+    const testFn = existsSync(filePath) ? it : it.skip;
+    testFn(`should parse and serialize ${levelFile} with specs`, async () => {
       const originalData = readFileSync(filePath);
 
       // Parse with specs (structured data)
@@ -54,7 +49,9 @@ describe("Bugdom 1 Roundtrip", () => {
       const jsonData = JSON.parse(jsonStringResult.value);
 
       // Verify expected structure
-      function assertIsRecord(x: unknown): asserts x is Record<string, unknown> {
+      function assertIsRecord(
+        x: unknown,
+      ): asserts x is Record<string, unknown> {
         if (typeof x !== "object" || x === null)
           throw new Error("Parsed data is not an object");
       }
@@ -73,59 +70,66 @@ describe("Bugdom 1 Roundtrip", () => {
       if (!serializeResult.ok) return;
 
       // rsrcdump-ts v1.0.6 has a known 44-byte resource fork header discrepancy
-      const sizeDiff = Math.abs(serializeResult.value.length - originalData.length);
+      const sizeDiff = Math.abs(
+        serializeResult.value.length - originalData.length,
+      );
       expect(sizeDiff).toBeLessThanOrEqual(44);
     });
 
-    it(`should produce valid JSON roundtrip for ${levelFile}`, async () => {
-      const filePath = join(terrainDir, levelFile);
-      const originalData = readFileSync(filePath);
+    const testFn2 = existsSync(filePath) ? it : it.skip;
+    testFn2(
+      `should produce valid JSON roundtrip for ${levelFile}`,
+      async () => {
+        const originalData = readFileSync(filePath);
 
-      // Parse → serialize → parse again should produce identical JSON
-      const parseResult1 = await saveToJson(
-        new Uint8Array(originalData),
-        bugdomSpecs,
-        [],
-        [],
-      );
-      expect(parseResult1.ok).toBe(true);
-      if (!parseResult1.ok) return;
+        // Parse → serialize → parse again should produce identical JSON
+        const parseResult1 = await saveToJson(
+          new Uint8Array(originalData),
+          bugdomSpecs,
+          [],
+          [],
+        );
+        expect(parseResult1.ok).toBe(true);
+        if (!parseResult1.ok) return;
 
-      const jsonData1 = JSON.parse(parseResult1.value);
+        const jsonData1 = JSON.parse(parseResult1.value);
 
-      const serializeResult = loadBytesFromJson(
-        jsonData1,
-        bugdomSpecs,
-        [],
-        [],
-        true,
-      );
-      expect(serializeResult.ok).toBe(true);
-      if (!serializeResult.ok) return;
+        const serializeResult = loadBytesFromJson(
+          jsonData1,
+          bugdomSpecs,
+          [],
+          [],
+          true,
+        );
+        expect(serializeResult.ok).toBe(true);
+        if (!serializeResult.ok) return;
 
-      const parseResult2 = await saveToJson(
-        serializeResult.value,
-        bugdomSpecs,
-        [],
-        [],
-      );
-      expect(parseResult2.ok).toBe(true);
-      if (!parseResult2.ok) return;
+        const parseResult2 = await saveToJson(
+          serializeResult.value,
+          bugdomSpecs,
+          [],
+          [],
+        );
+        expect(parseResult2.ok).toBe(true);
+        if (!parseResult2.ok) return;
 
-      const jsonData2 = JSON.parse(parseResult2.value);
+        const jsonData2 = JSON.parse(parseResult2.value);
 
-      // JSON structure should be identical after roundtrip
-      function assertIsRecord(x: unknown): asserts x is Record<string, unknown> {
-        if (typeof x !== "object" || x === null)
-          throw new Error("Parsed data is not an object");
-      }
-      assertIsRecord(jsonData1);
-      assertIsRecord(jsonData2);
+        // JSON structure should be identical after roundtrip
+        function assertIsRecord(
+          x: unknown,
+        ): asserts x is Record<string, unknown> {
+          if (typeof x !== "object" || x === null)
+            throw new Error("Parsed data is not an object");
+        }
+        assertIsRecord(jsonData1);
+        assertIsRecord(jsonData2);
 
-      // Compare key resource types exist in both
-      for (const key of ["Hedr", "Itms", "Layr", "YCrd"]) {
-        expect(key in jsonData2).toBe(key in jsonData1);
-      }
-    });
+        // Compare key resource types exist in both
+        for (const key of ["Hedr", "Itms", "Layr", "YCrd"]) {
+          expect(key in jsonData2).toBe(key in jsonData1);
+        }
+      },
+    );
   }
 });

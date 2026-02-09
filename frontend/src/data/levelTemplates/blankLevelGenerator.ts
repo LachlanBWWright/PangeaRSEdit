@@ -343,7 +343,7 @@ function createBlankLiquidData(): LiquidData {
 /**
  * Check if a game supports creating blank levels
  */
-export function canCreateBlankLevel(_game: Game): boolean {
+export function canCreateBlankLevel(): boolean {
   // All games support blank level creation
   return true;
 }

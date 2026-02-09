@@ -13,7 +13,7 @@
  * - Caches full BG3D file conversions to avoid redundant work
  */
 
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import BG3DGltfWorker from "@/modelParsers/bg3dGltfWorker?worker";
 import type { BG3DGltfWorkerResponse } from "@/modelParsers/bg3dGltfWorker";
 import { fromPromise } from "@/types/result";
@@ -293,7 +293,9 @@ export const useItemModelCache = (game: Game = Game.OTTO_MATIC): UseItemModelCac
   // Mirror modelCache in a ref so loadModel can read latest state
   // without needing modelCache in its dependency array
   const modelCacheRef = useRef<Map<string, CachedModel>>(modelCache);
-  modelCacheRef.current = modelCache;
+  useEffect(() => {
+    modelCacheRef.current = modelCache;
+  }, [modelCache]);
 
   const getWorker = useCallback(() => {
     if (!workerRef.current) {

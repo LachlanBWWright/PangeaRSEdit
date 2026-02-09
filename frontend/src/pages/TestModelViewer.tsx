@@ -5,7 +5,7 @@
  * Allows selecting a game, model file, and specific model index to load.
  */
 
-import React, { useState, useCallback, useRef, useEffect } from "react";
+import React, { useState, useCallback, useRef } from "react";
 import { Canvas } from "@react-three/fiber";
 import { OrbitControls, Grid } from "@react-three/drei";
 import { Group, Mesh, BufferGeometry } from "three";
@@ -410,22 +410,20 @@ export function TestModelViewer() {
   const [maxIndex, setMaxIndex] = useState<number>(0);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
-  const [gltfScene, setGltfScene] = useState<Group | null>(null);
   const [fullGltf, setFullGltf] = useState<GLTF | null>(null);
   const [status, setStatus] = useState<string>("Select a game and model file to begin");
-  const [modelStats, setModelStats] = useState<{ vertices: number; faces: number } | null>(null);
   const [modelNames, setModelNames] = useState<string[]>([]);
   
   const workerRef = useRef<Worker | null>(null);
   
   // Get the current game config
-  const gameConfig = GAME_CONFIGS.find(g => g.id === selectedGame);
+  const gameConfig = useMemo(() => GAME_CONFIGS.find(g => g.id === selectedGame), [selectedGame]);
   
   // Get all files for the selected game (models + skeletons combined)
-  const allFiles = gameConfig ? getAllFilesForGame(gameConfig) : [];
+  const allFiles = useMemo(() => gameConfig ? getAllFilesForGame(gameConfig) : [], [gameConfig]);
   
   // Get the selected file entry
-  const selectedFileEntry = allFiles.find(f => f.path === selectedFileKey);
+  const selectedFileEntry = useMemo(() => allFiles.find(f => f.path === selectedFileKey), [allFiles, selectedFileKey]);
   
   // Initialize worker
   const getWorker = useCallback(() => {
@@ -434,6 +432,16 @@ export function TestModelViewer() {
     }
     return workerRef.current;
   }, []);
+
+  // Derived 3D scene and stats
+  const gltfScene = useMemo(() => {
+    if (!fullGltf) return null;
+    return extractSubgroupByIndex(fullGltf, modelIndex);
+  }, [fullGltf, modelIndex]);
+
+  const modelStats = useMemo(() => {
+    return calculateModelStats(gltfScene);
+  }, [gltfScene]);
   
   // Reset model index when file selection changes
   const handleFileChange = useCallback((fileKey: string) => {
@@ -441,9 +449,7 @@ export function TestModelViewer() {
     setModelIndex(0);
     setMaxIndex(0);
     setFullGltf(null);
-    setGltfScene(null);
     setModelNames([]);
-    setModelStats(null);
     setStatus("File selected. Click 'Load Model' to load.");
   }, []);
   
@@ -454,9 +460,7 @@ export function TestModelViewer() {
     setModelIndex(0);
     setMaxIndex(0);
     setFullGltf(null);
-    setGltfScene(null);
     setModelNames([]);
-    setModelStats(null);
     setStatus("Select a model file to continue");
   }, []);
   
@@ -615,26 +619,21 @@ export function TestModelViewer() {
     }
     setModelNames(names);
 
-    // Extract the first model (index 0 since we reset)
-    const extracted = extractSubgroupByIndex(gltf, 0);
-    setGltfScene(extracted);
-    setModelStats(calculateModelStats(extracted));
-
     const currentName = names[0] || `Model 0`;
     setStatus(`Loaded! File contains ${numModels} model(s). Showing: ${currentName}`);
     setLoading(false);
   }, [gameConfig, selectedFileEntry, getWorker]);
-  
-  // Update displayed model when index changes (if we have a loaded GLTF)
-  useEffect(() => {
+
+  // Derived status message
+  const displayStatus = useMemo(() => {
+    if (loading) return status;
+    if (error) return `Error: ${error}`;
     if (fullGltf) {
-      const extracted = extractSubgroupByIndex(fullGltf, modelIndex);
-      setGltfScene(extracted);
-      setModelStats(calculateModelStats(extracted));
       const modelName = modelNames[modelIndex] || `Model ${modelIndex}`;
-      setStatus(`Showing: ${modelName} (index ${modelIndex} of ${maxIndex})`);
+      return `Showing: ${modelName} (index ${modelIndex} of ${maxIndex})`;
     }
-  }, [modelIndex, fullGltf, maxIndex, modelNames]);
+    return status;
+  }, [loading, error, fullGltf, modelNames, modelIndex, maxIndex, status]);
   
   // Navigate to next/previous model
   const nextModel = () => {
@@ -754,7 +753,7 @@ export function TestModelViewer() {
           
           {/* Status */}
           <div className="p-3 bg-gray-700 rounded text-sm text-gray-300">
-            {status}
+            {displayStatus}
           </div>
           
           {/* Model Stats */}

@@ -10,8 +10,7 @@
  */
 
 import { describe, it, expect } from "vitest";
-import { Game } from "@/data/globals/globals";
-import { categorizeItem, ItemCategory, getAllCategories } from "@/data/items/itemCategories";
+import { categorizeItem, getAllCategories } from "@/data/items/itemCategories";
 import { isItemVisible, createDefaultFilter, applyFilterPreset } from "@/data/items/itemFilterUtils";
 import { FilterMode, FILTER_PRESETS, DEFAULT_FILTER_STATE } from "@/data/items/itemFilterAtoms";
 import { getGameMapper, getGamesWithMappers } from "@/data/items/mappers";
@@ -19,7 +18,6 @@ import {
   ROTATION_4_WAY, 
   ROTATION_8_WAY, 
   calculateRotation, 
-  ENEMY_SPAWN_FLAGS, 
   isFlagSet 
 } from "@/data/items/standardParamTypes";
 import { getGameMappingSummary, validateGameMappings } from "@/data/items/itemModelUtils";
@@ -171,13 +169,11 @@ describe("Item Module Integration", () => {
     it("Otto Matic has the most mapped items", () => {
       const gamesWithMappers = getGamesWithMappers();
       let maxCount = 0;
-      let maxGame: Game | null = null;
       
       for (const game of gamesWithMappers) {
         const summary = getGameMappingSummary(game);
         if (summary.ok && summary.value.totalMapped > maxCount) {
           maxCount = summary.value.totalMapped;
-          maxGame = game;
         }
       }
       

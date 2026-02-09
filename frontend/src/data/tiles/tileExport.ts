@@ -147,7 +147,7 @@ export function exportSingleTile(
  */
 export function calculatePaletteGrid(
   tileCount: number,
-  maxWidth: number = 16,
+  maxWidth = 16,
 ): { columns: number; rows: number } {
   // Target square-ish layout
   const columns = Math.min(maxWidth, Math.ceil(Math.sqrt(tileCount)));

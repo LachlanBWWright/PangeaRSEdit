@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, memo } from "react";
 import {
   FenceData,
   HeaderData,
@@ -36,8 +36,6 @@ function calculateFenceSegmentGeometry(
   textureAspectRatio: number,
   globals: GlobalsInterface,
 ): FenceSegmentGeometryData {
-  // Convert raw coordinates to world units using MAP2UNIT_VALUE
-  // MAP2UNIT_VALUE = TILE_INGAME_SIZE / TILE_SIZE
   const scale = globals.TILE_INGAME_SIZE / globals.TILE_SIZE;
 
   const rawX1 = nubA_raw[0] * scale;
@@ -45,35 +43,26 @@ function calculateFenceSegmentGeometry(
   const rawX2 = nubB_raw[0] * scale;
   const rawZ2 = nubB_raw[1] * scale;
 
-  // 3D endpoints (bottom and top)
   const A = [rawX1, terrainY1, rawZ1];
   const B = [rawX2, terrainY2, rawZ2];
   const At = [rawX1, terrainY1 + fenceHeight, rawZ1];
   const Bt = [rawX2, terrainY2 + fenceHeight, rawZ2];
 
-  // Vertices: A (bottom left), B (bottom right), At (top left), Bt (top right)
   const vertices = [...A, ...B, ...At, ...Bt];
-
-  // Indices for two triangles: (A, B, At) and (B, Bt, At)
   const indices = [0, 1, 2, 1, 3, 2];
 
-  // Calculate UV coordinates
-  // From source: textureUOff = 1.0f / height * aspectRatio
   const textureUOff = (textureAspectRatio / fenceHeight) * 1;
 
-  // Calculate distance from A to B
   const dx = rawX2 - rawX1;
   const dz = rawZ2 - rawZ1;
   const distance = Math.sqrt(dx * dx + dz * dz);
 
-  // UV coordinates: v=0 at bottom, v=1 at top
-  // u accumulates along the fence length
   const u = distance * textureUOff;
   const uvs = [
-    0, 0, // A bottom: u=0, v=0
-    u, 0, // B bottom: u=distance*textureUOff, v=0
-    0, 1, // At top: u=0, v=1
-    u, 1, // Bt top: u=distance*textureUOff, v=1
+    0, 0,
+    u, 0,
+    0, 1,
+    u, 1,
   ];
 
   return { vertices, uvs, indices };
@@ -137,11 +126,10 @@ interface FenceGroupData {
   }[];
 }
 
-export const FenceGeometry: React.FC<FenceGeometryProps> = ({ fenceData, headerData, terrainData }) => {
+const FenceGeometryComponent: React.FC<FenceGeometryProps> = ({ fenceData, headerData, terrainData }) => {
   const globals = useAtomValue(Globals);
   const [textures, setTextures] = useState<Map<string, Texture>>(new Map());
 
-  // Load textures for all fence types on mount
   useEffect(() => {
     if (
       !fenceData.Fenc ||
@@ -154,7 +142,6 @@ export const FenceGeometry: React.FC<FenceGeometryProps> = ({ fenceData, headerD
     const fences = fenceData.Fenc[1000].obj;
     const textureUrls = new Set<string>();
 
-    // Collect all unique texture URLs
     fences.forEach((fence) => {
       const imagePath = getFenceImagePath(globals, fence.fenceType);
       if (imagePath) {
@@ -162,18 +149,18 @@ export const FenceGeometry: React.FC<FenceGeometryProps> = ({ fenceData, headerD
       }
     });
 
-    // Load all textures
     const textureLoader = new TextureLoader();
     const loadedTextures = new Map<string, Texture>();
     let loadedCount = 0;
+
+    if (textureUrls.size === 0) return;
 
     textureUrls.forEach((url) => {
       textureLoader.load(
         url,
         (texture) => {
-          // Configure texture wrapping
-          texture.wrapS = RepeatWrapping; // U: wrap horizontally
-          texture.wrapT = ClampToEdgeWrapping; // V: clamp vertically
+          texture.wrapS = RepeatWrapping;
+          texture.wrapT = ClampToEdgeWrapping;
           texture.magFilter = LinearFilter;
           texture.minFilter = LinearMipmapLinearFilter;
 
@@ -181,25 +168,20 @@ export const FenceGeometry: React.FC<FenceGeometryProps> = ({ fenceData, headerD
           loadedCount++;
 
           if (loadedCount === textureUrls.size) {
-            setTextures(loadedTextures);
+            setTextures(new Map(loadedTextures));
           }
         },
         undefined,
         () => {
-          // On error, continue without texture for this type
           loadedCount++;
           if (loadedCount === textureUrls.size) {
-            setTextures(loadedTextures);
+            setTextures(new Map(loadedTextures));
           }
         },
       );
     });
   }, [fenceData, globals]);
 
-  // Extract YCrd array for dependency tracking - terrain height changes should trigger re-render
-  const yCrdData = terrainData.YCrd?.[1000]?.obj;
-  
-  // Memoize fence geometry calculations to properly track terrain height changes
   const fenceGroups = useMemo(() => {
     if (
       !fenceData.Fenc ||
@@ -228,7 +210,6 @@ export const FenceGeometry: React.FC<FenceGeometryProps> = ({ fenceData, headerD
       const fenceHeight = getFenceHeight(globals, fenceType);
       const imagePath = getFenceImagePath(globals, fenceType);
 
-      // Get texture aspect ratio (fallback to 1 if not loaded yet)
       const texture = textures.get(imagePath);
       let textureAspectRatio = 1;
       if (texture?.source?.data && typeof texture.source.data === "object" && texture.source.data !== null) {
@@ -282,7 +263,7 @@ export const FenceGeometry: React.FC<FenceGeometryProps> = ({ fenceData, headerD
     });
 
     return groups;
-  }, [fenceData, headerData, terrainData, globals, textures, yCrdData]);
+  }, [fenceData, headerData, terrainData, globals, textures]);
 
   if (!fenceGroups) {
     return null;
@@ -312,3 +293,5 @@ export const FenceGeometry: React.FC<FenceGeometryProps> = ({ fenceData, headerD
     </group>
   );
 };
+
+export const FenceGeometry = memo(FenceGeometryComponent);

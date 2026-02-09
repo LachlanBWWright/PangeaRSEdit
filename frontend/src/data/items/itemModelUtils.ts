@@ -162,10 +162,10 @@ export function validateGameMappings(game: Game): Result<{
  * Find duplicate model mappings within a game
  */
 export function findDuplicateMappings(game: Game): Result<{
-  duplicates: Array<{
+  duplicates: {
     modelKey: string;
     itemTypes: number[];
-  }>;
+  }[];
 }, Error> {
   const mapper = getGameMapper(game);
   if (!mapper) {
@@ -185,7 +185,7 @@ export function findDuplicateMappings(game: Game): Result<{
     modelKeyToTypes.set(modelKey, types);
   }
   
-  const duplicates: Array<{ modelKey: string; itemTypes: number[] }> = [];
+  const duplicates: { modelKey: string; itemTypes: number[] }[] = [];
   
   for (const [modelKey, itemTypes] of modelKeyToTypes.entries()) {
     if (itemTypes.length > 1) {

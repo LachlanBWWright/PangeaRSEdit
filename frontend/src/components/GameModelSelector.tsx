@@ -29,7 +29,10 @@ export interface GameInfo {
 import type { Result } from "@/types/result";
 
 export interface GameModelSelectorProps {
-  onLoadModel: (bg3dFile: File, skeletonFile?: File) => Promise<Result<void, Error>>;
+  onLoadModel: (
+    bg3dFile: File,
+    skeletonFile?: File,
+  ) => Promise<Result<void, Error>>;
   loading: boolean;
 }
 
@@ -120,7 +123,9 @@ export function GameModelSelector({
 
     // If skeleton file exists and user wants to load it
     if (selectedModel.skeletonFile && loadWithSkeleton) {
-      const skeletonFetchResult = await fromPromise(fetch(selectedModel.skeletonFile));
+      const skeletonFetchResult = await fromPromise(
+        fetch(selectedModel.skeletonFile),
+      );
       if (!skeletonFetchResult.ok) {
         console.warn(
           `${selectedModel.name} skeleton file fetch failed, loading without animations`,
@@ -131,7 +136,9 @@ export function GameModelSelector({
       } else {
         const skeletonResponse = skeletonFetchResult.value;
         if (skeletonResponse.ok) {
-          const skeletonBufferResult = await fromPromise(skeletonResponse.arrayBuffer());
+          const skeletonBufferResult = await fromPromise(
+            skeletonResponse.arrayBuffer(),
+          );
           if (!skeletonBufferResult.ok) {
             console.warn(
               `${selectedModel.name} skeleton file read failed, loading without animations`,

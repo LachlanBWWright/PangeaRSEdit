@@ -116,7 +116,7 @@ export function floodFillTile(
   selectedTile: TileInfo,
   terrainDraft: Draft<TerrainData>,
   headerData: HeaderData,
-  maxFill: number = 10000,
+  maxFill = 10000,
 ): TilePaintResult {
   const result: TilePaintResult = { success: false, modifiedCells: [] };
   
@@ -144,7 +144,7 @@ export function floodFillTile(
   }
   
   // Flood fill using BFS
-  const queue: Array<[number, number]> = [[startX, startZ]];
+  const queue: [number, number][] = [[startX, startZ]];
   const visited = new Set<number>();
   
   while (queue.length > 0 && result.modifiedCells.length < maxFill) {
@@ -206,7 +206,6 @@ export function replaceAllTiles(
   fromAttributeIndex: number,
   toTile: TileInfo,
   terrainDraft: Draft<TerrainData>,
-  _headerData: HeaderData,
 ): TilePaintResult {
   const result: TilePaintResult = { success: false, modifiedCells: [] };
   

@@ -1,4 +1,4 @@
-import { useMemo, useEffect } from "react";
+import { useMemo } from "react";
 import { Canvas } from "@react-three/fiber";
 import { OrbitControls, useGLTF } from "@react-three/drei";
 import { EnhancedModelMesh } from "@/components/EnhancedModelMesh";
@@ -64,13 +64,14 @@ export function ModelCanvas(props: ModelCanvasProps) {
   const { animationMixer } = useModelAnimations(gltfResult, onAnimationsReady);
 
   // Shift Bugdom 1 model down by half its bounding box height so it appears grounded
-  useEffect(() => {
+  const modelPosition = useMemo((): [number, number, number] => {
     if (props.gameType === Game.BUGDOM && gltfResult?.scene) {
       const box = new Box3().setFromObject(gltfResult.scene);
       const size = new Vector3();
       box.getSize(size);
-      gltfResult.scene.position.y = -size.y / 2;
+      return [0, -size.y / 2, 0];
     }
+    return [0, 0, 0];
   }, [gltfResult, props.gameType]);
 
   // Validate gltfUrl for rendering (after hooks)
@@ -101,6 +102,7 @@ export function ModelCanvas(props: ModelCanvasProps) {
             scene={gltfResult.scene}
             wireframeMode={wireframeMode}
             showSkeleton={showSkeleton}
+            position={modelPosition}
           />
         )}
         <AnimationUpdater

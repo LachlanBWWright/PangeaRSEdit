@@ -2,8 +2,13 @@ import { LevelData } from "@/python/structSpecs/LevelTypes";
 import { Result, ok, err, fromPromise } from "@/types/result";
 import { preprocessJson } from "@/data/processors/ottoPreprocessor";
 import { fixNullToZero } from "@/data/processors/nullToZeroFixer";
+import { isRecord } from "./typeGuards";
 import type { GlobalsInterface } from "@/data/globals/globals";
-import { splitLevelData, AtomicLevelData } from "@/data/utils/levelDataUtils";
+import {
+  splitLevelData,
+  AtomicLevelData,
+  isLevelDataLike,
+} from "@/data/utils/levelDataUtils";
 import { validateLevelDataForGame } from "@/validation/validateLevelForGame";
 import { saveToJson } from "@lachlanbwwright/rsrcdump-ts";
 
@@ -14,7 +19,9 @@ export async function parseRsrcLevelFile(
 ): Promise<Result<LevelData, Error>> {
   const bufferResult = await fromPromise(file.arrayBuffer());
   if (!bufferResult.ok) {
-    return err(new Error(`Failed to read file buffer: ${bufferResult.error.message}`));
+    return err(
+      new Error(`Failed to read file buffer: ${bufferResult.error.message}`),
+    );
   }
 
   const levelBuffer = bufferResult.value;
@@ -35,10 +42,10 @@ export async function parseRsrcLevelFile(
   const parsedUnknown: unknown = JSON.parse(parseResult.value);
 
   // Validate that parsed data is an object
-  if (typeof parsedUnknown !== "object" || parsedUnknown === null) {
+  if (!isRecord(parsedUnknown)) {
     return err(new Error("Parsed level data is not an object"));
   }
-  const result = parsedUnknown as Record<string, unknown>;
+  const result = parsedUnknown;
 
   // Fix null values from rsrcdump-ts (safety net for backwards compatibility)
   // v1.0.6 should have fixed null/undefined bugs, but we keep this as a safety measure
@@ -55,10 +62,7 @@ export async function parseRsrcLevelFile(
   fixNullToZero(result);
 
   // Validate the preprocessed data using the appropriate game schema
-  const validationResult = validateLevelDataForGame(
-    result,
-    gameType.GAME_TYPE,
-  );
+  const validationResult = validateLevelDataForGame(result, gameType.GAME_TYPE);
   if (!validationResult.ok) {
     return err(
       new Error(
@@ -68,10 +72,10 @@ export async function parseRsrcLevelFile(
   }
 
   // After validation, we know the structure matches LevelData
-  if (typeof result !== "object" || result === null || !("Hedr" in result)) {
+  if (!isLevelDataLike(result)) {
     return err(new Error("Parsed level data is not LevelData"));
   }
-  const levelData = result as LevelData;
+  const levelData = result;
 
   setData(splitLevelData(levelData));
   return ok(levelData);

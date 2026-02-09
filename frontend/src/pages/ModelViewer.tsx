@@ -35,8 +35,9 @@ export function ModelViewer() {
   const [loading, setLoading] = useState(false);
   const [textures, setTextures] = useState<Texture[]>([]);
   const [animations, setAnimations] = useState<AnimationInfo[]>([]);
-  const [animationMixer, setAnimationMixer] =
-    useState<AnimationMixer | null>(null);
+  const [animationMixer, setAnimationMixer] = useState<AnimationMixer | null>(
+    null,
+  );
   const [uploadStep, setUploadStep] = useState<
     "select-bg3d" | "select-skeleton" | "completed"
   >("select-bg3d");
@@ -144,10 +145,7 @@ export function ModelViewer() {
 
   // Handle animation state from ModelCanvas
   const handleAnimationsReady = useCallback(
-    (
-      animationInfos: AnimationInfo[],
-      mixer: AnimationMixer | null,
-    ) => {
+    (animationInfos: AnimationInfo[], mixer: AnimationMixer | null) => {
       // Use glTF animations from the model
       setAnimations(animationInfos);
       setAnimationMixer(mixer);
@@ -263,7 +261,10 @@ export function ModelViewer() {
   const loadTestModelWithoutSkeleton = async () => {
     const result = await loadOttoTestModelWithoutSkeleton();
     if (!result.ok) {
-      console.error("Error loading sample model without skeleton:", result.error);
+      console.error(
+        "Error loading sample model without skeleton:",
+        result.error,
+      );
       toast.error("Failed to load Otto sample file");
       return;
     }
@@ -342,11 +343,12 @@ export function ModelViewer() {
                     worker.postMessage({ type: "glb-to-bg3d", buffer }, [
                       buffer,
                     ]);
-                    worker.onmessage = (event: MessageEvent<BG3DGltfWorkerResponse>) => {
+                    worker.onmessage = (
+                      event: MessageEvent<BG3DGltfWorkerResponse>,
+                    ) => {
                       if (event.data.type === "error") {
                         alert(
-                          "GLB to BG3D conversion failed: " +
-                            event.data.error,
+                          "GLB to BG3D conversion failed: " + event.data.error,
                         );
                         worker.terminate();
                         return;
@@ -399,10 +401,10 @@ export function ModelViewer() {
                   }
                   const buffer = bufferResult.value;
                   const worker = new BG3DGltfWorker();
-                  worker.postMessage({ type: "glb-to-bg3d", buffer }, [
-                    buffer,
-                  ]);
-                  worker.onmessage = (event: MessageEvent<BG3DGltfWorkerResponse>) => {
+                  worker.postMessage({ type: "glb-to-bg3d", buffer }, [buffer]);
+                  worker.onmessage = (
+                    event: MessageEvent<BG3DGltfWorkerResponse>,
+                  ) => {
                     if (event.data.type === "error") {
                       alert(
                         "GLB to BG3D conversion failed: " + event.data.error,

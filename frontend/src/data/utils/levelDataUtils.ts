@@ -10,13 +10,20 @@ import {
 import { Result, ok, err } from "../../types/result";
 
 // Type guard helper
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
+export function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-// Type guard for LevelData - basic structure check
-function isLevelDataLike(value: unknown): value is LevelData {
-  return isRecord(value);
+// Type guard for LevelData - checks for required keys
+export function isLevelDataLike(value: unknown): value is LevelData {
+  if (!isRecord(value)) return false;
+  // Hedr and _metadata are always required for a valid LevelData
+  if (!("Hedr" in value) || !("_metadata" in value)) return false;
+  // At least one terrain key must exist
+  if (!("STgd" in value || "Layr" in value)) return false;
+  // ItCo and YCrd are also required for terrain
+  if (!("ItCo" in value) || !("YCrd" in value)) return false;
+  return true;
 }
 
 /**
@@ -36,9 +43,7 @@ export interface AtomicLevelData {
 /**
  * Split a complete LevelData into atomic data types
  */
-export function splitLevelData(
-  levelData: LevelData | null,
-): AtomicLevelData {
+export function splitLevelData(levelData: LevelData | null): AtomicLevelData {
   if (!levelData) {
     return {
       headerData: null,
@@ -89,8 +94,24 @@ export function splitLevelData(
   // Collect extra resource types not handled by named atomic sections
   // (e.g. Splt, Liqd hex data) so they survive the split/combine cycle
   const knownKeys = new Set([
-    "Hedr", "Itms", "Liqd", "Fenc", "FnNb", "Spln", "SpNb", "SpPt", "SpIt",
-    "Atrb", "Timg", "ItCo", "Layr", "STgd", "YCrd", "alis", "Xlat", "Vcol",
+    "Hedr",
+    "Itms",
+    "Liqd",
+    "Fenc",
+    "FnNb",
+    "Spln",
+    "SpNb",
+    "SpPt",
+    "SpIt",
+    "Atrb",
+    "Timg",
+    "ItCo",
+    "Layr",
+    "STgd",
+    "YCrd",
+    "alis",
+    "Xlat",
+    "Vcol",
     "_metadata",
   ]);
   const extraResources: Record<string, unknown> = {};
@@ -161,7 +182,11 @@ export function combineLevelData(
   // Header and terrain are critical; optional sections (items, liquids, fences, splines)
   // are allowed to be missing and will simply not be included in the serialized output.
   if (!headerData || !terrainData) {
-    return err(new Error("Cannot combine level data: critical header or terrain is missing"));
+    return err(
+      new Error(
+        "Cannot combine level data: critical header or terrain is missing",
+      ),
+    );
   }
 
   // Build combined object progressively, only including sections that exist
@@ -216,19 +241,20 @@ export function isAtomicDataComplete(atomicData: AtomicLevelData): boolean {
  * the top level that look like resource type names (length <= 4) map
  * to object/dict values where each resource id maps to a wrapper dict.
  */
-export function validateResourceForkJson(json_blob: Record<string, unknown>):
+export function validateResourceForkJson(
+  json_blob: Record<string, unknown>,
+):
   | { ok: true }
   | { ok: false; message: string; badKey?: string; badValueType?: string } {
-  if (typeof json_blob !== "object" || json_blob === null || Array.isArray(json_blob)) {
+  if (!isRecord(json_blob)) {
     return { ok: false, message: "Top-level JSON blob must be an object" };
   }
-
   for (const [key, value] of Object.entries(json_blob)) {
     if (key.length <= 4) {
       if (value === undefined || value === null) {
         continue; // Optional/absent resource sections are allowed
       }
-      if (typeof value !== "object" || value === null || Array.isArray(value)) {
+      if (!isRecord(value)) {
         return {
           ok: false,
           message: `Resource type key '${key}' must map to an object/dict of resource records`,
@@ -237,21 +263,27 @@ export function validateResourceForkJson(json_blob: Record<string, unknown>):
         };
       }
       // Ensure each inner record maps to objects
-      if (isRecord(value)) {
-        for (const [resId, resBlob] of Object.entries(value)) {
-          if (typeof resBlob !== "object" || resBlob === null || Array.isArray(resBlob)) {
-            return {
-              ok: false,
-              message: `Resource record '${resId}' under type '${key}' must be an object/dict`,
-              badKey: key,
-              badValueType: Array.isArray(resBlob) ? "array" : typeof resBlob,
-            };
-          }
+      for (const [resId, resBlob] of Object.entries(value)) {
+        if (!isRecord(resBlob)) {
+          return {
+            ok: false,
+            message: `Resource record '${resId}' under type '${key}' must be an object/dict`,
+            badKey: key,
+            badValueType: Array.isArray(resBlob) ? "array" : typeof resBlob,
+          };
+        }
+        // Optionally: check for required fields in resource records (e.g., 'obj', 'name', 'order')
+        if (!("obj" in resBlob)) {
+          return {
+            ok: false,
+            message: `Resource record '${resId}' under type '${key}' is missing required 'obj' field`,
+            badKey: key,
+            badValueType: "missing_obj",
+          };
         }
       }
     }
   }
-
   return { ok: true };
 }
 
@@ -260,7 +292,9 @@ export function validateResourceForkJson(json_blob: Record<string, unknown>):
  * so downstream validation/serialization doesn't fail on stray arrays or primitives.
  * Also removes resource types with empty arrays (rsrcdump-ts throws on 0 resources).
  */
-export function sanitizeResourceForkJson(data: unknown): Record<string, unknown> {
+export function sanitizeResourceForkJson(
+  data: unknown,
+): Record<string, unknown> {
   if (!isRecord(data)) {
     return {};
   }
@@ -278,14 +312,21 @@ export function sanitizeResourceForkJson(data: unknown): Record<string, unknown>
     }
     const entry = value;
     for (const [resId, resVal] of Object.entries(entry)) {
-      if (resVal === undefined || resVal === null) continue;
+      if (resVal === undefined || resVal === null) {
+        Reflect.deleteProperty(entry, resId);
+        continue;
+      }
       if (!isRecord(resVal)) {
         Reflect.deleteProperty(entry, resId);
         continue;
       }
       // Check if the resource entry has a non-empty obj array
       const obj = resVal.obj;
-      if (Array.isArray(obj) && obj.length === 0) {
+      if (!Array.isArray(obj)) {
+        Reflect.deleteProperty(entry, resId);
+        continue;
+      }
+      if (obj.length === 0) {
         // Skip empty array resources - rsrcdump throws on 0 resources
         Reflect.deleteProperty(entry, resId);
       }

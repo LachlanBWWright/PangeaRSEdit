@@ -331,14 +331,12 @@ describe.skip("3DMF glTF Full Roundtrip Tests", () => {
   describe("Double Roundtrip Stability Test", () => {
     it("should produce identical results after two roundtrips", async () => {
       const testFile = join(BUGDOM_SKELETONS_PATH, "Ant.3dmf");
-      let fileBuffer: ArrayBuffer;
-      
       if (!existsSync(testFile)) {
         console.log("Ant.3dmf not available, skipping");
         return;
       }
       const data = readFileSync(testFile);
-      fileBuffer = data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength);
+      const fileBuffer = data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength);
 
       console.log(`\n=== Double Roundtrip Stability Test ===`);
 
