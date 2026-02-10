@@ -223,8 +223,7 @@ export function AnimationViewer({
     const trimmedName = editName.trim();
     const nextName =
       trimmedName.length > 0 ? trimmedName : `Animation ${selectedAnimation + 1}`;
-    const durationValue = Number.isFinite(editDuration) ? editDuration : current.duration;
-    const nextDuration = durationValue > 0 ? durationValue : current.duration;
+    const nextDuration = editDuration > 0 ? editDuration : current.duration;
     const clip = current.clip.clone();
     clip.name = nextName;
     clip.duration = nextDuration;
@@ -245,12 +244,9 @@ export function AnimationViewer({
       trimmedName.length > 0
         ? trimmedName
         : `Animation ${editableAnimations.length + 1}`;
-    const durationValue = Number.isFinite(newAnimationDuration)
-      ? newAnimationDuration
-      : 1;
-    const nextDuration = durationValue > 0 ? durationValue : 1;
+    const nextDuration = newAnimationDuration > 0 ? newAnimationDuration : 1;
     const templateClip = selectedAnimationInfo?.clip ?? null;
-    const tracks: AnimationClip["tracks"] = [];
+    const tracks = [];
     const clip = templateClip
       ? templateClip.clone()
       : new AnimationClip(nextName, nextDuration, tracks);
@@ -408,7 +404,7 @@ export function AnimationViewer({
               <label className="text-xs text-gray-300">Duration (seconds)</label>
               <Input
                 type="number"
-                min={0.01}
+                min={0.016}
                 step={0.1}
                 value={Number.isFinite(editDuration) ? editDuration : 0}
                 onChange={(event) =>
@@ -452,7 +448,7 @@ export function AnimationViewer({
             <label className="text-xs text-gray-300">Duration (seconds)</label>
             <Input
               type="number"
-              min={0.01}
+              min={0.016}
               step={0.1}
               value={Number.isFinite(newAnimationDuration) ? newAnimationDuration : 1}
               onChange={(event) =>
