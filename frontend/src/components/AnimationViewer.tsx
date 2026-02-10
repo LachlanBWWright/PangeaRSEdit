@@ -250,7 +250,10 @@ export function AnimationViewer({
       : 1;
     const nextDuration = durationValue > 0 ? durationValue : 1;
     const templateClip = selectedAnimationInfo?.clip ?? null;
-    const clip = templateClip ? templateClip.clone() : new AnimationClip(nextName, nextDuration, []);
+    const tracks: AnimationClip["tracks"] = [];
+    const clip = templateClip
+      ? templateClip.clone()
+      : new AnimationClip(nextName, nextDuration, tracks);
     clip.name = nextName;
     clip.duration = nextDuration;
     const nextIndex = editableAnimations.length;
@@ -266,13 +269,14 @@ export function AnimationViewer({
 
   const handleDeleteAnimation = () => {
     if (selectedAnimation === null) return;
+    const deletedIndex = selectedAnimation;
     setEditableAnimations((prev) =>
-      normalizeAnimations(prev.filter((_, index) => index !== selectedAnimation)),
+      normalizeAnimations(prev.filter((_, index) => index !== deletedIndex)),
     );
     setSelectedAnimation((prev) => {
       if (prev === null) return null;
-      if (prev === selectedAnimation) return null;
-      return prev > selectedAnimation ? prev - 1 : prev;
+      if (prev === deletedIndex) return null;
+      return prev > deletedIndex ? prev - 1 : prev;
     });
   };
 
@@ -404,7 +408,7 @@ export function AnimationViewer({
               <label className="text-xs text-gray-300">Duration (seconds)</label>
               <Input
                 type="number"
-                min={0}
+                min={0.01}
                 step={0.1}
                 value={Number.isFinite(editDuration) ? editDuration : 0}
                 onChange={(event) =>
@@ -448,7 +452,7 @@ export function AnimationViewer({
             <label className="text-xs text-gray-300">Duration (seconds)</label>
             <Input
               type="number"
-              min={0}
+              min={0.01}
               step={0.1}
               value={Number.isFinite(newAnimationDuration) ? newAnimationDuration : 1}
               onChange={(event) =>
