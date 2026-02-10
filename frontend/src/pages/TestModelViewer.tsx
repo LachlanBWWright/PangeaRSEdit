@@ -5,7 +5,7 @@
  * Allows selecting a game, model file, and specific model index to load.
  */
 
-import React, { useState, useCallback, useRef } from "react";
+import React, { useState, useCallback, useRef, useMemo } from "react";
 import { Canvas } from "@react-three/fiber";
 import { OrbitControls, Grid } from "@react-three/drei";
 import { Group, Mesh, BufferGeometry } from "three";
@@ -480,7 +480,7 @@ export function TestModelViewer() {
     console.log(`Loading model from: ${url}`);
 
     const fetchResult = await fromPromise(fetch(url));
-    if (!fetchResult.ok) {
+    if (fetchResult.isErr()) {
       const errorMsg = `Failed to fetch: ${fetchResult.error.message}`;
       setError(errorMsg);
       setStatus(`Error: ${errorMsg}`);
@@ -499,7 +499,7 @@ export function TestModelViewer() {
     }
 
     const bufferResult = await fromPromise(response.arrayBuffer());
-    if (!bufferResult.ok) {
+    if (bufferResult.isErr()) {
       const errorMsg = `Failed to read buffer: ${bufferResult.error.message}`;
       setError(errorMsg);
       setStatus(`Error: ${errorMsg}`);
@@ -561,7 +561,7 @@ export function TestModelViewer() {
       })
     );
 
-    if (!glbBufferResult.ok) {
+    if (glbBufferResult.isErr()) {
       const errorMsg = `Conversion failed: ${glbBufferResult.error.message}`;
       setError(errorMsg);
       setStatus(`Error: ${errorMsg}`);
@@ -591,7 +591,7 @@ export function TestModelViewer() {
 
     URL.revokeObjectURL(blobUrl);
 
-    if (!gltfResult.ok) {
+    if (gltfResult.isErr()) {
       const errorMsg = `Failed to load GLTF: ${gltfResult.error.message}`;
       setError(errorMsg);
       setStatus(`Error: ${errorMsg}`);
@@ -668,7 +668,7 @@ export function TestModelViewer() {
                   <SelectItem 
                     key={game.id} 
                     value={game.id}
-                    className="text-white hover:bg-gray-600"
+                    className="text-white focus:bg-gray-600"
                   >
                     {game.name} ({game.format.toUpperCase()})
                   </SelectItem>
@@ -693,7 +693,7 @@ export function TestModelViewer() {
                   <SelectItem 
                     key={file.path} 
                     value={file.path}
-                    className={`text-white hover:bg-gray-600 ${file.isSkeleton ? "text-purple-300" : ""}`}
+                    className={`text-white focus:bg-gray-600 ${file.isSkeleton ? "text-purple-300" : ""}`}
                   >
                     {file.label}
                   </SelectItem>
@@ -706,7 +706,7 @@ export function TestModelViewer() {
           <Button 
             onClick={loadModelFile}
             disabled={loading || !selectedGame || !selectedFileEntry}
-            className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+            className="w-full"
           >
             {loading ? "Loading..." : "Load Model"}
           </Button>
@@ -726,7 +726,7 @@ export function TestModelViewer() {
                   size="sm"
                   onClick={prevModel}
                   disabled={modelIndex <= 0}
-                  className="bg-gray-700 border-gray-600 text-white hover:bg-gray-600"
+                  className="text-white"
                 >
                   ←
                 </Button>
@@ -743,7 +743,7 @@ export function TestModelViewer() {
                   size="sm"
                   onClick={nextModel}
                   disabled={modelIndex >= maxIndex}
-                  className="bg-gray-700 border-gray-600 text-white hover:bg-gray-600"
+                  className="text-white"
                 >
                   →
                 </Button>

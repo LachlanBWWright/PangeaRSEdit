@@ -125,8 +125,8 @@ export async function fetchFileLines(
 ): Promise<Result<string[], Error>> {
   const result = await fetchGitHubFile(owner, repo, branch, path, rateLimitConfig);
   
-  if (!result.ok) {
-    return result;
+  if (result.isErr()) {
+    return err(result.error);
   }
   
   const { lines, totalLines } = result.value;
@@ -275,8 +275,8 @@ export class GitHubFileCache {
   ): Promise<Result<string[], Error>> {
     const fileResult = await this.getFile(owner, repo, branch, path);
     
-    if (!fileResult.ok) {
-      return fileResult;
+    if (fileResult.isErr()) {
+      return err(fileResult.error);
     }
     
     const { lines, totalLines } = fileResult.value;

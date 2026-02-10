@@ -86,7 +86,7 @@ export function GameModelSelector({
 
     // Fetch the model file (could be BG3D or 3DMF)
     const bg3dFetchResult = await fromPromise(fetch(selectedModel.bg3dFile));
-    if (!bg3dFetchResult.ok) {
+    if (bg3dFetchResult.isErr()) {
       console.error("Error loading selected model:", bg3dFetchResult.error);
       toast.error(`Failed to load ${selectedModel.name}`);
       return;
@@ -101,7 +101,7 @@ export function GameModelSelector({
     }
 
     const bg3dBufferResult = await fromPromise(bg3dResponse.arrayBuffer());
-    if (!bg3dBufferResult.ok) {
+    if (bg3dBufferResult.isErr()) {
       console.error("Error loading selected model:", bg3dBufferResult.error);
       toast.error(`Failed to load ${selectedModel.name}`);
       return;
@@ -126,7 +126,7 @@ export function GameModelSelector({
       const skeletonFetchResult = await fromPromise(
         fetch(selectedModel.skeletonFile),
       );
-      if (!skeletonFetchResult.ok) {
+      if (skeletonFetchResult.isErr()) {
         console.warn(
           `${selectedModel.name} skeleton file fetch failed, loading without animations`,
         );
@@ -139,11 +139,11 @@ export function GameModelSelector({
           const skeletonBufferResult = await fromPromise(
             skeletonResponse.arrayBuffer(),
           );
-          if (!skeletonBufferResult.ok) {
-            console.warn(
-              `${selectedModel.name} skeleton file read failed, loading without animations`,
-            );
-            toast.warning(
+            if (skeletonBufferResult.isErr()) {
+              console.warn(
+                `${selectedModel.name} skeleton file read failed, loading without animations`,
+              );
+              toast.warning(
               "Failed to read skeleton file, loading model without animations",
             );
           } else {
@@ -169,7 +169,7 @@ export function GameModelSelector({
     }
 
     const loadResult = await onLoadModel(bg3dFile, skeletonFile);
-    if (!loadResult.ok) {
+    if (loadResult.isErr()) {
       console.error("Error loading selected model:", loadResult.error);
       toast.error(`Failed to load ${selectedModel.name}`);
     }
@@ -195,7 +195,7 @@ export function GameModelSelector({
                 <SelectItem
                   key={game.id}
                   value={game.id}
-                  className="text-white hover:bg-gray-600"
+                  className="text-white focus:bg-gray-600"
                 >
                   {game.name}{" "}
                   {game.models.length === 0 && "(No models available)"}
@@ -218,13 +218,13 @@ export function GameModelSelector({
               </SelectTrigger>
               <SelectContent className="bg-gray-700 border-gray-600">
                 {availableCategories.map((category) => (
-                  <SelectItem
-                    key={category}
-                    value={category}
-                    className="text-white hover:bg-gray-600"
-                  >
-                    {category}
-                  </SelectItem>
+                    <SelectItem
+                      key={category}
+                      value={category}
+                      className="text-white focus:bg-gray-600"
+                    >
+                      {category}
+                    </SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -253,7 +253,7 @@ export function GameModelSelector({
                     <SelectItem
                       key={model.name}
                       value={model.name}
-                      className="text-white hover:bg-gray-600"
+                      className="text-white focus:bg-gray-600"
                     >
                       <div className="flex flex-col">
                         <span>{model.name}</span>

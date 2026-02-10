@@ -607,8 +607,8 @@ export function parseBG3D(
   }
   for (const group of groups) {
     const validationResult = validateGeometryMaterials(group);
-    if (!validationResult.ok) {
-      return validationResult;
+    if (validationResult.isErr()) {
+      return err(validationResult.error);
     }
   }
 

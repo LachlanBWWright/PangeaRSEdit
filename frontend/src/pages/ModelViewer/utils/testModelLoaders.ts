@@ -4,7 +4,7 @@
  * Loads pre-packaged test models (Otto Matic) from the public assets directory
  */
 
-import { fromPromise, err, type Result } from "@/types/result";
+import { fromPromise, err, ok, type Result } from "@/types/result";
 
 /**
  * Loads the Otto test model with skeleton
@@ -57,7 +57,7 @@ export async function loadOttoTestModel(): Promise<Result<{
     );
   }
 
-  return { ok: true, value: { bg3dFile, skeletonFile } };
+  return ok({ bg3dFile, skeletonFile });
 }
 
 /**
@@ -92,5 +92,5 @@ export async function loadOttoTestModelWithoutSkeleton(): Promise<Result<File, E
   });
 
   console.log("Loading Otto model without skeleton data for comparison");
-  return { ok: true, value: bg3dFile };
+  return ok(bg3dFile);
 }

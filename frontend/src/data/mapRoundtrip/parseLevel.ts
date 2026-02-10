@@ -152,7 +152,7 @@ export async function parseLevelForGame(
   });
 
   if (isErr(parseResult)) {
-    return parseResult;
+    return err(parseResult.error);
   }
 
   // Apply preprocessing (LevelData must be a record for preprocessJson)
@@ -161,7 +161,7 @@ export async function parseLevelForGame(
   }
   const preprocessResult = preprocessJson(parseResult.value, gameType);
   if (isErr(preprocessResult)) {
-    return preprocessResult;
+    return err(preprocessResult.error);
   }
 
   return ok(parseResult.value);

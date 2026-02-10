@@ -1,6 +1,13 @@
 import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
 import { Play, Pause, Square, RotateCcw } from "lucide-react";
 import { AnimationClip, AnimationMixer, LoopRepeat, type AnimationAction } from "three";
@@ -32,6 +39,8 @@ export function AnimationViewer({
   const [hasActiveAction, setHasActiveAction] = useState(false); // Track if there's an active action
   const animationRequestRef = useRef<number | undefined>(undefined);
   const currentActionRef = useRef<AnimationAction | null>(null);
+  const selectedAnimationValue =
+    selectedAnimation === null ? "none" : String(selectedAnimation);
 
   // Update animation state when mixer or selection changes
   useEffect(() => {
@@ -183,22 +192,35 @@ export function AnimationViewer({
         {/* Animation List */}
         <div className="space-y-2">
           <label className="text-xs text-gray-300">Select Animation:</label>
-          <select
-            className="w-full bg-gray-700 text-white border border-gray-600 rounded px-2 py-1 text-sm"
-            value={selectedAnimation ?? ""}
-            onChange={(e) =>
-              setSelectedAnimation(
-                e.target.value ? parseInt(e.target.value) : null,
-              )
-            }
+          <Select
+            value={selectedAnimationValue}
+            onValueChange={(value) => {
+              if (value === "none") {
+                setSelectedAnimation(null);
+                return;
+              }
+              const nextIndex = Number.parseInt(value, 10);
+              setSelectedAnimation(Number.isNaN(nextIndex) ? null : nextIndex);
+            }}
           >
-            <option value="">-- Select Animation --</option>
-            {animations.map((anim, index) => (
-              <option key={index} value={index}>
-                {anim.name} ({formatTime(anim.duration)})
-              </option>
-            ))}
-          </select>
+            <SelectTrigger className="w-full bg-gray-700 border-gray-600 text-white">
+              <SelectValue placeholder="Select animation" />
+            </SelectTrigger>
+            <SelectContent className="bg-gray-700 border-gray-600">
+              <SelectItem value="none" className="text-white focus:bg-gray-600">
+                -- Select Animation --
+              </SelectItem>
+              {animations.map((anim, index) => (
+                <SelectItem
+                  key={`${anim.name}-${index}`}
+                  value={String(index)}
+                  className="text-white focus:bg-gray-600"
+                >
+                  {anim.name} ({formatTime(anim.duration)})
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
 
         {/* Animation Controls */}

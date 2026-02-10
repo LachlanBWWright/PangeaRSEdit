@@ -277,7 +277,7 @@ export function ModelUploadPanel({
             <input
               ref={fileInputRef}
               type="file"
-              accept=".bg3d,.skeleton.rsrc"
+              accept=".bg3d,.3dmf,.skeleton.rsrc"
               multiple
               className="hidden"
               onChange={(e) => {

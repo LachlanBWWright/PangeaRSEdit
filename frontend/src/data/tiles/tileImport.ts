@@ -255,24 +255,24 @@ export async function prepareTileFromImage(
   
   // Load and validate image
   const imageResult = await loadAndValidateImage(file, globals);
-  if (!imageResult.ok) {
-    return imageResult;
+  if (imageResult.isErr()) {
+    return err(imageResult.error);
   }
   
   const image = imageResult.value;
   
   // Convert to 16-bit tile data
   const tileDataResult = convertImageTo16BitTileData(image, config);
-  if (!tileDataResult.ok) {
-    return tileDataResult;
+  if (tileDataResult.isErr()) {
+    return err(tileDataResult.error);
   }
   
   const tileData = tileDataResult.value;
   
   // Generate preview
   const previewResult = convertTileDataToPreview(tileData, gameConfig.tileSize);
-  if (!previewResult.ok) {
-    return previewResult;
+  if (previewResult.isErr()) {
+    return err(previewResult.error);
   }
   
   return ok({

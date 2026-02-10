@@ -3,8 +3,10 @@
 import eslint from "@eslint/js";
 import { defineConfig } from "eslint/config";
 import tseslint from "typescript-eslint";
+import tsParser from "@typescript-eslint/parser";
 import reactHooks from "eslint-plugin-react-hooks";
 import functionalPlugin from "eslint-plugin-functional";
+import neverthrowPlugin from "eslint-plugin-neverthrow";
 
 export default defineConfig(
   {
@@ -28,10 +30,13 @@ export default defineConfig(
     plugins: {
       "typescript-eslint": tseslint,
       "functional": functionalPlugin,
+      "neverthrow": neverthrowPlugin,
     },
     languageOptions: {
+      parser: tsParser,
       parserOptions: {
         projectService: true,
+        tsconfigRootDir: process.cwd(),
       },
     },
     rules: {
@@ -40,6 +45,7 @@ export default defineConfig(
       // Enforce Result types - ban throw statements and try/catch blocks
       "functional/no-throw-statements": "error",
       "functional/no-try-statements": "error",
+      "neverthrow/must-use-result": "off",
     },
   },
   // Allow try/catch ONLY in result.ts utilities

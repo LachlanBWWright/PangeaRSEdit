@@ -1,4 +1,12 @@
+import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 type FileType = "sprites" | "tga" | "tileset";
 
@@ -58,6 +66,7 @@ export function MightyMikeAssetBrowser({
   loading,
   loadedFilename,
 }: MightyMikeAssetBrowserProps) {
+  const [selectedAsset, setSelectedAsset] = useState<string>("");
   const getAvailableFiles = (type: FileType): string[] => {
     switch (type) {
       case "sprites":
@@ -79,43 +88,60 @@ export function MightyMikeAssetBrowser({
       <CardContent className="space-y-3">
         <div>
           <label className="text-xs text-gray-400 block mb-2">Asset Type</label>
-          <select
+          <Select
             value={selectedType}
-            onChange={(e) => {
-              const v = e.target.value;
-              if (v === "sprites" || v === "tga" || v === "tileset") {
-                onTypeChange(v);
+            onValueChange={(value) => {
+              if (value === "sprites" || value === "tga" || value === "tileset") {
+                onTypeChange(value);
               } else {
-                console.warn("Unknown asset type selected:", v);
+                console.warn("Unknown asset type selected:", value);
               }
             }}
-            className="w-full bg-gray-700 text-white rounded px-2 py-2 text-sm border border-gray-600"
           >
-            <option value="sprites" style={{ color: "white", backgroundColor: "#1a1a2e" }}>Sprites (.shapes)</option>
-            <option value="tga" style={{ color: "white", backgroundColor: "#1a1a2e" }}>Scene Images (.tga)</option>
-            <option value="tileset" style={{ color: "white", backgroundColor: "#1a1a2e" }}>Tilesets (.tileset)</option>
-          </select>
+            <SelectTrigger className="w-full bg-gray-700 border-gray-600 text-white">
+              <SelectValue placeholder="Select asset type" />
+            </SelectTrigger>
+            <SelectContent className="bg-gray-700 border-gray-600">
+              <SelectItem value="sprites" className="text-white focus:bg-gray-600">
+                Sprites (.shapes)
+              </SelectItem>
+              <SelectItem value="tga" className="text-white focus:bg-gray-600">
+                Scene Images (.tga)
+              </SelectItem>
+              <SelectItem value="tileset" className="text-white focus:bg-gray-600">
+                Tilesets (.tileset)
+              </SelectItem>
+            </SelectContent>
+          </Select>
         </div>
 
         <div>
           <label className="text-xs text-gray-400 block mb-2">Select Asset</label>
-          <select
-            onChange={(e) => {
-              if (e.target.value) {
-                onAssetSelect(e.target.value);
-                e.target.value = "";
+          <Select
+            value={selectedAsset}
+            onValueChange={(value) => {
+              if (value) {
+                onAssetSelect(value);
+                setSelectedAsset("");
               }
             }}
-            className="w-full bg-gray-700 text-white rounded px-2 py-2 text-sm border border-gray-600"
             disabled={loading}
           >
-            <option value="" style={{ color: "white", backgroundColor: "#1a1a2e" }}>Select a file...</option>
-            {availableFiles.map((f) => (
-              <option key={f} value={f} style={{ color: "white", backgroundColor: "#1a1a2e" }}>
-                {f}
-              </option>
-            ))}
-          </select>
+            <SelectTrigger className="w-full bg-gray-700 border-gray-600 text-white">
+              <SelectValue placeholder="Select a file..." />
+            </SelectTrigger>
+            <SelectContent className="bg-gray-700 border-gray-600">
+              {availableFiles.map((file) => (
+                <SelectItem
+                  key={file}
+                  value={file}
+                  className="text-white focus:bg-gray-600"
+                >
+                  {file}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
 
         {loading && <p className="text-sm text-blue-400">Loading...</p>}

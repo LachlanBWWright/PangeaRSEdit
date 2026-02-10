@@ -1,5 +1,12 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { ShapesFile } from "@/parsers/mightyMikeShapesParser";
 
@@ -66,19 +73,30 @@ export function SpriteControls({
             </Button>
           </div>
 
-          <select
-            value={selectedShapeIndex}
-            onChange={(e) => {
-              onShapeChange(parseInt(e.target.value));
+          <Select
+            value={String(selectedShapeIndex)}
+            onValueChange={(value) => {
+              const nextIndex = Number.parseInt(value, 10);
+              if (!Number.isNaN(nextIndex)) {
+                onShapeChange(nextIndex);
+              }
             }}
-            className="w-full bg-gray-700 text-white rounded px-2 py-1 text-sm"
           >
-            {shapesFile.shapes.map((_, idx) => (
-              <option key={idx} value={idx} style={{ color: "white", backgroundColor: "#1a1a2e" }}>
-                Shape {idx} ({shapesFile.shapes[idx]?.frames.length ?? 0} frames)
-              </option>
-            ))}
-          </select>
+            <SelectTrigger className="w-full bg-gray-700 border-gray-600 text-white">
+              <SelectValue placeholder="Select a shape" />
+            </SelectTrigger>
+            <SelectContent className="bg-gray-700 border-gray-600">
+              {shapesFile.shapes.map((shape, idx) => (
+                <SelectItem
+                  key={`shape-${idx}`}
+                  value={String(idx)}
+                  className="text-white focus:bg-gray-600"
+                >
+                  Shape {idx} ({shape.frames.length} frames)
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </CardContent>
       </Card>
 

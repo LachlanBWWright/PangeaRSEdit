@@ -1,60 +1,82 @@
 /**
  * Result type for error handling (inspired by Rust's Result<T, E>)
- * 
- * This provides a type-safe alternative to throwing exceptions,
- * allowing functions to return either a success value or an error.
+ *
+ * This module wraps NeverThrow to provide a consistent Result API
+ * while keeping the existing helper utilities.
  */
 
-/** Represents a successful result containing a value of type T */
-export interface Ok<T> {
-  readonly ok: true;
-  readonly value: T;
-  readonly error?: never;
+import {
+  err as neverthrowErr,
+  ok as neverthrowOk,
+  Result as NeverthrowResult,
+  ResultAsync,
+  Ok,
+  Err,
+} from "neverthrow";
+
+declare module "neverthrow" {
+  interface Ok<T, E> {
+    readonly ok: true;
+    readonly _neverthrowTypes?: [T, E];
+  }
+
+  interface Err<T, E> {
+    readonly ok: false;
+    readonly _neverthrowTypes?: [T, E];
+  }
 }
 
-/** Represents a failure result containing an error */
-export interface Err<E = Error> {
-  readonly ok: false;
-  readonly error: E;
-  readonly value?: never;
-}
+const ensureLegacyOkFlag = () => {
+  if (!Object.prototype.hasOwnProperty.call(Ok.prototype, "ok")) {
+    Object.defineProperty(Ok.prototype, "ok", {
+      get: () => true,
+    });
+  }
+  if (!Object.prototype.hasOwnProperty.call(Err.prototype, "ok")) {
+    Object.defineProperty(Err.prototype, "ok", {
+      get: () => false,
+    });
+  }
+};
+
+ensureLegacyOkFlag();
 
 /** A Result is either Ok with a value, or Err with an error */
-export type Result<T, E = Error> = Ok<T> | Err<E>;
+export type Result<T, E = Error> = NeverthrowResult<T, E>;
 
 /**
  * Create a successful result
  */
-export function ok<T>(value: T): Ok<T> {
-  return { ok: true, value };
+export function ok<T>(value: T): Ok<T, never> {
+  return neverthrowOk(value);
 }
 
 /**
  * Create an error result
  */
-export function err<E = Error>(error: E): Err<E> {
-  return { ok: false, error };
+export function err<E = Error>(error: E): Err<never, E> {
+  return neverthrowErr(error);
 }
 
 /**
  * Create an error result from a string message
  */
-export function errMsg(message: string): Err<Error> {
-  return { ok: false, error: new Error(message) };
+export function errMsg(message: string): Err<never, Error> {
+  return err(new Error(message));
 }
 
 /**
  * Type guard to check if a result is Ok
  */
-export function isOk<T, E>(result: Result<T, E>): result is Ok<T> {
-  return result.ok === true;
+export function isOk<T, E>(result: Result<T, E>): result is Ok<T, E> {
+  return result.isOk();
 }
 
 /**
  * Type guard to check if a result is Err
  */
-export function isErr<T, E>(result: Result<T, E>): result is Err<E> {
-  return result.ok === false;
+export function isErr<T, E>(result: Result<T, E>): result is Err<T, E> {
+  return result.isErr();
 }
 
 /**
@@ -62,7 +84,7 @@ export function isErr<T, E>(result: Result<T, E>): result is Err<E> {
  * Use sparingly - prefer pattern matching with isOk/isErr
  */
 export function unwrap<T, E>(result: Result<T, E>): T {
-  if (result.ok) {
+  if (result.isOk()) {
     return result.value;
   }
   throw result.error;
@@ -72,30 +94,27 @@ export function unwrap<T, E>(result: Result<T, E>): T {
  * Unwrap a result, returning the value if Ok, or a default value if Err
  */
 export function unwrapOr<T, E>(result: Result<T, E>, defaultValue: T): T {
-  if (result.ok) {
-    return result.value;
-  }
-  return defaultValue;
+  return result.unwrapOr(defaultValue);
 }
 
 /**
  * Map a successful result to a new value
  */
-export function map<T, U, E>(result: Result<T, E>, fn: (value: T) => U): Result<U, E> {
-  if (result.ok) {
-    return ok(fn(result.value));
-  }
-  return result;
+export function map<T, U, E>(
+  result: Result<T, E>,
+  fn: (value: T) => U,
+): Result<U, E> {
+  return result.map(fn);
 }
 
 /**
  * Map an error to a new error type
  */
-export function mapErr<T, E, F>(result: Result<T, E>, fn: (error: E) => F): Result<T, F> {
-  if (!result.ok) {
-    return err(fn(result.error));
-  }
-  return result;
+export function mapErr<T, E, F>(
+  result: Result<T, E>,
+  fn: (error: E) => F,
+): Result<T, F> {
+  return result.mapErr(fn);
 }
 
 /**
@@ -103,24 +122,20 @@ export function mapErr<T, E, F>(result: Result<T, E>, fn: (error: E) => F): Resu
  */
 export function andThen<T, U, E>(
   result: Result<T, E>,
-  fn: (value: T) => Result<U, E>
+  fn: (value: T) => Result<U, E>,
 ): Result<U, E> {
-  if (result.ok) {
-    return fn(result.value);
-  }
-  return result;
+  return result.andThen(fn);
 }
 
 /**
  * Convert a Promise that might reject to a Promise that returns a Result
  */
-export async function fromPromise<T>(promise: Promise<T>): Promise<Result<T, Error>> {
-  try {
-    const value = await promise;
-    return ok(value);
-  } catch (error) {
-    return err(error instanceof Error ? error : new Error(String(error)));
-  }
+export async function fromPromise<T>(
+  promise: Promise<T>,
+): Promise<Result<T, Error>> {
+  return await ResultAsync.fromPromise(promise, (error) =>
+    error instanceof Error ? error : new Error(String(error)),
+  );
 }
 
 /**
@@ -138,9 +153,14 @@ export function tryFn<T>(fn: () => T): Result<T, Error> {
  * Safely access an array element by index
  * Returns Err if index is out of bounds or element is undefined (for sparse arrays)
  */
-export function safeIndex<T>(arr: readonly T[], index: number): Result<T, Error> {
+export function safeIndex<T>(
+  arr: readonly T[],
+  index: number,
+): Result<T, Error> {
   if (index < 0 || index >= arr.length) {
-    return err(new Error(`Index ${index} out of bounds for array of length ${arr.length}`));
+    return err(
+      new Error(`Index ${index} out of bounds for array of length ${arr.length}`),
+    );
   }
   // With noUncheckedIndexedAccess, arr[index] is T | undefined
   // The undefined check handles sparse arrays where a valid index may still be undefined
@@ -157,13 +177,13 @@ export function safeIndex<T>(arr: readonly T[], index: number): Result<T, Error>
  */
 export function safeGet<T extends object, K extends keyof T>(
   obj: T,
-  key: K
+  key: K,
 ): Result<NonNullable<T[K]>, Error> {
   const value = obj[key];
   if (value === undefined || value === null) {
     return err(new Error(`Property '${String(key)}' is not defined`));
   }
-  return ok(value as NonNullable<T[K]>);
+  return ok(value);
 }
 
 /**
@@ -172,7 +192,7 @@ export function safeGet<T extends object, K extends keyof T>(
  */
 export function safeRecordGet<V>(
   record: Record<string | number, V>,
-  key: string | number
+  key: string | number,
 ): Result<V, Error> {
   const value = record[key];
   if (value === undefined) {
@@ -188,8 +208,8 @@ export function safeRecordGet<V>(
 export function all<T, E>(results: Result<T, E>[]): Result<T[], E> {
   const values: T[] = [];
   for (const result of results) {
-    if (!result.ok) {
-      return result;
+    if (result.isErr()) {
+      return err(result.error);
     }
     values.push(result.value);
   }
@@ -204,10 +224,7 @@ export function match<T, E, U>(
   handlers: {
     ok: (value: T) => U;
     err: (error: E) => U;
-  }
+  },
 ): U {
-  if (result.ok) {
-    return handlers.ok(result.value);
-  }
-  return handlers.err(result.error);
+  return result.match(handlers.ok, handlers.err);
 }
