@@ -1,6 +1,7 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -30,6 +31,17 @@ export function AnimationViewer({
   animationMixer,
   onAnimationChange,
 }: AnimationViewerProps) {
+  const normalizeAnimations = useCallback(
+    (items: AnimationInfo[]) =>
+      items.map((anim, index) => ({
+        ...anim,
+        index,
+      })),
+    [],
+  );
+  const [editableAnimations, setEditableAnimations] = useState<AnimationInfo[]>(
+    () => normalizeAnimations(animations),
+  );
   const [selectedAnimation, setSelectedAnimation] = useState<number | null>(
     null,
   );
@@ -37,19 +49,57 @@ export function AnimationViewer({
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [hasActiveAction, setHasActiveAction] = useState(false); // Track if there's an active action
+  const [editName, setEditName] = useState("");
+  const [editDuration, setEditDuration] = useState(0);
+  const [newAnimationName, setNewAnimationName] = useState("New Animation");
+  const [newAnimationDuration, setNewAnimationDuration] = useState(1);
   const animationRequestRef = useRef<number | undefined>(undefined);
   const currentActionRef = useRef<AnimationAction | null>(null);
   const selectedAnimationValue =
     selectedAnimation === null ? "none" : String(selectedAnimation);
+  const selectedAnimationInfo = useMemo(
+    () =>
+      selectedAnimation === null
+        ? null
+        : editableAnimations[selectedAnimation] ?? null,
+    [editableAnimations, selectedAnimation],
+  );
+
+  useEffect(() => {
+    const normalized = normalizeAnimations(animations);
+    Promise.resolve().then(() => {
+      setEditableAnimations(normalized);
+      setSelectedAnimation(null);
+      setEditName("");
+      setEditDuration(0);
+      setCurrentTime(0);
+      setDuration(0);
+      setIsPlaying(false);
+    });
+  }, [animations, normalizeAnimations]);
+
+  useEffect(() => {
+    if (!selectedAnimationInfo) {
+      Promise.resolve().then(() => {
+        setEditName("");
+        setEditDuration(0);
+      });
+      return;
+    }
+    Promise.resolve().then(() => {
+      setEditName(selectedAnimationInfo.name);
+      setEditDuration(selectedAnimationInfo.duration);
+    });
+  }, [selectedAnimationInfo]);
 
   // Update animation state when mixer or selection changes
   useEffect(() => {
     if (
       selectedAnimation !== null &&
       animationMixer &&
-      animations[selectedAnimation]
+      editableAnimations[selectedAnimation]
     ) {
-      const animationInfo = animations[selectedAnimation];
+      const animationInfo = editableAnimations[selectedAnimation];
       Promise.resolve().then(() => {
         setDuration(animationInfo.duration);
         setCurrentTime(0);
@@ -86,7 +136,7 @@ export function AnimationViewer({
       }
       onAnimationChange?.(null);
     }
-  }, [selectedAnimation, animationMixer, animations, onAnimationChange]);
+  }, [selectedAnimation, animationMixer, editableAnimations, onAnimationChange]);
 
   // Animation loop for updating time
   useEffect(() => {
@@ -166,26 +216,73 @@ export function AnimationViewer({
       .padStart(2, "0")}`;
   };
 
-  if (animations.length === 0) {
-    return (
-      <Card className="bg-gray-800 border-gray-700">
-        <CardHeader>
-          <CardTitle className="text-white text-sm">Animations</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-sm text-gray-400">
-            No animations found in this model
-          </p>
-        </CardContent>
-      </Card>
+  const handleUpdateAnimation = () => {
+    if (selectedAnimation === null) return;
+    const current = editableAnimations[selectedAnimation];
+    if (!current) return;
+    const trimmedName = editName.trim();
+    const nextName =
+      trimmedName.length > 0 ? trimmedName : `Animation ${selectedAnimation + 1}`;
+    const durationValue = Number.isFinite(editDuration) ? editDuration : current.duration;
+    const nextDuration = durationValue > 0 ? durationValue : current.duration;
+    const clip = current.clip.clone();
+    clip.name = nextName;
+    clip.duration = nextDuration;
+    setEditableAnimations((prev) =>
+      normalizeAnimations(
+        prev.map((anim, index) =>
+          index === selectedAnimation
+            ? { ...anim, name: nextName, duration: nextDuration, clip }
+            : anim,
+        ),
+      ),
     );
-  }
+  };
+
+  const handleCreateAnimation = () => {
+    const trimmedName = newAnimationName.trim();
+    const nextName =
+      trimmedName.length > 0
+        ? trimmedName
+        : `Animation ${editableAnimations.length + 1}`;
+    const durationValue = Number.isFinite(newAnimationDuration)
+      ? newAnimationDuration
+      : 1;
+    const nextDuration = durationValue > 0 ? durationValue : 1;
+    const templateClip = selectedAnimationInfo?.clip ?? null;
+    const clip = templateClip ? templateClip.clone() : new AnimationClip(nextName, nextDuration, []);
+    clip.name = nextName;
+    clip.duration = nextDuration;
+    const nextIndex = editableAnimations.length;
+    const newInfo: AnimationInfo = {
+      name: nextName,
+      duration: nextDuration,
+      index: nextIndex,
+      clip,
+    };
+    setEditableAnimations((prev) => normalizeAnimations([...prev, newInfo]));
+    setSelectedAnimation(nextIndex);
+  };
+
+  const handleDeleteAnimation = () => {
+    if (selectedAnimation === null) return;
+    setEditableAnimations((prev) =>
+      normalizeAnimations(prev.filter((_, index) => index !== selectedAnimation)),
+    );
+    setSelectedAnimation((prev) => {
+      if (prev === null) return null;
+      if (prev === selectedAnimation) return null;
+      return prev > selectedAnimation ? prev - 1 : prev;
+    });
+  };
+
+  const hasAnimations = editableAnimations.length > 0;
 
   return (
     <Card className="bg-gray-800 border-gray-700">
       <CardHeader>
         <CardTitle className="text-white text-sm">
-          Animations ({animations.length})
+          Animations ({editableAnimations.length})
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -210,7 +307,7 @@ export function AnimationViewer({
               <SelectItem value="none" className="text-white focus:bg-gray-600">
                 -- Select Animation --
               </SelectItem>
-              {animations.map((anim, index) => (
+              {editableAnimations.map((anim, index) => (
                 <SelectItem
                   key={`${anim.name}-${index}`}
                   value={String(index)}
@@ -221,10 +318,15 @@ export function AnimationViewer({
               ))}
             </SelectContent>
           </Select>
+          {!hasAnimations && (
+            <p className="text-xs text-gray-400">
+              No animations found in this model.
+            </p>
+          )}
         </div>
 
         {/* Animation Controls */}
-        {selectedAnimation !== null && (
+        {selectedAnimationInfo && (
           <div className="space-y-3">
             {/* Control Buttons */}
             <div className="flex gap-2">
@@ -281,12 +383,98 @@ export function AnimationViewer({
 
             {/* Animation Info */}
             <div className="text-xs text-gray-400 space-y-1">
-              <div>Name: {animations[selectedAnimation]?.name}</div>
+              <div>Name: {selectedAnimationInfo.name}</div>
               <div>Duration: {formatTime(duration)}</div>
               <div>Status: {isPlaying ? "Playing" : "Paused"}</div>
             </div>
           </div>
         )}
+
+        {/* Animation Editor */}
+        <div className="space-y-3 border-t border-gray-700 pt-3">
+          <div className="text-xs font-semibold text-gray-300">Edit Animation</div>
+          {selectedAnimationInfo ? (
+            <div className="space-y-2">
+              <label className="text-xs text-gray-300">Name</label>
+              <Input
+                value={editName}
+                onChange={(event) => setEditName(event.target.value)}
+                className="bg-gray-700 border-gray-600 text-white"
+              />
+              <label className="text-xs text-gray-300">Duration (seconds)</label>
+              <Input
+                type="number"
+                min={0}
+                step={0.1}
+                value={Number.isFinite(editDuration) ? editDuration : 0}
+                onChange={(event) =>
+                  setEditDuration(Number.parseFloat(event.target.value))
+                }
+                className="bg-gray-700 border-gray-600 text-white"
+              />
+              <div className="flex gap-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="flex-1 text-white"
+                  onClick={handleUpdateAnimation}
+                >
+                  Save Changes
+                </Button>
+                <Button
+                  size="sm"
+                  variant="destructive"
+                  className="text-white"
+                  onClick={handleDeleteAnimation}
+                >
+                  Delete
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <p className="text-xs text-gray-400">Select an animation to edit.</p>
+          )}
+        </div>
+
+        <div className="space-y-3 border-t border-gray-700 pt-3">
+          <div className="text-xs font-semibold text-gray-300">Create Animation</div>
+          <div className="space-y-2">
+            <label className="text-xs text-gray-300">Name</label>
+            <Input
+              value={newAnimationName}
+              onChange={(event) => setNewAnimationName(event.target.value)}
+              className="bg-gray-700 border-gray-600 text-white"
+            />
+            <label className="text-xs text-gray-300">Duration (seconds)</label>
+            <Input
+              type="number"
+              min={0}
+              step={0.1}
+              value={Number.isFinite(newAnimationDuration) ? newAnimationDuration : 1}
+              onChange={(event) =>
+                setNewAnimationDuration(Number.parseFloat(event.target.value))
+              }
+              className="bg-gray-700 border-gray-600 text-white"
+            />
+            <Button
+              size="sm"
+              variant="outline"
+              className="w-full text-white"
+              onClick={handleCreateAnimation}
+            >
+              Create Animation
+            </Button>
+            {selectedAnimationInfo ? (
+              <p className="text-xs text-gray-400">
+                New animation will copy tracks from "{selectedAnimationInfo.name}"
+              </p>
+            ) : (
+              <p className="text-xs text-gray-400">
+                New animation will start empty until edited.
+              </p>
+            )}
+          </div>
+        </div>
       </CardContent>
     </Card>
   );
