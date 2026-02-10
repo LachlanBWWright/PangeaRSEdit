@@ -41,8 +41,8 @@ export function AnimationViewer({
       })),
     [],
   );
-  const [editableAnimations, setEditableAnimations] = useState<AnimationInfo[]>(
-    () => normalizeAnimations(animations),
+  const [draftAnimations, setDraftAnimations] = useState<AnimationInfo[] | null>(
+    null,
   );
   const [selectedAnimation, setSelectedAnimation] = useState<number | null>(
     null,
@@ -59,6 +59,11 @@ export function AnimationViewer({
   );
   const animationRequestRef = useRef<number | undefined>(undefined);
   const currentActionRef = useRef<AnimationAction | null>(null);
+  const baseAnimations = useMemo(
+    () => normalizeAnimations(animations),
+    [animations, normalizeAnimations],
+  );
+  const editableAnimations = draftAnimations ?? baseAnimations;
   const selectedAnimationValue =
     selectedAnimation === null ? "none" : String(selectedAnimation);
   const selectedAnimationInfo = useMemo(
@@ -68,33 +73,6 @@ export function AnimationViewer({
         : editableAnimations[selectedAnimation] ?? null,
     [editableAnimations, selectedAnimation],
   );
-
-  useEffect(() => {
-    const normalized = normalizeAnimations(animations);
-    Promise.resolve().then(() => {
-      setEditableAnimations(normalized);
-      setSelectedAnimation(null);
-      setEditName("");
-      setEditDuration(0);
-      setCurrentTime(0);
-      setDuration(0);
-      setIsPlaying(false);
-    });
-  }, [animations, normalizeAnimations]);
-
-  useEffect(() => {
-    if (!selectedAnimationInfo) {
-      Promise.resolve().then(() => {
-        setEditName("");
-        setEditDuration(0);
-      });
-      return;
-    }
-    Promise.resolve().then(() => {
-      setEditName(selectedAnimationInfo.name);
-      setEditDuration(selectedAnimationInfo.duration);
-    });
-  }, [selectedAnimationInfo]);
 
   // Update animation state when mixer or selection changes
   useEffect(() => {
@@ -231,15 +209,17 @@ export function AnimationViewer({
     const clip = current.clip.clone();
     clip.name = nextName;
     clip.duration = nextDuration;
-    setEditableAnimations((prev) =>
+    setDraftAnimations((prev) =>
       normalizeAnimations(
-        prev.map((anim, index) =>
+        (prev ?? editableAnimations).map((anim, index) =>
           index === selectedAnimation
             ? { ...anim, name: nextName, duration: nextDuration, clip }
             : anim,
         ),
       ),
     );
+    setEditName(nextName);
+    setEditDuration(nextDuration);
   };
 
   const handleCreateAnimation = () => {
@@ -253,10 +233,10 @@ export function AnimationViewer({
         ? newAnimationDuration
         : DEFAULT_ANIMATION_DURATION;
     const templateClip = selectedAnimationInfo?.clip ?? null;
-    const tracks = [];
+    const emptyTracks = [];
     const clip = templateClip
       ? templateClip.clone()
-      : new AnimationClip(nextName, nextDuration, tracks);
+      : new AnimationClip(nextName, nextDuration, emptyTracks);
     clip.name = nextName;
     clip.duration = nextDuration;
     const nextIndex = editableAnimations.length;
@@ -266,21 +246,29 @@ export function AnimationViewer({
       index: nextIndex,
       clip,
     };
-    setEditableAnimations((prev) => normalizeAnimations([...prev, newInfo]));
+    setDraftAnimations((prev) =>
+      normalizeAnimations([...(prev ?? editableAnimations), newInfo]),
+    );
     setSelectedAnimation(nextIndex);
+    setEditName(nextName);
+    setEditDuration(nextDuration);
   };
 
   const handleDeleteAnimation = () => {
     if (selectedAnimation === null) return;
     const deletedIndex = selectedAnimation;
-    setEditableAnimations((prev) =>
-      normalizeAnimations(prev.filter((_, index) => index !== deletedIndex)),
+    setDraftAnimations((prev) =>
+      normalizeAnimations(
+        (prev ?? editableAnimations).filter((_, index) => index !== deletedIndex),
+      ),
     );
     setSelectedAnimation((prev) => {
       if (prev === null) return null;
       if (prev === deletedIndex) return null;
       return prev > deletedIndex ? prev - 1 : prev;
     });
+    setEditName("");
+    setEditDuration(0);
   };
 
   const hasAnimations = editableAnimations.length > 0;
@@ -301,10 +289,22 @@ export function AnimationViewer({
             onValueChange={(value) => {
               if (value === "none") {
                 setSelectedAnimation(null);
+                setEditName("");
+                setEditDuration(0);
                 return;
               }
               const nextIndex = Number.parseInt(value, 10);
-              setSelectedAnimation(Number.isNaN(nextIndex) ? null : nextIndex);
+              const resolvedIndex = Number.isNaN(nextIndex)
+                ? null
+                : nextIndex;
+              setSelectedAnimation(resolvedIndex);
+              if (
+                resolvedIndex !== null &&
+                editableAnimations[resolvedIndex]
+              ) {
+                setEditName(editableAnimations[resolvedIndex].name);
+                setEditDuration(editableAnimations[resolvedIndex].duration);
+              }
             }}
           >
             <SelectTrigger className="w-full bg-gray-700 border-gray-600 text-white">

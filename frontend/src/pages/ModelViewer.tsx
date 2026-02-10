@@ -448,6 +448,7 @@ export function ModelViewer() {
           {/* Animation Viewer - Show when animations are available */}
           {gltfUrl && (
             <AnimationViewer
+              key={gltfUrl}
               animations={animations}
               animationMixer={animationMixer}
             />
