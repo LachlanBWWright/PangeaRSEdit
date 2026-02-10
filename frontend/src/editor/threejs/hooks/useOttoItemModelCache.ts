@@ -163,7 +163,7 @@ function loadFileGltf(worker: Worker, fileUrl: string): Promise<GLTF> {
 
   const promise = (async () => {
     const fetchResult = await fromPromise(fetch(fileUrl));
-    if (!fetchResult.ok) {
+    if (fetchResult.isErr()) {
       return Promise.reject(new Error(`Failed to fetch: ${fetchResult.error.message} (${fileUrl})`));
     }
     const response = fetchResult.value;
@@ -171,7 +171,7 @@ function loadFileGltf(worker: Worker, fileUrl: string): Promise<GLTF> {
       return Promise.reject(new Error(`Failed to fetch: ${response.statusText} (${fileUrl})`));
     }
     const bufferResult = await fromPromise(response.arrayBuffer());
-    if (!bufferResult.ok) {
+    if (bufferResult.isErr()) {
       return Promise.reject(new Error(`Failed to read buffer: ${bufferResult.error.message}`));
     }
     const buffer = bufferResult.value;
@@ -350,7 +350,7 @@ export const useItemModelCache = (game: Game = Game.OTTO_MATIC): UseItemModelCac
       // Load the full BG3D file (cached at the file level)
       const fullGltfResult = await fromPromise(loadFileGltf(getWorker(), bg3dUrl));
 
-      if (!fullGltfResult.ok) {
+      if (fullGltfResult.isErr()) {
         console.error(
           `[ItemModelCache] Error loading model for item type ${itemType}:`,
           fullGltfResult.error.message,

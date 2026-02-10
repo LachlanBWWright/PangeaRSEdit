@@ -133,7 +133,7 @@ export async function saveMap({
 
     const compileResult = compileNanosaur1Level(data, rawLevelData);
 
-    if (!compileResult.ok) {
+    if (compileResult.isErr()) {
       toast({
         title: "Failed to compile Nanosaur 1 level",
         description: compileResult.error.message,

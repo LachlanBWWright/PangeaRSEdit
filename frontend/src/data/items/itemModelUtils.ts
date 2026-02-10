@@ -281,7 +281,7 @@ export function generateMappingCoverageReport(): string {
     lines.push("");
     
     const summaryResult = getGameMappingSummary(game);
-    if (summaryResult.ok) {
+    if (summaryResult.isOk()) {
       const s = summaryResult.value;
       lines.push(`- Total mapped: ${s.totalMapped}`);
       lines.push(`- With variants: ${s.mappingsWithVariants}`);
@@ -291,14 +291,14 @@ export function generateMappingCoverageReport(): string {
     }
     
     const filesResult = getUniqueModelFiles(game);
-    if (filesResult.ok) {
+    if (filesResult.isOk()) {
       const f = filesResult.value;
       lines.push(`- Model files: ${f.modelFiles.length}`);
       lines.push(`- Skeleton files: ${f.skeletonFiles.length}`);
     }
     
     const validationResult = validateGameMappings(game);
-    if (validationResult.ok) {
+    if (validationResult.isOk()) {
       const v = validationResult.value;
       if (v.valid) {
         lines.push(`- Validation: ✅ All mappings valid`);

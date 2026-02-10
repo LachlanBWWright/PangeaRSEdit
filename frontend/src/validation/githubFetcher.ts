@@ -53,7 +53,7 @@ export async function fetchGitHubFile(
     }
 
     const fetchResult = await fromPromise(fetch(url));
-    if (!fetchResult.ok) {
+    if (fetchResult.isErr()) {
       lastError = fetchResult.error;
       continue;
     }
@@ -73,7 +73,7 @@ export async function fetchGitHubFile(
     }
 
     const textResult = await fromPromise(response.text());
-    if (!textResult.ok) {
+    if (textResult.isErr()) {
       lastError = textResult.error;
       continue;
     }
@@ -233,7 +233,7 @@ export class GitHubFileCache {
     // Fetch from GitHub
     const result = await fetchGitHubFile(owner, repo, branch, path, this.rateLimitConfig);
     
-    if (result.ok) {
+    if (result.isOk()) {
       // Cache the result
       this.cache.set(key, {
         content: result.value.content,

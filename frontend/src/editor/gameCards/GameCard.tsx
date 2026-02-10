@@ -131,7 +131,7 @@ export function GameCard({
               const file = e.target.files[0];
               setMapFile(file);
               const parseResult = await handleParseLevelDataFile(file, globals);
-              if (!parseResult?.ok) {
+              if (!parseResult || parseResult.isErr()) {
                 const message =
                   parseResult?.error instanceof Error
                     ? parseResult.error.message
@@ -163,7 +163,7 @@ export function GameCard({
                     dataView,
                     globals,
                   );
-                  if (!mapImagesResult.ok) {
+                  if (mapImagesResult.isErr()) {
                     console.error(
                       "Failed to load map images:",
                       mapImagesResult.error.message,
@@ -195,7 +195,7 @@ export function GameCard({
                   const buffer = await file.arrayBuffer();
                   const result = parseTunnelFile(buffer);
 
-                  if (!result.ok) {
+                  if (result.isErr()) {
                     console.error(
                       "Failed to parse tunnel file:",
                       result.error.message,

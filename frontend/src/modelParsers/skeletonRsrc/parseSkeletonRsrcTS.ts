@@ -1,4 +1,5 @@
 import { saveToJson } from "@lachlanbwwright/rsrcdump-ts";
+import { err, ok } from "../../types/result";
 import type {
   SkeletonResource,
 } from "../../python/structSpecs/skeleton/skeletonInterface";
@@ -189,10 +190,11 @@ export async function parseSkeletonRsrcJson(
 ): Promise<ParsedSkeleton> {
   const uint8Array = new Uint8Array(bytes);
   const result = await saveToJson(uint8Array, skeletonSpecs, [], []);
-  if (!result.ok) {
-    return Promise.reject(result.error);
+  const parseResult = result.ok ? ok(result.value) : err(result.error);
+  if (parseResult.isErr()) {
+    return Promise.reject(parseResult.error);
   }
-  const parsed: unknown = JSON.parse(result.value);
+  const parsed: unknown = JSON.parse(parseResult.value);
   // Validate the parsed structure at runtime
   if (!isParsedSkeleton(parsed)) {
     return Promise.reject("Invalid skeleton structure");

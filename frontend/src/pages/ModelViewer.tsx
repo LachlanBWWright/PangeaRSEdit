@@ -168,7 +168,7 @@ export function ModelViewer() {
 
   async function handleDownloadTexture(texture: Texture) {
     const result = await fromPromise(downloadTexture(texture, texture.name));
-    if (!result.ok) {
+    if (result.isErr()) {
       console.error("Error downloading texture:", result.error);
       toast.error("Failed to download texture");
       return;
@@ -187,7 +187,7 @@ export function ModelViewer() {
     }
 
     const result = await fromPromise(downloadBG3DModel(bg3dParsed));
-    if (!result.ok) {
+    if (result.isErr()) {
       console.error("Error downloading BG3D:", result.error);
       toast.error(result.error.message);
       return;
@@ -212,7 +212,7 @@ export function ModelViewer() {
     }
 
     const result = await fromPromise(download3DMFModel(bg3dParsed));
-    if (!result.ok) {
+    if (result.isErr()) {
       console.error("Error downloading 3DMF:", result.error);
       toast.error(result.error.message);
       return;
@@ -241,7 +241,7 @@ export function ModelViewer() {
 
   const loadTestModel = async () => {
     const result = await loadOttoTestModel();
-    if (!result.ok) {
+    if (result.isErr()) {
       console.error("Error loading sample model:", result.error);
       toast.error("Failed to load Otto sample files");
       return;
@@ -249,7 +249,7 @@ export function ModelViewer() {
 
     const { bg3dFile, skeletonFile } = result.value;
     const uploadResult = await handleFileUpload(bg3dFile, skeletonFile);
-    if (!uploadResult?.ok) {
+    if (!uploadResult || uploadResult.isErr()) {
       console.error("Error uploading sample model:", uploadResult?.error);
       toast.error(
         uploadResult?.error?.message || "Failed to load Otto sample files",
@@ -260,7 +260,7 @@ export function ModelViewer() {
 
   const loadTestModelWithoutSkeleton = async () => {
     const result = await loadOttoTestModelWithoutSkeleton();
-    if (!result.ok) {
+    if (result.isErr()) {
       console.error(
         "Error loading sample model without skeleton:",
         result.error,
@@ -271,7 +271,7 @@ export function ModelViewer() {
 
     const bg3dFile = result.value;
     const uploadResult = await handleFileUpload(bg3dFile);
-    if (!uploadResult?.ok) {
+    if (!uploadResult || uploadResult.isErr()) {
       console.error("Error uploading sample model:", uploadResult?.error);
       toast.error(
         uploadResult?.error?.message || "Failed to load Otto sample file",
@@ -331,7 +331,7 @@ export function ModelViewer() {
                   if (file) {
                     const downloadName = file.name.replace(/\.glb$/, ".bg3d");
                     const bufferResult = await fromPromise(file.arrayBuffer());
-                    if (!bufferResult.ok) {
+                    if (bufferResult.isErr()) {
                       alert(
                         "GLB to BG3D conversion failed: " +
                           bufferResult.error.message,
@@ -392,7 +392,7 @@ export function ModelViewer() {
                   if (!file) return;
                   const downloadName = file.name.replace(/\.glb$/, ".bg3d");
                   const bufferResult = await fromPromise(file.arrayBuffer());
-                  if (!bufferResult.ok) {
+                  if (bufferResult.isErr()) {
                     alert(
                       "GLB to BG3D conversion failed: " +
                         bufferResult.error.message,

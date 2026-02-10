@@ -394,7 +394,7 @@ export function ItemModelViewer() {
     setStatus(`Fetching ${mapping.modelFile}...`);
 
     const fetchResult = await fromPromise(fetch(modelPath));
-    if (!fetchResult.ok) {
+    if (fetchResult.isErr()) {
       const errorMsg = fetchResult.error.message;
       setError(errorMsg);
       const itemName = selectedItem?.name ?? "item";
@@ -415,7 +415,7 @@ export function ItemModelViewer() {
     }
 
     const bufferResult = await fromPromise(response.arrayBuffer());
-    if (!bufferResult.ok) {
+    if (bufferResult.isErr()) {
       const errorMsg = bufferResult.error.message;
       setError(errorMsg);
       const itemName = selectedItem?.name ?? "item";
@@ -475,7 +475,7 @@ export function ItemModelViewer() {
         }, WORKER_TIMEOUT_MS);
       });
 
-      if (!glbBufferResult.ok) {
+      if (glbBufferResult.isErr()) {
         const errorMsg = glbBufferResult.error.message;
         setError(errorMsg);
         const itemName = selectedItem?.name ?? "item";
@@ -506,7 +506,7 @@ export function ItemModelViewer() {
 
       URL.revokeObjectURL(blobUrl);
 
-      if (!gltfResult.ok) {
+      if (gltfResult.isErr()) {
         const errorMsg = gltfResult.error.message;
         setError(errorMsg);
         const itemName = selectedItem?.name ?? "item";

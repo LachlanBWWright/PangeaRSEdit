@@ -101,7 +101,7 @@ export function useFileUpload(options: UseFileUploadOptions) {
           await import("../../../modelParsers/parseBG3D");
 
         const dmfBufferResult = await fromPromise(bg3dFile.arrayBuffer());
-        if (!dmfBufferResult.ok) {
+        if (dmfBufferResult.isErr()) {
           const message = `Failed to read 3DMF file: ${dmfBufferResult.error.message}`;
           toast.error(message);
           onLoadingChange(false);
@@ -109,7 +109,7 @@ export function useFileUpload(options: UseFileUploadOptions) {
         }
         const dmfBuffer = dmfBufferResult.value;
         const parseResult = parse3DMFToMetaFile(dmfBuffer);
-        if (!parseResult.ok) {
+        if (parseResult.isErr()) {
           const message = `Failed to parse 3DMF file: ${parseResult.error.message}`;
           toast.error(message);
           onLoadingChange(false);
@@ -117,7 +117,7 @@ export function useFileUpload(options: UseFileUploadOptions) {
         }
 
         const bg3dResult = metaFileToBG3DParseResult(parseResult.value);
-        if (!bg3dResult.ok) {
+        if (bg3dResult.isErr()) {
           const message = `Failed to convert 3DMF to BG3D: ${bg3dResult.error.message}`;
           toast.error(message);
           onLoadingChange(false);
@@ -133,7 +133,7 @@ export function useFileUpload(options: UseFileUploadOptions) {
           const skeletonBufferResult = await fromPromise(
             skeletonFile.arrayBuffer(),
           );
-          if (!skeletonBufferResult.ok) {
+          if (skeletonBufferResult.isErr()) {
             console.error(
               "Error reading skeleton file:",
               skeletonBufferResult.error,
@@ -145,7 +145,7 @@ export function useFileUpload(options: UseFileUploadOptions) {
             const skeletonParseResult = await fromPromise(
               parseSkeletonRsrc(skeletonBufferResult.value),
             );
-            if (!skeletonParseResult.ok) {
+            if (skeletonParseResult.isErr()) {
               console.error(
                 "Error parsing skeleton:",
                 skeletonParseResult.error,
@@ -203,7 +203,7 @@ export function useFileUpload(options: UseFileUploadOptions) {
         );
  
         const workerResult = await fromPromise(workerPromise);
-        if (!workerResult.ok) {
+        if (workerResult.isErr()) {
           const message = workerResult.error instanceof Error ? workerResult.error.message : String(workerResult.error);
           toast.error(`Error loading model: ${message}`);
           onLoadingChange(false);
@@ -254,7 +254,7 @@ export function useFileUpload(options: UseFileUploadOptions) {
 
       // Handle standard BG3D file processing
       const bg3dBufferResult = await fromPromise(bg3dFile.arrayBuffer());
-      if (!bg3dBufferResult.ok) {
+      if (bg3dBufferResult.isErr()) {
         const message = `Failed to read BG3D file: ${bg3dBufferResult.error.message}`;
         toast.error(message);
         onLoadingChange(false);
@@ -269,7 +269,7 @@ export function useFileUpload(options: UseFileUploadOptions) {
         const skeletonBufferResult = await fromPromise(
           skeletonFile.arrayBuffer(),
         );
-        if (!skeletonBufferResult.ok) {
+        if (skeletonBufferResult.isErr()) {
           console.error(
             "Error reading skeleton file:",
             skeletonBufferResult.error,
@@ -281,7 +281,7 @@ export function useFileUpload(options: UseFileUploadOptions) {
           const skeletonParseResult = await fromPromise(
             parseSkeletonRsrc(skeletonBufferResult.value),
           );
-          if (!skeletonParseResult.ok) {
+          if (skeletonParseResult.isErr()) {
             console.error("Error parsing skeleton:", skeletonParseResult.error);
             toast.warning(
               "Failed to load skeleton, continuing without animations",
@@ -328,7 +328,7 @@ export function useFileUpload(options: UseFileUploadOptions) {
       );
  
       const workerResult = await fromPromise(workerPromise);
-      if (!workerResult.ok) {
+      if (workerResult.isErr()) {
         const message = workerResult.error instanceof Error ? workerResult.error.message : String(workerResult.error);
         toast.error(`Error loading model: ${message}`);
         onLoadingChange(false);

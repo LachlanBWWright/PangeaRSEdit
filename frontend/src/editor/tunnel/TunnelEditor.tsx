@@ -201,7 +201,7 @@ function TunnelEditorView({
 
   const handleSave = useCallback(() => {
     const result = serializeTunnelFile(tunnelData);
-    if (!result.ok) {
+    if (result.isErr()) {
       toast.error("Failed to save", { description: result.error.message });
       return;
     }
@@ -376,13 +376,13 @@ function TunnelUploadPrompt({
       const file = e.target.files?.[0];
       if (!file) return;
 
-      const buffer = await file.arrayBuffer();
-      const result = parseTunnelFile(buffer);
+    const buffer = await file.arrayBuffer();
+    const result = parseTunnelFile(buffer);
 
-      if (!result.ok) {
-        toast.error("Failed to parse tunnel file", {
-          description: result.error.message,
-        });
+    if (result.isErr()) {
+      toast.error("Failed to parse tunnel file", {
+        description: result.error.message,
+      });
         return;
       }
 

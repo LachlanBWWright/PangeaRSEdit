@@ -18,7 +18,7 @@ export async function parseRsrcLevelFile(
   setData: (data: AtomicLevelData) => void,
 ): Promise<Result<LevelData, Error>> {
   const bufferResult = await fromPromise(file.arrayBuffer());
-  if (!bufferResult.ok) {
+  if (bufferResult.isErr()) {
     return err(
       new Error(`Failed to read file buffer: ${bufferResult.error.message}`),
     );
@@ -53,7 +53,7 @@ export async function parseRsrcLevelFile(
 
   // Apply preprocessing FIRST (converts liquid nubs from x_0/y_0 format to array format)
   const preprocessResult = preprocessJson(result, gameType);
-  if (!preprocessResult.ok) {
+  if (preprocessResult.isErr()) {
     return err(preprocessResult.error);
   }
 
@@ -63,7 +63,7 @@ export async function parseRsrcLevelFile(
 
   // Validate the preprocessed data using the appropriate game schema
   const validationResult = validateLevelDataForGame(result, gameType.GAME_TYPE);
-  if (!validationResult.ok) {
+  if (validationResult.isErr()) {
     return err(
       new Error(
         `Level validation failed for ${gameType.GAME_NAME}: ${validationResult.error.message}`,

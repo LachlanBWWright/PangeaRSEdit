@@ -291,7 +291,7 @@ export function useTextureManagement(options: UseTextureManagementOptions) {
         })
       );
 
-      if (!blobResult.ok) {
+      if (blobResult.isErr()) {
         console.error("Error editing texture:", blobResult.error);
         toast.error(blobResult.error.message);
         return;
@@ -304,7 +304,7 @@ export function useTextureManagement(options: UseTextureManagementOptions) {
 
       // Use the existing replaceTexture function
       const replaceResult = await fromPromise(replaceTexture(texture, file));
-      if (!replaceResult.ok) {
+      if (replaceResult.isErr()) {
         console.error("Error editing texture:", replaceResult.error);
         toast.error(replaceResult.error.message);
         return;

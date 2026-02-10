@@ -66,7 +66,7 @@ export async function openFile({
     setData,
     rsrcName, // Pass the URL for Mighty Mike tileset loading
   );
-  if (!parseResult.ok) {
+  if (parseResult.isErr()) {
     console.error(
       "Failed to parse level data:",
       parseResult.error?.message ?? parseResult.error,
@@ -155,7 +155,7 @@ export async function openFile({
     const imgBuffer = await imgFile.arrayBuffer();
     const imgDataView = new DataView(imgBuffer);
     const mapImagesResult = await loadMapImages(imgDataView, gameType);
-    if (!mapImagesResult.ok) {
+    if (mapImagesResult.isErr()) {
       console.error(
         "Failed to load map images:",
         mapImagesResult.error.message,

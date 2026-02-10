@@ -183,7 +183,8 @@ export function safeGet<T extends object, K extends keyof T>(
   if (value === undefined || value === null) {
     return err(new Error(`Property '${String(key)}' is not defined`));
   }
-  return ok(value);
+  const nonNullableValue: NonNullable<T[K]> = value;
+  return ok(nonNullableValue);
 }
 
 /**

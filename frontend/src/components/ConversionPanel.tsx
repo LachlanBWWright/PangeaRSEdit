@@ -30,7 +30,7 @@ export function ConversionPanel({
     const downloadName = file.name.replace(new RegExp(`\\.${fileExtension}$`), `.${outputExtension}`);
 
     const bufferResult = await fromPromise(file.arrayBuffer());
-    if (!bufferResult.ok) {
+    if (bufferResult.isErr()) {
       alert(`${title} conversion failed: ${bufferResult.error.message}`);
       return;
     }
@@ -60,7 +60,7 @@ export function ConversionPanel({
     );
 
     const workerResult = await resultPromise;
-    if (!workerResult.ok) {
+    if (workerResult.isErr()) {
       alert(`${title} conversion failed: ${workerResult.error.message}`);
       return;
     }

@@ -318,7 +318,7 @@ export function IntroPrompt() {
       }
 
       const result = compileNanosaur1Level(combinedData, rawLevelData);
-      if (!result.ok) {
+      if (result.isErr()) {
         console.error("Nanosaur compilation failed:", result.error);
         toast.error("Download failed", { description: result.error.message });
         return;
@@ -329,7 +329,7 @@ export function IntroPrompt() {
     } else if (globals.GAME_TYPE === Game.MIGHTY_MIKE) {
       // Mighty Mike: Use custom serializer
       const result = serializeMightyMikeLevel(combinedData);
-      if (!result.ok) {
+      if (result.isErr()) {
         console.error("Mighty Mike serialization failed:", result.error);
         toast.error("Download failed", { description: result.error.message });
         return;
@@ -541,7 +541,7 @@ export function IntroPrompt() {
       setGlobals(gameType);
       const dimensions = getDefaultDimensions(gameType.GAME_TYPE);
       const result = createBlankLevel(gameType.GAME_TYPE, dimensions);
-      if (!result.ok) {
+      if (result.isErr()) {
         toast.error("Failed to create blank level", {
           description: result.error.message,
         });

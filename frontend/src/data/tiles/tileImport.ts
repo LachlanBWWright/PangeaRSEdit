@@ -89,7 +89,7 @@ export async function loadAndValidateImage(
   
   // Load image
   const image = await loadImageFile(file);
-  if (!image.ok) {
+  if (image.isErr()) {
     return image;
   }
   

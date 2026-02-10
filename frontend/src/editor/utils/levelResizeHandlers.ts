@@ -16,7 +16,7 @@ export function applyResizeToAtomicData(
   options: ResizeUIOptions,
 ): { ok: boolean; data: AtomicLevelData; warnings: string[] } {
   const combinedResult = combineLevelData(atomicData);
-  if (!combinedResult.ok) {
+  if (combinedResult.isErr()) {
     return {
       ok: false,
       data: atomicData,

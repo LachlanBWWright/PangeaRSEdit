@@ -107,7 +107,7 @@ export function SpriteViewer() {
 
     setLoading(true);
     const bufferResult = await fromPromise(file.arrayBuffer());
-    if (!bufferResult.ok) {
+    if (bufferResult.isErr()) {
       console.error("Error loading file:", bufferResult.error);
       toast.error(bufferResult.error.message);
       setLoading(false);
@@ -156,7 +156,7 @@ export function SpriteViewer() {
     const url = `data/mightymike/shapes/${filename}.shapes`;
     const fetchResult = await fromPromise(fetch(url));
 
-    if (!fetchResult.ok) {
+    if (fetchResult.isErr()) {
       console.error("Error loading sprites:", fetchResult.error);
       toast.error(fetchResult.error.message);
       setLoading(false);
@@ -171,7 +171,7 @@ export function SpriteViewer() {
     }
 
     const bufferResult = await fromPromise(response.arrayBuffer());
-    if (!bufferResult.ok) {
+    if (bufferResult.isErr()) {
       console.error("Error loading sprites:", bufferResult.error);
       toast.error(bufferResult.error.message);
       setLoading(false);
@@ -203,7 +203,7 @@ export function SpriteViewer() {
     const url = `assets/mightyMike/terrain/${filename}.tga`;
     const fetchResult = await fromPromise(fetch(url));
 
-    if (!fetchResult.ok) {
+    if (fetchResult.isErr()) {
       console.error("Error loading TGA:", fetchResult.error);
       toast.error(fetchResult.error.message);
       setLoading(false);
@@ -218,7 +218,7 @@ export function SpriteViewer() {
     }
 
     const bufferResult = await fromPromise(response.arrayBuffer());
-    if (!bufferResult.ok) {
+    if (bufferResult.isErr()) {
       console.error("Error loading TGA:", bufferResult.error);
       toast.error(bufferResult.error.message);
       setLoading(false);
@@ -260,7 +260,7 @@ export function SpriteViewer() {
     const tgaUrl = `assets/mightyMike/terrain/${tgaName}.tga`;
     const tgaFetchResult = await fromPromise(fetch(tgaUrl));
 
-    if (!tgaFetchResult.ok) {
+    if (tgaFetchResult.isErr()) {
       console.error("Error loading tileset:", tgaFetchResult.error);
       toast.error(tgaFetchResult.error.message);
       setLoading(false);
@@ -275,7 +275,7 @@ export function SpriteViewer() {
     }
 
     const tgaBufferResult = await fromPromise(tgaResponse.arrayBuffer());
-    if (!tgaBufferResult.ok) {
+    if (tgaBufferResult.isErr()) {
       console.error("Error loading tileset:", tgaBufferResult.error);
       toast.error(tgaBufferResult.error.message);
       setLoading(false);
@@ -362,7 +362,7 @@ export function SpriteViewer() {
       const tilesetUrl = `assets/mightyMike/terrain/${filename}.tileset`;
       const tilesetFetchResult = await fromPromise(fetch(tilesetUrl));
 
-      if (!tilesetFetchResult.ok) {
+      if (tilesetFetchResult.isErr()) {
         console.error("Error loading tileset:", tilesetFetchResult.error);
         toast.error(tilesetFetchResult.error.message);
         setLoading(false);
@@ -377,7 +377,7 @@ export function SpriteViewer() {
       }
 
       const tilesetBufferResult = await fromPromise(tilesetResponse.arrayBuffer());
-      if (!tilesetBufferResult.ok) {
+      if (tilesetBufferResult.isErr()) {
         console.error("Error loading tileset:", tilesetBufferResult.error);
         toast.error(tilesetBufferResult.error.message);
         setLoading(false);
@@ -670,7 +670,7 @@ export function SpriteViewer() {
       const tgaUrl = `assets/mightyMike/terrain/${tgaName}.tga`;
 
       const fetchResult = await fromPromise(fetch(tgaUrl));
-      if (!fetchResult.ok) {
+      if (fetchResult.isErr()) {
         console.error("Error loading palette:", fetchResult.error);
         toast.error("Failed to load palette");
         return;
@@ -683,7 +683,7 @@ export function SpriteViewer() {
       }
 
       const bufferResult = await fromPromise(response.arrayBuffer());
-      if (!bufferResult.ok) {
+      if (bufferResult.isErr()) {
         console.error("Error loading palette:", bufferResult.error);
         toast.error("Failed to load palette");
         return;
@@ -760,7 +760,7 @@ export function SpriteViewer() {
     const tgaUrl = `assets/mightyMike/terrain/${tgaName}.tga`;
 
     const fetchResult = await fromPromise(fetch(tgaUrl));
-    if (!fetchResult.ok) {
+    if (fetchResult.isErr()) {
       console.error("Error loading tileset palette:", fetchResult.error);
       toast.error("Failed to load palette");
       return;
@@ -773,7 +773,7 @@ export function SpriteViewer() {
     }
 
     const bufferResult = await fromPromise(response.arrayBuffer());
-    if (!bufferResult.ok) {
+    if (bufferResult.isErr()) {
       console.error("Error loading tileset palette:", bufferResult.error);
       toast.error("Failed to load palette");
       return;

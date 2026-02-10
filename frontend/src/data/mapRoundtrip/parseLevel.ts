@@ -47,7 +47,7 @@ export async function parseLevelBuffer(
   }
 
   const jsonParseResult = tryFn(() => JSON.parse(parseResult.value));
-  if (!jsonParseResult.ok) {
+  if (jsonParseResult.isErr()) {
     return err(new Error(`JSON parse failed: ${jsonParseResult.error.message}`));
   }
 
@@ -91,7 +91,7 @@ export function parseNanosaur1Buffer(
     );
   });
 
-  if (!parseResult.ok) {
+  if (parseResult.isErr()) {
     return err(parseResult.error);
   }
 
