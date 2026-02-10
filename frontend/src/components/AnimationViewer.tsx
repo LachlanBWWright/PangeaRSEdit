@@ -236,10 +236,9 @@ export function AnimationViewer({
         ? newAnimationDuration
         : DEFAULT_ANIMATION_DURATION;
     const templateClip = selectedAnimationInfo?.clip ?? null;
-    const emptyTracks = [];
     const clip = templateClip
       ? templateClip.clone()
-      : new AnimationClip(nextName, nextDuration, emptyTracks);
+      : new AnimationClip(nextName, nextDuration, []);
     clip.name = nextName;
     clip.duration = nextDuration;
     const nextIndex = editableAnimations.length;
@@ -416,11 +415,7 @@ export function AnimationViewer({
                 type="number"
                 min={MIN_ANIMATION_DURATION}
                 step={0.1}
-                value={
-                  Number.isFinite(editDuration)
-                    ? editDuration
-                    : selectedAnimationInfo.duration
-                }
+                value={editDuration}
                 onChange={(event) => {
                   const parsed = Number.parseFloat(event.target.value);
                   setEditDuration(
