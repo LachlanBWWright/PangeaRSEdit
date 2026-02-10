@@ -16,6 +16,7 @@ import { preprocessJson } from "../../src/data/processors/ottoPreprocessor";
 import { fixNullToZero } from "../../src/data/processors/nullToZeroFixer";
 import { BugdomGlobals, NanosaurGlobals } from "../../src/data/globals/globals";
 import { validateLevelDataForGame } from "../../src/validation/validateLevelForGame";
+import { err, ok } from "../../src/types/result";
 import {
   splitLevelData,
   combineLevelData,
@@ -67,31 +68,37 @@ describe("Bugdom 1 Full Save Pipeline", () => {
       [],
       [],
     );
-    if (!parseResult.ok) throw new Error("Parse: " + parseResult.error);
-    const parsed: Record<string, unknown> = JSON.parse(parseResult.value);
+    const parsedJsonResult = parseResult.ok
+      ? ok(parseResult.value)
+      : err(parseResult.error);
+    if (parsedJsonResult.isErr()) throw new Error("Parse: " + parsedJsonResult.error);
+    const parsed: Record<string, unknown> = JSON.parse(parsedJsonResult.value);
 
     fixNullToZero(parsed);
     const preResult = preprocessJson(parsed, BugdomGlobals);
-    if (!preResult.ok)
+    if (preResult.isErr())
       throw new Error("Preprocess: " + preResult.error.message);
     fixNullToZero(parsed);
 
     const valResult = validateLevelDataForGame(parsed, BugdomGlobals.GAME_TYPE);
-    if (!valResult.ok) throw new Error("Validate: " + valResult.error.message);
+    if (valResult.isErr()) throw new Error("Validate: " + valResult.error.message);
 
     if (!isLevelDataLike(parsed))
       throw new Error("Parsed data is not LevelData");
     const split = splitLevelData(parsed);
     const combResult = combineLevelData(split);
-    if (!combResult.ok) throw new Error("Combine: " + combResult.error.message);
+    if (combResult.isErr()) throw new Error("Combine: " + combResult.error.message);
 
     const sanitized = sanitizeResourceForkJson(combResult.value);
     const serResult = loadBytesFromJson(sanitized, bugdomSpecs, [], [], true);
-    if (!serResult.ok) throw new Error("Serialize: " + serResult.error);
+    const serializedResult = serResult.ok
+      ? ok(serResult.value)
+      : err(serResult.error);
+    if (serializedResult.isErr()) throw new Error("Serialize: " + serializedResult.error);
 
     return {
       original: new Uint8Array(data),
-      serialized: serResult.value,
+      serialized: serializedResult.value,
       combined: sanitized,
     };
   }
@@ -119,9 +126,7 @@ describe("Nanosaur 1 Full Save Pipeline", () => {
     rawLevelData: Nanosaur1LevelData;
     levelData: LevelData;
   }> {
-    const parseResult = parseNanosaur1Level(arrayBuffer);
-    if (!parseResult.ok) throw new Error("Parse: " + parseResult.error.message);
-    const rawLevelData = parseResult.value;
+    const rawLevelData = parseNanosaur1Level(arrayBuffer);
 
     const withMetadata = nanosaur1LevelToLevelData(rawLevelData);
     fixNullToZero(withMetadata);
@@ -130,11 +135,11 @@ describe("Nanosaur 1 Full Save Pipeline", () => {
       withMetadata,
       NanosaurGlobals.GAME_TYPE,
     );
-    if (!valResult.ok) throw new Error("Validate: " + valResult.error.message);
+    if (valResult.isErr()) throw new Error("Validate: " + valResult.error.message);
 
     const split = splitLevelData(withMetadata);
     const combResult = combineLevelData(split);
-    if (!combResult.ok) throw new Error("Combine: " + combResult.error.message);
+    if (combResult.isErr()) throw new Error("Combine: " + combResult.error.message);
 
     const combinedRaw = isRecord(combResult.value._metadata)
       ? combResult.value._metadata.nanosaur1RawLevel
@@ -144,7 +149,7 @@ describe("Nanosaur 1 Full Save Pipeline", () => {
     }
 
     const compileResult = compileNanosaur1Level(combResult.value, combinedRaw);
-    if (!compileResult.ok) {
+    if (compileResult.isErr()) {
       throw new Error("Compile failed: " + compileResult.error.message);
     }
 
@@ -183,8 +188,8 @@ describe("Nanosaur 1 Full Save Pipeline", () => {
       // Process the modified levelData back to binary
       const split = splitLevelData(levelData);
       const combResult = combineLevelData(split);
-      expect(combResult.ok).toBe(true);
-      if (!combResult.ok) return;
+      expect(combResult.isOk()).toBe(true);
+      if (combResult.isErr()) return;
 
       const combinedRaw = isRecord(combResult.value._metadata)
         ? combResult.value._metadata.nanosaur1RawLevel
@@ -198,20 +203,19 @@ describe("Nanosaur 1 Full Save Pipeline", () => {
         combResult.value,
         combinedRaw,
       );
-      expect(compileResult.ok).toBe(true);
-      if (!compileResult.ok) return;
+      expect(compileResult.isOk()).toBe(true);
+      if (compileResult.isErr()) return;
 
       // Re-parse the compiled binary and check if our modification is there
       const reParsedResult = parseNanosaur1Level(compileResult.value);
-      expect(reParsedResult.ok).toBe(true);
-      if (!reParsedResult.ok) return;
-
-      const reParsedItem = reParsedResult.value.items[0];
+      const reParsedItem = reParsedResult.objectList[0];
+      if (!reParsedItem) return;
       expect(reParsedItem.x).toBe(123);
       expect(reParsedItem.y).toBe(456);
 
       // Verify other data is preserved (like rawLevelData settings)
-      expect(reParsedResult.value.skyColor).toEqual(rawLevelData.skyColor);
+      expect(reParsedResult.header.width).toBe(rawLevelData.header.width);
+      expect(reParsedResult.textureLayer.length).toBe(rawLevelData.textureLayer.length);
     },
   );
 });

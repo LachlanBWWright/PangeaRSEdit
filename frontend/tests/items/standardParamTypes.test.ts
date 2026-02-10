@@ -76,14 +76,14 @@ describe("standardParamTypes", () => {
   describe("Pre-defined Flag Parameters", () => {
     it("ENEMY_SPAWN_FLAGS should have expected flags", () => {
       expect(ENEMY_SPAWN_FLAGS.type).toBe("BitFlags");
-      expect(ENEMY_SPAWN_FLAGS.flags.length).toBe(3);
-      expect(ENEMY_SPAWN_FLAGS.flags[0].name).toBe("AlwaysAdd");
+      expect(ENEMY_SPAWN_FLAGS.flags?.length).toBe(3);
+      expect(ENEMY_SPAWN_FLAGS.flags?.[0]?.name).toBe("AlwaysAdd");
     });
     
     it("TRIGGER_FLAGS should have expected flags", () => {
       expect(TRIGGER_FLAGS.type).toBe("BitFlags");
-      expect(TRIGGER_FLAGS.flags.length).toBe(3);
-      expect(TRIGGER_FLAGS.flags[0].name).toBe("OneShot");
+      expect(TRIGGER_FLAGS.flags?.length).toBe(3);
+      expect(TRIGGER_FLAGS.flags?.[0]?.name).toBe("OneShot");
     });
   });
   

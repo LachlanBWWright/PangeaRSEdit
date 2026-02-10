@@ -302,7 +302,13 @@ export function sanitizeResourceForkJson(
   const source = data;
   const sanitized: Record<string, unknown> = { ...source };
   for (const [key, value] of Object.entries(source)) {
-    if (key.length > 4) continue;
+    if (key === "_metadata") {
+      continue;
+    }
+    if (key.length > 4) {
+      Reflect.deleteProperty(sanitized, key);
+      continue;
+    }
     if (value === undefined || value === null) {
       Reflect.deleteProperty(sanitized, key);
       continue;

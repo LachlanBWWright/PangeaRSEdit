@@ -1,6 +1,7 @@
-import { LevelData } from "../../python/structSpecs/LevelTypes";
+import type { TerrainItem, LevelData } from "../../python/structSpecs/LevelTypes";
 import type { Nanosaur1LevelData } from "../../data/processors/classicProprocessor";
 import { Result, ok } from "../../types/result";
+import type { RawNanosaurItem } from "./nanosaurInterfaces";
 import { isRawNanosaurAttribute, isRawNanosaurItem } from "./typeGuards";
 
 /**
@@ -85,29 +86,56 @@ export function compileNanosaur1Level(
     // -- Object List: prefer LevelData Itms, fall back to rawLevelData --
     if (objectListOffset > 0) {
       const editorItems = levelData.Itms?.[1000]?.obj;
+      const hasRawParams = (
+        item: RawNanosaurItem | TerrainItem<number>,
+      ): item is RawNanosaurItem =>
+        isRawNanosaurItem(item) &&
+        ("parm" in item ||
+          "y" in item ||
+          "prevItemIdx" in item ||
+          "nextItemIdx" in item);
+      const toRawItem = (
+        item: RawNanosaurItem | TerrainItem<number>,
+      ): RawNanosaurItem | null => {
+        if (hasRawParams(item)) {
+          return item;
+        }
+        if ("p0" in item && "p1" in item && "p2" in item && "p3" in item) {
+          return {
+            x: item.x,
+            y: item.z,
+            z: item.z,
+            type: item.type,
+            parm: [item.p0, item.p1, item.p2, item.p3],
+            flags: item.flags,
+          };
+        }
+        return null;
+      };
       if (Array.isArray(editorItems) && editorItems.length > 0) {
         // Use editor items - convert back to binary format
         view.setInt32(objectListOffset, editorItems.length, false);
         let writePtr = objectListOffset + 4;
         for (const item of editorItems) {
-          if (!isRawNanosaurItem(item)) continue;
-          view.setUint16(writePtr, item.x ?? 0, false);
-          view.setUint16(writePtr + 2, item.y ?? item.z ?? 0, false);
-          view.setUint16(writePtr + 4, item.type ?? 0, false);
-          if (item.parm) {
-            view.setUint8(writePtr + 6, item.parm[0] ?? 0);
-            view.setUint8(writePtr + 7, item.parm[1] ?? 0);
-            view.setUint8(writePtr + 8, item.parm[2] ?? 0);
-            view.setUint8(writePtr + 9, item.parm[3] ?? 0);
+          const rawItem = toRawItem(item);
+          if (!rawItem) continue;
+          view.setUint16(writePtr, rawItem.x ?? 0, false);
+          view.setUint16(writePtr + 2, rawItem.y ?? rawItem.z ?? 0, false);
+          view.setUint16(writePtr + 4, rawItem.type ?? 0, false);
+          if (rawItem.parm) {
+            view.setUint8(writePtr + 6, rawItem.parm[0] ?? 0);
+            view.setUint8(writePtr + 7, rawItem.parm[1] ?? 0);
+            view.setUint8(writePtr + 8, rawItem.parm[2] ?? 0);
+            view.setUint8(writePtr + 9, rawItem.parm[3] ?? 0);
           } else {
             view.setUint8(writePtr + 6, 0);
             view.setUint8(writePtr + 7, 0);
             view.setUint8(writePtr + 8, 0);
             view.setUint8(writePtr + 9, 0);
           }
-          view.setUint16(writePtr + 10, item.flags ?? 0, false);
-          view.setInt32(writePtr + 12, item.prevItemIdx ?? 0, false);
-          view.setInt32(writePtr + 16, item.nextItemIdx ?? 0, false);
+          view.setUint16(writePtr + 10, rawItem.flags ?? 0, false);
+          view.setInt32(writePtr + 12, rawItem.prevItemIdx ?? 0, false);
+          view.setInt32(writePtr + 16, rawItem.nextItemIdx ?? 0, false);
           writePtr += 20;
         }
       } else {

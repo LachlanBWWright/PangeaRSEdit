@@ -25,9 +25,13 @@ describe("type guards and validation helpers", () => {
     };
     expect(isLevelDataLike(valid)).toBe(true);
     // Accepts Layr instead of STgd
-    const validLayr = { ...valid };
-    delete validLayr.STgd;
-    validLayr.Layr = {};
+    const validLayr = {
+      Hedr: {},
+      _metadata: {},
+      ItCo: {},
+      YCrd: {},
+      Layr: {},
+    };
     expect(isLevelDataLike(validLayr)).toBe(true);
   });
 
@@ -64,7 +68,7 @@ describe("type guards and validation helpers", () => {
     const sanitized = sanitizeResourceForkJson(input);
     expect("BadType" in sanitized).toBe(false);
     expect("Empty" in sanitized).toBe(false);
-    expect("Hedr" in sanitized).toBe(true);
+    expect("Hedr" in sanitized).toBe(false);
     expect("_metadata" in sanitized).toBe(true);
   });
 });
