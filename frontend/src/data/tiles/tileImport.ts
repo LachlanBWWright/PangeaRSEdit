@@ -301,7 +301,7 @@ export async function validateTileImportBatch(
   
   for (const file of files) {
     const result = await loadAndValidateImage(file, globals);
-    if (result.ok) {
+    if (result.isOk()) {
       validFiles.push(file);
     } else {
       invalidFiles.push({ file, reason: result.error.message });

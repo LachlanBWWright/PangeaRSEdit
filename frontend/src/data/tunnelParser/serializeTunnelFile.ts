@@ -261,7 +261,7 @@ export function serializeTunnelFile(data: TunnelData): Result<ArrayBuffer, Error
     return writer.getBuffer();
   });
 
-  if (!serializeResult.ok) {
+  if (serializeResult.isErr()) {
     return err(new Error(`Failed to serialize tunnel file: ${serializeResult.error.message}`));
   }
 

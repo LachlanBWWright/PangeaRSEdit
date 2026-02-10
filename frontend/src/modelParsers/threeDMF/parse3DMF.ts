@@ -118,9 +118,9 @@ function readTriangleVertexIndices(
       const r0 = reader.readUint8();
       const r1 = reader.readUint8();
       const r2 = reader.readUint8();
-      if (!r0.ok) return err(r0.error);
-      if (!r1.ok) return err(r1.error);
-      if (!r2.ok) return err(r2.error);
+      if (r0.isErr()) return err(r0.error);
+      if (r1.isErr()) return err(r1.error);
+      if (r2.isErr()) return err(r2.error);
       v0 = r0.value;
       v1 = r1.value;
       v2 = r2.value;
@@ -129,9 +129,9 @@ function readTriangleVertexIndices(
       const r0 = reader.readUint16();
       const r1 = reader.readUint16();
       const r2 = reader.readUint16();
-      if (!r0.ok) return err(r0.error);
-      if (!r1.ok) return err(r1.error);
-      if (!r2.ok) return err(r2.error);
+      if (r0.isErr()) return err(r0.error);
+      if (r1.isErr()) return err(r1.error);
+      if (r2.isErr()) return err(r2.error);
       v0 = r0.value;
       v1 = r1.value;
       v2 = r2.value;
@@ -140,9 +140,9 @@ function readTriangleVertexIndices(
       const r0 = reader.readUint32();
       const r1 = reader.readUint32();
       const r2 = reader.readUint32();
-      if (!r0.ok) return err(r0.error);
-      if (!r1.ok) return err(r1.error);
-      if (!r2.ok) return err(r2.error);
+      if (r0.isErr()) return err(r0.error);
+      if (r1.isErr()) return err(r1.error);
+      if (r2.isErr()) return err(r2.error);
       v0 = r0.value;
       v1 = r1.value;
       v2 = r2.value;
@@ -174,21 +174,21 @@ function parseTmsh(
 
   // Read header
   const numTrianglesResult = reader.readUint32();
-  if (!numTrianglesResult.ok) return err(numTrianglesResult.error);
+  if (numTrianglesResult.isErr()) return err(numTrianglesResult.error);
   const numTriangles = numTrianglesResult.value;
 
   reader.skip(4); // numTriangleAttributes - we'll read them as we go
 
   const numEdgesResult = reader.readUint32();
-  if (!numEdgesResult.ok) return err(numEdgesResult.error);
+  if (numEdgesResult.isErr()) return err(numEdgesResult.error);
   const numEdges = numEdgesResult.value;
 
   const numEdgeAttributesResult = reader.readUint32();
-  if (!numEdgeAttributesResult.ok) return err(numEdgeAttributesResult.error);
+  if (numEdgeAttributesResult.isErr()) return err(numEdgeAttributesResult.error);
   const numEdgeAttributes = numEdgeAttributesResult.value;
 
   const numVerticesResult = reader.readUint32();
-  if (!numVerticesResult.ok) return err(numVerticesResult.error);
+  if (numVerticesResult.isErr()) return err(numVerticesResult.error);
   const numVertices = numVerticesResult.value;
 
   reader.skip(4); // numVertexAttributes
@@ -215,7 +215,7 @@ function parseTmsh(
     numVertices,
     mesh.triangles
   );
-  if (!triResult.ok) return err(triResult.error);
+  if (triResult.isErr()) return err(triResult.error);
 
   // Validate vertex indices
   for (let i = 0; i < numTriangles; i++) {
@@ -234,9 +234,9 @@ function parseTmsh(
     const xResult = reader.readFloat32();
     const yResult = reader.readFloat32();
     const zResult = reader.readFloat32();
-    if (!xResult.ok) return err(xResult.error);
-    if (!yResult.ok) return err(yResult.error);
-    if (!zResult.ok) return err(zResult.error);
+    if (xResult.isErr()) return err(xResult.error);
+    if (yResult.isErr()) return err(yResult.error);
+    if (zResult.isErr()) return err(zResult.error);
     
     const point = mesh.points[i];
     if (point) {
@@ -255,13 +255,13 @@ function parseTmsh(
   const maxZResult = reader.readFloat32();
   const emptyFlagResult = reader.readUint32();
 
-  if (!minXResult.ok) return err(minXResult.error);
-  if (!minYResult.ok) return err(minYResult.error);
-  if (!minZResult.ok) return err(minZResult.error);
-  if (!maxXResult.ok) return err(maxXResult.error);
-  if (!maxYResult.ok) return err(maxYResult.error);
-  if (!maxZResult.ok) return err(maxZResult.error);
-  if (!emptyFlagResult.ok) return err(emptyFlagResult.error);
+  if (minXResult.isErr()) return err(minXResult.error);
+  if (minYResult.isErr()) return err(minYResult.error);
+  if (minZResult.isErr()) return err(minZResult.error);
+  if (maxXResult.isErr()) return err(maxXResult.error);
+  if (maxYResult.isErr()) return err(maxYResult.error);
+  if (maxZResult.isErr()) return err(maxZResult.error);
+  if (emptyFlagResult.isErr()) return err(emptyFlagResult.error);
 
   mesh.bBox = {
     min: { x: minXResult.value, y: minYResult.value, z: minZResult.value },
@@ -291,25 +291,25 @@ function parseAtar(
   const mesh = state.currentMesh;
 
   const attributeTypeResult = reader.readUint32();
-  if (!attributeTypeResult.ok) return err(attributeTypeResult.error);
+  if (attributeTypeResult.isErr()) return err(attributeTypeResult.error);
   const attributeType = attributeTypeResult.value;
 
   const zeroResult = reader.readUint32();
-  if (!zeroResult.ok) return err(zeroResult.error);
+  if (zeroResult.isErr()) return err(zeroResult.error);
   if (zeroResult.value !== 0) {
     return err(new Error("Expected zero in atar header"));
   }
 
   const positionOfArrayResult = reader.readUint32();
-  if (!positionOfArrayResult.ok) return err(positionOfArrayResult.error);
+  if (positionOfArrayResult.isErr()) return err(positionOfArrayResult.error);
   const positionOfArray = positionOfArrayResult.value;
 
   const positionInArrayResult = reader.readUint32();
-  if (!positionInArrayResult.ok) return err(positionInArrayResult.error);
+  if (positionInArrayResult.isErr()) return err(positionInArrayResult.error);
   // positionInArray is not always used
 
   const attributeUseFlagResult = reader.readUint32();
-  if (!attributeUseFlagResult.ok) return err(attributeUseFlagResult.error);
+  if (attributeUseFlagResult.isErr()) return err(attributeUseFlagResult.error);
   // attributeUseFlag is usually 0 or 1
 
   if (attributeType < 1 || attributeType >= AttributeType.NumTypes) {
@@ -337,8 +337,8 @@ function parseAtar(
     for (let i = 0; i < mesh.numPoints; i++) {
       const uResult = reader.readFloat32();
       const vResult = reader.readFloat32();
-      if (!uResult.ok) return err(uResult.error);
-      if (!vResult.ok) return err(vResult.error);
+      if (uResult.isErr()) return err(uResult.error);
+      if (vResult.isErr()) return err(vResult.error);
       // Flip V coordinate: 3DMF uses bottom-left UV origin (like OpenGL),
       // but many 3D formats use top-left origin. Flip V for compatibility.
       mesh.vertexUVs[i] = { u: uResult.value, v: 1 - vResult.value };
@@ -357,9 +357,9 @@ function parseAtar(
       const xResult = reader.readFloat32();
       const yResult = reader.readFloat32();
       const zResult = reader.readFloat32();
-      if (!xResult.ok) return err(xResult.error);
-      if (!yResult.ok) return err(yResult.error);
-      if (!zResult.ok) return err(zResult.error);
+      if (xResult.isErr()) return err(xResult.error);
+      if (yResult.isErr()) return err(yResult.error);
+      if (zResult.isErr()) return err(zResult.error);
       mesh.vertexNormals[i] = { 
         x: xResult.value, 
         y: yResult.value, 
@@ -380,9 +380,9 @@ function parseAtar(
       const rResult = reader.readFloat32();
       const gResult = reader.readFloat32();
       const bResult = reader.readFloat32();
-      if (!rResult.ok) return err(rResult.error);
-      if (!gResult.ok) return err(gResult.error);
-      if (!bResult.ok) return err(bResult.error);
+      if (rResult.isErr()) return err(rResult.error);
+      if (gResult.isErr()) return err(gResult.error);
+      if (bResult.isErr()) return err(bResult.error);
       mesh.vertexColors[i] = { 
         r: rResult.value, 
         g: gResult.value, 
@@ -429,7 +429,7 @@ function parsePixmap(
   if (isMipmap) {
     // txmm format
     const useMipmappingResult = reader.readUint32();
-    if (!useMipmappingResult.ok) return err(useMipmappingResult.error);
+    if (useMipmappingResult.isErr()) return err(useMipmappingResult.error);
     if (useMipmappingResult.value !== 0) {
       return err(new Error("Mipmapping not supported"));
     }
@@ -442,13 +442,13 @@ function parsePixmap(
     const rowBytesResult = reader.readUint32();
     const offsetResult = reader.readUint32();
 
-    if (!pixelTypeResult.ok) return err(pixelTypeResult.error);
-    if (!bitOrderResult.ok) return err(bitOrderResult.error);
-    if (!byteOrderResult.ok) return err(byteOrderResult.error);
-    if (!widthResult.ok) return err(widthResult.error);
-    if (!heightResult.ok) return err(heightResult.error);
-    if (!rowBytesResult.ok) return err(rowBytesResult.error);
-    if (!offsetResult.ok) return err(offsetResult.error);
+    if (pixelTypeResult.isErr()) return err(pixelTypeResult.error);
+    if (bitOrderResult.isErr()) return err(bitOrderResult.error);
+    if (byteOrderResult.isErr()) return err(byteOrderResult.error);
+    if (widthResult.isErr()) return err(widthResult.error);
+    if (heightResult.isErr()) return err(heightResult.error);
+    if (rowBytesResult.isErr()) return err(rowBytesResult.error);
+    if (offsetResult.isErr()) return err(offsetResult.error);
 
     if (offsetResult.value !== 0) {
       return err(new Error("Unsupported texture offset"));
@@ -470,12 +470,12 @@ function parsePixmap(
     const bitOrderResult = reader.readUint32();
     const byteOrderResult = reader.readUint32();
 
-    if (!widthResult.ok) return err(widthResult.error);
-    if (!heightResult.ok) return err(heightResult.error);
-    if (!rowBytesResult.ok) return err(rowBytesResult.error);
-    if (!pixelTypeResult.ok) return err(pixelTypeResult.error);
-    if (!bitOrderResult.ok) return err(bitOrderResult.error);
-    if (!byteOrderResult.ok) return err(byteOrderResult.error);
+    if (widthResult.isErr()) return err(widthResult.error);
+    if (heightResult.isErr()) return err(heightResult.error);
+    if (rowBytesResult.isErr()) return err(rowBytesResult.error);
+    if (pixelTypeResult.isErr()) return err(pixelTypeResult.error);
+    if (bitOrderResult.isErr()) return err(bitOrderResult.error);
+    if (byteOrderResult.isErr()) return err(byteOrderResult.error);
 
     pixelType = pixelTypeResult.value;
     bitOrder = bitOrderResult.value;
@@ -515,7 +515,7 @@ function parsePixmap(
   const imageData = new Uint8Array(trimmedRowBytes * height);
   for (let y = 0; y < height; y++) {
     const rowResult = reader.readBytes(trimmedRowBytes);
-    if (!rowResult.ok) return err(rowResult.error);
+    if (rowResult.isErr()) return err(rowResult.error);
     imageData.set(rowResult.value, y * trimmedRowBytes);
     reader.skip(rowBytes - width * bytesPerPixel);
   }
@@ -567,8 +567,8 @@ function parseOneChunk(state: ParserState): Result<number, Error> {
   const chunkTypeResult = reader.readUint32();
   const chunkSizeResult = reader.readUint32();
 
-  if (!chunkTypeResult.ok) return err(chunkTypeResult.error);
-  if (!chunkSizeResult.ok) return err(chunkSizeResult.error);
+  if (chunkTypeResult.isErr()) return err(chunkTypeResult.error);
+  if (chunkSizeResult.isErr()) return err(chunkSizeResult.error);
 
   const chunkType = chunkTypeResult.value;
   const chunkSize = chunkSizeResult.value;
@@ -593,7 +593,7 @@ function parseOneChunk(state: ParserState): Result<number, Error> {
       const limit = reader.tell() + chunkSize;
       while (reader.tell() < limit) {
         const result = parseOneChunk(state);
-        if (!result.ok) return result;
+        if (result.isErr()) return result;
       }
       state.currentDepth--;
       state.currentMesh = null;
@@ -614,7 +614,7 @@ function parseOneChunk(state: ParserState): Result<number, Error> {
       let endgFound = false;
       while (!endgFound) {
         const result = parseOneChunk(state);
-        if (!result.ok) return result;
+        if (result.isErr()) return result;
         if (result.value === CHUNK_ENDG) {
           endgFound = true;
         }
@@ -638,7 +638,7 @@ function parseOneChunk(state: ParserState): Result<number, Error> {
       }
 
       const result = parseTmsh(state, chunkSize);
-      if (!result.ok) return err(result.error);
+      if (result.isErr()) return err(result.error);
 
       if (!state.currentMesh) {
         return err(new Error("currentMesh wasn't set by parseTmsh"));
@@ -661,7 +661,7 @@ function parseOneChunk(state: ParserState): Result<number, Error> {
 
     case CHUNK_ATAR: {
       const result = parseAtar(state, chunkSize);
-      if (!result.ok) return err(result.error);
+      if (result.isErr()) return err(result.error);
       break;
     }
 
@@ -684,9 +684,9 @@ function parseOneChunk(state: ParserState): Result<number, Error> {
       const rResult = reader.readFloat32();
       const gResult = reader.readFloat32();
       const bResult = reader.readFloat32();
-      if (!rResult.ok) return err(rResult.error);
-      if (!gResult.ok) return err(gResult.error);
-      if (!bResult.ok) return err(bResult.error);
+      if (rResult.isErr()) return err(rResult.error);
+      if (gResult.isErr()) return err(gResult.error);
+      if (bResult.isErr()) return err(bResult.error);
 
       state.currentMesh.diffuseColor.r = rResult.value;
       state.currentMesh.diffuseColor.g = gResult.value;
@@ -706,9 +706,9 @@ function parseOneChunk(state: ParserState): Result<number, Error> {
       const rResult = reader.readFloat32();
       const gResult = reader.readFloat32();
       const bResult = reader.readFloat32();
-      if (!rResult.ok) return err(rResult.error);
-      if (!gResult.ok) return err(gResult.error);
-      if (!bResult.ok) return err(bResult.error);
+      if (rResult.isErr()) return err(rResult.error);
+      if (gResult.isErr()) return err(gResult.error);
+      if (bResult.isErr()) return err(bResult.error);
 
       // Note: Original parser asserts r == g == b
       state.currentMesh.diffuseColor.a = rResult.value;
@@ -749,14 +749,14 @@ function parseOneChunk(state: ParserState): Result<number, Error> {
     case CHUNK_TXPM: {
       // Mipmap or pixmap texture
       const shaderResult = getCurrentTextureShader(state);
-      if (!shaderResult.ok) return err(shaderResult.error);
+      if (shaderResult.isErr()) return err(shaderResult.error);
 
       if (shaderResult.value.pixmap !== null) {
         // Pixmap already set, skip this one
         reader.skip(chunkSize);
       } else {
         const pixmapResult = parsePixmap(state, chunkType, chunkSize);
-        if (!pixmapResult.ok) return err(pixmapResult.error);
+        if (pixmapResult.isErr()) return err(pixmapResult.error);
         shaderResult.value.pixmap = pixmapResult.value;
       }
       break;
@@ -769,12 +769,12 @@ function parseOneChunk(state: ParserState): Result<number, Error> {
       }
 
       const shaderResult = getCurrentTextureShader(state);
-      if (!shaderResult.ok) return err(shaderResult.error);
+      if (shaderResult.isErr()) return err(shaderResult.error);
 
       const boundaryUResult = reader.readUint32();
       const boundaryVResult = reader.readUint32();
-      if (!boundaryUResult.ok) return err(boundaryUResult.error);
-      if (!boundaryVResult.ok) return err(boundaryVResult.error);
+      if (boundaryUResult.isErr()) return err(boundaryUResult.error);
+      if (boundaryVResult.isErr()) return err(boundaryVResult.error);
 
       shaderResult.value.boundaryU = boundaryUResult.value as ShaderUVBoundary;
       shaderResult.value.boundaryV = boundaryVResult.value as ShaderUVBoundary;
@@ -788,7 +788,7 @@ function parseOneChunk(state: ParserState): Result<number, Error> {
       }
 
       const targetResult = reader.readUint32();
-      if (!targetResult.ok) return err(targetResult.error);
+      if (targetResult.isErr()) return err(targetResult.error);
       const target = targetResult.value;
 
       const tocEntry = state.referenceTOC.get(target);
@@ -800,7 +800,7 @@ function parseOneChunk(state: ParserState): Result<number, Error> {
       const jumpBackTo = reader.tell();
       reader.goto(tocEntry.offset);
       const result = parseOneChunk(state);
-      if (!result.ok) return result;
+      if (result.isErr()) return result;
       reader.goto(jumpBackTo);
       break;
     }
@@ -831,14 +831,14 @@ function readHeaderAndTOC(state: ParserState): Result<void, Error> {
 
   // Read magic number
   const magicResult = reader.readUint32();
-  if (!magicResult.ok) return err(magicResult.error);
+  if (magicResult.isErr()) return err(magicResult.error);
   if (magicResult.value !== CHUNK_3DMF) {
     return err(new Error(`Not a 3DMF file (got ${fourCCToString(magicResult.value)})`));
   }
 
   // Read header length
   const headerLenResult = reader.readUint32();
-  if (!headerLenResult.ok) return err(headerLenResult.error);
+  if (headerLenResult.isErr()) return err(headerLenResult.error);
   if (headerLenResult.value !== 16) {
     return err(new Error(`Bad 3DMF header length: ${headerLenResult.value}`));
   }
@@ -846,8 +846,8 @@ function readHeaderAndTOC(state: ParserState): Result<void, Error> {
   // Read version
   const versionMajorResult = reader.readUint16();
   const versionMinorResult = reader.readUint16();
-  if (!versionMajorResult.ok) return err(versionMajorResult.error);
-  if (!versionMinorResult.ok) return err(versionMinorResult.error);
+  if (versionMajorResult.isErr()) return err(versionMajorResult.error);
+  if (versionMinorResult.isErr()) return err(versionMinorResult.error);
 
   const versionMajor = versionMajorResult.value;
   const versionMinor = versionMinorResult.value;
@@ -858,14 +858,14 @@ function readHeaderAndTOC(state: ParserState): Result<void, Error> {
 
   // Read flags
   const flagsResult = reader.readUint32();
-  if (!flagsResult.ok) return err(flagsResult.error);
+  if (flagsResult.isErr()) return err(flagsResult.error);
   if (flagsResult.value !== 0) {
     return err(new Error("Database or Stream modes aren't supported"));
   }
 
   // Read TOC offset
   const tocOffsetResult = reader.readUint64();
-  if (!tocOffsetResult.ok) return err(tocOffsetResult.error);
+  if (tocOffsetResult.isErr()) return err(tocOffsetResult.error);
   const tocOffset = tocOffsetResult.value;
 
   // Read TOC if present
@@ -875,7 +875,7 @@ function readHeaderAndTOC(state: ParserState): Result<void, Error> {
 
     // Read TOC header
     const tocMagicResult = reader.readUint32();
-    if (!tocMagicResult.ok) return err(tocMagicResult.error);
+    if (tocMagicResult.isErr()) return err(tocMagicResult.error);
     if (tocMagicResult.value !== CHUNK_TOC) {
       return err(new Error("Expecting toc magic"));
     }
@@ -889,9 +889,9 @@ function readHeaderAndTOC(state: ParserState): Result<void, Error> {
     const tocEntrySizeResult = reader.readUint32();
     const nEntriesResult = reader.readUint32();
 
-    if (!tocEntryTypeResult.ok) return err(tocEntryTypeResult.error);
-    if (!tocEntrySizeResult.ok) return err(tocEntrySizeResult.error);
-    if (!nEntriesResult.ok) return err(nEntriesResult.error);
+    if (tocEntryTypeResult.isErr()) return err(tocEntryTypeResult.error);
+    if (tocEntrySizeResult.isErr()) return err(tocEntrySizeResult.error);
+    if (nEntriesResult.isErr()) return err(nEntriesResult.error);
 
     if (tocEntryTypeResult.value !== 1) {
       return err(new Error("Only QD3D 1.5 3DMF TOCs are recognized"));
@@ -906,9 +906,9 @@ function readHeaderAndTOC(state: ParserState): Result<void, Error> {
       const objLocationResult = reader.readUint64();
       const objTypeResult = reader.readUint32();
 
-      if (!refIDResult.ok) return err(refIDResult.error);
-      if (!objLocationResult.ok) return err(objLocationResult.error);
-      if (!objTypeResult.ok) return err(objTypeResult.error);
+      if (refIDResult.isErr()) return err(refIDResult.error);
+      if (objLocationResult.isErr()) return err(objLocationResult.error);
+      if (objTypeResult.isErr()) return err(objTypeResult.error);
 
       state.referenceTOC.set(refIDResult.value, {
         offset: objLocationResult.value,
@@ -940,13 +940,13 @@ export function parse3DMFToMetaFile(buffer: ArrayBuffer): Result<TQ3MetaFile, Er
 
   // Read header and TOC
   const headerResult = readHeaderAndTOC(state);
-  if (!headerResult.ok) return err(headerResult.error);
+  if (headerResult.isErr()) return err(headerResult.error);
 
   // Parse chunks until EOF
   const fileLength = reader.length();
   while (reader.tell() < fileLength) {
     const result = parseOneChunk(state);
-    if (!result.ok) {
+    if (result.isErr()) {
       // Check if it's an early EOF error (which is acceptable at end of some files)
       if (result.error.message === "Early EOF in 3DMF") {
         break;

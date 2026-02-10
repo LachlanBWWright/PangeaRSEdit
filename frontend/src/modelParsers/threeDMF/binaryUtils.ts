@@ -145,7 +145,7 @@ export class BigEndianReader {
    */
   readFourCC(): Result<string, Error> {
     const result = this.readUint32();
-    if (!result.ok) {
+    if (result.isErr()) {
       return err(result.error);
     }
     const fourCC = result.value;

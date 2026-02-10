@@ -32,7 +32,7 @@ export async function parseBG3DWithSkeleton(
 
   // Parse skeleton data using the existing skeleton parser
   const skeletonResult = await fromPromise(parseSkeletonRsrc(skeletonBuffer));
-  if (!skeletonResult.ok) {
+  if (skeletonResult.isErr()) {
     return err(skeletonResult.error);
   }
 

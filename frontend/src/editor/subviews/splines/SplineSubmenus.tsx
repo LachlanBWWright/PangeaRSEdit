@@ -100,7 +100,7 @@ export function EditSplineItemMenu({
   const currentSplineItemData = splineItemData.at(selectedSplineItem);
 
   const splineItemTypesResult = getSplineItemTypes(globals);
-  const allSplineItemValues = splineItemTypesResult.ok
+  const allSplineItemValues = splineItemTypesResult.isOk()
     ? splineItemTypesResult.value
         .map((key) => parseInt(key))
         .filter((key) => isNaN(key) === false)

@@ -33,7 +33,7 @@ export function FenceMenu({
       : null;
 
   const fenceTypesResult = getFenceTypes(globals);
-  const fenceValues = fenceTypesResult.ok
+  const fenceValues = fenceTypesResult.isOk()
     ? fenceTypesResult.value
         .map((key) => parseInt(key))
         .filter((key) => isNaN(key) === false)

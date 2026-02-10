@@ -55,7 +55,7 @@ async function testGame(game: string, filePath: string) {
   // Parse BG3D
   console.log("Parsing BG3D...");
   const parsed = parseBG3D(arrayBuffer);
-  if (!parsed.ok) {
+  if (parsed.isErr()) {
     console.error(
       `❌ Parse failed: ${parsed.error?.message ?? String(parsed.error)}`,
     );
@@ -97,7 +97,7 @@ async function testGame(game: string, filePath: string) {
   // Convert back to BG3D
   console.log("Converting back to BG3D...");
   const roundtripResult = await fromPromise(gltfToBG3D(gltfDoc));
-  if (!roundtripResult.ok) {
+  if (roundtripResult.isErr()) {
     console.log(`❌ Error: ${roundtripResult.error.message}`);
     return { game, success: false, error: roundtripResult.error.message };
   }

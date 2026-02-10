@@ -333,7 +333,7 @@ export function MightyMikeTileMenu({
       })
     );
 
-    if (!bitmapResult.ok) {
+    if (bitmapResult.isErr()) {
       toast.error(`Failed to upload tile: ${bitmapResult.error.message}`);
       return;
     }

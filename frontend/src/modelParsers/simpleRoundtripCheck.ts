@@ -91,7 +91,7 @@ async function main() {
     roundtrip1SkeletonResource,
   );
 
-  if (!roundtrip1SkeletonBinaryResult.ok) {
+  if (roundtrip1SkeletonBinaryResult.isErr()) {
     console.error("Failed to convert skeleton to binary:", roundtrip1SkeletonBinaryResult.error);
     return;
   }
@@ -148,7 +148,7 @@ async function main() {
     roundtrip2SkeletonResource,
   );
 
-  if (!roundtrip2SkeletonBinaryResult.ok) {
+  if (roundtrip2SkeletonBinaryResult.isErr()) {
     console.error("Failed to convert skeleton to binary:", roundtrip2SkeletonBinaryResult.error);
     return;
   }
