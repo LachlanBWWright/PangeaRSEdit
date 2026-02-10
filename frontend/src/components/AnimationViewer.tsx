@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo, useCallback } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -20,6 +20,12 @@ export interface AnimationInfo {
   clip: AnimationClip;
 }
 
+const reindexAnimations = (items: AnimationInfo[]) =>
+  items.map((anim, index) => ({
+    ...anim,
+    index,
+  }));
+
 interface AnimationViewerProps {
   animations: AnimationInfo[];
   animationMixer: AnimationMixer | null;
@@ -33,14 +39,6 @@ export function AnimationViewer({
 }: AnimationViewerProps) {
   const DEFAULT_ANIMATION_DURATION = 1;
   const MIN_ANIMATION_DURATION = 0.016; // ~1 frame at 60fps
-  const reindexAnimations = useCallback(
-    (items: AnimationInfo[]) =>
-      items.map((anim, index) => ({
-        ...anim,
-        index,
-      })),
-    [],
-  );
   const [draftAnimations, setDraftAnimations] = useState<AnimationInfo[] | null>(
     null,
   );
@@ -61,7 +59,7 @@ export function AnimationViewer({
   const currentActionRef = useRef<AnimationAction | null>(null);
   const baseAnimations = useMemo(
     () => reindexAnimations(animations),
-    [animations, reindexAnimations],
+    [animations],
   );
   const editableAnimations = draftAnimations ?? baseAnimations;
   const selectedAnimationValue =
@@ -418,8 +416,8 @@ export function AnimationViewer({
                 value={editDuration}
                 onChange={(event) => {
                   const parsed = Number.parseFloat(event.target.value);
-                  setEditDuration(
-                    Number.isFinite(parsed) ? parsed : MIN_ANIMATION_DURATION,
+                  setEditDuration((prev) =>
+                    Number.isFinite(parsed) ? parsed : prev,
                   );
                 }}
                 className="bg-gray-700 border-gray-600 text-white"
@@ -469,8 +467,8 @@ export function AnimationViewer({
               }
               onChange={(event) => {
                 const parsed = Number.parseFloat(event.target.value);
-                setNewAnimationDuration(
-                  Number.isFinite(parsed) ? parsed : DEFAULT_ANIMATION_DURATION,
+                setNewAnimationDuration((prev) =>
+                  Number.isFinite(parsed) ? parsed : prev,
                 );
               }}
               className="bg-gray-700 border-gray-600 text-white"
