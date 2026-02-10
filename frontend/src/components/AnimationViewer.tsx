@@ -31,6 +31,8 @@ export function AnimationViewer({
   animationMixer,
   onAnimationChange,
 }: AnimationViewerProps) {
+  const DEFAULT_ANIMATION_DURATION = 1;
+  const MIN_ANIMATION_DURATION = 0.016; // ~1 frame at 60fps
   const normalizeAnimations = useCallback(
     (items: AnimationInfo[]) =>
       items.map((anim, index) => ({
@@ -52,7 +54,9 @@ export function AnimationViewer({
   const [editName, setEditName] = useState("");
   const [editDuration, setEditDuration] = useState(0);
   const [newAnimationName, setNewAnimationName] = useState("New Animation");
-  const [newAnimationDuration, setNewAnimationDuration] = useState(1);
+  const [newAnimationDuration, setNewAnimationDuration] = useState(
+    DEFAULT_ANIMATION_DURATION,
+  );
   const animationRequestRef = useRef<number | undefined>(undefined);
   const currentActionRef = useRef<AnimationAction | null>(null);
   const selectedAnimationValue =
@@ -244,7 +248,10 @@ export function AnimationViewer({
       trimmedName.length > 0
         ? trimmedName
         : `Animation ${editableAnimations.length + 1}`;
-    const nextDuration = newAnimationDuration > 0 ? newAnimationDuration : 1;
+    const nextDuration =
+      newAnimationDuration > 0
+        ? newAnimationDuration
+        : DEFAULT_ANIMATION_DURATION;
     const templateClip = selectedAnimationInfo?.clip ?? null;
     const tracks = [];
     const clip = templateClip
@@ -404,9 +411,13 @@ export function AnimationViewer({
               <label className="text-xs text-gray-300">Duration (seconds)</label>
               <Input
                 type="number"
-                min={0.016}
+                min={MIN_ANIMATION_DURATION}
                 step={0.1}
-                value={Number.isFinite(editDuration) ? editDuration : 0}
+                value={
+                  Number.isFinite(editDuration)
+                    ? editDuration
+                    : selectedAnimationInfo.duration
+                }
                 onChange={(event) =>
                   setEditDuration(Number.parseFloat(event.target.value))
                 }
@@ -448,9 +459,13 @@ export function AnimationViewer({
             <label className="text-xs text-gray-300">Duration (seconds)</label>
             <Input
               type="number"
-              min={0.016}
+              min={MIN_ANIMATION_DURATION}
               step={0.1}
-              value={Number.isFinite(newAnimationDuration) ? newAnimationDuration : 1}
+              value={
+                Number.isFinite(newAnimationDuration)
+                  ? newAnimationDuration
+                  : DEFAULT_ANIMATION_DURATION
+              }
               onChange={(event) =>
                 setNewAnimationDuration(Number.parseFloat(event.target.value))
               }
