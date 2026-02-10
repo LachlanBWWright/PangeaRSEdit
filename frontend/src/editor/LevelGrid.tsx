@@ -24,7 +24,7 @@ export function LevelGrid({ title, children }: Props) {
   return (
     <div className="flex flex-col gap-1 text-2xl min-w-40">
       <p>{title}</p>
-      {childrenWithFullWidth}
+      <div>{childrenWithFullWidth}</div>
     </div>
   );
 }

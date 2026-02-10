@@ -72,7 +72,7 @@ export interface ModelVariant {
   /** Position offset [x, y, z] relative to the item's terrain position */
   positionOffset?: [number, number, number];
   /** References to game source code that define this mapping */
-  citations?: ReadonlyArray<import("./itemModelTypes").SourceCitation>;
+  citations?: readonly import("./itemModelTypes").SourceCitation[];
 }
 
 /**

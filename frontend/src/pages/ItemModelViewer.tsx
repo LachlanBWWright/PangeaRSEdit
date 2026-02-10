@@ -38,6 +38,7 @@ import { getGameMapper } from "@/data/items/mappers";
 import { ottoItemMapper } from "@/data/items/mappers/ottoItemMapper";
 import type { UniversalItemModelMapping } from "@/data/items/itemModelTypes";
 import { getCitationPermalink } from "@/data/items/itemModelTypes";
+import { fromPromise, err, type Result } from "@/types/result";
 
 /**
  * Camera configuration for optimal model viewing
@@ -191,41 +192,36 @@ function calculateModelStats(scene: Group | null): { vertices: number; faces: nu
  * When groupSize > 1, extracts consecutive subgroups and combines them.
  */
 function extractSubgroupByIndex(gltf: GLTF, modelIndex: number, groupSize = 1): Group | null {
-  try {
-    const groupsContainer = 
-      gltf.scene.children && gltf.scene.children.length > 0
-        ? gltf.scene.children[0]
-        : null;
-        
-    if (!groupsContainer) {
-      console.warn("No groups container found");
-      return null;
-    }
-    
-    if (modelIndex >= groupsContainer.children.length) {
-      console.warn(`Model index ${modelIndex} out of range (max ${groupsContainer.children.length - 1})`);
-      return null;
-    }
-    
-    const newScene = new Group();
-    const endIndex = Math.min(modelIndex + groupSize, groupsContainer.children.length);
-    
-    for (let i = modelIndex; i < endIndex; i++) {
-      const targetModel = groupsContainer.children[i];
-      if (targetModel) {
-        newScene.add(targetModel.clone(true));
-      }
-    }
-    
-    if (newScene.children.length === 0) {
-      return null;
-    }
-    
-    return newScene;
-  } catch (error) {
-    console.error("Error extracting subgroup:", error);
+  const groupsContainer =
+    gltf.scene.children && gltf.scene.children.length > 0
+      ? gltf.scene.children[0]
+      : null;
+
+  if (!groupsContainer) {
+    console.warn("No groups container found");
     return null;
   }
+
+  if (modelIndex >= groupsContainer.children.length) {
+    console.warn(`Model index ${modelIndex} out of range (max ${groupsContainer.children.length - 1})`);
+    return null;
+  }
+
+  const newScene = new Group();
+  const endIndex = Math.min(modelIndex + groupSize, groupsContainer.children.length);
+
+  for (let i = modelIndex; i < endIndex; i++) {
+    const targetModel = groupsContainer.children[i];
+    if (targetModel) {
+      newScene.add(targetModel.clone(true));
+    }
+  }
+
+  if (newScene.children.length === 0) {
+    return null;
+  }
+
+  return newScene;
 }
 
 export function ItemModelViewer() {
@@ -390,95 +386,149 @@ export function ItemModelViewer() {
     setLoading(true);
     setError(null);
     setStatus(`Loading model for ${selectedItem?.name ?? "item"}...`);
-    
-    try {
-      // Construct the model path using the mapping's directory (either "models" or "skeletons")
-      const modelPath = [selectedGame.basePath, mapping.modelPath, mapping.modelFile].join("/");
-      
-      console.log(`Loading model from: ${modelPath}, index: ${mapping.modelIndex}`);
-      setStatus(`Fetching ${mapping.modelFile}...`);
-      
-      const response = await fetch(modelPath);
-      if (!response.ok) {
-        throw new Error(`Failed to fetch model: ${response.statusText} (${modelPath})`);
-      }
-      
-      const buffer = await response.arrayBuffer();
-      setStatus(`Converting ${mapping.modelFile} to GLB...`);
+
+    // Construct the model path using the mapping's directory (either "models" or "skeletons")
+    const modelPath = [selectedGame.basePath, mapping.modelPath, mapping.modelFile].join("/");
+
+    console.log(`Loading model from: ${modelPath}, index: ${mapping.modelIndex}`);
+    setStatus(`Fetching ${mapping.modelFile}...`);
+
+    const fetchResult = await fromPromise(fetch(modelPath));
+    if (!fetchResult.ok) {
+      const errorMsg = fetchResult.error.message;
+      setError(errorMsg);
+      const itemName = selectedItem?.name ?? "item";
+      setStatus(`Error loading ${itemName}: ${errorMsg}`);
+      console.error("Model load error:", fetchResult.error);
+      setLoading(false);
+      return;
+    }
+
+    const response = fetchResult.value;
+    if (!response.ok) {
+      const errorMsg = `Failed to fetch model: ${response.statusText} (${modelPath})`;
+      setError(errorMsg);
+      const itemName = selectedItem?.name ?? "item";
+      setStatus(`Error loading ${itemName}: ${errorMsg}`);
+      setLoading(false);
+      return;
+    }
+
+    const bufferResult = await fromPromise(response.arrayBuffer());
+    if (!bufferResult.ok) {
+      const errorMsg = bufferResult.error.message;
+      setError(errorMsg);
+      const itemName = selectedItem?.name ?? "item";
+      setStatus(`Error loading ${itemName}: ${errorMsg}`);
+      console.error("Model load error:", bufferResult.error);
+      setLoading(false);
+      return;
+    }
+    const buffer = bufferResult.value;
+    setStatus(`Converting ${mapping.modelFile} to GLB...`);
       
       // Convert via worker
-      const glbBuffer = await new Promise<ArrayBuffer>((resolve, reject) => {
+      const glbBufferResult: Result<ArrayBuffer, Error> = await new Promise((resolve) => {
         const worker = getWorker();
         let resolved = false;
-        
+
         const handleMessage = (e: MessageEvent<BG3DGltfWorkerResponse>) => {
           if (e.data.type === "bg3d-with-skeleton-to-glb" && e.data.result) {
             resolved = true;
             worker.removeEventListener("message", handleMessage);
             worker.removeEventListener("error", handleError);
-            resolve(e.data.result);
+            resolve({ ok: true, value: e.data.result });
           } else if (e.data.type === "error") {
             resolved = true;
             worker.removeEventListener("message", handleMessage);
             worker.removeEventListener("error", handleError);
-            reject(new Error(e.data.error));
+            resolve(err(new Error(e.data.error)));
           }
         };
-        
+
         const handleError = (error: ErrorEvent) => {
           if (!resolved) {
             resolved = true;
             worker.removeEventListener("message", handleMessage);
             worker.removeEventListener("error", handleError);
-            reject(new Error(error.message || "Worker error"));
+            resolve(err(new Error(error.message || "Worker error")));
           }
         };
-        
+
         worker.addEventListener("message", handleMessage);
         worker.addEventListener("error", handleError);
-        
+
         worker.postMessage({
           type: "bg3d-with-skeleton-to-glb",
           bg3dBuffer: buffer,
           skeletonData: undefined,
         });
-        
+
         // Timeout
         setTimeout(() => {
           if (!resolved) {
             resolved = true;
             worker.removeEventListener("message", handleMessage);
             worker.removeEventListener("error", handleError);
-            reject(new Error("Conversion timeout"));
+            resolve(err(new Error("Conversion timeout")));
           }
         }, WORKER_TIMEOUT_MS);
       });
+
+      if (!glbBufferResult.ok) {
+        const errorMsg = glbBufferResult.error.message;
+        setError(errorMsg);
+        const itemName = selectedItem?.name ?? "item";
+        setStatus(`Error loading ${itemName}: ${errorMsg}`);
+        console.error("Model load error:", glbBufferResult.error);
+        setLoading(false);
+        return;
+      }
+      const glbBuffer = glbBufferResult.value;
       
       setStatus("Loading GLB into Three.js...");
-      
+
       // Load into Three.js
       const blob = new Blob([glbBuffer], { type: "model/gltf-binary" });
       const blobUrl = URL.createObjectURL(blob);
-      
+
       const loader = new GLTFLoader();
-      const gltf = await new Promise<GLTF>((resolve, reject) => {
-        loader.load(
-          blobUrl,
-          (gltf) => resolve(gltf),
-          undefined,
-          (err) => reject(err)
-        );
-      });
-      
+      const gltfResult = await fromPromise(
+        new Promise<GLTF>((resolve, reject) => {
+          loader.load(
+            blobUrl,
+            (gltf) => resolve(gltf),
+            undefined,
+            (err) => reject(err)
+          );
+        })
+      );
+
       URL.revokeObjectURL(blobUrl);
-      
+
+      if (!gltfResult.ok) {
+        const errorMsg = gltfResult.error.message;
+        setError(errorMsg);
+        const itemName = selectedItem?.name ?? "item";
+        setStatus(`Error loading ${itemName}: ${errorMsg}`);
+        console.error("Model load error:", gltfResult.error);
+        setLoading(false);
+        return;
+      }
+      const gltf = gltfResult.value;
+
       // Extract the specific model by index
       const groupSize = mapping.groupSize ?? 1;
       setStatus(`Extracting model at index ${mapping.modelIndex}${groupSize > 1 ? ` (${groupSize} groups)` : ""}...`);
       const extracted = extractSubgroupByIndex(gltf, mapping.modelIndex, groupSize);
-      
+
       if (!extracted) {
-        throw new Error(`Could not extract model at index ${mapping.modelIndex}`);
+        const errorMsg = `Could not extract model at index ${mapping.modelIndex}`;
+        setError(errorMsg);
+        const itemName = selectedItem?.name ?? "item";
+        setStatus(`Error loading ${itemName}: ${errorMsg}`);
+        setLoading(false);
+        return;
       }
       
       // Apply scaling: uniform scale, then per-axis overrides
@@ -502,19 +552,10 @@ export function ItemModelViewer() {
       setGltfScene(extracted);
       setModelStats(calculateModelStats(extracted));
       setLoadedModelInfo({ file: mapping.modelFile, index: mapping.modelIndex, mapping });
-      
+
       const itemName = selectedItem?.name ?? "item";
       setStatus(`Loaded: ${itemName} (${mapping.modelFile} @ index ${mapping.modelIndex})`);
-      
-    } catch (err) {
-      const errorMsg = err instanceof Error ? err.message : String(err);
-      setError(errorMsg);
-      const itemName = selectedItem?.name ?? "item";
-      setStatus(`Error loading ${itemName}: ${errorMsg}`);
-      console.error("Model load error:", err);
-    } finally {
       setLoading(false);
-    }
   }, [selectedGame, selectedItemType, selectedItem, currentMapping, getWorker]);
   
   return (

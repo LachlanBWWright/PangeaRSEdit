@@ -126,7 +126,7 @@ export function GameCarousel({
 
   return (
     <Carousel
-      className="mx-auto w-full max-w-[1400px] min-h-0 h-full max-h-[70vh] lg:max-h-[80vh] overflow-hidden px-12"
+      className="mx-auto w-full max-w-[1400px] min-h-0 h-full overflow-hidden px-12"
       opts={{ align: showAllGames ? "start" : "center", skipSnaps: true }}
     >
       <CarouselContent
@@ -181,9 +181,6 @@ function GameCarouselItem({
 }) {
   // Look up component from module-level map
   const LevelComponent = LEVEL_COMPONENTS_MAP[game.title];
-  if (!LevelComponent) {
-    throw new Error(`Unknown game title: ${game.title}`);
-  }
 
   // Create tunnel load handler
   const handleTunnelLoad = useCallback(
@@ -193,6 +190,16 @@ function GameCarouselItem({
     },
     [setTunnelData, setTunnelFileName],
   );
+
+  if (!LevelComponent) {
+    return (
+      <CarouselItem className="pl-4 md:pl-6 md:basis-1/2 lg:basis-1/3 min-h-0 box-border overflow-hidden">
+        <div className="p-4 border border-red-500 rounded bg-red-900/20">
+          <p className="text-red-400">Unknown game title: {game.title}</p>
+        </div>
+      </CarouselItem>
+    );
+  }
 
   return (
     <CarouselItem className="pl-4 md:pl-6 md:basis-1/2 lg:basis-1/3 min-h-0 box-border overflow-hidden">

@@ -3,7 +3,7 @@
 // Tests: parse → export → compare levels to original binary
 
 import { describe, it, expect } from "vitest";
-import { readFileSync } from "fs";
+import { readFileSync, existsSync } from "fs";
 import { join } from "path";
 import { parseNanosaur1Level, nanosaur1LevelToLevelData } from "../../src/data/processors/classicProprocessor";
 import { compileNanosaur1Level } from "../../src/editor/loadLogic/compileNanosaur1Level";
@@ -35,14 +35,12 @@ describe("Nanosaur 1 - Byte-Accurate Roundtrip", () => {
   levels.forEach((filename) => {
     it(`${filename}: byte-for-byte accuracy`, () => {
       const path = join(levelsDir, filename);
-      let originalBuffer: Buffer;
       
-      try {
-        originalBuffer = readFileSync(path);
-      } catch {
+      if (!existsSync(path)) {
         console.warn(`Could not find file ${path}, skipping test`);
         return;
       }
+      const originalBuffer = readFileSync(path);
 
       const originalData = new Uint8Array(originalBuffer);
       expect(originalData.length).toBeGreaterThan(0);
@@ -116,14 +114,12 @@ describe("Mighty Mike - Byte-Accurate Roundtrip", () => {
   levels.forEach((filename) => {
     it(`${filename}: byte-for-byte accuracy`, () => {
       const path = join(levelsDir, filename);
-      let originalBuffer: Buffer;
       
-      try {
-        originalBuffer = readFileSync(path);
-      } catch {
+      if (!existsSync(path)) {
         console.warn(`Could not find file ${path}, skipping test`);
         return;
       }
+      const originalBuffer = readFileSync(path);
 
       const originalData = new Uint8Array(originalBuffer);
       expect(originalData.length).toBeGreaterThan(0);

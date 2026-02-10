@@ -102,14 +102,8 @@ export const Spline = memo(
 
              updateSplinePointsFromNubs(splineIdx, setSplineData);
              // Reset Konva node transform after committing
-            try {
-              e.target.x(0);
-              e.target.y(0);
-            } catch (err) {
-              // Best-effort: resetting Konva node transform. Log and continue.
-              // Not a user-facing error; keep behavior unchanged.
-              console.warn("Failed to reset Konva node transform:", err);
-            }
+            e.target.x(0);
+            e.target.y(0);
             setInitialDragState(null);
           }}
         />

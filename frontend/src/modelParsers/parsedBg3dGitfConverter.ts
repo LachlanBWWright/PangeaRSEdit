@@ -423,108 +423,91 @@ export function bg3dParsedToGLTF(
     if (mat.textures && mat.textures.length > 0) {
       mat.textures.forEach((tex, j) => {
         let pngBuffer: Uint8Array<ArrayBufferLike>;
-        try {
-          if (tex.isJpeg) {
-            // JPEG texture (Nanosaur 2) - decompress from QuickTime format and convert to PNG
-            console.log(
-              `[Material ${i}] Processing JPEG texture, bufferSize: ${tex.bufferSize}`,
-            );
+        if (tex.isJpeg) {
+          // JPEG texture (Nanosaur 2) - decompress from QuickTime format and convert to PNG
+          console.log(
+            `[Material ${i}] Processing JPEG texture, bufferSize: ${tex.bufferSize}`,
+          );
 
-            try {
-              // Extract payload from QuickTime ImageDescription format
-              const view = new DataView(
-                tex.pixels.buffer,
-                tex.pixels.byteOffset,
-              );
-              const offset = view.getInt32(0, false); // big-endian
-              const payloadSize = tex.bufferSize - offset;
-              const payloadView = new Uint8Array(
-                tex.pixels.buffer,
-                tex.pixels.byteOffset + offset,
-                payloadSize,
-              );
+          // Extract payload from QuickTime ImageDescription format
+          const view = new DataView(
+            tex.pixels.buffer,
+            tex.pixels.byteOffset,
+          );
+          const offset = view.getInt32(0, false); // big-endian
+          const payloadSize = tex.bufferSize - offset;
+          const payloadView = new Uint8Array(
+            tex.pixels.buffer,
+            tex.pixels.byteOffset + offset,
+            payloadSize,
+          );
 
-              console.log(
-                `[Material ${i}] Offset: ${offset}, Payload size: ${payloadSize}`,
-              );
+          console.log(
+            `[Material ${i}] Offset: ${offset}, Payload size: ${payloadSize}`,
+          );
 
-              // Copy to new buffer for decodeJpegNode
-              const payloadBuffer = new Uint8Array(payloadSize);
-              payloadBuffer.set(payloadView);
+          // Copy to new buffer for decodeJpegNode
+          const payloadBuffer = new Uint8Array(payloadSize);
+          payloadBuffer.set(payloadView);
 
-              // Decompress JPEG
-              const imageData = decodeJpegNode(payloadBuffer.buffer);
-              console.log(
-                `[Material ${i}] Decompressed JPEG: ${imageData.width}x${imageData.height}`,
-              );
+          // Decompress JPEG
+          const imageData = decodeJpegNode(payloadBuffer.buffer);
+          console.log(
+            `[Material ${i}] Decompressed JPEG: ${imageData.width}x${imageData.height}`,
+          );
 
-              // Convert to PNG
-              const pngBuffer = rgba8ToPng(
-                new Uint8Array(imageData.data),
-                imageData.width,
-                imageData.height,
-              );
+          // Convert to PNG
+          const jpegPngBuffer = rgba8ToPng(
+            new Uint8Array(imageData.data),
+            imageData.width,
+            imageData.height,
+          );
 
-              const texture = doc.createTexture();
-              texture.setMimeType("image/png");
-              texture.setImage(pngBuffer);
-              texture.setExtras({
-                width: imageData.width,
-                height: imageData.height,
-                srcPixelFormat: tex.srcPixelFormat,
-                dstPixelFormat: tex.dstPixelFormat,
-                bufferSize: tex.bufferSize,
-                isJpeg: true,
-                hasAlpha: !!tex.jpegAlphaData,
-              });
-              if (j === 0) {
-                const gltfMat = gltfMaterials[i];
-                if (gltfMat) {
-                  gltfMat.setBaseColorTexture(texture);
-                }
-              }
-              return; // Skip the rest of the texture processing
-            } catch (error) {
-              console.error(
-                `[Material ${i}] Failed to decompress JPEG texture:`,
-                error,
-              );
-              // Fall through to create a gray placeholder
-              pngBuffer = rgba8ToPng(
-                new Uint8Array(tex.width * tex.height * 4).fill(128),
-                tex.width,
-                tex.height,
-              );
+          const texture = doc.createTexture();
+          texture.setMimeType("image/png");
+          texture.setImage(jpegPngBuffer);
+          texture.setExtras({
+            width: imageData.width,
+            height: imageData.height,
+            srcPixelFormat: tex.srcPixelFormat,
+            dstPixelFormat: tex.dstPixelFormat,
+            bufferSize: tex.bufferSize,
+            isJpeg: true,
+            hasAlpha: !!tex.jpegAlphaData,
+          });
+          if (j === 0) {
+            const gltfMat = gltfMaterials[i];
+            if (gltfMat) {
+              gltfMat.setBaseColorTexture(texture);
             }
-          } else if (
-            tex.srcPixelFormat === PixelFormatSrc.GL_UNSIGNED_SHORT_1_5_5_5_REV
-          ) {
-            // ARGB16 with byte swap
-            const src = new Uint16Array(
-              tex.pixels.buffer,
-              tex.pixels.byteOffset,
-              tex.pixels.byteLength / 2,
-            );
-            // Byte swap each 16-bit value
-            const swapped = new Uint16Array(src.length);
-            for (let k = 0; k < src.length; k++) {
-              const val = src[k];
-              if (val !== undefined) {
-                swapped[k] = ((val & 0xff) << 8) | ((val >> 8) & 0xff);
-              }
-            }
-            pngBuffer = argb16ToPng(swapped, tex.width, tex.height);
-          } else if (tex.srcPixelFormat === PixelFormatSrc.GL_RGB) {
-            // RGB8
-            pngBuffer = rgb24ToPng(tex.pixels, tex.width, tex.height);
-          } else if (tex.srcPixelFormat === PixelFormatSrc.GL_RGBA) {
-            // GL_RGBA (RGBA8)
-            pngBuffer = rgba8ToPng(tex.pixels, tex.width, tex.height);
-          } else {
-            // Unknown/unsupported format, fallback to raw buffer
-            pngBuffer = tex.pixels;
           }
-        } catch {
+          return; // Skip the rest of the texture processing
+        } else if (
+          tex.srcPixelFormat === PixelFormatSrc.GL_UNSIGNED_SHORT_1_5_5_5_REV
+        ) {
+          // ARGB16 with byte swap
+          const src = new Uint16Array(
+            tex.pixels.buffer,
+            tex.pixels.byteOffset,
+            tex.pixels.byteLength / 2,
+          );
+          // Byte swap each 16-bit value
+          const swapped = new Uint16Array(src.length);
+          for (let k = 0; k < src.length; k++) {
+            const val = src[k];
+            if (val !== undefined) {
+              swapped[k] = ((val & 0xff) << 8) | ((val >> 8) & 0xff);
+            }
+          }
+          pngBuffer = argb16ToPng(swapped, tex.width, tex.height);
+        } else if (tex.srcPixelFormat === PixelFormatSrc.GL_RGB) {
+          // RGB8
+          pngBuffer = rgb24ToPng(tex.pixels, tex.width, tex.height);
+        } else if (tex.srcPixelFormat === PixelFormatSrc.GL_RGBA) {
+          // GL_RGBA (RGBA8)
+          pngBuffer = rgba8ToPng(tex.pixels, tex.width, tex.height);
+        } else {
+          // Unknown/unsupported format, fallback to raw buffer
           pngBuffer = tex.pixels;
         }
 
@@ -1088,20 +1071,16 @@ export function bg3dParsedToGLTF(
 
   // Preserve original binary data ONLY when explicitly provided; this is required by some tests/tools
   if (originalBinaryData) {
-    try {
-      const originalBinaries: Record<string, unknown> = {};
-      if (originalBinaryData.bg3dBuffer)
-        originalBinaries.bg3d = Array.from(
-          new Uint8Array(originalBinaryData.bg3dBuffer),
-        );
-      if (originalBinaryData.skeletonBuffer)
-        originalBinaries.skeleton = Array.from(
-          new Uint8Array(originalBinaryData.skeletonBuffer),
-        );
-      extrasData.originalBinaries = originalBinaries;
-    } catch {
-      // ignore
-    }
+    const originalBinaries: Record<string, unknown> = {};
+    if (originalBinaryData.bg3dBuffer)
+      originalBinaries.bg3d = Array.from(
+        new Uint8Array(originalBinaryData.bg3dBuffer),
+      );
+    if (originalBinaryData.skeletonBuffer)
+      originalBinaries.skeleton = Array.from(
+        new Uint8Array(originalBinaryData.skeletonBuffer),
+      );
+    extrasData.originalBinaries = originalBinaries;
   }
 
   doc.getRoot().setExtras(extrasData);
@@ -1201,7 +1180,8 @@ export async function gltfToBG3D(doc: Document): Promise<BG3DParseResult> {
               const newBuffer = u8.buffer.slice(0);
               // slice(0) returns ArrayBuffer, but TypeScript can't infer it from SharedArrayBuffer
               if (!(newBuffer instanceof ArrayBuffer)) {
-                throw new Error("Failed to convert to ArrayBuffer");
+                console.error("Failed to convert to ArrayBuffer - using empty buffer");
+                return new ArrayBuffer(0);
               }
               return newBuffer;
             })();

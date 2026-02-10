@@ -4,12 +4,9 @@
 
 import { describe, it, expect } from "vitest";
 import {
-  type EditOperation,
   type MoveItemOperation,
   type AddItemOperation,
   type DeleteItemOperation,
-  type MoveSplineNubOperation,
-  type UpdateTerrainHeightOperation,
   reverseOperation,
   canMergeOperations,
   mergeOperations,
@@ -146,8 +143,12 @@ describe("Level Edit Integration", () => {
       };
       
       expect(canMergeOperations(op1, op2)).toBe(true);
-      
-      const merged = mergeOperations(op1, op2);
+
+      const mergeResult = mergeOperations(op1, op2);
+      expect(mergeResult.ok).toBe(true);
+      if (!mergeResult.ok) return; // Type guard
+
+      const merged = mergeResult.value;
       expect(merged.type).toBe("MoveItem");
       if (merged.type === "MoveItem") {
         expect(merged.oldX).toBe(100);  // Original old position
@@ -243,9 +244,13 @@ describe("Level Edit Integration", () => {
         newZ: 200,
       };
       
-      const merged = mergeOperations(op1, op2);
+      const mergeResult = mergeOperations(op1, op2);
+      expect(mergeResult.ok).toBe(true);
+      if (!mergeResult.ok) return; // Type guard
+
+      const merged = mergeResult.value;
       const reversed = reverseOperation(merged);
-      
+
       // Reversing the merged operation should go back to original position
       if (reversed.type === "MoveItem") {
         expect(reversed.newX).toBe(0);

@@ -15,7 +15,7 @@ import { bg3dSkeletonToSkeletonResource } from "../skeletonExport";
 // import { skeletonResourceToBinary } from "../skeletonExport"; // Requires Worker, not available in tests
 import { parseBG3DWithSkeletonResource } from "../bg3dWithSkeleton";
 import { TQ3MetaFile } from "./types";
-import { readFileSync } from "fs";
+import { existsSync, readFileSync } from "fs";
 import { join } from "path";
 import { NodeIO } from "@gltf-transform/core";
 import { validateBytes } from "gltf-validator";
@@ -194,15 +194,12 @@ describe.skip("3DMF TRUE Full Roundtrip Tests (3DMF → glTF → 3DMF)", () => {
     testFiles.forEach(({ path, name }) => {
       it(`should roundtrip ${name}: 3DMF → glTF → 3DMF`, async () => {
         const testFile = join(path, name);
-        let originalBuffer: ArrayBuffer;
-        
-        try {
-          const data = readFileSync(testFile);
-          originalBuffer = data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength);
-        } catch {
+        if (!existsSync(testFile)) {
           console.log(`${name} not available, skipping`);
           return;
         }
+        const data = readFileSync(testFile);
+        const originalBuffer = data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength);
 
         console.log(`\n=== Testing ${name} TRUE Roundtrip ===`);
         console.log(`Original file size: ${originalBuffer.byteLength} bytes`);
@@ -308,19 +305,15 @@ describe.skip("3DMF TRUE Full Roundtrip Tests (3DMF → glTF → 3DMF)", () => {
       it(`should roundtrip ${modelName} + ${skeletonName}: 3DMF+skeleton → glTF → 3DMF+skeleton`, async () => {
         const modelFile = join(modelPath, modelName);
         const skeletonFile = join(skeletonPath, skeletonName);
-        let originalModelBuffer: ArrayBuffer;
-        let originalSkeletonBuffer: ArrayBuffer;
-        
-        try {
-          const modelData = readFileSync(modelFile);
-          originalModelBuffer = modelData.buffer.slice(modelData.byteOffset, modelData.byteOffset + modelData.byteLength);
-          
-          const skeletonData = readFileSync(skeletonFile);
-          originalSkeletonBuffer = skeletonData.buffer.slice(skeletonData.byteOffset, skeletonData.byteOffset + skeletonData.byteLength);
-        } catch {
+        if (!existsSync(modelFile) || !existsSync(skeletonFile)) {
           console.log(`${modelName} or ${skeletonName} not available, skipping`);
           return;
         }
+        const modelData = readFileSync(modelFile);
+        const originalModelBuffer = modelData.buffer.slice(modelData.byteOffset, modelData.byteOffset + modelData.byteLength);
+
+        const skeletonData = readFileSync(skeletonFile);
+        const originalSkeletonBuffer = skeletonData.buffer.slice(skeletonData.byteOffset, skeletonData.byteOffset + skeletonData.byteLength);
 
         console.log(`\n=== Testing ${modelName} + ${skeletonName} TRUE Roundtrip ===`);
         console.log(`Original model size: ${originalModelBuffer.byteLength} bytes`);
@@ -420,15 +413,12 @@ describe.skip("3DMF TRUE Full Roundtrip Tests (3DMF → glTF → 3DMF)", () => {
     modelFiles.forEach(({ path, name }) => {
       it(`should roundtrip model file ${name}: 3DMF → glTF → 3DMF`, async () => {
         const testFile = join(path, name);
-        let originalBuffer: ArrayBuffer;
-        
-        try {
-          const data = readFileSync(testFile);
-          originalBuffer = data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength);
-        } catch {
+        if (!existsSync(testFile)) {
           console.log(`${name} not available, skipping`);
           return;
         }
+        const data = readFileSync(testFile);
+        const originalBuffer = data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength);
 
         console.log(`\n=== Testing ${name} TRUE Roundtrip ===`);
         console.log(`Original file size: ${originalBuffer.byteLength} bytes`);
@@ -494,15 +484,12 @@ describe.skip("3DMF TRUE Full Roundtrip Tests (3DMF → glTF → 3DMF)", () => {
   describe("Double Roundtrip Stability Test", () => {
     it("should produce stable results after two roundtrips", async () => {
       const testFile = join(BUGDOM_SKELETONS_PATH, "Ant.3dmf");
-      let originalBuffer: ArrayBuffer;
-      
-      try {
-        const data = readFileSync(testFile);
-        originalBuffer = data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength);
-      } catch {
+      if (!existsSync(testFile)) {
         console.log("Ant.3dmf not available, skipping");
         return;
       }
+      const data = readFileSync(testFile);
+      const originalBuffer = data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength);
 
       console.log(`\n=== Double Roundtrip Stability Test ===`);
 

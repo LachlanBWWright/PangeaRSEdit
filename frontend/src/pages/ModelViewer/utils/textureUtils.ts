@@ -98,51 +98,37 @@ export async function extractTexturesFromBG3D(
         const expectedPixelCount = texture.width * texture.height;
         imageData = ctx.createImageData(texture.width, texture.height);
 
-        try {
-          // Read the offset from the first 4 bytes (big-endian)
-          const view = new DataView(
-            texture.pixels.buffer,
-            texture.pixels.byteOffset,
-          );
-          const offset = view.getInt32(0, false); // false = big-endian
+        // Read the offset from the first 4 bytes (big-endian)
+        const view = new DataView(
+          texture.pixels.buffer,
+          texture.pixels.byteOffset,
+        );
+        const offset = view.getInt32(0, false); // false = big-endian
 
-          // Extract the actual compressed image data
-          const payloadSize = texture.bufferSize - offset;
-          const payloadView = new Uint8Array(
-            texture.pixels.buffer,
-            texture.pixels.byteOffset + offset,
-            payloadSize,
-          );
+        // Extract the actual compressed image data
+        const payloadSize = texture.bufferSize - offset;
+        const payloadView = new Uint8Array(
+          texture.pixels.buffer,
+          texture.pixels.byteOffset + offset,
+          payloadSize,
+        );
 
-          // Copy payload to a new buffer (required for decodeJpegNode)
-          const payloadBuffer = new Uint8Array(payloadSize);
-          payloadBuffer.set(payloadView);
+        // Copy payload to a new buffer (required for decodeJpegNode)
+        const payloadBuffer = new Uint8Array(payloadSize);
+        payloadBuffer.set(payloadView);
 
-          // Use decodeJpegNode to decompress the payload
-          // (it can handle JPEG and other image formats that stbi supports)
-          const decompressedImageData = decodeJpegNode(payloadBuffer.buffer);
-          imageData = decompressedImageData;
+        // Use decodeJpegNode to decompress the payload
+        // (it can handle JPEG and other image formats that stbi supports)
+        const decompressedImageData = decodeJpegNode(payloadBuffer.buffer);
+        imageData = decompressedImageData;
 
-          // If there's separate alpha data, blend it in
-          if (
-            texture.jpegAlphaData &&
-            texture.jpegAlphaData.length === expectedPixelCount
-          ) {
-            for (let i = 0; i < expectedPixelCount; i++) {
-              imageData.data[i * 4 + 3] = texture.jpegAlphaData[i] ?? 255;
-            }
-          }
-        } catch (error) {
-          console.error(
-            `Failed to decompress JPEG texture at Material_${materialIndex}_Texture_${textureIndex}:`,
-            error,
-          );
-          // Fallback: create white placeholder to indicate error
-          for (let i = 0; i < imageData.data.length; i += 4) {
-            imageData.data[i] = 255;
-            imageData.data[i + 1] = 255;
-            imageData.data[i + 2] = 255;
-            imageData.data[i + 3] = 255;
+        // If there's separate alpha data, blend it in
+        if (
+          texture.jpegAlphaData &&
+          texture.jpegAlphaData.length === expectedPixelCount
+        ) {
+          for (let i = 0; i < expectedPixelCount; i++) {
+            imageData.data[i * 4 + 3] = texture.jpegAlphaData[i] ?? 255;
           }
         }
       } else {

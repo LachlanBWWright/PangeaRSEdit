@@ -842,36 +842,32 @@ function convertSkeletonResourceToBG3D(
   // Build RelP map from SkeletonResource (if present)
   const relPointsMap: Record<string, [number, number, number][]> = {};
   Object.entries(skeleton.RelP || {}).forEach(([rid, rentry]) => {
-    try {
-      const arr = rentry.obj;
-      if (Array.isArray(arr)) {
-        relPointsMap[rid] = arr.map((p: unknown) => {
-          if (!isRecord(p)) return [0, 0, 0];
-          const obj = p;
-          const relOffsetX =
-            typeof obj.relOffsetX === "number"
-              ? obj.relOffsetX
-              : typeof obj.x === "number"
-              ? obj.x
-              : 0;
-          const relOffsetY =
-            typeof obj.relOffsetY === "number"
-              ? obj.relOffsetY
-              : typeof obj.y === "number"
-              ? obj.y
-              : 0;
-          const relOffsetZ =
-            typeof obj.relOffsetZ === "number"
-              ? obj.relOffsetZ
-              : typeof obj.z === "number"
-              ? obj.z
-              : 0;
-          return [relOffsetX, relOffsetY, relOffsetZ];
-        });
-      } else {
-        relPointsMap[rid] = [];
-      }
-    } catch {
+    const arr = rentry.obj;
+    if (Array.isArray(arr)) {
+      relPointsMap[rid] = arr.map((p: unknown) => {
+        if (!isRecord(p)) return [0, 0, 0];
+        const obj = p;
+        const relOffsetX =
+          typeof obj.relOffsetX === "number"
+            ? obj.relOffsetX
+            : typeof obj.x === "number"
+            ? obj.x
+            : 0;
+        const relOffsetY =
+          typeof obj.relOffsetY === "number"
+            ? obj.relOffsetY
+            : typeof obj.y === "number"
+            ? obj.y
+            : 0;
+        const relOffsetZ =
+          typeof obj.relOffsetZ === "number"
+            ? obj.relOffsetZ
+            : typeof obj.z === "number"
+            ? obj.z
+            : 0;
+        return [relOffsetX, relOffsetY, relOffsetZ];
+      });
+    } else {
       relPointsMap[rid] = [];
     }
   });

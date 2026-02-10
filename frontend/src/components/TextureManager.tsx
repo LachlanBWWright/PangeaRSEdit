@@ -3,6 +3,7 @@ import { TextureItem } from "./TextureManager/TextureItem";
 import { useRef, useState } from "react";
 import { toast } from "sonner";
 import { ImageEditor } from "./ImageEditor";
+import { fromPromise } from "@/types/result";
 
 interface Texture {
   name: string;
@@ -35,14 +36,13 @@ export function TextureManager({
   const handleReplaceTexture = async (texture: Texture, file: File) => {
     if (!onReplaceTexture) return;
 
-    try {
-      await onReplaceTexture(texture, file);
-      toast.success(`Successfully replaced ${texture.name}`);
-    } catch (_error) {
-      // Log and notify but keep UI message the same
-      console.error("Failed to replace texture:", _error);
+    const result = await fromPromise(onReplaceTexture(texture, file));
+    if (!result.ok) {
+      console.error("Failed to replace texture:", result.error);
       toast.error("Failed to replace texture");
+      return;
     }
+    toast.success(`Successfully replaced ${texture.name}`);
   };
 
   const handleEditTexture = (texture: Texture) => {
@@ -53,41 +53,58 @@ export function TextureManager({
   const handleEditorSave = async (editedImageData: ImageData) => {
     if (!textureToEdit) return;
 
-    try {
-      // Use onTextureEdit if available, otherwise fall back to onReplaceTexture
-      if (onTextureEdit) {
-        await onTextureEdit(textureToEdit, editedImageData);
-      } else if (onReplaceTexture) {
-        // Convert ImageData to a File
-        const canvas = document.createElement("canvas");
-        canvas.width = editedImageData.width;
-        canvas.height = editedImageData.height;
-        const ctx = canvas.getContext("2d");
+    // Use onTextureEdit if available, otherwise fall back to onReplaceTexture
+    if (onTextureEdit) {
+      const result = await fromPromise(onTextureEdit(textureToEdit, editedImageData));
+      if (!result.ok) {
+        console.error("Error saving edited texture:", result.error);
+        toast.error("Failed to save edited texture");
+        return;
+      }
+    } else if (onReplaceTexture) {
+      // Convert ImageData to a File
+      const canvas = document.createElement("canvas");
+      canvas.width = editedImageData.width;
+      canvas.height = editedImageData.height;
+      const ctx = canvas.getContext("2d");
 
-        if (!ctx) {
-          console.error("Failed to get canvas context");
-          return;
-        }
+      if (!ctx) {
+        console.error("Failed to get canvas context");
+        toast.error("Failed to save edited texture");
+        return;
+      }
 
-        ctx.putImageData(editedImageData, 0, 0);
+      ctx.putImageData(editedImageData, 0, 0);
 
-        // Convert canvas to blob and then to file
-        const blob = await new Promise<Blob>((resolve) => {
+      // Convert canvas to blob and then to file
+      const blobResult = await fromPromise(
+        new Promise<Blob>((resolve, reject) => {
           canvas.toBlob((blob) => {
             if (blob) resolve(blob);
+            else reject(new Error("Failed to convert canvas to blob"));
           }, "image/png");
-        });
+        })
+      );
 
-        const file = new File([blob], `${textureToEdit.name}.png`, {
-          type: "image/png",
-        });
-        await onReplaceTexture(textureToEdit, file);
+      if (!blobResult.ok) {
+        console.error("Error saving edited texture:", blobResult.error);
+        toast.error("Failed to save edited texture");
+        return;
       }
-      toast.success(`Successfully updated ${textureToEdit.name}`);
-    } catch (error) {
-      console.error("Error saving edited texture:", error);
-      toast.error("Failed to save edited texture");
+
+      const blob = blobResult.value;
+      const file = new File([blob], `${textureToEdit.name}.png`, {
+        type: "image/png",
+      });
+
+      const replaceResult = await fromPromise(onReplaceTexture(textureToEdit, file));
+      if (!replaceResult.ok) {
+        console.error("Error saving edited texture:", replaceResult.error);
+        toast.error("Failed to save edited texture");
+        return;
+      }
     }
+    toast.success(`Successfully updated ${textureToEdit.name}`);
   };
 
   const toggleTextureExpansion = (index: number) => {
@@ -158,12 +175,7 @@ export function TextureManager({
           // This avoids race conditions with React state updates
           const textureToReplace = selectedTexture;
           if (file && textureToReplace) {
-            try {
-              await handleReplaceTexture(textureToReplace, file);
-            } catch (error) {
-              console.error(`Failed to replace texture ${textureToReplace.name}:`, error);
-              toast.error(`Failed to replace texture: ${error instanceof Error ? error.message : 'Unknown error'}`);
-            }
+            await handleReplaceTexture(textureToReplace, file);
             // Reset input value to allow re-selecting the same file
             e.target.value = "";
             // Clear selected texture after replacement

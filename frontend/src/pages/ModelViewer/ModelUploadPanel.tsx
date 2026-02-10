@@ -27,7 +27,10 @@ interface Props {
   handleSkipSkeleton: () => void;
   loadTestModel: () => Promise<void>;
   loadTestModelWithoutSkeleton: () => Promise<void>;
-  handleFileUpload: (bg3dFile: File, skeletonFile?: File) => Promise<void>;
+  handleFileUpload: (
+    bg3dFile: File,
+    skeletonFile?: File,
+  ) => Promise<import("@/types/result").Result<void, Error>>;
   handleDownloadBG3D: () => void;
   handleDownloadGLB: () => void;
   handleDownload3DMF: () => void;
@@ -134,7 +137,8 @@ export function ModelUploadPanel({
                         Drop model file here or click to select
                       </p>
                       <p className="text-sm text-gray-500">
-                        Upload .bg3d or .3dmf file first, then optionally add skeleton
+                        Upload .bg3d or .3dmf file first, then optionally add
+                        skeleton
                       </p>
                     </div>
                     <input
@@ -144,7 +148,11 @@ export function ModelUploadPanel({
                       className="hidden"
                       onChange={(e) => {
                         const file = e.target.files?.[0];
-                        if (file && (file.name.toLowerCase().endsWith(".bg3d") || file.name.toLowerCase().endsWith(".3dmf"))) {
+                        if (
+                          file &&
+                          (file.name.toLowerCase().endsWith(".bg3d") ||
+                            file.name.toLowerCase().endsWith(".3dmf"))
+                        ) {
                           handleBg3dFileSelect(file);
                         } else if (file) {
                           /* silent fallback: same as original toast handled upstream */

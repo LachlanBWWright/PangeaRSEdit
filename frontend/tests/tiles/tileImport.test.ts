@@ -3,11 +3,10 @@
  */
 
 import { describe, it, expect } from "vitest";
-import { Game, DataType } from "@/data/globals/globals";
+import { Game } from "@/data/globals/globals";
 import {
   canImportTiles,
   getTileImportRequirements,
-  convertImageTo16BitTileData,
   convertTileDataToPreview,
   getSupportedImageFormats,
   getTileImportFileFilter,

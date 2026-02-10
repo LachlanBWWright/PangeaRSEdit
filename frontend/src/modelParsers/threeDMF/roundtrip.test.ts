@@ -7,7 +7,7 @@
 import { describe, it, expect } from "vitest";
 import { parse3DMFToMetaFile } from "./parse3DMF";
 import { write3DMFFromMetaFile } from "./write3DMF";
-import { readFileSync } from "fs";
+import { existsSync, readFileSync } from "fs";
 import { join } from "path";
 
 // Use the correct paths to the public folder
@@ -36,14 +36,11 @@ describe("3DMF Byte-Accurate Roundtrip Tests", () => {
   describe("Mesh Data Preservation", () => {
     it("should preserve vertex positions in roundtrip", async () => {
       const testFile = join(BUGDOM_SKELETONS_PATH, "Ant.3dmf");
-      let fileBuffer: ArrayBuffer;
-      
-      try {
-        fileBuffer = readFileSync(testFile).buffer;
-      } catch {
+      if (!existsSync(testFile)) {
         console.log("Test file not available, skipping");
         return;
       }
+      const fileBuffer = readFileSync(testFile).buffer;
 
       // Parse original
       const parseResult = parse3DMFToMetaFile(fileBuffer);
@@ -92,14 +89,11 @@ describe("3DMF Byte-Accurate Roundtrip Tests", () => {
 
     it("should preserve triangle indices in roundtrip", async () => {
       const testFile = join(BUGDOM_SKELETONS_PATH, "Spider.3dmf");
-      let fileBuffer: ArrayBuffer;
-      
-      try {
-        fileBuffer = readFileSync(testFile).buffer;
-      } catch {
+      if (!existsSync(testFile)) {
         console.log("Test file not available, skipping");
         return;
       }
+      const fileBuffer = readFileSync(testFile).buffer;
 
       const parseResult = parse3DMFToMetaFile(fileBuffer);
       expect(parseResult.ok).toBe(true);
@@ -137,14 +131,11 @@ describe("3DMF Byte-Accurate Roundtrip Tests", () => {
 
     it("should preserve vertex normals if present", async () => {
       const testFile = join(NANOSAUR_SKELETONS_PATH, "Deinon.3dmf");
-      let fileBuffer: ArrayBuffer;
-      
-      try {
-        fileBuffer = readFileSync(testFile).buffer;
-      } catch {
+      if (!existsSync(testFile)) {
         console.log("Test file not available, skipping");
         return;
       }
+      const fileBuffer = readFileSync(testFile).buffer;
 
       const parseResult = parse3DMFToMetaFile(fileBuffer);
       expect(parseResult.ok).toBe(true);
@@ -185,14 +176,11 @@ describe("3DMF Byte-Accurate Roundtrip Tests", () => {
 
     it("should preserve UVs if present", async () => {
       const testFile = join(BUGDOM_SKELETONS_PATH, "Slug.3dmf");
-      let fileBuffer: ArrayBuffer;
-      
-      try {
-        fileBuffer = readFileSync(testFile).buffer;
-      } catch {
+      if (!existsSync(testFile)) {
         console.log("Test file not available, skipping");
         return;
       }
+      const fileBuffer = readFileSync(testFile).buffer;
 
       const parseResult = parse3DMFToMetaFile(fileBuffer);
       expect(parseResult.ok).toBe(true);
@@ -234,14 +222,11 @@ describe("3DMF Byte-Accurate Roundtrip Tests", () => {
   describe("Bounding Box Preservation", () => {
     it("should preserve bounding box values", async () => {
       const testFile = join(BUGDOM_SKELETONS_PATH, "Ant.3dmf");
-      let fileBuffer: ArrayBuffer;
-      
-      try {
-        fileBuffer = readFileSync(testFile).buffer;
-      } catch {
+      if (!existsSync(testFile)) {
         console.log("Test file not available, skipping");
         return;
       }
+      const fileBuffer = readFileSync(testFile).buffer;
 
       const parseResult = parse3DMFToMetaFile(fileBuffer);
       expect(parseResult.ok).toBe(true);
@@ -277,14 +262,11 @@ describe("3DMF Byte-Accurate Roundtrip Tests", () => {
   describe("Material Preservation", () => {
     it("should preserve diffuse color values", async () => {
       const testFile = join(BUGDOM_SKELETONS_PATH, "Spider.3dmf");
-      let fileBuffer: ArrayBuffer;
-      
-      try {
-        fileBuffer = readFileSync(testFile).buffer;
-      } catch {
+      if (!existsSync(testFile)) {
         console.log("Test file not available, skipping");
         return;
       }
+      const fileBuffer = readFileSync(testFile).buffer;
 
       const parseResult = parse3DMFToMetaFile(fileBuffer);
       expect(parseResult.ok).toBe(true);
@@ -327,14 +309,11 @@ describe("3DMF Byte-Accurate Roundtrip Tests", () => {
     testFiles.forEach(({ path, name }) => {
       it(`should successfully roundtrip ${name}`, async () => {
         const testFile = join(path, name);
-        let fileBuffer: ArrayBuffer;
-        
-        try {
-          fileBuffer = readFileSync(testFile).buffer;
-        } catch {
+        if (!existsSync(testFile)) {
           console.log(`${name} not available, skipping`);
           return;
         }
+        const fileBuffer = readFileSync(testFile).buffer;
 
         // Parse original
         const parseResult = parse3DMFToMetaFile(fileBuffer);

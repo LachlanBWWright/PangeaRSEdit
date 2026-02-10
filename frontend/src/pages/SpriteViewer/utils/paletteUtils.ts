@@ -2,6 +2,7 @@
  * Pure functions for palette manipulation
  * These functions don't depend on external state and can be composed
  */
+import { tryFn } from "@/types/result";
 
 export interface PaletteColor {
   r: number; // 0-255
@@ -144,13 +145,13 @@ export function isPalette(x: unknown): x is Palette {
 }
 
 export function deserializePalette(json: string): Palette | null {
-  try {
-    const data = JSON.parse(json);
-    if (isPalette(data)) {
-      return data;
-    }
-  } catch (e) {
-    console.error("Failed to deserialize palette:", e);
+  const parseResult = tryFn(() => JSON.parse(json) as unknown);
+  if (!parseResult.ok) {
+    console.error("Failed to deserialize palette:", parseResult.error);
+    return null;
+  }
+  if (isPalette(parseResult.value)) {
+    return parseResult.value;
   }
   return null;
 }

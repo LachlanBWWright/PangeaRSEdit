@@ -5,7 +5,7 @@
  * Allows selecting a game, model file, and specific model index to load.
  */
 
-import React, { useState, useCallback, useRef, useEffect } from "react";
+import React, { useState, useCallback, useRef } from "react";
 import { Canvas } from "@react-three/fiber";
 import { OrbitControls, Grid } from "@react-three/drei";
 import { Group, Mesh, BufferGeometry } from "three";
@@ -23,6 +23,7 @@ import { Label } from "@/components/ui/label";
 import BG3DGltfWorker from "@/modelParsers/bg3dGltfWorker?worker";
 import type { BG3DGltfWorkerResponse } from "@/modelParsers/bg3dGltfWorker";
 import { GLTFLoader, type GLTF } from "three/examples/jsm/loaders/GLTFLoader.js";
+import { fromPromise } from "@/types/result";
 
 /**
  * Describes a model file with its path and label
@@ -344,36 +345,31 @@ function calculateModelStats(scene: Group | null): { vertices: number; faces: nu
  * Extract a specific subgroup from a GLTF scene by index
  */
 function extractSubgroupByIndex(gltf: GLTF, modelIndex: number): Group | null {
-  try {
-    const groupsContainer = 
-      gltf.scene.children && gltf.scene.children.length > 0
-        ? gltf.scene.children[0]
-        : null;
-        
-    if (!groupsContainer) {
-      console.warn("No groups container found");
-      return null;
-    }
-    
-    if (modelIndex >= groupsContainer.children.length) {
-      console.warn(`Model index ${modelIndex} out of range (max ${groupsContainer.children.length - 1})`);
-      return null;
-    }
-    
-    const targetModel = groupsContainer.children[modelIndex];
-    if (!targetModel) {
-      return null;
-    }
-    
-    const clonedModel = targetModel.clone(true);
-    const newScene = new Group();
-    newScene.add(clonedModel);
-    
-    return newScene;
-  } catch (error) {
-    console.error("Error extracting subgroup:", error);
+  const groupsContainer =
+    gltf.scene.children && gltf.scene.children.length > 0
+      ? gltf.scene.children[0]
+      : null;
+
+  if (!groupsContainer) {
+    console.warn("No groups container found");
     return null;
   }
+
+  if (modelIndex >= groupsContainer.children.length) {
+    console.warn(`Model index ${modelIndex} out of range (max ${groupsContainer.children.length - 1})`);
+    return null;
+  }
+
+  const targetModel = groupsContainer.children[modelIndex];
+  if (!targetModel) {
+    return null;
+  }
+
+  const clonedModel = targetModel.clone(true);
+  const newScene = new Group();
+  newScene.add(clonedModel);
+
+  return newScene;
 }
 
 /**
@@ -414,22 +410,20 @@ export function TestModelViewer() {
   const [maxIndex, setMaxIndex] = useState<number>(0);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
-  const [gltfScene, setGltfScene] = useState<Group | null>(null);
   const [fullGltf, setFullGltf] = useState<GLTF | null>(null);
   const [status, setStatus] = useState<string>("Select a game and model file to begin");
-  const [modelStats, setModelStats] = useState<{ vertices: number; faces: number } | null>(null);
   const [modelNames, setModelNames] = useState<string[]>([]);
   
   const workerRef = useRef<Worker | null>(null);
   
   // Get the current game config
-  const gameConfig = GAME_CONFIGS.find(g => g.id === selectedGame);
+  const gameConfig = useMemo(() => GAME_CONFIGS.find(g => g.id === selectedGame), [selectedGame]);
   
   // Get all files for the selected game (models + skeletons combined)
-  const allFiles = gameConfig ? getAllFilesForGame(gameConfig) : [];
+  const allFiles = useMemo(() => gameConfig ? getAllFilesForGame(gameConfig) : [], [gameConfig]);
   
   // Get the selected file entry
-  const selectedFileEntry = allFiles.find(f => f.path === selectedFileKey);
+  const selectedFileEntry = useMemo(() => allFiles.find(f => f.path === selectedFileKey), [allFiles, selectedFileKey]);
   
   // Initialize worker
   const getWorker = useCallback(() => {
@@ -438,6 +432,16 @@ export function TestModelViewer() {
     }
     return workerRef.current;
   }, []);
+
+  // Derived 3D scene and stats
+  const gltfScene = useMemo(() => {
+    if (!fullGltf) return null;
+    return extractSubgroupByIndex(fullGltf, modelIndex);
+  }, [fullGltf, modelIndex]);
+
+  const modelStats = useMemo(() => {
+    return calculateModelStats(gltfScene);
+  }, [gltfScene]);
   
   // Reset model index when file selection changes
   const handleFileChange = useCallback((fileKey: string) => {
@@ -445,9 +449,7 @@ export function TestModelViewer() {
     setModelIndex(0);
     setMaxIndex(0);
     setFullGltf(null);
-    setGltfScene(null);
     setModelNames([]);
-    setModelStats(null);
     setStatus("File selected. Click 'Load Model' to load.");
   }, []);
   
@@ -458,9 +460,7 @@ export function TestModelViewer() {
     setModelIndex(0);
     setMaxIndex(0);
     setFullGltf(null);
-    setGltfScene(null);
     setModelNames([]);
-    setModelStats(null);
     setStatus("Select a model file to continue");
   }, []);
   
@@ -470,29 +470,53 @@ export function TestModelViewer() {
       setError("Please select a game and model file");
       return;
     }
-    
+
     setLoading(true);
     setError(null);
     setModelIndex(0); // Reset index when loading new file
     setStatus("Fetching model file...");
-    
-    try {
-      const url = selectedFileEntry.path;
-      console.log(`Loading model from: ${url}`);
-      
-      const response = await fetch(url);
-      if (!response.ok) {
-        throw new Error(`Failed to fetch: ${response.statusText}`);
-      }
-      
-      const buffer = await response.arrayBuffer();
-      setStatus(`Converting ${gameConfig.format.toUpperCase()} to GLB...`);
-      
-      // Convert via worker
-      const glbBuffer = await new Promise<ArrayBuffer>((resolve, reject) => {
+
+    const url = selectedFileEntry.path;
+    console.log(`Loading model from: ${url}`);
+
+    const fetchResult = await fromPromise(fetch(url));
+    if (!fetchResult.ok) {
+      const errorMsg = `Failed to fetch: ${fetchResult.error.message}`;
+      setError(errorMsg);
+      setStatus(`Error: ${errorMsg}`);
+      console.error("Model fetch error:", fetchResult.error);
+      setLoading(false);
+      return;
+    }
+
+    const response = fetchResult.value;
+    if (!response.ok) {
+      const errorMsg = `Failed to fetch: ${response.statusText}`;
+      setError(errorMsg);
+      setStatus(`Error: ${errorMsg}`);
+      setLoading(false);
+      return;
+    }
+
+    const bufferResult = await fromPromise(response.arrayBuffer());
+    if (!bufferResult.ok) {
+      const errorMsg = `Failed to read buffer: ${bufferResult.error.message}`;
+      setError(errorMsg);
+      setStatus(`Error: ${errorMsg}`);
+      console.error("Buffer read error:", bufferResult.error);
+      setLoading(false);
+      return;
+    }
+
+    const buffer = bufferResult.value;
+    setStatus(`Converting ${gameConfig.format.toUpperCase()} to GLB...`);
+
+    // Convert via worker
+    const glbBufferResult = await fromPromise(
+      new Promise<ArrayBuffer>((resolve, reject) => {
         const worker = getWorker();
         let resolved = false;
-        
+
         const handleMessage = (e: MessageEvent<BG3DGltfWorkerResponse>) => {
           if (e.data.type === "bg3d-with-skeleton-to-glb" && e.data.result) {
             resolved = true;
@@ -506,7 +530,7 @@ export function TestModelViewer() {
             reject(new Error(e.data.error));
           }
         };
-        
+
         const handleError = (error: ErrorEvent) => {
           if (!resolved) {
             resolved = true;
@@ -515,16 +539,16 @@ export function TestModelViewer() {
             reject(new Error(error.message || "Worker error"));
           }
         };
-        
+
         worker.addEventListener("message", handleMessage);
         worker.addEventListener("error", handleError);
-        
+
         worker.postMessage({
           type: "bg3d-with-skeleton-to-glb",
           bg3dBuffer: buffer,
           skeletonData: undefined,
         });
-        
+
         // Timeout
         setTimeout(() => {
           if (!resolved) {
@@ -534,71 +558,82 @@ export function TestModelViewer() {
             reject(new Error("Conversion timeout"));
           }
         }, 60000);
-      });
-      
-      setStatus("Loading GLB into Three.js...");
-      
-      // Load into Three.js
-      const blob = new Blob([glbBuffer], { type: "model/gltf-binary" });
-      const blobUrl = URL.createObjectURL(blob);
-      
-      const loader = new GLTFLoader();
-      const gltf = await new Promise<GLTF>((resolve, reject) => {
+      })
+    );
+
+    if (!glbBufferResult.ok) {
+      const errorMsg = `Conversion failed: ${glbBufferResult.error.message}`;
+      setError(errorMsg);
+      setStatus(`Error: ${errorMsg}`);
+      console.error("Conversion error:", glbBufferResult.error);
+      setLoading(false);
+      return;
+    }
+
+    const glbBuffer = glbBufferResult.value;
+    setStatus("Loading GLB into Three.js...");
+
+    // Load into Three.js
+    const blob = new Blob([glbBuffer], { type: "model/gltf-binary" });
+    const blobUrl = URL.createObjectURL(blob);
+
+    const loader = new GLTFLoader();
+    const gltfResult = await fromPromise(
+      new Promise<GLTF>((resolve, reject) => {
         loader.load(
           blobUrl,
           (gltf) => resolve(gltf),
           undefined,
           (err) => reject(err)
         );
-      });
-      
-      URL.revokeObjectURL(blobUrl);
-      
-      // Store full GLTF for extraction
-      setFullGltf(gltf);
-      
-      // Count models in the file and extract their names
-      const groupsContainer = gltf.scene.children[0];
-      const numModels = groupsContainer?.children.length ?? 0;
-      setMaxIndex(Math.max(0, numModels - 1));
-      
-      // Extract model names from the group children
-      const names: string[] = [];
-      if (groupsContainer?.children) {
-        groupsContainer.children.forEach((child, idx) => {
-          names.push(child.name || `Model ${idx}`);
-        });
-      }
-      setModelNames(names);
-      
-      // Extract the first model (index 0 since we reset)
-      const extracted = extractSubgroupByIndex(gltf, 0);
-      setGltfScene(extracted);
-      setModelStats(calculateModelStats(extracted));
-      
-      const currentName = names[0] || `Model 0`;
-      setStatus(`Loaded! File contains ${numModels} model(s). Showing: ${currentName}`);
-      
-    } catch (err) {
-      const errorMsg = err instanceof Error ? err.message : String(err);
+      })
+    );
+
+    URL.revokeObjectURL(blobUrl);
+
+    if (!gltfResult.ok) {
+      const errorMsg = `Failed to load GLTF: ${gltfResult.error.message}`;
       setError(errorMsg);
       setStatus(`Error: ${errorMsg}`);
-      console.error("Model load error:", err);
-    } finally {
+      console.error("GLTF load error:", gltfResult.error);
       setLoading(false);
+      return;
     }
+
+    const gltf = gltfResult.value;
+
+    // Store full GLTF for extraction
+    setFullGltf(gltf);
+
+    // Count models in the file and extract their names
+    const groupsContainer = gltf.scene.children[0];
+    const numModels = groupsContainer?.children.length ?? 0;
+    setMaxIndex(Math.max(0, numModels - 1));
+
+    // Extract model names from the group children
+    const names: string[] = [];
+    if (groupsContainer?.children) {
+      groupsContainer.children.forEach((child, idx) => {
+        names.push(child.name || `Model ${idx}`);
+      });
+    }
+    setModelNames(names);
+
+    const currentName = names[0] || `Model 0`;
+    setStatus(`Loaded! File contains ${numModels} model(s). Showing: ${currentName}`);
+    setLoading(false);
   }, [gameConfig, selectedFileEntry, getWorker]);
-  
-  // Update displayed model when index changes (if we have a loaded GLTF)
-  useEffect(() => {
+
+  // Derived status message
+  const displayStatus = useMemo(() => {
+    if (loading) return status;
+    if (error) return `Error: ${error}`;
     if (fullGltf) {
-      const extracted = extractSubgroupByIndex(fullGltf, modelIndex);
-      setGltfScene(extracted);
-      setModelStats(calculateModelStats(extracted));
       const modelName = modelNames[modelIndex] || `Model ${modelIndex}`;
-      setStatus(`Showing: ${modelName} (index ${modelIndex} of ${maxIndex})`);
+      return `Showing: ${modelName} (index ${modelIndex} of ${maxIndex})`;
     }
-  }, [modelIndex, fullGltf, maxIndex, modelNames]);
+    return status;
+  }, [loading, error, fullGltf, modelNames, modelIndex, maxIndex, status]);
   
   // Navigate to next/previous model
   const nextModel = () => {
@@ -718,7 +753,7 @@ export function TestModelViewer() {
           
           {/* Status */}
           <div className="p-3 bg-gray-700 rounded text-sm text-gray-300">
-            {status}
+            {displayStatus}
           </div>
           
           {/* Model Stats */}

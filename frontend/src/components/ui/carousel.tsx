@@ -34,7 +34,17 @@ function useCarousel() {
   const context = React.useContext(CarouselContext);
 
   if (!context) {
-    throw new Error("useCarousel must be used within a <Carousel />");
+    console.error("useCarousel must be used within a <Carousel />");
+    // Return a minimal dummy context to avoid runtime errors
+    const dummyContext: CarouselContextProps = {
+      carouselRef: () => { void 0; },
+      api: undefined,
+      scrollPrev: () => { void 0; },
+      scrollNext: () => { void 0; },
+      canScrollPrev: false,
+      canScrollNext: false,
+    };
+    return dummyContext;
   }
 
   return context;

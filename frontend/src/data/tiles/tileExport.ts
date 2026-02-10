@@ -5,7 +5,7 @@
  * Supports exporting individual tiles, tile palettes, or entire tilesets.
  */
 
-import { Result, ok, err } from "@/types/result";
+import { Result, ok, err, fromPromise } from "@/types/result";
 import { Game } from "@/data/globals/globals";
 import { isTileBasedGame } from "./tileStructures";
 
@@ -147,7 +147,7 @@ export function exportSingleTile(
  */
 export function calculatePaletteGrid(
   tileCount: number,
-  maxWidth: number = 16,
+  maxWidth = 16,
 ): { columns: number; rows: number } {
   // Target square-ish layout
   const columns = Math.min(maxWidth, Math.ceil(Math.sqrt(tileCount)));
@@ -217,18 +217,27 @@ export async function exportTilePalette(
     }
     
     // Draw tile to canvas using createImageBitmap for proper async loading
-    try {
-      // Convert data URL to blob
-      const response = await fetch(tileResult.value.dataUrl);
-      const blob = await response.blob();
-      const bitmap = await createImageBitmap(blob);
-      ctx.drawImage(bitmap, col * scaledTileSize, row * scaledTileSize);
-      bitmap.close();
-    } catch {
-      // If createImageBitmap fails, fall back to synchronous drawing
-      // This is acceptable since the image is already in memory
+    const fetchResult = await fromPromise(fetch(tileResult.value.dataUrl));
+    if (!fetchResult.ok) {
+      // If fetch fails, skip this tile
       continue;
     }
+
+    const blobResult = await fromPromise(fetchResult.value.blob());
+    if (!blobResult.ok) {
+      // If blob conversion fails, skip this tile
+      continue;
+    }
+
+    const bitmapResult = await fromPromise(createImageBitmap(blobResult.value));
+    if (!bitmapResult.ok) {
+      // If createImageBitmap fails, skip this tile
+      continue;
+    }
+
+    const bitmap = bitmapResult.value;
+    ctx.drawImage(bitmap, col * scaledTileSize, row * scaledTileSize);
+    bitmap.close();
   }
   
   // Export as data URL

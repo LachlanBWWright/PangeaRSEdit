@@ -115,10 +115,10 @@ export function isTileRotated(bits: number): boolean {
  */
 export function createTileBits(
   tileNumber: number,
-  flipX: boolean = false,
-  flipY: boolean = false,
-  flipXY: boolean = false,
-  rotate: boolean = false,
+  flipX = false,
+  flipY = false,
+  flipXY = false,
+  rotate = false,
 ): number {
   let bits = tileNumber & TILENUM_MASK;
   if (flipX) bits |= TILE_FLIPX_MASK;

@@ -15,12 +15,14 @@ interface EnhancedModelMeshProps {
   scene: Group;
   wireframeMode?: boolean;
   showSkeleton?: boolean;
+  position?: [number, number, number];
 }
 
 function EnhancedModelMeshComponent({
   scene,
   wireframeMode = false,
   showSkeleton = false,
+  position = [0, 0, 0],
 }: EnhancedModelMeshProps) {
   const skeletonHelpersRef = useRef<(SkeletonHelper | Mesh)[]>([]);
 
@@ -198,7 +200,11 @@ function EnhancedModelMeshComponent({
     return null;
   }
 
-  return <primitive object={scene} />;
+  return (
+    <group position={position}>
+      <primitive object={scene} />
+    </group>
+  );
 }
 
 export const EnhancedModelMesh = memo(EnhancedModelMeshComponent);

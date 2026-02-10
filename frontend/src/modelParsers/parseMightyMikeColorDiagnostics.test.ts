@@ -131,18 +131,13 @@ describe("Mighty Mike Color Diagnostics", () => {
   });
 
   it("should detect palette format differences and color statistics", async () => {
-    // Write diagnostics JSON to tests-output for offline inspection
-    try {
-      const outDir = join(__dirname, "../../tests-output");
-      // Ensure directory exists
-      const { existsSync, mkdirSync, writeFileSync } = await import("fs");
-      if (!existsSync(outDir)) mkdirSync(outDir, { recursive: true });
-      const outPath = join(outDir, "mighty-mike-palette-diagnostics.json");
-      writeFileSync(outPath, JSON.stringify(sceneStats, null, 2));
-      console.log(`Wrote palette diagnostics to ${outPath}`);
-    } catch {
-      // Best-effort write; ignore errors in CI
-    }
+    // Write diagnostics JSON to tests-output for offline inspection (best-effort)
+    const outDir = join(__dirname, "../../tests-output");
+    const { existsSync, mkdirSync, writeFileSync } = await import("fs");
+    if (!existsSync(outDir)) mkdirSync(outDir, { recursive: true });
+    const outPath = join(outDir, "mighty-mike-palette-diagnostics.json");
+    writeFileSync(outPath, JSON.stringify(sceneStats, null, 2));
+    console.log(`Wrote palette diagnostics to ${outPath}`);
 
     // Check that bargain/fairy palettes exist and that one of them
     // has the highest greenRatio among scenes (i.e. they look 'correct')

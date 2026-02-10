@@ -52,70 +52,63 @@ export async function downloadBG3DModel(
     const worker = new BG3DGltfWorker();
 
     worker.onmessage = async (e: MessageEvent<BG3DGltfWorkerResponse>) => {
-      try {
-        const result = e.data;
-        if (result.type === "error") {
-          reject(new Error(`Failed to convert BG3D: ${result.error}`));
-          return;
-        }
+      const result = e.data;
+      if (result.type === "error") {
+        worker.terminate();
+        reject(new Error(`Failed to convert BG3D: ${result.error}`));
+        return;
+      }
 
-        if (result.type === "bg3d-parsed-to-bg3d") {
-          // Download the BG3D binary
-          const blob = new Blob([result.result], {
+      if (result.type === "bg3d-parsed-to-bg3d") {
+        // Download the BG3D binary
+        const blob = new Blob([result.result], {
+          type: "application/octet-stream",
+        });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `${modelFileName}.bg3d`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+
+        // Also download skeleton if available
+        if (
+          bg3dParsed.skeleton &&
+          bg3dParsed.skeleton.animations.length > 0
+        ) {
+          const skeletonResource = bg3dSkeletonToSkeletonResource(
+            bg3dParsed.skeleton,
+          );
+
+          // Convert to binary .rsrc format
+          const skeletonBinaryResult = skeletonResourceToBinary(
+            skeletonResource,
+          );
+          if (!skeletonBinaryResult.ok) {
+            console.error("Failed to convert skeleton to binary:", skeletonBinaryResult.error);
+            worker.terminate();
+            resolve();
+            return;
+          }
+          const skeletonBinary = skeletonBinaryResult.value;
+          const skeletonBlob = new Blob([skeletonBinary], {
             type: "application/octet-stream",
           });
-          const url = URL.createObjectURL(blob);
-          const a = document.createElement("a");
-          a.href = url;
-          a.download = `${modelFileName}.bg3d`;
-          document.body.appendChild(a);
-          a.click();
-          document.body.removeChild(a);
-          URL.revokeObjectURL(url);
+          const skeletonUrl = URL.createObjectURL(skeletonBlob);
 
-          // Also download skeleton if available
-          if (
-            bg3dParsed.skeleton &&
-            bg3dParsed.skeleton.animations.length > 0
-          ) {
-            try {
-              const skeletonResource = bg3dSkeletonToSkeletonResource(
-                bg3dParsed.skeleton,
-              );
-
-              // Convert to binary .rsrc format
-              const skeletonBinaryResult = skeletonResourceToBinary(
-                skeletonResource,
-              );
-              if (!skeletonBinaryResult.ok) {
-                console.error("Failed to convert skeleton to binary:", skeletonBinaryResult.error);
-                return;
-              }
-              const skeletonBinary = skeletonBinaryResult.value;
-              const skeletonBlob = new Blob([skeletonBinary], {
-                type: "application/octet-stream",
-              });
-              const skeletonUrl = URL.createObjectURL(skeletonBlob);
-
-              const skeletonLink = document.createElement("a");
-              skeletonLink.href = skeletonUrl;
-              skeletonLink.download = `${skeletonFileName}.rsrc`;
-              document.body.appendChild(skeletonLink);
-              skeletonLink.click();
-              document.body.removeChild(skeletonLink);
-              URL.revokeObjectURL(skeletonUrl);
-            } catch (error) {
-              console.error("Error exporting skeleton:", error);
-              // Don't reject if skeleton export fails, model was already downloaded
-            }
-          }
-
-          resolve();
+          const skeletonLink = document.createElement("a");
+          skeletonLink.href = skeletonUrl;
+          skeletonLink.download = `${skeletonFileName}.rsrc`;
+          document.body.appendChild(skeletonLink);
+          skeletonLink.click();
+          document.body.removeChild(skeletonLink);
+          URL.revokeObjectURL(skeletonUrl);
         }
-      } catch (error) {
-        reject(error);
-      } finally {
+
         worker.terminate();
+        resolve();
       }
     };
 
@@ -171,12 +164,14 @@ export async function download3DMFModel(
 
   const metaResult = bg3dParseResultToMetaFile(bg3dParsed);
   if (!metaResult.ok) {
-    throw new Error(`Failed to convert to 3DMF: ${metaResult.error.message}`);
+    console.error(`Failed to convert to 3DMF: ${metaResult.error.message}`);
+    return;
   }
 
   const writeResult = write3DMFFromMetaFile(metaResult.value);
   if (!writeResult.ok) {
-    throw new Error(`Failed to write 3DMF: ${writeResult.error.message}`);
+    console.error(`Failed to write 3DMF: ${writeResult.error.message}`);
+    return;
   }
 
   // Download the 3DMF binary

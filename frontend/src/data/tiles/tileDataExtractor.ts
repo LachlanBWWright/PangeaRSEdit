@@ -40,7 +40,6 @@ interface ExtendedTileAttribute {
  */
 export function extractTileInfo(
   terrainData: TerrainData,
-  _headerData: HeaderData,
 ): TileInfo[] {
   const tiles: TileInfo[] = [];
   
@@ -107,7 +106,7 @@ export function getTileUsageStats(
   terrainData: TerrainData,
   headerData: HeaderData,
 ): TileUsageStats {
-  const tiles = extractTileInfo(terrainData, headerData);
+  const tiles = extractTileInfo(terrainData);
   const usedTiles = tiles.filter(t => t.usageCount > 0);
   const unusedTiles = tiles.filter(t => t.usageCount === 0);
   
@@ -182,8 +181,8 @@ export function findTilePositions(
   attributeIndex: number,
   terrainData: TerrainData,
   headerData: HeaderData,
-): Array<{ x: number; z: number }> {
-  const positions: Array<{ x: number; z: number }> = [];
+): { x: number; z: number }[] {
+  const positions: { x: number; z: number }[] = [];
   
   const header = headerData.Hedr[1000].obj;
   const layr = terrainData.Layr?.[1000]?.obj;
@@ -207,9 +206,8 @@ export function findTilePositions(
  */
 export function getUnusedTileIndices(
   terrainData: TerrainData,
-  headerData: HeaderData,
 ): number[] {
-  const tiles = extractTileInfo(terrainData, headerData);
+  const tiles = extractTileInfo(terrainData);
   return tiles
     .filter(t => t.usageCount === 0)
     .map(t => t.attributeIndex);

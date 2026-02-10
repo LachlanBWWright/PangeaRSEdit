@@ -11,6 +11,7 @@ import { Save, X, Undo, Redo } from "lucide-react";
 import { ToolsPanel } from "./ImageEditor/ToolsPanel";
 import { toast } from "sonner";
 import Konva from "konva";
+import { fromPromise } from "@/types/result";
 // Event typing removed - handlers don't need explicit event param here
 
 interface BrushStroke {
@@ -193,62 +194,65 @@ export function ImageEditor({
     }
 
     setSaving(true);
-    try {
-      // Create a canvas to combine the original image with edits
-      const canvas = document.createElement("canvas");
-      canvas.width = image.width;
-      canvas.height = image.height;
-      const ctx = canvas.getContext("2d");
 
-      if (!ctx) {
-        toast.error("Failed to get canvas context");
-        return;
+    // Create a canvas to combine the original image with edits
+    const canvas = document.createElement("canvas");
+    canvas.width = image.width;
+    canvas.height = image.height;
+    const ctx = canvas.getContext("2d");
+
+    if (!ctx) {
+      toast.error("Failed to get canvas context");
+      setSaving(false);
+      return;
+    }
+
+    // Draw the original image
+    ctx.drawImage(image, 0, 0);
+
+    // Draw all strokes on top (strokes are already in original image coordinates)
+    strokes.forEach((stroke) => {
+      if (stroke.points.length < 2) return;
+
+      ctx.strokeStyle = stroke.color;
+      ctx.lineWidth = stroke.size;
+      ctx.lineCap = "round";
+      ctx.lineJoin = "round";
+
+      if (stroke.shape === "square") {
+        ctx.lineCap = "square";
+        ctx.lineJoin = "miter";
       }
 
-      // Draw the original image
-      ctx.drawImage(image, 0, 0);
+      ctx.beginPath();
+      const startX = stroke.points[0] ?? 0;
+      const startY = stroke.points[1] ?? 0;
+      ctx.moveTo(startX, startY);
 
-      // Draw all strokes on top (strokes are already in original image coordinates)
-      strokes.forEach((stroke) => {
-        if (stroke.points.length < 2) return;
+      for (let i = 2; i < stroke.points.length; i += 2) {
+        const x = stroke.points[i] ?? 0;
+        const y = stroke.points[i + 1] ?? 0;
+        ctx.lineTo(x, y);
+      }
 
-        ctx.strokeStyle = stroke.color;
-        ctx.lineWidth = stroke.size;
-        ctx.lineCap = "round";
-        ctx.lineJoin = "round";
+      ctx.stroke();
+    });
 
-        if (stroke.shape === "square") {
-          ctx.lineCap = "square";
-          ctx.lineJoin = "miter";
-        }
+    // Get image data from the canvas
+    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
 
-        ctx.beginPath();
-        const startX = stroke.points[0] ?? 0;
-        const startY = stroke.points[1] ?? 0;
-        ctx.moveTo(startX, startY);
-
-        for (let i = 2; i < stroke.points.length; i += 2) {
-          const x = stroke.points[i] ?? 0;
-          const y = stroke.points[i + 1] ?? 0;
-          ctx.lineTo(x, y);
-        }
-
-        ctx.stroke();
-      });
-
-      // Get image data from the canvas
-      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-
-      // Call the onSave callback
-      await onSave(imageData);
-      toast.success("Image saved successfully");
-      onClose();
-    } catch (error) {
-      console.error("Error saving edited image:", error);
+    // Call the onSave callback
+    const saveResult = await fromPromise(onSave(imageData));
+    if (!saveResult.ok) {
+      console.error("Error saving edited image:", saveResult.error);
       toast.error("Failed to save edited image");
-    } finally {
       setSaving(false);
+      return;
     }
+
+    toast.success("Image saved successfully");
+    setSaving(false);
+    onClose();
   };
 
   const handleClose = () => {

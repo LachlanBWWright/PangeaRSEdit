@@ -14,84 +14,73 @@ class MockBG3DGltfWorker {
   postMessage(message: BG3DGltfWorkerMessage) {
     // Simulate async worker processing
     setTimeout(() => {
-      try {
-        if (message.type === "bg3d-with-skeleton-to-glb") {
-          // Mock successful skeleton processing
-          const response: BG3DGltfWorkerResponse = {
-            type: "bg3d-with-skeleton-to-glb",
-            result: new ArrayBuffer(100), // Mock GLB buffer
-            parsed: {
-              materials: [],
-              groups: [],
-              skeleton: {
-                version: 1,
-                numAnims: 1,
-                numJoints: 2,
-                num3DMFLimbs: 0,
-                bones: [
-                  {
-                    parentBone: -1,
-                    name: "root",
-                    coordX: 0,
-                    coordY: 0,
-                    coordZ: 0,
-                    numPointsAttachedToBone: 0,
-                    numNormalsAttachedToBone: 0,
+      if (message.type === "bg3d-with-skeleton-to-glb") {
+        // Mock successful skeleton processing
+        const response: BG3DGltfWorkerResponse = {
+          type: "bg3d-with-skeleton-to-glb",
+          result: new ArrayBuffer(100), // Mock GLB buffer
+          parsed: {
+            materials: [],
+            groups: [],
+            skeleton: {
+              version: 1,
+              numAnims: 1,
+              numJoints: 2,
+              num3DMFLimbs: 0,
+              bones: [
+                {
+                  parentBone: -1,
+                  name: "root",
+                  coordX: 0,
+                  coordY: 0,
+                  coordZ: 0,
+                  numPointsAttachedToBone: 0,
+                  numNormalsAttachedToBone: 0,
+                },
+              ],
+              animations: [
+                {
+                  name: "test_animation",
+                  numAnimEvents: 0,
+                  events: [],
+                  keyframes: {
+                    0: [
+                      {
+                        tick: 0,
+                        accelerationMode: 0,
+                        coordX: 0,
+                        coordY: 0,
+                        coordZ: 0,
+                        rotationX: 0,
+                        rotationY: 0,
+                        rotationZ: 0,
+                        scaleX: 1,
+                        scaleY: 1,
+                        scaleZ: 1,
+                      },
+                    ],
                   },
-                ],
-                animations: [
-                  {
-                    name: "test_animation",
-                    numAnimEvents: 0,
-                    events: [],
-                    keyframes: {
-                      0: [
-                        {
-                          tick: 0,
-                          accelerationMode: 0,
-                          coordX: 0,
-                          coordY: 0,
-                          coordZ: 0,
-                          rotationX: 0,
-                          rotationY: 0,
-                          rotationZ: 0,
-                          scaleX: 1,
-                          scaleY: 1,
-                          scaleZ: 1,
-                        },
-                      ],
-                    },
-                  },
-                ],
-              },
+                },
+              ],
             },
-          };
-          if (this.onmessage) {
-            const event = new MessageEvent("message", { data: response });
-            this.onmessage(event);
-          }
-        } else if (message.type === "bg3d-to-glb") {
-          // Mock regular BG3D processing
-          const response: BG3DGltfWorkerResponse = {
-            type: "bg3d-to-glb",
-            result: new ArrayBuffer(100), // Mock GLB buffer
-            parsed: {
-              materials: [],
-              groups: [],
-            },
-          };
-          if (this.onmessage) {
-            const event = new MessageEvent("message", { data: response });
-            this.onmessage(event);
-          }
-        }
-      } catch (error) {
-        const errorResponse: BG3DGltfWorkerResponse = {
-          type: "error",
-          error: error instanceof Error ? error.message : "Unknown error",
+          },
         };
         if (this.onmessage) {
-          const event = new MessageEvent("message", { data: errorResponse });
+          const event = new MessageEvent("message", { data: response });
+          this.onmessage(event);
+        }
+      } else if (message.type === "bg3d-to-glb") {
+        // Mock regular BG3D processing
+        const response: BG3DGltfWorkerResponse = {
+          type: "bg3d-to-glb",
+          result: new ArrayBuffer(100), // Mock GLB buffer
+          parsed: {
+            materials: [],
+            groups: [],
+          },
+        };
+        if (this.onmessage) {
+          const event = new MessageEvent("message", { data: response });
           this.onmessage(event);
         }
       }

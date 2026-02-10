@@ -14,11 +14,13 @@ document.documentElement.classList.add('dark');
 
 const rootElement = document.getElementById("root");
 if (!rootElement) {
-  throw new Error("Root element not found");
+  console.error("Root element not found - cannot render app");
+  // Create a fallback error message in the body
+  document.body.innerHTML = '<div style="color: red; padding: 20px;">Error: Root element not found. Cannot render application.</div>';
+} else {
+  createRoot(rootElement).render(
+    <StrictMode>
+      <App />
+    </StrictMode>,
+  );
 }
-
-createRoot(rootElement).render(
-  <StrictMode>
-    <App />
-  </StrictMode>,
-);

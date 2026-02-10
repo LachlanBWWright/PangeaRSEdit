@@ -65,12 +65,8 @@ export const Fence = memo(
                 }
               }
             });
-            try {
-              e.target.x(0); // Reset line position after dragging nubs
-              e.target.y(0); // Reset line position after dragging nubs
-            } catch (err) {
-              console.warn("Failed to reset Konva node transform:", err);
-            }
+            e.target.x(0); // Reset line position after dragging nubs
+            e.target.y(0); // Reset line position after dragging nubs
             setInitialDragState(null); // Clear initial drag state
           }}
         />

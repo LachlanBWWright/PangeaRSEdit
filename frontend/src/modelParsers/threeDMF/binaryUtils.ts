@@ -282,9 +282,9 @@ export class BigEndianWriter {
   /**
    * Write a FourCC code from string
    */
-  writeFourCC(str: string): void {
+  writeFourCC(str: string): Result<void, Error> {
     if (str.length !== 4) {
-      throw new Error(`FourCC must be exactly 4 characters: ${str}`);
+      return err(new Error(`FourCC must be exactly 4 characters: ${str}`));
     }
     const value =
       ((str.charCodeAt(0) & 0xff) << 24) |
@@ -292,6 +292,7 @@ export class BigEndianWriter {
       ((str.charCodeAt(2) & 0xff) << 8) |
       (str.charCodeAt(3) & 0xff);
     this.writeUint32(value);
+    return ok(undefined);
   }
 
   /**

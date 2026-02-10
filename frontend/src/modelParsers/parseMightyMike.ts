@@ -29,32 +29,26 @@ function decompressIfNeeded(buffer: ArrayBuffer): ArrayBuffer {
 
   // Check if this looks like a packed file (compression type 0-6)
   if (compressionType <= 6) {
-    try {
-      if (compressionType === PACK_TYPE_RLB) {
-        // Tileset files use RLB (byte-level) compression
-        const result = rlbDecompress(buffer);
-        if (isOk(result)) {
-          return result.value.data;
-        } else {
-          console.warn(`RLB decompression failed:`, result.error);
-          return buffer;
-        }
-      } else if (compressionType === PACK_TYPE_RLW) {
-        // Map files use RLW (word-level) compression
-        const result = rlwDecompress(buffer);
-        if (isOk(result)) {
-          return result.value.data;
-        } else {
-          console.warn(`RLW decompression failed:`, result.error);
-          return buffer;
-        }
+    if (compressionType === PACK_TYPE_RLB) {
+      // Tileset files use RLB (byte-level) compression
+      const result = rlbDecompress(buffer);
+      if (isOk(result)) {
+        return result.value.data;
       } else {
-        // Unknown compression type, return as-is
+        console.warn(`RLB decompression failed:`, result.error);
         return buffer;
       }
-    } catch (error) {
-      // If decompression fails, assume it's not compressed
-      console.warn(`Decompression failed for type ${compressionType}:`, error);
+    } else if (compressionType === PACK_TYPE_RLW) {
+      // Map files use RLW (word-level) compression
+      const result = rlwDecompress(buffer);
+      if (isOk(result)) {
+        return result.value.data;
+      } else {
+        console.warn(`RLW decompression failed:`, result.error);
+        return buffer;
+      }
+    } else {
+      // Unknown compression type, return as-is
       return buffer;
     }
   }
@@ -166,9 +160,8 @@ export function parseMightyMikeTileSet(
   buffer: ArrayBuffer,
   palette?: Uint8Array,
 ): Result<MightyMikeTileSet, string> {
-  try {
-    // Decompress if needed
-    const decompressedBuffer = decompressIfNeeded(buffer);
+  // Decompress if needed
+  const decompressedBuffer = decompressIfNeeded(buffer);
     const data = new DataView(decompressedBuffer);
     const dataLength = decompressedBuffer.byteLength;
 
@@ -342,18 +335,14 @@ export function parseMightyMikeTileSet(
       tileImages,
     };
 
-    return { ok: true, value: tileset };
-  } catch (error) {
-    return { ok: false, error: `Failed to parse tileset: ${error}` };
-  }
+  return { ok: true, value: tileset };
 }
 
 export function parseMightyMikeMap(
   buffer: ArrayBuffer,
 ): Result<MightyMikeMap, string> {
-  try {
-    // Decompress if needed
-    const decompressedBuffer = decompressIfNeeded(buffer);
+  // Decompress if needed
+  const decompressedBuffer = decompressIfNeeded(buffer);
     const data = new DataView(decompressedBuffer);
     const dataLength = decompressedBuffer.byteLength;
 
@@ -478,10 +467,7 @@ export function parseMightyMikeMap(
       padding,
     };
 
-    return { ok: true, value: mapData };
-  } catch (error) {
-    return { ok: false, error: `Failed to parse map: ${error}` };
-  }
+  return { ok: true, value: mapData };
 }
 
 /**

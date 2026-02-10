@@ -8,13 +8,10 @@
 
 import { describe, it, expect } from "vitest";
 import {
-  type EditOperation,
   type MoveItemOperation,
   type AddItemOperation,
   type DeleteItemOperation,
   type UpdateItemParamsOperation,
-  type MoveSplineNubOperation,
-  type UpdateTerrainHeightOperation,
   reverseOperation,
   canMergeOperations,
   mergeOperations,
@@ -192,9 +189,12 @@ describe("Operation Reversal Tests", () => {
       };
       
       expect(canMergeOperations(op1, op2)).toBe(true);
-      
-      const merged = mergeOperations(op1, op2);
-      
+
+      const mergeResult = mergeOperations(op1, op2);
+      expect(mergeResult.ok).toBe(true);
+      if (!mergeResult.ok) return; // Type guard
+
+      const merged = mergeResult.value;
       expect(merged.type).toBe("MoveItem");
       if (merged.type === "MoveItem") {
         expect(merged.oldX).toBe(0);
@@ -253,9 +253,13 @@ describe("Operation Reversal Tests", () => {
         newX: 200, newZ: 200,
       };
       
-      const merged = mergeOperations(op1, op2);
+      const mergeResult = mergeOperations(op1, op2);
+      expect(mergeResult.ok).toBe(true);
+      if (!mergeResult.ok) return; // Type guard
+
+      const merged = mergeResult.value;
       const reversed = reverseOperation(merged);
-      
+
       if (merged.type === "MoveItem" && reversed.type === "MoveItem") {
         // Merged: 0,0 -> 200,200
         // Reversed: 200,200 -> 0,0

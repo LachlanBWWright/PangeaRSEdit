@@ -11,7 +11,7 @@
 import { describe, it, expect } from "vitest";
 import { parseBG3D, bg3dParsedToBG3D, BG3DParseResult } from "./parseBG3D";
 import { bg3dParsedToGLTF, gltfToBG3D } from "./parsedBg3dGitfConverter";
-import { accessSync, constants, readFileSync } from "fs";
+import { existsSync, readFileSync } from "fs";
 import { join } from "path";
 
 // Game paths relative to workspace root
@@ -53,12 +53,7 @@ const TEST_FIXTURES = {
 
 // Helper to check if file exists
 function fileExists(filePath: string): boolean {
-  try {
-    accessSync(filePath, constants.F_OK);
-    return true;
-  } catch {
-    return false;
-  }
+  return existsSync(filePath);
 }
 
 // Helper to read file as ArrayBuffer
@@ -122,13 +117,7 @@ describe("BG3D Multi-Game Parsing Tests", () => {
         const parsed: BG3DParseResult = parsedRes.value;
 
         // Convert to glTF - this should not throw
-        let gltfDoc;
-        try {
-          gltfDoc = bg3dParsedToGLTF(parsed);
-        } catch (error) {
-          console.error(`Failed to convert ${gameConfig.name} to glTF:`, error);
-          throw error;
-        }
+        const gltfDoc = bg3dParsedToGLTF(parsed);
 
         expect(gltfDoc).toBeDefined();
 
@@ -160,16 +149,7 @@ describe("BG3D Multi-Game Parsing Tests", () => {
         });
 
         // Convert back
-        let roundtripParsed;
-        try {
-          roundtripParsed = await gltfToBG3D(gltfDoc);
-        } catch (error) {
-          console.error(
-            `Failed to convert ${gameConfig.name} from glTF:`,
-            error,
-          );
-          throw error;
-        }
+        const roundtripParsed = await gltfToBG3D(gltfDoc);
 
         // Convert back to binary
         const roundtripBuffer = bg3dParsedToBG3D(roundtripParsed);
@@ -325,18 +305,11 @@ describe("BG3D Model File Tests", () => {
 
       const buffer = readFileAsArrayBuffer(modelPath);
 
-      let parsed: BG3DParseResult | undefined;
-      try {
-        const parsedRes = parseBG3D(buffer);
-        if (!parsedRes.ok) throw parsedRes.error;
-        parsed = parsedRes.value;
-      } catch (error) {
-        console.error(`Failed to parse ${gameKey} model:`, error);
-        throw error;
-      }
+      const parsedRes = parseBG3D(buffer);
+      if (!parsedRes.ok) throw parsedRes.error;
+      const parsed: BG3DParseResult = parsedRes.value;
 
       expect(parsed).toBeDefined();
-      if (!parsed) throw new Error("Expected parsed to be defined");
       expect(parsed.materials.length).toBeGreaterThan(0);
 
       console.log(

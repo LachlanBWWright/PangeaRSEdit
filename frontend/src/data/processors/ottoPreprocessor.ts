@@ -5,12 +5,14 @@ import { Game, GlobalsInterface } from "../globals/globals";
 import { Result, ok, err } from "../../types/result";
 
 // Type guard helper
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
+export function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 // Type guard for obj records
-function isObjRecord(value: unknown): value is Record<number, { obj: unknown }> {
+export function isObjRecord(
+  value: unknown,
+): value is Record<number, { obj: unknown }> {
   if (!isRecord(value)) return false;
   return true; // We just need it to be a record
 }
@@ -21,7 +23,9 @@ function isObjRecord(value: unknown): value is Record<number, { obj: unknown }> 
  */
 function usesLayrAsTileIndices(globals: GlobalsInterface): boolean {
   // All games EXCEPT Otto Matic and CroMag use Layr as tile indices
-  return globals.GAME_TYPE !== Game.OTTO_MATIC && globals.GAME_TYPE !== Game.CRO_MAG;
+  return (
+    globals.GAME_TYPE !== Game.OTTO_MATIC && globals.GAME_TYPE !== Game.CRO_MAG
+  );
 }
 
 // we intentionally accept a free-form JSON object here — linting for explicit any is suppressed
@@ -95,17 +99,21 @@ export function preprocessJson(
     for (const waterItem of liquidObj) {
       if (!isRecord(waterItem)) continue;
       const item = waterItem;
-      
+
       // HANDLE NEW RSRCDUMP-TS v1.0.6 FORMAT WITH BACKTICK MACRO
       // rsrcdump-ts outputs x`y[100] as an array of {x, y} objects
-      if (item['x`y'] && Array.isArray(item['x`y'])) {
-        const xyArray = item['x`y'];
+      if (item["x`y"] && Array.isArray(item["x`y"])) {
+        const xyArray = item["x`y"];
         // Convert from [{x, y}, ...] to [[x, y], ...]
         const nubs: [number, number][] = [];
         for (let i = 0; i < globals.LIQD_NUBS; i++) {
           if (i < xyArray.length && xyArray[i]) {
             const coord = xyArray[i];
-            if (isRecord(coord) && typeof coord.x === 'number' && typeof coord.y === 'number') {
+            if (
+              isRecord(coord) &&
+              typeof coord.x === "number" &&
+              typeof coord.y === "number"
+            ) {
               nubs.push([coord.x, coord.y]);
             } else {
               nubs.push([0, 0]);
@@ -116,24 +124,33 @@ export function preprocessJson(
         }
         item.nubs = nubs;
         // Remove the x`y field to avoid confusion
-        Reflect.deleteProperty(item, 'x`y');
+        Reflect.deleteProperty(item, "x`y");
         continue;
       }
-      
+
       // Check if nubs array already exists (should be rare now with v1.0.6)
       if (item.nubs && Array.isArray(item.nubs)) {
         // Already in new format - validate and ensure proper structure
         const existingNubs = item.nubs;
-        
+
         // Validate each nub is a proper [number, number] tuple
         const validatedNubs: [number, number][] = [];
         for (let i = 0; i < globals.LIQD_NUBS; i++) {
           if (i < existingNubs.length && existingNubs[i]) {
             const nub = existingNubs[i];
             // Handle both array tuple and object format
-            if (Array.isArray(nub) && nub.length >= 2 && typeof nub[0] === 'number' && typeof nub[1] === 'number') {
+            if (
+              Array.isArray(nub) &&
+              nub.length >= 2 &&
+              typeof nub[0] === "number" &&
+              typeof nub[1] === "number"
+            ) {
               validatedNubs.push([nub[0], nub[1]]);
-            } else if (isRecord(nub) && typeof nub.x === 'number' && typeof nub.y === 'number') {
+            } else if (
+              isRecord(nub) &&
+              typeof nub.x === "number" &&
+              typeof nub.y === "number"
+            ) {
               // Handle {x, y} object format
               validatedNubs.push([nub.x, nub.y]);
             } else {
@@ -146,18 +163,18 @@ export function preprocessJson(
         item.nubs = validatedNubs;
         continue; // Already processed
       }
-      
+
       // Build nubs array from x_0, y_0, x_1, y_1, etc. fields (old format - should be very rare)
       const nubs: [number, number][] = [];
       let hasAnyNubFields = false;
-      
+
       for (let i = 0; i < globals.LIQD_NUBS; i++) {
         const xKey = `x_${i}`;
         const yKey = `y_${i}`;
         const xVal = item[xKey];
         const yVal = item[yKey];
-        
-        if (typeof xVal === 'number' && typeof yVal === 'number') {
+
+        if (typeof xVal === "number" && typeof yVal === "number") {
           hasAnyNubFields = true;
           nubs.push([xVal, yVal]);
         } else {
@@ -165,7 +182,7 @@ export function preprocessJson(
           nubs.push([0, 0]);
         }
       }
-      
+
       // Set nubs - prefer found fields, otherwise initialize empty
       if (hasAnyNubFields) {
         item.nubs = nubs;
@@ -202,8 +219,8 @@ export function ottoPreprocessor(
     }
 
     if (Array.isArray(data.Liqd?.[1000]?.obj)) {
-      for (const waterItem of data.Liqd[1000].obj) {
-        const item = waterItem as Liquid & Record<string, unknown>;
+      data.Liqd[1000].obj = data.Liqd[1000].obj.map((waterItem) => {
+        const item = { ...waterItem } as Liquid & Record<string, unknown>;
         for (let i = 0; i < globals.LIQD_NUBS; i++) {
           const nub = item.nubs?.[i];
           if (nub) {
@@ -211,7 +228,8 @@ export function ottoPreprocessor(
             item[`y_${i}`] = nub[1];
           }
         }
-      }
+        return item;
+      });
     }
 
     //Fix spline numnubs
@@ -285,7 +303,10 @@ export function ottoPreprocessor(
         const newIdx = atrbValueToIndex.get(
           JSON.stringify(data.Atrb[1000].obj[layr]),
         );
-        if (newIdx === undefined) throw new Error("Invalid Atrb index");
+        if (newIdx === undefined) {
+          console.error("Invalid Atrb index");
+          continue;
+        }
         // Update the Layr index to point to the new Atrb index
         data.Layr[1000].obj[layr] = newIdx;
       }

@@ -6,7 +6,7 @@
  */
 
 import { describe, it, expect } from "vitest";
-import { readFileSync } from "fs";
+import { readFileSync, existsSync } from "fs";
 import { join } from "path";
 import {
   parseNanosaur1Level,
@@ -15,15 +15,13 @@ import {
 import { compileNanosaur1Level } from "../../src/editor/loadLogic/compileNanosaur1Level";
 
 describe("Nanosaur 1 Binary Roundtrip", () => {
-  const terrainDir = join(
-    __dirname,
-    "../../public/assets/nanosaur/terrain",
-  );
+  const terrainDir = join(__dirname, "../../public/assets/nanosaur/terrain");
   const levelFiles = ["Level1.ter", "Level1Pro.ter"];
 
   for (const levelFile of levelFiles) {
-    it(`should roundtrip ${levelFile} byte-for-byte`, () => {
-      const filePath = join(terrainDir, levelFile);
+    const filePath = join(terrainDir, levelFile);
+    const testFn = existsSync(filePath) ? it : it.skip;
+    testFn(`should roundtrip ${levelFile} byte-for-byte`, () => {
       const originalBuffer = readFileSync(filePath);
       const originalData = new Uint8Array(originalBuffer);
 
@@ -55,8 +53,8 @@ describe("Nanosaur 1 Binary Roundtrip", () => {
       if (firstDiff !== -1) {
         console.error(
           `Byte difference in ${levelFile} at offset ${firstDiff}: ` +
-          `original=0x${originalData[firstDiff]?.toString(16)}, ` +
-          `roundtrip=0x${roundtripData[firstDiff]?.toString(16)}`,
+            `original=0x${originalData[firstDiff]?.toString(16)}, ` +
+            `roundtrip=0x${roundtripData[firstDiff]?.toString(16)}`,
         );
       }
 

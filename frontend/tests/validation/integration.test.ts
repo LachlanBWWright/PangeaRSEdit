@@ -28,7 +28,7 @@ describe("Validation Module Integration", () => {
     });
 
     it("repository entries have valid structure", () => {
-      for (const [game, repo] of Object.entries(GAME_REPOSITORIES)) {
+      for (const repo of Object.values(GAME_REPOSITORIES)) {
         expect(repo).toBeDefined();
         expect(typeof repo.owner).toBe("string");
         expect(typeof repo.repo).toBe("string");
@@ -76,21 +76,21 @@ describe("Validation Module Integration", () => {
 
   describe("Repository URL format consistency", () => {
     it("all repos use valid GitHub username format", () => {
-      for (const [_game, repo] of Object.entries(GAME_REPOSITORIES)) {
+      for (const repo of Object.values(GAME_REPOSITORIES)) {
         // GitHub usernames: alphanumeric, hyphens, not starting/ending with hyphen
         expect(repo.owner).toMatch(/^[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?$/);
       }
     });
 
     it("all repos use valid repository name format", () => {
-      for (const [_game, repo] of Object.entries(GAME_REPOSITORIES)) {
+      for (const repo of Object.values(GAME_REPOSITORIES)) {
         // GitHub repo names: alphanumeric, dots, hyphens, underscores
         expect(repo.repo).toMatch(/^[a-zA-Z0-9._-]+$/);
       }
     });
 
     it("all repos use standard branch names", () => {
-      for (const [_game, repo] of Object.entries(GAME_REPOSITORIES)) {
+      for (const repo of Object.values(GAME_REPOSITORIES)) {
         // Common branch names
         expect(["main", "master", "dev", "develop"]).toContain(repo.branch);
       }
@@ -99,13 +99,13 @@ describe("Validation Module Integration", () => {
 
   describe("Jorio repositories", () => {
     it("all games are under jorio organization", () => {
-      for (const [_game, repo] of Object.entries(GAME_REPOSITORIES)) {
+      for (const repo of Object.values(GAME_REPOSITORIES)) {
         expect(repo.owner).toBe("jorio");
       }
     });
 
     it("jorio repos use src path for source", () => {
-      for (const [_game, repo] of Object.entries(GAME_REPOSITORIES)) {
+      for (const repo of Object.values(GAME_REPOSITORIES)) {
         expect(repo.sourcePath).toBe("src");
       }
     });
@@ -126,6 +126,9 @@ describe("Validation Module Integration", () => {
         
         // Both should reference the same repo
         const repo = GAME_REPOSITORIES[game];
+        expect(repo).toBeDefined();
+        if (!repo) continue;
+        
         expect(rawUrl).toContain(repo.owner);
         expect(rawUrl).toContain(repo.repo);
         expect(permalink).toContain(repo.owner);

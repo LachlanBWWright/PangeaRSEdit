@@ -66,8 +66,8 @@ export function GameCard({
   const isMightyMike = globals.GAME_TYPE === Game.MIGHTY_MIKE;
 
   return (
-    <Card className="h-full flex flex-col min-h-0 overflow-hidden bg-gray-800 border-gray-700 text-white">
-      <CardContent className="flex-1 flex flex-col min-h-0 overflow-auto p-4">
+    <Card className="h-full flex flex-col min-h-0 overflow-y-auto overflow-x-hidden bg-gray-800 border-gray-700 text-white">
+      <CardContent className="flex flex-col p-4">
         <div className="flex-none min-h-8">
           <h3 className="text-lg font-semibold">{title}</h3>
         </div>
@@ -104,7 +104,7 @@ export function GameCard({
           </Button>
         </div>
 
-        <div className="flex-1 min-h-0 mt-2 overflow-auto flex flex-col gap-1 text-2xl min-w-40">
+        <div className="mt-2 flex flex-col gap-1 text-2xl min-w-40">
           {children}
         </div>
 

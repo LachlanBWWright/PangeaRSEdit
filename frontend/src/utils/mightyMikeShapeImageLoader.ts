@@ -7,7 +7,7 @@
 
 import { parseShapesFile, shapeFrameToCanvas, ShapesFile } from "../parsers/mightyMikeShapesParser";
 import { getItemShapesFile, getItemSpriteMapping } from "../data/items/mightyMikeItemSpriteMap";
-import { Result, ok, err, isErr } from "../types/result";
+import { Result, ok, err, isErr, fromPromise } from "../types/result";
 
 const SHAPES_BASE_PATH = "/PangeaRSEdit/data/mightymike/shapes";
 
@@ -29,31 +29,38 @@ async function loadShapesFile(shapesFilename: string): Promise<Result<ShapesFile
 
   const url = `${SHAPES_BASE_PATH}/${shapesFilename}`;
 
-  try {
-    const response = await fetch(url);
-    if (!response.ok) {
-      return err(new Error(`HTTP ${response.status}: ${response.statusText}`));
-    }
-
-    const buffer = await response.arrayBuffer();
-    const result = parseShapesFile(buffer);
-
-    if (isErr(result)) {
-      return err(result.error);
-    }
-
-    // Cache the parsed file
-    shapesFileCache.set(shapesFilename, result.value);
-    return ok(result.value);
-  } catch (error) {
+  const fetchResult = await fromPromise(fetch(url));
+  if (!fetchResult.ok) {
     return err(
       new Error(
-        `Failed to load shapes file '${shapesFilename}': ${
-          error instanceof Error ? error.message : String(error)
-        }`
+        `Failed to load shapes file '${shapesFilename}': ${fetchResult.error.message}`
       )
     );
   }
+
+  const response = fetchResult.value;
+  if (!response.ok) {
+    return err(new Error(`HTTP ${response.status}: ${response.statusText}`));
+  }
+
+  const bufferResult = await fromPromise(response.arrayBuffer());
+  if (!bufferResult.ok) {
+    return err(
+      new Error(
+        `Failed to read buffer from '${shapesFilename}': ${bufferResult.error.message}`
+      )
+    );
+  }
+
+  const result = parseShapesFile(bufferResult.value);
+
+  if (isErr(result)) {
+    return err(result.error);
+  }
+
+  // Cache the parsed file
+  shapesFileCache.set(shapesFilename, result.value);
+  return ok(result.value);
 }
 
 /**
@@ -86,81 +93,71 @@ async function loadShapeFrame(
     return ok(cached);
   }
 
-  try {
-    const shapesFileResult = await loadShapesFile(shapesFilename);
-    if (isErr(shapesFileResult)) {
-      return err(shapesFileResult.error);
-    }
+  const shapesFileResult = await loadShapesFile(shapesFilename);
+  if (isErr(shapesFileResult)) {
+    return err(shapesFileResult.error);
+  }
 
-    const shapesFile = shapesFileResult.value;
+  const shapesFile = shapesFileResult.value;
 
-    if (shapeIndex < 0 || shapeIndex >= shapesFile.shapes.length) {
-      return err(
-        new Error(
-          `Shape index ${shapeIndex} out of bounds (file has ${shapesFile.shapes.length} shapes)`
-        )
-      );
-    }
-
-    const shape = shapesFile.shapes[shapeIndex];
-    if (!shape) {
-      return err(
-        new Error(
-          `Shape ${shapeIndex} not found in shapes file`
-        )
-      );
-    }
-
-    if (frameIndex < 0 || frameIndex >= shape.frames.length) {
-      return err(
-        new Error(
-          `Frame index ${frameIndex} out of bounds (shape has ${shape.frames.length} frames)`
-        )
-      );
-    }
-
-    const frame = shape.frames[frameIndex];
-    if (!frame) {
-      return err(
-        new Error(
-          `Frame ${frameIndex} not found in shape ${shapeIndex}`
-        )
-      );
-    }
-
-    // Render frame to canvas at original size
-    const originalCanvasResult = shapeFrameToCanvas(frame, shapesFile.colorTable);
-    if (isErr(originalCanvasResult)) {
-      return err(originalCanvasResult.error);
-    }
-    const originalCanvas = originalCanvasResult.value;
-
-    // Scale down to display size (12x12 pixels) for the level editor
-    const scaledCanvas = document.createElement('canvas');
-    scaledCanvas.width = ITEM_DISPLAY_SIZE;
-    scaledCanvas.height = ITEM_DISPLAY_SIZE;
-
-    const ctx = scaledCanvas.getContext('2d');
-    if (!ctx) {
-      return err(new Error('Failed to get canvas context for scaling'));
-    }
-
-    // Use nearest-neighbor scaling to preserve pixel art appearance
-    ctx.imageSmoothingEnabled = false;
-    ctx.drawImage(originalCanvas, 0, 0, ITEM_DISPLAY_SIZE, ITEM_DISPLAY_SIZE);
-
-    // Cache the rendered canvas
-    frameCanvasCache.set(cacheKey, scaledCanvas);
-    return ok(scaledCanvas);
-  } catch (error) {
+  if (shapeIndex < 0 || shapeIndex >= shapesFile.shapes.length) {
     return err(
       new Error(
-        `Failed to load shape frame: ${
-          error instanceof Error ? error.message : String(error)
-        }`
+        `Shape index ${shapeIndex} out of bounds (file has ${shapesFile.shapes.length} shapes)`
       )
     );
   }
+
+  const shape = shapesFile.shapes[shapeIndex];
+  if (!shape) {
+    return err(
+      new Error(
+        `Shape ${shapeIndex} not found in shapes file`
+      )
+    );
+  }
+
+  if (frameIndex < 0 || frameIndex >= shape.frames.length) {
+    return err(
+      new Error(
+        `Frame index ${frameIndex} out of bounds (shape has ${shape.frames.length} frames)`
+      )
+    );
+  }
+
+  const frame = shape.frames[frameIndex];
+  if (!frame) {
+    return err(
+      new Error(
+        `Frame ${frameIndex} not found in shape ${shapeIndex}`
+      )
+    );
+  }
+
+  // Render frame to canvas at original size
+  const originalCanvasResult = shapeFrameToCanvas(frame, shapesFile.colorTable);
+  if (isErr(originalCanvasResult)) {
+    return err(originalCanvasResult.error);
+  }
+  const originalCanvas = originalCanvasResult.value;
+
+  // Scale down to display size (12x12 pixels) for the level editor
+  const scaledCanvas = document.createElement('canvas');
+  scaledCanvas.width = ITEM_DISPLAY_SIZE;
+  scaledCanvas.height = ITEM_DISPLAY_SIZE;
+
+  const ctx = scaledCanvas.getContext('2d');
+  if (!ctx) {
+    return err(new Error('Failed to get canvas context for scaling'));
+  }
+
+  // Use nearest-neighbor scaling to preserve pixel art appearance
+  ctx.imageSmoothingEnabled = false;
+  ctx.drawImage(originalCanvas, 0, 0, ITEM_DISPLAY_SIZE, ITEM_DISPLAY_SIZE);
+
+  // Cache the rendered canvas
+  frameCanvasCache.set(cacheKey, scaledCanvas);
+  return ok(scaledCanvas);
 }
 
 /**
@@ -171,32 +168,22 @@ export async function loadItemImage(
   itemType: number,
   currentScene?: string
 ): Promise<Result<HTMLCanvasElement | null>> {
-  try {
-    const mapping = getItemSpriteMapping(itemType);
-    if (!mapping) {
-      return ok(null); // Item has no sprite
-    }
-
-    const shapesFilename = getItemShapesFile(itemType, currentScene);
-    if (!shapesFilename) {
-      return ok(null); // Could not determine which shapes file to use
-    }
-
-    // Load the first frame (frame 0) of the sprite
-    const frameResult = await loadShapeFrame(shapesFilename, mapping.spriteType, 0);
-    if (isErr(frameResult)) {
-      return err(frameResult.error);
-    }
-    return ok(frameResult.value);
-  } catch (error) {
-    return err(
-      new Error(
-        `Failed to load item ${itemType} image: ${
-          error instanceof Error ? error.message : String(error)
-        }`
-      )
-    );
+  const mapping = getItemSpriteMapping(itemType);
+  if (!mapping) {
+    return ok(null); // Item has no sprite
   }
+
+  const shapesFilename = getItemShapesFile(itemType, currentScene);
+  if (!shapesFilename) {
+    return ok(null); // Could not determine which shapes file to use
+  }
+
+  // Load the first frame (frame 0) of the sprite
+  const frameResult = await loadShapeFrame(shapesFilename, mapping.spriteType, 0);
+  if (isErr(frameResult)) {
+    return err(frameResult.error);
+  }
+  return ok(frameResult.value);
 }
 
 /**

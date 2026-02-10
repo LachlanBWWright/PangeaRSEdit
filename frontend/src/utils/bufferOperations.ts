@@ -203,21 +203,15 @@ export function hexToBuffer(hex: string): Result<ArrayBuffer> {
     return err(new Error("Hex string must have even length"));
   }
 
-  try {
-    const bytes = new Uint8Array(hex.length / 2);
-    for (let i = 0; i < hex.length; i += 2) {
-      const byte = parseInt(hex.substr(i, 2), 16);
-      if (isNaN(byte)) {
-        return err(new Error(`Invalid hex characters at position ${i}: ${hex.substr(i, 2)}`));
-      }
-      bytes[i / 2] = byte;
+  const bytes = new Uint8Array(hex.length / 2);
+  for (let i = 0; i < hex.length; i += 2) {
+    const byte = parseInt(hex.substr(i, 2), 16);
+    if (isNaN(byte)) {
+      return err(new Error(`Invalid hex characters at position ${i}: ${hex.substr(i, 2)}`));
     }
-    return ok(bytes.buffer);
-  } catch (e) {
-    return err(
-      new Error(`Invalid hex string: ${e instanceof Error ? e.message : String(e)}`)
-    );
+    bytes[i / 2] = byte;
   }
+  return ok(bytes.buffer);
 }
 
 /**

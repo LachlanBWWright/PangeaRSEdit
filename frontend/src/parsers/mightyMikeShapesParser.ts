@@ -129,90 +129,84 @@ function readI32BE(view: DataView, offset: number): number {
  * Parse a Mighty Mike .shapes file
  */
 export function parseShapesFile(buffer: ArrayBuffer): Result<ShapesFile, Error> {
-  try {
-    const view = new DataView(buffer);
+  const view = new DataView(buffer);
 
-    if (buffer.byteLength < 20) {
-      return err(new Error("Shapes file too small"));
-    }
-
-    // Shapes files are packed with an 8-byte header (from LoadPackedFile in Misc.c):
-    // Bytes 0-3: Decompressed size (int32_t, big-endian)
-    // Bytes 4-7: Compression type (int32_t, big-endian)
-    //   0 = RLB compression (PACK_TYPE_RLB)
-    //   2 = no compression (PACK_TYPE_NONE)
-    // Bytes 8+: Compressed/uncompressed shape data
-    const decompSize = readI32BE(view, 0);
-    const compressionType = readI32BE(view, 4);
-
-    // Decompress if necessary
-    const compressedData = new Uint8Array(buffer, 8); // data starts at byte 8
-
-    let shapeBuffer: ArrayBuffer;
-    if (compressionType === 0) {
-      // RLB compressed (PACK_TYPE_RLB)
-      const decompressed = decompressRLB(compressedData, decompSize);
-      const maybeBuffer = decompressed.buffer;
-      // Make a defensive copy so we always have an ArrayBuffer (avoid SharedArrayBuffer incompatibilities)
-      const copied = new Uint8Array(maybeBuffer).slice();
-      shapeBuffer = copied.buffer;
-    } else if (compressionType === 2) {
-      // Uncompressed (PACK_TYPE_NONE)
-      shapeBuffer = buffer.slice(8);
-    } else {
-      return err(new Error(`Unsupported compression type: ${compressionType}`));
-    }
-
-    const shapeView = new DataView(shapeBuffer);
-    const shapeBytes = new Uint8Array(shapeBuffer);
-
-    // Read header offsets (from the shape data, not the file start)
-    // Offset 0-3: Unknown/unused value (may be decompressed size or garbage)
-    // Offset 4-7: Offset to Shape List (int32_t, big-endian)
-    // Note: File does NOT seem to contain color table offset. The color table is always absent
-    // or located at the end of the file and is not used by the game.
-    // See Shape.c line 139-140: "Mighty Mike always sets palette colors from image files,
-    // never from shape files."
-
-    const offsetToShapeList = readI32BE(shapeView, 4);
-
-    // Validate offset
-    if (
-      offsetToShapeList < 0 ||
-      offsetToShapeList >= shapeBuffer.byteLength
-    ) {
-      return err(new Error("Invalid shape list offset in shapes file header"));
-    }
-
-    // Create a default color table (since the file doesn't contain valid color data)
-    const colorTable: RGBColor[] = [];
-    for (let i = 0; i < 256; i++) {
-      // Create a grayscale palette as default
-      // In practice, Mighty Mike loads colors from image files, not the shape file
-      const gray = Math.floor((i / 256) * 255);
-      colorTable.push({ r: gray, g: gray, b: gray });
-    }
-
-    // Parse shapes
-    const shapesResult = parseShapeList(
-      shapeView,
-      shapeBytes,
-      offsetToShapeList
-    );
-    if (!shapesResult.success) {
-      const errorMsg = shapesResult.error instanceof Error ? shapesResult.error.message : String(shapesResult.error || "Unknown error");
-      return err(new Error(errorMsg));
-    }
-
-    return ok({
-      colorTable,
-      shapes: shapesResult.shapes,
-    });
-  } catch (error) {
-    return err(
-      error instanceof Error ? error : new Error("Unknown error parsing shapes file")
-    );
+  if (buffer.byteLength < 20) {
+    return err(new Error("Shapes file too small"));
   }
+
+  // Shapes files are packed with an 8-byte header (from LoadPackedFile in Misc.c):
+  // Bytes 0-3: Decompressed size (int32_t, big-endian)
+  // Bytes 4-7: Compression type (int32_t, big-endian)
+  //   0 = RLB compression (PACK_TYPE_RLB)
+  //   2 = no compression (PACK_TYPE_NONE)
+  // Bytes 8+: Compressed/uncompressed shape data
+  const decompSize = readI32BE(view, 0);
+  const compressionType = readI32BE(view, 4);
+
+  // Decompress if necessary
+  const compressedData = new Uint8Array(buffer, 8); // data starts at byte 8
+
+  let shapeBuffer: ArrayBuffer;
+  if (compressionType === 0) {
+    // RLB compressed (PACK_TYPE_RLB)
+    const decompressed = decompressRLB(compressedData, decompSize);
+    const maybeBuffer = decompressed.buffer;
+    // Make a defensive copy so we always have an ArrayBuffer (avoid SharedArrayBuffer incompatibilities)
+    const copied = new Uint8Array(maybeBuffer).slice();
+    shapeBuffer = copied.buffer;
+  } else if (compressionType === 2) {
+    // Uncompressed (PACK_TYPE_NONE)
+    shapeBuffer = buffer.slice(8);
+  } else {
+    return err(new Error(`Unsupported compression type: ${compressionType}`));
+  }
+
+  const shapeView = new DataView(shapeBuffer);
+  const shapeBytes = new Uint8Array(shapeBuffer);
+
+  // Read header offsets (from the shape data, not the file start)
+  // Offset 0-3: Unknown/unused value (may be decompressed size or garbage)
+  // Offset 4-7: Offset to Shape List (int32_t, big-endian)
+  // Note: File does NOT seem to contain color table offset. The color table is always absent
+  // or located at the end of the file and is not used by the game.
+  // See Shape.c line 139-140: "Mighty Mike always sets palette colors from image files,
+  // never from shape files."
+
+  const offsetToShapeList = readI32BE(shapeView, 4);
+
+  // Validate offset
+  if (
+    offsetToShapeList < 0 ||
+    offsetToShapeList >= shapeBuffer.byteLength
+  ) {
+    return err(new Error("Invalid shape list offset in shapes file header"));
+  }
+
+  // Create a default color table (since the file doesn't contain valid color data)
+  const colorTable: RGBColor[] = [];
+  for (let i = 0; i < 256; i++) {
+    // Create a grayscale palette as default
+    // In practice, Mighty Mike loads colors from image files, not the shape file
+    const gray = Math.floor((i / 256) * 255);
+    colorTable.push({ r: gray, g: gray, b: gray });
+  }
+
+  // Parse shapes
+  const shapesResult = parseShapeList(
+    shapeView,
+    shapeBytes,
+    offsetToShapeList
+  );
+  if (!shapesResult.success) {
+    const errorMsg = shapesResult.error instanceof Error ? shapesResult.error.message : String(shapesResult.error || "Unknown error");
+    return err(new Error(errorMsg));
+  }
+
+  return ok({
+    colorTable,
+    shapes: shapesResult.shapes,
+  });
 }
 
 interface ShapeListResult {
@@ -226,193 +220,184 @@ function parseShapeList(
   bytes: Uint8Array,
   offset: number
 ): ShapeListResult {
-  try {
-    const shapeCount = readI16BE(view, offset);
+  const shapeCount = readI16BE(view, offset);
 
-    if (shapeCount < 0 || shapeCount > 1000) {
-      return {
-        success: false,
-        shapes: [],
-        error: new Error(`Invalid shape count: ${shapeCount}`),
-      };
-    }
-
-    const shapes: Shape[] = [];
-    let pos = offset + 2; // Skip count
-
-    // Read offsets to shape headers
-    const shapeOffsets: number[] = [];
-    for (let i = 0; i < shapeCount; i++) {
-      if (pos + 4 > bytes.length) {
-        return {
-          success: false,
-          shapes: [],
-          error: new Error("Unexpected end of shape offset list"),
-        };
-      }
-      shapeOffsets.push(readI32BE(view, pos));
-      pos += 4;
-    }
-
-    // Parse each shape
-    for (let i = 0; i < shapeCount; i++) {
-      const shapeBase = shapeOffsets[i];
-
-      if (shapeBase === undefined ||
-        shapeBase < 0 ||
-        shapeBase + 8 > bytes.length
-      ) {
-        return {
-          success: false,
-          shapes: [],
-          error: new Error(
-            `Invalid shape header offset at shape ${i}: ${shapeBase}`
-          ),
-        };
-      }
-
-      const frameListOffset = readI32BE(view, shapeBase + 2);
-
-      if (frameListOffset < 0 || shapeBase + frameListOffset >= bytes.length) {
-        return {
-          success: false,
-          shapes: [],
-          error: new Error(
-            `Invalid frame list offset in shape ${i}: ${frameListOffset}`
-          ),
-        };
-      }
-
-      const frameListPos = shapeBase + frameListOffset;
-      const frameCount = readI16BE(view, frameListPos);
-
-      if (frameCount < 0 || frameCount > 1000) {
-        return {
-          success: false,
-          shapes: [],
-          error: new Error(
-            `Invalid frame count in shape ${i}: ${frameCount}`
-          ),
-        };
-      }
-
-      const frames: ShapeFrame[] = [];
-      let framePos = frameListPos + 2;
-
-      // Read frame offsets
-      const frameOffsets: number[] = [];
-      for (let f = 0; f < frameCount; f++) {
-        if (framePos + 4 > bytes.length) {
-          return {
-            success: false,
-            shapes: [],
-            error: new Error(
-              `Unexpected end of frame offset list in shape ${i}`
-            ),
-          };
-        }
-        frameOffsets.push(readI32BE(view, framePos));
-        framePos += 4;
-      }
-
-      // Parse each frame
-      for (let f = 0; f < frameCount; f++) {
-        const frameOffset = frameOffsets[f];
-        if (frameOffset === undefined) {
-          return {
-            success: false,
-            shapes: [],
-            error: new Error(
-              `Frame offset ${f} not found in frame list for shape ${i}`
-            ),
-          };
-        }
-
-        const frameHeaderPos = shapeBase + frameOffset;
-
-        if (frameHeaderPos + 16 > bytes.length) {
-          return {
-            success: false,
-            shapes: [],
-            error: new Error(
-              `Invalid frame header in shape ${i}, frame ${f}`
-            ),
-          };
-        }
-
-        const header: FrameHeader = {
-          width: readI16BE(view, frameHeaderPos),
-          height: readI16BE(view, frameHeaderPos + 2),
-          offsetX: readI16BE(view, frameHeaderPos + 4),
-          offsetY: readI16BE(view, frameHeaderPos + 6),
-          pixelOffset: readI32BE(view, frameHeaderPos + 8),
-          maskOffset: readI32BE(view, frameHeaderPos + 12),
-        };
-
-        // Validate frame dimensions
-        if (header.width < 0 || header.width > 2048 ||
-            header.height < 0 || header.height > 2048) {
-          return {
-            success: false,
-            shapes: [],
-            error: new Error(
-              `Invalid frame dimensions in shape ${i}, frame ${f}: ${header.width}x${header.height}`
-            ),
-          };
-        }
-
-        // Extract pixel data
-        const pixelDataSize = header.width * header.height;
-        const pixelStartOffset = shapeBase + header.pixelOffset;
-
-        if (pixelStartOffset + pixelDataSize > bytes.length) {
-          return {
-            success: false,
-            shapes: [],
-            error: new Error(
-              `Pixel data out of bounds in shape ${i}, frame ${f}`
-            ),
-          };
-        }
-
-        const pixels = bytes.slice(
-          pixelStartOffset,
-          pixelStartOffset + pixelDataSize
-        );
-
-        // Extract mask data if present
-        let mask: Uint8Array | undefined;
-        if (header.maskOffset > 0) {
-          const maskStartOffset = shapeBase + header.maskOffset;
-          const maskSize = Math.ceil((header.width * header.height) / 8);
-
-          if (maskStartOffset + maskSize <= bytes.length) {
-            mask = bytes.slice(maskStartOffset, maskStartOffset + maskSize);
-          }
-        }
-
-        frames.push({
-          header,
-          pixels,
-          mask,
-        });
-      }
-
-      shapes.push({
-        shapeIndex: i,
-        frames,
-      });
-    }
-
-    return { success: true, shapes };
-  } catch (error) {
+  if (shapeCount < 0 || shapeCount > 1000) {
     return {
       success: false,
       shapes: [],
-      error:
-        error instanceof Error ? error : new Error("Error parsing shapes list"),
+      error: new Error(`Invalid shape count: ${shapeCount}`),
     };
   }
+
+  const shapes: Shape[] = [];
+  let pos = offset + 2; // Skip count
+
+  // Read offsets to shape headers
+  const shapeOffsets: number[] = [];
+  for (let i = 0; i < shapeCount; i++) {
+    if (pos + 4 > bytes.length) {
+      return {
+        success: false,
+        shapes: [],
+        error: new Error("Unexpected end of shape offset list"),
+      };
+    }
+    shapeOffsets.push(readI32BE(view, pos));
+    pos += 4;
+  }
+
+  // Parse each shape
+  for (let i = 0; i < shapeCount; i++) {
+    const shapeBase = shapeOffsets[i];
+
+    if (shapeBase === undefined ||
+      shapeBase < 0 ||
+      shapeBase + 8 > bytes.length
+    ) {
+      return {
+        success: false,
+        shapes: [],
+        error: new Error(
+          `Invalid shape header offset at shape ${i}: ${shapeBase}`
+        ),
+      };
+    }
+
+    const frameListOffset = readI32BE(view, shapeBase + 2);
+
+    if (frameListOffset < 0 || shapeBase + frameListOffset >= bytes.length) {
+      return {
+        success: false,
+        shapes: [],
+        error: new Error(
+          `Invalid frame list offset in shape ${i}: ${frameListOffset}`
+        ),
+      };
+    }
+
+    const frameListPos = shapeBase + frameListOffset;
+    const frameCount = readI16BE(view, frameListPos);
+
+    if (frameCount < 0 || frameCount > 1000) {
+      return {
+        success: false,
+        shapes: [],
+        error: new Error(
+          `Invalid frame count in shape ${i}: ${frameCount}`
+        ),
+      };
+    }
+
+    const frames: ShapeFrame[] = [];
+    let framePos = frameListPos + 2;
+
+    // Read frame offsets
+    const frameOffsets: number[] = [];
+    for (let f = 0; f < frameCount; f++) {
+      if (framePos + 4 > bytes.length) {
+        return {
+          success: false,
+          shapes: [],
+          error: new Error(
+            `Unexpected end of frame offset list in shape ${i}`
+          ),
+        };
+      }
+      frameOffsets.push(readI32BE(view, framePos));
+      framePos += 4;
+    }
+
+    // Parse each frame
+    for (let f = 0; f < frameCount; f++) {
+      const frameOffset = frameOffsets[f];
+      if (frameOffset === undefined) {
+        return {
+          success: false,
+          shapes: [],
+          error: new Error(
+            `Frame offset ${f} not found in frame list for shape ${i}`
+          ),
+        };
+      }
+
+      const frameHeaderPos = shapeBase + frameOffset;
+
+      if (frameHeaderPos + 16 > bytes.length) {
+        return {
+          success: false,
+          shapes: [],
+          error: new Error(
+            `Invalid frame header in shape ${i}, frame ${f}`
+          ),
+        };
+      }
+
+      const header: FrameHeader = {
+        width: readI16BE(view, frameHeaderPos),
+        height: readI16BE(view, frameHeaderPos + 2),
+        offsetX: readI16BE(view, frameHeaderPos + 4),
+        offsetY: readI16BE(view, frameHeaderPos + 6),
+        pixelOffset: readI32BE(view, frameHeaderPos + 8),
+        maskOffset: readI32BE(view, frameHeaderPos + 12),
+      };
+
+      // Validate frame dimensions
+      if (header.width < 0 || header.width > 2048 ||
+          header.height < 0 || header.height > 2048) {
+        return {
+          success: false,
+          shapes: [],
+          error: new Error(
+            `Invalid frame dimensions in shape ${i}, frame ${f}: ${header.width}x${header.height}`
+          ),
+        };
+      }
+
+      // Extract pixel data
+      const pixelDataSize = header.width * header.height;
+      const pixelStartOffset = shapeBase + header.pixelOffset;
+
+      if (pixelStartOffset + pixelDataSize > bytes.length) {
+        return {
+          success: false,
+          shapes: [],
+          error: new Error(
+            `Pixel data out of bounds in shape ${i}, frame ${f}`
+          ),
+        };
+      }
+
+      const pixels = bytes.slice(
+        pixelStartOffset,
+        pixelStartOffset + pixelDataSize
+      );
+
+      // Extract mask data if present
+      let mask: Uint8Array | undefined;
+      if (header.maskOffset > 0) {
+        const maskStartOffset = shapeBase + header.maskOffset;
+        const maskSize = Math.ceil((header.width * header.height) / 8);
+
+        if (maskStartOffset + maskSize <= bytes.length) {
+          mask = bytes.slice(maskStartOffset, maskStartOffset + maskSize);
+        }
+      }
+
+      frames.push({
+        header,
+        pixels,
+        mask,
+      });
+    }
+
+    shapes.push({
+      shapeIndex: i,
+      frames,
+    });
+  }
+
+  return { success: true, shapes };
 }
 
 /**

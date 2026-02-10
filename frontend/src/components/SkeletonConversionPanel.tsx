@@ -12,6 +12,7 @@ import { skeletonResourceToBinary } from "../modelParsers/skeletonBinaryExport";
 import type { SkeletonResource } from "../python/structSpecs/skeleton/skeletonInterface";
 import { toast } from "sonner";
 import { DropArea } from "./SkeletonConversionPanel/DropArea";
+import { fromPromise } from "@/types/result";
 
 interface SkeletonConversionPanelProps {
   title: string;
@@ -32,17 +33,37 @@ export function SkeletonConversionPanel({
 
   const handleFileConversion = async (bg3dFile: File, skeletonFile?: File) => {
     setLoading(true);
-    try {
-      const bg3dBuffer = await bg3dFile.arrayBuffer();
-      let skeletonData: SkeletonResource | undefined;
 
-      // Parse skeleton file if provided using TypeScript implementation
-      if (skeletonFile) {
-        console.log("Parsing skeleton file for conversion with TypeScript...");
-        const skeletonArrayBuffer = await skeletonFile.arrayBuffer();
-        skeletonData = await parseSkeletonRsrc(skeletonArrayBuffer);
-        console.log("Skeleton data parsed for conversion:", skeletonData);
+    const bg3dBufferResult = await fromPromise(bg3dFile.arrayBuffer());
+    if (!bg3dBufferResult.ok) {
+      toast.error(`${title} conversion failed: ${bg3dBufferResult.error.message}`);
+      setLoading(false);
+      return;
+    }
+    const bg3dBuffer = bg3dBufferResult.value;
+
+    let skeletonData: SkeletonResource | undefined;
+
+    // Parse skeleton file if provided using TypeScript implementation
+    if (skeletonFile) {
+      console.log("Parsing skeleton file for conversion with TypeScript...");
+      const skeletonBufferResult = await fromPromise(skeletonFile.arrayBuffer());
+      if (!skeletonBufferResult.ok) {
+        toast.error(`Failed to read skeleton file: ${skeletonBufferResult.error.message}`);
+        setLoading(false);
+        return;
       }
+      const skeletonArrayBuffer = skeletonBufferResult.value;
+
+      const skeletonParseResult = await fromPromise(parseSkeletonRsrc(skeletonArrayBuffer));
+      if (!skeletonParseResult.ok) {
+        toast.error(`Failed to parse skeleton file: ${skeletonParseResult.error.message}`);
+        setLoading(false);
+        return;
+      }
+      skeletonData = skeletonParseResult.value;
+      console.log("Skeleton data parsed for conversion:", skeletonData);
+    }
 
       const worker = new BG3DGltfWorker();
 
@@ -124,24 +145,25 @@ export function SkeletonConversionPanel({
           result.type === "bg3d-with-skeleton-to-glb" &&
           result.parsed?.skeleton
         ) {
-          try {
-            console.log(
-              "Converting skeleton to resource format for download...",
-            );
-            const skeletonResource = bg3dSkeletonToSkeletonResource(
-              result.parsed.skeleton,
-            );
+          console.log(
+            "Converting skeleton to resource format for download...",
+          );
+          const skeletonResource = bg3dSkeletonToSkeletonResource(
+            result.parsed.skeleton,
+          );
 
-            console.log(
-              "Converting skeleton resource to binary for download...",
+          console.log(
+            "Converting skeleton resource to binary for download...",
+          );
+          const skeletonBinaryResult = skeletonResourceToBinary(
+            skeletonResource,
+          );
+          if (!skeletonBinaryResult.ok) {
+            console.error("Failed to convert skeleton to binary:", skeletonBinaryResult.error);
+            toast.success(
+              `${title} conversion completed (skeleton file generation failed)`,
             );
-            const skeletonBinaryResult = skeletonResourceToBinary(
-              skeletonResource,
-            );
-            if (!skeletonBinaryResult.ok) {
-              console.error("Failed to convert skeleton to binary:", skeletonBinaryResult.error);
-              return;
-            }
+          } else {
             const skeletonBinary = skeletonBinaryResult.value;
 
             // Download the skeleton file
@@ -161,11 +183,6 @@ export function SkeletonConversionPanel({
             setTimeout(() => URL.revokeObjectURL(skeletonUrl), 1000);
 
             toast.success(`${title} conversion completed with skeleton file`);
-          } catch (error) {
-            console.error("Error generating skeleton file:", error);
-            toast.success(
-              `${title} conversion completed (skeleton file generation failed)`,
-            );
           }
         } else {
           toast.success(`${title} conversion completed`);
@@ -175,12 +192,8 @@ export function SkeletonConversionPanel({
         setUploadStep("select-bg3d");
         setPendingBg3dFile(null);
       }
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : String(err);
-      toast.error(`${title} conversion failed: ${errorMessage}`);
-    } finally {
-      setLoading(false);
-    }
+
+    setLoading(false);
   };
 
   const handleBg3dFileSelect = (bg3dFile: File) => {

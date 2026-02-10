@@ -28,8 +28,6 @@ export class BugdomItemMapper implements GameItemModelMapper {
    */
   getMapping(
     itemType: number,
-    _levelNum?: number,
-    _params?: { p0: number; p1: number; p2: number; p3: number },
   ): UniversalItemModelMapping | undefined {
     const mapping = getBugdomItemModelMapping(itemType);
     if (!mapping) return undefined;

@@ -59,103 +59,80 @@ export function bg3dTexturesToGltf(
         let actualWidth = tex.width;
         let actualHeight = tex.height;
 
-        try {
-          // Handle JPEG textures (Nanosaur 2)
-          if (tex.isJpeg) {
-            const jpegTex = tex;
-            console.log(
-              `[Material ${i}] Processing JPEG texture, bufferSize: ${jpegTex.bufferSize}, expected dimensions: ${jpegTex.width}x${jpegTex.height}`,
-            );
+        // Handle JPEG textures (Nanosaur 2)
+        if (tex.isJpeg) {
+          const jpegTex = tex;
+          console.log(
+            `[Material ${i}] Processing JPEG texture, bufferSize: ${jpegTex.bufferSize}, expected dimensions: ${jpegTex.width}x${jpegTex.height}`,
+          );
 
-            // Extract payload from QuickTime ImageDescription format
-            const view = new DataView(
-              jpegTex.pixels.buffer,
-              jpegTex.pixels.byteOffset,
-            );
-            const offset = view.getInt32(0, false); // big-endian
-            const payloadSize = jpegTex.bufferSize - offset;
-            const payloadView = new Uint8Array(
-              jpegTex.pixels.buffer,
-              jpegTex.pixels.byteOffset + offset,
-              payloadSize,
-            );
+          // Extract payload from QuickTime ImageDescription format
+          const view = new DataView(
+            jpegTex.pixels.buffer,
+            jpegTex.pixels.byteOffset,
+          );
+          const offset = view.getInt32(0, false); // big-endian
+          const payloadSize = jpegTex.bufferSize - offset;
+          const payloadView = new Uint8Array(
+            jpegTex.pixels.buffer,
+            jpegTex.pixels.byteOffset + offset,
+            payloadSize,
+          );
 
-            console.log(
-              `[Material ${i}] Offset: ${offset}, Payload size: ${payloadSize}`,
-            );
+          console.log(
+            `[Material ${i}] Offset: ${offset}, Payload size: ${payloadSize}`,
+          );
 
-            // Copy to new buffer for decodeJpegNode
-            const payloadBuffer = new Uint8Array(payloadSize);
-            payloadBuffer.set(payloadView);
+          // Copy to new buffer for decodeJpegNode
+          const payloadBuffer = new Uint8Array(payloadSize);
+          payloadBuffer.set(payloadView);
 
-            // Decompress JPEG
-            const imageData = decodeJpegNode(payloadBuffer.buffer);
-            console.log(
-              `[Material ${i}] Decompressed JPEG: ${imageData.width}x${imageData.height}, data length: ${imageData.data.length}`,
-            );
-            console.log(
-              `[Material ${i}] BG3D texture metadata: ${jpegTex.width}x${jpegTex.height}`,
-            );
+          // Decompress JPEG
+          const imageData = decodeJpegNode(payloadBuffer.buffer);
+          console.log(
+            `[Material ${i}] Decompressed JPEG: ${imageData.width}x${imageData.height}, data length: ${imageData.data.length}`,
+          );
+          console.log(
+            `[Material ${i}] BG3D texture metadata: ${jpegTex.width}x${jpegTex.height}`,
+          );
 
-            // Use decompressed dimensions (JPEG may differ from metadata)
-            actualWidth = imageData.width;
-            actualHeight = imageData.height;
-            console.log(
-              `[Material ${i}] Using decompressed dimensions: ${actualWidth}x${actualHeight}`,
-            );
+          // Use decompressed dimensions (JPEG may differ from metadata)
+          actualWidth = imageData.width;
+          actualHeight = imageData.height;
+          console.log(
+            `[Material ${i}] Using decompressed dimensions: ${actualWidth}x${actualHeight}`,
+          );
 
-            // Convert to PNG
-            pngBuffer = rgba8ToPng(
-              new Uint8Array(imageData.data),
-              actualWidth,
-              actualHeight,
-            );
-            console.log(
-              `[Material ${i}] PNG buffer created, size: ${pngBuffer.length}`,
-            );
-          } else if (
-            tex.srcPixelFormat === PixelFormatSrc.GL_UNSIGNED_SHORT_1_5_5_5_REV
-          ) {
-            // ARGB16 with byte swap
-            const src = new Uint16Array(
-              tex.pixels.buffer,
-              tex.pixels.byteOffset,
-              tex.pixels.byteLength / 2,
-            );
-            const swapped = new Uint16Array(src.length);
-            for (let k = 0; k < src.length; k++) {
-              const val = src[k] ?? 0;
-              swapped[k] = ((val & 0xff) << 8) | ((val >> 8) & 0xff);
-            }
-            pngBuffer = argb16ToPng(swapped, tex.width, tex.height);
-          } else if (tex.srcPixelFormat === PixelFormatSrc.GL_RGB) {
-            pngBuffer = rgb24ToPng(tex.pixels, tex.width, tex.height);
-          } else if (tex.srcPixelFormat === PixelFormatSrc.GL_RGBA) {
-            pngBuffer = rgba8ToPng(tex.pixels, tex.width, tex.height);
-          } else {
-            pngBuffer = tex.pixels;
+          // Convert to PNG
+          pngBuffer = rgba8ToPng(
+            new Uint8Array(imageData.data),
+            actualWidth,
+            actualHeight,
+          );
+          console.log(
+            `[Material ${i}] PNG buffer created, size: ${pngBuffer.length}`,
+          );
+        } else if (
+          tex.srcPixelFormat === PixelFormatSrc.GL_UNSIGNED_SHORT_1_5_5_5_REV
+        ) {
+          // ARGB16 with byte swap
+          const src = new Uint16Array(
+            tex.pixels.buffer,
+            tex.pixels.byteOffset,
+            tex.pixels.byteLength / 2,
+          );
+          const swapped = new Uint16Array(src.length);
+          for (let k = 0; k < src.length; k++) {
+            const val = src[k] ?? 0;
+            swapped[k] = ((val & 0xff) << 8) | ((val >> 8) & 0xff);
           }
-        } catch (error) {
-          console.error(`Failed to convert texture for material ${i}:`, error);
-          // Fallback: convert raw pixels to RGBA and then to PNG
-          try {
-            const fallbackRgba = new Uint8Array(tex.width * tex.height * 4);
-            // Fill with gray color as placeholder
-            for (let i = 0; i < fallbackRgba.length; i += 4) {
-              fallbackRgba[i] = 128; // R
-              fallbackRgba[i + 1] = 128; // G
-              fallbackRgba[i + 2] = 128; // B
-              fallbackRgba[i + 3] = 255; // A
-            }
-            pngBuffer = rgba8ToPng(fallbackRgba, tex.width, tex.height);
-          } catch (fallbackError) {
-            console.error(
-              `Fallback also failed for material ${i}:`,
-              fallbackError,
-            );
-            // Last resort: use original pixels
-            pngBuffer = tex.pixels;
-          }
+          pngBuffer = argb16ToPng(swapped, tex.width, tex.height);
+        } else if (tex.srcPixelFormat === PixelFormatSrc.GL_RGB) {
+          pngBuffer = rgb24ToPng(tex.pixels, tex.width, tex.height);
+        } else if (tex.srcPixelFormat === PixelFormatSrc.GL_RGBA) {
+          pngBuffer = rgba8ToPng(tex.pixels, tex.width, tex.height);
+        } else {
+          pngBuffer = tex.pixels;
         }
 
         const texture = doc.createTexture();

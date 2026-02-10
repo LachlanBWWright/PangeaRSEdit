@@ -33,10 +33,12 @@ describe("Edit Operations", () => {
       const reversed = reverseOperation(op);
 
       expect(reversed.type).toBe("MoveItem");
-      expect((reversed as MoveItemOperation).oldX).toBe(150);
-      expect((reversed as MoveItemOperation).oldZ).toBe(250);
-      expect((reversed as MoveItemOperation).newX).toBe(100);
-      expect((reversed as MoveItemOperation).newZ).toBe(200);
+      if (reversed.type === "MoveItem") {
+        expect(reversed.oldX).toBe(150);
+        expect(reversed.oldZ).toBe(250);
+        expect(reversed.newX).toBe(100);
+        expect(reversed.newZ).toBe(200);
+      }
     });
 
     it("reverses UpdateItemParams operation", () => {
@@ -50,20 +52,22 @@ describe("Edit Operations", () => {
       const reversed = reverseOperation(op);
 
       expect(reversed.type).toBe("UpdateItemParams");
-      expect((reversed as UpdateItemParamsOperation).oldParams).toEqual({
-        flags: 1,
-        p0: 5,
-        p1: 6,
-        p2: 7,
-        p3: 8,
-      });
-      expect((reversed as UpdateItemParamsOperation).newParams).toEqual({
-        flags: 0,
-        p0: 1,
-        p1: 2,
-        p2: 3,
-        p3: 4,
-      });
+      if (reversed.type === "UpdateItemParams") {
+        expect(reversed.oldParams).toEqual({
+          flags: 1,
+          p0: 5,
+          p1: 6,
+          p2: 7,
+          p3: 8,
+        });
+        expect(reversed.newParams).toEqual({
+          flags: 0,
+          p0: 1,
+          p1: 2,
+          p2: 3,
+          p3: 4,
+        });
+      }
     });
 
     it("double reverse returns equivalent operation", () => {
@@ -164,14 +168,17 @@ describe("Edit Operations", () => {
         newZ: 300,
       };
 
-      const merged = mergeOperations(first, second) as MoveItemOperation;
-
-      expect(merged.type).toBe("MoveItem");
-      expect(merged.itemIndex).toBe(0);
-      expect(merged.oldX).toBe(100); // From first
-      expect(merged.oldZ).toBe(200); // From first
-      expect(merged.newX).toBe(200); // From second
-      expect(merged.newZ).toBe(300); // From second
+      const mergeResult = mergeOperations(first, second);
+      expect(mergeResult.ok).toBe(true);
+      if (mergeResult.ok && mergeResult.value.type === "MoveItem") {
+        const merged = mergeResult.value;
+        expect(merged.type).toBe("MoveItem");
+        expect(merged.itemIndex).toBe(0);
+        expect(merged.oldX).toBe(100);
+        expect(merged.oldZ).toBe(200);
+        expect(merged.newX).toBe(200);
+        expect(merged.newZ).toBe(300);
+      }
     });
 
     it("merges consecutive MoveSplineNub operations", () => {
@@ -194,12 +201,15 @@ describe("Edit Operations", () => {
         newZ: 20,
       };
 
-      const merged = mergeOperations(first, second) as MoveSplineNubOperation;
-
-      expect(merged.oldX).toBe(0);
-      expect(merged.oldZ).toBe(0);
-      expect(merged.newX).toBe(20);
-      expect(merged.newZ).toBe(20);
+      const mergeResult = mergeOperations(first, second);
+      expect(mergeResult.ok).toBe(true);
+      if (mergeResult.ok && mergeResult.value.type === "MoveSplineNub") {
+        const merged = mergeResult.value;
+        expect(merged.oldX).toBe(0);
+        expect(merged.oldZ).toBe(0);
+        expect(merged.newX).toBe(20);
+        expect(merged.newZ).toBe(20);
+      }
     });
   });
 

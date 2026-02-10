@@ -4,6 +4,7 @@ import eslint from "@eslint/js";
 import { defineConfig } from "eslint/config";
 import tseslint from "typescript-eslint";
 import reactHooks from "eslint-plugin-react-hooks";
+import functionalPlugin from "eslint-plugin-functional";
 
 export default defineConfig(
   {
@@ -26,6 +27,7 @@ export default defineConfig(
   {
     plugins: {
       "typescript-eslint": tseslint,
+      "functional": functionalPlugin,
     },
     languageOptions: {
       parserOptions: {
@@ -35,6 +37,24 @@ export default defineConfig(
     rules: {
       "@typescript-eslint/no-unsafe-type-assertion": "error",
       "@typescript-eslint/no-unnecessary-type-assertion": "error",
+      // Enforce Result types - ban throw statements and try/catch blocks
+      "functional/no-throw-statements": "error",
+      "functional/no-try-statements": "error",
+    },
+  },
+  // Allow try/catch ONLY in result.ts utilities
+  {
+    files: ["src/types/result.ts"],
+    rules: {
+      "functional/no-throw-statements": "off",
+      "functional/no-try-statements": "off",
+    },
+  },
+  // Allow throw in test files (for test utilities and assertions)
+  {
+    files: ["**/*.test.ts", "**/*.test.tsx", "**/tests/**"],
+    rules: {
+      "functional/no-throw-statements": "off",
     },
   },
 );

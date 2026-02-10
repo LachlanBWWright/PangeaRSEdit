@@ -10,7 +10,7 @@ import { bg3dParsedToGLTF, gltfToBG3D } from "../parsedBg3dGitfConverter";
 import { parseSkeletonRsrc } from "../skeletonRsrc/parseSkeletonRsrcTS";
 import { parseBG3DWithSkeletonResource } from "../bg3dWithSkeleton";
 import { BG3DParseResult } from "../parseBG3D";
-import { readFileSync } from "fs";
+import { existsSync, readFileSync } from "fs";
 import { join } from "path";
 import { NodeIO } from "@gltf-transform/core";
 import { validateBytes } from "gltf-validator";
@@ -176,15 +176,12 @@ describe.skip("3DMF glTF Full Roundtrip Tests", () => {
     testFiles.forEach(({ path, name }) => {
       it(`should roundtrip ${name} through glTF format`, async () => {
         const testFile = join(path, name);
-        let fileBuffer: ArrayBuffer;
-        
-        try {
-          const data = readFileSync(testFile);
-          fileBuffer = data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength);
-        } catch {
+        if (!existsSync(testFile)) {
           console.log(`${name} not available, skipping`);
           return;
         }
+        const fileData = readFileSync(testFile);
+        const fileBuffer = fileData.buffer.slice(fileData.byteOffset, fileData.byteOffset + fileData.byteLength);
 
         console.log(`\n=== Testing ${name} glTF Roundtrip ===`);
 
@@ -255,19 +252,15 @@ describe.skip("3DMF glTF Full Roundtrip Tests", () => {
       it(`should roundtrip ${modelName} with skeleton through glTF format`, async () => {
         const modelFile = join(modelPath, modelName);
         const skeletonFile = join(skeletonPath, skeletonName);
-        let modelBuffer: ArrayBuffer;
-        let skeletonBuffer: ArrayBuffer;
-        
-        try {
-          const modelData = readFileSync(modelFile);
-          modelBuffer = modelData.buffer.slice(modelData.byteOffset, modelData.byteOffset + modelData.byteLength);
-          
-          const skeletonData = readFileSync(skeletonFile);
-          skeletonBuffer = skeletonData.buffer.slice(skeletonData.byteOffset, skeletonData.byteOffset + skeletonData.byteLength);
-        } catch {
+        if (!existsSync(modelFile) || !existsSync(skeletonFile)) {
           console.log(`${modelName} or ${skeletonName} not available, skipping`);
           return;
         }
+        const modelData = readFileSync(modelFile);
+        const modelBuffer = modelData.buffer.slice(modelData.byteOffset, modelData.byteOffset + modelData.byteLength);
+
+        const skeletonData = readFileSync(skeletonFile);
+        const skeletonBuffer = skeletonData.buffer.slice(skeletonData.byteOffset, skeletonData.byteOffset + skeletonData.byteLength);
 
         console.log(`\n=== Testing ${modelName} + ${skeletonName} glTF Roundtrip ===`);
 
@@ -338,15 +331,12 @@ describe.skip("3DMF glTF Full Roundtrip Tests", () => {
   describe("Double Roundtrip Stability Test", () => {
     it("should produce identical results after two roundtrips", async () => {
       const testFile = join(BUGDOM_SKELETONS_PATH, "Ant.3dmf");
-      let fileBuffer: ArrayBuffer;
-      
-      try {
-        const data = readFileSync(testFile);
-        fileBuffer = data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength);
-      } catch {
+      if (!existsSync(testFile)) {
         console.log("Ant.3dmf not available, skipping");
         return;
       }
+      const data = readFileSync(testFile);
+      const fileBuffer = data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength);
 
       console.log(`\n=== Double Roundtrip Stability Test ===`);
 
@@ -388,15 +378,12 @@ describe.skip("3DMF glTF Full Roundtrip Tests", () => {
     modelFiles.forEach(({ path, name }) => {
       it(`should roundtrip model file ${name} through glTF format`, async () => {
         const testFile = join(path, name);
-        let fileBuffer: ArrayBuffer;
-        
-        try {
-          const data = readFileSync(testFile);
-          fileBuffer = data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength);
-        } catch {
+        if (!existsSync(testFile)) {
           console.log(`${name} not available, skipping`);
           return;
         }
+        const fileData = readFileSync(testFile);
+        const fileBuffer = fileData.buffer.slice(fileData.byteOffset, fileData.byteOffset + fileData.byteLength);
 
         console.log(`\n=== Testing ${name} glTF Roundtrip ===`);
 

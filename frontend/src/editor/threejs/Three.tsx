@@ -71,64 +71,53 @@ function SceneExporter() {
 
     const exporter = new GLTFExporter();
 
-    try {
-      // Show a loading toast while the exporter runs
-      exportToastId.current = toast.loading("Exporting 3D map...");
+    // Show a loading toast while the exporter runs
+    exportToastId.current = toast.loading("Exporting 3D map...");
 
-      exporter.parse(
-        scene,
-        (result: ArrayBuffer | Record<string, unknown>) => {
-          // Dismiss loading toast and show success
-          if (exportToastId.current !== undefined) {
-            toast.dismiss(exportToastId.current);
-            exportToastId.current = undefined;
-          }
+    exporter.parse(
+      scene,
+      (result: ArrayBuffer | Record<string, unknown>) => {
+        // Dismiss loading toast and show success
+        if (exportToastId.current !== undefined) {
+          toast.dismiss(exportToastId.current);
+          exportToastId.current = undefined;
+        }
 
-          if (result instanceof ArrayBuffer) {
-            const blob = new Blob([result], { type: "model/gltf-binary" });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement("a");
-            a.href = url;
-            a.download = "map.glb";
-            document.body.appendChild(a);
-            a.click();
-            a.remove();
-            URL.revokeObjectURL(url);
-            toast.success("3D map exported (map.glb)");
-          } else {
-            const output = JSON.stringify(result, null, 2);
-            const blob = new Blob([output], { type: "application/json" });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement("a");
-            a.href = url;
-            a.download = "map.gltf";
-            document.body.appendChild(a);
-            a.click();
-            a.remove();
-            URL.revokeObjectURL(url);
-            toast.success("3D map exported (map.gltf)");
-          }
-        },
-        (error) => {
-          if (exportToastId.current !== undefined) {
-            toast.dismiss(exportToastId.current);
-            exportToastId.current = undefined;
-          }
-          console.error("Export error:", error);
-          toast.error("Failed to export 3D map");
-        },
-        { binary: true, embedImages: true },
-      );
-    } catch (err: unknown) {
-      if (exportToastId.current !== undefined) {
-        toast.dismiss(exportToastId.current);
-        exportToastId.current = undefined;
-      }
-      console.error("Failed to export GLB", err);
-      toast.error("Failed to export 3D map", {
-        description: err instanceof Error ? err.message : String(err),
-      });
-    }
+        if (result instanceof ArrayBuffer) {
+          const blob = new Blob([result], { type: "model/gltf-binary" });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = "map.glb";
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+          URL.revokeObjectURL(url);
+          toast.success("3D map exported (map.glb)");
+        } else {
+          const output = JSON.stringify(result, null, 2);
+          const blob = new Blob([output], { type: "application/json" });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = "map.gltf";
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+          URL.revokeObjectURL(url);
+          toast.success("3D map exported (map.gltf)");
+        }
+      },
+      (error) => {
+        if (exportToastId.current !== undefined) {
+          toast.dismiss(exportToastId.current);
+          exportToastId.current = undefined;
+        }
+        console.error("Export error:", error);
+        toast.error("Failed to export 3D map");
+      },
+      { binary: true, embedImages: true },
+    );
   }, [exportCounter, scene]);
 
   return null;

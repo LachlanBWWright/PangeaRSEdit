@@ -5,6 +5,7 @@ import {
   BG3DGltfWorkerMessage,
   BG3DGltfWorkerResponse,
 } from "../modelParsers/bg3dGltfWorker";
+import { fromPromise } from "@/types/result";
 
 interface ConversionPanelProps {
   title: string;
@@ -27,51 +28,61 @@ export function ConversionPanel({
 }: ConversionPanelProps) {
   const handleFileConversion = async (file: File) => {
     const downloadName = file.name.replace(new RegExp(`\\.${fileExtension}$`), `.${outputExtension}`);
-    
-    try {
-      const buffer = await file.arrayBuffer();
-      const worker = new BG3DGltfWorker();
-      
-      const result = await new Promise<BG3DGltfWorkerResponse>((resolve, reject) => {
+
+    const bufferResult = await fromPromise(file.arrayBuffer());
+    if (!bufferResult.ok) {
+      alert(`${title} conversion failed: ${bufferResult.error.message}`);
+      return;
+    }
+
+    const buffer = bufferResult.value;
+    const worker = new BG3DGltfWorker();
+
+    const resultPromise = fromPromise(
+      new Promise<BG3DGltfWorkerResponse>((resolve, reject) => {
         worker.onmessage = (event) => {
           resolve(event.data);
           worker.terminate();
         };
-        
+
         worker.onerror = (error) => {
           reject(error);
           worker.terminate();
         };
-        
+
         const message: BG3DGltfWorkerMessage = {
           type: conversionType,
           buffer,
         };
-        
+
         worker.postMessage(message, [buffer]);
+      })
+    );
+
+    const workerResult = await resultPromise;
+    if (!workerResult.ok) {
+      alert(`${title} conversion failed: ${workerResult.error.message}`);
+      return;
+    }
+
+    const result = workerResult.value;
+    if (result.type === "error") {
+      alert(`${title} conversion failed: ${result.error}`);
+      return;
+    }
+
+    if (result.type === conversionType) {
+      const convertedBlob = new Blob([result.result], {
+        type: outputMimeType,
       });
-      
-      if (result.type === "error") {
-        alert(`${title} conversion failed: ${result.error}`);
-        return;
-      }
-      
-      if (result.type === conversionType) {
-        const convertedBlob = new Blob([result.result], {
-          type: outputMimeType,
-        });
-        const url = URL.createObjectURL(convertedBlob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = downloadName;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        setTimeout(() => URL.revokeObjectURL(url), 1000);
-      }
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : String(err);
-      alert(`${title} conversion failed: ${errorMessage}`);
+      const url = URL.createObjectURL(convertedBlob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = downloadName;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
     }
   };
 

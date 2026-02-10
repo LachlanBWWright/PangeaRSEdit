@@ -13,9 +13,10 @@
  * - Caches full BG3D file conversions to avoid redundant work
  */
 
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import BG3DGltfWorker from "@/modelParsers/bg3dGltfWorker?worker";
 import type { BG3DGltfWorkerResponse } from "@/modelParsers/bg3dGltfWorker";
+import { fromPromise } from "@/types/result";
 import { getGameMapper } from "@/data/items/mappers";
 import { Game } from "@/data/globals/globals";
 import { getParamByIndex } from "@/data/items/standardParamTypes";
@@ -161,11 +162,19 @@ function loadFileGltf(worker: Worker, fileUrl: string): Promise<GLTF> {
   if (cached) return cached;
 
   const promise = (async () => {
-    const response = await fetch(fileUrl);
-    if (!response.ok) {
-      throw new Error(`Failed to fetch: ${response.statusText} (${fileUrl})`);
+    const fetchResult = await fromPromise(fetch(fileUrl));
+    if (!fetchResult.ok) {
+      return Promise.reject(new Error(`Failed to fetch: ${fetchResult.error.message} (${fileUrl})`));
     }
-    const buffer = await response.arrayBuffer();
+    const response = fetchResult.value;
+    if (!response.ok) {
+      return Promise.reject(new Error(`Failed to fetch: ${response.statusText} (${fileUrl})`));
+    }
+    const bufferResult = await fromPromise(response.arrayBuffer());
+    if (!bufferResult.ok) {
+      return Promise.reject(new Error(`Failed to read buffer: ${bufferResult.error.message}`));
+    }
+    const buffer = bufferResult.value;
 
     const glbArrayBuffer = await convertBg3dToGltf(worker, buffer);
 
@@ -225,52 +234,47 @@ function extractSubgroupByIndex(
   modelIndex: number,
   groupSize = 1,
 ): GLTF | null {
-  try {
-    const groupsContainer =
-      gltf.scene.children && gltf.scene.children.length > 0
-        ? gltf.scene.children[0]
-        : null;
+  const groupsContainer =
+    gltf.scene.children && gltf.scene.children.length > 0
+      ? gltf.scene.children[0]
+      : null;
 
-    if (!groupsContainer) {
-      console.warn(
-        `Could not find groups container. Scene has ${
-          gltf.scene.children?.length || 0
-        } children`,
-      );
-      return null;
-    }
-
-    if (modelIndex >= groupsContainer.children.length) {
-      console.warn(
-        `Model index ${modelIndex} out of range (max ${
-          groupsContainer.children.length - 1
-        })`,
-      );
-      return null;
-    }
-
-    const newScene = new Group();
-    const endIndex = Math.min(
-      modelIndex + groupSize,
-      groupsContainer.children.length,
+  if (!groupsContainer) {
+    console.warn(
+      `Could not find groups container. Scene has ${
+        gltf.scene.children?.length || 0
+      } children`,
     );
-
-    for (let i = modelIndex; i < endIndex; i++) {
-      const targetModel = groupsContainer.children[i];
-      if (targetModel) {
-        newScene.add(targetModel.clone(true));
-      }
-    }
-
-    if (newScene.children.length === 0) {
-      return null;
-    }
-
-    return { ...gltf, scene: newScene };
-  } catch (error) {
-    console.error(`Error in extractSubgroupByIndex:`, error);
     return null;
   }
+
+  if (modelIndex >= groupsContainer.children.length) {
+    console.warn(
+      `Model index ${modelIndex} out of range (max ${
+        groupsContainer.children.length - 1
+      })`,
+    );
+    return null;
+  }
+
+  const newScene = new Group();
+  const endIndex = Math.min(
+    modelIndex + groupSize,
+    groupsContainer.children.length,
+  );
+
+  for (let i = modelIndex; i < endIndex; i++) {
+    const targetModel = groupsContainer.children[i];
+    if (targetModel) {
+      newScene.add(targetModel.clone(true));
+    }
+  }
+
+  if (newScene.children.length === 0) {
+    return null;
+  }
+
+  return { ...gltf, scene: newScene };
 }
 
 /**
@@ -289,7 +293,9 @@ export const useItemModelCache = (game: Game = Game.OTTO_MATIC): UseItemModelCac
   // Mirror modelCache in a ref so loadModel can read latest state
   // without needing modelCache in its dependency array
   const modelCacheRef = useRef<Map<string, CachedModel>>(modelCache);
-  modelCacheRef.current = modelCache;
+  useEffect(() => {
+    modelCacheRef.current = modelCache;
+  }, [modelCache]);
 
   const getWorker = useCallback(() => {
     if (!workerRef.current) {
@@ -334,59 +340,73 @@ export const useItemModelCache = (game: Game = Game.OTTO_MATIC): UseItemModelCac
         return updated;
       });
 
-      try {
-        const baseUrl = GAME_BASE_PATHS[game];
-        const bg3dUrl = `${baseUrl}/${mapping.modelPath}/${mapping.modelFile}`;
+      const baseUrl = GAME_BASE_PATHS[game];
+      const bg3dUrl = `${baseUrl}/${mapping.modelPath}/${mapping.modelFile}`;
 
-        console.log(
-          `[ItemModelCache] Loading model: ${bg3dUrl} (index: ${mapping.modelIndex}, groupSize: ${mapping.groupSize ?? 1})`,
-        );
+      console.log(
+        `[ItemModelCache] Loading model: ${bg3dUrl} (index: ${mapping.modelIndex}, groupSize: ${mapping.groupSize ?? 1})`,
+      );
 
-        // Load the full BG3D file (cached at the file level)
-        const fullGltf = await loadFileGltf(getWorker(), bg3dUrl);
+      // Load the full BG3D file (cached at the file level)
+      const fullGltfResult = await fromPromise(loadFileGltf(getWorker(), bg3dUrl));
 
-        // Extract the specific model for this item type
-        let finalGltf = fullGltf;
-        if (mapping.modelIndex !== undefined) {
-          const extracted = extractSubgroupByIndex(
-            fullGltf,
-            mapping.modelIndex,
-            mapping.groupSize ?? 1,
-          );
-          if (extracted) {
-            finalGltf = extracted;
-          } else {
-            throw new Error(
-              `Failed to extract model index ${mapping.modelIndex} from ${mapping.modelFile}`,
-            );
-          }
-        }
-
-        // Cache the result
-        setModelCache((prev) => {
-          const updated = new Map(prev);
-          updated.set(cacheKey, { gltf: finalGltf, loading: false });
-          return updated;
-        });
-
-        return finalGltf;
-      } catch (error) {
-        const err = error instanceof Error ? error : new Error(String(error));
+      if (!fullGltfResult.ok) {
         console.error(
           `[ItemModelCache] Error loading model for item type ${itemType}:`,
-          err.message,
+          fullGltfResult.error.message,
         );
 
         setModelCache((prev) => {
           const updated = new Map(prev);
-          updated.set(cacheKey, { gltf: null, loading: false, error: err });
+          updated.set(cacheKey, { gltf: null, loading: false, error: fullGltfResult.error });
           return updated;
         });
 
-        return null;
-      } finally {
         inFlightRef.current.delete(cacheKey);
+        return null;
       }
+
+      const fullGltf = fullGltfResult.value;
+
+      // Extract the specific model for this item type
+      let finalGltf = fullGltf;
+      if (mapping.modelIndex !== undefined) {
+        const extracted = extractSubgroupByIndex(
+          fullGltf,
+          mapping.modelIndex,
+          mapping.groupSize ?? 1,
+        );
+        if (extracted) {
+          finalGltf = extracted;
+        } else {
+          const extractError = new Error(
+            `Failed to extract model index ${mapping.modelIndex} from ${mapping.modelFile}`,
+          );
+          console.error(
+            `[ItemModelCache] Error loading model for item type ${itemType}:`,
+            extractError.message,
+          );
+
+          setModelCache((prev) => {
+            const updated = new Map(prev);
+            updated.set(cacheKey, { gltf: null, loading: false, error: extractError });
+            return updated;
+          });
+
+          inFlightRef.current.delete(cacheKey);
+          return null;
+        }
+      }
+
+      // Cache the result
+      setModelCache((prev) => {
+        const updated = new Map(prev);
+        updated.set(cacheKey, { gltf: finalGltf, loading: false });
+        return updated;
+      });
+
+      inFlightRef.current.delete(cacheKey);
+      return finalGltf;
     },
     [game, getWorker],
   );

@@ -242,7 +242,7 @@ function resizeItems(
   };
 }
 
-function resizeItCo(data: TerrainData, _header: { mapWidth: number; mapHeight: number }): TerrainData {
+function resizeItCo(data: TerrainData): TerrainData {
   const itco = data.ItCo?.[1000];
   if (!itco) return data;
   const updated = {
@@ -299,7 +299,7 @@ export function resizeLevel(
     ...(levelData.Vcol !== undefined ? { Vcol: levelData.Vcol } : {}),
   };
   const resizedTerrain = resizeTerrainData(terrainData, header, globals, options);
-  const resizedTerrainWithItCo = resizeItCo(resizedTerrain, header);
+  const resizedTerrainWithItCo = resizeItCo(resizedTerrain);
   const { data: resizedItems, outOfBounds } = resizeItems(
     levelData.Itms ? { Itms: levelData.Itms } : null,
     options,

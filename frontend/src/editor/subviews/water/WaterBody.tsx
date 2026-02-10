@@ -78,12 +78,8 @@ export const WaterBody = memo(
                 }
               }
             });
-            try {
-              e.target.x(0);
-              e.target.y(0);
-            } catch (err) {
-              console.warn("Failed to reset Konva node transform:", err);
-            }
+            e.target.x(0);
+            e.target.y(0);
             setInitialDragState(null);
           }}
         />

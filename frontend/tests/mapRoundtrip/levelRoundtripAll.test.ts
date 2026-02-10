@@ -22,15 +22,12 @@ function findTerrainFiles(gamesRoot: string): { game: string; path: string }[] {
     const gameName = e.name;
     const terrainDir = join(gamesRoot, gameName, "Data", "Terrain");
     if (!existsSync(terrainDir)) continue;
-    try {
-      const files = readdirSync(terrainDir);
-      for (const f of files) {
-        if (f.endsWith(".ter.rsrc") || f.endsWith(".ter")) {
-          results.push({ game: gameName, path: join(terrainDir, f) });
-        }
+    if (!existsSync(terrainDir)) continue;
+    const files = readdirSync(terrainDir);
+    for (const f of files) {
+      if (f.endsWith(".ter.rsrc") || f.endsWith(".ter")) {
+        results.push({ game: gameName, path: join(terrainDir, f) });
       }
-    } catch {
-      // ignore unreadable dirs
     }
   }
 
