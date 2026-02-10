@@ -235,6 +235,12 @@ export function isAtomicDataComplete(atomicData: AtomicLevelData): boolean {
   );
 }
 
+export interface ResourceForkValidationError {
+  message: string;
+  badKey?: string;
+  badValueType?: string;
+}
+
 /**
  * Basic validation to ensure the object conforms to the minimal shape
  * expected by `rsrcdump.jsonio.json_to_resource_fork`, i.e. keys at
@@ -243,11 +249,9 @@ export function isAtomicDataComplete(atomicData: AtomicLevelData): boolean {
  */
 export function validateResourceForkJson(
   json_blob: Record<string, unknown>,
-):
-  | { ok: true }
-  | { ok: false; message: string; badKey?: string; badValueType?: string } {
+): Result<void, ResourceForkValidationError> {
   if (!isRecord(json_blob)) {
-    return { ok: false, message: "Top-level JSON blob must be an object" };
+    return err({ message: "Top-level JSON blob must be an object" });
   }
   for (const [key, value] of Object.entries(json_blob)) {
     if (key.length <= 4) {
@@ -255,36 +259,33 @@ export function validateResourceForkJson(
         continue; // Optional/absent resource sections are allowed
       }
       if (!isRecord(value)) {
-        return {
-          ok: false,
+        return err({
           message: `Resource type key '${key}' must map to an object/dict of resource records`,
           badKey: key,
           badValueType: Array.isArray(value) ? "array" : typeof value,
-        };
+        });
       }
       // Ensure each inner record maps to objects
       for (const [resId, resBlob] of Object.entries(value)) {
         if (!isRecord(resBlob)) {
-          return {
-            ok: false,
+          return err({
             message: `Resource record '${resId}' under type '${key}' must be an object/dict`,
             badKey: key,
             badValueType: Array.isArray(resBlob) ? "array" : typeof resBlob,
-          };
+          });
         }
         // Optionally: check for required fields in resource records (e.g., 'obj', 'name', 'order')
         if (!("obj" in resBlob)) {
-          return {
-            ok: false,
+          return err({
             message: `Resource record '${resId}' under type '${key}' is missing required 'obj' field`,
             badKey: key,
             badValueType: "missing_obj",
-          };
+          });
         }
       }
     }
   }
-  return { ok: true };
+  return ok(undefined);
 }
 
 /**

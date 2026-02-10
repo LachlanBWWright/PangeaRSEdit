@@ -48,9 +48,9 @@ describe("type guards and validation helpers", () => {
       STgd: {},
     };
     const res = validateResourceForkJson(bad);
-    expect(res.ok).toBe(false);
-    if (!res.ok) {
-      expect(res.badValueType).toBe("missing_obj");
+    expect(res.isErr()).toBe(true);
+    if (res.isErr()) {
+      expect(res.error.badValueType).toBe("missing_obj");
     }
   });
 
@@ -121,7 +121,7 @@ describe("level data utils", () => {
 
     // Combine directly without injecting empty defaults; optional sections may be missing
     const combined = combineLevelData(atomic);
-    expect(combined.ok).toBe(true);
+    expect(combined.isOk()).toBe(true);
   });
 
   it("validateResourceForkJson detects malformed types", async () => {
@@ -131,7 +131,7 @@ describe("level data utils", () => {
       Atrb: { 1000: { name: "Tile Attribute Data", obj: [], order: 0 } },
     };
     const { validateResourceForkJson } = await import("./levelDataUtils");
-    expect(validateResourceForkJson(good).ok).toBe(true);
+    expect(validateResourceForkJson(good).isOk()).toBe(true);
 
     const bad = {
       _metadata: { file_attributes: 0, junk1: 0, junk2: 0 },
@@ -145,9 +145,9 @@ describe("level data utils", () => {
     }
     assertIsRecord(badUnknown);
     const res = validateResourceForkJson(badUnknown);
-    expect(res.ok).toBe(false);
-    if (!res.ok) {
-      expect(res.badKey).toBe("Hedr");
+    expect(res.isErr()).toBe(true);
+    if (res.isErr()) {
+      expect(res.error.badKey).toBe("Hedr");
     }
   });
 });

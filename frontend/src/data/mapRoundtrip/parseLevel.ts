@@ -42,11 +42,15 @@ export async function parseLevelBuffer(
     excludeTypes,
   );
 
-  if (!parseResult.ok) {
-    return err(new Error(parseResult.error));
+  const parsedJsonResult = parseResult.ok
+    ? ok(parseResult.value)
+    : err(new Error(parseResult.error));
+
+  if (parsedJsonResult.isErr()) {
+    return err(parsedJsonResult.error);
   }
 
-  const jsonParseResult = tryFn(() => JSON.parse(parseResult.value));
+  const jsonParseResult = tryFn(() => JSON.parse(parsedJsonResult.value));
   if (jsonParseResult.isErr()) {
     return err(new Error(`JSON parse failed: ${jsonParseResult.error.message}`));
   }
@@ -119,11 +123,15 @@ export async function serializeLevelData(
     true, // adf
   );
 
-  if (!saveResult.ok) {
-    return err(new Error(saveResult.error));
+  const serializedResult = saveResult.ok
+    ? ok(saveResult.value)
+    : err(new Error(saveResult.error));
+
+  if (serializedResult.isErr()) {
+    return err(serializedResult.error);
   }
 
-  const resultBuffer = saveResult.value.buffer;
+  const resultBuffer = serializedResult.value.buffer;
   if (!(resultBuffer instanceof ArrayBuffer)) {
     return err(new Error("Result buffer is not an ArrayBuffer"));
   }

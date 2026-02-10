@@ -3,6 +3,7 @@ import type { AtomicLevelData } from "@/data/utils/levelDataUtils";
 import { combineLevelData, splitLevelData } from "@/data/utils/levelDataUtils";
 import type { ResizeDirection } from "@/data/utils/levelResizeUtils";
 import { resizeLevel } from "@/data/utils/levelResizeUtils";
+import { err, ok, type Result } from "@/types/result";
 
 export interface ResizeUIOptions {
   direction: ResizeDirection;
@@ -10,24 +11,24 @@ export interface ResizeUIOptions {
   defaultHeight: number;
 }
 
+export interface ResizeAtomicDataResult {
+  data: AtomicLevelData;
+  warnings: string[];
+}
+
 export function applyResizeToAtomicData(
   atomicData: AtomicLevelData,
   globals: GlobalsInterface,
   options: ResizeUIOptions,
-): { ok: boolean; data: AtomicLevelData; warnings: string[] } {
+): Result<ResizeAtomicDataResult, Error> {
   const combinedResult = combineLevelData(atomicData);
   if (combinedResult.isErr()) {
-    return {
-      ok: false,
-      data: atomicData,
-      warnings: [combinedResult.error.message],
-    };
+    return err(combinedResult.error);
   }
 
   const resized = resizeLevel(combinedResult.value, globals, options);
-  return {
-    ok: resized.ok,
+  return ok({
     data: splitLevelData(resized.levelData),
     warnings: resized.warnings,
-  };
+  });
 }

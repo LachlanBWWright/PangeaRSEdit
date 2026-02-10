@@ -35,11 +35,15 @@ export async function parseRsrcLevelFile(
     [], // excludeTypes
   );
 
-  if (!parseResult.ok) {
-    return err(new Error(parseResult.error));
+  const parsedJsonResult = parseResult.ok
+    ? ok(parseResult.value)
+    : err(new Error(parseResult.error));
+
+  if (parsedJsonResult.isErr()) {
+    return err(parsedJsonResult.error);
   }
 
-  const parsedUnknown: unknown = JSON.parse(parseResult.value);
+  const parsedUnknown: unknown = JSON.parse(parsedJsonResult.value);
 
   // Validate that parsed data is an object
   if (!isRecord(parsedUnknown)) {

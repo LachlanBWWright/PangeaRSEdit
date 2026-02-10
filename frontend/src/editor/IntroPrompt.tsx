@@ -31,7 +31,7 @@ import {
   validateResourceForkJson,
   sanitizeResourceForkJson,
 } from "../data/utils/levelDataUtils";
-import { isOk } from "../types/result";
+import { err, isOk, ok } from "../types/result";
 import { createBlankLevel, getDefaultDimensions } from "@/data/levelTemplates";
 import { SafeItemTypes, SafeSplineItemTypes } from "../data/items/itemAtoms";
 import { extractSafeItemTypes } from "../data/items/extractSafeItemTypes";
@@ -344,10 +344,10 @@ export function IntroPrompt() {
 
       // Validate JSON shape expected by rsrcdump
       const validation = validateResourceForkJson(sanitizedData);
-      if (!validation.ok) {
-        console.error("Invalid JSON for resource fork:", validation);
+      if (validation.isErr()) {
+        console.error("Invalid JSON for resource fork:", validation.error);
         toast.error("Download failed", {
-          description: `Invalid map data structure for resource fork: ${validation.message}`,
+          description: `Invalid map data structure for resource fork: ${validation.error.message}`,
         });
         return;
       }
@@ -361,15 +361,19 @@ export function IntroPrompt() {
         true, // adf
       );
 
-      if (!saveResult.ok) {
-        console.error("Download failed:", saveResult.error);
+      const serializedResult = saveResult.ok
+        ? ok(saveResult.value)
+        : err(saveResult.error);
+
+      if (serializedResult.isErr()) {
+        console.error("Download failed:", serializedResult.error);
         toast.error("Download failed", {
-          description: saveResult.error,
+          description: String(serializedResult.error),
         });
         return;
       }
 
-      const loadRes = saveResult.value;
+      const loadRes = serializedResult.value;
 
       if (!loadRes || loadRes.byteLength === 0) {
         console.error("Download failed: Generated map data is empty");
