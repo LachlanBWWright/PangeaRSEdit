@@ -23,6 +23,14 @@ export interface AnimationInfo {
 const DEFAULT_ANIMATION_DURATION = 1;
 const MIN_ANIMATION_DURATION = 0.016; // ~1 frame at 60fps
 
+const parseDurationInput = (value: string, fallback: number) => {
+  const parsed = Number.parseFloat(value);
+  if (!Number.isFinite(parsed)) {
+    return fallback;
+  }
+  return parsed >= MIN_ANIMATION_DURATION ? parsed : fallback;
+};
+
 const reindexAnimations = (items: AnimationInfo[]) =>
   items.map((anim, index) => ({
     ...anim,
@@ -56,16 +64,18 @@ export function AnimationViewer({
   const [newAnimationDuration, setNewAnimationDuration] = useState(
     DEFAULT_ANIMATION_DURATION,
   );
-  const [autoNameCounter, setAutoNameCounter] = useState(
-    () => animations.length + 1,
-  );
   const animationRequestRef = useRef<number | undefined>(undefined);
   const currentActionRef = useRef<AnimationAction | null>(null);
+  const autoNameCounterRef = useRef(animations.length + 1);
   const baseAnimations = useMemo(
     () => reindexAnimations(animations),
     [animations],
   );
   const editableAnimations = draftAnimations ?? baseAnimations;
+
+  useEffect(() => {
+    autoNameCounterRef.current = animations.length + 1;
+  }, [animations.length]);
   const selectedAnimationValue =
     selectedAnimation === null ? "none" : String(selectedAnimation);
   const selectedAnimationInfo = useMemo(
@@ -214,25 +224,27 @@ export function AnimationViewer({
     const clip = current.clip.clone();
     clip.name = nextName;
     clip.duration = nextDuration;
-    setDraftAnimations((prev) =>
-      reindexAnimations(
-        (prev ?? editableAnimations).map((anim, index) =>
+    setDraftAnimations((prev) => {
+      const currentAnimations = prev ?? baseAnimations;
+      return reindexAnimations(
+        currentAnimations.map((anim, index) =>
           index === selectedAnimation
             ? { ...anim, name: nextName, duration: nextDuration, clip }
             : anim,
         ),
-      ),
-    );
+      );
+    });
     setEditName(nextName);
     setEditDuration(nextDuration);
   };
 
   const handleCreateAnimation = () => {
     const trimmedName = newAnimationName.trim();
+    const nextAutoIndex = autoNameCounterRef.current;
     const nextName =
       trimmedName.length > 0
         ? trimmedName
-        : `Animation ${autoNameCounter}`;
+        : `Animation ${nextAutoIndex}`;
     const nextDuration =
       newAnimationDuration >= MIN_ANIMATION_DURATION
         ? newAnimationDuration
@@ -250,24 +262,25 @@ export function AnimationViewer({
       clip,
     };
     setDraftAnimations((prev) =>
-      reindexAnimations([...(prev ?? editableAnimations), newInfo]),
+      reindexAnimations([...(prev ?? baseAnimations), newInfo]),
     );
     setSelectedAnimation(nextIndex);
     setEditName(nextName);
     setEditDuration(nextDuration);
     if (trimmedName.length === 0) {
-      setAutoNameCounter((prev) => prev + 1);
+      autoNameCounterRef.current += 1;
     }
   };
 
   const handleDeleteAnimation = () => {
     if (selectedAnimation === null) return;
     const deletedIndex = selectedAnimation;
-    setDraftAnimations((prev) =>
-      reindexAnimations(
-        (prev ?? editableAnimations).filter((_, index) => index !== deletedIndex),
-      ),
-    );
+    setDraftAnimations((prev) => {
+      const currentAnimations = prev ?? baseAnimations;
+      return reindexAnimations(
+        currentAnimations.filter((_, index) => index !== deletedIndex),
+      );
+    });
     setSelectedAnimation((prev) => {
       if (prev === null) return null;
       if (prev === deletedIndex) return null;
@@ -421,11 +434,8 @@ export function AnimationViewer({
                 step={0.1}
                 value={editDuration}
                 onChange={(event) => {
-                  const parsed = Number.parseFloat(event.target.value);
                   setEditDuration((prev) =>
-                    Number.isFinite(parsed) && parsed >= MIN_ANIMATION_DURATION
-                      ? parsed
-                      : prev,
+                    parseDurationInput(event.target.value, prev),
                   );
                 }}
                 className="bg-gray-700 border-gray-600 text-white"
@@ -474,11 +484,8 @@ export function AnimationViewer({
                   : DEFAULT_ANIMATION_DURATION
               }
               onChange={(event) => {
-                const parsed = Number.parseFloat(event.target.value);
                 setNewAnimationDuration((prev) =>
-                  Number.isFinite(parsed) && parsed >= MIN_ANIMATION_DURATION
-                    ? parsed
-                    : prev,
+                  parseDurationInput(event.target.value, prev),
                 );
               }}
               className="bg-gray-700 border-gray-600 text-white"
