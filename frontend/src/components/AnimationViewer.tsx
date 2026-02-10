@@ -33,7 +33,7 @@ export function AnimationViewer({
 }: AnimationViewerProps) {
   const DEFAULT_ANIMATION_DURATION = 1;
   const MIN_ANIMATION_DURATION = 0.016; // ~1 frame at 60fps
-  const normalizeAnimations = useCallback(
+  const reindexAnimations = useCallback(
     (items: AnimationInfo[]) =>
       items.map((anim, index) => ({
         ...anim,
@@ -60,8 +60,8 @@ export function AnimationViewer({
   const animationRequestRef = useRef<number | undefined>(undefined);
   const currentActionRef = useRef<AnimationAction | null>(null);
   const baseAnimations = useMemo(
-    () => normalizeAnimations(animations),
-    [animations, normalizeAnimations],
+    () => reindexAnimations(animations),
+    [animations, reindexAnimations],
   );
   const editableAnimations = draftAnimations ?? baseAnimations;
   const selectedAnimationValue =
@@ -205,12 +205,15 @@ export function AnimationViewer({
     const trimmedName = editName.trim();
     const nextName =
       trimmedName.length > 0 ? trimmedName : `Animation ${selectedAnimation + 1}`;
-    const nextDuration = editDuration > 0 ? editDuration : current.duration;
+    const nextDuration =
+      editDuration >= MIN_ANIMATION_DURATION
+        ? editDuration
+        : current.duration;
     const clip = current.clip.clone();
     clip.name = nextName;
     clip.duration = nextDuration;
     setDraftAnimations((prev) =>
-      normalizeAnimations(
+      reindexAnimations(
         (prev ?? editableAnimations).map((anim, index) =>
           index === selectedAnimation
             ? { ...anim, name: nextName, duration: nextDuration, clip }
@@ -229,7 +232,7 @@ export function AnimationViewer({
         ? trimmedName
         : `Animation ${editableAnimations.length + 1}`;
     const nextDuration =
-      newAnimationDuration > 0
+      newAnimationDuration >= MIN_ANIMATION_DURATION
         ? newAnimationDuration
         : DEFAULT_ANIMATION_DURATION;
     const templateClip = selectedAnimationInfo?.clip ?? null;
@@ -247,7 +250,7 @@ export function AnimationViewer({
       clip,
     };
     setDraftAnimations((prev) =>
-      normalizeAnimations([...(prev ?? editableAnimations), newInfo]),
+      reindexAnimations([...(prev ?? editableAnimations), newInfo]),
     );
     setSelectedAnimation(nextIndex);
     setEditName(nextName);
@@ -258,7 +261,7 @@ export function AnimationViewer({
     if (selectedAnimation === null) return;
     const deletedIndex = selectedAnimation;
     setDraftAnimations((prev) =>
-      normalizeAnimations(
+      reindexAnimations(
         (prev ?? editableAnimations).filter((_, index) => index !== deletedIndex),
       ),
     );
@@ -418,9 +421,12 @@ export function AnimationViewer({
                     ? editDuration
                     : selectedAnimationInfo.duration
                 }
-                onChange={(event) =>
-                  setEditDuration(Number.parseFloat(event.target.value))
-                }
+                onChange={(event) => {
+                  const parsed = Number.parseFloat(event.target.value);
+                  setEditDuration(
+                    Number.isFinite(parsed) ? parsed : MIN_ANIMATION_DURATION,
+                  );
+                }}
                 className="bg-gray-700 border-gray-600 text-white"
               />
               <div className="flex gap-2">
@@ -466,9 +472,12 @@ export function AnimationViewer({
                   ? newAnimationDuration
                   : DEFAULT_ANIMATION_DURATION
               }
-              onChange={(event) =>
-                setNewAnimationDuration(Number.parseFloat(event.target.value))
-              }
+              onChange={(event) => {
+                const parsed = Number.parseFloat(event.target.value);
+                setNewAnimationDuration(
+                  Number.isFinite(parsed) ? parsed : DEFAULT_ANIMATION_DURATION,
+                );
+              }}
               className="bg-gray-700 border-gray-600 text-white"
             />
             <Button
@@ -485,7 +494,7 @@ export function AnimationViewer({
               </p>
             ) : (
               <p className="text-xs text-gray-400">
-                New animation will start empty until edited.
+                New animation will be empty until edited.
               </p>
             )}
           </div>
