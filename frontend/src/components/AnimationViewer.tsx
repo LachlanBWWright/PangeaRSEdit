@@ -40,6 +40,9 @@ const MIN_ANIMATION_DURATION = 0.016; // ~1 frame at 60fps
 const ANIMATION_PANEL_MAX_HEIGHT_CLASS = "max-h-[calc(100vh-12rem)]";
 const TIMELINE_MIN_WIDTH_CLASS = "min-w-[320px]";
 const BONE_NAME_MAX_WIDTH_CLASS = "max-w-[220px]";
+const KEYFRAME_LIST_MAX_HEIGHT_CLASS = "max-h-56";
+const METADATA_LIST_MAX_HEIGHT_CLASS = "max-h-32";
+const MIN_HEX_BONE_NAME_LENGTH = 6;
 const durationErrorMessage = `Invalid duration. Must be at least ${MIN_ANIMATION_DURATION} seconds.`;
 
 type TrackProperty = "position" | "rotation" | "scale";
@@ -79,7 +82,7 @@ const parseTrackName = (name: string) => {
 const decodeHexBoneName = (value: string) => {
   const normalized = value.replace(/\s+/g, "");
   if (
-    normalized.length < 6 ||
+    normalized.length < MIN_HEX_BONE_NAME_LENGTH ||
     normalized.length % 2 !== 0 ||
     !/^[0-9a-fA-F]+$/.test(normalized)
   ) {
@@ -1066,7 +1069,9 @@ export function AnimationViewer({
                   </Button>
                 </div>
                 {selectedKeyframes.length > 0 ? (
-                  <div className="space-y-2 max-h-56 overflow-y-auto rounded-md border border-gray-700 p-2">
+                  <div
+                    className={`space-y-2 ${KEYFRAME_LIST_MAX_HEIGHT_CLASS} overflow-y-auto rounded-md border border-gray-700 p-2`}
+                  >
                     {selectedKeyframes.map((keyframe, index) => (
                       <Button
                         key={`${keyframe.time}-${index}`}
@@ -1168,7 +1173,9 @@ export function AnimationViewer({
                   Event count: {selectedMetadata.eventCount}
                 </p>
                 {selectedMetadata.events.length > 0 ? (
-                  <div className="max-h-32 overflow-y-auto rounded-md border border-gray-700">
+                  <div
+                    className={`${METADATA_LIST_MAX_HEIGHT_CLASS} overflow-y-auto rounded-md border border-gray-700`}
+                  >
                     <div className="grid grid-cols-3 gap-2 px-2 py-1 text-[10px] text-gray-400">
                       <span>Time</span>
                       <span>Type</span>
