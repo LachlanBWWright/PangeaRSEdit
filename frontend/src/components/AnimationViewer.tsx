@@ -79,7 +79,7 @@ const parseTrackName = (name: string) => {
   };
 };
 
-const decodeHexBoneName = (value: string) => {
+const decodeHexEncodedBoneName = (value: string) => {
   const normalized = value.replace(/\s+/g, "");
   if (
     normalized.length < MIN_HEX_BONE_NAME_LENGTH ||
@@ -117,7 +117,8 @@ const decodeHexBoneName = (value: string) => {
   return decoded.trim().length > 0 ? decoded.trim() : null;
 };
 
-const formatBoneLabel = (value: string) => decodeHexBoneName(value) ?? value;
+const formatBoneLabel = (value: string) =>
+  decodeHexEncodedBoneName(value) ?? value;
 
 const extractBoneNames = (clip: AnimationClip) => {
   const names = new Set<string>();
@@ -322,7 +323,7 @@ export function AnimationViewer({
       action.time = Math.min(clip.duration, previousRatio * clip.duration);
     }
     currentActionRef.current = action;
-    const shouldPlay = isNewSelection ? true : isPlayingRef.current;
+    const shouldPlay = isNewSelection || isPlayingRef.current;
     if (shouldPlay) {
       action.play();
       action.paused = false;
@@ -1122,7 +1123,7 @@ export function AnimationViewer({
                             return next;
                           });
                         }}
-                        className="bg-gray-700 border-gray-600 text-white w-full"
+                        className="w-full bg-gray-700 border-gray-600 text-white"
                       />
                     ))}
                   </div>
