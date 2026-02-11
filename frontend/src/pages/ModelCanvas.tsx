@@ -80,7 +80,7 @@ export function ModelCanvas(props: ModelCanvasProps) {
     return found;
   }, [scene, selectedBoneName]);
   const lastBoneTransformRef = useRef<[number, number, number] | null>(null);
-  const TRANSFORM_EPSILON = 0.0005; // Small threshold to avoid noisy gizmo updates.
+  const BONE_TRANSFORM_THRESHOLD = 0.0005; // Small threshold to avoid noisy gizmo updates.
 
   const handleBoneTransformChange = useCallback(() => {
     if (!selectedBoneObject || !onBoneTransformChange) {
@@ -90,9 +90,9 @@ export function ModelCanvas(props: ModelCanvasProps) {
     const previous = lastBoneTransformRef.current;
     if (
       previous &&
-      Math.abs(previous[0] - x) < TRANSFORM_EPSILON &&
-      Math.abs(previous[1] - y) < TRANSFORM_EPSILON &&
-      Math.abs(previous[2] - z) < TRANSFORM_EPSILON
+      Math.abs(previous[0] - x) < BONE_TRANSFORM_THRESHOLD &&
+      Math.abs(previous[1] - y) < BONE_TRANSFORM_THRESHOLD &&
+      Math.abs(previous[2] - z) < BONE_TRANSFORM_THRESHOLD
     ) {
       return;
     }

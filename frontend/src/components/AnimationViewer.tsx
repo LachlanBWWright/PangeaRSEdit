@@ -37,7 +37,7 @@ export interface AnimationMetadata {
 
 const DEFAULT_ANIMATION_DURATION = 1;
 const MIN_ANIMATION_DURATION = 0.016; // ~1 frame at 60fps
-const ASSUMED_LOOP_VALUE = true;
+const FALLBACK_LOOP_VALUE = true;
 const durationErrorMessage = `Invalid duration. Must be at least ${MIN_ANIMATION_DURATION} seconds.`;
 const ANIMATION_PANEL_MAX_HEIGHT_CLASS = "max-h-[calc(100vh-12rem)]";
 const TIMELINE_MIN_WIDTH_CLASS = "min-w-[320px]";
@@ -272,6 +272,14 @@ export function AnimationViewer({
       values: values.slice(index * stride, index * stride + stride),
     }));
   }, [selectedTrack, selectedTrackConfig.components.length]);
+
+  const valueGridClass = useMemo(() => {
+    const count = selectedTrackConfig.components.length;
+    if (count === 1) return "grid-cols-1";
+    if (count === 2) return "grid-cols-2";
+    if (count >= 4) return "grid-cols-4";
+    return "grid-cols-3";
+  }, [selectedTrackConfig.components.length]);
 
   const timelineRows = useMemo(() => {
     if (!selectedAnimationInfo) {
@@ -1184,7 +1192,7 @@ export function AnimationViewer({
                       </div>
                     )}
                   </div>
-                  <div className="grid grid-cols-3 gap-3">
+                  <div className={`grid ${valueGridClass} gap-3`}>
                     {/* Most transforms are 3-component vectors (x/y/z). */}
                     {selectedTrackConfig.components.map((label, index) => (
                       <Input
@@ -1306,7 +1314,7 @@ export function AnimationViewer({
                 <div className="space-y-1 text-xs text-gray-400">
                   <p>Duration: {formatTime(selectedAnimationInfo.duration)}</p>
                   <p>
-                    Looping: {(selectedAnimationInfo.loop ?? ASSUMED_LOOP_VALUE)
+                    Looping: {(selectedAnimationInfo.loop ?? FALLBACK_LOOP_VALUE)
                       ? "On"
                       : "Off"}
                   </p>
