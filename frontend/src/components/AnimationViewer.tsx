@@ -37,7 +37,7 @@ export interface AnimationMetadata {
 
 const DEFAULT_ANIMATION_DURATION = 1;
 const MIN_ANIMATION_DURATION = 0.016; // ~1 frame at 60fps
-const FALLBACK_LOOP_VALUE = true;
+const FALLBACK_LOOP_VALUE = true; // Animations default to looping in game playback.
 const durationErrorMessage = `Invalid duration. Must be at least ${MIN_ANIMATION_DURATION} seconds.`;
 const ANIMATION_PANEL_MAX_HEIGHT_CLASS = "max-h-[calc(100vh-12rem)]";
 const TIMELINE_MIN_WIDTH_CLASS = "min-w-[320px]";
@@ -1033,13 +1033,11 @@ export function AnimationViewer({
                             className="text-white focus:bg-gray-600"
                             textValue={formattedBone}
                           >
-                          <span className="block">
-                            {formattedBone}
-                          </span>
                             <span
-                              className={`block ${BONE_NAME_MAX_WIDTH_CLASS} truncate text-[10px] text-gray-400`}
+                              className={`block ${BONE_NAME_MAX_WIDTH_CLASS} truncate`}
+                              title={bone}
                             >
-                              {bone}
+                              {formattedBone}
                             </span>
                           </SelectItem>
                         );
@@ -1194,7 +1192,6 @@ export function AnimationViewer({
                     )}
                   </div>
                   <div className={`grid ${valueGridClass} gap-3`}>
-                    {/* Layout adapts to the number of track components. */}
                     {selectedTrackConfig.components.map((label, index) => (
                       <Input
                         key={label}
