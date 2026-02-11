@@ -22,6 +22,7 @@ describe("AnimationViewer", () => {
     );
     expect(markup).toContain("Create Animation");
     expect(markup).toContain("Edit Animation");
+    expect(markup).toContain("Keyframe Editor");
     expect(markup).toContain("Animations (1)");
   });
 });

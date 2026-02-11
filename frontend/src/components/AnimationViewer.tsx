@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Switch } from "@/components/ui/switch";
 import {
   Select,
   SelectContent,
@@ -11,24 +12,67 @@ import {
 } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
 import { Play, Pause, Square, RotateCcw } from "lucide-react";
-import { AnimationClip, AnimationMixer, LoopRepeat, type AnimationAction } from "three";
+import {
+  AnimationClip,
+  AnimationMixer,
+  LoopOnce,
+  LoopRepeat,
+  QuaternionKeyframeTrack,
+  VectorKeyframeTrack,
+  type AnimationAction,
+} from "three";
 
 export interface AnimationInfo {
   name: string;
   duration: number;
   index: number;
   clip: AnimationClip;
+  loop?: boolean;
 }
 
 const DEFAULT_ANIMATION_DURATION = 1;
 const MIN_ANIMATION_DURATION = 0.016; // ~1 frame at 60fps
 
-const parseDurationInput = (value: string, fallback: number) => {
-  const parsed = Number.parseFloat(value);
-  if (!Number.isFinite(parsed)) {
-    return fallback;
+type TrackProperty = "position" | "rotation" | "scale";
+
+const TRACK_PROPERTY_CONFIG: Record<
+  TrackProperty,
+  { trackName: string; label: string; components: string[] }
+> = {
+  position: {
+    trackName: "position",
+    label: "Position",
+    components: ["X", "Y", "Z"],
+  },
+  rotation: {
+    trackName: "quaternion",
+    label: "Rotation (Quaternion)",
+    components: ["X", "Y", "Z", "W"],
+  },
+  scale: {
+    trackName: "scale",
+    label: "Scale",
+    components: ["X", "Y", "Z"],
+  },
+};
+
+const parseTrackName = (name: string) => {
+  const lastDot = name.lastIndexOf(".");
+  if (lastDot === -1) {
+    return null;
   }
-  return parsed >= MIN_ANIMATION_DURATION ? parsed : fallback;
+  return {
+    boneName: name.slice(0, lastDot),
+    property: name.slice(lastDot + 1),
+  };
+};
+
+const parseDurationInputValue = (value: string, fallback: number) => {
+  const parsed = Number.parseFloat(value);
+  if (!Number.isFinite(parsed) || parsed < MIN_ANIMATION_DURATION) {
+    return { value: fallback, valid: false };
+  }
+  return { value: parsed, valid: true };
 };
 
 const reindexAnimations = (items: AnimationInfo[]) =>
@@ -59,11 +103,24 @@ export function AnimationViewer({
   const [duration, setDuration] = useState(0);
   const [hasActiveAction, setHasActiveAction] = useState(false); // Track if there's an active action
   const [editName, setEditName] = useState("");
-  const [editDuration, setEditDuration] = useState(0);
+  const [editDurationInput, setEditDurationInput] = useState("");
   const [newAnimationName, setNewAnimationName] = useState("New Animation");
-  const [newAnimationDuration, setNewAnimationDuration] = useState(
-    DEFAULT_ANIMATION_DURATION,
+  const [newAnimationDurationInput, setNewAnimationDurationInput] = useState(
+    DEFAULT_ANIMATION_DURATION.toString(),
   );
+  const [durationMode, setDurationMode] = useState<"scale" | "truncate">(
+    "scale",
+  );
+  const [durationError, setDurationError] = useState<string | null>(null);
+  const [keyframeError, setKeyframeError] = useState<string | null>(null);
+  const [selectedBoneName, setSelectedBoneName] = useState("");
+  const [selectedTrackProperty, setSelectedTrackProperty] =
+    useState<TrackProperty>("position");
+  const [selectedKeyframeIndex, setSelectedKeyframeIndex] = useState<
+    number | null
+  >(null);
+  const [keyframeTimeInput, setKeyframeTimeInput] = useState("");
+  const [keyframeValueInputs, setKeyframeValueInputs] = useState<string[]>([]);
   const animationRequestRef = useRef<number | undefined>(undefined);
   const currentActionRef = useRef<AnimationAction | null>(null);
   const autoNameCounterRef = useRef(animations.length + 1);
@@ -85,6 +142,72 @@ export function AnimationViewer({
         : editableAnimations[selectedAnimation] ?? null,
     [editableAnimations, selectedAnimation],
   );
+  const availableBoneNames = useMemo(() => {
+    if (!selectedAnimationInfo) {
+      return [];
+    }
+    const names = new Set<string>();
+    selectedAnimationInfo.clip.tracks.forEach((track) => {
+      const parsed = parseTrackName(track.name);
+      if (!parsed) return;
+      const hasProperty = Object.values(TRACK_PROPERTY_CONFIG).some(
+        (config) => config.trackName === parsed.property,
+      );
+      if (hasProperty) {
+        names.add(parsed.boneName);
+      }
+    });
+    return Array.from(names).sort((a, b) => a.localeCompare(b));
+  }, [selectedAnimationInfo]);
+  const selectedTrackConfig = TRACK_PROPERTY_CONFIG[selectedTrackProperty];
+  const selectedTrack = useMemo(() => {
+    if (!selectedAnimationInfo || !selectedBoneName) {
+      return null;
+    }
+    return (
+      selectedAnimationInfo.clip.tracks.find((track) => {
+        const parsed = parseTrackName(track.name);
+        if (!parsed) return false;
+        return (
+          parsed.boneName === selectedBoneName &&
+          parsed.property === selectedTrackConfig.trackName
+        );
+      }) ?? null
+    );
+  }, [selectedAnimationInfo, selectedBoneName, selectedTrackConfig.trackName]);
+  const selectedKeyframes = useMemo(() => {
+    if (!selectedTrack) {
+      return [];
+    }
+    const times = Array.from(selectedTrack.times);
+    const values = Array.from(selectedTrack.values);
+    const stride = selectedTrackConfig.components.length;
+    return times.map((time, index) => ({
+      time,
+      values: values.slice(index * stride, index * stride + stride),
+    }));
+  }, [selectedTrack, selectedTrackConfig.components.length]);
+
+  const updateSelectedAnimation = (
+    updater: (current: AnimationInfo) => AnimationInfo,
+  ) => {
+    if (selectedAnimation === null) {
+      return;
+    }
+    setDraftAnimations((prev) => {
+      const currentAnimations = prev ?? baseAnimations;
+      return reindexAnimations(
+        currentAnimations.map((anim, index) =>
+          index === selectedAnimation ? updater(anim) : anim,
+        ),
+      );
+    });
+  };
+
+  const applyLoopSetting = (action: AnimationAction, loop: boolean) => {
+    action.setLoop(loop ? LoopRepeat : LoopOnce, loop ? Infinity : 0);
+    action.clampWhenFinished = !loop;
+  };
 
   // Update animation state when mixer or selection changes
   useEffect(() => {
@@ -112,7 +235,7 @@ export function AnimationViewer({
       if (clip) {
         const action = animationMixer.clipAction(clip);
         action.reset();
-        action.setLoop(LoopRepeat, Infinity);
+        applyLoopSetting(action, animationInfo.loop ?? true);
         currentActionRef.current = action;
         Promise.resolve().then(() => setHasActiveAction(true));
       }
@@ -164,6 +287,10 @@ export function AnimationViewer({
 
   const handlePlay = () => {
     if (currentActionRef.current && animationMixer) {
+      applyLoopSetting(
+        currentActionRef.current,
+        selectedAnimationInfo?.loop ?? true,
+      );
       if (isPlaying) {
         currentActionRef.current.paused = true;
         setIsPlaying(false);
@@ -217,25 +344,17 @@ export function AnimationViewer({
     const trimmedName = editName.trim();
     const nextName =
       trimmedName.length > 0 ? trimmedName : `Animation ${selectedAnimation + 1}`;
-    const nextDuration =
-      editDuration >= MIN_ANIMATION_DURATION
-        ? editDuration
-        : current.duration;
+    const nextLoop = current.loop ?? true;
     const clip = current.clip.clone();
     clip.name = nextName;
-    clip.duration = nextDuration;
-    setDraftAnimations((prev) => {
-      const currentAnimations = prev ?? baseAnimations;
-      return reindexAnimations(
-        currentAnimations.map((anim, index) =>
-          index === selectedAnimation
-            ? { ...anim, name: nextName, duration: nextDuration, clip }
-            : anim,
-        ),
-      );
-    });
+    updateSelectedAnimation((anim) => ({
+      ...anim,
+      name: nextName,
+      clip,
+      loop: nextLoop,
+    }));
     setEditName(nextName);
-    setEditDuration(nextDuration);
+    setDurationError(null);
   };
 
   const handleCreateAnimation = () => {
@@ -245,10 +364,11 @@ export function AnimationViewer({
       trimmedName.length > 0
         ? trimmedName
         : `Animation ${nextAutoIndex}`;
-    const nextDuration =
-      newAnimationDuration >= MIN_ANIMATION_DURATION
-        ? newAnimationDuration
-        : DEFAULT_ANIMATION_DURATION;
+    const parsedDuration = parseDurationInputValue(
+      newAnimationDurationInput,
+      DEFAULT_ANIMATION_DURATION,
+    );
+    const nextDuration = parsedDuration.value;
     const clip = selectedAnimationInfo?.clip
       ? selectedAnimationInfo.clip.clone()
       : new AnimationClip(nextName, nextDuration, []);
@@ -260,16 +380,213 @@ export function AnimationViewer({
       duration: nextDuration,
       index: nextIndex,
       clip,
+      loop: true,
     };
     setDraftAnimations((prev) =>
       reindexAnimations([...(prev ?? baseAnimations), newInfo]),
     );
     setSelectedAnimation(nextIndex);
     setEditName(nextName);
-    setEditDuration(nextDuration);
+    setEditDurationInput(nextDuration.toString());
+    setDurationError(parsedDuration.valid ? null : "Invalid duration input");
     if (trimmedName.length === 0) {
       autoNameCounterRef.current += 1;
     }
+  };
+
+  const handleLoopToggle = (nextLoop: boolean) => {
+    if (selectedAnimation === null) return;
+    updateSelectedAnimation((anim) => ({
+      ...anim,
+      loop: nextLoop,
+    }));
+    if (currentActionRef.current) {
+      applyLoopSetting(currentActionRef.current, nextLoop);
+    }
+  };
+
+  const handleApplyDuration = () => {
+    if (selectedAnimation === null) return;
+    const current = editableAnimations[selectedAnimation];
+    if (!current) return;
+    const parsedDuration = parseDurationInputValue(
+      editDurationInput,
+      current.duration,
+    );
+    if (!parsedDuration.valid) {
+      setDurationError("Enter a valid duration.");
+      return;
+    }
+    const nextDuration = parsedDuration.value;
+    const currentDuration = current.duration > 0 ? current.duration : 1;
+    const scale = nextDuration / currentDuration;
+    const nextTracks = current.clip.tracks.map((track) => {
+      const times = Array.from(track.times);
+      const values = Array.from(track.values);
+      const stride = track.getValueSize();
+      let nextTimes: number[] = [];
+      let nextValues: number[] = [];
+      if (durationMode === "truncate") {
+        times.forEach((time, index) => {
+          if (time <= nextDuration) {
+            nextTimes.push(time);
+            nextValues.push(
+              ...values.slice(index * stride, index * stride + stride),
+            );
+          }
+        });
+        if (nextTimes.length === 0 && times.length > 0) {
+          nextTimes = [0];
+          nextValues = values.slice(0, stride);
+        }
+      } else {
+        nextTimes = times.map((time) => time * scale);
+        nextValues = values.slice();
+      }
+      const nextTrack = track.clone();
+      nextTrack.times = new Float32Array(nextTimes);
+      nextTrack.values = new Float32Array(nextValues);
+      return nextTrack;
+    });
+    const nextClip = new AnimationClip(current.name, nextDuration, nextTracks);
+    updateSelectedAnimation((anim) => ({
+      ...anim,
+      duration: nextDuration,
+      clip: nextClip,
+    }));
+    setDuration(nextDuration);
+    setEditDurationInput(nextDuration.toString());
+    setDurationError(null);
+  };
+
+  const handleSelectKeyframe = (index: number) => {
+    const keyframe = selectedKeyframes[index];
+    if (!keyframe) return;
+    setSelectedKeyframeIndex(index);
+    setKeyframeTimeInput(keyframe.time.toString());
+    setKeyframeValueInputs(keyframe.values.map((value) => value.toString()));
+    setKeyframeError(null);
+  };
+
+  const handleApplyKeyframe = () => {
+    if (!selectedAnimationInfo || !selectedBoneName) return;
+    const timeValue = Number.parseFloat(keyframeTimeInput);
+    if (!Number.isFinite(timeValue) || timeValue < 0) {
+      setKeyframeError("Enter a valid keyframe time.");
+      return;
+    }
+    const componentCount = selectedTrackConfig.components.length;
+    if (keyframeValueInputs.length !== componentCount) {
+      setKeyframeError("Enter all component values.");
+      return;
+    }
+    const parsedValues = keyframeValueInputs.map((value) =>
+      Number.parseFloat(value),
+    );
+    if (parsedValues.some((value) => !Number.isFinite(value))) {
+      setKeyframeError("Enter valid numeric values.");
+      return;
+    }
+    const trackName = `${selectedBoneName}.${selectedTrackConfig.trackName}`;
+    const currentTrack = selectedTrack ?? null;
+    const stride = componentCount;
+    let times: number[] = [];
+    let values: number[] = [];
+    if (currentTrack) {
+      times = Array.from(currentTrack.times);
+      values = Array.from(currentTrack.values);
+    }
+    if (
+      currentTrack &&
+      selectedKeyframeIndex !== null &&
+      selectedKeyframeIndex < times.length
+    ) {
+      times[selectedKeyframeIndex] = timeValue;
+      parsedValues.forEach((value, offset) => {
+        values[selectedKeyframeIndex * stride + offset] = value;
+      });
+    } else {
+      times.push(timeValue);
+      values.push(...parsedValues);
+    }
+    const combined = times.map((time, index) => ({
+      time,
+      values: values.slice(index * stride, index * stride + stride),
+    }));
+    combined.sort((a, b) => a.time - b.time);
+    const nextTimes = combined.map((entry) => entry.time);
+    const nextValues = combined.flatMap((entry) => entry.values);
+    const nextTrack = currentTrack
+      ? currentTrack.clone()
+      : selectedTrackConfig.trackName === "quaternion"
+        ? new QuaternionKeyframeTrack(trackName, nextTimes, nextValues)
+        : new VectorKeyframeTrack(trackName, nextTimes, nextValues);
+    nextTrack.times = new Float32Array(nextTimes);
+    nextTrack.values = new Float32Array(nextValues);
+    const nextTracks = selectedAnimationInfo.clip.tracks
+      .filter((track) => track !== currentTrack)
+      .concat(nextTrack);
+    const nextClip = new AnimationClip(
+      selectedAnimationInfo.name,
+      selectedAnimationInfo.duration,
+      nextTracks,
+    );
+    updateSelectedAnimation((anim) => ({
+      ...anim,
+      clip: nextClip,
+    }));
+    setKeyframeError(null);
+  };
+
+  const handleDeleteKeyframe = () => {
+    if (
+      !selectedAnimationInfo ||
+      !selectedTrack ||
+      selectedKeyframeIndex === null
+    ) {
+      return;
+    }
+    const stride = selectedTrackConfig.components.length;
+    const times = Array.from(selectedTrack.times);
+    const values = Array.from(selectedTrack.values);
+    const nextTimes: number[] = [];
+    const nextValues: number[] = [];
+    times.forEach((time, index) => {
+      if (index !== selectedKeyframeIndex) {
+        nextTimes.push(time);
+        nextValues.push(
+          ...values.slice(index * stride, index * stride + stride),
+        );
+      }
+    });
+    const baseTracks = selectedAnimationInfo.clip.tracks.filter(
+      (track) => track !== selectedTrack,
+    );
+    const nextTracks =
+      nextTimes.length === 0
+        ? baseTracks
+        : [
+            ...baseTracks,
+            (() => {
+              const nextTrack = selectedTrack.clone();
+              nextTrack.times = new Float32Array(nextTimes);
+              nextTrack.values = new Float32Array(nextValues);
+              return nextTrack;
+            })(),
+          ];
+    const nextClip = new AnimationClip(
+      selectedAnimationInfo.name,
+      selectedAnimationInfo.duration,
+      nextTracks,
+    );
+    updateSelectedAnimation((anim) => ({
+      ...anim,
+      clip: nextClip,
+    }));
+    setSelectedKeyframeIndex(null);
+    setKeyframeTimeInput("");
+    setKeyframeValueInputs([]);
+    setKeyframeError(null);
   };
 
   const handleDeleteAnimation = () => {
@@ -287,7 +604,13 @@ export function AnimationViewer({
       return prev > deletedIndex ? prev - 1 : prev;
     });
     setEditName("");
-    setEditDuration(0);
+    setEditDurationInput("");
+    setSelectedBoneName("");
+    setSelectedKeyframeIndex(null);
+    setKeyframeTimeInput("");
+    setKeyframeValueInputs([]);
+    setKeyframeError(null);
+    setDurationError(null);
   };
 
   const hasAnimations = editableAnimations.length > 0;
@@ -309,7 +632,14 @@ export function AnimationViewer({
               if (value === "none") {
                 setSelectedAnimation(null);
                 setEditName("");
-                setEditDuration(0);
+                setEditDurationInput("");
+                setSelectedBoneName("");
+                setSelectedTrackProperty("position");
+                setSelectedKeyframeIndex(null);
+                setKeyframeTimeInput("");
+                setKeyframeValueInputs([]);
+                setKeyframeError(null);
+                setDurationError(null);
                 return;
               }
               const nextIndex = Number.parseInt(value, 10);
@@ -317,12 +647,32 @@ export function AnimationViewer({
                 ? null
                 : nextIndex;
               setSelectedAnimation(resolvedIndex);
-              if (
-                resolvedIndex !== null &&
-                editableAnimations[resolvedIndex]
-              ) {
-                setEditName(editableAnimations[resolvedIndex].name);
-                setEditDuration(editableAnimations[resolvedIndex].duration);
+              const resolvedAnimation =
+                resolvedIndex !== null
+                  ? editableAnimations[resolvedIndex]
+                  : null;
+              if (resolvedAnimation) {
+                setEditName(resolvedAnimation.name);
+                setEditDurationInput(resolvedAnimation.duration.toString());
+                const boneNames = new Set<string>();
+                resolvedAnimation.clip.tracks.forEach((track) => {
+                  const parsed = parseTrackName(track.name);
+                  if (!parsed) return;
+                  const hasProperty = Object.values(
+                    TRACK_PROPERTY_CONFIG,
+                  ).some((config) => config.trackName === parsed.property);
+                  if (hasProperty) {
+                    boneNames.add(parsed.boneName);
+                  }
+                });
+                const nextBoneName = Array.from(boneNames).sort()[0] ?? "";
+                setSelectedBoneName(nextBoneName);
+                setSelectedTrackProperty("position");
+                setSelectedKeyframeIndex(null);
+                setKeyframeTimeInput("");
+                setKeyframeValueInputs([]);
+                setKeyframeError(null);
+                setDurationError(null);
               }
             }}
           >
@@ -358,10 +708,9 @@ export function AnimationViewer({
             <div className="flex gap-2">
               <Button
                 size="sm"
-                variant="outline"
                 onClick={handlePlay}
                 disabled={!hasActiveAction}
-                className="flex-1 text-white"
+                className="flex-1"
               >
                 {isPlaying ? (
                   <Pause className="w-3 h-3" />
@@ -371,7 +720,6 @@ export function AnimationViewer({
               </Button>
               <Button
                 size="sm"
-                variant="outline"
                 onClick={handleStop}
                 disabled={!hasActiveAction}
                 className="text-white"
@@ -380,7 +728,6 @@ export function AnimationViewer({
               </Button>
               <Button
                 size="sm"
-                variant="outline"
                 onClick={handleReset}
                 disabled={!hasActiveAction}
                 className="text-white"
@@ -420,47 +767,237 @@ export function AnimationViewer({
         <div className="space-y-3 border-t border-gray-700 pt-3">
           <div className="text-xs font-semibold text-gray-300">Edit Animation</div>
           {selectedAnimationInfo ? (
-            <div className="space-y-2">
+            <div className="space-y-3">
               <label className="text-xs text-gray-300">Name</label>
               <Input
                 value={editName}
                 onChange={(event) => setEditName(event.target.value)}
                 className="bg-gray-700 border-gray-600 text-white"
               />
+              <div className="flex items-center justify-between rounded-md border border-gray-600 bg-gray-700 px-3 py-2">
+                <span className="text-xs text-gray-200">Loop animation</span>
+                <Switch
+                  checked={selectedAnimationInfo.loop ?? true}
+                  onCheckedChange={handleLoopToggle}
+                />
+              </div>
               <label className="text-xs text-gray-300">Duration (seconds)</label>
               <Input
-                type="number"
-                min={MIN_ANIMATION_DURATION}
-                step={0.1}
-                value={editDuration}
-                onChange={(event) => {
-                  setEditDuration((prev) =>
-                    parseDurationInput(event.target.value, prev),
-                  );
-                }}
+                type="text"
+                inputMode="decimal"
+                value={editDurationInput}
+                onChange={(event) => setEditDurationInput(event.target.value)}
                 className="bg-gray-700 border-gray-600 text-white"
               />
-              <div className="flex gap-2">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="flex-1 text-white"
-                  onClick={handleUpdateAnimation}
-                >
-                  Save Changes
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
+                <div className="flex-1 space-y-2">
+                  <label className="text-xs text-gray-300">Retiming mode</label>
+                  <Select
+                    value={durationMode}
+                    onValueChange={(value) =>
+                      setDurationMode(value === "truncate" ? "truncate" : "scale")
+                    }
+                  >
+                    <SelectTrigger className="bg-gray-700 border-gray-600 text-white">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="bg-gray-700 border-gray-600 text-white">
+                      <SelectItem value="scale" className="text-white focus:bg-gray-600">
+                        Scale (speed up/slow down)
+                      </SelectItem>
+                      <SelectItem value="truncate" className="text-white focus:bg-gray-600">
+                        Truncate extra frames
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <Button size="sm" onClick={handleApplyDuration} className="text-white">
+                  Apply Duration
                 </Button>
-                <Button
-                  size="sm"
-                  variant="destructive"
-                  className="text-white"
-                  onClick={handleDeleteAnimation}
-                >
-                  Delete
+              </div>
+              {durationError && (
+                <p className="text-xs text-red-300">{durationError}</p>
+              )}
+              <div className="flex flex-col gap-2 sm:flex-row">
+                <Button size="sm" className="flex-1" onClick={handleUpdateAnimation}>
+                  Save Metadata
+                </Button>
+                <Button size="sm" className="flex-1" onClick={handleDeleteAnimation}>
+                  Delete Animation
                 </Button>
               </div>
             </div>
           ) : (
             <p className="text-xs text-gray-400">Select an animation to edit.</p>
+          )}
+        </div>
+
+        <div className="space-y-3 border-t border-gray-700 pt-3">
+          <div className="text-xs font-semibold text-gray-300">Keyframe Editor</div>
+          {selectedAnimationInfo ? (
+            <div className="space-y-3">
+              <div className="grid gap-2 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <label className="text-xs text-gray-300">Bone</label>
+                  <Select
+                    value={selectedBoneName || "none"}
+                    onValueChange={(value) => {
+                      const nextBone = value === "none" ? "" : value;
+                      setSelectedBoneName(nextBone);
+                      setSelectedKeyframeIndex(null);
+                      setKeyframeTimeInput("");
+                      setKeyframeValueInputs(
+                        Array(selectedTrackConfig.components.length).fill(""),
+                      );
+                      setKeyframeError(null);
+                    }}
+                  >
+                    <SelectTrigger className="bg-gray-700 border-gray-600 text-white">
+                      <SelectValue placeholder="Select bone" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-gray-700 border-gray-600 text-white">
+                      <SelectItem value="none" className="text-white focus:bg-gray-600">
+                        -- Select Bone --
+                      </SelectItem>
+                      {availableBoneNames.map((bone) => (
+                        <SelectItem
+                          key={bone}
+                          value={bone}
+                          className="text-white focus:bg-gray-600"
+                        >
+                          {bone}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-xs text-gray-300">Track</label>
+                  <Select
+                    value={selectedTrackProperty}
+                    onValueChange={(value) => {
+                      const nextProperty =
+                        value === "rotation"
+                          ? "rotation"
+                          : value === "scale"
+                            ? "scale"
+                            : "position";
+                      setSelectedTrackProperty(nextProperty);
+                      setSelectedKeyframeIndex(null);
+                      setKeyframeTimeInput("");
+                      setKeyframeValueInputs(
+                        Array(TRACK_PROPERTY_CONFIG[nextProperty].components.length).fill(""),
+                      );
+                      setKeyframeError(null);
+                    }}
+                  >
+                    <SelectTrigger className="bg-gray-700 border-gray-600 text-white">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="bg-gray-700 border-gray-600 text-white">
+                      {Object.entries(TRACK_PROPERTY_CONFIG).map(([key, config]) => (
+                        <SelectItem
+                          key={key}
+                          value={key}
+                          className="text-white focus:bg-gray-600"
+                        >
+                          {config.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-gray-300">Keyframes</span>
+                  <Button
+                    size="sm"
+                    onClick={() => {
+                      setSelectedKeyframeIndex(null);
+                      setKeyframeTimeInput("");
+                      setKeyframeValueInputs(
+                        Array(selectedTrackConfig.components.length).fill(""),
+                      );
+                      setKeyframeError(null);
+                    }}
+                  >
+                    New Keyframe
+                  </Button>
+                </div>
+                {selectedKeyframes.length > 0 ? (
+                  <div className="space-y-2 max-h-32 overflow-y-auto rounded-md border border-gray-700 p-2">
+                    {selectedKeyframes.map((keyframe, index) => (
+                      <Button
+                        key={`${keyframe.time}-${index}`}
+                        size="sm"
+                        className="w-full justify-between"
+                        onClick={() => handleSelectKeyframe(index)}
+                      >
+                        <span>#{index + 1}</span>
+                        <span>{formatTime(keyframe.time)}</span>
+                      </Button>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-xs text-gray-400">
+                    No keyframes found for this track.
+                  </p>
+                )}
+              </div>
+              <div className="grid gap-2 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <label className="text-xs text-gray-300">Time (seconds)</label>
+                  <Input
+                    type="text"
+                    inputMode="decimal"
+                    value={keyframeTimeInput}
+                    onChange={(event) => setKeyframeTimeInput(event.target.value)}
+                    className="bg-gray-700 border-gray-600 text-white"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-xs text-gray-300">Values</label>
+                  <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                    {selectedTrackConfig.components.map((label, index) => (
+                      <Input
+                        key={label}
+                        type="text"
+                        inputMode="decimal"
+                        placeholder={label}
+                        value={keyframeValueInputs[index] ?? ""}
+                        onChange={(event) => {
+                          setKeyframeValueInputs((prev) => {
+                            const next = [...prev];
+                            next[index] = event.target.value;
+                            return next;
+                          });
+                        }}
+                        className="bg-gray-700 border-gray-600 text-white"
+                      />
+                    ))}
+                  </div>
+                </div>
+              </div>
+              {keyframeError && (
+                <p className="text-xs text-red-300">{keyframeError}</p>
+              )}
+              <div className="flex flex-col gap-2 sm:flex-row">
+                <Button size="sm" className="flex-1" onClick={handleApplyKeyframe}>
+                  {selectedKeyframeIndex === null ? "Add Keyframe" : "Update Keyframe"}
+                </Button>
+                <Button
+                  size="sm"
+                  className="flex-1"
+                  onClick={handleDeleteKeyframe}
+                  disabled={selectedKeyframeIndex === null}
+                >
+                  Delete Keyframe
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <p className="text-xs text-gray-400">Select an animation to edit keyframes.</p>
           )}
         </div>
 
@@ -475,24 +1012,16 @@ export function AnimationViewer({
             />
             <label className="text-xs text-gray-300">Duration (seconds)</label>
             <Input
-              type="number"
-              min={MIN_ANIMATION_DURATION}
-              step={0.1}
-              value={
-                Number.isFinite(newAnimationDuration)
-                  ? newAnimationDuration
-                  : DEFAULT_ANIMATION_DURATION
+              type="text"
+              inputMode="decimal"
+              value={newAnimationDurationInput}
+              onChange={(event) =>
+                setNewAnimationDurationInput(event.target.value)
               }
-              onChange={(event) => {
-                setNewAnimationDuration((prev) =>
-                  parseDurationInput(event.target.value, prev),
-                );
-              }}
               className="bg-gray-700 border-gray-600 text-white"
             />
             <Button
               size="sm"
-              variant="outline"
               className="w-full text-white"
               onClick={handleCreateAnimation}
             >
