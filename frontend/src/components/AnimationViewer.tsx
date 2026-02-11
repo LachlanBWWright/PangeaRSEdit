@@ -1301,7 +1301,7 @@ export function AnimationViewer({
           {selectedAnimationInfo ? (
             selectedMetadata ? (
               <div className="space-y-2">
-                <div className="text-xs text-gray-400 space-y-1">
+                <div className="space-y-1 text-xs text-gray-400">
                   <p>Duration: {formatTime(selectedAnimationInfo.duration)}</p>
                   <p>
                     Looping: {(selectedAnimationInfo.loop ?? true) ? "On" : "Off"}

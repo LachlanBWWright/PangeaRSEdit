@@ -1,4 +1,4 @@
-import { useMemo, useState, useCallback, useEffect } from "react";
+import { useMemo, useState, useCallback, useEffect, useRef } from "react";
 import { Canvas } from "@react-three/fiber";
 import { OrbitControls, TransformControls, useGLTF } from "@react-three/drei";
 import { EnhancedModelMesh } from "@/components/EnhancedModelMesh";
@@ -79,17 +79,27 @@ export function ModelCanvas(props: ModelCanvasProps) {
     });
     return found;
   }, [scene, selectedBoneName]);
+  const lastBoneTransformRef = useRef<string | null>(null);
+
   const handleBoneTransformChange = useCallback(() => {
     if (!selectedBoneObject || !onBoneTransformChange) {
       return;
     }
     const { x, y, z } = selectedBoneObject.position;
+    const nextKey = `${x.toFixed(4)}|${y.toFixed(4)}|${z.toFixed(4)}`;
+    if (lastBoneTransformRef.current === nextKey) {
+      return;
+    }
+    lastBoneTransformRef.current = nextKey;
     onBoneTransformChange([x, y, z]);
   }, [selectedBoneObject, onBoneTransformChange]);
 
   useEffect(() => {
-    handleBoneTransformChange();
-  }, [handleBoneTransformChange]);
+    lastBoneTransformRef.current = null;
+    if (selectedBoneObject) {
+      handleBoneTransformChange();
+    }
+  }, [selectedBoneObject, handleBoneTransformChange]);
 
   // Shift Bugdom 1 model down by half its bounding box height so it appears grounded
   const modelPosition = useMemo((): [number, number, number] => {
