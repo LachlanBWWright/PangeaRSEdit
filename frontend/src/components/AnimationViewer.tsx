@@ -44,7 +44,10 @@ const BONE_NAME_MAX_WIDTH_CLASS = "max-w-[220px]";
 const KEYFRAME_LIST_MAX_HEIGHT_CLASS = "max-h-56";
 const METADATA_LIST_MAX_HEIGHT_CLASS = "max-h-32";
 const MIN_HEX_BONE_NAME_LENGTH = 6;
-const KEYFRAME_INPUT_CLASS = "w-full bg-gray-700 border-gray-600 text-white";
+const KEYFRAME_TIME_INPUT_CLASS = "w-full h-11 bg-gray-700 border-gray-600 text-white text-base";
+const KEYFRAME_VALUE_INPUT_CLASS =
+  "w-full min-w-[7rem] h-11 bg-gray-700 border-gray-600 text-white text-base";
+const TIMELINE_TABLE_MIN_WIDTH_CLASS = "min-w-[720px]";
 const MIN_PLAYBACK_RATIO = 0.001;
 
 type TrackProperty = "position" | "rotation" | "scale";
@@ -166,6 +169,7 @@ interface AnimationViewerProps {
   onAnimationChange?: (animationIndex: number | null) => void;
   onBoneSelectionChange?: (boneName: string | null) => void;
   animationMetadata?: Record<string, AnimationMetadata>;
+  boneTransform?: [number, number, number] | null;
 } 
 
 export function AnimationViewer({
@@ -174,6 +178,7 @@ export function AnimationViewer({
   onAnimationChange,
   onBoneSelectionChange,
   animationMetadata,
+  boneTransform,
 }: AnimationViewerProps) {
   const [draftAnimations, setDraftAnimations] = useState<AnimationInfo[] | null>(
     null,
@@ -266,6 +271,37 @@ export function AnimationViewer({
       values: values.slice(index * stride, index * stride + stride),
     }));
   }, [selectedTrack, selectedTrackConfig.components.length]);
+
+  const timelineRows = useMemo(() => {
+    if (!selectedAnimationInfo) {
+      return [];
+    }
+    const rows = new Map<string, Set<number>>();
+    selectedAnimationInfo.clip.tracks.forEach((track) => {
+      const parsed = parseTrackName(track.name);
+      if (!parsed) return;
+      if (!rows.has(parsed.boneName)) {
+        rows.set(parsed.boneName, new Set());
+      }
+      const rowTimes = rows.get(parsed.boneName);
+      if (!rowTimes) return;
+      Array.from(track.times).forEach((time) => rowTimes.add(time));
+    });
+    return Array.from(rows.entries()).map(([boneName, times]) => ({
+      boneName,
+      times: Array.from(times).sort((a, b) => a - b),
+    }));
+  }, [selectedAnimationInfo]);
+
+  const totalKeyframes = useMemo(() => {
+    if (!selectedAnimationInfo) {
+      return 0;
+    }
+    return selectedAnimationInfo.clip.tracks.reduce(
+      (sum, track) => sum + track.times.length,
+      0,
+    );
+  }, [selectedAnimationInfo]);
 
   const selectedMetadata =
     selectedAnimationInfo && animationMetadata
@@ -640,6 +676,16 @@ export function AnimationViewer({
     setKeyframeError(null);
   };
 
+  const handleUseBoneTransform = () => {
+    if (!boneTransform || selectedTrackProperty !== "position") {
+      return;
+    }
+    setKeyframeValueInputs(
+      boneTransform.map((value) => value.toFixed(3)),
+    );
+    setKeyframeError(null);
+  };
+
   const handleDeleteKeyframe = () => {
     if (
       !selectedAnimationInfo ||
@@ -973,12 +1019,15 @@ export function AnimationViewer({
                           key={bone}
                           value={bone}
                           className="text-white focus:bg-gray-600"
+                          textValue={formatBoneLabel(bone)}
                         >
-                          <span
-                            className={`block ${BONE_NAME_MAX_WIDTH_CLASS} truncate`}
-                            title={bone}
-                          >
+                          <span className="block text-white">
                             {formatBoneLabel(bone)}
+                          </span>
+                          <span
+                            className={`block ${BONE_NAME_MAX_WIDTH_CLASS} truncate text-[10px] text-gray-400`}
+                          >
+                            {bone}
                           </span>
                         </SelectItem>
                       ))}
@@ -1114,12 +1163,24 @@ export function AnimationViewer({
                     inputMode="decimal"
                     value={keyframeTimeInput}
                     onChange={(event) => setKeyframeTimeInput(event.target.value)}
-                    className={KEYFRAME_INPUT_CLASS}
+                    className={KEYFRAME_TIME_INPUT_CLASS}
                   />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-xs text-gray-300">Values</label>
-                  <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <label className="text-xs text-gray-300">Values</label>
+                    {boneTransform && selectedTrackProperty === "position" && (
+                      <div className="flex flex-wrap items-center gap-2 text-[10px] text-gray-400">
+                        <span>
+                          Gizmo: {boneTransform.map((val) => val.toFixed(2)).join(", ")}
+                        </span>
+                        <Button size="sm" onClick={handleUseBoneTransform}>
+                          Use Gizmo Values
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 lg:grid-cols-4">
                     {selectedTrackConfig.components.map((label, index) => (
                       <Input
                         key={label}
@@ -1134,7 +1195,7 @@ export function AnimationViewer({
                             return next;
                           });
                         }}
-                        className={KEYFRAME_INPUT_CLASS}
+                        className={KEYFRAME_VALUE_INPUT_CLASS}
                       />
                     ))}
                   </div>
@@ -1170,6 +1231,62 @@ export function AnimationViewer({
                   Delete Keyframe
                 </Button>
               </div>
+              <details className="rounded-md border border-gray-700 bg-gray-800 p-2">
+                <summary className="cursor-pointer text-xs text-gray-200">
+                  Joint Timeline Table
+                </summary>
+                <div className="mt-3 space-y-3">
+                  <div className="flex justify-between text-[10px] text-gray-400">
+                    <span>0:00.00</span>
+                    <span>{formatTime(timelineDuration)}</span>
+                  </div>
+                  <div className="overflow-x-auto">
+                    <div className={`space-y-2 ${TIMELINE_TABLE_MIN_WIDTH_CLASS}`}>
+                      {timelineRows.map((row) => {
+                        const isSelected = row.boneName === selectedBoneName;
+                        return (
+                          <div
+                            key={row.boneName}
+                            className={`flex items-center gap-3 rounded-md px-2 py-1 ${
+                              isSelected ? "bg-blue-900/30" : "bg-gray-900/20"
+                            }`}
+                          >
+                            <button
+                              type="button"
+                              onClick={() => setSelectedBoneName(row.boneName)}
+                              className="w-40 shrink-0 text-left text-xs text-gray-200 hover:text-white"
+                              title={row.boneName}
+                            >
+                              {formatBoneLabel(row.boneName)}
+                            </button>
+                            <div className="relative h-6 flex-1 rounded bg-gray-800/60">
+                              {row.times.map((time, index) => {
+                                const position =
+                                  timelineDuration > 0
+                                    ? (time / timelineDuration) * 100
+                                    : 0;
+                                return (
+                                  <span
+                                    key={`${row.boneName}-${time}-${index}`}
+                                    className="absolute top-1/2 h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full bg-blue-400"
+                                    style={{
+                                      left: `${Math.min(
+                                        100,
+                                        Math.max(0, position),
+                                      )}%`,
+                                    }}
+                                    title={`${formatTime(time)}`}
+                                  />
+                                );
+                              })}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+              </details>
             </div>
           ) : (
             <p className="text-xs text-gray-400">Select an animation to edit keyframes.</p>
@@ -1181,9 +1298,14 @@ export function AnimationViewer({
           {selectedAnimationInfo ? (
             selectedMetadata ? (
               <div className="space-y-2">
-                <p className="text-xs text-gray-400">
-                  Event count: {selectedMetadata.eventCount}
-                </p>
+                <div className="text-xs text-gray-400 space-y-1">
+                  <p>Duration: {formatTime(selectedAnimationInfo.duration)}</p>
+                  <p>Looping: {selectedAnimationInfo.loop ?? true ? "On" : "Off"}</p>
+                  <p>Bones: {timelineRows.length}</p>
+                  <p>Tracks: {selectedAnimationInfo.clip.tracks.length}</p>
+                  <p>Keyframes: {totalKeyframes}</p>
+                  <p>Event count: {selectedMetadata.eventCount}</p>
+                </div>
                 {selectedMetadata.events.length > 0 ? (
                   <div
                     className={`${METADATA_LIST_MAX_HEIGHT_CLASS} overflow-y-auto rounded-md border border-gray-700`}

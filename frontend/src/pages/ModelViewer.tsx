@@ -39,6 +39,9 @@ export function ModelViewer() {
     null,
   );
   const [selectedBoneName, setSelectedBoneName] = useState<string | null>(null);
+  const [boneTransform, setBoneTransform] = useState<
+    [number, number, number] | null
+  >(null);
   const [uploadStep, setUploadStep] = useState<
     "select-bg3d" | "select-skeleton" | "completed"
   >("select-bg3d");
@@ -151,6 +154,7 @@ export function ModelViewer() {
       setAnimations(animationInfos);
       setAnimationMixer(mixer);
       setSelectedBoneName(null);
+      setBoneTransform(null);
 
       if (animationInfos.length > 0) {
         console.log(
@@ -169,6 +173,18 @@ export function ModelViewer() {
       Promise.resolve().then(() => setShowSkeleton(true));
     }
   }, [selectedBoneName]);
+
+  const handleBoneTransformChange = useCallback(
+    (position: [number, number, number]) => {
+      setBoneTransform(position);
+    },
+    [],
+  );
+
+  const handleBoneSelectionChange = useCallback((boneName: string | null) => {
+    setSelectedBoneName(boneName);
+    setBoneTransform(null);
+  }, []);
 
   const animationMetadata = useMemo(() => {
     if (!bg3dParsed?.skeleton?.animations) {
@@ -478,8 +494,9 @@ export function ModelViewer() {
               key={gltfUrl}
               animations={animations}
               animationMixer={animationMixer}
-              onBoneSelectionChange={setSelectedBoneName}
+              onBoneSelectionChange={handleBoneSelectionChange}
               animationMetadata={animationMetadata}
+              boneTransform={boneTransform}
             />
           )}
 
@@ -548,6 +565,7 @@ export function ModelViewer() {
                 showSkeleton={showSkeleton}
                 logBonePositions={logBonePositions}
                 selectedBoneName={selectedBoneName}
+                onBoneTransformChange={handleBoneTransformChange}
               />
             </ErrorBoundary>
           ) : (

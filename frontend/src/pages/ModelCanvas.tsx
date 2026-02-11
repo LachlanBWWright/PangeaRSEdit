@@ -1,13 +1,13 @@
-import { useMemo } from "react";
+import { useMemo, useState, useCallback, useEffect } from "react";
 import { Canvas } from "@react-three/fiber";
-import { OrbitControls, useGLTF } from "@react-three/drei";
+import { OrbitControls, TransformControls, useGLTF } from "@react-three/drei";
 import { EnhancedModelMesh } from "@/components/EnhancedModelMesh";
 import { ModelCanvasProps } from "@/components/model-viewer/types";
 import { useModelHierarchy } from "@/components/model-viewer/useModelHierarchy";
 import { useModelAnimations } from "@/components/model-viewer/useModelAnimations";
 import { AnimationUpdater } from "@/components/model-viewer/AnimationUpdater";
 import { Game } from "@/data/globals/globals";
-import { Box3, Vector3 } from "three";
+import { Box3, Vector3, Object3D } from "three";
 
 export function ModelCanvas(props: ModelCanvasProps) {
   // Memoize camera config to prevent Canvas re-initialization on every render
@@ -47,6 +47,7 @@ export function ModelCanvas(props: ModelCanvasProps) {
     setModelNodes,
     onSceneReady,
     onAnimationsReady,
+    onBoneTransformChange,
     wireframeMode,
     showSkeleton,
     logBonePositions,
@@ -63,6 +64,32 @@ export function ModelCanvas(props: ModelCanvasProps) {
 
   // Handle animations
   const { animationMixer } = useModelAnimations(gltfResult, onAnimationsReady);
+
+  const [isTransforming, setIsTransforming] = useState(false);
+  const scene = gltfResult?.scene ?? null;
+  const selectedBoneObject = useMemo<Object3D | null>(() => {
+    if (!scene || !selectedBoneName) {
+      return null;
+    }
+    let found: Object3D | null = null;
+    scene.traverse((object) => {
+      if (object.name === selectedBoneName) {
+        found = object;
+      }
+    });
+    return found;
+  }, [scene, selectedBoneName]);
+  const handleBoneTransformChange = useCallback(() => {
+    if (!selectedBoneObject || !onBoneTransformChange) {
+      return;
+    }
+    const { x, y, z } = selectedBoneObject.position;
+    onBoneTransformChange([x, y, z]);
+  }, [selectedBoneObject, onBoneTransformChange]);
+
+  useEffect(() => {
+    handleBoneTransformChange();
+  }, [handleBoneTransformChange]);
 
   // Shift Bugdom 1 model down by half its bounding box height so it appears grounded
   const modelPosition = useMemo((): [number, number, number] => {
@@ -107,15 +134,25 @@ export function ModelCanvas(props: ModelCanvasProps) {
             position={modelPosition}
           />
         )}
+        {selectedBoneObject && (
+          <TransformControls
+            object={selectedBoneObject}
+            mode="translate"
+            size={0.7}
+            onObjectChange={handleBoneTransformChange}
+            onMouseDown={() => setIsTransforming(true)}
+            onMouseUp={() => setIsTransforming(false)}
+          />
+        )}
         <AnimationUpdater
           animationMixer={animationMixer}
           logBonePositions={logBonePositions}
         />
         <OrbitControls
           enablePan={false}
-          enableZoom={true}
-          enableRotate={true}
-          autoRotate={true}
+          enableZoom={!isTransforming}
+          enableRotate={!isTransforming}
+          autoRotate={!isTransforming}
           autoRotateSpeed={2}
         />
       </Canvas>

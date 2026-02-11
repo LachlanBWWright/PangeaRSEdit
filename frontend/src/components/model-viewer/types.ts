@@ -22,6 +22,7 @@ export interface ModelCanvasProps {
     animations: AnimationInfo[],
     mixer: AnimationMixer | null,
   ) => void;
+  onBoneTransformChange?: (position: [number, number, number]) => void;
   wireframeMode?: boolean;
   showSkeleton?: boolean;
   logBonePositions?: boolean;
