@@ -1184,7 +1184,7 @@ export function AnimationViewer({
                       </div>
                     )}
                   </div>
-                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+                  <div className="grid grid-cols-3 gap-3">
                     {selectedTrackConfig.components.map((label, index) => (
                       <Input
                         key={label}
@@ -1305,7 +1305,9 @@ export function AnimationViewer({
                 <div className="space-y-1 text-xs text-gray-400">
                   <p>Duration: {formatTime(selectedAnimationInfo.duration)}</p>
                   <p>
-                    Looping: {(selectedAnimationInfo.loop ?? DEFAULT_LOOP_ENABLED) ? "On" : "Off"}
+                    Looping: {(selectedAnimationInfo.loop ?? DEFAULT_LOOP_ENABLED)
+                      ? "On"
+                      : "Off"}
                   </p>
                   <p>Bones: {timelineRows.length}</p>
                   <p>Tracks: {selectedAnimationInfo.clip.tracks.length}</p>

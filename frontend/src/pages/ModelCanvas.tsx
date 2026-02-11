@@ -79,18 +79,24 @@ export function ModelCanvas(props: ModelCanvasProps) {
     });
     return found;
   }, [scene, selectedBoneName]);
-  const lastBoneTransformRef = useRef<string | null>(null);
+  const lastBoneTransformRef = useRef<[number, number, number] | null>(null);
+  const TRANSFORM_EPSILON = 0.0005;
 
   const handleBoneTransformChange = useCallback(() => {
     if (!selectedBoneObject || !onBoneTransformChange) {
       return;
     }
     const { x, y, z } = selectedBoneObject.position;
-    const nextKey = `${x.toFixed(4)}|${y.toFixed(4)}|${z.toFixed(4)}`;
-    if (lastBoneTransformRef.current === nextKey) {
+    const previous = lastBoneTransformRef.current;
+    if (
+      previous &&
+      Math.abs(previous[0] - x) < TRANSFORM_EPSILON &&
+      Math.abs(previous[1] - y) < TRANSFORM_EPSILON &&
+      Math.abs(previous[2] - z) < TRANSFORM_EPSILON
+    ) {
       return;
     }
-    lastBoneTransformRef.current = nextKey;
+    lastBoneTransformRef.current = [x, y, z];
     onBoneTransformChange([x, y, z]);
   }, [selectedBoneObject, onBoneTransformChange]);
 
