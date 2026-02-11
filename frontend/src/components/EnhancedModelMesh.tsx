@@ -11,11 +11,25 @@ import {
 } from "three";
 import { useEffect, useRef, memo } from "react";
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+function hasColor(
+  x: unknown,
+): x is { color: { setHex: (hex: number) => void } } {
+  if (!isRecord(x)) return false;
+  const colorValue = x["color"];
+  if (!isRecord(colorValue)) return false;
+  return typeof colorValue["setHex"] === "function";
+}
+
 interface EnhancedModelMeshProps {
   scene: Group;
   wireframeMode?: boolean;
   showSkeleton?: boolean;
   position?: [number, number, number];
+  selectedBoneName?: string | null;
 }
 
 function EnhancedModelMeshComponent({
@@ -23,6 +37,7 @@ function EnhancedModelMeshComponent({
   wireframeMode = false,
   showSkeleton = false,
   position = [0, 0, 0],
+  selectedBoneName = null,
 }: EnhancedModelMeshProps) {
   const skeletonHelpersRef = useRef<(SkeletonHelper | Mesh)[]>([]);
 
@@ -57,6 +72,7 @@ function EnhancedModelMeshComponent({
       );
     }
 
+
     // Clean up previous skeleton helpers
     skeletonHelpersRef.current.forEach((helper) => {
       // Handle both SkeletonHelper and Mesh objects
@@ -84,6 +100,7 @@ function EnhancedModelMeshComponent({
     skeletonHelpersRef.current = [];
 
     if (showSkeleton) {
+      const defaultBoneColor = 0x00ff00;
       // Find all skinned meshes and create skeleton helpers
       scene.traverse((object) => {
         if (object instanceof SkinnedMesh && object.skeleton) {
@@ -91,7 +108,7 @@ function EnhancedModelMeshComponent({
 
           // Create bone joint spheres
           const boneGeometry = new SphereGeometry(0.5, 8, 8);
-          const boneMaterial = new MeshBasicMaterial({ color: 0x00ff00 });
+          const boneMaterial = new MeshBasicMaterial({ color: defaultBoneColor });
 
           skeleton.bones.forEach((bone) => {
             const boneMesh = new Mesh(boneGeometry, boneMaterial.clone());
@@ -99,6 +116,13 @@ function EnhancedModelMeshComponent({
             // The bone's position already defines where this sphere appears in space
             boneMesh.position.set(0, 0, 0);
             boneMesh.scale.setScalar(0.3); // Small spheres at joints
+            boneMesh.userData.boneName = bone.name;
+            const material = Array.isArray(boneMesh.material)
+              ? boneMesh.material[0]
+              : boneMesh.material;
+            if (material && hasColor(material)) {
+              material.color.setHex(defaultBoneColor);
+            }
             bone.add(boneMesh);
             skeletonHelpersRef.current.push(boneMesh);
           });
@@ -194,6 +218,28 @@ function EnhancedModelMeshComponent({
       skeletonHelpersRef.current = [];
     };
   }, [scene, showSkeleton]);
+
+  useEffect(() => {
+    if (!showSkeleton) return;
+    const defaultBoneColor = 0x00ff00;
+    const selectedBoneColor = 0x3b82f6;
+    skeletonHelpersRef.current.forEach((helper) => {
+      if (!(helper instanceof Mesh)) return;
+      const boneNameValue = helper.userData.boneName;
+      if (typeof boneNameValue !== "string") return;
+      const material = Array.isArray(helper.material)
+        ? helper.material[0]
+        : helper.material;
+      if (!material) return;
+      if (hasColor(material)) {
+        material.color.setHex(
+          boneNameValue === selectedBoneName
+            ? selectedBoneColor
+            : defaultBoneColor,
+        );
+      }
+    });
+  }, [selectedBoneName, showSkeleton]);
 
   if (!scene) {
     console.warn("No scene available");

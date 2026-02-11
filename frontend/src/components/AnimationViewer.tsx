@@ -30,6 +30,11 @@ export interface AnimationInfo {
   loop?: boolean;
 }
 
+export interface AnimationMetadata {
+  eventCount: number;
+  events: { time: number; type: number; value: number }[];
+}
+
 const DEFAULT_ANIMATION_DURATION = 1;
 const MIN_ANIMATION_DURATION = 0.016; // ~1 frame at 60fps
 
@@ -67,6 +72,42 @@ const parseTrackName = (name: string) => {
   };
 };
 
+const decodeHexBoneName = (value: string) => {
+  const normalized = value.replace(/\s+/g, "");
+  if (
+    normalized.length < 6 ||
+    normalized.length % 2 !== 0 ||
+    !/^[0-9a-fA-F]+$/.test(normalized)
+  ) {
+    return null;
+  }
+  const bytes = normalized.match(/.{1,2}/g)?.map((pair) => Number.parseInt(pair, 16)) ?? [];
+  if (bytes.length === 0) {
+    return null;
+  }
+  const firstByte = bytes[0];
+  if (firstByte !== undefined && firstByte > 0 && firstByte < bytes.length) {
+    const length = firstByte;
+    const slice = bytes.slice(1, 1 + length);
+    const decoded = slice
+      .map((byte) => (byte >= 32 && byte < 127 ? String.fromCharCode(byte) : ""))
+      .join("");
+    if (decoded.trim().length > 0) {
+      return decoded.trim();
+    }
+  }
+  let decoded = "";
+  for (const byte of bytes) {
+    if (byte === 0) break;
+    if (byte >= 32 && byte < 127) {
+      decoded += String.fromCharCode(byte);
+    }
+  }
+  return decoded.trim().length > 0 ? decoded.trim() : null;
+};
+
+const formatBoneLabel = (value: string) => decodeHexBoneName(value) ?? value;
+
 const extractBoneNames = (clip: AnimationClip) => {
   const names = new Set<string>();
   clip.tracks.forEach((track) => {
@@ -100,12 +141,16 @@ interface AnimationViewerProps {
   animations: AnimationInfo[];
   animationMixer: AnimationMixer | null;
   onAnimationChange?: (animationIndex: number | null) => void;
+  onBoneSelectionChange?: (boneName: string | null) => void;
+  animationMetadata?: Record<string, AnimationMetadata>;
 } 
 
 export function AnimationViewer({
   animations,
   animationMixer,
   onAnimationChange,
+  onBoneSelectionChange,
+  animationMetadata,
 }: AnimationViewerProps) {
   const [draftAnimations, setDraftAnimations] = useState<AnimationInfo[] | null>(
     null,
@@ -138,12 +183,19 @@ export function AnimationViewer({
   const [keyframeValueInputs, setKeyframeValueInputs] = useState<string[]>([]);
   const animationRequestRef = useRef<number | undefined>(undefined);
   const currentActionRef = useRef<AnimationAction | null>(null);
+  const isPlayingRef = useRef(false);
+  const lastSelectionRef = useRef<number | null>(null);
   const autoNameCounterRef = useRef(animations.length + 1);
   const baseAnimations = useMemo(
     () => reindexAnimations(animations),
     [animations],
   );
   const editableAnimations = draftAnimations ?? baseAnimations;
+
+  const setPlayingState = (value: boolean) => {
+    isPlayingRef.current = value;
+    setIsPlaying(value);
+  };
 
   useEffect(() => {
     autoNameCounterRef.current = animations.length + 1;
@@ -192,6 +244,15 @@ export function AnimationViewer({
     }));
   }, [selectedTrack, selectedTrackConfig.components.length]);
 
+  const selectedMetadata =
+    selectedAnimationInfo && animationMetadata
+      ? animationMetadata[selectedAnimationInfo.name]
+      : undefined;
+
+  useEffect(() => {
+    onBoneSelectionChange?.(selectedBoneName || null);
+  }, [selectedBoneName, onBoneSelectionChange]);
+
   const updateSelectedAnimation = (
     updater: (current: AnimationInfo) => AnimationInfo,
   ) => {
@@ -215,48 +276,57 @@ export function AnimationViewer({
 
   // Update animation state when mixer or selection changes
   useEffect(() => {
-    if (
-      selectedAnimation !== null &&
-      animationMixer &&
-      editableAnimations[selectedAnimation]
-    ) {
-      const animationInfo = editableAnimations[selectedAnimation];
-      Promise.resolve().then(() => {
-        setDuration(animationInfo.duration);
-        setCurrentTime(0);
-        setIsPlaying(false);
-      });
-
-      // Stop current animation if any
-      if (currentActionRef.current) {
-        currentActionRef.current.stop();
-        currentActionRef.current = null;
-        Promise.resolve().then(() => setHasActiveAction(false));
-      }
-
-      // Get the animation clip and create action
-      const clip = animationInfo.clip;
-      if (clip) {
-        const action = animationMixer.clipAction(clip);
-        action.reset();
-        configureActionLoop(action, animationInfo.loop ?? true);
-        currentActionRef.current = action;
-        Promise.resolve().then(() => setHasActiveAction(true));
-      }
-
-      onAnimationChange?.(selectedAnimation);
-    } else {
+    const animationInfo =
+      selectedAnimation !== null ? editableAnimations[selectedAnimation] : null;
+    if (!animationMixer || !animationInfo) {
       Promise.resolve().then(() => {
         setDuration(0);
         setCurrentTime(0);
-        setIsPlaying(false);
+        setPlayingState(false);
+        setHasActiveAction(false);
       });
       if (currentActionRef.current) {
         currentActionRef.current.stop();
         currentActionRef.current = null;
       }
+      lastSelectionRef.current = selectedAnimation;
       onAnimationChange?.(null);
+      return;
     }
+
+    const clip = animationInfo.clip;
+    const isNewSelection = lastSelectionRef.current !== selectedAnimation;
+    const previousAction = currentActionRef.current;
+    const previousDuration = previousAction?.getClip().duration ?? clip.duration;
+    const previousTime = previousAction?.time ?? 0;
+    const previousRatio =
+      previousDuration > 0 ? previousTime / previousDuration : 0;
+    if (previousAction) {
+      previousAction.stop();
+    }
+    const action = animationMixer.clipAction(clip);
+    action.reset();
+    configureActionLoop(action, animationInfo.loop ?? true);
+    if (!isNewSelection && previousRatio > 0) {
+      action.time = Math.min(clip.duration, previousRatio * clip.duration);
+    }
+    currentActionRef.current = action;
+    const shouldPlay = isNewSelection ? true : isPlayingRef.current;
+    if (shouldPlay) {
+      action.play();
+      action.paused = false;
+    } else {
+      action.play();
+      action.paused = true;
+    }
+    Promise.resolve().then(() => {
+      setDuration(clip.duration);
+      setCurrentTime(action.time);
+      setHasActiveAction(true);
+      setPlayingState(shouldPlay);
+    });
+    lastSelectionRef.current = selectedAnimation;
+    onAnimationChange?.(selectedAnimation);
   }, [selectedAnimation, animationMixer, editableAnimations, onAnimationChange]);
 
   // Animation loop for updating time
@@ -295,13 +365,13 @@ export function AnimationViewer({
         currentActionRef.current,
         selectedAnimationInfo?.loop ?? true,
       );
-      if (isPlaying) {
+      if (isPlayingRef.current) {
         currentActionRef.current.paused = true;
-        setIsPlaying(false);
+        setPlayingState(false);
       } else {
         currentActionRef.current.paused = false;
         currentActionRef.current.play();
-        setIsPlaying(true);
+        setPlayingState(true);
       }
     }
   };
@@ -311,7 +381,7 @@ export function AnimationViewer({
       currentActionRef.current.stop();
       currentActionRef.current.time = 0;
       setCurrentTime(0);
-      setIsPlaying(false);
+      setPlayingState(false);
     }
   };
 
@@ -372,6 +442,12 @@ export function AnimationViewer({
       newAnimationDurationInput,
       DEFAULT_ANIMATION_DURATION,
     );
+    if (!parsedDuration.valid) {
+      setDurationError(
+        `Invalid duration. Must be at least ${MIN_ANIMATION_DURATION} seconds.`,
+      );
+      return;
+    }
     const nextDuration = parsedDuration.value;
     const clip = selectedAnimationInfo?.clip
       ? selectedAnimationInfo.clip.clone()
@@ -392,11 +468,7 @@ export function AnimationViewer({
     setSelectedAnimation(nextIndex);
     setEditName(nextName);
     setEditDurationInput(nextDuration.toString());
-    setDurationError(
-      parsedDuration.valid
-        ? null
-        : `Invalid duration. Must be at least ${MIN_ANIMATION_DURATION} seconds.`,
-    );
+    setDurationError(null);
     if (trimmedName.length === 0) {
       autoNameCounterRef.current += 1;
     }
@@ -625,6 +697,9 @@ export function AnimationViewer({
   };
 
   const hasAnimations = editableAnimations.length > 0;
+  const timelineDuration = selectedAnimationInfo?.duration ?? 0;
+  const timelinePlayhead =
+    timelineDuration > 0 ? (currentTime / timelineDuration) * 100 : 0;
 
   return (
     <Card className="bg-gray-800 border-gray-700">
@@ -633,7 +708,7 @@ export function AnimationViewer({
           Animations ({editableAnimations.length})
         </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-4">
+      <CardContent className="space-y-4 max-h-[70vh] overflow-y-auto pr-1">
         {/* Animation List */}
         <div className="space-y-2">
           <label className="text-xs text-gray-300">Select Animation:</label>
@@ -878,7 +953,9 @@ export function AnimationViewer({
                           value={bone}
                           className="text-white focus:bg-gray-600"
                         >
-                          {bone}
+                          <span className="block max-w-[220px] truncate" title={bone}>
+                            {formatBoneLabel(bone)}
+                          </span>
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -922,6 +999,45 @@ export function AnimationViewer({
                 </div>
               </div>
               <div className="space-y-2">
+                <div className="flex justify-between text-xs text-gray-400">
+                  <span>0:00.00</span>
+                  <span>{formatTime(timelineDuration)}</span>
+                </div>
+                <div className="overflow-x-auto">
+                  <div className="relative h-10 min-w-[320px] rounded-md border border-gray-700 bg-gray-800">
+                    <div
+                      className="absolute top-0 h-full w-px bg-blue-400"
+                      style={{
+                        left: `${Math.min(100, Math.max(0, timelinePlayhead))}%`,
+                      }}
+                    />
+                    {selectedKeyframes.map((keyframe, index) => {
+                      const position =
+                        timelineDuration > 0
+                          ? (keyframe.time / timelineDuration) * 100
+                          : 0;
+                      const isSelected = selectedKeyframeIndex === index;
+                      return (
+                        <button
+                          key={`${keyframe.time}-${index}`}
+                          type="button"
+                          className={`absolute top-1/2 h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full border ${
+                            isSelected
+                              ? "border-blue-200 bg-blue-500"
+                              : "border-gray-500 bg-gray-300"
+                          }`}
+                          style={{
+                            left: `${Math.min(100, Math.max(0, position))}%`,
+                          }}
+                          onClick={() => handleSelectKeyframe(index)}
+                          title={`#${index + 1} @ ${formatTime(keyframe.time)}`}
+                        />
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+              <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <span className="text-xs text-gray-300">Keyframes</span>
                   <Button
@@ -939,12 +1055,13 @@ export function AnimationViewer({
                   </Button>
                 </div>
                 {selectedKeyframes.length > 0 ? (
-                  <div className="space-y-2 max-h-32 overflow-y-auto rounded-md border border-gray-700 p-2">
+                  <div className="space-y-2 max-h-40 overflow-y-auto rounded-md border border-gray-700 p-2">
                     {selectedKeyframes.map((keyframe, index) => (
                       <Button
                         key={`${keyframe.time}-${index}`}
                         size="sm"
                         className="w-full justify-between"
+                        selected={selectedKeyframeIndex === index}
                         onClick={() => handleSelectKeyframe(index)}
                       >
                         <span>#{index + 1}</span>
@@ -986,7 +1103,7 @@ export function AnimationViewer({
                             return next;
                           });
                         }}
-                        className="bg-gray-700 border-gray-600 text-white"
+                        className="bg-gray-700 border-gray-600 text-white min-w-[5rem] w-full"
                       />
                     ))}
                   </div>
@@ -1025,6 +1142,46 @@ export function AnimationViewer({
             </div>
           ) : (
             <p className="text-xs text-gray-400">Select an animation to edit keyframes.</p>
+          )}
+        </div>
+
+        <div className="space-y-3 border-t border-gray-700 pt-3">
+          <div className="text-xs font-semibold text-gray-300">Animation Metadata</div>
+          {selectedAnimationInfo ? (
+            selectedMetadata ? (
+              <div className="space-y-2">
+                <p className="text-xs text-gray-400">
+                  Event count: {selectedMetadata.eventCount}
+                </p>
+                {selectedMetadata.events.length > 0 ? (
+                  <div className="max-h-32 overflow-y-auto rounded-md border border-gray-700">
+                    <div className="grid grid-cols-3 gap-2 px-2 py-1 text-[10px] text-gray-400">
+                      <span>Time</span>
+                      <span>Type</span>
+                      <span>Value</span>
+                    </div>
+                    {selectedMetadata.events.map((event, index) => (
+                      <div
+                        key={`${event.time}-${index}`}
+                        className="grid grid-cols-3 gap-2 px-2 py-1 text-xs text-gray-200 border-t border-gray-800"
+                      >
+                        <span>{formatTime(event.time)}</span>
+                        <span>{event.type}</span>
+                        <span>{event.value}</span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-xs text-gray-400">No animation events found.</p>
+                )}
+              </div>
+            ) : (
+              <p className="text-xs text-gray-400">
+                No game animation metadata available.
+              </p>
+            )
+          ) : (
+            <p className="text-xs text-gray-400">Select an animation to view metadata.</p>
           )}
         </div>
 

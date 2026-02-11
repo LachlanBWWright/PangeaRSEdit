@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useMemo, useEffect } from "react";
 import { ModelCanvas } from "./ModelCanvas";
 // import { ModelHierarchy } from "@/components/ModelHierarchy";
 import { AnimationViewer, AnimationInfo } from "@/components/AnimationViewer";
@@ -38,6 +38,7 @@ export function ModelViewer() {
   const [animationMixer, setAnimationMixer] = useState<AnimationMixer | null>(
     null,
   );
+  const [selectedBoneName, setSelectedBoneName] = useState<string | null>(null);
   const [uploadStep, setUploadStep] = useState<
     "select-bg3d" | "select-skeleton" | "completed"
   >("select-bg3d");
@@ -149,6 +150,7 @@ export function ModelViewer() {
       // Use glTF animations from the model
       setAnimations(animationInfos);
       setAnimationMixer(mixer);
+      setSelectedBoneName(null);
 
       if (animationInfos.length > 0) {
         console.log(
@@ -161,6 +163,31 @@ export function ModelViewer() {
     },
     [],
   );
+
+  useEffect(() => {
+    if (selectedBoneName) {
+      Promise.resolve().then(() => setShowSkeleton(true));
+    }
+  }, [selectedBoneName]);
+
+  const animationMetadata = useMemo(() => {
+    if (!bg3dParsed?.skeleton?.animations) {
+      return {};
+    }
+    return bg3dParsed.skeleton.animations.reduce(
+      (acc, animation) => {
+        acc[animation.name] = {
+          eventCount: animation.numAnimEvents,
+          events: animation.events,
+        };
+        return acc;
+      },
+      {} as Record<
+        string,
+        { eventCount: number; events: { time: number; type: number; value: number }[] }
+      >,
+    );
+  }, [bg3dParsed]);
 
   // Removed unused handleTexturesExtracted and handleNodesExtracted
 
@@ -451,6 +478,8 @@ export function ModelViewer() {
               key={gltfUrl}
               animations={animations}
               animationMixer={animationMixer}
+              onBoneSelectionChange={setSelectedBoneName}
+              animationMetadata={animationMetadata}
             />
           )}
 
@@ -518,6 +547,7 @@ export function ModelViewer() {
                 wireframeMode={wireframeMode}
                 showSkeleton={showSkeleton}
                 logBonePositions={logBonePositions}
+                selectedBoneName={selectedBoneName}
               />
             </ErrorBoundary>
           ) : (

@@ -50,6 +50,7 @@ export function ModelCanvas(props: ModelCanvasProps) {
     wireframeMode,
     showSkeleton,
     logBonePositions,
+    selectedBoneName,
   } = props;
 
   // Always call hooks unconditionally (must be called in every render in same order)
@@ -102,6 +103,7 @@ export function ModelCanvas(props: ModelCanvasProps) {
             scene={gltfResult.scene}
             wireframeMode={wireframeMode}
             showSkeleton={showSkeleton}
+            selectedBoneName={selectedBoneName}
             position={modelPosition}
           />
         )}

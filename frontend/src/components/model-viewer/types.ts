@@ -25,5 +25,6 @@ export interface ModelCanvasProps {
   wireframeMode?: boolean;
   showSkeleton?: boolean;
   logBonePositions?: boolean;
+  selectedBoneName?: string | null;
   gameType?: Game;
 }
