@@ -45,7 +45,7 @@ const KEYFRAME_LIST_MAX_HEIGHT_CLASS = "max-h-56";
 const METADATA_LIST_MAX_HEIGHT_CLASS = "max-h-32";
 const MIN_HEX_BONE_NAME_LENGTH = 6;
 const KEYFRAME_INPUT_CLASS = "w-full bg-gray-700 border-gray-600 text-white";
-const KEYFRAME_TIME_EPSILON = 0.001;
+const MIN_PLAYBACK_RATIO = 0.001;
 
 type TrackProperty = "position" | "rotation" | "scale";
 
@@ -123,7 +123,7 @@ const decodeHexEncodedBoneName = (value: string) => {
   return decoded.trim().length > 0 ? decoded.trim() : null;
 };
 
-const formatBoneLabel = (value: string) =>
+export const formatBoneLabel = (value: string) =>
   decodeHexEncodedBoneName(value) ?? value;
 
 const extractBoneNames = (clip: AnimationClip) => {
@@ -325,7 +325,7 @@ export function AnimationViewer({
     const action = animationMixer.clipAction(clip);
     action.reset();
     configureActionLoop(action, animationInfo.loop ?? true);
-    if (!isNewSelection && previousRatio > KEYFRAME_TIME_EPSILON) {
+    if (!isNewSelection && previousRatio > MIN_PLAYBACK_RATIO) {
       action.time = Math.min(clip.duration, previousRatio * clip.duration);
     }
     currentActionRef.current = action;

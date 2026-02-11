@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import { AnimationClip } from "three";
 import { createElement } from "react";
-import { AnimationViewer } from "../../src/components/AnimationViewer";
+import { AnimationViewer, formatBoneLabel } from "../../src/components/AnimationViewer";
 
 describe("AnimationViewer", () => {
   it("renders empty state when no animations exist", () => {
@@ -24,5 +24,12 @@ describe("AnimationViewer", () => {
     expect(markup).toContain("Edit Animation");
     expect(markup).toContain("Keyframe Editor");
     expect(markup).toContain("Animations (1)");
+  });
+
+  it("decodes hex-encoded bone labels", () => {
+    const label = formatBoneLabel(
+      "04486561643B003A0A5FEE50003300320069006D018600300015017700140034",
+    );
+    expect(label).toBe("Head");
   });
 });
