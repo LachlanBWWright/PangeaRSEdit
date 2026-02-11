@@ -204,7 +204,7 @@ export function AnimationViewer({
     });
   };
 
-  const applyLoopSetting = (action: AnimationAction, loop: boolean) => {
+  const configureActionLoop = (action: AnimationAction, loop: boolean) => {
     action.setLoop(loop ? LoopRepeat : LoopOnce, loop ? Infinity : 0);
     action.clampWhenFinished = !loop;
   };
@@ -235,7 +235,7 @@ export function AnimationViewer({
       if (clip) {
         const action = animationMixer.clipAction(clip);
         action.reset();
-        applyLoopSetting(action, animationInfo.loop ?? true);
+        configureActionLoop(action, animationInfo.loop ?? true);
         currentActionRef.current = action;
         Promise.resolve().then(() => setHasActiveAction(true));
       }
@@ -287,7 +287,7 @@ export function AnimationViewer({
 
   const handlePlay = () => {
     if (currentActionRef.current && animationMixer) {
-      applyLoopSetting(
+      configureActionLoop(
         currentActionRef.current,
         selectedAnimationInfo?.loop ?? true,
       );
@@ -401,7 +401,7 @@ export function AnimationViewer({
       loop: nextLoop,
     }));
     if (currentActionRef.current) {
-      applyLoopSetting(currentActionRef.current, nextLoop);
+      configureActionLoop(currentActionRef.current, nextLoop);
     }
   };
 
@@ -820,9 +820,17 @@ export function AnimationViewer({
               )}
               <div className="flex flex-col gap-2 sm:flex-row">
                 <Button size="sm" className="flex-1" onClick={handleUpdateAnimation}>
-                  Save Metadata
+                  Save Changes
                 </Button>
-                <Button size="sm" className="flex-1" onClick={handleDeleteAnimation}>
+                <Button
+                  size="sm"
+                  className="flex-1"
+                  onClick={() => {
+                    if (window.confirm("Delete this animation?")) {
+                      handleDeleteAnimation();
+                    }
+                  }}
+                >
                   Delete Animation
                 </Button>
               </div>
@@ -989,7 +997,11 @@ export function AnimationViewer({
                 <Button
                   size="sm"
                   className="flex-1"
-                  onClick={handleDeleteKeyframe}
+                  onClick={() => {
+                    if (window.confirm("Delete this keyframe?")) {
+                      handleDeleteKeyframe();
+                    }
+                  }}
                   disabled={selectedKeyframeIndex === null}
                 >
                   Delete Keyframe
