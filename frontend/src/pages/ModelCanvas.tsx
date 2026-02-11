@@ -80,7 +80,7 @@ export function ModelCanvas(props: ModelCanvasProps) {
     return found;
   }, [scene, selectedBoneName]);
   const lastBoneTransformRef = useRef<[number, number, number] | null>(null);
-  const TRANSFORM_EPSILON = 0.0005;
+  const TRANSFORM_EPSILON = 0.0005; // Small threshold to avoid noisy gizmo updates.
 
   const handleBoneTransformChange = useCallback(() => {
     if (!selectedBoneObject || !onBoneTransformChange) {

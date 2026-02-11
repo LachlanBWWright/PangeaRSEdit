@@ -37,7 +37,7 @@ export interface AnimationMetadata {
 
 const DEFAULT_ANIMATION_DURATION = 1;
 const MIN_ANIMATION_DURATION = 0.016; // ~1 frame at 60fps
-const DEFAULT_LOOP_ENABLED = true;
+const ASSUMED_LOOP_VALUE = true;
 const durationErrorMessage = `Invalid duration. Must be at least ${MIN_ANIMATION_DURATION} seconds.`;
 const ANIMATION_PANEL_MAX_HEIGHT_CLASS = "max-h-[calc(100vh-12rem)]";
 const TIMELINE_MIN_WIDTH_CLASS = "min-w-[320px]";
@@ -1185,6 +1185,7 @@ export function AnimationViewer({
                     )}
                   </div>
                   <div className="grid grid-cols-3 gap-3">
+                    {/* Most transforms are 3-component vectors (x/y/z). */}
                     {selectedTrackConfig.components.map((label, index) => (
                       <Input
                         key={label}
@@ -1305,7 +1306,7 @@ export function AnimationViewer({
                 <div className="space-y-1 text-xs text-gray-400">
                   <p>Duration: {formatTime(selectedAnimationInfo.duration)}</p>
                   <p>
-                    Looping: {(selectedAnimationInfo.loop ?? DEFAULT_LOOP_ENABLED)
+                    Looping: {(selectedAnimationInfo.loop ?? ASSUMED_LOOP_VALUE)
                       ? "On"
                       : "Off"}
                   </p>
