@@ -37,13 +37,15 @@ export interface AnimationMetadata {
 
 const DEFAULT_ANIMATION_DURATION = 1;
 const MIN_ANIMATION_DURATION = 0.016; // ~1 frame at 60fps
+const durationErrorMessage = `Invalid duration. Must be at least ${MIN_ANIMATION_DURATION} seconds.`;
 const ANIMATION_PANEL_MAX_HEIGHT_CLASS = "max-h-[calc(100vh-12rem)]";
 const TIMELINE_MIN_WIDTH_CLASS = "min-w-[320px]";
 const BONE_NAME_MAX_WIDTH_CLASS = "max-w-[220px]";
 const KEYFRAME_LIST_MAX_HEIGHT_CLASS = "max-h-56";
 const METADATA_LIST_MAX_HEIGHT_CLASS = "max-h-32";
 const MIN_HEX_BONE_NAME_LENGTH = 6;
-const durationErrorMessage = `Invalid duration. Must be at least ${MIN_ANIMATION_DURATION} seconds.`;
+const KEYFRAME_INPUT_CLASS = "w-full bg-gray-700 border-gray-600 text-white";
+const KEYFRAME_TIME_EPSILON = 0.001;
 
 type TrackProperty = "position" | "rotation" | "scale";
 
@@ -97,7 +99,11 @@ const decodeHexEncodedBoneName = (value: string) => {
     return null;
   }
   const firstByte = bytes[0];
-  if (firstByte !== undefined && firstByte > 0 && firstByte < bytes.length) {
+  if (
+    firstByte !== undefined &&
+    firstByte > 0 &&
+    1 + firstByte <= bytes.length
+  ) {
     const length = firstByte;
     const slice = bytes.slice(1, 1 + length);
     const decoded = slice
@@ -319,7 +325,7 @@ export function AnimationViewer({
     const action = animationMixer.clipAction(clip);
     action.reset();
     configureActionLoop(action, animationInfo.loop ?? true);
-    if (!isNewSelection && previousRatio > 0) {
+    if (!isNewSelection && previousRatio > KEYFRAME_TIME_EPSILON) {
       action.time = Math.min(clip.duration, previousRatio * clip.duration);
     }
     currentActionRef.current = action;
@@ -1103,7 +1109,7 @@ export function AnimationViewer({
                     inputMode="decimal"
                     value={keyframeTimeInput}
                     onChange={(event) => setKeyframeTimeInput(event.target.value)}
-                    className="bg-gray-700 border-gray-600 text-white"
+                    className={KEYFRAME_INPUT_CLASS}
                   />
                 </div>
                 <div className="space-y-2">
@@ -1123,7 +1129,7 @@ export function AnimationViewer({
                             return next;
                           });
                         }}
-                        className="w-full bg-gray-700 border-gray-600 text-white"
+                        className={KEYFRAME_INPUT_CLASS}
                       />
                     ))}
                   </div>
