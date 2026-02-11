@@ -81,7 +81,11 @@ const decodeHexBoneName = (value: string) => {
   ) {
     return null;
   }
-  const bytes = normalized.match(/.{1,2}/g)?.map((pair) => Number.parseInt(pair, 16)) ?? [];
+  const matches = normalized.match(/.{1,2}/g);
+  if (!matches) {
+    return null;
+  }
+  const bytes = matches.map((pair) => Number.parseInt(pair, 16));
   if (bytes.length === 0) {
     return null;
   }
@@ -708,7 +712,7 @@ export function AnimationViewer({
           Animations ({editableAnimations.length})
         </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-4 max-h-[70vh] overflow-y-auto pr-1">
+      <CardContent className="space-y-4 max-h-[calc(100vh-12rem)] overflow-y-auto pr-1">
         {/* Animation List */}
         <div className="space-y-2">
           <label className="text-xs text-gray-300">Select Animation:</label>
@@ -1055,7 +1059,7 @@ export function AnimationViewer({
                   </Button>
                 </div>
                 {selectedKeyframes.length > 0 ? (
-                  <div className="space-y-2 max-h-40 overflow-y-auto rounded-md border border-gray-700 p-2">
+                  <div className="space-y-2 max-h-56 overflow-y-auto rounded-md border border-gray-700 p-2">
                     {selectedKeyframes.map((keyframe, index) => (
                       <Button
                         key={`${keyframe.time}-${index}`}
