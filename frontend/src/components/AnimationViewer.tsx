@@ -67,6 +67,21 @@ const parseTrackName = (name: string) => {
   };
 };
 
+const extractBoneNames = (clip: AnimationClip) => {
+  const names = new Set<string>();
+  clip.tracks.forEach((track) => {
+    const parsed = parseTrackName(track.name);
+    if (!parsed) return;
+    const hasProperty = Object.values(TRACK_PROPERTY_CONFIG).some(
+      (config) => config.trackName === parsed.property,
+    );
+    if (hasProperty) {
+      names.add(parsed.boneName);
+    }
+  });
+  return Array.from(names).sort((a, b) => a.localeCompare(b));
+};
+
 const parseDurationInputValue = (value: string, fallback: number) => {
   const parsed = Number.parseFloat(value);
   if (!Number.isFinite(parsed) || parsed < MIN_ANIMATION_DURATION) {
@@ -146,18 +161,7 @@ export function AnimationViewer({
     if (!selectedAnimationInfo) {
       return [];
     }
-    const names = new Set<string>();
-    selectedAnimationInfo.clip.tracks.forEach((track) => {
-      const parsed = parseTrackName(track.name);
-      if (!parsed) return;
-      const hasProperty = Object.values(TRACK_PROPERTY_CONFIG).some(
-        (config) => config.trackName === parsed.property,
-      );
-      if (hasProperty) {
-        names.add(parsed.boneName);
-      }
-    });
-    return Array.from(names).sort((a, b) => a.localeCompare(b));
+    return extractBoneNames(selectedAnimationInfo.clip);
   }, [selectedAnimationInfo]);
   const selectedTrackConfig = TRACK_PROPERTY_CONFIG[selectedTrackProperty];
   const selectedTrack = useMemo(() => {
@@ -388,7 +392,11 @@ export function AnimationViewer({
     setSelectedAnimation(nextIndex);
     setEditName(nextName);
     setEditDurationInput(nextDuration.toString());
-    setDurationError(parsedDuration.valid ? null : "Invalid duration input");
+    setDurationError(
+      parsedDuration.valid
+        ? null
+        : `Invalid duration. Must be at least ${MIN_ANIMATION_DURATION} seconds.`,
+    );
     if (trimmedName.length === 0) {
       autoNameCounterRef.current += 1;
     }
@@ -414,7 +422,9 @@ export function AnimationViewer({
       current.duration,
     );
     if (!parsedDuration.valid) {
-      setDurationError("Enter a valid duration.");
+      setDurationError(
+        `Invalid duration. Must be at least ${MIN_ANIMATION_DURATION} seconds.`,
+      );
       return;
     }
     const nextDuration = parsedDuration.value;
@@ -435,10 +445,11 @@ export function AnimationViewer({
             );
           }
         });
-        if (nextTimes.length === 0 && times.length > 0) {
-          nextTimes = [0];
-          nextValues = values.slice(0, stride);
-        }
+          if (nextTimes.length === 0 && times.length > 0) {
+            // Preserve the first keyframe so we don't end up with an empty track.
+            nextTimes = [0];
+            nextValues = values.slice(0, stride);
+          }
       } else {
         nextTimes = times.map((time) => time * scale);
         nextValues = values.slice();
@@ -654,18 +665,8 @@ export function AnimationViewer({
               if (resolvedAnimation) {
                 setEditName(resolvedAnimation.name);
                 setEditDurationInput(resolvedAnimation.duration.toString());
-                const boneNames = new Set<string>();
-                resolvedAnimation.clip.tracks.forEach((track) => {
-                  const parsed = parseTrackName(track.name);
-                  if (!parsed) return;
-                  const hasProperty = Object.values(
-                    TRACK_PROPERTY_CONFIG,
-                  ).some((config) => config.trackName === parsed.property);
-                  if (hasProperty) {
-                    boneNames.add(parsed.boneName);
-                  }
-                });
-                const nextBoneName = Array.from(boneNames).sort()[0] ?? "";
+                const nextBoneName =
+                  extractBoneNames(resolvedAnimation.clip)[0] ?? "";
                 setSelectedBoneName(nextBoneName);
                 setSelectedTrackProperty("position");
                 setSelectedKeyframeIndex(null);
@@ -826,7 +827,11 @@ export function AnimationViewer({
                   size="sm"
                   className="flex-1"
                   onClick={() => {
-                    if (window.confirm("Delete this animation?")) {
+                    const name = selectedAnimationInfo?.name;
+                    const message = name
+                      ? `Delete animation "${name}"?`
+                      : "Delete this animation?";
+                    if (window.confirm(message)) {
                       handleDeleteAnimation();
                     }
                   }}
@@ -998,7 +1003,17 @@ export function AnimationViewer({
                   size="sm"
                   className="flex-1"
                   onClick={() => {
-                    if (window.confirm("Delete this keyframe?")) {
+                    const keyframe =
+                      selectedKeyframeIndex !== null
+                        ? selectedKeyframes[selectedKeyframeIndex]
+                        : null;
+                    const message =
+                      keyframe && selectedKeyframeIndex !== null
+                        ? `Delete keyframe #${selectedKeyframeIndex + 1} at ${formatTime(
+                            keyframe.time,
+                          )}?`
+                        : "Delete this keyframe?";
+                    if (window.confirm(message)) {
                       handleDeleteKeyframe();
                     }
                   }}
