@@ -1014,23 +1014,26 @@ export function AnimationViewer({
                       <SelectItem value="none" className="text-white focus:bg-gray-600">
                         -- Select Bone --
                       </SelectItem>
-                      {availableBoneNames.map((bone) => (
-                        <SelectItem
-                          key={bone}
-                          value={bone}
-                          className="text-white focus:bg-gray-600"
-                          textValue={formatBoneLabel(bone)}
-                        >
-                          <span className="block text-white">
-                            {formatBoneLabel(bone)}
-                          </span>
-                          <span
-                            className={`block ${BONE_NAME_MAX_WIDTH_CLASS} truncate text-[10px] text-gray-400`}
+                      {availableBoneNames.map((bone) => {
+                        const formattedBone = formatBoneLabel(bone);
+                        return (
+                          <SelectItem
+                            key={bone}
+                            value={bone}
+                            className="text-white focus:bg-gray-600"
+                            textValue={formattedBone}
                           >
-                            {bone}
-                          </span>
-                        </SelectItem>
-                      ))}
+                            <span className="block text-white">
+                              {formattedBone}
+                            </span>
+                            <span
+                              className={`block ${BONE_NAME_MAX_WIDTH_CLASS} truncate text-[10px] text-gray-400`}
+                            >
+                              {bone}
+                            </span>
+                          </SelectItem>
+                        );
+                      })}
                     </SelectContent>
                   </Select>
                 </div>
@@ -1300,7 +1303,9 @@ export function AnimationViewer({
               <div className="space-y-2">
                 <div className="text-xs text-gray-400 space-y-1">
                   <p>Duration: {formatTime(selectedAnimationInfo.duration)}</p>
-                  <p>Looping: {selectedAnimationInfo.loop ?? true ? "On" : "Off"}</p>
+                  <p>
+                    Looping: {(selectedAnimationInfo.loop ?? true) ? "On" : "Off"}
+                  </p>
                   <p>Bones: {timelineRows.length}</p>
                   <p>Tracks: {selectedAnimationInfo.clip.tracks.length}</p>
                   <p>Keyframes: {totalKeyframes}</p>
