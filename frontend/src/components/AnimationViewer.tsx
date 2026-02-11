@@ -162,6 +162,7 @@ const reindexAnimations = (items: AnimationInfo[]) =>
   items.map((anim, index) => ({
     ...anim,
     index,
+    loop: anim.loop ?? FALLBACK_LOOP_VALUE,
   }));
 
 interface AnimationViewerProps {
@@ -1193,7 +1194,7 @@ export function AnimationViewer({
                     )}
                   </div>
                   <div className={`grid ${valueGridClass} gap-3`}>
-                    {/* Most transforms are 3-component vectors (x/y/z). */}
+                    {/* Layout adapts to the number of track components. */}
                     {selectedTrackConfig.components.map((label, index) => (
                       <Input
                         key={label}
@@ -1313,11 +1314,7 @@ export function AnimationViewer({
               <div className="space-y-2">
                 <div className="space-y-1 text-xs text-gray-400">
                   <p>Duration: {formatTime(selectedAnimationInfo.duration)}</p>
-                  <p>
-                    Looping: {(selectedAnimationInfo.loop ?? FALLBACK_LOOP_VALUE)
-                      ? "On"
-                      : "Off"}
-                  </p>
+                  <p>Looping: {selectedAnimationInfo.loop ? "On" : "Off"}</p>
                   <p>Bones: {timelineRows.length}</p>
                   <p>Tracks: {selectedAnimationInfo.clip.tracks.length}</p>
                   <p>Keyframes: {totalKeyframes}</p>
