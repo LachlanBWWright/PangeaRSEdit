@@ -37,6 +37,7 @@ export interface AnimationMetadata {
 
 const DEFAULT_ANIMATION_DURATION = 1;
 const MIN_ANIMATION_DURATION = 0.016; // ~1 frame at 60fps
+const DEFAULT_LOOP_ENABLED = true;
 const durationErrorMessage = `Invalid duration. Must be at least ${MIN_ANIMATION_DURATION} seconds.`;
 const ANIMATION_PANEL_MAX_HEIGHT_CLASS = "max-h-[calc(100vh-12rem)]";
 const TIMELINE_MIN_WIDTH_CLASS = "min-w-[320px]";
@@ -1023,9 +1024,9 @@ export function AnimationViewer({
                             className="text-white focus:bg-gray-600"
                             textValue={formattedBone}
                           >
-                            <span className="block text-white">
-                              {formattedBone}
-                            </span>
+                          <span className="block">
+                            {formattedBone}
+                          </span>
                             <span
                               className={`block ${BONE_NAME_MAX_WIDTH_CLASS} truncate text-[10px] text-gray-400`}
                             >
@@ -1304,7 +1305,7 @@ export function AnimationViewer({
                 <div className="space-y-1 text-xs text-gray-400">
                   <p>Duration: {formatTime(selectedAnimationInfo.duration)}</p>
                   <p>
-                    Looping: {(selectedAnimationInfo.loop ?? true) ? "On" : "Off"}
+                    Looping: {(selectedAnimationInfo.loop ?? DEFAULT_LOOP_ENABLED) ? "On" : "Off"}
                   </p>
                   <p>Bones: {timelineRows.length}</p>
                   <p>Tracks: {selectedAnimationInfo.clip.tracks.length}</p>
