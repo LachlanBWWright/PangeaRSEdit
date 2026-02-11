@@ -37,6 +37,10 @@ export interface AnimationMetadata {
 
 const DEFAULT_ANIMATION_DURATION = 1;
 const MIN_ANIMATION_DURATION = 0.016; // ~1 frame at 60fps
+const ANIMATION_PANEL_MAX_HEIGHT_CLASS = "max-h-[calc(100vh-12rem)]";
+const TIMELINE_MIN_WIDTH_CLASS = "min-w-[320px]";
+const BONE_NAME_MAX_WIDTH_CLASS = "max-w-[220px]";
+const durationErrorMessage = `Invalid duration. Must be at least ${MIN_ANIMATION_DURATION} seconds.`;
 
 type TrackProperty = "position" | "rotation" | "scale";
 
@@ -447,9 +451,7 @@ export function AnimationViewer({
       DEFAULT_ANIMATION_DURATION,
     );
     if (!parsedDuration.valid) {
-      setDurationError(
-        `Invalid duration. Must be at least ${MIN_ANIMATION_DURATION} seconds.`,
-      );
+      setDurationError(durationErrorMessage);
       return;
     }
     const nextDuration = parsedDuration.value;
@@ -498,9 +500,7 @@ export function AnimationViewer({
       current.duration,
     );
     if (!parsedDuration.valid) {
-      setDurationError(
-        `Invalid duration. Must be at least ${MIN_ANIMATION_DURATION} seconds.`,
-      );
+      setDurationError(durationErrorMessage);
       return;
     }
     const nextDuration = parsedDuration.value;
@@ -712,7 +712,9 @@ export function AnimationViewer({
           Animations ({editableAnimations.length})
         </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-4 max-h-[calc(100vh-12rem)] overflow-y-auto pr-1">
+      <CardContent
+        className={`space-y-4 ${ANIMATION_PANEL_MAX_HEIGHT_CLASS} overflow-y-auto pr-1`}
+      >
         {/* Animation List */}
         <div className="space-y-2">
           <label className="text-xs text-gray-300">Select Animation:</label>
@@ -957,7 +959,10 @@ export function AnimationViewer({
                           value={bone}
                           className="text-white focus:bg-gray-600"
                         >
-                          <span className="block max-w-[220px] truncate" title={bone}>
+                          <span
+                            className={`block ${BONE_NAME_MAX_WIDTH_CLASS} truncate`}
+                            title={bone}
+                          >
                             {formatBoneLabel(bone)}
                           </span>
                         </SelectItem>
@@ -1008,7 +1013,9 @@ export function AnimationViewer({
                   <span>{formatTime(timelineDuration)}</span>
                 </div>
                 <div className="overflow-x-auto">
-                  <div className="relative h-10 min-w-[320px] rounded-md border border-gray-700 bg-gray-800">
+                  <div
+                    className={`relative h-10 ${TIMELINE_MIN_WIDTH_CLASS} rounded-md border border-gray-700 bg-gray-800`}
+                  >
                     <div
                       className="absolute top-0 h-full w-px bg-blue-400"
                       style={{
