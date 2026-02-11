@@ -62,7 +62,6 @@ function EnhancedModelMeshComponent({
 
   useEffect(() => {
     if (!scene) return;
-
     function hasDispose(x: unknown): x is { dispose: () => void } {
       return (
         typeof x === "object" &&

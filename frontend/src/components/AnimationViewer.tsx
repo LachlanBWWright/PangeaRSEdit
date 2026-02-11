@@ -81,6 +81,11 @@ const parseTrackName = (name: string) => {
   };
 };
 
+/**
+ * Decode hex-encoded bone names (Pascal-style length prefix or null-terminated).
+ * Some skeletons store bone names in fixed-width hex strings; this tries the
+ * length-prefixed format first, then falls back to null-terminated ASCII.
+ */
 const decodeHexEncodedBoneName = (value: string) => {
   const normalized = value.replace(/\s+/g, "");
   if (
@@ -325,7 +330,7 @@ export function AnimationViewer({
     const action = animationMixer.clipAction(clip);
     action.reset();
     configureActionLoop(action, animationInfo.loop ?? true);
-    if (!isNewSelection && previousRatio > MIN_PLAYBACK_RATIO) {
+    if (!isNewSelection && previousRatio >= MIN_PLAYBACK_RATIO) {
       action.time = Math.min(clip.duration, previousRatio * clip.duration);
     }
     currentActionRef.current = action;
