@@ -1060,8 +1060,11 @@ export function AnimationViewer({
                       <Button
                         key={`${keyframe.time}-${index}`}
                         size="sm"
-                        className="w-full justify-between"
-                        selected={selectedKeyframeIndex === index}
+                        className={`w-full justify-between ${
+                          selectedKeyframeIndex === index
+                            ? "bg-blue-700 hover:bg-blue-700"
+                            : ""
+                        }`}
                         onClick={() => handleSelectKeyframe(index)}
                       >
                         <span>#{index + 1}</span>
@@ -1103,7 +1106,7 @@ export function AnimationViewer({
                             return next;
                           });
                         }}
-                        className="bg-gray-700 border-gray-600 text-white min-w-[5rem] w-full"
+                        className="bg-gray-700 border-gray-600 text-white w-full"
                       />
                     ))}
                   </div>
