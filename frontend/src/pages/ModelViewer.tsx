@@ -151,7 +151,11 @@ export function ModelViewer() {
   const handleAnimationsReady = useCallback(
     (animationInfos: AnimationInfo[], mixer: AnimationMixer | null) => {
       // Use glTF animations from the model
-      setAnimations(animationInfos);
+      const normalizedAnimations = animationInfos.map((animation) => ({
+        ...animation,
+        loop: animation.loop ?? true,
+      }));
+      setAnimations(normalizedAnimations);
       setAnimationMixer(mixer);
       setSelectedBoneName(null);
       setBoneTransform(null);
