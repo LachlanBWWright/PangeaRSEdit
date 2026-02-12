@@ -19,6 +19,7 @@ export function getFenceImagePath(
       return `assets/bugdom/fences/${2000 + fenceType}.jpg`;
 
     case Game.BUGDOM_2: {
+      // Bugdom 1 has 9 fence textures (2000-2008), reuse them for Bugdom 2.
       const fallbackIndex = fenceType % 9;
       return `assets/bugdom/fences/${2000 + fallbackIndex}.jpg`;
     }

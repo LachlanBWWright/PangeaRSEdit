@@ -666,9 +666,10 @@ export function AnimationViewer({
     combined.sort((a, b) => a.time - b.time);
     const nextTimes = combined.map((entry) => entry.time);
     const nextValues = combined.flatMap((entry) => entry.values);
+    const TIME_EPSILON = 0.0001;
     const updatedIndex = combined.findIndex(
       (entry) =>
-        entry.time === timeValue &&
+        Math.abs(entry.time - timeValue) < TIME_EPSILON &&
         entry.values.every((value, offset) => value === parsedValues[offset]),
     );
     const nextIndex =
