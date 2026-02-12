@@ -492,6 +492,7 @@ export function AnimationViewer({
     setDurationError(null);
   };
 
+  // fromSelection: true copies tracks from current animation; false creates empty tracks.
   const handleCreateAnimation = (fromSelection: boolean) => {
     const trimmedName = newAnimationName.trim();
     const nextAutoIndex = autoNameCounterRef.current;
