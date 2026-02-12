@@ -58,6 +58,7 @@ export function MiniThreeView({
         actionRef.current = null;
         return;
       }
+      // Use case-insensitive match to handle capitalization differences in assets.
       const target =
         (defaultAnimationName
           ? animationInfos.find(
@@ -66,7 +67,6 @@ export function MiniThreeView({
                 defaultAnimationName.toLowerCase(),
             )
           : undefined) ?? animationInfos[0];
-      // Use case-insensitive match to handle capitalization differences in assets.
       if (!target) {
         return;
       }
