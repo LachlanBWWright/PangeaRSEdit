@@ -112,7 +112,7 @@ export function ModelCanvas(props: ModelCanvasProps) {
     if (props.gameType === Game.BUGDOM && gltfResult?.scene) {
       // Manual offset in Bugdom 1 world units to align mascot feet with the ground plane.
       const BUGDOM1_GROUND_OFFSET = -60;
-      if (import.meta.env?.DEV) {
+      if (import.meta.env.DEV) {
         console.info(
           "Bugdom 1 model offset (manual):",
           BUGDOM1_GROUND_OFFSET,

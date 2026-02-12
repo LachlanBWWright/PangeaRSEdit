@@ -670,6 +670,7 @@ export function AnimationViewer({
     const updatedIndex = combined.findIndex(
       (entry) =>
         Math.abs(entry.time - timeValue) < KEYFRAME_TIME_EPSILON &&
+        entry.values.length === parsedValues.length &&
         entry.values.every((value, offset) => value === parsedValues[offset]),
     );
     const nextIndex =
