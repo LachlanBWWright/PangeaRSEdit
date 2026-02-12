@@ -110,8 +110,8 @@ export function ModelCanvas(props: ModelCanvasProps) {
   // Shift Bugdom 1 model down by half its bounding box height so it appears grounded
   const modelPosition = useMemo((): [number, number, number] => {
     if (props.gameType === Game.BUGDOM && gltfResult?.scene) {
-      // Manual offset to align Bugdom 1 mascot feet with the ground plane.
-      const BUGDOM1_GROUND_OFFSET = -60;
+      // Manual offset in game units to align Bugdom 1 mascot feet with the ground plane.
+      const BUGDOM1_GROUND_OFFSET = -60; // Replaces bbox/2 offset for better footing alignment.
       if (import.meta.env?.DEV) {
         console.info(
           "Bugdom 1 model offset (manual):",
