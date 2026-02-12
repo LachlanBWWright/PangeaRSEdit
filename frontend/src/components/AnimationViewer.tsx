@@ -1183,12 +1183,18 @@ export function AnimationViewer({
                   <label className="text-xs text-gray-300">Values</label>
                   {boneTransform && selectedTrackProperty === "position" && (
                     <div className="space-y-1 text-[10px] text-gray-400">
-                      {boneTransform.map((val, index) => (
+                      {boneTransform.map((val, index) => {
+                        const fallbackLabels = ["X", "Y", "Z", "W"];
+                        const label =
+                          selectedTrackConfig.components[index] ??
+                          fallbackLabels[index] ??
+                          `Component ${index + 1}`;
+                        return (
                         <div key={`gizmo-${index}`}>
-                          Gizmo {selectedTrackConfig.components[index] ?? index + 1}:{" "}
-                          {val.toFixed(2)}
+                          Gizmo {label}: {val.toFixed(2)}
                         </div>
-                      ))}
+                        );
+                      })}
                       <Button size="sm" onClick={handleUseBoneTransform}>
                         Use Gizmo Values
                       </Button>
@@ -1270,9 +1276,13 @@ export function AnimationViewer({
                               onClick={() => {
                                 setSelectedBoneName(row.boneName);
                                 setSelectedTrackProperty("position");
-                                setSelectedKeyframeIndex((prev) =>
-                                  prev !== null && prev < row.times.length ? prev : null,
-                                );
+                                setSelectedKeyframeIndex((prev) => {
+                                  if (row.times.length === 0) {
+                                    return null;
+                                  }
+                                  const nextIndex = prev ?? 0;
+                                  return Math.min(nextIndex, row.times.length - 1);
+                                });
                               }}
                               className="w-40 shrink-0 text-left text-xs text-gray-200 hover:text-white"
                               title={row.boneName}
