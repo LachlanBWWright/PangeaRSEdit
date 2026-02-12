@@ -48,6 +48,7 @@ const KEYFRAME_TIME_INPUT_CLASS = "w-full h-11 bg-gray-700 border-gray-600 text-
 const KEYFRAME_VALUE_INPUT_CLASS =
   "w-full min-w-[7rem] h-11 bg-gray-700 border-gray-600 text-white text-base";
 const TIMELINE_TABLE_MIN_WIDTH_CLASS = "min-w-[720px]";
+const KEYFRAME_TIME_EPSILON = 0.0001;
 const MIN_PLAYBACK_RATIO = 0.001;
 
 type TrackProperty = "position" | "rotation" | "scale";
@@ -666,10 +667,9 @@ export function AnimationViewer({
     combined.sort((a, b) => a.time - b.time);
     const nextTimes = combined.map((entry) => entry.time);
     const nextValues = combined.flatMap((entry) => entry.values);
-    const TIME_EPSILON = 0.0001;
     const updatedIndex = combined.findIndex(
       (entry) =>
-        Math.abs(entry.time - timeValue) < TIME_EPSILON &&
+        Math.abs(entry.time - timeValue) < KEYFRAME_TIME_EPSILON &&
         entry.values.every((value, offset) => value === parsedValues[offset]),
     );
     const nextIndex =
