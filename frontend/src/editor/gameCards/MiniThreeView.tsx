@@ -59,13 +59,16 @@ export function MiniThreeView({
         return;
       }
       const target =
-        (defaultAnimationName &&
-          animationInfos.find(
-            (anim) =>
-              anim.name.toLowerCase() === defaultAnimationName.toLowerCase(),
-          )) ||
-        animationInfos[0];
-      if (!target) return;
+        (defaultAnimationName
+          ? animationInfos.find(
+              (anim) =>
+                anim.name.toLowerCase() ===
+                defaultAnimationName.toLowerCase(),
+            )
+          : undefined) ?? animationInfos[0];
+      if (!target) {
+        return;
+      }
       const action = mixer.clipAction(target.clip);
       action.reset();
       action.play();

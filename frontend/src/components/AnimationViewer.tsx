@@ -1217,6 +1217,7 @@ export function AnimationViewer({
                     </div>
                   )}
                   <div className="space-y-3">
+                    {/* Stack components vertically for clearer per-axis editing. */}
                     {selectedTrackConfig.components.map((label, index) => (
                       <Input
                         key={label}
