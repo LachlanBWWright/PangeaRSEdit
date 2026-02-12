@@ -8,6 +8,11 @@ import { TextureManager } from "@/components/TextureManager";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { ModelUploadPanel } from "./ModelViewer/ModelUploadPanel";
 import { VisualizationOptions } from "./ModelViewer/VisualizationOptions";
+import {
+  ResizableHandle,
+  ResizablePanel,
+  ResizablePanelGroup,
+} from "@/components/ui/resizable";
 import { fromPromise } from "@/types/result";
 
 import { SkeletonConversionPanel } from "@/components/SkeletonConversionPanel";
@@ -322,9 +327,10 @@ export function ModelViewer() {
 
   return (
     <>
-      <div className="h-full flex gap-4 p-4 bg-gray-900 text-white">
-        {/* Left sidebar - Controls */}
-        <div className="flex flex-col w-80 space-y-4 px-2 overflow-y-auto">
+      <div className="h-full p-4 bg-gray-900 text-white">
+        <ResizablePanelGroup orientation="horizontal" className="h-full w-full">
+          <ResizablePanel defaultSize={28} minSize={20} className="pr-3">
+            <div className="flex h-full flex-col space-y-4 px-2 overflow-y-auto">
           <ModelUploadPanel
             gltfUrl={gltfUrl}
             useGameSelector={useGameSelector}
@@ -545,36 +551,42 @@ export function ModelViewer() {
             description="Upload a .glb file to convert and download as .bg3d."
             conversionType="glb-to-bg3d"
           />
-        </div>
-
-        {/* Main viewport - 3D Scene */}
-        <div className="flex-1 bg-gray-800 rounded-lg overflow-hidden min-h-0">
-          {gltfUrl ? (
-            <ErrorBoundary>
-              <ModelCanvas
-                gltfUrl={gltfUrl}
-                setModelNodes={setModelNodes}
-                onSceneReady={setScene}
-                onAnimationsReady={handleAnimationsReady}
-                wireframeMode={wireframeMode}
-                showSkeleton={wireframeMode}
-                logBonePositions={logBonePositions}
-                selectedBoneName={selectedBoneName}
-                onBoneTransformChange={handleBoneTransformChange}
-              />
-            </ErrorBoundary>
-          ) : (
-            <div className="flex items-center justify-center h-full text-gray-400">
-              <div className="text-center">
-                <div className="w-24 h-24 mx-auto mb-4 rounded-full bg-gray-700 flex items-center justify-center">
-                  <Upload className="w-12 h-12" />
-                </div>
-                <h3 className="text-xl font-semibold mb-2">No Model Loaded</h3>
-                <p>Upload a BG3D file to start viewing 3D models</p>
-              </div>
             </div>
-          )}
-        </div>
+          </ResizablePanel>
+          <ResizableHandle withHandle />
+          <ResizablePanel defaultSize={72} minSize={35} className="min-h-0">
+            <div className="h-full bg-gray-800 rounded-lg overflow-hidden min-h-0">
+              {/* Main viewport - 3D Scene */}
+              {gltfUrl ? (
+                <ErrorBoundary>
+                  <ModelCanvas
+                    gltfUrl={gltfUrl}
+                    setModelNodes={setModelNodes}
+                    onSceneReady={setScene}
+                    onAnimationsReady={handleAnimationsReady}
+                    wireframeMode={wireframeMode}
+                    showSkeleton={wireframeMode}
+                    logBonePositions={logBonePositions}
+                    selectedBoneName={selectedBoneName}
+                    onBoneTransformChange={handleBoneTransformChange}
+                  />
+                </ErrorBoundary>
+              ) : (
+                <div className="flex items-center justify-center h-full text-gray-400">
+                  <div className="text-center">
+                    <div className="w-24 h-24 mx-auto mb-4 rounded-full bg-gray-700 flex items-center justify-center">
+                      <Upload className="w-12 h-12" />
+                    </div>
+                    <h3 className="text-xl font-semibold mb-2">
+                      No Model Loaded
+                    </h3>
+                    <p>Upload a BG3D file to start viewing 3D models</p>
+                  </div>
+                </div>
+              )}
+            </div>
+          </ResizablePanel>
+        </ResizablePanelGroup>
       </div>
       <Toaster />
     </>

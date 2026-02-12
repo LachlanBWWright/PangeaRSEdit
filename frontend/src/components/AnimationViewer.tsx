@@ -273,13 +273,6 @@ export function AnimationViewer({
     }));
   }, [selectedTrack, selectedTrackConfig.components.length]);
 
-  const valueGridClass = useMemo(() => {
-    const count = selectedTrackConfig.components.length;
-    if (count === 1) return "grid-cols-1";
-    if (count === 2) return "grid-cols-2";
-    if (count >= 4) return "grid-cols-4";
-    return "grid-cols-3";
-  }, [selectedTrackConfig.components.length]);
 
   const timelineRows = useMemo(() => {
     if (!selectedAnimationInfo) {
@@ -499,7 +492,7 @@ export function AnimationViewer({
     setDurationError(null);
   };
 
-  const handleCreateAnimation = () => {
+  const handleCreateAnimation = (fromSelection: boolean) => {
     const trimmedName = newAnimationName.trim();
     const nextAutoIndex = autoNameCounterRef.current;
     const nextName =
@@ -515,9 +508,10 @@ export function AnimationViewer({
       return;
     }
     const nextDuration = parsedDuration.value;
-    const clip = selectedAnimationInfo?.clip
-      ? selectedAnimationInfo.clip.clone()
-      : new AnimationClip(nextName, nextDuration, []);
+    const clip =
+      fromSelection && selectedAnimationInfo?.clip
+        ? selectedAnimationInfo.clip.clone()
+        : new AnimationClip(nextName, nextDuration, []);
     clip.name = nextName;
     clip.duration = nextDuration;
     const nextIndex = editableAnimations.length;
@@ -671,6 +665,15 @@ export function AnimationViewer({
     combined.sort((a, b) => a.time - b.time);
     const nextTimes = combined.map((entry) => entry.time);
     const nextValues = combined.flatMap((entry) => entry.values);
+    const updatedIndex = combined.findIndex(
+      (entry) =>
+        entry.time === timeValue &&
+        entry.values.every((value, offset) => value === parsedValues[offset]),
+    );
+    const nextIndex =
+      updatedIndex >= 0
+        ? updatedIndex
+        : selectedKeyframeIndex ?? combined.length - 1;
     const nextTrack = currentTrack
       ? currentTrack.clone()
       : selectedTrackConfig.trackName === "quaternion"
@@ -690,6 +693,18 @@ export function AnimationViewer({
       ...anim,
       clip: nextClip,
     }));
+    const selectedEntry = combined[nextIndex];
+    if (selectedEntry) {
+      setSelectedKeyframeIndex(nextIndex);
+      setKeyframeTimeInput(selectedEntry.time.toString());
+      setKeyframeValueInputs(
+        selectedEntry.values.map((value) => value.toString()),
+      );
+      if (currentActionRef.current?.paused) {
+        currentActionRef.current.time = selectedEntry.time;
+        setCurrentTime(selectedEntry.time);
+      }
+    }
     setKeyframeError(null);
   };
 
@@ -1200,7 +1215,7 @@ export function AnimationViewer({
                       </Button>
                     </div>
                   )}
-                  <div className={`grid ${valueGridClass} gap-3`}>
+                  <div className="space-y-3">
                     {selectedTrackConfig.components.map((label, index) => (
                       <Input
                         key={label}
@@ -1389,22 +1404,26 @@ export function AnimationViewer({
               }
               className="bg-gray-700 border-gray-600 text-white"
             />
-            <Button
-              size="sm"
-              className="w-full text-white"
-              onClick={handleCreateAnimation}
-            >
-              Create Animation
-            </Button>
-            {selectedAnimationInfo ? (
-              <p className="text-xs text-gray-400">
-                New animation will copy tracks from "{selectedAnimationInfo.name}"
-              </p>
-            ) : (
-              <p className="text-xs text-gray-400">
-                New animation will be empty until edited.
-              </p>
-            )}
+            <div className="space-y-2">
+              <Button
+                size="sm"
+                className="w-full text-white"
+                onClick={() => handleCreateAnimation(true)}
+              >
+                Create Animation (Copy Tracks)
+              </Button>
+              <Button
+                size="sm"
+                variant="secondary"
+                className="w-full"
+                onClick={() => handleCreateAnimation(false)}
+              >
+                Create Empty Animation
+              </Button>
+            </div>
+            <p className="text-xs text-gray-400">
+              Create a new animation from the current model or start with empty tracks.
+            </p>
           </div>
         </div>
       </CardContent>

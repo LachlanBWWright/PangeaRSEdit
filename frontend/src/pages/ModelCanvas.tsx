@@ -7,7 +7,7 @@ import { useModelHierarchy } from "@/components/model-viewer/useModelHierarchy";
 import { useModelAnimations } from "@/components/model-viewer/useModelAnimations";
 import { AnimationUpdater } from "@/components/model-viewer/AnimationUpdater";
 import { Game } from "@/data/globals/globals";
-import { Box3, Vector3, Object3D } from "three";
+import { Object3D } from "three";
 
 export function ModelCanvas(props: ModelCanvasProps) {
   // Memoize camera config to prevent Canvas re-initialization on every render
@@ -110,10 +110,9 @@ export function ModelCanvas(props: ModelCanvasProps) {
   // Shift Bugdom 1 model down by half its bounding box height so it appears grounded
   const modelPosition = useMemo((): [number, number, number] => {
     if (props.gameType === Game.BUGDOM && gltfResult?.scene) {
-      const box = new Box3().setFromObject(gltfResult.scene);
-      const size = new Vector3();
-      box.getSize(size);
-      return [0, -size.y / 2, 0];
+      const BUGDOM1_GROUND_OFFSET = -60;
+      console.log("Bugdom 1 model offset (manual):", BUGDOM1_GROUND_OFFSET);
+      return [0, BUGDOM1_GROUND_OFFSET, 0];
     }
     return [0, 0, 0];
   }, [gltfResult, props.gameType]);
