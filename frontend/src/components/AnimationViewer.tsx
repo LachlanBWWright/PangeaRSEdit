@@ -39,7 +39,6 @@ const DEFAULT_ANIMATION_DURATION = 1;
 const MIN_ANIMATION_DURATION = 0.016; // ~1 frame at 60fps
 const FALLBACK_LOOP_VALUE = true; // Animations default to looping in game playback.
 const durationErrorMessage = `Invalid duration. Must be at least ${MIN_ANIMATION_DURATION} seconds.`;
-const ANIMATION_PANEL_MAX_HEIGHT_CLASS = "max-h-[calc(100vh-12rem)]";
 const TIMELINE_MIN_WIDTH_CLASS = "min-w-[320px]";
 const BONE_NAME_MAX_WIDTH_CLASS = "max-w-[220px]";
 const KEYFRAME_LIST_MAX_HEIGHT_CLASS = "max-h-56";
@@ -552,7 +551,9 @@ export function AnimationViewer({
     }
   };
 
-  const handleApplyDuration = () => {
+  const handleApplyDuration = (
+    nextMode: "scale" | "truncate" = durationMode,
+  ) => {
     if (selectedAnimation === null) return;
     const current = editableAnimations[selectedAnimation];
     if (!current) return;
@@ -573,7 +574,7 @@ export function AnimationViewer({
       const stride = track.getValueSize();
       let nextTimes: number[] = [];
       let nextValues: number[] = [];
-      if (durationMode === "truncate") {
+      if (nextMode === "truncate") {
         times.forEach((time, index) => {
           if (time <= nextDuration) {
             nextTimes.push(time);
@@ -614,6 +615,12 @@ export function AnimationViewer({
     setKeyframeTimeInput(keyframe.time.toString());
     setKeyframeValueInputs(keyframe.values.map((value) => value.toString()));
     setKeyframeError(null);
+    if (currentActionRef.current) {
+      currentActionRef.current.time = keyframe.time;
+      currentActionRef.current.paused = true;
+      setCurrentTime(keyframe.time);
+      setPlayingState(false);
+    }
   };
 
   const handleApplyKeyframe = () => {
@@ -783,9 +790,7 @@ export function AnimationViewer({
           Animations ({editableAnimations.length})
         </CardTitle>
       </CardHeader>
-      <CardContent
-        className={`space-y-4 ${ANIMATION_PANEL_MAX_HEIGHT_CLASS} overflow-y-auto pr-1`}
-      >
+      <CardContent className="space-y-4">
         {/* Animation List */}
         <div className="space-y-2">
           <label className="text-xs text-gray-300">Select Animation:</label>
@@ -942,31 +947,28 @@ export function AnimationViewer({
                 onChange={(event) => setEditDurationInput(event.target.value)}
                 className="bg-gray-700 border-gray-600 text-white"
               />
-              <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
-                <div className="flex-1 space-y-2">
-                  <label className="text-xs text-gray-300">Retiming mode</label>
-                  <Select
-                    value={durationMode}
-                    onValueChange={(value) =>
-                      setDurationMode(value === "truncate" ? "truncate" : "scale")
-                    }
-                  >
-                    <SelectTrigger className="bg-gray-700 border-gray-600 text-white">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent className="bg-gray-700 border-gray-600 text-white">
-                      <SelectItem value="scale" className="text-white focus:bg-gray-600">
-                        Scale (speed up/slow down)
-                      </SelectItem>
-                      <SelectItem value="truncate" className="text-white focus:bg-gray-600">
-                        Truncate extra frames
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <Button size="sm" onClick={handleApplyDuration} className="text-white">
-                  Apply Duration
-                </Button>
+              <div className="space-y-2">
+                <label className="text-xs text-gray-300">Retiming mode</label>
+                <Select
+                  value={durationMode}
+                  onValueChange={(value) => {
+                    const nextMode = value === "truncate" ? "truncate" : "scale";
+                    setDurationMode(nextMode);
+                    handleApplyDuration(nextMode);
+                  }}
+                >
+                  <SelectTrigger className="bg-gray-700 border-gray-600 text-white">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="bg-gray-700 border-gray-600 text-white">
+                    <SelectItem value="scale" className="text-white focus:bg-gray-600">
+                      Scale (speed up/slow down)
+                    </SelectItem>
+                    <SelectItem value="truncate" className="text-white focus:bg-gray-600">
+                      Truncate extra frames
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
               {durationError && (
                 <p className="text-xs text-red-300">{durationError}</p>
@@ -1166,7 +1168,7 @@ export function AnimationViewer({
                   </p>
                 )}
               </div>
-              <div className="grid gap-2 sm:grid-cols-2">
+              <div className="space-y-4">
                 <div className="space-y-2">
                   <label className="text-xs text-gray-300">Time (seconds)</label>
                   <Input
@@ -1178,19 +1180,20 @@ export function AnimationViewer({
                   />
                 </div>
                 <div className="space-y-2">
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <label className="text-xs text-gray-300">Values</label>
-                    {boneTransform && selectedTrackProperty === "position" && (
-                      <div className="flex flex-wrap items-center gap-2 text-[10px] text-gray-400">
-                        <span>
-                          Gizmo: {boneTransform.map((val) => val.toFixed(2)).join(", ")}
-                        </span>
-                        <Button size="sm" onClick={handleUseBoneTransform}>
-                          Use Gizmo Values
-                        </Button>
-                      </div>
-                    )}
-                  </div>
+                  <label className="text-xs text-gray-300">Values</label>
+                  {boneTransform && selectedTrackProperty === "position" && (
+                    <div className="space-y-1 text-[10px] text-gray-400">
+                      {boneTransform.map((val, index) => (
+                        <div key={`gizmo-${index}`}>
+                          Gizmo {selectedTrackConfig.components[index] ?? index + 1}:{" "}
+                          {val.toFixed(2)}
+                        </div>
+                      ))}
+                      <Button size="sm" onClick={handleUseBoneTransform}>
+                        Use Gizmo Values
+                      </Button>
+                    </div>
+                  )}
                   <div className={`grid ${valueGridClass} gap-3`}>
                     {selectedTrackConfig.components.map((label, index) => (
                       <Input
@@ -1264,7 +1267,13 @@ export function AnimationViewer({
                           >
                             <button
                               type="button"
-                              onClick={() => setSelectedBoneName(row.boneName)}
+                              onClick={() => {
+                                setSelectedBoneName(row.boneName);
+                                setSelectedTrackProperty("position");
+                                setSelectedKeyframeIndex((prev) =>
+                                  prev !== null && prev < row.times.length ? prev : null,
+                                );
+                              }}
                               className="w-40 shrink-0 text-left text-xs text-gray-200 hover:text-white"
                               title={row.boneName}
                             >

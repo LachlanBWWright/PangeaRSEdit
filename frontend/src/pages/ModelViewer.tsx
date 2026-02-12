@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, useMemo, useEffect } from "react";
+import { useState, useRef, useCallback, useMemo } from "react";
 import { ModelCanvas } from "./ModelCanvas";
 // import { ModelHierarchy } from "@/components/ModelHierarchy";
 import { AnimationViewer, AnimationInfo } from "@/components/AnimationViewer";
@@ -48,7 +48,6 @@ export function ModelViewer() {
   const [pendingBg3dFile, setPendingBg3dFile] = useState<File | null>(null);
   const [useGameSelector, setUseGameSelector] = useState<boolean>(true); // New state for UI mode
   const [wireframeMode, setWireframeMode] = useState<boolean>(false);
-  const [showSkeleton, setShowSkeleton] = useState<boolean>(false);
   const [logBonePositions, setLogBonePositions] = useState<boolean>(false);
 
   const [, setScene] = useState<Group | undefined>(undefined);
@@ -171,12 +170,6 @@ export function ModelViewer() {
     },
     [],
   );
-
-  useEffect(() => {
-    if (selectedBoneName) {
-      Promise.resolve().then(() => setShowSkeleton(true));
-    }
-  }, [selectedBoneName]);
 
   const handleBoneTransformChange = useCallback(
     (position: [number, number, number]) => {
@@ -485,8 +478,6 @@ export function ModelViewer() {
             <VisualizationOptions
               wireframeMode={wireframeMode}
               setWireframeMode={setWireframeMode}
-              showSkeleton={showSkeleton}
-              setShowSkeleton={setShowSkeleton}
               logBonePositions={logBonePositions}
               setLogBonePositions={setLogBonePositions}
             />
@@ -566,7 +557,7 @@ export function ModelViewer() {
                 onSceneReady={setScene}
                 onAnimationsReady={handleAnimationsReady}
                 wireframeMode={wireframeMode}
-                showSkeleton={showSkeleton}
+                showSkeleton={wireframeMode}
                 logBonePositions={logBonePositions}
                 selectedBoneName={selectedBoneName}
                 onBoneTransformChange={handleBoneTransformChange}
