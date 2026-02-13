@@ -17,7 +17,7 @@ export function ModelCanvas(props: ModelCanvasProps) {
     // Raised camera for Bugdom 1 (keep more overhead view)
     if (props.gameType === Game.BUGDOM) {
       // Double the previous vertical offset for a higher overhead view
-      position = [60, 40, 0];
+      position = [80, 0, 0];
     }
 
     // Zoom in for Bugdom 2 to show more detail
@@ -35,7 +35,7 @@ export function ModelCanvas(props: ModelCanvasProps) {
       props.gameType === Game.NANOSAUR ||
       props.gameType === Game.NANOSAUR_2
     ) {
-      position = [0, 0, 120];
+      position = [0, 0, 140];
     }
 
     // Zoom out for Cro-Mag Rally for a wider view
@@ -121,10 +121,7 @@ export function ModelCanvas(props: ModelCanvasProps) {
       // Manual offset in Bugdom 1 world units to align mascot feet with the ground plane.
       const BUGDOM1_GROUND_OFFSET = -60;
       if (import.meta.env.DEV) {
-        console.info(
-          "Bugdom 1 model offset (manual):",
-          BUGDOM1_GROUND_OFFSET,
-        );
+        console.info("Bugdom 1 model offset (manual):", BUGDOM1_GROUND_OFFSET);
       }
       return [0, BUGDOM1_GROUND_OFFSET, 0];
     }

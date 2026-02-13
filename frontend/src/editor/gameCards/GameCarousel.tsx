@@ -126,7 +126,7 @@ export function GameCarousel({
 
   return (
     <Carousel
-      className="mx-auto w-full max-w-[1400px] min-h-0 h-full overflow-hidden px-12"
+      className="mx-auto w-full max-w-350 min-h-0 h-full overflow-hidden px-12"
       opts={{ align: showAllGames ? "start" : "center", skipSnaps: true }}
     >
       <CarouselContent
