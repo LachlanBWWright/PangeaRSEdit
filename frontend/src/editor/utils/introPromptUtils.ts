@@ -182,13 +182,12 @@ export function prepareDownloadData(
   data: LevelData,
   globals: GlobalsInterface,
 ): LevelData {
-  const cloned = structuredClone(data);
-  let updated = cloned;
+  let workingData = structuredClone(data);
   ottoPreprocessor((updater) => {
-    const next = typeof updater === "function" ? updater(updated) : updater;
+    const next = typeof updater === "function" ? updater(workingData) : updater;
     if (next !== undefined) {
-      updated = next;
+      workingData = next;
     }
   }, globals);
-  return updated;
+  return workingData;
 }
