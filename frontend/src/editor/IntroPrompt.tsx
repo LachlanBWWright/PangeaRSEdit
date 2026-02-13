@@ -12,7 +12,6 @@ import { EditorView } from "./EditorView";
 import { TunnelEditor } from "./tunnel/TunnelEditor";
 import { Button } from "@/components/ui/button";
 import { Updater, useImmer } from "use-immer";
-import { ottoPreprocessor } from "../data/processors/ottoPreprocessor";
 import {
   Globals,
   DataType,
@@ -40,6 +39,7 @@ import { compileNanosaur1Level } from "./loadLogic/compileNanosaur1Level";
 import { serializeMightyMikeLevel } from "./loadLogic/parseMightyMikeFile";
 import { isNanosaur1LevelData } from "./loadLogic/typeGuards";
 import type { TunnelData } from "@/data/tunnelParser/types";
+import { prepareDownloadData } from "./utils/introPromptUtils";
 
 export interface DataHistory {
   items: AtomicLevelData[];
@@ -637,16 +637,11 @@ export function IntroPrompt() {
           onClick={() => {
             const combinedDataResult = combineLevelData(getCurrentAtomicData());
             if (isOk(combinedDataResult)) {
-              const combinedData = structuredClone(combinedDataResult.value);
-              ottoPreprocessor((updater) => {
-                // Apply the update to a combined data structure
-                const updated =
-                  typeof updater === "function"
-                    ? (updater(combinedData) ?? combinedData)
-                    : updater;
-                // Split back into atomic data
-                setAllAtomicData(splitLevelData(updated));
-              }, globals);
+              const combinedData = prepareDownloadData(
+                combinedDataResult.value,
+                globals,
+              );
+              setAllAtomicData(splitLevelData(combinedData));
             }
             setBlockHistoryUpdate(true);
             setProcessed(true); //Trigger useEffect for downloading

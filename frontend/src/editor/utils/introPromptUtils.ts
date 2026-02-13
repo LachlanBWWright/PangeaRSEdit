@@ -10,6 +10,9 @@ import {
   AtomicLevelData,
   isAtomicDataComplete,
 } from "../../data/utils/levelDataUtils";
+import { ottoPreprocessor } from "../../data/processors/ottoPreprocessor";
+import type { GlobalsInterface } from "../../data/globals/globals";
+import type { LevelData } from "../../python/structSpecs/LevelTypes";
 
 /**
  * History state interface for undo/redo functionality
@@ -170,4 +173,22 @@ export function createRedoHandler(
  */
 export function canSaveMap(mapFile: File | undefined, mapImagesFile: File | undefined): boolean {
   return mapFile !== undefined && mapImagesFile !== undefined;
+}
+
+/**
+ * Clone and preprocess LevelData for download without mutating the original object.
+ */
+export function prepareDownloadData(
+  data: LevelData,
+  globals: GlobalsInterface,
+): LevelData {
+  const cloned = structuredClone(data);
+  let updated = cloned;
+  ottoPreprocessor((updater) => {
+    const next = typeof updater === "function" ? updater(updated) : updater;
+    if (next !== undefined) {
+      updated = next;
+    }
+  }, globals);
+  return updated;
 }
