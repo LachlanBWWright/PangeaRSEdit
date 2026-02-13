@@ -649,14 +649,14 @@ function createSkin(
 // }
 
 /**
- * Process Otto animation data into glTF-compatible format
+ * Process skeleton animation data into glTF-compatible format
  * Converts absolute keyframe coordinates to relative transforms
  */
-function processOttoAnimations(
+function processSkeletonAnimations(
   bg3dAnimations: BG3DAnimation[],
   bones: BG3DBone[],
 ): ProcessedAnimation[] {
-  console.log("Processing Otto animations...");
+  console.log("Processing skeleton animations...");
 
   return bg3dAnimations.map((anim) => {
     const channels: AnimationChannelData[] = [];
@@ -1025,7 +1025,7 @@ export function createSkeletonSystem(
 
   // Step 4: Process animations
   console.log(`Processing ${skeleton.animations.length} animations...`);
-  const processedAnimations = processOttoAnimations(
+  const processedAnimations = processSkeletonAnimations(
     skeleton.animations,
     skeleton.bones,
   );
