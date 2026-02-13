@@ -91,17 +91,15 @@ describe("Level Templates Integration", () => {
 
   describe("Blank Level Creation", () => {
     it("can create blank level for supported games", () => {
-      expect(canCreateBlankLevel(Game.OTTO_MATIC)).toBe(true);
-      expect(canCreateBlankLevel(Game.BUGDOM_2)).toBe(true);
-      expect(canCreateBlankLevel(Game.NANOSAUR_2)).toBe(true);
+      expect(canCreateBlankLevel()).toBe(true);
     });
 
     it("creates valid blank level for Otto Matic", () => {
       const dims = getDefaultDimensions(Game.OTTO_MATIC);
       const result = createBlankLevel(Game.OTTO_MATIC, dims);
 
-      expect(result.ok).toBe(true);
-      if (result.ok) {
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
         expect(result.value).toBeDefined();
         expect(result.value.headerData).toBeDefined();
         expect(result.value.terrainData).toBeDefined();
@@ -113,8 +111,8 @@ describe("Level Templates Integration", () => {
       const dims = getDefaultDimensions(Game.NANOSAUR_2);
       const result = createBlankLevel(Game.NANOSAUR_2, dims);
 
-      expect(result.ok).toBe(true);
-      if (result.ok) {
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
         expect(result.value).toBeDefined();
         expect(result.value.headerData).toBeDefined();
         expect(result.value.terrainData).toBeDefined();
@@ -128,7 +126,7 @@ describe("Level Templates Integration", () => {
         height: reqs.minMapHeight * 2,
       });
 
-      expect(result.ok).toBe(true);
+      expect(result.isOk()).toBe(true);
     });
 
     it("getBlankLevelDescription returns non-empty string", () => {

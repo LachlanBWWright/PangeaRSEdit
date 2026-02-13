@@ -3,6 +3,7 @@ import { openFile } from "./openFile";
 import type { GlobalsInterface } from "@/data/globals/globals";
 import { DataType } from "@/data/globals/globals";
 import type { LevelData, StandardHeader, TileAttribute, SupertileGridEntry, TerrainItem, SplineItem } from "@/python/structSpecs/LevelTypes";
+import { ok } from "@/types/result";
 
 vi.mock("./parseLevelDataFile", () => ({ parseLevelDataFile: vi.fn() }));
 import * as parseModule from "./parseLevelDataFile";
@@ -72,7 +73,7 @@ describe("openFile", () => {
 
     // Use the hoisted mock and configure its return value for this test
     const _parse = vi.mocked(parseModule.parseLevelDataFile);
-    _parse.mockResolvedValueOnce({ ok: true, value: createMockLevelData() });
+    _parse.mockResolvedValueOnce(ok(createMockLevelData()));
 
     const setGlobals = vi.fn();
     const setMapFile = vi.fn();
@@ -128,10 +129,7 @@ describe("openFile", () => {
     };
 
     const _parse = vi.mocked(parseModule.parseLevelDataFile);
-    _parse.mockResolvedValueOnce({
-      ok: true,
-      value: mockDataWithTimg,
-    });
+    _parse.mockResolvedValueOnce(ok(mockDataWithTimg));
 
     const setGlobals = vi.fn();
     const setMapFile = vi.fn();

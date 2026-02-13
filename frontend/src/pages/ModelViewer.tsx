@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useMemo } from "react";
 import { ModelCanvas } from "./ModelCanvas";
 // import { ModelHierarchy } from "@/components/ModelHierarchy";
 import { AnimationViewer, AnimationInfo } from "@/components/AnimationViewer";
@@ -8,6 +8,11 @@ import { TextureManager } from "@/components/TextureManager";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { ModelUploadPanel } from "./ModelViewer/ModelUploadPanel";
 import { VisualizationOptions } from "./ModelViewer/VisualizationOptions";
+import {
+  ResizableHandle,
+  ResizablePanel,
+  ResizablePanelGroup,
+} from "@/components/ui/resizable";
 import { fromPromise } from "@/types/result";
 
 import { SkeletonConversionPanel } from "@/components/SkeletonConversionPanel";
@@ -38,13 +43,16 @@ export function ModelViewer() {
   const [animationMixer, setAnimationMixer] = useState<AnimationMixer | null>(
     null,
   );
+  const [selectedBoneName, setSelectedBoneName] = useState<string | null>(null);
+  const [boneTransform, setBoneTransform] = useState<
+    [number, number, number] | null
+  >(null);
   const [uploadStep, setUploadStep] = useState<
     "select-bg3d" | "select-skeleton" | "completed"
   >("select-bg3d");
   const [pendingBg3dFile, setPendingBg3dFile] = useState<File | null>(null);
   const [useGameSelector, setUseGameSelector] = useState<boolean>(true); // New state for UI mode
   const [wireframeMode, setWireframeMode] = useState<boolean>(false);
-  const [showSkeleton, setShowSkeleton] = useState<boolean>(false);
   const [logBonePositions, setLogBonePositions] = useState<boolean>(false);
 
   const [, setScene] = useState<Group | undefined>(undefined);
@@ -147,8 +155,14 @@ export function ModelViewer() {
   const handleAnimationsReady = useCallback(
     (animationInfos: AnimationInfo[], mixer: AnimationMixer | null) => {
       // Use glTF animations from the model
-      setAnimations(animationInfos);
+      const normalizedAnimations = animationInfos.map((animation) => ({
+        ...animation,
+        loop: animation.loop ?? true,
+      }));
+      setAnimations(normalizedAnimations);
       setAnimationMixer(mixer);
+      setSelectedBoneName(null);
+      setBoneTransform(null);
 
       if (animationInfos.length > 0) {
         console.log(
@@ -162,13 +176,44 @@ export function ModelViewer() {
     [],
   );
 
+  const handleBoneTransformChange = useCallback(
+    (position: [number, number, number]) => {
+      setBoneTransform(position);
+    },
+    [],
+  );
+
+  const handleBoneSelectionChange = useCallback((boneName: string | null) => {
+    setSelectedBoneName(boneName);
+    setBoneTransform(null);
+  }, []);
+
+  const animationMetadata = useMemo(() => {
+    if (!bg3dParsed?.skeleton?.animations) {
+      return {};
+    }
+    return bg3dParsed.skeleton.animations.reduce(
+      (acc, animation) => {
+        acc[animation.name] = {
+          eventCount: animation.numAnimEvents,
+          events: animation.events,
+        };
+        return acc;
+      },
+      {} as Record<
+        string,
+        { eventCount: number; events: { time: number; type: number; value: number }[] }
+      >,
+    );
+  }, [bg3dParsed]);
+
   // Removed unused handleTexturesExtracted and handleNodesExtracted
 
   // Removed handleClonedSceneUpdate, handled in ModelCanvas
 
   async function handleDownloadTexture(texture: Texture) {
     const result = await fromPromise(downloadTexture(texture, texture.name));
-    if (!result.ok) {
+    if (result.isErr()) {
       console.error("Error downloading texture:", result.error);
       toast.error("Failed to download texture");
       return;
@@ -187,7 +232,7 @@ export function ModelViewer() {
     }
 
     const result = await fromPromise(downloadBG3DModel(bg3dParsed));
-    if (!result.ok) {
+    if (result.isErr()) {
       console.error("Error downloading BG3D:", result.error);
       toast.error(result.error.message);
       return;
@@ -212,7 +257,7 @@ export function ModelViewer() {
     }
 
     const result = await fromPromise(download3DMFModel(bg3dParsed));
-    if (!result.ok) {
+    if (result.isErr()) {
       console.error("Error downloading 3DMF:", result.error);
       toast.error(result.error.message);
       return;
@@ -241,7 +286,7 @@ export function ModelViewer() {
 
   const loadTestModel = async () => {
     const result = await loadOttoTestModel();
-    if (!result.ok) {
+    if (result.isErr()) {
       console.error("Error loading sample model:", result.error);
       toast.error("Failed to load Otto sample files");
       return;
@@ -249,7 +294,7 @@ export function ModelViewer() {
 
     const { bg3dFile, skeletonFile } = result.value;
     const uploadResult = await handleFileUpload(bg3dFile, skeletonFile);
-    if (!uploadResult?.ok) {
+    if (!uploadResult || uploadResult.isErr()) {
       console.error("Error uploading sample model:", uploadResult?.error);
       toast.error(
         uploadResult?.error?.message || "Failed to load Otto sample files",
@@ -260,7 +305,7 @@ export function ModelViewer() {
 
   const loadTestModelWithoutSkeleton = async () => {
     const result = await loadOttoTestModelWithoutSkeleton();
-    if (!result.ok) {
+    if (result.isErr()) {
       console.error(
         "Error loading sample model without skeleton:",
         result.error,
@@ -271,7 +316,7 @@ export function ModelViewer() {
 
     const bg3dFile = result.value;
     const uploadResult = await handleFileUpload(bg3dFile);
-    if (!uploadResult?.ok) {
+    if (!uploadResult || uploadResult.isErr()) {
       console.error("Error uploading sample model:", uploadResult?.error);
       toast.error(
         uploadResult?.error?.message || "Failed to load Otto sample file",
@@ -282,9 +327,10 @@ export function ModelViewer() {
 
   return (
     <>
-      <div className="h-full flex gap-4 p-4 bg-gray-900 text-white">
-        {/* Left sidebar - Controls */}
-        <div className="flex flex-col w-80 space-y-4 px-2 overflow-y-auto">
+      <div className="h-full p-4 bg-gray-900 text-white">
+        <ResizablePanelGroup orientation="horizontal" className="h-full w-full">
+          <ResizablePanel defaultSize={28} minSize={20} className="pr-3">
+            <div className="flex h-full flex-col space-y-4 px-2 overflow-y-auto">
           <ModelUploadPanel
             gltfUrl={gltfUrl}
             useGameSelector={useGameSelector}
@@ -331,7 +377,7 @@ export function ModelViewer() {
                   if (file) {
                     const downloadName = file.name.replace(/\.glb$/, ".bg3d");
                     const bufferResult = await fromPromise(file.arrayBuffer());
-                    if (!bufferResult.ok) {
+                    if (bufferResult.isErr()) {
                       alert(
                         "GLB to BG3D conversion failed: " +
                           bufferResult.error.message,
@@ -392,7 +438,7 @@ export function ModelViewer() {
                   if (!file) return;
                   const downloadName = file.name.replace(/\.glb$/, ".bg3d");
                   const bufferResult = await fromPromise(file.arrayBuffer());
-                  if (!bufferResult.ok) {
+                  if (bufferResult.isErr()) {
                     alert(
                       "GLB to BG3D conversion failed: " +
                         bufferResult.error.message,
@@ -438,8 +484,6 @@ export function ModelViewer() {
             <VisualizationOptions
               wireframeMode={wireframeMode}
               setWireframeMode={setWireframeMode}
-              showSkeleton={showSkeleton}
-              setShowSkeleton={setShowSkeleton}
               logBonePositions={logBonePositions}
               setLogBonePositions={setLogBonePositions}
             />
@@ -448,8 +492,12 @@ export function ModelViewer() {
           {/* Animation Viewer - Show when animations are available */}
           {gltfUrl && (
             <AnimationViewer
+              key={gltfUrl}
               animations={animations}
               animationMixer={animationMixer}
+              onBoneSelectionChange={handleBoneSelectionChange}
+              animationMetadata={animationMetadata}
+              boneTransform={boneTransform}
             />
           )}
 
@@ -503,34 +551,42 @@ export function ModelViewer() {
             description="Upload a .glb file to convert and download as .bg3d."
             conversionType="glb-to-bg3d"
           />
-        </div>
-
-        {/* Main viewport - 3D Scene */}
-        <div className="flex-1 bg-gray-800 rounded-lg overflow-hidden min-h-0">
-          {gltfUrl ? (
-            <ErrorBoundary>
-              <ModelCanvas
-                gltfUrl={gltfUrl}
-                setModelNodes={setModelNodes}
-                onSceneReady={setScene}
-                onAnimationsReady={handleAnimationsReady}
-                wireframeMode={wireframeMode}
-                showSkeleton={showSkeleton}
-                logBonePositions={logBonePositions}
-              />
-            </ErrorBoundary>
-          ) : (
-            <div className="flex items-center justify-center h-full text-gray-400">
-              <div className="text-center">
-                <div className="w-24 h-24 mx-auto mb-4 rounded-full bg-gray-700 flex items-center justify-center">
-                  <Upload className="w-12 h-12" />
-                </div>
-                <h3 className="text-xl font-semibold mb-2">No Model Loaded</h3>
-                <p>Upload a BG3D file to start viewing 3D models</p>
-              </div>
             </div>
-          )}
-        </div>
+          </ResizablePanel>
+          <ResizableHandle withHandle />
+          <ResizablePanel defaultSize={72} minSize={35} className="min-h-0">
+            <div className="h-full bg-gray-800 rounded-lg overflow-hidden min-h-0">
+              {/* Main viewport - 3D Scene */}
+              {gltfUrl ? (
+                <ErrorBoundary>
+                  <ModelCanvas
+                    gltfUrl={gltfUrl}
+                    setModelNodes={setModelNodes}
+                    onSceneReady={setScene}
+                    onAnimationsReady={handleAnimationsReady}
+                    wireframeMode={wireframeMode}
+                    showSkeleton={wireframeMode}
+                    logBonePositions={logBonePositions}
+                    selectedBoneName={selectedBoneName}
+                    onBoneTransformChange={handleBoneTransformChange}
+                  />
+                </ErrorBoundary>
+              ) : (
+                <div className="flex items-center justify-center h-full text-gray-400">
+                  <div className="text-center">
+                    <div className="w-24 h-24 mx-auto mb-4 rounded-full bg-gray-700 flex items-center justify-center">
+                      <Upload className="w-12 h-12" />
+                    </div>
+                    <h3 className="text-xl font-semibold mb-2">
+                      No Model Loaded
+                    </h3>
+                    <p>Upload a BG3D file to start viewing 3D models</p>
+                  </div>
+                </div>
+              )}
+            </div>
+          </ResizablePanel>
+        </ResizablePanelGroup>
       </div>
       <Toaster />
     </>

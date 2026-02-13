@@ -1010,7 +1010,7 @@ export function createSkeletonSystem(
   const skeletonRootResult = buildJointHierarchy(doc, joints, skeleton.bones);
   if (isErr(skeletonRootResult)) {
     console.error("Error building joint hierarchy:", skeletonRootResult.error);
-    return skeletonRootResult;
+    return err(skeletonRootResult.error);
   }
   const skeletonRoot = skeletonRootResult.value;
 

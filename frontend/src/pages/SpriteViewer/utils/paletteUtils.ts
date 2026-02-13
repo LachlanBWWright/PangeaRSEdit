@@ -146,7 +146,7 @@ export function isPalette(x: unknown): x is Palette {
 
 export function deserializePalette(json: string): Palette | null {
   const parseResult = tryFn(() => JSON.parse(json) as unknown);
-  if (!parseResult.ok) {
+  if (parseResult.isErr()) {
     console.error("Failed to deserialize palette:", parseResult.error);
     return null;
   }

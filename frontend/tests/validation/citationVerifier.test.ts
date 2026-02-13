@@ -165,11 +165,13 @@ describe("citationVerifier", () => {
       ];
       
       const summary = summarizeResults(results);
-      expect(summary.byGame["ottomatic"].total).toBe(2);
-      expect(summary.byGame["ottomatic"].verified).toBe(1);
-      expect(summary.byGame["ottomatic"].failures).toBe(1);
-      expect(summary.byGame["bugdom"].total).toBe(1);
-      expect(summary.byGame["bugdom"].verified).toBe(1);
+      const ottoSummary = summary.byGame["ottomatic"];
+      const bugdomSummary = summary.byGame["bugdom"];
+      expect(ottoSummary?.total).toBe(2);
+      expect(ottoSummary?.verified).toBe(1);
+      expect(ottoSummary?.failures).toBe(1);
+      expect(bugdomSummary?.total).toBe(1);
+      expect(bugdomSummary?.verified).toBe(1);
     });
     
     it("should count all status types", () => {

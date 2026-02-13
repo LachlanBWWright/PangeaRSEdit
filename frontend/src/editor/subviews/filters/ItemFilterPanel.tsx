@@ -12,6 +12,13 @@ import {
   getCategoryDisplayName,
   getAllCategories,
 } from "@/data/items/itemCategories";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 interface ItemFilterPanelProps {
   isOpen: boolean;
@@ -73,13 +80,13 @@ export const ItemFilterPanel: React.FC<ItemFilterPanelProps> = ({
         {/* Filter Mode Selection */}
         <div className="mb-4">
           <label className="block text-sm text-gray-400 mb-2">Filter Mode</label>
-          <select
+          <Select
             value={filter.mode}
-            onChange={(e) => {
+            onValueChange={(value) => {
               const selectedMode =
-                e.target.value === FilterMode.SHOW_ALL
+                value === FilterMode.SHOW_ALL
                   ? FilterMode.SHOW_ALL
-                  : e.target.value === FilterMode.SHOW_SELECTED
+                  : value === FilterMode.SHOW_SELECTED
                   ? FilterMode.SHOW_SELECTED
                   : FilterMode.HIDE_SELECTED;
               setFilter({
@@ -87,12 +94,22 @@ export const ItemFilterPanel: React.FC<ItemFilterPanelProps> = ({
                 mode: selectedMode,
               });
             }}
-            className="w-full bg-gray-800 text-white rounded p-2 border border-gray-600 focus:border-blue-500 focus:outline-none"
           >
-            <option value={FilterMode.SHOW_ALL}>Show All Items</option>
-            <option value={FilterMode.SHOW_SELECTED}>Show Selected Only</option>
-            <option value={FilterMode.HIDE_SELECTED}>Hide Selected</option>
-          </select>
+            <SelectTrigger className="w-full bg-gray-800 border-gray-600 text-white focus:border-blue-500">
+              <SelectValue placeholder="Select filter mode" />
+            </SelectTrigger>
+            <SelectContent className="bg-gray-800 border-gray-600">
+              <SelectItem value={FilterMode.SHOW_ALL} className="text-white focus:bg-gray-600">
+                Show All Items
+              </SelectItem>
+              <SelectItem value={FilterMode.SHOW_SELECTED} className="text-white focus:bg-gray-600">
+                Show Selected Only
+              </SelectItem>
+              <SelectItem value={FilterMode.HIDE_SELECTED} className="text-white focus:bg-gray-600">
+                Hide Selected
+              </SelectItem>
+            </SelectContent>
+          </Select>
         </div>
 
         {/* Quick Presets */}

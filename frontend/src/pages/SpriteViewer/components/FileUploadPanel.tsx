@@ -1,5 +1,12 @@
 import { useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Upload } from "lucide-react";
 
 type FileType = "sprites" | "tga" | "tileset";
@@ -39,22 +46,31 @@ export function FileUploadPanel({
       <CardContent className="space-y-3">
         <div>
           <label className="text-xs text-gray-400 block mb-2">File Type</label>
-          <select
+          <Select
             value={selectedType}
-            onChange={(e) => {
-              const v = e.target.value;
-              if (v === "sprites" || v === "tga" || v === "tileset") {
-                onTypeChange(v);
+            onValueChange={(value) => {
+              if (value === "sprites" || value === "tga" || value === "tileset") {
+                onTypeChange(value);
               } else {
-                console.warn("Unknown file type selected:", v);
+                console.warn("Unknown file type selected:", value);
               }
             }}
-            className="w-full bg-gray-700 text-white rounded px-2 py-2 text-sm border border-gray-600"
           >
-            <option value="sprites" style={{ color: "white", backgroundColor: "#1a1a2e" }}>Sprites (.shapes)</option>
-            <option value="tga" style={{ color: "white", backgroundColor: "#1a1a2e" }}>Images (.tga)</option>
-            <option value="tileset" style={{ color: "white", backgroundColor: "#1a1a2e" }}>Tilesets (.tileset)</option>
-          </select>
+            <SelectTrigger className="w-full bg-gray-700 border-gray-600 text-white">
+              <SelectValue placeholder="Select file type" />
+            </SelectTrigger>
+            <SelectContent className="bg-gray-700 border-gray-600">
+              <SelectItem value="sprites" className="text-white focus:bg-gray-600">
+                Sprites (.shapes)
+              </SelectItem>
+              <SelectItem value="tga" className="text-white focus:bg-gray-600">
+                Images (.tga)
+              </SelectItem>
+              <SelectItem value="tileset" className="text-white focus:bg-gray-600">
+                Tilesets (.tileset)
+              </SelectItem>
+            </SelectContent>
+          </Select>
         </div>
 
         <div

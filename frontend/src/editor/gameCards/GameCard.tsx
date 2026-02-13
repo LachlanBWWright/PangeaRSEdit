@@ -64,6 +64,17 @@ export function GameCard({
 
   const isOttoMatic = globals.GAME_TYPE === Game.OTTO_MATIC;
   const isMightyMike = globals.GAME_TYPE === Game.MIGHTY_MIKE;
+  const isBugdom1 = globals.DATA_TYPE === DataType.RSRC_FORK;
+  const isNanosaur1 = globals.DATA_TYPE === DataType.TRT_FILE;
+
+  const levelFileType = isMightyMike
+    ? ".map"
+    : isNanosaur1
+    ? ".ter"
+    : ".ter.rsrc";
+  const textureFileType =
+    isMightyMike || isBugdom1 ? null : isNanosaur1 ? ".trt" : ".ter";
+  const showTextureUpload = textureFileType !== null;
 
   return (
     <Card className="h-full flex flex-col min-h-0 overflow-y-auto overflow-x-hidden bg-gray-800 border-gray-700 text-white">
@@ -110,20 +121,17 @@ export function GameCard({
 
         <div className="flex-none pt-2 border-t border-gray-700 mt-2">
           <p className="text-sm text-gray-300">
-            Upload Level Data (
-            {globals.DATA_TYPE === DataType.MIGHTY_MIKE ? ".map" : ".ter.rsrc"})
+            Upload Level Data ({levelFileType})
           </p>
           <FileUpload
             className="text-sm"
-            acceptType={
-              globals.DATA_TYPE === DataType.MIGHTY_MIKE ? ".map" : ".ter.rsrc"
-            }
+            acceptType={levelFileType}
             handleOnChange={async (e) => {
               if (!e.target?.files?.[0]) return;
               const file = e.target.files[0];
               setMapFile(file);
               const parseResult = await handleParseLevelDataFile(file, globals);
-              if (!parseResult?.ok) {
+              if (!parseResult || parseResult.isErr()) {
                 const message =
                   parseResult?.error instanceof Error
                     ? parseResult.error.message
@@ -137,14 +145,14 @@ export function GameCard({
             }}
           />
 
-          {globals.DATA_TYPE !== DataType.MIGHTY_MIKE && (
+          {showTextureUpload && textureFileType && (
             <>
               <p className="text-sm text-gray-300 mt-2">
-                Upload Texture Data (.ter)
+                Upload Texture Data ({textureFileType})
               </p>
               <FileUpload
                 className="text-sm"
-                acceptType=".ter"
+                acceptType={textureFileType}
                 handleOnChange={async (e) => {
                   if (!e.target?.files?.[0]) return;
                   const mapImagesFile = e.target.files[0];
@@ -155,7 +163,7 @@ export function GameCard({
                     dataView,
                     globals,
                   );
-                  if (!mapImagesResult.ok) {
+                  if (mapImagesResult.isErr()) {
                     console.error(
                       "Failed to load map images:",
                       mapImagesResult.error.message,
@@ -187,7 +195,7 @@ export function GameCard({
                   const buffer = await file.arrayBuffer();
                   const result = parseTunnelFile(buffer);
 
-                  if (!result.ok) {
+                  if (result.isErr()) {
                     console.error(
                       "Failed to parse tunnel file:",
                       result.error.message,

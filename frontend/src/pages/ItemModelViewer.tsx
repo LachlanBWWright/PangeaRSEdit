@@ -38,7 +38,7 @@ import { getGameMapper } from "@/data/items/mappers";
 import { ottoItemMapper } from "@/data/items/mappers/ottoItemMapper";
 import type { UniversalItemModelMapping } from "@/data/items/itemModelTypes";
 import { getCitationPermalink } from "@/data/items/itemModelTypes";
-import { fromPromise, err, type Result } from "@/types/result";
+import { fromPromise, err, ok, type Result } from "@/types/result";
 
 /**
  * Camera configuration for optimal model viewing
@@ -394,7 +394,7 @@ export function ItemModelViewer() {
     setStatus(`Fetching ${mapping.modelFile}...`);
 
     const fetchResult = await fromPromise(fetch(modelPath));
-    if (!fetchResult.ok) {
+    if (fetchResult.isErr()) {
       const errorMsg = fetchResult.error.message;
       setError(errorMsg);
       const itemName = selectedItem?.name ?? "item";
@@ -415,7 +415,7 @@ export function ItemModelViewer() {
     }
 
     const bufferResult = await fromPromise(response.arrayBuffer());
-    if (!bufferResult.ok) {
+    if (bufferResult.isErr()) {
       const errorMsg = bufferResult.error.message;
       setError(errorMsg);
       const itemName = selectedItem?.name ?? "item";
@@ -437,7 +437,7 @@ export function ItemModelViewer() {
             resolved = true;
             worker.removeEventListener("message", handleMessage);
             worker.removeEventListener("error", handleError);
-            resolve({ ok: true, value: e.data.result });
+            resolve(ok(e.data.result));
           } else if (e.data.type === "error") {
             resolved = true;
             worker.removeEventListener("message", handleMessage);
@@ -475,7 +475,7 @@ export function ItemModelViewer() {
         }, WORKER_TIMEOUT_MS);
       });
 
-      if (!glbBufferResult.ok) {
+      if (glbBufferResult.isErr()) {
         const errorMsg = glbBufferResult.error.message;
         setError(errorMsg);
         const itemName = selectedItem?.name ?? "item";
@@ -506,7 +506,7 @@ export function ItemModelViewer() {
 
       URL.revokeObjectURL(blobUrl);
 
-      if (!gltfResult.ok) {
+      if (gltfResult.isErr()) {
         const errorMsg = gltfResult.error.message;
         setError(errorMsg);
         const itemName = selectedItem?.name ?? "item";

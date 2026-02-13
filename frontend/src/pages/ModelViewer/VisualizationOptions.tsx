@@ -4,8 +4,6 @@ import { Switch } from "@/components/ui/switch";
 interface Props {
   wireframeMode: boolean;
   setWireframeMode: (v: boolean) => void;
-  showSkeleton: boolean;
-  setShowSkeleton: (v: boolean) => void;
   logBonePositions: boolean;
   setLogBonePositions: (v: boolean) => void;
 }
@@ -13,8 +11,6 @@ interface Props {
 export function VisualizationOptions({
   wireframeMode,
   setWireframeMode,
-  showSkeleton,
-  setShowSkeleton,
   logBonePositions,
   setLogBonePositions,
 }: Props) {
@@ -31,25 +27,12 @@ export function VisualizationOptions({
             htmlFor="wireframe-mode"
             className="text-sm text-gray-300 cursor-pointer"
           >
-            Wireframe Mode
+            Wireframe + Skeleton
           </label>
           <Switch
             id="wireframe-mode"
             checked={wireframeMode}
             onCheckedChange={setWireframeMode}
-          />
-        </div>
-        <div className="flex items-center justify-between">
-          <label
-            htmlFor="show-skeleton"
-            className="text-sm text-gray-300 cursor-pointer"
-          >
-            Show Skeleton
-          </label>
-          <Switch
-            id="show-skeleton"
-            checked={showSkeleton}
-            onCheckedChange={setShowSkeleton}
           />
         </div>
         <div className="flex items-center justify-between">

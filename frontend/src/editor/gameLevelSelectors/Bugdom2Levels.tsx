@@ -19,7 +19,7 @@ export function Bugdom2Levels({
       if (!onTunnelLoad) return;
 
       const fetchResult = await fromPromise(fetch(tunnelPath));
-      if (!fetchResult.ok) {
+      if (fetchResult.isErr()) {
         toast.error(`Failed to fetch ${fileName}`, {
           description: fetchResult.error.message,
         });
@@ -35,7 +35,7 @@ export function Bugdom2Levels({
       }
 
       const bufferResult = await fromPromise(response.arrayBuffer());
-      if (!bufferResult.ok) {
+      if (bufferResult.isErr()) {
         toast.error("Failed to read response", {
           description: bufferResult.error.message,
         });
@@ -44,7 +44,7 @@ export function Bugdom2Levels({
 
       const result = parseTunnelFile(bufferResult.value);
 
-      if (!result.ok) {
+      if (result.isErr()) {
         toast.error("Failed to parse tunnel file", {
           description: result.error.message,
         });

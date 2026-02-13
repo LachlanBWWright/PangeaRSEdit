@@ -84,8 +84,10 @@ describe("reportGenerator", () => {
       
       expect(report.summary.total).toBe(3);
       expect(report.summary.verified).toBe(2);
-      expect(report.summary.byGame["ottomatic"].total).toBe(2);
-      expect(report.summary.byGame["bugdom"].total).toBe(1);
+      const ottoSummary = report.summary.byGame["ottomatic"];
+      const bugdomSummary = report.summary.byGame["bugdom"];
+      expect(ottoSummary?.total).toBe(2);
+      expect(bugdomSummary?.total).toBe(1);
     });
   });
   
@@ -256,8 +258,9 @@ describe("reportGenerator", () => {
       const fixes = suggestFixes(failures);
       
       expect(fixes).toHaveLength(1);
-      expect(fixes[0].action).toBe("update_line");
-      expect(fixes[0].suggestedLineNumber).toBe(150);
+      const [firstFix] = fixes;
+      expect(firstFix?.action).toBe("update_line");
+      expect(firstFix?.suggestedLineNumber).toBe(150);
     });
     
     it("should suggest code update for changed code", () => {
@@ -270,8 +273,9 @@ describe("reportGenerator", () => {
       const fixes = suggestFixes(failures);
       
       expect(fixes).toHaveLength(1);
-      expect(fixes[0].action).toBe("update_code");
-      expect(fixes[0].suggestedCode).toBe("int y = 10;");
+      const [firstFix] = fixes;
+      expect(firstFix?.action).toBe("update_code");
+      expect(firstFix?.suggestedCode).toBe("int y = 10;");
     });
     
     it("should suggest investigation for file not found", () => {
@@ -282,8 +286,9 @@ describe("reportGenerator", () => {
       const fixes = suggestFixes(failures);
       
       expect(fixes).toHaveLength(1);
-      expect(fixes[0].action).toBe("investigate");
-      expect(fixes[0].reason).toContain("not found");
+      const [firstFix] = fixes;
+      expect(firstFix?.action).toBe("investigate");
+      expect(firstFix?.reason).toContain("not found");
     });
     
     it("should suggest investigation for line not found", () => {
@@ -294,8 +299,9 @@ describe("reportGenerator", () => {
       const fixes = suggestFixes(failures);
       
       expect(fixes).toHaveLength(1);
-      expect(fixes[0].action).toBe("investigate");
-      expect(fixes[0].reason).toContain("exceeds file length");
+      const [firstFix] = fixes;
+      expect(firstFix?.action).toBe("investigate");
+      expect(firstFix?.reason).toContain("exceeds file length");
     });
     
     it("should handle multiple failures", () => {
@@ -308,9 +314,10 @@ describe("reportGenerator", () => {
       const fixes = suggestFixes(failures);
       
       expect(fixes).toHaveLength(3);
-      expect(fixes[0].action).toBe("update_line");
-      expect(fixes[1].action).toBe("update_code");
-      expect(fixes[2].action).toBe("investigate");
+      const [firstFix, secondFix, thirdFix] = fixes;
+      expect(firstFix?.action).toBe("update_line");
+      expect(secondFix?.action).toBe("update_code");
+      expect(thirdFix?.action).toBe("investigate");
     });
   });
 });

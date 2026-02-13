@@ -75,21 +75,15 @@ export function ModelUploadPanel({
             <div className="flex space-x-2 mb-4">
               <Button
                 onClick={() => setUseGameSelector(true)}
-                variant={useGameSelector ? "default" : "outline"}
                 size="sm"
-                className={`flex-1 ${
-                  !useGameSelector ? "text-gray-300 hover:text-white" : ""
-                }`}
+                className="flex-1"
               >
                 Game Models
               </Button>
               <Button
                 onClick={() => setUseGameSelector(false)}
-                variant={!useGameSelector ? "default" : "outline"}
                 size="sm"
-                className={`flex-1 ${
-                  useGameSelector ? "text-gray-300 hover:text-white" : ""
-                }`}
+                className="flex-1"
               >
                 Upload Files
               </Button>
@@ -107,7 +101,6 @@ export function ModelUploadPanel({
                 </p>
                 <Button
                   onClick={loadTestModel}
-                  variant="outline"
                   className="w-full text-white text-xs"
                   disabled={loading}
                 >
@@ -115,7 +108,6 @@ export function ModelUploadPanel({
                 </Button>
                 <Button
                   onClick={loadTestModelWithoutSkeleton}
-                  variant="outline"
                   className="w-full text-white text-xs mt-2"
                   disabled={loading}
                 >
@@ -202,7 +194,6 @@ export function ModelUploadPanel({
                     <div className="flex gap-2">
                       <Button
                         onClick={handleSkipSkeleton}
-                        variant="outline"
                         className="flex-1 text-white"
                         disabled={loading}
                       >
@@ -210,8 +201,7 @@ export function ModelUploadPanel({
                       </Button>
                       <Button
                         onClick={() => onCancelSelection()}
-                        variant="ghost"
-                        className="flex-1 text-gray-400 hover:text-white"
+                        className="flex-1 text-white"
                       >
                         Choose Different BG3D
                       </Button>
@@ -233,7 +223,6 @@ export function ModelUploadPanel({
             <div className="space-y-2">
               <Button
                 onClick={() => handleDownloadBG3D()}
-                variant="outline"
                 className="w-full text-white"
               >
                 <Download className="w-4 h-4 mr-2" />
@@ -241,7 +230,6 @@ export function ModelUploadPanel({
               </Button>
               <Button
                 onClick={() => handleDownload3DMF()}
-                variant="outline"
                 className="w-full text-white"
               >
                 <Download className="w-4 h-4 mr-2" />
@@ -249,7 +237,6 @@ export function ModelUploadPanel({
               </Button>
               <Button
                 onClick={() => handleDownloadGLB()}
-                variant="outline"
                 className="w-full text-white"
               >
                 <Download className="w-4 h-4 mr-2" />
@@ -257,8 +244,7 @@ export function ModelUploadPanel({
               </Button>
               <Button
                 onClick={() => handleClearModel()}
-                variant="outline"
-                className="w-full text-red-400 hover:text-red-300 border-red-600 hover:border-red-500"
+                className="w-full text-white"
               >
                 <X className="w-4 h-4 mr-2" />
                 Clear Model
@@ -267,8 +253,7 @@ export function ModelUploadPanel({
             <hr className="border-gray-600" />
             <Button
               onClick={() => fileInputRef.current?.click()}
-              variant="ghost"
-              className="w-full text-gray-400 hover:text-white"
+              className="w-full text-white"
               size="sm"
             >
               <Upload className="w-4 h-4 mr-2" />
@@ -277,7 +262,7 @@ export function ModelUploadPanel({
             <input
               ref={fileInputRef}
               type="file"
-              accept=".bg3d,.skeleton.rsrc"
+              accept=".bg3d,.3dmf,.skeleton.rsrc"
               multiple
               className="hidden"
               onChange={(e) => {

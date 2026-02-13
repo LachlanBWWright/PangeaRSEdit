@@ -1,6 +1,13 @@
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Download, RotateCw, Copy } from "lucide-react";
 import { toast } from "sonner";
 
@@ -47,17 +54,25 @@ export function TilesetEditor({
           {onPaletteSceneChange && (
             <div>
               <label className="text-xs text-gray-400 block mb-2">Render Palette</label>
-              <select
-                value={currentPaletteScene || ""}
-                onChange={(e) => onPaletteSceneChange(e.target.value)}
-                className="w-full bg-gray-700 text-white rounded px-2 py-1 text-sm"
+              <Select
+                value={currentPaletteScene ?? ""}
+                onValueChange={(value) => onPaletteSceneChange(value)}
               >
-                {sceneNames.map((scene) => (
-                  <option key={scene} value={scene} style={{ backgroundColor: "#1a1a2e", color: "white" }}>
-                    {scene.charAt(0).toUpperCase() + scene.slice(1)}
-                  </option>
-                ))}
-              </select>
+                <SelectTrigger className="w-full bg-gray-700 border-gray-600 text-white">
+                  <SelectValue placeholder="Select a palette scene" />
+                </SelectTrigger>
+                <SelectContent className="bg-gray-700 border-gray-600">
+                  {sceneNames.map((scene) => (
+                    <SelectItem
+                      key={scene}
+                      value={scene}
+                      className="text-white focus:bg-gray-600"
+                    >
+                      {scene.charAt(0).toUpperCase() + scene.slice(1)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
               <p className="text-xs text-gray-500 mt-1">
                 Tileset: {currentTilesetScene ? currentTilesetScene.charAt(0).toUpperCase() + currentTilesetScene.slice(1) : "None"}
               </p>

@@ -61,7 +61,7 @@ function convertModelVariant(variant: ModelVariant): UniversalItemModelMapping {
     scaleY: variant.scaleY,
     rotationY: variant.rotationY,
     positionOffset: variant.positionOffset,
-    citations: variant.citations,
+    citations: variant.citations ? [...variant.citations] : undefined,
   };
 }
 
@@ -81,7 +81,7 @@ function convertToUniversal(mapping: ItemModelMapping): UniversalItemModelMappin
     scaleY: mapping.scaleY,
     rotationY: mapping.rotationY,
     positionOffset: mapping.positionOffset,
-    citations: mapping.citations,
+    citations: mapping.citations ? [...mapping.citations] : undefined,
   };
 }
 

@@ -8,6 +8,7 @@ import { loadBytesFromJson } from "@lachlanbwwright/rsrcdump-ts";
 import type { Nanosaur1LevelData } from "@/data/processors/classicProprocessor";
 import type { MightyMikeMap } from "@/python/structSpecs/mightyMikeInterface";
 import { sanitizeResourceForkJson } from "../utils/levelDataUtils";
+import { err, ok } from "@/types/result";
 
 function isRecord(value: unknown): value is Record<string | number, unknown> {
   return typeof value === "object" && value !== null;
@@ -133,7 +134,7 @@ export async function saveMap({
 
     const compileResult = compileNanosaur1Level(data, rawLevelData);
 
-    if (!compileResult.ok) {
+    if (compileResult.isErr()) {
       toast({
         title: "Failed to compile Nanosaur 1 level",
         description: compileResult.error.message,
@@ -196,19 +197,26 @@ async function processMapData({
   // Validate the JSON before passing to rsrcdump to avoid uncaught errors
   const sanitized = sanitizeResourceForkJson(data);
   const validation = validateResourceForkJson(sanitized);
-  if (!validation.ok) {
-    console.error("Invalid JSON for resource fork:", validation);
+  if (validation.isErr()) {
+    console.error("Invalid JSON for resource fork:", validation.error);
     toast({
       title: "Saving failed",
-      description: `Invalid map data structure: ${validation.message}`,
+      description: `Invalid map data structure: ${validation.error.message}`,
     });
     return new ArrayBuffer(0);
   }
 
   const saveResult = loadBytesFromJson(sanitized, globals.STRUCT_SPECS, [], [], true);
 
-  if (!saveResult.ok) {
-    const saveErrorMsg = typeof saveResult.error === "string" ? saveResult.error : String(saveResult.error);
+  const serializedResult = saveResult.ok
+    ? ok(saveResult.value)
+    : err(saveResult.error);
+
+  if (serializedResult.isErr()) {
+    const saveErrorMsg =
+      typeof serializedResult.error === "string"
+        ? serializedResult.error
+        : String(serializedResult.error);
     console.error("Failed to serialize:", saveErrorMsg);
     toast({
       title: "Saving failed",
@@ -218,7 +226,7 @@ async function processMapData({
   }
 
   // loadBytesFromJson returns Uint8Array on success
-  const out = saveResult.value;
+  const out = serializedResult.value;
   const buffer = out.buffer;
   if (buffer instanceof ArrayBuffer) {
     return buffer.slice(out.byteOffset, out.byteOffset + out.byteLength);

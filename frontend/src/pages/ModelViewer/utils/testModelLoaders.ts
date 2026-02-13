@@ -4,7 +4,7 @@
  * Loads pre-packaged test models (Otto Matic) from the public assets directory
  */
 
-import { fromPromise, err, type Result } from "@/types/result";
+import { fromPromise, err, ok, type Result } from "@/types/result";
 
 /**
  * Loads the Otto test model with skeleton
@@ -21,7 +21,7 @@ export async function loadOttoTestModel(): Promise<Result<{
     fetch("/PangeaRSEdit/games/ottomatic/skeletons/Otto.skeleton.rsrc"),
   ]));
 
-  if (!fetchAllResult.ok) {
+  if (fetchAllResult.isErr()) {
     return err(new Error(`Failed to fetch test models: ${fetchAllResult.error.message}`));
   }
 
@@ -32,7 +32,7 @@ export async function loadOttoTestModel(): Promise<Result<{
   }
 
   const bg3dBufferResult = await fromPromise(bg3dResponse.arrayBuffer());
-  if (!bg3dBufferResult.ok) {
+  if (bg3dBufferResult.isErr()) {
     return err(new Error(`Failed to read Otto.bg3d: ${bg3dBufferResult.error.message}`));
   }
   const bg3dArrayBuffer = bg3dBufferResult.value;
@@ -43,7 +43,7 @@ export async function loadOttoTestModel(): Promise<Result<{
   let skeletonFile: File | undefined;
   if (skeletonResponse.ok) {
     const skeletonBufferResult = await fromPromise(skeletonResponse.arrayBuffer());
-    if (!skeletonBufferResult.ok) {
+    if (skeletonBufferResult.isErr()) {
       return err(new Error(`Failed to read Otto.skeleton.rsrc: ${skeletonBufferResult.error.message}`));
     }
     const skeletonArrayBuffer = skeletonBufferResult.value;
@@ -57,7 +57,7 @@ export async function loadOttoTestModel(): Promise<Result<{
     );
   }
 
-  return { ok: true, value: { bg3dFile, skeletonFile } };
+  return ok({ bg3dFile, skeletonFile });
 }
 
 /**
@@ -72,7 +72,7 @@ export async function loadOttoTestModelWithoutSkeleton(): Promise<Result<File, E
     fetch("/PangeaRSEdit/games/ottomatic/skeletons/Otto.bg3d")
   );
 
-  if (!fetchResult.ok) {
+  if (fetchResult.isErr()) {
     return err(new Error(`Failed to fetch Otto.bg3d: ${fetchResult.error.message}`));
   }
 
@@ -82,7 +82,7 @@ export async function loadOttoTestModelWithoutSkeleton(): Promise<Result<File, E
   }
 
   const bufferResult = await fromPromise(bg3dResponse.arrayBuffer());
-  if (!bufferResult.ok) {
+  if (bufferResult.isErr()) {
     return err(new Error(`Failed to read Otto.bg3d: ${bufferResult.error.message}`));
   }
 
@@ -92,5 +92,5 @@ export async function loadOttoTestModelWithoutSkeleton(): Promise<Result<File, E
   });
 
   console.log("Loading Otto model without skeleton data for comparison");
-  return { ok: true, value: bg3dFile };
+  return ok(bg3dFile);
 }

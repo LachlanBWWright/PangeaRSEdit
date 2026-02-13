@@ -140,7 +140,7 @@ export function validateLevelDataWithWarnings(
   const validationResult = validateLevelDataForGame(data, gameType);
 
   // If validation failed, check if it's a recoverable error
-  if (!validationResult.ok) {
+  if (validationResult.isErr()) {
     // Check for common recoverable issues
     const errorMessage = validationResult.error.message;
 

@@ -35,7 +35,7 @@ export function SkeletonConversionPanel({
     setLoading(true);
 
     const bg3dBufferResult = await fromPromise(bg3dFile.arrayBuffer());
-    if (!bg3dBufferResult.ok) {
+    if (bg3dBufferResult.isErr()) {
       toast.error(`${title} conversion failed: ${bg3dBufferResult.error.message}`);
       setLoading(false);
       return;
@@ -48,7 +48,7 @@ export function SkeletonConversionPanel({
     if (skeletonFile) {
       console.log("Parsing skeleton file for conversion with TypeScript...");
       const skeletonBufferResult = await fromPromise(skeletonFile.arrayBuffer());
-      if (!skeletonBufferResult.ok) {
+      if (skeletonBufferResult.isErr()) {
         toast.error(`Failed to read skeleton file: ${skeletonBufferResult.error.message}`);
         setLoading(false);
         return;
@@ -56,7 +56,7 @@ export function SkeletonConversionPanel({
       const skeletonArrayBuffer = skeletonBufferResult.value;
 
       const skeletonParseResult = await fromPromise(parseSkeletonRsrc(skeletonArrayBuffer));
-      if (!skeletonParseResult.ok) {
+      if (skeletonParseResult.isErr()) {
         toast.error(`Failed to parse skeleton file: ${skeletonParseResult.error.message}`);
         setLoading(false);
         return;
@@ -158,7 +158,7 @@ export function SkeletonConversionPanel({
           const skeletonBinaryResult = skeletonResourceToBinary(
             skeletonResource,
           );
-          if (!skeletonBinaryResult.ok) {
+          if (skeletonBinaryResult.isErr()) {
             console.error("Failed to convert skeleton to binary:", skeletonBinaryResult.error);
             toast.success(
               `${title} conversion completed (skeleton file generation failed)`,

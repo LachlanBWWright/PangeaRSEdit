@@ -119,17 +119,17 @@ function createTestData(): { terrainData: TerrainData; headerData: HeaderData } 
 describe("Tile Data Extractor", () => {
   describe("extractTileInfo", () => {
     it("extracts all tiles from terrain data", () => {
-      const { terrainData, headerData } = createTestData();
+      const { terrainData } = createTestData();
 
-      const tiles = extractTileInfo(terrainData, headerData);
+      const tiles = extractTileInfo(terrainData);
 
       expect(tiles).toHaveLength(4);
     });
 
     it("calculates usage counts correctly", () => {
-      const { terrainData, headerData } = createTestData();
+      const { terrainData } = createTestData();
 
-      const tiles = extractTileInfo(terrainData, headerData);
+      const tiles = extractTileInfo(terrainData);
 
       // Tile 0: used 10 times (4+2+2+2)
       const tile0 = tiles.find(t => t.attributeIndex === 0);
@@ -149,9 +149,9 @@ describe("Tile Data Extractor", () => {
     });
 
     it("extracts flags and parameters", () => {
-      const { terrainData, headerData } = createTestData();
+      const { terrainData } = createTestData();
 
-      const tiles = extractTileInfo(terrainData, headerData);
+      const tiles = extractTileInfo(terrainData);
       const tile1 = tiles.find(t => t.attributeIndex === 1);
 
       expect(tile1?.flags).toBe(1);
@@ -160,9 +160,9 @@ describe("Tile Data Extractor", () => {
     });
 
     it("uses translation table for tile index", () => {
-      const { terrainData, headerData } = createTestData();
+      const { terrainData } = createTestData();
 
-      const tiles = extractTileInfo(terrainData, headerData);
+      const tiles = extractTileInfo(terrainData);
       const tile0 = tiles.find(t => t.attributeIndex === 0);
 
       // Should use xlat value
@@ -261,9 +261,9 @@ describe("Tile Data Extractor", () => {
 
   describe("getUnusedTileIndices", () => {
     it("returns unused tile indices", () => {
-      const { terrainData, headerData } = createTestData();
+      const { terrainData } = createTestData();
 
-      const unused = getUnusedTileIndices(terrainData, headerData);
+      const unused = getUnusedTileIndices(terrainData);
 
       expect(unused).toHaveLength(1);
       expect(unused[0]).toBe(3);

@@ -583,7 +583,7 @@ export function parseBG3D(
     for (const child of group.children) {
       if (isBG3DGroup(child) && Array.isArray(child.children)) {
         const result = validateGeometryMaterials(child);
-        if (!result.ok) return result;
+        if (result.isErr()) return result;
       } else if (isBG3DGeometry(child)) {
         const geom = child;
         if (geom.layerMaterialNum) {
@@ -607,8 +607,8 @@ export function parseBG3D(
   }
   for (const group of groups) {
     const validationResult = validateGeometryMaterials(group);
-    if (!validationResult.ok) {
-      return validationResult;
+    if (validationResult.isErr()) {
+      return err(validationResult.error);
     }
   }
 

@@ -228,7 +228,7 @@ self.onmessage = async (e: MessageEvent<BG3DGltfWorkerMessage>) => {
       self.postMessage(response);
     }
   })());
-  if (!result.ok) {
+  if (result.isErr()) {
     const response: BG3DGltfWorkerResponse = {
       type: "error",
       error: result.error instanceof Error ? result.error.message : String(result.error),

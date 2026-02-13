@@ -235,6 +235,12 @@ export function isAtomicDataComplete(atomicData: AtomicLevelData): boolean {
   );
 }
 
+export interface ResourceForkValidationError {
+  message: string;
+  badKey?: string;
+  badValueType?: string;
+}
+
 /**
  * Basic validation to ensure the object conforms to the minimal shape
  * expected by `rsrcdump.jsonio.json_to_resource_fork`, i.e. keys at
@@ -243,11 +249,9 @@ export function isAtomicDataComplete(atomicData: AtomicLevelData): boolean {
  */
 export function validateResourceForkJson(
   json_blob: Record<string, unknown>,
-):
-  | { ok: true }
-  | { ok: false; message: string; badKey?: string; badValueType?: string } {
+): Result<void, ResourceForkValidationError> {
   if (!isRecord(json_blob)) {
-    return { ok: false, message: "Top-level JSON blob must be an object" };
+    return err({ message: "Top-level JSON blob must be an object" });
   }
   for (const [key, value] of Object.entries(json_blob)) {
     if (key.length <= 4) {
@@ -255,36 +259,33 @@ export function validateResourceForkJson(
         continue; // Optional/absent resource sections are allowed
       }
       if (!isRecord(value)) {
-        return {
-          ok: false,
+        return err({
           message: `Resource type key '${key}' must map to an object/dict of resource records`,
           badKey: key,
           badValueType: Array.isArray(value) ? "array" : typeof value,
-        };
+        });
       }
       // Ensure each inner record maps to objects
       for (const [resId, resBlob] of Object.entries(value)) {
         if (!isRecord(resBlob)) {
-          return {
-            ok: false,
+          return err({
             message: `Resource record '${resId}' under type '${key}' must be an object/dict`,
             badKey: key,
             badValueType: Array.isArray(resBlob) ? "array" : typeof resBlob,
-          };
+          });
         }
         // Optionally: check for required fields in resource records (e.g., 'obj', 'name', 'order')
         if (!("obj" in resBlob)) {
-          return {
-            ok: false,
+          return err({
             message: `Resource record '${resId}' under type '${key}' is missing required 'obj' field`,
             badKey: key,
             badValueType: "missing_obj",
-          };
+          });
         }
       }
     }
   }
-  return { ok: true };
+  return ok(undefined);
 }
 
 /**
@@ -299,41 +300,46 @@ export function sanitizeResourceForkJson(
     return {};
   }
   const source = data;
-  const sanitized: Record<string, unknown> = { ...source };
+  const sanitized: Record<string, unknown> = {};
+  if ("_metadata" in source) {
+    sanitized._metadata = source._metadata;
+  }
   for (const [key, value] of Object.entries(source)) {
-    if (key.length > 4) continue;
+    if (key === "_metadata") {
+      continue;
+    }
+    if (key.length > 4) {
+      continue;
+    }
     if (value === undefined || value === null) {
-      Reflect.deleteProperty(sanitized, key);
       continue;
     }
     if (!isRecord(value)) {
-      Reflect.deleteProperty(sanitized, key);
       continue;
     }
     const entry = value;
+    const sanitizedEntry: Record<string, unknown> = {};
     for (const [resId, resVal] of Object.entries(entry)) {
       if (resVal === undefined || resVal === null) {
-        Reflect.deleteProperty(entry, resId);
         continue;
       }
       if (!isRecord(resVal)) {
-        Reflect.deleteProperty(entry, resId);
         continue;
       }
       // Check if the resource entry has a non-empty obj array
       const obj = resVal.obj;
       if (!Array.isArray(obj)) {
-        Reflect.deleteProperty(entry, resId);
         continue;
       }
       if (obj.length === 0) {
         // Skip empty array resources - rsrcdump throws on 0 resources
-        Reflect.deleteProperty(entry, resId);
+        continue;
       }
+      sanitizedEntry[resId] = resVal;
     }
     // If all resources in this type were empty, remove the entire type
-    if (Object.keys(entry).length === 0) {
-      Reflect.deleteProperty(sanitized, key);
+    if (Object.keys(sanitizedEntry).length > 0) {
+      sanitized[key] = sanitizedEntry;
     }
   }
   return sanitized;

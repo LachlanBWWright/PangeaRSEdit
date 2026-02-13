@@ -27,7 +27,7 @@ onmessage = async (event: MessageEvent<JpegCompressMessage>) => {
       );
     }
     const jpegResult = await jpegCompress(imageData, event.data.quality);
-    if (!jpegResult.ok) {
+    if (jpegResult.isErr()) {
       console.error("Failed to compress JPEG:", jpegResult.error);
       return;
     }

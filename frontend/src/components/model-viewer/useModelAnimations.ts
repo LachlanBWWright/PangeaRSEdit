@@ -31,6 +31,7 @@ export function useModelAnimations(
             duration: clip.duration,
             index: index,
             clip: clip,
+            loop: true,
           }),
         );
 

@@ -154,7 +154,7 @@ export function TopologyTiles({
       header.mapHeight + 1,
       coordColours,
     );
-    if (!result.ok) {
+    if (result.isErr()) {
       console.error("Failed to create image canvas:", result.error.message);
       return null;
     }
@@ -255,7 +255,7 @@ export function EmptyTiles({
       header.mapHeight,
       coordColours,
     );
-    if (!result.ok) {
+    if (result.isErr()) {
       console.error("Failed to create image canvas:", result.error.message);
       return null;
     }
@@ -358,7 +358,7 @@ export function ElectricFloor0Tiles({
       header.mapHeight,
       coordColours,
     );
-    if (!result.ok) {
+    if (result.isErr()) {
       console.error("Failed to create image canvas:", result.error.message);
       return null;
     }
@@ -462,7 +462,7 @@ export function ElectricFloor1Tiles({
       header.mapHeight,
       coordColours,
     );
-    if (!result.ok) {
+    if (result.isErr()) {
       console.error("Failed to create image canvas:", result.error.message);
       return null;
     }

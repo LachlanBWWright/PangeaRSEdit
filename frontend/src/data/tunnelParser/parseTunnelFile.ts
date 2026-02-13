@@ -331,7 +331,7 @@ export function parseTunnelFile(buffer: ArrayBuffer): Result<TunnelData, Error> 
     };
   });
 
-  if (!parseResult.ok) {
+  if (parseResult.isErr()) {
     return err(new Error(`Failed to parse tunnel file: ${parseResult.error.message}`));
   }
 

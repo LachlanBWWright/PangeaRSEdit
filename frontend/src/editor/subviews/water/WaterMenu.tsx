@@ -47,7 +47,7 @@ export function WaterMenu({
       : null;
 
   const waterTypesResult = getWaterBodyTypes(globals);
-  const waterBodyValues = waterTypesResult.ok
+  const waterBodyValues = waterTypesResult.isOk()
     ? waterTypesResult.value
         .map((key) => parseInt(key))
         .filter((key) => isNaN(key) === false)

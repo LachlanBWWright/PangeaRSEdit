@@ -149,9 +149,10 @@ describe("Game Item Mappers", () => {
     it("should sort games by item count descending", () => {
       const summary = getMapperCoverageSummary();
       for (let i = 1; i < summary.gameDetails.length; i++) {
-        expect(summary.gameDetails[i - 1].itemCount).toBeGreaterThanOrEqual(
-          summary.gameDetails[i].itemCount
-        );
+        const previous = summary.gameDetails[i - 1];
+        const current = summary.gameDetails[i];
+        if (!previous || !current) continue;
+        expect(previous.itemCount).toBeGreaterThanOrEqual(current.itemCount);
       }
     });
   });
@@ -181,6 +182,7 @@ describe("Game Item Mappers", () => {
       const mappedTypes = ottoItemMapper.getMappedTypes();
       if (mappedTypes.length > 0) {
         const firstType = mappedTypes[0];
+        if (firstType === undefined) return;
         const mapping = ottoItemMapper.getMapping(firstType);
         expect(mapping).toBeDefined();
         expect(mapping?.modelFile).toBeTruthy();
@@ -197,7 +199,10 @@ describe("Game Item Mappers", () => {
     it("should report hasModel correctly", () => {
       const mappedTypes = ottoItemMapper.getMappedTypes();
       if (mappedTypes.length > 0) {
-        expect(ottoItemMapper.hasModel(mappedTypes[0])).toBe(true);
+        const firstType = mappedTypes[0];
+        if (firstType !== undefined) {
+          expect(ottoItemMapper.hasModel(firstType)).toBe(true);
+        }
       }
       expect(ottoItemMapper.hasModel(99999)).toBe(false);
     });
@@ -268,7 +273,7 @@ describe("Game Item Mappers", () => {
     
     it("should handle level-specific lookups", () => {
       // Even if no mappings exist yet, it shouldn't crash
-      const mapping = bugdom2ItemMapper.getMapping(1, 0);
+      const mapping = bugdom2ItemMapper.getMapping(1);
       // Will be undefined until mappings are added
       expect(mapping === undefined || mapping !== null).toBe(true);
     });
@@ -313,6 +318,7 @@ describe("Game Item Mappers", () => {
       const mappedTypes = nanosaur2ItemMapper.getMappedTypes();
       if (mappedTypes.length > 0) {
         const firstType = mappedTypes[0];
+        if (firstType === undefined) return;
         const mapping = nanosaur2ItemMapper.getMapping(firstType);
         expect(mapping).toBeDefined();
         expect(mapping?.modelFile).toBeTruthy();
@@ -330,6 +336,7 @@ describe("Game Item Mappers", () => {
       const mappedTypes = nanosaur2ItemMapper.getMappedTypes();
       if (mappedTypes.length > 0) {
         const firstType = mappedTypes[0];
+        if (firstType === undefined) return;
         const mapping = nanosaur2ItemMapper.getMapping(firstType, undefined, { p0: 0, p1: 0, p2: 0, p3: 0 });
         expect(mapping === undefined || mapping !== null).toBe(true);
       }
@@ -349,6 +356,7 @@ describe("Game Item Mappers", () => {
       const mappedTypes = croMagItemMapper.getMappedTypes();
       if (mappedTypes.length > 0) {
         const firstType = mappedTypes[0];
+        if (firstType === undefined) return;
         const mapping = croMagItemMapper.getMapping(firstType);
         expect(mapping).toBeDefined();
         expect(mapping?.modelFile).toBeTruthy();
@@ -375,6 +383,7 @@ describe("Game Item Mappers", () => {
       const mappedTypes = billyFrontierItemMapper.getMappedTypes();
       if (mappedTypes.length > 0) {
         const firstType = mappedTypes[0];
+        if (firstType === undefined) return;
         const mapping = billyFrontierItemMapper.getMapping(firstType);
         expect(mapping).toBeDefined();
         expect(mapping?.modelFile).toBeTruthy();
@@ -392,6 +401,7 @@ describe("Game Item Mappers", () => {
       const mappedTypes = billyFrontierItemMapper.getMappedTypes();
       if (mappedTypes.length > 0) {
         const firstType = mappedTypes[0];
+        if (firstType === undefined) return;
         const mapping = billyFrontierItemMapper.getMapping(firstType, undefined, { p0: 0, p1: 0, p2: 0, p3: 0 });
         expect(mapping === undefined || mapping !== null).toBe(true);
       }

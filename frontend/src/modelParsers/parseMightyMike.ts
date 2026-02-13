@@ -1,8 +1,7 @@
 // parseMightyMike.ts
 // TypeScript parser for MightyMike .map and .tileset files
 
-import type { Result } from "../types/result";
-import { isOk } from "../types/result";
+import { err, isOk, ok, type Result } from "../types/result";
 import type {
   MightyMikeTileSet,
   MightyMikeMap,
@@ -187,16 +186,12 @@ export function parseMightyMikeTileSet(
       const offset1 = offsets[i];
       const offset2 = offsets[i + 1];
       if (!offset1 || !offset2) {
-        return {
-          ok: false,
-          error: `Invalid tileset: missing offset at index ${i}`,
-        };
+        return err(`Invalid tileset: missing offset at index ${i}`);
       }
       if (offset1.value >= offset2.value) {
-        return {
-          ok: false,
-          error: `Invalid tileset: offset ${offset1.name} (${offset1.value}) >= ${offset2.name} (${offset2.value})`,
-        };
+        return err(
+          `Invalid tileset: offset ${offset1.name} (${offset1.value}) >= ${offset2.name} (${offset2.value})`,
+        );
       }
     }
 
@@ -208,10 +203,7 @@ export function parseMightyMikeTileSet(
       offsetToTileAnimList >= dataLength ||
       offsetToTileXparentList >= dataLength
     ) {
-      return {
-        ok: false,
-        error: "Invalid tileset file: offsets out of bounds",
-      };
+      return err("Invalid tileset file: offsets out of bounds");
     }
 
     // Parse counts (16-bit big-endian integers before each section)
@@ -335,7 +327,7 @@ export function parseMightyMikeTileSet(
       tileImages,
     };
 
-  return { ok: true, value: tileset };
+  return ok(tileset);
 }
 
 export function parseMightyMikeMap(
@@ -356,10 +348,7 @@ export function parseMightyMikeMap(
 
     // Validate offsets
     if (offsetToMapImage >= dataLength) {
-      return {
-        ok: false,
-        error: "Invalid map file: map image offset out of bounds",
-      };
+      return err("Invalid map file: map image offset out of bounds");
     }
 
     // Parse map dimensions (16-bit big-endian)
@@ -467,7 +456,7 @@ export function parseMightyMikeMap(
       padding,
     };
 
-  return { ok: true, value: mapData };
+  return ok(mapData);
 }
 
 /**
@@ -478,22 +467,19 @@ export function parseMightyMikeLevel(
   mapBuffer: ArrayBuffer,
 ): Result<MightyMikeLevel, string> {
   const tilesetResult = parseMightyMikeTileSet(tilesetBuffer);
-  if (!tilesetResult.ok) {
-    return { ok: false, error: `Tileset error: ${tilesetResult.error}` };
+  if (tilesetResult.isErr()) {
+    return err(`Tileset error: ${tilesetResult.error}`);
   }
 
   const mapResult = parseMightyMikeMap(mapBuffer);
-  if (!mapResult.ok) {
-    return { ok: false, error: `Map error: ${mapResult.error}` };
+  if (mapResult.isErr()) {
+    return err(`Map error: ${mapResult.error}`);
   }
 
-  return {
-    ok: true,
-    value: {
-      tileset: tilesetResult.value,
-      map: mapResult.value,
-    },
-  };
+  return ok({
+    tileset: tilesetResult.value,
+    map: mapResult.value,
+  });
 }
 
 export function mightyMikeMapToBinary(map: MightyMikeMap): ArrayBuffer {

@@ -243,7 +243,7 @@ export function ImageEditor({
 
     // Call the onSave callback
     const saveResult = await fromPromise(onSave(imageData));
-    if (!saveResult.ok) {
+    if (saveResult.isErr()) {
       console.error("Error saving edited image:", saveResult.error);
       toast.error("Failed to save edited image");
       setSaving(false);

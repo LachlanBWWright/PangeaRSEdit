@@ -30,7 +30,7 @@ async function loadShapesFile(shapesFilename: string): Promise<Result<ShapesFile
   const url = `${SHAPES_BASE_PATH}/${shapesFilename}`;
 
   const fetchResult = await fromPromise(fetch(url));
-  if (!fetchResult.ok) {
+  if (fetchResult.isErr()) {
     return err(
       new Error(
         `Failed to load shapes file '${shapesFilename}': ${fetchResult.error.message}`
@@ -44,7 +44,7 @@ async function loadShapesFile(shapesFilename: string): Promise<Result<ShapesFile
   }
 
   const bufferResult = await fromPromise(response.arrayBuffer());
-  if (!bufferResult.ok) {
+  if (bufferResult.isErr()) {
     return err(
       new Error(
         `Failed to read buffer from '${shapesFilename}': ${bufferResult.error.message}`

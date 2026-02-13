@@ -32,7 +32,9 @@ export const TerrainGeometry = forwardRef<Mesh, {
     [mapImages, headerData, terrainData, globals],
   );
 
-  const combinedImg = combinedImgResult.ok ? combinedImgResult.value : null;
+  const combinedImg = combinedImgResult.isOk()
+    ? combinedImgResult.value
+    : null;
 
   const header: StandardHeader | undefined = headerData.Hedr?.[1000]?.obj;
 
@@ -93,7 +95,7 @@ export const TerrainGeometry = forwardRef<Mesh, {
     return new CanvasTexture(combinedImg);
   }, [combinedImg]);
 
-  if (!combinedImgResult.ok) {
+  if (combinedImgResult.isErr()) {
     console.error(
       "Failed to combine map images:",
       combinedImgResult.error.message,

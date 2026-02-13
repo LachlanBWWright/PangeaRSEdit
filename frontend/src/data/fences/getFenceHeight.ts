@@ -1,4 +1,5 @@
 import { Game, GlobalsInterface } from "../globals/globals";
+import { FenceType as Nanosaur2FenceType } from "./nanosaur2FenceType";
 
 /**
  * Gets the height of a fence type based on the game.
@@ -75,11 +76,17 @@ export function getFenceHeight(
     }
 
     case Game.NANOSAUR_2: {
-      const nanosaur2Heights = [
-        1000, // FENCE_TYPE_PINETREES (estimated, uses MAX_ALTITUDE_DIFF + 100)
-        300, // FENCE_TYPE_INVISIBLEBLOCKENEMY
-      ];
-      return nanosaur2Heights[fenceType] || 1000;
+      switch (fenceType) {
+        case Nanosaur2FenceType.LEVEL_1_PINETREE:
+          return 1000;
+        case Nanosaur2FenceType.LEVEL_2_DUSTDEVIL:
+          return 300;
+        case Nanosaur2FenceType.LEVEL_1_BLOCKENEMY:
+        case Nanosaur2FenceType.LEVEL_2_BLOCKENEMY:
+        case Nanosaur2FenceType.LEVEL_3_BLOCKENEMY:
+        default:
+          return 300;
+      }
     }
 
     case Game.CRO_MAG: {

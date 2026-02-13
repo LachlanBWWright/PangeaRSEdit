@@ -227,7 +227,7 @@ export async function verifyCitation(
   // Fetch the file
   const fileResult = await cache.getGameFile(citation.game, citation.codeSample.fileName);
   
-  if (!fileResult.ok) {
+  if (fileResult.isErr()) {
     const error = fileResult.error;
     if (error.message.includes('not found')) {
       return {

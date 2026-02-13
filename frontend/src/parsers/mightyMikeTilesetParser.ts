@@ -39,8 +39,8 @@ export function parseTilesetFile(
 ): Result<MightyMikeTileset> {
   // Decompress the tileset data
   const decompressResult = rlbDecompress(buffer);
-  if (!decompressResult.ok) {
-    return decompressResult;
+  if (decompressResult.isErr()) {
+    return err(decompressResult.error);
   }
 
   const decompressed = decompressResult.value.data;

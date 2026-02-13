@@ -86,7 +86,7 @@ export async function downloadBG3DModel(
           const skeletonBinaryResult = skeletonResourceToBinary(
             skeletonResource,
           );
-          if (!skeletonBinaryResult.ok) {
+          if (skeletonBinaryResult.isErr()) {
             console.error("Failed to convert skeleton to binary:", skeletonBinaryResult.error);
             worker.terminate();
             resolve();
@@ -163,13 +163,13 @@ export async function download3DMFModel(
   );
 
   const metaResult = bg3dParseResultToMetaFile(bg3dParsed);
-  if (!metaResult.ok) {
+  if (metaResult.isErr()) {
     console.error(`Failed to convert to 3DMF: ${metaResult.error.message}`);
     return;
   }
 
   const writeResult = write3DMFFromMetaFile(metaResult.value);
-  if (!writeResult.ok) {
+  if (writeResult.isErr()) {
     console.error(`Failed to write 3DMF: ${writeResult.error.message}`);
     return;
   }

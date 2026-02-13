@@ -212,25 +212,25 @@ export async function exportTilePalette(
     if (!tileData) continue; // Skip if no tile data
     
     const tileResult = exportSingleTile(tileData, tileSize, fullConfig);
-    if (!tileResult.ok) {
+    if (tileResult.isErr()) {
       continue; // Skip failed tiles
     }
     
     // Draw tile to canvas using createImageBitmap for proper async loading
     const fetchResult = await fromPromise(fetch(tileResult.value.dataUrl));
-    if (!fetchResult.ok) {
+    if (fetchResult.isErr()) {
       // If fetch fails, skip this tile
       continue;
     }
 
     const blobResult = await fromPromise(fetchResult.value.blob());
-    if (!blobResult.ok) {
+    if (blobResult.isErr()) {
       // If blob conversion fails, skip this tile
       continue;
     }
 
     const bitmapResult = await fromPromise(createImageBitmap(blobResult.value));
-    if (!bitmapResult.ok) {
+    if (bitmapResult.isErr()) {
       // If createImageBitmap fails, skip this tile
       continue;
     }

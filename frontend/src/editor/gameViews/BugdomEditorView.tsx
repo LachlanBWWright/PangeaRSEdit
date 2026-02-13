@@ -102,13 +102,16 @@ export function BugdomEditorView({
         defaultHeight: headerData.Hedr[1000].obj.minY ?? 0,
       },
     );
-    if (result.ok) {
-      if (result.data.headerData) setHeaderData(result.data.headerData);
-      if (result.data.itemData !== undefined) setItemData(result.data.itemData);
-      if (result.data.fenceData !== undefined) setFenceData(result.data.fenceData);
-      if (result.data.splineData !== undefined) setSplineData(result.data.splineData);
-      if (result.data.terrainData) setTerrainData(result.data.terrainData);
+    if (result.isErr()) {
+      console.error("Failed to resize level:", result.error.message);
+      return;
     }
+    const resized = result.value.data;
+    if (resized.headerData) setHeaderData(resized.headerData);
+    if (resized.itemData !== undefined) setItemData(resized.itemData);
+    if (resized.fenceData !== undefined) setFenceData(resized.fenceData);
+    if (resized.splineData !== undefined) setSplineData(resized.splineData);
+    if (resized.terrainData) setTerrainData(resized.terrainData);
   };
 
   return (

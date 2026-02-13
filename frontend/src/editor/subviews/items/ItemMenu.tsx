@@ -50,7 +50,7 @@ export function ItemMenu({
     selectedItem !== undefined ? itemData.Itms[1000].obj[selectedItem] : null;
 
   const itemTypesResult = getItemTypes(globals);
-  const allItemValues = itemTypesResult.ok
+  const allItemValues = itemTypesResult.isOk()
     ? itemTypesResult.value
         .map((key) => parseInt(key))
         .filter((key) => isNaN(key) === false)
@@ -262,7 +262,7 @@ function AddItemMenu() {
   const globals = useAtomValue(Globals);
 
   const itemTypesResult = getItemTypes(globals);
-  const itemValues = itemTypesResult.ok
+  const itemValues = itemTypesResult.isOk()
     ? itemTypesResult.value
         .map((key) => parseInt(key))
         .filter((key) => isNaN(key) === false)

@@ -100,13 +100,13 @@ async function loadScenePalette(
   }
 
   const fetchResult = await fromPromise(fetch(tgaUrl));
-  if (!fetchResult.ok || !fetchResult.value.ok) {
+  if (fetchResult.isErr() || !fetchResult.value.ok) {
     return null;
   }
 
   const response = fetchResult.value;
   const bufferResult = await fromPromise(response.arrayBuffer());
-  if (!bufferResult.ok) {
+  if (bufferResult.isErr()) {
     return null;
   }
 
@@ -130,7 +130,7 @@ export async function parseMightyMikeFile(
   setMapImages?: (images: HTMLCanvasElement[]) => void,
 ): Promise<Result<LevelData, Error>> {
   const bufferResult = await fromPromise(file.arrayBuffer());
-  if (!bufferResult.ok) {
+  if (bufferResult.isErr()) {
     return err(
       new Error(`Failed to read file buffer: ${bufferResult.error.message}`),
     );
@@ -138,7 +138,7 @@ export async function parseMightyMikeFile(
 
   const levelBuffer = bufferResult.value;
   const mapResult = parseMightyMikeMap(levelBuffer);
-  if (!mapResult.ok) {
+  if (mapResult.isErr()) {
     return err(new Error(`Failed to parse MightyMike map: ${mapResult.error}`));
   }
 
@@ -153,18 +153,18 @@ export async function parseMightyMikeFile(
 
     const tilesetUrl = mapFileUrl.replace(/\.map-\d+$/, ".tileset");
     const tilesetFetchResult = await fromPromise(fetch(tilesetUrl));
-    if (tilesetFetchResult.ok && tilesetFetchResult.value.ok) {
+    if (tilesetFetchResult.isOk() && tilesetFetchResult.value.ok) {
       const tilesetBufferResult = await fromPromise(
         tilesetFetchResult.value.arrayBuffer(),
       );
-      if (tilesetBufferResult.ok) {
+      if (tilesetBufferResult.isOk()) {
         const tilesetBuffer = tilesetBufferResult.value;
         const tilesetResult = parseMightyMikeTileSet(
           tilesetBuffer,
           paletteData || undefined,
         );
 
-        if (tilesetResult.ok) {
+        if (tilesetResult.isOk()) {
           tilesetData = tilesetResult.value;
         }
       }

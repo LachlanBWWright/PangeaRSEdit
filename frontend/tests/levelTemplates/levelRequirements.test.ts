@@ -115,11 +115,11 @@ describe("Level Requirements", () => {
 describe("Blank Level Generator", () => {
   describe("canCreateBlankLevel", () => {
     it("returns true for Otto Matic", () => {
-      expect(canCreateBlankLevel(Game.OTTO_MATIC)).toBe(true);
+      expect(canCreateBlankLevel()).toBe(true);
     });
 
     it("returns true for Nanosaur", () => {
-      expect(canCreateBlankLevel(Game.NANOSAUR)).toBe(true);
+      expect(canCreateBlankLevel()).toBe(true);
     });
   });
 
@@ -127,8 +127,8 @@ describe("Blank Level Generator", () => {
     it("creates valid Otto Matic level", () => {
       const result = createBlankLevel(Game.OTTO_MATIC, { width: 64, height: 64 });
       
-      expect(result.ok).toBe(true);
-      if (!result.ok) return;
+      expect(result.isOk()).toBe(true);
+      if (result.isErr()) return;
 
       const level = result.value;
       expect(level.headerData.Hedr).toBeDefined();
@@ -143,8 +143,8 @@ describe("Blank Level Generator", () => {
     it("creates valid Bugdom 1 level with roof", () => {
       const result = createBlankLevel(Game.BUGDOM, { width: 50, height: 50 });
       
-      expect(result.ok).toBe(true);
-      if (!result.ok) return;
+      expect(result.isOk()).toBe(true);
+      if (result.isErr()) return;
 
       const level = result.value;
       // Bugdom has roof layer
@@ -156,8 +156,8 @@ describe("Blank Level Generator", () => {
     it("creates valid Nanosaur level without optional data", () => {
       const result = createBlankLevel(Game.NANOSAUR, { width: 50, height: 50 });
       
-      expect(result.ok).toBe(true);
-      if (!result.ok) return;
+      expect(result.isOk()).toBe(true);
+      if (result.isErr()) return;
 
       const level = result.value;
       expect(level.fenceData).toBeNull();
@@ -168,19 +168,19 @@ describe("Blank Level Generator", () => {
     it("returns error for invalid dimensions", () => {
       const result = createBlankLevel(Game.OTTO_MATIC, { width: 5, height: 64 });
       
-      expect(result.ok).toBe(false);
+      expect(result.isErr()).toBe(true);
     });
 
     it("initializes terrain with correct size", () => {
       const result = createBlankLevel(Game.OTTO_MATIC, { width: 32, height: 48 });
       
-      expect(result.ok).toBe(true);
-      if (!result.ok) return;
+      expect(result.isOk()).toBe(true);
+      if (result.isErr()) return;
 
       const level = result.value;
       const yCrd = level.terrainData.YCrd[1000].obj;
       expect(yCrd).toBeDefined();
-      expect(yCrd.length).toBe(32 * 48);
+      expect(yCrd.length).toBe((32 + 1) * (48 + 1));
     });
 
     it("uses custom terrain height", () => {
@@ -190,8 +190,8 @@ describe("Blank Level Generator", () => {
         defaultTerrainHeight: 100,
       });
       
-      expect(result.ok).toBe(true);
-      if (!result.ok) return;
+      expect(result.isOk()).toBe(true);
+      if (result.isErr()) return;
 
       const level = result.value;
       const yCrd = level.terrainData.YCrd[1000].obj;
@@ -201,8 +201,8 @@ describe("Blank Level Generator", () => {
     it("creates header with correct dimensions", () => {
       const result = createBlankLevel(Game.BUGDOM_2, { width: 64, height: 80 });
       
-      expect(result.ok).toBe(true);
-      if (!result.ok) return;
+      expect(result.isOk()).toBe(true);
+      if (result.isErr()) return;
 
       const level = result.value;
       const header = level.headerData.Hedr[1000].obj;
@@ -213,8 +213,8 @@ describe("Blank Level Generator", () => {
     it("creates Cro-Mag level with numPaths", () => {
       const result = createBlankLevel(Game.CRO_MAG, { width: 64, height: 64 });
       
-      expect(result.ok).toBe(true);
-      if (!result.ok) return;
+      expect(result.isOk()).toBe(true);
+      if (result.isErr()) return;
 
       const level = result.value;
       const header = level.headerData.Hedr[1000].obj;

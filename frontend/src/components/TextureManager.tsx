@@ -37,7 +37,7 @@ export function TextureManager({
     if (!onReplaceTexture) return;
 
     const result = await fromPromise(onReplaceTexture(texture, file));
-    if (!result.ok) {
+    if (result.isErr()) {
       console.error("Failed to replace texture:", result.error);
       toast.error("Failed to replace texture");
       return;
@@ -56,7 +56,7 @@ export function TextureManager({
     // Use onTextureEdit if available, otherwise fall back to onReplaceTexture
     if (onTextureEdit) {
       const result = await fromPromise(onTextureEdit(textureToEdit, editedImageData));
-      if (!result.ok) {
+      if (result.isErr()) {
         console.error("Error saving edited texture:", result.error);
         toast.error("Failed to save edited texture");
         return;
@@ -86,7 +86,7 @@ export function TextureManager({
         })
       );
 
-      if (!blobResult.ok) {
+      if (blobResult.isErr()) {
         console.error("Error saving edited texture:", blobResult.error);
         toast.error("Failed to save edited texture");
         return;
@@ -98,7 +98,7 @@ export function TextureManager({
       });
 
       const replaceResult = await fromPromise(onReplaceTexture(textureToEdit, file));
-      if (!replaceResult.ok) {
+      if (replaceResult.isErr()) {
         console.error("Error saving edited texture:", replaceResult.error);
         toast.error("Failed to save edited texture");
         return;

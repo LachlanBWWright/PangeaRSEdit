@@ -1,4 +1,5 @@
 import { Game, GlobalsInterface } from "../globals/globals";
+import { FenceType as Nanosaur2FenceType } from "./nanosaur2FenceType";
 
 /**
  * Gets the asset path for a fence image based on game type and fence type
@@ -17,8 +18,11 @@ export function getFenceImagePath(
     case Game.BUGDOM:
       return `assets/bugdom/fences/${2000 + fenceType}.jpg`;
 
-    case Game.BUGDOM_2:
-      return `assets/bugdom2/fences/fence_${fenceType}.png`;
+    case Game.BUGDOM_2: {
+      // Bugdom 1 has 9 fence textures (2000-2008), reuse them for Bugdom 2.
+      const fallbackIndex = fenceType % 9;
+      return `assets/bugdom/fences/${2000 + fallbackIndex}.jpg`;
+    }
 
     case Game.BILLY_FRONTIER:
       // Billy Frontier uses global002.png to global007.png
@@ -63,15 +67,17 @@ export function getFenceImagePath(
     }
 
     case Game.NANOSAUR_2: {
-      // Nanosaur 2 has limited fence assets
-      const nanosaur2Files = [
-        "pinefence.jpg",
-        "dustdevil.jpg",
-        "blockenemy.png",
-      ];
-      return fenceType < nanosaur2Files.length
-        ? `assets/nanosaur2/fences/${nanosaur2Files[fenceType]}`
-        : `assets/nanosaur2/fences/pinefence.jpg`; // fallback
+      switch (fenceType) {
+        case Nanosaur2FenceType.LEVEL_1_PINETREE:
+          return "assets/nanosaur2/fences/pinefence.jpg";
+        case Nanosaur2FenceType.LEVEL_2_DUSTDEVIL:
+          return "assets/nanosaur2/fences/dustdevil.jpg";
+        case Nanosaur2FenceType.LEVEL_1_BLOCKENEMY:
+        case Nanosaur2FenceType.LEVEL_2_BLOCKENEMY:
+        case Nanosaur2FenceType.LEVEL_3_BLOCKENEMY:
+        default:
+          return "assets/nanosaur2/fences/blockenemy.png";
+      }
     }
 
     case Game.NANOSAUR:
