@@ -637,7 +637,7 @@ export function IntroPrompt() {
           onClick={() => {
             const combinedDataResult = combineLevelData(getCurrentAtomicData());
             if (isOk(combinedDataResult)) {
-              const combinedData = combinedDataResult.value;
+              const combinedData = structuredClone(combinedDataResult.value);
               ottoPreprocessor((updater) => {
                 // Apply the update to a combined data structure
                 const updated =
