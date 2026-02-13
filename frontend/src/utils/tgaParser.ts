@@ -3,6 +3,8 @@
  * Extracts color palette from TGA files used in Mighty Mike
  */
 
+import { parseTGAHeader } from "./tgaCommon";
+
 // Color correction lookup tables - matches Mighty Mike's Palette.c
 // These convert from Apple RGB (16-bit) to sRGB (8-bit)
 const gAppleRGBToLinear = buildAppleRGBToLinearTable();
@@ -71,21 +73,6 @@ function applyColorCorrection(
   return [finalRed, finalGreen, finalBlue];
 }
 
-export interface TGAHeader {
-  idLength: number;
-  colorMapType: number;
-  imageType: number;
-  colorMapOrigin: number;
-  colorMapLength: number;
-  colorMapDepth: number;
-  imageXOrigin: number;
-  imageYOrigin: number;
-  imageWidth: number;
-  imageHeight: number;
-  pixelDepth: number;
-  imageDescriptor: number;
-}
-
 export interface TGAPalette {
   colors: Uint8ClampedArray; // RGBA format, 4 bytes per color, 256 colors = 1024 bytes
 }
@@ -96,26 +83,6 @@ export let APPLY_COLOR_CORRECTION = true;
 
 export function setApplyColorCorrection(value: boolean) {
   APPLY_COLOR_CORRECTION = value;
-}
-
-/**
- * Parse TGA file header (18 bytes)
- */
-function parseTGAHeader(data: DataView): TGAHeader {
-  return {
-    idLength: data.getUint8(0),
-    colorMapType: data.getUint8(1),
-    imageType: data.getUint8(2),
-    colorMapOrigin: data.getUint16(3, true), // Little-endian
-    colorMapLength: data.getUint16(5, true), // Little-endian
-    colorMapDepth: data.getUint8(7),
-    imageXOrigin: data.getUint16(8, true),
-    imageYOrigin: data.getUint16(10, true),
-    imageWidth: data.getUint16(12, true),
-    imageHeight: data.getUint16(14, true),
-    pixelDepth: data.getUint8(16),
-    imageDescriptor: data.getUint8(17),
-  };
 }
 
 /**

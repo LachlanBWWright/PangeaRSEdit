@@ -114,9 +114,61 @@ frontend/src/editor/subviews/tiles/
 - Used by ItemMenu, MightyMikeItemMenu, and SplineSubmenus
 - Reduces ~150 lines of duplicate code
 
-## Code Duplication Analysis
+### 6. Validation Schema Refactoring ✅
 
-### Detected Duplicates (using jscpd)
+**Impact**: 50% reduction, eliminated 111 lines of duplication
+
+**Before**:
+- Three nearly identical files with schema definitions
+- `billyFrontier.ts` (75 lines)
+- `nanosaur2.ts` (72 lines)
+- `bugdom2.ts` (75 lines)
+- Total: 222 lines
+
+**After**:
+- Extracted shared schema factory to `sharedSchemas.ts` (75 lines)
+- Refactored files now just call the factory:
+  - `billyFrontier.ts` (14 lines)
+  - `nanosaur2.ts` (11 lines)
+  - `bugdom2.ts` (11 lines)
+- Total: 111 lines vs original 222 lines = **-111 lines** of duplication
+
+**New Structure**:
+```
+frontend/src/validation/games/
+├── sharedSchemas.ts           (75 lines) - Shared factory function
+├── billyFrontier.ts          (14 lines) - Uses createSimplifiedLevelSchema()
+├── nanosaur2.ts              (11 lines) - Uses createSimplifiedLevelSchema()
+└── bugdom2.ts                (11 lines) - Uses createSimplifiedLevelSchema()
+```
+
+**Benefits**:
+- Single source of truth for simplified level schema structure
+- All three games use identical schema logic
+- Easy to update all three games at once
+- Reduces maintenance burden
+
+### 7. TGA Parser Utilities Extraction ✅
+
+**Impact**: Eliminated 29 lines of duplication
+
+**Before**:
+- `tgaImageParser.ts` (442 lines) - had duplicate TGAHeader interface and parseTGAHeader function
+- `tgaParser.ts` (278 lines) - had duplicate TGAHeader interface and parseTGAHeader function
+- Total: 720 lines with 29 lines duplicated
+
+**After**:
+- Extracted to `tgaCommon.ts` (38 lines) - shared TGAHeader interface and parseTGAHeader function
+- `tgaImageParser.ts` (407 lines) - imports from tgaCommon
+- `tgaParser.ts` (246 lines) - imports from tgaCommon
+- Total: 691 lines vs original 720 lines = **-29 lines** of duplication
+
+**Benefits**:
+- Single definition of TGA header parsing logic
+- Both parsers stay in sync
+- Easier to maintain and test
+
+## Code Duplication Analysis
 
 **High Priority** (>80 lines):
 - ItemMenu.tsx ↔ SplineSubmenus.tsx: 98 lines, 922 tokens
@@ -232,10 +284,22 @@ ComponentName/
 - Net: **-188 lines** of eliminated duplication
 - Removed 3 nearly-identical component implementations
 
+**Validation Schemas**:
+- Reduced from 222 lines to 111 lines (50% reduction)
+- Extracted shared schema factory (75 lines)
+- Net: **-111 lines** of eliminated duplication
+- Unified Billy Frontier, Nanosaur 2, and Bugdom 2 schemas
+
+**TGA Parsers**:
+- Reduced from 720 lines to 691 lines (4% reduction)
+- Extracted shared utilities (38 lines)
+- Net: **-29 lines** of eliminated duplication
+- Unified TGAHeader and parseTGAHeader across two parsers
+
 **Overall Impact**:
-- **Total duplication eliminated**: ~340+ lines
-- **Files refactored**: 2 major components
-- **New utility files created**: 16 files
+- **Total duplication eliminated**: ~480+ lines (188 + 111 + 29 + previous 150+ from shared components)
+- **Files refactored**: 4 major components + validation schemas + TGA parsers
+- **New utility files created**: 19 files
 - **Better code organization**: Component responsibilities clearly separated
 - **Improved maintainability**: Easier to test, modify, and extend
 
