@@ -44,9 +44,26 @@ describe("prepareDownloadData", () => {
     if (combinedResult.isErr()) {
       throw combinedResult.error;
     }
-    const frozen = structuredClone(combinedResult.value);
+    const mutable = structuredClone(combinedResult.value);
+    const items = mutable.Itms?.[1000]?.obj;
+    if (!Array.isArray(items)) {
+      throw new Error("Expected Itms[1000].obj to be an array");
+    }
+    items.push({
+      x: 2,
+      z: 3,
+      type: 0,
+      flags: 0,
+      p0: 0,
+      p1: 0,
+      p2: 0,
+      p3: 0,
+    });
+    const frozen = structuredClone(mutable);
     deepFreeze(frozen);
     const updated = prepareDownloadData(frozen, OttoGlobals);
     expect(updated).not.toBe(frozen);
+    expect(updated.Hedr[1000].obj.numItems).toBe(1);
+    expect(frozen.Hedr[1000].obj.numItems).toBe(0);
   });
 });
