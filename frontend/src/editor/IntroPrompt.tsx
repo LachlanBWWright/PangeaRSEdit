@@ -294,7 +294,7 @@ export function IntroPrompt() {
       return;
     }
 
-    const combinedData = combinedDataResult.value;
+    const combinedData = structuredClone(combinedDataResult.value);
 
     //TODO: Find better solution
     //remove timg from combinedData - needed to fix bug for non-RSRC_FORK games
