@@ -24,7 +24,7 @@ function deepFreeze(value: unknown): void {
 }
 
 describe("prepareDownloadData", () => {
-  it("clones before preprocessing frozen level data", () => {
+  it("does not mutate frozen input data during preprocessing", () => {
     const blankResult = createBlankLevel(OttoGlobals.GAME_TYPE, {
       width: 16,
       height: 16,
