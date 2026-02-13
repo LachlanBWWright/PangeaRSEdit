@@ -7,7 +7,7 @@ import { useModelHierarchy } from "@/components/model-viewer/useModelHierarchy";
 import { useModelAnimations } from "@/components/model-viewer/useModelAnimations";
 import { AnimationUpdater } from "@/components/model-viewer/AnimationUpdater";
 import { Game } from "@/data/globals/globals";
-import { Object3D } from "three";
+import { Box3, Object3D, Vector3 } from "three";
 
 export function ModelCanvas(props: ModelCanvasProps) {
   // Memoize camera config to prevent Canvas re-initialization on every render
@@ -17,7 +17,7 @@ export function ModelCanvas(props: ModelCanvasProps) {
     // Raised camera for Bugdom 1 (keep more overhead view)
     if (props.gameType === Game.BUGDOM) {
       // Double the previous vertical offset for a higher overhead view
-      position = [60, 60, 0];
+      position = [60, 40, 0];
     }
 
     // Zoom in for Bugdom 2 to show more detail
@@ -28,6 +28,14 @@ export function ModelCanvas(props: ModelCanvasProps) {
     // Keep Billy Frontier slightly zoomed in like before
     else if (props.gameType === Game.BILLY_FRONTIER) {
       position = [0, 0, 80];
+    }
+
+    // Increase distance for Nanosaur games for wider framing
+    else if (
+      props.gameType === Game.NANOSAUR ||
+      props.gameType === Game.NANOSAUR_2
+    ) {
+      position = [0, 0, 120];
     }
 
     // Zoom out for Cro-Mag Rally for a wider view
@@ -119,6 +127,12 @@ export function ModelCanvas(props: ModelCanvasProps) {
         );
       }
       return [0, BUGDOM1_GROUND_OFFSET, 0];
+    }
+    if (props.gameType === Game.BUGDOM_2 && gltfResult?.scene) {
+      const box = new Box3().setFromObject(gltfResult.scene);
+      const size = new Vector3();
+      box.getSize(size);
+      return [0, -size.y * 0.25, 0];
     }
     return [0, 0, 0];
   }, [gltfResult, props.gameType]);

@@ -300,47 +300,46 @@ export function sanitizeResourceForkJson(
     return {};
   }
   const source = data;
-  const sanitized: Record<string, unknown> = { ...source };
+  const sanitized: Record<string, unknown> = {};
+  if ("_metadata" in source) {
+    sanitized._metadata = source._metadata;
+  }
   for (const [key, value] of Object.entries(source)) {
     if (key === "_metadata") {
       continue;
     }
     if (key.length > 4) {
-      Reflect.deleteProperty(sanitized, key);
       continue;
     }
     if (value === undefined || value === null) {
-      Reflect.deleteProperty(sanitized, key);
       continue;
     }
     if (!isRecord(value)) {
-      Reflect.deleteProperty(sanitized, key);
       continue;
     }
     const entry = value;
+    const cleanedEntry: Record<string, unknown> = {};
     for (const [resId, resVal] of Object.entries(entry)) {
       if (resVal === undefined || resVal === null) {
-        Reflect.deleteProperty(entry, resId);
         continue;
       }
       if (!isRecord(resVal)) {
-        Reflect.deleteProperty(entry, resId);
         continue;
       }
       // Check if the resource entry has a non-empty obj array
       const obj = resVal.obj;
       if (!Array.isArray(obj)) {
-        Reflect.deleteProperty(entry, resId);
         continue;
       }
       if (obj.length === 0) {
         // Skip empty array resources - rsrcdump throws on 0 resources
-        Reflect.deleteProperty(entry, resId);
+        continue;
       }
+      cleanedEntry[resId] = resVal;
     }
     // If all resources in this type were empty, remove the entire type
-    if (Object.keys(entry).length === 0) {
-      Reflect.deleteProperty(sanitized, key);
+    if (Object.keys(cleanedEntry).length > 0) {
+      sanitized[key] = cleanedEntry;
     }
   }
   return sanitized;
