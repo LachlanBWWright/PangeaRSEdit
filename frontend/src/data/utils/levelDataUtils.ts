@@ -318,7 +318,7 @@ export function sanitizeResourceForkJson(
       continue;
     }
     const entry = value;
-    const cleanedEntry: Record<string, unknown> = {};
+    const sanitizedEntry: Record<string, unknown> = {};
     for (const [resId, resVal] of Object.entries(entry)) {
       if (resVal === undefined || resVal === null) {
         continue;
@@ -335,11 +335,11 @@ export function sanitizeResourceForkJson(
         // Skip empty array resources - rsrcdump throws on 0 resources
         continue;
       }
-      cleanedEntry[resId] = resVal;
+      sanitizedEntry[resId] = resVal;
     }
     // If all resources in this type were empty, remove the entire type
-    if (Object.keys(cleanedEntry).length > 0) {
-      sanitized[key] = cleanedEntry;
+    if (Object.keys(sanitizedEntry).length > 0) {
+      sanitized[key] = sanitizedEntry;
     }
   }
   return sanitized;
