@@ -9,6 +9,8 @@ import type { Nanosaur1LevelData } from "@/data/processors/classicProprocessor";
 import type { MightyMikeMap } from "@/python/structSpecs/mightyMikeInterface";
 import { sanitizeResourceForkJson } from "../utils/levelDataUtils";
 import { err, ok } from "@/types/result";
+import { compileNanosaur1Level } from "@/editor/loadLogic/compileNanosaur1Level";
+import { mightyMikeMapToCompressedBinary } from "@/modelParsers/parseMightyMike";
 
 function isRecord(value: unknown): value is Record<string | number, unknown> {
   return typeof value === "object" && value !== null;
@@ -119,8 +121,6 @@ export async function saveMap({
     });
   } else if (globals.DATA_TYPE === DataType.TRT_FILE) {
     // Nanosaur 1: Compile back to .ter format
-    const { compileNanosaur1Level } = await import("@/editor/loadLogic/compileNanosaur1Level");
-
     // We need the original raw level data to preserve binary-specific information
     const rawLevelData = getNanosaurRawLevel(data._metadata);
 
@@ -148,8 +148,6 @@ export async function saveMap({
     });
   } else if (globals.GAME_NAME === "Mighty Mike") {
     // Mighty Mike: Compile back to .map format
-    const { mightyMikeMapToCompressedBinary } = await import("@/modelParsers/parseMightyMike");
-
     // Extract Mighty Mike-specific data from metadata
     const mightyMikeData = getMightyMikeMapData(data._metadata);
 
