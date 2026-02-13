@@ -2,7 +2,7 @@
  * Shared tile click handler logic
  */
 
-import type { HeaderData, TerrainData } from "@/python/structSpecs/LevelTypes";
+import type { TerrainData } from "@/python/structSpecs/LevelTypes";
 import type { Updater } from "use-immer";
 import { KonvaEventObject } from "konva/lib/Node";
 import type { GlobalsInterface } from "@/data/globals/globals";

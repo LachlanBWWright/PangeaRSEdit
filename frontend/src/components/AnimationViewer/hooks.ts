@@ -2,7 +2,7 @@
  * Animation Viewer React hooks for animation state management
  */
 
-import { useState, useRef, useEffect, useMemo } from "react";
+import { useState, useRef, useEffect } from "react";
 import { AnimationMixer, AnimationAction, LoopOnce, LoopRepeat } from "three";
 import type { AnimationInfo } from "./types";
 import { FALLBACK_LOOP_VALUE, MIN_PLAYBACK_RATIO } from "./utils";

@@ -13,16 +13,14 @@ import {
   TopologyBrushRadius,
   TopologyOpacity,
   TopologyValue,
-  TileEditingEnabled,
-  TileBrushType,
 } from "../../data/tiles/tileAtoms";
 import { useAtomValue } from "jotai";
 import { Globals } from "../../data/globals/globals";
 import { useMemo } from "react";
 import { createImageCanvas } from "./tiles/tilesUtils";
 import { elevationToRGBA } from "./tiles/tilesUtils";
-import { KonvaEventObject } from "konva/lib/Node";
 import { calculateBrushPixels, applyTopologyBrush, PixelType } from "../utils/topologyBrushUtils";
+import { FlagTileEditor } from "./tiles/FlagTileEditor";
 
 /* 
 
@@ -84,28 +82,32 @@ export function Tiles({
 
   if (tileViewMode === TileViews.Flags)
     return (
-      <EmptyTiles
+      <FlagTileEditor
         headerData={headerData}
         setTerrainData={setTerrainData}
         tileGrid={tileGrid}
+        flagBit={1}
+        flagToColour={(flag) => (flag & 1 ? [255, 255, 255, 255] : [0, 0, 0, 0])}
       />
     );
   if (tileViewMode === TileViews.ElectricFloor0)
     return (
-      <ElectricFloor0Tiles
+      <FlagTileEditor
         headerData={headerData}
         setTerrainData={setTerrainData}
         tileGrid={tileGrid}
+        flagBit={1 << 1}
+        flagToColour={(flag) => (flag & (1 << 1) ? [255, 255, 255, 255] : [0, 0, 0, 0])}
       />
     );
 
-  //ElectricFloor1
-
   return (
-    <ElectricFloor1Tiles
+    <FlagTileEditor
       headerData={headerData}
       setTerrainData={setTerrainData}
       tileGrid={tileGrid}
+      flagBit={1 << 2}
+      flagToColour={(flag) => (flag & (1 << 2) ? [255, 255, 255, 255] : [0, 0, 0, 0])}
     />
   );
 }
@@ -216,316 +218,6 @@ export function TopologyTiles({
           setPixels(pixelList);
         }}
         image={imgCanvas ?? undefined}
-      />
-    </Layer>
-  );
-}
-
-export function EmptyTiles({
-  headerData,
-  setTerrainData,
-  tileGrid,
-}: {
-  headerData: HeaderData;
-  setTerrainData: Updater<TerrainData>;
-  tileGrid: TileAttribute[];
-}) {
-  const globals = useAtomValue(Globals);
-  // Use Jotai atoms for tile editing state
-  const tileEditingEnabled = useAtomValue(TileEditingEnabled);
-  const brushType = useAtomValue(TileBrushType);
-  const topologyBrushRadius = useAtomValue(TopologyBrushRadius);
-
-  const header = useMemo(() => headerData.Hedr[1000].obj, [headerData.Hedr]);
-
-  const flagToColour = (flag: number) => {
-    //TILE_ATTRB_BLANK
-    if (flag & 1) return [255, 255, 255, 255];
-    return [0, 0, 0, 0];
-  };
-
-  const coordColours = useMemo(() => {
-    return tileGrid.flatMap((tile) => flagToColour(tile.flags));
-  }, [tileGrid]);
-
-  const imgCanvas = useMemo(() => {
-    if (!header) return null;
-    const result = createImageCanvas(
-      header.mapWidth,
-      header.mapHeight,
-      coordColours,
-    );
-    if (result.isErr()) {
-      console.error("Failed to create image canvas:", result.error.message);
-      return null;
-    }
-    return result.value;
-  }, [header, coordColours]);
-
-  const handleTileClickEvent = (e: KonvaEventObject<MouseEvent>) => {
-    if (!tileEditingEnabled) return;
-
-    const pos = e.target.getStage()?.getRelativePointerPosition();
-    if (!pos) return;
-
-    const centerX = Math.round(pos.x / globals.TILE_SIZE) * globals.TILE_SIZE;
-    const centerY = Math.round(pos.y / globals.TILE_SIZE) * globals.TILE_SIZE;
-    const radius = (topologyBrushRadius - 1) * globals.TILE_SIZE;
-
-    setTerrainData((data) => {
-      if (!data.Layr?.[1000]?.obj || !data.Atrb?.[1000]?.obj) return;
-      const baseX = centerX - radius;
-      const baseY = centerY - radius;
-      const size = radius * 2;
-
-      for (let i = 0; i <= size; i += globals.TILE_SIZE) {
-        for (let j = 0; j <= size; j += globals.TILE_SIZE) {
-          const tileX = baseX + i;
-          const tileY = baseY + j;
-
-          const tileGridX = Math.floor(tileX / globals.TILE_SIZE);
-          const tileGridY = Math.floor(tileY / globals.TILE_SIZE);
-
-          if (
-            tileGridX < 0 ||
-            tileGridX >= header.mapWidth ||
-            tileGridY < 0 ||
-            tileGridY >= header.mapHeight
-          )
-            continue;
-
-          const flatPos = tileGridY * header.mapWidth + tileGridX;
-          const atrbIdx = data.Layr[1000].obj[flatPos];
-          if (atrbIdx === undefined) continue;
-          const attr = data.Atrb[1000].obj[atrbIdx];
-          if (!attr) continue;
-
-          if (brushType === "add") {
-            attr.flags |= 1; // TILE_ATTRIB_BLANK
-          } else if (brushType === "remove") {
-            attr.flags &= ~1; // Clear TILE_ATTRIB_BLANK
-          }
-        }
-      }
-    });
-  };
-
-  return (
-    <Layer imageSmoothingEnabled={false}>
-      <Image
-        x={0}
-        y={0}
-        width={header.mapWidth * globals.TILE_SIZE}
-        height={header.mapHeight * globals.TILE_SIZE}
-        image={imgCanvas ?? undefined}
-        onClick={handleTileClickEvent}
-      />
-    </Layer>
-  );
-}
-
-export function ElectricFloor0Tiles({
-  headerData,
-  setTerrainData,
-  tileGrid,
-}: {
-  headerData: HeaderData;
-  setTerrainData: Updater<TerrainData>;
-  tileGrid: TileAttribute[];
-}) {
-  const globals = useAtomValue(Globals);
-  // Use Jotai atoms for tile editing state
-  const tileEditingEnabled = useAtomValue(TileEditingEnabled);
-  const brushType = useAtomValue(TileBrushType);
-  const topologyBrushRadius = useAtomValue(TopologyBrushRadius);
-
-  const header = useMemo(() => headerData.Hedr[1000].obj, [headerData.Hedr]);
-
-  const flagToColour = (flag: number) => {
-    //Electric 1
-    if (flag & (1 << 1)) return [255, 255, 255, 255];
-    return [0, 0, 0, 0];
-  };
-
-  const coordColours = useMemo(() => {
-    return tileGrid.flatMap((tile) => flagToColour(tile.flags));
-  }, [tileGrid]);
-
-  const imgCanvas = useMemo(() => {
-    if (!header) return null;
-    const result = createImageCanvas(
-      header.mapWidth,
-      header.mapHeight,
-      coordColours,
-    );
-    if (result.isErr()) {
-      console.error("Failed to create image canvas:", result.error.message);
-      return null;
-    }
-    return result.value;
-  }, [header, coordColours]);
-
-  const handleTileClickEvent = (e: KonvaEventObject<MouseEvent>) => {
-    if (!tileEditingEnabled) return;
-
-    const pos = e.target.getStage()?.getRelativePointerPosition();
-    if (!pos) return;
-
-    const centerX = Math.round(pos.x / globals.TILE_SIZE) * globals.TILE_SIZE;
-    const centerY = Math.round(pos.y / globals.TILE_SIZE) * globals.TILE_SIZE;
-    const radius = (topologyBrushRadius - 1) * globals.TILE_SIZE;
-
-    setTerrainData((data) => {
-      if (!data.Layr?.[1000]?.obj || !data.Atrb?.[1000]?.obj) return;
-      const baseX = centerX - radius;
-      const baseY = centerY - radius;
-      const size = radius * 2;
-
-      for (let i = 0; i <= size; i += globals.TILE_SIZE) {
-        for (let j = 0; j <= size; j += globals.TILE_SIZE) {
-          const tileX = baseX + i;
-          const tileY = baseY + j;
-
-          const tileGridX = Math.floor(tileX / globals.TILE_SIZE);
-          const tileGridY = Math.floor(tileY / globals.TILE_SIZE);
-
-          if (
-            tileGridX < 0 ||
-            tileGridX >= header.mapWidth ||
-            tileGridY < 0 ||
-            tileGridY >= header.mapHeight
-          )
-            continue;
-
-          const flatPos = tileGridY * header.mapWidth + tileGridX;
-          const atrbIdx = data.Layr[1000].obj[flatPos];
-          if (atrbIdx === undefined) continue;
-          const attr = data.Atrb[1000].obj[atrbIdx];
-          if (!attr) continue;
-
-          if (brushType === "add") {
-            attr.flags |= 1 << 1; // TILE_ATTRIB_ELECTROCUTE_AREA0
-          } else if (brushType === "remove") {
-            attr.flags &= ~(1 << 1); // Clear TILE_ATTRIB_ELECTROCUTE_AREA0
-          }
-        }
-      }
-    });
-  };
-
-  return (
-    <Layer imageSmoothingEnabled={false}>
-      <Image
-        x={0}
-        y={0}
-        width={header.mapWidth * globals.TILE_SIZE}
-        height={header.mapHeight * globals.TILE_SIZE}
-        image={imgCanvas ?? undefined}
-        onClick={handleTileClickEvent}
-      />
-    </Layer>
-  );
-}
-
-export function ElectricFloor1Tiles({
-  headerData,
-  setTerrainData,
-  tileGrid,
-}: {
-  headerData: HeaderData;
-  setTerrainData: Updater<TerrainData>;
-  tileGrid: TileAttribute[];
-}) {
-  const globals = useAtomValue(Globals);
-
-  // Use Jotai atoms for tile editing state
-  const tileEditingEnabled = useAtomValue(TileEditingEnabled);
-  const brushType = useAtomValue(TileBrushType);
-  const topologyBrushRadius = useAtomValue(TopologyBrushRadius);
-
-  const header = useMemo(() => headerData.Hedr[1000].obj, [headerData.Hedr]);
-
-  const flagToColour = (flag: number) => {
-    //Electric 2
-    if (flag & (1 << 2)) return [255, 255, 255, 255];
-    return [0, 0, 0, 0];
-  };
-
-  const coordColours = useMemo(() => {
-    return tileGrid.flatMap((tile) => flagToColour(tile.flags));
-  }, [tileGrid]);
-
-  const imgCanvas = useMemo(() => {
-    if (!header) return null;
-    const result = createImageCanvas(
-      header.mapWidth,
-      header.mapHeight,
-      coordColours,
-    );
-    if (result.isErr()) {
-      console.error("Failed to create image canvas:", result.error.message);
-      return null;
-    }
-    return result.value;
-  }, [header, coordColours]);
-
-  const handleTileClickEvent = (e: KonvaEventObject<MouseEvent>) => {
-    if (!tileEditingEnabled) return;
-
-    const pos = e.target.getStage()?.getRelativePointerPosition();
-    if (!pos) return;
-
-    const centerX = Math.round(pos.x / globals.TILE_SIZE) * globals.TILE_SIZE;
-    const centerY = Math.round(pos.y / globals.TILE_SIZE) * globals.TILE_SIZE;
-    const radius = (topologyBrushRadius - 1) * globals.TILE_SIZE;
-
-    setTerrainData((data) => {
-      if (!data.Layr?.[1000]?.obj || !data.Atrb?.[1000]?.obj) return;
-      const baseX = centerX - radius;
-      const baseY = centerY - radius;
-      const size = radius * 2;
-
-      for (let i = 0; i <= size; i += globals.TILE_SIZE) {
-        for (let j = 0; j <= size; j += globals.TILE_SIZE) {
-          const tileX = baseX + i;
-          const tileY = baseY + j;
-
-          const tileGridX = Math.floor(tileX / globals.TILE_SIZE);
-          const tileGridY = Math.floor(tileY / globals.TILE_SIZE);
-
-          if (
-            tileGridX < 0 ||
-            tileGridX >= header.mapWidth ||
-            tileGridY < 0 ||
-            tileGridY >= header.mapHeight
-          )
-            continue;
-
-          const flatPos = tileGridY * header.mapWidth + tileGridX;
-          const atrbIdx = data.Layr[1000].obj[flatPos];
-          if (atrbIdx === undefined) continue;
-          const attr = data.Atrb[1000].obj[atrbIdx];
-          if (!attr) continue;
-
-          if (brushType === "add") {
-            attr.flags |= 1 << 2; // TILE_ATTRIB_ELECTROCUTE_AREA1
-          } else if (brushType === "remove") {
-            attr.flags &= ~(1 << 2); // Clear TILE_ATTRIB_ELECTROCUTE_AREA1
-          }
-        }
-      }
-    });
-  };
-
-  return (
-    <Layer imageSmoothingEnabled={false}>
-      <Image
-        x={0}
-        y={0}
-        width={header.mapWidth * globals.TILE_SIZE}
-        height={header.mapHeight * globals.TILE_SIZE}
-        image={imgCanvas ?? undefined}
-        onClick={handleTileClickEvent}
       />
     </Layer>
   );

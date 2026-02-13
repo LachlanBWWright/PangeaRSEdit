@@ -7,10 +7,8 @@ import { useState, useEffect, useRef, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   AnimationClip,
-  AnimationMixer,
   QuaternionKeyframeTrack,
   VectorKeyframeTrack,
-  type AnimationAction,
 } from "three";
 import { AnimationSelector } from "./AnimationSelector";
 import { AnimationControls } from "./AnimationControls";
