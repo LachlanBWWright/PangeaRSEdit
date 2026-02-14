@@ -319,14 +319,9 @@ export function sanitizeResourceForkJson(
       // Keep object resources with non-empty arrays and data resources with non-empty strings.
       const obj = resVal.obj;
       const dataField = resVal.data;
-      if (Array.isArray(obj)) {
-        if (obj.length === 0) {
-          continue;
-        }
-        sanitizedEntry[resId] = resVal;
-        continue;
-      }
-      if (typeof dataField !== "string" || dataField.length === 0) {
+      const hasObj = Array.isArray(obj) && obj.length > 0;
+      const hasData = typeof dataField === "string" && dataField.length > 0;
+      if (!hasObj && !hasData) {
         continue;
       }
       sanitizedEntry[resId] = resVal;

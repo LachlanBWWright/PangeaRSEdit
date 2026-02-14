@@ -186,12 +186,8 @@ export function prepareDownloadData(
   const cloneableData = { ...data };
   const maybeTileset = Reflect.get(cloneableData, "tileset");
   if (isRecord(maybeTileset) && "tileImages" in maybeTileset) {
-    const sanitizedTileset: Record<string, unknown> = {};
-    for (const [key, value] of Object.entries(maybeTileset)) {
-      if (key !== "tileImages") {
-        sanitizedTileset[key] = value;
-      }
-    }
+    const sanitizedTileset = { ...maybeTileset };
+    Reflect.deleteProperty(sanitizedTileset, "tileImages");
     Reflect.set(cloneableData, "tileset", sanitizedTileset);
   }
   let workingData = structuredClone(cloneableData);

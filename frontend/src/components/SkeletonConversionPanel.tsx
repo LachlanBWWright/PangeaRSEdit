@@ -293,11 +293,11 @@ export function SkeletonConversionPanel({
               <p className="text-gray-400 mb-2">
                 Drop a {expectedExt} file here or click to select
               </p>
-                <p className="text-sm text-gray-500">
-                  {conversionType === "bg3d-to-glb"
-                    ? "Upload .bg3d or .3dmf first, then optionally add skeleton"
-                    : "Supports .glb files"}
-                </p>
+              <p className="text-sm text-gray-500">
+                {conversionType === "bg3d-to-glb"
+                  ? "Upload .bg3d or .3dmf first, then optionally add skeleton"
+                  : "Supports .glb files"}
+              </p>
             </DropArea>
             <input
               type="file"
