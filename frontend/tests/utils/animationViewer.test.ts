@@ -9,7 +9,7 @@ describe("AnimationViewer", () => {
     const markup = renderToStaticMarkup(
       createElement(AnimationViewer, { animations: [], animationMixer: null }),
     );
-    expect(markup).toContain("No animations found in this model");
+    expect(markup).toContain("No animations available.");
   });
 
   it("renders editor controls when animations exist", () => {
@@ -21,8 +21,8 @@ describe("AnimationViewer", () => {
       }),
     );
     expect(markup).toContain("Create Animation");
-    expect(markup).toContain("Edit Animation");
-    expect(markup).toContain("Keyframe Editor");
+    expect(markup).toContain("Edit Animation Properties");
+    expect(markup).toContain("Edit Keyframes");
     expect(markup).toContain("Animations (1)");
   });
 

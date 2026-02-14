@@ -1,6 +1,6 @@
 import { Link, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Map, Box, Image, Download, FlaskConical, Boxes } from "lucide-react";
+import { Map, Box, Image, Download, FlaskConical, Boxes, ClipboardList } from "lucide-react";
 
 export function Navigation() {
   const location = useLocation();
@@ -73,6 +73,18 @@ export function Navigation() {
           <Link to="/test-models" className="text-white">
             <FlaskConical className="w-4 h-4" />
             Test Models
+            </Link>
+          </Button>
+        <Button
+          asChild
+          variant={
+            location.pathname === "/item-audit" ? "default" : "ghost"
+          }
+          className="flex items-center gap-2"
+        >
+          <Link to="/item-audit" className="text-white">
+            <ClipboardList className="w-4 h-4" />
+            Item Audit
           </Link>
         </Button>
       </div>
