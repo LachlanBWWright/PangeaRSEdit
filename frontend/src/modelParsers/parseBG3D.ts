@@ -237,15 +237,8 @@ export function parseBG3D(
   // Tag-based parsing loop
   while (!done && offset < buffer.byteLength) {
     if (offset + 4 > buffer.byteLength) break;
-    const tagOffset = offset;
     const tagValue = view.getUint32(offset, false);
     const tag = tagValue;
-    // Debug: log tag info
-    console.log(
-      `[parseBG3D] Read tag ${
-        BG3DTagType[tag] ?? tag
-      } (value: ${tag}) at offset ${tagOffset}`,
-    );
     offset += 4;
 
     // Main tag switch
@@ -299,14 +292,6 @@ export function parseBG3D(
         const pixels = new Uint8Array(buffer, offset, bufferSize);
         offset += bufferSize;
 
-        console.log(
-          `SrcFormat: ${srcPixelFormat}, DstFormat: ${dstPixelFormat}`,
-        );
-        console.log(
-          `Texture src format: ${getPixelFormatSrcName(
-            srcPixelFormat,
-          )}, dst format: ${getPixelFormatDstName(dstPixelFormat)}`,
-        );
         currentMaterial.textures.push({
           width,
           height,
@@ -343,10 +328,6 @@ export function parseBG3D(
           jpegAlphaData = new Uint8Array(buffer, offset, alphaSize);
           offset += alphaSize;
         }
-
-        console.log(
-          `JPEG Texture: ${width}x${height}, buffer: ${bufferSize}, hasAlpha: ${hasAlphaChannel}`,
-        );
 
         // Store as a special texture type with JPEG marker
         currentMaterial.textures.push({

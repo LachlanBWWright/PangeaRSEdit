@@ -64,8 +64,6 @@ export function ModelCanvas(props: ModelCanvasProps) {
 
   // Always call hooks unconditionally (must be called in every render in same order)
   const gltfResult = useGLTF(gltfUrl || "");
-  console.log("gltfresult");
-  console.log(gltfResult);
 
   // Extract model hierarchy
   useModelHierarchy(gltfResult, setModelNodes, onSceneReady);

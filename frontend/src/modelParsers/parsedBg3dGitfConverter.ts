@@ -38,7 +38,6 @@ import {
   Node,
   Skin,
   Accessor,
-  Animation,
 } from "@gltf-transform/core";
 import { PixelFormatSrc, PixelFormatDst } from "./parseBG3D";
 import { Quaternion } from "three";
@@ -401,9 +400,7 @@ export function bg3dParsedToGLTF(
   },
 ): Document {
   const doc = new Document();
-  console.log("Creating new glTF Document");
   const baseBuffer = doc.createBuffer("Basebuffer");
-  console.log("Created base buffer for glTF Document");
 
   // 1. Materials
   const gltfMaterials: Material[] = (parsed.materials || []).map((mat, i) => {
@@ -425,9 +422,6 @@ export function bg3dParsedToGLTF(
         let pngBuffer: Uint8Array<ArrayBufferLike>;
         if (tex.isJpeg) {
           // JPEG texture (Nanosaur 2) - decompress from QuickTime format and convert to PNG
-          console.log(
-            `[Material ${i}] Processing JPEG texture, bufferSize: ${tex.bufferSize}`,
-          );
 
           // Extract payload from QuickTime ImageDescription format
           const view = new DataView(
@@ -442,9 +436,6 @@ export function bg3dParsedToGLTF(
             payloadSize,
           );
 
-          console.log(
-            `[Material ${i}] Offset: ${offset}, Payload size: ${payloadSize}`,
-          );
 
           // Copy to new buffer for decodeJpegNode
           const payloadBuffer = new Uint8Array(payloadSize);
@@ -452,9 +443,6 @@ export function bg3dParsedToGLTF(
 
           // Decompress JPEG
           const imageData = decodeJpegNode(payloadBuffer.buffer);
-          console.log(
-            `[Material ${i}] Decompressed JPEG: ${imageData.width}x${imageData.height}`,
-          );
 
           // Convert to PNG
           const jpegPngBuffer = rgba8ToPng(
@@ -539,14 +527,8 @@ export function bg3dParsedToGLTF(
 
   // 3. Skeleton System (NEW IMPLEMENTATION)
   let gltfSkin: Skin | null = null;
-  let gltfAnimations: Animation[] = [];
 
   if (parsed.skeleton) {
-    console.log("Creating skeleton system with new implementation...");
-    console.log(
-      `Input skeleton has ${parsed.skeleton.bones.length} bones, ${parsed.skeleton.animations.length} animations`,
-    );
-
     const skeletonSystemResult = createSkeletonSystem(
       doc,
       parsed.skeleton,
@@ -560,16 +542,7 @@ export function bg3dParsedToGLTF(
       );
     } else {
       gltfSkin = skeletonSystemResult.value.skin;
-      gltfAnimations = skeletonSystemResult.value.animations;
-
-      console.log(
-        `Skeleton system created: skin=${!!gltfSkin}, joints=${
-          gltfSkin?.listJoints().length
-        }, animations=${gltfAnimations.length}`,
-      );
     }
-  } else {
-    console.log("No skeleton data in parsed BG3D");
   }
 
   // Type guard to check if a child is a BG3DGroup (has children array)
@@ -598,7 +571,6 @@ export function bg3dParsedToGLTF(
   }
 
   const allGeometries = collectGeometries(parsed.groups || []);
-  console.log(`Processing ${allGeometries.length} geometries`);
 
   // Build decomposed point list mapping (like Otto's runtime decomposition)
   // This maps from decomposedPointIndex -> {meshIndex, localVertexIndex}[]
@@ -654,10 +626,6 @@ export function bg3dParsedToGLTF(
       }
     });
   });
-
-  console.log(
-    `Built decomposed point list with ${decomposedPointList.length} unique points across ${allGeometries.length} meshes`,
-  );
 
   // 4. Meshes and Primitives
   const gltfMeshes: Mesh[] = [];
