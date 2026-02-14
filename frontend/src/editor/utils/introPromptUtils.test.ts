@@ -36,6 +36,7 @@ describe("prepareDownloadData", () => {
       ItCo: { 1000: { name: "Terrain Items Color Array", data: "", order: 0 } },
       STgd: { 1000: { name: "SuperTile Grid", obj: [], order: 0 } },
       YCrd: { 1000: { name: "Floor&Ceiling Y Coords", obj: [], order: 0 } },
+      alis: {},
       _metadata: { file_attributes: 0, junk1: 0, junk2: 0 },
     };
     Reflect.set(sample, "tileset", {
