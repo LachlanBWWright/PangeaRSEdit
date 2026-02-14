@@ -632,9 +632,6 @@ function convertSkeletonResourceToBG3D(
 
   boneEntries.forEach(([boneId, boneEntry]) => {
     const boneObj = boneEntry.obj;
-    console.log(`Bone ${boneId} raw obj:`, boneObj);
-    console.log(`Bone ${boneId} full entry:`, boneEntry);
-    console.log(`Bone ${boneId} raw data keys:`, Object.keys(boneObj || {}));
 
     // Get point indices for this bone
     const pointIndices: number[] = [];
@@ -678,7 +675,7 @@ function convertSkeletonResourceToBG3D(
   // Sort animation headers by their resource ID to ensure correct order
   animHeaderEntries.sort(([a], [b]) => parseInt(a, 10) - parseInt(b, 10));
 
-  animHeaderEntries.forEach(([animId, animEntry], forEachIndex) => {
+  animHeaderEntries.forEach(([animId, animEntry]) => {
     const animHeader = animEntry.obj;
 
     // Calculate the actual animation index from the resource ID
@@ -713,17 +710,6 @@ function convertSkeletonResourceToBG3D(
     // Each KeyF resource follows the pattern: 1000 + (animIndex * 100) + boneIndex
     // Where animIndex is the actual animation index (0-34), not the forEach index
 
-    // Debug: Log available KeyF resources for this animation
-    if (forEachIndex === 0) {
-      console.log(
-        `Animation mapping debug: AnHd ID ${animId} maps to animation index ${animIndex}`,
-      );
-      console.log(
-        `Available KeyF resources:`,
-        Object.keys(skeleton.KeyF || {}).length,
-      );
-    }
-
     for (let boneIndex = 0; boneIndex < bones.length; boneIndex++) {
       // KeyF resource pattern: 1000 + (animIndex * 100) + boneIndex
       // Animation 0: 1000-1015, Animation 1: 1100-1115, etc.
@@ -734,41 +720,11 @@ function convertSkeletonResourceToBG3D(
       ).toString();
       const keyframeEntry = skeleton.KeyF?.[keyframeResourceId];
 
-      if (forEachIndex < 3) {
-        // Only log for first 3 animations to avoid spam
-        console.log(
-          `Animation ${animIndex} (${
-            animHeader.animName
-          }), bone ${boneIndex}: KeyF resource ID ${keyframeResourceId}, found: ${!!keyframeEntry}`,
-        );
-      }
-
       if (
         keyframeEntry &&
         keyframeEntry.obj &&
         Array.isArray(keyframeEntry.obj)
       ) {
-        if (forEachIndex < 3) {
-          console.log(
-            `  Found ${keyframeEntry.obj.length} keyframes for bone ${boneIndex} in animation ${animIndex}`,
-          );
-          if (keyframeEntry.obj.length > 0) {
-            const firstKeyframe = keyframeEntry.obj[0];
-            const lastKeyframe =
-              keyframeEntry.obj[keyframeEntry.obj.length - 1];
-            if (firstKeyframe) {
-              console.log(
-                `  First keyframe: tick=${firstKeyframe.tick}, coord=[${firstKeyframe.coordX}, ${firstKeyframe.coordY}, ${firstKeyframe.coordZ}]`,
-              );
-            }
-            if (lastKeyframe) {
-              console.log(
-                `  Last keyframe: tick=${lastKeyframe.tick}, coord=[${lastKeyframe.coordX}, ${lastKeyframe.coordY}, ${lastKeyframe.coordZ}]`,
-              );
-            }
-          }
-        }
-
         const boneKeyframes = keyframes[boneIndex];
         if (boneKeyframes) {
           keyframeEntry.obj.forEach((keyframe) => {
@@ -787,30 +743,8 @@ function convertSkeletonResourceToBG3D(
             });
           });
         }
-      } else if (forEachIndex < 3) {
-        const objInfo = keyframeEntry?.obj
-          ? `obj type: ${typeof keyframeEntry.obj}, is array: ${Array.isArray(
-              keyframeEntry.obj,
-            )}, length: ${keyframeEntry.obj.length || "N/A"}`
-          : "no obj";
-        console.log(
-          `  KeyF resource ${keyframeResourceId} is ${
-            !keyframeEntry ? "missing" : `present but: ${objInfo}`
-          }`,
-        );
-        if (keyframeEntry?.obj && !Array.isArray(keyframeEntry.obj)) {
-          console.log(`  KeyF obj structure:`, keyframeEntry.obj);
-        }
       }
     }
-
-    const totalKeyframes = Object.values(keyframes).reduce(
-      (sum, boneKeyframes) => sum + boneKeyframes.length,
-      0,
-    );
-    console.log(
-      `Animation ${animIndex} (${animHeader.animName}): ${totalKeyframes} total keyframes across ${bones.length} bones`,
-    );
 
     animations.push({
       name: animHeader.animName,
@@ -901,20 +835,14 @@ export function bg3dParsedToBG3D(parsed: BG3DParseResult): ArrayBuffer {
   view.setUint8(offset++, "D".charCodeAt(0));
   for (let i = 0; i < 16; i++) view.setUint8(offset++, 0);
 
-  console.log("Writing header at offset", offset);
-
   // Write all materials
   for (const material of parsed.materials) {
     // MATERIALFLAGS
-    console.log(`[bg3dParsedToBG3D] Write MATERIALFLAGS at offset ${offset}`);
     view.setUint32(offset, BG3DTagType.MATERIALFLAGS, false);
     offset += 4;
     view.setUint32(offset, material.flags, false);
     offset += 4;
     // MATERIALDIFFUSECOLOR
-    console.log(
-      `[bg3dParsedToBG3D] Write MATERIALDIFFUSECOLOR at offset ${offset}`,
-    );
     view.setUint32(offset, BG3DTagType.MATERIALDIFFUSECOLOR, false);
     offset += 4;
     for (let i = 0; i < 4; i++) {
@@ -925,7 +853,6 @@ export function bg3dParsedToBG3D(parsed: BG3DParseResult): ArrayBuffer {
     for (const tex of material.textures) {
       if (tex.isJpeg) {
         // Write JPEGTEXTURE (Nanosaur 2)
-        console.log(`[bg3dParsedToBG3D] Write JPEGTEXTURE at offset ${offset}`);
         view.setUint32(offset, BG3DTagType.JPEGTEXTURE, false);
         offset += 4;
         view.setUint32(offset, tex.width, false);
@@ -948,7 +875,6 @@ export function bg3dParsedToBG3D(parsed: BG3DParseResult): ArrayBuffer {
         }
       } else {
         // Write standard TEXTUREMAP
-        console.log(`[bg3dParsedToBG3D] Write TEXTUREMAP at offset ${offset}`);
         view.setUint32(offset, BG3DTagType.TEXTUREMAP, false);
         offset += 4;
         view.setUint32(offset, tex.width, false);
@@ -972,14 +898,12 @@ export function bg3dParsedToBG3D(parsed: BG3DParseResult): ArrayBuffer {
     }
   }
 
-  console.log("NUM PARSED GROUPS:", parsed.groups.length);
   // Write groups and all group-specific data
   parsed.groups.forEach((group) => {
     offset = writeGroup(view, buffer, group, offset, true);
   });
 
   // ENDFILE
-  console.log("Writing ENDFILE at offset", offset);
   view.setUint32(offset, BG3DTagType.ENDFILE, false);
   offset += 4;
 
@@ -999,7 +923,6 @@ function writeGroup(
   // GROUPSTART
 
   if (!isBaseGroup) {
-    console.log(`[bg3dParsedToBG3D] Write GROUPSTART at offset ${offset}`);
     view.setUint32(offset, BG3DTagType.GROUPSTART, false);
     offset += 4;
   }
@@ -1012,7 +935,6 @@ function writeGroup(
     } else {
       // GEOMETRY tag
       const geom = child;
-      console.log(`[bg3dParsedToBG3D] Write GEOMETRY at offset ${offset}`);
       view.setUint32(offset, BG3DTagType.GEOMETRY, false);
       offset += 4;
       view.setUint32(offset, geom.type, false);
@@ -1023,9 +945,6 @@ function writeGroup(
         view.setUint32(offset, geom.layerMaterialNum?.[i] ?? 0, false);
         offset += 4;
       }
-      //
-      console.log("numMaterials:", geom.numMaterials);
-      console.log("layerMaterialNum:", geom.layerMaterialNum);
       view.setUint32(offset, geom.flags, false);
       offset += 4;
       view.setUint32(offset, geom.numPoints, false);
@@ -1040,7 +959,6 @@ function writeGroup(
 
       // Write arrays if present
       if (geom.vertices) {
-        console.log(`[bg3dParsedToBG3D] Write VERTEXARRAY at offset ${offset}`);
         view.setUint32(offset, BG3DTagType.VERTEXARRAY, false);
         offset += 4;
         for (const [x, y, z] of geom.vertices) {
@@ -1053,7 +971,6 @@ function writeGroup(
         }
       }
       if (geom.normals) {
-        console.log(`[bg3dParsedToBG3D] Write NORMALARRAY at offset ${offset}`);
         view.setUint32(offset, BG3DTagType.NORMALARRAY, false);
         offset += 4;
         for (const [x, y, z] of geom.normals) {
@@ -1066,7 +983,6 @@ function writeGroup(
         }
       }
       if (geom.uvs) {
-        console.log(`[bg3dParsedToBG3D] Write UVARRAY at offset ${offset}`);
         view.setUint32(offset, BG3DTagType.UVARRAY, false);
         offset += 4;
         for (const [u, v] of geom.uvs) {
@@ -1077,7 +993,6 @@ function writeGroup(
         }
       }
       if (geom.colors) {
-        console.log(`[bg3dParsedToBG3D] Write COLORARRAY at offset ${offset}`);
         view.setUint32(offset, BG3DTagType.COLORARRAY, false);
         offset += 4;
         for (const [r, g, b, a] of geom.colors) {
@@ -1088,9 +1003,6 @@ function writeGroup(
         }
       }
       if (geom.triangles) {
-        console.log(
-          `[bg3dParsedToBG3D] Write TRIANGLEARRAY at offset ${offset}`,
-        );
         view.setUint32(offset, BG3DTagType.TRIANGLEARRAY, false);
         offset += 4;
         for (const [a, b, c] of geom.triangles) {
@@ -1104,7 +1016,6 @@ function writeGroup(
       }
       // Write bounding box if present (Bugdom 2, Billy Frontier, Nanosaur 2)
       if (geom.boundingBox) {
-        console.log(`[bg3dParsedToBG3D] Write BOUNDINGBOX at offset ${offset}`);
         view.setUint32(offset, BG3DTagType.BOUNDINGBOX, false);
         offset += 4;
         // min x, y, z
@@ -1130,7 +1041,6 @@ function writeGroup(
 
   // GROUPEND
   if (!isBaseGroup) {
-    console.log(`[bg3dParsedToBG3D] Write GROUPEND at offset ${offset}`);
     view.setUint32(offset, BG3DTagType.GROUPEND, false);
     offset += 4;
   }
