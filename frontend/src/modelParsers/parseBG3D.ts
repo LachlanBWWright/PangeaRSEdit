@@ -237,6 +237,7 @@ export function parseBG3D(
   // Tag-based parsing loop
   while (!done && offset < buffer.byteLength) {
     if (offset + 4 > buffer.byteLength) break;
+    const tagOffset = offset;
     const tagValue = view.getUint32(offset, false);
     const tag = tagValue;
     offset += 4;
