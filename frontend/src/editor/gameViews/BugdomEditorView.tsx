@@ -21,6 +21,14 @@ import { ThreeView } from "../threejs/Three";
 import { View } from "../viewEnum";
 import { ItemFilterToggle } from "../subviews/filters/ItemFilterToggle";
 import {
+  EmptyFencePrompt,
+  EmptySplinePrompt,
+} from "../subviews/EmptyDataPrompts";
+import {
+  createEmptyFenceData,
+  createEmptySplineData,
+} from "../utils/dataInitializers";
+import {
   createNonNullUpdater,
   createUndoRedoKeyHandler,
   createZoomInHandler,
@@ -126,11 +134,14 @@ export function BugdomEditorView({
         dataHistoryIndex={dataHistory.index}
         dataHistoryLength={dataHistory.items.length}
         terrainHasSTgd={showSupertileMenu}
-        hasFenceData={fenceData !== null}
       />
       <div>
-        {view === View.fences && fenceData && (
-          <FenceMenu fenceData={fenceData} setFenceData={setFenceDataNotNull} />
+        {view === View.fences && (
+          fenceData ? (
+            <FenceMenu fenceData={fenceData} setFenceData={setFenceDataNotNull} />
+          ) : (
+            <EmptyFencePrompt onInitialize={() => setFenceData(createEmptyFenceData())} />
+          )
         )}
         {view === View.items && itemData && (
           <ItemMenu
@@ -140,13 +151,17 @@ export function BugdomEditorView({
             setHeaderData={setHeaderData}
           />
         )}
-        {view === View.splines && splineData && (
-          <SplineMenu
-            splineData={splineData}
-            setSplineData={setSplineDataNotNull}
-            headerData={headerData}
-            setHeaderData={setHeaderData}
-          />
+        {view === View.splines && (
+          splineData ? (
+            <SplineMenu
+              splineData={splineData}
+              setSplineData={setSplineDataNotNull}
+              headerData={headerData}
+              setHeaderData={setHeaderData}
+            />
+          ) : (
+            <EmptySplinePrompt onInitialize={() => setSplineData(createEmptySplineData())} />
+          )
         )}
         {view === View.tiles && canvasViewMode !== CanvasView.THREE_D && (
           <IndividualTilesMenu

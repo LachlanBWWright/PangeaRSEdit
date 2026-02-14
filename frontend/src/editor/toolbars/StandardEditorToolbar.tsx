@@ -20,8 +20,6 @@ interface Props {
   dataHistoryIndex: number;
   dataHistoryLength: number;
   terrainHasSTgd?: boolean;
-  hasFenceData?: boolean;
-  hasLiquidData?: boolean;
 }
 
 export function StandardEditorToolbar({
@@ -34,25 +32,16 @@ export function StandardEditorToolbar({
   dataHistoryIndex,
   dataHistoryLength,
   terrainHasSTgd,
-  hasFenceData,
-  hasLiquidData,
 }: Props) {
-  const showFences = hasFenceData !== false;
-  const showWater = hasLiquidData !== false;
-
   return (
     <>
 <div className="grid grid-cols-5 lg:grid-cols-10 gap-2 w-full overflow-clip">
-          {showFences && (
-            <Button className="w-full" selected={view === View.fences} onClick={() => setView(View.fences)}>
-              Fences
-            </Button>
-          )}
-          {showWater && (
-            <Button className="w-full" selected={view === View.water} onClick={() => setView(View.water)}>
-              Water
-            </Button>
-          )}
+          <Button className="w-full" selected={view === View.fences} onClick={() => setView(View.fences)}>
+            Fences
+          </Button>
+          <Button className="w-full" selected={view === View.water} onClick={() => setView(View.water)}>
+            Water
+          </Button>
           <Button className="w-full" selected={view === View.items} onClick={() => setView(View.items)}>
             Items
           </Button>
