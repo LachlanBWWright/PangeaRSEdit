@@ -2112,7 +2112,7 @@ export async function gltfToBG3D(doc: Document): Promise<BG3DParseResult> {
   };
 }
 
-interface OttoRoundtrip {
+interface SkeletonRoundtrip {
   bg3dBuffer?: number[];
   skeletonBuffer?: number[];
 }
@@ -2122,8 +2122,8 @@ interface OriginalBinaries {
   skeleton?: number[];
 }
 
-// Type guard for OttoRoundtrip
-function isOttoRoundtrip(value: unknown): value is OttoRoundtrip {
+// Type guard for SkeletonRoundtrip
+function isSkeletonRoundtrip(value: unknown): value is SkeletonRoundtrip {
   if (!isRecord(value)) return false;
   return (
     (value.bg3dBuffer === undefined || Array.isArray(value.bg3dBuffer)) &&
@@ -2145,11 +2145,11 @@ function isOriginalBinaries(value: unknown): value is OriginalBinaries {
  */
 export function getOriginalBG3DBinary(doc: Document): ArrayBuffer | null {
   const rootExtras = doc.getRoot().getExtras() || {};
-  const ottoRoundtripRaw = isRecord(rootExtras)
+  const skeletonRoundtripRaw = isRecord(rootExtras)
     ? rootExtras.ottoRoundtrip
     : undefined;
-  const ottoRoundtrip = isOttoRoundtrip(ottoRoundtripRaw)
-    ? ottoRoundtripRaw
+  const skeletonRoundtrip = isSkeletonRoundtrip(skeletonRoundtripRaw)
+    ? skeletonRoundtripRaw
     : undefined;
   const originalBinariesRaw = isRecord(rootExtras)
     ? rootExtras.originalBinaries
@@ -2158,11 +2158,11 @@ export function getOriginalBG3DBinary(doc: Document): ArrayBuffer | null {
     ? originalBinariesRaw
     : undefined;
 
-  if (ottoRoundtrip?.bg3dBuffer) {
+  if (skeletonRoundtrip?.bg3dBuffer) {
     console.log(
-      "Returning original BG3D binary data for exact roundtrip (ottoRoundtrip)",
+      "Returning original BG3D binary data for exact roundtrip (skeletonRoundtrip)",
     );
-    return new Uint8Array(ottoRoundtrip.bg3dBuffer).buffer;
+    return new Uint8Array(skeletonRoundtrip.bg3dBuffer).buffer;
   }
 
   if (originalBinaries?.bg3d) {
@@ -2183,11 +2183,11 @@ export function getOriginalBG3DBinary(doc: Document): ArrayBuffer | null {
  */
 export function getOriginalSkeletonBinary(doc: Document): ArrayBuffer | null {
   const rootExtras = doc.getRoot().getExtras() || {};
-  const ottoRoundtripRaw = isRecord(rootExtras)
+  const skeletonRoundtripRaw = isRecord(rootExtras)
     ? rootExtras.ottoRoundtrip
     : undefined;
-  const ottoRoundtrip = isOttoRoundtrip(ottoRoundtripRaw)
-    ? ottoRoundtripRaw
+  const skeletonRoundtrip = isSkeletonRoundtrip(skeletonRoundtripRaw)
+    ? skeletonRoundtripRaw
     : undefined;
   const originalBinariesRaw = isRecord(rootExtras)
     ? rootExtras.originalBinaries
@@ -2196,11 +2196,11 @@ export function getOriginalSkeletonBinary(doc: Document): ArrayBuffer | null {
     ? originalBinariesRaw
     : undefined;
 
-  if (ottoRoundtrip?.skeletonBuffer) {
+  if (skeletonRoundtrip?.skeletonBuffer) {
     console.log(
-      "Returning original skeleton binary data for exact roundtrip (ottoRoundtrip)",
+      "Returning original skeleton binary data for exact roundtrip (skeletonRoundtrip)",
     );
-    return new Uint8Array(ottoRoundtrip.skeletonBuffer).buffer;
+    return new Uint8Array(skeletonRoundtrip.skeletonBuffer).buffer;
   }
 
   if (originalBinaries?.skeleton) {

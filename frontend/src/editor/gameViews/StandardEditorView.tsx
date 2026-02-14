@@ -22,6 +22,16 @@ import { ThreeView } from "../threejs/Three";
 import { View } from "../viewEnum";
 import { ItemFilterToggle } from "../subviews/filters/ItemFilterToggle";
 import {
+  EmptyFencePrompt,
+  EmptyWaterPrompt,
+  EmptySplinePrompt,
+} from "../subviews/EmptyDataPrompts";
+import {
+  createEmptyFenceData,
+  createEmptyLiquidData,
+  createEmptySplineData,
+} from "../utils/dataInitializers";
+import {
   createNonNullUpdater,
   createUndoRedoKeyHandler,
   createZoomInHandler,
@@ -135,15 +145,21 @@ export function StandardEditorView({
         dataHistoryIndex={dataHistory.index}
         dataHistoryLength={dataHistory.items.length}
         terrainHasSTgd={showSupertileMenu}
-        hasFenceData={fenceData !== null}
-        hasLiquidData={liquidData !== null}
       />
       <div>
-        {view === View.fences && fenceData && (
-          <FenceMenu fenceData={fenceData} setFenceData={setFenceDataNotNull} />
+        {view === View.fences && (
+          fenceData ? (
+            <FenceMenu fenceData={fenceData} setFenceData={setFenceDataNotNull} />
+          ) : (
+            <EmptyFencePrompt onInitialize={() => setFenceData(createEmptyFenceData())} />
+          )
         )}
-        {view === View.water && liquidData && (
-          <WaterMenu liquidData={liquidData} setLiquidData={setLiquidDataNotNull} />
+        {view === View.water && (
+          liquidData ? (
+            <WaterMenu liquidData={liquidData} setLiquidData={setLiquidDataNotNull} />
+          ) : (
+            <EmptyWaterPrompt onInitialize={() => setLiquidData(createEmptyLiquidData())} />
+          )
         )}
         {view === View.items && itemData && (
           <ItemMenu
@@ -153,13 +169,17 @@ export function StandardEditorView({
             setHeaderData={setHeaderData}
           />
         )}
-        {view === View.splines && splineData && (
-          <SplineMenu
-            splineData={splineData}
-            setSplineData={setSplineDataNotNull}
-            headerData={headerData}
-            setHeaderData={setHeaderData}
-          />
+        {view === View.splines && (
+          splineData ? (
+            <SplineMenu
+              splineData={splineData}
+              setSplineData={setSplineDataNotNull}
+              headerData={headerData}
+              setHeaderData={setHeaderData}
+            />
+          ) : (
+            <EmptySplinePrompt onInitialize={() => setSplineData(createEmptySplineData())} />
+          )
         )}
         {view === View.tiles && (
           <StandardTilesMenu
