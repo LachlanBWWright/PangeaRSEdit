@@ -111,10 +111,7 @@ describe("Bugdom 1 Full Save Pipeline", () => {
       expect(combined._metadata).toBeDefined();
 
       const reparsedResult = await saveToJson(serialized, bugdomSpecs, [], []);
-      const reparsedJson = reparsedResult.ok
-        ? ok(reparsedResult.value)
-        : err(reparsedResult.error);
-      expect(reparsedJson.isOk()).toBe(true);
+      expect(reparsedResult.ok).toBe(true);
     });
   }
 });

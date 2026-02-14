@@ -19,7 +19,7 @@ describe("Bugdom 2 Level Roundtrip", () => {
     "../../../../public/assets/bugdom2/terrain",
   );
   const levelFiles = [
-    // Tunnel levels (Level4/Level7) are intentionally excluded due known roundtrip instability.
+    // Tunnel levels (Level4/Level7) are intentionally excluded due to known roundtrip instability.
     "Level1_Garden.ter.rsrc",
     "Level2_SideWalk.ter.rsrc",
     "Level3_DogHair.ter.rsrc",

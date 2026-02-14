@@ -12,24 +12,12 @@ import {
 import { Game } from "@/data/globals/globals";
 import {
   buildItemAuditEntries,
+  createDefaultDecision,
   createItemAuditReport,
   getItemAuditConfigs,
   type ItemAuditDecision,
   type ParamStatus,
 } from "./itemAuditUtils";
-
-function createDefaultDecision(): ItemAuditDecision {
-  return {
-    modelStatus: "unknown",
-    paramStatus: {
-      p0: "unknown",
-      p1: "unknown",
-      p2: "unknown",
-      p3: "unknown",
-    },
-    notes: "",
-  };
-}
 
 interface StatusSelectProps {
   value: ParamStatus;

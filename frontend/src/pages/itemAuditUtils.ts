@@ -68,7 +68,7 @@ function summarizeParamDescription(param: ParamDescription | undefined): string 
   return `Bit Flags (${param.flags.length})`;
 }
 
-function createDefaultDecision(): ItemAuditDecision {
+export function createDefaultDecision(): ItemAuditDecision {
   return {
     modelStatus: "unknown",
     paramStatus: { p0: "unknown", p1: "unknown", p2: "unknown", p3: "unknown" },
