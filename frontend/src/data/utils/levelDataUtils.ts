@@ -264,7 +264,7 @@ export function validateResourceForkJson(
             badValueType: Array.isArray(resBlob) ? "array" : typeof resBlob,
           });
         }
-        // Resource records can be object-based or binary-data-based.
+        // Resource records can contain object payloads (`obj`) or binary payloads (`data`).
         if (!("obj" in resBlob) && !("data" in resBlob)) {
           return err({
             message: `Resource record '${resId}' under type '${key}' is missing required 'obj' or 'data' field`,
