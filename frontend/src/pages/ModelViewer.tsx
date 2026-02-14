@@ -421,6 +421,12 @@ export function ModelViewer() {
               />
             </>
           )}
+          {gltfUrl && (
+            <p className="text-xs text-gray-400 px-1">
+              Conversion tools are hidden while a model is loaded. Clear the
+              model to convert another file.
+            </p>
+          )}
              </div>
            </ResizablePanel>
           <ResizableHandle withHandle />

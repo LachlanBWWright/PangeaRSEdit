@@ -264,8 +264,12 @@ export function validateResourceForkJson(
             badValueType: Array.isArray(resBlob) ? "array" : typeof resBlob,
           });
         }
-        // Resource records can contain object payloads (`obj`) or binary payloads (`data`).
-        if (!("obj" in resBlob) && !("data" in resBlob)) {
+        // Resource records can contain object payloads (`obj`, e.g. Hedr/Atrb)
+        // or binary payloads (`data`, e.g. Timg hex image blobs).
+        if (
+          !Object.hasOwn(resBlob, "obj") &&
+          !Object.hasOwn(resBlob, "data")
+        ) {
           return err({
             message: `Resource record '${resId}' under type '${key}' is missing required 'obj' or 'data' field`,
             badKey: key,

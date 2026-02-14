@@ -184,9 +184,9 @@ export function prepareDownloadData(
   globals: GlobalsInterface,
 ): LevelData {
   const cloneableData = { ...data };
-  const maybeTileset = Reflect.get(cloneableData, "tileset");
-  if (isRecord(maybeTileset) && "tileImages" in maybeTileset) {
-    const sanitizedTileset = { ...maybeTileset };
+  const rawTileset = Reflect.get(cloneableData, "tileset");
+  if (isRecord(rawTileset) && "tileImages" in rawTileset) {
+    const sanitizedTileset = { ...rawTileset };
     Reflect.deleteProperty(sanitizedTileset, "tileImages");
     Reflect.set(cloneableData, "tileset", sanitizedTileset);
   }
