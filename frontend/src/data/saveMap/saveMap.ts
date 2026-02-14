@@ -166,7 +166,6 @@ export async function saveMap({
     });
   } else {
     const mapBuffer = await processMapData({ data, globals });
-    console.log("test\n\n\n");
     downloadBlob(mapBuffer, mapFile.name, ".ter.rsrc");
     toast({
       title: "Map Downloaded!",
@@ -190,8 +189,6 @@ async function processMapData({
   data: LevelData;
   globals: GlobalsInterface;
 }): Promise<ArrayBuffer> {
-  console.log("saving");
-  console.log(data);
   // Validate the JSON before passing to rsrcdump to avoid uncaught errors
   const sanitized = sanitizeResourceForkJson(data);
   const validation = validateResourceForkJson(sanitized);
@@ -241,7 +238,6 @@ async function compressMapImages(
   return new Promise((res, err) => {
     const compressedTextures: DataView[] = new Array(mapImages.length);
     const resolvedTextures = { count: 0 };
-    console.time("compress");
     for (let i = 0; i < mapImages.length; i++) {
       const canvas = mapImages[i];
       if (!canvas) {
@@ -266,7 +262,6 @@ async function compressMapImages(
         compressedTextures[data.id] = new DataView(data.dataBuffer);
         resolvedTextures.count++;
         if (resolvedTextures.count === mapImages.length) {
-          console.timeEnd("compress");
           res(compressedTextures);
         }
         lzssWorker.terminate();

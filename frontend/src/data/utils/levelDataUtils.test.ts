@@ -54,7 +54,7 @@ describe("type guards and validation helpers", () => {
     const res = validateResourceForkJson(bad);
     expect(res.isErr()).toBe(true);
     if (res.isErr()) {
-      expect(res.error.badValueType).toBe("missing_obj");
+      expect(res.error.badValueType).toBe("missing_obj_or_data");
     }
   });
 
@@ -70,6 +70,21 @@ describe("type guards and validation helpers", () => {
     expect("Empty" in sanitized).toBe(false);
     expect("Hedr" in sanitized).toBe(false);
     expect("_metadata" in sanitized).toBe(true);
+  });
+
+  it("preserves non-empty data resources for RSRC_FORK roundtrips", () => {
+    const input = {
+      _metadata: {},
+      Timg: {
+        1000: {
+          name: "Extracted Tile Image Data 32x32/16bit",
+          data: "0011",
+          order: 0,
+        },
+      },
+    };
+    const sanitized = sanitizeResourceForkJson(input);
+    expect("Timg" in sanitized).toBe(true);
   });
 });
 import { describe, it, expect } from "vitest";

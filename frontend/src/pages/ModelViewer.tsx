@@ -19,8 +19,6 @@ import { SkeletonConversionPanel } from "@/components/SkeletonConversionPanel";
 import { BG3DParseResult } from "../modelParsers/parseBG3D";
 import { toast, Toaster } from "sonner";
 import { AnimationMixer, Group } from "three";
-import BG3DGltfWorker from "../modelParsers/bg3dGltfWorker?worker";
-import type { BG3DGltfWorkerResponse } from "../modelParsers/bg3dGltfWorker";
 import {
   downloadTexture,
   downloadBG3DModel,
@@ -163,15 +161,6 @@ export function ModelViewer() {
       setAnimationMixer(mixer);
       setSelectedBoneName(null);
       setBoneTransform(null);
-
-      if (animationInfos.length > 0) {
-        console.log(
-          `Loaded ${animationInfos.length} animations from glTF:`,
-          animationInfos.map((a) => `${a.name} (${a.duration.toFixed(2)}s)`),
-        );
-      } else {
-        console.log("No animations found in glTF");
-      }
     },
     [],
   );
@@ -357,128 +346,6 @@ export function ModelViewer() {
             }}
           />
 
-          {/* GLB to BG3D Upload (Web Worker) - Refactored UI */}
-          <Card className="bg-gray-800 border-gray-700">
-            <CardHeader>
-              <CardTitle className="text-white">Convert GLB to BG3D</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              <p className="text-sm text-gray-300">
-                Upload a .glb file to convert and download as .bg3d.
-              </p>
-              <div
-                className="border-2 border-dashed border-gray-600 rounded-lg p-8 text-center cursor-pointer hover:border-gray-500 transition-colors"
-                onDrop={async (e) => {
-                  e.preventDefault();
-                  const files = Array.from(e.dataTransfer.files);
-                  const file = files.find((f) =>
-                    f.name.toLowerCase().endsWith(".glb"),
-                  );
-                  if (file) {
-                    const downloadName = file.name.replace(/\.glb$/, ".bg3d");
-                    const bufferResult = await fromPromise(file.arrayBuffer());
-                    if (bufferResult.isErr()) {
-                      alert(
-                        "GLB to BG3D conversion failed: " +
-                          bufferResult.error.message,
-                      );
-                      return;
-                    }
-                    const buffer = bufferResult.value;
-                    const worker = new BG3DGltfWorker();
-                    worker.postMessage({ type: "glb-to-bg3d", buffer }, [
-                      buffer,
-                    ]);
-                    worker.onmessage = (
-                      event: MessageEvent<BG3DGltfWorkerResponse>,
-                    ) => {
-                      if (event.data.type === "error") {
-                        alert(
-                          "GLB to BG3D conversion failed: " + event.data.error,
-                        );
-                        worker.terminate();
-                        return;
-                      }
-                      if (event.data.type === "glb-to-bg3d") {
-                        const result = event.data.result;
-                        const convertedBlob = new Blob([result], {
-                          type: "application/octet-stream",
-                        });
-                        const url = URL.createObjectURL(convertedBlob);
-                        const a = document.createElement("a");
-                        a.href = url;
-                        a.download = downloadName;
-                        document.body.appendChild(a);
-                        a.click();
-                        document.body.removeChild(a);
-                        setTimeout(() => URL.revokeObjectURL(url), 1000);
-                        worker.terminate();
-                      }
-                    };
-                  }
-                }}
-                onDragOver={(e) => e.preventDefault()}
-                onClick={() =>
-                  document.getElementById("glb-to-bg3d-upload")?.click()
-                }
-              >
-                <Upload className="w-12 h-12 mx-auto mb-4 text-gray-400" />
-                <p className="text-gray-400 mb-2">
-                  Drop a GLB file here or click to select
-                </p>
-                <p className="text-sm text-gray-500">Supports .glb files</p>
-              </div>
-              <input
-                type="file"
-                accept=".glb"
-                className="hidden"
-                id="glb-to-bg3d-upload"
-                onChange={async (e) => {
-                  const file = e.target.files?.[0];
-                  if (!file) return;
-                  const downloadName = file.name.replace(/\.glb$/, ".bg3d");
-                  const bufferResult = await fromPromise(file.arrayBuffer());
-                  if (bufferResult.isErr()) {
-                    alert(
-                      "GLB to BG3D conversion failed: " +
-                        bufferResult.error.message,
-                    );
-                    return;
-                  }
-                  const buffer = bufferResult.value;
-                  const worker = new BG3DGltfWorker();
-                  worker.postMessage({ type: "glb-to-bg3d", buffer }, [buffer]);
-                  worker.onmessage = (
-                    event: MessageEvent<BG3DGltfWorkerResponse>,
-                  ) => {
-                    if (event.data.type === "error") {
-                      alert(
-                        "GLB to BG3D conversion failed: " + event.data.error,
-                      );
-                      worker.terminate();
-                      return;
-                    }
-                    if (event.data.type === "glb-to-bg3d") {
-                      const result = event.data.result;
-                      const convertedBlob = new Blob([result], {
-                        type: "application/octet-stream",
-                      });
-                      const url = URL.createObjectURL(convertedBlob);
-                      const a = document.createElement("a");
-                      a.href = url;
-                      a.download = downloadName;
-                      document.body.appendChild(a);
-                      a.click();
-                      document.body.removeChild(a);
-                      setTimeout(() => URL.revokeObjectURL(url), 1000);
-                      worker.terminate();
-                    }
-                  };
-                }}
-              />
-            </CardContent>
-          </Card>
-
           {/* Visualization Controls */}
           {gltfUrl && (
             <VisualizationOptions
@@ -539,20 +406,23 @@ export function ModelViewer() {
               </CardContent>
             </Card>
           )}
-          {/* Conversion Panels */}
-          <SkeletonConversionPanel
-            title="Convert BG3D to GLB"
-            description="Upload .bg3d and optional .skeleton.rsrc files to convert and download as .glb."
-            conversionType="bg3d-to-glb"
-          />
+          {!gltfUrl && (
+            <>
+              <SkeletonConversionPanel
+                title="Convert BG3D / 3DMF to GLB"
+                description="Upload .bg3d or .3dmf and optional .skeleton.rsrc files to convert and download as .glb."
+                conversionType="bg3d-to-glb"
+              />
 
-          <SkeletonConversionPanel
-            title="Convert GLB to BG3D"
-            description="Upload a .glb file to convert and download as .bg3d."
-            conversionType="glb-to-bg3d"
-          />
-            </div>
-          </ResizablePanel>
+              <SkeletonConversionPanel
+                title="Convert GLB to BG3D"
+                description="Upload a .glb file to convert and download as .bg3d."
+                conversionType="glb-to-bg3d"
+              />
+            </>
+          )}
+             </div>
+           </ResizablePanel>
           <ResizableHandle withHandle />
           <ResizablePanel defaultSize={72} minSize={35} className="min-h-0">
             <div className="h-full bg-gray-800 rounded-lg overflow-hidden min-h-0">

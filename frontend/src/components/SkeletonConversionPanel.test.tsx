@@ -258,7 +258,10 @@ describe("ModelViewer Two-Step Upload Logic", () => {
 describe("SkeletonConversionPanel Logic", () => {
   test("handles conversion type validation", () => {
     const getFileExtensions = (conversionType: string) => {
-      const expectedExt = conversionType === "bg3d-to-glb" ? ".bg3d" : ".glb";
+      const expectedExt =
+        conversionType === "bg3d-to-glb"
+          ? [".bg3d", ".3dmf"]
+          : [".glb"];
       const outputExt = conversionType === "bg3d-to-glb" ? "glb" : "bg3d";
       const outputMimeType =
         conversionType === "bg3d-to-glb"
@@ -269,12 +272,12 @@ describe("SkeletonConversionPanel Logic", () => {
     };
 
     const bg3dToGlb = getFileExtensions("bg3d-to-glb");
-    expect(bg3dToGlb.expectedExt).toBe(".bg3d");
+    expect(bg3dToGlb.expectedExt).toEqual([".bg3d", ".3dmf"]);
     expect(bg3dToGlb.outputExt).toBe("glb");
     expect(bg3dToGlb.outputMimeType).toBe("model/gltf-binary");
 
     const glbToBg3d = getFileExtensions("glb-to-bg3d");
-    expect(glbToBg3d.expectedExt).toBe(".glb");
+    expect(glbToBg3d.expectedExt).toEqual([".glb"]);
     expect(glbToBg3d.outputExt).toBe("bg3d");
     expect(glbToBg3d.outputMimeType).toBe("application/octet-stream");
   });

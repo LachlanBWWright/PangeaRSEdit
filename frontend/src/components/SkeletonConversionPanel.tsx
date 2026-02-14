@@ -46,7 +46,6 @@ export function SkeletonConversionPanel({
 
     // Parse skeleton file if provided using TypeScript implementation
     if (skeletonFile) {
-      console.log("Parsing skeleton file for conversion with TypeScript...");
       const skeletonBufferResult = await fromPromise(skeletonFile.arrayBuffer());
       if (skeletonBufferResult.isErr()) {
         toast.error(`Failed to read skeleton file: ${skeletonBufferResult.error.message}`);
@@ -62,7 +61,6 @@ export function SkeletonConversionPanel({
         return;
       }
       skeletonData = skeletonParseResult.value;
-      console.log("Skeleton data parsed for conversion:", skeletonData);
     }
 
       const worker = new BG3DGltfWorker();
@@ -123,7 +121,7 @@ export function SkeletonConversionPanel({
             ? "model/gltf-binary"
             : "application/octet-stream";
         const downloadName = bg3dFile.name.replace(
-          /\.(bg3d|glb)$/,
+          /\.(bg3d|3dmf|glb)$/,
           `.${outputExtension}`,
         );
 
@@ -145,16 +143,10 @@ export function SkeletonConversionPanel({
           result.type === "bg3d-with-skeleton-to-glb" &&
           result.parsed?.skeleton
         ) {
-          console.log(
-            "Converting skeleton to resource format for download...",
-          );
           const skeletonResource = bg3dSkeletonToSkeletonResource(
             result.parsed.skeleton,
           );
 
-          console.log(
-            "Converting skeleton resource to binary for download...",
-          );
           const skeletonBinaryResult = skeletonResourceToBinary(
             skeletonResource,
           );
@@ -216,9 +208,10 @@ export function SkeletonConversionPanel({
   const handleDrop = async (e: React.DragEvent) => {
     e.preventDefault();
     const files = Array.from(e.dataTransfer.files);
-    const expectedExt = conversionType === "bg3d-to-glb" ? ".bg3d" : ".glb";
+    const expectedExt =
+      conversionType === "bg3d-to-glb" ? [".bg3d", ".3dmf"] : [".glb"];
     const primaryFile = files.find((f) =>
-      f.name.toLowerCase().endsWith(expectedExt),
+      expectedExt.some((ext) => f.name.toLowerCase().endsWith(ext)),
     );
     const skeletonFile = files.find((f) =>
       f.name.toLowerCase().endsWith(".skeleton.rsrc"),
@@ -235,7 +228,9 @@ export function SkeletonConversionPanel({
         }
       } else {
         toast.error(
-          `Please drop a ${expectedExt.substring(1).toUpperCase()} file`,
+          conversionType === "bg3d-to-glb"
+            ? "Please drop a BG3D or 3DMF file"
+            : "Please drop a GLB file",
         );
       }
     } else if (uploadStep === "select-skeleton") {
@@ -254,12 +249,15 @@ export function SkeletonConversionPanel({
     if (!file) return;
 
     if (uploadStep === "select-bg3d") {
-      const expectedExt = conversionType === "bg3d-to-glb" ? ".bg3d" : ".glb";
-      if (file.name.toLowerCase().endsWith(expectedExt)) {
+      const expectedExt =
+        conversionType === "bg3d-to-glb" ? [".bg3d", ".3dmf"] : [".glb"];
+      if (expectedExt.some((ext) => file.name.toLowerCase().endsWith(ext))) {
         handleBg3dFileSelect(file);
       } else {
         toast.error(
-          `Please select a ${expectedExt.substring(1).toUpperCase()} file`,
+          conversionType === "bg3d-to-glb"
+            ? "Please select a BG3D or 3DMF file"
+            : "Please select a GLB file",
         );
       }
     } else if (uploadStep === "select-skeleton") {
@@ -274,8 +272,8 @@ export function SkeletonConversionPanel({
   };
 
   const inputId = `${conversionType}-skeleton-upload`;
-  const expectedExt = conversionType === "bg3d-to-glb" ? "BG3D" : "GLB";
-  const fileAccept = conversionType === "bg3d-to-glb" ? ".bg3d" : ".glb";
+  const expectedExt = conversionType === "bg3d-to-glb" ? "BG3D or 3DMF" : "GLB";
+  const fileAccept = conversionType === "bg3d-to-glb" ? ".bg3d,.3dmf" : ".glb";
 
   return (
     <Card className="bg-gray-800 border-gray-700">
@@ -295,11 +293,11 @@ export function SkeletonConversionPanel({
               <p className="text-gray-400 mb-2">
                 Drop a {expectedExt} file here or click to select
               </p>
-              <p className="text-sm text-gray-500">
-                {conversionType === "bg3d-to-glb"
-                  ? "Upload .bg3d file first, then optionally add skeleton"
-                  : "Supports .glb files"}
-              </p>
+                <p className="text-sm text-gray-500">
+                  {conversionType === "bg3d-to-glb"
+                    ? "Upload .bg3d or .3dmf first, then optionally add skeleton"
+                    : "Supports .glb files"}
+                </p>
             </DropArea>
             <input
               type="file"

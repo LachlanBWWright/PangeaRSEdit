@@ -143,16 +143,6 @@ export function splitLevelData(levelData: LevelData | null): AtomicLevelData {
       }
     : null;
 
-  // Log which atomic fields are missing (null)
-  console.log("splitLevelData: null status", {
-    headerData: headerData === null,
-    itemData: itemData === null,
-    liquidData: liquidData === null,
-    fenceData: fenceData === null,
-    splineData: splineData === null,
-    terrainData: terrainData === null,
-  });
-
   return {
     headerData,
     itemData,
@@ -274,12 +264,12 @@ export function validateResourceForkJson(
             badValueType: Array.isArray(resBlob) ? "array" : typeof resBlob,
           });
         }
-        // Optionally: check for required fields in resource records (e.g., 'obj', 'name', 'order')
-        if (!("obj" in resBlob)) {
+        // Resource records can be object-based or binary-data-based.
+        if (!("obj" in resBlob) && !("data" in resBlob)) {
           return err({
-            message: `Resource record '${resId}' under type '${key}' is missing required 'obj' field`,
+            message: `Resource record '${resId}' under type '${key}' is missing required 'obj' or 'data' field`,
             badKey: key,
-            badValueType: "missing_obj",
+            badValueType: "missing_obj_or_data",
           });
         }
       }
@@ -326,13 +316,17 @@ export function sanitizeResourceForkJson(
       if (!isRecord(resVal)) {
         continue;
       }
-      // Check if the resource entry has a non-empty obj array
+      // Keep object resources with non-empty arrays and data resources with non-empty strings.
       const obj = resVal.obj;
-      if (!Array.isArray(obj)) {
+      const dataField = resVal.data;
+      if (Array.isArray(obj)) {
+        if (obj.length === 0) {
+          continue;
+        }
+        sanitizedEntry[resId] = resVal;
         continue;
       }
-      if (obj.length === 0) {
-        // Skip empty array resources - rsrcdump throws on 0 resources
+      if (typeof dataField !== "string" || dataField.length === 0) {
         continue;
       }
       sanitizedEntry[resId] = resVal;
