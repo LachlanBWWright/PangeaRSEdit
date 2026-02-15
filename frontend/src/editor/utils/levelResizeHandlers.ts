@@ -2,7 +2,7 @@ import type { GlobalsInterface } from "@/data/globals/globals";
 import type { AtomicLevelData } from "@/data/utils/levelDataUtils";
 import { combineLevelData, splitLevelData } from "@/data/utils/levelDataUtils";
 import type { ResizeDirection } from "@/data/utils/levelResizeUtils";
-import { resizeLevel } from "@/data/utils/levelResizeUtils";
+import { ITEM_BOUNDS_WARNING, resizeLevel } from "@/data/utils/levelResizeUtils";
 import { err, ok, type Result } from "@/types/result";
 
 export interface ResizeUIOptions {
@@ -58,7 +58,7 @@ export function applySupertileResizeToAtomicData(
   return ok({
     data: splitLevelData(resizedLevel),
     warnings: resized.warnings.filter(
-      (warning) => !warning.toLowerCase().includes("items were outside"),
+      (warning) => warning !== ITEM_BOUNDS_WARNING,
     ),
   });
 }

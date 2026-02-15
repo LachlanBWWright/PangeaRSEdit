@@ -23,6 +23,8 @@ export interface ResizeResult {
   itemsOutOfBounds: TerrainItem[];
 }
 
+export const ITEM_BOUNDS_WARNING = "Some items were outside the new bounds.";
+
 interface ResizeDimensions {
   newWidth: number;
   newHeight: number;
@@ -316,7 +318,7 @@ export function resizeLevel(
   return {
     ok: true,
     levelData: resizedLevel,
-    warnings: outOfBounds.length ? ["Some items were outside the new bounds."] : [],
+    warnings: outOfBounds.length ? [ITEM_BOUNDS_WARNING] : [],
     itemsOutOfBounds: outOfBounds,
   };
 }

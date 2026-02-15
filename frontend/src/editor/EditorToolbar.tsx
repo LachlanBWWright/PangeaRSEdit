@@ -8,12 +8,6 @@ import { View } from "./viewEnum";
 interface Props {
   view: View;
   setView: (v: View) => void;
-  undoData: () => void;
-  redoData: () => void;
-  zoomIn: () => void;
-  zoomOut: () => void;
-  dataHistoryIndex: number;
-  dataHistoryLength: number;
   terrainHasSTgd?: boolean;
   hasFenceData?: boolean;
   hasLiquidData?: boolean;
@@ -22,12 +16,6 @@ interface Props {
 export function EditorToolbar({
   view,
   setView,
-  undoData,
-  redoData,
-  zoomIn,
-  zoomOut,
-  dataHistoryIndex,
-  dataHistoryLength,
   terrainHasSTgd,
   hasFenceData,
   hasLiquidData,
@@ -45,7 +33,7 @@ export function EditorToolbar({
 
   return (
     <>
-      <div className="grid grid-cols-5 lg:grid-cols-10 gap-2 w-full overflow-clip">
+      <div className="grid grid-flow-col auto-cols-fr gap-2 w-full overflow-clip">
         {showFences && (
           <Button
             selected={view === View.fences}
@@ -66,10 +54,6 @@ export function EditorToolbar({
         <Button className="w-full" selected={view === View.splines} onClick={() => setView(View.splines)}>Splines</Button>
         <Button className="w-full" selected={view === View.tiles} onClick={() => setView(View.tiles)}>Tiles</Button>
         <Button className="w-full" disabled={!terrainHasSTgd} selected={view === View.supertiles} onClick={() => setView(View.supertiles)}>Supertiles</Button>
-        <Button className="w-full" variant="zoom" disabled={dataHistoryIndex === 0} onClick={undoData}>↩</Button>
-        <Button className="w-full" variant="zoom" disabled={dataHistoryIndex === dataHistoryLength - 1} onClick={redoData}>↪</Button>
-        <Button className="w-full" variant="zoom" onClick={zoomOut}>-</Button>
-        <Button className="w-full" variant="zoom" onClick={zoomIn}>+</Button>
       </div>
       <Separator />
     </>

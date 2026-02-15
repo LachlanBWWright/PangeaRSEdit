@@ -165,11 +165,62 @@ function createAtomicFixture(): AtomicLevelData {
 }
 
 describe("applySupertileResizeToAtomicData", () => {
-  it("keeps item, fence, spline, and liquid coordinates unchanged", () => {
+  it("keeps item, fence, spline, and liquid coordinates unchanged for all resize directions", () => {
+    const cases: {
+      direction: "top" | "bottom" | "left" | "right";
+      width: number;
+      height: number;
+    }[] = [
+      { direction: "left", width: 15, height: 10 },
+      { direction: "right", width: 15, height: 10 },
+      { direction: "top", width: 10, height: 15 },
+      { direction: "bottom", width: 10, height: 15 },
+    ];
+
+    for (const testCase of cases) {
+      const fixture = createAtomicFixture();
+      const result = applySupertileResizeToAtomicData(fixture, BugdomGlobals, {
+        direction: testCase.direction,
+        tileCount: BugdomGlobals.TILES_PER_SUPERTILE,
+        defaultHeight: 0,
+      });
+
+      expect(result.isOk()).toBe(true);
+      if (result.isErr()) {
+        continue;
+      }
+
+      const resized = result.value.data;
+      expect(resized.headerData?.Hedr[1000].obj.mapWidth).toBe(testCase.width);
+      expect(resized.headerData?.Hedr[1000].obj.mapHeight).toBe(testCase.height);
+      expect(resized.terrainData?.Layr?.[1000].obj.length).toBe(
+        testCase.width * testCase.height,
+      );
+      expect(resized.terrainData?.YCrd[1000].obj.length).toBe(
+        (testCase.width + 1) * (testCase.height + 1),
+      );
+      expect(resized.itemData?.Itms[1000].obj[0]?.x).toBe(160);
+      expect(resized.itemData?.Itms[1000].obj[0]?.z).toBe(224);
+      expect(resized.fenceData?.FnNb[1000]?.obj[0]).toEqual([50, 50]);
+      expect(resized.splineData?.SpNb[1000]?.obj[0]).toEqual({
+        x: 200,
+        z: 300,
+      });
+      expect(resized.liquidData?.Liqd[1000]?.obj[0]?.hotSpotX).toBe(320);
+      expect(resized.liquidData?.Liqd[1000]?.obj[0]?.hotSpotZ).toBe(480);
+    }
+  });
+
+  it("filters item out-of-bounds warnings while keeping item coordinates", () => {
     const fixture = createAtomicFixture();
+    const firstItem = fixture.itemData?.Itms[1000].obj[0];
+    if (firstItem) {
+      firstItem.x = 224;
+    }
+
     const result = applySupertileResizeToAtomicData(fixture, BugdomGlobals, {
       direction: "left",
-      tileCount: BugdomGlobals.TILES_PER_SUPERTILE,
+      tileCount: -BugdomGlobals.TILES_PER_SUPERTILE,
       defaultHeight: 0,
     });
 
@@ -178,17 +229,7 @@ describe("applySupertileResizeToAtomicData", () => {
       return;
     }
 
-    const resized = result.value.data;
-    expect(resized.headerData?.Hedr[1000].obj.mapWidth).toBe(15);
-    expect(resized.headerData?.Hedr[1000].obj.mapHeight).toBe(10);
-    expect(resized.terrainData?.Layr?.[1000].obj.length).toBe(150);
-    expect(resized.terrainData?.STgd?.[1000].obj.length).toBe(6);
-    expect(resized.terrainData?.YCrd[1000].obj.length).toBe(176);
-    expect(resized.itemData?.Itms[1000].obj[0]?.x).toBe(160);
-    expect(resized.itemData?.Itms[1000].obj[0]?.z).toBe(224);
-    expect(resized.fenceData?.FnNb[1000]?.obj[0]).toEqual([50, 50]);
-    expect(resized.splineData?.SpNb[1000]?.obj[0]).toEqual({ x: 200, z: 300 });
-    expect(resized.liquidData?.Liqd[1000]?.obj[0]?.hotSpotX).toBe(320);
-    expect(resized.liquidData?.Liqd[1000]?.obj[0]?.hotSpotZ).toBe(480);
+    expect(result.value.warnings).toEqual([]);
+    expect(result.value.data.itemData?.Itms[1000].obj[0]?.x).toBe(224);
   });
 });

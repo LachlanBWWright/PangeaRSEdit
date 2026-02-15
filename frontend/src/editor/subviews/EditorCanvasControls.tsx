@@ -44,7 +44,7 @@ export function EditorCanvasControls({
         aria-label="Zoom out"
         title="Zoom out"
       >
-        −
+        -
       </button>
       <button
         onClick={zoomIn}
