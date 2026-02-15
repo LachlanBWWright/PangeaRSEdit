@@ -83,68 +83,57 @@ export function ItemAuditPage() {
     const loadPreview = async () => {
       setPreviewScene(null);
       setPreviewError(null);
+      const finishWithError = (message: string) => {
+        if (!cancelled) {
+          setPreviewError(message);
+          setPreviewLoading(false);
+        }
+        worker.terminate();
+      };
       if (
         !currentEntry ||
         !currentConfig ||
         !currentEntry.modelMappingFile ||
         !currentEntry.modelMappingPath
       ) {
+        worker.terminate();
         return;
       }
       setPreviewLoading(true);
       const modelUrl = `${currentConfig.basePath}/${currentEntry.modelMappingPath}/${currentEntry.modelMappingFile}`;
       const fetchResult = await fromPromise(fetch(modelUrl));
       if (fetchResult.isErr()) {
-        if (!cancelled) {
-          setPreviewError(fetchResult.error.message);
-          setPreviewLoading(false);
-        }
-        worker.terminate();
+        finishWithError(fetchResult.error.message);
         return;
       }
       const response = fetchResult.value;
       if (!response.ok) {
-        if (!cancelled) {
-          setPreviewError(`Failed to load model (${response.status})`);
-          setPreviewLoading(false);
-        }
-        worker.terminate();
+        finishWithError(`Failed to load model (${response.status})`);
         return;
       }
       const bufferResult = await fromPromise(response.arrayBuffer());
       if (bufferResult.isErr()) {
-        if (!cancelled) {
-          setPreviewError(bufferResult.error.message);
-          setPreviewLoading(false);
-        }
-        worker.terminate();
+        finishWithError(bufferResult.error.message);
         return;
       }
 
       const workerResult = await fromPromise(
         new Promise<BG3DGltfWorkerResponse>((resolve, reject) => {
           worker.onmessage = (event) => resolve(event.data);
-          worker.onerror = () => reject(new Error("Model conversion worker failed"));
+          worker.onerror = (event) =>
+            reject(new Error(event.message || "Model conversion worker failed"));
           const arrayBuffer = bufferResult.value;
           worker.postMessage({ type: "bg3d-to-glb", buffer: arrayBuffer }, [arrayBuffer]);
         }),
       );
       if (workerResult.isErr()) {
-        if (!cancelled) {
-          setPreviewError(workerResult.error.message);
-          setPreviewLoading(false);
-        }
-        worker.terminate();
+        finishWithError(workerResult.error.message);
         return;
       }
       const converted = workerResult.value;
       if (converted.type !== "bg3d-to-glb") {
-        if (!cancelled) {
-          const message = converted.type === "error" ? converted.error : "Unexpected model conversion result";
-          setPreviewError(message);
-          setPreviewLoading(false);
-        }
-        worker.terminate();
+        const message = converted.type === "error" ? converted.error : "Unexpected model conversion result";
+        finishWithError(message);
         return;
       }
 
@@ -154,11 +143,7 @@ export function ItemAuditPage() {
       const gltfResult = await fromPromise(loader.loadAsync(glbUrl));
       URL.revokeObjectURL(glbUrl);
       if (gltfResult.isErr()) {
-        if (!cancelled) {
-          setPreviewError(gltfResult.error.message);
-          setPreviewLoading(false);
-        }
-        worker.terminate();
+        finishWithError(gltfResult.error.message);
         return;
       }
 
@@ -292,8 +277,8 @@ export function ItemAuditPage() {
                 <div className="space-y-2">
                   <Label>Model citations</Label>
                   <div className="space-y-2">
-                    {currentEntry.modelCitations.map((citation) => (
-                      <div key={`${citation.file}:${citation.line}:${citation.description}`} className="rounded border border-gray-700 bg-gray-900 p-2 text-xs">
+                    {currentEntry.modelCitations.map((citation, index) => (
+                      <div key={`${citation.file}:${citation.line}:${index}`} className="rounded border border-gray-700 bg-gray-900 p-2 text-xs">
                         <p className="font-medium">{citation.description}</p>
                         <p>{citation.file}:{citation.line}{citation.endLine ? `-${citation.endLine}` : ""}</p>
                         <a className="text-blue-300 underline" href={citation.permalink} target="_blank" rel="noreferrer">
@@ -327,8 +312,8 @@ export function ItemAuditPage() {
                         }))
                       }
                     />
-                    {currentEntry.paramDetails[key].citations.map((citation) => (
-                      <div key={`${key}-${citation.fileName}-${citation.lineNumber}`} className="rounded border border-gray-700 bg-gray-900 p-2 text-xs">
+                    {currentEntry.paramDetails[key].citations.map((citation, citationIndex) => (
+                      <div key={`${key}-${citation.fileName}-${citation.lineNumber}-${citationIndex}`} className="rounded border border-gray-700 bg-gray-900 p-2 text-xs">
                         <p>{citation.fileName}:{citation.lineNumber}</p>
                         <pre className="whitespace-pre-wrap">{citation.code}</pre>
                       </div>

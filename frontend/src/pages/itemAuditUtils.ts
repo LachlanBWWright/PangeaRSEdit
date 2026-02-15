@@ -154,6 +154,20 @@ function toParamCitation(sample: CodeSample): ParamCitationDetail {
   };
 }
 
+function hasValidCodeSample(value: unknown): value is CodeSample {
+  if (typeof value !== "object" || value === null) {
+    return false;
+  }
+  const fileName = Reflect.get(value, "fileName");
+  const lineNumber = Reflect.get(value, "lineNumber");
+  const code = Reflect.get(value, "code");
+  return (
+    typeof fileName === "string" &&
+    typeof lineNumber === "number" &&
+    typeof code === "string"
+  );
+}
+
 function paramAuditDetail(param: ParamDescription | undefined): ParamAuditDetail {
   if (param === undefined) {
     return { summary: "Unknown", citations: [] };
@@ -166,8 +180,9 @@ function paramAuditDetail(param: ParamDescription | undefined): ParamAuditDetail
     return { summary: param.description, citations };
   }
   const citations = param.flags
-    .filter((flag) => flag.codeSample !== undefined)
-    .map((flag) => toParamCitation(flag.codeSample));
+    .map((flag) => flag.codeSample)
+    .filter(hasValidCodeSample)
+    .map((sample) => toParamCitation(sample));
   return { summary: `Bit Flags (${param.flags.length})`, citations };
 }
 
