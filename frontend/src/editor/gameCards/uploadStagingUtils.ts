@@ -21,3 +21,24 @@ export function getUploadAcceptTypes(config: UploadAcceptConfig): string {
   }
   return `${config.levelFileType},${config.textureFileType}`;
 }
+
+export type UploadFileKind = "level" | "texture" | "tunnel" | "invalid";
+
+export function classifyUploadFile(
+  fileName: string,
+  levelFileType: string,
+  textureFileType: string | null,
+  isBugdom2: boolean,
+): UploadFileKind {
+  const lower = fileName.toLowerCase();
+  if (isBugdom2 && lower.endsWith(".tun")) {
+    return "tunnel";
+  }
+  if (lower.endsWith(levelFileType)) {
+    return "level";
+  }
+  if (textureFileType && lower.endsWith(textureFileType)) {
+    return "texture";
+  }
+  return "invalid";
+}

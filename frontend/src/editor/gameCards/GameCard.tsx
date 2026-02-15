@@ -9,7 +9,10 @@ import { parseTunnelFile } from "@/data/tunnelParser/parseTunnelFile";
 import type { TunnelData } from "@/data/tunnelParser/types";
 import { Button } from "@/components/ui/button";
 import { Upload, X } from "lucide-react";
-import { getUploadAcceptTypes } from "./uploadStagingUtils";
+import {
+  classifyUploadFile,
+  getUploadAcceptTypes,
+} from "./uploadStagingUtils";
 
 const getModelPath = (gameType: Game): string | undefined => {
   switch (gameType) {
@@ -33,10 +36,6 @@ const getModelPath = (gameType: Game): string | undefined => {
       return "/glbModels/OttoMatic.glb";
   }
 };
-
-function extensionFor(file: File): string {
-  return file.name.toLowerCase();
-}
 
 export function GameCard({
   title,
@@ -97,6 +96,7 @@ export function GameCard({
     stagedLevelFile,
     stagedTextureFile,
   ]);
+  const formattedAccepts = accepts.split(",").join(", ");
 
   const clearStaged = () => {
     setStagedLevelFile(null);
@@ -132,8 +132,13 @@ export function GameCard({
   };
 
   const handleFile = async (file: File) => {
-    const lower = extensionFor(file);
-    if (isBugdom2 && lower.endsWith(".tun")) {
+    const fileKind = classifyUploadFile(
+      file.name,
+      levelFileType,
+      textureFileType,
+      isBugdom2,
+    );
+    if (fileKind === "tunnel") {
       const result = parseTunnelFile(await file.arrayBuffer());
       if (result.isErr()) {
         toast.error("Failed to parse tunnel file", {
@@ -147,9 +152,8 @@ export function GameCard({
       return;
     }
 
-    const isLevel = lower.endsWith(levelFileType);
-    const isTexture =
-      textureFileType !== null && lower.endsWith(textureFileType);
+    const isLevel = fileKind === "level";
+    const isTexture = fileKind === "texture";
 
     if (!isLevel && !isTexture) {
       toast.error("Unsupported file type", {
@@ -245,9 +249,7 @@ export function GameCard({
         </div>
 
         <div className="flex-none pt-3 border-t border-gray-700 mt-3 space-y-2">
-          <p className="text-sm text-gray-300">
-            Upload files ({accepts.replaceAll(",", ", ")})
-          </p>
+          <p className="text-sm text-gray-300">Upload files ({formattedAccepts})</p>
           <div
             className="border-2 border-dashed border-gray-600 rounded-lg p-4 text-center cursor-pointer hover:border-gray-500 transition-colors"
             onDrop={onDrop}
@@ -258,7 +260,7 @@ export function GameCard({
             <p className="text-sm text-gray-300">
               Drop files here or click to browse
             </p>
-            <p className="text-xs text-gray-500 mt-1">Accepted: {accepts}</p>
+            <p className="text-xs text-gray-500 mt-1">Accepted: {formattedAccepts}</p>
           </div>
           <input
             ref={inputRef}
@@ -274,7 +276,10 @@ export function GameCard({
               <Button
                 size="icon"
                 variant="ghost"
-                onClick={() => setStagedLevelFile(null)}
+                onClick={() => {
+                  setStagedLevelFile(null);
+                  toast.message("Removed staged level file");
+                }}
               >
                 <X className="w-4 h-4" />
               </Button>
@@ -286,7 +291,10 @@ export function GameCard({
               <Button
                 size="icon"
                 variant="ghost"
-                onClick={() => setStagedTextureFile(null)}
+                onClick={() => {
+                  setStagedTextureFile(null);
+                  toast.message("Removed staged texture file");
+                }}
               >
                 <X className="w-4 h-4" />
               </Button>

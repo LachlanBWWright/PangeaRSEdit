@@ -24,6 +24,11 @@ import { useState, useMemo } from "react";
 import { RotateCw, FlipHorizontal, FlipVertical } from "lucide-react";
 import { toast } from "sonner";
 import {
+  canRemoveSupertileColumn,
+  canRemoveSupertileRow,
+  getSupertileCounts,
+} from "../supertiles/supertileResizeGuards";
+import {
   TILENUM_MASK,
   TILE_FLIPX_MASK,
   TILE_FLIPY_MASK,
@@ -57,9 +62,10 @@ export function BugdomTileMenu({
   const selectedTile = useAtomValue(SelectedTile);
   const hedr = headerData.Hedr[1000].obj;
   const globals = useAtomValue(Globals);
-  const supertilesWide = Math.ceil(hedr.mapWidth / globals.TILES_PER_SUPERTILE);
-  const supertilesHigh = Math.ceil(
-    hedr.mapHeight / globals.TILES_PER_SUPERTILE,
+  const supertileCounts = getSupertileCounts(
+    hedr.mapWidth,
+    hedr.mapHeight,
+    globals.TILES_PER_SUPERTILE,
   );
 
   // Selected individual tile within the supertile (0-24 for 5x5)
@@ -68,6 +74,23 @@ export function BugdomTileMenu({
 
   // Selected tile from the palette for replacement
   const [selectedPaletteTile, setSelectedPaletteTile] = useState<number>(0);
+
+  const handleRemoveSupertile = (
+    direction: "top" | "bottom" | "left" | "right",
+  ) => {
+    const removingRow = direction === "top" || direction === "bottom";
+    const canRemove = removingRow
+      ? canRemoveSupertileRow(supertileCounts.height)
+      : canRemoveSupertileColumn(supertileCounts.width);
+    if (!canRemove) {
+      toast.error("Cannot remove supertile", {
+        description:
+          "At least one supertile row and one supertile column must remain.",
+      });
+      return;
+    }
+    onResizeSupertiles(direction, -1);
+  };
 
   // Get the Layr and Xlat data
   const layerData = terrainData.Layr?.[1000]?.obj;
@@ -326,32 +349,16 @@ export function BugdomTileMenu({
         </Button>
       </div>
       <div className="grid grid-cols-4 gap-2">
-        <Button
-          variant="destructive"
-          disabled={supertilesHigh <= 1}
-          onClick={() => onResizeSupertiles("top", -1)}
-        >
+        <Button variant="destructive" onClick={() => handleRemoveSupertile("top")}>
           Remove Supertile Row Top
         </Button>
-        <Button
-          variant="destructive"
-          disabled={supertilesHigh <= 1}
-          onClick={() => onResizeSupertiles("bottom", -1)}
-        >
+        <Button variant="destructive" onClick={() => handleRemoveSupertile("bottom")}>
           Remove Supertile Row Bottom
         </Button>
-        <Button
-          variant="destructive"
-          disabled={supertilesWide <= 1}
-          onClick={() => onResizeSupertiles("left", -1)}
-        >
+        <Button variant="destructive" onClick={() => handleRemoveSupertile("left")}>
           Remove Supertile Column Left
         </Button>
-        <Button
-          variant="destructive"
-          disabled={supertilesWide <= 1}
-          onClick={() => onResizeSupertiles("right", -1)}
-        >
+        <Button variant="destructive" onClick={() => handleRemoveSupertile("right")}>
           Remove Supertile Column Right
         </Button>
       </div>
