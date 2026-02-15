@@ -30,6 +30,7 @@ interface TopologyBrush3DProps {
   lineStart?: { x: number; y: number; z: number } | null;
   showLinePreview?: boolean;
   displacementMagnitude?: number;
+  displacementDirection?: "up" | "down";
   visible: boolean;
 }
 
@@ -38,6 +39,7 @@ export function TopologyBrush3D({
   lineStart,
   showLinePreview,
   displacementMagnitude,
+  displacementDirection,
   visible,
 }: TopologyBrush3DProps) {
   const globals = useAtomValue(Globals);
@@ -141,6 +143,7 @@ export function TopologyBrush3D({
       <mesh
         geometry={geometry}
         material={fillMaterial}
+        // Three.js terrain editing uses Y-up coordinates.
         position={[
           intersectionPoint.x,
           intersectionPoint.y + BRUSH_SURFACE_OFFSET,
@@ -189,6 +192,7 @@ export function TopologyBrush3D({
           intersectionPoint.y + poleHeight + 6 + BRUSH_LINE_OFFSET,
           intersectionPoint.z,
         ]}
+        rotation={displacementDirection === "down" ? [Math.PI, 0, 0] : [0, 0, 0]}
       />
     </>
   );

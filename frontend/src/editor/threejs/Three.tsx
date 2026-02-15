@@ -171,6 +171,17 @@ export function ThreeView({
 
   const unitsWide = numWide * globals.TILE_INGAME_SIZE;
   const unitsHigh = numHigh * globals.TILE_INGAME_SIZE;
+  const yScale = globals.TILE_INGAME_SIZE / Math.max(1, header.tileSize ?? 1);
+  const setModeDisplacement =
+    intersectionPoint === null
+      ? Math.abs(topologyValue) * yScale
+      : Math.abs(topologyValue * yScale - intersectionPoint.y);
+  const displacementMagnitude =
+    valueMode === TopologyValueMode.SET_VALUE
+      ? setModeDisplacement
+      : Math.abs(topologyValue) * yScale;
+  const displacementDirection =
+    topologyValue === 0 ? undefined : topologyValue < 0 ? "down" : "up";
 
   const handlePointerMove = useCallback((event: Event<string, unknown>) => {
     if (!isEditingTopology || !terrainMeshRef.current) return;
@@ -446,7 +457,8 @@ export function ThreeView({
             intersectionPoint={intersectionPoint}
             lineStart={brushLineStart}
             showLinePreview={isEditing && valueMode !== TopologyValueMode.SET_VALUE}
-            displacementMagnitude={Math.abs(topologyValue) * globals.TILE_INGAME_SIZE}
+            displacementMagnitude={displacementMagnitude}
+            displacementDirection={displacementDirection}
             visible={!!intersectionPoint}
           />
           <TopologyPreview3D />

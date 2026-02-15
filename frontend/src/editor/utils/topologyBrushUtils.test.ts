@@ -45,4 +45,37 @@ describe("topologyBrushUtils line brush math", () => {
     expect(centerlinePoint).toBeDefined();
     expect(centerlinePoint?.distance).toBe(0);
   });
+
+  it("falls back to radial behavior for set-value mode", () => {
+    const pixels = calculateBrushPixels({
+      centerX: 10,
+      centerY: 10,
+      radius: 4,
+      brushMode: TopologyBrushMode.SQUARE_BRUSH,
+      valueMode: TopologyValueMode.SET_VALUE,
+      value: 1,
+      header: {
+        version: 1,
+        mapWidth: 32,
+        mapHeight: 32,
+        tileSize: 1,
+        minY: 0,
+        maxY: 255,
+        numItems: 0,
+        numSplines: 0,
+        numFences: 0,
+        numTilePages: 0,
+        numTiles: 0,
+        numUniqueSupertiles: 0,
+        numWaterPatches: 0,
+        numCheckpoints: 0,
+      },
+      globals: OttoGlobals,
+      tileSize: 1,
+      lineStart: { x: 0, y: 0 },
+      lineEnd: { x: 40, y: 40 },
+    });
+    const farPoint = pixels.find((pixel) => pixel.x === 14 && pixel.y === 14);
+    expect(farPoint?.distance).toBe(1);
+  });
 });

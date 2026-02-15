@@ -77,6 +77,7 @@ export function useAtomicDataUpdaters<T>(
       setter((current) => {
         if (!current) return current;
         if (typeof updater === "function") {
+          // Updater has a broad union type and isn't directly callable after narrowing.
           return Reflect.apply(updater, undefined, [current]);
         }
         return updater;

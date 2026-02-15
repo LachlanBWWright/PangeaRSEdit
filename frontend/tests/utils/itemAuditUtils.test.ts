@@ -13,6 +13,7 @@ describe("itemAuditUtils", () => {
     expect(entries[0]?.itemType).toBe(0);
     expect(entries[0]?.itemName.length).toBeGreaterThan(0);
     expect(entries[0]?.paramDetails.p0.summary.length).toBeGreaterThan(0);
+    expect(entries[0]?.modelGroupSize).toBeGreaterThan(0);
   });
 
   it("includes custom decisions in exported report", () => {

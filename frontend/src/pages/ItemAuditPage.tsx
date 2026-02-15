@@ -141,6 +141,13 @@ function parseImportedDecisions(
   return nextDecisions;
 }
 
+function firstIncompleteIndex(
+  entries: ReturnType<typeof buildItemAuditEntries>,
+): number {
+  const index = entries.findIndex((entry) => !isEntryFullyRated(entry.decision));
+  return index === -1 ? 0 : index;
+}
+
 export function ItemAuditPage() {
   const gameConfigs = getItemAuditConfigs();
   const [selectedGame, setSelectedGame] = useState<Game>(Game.OTTO_MATIC);
@@ -253,7 +260,24 @@ export function ItemAuditPage() {
           modelIndex,
           previewMapping.groupSize ?? currentEntry.modelGroupSize,
         );
-        setPreviewScene(extracted ?? gltfResult.value.scene);
+        const previewRoot = (extracted ?? gltfResult.value.scene).clone(true);
+        const uniformScale = previewMapping.scale ?? 1;
+        const scaleXZ = previewMapping.scaleXZ ?? 1;
+        const scaleY = previewMapping.scaleY ?? 1;
+        previewRoot.scale.set(
+          uniformScale * scaleXZ,
+          uniformScale * scaleY,
+          uniformScale * scaleXZ,
+        );
+        previewRoot.rotation.y = previewMapping.rotationY ?? 0;
+        if (previewMapping.positionOffset) {
+          previewRoot.position.set(
+            previewMapping.positionOffset[0],
+            previewMapping.positionOffset[1],
+            previewMapping.positionOffset[2],
+          );
+        }
+        setPreviewScene(previewRoot);
         setPreviewLoading(false);
       }
       worker.terminate();
@@ -270,7 +294,8 @@ export function ItemAuditPage() {
     decisionState: Record<number, ItemAuditDecision> = decisions,
   ) => {
     const report = createItemAuditReport(selectedGame, decisionState);
-    const blob = new Blob([JSON.stringify(report, null, 2)], { type: "application/json" });
+    const payload = { ...report, currentIndex };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
     const url = URL.createObjectURL(blob);
     const anchor = document.createElement("a");
     anchor.href = url;
@@ -291,7 +316,7 @@ export function ItemAuditPage() {
         return;
       }
       const parsedResult = await fromPromise(
-        Promise.resolve(textResult.value).then((text) => JSON.parse(text)),
+        Promise.resolve().then(() => JSON.parse(textResult.value)),
       );
       if (parsedResult.isErr()) {
         setImportStatus(`Invalid JSON: ${parsedResult.error.message}`);
@@ -300,6 +325,7 @@ export function ItemAuditPage() {
       const parsed = parsedResult.value;
       const gameValue = Reflect.get(parsed, "game");
       const entriesValue = Reflect.get(parsed, "entries");
+      const progressIndex = Reflect.get(parsed, "currentIndex");
       if (typeof gameValue !== "number" || !Array.isArray(entriesValue)) {
         setImportStatus("Invalid report format: expected game and entries.");
         return;
@@ -311,8 +337,13 @@ export function ItemAuditPage() {
         return;
       }
       setSelectedGame(selectedConfig.game);
-      setCurrentIndex(0);
       setDecisions(nextDecisions);
+      const importedEntries = buildItemAuditEntries(selectedConfig.game, nextDecisions);
+      if (typeof progressIndex === "number" && progressIndex >= 0 && progressIndex < importedEntries.length) {
+        setCurrentIndex(progressIndex);
+      } else {
+        setCurrentIndex(firstIncompleteIndex(importedEntries));
+      }
       autoDownloadedRef.current = false;
       setImportStatus("Audit report imported successfully.");
     })();
@@ -341,12 +372,15 @@ export function ItemAuditPage() {
 
   return (
     <div className="p-4 text-white bg-gray-900 min-h-full">
-      <Card className="bg-gray-800 border-gray-700 mb-4">
-        <CardHeader>
-          <CardTitle>Item Model / Param Audit</CardTitle>
+      <Card className="bg-gray-800/90 border-gray-700 shadow-xl mb-4">
+        <CardHeader className="border-b border-gray-700">
+          <CardTitle className="text-xl">Item Model / Param Audit</CardTitle>
+          <p className="text-sm text-gray-300">
+            Mark each field as correct/incorrect to identify hallucinated mappings.
+          </p>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid md:grid-cols-2 gap-4">
+          <div className="grid md:grid-cols-2 gap-4 bg-gray-900/60 rounded-lg border border-gray-700 p-3">
             <div>
               <Label>Game</Label>
               <Select
@@ -391,7 +425,7 @@ export function ItemAuditPage() {
 
           {currentEntry && (
             <div className="space-y-4">
-              <div className="flex justify-between items-center">
+              <div className="flex justify-between items-center rounded-lg border border-gray-700 bg-gray-900/60 p-3">
                 <div>
                   <p className="text-sm text-gray-400">
                     Item {currentIndex + 1} of {entries.length}
@@ -426,7 +460,7 @@ export function ItemAuditPage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-4 gap-2">
+              <div className="grid grid-cols-4 gap-2 bg-gray-900/50 border border-gray-700 rounded-lg p-3">
                 {PARAM_KEYS.map((key) => (
                   <div key={`preview-${key}`} className="space-y-1">
                     <Label>{key.toUpperCase()} Preview</Label>
@@ -450,7 +484,7 @@ export function ItemAuditPage() {
                 ))}
               </div>
 
-              <div className="h-64 rounded border border-gray-700 overflow-hidden">
+              <div className="h-64 rounded-lg border border-gray-700 overflow-hidden bg-black/30">
                 {previewScene ? (
                   <Canvas camera={{ position: [300, 200, 300], fov: 50, near: 1, far: 50000 }}>
                     <ambientLight intensity={0.7} />
@@ -468,8 +502,16 @@ export function ItemAuditPage() {
                 )}
               </div>
 
+              {previewMapping && (
+                <div className="text-xs text-gray-300 grid md:grid-cols-3 gap-2 rounded border border-gray-700 bg-gray-900/60 p-3">
+                  <p>Model Index: {previewMapping.modelIndex}</p>
+                  <p>Group Size: {previewMapping.groupSize ?? 1}</p>
+                  <p>Rotation Y: {previewMapping.rotationY ?? 0}</p>
+                </div>
+              )}
+
               {currentEntry.modelCitations.length > 0 && (
-                <div className="space-y-2">
+                <div className="space-y-2 rounded border border-gray-700 bg-gray-900/60 p-3">
                   <Label>Model citations</Label>
                   <div className="space-y-2">
                     {currentEntry.modelCitations.map((citation, index) => (
@@ -485,7 +527,7 @@ export function ItemAuditPage() {
                 </div>
               )}
 
-              <div className="grid md:grid-cols-2 gap-3">
+              <div className="grid md:grid-cols-2 gap-3 rounded border border-gray-700 bg-gray-900/50 p-3">
                 <div className="space-y-2">
                   <Label>Model correctness</Label>
                   <StatusSelect
@@ -517,7 +559,7 @@ export function ItemAuditPage() {
                 ))}
               </div>
 
-              <div className="space-y-2">
+              <div className="space-y-2 rounded border border-gray-700 bg-gray-900/60 p-3">
                 <Label>Notes</Label>
                 <textarea
                   className="w-full min-h-[80px] rounded border border-gray-700 bg-gray-900 p-2 text-white"
