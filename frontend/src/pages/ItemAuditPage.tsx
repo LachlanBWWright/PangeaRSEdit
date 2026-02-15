@@ -5,6 +5,7 @@ import { Group } from "three";
 import { GLTFLoader, type GLTF } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -17,6 +18,7 @@ import { Game } from "@/data/globals/globals";
 import BG3DGltfWorker from "@/modelParsers/bg3dGltfWorker?worker";
 import type { BG3DGltfWorkerResponse } from "@/modelParsers/bg3dGltfWorker";
 import { fromPromise } from "@/types/result";
+import { getGameMapper } from "@/data/items/mappers";
 import {
   buildItemAuditEntries,
   createDecisionForEntry,
@@ -91,6 +93,54 @@ function isEntryFullyRated(entry: ItemAuditDecision): boolean {
   );
 }
 
+function parseImportedDecisions(
+  entriesValue: unknown[],
+): Record<number, ItemAuditDecision> {
+  const nextDecisions: Record<number, ItemAuditDecision> = {};
+  for (const entry of entriesValue) {
+    if (typeof entry !== "object" || entry === null) {
+      continue;
+    }
+    const itemType = Reflect.get(entry, "itemType");
+    const decision = Reflect.get(entry, "decision");
+    if (
+      typeof itemType !== "number" ||
+      typeof decision !== "object" ||
+      decision === null
+    ) {
+      continue;
+    }
+    const modelStatus = Reflect.get(decision, "modelStatus");
+    const paramStatus = Reflect.get(decision, "paramStatus");
+    const notes = Reflect.get(decision, "notes");
+    if (
+      (modelStatus === "correct" ||
+        modelStatus === "incorrect" ||
+        modelStatus === "unknown") &&
+      typeof paramStatus === "object" &&
+      paramStatus !== null
+    ) {
+      const p0 = Reflect.get(paramStatus, "p0");
+      const p1 = Reflect.get(paramStatus, "p1");
+      const p2 = Reflect.get(paramStatus, "p2");
+      const p3 = Reflect.get(paramStatus, "p3");
+      if (
+        (p0 === "correct" || p0 === "incorrect" || p0 === "unknown") &&
+        (p1 === "correct" || p1 === "incorrect" || p1 === "unknown") &&
+        (p2 === "correct" || p2 === "incorrect" || p2 === "unknown") &&
+        (p3 === "correct" || p3 === "incorrect" || p3 === "unknown")
+      ) {
+        nextDecisions[itemType] = {
+          modelStatus,
+          paramStatus: { p0, p1, p2, p3 },
+          notes: typeof notes === "string" ? notes : "",
+        };
+      }
+    }
+  }
+  return nextDecisions;
+}
+
 export function ItemAuditPage() {
   const gameConfigs = getItemAuditConfigs();
   const [selectedGame, setSelectedGame] = useState<Game>(Game.OTTO_MATIC);
@@ -99,7 +149,14 @@ export function ItemAuditPage() {
   const [previewScene, setPreviewScene] = useState<Group | null>(null);
   const [previewError, setPreviewError] = useState<string | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
+  const [importStatus, setImportStatus] = useState<string | null>(null);
   const autoDownloadedRef = useRef(false);
+  const [previewParams, setPreviewParams] = useState({
+    p0: 0,
+    p1: 0,
+    p2: 0,
+    p3: 0,
+  });
 
   const entries = useMemo(
     () => buildItemAuditEntries(selectedGame, decisions),
@@ -107,6 +164,13 @@ export function ItemAuditPage() {
   );
   const currentEntry = entries[currentIndex];
   const currentConfig = getItemAuditConfig(selectedGame);
+  const mapper = getGameMapper(selectedGame);
+  const previewMapping = useMemo(() => {
+    if (!currentEntry || !mapper) {
+      return undefined;
+    }
+    return mapper.getMapping(currentEntry.itemType, undefined, previewParams);
+  }, [currentEntry, mapper, previewParams]);
   const currentDecision = currentEntry
     ? decisions[currentEntry.itemType] ?? createDecisionForEntry(currentEntry)
     : null;
@@ -128,14 +192,14 @@ export function ItemAuditPage() {
       if (
         !currentEntry ||
         !currentConfig ||
-        !currentEntry.modelMappingFile ||
-        !currentEntry.modelMappingPath
+        !previewMapping?.modelFile ||
+        !previewMapping?.modelPath
       ) {
         worker.terminate();
         return;
       }
       setPreviewLoading(true);
-      const modelUrl = `${currentConfig.basePath}/${currentEntry.modelMappingPath}/${currentEntry.modelMappingFile}`;
+      const modelUrl = `${currentConfig.basePath}/${previewMapping.modelPath}/${previewMapping.modelFile}`;
       const fetchResult = await fromPromise(fetch(modelUrl));
       if (fetchResult.isErr()) {
         finishWithError(fetchResult.error.message);
@@ -183,11 +247,11 @@ export function ItemAuditPage() {
       }
 
       if (!cancelled) {
-        const modelIndex = currentEntry.modelIndex ?? 0;
+        const modelIndex = previewMapping.modelIndex ?? currentEntry.modelIndex ?? 0;
         const extracted = extractSubgroupByIndex(
           gltfResult.value,
           modelIndex,
-          currentEntry.modelGroupSize,
+          previewMapping.groupSize ?? currentEntry.modelGroupSize,
         );
         setPreviewScene(extracted ?? gltfResult.value.scene);
         setPreviewLoading(false);
@@ -200,7 +264,7 @@ export function ItemAuditPage() {
       cancelled = true;
       worker.terminate();
     };
-  }, [currentEntry, currentConfig]);
+  }, [currentEntry, currentConfig, previewMapping]);
 
   const saveReport = (
     decisionState: Record<number, ItemAuditDecision> = decisions,
@@ -213,6 +277,45 @@ export function ItemAuditPage() {
     anchor.download = `${report.gameName.toLowerCase().replace(/\s+/g, "-")}-item-audit.json`;
     anchor.click();
     URL.revokeObjectURL(url);
+  };
+
+  const importReport = (file: File | null) => {
+    if (!file) {
+      return;
+    }
+    setImportStatus("Importing audit report...");
+    void (async () => {
+      const textResult = await fromPromise(file.text());
+      if (textResult.isErr()) {
+        setImportStatus(`Failed to read file: ${textResult.error.message}`);
+        return;
+      }
+      const parsedResult = await fromPromise(
+        Promise.resolve(textResult.value).then((text) => JSON.parse(text)),
+      );
+      if (parsedResult.isErr()) {
+        setImportStatus(`Invalid JSON: ${parsedResult.error.message}`);
+        return;
+      }
+      const parsed = parsedResult.value;
+      const gameValue = Reflect.get(parsed, "game");
+      const entriesValue = Reflect.get(parsed, "entries");
+      if (typeof gameValue !== "number" || !Array.isArray(entriesValue)) {
+        setImportStatus("Invalid report format: expected game and entries.");
+        return;
+      }
+      const nextDecisions = parseImportedDecisions(entriesValue);
+      const selectedConfig = gameConfigs.find((config) => config.game === gameValue);
+      if (!selectedConfig) {
+        setImportStatus("Report game is not supported in this build.");
+        return;
+      }
+      setSelectedGame(selectedConfig.game);
+      setCurrentIndex(0);
+      setDecisions(nextDecisions);
+      autoDownloadedRef.current = false;
+      setImportStatus("Audit report imported successfully.");
+    })();
   };
 
   const updateDecision = (updater: (current: ItemAuditDecision) => ItemAuditDecision) => {
@@ -270,8 +373,19 @@ export function ItemAuditPage() {
                 </SelectContent>
               </Select>
             </div>
-            <div className="flex items-end justify-end">
-              <Button onClick={saveReport}>Save JSON Report</Button>
+            <div className="flex flex-col items-end justify-end gap-2">
+              <Input
+                type="file"
+                accept="application/json"
+                className="max-w-xs"
+                onChange={(event) =>
+                  importReport(event.target.files?.[0] ?? null)
+                }
+              />
+              <Button onClick={() => saveReport()}>Save JSON Report</Button>
+              {importStatus && (
+                <p className="text-xs text-gray-300 max-w-xs text-right">{importStatus}</p>
+              )}
             </div>
           </div>
 
@@ -287,8 +401,8 @@ export function ItemAuditPage() {
                   </h3>
                   <p className="text-sm text-gray-400">
                     Model mapping:{" "}
-                    {currentEntry.modelMappingFile
-                      ? `${currentEntry.modelMappingPath}/${currentEntry.modelMappingFile}`
+                    {previewMapping?.modelFile
+                      ? `${previewMapping.modelPath}/${previewMapping.modelFile}`
                       : "Not mapped"}
                   </p>
                 </div>
@@ -310,6 +424,30 @@ export function ItemAuditPage() {
                     </Button>
                   )}
                 </div>
+              </div>
+
+              <div className="grid grid-cols-4 gap-2">
+                {PARAM_KEYS.map((key) => (
+                  <div key={`preview-${key}`} className="space-y-1">
+                    <Label>{key.toUpperCase()} Preview</Label>
+                    <Input
+                      type="number"
+                      value={previewParams[key]}
+                      onChange={(event) =>
+                        setPreviewParams((prev) => {
+                          const parsedValue = Number.parseInt(
+                            event.target.value || "0",
+                            10,
+                          );
+                          return {
+                            ...prev,
+                            [key]: Number.isNaN(parsedValue) ? 0 : parsedValue,
+                          };
+                        })
+                      }
+                    />
+                  </div>
+                ))}
               </div>
 
               <div className="h-64 rounded border border-gray-700 overflow-hidden">

@@ -5,12 +5,12 @@
 
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
-import type { ParamSpecWithFlags, FlagDescription } from "@/data/items/itemParams";
-import { parseU8 } from "@/utils/parseNumber";
+import type { ParamDescription, FlagDescription } from "@/data/items/itemParams";
+import { parseU8 } from "@/utils/numberParsers";
 
 interface ParameterFieldProps {
   paramIndex: number;
-  param: ParamSpecWithFlags | string | undefined;
+  param: ParamDescription | undefined;
   value: number;
   onValueChange: (value: number) => void;
   onFlagChange?: (flagIndex: number, checked: boolean) => void;

@@ -76,7 +76,10 @@ export function useAtomicDataUpdaters<T>(
     (updater) => {
       setter((current) => {
         if (!current) return current;
-        return typeof updater === "function" ? updater(current) : updater;
+        if (typeof updater === "function") {
+          return Reflect.apply(updater, undefined, [current]);
+        }
+        return updater;
       });
     },
     [setter],

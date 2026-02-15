@@ -3,6 +3,8 @@ import { useMemo } from "react";
 import {
   CircleGeometry,
   PlaneGeometry,
+  CylinderGeometry,
+  ConeGeometry,
   MeshBasicMaterial,
   DoubleSide,
 } from "three";
@@ -13,10 +15,21 @@ import {
   TopologyBrushMode,
 } from "@/data/tiles/tileAtoms";
 
+const BRUSH_SURFACE_OFFSET = 0.08;
+const BRUSH_INNER_OFFSET = BRUSH_SURFACE_OFFSET * 2;
+const BRUSH_LINE_OFFSET = BRUSH_SURFACE_OFFSET * 1.5;
+const MIN_POLE_HEIGHT = 5;
+const DEFAULT_POLE_HEIGHT_SCALE = 0.8;
+const MAX_POLE_HEIGHT_SCALE = 1.8;
+const ARROW_RADIUS = 5;
+const ARROW_HEIGHT = 12;
+const ARROW_SEGMENTS = 10;
+
 interface TopologyBrush3DProps {
   intersectionPoint: { x: number; y: number; z: number } | null;
   lineStart?: { x: number; y: number; z: number } | null;
   showLinePreview?: boolean;
+  displacementMagnitude?: number;
   visible: boolean;
 }
 
@@ -24,6 +37,7 @@ export function TopologyBrush3D({
   intersectionPoint,
   lineStart,
   showLinePreview,
+  displacementMagnitude,
   visible,
 }: TopologyBrush3DProps) {
   const globals = useAtomValue(Globals);
@@ -72,6 +86,31 @@ export function TopologyBrush3D({
       ),
     [worldRadius],
   );
+  const poleHeight = Math.max(
+    MIN_POLE_HEIGHT,
+    Math.min(
+      worldRadius * MAX_POLE_HEIGHT_SCALE,
+      displacementMagnitude ?? worldRadius * DEFAULT_POLE_HEIGHT_SCALE,
+    ),
+  );
+  const poleGeometry = useMemo(
+    () => new CylinderGeometry(2, 2, poleHeight, 8),
+    [poleHeight],
+  );
+  const arrowGeometry = useMemo(
+    () => new ConeGeometry(ARROW_RADIUS, ARROW_HEIGHT, ARROW_SEGMENTS),
+    [],
+  );
+  const poleMaterial = useMemo(
+    () =>
+      new MeshBasicMaterial({
+        color: 0x44d4ff,
+        transparent: true,
+        opacity: 0.9,
+        depthWrite: false,
+      }),
+    [],
+  );
 
   if (!visible || !intersectionPoint) {
     return null;
@@ -102,13 +141,21 @@ export function TopologyBrush3D({
       <mesh
         geometry={geometry}
         material={fillMaterial}
-        position={[intersectionPoint.x, intersectionPoint.y, intersectionPoint.z + 0.5]}
+        position={[
+          intersectionPoint.x,
+          intersectionPoint.y + BRUSH_SURFACE_OFFSET,
+          intersectionPoint.z,
+        ]}
         rotation={[-Math.PI / 2, 0, 0]}
       />
       <mesh
         geometry={geometry}
         material={falloffMaterial}
-        position={[intersectionPoint.x, intersectionPoint.y + 0.05, intersectionPoint.z + 0.5]}
+        position={[
+          intersectionPoint.x,
+          intersectionPoint.y + BRUSH_INNER_OFFSET,
+          intersectionPoint.z,
+        ]}
         rotation={[-Math.PI / 2, 0, 0]}
         scale={[0.6, 0.6, 1]}
       />
@@ -116,11 +163,33 @@ export function TopologyBrush3D({
         <mesh
           geometry={lineGeometry}
           material={fillMaterial}
-          position={[lineMidpoint.x, lineMidpoint.y + 0.02, lineMidpoint.z + 0.5]}
+          position={[
+            lineMidpoint.x,
+            lineMidpoint.y + BRUSH_LINE_OFFSET,
+            lineMidpoint.z,
+          ]}
           rotation={[-Math.PI / 2, 0, lineAngle]}
           scale={[lineLength / Math.max(1, worldRadius * 2), 1, 1]}
         />
       )}
+      <mesh
+        geometry={poleGeometry}
+        material={poleMaterial}
+        position={[
+          intersectionPoint.x,
+          intersectionPoint.y + poleHeight / 2 + BRUSH_LINE_OFFSET,
+          intersectionPoint.z,
+        ]}
+      />
+      <mesh
+        geometry={arrowGeometry}
+        material={poleMaterial}
+        position={[
+          intersectionPoint.x,
+          intersectionPoint.y + poleHeight + 6 + BRUSH_LINE_OFFSET,
+          intersectionPoint.z,
+        ]}
+      />
     </>
   );
 }

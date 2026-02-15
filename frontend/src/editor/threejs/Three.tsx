@@ -24,6 +24,7 @@ import {
   CurrentTopologyBrushMode,
   TopologyBrushRadius,
   CurrentTopologyValueMode,
+  TopologyValueMode,
   TopologyValue,
   EditRoofAndFloorTogether,
   RoofFloorElevation,
@@ -445,6 +446,7 @@ export function ThreeView({
             intersectionPoint={intersectionPoint}
             lineStart={brushLineStart}
             showLinePreview={isEditing && valueMode !== TopologyValueMode.SET_VALUE}
+            displacementMagnitude={Math.abs(topologyValue) * globals.TILE_INGAME_SIZE}
             visible={!!intersectionPoint}
           />
           <TopologyPreview3D />
