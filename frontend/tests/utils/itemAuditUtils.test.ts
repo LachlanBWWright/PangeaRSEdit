@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { Game } from "@/data/globals/globals";
-import { buildItemAuditEntries, createItemAuditReport } from "@/pages/itemAuditUtils";
+import {
+  buildItemAuditEntries,
+  createDecisionForEntry,
+  createItemAuditReport,
+} from "@/pages/itemAuditUtils";
 
 describe("itemAuditUtils", () => {
   it("builds item audit entries for a game", () => {
@@ -29,5 +33,17 @@ describe("itemAuditUtils", () => {
     expect(first?.decision.modelStatus).toBe("correct");
     expect(first?.decision.paramStatus.p0).toBe("incorrect");
     expect(first?.paramDetails.p0.summary.length).toBeGreaterThan(0);
+  });
+
+  it("defaults unknown/unused params to correct for audit flow", () => {
+    const entries = buildItemAuditEntries(Game.OTTO_MATIC, {});
+    const unknownEntry = entries.find((entry) => entry.paramDetails.p1.summary === "Unused");
+    expect(unknownEntry).toBeDefined();
+    if (!unknownEntry) {
+      return;
+    }
+    const decision = createDecisionForEntry(unknownEntry);
+    expect(decision.paramStatus.p1).toBe("correct");
+    expect(decision.modelStatus).toBe("unknown");
   });
 });

@@ -157,7 +157,9 @@ export function ThreeView({
   
   const terrainMeshRef = useRef<Mesh>(null);
   const [intersectionPoint, setIntersectionPoint] = useState<{ x: number; y: number; z: number } | null>(null);
+  const [brushLineStart, setBrushLineStart] = useState<{ x: number; y: number; z: number } | null>(null);
   const [isEditing, setIsEditing] = useState(false);
+  const lastBrushCenterRef = useRef<{ x: number; y: number } | null>(null);
   
   const isEditingTopology = tileViewMode === TileViews.Topology;
 
@@ -182,10 +184,16 @@ export function ThreeView({
       // Calculate affected pixels for preview
       const tileCoords = worldToTile(event.point.x, event.point.z, globals.TILE_INGAME_SIZE);
       const radius = (brushRadius - 1) * globals.TILE_INGAME_SIZE;
+      const currentCenter = {
+        x: tileCoords.x * globals.TILE_INGAME_SIZE,
+        y: tileCoords.z * globals.TILE_INGAME_SIZE,
+      };
+      const lineStart = isEditing ? lastBrushCenterRef.current ?? currentCenter : undefined;
+      const lineEnd = currentCenter;
       
       const pixels = calculateBrushPixels({
-        centerX: tileCoords.x * globals.TILE_INGAME_SIZE,
-        centerY: tileCoords.z * globals.TILE_INGAME_SIZE,
+        centerX: currentCenter.x,
+        centerY: currentCenter.y,
         radius,
         brushMode,
         valueMode,
@@ -193,6 +201,8 @@ export function ThreeView({
         header,
         globals,
         tileSize: globals.TILE_INGAME_SIZE,
+        lineStart,
+        lineEnd,
       });
 
       // Apply brush while dragging (if isEditing)
@@ -212,8 +222,8 @@ export function ThreeView({
             terrainData.YCrd[1001].obj,
             pixels,
             {
-              centerX: tileCoords.x * globals.TILE_INGAME_SIZE,
-              centerY: tileCoords.z * globals.TILE_INGAME_SIZE,
+              centerX: currentCenter.x,
+              centerY: currentCenter.y,
               radius,
               brushMode,
               valueMode,
@@ -221,14 +231,16 @@ export function ThreeView({
               header,
               globals,
               tileSize: globals.TILE_INGAME_SIZE,
+              lineStart,
+              lineEnd,
             },
             roofFloorElevation
           );
         } else {
           // Apply single brush (floor only)
           applyTopologyBrush(terrainData.YCrd[1000].obj, pixels, {
-            centerX: tileCoords.x * globals.TILE_INGAME_SIZE,
-            centerY: tileCoords.z * globals.TILE_INGAME_SIZE,
+            centerX: currentCenter.x,
+            centerY: currentCenter.y,
             radius,
             brushMode,
             valueMode,
@@ -236,8 +248,11 @@ export function ThreeView({
             header,
             globals,
             tileSize: globals.TILE_INGAME_SIZE,
+            lineStart,
+            lineEnd,
           });
         }
+        lastBrushCenterRef.current = currentCenter;
 
         // Trigger geometry update
         if (terrainMeshRef.current && terrainMeshRef.current.geometry) {
@@ -271,10 +286,20 @@ export function ThreeView({
       // Apply brush
       const tileCoords = worldToTile(event.point.x, event.point.z, globals.TILE_INGAME_SIZE);
       const radius = (brushRadius - 1) * globals.TILE_INGAME_SIZE;
+      const currentCenter = {
+        x: tileCoords.x * globals.TILE_INGAME_SIZE,
+        y: tileCoords.z * globals.TILE_INGAME_SIZE,
+      };
+      lastBrushCenterRef.current = currentCenter;
+      setBrushLineStart({
+        x: currentCenter.x,
+        y: event.point.y,
+        z: currentCenter.y,
+      });
       
       const pixels = calculateBrushPixels({
-        centerX: tileCoords.x * globals.TILE_INGAME_SIZE,
-        centerY: tileCoords.z * globals.TILE_INGAME_SIZE,
+        centerX: currentCenter.x,
+        centerY: currentCenter.y,
         radius,
         brushMode,
         valueMode,
@@ -282,6 +307,8 @@ export function ThreeView({
         header,
         globals,
         tileSize: globals.TILE_INGAME_SIZE,
+        lineStart: currentCenter,
+        lineEnd: currentCenter,
       });
 
       // Check if we should use dual editing mode
@@ -295,8 +322,8 @@ export function ThreeView({
           terrainData.YCrd[1001].obj,
           pixels,
           {
-            centerX: tileCoords.x * globals.TILE_INGAME_SIZE,
-            centerY: tileCoords.z * globals.TILE_INGAME_SIZE,
+            centerX: currentCenter.x,
+            centerY: currentCenter.y,
             radius,
             brushMode,
             valueMode,
@@ -304,14 +331,16 @@ export function ThreeView({
             header,
             globals,
             tileSize: globals.TILE_INGAME_SIZE,
+            lineStart: currentCenter,
+            lineEnd: currentCenter,
           },
           roofFloorElevation
         );
       } else {
         // Apply single brush
         applyTopologyBrush(terrainData.YCrd[1000].obj, pixels, {
-          centerX: tileCoords.x * globals.TILE_INGAME_SIZE,
-          centerY: tileCoords.z * globals.TILE_INGAME_SIZE,
+          centerX: currentCenter.x,
+          centerY: currentCenter.y,
           radius,
           brushMode,
           valueMode,
@@ -319,6 +348,8 @@ export function ThreeView({
           header,
           globals,
           tileSize: globals.TILE_INGAME_SIZE,
+          lineStart: currentCenter,
+          lineEnd: currentCenter,
         });
       }
 
@@ -336,6 +367,8 @@ export function ThreeView({
 
   const handlePointerUp = useCallback(() => {
     setIsEditing(false);
+    setBrushLineStart(null);
+    lastBrushCenterRef.current = null;
   }, []);
 
   // Ensure header is defined before rendering TestGeometry
@@ -410,6 +443,8 @@ export function ThreeView({
         <>
           <TopologyBrush3D 
             intersectionPoint={intersectionPoint}
+            lineStart={brushLineStart}
+            showLinePreview={isEditing && valueMode !== TopologyValueMode.SET_VALUE}
             visible={!!intersectionPoint}
           />
           <TopologyPreview3D />

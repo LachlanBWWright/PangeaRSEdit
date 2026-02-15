@@ -70,6 +70,8 @@ export interface ItemAuditEntry {
   hasModelMapping: boolean;
   modelMappingFile: string | null;
   modelMappingPath: "models" | "skeletons" | null;
+  modelIndex: number | null;
+  modelGroupSize: number;
   modelCitations: ModelCitationDetail[];
   paramDetails: {
     p0: ParamAuditDetail;
@@ -207,6 +209,20 @@ export function createDefaultDecision(): ItemAuditDecision {
   };
 }
 
+export function createDecisionForEntry(entry: ItemAuditEntry): ItemAuditDecision {
+  const base = createDefaultDecision();
+  const next = {
+    ...base,
+    modelStatus: "unknown" as ParamStatus,
+  };
+  const unknownLike = (summary: string) => summary === "Unknown" || summary === "Unused";
+  if (unknownLike(entry.paramDetails.p0.summary)) next.paramStatus.p0 = "correct";
+  if (unknownLike(entry.paramDetails.p1.summary)) next.paramStatus.p1 = "correct";
+  if (unknownLike(entry.paramDetails.p2.summary)) next.paramStatus.p2 = "correct";
+  if (unknownLike(entry.paramDetails.p3.summary)) next.paramStatus.p3 = "correct";
+  return next;
+}
+
 export function getItemAuditConfigs(): readonly GameAuditConfig[] {
   return GAME_AUDIT_CONFIGS;
 }
@@ -238,6 +254,8 @@ export function buildItemAuditEntries(
       hasModelMapping: mapping !== undefined,
       modelMappingFile: mapping?.modelFile ?? null,
       modelMappingPath: mapping?.modelPath ?? null,
+      modelIndex: mapping?.modelIndex ?? null,
+      modelGroupSize: mapping?.groupSize ?? 1,
       modelCitations: buildModelCitations(game, mapping?.citations),
       paramDetails: {
         p0: paramAuditDetail(itemParams?.p0),

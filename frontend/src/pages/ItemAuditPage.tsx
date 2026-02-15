@@ -1,8 +1,8 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Canvas } from "@react-three/fiber";
 import { OrbitControls, Grid } from "@react-three/drei";
 import { Group } from "three";
-import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
+import { GLTFLoader, type GLTF } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -19,7 +19,7 @@ import type { BG3DGltfWorkerResponse } from "@/modelParsers/bg3dGltfWorker";
 import { fromPromise } from "@/types/result";
 import {
   buildItemAuditEntries,
-  createDefaultDecision,
+  createDecisionForEntry,
   createItemAuditReport,
   getItemAuditConfig,
   getItemAuditConfigs,
@@ -32,33 +32,64 @@ interface StatusSelectProps {
   onChange: (value: ParamStatus) => void;
 }
 
-function isParamStatus(value: string): value is ParamStatus {
-  return value === "unknown" || value === "correct" || value === "incorrect";
-}
-
 function StatusSelect({ value, onChange }: StatusSelectProps) {
   return (
-    <Select
-      value={value}
-      onValueChange={(next) => {
-        if (isParamStatus(next)) {
-          onChange(next);
-        }
-      }}
-    >
-      <SelectTrigger className="bg-gray-900 border-gray-700 text-white">
-        <SelectValue />
-      </SelectTrigger>
-      <SelectContent>
-        <SelectItem value="unknown">Unknown</SelectItem>
-        <SelectItem value="correct">Correct</SelectItem>
-        <SelectItem value="incorrect">Incorrect</SelectItem>
-      </SelectContent>
-    </Select>
+    <div className="flex gap-2">
+      <Button
+        type="button"
+        variant={value === "correct" ? "default" : "outline"}
+        onClick={() => onChange("correct")}
+      >
+        Correct
+      </Button>
+      <Button
+        type="button"
+        variant={value === "incorrect" ? "destructive" : "outline"}
+        onClick={() => onChange("incorrect")}
+      >
+        Incorrect
+      </Button>
+    </div>
   );
 }
 
 const PARAM_KEYS: ("p0" | "p1" | "p2" | "p3")[] = ["p0", "p1", "p2", "p3"];
+
+function extractSubgroupByIndex(
+  gltf: GLTF,
+  modelIndex: number,
+  groupSize: number,
+): Group | null {
+  const groupsContainer =
+    gltf.scene.children && gltf.scene.children.length > 0
+      ? gltf.scene.children[0]
+      : null;
+  if (!groupsContainer) {
+    return null;
+  }
+  if (modelIndex < 0 || modelIndex >= groupsContainer.children.length) {
+    return null;
+  }
+  const endIndex = Math.min(modelIndex + groupSize, groupsContainer.children.length);
+  const extracted = new Group();
+  for (let index = modelIndex; index < endIndex; index++) {
+    const child = groupsContainer.children[index];
+    if (child) {
+      extracted.add(child.clone(true));
+    }
+  }
+  return extracted.children.length > 0 ? extracted : null;
+}
+
+function isEntryFullyRated(entry: ItemAuditDecision): boolean {
+  return (
+    entry.modelStatus !== "unknown" &&
+    entry.paramStatus.p0 !== "unknown" &&
+    entry.paramStatus.p1 !== "unknown" &&
+    entry.paramStatus.p2 !== "unknown" &&
+    entry.paramStatus.p3 !== "unknown"
+  );
+}
 
 export function ItemAuditPage() {
   const gameConfigs = getItemAuditConfigs();
@@ -68,6 +99,7 @@ export function ItemAuditPage() {
   const [previewScene, setPreviewScene] = useState<Group | null>(null);
   const [previewError, setPreviewError] = useState<string | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
+  const autoDownloadedRef = useRef(false);
 
   const entries = useMemo(
     () => buildItemAuditEntries(selectedGame, decisions),
@@ -75,6 +107,9 @@ export function ItemAuditPage() {
   );
   const currentEntry = entries[currentIndex];
   const currentConfig = getItemAuditConfig(selectedGame);
+  const currentDecision = currentEntry
+    ? decisions[currentEntry.itemType] ?? createDecisionForEntry(currentEntry)
+    : null;
 
   useEffect(() => {
     let cancelled = false;
@@ -148,7 +183,13 @@ export function ItemAuditPage() {
       }
 
       if (!cancelled) {
-        setPreviewScene(gltfResult.value.scene);
+        const modelIndex = currentEntry.modelIndex ?? 0;
+        const extracted = extractSubgroupByIndex(
+          gltfResult.value,
+          modelIndex,
+          currentEntry.modelGroupSize,
+        );
+        setPreviewScene(extracted ?? gltfResult.value.scene);
         setPreviewLoading(false);
       }
       worker.terminate();
@@ -161,18 +202,10 @@ export function ItemAuditPage() {
     };
   }, [currentEntry, currentConfig]);
 
-  const updateDecision = (updater: (current: ItemAuditDecision) => ItemAuditDecision) => {
-    if (!currentEntry) {
-      return;
-    }
-    setDecisions((prev) => {
-      const existing = prev[currentEntry.itemType] ?? createDefaultDecision();
-      return { ...prev, [currentEntry.itemType]: updater(existing) };
-    });
-  };
-
-  const saveReport = () => {
-    const report = createItemAuditReport(selectedGame, decisions);
+  const saveReport = (
+    decisionState: Record<number, ItemAuditDecision> = decisions,
+  ) => {
+    const report = createItemAuditReport(selectedGame, decisionState);
     const blob = new Blob([JSON.stringify(report, null, 2)], { type: "application/json" });
     const url = URL.createObjectURL(blob);
     const anchor = document.createElement("a");
@@ -180,6 +213,27 @@ export function ItemAuditPage() {
     anchor.download = `${report.gameName.toLowerCase().replace(/\s+/g, "-")}-item-audit.json`;
     anchor.click();
     URL.revokeObjectURL(url);
+  };
+
+  const updateDecision = (updater: (current: ItemAuditDecision) => ItemAuditDecision) => {
+    if (!currentEntry) {
+      return;
+    }
+    setDecisions((prev) => {
+      const existing = prev[currentEntry.itemType] ?? createDecisionForEntry(currentEntry);
+      const updated = updater(existing);
+      const nextState = { ...prev, [currentEntry.itemType]: updated };
+      const atLastItem = currentIndex === entries.length - 1;
+      if (
+        atLastItem &&
+        isEntryFullyRated(updated) &&
+        !autoDownloadedRef.current
+      ) {
+        saveReport(nextState);
+        autoDownloadedRef.current = true;
+      }
+      return nextState;
+    });
   };
 
   return (
@@ -200,6 +254,7 @@ export function ItemAuditPage() {
                     setSelectedGame(selected.game);
                     setCurrentIndex(0);
                     setDecisions({});
+                    autoDownloadedRef.current = false;
                   }
                 }}
               >
@@ -244,14 +299,16 @@ export function ItemAuditPage() {
                   >
                     Previous
                   </Button>
-                  <Button
-                    variant="outline"
-                    onClick={() =>
-                      setCurrentIndex((idx) => Math.min(entries.length - 1, idx + 1))
-                    }
-                  >
-                    Next
-                  </Button>
+                  {currentDecision && isEntryFullyRated(currentDecision) && (
+                    <Button
+                      variant="outline"
+                      onClick={() =>
+                        setCurrentIndex((idx) => Math.min(entries.length - 1, idx + 1))
+                      }
+                    >
+                      Next
+                    </Button>
+                  )}
                 </div>
               </div>
 
@@ -294,7 +351,7 @@ export function ItemAuditPage() {
                 <div className="space-y-2">
                   <Label>Model correctness</Label>
                   <StatusSelect
-                    value={currentEntry.decision.modelStatus}
+                    value={currentDecision?.modelStatus ?? "unknown"}
                     onChange={(value) =>
                       updateDecision((existing) => ({ ...existing, modelStatus: value }))
                     }
@@ -304,7 +361,7 @@ export function ItemAuditPage() {
                   <div className="space-y-2" key={key}>
                     <Label>{key.toUpperCase()} — {currentEntry.paramDetails[key].summary}</Label>
                     <StatusSelect
-                      value={currentEntry.decision.paramStatus[key]}
+                      value={currentDecision?.paramStatus[key] ?? "unknown"}
                       onChange={(value) =>
                         updateDecision((existing) => ({
                           ...existing,
@@ -326,7 +383,7 @@ export function ItemAuditPage() {
                 <Label>Notes</Label>
                 <textarea
                   className="w-full min-h-[80px] rounded border border-gray-700 bg-gray-900 p-2 text-white"
-                  value={currentEntry.decision.notes}
+                  value={currentDecision?.notes ?? ""}
                   onChange={(event) =>
                     updateDecision((existing) => ({ ...existing, notes: event.target.value }))
                   }
