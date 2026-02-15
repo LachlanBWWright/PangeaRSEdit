@@ -58,7 +58,7 @@ export function applySupertileResizeToAtomicData(
   return ok({
     data: splitLevelData(resizedLevel),
     warnings: resized.warnings.filter(
-      (warning) => warning !== "Some items were outside the new bounds.",
+      (warning) => !warning.toLowerCase().includes("items were outside"),
     ),
   });
 }

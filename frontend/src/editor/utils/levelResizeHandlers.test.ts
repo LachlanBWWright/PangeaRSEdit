@@ -179,6 +179,11 @@ describe("applySupertileResizeToAtomicData", () => {
     }
 
     const resized = result.value.data;
+    expect(resized.headerData?.Hedr[1000].obj.mapWidth).toBe(15);
+    expect(resized.headerData?.Hedr[1000].obj.mapHeight).toBe(10);
+    expect(resized.terrainData?.Layr?.[1000].obj.length).toBe(150);
+    expect(resized.terrainData?.STgd?.[1000].obj.length).toBe(6);
+    expect(resized.terrainData?.YCrd[1000].obj.length).toBe(176);
     expect(resized.itemData?.Itms[1000].obj[0]?.x).toBe(160);
     expect(resized.itemData?.Itms[1000].obj[0]?.z).toBe(224);
     expect(resized.fenceData?.FnNb[1000]?.obj[0]).toEqual([50, 50]);
