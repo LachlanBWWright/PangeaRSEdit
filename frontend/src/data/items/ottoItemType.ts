@@ -559,11 +559,11 @@ export const TerrainItemTypeParams: Record<ItemType, OttoItemParams> = {
     flags: "Auto-fade status bits",
     p0: {
       type: "Integer",
-      description: "Rotation (0-3, multiplied by PI/2)",
+      description: "Rotation (0=0°, 1=90°)",
       codeSample: {
-        code: "gNewObjectDefinition.rot = itemPtr->parm[0] == 1 ? PI/2 : 0;",
+        code: "if (itemPtr->parm[0] == 1)\n  gNewObjectDefinition.rot = PI/2;\nelse\n  gNewObjectDefinition.rot = 0;",
         fileName: "Items/Triggers.c",
-        lineNumber: 200,
+        lineNumber: 201,
       },
     },
     p1: "Unused",
@@ -625,11 +625,11 @@ export const TerrainItemTypeParams: Record<ItemType, OttoItemParams> = {
     flags: "Auto-fade status bits",
     p0: {
       type: "Integer",
-      description: "Gate type (0=Wood, 1=Metal)",
+      description: "Rotation (0=0°, 1=90°)",
       codeSample: {
-        code: "gNewObjectDefinition.rot = itemPtr->parm[0] == 1 ? PI/2 : 0;",
+        code: "if (itemPtr->parm[0] == 1)\n  gNewObjectDefinition.rot = PI/2;\nelse\n  gNewObjectDefinition.rot = 0;",
         fileName: "Items/Triggers.c",
-        lineNumber: 438,
+        lineNumber: 439,
       },
     },
     p1: "Unused",
@@ -658,9 +658,9 @@ export const TerrainItemTypeParams: Record<ItemType, OttoItemParams> = {
       type: "Integer",
       description: "Rotation (0=0°, 1=90°, 2=180°, 3=270°)",
       codeSample: {
-        code: "float r = itemPtr->parm[0] * (PI2/4.0f);",
-        fileName: "Items/Traps.c",
-        lineNumber: 300,
+        code: "gNewObjectDefinition.rot = r = (float)itemPtr->parm[0] * (PI/2);",
+        fileName: "Items/Items.c",
+        lineNumber: 708,
       },
     },
     p1: "Unused",
@@ -680,9 +680,9 @@ export const TerrainItemTypeParams: Record<ItemType, OttoItemParams> = {
       type: "Integer",
       description: "Rotation (0-3, multiplied by PI/2)",
       codeSample: {
-        code: "gNewObjectDefinition.rot = (float)itemPtr->parm[0] * PI/2;",
+        code: "gNewObjectDefinition.rot = (float)itemPtr->parm[0] * (PI/2);",
         fileName: "Items/Items.c",
-        lineNumber: 555,
+        lineNumber: 545,
       },
     },
     p1: "Unused",
@@ -756,18 +756,18 @@ export const TerrainItemTypeParams: Record<ItemType, OttoItemParams> = {
       description:
         "Pipe type (0=FancyJ, 1=BentTube, 2=StraightTube, 3=LongU, 4=ShortU, 5=GrateTube)",
       codeSample: {
-        code: "int type = itemPtr->parm[0]; // get pipe type",
+        code: "int type = itemPtr->parm[0];",
         fileName: "Items/Items.c",
-        lineNumber: 885,
+        lineNumber: 766,
       },
     },
     p1: {
       type: "Integer",
       description: "Rotation (0-3, multiplied by PI/2)",
       codeSample: {
-        code: "gNewObjectDefinition.rot = (float)itemPtr->parm[1] * (PI/2);",
+        code: "gNewObjectDefinition.rot = r = (float)itemPtr->parm[1] * (PI2/8);",
         fileName: "Items/Items.c",
-        lineNumber: 606,
+        lineNumber: 782,
       },
     },
     p2: {
@@ -1429,18 +1429,18 @@ export const TerrainItemTypeParams: Record<ItemType, OttoItemParams> = {
       type: "Integer",
       description: "How many tires in the strip",
       codeSample: {
-        code: "numTires = itemPtr->parm[0];",
+        code: "short numTires = itemPtr->parm[0];",
         fileName: "Items/BumperCar.c",
-        lineNumber: 200,
+        lineNumber: 825,
       },
     },
     p1: {
       type: "Integer",
-      description: "Rotation of the tire strip",
+      description: "Rotation of the tire strip (0-3, multiplied by PI2/4)",
       codeSample: {
-        code: "rotation = itemPtr->parm[1];",
+        code: "float aim = (float)itemPtr->parm[1] * (PI2/4.0f);",
         fileName: "Items/BumperCar.c",
-        lineNumber: 201,
+        lineNumber: 826,
       },
     },
     p2: "Unused",
@@ -1762,11 +1762,11 @@ export const TerrainItemTypeParams: Record<ItemType, OttoItemParams> = {
     flags: "Auto-fade status bits",
     p0: {
       type: "Integer",
-      description: "Snowball size (0-2)",
+      description: "Unused in current source (snowball type is fixed)",
       codeSample: {
-        code: "gNewObjectDefinition.type = FIREICE_ObjType_Snowball_Small + itemPtr->parm[0];",
+        code: "gNewObjectDefinition.type = FIREICE_ObjType_SnowBall;",
         fileName: "Items/Traps.c",
-        lineNumber: 2084,
+        lineNumber: 2083,
       },
     },
     p1: "Unused",
