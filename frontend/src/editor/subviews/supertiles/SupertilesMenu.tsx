@@ -26,9 +26,14 @@ export function SupertileMenu({
   setTerrainData,
   mapImages,
   setMapImages,
+  onResizeSupertiles,
 }: {
   mapImages: HTMLCanvasElement[];
   setMapImages: (newCanvases: HTMLCanvasElement[]) => void;
+  onResizeSupertiles: (
+    direction: "top" | "bottom" | "left" | "right",
+    supertileCount: number,
+  ) => void;
   headerData: HeaderData;
   setHeaderData: Updater<HeaderData>;
   terrainData: TerrainData;
@@ -77,7 +82,36 @@ export function SupertileMenu({
   };
 
   return (
-    <div className="grid grid-cols-3 gap-2">
+    <div className="flex flex-col gap-2">
+      <div className="grid grid-cols-4 gap-2">
+        <Button onClick={() => onResizeSupertiles("top", 1)}>
+          Add Supertile Row Top
+        </Button>
+        <Button onClick={() => onResizeSupertiles("bottom", 1)}>
+          Add Supertile Row Bottom
+        </Button>
+        <Button onClick={() => onResizeSupertiles("left", 1)}>
+          Add Supertile Column Left
+        </Button>
+        <Button onClick={() => onResizeSupertiles("right", 1)}>
+          Add Supertile Column Right
+        </Button>
+      </div>
+      <div className="grid grid-cols-4 gap-2">
+        <Button variant="destructive" onClick={() => onResizeSupertiles("top", -1)}>
+          Remove Supertile Row Top
+        </Button>
+        <Button variant="destructive" onClick={() => onResizeSupertiles("bottom", -1)}>
+          Remove Supertile Row Bottom
+        </Button>
+        <Button variant="destructive" onClick={() => onResizeSupertiles("left", -1)}>
+          Remove Supertile Column Left
+        </Button>
+        <Button variant="destructive" onClick={() => onResizeSupertiles("right", -1)}>
+          Remove Supertile Column Right
+        </Button>
+      </div>
+      <div className="grid grid-cols-3 gap-2">
       <div className="flex flex-col gap-2">
         <p>Replace Selected Tile ({selectedTile})</p>
         <FileUpload
@@ -262,6 +296,7 @@ export function SupertileMenu({
 
         <p>Current Tile: #{selectedTile}</p>
         <p>Texture ID: {stgd[selectedTile]?.superTileId || 0}</p>
+      </div>
       </div>
     </div>
   );

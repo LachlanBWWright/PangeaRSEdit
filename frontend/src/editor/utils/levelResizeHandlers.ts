@@ -32,3 +32,33 @@ export function applyResizeToAtomicData(
     warnings: resized.warnings,
   });
 }
+
+export function applySupertileResizeToAtomicData(
+  atomicData: AtomicLevelData,
+  globals: GlobalsInterface,
+  options: ResizeUIOptions,
+): Result<ResizeAtomicDataResult, Error> {
+  const combinedResult = combineLevelData(atomicData);
+  if (combinedResult.isErr()) {
+    return err(combinedResult.error);
+  }
+
+  const originalLevel = combinedResult.value;
+  const resized = resizeLevel(originalLevel, globals, options);
+  const resizedLevel = {
+    ...resized.levelData,
+    Itms: originalLevel.Itms,
+    Fenc: originalLevel.Fenc,
+    FnNb: originalLevel.FnNb,
+    Liqd: originalLevel.Liqd,
+    Spln: originalLevel.Spln,
+    SpPt: originalLevel.SpPt,
+  };
+
+  return ok({
+    data: splitLevelData(resizedLevel),
+    warnings: resized.warnings.filter(
+      (warning) => warning !== "Some items were outside the new bounds.",
+    ),
+  });
+}

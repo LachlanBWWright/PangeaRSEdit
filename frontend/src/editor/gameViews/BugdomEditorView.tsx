@@ -20,6 +20,7 @@ import { Bugdom1KonvaView } from "../canvas/Bugdom1KonvaView";
 import { ThreeView } from "../threejs/Three";
 import { View } from "../viewEnum";
 import { ItemFilterToggle } from "../subviews/filters/ItemFilterToggle";
+import { EditorCanvasControls } from "../subviews/EditorCanvasControls";
 import {
   EmptyFencePrompt,
   EmptySplinePrompt,
@@ -35,7 +36,7 @@ import {
   createZoomOutHandler,
   terrainHasSupertileData,
 } from "../utils/editorViewUtils";
-import { applyResizeToAtomicData } from "../utils/levelResizeHandlers";
+import { applySupertileResizeToAtomicData } from "../utils/levelResizeHandlers";
 import { Globals } from "@/data/globals/globals";
 import type { BugdomEditorViewProps } from "../utils/editorViewTypes";
 import {
@@ -93,8 +94,11 @@ export function BugdomEditorView({
   );
 
   const showSupertileMenu = terrainHasSupertileData(terrainData);
-  const handleResize = (direction: "top" | "bottom" | "left" | "right", tileCount: number) => {
-    const result = applyResizeToAtomicData(
+  const handleSupertileResize = (
+    direction: "top" | "bottom" | "left" | "right",
+    supertileCount: number,
+  ) => {
+    const result = applySupertileResizeToAtomicData(
       {
         headerData,
         itemData,
@@ -106,7 +110,7 @@ export function BugdomEditorView({
       globals,
       {
         direction,
-        tileCount,
+        tileCount: supertileCount * globals.TILES_PER_SUPERTILE,
         defaultHeight: headerData.Hedr[1000].obj.minY ?? 0,
       },
     );
@@ -127,12 +131,6 @@ export function BugdomEditorView({
       <Bugdom1EditorToolbar
         view={view}
         setView={setView}
-        undoData={undoData}
-        redoData={redoData}
-        zoomIn={zoomIn}
-        zoomOut={zoomOut}
-        dataHistoryIndex={dataHistory.index}
-        dataHistoryLength={dataHistory.items.length}
         terrainHasSTgd={showSupertileMenu}
       />
       <div>
@@ -164,11 +162,7 @@ export function BugdomEditorView({
           )
         )}
         {view === View.tiles && (
-          <IndividualTilesMenu
-            headerData={headerData}
-            setHeaderData={setHeaderData}
-            onResize={handleResize}
-          />
+          <IndividualTilesMenu headerData={headerData} setHeaderData={setHeaderData} />
         )}
         {view === View.supertiles && showSupertileMenu && (
           <BugdomTileMenu
@@ -178,10 +172,21 @@ export function BugdomEditorView({
             setTerrainData={setTerrainData}
             mapImages={mapImages}
             setMapImages={setMapImages}
+            onResizeSupertiles={handleSupertileResize}
           />
         )}
       </div>
       <div className="w-full min-h-0 flex-1 border-2 border-black overflow-clip relative">
+        <div className="absolute top-2 left-2 z-10">
+          <EditorCanvasControls
+            undoData={undoData}
+            redoData={redoData}
+            zoomOut={zoomOut}
+            zoomIn={zoomIn}
+            dataHistoryIndex={dataHistory.index}
+            dataHistoryLength={dataHistory.items.length}
+          />
+        </div>
         {/* Item Filter Toggle - Top Right */}
         {itemData && (
           <div className="absolute top-2 right-2 z-10">

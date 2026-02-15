@@ -41,17 +41,19 @@ interface BugdomTileMenuProps {
   setTerrainData: Updater<TerrainData>;
   mapImages: HTMLCanvasElement[];
   setMapImages: (newCanvases: HTMLCanvasElement[]) => void;
+  onResizeSupertiles: (
+    direction: "top" | "bottom" | "left" | "right",
+    supertileCount: number,
+  ) => void;
 }
 
 export function BugdomTileMenu({
   headerData,
-
   terrainData,
   setTerrainData,
   mapImages,
+  onResizeSupertiles,
 }: BugdomTileMenuProps) {
-  // Mark destructured setters as used to satisfy lint rules (component doesn't use them directly)
-
   const selectedTile = useAtomValue(SelectedTile);
   const hedr = headerData.Hedr[1000].obj;
   const globals = useAtomValue(Globals);
@@ -304,7 +306,36 @@ export function BugdomTileMenu({
   const boxHeight = "h-80"; // Consistent height for all columns
 
   return (
-    <div className="grid grid-cols-3 gap-4 p-2">
+    <div className="flex flex-col gap-4 p-2">
+      <div className="grid grid-cols-4 gap-2">
+        <Button onClick={() => onResizeSupertiles("top", 1)}>
+          Add Supertile Row Top
+        </Button>
+        <Button onClick={() => onResizeSupertiles("bottom", 1)}>
+          Add Supertile Row Bottom
+        </Button>
+        <Button onClick={() => onResizeSupertiles("left", 1)}>
+          Add Supertile Column Left
+        </Button>
+        <Button onClick={() => onResizeSupertiles("right", 1)}>
+          Add Supertile Column Right
+        </Button>
+      </div>
+      <div className="grid grid-cols-4 gap-2">
+        <Button variant="destructive" onClick={() => onResizeSupertiles("top", -1)}>
+          Remove Supertile Row Top
+        </Button>
+        <Button variant="destructive" onClick={() => onResizeSupertiles("bottom", -1)}>
+          Remove Supertile Row Bottom
+        </Button>
+        <Button variant="destructive" onClick={() => onResizeSupertiles("left", -1)}>
+          Remove Supertile Column Left
+        </Button>
+        <Button variant="destructive" onClick={() => onResizeSupertiles("right", -1)}>
+          Remove Supertile Column Right
+        </Button>
+      </div>
+      <div className="grid grid-cols-3 gap-4">
       {/* Left column: Selected Supertile Tiles */}
       <div className={`flex flex-col gap-2 ${boxHeight}`}>
         <h3 className="font-bold text-white text-center">
@@ -492,6 +523,7 @@ export function BugdomTileMenu({
             ))}
           </div>
         </div>
+      </div>
       </div>
     </div>
   );
