@@ -320,10 +320,13 @@ export function sanitizeResourceForkJson(
       if (!isRecord(resVal)) {
         continue;
       }
-      // Keep object resources with non-empty arrays and data resources with non-empty strings.
+      // Keep object resources (`obj`) and data resources (`data`).
+      // For array-shaped objects, skip empty arrays to avoid empty resource payloads.
       const obj = resVal.obj;
       const dataField = resVal.data;
-      const hasObj = Array.isArray(obj) && obj.length > 0;
+      const hasObj =
+        (Array.isArray(obj) && obj.length > 0) ||
+        (isRecord(obj) && !Array.isArray(obj));
       const hasData = typeof dataField === "string" && dataField.length > 0;
       if (!hasObj && !hasData) {
         continue;

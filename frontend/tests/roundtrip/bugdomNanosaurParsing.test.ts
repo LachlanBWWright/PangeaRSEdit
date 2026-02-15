@@ -109,6 +109,7 @@ describe("Bugdom 1 Full Save Pipeline", () => {
       const { serialized, combined } = await runBugdomPipeline(levelFile);
       expect(serialized.byteLength).toBeGreaterThan(0);
       expect(combined._metadata).toBeDefined();
+      expect(combined.Hedr).toBeDefined();
 
       const reparsedResult = await saveToJson(serialized, bugdomSpecs, [], []);
       expect(reparsedResult.ok).toBe(true);

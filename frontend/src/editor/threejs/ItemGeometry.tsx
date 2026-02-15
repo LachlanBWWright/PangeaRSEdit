@@ -348,11 +348,6 @@ export const ItemGeometry: React.FC<ItemGeometryProps> = ({
             ? dims.yValue3D
             : snappedTerrainY + dims.yValue3D;
 
-          // Debug: log liquid patch Y calculation
-          console.log(
-            `LiquidPatch type=${item.type} p2=${item.p2} p3=${item.p3} isAbsoluteY=${dims.isAbsoluteY} yValue3D=${dims.yValue3D} terrainY=${snappedTerrainY} finalY=${liquidY}`,
-          );
-
           return (
             <LiquidPatchPlane
               key={`liquid-patch-${idx}`}

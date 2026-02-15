@@ -8,6 +8,7 @@ describe("itemAuditUtils", () => {
     expect(entries.length).toBeGreaterThan(0);
     expect(entries[0]?.itemType).toBe(0);
     expect(entries[0]?.itemName.length).toBeGreaterThan(0);
+    expect(entries[0]?.paramDetails.p0.summary.length).toBeGreaterThan(0);
   });
 
   it("includes custom decisions in exported report", () => {
@@ -27,5 +28,6 @@ describe("itemAuditUtils", () => {
     const first = report.entries.find((entry) => entry.itemType === 0);
     expect(first?.decision.modelStatus).toBe("correct");
     expect(first?.decision.paramStatus.p0).toBe("incorrect");
+    expect(first?.paramDetails.p0.summary.length).toBeGreaterThan(0);
   });
 });

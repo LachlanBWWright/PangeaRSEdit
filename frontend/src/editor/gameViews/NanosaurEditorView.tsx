@@ -122,7 +122,7 @@ export function NanosaurEditorView({
             setHeaderData={setHeaderData}
           />
         )}
-        {view === View.tiles && canvasViewMode !== CanvasView.THREE_D && (
+        {view === View.tiles && (
           <IndividualTilesMenu
             headerData={headerData}
             setHeaderData={setHeaderData}

@@ -86,6 +86,21 @@ describe("type guards and validation helpers", () => {
     const sanitized = sanitizeResourceForkJson(input);
     expect("Timg" in sanitized).toBe(true);
   });
+
+  it("preserves object-backed resources like Hedr", () => {
+    const input = {
+      _metadata: {},
+      Hedr: {
+        1000: {
+          name: "Header",
+          obj: { mapWidth: 64, mapHeight: 64 },
+          order: 0,
+        },
+      },
+    };
+    const sanitized = sanitizeResourceForkJson(input);
+    expect("Hedr" in sanitized).toBe(true);
+  });
 });
 import { describe, it, expect } from "vitest";
 import { splitLevelData, combineLevelData } from "./levelDataUtils";

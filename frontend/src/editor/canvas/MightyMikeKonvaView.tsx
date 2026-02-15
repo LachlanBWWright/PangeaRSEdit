@@ -89,17 +89,6 @@ export function MightyMikeKonvaView({
     [setItemData],
   );
 
-  // Debug logging
-  useEffect(() => {
-    console.log("MightyMikeKonvaView: Render state", {
-      hasTerrainData: !!terrainData,
-      hasLayr: !!terrainData?.Layr,
-      mapImagesCount: mapImages.length,
-      containerSize,
-      shouldRenderTiles: !!terrainData?.Layr && mapImages.length > 0,
-    });
-  }, [terrainData, mapImages, containerSize]);
-
   return (
     <div ref={containerRef} style={{ width: "100%", height: "100%" }}>
       <Stage

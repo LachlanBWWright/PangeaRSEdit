@@ -26,7 +26,6 @@ export async function loadMapImages(
           offset += 4;
           if (size === 0) break;
 
-          console.log("Secondoffset", dataView.getInt32(offset));
 
           offset += size;
 
@@ -47,7 +46,6 @@ export async function loadMapImages(
           offset += 4;
 
           const imageDescriptionOffset = dataView.getInt32(offset);
-          console.log("Image Description Offset", imageDescriptionOffset);
           offset += imageDescriptionOffset;
           size -= imageDescriptionOffset; // Adjust size to only include JPEG data, not the imageDescription record
 
