@@ -32,6 +32,17 @@ export const DEFAULT_RATE_LIMIT: RateLimitConfig = {
   maxRetries: 3,
 };
 
+function buildCandidatePaths(sourcePath: string, filePath: string): string[] {
+  const normalizedPath = filePath.replace(/^\/+/, "");
+  return [
+    `${sourcePath}/${normalizedPath}`,
+    normalizedPath,
+    normalizedPath.startsWith("Source/")
+      ? `${sourcePath}/${normalizedPath.slice("Source/".length)}`
+      : `Source/${normalizedPath}`,
+  ];
+}
+
 /**
  * Fetch a file from a GitHub repository
  */
@@ -104,11 +115,28 @@ export async function fetchGameSourceFile(
     return err(new Error(`Unknown game: ${game}`));
   }
   
-  // The filePath from citations is like "Items/Items.c"
-  // We need to prepend the source path
-  const fullPath = `${repo.sourcePath}/${filePath}`;
-  
-  return fetchGitHubFile(repo.owner, repo.repo, repo.branch, fullPath, rateLimitConfig);
+  const candidatePaths = buildCandidatePaths(repo.sourcePath, filePath);
+
+  const tried = new Set<string>();
+  for (const candidate of candidatePaths) {
+    const path = candidate.replace(/\/{2,}/g, "/");
+    if (tried.has(path)) {
+      continue;
+    }
+    tried.add(path);
+    const fetchResult = await fetchGitHubFile(
+      repo.owner,
+      repo.repo,
+      repo.branch,
+      path,
+      rateLimitConfig,
+    );
+    if (fetchResult.isOk()) {
+      return fetchResult;
+    }
+  }
+
+  return err(new Error(`File not found: ${filePath}`));
 }
 
 /**
@@ -257,9 +285,23 @@ export class GitHubFileCache {
     if (!repo) {
       return err(new Error(`Unknown game: ${game}`));
     }
-    
-    const fullPath = `${repo.sourcePath}/${filePath}`;
-    return this.getFile(repo.owner, repo.repo, repo.branch, fullPath);
+
+    const candidatePaths = buildCandidatePaths(repo.sourcePath, filePath);
+    const tried = new Set<string>();
+
+    for (const candidate of candidatePaths) {
+      const path = candidate.replace(/\/{2,}/g, "/");
+      if (tried.has(path)) {
+        continue;
+      }
+      tried.add(path);
+      const result = await this.getFile(repo.owner, repo.repo, repo.branch, path);
+      if (result.isOk()) {
+        return result;
+      }
+    }
+
+    return err(new Error(`File not found: ${filePath}`));
   }
   
   /**

@@ -45,7 +45,7 @@ export const GAME_REPOSITORIES: Record<string, GameRepository> = {
   },
   cromag: {
     owner: "jorio",
-    repo: "CroMag-Rally",
+    repo: "CroMagRally",
     branch: "master",
     sourcePath: "src",
   },

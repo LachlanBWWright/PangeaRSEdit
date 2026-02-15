@@ -4,6 +4,7 @@ import {
   extractAllCitations,
   getGamesWithItemParams,
   getCitationCount,
+  getAllMissingCitations,
 } from "./citationExtractor";
 import {
   getKnownGames,
@@ -41,6 +42,14 @@ describe("Citation Extractor", () => {
       // Check that we have citations from multiple games
       const games = new Set(allCitations.map(c => c.game));
       expect(games.size).toBeGreaterThan(1);
+      expect(games.has("mightymike")).toBe(false);
+    });
+
+    it("should use path-qualified filenames for all extracted citations", () => {
+      const allCitations = extractAllCitations();
+      for (const citation of allCitations) {
+        expect(citation.codeSample.fileName.includes("/")).toBe(true);
+      }
     });
   });
 
@@ -49,6 +58,8 @@ describe("Citation Extractor", () => {
       const games = getGamesWithItemParams();
       expect(games).toContain("ottomatic");
       expect(games).toContain("bugdom2");
+      expect(games).toContain("mightymike");
+      expect(games.length).toBe(8);
     });
   });
 
@@ -61,6 +72,20 @@ describe("Citation Extractor", () => {
     it("should return 0 for unknown game", () => {
       const count = getCitationCount("nonexistent");
       expect(count).toBe(0);
+    });
+  });
+
+  describe("missing citation coverage", () => {
+    it("should not have missing citations for parameter descriptions", () => {
+      const missing = getAllMissingCitations();
+      expect(missing).toEqual([]);
+    });
+
+    it("should report no missing citations for each game with item params", () => {
+      for (const game of getGamesWithItemParams()) {
+        const missingForGame = getAllMissingCitations().filter((item) => item.game === game);
+        expect(missingForGame).toEqual([]);
+      }
     });
   });
 });

@@ -242,7 +242,7 @@ export const TerrainItemTypeParams: Record<ItemType, OttoItemParams> = {
       description: "Starting aim direction (0-7)",
       codeSample: {
         code: "gPlayerInfo.startRotY = (float)itemPtr[i].parm[0] * (PI2/8.0f); // calc starting rotation aim",
-        fileName: "Terrain2.c",
+        fileName: "Terrain/Terrain2.c",
         lineNumber: 282,
       },
     },
@@ -1011,18 +1011,18 @@ export const TerrainItemTypeParams: Record<ItemType, OttoItemParams> = {
       type: "Integer",
       description: "Platform type (0=Short, 1=Medium, 2=Tall, 3=Unused)",
       codeSample: {
-        code: "int type = itemPtr->parm[0]; // get platform type\ngNewObjectDefinition.type = PARK_ObjType_ShortFlower + type;",
-        fileName: "Items2.c",
-        lineNumber: 1226,
+        code: "gNewObjectDefinition.type = JUNGLE_ObjType_LeafPlatform0 + itemPtr->parm[0];",
+        fileName: "Items/Triggers2.c",
+        lineNumber: 423,
       },
     },
     p1: {
       type: "Integer",
       description: "Rotation (0-3, multiplied by PI2/4)",
       codeSample: {
-        code: "gNewObjectDefinition.rot = RandomFloat() * PI2; // random rotation, not directly from parm[1]",
-        fileName: "Items2.c",
-        lineNumber: 1229,
+        code: "gNewObjectDefinition.rot = (float)itemPtr->parm[1] * (PI2 / 4.0f);",
+        fileName: "Items/Triggers2.c",
+        lineNumber: 430,
       },
     },
     p2: "Unused",
