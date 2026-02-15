@@ -42,6 +42,10 @@ export function SupertileMenu({
   const selectedTile = useAtomValue(SelectedTile);
   const hedr = headerData.Hedr[1000].obj;
   const globals = useAtomValue(Globals);
+  const supertilesWide = Math.ceil(hedr.mapWidth / globals.TILES_PER_SUPERTILE);
+  const supertilesHigh = Math.ceil(
+    hedr.mapHeight / globals.TILES_PER_SUPERTILE,
+  );
 
   // Check if STgd exists
   if (!terrainData.STgd?.[1000]?.obj) {
@@ -98,16 +102,32 @@ export function SupertileMenu({
         </Button>
       </div>
       <div className="grid grid-cols-4 gap-2">
-        <Button variant="destructive" onClick={() => onResizeSupertiles("top", -1)}>
+        <Button
+          variant="destructive"
+          disabled={supertilesHigh <= 1}
+          onClick={() => onResizeSupertiles("top", -1)}
+        >
           Remove Supertile Row Top
         </Button>
-        <Button variant="destructive" onClick={() => onResizeSupertiles("bottom", -1)}>
+        <Button
+          variant="destructive"
+          disabled={supertilesHigh <= 1}
+          onClick={() => onResizeSupertiles("bottom", -1)}
+        >
           Remove Supertile Row Bottom
         </Button>
-        <Button variant="destructive" onClick={() => onResizeSupertiles("left", -1)}>
+        <Button
+          variant="destructive"
+          disabled={supertilesWide <= 1}
+          onClick={() => onResizeSupertiles("left", -1)}
+        >
           Remove Supertile Column Left
         </Button>
-        <Button variant="destructive" onClick={() => onResizeSupertiles("right", -1)}>
+        <Button
+          variant="destructive"
+          disabled={supertilesWide <= 1}
+          onClick={() => onResizeSupertiles("right", -1)}
+        >
           Remove Supertile Column Right
         </Button>
       </div>
@@ -290,8 +310,8 @@ export function SupertileMenu({
         </Button>
       </div>
       <div className="flex flex-col gap-2">
-        <p>Supertiles Wide: {hedr.mapWidth / globals.TILES_PER_SUPERTILE}</p>
-        <p>Supertiles High: {hedr.mapHeight / globals.TILES_PER_SUPERTILE}</p>
+        <p>Supertiles Wide: {supertilesWide}</p>
+        <p>Supertiles High: {supertilesHigh}</p>
         <p>Unique Supertiles {hedr.numUniqueSupertiles}</p>
 
         <p>Current Tile: #{selectedTile}</p>

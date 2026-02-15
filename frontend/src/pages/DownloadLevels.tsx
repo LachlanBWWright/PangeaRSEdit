@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { Download, ChevronDown, ChevronUp, Gamepad2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import {
   Card,
   CardContent,
@@ -10,10 +9,6 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { getGamesByCategory, type Level } from "@/data/levels";
-import {
-  downloadFileFromGoogleDrive,
-  uploadFileToGoogleDrive,
-} from "@/utils/googleDrive";
 
 interface LevelCardProps {
   level: Level;
@@ -133,45 +128,6 @@ function GameSection({ gameName, levels }: GameSectionProps) {
 
 export function DownloadLevels() {
   const gamesByCategory = getGamesByCategory();
-  const [driveToken, setDriveToken] = useState("");
-  const [driveFileId, setDriveFileId] = useState("");
-  const [selectedUploadFile, setSelectedUploadFile] = useState<File | null>(null);
-  const [driveStatus, setDriveStatus] = useState<string | null>(null);
-
-  const handleDriveUpload = async () => {
-    if (!driveToken || !selectedUploadFile) {
-      setDriveStatus("Provide an access token and select a level file.");
-      return;
-    }
-    setDriveStatus("Uploading to Google Drive...");
-    const result = await uploadFileToGoogleDrive(selectedUploadFile, driveToken);
-    if ("error" in result) {
-      setDriveStatus(result.error);
-      return;
-    }
-    setDriveStatus(`Uploaded successfully. File ID: ${result.fileId}`);
-    setDriveFileId(result.fileId);
-  };
-
-  const handleDriveDownload = async () => {
-    if (!driveToken || !driveFileId) {
-      setDriveStatus("Provide an access token and file id.");
-      return;
-    }
-    setDriveStatus("Downloading from Google Drive...");
-    const result = await downloadFileFromGoogleDrive(driveFileId, driveToken);
-    if ("error" in result) {
-      setDriveStatus(result.error);
-      return;
-    }
-    const url = URL.createObjectURL(result.blob);
-    const anchor = document.createElement("a");
-    anchor.href = url;
-    anchor.download = result.filename;
-    anchor.click();
-    URL.revokeObjectURL(url);
-    setDriveStatus(`Downloaded ${result.filename}`);
-  };
 
   return (
     <div className="h-full overflow-auto bg-gray-900 p-6">
@@ -197,46 +153,6 @@ export function DownloadLevels() {
           </p>
           <p></p>
         </div>
-
-        <Card className="bg-gray-800 border-gray-700 mb-8">
-          <CardHeader>
-            <CardTitle className="text-white">Google Drive Level Storage</CardTitle>
-            <CardDescription className="text-gray-300">
-              Use a Google OAuth access token with Drive permissions to upload or
-              download level files.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <Input
-              type="password"
-              placeholder="Google Drive OAuth access token"
-              value={driveToken}
-              onChange={(event) => setDriveToken(event.target.value)}
-            />
-            <div className="grid md:grid-cols-2 gap-3">
-              <Input
-                placeholder="Drive file id for download"
-                value={driveFileId}
-                onChange={(event) => setDriveFileId(event.target.value)}
-              />
-              <Input
-                type="file"
-                onChange={(event) =>
-                  setSelectedUploadFile(event.target.files?.[0] ?? null)
-                }
-              />
-            </div>
-            <div className="flex gap-2">
-              <Button onClick={handleDriveUpload}>Upload selected file to Drive</Button>
-              <Button variant="outline" onClick={handleDriveDownload}>
-                Download file id from Drive
-              </Button>
-            </div>
-            {driveStatus && (
-              <p className="text-sm text-gray-300">{driveStatus}</p>
-            )}
-          </CardContent>
-        </Card>
 
         {gamesByCategory.map((game) => (
           <GameSection

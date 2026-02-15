@@ -1,3 +1,5 @@
+import { Redo2, Undo2, ZoomIn, ZoomOut } from "lucide-react";
+
 interface EditorCanvasControlsProps {
   undoData: () => void;
   redoData: () => void;
@@ -27,7 +29,7 @@ export function EditorCanvasControls({
         title="Undo"
         disabled={dataHistoryIndex === 0}
       >
-        ↩
+        <Undo2 className="w-5 h-5" />
       </button>
       <button
         onClick={redoData}
@@ -36,7 +38,7 @@ export function EditorCanvasControls({
         title="Redo"
         disabled={dataHistoryIndex === dataHistoryLength - 1}
       >
-        ↪
+        <Redo2 className="w-5 h-5" />
       </button>
       <button
         onClick={zoomOut}
@@ -44,7 +46,7 @@ export function EditorCanvasControls({
         aria-label="Zoom out"
         title="Zoom out"
       >
-        -
+        <ZoomOut className="w-5 h-5" />
       </button>
       <button
         onClick={zoomIn}
@@ -52,7 +54,7 @@ export function EditorCanvasControls({
         aria-label="Zoom in"
         title="Zoom in"
       >
-        +
+        <ZoomIn className="w-5 h-5" />
       </button>
     </div>
   );

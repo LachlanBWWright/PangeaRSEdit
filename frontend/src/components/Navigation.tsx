@@ -1,6 +1,6 @@
 import { Link, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Map, Box, Image, Download, FlaskConical, Boxes, ClipboardList } from "lucide-react";
+import { Map, Box, Download } from "lucide-react";
 
 export function Navigation() {
   const location = useLocation();
@@ -29,7 +29,7 @@ export function Navigation() {
             Model Viewer
           </Link>
         </Button>
-        <Button
+        {/* <Button
           asChild
           variant={location.pathname === "/sprite-viewer" ? "default" : "ghost"}
           className="flex items-center gap-2"
@@ -39,6 +39,7 @@ export function Navigation() {
             Sprite Viewer
           </Link>
         </Button>
+        */}
         <Button
           asChild
           variant={
@@ -51,7 +52,7 @@ export function Navigation() {
             Download Levels
           </Link>
         </Button>
-        <Button
+        {/* <Button
           asChild
           variant={
             location.pathname === "/item-models" ? "default" : "ghost"
@@ -86,7 +87,7 @@ export function Navigation() {
             <ClipboardList className="w-4 h-4" />
             Item Audit
           </Link>
-        </Button>
+        </Button> */}
       </div>
     </nav>
   );

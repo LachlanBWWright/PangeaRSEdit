@@ -57,6 +57,10 @@ export function BugdomTileMenu({
   const selectedTile = useAtomValue(SelectedTile);
   const hedr = headerData.Hedr[1000].obj;
   const globals = useAtomValue(Globals);
+  const supertilesWide = Math.ceil(hedr.mapWidth / globals.TILES_PER_SUPERTILE);
+  const supertilesHigh = Math.ceil(
+    hedr.mapHeight / globals.TILES_PER_SUPERTILE,
+  );
 
   // Selected individual tile within the supertile (0-24 for 5x5)
   const [selectedTileInSupertile, setSelectedTileInSupertile] =
@@ -322,16 +326,32 @@ export function BugdomTileMenu({
         </Button>
       </div>
       <div className="grid grid-cols-4 gap-2">
-        <Button variant="destructive" onClick={() => onResizeSupertiles("top", -1)}>
+        <Button
+          variant="destructive"
+          disabled={supertilesHigh <= 1}
+          onClick={() => onResizeSupertiles("top", -1)}
+        >
           Remove Supertile Row Top
         </Button>
-        <Button variant="destructive" onClick={() => onResizeSupertiles("bottom", -1)}>
+        <Button
+          variant="destructive"
+          disabled={supertilesHigh <= 1}
+          onClick={() => onResizeSupertiles("bottom", -1)}
+        >
           Remove Supertile Row Bottom
         </Button>
-        <Button variant="destructive" onClick={() => onResizeSupertiles("left", -1)}>
+        <Button
+          variant="destructive"
+          disabled={supertilesWide <= 1}
+          onClick={() => onResizeSupertiles("left", -1)}
+        >
           Remove Supertile Column Left
         </Button>
-        <Button variant="destructive" onClick={() => onResizeSupertiles("right", -1)}>
+        <Button
+          variant="destructive"
+          disabled={supertilesWide <= 1}
+          onClick={() => onResizeSupertiles("right", -1)}
+        >
           Remove Supertile Column Right
         </Button>
       </div>

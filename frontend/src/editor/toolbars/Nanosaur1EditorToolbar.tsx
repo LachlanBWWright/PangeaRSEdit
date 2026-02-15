@@ -8,8 +8,8 @@
  * - NO fences, water, or splines
  */
 
-import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { View } from "../viewEnum";
 
 interface Props {
@@ -23,13 +23,30 @@ export function Nanosaur1EditorToolbar({
   setView,
   terrainHasSTgd,
 }: Props) {
+  const currentValue =
+    view === View.items
+      ? "items"
+      : view === View.tiles
+      ? "tiles"
+      : "supertiles";
+
+  const handleValueChange = (value: string) => {
+    if (value === "items") setView(View.items);
+    else if (value === "tiles") setView(View.tiles);
+    else if (value === "supertiles") setView(View.supertiles);
+  };
+
   return (
     <>
-      <div className="grid grid-flow-col auto-cols-fr gap-2 w-full overflow-clip">
-        <Button className="w-full" selected={view === View.items} onClick={() => setView(View.items)}>Items</Button>
-        <Button className="w-full" selected={view === View.tiles} onClick={() => setView(View.tiles)}>Tiles</Button>
-        <Button className="w-full" disabled={!terrainHasSTgd} selected={view === View.supertiles} onClick={() => setView(View.supertiles)}>Supertiles</Button>
-      </div>
+      <Tabs value={currentValue} onValueChange={handleValueChange}>
+        <TabsList className="grid grid-flow-col auto-cols-fr gap-2 w-full overflow-clip">
+          <TabsTrigger className="w-full" value="items">Items</TabsTrigger>
+          <TabsTrigger className="w-full" value="tiles">Tiles</TabsTrigger>
+          <TabsTrigger className="w-full" value="supertiles" disabled={!terrainHasSTgd}>
+            Supertiles
+          </TabsTrigger>
+        </TabsList>
+      </Tabs>
       <Separator />
     </>
   );

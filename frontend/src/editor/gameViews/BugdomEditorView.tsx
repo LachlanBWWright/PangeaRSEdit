@@ -177,7 +177,7 @@ export function BugdomEditorView({
         )}
       </div>
       <div className="w-full min-h-0 flex-1 border-2 border-black overflow-clip relative">
-        <div className="absolute top-2 left-2 z-10">
+        <div className="absolute top-2 right-2 z-10 flex gap-2">
           <EditorCanvasControls
             undoData={undoData}
             redoData={redoData}
@@ -186,13 +186,8 @@ export function BugdomEditorView({
             dataHistoryIndex={dataHistory.index}
             dataHistoryLength={dataHistory.items.length}
           />
+          {itemData && <ItemFilterToggle />}
         </div>
-        {/* Item Filter Toggle - Top Right */}
-        {itemData && (
-          <div className="absolute top-2 right-2 z-10">
-            <ItemFilterToggle />
-          </div>
-        )}
         {canvasViewMode === CanvasView.THREE_D && view === View.tiles ? (
           <ThreeView
             headerData={headerData}
