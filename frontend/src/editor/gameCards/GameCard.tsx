@@ -14,6 +14,7 @@ import {
   getUploadAcceptTypes,
   updateStagedFiles,
 } from "./uploadStagingUtils";
+import { cn } from "@/lib/utils";
 
 const getModelPath = (gameType: Game): string | undefined => {
   switch (gameType) {
@@ -101,6 +102,8 @@ export function GameCard({
     stagedTextureFile,
   ]);
   const formattedAccepts = accepts.split(",").join(", ");
+  const uploadDropzoneClassName =
+    "border-2 border-dashed border-gray-600 rounded-lg p-4 h-32 text-center cursor-pointer hover:border-gray-500 transition-colors flex flex-col justify-center gap-1 overflow-hidden";
 
   const clearStaged = () => {
     stagedLevelRef.current = null;
@@ -288,9 +291,11 @@ export function GameCard({
             )}
           </Button>
           <div
-            className={`overflow-auto max-h-[calc(100vh-420px)] transition-all ${
-              showLevelList ? "min-h-[200px] flex-1" : "h-0 min-h-0"
-            }`}
+            className={cn(
+              "overflow-auto transition-all",
+              showLevelList ? "min-h-[200px] flex-1" : "h-0 min-h-0",
+            )}
+            style={{ maxHeight: "100%" }}
           >
             {showLevelList && children}
           </div>
@@ -299,7 +304,7 @@ export function GameCard({
         <div className="flex-none pt-3 border-t border-gray-700 mt-3 space-y-2">
           <p className="text-sm text-gray-300">Upload files ({formattedAccepts})</p>
           <div
-            className="border-2 border-dashed border-gray-600 rounded-lg p-4 h-32 text-center cursor-pointer hover:border-gray-500 transition-colors flex flex-col justify-center gap-1 overflow-hidden"
+            className={cn(uploadDropzoneClassName)}
             onDrop={onDrop}
             onDragOver={(event) => event.preventDefault()}
             onClick={() => inputRef.current?.click()}

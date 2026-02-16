@@ -41,7 +41,7 @@ import {
 
 import { useEffect, useRef, useState, useCallback } from "react";
 import { toast } from "sonner";
-import { Vector3, Mesh } from "three";
+import { Vector3, Mesh, MOUSE } from "three";
 import type { Event } from "three";
 
 // Type guard for THREE events with point
@@ -432,7 +432,11 @@ export function ThreeView({
         maxPolarAngle={Math.PI / 2 - 0.05}
         // Keep panning aligned with the ground plane, so panning feels intuitive
         screenSpacePanning={false}
-        mouseButtons={{ LEFT: 0, MIDDLE: 1, RIGHT: 2 }}
+        mouseButtons={{
+          LEFT: MOUSE.ROTATE,
+          MIDDLE: MOUSE.DOLLY,
+          RIGHT: MOUSE.PAN,
+        }}
         // Start looking at the center of the map
         target={[unitsWide / 2, 0, unitsHigh / 2]}
       />
@@ -449,17 +453,17 @@ export function ThreeView({
         headerData={headerData}
         terrainData={terrainData}
         mapImages={mapImages}
-        onPointerDown={handlePointerDown}
-        onPointerMove={handlePointerMove}
-        onPointerUp={handlePointerUp}
+        onPointerDown={isEditingTopology ? handlePointerDown : undefined}
+        onPointerMove={isEditingTopology ? handlePointerMove : undefined}
+        onPointerUp={isEditingTopology ? handlePointerUp : undefined}
       />
       {/* Roof geometry (Bugdom 1 and games with YCrd 1001) */}
       <RoofGeometry
         headerData={headerData}
         terrainData={terrainData}
-        onPointerDown={handlePointerDown}
-        onPointerMove={handlePointerMove}
-        onPointerUp={handlePointerUp}
+        onPointerDown={isEditingTopology ? handlePointerDown : undefined}
+        onPointerMove={isEditingTopology ? handlePointerMove : undefined}
+        onPointerUp={isEditingTopology ? handlePointerUp : undefined}
       />
       {isEditingTopology && (
         <>

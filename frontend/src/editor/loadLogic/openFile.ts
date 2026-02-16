@@ -52,8 +52,14 @@ export async function openFile({
 
   setGlobals(gameType);
 
-  const res = await fetch(rsrcName);
-  const file = await res.blob();
+  const levelResponse = await fetch(rsrcName).catch(() => null);
+  if (!levelResponse || !levelResponse.ok) {
+    toast.error("Failed to download level file", {
+      description: rsrcName,
+    });
+    return;
+  }
+  const file = await levelResponse.blob();
   setMapFile(new File([file], name));
 
   if (gameType.DATA_TYPE === DataType.TRT_FILE) {
@@ -103,7 +109,13 @@ export async function openFile({
       toast.error("Mighty Mike data has an unexpected format");
     }
   } else if (gameType.DATA_TYPE === DataType.TRT_FILE) {
-    const imgRes = await fetch(url);
+    const imgRes = await fetch(url).catch(() => null);
+    if (!imgRes || !imgRes.ok) {
+      toast.error("Failed to download texture file", {
+        description: url,
+      });
+      return;
+    }
     const img = await imgRes.blob();
     const imgFile = new File([img], url.split("/").pop() ?? "");
     const imgBuffer = await imgFile.arrayBuffer();
@@ -113,7 +125,13 @@ export async function openFile({
     setMapImagesFile(imgFile);
     setMapImages(canvases);
   } else if (gameType.DATA_TYPE !== DataType.RSRC_FORK) {
-    const imgRes = await fetch(url);
+    const imgRes = await fetch(url).catch(() => null);
+    if (!imgRes || !imgRes.ok) {
+      toast.error("Failed to download texture file", {
+        description: url,
+      });
+      return;
+    }
     const img = await imgRes.blob();
     const imgFile = new File([img], url.split("/").pop() ?? "");
     const imgBuffer = await imgFile.arrayBuffer();

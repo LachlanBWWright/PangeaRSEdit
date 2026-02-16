@@ -13,6 +13,7 @@ import { Edit } from "lucide-react";
 import { toast } from "sonner";
 import { downloadSelectedTile, downloadMapImage } from "./supertileUtils";
 import { ImageEditor } from "@/components/ImageEditor";
+import { cn } from "@/lib/utils";
 import {
   canRemoveSupertileColumn,
   canRemoveSupertileRow,
@@ -121,8 +122,8 @@ export function SupertileMenu({
     const nextImages = [...mapImages];
     let nextId = 1;
 
-    setTerrainData((draft) => {
-      const stgdEntry = draft.STgd?.[1000];
+    setTerrainData((terrainDraft) => {
+      const stgdEntry = terrainDraft.STgd?.[1000];
       if (!stgdEntry?.obj) {
         return;
       }
@@ -438,6 +439,10 @@ function ImageDisplay({ image }: { image?: HTMLCanvasElement }) {
   return <Image image={image} width={250} height={250} />;
 }
 
+/**
+ * Shared image upload dropzone used for tile and whole-map texture updates.
+ * It supports click-to-browse and drag/drop in one compact panel.
+ */
 function ImageDropzone({
   inputRef,
   label,
@@ -453,9 +458,12 @@ function ImageDropzone({
 }) {
   return (
     <div
-      className={`border-2 border-dashed border-gray-600 rounded-lg p-3 text-center transition-colors ${
-        disabled ? "opacity-50 cursor-not-allowed" : "cursor-pointer hover:border-gray-500"
-      }`}
+      className={cn(
+        "border-2 border-dashed border-gray-600 rounded-lg p-3 text-center transition-colors",
+        disabled
+          ? "opacity-50 cursor-not-allowed"
+          : "cursor-pointer hover:border-gray-500",
+      )}
       onClick={() => {
         if (!disabled) {
           inputRef.current?.click();
