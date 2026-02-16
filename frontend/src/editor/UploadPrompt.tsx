@@ -42,17 +42,19 @@ export function UploadPrompt({
       setData,
     });
 
-  const handleParseLevelDataFile = (file: Blob, gameType: GlobalsInterface) =>
-    parseLevelDataFile(
+  const handleParseLevelDataFile = (file: Blob, gameType: GlobalsInterface) => {
+    setGlobals(gameType);
+    return parseLevelDataFile(
       file,
       gameType,
       setData,
       undefined,
       setMapImages,
     );
+  };
 
   return (
-    <div className="flex text-white flex-col items-stretch justify-start p-4 md:p-8 pb-8 h-[calc(100vh-56px)] overflow-auto">
+    <div className="flex text-white flex-col items-stretch justify-start p-4 md:p-8 pb-8 min-h-[calc(100vh-56px)] overflow-auto">
       <div className="w-full flex flex-col gap-4 items-center min-h-full">
         <div className="flex-none flex flex-col gap-2 items-center w-full lg:w-3/4">
           <IntroText />

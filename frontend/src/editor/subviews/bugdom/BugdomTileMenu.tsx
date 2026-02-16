@@ -20,9 +20,10 @@ import {
 } from "@/python/structSpecs/LevelTypes";
 import { Globals } from "../../../data/globals/globals";
 import { Button } from "@/components/ui/button";
-import { useState, useMemo } from "react";
-import { RotateCw, FlipHorizontal, FlipVertical } from "lucide-react";
+import { useState, useMemo, useRef } from "react";
+import { Edit, FlipHorizontal, FlipVertical, RotateCw, Upload } from "lucide-react";
 import { toast } from "sonner";
+import { ImageEditor } from "@/components/ImageEditor";
 import {
   canRemoveSupertileColumn,
   canRemoveSupertileRow,
@@ -57,6 +58,7 @@ export function BugdomTileMenu({
   terrainData,
   setTerrainData,
   mapImages,
+  setMapImages,
   onResizeSupertiles,
 }: BugdomTileMenuProps) {
   const selectedTile = useAtomValue(SelectedTile);
@@ -74,6 +76,8 @@ export function BugdomTileMenu({
 
   // Selected tile from the palette for replacement
   const [selectedPaletteTile, setSelectedPaletteTile] = useState<number>(0);
+  const paletteUploadInputRef = useRef<HTMLInputElement>(null);
+  const [isEditingPaletteTile, setIsEditingPaletteTile] = useState(false);
 
   const handleRemoveSupertile = (
     direction: "top" | "bottom" | "left" | "right",
@@ -96,6 +100,10 @@ export function BugdomTileMenu({
   const layerData = terrainData.Layr?.[1000]?.obj;
   const xlatTable = terrainData.Xlat?.[1000]?.obj;
   const numTileImages = mapImages.length;
+
+  // Bugdom 1/Nanosaur 1 source assets store palette entries as fixed-size 32x32 tiles.
+  // Keep replacement and edits constrained to the existing palette range instead of growing it.
+  const PALETTE_TILE_SIZE = 32;
 
   // NOTE: tile info helper is defined inside useMemo to avoid changing the memo's dependencies
 
@@ -320,6 +328,57 @@ export function BugdomTileMenu({
     toast.success(
       `Replaced with image #${selectedPaletteTile} (tile index ${tileIndexForImage})`,
     );
+  };
+
+  const handleUploadPaletteTile = async (
+    event: React.ChangeEvent<HTMLInputElement>,
+  ) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    if (!mapImages[selectedPaletteTile]) {
+      toast.error("Selected palette tile has no image");
+      return;
+    }
+
+    const canvas = document.createElement("canvas");
+    canvas.width = PALETTE_TILE_SIZE;
+    canvas.height = PALETTE_TILE_SIZE;
+    const context = canvas.getContext("2d");
+    if (!context) {
+      toast.error("Failed to create canvas context");
+      return;
+    }
+    context.fillStyle = "black";
+    context.fillRect(0, 0, PALETTE_TILE_SIZE, PALETTE_TILE_SIZE);
+    const imageBitmap = await createImageBitmap(file, {
+      resizeWidth: PALETTE_TILE_SIZE,
+      resizeHeight: PALETTE_TILE_SIZE,
+      resizeQuality: "high",
+    });
+    context.drawImage(imageBitmap, 0, 0);
+
+    const newMapImages = [...mapImages];
+    newMapImages[selectedPaletteTile] = canvas;
+    setMapImages(newMapImages);
+    event.target.value = "";
+    toast.success(`Updated palette tile #${selectedPaletteTile}`);
+  };
+
+  const handleSavePaletteEdit = async (editedImageData: ImageData) => {
+    const canvas = document.createElement("canvas");
+    canvas.width = editedImageData.width;
+    canvas.height = editedImageData.height;
+    const context = canvas.getContext("2d");
+    if (!context) {
+      toast.error("Failed to create canvas context");
+      return;
+    }
+    context.putImageData(editedImageData, 0, 0);
+    const newMapImages = [...mapImages];
+    newMapImages[selectedPaletteTile] = canvas;
+    setMapImages(newMapImages);
+    setIsEditingPaletteTile(false);
+    toast.success(`Edited palette tile #${selectedPaletteTile}`);
   };
 
   if (!layerData) {
@@ -550,8 +609,42 @@ export function BugdomTileMenu({
             ))}
           </div>
         </div>
+        <div className="grid grid-cols-2 gap-2">
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => setIsEditingPaletteTile(true)}
+            disabled={!mapImages[selectedPaletteTile]}
+          >
+            <Edit className="mr-1 h-4 w-4" />
+            Edit palette tile
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => paletteUploadInputRef.current?.click()}
+            disabled={!mapImages[selectedPaletteTile]}
+          >
+            <Upload className="mr-1 h-4 w-4" />
+            Upload palette tile
+          </Button>
+          <input
+            ref={paletteUploadInputRef}
+            type="file"
+            className="hidden"
+            accept="image/*"
+            onChange={handleUploadPaletteTile}
+          />
+        </div>
       </div>
       </div>
+      <ImageEditor
+        isOpen={isEditingPaletteTile}
+        onClose={() => setIsEditingPaletteTile(false)}
+        imageUrl={mapImages[selectedPaletteTile]?.toDataURL("image/png") ?? ""}
+        imageName={`Palette_${selectedPaletteTile}`}
+        onSave={handleSavePaletteEdit}
+      />
     </div>
   );
 }

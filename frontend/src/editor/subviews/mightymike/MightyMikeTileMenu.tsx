@@ -10,7 +10,7 @@
  */
 
 import { useAtomValue } from "jotai";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Layer, Stage, Image } from "react-konva";
 import { SelectedTile } from "@/data/supertiles/supertileAtoms";
 import { Updater } from "use-immer";
@@ -54,6 +54,8 @@ interface MightyMikeTileMenuProps {
   onResize: (direction: "top" | "bottom" | "left" | "right", tileCount: number) => void;
 }
 
+// Mighty Mike source tiles are fixed 32x32 in the original engine tile set.
+// Keep palette uploads/edits constrained to this size and current palette bounds.
 const TILE_SIZE = 32;
 
 export function MightyMikeTileMenu({
@@ -73,6 +75,8 @@ export function MightyMikeTileMenu({
   const [selectedPaletteTile, setSelectedPaletteTile] = useState<number>(0);
   const [isEditingTile, setIsEditingTile] = useState(false);
   const [editingImageUrl, setEditingImageUrl] = useState<string | null>(null);
+  const [isEditingPaletteTile, setIsEditingPaletteTile] = useState(false);
+  const paletteUploadInputRef = useRef<HTMLInputElement>(null);
 
   // Get required data
   const header = headerData.Hedr[1000].obj;
@@ -163,7 +167,7 @@ export function MightyMikeTileMenu({
 
   // Handler: Replace tile from palette
   const handleReplaceTile = () => {
-    if (selectedPaletteTile < 0 || selectedPaletteTile >= mapImages.length) {
+    if (!mapImages[selectedPaletteTile]) {
       toast.error("Invalid palette tile selected");
       return;
     }
@@ -347,6 +351,59 @@ export function MightyMikeTileMenu({
     setMapImages(newMapImages);
 
     toast.success("Tile image replaced");
+  };
+
+  const handleUploadPaletteTile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target?.files?.[0];
+    if (!file) return;
+    if (selectedPaletteTile < 0 || selectedPaletteTile >= mapImages.length) {
+      toast.error("Invalid palette tile selected");
+      return;
+    }
+    const canvas = document.createElement("canvas");
+    canvas.width = TILE_SIZE;
+    canvas.height = TILE_SIZE;
+    const context = canvas.getContext("2d");
+    if (!context) {
+      toast.error("Failed to create canvas context");
+      return;
+    }
+    context.fillStyle = "black";
+    context.fillRect(0, 0, canvas.width, canvas.height);
+    const bitmapResult = await fromPromise(
+      createImageBitmap(file, {
+        resizeWidth: TILE_SIZE,
+        resizeHeight: TILE_SIZE,
+        resizeQuality: "high",
+      }),
+    );
+    if (bitmapResult.isErr()) {
+      toast.error(`Failed to upload palette tile: ${bitmapResult.error.message}`);
+      return;
+    }
+    context.drawImage(bitmapResult.value, 0, 0);
+    const nextImages = [...mapImages];
+    nextImages[selectedPaletteTile] = canvas;
+    setMapImages(nextImages);
+    e.target.value = "";
+    toast.success(`Palette tile #${selectedPaletteTile} updated`);
+  };
+
+  const handleSavePaletteTileEdit = async (editedImageData: ImageData) => {
+    const canvas = document.createElement("canvas");
+    canvas.width = editedImageData.width;
+    canvas.height = editedImageData.height;
+    const context = canvas.getContext("2d");
+    if (!context) {
+      toast.error("Failed to get canvas context");
+      return;
+    }
+    context.putImageData(editedImageData, 0, 0);
+    const nextImages = [...mapImages];
+    nextImages[selectedPaletteTile] = canvas;
+    setMapImages(nextImages);
+    setIsEditingPaletteTile(false);
+    toast.success(`Edited palette tile #${selectedPaletteTile}`);
   };
 
   // Validate selected tile is in bounds
@@ -548,6 +605,33 @@ export function MightyMikeTileMenu({
             ))}
           </div>
         </div>
+        <div className="grid grid-cols-2 gap-2">
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => setIsEditingPaletteTile(true)}
+            disabled={!mapImages[selectedPaletteTile]}
+          >
+            <Edit className="mr-1 h-4 w-4" />
+            Edit palette tile
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => paletteUploadInputRef.current?.click()}
+            disabled={!mapImages[selectedPaletteTile]}
+          >
+            <Upload className="mr-1 h-4 w-4" />
+            Upload palette tile
+          </Button>
+          <input
+            ref={paletteUploadInputRef}
+            type="file"
+            className="hidden"
+            accept="image/*"
+            onChange={handleUploadPaletteTile}
+          />
+        </div>
 
         {/* Replace Button */}
         <Button
@@ -574,6 +658,15 @@ export function MightyMikeTileMenu({
           imageUrl={editingImageUrl}
           onSave={handleSaveTileEdit}
           imageName={`Tile_${selectedTile}`}
+        />
+      )}
+      {isEditingPaletteTile && (
+        <ImageEditor
+          isOpen={isEditingPaletteTile}
+          onClose={() => setIsEditingPaletteTile(false)}
+          imageUrl={mapImages[selectedPaletteTile]?.toDataURL("image/png") ?? ""}
+          onSave={handleSavePaletteTileEdit}
+          imageName={`Palette_${selectedPaletteTile}`}
         />
       )}
     </div>

@@ -48,6 +48,7 @@ import type { Event } from "three";
 interface ThreeEventWithPoint extends Event<string, unknown> {
   point: Vector3;
   nativeEvent?: PointerEvent;
+  stopPropagation?: () => void;
 }
 
 function hasPointProperty(event: Event<string, unknown>): event is ThreeEventWithPoint {
@@ -159,7 +160,6 @@ export function ThreeView({
   
   const terrainMeshRef = useRef<Mesh>(null);
   const [intersectionPoint, setIntersectionPoint] = useState<{ x: number; y: number; z: number } | null>(null);
-  const [brushLineStart, setBrushLineStart] = useState<{ x: number; y: number; z: number } | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const lastBrushCenterRef = useRef<{ x: number; y: number } | null>(null);
   
@@ -224,6 +224,7 @@ export function ThreeView({
       // to limit update frequency. Current implementation prioritizes responsiveness
       // for typical game level sizes (tested with maps up to 256x256 tiles).
       if (isEditing && terrainData.YCrd?.[1000]?.obj) {
+        event.stopPropagation?.();
         // Check if we should use dual editing mode (floor + roof)
         const hasRoof = terrainData.YCrd?.[1001]?.obj !== undefined;
         const useDualMode = editRoofAndFloor && hasRoof;
@@ -301,6 +302,7 @@ export function ThreeView({
     }
     
     if (hasPointProperty(event) && terrainData.YCrd?.[1000]?.obj) {
+      event.stopPropagation?.();
       setIsEditing(true);
       
       // Apply brush
@@ -311,12 +313,6 @@ export function ThreeView({
         y: tileCoords.z * globals.TILE_INGAME_SIZE,
       };
       lastBrushCenterRef.current = currentCenter;
-      setBrushLineStart({
-        x: currentCenter.x,
-        y: event.point.y,
-        z: currentCenter.y,
-      });
-      
       const pixels = calculateBrushPixels({
         centerX: currentCenter.x,
         centerY: currentCenter.y,
@@ -387,7 +383,6 @@ export function ThreeView({
 
   const handlePointerUp = useCallback(() => {
     setIsEditing(false);
-    setBrushLineStart(null);
     lastBrushCenterRef.current = null;
   }, []);
 
@@ -424,7 +419,7 @@ export function ThreeView({
         dampingFactor={0.08}
         // Allow panning and rotating but reduce rotation to stay usable for map editing
         enablePan
-        enableRotate
+        enableRotate={!isEditingTopology}
         minDistance={50}
         maxDistance={Math.max(unitsWide, unitsHigh) * 10}
         // Don't allow going below the horizon (keeps it primarily a top-down editor)
@@ -469,8 +464,8 @@ export function ThreeView({
         <>
           <TopologyBrush3D 
             intersectionPoint={intersectionPoint}
-            lineStart={brushLineStart}
-            showLinePreview={isEditing && valueMode !== TopologyValueMode.SET_VALUE}
+            lineStart={null}
+            showLinePreview={false}
             displacementMagnitude={displacementMagnitude}
             displacementDirection={displacementDirection}
             visible={!!intersectionPoint}

@@ -8,7 +8,7 @@ import type { Result } from "@/types/result";
 import { parseTunnelFile } from "@/data/tunnelParser/parseTunnelFile";
 import type { TunnelData } from "@/data/tunnelParser/types";
 import { Button } from "@/components/ui/button";
-import { ChevronDown, ChevronUp, Upload } from "lucide-react";
+import { Upload } from "lucide-react";
 import {
   classifyUploadFile,
   getUploadAcceptTypes,
@@ -76,7 +76,6 @@ export function GameCard({
   const [stagedTextureFile, setStagedTextureFile] = useState<File | null>(null);
   const stagedLevelRef = useRef<File | null>(null);
   const stagedTextureRef = useRef<File | null>(null);
-  const [showLevelList, setShowLevelList] = useState(true);
 
   const levelFileType = isMightyMike
     ? ".map"
@@ -103,7 +102,7 @@ export function GameCard({
   ]);
   const formattedAccepts = accepts.split(",").join(", ");
   const uploadDropzoneClassName =
-    "border-2 border-dashed border-gray-600 rounded-lg p-4 h-32 text-center cursor-pointer hover:border-gray-500 transition-colors flex flex-col justify-center gap-1 overflow-hidden";
+    "border-2 border-dashed border-gray-600 rounded-lg p-3 h-32 text-center cursor-pointer hover:border-gray-500 transition-colors flex flex-col justify-center gap-1";
 
   const clearStaged = () => {
     stagedLevelRef.current = null;
@@ -237,20 +236,21 @@ export function GameCard({
   };
 
   return (
-    <Card className="h-full flex flex-col min-h-0 overflow-hidden bg-gray-800 border-gray-700 text-white">
+    <Card className="h-full flex flex-col min-h-0 bg-gray-800 border-gray-700 text-white">
       <CardContent className="flex h-full min-h-0 flex-col p-4">
         <div className="flex-none min-h-8">
           <h3 className="text-lg font-semibold">{title}</h3>
         </div>
 
-        {title === "Otto Matic" && <div className="h-4" />}
-
         <div className="flex-none mt-3 flex flex-col items-center">
-          {!isOttoMatic && (
-            <p className="text-xs text-gray-400 text-center mb-1">
-              (Not Functional)
-            </p>
-          )}
+          <p
+            className={cn(
+              "text-xs text-center mb-1",
+              isOttoMatic ? "invisible" : "text-gray-400",
+            )}
+          >
+            (Not Functional)
+          </p>
 
           {isMightyMike ? (
             <div className="w-full h-56 flex items-center justify-center">
@@ -271,33 +271,14 @@ export function GameCard({
           </Button>
         </div>
 
-        <div className="mt-2 flex min-h-[200px] flex-1 flex-col gap-2 overflow-hidden text-base min-w-40">
-          <Button
-            size="sm"
-            variant="outline"
-            className="w-full"
-            onClick={() => setShowLevelList((current) => !current)}
-          >
-            {showLevelList ? (
-              <>
-                <ChevronUp className="mr-2 h-4 w-4" />
-                Collapse level list
-              </>
-            ) : (
-              <>
-                <ChevronDown className="mr-2 h-4 w-4" />
-                Expand level list
-              </>
-            )}
-          </Button>
+        <div className="mt-2 flex min-h-[200px] flex-1 flex-col gap-2 text-base min-w-40">
           <div
             className={cn(
-              "overflow-auto transition-all",
-              showLevelList ? "min-h-[200px] flex-1" : "h-0 min-h-0",
+              "overflow-auto min-h-[200px] flex-1",
             )}
             style={{ maxHeight: "100%" }}
           >
-            {showLevelList && children}
+            {children}
           </div>
         </div>
 
@@ -313,12 +294,12 @@ export function GameCard({
             <p className="text-sm text-gray-300">
               Drop files here or click to browse
             </p>
-            <p className="text-xs text-gray-500 mt-1">Accepted: {formattedAccepts}</p>
-            <p className="text-xs text-gray-400 truncate">
+            <p className="text-xs text-gray-500 mt-1 break-all">Accepted: {formattedAccepts}</p>
+            <p className="text-xs text-gray-400 break-all">
               {stagedLevelFile ? `Staged level: ${stagedLevelFile.name}` : "No level file staged"}
             </p>
             {textureFileType && (
-              <p className="text-xs text-gray-400 truncate">
+              <p className="text-xs text-gray-400 break-all">
                 {stagedTextureFile
                   ? `Staged texture: ${stagedTextureFile.name}`
                   : "No texture file staged"}

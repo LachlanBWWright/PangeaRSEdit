@@ -59,9 +59,6 @@ export function SupertileMenu({
   const [tileEditorOpen, setTileEditorOpen] = useState(false);
   const [mapEditorOpen, setMapEditorOpen] = useState(false);
   const [mapEditorImageUrl, setMapEditorImageUrl] = useState("");
-  const [mapEditorMode, setMapEditorMode] = useState<
-    "non-empty" | "regenerate-all"
-  >("non-empty");
 
   // Check if STgd exists
   if (!terrainData.STgd?.[1000]?.obj) {
@@ -116,7 +113,10 @@ export function SupertileMenu({
     toast.success("Selected tile texture updated");
   };
 
-  const applyWholeMapCanvas = (canvas: HTMLCanvasElement) => {
+  const applyWholeMapCanvas = (
+    canvas: HTMLCanvasElement,
+    mode: "non-empty" | "regenerate-all",
+  ) => {
     const tilesWide = hedr.mapWidth / globals.TILES_PER_SUPERTILE;
     const tilesHigh = hedr.mapHeight / globals.TILES_PER_SUPERTILE;
     const nextImages = [...mapImages];
@@ -153,7 +153,7 @@ export function SupertileMenu({
           if (!tileEntry) {
             continue;
           }
-          if (mapEditorMode === "non-empty") {
+          if (mode === "non-empty") {
             if (tileEntry.superTileId !== 0) {
               nextImages[tileEntry.superTileId] = slice;
             }
@@ -167,7 +167,7 @@ export function SupertileMenu({
     });
 
     setMapImages(nextImages);
-    if (mapEditorMode === "regenerate-all") {
+    if (mode === "regenerate-all") {
       setHeaderData((draft) => {
         draft.Hedr[1000].obj.numUniqueSupertiles = nextId;
       });
@@ -207,6 +207,22 @@ export function SupertileMenu({
       }
     }
     return canvas;
+  };
+
+  const saveWholeMapImageData = (
+    editedImageData: ImageData,
+    mode: "non-empty" | "regenerate-all",
+  ) => {
+    const editedCanvas = document.createElement("canvas");
+    editedCanvas.width = editedImageData.width;
+    editedCanvas.height = editedImageData.height;
+    const context = editedCanvas.getContext("2d");
+    if (!context) {
+      toast.error("Failed to create canvas context");
+      return;
+    }
+    context.putImageData(editedImageData, 0, 0);
+    applyWholeMapCanvas(editedCanvas, mode);
   };
 
   const handleEditTileTexture = () => {
@@ -344,7 +360,7 @@ export function SupertileMenu({
                 (hedr.mapHeight / globals.TILES_PER_SUPERTILE),
             );
             if (canvas) {
-              applyWholeMapCanvas(canvas);
+              applyWholeMapCanvas(canvas, "regenerate-all");
             }
           }}
         />
@@ -361,19 +377,6 @@ export function SupertileMenu({
           }}
         >
           Edit whole map in texture editor
-        </Button>
-        <Button
-          size="sm"
-          variant={mapEditorMode === "non-empty" ? "default" : "outline"}
-          onClick={() =>
-            setMapEditorMode((mode) =>
-              mode === "non-empty" ? "regenerate-all" : "non-empty",
-            )
-          }
-        >
-          {mapEditorMode === "non-empty"
-            ? "Saving mode: non-empty tiles only"
-            : "Saving mode: regenerate all texture IDs"}
         </Button>
         <div className="flex-1" />
         <p>Download Image For Whole Map</p>
@@ -416,18 +419,21 @@ export function SupertileMenu({
         onClose={() => setMapEditorOpen(false)}
         imageUrl={mapEditorImageUrl}
         imageName="Whole map texture"
-        onSave={async (editedImageData) => {
-          const editedCanvas = document.createElement("canvas");
-          editedCanvas.width = editedImageData.width;
-          editedCanvas.height = editedImageData.height;
-          const context = editedCanvas.getContext("2d");
-          if (!context) {
-            toast.error("Failed to create canvas context");
-            return;
-          }
-          context.putImageData(editedImageData, 0, 0);
-          applyWholeMapCanvas(editedCanvas);
-        }}
+        saveActions={[
+          {
+            label: "Update non-empty tiles",
+            onSave: async (editedImageData) =>
+              saveWholeMapImageData(editedImageData, "non-empty"),
+          },
+          {
+            label: "Save all tiles",
+            onSave: async (editedImageData) =>
+              saveWholeMapImageData(editedImageData, "regenerate-all"),
+          },
+        ]}
+        onSave={async (editedImageData) =>
+          saveWholeMapImageData(editedImageData, "non-empty")
+        }
       />
     </div>
   );

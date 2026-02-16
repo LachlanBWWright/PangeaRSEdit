@@ -106,4 +106,13 @@ describe("getUploadAcceptTypes", () => {
     expect(stagedAfterLevel.level).toBe(levelFile);
     expect(stagedAfterLevel.texture).toBe(textureFile);
   });
+
+  it("classifies upload types case-insensitively for staged auto-load paths", () => {
+    expect(
+      classifyUploadFile("LEVEL_A.TER.RSRC", ".ter.rsrc", ".ter", false),
+    ).toBe("level");
+    expect(classifyUploadFile("Level_A.TER", ".ter.rsrc", ".ter", false)).toBe(
+      "texture",
+    );
+  });
 });
