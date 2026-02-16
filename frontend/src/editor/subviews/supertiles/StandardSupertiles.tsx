@@ -59,12 +59,6 @@ export const StandardSupertiles = memo(
       return imageArray;
     }, [mapImages, terrainData.STgd]);
 
-    console.log("StandardSupertiles: Rendering pre-composed supertiles", {
-      imageGridLength: imageGrid.length,
-      mapImagesCount: mapImages.length,
-      supertilesWide,
-    });
-
     return (
       <Layer>
         {imageGrid.map((img, i) => {

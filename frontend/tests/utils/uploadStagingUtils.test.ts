@@ -62,5 +62,18 @@ describe("upload staging utils", () => {
     const stagedBoth = updateStagedFiles(stagedTextureFirst, levelFile, "level");
     expect(stagedBoth.level).toBe(levelFile);
     expect(stagedBoth.texture).toBe(textureFile);
+
+    const stagedLevelFirst = updateStagedFiles(
+      { level: null, texture: null },
+      levelFile,
+      "level",
+    );
+    const stagedBothOpposite = updateStagedFiles(
+      stagedLevelFirst,
+      textureFile,
+      "texture",
+    );
+    expect(stagedBothOpposite.level).toBe(levelFile);
+    expect(stagedBothOpposite.texture).toBe(textureFile);
   });
 });

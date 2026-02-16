@@ -39,10 +39,6 @@ export function useModelAnimations(
           onAnimationsReady(animationInfos, mixer);
         }
 
-        console.log(
-          `Found ${gltfResult.animations.length} animations:`,
-          animationInfos,
-        );
       } else {
         Promise.resolve().then(() => setAnimationMixer(null));
         if (onAnimationsReady) {

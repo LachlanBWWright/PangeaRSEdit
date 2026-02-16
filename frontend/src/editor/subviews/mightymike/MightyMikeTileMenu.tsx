@@ -167,7 +167,11 @@ export function MightyMikeTileMenu({
 
   // Handler: Replace tile from palette
   const handleReplaceTile = () => {
-    if (!mapImages[selectedPaletteTile]) {
+    if (
+      selectedPaletteTile < 0 ||
+      selectedPaletteTile >= mapImages.length ||
+      !mapImages[selectedPaletteTile]
+    ) {
       toast.error("Invalid palette tile selected");
       return;
     }
