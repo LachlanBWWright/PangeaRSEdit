@@ -8,6 +8,7 @@ import {
 import type { GlobalsInterface } from "@/data/globals/globals";
 import type { AtomicLevelData } from "@/data/utils/levelDataUtils";
 import { parseLevelDataFile } from "./parseLevelDataFile";
+import { toast } from "sonner";
 
 /**
  * Convert hex string to Uint8Array (browser-compatible)
@@ -66,10 +67,9 @@ export async function openFile({
     rsrcName, // Pass the URL for Mighty Mike tileset loading
   );
   if (parseResult.isErr()) {
-    console.error(
-      "Failed to parse level data:",
-      parseResult.error?.message ?? parseResult.error,
-    );
+    toast.error("Failed to parse level data", {
+      description: parseResult.error?.message ?? String(parseResult.error),
+    });
     return;
   }
   const jsonData = parseResult.value;
@@ -92,7 +92,7 @@ export async function openFile({
       const tileImages = tilesetData?.tileImages || [];
 
       if (tileImages.length === 0) {
-        console.warn("MightyMike: No tile images loaded! Tileset may not have been parsed or tileImages array is empty.");
+        toast.error("No Mighty Mike tile images loaded");
       }
       
       // Create a dummy file to allow downloads
@@ -100,7 +100,7 @@ export async function openFile({
       setMapImagesFile(dummyFile);
       setMapImages(tileImages);
     } else {
-      console.warn("MightyMike: parsed data doesn't match expected shape");
+      toast.error("Mighty Mike data has an unexpected format");
     }
   } else if (gameType.DATA_TYPE === DataType.TRT_FILE) {
     const imgRes = await fetch(url);
@@ -120,10 +120,9 @@ export async function openFile({
     const imgDataView = new DataView(imgBuffer);
     const mapImagesResult = await loadMapImages(imgDataView, gameType);
     if (mapImagesResult.isErr()) {
-      console.error(
-        "Failed to load map images:",
-        mapImagesResult.error.message,
-      );
+      toast.error("Failed to load map images", {
+        description: mapImagesResult.error.message,
+      });
       return;
     }
     setMapImagesFile(imgFile);
@@ -144,7 +143,7 @@ export async function openFile({
       }
     }
     if (!imgString) {
-      console.error("No image data found");
+      toast.error("No embedded image data found");
       return;
     }
     const imgBuffer = hexToUint8Array(imgString);
@@ -166,4 +165,5 @@ export async function openFile({
     setMapImagesFile(syntheticImagesFile);
     setMapImages(canvases);
   }
+  toast.success("Level loaded");
 }

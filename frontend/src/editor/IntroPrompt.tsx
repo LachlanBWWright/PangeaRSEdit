@@ -366,7 +366,9 @@ export function IntroPrompt() {
 
     //Download Images
     if (!mapImages) {
-      console.warn("No map images to download");
+      toast.error("Download failed", {
+        description: "No map images are loaded for this level.",
+      });
       return;
     }
 

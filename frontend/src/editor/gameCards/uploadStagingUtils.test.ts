@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { classifyUploadFile, getUploadAcceptTypes } from "./uploadStagingUtils";
+import {
+  classifyUploadFile,
+  getUploadAcceptTypes,
+  updateStagedFiles,
+} from "./uploadStagingUtils";
 
 describe("getUploadAcceptTypes", () => {
   it("allows bugdom2 tunnel upload before staging", () => {
@@ -81,5 +85,25 @@ describe("getUploadAcceptTypes", () => {
         hasStagedTexture: true,
       }),
     ).toBe(".ter.rsrc");
+  });
+
+  it("updates staged files in order-agnostic upload sequences", () => {
+    const levelFile = new File(["level"], "map.ter.rsrc");
+    const textureFile = new File(["tex"], "map.ter");
+    const stagedAfterTexture = updateStagedFiles(
+      { level: null, texture: null },
+      textureFile,
+      "texture",
+    );
+    expect(stagedAfterTexture.level).toBeNull();
+    expect(stagedAfterTexture.texture).toBe(textureFile);
+
+    const stagedAfterLevel = updateStagedFiles(
+      stagedAfterTexture,
+      levelFile,
+      "level",
+    );
+    expect(stagedAfterLevel.level).toBe(levelFile);
+    expect(stagedAfterLevel.texture).toBe(textureFile);
   });
 });

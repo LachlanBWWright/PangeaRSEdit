@@ -24,6 +24,11 @@ export function getUploadAcceptTypes(config: UploadAcceptConfig): string {
 
 export type UploadFileKind = "level" | "texture" | "tunnel" | "invalid";
 
+export interface StagedFilesState {
+  level: File | null;
+  texture: File | null;
+}
+
 export function classifyUploadFile(
   fileName: string,
   levelFileType: string,
@@ -41,4 +46,18 @@ export function classifyUploadFile(
     return "texture";
   }
   return "invalid";
+}
+
+export function updateStagedFiles(
+  current: StagedFilesState,
+  file: File,
+  fileKind: UploadFileKind,
+): StagedFilesState {
+  if (fileKind === "level") {
+    return { level: file, texture: current.texture };
+  }
+  if (fileKind === "texture") {
+    return { level: current.level, texture: file };
+  }
+  return current;
 }

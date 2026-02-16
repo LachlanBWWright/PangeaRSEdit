@@ -47,6 +47,7 @@ import type { Event } from "three";
 // Type guard for THREE events with point
 interface ThreeEventWithPoint extends Event<string, unknown> {
   point: Vector3;
+  nativeEvent?: PointerEvent;
 }
 
 function hasPointProperty(event: Event<string, unknown>): event is ThreeEventWithPoint {
@@ -291,6 +292,13 @@ export function ThreeView({
 
   const handlePointerDown = useCallback((event: Event<string, unknown>) => {
     if (!isEditingTopology) return;
+    if (
+      hasPointProperty(event) &&
+      typeof event.nativeEvent?.button === "number" &&
+      event.nativeEvent.button !== 0
+    ) {
+      return;
+    }
     
     if (hasPointProperty(event) && terrainData.YCrd?.[1000]?.obj) {
       setIsEditing(true);
@@ -392,6 +400,7 @@ export function ThreeView({
     <Canvas
       style={{ width: "100%", height: "100%" }}
       gl={{ logarithmicDepthBuffer: true }}
+      onContextMenu={(event) => event.preventDefault()}
       camera={{
         fov: 60,
         near: 1,
@@ -423,12 +432,13 @@ export function ThreeView({
         maxPolarAngle={Math.PI / 2 - 0.05}
         // Keep panning aligned with the ground plane, so panning feels intuitive
         screenSpacePanning={false}
+        mouseButtons={{ LEFT: 0, MIDDLE: 1, RIGHT: 2 }}
         // Start looking at the center of the map
         target={[unitsWide / 2, 0, unitsHigh / 2]}
       />
 
       {/* Lighting for 3D item models and terrain */}
-      <ambientLight intensity={0.6} />
+      <ambientLight intensity={0.9} />
       <directionalLight position={[1, 1, 0.5]} intensity={1} />
       <directionalLight position={[-1, -0.5, -0.5]} intensity={0.3} />
 

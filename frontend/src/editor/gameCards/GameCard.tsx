@@ -8,10 +8,11 @@ import type { Result } from "@/types/result";
 import { parseTunnelFile } from "@/data/tunnelParser/parseTunnelFile";
 import type { TunnelData } from "@/data/tunnelParser/types";
 import { Button } from "@/components/ui/button";
-import { Upload, X } from "lucide-react";
+import { ChevronDown, ChevronUp, Upload } from "lucide-react";
 import {
   classifyUploadFile,
   getUploadAcceptTypes,
+  updateStagedFiles,
 } from "./uploadStagingUtils";
 
 const getModelPath = (gameType: Game): string | undefined => {
@@ -72,6 +73,9 @@ export function GameCard({
   const inputRef = useRef<HTMLInputElement>(null);
   const [stagedLevelFile, setStagedLevelFile] = useState<File | null>(null);
   const [stagedTextureFile, setStagedTextureFile] = useState<File | null>(null);
+  const stagedLevelRef = useRef<File | null>(null);
+  const stagedTextureRef = useRef<File | null>(null);
+  const [showLevelList, setShowLevelList] = useState(true);
 
   const levelFileType = isMightyMike
     ? ".map"
@@ -99,6 +103,8 @@ export function GameCard({
   const formattedAccepts = accepts.split(",").join(", ");
 
   const clearStaged = () => {
+    stagedLevelRef.current = null;
+    stagedTextureRef.current = null;
     setStagedLevelFile(null);
     setStagedTextureFile(null);
   };
@@ -107,9 +113,11 @@ export function GameCard({
     levelFile: File,
     textureFile: File | null,
   ) => {
+    const toastId = toast.loading("Loading level files...");
     setMapFile(levelFile);
     const parseResult = await handleParseLevelDataFile(levelFile, globals);
     if (parseResult.isErr()) {
+      toast.dismiss(toastId);
       toast.error("Failed to parse level data", {
         description: parseResult.error.message,
       });
@@ -119,6 +127,7 @@ export function GameCard({
       const buffer = await textureFile.arrayBuffer();
       const mapImagesResult = await loadMapImages(new DataView(buffer), globals);
       if (mapImagesResult.isErr()) {
+        toast.dismiss(toastId);
         toast.error("Failed to load textures", {
           description: mapImagesResult.error.message,
         });
@@ -128,6 +137,7 @@ export function GameCard({
       setMapImages(mapImagesResult.value);
     }
     clearStaged();
+    toast.dismiss(toastId);
     toast.success("Level loaded");
   };
 
@@ -162,13 +172,23 @@ export function GameCard({
       return;
     }
 
-    const nextLevel = isLevel ? file : stagedLevelFile;
-    const nextTexture = isTexture ? file : stagedTextureFile;
+    const nextStaged = updateStagedFiles(
+      {
+        level: stagedLevelRef.current,
+        texture: stagedTextureRef.current,
+      },
+      file,
+      fileKind,
+    );
+    const nextLevel = nextStaged.level;
+    const nextTexture = nextStaged.texture;
 
     if (isLevel) {
+      stagedLevelRef.current = file;
       setStagedLevelFile(file);
     }
     if (isTexture) {
+      stagedTextureRef.current = file;
       setStagedTextureFile(file);
     }
 
@@ -192,26 +212,30 @@ export function GameCard({
   };
 
   const onInputChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) {
+    const files = Array.from(event.target.files ?? []);
+    if (files.length === 0) {
       return;
     }
-    await handleFile(file);
+    for (const file of files) {
+      await handleFile(file);
+    }
     event.target.value = "";
   };
 
   const onDrop = async (event: React.DragEvent<HTMLDivElement>) => {
     event.preventDefault();
-    const file = event.dataTransfer.files[0];
-    if (!file) {
+    const files = Array.from(event.dataTransfer.files);
+    if (files.length === 0) {
       return;
     }
-    await handleFile(file);
+    for (const file of files) {
+      await handleFile(file);
+    }
   };
 
   return (
-    <Card className="h-full flex flex-col min-h-0 bg-gray-800 border-gray-700 text-white">
-      <CardContent className="flex flex-col p-4">
+    <Card className="h-full flex flex-col min-h-0 overflow-hidden bg-gray-800 border-gray-700 text-white">
+      <CardContent className="flex h-full min-h-0 flex-col p-4">
         <div className="flex-none min-h-8">
           <h3 className="text-lg font-semibold">{title}</h3>
         </div>
@@ -244,14 +268,38 @@ export function GameCard({
           </Button>
         </div>
 
-        <div className="mt-2 flex flex-col gap-1 text-base min-w-40">
-          {children}
+        <div className="mt-2 flex min-h-[200px] flex-1 flex-col gap-2 overflow-hidden text-base min-w-40">
+          <Button
+            size="sm"
+            variant="outline"
+            className="w-full"
+            onClick={() => setShowLevelList((current) => !current)}
+          >
+            {showLevelList ? (
+              <>
+                <ChevronUp className="mr-2 h-4 w-4" />
+                Collapse level list
+              </>
+            ) : (
+              <>
+                <ChevronDown className="mr-2 h-4 w-4" />
+                Expand level list
+              </>
+            )}
+          </Button>
+          <div
+            className={`overflow-auto max-h-[calc(100vh-420px)] transition-all ${
+              showLevelList ? "min-h-[200px] flex-1" : "h-0 min-h-0"
+            }`}
+          >
+            {showLevelList && children}
+          </div>
         </div>
 
         <div className="flex-none pt-3 border-t border-gray-700 mt-3 space-y-2">
           <p className="text-sm text-gray-300">Upload files ({formattedAccepts})</p>
           <div
-            className="border-2 border-dashed border-gray-600 rounded-lg p-4 text-center cursor-pointer hover:border-gray-500 transition-colors"
+            className="border-2 border-dashed border-gray-600 rounded-lg p-4 h-32 text-center cursor-pointer hover:border-gray-500 transition-colors flex flex-col justify-center gap-1 overflow-hidden"
             onDrop={onDrop}
             onDragOver={(event) => event.preventDefault()}
             onClick={() => inputRef.current?.click()}
@@ -261,45 +309,25 @@ export function GameCard({
               Drop files here or click to browse
             </p>
             <p className="text-xs text-gray-500 mt-1">Accepted: {formattedAccepts}</p>
+            <p className="text-xs text-gray-400 truncate">
+              {stagedLevelFile ? `Staged level: ${stagedLevelFile.name}` : "No level file staged"}
+            </p>
+            {textureFileType && (
+              <p className="text-xs text-gray-400 truncate">
+                {stagedTextureFile
+                  ? `Staged texture: ${stagedTextureFile.name}`
+                  : "No texture file staged"}
+              </p>
+            )}
           </div>
           <input
             ref={inputRef}
             type="file"
             className="hidden"
             accept={accepts}
+            multiple
             onChange={onInputChange}
           />
-
-          {stagedLevelFile && (
-            <div className="flex items-center justify-between text-sm bg-gray-900 rounded px-3 py-2">
-              <span>Staged level: {stagedLevelFile.name}</span>
-              <Button
-                size="icon"
-                variant="ghost"
-                onClick={() => {
-                  setStagedLevelFile(null);
-                  toast.message("Removed staged level file");
-                }}
-              >
-                <X className="w-4 h-4" />
-              </Button>
-            </div>
-          )}
-          {stagedTextureFile && (
-            <div className="flex items-center justify-between text-sm bg-gray-900 rounded px-3 py-2">
-              <span>Staged texture: {stagedTextureFile.name}</span>
-              <Button
-                size="icon"
-                variant="ghost"
-                onClick={() => {
-                  setStagedTextureFile(null);
-                  toast.message("Removed staged texture file");
-                }}
-              >
-                <X className="w-4 h-4" />
-              </Button>
-            </div>
-          )}
         </div>
       </CardContent>
     </Card>
