@@ -25,10 +25,6 @@ import {
   downloadGLBModel,
   download3DMFModel,
 } from "./ModelViewer/utils/downloadUtils";
-import {
-  loadOttoTestModel,
-  loadOttoTestModelWithoutSkeleton,
-} from "./ModelViewer/utils/testModelLoaders";
 import { useFileUpload } from "./ModelViewer/hooks/useFileUpload";
 import { useTextureManagement } from "./ModelViewer/hooks/useTextureManagement";
 import type { Texture, ModelNode } from "./ModelViewer/types";
@@ -273,47 +269,6 @@ export function ModelViewer() {
     toast.success("Model cleared");
   };
 
-  const loadTestModel = async () => {
-    const result = await loadOttoTestModel();
-    if (result.isErr()) {
-      console.error("Error loading sample model:", result.error);
-      toast.error("Failed to load Otto sample files");
-      return;
-    }
-
-    const { bg3dFile, skeletonFile } = result.value;
-    const uploadResult = await handleFileUpload(bg3dFile, skeletonFile);
-    if (!uploadResult || uploadResult.isErr()) {
-      console.error("Error uploading sample model:", uploadResult?.error);
-      toast.error(
-        uploadResult?.error?.message || "Failed to load Otto sample files",
-      );
-      return;
-    }
-  };
-
-  const loadTestModelWithoutSkeleton = async () => {
-    const result = await loadOttoTestModelWithoutSkeleton();
-    if (result.isErr()) {
-      console.error(
-        "Error loading sample model without skeleton:",
-        result.error,
-      );
-      toast.error("Failed to load Otto sample file");
-      return;
-    }
-
-    const bg3dFile = result.value;
-    const uploadResult = await handleFileUpload(bg3dFile);
-    if (!uploadResult || uploadResult.isErr()) {
-      console.error("Error uploading sample model:", uploadResult?.error);
-      toast.error(
-        uploadResult?.error?.message || "Failed to load Otto sample file",
-      );
-      return;
-    }
-  };
-
   return (
     <>
       <div className="h-full p-4 bg-gray-900 text-white">
@@ -333,8 +288,6 @@ export function ModelViewer() {
             handleBg3dFileSelect={handleBg3dFileSelect}
             handleSkeletonFileSelect={handleSkeletonFileSelect}
             handleSkipSkeleton={handleSkipSkeleton}
-            loadTestModel={loadTestModel}
-            loadTestModelWithoutSkeleton={loadTestModelWithoutSkeleton}
             handleFileUpload={handleFileUpload}
             handleDownloadBG3D={handleDownloadBG3D}
             handleDownloadGLB={handleDownloadGLB}

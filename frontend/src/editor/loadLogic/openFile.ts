@@ -51,6 +51,7 @@ export async function openFile({
   if (!name) return;
 
   setGlobals(gameType);
+  setMapImages([]);
 
   const levelResponse = await fetch(rsrcName).catch(() => null);
   if (!levelResponse || !levelResponse.ok) {

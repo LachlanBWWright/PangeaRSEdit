@@ -109,7 +109,7 @@ export function MiniThreeView({
   return (
     <div
       ref={containerRef}
-      className="w-full h-56 bg-transparent rounded-md overflow-hidden"
+      className="w-full h-20 bg-transparent rounded-md overflow-hidden"
       style={{ contain: "paint" }}
     >
       <ErrorBoundary>

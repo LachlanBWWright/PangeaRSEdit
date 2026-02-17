@@ -46,7 +46,7 @@ export function TopologyBrush3D({
   const brushMode = useAtomValue(CurrentTopologyBrushMode);
   const brushRadius = useAtomValue(TopologyBrushRadius);
 
-  const worldRadius = Math.max(1, brushRadius - 1) * globals.TILE_INGAME_SIZE;
+  const worldRadius = Math.max(1, brushRadius) * globals.TILE_INGAME_SIZE;
 
   const geometry = useMemo(
     () =>

@@ -102,7 +102,7 @@ export function GameCard({
   ]);
   const formattedAccepts = accepts.split(",").join(", ");
   const uploadDropzoneClassName =
-    "border-2 border-dashed border-gray-600 rounded-lg p-3 h-32 text-center cursor-pointer hover:border-gray-500 transition-colors flex flex-col justify-center gap-1";
+    "border-2 border-dashed border-gray-600 rounded-lg p-2 h-20 text-center cursor-pointer hover:border-gray-500 transition-colors flex flex-col justify-center gap-0.5";
 
   const clearStaged = () => {
     stagedLevelRef.current = null;
@@ -116,6 +116,7 @@ export function GameCard({
     textureFile: File | null,
   ) => {
     const toastId = toast.loading("Loading level files...");
+    setMapImages([]);
     setMapFile(levelFile);
     const parseResult = await handleParseLevelDataFile(levelFile, globals);
     if (parseResult.isErr()) {
@@ -188,10 +189,16 @@ export function GameCard({
     if (isLevel) {
       stagedLevelRef.current = file;
       setStagedLevelFile(file);
+      toast.success("Level file staged", {
+        description: file.name,
+      });
     }
     if (isTexture) {
       stagedTextureRef.current = file;
       setStagedTextureFile(file);
+      toast.success("Texture file staged", {
+        description: file.name,
+      });
     }
 
     if (!textureFileType) {
@@ -218,6 +225,9 @@ export function GameCard({
     if (files.length === 0) {
       return;
     }
+    toast.message("Processing selected files", {
+      description: `${files.length} file${files.length > 1 ? "s" : ""} selected`,
+    });
     for (const file of files) {
       await handleFile(file);
     }
@@ -230,19 +240,22 @@ export function GameCard({
     if (files.length === 0) {
       return;
     }
+    toast.message("Processing dropped files", {
+      description: `${files.length} file${files.length > 1 ? "s" : ""} dropped`,
+    });
     for (const file of files) {
       await handleFile(file);
     }
   };
 
   return (
-    <Card className="h-full flex flex-col min-h-0 bg-gray-800 border-gray-700 text-white">
-      <CardContent className="flex h-full min-h-0 flex-col p-4">
+    <Card className="h-72 flex flex-col min-h-0 bg-gray-800 border-gray-700 text-white">
+      <CardContent className="flex h-full min-h-0 flex-col gap-2 p-3">
         <div className="flex-none min-h-8">
           <h3 className="text-lg font-semibold">{title}</h3>
         </div>
 
-        <div className="flex-none mt-3 flex flex-col items-center">
+        <div className="flex-none flex flex-col items-center">
           <p
             className={cn(
               "text-xs text-center mb-1",
@@ -253,7 +266,7 @@ export function GameCard({
           </p>
 
           {isMightyMike ? (
-            <div className="w-full h-56 flex items-center justify-center">
+            <div className="w-full h-20 flex items-center justify-center">
               <img
                 src="https://raw.githubusercontent.com/jorio/MightyMike/refs/heads/master/packaging/MightyMikeRaw.png"
                 alt="Mighty Mike"
@@ -265,25 +278,20 @@ export function GameCard({
           )}
         </div>
 
-        <div className="flex-none pt-2 mt-2">
-          <Button className="w-full mb-2" onClick={() => onCreateBlankLevel(globals)}>
+        <div className="flex-none">
+          <Button className="w-full" onClick={() => onCreateBlankLevel(globals)}>
             Create Blank Level
           </Button>
         </div>
 
-        <div className="mt-2 flex min-h-[200px] flex-1 flex-col gap-2 text-base min-w-40">
-          <div
-            className={cn(
-              "overflow-auto min-h-[200px] flex-1",
-            )}
-            style={{ maxHeight: "100%" }}
-          >
+        <div className="flex min-h-0 flex-1 flex-col text-base min-w-40">
+          <div className="overflow-y-auto min-h-0 flex-1">
             {children}
           </div>
         </div>
 
-        <div className="flex-none pt-3 border-t border-gray-700 mt-3 space-y-2">
-          <p className="text-sm text-gray-300">Upload files ({formattedAccepts})</p>
+        <div className="flex-none border-t border-gray-700 pt-2 space-y-1">
+          <p className="text-xs text-gray-300">Upload files ({formattedAccepts})</p>
           <div
             className={cn(uploadDropzoneClassName)}
             onDrop={onDrop}
@@ -291,9 +299,9 @@ export function GameCard({
             onClick={() => inputRef.current?.click()}
           >
             <Upload className="w-8 h-8 mx-auto mb-2 text-gray-400" />
-            <p className="text-sm text-gray-300">
-              Drop files here or click to browse
-            </p>
+                <p className="text-xs text-gray-300">
+                  Drop files here or click to browse
+                </p>
             <p className="text-xs text-gray-500 mt-1 break-all">Accepted: {formattedAccepts}</p>
             <p className="text-xs text-gray-400 break-all">
               {stagedLevelFile ? `Staged level: ${stagedLevelFile.name}` : "No level file staged"}

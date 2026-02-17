@@ -196,7 +196,7 @@ export function ThreeView({
 
       // Calculate affected pixels for preview
       const tileCoords = worldToTile(event.point.x, event.point.z, globals.TILE_INGAME_SIZE);
-      const radius = (brushRadius - 1) * globals.TILE_INGAME_SIZE;
+      const radius = Math.max(1, brushRadius) * globals.TILE_INGAME_SIZE;
       const currentCenter = {
         x: tileCoords.x * globals.TILE_INGAME_SIZE,
         y: tileCoords.z * globals.TILE_INGAME_SIZE,
@@ -307,7 +307,7 @@ export function ThreeView({
       
       // Apply brush
       const tileCoords = worldToTile(event.point.x, event.point.z, globals.TILE_INGAME_SIZE);
-      const radius = (brushRadius - 1) * globals.TILE_INGAME_SIZE;
+      const radius = Math.max(1, brushRadius) * globals.TILE_INGAME_SIZE;
       const currentCenter = {
         x: tileCoords.x * globals.TILE_INGAME_SIZE,
         y: tileCoords.z * globals.TILE_INGAME_SIZE,
@@ -419,7 +419,7 @@ export function ThreeView({
         dampingFactor={0.08}
         // Allow panning and rotating but reduce rotation to stay usable for map editing
         enablePan
-        enableRotate={!isEditingTopology}
+        enableRotate
         minDistance={50}
         maxDistance={Math.max(unitsWide, unitsHigh) * 10}
         // Don't allow going below the horizon (keeps it primarily a top-down editor)
