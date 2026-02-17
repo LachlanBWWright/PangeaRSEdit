@@ -1,4 +1,4 @@
-import { ottoMaticLevel } from "@/python/structSpecs/ottoMaticInterface";
+import { LevelData } from "@/python/structSpecs/LevelTypes";
 import { Updater } from "use-immer";
 import {
   TileViews,
@@ -8,21 +8,21 @@ import {
 } from "./tileAtoms";
 
 // Type definition for tile operations
-type PixelType = { x: number; y: number };
+interface PixelType { x: number; y: number }
 
 export function handleTileClick(
   x: number,
   y: number,
-  setData: Updater<ottoMaticLevel>,
+  setTerrainData: Updater<Partial<LevelData>>,
   tileView: TileViews,
   tileEditingEnabled: boolean,
   brushType: "add" | "remove",
   tileSize: number,
-  brushRadius: number = 1,
+  brushRadius = 1,
 ) {
   if (!tileEditingEnabled) return;
 
-  setData((draft) => {
+  setTerrainData((draft) => {
     const header = draft.Hedr?.[1000]?.obj;
     if (!header) return;
 
@@ -74,31 +74,35 @@ export function handleTileClick(
     // Apply the changes to all pixels in the brush area
     for (const pixel of pixelList) {
       const tileIndex = pixel.y * header.mapWidth + pixel.x;
+      if (!draft.Layr?.[1000]?.obj || !draft.Atrb?.[1000]?.obj) continue;
       const attrIndex = draft.Layr[1000].obj[tileIndex];
 
       if (attrIndex === undefined) continue;
 
+      const attr = draft.Atrb[1000].obj[attrIndex];
+      if (!attr) continue;
+
       // Modify the flag based on the current view and brush type
       if (tileView === TileViews.Flags) {
         if (brushType === "add") {
-          draft.Atrb[1000].obj[attrIndex].flags |= TILE_ATTRIB_BLANK;
+          attr.flags |= TILE_ATTRIB_BLANK;
         } else {
-          draft.Atrb[1000].obj[attrIndex].flags &= ~TILE_ATTRIB_BLANK;
+          attr.flags &= ~TILE_ATTRIB_BLANK;
         }
       } else if (tileView === TileViews.ElectricFloor0) {
         if (brushType === "add") {
-          draft.Atrb[1000].obj[attrIndex].flags |=
+          attr.flags |=
             TILE_ATTRIB_ELECTROCUTE_AREA0;
         } else {
-          draft.Atrb[1000].obj[attrIndex].flags &=
+          attr.flags &=
             ~TILE_ATTRIB_ELECTROCUTE_AREA0;
         }
       } else if (tileView === TileViews.ElectricFloor1) {
         if (brushType === "add") {
-          draft.Atrb[1000].obj[attrIndex].flags |=
+          attr.flags |=
             TILE_ATTRIB_ELECTROCUTE_AREA1;
         } else {
-          draft.Atrb[1000].obj[attrIndex].flags &=
+          attr.flags &=
             ~TILE_ATTRIB_ELECTROCUTE_AREA1;
         }
       }

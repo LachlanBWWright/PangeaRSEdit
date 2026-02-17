@@ -94,7 +94,7 @@ export const billyFrontierItemTypeParams: Record<
       codeSample: {
         code: "gPlayerInfo.startRotY = (float)itemPtr[i].parm[0] * (PI2/8.0f);",
         fileName: "Source/Terrain/Terrain2.c",
-        lineNumber: 248,
+        lineNumber: 211,
       },
     },
     p1: "Unknown",
@@ -105,9 +105,9 @@ export const billyFrontierItemTypeParams: Record<
     flags: "Unknown",
     p0: {
       type: "Integer",
-      description: "Dueler type (enemy character variant)",
+      description: "Dueler index in the duel sequence",
       codeSample: {
-        code: "short duelerType = itemPtr->parm[0];",
+        code: "int duelerNum = itemPtr->parm[0];",
         fileName: "Source/System/Areas/Duel.c",
         lineNumber: 388,
       },

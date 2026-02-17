@@ -61,14 +61,25 @@ export interface SkeletonHeader {
 }
 
 // Bone object inside Bone field
+// Matches File_BoneDefinitionType from file.h:
+// int32_t parentBone, unsigned char name[32], OGLPoint3D coord, uint16_t numPointsAttachedToBone,
+// uint16_t numNormalsAttachedToBone, uint32_t reserved[8]
 export interface BoneObj {
-  parentBone: number; // -1 if no parent, otherwise index of parent bone
-  name: string;
+  parentBone: number; // -1 if no parent, otherwise index of parent bone (int32_t)
+  name: string; // 32-byte Pascal string
   coordX: number;
   coordY: number;
   coordZ: number;
   numPointsAttachedToBone: number;
   numNormalsAttachedToBone: number;
+  reserved0?: number; // Reserved field 0
+  reserved1?: number; // Reserved field 1
+  reserved2?: number; // Reserved field 2
+  reserved3?: number; // Reserved field 3
+  reserved4?: number; // Reserved field 4
+  reserved5?: number; // Reserved field 5
+  reserved6?: number; // Reserved field 6
+  reserved7?: number; // Reserved field 7
 }
 
 export interface BoneEntry {
@@ -107,14 +118,14 @@ export interface HedrEntry {
 
 export interface SkeletonResource {
   _metadata?: Record<string, unknown>;
-  Hedr: { [key: string]: HedrEntry };
-  Bone: { [key: string]: BoneEntry };
-  BonP: { [key: string]: BonPEntry };
-  BonN: { [key: string]: BonNEntry };
-  RelP?: { [key: string]: RelPEntry };
-  AnHd: { [key: string]: AnHdEntry };
-  Evnt: { [key: string]: EvntEntry };
-  NumK: { [key: string]: NumKEntry };
-  KeyF: { [key: string]: KeyFEntry };
+  Hedr: Record<string, HedrEntry>;
+  Bone: Record<string, BoneEntry>;
+  BonP: Record<string, BonPEntry>;
+  BonN: Record<string, BonNEntry>;
+  RelP?: Record<string, RelPEntry>;
+  AnHd: Record<string, AnHdEntry>;
+  Evnt: Record<string, EvntEntry>;
+  NumK: Record<string, NumKEntry>;
+  KeyF: Record<string, KeyFEntry>;
   [key: string]: unknown;
 }

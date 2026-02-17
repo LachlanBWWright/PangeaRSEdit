@@ -9,6 +9,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { getGamesByCategory, type Level } from "@/data/levels";
+import { toast } from "sonner";
 
 interface LevelCardProps {
   level: Level;
@@ -18,6 +19,7 @@ function LevelCard({ level }: LevelCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
 
   const downloadLevel = () => {
+    let downloadedAny = false;
     // Create a temporary link element to download the .ter file
     const downloadFile = (url: string, filename: string) => {
       const link = document.createElement("a");
@@ -32,6 +34,7 @@ function LevelCard({ level }: LevelCardProps) {
     if (level.terFile) {
       const terFilename = level.terFile.split("/").pop() || `${level.id}.ter`;
       downloadFile(level.terFile, terFilename);
+      downloadedAny = true;
     }
 
     // Download .ter.rsrc file if it exists
@@ -39,7 +42,14 @@ function LevelCard({ level }: LevelCardProps) {
       const rsrcFilename =
         level.rsrcFile.split("/").pop() || `${level.id}.ter.rsrc`;
       downloadFile(level.rsrcFile, rsrcFilename);
+      downloadedAny = true;
     }
+
+    if (!downloadedAny) {
+      toast.error("No downloadable files found for this level");
+      return;
+    }
+    toast.success(`Started downloading ${level.name}`);
   };
 
   return (
@@ -130,7 +140,7 @@ export function DownloadLevels() {
   const gamesByCategory = getGamesByCategory();
 
   return (
-    <div className="flex-1 bg-gray-900 p-6">
+    <div className="h-full overflow-auto bg-gray-900 p-6">
       <div className="max-w-7xl mx-auto">
         <div className="flex flex-col gap-2 mb-8 text-center">
           <h1 className="text-4xl font-bold text-white pb-2">

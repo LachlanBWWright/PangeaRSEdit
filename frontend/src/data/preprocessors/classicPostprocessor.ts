@@ -1,14 +1,16 @@
 // classicPostprocessor.ts
 // Converts an array of 32x32 HTMLCanvasElement images into the Nanosaur 1/Bugdom 1 tile file format (big-endian ARGB1555)
 
+import { Result, ok, err } from "../../types/result";
+
 /**
  * Convert an array of 32x32 canvas images to a Nanosaur 1/Bugdom 1 tile ArrayBuffer
  * @param canvases Array of 32x32 HTMLCanvasElement
- * @returns ArrayBuffer in classic tile format
+ * @returns Result with ArrayBuffer in classic tile format
  */
 export function classicPostprocessor(
   canvases: HTMLCanvasElement[],
-): ArrayBuffer {
+): Result<ArrayBuffer, Error> {
   const TILE_SIZE = 32;
   const BYTES_PER_TILE = TILE_SIZE * TILE_SIZE * 2;
   const tileCount = canvases.length;
@@ -20,15 +22,20 @@ export function classicPostprocessor(
 
   for (let t = 0; t < tileCount; t++) {
     const canvas = canvases[t];
+    if (!canvas) {
+      return err(new Error(`Canvas at index ${t} is undefined`));
+    }
     const ctx = canvas.getContext("2d");
-    if (!ctx) throw new Error("Canvas context not available");
+    if (!ctx) {
+      return err(new Error("Canvas context not available"));
+    }
     const imageData = ctx.getImageData(0, 0, TILE_SIZE, TILE_SIZE);
     const data = imageData.data;
     const tileOffset = 4 + t * BYTES_PER_TILE;
     for (let i = 0; i < TILE_SIZE * TILE_SIZE; i++) {
-      const r = data[i * 4 + 0];
-      const g = data[i * 4 + 1];
-      const b = data[i * 4 + 2];
+      const r = data[i * 4 + 0] ?? 0;
+      const g = data[i * 4 + 1] ?? 0;
+      const b = data[i * 4 + 2] ?? 0;
       // Alpha is ignored, always set high bit
       let val = 0x8000;
       val |= ((r >> 3) & 0x1f) << 10;
@@ -37,5 +44,5 @@ export function classicPostprocessor(
       view.setUint16(tileOffset + i * 2, val, false); // big-endian
     }
   }
-  return buffer;
+  return ok(buffer);
 }

@@ -1,10 +1,10 @@
 import {
-  ottoHeader,
-  ottoMaticLevel,
-} from "@/python/structSpecs/ottoMaticInterface";
+  StandardHeader,
+} from "@/python/structSpecs/LevelTypes";
+import { HeaderData, TerrainData } from "@/python/structSpecs/LevelTypes";
 import { useMemo } from "react";
 
-const elevationToRGBA = (elevation: number, header: ottoHeader) => {
+const elevationToRGBA = (elevation: number, header: StandardHeader) => {
   return [
     ((elevation - header.minY) / (header.maxY - header.minY)) * 255,
     ((elevation - header.minY) / (header.maxY - header.minY)) * 255,
@@ -13,20 +13,26 @@ const elevationToRGBA = (elevation: number, header: ottoHeader) => {
   ];
 };
 
-export function useHeightImg(data: ottoMaticLevel) {
-  const header = useMemo(() => data.Hedr[1000].obj, [data.Hedr]);
+export function useHeightImg(headerData: HeaderData, terrainData: TerrainData) {
+  const header = useMemo(() => headerData.Hedr?.[1000]?.obj, [headerData.Hedr]);
 
-  const coordColours = useMemo(
-    () => data.YCrd[1000].obj.flatMap((e) => elevationToRGBA(e, header)),
-    [data.YCrd[1000].obj],
-  );
+  const yCrdData = terrainData.YCrd?.[1000]?.obj;
+  
+  const coordColours = useMemo(() => {
+    if (!yCrdData || !header) return [];
+    return yCrdData.flatMap((e) => elevationToRGBA(e, header));
+  }, [yCrdData, header]);
 
   const imgCanvas = useMemo(() => {
+    if (!header) return null;
     const imgCanvas = document.createElement("canvas");
     imgCanvas.width = header.mapWidth + 1;
     imgCanvas.height = header.mapHeight + 1;
     const imgCtx = imgCanvas.getContext("2d");
-    if (!imgCtx) throw new Error("Could not get canvas context");
+    if (!imgCtx) {
+      console.error("Could not get canvas context for height image");
+      return null;
+    }
 
     imgCtx.putImageData(
       new ImageData(
@@ -38,11 +44,11 @@ export function useHeightImg(data: ottoMaticLevel) {
       0,
     );
     return imgCanvas;
-  }, [header, data.YCrd[1000].obj]);
+  }, [header, coordColours]);
   return { heightImg: imgCanvas };
 }
 
-const elevationToRGBAUnscaled = (elevation: number, header: ottoHeader) => {
+const elevationToRGBAUnscaled = (elevation: number, header: StandardHeader) => {
   return [
     (elevation / header.maxY) * 255,
     (elevation / header.maxY) * 255,
@@ -51,21 +57,26 @@ const elevationToRGBAUnscaled = (elevation: number, header: ottoHeader) => {
   ];
 };
 
-export function useUnscaledHeightImg(data: ottoMaticLevel) {
-  const header = useMemo(() => data.Hedr[1000].obj, [data.Hedr]);
+export function useUnscaledHeightImg(headerData: HeaderData, terrainData: TerrainData) {
+  const header = useMemo(() => headerData.Hedr?.[1000]?.obj, [headerData.Hedr]);
 
-  const coordColours = useMemo(
-    () =>
-      data.YCrd[1000].obj.flatMap((e) => elevationToRGBAUnscaled(e, header)),
-    [data.YCrd[1000].obj],
-  );
+  const yCrdData = terrainData.YCrd?.[1000]?.obj;
+  
+  const coordColours = useMemo(() => {
+    if (!yCrdData || !header) return [];
+    return yCrdData.flatMap((e) => elevationToRGBAUnscaled(e, header));
+  }, [yCrdData, header]);
 
   const imgCanvas = useMemo(() => {
+    if (!header) return null;
     const imgCanvas = document.createElement("canvas");
     imgCanvas.width = header.mapWidth + 1;
     imgCanvas.height = header.mapHeight + 1;
     const imgCtx = imgCanvas.getContext("2d");
-    if (!imgCtx) throw new Error("Could not get canvas context");
+    if (!imgCtx) {
+      console.error("Could not get canvas context for unscaled height image");
+      return null;
+    }
 
     imgCtx.putImageData(
       new ImageData(
@@ -77,6 +88,6 @@ export function useUnscaledHeightImg(data: ottoMaticLevel) {
       0,
     );
     return imgCanvas;
-  }, [header, data.YCrd[1000].obj]);
+  }, [header, coordColours]);
   return { heightImg: imgCanvas };
 }

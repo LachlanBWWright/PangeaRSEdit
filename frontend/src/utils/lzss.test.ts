@@ -259,7 +259,7 @@ describe("LZSS Compression Algorithm", () => {
       const textBytes = encoder.encode(text);
       const inputDataView = new DataView(new ArrayBuffer(textBytes.length));
       for (let i = 0; i < textBytes.length; i++) {
-        inputDataView.setUint8(i, textBytes[i]);
+        inputDataView.setUint8(i, textBytes[i] ?? 0);
       }
 
       const compressedDataView = lzssCompress(inputDataView);
@@ -323,7 +323,7 @@ describe("LZSS Compression Algorithm", () => {
       // Block 3: Repeating pattern (moderately compressible)
       const pattern = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
       for (let i = 0; i < 5_000; i++) {
-        inputDataView.setUint8(pos++, pattern[i % pattern.length]);
+        inputDataView.setUint8(pos++, pattern[i % pattern.length] ?? 0);
       }
 
       // Block 4: Copy of block 1 (highly compressible since we've seen it before)
@@ -425,7 +425,7 @@ describe("LZSS Compression Algorithm", () => {
 
       // Fill with repeating pattern
       for (let i = 0; i < 16384; i++) {
-        inputDataView.setUint8(i, pattern[i % pattern.length]);
+        inputDataView.setUint8(i, pattern[i % pattern.length] ?? 0);
       }
 
       const compressedDataView = lzssCompress(inputDataView);
@@ -527,7 +527,7 @@ describe("LZSS Compression Algorithm", () => {
       const inputDataView = new DataView(new ArrayBuffer(mapBytes.length));
 
       for (let i = 0; i < mapBytes.length; i++) {
-        inputDataView.setUint8(i, mapBytes[i]);
+        inputDataView.setUint8(i, mapBytes[i] ?? 0);
       }
 
       const compressedDataView = lzssCompress(inputDataView);

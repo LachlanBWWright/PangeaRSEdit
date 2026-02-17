@@ -10,6 +10,7 @@ export default defineConfig({
   use: {
     baseURL: 'http://localhost:5173/PangeaRSEdit/',
     trace: 'on-first-retry',
+    headless: true,
   },
 
   projects: [
@@ -22,6 +23,6 @@ export default defineConfig({
   webServer: {
     command: 'npm run dev',
     port: 5173,
-    reuseExistingServer: !process.env.CI,
+    reuseExistingServer: true,
   },
 });

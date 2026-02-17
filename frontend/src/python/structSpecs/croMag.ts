@@ -1,6 +1,7 @@
 export const croMagSpecs = [
-  //Header
-  "Hedr:L5i3f5i40x:version,numItems,mapWidth,mapHeight,numTilePages,numTiles,tileSize,minY,maxY,numSplines,numFences,numUniqueSupertiles,numWaterPatches,numCheckpoints",
+  //Header - Cro-Mag Rally uses numPaths instead of numWaterPatches
+  //Source: games/cromagrally/Source/System/File.c - PlayfieldHeaderType
+  "Hedr:L5i3f5i40x:version,numItems,mapWidth,mapHeight,numTilePages,numTiles,tileSize,minY,maxY,numSplines,numFences,numUniqueSupertiles,numPaths,numCheckpoints",
 
   /////////////////////////////////////////////////////////////////
   // Supertiles

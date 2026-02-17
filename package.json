@@ -1,0 +1,14 @@
+{
+  "name": "pangearsedit",
+  "private": true,
+  "scripts": {
+    "test": "vitest",
+    "test:run": "vitest run"
+  },
+  "dependencies": {
+    "gltf-validator": "^2.0.0-dev.3.10"
+  },
+  "devDependencies": {
+    "vitest": "^4.0.16"
+  }
+}

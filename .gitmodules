@@ -1,6 +1,3 @@
-[submodule "backend/rsrcdump"]
-	path = backend/rsrcdump
-	url = https://github.com/LachlanBWWright/rsrcdump.git
 [submodule "games/ottomatic"]
 	path = games/ottomatic
 	url = https://github.com/jorio/ottomatic.git
@@ -22,3 +19,6 @@
 [submodule "games/billyfrontier"]
 	path = games/billyfrontier
 	url = https://github.com/jorio/billyfrontier.git
+[submodule "games/mightymike"]
+	path = games/mightymike
+	url = https://github.com/jorio/MightyMike

@@ -1,9 +1,78 @@
-import { PyodideMessage, PyodideResponse } from "../../python/pyodideWorker";
 import { LzssMessage, LzssResponse } from "@/utils/lzssWorker";
 import LzssWorker from "../utils/lzssWorker?worker";
-import { ottoMaticLevel } from "../../python/structSpecs/ottoMaticInterface";
-import { Game, type GlobalsInterface } from "../globals/globals";
+import { LevelData, type LevelMetadata } from "@/python/structSpecs/LevelTypes";
+import { DataType, TileImageFormat, type GlobalsInterface } from "../globals/globals";
+import { validateResourceForkJson } from "../utils/levelDataUtils";
+import { toast } from "../../hooks/use-toast";
+import { loadBytesFromJson } from "@lachlanbwwright/rsrcdump-ts";
+import type { Nanosaur1LevelData } from "@/data/processors/classicProprocessor";
+import type { MightyMikeMap } from "@/python/structSpecs/mightyMikeInterface";
+import { sanitizeResourceForkJson } from "../utils/levelDataUtils";
+import { err, ok } from "@/types/result";
+import { compileNanosaur1Level } from "@/editor/loadLogic/compileNanosaur1Level";
+import { mightyMikeMapToCompressedBinary } from "@/modelParsers/parseMightyMike";
 
+function isRecord(value: unknown): value is Record<string | number, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+function getNestedMetadata(
+  metadata: LevelMetadata | undefined,
+  key: string,
+): Record<string, unknown> | undefined {
+  const entry = metadata?.[key];
+  if (isRecord(entry) && "obj" in entry) {
+    const obj = (entry as Record<string, unknown>).obj;
+    if (isRecord(obj)) {
+      return obj;
+    }
+  }
+  return undefined;
+}
+
+function isNanosaur1LevelData(value: unknown): value is Nanosaur1LevelData {
+  return (
+    isRecord(value) &&
+    "header" in value &&
+    "textureLayer" in value &&
+    "objectList" in value
+  );
+}
+
+function isMightyMikeMap(value: unknown): value is MightyMikeMap {
+  return (
+    isRecord(value) &&
+    "mapWidth" in value &&
+    "mapHeight" in value &&
+    "mapImage" in value
+  );
+}
+
+function getNanosaurRawLevel(
+  metadata: LevelMetadata | undefined,
+): Nanosaur1LevelData | undefined {
+  const direct = (metadata as Record<string, unknown> | undefined)
+    ?.nanosaur1RawLevel;
+  if (isNanosaur1LevelData(direct)) {
+    return direct;
+  }
+  const nested = getNestedMetadata(metadata, "1000");
+  const nestedRaw = nested?.nanosaur1RawLevel;
+  return isNanosaur1LevelData(nestedRaw) ? nestedRaw : undefined;
+}
+
+function getMightyMikeMapData(
+  metadata: LevelMetadata | undefined,
+): MightyMikeMap | undefined {
+  const direct = (metadata as Record<string, unknown> | undefined)
+    ?.mightyMikeMapData;
+  if (isMightyMikeMap(direct)) {
+    return direct;
+  }
+  const nested = getNestedMetadata(metadata, "1000");
+  const nestedMap = nested?.mightyMikeMapData;
+  return isMightyMikeMap(nestedMap) ? nestedMap : undefined;
+}
 /**
  * Save and download map and images as in IntroPrompt
  */
@@ -12,19 +81,18 @@ export async function saveMap({
   mapImagesFile,
   mapImages,
   data,
-  pyodideWorker,
   globals,
   toast,
 }: {
   mapFile: File | undefined;
   mapImagesFile: File | undefined;
   mapImages: HTMLCanvasElement[] | undefined;
-  data: ottoMaticLevel | null;
-  pyodideWorker: Worker;
+  data: LevelData;
   globals: GlobalsInterface;
   toast: (opts: { title: string; description?: string }) => void;
 }) {
-  if (!mapFile || !mapImagesFile) return;
+  // Allow RSRC_FORK games to save even if a separate images file isn't present
+  if (!mapFile || (globals.DATA_TYPE !== DataType.RSRC_FORK && !mapImagesFile)) return;
 
   // Download Images
   if (mapImages) {
@@ -35,31 +103,74 @@ export async function saveMap({
 
     const bufferList = await compressMapImages(mapImages);
     const imageDownloadBuffer = combineBuffersForDownload(bufferList);
-    downloadBlob(imageDownloadBuffer, mapImagesFile.name, ".ter");
+    downloadBlob(imageDownloadBuffer, mapImagesFile?.name || "images", ".ter");
   }
 
-  toast({
-    title: "Saving Map",
-    description: "Processing map data",
-  });
-
-  if (globals.GAME_TYPE === Game.NANOSAUR_2) {
-    //TODO: Nanosaur 2 map logic
+  if (globals.TILE_IMAGE_FORMAT === TileImageFormat.JPG) {
+    //TODO: JPEG-based map logic (e.g., Nanosaur 2)
   }
-  //if bugdom 1
-  else if (globals.GAME_TYPE === Game.BUGDOM) {
-    //Should save images here too as Bugdom 1 has terrain and image data in the same file
-    //TODO
-  } else if (globals.GAME_TYPE === Game.NANOSAUR) {
-    //TODO
-  } else {
-    const mapBuffer = await processMapData({ data, pyodideWorker, globals });
+  //if bugdom 1 (resource fork)
+  else if (globals.DATA_TYPE === DataType.RSRC_FORK) {
+    // For RSRC_FORK (Bugdom 1), Timg should be embedded in `data` and rsrcdump-ts
+    // serializes it into the single .ter.rsrc file. Serialize and
+    // download the combined resource fork map file.
+    const mapBuffer = await processMapData({ data, globals });
     downloadBlob(mapBuffer, mapFile.name, ".ter.rsrc");
-  }
+    toast({
+      title: "Map Downloaded!",
+    });
+  } else if (globals.DATA_TYPE === DataType.TRT_FILE) {
+    // Nanosaur 1: Compile back to .ter format
+    // We need the original raw level data to preserve binary-specific information
+    const rawLevelData = getNanosaurRawLevel(data._metadata);
 
-  toast({
-    title: "Map Downloaded!",
-  });
+    if (!rawLevelData) {
+      toast({
+        title: "Cannot save Nanosaur 1 level",
+        description: "Original level data not found in metadata",
+      });
+      return;
+    }
+
+    const compileResult = compileNanosaur1Level(data, rawLevelData);
+
+    if (compileResult.isErr()) {
+      toast({
+        title: "Failed to compile Nanosaur 1 level",
+        description: compileResult.error.message,
+      });
+      return;
+    }
+
+    downloadBlob(compileResult.value, mapFile.name, ".ter");
+    toast({
+      title: "Nanosaur 1 Map Downloaded!",
+    });
+  } else if (globals.GAME_NAME === "Mighty Mike") {
+    // Mighty Mike: Compile back to .map format
+    // Extract Mighty Mike-specific data from metadata
+    const mightyMikeData = getMightyMikeMapData(data._metadata);
+
+    if (!mightyMikeData) {
+      toast({
+        title: "Cannot save Mighty Mike level",
+        description: "Original level data not found in metadata",
+      });
+      return;
+    }
+
+    const mapBuffer = mightyMikeMapToCompressedBinary(mightyMikeData);
+    downloadBlob(mapBuffer, mapFile.name, ".map");
+    toast({
+      title: "Mighty Mike Map Downloaded!",
+    });
+  } else {
+    const mapBuffer = await processMapData({ data, globals });
+    downloadBlob(mapBuffer, mapFile.name, ".ter.rsrc");
+    toast({
+      title: "Map Downloaded!",
+    });
+  }
 }
 
 function downloadBlob(buffer: ArrayBuffer, filename: string, mime: string) {
@@ -73,31 +184,52 @@ function downloadBlob(buffer: ArrayBuffer, filename: string, mime: string) {
 
 async function processMapData({
   data,
-  pyodideWorker,
   globals,
 }: {
-  data: ottoMaticLevel | null;
-  pyodideWorker: Worker;
+  data: LevelData;
   globals: GlobalsInterface;
 }): Promise<ArrayBuffer> {
-  return new Promise<ArrayBuffer>((resolve, reject) => {
-    pyodideWorker.postMessage({
-      type: "load_bytes_from_json",
-      json_blob: data,
-      converters: globals.STRUCT_SPECS,
-      only_types: [],
-      skip_types: [],
-      adf: "True",
-    } satisfies PyodideMessage);
+  // Validate the JSON before passing to rsrcdump to avoid uncaught errors
+  const sanitized = sanitizeResourceForkJson(data);
+  const validation = validateResourceForkJson(sanitized);
+  if (validation.isErr()) {
+    console.error("Invalid JSON for resource fork:", validation.error);
+    toast({
+      title: "Saving failed",
+      description: `Invalid map data structure: ${validation.error.message}`,
+    });
+    return new ArrayBuffer(0);
+  }
 
-    pyodideWorker.onmessage = (event: MessageEvent<PyodideResponse>) => {
-      if (event.data.type === "load_bytes_from_json") {
-        resolve(event.data.result);
-      } else {
-        reject(new Error("Unexpected response from pyodide worker"));
-      }
-    };
-  });
+  const saveResult = loadBytesFromJson(sanitized, globals.STRUCT_SPECS, [], [], true);
+
+  const serializedResult = saveResult.ok
+    ? ok(saveResult.value)
+    : err(saveResult.error);
+
+  if (serializedResult.isErr()) {
+    const saveErrorMsg =
+      typeof serializedResult.error === "string"
+        ? serializedResult.error
+        : String(serializedResult.error);
+    console.error("Failed to serialize:", saveErrorMsg);
+    toast({
+      title: "Saving failed",
+      description: saveErrorMsg,
+    });
+    return new ArrayBuffer(0);
+  }
+
+  // loadBytesFromJson returns Uint8Array on success
+  const out = serializedResult.value;
+  const buffer = out.buffer;
+  if (buffer instanceof ArrayBuffer) {
+    return buffer.slice(out.byteOffset, out.byteOffset + out.byteLength);
+  }
+  // Handle SharedArrayBuffer by copying to ArrayBuffer
+  const copy = new ArrayBuffer(out.byteLength);
+  new Uint8Array(copy).set(new Uint8Array(buffer, out.byteOffset, out.byteLength));
+  return copy;
 }
 
 async function compressMapImages(
@@ -106,9 +238,13 @@ async function compressMapImages(
   return new Promise((res, err) => {
     const compressedTextures: DataView[] = new Array(mapImages.length);
     const resolvedTextures = { count: 0 };
-    console.time("compress");
     for (let i = 0; i < mapImages.length; i++) {
-      const canvasCtx = mapImages[i].getContext("2d");
+      const canvas = mapImages[i];
+      if (!canvas) {
+        err(new Error(`Canvas at index ${i} is undefined`));
+        return;
+      }
+      const canvasCtx = canvas.getContext("2d");
       if (!canvasCtx) {
         err(new Error("Could not get canvas context"));
         return;
@@ -116,8 +252,8 @@ async function compressMapImages(
       const imageData = canvasCtx.getImageData(
         0,
         0,
-        mapImages[i].width,
-        mapImages[i].height,
+        canvas.width,
+        canvas.height,
       );
       const lzssWorker = new LzssWorker();
       lzssWorker.onmessage = (e: MessageEvent<LzssResponse>) => {
@@ -126,7 +262,6 @@ async function compressMapImages(
         compressedTextures[data.id] = new DataView(data.dataBuffer);
         resolvedTextures.count++;
         if (resolvedTextures.count === mapImages.length) {
-          console.timeEnd("compress");
           res(compressedTextures);
         }
         lzssWorker.terminate();
@@ -150,8 +285,8 @@ function combineBuffersForDownload(bufferList: DataView[]): ArrayBuffer {
   }
   const imageDownloadBuffer = new DataView(new ArrayBuffer(totalSize));
   let pos2 = 0;
-  for (let i = 0; i < bufferList.length; i++) {
-    const buffer = bufferList[i];
+  for (const buffer of bufferList) {
+    if (!buffer) continue;
     imageDownloadBuffer.setInt32(pos2, buffer.byteLength);
     pos2 += 4;
     for (let j = 0; j < buffer.byteLength; j++) {

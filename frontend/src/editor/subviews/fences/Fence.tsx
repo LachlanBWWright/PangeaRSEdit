@@ -1,19 +1,20 @@
 import { Updater } from "use-immer";
-import { ottoMaticLevel } from "../../../python/structSpecs/ottoMaticInterface";
+import { FenceData } from "@/python/structSpecs/LevelTypes";
 import { Line } from "react-konva";
+import Konva from "konva";
 import { FenceNub } from "./FenceNub";
 import { SelectedFence } from "../../../data/fences/fenceAtoms";
 import { useAtom } from "jotai";
-import { memo, useState } from "react"; // Added useState
+import { memo, useState } from "react";
 
 export const Fence = memo(
   ({
-    data,
-    setData,
+    fenceData,
+    setFenceData,
     fenceIdx,
   }: {
-    data: ottoMaticLevel;
-    setData: Updater<ottoMaticLevel>;
+    fenceData: FenceData;
+    setFenceData: Updater<FenceData>;
     fenceIdx: number;
   }) => {
     const [selectedFence, setSelectedFence] = useAtom(SelectedFence);
@@ -22,10 +23,10 @@ export const Fence = memo(
       [number, number][] | null
     >(null);
 
-    const lines = data.FnNb[1000 + fenceIdx].obj.flatMap((nub) => [
-      nub[0],
-      nub[1],
-    ]);
+    const fenceNubs = fenceData.FnNb[1000 + fenceIdx]?.obj;
+    if (!fenceNubs) return null;
+
+    const lines = fenceNubs.flatMap((nub) => [nub[0], nub[1]]);
 
     return (
       <>
@@ -37,22 +38,31 @@ export const Fence = memo(
           draggable // Make the line draggable
           onDragStart={() => {
             // Store the initial positions of the nubs when dragging starts
-            setInitialDragState(
-              data.FnNb[1000 + fenceIdx].obj.map((nub) => [nub[0], nub[1]]),
-            );
+            const nubData = fenceData.FnNb[1000 + fenceIdx]?.obj;
+            if (nubData) {
+              setInitialDragState(nubData.map((nub) => [nub[0], nub[1]]));
+            }
             setSelectedFence(fenceIdx); // Select the fence on drag start
           }}
-          onDragEnd={(e) => {
+          onDragMove={() => {
+            // Don't update nub positions on each move. Visual transform is handled by Konva.
+          }}
+          onDragEnd={(e: Konva.KonvaEventObject<DragEvent>) => {
             if (!initialDragState) return;
 
             const dragDx = e.target.x();
             const dragDz = e.target.y();
 
-            setData((draft) => {
-              const currentNubs = draft.FnNb[1000 + fenceIdx].obj;
+            setFenceData((draft) => {
+              const currentNubs = draft.FnNb[1000 + fenceIdx]?.obj;
+              if (!currentNubs) return;
               for (let i = 0; i < currentNubs.length; i++) {
-                currentNubs[i][0] = initialDragState[i][0] + dragDx;
-                currentNubs[i][1] = initialDragState[i][1] + dragDz;
+                const nub = currentNubs[i];
+                const initial = initialDragState[i];
+                if (nub && initial) {
+                  nub[0] = initial[0] + dragDx;
+                  nub[1] = initial[1] + dragDz;
+                }
               }
             });
             e.target.x(0); // Reset line position after dragging nubs
@@ -60,14 +70,17 @@ export const Fence = memo(
             setInitialDragState(null); // Clear initial drag state
           }}
         />
-        {data.FnNb[1000 + fenceIdx].obj.map((nub, nubIdx) => (
+        {fenceNubs.map((nub, nubIdx) => (
           <FenceNub
             key={nubIdx}
             idx={fenceIdx}
             nub={nub}
             setNub={(newNub: [number, number]) => {
-              setData((data) => {
-                data.FnNb[1000 + fenceIdx].obj[nubIdx] = newNub;
+              setFenceData((fenceData) => {
+                const nubData = fenceData.FnNb[1000 + fenceIdx]?.obj;
+                if (nubData && nubData[nubIdx]) {
+                  nubData[nubIdx] = newNub;
+                }
               });
             }}
           />

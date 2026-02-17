@@ -479,9 +479,9 @@ export const nanosaur2ItemTypeParams: Record<ItemType, ItemParams> = {
       type: "Integer",
       description: "Tree variant type (different desert tree models)",
       codeSample: {
-        code: "short type = itemPtr->parm[0];\nif (itemPtr->parm[0] > 4)\n  return(true);",
+        code: "if (itemPtr->parm[0] > 4)\n  DoFatalAlert(\"AddDesertTree: illegal subtype\");",
         fileName: "Source/Items/Trees.c",
-        lineNumber: 595,
+        lineNumber: 598,
       },
     },
     p1: {

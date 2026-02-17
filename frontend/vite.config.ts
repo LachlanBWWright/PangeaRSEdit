@@ -4,9 +4,16 @@ import path from "path";
 
 // https://vitejs.dev/config/
 export default defineConfig({
-  assetsInclude: ["**/*.ter.rsrc", "**/*.ter", "**/*.trt"],
+  assetsInclude: [
+    "**/*.ter.rsrc",
+    "**/*.ter",
+    "**/*.trt",
+    "**/*.tileset",
+    "**/*.map-1",
+    "**/*.map-2",
+    "**/*.map-3",
+  ],
   optimizeDeps: {
-    exclude: ["pyodide"],
     esbuildOptions: {
       target: "es2022",
     },
@@ -16,7 +23,11 @@ export default defineConfig({
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
+      buffer: "buffer/",
     },
+  },
+  define: {
+    "global.Buffer": ["buffer", "Buffer"],
   },
   base: "/PangeaRSEdit/",
   build: {
@@ -30,9 +41,6 @@ export default defineConfig({
     setupFiles: ["./vitest.setup.ts"],
     environment: "jsdom",
     deps: {
-      // vitest < 0.34
-      inline: ["vitest-canvas-mock"],
-      // >= 0.34
       optimizer: {
         web: {
           include: ["vitest-canvas-mock"],

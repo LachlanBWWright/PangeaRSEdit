@@ -1,8 +1,9 @@
 import { useAtom } from "jotai";
 import { Circle } from "react-konva";
 import { SelectedFence } from "../../../data/fences/fenceAtoms";
+import { memo, useRef } from "react";
+// import { Globals } from "../../../data/globals/globals";
 import { getColour } from "./Fence";
-import { memo } from "react";
 
 export const FenceNub = memo(
   ({
@@ -15,6 +16,8 @@ export const FenceNub = memo(
     setNub: (nub: [number, number]) => void;
   }) => {
     const [selectedFence, setSelectedFence] = useAtom(SelectedFence);
+    const nubRafRef = useRef<number | null>(null);
+    // Globals kept for potential future use
 
     return (
       <Circle
@@ -27,7 +30,17 @@ export const FenceNub = memo(
         onDragStart={() => {
           setSelectedFence(idx);
         }}
+        onDragMove={(e) => {
+          const newX = Math.round(e.target.x());
+          const newY = Math.round(e.target.y());
+
+          if (nubRafRef.current) cancelAnimationFrame(nubRafRef.current);
+          nubRafRef.current = requestAnimationFrame(() => {
+            setNub([newX, newY]);
+          });
+        }}
         onDragEnd={(e) => {
+          if (nubRafRef.current) cancelAnimationFrame(nubRafRef.current);
           setNub([Math.round(e.target.x()), Math.round(e.target.y())]);
         }}
       />

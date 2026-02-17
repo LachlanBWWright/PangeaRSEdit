@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { parseBG3D, bg3dParsedToBG3D } from "./parseBG3D";
-import * as fs from "fs";
-import * as path from "path";
+import { existsSync, readFileSync, writeFileSync } from "fs";
+import { join } from "path";
 
 import { argb16ToPng, rgba8ToPng } from "./image/pngArgb";
 
@@ -9,25 +9,172 @@ import { argb16ToPng, rgba8ToPng } from "./image/pngArgb";
 function byteSwapUint16Array(arr: Uint16Array): Uint16Array {
   const swapped = new Uint16Array(arr.length);
   for (let i = 0; i < arr.length; i++) {
-    const val = arr[i];
+    const val = arr[i] ?? 0;
     swapped[i] = ((val & 0xff) << 8) | ((val >> 8) & 0xff);
   }
   return swapped;
 }
 
 // Adjust the path to your testSkeletons folder and BG3D file name
-const TEST_BG3D_PATH = path.join(
+const TEST_BG3D_PATH = join(
   __dirname,
   "./testSkeletons/level4_apocalypse.bg3d",
 );
 
+// Test files for games with bounding boxes (Billy Frontier, Cro Mag)
+const BILLY_BG3D_PATH = join(__dirname, "./testSkeletons/Billy.bg3d");
+const BROG_BG3D_PATH = join(__dirname, "./testSkeletons/Brog.bg3d");
+
+// Helper to count geometries and check for bounding boxes
+interface GroupChild { children?: GroupChild[]; boundingBox?: unknown }
+
+function analyzeGroups(groups: GroupChild[]): {
+  geomCount: number;
+  boundingBoxCount: number;
+} {
+  let geomCount = 0;
+  let boundingBoxCount = 0;
+  function traverse(group: GroupChild) {
+    if (Array.isArray(group.children)) {
+      for (const child of group.children ?? []) {
+        if (Array.isArray(child.children)) {
+          traverse(child);
+        } else {
+          geomCount++;
+          if (child.boundingBox) boundingBoxCount++;
+        }
+      }
+    }
+  }
+  for (const group of groups) {
+    traverse(group);
+  }
+  return { geomCount, boundingBoxCount };
+}
+
+describe("parseBG3D - Multi-Game Support", () => {
+  it("parses Billy Frontier BG3D file with bounding boxes", () => {
+    if (!existsSync(BILLY_BG3D_PATH)) {
+      console.warn("Skipping: Billy.bg3d not found in testSkeletons");
+      return;
+    }
+
+    const fileBuffer = readFileSync(BILLY_BG3D_PATH);
+    const arrayBuffer = fileBuffer.buffer.slice(
+      fileBuffer.byteOffset,
+      fileBuffer.byteOffset + fileBuffer.byteLength,
+    );
+
+    // Parse BG3D - should not throw
+    const parsedRes = parseBG3D(arrayBuffer);
+    if (!parsedRes.ok) throw parsedRes.error;
+    const parsed = parsedRes.value;
+    expect(parsed).toBeDefined();
+    expect(parsed.materials.length).toBeGreaterThan(0);
+
+    // Check for bounding boxes (Billy Frontier should have them)
+    const analysis = analyzeGroups(parsed.groups);
+    console.log(
+      `Billy.bg3d: ${analysis.geomCount} geometries, ${analysis.boundingBoxCount} bounding boxes`,
+    );
+    expect(analysis.geomCount).toBeGreaterThan(0);
+    // Billy Frontier should have bounding boxes
+    expect(analysis.boundingBoxCount).toBeGreaterThan(0);
+
+    // Roundtrip test
+    const outputBuffer = bg3dParsedToBG3D(parsed);
+    expect(outputBuffer.byteLength).toBeGreaterThan(0);
+
+    // Size should be similar (exact match not required due to potential ordering differences)
+    const sizeDiff = Math.abs(outputBuffer.byteLength - arrayBuffer.byteLength);
+    console.log(
+      `Size diff: ${sizeDiff} bytes (original: ${arrayBuffer.byteLength}, roundtrip: ${outputBuffer.byteLength})`,
+    );
+  });
+
+  it("parses Cro Mag Rally BG3D file (no bounding boxes)", () => {
+    if (!existsSync(BROG_BG3D_PATH)) {
+      console.warn("Skipping: Brog.bg3d not found in testSkeletons");
+      return;
+    }
+
+    const fileBuffer = readFileSync(BROG_BG3D_PATH);
+    const arrayBuffer = fileBuffer.buffer.slice(
+      fileBuffer.byteOffset,
+      fileBuffer.byteOffset + fileBuffer.byteLength,
+    );
+
+    // Parse BG3D - should not throw
+    const parsedRes = parseBG3D(arrayBuffer);
+    if (!parsedRes.ok) throw parsedRes.error;
+    const parsed = parsedRes.value;
+    expect(parsed).toBeDefined();
+    expect(parsed.materials.length).toBeGreaterThan(0);
+
+    // Check for bounding boxes (Cro Mag should NOT have them)
+    const analysis = analyzeGroups(parsed.groups);
+    console.log(
+      `Brog.bg3d: ${analysis.geomCount} geometries, ${analysis.boundingBoxCount} bounding boxes`,
+    );
+    expect(analysis.geomCount).toBeGreaterThan(0);
+    // Cro Mag Rally should NOT have bounding boxes (they're calculated at runtime)
+    expect(analysis.boundingBoxCount).toBe(0);
+
+    // Roundtrip test
+    const outputBuffer = bg3dParsedToBG3D(parsed);
+    expect(outputBuffer.byteLength).toBeGreaterThan(0);
+  });
+
+  it("parses Bugdom 2 BG3D file with bounding boxes (Grasshopper)", () => {
+    const grasshopperPath = join(
+      __dirname,
+      "./testSkeletons/Grasshopper.bg3d",
+    );
+    if (!existsSync(grasshopperPath)) {
+      console.warn("Skipping: Grasshopper.bg3d not found in testSkeletons");
+      return;
+    }
+
+    const fileBuffer = readFileSync(grasshopperPath);
+    const arrayBuffer = fileBuffer.buffer.slice(
+      fileBuffer.byteOffset,
+      fileBuffer.byteOffset + fileBuffer.byteLength,
+    );
+
+    // Parse BG3D - should not throw (this was failing before the fix)
+    const parsedRes = parseBG3D(arrayBuffer);
+    if (!parsedRes.ok) throw parsedRes.error;
+    const parsed = parsedRes.value;
+    expect(parsed).toBeDefined();
+    expect(parsed.materials.length).toBeGreaterThan(0);
+
+    // Check for bounding boxes (Bugdom 2 should have them)
+    const analysis = analyzeGroups(parsed.groups);
+    console.log(
+      `Grasshopper.bg3d: ${analysis.geomCount} geometries, ${analysis.boundingBoxCount} bounding boxes`,
+    );
+    expect(analysis.geomCount).toBeGreaterThan(0);
+    // Bugdom 2 should have bounding boxes
+    expect(analysis.boundingBoxCount).toBeGreaterThan(0);
+
+    // Roundtrip test
+    const outputBuffer = bg3dParsedToBG3D(parsed);
+    expect(outputBuffer.byteLength).toBeGreaterThan(0);
+
+    // Size should be exactly the same since we're preserving bounding boxes
+    expect(outputBuffer.byteLength).toBe(arrayBuffer.byteLength);
+  });
+});
+
 describe("parseBG3DAndUnparse", () => {
   it("parses a real BG3D file from testSkeletons and converts it back and forth", () => {
-    const fileBuffer = fs.readFileSync(TEST_BG3D_PATH);
+    const fileBuffer = readFileSync(TEST_BG3D_PATH);
     const arrayBuffer = fileBuffer.buffer;
 
     // Step 1: Parse BG3D
-    const parsed = parseBG3D(arrayBuffer);
+    const parsedRes = parseBG3D(arrayBuffer);
+    if (!parsedRes.ok) throw parsedRes.error;
+    const parsed = parsedRes.value;
     expect(parsed).toBeDefined();
     //expect(Array.isArray(parsed.materials)).toBe(true);
     expect(Array.isArray(parsed.groups)).toBe(true);
@@ -58,11 +205,11 @@ describe("parseBG3DAndUnparse", () => {
           console.log(tex.pixels, tex.width, tex.height);
           pngBuffer = rgba8ToPng(tex.pixels, tex.width, tex.height);
         }
-        const pngPath = path.join(
+        const pngPath = join(
           __dirname,
           `./testSkeletons/output/level4_apocalypse.material${i}.texture${j}.png`,
         );
-        fs.writeFileSync(pngPath, pngBuffer);
+        writeFileSync(pngPath, pngBuffer);
         console.log(`Saved PNG to ${pngPath}`);
       });
     });
@@ -75,11 +222,11 @@ describe("parseBG3DAndUnparse", () => {
     expect(outputArray.length).toBeGreaterThan(0);
 
     // Save the new BG3D file for inspection
-    const roundtripPath = path.join(
+    const roundtripPath = join(
       __dirname,
       "./testSkeletons/output/level4_apocalypse.roundtrip1.bg3d",
     );
-    fs.writeFileSync(roundtripPath, Buffer.from(outputBuffer));
+    writeFileSync(roundtripPath, Buffer.from(outputBuffer));
 
     //Compare original and output arrays
     //Compare all bytes

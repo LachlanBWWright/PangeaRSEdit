@@ -1,16 +1,23 @@
 import React from "react";
 import { useAtomValue } from "jotai";
 import { Globals } from "@/data/globals/globals";
-import { ottoMaticLevel } from "@/python/structSpecs/ottoMaticInterface";
+import {
+  LiquidData,
+  HeaderData,
+  TerrainData,
+} from "@/python/structSpecs/LevelTypes";
 import { DoubleSide, Shape, Vector2 } from "three";
 import { WaterBodyType } from "@/data/water/ottoWaterBodyType";
-import { getTerrainHeightAtPoint } from "./FenceGeometry";
+import { getTerrainHeightAtPoint } from "./fenceUtils/getTerrainHeightAtPoint";
 
 interface LiquidGeometryProps {
-  data: ottoMaticLevel;
-  // Potentially add a prop for liquid type if colors/properties need to vary
-  // liquidType?: 'water' | 'lava' | 'acid';
+  liquidData: LiquidData;
+  headerData: HeaderData;
+  terrainData: TerrainData;
 }
+
+// Debug flag - set to false in production
+const DEBUG_LIQUID_RENDERING = false;
 
 const getLiquidProperties = (type: WaterBodyType) => {
   switch (type) {
@@ -35,20 +42,44 @@ const getLiquidProperties = (type: WaterBodyType) => {
   }
 };
 
-export const LiquidGeometry: React.FC<LiquidGeometryProps> = ({ data }) => {
+export const LiquidGeometry: React.FC<LiquidGeometryProps> = ({ liquidData, headerData, terrainData }) => {
   const globals = useAtomValue(Globals);
 
-  if (!data.Liqd?.[1000]?.obj) {
+  if (!liquidData.Liqd?.[1000]?.obj) {
+    if (DEBUG_LIQUID_RENDERING) {
+      console.log("[LiquidGeometry] No liquid data found");
+    }
     return null;
   }
 
-  const liquidPatches = data.Liqd[1000].obj;
+  const liquidPatches = liquidData.Liqd[1000].obj;
+  if (DEBUG_LIQUID_RENDERING) {
+    console.log(`[LiquidGeometry] Found ${liquidPatches.length} liquid patches`);
+  }
 
   return (
     <group>
       {liquidPatches.map((patch, index) => {
+        if (DEBUG_LIQUID_RENDERING) {
+          console.log(`[LiquidGeometry] Patch ${index}:`, {
+            numNubs: patch.numNubs,
+            nubs: patch.nubs,
+            type: patch.type,
+          });
+        }
+        
         if (!patch || patch.numNubs < 3) {
           // A polygon needs at least 3 vertices
+          if (DEBUG_LIQUID_RENDERING) {
+            console.log(`[LiquidGeometry] Patch ${index} skipped: insufficient nubs`);
+          }
+          return null;
+        }
+
+        if (!patch.nubs || !Array.isArray(patch.nubs)) {
+          if (DEBUG_LIQUID_RENDERING) {
+            console.log(`[LiquidGeometry] Patch ${index} skipped: nubs not an array`);
+          }
           return null;
         }
 
@@ -58,10 +89,23 @@ export const LiquidGeometry: React.FC<LiquidGeometryProps> = ({ data }) => {
 
         const points = patch.nubs
           .slice(0, patch.numNubs)
-          .map((nub) => new Vector2(nub[0] * scale, nub[1] * scale));
+          .map((nub, i) => {
+            if (!nub || !Array.isArray(nub) || nub.length < 2) {
+              if (DEBUG_LIQUID_RENDERING) {
+                console.warn(`[LiquidGeometry] Patch ${index} nub ${i} is invalid:`, nub);
+              }
+              return new Vector2(0, 0);
+            }
+            const x = nub[0] ?? 0;
+            const y = nub[1] ?? 0;
+            return new Vector2(x * scale, y * scale);
+          });
 
         // Ensure we still have enough points after slicing and potential filtering if any
         if (points.length < 3) {
+          if (DEBUG_LIQUID_RENDERING) {
+            console.log(`[LiquidGeometry] Patch ${index} skipped: insufficient points after processing`);
+          }
           return null;
         }
 
@@ -72,11 +116,14 @@ export const LiquidGeometry: React.FC<LiquidGeometryProps> = ({ data }) => {
           getTerrainHeightAtPoint(
             patch.hotSpotX,
             patch.hotSpotZ,
-            data,
+            headerData,
+            terrainData,
             globals,
           ) + 100; //patch.height;
 
-        console.log("Patch height", liquidLevelY);
+        if (DEBUG_LIQUID_RENDERING) {
+          console.log(`[LiquidGeometry] Rendering patch ${index} at Y=${liquidLevelY}`);
+        }
         return (
           <React.Fragment key={`liquid-fragment-${index}`}>
             <mesh

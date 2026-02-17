@@ -1,17 +1,17 @@
 import { jpegCompress } from "./jpegCompress";
 
-export type JpegCompressMessage = {
+export interface JpegCompressMessage {
   id: number;
   type: "compress";
   input: ImageData | { width: number; height: number; data: Uint8ClampedArray };
   quality?: number;
-};
+}
 
-export type JpegCompressResponse = {
+export interface JpegCompressResponse {
   id: number;
   type: "compressRes";
   jpegData: ArrayBuffer;
-};
+}
 
 onmessage = async (event: MessageEvent<JpegCompressMessage>) => {
   if (event.data.type === "compress") {
@@ -26,11 +26,15 @@ onmessage = async (event: MessageEvent<JpegCompressMessage>) => {
         event.data.input.height,
       );
     }
-    const jpegData = await jpegCompress(imageData, event.data.quality);
+    const jpegResult = await jpegCompress(imageData, event.data.quality);
+    if (jpegResult.isErr()) {
+      console.error("Failed to compress JPEG:", jpegResult.error);
+      return;
+    }
     postMessage({
       id: event.data.id,
       type: "compressRes",
-      jpegData,
+      jpegData: jpegResult.value,
     } satisfies JpegCompressResponse);
   }
 };

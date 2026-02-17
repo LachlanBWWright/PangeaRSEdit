@@ -341,11 +341,11 @@ export const bugdom2ItemTypeParams: Record<ItemType, Bugdom2ItemParams> = {
     flags: "Unknown",
     p0: {
       type: "Integer",
-      description: "Shell rotation (0-3, where each unit = 90°)",
+      description: "Unused in current source (shell rotation is randomized)",
       codeSample: {
-        code: "gNewObjectDefinition.rot = (float)itemPtr->parm[0] * (PI/2);",
+        code: "gNewObjectDefinition.rot = RandomFloat() * PI2;",
         fileName: "Source/Items/Snails.c",
-        lineNumber: 677,
+        lineNumber: 682,
       },
     },
     p1: "Unknown",
@@ -408,9 +408,9 @@ export const bugdom2ItemTypeParams: Record<ItemType, Bugdom2ItemParams> = {
       type: "Integer",
       description: "Scarecrow part (0 = body, 1 = head separately)",
       codeSample: {
-        code: "if (itemPtr->parm[0] == 0) {\n    /* MAIN BODY */\n    gNewObjectDefinition.type = GARDEN_ObjType_ScarecrowBody;",
+        code: "gNewObjectDefinition.type = GARDEN_ObjType_ScarecrowBody;",
         fileName: "Source/Items/Snails.c",
-        lineNumber: 809,
+        lineNumber: 817,
       },
     },
     p1: "Unknown",
@@ -432,7 +432,7 @@ export const bugdom2ItemTypeParams: Record<ItemType, Bugdom2ItemParams> = {
       codeSample: {
         code: "if (isOpen)\n    gNewObjectDefinition.rot = itemPtr->parm[0] * PI/2 + PI/2;\nelse\n    gNewObjectDefinition.rot = itemPtr->parm[0] * PI/2;",
         fileName: "Source/Items/Items.c",
-        lineNumber: 424,
+        lineNumber: 421,
       },
     },
     p1: {
@@ -492,7 +492,7 @@ export const bugdom2ItemTypeParams: Record<ItemType, Bugdom2ItemParams> = {
       codeSample: {
         code: "gNewObjectDefinition.rot = (float)itemPtr->parm[0] * PI/2;",
         fileName: "Source/Items/Items.c",
-        lineNumber: 530,
+        lineNumber: 539,
       },
     },
     p1: {

@@ -1,86 +1,127 @@
 import {
-  ottoMaticLevel,
-  ottoTileAttribute,
-} from "../../python/structSpecs/ottoMaticInterface";
+  TileAttribute,
+  TerrainData,
+  HeaderData,
+} from "@/python/structSpecs/LevelTypes";
 import { Layer, Image } from "react-konva";
 import { Updater } from "use-immer";
 import {
   CurrentTopologyBrushMode,
   CurrentTopologyValueMode,
+  TopologyValueMode,
   TileViewMode,
   TileViews,
-  TopologyBrushMode,
   TopologyBrushRadius,
   TopologyOpacity,
   TopologyValue,
-  TopologyValueMode,
-  TileEditingEnabled,
-  TileBrushType,
 } from "../../data/tiles/tileAtoms";
 import { useAtomValue } from "jotai";
 import { Globals } from "../../data/globals/globals";
-import { useMemo } from "react";
-import { handleTileClick } from "../../data/tiles/tileHandlers";
-import { KonvaEventObject } from 'konva/lib/Node';
+import { useMemo, useState } from "react";
+import { createImageCanvas } from "./tiles/tilesUtils";
+import { elevationToRGBA } from "./tiles/tilesUtils";
+import { calculateBrushPixels, applyTopologyBrush, PixelType } from "../utils/topologyBrushUtils";
+import { FlagTileEditor } from "./tiles/FlagTileEditor";
 
 /* 
 
   Tile attribs p0 and p1 are NOT used!
 
-	TILE_ATTRIB_BLANK				=	1, 
-	TILE_ATTRIB_ELECTROCUTE_AREA0	=	(1<<1),
-	TILE_ATTRIB_ELECTROCUTE_AREA1	=	(1<<2)
+TILE_ATTRIB_BLANK=1, 
+TILE_ATTRIB_ELECTROCUTE_AREA0=(1<<1),
+TILE_ATTRIB_ELECTROCUTE_AREA1=(1<<2)
 
 */
 
 export function Tiles({
-  data,
-  setData,
+  headerData,
+  terrainData,
+  setTerrainData,
   isEditingTopology,
 }: {
-  data: ottoMaticLevel;
-  setData: Updater<ottoMaticLevel>;
+  headerData: HeaderData;
+  terrainData: TerrainData;
+  setTerrainData: Updater<TerrainData>;
   isEditingTopology: boolean;
 }) {
   const tileViewMode = useAtomValue(TileViewMode);
 
-  const tileGrid = useMemo(
-    () => data.Layr[1000].obj.map((atrbIdx) => data.Atrb[1000].obj[atrbIdx]),
-    [data.Layr, data.Atrb],
-  );
+  const tileGrid = useMemo(() => {
+    // If no Atrb data or Layr doesn't reference Atrb, return empty array
+    const layrData = terrainData.Layr?.[1000]?.obj;
+    const atrbData = terrainData.Atrb?.[1000]?.obj;
+    if (!atrbData || !layrData) {
+      return [];
+    }
+    return layrData
+      .map((atrbIdx: number) => atrbData[atrbIdx])
+      .filter((tile): tile is TileAttribute => tile !== undefined);
+  }, [terrainData.Layr, terrainData.Atrb]);
 
-  if (tileViewMode === TileViews.Topology)
+  // For Topology view, check if YCrd data exists
+  if (tileViewMode === TileViews.Topology) {
+    // Check if YCrd data exists and has content
+    if (!terrainData.YCrd?.[1000]?.obj?.length) {
+      return <Layer>{/* No topology data available for this game */}</Layer>;
+    }
     return (
       <TopologyTiles
-        data={data}
-        setData={setData}
+        headerData={headerData}
+        terrainData={terrainData}
+        setTerrainData={setTerrainData}
         isEditingTopology={isEditingTopology}
       />
     );
+  }
+
+  // For other tile views, check if tileGrid has data
+  if (!tileGrid.length) {
+    return (
+      <Layer>{/* No tile attribute data available for this game */}</Layer>
+    );
+  }
 
   if (tileViewMode === TileViews.Flags)
-    return <EmptyTiles data={data} setData={setData} tileGrid={tileGrid} />;
+    return (
+      <FlagTileEditor
+        headerData={headerData}
+        setTerrainData={setTerrainData}
+        tileGrid={tileGrid}
+        flagBit={1}
+        flagToColour={(flag) => (flag & 1 ? [255, 255, 255, 255] : [0, 0, 0, 0])}
+      />
+    );
   if (tileViewMode === TileViews.ElectricFloor0)
     return (
-      <ElectricFloor0Tiles data={data} setData={setData} tileGrid={tileGrid} />
+      <FlagTileEditor
+        headerData={headerData}
+        setTerrainData={setTerrainData}
+        tileGrid={tileGrid}
+        flagBit={1 << 1}
+        flagToColour={(flag) => (flag & (1 << 1) ? [255, 255, 255, 255] : [0, 0, 0, 0])}
+      />
     );
 
-  //ElectricFloor1
-
   return (
-    <ElectricFloor1Tiles data={data} setData={setData} tileGrid={tileGrid} />
+    <FlagTileEditor
+      headerData={headerData}
+      setTerrainData={setTerrainData}
+      tileGrid={tileGrid}
+      flagBit={1 << 2}
+      flagToColour={(flag) => (flag & (1 << 2) ? [255, 255, 255, 255] : [0, 0, 0, 0])}
+    />
   );
 }
 
-type PixelType = { x: number; y: number; value: number; distance: number };
-
 export function TopologyTiles({
-  data,
-  setData,
+  headerData,
+  terrainData,
+  setTerrainData,
   isEditingTopology,
 }: {
-  data: ottoMaticLevel;
-  setData: Updater<ottoMaticLevel>;
+  headerData: HeaderData;
+  terrainData: TerrainData;
+  setTerrainData: Updater<TerrainData>;
   isEditingTopology: boolean;
 }) {
   const currentTopologyBrushMode = useAtomValue(CurrentTopologyBrushMode);
@@ -89,83 +130,86 @@ export function TopologyTiles({
   const topologyBrushRadius = useAtomValue(TopologyBrushRadius);
   const globals = useAtomValue(Globals);
   const opacity = useAtomValue(TopologyOpacity);
-
-  const header = useMemo(() => data.Hedr[1000].obj, [data.Hedr]);
-
-  const elevationToRGBA = (elevation: number) => {
-    return [
-      ((elevation - header.minY) / (header.maxY - header.minY)) * 255,
-      ((elevation - header.minY) / (header.maxY - header.minY)) * 255,
-      ((elevation - header.minY) / (header.maxY - header.minY)) * 255,
-      255,
-    ];
-  };
-
-  const flattenCoords = (x: number, y: number) => {
-    x = Math.floor(x / globals.TILE_SIZE);
-    y = Math.floor(y / globals.TILE_SIZE);
-    return y * (header.mapWidth + 1) + x;
-  };
-
-  const coordColours = useMemo(
-    () => data.YCrd[1000].obj.flatMap(elevationToRGBA),
-    [data.YCrd[1000].obj],
+  const [isDragging, setIsDragging] = useState(false);
+  const [lastBrushPoint, setLastBrushPoint] = useState<{ x: number; y: number } | null>(
+    null,
   );
 
-  const imgCanvas = useMemo(() => {
-    const imgCanvas = document.createElement("canvas");
-    imgCanvas.width = header.mapWidth + 1;
-    imgCanvas.height = header.mapHeight + 1;
-    const imgCtx = imgCanvas.getContext("2d");
-    if (!imgCtx) throw new Error("Could not get canvas context");
+  const header = useMemo(() => headerData.Hedr[1000].obj, [headerData.Hedr]);
 
-    imgCtx.putImageData(
-      new ImageData(
-        new Uint8ClampedArray(coordColours),
-        header.mapWidth + 1,
-        header.mapHeight + 1,
-      ),
-      0,
-      0,
+  // Guard against missing or empty YCrd data
+  const yCrdData = terrainData.YCrd?.[1000]?.obj;
+
+  const coordColours = useMemo(() => {
+    if (!yCrdData || yCrdData.length === 0) {
+      // Return a minimal valid array for empty data
+      return [128, 128, 128, 255];
+    }
+    return yCrdData.flatMap((e) => elevationToRGBA(header, e));
+  }, [yCrdData, header]);
+
+  const imgCanvas = useMemo(() => {
+    // Guard against empty data - create a 1x1 placeholder
+    if (!yCrdData || yCrdData.length === 0) {
+      const canvas = document.createElement("canvas");
+      canvas.width = 1;
+      canvas.height = 1;
+      return canvas;
+    }
+    const result = createImageCanvas(
+      header.mapWidth + 1,
+      header.mapHeight + 1,
+      coordColours,
     );
-    return imgCanvas;
-  }, [header, data.YCrd[1000].obj]);
+    if (result.isErr()) {
+      console.error("Failed to create image canvas:", result.error.message);
+      return null;
+    }
+    return result.value;
+  }, [header, coordColours, yCrdData]);
 
   const setPixels = (pixelList: PixelType[]) => {
-    setData((data) => {
-      for (const pixelData of pixelList) {
-        const { x, y, value, distance } = pixelData;
+    // Guard against missing YCrd data
+    if (!yCrdData || yCrdData.length === 0) return;
 
-        if (
-          x < 0 ||
-          x > (header.mapWidth + 1) * globals.TILE_SIZE ||
-          y < 0 ||
-          y > (header.mapHeight + 1) * globals.TILE_SIZE
-        )
-          continue;
-        const flatPos = flattenCoords(x, y);
-        if (data.YCrd[1000].obj[flatPos] === undefined) continue;
+    setTerrainData((data) => {
+      if (!data.YCrd?.[1000]?.obj) return;
 
-        if (currentTopologyValueMode === TopologyValueMode.SET_VALUE) {
-          data.YCrd[1000].obj[flatPos] = value;
-        } else if (currentTopologyValueMode === TopologyValueMode.DELTA_VALUE) {
-          data.YCrd[1000].obj[flatPos] = data.YCrd[1000].obj[flatPos] + value;
-        } else if (
-          currentTopologyValueMode === TopologyValueMode.DELTA_WITH_DROPOFF
-        ) {
-          data.YCrd[1000].obj[flatPos] =
-            data.YCrd[1000].obj[flatPos] + value * (1 - distance);
-        }
-
-        //Clamp
-        if (data.YCrd[1000].obj[flatPos] < header.minY) {
-          data.YCrd[1000].obj[flatPos] = header.minY;
-        }
-        if (data.YCrd[1000].obj[flatPos] > header.maxY) {
-          data.YCrd[1000].obj[flatPos] = header.maxY;
-        }
-      }
+      // Use shared brush application utility
+      applyTopologyBrush(data.YCrd[1000].obj, pixelList, {
+        centerX: 0, // Not used in applyTopologyBrush
+        centerY: 0, // Not used in applyTopologyBrush
+        radius: (topologyBrushRadius - 1) * globals.TILE_SIZE,
+        brushMode: currentTopologyBrushMode,
+        valueMode: currentTopologyValueMode,
+        value: topologyValue,
+        header,
+        globals,
+        tileSize: globals.TILE_SIZE,
+      });
     });
+  };
+
+  const applyBrushAt = (
+    centerX: number,
+    centerY: number,
+    lineStart?: { x: number; y: number },
+  ) => {
+    const radius = (topologyBrushRadius - 1) * globals.TILE_SIZE;
+    const pixelList = calculateBrushPixels({
+      centerX,
+      centerY,
+      radius,
+      brushMode: currentTopologyBrushMode,
+      valueMode: currentTopologyValueMode,
+      value: topologyValue,
+      header,
+      globals,
+      tileSize: globals.TILE_SIZE,
+      lineStart,
+      lineEnd: { x: centerX, y: centerY },
+    });
+    setPixels(pixelList);
   };
 
   return (
@@ -183,304 +227,36 @@ export function TopologyTiles({
 
           const centerX = Math.round(pos.x);
           const centerY = Math.round(pos.y);
-          const radius = (topologyBrushRadius - 1) * globals.TILE_SIZE;
-          const pixelList: PixelType[] = [];
-
-          if (currentTopologyBrushMode === TopologyBrushMode.CIRCLE_BRUSH) {
-            // Create a circular brush pattern
-            const baseX = centerX - radius;
-            const baseY = centerY - radius;
-            const diameter = radius * 2;
-
-            for (let i = 0; i <= diameter; i += globals.TILE_SIZE) {
-              for (let j = 0; j <= diameter; j += globals.TILE_SIZE) {
-                const tileX = baseX + i;
-                const tileY = baseY + j;
-
-                // Calculate if this tile is within the circle radius
-                const distanceSquared =
-                  Math.pow(tileX - centerX, 2) + Math.pow(tileY - centerY, 2);
-
-                const distance = Math.sqrt(distanceSquared) / radius;
-
-                if (distanceSquared <= Math.pow(radius, 2)) {
-                  pixelList.push({
-                    x: tileX,
-                    y: tileY,
-                    value: topologyValue,
-                    distance: distance,
-                  });
-                }
-              }
-            }
-          } else {
-            // Original square brush pattern
-            const baseX = centerX - radius;
-            const baseY = centerY - radius;
-            const size = radius * 2;
-
-            // Calculate distance for square brush (normalized from 0 to 1)
-            // Using Manhattan distance for square pattern feel
-            for (let i = 0; i <= size; i += globals.TILE_SIZE) {
-              for (let j = 0; j <= size; j += globals.TILE_SIZE) {
-                const tileX = baseX + i;
-                const tileY = baseY + j;
-
-                // Calculate distance from center (using max of x,y distance for square pattern feel)
-                const xDistance = Math.abs(tileX - centerX);
-                const yDistance = Math.abs(tileY - centerY);
-                const distance = Math.max(xDistance, yDistance) / radius;
-
-                pixelList.push({
-                  x: tileX,
-                  y: tileY,
-                  value: topologyValue,
-                  distance: distance,
-                });
-              }
-            }
-          }
-
-          setPixels(pixelList);
+          applyBrushAt(centerX, centerY);
         }}
-        image={imgCanvas}
-      />
-    </Layer>
-  );
-}
-export function EmptyTiles({
-  data,
-  setData,
-  tileGrid,
-}: {
-  data: ottoMaticLevel;
-  setData: Updater<ottoMaticLevel>;
-  tileGrid: ottoTileAttribute[];
-}) {
-  const globals = useAtomValue(Globals);
-  // Use Jotai atoms for tile editing state
-  const tileEditingEnabled = useAtomValue(TileEditingEnabled);
-  const brushType = useAtomValue(TileBrushType);
-  const currentTileView = useAtomValue(TileViewMode);
-  const topologyBrushRadius = useAtomValue(TopologyBrushRadius);
-
-  const header = useMemo(() => data.Hedr[1000].obj, [data.Hedr]);
-
-  const flagToColour = (flag: number) => {
-    //TILE_ATTRB_BLANK
-    if (flag & 1) return [255, 255, 255, 255];
-    return [0, 0, 0, 0];
-  };
-
-  const coordColours = useMemo(() => {
-    return tileGrid.flatMap((tile) => flagToColour(tile.flags));
-  }, [tileGrid]);
-
-  const imgCanvas = useMemo(() => {
-    const imgCanvas = document.createElement("canvas");
-    imgCanvas.width = header.mapWidth;
-    imgCanvas.height = header.mapHeight;
-    const imgCtx = imgCanvas.getContext("2d");
-    if (!imgCtx) throw new Error("Could not get canvas context");
-
-    imgCtx.putImageData(
-      new ImageData(
-        new Uint8ClampedArray(coordColours),
-        header.mapWidth,
-        header.mapHeight,
-      ),
-      0,
-      0,
-    );
-    return imgCanvas;
-  }, [header.mapWidth, header.mapHeight, coordColours]);
-
-  const handleTileClickEvent = (e: KonvaEventObject<MouseEvent>) => {
-    if (!tileEditingEnabled) return;
-
-    const pos = e.target.getStage()?.getRelativePointerPosition();
-    if (!pos) return;
-
-    // Call our handler function with brush radius
-    handleTileClick(
-      pos.x,
-      pos.y,
-      setData,
-      currentTileView,
-      tileEditingEnabled,
-      brushType,
-      globals.TILE_SIZE,
-      topologyBrushRadius,
-    );
-  };
-
-  return (
-    <Layer imageSmoothingEnabled={false}>
-      <Image
-        x={0}
-        y={0}
-        width={header.mapWidth * globals.TILE_SIZE}
-        height={header.mapHeight * globals.TILE_SIZE}
-        image={imgCanvas}
-        onClick={handleTileClickEvent}
-      />
-    </Layer>
-  );
-}
-export function ElectricFloor0Tiles({
-  data,
-  setData,
-  tileGrid,
-}: {
-  data: ottoMaticLevel;
-  setData: Updater<ottoMaticLevel>;
-  tileGrid: ottoTileAttribute[];
-}) {
-  const globals = useAtomValue(Globals);
-  // Use Jotai atoms for tile editing state
-  const tileEditingEnabled = useAtomValue(TileEditingEnabled);
-  const brushType = useAtomValue(TileBrushType);
-  const currentTileView = useAtomValue(TileViewMode);
-  const topologyBrushRadius = useAtomValue(TopologyBrushRadius);
-
-  const header = useMemo(() => data.Hedr[1000].obj, [data.Hedr]);
-
-  const flagToColour = (flag: number) => {
-    //Electric 1
-    if (flag & (1 << 1)) return [255, 255, 255, 255];
-    return [0, 0, 0, 0];
-  };
-
-  const coordColours = useMemo(() => {
-    return tileGrid.flatMap((tile) => flagToColour(tile.flags));
-  }, [tileGrid]);
-
-  const imgCanvas = useMemo(() => {
-    const imgCanvas = document.createElement("canvas");
-    imgCanvas.width = header.mapWidth;
-    imgCanvas.height = header.mapHeight;
-    const imgCtx = imgCanvas.getContext("2d");
-    if (!imgCtx) throw new Error("Could not get canvas context");
-
-    imgCtx.putImageData(
-      new ImageData(
-        new Uint8ClampedArray(coordColours),
-        header.mapWidth,
-        header.mapHeight,
-      ),
-      0,
-      0,
-    );
-    return imgCanvas;
-  }, [header.mapWidth, header.mapHeight, coordColours]);
-
-  const handleTileClickEvent = (e: KonvaEventObject<MouseEvent>) => {
-    if (!tileEditingEnabled) return;
-
-    const pos = e.target.getStage()?.getRelativePointerPosition();
-    if (!pos) return;
-
-    // Call our handler function with brush radius
-    handleTileClick(
-      pos.x,
-      pos.y,
-      setData,
-      currentTileView,
-      tileEditingEnabled,
-      brushType,
-      globals.TILE_SIZE,
-      topologyBrushRadius,
-    );
-  };
-
-  return (
-    <Layer imageSmoothingEnabled={false}>
-      <Image
-        x={0}
-        y={0}
-        width={header.mapWidth * globals.TILE_SIZE}
-        height={header.mapHeight * globals.TILE_SIZE}
-        image={imgCanvas}
-        onClick={handleTileClickEvent}
-      />
-    </Layer>
-  );
-}
-export function ElectricFloor1Tiles({
-  data,
-  setData,
-  tileGrid,
-}: {
-  data: ottoMaticLevel;
-  setData: Updater<ottoMaticLevel>;
-  tileGrid: ottoTileAttribute[];
-}) {
-  const globals = useAtomValue(Globals);
-  // Use Jotai atoms for tile editing state
-  const tileEditingEnabled = useAtomValue(TileEditingEnabled);
-  const brushType = useAtomValue(TileBrushType);
-  const currentTileView = useAtomValue(TileViewMode);
-  const topologyBrushRadius = useAtomValue(TopologyBrushRadius);
-
-  const header = useMemo(() => data.Hedr[1000].obj, [data.Hedr]);
-
-  const flagToColour = (flag: number) => {
-    //Electric 2
-    if (flag & (1 << 2)) return [255, 255, 255, 255];
-    return [0, 0, 0, 0];
-  };
-
-  const coordColours = useMemo(() => {
-    return tileGrid.flatMap((tile) => flagToColour(tile.flags));
-  }, [tileGrid]);
-
-  const imgCanvas = useMemo(() => {
-    const imgCanvas = document.createElement("canvas");
-    imgCanvas.width = header.mapWidth;
-    imgCanvas.height = header.mapHeight;
-    const imgCtx = imgCanvas.getContext("2d");
-    if (!imgCtx) throw new Error("Could not get canvas context");
-
-    imgCtx.putImageData(
-      new ImageData(
-        new Uint8ClampedArray(coordColours),
-        header.mapWidth,
-        header.mapHeight,
-      ),
-      0,
-      0,
-    );
-    return imgCanvas;
-  }, [header.mapWidth, header.mapHeight, coordColours]);
-
-  const handleTileClickEvent = (e: KonvaEventObject<MouseEvent>) => {
-    if (!tileEditingEnabled) return;
-
-    const pos = e.target.getStage()?.getRelativePointerPosition();
-    if (!pos) return;
-
-    // Call our handler function with brush radius
-    handleTileClick(
-      pos.x,
-      pos.y,
-      setData,
-      currentTileView,
-      tileEditingEnabled,
-      brushType,
-      globals.TILE_SIZE,
-      topologyBrushRadius,
-    );
-  };
-
-  return (
-    <Layer imageSmoothingEnabled={false}>
-      <Image
-        x={0}
-        y={0}
-        width={header.mapWidth * globals.TILE_SIZE}
-        height={header.mapHeight * globals.TILE_SIZE}
-        image={imgCanvas}
-        onClick={handleTileClickEvent}
+        onMouseDown={(e) => {
+          if (!isEditingTopology) return;
+          const pos = e.target.getStage()?.getRelativePointerPosition();
+          if (!pos) return;
+          const centerX = Math.round(pos.x);
+          const centerY = Math.round(pos.y);
+          setIsDragging(true);
+          setLastBrushPoint({ x: centerX, y: centerY });
+          applyBrushAt(centerX, centerY);
+        }}
+        onMouseMove={(e) => {
+          if (!isEditingTopology || !isDragging) return;
+          const pos = e.target.getStage()?.getRelativePointerPosition();
+          if (!pos) return;
+          const centerX = Math.round(pos.x);
+          const centerY = Math.round(pos.y);
+          const lineStart =
+            currentTopologyValueMode === TopologyValueMode.SET_VALUE
+              ? undefined
+              : lastBrushPoint ?? { x: centerX, y: centerY };
+          applyBrushAt(centerX, centerY, lineStart);
+          setLastBrushPoint({ x: centerX, y: centerY });
+        }}
+        onMouseUp={() => {
+          setIsDragging(false);
+          setLastBrushPoint(null);
+        }}
+        image={imgCanvas ?? undefined}
       />
     </Layer>
   );
