@@ -211,40 +211,14 @@ export function ModelUploadPanel({
               </Button>
               <Button
                 onClick={() => handleClearModel()}
-                className="w-full text-white"
+                variant="destructive"
+                className="w-full"
               >
                 <X className="w-4 h-4 mr-2" />
                 Clear Model
               </Button>
+
             </div>
-            <hr className="border-gray-600" />
-            <Button
-              onClick={() => fileInputRef.current?.click()}
-              className="w-full text-white"
-              size="sm"
-            >
-              <Upload className="w-4 h-4 mr-2" />
-              Load Different Model
-            </Button>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept=".bg3d,.3dmf,.skeleton.rsrc"
-              multiple
-              className="hidden"
-              onChange={(e) => {
-                const files = Array.from(e.target.files || []);
-                const bg3dFile = files.find((f) =>
-                  f.name.toLowerCase().endsWith(".bg3d"),
-                );
-                const skeletonFile = files.find((f) =>
-                  f.name.toLowerCase().endsWith(".skeleton.rsrc"),
-                );
-                if (bg3dFile) {
-                  handleFileUpload(bg3dFile, skeletonFile);
-                }
-              }}
-            />
           </div>
         )}
       </CardContent>

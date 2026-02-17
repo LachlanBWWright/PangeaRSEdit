@@ -16,7 +16,7 @@ export function Navigation() {
 
   return (
     <nav className="sticky top-0 z-50 bg-slate-800 border-b border-slate-700 px-2 md:px-4 py-2 h-14 flex items-center gap-2 md:gap-4">
-      <h1 className="text-white text-lg md:text-xl font-bold shrink-0">PangeaRS Edit</h1>
+      <h1 className="text-white text-lg md:text-xl font-bold shrink-0 hidden md:block">PangeaRS Edit</h1>
       <div className="flex gap-2 overflow-x-auto whitespace-nowrap min-w-0 pr-1">
         <Button
           asChild
@@ -25,7 +25,7 @@ export function Navigation() {
         >
           <Link to="/" className="text-white">
             <Map className="w-4 h-4" />
-            Level Editor
+            <span>Level Editor</span>
           </Link>
         </Button>
         <Button
@@ -35,7 +35,7 @@ export function Navigation() {
         >
           <Link to="/model-viewer" className="text-white">
             <Box className="w-4 h-4" />
-            Model Viewer
+            <span>Model Viewer</span>
           </Link>
         </Button>
         <Button
@@ -47,7 +47,7 @@ export function Navigation() {
         >
           <Link to="/download-levels" className="text-white">
             <Download className="w-4 h-4" />
-            Download Levels
+            <span>Download Levels</span>
           </Link>
         </Button>
         {showExperimentalLinks && (
@@ -61,7 +61,7 @@ export function Navigation() {
             >
               <Link to="/sprite-viewer" className="text-white">
                 <Image className="w-4 h-4" />
-                Sprite Viewer
+                <span>Sprite Viewer</span>
               </Link>
             </Button>
             <Button
@@ -71,7 +71,7 @@ export function Navigation() {
             >
               <Link to="/item-models" className="text-white">
                 <Boxes className="w-4 h-4" />
-                Item Models
+                <span>Item Models</span>
               </Link>
             </Button>
             <Button
@@ -81,7 +81,7 @@ export function Navigation() {
             >
               <Link to="/test-models" className="text-white">
                 <FlaskConical className="w-4 h-4" />
-                Test Models
+                <span>Test Models</span>
               </Link>
             </Button>
             <Button
@@ -91,7 +91,7 @@ export function Navigation() {
             >
               <Link to="/item-audit" className="text-white">
                 <ClipboardList className="w-4 h-4" />
-                Item Audit
+                <span>Item Audit</span>
               </Link>
             </Button>
           </>
