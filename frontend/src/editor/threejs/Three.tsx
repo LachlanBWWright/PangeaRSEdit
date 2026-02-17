@@ -2,6 +2,7 @@ import { Canvas, useThree } from "@react-three/fiber";
 import { MapControls } from "@react-three/drei";
 import { TerrainGeometry } from "./Terrain";
 import { RoofGeometry } from "./RoofGeometry";
+import { RoofGapGeometry } from "./RoofGapGeometry";
 import { FenceGeometry } from "./FenceGeometry";
 import { LiquidGeometry } from "./LiquidGeometry";
 import { ItemGeometry } from "./ItemGeometry";
@@ -60,6 +61,7 @@ import {
   applyTopologyBrush,
   applyDualTopologyBrush,
   worldToTile,
+  brushRadiusToWorldRadius,
 } from "../utils/topologyBrushUtils";
 
 function SceneExporter() {
@@ -196,7 +198,10 @@ export function ThreeView({
 
       // Calculate affected pixels for preview
       const tileCoords = worldToTile(event.point.x, event.point.z, globals.TILE_INGAME_SIZE);
-      const radius = Math.max(1, brushRadius) * globals.TILE_INGAME_SIZE;
+      const radius = brushRadiusToWorldRadius(
+        brushRadius,
+        globals.TILE_INGAME_SIZE,
+      );
       const currentCenter = {
         x: tileCoords.x * globals.TILE_INGAME_SIZE,
         y: tileCoords.z * globals.TILE_INGAME_SIZE,
@@ -307,7 +312,10 @@ export function ThreeView({
       
       // Apply brush
       const tileCoords = worldToTile(event.point.x, event.point.z, globals.TILE_INGAME_SIZE);
-      const radius = Math.max(1, brushRadius) * globals.TILE_INGAME_SIZE;
+      const radius = brushRadiusToWorldRadius(
+        brushRadius,
+        globals.TILE_INGAME_SIZE,
+      );
       const currentCenter = {
         x: tileCoords.x * globals.TILE_INGAME_SIZE,
         y: tileCoords.z * globals.TILE_INGAME_SIZE,
@@ -428,9 +436,9 @@ export function ThreeView({
         // Keep panning aligned with the ground plane, so panning feels intuitive
         screenSpacePanning={false}
         mouseButtons={{
-          LEFT: MOUSE.ROTATE,
+          LEFT: MOUSE.PAN,
           MIDDLE: MOUSE.DOLLY,
-          RIGHT: MOUSE.PAN,
+          RIGHT: MOUSE.ROTATE,
         }}
         // Start looking at the center of the map
         target={[unitsWide / 2, 0, unitsHigh / 2]}
@@ -460,6 +468,7 @@ export function ThreeView({
         onPointerMove={isEditingTopology ? handlePointerMove : undefined}
         onPointerUp={isEditingTopology ? handlePointerUp : undefined}
       />
+      <RoofGapGeometry headerData={headerData} terrainData={terrainData} />
       {isEditingTopology && (
         <>
           <TopologyBrush3D 

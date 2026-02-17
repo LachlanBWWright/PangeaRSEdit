@@ -27,6 +27,17 @@ export interface BrushParams {
   lineEnd?: { x: number; y: number };
 }
 
+/**
+ * Convert user-selected brush radius (in tiles) to world-space distance.
+ * A minimum of 1 tile is enforced so radius=1 always affects at least one tile.
+ */
+export function brushRadiusToWorldRadius(
+  brushRadius: number,
+  tileIngameSize: number,
+): number {
+  return Math.max(1, brushRadius) * tileIngameSize;
+}
+
 export function distanceToLineSegment(
   pointX: number,
   pointY: number,

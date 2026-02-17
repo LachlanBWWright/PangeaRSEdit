@@ -16,6 +16,9 @@ import {
 } from "./uploadStagingUtils";
 import { cn } from "@/lib/utils";
 
+const GAME_CARD_HEIGHT_CLASS = "h-[288px]";
+const GAME_CARD_PREVIEW_HEIGHT_CLASS = "h-20";
+
 const getModelPath = (gameType: Game): string | undefined => {
   switch (gameType) {
     case Game.OTTO_MATIC:
@@ -101,8 +104,11 @@ export function GameCard({
     stagedTextureFile,
   ]);
   const formattedAccepts = accepts.split(",").join(", ");
-  const uploadDropzoneClassName =
-    "border-2 border-dashed border-gray-600 rounded-lg p-2 h-20 text-center cursor-pointer hover:border-gray-500 transition-colors flex flex-col justify-center gap-0.5";
+  const uploadDropzoneClassName = cn(
+    "border-2 border-dashed border-gray-600 rounded-lg p-2 h-20 text-center",
+    "cursor-pointer hover:border-gray-500 transition-colors flex flex-col",
+    "justify-center gap-0.5",
+  );
 
   const clearStaged = () => {
     stagedLevelRef.current = null;
@@ -249,7 +255,12 @@ export function GameCard({
   };
 
   return (
-    <Card className="h-72 flex flex-col min-h-0 bg-gray-800 border-gray-700 text-white">
+    <Card
+      className={cn(
+        GAME_CARD_HEIGHT_CLASS,
+        "flex flex-col min-h-0 bg-gray-800 border-gray-700 text-white",
+      )}
+    >
       <CardContent className="flex h-full min-h-0 flex-col gap-2 p-3">
         <div className="flex-none min-h-8">
           <h3 className="text-lg font-semibold">{title}</h3>
@@ -266,7 +277,12 @@ export function GameCard({
           </p>
 
           {isMightyMike ? (
-            <div className="w-full h-20 flex items-center justify-center">
+            <div
+              className={cn(
+                "w-full flex items-center justify-center",
+                GAME_CARD_PREVIEW_HEIGHT_CLASS,
+              )}
+            >
               <img
                 src="https://raw.githubusercontent.com/jorio/MightyMike/refs/heads/master/packaging/MightyMikeRaw.png"
                 alt="Mighty Mike"
@@ -274,7 +290,11 @@ export function GameCard({
               />
             </div>
           ) : (
-            <MiniThreeView gltfUrl={modelPath} gameType={globals.GAME_TYPE} />
+            <MiniThreeView
+              gltfUrl={modelPath}
+              gameType={globals.GAME_TYPE}
+              className={GAME_CARD_PREVIEW_HEIGHT_CLASS}
+            />
           )}
         </div>
 
@@ -299,9 +319,9 @@ export function GameCard({
             onClick={() => inputRef.current?.click()}
           >
             <Upload className="w-8 h-8 mx-auto mb-2 text-gray-400" />
-                <p className="text-xs text-gray-300">
-                  Drop files here or click to browse
-                </p>
+            <p className="text-xs text-gray-300">
+              Drop files here or click to browse
+            </p>
             <p className="text-xs text-gray-500 mt-1 break-all">Accepted: {formattedAccepts}</p>
             <p className="text-xs text-gray-400 break-all">
               {stagedLevelFile ? `Staged level: ${stagedLevelFile.name}` : "No level file staged"}

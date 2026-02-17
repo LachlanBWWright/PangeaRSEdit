@@ -14,6 +14,7 @@ import {
   TopologyBrushRadius,
   TopologyBrushMode,
 } from "@/data/tiles/tileAtoms";
+import { brushRadiusToWorldRadius } from "../utils/topologyBrushUtils";
 
 const BRUSH_SURFACE_OFFSET = 0.08;
 const BRUSH_INNER_OFFSET = BRUSH_SURFACE_OFFSET * 2;
@@ -46,7 +47,10 @@ export function TopologyBrush3D({
   const brushMode = useAtomValue(CurrentTopologyBrushMode);
   const brushRadius = useAtomValue(TopologyBrushRadius);
 
-  const worldRadius = Math.max(1, brushRadius) * globals.TILE_INGAME_SIZE;
+  const worldRadius = brushRadiusToWorldRadius(
+    brushRadius,
+    globals.TILE_INGAME_SIZE,
+  );
 
   const geometry = useMemo(
     () =>

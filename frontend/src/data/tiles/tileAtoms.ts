@@ -35,6 +35,7 @@ export const TopologyOpacity = atom<number>(1);
 
 // Roof support atoms (for Bugdom 1 and games with YCrd 1001)
 export const ShowRoofInTopology = atom<boolean>(false);
+export const ShowRoofGapInTopology = atom<boolean>(false);
 export const EditRoofAndFloorTogether = atom<boolean>(false);
 export const RoofFloorElevation = atom<number>(100); // Center elevation for dual editing
 
