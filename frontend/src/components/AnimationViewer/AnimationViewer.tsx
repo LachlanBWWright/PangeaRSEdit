@@ -219,8 +219,8 @@ export function AnimationViewer({
     }
   };
 
-  const handleTimeChange = (newTime: number[]) => {
-    const time = newTime[0] ?? 0;
+  const handleTimeChange = (newTime: number) => {
+    const time = newTime;
     if (currentActionRef.current && animationMixer) {
       currentActionRef.current.time = time;
       setCurrentTime(time);
@@ -701,7 +701,7 @@ export function AnimationViewer({
             timelineDuration={timelineDuration}
             timelinePlayhead={timelinePlayhead}
             timelineRows={timelineRows}
-            boneTransform={boneTransform}
+            boneTransform={boneTransform ?? null}
             onBoneNameChange={handleBoneNameChange}
             onTrackPropertyChange={handleTrackPropertyChange}
             onSelectKeyframe={handleSelectKeyframe}

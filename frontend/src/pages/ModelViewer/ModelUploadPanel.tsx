@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Upload, X, Download } from "lucide-react";
 import { GameModelSelector } from "@/components/GameModelSelector";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 /* interface Texture {
   name: string;
@@ -25,8 +26,6 @@ interface Props {
   handleBg3dFileSelect: (f: File) => void;
   handleSkeletonFileSelect: (f?: File) => void;
   handleSkipSkeleton: () => void;
-  loadTestModel: () => Promise<void>;
-  loadTestModelWithoutSkeleton: () => Promise<void>;
   handleFileUpload: (
     bg3dFile: File,
     skeletonFile?: File,
@@ -51,8 +50,6 @@ export function ModelUploadPanel({
   handleBg3dFileSelect,
   handleSkeletonFileSelect,
   handleSkipSkeleton,
-  loadTestModel,
-  loadTestModelWithoutSkeleton,
   handleFileUpload,
   handleDownloadBG3D,
   handleDownloadGLB,
@@ -72,48 +69,18 @@ export function ModelUploadPanel({
       <CardContent className="space-y-4">
         {!gltfUrl ? (
           <>
-            <div className="flex space-x-2 mb-4">
-              <Button
-                onClick={() => setUseGameSelector(true)}
-                size="sm"
-                className="flex-1"
-              >
-                Game Models
-              </Button>
-              <Button
-                onClick={() => setUseGameSelector(false)}
-                size="sm"
-                className="flex-1"
-              >
-                Upload Files
-              </Button>
-            </div>
+            <Tabs
+              value={useGameSelector ? "game-models" : "upload-files"}
+              onValueChange={(value) => setUseGameSelector(value === "game-models")}
+            >
+              <TabsList className="mb-4 grid w-full grid-cols-2">
+                <TabsTrigger value="game-models">Game Models</TabsTrigger>
+                <TabsTrigger value="upload-files">Upload Files</TabsTrigger>
+              </TabsList>
+            </Tabs>
 
             {useGameSelector ? (
-              <>
-                <GameModelSelector
-                  onLoadModel={handleFileUpload}
-                  loading={loading}
-                />
-                <hr className="border-gray-600 my-4" />
-                <p className="text-xs text-gray-400 text-center mb-2">
-                  Or use sample files:
-                </p>
-                <Button
-                  onClick={loadTestModel}
-                  className="w-full text-white text-xs"
-                  disabled={loading}
-                >
-                  Otto Sample (with Skeleton)
-                </Button>
-                <Button
-                  onClick={loadTestModelWithoutSkeleton}
-                  className="w-full text-white text-xs mt-2"
-                  disabled={loading}
-                >
-                  Otto Sample (no Skeleton)
-                </Button>
-              </>
+              <GameModelSelector onLoadModel={handleFileUpload} loading={loading} />
             ) : (
               <>
                 {uploadStep === "select-bg3d" && (
@@ -244,40 +211,14 @@ export function ModelUploadPanel({
               </Button>
               <Button
                 onClick={() => handleClearModel()}
-                className="w-full text-white"
+                variant="destructive"
+                className="w-full"
               >
                 <X className="w-4 h-4 mr-2" />
                 Clear Model
               </Button>
+
             </div>
-            <hr className="border-gray-600" />
-            <Button
-              onClick={() => fileInputRef.current?.click()}
-              className="w-full text-white"
-              size="sm"
-            >
-              <Upload className="w-4 h-4 mr-2" />
-              Load Different Model
-            </Button>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept=".bg3d,.3dmf,.skeleton.rsrc"
-              multiple
-              className="hidden"
-              onChange={(e) => {
-                const files = Array.from(e.target.files || []);
-                const bg3dFile = files.find((f) =>
-                  f.name.toLowerCase().endsWith(".bg3d"),
-                );
-                const skeletonFile = files.find((f) =>
-                  f.name.toLowerCase().endsWith(".skeleton.rsrc"),
-                );
-                if (bg3dFile) {
-                  handleFileUpload(bg3dFile, skeletonFile);
-                }
-              }}
-            />
           </div>
         )}
       </CardContent>

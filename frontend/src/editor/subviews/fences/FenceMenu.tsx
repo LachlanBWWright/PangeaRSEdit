@@ -113,23 +113,23 @@ export function FenceMenu({
                     </SelectItem>
                   ))}
                 </SelectContent>
-                </Select>
+              </Select>
+              {fencePreviewPath && (
+                <div className="border border-gray-600 rounded bg-gray-800 p-2 flex items-center justify-center mt-2">
+                  <img
+                    src={fencePreviewPath}
+                    alt={getFenceName(globals, fenceDataObj.fenceType)}
+                    className="max-h-24 max-w-full object-contain"
+                    onError={(e) => {
+                      e.currentTarget.style.display = "none";
+                    }}
+                  />
+                </div>
+              )}
             </>
           )}
         </div>
         <div className="flex flex-col gap-2">
-          {fencePreviewPath && (
-            <div className="border border-gray-600 rounded bg-gray-800 p-2 flex items-center justify-center">
-              <img
-                src={fencePreviewPath}
-                alt={getFenceName(globals, fenceDataObj?.fenceType ?? 0)}
-                className="max-h-24 max-w-full object-contain"
-                onError={(e) => {
-                  e.currentTarget.style.display = "none";
-                }}
-              />
-            </div>
-          )}
           <Button
             disabled={selectedFence === undefined}
             onClick={() => {

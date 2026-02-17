@@ -76,8 +76,6 @@ export function rgba8ToPng(
   height: number,
 ): Buffer {
   const expectedLength = width * height * 4;
-  console.log("Setting PNG data with length:", rgba.length, "expected:", expectedLength);
-  console.log("PNG dimensions:", width, "x", height);
 
   if (rgba.length !== expectedLength) {
     console.warn(`RGBA data length mismatch: got ${rgba.length}, expected ${expectedLength}`);
@@ -86,7 +84,6 @@ export function rgba8ToPng(
   const png = new PNG({ width, height });
   png.data.set(rgba);
   const encoded = PNG.sync.write(png);
-  console.log("PNG encoded successfully, size:", encoded.length);
   return encoded;
 }
 

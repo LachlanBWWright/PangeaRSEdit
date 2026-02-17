@@ -8,6 +8,7 @@ import { Updater } from "use-immer";
 import {
   CurrentTopologyBrushMode,
   CurrentTopologyValueMode,
+  TopologyValueMode,
   TileViewMode,
   TileViews,
   TopologyBrushRadius,
@@ -16,7 +17,7 @@ import {
 } from "../../data/tiles/tileAtoms";
 import { useAtomValue } from "jotai";
 import { Globals } from "../../data/globals/globals";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { createImageCanvas } from "./tiles/tilesUtils";
 import { elevationToRGBA } from "./tiles/tilesUtils";
 import { calculateBrushPixels, applyTopologyBrush, PixelType } from "../utils/topologyBrushUtils";
@@ -129,6 +130,10 @@ export function TopologyTiles({
   const topologyBrushRadius = useAtomValue(TopologyBrushRadius);
   const globals = useAtomValue(Globals);
   const opacity = useAtomValue(TopologyOpacity);
+  const [isDragging, setIsDragging] = useState(false);
+  const [lastBrushPoint, setLastBrushPoint] = useState<{ x: number; y: number } | null>(
+    null,
+  );
 
   const header = useMemo(() => headerData.Hedr[1000].obj, [headerData.Hedr]);
 
@@ -185,6 +190,28 @@ export function TopologyTiles({
     });
   };
 
+  const applyBrushAt = (
+    centerX: number,
+    centerY: number,
+    lineStart?: { x: number; y: number },
+  ) => {
+    const radius = (topologyBrushRadius - 1) * globals.TILE_SIZE;
+    const pixelList = calculateBrushPixels({
+      centerX,
+      centerY,
+      radius,
+      brushMode: currentTopologyBrushMode,
+      valueMode: currentTopologyValueMode,
+      value: topologyValue,
+      header,
+      globals,
+      tileSize: globals.TILE_SIZE,
+      lineStart,
+      lineEnd: { x: centerX, y: centerY },
+    });
+    setPixels(pixelList);
+  };
+
   return (
     <Layer imageSmoothingEnabled={false}>
       <Image
@@ -200,22 +227,34 @@ export function TopologyTiles({
 
           const centerX = Math.round(pos.x);
           const centerY = Math.round(pos.y);
-          const radius = (topologyBrushRadius - 1) * globals.TILE_SIZE;
-
-          // Use shared brush calculation utility
-          const pixelList = calculateBrushPixels({
-            centerX,
-            centerY,
-            radius,
-            brushMode: currentTopologyBrushMode,
-            valueMode: currentTopologyValueMode,
-            value: topologyValue,
-            header,
-            globals,
-            tileSize: globals.TILE_SIZE,
-          });
-
-          setPixels(pixelList);
+          applyBrushAt(centerX, centerY);
+        }}
+        onMouseDown={(e) => {
+          if (!isEditingTopology) return;
+          const pos = e.target.getStage()?.getRelativePointerPosition();
+          if (!pos) return;
+          const centerX = Math.round(pos.x);
+          const centerY = Math.round(pos.y);
+          setIsDragging(true);
+          setLastBrushPoint({ x: centerX, y: centerY });
+          applyBrushAt(centerX, centerY);
+        }}
+        onMouseMove={(e) => {
+          if (!isEditingTopology || !isDragging) return;
+          const pos = e.target.getStage()?.getRelativePointerPosition();
+          if (!pos) return;
+          const centerX = Math.round(pos.x);
+          const centerY = Math.round(pos.y);
+          const lineStart =
+            currentTopologyValueMode === TopologyValueMode.SET_VALUE
+              ? undefined
+              : lastBrushPoint ?? { x: centerX, y: centerY };
+          applyBrushAt(centerX, centerY, lineStart);
+          setLastBrushPoint({ x: centerX, y: centerY });
+        }}
+        onMouseUp={() => {
+          setIsDragging(false);
+          setLastBrushPoint(null);
         }}
         image={imgCanvas ?? undefined}
       />

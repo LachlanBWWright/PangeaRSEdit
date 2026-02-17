@@ -262,7 +262,6 @@ export function IntroPrompt() {
     }
 
     let mapBlob: Blob;
-    let byteLength = 0;
 
     // Handle custom binary formats based on Game type
     if (globals.GAME_TYPE === Game.NANOSAUR) {
@@ -284,7 +283,6 @@ export function IntroPrompt() {
       }
 
       mapBlob = new Blob([result.value], { type: ".ter" });
-      byteLength = result.value.byteLength;
     } else if (globals.GAME_TYPE === Game.MIGHTY_MIKE) {
       // Mighty Mike: Use custom serializer
       const result = serializeMightyMikeLevel(combinedData);
@@ -294,7 +292,6 @@ export function IntroPrompt() {
         return;
       }
       mapBlob = new Blob([result.value], { type: ".map" });
-      byteLength = result.value.byteLength;
     } else {
       // Standard Resource Fork games: Use rsrcdump-ts
 
@@ -343,7 +340,6 @@ export function IntroPrompt() {
       }
 
       mapBlob = new Blob([loadRes.slice(0)], { type: ".ter.rsrc" });
-      byteLength = loadRes.byteLength;
     }
 
     const mapUrl = URL.createObjectURL(mapBlob);
@@ -352,10 +348,6 @@ export function IntroPrompt() {
     downloadLink.href = mapUrl;
     downloadLink.setAttribute("download", mapFile.name);
     downloadLink.click();
-
-    console.log(
-      `Map downloaded successfully: ${mapFile.name} (${byteLength} bytes)`,
-    );
 
     // For RSRC_FORK games (e.g., Bugdom 1) the texture data (Timg) is
     // embedded in the same resource file; skip the separate texture
@@ -374,7 +366,9 @@ export function IntroPrompt() {
 
     //Download Images
     if (!mapImages) {
-      console.warn("No map images to download");
+      toast.error("Download failed", {
+        description: "No map images are loaded for this level.",
+      });
       return;
     }
 
@@ -384,7 +378,6 @@ export function IntroPrompt() {
     const compressTextures = new Promise<DataView[]>((res, err) => {
       const compressedTextures: DataView[] = new Array(mapImages.length);
       const resolvedTextures = { count: 0 };
-      console.time("compress");
       for (let i = 0; i < mapImages.length; i++) {
         const canvas = mapImages[i];
         if (!canvas) {
@@ -414,13 +407,11 @@ export function IntroPrompt() {
           resolvedTextures.count++;
 
           if (resolvedTextures.count === mapImages.length) {
-            console.timeEnd("compress");
             res(compressedTextures);
           }
           lzssWorker.terminate();
         };
 
-        console.log("Before", imageData.data.buffer.byteLength);
         lzssWorker.postMessage(
           {
             uIntArray: imageData.data,
@@ -430,7 +421,6 @@ export function IntroPrompt() {
           } satisfies LzssMessage,
           [imageData.data.buffer],
         );
-        console.log("After", imageData.data.buffer.byteLength);
       }
     });
     const bufferList = await compressTextures;

@@ -19,15 +19,6 @@ interface IndividualTileSupertilesProps {
 export const IndividualTileSupertiles = memo(
   ({ headerData, terrainData, mapImages }: IndividualTileSupertilesProps) => {
     const xlatTable = terrainData.Xlat?.[1000]?.obj;
-    
-    console.log(
-      "IndividualTileSupertiles: Rendering individual tile system",
-      { 
-        xlatTableLength: xlatTable?.length,
-        mapImagesCount: mapImages.length,
-        hasLayr: !!terrainData.Layr?.[1000]?.obj,
-      },
-    );
 
     return (
       <BugdomSupertiles

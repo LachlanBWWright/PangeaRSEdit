@@ -127,9 +127,6 @@ export function useFileUpload(options: UseFileUploadOptions) {
         // Parse skeleton file if provided
         let skeletonData: SkeletonResource | undefined;
         if (skeletonFile) {
-          console.log(
-            "Parsing skeleton file with TypeScript implementation...",
-          );
           const skeletonBufferResult = await fromPromise(
             skeletonFile.arrayBuffer(),
           );
@@ -155,9 +152,6 @@ export function useFileUpload(options: UseFileUploadOptions) {
               );
             } else {
               skeletonData = skeletonParseResult.value;
-              console.log(
-                `Successfully parsed skeleton with ${Object.keys(skeletonData?.Bone || {}).length || 0} bones`,
-              );
             }
           }
         }
@@ -228,12 +222,6 @@ export function useFileUpload(options: UseFileUploadOptions) {
           if (enhancedParsed) {
             onBg3dParsedChange(enhancedParsed);
 
-            // Check if skeleton data was preserved
-            if (enhancedParsed.skeleton?.animations?.length) {
-              console.log(
-                `Animation metadata preserved: ${enhancedParsed.skeleton.animations.length} animations detected`,
-              );
-            }
           }
 
           const glbBlob = new Blob([result.result], {
@@ -265,7 +253,6 @@ export function useFileUpload(options: UseFileUploadOptions) {
 
       // Parse skeleton file if provided
       if (skeletonFile) {
-        console.log("Parsing skeleton file with TypeScript implementation...");
         const skeletonBufferResult = await fromPromise(
           skeletonFile.arrayBuffer(),
         );
@@ -288,9 +275,6 @@ export function useFileUpload(options: UseFileUploadOptions) {
             );
           } else {
             skeletonData = skeletonParseResult.value;
-            console.log(
-              `Successfully parsed skeleton with ${Object.keys(skeletonData?.Bone || {}).length || 0} bones`,
-            );
           }
         }
       }
@@ -353,12 +337,6 @@ export function useFileUpload(options: UseFileUploadOptions) {
         if (enhancedParsed) {
           onBg3dParsedChange(enhancedParsed);
 
-          // Check if skeleton data was preserved
-          if (enhancedParsed.skeleton?.animations?.length) {
-            console.log(
-              `Animation metadata preserved: ${enhancedParsed.skeleton.animations.length} animations detected`,
-            );
-          }
 
           // Extract and display textures
           const textures = await extractTexturesFromBG3D(enhancedParsed);

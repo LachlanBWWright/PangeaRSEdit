@@ -26,6 +26,10 @@ interface ImageEditorProps {
   onClose: () => void;
   imageUrl: string;
   onSave: (editedImageData: ImageData) => Promise<void>;
+  saveActions?: {
+    label: string;
+    onSave: (editedImageData: ImageData) => Promise<void>;
+  }[];
   imageName?: string;
 }
 
@@ -34,6 +38,7 @@ export function ImageEditor({
   onClose,
   imageUrl,
   onSave,
+  saveActions,
   imageName,
 }: ImageEditorProps) {
   const [tool] = useState<"brush">("brush");
@@ -187,7 +192,9 @@ export function ImageEditor({
     setCurrentStroke(null);
   };
 
-  const handleSave = async () => {
+  const handleSave = async (
+    customSaveHandler: (editedImageData: ImageData) => Promise<void> = onSave,
+  ) => {
     if (!image || !stageRef.current) {
       toast.error("No image to save");
       return;
@@ -241,8 +248,8 @@ export function ImageEditor({
     // Get image data from the canvas
     const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
 
-    // Call the onSave callback
-    const saveResult = await fromPromise(onSave(imageData));
+    // Call the save callback
+    const saveResult = await fromPromise(customSaveHandler(imageData));
     if (saveResult.isErr()) {
       console.error("Error saving edited image:", saveResult.error);
       toast.error("Failed to save edited image");
@@ -383,14 +390,30 @@ export function ImageEditor({
             Cancel
           </Button>
 
-          <Button
-            onClick={handleSave}
-            disabled={saving}
-            className="bg-blue-600 hover:bg-blue-700"
-          >
-            <Save className="w-4 h-4 mr-2" />
-            {saving ? "Saving..." : "Save Changes"}
-          </Button>
+          {saveActions && saveActions.length > 0 ? (
+            <div className="flex gap-2">
+              {saveActions.map((action) => (
+                <Button
+                  key={action.label}
+                  onClick={() => handleSave(action.onSave)}
+                  disabled={saving}
+                  className="bg-blue-600 hover:bg-blue-700"
+                >
+                  <Save className="w-4 h-4 mr-2" />
+                  {saving ? "Saving..." : action.label}
+                </Button>
+              ))}
+            </div>
+          ) : (
+            <Button
+              onClick={() => handleSave(onSave)}
+              disabled={saving}
+              className="bg-blue-600 hover:bg-blue-700"
+            >
+              <Save className="w-4 h-4 mr-2" />
+              {saving ? "Saving..." : "Save Changes"}
+            </Button>
+          )}
         </div>
       </DialogContent>
     </Dialog>

@@ -9,6 +9,7 @@ import { Updater } from "use-immer";
 import {
   AtomicLevelData,
   isAtomicDataComplete,
+  isRecord,
 } from "../../data/utils/levelDataUtils";
 import { ottoPreprocessor } from "../../data/processors/ottoPreprocessor";
 import type { GlobalsInterface } from "../../data/globals/globals";
@@ -182,7 +183,14 @@ export function prepareDownloadData(
   data: LevelData,
   globals: GlobalsInterface,
 ): LevelData {
-  let workingData = structuredClone(data);
+  const cloneableData = { ...data };
+  const rawTileset = Reflect.get(cloneableData, "tileset");
+  if (isRecord(rawTileset) && "tileImages" in rawTileset) {
+    const sanitizedTileset = { ...rawTileset };
+    Reflect.deleteProperty(sanitizedTileset, "tileImages");
+    Reflect.set(cloneableData, "tileset", sanitizedTileset);
+  }
+  let workingData = structuredClone(cloneableData);
   ottoPreprocessor((updater) => {
     const next = typeof updater === "function" ? updater(workingData) : updater;
     if (next !== undefined) {

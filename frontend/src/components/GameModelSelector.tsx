@@ -1,6 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Select,
   SelectContent,
@@ -178,11 +177,7 @@ export function GameModelSelector({
   const hasSkeletonFile = selectedModel?.skeletonFile !== undefined;
 
   return (
-    <Card className="bg-gray-800 border-gray-700">
-      <CardHeader>
-        <CardTitle className="text-white">Game Model Selector</CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4">
+    <div className="space-y-4">
         {/* Game Selection */}
         <div className="space-y-2">
           <label className="text-sm text-gray-300">Game</label>
@@ -342,7 +337,6 @@ export function GameModelSelector({
             )}
           </div>
         )}
-      </CardContent>
-    </Card>
+    </div>
   );
 }

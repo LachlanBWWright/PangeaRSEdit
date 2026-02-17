@@ -4,6 +4,7 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { Game } from "@/data/globals/globals";
 import type { AnimationAction, AnimationMixer } from "three";
 import type { AnimationInfo } from "@/components/AnimationViewer";
+import { cn } from "@/lib/utils";
 
 const getDefaultAnimationName = (gameType: Game): string | null => {
   switch (gameType) {
@@ -29,9 +30,11 @@ const getDefaultAnimationName = (gameType: Game): string | null => {
 export function MiniThreeView({
   gltfUrl,
   gameType,
+  className,
 }: {
   gltfUrl?: string;
   gameType: Game;
+  className?: string;
 }) {
   // Prevent unnecessary reinitialization
   useMemo(() => ({ position: [0, 0, 50] as const }), []);
@@ -109,7 +112,11 @@ export function MiniThreeView({
   return (
     <div
       ref={containerRef}
-      className="w-100 h-70 bg-transparent rounded-md overflow-hidden"
+      className={cn(
+        "w-full bg-transparent rounded-md overflow-hidden",
+        className ?? "h-56",
+      )}
+      style={{ contain: "paint" }}
     >
       <ErrorBoundary>
         <Suspense

@@ -126,7 +126,7 @@ export function GameCarousel({
 
   return (
     <Carousel
-      className="mx-auto w-full max-w-350 min-h-0 h-full overflow-hidden px-12"
+      className="mx-auto w-full h-full min-h-0 px-2 md:px-12"
       opts={{ align: showAllGames ? "start" : "center", skipSnaps: true }}
     >
       <CarouselContent
@@ -193,7 +193,7 @@ function GameCarouselItem({
 
   if (!LevelComponent) {
     return (
-      <CarouselItem className="pl-4 md:pl-6 md:basis-1/2 lg:basis-1/3 min-h-0 box-border overflow-hidden">
+          <CarouselItem className="pl-4 md:pl-6 md:basis-1/2 lg:basis-1/3 h-full min-h-0 box-border">
         <div className="p-4 border border-red-500 rounded bg-red-900/20">
           <p className="text-red-400">Unknown game title: {game.title}</p>
         </div>
@@ -202,7 +202,7 @@ function GameCarouselItem({
   }
 
   return (
-    <CarouselItem className="pl-4 md:pl-6 md:basis-1/2 lg:basis-1/3 min-h-0 box-border overflow-hidden">
+    <CarouselItem className="pl-4 md:pl-6 md:basis-1/2 lg:basis-1/3 h-full min-h-0 box-border">
       <GameCard
         title={game.title}
         globals={game.globals}

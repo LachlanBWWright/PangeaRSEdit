@@ -16,6 +16,7 @@ import { MightyMikeTileMenu } from "../subviews/mightymike/MightyMikeTileMenu";
 import { MightyMikeKonvaView } from "../canvas/MightyMikeKonvaView";
 import { View } from "../viewEnum";
 import { ItemFilterToggle } from "../subviews/filters/ItemFilterToggle";
+import { EditorCanvasControls } from "../subviews/EditorCanvasControls";
 import {
   createNonNullUpdater,
   createUndoRedoKeyHandler,
@@ -98,12 +99,6 @@ export function MightyMikeEditorView({
       <MightyMikeEditorToolbar
         view={view}
         setView={setView}
-        undoData={undoData}
-        redoData={redoData}
-        zoomIn={zoomIn}
-        zoomOut={zoomOut}
-        dataHistoryIndex={dataHistory.index}
-        dataHistoryLength={dataHistory.items.length}
       />
       <div className="h-80 overflow-y-auto border-b border-gray-600">
         {view === View.items && itemData && (
@@ -135,12 +130,17 @@ export function MightyMikeEditorView({
         )}
       </div>
       <div className="w-full min-h-0 flex-1 border-2 border-black overflow-clip relative">
-        {/* Item Filter Toggle - Top Right */}
-        {itemData && (
-          <div className="absolute top-2 right-2 z-10">
-            <ItemFilterToggle />
-          </div>
-        )}
+        <div className="absolute top-2 right-2 z-10 flex gap-2">
+          <EditorCanvasControls
+            undoData={undoData}
+            redoData={redoData}
+            zoomOut={zoomOut}
+            zoomIn={zoomIn}
+            dataHistoryIndex={dataHistory.index}
+            dataHistoryLength={dataHistory.items.length}
+          />
+          {itemData && <ItemFilterToggle />}
+        </div>
         {/* Mighty Mike is 2D only - no 3D view */}
         <MightyMikeKonvaView
           headerData={headerData}

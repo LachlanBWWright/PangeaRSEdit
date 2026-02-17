@@ -9,14 +9,12 @@ if (typeof window !== "undefined") {
   (window as typeof window & { Buffer: typeof Buffer }).Buffer = Buffer;
 }
 
-// Enable dark mode
-document.documentElement.classList.add('dark');
-
 const rootElement = document.getElementById("root");
 if (!rootElement) {
   console.error("Root element not found - cannot render app");
   // Create a fallback error message in the body
-  document.body.innerHTML = '<div style="color: red; padding: 20px;">Error: Root element not found. Cannot render application.</div>';
+  document.body.innerHTML =
+    '<div style="color: red; padding: 20px;">Error: Root element not found. Cannot render application.</div>';
 } else {
   createRoot(rootElement).render(
     <StrictMode>

@@ -10,58 +10,53 @@
  * - NO water
  */
 
-import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { View } from "../viewEnum";
 
 interface Props {
   view: View;
   setView: (v: View) => void;
-  undoData: () => void;
-  redoData: () => void;
-  zoomIn: () => void;
-  zoomOut: () => void;
-  dataHistoryIndex: number;
-  dataHistoryLength: number;
   terrainHasSTgd?: boolean;
 }
 
 export function Bugdom1EditorToolbar({
   view,
   setView,
-  undoData,
-  redoData,
-  zoomIn,
-  zoomOut,
-  dataHistoryIndex,
-  dataHistoryLength,
   terrainHasSTgd,
 }: Props) {
+  const currentValue =
+    view === View.fences
+      ? "fences"
+      : view === View.items
+      ? "items"
+      : view === View.splines
+      ? "splines"
+      : view === View.tiles
+      ? "tiles"
+      : "supertiles";
+
+  const handleValueChange = (value: string) => {
+    if (value === "fences") setView(View.fences);
+    else if (value === "items") setView(View.items);
+    else if (value === "splines") setView(View.splines);
+    else if (value === "tiles") setView(View.tiles);
+    else if (value === "supertiles") setView(View.supertiles);
+  };
+
   return (
     <>
-      <div className="grid grid-cols-5 lg:grid-cols-9 gap-2 w-full overflow-clip">
-        <Button
-          selected={view === View.fences}
-          onClick={() => setView(View.fences)}
-        >
-          Fences
-        </Button>
-        <Button className="w-full" selected={view === View.items} onClick={() => setView(View.items)}>Items</Button>
-        <Button className="w-full" selected={view === View.splines} onClick={() => setView(View.splines)}>Splines</Button>
-        <Button className="w-full" selected={view === View.tiles} onClick={() => setView(View.tiles)}>Tiles</Button>
-        <Button
-          disabled={!terrainHasSTgd}
-          selected={view === View.supertiles}
-          onClick={() => setView(View.supertiles)}
-        >
-          Supertiles
-        </Button>
-        <Button className="w-full" variant="zoom" disabled={dataHistoryIndex === 0} onClick={undoData}>↩</Button>
-        <Button className="w-full" variant="zoom" disabled={dataHistoryIndex === dataHistoryLength - 1} onClick={redoData}>↪</Button>
-
-        <Button className="w-full" variant="zoom" onClick={zoomOut}>-</Button>
-        <Button className="w-full" variant="zoom" onClick={zoomIn}>+</Button>
-      </div>
+      <Tabs value={currentValue} onValueChange={handleValueChange}>
+        <TabsList className="grid grid-flow-col auto-cols-fr gap-2 w-full overflow-clip">
+          <TabsTrigger className="w-full" value="fences">Fences</TabsTrigger>
+          <TabsTrigger className="w-full" value="items">Items</TabsTrigger>
+          <TabsTrigger className="w-full" value="splines">Splines</TabsTrigger>
+          <TabsTrigger className="w-full" value="tiles">Tiles</TabsTrigger>
+          <TabsTrigger className="w-full" value="supertiles" disabled={!terrainHasSTgd}>
+            Supertiles
+          </TabsTrigger>
+        </TabsList>
+      </Tabs>
       <Separator />
     </>
   );

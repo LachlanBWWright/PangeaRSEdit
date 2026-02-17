@@ -38,7 +38,6 @@ import {
   Node,
   Skin,
   Accessor,
-  Animation,
 } from "@gltf-transform/core";
 import { PixelFormatSrc, PixelFormatDst } from "./parseBG3D";
 import { Quaternion } from "three";
@@ -401,9 +400,7 @@ export function bg3dParsedToGLTF(
   },
 ): Document {
   const doc = new Document();
-  console.log("Creating new glTF Document");
   const baseBuffer = doc.createBuffer("Basebuffer");
-  console.log("Created base buffer for glTF Document");
 
   // 1. Materials
   const gltfMaterials: Material[] = (parsed.materials || []).map((mat, i) => {
@@ -425,9 +422,6 @@ export function bg3dParsedToGLTF(
         let pngBuffer: Uint8Array<ArrayBufferLike>;
         if (tex.isJpeg) {
           // JPEG texture (Nanosaur 2) - decompress from QuickTime format and convert to PNG
-          console.log(
-            `[Material ${i}] Processing JPEG texture, bufferSize: ${tex.bufferSize}`,
-          );
 
           // Extract payload from QuickTime ImageDescription format
           const view = new DataView(
@@ -442,9 +436,6 @@ export function bg3dParsedToGLTF(
             payloadSize,
           );
 
-          console.log(
-            `[Material ${i}] Offset: ${offset}, Payload size: ${payloadSize}`,
-          );
 
           // Copy to new buffer for decodeJpegNode
           const payloadBuffer = new Uint8Array(payloadSize);
@@ -452,9 +443,6 @@ export function bg3dParsedToGLTF(
 
           // Decompress JPEG
           const imageData = decodeJpegNode(payloadBuffer.buffer);
-          console.log(
-            `[Material ${i}] Decompressed JPEG: ${imageData.width}x${imageData.height}`,
-          );
 
           // Convert to PNG
           const jpegPngBuffer = rgba8ToPng(
@@ -539,14 +527,8 @@ export function bg3dParsedToGLTF(
 
   // 3. Skeleton System (NEW IMPLEMENTATION)
   let gltfSkin: Skin | null = null;
-  let gltfAnimations: Animation[] = [];
 
   if (parsed.skeleton) {
-    console.log("Creating skeleton system with new implementation...");
-    console.log(
-      `Input skeleton has ${parsed.skeleton.bones.length} bones, ${parsed.skeleton.animations.length} animations`,
-    );
-
     const skeletonSystemResult = createSkeletonSystem(
       doc,
       parsed.skeleton,
@@ -560,16 +542,7 @@ export function bg3dParsedToGLTF(
       );
     } else {
       gltfSkin = skeletonSystemResult.value.skin;
-      gltfAnimations = skeletonSystemResult.value.animations;
-
-      console.log(
-        `Skeleton system created: skin=${!!gltfSkin}, joints=${
-          gltfSkin?.listJoints().length
-        }, animations=${gltfAnimations.length}`,
-      );
     }
-  } else {
-    console.log("No skeleton data in parsed BG3D");
   }
 
   // Type guard to check if a child is a BG3DGroup (has children array)
@@ -598,7 +571,6 @@ export function bg3dParsedToGLTF(
   }
 
   const allGeometries = collectGeometries(parsed.groups || []);
-  console.log(`Processing ${allGeometries.length} geometries`);
 
   // Build decomposed point list mapping (like Otto's runtime decomposition)
   // This maps from decomposedPointIndex -> {meshIndex, localVertexIndex}[]
@@ -654,10 +626,6 @@ export function bg3dParsedToGLTF(
       }
     });
   });
-
-  console.log(
-    `Built decomposed point list with ${decomposedPointList.length} unique points across ${allGeometries.length} meshes`,
-  );
 
   // 4. Meshes and Primitives
   const gltfMeshes: Mesh[] = [];
@@ -873,7 +841,6 @@ export function bg3dParsedToGLTF(
     const skeletonRoot = gltfSkin.getSkeleton();
     if (skeletonRoot && skeletonRoot.getName() === "Armature") {
       skeletonArmatureNode = skeletonRoot;
-      console.log("Found Armature node for attaching skinned meshes");
     }
   }
 
@@ -909,9 +876,6 @@ export function bg3dParsedToGLTF(
             // This is REQUIRED by glTF 2.0 specification
             if (skeletonArmatureNode) {
               skeletonArmatureNode.addChild(meshNode);
-              console.log(
-                `✅ Added skinned mesh ${meshNode.getName()} as child of Armature (CORRECT)`,
-              );
             } else {
               // Fallback: add to scene root (but this violates glTF spec)
               sceneRoot.addChild(meshNode);
@@ -984,10 +948,6 @@ export function bg3dParsedToGLTF(
 
   // Note: Animations are automatically added to the document when created with doc.createAnimation()
   // No need to manually push them to the list
-  console.log(
-    `glTF document now has ${doc.getRoot().listAnimations().length} animations`,
-  );
-
   // Store only non-glTF-representable data (material/texture metadata)
   // glTF can represent skeleton bones, animations, and keyframes natively
   // But these BG3D-specific data types need to be preserved in extras:
@@ -1089,8 +1049,6 @@ export function bg3dParsedToGLTF(
 }
 
 export async function gltfToBG3D(doc: Document): Promise<BG3DParseResult> {
-  console.log("=== Starting glTF to BG3D Conversion ===");
-
   const rootExtras = doc.getRoot().getExtras() || {};
   const bg3dFieldsRaw = isRecord(rootExtras)
     ? rootExtras.bg3dFields
@@ -1102,8 +1060,6 @@ export async function gltfToBG3D(doc: Document): Promise<BG3DParseResult> {
   const materialExtras = isArray(materialExtrasRaw) ? materialExtrasRaw : [];
 
   // Note: Bone data (pointIndices, normalIndices) will be reconstructed from mesh skinning data
-
-  console.log("Reconstructing BG3D data from glTF native format...");
 
   // 1. Restore materials from glTF materials
   const docMaterials = doc.getRoot().listMaterials();
@@ -1155,7 +1111,6 @@ export async function gltfToBG3D(doc: Document): Promise<BG3DParseResult> {
 
           if (isJPEG || texExtras?.isJpeg) {
             // JPEG texture (Nanosaur 2) - preserve as-is
-            console.log(`Preserving JPEG texture for material ${index}`);
             const width = getNumber(texExtras?.width, 128);
             const height = getNumber(texExtras?.height, 128);
             textures.push({
@@ -1222,8 +1177,6 @@ export async function gltfToBG3D(doc: Document): Promise<BG3DParseResult> {
             );
           }
         }
-      } else {
-        console.log(`Material[${index}]: No baseColorTexture found.`);
       }
 
       return {
@@ -1241,7 +1194,6 @@ export async function gltfToBG3D(doc: Document): Promise<BG3DParseResult> {
   // Check if original skeleton binary is preserved
   const originalSkeletonBinary = getOriginalSkeletonBinary(doc);
   if (originalSkeletonBinary) {
-    console.log("Using original skeleton binary for exact roundtrip");
     // Parse the original skeleton binary to get exact skeleton data
     const originalSkeletonResource = await parseSkeletonRsrc(
       originalSkeletonBinary,
@@ -1404,10 +1356,7 @@ export async function gltfToBG3D(doc: Document): Promise<BG3DParseResult> {
       metadata: originalSkeletonResource._metadata,
     };
   } else {
-    console.log(`Found ${skins.length} skins in glTF document`);
-
     if (skins.length > 0) {
-      console.log("Extracting skeleton from glTF Skin and Animations...");
       const skin = skins[0];
       if (!skin) {
         console.warn("No skin found in glTF document");
@@ -1417,11 +1366,6 @@ export async function gltfToBG3D(doc: Document): Promise<BG3DParseResult> {
         };
       }
       const joints = skin.listJoints();
-
-      console.log(`Skin has ${joints.length} joints`);
-      joints.forEach((joint, i) => {
-        console.log(`  Joint ${i}: ${joint.getName()}`);
-      });
 
       if (joints.length > 0) {
         // First pass: create bones with basic data
@@ -1638,10 +1582,6 @@ export async function gltfToBG3D(doc: Document): Promise<BG3DParseResult> {
             currentMeshIndex++;
           });
 
-        console.log(
-          `[Reverse] Built decomposed point list with ${reverseDecomposedPointList.length} unique points`,
-        );
-
         // Now collect bone influences using decomposed point indices
         const bonePointSets: Set<number>[] = bones.map(() => new Set<number>());
         const boneNormalSets: Set<number>[] = bones.map(
@@ -1726,26 +1666,12 @@ export async function gltfToBG3D(doc: Document): Promise<BG3DParseResult> {
         const skeletonExtras = isRecord(skeletonExtrasRaw)
           ? skeletonExtrasRaw
           : undefined;
-        console.log("[DEBUG] skeletonExtras available:", !!skeletonExtras);
-        console.log(
-          "[DEBUG] skeletonExtras.keyframeData available:",
-          Array.isArray(skeletonExtras?.keyframeData),
-        );
-        console.log(
-          "[DEBUG] skeletonExtras.keyframeData length:",
-          skeletonExtras?.keyframeData || 0,
-        );
 
         const keyframeDataArray = skeletonExtras && Array.isArray(skeletonExtras.keyframeData) 
           ? (skeletonExtras.keyframeData as unknown[])
           : undefined;
         if (keyframeDataArray) {
           // Use keyframe data from extras if available (preserves accelerationMode, exact values)
-          console.log(
-            "[DEBUG] Restoring keyframe data from extras for",
-            animations.length,
-            "animations",
-          );
           animations.forEach((anim, index) => {
             if (!keyframeDataArray) return;
             let kfData: unknown | undefined;
@@ -1757,10 +1683,6 @@ export async function gltfToBG3D(doc: Document): Promise<BG3DParseResult> {
             }
             kfData = kfData ?? keyframeDataArray[index];
             if (isRecord(kfData) && kfData.keyframes) {
-              console.log(
-                "[DEBUG] Restored keyframes for animation",
-                anim.name,
-              );
               // Use type guard to verify the keyframes structure
               const kfKeyframes = kfData.keyframes;
               if (isRecord(kfKeyframes)) {
@@ -1777,17 +1699,8 @@ export async function gltfToBG3D(doc: Document): Promise<BG3DParseResult> {
                 }
                 anim.keyframes = typedKeyframes;
               }
-            } else {
-              console.log(
-                "[DEBUG] No keyframe data found for animation",
-                anim.name,
-              );
             }
           });
-        } else {
-          console.log(
-            "[DEBUG] No keyframeData in skeletonExtras - using glTF-extracted animations",
-          );
         }
 
         const animEventsArray = skeletonExtras && Array.isArray(skeletonExtras.animationEvents)
@@ -1822,12 +1735,6 @@ export async function gltfToBG3D(doc: Document): Promise<BG3DParseResult> {
           Array.isArray(skeletonExtras.boneData)
         ) {
           const boneDataArray = skeletonExtras.boneData;
-          console.log(
-            "[DEBUG] Restoring bone data from extras for",
-            boneDataArray.length,
-            "bones",
-          );
-          console.log("[DEBUG] Current bones array length:", bones.length);
 
           // If extras has more bones, expand the array
           while (bones.length < boneDataArray.length) {
@@ -1935,10 +1842,6 @@ export async function gltfToBG3D(doc: Document): Promise<BG3DParseResult> {
           alisData,
           metadata,
         };
-
-        console.log(
-          `Extracted skeleton: ${bones.length} bones, ${animations.length} animations`,
-        );
       }
     }
   }
@@ -2103,8 +2006,6 @@ export async function gltfToBG3D(doc: Document): Promise<BG3DParseResult> {
     .map((node) => processNode(node))
     .filter(isBG3DGroup);
 
-  console.log("=== glTF to BG3D Conversion Complete ===");
-
   return {
     materials,
     groups,
@@ -2159,22 +2060,13 @@ export function getOriginalBG3DBinary(doc: Document): ArrayBuffer | null {
     : undefined;
 
   if (skeletonRoundtrip?.bg3dBuffer) {
-    console.log(
-      "Returning original BG3D binary data for exact roundtrip (skeletonRoundtrip)",
-    );
     return new Uint8Array(skeletonRoundtrip.bg3dBuffer).buffer;
   }
 
   if (originalBinaries?.bg3d) {
-    console.log(
-      "Returning original BG3D binary data for exact roundtrip (originalBinaries)",
-    );
     return new Uint8Array(originalBinaries.bg3d).buffer;
   }
 
-  console.log(
-    "Original binary data not available - using proper glTF conversion",
-  );
   return null;
 }
 
@@ -2197,21 +2089,12 @@ export function getOriginalSkeletonBinary(doc: Document): ArrayBuffer | null {
     : undefined;
 
   if (skeletonRoundtrip?.skeletonBuffer) {
-    console.log(
-      "Returning original skeleton binary data for exact roundtrip (skeletonRoundtrip)",
-    );
     return new Uint8Array(skeletonRoundtrip.skeletonBuffer).buffer;
   }
 
   if (originalBinaries?.skeleton) {
-    console.log(
-      "Returning original skeleton binary data for exact roundtrip (originalBinaries)",
-    );
     return new Uint8Array(originalBinaries.skeleton).buffer;
   }
 
-  console.log(
-    "Original skeleton binary data not available - using proper glTF conversion",
-  );
   return null;
 }

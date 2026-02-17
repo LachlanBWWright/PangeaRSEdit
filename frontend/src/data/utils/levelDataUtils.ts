@@ -143,16 +143,6 @@ export function splitLevelData(levelData: LevelData | null): AtomicLevelData {
       }
     : null;
 
-  // Log which atomic fields are missing (null)
-  console.log("splitLevelData: null status", {
-    headerData: headerData === null,
-    itemData: itemData === null,
-    liquidData: liquidData === null,
-    fenceData: fenceData === null,
-    splineData: splineData === null,
-    terrainData: terrainData === null,
-  });
-
   return {
     headerData,
     itemData,
@@ -274,12 +264,16 @@ export function validateResourceForkJson(
             badValueType: Array.isArray(resBlob) ? "array" : typeof resBlob,
           });
         }
-        // Optionally: check for required fields in resource records (e.g., 'obj', 'name', 'order')
-        if (!("obj" in resBlob)) {
+        // Resource records can contain object payloads (`obj`, e.g. Hedr/Atrb)
+        // or binary payloads (`data`, e.g. Timg hex image blobs).
+        if (
+          !Object.hasOwn(resBlob, "obj") &&
+          !Object.hasOwn(resBlob, "data")
+        ) {
           return err({
-            message: `Resource record '${resId}' under type '${key}' is missing required 'obj' field`,
+            message: `Resource record '${resId}' under type '${key}' is missing required 'obj' or 'data' field`,
             badKey: key,
-            badValueType: "missing_obj",
+            badValueType: "missing_obj_or_data",
           });
         }
       }
@@ -326,13 +320,15 @@ export function sanitizeResourceForkJson(
       if (!isRecord(resVal)) {
         continue;
       }
-      // Check if the resource entry has a non-empty obj array
+      // Keep object resources (`obj`) and data resources (`data`).
+      // For array-shaped objects, skip empty arrays to avoid empty resource payloads.
       const obj = resVal.obj;
-      if (!Array.isArray(obj)) {
-        continue;
-      }
-      if (obj.length === 0) {
-        // Skip empty array resources - rsrcdump throws on 0 resources
+      const dataField = resVal.data;
+      const hasObj =
+        (Array.isArray(obj) && obj.length > 0) ||
+        (isRecord(obj) && !Array.isArray(obj));
+      const hasData = typeof dataField === "string" && dataField.length > 0;
+      if (!hasObj && !hasData) {
         continue;
       }
       sanitizedEntry[resId] = resVal;

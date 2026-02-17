@@ -356,9 +356,9 @@ export const bugdomItemTypeParams: Record<ItemType, BugdomItemParams> = {
       type: "Integer",
       description: "Y offset (×4 world units) or Y table index when p3 bit 2 is set",
       codeSample: {
-        code: "yOff = itemPtr->parm[2] * 4.0f;\ny = GetTerrainHeightAtCoord(x,z,FLOOR) + yOff;",
+        code: "yOff *= 4.0f;\ny = GetTerrainHeightAtCoord(x,z,FLOOR)+yOff;",
         fileName: "src/Items/Liquids.c",
-        lineNumber: 333,
+        lineNumber: 329,
       },
     },
     p3: {
@@ -549,9 +549,9 @@ export const bugdomItemTypeParams: Record<ItemType, BugdomItemParams> = {
       type: "Integer",
       description: "Y offset (×10 world units) or Y table index when p3 bit 0 is set",
       codeSample: {
-        code: "yOff = itemPtr->parm[2] * 10.0f;\ny = GetTerrainHeightAtCoord(x,z,FLOOR) + yOff;",
+        code: "yOff *= 10.0f;\ny = GetTerrainHeightAtCoord(x,z,FLOOR)+yOff;",
         fileName: "src/Items/Liquids.c",
-        lineNumber: 833,
+        lineNumber: 832,
       },
     },
     p3: {
@@ -896,9 +896,9 @@ export const bugdomItemTypeParams: Record<ItemType, BugdomItemParams> = {
       type: "Integer",
       description: "Y offset (×10 world units) or Y table index when p3 bit 0 is set",
       codeSample: {
-        code: "yOff = itemPtr->parm[2] * 10.0f;\ny = GetTerrainHeightAtCoord(x,z,FLOOR) + yOff;",
+        code: "yOff *= 10.0f;\ny = GetTerrainHeightAtCoord(x,z,FLOOR)+yOff;",
         fileName: "src/Items/Liquids.c",
-        lineNumber: 833,
+        lineNumber: 832,
       },
     },
     p3: {
@@ -940,9 +940,9 @@ export const bugdomItemTypeParams: Record<ItemType, BugdomItemParams> = {
       type: "Integer",
       description: "Y offset (×10 world units) or Y table index when p3 bit 0 is set",
       codeSample: {
-        code: "yOff = itemPtr->parm[2] * 10.0f;\ny = GetTerrainHeightAtCoord(x,z,FLOOR) + yOff;",
+        code: "yOff *= 10.0f;\ny = GetTerrainHeightAtCoord(x,z,FLOOR)+yOff;",
         fileName: "src/Items/Liquids.c",
-        lineNumber: 833,
+        lineNumber: 832,
       },
     },
     p3: {

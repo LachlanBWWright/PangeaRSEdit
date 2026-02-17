@@ -44,11 +44,9 @@ import { useAtom } from "jotai";
 export function OttoMaticTilesMenu({
   headerData,
   setHeaderData,
-  onResize,
 }: {
   headerData: HeaderData;
   setHeaderData: Updater<HeaderData>;
-  onResize: (direction: "top" | "bottom" | "left" | "right", tileCount: number) => void;
 }) {
   const [tileView, setTileView] = useAtom(TileViewMode);
   const [brushMode, setBrushMode] = useAtom(CurrentTopologyBrushMode);
@@ -102,18 +100,6 @@ export function OttoMaticTilesMenu({
 
   return (
     <div className="flex flex-col gap-2">
-      <div className="grid grid-cols-4 gap-2">
-        <Button onClick={() => onResize("top", 1)}>Add Row Top</Button>
-        <Button onClick={() => onResize("bottom", 1)}>Add Row Bottom</Button>
-        <Button onClick={() => onResize("left", 1)}>Add Column Left</Button>
-        <Button onClick={() => onResize("right", 1)}>Add Column Right</Button>
-      </div>
-      <div className="grid grid-cols-4 gap-2">
-        <Button variant="destructive" onClick={() => onResize("top", -1)}>Remove Row Top</Button>
-        <Button variant="destructive" onClick={() => onResize("bottom", -1)}>Remove Row Bottom</Button>
-        <Button variant="destructive" onClick={() => onResize("left", -1)}>Remove Column Left</Button>
-        <Button variant="destructive" onClick={() => onResize("right", -1)}>Remove Column Right</Button>
-      </div>
       <div className="grid grid-cols-4 gap-2">
         <Button
           selected={tileView === TileViews.Topology}
@@ -216,7 +202,7 @@ export function OttoMaticTilesMenu({
           />
           <div className="flex flex-row justify-between gap-2 items-center col-span-2">
             <div className="flex items-center gap-2">
-              <p>Show 3D Map (View Only)</p>
+              <p>Show 3D View (Experimental)</p>
               <Switch
                 checked={canvasViewMode === CanvasView.THREE_D}
                 onCheckedChange={(e) =>

@@ -20,9 +20,15 @@ import {
 } from "@/python/structSpecs/LevelTypes";
 import { Globals } from "../../../data/globals/globals";
 import { Button } from "@/components/ui/button";
-import { useState, useMemo } from "react";
-import { RotateCw, FlipHorizontal, FlipVertical } from "lucide-react";
+import { useState, useMemo, useRef } from "react";
+import { Edit, FlipHorizontal, FlipVertical, RotateCw, Upload } from "lucide-react";
 import { toast } from "sonner";
+import { ImageEditor } from "@/components/ImageEditor";
+import {
+  canRemoveSupertileColumn,
+  canRemoveSupertileRow,
+  getSupertileCounts,
+} from "../supertiles/supertileResizeGuards";
 import {
   TILENUM_MASK,
   TILE_FLIPX_MASK,
@@ -41,20 +47,28 @@ interface BugdomTileMenuProps {
   setTerrainData: Updater<TerrainData>;
   mapImages: HTMLCanvasElement[];
   setMapImages: (newCanvases: HTMLCanvasElement[]) => void;
+  onResizeSupertiles: (
+    direction: "top" | "bottom" | "left" | "right",
+    supertileCount: number,
+  ) => void;
 }
 
 export function BugdomTileMenu({
   headerData,
-
   terrainData,
   setTerrainData,
   mapImages,
+  setMapImages,
+  onResizeSupertiles,
 }: BugdomTileMenuProps) {
-  // Mark destructured setters as used to satisfy lint rules (component doesn't use them directly)
-
   const selectedTile = useAtomValue(SelectedTile);
   const hedr = headerData.Hedr[1000].obj;
   const globals = useAtomValue(Globals);
+  const supertileCounts = getSupertileCounts(
+    hedr.mapWidth,
+    hedr.mapHeight,
+    globals.TILES_PER_SUPERTILE,
+  );
 
   // Selected individual tile within the supertile (0-24 for 5x5)
   const [selectedTileInSupertile, setSelectedTileInSupertile] =
@@ -62,11 +76,34 @@ export function BugdomTileMenu({
 
   // Selected tile from the palette for replacement
   const [selectedPaletteTile, setSelectedPaletteTile] = useState<number>(0);
+  const paletteUploadInputRef = useRef<HTMLInputElement>(null);
+  const [isEditingPaletteTile, setIsEditingPaletteTile] = useState(false);
+
+  const handleRemoveSupertile = (
+    direction: "top" | "bottom" | "left" | "right",
+  ) => {
+    const removingRow = direction === "top" || direction === "bottom";
+    const canRemove = removingRow
+      ? canRemoveSupertileRow(supertileCounts.height)
+      : canRemoveSupertileColumn(supertileCounts.width);
+    if (!canRemove) {
+      toast.error("Cannot remove supertile", {
+        description:
+          "At least one supertile row and one supertile column must remain.",
+      });
+      return;
+    }
+    onResizeSupertiles(direction, -1);
+  };
 
   // Get the Layr and Xlat data
   const layerData = terrainData.Layr?.[1000]?.obj;
   const xlatTable = terrainData.Xlat?.[1000]?.obj;
   const numTileImages = mapImages.length;
+
+  // Bugdom 1/Nanosaur 1 source assets store palette entries as fixed-size 32x32 tiles.
+  // Keep replacement and edits constrained to the existing palette range instead of growing it.
+  const PALETTE_TILE_SIZE = 32;
 
   // NOTE: tile info helper is defined inside useMemo to avoid changing the memo's dependencies
 
@@ -293,6 +330,57 @@ export function BugdomTileMenu({
     );
   };
 
+  const handleUploadPaletteTile = async (
+    event: React.ChangeEvent<HTMLInputElement>,
+  ) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    if (!mapImages[selectedPaletteTile]) {
+      toast.error("Selected palette tile has no image");
+      return;
+    }
+
+    const canvas = document.createElement("canvas");
+    canvas.width = PALETTE_TILE_SIZE;
+    canvas.height = PALETTE_TILE_SIZE;
+    const context = canvas.getContext("2d");
+    if (!context) {
+      toast.error("Failed to create canvas context");
+      return;
+    }
+    context.fillStyle = "black";
+    context.fillRect(0, 0, PALETTE_TILE_SIZE, PALETTE_TILE_SIZE);
+    const imageBitmap = await createImageBitmap(file, {
+      resizeWidth: PALETTE_TILE_SIZE,
+      resizeHeight: PALETTE_TILE_SIZE,
+      resizeQuality: "high",
+    });
+    context.drawImage(imageBitmap, 0, 0);
+
+    const newMapImages = [...mapImages];
+    newMapImages[selectedPaletteTile] = canvas;
+    setMapImages(newMapImages);
+    event.target.value = "";
+    toast.success(`Updated palette tile #${selectedPaletteTile}`);
+  };
+
+  const handleSavePaletteEdit = async (editedImageData: ImageData) => {
+    const canvas = document.createElement("canvas");
+    canvas.width = editedImageData.width;
+    canvas.height = editedImageData.height;
+    const context = canvas.getContext("2d");
+    if (!context) {
+      toast.error("Failed to create canvas context");
+      return;
+    }
+    context.putImageData(editedImageData, 0, 0);
+    const newMapImages = [...mapImages];
+    newMapImages[selectedPaletteTile] = canvas;
+    setMapImages(newMapImages);
+    setIsEditingPaletteTile(false);
+    toast.success(`Edited palette tile #${selectedPaletteTile}`);
+  };
+
   if (!layerData) {
     return (
       <div className="p-4 text-white">
@@ -304,7 +392,36 @@ export function BugdomTileMenu({
   const boxHeight = "h-80"; // Consistent height for all columns
 
   return (
-    <div className="grid grid-cols-3 gap-4 p-2">
+    <div className="flex flex-col gap-4 p-2">
+      <div className="grid grid-cols-4 gap-2">
+        <Button onClick={() => onResizeSupertiles("top", 1)}>
+          Add Supertile Row Top
+        </Button>
+        <Button onClick={() => onResizeSupertiles("bottom", 1)}>
+          Add Supertile Row Bottom
+        </Button>
+        <Button onClick={() => onResizeSupertiles("left", 1)}>
+          Add Supertile Column Left
+        </Button>
+        <Button onClick={() => onResizeSupertiles("right", 1)}>
+          Add Supertile Column Right
+        </Button>
+      </div>
+      <div className="grid grid-cols-4 gap-2">
+        <Button variant="destructive" onClick={() => handleRemoveSupertile("top")}>
+          Remove Supertile Row Top
+        </Button>
+        <Button variant="destructive" onClick={() => handleRemoveSupertile("bottom")}>
+          Remove Supertile Row Bottom
+        </Button>
+        <Button variant="destructive" onClick={() => handleRemoveSupertile("left")}>
+          Remove Supertile Column Left
+        </Button>
+        <Button variant="destructive" onClick={() => handleRemoveSupertile("right")}>
+          Remove Supertile Column Right
+        </Button>
+      </div>
+      <div className="grid grid-cols-3 gap-4">
       {/* Left column: Selected Supertile Tiles */}
       <div className={`flex flex-col gap-2 ${boxHeight}`}>
         <h3 className="font-bold text-white text-center">
@@ -492,7 +609,42 @@ export function BugdomTileMenu({
             ))}
           </div>
         </div>
+        <div className="grid grid-cols-2 gap-2">
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => setIsEditingPaletteTile(true)}
+            disabled={!mapImages[selectedPaletteTile]}
+          >
+            <Edit className="mr-1 h-4 w-4" />
+            Edit palette tile
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => paletteUploadInputRef.current?.click()}
+            disabled={!mapImages[selectedPaletteTile]}
+          >
+            <Upload className="mr-1 h-4 w-4" />
+            Upload palette tile
+          </Button>
+          <input
+            ref={paletteUploadInputRef}
+            type="file"
+            className="hidden"
+            accept="image/*"
+            onChange={handleUploadPaletteTile}
+          />
+        </div>
       </div>
+      </div>
+      <ImageEditor
+        isOpen={isEditingPaletteTile}
+        onClose={() => setIsEditingPaletteTile(false)}
+        imageUrl={mapImages[selectedPaletteTile]?.toDataURL("image/png") ?? ""}
+        imageName={`Palette_${selectedPaletteTile}`}
+        onSave={handleSavePaletteEdit}
+      />
     </div>
   );
 }

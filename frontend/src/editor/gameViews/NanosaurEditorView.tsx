@@ -21,6 +21,7 @@ import { Nanosaur1KonvaView } from "../canvas/Nanosaur1KonvaView";
 import { ThreeView } from "../threejs/Three";
 import { View } from "../viewEnum";
 import { ItemFilterToggle } from "../subviews/filters/ItemFilterToggle";
+import { EditorCanvasControls } from "../subviews/EditorCanvasControls";
 import {
   createNonNullUpdater,
   createUndoRedoKeyHandler,
@@ -28,7 +29,7 @@ import {
   createZoomOutHandler,
   terrainHasSupertileData,
 } from "../utils/editorViewUtils";
-import { applyResizeToAtomicData } from "../utils/levelResizeHandlers";
+import { applySupertileResizeToAtomicData } from "../utils/levelResizeHandlers";
 import { Globals } from "@/data/globals/globals";
 import type { NanosaurEditorViewProps } from "../utils/editorViewTypes";
 import {
@@ -73,8 +74,11 @@ export function NanosaurEditorView({
   );
 
   const showSupertileMenu = terrainHasSupertileData(terrainData);
-  const handleResize = (direction: "top" | "bottom" | "left" | "right", tileCount: number) => {
-    const result = applyResizeToAtomicData(
+  const handleSupertileResize = (
+    direction: "top" | "bottom" | "left" | "right",
+    supertileCount: number,
+  ) => {
+    const result = applySupertileResizeToAtomicData(
       {
         headerData,
         itemData,
@@ -86,7 +90,7 @@ export function NanosaurEditorView({
       globals,
       {
         direction,
-        tileCount,
+        tileCount: supertileCount * globals.TILES_PER_SUPERTILE,
         defaultHeight: headerData.Hedr[1000].obj.minY ?? 0,
       },
     );
@@ -105,12 +109,6 @@ export function NanosaurEditorView({
       <Nanosaur1EditorToolbar
         view={view}
         setView={setView}
-        undoData={undoData}
-        redoData={redoData}
-        zoomIn={zoomIn}
-        zoomOut={zoomOut}
-        dataHistoryIndex={dataHistory.index}
-        dataHistoryLength={dataHistory.items.length}
         terrainHasSTgd={showSupertileMenu}
       />
       <div>
@@ -122,12 +120,8 @@ export function NanosaurEditorView({
             setHeaderData={setHeaderData}
           />
         )}
-        {view === View.tiles && canvasViewMode !== CanvasView.THREE_D && (
-          <IndividualTilesMenu
-            headerData={headerData}
-            setHeaderData={setHeaderData}
-            onResize={handleResize}
-          />
+        {view === View.tiles && (
+          <IndividualTilesMenu headerData={headerData} setHeaderData={setHeaderData} />
         )}
         {view === View.supertiles && showSupertileMenu && (
           <BugdomTileMenu
@@ -137,16 +131,22 @@ export function NanosaurEditorView({
             setTerrainData={setTerrainData}
             mapImages={mapImages}
             setMapImages={setMapImages}
+            onResizeSupertiles={handleSupertileResize}
           />
         )}
       </div>
       <div className="w-full min-h-0 flex-1 border-2 border-black overflow-clip relative">
-        {/* Item Filter Toggle - Top Right */}
-        {itemData && (
-          <div className="absolute top-2 right-2 z-10">
-            <ItemFilterToggle />
-          </div>
-        )}
+        <div className="absolute top-2 right-2 z-10 flex gap-2">
+          <EditorCanvasControls
+            undoData={undoData}
+            redoData={redoData}
+            zoomOut={zoomOut}
+            zoomIn={zoomIn}
+            dataHistoryIndex={dataHistory.index}
+            dataHistoryLength={dataHistory.items.length}
+          />
+          {itemData && <ItemFilterToggle />}
+        </div>
         {canvasViewMode === CanvasView.THREE_D && view === View.tiles ? (
           <ThreeView
             headerData={headerData}

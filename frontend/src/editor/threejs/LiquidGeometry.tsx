@@ -17,7 +17,7 @@ interface LiquidGeometryProps {
 }
 
 // Debug flag - set to false in production
-const DEBUG_LIQUID_RENDERING = true;
+const DEBUG_LIQUID_RENDERING = false;
 
 const getLiquidProperties = (type: WaterBodyType) => {
   switch (type) {

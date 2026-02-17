@@ -73,7 +73,6 @@ export function useTextureManagement(options: UseTextureManagementOptions) {
         const img = new Image();
 
         img.onload = async () => {
-          console.log(`[Texture Replacement] Image loaded: ${img.width}x${img.height}`);
             // Extract material and texture indices from texture name
             const nameMatch = texture.name.match(/Material_(\d+)_Texture_(\d+)/);
             if (!nameMatch) {
@@ -84,7 +83,6 @@ export function useTextureManagement(options: UseTextureManagementOptions) {
 
             const materialIndex = parseInt(nameMatch[1] ?? "0");
             const textureIndex = parseInt(nameMatch[2] ?? "0");
-            console.log(`[Texture Replacement] Replacing Material_${materialIndex}_Texture_${textureIndex}`);
 
             // Get the existing texture from BG3D data first
             const existingTexture =
@@ -143,7 +141,6 @@ export function useTextureManagement(options: UseTextureManagementOptions) {
               const argb16 = rgba8ToArgb16(rgba);
               // Create Uint8Array view of the ARGB16 buffer
               newPixels = new Uint8Array(argb16.buffer, argb16.byteOffset, argb16.byteLength);
-              console.log(`[Texture Replacement] ARGB16 conversion: input RGBA length=${rgba.length}, argb16 count=${argb16.length}, output bytes length=${newPixels.length}`);
             } else if (existingTexture.isJpeg) {
               // JPEG textures should not be edited - they have complex format
               toast.error("JPEG textures cannot be edited directly");
@@ -171,7 +168,6 @@ export function useTextureManagement(options: UseTextureManagementOptions) {
                           height: img.height,
                           bufferSize: newPixels.byteLength,
                         };
-                        console.log(`[Texture Replacement] Updated texture: format=${updatedTexture.srcPixelFormat}, size=${img.width}x${img.height}, pixelBytes=${newPixels.byteLength}`);
                         return updatedTexture;
                       }
                       return tex;
@@ -181,8 +177,6 @@ export function useTextureManagement(options: UseTextureManagementOptions) {
                 return material;
               }),
             };
-
-            console.log(`[Texture Replacement] Sending to worker: ${updatedBG3D.materials[materialIndex]?.textures[textureIndex]?.width}x${updatedBG3D.materials[materialIndex]?.textures[textureIndex]?.height}`);
 
             // Reset scene state to prevent crashes
             onSceneReset();
@@ -214,7 +208,6 @@ export function useTextureManagement(options: UseTextureManagementOptions) {
             }
 
             if (result.type === "bg3d-parsed-to-glb") {
-              console.log(`[Texture Replacement] Worker returned GLB, parsed data included=${!!result.parsed}`);
               // Clean up old URL first
               if (gltfUrl) {
                 URL.revokeObjectURL(gltfUrl);
@@ -222,7 +215,6 @@ export function useTextureManagement(options: UseTextureManagementOptions) {
 
               // Update state with parsed data from worker (preserves all BG3D state including edited textures)
               const preservedBG3D = result.parsed || updatedBG3D;
-              console.log(`[Texture Replacement] Using BG3D data: ${preservedBG3D.materials[materialIndex]?.textures[textureIndex]?.width}x${preservedBG3D.materials[materialIndex]?.textures[textureIndex]?.height}`);
               onBg3dParsedChange(preservedBG3D);
 
               // Create new GLTF URL
@@ -230,12 +222,10 @@ export function useTextureManagement(options: UseTextureManagementOptions) {
                 type: "model/gltf-binary",
               });
               const newUrl = URL.createObjectURL(glbBlob);
-              console.log(`[Texture Replacement] Created new GLB URL, size=${glbBlob.size}`);
               onGltfUrlChange(newUrl);
 
               // Re-extract textures to update the UI
               const textures = await extractTexturesFromBG3D(preservedBG3D);
-              console.log(`[Texture Replacement] Re-extracted ${textures.length} textures`);
               onTexturesChange(textures);
 
               toast.success("Texture replaced successfully");

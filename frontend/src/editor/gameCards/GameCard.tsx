@@ -1,5 +1,4 @@
-import React from "react";
-import { FileUpload } from "@/components/FileUpload";
+import React, { useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { loadMapImages } from "@/editor/loadLogic/loadMapImages";
 import { DataType, Game, type GlobalsInterface } from "@/data/globals/globals";
@@ -9,6 +8,15 @@ import type { Result } from "@/types/result";
 import { parseTunnelFile } from "@/data/tunnelParser/parseTunnelFile";
 import type { TunnelData } from "@/data/tunnelParser/types";
 import { Button } from "@/components/ui/button";
+import { Upload, X } from "lucide-react";
+import {
+  classifyUploadFile,
+  getUploadAcceptTypes,
+  updateStagedFiles,
+} from "./uploadStagingUtils";
+import { cn } from "@/lib/utils";
+
+const GAME_CARD_PREVIEW_HEIGHT_CLASS = "h-60";
 
 const getModelPath = (gameType: Game): string | undefined => {
   switch (gameType) {
@@ -27,7 +35,7 @@ const getModelPath = (gameType: Game): string | undefined => {
     case Game.BILLY_FRONTIER:
       return "/glbModels/BillyFrontier.glb";
     case Game.MIGHTY_MIKE:
-      return undefined; // Blank placeholder for 2D game
+      return undefined;
     default:
       return "/glbModels/OttoMatic.glb";
   }
@@ -61,40 +69,249 @@ export function GameCard({
 }) {
   const modelPath = getModelPath(globals.GAME_TYPE);
   const isBugdom2 = globals.GAME_TYPE === Game.BUGDOM_2;
-
   const isOttoMatic = globals.GAME_TYPE === Game.OTTO_MATIC;
   const isMightyMike = globals.GAME_TYPE === Game.MIGHTY_MIKE;
   const isBugdom1 = globals.DATA_TYPE === DataType.RSRC_FORK;
   const isNanosaur1 = globals.DATA_TYPE === DataType.TRT_FILE;
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [stagedLevelFile, setStagedLevelFile] = useState<File | null>(null);
+  const [stagedTextureFile, setStagedTextureFile] = useState<File | null>(null);
+  const stagedLevelRef = useRef<File | null>(null);
+  const stagedTextureRef = useRef<File | null>(null);
 
   const levelFileType = isMightyMike
     ? ".map"
     : isNanosaur1
-    ? ".ter"
-    : ".ter.rsrc";
+      ? ".ter"
+      : ".ter.rsrc";
   const textureFileType =
     isMightyMike || isBugdom1 ? null : isNanosaur1 ? ".trt" : ".ter";
-  const showTextureUpload = textureFileType !== null;
+
+  const accepts = useMemo(() => {
+    return getUploadAcceptTypes({
+      isBugdom2,
+      levelFileType,
+      textureFileType,
+      hasStagedLevel: stagedLevelFile !== null,
+      hasStagedTexture: stagedTextureFile !== null,
+    });
+  }, [
+    isBugdom2,
+    levelFileType,
+    textureFileType,
+    stagedLevelFile,
+    stagedTextureFile,
+  ]);
+  const allTypes = [
+    levelFileType,
+    textureFileType,
+    isBugdom2 ? ".tun" : null,
+  ].filter((t): t is string => t !== null);
+
+  const formatTypeList = (types: string[]) => {
+    if (types.length <= 1) return types[0] ?? "";
+    return types.slice(0, -1).join(", ") + " or " + types[types.length - 1];
+  };
+
+  const stagedBadge = (name: string, kind: "level" | "texture") => (
+    <span className="inline-flex items-center gap-0.5">
+      {name}
+      <button
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation();
+          if (kind === "level") {
+            stagedLevelRef.current = null;
+            setStagedLevelFile(null);
+          } else {
+            stagedTextureRef.current = null;
+            setStagedTextureFile(null);
+          }
+        }}
+        className="inline-flex items-center justify-center rounded-full hover:bg-gray-600 p-0.5"
+      >
+        <X className="w-3 h-3" />
+      </button>
+    </span>
+  );
+  const uploadDropzoneClassName = cn(
+    "border-2 border-dashed border-gray-600 rounded-lg p-2 h-20 text-center",
+    "cursor-pointer hover:border-gray-500 transition-colors flex flex-col",
+    "justify-center gap-0.5",
+  );
+
+  const clearStaged = () => {
+    stagedLevelRef.current = null;
+    stagedTextureRef.current = null;
+    setStagedLevelFile(null);
+    setStagedTextureFile(null);
+  };
+
+  const loadStagedLevel = async (levelFile: File, textureFile: File | null) => {
+    const toastId = toast.loading("Loading level files...");
+    setMapImages([]);
+    setMapFile(levelFile);
+    const parseResult = await handleParseLevelDataFile(levelFile, globals);
+    if (parseResult.isErr()) {
+      toast.dismiss(toastId);
+      toast.error("Failed to parse level data", {
+        description: parseResult.error.message,
+      });
+      return;
+    }
+    if (textureFile) {
+      const buffer = await textureFile.arrayBuffer();
+      const mapImagesResult = await loadMapImages(
+        new DataView(buffer),
+        globals,
+      );
+      if (mapImagesResult.isErr()) {
+        toast.dismiss(toastId);
+        toast.error("Failed to load textures", {
+          description: mapImagesResult.error.message,
+        });
+        return;
+      }
+      setMapImagesFile(textureFile);
+      setMapImages(mapImagesResult.value);
+    }
+    clearStaged();
+    toast.dismiss(toastId);
+    toast.success("Level loaded");
+  };
+
+  const handleFile = async (file: File) => {
+    const fileKind = classifyUploadFile(
+      file.name,
+      levelFileType,
+      textureFileType,
+      isBugdom2,
+    );
+    if (fileKind === "tunnel") {
+      const result = parseTunnelFile(await file.arrayBuffer());
+      if (result.isErr()) {
+        toast.error("Failed to parse tunnel file", {
+          description: result.error.message,
+        });
+        return;
+      }
+      setTunnelFileName(file.name);
+      setTunnelData(result.value);
+      toast.success("Tunnel level loaded");
+      return;
+    }
+
+    const isLevel = fileKind === "level";
+    const isTexture = fileKind === "texture";
+
+    if (!isLevel && !isTexture) {
+      toast.error("Unsupported file type", {
+        description: `Expected ${accepts}`,
+      });
+      return;
+    }
+
+    const nextStaged = updateStagedFiles(
+      {
+        level: stagedLevelRef.current,
+        texture: stagedTextureRef.current,
+      },
+      file,
+      fileKind,
+    );
+    const nextLevel = nextStaged.level;
+    const nextTexture = nextStaged.texture;
+
+    if (isLevel) {
+      stagedLevelRef.current = file;
+      setStagedLevelFile(file);
+      toast.success("Level file staged", {
+        description: file.name,
+      });
+    }
+    if (isTexture) {
+      stagedTextureRef.current = file;
+      setStagedTextureFile(file);
+      toast.success("Texture file staged", {
+        description: file.name,
+      });
+    }
+
+    if (!textureFileType) {
+      if (nextLevel) {
+        await loadStagedLevel(nextLevel, null);
+      }
+      return;
+    }
+
+    if (nextLevel && nextTexture) {
+      await loadStagedLevel(nextLevel, nextTexture);
+      return;
+    }
+
+    toast.message("File staged", {
+      description: nextLevel
+        ? `Now upload ${textureFileType} to finish loading`
+        : `Now upload ${levelFileType} to finish loading`,
+    });
+  };
+
+  const onInputChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(event.target.files ?? []);
+    if (files.length === 0) {
+      return;
+    }
+    toast.message("Processing selected files", {
+      description: `${files.length} file${files.length > 1 ? "s" : ""} selected`,
+    });
+    for (const file of files) {
+      await handleFile(file);
+    }
+    event.target.value = "";
+  };
+
+  const onDrop = async (event: React.DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    const files = Array.from(event.dataTransfer.files);
+    if (files.length === 0) {
+      return;
+    }
+    toast.message("Processing dropped files", {
+      description: `${files.length} file${files.length > 1 ? "s" : ""} dropped`,
+    });
+    for (const file of files) {
+      await handleFile(file);
+    }
+  };
 
   return (
-    <Card className="h-full flex flex-col min-h-0 overflow-y-auto overflow-x-hidden bg-gray-800 border-gray-700 text-white">
-      <CardContent className="flex flex-col p-4">
+    <Card
+      className={cn(
+        "flex flex-col min-h-[500px] h-full bg-gray-800 border-gray-700 text-white",
+      )}
+    >
+      <CardContent className="flex h-full min-h-0 flex-col gap-2 p-3">
         <div className="flex-none min-h-8">
           <h3 className="text-lg font-semibold">{title}</h3>
         </div>
 
-        {/* Add extra vertical spacing for Otto Matic to match other cards */}
-        {title === "Otto Matic" && <div className="h-4" />}
-
-        <div className="flex-none mt-3 flex flex-col items-center">
-          {!isOttoMatic && (
-            <p className="text-xs text-gray-400 text-center mb-1">
-              (Not Functional)
-            </p>
-          )}
+        <div className="flex-none flex flex-col items-center">
+          <p
+            className={cn(
+              "text-xs text-center mb-1",
+              isOttoMatic ? "invisible" : "text-gray-400",
+            )}
+          >
+            (Not Functional)
+          </p>
 
           {isMightyMike ? (
-            <div className="w-100 h-70 flex items-center justify-center">
+            <div
+              className={cn(
+                "w-full flex items-center justify-center",
+                GAME_CARD_PREVIEW_HEIGHT_CLASS,
+              )}
+            >
               <img
                 src="https://raw.githubusercontent.com/jorio/MightyMike/refs/heads/master/packaging/MightyMikeRaw.png"
                 alt="Mighty Mike"
@@ -102,116 +319,67 @@ export function GameCard({
               />
             </div>
           ) : (
-            <MiniThreeView gltfUrl={modelPath} gameType={globals.GAME_TYPE} />
+            <MiniThreeView
+              gltfUrl={modelPath}
+              gameType={globals.GAME_TYPE}
+              className={GAME_CARD_PREVIEW_HEIGHT_CLASS}
+            />
           )}
         </div>
 
-        <div className="flex-none pt-2 mt-2">
+        <div className="flex-none">
           <Button
-            className="w-full mb-2"
+            className="w-full"
             onClick={() => onCreateBlankLevel(globals)}
           >
             Create Blank Level
           </Button>
         </div>
 
-        <div className="mt-2 flex flex-col gap-1 text-2xl min-w-40">
-          {children}
+        <div className="flex min-h-0 flex-1 flex-col text-base min-w-40">
+          <div className="overflow-y-auto min-h-0 flex-1">{children}</div>
         </div>
 
-        <div className="flex-none pt-2 border-t border-gray-700 mt-2">
-          <p className="text-sm text-gray-300">
-            Upload Level Data ({levelFileType})
-          </p>
-          <FileUpload
-            className="text-sm"
-            acceptType={levelFileType}
-            handleOnChange={async (e) => {
-              if (!e.target?.files?.[0]) return;
-              const file = e.target.files[0];
-              setMapFile(file);
-              const parseResult = await handleParseLevelDataFile(file, globals);
-              if (!parseResult || parseResult.isErr()) {
-                const message =
-                  parseResult?.error instanceof Error
-                    ? parseResult.error.message
-                    : String(parseResult?.error);
-                console.error("Failed to parse level data:", message);
-                toast.error("Failed to parse level data", {
-                  description: message,
-                });
-                return;
-              }
-            }}
+        <div className="flex-none border-t border-gray-700 pt-2 space-y-1">
+          <div
+            className={cn(uploadDropzoneClassName)}
+            onDrop={onDrop}
+            onDragOver={(event) => event.preventDefault()}
+            onClick={() => inputRef.current?.click()}
+          >
+            <Upload className="w-8 h-8 mx-auto mb-2 text-gray-400" />
+            <p className="text-xs text-gray-300">
+              Drop files here or click to browse
+            </p>
+            <p className="text-xs text-gray-400 mt-1 break-all">
+              {stagedLevelFile && stagedTextureFile ? (
+                <>
+                  Staged: {stagedBadge(stagedLevelFile.name, "level")},{" "}
+                  {stagedBadge(stagedTextureFile.name, "texture")}
+                </>
+              ) : stagedLevelFile ? (
+                <>
+                  Staged: {stagedBadge(stagedLevelFile.name, "level")} — now
+                  upload {textureFileType} file
+                </>
+              ) : stagedTextureFile ? (
+                <>
+                  Staged: {stagedBadge(stagedTextureFile.name, "texture")} — now
+                  upload {levelFileType} file
+                </>
+              ) : (
+                <>Accepts {formatTypeList(allTypes)}</>
+              )}
+            </p>
+          </div>
+          <input
+            ref={inputRef}
+            type="file"
+            className="hidden"
+            accept={accepts}
+            multiple
+            onChange={onInputChange}
           />
-
-          {showTextureUpload && textureFileType && (
-            <>
-              <p className="text-sm text-gray-300 mt-2">
-                Upload Texture Data ({textureFileType})
-              </p>
-              <FileUpload
-                className="text-sm"
-                acceptType={textureFileType}
-                handleOnChange={async (e) => {
-                  if (!e.target?.files?.[0]) return;
-                  const mapImagesFile = e.target.files[0];
-                  const buffer = await mapImagesFile.arrayBuffer();
-                  const dataView = new DataView(buffer);
-
-                  const mapImagesResult = await loadMapImages(
-                    dataView,
-                    globals,
-                  );
-                  if (mapImagesResult.isErr()) {
-                    console.error(
-                      "Failed to load map images:",
-                      mapImagesResult.error.message,
-                    );
-                    toast.error("Failed to load textures", {
-                      description: mapImagesResult.error.message,
-                    });
-                    return;
-                  }
-                  setMapImagesFile(mapImagesFile);
-                  setMapImages(mapImagesResult.value);
-                }}
-              />
-            </>
-          )}
-
-          {/* Tunnel file upload for Bugdom 2 */}
-          {isBugdom2 && (
-            <>
-              <p className="text-sm text-gray-300 mt-2">
-                Upload Tunnel Level (.tun)
-              </p>
-              <FileUpload
-                className="text-sm"
-                acceptType=".tun"
-                handleOnChange={async (e) => {
-                  if (!e.target?.files?.[0]) return;
-                  const file = e.target.files[0];
-                  const buffer = await file.arrayBuffer();
-                  const result = parseTunnelFile(buffer);
-
-                  if (result.isErr()) {
-                    console.error(
-                      "Failed to parse tunnel file:",
-                      result.error.message,
-                    );
-                    toast.error("Failed to parse tunnel file", {
-                      description: result.error.message,
-                    });
-                    return;
-                  }
-
-                  setTunnelFileName(file.name);
-                  setTunnelData(result.value);
-                }}
-              />
-            </>
-          )}
         </div>
       </CardContent>
     </Card>

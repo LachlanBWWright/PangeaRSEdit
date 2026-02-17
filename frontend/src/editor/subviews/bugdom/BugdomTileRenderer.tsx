@@ -22,10 +22,6 @@ import {
 } from "@/python/structSpecs/LevelTypes";
 import {
   TILENUM_MASK,
-  TILE_FLIPX_MASK,
-  TILE_FLIPY_MASK,
-  TILE_FLIPXY_MASK,
-  TILE_ROTATE_MASK,
   buildAllBugdomSupertiles,
 } from "./BugdomTileRenderer.utils";
 
@@ -57,10 +53,6 @@ export const BugdomSupertiles = memo(
     // Build all supertile images from individual tiles
     const supertileImages = useMemo(() => {
       if (!terrainData.Layr?.[1000]?.obj || tileImages.length === 0) {
-        console.log("BugdomTileRenderer: No Layr data or tileImages", {
-          hasLayr: !!terrainData.Layr?.[1000]?.obj,
-          tileImagesLength: tileImages.length,
-        });
         return [];
       }
 
@@ -95,116 +87,6 @@ export const BugdomSupertiles = memo(
         );
       }
 
-      const firstTileValues = layerData.slice(0, 25).map((v, i) => ({
-        index: i,
-        raw: v,
-        tileNum: v & TILENUM_MASK,
-        translated: xlatTable
-          ? xlatTable[v & TILENUM_MASK]?.idx
-          : v & TILENUM_MASK,
-        flipX: (v & TILE_FLIPX_MASK) !== 0,
-        flipY: (v & TILE_FLIPY_MASK) !== 0,
-        rotation: (v & TILE_ROTATE_MASK) >> 12,
-      }));
-
-      // Log first 20 Xlat values to see what the translation table contains
-      const firstXlatValues = xlatTable
-        ?.slice(0, 20)
-        .map((x, i) => ({ index: i, imageIdx: x.idx }));
-
-      // Analyze Xlat table for potential issues
-      const xlatAnalysis = xlatTable
-        ? (() => {
-            let negativeCount = 0;
-            let outOfBoundsCount = 0;
-            let maxIdx = 0;
-            let minIdx = Infinity;
-
-            for (const entry of xlatTable) {
-              if (!entry) continue;
-              const idx = entry.idx;
-              if (idx < 0) negativeCount++;
-              if (idx >= tileImages.length) outOfBoundsCount++;
-              maxIdx = Math.max(maxIdx, idx);
-              minIdx = Math.min(minIdx, idx);
-            }
-
-            return {
-              negativeCount,
-              outOfBoundsCount,
-              maxIdx,
-              minIdx,
-              numTileImages: tileImages.length,
-            };
-          })()
-        : null;
-
-      // Analyze Layr for potential issues
-      const layrAnalysis = (() => {
-        let maxTileIdx = 0;
-        let tilesWithFlipBits = 0;
-        let tilesWithRotation = 0;
-
-        for (let i = 0; i < Math.min(1000, layerData.length); i++) {
-          const val = layerData[i];
-          if (val === undefined) continue;
-          const tileIdx = val & TILENUM_MASK;
-          maxTileIdx = Math.max(maxTileIdx, tileIdx);
-          if (val & TILE_FLIPXY_MASK) tilesWithFlipBits++;
-          if (val & TILE_ROTATE_MASK) tilesWithRotation++;
-        }
-
-        return {
-          maxTileIdx,
-          tilesWithFlipBits,
-          tilesWithRotation,
-          xlatTableLength: xlatTable?.length ?? 0,
-          tileIdxExceedsXlat: maxTileIdx >= (xlatTable?.length ?? 0),
-        };
-      })();
-
-      // Check for sparse white tiles pattern - sample every 160th tile (one per row) for first 20 rows
-      const rowSamples = [];
-      for (let row = 0; row < 20 && row < header.mapHeight; row++) {
-        const startIdx = row * header.mapWidth;
-        const tileValue = layerData[startIdx];
-        if (tileValue === undefined) continue;
-        const tileIdx = tileValue & TILENUM_MASK;
-        const xlatEntry =
-          xlatTable && tileIdx < xlatTable.length
-            ? xlatTable[tileIdx]
-            : undefined;
-        const translatedIdx = xlatEntry ? xlatEntry.idx : tileIdx;
-        rowSamples.push({
-          row,
-          flatIndex: startIdx,
-          tileValue,
-          tileIdx,
-          translatedIdx,
-          hasTileImage: translatedIdx >= 0 && translatedIdx < tileImages.length,
-        });
-      }
-
-      console.log("BugdomTileRenderer: Building supertiles", {
-        mapWidth: header.mapWidth,
-        mapHeight: header.mapHeight,
-        expectedLayrLength: header.mapWidth * header.mapHeight,
-        tilesPerSupertile,
-        tileSize,
-        supertilePixelSize,
-        layerDataLength: layerData.length,
-        tileImagesCount: tileImages.length,
-        numTilesFromHeader: header.numTiles,
-        hasXlatTable: !!xlatTable,
-        xlatTableLength: xlatTable?.length,
-        isLikelyInvalidData,
-        firstTileValues,
-        firstXlatValues,
-        xlatAnalysis,
-        layrAnalysis,
-        rowSamples,
-      });
-
       // Validate that Layr has correct number of entries
       const expectedLayrLength = header.mapWidth * header.mapHeight;
       if (layerData.length !== expectedLayrLength) {
@@ -233,14 +115,7 @@ export const BugdomSupertiles = memo(
       tileSize,
       header.mapWidth,
       header.mapHeight,
-      header.numTiles,
-      supertilePixelSize,
-    ]);
-
-    console.log("BugdomTileRenderer: Rendering", {
-      supertileImagesCount: supertileImages.length,
-      supertilesWide,
-    });
+      ]);
 
     return (
       <Layer>

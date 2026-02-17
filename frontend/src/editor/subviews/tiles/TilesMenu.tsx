@@ -13,6 +13,7 @@ import {
   TileEditingEnabled,
   TileBrushType,
   ShowRoofInTopology,
+  ShowRoofGapInTopology,
   EditRoofAndFloorTogether,
   RoofFloorElevation,
 } from "../../../data/tiles/tileAtoms";
@@ -62,11 +63,15 @@ export function TilesMenu({
   const [selectedTileBrushType, setSelectedTileBrushType] =
     useAtom(TileBrushType);
   const [showRoof, setShowRoof] = useAtom(ShowRoofInTopology);
+  const [showRoofGap, setShowRoofGap] = useAtom(ShowRoofGapInTopology);
   const [editTogether, setEditTogether] = useAtom(EditRoofAndFloorTogether);
   const [roofFloorElevation, setRoofFloorElevation] = useAtom(RoofFloorElevation);
   const globals = useAtomValue(Globals);
 
   const header = headerData?.Hedr?.[1000]?.obj;
+  // Bugdom source uses Layr 1000 for floor and Layr 1001 for ceiling when gDoCeiling is enabled
+  // (games/bugdom/src/System/File.c reads Layr 1001 and YCrd 1001 for roof terrain).
+  const hasRoofLayer = globals.GAME_TYPE === Game.BUGDOM;
   const minY = header?.minY || 0;
   const maxY = header?.maxY || 0;
 
@@ -89,6 +94,13 @@ export function TilesMenu({
       setCanvasViewMode(CanvasView.TWO_D);
     }
   }, [tileView, setCanvasViewMode]);
+
+  useEffect(() => {
+    if (!hasRoofLayer) {
+      setShowRoof(false);
+      setShowRoofGap(false);
+    }
+  }, [hasRoofLayer, setShowRoof, setShowRoofGap]);
 
   const handleMinYChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newValue = parseFloat(e.target.value);
@@ -253,37 +265,48 @@ export function TilesMenu({
           />
 
           {/* Roof support controls (for games with YCrd 1001 like Bugdom 1) */}
-          <div className="flex flex-row justify-center gap-2 items-center col-span-2 mt-2 p-2 bg-gray-800 rounded">
-            <p>Show Roof (YCrd 1001)</p>
-            <Switch
-              checked={showRoof}
-              onCheckedChange={setShowRoof}
-            />
-          </div>
-
-          {showRoof && (
+          {hasRoofLayer && (
             <>
-              <div className="flex flex-row justify-center gap-2 items-center col-span-2">
-                <p>Edit Floor &amp; Roof Together</p>
+              <div className="flex flex-row justify-center gap-2 items-center col-span-2 mt-2 p-2 bg-gray-800 rounded">
+                <p>Show Roof (YCrd 1001)</p>
                 <Switch
-                  checked={editTogether}
-                  onCheckedChange={setEditTogether}
+                  checked={showRoof}
+                  onCheckedChange={setShowRoof}
                 />
               </div>
-              {editTogether && (
+              {showRoof && (
                 <>
-                  <p>Center Elevation</p>
-                  <Input
-                    type="number"
-                    value={roofFloorElevation}
-                    onChange={(e) => 
-                      setRoofFloorElevation(parseInt(e.target.value) || 100)
-                    }
-                  />
-                  <p className="col-span-2 text-sm text-gray-400">
-                    Edits will maintain distance from this center elevation.
-                    Roof will always be above floor.
-                  </p>
+                  <div className="flex flex-row justify-center gap-2 items-center col-span-2">
+                    <p>Show Roof/Floor Gap</p>
+                    <Switch
+                      checked={showRoofGap}
+                      onCheckedChange={setShowRoofGap}
+                    />
+                  </div>
+                  <div className="flex flex-row justify-center gap-2 items-center col-span-2">
+                    <p>Edit Floor &amp; Roof Together</p>
+                    <Switch
+                      checked={editTogether}
+                      onCheckedChange={setEditTogether}
+                    />
+                  </div>
+                  {editTogether && (
+                    <>
+                      <p>Center Elevation</p>
+                      <Input
+                        type="number"
+                        value={roofFloorElevation}
+                        onChange={(e) =>
+                          setRoofFloorElevation(parseInt(e.target.value) || 100)
+                        }
+                      />
+                      <p className="col-span-2 text-sm text-gray-400">
+                        Center elevation is the reference point used to keep
+                        floor/roof spacing consistent. Roof always stays above
+                        floor.
+                      </p>
+                    </>
+                  )}
                 </>
               )}
             </>
@@ -291,7 +314,7 @@ export function TilesMenu({
 
           <div className="flex flex-row justify-between gap-2 items-center col-span-2">
             <div className="flex items-center gap-2">
-              <p>Show 3D Map (View Only)</p>
+              <p>Show 3D View (Experimental)</p>
               <Switch
                 checked={canvasViewMode === CanvasView.THREE_D}
                 onCheckedChange={(e) => {

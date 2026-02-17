@@ -23,67 +23,111 @@ export interface BrushParams {
   header: StandardHeader;
   globals: GlobalsInterface;
   tileSize: number; // For 2D use globals.TILE_SIZE, for 3D use 1 (tile units)
+  lineStart?: { x: number; y: number };
+  lineEnd?: { x: number; y: number };
+}
+
+/**
+ * Convert user-selected brush radius (in tiles) to world-space distance.
+ * A minimum of 1 tile is enforced so radius=1 always affects at least one tile.
+ */
+export function brushRadiusToWorldRadius(
+  brushRadius: number,
+  tileIngameSize: number,
+): number {
+  return Math.max(1, brushRadius) * tileIngameSize;
+}
+
+export function distanceToLineSegment(
+  pointX: number,
+  pointY: number,
+  startX: number,
+  startY: number,
+  endX: number,
+  endY: number,
+): number {
+  const deltaX = endX - startX;
+  const deltaY = endY - startY;
+  const lengthSquared = deltaX * deltaX + deltaY * deltaY;
+  if (lengthSquared === 0) {
+    return Math.hypot(pointX - startX, pointY - startY);
+  }
+  const projection = ((pointX - startX) * deltaX + (pointY - startY) * deltaY) / lengthSquared;
+  const clamped = Math.max(0, Math.min(1, projection));
+  const closestX = startX + clamped * deltaX;
+  const closestY = startY + clamped * deltaY;
+  return Math.hypot(pointX - closestX, pointY - closestY);
 }
 
 /**
  * Calculate which tiles/pixels should be affected by the brush
  */
 export function calculateBrushPixels(params: BrushParams): PixelType[] {
-  const { centerX, centerY, radius, brushMode, value, tileSize } = params;
+  const { centerX, centerY, radius, brushMode, value, tileSize, lineStart, lineEnd } = params;
   const pixelList: PixelType[] = [];
+  if (radius <= 0 || tileSize <= 0) {
+    return pixelList;
+  }
+  const hasLine =
+    params.valueMode !== TopologyValueMode.SET_VALUE &&
+    lineStart !== undefined &&
+    lineEnd !== undefined;
+  const lineStartPoint = lineStart ?? { x: centerX, y: centerY };
+  const lineEndPoint = lineEnd ?? { x: centerX, y: centerY };
 
-  if (brushMode === TopologyBrushMode.CIRCLE_BRUSH) {
-    // Create a circular brush pattern
-    const baseX = centerX - radius;
-    const baseY = centerY - radius;
-    const diameter = radius * 2;
+  let lineMinX = centerX;
+  let lineMaxX = centerX;
+  let lineMinY = centerY;
+  let lineMaxY = centerY;
+  if (hasLine) {
+    lineMinX = Math.min(lineStartPoint.x, lineEndPoint.x);
+    lineMaxX = Math.max(lineStartPoint.x, lineEndPoint.x);
+    lineMinY = Math.min(lineStartPoint.y, lineEndPoint.y);
+    lineMaxY = Math.max(lineStartPoint.y, lineEndPoint.y);
+  }
+  const baseX = lineMinX - radius;
+  const baseY = lineMinY - radius;
+  const width = lineMaxX - lineMinX + radius * 2;
+  const height = lineMaxY - lineMinY + radius * 2;
 
-    for (let i = 0; i <= diameter; i += tileSize) {
-      for (let j = 0; j <= diameter; j += tileSize) {
-        const tileX = baseX + i;
-        const tileY = baseY + j;
+  for (let i = 0; i <= width; i += tileSize) {
+    for (let j = 0; j <= height; j += tileSize) {
+      const tileX = baseX + i;
+      const tileY = baseY + j;
+      const radialDistance = hasLine
+        ? distanceToLineSegment(
+            tileX,
+            tileY,
+            lineStartPoint.x,
+            lineStartPoint.y,
+            lineEndPoint.x,
+            lineEndPoint.y,
+          )
+        : Math.hypot(tileX - centerX, tileY - centerY);
 
-        // Calculate if this tile is within the circle radius
-        const distanceSquared =
-          Math.pow(tileX - centerX, 2) + Math.pow(tileY - centerY, 2);
-
-        const distance = Math.sqrt(distanceSquared) / radius;
-
-        if (distanceSquared <= Math.pow(radius, 2)) {
-          pixelList.push({
-            x: tileX,
-            y: tileY,
-            value: value,
-            distance: distance,
-          });
+      if (brushMode === TopologyBrushMode.CIRCLE_BRUSH) {
+        if (radialDistance > radius) {
+          continue;
         }
-      }
-    }
-  } else {
-    // Square brush pattern
-    const baseX = centerX - radius;
-    const baseY = centerY - radius;
-    const size = radius * 2;
-
-    // Calculate distance for square brush (normalized from 0 to 1)
-    // Using Manhattan distance for square pattern feel
-    for (let i = 0; i <= size; i += tileSize) {
-      for (let j = 0; j <= size; j += tileSize) {
-        const tileX = baseX + i;
-        const tileY = baseY + j;
-
-        // Calculate distance from center (using max of x,y distance for square pattern feel)
+      } else if (!hasLine) {
         const xDistance = Math.abs(tileX - centerX);
         const yDistance = Math.abs(tileY - centerY);
-        const distance = Math.max(xDistance, yDistance) / radius;
-
-        pixelList.push({
-          x: tileX,
-          y: tileY,
-          value: value,
-          distance: distance,
-        });
+        if (xDistance > radius || yDistance > radius) {
+          continue;
+        }
       }
+
+      const normalizedDistance =
+        brushMode === TopologyBrushMode.SQUARE_BRUSH && !hasLine
+          ? Math.max(Math.abs(tileX - centerX), Math.abs(tileY - centerY)) / radius
+          : radialDistance / radius;
+
+      pixelList.push({
+        x: tileX,
+        y: tileY,
+        value,
+        distance: normalizedDistance,
+      });
     }
   }
 
