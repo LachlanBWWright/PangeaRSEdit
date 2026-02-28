@@ -33,6 +33,9 @@ describe("BG3D → GLB → BG3D Roundtrip (with preserved binary)", () => {
     { game: "ottomatic", name: "Blob" },
     { game: "cromagrally", name: "Viking" },
     { game: "cromagrally", name: "Brog" },
+    { game: "billyfrontier", name: "Billy" },
+    { game: "bugdom2", name: "Ant" },
+    { game: "nanosaur2", name: "brach" },
   ];
 
   bg3dTestFiles.forEach(({ game, name }) => {

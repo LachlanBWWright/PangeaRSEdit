@@ -95,6 +95,7 @@ export function TestGameDialog({
   const [errorLog, setErrorLog] = useState<string[]>([]);
   const [iframeKey, setIframeKey] = useState(0);
   const [useLocalWasm, setUseLocalWasm] = useState<boolean | null>(null);
+  const [fencesEnabled, setFencesEnabled] = useState(true);
 
   const levelInfo = OTTO_LEVELS[levelNumber] ?? OTTO_LEVELS[DEFAULT_OTTO_LEVEL];
 
@@ -213,6 +214,14 @@ export function TestGameDialog({
     URL.revokeObjectURL(url);
   }, [terrainRsrcBlob, levelInfo]);
 
+  const handleToggleFences = useCallback(() => {
+    const iframe = iframeRef.current;
+    if (!iframe) return;
+    const newState = !fencesEnabled;
+    safeCallCcall(iframe, "OttoMatic_SetFenceCollisions", null, ["number"], [newState ? 1 : 0]);
+    setFencesEnabled(newState);
+  }, [fencesEnabled]);
+
   const hasTerrainData = terrainRsrcBlob !== null || terrainDataBlob !== null;
 
   return (
@@ -261,6 +270,15 @@ export function TestGameDialog({
           {terrainRsrcBlob !== null && status !== "idle" && (
             <Button variant="outline" onClick={handleDownloadTerrain}>
               Download .ter.rsrc
+            </Button>
+          )}
+
+          {status === "running" && (
+            <Button
+              variant={fencesEnabled ? "outline" : "destructive"}
+              onClick={handleToggleFences}
+            >
+              {fencesEnabled ? "Fences: On" : "Fences: Off"}
             </Button>
           )}
         </div>
