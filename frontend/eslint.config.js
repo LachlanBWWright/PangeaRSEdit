@@ -18,6 +18,7 @@ export default defineConfig(
       "debug-liquid-rsrcdump.js",
       "dist/**",
       "coverage/**",
+      "public/wasm/**",
     ],
   },
   [

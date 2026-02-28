@@ -31,3 +31,6 @@ coverage/
 
 # Build artifacts
 *.tsbuildinfo
+
+# WASM game builds (too large to commit)
+public/wasm/

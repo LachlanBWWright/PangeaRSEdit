@@ -20,7 +20,8 @@ import {
   DEFAULT_OTTO_LEVEL,
 } from "./utils/ottoLevelNumbers";
 
-const GAME_BASE_URL =
+const WASM_BASE_PATH = `${import.meta.env.BASE_URL}wasm/ottomatic`;
+const REMOTE_GAME_URL =
   "https://lachlanbwwright.github.io/OttoMatic-Android";
 
 const MAX_ERROR_LOG_ENTRIES = 50;
@@ -93,10 +94,21 @@ export function TestGameDialog({
   const [status, setStatus] = useState<GameStatus>("idle");
   const [errorLog, setErrorLog] = useState<string[]>([]);
   const [iframeKey, setIframeKey] = useState(0);
+  const [useLocalWasm, setUseLocalWasm] = useState<boolean | null>(null);
 
   const levelInfo = OTTO_LEVELS[levelNumber] ?? OTTO_LEVELS[DEFAULT_OTTO_LEVEL];
 
-  const gameUrl = `${GAME_BASE_URL}/?level=${String(levelNumber)}`;
+  // Check if local WASM files are available
+  useEffect(() => {
+    if (useLocalWasm !== null) return;
+    fetch(`${WASM_BASE_PATH}/OttoMatic.js`, { method: "HEAD" })
+      .then((res) => { setUseLocalWasm(res.ok); })
+      .catch(() => { setUseLocalWasm(false); });
+  }, [useLocalWasm]);
+
+  const gameUrl = useLocalWasm
+    ? `${WASM_BASE_PATH}/OttoMatic.html?level=${String(levelNumber)}`
+    : `${REMOTE_GAME_URL}/?level=${String(levelNumber)}`;
 
   const appendError = useCallback((msg: string) => {
     setErrorLog((prev) => [...prev.slice(-(MAX_ERROR_LOG_ENTRIES - 1)), msg]);
@@ -215,10 +227,10 @@ export function TestGameDialog({
             {status === "loading" && "Loading game…"}
             {status === "running" &&
               (hasTerrainData
-                ? "Game running with custom terrain. Terrain injection may be blocked by cross-origin policy — use the in-game upload panel as a fallback."
-                : "Game running with default terrain. Compile and download your level first to test custom terrain.")}
+                ? `Game running with custom terrain${useLocalWasm ? " (local WASM)" : " (remote)"}. Terrain injection may be blocked by cross-origin policy — use the in-game upload panel as a fallback.`
+                : `Game running with default terrain${useLocalWasm ? " (local WASM)" : " (remote)"}. Compile and download your level first to test custom terrain.`)}
             {status === "crashed" && "The game has encountered an error. Check the log below and try rebooting."}
-            {status === "idle" && "Select a level number and start the game."}
+            {status === "idle" && `Select a level number and start the game.${useLocalWasm === null ? " Checking for local WASM…" : useLocalWasm ? " Using local WASM build." : " Using remote game server."}`}
           </DialogDescription>
         </DialogHeader>
 
