@@ -15,6 +15,8 @@ import {
   isLevelDataLike,
 } from "../../data/utils/levelDataUtils";
 import { extractTGAPalette } from "../../utils/tgaParser";
+import { gMightyMikePalette } from "../../utils/mightyMikePalette";
+import { clearItemImageCache } from "../../utils/mightyMikeShapeImageLoader";
 
 import { isRecord, isMightyMikeMap } from "./typeGuards";
 
@@ -128,6 +130,12 @@ export async function parseMightyMikeFile(
 
   if (mapFileUrl) {
     paletteData = await loadBorderPalette(mapFileUrl);
+
+    // Load the palette into the global palette manager so sprites render with correct colors
+    if (paletteData) {
+      gMightyMikePalette.loadPaletteFromRGBA(paletteData);
+      clearItemImageCache();
+    }
 
     const tilesetUrl = mapFileUrl.replace(/\.map-\d+$/, ".tileset");
     const tilesetFetchResult = await fromPromise(fetch(tilesetUrl));

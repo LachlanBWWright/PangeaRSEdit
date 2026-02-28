@@ -5,9 +5,10 @@
  * All functions return Result types for explicit error handling.
  */
 
-import { parseShapesFile, shapeFrameToCanvas, ShapesFile } from "../parsers/mightyMikeShapesParser";
+import { parseShapesFile, shapeFrameToCanvas, ShapesFile, RGBColor } from "../parsers/mightyMikeShapesParser";
 import { getItemShapesFile, getItemSpriteMapping } from "../data/items/mightyMikeItemSpriteMap";
 import { Result, ok, err, isErr, fromPromise } from "../types/result";
+import { gMightyMikePalette } from "./mightyMikePalette";
 
 const SHAPES_BASE_PATH = "/PangeaRSEdit/data/mightymike/shapes";
 
@@ -16,6 +17,27 @@ const shapesFileCache = new Map<string, ShapesFile>();
 
 // Cache for rendered frame canvases
 const frameCanvasCache = new Map<string, HTMLCanvasElement>();
+
+/**
+ * Get the current game palette as an array of RGBColor objects
+ * compatible with the shapes parser's shapeFrameToCanvas function.
+ *
+ * The palette data comes from the global MightyMikePaletteManager,
+ * which should be loaded with border.tga palette data before rendering sprites.
+ */
+function getGamePaletteColors(): RGBColor[] {
+  const paletteRGBA = gMightyMikePalette.getPaletteAsRGBA();
+  const colors: RGBColor[] = [];
+  for (let i = 0; i < 256; i++) {
+    const offset = i * 4;
+    colors.push({
+      r: paletteRGBA[offset] ?? 0,
+      g: paletteRGBA[offset + 1] ?? 0,
+      b: paletteRGBA[offset + 2] ?? 0,
+    });
+  }
+  return colors;
+}
 
 /**
  * Load a .shapes file from the public folder and cache it
@@ -132,8 +154,9 @@ async function loadShapeFrame(
     );
   }
 
-  // Render frame to canvas at original size
-  const originalCanvasResult = shapeFrameToCanvas(frame, shapesFile.colorTable);
+  // Render frame to canvas using the actual game palette (not the greyscale default)
+  const paletteColors = getGamePaletteColors();
+  const originalCanvasResult = shapeFrameToCanvas(frame, paletteColors);
   if (isErr(originalCanvasResult)) {
     return err(originalCanvasResult.error);
   }
