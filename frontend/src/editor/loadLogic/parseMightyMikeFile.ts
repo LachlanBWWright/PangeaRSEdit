@@ -60,36 +60,17 @@ function isMightyMikeTileSet(value: unknown): value is MightyMikeTileSet {
 }
 
 /**
- * Get the scene name from the map file URL
- * Example: "jurassic.map-1" -> "jurassic"
+ * Load the palette from border.tga
+ *
+ * The game sets its palette from border.tga (loaded in InitArea → LoadBorderImage)
+ * rather than from the per-scene cinema TGA files.  Some scene TGAs happened to
+ * share the same palette as border.tga (fairy, bargain) while others did not
+ * (jurassic, candy, clown), which caused color mismatches in the editor.
  */
-function getSceneNameFromUrl(mapFileUrl: string): string | null {
-  const filename = mapFileUrl.split("/").pop();
-  if (!filename) return null;
-  const match = filename.match(/^(\w+)\.map-\d+$/);
-  return match ? (match[1] ?? null) : null;
-}
-
-/**
- * Load the palette from the scene-specific TGA file
- */
-async function loadScenePalette(
-  sceneName: string,
+async function loadBorderPalette(
   basePath?: string,
 ): Promise<Uint8Array | null> {
-  // Map scene names to TGA filenames
-  const sceneToTGA: Record<string, string> = {
-    jurassic: "dinoscene.tga",
-    candy: "candyscene.tga",
-    fairy: "fairyscene.tga",
-    clown: "clownscene.tga",
-    bargain: "bargainscene.tga",
-  };
-
-  const tgaFilename = sceneToTGA[sceneName.toLowerCase()];
-  if (!tgaFilename) {
-    return null;
-  }
+  const tgaFilename = "border.tga";
 
   let tgaUrl: string;
   if (basePath && basePath.includes("/")) {
@@ -146,10 +127,7 @@ export async function parseMightyMikeFile(
   let paletteData: Uint8Array | null = null;
 
   if (mapFileUrl) {
-    const sceneName = getSceneNameFromUrl(mapFileUrl);
-    if (sceneName) {
-      paletteData = await loadScenePalette(sceneName, mapFileUrl);
-    }
+    paletteData = await loadBorderPalette(mapFileUrl);
 
     const tilesetUrl = mapFileUrl.replace(/\.map-\d+$/, ".tileset");
     const tilesetFetchResult = await fromPromise(fetch(tilesetUrl));
