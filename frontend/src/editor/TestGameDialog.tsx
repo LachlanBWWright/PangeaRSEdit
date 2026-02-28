@@ -189,6 +189,16 @@ export function TestGameDialog({
     setErrorLog([]);
   }, []);
 
+  const handleDownloadTerrain = useCallback(() => {
+    if (!terrainRsrcBlob || !levelInfo) return;
+    const url = URL.createObjectURL(terrainRsrcBlob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${levelInfo.terrainFile}.rsrc`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }, [terrainRsrcBlob, levelInfo]);
+
   const hasTerrainData = terrainRsrcBlob !== null || terrainDataBlob !== null;
 
   return (
@@ -233,6 +243,12 @@ export function TestGameDialog({
           <Button variant="outline" onClick={handleReboot}>
             {status === "idle" ? "Start Game" : "Reboot Game"}
           </Button>
+
+          {terrainRsrcBlob !== null && status !== "idle" && (
+            <Button variant="outline" onClick={handleDownloadTerrain}>
+              Download .ter.rsrc
+            </Button>
+          )}
         </div>
 
         {status === "crashed" && errorLog.length > 0 && (

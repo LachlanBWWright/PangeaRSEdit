@@ -44,6 +44,7 @@ import { createBlankMapImagesForGame } from "./IntroPrompt/canvasUtils";
 import { TestGameDialog } from "./TestGameDialog";
 import {
   DEFAULT_OTTO_LEVEL,
+  OTTO_LEVELS,
   inferLevelNumberFromFilename,
 } from "./utils/ottoLevelNumbers";
 import {
@@ -53,7 +54,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { OTTO_LEVELS } from "./utils/ottoLevelNumbers";
 
 export interface DataHistory {
   items: AtomicLevelData[];
