@@ -18,6 +18,7 @@ export default defineConfig({
       "tests/mapRoundtrip/bugdom.test.ts",
       "tests/mapRoundtrip/nanosaur.test.ts",
       "tests/mapRoundtrip/mightyMike.test.ts",
+      "tests/modelRoundtrip/**/*.test.ts",
       "tests/tunnel/**/*.test.ts",
       "tests/levelEdit/**/*.test.ts",
       "tests/levelTemplates/**/*.test.ts",
