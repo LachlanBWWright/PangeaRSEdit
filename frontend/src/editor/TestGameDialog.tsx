@@ -23,6 +23,8 @@ import {
 const GAME_BASE_URL =
   "https://lachlanbwwright.github.io/OttoMatic-Android";
 
+const MAX_ERROR_LOG_ENTRIES = 50;
+
 type GameStatus = "loading" | "running" | "crashed" | "idle";
 
 interface Props {
@@ -97,7 +99,7 @@ export function TestGameDialog({
   const gameUrl = `${GAME_BASE_URL}/?level=${String(levelNumber)}`;
 
   const appendError = useCallback((msg: string) => {
-    setErrorLog((prev) => [...prev.slice(-49), msg]);
+    setErrorLog((prev) => [...prev.slice(-(MAX_ERROR_LOG_ENTRIES - 1)), msg]);
     setStatus("crashed");
   }, []);
 
@@ -233,9 +235,9 @@ export function TestGameDialog({
             </SelectTrigger>
             <SelectContent>
               {OTTO_LEVELS.map((l) => (
-                <SelectItem key={l.levelNumber} value={String(l.levelNumber)}>
-                  {`Level ${String(l.levelNumber + 1)}: ${l.name}`}
-                </SelectItem>
+                  <SelectItem key={l.levelNumber} value={String(l.levelNumber)}>
+                    {`Lv ${String(l.levelNumber + 1)}: ${l.name}`}
+                  </SelectItem>
               ))}
             </SelectContent>
           </Select>
