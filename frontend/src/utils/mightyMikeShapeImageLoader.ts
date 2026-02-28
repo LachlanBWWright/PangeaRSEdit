@@ -74,11 +74,9 @@ function getFrameCacheKey(
   return `${shapesFile}:${shapeIndex}:${frameIndex}`;
 }
 
-const ITEM_DISPLAY_SIZE = 12; // Size to scale item sprites to (in pixels)
-
 /**
- * Load and render a specific frame from a shape as a canvas
- * Scales the sprite to ITEM_DISPLAY_SIZE for use in the level editor
+ * Load and render a specific frame from a shape as a canvas.
+ * Returns the sprite at its natural pixel size for the level editor.
  */
 async function loadShapeFrame(
   shapesFilename: string,
@@ -139,25 +137,10 @@ async function loadShapeFrame(
   if (isErr(originalCanvasResult)) {
     return err(originalCanvasResult.error);
   }
-  const originalCanvas = originalCanvasResult.value;
 
-  // Scale down to display size (12x12 pixels) for the level editor
-  const scaledCanvas = document.createElement('canvas');
-  scaledCanvas.width = ITEM_DISPLAY_SIZE;
-  scaledCanvas.height = ITEM_DISPLAY_SIZE;
-
-  const ctx = scaledCanvas.getContext('2d');
-  if (!ctx) {
-    return err(new Error('Failed to get canvas context for scaling'));
-  }
-
-  // Use nearest-neighbor scaling to preserve pixel art appearance
-  ctx.imageSmoothingEnabled = false;
-  ctx.drawImage(originalCanvas, 0, 0, ITEM_DISPLAY_SIZE, ITEM_DISPLAY_SIZE);
-
-  // Cache the rendered canvas
-  frameCanvasCache.set(cacheKey, scaledCanvas);
-  return ok(scaledCanvas);
+  // Cache and return at natural pixel size
+  frameCanvasCache.set(cacheKey, originalCanvasResult.value);
+  return ok(originalCanvasResult.value);
 }
 
 /**

@@ -44,16 +44,16 @@ export const MightyMikeItem = memo(function MightyMikeItem({
   );
   const handleDragEnd = useCallback(
     (e: Konva.KonvaEventObject<DragEvent>) => {
+      const imgW = itemImage ? itemImage.width : ITEM_BOX_SIZE;
+      const imgH = itemImage ? itemImage.height : ITEM_BOX_SIZE;
       updateItem(setItemData, itemIdx, {
-        x: Math.round(e.target.x() + ITEM_BOX_OFFSET),
-        z: Math.round(e.target.y() + ITEM_BOX_OFFSET),
+        x: Math.round(e.target.x() + imgW / 2),
+        z: Math.round(e.target.y() + imgH),
       });
     },
-    [itemIdx, setItemData],
+    [itemIdx, setItemData, itemImage],
   );
 
-  const itemX = useMemo(() => item?.x ? item.x - ITEM_BOX_OFFSET : 0, [item]);
-  const itemZ = useMemo(() => item?.z ? item.z - ITEM_BOX_OFFSET : 0, [item]);
   const itemName = useMemo(
     () => item ? getItemName(globals, item.type) : "",
     [item, globals]
@@ -90,16 +90,21 @@ export const MightyMikeItem = memo(function MightyMikeItem({
 
   if (item === null || item === undefined) return null;
 
-  // If showing images and we have an image, use Konva Image instead of Rect
+  // If showing images and we have an image, render at natural sprite size
+  // Position: sprite bottom-center aligns with item x,y (game convention)
   if (showItemImages && itemImage) {
+    const imgW = itemImage.width;
+    const imgH = itemImage.height;
+    const drawX = item.x - imgW / 2;
+    const drawY = item.z - imgH;
     return (
       <>
         <KonvaImage
           image={itemImage}
-          x={itemX}
-          y={itemZ}
-          width={ITEM_BOX_SIZE}
-          height={ITEM_BOX_SIZE}
+          x={drawX}
+          y={drawY}
+          width={imgW}
+          height={imgH}
           draggable
           onMouseOver={handleMouseOver}
           onMouseLeave={handleMouseLeave}
@@ -119,11 +124,13 @@ export const MightyMikeItem = memo(function MightyMikeItem({
   }
 
   // Default: show box like original Item component
+  const boxX = item.x - ITEM_BOX_OFFSET;
+  const boxY = item.z - ITEM_BOX_OFFSET;
   return (
     <>
       <Rect
-        x={itemX}
-        y={itemZ}
+        x={boxX}
+        y={boxY}
         width={ITEM_BOX_SIZE}
         height={ITEM_BOX_SIZE}
         stroke="red"
@@ -141,8 +148,8 @@ export const MightyMikeItem = memo(function MightyMikeItem({
         fill="black"
         visible={!hovering}
         fontSize={8}
-        x={itemX}
-        y={itemZ}
+        x={boxX}
+        y={boxY}
         draggable
         onMouseOver={handleMouseOver}
         onMouseLeave={handleMouseLeave}
