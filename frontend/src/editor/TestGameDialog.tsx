@@ -102,9 +102,11 @@ export function TestGameDialog({
   // Check if local WASM files are available
   useEffect(() => {
     if (useLocalWasm !== null) return;
+    let cancelled = false;
     fetch(`${WASM_BASE_PATH}/OttoMatic.js`, { method: "HEAD" })
-      .then((res) => { setUseLocalWasm(res.ok); })
-      .catch(() => { setUseLocalWasm(false); });
+      .then((res) => { if (!cancelled) setUseLocalWasm(res.ok); })
+      .catch(() => { if (!cancelled) setUseLocalWasm(false); });
+    return () => { cancelled = true; };
   }, [useLocalWasm]);
 
   const gameUrl = useLocalWasm

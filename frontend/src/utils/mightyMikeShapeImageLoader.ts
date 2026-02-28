@@ -18,6 +18,10 @@ const shapesFileCache = new Map<string, ShapesFile>();
 // Cache for rendered frame canvases
 const frameCanvasCache = new Map<string, HTMLCanvasElement>();
 
+// Cached palette conversion to avoid recreating on every frame render
+let cachedPaletteRGBA: Uint8Array | null = null;
+let cachedPaletteColors: RGBColor[] | null = null;
+
 /**
  * Get the current game palette as an array of RGBColor objects
  * compatible with the shapes parser's shapeFrameToCanvas function.
@@ -27,6 +31,9 @@ const frameCanvasCache = new Map<string, HTMLCanvasElement>();
  */
 function getGamePaletteColors(): RGBColor[] {
   const paletteRGBA = gMightyMikePalette.getPaletteAsRGBA();
+  if (cachedPaletteRGBA === paletteRGBA && cachedPaletteColors) {
+    return cachedPaletteColors;
+  }
   const colors: RGBColor[] = [];
   for (let i = 0; i < 256; i++) {
     const offset = i * 4;
@@ -36,6 +43,8 @@ function getGamePaletteColors(): RGBColor[] {
       b: paletteRGBA[offset + 2] ?? 0,
     });
   }
+  cachedPaletteRGBA = paletteRGBA;
+  cachedPaletteColors = colors;
   return colors;
 }
 
