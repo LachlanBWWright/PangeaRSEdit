@@ -28,6 +28,7 @@ export default defineConfig({
       "src/types/*.test.ts",
       "src/data/utils/*.test.ts",
       "src/data/selectors/*.test.ts",
+      "src/editor/utils/*.test.ts",
     ],
     exclude: [
       "tests/e2e/**",
