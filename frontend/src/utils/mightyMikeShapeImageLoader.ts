@@ -238,6 +238,8 @@ export async function preloadItemImages(
 export function clearItemImageCache(): void {
   shapesFileCache.clear();
   frameCanvasCache.clear();
+  cachedPaletteRGBA = null;
+  cachedPaletteColors = null;
 }
 
 /**
