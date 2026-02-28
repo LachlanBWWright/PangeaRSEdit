@@ -22,3 +22,6 @@
 [submodule "games/mightymike"]
 	path = games/mightymike
 	url = https://github.com/jorio/MightyMike
+[submodule "games/ottomatic-wasm"]
+	path = games/ottomatic-wasm
+	url = https://github.com/LachlanBWWright/OttoMatic-Android

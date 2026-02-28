@@ -41,6 +41,19 @@ import { isNanosaur1LevelData } from "./loadLogic/typeGuards";
 import type { TunnelData } from "@/data/tunnelParser/types";
 import { prepareDownloadData } from "./utils/introPromptUtils";
 import { createBlankMapImagesForGame } from "./IntroPrompt/canvasUtils";
+import { TestGameDialog } from "./TestGameDialog";
+import {
+  DEFAULT_OTTO_LEVEL,
+  inferLevelNumberFromFilename,
+} from "./utils/ottoLevelNumbers";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { OTTO_LEVELS } from "./utils/ottoLevelNumbers";
 
 export interface DataHistory {
   items: AtomicLevelData[];
@@ -84,6 +97,10 @@ export function IntroPrompt() {
     undefined,
   );
   const [processed, setProcessed] = useState(false);
+  const [testDialogOpen, setTestDialogOpen] = useState(false);
+  const [ottoLevelNumber, setOttoLevelNumber] = useState(DEFAULT_OTTO_LEVEL);
+  const [terrainRsrcBlob, setTerrainRsrcBlob] = useState<Blob | null>(null);
+  const [terrainDataBlob, setTerrainDataBlob] = useState<Blob | null>(null);
   // Helper to get current atomic data
   const getCurrentAtomicData = useCallback((): AtomicLevelData => {
     return {
@@ -527,6 +544,9 @@ export function IntroPrompt() {
       setMapImages(mapImagesArray);
       setDataHistory(() => ({ items: [blankAtomicData], index: 0 }));
       setBlockHistoryUpdate(true);
+      if (gameType.GAME_TYPE === Game.OTTO_MATIC) {
+        setOttoLevelNumber(DEFAULT_OTTO_LEVEL);
+      }
     },
     [
       setGlobals,
@@ -538,6 +558,72 @@ export function IntroPrompt() {
       setMapImagesFile,
     ],
   );
+
+  const handleTestLevel = useCallback(() => {
+    if (globals.GAME_TYPE !== Game.OTTO_MATIC) return;
+
+    const combinedDataResult = combineLevelData(getCurrentAtomicData());
+    if (!isOk(combinedDataResult)) {
+      toast.error("Cannot compile level data", {
+        description: combinedDataResult.error.message,
+      });
+      return;
+    }
+
+    const combinedData = prepareDownloadData(
+      combinedDataResult.value,
+      globals,
+    );
+
+    const sanitizedData = sanitizeResourceForkJson(
+      structuredClone(combinedData),
+    );
+
+    const validation = validateResourceForkJson(sanitizedData);
+    if (validation.isErr()) {
+      toast.error("Invalid level data", {
+        description: validation.error.message,
+      });
+      return;
+    }
+
+    const saveResult = loadBytesFromJson(
+      sanitizedData,
+      globals.STRUCT_SPECS,
+      [],
+      [],
+      true,
+    );
+
+    const serializedResult = saveResult.ok
+      ? ok(saveResult.value)
+      : err(saveResult.error);
+
+    if (serializedResult.isErr()) {
+      toast.error("Failed to compile level", {
+        description: String(serializedResult.error),
+      });
+      return;
+    }
+
+    const loadRes = serializedResult.value;
+    if (!loadRes || loadRes.byteLength === 0) {
+      toast.error("Compiled level data is empty");
+      return;
+    }
+
+    setTerrainRsrcBlob(new Blob([loadRes.slice(0)], { type: "application/octet-stream" }));
+
+    if (mapFile) {
+      const inferred = inferLevelNumberFromFilename(mapFile.name);
+      if (inferred !== undefined) {
+        setOttoLevelNumber(inferred);
+      }
+    }
+
+    setTerrainDataBlob(null);
+    setTestDialogOpen(true);
+  }, [globals, getCurrentAtomicData, mapFile]);
 
   // Handle tunnel data updates
   const handleTunnelDataUpdate = useCallback((data: TunnelData) => {
@@ -598,6 +684,40 @@ export function IntroPrompt() {
         >
           Download
         </Button>
+        {globals.GAME_TYPE === Game.OTTO_MATIC && (
+          <>
+            <Select
+              value={String(ottoLevelNumber)}
+              onValueChange={(v) => setOttoLevelNumber(Number(v))}
+            >
+              <SelectTrigger className="w-44" data-testid="otto-level-select">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {OTTO_LEVELS.map((l) => (
+                  <SelectItem key={l.levelNumber} value={String(l.levelNumber)}>
+                    {`Lv ${String(l.levelNumber + 1)}: ${l.name}`}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Button
+              data-testid="test-level-button"
+              variant="outline"
+              onClick={handleTestLevel}
+            >
+              Test Level
+            </Button>
+            <TestGameDialog
+              open={testDialogOpen}
+              onOpenChange={setTestDialogOpen}
+              levelNumber={ottoLevelNumber}
+              onLevelNumberChange={setOttoLevelNumber}
+              terrainRsrcBlob={terrainRsrcBlob}
+              terrainDataBlob={terrainDataBlob}
+            />
+          </>
+        )}
       </div>
       <hr />
       {/* Render editor when we have images; allow some atomic pieces to be null. */}
