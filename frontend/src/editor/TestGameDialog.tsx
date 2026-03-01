@@ -164,7 +164,6 @@ export function TestGameDialog({
   const [status, setStatus] = useState<GameStatus>("idle");
   const [errorLog, setErrorLog] = useState<string[]>([]);
   const [gameKey, setGameKey] = useState(0);
-  const [fetchedLocalWasm, setFetchedLocalWasm] = useState<boolean | null>(null);
   const [fencesEnabled, setFencesEnabled] = useState(true);
   const [godModeEnabled, setGodModeEnabled] = useState(false);
   const [speedMultiplier, setSpeedMultiplier] = useState(1.0);
