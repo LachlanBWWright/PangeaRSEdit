@@ -57,13 +57,23 @@ function callFenceCollision(gameType: Game, enabled: boolean): void {
   const flag = enabled ? 1 : 0;
   switch (gameType) {
     case Game.OTTO_MATIC:
-      window.Module?.ccall?.("OttoMatic_SetFenceCollisions", null, ["number"], [flag]);
+      window.Module?.ccall?.(
+        "OttoMatic_SetFenceCollisions",
+        null,
+        ["number"],
+        [flag],
+      );
       break;
     case Game.NANOSAUR:
       window.SetFenceCollisionsEnabled?.(flag);
       break;
     case Game.BUGDOM:
-      window.Module?.ccall?.("BugdomSetFenceCollision", null, ["number"], [flag]);
+      window.Module?.ccall?.(
+        "BugdomSetFenceCollision",
+        null,
+        ["number"],
+        [flag],
+      );
       break;
     case Game.BUGDOM_2:
       window.gameAPI?.setFenceCollisionEnabled(enabled);
@@ -75,7 +85,12 @@ function callFenceCollision(gameType: Game, enabled: boolean): void {
       window.Module?.ccall?.("BF_SetFenceCollision", null, ["number"], [flag]);
       break;
     case Game.NANOSAUR_2:
-      window.Module?.ccall?.("Nanosaur2_SetFenceCollisionsEnabled", null, ["number"], [flag]);
+      window.Module?.ccall?.(
+        "Nanosaur2_SetFenceCollisionsEnabled",
+        null,
+        ["number"],
+        [flag],
+      );
       break;
     default:
       break;
@@ -84,12 +99,22 @@ function callFenceCollision(gameType: Game, enabled: boolean): void {
 
 /** Otto Matic only: god mode toggle via Module.ccall. */
 function callGodMode(enabled: boolean): void {
-  window.Module?.ccall?.("OttoMatic_SetGodMode", null, ["number"], [enabled ? 1 : 0]);
+  window.Module?.ccall?.(
+    "OttoMatic_SetGodMode",
+    null,
+    ["number"],
+    [enabled ? 1 : 0],
+  );
 }
 
 /** Otto Matic only: movement speed multiplier via Module.ccall. */
 function callSpeedMultiplier(value: number): void {
-  window.Module?.ccall?.("OttoMatic_SetSpeedMultiplier", null, ["number"], [value]);
+  window.Module?.ccall?.(
+    "OttoMatic_SetSpeedMultiplier",
+    null,
+    ["number"],
+    [value],
+  );
 }
 
 /** Nanosaur only: restore health via exported JS function. */
@@ -181,7 +206,9 @@ export function TestGameDialog({
 
   // For games without a WASM build, we know immediately — no fetch needed.
   // For games that have a build, null means "still checking".
-  const [fetchedLocalWasm, setFetchedLocalWasm] = useState<boolean | null>(null);
+  const [fetchedLocalWasm, setFetchedLocalWasm] = useState<boolean | null>(
+    null,
+  );
   const useLocalWasm = config.wasmAvailable ? fetchedLocalWasm : false;
 
   // Detect whether local WASM files are present for games that do have a build
@@ -197,9 +224,19 @@ export function TestGameDialog({
           setFetchedLocalWasm(res.ok && ct.includes("javascript"));
         }
       })
-      .catch(() => { if (!cancelled) setFetchedLocalWasm(false); });
-    return () => { cancelled = true; };
-  }, [gameType, config.wasmAvailable, config.wasmDir, config.mainJs, setFetchedLocalWasm]);
+      .catch(() => {
+        if (!cancelled) setFetchedLocalWasm(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    gameType,
+    config.wasmAvailable,
+    config.wasmDir,
+    config.mainJs,
+    setFetchedLocalWasm,
+  ]);
 
   const appendError = useCallback((msg: string) => {
     setErrorLog((prev) => [...prev.slice(-(MAX_ERROR_LOG_ENTRIES - 1)), msg]);
@@ -260,7 +297,9 @@ export function TestGameDialog({
           }
         }
       },
-      onAbort: () => { appendError("Game crashed unexpectedly."); },
+      onAbort: () => {
+        appendError("Game crashed unexpectedly.");
+      },
     };
 
     const script = document.createElement("script");
@@ -318,7 +357,11 @@ export function TestGameDialog({
   );
 
   const handleOpenRemote = useCallback(() => {
-    window.open(config.remoteGameUrl(levelNumber), "_blank", "noopener,noreferrer");
+    window.open(
+      config.remoteGameUrl(levelNumber),
+      "_blank",
+      "noopener,noreferrer",
+    );
   }, [config, levelNumber]);
 
   const handleToggleFences = useCallback(() => {
@@ -354,9 +397,9 @@ export function TestGameDialog({
   const isOttoMatic = gameType === Game.OTTO_MATIC;
   const isNanosaur = gameType === Game.NANOSAUR;
   const hasTerrainData = terrainRsrcBlob !== null || terrainDataBlob !== null;
-  const currentLevelInfo = config.levels.find(
-    (l) => getLevelIndex(l) === levelNumber,
-  ) ?? config.levels[0];
+  const currentLevelInfo =
+    config.levels.find((l) => getLevelIndex(l) === levelNumber) ??
+    config.levels[0];
   const levelLabelText = currentLevelInfo
     ? levelLabel(currentLevelInfo, config.levels.indexOf(currentLevelInfo))
     : "";
@@ -370,21 +413,36 @@ export function TestGameDialog({
             {levelLabelText ? ` — ${levelLabelText}` : ""}
           </DialogTitle>
           <DialogDescription>
-            {!config.wasmAvailable && "WASM build not yet available for this game."}
-            {config.wasmAvailable && useLocalWasm === null && "Checking for local WASM build…"}
-            {config.wasmAvailable && useLocalWasm === false && "No local WASM found. Use \"Open on GitHub Pages\" to play in a new tab."}
-            {config.wasmAvailable && useLocalWasm === true && status === "idle" && "Local WASM detected. Press \"Start Game\" to launch."}
+            {!config.wasmAvailable &&
+              "WASM build not yet available for this game."}
+            {config.wasmAvailable &&
+              useLocalWasm === null &&
+              "Checking for local WASM build…"}
+            {config.wasmAvailable &&
+              useLocalWasm === false &&
+              'No local WASM found. Use "Open on GitHub Pages" to play in a new tab.'}
+            {config.wasmAvailable &&
+              useLocalWasm === true &&
+              status === "idle" &&
+              'Local WASM detected. Press "Start Game" to launch.'}
             {status === "loading" && "Loading game…"}
-            {status === "running" && isOttoMatic && (hasTerrainData ? "Game running with custom terrain (local WASM)." : "Game running with default terrain.")}
+            {status === "running" &&
+              isOttoMatic &&
+              (hasTerrainData
+                ? "Game running with custom terrain (local WASM)."
+                : "Game running with default terrain.")}
             {status === "running" && !isOttoMatic && "Game running."}
-            {status === "crashed" && "The game has encountered an error. Check the log below and try rebooting."}
+            {status === "crashed" &&
+              "The game has encountered an error. Check the log below and try rebooting."}
           </DialogDescription>
         </DialogHeader>
 
         {/* Controls bar */}
         <div className="flex items-center gap-2 flex-wrap">
           <label className="text-sm font-medium" htmlFor="game-level-select">
-            {config.levels === GAME_PORT_CONFIGS[Game.CRO_MAG].levels ? "Track:" : "Level:"}
+            {config.levels === GAME_PORT_CONFIGS[Game.CRO_MAG].levels
+              ? "Track:"
+              : "Level:"}
           </label>
           <Select
             value={String(levelNumber)}
@@ -395,7 +453,10 @@ export function TestGameDialog({
             </SelectTrigger>
             <SelectContent>
               {config.levels.map((l, idx) => (
-                <SelectItem key={getLevelIndex(l)} value={String(getLevelIndex(l))}>
+                <SelectItem
+                  key={getLevelIndex(l)}
+                  value={String(getLevelIndex(l))}
+                >
                   {levelLabel(l, idx)}
                 </SelectItem>
               ))}
@@ -440,8 +501,12 @@ export function TestGameDialog({
 
           {isNanosaur && status === "running" && (
             <>
-              <Button variant="outline" onClick={callRestoreHealth}>Restore Health</Button>
-              <Button variant="outline" onClick={callFillFuel}>Fill Fuel</Button>
+              <Button variant="outline" onClick={callRestoreHealth}>
+                Restore Health
+              </Button>
+              <Button variant="outline" onClick={callFillFuel}>
+                Fill Fuel
+              </Button>
             </>
           )}
         </div>
@@ -475,7 +540,10 @@ export function TestGameDialog({
         <div className="flex-1 min-h-0 relative rounded overflow-hidden border border-border bg-black">
           {!config.wasmAvailable ? (
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 text-muted-foreground p-6 text-center">
-              <p>No WASM build is available for {GAME_DISPLAY_NAMES[config.game]} yet.</p>
+              <p>
+                No WASM build is available for {GAME_DISPLAY_NAMES[config.game]}{" "}
+                yet.
+              </p>
               <Button variant="outline" onClick={handleOpenRemote}>
                 View Repository ↗
               </Button>
@@ -509,7 +577,8 @@ export function TestGameDialog({
 
         <DialogFooter className="flex-row gap-2 justify-between sm:justify-between">
           <p className="text-xs text-muted-foreground self-center">
-            Click the canvas to capture mouse/keyboard. Press Escape or F to release.
+            Click the canvas to capture mouse/keyboard. Press Escape or F to
+            release.
           </p>
           <Button variant="outline" onClick={() => handleOpenChange(false)}>
             Close
