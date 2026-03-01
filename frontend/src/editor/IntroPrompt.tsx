@@ -44,9 +44,13 @@ import { createBlankMapImagesForGame } from "./IntroPrompt/canvasUtils";
 import { TestGameDialog } from "./TestGameDialog";
 import {
   DEFAULT_OTTO_LEVEL,
-  OTTO_LEVELS,
   inferLevelNumberFromFilename,
 } from "./utils/ottoLevelNumbers";
+import {
+  GAME_PORT_CONFIGS,
+  getLevelIndex,
+  type AnyLevelInfo,
+} from "./utils/gamePortConfig";
 import {
   Select,
   SelectContent,
@@ -546,6 +550,9 @@ export function IntroPrompt() {
       setBlockHistoryUpdate(true);
       if (gameType.GAME_TYPE === Game.OTTO_MATIC) {
         setOttoLevelNumber(DEFAULT_OTTO_LEVEL);
+      } else {
+        const portConfig = GAME_PORT_CONFIGS[gameType.GAME_TYPE];
+        setOttoLevelNumber(portConfig?.defaultLevel ?? 0);
       }
     },
     [
@@ -560,7 +567,13 @@ export function IntroPrompt() {
   );
 
   const handleTestLevel = useCallback(() => {
-    if (globals.GAME_TYPE !== Game.OTTO_MATIC) return;
+    // For non-Otto games: open dialog directly (game uses default terrain)
+    if (globals.GAME_TYPE !== Game.OTTO_MATIC) {
+      setTerrainRsrcBlob(null);
+      setTerrainDataBlob(null);
+      setTestDialogOpen(true);
+      return;
+    }
 
     const combinedDataResult = combineLevelData(getCurrentAtomicData());
     if (!isOk(combinedDataResult)) {
@@ -684,7 +697,7 @@ export function IntroPrompt() {
         >
           Download
         </Button>
-        {globals.GAME_TYPE === Game.OTTO_MATIC && (
+        {GAME_PORT_CONFIGS[globals.GAME_TYPE] && (
           <>
             <Select
               value={String(ottoLevelNumber)}
@@ -694,11 +707,16 @@ export function IntroPrompt() {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {OTTO_LEVELS.map((l) => (
-                  <SelectItem key={l.levelNumber} value={String(l.levelNumber)}>
-                    {`Lv ${String(l.levelNumber + 1)}: ${l.name}`}
-                  </SelectItem>
-                ))}
+                {GAME_PORT_CONFIGS[globals.GAME_TYPE].levels.map(
+                  (l: AnyLevelInfo, idx: number) => (
+                    <SelectItem
+                      key={getLevelIndex(l)}
+                      value={String(getLevelIndex(l))}
+                    >
+                      {`${String(idx + 1)}: ${l.name}`}
+                    </SelectItem>
+                  ),
+                )}
               </SelectContent>
             </Select>
             <Button
@@ -711,6 +729,7 @@ export function IntroPrompt() {
             <TestGameDialog
               open={testDialogOpen}
               onOpenChange={setTestDialogOpen}
+              gameType={globals.GAME_TYPE}
               levelNumber={ottoLevelNumber}
               onLevelNumberChange={setOttoLevelNumber}
               terrainRsrcBlob={terrainRsrcBlob}

@@ -25,3 +25,24 @@
 [submodule "games/ottomatic-wasm"]
 	path = games/ottomatic-wasm
 	url = https://github.com/LachlanBWWright/OttoMatic-Android
+[submodule "gamePorts/nanosaur"]
+	path = gamePorts/nanosaur
+	url = https://github.com/LachlanBWWright/Nanosaur-android
+[submodule "gamePorts/bugdom"]
+	path = gamePorts/bugdom
+	url = https://github.com/LachlanBWWright/Bugdom-android
+[submodule "gamePorts/cromagrally"]
+	path = gamePorts/cromagrally
+	url = https://github.com/LachlanBWWright/CroMagRally-Android
+[submodule "gamePorts/bugdom2"]
+	path = gamePorts/bugdom2
+	url = https://github.com/LachlanBWWright/Bugdom2-Android
+[submodule "gamePorts/billyfrontier"]
+	path = gamePorts/billyfrontier
+	url = https://github.com/LachlanBWWright/BillyFrontier-Android
+[submodule "gamePorts/mightymike"]
+	path = gamePorts/mightymike
+	url = https://github.com/LachlanBWWright/MightyMike-Android
+[submodule "gamePorts/nanosaur2"]
+	path = gamePorts/nanosaur2
+	url = https://github.com/LachlanBWWright/Nanosaur2-Android
