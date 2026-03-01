@@ -270,12 +270,6 @@ export async function parseMightyMikeFile(
       : undefined;
   const tilesetField = isMightyMikeTileSet(tilesetRaw) ? tilesetRaw : undefined;
 
-  if (!isLevelDataLike(ottoCompatible)) {
-    return err(new Error("Constructed data is not valid LevelData"));
-  }
-  const atomicData = splitLevelData(ottoCompatible);
-  setData(atomicData);
-
   if (
     tilesetField?.tileImages &&
     Array.isArray(tilesetField.tileImages) &&
@@ -308,6 +302,10 @@ export async function parseMightyMikeFile(
   if (!isLevelDataLike(finalData)) {
     return err(new Error("Final data is not LevelData"));
   }
+
+  // setData must use finalData (which includes mightyMikeMapData) so that
+  // serializeMightyMikeLevel can reconstruct the binary map on download.
+  setData(splitLevelData(finalData));
 
   return ok(finalData);
 }

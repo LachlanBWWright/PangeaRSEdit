@@ -27,7 +27,7 @@ import { parseU8, parseU16 } from "@/utils/numberParsers";
 import { atom } from "jotai";
 
 // Atom to track if item images should be shown globally for all items
-export const ShowMightyMikeItemImages = atom(false);
+export const ShowMightyMikeItemImages = atom(true);
 
 export const MightyMikeItemMenu = memo(function MightyMikeItemMenu({
   itemData,

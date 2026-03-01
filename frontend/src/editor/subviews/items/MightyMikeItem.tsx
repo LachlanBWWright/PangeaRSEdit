@@ -9,7 +9,7 @@ import { Globals } from "@/data/globals/globals";
 import { getItemName } from "@/data/items/getItemNames";
 import { selectItem, updateItem } from "../../../data/selectors";
 import { ShowMightyMikeItemImages } from "./MightyMikeItemMenu";
-import { loadItemImage } from "@/utils/mightyMikeShapeImageLoader";
+import { loadItemImage, type ItemFrameImage } from "@/utils/mightyMikeShapeImageLoader";
 import { CurrentScene } from "@/data/game/gameAtoms";
 import { isOk } from "@/types/result";
 
@@ -34,7 +34,7 @@ export const MightyMikeItem = memo(function MightyMikeItem({
   const globals = useAtomValue(Globals);
   const showItemImages = useAtomValue(ShowMightyMikeItemImages);
   const currentScene = useAtomValue(CurrentScene);
-  const [itemImage, setItemImage] = useState<HTMLCanvasElement | null>(null);
+  const [itemImageData, setItemImageData] = useState<ItemFrameImage | null>(null);
 
   const handleMouseOver = useCallback(() => setHovering(true), []);
   const handleMouseLeave = useCallback(() => setHovering(false), []);
@@ -44,14 +44,16 @@ export const MightyMikeItem = memo(function MightyMikeItem({
   );
   const handleDragEnd = useCallback(
     (e: Konva.KonvaEventObject<DragEvent>) => {
-      const imgW = itemImage ? itemImage.width : ITEM_BOX_SIZE;
-      const imgH = itemImage ? itemImage.height : ITEM_BOX_SIZE;
+      // Apply the sprite's frame offset to map canvas top-left back to item world position.
+      // offsetX/offsetY are the sprite hot-spot offsets from the game's FrameHeader.
+      const ox = itemImageData ? itemImageData.offsetX : -ITEM_BOX_OFFSET;
+      const oy = itemImageData ? itemImageData.offsetY : -ITEM_BOX_OFFSET;
       updateItem(setItemData, itemIdx, {
-        x: Math.round(e.target.x() + imgW / 2),
-        z: Math.round(e.target.y() + imgH),
+        x: Math.round(e.target.x() - ox),
+        z: Math.round(e.target.y() - oy),
       });
     },
-    [itemIdx, setItemData, itemImage],
+    [itemIdx, setItemData, itemImageData],
   );
 
   const itemName = useMemo(
@@ -62,21 +64,20 @@ export const MightyMikeItem = memo(function MightyMikeItem({
   // Load item image when toggle is on
   useEffect(() => {
     if (!showItemImages || !item) {
-      // Reset state asynchronously
-      Promise.resolve().then(() => setItemImage(null));
+      Promise.resolve().then(() => setItemImageData(null));
       return;
     }
 
     loadItemImage(item.type, currentScene)
       .then((result) => {
         if (isOk(result)) {
-          setItemImage(result.value);
+          setItemImageData(result.value);
         } else {
           console.warn(
             `Failed to load image for item ${item.type}:`,
             result.error.message
           );
-          setItemImage(null);
+          setItemImageData(null);
         }
       })
       .catch((error) => {
@@ -84,27 +85,27 @@ export const MightyMikeItem = memo(function MightyMikeItem({
           `Unexpected error loading image for item ${item.type}:`,
           error instanceof Error ? error.message : String(error)
         );
-        setItemImage(null);
+        setItemImageData(null);
       });
   }, [showItemImages, item, currentScene]);
 
   if (item === null || item === undefined) return null;
 
-  // If showing images and we have an image, render at natural sprite size
-  // Position: sprite bottom-center aligns with item x,y (game convention)
-  if (showItemImages && itemImage) {
-    const imgW = itemImage.width;
-    const imgH = itemImage.height;
-    const drawX = item.x - imgW / 2;
-    const drawY = item.z - imgH;
+  // If showing images and we have an image, render at natural sprite size.
+  // The frame header's offsetX/offsetY map the sprite onto the item's world position
+  // the same way the game does: drawX = item.x + offsetX, drawY = item.z + offsetY.
+  if (showItemImages && itemImageData) {
+    const { canvas, offsetX, offsetY } = itemImageData;
+    const drawX = item.x + offsetX;
+    const drawY = item.z + offsetY;
     return (
       <>
         <KonvaImage
-          image={itemImage}
+          image={canvas}
           x={drawX}
           y={drawY}
-          width={imgW}
-          height={imgH}
+          width={canvas.width}
+          height={canvas.height}
           draggable
           onMouseOver={handleMouseOver}
           onMouseLeave={handleMouseLeave}

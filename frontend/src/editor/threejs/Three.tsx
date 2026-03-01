@@ -163,6 +163,10 @@ export function ThreeView({
   const terrainMeshRef = useRef<Mesh>(null);
   const [intersectionPoint, setIntersectionPoint] = useState<{ x: number; y: number; z: number } | null>(null);
   const [isEditing, setIsEditing] = useState(false);
+  // Incremented when the 3D topology brush finishes a stroke so fence/item geometry
+  // re-reads terrain heights (the brush directly mutates terrainData in place for
+  // performance, so the useMemo deps don't see the change otherwise).
+  const [topologyVersion, setTopologyVersion] = useState(0);
   const lastBrushCenterRef = useRef<{ x: number; y: number } | null>(null);
   
   const isEditingTopology = tileViewMode === TileViews.Topology;
@@ -392,6 +396,8 @@ export function ThreeView({
   const handlePointerUp = useCallback(() => {
     setIsEditing(false);
     lastBrushCenterRef.current = null;
+    // Increment topologyVersion so FenceGeometry/ItemGeometry re-read terrain heights.
+    setTopologyVersion((v) => v + 1);
   }, []);
 
   // Ensure header is defined before rendering TestGeometry
@@ -487,6 +493,7 @@ export function ThreeView({
           fenceData={fenceData}
           headerData={headerData}
           terrainData={terrainData}
+          topologyVersion={topologyVersion}
         />
       )}
       {liquidData && show3DLiquid && (

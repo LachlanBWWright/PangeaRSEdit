@@ -15,8 +15,17 @@ const SHAPES_BASE_PATH = "/PangeaRSEdit/data/mightymike/shapes";
 // Cache for loaded .shapes files
 const shapesFileCache = new Map<string, ShapesFile>();
 
-// Cache for rendered frame canvases
-const frameCanvasCache = new Map<string, HTMLCanvasElement>();
+/** Canvas plus the sprite's hot-spot offsets from the game's FrameHeader. */
+export interface ItemFrameImage {
+  canvas: HTMLCanvasElement;
+  /** Horizontal offset from item world-position to the top-left of the sprite (negative = sprite starts left of item). */
+  offsetX: number;
+  /** Vertical offset from item world-position to the top of the sprite (negative = sprite starts above item). */
+  offsetY: number;
+}
+
+// Cache for rendered frame images (canvas + offsets)
+const frameCanvasCache = new Map<string, ItemFrameImage>();
 
 // Cached palette conversion to avoid recreating on every frame render
 let cachedPaletteRGBA: Uint8Array | null = null;
@@ -107,13 +116,13 @@ function getFrameCacheKey(
 
 /**
  * Load and render a specific frame from a shape as a canvas.
- * Returns the sprite at its natural pixel size for the level editor.
+ * Returns the sprite at its natural pixel size for the level editor, with frame offsets.
  */
 async function loadShapeFrame(
   shapesFilename: string,
   shapeIndex: number,
   frameIndex = 0
-): Promise<Result<HTMLCanvasElement>> {
+): Promise<Result<ItemFrameImage>> {
   const cacheKey = getFrameCacheKey(shapesFilename, shapeIndex, frameIndex);
 
   // Check cache first
@@ -170,19 +179,25 @@ async function loadShapeFrame(
     return err(originalCanvasResult.error);
   }
 
+  const frameImage: ItemFrameImage = {
+    canvas: originalCanvasResult.value,
+    offsetX: frame.header.offsetX,
+    offsetY: frame.header.offsetY,
+  };
+
   // Cache and return at natural pixel size
-  frameCanvasCache.set(cacheKey, originalCanvasResult.value);
-  return ok(originalCanvasResult.value);
+  frameCanvasCache.set(cacheKey, frameImage);
+  return ok(frameImage);
 }
 
 /**
- * Load an item's image (first frame) for display in the level editor
- * Returns Ok(canvas) if successful, Ok(null) if item has no sprite, or Err if loading failed
+ * Load an item's image (first frame) for display in the level editor.
+ * Returns Ok({canvas, offsetX, offsetY}) if successful, Ok(null) if item has no sprite, or Err if loading failed.
  */
 export async function loadItemImage(
   itemType: number,
   currentScene?: string
-): Promise<Result<HTMLCanvasElement | null>> {
+): Promise<Result<ItemFrameImage | null>> {
   const mapping = getItemSpriteMapping(itemType);
   if (!mapping) {
     return ok(null); // Item has no sprite

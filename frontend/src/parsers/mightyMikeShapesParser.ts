@@ -354,11 +354,12 @@ function parseShapeList(
         };
       }
 
-      // Extract pixel data
+      // Extract pixel data.
+      // pixelOffset is also relative to shapeBase and can be negative.
       const pixelDataSize = header.width * header.height;
       const pixelStartOffset = shapeBase + header.pixelOffset;
 
-      if (pixelStartOffset + pixelDataSize > bytes.length) {
+      if (pixelStartOffset < 0 || pixelStartOffset + pixelDataSize > bytes.length) {
         return {
           success: false,
           shapes: [],
@@ -373,13 +374,16 @@ function parseShapeList(
         pixelStartOffset + pixelDataSize
       );
 
-      // Extract mask data if present (byte-per-pixel, not bit-per-pixel)
+      // Extract mask data if present (byte-per-pixel, not bit-per-pixel).
+      // maskOffset is relative to shapeBase (the shape header) and is typically
+      // *negative* because pixel/mask data is laid out before the shape headers.
+      // The original check `> 0` was wrong; use a bounds check instead.
       let mask: Uint8Array | undefined;
-      if (header.maskOffset > 0) {
+      if (header.maskOffset !== 0) {
         const maskStartOffset = shapeBase + header.maskOffset;
         const maskSize = header.width * header.height;
 
-        if (maskStartOffset + maskSize <= bytes.length) {
+        if (maskStartOffset >= 0 && maskStartOffset + maskSize <= bytes.length) {
           mask = bytes.slice(maskStartOffset, maskStartOffset + maskSize);
         }
       }
