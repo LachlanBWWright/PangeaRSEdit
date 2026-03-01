@@ -168,7 +168,7 @@ export const GAME_PORT_CONFIGS: Readonly<Record<Game, GamePortConfig>> = {
   [Game.BILLY_FRONTIER]: {
     game: Game.BILLY_FRONTIER,
     wasmDir: "billyfrontier",
-    mainJs: "BillyFrontier.js",
+    mainJs: "billyfrontier.js",
     remoteGameUrl: (n) =>
       `https://lachlanbwwright.github.io/BillyFrontier-Android/game/billyfrontier.html#level=${String(n)}`,
     levels: BILLY_FRONTIER_AREAS,

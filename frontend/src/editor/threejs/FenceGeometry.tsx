@@ -111,6 +111,7 @@ const FenceSegmentMesh: React.FC<FenceSegmentMeshProps> = ({
           map={texture}
           side={DoubleSide}
           transparent={true}
+          alphaTest={0.5}
         />
       ) : (
         <meshStandardMaterial color={fenceColor} side={DoubleSide} />

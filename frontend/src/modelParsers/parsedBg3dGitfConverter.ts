@@ -13,6 +13,7 @@ import {
   BG3DSkeleton,
   BG3DBone,
   BG3DAnimation,
+  BG3DMaterialFlags,
 } from "./parseBG3D";
 
 import {
@@ -411,6 +412,17 @@ export function bg3dParsedToGLTF(
     m.setExtras({
       flags: mat.flags,
     });
+
+    // Set alpha mode based on BG3D material flags.
+    // BG3D_MATERIALFLAG_ALWAYSBLEND means the game uses GL_BLEND (smooth transparency).
+    // Textured materials without ALWAYSBLEND still use ARGB1555 textures with a 1-bit
+    // alpha channel, so use MASK mode (hard cutout) with 0.5 threshold.
+    if (mat.flags & BG3DMaterialFlags.BG3D_MATERIALFLAG_ALWAYSBLEND) {
+      m.setAlphaMode("BLEND");
+    } else if (mat.flags & BG3DMaterialFlags.BG3D_MATERIALFLAG_TEXTURED) {
+      m.setAlphaMode("MASK");
+      m.setAlphaCutoff(0.5);
+    }
 
     return m;
   });

@@ -146,7 +146,7 @@ export function OttoMaticEditorView({
         setView={setView}
         terrainHasSTgd={showSupertileMenu}
       />
-      <div>
+      <div className="overflow-y-auto">
         {view === View.fences && (
           fenceData ? (
             <FenceMenu fenceData={fenceData} setFenceData={setFenceDataNotNull} />

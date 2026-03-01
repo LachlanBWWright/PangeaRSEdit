@@ -138,28 +138,28 @@ export const BUGDOM2_ITEM_MODEL_MAPPINGS: Record<
   11: { modelFile: "Level1_Garden.bg3d", modelPath: "models", modelIndex: 8, groupSize: 3 },
   // 29: Rose (FOLIAGE_ObjType_Rose = 11)
   29: { modelFile: "Foliage.bg3d", modelPath: "models", modelIndex: 11 },
-  // 30: Tulip Pot (SIDEWALK_ObjType_TulipPot = 30)
-  30: { modelFile: "Level2_Sidewalk.bg3d", modelPath: "models", modelIndex: 30 },
+  // 30: Tulip Pot (SIDEWALK_ObjType_TulipPot = 30, scale 3.0)
+  30: { modelFile: "Level2_Sidewalk.bg3d", modelPath: "models", modelIndex: 30, scale: 3.0 },
   // 28: Windmill (SIDEWALK_ObjType_WindmillBase = 28, + Blades)
   28: { modelFile: "Level2_Sidewalk.bg3d", modelPath: "models", modelIndex: 28, groupSize: 2 },
 
   // Sidewalk level items (Level2_Sidewalk.bg3d - MODEL_GROUP_LEVELSPECIFIC)
-  // 17: Brick (SIDEWALK_ObjType_Brick = 8)
-  17: { modelFile: "Level2_Sidewalk.bg3d", modelPath: "models", modelIndex: 8 },
-  // 18: Post (SIDEWALK_ObjType_Post_Brick = 12)
-  18: { modelFile: "Level2_Sidewalk.bg3d", modelPath: "models", modelIndex: 12 },
-  // 21: Pebble (SIDEWALK_ObjType_LargeStone = 9)
+  // 17: Brick (SIDEWALK_ObjType_Brick = 8, scale 2.5)
+  17: { modelFile: "Level2_Sidewalk.bg3d", modelPath: "models", modelIndex: 8, scale: 2.5 },
+  // 18: Post (SIDEWALK_ObjType_Post_Brick = 12, scale 1.5)
+  18: { modelFile: "Level2_Sidewalk.bg3d", modelPath: "models", modelIndex: 12, scale: 1.5 },
+  // 21: Pebble (SIDEWALK_ObjType_LargeStone = 9, scale ~1.0)
   21: { modelFile: "Level2_Sidewalk.bg3d", modelPath: "models", modelIndex: 9 },
   // 23: Pool Coping (SIDEWALK_ObjType_Coping = 20)
   23: { modelFile: "Level2_Sidewalk.bg3d", modelPath: "models", modelIndex: 20 },
-  // 24: Pool Leaf (SIDEWALK_ObjType_PoolLeaf1 = 16)
-  24: { modelFile: "Level2_Sidewalk.bg3d", modelPath: "models", modelIndex: 16 },
-  // 27: Dog House (SIDEWALK_ObjType_DogHouse = 27)
-  27: { modelFile: "Level2_Sidewalk.bg3d", modelPath: "models", modelIndex: 27 },
-  // 31: Beach Ball (SIDEWALK_ObjType_BeachBall = 22)
-  31: { modelFile: "Level2_Sidewalk.bg3d", modelPath: "models", modelIndex: 22 },
-  // 32: Chlorine Float (SIDEWALK_ObjType_ChlorineFloat = 23)
-  32: { modelFile: "Level2_Sidewalk.bg3d", modelPath: "models", modelIndex: 23 },
+  // 24: Pool Leaf (SIDEWALK_ObjType_PoolLeaf1 = 16, scale ~2.0)
+  24: { modelFile: "Level2_Sidewalk.bg3d", modelPath: "models", modelIndex: 16, scale: 2.0 },
+  // 27: Dog House (SIDEWALK_ObjType_DogHouse = 27, scale 2.0)
+  27: { modelFile: "Level2_Sidewalk.bg3d", modelPath: "models", modelIndex: 27, scale: 2.0 },
+  // 31: Beach Ball (SIDEWALK_ObjType_BeachBall = 22, scale 2.5)
+  31: { modelFile: "Level2_Sidewalk.bg3d", modelPath: "models", modelIndex: 22, scale: 2.5 },
+  // 32: Chlorine Float (SIDEWALK_ObjType_ChlorineFloat = 23, scale 3.0)
+  32: { modelFile: "Level2_Sidewalk.bg3d", modelPath: "models", modelIndex: 23, scale: 3.0 },
   // 33: Pool Ring Float (SIDEWALK_ObjType_PoolRingFloat = 24)
   33: { modelFile: "Level2_Sidewalk.bg3d", modelPath: "models", modelIndex: 24 },
   // 34: Drain Pipe (SIDEWALK_ObjType_DrainPipe = 31)
@@ -172,8 +172,8 @@ export const BUGDOM2_ITEM_MODEL_MAPPINGS: Record<
   15: { modelFile: "Level5_Playroom.bg3d", modelPath: "models", modelIndex: 6 },
   // 41: Letter Block (PLAYROOM_ObjType_LetterBlock1 = 1)
   41: { modelFile: "Level5_Playroom.bg3d", modelPath: "models", modelIndex: 1 },
-  // 40: Slot Car (PLAYROOM_ObjType_SlotCarRed = 11)
-  40: { modelFile: "Level5_Playroom.bg3d", modelPath: "models", modelIndex: 11 },
+  // 40: NilAdd - slot car is not a terrain item (spawned on splines, not terrain)
+  // 40 intentionally omitted
   // 46: Puzzle (PLAYROOM_ObjType_PuzzleMain = 20)
   46: { modelFile: "Level5_Playroom.bg3d", modelPath: "models", modelIndex: 20 },
   // 47: Lego Wall (PLAYROOM_ObjType_LegoWall = 24)
@@ -190,8 +190,8 @@ export const BUGDOM2_ITEM_MODEL_MAPPINGS: Record<
   55: { modelFile: "Level6_Closet.bg3d", modelPath: "models", modelIndex: 2 },
   // 57: Moth Ball (CLOSET_ObjType_MothBall = 10)
   57: { modelFile: "Level6_Closet.bg3d", modelPath: "models", modelIndex: 10 },
-  // 58: Vacuum (CLOSET_ObjType_Vacuume = 11)
-  58: { modelFile: "Level6_Closet.bg3d", modelPath: "models", modelIndex: 11 },
+  // 58: NilAdd - vacuum cleaner is not a terrain item
+  // 58 intentionally omitted
   // 59: Closet Wall / PCI Card (CLOSET_ObjType_PCICard = 13)
   59: { modelFile: "Level6_Closet.bg3d", modelPath: "models", modelIndex: 13 },
   // 62: Silicon Part (CLOSET_ObjType_SiliconDoor = 21)
@@ -247,8 +247,8 @@ export const BUGDOM2_ITEM_MODEL_MAPPINGS: Record<
   7: { modelFile: "Global.bg3d", modelPath: "models", modelIndex: 26 },
   // 9: Acorn (GLOBAL_ObjType_Acorn = 25)
   9: { modelFile: "Global.bg3d", modelPath: "models", modelIndex: 25 },
-  // 13: Door (level-specific, uses GARDEN_ObjType_RedDoor = 5 on Garden)
-  13: { modelFile: "Level1_Garden.bg3d", modelPath: "models", modelIndex: 5 },
+  // 13: Door (level-specific, uses GARDEN_ObjType_RedDoor = 5 on Garden, scale 1.8)
+  13: { modelFile: "Level1_Garden.bg3d", modelPath: "models", modelIndex: 5, scale: 1.8 },
   // 20: Shrub Root (FOLIAGE_ObjType_ShrubRoot = 10)
   20: { modelFile: "Foliage.bg3d", modelPath: "models", modelIndex: 10 },
   // 26: Squish Berry (SIDEWALK_ObjType_SquishBerry = 25)
