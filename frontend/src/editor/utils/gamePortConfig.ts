@@ -27,15 +27,6 @@ export type AnyLevelInfo =
 
 /** Returns the display name for any level/track/area info object. */
 export function getLevelDisplayName(info: AnyLevelInfo): string {
-  if ("terrainFile" in info && "levelNumber" in info) {
-    return info.name;
-  }
-  if ("trackNumber" in info) {
-    return info.name;
-  }
-  if ("areaNumber" in info) {
-    return info.name;
-  }
   return info.name;
 }
 

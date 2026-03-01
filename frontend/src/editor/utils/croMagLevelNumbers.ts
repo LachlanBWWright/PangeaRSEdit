@@ -16,6 +16,7 @@ export const CROMAG_TRACKS: readonly CroMagTrackInfo[] = [
   { trackNumber: 2, name: "Ice Age Rally" },
   { trackNumber: 3, name: "Lava Land" },
   { trackNumber: 4, name: "Jungle Joyride" },
+  // Track names 5–17 are not yet confirmed from the game source; using generic labels
   { trackNumber: 5, name: "Track 5" },
   { trackNumber: 6, name: "Track 6" },
   { trackNumber: 7, name: "Track 7" },

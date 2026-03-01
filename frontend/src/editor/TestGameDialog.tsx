@@ -128,7 +128,17 @@ function injectTerrainBlob(
   reader.readAsArrayBuffer(blob);
 }
 
-/** Return a human-readable label for any level/track/area entry. */
+/** Map a Game enum value to its display name. */
+const GAME_DISPLAY_NAMES: Readonly<Record<Game, string>> = {
+  [Game.OTTO_MATIC]: "Otto Matic",
+  [Game.NANOSAUR]: "Nanosaur",
+  [Game.BUGDOM]: "Bugdom",
+  [Game.BUGDOM_2]: "Bugdom 2",
+  [Game.CRO_MAG]: "Cro-Mag Rally",
+  [Game.BILLY_FRONTIER]: "Billy Frontier",
+  [Game.MIGHTY_MIKE]: "Mighty Mike",
+  [Game.NANOSAUR_2]: "Nanosaur 2",
+};
 function levelLabel(info: AnyLevelInfo, idx: number): string {
   if ("trackNumber" in info) {
     return `Track ${String(info.trackNumber)}: ${info.name}`;
@@ -154,7 +164,7 @@ export function TestGameDialog({
   const [status, setStatus] = useState<GameStatus>("idle");
   const [errorLog, setErrorLog] = useState<string[]>([]);
   const [gameKey, setGameKey] = useState(0);
-  const [useLocalWasm, setUseLocalWasm] = useState<boolean | null>(null);
+  const [fetchedLocalWasm, setFetchedLocalWasm] = useState<boolean | null>(null);
   const [fencesEnabled, setFencesEnabled] = useState(true);
   const [godModeEnabled, setGodModeEnabled] = useState(false);
   const [speedMultiplier, setSpeedMultiplier] = useState(1.0);
@@ -163,25 +173,34 @@ export function TestGameDialog({
   const capturedLevelRef = useRef(levelNumber);
   const terrainRsrcBlobRef = useRef(terrainRsrcBlob);
   const terrainDataBlobRef = useRef(terrainDataBlob);
-  useEffect(() => { terrainRsrcBlobRef.current = terrainRsrcBlob; }, [terrainRsrcBlob]);
-  useEffect(() => { terrainDataBlobRef.current = terrainDataBlob; }, [terrainDataBlob]);
+  useEffect(() => {
+    terrainRsrcBlobRef.current = terrainRsrcBlob;
+    terrainDataBlobRef.current = terrainDataBlob;
+  }, [terrainRsrcBlob, terrainDataBlob]);
 
   const config = GAME_PORT_CONFIGS[gameType];
 
-  // Detect whether local WASM files are available for this game
+  // For games without a WASM build, we know immediately — no fetch needed.
+  // For games that have a build, null means "still checking".
+  const [fetchedLocalWasm, setFetchedLocalWasm] = useState<boolean | null>(null);
+  const useLocalWasm = config.wasmAvailable ? fetchedLocalWasm : false;
+
+  // Detect whether local WASM files are present for games that do have a build
   useEffect(() => {
-    setUseLocalWasm(null);
-    if (!config.wasmAvailable) {
-      setUseLocalWasm(false);
-      return;
-    }
+    if (!config.wasmAvailable) return;
     const jsPath = `${import.meta.env.BASE_URL}wasm/${config.wasmDir}/${config.mainJs}`;
     let cancelled = false;
     fetch(jsPath, { method: "HEAD" })
-      .then((res) => { if (!cancelled) setUseLocalWasm(res.ok); })
-      .catch(() => { if (!cancelled) setUseLocalWasm(false); });
+      .then((res) => {
+        if (!cancelled) {
+          // Reject SPA fallback responses (text/html) — only accept actual JS files
+          const ct = res.headers.get("content-type") ?? "";
+          setFetchedLocalWasm(res.ok && ct.includes("javascript"));
+        }
+      })
+      .catch(() => { if (!cancelled) setFetchedLocalWasm(false); });
     return () => { cancelled = true; };
-  }, [gameType, config.wasmAvailable, config.wasmDir, config.mainJs]);
+  }, [gameType, config.wasmAvailable, config.wasmDir, config.mainJs, setFetchedLocalWasm]);
 
   const appendError = useCallback((msg: string) => {
     setErrorLog((prev) => [...prev.slice(-(MAX_ERROR_LOG_ENTRIES - 1)), msg]);
@@ -262,8 +281,7 @@ export function TestGameDialog({
       clearPreLoadVars(gameType);
       delete window.Module;
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [gameKey, useLocalWasm, gameType, config]);
+  }, [gameKey, useLocalWasm, gameType, config, appendError]);
 
   const handleStartOrReboot = useCallback(() => {
     capturedLevelRef.current = levelNumber;
@@ -349,7 +367,7 @@ export function TestGameDialog({
       <DialogContent className="max-w-5xl w-[95vw] h-[90vh] flex flex-col">
         <DialogHeader>
           <DialogTitle>
-            {`Test Level in ${config.game === Game.CRO_MAG ? "Cro-Mag Rally" : config.game === Game.BUGDOM_2 ? "Bugdom 2" : config.game === Game.NANOSAUR_2 ? "Nanosaur 2" : config.game === Game.BILLY_FRONTIER ? "Billy Frontier" : config.game === Game.MIGHTY_MIKE ? "Mighty Mike" : config.game === Game.NANOSAUR ? "Nanosaur" : config.game === Game.BUGDOM ? "Bugdom" : "Otto Matic"}`}
+            {`Test Level in ${GAME_DISPLAY_NAMES[config.game]}`}
             {levelLabelText ? ` — ${levelLabelText}` : ""}
           </DialogTitle>
           <DialogDescription>
@@ -458,7 +476,7 @@ export function TestGameDialog({
         <div className="flex-1 min-h-0 relative rounded overflow-hidden border border-border bg-black">
           {!config.wasmAvailable ? (
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 text-muted-foreground p-6 text-center">
-              <p>No WASM build is available for {config.game === Game.MIGHTY_MIKE ? "Mighty Mike" : "this game"} yet.</p>
+              <p>No WASM build is available for {GAME_DISPLAY_NAMES[config.game]} yet.</p>
               <Button variant="outline" onClick={handleOpenRemote}>
                 View Repository ↗
               </Button>
