@@ -216,6 +216,16 @@ export function IntroPrompt() {
     setDataHistory,
   ]);
 
+  // When a new Otto Matic terrain file is loaded, infer the level number from the filename
+  // so the "Test Level" dialog opens at the correct level by default.
+  useEffect(() => {
+    if (!mapFile || globals.GAME_TYPE !== Game.OTTO_MATIC) return;
+    const inferred = inferLevelNumberFromFilename(mapFile.name);
+    if (inferred !== undefined) {
+      Promise.resolve().then(() => setOttoLevelNumber(inferred));
+    }
+  }, [mapFile, globals.GAME_TYPE]);
+
   const undoData = () => {
     if (dataHistory.index > 0) {
       setDataHistory((draft) => {

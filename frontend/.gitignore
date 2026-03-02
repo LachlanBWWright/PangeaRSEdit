@@ -31,3 +31,6 @@ coverage/
 
 # Build artifacts
 *.tsbuildinfo
+
+# Emscripten large data packages (served from CDN instead)
+public/wasm/**/*.data

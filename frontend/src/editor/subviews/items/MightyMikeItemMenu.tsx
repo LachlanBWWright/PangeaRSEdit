@@ -25,6 +25,9 @@ import { getItemTypes } from "@/data/items/getItemTypes";
 import { Image as ImageIcon, ImageOff } from "lucide-react";
 import { parseU8, parseU16 } from "@/utils/numberParsers";
 import { atom } from "jotai";
+import { getMightyMikeItemParams } from "@/data/items/mightyMikeItemParams";
+import { ParamTooltip } from "./ParamTooltip";
+import { getParamTooltip } from "./getParamTooltip";
 
 // Atom to track if item images should be shown globally for all items
 export const ShowMightyMikeItemImages = atom(true);
@@ -139,6 +142,17 @@ export const MightyMikeItemMenu = memo(function MightyMikeItemMenu({
               {([0, 1, 2, 3] as const).map((i) => {
                 const paramKey = `p${i}` as const;
                 const value = selectedItemData[paramKey];
+                const itemParams = getMightyMikeItemParams(selectedItemData.type);
+                const param = itemParams[paramKey];
+                const tooltip = getParamTooltip(param);
+                const label =
+                  param && typeof param !== "string" && param.type === "Integer"
+                    ? param.description.split(" (")[0]
+                    : `Parameter ${i}`;
+                const codeSample =
+                  param && typeof param !== "string" && param.type === "Integer"
+                    ? param.codeSample
+                    : undefined;
                 const setValue = (v: number) => {
                   setItemData((itemData) => {
                     if (selectedItem === undefined) return;
@@ -149,9 +163,12 @@ export const MightyMikeItemMenu = memo(function MightyMikeItemMenu({
                   });
                 };
                 return [
-                  <label key={`label-${i}`} className="text-sm font-medium">
-                    Parameter {i}
-                  </label>,
+                  <ParamTooltip
+                    key={`label-${i}`}
+                    label={label}
+                    tooltip={tooltip}
+                    codeSample={codeSample}
+                  />,
                   <Input
                     key={`input-${i}`}
                     type="number"

@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
+import { Progress } from "@/components/ui/progress";
 import {
   Select,
   SelectContent,
@@ -192,6 +193,8 @@ export function TestGameDialog({
   const [fencesEnabled, setFencesEnabled] = useState(true);
   const [godModeEnabled, setGodModeEnabled] = useState(false);
   const [speedMultiplier, setSpeedMultiplier] = useState(1.0);
+  const [loadProgress, setLoadProgress] = useState<number | null>(null);
+  const [loadStatusText, setLoadStatusText] = useState<string>("");
 
   // Refs that capture values at game-start time
   const capturedLevelRef = useRef(levelNumber);
@@ -255,7 +258,28 @@ export function TestGameDialog({
 
     window.Module = {
       canvas,
-      locateFile: (path) => `${basePath}/${path}`,
+      locateFile: (path: string) => {
+        // Redirect large Emscripten data packages to the CDN to avoid
+        // committing multi-hundred-MB files to the repository.
+        if (config.cdnBaseUrl && path.endsWith(".data")) {
+          return `${config.cdnBaseUrl}/${path}`;
+        }
+        return `${basePath}/${path}`;
+      },
+      setStatus: (text: string) => {
+        setLoadStatusText(text);
+        const match = /(\d+(\.\d+)?)\/(\d+)/.exec(text);
+        if (match) {
+          const downloaded = parseFloat(match[1] ?? "0");
+          const total = parseFloat(match[3] ?? "1");
+          setLoadProgress(total > 0 ? (downloaded / total) * 100 : null);
+        } else if (text === "") {
+          setLoadProgress(100);
+        }
+      },
+      monitorRunDependencies: (left: number) => {
+        if (left === 0) setLoadProgress(100);
+      },
       onRuntimeInitialized: () => {
         setStatus("running");
 
@@ -335,6 +359,8 @@ export function TestGameDialog({
     setFencesEnabled(true);
     setGodModeEnabled(false);
     setSpeedMultiplier(1.0);
+    setLoadProgress(0);
+    setLoadStatusText("Loading game…");
     setGameKey((k) => k + 1);
   }, [levelNumber, gameType]);
 
@@ -533,6 +559,15 @@ export function TestGameDialog({
             {errorLog.map((msg, i) => (
               <div key={`${String(i)}-${msg.slice(0, 20)}`}>{msg}</div>
             ))}
+          </div>
+        )}
+
+        {status === "loading" && loadProgress !== null && (
+          <div className="flex flex-col gap-1 px-1">
+            <Progress value={loadProgress} className="h-2" />
+            {loadStatusText && (
+              <p className="text-xs text-muted-foreground">{loadStatusText}</p>
+            )}
           </div>
         )}
 

@@ -14,6 +14,10 @@ declare global {
       locateFile?: (path: string, scriptDirectory: string) => string;
       onRuntimeInitialized?: () => void;
       onAbort?: (reason?: unknown) => void;
+      /** Called by Emscripten to report download progress text (e.g. "Downloading data..."). */
+      setStatus?: (text: string) => void;
+      /** Called by Emscripten with remaining dependency count; 0 means all loaded. */
+      monitorRunDependencies?: (left: number) => void;
       ccall?: (
         fn: string,
         returnType: string | null,

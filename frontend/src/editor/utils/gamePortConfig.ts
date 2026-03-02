@@ -79,6 +79,12 @@ export interface GamePortConfig {
   };
   /** Whether a WASM build is publicly available (false for MightyMike). */
   readonly wasmAvailable: boolean;
+  /**
+   * CDN base URL for large asset files (e.g. Emscripten .data packages).
+   * When set, locateFile() will redirect non-JS/WASM requests to this URL.
+   * This avoids committing large data packages to the repository.
+   */
+  readonly cdnBaseUrl?: string;
 }
 
 export const GAME_PORT_CONFIGS: Readonly<Record<Game, GamePortConfig>> = {
@@ -106,6 +112,7 @@ export const GAME_PORT_CONFIGS: Readonly<Record<Game, GamePortConfig>> = {
       getSetPathArg: (f) => `/Data/Terrain/${f}`,
     },
     wasmAvailable: true,
+    cdnBaseUrl: "https://lachlanbwwright.github.io/OttoMatic-Android",
   },
 
   [Game.NANOSAUR]: {
@@ -120,6 +127,7 @@ export const GAME_PORT_CONFIGS: Readonly<Record<Game, GamePortConfig>> = {
     hasGodMode: false,
     hasSpeedMultiplier: false,
     wasmAvailable: true,
+    cdnBaseUrl: "https://lachlanbwwright.github.io/Nanosaur-android/game",
   },
 
   [Game.BUGDOM]: {
@@ -135,6 +143,7 @@ export const GAME_PORT_CONFIGS: Readonly<Record<Game, GamePortConfig>> = {
     hasGodMode: false,
     hasSpeedMultiplier: false,
     wasmAvailable: true,
+    cdnBaseUrl: "https://lachlanbwwright.github.io/Bugdom-android",
   },
 
   [Game.BUGDOM_2]: {
@@ -149,6 +158,7 @@ export const GAME_PORT_CONFIGS: Readonly<Record<Game, GamePortConfig>> = {
     hasGodMode: false,
     hasSpeedMultiplier: false,
     wasmAvailable: true,
+    cdnBaseUrl: "https://lachlanbwwright.github.io/Bugdom2-Android",
   },
 
   [Game.CRO_MAG]: {
@@ -163,6 +173,7 @@ export const GAME_PORT_CONFIGS: Readonly<Record<Game, GamePortConfig>> = {
     hasGodMode: false,
     hasSpeedMultiplier: false,
     wasmAvailable: true,
+    cdnBaseUrl: "https://lachlanbwwright.github.io/CroMagRally-Android/game",
   },
 
   [Game.BILLY_FRONTIER]: {
@@ -188,6 +199,7 @@ export const GAME_PORT_CONFIGS: Readonly<Record<Game, GamePortConfig>> = {
       getSetPathArg: (f) => `:Terrain:${f}`,
     },
     wasmAvailable: true,
+    cdnBaseUrl: "https://lachlanbwwright.github.io/BillyFrontier-Android/game",
   },
 
   [Game.MIGHTY_MIKE]: {
@@ -216,5 +228,6 @@ export const GAME_PORT_CONFIGS: Readonly<Record<Game, GamePortConfig>> = {
     hasGodMode: false,
     hasSpeedMultiplier: false,
     wasmAvailable: true,
+    cdnBaseUrl: "https://lachlanbwwright.github.io/Nanosaur2-Android",
   },
 };

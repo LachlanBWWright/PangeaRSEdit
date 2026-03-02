@@ -6,11 +6,25 @@ import { Result } from "@/types/result";
 import { parseNanosaurLevelFile } from "./parseNanosaurLevelFile";
 import { parseMightyMikeFile } from "./parseMightyMikeFile";
 import { parseRsrcLevelFile } from "./parseRsrcLevelFile";
+import {
+  extractTilesFromBuffer,
+  createCanvasFromTile,
+} from "@/data/processors/classicProprocessor";
+import { isRecord } from "./typeGuards";
+
+function hexToUint8Array(hexString: string): Uint8Array {
+  const bytes = new Uint8Array(hexString.length / 2);
+  for (let i = 0; i < hexString.length; i += 2) {
+    bytes[i / 2] = parseInt(hexString.substring(i, i + 2), 16);
+  }
+  return bytes;
+}
 
 /**
  * Parse a level data file into an ottoMatic-compatible structure and set
  * the editor state by calling setData.
- * Also calls setMapImages for Mighty Mike levels (since tileset images aren't in AtomicLevelData).
+ * Also calls setMapImages for Mighty Mike levels (since tileset images aren't in AtomicLevelData)
+ * and for RSRC_FORK (Bugdom 1) levels where tile images are embedded in the Timg resource.
  */
 export async function parseLevelDataFile(
   file: Blob,
@@ -39,5 +53,29 @@ export async function parseLevelDataFile(
   }
 
   // All other standard games use the rsrcdump-ts flow
-  return await parseRsrcLevelFile(file, gameType, setData);
+  const result = await parseRsrcLevelFile(file, gameType, setData);
+
+  // For RSRC_FORK (Bugdom 1), tile images are embedded in the Timg resource.
+  // Extract them here so the editor always displays tiles after a file upload.
+  if (result.isOk() && gameType.DATA_TYPE === DataType.RSRC_FORK && setMapImages) {
+    const levelData = result.value;
+    const timg = isRecord(levelData.Timg) ? levelData.Timg : undefined;
+    const timg1000 = timg && isRecord(timg["1000"]) ? timg["1000"] : undefined;
+    const imgHex = typeof timg1000?.data === "string" ? timg1000.data : undefined;
+    if (imgHex) {
+      const imgBuffer = hexToUint8Array(imgHex);
+      const alignedBuffer = new ArrayBuffer(imgBuffer.byteLength);
+      new Uint8Array(alignedBuffer).set(imgBuffer);
+      const tileCount = imgBuffer.byteLength / 2 / 32 / 32;
+      const tiles = extractTilesFromBuffer(
+        new DataView(alignedBuffer),
+        tileCount,
+        32,
+        32 * 32 * 2,
+      );
+      setMapImages(tiles.map(createCanvasFromTile));
+    }
+  }
+
+  return result;
 }

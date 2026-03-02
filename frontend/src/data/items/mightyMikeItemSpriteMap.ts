@@ -159,8 +159,9 @@ export const MIGHTY_MIKE_ITEM_SPRITE_MAP: Record<number, ItemSpriteMapping> = {
   // Item 15: Health Powerup (scene-specific sprite from area-specific2 shapes)
   15: {
     itemType: 15,
-    groupNum: 3, // GROUP_AREA_SPECIFIC2 (varies per scene, but always group 3 except bargain)
-    spriteType: 4, // Scene-specific: Jurassic=4, Clown=4, Candy=5, Fairy=1, Bargain group2=1
+    groupNum: 3, // GROUP_AREA_SPECIFIC2
+    spriteType: 4, // Jurassic=4, Clown=4 (default); Candy=5, Fairy=1, Bargain area1=1
+    scene: "jurassic", // fallback scene so getItemShapesFile returns jurassic2.shapes
     notes: "Scene-specific health powerup",
   },
 
@@ -188,13 +189,15 @@ export const MIGHTY_MIKE_ITEM_SPRITE_MAP: Record<number, ItemSpriteMapping> = {
     scene: "bargain",
   },
 
-  // Item 19: Key
+  // Item 19: Key (scene-specific - group2 of the current scene)
+  // Jurassic: ObjType_JurassicKeys=5, Clown: ObjType_ClownKeys=5,
+  // Candy: ObjType_CandyKeys=1, Fairy: ObjType_FairyKeys=5, Bargain: ObjType_BargainKeys=3
   19: {
     itemType: 19,
-    groupNum: -1,
-    spriteType: -1,
-    shapesFile: "bonus.shapes",
-    notes: "Color keys stored in bonus.shapes",
+    groupNum: 3, // GROUP_AREA_SPECIFIC2 for jurassic/clown/candy/fairy (bargain=area1)
+    spriteType: 5, // Default to jurassic/clown/fairy index 5; candy uses 1, bargain uses 3
+    scene: "jurassic", // fallback scene so getItemShapesFile returns jurassic2.shapes
+    notes: "Color keys - scene-specific index (jurassic/clown/fairy=5, candy=1, bargain=3)",
   },
 
   // Item 20: Clown Door (Clown)
@@ -301,21 +304,20 @@ export const MIGHTY_MIKE_ITEM_SPRITE_MAP: Record<number, ItemSpriteMapping> = {
     scene: "candy",
   },
 
-  // Item 33: Weapon Powerup
+  // Item 33: Weapon Powerup (GROUP_WEAPONS, ObjType_WeaponPOWs=10, parm[0]=weapon type)
   33: {
     itemType: 33,
     groupNum: 4, // GROUP_WEAPONS
-    spriteType: -1,
+    spriteType: 10, // ObjType_WeaponPOWs
     shapesFile: "weapon.shapes",
   },
 
-  // Item 34: Misc Powerup
+  // Item 34: Misc Powerup (GROUP_WEAPONS, ObjType_MiscPOWs=14, parm[0]=misc type)
   34: {
     itemType: 34,
-    groupNum: -1,
-    spriteType: -1,
-    shapesFile: "bonus.shapes",
-    notes: "Scene-specific misc powerups in bonus.shapes",
+    groupNum: 4, // GROUP_WEAPONS
+    spriteType: 14, // ObjType_MiscPOWs
+    shapesFile: "weapon.shapes",
   },
 
   // Item 35: Gum Ball (Candy)
@@ -478,13 +480,13 @@ export const MIGHTY_MIKE_ITEM_SPRITE_MAP: Record<number, ItemSpriteMapping> = {
     scene: "bargain",
   },
 
-  // Item 55: Key Color (Color key)
+  // Item 55: Key Color (COLOR key display) - GROUP_MAIN, ObjType_KeyColor=9
   55: {
     itemType: 55,
-    groupNum: -1,
-    spriteType: -1,
-    shapesFile: "bonus.shapes",
-    notes: "Color keys in bonus.shapes",
+    groupNum: 0, // GROUP_MAIN
+    spriteType: 9, // ObjType_KeyColor
+    shapesFile: "main.shapes",
+    notes: "Color key icon in main.shapes",
   },
 };
 
