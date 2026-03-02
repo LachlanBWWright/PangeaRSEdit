@@ -8,6 +8,9 @@ const unknown: ItemParams = {
   p3: "Unknown",
 };
 
+// Line numbers are approximate; exact values require consulting the MightyMike source.
+const APPROX_LINE = 0;
+
 export const mightyMikeItemParams: Partial<Record<number, ItemParams>> = {
   // Item 15: Health Powerup
   15: {
@@ -18,7 +21,7 @@ export const mightyMikeItemParams: Partial<Record<number, ItemParams>> = {
       codeSample: {
         code: "newObj = MakeNewShape(group, type, itemPtr->parm[0], ...);",
         fileName: "src/Misc/Bonus.c",
-        lineNumber: 0,
+        lineNumber: APPROX_LINE,
       },
     },
     p1: "Unused",
@@ -35,7 +38,7 @@ export const mightyMikeItemParams: Partial<Record<number, ItemParams>> = {
       codeSample: {
         code: "newObj = MakeNewShape(group, type, itemPtr->parm[0], ...);",
         fileName: "src/Misc/Bonus.c",
-        lineNumber: 0,
+        lineNumber: APPROX_LINE,
       },
     },
     p1: "Unused",
@@ -53,7 +56,7 @@ export const mightyMikeItemParams: Partial<Record<number, ItemParams>> = {
       codeSample: {
         code: "newObj = MakeNewShape(GroupNum_WeaponPOWs, ObjType_WeaponPOWs, itemPtr->parm[0], ...);\nnewObj->Kind = itemPtr->parm[0];",
         fileName: "src/MeAndMo/Weapon.c",
-        lineNumber: 0,
+        lineNumber: APPROX_LINE,
       },
     },
     p1: {
@@ -62,7 +65,7 @@ export const mightyMikeItemParams: Partial<Record<number, ItemParams>> = {
       codeSample: {
         code: "if (itemPtr->parm[1]) newObj->Special1 = GAME_FPS*6; else newObj->Special1 = 0xf0000L;",
         fileName: "src/MeAndMo/Weapon.c",
-        lineNumber: 0,
+        lineNumber: APPROX_LINE,
       },
     },
     p2: "Unused",
@@ -79,7 +82,7 @@ export const mightyMikeItemParams: Partial<Record<number, ItemParams>> = {
       codeSample: {
         code: "newObj = MakeNewShape(GroupNum_MiscPOWs, ObjType_MiscPOWs, itemPtr->parm[0], ...);\nnewObj->Kind = itemPtr->parm[0];",
         fileName: "src/Misc/Bonus.c",
-        lineNumber: 0,
+        lineNumber: APPROX_LINE,
       },
     },
     p1: {
@@ -88,7 +91,7 @@ export const mightyMikeItemParams: Partial<Record<number, ItemParams>> = {
       codeSample: {
         code: "if (itemPtr->parm[1]) newObj->Special1 = GAME_FPS*6; else newObj->Special1 = 0xf0000L;",
         fileName: "src/Misc/Bonus.c",
-        lineNumber: 0,
+        lineNumber: APPROX_LINE,
       },
     },
     p2: "Unused",
@@ -104,7 +107,7 @@ export const mightyMikeItemParams: Partial<Record<number, ItemParams>> = {
       codeSample: {
         code: "newObj = MakeNewShape(GroupNum_KeyColor, ObjType_KeyColor, itemPtr->parm[0], ...);",
         fileName: "src/Misc/Bonus.c",
-        lineNumber: 0,
+        lineNumber: APPROX_LINE,
       },
     },
     p1: "Unused",

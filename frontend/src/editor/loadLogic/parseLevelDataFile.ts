@@ -12,6 +12,8 @@ import {
 } from "@/data/processors/classicProprocessor";
 import { isRecord } from "./typeGuards";
 
+// The caller (parseRsrcLevelFile → rsrcdump-ts) guarantees hex strings produced by
+// Base16Converter are well-formed pairs of hex digits, so no additional validation needed.
 function hexToUint8Array(hexString: string): Uint8Array {
   const bytes = new Uint8Array(hexString.length / 2);
   for (let i = 0; i < hexString.length; i += 2) {

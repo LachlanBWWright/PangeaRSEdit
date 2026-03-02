@@ -268,6 +268,8 @@ export function TestGameDialog({
       },
       setStatus: (text: string) => {
         setLoadStatusText(text);
+        // Emscripten formats progress as "Downloading data... (downloaded/total)"
+        // match[1]=downloaded bytes, match[3]=total bytes (match[2] is the decimal group)
         const match = /(\d+(\.\d+)?)\/(\d+)/.exec(text);
         if (match) {
           const downloaded = parseFloat(match[1] ?? "0");
