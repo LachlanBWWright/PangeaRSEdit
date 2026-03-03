@@ -226,6 +226,16 @@ export function IntroPrompt() {
     }
   }, [mapFile, globals.GAME_TYPE]);
 
+  // Warn before unloading the tab when a level is loaded to prevent accidental data loss.
+  useEffect(() => {
+    if (!mapFile) return;
+    const onBeforeUnload = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+    };
+    window.addEventListener("beforeunload", onBeforeUnload);
+    return () => window.removeEventListener("beforeunload", onBeforeUnload);
+  }, [mapFile]);
+
   const undoData = () => {
     if (dataHistory.index > 0) {
       setDataHistory((draft) => {
@@ -690,25 +700,9 @@ export function IntroPrompt() {
         <Button onClick={clearAllState}>←New Map</Button>
         <div className="flex-1" />
 
-        <Button
-          data-testid="download-button"
-          onClick={() => {
-            const combinedDataResult = combineLevelData(getCurrentAtomicData());
-            if (isOk(combinedDataResult)) {
-              const combinedData = prepareDownloadData(
-                combinedDataResult.value,
-                globals,
-              );
-              setAllAtomicData(splitLevelData(combinedData));
-            }
-            setBlockHistoryUpdate(true);
-            setProcessed(true); //Trigger useEffect for downloading
-          }}
-        >
-          Download
-        </Button>
-        {GAME_PORT_CONFIGS[globals.GAME_TYPE] && (
-          <>
+        {/* Test Level group (Otto Matic only) — shown to the LEFT of Download */}
+        {globals.GAME_TYPE === Game.OTTO_MATIC && GAME_PORT_CONFIGS[globals.GAME_TYPE] && (
+          <div className="flex items-center gap-2 border border-border rounded px-2 py-1">
             <Select
               value={String(ottoLevelNumber)}
               onValueChange={(v) => setOttoLevelNumber(Number(v))}
@@ -736,16 +730,39 @@ export function IntroPrompt() {
             >
               Test Level
             </Button>
-            <TestGameDialog
-              open={testDialogOpen}
-              onOpenChange={setTestDialogOpen}
-              gameType={globals.GAME_TYPE}
-              levelNumber={ottoLevelNumber}
-              onLevelNumberChange={setOttoLevelNumber}
-              terrainRsrcBlob={terrainRsrcBlob}
-              terrainDataBlob={terrainDataBlob}
-            />
-          </>
+          </div>
+        )}
+
+        {/* Download — always rightmost */}
+        <Button
+          data-testid="download-button"
+          onClick={() => {
+            const combinedDataResult = combineLevelData(getCurrentAtomicData());
+            if (isOk(combinedDataResult)) {
+              const combinedData = prepareDownloadData(
+                combinedDataResult.value,
+                globals,
+              );
+              setAllAtomicData(splitLevelData(combinedData));
+            }
+            setBlockHistoryUpdate(true);
+            setProcessed(true); //Trigger useEffect for downloading
+          }}
+        >
+          Download
+        </Button>
+
+        {/* TestGameDialog lives outside the toolbar; always rendered when port config exists */}
+        {GAME_PORT_CONFIGS[globals.GAME_TYPE] && (
+          <TestGameDialog
+            open={testDialogOpen}
+            onOpenChange={setTestDialogOpen}
+            gameType={globals.GAME_TYPE}
+            levelNumber={ottoLevelNumber}
+            onLevelNumberChange={setOttoLevelNumber}
+            terrainRsrcBlob={terrainRsrcBlob}
+            terrainDataBlob={terrainDataBlob}
+          />
         )}
       </div>
       <hr />

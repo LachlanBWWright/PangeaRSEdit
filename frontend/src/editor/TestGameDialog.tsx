@@ -39,121 +39,6 @@ interface Props {
   terrainDataBlob: Blob | null;
 }
 
-/** Apply pre-load window globals required before the game script is executed. */
-function applyPreLoadVars(gameType: Game, levelIndex: number): void {
-  if (gameType === Game.BUGDOM) {
-    window.BUGDOM_START_LEVEL = levelIndex;
-  }
-}
-
-/** Remove pre-load window globals set by applyPreLoadVars. */
-function clearPreLoadVars(gameType: Game): void {
-  if (gameType === Game.BUGDOM) {
-    delete window.BUGDOM_START_LEVEL;
-  }
-}
-
-/** Call the fence-collision toggle for the active game via its published API. */
-function callFenceCollision(gameType: Game, enabled: boolean): void {
-  const flag = enabled ? 1 : 0;
-  switch (gameType) {
-    case Game.OTTO_MATIC:
-      window.Module?.ccall?.(
-        "OttoMatic_SetFenceCollisions",
-        null,
-        ["number"],
-        [flag],
-      );
-      break;
-    case Game.NANOSAUR:
-      window.SetFenceCollisionsEnabled?.(flag);
-      break;
-    case Game.BUGDOM:
-      window.Module?.ccall?.(
-        "BugdomSetFenceCollision",
-        null,
-        ["number"],
-        [flag],
-      );
-      break;
-    case Game.BUGDOM_2:
-      window.gameAPI?.setFenceCollisionEnabled(enabled);
-      break;
-    case Game.CRO_MAG:
-      window.GameCheat?.setFenceCollision(flag);
-      break;
-    case Game.BILLY_FRONTIER:
-      window.Module?.ccall?.("BF_SetFenceCollision", null, ["number"], [flag]);
-      break;
-    case Game.NANOSAUR_2:
-      window.Module?.ccall?.(
-        "Nanosaur2_SetFenceCollisionsEnabled",
-        null,
-        ["number"],
-        [flag],
-      );
-      break;
-    default:
-      break;
-  }
-}
-
-/** Otto Matic only: god mode toggle via Module.ccall. */
-function callGodMode(enabled: boolean): void {
-  window.Module?.ccall?.(
-    "OttoMatic_SetGodMode",
-    null,
-    ["number"],
-    [enabled ? 1 : 0],
-  );
-}
-
-/** Otto Matic only: movement speed multiplier via Module.ccall. */
-function callSpeedMultiplier(value: number): void {
-  window.Module?.ccall?.(
-    "OttoMatic_SetSpeedMultiplier",
-    null,
-    ["number"],
-    [value],
-  );
-}
-
-/** Nanosaur only: restore health via exported JS function. */
-function callRestoreHealth(): void {
-  window.CheatRestoreHealth?.();
-}
-
-/** Nanosaur only: fill fuel via exported JS function. */
-function callFillFuel(): void {
-  window.CheatFillFuel?.();
-}
-
-/** Write a terrain blob to the game's virtual FS and call the set-path function. */
-function injectTerrainBlob(
-  path: string,
-  blob: Blob,
-  thenCallFn: string | null,
-  thenCallArg: string | null,
-  appendError: (msg: string) => void,
-): void {
-  const reader = new FileReader();
-  reader.onload = () => {
-    const result = reader.result;
-    if (!(result instanceof ArrayBuffer)) return;
-    const data = new Uint8Array(result);
-    const fs = window.Module?.FS;
-    if (!fs) {
-      appendError("Game filesystem not available — terrain injection failed.");
-      return;
-    }
-    fs.writeFile(path, data);
-    if (thenCallFn && thenCallArg) {
-      window.Module?.ccall?.(thenCallFn, null, ["string"], [thenCallArg]);
-    }
-  };
-  reader.readAsArrayBuffer(blob);
-}
-
 /** Map a Game enum value to its display name. */
 const GAME_DISPLAY_NAMES: Readonly<Record<Game, string>> = {
   [Game.OTTO_MATIC]: "Otto Matic",
@@ -165,6 +50,7 @@ const GAME_DISPLAY_NAMES: Readonly<Record<Game, string>> = {
   [Game.MIGHTY_MIKE]: "Mighty Mike",
   [Game.NANOSAUR_2]: "Nanosaur 2",
 };
+
 function levelLabel(info: AnyLevelInfo, idx: number): string {
   if ("trackNumber" in info) {
     return `Track ${String(info.trackNumber)}: ${info.name}`;
@@ -173,6 +59,87 @@ function levelLabel(info: AnyLevelInfo, idx: number): string {
     return `Area ${String(info.areaNumber + 1)}: ${info.name}`;
   }
   return `Lv ${String(idx + 1)}: ${info.name}`;
+}
+
+/**
+ * Builds the srcdoc HTML for an iframe that hosts the game.
+ * The iframe has its own isolated browsing context, preventing script
+ * re-declaration errors (ExitStatus, etc.) when the dialog is reopened.
+ */
+function buildGameIframeSrc(
+  basePath: string,
+  mainJs: string,
+  cdnBaseUrl: string | undefined,
+  gameType: Game,
+  levelIndex: number,
+  bugdomStartLevel: number | undefined,
+): string {
+  const preloadVars = gameType === Game.BUGDOM && bugdomStartLevel !== undefined
+    ? `window.BUGDOM_START_LEVEL = ${String(bugdomStartLevel)};`
+    : "";
+
+  const locateFileBody = cdnBaseUrl
+    ? `if (path.endsWith('.data')) return '${cdnBaseUrl}/' + path; return '${basePath}/' + path;`
+    : `return '${basePath}/' + path;`;
+
+  return `<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: black; overflow: hidden; width: 100vw; height: 100vh; }
+  canvas { width: 100%; height: 100%; display: block; }
+</style>
+</head>
+<body>
+<canvas id="canvas" tabindex="0"></canvas>
+<script>
+${preloadVars}
+window.Module = {
+  canvas: document.getElementById('canvas'),
+  locateFile: function(path) { ${locateFileBody} },
+  setStatus: function(text) {
+    const m = /(\\d+(?:\\.\\d+)?)\\/(\\d+)/.exec(text);
+    if (m) {
+      window.parent.postMessage({ type: 'progress', downloaded: parseFloat(m[1]), total: parseFloat(m[2]), text: text }, '*');
+    } else if (text === '') {
+      window.parent.postMessage({ type: 'progress', downloaded: 1, total: 1, text: '' }, '*');
+    } else {
+      window.parent.postMessage({ type: 'status', text: text }, '*');
+    }
+  },
+  monitorRunDependencies: function(left) {
+    if (left === 0) window.parent.postMessage({ type: 'progress', downloaded: 1, total: 1, text: '' }, '*');
+  },
+  onRuntimeInitialized: function() {
+    window.parent.postMessage({ type: 'running', levelIndex: ${String(levelIndex)} }, '*');
+  },
+  onAbort: function() {
+    window.parent.postMessage({ type: 'crashed', msg: 'Game crashed unexpectedly.' }, '*');
+  }
+};
+window.addEventListener('message', function(e) {
+  const d = e.data;
+  if (!d || !d.cmd) return;
+  try {
+    if (d.cmd === 'ccall' && window.Module && window.Module.ccall) {
+      window.Module.ccall(d.fn, d.returnType || null, d.argTypes || [], d.args || []);
+    } else if (d.cmd === 'writeFile' && window.Module && window.Module.FS) {
+      window.Module.FS.writeFile(d.path, new Uint8Array(d.data));
+      if (d.thenCallFn && window.Module && window.Module.ccall) {
+        window.Module.ccall(d.thenCallFn, null, ['string'], [d.thenCallArg]);
+      }
+    } else if (d.cmd === 'setWindowGlobal') {
+      window[d.key] = d.value;
+    }
+  } catch(err) {
+    window.parent.postMessage({ type: 'error', msg: String(err) }, '*');
+  }
+});
+</script>
+<script src="${basePath}/${mainJs}" onerror="window.parent.postMessage({type:'crashed',msg:'Failed to load game script: ${mainJs}'},'*')"></script>
+</body>
+</html>`;
 }
 
 export function TestGameDialog({
@@ -184,8 +151,7 @@ export function TestGameDialog({
   terrainRsrcBlob,
   terrainDataBlob,
 }: Props) {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const scriptRef = useRef<HTMLScriptElement | null>(null);
+  const iframeRef = useRef<HTMLIFrameElement | null>(null);
 
   const [status, setStatus] = useState<GameStatus>("idle");
   const [errorLog, setErrorLog] = useState<string[]>([]);
@@ -207,14 +173,9 @@ export function TestGameDialog({
 
   const config = GAME_PORT_CONFIGS[gameType];
 
-  // For games without a WASM build, we know immediately — no fetch needed.
-  // For games that have a build, null means "still checking".
-  const [fetchedLocalWasm, setFetchedLocalWasm] = useState<boolean | null>(
-    null,
-  );
+  const [fetchedLocalWasm, setFetchedLocalWasm] = useState<boolean | null>(null);
   const useLocalWasm = config.wasmAvailable ? fetchedLocalWasm : false;
 
-  // Detect whether local WASM files are present for games that do have a build
   useEffect(() => {
     if (!config.wasmAvailable) return;
     const jsPath = `${import.meta.env.BASE_URL}wasm/${config.wasmDir}/${config.mainJs}`;
@@ -222,140 +183,167 @@ export function TestGameDialog({
     fetch(jsPath, { method: "HEAD" })
       .then((res) => {
         if (!cancelled) {
-          // Reject SPA fallback responses (text/html) — only accept actual JS files
           const ct = res.headers.get("content-type") ?? "";
           setFetchedLocalWasm(res.ok && ct.includes("javascript"));
         }
       })
-      .catch(() => {
-        if (!cancelled) setFetchedLocalWasm(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [
-    gameType,
-    config.wasmAvailable,
-    config.wasmDir,
-    config.mainJs,
-    setFetchedLocalWasm,
-  ]);
+      .catch(() => { if (!cancelled) setFetchedLocalWasm(false); });
+    return () => { cancelled = true; };
+  }, [gameType, config.wasmAvailable, config.wasmDir, config.mainJs]);
 
   const appendError = useCallback((msg: string) => {
     setErrorLog((prev) => [...prev.slice(-(MAX_ERROR_LOG_ENTRIES - 1)), msg]);
     setStatus("crashed");
   }, []);
 
-  // Load / reload the game via canvas + dynamic script injection
+  // Listen for postMessage events from the game iframe
   useEffect(() => {
-    if (gameKey === 0 || !useLocalWasm || !canvasRef.current) return;
+    if (gameKey === 0) return;
+
+    /** Extracts a typed property from an `unknown` object without assertions. */
+    function getProp<T>(
+      obj: unknown,
+      key: string,
+      guard: (v: unknown) => v is T,
+    ): T | undefined {
+      if (typeof obj !== "object" || obj === null) return undefined;
+      const entries = Object.entries(obj);
+      const pair = entries.find(([k]) => k === key);
+      if (!pair) return undefined;
+      return guard(pair[1]) ? pair[1] : undefined;
+    }
+    const isStr = (v: unknown): v is string => typeof v === "string";
+    const isNum = (v: unknown): v is number => typeof v === "number";
+
+    const handleMessage = (e: MessageEvent) => {
+      // Only accept messages from our iframe
+      if (!iframeRef.current || e.source !== iframeRef.current.contentWindow) return;
+      // Treat e.data as unknown by passing it to a parameter typed 'unknown'
+      const data: unknown = e.data;
+      if (typeof data !== "object" || data === null) return;
+
+      const msgType = getProp(data, "type", isStr);
+      if (!msgType) return;
+
+      switch (msgType) {
+        case "progress": {
+          const downloaded = getProp(data, "downloaded", isNum) ?? 0;
+          const total = getProp(data, "total", isNum) ?? 1;
+          const text = getProp(data, "text", isStr) ?? "";
+          setLoadStatusText(text);
+          setLoadProgress(total > 0 ? (downloaded / total) * 100 : null);
+          break;
+        }
+        case "status":
+          setLoadStatusText(getProp(data, "text", isStr) ?? "");
+          break;
+        case "running": {
+          setStatus("running");
+          const capturedLevel = capturedLevelRef.current;
+          // Skip to the selected level after runtime is ready
+          const skipCall = config.getSkipToLevelCcall?.(capturedLevel);
+          if (skipCall) {
+            iframeRef.current?.contentWindow?.postMessage({
+              cmd: "ccall",
+              fn: skipCall.fn,
+              returnType: skipCall.returnType,
+              argTypes: skipCall.argTypes,
+              args: skipCall.args,
+            }, "*");
+          }
+          // Inject terrain for Otto Matic
+          if (gameType === Game.OTTO_MATIC) {
+            const ottoLevel = OTTO_LEVELS[capturedLevel];
+            if (ottoLevel) {
+              const rsrcBlob = terrainRsrcBlobRef.current;
+              const dataBlob = terrainDataBlobRef.current;
+              if (rsrcBlob) {
+                rsrcBlob.arrayBuffer().then((buf) => {
+                  iframeRef.current?.contentWindow?.postMessage({
+                    cmd: "writeFile",
+                    path: `/Data/Terrain/${ottoLevel.terrainFile}.rsrc`,
+                    data: buf,
+                    thenCallFn: null,
+                    thenCallArg: null,
+                  }, "*", [buf]);
+                }).catch(() => appendError("Failed to read terrain rsrc blob."));
+              }
+              if (dataBlob) {
+                dataBlob.arrayBuffer().then((buf) => {
+                  iframeRef.current?.contentWindow?.postMessage({
+                    cmd: "writeFile",
+                    path: `/Data/Terrain/${ottoLevel.terrainFile}`,
+                    data: buf,
+                    thenCallFn: "OttoMatic_SetTerrainPath",
+                    thenCallArg: `/Data/Terrain/${ottoLevel.terrainFile}`,
+                  }, "*", [buf]);
+                }).catch(() => appendError("Failed to read terrain data blob."));
+              }
+            }
+          }
+          break;
+        }
+        case "crashed":
+          appendError(getProp(data, "msg", isStr) ?? "Game crashed.");
+          break;
+        case "error":
+          appendError(getProp(data, "msg", isStr) ?? "Game error.");
+          break;
+        default:
+          break;
+      }
+    };
+
+    window.addEventListener("message", handleMessage);
+    return () => window.removeEventListener("message", handleMessage);
+  }, [gameKey, gameType, config, appendError]);
+
+  // Create the game iframe when a game session starts
+  useEffect(() => {
+    if (gameKey === 0 || !useLocalWasm) return;
 
     const capturedLevel = capturedLevelRef.current;
     const basePath = `${import.meta.env.BASE_URL}wasm/${config.wasmDir}`;
-    const canvas = canvasRef.current;
+    const absoluteBasePath = new URL(basePath, window.location.href).href;
+    const absoluteCdnUrl = config.cdnBaseUrl;
 
-    applyPreLoadVars(gameType, capturedLevel);
+    const bugdomStartLevel = gameType === Game.BUGDOM ? capturedLevel : undefined;
 
-    window.Module = {
-      canvas,
-      locateFile: (path: string) => {
-        // Redirect large Emscripten data packages to the CDN to avoid
-        // committing multi-hundred-MB files to the repository.
-        if (config.cdnBaseUrl && path.endsWith(".data")) {
-          return `${config.cdnBaseUrl}/${path}`;
-        }
-        return `${basePath}/${path}`;
-      },
-      setStatus: (text: string) => {
-        setLoadStatusText(text);
-        // Emscripten formats progress as "Downloading data... (downloaded/total)"
-        // match[1]=downloaded bytes, match[3]=total bytes (match[2] is the decimal group)
-        const match = /(\d+(\.\d+)?)\/(\d+)/.exec(text);
-        if (match) {
-          const downloaded = parseFloat(match[1] ?? "0");
-          const total = parseFloat(match[3] ?? "1");
-          setLoadProgress(total > 0 ? (downloaded / total) * 100 : null);
-        } else if (text === "") {
-          setLoadProgress(100);
-        }
-      },
-      monitorRunDependencies: (left: number) => {
-        if (left === 0) setLoadProgress(100);
-      },
-      onRuntimeInitialized: () => {
-        setStatus("running");
+    const srcdoc = buildGameIframeSrc(
+      absoluteBasePath,
+      config.mainJs,
+      absoluteCdnUrl,
+      gameType,
+      capturedLevel,
+      bugdomStartLevel,
+    );
 
-        // Skip to the selected level after runtime is ready
-        const skipCall = config.getSkipToLevelCcall?.(capturedLevel);
-        if (skipCall) {
-          window.Module?.ccall?.(
-            skipCall.fn,
-            skipCall.returnType,
-            skipCall.argTypes,
-            skipCall.args,
-          );
-        }
+    const iframe = document.createElement("iframe");
+    iframe.srcdoc = srcdoc;
+    iframe.style.cssText = "position:absolute;inset:0;width:100%;height:100%;border:none;";
+    // allow-same-origin is required for Emscripten's virtual FS (IDBFS/MemFS) and
+    // WASM shared-memory APIs. The iframe content is our own bundled game code, so
+    // the same-origin + scripts combination is intentional and safe in this context.
+    iframe.setAttribute("sandbox", "allow-scripts allow-same-origin");
+    iframeRef.current = iframe;
 
-        // Inject terrain for Otto Matic (rsrc + data forks)
-        if (gameType === Game.OTTO_MATIC) {
-          const ottoLevel = OTTO_LEVELS[capturedLevel];
-          if (ottoLevel) {
-            const rsrcBlob = terrainRsrcBlobRef.current;
-            const dataBlob = terrainDataBlobRef.current;
-            if (rsrcBlob) {
-              injectTerrainBlob(
-                `/Data/Terrain/${ottoLevel.terrainFile}.rsrc`,
-                rsrcBlob,
-                null,
-                null,
-                appendError,
-              );
-            }
-            if (dataBlob) {
-              injectTerrainBlob(
-                `/Data/Terrain/${ottoLevel.terrainFile}`,
-                dataBlob,
-                "OttoMatic_SetTerrainPath",
-                `/Data/Terrain/${ottoLevel.terrainFile}`,
-                appendError,
-              );
-            }
-          }
-        }
-      },
-      onAbort: () => {
-        appendError("Game crashed unexpectedly.");
-      },
-    };
-
-    const script = document.createElement("script");
-    script.src = `${basePath}/${config.mainJs}`;
-    script.onerror = () => {
-      appendError(`Failed to load game script: ${config.mainJs}`);
-      setStatus("crashed");
-    };
-    document.body.appendChild(script);
-    scriptRef.current = script;
+    // The placeholder div will be replaced by the iframe
+    const container = document.getElementById("game-iframe-container");
+    if (container) container.appendChild(iframe);
 
     return () => {
-      if (scriptRef.current && document.body.contains(scriptRef.current)) {
-        document.body.removeChild(scriptRef.current);
-        scriptRef.current = null;
-      }
-      clearPreLoadVars(gameType);
-      delete window.Module;
+      if (iframe.parentNode) iframe.parentNode.removeChild(iframe);
+      iframeRef.current = null;
     };
-  }, [gameKey, useLocalWasm, gameType, config, appendError]);
+  }, [gameKey, useLocalWasm, gameType, config]);
+
+  /** Send a ccall command to the game iframe. */
+  const sendCcall = useCallback((fn: string, argTypes: string[], args: unknown[]) => {
+    iframeRef.current?.contentWindow?.postMessage({ cmd: "ccall", fn, returnType: null, argTypes, args }, "*");
+  }, []);
 
   const handleStartOrReboot = useCallback(() => {
     capturedLevelRef.current = levelNumber;
-    // Clean up any running game before starting fresh
-    if (scriptRef.current && document.body.contains(scriptRef.current)) {
-      document.body.removeChild(scriptRef.current);
-      scriptRef.current = null;
-    }
-    clearPreLoadVars(gameType);
-    delete window.Module;
     setStatus("loading");
     setErrorLog([]);
     setFencesEnabled(true);
@@ -364,51 +352,74 @@ export function TestGameDialog({
     setLoadProgress(0);
     setLoadStatusText("Loading game…");
     setGameKey((k) => k + 1);
-  }, [levelNumber, gameType]);
+  }, [levelNumber]);
 
   const handleOpenChange = useCallback(
     (next: boolean) => {
       if (!next) {
-        if (scriptRef.current && document.body.contains(scriptRef.current)) {
-          document.body.removeChild(scriptRef.current);
-          scriptRef.current = null;
-        }
-        clearPreLoadVars(gameType);
-        delete window.Module;
         setStatus("idle");
         setGameKey(0);
         setErrorLog([]);
       }
       onOpenChange(next);
     },
-    [onOpenChange, gameType],
+    [onOpenChange],
   );
 
   const handleOpenRemote = useCallback(() => {
-    window.open(
-      config.remoteGameUrl(levelNumber),
-      "_blank",
-      "noopener,noreferrer",
-    );
+    window.open(config.remoteGameUrl(levelNumber), "_blank", "noopener,noreferrer");
   }, [config, levelNumber]);
 
   const handleToggleFences = useCallback(() => {
     const next = !fencesEnabled;
-    callFenceCollision(gameType, next);
+    const flag = next ? 1 : 0;
+    switch (gameType) {
+      case Game.OTTO_MATIC:
+        sendCcall("OttoMatic_SetFenceCollisions", ["number"], [flag]);
+        break;
+      case Game.NANOSAUR:
+        sendCcall("SetFenceCollisionsEnabled", ["number"], [flag]);
+        break;
+      case Game.BUGDOM:
+        sendCcall("BugdomSetFenceCollision", ["number"], [flag]);
+        break;
+      case Game.BUGDOM_2:
+        sendCcall("gameAPI_setFenceCollisionEnabled", ["number"], [flag]);
+        break;
+      case Game.CRO_MAG:
+        sendCcall("GameCheat_setFenceCollision", ["number"], [flag]);
+        break;
+      case Game.BILLY_FRONTIER:
+        sendCcall("BF_SetFenceCollision", ["number"], [flag]);
+        break;
+      case Game.NANOSAUR_2:
+        sendCcall("Nanosaur2_SetFenceCollisionsEnabled", ["number"], [flag]);
+        break;
+      default:
+        break;
+    }
     setFencesEnabled(next);
-  }, [fencesEnabled, gameType]);
+  }, [fencesEnabled, gameType, sendCcall]);
 
   const handleToggleGodMode = useCallback(() => {
     const next = !godModeEnabled;
-    callGodMode(next);
+    sendCcall("OttoMatic_SetGodMode", ["number"], [next ? 1 : 0]);
     setGodModeEnabled(next);
-  }, [godModeEnabled]);
+  }, [godModeEnabled, sendCcall]);
 
   const handleSpeedChange = useCallback((values: number[]) => {
     const val = values[0] ?? 1;
-    callSpeedMultiplier(val);
+    sendCcall("OttoMatic_SetSpeedMultiplier", ["number"], [val]);
     setSpeedMultiplier(val);
-  }, []);
+  }, [sendCcall]);
+
+  const handleRestoreHealth = useCallback(() => {
+    sendCcall("CheatRestoreHealth", [], []);
+  }, [sendCcall]);
+
+  const handleFillFuel = useCallback(() => {
+    sendCcall("CheatFillFuel", [], []);
+  }, [sendCcall]);
 
   const handleDownloadOttoTerrain = useCallback(() => {
     if (!terrainRsrcBlob) return;
@@ -426,8 +437,7 @@ export function TestGameDialog({
   const isNanosaur = gameType === Game.NANOSAUR;
   const hasTerrainData = terrainRsrcBlob !== null || terrainDataBlob !== null;
   const currentLevelInfo =
-    config.levels.find((l) => getLevelIndex(l) === levelNumber) ??
-    config.levels[0];
+    config.levels.find((l) => getLevelIndex(l) === levelNumber) ?? config.levels[0];
   const levelLabelText = currentLevelInfo
     ? levelLabel(currentLevelInfo, config.levels.indexOf(currentLevelInfo))
     : "";
@@ -441,21 +451,14 @@ export function TestGameDialog({
             {levelLabelText ? ` — ${levelLabelText}` : ""}
           </DialogTitle>
           <DialogDescription>
-            {!config.wasmAvailable &&
-              "WASM build not yet available for this game."}
-            {config.wasmAvailable &&
-              useLocalWasm === null &&
-              "Checking for local WASM build…"}
-            {config.wasmAvailable &&
-              useLocalWasm === false &&
+            {!config.wasmAvailable && "WASM build not yet available for this game."}
+            {config.wasmAvailable && useLocalWasm === null && "Checking for local WASM build…"}
+            {config.wasmAvailable && useLocalWasm === false &&
               'No local WASM found. Use "Open on GitHub Pages" to play in a new tab.'}
-            {config.wasmAvailable &&
-              useLocalWasm === true &&
-              status === "idle" &&
+            {config.wasmAvailable && useLocalWasm === true && status === "idle" &&
               'Local WASM detected. Press "Start Game" to launch.'}
             {status === "loading" && "Loading game…"}
-            {status === "running" &&
-              isOttoMatic &&
+            {status === "running" && isOttoMatic &&
               (hasTerrainData
                 ? "Game running with custom terrain (local WASM)."
                 : "Game running with default terrain.")}
@@ -468,9 +471,7 @@ export function TestGameDialog({
         {/* Controls bar */}
         <div className="flex items-center gap-2 flex-wrap">
           <label className="text-sm font-medium" htmlFor="game-level-select">
-            {config.levels === GAME_PORT_CONFIGS[Game.CRO_MAG].levels
-              ? "Track:"
-              : "Level:"}
+            {config.levels === GAME_PORT_CONFIGS[Game.CRO_MAG].levels ? "Track:" : "Level:"}
           </label>
           <Select
             value={String(levelNumber)}
@@ -481,10 +482,7 @@ export function TestGameDialog({
             </SelectTrigger>
             <SelectContent>
               {config.levels.map((l, idx) => (
-                <SelectItem
-                  key={getLevelIndex(l)}
-                  value={String(getLevelIndex(l))}
-                >
+                <SelectItem key={getLevelIndex(l)} value={String(getLevelIndex(l))}>
                   {levelLabel(l, idx)}
                 </SelectItem>
               ))}
@@ -529,10 +527,10 @@ export function TestGameDialog({
 
           {isNanosaur && status === "running" && (
             <>
-              <Button variant="outline" onClick={callRestoreHealth}>
+              <Button variant="outline" onClick={handleRestoreHealth}>
                 Restore Health
               </Button>
-              <Button variant="outline" onClick={callFillFuel}>
+              <Button variant="outline" onClick={handleFillFuel}>
                 Fill Fuel
               </Button>
             </>
@@ -573,13 +571,15 @@ export function TestGameDialog({
           </div>
         )}
 
-        {/* Game canvas */}
-        <div className="flex-1 min-h-0 relative rounded overflow-hidden border border-border bg-black">
+        {/* Game container — iframe lives here when active */}
+        <div
+          id="game-iframe-container"
+          className="flex-1 min-h-0 relative rounded overflow-hidden border border-border bg-black"
+        >
           {!config.wasmAvailable ? (
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 text-muted-foreground p-6 text-center">
               <p>
-                No WASM build is available for {GAME_DISPLAY_NAMES[config.game]}{" "}
-                yet.
+                No WASM build is available for {GAME_DISPLAY_NAMES[config.game]} yet.
               </p>
               <Button variant="outline" onClick={handleOpenRemote}>
                 View Repository ↗
@@ -598,24 +598,17 @@ export function TestGameDialog({
                 Open on GitHub Pages ↗
               </Button>
             </div>
-          ) : status === "idle" ? (
+          ) : gameKey === 0 ? (
             <div className="absolute inset-0 flex items-center justify-center text-muted-foreground">
               Press &quot;Start Game&quot; to launch
             </div>
-          ) : (
-            <canvas
-              ref={canvasRef}
-              id="canvas"
-              className="w-full h-full"
-              tabIndex={0}
-            />
-          )}
+          ) : null}
+          {/* iframe is dynamically appended into this div by the useEffect above */}
         </div>
 
         <DialogFooter className="flex-row gap-2 justify-between sm:justify-between">
           <p className="text-xs text-muted-foreground self-center">
-            Click the canvas to capture mouse/keyboard. Press Escape or F to
-            release.
+            Click the game to capture mouse/keyboard. Press Escape or F to release.
           </p>
           <Button variant="outline" onClick={() => handleOpenChange(false)}>
             Close
