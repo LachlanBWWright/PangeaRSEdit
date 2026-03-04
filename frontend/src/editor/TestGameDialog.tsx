@@ -240,45 +240,83 @@ export function TestGameDialog({
         case "running": {
           setStatus("running");
           const capturedLevel = capturedLevelRef.current;
-          // Skip to the selected level after runtime is ready
-          const skipCall = config.getSkipToLevelCcall?.(capturedLevel);
-          if (skipCall) {
-            iframeRef.current?.contentWindow?.postMessage({
-              cmd: "ccall",
-              fn: skipCall.fn,
-              returnType: skipCall.returnType,
-              argTypes: skipCall.argTypes,
-              args: skipCall.args,
-            }, "*");
-          }
-          // Inject terrain for Otto Matic
+          // Inject terrain for Otto Matic, then skip to level
           if (gameType === Game.OTTO_MATIC) {
             const ottoLevel = OTTO_LEVELS[capturedLevel];
             if (ottoLevel) {
               const rsrcBlob = terrainRsrcBlobRef.current;
               const dataBlob = terrainDataBlobRef.current;
+              const terrainPath = `/Data/Terrain/${ottoLevel.terrainFile}`;
+              // Build an ordered chain: write rsrc → write data (if any) → set path → skip level
+              const skipCall = config.getSkipToLevelCcall?.(capturedLevel);
+
+              const setPathAndSkip = () => {
+                // Tell the game which terrain to load
+                iframeRef.current?.contentWindow?.postMessage({
+                  cmd: "ccall",
+                  fn: "OttoMatic_SetTerrainPath",
+                  returnType: null,
+                  argTypes: ["string"],
+                  args: [terrainPath],
+                }, "*");
+                // Jump directly to the selected level
+                if (skipCall) {
+                  iframeRef.current?.contentWindow?.postMessage({
+                    cmd: "ccall",
+                    fn: skipCall.fn,
+                    returnType: skipCall.returnType,
+                    argTypes: skipCall.argTypes,
+                    args: skipCall.args,
+                  }, "*");
+                }
+              };
+
+              const writeDataThenFinish = () => {
+                if (dataBlob) {
+                  dataBlob.arrayBuffer().then((buf) => {
+                    iframeRef.current?.contentWindow?.postMessage({
+                      cmd: "writeFile",
+                      path: terrainPath,
+                      data: buf,
+                    }, "*", [buf]);
+                    setPathAndSkip();
+                  }).catch(() => {
+                    appendError("Failed to read terrain data blob.");
+                    setPathAndSkip();
+                  });
+                } else {
+                  // No texture data provided — game uses its bundled .ter
+                  setPathAndSkip();
+                }
+              };
+
               if (rsrcBlob) {
                 rsrcBlob.arrayBuffer().then((buf) => {
                   iframeRef.current?.contentWindow?.postMessage({
                     cmd: "writeFile",
-                    path: `/Data/Terrain/${ottoLevel.terrainFile}.rsrc`,
+                    path: `${terrainPath}.rsrc`,
                     data: buf,
-                    thenCallFn: null,
-                    thenCallArg: null,
                   }, "*", [buf]);
-                }).catch(() => appendError("Failed to read terrain rsrc blob."));
+                  writeDataThenFinish();
+                }).catch(() => {
+                  appendError("Failed to read terrain rsrc blob.");
+                  writeDataThenFinish();
+                });
+              } else {
+                writeDataThenFinish();
               }
-              if (dataBlob) {
-                dataBlob.arrayBuffer().then((buf) => {
-                  iframeRef.current?.contentWindow?.postMessage({
-                    cmd: "writeFile",
-                    path: `/Data/Terrain/${ottoLevel.terrainFile}`,
-                    data: buf,
-                    thenCallFn: "OttoMatic_SetTerrainPath",
-                    thenCallArg: `/Data/Terrain/${ottoLevel.terrainFile}`,
-                  }, "*", [buf]);
-                }).catch(() => appendError("Failed to read terrain data blob."));
-              }
+            }
+          } else {
+            // Non-Otto games: just skip to level directly
+            const skipCall = config.getSkipToLevelCcall?.(capturedLevel);
+            if (skipCall) {
+              iframeRef.current?.contentWindow?.postMessage({
+                cmd: "ccall",
+                fn: skipCall.fn,
+                returnType: skipCall.returnType,
+                argTypes: skipCall.argTypes,
+                args: skipCall.args,
+              }, "*");
             }
           }
           break;
@@ -357,8 +395,8 @@ export function TestGameDialog({
   const handleOpenChange = useCallback(
     (next: boolean) => {
       if (!next) {
-        setStatus("idle");
-        setGameKey(0);
+        // Keep game running in background — don't reset gameKey.
+        // The dialog hides via CSS (forceMount keeps content in DOM).
         setErrorLog([]);
       }
       onOpenChange(next);
@@ -444,7 +482,12 @@ export function TestGameDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="max-w-5xl w-[95vw] h-[90vh] flex flex-col">
+      {/* forceMount keeps the content (and game iframe) in the DOM when dialog is closed,
+          avoiding a full game reload on reopen. CSS 'hidden' visually hides it. */}
+      <DialogContent
+        forceMount
+        className={`max-w-5xl w-[95vw] h-[90vh] flex flex-col${!open ? " hidden" : ""}`}
+      >
         <DialogHeader>
           <DialogTitle>
             {`Test Level in ${GAME_DISPLAY_NAMES[config.game]}`}

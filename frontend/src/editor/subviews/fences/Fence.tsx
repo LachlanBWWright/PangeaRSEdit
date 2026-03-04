@@ -1,6 +1,6 @@
 import { Updater } from "use-immer";
 import { FenceData } from "@/python/structSpecs/LevelTypes";
-import { Circle, Group, Image as KonvaImage, Line, Text } from "react-konva";
+import { Circle, Group, Line, Text } from "react-konva";
 import Konva from "konva";
 import { FenceNub } from "./FenceNub";
 import { SelectedFence } from "../../../data/fences/fenceAtoms";
@@ -138,33 +138,11 @@ export const Fence = memo(
     const firstNub = fenceNubs[0];
     const lastNub = fenceNubs[fenceNubs.length - 1];
 
+    // Offset for add/remove buttons — placed outside the nub radius
+    const BTN_OFFSET = 36;
+
     return (
       <>
-        {/* Fence image tiles drawn along each segment */}
-        {fenceImage && fenceNubs.length >= 2 &&
-          fenceNubs.slice(0, -1).map((nub, i) => {
-            const next = fenceNubs[i + 1];
-            if (!next) return null;
-            const dx = next[0] - nub[0];
-            const dy = next[1] - nub[1];
-            const len = Math.hypot(dx, dy);
-            const angle = (Math.atan2(dy, dx) * 180) / Math.PI;
-            const imgH = 20;
-            return (
-              <KonvaImage
-                key={`img-${i}`}
-                image={fenceImage}
-                x={nub[0]}
-                y={nub[1] - imgH / 2}
-                width={len}
-                height={imgH}
-                rotation={angle}
-                listening={false}
-                opacity={0.85}
-              />
-            );
-          })}
-
         <Line
           points={lines}
           stroke={color}
@@ -208,6 +186,7 @@ export const Fence = memo(
             key={nubIdx}
             idx={fenceIdx}
             nub={nub}
+            image={fenceImage}
             setNub={(newNub: [number, number]) => {
               setFenceData((fenceData) => {
                 const nubData = fenceData.FnNb[NUB_KEY_BASE + fenceIdx]?.obj;
@@ -222,45 +201,81 @@ export const Fence = memo(
         {/* Nub add/remove icons when this fence is selected */}
         {isSelected && firstNub && (
           <>
-            {/* Add at front */}
+            {/* Connecting line: add-front button → first nub */}
+            <Line
+              points={[firstNub[0] - BTN_OFFSET, firstNub[1] - BTN_OFFSET, firstNub[0], firstNub[1]]}
+              stroke="#22c55e"
+              strokeWidth={1.5}
+              dash={[4, 3]}
+              listening={false}
+              opacity={0.7}
+            />
             <KonvaIconButton
-              x={firstNub[0] - 30}
-              y={firstNub[1] - 30}
+              x={firstNub[0] - BTN_OFFSET}
+              y={firstNub[1] - BTN_OFFSET}
               label="+"
               bgColor="#22c55e"
               onClick={handleAddFront}
             />
-            {/* Remove front nub — only shown when more than minimum */}
             {numNubs > MIN_NUBS && (
-              <KonvaIconButton
-                x={firstNub[0] + 30}
-                y={firstNub[1] - 30}
-                label="×"
-                bgColor="#ef4444"
-                onClick={handleRemoveFront}
-              />
+              <>
+                {/* Connecting line: remove-front button → first nub */}
+                <Line
+                  points={[firstNub[0] + BTN_OFFSET, firstNub[1] - BTN_OFFSET, firstNub[0], firstNub[1]]}
+                  stroke="#ef4444"
+                  strokeWidth={1.5}
+                  dash={[4, 3]}
+                  listening={false}
+                  opacity={0.7}
+                />
+                <KonvaIconButton
+                  x={firstNub[0] + BTN_OFFSET}
+                  y={firstNub[1] - BTN_OFFSET}
+                  label="×"
+                  bgColor="#ef4444"
+                  onClick={handleRemoveFront}
+                />
+              </>
             )}
           </>
         )}
         {isSelected && lastNub && firstNub !== lastNub && (
           <>
-            {/* Add at back */}
+            {/* Connecting line: add-back button → last nub */}
+            <Line
+              points={[lastNub[0] + BTN_OFFSET, lastNub[1] + BTN_OFFSET, lastNub[0], lastNub[1]]}
+              stroke="#22c55e"
+              strokeWidth={1.5}
+              dash={[4, 3]}
+              listening={false}
+              opacity={0.7}
+            />
             <KonvaIconButton
-              x={lastNub[0] + 30}
-              y={lastNub[1] + 30}
+              x={lastNub[0] + BTN_OFFSET}
+              y={lastNub[1] + BTN_OFFSET}
               label="+"
               bgColor="#22c55e"
               onClick={handleAddBack}
             />
-            {/* Remove back nub — only shown when more than minimum */}
             {numNubs > MIN_NUBS && (
-              <KonvaIconButton
-                x={lastNub[0] - 30}
-                y={lastNub[1] + 30}
-                label="×"
-                bgColor="#ef4444"
-                onClick={handleRemoveBack}
-              />
+              <>
+                {/* Connecting line: remove-back button → last nub */}
+                <Line
+                  points={[lastNub[0] - BTN_OFFSET, lastNub[1] + BTN_OFFSET, lastNub[0], lastNub[1]]}
+                  stroke="#ef4444"
+                  strokeWidth={1.5}
+                  dash={[4, 3]}
+                  listening={false}
+                  opacity={0.7}
+                />
+                <KonvaIconButton
+                  x={lastNub[0] - BTN_OFFSET}
+                  y={lastNub[1] + BTN_OFFSET}
+                  label="×"
+                  bgColor="#ef4444"
+                  onClick={handleRemoveBack}
+                />
+              </>
             )}
           </>
         )}

@@ -654,9 +654,16 @@ export function IntroPrompt() {
       }
     }
 
-    setTerrainDataBlob(null);
+    // Provide the original .ter (texture data) file so the game uses the correct terrain textures.
+    // mapImagesFile holds the raw .ter binary loaded when the level was opened.
+    if (mapImagesFile && mapImagesFile.size > 0) {
+      setTerrainDataBlob(new Blob([mapImagesFile], { type: "application/octet-stream" }));
+    } else {
+      setTerrainDataBlob(null);
+    }
+
     setTestDialogOpen(true);
-  }, [globals, getCurrentAtomicData, mapFile]);
+  }, [globals, getCurrentAtomicData, mapFile, mapImagesFile]);
 
   // Handle tunnel data updates
   const handleTunnelDataUpdate = useCallback((data: TunnelData) => {
