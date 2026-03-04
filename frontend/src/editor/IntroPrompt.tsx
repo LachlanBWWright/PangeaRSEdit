@@ -655,7 +655,8 @@ export function IntroPrompt() {
     }
 
     // Provide the original .ter (texture data) file so the game uses the correct terrain textures.
-    // mapImagesFile holds the raw .ter binary loaded when the level was opened.
+    // If absent (blank level or non-Otto game), terrainDataBlob remains null and the game
+    // falls back to its bundled .ter textures for the selected level.
     if (mapImagesFile && mapImagesFile.size > 0) {
       setTerrainDataBlob(new Blob([mapImagesFile], { type: "application/octet-stream" }));
     } else {

@@ -18,11 +18,11 @@ import { HeaderData, TerrainData } from "@/python/structSpecs/LevelTypes";
 import { FileUpload } from "@/components/FileUpload";
 import { Button } from "@/components/ui/button";
 import { ImageEditor } from "@/components/ImageEditor";
-import { Edit, Download, Upload, Shield, Info } from "lucide-react";
+import { Edit, Download, Upload, Shield, Info, Paintbrush } from "lucide-react";
 import { toast } from "sonner";
 import { fromPromise } from "@/types/result";
 import { useAtom } from "jotai";
-import { ShowMightyMikeCollisionOverlay } from "@/data/game/gameAtoms";
+import { CollisionBrushMode, ShowMightyMikeCollisionOverlay } from "@/data/game/gameAtoms";
 import {
   Tooltip,
   TooltipContent,
@@ -76,6 +76,7 @@ export function MightyMikeTileMenu({
   const [showCollisionOverlay, setShowCollisionOverlay] = useAtom(
     ShowMightyMikeCollisionOverlay
   );
+  const [collisionBrushMode, setCollisionBrushMode] = useAtom(CollisionBrushMode);
 
   // Local state
   const [selectedPaletteTile, setSelectedPaletteTile] = useState<number>(0);
@@ -287,25 +288,15 @@ export function MightyMikeTileMenu({
     property: "hasCollisionMask" | "usePixelAccurateCollision",
     value: boolean
   ) => {
-    if (selectedTile < 0 || selectedTile >= mightyMikeTileValuesArray.length) {
-      toast.error("Invalid tile selected");
-      return;
-    }
-
-    // Update the tile value in the array
-    const tileValue = mightyMikeTileValuesArray[selectedTile];
-    if (!isRecord(tileValue)) return;
-
-    tileValue[property] = value;
-
-    // Update state to trigger re-render
     setTerrainData((data) => {
-      if (!data.Layr) return;
-      // Force a state update by touching the layer data
-      const layer = data.Layr[1000];
-      if (layer) {
-        layer.obj = [...(layer.obj || [])];
-      }
+      const meta = isRecord(data._metadata) && isRecord(data._metadata[1000]) && isRecord(data._metadata[1000].obj)
+        ? data._metadata[1000].obj
+        : undefined;
+      const tileValues = meta && isArray(meta.mightyMikeTileValues) ? meta.mightyMikeTileValues : undefined;
+      if (!tileValues || selectedTile < 0 || selectedTile >= tileValues.length) return;
+      const tileVal = tileValues[selectedTile];
+      if (!isRecord(tileVal)) return;
+      tileVal[property] = value;
     });
 
     toast.success(
@@ -500,6 +491,19 @@ export function MightyMikeTileMenu({
             }
           >
             <Shield className="w-4 h-4" />
+          </Button>
+        </div>
+
+        {/* Collision brush toggle */}
+        <div className="flex items-center justify-between">
+          <span className="text-xs font-semibold">Collision Brush</span>
+          <Button
+            size="sm"
+            variant={collisionBrushMode ? "default" : "outline"}
+            onClick={() => setCollisionBrushMode(!collisionBrushMode)}
+            title={collisionBrushMode ? "Disable collision brush (click tiles to toggle)" : "Enable collision brush — drag to toggle collision on tiles"}
+          >
+            <Paintbrush className="w-4 h-4" />
           </Button>
         </div>
 

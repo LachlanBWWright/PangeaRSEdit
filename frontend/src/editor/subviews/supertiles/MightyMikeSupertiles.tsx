@@ -7,10 +7,12 @@
  */
 
 import { Layer, Image, Rect } from "react-konva";
-import { Fragment, memo } from "react";
-import { useAtom } from "jotai";
+import { Fragment, memo, useCallback } from "react";
+import { useAtom, useAtomValue } from "jotai";
 import { SelectedTile } from "@/data/supertiles/supertileAtoms";
+import { CollisionBrushMode } from "@/data/game/gameAtoms";
 import { TerrainData, HeaderData } from "@/python/structSpecs/LevelTypes";
+import { Updater } from "use-immer";
 
 // Type guard helpers
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -28,6 +30,7 @@ function getBoolean(value: unknown, defaultValue = false): boolean {
 interface MightyMikeSupertilesProps {
   headerData: HeaderData;
   terrainData: TerrainData;
+  setTerrainData: Updater<TerrainData>;
   mapImages: HTMLCanvasElement[];
   showCollisionOverlay?: boolean;
 }
@@ -35,22 +38,44 @@ interface MightyMikeSupertilesProps {
 const MightyMikeSupertilesComponent = ({
   headerData,
   terrainData,
+  setTerrainData,
   mapImages,
   showCollisionOverlay = false,
 }: MightyMikeSupertilesProps) => {
   const [selectedTile, setSelectedTile] = useAtom(SelectedTile);
+  const collisionBrushMode = useAtomValue(CollisionBrushMode);
   const header = headerData.Hedr[1000].obj;
   const layr = terrainData.Layr?.[1000]?.obj || [];
   const xlatTable = terrainData.Xlat?.[1000]?.obj;
 
   // Access Mighty Mike tile values from the raw terrainData if available
-  // These are stored as a keyed object during parsing, containing collision info
   const metadata = isRecord(terrainData._metadata) ? terrainData._metadata : undefined;
   const metadataEntry = metadata && isRecord(metadata[1000]) ? metadata[1000] : undefined;
   const metadataObj = metadataEntry && isRecord(metadataEntry.obj) ? metadataEntry.obj : undefined;
   const mightyMikeTileValuesArray = metadataObj && isArray(metadataObj.mightyMikeTileValues)
     ? metadataObj.mightyMikeTileValues
     : [];
+
+  // Extract per-tile pixel-accurate collision canvases from the stored tileset
+  const tilesetRaw = isRecord(terrainData.tileset) ? terrainData.tileset : undefined;
+  const rawCollisionImages = tilesetRaw && isArray(tilesetRaw.collisionImages) ? tilesetRaw.collisionImages : [];
+  const collisionImages = rawCollisionImages.filter(
+    (img): img is HTMLCanvasElement => isRecord(img) && typeof img.getContext === "function",
+  );
+
+  // Brush handler: toggle hasCollisionMask for a tile
+  const handleBrushTile = useCallback((tileIdx: number) => {
+    setTerrainData((data) => {
+      const meta = isRecord(data._metadata) && isRecord(data._metadata[1000]) && isRecord(data._metadata[1000].obj)
+        ? data._metadata[1000].obj
+        : undefined;
+      const tileValues = meta && isArray(meta.mightyMikeTileValues) ? meta.mightyMikeTileValues : undefined;
+      if (!tileValues || tileIdx < 0 || tileIdx >= tileValues.length) return;
+      const tileVal = tileValues[tileIdx];
+      if (!isRecord(tileVal)) return;
+      tileVal.hasCollisionMask = !tileVal.hasCollisionMask;
+    });
+  }, [setTerrainData]);
 
   const TILE_SIZE = 32;
   const mapWidth = header.mapWidth;
@@ -129,7 +154,16 @@ const MightyMikeSupertilesComponent = ({
           <Fragment key={i}>
             <Image
               image={img}
-              onClick={() => setSelectedTile(i)}
+              onClick={() => {
+                if (collisionBrushMode) {
+                  handleBrushTile(i);
+                } else {
+                  setSelectedTile(i);
+                }
+              }}
+              onMouseEnter={(e) => {
+                if (collisionBrushMode && e.evt.buttons === 1) handleBrushTile(i);
+              }}
               x={x}
               y={y}
               width={TILE_SIZE}
@@ -157,11 +191,26 @@ const MightyMikeSupertilesComponent = ({
 
                 if (!hasCollisionMask) return null;
 
-                // Different colors for different collision types
-                const color = usePixelAccurateCollision
-                  ? "rgba(0, 255, 0, 0.3)" // Green for pixel-accurate
-                  : "rgba(255, 165, 0, 0.3)"; // Orange for tile-based
+                // For pixel-accurate collision, use the pre-generated collision canvas
+                // (orange only where palette index is collidable, transparent elsewhere).
+                if (usePixelAccurateCollision && imageIndex < collisionImages.length) {
+                  const collisionImg = collisionImages[imageIndex];
+                  if (collisionImg) {
+                    return (
+                      <Image
+                        key={`collision-${i}`}
+                        image={collisionImg}
+                        x={x}
+                        y={y}
+                        width={TILE_SIZE}
+                        height={TILE_SIZE}
+                        listening={false}
+                      />
+                    );
+                  }
+                }
 
+                // Tile-based collision: solid blue overlay
                 return (
                   <Rect
                     key={`collision-${i}`}
@@ -169,7 +218,7 @@ const MightyMikeSupertilesComponent = ({
                     y={y}
                     width={TILE_SIZE}
                     height={TILE_SIZE}
-                    fill={color}
+                    fill="rgba(30, 100, 255, 0.35)"
                     listening={false}
                   />
                 );

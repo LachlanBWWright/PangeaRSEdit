@@ -48,6 +48,7 @@ export function MightyMikeKonvaView({
   itemData,
   setItemData,
   terrainData,
+  setTerrainData,
   mapImages,
   view,
   stage,
@@ -154,6 +155,7 @@ export function MightyMikeKonvaView({
           <MightyMikeSupertiles
             headerData={headerData}
             terrainData={terrainData}
+            setTerrainData={setTerrainData}
             mapImages={mapImages}
             showCollisionOverlay={showCollisionOverlay}
           />

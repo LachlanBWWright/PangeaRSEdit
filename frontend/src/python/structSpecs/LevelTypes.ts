@@ -410,6 +410,8 @@ export interface TerrainData<
     }
   >;
   _metadata: LevelMetadata;
+  /** Game-specific tileset data stored dynamically (e.g. MightyMikeTileSet). */
+  tileset?: unknown;
 }
 
 // ============================================================================

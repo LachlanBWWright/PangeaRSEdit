@@ -395,8 +395,9 @@ export function TestGameDialog({
   const handleOpenChange = useCallback(
     (next: boolean) => {
       if (!next) {
-        // Keep game running in background — don't reset gameKey.
-        // The dialog hides via CSS (forceMount keeps content in DOM).
+        // Keep the game running in background — intentionally do NOT reset gameKey or status.
+        // forceMount on DialogContent keeps the iframe in the DOM even when closed,
+        // so no re-download is needed when reopening. Only error log is cleared.
         setErrorLog([]);
       }
       onOpenChange(next);
