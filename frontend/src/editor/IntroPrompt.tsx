@@ -30,7 +30,7 @@ import {
   validateResourceForkJson,
   sanitizeResourceForkJson,
 } from "../data/utils/levelDataUtils";
-import { err, isOk, ok } from "../types/result";
+import { err, fromPromise, isOk, ok } from "../types/result";
 import { createBlankLevel, getDefaultDimensions } from "@/data/levelTemplates";
 import { SafeItemTypes, SafeSplineItemTypes } from "../data/items/itemAtoms";
 import { extractSafeItemTypes } from "../data/items/extractSafeItemTypes";
@@ -586,7 +586,7 @@ export function IntroPrompt() {
     ],
   );
 
-  const handleTestLevel = useCallback(() => {
+  const handleTestLevel = useCallback(async () => {
     // For non-Otto games: open dialog directly (game uses default terrain)
     if (globals.GAME_TYPE !== Game.OTTO_MATIC) {
       setTerrainRsrcBlob(null);
@@ -654,17 +654,63 @@ export function IntroPrompt() {
       }
     }
 
-    // Provide the original .ter (texture data) file so the game uses the correct terrain textures.
-    // If absent (blank level or non-Otto game), terrainDataBlob remains null and the game
-    // falls back to its bundled .ter textures for the selected level.
-    if (mapImagesFile && mapImagesFile.size > 0) {
+    // Build a fresh .ter blob from the current (possibly edited) mapImages using LZSS.
+    // This ensures the game sees the current tile textures, not the original downloaded file.
+    if (mapImages && mapImages.length > 0) {
+      const compressPromise = new Promise<DataView[]>((res, rej) => {
+        const results: DataView[] = new Array(mapImages.length);
+        let count = 0;
+        for (let i = 0; i < mapImages.length; i++) {
+          const canvas = mapImages[i];
+          if (!canvas) { rej(new Error(`Missing canvas at index ${i} — cannot compress tile textures`)); return; }
+          const ctx = canvas.getContext("2d");
+          if (!ctx) { rej(new Error(`Failed to get 2D context for canvas at index ${i}`)); return; }
+          const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+          const worker = new LzssWorker();
+          worker.onerror = (ev) => rej(new Error(`LZSS worker error on tile ${i}: ${String(ev.message)}`));
+          worker.onmessage = (e: MessageEvent<LzssResponse>) => {
+            if (e.data.type !== "compressRes") return;
+            results[e.data.id] = new DataView(e.data.dataBuffer);
+            count++;
+            if (count === mapImages.length) res(results);
+            worker.terminate();
+          };
+          worker.postMessage({ uIntArray: imageData.data, type: "compress", id: i } satisfies LzssMessage, [imageData.data.buffer]);
+        }
+      });
+
+      const compressResult = await fromPromise(compressPromise);
+      if (compressResult.isOk()) {
+        const compressedTextures = compressResult.value;
+        let totalSize = 0;
+        for (const buf of compressedTextures) totalSize += 4 + buf.byteLength;
+        const terBuffer = new DataView(new ArrayBuffer(totalSize));
+        let pos = 0;
+        for (const buf of compressedTextures) {
+          if (!buf) continue;
+          terBuffer.setInt32(pos, buf.byteLength);
+          pos += 4;
+          for (let j = 0; j < buf.byteLength; j++) terBuffer.setUint8(pos++, buf.getUint8(j));
+        }
+        setTerrainDataBlob(new Blob([terBuffer.buffer], { type: "application/octet-stream" }));
+      } else {
+        // Log for debugging, then fall back to the original .ter file
+        console.warn("[TestLevel] .ter compression failed, falling back to original file:", compressResult.error);
+        if (mapImagesFile && mapImagesFile.size > 0) {
+          setTerrainDataBlob(new Blob([mapImagesFile], { type: "application/octet-stream" }));
+        } else {
+          setTerrainDataBlob(null);
+        }
+      }
+    } else if (mapImagesFile && mapImagesFile.size > 0) {
+      // No in-memory images available; pass the original .ter file
       setTerrainDataBlob(new Blob([mapImagesFile], { type: "application/octet-stream" }));
     } else {
       setTerrainDataBlob(null);
     }
 
     setTestDialogOpen(true);
-  }, [globals, getCurrentAtomicData, mapFile, mapImagesFile]);
+  }, [globals, getCurrentAtomicData, mapFile, mapImages, mapImagesFile]);
 
   // Handle tunnel data updates
   const handleTunnelDataUpdate = useCallback((data: TunnelData) => {

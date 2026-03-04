@@ -43,6 +43,9 @@ export const FenceNub = memo(
           setNub([Math.round(e.target.x()), Math.round(e.target.y())]);
         }}
       >
+        {/* Black background circle — always visible behind image or solid fill */}
+        <Circle radius={NUB_RADIUS} fill="black" listening={false} />
+
         {/* Solid fill when no image */}
         {!image && <Circle radius={NUB_RADIUS} fill={color} />}
 

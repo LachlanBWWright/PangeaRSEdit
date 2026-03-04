@@ -152,6 +152,8 @@ export function TestGameDialog({
   terrainDataBlob,
 }: Props) {
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
+  /** Interval ref for periodic skip-to-level retries after game starts. */
+  const skipRetryIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const [status, setStatus] = useState<GameStatus>("idle");
   const [errorLog, setErrorLog] = useState<string[]>([]);
@@ -240,6 +242,36 @@ export function TestGameDialog({
         case "running": {
           setStatus("running");
           const capturedLevel = capturedLevelRef.current;
+
+          /** Send a single skip-to-level ccall for the current game. */
+          const sendSkip = (skipCall: ReturnType<typeof config.getSkipToLevelCcall>) => {
+            if (!skipCall) return;
+            iframeRef.current?.contentWindow?.postMessage({
+              cmd: "ccall",
+              fn: skipCall.fn,
+              returnType: skipCall.returnType,
+              argTypes: skipCall.argTypes,
+              args: skipCall.args,
+            }, "*");
+          };
+
+          // Start a periodic retry interval: OttoMatic_SkipToLevel only works once
+          // the game's main loop is in a level-playing state. Retry every 2 s for
+          // up to 10 attempts (20 s total) to catch when the game enters gameplay.
+          if (skipRetryIntervalRef.current) clearInterval(skipRetryIntervalRef.current);
+          const skipCall = config.getSkipToLevelCcall?.(capturedLevel);
+          if (skipCall) {
+            let retryCount = 0;
+            skipRetryIntervalRef.current = setInterval(() => {
+              sendSkip(skipCall);
+              retryCount++;
+              if (retryCount >= 10 && skipRetryIntervalRef.current) {
+                clearInterval(skipRetryIntervalRef.current);
+                skipRetryIntervalRef.current = null;
+              }
+            }, 2000);
+          }
+
           // Inject terrain for Otto Matic, then skip to level
           if (gameType === Game.OTTO_MATIC) {
             const ottoLevel = OTTO_LEVELS[capturedLevel];
@@ -247,8 +279,6 @@ export function TestGameDialog({
               const rsrcBlob = terrainRsrcBlobRef.current;
               const dataBlob = terrainDataBlobRef.current;
               const terrainPath = `/Data/Terrain/${ottoLevel.terrainFile}`;
-              // Build an ordered chain: write rsrc → write data (if any) → set path → skip level
-              const skipCall = config.getSkipToLevelCcall?.(capturedLevel);
 
               const setPathAndSkip = () => {
                 // Tell the game which terrain to load
@@ -259,16 +289,8 @@ export function TestGameDialog({
                   argTypes: ["string"],
                   args: [terrainPath],
                 }, "*");
-                // Jump directly to the selected level
-                if (skipCall) {
-                  iframeRef.current?.contentWindow?.postMessage({
-                    cmd: "ccall",
-                    fn: skipCall.fn,
-                    returnType: skipCall.returnType,
-                    argTypes: skipCall.argTypes,
-                    args: skipCall.args,
-                  }, "*");
-                }
+                // Also send the skip call immediately (interval handles retries)
+                sendSkip(skipCall ?? null);
               };
 
               const writeDataThenFinish = () => {
@@ -285,7 +307,6 @@ export function TestGameDialog({
                     setPathAndSkip();
                   });
                 } else {
-                  // No texture data provided — game uses its bundled .ter
                   setPathAndSkip();
                 }
               };
@@ -305,18 +326,6 @@ export function TestGameDialog({
               } else {
                 writeDataThenFinish();
               }
-            }
-          } else {
-            // Non-Otto games: just skip to level directly
-            const skipCall = config.getSkipToLevelCcall?.(capturedLevel);
-            if (skipCall) {
-              iframeRef.current?.contentWindow?.postMessage({
-                cmd: "ccall",
-                fn: skipCall.fn,
-                returnType: skipCall.returnType,
-                argTypes: skipCall.argTypes,
-                args: skipCall.args,
-              }, "*");
             }
           }
           break;
@@ -381,6 +390,11 @@ export function TestGameDialog({
   }, []);
 
   const handleStartOrReboot = useCallback(() => {
+    // Clear any pending skip-level interval before starting a new game session
+    if (skipRetryIntervalRef.current) {
+      clearInterval(skipRetryIntervalRef.current);
+      skipRetryIntervalRef.current = null;
+    }
     capturedLevelRef.current = levelNumber;
     setStatus("loading");
     setErrorLog([]);
@@ -391,6 +405,19 @@ export function TestGameDialog({
     setLoadStatusText("Loading game…");
     setGameKey((k) => k + 1);
   }, [levelNumber]);
+
+  /** Manually trigger a skip-to-level ccall (useful if the auto-retry was too early). */
+  const handleManualSkipToLevel = useCallback(() => {
+    const skipCall = config.getSkipToLevelCcall?.(capturedLevelRef.current);
+    if (!skipCall) return;
+    iframeRef.current?.contentWindow?.postMessage({
+      cmd: "ccall",
+      fn: skipCall.fn,
+      returnType: skipCall.returnType,
+      argTypes: skipCall.argTypes,
+      args: skipCall.args,
+    }, "*");
+  }, [config]);
 
   const handleOpenChange = useCallback(
     (next: boolean) => {
@@ -569,6 +596,12 @@ export function TestGameDialog({
             </Button>
           )}
 
+          {config.getSkipToLevelCcall && status === "running" && (
+            <Button variant="outline" onClick={handleManualSkipToLevel} title="Manually trigger skip to selected level (if game is in gameplay)">
+              Skip to Level {capturedLevelRef.current}
+            </Button>
+          )}
+
           {isNanosaur && status === "running" && (
             <>
               <Button variant="outline" onClick={handleRestoreHealth}>
@@ -585,7 +618,7 @@ export function TestGameDialog({
         {config.hasSpeedMultiplier && status === "running" && (
           <div className="flex items-center gap-3 px-1">
             <span className="text-sm font-medium whitespace-nowrap">
-              Speed: {speedMultiplier.toFixed(1)}×
+              Player Speed: {speedMultiplier.toFixed(1)}×
             </span>
             <Slider
               className="w-40"
