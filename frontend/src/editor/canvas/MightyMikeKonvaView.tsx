@@ -158,6 +158,7 @@ export function MightyMikeKonvaView({
             setTerrainData={setTerrainData}
             mapImages={mapImages}
             showCollisionOverlay={showCollisionOverlay}
+            view={view}
           />
         )}
 

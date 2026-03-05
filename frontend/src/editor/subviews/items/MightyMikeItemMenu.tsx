@@ -23,7 +23,7 @@ import { getItemName } from "@/data/items/getItemNames";
 import { Globals } from "@/data/globals/globals";
 import { getItemTypes } from "@/data/items/getItemTypes";
 import { Image as ImageIcon, ImageOff } from "lucide-react";
-import { parseU8, parseU16 } from "@/utils/numberParsers";
+import { parseU8 } from "@/utils/numberParsers";
 import { atom } from "jotai";
 import { getMightyMikeItemParams } from "@/data/items/mightyMikeItemParams";
 import { ParamTooltip } from "./ParamTooltip";
@@ -82,8 +82,8 @@ export const MightyMikeItemMenu = memo(function MightyMikeItemMenu({
       {selectedItemData === null || selectedItemData === undefined ? (
         <AddItemMenu />
       ) : (
-        <p>
-          Item {selectedItemData.type} ({selectedItemData.x},
+        <p className="text-xs text-gray-400">
+          Item {selectedItemData.type} ({selectedItemData.x},{" "}
           {selectedItemData.z})
         </p>
       )}
@@ -123,19 +123,35 @@ export const MightyMikeItemMenu = memo(function MightyMikeItemMenu({
             </Select>
 
             <div className="grid grid-cols-[auto_1fr_auto_1fr] gap-2 items-baseline">
-              <label className="text-sm font-medium">Flags</label>
+              {/* X/Z position (editable for precision placement; drag in canvas for quick placement) */}
+              <label className="text-sm font-medium">X</label>
               <Input
                 type="number"
-                className="col-span-3"
-                value={selectedItemData.flags.toString()}
+                value={selectedItemData.x.toString()}
                 onChange={(e) => {
-                  setItemData((itemData) => {
-                    if (selectedItem === undefined) return;
-                    const item = itemData.Itms[1000]?.obj?.[selectedItem];
-                    if (item) {
-                      item.flags = parseU16(e.target.value);
-                    }
-                  });
+                  const v = parseInt(e.target.value);
+                  if (!isNaN(v)) {
+                    setItemData((itemData) => {
+                      if (selectedItem === undefined) return;
+                      const item = itemData.Itms[1000]?.obj?.[selectedItem];
+                      if (item) item.x = v;
+                    });
+                  }
+                }}
+              />
+              <label className="text-sm font-medium">Y</label>
+              <Input
+                type="number"
+                value={selectedItemData.z.toString()}
+                onChange={(e) => {
+                  const v = parseInt(e.target.value);
+                  if (!isNaN(v)) {
+                    setItemData((itemData) => {
+                      if (selectedItem === undefined) return;
+                      const item = itemData.Itms[1000]?.obj?.[selectedItem];
+                      if (item) item.z = v;
+                    });
+                  }
                 }}
               />
 

@@ -17,6 +17,8 @@ import { CollisionBrushMode } from "@/data/game/gameAtoms";
 import { TerrainData, HeaderData } from "@/python/structSpecs/LevelTypes";
 import { Updater } from "use-immer";
 import type Konva from "konva";
+import { View } from "@/editor/viewEnum";
+import { AltMapBrushValue, ALT_TILE_OPTIONS } from "../mightymike/MightyMikeAltMapEditor";
 
 // Type guard helpers
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -37,6 +39,8 @@ interface MightyMikeSupertilesProps {
   setTerrainData: Updater<TerrainData>;
   mapImages: HTMLCanvasElement[];
   showCollisionOverlay?: boolean;
+  /** Current editor view — used to show alt-map overlay in tiles mode. */
+  view?: View;
 }
 
 const TILE_SIZE = 32;
@@ -47,9 +51,12 @@ const MightyMikeSupertilesComponent = ({
   setTerrainData,
   mapImages,
   showCollisionOverlay = false,
+  view,
 }: MightyMikeSupertilesProps) => {
   const [selectedTile, setSelectedTile] = useAtom(SelectedTile);
   const collisionBrushMode = useAtomValue(CollisionBrushMode);
+  const altMapBrushValue = useAtomValue(AltMapBrushValue);
+  const showAltMap = view === View.tiles;
   const header = headerData.Hedr[1000].obj;
   const mapWidth = header.mapWidth;
 
@@ -78,6 +85,25 @@ const MightyMikeSupertilesComponent = ({
     );
   }, [terrainData.tileset]);
 
+  /** Extract the flat alt-map data from mightyMikeMapData. */
+  const altMapFlat = useMemo<number[]>(() => {
+    const metadata = isRecord(terrainData._metadata) ? terrainData._metadata : undefined;
+    const metadataEntry = metadata && isRecord(metadata[1000]) ? metadata[1000] : undefined;
+    const metadataObj = metadataEntry && isRecord(metadataEntry.obj) ? metadataEntry.obj : undefined;
+    const mapData = metadataObj && isRecord(metadataObj.mightyMikeMapData) ? metadataObj.mightyMikeMapData : undefined;
+    const altMap2d = mapData && isArray(mapData.altMap) ? mapData.altMap : null;
+    if (!altMap2d) return [];
+    const flat: number[] = [];
+    for (const row of altMap2d) {
+      if (isArray(row)) {
+        for (const cell of row) {
+          flat.push(typeof cell === "number" ? cell : 0);
+        }
+      }
+    }
+    return flat;
+  }, [terrainData._metadata]);
+
   // Brush handler: toggle hasCollisionMask for a tile
   const handleBrushTile = useCallback((tileIdx: number) => {
     setTerrainData((data) => {
@@ -91,6 +117,25 @@ const MightyMikeSupertilesComponent = ({
       tileVal.hasCollisionMask = !tileVal.hasCollisionMask;
     });
   }, [setTerrainData]);
+
+  /** Paint an alt-map value at a tile index. */
+  const handleBrushAltMap = useCallback((tileIdx: number) => {
+    setTerrainData((data) => {
+      const metadata = isRecord(data._metadata) ? data._metadata : undefined;
+      const metadataEntry = metadata && isRecord(metadata[1000]) ? metadata[1000] : undefined;
+      const metadataObj = metadataEntry && isRecord(metadataEntry.obj) ? metadataEntry.obj : undefined;
+      const mapData = metadataObj && isRecord(metadataObj.mightyMikeMapData) ? metadataObj.mightyMikeMapData : undefined;
+      if (!mapData) return;
+      const altMap2d = isArray(mapData.altMap) ? mapData.altMap : null;
+      if (!altMap2d) return;
+      const row = Math.floor(tileIdx / mapWidth);
+      const col = tileIdx % mapWidth;
+      const rowArr = altMap2d[row];
+      if (isArray(rowArr) && col < rowArr.length) {
+        rowArr[col] = altMapBrushValue;
+      }
+    });
+  }, [setTerrainData, mapWidth, altMapBrushValue]);
 
   const mapHeight = Math.ceil(layr.length / mapWidth);
 
@@ -184,6 +229,39 @@ const MightyMikeSupertilesComponent = ({
     mapHeight,
   ]);
 
+  /**
+   * Pre-bake alt-map overlay: one canvas showing directional glyphs per tile.
+   * Rebuilt whenever the altMap data or view changes.
+   */
+  const altMapCanvas = useMemo<HTMLCanvasElement | null>(() => {
+    if (!showAltMap || altMapFlat.length === 0) return null;
+    const canvas = document.createElement("canvas");
+    canvas.width = mapWidth * TILE_SIZE;
+    canvas.height = mapHeight * TILE_SIZE;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return null;
+
+    ctx.font = `bold ${Math.floor(TILE_SIZE * 0.55)}px sans-serif`;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+
+    altMapFlat.forEach((val, i) => {
+      if (val === 0) return;
+      const option = ALT_TILE_OPTIONS.find((o) => o.value === val);
+      if (!option) return;
+      const tx = (i % mapWidth) * TILE_SIZE;
+      const ty = Math.floor(i / mapWidth) * TILE_SIZE;
+      // Semi-transparent background tint
+      ctx.fillStyle = `${option.color}66`;
+      ctx.fillRect(tx, ty, TILE_SIZE, TILE_SIZE);
+      // Glyph
+      ctx.fillStyle = option.color === "transparent" ? "#ffffff" : option.color;
+      ctx.fillText(option.glyph, tx + TILE_SIZE / 2, ty + TILE_SIZE / 2);
+    });
+
+    return canvas;
+  }, [showAltMap, altMapFlat, mapWidth, mapHeight]);
+
   /** Map a Konva Image click/mousemove to a tile index using the stage pointer position. */
   const getTileIndexFromEvent = useCallback(
     (e: Konva.KonvaEventObject<MouseEvent>): number | null => {
@@ -203,22 +281,29 @@ const MightyMikeSupertilesComponent = ({
     (e: Konva.KonvaEventObject<MouseEvent>) => {
       const tileIdx = getTileIndexFromEvent(e);
       if (tileIdx === null) return;
-      if (collisionBrushMode) {
+      if (showAltMap) {
+        handleBrushAltMap(tileIdx);
+      } else if (collisionBrushMode) {
         handleBrushTile(tileIdx);
       } else {
         setSelectedTile(tileIdx);
       }
     },
-    [collisionBrushMode, getTileIndexFromEvent, handleBrushTile, setSelectedTile],
+    [showAltMap, collisionBrushMode, getTileIndexFromEvent, handleBrushAltMap, handleBrushTile, setSelectedTile],
   );
 
   const handleCanvasMouseMove = useCallback(
     (e: Konva.KonvaEventObject<MouseEvent>) => {
-      if (!collisionBrushMode || e.evt.buttons !== 1) return;
+      if (e.evt.buttons !== 1) return;
       const tileIdx = getTileIndexFromEvent(e);
-      if (tileIdx !== null) handleBrushTile(tileIdx);
+      if (tileIdx === null) return;
+      if (showAltMap) {
+        handleBrushAltMap(tileIdx);
+      } else if (collisionBrushMode) {
+        handleBrushTile(tileIdx);
+      }
     },
-    [collisionBrushMode, getTileIndexFromEvent, handleBrushTile],
+    [showAltMap, collisionBrushMode, getTileIndexFromEvent, handleBrushAltMap, handleBrushTile],
   );
 
   // Selected tile highlight position
@@ -256,8 +341,20 @@ const MightyMikeSupertilesComponent = ({
         />
       )}
 
+      {/* Alt-map overlay: shown in tiles editing mode */}
+      {showAltMap && altMapCanvas && (
+        <Image
+          image={altMapCanvas}
+          x={0}
+          y={0}
+          width={mapWidth * TILE_SIZE}
+          height={mapHeight * TILE_SIZE}
+          listening={false}
+        />
+      )}
+
       {/* Selected tile highlight */}
-      {selectedTile !== null && selX >= 0 && selY >= 0 && (
+      {!showAltMap && selectedTile !== null && selX >= 0 && selY >= 0 && (
         <Rect
           x={selX}
           y={selY}
