@@ -33,6 +33,22 @@ function getBoolean(value: unknown, defaultValue = false): boolean {
   return typeof value === 'boolean' ? value : defaultValue;
 }
 
+/**
+ * Extract the 2D alt-map array from the nested metadata structure.
+ * Returns `null` if no alt-map is present.
+ */
+function getAltMapArray(metadata: unknown): unknown[] | null {
+  if (!isRecord(metadata)) return null;
+  const entry = isRecord(metadata[1000]) ? metadata[1000] : null;
+  if (!entry) return null;
+  const obj = isRecord(entry.obj) ? entry.obj : null;
+  if (!obj) return null;
+  const mapData = isRecord(obj.mightyMikeMapData) ? obj.mightyMikeMapData : null;
+  if (!mapData) return null;
+  const altMap = mapData.altMap;
+  return isArray(altMap) ? altMap : null;
+}
+
 interface MightyMikeSupertilesProps {
   headerData: HeaderData;
   terrainData: TerrainData;
@@ -87,11 +103,7 @@ const MightyMikeSupertilesComponent = ({
 
   /** Extract the flat alt-map data from mightyMikeMapData. */
   const altMapFlat = useMemo<number[]>(() => {
-    const metadata = isRecord(terrainData._metadata) ? terrainData._metadata : undefined;
-    const metadataEntry = metadata && isRecord(metadata[1000]) ? metadata[1000] : undefined;
-    const metadataObj = metadataEntry && isRecord(metadataEntry.obj) ? metadataEntry.obj : undefined;
-    const mapData = metadataObj && isRecord(metadataObj.mightyMikeMapData) ? metadataObj.mightyMikeMapData : undefined;
-    const altMap2d = mapData && isArray(mapData.altMap) ? mapData.altMap : null;
+    const altMap2d = getAltMapArray(terrainData._metadata);
     if (!altMap2d) return [];
     const flat: number[] = [];
     for (const row of altMap2d) {
@@ -121,12 +133,7 @@ const MightyMikeSupertilesComponent = ({
   /** Paint an alt-map value at a tile index. */
   const handleBrushAltMap = useCallback((tileIdx: number) => {
     setTerrainData((data) => {
-      const metadata = isRecord(data._metadata) ? data._metadata : undefined;
-      const metadataEntry = metadata && isRecord(metadata[1000]) ? metadata[1000] : undefined;
-      const metadataObj = metadataEntry && isRecord(metadataEntry.obj) ? metadataEntry.obj : undefined;
-      const mapData = metadataObj && isRecord(metadataObj.mightyMikeMapData) ? metadataObj.mightyMikeMapData : undefined;
-      if (!mapData) return;
-      const altMap2d = isArray(mapData.altMap) ? mapData.altMap : null;
+      const altMap2d = getAltMapArray(data._metadata);
       if (!altMap2d) return;
       const row = Math.floor(tileIdx / mapWidth);
       const col = tileIdx % mapWidth;

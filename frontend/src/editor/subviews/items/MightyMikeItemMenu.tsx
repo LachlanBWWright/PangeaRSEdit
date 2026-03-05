@@ -139,7 +139,8 @@ export const MightyMikeItemMenu = memo(function MightyMikeItemMenu({
                   }
                 }}
               />
-              <label className="text-sm font-medium">Y</label>
+              {/* 'Z' is the vertical screen coordinate in MM (stored as TerrainItem.z) */}
+              <label className="text-sm font-medium">Z</label>
               <Input
                 type="number"
                 value={selectedItemData.z.toString()}
