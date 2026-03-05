@@ -73,9 +73,9 @@ export function ModelUploadPanel({
               value={useGameSelector ? "game-models" : "upload-files"}
               onValueChange={(value) => setUseGameSelector(value === "game-models")}
             >
-              <TabsList className="mb-4 grid w-full grid-cols-2">
-                <TabsTrigger value="game-models">Game Models</TabsTrigger>
-                <TabsTrigger value="upload-files">Upload Files</TabsTrigger>
+              <TabsList className="mb-4 grid w-full grid-cols-2 bg-gray-700 border border-gray-600">
+                <TabsTrigger value="game-models" className="data-[state=active]:bg-gray-500 data-[state=active]:text-white text-gray-300">Game Models</TabsTrigger>
+                <TabsTrigger value="upload-files" className="data-[state=active]:bg-gray-500 data-[state=active]:text-white text-gray-300">Upload Files</TabsTrigger>
               </TabsList>
             </Tabs>
 

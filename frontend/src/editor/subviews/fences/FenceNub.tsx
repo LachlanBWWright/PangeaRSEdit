@@ -67,13 +67,12 @@ export const FenceNub = memo(
           </Group>
         )}
 
-        {/* Colored border — always rendered on top */}
+        {/* Colored border — serves as the hit area for click/drag; must be listening */}
         <Circle
           radius={NUB_RADIUS}
           fill="transparent"
           stroke={color}
           strokeWidth={isSelected ? 4 : 2}
-          listening={false}
         />
       </Group>
     );

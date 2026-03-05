@@ -38,6 +38,8 @@ export const Spline = memo(
     const [initialDragState, setInitialDragState] = useState<
       { x: number; z: number }[] | null
     >(null);
+    /** Ref to the Konva Line node — used to fix the drag-end flash glitch. */
+    const lineRef = useRef<Konva.Line | null>(null);
 
     const nubs = selectSplineNubs(splineData, SPLINE_KEY_BASE + splineIdx);
     const items = selectSplineItems(splineData, SPLINE_KEY_BASE + splineIdx);
@@ -59,6 +61,7 @@ export const Spline = memo(
     return (
       <>
         <Line
+          ref={lineRef}
           points={points}
           stroke={selectedSpline === splineIdx ? "red" : "blue"}
           strokeWidth={selectedSpline === splineIdx ? 5 : 2}
@@ -87,6 +90,19 @@ export const Spline = memo(
               z: initPos.z + dragDz,
             }));
 
+            // Pre-translate the Konva Line's own points to include the drag offset and
+            // reset its position to (0,0) before React re-renders. This eliminates the
+            // one-frame flash where the line would visually jump back to its old position.
+            if (lineRef.current) {
+              const rawPts = lineRef.current.points();
+              lineRef.current.points(
+                rawPts.map((v, i) => (i % 2 === 0 ? v + dragDx : v + dragDz)),
+              );
+              lineRef.current.x(0);
+              lineRef.current.y(0);
+              lineRef.current.getLayer()?.batchDraw();
+            }
+
             // Commit updated nub positions once, on drag end
             setSplineData((draft) => {
               const spNb = draft.SpNb?.[SPLINE_KEY_BASE + splineIdx];
@@ -100,10 +116,7 @@ export const Spline = memo(
               }
             });
 
-             updateSplinePointsFromNubs(splineIdx, setSplineData);
-             // Reset Konva node transform after committing
-            e.target.x(0);
-            e.target.y(0);
+            updateSplinePointsFromNubs(splineIdx, setSplineData);
             setInitialDragState(null);
           }}
         />

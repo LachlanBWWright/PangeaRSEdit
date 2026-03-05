@@ -31,6 +31,17 @@ interface ImageEditorProps {
     onSave: (editedImageData: ImageData) => Promise<void>;
   }[];
   imageName?: string;
+  /**
+   * When provided, the editor operates in palette-constrained mode:
+   * the free color picker is hidden and only these colors can be used for painting.
+   * Each entry is a CSS hex color string (e.g. "#ff0080").
+   */
+  paletteColors?: string[];
+  /**
+   * Called when the user replaces a palette entry (palette mode only).
+   * The host component should remap all pixels of the old color to the new color.
+   */
+  onReplacePaletteColor?: (index: number, newColor: string) => void;
 }
 
 export function ImageEditor({
@@ -40,11 +51,15 @@ export function ImageEditor({
   onSave,
   saveActions,
   imageName,
+  paletteColors,
+  onReplacePaletteColor,
 }: ImageEditorProps) {
   const [tool] = useState<"brush">("brush");
   const [brushSize, setBrushSize] = useState([5]);
   const [brushShape, setBrushShape] = useState<"circle" | "square">("circle");
-  const [brushColor, setBrushColor] = useState("#ffffff");
+  const [brushColor, setBrushColor] = useState(
+    () => paletteColors?.[0] ?? "#ffffff",
+  );
   const [isDrawing, setIsDrawing] = useState(false);
   const [strokes, setStrokes] = useState<BrushStroke[]>([]);
   const [currentStroke, setCurrentStroke] = useState<BrushStroke | null>(null);
@@ -57,7 +72,7 @@ export function ImageEditor({
   const stageRef = useRef<Konva.Stage>(null);
   const layerRef = useRef<Konva.Layer>(null);
 
-  // Predefined color palette
+  // Predefined color palette (used only in free-color mode)
   const colorPalette = [
     "#ffffff",
     "#000000",
@@ -99,13 +114,17 @@ export function ImageEditor({
         setCurrentStroke(null);
         setHistory([]);
         setHistoryIndex(-1);
+        // Default brush to first palette color when in palette mode
+        if (paletteColors && paletteColors.length > 0) {
+          setBrushColor(paletteColors[0]);
+        }
       };
       img.onerror = () => {
         toast.error("Failed to load image for editing");
       };
       img.src = imageUrl;
     }
-  }, [isOpen, imageUrl]);
+  }, [isOpen, imageUrl, paletteColors]);
 
   const saveToHistory = (newStrokes: BrushStroke[]) => {
     const newHistory = history.slice(0, historyIndex + 1);
@@ -330,6 +349,8 @@ export function ImageEditor({
             brushColor={brushColor}
             setBrushColor={setBrushColor}
             colorPalette={colorPalette}
+            paletteColors={paletteColors}
+            onReplacePaletteColor={onReplacePaletteColor}
           />
 
           {/* Canvas Area */}

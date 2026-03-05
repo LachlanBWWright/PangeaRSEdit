@@ -1,5 +1,5 @@
 import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   CurrentTopologyBrushMode,
   CurrentTopologyValueMode,
@@ -120,53 +120,36 @@ export function TilesMenu({
     });
   };
 
-  // Calculate grid columns based on available buttons
-  // Use explicit Tailwind classes to ensure they're included in the CSS bundle
-  const buttonCount =
-    1 + (hasTileFlags ? 1 : 0) + (hasElectricFloorOptions ? 2 : 0);
-  const gridColsClass =
-    buttonCount >= 4
-      ? "grid-cols-4"
-      : buttonCount === 3
-      ? "grid-cols-3"
-      : buttonCount === 2
-      ? "grid-cols-2"
-      : "grid-cols-1";
-
   return (
     <div className="flex flex-col gap-2">
-      <div className={`grid ${gridColsClass} gap-2`}>
-        <Button
-          selected={tileView === TileViews.Topology}
-          onClick={() => setTileView(TileViews.Topology)}
-        >
-          Topology
-        </Button>
-        {hasTileFlags && (
-          <Button
-            selected={tileView === TileViews.Flags}
-            onClick={() => setTileView(TileViews.Flags)}
-          >
-            Empty Tiles
-          </Button>
-        )}
-        {hasElectricFloorOptions && (
-          <>
-            <Button
-              selected={tileView === TileViews.ElectricFloor0}
-              onClick={() => setTileView(TileViews.ElectricFloor0)}
-            >
-              Electric Floor 1
-            </Button>
-            <Button
-              selected={tileView === TileViews.ElectricFloor1}
-              onClick={() => setTileView(TileViews.ElectricFloor1)}
-            >
-              Electric Floor 2
-            </Button>
-          </>
-        )}
-      </div>
+      <Tabs
+        value={
+          tileView === TileViews.Topology
+            ? "topology"
+            : tileView === TileViews.Flags
+            ? "flags"
+            : tileView === TileViews.ElectricFloor0
+            ? "electric0"
+            : "electric1"
+        }
+        onValueChange={(v) => {
+          if (v === "topology") setTileView(TileViews.Topology);
+          else if (v === "flags") setTileView(TileViews.Flags);
+          else if (v === "electric0") setTileView(TileViews.ElectricFloor0);
+          else if (v === "electric1") setTileView(TileViews.ElectricFloor1);
+        }}
+      >
+        <TabsList className="grid grid-flow-col auto-cols-fr w-full">
+          <TabsTrigger value="topology">Topology</TabsTrigger>
+          {hasTileFlags && <TabsTrigger value="flags">Empty Tiles</TabsTrigger>}
+          {hasElectricFloorOptions && (
+            <>
+              <TabsTrigger value="electric0">Electric Floor 1</TabsTrigger>
+              <TabsTrigger value="electric1">Electric Floor 2</TabsTrigger>
+            </>
+          )}
+        </TabsList>
+      </Tabs>
 
       {/* Info message for games without tile attribute editing */}
       {usesIndividualTiles && tileView !== TileViews.Topology && (
