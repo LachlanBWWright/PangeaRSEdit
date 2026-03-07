@@ -48,6 +48,7 @@ export function ModelViewer() {
   const [useGameSelector, setUseGameSelector] = useState<boolean>(true); // New state for UI mode
   const [wireframeMode, setWireframeMode] = useState<boolean>(false);
   const [logBonePositions, setLogBonePositions] = useState<boolean>(false);
+  const hasAnimations = animations.length > 0;
 
   const [, setScene] = useState<Group | undefined>(undefined);
   const [, setModelNodes] = useState<ModelNode[]>([]);
@@ -155,6 +156,9 @@ export function ModelViewer() {
       }));
       setAnimations(normalizedAnimations);
       setAnimationMixer(mixer);
+      if (normalizedAnimations.length === 0) {
+        setLogBonePositions(false);
+      }
       setSelectedBoneName(null);
       setBoneTransform(null);
     },
@@ -306,11 +310,12 @@ export function ModelViewer() {
               setWireframeMode={setWireframeMode}
               logBonePositions={logBonePositions}
               setLogBonePositions={setLogBonePositions}
+              hasAnimations={hasAnimations}
             />
           )}
 
           {/* Animation Viewer - Show when animations are available */}
-          {gltfUrl && (
+          {gltfUrl && hasAnimations && (
             <AnimationViewer
               key={gltfUrl}
               animations={animations}
@@ -394,9 +399,9 @@ export function ModelViewer() {
                     onSceneReady={setScene}
                     onAnimationsReady={handleAnimationsReady}
                     wireframeMode={wireframeMode}
-                    showSkeleton={wireframeMode}
+                    showSkeleton={wireframeMode && hasAnimations}
                     logBonePositions={logBonePositions}
-                    selectedBoneName={selectedBoneName}
+                    selectedBoneName={hasAnimations ? selectedBoneName : null}
                     onBoneTransformChange={handleBoneTransformChange}
                   />
                 </ErrorBoundary>

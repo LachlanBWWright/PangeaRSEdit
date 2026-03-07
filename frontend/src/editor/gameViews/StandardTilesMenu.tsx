@@ -7,6 +7,7 @@
 
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   CurrentTopologyBrushMode,
   CurrentTopologyValueMode,
@@ -101,20 +102,23 @@ export function StandardTilesMenu({
 
   return (
     <div className="flex flex-col gap-2">
-      <div className="grid grid-cols-2 gap-2">
-        <Button
-          selected={tileView === TileViews.Topology}
-          onClick={() => setTileView(TileViews.Topology)}
-        >
-          Topology
-        </Button>
-        <Button
-          selected={tileView === TileViews.Flags}
-          onClick={() => setTileView(TileViews.Flags)}
-        >
-          Empty Tiles
-        </Button>
-      </div>
+      <Tabs
+        value={tileView === TileViews.Topology ? "topology" : "flags"}
+        onValueChange={(value) =>
+          setTileView(
+            value === "topology" ? TileViews.Topology : TileViews.Flags,
+          )
+        }
+      >
+        <TabsList className="grid grid-flow-col auto-cols-fr gap-2 w-full overflow-clip">
+          <TabsTrigger className="w-full" value="topology">
+            Topology
+          </TabsTrigger>
+          <TabsTrigger className="w-full" value="flags">
+            Empty Tiles
+          </TabsTrigger>
+        </TabsList>
+      </Tabs>
 
       {tileView === TileViews.Topology && (
         <div className="grid grid-cols-[auto_1fr_auto_1fr] gap-2 items-center">

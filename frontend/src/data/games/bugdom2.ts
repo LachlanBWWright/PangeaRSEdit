@@ -9,7 +9,6 @@ export const bugdom2: GameInfo = {
       bg3dFile: "/PangeaRSEdit/games/bugdom2/skeletons/Grasshopper.bg3d",
       skeletonFile:
         "/PangeaRSEdit/games/bugdom2/skeletons/Skip_Explore.skeleton.rsrc",
-      description: "Main character Skip the Grasshopper with animations",
       category: "Characters",
     },
     {
@@ -17,14 +16,12 @@ export const bugdom2: GameInfo = {
       bg3dFile: "/PangeaRSEdit/games/bugdom2/skeletons/BuddyBug.bg3d",
       skeletonFile:
         "/PangeaRSEdit/games/bugdom2/skeletons/BuddyBug.skeleton.rsrc",
-      description: "Companion Buddy Bug with animations",
       category: "Characters",
     },
     {
       name: "Ant",
       bg3dFile: "/PangeaRSEdit/games/bugdom2/skeletons/Ant.bg3d",
       skeletonFile: "/PangeaRSEdit/games/bugdom2/skeletons/Ant.skeleton.rsrc",
-      description: "Ant enemy with animations",
       category: "Characters",
     },
     {
@@ -32,7 +29,6 @@ export const bugdom2: GameInfo = {
       bg3dFile: "/PangeaRSEdit/games/bugdom2/skeletons/BumbleBee.bg3d",
       skeletonFile:
         "/PangeaRSEdit/games/bugdom2/skeletons/BumbleBee.skeleton.rsrc",
-      description: "Bumblebee character with animations",
       category: "Characters",
     },
     {
@@ -40,14 +36,12 @@ export const bugdom2: GameInfo = {
       bg3dFile: "/PangeaRSEdit/games/bugdom2/skeletons/DragonFly.bg3d",
       skeletonFile:
         "/PangeaRSEdit/games/bugdom2/skeletons/DragonFly.skeleton.rsrc",
-      description: "Dragonfly character with animations",
       category: "Characters",
     },
     {
       name: "Frog",
       bg3dFile: "/PangeaRSEdit/games/bugdom2/skeletons/Frog.bg3d",
       skeletonFile: "/PangeaRSEdit/games/bugdom2/skeletons/Frog.skeleton.rsrc",
-      description: "Frog character with animations",
       category: "Characters",
     },
     {
@@ -172,13 +166,11 @@ export const bugdom2: GameInfo = {
     {
       name: "Level 1 - Garden",
       bg3dFile: "/PangeaRSEdit/games/bugdom2/models/Level1_Garden.bg3d",
-      description: "Garden level environment models",
       category: "Levels",
     },
     {
       name: "Level 2 - Sidewalk",
       bg3dFile: "/PangeaRSEdit/games/bugdom2/models/Level2_Sidewalk.bg3d",
-      description: "Sidewalk level environment models",
       category: "Levels",
     },
     {

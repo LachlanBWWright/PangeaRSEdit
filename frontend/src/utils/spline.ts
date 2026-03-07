@@ -250,28 +250,40 @@ export function bakeSpline(
     numPoints++;
   }
 
+  points = points.slice(0, numPoints);
+
   if (allowClosingSegment && circular && nubs.length > 2) {
     const firstNub = nubs[0];
     const secondLastNub = nubs[numNubs - 2];
     const lastNub = nubs[numNubs - 1];
-    
-    if (firstNub && secondLastNub && lastNub) {
+    const duplicatedSpanPoints = pointsPerSpan[numNubs - 2] ?? 0;
+    const closingSpanPoints = pointsPerSpan[numNubs - 1] ?? 0;
+
+    if (
+      firstNub &&
+      secondLastNub &&
+      lastNub &&
+      duplicatedSpanPoints > 0 &&
+      closingSpanPoints > 0
+    ) {
       const lastSegmentNubs = [secondLastNub, lastNub, firstNub];
-      const lastSegmentPoints = lastSegmentNubs.map(() => spanPoints(1));
+      const lastSegmentPoints = [
+        duplicatedSpanPoints,
+        closingSpanPoints,
+        0,
+      ];
       const closingPoints = bakeSpline(
         lastSegmentNubs,
         lastSegmentPoints,
         false,
         false,
       );
-      if (closingPoints.length > 1) {
-        points = points.concat(closingPoints.slice(1));
+      if (closingPoints.length > duplicatedSpanPoints) {
+        points = points.concat(closingPoints.slice(duplicatedSpanPoints));
         numPoints = points.length;
       }
     }
   }
-
-  points = points.slice(0, numPoints);
 
   return points;
 }

@@ -15,7 +15,6 @@ export interface GameModel {
   name: string;
   bg3dFile: string;
   skeletonFile?: string;
-  description?: string;
   category: "Characters" | "Levels" | "Objects";
 }
 
@@ -250,14 +249,7 @@ export function GameModelSelector({
                       value={model.name}
                       className="text-white focus:bg-gray-600"
                     >
-                      <div className="flex flex-col">
-                        <span>{model.name}</span>
-                        {model.description && (
-                          <span className="text-xs text-gray-400">
-                            {model.description}
-                          </span>
-                        )}
-                      </div>
+                      {model.name}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -328,11 +320,6 @@ export function GameModelSelector({
               <p>
                 <strong>Skeleton File:</strong>{" "}
                 {selectedModel.skeletonFile.split("/").pop()}
-              </p>
-            )}
-            {selectedModel.description && (
-              <p>
-                <strong>Description:</strong> {selectedModel.description}
               </p>
             )}
           </div>
