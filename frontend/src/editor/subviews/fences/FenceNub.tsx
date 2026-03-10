@@ -10,11 +10,13 @@ export const FenceNub = memo(
   ({
     nub,
     idx,
+    onPreviewNub,
     setNub,
     image,
   }: {
     nub: [number, number];
     idx: number;
+    onPreviewNub: (nub: [number, number]) => void;
     setNub: (nub: [number, number]) => void;
     image?: HTMLImageElement | null;
   }) => {
@@ -35,7 +37,7 @@ export const FenceNub = memo(
           const newY = Math.round(e.target.y());
           if (nubRafRef.current) cancelAnimationFrame(nubRafRef.current);
           nubRafRef.current = requestAnimationFrame(() => {
-            setNub([newX, newY]);
+            onPreviewNub([newX, newY]);
           });
         }}
         onDragEnd={(e) => {
@@ -44,10 +46,17 @@ export const FenceNub = memo(
         }}
       >
         {/* Black background circle — always visible behind image or solid fill */}
-        <Circle radius={NUB_RADIUS} fill="black" listening={false} />
+        <Circle
+          radius={NUB_RADIUS}
+          fill="black"
+          listening={false}
+          perfectDrawEnabled={false}
+        />
 
         {/* Solid fill when no image */}
-        {!image && <Circle radius={NUB_RADIUS} fill={color} />}
+        {!image && (
+          <Circle radius={NUB_RADIUS} fill={color} perfectDrawEnabled={false} />
+        )}
 
         {/* Fence image clipped to circle */}
         {image && (
@@ -73,6 +82,7 @@ export const FenceNub = memo(
           fill="transparent"
           stroke={color}
           strokeWidth={isSelected ? 4 : 2}
+          perfectDrawEnabled={false}
         />
       </Group>
     );

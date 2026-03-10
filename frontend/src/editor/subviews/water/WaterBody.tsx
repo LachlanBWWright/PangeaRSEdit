@@ -42,6 +42,7 @@ export const WaterBody = memo(
             waterBodyIdx === selectedWaterBody ? "#9999FFDD" : "#9999FF77"
           }
           strokeWidth={waterBodyIdx === selectedWaterBody ? 5 : 2}
+          perfectDrawEnabled={false}
           onClick={() => setSelectedWaterBody(waterBodyIdx)}
           closed
           fill={waterBodyIdx === selectedWaterBody ? "#9999FFDD" : "#9999FF77"}
@@ -107,7 +108,10 @@ export const WaterBody = memo(
                       ? "#FF99FFDD"
                       : "#9999FFDD"
                   }
+                  stroke="black"
+                  strokeWidth={2}
                   draggable={true}
+                  perfectDrawEnabled={false}
                   onClick={() => {
                     setSelectedWaterBody(waterBodyIdx);
                     setSelectedWaterNub(nubIdx);

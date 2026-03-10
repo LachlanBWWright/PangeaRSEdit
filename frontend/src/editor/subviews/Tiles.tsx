@@ -3,11 +3,12 @@ import {
   TerrainData,
   HeaderData,
 } from "@/python/structSpecs/LevelTypes";
-import { Layer, Image } from "react-konva";
+import { Layer, Image, Circle, Rect } from "react-konva";
 import { Updater } from "use-immer";
 import {
   CurrentTopologyBrushMode,
   CurrentTopologyValueMode,
+  TopologyBrushMode,
   TopologyValueMode,
   TileViewMode,
   TileViews,
@@ -134,6 +135,10 @@ export function TopologyTiles({
   const [lastBrushPoint, setLastBrushPoint] = useState<{ x: number; y: number } | null>(
     null,
   );
+  const [brushPreviewPoint, setBrushPreviewPoint] = useState<{
+    x: number;
+    y: number;
+  } | null>(null);
 
   const header = useMemo(() => headerData.Hedr[1000].obj, [headerData.Hedr]);
 
@@ -212,6 +217,9 @@ export function TopologyTiles({
     setPixels(pixelList);
   };
 
+  const previewSize = (topologyBrushRadius - 1) * globals.TILE_SIZE;
+  const showBrushPreview = isEditingTopology && brushPreviewPoint !== null;
+
   return (
     <Layer imageSmoothingEnabled={false}>
       <Image
@@ -235,16 +243,18 @@ export function TopologyTiles({
           if (!pos) return;
           const centerX = Math.round(pos.x);
           const centerY = Math.round(pos.y);
+          setBrushPreviewPoint({ x: centerX, y: centerY });
           setIsDragging(true);
           setLastBrushPoint({ x: centerX, y: centerY });
           applyBrushAt(centerX, centerY);
         }}
         onMouseMove={(e) => {
-          if (!isEditingTopology || !isDragging) return;
           const pos = e.target.getStage()?.getRelativePointerPosition();
           if (!pos) return;
           const centerX = Math.round(pos.x);
           const centerY = Math.round(pos.y);
+          setBrushPreviewPoint({ x: centerX, y: centerY });
+          if (!isEditingTopology || !isDragging) return;
           const lineStart =
             currentTopologyValueMode === TopologyValueMode.SET_VALUE
               ? undefined
@@ -256,8 +266,38 @@ export function TopologyTiles({
           setIsDragging(false);
           setLastBrushPoint(null);
         }}
+        onMouseLeave={() => {
+          setIsDragging(false);
+          setLastBrushPoint(null);
+          setBrushPreviewPoint(null);
+        }}
         image={imgCanvas ?? undefined}
       />
+      {showBrushPreview &&
+        (currentTopologyBrushMode === TopologyBrushMode.CIRCLE_BRUSH ? (
+          <Circle
+            x={brushPreviewPoint.x}
+            y={brushPreviewPoint.y}
+            radius={previewSize}
+            stroke="#44ff44"
+            strokeWidth={2}
+            dash={[6, 4]}
+            listening={false}
+            perfectDrawEnabled={false}
+          />
+        ) : (
+          <Rect
+            x={brushPreviewPoint.x - previewSize}
+            y={brushPreviewPoint.y - previewSize}
+            width={previewSize * 2}
+            height={previewSize * 2}
+            stroke="#44ff44"
+            strokeWidth={2}
+            dash={[6, 4]}
+            listening={false}
+            perfectDrawEnabled={false}
+          />
+        ))}
     </Layer>
   );
 }

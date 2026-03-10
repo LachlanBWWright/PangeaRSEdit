@@ -451,9 +451,10 @@ export function ThreeView({
       />
 
       {/* Lighting for 3D item models and terrain */}
-      <ambientLight intensity={0.9} />
-      <directionalLight position={[1, 1, 0.5]} intensity={1} />
-      <directionalLight position={[-1, -0.5, -0.5]} intensity={0.3} />
+      <ambientLight intensity={1.15} />
+      <hemisphereLight args={[0xffffff, 0x8090a0, 0.7]} />
+      <directionalLight position={[1, 1.5, 0.75]} intensity={1.25} />
+      <directionalLight position={[-1, 0.25, -0.5]} intensity={0.5} />
 
       {/* Exporter hook component (listens for export triggers) */}
       <SceneExporter />

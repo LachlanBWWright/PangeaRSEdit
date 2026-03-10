@@ -75,6 +75,7 @@ export const Fence = memo(
     const [initialDragState, setInitialDragState] = useState<
       [number, number][] | null
     >(null);
+    const [previewNubs, setPreviewNubs] = useState<[number, number][] | null>(null);
 
     const fenceNubs = fenceData.FnNb[NUB_KEY_BASE + fenceIdx]?.obj ?? null;
     const fenceObj = fenceNubs ? fenceData.Fenc[1000].obj[fenceIdx] : undefined;
@@ -88,7 +89,11 @@ export const Fence = memo(
     if (!fenceNubs) return null;
 
     const numNubs = fenceObj?.numNubs ?? fenceNubs.length;
-    const lines = fenceNubs.flatMap((nub) => [nub[0], nub[1]]);
+    const displayNubs =
+      previewNubs && previewNubs.length === fenceNubs.length
+        ? previewNubs
+        : fenceNubs;
+    const lines = displayNubs.flatMap((nub) => [nub[0], nub[1]]);
 
     // --- Nub add/remove handlers ---
     const handleAddFront = () => {
@@ -135,8 +140,8 @@ export const Fence = memo(
       });
     };
 
-    const firstNub = fenceNubs[0];
-    const lastNub = fenceNubs[fenceNubs.length - 1];
+    const firstNub = displayNubs[0];
+    const lastNub = displayNubs[displayNubs.length - 1];
 
     // Offset for add/remove buttons — placed outside the nub radius
     const BTN_OFFSET = 36;
@@ -147,6 +152,7 @@ export const Fence = memo(
           points={lines}
           stroke={color}
           strokeWidth={isSelected ? 4 : 2}
+          perfectDrawEnabled={false}
           onClick={() => setSelectedFence(fenceIdx)}
           draggable
           onDragStart={() => {
@@ -178,16 +184,25 @@ export const Fence = memo(
             e.target.x(0);
             e.target.y(0);
             setInitialDragState(null);
+            setPreviewNubs(null);
           }}
         />
 
-        {fenceNubs.map((nub, nubIdx) => (
+        {displayNubs.map((nub, nubIdx) => (
           <FenceNub
             key={nubIdx}
             idx={fenceIdx}
             nub={nub}
             image={fenceImage}
+            onPreviewNub={(newNub: [number, number]) => {
+              setPreviewNubs((current) => {
+                const next = [...(current ?? fenceNubs)];
+                next[nubIdx] = newNub;
+                return next;
+              });
+            }}
             setNub={(newNub: [number, number]) => {
+              setPreviewNubs(null);
               setFenceData((fenceData) => {
                 const nubData = fenceData.FnNb[NUB_KEY_BASE + fenceIdx]?.obj;
                 if (nubData && nubData[nubIdx]) {

@@ -1,6 +1,6 @@
 import { Updater } from "use-immer";
 import { ItemData } from "@/python/structSpecs/LevelTypes";
-import { Label, Rect, Tag, Text } from "react-konva";
+import { Rect } from "react-konva";
 import type Konva from "konva";
 import { SelectedItem } from "../../../data/items/itemAtoms";
 import { useAtomValue, useSetAtom } from "jotai";
@@ -9,9 +9,13 @@ import { Globals } from "@/data/globals/globals";
 import { getItemName } from "@/data/items/getItemNames";
 import { updateItem } from "../../../data/selectors";
 import { getLiquidPatchStyle, getLiquidPatchDimensions } from "@/data/items/liquidPatchItems";
-
-const ITEM_BOX_SIZE = 12;
-const ITEM_BOX_OFFSET = ITEM_BOX_SIZE / 2;
+import {
+  HoverNameTag,
+  ITEM_BOX_OFFSET,
+  ITEM_BOX_SIZE,
+  ITEM_TAG_GAP,
+  ItemTypeNumber,
+} from "../shared/nodeVisuals";
 
 export const Item = memo(function Item({
   itemData,
@@ -113,10 +117,13 @@ export const Item = memo(function Item({
           listening={false}
         />
         {hovering && (
-          <Label opacity={1} x={item.x + dims.width2D / 2 + 5} y={item.z}>
-            <Tag fill={liquidPatchStyle.color2D} />
-            <Text text={liquidPatchStyle.name} fontSize={10} fill="white" />
-          </Label>
+          <HoverNameTag
+            x={rectX + dims.width2D + ITEM_TAG_GAP}
+            y={item.z - ITEM_BOX_OFFSET}
+            text={liquidPatchStyle.name}
+            fill={liquidPatchStyle.color2D}
+            textColor="white"
+          />
         )}
       </>
     );
@@ -138,25 +145,26 @@ export const Item = memo(function Item({
         onMouseDown={handleMouseDown}
         onDragStart={handleMouseDown}
         onDragEnd={handleDragEnd}
+        perfectDrawEnabled={false}
       />
 
-      <Text
-        text={item.type.toString()}
-        fill="black"
-        visible={!hovering}
-        fontSize={8}
-        x={itemX}
-        y={itemZ}
-        draggable
-        onMouseOver={handleMouseOver}
-        onMouseLeave={handleMouseLeave}
-      />
+      {!hovering && (
+        <ItemTypeNumber
+         x={itemX}
+         y={itemZ}
+          value={item.type.toString()}
+          fill="black"
+        />
+      )}
 
       {hovering && (
-        <Label opacity={1} x={item.x + 15} y={item.z}>
-          <Tag fill="red" />
-          <Text text={itemName} fontSize={8} fill="black" />
-        </Label>
+        <HoverNameTag
+          x={itemX + ITEM_BOX_SIZE + ITEM_TAG_GAP}
+          y={itemZ}
+          text={itemName}
+          fill="red"
+          textColor="black"
+        />
       )}
     </>
   );

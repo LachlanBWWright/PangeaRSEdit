@@ -7,7 +7,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Save, X, Undo, Redo } from "lucide-react";
+import { Save, X, Undo, Redo, ZoomIn, ZoomOut } from "lucide-react";
 import { ToolsPanel } from "./ImageEditor/ToolsPanel";
 import { toast } from "sonner";
 import Konva from "konva";
@@ -68,6 +68,7 @@ export function ImageEditor({
   const [historyIndex, setHistoryIndex] = useState(-1);
   const [saving, setSaving] = useState(false);
   const [scale, setScale] = useState(1);
+  const [baseScale, setBaseScale] = useState(1);
 
   const stageRef = useRef<Konva.Stage>(null);
   const layerRef = useRef<Konva.Layer>(null);
@@ -108,6 +109,7 @@ export function ImageEditor({
         const scaleY = Math.min(600 / img.height, 1);
         const finalScale = Math.min(scaleX, scaleY);
         setScale(finalScale);
+        setBaseScale(finalScale);
 
         // Reset editor state
         setStrokes([]);
@@ -115,8 +117,9 @@ export function ImageEditor({
         setHistory([]);
         setHistoryIndex(-1);
         // Default brush to first palette color when in palette mode
-        if (paletteColors && paletteColors.length > 0) {
-          setBrushColor(paletteColors[0]);
+        const defaultPaletteColor = paletteColors?.[0];
+        if (defaultPaletteColor) {
+          setBrushColor(defaultPaletteColor);
         }
       };
       img.onerror = () => {
@@ -293,6 +296,18 @@ export function ImageEditor({
     }
   };
 
+  const zoomOut = () => {
+    setScale((current) => Math.max(baseScale * 0.5, current / 1.25));
+  };
+
+  const zoomIn = () => {
+    setScale((current) => Math.min(baseScale * 8, current * 1.25));
+  };
+
+  const resetZoom = () => {
+    setScale(baseScale);
+  };
+
   if (!image) {
     return (
       <Dialog open={isOpen} onOpenChange={handleClose}>
@@ -312,31 +327,40 @@ export function ImageEditor({
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="max-w-6xl h-[85vh] flex flex-col text-white">
-        <DialogHeader>
-          <DialogTitle className="flex items-center justify-between text-white">
-            <span>Image Editor - {imageName || "Untitled"}</span>
-            <div className="flex space-x-2">
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={undo}
-                disabled={historyIndex < 0}
-                title="Undo"
-              >
-                <Undo className="w-4 h-4" />
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={redo}
-                disabled={historyIndex >= history.length - 1}
-                title="Redo"
-              >
-                <Redo className="w-4 h-4" />
-              </Button>
-            </div>
+      <DialogContent className="max-w-6xl h-[85vh] flex flex-col text-white pr-14">
+        <DialogHeader className="space-y-3">
+          <DialogTitle className="text-white">
+            Image Editor - {imageName || "Untitled"}
           </DialogTitle>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={undo}
+              disabled={historyIndex < 0}
+              title="Undo"
+            >
+              <Undo className="w-4 h-4" />
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={redo}
+              disabled={historyIndex >= history.length - 1}
+              title="Redo"
+            >
+              <Redo className="w-4 h-4" />
+            </Button>
+            <Button size="sm" variant="outline" onClick={zoomOut} title="Zoom out">
+              <ZoomOut className="w-4 h-4" />
+            </Button>
+            <Button size="sm" variant="outline" onClick={zoomIn} title="Zoom in">
+              <ZoomIn className="w-4 h-4" />
+            </Button>
+            <Button size="sm" variant="outline" onClick={resetZoom}>
+              {Math.round(scale * 100)}%
+            </Button>
+          </div>
         </DialogHeader>
 
         <div className="flex flex-1 gap-4 overflow-hidden">
@@ -363,8 +387,8 @@ export function ImageEditor({
                 scaleX={scale}
                 scaleY={scale}
                 onMouseDown={handleMouseDown}
-                onMousemove={handleMouseMove}
-                onMouseup={handleMouseUp}
+                onMouseMove={handleMouseMove}
+                onMouseUp={handleMouseUp}
                 className="border border-gray-600"
               >
                 <Layer ref={layerRef}>
