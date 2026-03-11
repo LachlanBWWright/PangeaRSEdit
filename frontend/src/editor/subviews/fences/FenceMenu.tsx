@@ -1,6 +1,7 @@
 import { Updater } from "use-immer";
 import { FenceData } from "@/python/structSpecs/LevelTypes";
 import { SelectedFence } from "../../../data/fences/fenceAtoms";
+import { memo, useMemo } from "react";
 import { useAtom, useAtomValue } from "jotai";
 import { Button } from "@/components/ui/button";
 import {
@@ -19,7 +20,7 @@ const NUB_KEY_BASE = 1000;
 /** Fences must keep at least this many nubs so they remain valid line segments. */
 const MIN_NUBS = 2;
 
-export function FenceMenu({
+export const FenceMenu = memo(function FenceMenu({
   fenceData,
   setFenceData,
 }: {
@@ -29,17 +30,18 @@ export function FenceMenu({
   const globals = useAtomValue(Globals);
   const [selectedFence, setSelectedFence] = useAtom(SelectedFence);
 
+  const fenceValues = useMemo(() => {
+    const result = getFenceTypes(globals);
+    return result.isOk()
+      ? result.value.map((key) => parseInt(key)).filter((key) => !isNaN(key))
+      : [];
+  }, [globals]);
+
   const fenceDataObj =
     selectedFence !== undefined
       ? fenceData.Fenc[1000].obj[selectedFence]
       : null;
 
-  const fenceTypesResult = getFenceTypes(globals);
-  const fenceValues = fenceTypesResult.isOk()
-    ? fenceTypesResult.value
-        .map((key) => parseInt(key))
-        .filter((key) => isNaN(key) === false)
-    : [];
   const fencePreviewPath =
     fenceDataObj && fenceDataObj !== undefined
       ? getFenceImagePath(globals, fenceDataObj.fenceType)
@@ -236,4 +238,4 @@ export function FenceMenu({
       </div>
     </div>
   );
-}
+});

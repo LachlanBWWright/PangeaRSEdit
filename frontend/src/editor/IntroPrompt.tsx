@@ -722,6 +722,16 @@ export function IntroPrompt() {
     clearAllState();
   }, [clearAllState]);
 
+  const handleDownload = useCallback(() => {
+    const combinedDataResult = combineLevelData(getCurrentAtomicData());
+    if (isOk(combinedDataResult)) {
+      const combinedData = prepareDownloadData(combinedDataResult.value, globals);
+      setAllAtomicData(splitLevelData(combinedData));
+    }
+    setBlockHistoryUpdate(true);
+    setProcessed(true);
+  }, [getCurrentAtomicData, globals, setAllAtomicData, setBlockHistoryUpdate]);
+
   // If we have tunnel data, show the tunnel editor
   if (tunnelData) {
     return (
@@ -790,18 +800,7 @@ export function IntroPrompt() {
         {/* Download — always rightmost */}
         <Button
           data-testid="download-button"
-          onClick={() => {
-            const combinedDataResult = combineLevelData(getCurrentAtomicData());
-            if (isOk(combinedDataResult)) {
-              const combinedData = prepareDownloadData(
-                combinedDataResult.value,
-                globals,
-              );
-              setAllAtomicData(splitLevelData(combinedData));
-            }
-            setBlockHistoryUpdate(true);
-            setProcessed(true); //Trigger useEffect for downloading
-          }}
+          onClick={handleDownload}
         >
           Download
         </Button>

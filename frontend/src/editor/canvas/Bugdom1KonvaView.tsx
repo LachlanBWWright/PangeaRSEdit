@@ -12,6 +12,7 @@
 import { useAtomValue, useSetAtom } from "jotai";
 import { useRef, useCallback, useState, useEffect } from "react";
 import { Stage } from "react-konva";
+import Konva from "konva";
 import { Updater } from "use-immer";
 import { SelectedFence } from "@/data/fences/fenceAtoms";
 import { ClickToAddItem, SelectedItem } from "@/data/items/itemAtoms";
@@ -126,6 +127,60 @@ export function Bugdom1KonvaView({
     [setSplineData],
   );
 
+  const handleStageClick = useCallback((e: Konva.KonvaEventObject<MouseEvent>) => {
+    if (clickToAddItem === undefined) return;
+    const stage = e.target.getStage();
+
+    const pos = stage?.getRelativePointerPosition();
+    if (!pos) return;
+    const x = Math.round(pos.x);
+    const z = Math.round(pos.y);
+
+    setItemDataNotNull((itemData) => {
+      itemData.Itms[1000].obj.push({
+        x: x,
+        z: z,
+        type: clickToAddItem,
+        flags: 0,
+        p0: 0,
+        p1: 0,
+        p2: 0,
+        p3: 0,
+      });
+    });
+  }, [clickToAddItem, setItemDataNotNull]);
+
+  const handleStageDblClick = useCallback(() => {
+    setSelectedFence(undefined);
+    setSelectedItem(undefined);
+    setSelectedSpline(undefined);
+  }, [setSelectedFence, setSelectedItem, setSelectedSpline]);
+
+  const handleStageWheel = useCallback((e: Konva.KonvaEventObject<WheelEvent>) => {
+    e.evt.preventDefault();
+
+    const scaleBy = 1.05;
+    const stage = e.target.getStage();
+    if (!stage) return;
+    const oldScale = stage.scaleX();
+    const pointerPosition = stage.getPointerPosition();
+    if (!pointerPosition) return;
+
+    const mousePointTo = {
+      x: pointerPosition.x / oldScale - stage.x() / oldScale,
+      y: pointerPosition.y / oldScale - stage.y() / oldScale,
+    };
+
+    const newScale =
+      e.evt.deltaY < 0 ? oldScale * scaleBy : oldScale / scaleBy;
+
+    setStage({
+      scale: newScale,
+      x: (pointerPosition.x / newScale - mousePointTo.x) * newScale,
+      y: (pointerPosition.y / newScale - mousePointTo.y) * newScale,
+    });
+  }, [setStage]);
+
   return (
     <div ref={containerRef} style={{ width: "100%", height: "100%" }}>
       <Stage
@@ -136,57 +191,9 @@ export function Bugdom1KonvaView({
         x={stage.x}
         y={stage.y}
         draggable={true}
-        onClick={(e) => {
-          if (clickToAddItem === undefined) return;
-          const stage = e.target.getStage();
-
-          const pos = stage?.getRelativePointerPosition();
-          if (!pos) return;
-          const x = Math.round(pos.x);
-          const z = Math.round(pos.y);
-
-          setItemDataNotNull((itemData) => {
-            itemData.Itms[1000].obj.push({
-              x: x,
-              z: z,
-              type: clickToAddItem,
-              flags: 0,
-              p0: 0,
-              p1: 0,
-              p2: 0,
-              p3: 0,
-            });
-          });
-        }}
-        onDblClick={() => {
-          setSelectedFence(undefined);
-          setSelectedItem(undefined);
-          setSelectedSpline(undefined);
-        }}
-        onWheel={(e) => {
-          e.evt.preventDefault();
-
-          const scaleBy = 1.05;
-          const stage = e.target.getStage();
-          if (!stage) return;
-          const oldScale = stage.scaleX();
-          const pointerPosition = stage.getPointerPosition();
-          if (!pointerPosition) return;
-
-          const mousePointTo = {
-            x: pointerPosition.x / oldScale - stage.x() / oldScale,
-            y: pointerPosition.y / oldScale - stage.y() / oldScale,
-          };
-
-          const newScale =
-            e.evt.deltaY < 0 ? oldScale * scaleBy : oldScale / scaleBy;
-
-          setStage({
-            scale: newScale,
-            x: (pointerPosition.x / newScale - mousePointTo.x) * newScale,
-            y: (pointerPosition.y / newScale - mousePointTo.y) * newScale,
-          });
-        }}
+        onClick={handleStageClick}
+        onDblClick={handleStageDblClick}
+        onWheel={handleStageWheel}
       >
         {/* Render individual tiles - Bugdom 1 uses 5x5 tile system */}
         {terrainData && terrainData.Layr && (
