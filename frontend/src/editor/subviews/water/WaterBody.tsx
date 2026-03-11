@@ -26,7 +26,9 @@ export const WaterBody = memo(
     const [initialDragState, setInitialDragState] = useState<
       [number, number][] | null
     >(null);
-    const nubRafRefs = useRef<Record<number, number | null>>({});
+    const lineRef = useRef<Konva.Line | null>(null);
+    /** Mutable preview nub positions during drag — updated imperatively to avoid per-frame state. */
+    const previewNubsRef = useRef<[number, number][] | null>(null);
 
     if (!waterBody) return <></>;
 
@@ -37,12 +39,14 @@ export const WaterBody = memo(
     return (
       <>
         <Line
+          ref={lineRef}
           points={waterNubs}
           stroke={
             waterBodyIdx === selectedWaterBody ? "#9999FFDD" : "#9999FF77"
           }
           strokeWidth={waterBodyIdx === selectedWaterBody ? 5 : 2}
           perfectDrawEnabled={false}
+          hitStrokeWidth={10}
           onClick={() => setSelectedWaterBody(waterBodyIdx)}
           closed
           fill={waterBodyIdx === selectedWaterBody ? "#9999FFDD" : "#9999FF77"}
@@ -119,29 +123,27 @@ export const WaterBody = memo(
                   onDragStart={() => {
                     setSelectedWaterBody(waterBodyIdx);
                     setSelectedWaterNub(nubIdx);
+                    previewNubsRef.current = waterBody.nubs
+                      .filter((_, i) => i < waterBody.numNubs)
+                      .map((n) => [n[0], n[1]] as [number, number]);
                   }}
                   onDragMove={(e: Konva.KonvaEventObject<DragEvent>) => {
                     const newX = Math.round(e.target.x());
                     const newY = Math.round(e.target.y());
-
-                    const existingRafId = nubRafRefs.current[nubIdx];
-                    if (existingRafId !== undefined)
-                      if (existingRafId !== null) cancelAnimationFrame(existingRafId);
-                    nubRafRefs.current[nubIdx] = requestAnimationFrame(() => {
-                      setLiquidData((liquidData) => {
-                        const wb = liquidData.Liqd[1000].obj[waterBodyIdx];
-                        const nubToUpdate = wb?.nubs[nubIdx];
-                        if (nubToUpdate) {
-                          nubToUpdate[0] = newX;
-                          nubToUpdate[1] = newY;
-                        }
-                      });
-                    });
+                    if (!previewNubsRef.current) return;
+                    const preview = previewNubsRef.current;
+                    const updated = preview[nubIdx];
+                    if (updated) {
+                      updated[0] = newX;
+                      updated[1] = newY;
+                    }
+                    if (lineRef.current) {
+                      lineRef.current.points(preview.flatMap((n) => [n[0], n[1]]));
+                      lineRef.current.getLayer()?.batchDraw();
+                    }
                   }}
                   onDragEnd={(e: Konva.KonvaEventObject<DragEvent>) => {
-                    const existingRafIdEnd = nubRafRefs.current[nubIdx];
-                    if (existingRafIdEnd !== undefined)
-                      if (existingRafIdEnd !== null) cancelAnimationFrame(existingRafIdEnd);
+                    previewNubsRef.current = null;
                     setLiquidData((liquidData) => {
                       const wb = liquidData.Liqd[1000].obj[waterBodyIdx];
                       const nubToUpdate = wb?.nubs[nubIdx];

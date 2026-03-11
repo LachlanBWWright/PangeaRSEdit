@@ -14,7 +14,7 @@ import {
 import { TerrainItemTypeParams, ItemType } from "../../../data/items/ottoItemType";
 import type { ParamDescription, FlagDescription } from "../../../data/items/itemParams";
 import { parseU16, parseU8 } from "../../../utils/numberParsers";
-import { useEffect } from "react";
+import { useMemo } from "react";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -49,17 +49,20 @@ export function ItemMenu({
   const selectedItemData =
     selectedItem !== undefined ? itemData.Itms[1000].obj[selectedItem] : null;
 
-  const itemTypesResult = getItemTypes(globals);
-  const allItemValues = itemTypesResult.isOk()
-    ? itemTypesResult.value
-        .map((key) => parseInt(key))
-        .filter((key) => isNaN(key) === false)
-    : [];
+  const allItemValues = useMemo(() => {
+    const result = getItemTypes(globals);
+    return result.isOk()
+      ? result.value.map((key) => parseInt(key)).filter((key) => !isNaN(key))
+      : [];
+  }, [globals]);
 
-  // Filter to safe items if enabled
-  const itemValues = filterToSafe && safeItemTypes.size > 0
-    ? allItemValues.filter((type) => safeItemTypes.has(type))
-    : allItemValues;
+  const itemValues = useMemo(
+    () =>
+      filterToSafe && safeItemTypes.size > 0
+        ? allItemValues.filter((type) => safeItemTypes.has(type))
+        : allItemValues,
+    [filterToSafe, safeItemTypes, allItemValues],
+  );
 
   return (
     <div className="flex flex-col gap-2">
@@ -256,17 +259,14 @@ export function ItemMenu({
 
 function AddItemMenu() {
   const [clickToAddItem, setClickToAddItem] = useAtom(ClickToAddItem);
-  useEffect(() => {
-    return () => setClickToAddItem(undefined);
-  }, [setClickToAddItem]);
   const globals = useAtomValue(Globals);
 
-  const itemTypesResult = getItemTypes(globals);
-  const itemValues = itemTypesResult.isOk()
-    ? itemTypesResult.value
-        .map((key) => parseInt(key))
-        .filter((key) => isNaN(key) === false)
-    : [];
+  const itemValues = useMemo(() => {
+    const result = getItemTypes(globals);
+    return result.isOk()
+      ? result.value.map((key) => parseInt(key)).filter((key) => !isNaN(key))
+      : [];
+  }, [globals]);
 
   if (clickToAddItem !== undefined)
     return (

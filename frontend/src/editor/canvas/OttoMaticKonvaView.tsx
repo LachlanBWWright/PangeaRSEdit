@@ -229,7 +229,8 @@ export function OttoMaticKonvaView({
         )}
 
         {/* Show all layers except when in tiles view */}
-        {view !== View.tiles && (
+        {/* Supertiles/overview mode — show all layers in default order */}
+        {view === View.supertiles && (
           <>
             {liquidData && (
               <WaterBodies

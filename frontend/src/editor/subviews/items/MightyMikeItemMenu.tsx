@@ -10,7 +10,7 @@ import { ItemData, HeaderData } from "@/python/structSpecs/LevelTypes";
 import { useAtom, useAtomValue } from "jotai";
 import { Button } from "@/components/ui/button";
 import { ClickToAddItem, SelectedItem } from "../../../data/items/itemAtoms";
-import { useEffect, memo } from "react";
+import { memo, useMemo } from "react";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -45,17 +45,17 @@ export const MightyMikeItemMenu = memo(function MightyMikeItemMenu({
   const [selectedItem, setSelectedItem] = useAtom(SelectedItem);
   const [showItemImages, setShowItemImages] = useAtom(ShowMightyMikeItemImages);
 
+  const itemValues = useMemo(() => {
+    const result = getItemTypes(globals);
+    return result.isOk()
+      ? result.value.map((key) => parseInt(key)).filter((key) => !isNaN(key))
+      : [];
+  }, [globals]);
+
   if (itemData.Itms === undefined) return null;
 
   const selectedItemData =
     selectedItem !== undefined ? itemData.Itms[1000].obj[selectedItem] : null;
-
-  const itemTypesResult = getItemTypes(globals);
-  const itemValues = itemTypesResult.isOk()
-    ? itemTypesResult.value
-        .map((key) => parseInt(key))
-        .filter((key) => isNaN(key) === false)
-    : [];
 
   return (
     <div className="flex flex-col gap-2">
@@ -218,17 +218,14 @@ export const MightyMikeItemMenu = memo(function MightyMikeItemMenu({
 
 function AddItemMenu() {
   const [clickToAddItem, setClickToAddItem] = useAtom(ClickToAddItem);
-  useEffect(() => {
-    return () => setClickToAddItem(undefined);
-  }, [setClickToAddItem]);
   const globals = useAtomValue(Globals);
 
-  const itemTypesResult = getItemTypes(globals);
-  const itemValues = itemTypesResult.isOk()
-    ? itemTypesResult.value
-        .map((key) => parseInt(key))
-        .filter((key) => isNaN(key) === false)
-    : [];
+  const itemValues = useMemo(() => {
+    const result = getItemTypes(globals);
+    return result.isOk()
+      ? result.value.map((key) => parseInt(key)).filter((key) => !isNaN(key))
+      : [];
+  }, [globals]);
 
   if (clickToAddItem !== undefined)
     return (

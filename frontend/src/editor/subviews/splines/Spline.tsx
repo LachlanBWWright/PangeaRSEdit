@@ -7,7 +7,7 @@ import type {
 import { Line, Circle, Rect, Text } from "react-konva";
 import type Konva from "konva";
 import { useAtom, useAtomValue } from "jotai";
-import { memo, useMemo, useState, useRef } from "react";
+import { memo, useCallback, useMemo, useState, useRef } from "react";
 import { getPoints } from "../../../utils/spline";
 import { SelectedSpline } from "../../../data/splines/splineAtoms";
 import { getSplineItemName } from "@/data/splines/getSplineItemNames";
@@ -45,8 +45,10 @@ export const Spline = memo(
     const [initialDragState, setInitialDragState] = useState<
       { x: number; z: number }[] | null
     >(null);
-    /** Ref to the Konva Line node — used to fix the drag-end flash glitch. */
+    /** Ref to the Konva Line node — used to fix the drag-end flash glitch and nub-drag preview. */
     const lineRef = useRef<Konva.Line | null>(null);
+    /** Mutable preview nubs during a nub drag — avoids React state updates per frame. */
+    const previewNubsRef = useRef<{ x: number; z: number }[] | null>(null);
 
     const nubs = selectSplineNubs(splineData, SPLINE_KEY_BASE + splineIdx);
     const items = selectSplineItems(splineData, SPLINE_KEY_BASE + splineIdx);
@@ -63,6 +65,35 @@ export const Spline = memo(
       return splinePts.flatMap((point) => [point.x, point.z]);
     }, [splinePts]);
 
+    /** Called by SplineNub on each drag frame — updates the line imperatively with no React state. */
+    const handleNubPreviewMove = useCallback(
+      (nubIdx: number, newX: number, newZ: number) => {
+        if (!lineRef.current) return;
+        if (!previewNubsRef.current) {
+          previewNubsRef.current = nubs.map((n) => ({ x: n.x, z: n.z }));
+        }
+        previewNubsRef.current[nubIdx] = { x: newX, z: newZ };
+        if (syncFirstAndLast && nubIdx === previewNubsRef.current.length - 1) {
+          previewNubsRef.current[0] = { x: newX, z: newZ };
+        }
+        const preview = previewNubsRef.current;
+        const workingNubs =
+          syncFirstAndLast && preview.length > 1 ? preview.slice(0, -1) : preview;
+        const newPoints =
+          workingNubs.length === 1 && workingNubs[0]
+            ? [workingNubs[0]]
+            : getPoints(workingNubs, syncFirstAndLast);
+        lineRef.current.points(newPoints.flatMap((p) => [p.x, p.z]));
+        lineRef.current.getLayer()?.batchDraw();
+      },
+      [nubs, syncFirstAndLast],
+    );
+
+    /** Called by SplineNub when drag ends — clears preview ref before committing state. */
+    const handleNubDragEnd = useCallback(() => {
+      previewNubsRef.current = null;
+    }, []);
+
     if (!splinePts) return null;
 
     return (
@@ -73,9 +104,9 @@ export const Spline = memo(
           stroke={selectedSpline === splineIdx ? "red" : "blue"}
           strokeWidth={selectedSpline === splineIdx ? 5 : 2}
           perfectDrawEnabled={false}
+          hitStrokeWidth={10}
           draggable
           onDragStart={() => {
-            // Store the initial positions of the nubs when dragging starts
             setInitialDragState(
               nubs.map((nub) => ({
                 x: nub.x,
@@ -84,8 +115,7 @@ export const Spline = memo(
             );
           }}
           onDragMove={() => {
-            // No per-frame state updates while dragging the whole spline.
-            // Konva applies visual transform during drag — we will commit changes on drag end.
+            // No per-frame state updates — Konva handles visuals during drag.
           }}
           onDragEnd={(e: Konva.KonvaEventObject<DragEvent>) => {
             if (!initialDragState) return;
@@ -98,9 +128,6 @@ export const Spline = memo(
               z: initPos.z + dragDz,
             }));
 
-            // Pre-translate the Konva Line's own points to include the drag offset and
-            // reset its position to (0,0) before React re-renders. This eliminates the
-            // one-frame flash where the line would visually jump back to its old position.
             if (lineRef.current) {
               const rawPts = lineRef.current.points();
               lineRef.current.points(
@@ -111,7 +138,6 @@ export const Spline = memo(
               lineRef.current.getLayer()?.batchDraw();
             }
 
-            // Commit updated nub positions once, on drag end
             setSplineData((draft) => {
               const spNb = draft.SpNb?.[SPLINE_KEY_BASE + splineIdx];
               if (spNb) {
@@ -129,8 +155,6 @@ export const Spline = memo(
           }}
         />
         {nubs.map((nub, nubIdx) => {
-          // For circular splines, hide the first nub (it's merged with the last)
-          // For open splines (Billy Frontier), show both endpoints
           if (nubIdx === 0 && !showFirstNub) return null;
           return (
             <SplineNub
@@ -140,6 +164,8 @@ export const Spline = memo(
               splineIdx={splineIdx}
               setSplineData={setSplineData}
               syncFirstAndLast={syncFirstAndLast}
+              onNubPreviewMove={handleNubPreviewMove}
+              onNubDragEnd={handleNubDragEnd}
               onNubChange={() => updateSplinePointsFromNubs(splineIdx, setSplineData)}
             />
           );
@@ -174,6 +200,8 @@ const SplineNub = memo(
     splineIdx,
     setSplineData,
     syncFirstAndLast,
+    onNubPreviewMove,
+    onNubDragEnd,
     onNubChange,
   }: {
     nub: SplineNubType;
@@ -181,11 +209,12 @@ const SplineNub = memo(
     splineIdx: number;
     setSplineData: Updater<SplineData>;
     syncFirstAndLast: boolean;
+    onNubPreviewMove: (nubIdx: number, x: number, z: number) => void;
+    onNubDragEnd: () => void;
     onNubChange: () => void;
   }) => {
     const [selectedSpline, setSelectedSpline] = useAtom(SelectedSpline);
     const [hovering, setHovering] = useState(false);
-    const nubRafRef = useRef<number | null>(null);
     return (
       <>
         <Circle
@@ -200,55 +229,13 @@ const SplineNub = memo(
           onMouseDown={() => setSelectedSpline(splineIdx)}
           onDragStart={() => setSelectedSpline(splineIdx)}
           onDragMove={(e: Konva.KonvaEventObject<DragEvent>) => {
-            const newX = Math.round(e.target.x());
-            const newZ = Math.round(e.target.y());
-
-            if (nubRafRef.current) cancelAnimationFrame(nubRafRef.current);
-            nubRafRef.current = requestAnimationFrame(() => {
-              setSplineData((draft) => {
-                const currentNubs =
-                  draft.SpNb?.[SPLINE_KEY_BASE + splineIdx]?.obj || [];
-                const updatedNubs = [...currentNubs];
-                updatedNubs[nubIdx] = { x: newX, z: newZ };
-
-                // For circular splines, sync first and last nub positions
-                if (syncFirstAndLast && nubIdx === currentNubs.length - 1) {
-                  updatedNubs[0] = { x: newX, z: newZ };
-                }
-
-                const spNb = draft.SpNb?.[SPLINE_KEY_BASE + splineIdx];
-                if (spNb) {
-                  spNb.obj = updatedNubs;
-                }
-
-                const firstNub = updatedNubs[0];
-                const workingNubs =
-                  updatedNubs.length > 1 && syncFirstAndLast
-                    ? updatedNubs.slice(0, -1)
-                    : updatedNubs;
-                const newPoints =
-                  workingNubs.length === 1 && firstNub
-                    ? [{ x: firstNub.x, z: firstNub.z }]
-                    : getPoints(workingNubs);
-
-                const spPt = draft.SpPt?.[SPLINE_KEY_BASE + splineIdx];
-                if (spPt) {
-                  spPt.obj = newPoints;
-                }
-
-                const spln =
-                  draft.Spln?.[1000]?.obj?.[splineIdx];
-                if (spln) {
-                  spln.numNubs = updatedNubs.length;
-                  spln.numPoints = newPoints.length;
-                }
-              });
-            });
+            onNubPreviewMove(nubIdx, Math.round(e.target.x()), Math.round(e.target.y()));
           }}
           onDragEnd={(e: Konva.KonvaEventObject<DragEvent>) => {
-            if (nubRafRef.current) cancelAnimationFrame(nubRafRef.current);
             const newX = Math.round(e.target.x());
             const newZ = Math.round(e.target.y());
+
+            onNubDragEnd();
 
             setSplineData((draft) => {
               const currentNubs =
@@ -256,7 +243,6 @@ const SplineNub = memo(
               const updatedNubs = [...currentNubs];
               updatedNubs[nubIdx] = { x: newX, z: newZ };
 
-              // For circular splines, sync first and last nub positions
               if (syncFirstAndLast && nubIdx === currentNubs.length - 1) {
                 updatedNubs[0] = { x: newX, z: newZ };
               }

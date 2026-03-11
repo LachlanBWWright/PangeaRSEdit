@@ -34,6 +34,7 @@ import {
   FilterToSafeSplineItems,
 } from "../../../data/items/itemAtoms";
 import { Label } from "@/components/ui/label";
+import { useMemo } from "react";
 
 export function AddNewSplineMenu({
   setSplineData,
@@ -94,23 +95,25 @@ export function EditSplineItemMenu({
   const [filterToSafe, setFilterToSafe] = useAtom(FilterToSafeSplineItems);
   const citationGame = getGameKeyFromName(globals.GAME_NAME);
 
+  const allSplineItemValues = useMemo(() => {
+    const result = getSplineItemTypes(globals);
+    return result.isOk()
+      ? result.value.map((key) => parseInt(key)).filter((key) => !isNaN(key))
+      : [];
+  }, [globals]);
+
+  const splineItemValues = useMemo(
+    () =>
+      filterToSafe && safeSplineItemTypes.size > 0
+        ? allSplineItemValues.filter((type) => safeSplineItemTypes.has(type))
+        : allSplineItemValues,
+    [filterToSafe, safeSplineItemTypes, allSplineItemValues],
+  );
+
   if (selectedSpline === undefined) return <p>No Selected Spline</p>;
   if (selectedSplineItem === undefined) return <></>;
 
   const currentSplineItemData = splineItemData.at(selectedSplineItem);
-
-  const splineItemTypesResult = getSplineItemTypes(globals);
-  const allSplineItemValues = splineItemTypesResult.isOk()
-    ? splineItemTypesResult.value
-        .map((key) => parseInt(key))
-        .filter((key) => isNaN(key) === false)
-    : [];
-
-  // Filter to safe spline items if enabled
-  const splineItemValues =
-    filterToSafe && safeSplineItemTypes.size > 0
-      ? allSplineItemValues.filter((type) => safeSplineItemTypes.has(type))
-      : allSplineItemValues;
 
   if (currentSplineItemData === undefined) return <></>;
 
