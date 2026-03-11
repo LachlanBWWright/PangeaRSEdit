@@ -39,64 +39,49 @@ describe("Item Filter Utils", () => {
       expect(isItemVisible(999, filter)).toBe(true);
     });
 
-    it("should show only selected categories in SHOW_SELECTED mode", () => {
+    it("should show only selected item types in SHOW_SELECTED mode", () => {
       const filter: ItemFilterState = {
         ...DEFAULT_FILTER_STATE,
         mode: FilterMode.SHOW_SELECTED,
-        categories: {
-          [ItemCategory.ENEMY]: true,
-          [ItemCategory.POWERUP]: false,
-          [ItemCategory.ENVIRONMENTAL]: false,
-          [ItemCategory.TRIGGER]: false,
-          [ItemCategory.PLAYER]: false,
-          [ItemCategory.UNKNOWN]: false,
+        itemTypes: {
+          1: true,
+          2: true,
         },
       };
 
-      expect(isItemVisible(1, filter)).toBe(true); // Enemy
-      expect(isItemVisible(2, filter)).toBe(true); // Enemy
-      expect(isItemVisible(3, filter)).toBe(false); // Powerup
-      expect(isItemVisible(7, filter)).toBe(false); // Environmental
+      expect(isItemVisible(1, filter)).toBe(true); // explicitly shown
+      expect(isItemVisible(2, filter)).toBe(true); // explicitly shown
+      expect(isItemVisible(3, filter)).toBe(false); // not in itemTypes, defaults hidden
+      expect(isItemVisible(7, filter)).toBe(false); // not in itemTypes, defaults hidden
     });
 
-    it("should hide selected categories in HIDE_SELECTED mode", () => {
+    it("should hide selected item types in HIDE_SELECTED mode", () => {
       const filter: ItemFilterState = {
         ...DEFAULT_FILTER_STATE,
         mode: FilterMode.HIDE_SELECTED,
-        categories: {
-          [ItemCategory.ENEMY]: true, // Hide enemies
-          [ItemCategory.POWERUP]: false,
-          [ItemCategory.ENVIRONMENTAL]: false,
-          [ItemCategory.TRIGGER]: false,
-          [ItemCategory.PLAYER]: false,
-          [ItemCategory.UNKNOWN]: false,
+        itemTypes: {
+          1: true, // hide type 1
+          2: true, // hide type 2
         },
       };
 
-      expect(isItemVisible(1, filter)).toBe(false); // Enemy - hidden
-      expect(isItemVisible(3, filter)).toBe(true); // Powerup - shown
+      expect(isItemVisible(1, filter)).toBe(false); // explicitly hidden
+      expect(isItemVisible(3, filter)).toBe(true); // not in itemTypes, defaults visible
     });
 
     it("should respect item type overrides", () => {
       const filter: ItemFilterState = {
         ...DEFAULT_FILTER_STATE,
         mode: FilterMode.SHOW_SELECTED,
-        categories: {
-          [ItemCategory.ENEMY]: true,
-          [ItemCategory.POWERUP]: false,
-          [ItemCategory.ENVIRONMENTAL]: false,
-          [ItemCategory.TRIGGER]: false,
-          [ItemCategory.PLAYER]: false,
-          [ItemCategory.UNKNOWN]: false,
-        },
         itemTypes: {
-          3: true, // Override: show this specific powerup
+          1: true, // show type 1
+          3: true, // show type 3 override
         },
       };
 
-      expect(isItemVisible(1, filter)).toBe(true); // Enemy - by category
-      expect(isItemVisible(3, filter)).toBe(true); // Powerup - by override
-      expect(isItemVisible(4, filter)).toBe(false); // Powerup - by category
+      expect(isItemVisible(1, filter)).toBe(true); // explicitly shown
+      expect(isItemVisible(3, filter)).toBe(true); // explicitly shown by override
+      expect(isItemVisible(4, filter)).toBe(false); // not in itemTypes, defaults hidden
     });
   });
 
@@ -142,26 +127,22 @@ describe("Item Filter Utils", () => {
       expect(getVisibleItemTypes(allTypes, filter)).toEqual(allTypes);
     });
 
-    it("should filter types based on categories", () => {
+    it("should filter types based on item type toggles", () => {
       const filter: ItemFilterState = {
         ...DEFAULT_FILTER_STATE,
         mode: FilterMode.SHOW_SELECTED,
-        categories: {
-          [ItemCategory.ENEMY]: true,
-          [ItemCategory.POWERUP]: false,
-          [ItemCategory.ENVIRONMENTAL]: false,
-          [ItemCategory.TRIGGER]: false,
-          [ItemCategory.PLAYER]: false,
-          [ItemCategory.UNKNOWN]: false,
+        itemTypes: {
+          1: true,
+          2: true,
         },
       };
       const allTypes = [1, 2, 3, 4, 5, 7];
 
       const visible = getVisibleItemTypes(allTypes, filter);
-      expect(visible).toContain(1); // Enemy
-      expect(visible).toContain(2); // Enemy
-      expect(visible).not.toContain(3); // Powerup
-      expect(visible).not.toContain(7); // Environmental
+      expect(visible).toContain(1); // explicitly shown
+      expect(visible).toContain(2); // explicitly shown
+      expect(visible).not.toContain(3); // defaults hidden
+      expect(visible).not.toContain(7); // defaults hidden
     });
   });
 

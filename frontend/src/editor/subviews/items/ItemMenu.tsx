@@ -89,10 +89,38 @@ export const ItemMenu = memo(function ItemMenu({
       {selectedItemData === null || selectedItemData === undefined ? (
         <AddItemMenu />
       ) : (
-        <p>
-          Item {selectedItemData.type} ({selectedItemData.x},
-          {selectedItemData.z})
-        </p>
+        <div className="grid grid-cols-[auto_1fr_auto_1fr] gap-x-2 gap-y-1 items-center text-sm">
+          <span className="text-gray-400">X</span>
+          <Input
+            type="number"
+            className="h-7 text-xs"
+            value={selectedItemData.x}
+            onChange={(e) => {
+              const val = parseInt(e.target.value);
+              if (isNaN(val)) return;
+              setItemData((draft) => {
+                if (selectedItem === undefined) return;
+                const item = draft.Itms[1000]?.obj?.[selectedItem];
+                if (item) item.x = val;
+              });
+            }}
+          />
+          <span className="text-gray-400">Z</span>
+          <Input
+            type="number"
+            className="h-7 text-xs"
+            value={selectedItemData.z}
+            onChange={(e) => {
+              const val = parseInt(e.target.value);
+              if (isNaN(val)) return;
+              setItemData((draft) => {
+                if (selectedItem === undefined) return;
+                const item = draft.Itms[1000]?.obj?.[selectedItem];
+                if (item) item.z = val;
+              });
+            }}
+          />
+        </div>
       )}
 
       <div className="flex flex-col gap-2">

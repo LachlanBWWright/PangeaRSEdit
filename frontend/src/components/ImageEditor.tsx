@@ -97,36 +97,35 @@ export function ImageEditor({
     "#80ff80",
   ];
 
-  // Load image when dialog opens
+  // Load image when dialog opens; state is reset inside onload to avoid cascading setState in effect
   useEffect(() => {
-    if (isOpen && imageUrl) {
-      const img = new window.Image();
-      img.crossOrigin = "anonymous";
-      img.onload = () => {
-        setImage(img);
-        // Calculate scale for display
-        const scaleX = Math.min(800 / img.width, 1);
-        const scaleY = Math.min(600 / img.height, 1);
-        const finalScale = Math.min(scaleX, scaleY);
-        setScale(finalScale);
-        setBaseScale(finalScale);
+    if (!isOpen || !imageUrl) return;
+    const img = new window.Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () => {
+      setImage(img);
+      // Calculate scale for display
+      const scaleX = Math.min(800 / img.width, 1);
+      const scaleY = Math.min(600 / img.height, 1);
+      const finalScale = Math.min(scaleX, scaleY);
+      setScale(finalScale);
+      setBaseScale(finalScale);
 
-        // Reset editor state
-        setStrokes([]);
-        setCurrentStroke(null);
-        setHistory([]);
-        setHistoryIndex(-1);
-        // Default brush to first palette color when in palette mode
-        const defaultPaletteColor = paletteColors?.[0];
-        if (defaultPaletteColor) {
-          setBrushColor(defaultPaletteColor);
-        }
-      };
-      img.onerror = () => {
-        toast.error("Failed to load image for editing");
-      };
-      img.src = imageUrl;
-    }
+      // Reset editor state
+      setStrokes([]);
+      setCurrentStroke(null);
+      setHistory([]);
+      setHistoryIndex(-1);
+      // Default brush to first palette color when in palette mode
+      const defaultPaletteColor = paletteColors?.[0];
+      if (defaultPaletteColor) {
+        setBrushColor(defaultPaletteColor);
+      }
+    };
+    img.onerror = () => {
+      toast.error("Failed to load image for editing");
+    };
+    img.src = imageUrl;
   }, [isOpen, imageUrl, paletteColors]);
 
   const saveToHistory = (newStrokes: BrushStroke[]) => {
@@ -310,7 +309,7 @@ export function ImageEditor({
 
   if (!image) {
     return (
-      <Dialog open={isOpen} onOpenChange={handleClose}>
+      <Dialog open={isOpen} onOpenChange={(open) => { if (!open) handleClose(); }}>
         <DialogContent className="max-w-4xl h-[80vh] text-white">
           <DialogHeader>
             <DialogTitle className="text-white">
@@ -326,7 +325,7 @@ export function ImageEditor({
   }
 
   return (
-    <Dialog open={isOpen} onOpenChange={handleClose}>
+    <Dialog open={isOpen} onOpenChange={(open) => { if (!open) handleClose(); }}>
       <DialogContent className="max-w-6xl h-[85vh] flex flex-col text-white pr-14">
         <DialogHeader className="space-y-3">
           <DialogTitle className="text-white">

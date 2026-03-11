@@ -238,10 +238,11 @@ export function IntroPrompt() {
 
   const undoData = () => {
     if (dataHistory.index > 0) {
+      // Read target item BEFORE setDataHistory so we use the current (correct) index
+      const historyItem = dataHistory.items[dataHistory.index - 1];
       setDataHistory((draft) => {
         draft.index -= 1;
       });
-      const historyItem = dataHistory.items[dataHistory.index - 1];
       if (historyItem) {
         setAllAtomicData(historyItem);
         setBlockHistoryUpdate(true);
@@ -251,10 +252,11 @@ export function IntroPrompt() {
 
   const redoData = () => {
     if (dataHistory.index < dataHistory.items.length - 1) {
+      // Read target item BEFORE setDataHistory so we use the current (correct) index
+      const historyItem = dataHistory.items[dataHistory.index + 1];
       setDataHistory((draft) => {
         draft.index += 1;
       });
-      const historyItem = dataHistory.items[dataHistory.index + 1];
       if (historyItem) {
         setAllAtomicData(historyItem);
         setBlockHistoryUpdate(true);

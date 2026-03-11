@@ -29,19 +29,14 @@ describe("Item Module Integration", () => {
       const itemType = 1;
       const typeName = "Enemy_Test";
       
-      
-      // Categorize
+      // Categorize (used for display but not for visibility)
       const category = categorizeItem(typeName);
       expect(getAllCategories()).toContain(category);
       
-      // Create filter showing only this category
+      // Create filter showing only this item type via itemTypes toggle
       const filter = createDefaultFilter();
       filter.mode = FilterMode.SHOW_SELECTED;
-      
-      // Set all categories to false except the item's category
-      for (const cat of getAllCategories()) {
-        filter.categories[cat] = cat === category;
-      }
+      filter.itemTypes = { [itemType]: true };
       
       // Item should be visible
       const visible = isItemVisible(itemType, filter);

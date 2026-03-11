@@ -373,6 +373,11 @@ export interface TerrainData<
       obj: number[];
       order: number;
     };
+    1001?: {
+      name: "Roof Terrain Layer Matrix";
+      obj: number[];
+      order: number;
+    };
   };
   STgd?: {
     1000: {
