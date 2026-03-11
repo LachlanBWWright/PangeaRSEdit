@@ -29,6 +29,9 @@ interface ItemGeometryProps {
 }
 
 const ITEM_SIZE = 50; // World units for item cube size
+const DRAG_HIGHLIGHT_COLOR = 0x00aaff;
+const DRAG_HIGHLIGHT_OPACITY = 0.4;
+const DRAG_HIGHLIGHT_SCALE = 0.8;
 
 /**
  * Colored cube fallback for items without 3D models
@@ -332,8 +335,8 @@ export const ItemGeometry: React.FC<ItemGeometryProps> = ({
               {content}
               {isDragging && (
                 <mesh position={[0, 0, 0]}>
-                  <sphereGeometry args={[ITEM_SIZE * 0.8, 8, 8]} />
-                  <meshBasicMaterial color={0x00aaff} transparent opacity={0.4} wireframe />
+                  <sphereGeometry args={[ITEM_SIZE * DRAG_HIGHLIGHT_SCALE, 8, 8]} />
+                  <meshBasicMaterial color={DRAG_HIGHLIGHT_COLOR} transparent opacity={DRAG_HIGHLIGHT_OPACITY} wireframe />
                 </mesh>
               )}
             </group>

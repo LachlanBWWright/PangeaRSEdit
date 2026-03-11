@@ -77,7 +77,11 @@ function NodeItem({
 
         <div className="flex items-center gap-1 flex-none">
           {node.polyCount !== undefined && (
-            <span className="text-xs text-gray-500 tabular-nums" title={`${node.polyCount} triangles`}>
+            <span
+              className="text-xs text-gray-500 tabular-nums"
+              title={`${node.polyCount.toLocaleString()} triangles`}
+              aria-label={`${node.polyCount.toLocaleString()} triangles`}
+            >
               {node.polyCount.toLocaleString()}▾
             </span>
           )}

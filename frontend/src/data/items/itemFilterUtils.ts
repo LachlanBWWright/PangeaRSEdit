@@ -83,12 +83,18 @@ export function countItemsByCategory(
   return counts;
 }
 
+const ENEMY_RE = /enemy|alien|monster|boss|walker|attacker/i;
+const POWERUP_RE = /powerup|pow_|health|ammo|weapon|pickup|bonus|token|coin|gem|clover|acorn/i;
+const TRIGGER_RE = /trigger|zone|checkpoint|gate|door|switch|teleport|portal|warp/i;
+const PLAYER_RE = /startcoords|exitrocket|exit|spawn|start|playerstart|camera/i;
+const ENVIRONMENTAL_RE = /plant|tree|rock|bush|flower|grass|fence|barrel|crate|decoration|scenery|building|structure|prop|water|bridge|platform/i;
+
 function categorizeItemSimple(name: string): ItemCategory {
-  if (/enemy|alien|monster|boss|walker|attacker/i.test(name)) return ItemCategory.ENEMY;
-  if (/powerup|pow_|health|ammo|weapon|pickup|bonus|token|coin|gem|clover|acorn/i.test(name)) return ItemCategory.POWERUP;
-  if (/trigger|zone|checkpoint|gate|door|switch|teleport|portal|warp/i.test(name)) return ItemCategory.TRIGGER;
-  if (/startcoords|exitrocket|exit|spawn|start|playerstart|camera/i.test(name)) return ItemCategory.PLAYER;
-  if (/plant|tree|rock|bush|flower|grass|fence|barrel|crate|decoration|scenery|building|structure|prop|water|bridge|platform/i.test(name)) return ItemCategory.ENVIRONMENTAL;
+  if (ENEMY_RE.test(name)) return ItemCategory.ENEMY;
+  if (POWERUP_RE.test(name)) return ItemCategory.POWERUP;
+  if (TRIGGER_RE.test(name)) return ItemCategory.TRIGGER;
+  if (PLAYER_RE.test(name)) return ItemCategory.PLAYER;
+  if (ENVIRONMENTAL_RE.test(name)) return ItemCategory.ENVIRONMENTAL;
   return ItemCategory.UNKNOWN;
 }
 
