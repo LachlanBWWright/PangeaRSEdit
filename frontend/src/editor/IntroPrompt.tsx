@@ -301,7 +301,7 @@ export function IntroPrompt() {
     const rawTileset = rawCombined.tileset;
     let cloneableCombined: typeof rawCombined;
     if (rawTileset && typeof rawTileset === "object" && "tileImages" in rawTileset) {
-      const { tileImages: _removed, ...sanitizedTileset } = rawTileset as Record<string, unknown>;
+      const { tileImages: _tileImagesStripped, ...sanitizedTileset } = rawTileset as Record<string, unknown>;
       cloneableCombined = { ...rawCombined, tileset: sanitizedTileset };
     } else {
       cloneableCombined = rawCombined;

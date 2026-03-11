@@ -158,14 +158,17 @@ export function TopologyTiles({
     return yCrdData.flatMap((e) => elevationToRGBA(header, e));
   }, [yCrdData, header]);
 
+  // Alpha for the semi-transparent roof/gap overlay (0-255)
+  const ROOF_OVERLAY_ALPHA = 180;
+
   // Roof colour overlay: blue tint representing ceiling elevation
   const roofCoordColours = useMemo(() => {
     if (!roofYCrdData || roofYCrdData.length === 0) return [];
     return roofYCrdData.flatMap((e) => {
       const grey = ((e - header.minY) / Math.max(1, header.maxY - header.minY)) * 255;
-      return [Math.round(grey * 0.4), Math.round(grey * 0.6), 255, 180]; // blue-tinted, semi-transparent
+      return [Math.round(grey * 0.4), Math.round(grey * 0.6), 255, ROOF_OVERLAY_ALPHA];
     });
-  }, [roofYCrdData, header]);
+  }, [roofYCrdData, header, ROOF_OVERLAY_ALPHA]);
 
   // Gap (roof - floor) colour map: red = tight, green = spacious
   const gapColours = useMemo(() => {
@@ -175,9 +178,9 @@ export function TopologyTiles({
       const gap = Math.max(0, roofY - floorY);
       const maxGap = header.maxY - header.minY;
       const ratio = Math.min(1, gap / Math.max(1, maxGap));
-      return [Math.round((1 - ratio) * 255), Math.round(ratio * 255), 0, 180];
+      return [Math.round((1 - ratio) * 255), Math.round(ratio * 255), 0, ROOF_OVERLAY_ALPHA];
     });
-  }, [roofYCrdData, yCrdData, header]);
+  }, [roofYCrdData, yCrdData, header, ROOF_OVERLAY_ALPHA]);
 
   const imgCanvas = useMemo(() => {
     // Guard against empty data - create a 1x1 placeholder

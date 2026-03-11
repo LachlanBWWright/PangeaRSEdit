@@ -78,7 +78,7 @@ export function KonvaView({
   const clickToAddItem = useAtomValue(ClickToAddItem);
   const globals = useAtomValue(Globals);
 
-  const containerRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement | null>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [containerSize, setContainerSize] = useState({
     width: 3000,
@@ -223,7 +223,7 @@ export function KonvaView({
     <div
       ref={(el) => {
         scrollContainerRef.current = el;
-        (containerRef as React.MutableRefObject<HTMLDivElement | null>).current = el;
+        containerRef.current = el;
       }}
       style={{
         width: "100%",
