@@ -62,7 +62,7 @@ export function ModelUploadPanel({
   return (
     <Card className="bg-gray-800 border-gray-700">
       <CardHeader>
-        <CardTitle className="text-white">
+        <CardTitle className="text-white truncate">
           {gltfUrl ? "Model Actions" : "Model Upload"}
         </CardTitle>
       </CardHeader>

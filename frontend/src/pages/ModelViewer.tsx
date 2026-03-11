@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback, useMemo } from "react";
 import { ModelCanvas } from "./ModelCanvas";
-// import { ModelHierarchy } from "@/components/ModelHierarchy";
+import { ModelHierarchy } from "@/components/ModelHierarchy";
 import { AnimationViewer, AnimationInfo } from "@/components/AnimationViewer";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Upload } from "lucide-react";
@@ -50,8 +50,8 @@ export function ModelViewer() {
   const [logBonePositions, setLogBonePositions] = useState<boolean>(false);
   const hasAnimations = animations.length > 0;
 
-  const [, setScene] = useState<Group | undefined>(undefined);
-  const [, setModelNodes] = useState<ModelNode[]>([]);
+  const [scene, setScene] = useState<Group | undefined>(undefined);
+  const [modelNodes, setModelNodes] = useState<ModelNode[]>([]);
   const [bg3dParsed, setBg3dParsed] = useState<BG3DParseResult | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -277,8 +277,8 @@ export function ModelViewer() {
     <>
       <div className="h-full p-4 bg-gray-900 text-white">
         <ResizablePanelGroup orientation="horizontal" className="h-full w-full">
-          <ResizablePanel defaultSize={28} minSize={20} className="pr-3">
-            <div className="flex h-full flex-col space-y-4 px-2 overflow-y-auto">
+          <ResizablePanel defaultSize={28} minSize={20} className="pr-3 min-w-0">
+            <div className="flex h-full flex-col space-y-4 px-2 overflow-y-auto min-w-0">
           <ModelUploadPanel
             gltfUrl={gltfUrl}
             useGameSelector={useGameSelector}
@@ -311,6 +311,17 @@ export function ModelViewer() {
               logBonePositions={logBonePositions}
               setLogBonePositions={setLogBonePositions}
               hasAnimations={hasAnimations}
+            />
+          )}
+
+          {/* Model Hierarchy — visibility toggles + poly counts */}
+          {gltfUrl && modelNodes.length > 0 && (
+            <ModelHierarchy
+              nodes={modelNodes}
+              clonedScene={scene}
+              onVisibilityChange={(nodeObject, visible) => {
+                nodeObject.visible = visible;
+              }}
             />
           )}
 

@@ -7,7 +7,7 @@ import { ModelNode } from "./model-viewer/types";
 
 interface ModelHierarchyProps {
   nodes: ModelNode[];
-  clonedScene: Group;
+  clonedScene?: Group;
   onVisibilityChange: (nodeObject: Object3D, visible: boolean) => void;
 }
 
@@ -69,15 +69,22 @@ function NodeItem({
         </Button>
 
         <span
-          className="text-sm flex-1 truncate text-white font-medium"
+          className="text-sm flex-1 truncate text-white font-medium min-w-0"
           title={node.name}
         >
           {node.name}
         </span>
 
-        <span className="text-xs text-gray-400 capitalize px-2 py-1 bg-gray-700 rounded">
-          {node.type}
-        </span>
+        <div className="flex items-center gap-1 flex-none">
+          {node.polyCount !== undefined && (
+            <span className="text-xs text-gray-500 tabular-nums" title={`${node.polyCount} triangles`}>
+              {node.polyCount.toLocaleString()}▾
+            </span>
+          )}
+          <span className="text-xs text-gray-400 capitalize px-1 py-0.5 bg-gray-700 rounded">
+            {node.type}
+          </span>
+        </div>
       </div>
 
       {hasChildren && expanded && node.children && (
@@ -116,13 +123,13 @@ export function ModelHierarchy({
   const [showAll, setShowAll] = useState(true);
 
   const handleToggleAll = () => {
-    // Toggle visibility for all top-level nodes
     const newShowAll = !showAll;
     setShowAll(newShowAll);
-
-    clonedScene.children.forEach((child) => {
-      onVisibilityChange(child, newShowAll);
-    });
+    if (clonedScene) {
+      clonedScene.children.forEach((child) => {
+        onVisibilityChange(child, newShowAll);
+      });
+    }
   };
 
   if (nodes.length === 0) {
