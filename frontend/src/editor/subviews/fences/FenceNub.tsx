@@ -10,14 +10,16 @@ export const FenceNub = memo(
   ({
     nub,
     idx,
+    nubIdx,
     onPreviewNub,
     setNub,
     image,
   }: {
     nub: [number, number];
     idx: number;
-    onPreviewNub: (nub: [number, number]) => void;
-    setNub: (nub: [number, number]) => void;
+    nubIdx: number;
+    onPreviewNub: (nubIdx: number, nub: [number, number]) => void;
+    setNub: (nubIdx: number, nub: [number, number]) => void;
     image?: HTMLImageElement | null;
   }) => {
     const [selectedFence, setSelectedFence] = useAtom(SelectedFence);
@@ -37,12 +39,12 @@ export const FenceNub = memo(
           const newY = Math.round(e.target.y());
           if (nubRafRef.current) cancelAnimationFrame(nubRafRef.current);
           nubRafRef.current = requestAnimationFrame(() => {
-            onPreviewNub([newX, newY]);
+            onPreviewNub(nubIdx, [newX, newY]);
           });
         }}
         onDragEnd={(e) => {
           if (nubRafRef.current) cancelAnimationFrame(nubRafRef.current);
-          setNub([Math.round(e.target.x()), Math.round(e.target.y())]);
+          setNub(nubIdx, [Math.round(e.target.x()), Math.round(e.target.y())]);
         }}
       >
         {/* Black background circle — always visible behind image or solid fill */}

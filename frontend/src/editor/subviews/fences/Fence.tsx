@@ -5,7 +5,7 @@ import Konva from "konva";
 import { FenceNub } from "./FenceNub";
 import { SelectedFence } from "../../../data/fences/fenceAtoms";
 import { useAtom, useAtomValue } from "jotai";
-import { memo, useEffect, useState } from "react";
+import { memo, useCallback, useEffect, useState } from "react";
 import { Globals } from "@/data/globals/globals";
 import { getFenceImagePath } from "@/data/fences/getFenceImagePath";
 
@@ -94,6 +94,31 @@ export const Fence = memo(
         ? previewNubs
         : fenceNubs;
     const lines = displayNubs.flatMap((nub) => [nub[0], nub[1]]);
+
+    // Stable callbacks so FenceNub memo is not defeated on every preview update
+    const handlePreviewNub = useCallback(
+      (nubIdx: number, newNub: [number, number]) => {
+        setPreviewNubs((current) => {
+          const next = [...(current ?? fenceNubs)];
+          next[nubIdx] = newNub;
+          return next;
+        });
+      },
+      [fenceNubs],
+    );
+
+    const handleSetNub = useCallback(
+      (nubIdx: number, newNub: [number, number]) => {
+        setPreviewNubs(null);
+        setFenceData((data) => {
+          const nubData = data.FnNb[NUB_KEY_BASE + fenceIdx]?.obj;
+          if (nubData && nubData[nubIdx]) {
+            nubData[nubIdx] = newNub;
+          }
+        });
+      },
+      [fenceIdx, setFenceData],
+    );
 
     // --- Nub add/remove handlers ---
     const handleAddFront = () => {
@@ -192,24 +217,11 @@ export const Fence = memo(
           <FenceNub
             key={nubIdx}
             idx={fenceIdx}
+            nubIdx={nubIdx}
             nub={nub}
             image={fenceImage}
-            onPreviewNub={(newNub: [number, number]) => {
-              setPreviewNubs((current) => {
-                const next = [...(current ?? fenceNubs)];
-                next[nubIdx] = newNub;
-                return next;
-              });
-            }}
-            setNub={(newNub: [number, number]) => {
-              setPreviewNubs(null);
-              setFenceData((fenceData) => {
-                const nubData = fenceData.FnNb[NUB_KEY_BASE + fenceIdx]?.obj;
-                if (nubData && nubData[nubIdx]) {
-                  nubData[nubIdx] = newNub;
-                }
-              });
-            }}
+            onPreviewNub={handlePreviewNub}
+            setNub={handleSetNub}
           />
         ))}
 
