@@ -10,7 +10,7 @@ import { ItemData, HeaderData } from "@/python/structSpecs/LevelTypes";
 import { useAtom, useAtomValue } from "jotai";
 import { Button } from "@/components/ui/button";
 import { ClickToAddItem, SelectedItem } from "../../../data/items/itemAtoms";
-import { memo, useMemo } from "react";
+import { memo, useEffect, useMemo } from "react";
 import { Input } from "@/components/ui/input";
 import {
   Select,

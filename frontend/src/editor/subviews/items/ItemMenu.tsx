@@ -14,7 +14,7 @@ import {
 import { TerrainItemTypeParams, ItemType } from "../../../data/items/ottoItemType";
 import type { ParamDescription, FlagDescription } from "../../../data/items/itemParams";
 import { parseU16, parseU8 } from "../../../utils/numberParsers";
-import { memo, useCallback, useMemo } from "react";
+import { memo, useCallback, useEffect, useMemo } from "react";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -265,6 +265,10 @@ export const ItemMenu = memo(function ItemMenu({
 function AddItemMenu() {
   const [clickToAddItem, setClickToAddItem] = useAtom(ClickToAddItem);
   const globals = useAtomValue(Globals);
+
+  useEffect(() => {
+    return () => setClickToAddItem(undefined);
+  }, [setClickToAddItem]);
 
   const itemValues = useMemo(() => {
     const result = getItemTypes(globals);
