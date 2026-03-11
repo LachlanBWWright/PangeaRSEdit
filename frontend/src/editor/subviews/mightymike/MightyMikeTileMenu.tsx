@@ -11,7 +11,6 @@
 
 import { useAtomValue } from "jotai";
 import { useRef, useState } from "react";
-import { Layer, Stage, Image } from "react-konva";
 import { SelectedTile } from "@/data/supertiles/supertileAtoms";
 import { Updater } from "use-immer";
 import { HeaderData, TerrainData } from "@/python/structSpecs/LevelTypes";
@@ -36,6 +35,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { TileCanvas } from "../shared/TileCanvas";
 
 // Type guard helpers
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -436,11 +436,9 @@ export function MightyMikeTileMenu({
         <p className="font-bold text-sm">Tile #{selectedTile}</p>
 
         {/* Compact Tile Preview */}
-        <Stage width={64} height={64} className="border border-gray-600 self-start">
-          <Layer>
-            {currentTileCanvas && <TileImage image={currentTileCanvas} size={64} />}
-          </Layer>
-        </Stage>
+        <div className="border border-gray-600 self-start">
+          <TileCanvas image={currentTileCanvas ?? undefined} size={64} />
+        </div>
 
         {/* Upload Button */}
         <div>
@@ -616,11 +614,7 @@ export function MightyMikeTileMenu({
                 }`}
                 title={`Tile #${idx}`}
               >
-                <Stage width={32} height={32} className="bg-black">
-                  <Layer>
-                    <TileImage image={img} />
-                  </Layer>
-                </Stage>
+                <TileCanvas image={img} size={32} />
               </div>
             ))}
           </div>
@@ -693,8 +687,4 @@ export function MightyMikeTileMenu({
   );
 }
 
-// Helper component to display tile image
-function TileImage({ image, size = TILE_SIZE }: { image: HTMLCanvasElement; size?: number }) {
-  if (!image) return null;
-  return <Image image={image} width={size} height={size} />;
-}
+

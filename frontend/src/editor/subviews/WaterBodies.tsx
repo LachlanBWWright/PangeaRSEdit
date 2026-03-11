@@ -4,8 +4,9 @@ import { Updater } from "use-immer";
 import { WaterBody } from "./water/WaterBody";
 import { SelectedWaterBody } from "@/data/water/waterAtoms";
 import { useAtomValue } from "jotai";
+import { memo } from "react";
 
-export function WaterBodies({
+export const WaterBodies = memo(function WaterBodies({
   liquidData,
   setLiquidData,
 }: {
@@ -38,4 +39,4 @@ export function WaterBodies({
       )}
     </Layer>
   );
-}
+});

@@ -2,8 +2,9 @@ import { SplineData } from "@/python/structSpecs/LevelTypes";
 import { Layer } from "react-konva";
 import { Updater } from "use-immer";
 import { Spline } from "./splines/Spline";
+import { memo } from "react";
 
-export function Splines({
+export const Splines = memo(function Splines({
   splineData,
   setSplineData,
 }: {
@@ -24,4 +25,4 @@ export function Splines({
       ))}
     </Layer>
   );
-}
+});

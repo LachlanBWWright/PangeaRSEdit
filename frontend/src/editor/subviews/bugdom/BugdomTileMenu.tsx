@@ -29,6 +29,7 @@ import {
   canRemoveSupertileRow,
   getSupertileCounts,
 } from "../supertiles/supertileResizeGuards";
+import { TileCanvas } from "../shared/TileCanvas";
 import {
   TILENUM_MASK,
   TILE_FLIPX_MASK,
@@ -675,11 +676,7 @@ export function BugdomTileMenu({
                 onClick={() => setSelectedPaletteTile(idx)}
                 title={`Tile #${idx}`}
               >
-                <Stage width={32} height={32}>
-                  <Layer>
-                    {img && <Image image={img} width={32} height={32} />}
-                  </Layer>
-                </Stage>
+                <TileCanvas image={img} size={32} />
               </div>
             ))}
           </div>
