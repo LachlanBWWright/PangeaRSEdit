@@ -215,6 +215,7 @@ export function StandardEditorView({
             splineData={splineData}
             terrainData={terrainData}
             mapImages={mapImages}
+            setItemData={setItemData}
           />
         ) : (
           <StandardKonvaView

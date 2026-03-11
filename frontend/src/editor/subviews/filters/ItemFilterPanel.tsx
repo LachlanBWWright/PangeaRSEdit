@@ -47,9 +47,10 @@ export const ItemFilterPanel: React.FC<ItemFilterPanelProps> = ({ isOpen, onClos
         itemTypes: newItemTypes,
       });
     } else {
-      // Show this type — remove from hidden set
-      const newItemTypes = { ...filter.itemTypes };
-      delete newItemTypes[id];
+      // Show this type — remove from hidden set using omit pattern
+      const newItemTypes = Object.fromEntries(
+        Object.entries(filter.itemTypes).filter(([k]) => Number(k) !== id),
+      ) as Record<number, boolean | undefined>;
       const hasHidden = Object.values(newItemTypes).some(Boolean);
       setFilter({
         ...filter,

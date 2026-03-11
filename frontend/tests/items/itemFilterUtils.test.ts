@@ -34,9 +34,9 @@ describe("Item Filter Utils", () => {
         mode: FilterMode.SHOW_ALL,
       };
 
-      expect(isItemVisible(1, filter, mockGetTypeName)).toBe(true);
-      expect(isItemVisible(3, filter, mockGetTypeName)).toBe(true);
-      expect(isItemVisible(999, filter, mockGetTypeName)).toBe(true);
+      expect(isItemVisible(1, filter)).toBe(true);
+      expect(isItemVisible(3, filter)).toBe(true);
+      expect(isItemVisible(999, filter)).toBe(true);
     });
 
     it("should show only selected categories in SHOW_SELECTED mode", () => {
@@ -53,10 +53,10 @@ describe("Item Filter Utils", () => {
         },
       };
 
-      expect(isItemVisible(1, filter, mockGetTypeName)).toBe(true); // Enemy
-      expect(isItemVisible(2, filter, mockGetTypeName)).toBe(true); // Enemy
-      expect(isItemVisible(3, filter, mockGetTypeName)).toBe(false); // Powerup
-      expect(isItemVisible(7, filter, mockGetTypeName)).toBe(false); // Environmental
+      expect(isItemVisible(1, filter)).toBe(true); // Enemy
+      expect(isItemVisible(2, filter)).toBe(true); // Enemy
+      expect(isItemVisible(3, filter)).toBe(false); // Powerup
+      expect(isItemVisible(7, filter)).toBe(false); // Environmental
     });
 
     it("should hide selected categories in HIDE_SELECTED mode", () => {
@@ -73,8 +73,8 @@ describe("Item Filter Utils", () => {
         },
       };
 
-      expect(isItemVisible(1, filter, mockGetTypeName)).toBe(false); // Enemy - hidden
-      expect(isItemVisible(3, filter, mockGetTypeName)).toBe(true); // Powerup - shown
+      expect(isItemVisible(1, filter)).toBe(false); // Enemy - hidden
+      expect(isItemVisible(3, filter)).toBe(true); // Powerup - shown
     });
 
     it("should respect item type overrides", () => {
@@ -94,9 +94,9 @@ describe("Item Filter Utils", () => {
         },
       };
 
-      expect(isItemVisible(1, filter, mockGetTypeName)).toBe(true); // Enemy - by category
-      expect(isItemVisible(3, filter, mockGetTypeName)).toBe(true); // Powerup - by override
-      expect(isItemVisible(4, filter, mockGetTypeName)).toBe(false); // Powerup - by category
+      expect(isItemVisible(1, filter)).toBe(true); // Enemy - by category
+      expect(isItemVisible(3, filter)).toBe(true); // Powerup - by override
+      expect(isItemVisible(4, filter)).toBe(false); // Powerup - by category
     });
   });
 
@@ -139,7 +139,7 @@ describe("Item Filter Utils", () => {
       };
       const allTypes = [1, 2, 3, 4, 5];
 
-      expect(getVisibleItemTypes(allTypes, filter, mockGetTypeName)).toEqual(allTypes);
+      expect(getVisibleItemTypes(allTypes, filter)).toEqual(allTypes);
     });
 
     it("should filter types based on categories", () => {
@@ -157,7 +157,7 @@ describe("Item Filter Utils", () => {
       };
       const allTypes = [1, 2, 3, 4, 5, 7];
 
-      const visible = getVisibleItemTypes(allTypes, filter, mockGetTypeName);
+      const visible = getVisibleItemTypes(allTypes, filter);
       expect(visible).toContain(1); // Enemy
       expect(visible).toContain(2); // Enemy
       expect(visible).not.toContain(3); // Powerup

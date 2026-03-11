@@ -142,16 +142,17 @@ const MightyMikeSupertilesComponent = ({
         if (!isRecord(obj["mightyMikeMapData"])) {
           obj["mightyMikeMapData"] = {};
         }
-        const mapData = obj["mightyMikeMapData"] as Record<string, unknown>;
+        const mapDataEntry = obj["mightyMikeMapData"];
+        if (!isRecord(mapDataEntry)) return;
         // Build empty 2D array sized to the current map
         const w = mapWidth;
         const h = Math.ceil(layr.length / mapWidth);
-        const newAltMap: number[][] = Array.from({ length: h }, () => Array(w).fill(0) as number[]);
-        mapData["altMap"] = newAltMap;
+        const newAltMap: number[][] = Array.from({ length: h }, () => Array<number>(w).fill(0));
+        mapDataEntry["altMap"] = newAltMap;
         entry["obj"] = obj;
         meta["1000"] = entry;
         (data as Record<string, unknown>)["_metadata"] = meta;
-        altMap2d = newAltMap as unknown[];
+        altMap2d = newAltMap;
       }
       const row = Math.floor(tileIdx / mapWidth);
       const col = tileIdx % mapWidth;

@@ -11,13 +11,32 @@ import {
 import { getGamesByCategory, type Level } from "@/data/levels";
 import { toast } from "sonner";
 import { zip } from "fflate";
+import { ResultAsync } from "neverthrow";
 
-/** Fetch a URL as a Uint8Array. */
-async function fetchBytes(url: string): Promise<Uint8Array<ArrayBuffer>> {
-  const resp = await fetch(url);
-  if (!resp.ok) throw new Error(`Failed to fetch ${url}: ${resp.status}`);
-  const buf = await resp.arrayBuffer();
-  return new Uint8Array(buf);
+/** Fetch a URL as a Uint8Array using ResultAsync. */
+function fetchBytes(url: string): ResultAsync<Uint8Array<ArrayBuffer>, Error> {
+  return ResultAsync.fromPromise(
+    fetch(url)
+      .then((resp) => {
+        if (!resp.ok) return Promise.reject(new Error(`HTTP ${resp.status}: ${url}`));
+        return resp.arrayBuffer();
+      })
+      .then((buf) => new Uint8Array(buf)),
+    (e) => (e instanceof Error ? e : new Error(String(e))),
+  );
+}
+
+/** Zip files using fflate, returning a ResultAsync. */
+function zipFiles(files: Record<string, Uint8Array<ArrayBuffer>>): ResultAsync<Uint8Array<ArrayBuffer>, Error> {
+  return ResultAsync.fromPromise(
+    new Promise<Uint8Array<ArrayBuffer>>((resolve, reject) => {
+      zip(files, (e, data) => {
+        if (e) reject(e);
+        else resolve(data.slice(0));
+      });
+    }),
+    (e) => (e instanceof Error ? e : new Error(String(e))),
+  );
 }
 
 /** Build a timestamp string suitable for filenames: YYYYMMDD_HHMMSS */
@@ -37,24 +56,12 @@ interface LevelCardProps {
 function LevelCard({ level }: LevelCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
 
-  const downloadLevel = async () => {
-    const files: Record<string, Uint8Array<ArrayBuffer>> = {};
+  const downloadLevel = () => {
+    const fetchPairs: { name: string; url: string }[] = [];
+    if (level.terFile) fetchPairs.push({ name: level.terFile.split("/").pop() ?? `${level.id}.ter`, url: level.terFile });
+    if (level.rsrcFile) fetchPairs.push({ name: level.rsrcFile.split("/").pop() ?? `${level.id}.ter.rsrc`, url: level.rsrcFile });
 
-    try {
-      if (level.terFile) {
-        const name = level.terFile.split("/").pop() ?? `${level.id}.ter`;
-        files[name] = await fetchBytes(level.terFile);
-      }
-      if (level.rsrcFile) {
-        const name = level.rsrcFile.split("/").pop() ?? `${level.id}.ter.rsrc`;
-        files[name] = await fetchBytes(level.rsrcFile);
-      }
-    } catch {
-      toast.error("Failed to download level files");
-      return;
-    }
-
-    if (Object.keys(files).length === 0) {
+    if (fetchPairs.length === 0) {
       toast.error("No downloadable files found for this level");
       return;
     }
@@ -63,22 +70,34 @@ function LevelCard({ level }: LevelCardProps) {
     const zipName = `${level.gameDisplayName} Level ${levelNumber} (${fileTimestamp()}).zip`
       .replace(/[/\\:*?"<>|]/g, "_");
 
-    zip(files, (err, data) => {
-      if (err) {
-        toast.error("Failed to create zip archive");
-        return;
-      }
-      const blob = new Blob([data.slice(0)], { type: "application/zip" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = zipName;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-      toast.success(`Downloaded ${zipName}`);
-    });
+    // Fetch all files, then zip
+    const fetchAll = ResultAsync.combine(
+      fetchPairs.map(({ name, url }) =>
+        fetchBytes(url).map((data) => ({ name, data })),
+      ),
+    );
+
+    void fetchAll
+      .andThen((pairs) => {
+        const files: Record<string, Uint8Array<ArrayBuffer>> = {};
+        for (const { name, data } of pairs) files[name] = data;
+        return zipFiles(files);
+      })
+      .match(
+        (data) => {
+          const blob = new Blob([data], { type: "application/zip" });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = zipName;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+          toast.success(`Downloaded ${zipName}`);
+        },
+        (e) => toast.error(`Download failed: ${e.message}`),
+      );
   };
 
   return (

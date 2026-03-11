@@ -22,7 +22,6 @@ type GetItemTypeName = (itemType: number) => string | undefined;
 export function isItemVisible(
   itemType: number,
   filter: ItemFilterState,
-  _getTypeName?: GetItemTypeName,
 ): boolean {
   if (filter.mode === FilterMode.SHOW_ALL) return true;
 
@@ -56,10 +55,9 @@ export function itemMatchesSearch(
 export function getVisibleItemTypes(
   allTypeIds: number[],
   filter: ItemFilterState,
-  getTypeName?: GetItemTypeName,
 ): number[] {
   if (filter.mode === FilterMode.SHOW_ALL) return allTypeIds;
-  return allTypeIds.filter((typeId) => isItemVisible(typeId, filter, getTypeName));
+  return allTypeIds.filter((typeId) => isItemVisible(typeId, filter));
 }
 
 /**

@@ -29,8 +29,6 @@ describe("Item Module Integration", () => {
       const itemType = 1;
       const typeName = "Enemy_Test";
       
-      // Create a getTypeName function
-      const getTypeName = (type: number) => type === itemType ? typeName : undefined;
       
       // Categorize
       const category = categorizeItem(typeName);
@@ -46,7 +44,7 @@ describe("Item Module Integration", () => {
       }
       
       // Item should be visible
-      const visible = isItemVisible(itemType, filter, getTypeName);
+      const visible = isItemVisible(itemType, filter);
       expect(visible).toBe(true);
     });
 
