@@ -479,7 +479,7 @@ export function ThreeView({
         // Keep panning aligned with the ground plane, so panning feels intuitive
         screenSpacePanning={false}
         mouseButtons={{
-          LEFT: MOUSE.PAN,
+          LEFT: MOUSE.ROTATE,
           MIDDLE: MOUSE.DOLLY,
           RIGHT: MOUSE.PAN,
         }}

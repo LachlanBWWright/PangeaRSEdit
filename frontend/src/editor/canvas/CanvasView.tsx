@@ -2,8 +2,9 @@ import { SelectedFence } from "@/data/fences/fenceAtoms";
 import { ClickToAddItem, SelectedItem } from "@/data/items/itemAtoms";
 import { SelectedSpline } from "@/data/splines/splineAtoms";
 import { SelectedWaterBody } from "@/data/water/waterAtoms";
+import { Globals } from "@/data/globals/globals";
 import { useAtomValue, useSetAtom } from "jotai";
-import { useRef, useState, useEffect, useCallback } from "react";
+import { useRef, useState, useEffect, useCallback, useMemo } from "react";
 import { Stage } from "react-konva";
 import Konva from "konva";
 import { Updater } from "use-immer";
@@ -75,12 +76,27 @@ export function KonvaView({
   const setSelectedSpline = useSetAtom(SelectedSpline);
   const setSelectedWaterBody = useSetAtom(SelectedWaterBody);
   const clickToAddItem = useAtomValue(ClickToAddItem);
+  const globals = useAtomValue(Globals);
 
   const containerRef = useRef<HTMLDivElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [containerSize, setContainerSize] = useState({
     width: 3000,
     height: 2000,
   });
+  const [scrollOffset, setScrollOffset] = useState({ x: 0, y: 0 });
+
+  const isTopologyMode = view === View.tiles;
+
+  // Compute the terrain content size for scrollable topology mode
+  const contentSize = useMemo(() => {
+    const header = headerData.Hedr?.[1000]?.obj;
+    if (!header) return { width: 3000, height: 2000 };
+    return {
+      width: (header.mapWidth + 1) * globals.TILE_SIZE * stage.scale,
+      height: (header.mapHeight + 1) * globals.TILE_SIZE * stage.scale,
+    };
+  }, [headerData.Hedr, globals.TILE_SIZE, stage.scale]);
 
   useEffect(() => {
     const updateSize = () => {
@@ -99,6 +115,12 @@ export function KonvaView({
     }
     window.addEventListener("resize", updateSize);
     return () => window.removeEventListener("resize", updateSize);
+  }, []);
+
+  // Sync scrollbars to stage offset in topology mode
+  const handleScrollContainerScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
+    const el = e.currentTarget;
+    setScrollOffset({ x: el.scrollLeft, y: el.scrollTop });
   }, []);
 
   // Create wrapper setters that handle null
@@ -198,15 +220,48 @@ export function KonvaView({
   }, [setStage]);
 
   return (
-    <div ref={containerRef} style={{ width: "100%", height: "100%" }}>
+    <div
+      ref={(el) => {
+        scrollContainerRef.current = el;
+        (containerRef as React.MutableRefObject<HTMLDivElement | null>).current = el;
+      }}
+      style={{
+        width: "100%",
+        height: "100%",
+        overflow: isTopologyMode ? "auto" : "hidden",
+        position: "relative",
+      }}
+      onScroll={isTopologyMode ? handleScrollContainerScroll : undefined}
+    >
+      {/* Spacer div sets the scrollable area dimensions in topology mode */}
+      {isTopologyMode && (
+        <div
+          style={{
+            position: "absolute",
+            width: Math.max(contentSize.width, containerSize.width),
+            height: Math.max(contentSize.height, containerSize.height),
+            pointerEvents: "none",
+          }}
+        />
+      )}
+      <div
+        style={{
+          width: containerSize.width,
+          height: containerSize.height,
+          position: "sticky",
+          top: 0,
+          left: 0,
+          flexShrink: 0,
+        }}
+      >
       <Stage
         width={containerSize.width}
         height={containerSize.height}
         scaleX={stage.scale}
         scaleY={stage.scale}
-        x={stage.x}
-        y={stage.y}
-        draggable={true}
+        x={isTopologyMode ? -scrollOffset.x : stage.x}
+        y={isTopologyMode ? -scrollOffset.y : stage.y}
+        draggable={!isTopologyMode}
         onClick={handleStageClick}
         onDblClick={handleStageDblClick}
         onWheel={handleStageWheel}
@@ -354,6 +409,7 @@ export function KonvaView({
           </>
         )}
       </Stage>
+      </div>
     </div>
   );
 }

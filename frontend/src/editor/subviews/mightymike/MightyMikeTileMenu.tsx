@@ -10,7 +10,7 @@
  */
 
 import { useAtomValue } from "jotai";
-import { useRef, useState } from "react";
+import { useRef, useState, useEffect } from "react";
 import { SelectedTile } from "@/data/supertiles/supertileAtoms";
 import { Updater } from "use-immer";
 import { HeaderData, TerrainData } from "@/python/structSpecs/LevelTypes";
@@ -101,6 +101,23 @@ export function MightyMikeTileMenu({
   const mapWidth = header.mapWidth;
   const mapHeight = header.mapHeight;
   const totalTiles = mapWidth * mapHeight;
+
+  // Sync palette selection to the image used by the currently selected map tile
+  useEffect(() => {
+    if (selectedTile < 0 || selectedTile >= layr.length) return;
+    const tileIndexValue = layr[selectedTile];
+    if (tileIndexValue === undefined || tileIndexValue === null) return;
+    let imageIndex: number = tileIndexValue;
+    if (xlatTable && tileIndexValue >= 0 && tileIndexValue < xlatTable.length) {
+      const entry = xlatTable[tileIndexValue];
+      if (entry && typeof entry === "object" && "idx" in entry) {
+        imageIndex = (entry as { idx: number }).idx;
+      }
+    }
+    if (imageIndex >= 0 && imageIndex < mapImages.length) {
+      setSelectedPaletteTile(imageIndex);
+    }
+  }, [selectedTile, layr, xlatTable, mapImages.length]);
 
   // Helper: Get collision properties for current tile
   const getCollisionProperties = (): {
@@ -423,10 +440,14 @@ export function MightyMikeTileMenu({
   return (
     <div className="flex flex-col h-full overflow-hidden">
       <div className="grid grid-cols-4 gap-2 p-2 border-b border-gray-600 flex-none">
-        <Button onClick={() => onResize("top", 1)}>Add Row Top</Button>
-        <Button onClick={() => onResize("bottom", 1)}>Add Row Bottom</Button>
-        <Button onClick={() => onResize("left", 1)}>Add Column Left</Button>
-        <Button onClick={() => onResize("right", 1)}>Add Column Right</Button>
+        <Button size="sm" onClick={() => onResize("top", 1)}>Add Row Top</Button>
+        <Button size="sm" onClick={() => onResize("bottom", 1)}>Add Row Bottom</Button>
+        <Button size="sm" onClick={() => onResize("left", 1)}>Add Column Left</Button>
+        <Button size="sm" onClick={() => onResize("right", 1)}>Add Column Right</Button>
+        <Button size="sm" variant="outline" onClick={() => onResize("top", -1)}>Remove Row Top</Button>
+        <Button size="sm" variant="outline" onClick={() => onResize("bottom", -1)}>Remove Row Bottom</Button>
+        <Button size="sm" variant="outline" onClick={() => onResize("left", -1)}>Remove Column Left</Button>
+        <Button size="sm" variant="outline" onClick={() => onResize("right", -1)}>Remove Column Right</Button>
       </div>
 
       {/* Main Content Grid — each column manages its own overflow */}

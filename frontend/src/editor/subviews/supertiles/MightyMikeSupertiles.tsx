@@ -260,7 +260,7 @@ const MightyMikeSupertilesComponent = ({
    * Rebuilt whenever the altMap data or view changes.
    */
   const altMapCanvas = useMemo<HTMLCanvasElement | null>(() => {
-    if (!showAltMap || altMapFlat.length === 0) return null;
+    if (!showAltMap) return null;
     const canvas = document.createElement("canvas");
     canvas.width = mapWidth * TILE_SIZE;
     canvas.height = mapHeight * TILE_SIZE;

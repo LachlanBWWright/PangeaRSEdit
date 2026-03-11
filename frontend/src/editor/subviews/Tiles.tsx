@@ -15,6 +15,8 @@ import {
   TopologyBrushRadius,
   TopologyOpacity,
   TopologyValue,
+  ShowRoofInTopology,
+  ShowRoofGapInTopology,
 } from "../../data/tiles/tileAtoms";
 import { useAtomValue } from "jotai";
 import { Globals } from "../../data/globals/globals";
@@ -131,6 +133,8 @@ export function TopologyTiles({
   const topologyBrushRadius = useAtomValue(TopologyBrushRadius);
   const globals = useAtomValue(Globals);
   const opacity = useAtomValue(TopologyOpacity);
+  const showRoof = useAtomValue(ShowRoofInTopology);
+  const showRoofGap = useAtomValue(ShowRoofGapInTopology);
   const [isDragging, setIsDragging] = useState(false);
   const [lastBrushPoint, setLastBrushPoint] = useState<{ x: number; y: number } | null>(
     null,
@@ -144,6 +148,7 @@ export function TopologyTiles({
 
   // Guard against missing or empty YCrd data
   const yCrdData = terrainData.YCrd?.[1000]?.obj;
+  const roofYCrdData = terrainData.YCrd?.[1001]?.obj;
 
   const coordColours = useMemo(() => {
     if (!yCrdData || yCrdData.length === 0) {
@@ -152,6 +157,27 @@ export function TopologyTiles({
     }
     return yCrdData.flatMap((e) => elevationToRGBA(header, e));
   }, [yCrdData, header]);
+
+  // Roof colour overlay: blue tint representing ceiling elevation
+  const roofCoordColours = useMemo(() => {
+    if (!roofYCrdData || roofYCrdData.length === 0) return [];
+    return roofYCrdData.flatMap((e) => {
+      const grey = ((e - header.minY) / Math.max(1, header.maxY - header.minY)) * 255;
+      return [Math.round(grey * 0.4), Math.round(grey * 0.6), 255, 180]; // blue-tinted, semi-transparent
+    });
+  }, [roofYCrdData, header]);
+
+  // Gap (roof - floor) colour map: red = tight, green = spacious
+  const gapColours = useMemo(() => {
+    if (!roofYCrdData || !yCrdData || roofYCrdData.length === 0 || yCrdData.length === 0) return [];
+    return roofYCrdData.flatMap((roofY, i) => {
+      const floorY = yCrdData[i] ?? 0;
+      const gap = Math.max(0, roofY - floorY);
+      const maxGap = header.maxY - header.minY;
+      const ratio = Math.min(1, gap / Math.max(1, maxGap));
+      return [Math.round((1 - ratio) * 255), Math.round(ratio * 255), 0, 180];
+    });
+  }, [roofYCrdData, yCrdData, header]);
 
   const imgCanvas = useMemo(() => {
     // Guard against empty data - create a 1x1 placeholder
@@ -172,6 +198,18 @@ export function TopologyTiles({
     }
     return result.value;
   }, [header, coordColours, yCrdData]);
+
+  const roofImgCanvas = useMemo(() => {
+    if (!showRoof || !roofYCrdData || roofYCrdData.length === 0) return null;
+    const colors = showRoofGap ? gapColours : roofCoordColours;
+    if (colors.length === 0) return null;
+    const result = createImageCanvas(
+      header.mapWidth + 1,
+      header.mapHeight + 1,
+      colors,
+    );
+    return result.isOk() ? result.value : null;
+  }, [showRoof, showRoofGap, roofYCrdData, roofCoordColours, gapColours, header]);
 
   const setPixels = (pixelList: PixelType[]) => {
     // Guard against missing YCrd data
@@ -298,6 +336,18 @@ export function TopologyTiles({
             perfectDrawEnabled={false}
           />
         ))}
+      {/* Roof overlay (semi-transparent, shown when showRoof is on and YCrd 1001 exists) */}
+      {showRoof && roofImgCanvas && (
+        <Image
+          x={0}
+          y={0}
+          opacity={opacity * 0.6}
+          width={(header.mapWidth + 1) * globals.TILE_SIZE}
+          height={(header.mapHeight + 1) * globals.TILE_SIZE}
+          image={roofImgCanvas}
+          listening={false}
+        />
+      )}
     </Layer>
   );
 }

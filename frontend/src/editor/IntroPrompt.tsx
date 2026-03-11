@@ -296,7 +296,17 @@ export function IntroPrompt() {
       return;
     }
 
-    const combinedData = structuredClone(combinedDataResult.value);
+    // Strip HTMLCanvasElement references (e.g. tileset.tileImages) before cloning
+    const rawCombined = combinedDataResult.value as Record<string, unknown>;
+    const rawTileset = rawCombined.tileset;
+    let cloneableCombined: typeof rawCombined;
+    if (rawTileset && typeof rawTileset === "object" && "tileImages" in rawTileset) {
+      const { tileImages: _removed, ...sanitizedTileset } = rawTileset as Record<string, unknown>;
+      cloneableCombined = { ...rawCombined, tileset: sanitizedTileset };
+    } else {
+      cloneableCombined = rawCombined;
+    }
+    const combinedData = structuredClone(cloneableCombined) as typeof rawCombined;
 
     //TODO: Find better solution
     //remove timg from combinedData - needed to fix bug for non-RSRC_FORK games
