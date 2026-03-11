@@ -10,6 +10,25 @@ import {
 } from "@/components/ui/card";
 import { getGamesByCategory, type Level } from "@/data/levels";
 import { toast } from "sonner";
+import { zip } from "fflate";
+
+/** Fetch a URL as a Uint8Array. */
+async function fetchBytes(url: string): Promise<Uint8Array<ArrayBuffer>> {
+  const resp = await fetch(url);
+  if (!resp.ok) throw new Error(`Failed to fetch ${url}: ${resp.status}`);
+  const buf = await resp.arrayBuffer();
+  return new Uint8Array(buf);
+}
+
+/** Build a timestamp string suitable for filenames: YYYYMMDD_HHMMSS */
+function fileTimestamp(): string {
+  const now = new Date();
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return (
+    `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}` +
+    `_${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`
+  );
+}
 
 interface LevelCardProps {
   level: Level;
@@ -18,38 +37,48 @@ interface LevelCardProps {
 function LevelCard({ level }: LevelCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
 
-  const downloadLevel = () => {
-    let downloadedAny = false;
-    // Create a temporary link element to download the .ter file
-    const downloadFile = (url: string, filename: string) => {
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = filename;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-    };
+  const downloadLevel = async () => {
+    const files: Record<string, Uint8Array<ArrayBuffer>> = {};
 
-    // Download .ter file if it exists
-    if (level.terFile) {
-      const terFilename = level.terFile.split("/").pop() || `${level.id}.ter`;
-      downloadFile(level.terFile, terFilename);
-      downloadedAny = true;
+    try {
+      if (level.terFile) {
+        const name = level.terFile.split("/").pop() ?? `${level.id}.ter`;
+        files[name] = await fetchBytes(level.terFile);
+      }
+      if (level.rsrcFile) {
+        const name = level.rsrcFile.split("/").pop() ?? `${level.id}.ter.rsrc`;
+        files[name] = await fetchBytes(level.rsrcFile);
+      }
+    } catch {
+      toast.error("Failed to download level files");
+      return;
     }
 
-    // Download .ter.rsrc file if it exists
-    if (level.rsrcFile) {
-      const rsrcFilename =
-        level.rsrcFile.split("/").pop() || `${level.id}.ter.rsrc`;
-      downloadFile(level.rsrcFile, rsrcFilename);
-      downloadedAny = true;
-    }
-
-    if (!downloadedAny) {
+    if (Object.keys(files).length === 0) {
       toast.error("No downloadable files found for this level");
       return;
     }
-    toast.success(`Started downloading ${level.name}`);
+
+    const levelNumber = level.category?.replace(/\D/g, "") ?? level.id;
+    const zipName = `${level.gameDisplayName} Level ${levelNumber} (${fileTimestamp()}).zip`
+      .replace(/[/\\:*?"<>|]/g, "_");
+
+    zip(files, (err, data) => {
+      if (err) {
+        toast.error("Failed to create zip archive");
+        return;
+      }
+      const blob = new Blob([data.slice(0)], { type: "application/zip" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = zipName;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      toast.success(`Downloaded ${zipName}`);
+    });
   };
 
   return (
@@ -82,7 +111,7 @@ function LevelCard({ level }: LevelCardProps) {
             <p className="text-gray-400 text-sm">{level.summary}</p>
           </div>
           <Button
-            onClick={downloadLevel}
+            onClick={() => void downloadLevel()}
             className="ml-4 bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-2"
             size="sm"
           >

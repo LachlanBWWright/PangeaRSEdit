@@ -66,3 +66,27 @@ body {
   color: hsl(var(--popover-foreground));
 }
 
+/* Custom themed scrollbars */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: hsl(222.2 47.4% 8%);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb {
+  background: hsl(217.2 32.6% 28%);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(217.2 32.6% 38%);
+}
+::-webkit-scrollbar-corner {
+  background: hsl(222.2 47.4% 8%);
+}
+* {
+  scrollbar-width: thin;
+  scrollbar-color: hsl(217.2 32.6% 28%) hsl(222.2 47.4% 8%);
+}
+

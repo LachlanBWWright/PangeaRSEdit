@@ -130,11 +130,29 @@ const MightyMikeSupertilesComponent = ({
     });
   }, [setTerrainData]);
 
-  /** Paint an alt-map value at a tile index. */
+  /** Paint an alt-map value at a tile index. Initializes the alt-map on first use. */
   const handleBrushAltMap = useCallback((tileIdx: number) => {
     setTerrainData((data) => {
-      const altMap2d = getAltMapArray(data._metadata);
-      if (!altMap2d) return;
+      // Lazily initialize the alt-map if it doesn't exist yet
+      let altMap2d = getAltMapArray(data._metadata);
+      if (!altMap2d) {
+        const meta: Record<string, unknown> = isRecord(data._metadata) ? data._metadata : {};
+        const entry: Record<string, unknown> = isRecord(meta["1000"]) ? meta["1000"] : { obj: {} };
+        const obj: Record<string, unknown> = isRecord(entry["obj"]) ? entry["obj"] : {};
+        if (!isRecord(obj["mightyMikeMapData"])) {
+          obj["mightyMikeMapData"] = {};
+        }
+        const mapData = obj["mightyMikeMapData"] as Record<string, unknown>;
+        // Build empty 2D array sized to the current map
+        const w = mapWidth;
+        const h = Math.ceil(layr.length / mapWidth);
+        const newAltMap: number[][] = Array.from({ length: h }, () => Array(w).fill(0) as number[]);
+        mapData["altMap"] = newAltMap;
+        entry["obj"] = obj;
+        meta["1000"] = entry;
+        (data as Record<string, unknown>)["_metadata"] = meta;
+        altMap2d = newAltMap as unknown[];
+      }
       const row = Math.floor(tileIdx / mapWidth);
       const col = tileIdx % mapWidth;
       const rowArr = altMap2d[row];
@@ -142,7 +160,7 @@ const MightyMikeSupertilesComponent = ({
         rowArr[col] = altMapBrushValue;
       }
     });
-  }, [setTerrainData, mapWidth, altMapBrushValue]);
+  }, [setTerrainData, mapWidth, altMapBrushValue, layr.length]);
 
   const mapHeight = Math.ceil(layr.length / mapWidth);
 

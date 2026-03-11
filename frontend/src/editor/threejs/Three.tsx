@@ -444,7 +444,7 @@ export function ThreeView({
         mouseButtons={{
           LEFT: MOUSE.PAN,
           MIDDLE: MOUSE.DOLLY,
-          RIGHT: MOUSE.ROTATE,
+          RIGHT: MOUSE.PAN,
         }}
         // Start looking at the center of the map
         target={[unitsWide / 2, 0, unitsHigh / 2]}

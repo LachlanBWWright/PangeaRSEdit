@@ -1,191 +1,145 @@
-import React from "react";
-import { useAtom } from "jotai";
-import {
-  itemFilterStateAtom,
-  FilterMode,
-  FILTER_PRESETS,
-  ItemFilterState,
-  FilterPreset,
-} from "@/data/items/itemFilterAtoms";
-import {
-  ItemCategory,
-  getCategoryDisplayName,
-  getAllCategories,
-} from "@/data/items/itemCategories";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import React, { useMemo, useState } from "react";
+import { useAtom, useAtomValue } from "jotai";
+import { itemFilterStateAtom, FilterMode, DEFAULT_FILTER_STATE } from "@/data/items/itemFilterAtoms";
+import { Globals } from "@/data/globals/globals";
 
 interface ItemFilterPanelProps {
   isOpen: boolean;
   onClose: () => void;
 }
 
-const CATEGORY_COLORS: Record<ItemCategory, string> = {
-  [ItemCategory.ENEMY]: "bg-red-500",
-  [ItemCategory.POWERUP]: "bg-green-500",
-  [ItemCategory.ENVIRONMENTAL]: "bg-blue-500",
-  [ItemCategory.TRIGGER]: "bg-yellow-500",
-  [ItemCategory.PLAYER]: "bg-purple-500",
-  [ItemCategory.UNKNOWN]: "bg-gray-500",
-};
-
 /**
- * Main filter panel component with category checkboxes and presets
+ * Item filter panel showing per-type toggles for all item types in the current game.
+ * Replaces the old category-based filter with individual item visibility controls.
  */
-export const ItemFilterPanel: React.FC<ItemFilterPanelProps> = ({
-  isOpen,
-  onClose,
-}) => {
+export const ItemFilterPanel: React.FC<ItemFilterPanelProps> = ({ isOpen, onClose }) => {
   const [filter, setFilter] = useAtom(itemFilterStateAtom);
+  const globals = useAtomValue(Globals);
+  const [search, setSearch] = useState("");
 
-  // Build default categories object with explicit typing to avoid type assertion
-  const defaultCategories: Record<ItemCategory, boolean> = {
-    [ItemCategory.ENEMY]: true,
-    [ItemCategory.POWERUP]: true,
-    [ItemCategory.ENVIRONMENTAL]: true,
-    [ItemCategory.TRIGGER]: true,
-    [ItemCategory.PLAYER]: true,
-    [ItemCategory.UNKNOWN]: true,
+  const allItemTypes = useMemo(() => {
+    const types = globals.ITEM_TYPES;
+    return Object.entries(types)
+      .map(([id, name]) => ({ id: Number(id), name }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }, [globals.ITEM_TYPES]);
+
+  const filteredTypes = useMemo(() => {
+    if (!search.trim()) return allItemTypes;
+    const q = search.toLowerCase();
+    return allItemTypes.filter((t) => t.name.toLowerCase().includes(q));
+  }, [allItemTypes, search]);
+
+  const isTypeVisible = (id: number): boolean => {
+    if (filter.mode === FilterMode.SHOW_ALL) return true;
+    if (filter.mode === FilterMode.HIDE_SELECTED) return !filter.itemTypes[id];
+    return !!filter.itemTypes[id];
   };
 
-  const defaultState: ItemFilterState = {
-    mode: FilterMode.SHOW_ALL,
-    categories: defaultCategories,
-    itemTypes: {},
-    searchQuery: "",
-    highlightedTypes: [],
+  const toggleType = (id: number) => {
+    const currentlyVisible = isTypeVisible(id);
+    if (currentlyVisible) {
+      // Hide this type
+      const newItemTypes = { ...filter.itemTypes, [id]: true as const };
+      setFilter({
+        ...filter,
+        mode: FilterMode.HIDE_SELECTED,
+        itemTypes: newItemTypes,
+      });
+    } else {
+      // Show this type — remove from hidden set
+      const newItemTypes = { ...filter.itemTypes };
+      delete newItemTypes[id];
+      const hasHidden = Object.values(newItemTypes).some(Boolean);
+      setFilter({
+        ...filter,
+        mode: hasHidden ? FilterMode.HIDE_SELECTED : FilterMode.SHOW_ALL,
+        itemTypes: newItemTypes,
+      });
+    }
   };
+
+  const showAll = () => setFilter(DEFAULT_FILTER_STATE);
+
+  const hideAll = () => {
+    const allHidden: Record<number, boolean | undefined> = {};
+    allItemTypes.forEach(({ id }) => {
+      allHidden[id] = true;
+    });
+    setFilter({ ...filter, mode: FilterMode.HIDE_SELECTED, itemTypes: allHidden });
+  };
+
+  const visibleCount = allItemTypes.filter((t) => isTypeVisible(t.id)).length;
 
   if (!isOpen) return null;
 
   return (
-    <div className="absolute top-4 right-16 w-80 max-w-[calc(100%-2rem)] bg-gray-900/95 rounded-lg shadow-xl z-50 border border-gray-700 max-h-[80vh] overflow-y-auto">
-      <div className="p-4">
-        <div className="flex justify-between items-center mb-4">
-          <h3 className="text-lg font-semibold text-white">Item Filters</h3>
+    <div className="absolute top-full right-0 mt-1 w-72 bg-gray-900/97 rounded-lg shadow-2xl z-50 border border-gray-700 flex flex-col max-h-[min(80vh,420px)]">
+      {/* Header */}
+      <div className="flex justify-between items-center px-3 py-2 border-b border-gray-700 flex-none">
+        <span className="text-sm font-semibold text-white">
+          Item Visibility ({visibleCount}/{allItemTypes.length})
+        </span>
+        <button
+          onClick={onClose}
+          className="text-gray-400 hover:text-white transition-colors text-lg leading-none"
+          aria-label="Close filter panel"
+        >
+          ✕
+        </button>
+      </div>
+
+      {/* Search + Toggle-all row */}
+      <div className="px-3 py-2 border-b border-gray-700 flex-none space-y-2">
+        <input
+          type="text"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search item types…"
+          className="w-full bg-gray-800 text-white text-sm rounded px-2 py-1 border border-gray-600 focus:border-blue-500 focus:outline-none"
+        />
+        <div className="flex gap-2">
           <button
-            onClick={onClose}
-            className="text-gray-400 hover:text-white transition-colors"
-            aria-label="Close filter panel"
+            onClick={showAll}
+            className="flex-1 py-1 text-xs bg-blue-700 hover:bg-blue-600 text-white rounded transition-colors"
           >
-            ✕
+            Show All
+          </button>
+          <button
+            onClick={hideAll}
+            className="flex-1 py-1 text-xs bg-gray-700 hover:bg-gray-600 text-white rounded transition-colors"
+          >
+            Hide All
           </button>
         </div>
+      </div>
 
-        {/* Filter Mode Selection */}
-        <div className="mb-4">
-          <label className="block text-sm text-gray-400 mb-2">Filter Mode</label>
-          <Select
-            value={filter.mode}
-            onValueChange={(value) => {
-              const selectedMode =
-                value === FilterMode.SHOW_ALL
-                  ? FilterMode.SHOW_ALL
-                  : value === FilterMode.SHOW_SELECTED
-                  ? FilterMode.SHOW_SELECTED
-                  : FilterMode.HIDE_SELECTED;
-              setFilter({
-                ...filter,
-                mode: selectedMode,
-              });
-            }}
-          >
-            <SelectTrigger className="w-full bg-gray-800 border-gray-600 text-white focus:border-blue-500">
-              <SelectValue placeholder="Select filter mode" />
-            </SelectTrigger>
-            <SelectContent className="bg-gray-800 border-gray-600">
-              <SelectItem value={FilterMode.SHOW_ALL} className="text-white focus:bg-gray-600">
-                Show All Items
-              </SelectItem>
-              <SelectItem value={FilterMode.SHOW_SELECTED} className="text-white focus:bg-gray-600">
-                Show Selected Only
-              </SelectItem>
-              <SelectItem value={FilterMode.HIDE_SELECTED} className="text-white focus:bg-gray-600">
-                Hide Selected
-              </SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-
-        {/* Quick Presets */}
-        <div className="mb-4">
-          <label className="block text-sm text-gray-400 mb-2">Quick Presets</label>
-          <div className="flex flex-wrap gap-2">
-            {FILTER_PRESETS.map((preset: FilterPreset) => (
-              <button
-                key={preset.name}
-                onClick={() => setFilter({ ...filter, ...preset.state })}
-                className="px-3 py-1 text-xs bg-blue-600 hover:bg-blue-500 text-white rounded transition-colors"
-                title={preset.description}
-              >
-                {preset.name}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Category Checkboxes */}
-        <div className="mb-4">
-          <label className="block text-sm text-gray-400 mb-2">Categories</label>
-          <div className="space-y-2">
-            {getAllCategories().map((category) => (
+      {/* Per-type toggle list */}
+      <div className="flex-1 overflow-y-auto px-1 py-1">
+        {filteredTypes.length === 0 ? (
+          <p className="text-gray-500 text-xs text-center py-3">No items match</p>
+        ) : (
+          filteredTypes.map(({ id, name }) => {
+            const visible = isTypeVisible(id);
+            return (
               <label
-                key={category}
-                className="flex items-center gap-2 cursor-pointer hover:bg-gray-800 p-1 rounded"
+                key={id}
+                className="flex items-center gap-2 px-2 py-1 rounded cursor-pointer hover:bg-gray-800 transition-colors"
               >
                 <input
                   type="checkbox"
-                  checked={filter.categories[category]}
-                  onChange={(e) =>
-                    setFilter({
-                      ...filter,
-                      categories: {
-                        ...filter.categories,
-                        [category]: e.target.checked,
-                      },
-                    })
-                  }
-                  className="w-4 h-4 rounded border-gray-600 focus:ring-blue-500"
+                  checked={visible}
+                  onChange={() => toggleType(id)}
+                  className="w-3.5 h-3.5 accent-blue-500 cursor-pointer"
                 />
-                <span
-                  className={`w-3 h-3 rounded-full ${CATEGORY_COLORS[category]}`}
-                />
-                <span className="text-white capitalize">
-                  {getCategoryDisplayName(category)}
+                <span className={`text-xs truncate ${visible ? "text-white" : "text-gray-500 line-through"}`}>
+                  {name}
                 </span>
+                <span className="ml-auto text-xs text-gray-600 flex-none">{id}</span>
               </label>
-            ))}
-          </div>
-        </div>
-
-        {/* Search */}
-        <div className="mb-4">
-          <label className="block text-sm text-gray-400 mb-2">
-            Search Items
-          </label>
-          <input
-            type="text"
-            value={filter.searchQuery}
-            onChange={(e) =>
-              setFilter({ ...filter, searchQuery: e.target.value })
-            }
-            placeholder="Search by name..."
-            className="w-full bg-gray-800 text-white rounded p-2 border border-gray-600 focus:border-blue-500 focus:outline-none"
-          />
-        </div>
-
-        {/* Reset Button */}
-        <button
-          onClick={() => setFilter(defaultState)}
-          className="w-full py-2 bg-gray-700 hover:bg-gray-600 text-white rounded transition-colors"
-        >
-          Reset Filters
-        </button>
+            );
+          })
+        )}
       </div>
     </div>
   );

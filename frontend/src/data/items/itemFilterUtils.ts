@@ -5,112 +5,65 @@
  */
 
 import { ItemFilterState, FilterMode } from "./itemFilterAtoms";
-import { ItemCategory, categorizeItem } from "./itemCategories";
+import { ItemCategory } from "./itemCategories";
 
 /**
  * Get the item type name for display/search purposes.
- * This should be provided by the game's item type mapping.
  */
 type GetItemTypeName = (itemType: number) => string | undefined;
 
 /**
  * Check if an item should be visible based on current filter state.
  * 
- * @param itemType - The numeric item type ID
- * @param filter - Current filter state
- * @param getTypeName - Function to get the display name for an item type
- * @returns true if the item should be visible
+ * In HIDE_SELECTED mode, items with `itemTypes[id] === true` are hidden.
+ * In SHOW_SELECTED mode, only items with `itemTypes[id] === true` are shown.
+ * In SHOW_ALL mode, all items are visible.
  */
 export function isItemVisible(
   itemType: number,
   filter: ItemFilterState,
-  getTypeName: GetItemTypeName,
+  _getTypeName?: GetItemTypeName,
 ): boolean {
-  // Show all mode bypasses filtering
-  if (filter.mode === FilterMode.SHOW_ALL) {
-    return true;
-  }
+  if (filter.mode === FilterMode.SHOW_ALL) return true;
 
-  // Check for specific item type override first
   const typeOverride = filter.itemTypes[itemType];
   if (typeOverride !== undefined) {
-    return filter.mode === FilterMode.SHOW_SELECTED
-      ? typeOverride
-      : !typeOverride;
+    return filter.mode === FilterMode.SHOW_SELECTED ? typeOverride : !typeOverride;
   }
 
-  // Fall back to category-based filtering
-  const typeName = getTypeName(itemType);
-  if (!typeName) {
-    // Unknown type - use the UNKNOWN category setting
-    const categoryEnabled = filter.categories[ItemCategory.UNKNOWN];
-    return filter.mode === FilterMode.SHOW_SELECTED
-      ? categoryEnabled
-      : !categoryEnabled;
-  }
-
-  const category = categorizeItem(typeName);
-  const categoryEnabled = filter.categories[category];
-
-  return filter.mode === FilterMode.SHOW_SELECTED
-    ? categoryEnabled
-    : !categoryEnabled;
+  // No explicit override — in SHOW_SELECTED mode items default to hidden;
+  // in HIDE_SELECTED mode they default to visible.
+  return filter.mode !== FilterMode.SHOW_SELECTED;
 }
 
 /**
  * Check if an item matches the current search query for highlighting.
- * 
- * @param itemType - The numeric item type ID
- * @param filter - Current filter state
- * @param getTypeName - Function to get the display name for an item type
- * @returns true if the item matches the search query, false if no match or no active search
  */
 export function itemMatchesSearch(
   itemType: number,
   filter: ItemFilterState,
   getTypeName: GetItemTypeName,
 ): boolean {
-  if (!filter.searchQuery) {
-    return false; // No active search - no items should be highlighted
-  }
-
+  if (!filter.searchQuery) return false;
   const typeName = getTypeName(itemType);
-  if (!typeName) {
-    return false;
-  }
-
-  const lowerQuery = filter.searchQuery.toLowerCase();
-  return typeName.toLowerCase().includes(lowerQuery);
+  if (!typeName) return false;
+  return typeName.toLowerCase().includes(filter.searchQuery.toLowerCase());
 }
 
 /**
  * Get a list of visible item type IDs based on filter state.
- * 
- * @param allTypeIds - Array of all item type IDs in the level
- * @param filter - Current filter state
- * @param getTypeName - Function to get the display name for an item type
- * @returns Array of item type IDs that should be visible
  */
 export function getVisibleItemTypes(
   allTypeIds: number[],
   filter: ItemFilterState,
-  getTypeName: GetItemTypeName,
+  getTypeName?: GetItemTypeName,
 ): number[] {
-  if (filter.mode === FilterMode.SHOW_ALL) {
-    return allTypeIds;
-  }
-
-  return allTypeIds.filter((typeId) =>
-    isItemVisible(typeId, filter, getTypeName)
-  );
+  if (filter.mode === FilterMode.SHOW_ALL) return allTypeIds;
+  return allTypeIds.filter((typeId) => isItemVisible(typeId, filter, getTypeName));
 }
 
 /**
- * Count items by category.
- * 
- * @param items - Array of items with a type property
- * @param getTypeName - Function to get the display name for an item type
- * @returns Record of category to count
+ * Count items by category (kept for backwards compatibility).
  */
 export function countItemsByCategory(
   items: { type: number }[],
@@ -124,16 +77,21 @@ export function countItemsByCategory(
     [ItemCategory.PLAYER]: 0,
     [ItemCategory.UNKNOWN]: 0,
   };
-
   for (const item of items) {
-    const typeName = getTypeName(item.type);
-    const category = typeName
-      ? categorizeItem(typeName)
-      : ItemCategory.UNKNOWN;
+    const name = getTypeName(item.type) ?? "";
+    const category = categorizeItemSimple(name);
     counts[category]++;
   }
-
   return counts;
+}
+
+function categorizeItemSimple(name: string): ItemCategory {
+  if (/enemy|alien|monster|boss|walker|attacker/i.test(name)) return ItemCategory.ENEMY;
+  if (/powerup|pow_|health|ammo|weapon|pickup|bonus|token|coin|gem|clover|acorn/i.test(name)) return ItemCategory.POWERUP;
+  if (/trigger|zone|checkpoint|gate|door|switch|teleport|portal|warp/i.test(name)) return ItemCategory.TRIGGER;
+  if (/startcoords|exitrocket|exit|spawn|start|playerstart|camera/i.test(name)) return ItemCategory.PLAYER;
+  if (/plant|tree|rock|bush|flower|grass|fence|barrel|crate|decoration|scenery|building|structure|prop|water|bridge|platform/i.test(name)) return ItemCategory.ENVIRONMENTAL;
+  return ItemCategory.UNKNOWN;
 }
 
 /**
