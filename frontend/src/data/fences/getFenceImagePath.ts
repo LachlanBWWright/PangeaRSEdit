@@ -24,11 +24,27 @@ export function getFenceImagePath(
       return `assets/bugdom/fences/${2000 + fallbackIndex}.jpg`;
     }
 
-    case Game.BILLY_FRONTIER:
-      // Billy Frontier uses global002.png to global007.png
-      return `assets/billyFrontier/fences/global${String(
-        fenceType + 2,
-      ).padStart(3, "0")}.png`;
+    case Game.BILLY_FRONTIER: {
+      // Map fence types to the actual sprite filenames from the Billy Frontier source.
+      // Based on games/billyfrontier/Source/Terrain/Fences.c and Source/Headers/sobjtypes.h:
+      // FENCE_TYPE_WOOD     -> GLOBAL_SObjType_Fence_Wood      (global003.png)
+      // FENCE_TYPE_WHITE    -> GLOBAL_SObjType_Fence_White     (global004.png)
+      // FENCE_TYPE_CANYON   -> STAMPEDE_SObjType_Fence_Canyon (stampede000.png)
+      // FENCE_TYPE_TALLGRASS-> GLOBAL_SObjType_Fence_TallGrass(global005.png)
+      // FENCE_TYPE_SMALLGRASS->GLOBAL_SObjType_Fence_SmallGrass(global006.png)
+      // FENCE_TYPE_SWAMPTREE-> GLOBAL_SObjType_Fence_SwampTree (global007.png)
+      // FENCE_TYPE_PICKETFENCE-> GLOBAL_SObjType_Fence_PicketFence (global002.png)
+      const billyFiles = [
+        "global003.png", // WOOD
+        "global004.png", // WHITE
+        "stampede000.png", // CANYON (stampede group)
+        "global005.png", // TALLGRASS
+        "global006.png", // SMALLGRASS
+        "global007.png", // SWAMPTREE
+        "global002.png", // PICKETFENCE
+      ];
+      return `assets/billyFrontier/fences/${billyFiles[fenceType] || "global003.png"}`;
+    }
 
     case Game.CRO_MAG: {
       // CroMag has specific file names for each fence type
