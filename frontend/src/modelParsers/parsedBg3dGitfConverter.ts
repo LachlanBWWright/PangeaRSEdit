@@ -414,10 +414,15 @@ export function bg3dParsedToGLTF(
     });
 
     // Set alpha mode based on BG3D material flags.
-    // BG3D_MATERIALFLAG_ALWAYSBLEND means the game uses GL_BLEND (smooth transparency).
-    // Textured materials without ALWAYSBLEND still use ARGB1555 textures with a 1-bit
-    // alpha channel, so use MASK mode (hard cutout) with 0.5 threshold.
-    if (mat.flags & BG3DMaterialFlags.BG3D_MATERIALFLAG_ALWAYSBLEND) {
+    // JPEG textures (Nanosaur 2) are opaque unless they carry a separate alpha channel
+    // (jpegAlphaData). Using BLEND on a fully-opaque texture forces Three.js into the
+    // transparent render pass and causes depth-sorting artefacts.
+    const hasJpegTexture = mat.textures.some((t) => t.isJpeg);
+    const hasJpegAlpha = mat.textures.some((t) => t.isJpeg && t.jpegAlphaData);
+    if (hasJpegTexture && !hasJpegAlpha) {
+      // No separate alpha channel: texture is fully opaque regardless of ALWAYSBLEND flag.
+      m.setAlphaMode("OPAQUE");
+    } else if (mat.flags & BG3DMaterialFlags.BG3D_MATERIALFLAG_ALWAYSBLEND) {
       m.setAlphaMode("BLEND");
     } else if (mat.flags & BG3DMaterialFlags.BG3D_MATERIALFLAG_TEXTURED) {
       m.setAlphaMode("MASK");
@@ -455,6 +460,14 @@ export function bg3dParsedToGLTF(
 
           // Decompress JPEG
           const imageData = decodeJpegNode(payloadBuffer.buffer);
+
+          // Apply separate per-pixel alpha channel when present (Nanosaur 2 JPEG format).
+          // Without this the alpha remains 255 (fully opaque) and transparent cutouts appear opaque.
+          if (tex.jpegAlphaData && tex.jpegAlphaData.length === imageData.width * imageData.height) {
+            for (let k = 0; k < tex.jpegAlphaData.length; k++) {
+              imageData.data[k * 4 + 3] = tex.jpegAlphaData[k] ?? 255;
+            }
+          }
 
           // Convert to PNG
           const jpegPngBuffer = rgba8ToPng(

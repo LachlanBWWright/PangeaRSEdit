@@ -34,11 +34,14 @@ export const BugdomSupertiles = memo(
     terrainData,
     tileImages,
     xlatTable,
+    layerKey = 1000,
   }: {
     headerData: HeaderData;
     terrainData: TerrainData;
     tileImages: HTMLCanvasElement[];
     xlatTable?: { idx: number }[];
+    /** Which Layr resource to render: 1000 = floor, 1001 = roof/ceiling */
+    layerKey?: 1000 | 1001;
   }) => {
     const globals = useAtomValue(Globals);
     const [selectedTile, setSelectedTile] = useAtom(SelectedTile);
@@ -52,11 +55,11 @@ export const BugdomSupertiles = memo(
 
     // Build all supertile images from individual tiles
     const supertileImages = useMemo(() => {
-      if (!terrainData.Layr?.[1000]?.obj || tileImages.length === 0) {
+      if (!terrainData.Layr?.[layerKey]?.obj || tileImages.length === 0) {
         return [];
       }
 
-      const layerData = terrainData.Layr[1000].obj;
+      const layerData = terrainData.Layr[layerKey].obj;
 
       // Detect invalid/test data by checking if Layr values are sequential
       // Real Bugdom data has tile indices (typically < numTiles) with flip/rotate bits
@@ -100,7 +103,7 @@ export const BugdomSupertiles = memo(
 
       return buildAllBugdomSupertiles(
         headerData,
-        terrainData.Layr[1000].obj,
+        terrainData.Layr[layerKey].obj,
         xlatTable,
         tileImages,
         tilesPerSupertile,
@@ -115,6 +118,7 @@ export const BugdomSupertiles = memo(
       tileSize,
       header.mapWidth,
       header.mapHeight,
+      layerKey,
       ]);
 
     return (

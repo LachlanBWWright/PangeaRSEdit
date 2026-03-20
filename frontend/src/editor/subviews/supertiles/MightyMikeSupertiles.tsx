@@ -288,16 +288,20 @@ const MightyMikeSupertilesComponent = ({
     return canvas;
   }, [showAltMap, altMapFlat, mapWidth, mapHeight]);
 
-  /** Map a Konva Image click/mousemove to a tile index using the stage pointer position. */
+  /** Map a Konva Image click/mousemove to a tile index in the tile grid's coordinate space. */
   const getTileIndexFromEvent = useCallback(
     (e: Konva.KonvaEventObject<MouseEvent>): number | null => {
       const stage = e.target.getStage();
-      const pos = stage?.getPointerPosition();
+      // getRelativePointerPosition accounts for stage scale and translation,
+      // returning the pointer position in the stage's local coordinate system.
+      const pos = stage?.getRelativePointerPosition();
       if (!pos) return null;
       const col = Math.floor(pos.x / TILE_SIZE);
       const row = Math.floor(pos.y / TILE_SIZE);
+      const mapHeight = Math.ceil(layr.length / mapWidth);
+      if (col < 0 || row < 0 || col >= mapWidth || row >= mapHeight) return null;
       const tileIdx = row * mapWidth + col;
-      if (tileIdx < 0 || tileIdx >= layr.length) return null;
+      if (tileIdx >= layr.length) return null;
       return tileIdx;
     },
     [mapWidth, layr.length],
