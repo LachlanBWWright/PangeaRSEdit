@@ -21,6 +21,7 @@ import { Items } from "../subviews/Items";
 import { Fences } from "../subviews/Fences";
 import { Splines } from "../subviews/Splines";
 import { IndividualTileSupertiles } from "../subviews/supertiles/IndividualTileSupertiles";
+import { Tiles } from "../subviews/Tiles";
 import {
   HeaderData,
   ItemData,
@@ -61,6 +62,7 @@ export function Bugdom1KonvaView({
   splineData,
   setSplineData,
   terrainData,
+  setTerrainData,
   mapImages,
   view,
   stage,
@@ -201,6 +203,16 @@ export function Bugdom1KonvaView({
             headerData={headerData}
             terrainData={terrainData}
             mapImages={mapImages}
+          />
+        )}
+
+        {/* Topology / flag overlay (tiles view) */}
+        {view === View.tiles && (
+          <Tiles
+            headerData={headerData}
+            terrainData={terrainData}
+            setTerrainData={setTerrainData}
+            isEditingTopology={true}
           />
         )}
 

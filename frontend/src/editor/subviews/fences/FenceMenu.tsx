@@ -89,8 +89,8 @@ export const FenceMenu = memo(function FenceMenu({
         </p>
       )}
 
-      {/* Two-column layout: left = type + nub controls + delete; right = preview */}
-      <div className="grid grid-cols-[1fr_auto] gap-2 w-full">
+      {/* Two-column layout: left = type + nub controls + delete; right = preview (when available) */}
+      <div className={fencePreviewPath ? "grid grid-cols-[1fr_auto] gap-2 w-full" : "w-full"}>
         {/* Left column */}
         <div className="flex flex-col gap-2">
           {fenceDataObj !== null && fenceDataObj !== undefined && (

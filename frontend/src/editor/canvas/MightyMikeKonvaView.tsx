@@ -162,8 +162,8 @@ export function MightyMikeKonvaView({
           />
         )}
 
-        {/* Items - shown except when in tiles view */}
-        {view !== View.tiles && itemData && (
+        {/* Items - always shown */}
+        {itemData && (
           <MightyMikeItems
             itemData={itemData}
             setItemData={setItemDataNotNull}

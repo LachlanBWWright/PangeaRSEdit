@@ -417,13 +417,26 @@ export function bg3dParsedToGLTF(
     // JPEG textures (Nanosaur 2) are opaque unless they carry a separate alpha channel
     // (jpegAlphaData). Using BLEND on a fully-opaque texture forces Three.js into the
     // transparent render pass and causes depth-sorting artefacts.
+    // JPEG alpha data represents hard cutout transparency (like window/glass outlines),
+    // so MASK (alphaTest=0.5) is preferable over BLEND — it avoids the depth-sort pass
+    // entirely while still punching out the transparent pixels correctly.
     const hasJpegTexture = mat.textures.some((t) => t.isJpeg);
     const hasJpegAlpha = mat.textures.some((t) => t.isJpeg && t.jpegAlphaData);
-    if (hasJpegTexture && !hasJpegAlpha) {
-      // No separate alpha channel: texture is fully opaque regardless of ALWAYSBLEND flag.
-      m.setAlphaMode("OPAQUE");
+    if (hasJpegTexture) {
+      if (hasJpegAlpha) {
+        // Hard-cutout alpha (binary mask) — MASK avoids depth-sort issues.
+        m.setAlphaMode("MASK");
+        m.setAlphaCutoff(0.5);
+      } else {
+        // No separate alpha channel: texture is fully opaque.
+        m.setAlphaMode("OPAQUE");
+      }
     } else if (mat.flags & BG3DMaterialFlags.BG3D_MATERIALFLAG_ALWAYSBLEND) {
-      m.setAlphaMode("BLEND");
+      // For ARGB16 (1-bit alpha) textures with ALWAYSBLEND, use MASK rather than BLEND.
+      // ARGB16 stores binary alpha (1=opaque, 0=transparent), so MASK is more correct
+      // and avoids the transparent render pass (which causes depth-sorting artefacts).
+      m.setAlphaMode("MASK");
+      m.setAlphaCutoff(0.5);
     } else if (mat.flags & BG3DMaterialFlags.BG3D_MATERIALFLAG_TEXTURED) {
       m.setAlphaMode("MASK");
       m.setAlphaCutoff(0.5);

@@ -296,12 +296,12 @@ export function IntroPrompt() {
       return;
     }
 
-    // Strip HTMLCanvasElement references (e.g. tileset.tileImages) before cloning
+    // Strip HTMLCanvasElement references (e.g. tileset.tileImages, collisionImages) before cloning
     const rawCombined = combinedDataResult.value as Record<string, unknown>;
     const rawTileset = rawCombined.tileset;
     let cloneableCombined: typeof rawCombined;
-    if (rawTileset && typeof rawTileset === "object" && "tileImages" in rawTileset) {
-      const { tileImages: _tileImagesStripped, ...sanitizedTileset } = rawTileset as Record<string, unknown>;
+    if (rawTileset && typeof rawTileset === "object") {
+      const { tileImages: _tileImagesStripped, collisionImages: _collisionImagesStripped, ...sanitizedTileset } = rawTileset as Record<string, unknown>;
       cloneableCombined = { ...rawCombined, tileset: sanitizedTileset };
     } else {
       cloneableCombined = rawCombined;

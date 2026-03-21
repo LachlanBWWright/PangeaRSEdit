@@ -211,43 +211,42 @@ const MightyMikeSupertilesComponent = ({
 
   /**
    * Pre-bake collision overlay: renders a single canvas for all collision tiles.
-   * Only recomputed when collision data or mapImages change.
+   * Every non-empty tile has inherent collision in Mighty Mike — the pixel-accurate
+   * tileset masks (from the colour transparency list) show which pixels per tile are
+   * solid.  TILE_PRIORITY_MASK (0x8000) is a rendering-priority flag (tile drawn over
+   * sprites), not a collision-only flag.
    */
   const collisionCanvas = useMemo<HTMLCanvasElement | null>(() => {
-    if (!showCollisionOverlay || mightyMikeTileValuesArray.length === 0) return null;
+    if (!showCollisionOverlay) return null;
     const canvas = document.createElement("canvas");
     canvas.width = mapWidth * TILE_SIZE;
     canvas.height = mapHeight * TILE_SIZE;
     const ctx = canvas.getContext("2d");
     if (!ctx) return null;
 
-    layr.forEach((_, i) => {
-      const tileValue = mightyMikeTileValuesArray[i];
-      if (!isRecord(tileValue)) return;
-      const hasCollisionMask = getBoolean(tileValue.hasCollisionMask);
-      if (!hasCollisionMask) return;
+    layr.forEach((rawTileIndex, i) => {
+      // tile index 0 is the blank/void tile (no visual, no collision)
+      if (rawTileIndex === 0 || rawTileIndex === undefined || rawTileIndex === null) return;
 
       const imgIdx = resolvedImageIndices[i];
-      const usePixelAccurateCollision = getBoolean(tileValue.usePixelAccurateCollision);
       const tx = (i % mapWidth) * TILE_SIZE;
       const ty = Math.floor(i / mapWidth) * TILE_SIZE;
 
-      if (usePixelAccurateCollision && imgIdx !== null && imgIdx < collisionImages.length) {
+      if (imgIdx !== null && imgIdx < collisionImages.length) {
         const collisionImg = collisionImages[imgIdx];
         if (collisionImg) {
           ctx.drawImage(collisionImg, tx, ty, TILE_SIZE, TILE_SIZE);
           return;
         }
       }
-      // Tile-based collision: solid blue overlay
-      ctx.fillStyle = "rgba(30, 100, 255, 0.35)";
+      // Fallback: solid orange overlay for tiles without a pixel-accurate mask
+      ctx.fillStyle = "rgba(200, 120, 0, 0.5)";
       ctx.fillRect(tx, ty, TILE_SIZE, TILE_SIZE);
     });
 
     return canvas;
   }, [
     showCollisionOverlay,
-    mightyMikeTileValuesArray,
     resolvedImageIndices,
     collisionImages,
     layr,
@@ -267,7 +266,7 @@ const MightyMikeSupertilesComponent = ({
     const ctx = canvas.getContext("2d");
     if (!ctx) return null;
 
-    ctx.font = `bold ${Math.floor(TILE_SIZE * 0.55)}px sans-serif`;
+    ctx.font = `bold ${Math.floor(TILE_SIZE * 0.8)}px sans-serif`;
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
 
@@ -277,10 +276,10 @@ const MightyMikeSupertilesComponent = ({
       if (!option) return;
       const tx = (i % mapWidth) * TILE_SIZE;
       const ty = Math.floor(i / mapWidth) * TILE_SIZE;
-      // Semi-transparent background tint
-      ctx.fillStyle = `${option.color}66`;
+      // Semi-transparent dark background so the arrow is always legible
+      ctx.fillStyle = "rgba(0,0,0,0.55)";
       ctx.fillRect(tx, ty, TILE_SIZE, TILE_SIZE);
-      // Glyph
+      // Fully-opaque glyph in the option colour
       ctx.fillStyle = option.color === "transparent" ? "#ffffff" : option.color;
       ctx.fillText(option.glyph, tx + TILE_SIZE / 2, ty + TILE_SIZE / 2);
     });
@@ -383,8 +382,8 @@ const MightyMikeSupertilesComponent = ({
         />
       )}
 
-      {/* Selected tile highlight */}
-      {!showAltMap && selectedTile !== null && selX >= 0 && selY >= 0 && (
+      {/* Selected tile highlight - always shown (even when viewing alt-map) */}
+      {selectedTile !== null && selX >= 0 && selY >= 0 && (
         <Rect
           x={selX}
           y={selY}

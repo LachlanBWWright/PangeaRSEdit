@@ -22,16 +22,16 @@ export const AltMapBrushValue = atom<number>(0);
 /** Arrow glyphs and labels for each alt-tile value. */
 export const ALT_TILE_OPTIONS: { value: number; label: string; glyph: string; color: string }[] = [
   { value: 0,  label: "None",       glyph: "○", color: "transparent" },
-  { value: 1,  label: "Up",         glyph: "↑", color: "#22c55e" },
-  { value: 2,  label: "Up-Right",   glyph: "↗", color: "#4ade80" },
-  { value: 3,  label: "Right",      glyph: "→", color: "#16a34a" },
-  { value: 4,  label: "Down-Right", glyph: "↘", color: "#86efac" },
-  { value: 5,  label: "Down",       glyph: "↓", color: "#15803d" },
-  { value: 6,  label: "Down-Left",  glyph: "↙", color: "#bbf7d0" },
-  { value: 7,  label: "Left",       glyph: "←", color: "#166534" },
-  { value: 8,  label: "Left-Up",    glyph: "↖", color: "#dcfce7" },
-  { value: 9,  label: "Stop",       glyph: "✕", color: "#ef4444" },
-  { value: 10, label: "Loop",       glyph: "↺", color: "#3b82f6" },
+  { value: 1,  label: "Up",         glyph: "↑", color: "#ff0000" },
+  { value: 2,  label: "Up-Right",   glyph: "↗", color: "#ff2200" },
+  { value: 3,  label: "Right",      glyph: "→", color: "#ff0000" },
+  { value: 4,  label: "Down-Right", glyph: "↘", color: "#ff2200" },
+  { value: 5,  label: "Down",       glyph: "↓", color: "#ff0000" },
+  { value: 6,  label: "Down-Left",  glyph: "↙", color: "#ff2200" },
+  { value: 7,  label: "Left",       glyph: "←", color: "#ff0000" },
+  { value: 8,  label: "Left-Up",    glyph: "↖", color: "#ff2200" },
+  { value: 9,  label: "Stop",       glyph: "✕", color: "#ffffff" },
+  { value: 10, label: "Loop",       glyph: "↺", color: "#ffff00" },
 ];
 
 export function MightyMikeAltMapEditorPanel() {
