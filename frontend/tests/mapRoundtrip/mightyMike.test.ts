@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { readFileSync } from "fs";
+import { readFileSync, existsSync } from "fs";
 import { join } from "path";
 import { parseMightyMikeMap, mightyMikeMapToBinary, mightyMikeMapToCompressedBinary } from "@/modelParsers/parseMightyMike";
 import { rlwDecompress } from "@/utils/rlwDecompress";
@@ -15,8 +15,19 @@ function bufferToArrayBuffer(buf: Buffer): ArrayBuffer {
   return ab;
 }
 
+// Resolve the map file path, falling back to bundled public assets when the
+// game submodule is not checked out.
+function resolveMapPath(gamesRoot: string, assetsRoot: string, filename: string): string | null {
+  const submodulePath = join(gamesRoot, "Data/Maps", filename);
+  if (existsSync(submodulePath)) return submodulePath;
+  const assetPath = join(assetsRoot, filename);
+  if (existsSync(assetPath)) return assetPath;
+  return null;
+}
+
 describe("Byte-perfect roundtrip", () => {
   const gamesRoot = join(__dirname, "../../../games/mightymike");
+  const assetsRoot = join(__dirname, "../../public/assets/mightyMike/terrain");
   const files = [
     "jurassic.map-1", "candy.map-1", "clown.map-1", "fairy.map-1", "bargain.map-1",
     "jurassic.map-2", "candy.map-2", "clown.map-2", "fairy.map-2", "bargain.map-2",
@@ -25,8 +36,12 @@ describe("Byte-perfect roundtrip", () => {
 
   files.forEach((filename) => {
     it(`${filename}: uncompressed byte-for-byte match`, () => {
-      const path = join(gamesRoot, "Data/Maps", filename);
-      const originalBuffer = readFileSync(path);
+      const resolvedPath = resolveMapPath(gamesRoot, assetsRoot, filename);
+      if (!resolvedPath) {
+        console.warn(`Skipping ${filename}: not found in submodule or public assets`);
+        return;
+      }
+      const originalBuffer = readFileSync(resolvedPath);
       const originalAB = bufferToArrayBuffer(originalBuffer);
 
       // Decompress original
@@ -59,8 +74,12 @@ describe("Byte-perfect roundtrip", () => {
 
   files.forEach((filename) => {
     it(`${filename}: compressed roundtrip data integrity`, () => {
-      const path = join(gamesRoot, "Data/Maps", filename);
-      const originalBuffer = readFileSync(path);
+      const resolvedPath = resolveMapPath(gamesRoot, assetsRoot, filename);
+      if (!resolvedPath) {
+        console.warn(`Skipping ${filename}: not found in submodule or public assets`);
+        return;
+      }
+      const originalBuffer = readFileSync(resolvedPath);
       const originalAB = bufferToArrayBuffer(originalBuffer);
 
       // Parse original

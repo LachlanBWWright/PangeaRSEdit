@@ -405,14 +405,28 @@ export function IntroPrompt() {
     // For RSRC_FORK games (e.g., Bugdom 1) the texture data (Timg) is
     // embedded in the same resource file; skip the separate texture
     // compression/download flow and finish here.
-    // Also skip image download for Mighty Mike (2D game) and Nanosaur (TRT file handles images differently? No, wait)
-    // Nanosaur 1 uses .trt files which are separate but not handled here.
-    // But standard .ter download is done.
-    // Mighty Mike doesn't use mapImages in the same way (tileset).
+    // Mighty Mike doesn't need a separate image download (tileset is not re-encoded).
     if (
       globals.DATA_TYPE === DataType.RSRC_FORK ||
       globals.DATA_TYPE === DataType.MIGHTY_MIKE
     ) {
+      toast.success("Map Downloaded!");
+      return;
+    }
+
+    // For Nanosaur 1 (TRT_FILE), download the original .trt file directly — the raw
+    // 16-bit ARGB1555 format is incompatible with the LZSS-based re-encoding below.
+    if (globals.DATA_TYPE === DataType.TRT_FILE) {
+      if (mapImagesFile) {
+        const trtBuffer = await mapImagesFile.arrayBuffer();
+        const trtBlob = new Blob([trtBuffer], { type: "application/octet-stream" });
+        const trtUrl = URL.createObjectURL(trtBlob);
+        const trtLink = document.createElement("a");
+        trtLink.href = trtUrl;
+        trtLink.setAttribute("download", mapImagesFile.name);
+        trtLink.click();
+        URL.revokeObjectURL(trtUrl);
+      }
       toast.success("Map Downloaded!");
       return;
     }

@@ -43,6 +43,7 @@ export function SkeletonConversionPanel({
     const bg3dBuffer = bg3dBufferResult.value;
 
     let skeletonData: SkeletonResource | undefined;
+    let skeletonRawBuffer: ArrayBuffer | undefined;
 
     // Parse skeleton file if provided using TypeScript implementation
     if (skeletonFile) {
@@ -52,9 +53,9 @@ export function SkeletonConversionPanel({
         setLoading(false);
         return;
       }
-      const skeletonArrayBuffer = skeletonBufferResult.value;
+      skeletonRawBuffer = skeletonBufferResult.value;
 
-      const skeletonParseResult = await fromPromise(parseSkeletonRsrc(skeletonArrayBuffer));
+      const skeletonParseResult = await fromPromise(parseSkeletonRsrc(skeletonRawBuffer));
       if (skeletonParseResult.isErr()) {
         toast.error(`Failed to parse skeleton file: ${skeletonParseResult.error.message}`);
         setLoading(false);
@@ -86,6 +87,7 @@ export function SkeletonConversionPanel({
                   type: "bg3d-with-skeleton-to-glb",
                   bg3dBuffer,
                   skeletonData,
+                  skeletonBuffer: skeletonRawBuffer,
                 }
               : {
                   type: "bg3d-to-glb",
@@ -137,6 +139,11 @@ export function SkeletonConversionPanel({
         document.body.removeChild(a);
         setTimeout(() => URL.revokeObjectURL(url), 1000);
 
+        // If we converted BG3D to GLB and have a skeleton, also include the skeleton file.
+        // When converting GLB back to BG3D, also download the preserved skeleton if present.
+        const skeletonResultBuffer =
+          result.type === "glb-to-bg3d" ? result.skeletonResult : undefined;
+
         // If we converted BG3D to GLB and we have animations, also generate skeleton file
         if (
           conversionType === "bg3d-to-glb" &&
@@ -176,6 +183,24 @@ export function SkeletonConversionPanel({
 
             toast.success(`${title} conversion completed with skeleton file`);
           }
+        } else if (skeletonResultBuffer) {
+          // GLB → BG3D: download preserved skeleton.rsrc alongside the BG3D file
+          const skeletonBlob = new Blob([skeletonResultBuffer], {
+            type: "application/octet-stream",
+          });
+          const skeletonUrl = URL.createObjectURL(skeletonBlob);
+          const skeletonLink = document.createElement("a");
+          skeletonLink.href = skeletonUrl;
+          skeletonLink.download = bg3dFile.name.replace(
+            /\.glb$/i,
+            ".skeleton.rsrc",
+          );
+          document.body.appendChild(skeletonLink);
+          skeletonLink.click();
+          document.body.removeChild(skeletonLink);
+          setTimeout(() => URL.revokeObjectURL(skeletonUrl), 1000);
+
+          toast.success(`${title} conversion completed with skeleton file`);
         } else {
           toast.success(`${title} conversion completed`);
         }

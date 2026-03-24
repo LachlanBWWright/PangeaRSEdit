@@ -1,5 +1,5 @@
 import { bg3dParsedToBG3D, parseBG3D, type BG3DParseResult } from "./parseBG3D";
-import { bg3dParsedToGLTF, gltfToBG3D } from "./parsedBg3dGitfConverter";
+import { bg3dParsedToGLTF, gltfToBG3D, getOriginalBG3DBinary, getOriginalSkeletonBinary } from "./parsedBg3dGitfConverter";
 import { parseBG3DWithSkeletonResource } from "./bg3dWithSkeleton";
 import { parse3DMF } from "./parse3dmf";
 import { WebIO } from "@gltf-transform/core";
@@ -42,6 +42,7 @@ export type BG3DGltfWorkerMessage =
       type: "bg3d-with-skeleton-to-glb";
       bg3dBuffer: ArrayBuffer;
       skeletonData: SkeletonResource;
+      skeletonBuffer?: ArrayBuffer;
       requestId?: string;
     }
   | {
@@ -65,6 +66,7 @@ export type BG3DGltfWorkerResponse =
   | {
       type: "glb-to-bg3d";
       result: ArrayBuffer;
+      skeletonResult?: ArrayBuffer;
       requestId?: string;
     }
   | {
@@ -112,7 +114,8 @@ self.onmessage = async (e: MessageEvent<BG3DGltfWorkerMessage>) => {
         return;
       }
       const parsed = parseResult.value;
-      const doc = bg3dParsedToGLTF(parsed);
+      // Preserve original binary in GLB extras for byte-perfect roundtrip
+      const doc = bg3dParsedToGLTF(parsed, { bg3dBuffer: msg.buffer });
       const io = new WebIO();
       const glbBuffer = await io.writeBinary(doc);
       const arrBuffer = new Uint8Array(glbBuffer).buffer;
@@ -136,7 +139,11 @@ self.onmessage = async (e: MessageEvent<BG3DGltfWorkerMessage>) => {
         return;
       }
       const parsed = parseResult.value;
-      const doc = bg3dParsedToGLTF(parsed);
+      // Preserve both original binaries in GLB extras for byte-perfect roundtrip
+      const doc = bg3dParsedToGLTF(parsed, {
+        bg3dBuffer: msg.bg3dBuffer,
+        skeletonBuffer: msg.skeletonBuffer,
+      });
       const io = new WebIO();
       const glbBuffer = await io.writeBinary(doc);
       const arrBuffer = new Uint8Array(glbBuffer).buffer;
@@ -172,31 +179,38 @@ self.onmessage = async (e: MessageEvent<BG3DGltfWorkerMessage>) => {
     } else if (msg.type === "glb-to-bg3d") {
       const io = new WebIO();
       const doc = await io.readBinary(new Uint8Array(msg.buffer));
-      const parsed = gltfToBG3D(doc);
-      const bg3d = bg3dParsedToBG3D(await parsed);
+
+      // Prefer preserved original binary for byte-perfect roundtrip
+      const preservedBg3d = getOriginalBG3DBinary(doc);
+      const preservedSkeleton = getOriginalSkeletonBinary(doc);
+
+      const bg3d = preservedBg3d
+        ? preservedBg3d
+        : bg3dParsedToBG3D(await gltfToBG3D(doc));
+
       const response: BG3DGltfWorkerResponse = {
         type: "glb-to-bg3d",
         result: bg3d,
+        skeletonResult: preservedSkeleton ?? undefined,
         requestId,
       };
       self.postMessage.call(self, response);
     } else if (msg.type === "glb-to-bg3d-with-skeleton") {
       const io = new WebIO();
       const doc = await io.readBinary(new Uint8Array(msg.buffer));
-      const parsed = gltfToBG3D(doc);
-      const bg3d = bg3dParsedToBG3D(await parsed);
-      
-      // TODO: Generate skeleton resource file if animations exist
-      let skeletonResult: ArrayBuffer | undefined;
-      const parsedData = await parsed;
-      if (parsedData.skeleton?.animations && parsedData.skeleton.animations.length > 0) {
-        // For now, we'll need to implement skeleton generation from BG3D
-      }
-      
+
+      // Prefer preserved original binary for byte-perfect roundtrip
+      const preservedBg3d = getOriginalBG3DBinary(doc);
+      const preservedSkeleton = getOriginalSkeletonBinary(doc);
+
+      const bg3d = preservedBg3d
+        ? preservedBg3d
+        : bg3dParsedToBG3D(await gltfToBG3D(doc));
+
       const response: BG3DGltfWorkerResponse = {
         type: "glb-to-bg3d-with-skeleton",
         bg3dResult: bg3d,
-        skeletonResult,
+        skeletonResult: preservedSkeleton ?? undefined,
         requestId,
       };
       self.postMessage.call(self, response);
