@@ -72,6 +72,7 @@ export function ImageEditor({
 
   const stageRef = useRef<Konva.Stage>(null);
   const layerRef = useRef<Konva.Layer>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   // Predefined color palette (used only in free-color mode)
   const colorPalette = [
@@ -296,16 +297,37 @@ export function ImageEditor({
   };
 
   const zoomOut = () => {
-    setScale((current) => Math.max(baseScale * 0.5, current / 1.25));
+    setScale((current) => Math.max(baseScale * 0.1, current / 1.25));
   };
 
   const zoomIn = () => {
-    setScale((current) => Math.min(baseScale * 8, current * 1.25));
+    setScale((current) => Math.min(baseScale * 20, current * 1.25));
   };
 
   const resetZoom = () => {
     setScale(baseScale);
   };
+
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    const handleWheelNative = (e: WheelEvent) => {
+      e.preventDefault();
+      const scaleBy = 1.1;
+      const direction = e.deltaY > 0 ? -1 : 1;
+      
+      setScale((current) => {
+        const newScale = direction > 0 ? current * scaleBy : current / scaleBy;
+        return Math.min(baseScale * 20, Math.max(baseScale * 0.1, newScale));
+      });
+    };
+
+    container.addEventListener("wheel", handleWheelNative, { passive: false, capture: true });
+    return () => {
+      container.removeEventListener("wheel", handleWheelNative, { capture: true });
+    };
+  }, [baseScale]);
 
   if (!image) {
     return (
@@ -331,35 +353,6 @@ export function ImageEditor({
           <DialogTitle className="text-white">
             Image Editor - {imageName || "Untitled"}
           </DialogTitle>
-          <div className="flex flex-wrap items-center gap-2">
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={undo}
-              disabled={historyIndex < 0}
-              title="Undo"
-            >
-              <Undo className="w-4 h-4" />
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={redo}
-              disabled={historyIndex >= history.length - 1}
-              title="Redo"
-            >
-              <Redo className="w-4 h-4" />
-            </Button>
-            <Button size="sm" variant="outline" onClick={zoomOut} title="Zoom out">
-              <ZoomOut className="w-4 h-4" />
-            </Button>
-            <Button size="sm" variant="outline" onClick={zoomIn} title="Zoom in">
-              <ZoomIn className="w-4 h-4" />
-            </Button>
-            <Button size="sm" variant="outline" onClick={resetZoom}>
-              {Math.round(scale * 100)}%
-            </Button>
-          </div>
         </DialogHeader>
 
         <div className="flex flex-1 gap-4 overflow-hidden">
@@ -377,52 +370,121 @@ export function ImageEditor({
           />
 
           {/* Canvas Area */}
-          <div className="flex-1 bg-gray-900 rounded overflow-hidden">
-            <div className="w-full h-full flex items-center justify-center">
-              <Stage
-                ref={stageRef}
-                width={Math.min(800, image.width * scale)}
-                height={Math.min(600, image.height * scale)}
-                scaleX={scale}
-                scaleY={scale}
-                onMouseDown={handleMouseDown}
-                onMouseMove={handleMouseMove}
-                onMouseUp={handleMouseUp}
-                className="border border-gray-600"
+          <div className="flex-1 bg-gray-900 rounded overflow-hidden relative">
+            {/* Overlay Controls */}
+            <div className="absolute top-4 right-4 z-10 flex flex-row items-center gap-2 bg-gray-800/90 p-1.5 rounded-lg shadow-xl border border-gray-700">
+              <div className="flex items-center gap-1 border-r border-gray-700 pr-2 mr-1">
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-8 w-8 p-0 hover:bg-gray-700 text-gray-300"
+                  onClick={undo}
+                  disabled={historyIndex < 0}
+                  title="Undo"
+                >
+                  <Undo className="w-4 h-4" />
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-8 w-8 p-0 hover:bg-gray-700 text-gray-300"
+                  onClick={redo}
+                  disabled={historyIndex >= history.length - 1}
+                  title="Redo"
+                >
+                  <Redo className="w-4 h-4" />
+                </Button>
+              </div>
+              <div className="flex items-center gap-1">
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-8 w-8 p-0 hover:bg-gray-700 text-gray-300"
+                  onClick={zoomOut}
+                  title="Zoom out"
+                >
+                  <ZoomOut className="w-4 h-4" />
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-8 w-8 p-0 hover:bg-gray-700 text-gray-300"
+                  onClick={zoomIn}
+                  title="Zoom in"
+                >
+                  <ZoomIn className="w-4 h-4" />
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-8 px-2 text-[11px] font-medium hover:bg-gray-700 text-gray-300 min-w-[3rem]"
+                  onClick={resetZoom}
+                >
+                  {Math.round(scale * 100)}%
+                </Button>
+              </div>
+            </div>
+
+            <div 
+              ref={containerRef}
+              className="w-full h-full overflow-auto custom-scrollbar"
+            >
+
+              <div 
+                className="flex p-20"
+                style={{
+                  minWidth: "100%",
+                  minHeight: "100%",
+                  width: image.width * scale + 160,
+                  height: image.height * scale + 160
+                }}
               >
-                <Layer ref={layerRef}>
-                  <Image image={image} />
+                <div className="m-auto shadow-2xl border border-gray-800">
+                  <Stage
+                    ref={stageRef}
+                    width={image.width * scale}
+                    height={image.height * scale}
+                    scaleX={scale}
+                    scaleY={scale}
+                    onMouseDown={handleMouseDown}
+                    onMouseMove={handleMouseMove}
+                    onMouseUp={handleMouseUp}
+                  >
+                    <Layer ref={layerRef}>
+                      <Image image={image} />
 
-                  {/* Render completed strokes */}
-                  {strokes.map((stroke, i) => (
-                    <Line
-                      key={i}
-                      points={stroke.points}
-                      stroke={stroke.color}
-                      strokeWidth={stroke.size}
-                      lineCap={stroke.shape === "circle" ? "round" : "square"}
-                      lineJoin={stroke.shape === "circle" ? "round" : "miter"}
-                      globalCompositeOperation="source-over"
-                    />
-                  ))}
+                      {/* Render completed strokes */}
+                      {strokes.map((stroke, i) => (
+                        <Line
+                          key={i}
+                          points={stroke.points}
+                          stroke={stroke.color}
+                          strokeWidth={stroke.size}
+                          lineCap={stroke.shape === "circle" ? "round" : "square"}
+                          lineJoin={stroke.shape === "circle" ? "round" : "miter"}
+                          globalCompositeOperation="source-over"
+                        />
+                      ))}
 
-                  {/* Render current stroke */}
-                  {currentStroke && (
-                    <Line
-                      points={currentStroke.points}
-                      stroke={currentStroke.color}
-                      strokeWidth={currentStroke.size}
-                      lineCap={
-                        currentStroke.shape === "circle" ? "round" : "square"
-                      }
-                      lineJoin={
-                        currentStroke.shape === "circle" ? "round" : "miter"
-                      }
-                      globalCompositeOperation="source-over"
-                    />
-                  )}
-                </Layer>
-              </Stage>
+                      {/* Render current stroke */}
+                      {currentStroke && (
+                        <Line
+                          points={currentStroke.points}
+                          stroke={currentStroke.color}
+                          strokeWidth={currentStroke.size}
+                          lineCap={
+                            currentStroke.shape === "circle" ? "round" : "square"
+                          }
+                          lineJoin={
+                            currentStroke.shape === "circle" ? "round" : "miter"
+                          }
+                          globalCompositeOperation="source-over"
+                        />
+                      )}
+                    </Layer>
+                  </Stage>
+                </div>
+              </div>
             </div>
           </div>
         </div>

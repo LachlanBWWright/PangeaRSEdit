@@ -125,7 +125,7 @@ describe("3DMF → GLB → 3DMF structural roundtrip", () => {
       if (withSkeleton.skeleton) {
         expect(roundtripped.skeleton).toBeDefined();
         if (roundtripped.skeleton) {
-          expect(roundtripped.skeleton.numBones).toBe(withSkeleton.skeleton.numBones);
+          expect(roundtripped.skeleton.numJoints).toBe(withSkeleton.skeleton.numJoints);
         }
       }
 

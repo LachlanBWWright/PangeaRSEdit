@@ -139,8 +139,14 @@ export function useTextureManagement(options: UseTextureManagementOptions) {
               // Convert RGBA to ARGB16 format
               const rgba = new Uint8Array(imageData.data);
               const argb16 = rgba8ToArgb16(rgba);
-              // Create Uint8Array view of the ARGB16 buffer
-              newPixels = new Uint8Array(argb16.buffer, argb16.byteOffset, argb16.byteLength);
+              // Byte-swap to Big-Endian since BG3D/3DMF expect it
+              const swapped = new Uint16Array(argb16.length);
+              for (let i = 0; i < argb16.length; i++) {
+                const val = argb16[i] ?? 0;
+                swapped[i] = ((val & 0xff) << 8) | ((val >> 8) & 0xff);
+              }
+              // Create Uint8Array view of the swapped ARGB16 buffer
+              newPixels = new Uint8Array(swapped.buffer, swapped.byteOffset, swapped.byteLength);
             } else if (existingTexture.isJpeg) {
               // JPEG textures should not be edited - they have complex format
               toast.error("JPEG textures cannot be edited directly");

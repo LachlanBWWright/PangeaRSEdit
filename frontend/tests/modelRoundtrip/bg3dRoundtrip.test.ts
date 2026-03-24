@@ -147,7 +147,7 @@ describe("BG3D structural roundtrip (without preserved binary)", () => {
       if (parsed.skeleton) {
         expect(roundtripped.skeleton).toBeDefined();
         if (roundtripped.skeleton) {
-          expect(roundtripped.skeleton.numBones).toBe(parsed.skeleton.numBones);
+          expect(roundtripped.skeleton.numJoints).toBe(parsed.skeleton.numJoints);
         }
       }
 

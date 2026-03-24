@@ -3,6 +3,7 @@
  * These functions don't depend on external state and can be composed
  */
 import { tryFn } from "@/types/result";
+import { hexToRgb as hexToRgbUtil, rgbToHex as rgbToHexUtil } from "@/utils/colorUtils";
 
 export interface PaletteColor {
   r: number; // 0-255
@@ -90,22 +91,14 @@ export function renamePalette(palette: Palette, newName: string): Palette {
  * Convert RGB to Hex string
  */
 export function rgbToHex(color: PaletteColor): string {
-  const hex = (n: number) => n.toString(16).padStart(2, "0");
-  return `#${hex(color.r)}${hex(color.g)}${hex(color.b)}`;
+  return rgbToHexUtil(color.r, color.g, color.b);
 }
 
 /**
  * Convert Hex string to RGB
  */
 export function hexToRgb(hex: string): PaletteColor | null {
-  const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-  return result && result[1] && result[2] && result[3]
-    ? {
-        r: parseInt(result[1], 16),
-        g: parseInt(result[2], 16),
-        b: parseInt(result[3], 16),
-      }
-    : null;
+  return hexToRgbUtil(hex);
 }
 
 /**

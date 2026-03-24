@@ -130,41 +130,94 @@ function parseModelWithSkeletonResource(
               normalIndices: [],
             };
           }
-          const boneObj = bone;
-          const coord = isRecord(boneObj.coord)
-            ? boneObj.coord
-            : { x: 0, y: 0, z: 0 };
-          const pointList = getNumberArray(boneObj.pointList);
-          const normalList = getNumberArray(boneObj.normalList);
+          
+          // In SkeletonResource, bone is a BoneEntry like { name, order, obj }
+          // We need to access bone.obj for the actual bone data
+          const boneEntry = bone;
+          const boneObj = isRecord(boneEntry.obj) ? boneEntry.obj : boneEntry;
+          
+          // Handle both old formats (coord.x, pointList) and new formats (coordX, pointIndices)
+          const coordX = typeof boneObj.coordX === "number" ? boneObj.coordX : 
+                         (isRecord(boneObj.coord) && typeof boneObj.coord.x === "number" ? boneObj.coord.x : 0);
+          const coordY = typeof boneObj.coordY === "number" ? boneObj.coordY : 
+                         (isRecord(boneObj.coord) && typeof boneObj.coord.y === "number" ? boneObj.coord.y : 0);
+          const coordZ = typeof boneObj.coordZ === "number" ? boneObj.coordZ : 
+                         (isRecord(boneObj.coord) && typeof boneObj.coord.z === "number" ? boneObj.coord.z : 0);
+          
+          const pointList = getNumberArray(boneObj.pointIndices || boneObj.pointList);
+          const normalList = getNumberArray(boneObj.normalIndices || boneObj.normalList);
+          
+          // Note: rsrcdump might use 'parentBone', 'name', 'numPointsAttachedToBone' directly on obj
           return {
-            parentBone:
-              typeof boneObj.parentBone === "number" ? boneObj.parentBone : -1,
-            name:
-              typeof boneObj.name === "string" ? boneObj.name : `bone_${index}`,
-            coordX: typeof coord.x === "number" ? coord.x : 0,
-            coordY: typeof coord.y === "number" ? coord.y : 0,
-            coordZ: typeof coord.z === "number" ? coord.z : 0,
-            numPointsAttachedToBone: pointList.length,
-            numNormalsAttachedToBone: normalList.length,
+            parentBone: typeof boneObj.parentBone === "number" ? boneObj.parentBone : -1,
+            name: typeof boneObj.name === "string" ? boneObj.name : 
+                  (typeof boneEntry.name === "string" ? boneEntry.name : `bone_${index}`),
+            coordX,
+            coordY,
+            coordZ,
+            numPointsAttachedToBone: typeof boneObj.numPointsAttachedToBone === "number" ? boneObj.numPointsAttachedToBone : pointList.length,
+            numNormalsAttachedToBone: typeof boneObj.numNormalsAttachedToBone === "number" ? boneObj.numNormalsAttachedToBone : normalList.length,
             pointIndices: pointList,
             normalIndices: normalList,
           };
         }),
-        animations:
-          animEntries.length > 0
-            ? animEntries.map((anim: unknown, animIndex: number) => {
-                const animName =
-                  isRecord(anim) && typeof anim.name === "string"
-                    ? anim.name
-                    : `anim_${animIndex}`;
-                return {
-                  name: animName,
-                  numAnimEvents: 0,
-                  events: [],
-                  keyframes: {},
-                };
-              })
-            : [],
+        animations: (() => {
+          const anims: any[] = [];
+          const animHeaderEntries = Object.entries(skeleton.AnHd || {});
+          animHeaderEntries.sort(([a], [b]) => parseInt(a, 10) - parseInt(b, 10));
+
+          animHeaderEntries.forEach(([animId, animEntry]) => {
+            const animHeader = animEntry.obj;
+            const animResourceId = parseInt(animId, 10);
+            const animIndex = animResourceId - 1000;
+
+            const events: any[] = [];
+            const eventEntry = skeleton.Evnt?.[animId];
+            if (eventEntry) {
+              eventEntry.obj.forEach((event: any) => {
+                events.push({
+                  time: event.time,
+                  type: event.type,
+                  value: event.value,
+                });
+              });
+            }
+
+            const keyframes: Record<number, any[]> = {};
+            for (let boneIndex = 0; boneIndex < boneEntries.length; boneIndex++) {
+              keyframes[boneIndex] = [];
+              const keyframeResourceId = (1000 + animIndex * 100 + boneIndex).toString();
+              const keyframeEntry = skeleton.KeyF?.[keyframeResourceId];
+
+              if (keyframeEntry && keyframeEntry.obj && Array.isArray(keyframeEntry.obj)) {
+                keyframeEntry.obj.forEach((keyframe: any) => {
+                  keyframes[boneIndex]?.push({
+                    tick: keyframe.tick,
+                    accelerationMode: keyframe.accelerationMode,
+                    coordX: keyframe.coordX,
+                    coordY: keyframe.coordY,
+                    coordZ: keyframe.coordZ,
+                    rotationX: keyframe.rotationX,
+                    rotationY: keyframe.rotationY,
+                    rotationZ: keyframe.rotationZ,
+                    scaleX: keyframe.scaleX,
+                    scaleY: keyframe.scaleY,
+                    scaleZ: keyframe.scaleZ,
+                  });
+                });
+              }
+            }
+
+            anims.push({
+              name: typeof animHeader?.animName === "string" ? animHeader.animName : 
+                    (typeof animEntry.name === "string" ? animEntry.name : `anim_${animIndex}`),
+              numAnimEvents: events.length,
+              events,
+              keyframes,
+            });
+          });
+          return anims;
+        })(),
       };
     }
 
