@@ -65,7 +65,6 @@ export function SkeletonConversionPanel({
       pushLog(`Read ${bg3dBuffer.byteLength} bytes from ${bg3dFile.name}.`);
 
       let skeletonData: SkeletonResource | undefined;
-      let skeletonRawBuffer: ArrayBuffer | undefined;
 
       if (skeletonFile) {
         pushLog(`Reading skeleton file ${skeletonFile.name}.`);
@@ -79,7 +78,7 @@ export function SkeletonConversionPanel({
           toast.error(message);
           return;
         }
-        skeletonRawBuffer = skeletonBufferResult.value;
+        const skeletonRawBuffer = skeletonBufferResult.value;
         pushLog(
           `Read ${skeletonRawBuffer.byteLength} bytes from ${skeletonFile.name}.`,
         );
@@ -123,7 +122,6 @@ export function SkeletonConversionPanel({
                   type: "bg3d-with-skeleton-to-glb",
                   bg3dBuffer,
                   skeletonData,
-                  skeletonBuffer: skeletonRawBuffer,
                 }
               : {
                   type: "bg3d-to-glb",

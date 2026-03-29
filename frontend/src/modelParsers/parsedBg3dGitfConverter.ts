@@ -52,7 +52,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 // Type guard for BG3DGroup
 function isBG3DGroup(value: unknown): value is BG3DGroup {
   if (!isRecord(value)) return false;
-  return typeof value.materialNum === "number";
+  return "children" in value && Array.isArray(value.children);
 }
 
 /**
@@ -1453,23 +1453,37 @@ export async function gltfToBG3D(doc: Document): Promise<BG3DParseResult> {
     };
   }
 
-  function processNode(node: Node): BG3DGroup | BG3DGeometry {
+  function processNode(node: Node): BG3DGroup {
     const mesh = node.getMesh();
     if (mesh) {
-      // Use processMesh to extract geometry from mesh
-      return processMesh(mesh);
+      // Wrap geometry in a group (BG3D structure: groups contain geometry)
+      return { children: [processMesh(mesh)] };
     }
 
     // Process child nodes
     const children: (BG3DGroup | BG3DGeometry)[] = [];
     const nodeChildren = node.listChildren();
     for (const childNode of nodeChildren) {
-      children.push(processNode(childNode));
+      children.push(...flattenNodeToGroupItems(childNode));
     }
     return { children };
   }
 
-  // Process scene hierarchy
+  // Flatten a node tree into items suitable for a BG3D group
+  function flattenNodeToGroupItems(node: Node): (BG3DGroup | BG3DGeometry)[] {
+    const mesh = node.getMesh();
+    if (mesh) {
+      return [processMesh(mesh)];
+    }
+    const items: (BG3DGroup | BG3DGeometry)[] = [];
+    for (const child of node.listChildren()) {
+      items.push(...flattenNodeToGroupItems(child));
+    }
+    return items;
+  }
+
+  // Process scene hierarchy - collect all meshes into a single root group
+  // BG3D format: root group → one sub-group per model → geometry
   const scene = doc.getRoot().listScenes()[0];
   if (!scene) {
     return {
@@ -1478,12 +1492,27 @@ export async function gltfToBG3D(doc: Document): Promise<BG3DParseResult> {
       skeleton,
     };
   }
-  const childNodes = scene.listChildren();
-  const groups: BG3DGroup[] = childNodes
-    .map((node) => processNode(node))
-    .filter(isBG3DGroup);
 
-    return {
+  // Collect all geometry from the scene (meshes may be at various levels)
+  function isGeometry(item: BG3DGroup | BG3DGeometry): item is BG3DGeometry {
+    return "numPoints" in item;
+  }
+  const allGeometry: BG3DGeometry[] = [];
+  for (const node of scene.listChildren()) {
+    const items = flattenNodeToGroupItems(node);
+    for (const item of items) {
+      if (isGeometry(item)) {
+        allGeometry.push(item);
+      }
+    }
+  }
+
+  // BG3D structure: root group contains one sub-group with all geometry items
+  const subGroup: BG3DGroup = { children: allGeometry };
+  const rootGroup: BG3DGroup = { children: [subGroup] };
+  const groups: BG3DGroup[] = allGeometry.length > 0 ? [rootGroup] : [];
+
+  return {
     materials,
     groups,
     skeleton,

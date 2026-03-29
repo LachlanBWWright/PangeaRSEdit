@@ -42,7 +42,6 @@ export type BG3DGltfWorkerMessage =
       type: "bg3d-with-skeleton-to-glb";
       bg3dBuffer: ArrayBuffer;
       skeletonData: SkeletonResource;
-      skeletonBuffer?: ArrayBuffer;
       requestId?: string;
     }
   | {
@@ -66,14 +65,12 @@ export type BG3DGltfWorkerResponse =
   | {
       type: "glb-to-bg3d";
       result: ArrayBuffer;
-      skeletonResult?: ArrayBuffer;
       parsed?: BG3DParseResult;
       requestId?: string;
     }
   | {
       type: "glb-to-bg3d-with-skeleton";
       bg3dResult: ArrayBuffer;
-      skeletonResult?: ArrayBuffer;
       parsed?: BG3DParseResult;
       requestId?: string;
     }
