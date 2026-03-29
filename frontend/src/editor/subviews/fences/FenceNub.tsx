@@ -4,7 +4,7 @@ import { SelectedFence } from "../../../data/fences/fenceAtoms";
 import { memo, useRef } from "react";
 import { getColour } from "./Fence";
 
-const NUB_RADIUS = 20;
+const NUB_RADIUS = 10;
 
 export const FenceNub = memo(
   ({

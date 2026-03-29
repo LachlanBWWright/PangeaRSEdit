@@ -1,4 +1,4 @@
-import { ItemData } from "@/python/structSpecs/LevelTypes";
+import { HeaderData, ItemData, TerrainData } from "@/python/structSpecs/LevelTypes";
 import { Layer, Rect } from "react-konva";
 import { Updater } from "use-immer";
 import { Item } from "./items/Item";
@@ -9,9 +9,13 @@ import { isItemVisible } from "@/data/items/itemFilterUtils";
 
 export const Items = memo(
   ({
+    headerData,
+    terrainData,
     itemData,
     setItemData,
   }: {
+    headerData: HeaderData;
+    terrainData: TerrainData;
     itemData: ItemData;
     setItemData: Updater<ItemData>;
   }) => {
@@ -40,7 +44,14 @@ export const Items = memo(
       <Layer>
         <Rect />
         {visibleItemIndices.map((itemIdx) => (
-          <Item key={itemIdx} itemData={itemData} setItemData={setItemData} itemIdx={itemIdx} />
+          <Item
+            key={itemIdx}
+            headerData={headerData}
+            terrainData={terrainData}
+            itemData={itemData}
+            setItemData={setItemData}
+            itemIdx={itemIdx}
+          />
         ))}
       </Layer>
     );

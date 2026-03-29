@@ -225,7 +225,12 @@ export function Bugdom1KonvaView({
             {view === View.fences && (
               <>
                 {itemData && (
-                  <Items itemData={itemData} setItemData={setItemDataNotNull} />
+                  <Items
+                    headerData={headerData}
+                    terrainData={terrainData}
+                    itemData={itemData}
+                    setItemData={setItemDataNotNull}
+                  />
                 )}
                 {splineData && (
                   <Splines
@@ -246,7 +251,12 @@ export function Bugdom1KonvaView({
             {view === View.splines && (
               <>
                 {itemData && (
-                  <Items itemData={itemData} setItemData={setItemDataNotNull} />
+                  <Items
+                    headerData={headerData}
+                    terrainData={terrainData}
+                    itemData={itemData}
+                    setItemData={setItemDataNotNull}
+                  />
                 )}
                 {fenceData && (
                   <Fences
@@ -279,7 +289,12 @@ export function Bugdom1KonvaView({
                   />
                 )}
                 {itemData && (
-                  <Items itemData={itemData} setItemData={setItemDataNotNull} />
+                  <Items
+                    headerData={headerData}
+                    terrainData={terrainData}
+                    itemData={itemData}
+                    setItemData={setItemDataNotNull}
+                  />
                 )}
               </>
             )}
@@ -294,7 +309,12 @@ export function Bugdom1KonvaView({
                   />
                 )}
                 {itemData && (
-                  <Items itemData={itemData} setItemData={setItemDataNotNull} />
+                  <Items
+                    headerData={headerData}
+                    terrainData={terrainData}
+                    itemData={itemData}
+                    setItemData={setItemDataNotNull}
+                  />
                 )}
                 {splineData && (
                   <Splines

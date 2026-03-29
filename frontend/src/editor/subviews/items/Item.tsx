@@ -1,14 +1,19 @@
 import { Updater } from "use-immer";
 import { ItemData } from "@/python/structSpecs/LevelTypes";
-import { Rect } from "react-konva";
+import { Image as KonvaImage, Rect } from "react-konva";
 import type Konva from "konva";
 import { SelectedItem } from "../../../data/items/itemAtoms";
 import { useAtomValue, useSetAtom } from "jotai";
-import { useState, useCallback, memo } from "react";
+import { useState, useCallback, memo, useMemo } from "react";
 import { Globals } from "@/data/globals/globals";
 import { getItemName } from "@/data/items/getItemNames";
 import { updateItem } from "../../../data/selectors";
-import { getLiquidPatchStyle, getLiquidPatchDimensions } from "@/data/items/liquidPatchItems";
+import {
+  getLiquidPatchStyle,
+  getLiquidPatchDimensions,
+  getLiquidPatchCanvas,
+} from "@/data/items/liquidPatchItems";
+import { HeaderData, TerrainData } from "@/python/structSpecs/LevelTypes";
 import {
   HoverNameTag,
   ITEM_BOX_OFFSET,
@@ -19,10 +24,14 @@ import {
 
 export const Item = memo(function Item({
   itemData,
+  headerData,
+  terrainData,
   setItemData,
   itemIdx,
 }: {
   itemData: ItemData;
+  headerData: HeaderData;
+  terrainData: TerrainData;
   setItemData: Updater<ItemData>;
   itemIdx: number;
 }) {
@@ -57,22 +66,105 @@ export const Item = memo(function Item({
 
   // Check if this is a liquid patch item (water, lava, honey, slime in Bugdom 1/Nanosaur 1)
   const liquidPatchStyle = getLiquidPatchStyle(globals, item.type);
-
-  // Render liquid patch items as rectangles to resemble water bodies
-  if (liquidPatchStyle) {
-    // Calculate dimensions based on item parameters
-    const dims = getLiquidPatchDimensions(
-      globals,
+  const liquidPatchDimensions = useMemo(
+    () =>
+      liquidPatchStyle
+        ? getLiquidPatchDimensions(
+            globals,
+            item.type,
+            item.p0,
+            item.p1,
+            item.p2,
+            item.p3,
+          )
+        : null,
+    [
+      globals.GAME_TYPE,
+      globals.TILE_SIZE,
+      globals.TILE_INGAME_SIZE,
       item.type,
       item.p0,
       item.p1,
       item.p2,
-      item.p3
-    );
+      item.p3,
+      liquidPatchStyle,
+    ],
+  );
+  const liquidPatchCanvas = useMemo(
+    () =>
+      liquidPatchStyle
+        ? getLiquidPatchCanvas(
+            globals,
+            headerData,
+            terrainData,
+            item.type,
+            item.p0,
+            item.p1,
+            item.p2,
+            item.p3,
+            item.x,
+            item.z,
+          )
+        : null,
+    [
+      globals.GAME_TYPE,
+      globals.TILE_SIZE,
+      globals.TILE_INGAME_SIZE,
+      headerData,
+      terrainData,
+      item.type,
+      item.p0,
+      item.p1,
+      item.p2,
+      item.p3,
+      item.x,
+      item.z,
+      liquidPatchStyle,
+    ],
+  );
+
+  // Render liquid patch items as rectangles to resemble water bodies
+  if (liquidPatchStyle) {
+    const dims = liquidPatchDimensions!;
 
     // Position is centered on the item coordinates
     const rectX = item.x - dims.width2D / 2;
     const rectZ = item.z - dims.depth2D / 2;
+
+    if (liquidPatchCanvas) {
+      return (
+        <>
+          <KonvaImage
+            image={liquidPatchCanvas.canvas}
+            x={rectX}
+            y={rectZ}
+            width={liquidPatchCanvas.width}
+            height={liquidPatchCanvas.height}
+            draggable
+            onMouseOver={handleMouseOver}
+            onMouseLeave={handleMouseLeave}
+            onMouseDown={handleMouseDown}
+            onDragStart={handleMouseDown}
+            onDragEnd={(e: Konva.KonvaEventObject<DragEvent>) => {
+              updateItem(setItemData, itemIdx, {
+                x: Math.round(e.target.x() + liquidPatchCanvas.width / 2),
+                z: Math.round(e.target.y() + liquidPatchCanvas.height / 2),
+              });
+            }}
+            perfectDrawEnabled={false}
+          />
+          {hovering && (
+            <HoverNameTag
+              x={rectX + liquidPatchCanvas.width + ITEM_TAG_GAP}
+              y={item.z - ITEM_BOX_OFFSET}
+              text={liquidPatchStyle.name}
+              fill={liquidPatchStyle.color2D}
+              textColor="white"
+            />
+          )}
+        </>
+      );
+    }
 
     return (
       <>

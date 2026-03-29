@@ -238,6 +238,8 @@ export function OttoMaticKonvaView({
           <>
             {liquidData && (
               <WaterBodies
+                headerData={headerData}
+                terrainData={terrainData}
                 liquidData={liquidData}
                 setLiquidData={setLiquidDataNotNull}
               />
@@ -249,7 +251,12 @@ export function OttoMaticKonvaView({
               />
             )}
             {itemData && (
-              <Items itemData={itemData} setItemData={setItemDataNotNull} />
+              <Items
+                headerData={headerData}
+                terrainData={terrainData}
+                itemData={itemData}
+                setItemData={setItemDataNotNull}
+              />
             )}
             {splineData && (
               <Splines
@@ -265,12 +272,19 @@ export function OttoMaticKonvaView({
           <>
             {liquidData && (
               <WaterBodies
+                headerData={headerData}
+                terrainData={terrainData}
                 liquidData={liquidData}
                 setLiquidData={setLiquidDataNotNull}
               />
             )}
             {itemData && (
-              <Items itemData={itemData} setItemData={setItemDataNotNull} />
+              <Items
+                headerData={headerData}
+                terrainData={terrainData}
+                itemData={itemData}
+                setItemData={setItemDataNotNull}
+              />
             )}
             {splineData && (
               <Splines
@@ -297,7 +311,12 @@ export function OttoMaticKonvaView({
               />
             )}
             {itemData && (
-              <Items itemData={itemData} setItemData={setItemDataNotNull} />
+              <Items
+                headerData={headerData}
+                terrainData={terrainData}
+                itemData={itemData}
+                setItemData={setItemDataNotNull}
+              />
             )}
             {splineData && (
               <Splines
@@ -307,6 +326,8 @@ export function OttoMaticKonvaView({
             )}
             {liquidData && (
               <WaterBodies
+                headerData={headerData}
+                terrainData={terrainData}
                 liquidData={liquidData}
                 setLiquidData={setLiquidDataNotNull}
               />
@@ -319,12 +340,19 @@ export function OttoMaticKonvaView({
           <>
             {liquidData && (
               <WaterBodies
+                headerData={headerData}
+                terrainData={terrainData}
                 liquidData={liquidData}
                 setLiquidData={setLiquidDataNotNull}
               />
             )}
             {itemData && (
-              <Items itemData={itemData} setItemData={setItemDataNotNull} />
+              <Items
+                headerData={headerData}
+                terrainData={terrainData}
+                itemData={itemData}
+                setItemData={setItemDataNotNull}
+              />
             )}
             {fenceData && (
               <Fences
@@ -346,6 +374,8 @@ export function OttoMaticKonvaView({
           <>
             {liquidData && (
               <WaterBodies
+                headerData={headerData}
+                terrainData={terrainData}
                 liquidData={liquidData}
                 setLiquidData={setLiquidDataNotNull}
               />
@@ -363,7 +393,12 @@ export function OttoMaticKonvaView({
               />
             )}
             {itemData && (
-              <Items itemData={itemData} setItemData={setItemDataNotNull} />
+              <Items
+                headerData={headerData}
+                terrainData={terrainData}
+                itemData={itemData}
+                setItemData={setItemDataNotNull}
+              />
             )}
           </>
         )}
