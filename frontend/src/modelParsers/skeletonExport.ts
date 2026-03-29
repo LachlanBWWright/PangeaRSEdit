@@ -150,9 +150,10 @@ export function bg3dSkeletonToSkeletonResource(
   const anHd: Record<string, AnHdEntry> = {};
   // Use provided evntData if available, otherwise create empty
   const evnt: Record<string, EvntEntry> = {};
-  if (hasEntries(evntData as Record<string, unknown> | undefined)) {
+  const evntRecord = getRecord(evntData);
+  if (hasEntries(evntRecord)) {
     // Copy the evntData entries safely
-    Object.entries(evntData).forEach(([key, value]) => {
+    Object.entries(evntRecord).forEach(([key, value]) => {
       if (isEvntEntry(value)) {
         evnt[key] = value;
       }
@@ -359,7 +360,7 @@ function convertRelPointsToRelPFormat(relPoints?: Record<string, [number, number
   const relP: Record<string, RelPEntry> = {};
   Object.entries(relPoints).forEach(([resourceId, points]) => {
     relP[resourceId] = {
-      name: `RelP_${resourceId}`,
+      name: "Relative Point Offset",
       order: parseInt(resourceId, 10),
       obj: points.map(([x, y, z]) => ({
         relOffsetX: x,

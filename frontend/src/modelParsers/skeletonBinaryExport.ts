@@ -18,6 +18,129 @@ export function getFinderInfo(): Uint8Array | undefined {
   return globalFinderInfo;
 }
 
+function cloneSkeletonResource(skeletonResource: SkeletonResource): SkeletonResource {
+  const cloned: SkeletonResource = {
+    _metadata: skeletonResource._metadata
+      ? { ...skeletonResource._metadata }
+      : undefined,
+    Hedr: Object.fromEntries(
+      Object.entries(skeletonResource.Hedr).map(([key, entry]) => [
+        key,
+        {
+          ...entry,
+          obj: { ...entry.obj },
+        },
+      ]),
+    ),
+    Bone: Object.fromEntries(
+      Object.entries(skeletonResource.Bone).map(([key, entry]) => [
+        key,
+        {
+          ...entry,
+          obj: { ...entry.obj },
+        },
+      ]),
+    ),
+    BonP: Object.fromEntries(
+      Object.entries(skeletonResource.BonP).map(([key, entry]) => [
+        key,
+        {
+          ...entry,
+          obj: entry.obj.map((point) => ({ ...point })),
+        },
+      ]),
+    ),
+    BonN: Object.fromEntries(
+      Object.entries(skeletonResource.BonN).map(([key, entry]) => [
+        key,
+        {
+          ...entry,
+          obj: entry.obj.map((normal) => ({ ...normal })),
+        },
+      ]),
+    ),
+  };
+
+  if (skeletonResource.RelP) {
+    cloned.RelP = Object.fromEntries(
+      Object.entries(skeletonResource.RelP).map(([key, entry]) => [
+        key,
+        {
+          ...entry,
+          obj: entry.obj.map((point) => ({ ...point })),
+        },
+      ]),
+    );
+  }
+
+  if (skeletonResource.AnHd) {
+    cloned.AnHd = Object.fromEntries(
+      Object.entries(skeletonResource.AnHd).map(([key, entry]) => [
+        key,
+        {
+          ...entry,
+          obj: { ...entry.obj },
+        },
+      ]),
+    );
+  }
+
+  if (skeletonResource.Evnt) {
+    cloned.Evnt = Object.fromEntries(
+      Object.entries(skeletonResource.Evnt).map(([key, entry]) => [
+        key,
+        {
+          ...entry,
+          obj: entry.obj.map((event) => ({ ...event })),
+        },
+      ]),
+    );
+  }
+
+  if (skeletonResource.NumK) {
+    cloned.NumK = Object.fromEntries(
+      Object.entries(skeletonResource.NumK).map(([key, entry]) => [
+        key,
+        {
+          ...entry,
+          obj: entry.obj.map((item) => ({ ...item })),
+        },
+      ]),
+    );
+  }
+
+  if (skeletonResource.KeyF) {
+    cloned.KeyF = Object.fromEntries(
+      Object.entries(skeletonResource.KeyF).map(([key, entry]) => [
+        key,
+        {
+          ...entry,
+          obj: entry.obj.map((keyframe) => ({ ...keyframe })),
+        },
+      ]),
+    );
+  }
+
+  if (
+    skeletonResource.alis &&
+    typeof skeletonResource.alis === "object" &&
+    !Array.isArray(skeletonResource.alis)
+  ) {
+    cloned.alis = Object.fromEntries(
+      Object.entries(skeletonResource.alis).map(([key, value]) => [
+        key,
+        value && typeof value === "object" && !Array.isArray(value)
+          ? { ...value }
+          : value,
+      ]),
+    );
+  } else if (skeletonResource.alis !== undefined) {
+    cloned.alis = skeletonResource.alis;
+  }
+
+  return cloned;
+}
+
 /**
  * Convert SkeletonResource JSON to binary .rsrc format
  * @param skeletonResource The skeleton resource to convert
@@ -30,9 +153,7 @@ export function skeletonResourceToBinary(
     "Converting SkeletonResource to binary format using rsrcdump-ts...",
   );
 
-  const binarySkeletonResource = JSON.parse(
-    JSON.stringify(skeletonResource),
-  ) as SkeletonResource;
+  const binarySkeletonResource = cloneSkeletonResource(skeletonResource);
 
   for (const entry of Object.values(binarySkeletonResource.Bone || {})) {
     const boneName = entry?.obj?.name;

@@ -12,6 +12,15 @@ import type { BG3DGltfWorkerResponse } from "@/modelParsers/bg3dGltfWorker";
 let workerBg3dResult: ArrayBuffer | null = null;
 let workerParsed: BG3DParseResult | null = null;
 
+function createMessageEvent<T>(data: T): MessageEvent<T> {
+  return new MessageEvent("message", { data });
+}
+
+interface WorkerScope {
+  postMessage: (response: BG3DGltfWorkerResponse) => void;
+  onmessage?: (e: MessageEvent<{ type: "glb-to-bg3d"; buffer: ArrayBuffer }>) => Promise<void> | void;
+}
+
 vi.mock("@/modelParsers/bg3dGltfWorker?worker", () => ({
   default: class MockWorker {
     onmessage?: (e: MessageEvent<BG3DGltfWorkerResponse>) => void;
@@ -22,16 +31,18 @@ vi.mock("@/modelParsers/bg3dGltfWorker?worker", () => ({
         throw new Error("workerBg3dResult was not initialized");
       }
 
-      this.onmessage?.({
-        data: {
+      this.onmessage?.(
+        createMessageEvent({
           type: "glb-to-bg3d",
           result: workerBg3dResult,
           parsed: workerParsed ?? undefined,
-        },
-      } as MessageEvent<BG3DGltfWorkerResponse>);
+        }),
+      );
     }
 
-    terminate() {}
+    terminate() {
+      return undefined;
+    }
   },
 }));
 
@@ -91,11 +102,8 @@ describe("3DMF download after GLB import", () => {
       ),
     );
 
-    const postMessage = vi.fn();
-    const workerScope = { postMessage } as {
-      postMessage: typeof postMessage;
-      onmessage?: (e: MessageEvent<any>) => Promise<void> | void;
-    };
+    const postMessage = vi.fn<(response: BG3DGltfWorkerResponse) => void>();
+    const workerScope: WorkerScope = { postMessage };
     vi.stubGlobal("self", workerScope);
 
     await import("@/modelParsers/bg3dGltfWorker");
@@ -103,14 +111,14 @@ describe("3DMF download after GLB import", () => {
       throw new Error("Expected worker onmessage to be installed");
     }
 
-    await workerScope.onmessage({
-      data: {
-        type: "glb-to-bg3d",
+    await workerScope.onmessage(
+      createMessageEvent({
+        type: "glb-to-bg3d" as const,
         buffer: glbBytes,
-      },
-    } as MessageEvent<any>);
+      }),
+    );
 
-    const response = postMessage.mock.calls.at(-1)?.[0] as BG3DGltfWorkerResponse;
+    const response = postMessage.mock.calls.at(-1)?.[0];
     if (response.type !== "glb-to-bg3d" || !response.parsed) {
       throw new Error("Expected parsed BG3D data from GLB import");
     }

@@ -4,7 +4,7 @@
  * Handles exporting models in various formats (BG3D, GLB, 3DMF) and textures
  */
 
-import { parseBG3D, type BG3DParseResult } from "../../../modelParsers/parseBG3D";
+import { parseBG3D } from "../../../modelParsers/parseBG3D";
 import BG3DGltfWorker from "../../../modelParsers/bg3dGltfWorker?worker";
 import type { BG3DGltfWorkerMessage, BG3DGltfWorkerResponse } from "../../../modelParsers/bg3dGltfWorker";
 import { bg3dParseResultToMetaFile, write3DMFFromMetaFile } from "../../../modelParsers/threeDMF";

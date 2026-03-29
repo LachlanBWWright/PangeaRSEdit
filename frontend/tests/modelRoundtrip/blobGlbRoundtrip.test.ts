@@ -25,25 +25,6 @@ function hexToLatin1(hex: string): string {
   return new TextDecoder("latin1").decode(bytes);
 }
 
-function expectExactByteMatch(
-  label: string,
-  original: ArrayBuffer,
-  recovered: ArrayBuffer,
-): void {
-  const originalBytes = new Uint8Array(original);
-  const recoveredBytes = new Uint8Array(recovered);
-  expect(recoveredBytes.length, `${label} length mismatch`).toBe(
-    originalBytes.length,
-  );
-
-  for (let i = 0; i < originalBytes.length; i++) {
-    expect(
-      recoveredBytes[i],
-      `${label} byte mismatch at offset ${i}`,
-    ).toBe(originalBytes[i]);
-  }
-}
-
 async function parseRawSkeletonJson(bytes: ArrayBuffer): Promise<Record<string, unknown>> {
   const result = await saveToJson(new Uint8Array(bytes), skeletonSpecs, [], []);
   expect(result.ok).toBe(true);
@@ -51,7 +32,74 @@ async function parseRawSkeletonJson(bytes: ArrayBuffer): Promise<Record<string, 
     return {};
   }
 
-  return JSON.parse(result.value) as Record<string, unknown>;
+  const parsed = JSON.parse(result.value);
+  return typeof parsed === "object" && parsed !== null && !Array.isArray(parsed)
+    ? parsed
+    : {};
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function getNestedRecord(
+  source: Record<string, unknown>,
+  key: string,
+): Record<string, unknown> | undefined {
+  const value = source[key];
+  return isRecord(value) ? value : undefined;
+}
+
+function getDataString(value: unknown): string {
+  if (!isRecord(value)) {
+    return "";
+  }
+  const data = value.data;
+  return typeof data === "string" ? data : "";
+}
+
+function getNumericProperty(
+  value: Record<string, unknown> | undefined,
+  key: string,
+): number | undefined {
+  const entry = value?.[key];
+  return typeof entry === "number" ? entry : undefined;
+}
+
+function createMessageEvent<T>(data: T): MessageEvent<T> {
+  return new MessageEvent("message", { data });
+}
+
+function diffOffset(left: ArrayBuffer, right: ArrayBuffer): number {
+  const a = new Uint8Array(left);
+  const b = new Uint8Array(right);
+  const limit = Math.min(a.length, b.length);
+  for (let i = 0; i < limit; i++) {
+    if (a[i] !== b[i]) {
+      return i;
+    }
+  }
+  return a.length === b.length ? -1 : limit;
+}
+
+function getExactByteMismatch(
+  label: string,
+  original: ArrayBuffer,
+  recovered: ArrayBuffer,
+): string | undefined {
+  const originalBytes = new Uint8Array(original);
+  const recoveredBytes = new Uint8Array(recovered);
+  if (recoveredBytes.length !== originalBytes.length) {
+    return `${label} length mismatch`;
+  }
+
+  for (let i = 0; i < originalBytes.length; i++) {
+    if (recoveredBytes[i] !== originalBytes[i]) {
+      return `${label} byte mismatch at offset ${i}`;
+    }
+  }
+
+  return undefined;
 }
 
 const blobBg3dPath = join(
@@ -82,14 +130,16 @@ vi.mock("@/modelParsers/bg3dGltfWorker?worker", () => ({
         return;
       }
 
-      await workerScope.onmessage({ data: message } as MessageEvent<BG3DGltfWorkerMessage>);
+      await workerScope.onmessage(createMessageEvent(message));
       const response = workerResponses.at(-1);
       if (response) {
-        this.onmessage?.({ data: response } as MessageEvent<BG3DGltfWorkerResponse>);
+        this.onmessage?.(createMessageEvent(response));
       }
     }
 
-    terminate() {}
+    terminate() {
+      return undefined;
+    }
   },
 }));
 
@@ -224,7 +274,7 @@ describe("Blob GLB roundtrip", () => {
     const originalSkeleton = bufferFromFile(blobSkeletonPath);
     const originalRaw = await parseRawSkeletonJson(originalSkeleton);
 
-    const originalAlis = originalRaw.alis as Record<string, unknown> | undefined;
+    const originalAlis = getNestedRecord(originalRaw, "alis");
     expect(originalAlis).toBeDefined();
     if (!originalAlis) {
       return;
@@ -287,7 +337,7 @@ describe("Blob GLB roundtrip", () => {
     expect(workerResponses.at(-1)?.skeletonResult).toBeUndefined();
 
     const recoveredRaw = await parseRawSkeletonJson(artifactsResult.value.skeletonBytes);
-    const recoveredAlias = recoveredRaw.alis as Record<string, unknown> | undefined;
+    const recoveredAlias = getNestedRecord(recoveredRaw, "alis");
     expect(recoveredAlias).toBeDefined();
     if (!recoveredAlias) {
       return;
@@ -297,19 +347,15 @@ describe("Blob GLB roundtrip", () => {
     const originalAliasHex = Object.fromEntries(
       Object.entries(originalAlis).map(([key, value]) => [
         key,
-        typeof value === "object" && value && "data" in value
-          ? String((value as { data?: string }).data ?? "")
-          : "",
+        getDataString(value),
       ]),
-    ) as Record<string, string>;
+    );
     const recoveredAliasHex = Object.fromEntries(
       Object.entries(recoveredAlias).map(([key, value]) => [
         key,
-        typeof value === "object" && value && "data" in value
-          ? String((value as { data?: string }).data ?? "")
-          : "",
+        getDataString(value),
       ]),
-    ) as Record<string, string>;
+    );
 
     expect(recoveredAliasHex["1000"]).toBe(originalAliasHex["1000"]);
     expect(recoveredAliasHex["1001"]).toBe(originalAliasHex["1001"]);
@@ -320,7 +366,7 @@ describe("Blob GLB roundtrip", () => {
           .filter(([key]) => key !== "_metadata")
           .map(([key, value]) => [
             key,
-            value && typeof value === "object" ? Object.keys(value as Record<string, unknown>).length : 0,
+            isRecord(value) ? Object.keys(value).length : 0,
           ]),
       );
 
@@ -333,8 +379,8 @@ describe("Blob GLB roundtrip", () => {
     console.log(
       "Blob skeleton alias keys (original/recovered):",
       JSON.stringify([
-        Object.keys((originalRaw.alis as Record<string, unknown>) || {}),
-        Object.keys((recoveredRaw.alis as Record<string, unknown>) || {}),
+        Object.keys(getNestedRecord(originalRaw, "alis") || {}),
+        Object.keys(getNestedRecord(recoveredRaw, "alis") || {}),
       ]),
     );
     const sectionDiffs: string[] = [];
@@ -342,11 +388,9 @@ describe("Blob GLB roundtrip", () => {
       if (key === "_metadata") {
         continue;
       }
-      try {
-        expect(recoveredRaw[key]).toEqual(originalRaw[key]);
-      } catch (error) {
+      if (JSON.stringify(recoveredRaw[key]) !== JSON.stringify(originalRaw[key])) {
         sectionDiffs.push(
-          `${key}: ${error instanceof Error ? error.message : String(error)}`,
+          `${key}: expected ${JSON.stringify(recoveredRaw[key])} to deeply equal ${JSON.stringify(originalRaw[key])}`,
         );
       }
     }
@@ -405,36 +449,20 @@ describe("Blob GLB roundtrip", () => {
     }
     expect(workerResponses.at(-1)?.skeletonResult).toBeUndefined();
 
-    const mismatches: string[] = [];
-    const diffOffset = (left: ArrayBuffer, right: ArrayBuffer): number => {
-      const a = new Uint8Array(left);
-      const b = new Uint8Array(right);
-      const limit = Math.min(a.length, b.length);
-      for (let i = 0; i < limit; i++) {
-        if (a[i] !== b[i]) {
-          return i;
-        }
-      }
-      return a.length === b.length ? -1 : limit;
-    };
-    try {
-      expectExactByteMatch(
+    expect(
+      getExactByteMismatch(
         "Blob BG3D",
         originalBg3d,
         artifactsResult.value.bg3dBytes,
-      );
-    } catch (error) {
-      mismatches.push(error instanceof Error ? error.message : String(error));
-    }
-    try {
-      expectExactByteMatch(
+      ),
+    ).toBeDefined();
+    expect(
+      getExactByteMismatch(
         "Blob skeleton.rsrc",
         originalSkeleton,
         artifactsResult.value.skeletonBytes,
-      );
-    } catch (error) {
-      mismatches.push(error instanceof Error ? error.message : String(error));
-    }
+      ),
+    ).toBeDefined();
     console.log(
       "Blob BG3D first differing offset:",
       diffOffset(originalBg3d, artifactsResult.value.bg3dBytes),
@@ -444,6 +472,19 @@ describe("Blob GLB roundtrip", () => {
       diffOffset(originalSkeleton, artifactsResult.value.skeletonBytes),
     );
 
-    expect(mismatches.length).toBeGreaterThan(0);
+    const originalRaw = await parseRawSkeletonJson(originalSkeleton);
+    const recoveredRaw = await parseRawSkeletonJson(artifactsResult.value.skeletonBytes);
+    const originalMetadata = getNestedRecord(originalRaw, "_metadata");
+    const recoveredMetadata = getNestedRecord(recoveredRaw, "_metadata");
+
+    expect(
+      diffOffset(originalSkeleton, artifactsResult.value.skeletonBytes),
+    ).toBe(8);
+    expect(getNumericProperty(originalMetadata, "junk1")).toBe(248743784);
+    expect(getNumericProperty(recoveredMetadata, "junk1")).toBe(0);
+    expect(getNumericProperty(originalMetadata, "junk2")).toBe(1498);
+    expect(getNumericProperty(recoveredMetadata, "junk2")).toBe(0);
+    expect(getNestedRecord(recoveredRaw, "Evnt")).toBeUndefined();
+    expect(getNestedRecord(originalRaw, "Evnt")).toBeDefined();
   });
 });

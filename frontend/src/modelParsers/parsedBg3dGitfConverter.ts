@@ -49,12 +49,6 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-// Type guard for BG3DGroup
-function isBG3DGroup(value: unknown): value is BG3DGroup {
-  if (!isRecord(value)) return false;
-  return "children" in value && Array.isArray(value.children);
-}
-
 /**
  * Matrix utilities for coordinate transformations
  */
@@ -1166,16 +1160,14 @@ export async function gltfToBG3D(doc: Document): Promise<BG3DParseResult> {
           refs: { meshIndex: number; vertexIndex: number }[];
         }
         const reverseDecomposedPointList: ReverseDecomposedPoint[] = [];
-        const REVERSE_MATCH_THRESHOLD = 0.001;
-
-        function reversePointsAreCloseEnough(
+        function reversePointsMatchExactly(
           p1: [number, number, number] | number[],
           p2: [number, number, number] | number[],
         ): boolean {
           return (
-            Math.abs(p1[0] - p2[0]) < REVERSE_MATCH_THRESHOLD &&
-            Math.abs(p1[1] - p2[1]) < REVERSE_MATCH_THRESHOLD &&
-            Math.abs(p1[2] - p2[2]) < REVERSE_MATCH_THRESHOLD
+            p1[0] === p2[0] &&
+            p1[1] === p2[1] &&
+            p1[2] === p2[2]
           );
         }
 
@@ -1212,7 +1204,7 @@ export async function gltfToBG3D(doc: Document): Promise<BG3DParseResult> {
                     const point = reverseDecomposedPointList[i];
                     if (
                       point &&
-                      reversePointsAreCloseEnough(vertex, point.realPoint)
+                      reversePointsMatchExactly(vertex, point.realPoint)
                     ) {
                       foundIndex = i;
                       break;
@@ -1328,12 +1320,8 @@ export async function gltfToBG3D(doc: Document): Promise<BG3DParseResult> {
         bones.forEach((bone, index) => {
           const pointSet = bonePointSets[index];
           const normalSet = boneNormalSets[index];
-          bone.pointIndices = pointSet
-            ? Array.from(pointSet).sort((a, b) => a - b)
-            : [];
-          bone.normalIndices = normalSet
-            ? Array.from(normalSet).sort((a, b) => a - b)
-            : [];
+          bone.pointIndices = pointSet ? Array.from(pointSet) : [];
+          bone.normalIndices = normalSet ? Array.from(normalSet) : [];
           bone.numPointsAttachedToBone = bone.pointIndices.length;
           bone.numNormalsAttachedToBone = bone.normalIndices.length;
         });
@@ -1505,22 +1493,6 @@ export async function gltfToBG3D(doc: Document): Promise<BG3DParseResult> {
       numPoints: vertices ? vertices.length : 0,
       numTriangles: triangles ? triangles.length : 0,
     };
-  }
-
-  function processNode(node: Node): BG3DGroup {
-    const mesh = node.getMesh();
-    if (mesh) {
-      // Wrap geometry in a group (BG3D structure: groups contain geometry)
-      return { children: [processMesh(mesh)] };
-    }
-
-    // Process child nodes
-    const children: (BG3DGroup | BG3DGeometry)[] = [];
-    const nodeChildren = node.listChildren();
-    for (const childNode of nodeChildren) {
-      children.push(...flattenNodeToGroupItems(childNode));
-    }
-    return { children };
   }
 
   // Flatten a node tree into items suitable for a BG3D group

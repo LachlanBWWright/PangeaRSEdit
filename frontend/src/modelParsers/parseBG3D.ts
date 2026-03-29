@@ -802,15 +802,10 @@ function convertSkeletonResourceToBG3D(
   // Extract alis data from skeleton resource (stored at skeleton.alis = { "1000": {...} })
   // We want to preserve just the inner structure { "1000": { name: "alis", order: 1000, data: "..." } }
   let alisData: Record<string, unknown> | undefined = undefined;
-  Object.keys(skeleton).forEach((key) => {
-    if (key.toLowerCase() === "alis") {
-      // Store the inner structure directly, not wrapped in another object
-      const skelKey = skeleton[key as keyof typeof skeleton];
-      if (isRecord(skelKey)) {
-        alisData = skelKey;
-      }
-    }
-  });
+  const maybeAlis = skeleton.alis;
+  if (isRecord(maybeAlis)) {
+    alisData = maybeAlis;
+  }
 
   return {
     version: header.version,

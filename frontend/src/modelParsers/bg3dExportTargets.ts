@@ -1,12 +1,12 @@
 import { Game } from "@/data/globals/globals";
 
-export type BG3DAliasResourceTarget = {
+export interface BG3DAliasResourceTarget {
   resourceId: number;
   name: "Limb BG3D Alias" | "Limb 3DMF Alias";
   companionExtension: "bg3d" | "3df";
-};
+}
 
-export type BG3DExportTarget = {
+export interface BG3DExportTarget {
   id: string;
   label: string;
   companionExtension: "bg3d" | "3df";
@@ -14,7 +14,7 @@ export type BG3DExportTarget = {
   aliasName: "Limb BG3D Alias" | "Limb 3DMF Alias";
   aliasPathPrefix: string;
   aliasResources?: BG3DAliasResourceTarget[];
-};
+}
 
 export const BG3D_EXPORT_TARGETS: BG3DExportTarget[] = [
   {

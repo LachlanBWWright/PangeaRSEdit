@@ -41,9 +41,12 @@ describe("Otto GLB skeleton RelP roundtrip", () => {
       expect(roundtripped.skeleton?.relPoints?.["1000"]?.length).toBe(
         parsed.skeleton?.relPoints?.["1000"]?.length,
       );
+      if (!roundtripped.skeleton) {
+        return;
+      }
 
       const roundtrippedResource = bg3dSkeletonToSkeletonResource(
-        roundtripped.skeleton!,
+        roundtripped.skeleton,
       );
       expect(roundtrippedResource.RelP?.["1000"]?.obj.length).toBe(
         parsed.skeleton?.relPoints?.["1000"]?.length,

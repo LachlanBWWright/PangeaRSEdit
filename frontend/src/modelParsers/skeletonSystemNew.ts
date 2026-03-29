@@ -1204,7 +1204,7 @@ export function extractAnimationsFromGLTF(
           }
           keyframe = {
             tick,
-            accelerationMode: 0,
+            accelerationMode: 1,
             coordX: localX,
             coordY: localY,
             coordZ: localZ,

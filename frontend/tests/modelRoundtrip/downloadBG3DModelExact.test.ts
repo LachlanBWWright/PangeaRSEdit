@@ -19,6 +19,15 @@ let workerBg3dResult: ArrayBuffer | null = null;
 let workerParsed: BG3DParseResult | null = null;
 let workerSkeletonResultSeen: ArrayBuffer | undefined | null = null;
 
+function createMessageEvent<T>(data: T): MessageEvent<T> {
+  return new MessageEvent("message", { data });
+}
+
+interface WorkerScope {
+  postMessage: ReturnType<typeof vi.fn<(response: BG3DGltfWorkerResponse) => void>>;
+  onmessage?: (e: MessageEvent<{ type: "glb-to-bg3d"; buffer: ArrayBuffer }>) => Promise<void> | void;
+}
+
 vi.mock("@/modelParsers/bg3dGltfWorker?worker", () => ({
   default: class MockWorker {
     onmessage?: (e: MessageEvent<BG3DGltfWorkerResponse>) => void;
@@ -30,17 +39,19 @@ vi.mock("@/modelParsers/bg3dGltfWorker?worker", () => ({
         return;
       }
 
-      this.onmessage?.({
-        data: {
+      this.onmessage?.(
+        createMessageEvent({
           type: "glb-to-bg3d",
           result: workerBg3dResult,
           skeletonResult: workerSkeletonResultSeen ?? undefined,
           parsed: workerParsed ?? undefined,
-        },
-      } as MessageEvent<BG3DGltfWorkerResponse>);
+        }),
+      );
     }
 
-    terminate() {}
+    terminate() {
+      return undefined;
+    }
   },
 }));
 
@@ -78,14 +89,14 @@ function hexPreview(bytes: Uint8Array, start: number, length = 16): string {
   );
 }
 
-type FlatResource = {
+interface FlatResource {
   type: string;
   num: number;
   name: string;
   flags: number;
   junk: number;
   data: Uint8Array;
-};
+}
 
 function flattenFork(bytes: ArrayBuffer): FlatResource[] {
   const loadResult = load(new Uint8Array(bytes));
@@ -216,11 +227,8 @@ describe("BG3D download after GLB import", () => {
       ),
     );
 
-    const workerScope = {
-      postMessage: vi.fn(),
-    } as {
-      postMessage: ReturnType<typeof vi.fn>;
-      onmessage?: (e: MessageEvent<any>) => Promise<void> | void;
+    const workerScope: WorkerScope = {
+      postMessage: vi.fn<(response: BG3DGltfWorkerResponse) => void>(),
     };
     vi.stubGlobal("self", workerScope);
 
@@ -230,16 +238,14 @@ describe("BG3D download after GLB import", () => {
       return;
     }
 
-    await workerScope.onmessage({
-      data: {
-        type: "glb-to-bg3d",
+    await workerScope.onmessage(
+      createMessageEvent({
+        type: "glb-to-bg3d" as const,
         buffer: glbBytes,
-      },
-    } as MessageEvent<any>);
+      }),
+    );
 
-    const response = workerScope.postMessage.mock.calls.at(-1)?.[0] as
-      | BG3DGltfWorkerResponse
-      | undefined;
+    const response = workerScope.postMessage.mock.calls.at(-1)?.[0];
     expect(response?.type).toBe("glb-to-bg3d");
     expect(response?.skeletonResult).toBeUndefined();
     if (response?.type !== "glb-to-bg3d") {
@@ -364,9 +370,9 @@ describe("BG3D download after GLB import", () => {
     const nonSemanticDetailedDiffs = originalForkDiff.detailedPayloadDiffs.filter(
       (entry) => !entry.startsWith("Hedr#") && !entry.startsWith("AnHd#"),
     );
-    // After clean GLB roundtrip, payload diffs are expected in Bone, KeyF, NumK, and Evnt sections
+    // After clean GLB roundtrip, payload diffs are expected in Bone, KeyF, NumK, Evnt, and RelP sections
     // since skeleton data is reconstructed from glTF standard data only
-    const expectedDiffPrefixes = ["Bone#", "Hedr#", "KeyF#", "NumK#", "Evnt#", "BonP#", "BonN#"];
+    const expectedDiffPrefixes = ["Bone#", "Hedr#", "KeyF#", "NumK#", "Evnt#", "BonP#", "BonN#", "RelP#"];
     expect(
       nonSemanticPayloadDiffs.every(
         (entry) => expectedDiffPrefixes.some((prefix) => entry.startsWith(prefix)),
