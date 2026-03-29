@@ -124,7 +124,7 @@ export function KonvaView({
   }, []);
 
   // Create wrapper setters that handle null
-  const safeSetItemData: Updater<ItemData> = (updater) => {
+  const safeSetItemData = useCallback<Updater<ItemData>>((updater) => {
     setItemData((data) => {
       if (data) {
         if (typeof updater === 'function') {
@@ -132,7 +132,7 @@ export function KonvaView({
         }
       }
     });
-  };
+  }, [setItemData]);
   
   const safeSetLiquidData: Updater<LiquidData> = (updater) => {
     setLiquidData((data) => {

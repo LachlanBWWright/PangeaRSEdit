@@ -86,20 +86,11 @@ export const Fence = memo(
     const imageSrc = fenceNubs ? getFenceImagePath(globals, fenceObj?.fenceType ?? 0) : null;
     const fenceImage = useFenceImage(imageSrc || null);
 
-    if (!fenceNubs) return null;
-
-    const numNubs = fenceObj?.numNubs ?? fenceNubs.length;
-    const displayNubs =
-      previewNubs && previewNubs.length === fenceNubs.length
-        ? previewNubs
-        : fenceNubs;
-    const lines = displayNubs.flatMap((nub) => [nub[0], nub[1]]);
-
     // Stable callbacks so FenceNub memo is not defeated on every preview update
     const handlePreviewNub = useCallback(
       (nubIdx: number, newNub: [number, number]) => {
         setPreviewNubs((current) => {
-          const next = [...(current ?? fenceNubs)];
+          const next = [...(current ?? fenceNubs ?? [])];
           next[nubIdx] = newNub;
           return next;
         });
@@ -119,6 +110,15 @@ export const Fence = memo(
       },
       [fenceIdx, setFenceData],
     );
+
+    if (!fenceNubs) return null;
+
+    const numNubs = fenceObj?.numNubs ?? fenceNubs.length;
+    const displayNubs =
+      previewNubs && previewNubs.length === fenceNubs.length
+        ? previewNubs
+        : fenceNubs;
+    const lines = displayNubs.flatMap((nub) => [nub[0], nub[1]]);
 
     // --- Nub add/remove handlers ---
     const handleAddFront = () => {

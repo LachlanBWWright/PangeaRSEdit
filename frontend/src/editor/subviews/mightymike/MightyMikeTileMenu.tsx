@@ -10,7 +10,7 @@
  */
 
 import { useAtomValue } from "jotai";
-import { useRef, useState, useEffect } from "react";
+import { useMemo, useRef, useState } from "react";
 import { SelectedTile } from "@/data/supertiles/supertileAtoms";
 import { Updater } from "use-immer";
 import { HeaderData, TerrainData } from "@/python/structSpecs/LevelTypes";
@@ -79,7 +79,10 @@ export function MightyMikeTileMenu({
   const [collisionBrushMode, setCollisionBrushMode] = useAtom(CollisionBrushMode);
 
   // Local state
-  const [selectedPaletteTile, setSelectedPaletteTile] = useState<number>(0);
+  const [manualTilePaletteSelection, setManualTilePaletteSelection] = useState<{
+    tile: number;
+    palette: number;
+  } | null>(null);
   const [isEditingTile, setIsEditingTile] = useState(false);
   const [editingImageUrl, setEditingImageUrl] = useState<string | null>(null);
   const [isEditingPaletteTile, setIsEditingPaletteTile] = useState(false);
@@ -87,7 +90,10 @@ export function MightyMikeTileMenu({
 
   // Get required data
   const header = headerData.Hedr[1000].obj;
-  const layr = terrainData.Layr?.[1000]?.obj || [];
+  const layr = useMemo(
+    () => terrainData.Layr?.[1000]?.obj ?? [],
+    [terrainData.Layr],
+  );
   const xlatTable = terrainData.Xlat?.[1000]?.obj;
 
   // Get collision data from Mighty Mike metadata using type guards
@@ -102,11 +108,10 @@ export function MightyMikeTileMenu({
   const mapHeight = header.mapHeight;
   const totalTiles = mapWidth * mapHeight;
 
-  // Sync palette selection to the image used by the currently selected map tile
-  useEffect(() => {
-    if (selectedTile < 0 || selectedTile >= layr.length) return;
+  const selectedPaletteTile = useMemo(() => {
+    if (selectedTile < 0 || selectedTile >= layr.length) return 0;
     const tileIndexValue = layr[selectedTile];
-    if (tileIndexValue === undefined || tileIndexValue === null) return;
+    if (tileIndexValue === undefined || tileIndexValue === null) return 0;
     let imageIndex: number = tileIndexValue;
     if (xlatTable && tileIndexValue >= 0 && tileIndexValue < xlatTable.length) {
       const entry = xlatTable[tileIndexValue];
@@ -115,9 +120,12 @@ export function MightyMikeTileMenu({
       }
     }
     if (imageIndex >= 0 && imageIndex < mapImages.length) {
-      setSelectedPaletteTile(imageIndex);
+      return manualTilePaletteSelection?.tile === selectedTile
+        ? manualTilePaletteSelection.palette
+        : imageIndex;
     }
-  }, [selectedTile, layr, xlatTable, mapImages.length]);
+    return 0;
+  }, [selectedTile, layr, xlatTable, mapImages.length, manualTilePaletteSelection]);
 
   // Helper: Get collision properties for current tile
   const getCollisionProperties = (): {
@@ -627,7 +635,12 @@ export function MightyMikeTileMenu({
             {mapImages.map((img, idx) => (
               <div
                 key={idx}
-                onClick={() => setSelectedPaletteTile(idx)}
+                onClick={() =>
+                  setManualTilePaletteSelection({
+                    tile: selectedTile,
+                    palette: idx,
+                  })
+                }
                 className={`cursor-pointer transition-all ${
                   selectedPaletteTile === idx
                     ? "ring-2 ring-green-500 rounded"
@@ -707,5 +720,3 @@ export function MightyMikeTileMenu({
     </div>
   );
 }
-
-

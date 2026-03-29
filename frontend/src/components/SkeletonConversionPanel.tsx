@@ -52,7 +52,7 @@ export function SkeletonConversionPanel({
       }.`,
     );
 
-    try {
+    const conversionResult = await fromPromise((async () => {
       const bg3dBufferResult = await fromPromise(bg3dFile.arrayBuffer());
       if (bg3dBufferResult.isErr()) {
         const message = `Failed to read model file: ${bg3dBufferResult.error.message}`;
@@ -268,14 +268,14 @@ export function SkeletonConversionPanel({
         setPendingBg3dFile(null);
         pushLog("Conversion completed successfully.");
       }
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
+    })());
+    if (conversionResult.isErr()) {
+      const message = conversionResult.error.message;
       pushLog(`Unexpected conversion error: ${message}`);
       toast.dismiss(toastId);
       toast.error(`${title} conversion failed: ${message}`);
-    } finally {
-      setLoading(false);
     }
+    setLoading(false);
   };
 
   const handleBg3dFileSelect = async (bg3dFile: File) => {
