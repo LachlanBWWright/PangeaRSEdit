@@ -151,29 +151,12 @@ export function bg3dSkeletonToSkeletonResource(
   // Use provided evntData if available, otherwise create empty
   const evnt: Record<string, EvntEntry> = {};
   const evntRecord = getRecord(evntData);
-  if (hasEntries(evntRecord)) {
+  if (evntRecord && hasEntries(evntRecord)) {
     // Copy the evntData entries safely
     Object.entries(evntRecord).forEach(([key, value]) => {
       if (isEvntEntry(value)) {
         evnt[key] = value;
       }
-    });
-  } else {
-    skeleton.animations.forEach((animation, animIndex) => {
-      if (animation.events.length === 0) {
-        return;
-      }
-
-      const animResourceId = 1000 + animIndex;
-      evnt[animResourceId.toString()] = {
-        name: "Animation Events",
-        order: animResourceId,
-        obj: animation.events.map((event) => ({
-          time: event.time,
-          type: event.type,
-          value: event.value,
-        })),
-      };
     });
   }
   const numK: Record<string, NumKEntry> = {};
@@ -181,27 +164,30 @@ export function bg3dSkeletonToSkeletonResource(
 
   skeleton.animations.forEach((animation, animIndex) => {
     const animResourceId = 1000 + animIndex;
+    const animResourceKey = animResourceId.toString();
+    const emittedEvents = evntRecord?.[animResourceKey]
+      ? evnt[animResourceKey]?.obj ?? []
+      : animation.events.map((event) => ({
+          time: event.time,
+          type: event.type,
+          value: event.value,
+        }));
 
     // Animation header - use resource IDs starting from 1000
-    anHd[animResourceId.toString()] = {
+    anHd[animResourceKey] = {
       name: animation.name, // Use actual animation name, not generic "Animation Header"
       order: animResourceId,
       obj: {
         animName: animation.name,
-        numAnimEvents: animation.numAnimEvents,
+        numAnimEvents: emittedEvents.length,
       },
     };
 
-    // Animation events (only if evntData not provided)
-    if (!evntData && animation.events.length > 0) {
-      evnt[animResourceId.toString()] = {
-        name: "Animation Events",
+    if (!evntRecord?.[animResourceKey]) {
+      evnt[animResourceKey] = {
+        name: animation.name,
         order: animResourceId,
-        obj: animation.events.map((event) => ({
-          time: event.time,
-          type: event.type,
-          value: event.value,
-        })),
+        obj: emittedEvents,
       };
     }
 
@@ -271,7 +257,7 @@ export function bg3dSkeletonToSkeletonResource(
   // Build RelP safely without type assertions
   const relPResult: Record<string, RelPEntry> = {};
   const effectiveRelPRecord = getRecord(effectiveRelP);
-  if (hasEntries(effectiveRelPRecord)) {
+  if (effectiveRelPRecord && hasEntries(effectiveRelPRecord)) {
     Object.entries(effectiveRelPRecord).forEach(([key, value]) => {
       if (isRelPEntry(value)) {
         relPResult[key] = value;

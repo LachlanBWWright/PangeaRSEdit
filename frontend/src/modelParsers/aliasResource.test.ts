@@ -53,7 +53,7 @@ describe("aliasResource", () => {
     }
 
     const bg3d = bufferFromFile(bg3dPath);
-    await parseSkeletonRsrc(bufferFromFile(skelPath));
+    const skeleton = await parseSkeletonRsrc(bufferFromFile(skelPath));
     const parsed = unwrap(parseBG3D(bg3d, skeleton));
     if (!parsed.skeleton) {
       throw new Error("Expected Otto skeleton data");

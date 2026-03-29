@@ -144,9 +144,7 @@ describe("BG3D Multi-Game Parsing Tests", () => {
         const parsedRes = parseBG3D(originalBuffer);
         if (!parsedRes.ok) throw parsedRes.error;
         const parsed: BG3DParseResult = parsedRes.value;
-        const gltfDoc = bg3dParsedToGLTF(parsed, {
-          bg3dBuffer: originalBuffer,
-        });
+        const gltfDoc = bg3dParsedToGLTF(parsed);
 
         // Convert back
         const roundtripParsed = await gltfToBG3D(gltfDoc);

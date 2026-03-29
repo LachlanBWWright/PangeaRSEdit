@@ -244,7 +244,12 @@ export function TestGameDialog({
           const capturedLevel = capturedLevelRef.current;
 
           /** Send a single skip-to-level ccall for the current game. */
-          const sendSkip = (skipCall: ReturnType<typeof config.getSkipToLevelCcall>) => {
+          const sendSkip = (skipCall: {
+            fn: string;
+            returnType: null;
+            argTypes: string[];
+            args: unknown[];
+          } | null) => {
             if (!skipCall) return;
             iframeRef.current?.contentWindow?.postMessage({
               cmd: "ccall",

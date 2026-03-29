@@ -8,7 +8,6 @@ import {
 } from "@/components/ui/select";
 import { Circle, Square, Pipette } from "lucide-react";
 import { hexToRgb, rgbToHex } from "@/utils/colorUtils";
-import { Input } from "@/components/ui/input";
 
 interface Props {
   brushSize: number[];

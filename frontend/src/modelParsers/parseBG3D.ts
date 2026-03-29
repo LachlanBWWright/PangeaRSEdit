@@ -1089,7 +1089,16 @@ function isBG3DGeometry(obj: BG3DGeometry | BG3DGroup): obj is BG3DGeometry {
 export function convertBG3DToSkeletonResource(
   skeleton: BG3DSkeleton,
 ): SkeletonResource {
-  const skeletonResource: SkeletonResource = {
+  const skeletonResource: {
+    Hedr: NonNullable<SkeletonResource["Hedr"]>;
+    Bone: NonNullable<SkeletonResource["Bone"]>;
+    BonP: NonNullable<SkeletonResource["BonP"]>;
+    BonN: NonNullable<SkeletonResource["BonN"]>;
+    AnHd: NonNullable<SkeletonResource["AnHd"]>;
+    Evnt: NonNullable<SkeletonResource["Evnt"]>;
+    NumK: NonNullable<SkeletonResource["NumK"]>;
+    KeyF: NonNullable<SkeletonResource["KeyF"]>;
+  } = {
     Hedr: {},
     Bone: {},
     BonP: {},

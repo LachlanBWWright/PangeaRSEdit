@@ -155,6 +155,12 @@ export function useFileUpload(options: UseFileUploadOptions) {
           onLoadingChange(false);
           return err(new Error(result.error));
         }
+        if (result.type !== "glb-to-bg3d") {
+          const message = `Unexpected worker response type: ${result.type}`;
+          toast.error(message);
+          onLoadingChange(false);
+          return err(new Error(message));
+        }
 
         const parsedResult = await parseGlbImportResult(result);
         if (parsedResult.isErr()) {

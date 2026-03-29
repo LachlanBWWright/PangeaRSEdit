@@ -29,10 +29,6 @@ function isArray(value: unknown): value is unknown[] {
   return Array.isArray(value);
 }
 
-function getBoolean(value: unknown, defaultValue = false): boolean {
-  return typeof value === 'boolean' ? value : defaultValue;
-}
-
 /**
  * Extract the 2D alt-map array from the nested metadata structure.
  * Returns `null` if no alt-map is present.
@@ -82,15 +78,6 @@ const MightyMikeSupertilesComponent = ({
     [terrainData.Layr],
   );
   const xlatTable = terrainData.Xlat?.[1000]?.obj;
-
-  const mightyMikeTileValuesArray = useMemo(() => {
-    const metadata = isRecord(terrainData._metadata) ? terrainData._metadata : undefined;
-    const metadataEntry = metadata && isRecord(metadata[1000]) ? metadata[1000] : undefined;
-    const metadataObj = metadataEntry && isRecord(metadataEntry.obj) ? metadataEntry.obj : undefined;
-    return metadataObj && isArray(metadataObj.mightyMikeTileValues)
-      ? metadataObj.mightyMikeTileValues
-      : [];
-  }, [terrainData._metadata]);
 
   // Extract per-tile pixel-accurate collision canvases from the stored tileset
   const collisionImages = useMemo(() => {
@@ -199,7 +186,7 @@ const MightyMikeSupertilesComponent = ({
 
     layr.forEach((_, i) => {
       const imgIdx = resolvedImageIndices[i];
-      if (imgIdx === null) return;
+      if (typeof imgIdx !== "number") return;
       const img = mapImages[imgIdx];
       if (!img) return;
       const tx = (i % mapWidth) * TILE_SIZE;
@@ -232,7 +219,7 @@ const MightyMikeSupertilesComponent = ({
       const tx = (i % mapWidth) * TILE_SIZE;
       const ty = Math.floor(i / mapWidth) * TILE_SIZE;
 
-      if (imgIdx !== null && imgIdx < collisionImages.length) {
+      if (typeof imgIdx === "number" && imgIdx < collisionImages.length) {
         const collisionImg = collisionImages[imgIdx];
         if (collisionImg) {
           ctx.drawImage(collisionImg, tx, ty, TILE_SIZE, TILE_SIZE);

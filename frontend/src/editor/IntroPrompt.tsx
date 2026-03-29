@@ -59,6 +59,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
 export interface DataHistory {
   items: AtomicLevelData[];
   index: number;
@@ -297,16 +301,20 @@ export function IntroPrompt() {
     }
 
     // Strip HTMLCanvasElement references (e.g. tileset.tileImages, collisionImages) before cloning
-    const rawCombined = combinedDataResult.value as Record<string, unknown>;
+    const rawCombined = combinedDataResult.value;
     const rawTileset = rawCombined.tileset;
-    let cloneableCombined: typeof rawCombined;
-    if (rawTileset && typeof rawTileset === "object") {
-      const { tileImages: _tileImagesStripped, collisionImages: _collisionImagesStripped, ...sanitizedTileset } = rawTileset as Record<string, unknown>;
-      cloneableCombined = { ...rawCombined, tileset: sanitizedTileset };
-    } else {
-      cloneableCombined = rawCombined;
-    }
-    const combinedData = structuredClone(cloneableCombined) as typeof rawCombined;
+    const cloneableCombined =
+      isRecord(rawTileset)
+        ? {
+            ...rawCombined,
+            tileset: Object.fromEntries(
+              Object.entries(rawTileset).filter(
+                ([key]) => key !== "tileImages" && key !== "collisionImages",
+              ),
+            ),
+          }
+        : rawCombined;
+    const combinedData = structuredClone(cloneableCombined);
 
     //TODO: Find better solution
     //remove timg from combinedData - needed to fix bug for non-RSRC_FORK games
@@ -319,7 +327,10 @@ export function IntroPrompt() {
     // Handle custom binary formats based on Game type
     if (globals.GAME_TYPE === Game.NANOSAUR) {
       // Nanosaur 1: Use custom compiler
-      const rawLevelData = combinedData._metadata?.nanosaur1RawLevel;
+      const metadata = isRecord(combinedData._metadata)
+        ? combinedData._metadata
+        : undefined;
+      const rawLevelData = metadata?.nanosaur1RawLevel;
       if (!isNanosaur1LevelData(rawLevelData)) {
         console.error("Missing raw Nanosaur 1 level data");
         toast.error("Download failed", {

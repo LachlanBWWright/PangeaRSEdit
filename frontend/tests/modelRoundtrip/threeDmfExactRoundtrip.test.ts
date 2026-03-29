@@ -2,7 +2,6 @@ import { describe, it, expect, vi, afterEach } from "vitest";
 import { NodeIO } from "@gltf-transform/core";
 import { readFileSync, existsSync } from "fs";
 import { join } from "path";
-import { bg3dParsedToBG3D } from "@/modelParsers/parseBG3D";
 import { bg3dParsedToGLTF } from "@/modelParsers/parsedBg3dGitfConverter";
 import { parse3DMFToMetaFile, metaFileToBG3DParseResult } from "@/modelParsers/threeDMF";
 import { get3DMFDownloadBytes } from "@/pages/ModelViewer/utils/downloadUtils";
@@ -14,6 +13,12 @@ let workerParsed: BG3DParseResult | null = null;
 
 function createMessageEvent<T>(data: T): MessageEvent<T> {
   return new MessageEvent("message", { data });
+}
+
+function toArrayBuffer(bytes: Uint8Array): ArrayBuffer {
+  const copy = new ArrayBuffer(bytes.byteLength);
+  new Uint8Array(copy).set(bytes);
+  return copy;
 }
 
 interface WorkerScope {
@@ -84,18 +89,17 @@ describe("3DMF download after GLB import", () => {
 
     const parsed = parsedResult.value;
 
-    const gltfDocument = bg3dParsedToGLTF(parsed, {
-      bg3dBuffer: bg3dParsedToBG3D(parsed),
-      skeletonBuffer: originalSkeleton,
-    });
+    void originalSkeleton;
+    const gltfDocument = bg3dParsedToGLTF(parsed);
 
     const io = new NodeIO();
     const glbBytes = await io.writeBinary(gltfDocument);
+    const glbBuffer = toArrayBuffer(glbBytes);
     const gltfUrl = "blob:rex.glb";
     vi.stubGlobal(
       "fetch",
       vi.fn().mockResolvedValue(
-        new Response(glbBytes, {
+        new Response(glbBuffer, {
           status: 200,
           headers: { "Content-Type": "model/gltf-binary" },
         }),
@@ -112,14 +116,14 @@ describe("3DMF download after GLB import", () => {
     }
 
     await workerScope.onmessage(
-      createMessageEvent({
-        type: "glb-to-bg3d" as const,
-        buffer: glbBytes,
-      }),
-    );
+        createMessageEvent({
+          type: "glb-to-bg3d" as const,
+          buffer: glbBuffer,
+        }),
+      );
 
     const response = postMessage.mock.calls.at(-1)?.[0];
-    if (response.type !== "glb-to-bg3d" || !response.parsed) {
+    if (!response || response.type !== "glb-to-bg3d" || !response.parsed) {
       throw new Error("Expected parsed BG3D data from GLB import");
     }
 

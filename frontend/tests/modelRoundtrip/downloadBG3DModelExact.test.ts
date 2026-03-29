@@ -60,6 +60,12 @@ function bufferFromFile(filePath: string): ArrayBuffer {
   return buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength);
 }
 
+function toArrayBuffer(bytes: Uint8Array): ArrayBuffer {
+  const copy = new ArrayBuffer(bytes.byteLength);
+  new Uint8Array(copy).set(bytes);
+  return copy;
+}
+
 function sameBytes(left: Uint8Array, right: Uint8Array): boolean {
   if (left.length !== right.length) {
     return false;
@@ -214,13 +220,14 @@ describe("BG3D download after GLB import", () => {
     const gltfDocument = bg3dParsedToGLTF(parsed);
     const io = new NodeIO();
     const glbBytes = await io.writeBinary(gltfDocument);
-    expect(glbBytes.byteLength).toBeGreaterThan(0);
+    const glbBuffer = toArrayBuffer(glbBytes);
+    expect(glbBuffer.byteLength).toBeGreaterThan(0);
 
     const gltfUrl = "blob:otto.glb";
     vi.stubGlobal(
       "fetch",
       vi.fn().mockResolvedValue(
-        new Response(glbBytes, {
+        new Response(glbBuffer, {
           status: 200,
           headers: { "Content-Type": "model/gltf-binary" },
         }),
@@ -239,11 +246,11 @@ describe("BG3D download after GLB import", () => {
     }
 
     await workerScope.onmessage(
-      createMessageEvent({
-        type: "glb-to-bg3d" as const,
-        buffer: glbBytes,
-      }),
-    );
+        createMessageEvent({
+          type: "glb-to-bg3d" as const,
+          buffer: glbBuffer,
+        }),
+      );
 
     const response = workerScope.postMessage.mock.calls.at(-1)?.[0];
     expect(response?.type).toBe("glb-to-bg3d");
@@ -266,10 +273,14 @@ describe("BG3D download after GLB import", () => {
     }
 
     const artifacts = artifactsResult.value;
+    const skeletonBytes = artifacts.skeletonBytes;
     expect(workerSkeletonResultSeen).toBeUndefined();
+    if (!skeletonBytes) {
+      return;
+    }
 
     const recoveredBg3dSkeleton = await parseSkeletonRsrc(
-      artifacts.skeletonBytes,
+      skeletonBytes,
     );
     const recoveredParsedResult = parseBG3D(
       artifacts.bg3dBytes,
@@ -309,7 +320,7 @@ describe("BG3D download after GLB import", () => {
       recoveredParsed.skeleton?.animations.map((anim) => anim.events.length),
     ).toEqual(parsed.skeleton?.animations.map(() => 0));
 
-    const originalForkDiff = diffForks(originalSkeleton, artifacts.skeletonBytes);
+    const originalForkDiff = diffForks(originalSkeleton, skeletonBytes);
     console.log(
       "Otto Blob resource keys (original/recovered):",
       JSON.stringify(
@@ -335,9 +346,10 @@ describe("BG3D download after GLB import", () => {
       JSON.stringify(originalForkDiff.metadataDiffs, null, 2),
     );
 
-    // Evnt and RelP resources cannot be represented in standard glTF
+    // RelP cannot be represented in standard glTF; Evnt resources must still exist
+    // so the game loader can read the animation-event fork entries.
     const expectedMissingKeys = originalForkDiff.missingKeys.filter(
-      (key: string) => !key.startsWith("Evnt#") && !key.startsWith("RelP#"),
+      (key: string) => !key.startsWith("RelP#"),
     );
     expect(expectedMissingKeys).toEqual([]);
     expect(originalForkDiff.extraKeys).toEqual([]);
@@ -385,10 +397,11 @@ describe("BG3D download after GLB import", () => {
     ).toBe(true);
     expect(originalForkDiff.payloadDiffs.some((entry) => entry.startsWith("Hedr#"))).toBe(true);
     expect(originalForkDiff.payloadDiffs.some((entry) => entry.startsWith("AnHd#"))).toBe(true);
+    expect(originalForkDiff.recoveredKeys.some((entry) => entry.startsWith("Evnt#"))).toBe(true);
 
     const byteMatch = sameBytes(
       new Uint8Array(originalSkeleton),
-      new Uint8Array(artifacts.skeletonBytes),
+      new Uint8Array(skeletonBytes),
     );
     console.log("Otto Blob skeleton byte-perfect:", byteMatch);
     expect(byteMatch).toBe(false);

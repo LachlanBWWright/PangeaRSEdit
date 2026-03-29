@@ -18,6 +18,12 @@ function createMessageEvent<T>(data: T): MessageEvent<T> {
   return new MessageEvent("message", { data });
 }
 
+function toArrayBuffer(bytes: Uint8Array): ArrayBuffer {
+  const copy = new ArrayBuffer(bytes.byteLength);
+  new Uint8Array(copy).set(bytes);
+  return copy;
+}
+
 interface WorkerScope {
   postMessage: (response: BG3DGltfWorkerResponse) => void;
   onmessage?: (e: MessageEvent<{ type: "glb-to-bg3d"; buffer: ArrayBuffer }>) => Promise<void> | void;
@@ -86,11 +92,12 @@ describe("Animated GLB import download", () => {
     const gltfDocument = bg3dParsedToGLTF(parsedWithoutAlias);
     const io = new NodeIO();
     const glbBytes = await io.writeBinary(gltfDocument);
+    const glbBuffer = toArrayBuffer(glbBytes);
     const gltfUrl = "blob:animated.glb";
     vi.stubGlobal(
       "fetch",
       vi.fn().mockResolvedValue(
-        new Response(glbBytes, {
+        new Response(glbBuffer, {
           status: 200,
           headers: { "Content-Type": "model/gltf-binary" },
         }),
@@ -107,14 +114,14 @@ describe("Animated GLB import download", () => {
     }
 
     await workerScope.onmessage(
-      createMessageEvent({
-        type: "glb-to-bg3d" as const,
-        buffer: glbBytes,
-      }),
-    );
+        createMessageEvent({
+          type: "glb-to-bg3d" as const,
+          buffer: glbBuffer,
+        }),
+      );
 
     const response = postMessage.mock.calls.at(-1)?.[0];
-    if (response.type !== "glb-to-bg3d" || !response.parsed) {
+    if (!response || response.type !== "glb-to-bg3d" || !response.parsed) {
       throw new Error("Expected parsed BG3D data from animated GLB import");
     }
 

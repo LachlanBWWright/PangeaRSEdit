@@ -16,27 +16,29 @@ export interface BG3DExportTarget {
   aliasResources?: BG3DAliasResourceTarget[];
 }
 
+export const DEFAULT_BG3D_EXPORT_TARGET: BG3DExportTarget = {
+  id: "ottomatic",
+  label: "Otto Matic",
+  companionExtension: "bg3d",
+  aliasResourceId: 1001,
+  aliasName: "Limb BG3D Alias",
+  aliasPathPrefix: "Projects:Otto:Project:Data:Skeletons:",
+  aliasResources: [
+    {
+      resourceId: 1000,
+      name: "Limb 3DMF Alias",
+      companionExtension: "3df",
+    },
+    {
+      resourceId: 1001,
+      name: "Limb BG3D Alias",
+      companionExtension: "bg3d",
+    },
+  ],
+};
+
 export const BG3D_EXPORT_TARGETS: BG3DExportTarget[] = [
-  {
-    id: "ottomatic",
-    label: "Otto Matic",
-    companionExtension: "bg3d",
-    aliasResourceId: 1001,
-    aliasName: "Limb BG3D Alias",
-    aliasPathPrefix: "Projects:Otto:Project:Data:Skeletons:",
-    aliasResources: [
-      {
-        resourceId: 1000,
-        name: "Limb 3DMF Alias",
-        companionExtension: "3df",
-      },
-      {
-        resourceId: 1001,
-        name: "Limb BG3D Alias",
-        companionExtension: "bg3d",
-      },
-    ],
-  },
+  DEFAULT_BG3D_EXPORT_TARGET,
   {
     id: "cromag",
     label: "Cro-Mag Rally",
@@ -89,8 +91,6 @@ export const BG3D_EXPORT_TARGETS: BG3DExportTarget[] = [
     aliasPathPrefix: "Projects:Nanosaur:Data:Skeletons:",
   },
 ];
-
-export const DEFAULT_BG3D_EXPORT_TARGET = BG3D_EXPORT_TARGETS[0];
 
 export function getBG3DExportTarget(id: string): BG3DExportTarget {
   return (

@@ -34,9 +34,17 @@ export const ALT_TILE_OPTIONS: { value: number; label: string; glyph: string; co
   { value: 10, label: "Loop",       glyph: "↺", color: "#ffff00" },
 ];
 
+const DEFAULT_ALT_TILE_OPTION = ALT_TILE_OPTIONS[0] ?? {
+  value: 0,
+  label: "None",
+  glyph: "○",
+  color: "transparent",
+};
+
 export function MightyMikeAltMapEditorPanel() {
   const [brushValue, setBrushValue] = useAtom(AltMapBrushValue);
-  const selected = ALT_TILE_OPTIONS.find((o) => o.value === brushValue) ?? ALT_TILE_OPTIONS[0];
+  const selected =
+    ALT_TILE_OPTIONS.find((o) => o.value === brushValue) ?? DEFAULT_ALT_TILE_OPTION;
 
   return (
     <div className="flex flex-col gap-3 p-2">

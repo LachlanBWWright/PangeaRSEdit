@@ -82,6 +82,15 @@ export interface BG3DDownloadArtifacts {
   skeletonBytes?: ArrayBuffer;
 }
 
+function toBlobPart(data: ArrayBuffer | Uint8Array): ArrayBuffer {
+  if (data instanceof ArrayBuffer) {
+    return data;
+  }
+  const copy = new ArrayBuffer(data.byteLength);
+  new Uint8Array(copy).set(data);
+  return copy;
+}
+
 export async function getBG3DDownloadArtifacts(
   gltfUrl: string,
   modelFileName = "Model",
@@ -94,6 +103,9 @@ export async function getBG3DDownloadArtifacts(
 
   if (result.value.type === "error") {
     return err(new Error(`Failed to convert GLB to BG3D: ${result.value.error}`));
+  }
+  if (result.value.type !== "glb-to-bg3d") {
+    return err(new Error(`Unexpected worker response type: ${result.value.type}`));
   }
 
   const parsedResult = result.value.parsed
@@ -140,6 +152,9 @@ export async function get3DMFDownloadBytes(
 
   if (result.value.type === "error") {
     return err(new Error(`Failed to convert GLB to BG3D: ${result.value.error}`));
+  }
+  if (result.value.type !== "glb-to-bg3d") {
+    return err(new Error(`Unexpected worker response type: ${result.value.type}`));
   }
 
   const parsedBg3dResult = result.value.parsed
@@ -200,7 +215,7 @@ export async function downloadBG3DModel(
   exportTarget: BG3DExportTarget = DEFAULT_BG3D_EXPORT_TARGET,
 ): Promise<Result<void, Error>> {
   const downloadBlob = (data: ArrayBuffer | Uint8Array, fileName: string) => {
-    const blob = new Blob([data], {
+    const blob = new Blob([toBlobPart(data)], {
       type: "application/octet-stream",
     });
     const url = URL.createObjectURL(blob);

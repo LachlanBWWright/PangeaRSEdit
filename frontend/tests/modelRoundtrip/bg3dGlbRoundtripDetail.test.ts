@@ -7,6 +7,17 @@ import { readFileSync, existsSync } from "fs";
 import { join } from "path";
 import { NodeIO } from "@gltf-transform/core";
 
+function isGeometryChild(
+  child: unknown,
+): child is {
+  numPoints: number;
+  numTriangles: number;
+  numMaterials: number;
+  layerMaterialNum?: number[];
+} {
+  return typeof child === "object" && child !== null && "numPoints" in child;
+}
+
 function bufferFromFile(filePath: string): ArrayBuffer {
   const buf = readFileSync(filePath);
   return buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength);
@@ -36,7 +47,7 @@ describe("BG3D GLB roundtrip detail", () => {
     parsed.groups.forEach((g, i) => {
       console.log(`Group ${i}: ${g.children?.length ?? 0} children`);
       g.children?.forEach((child, j) => {
-        if (child.type === 'geometry') {
+        if (isGeometryChild(child)) {
           console.log(`  Geom ${j}: nPts=${child.numPoints} nTri=${child.numTriangles} nMats=${child.numMaterials} layers=[${child.layerMaterialNum?.join(',')}]`);
         }
       });
@@ -60,7 +71,7 @@ describe("BG3D GLB roundtrip detail", () => {
     roundtripped.groups.forEach((g, i) => {
       console.log(`Group ${i}: ${g.children?.length ?? 0} children`);
       g.children?.forEach((child, j) => {
-        if (child.type === 'geometry') {
+        if (isGeometryChild(child)) {
           console.log(`  Geom ${j}: nPts=${child.numPoints} nTri=${child.numTriangles} nMats=${child.numMaterials} layers=[${child.layerMaterialNum?.join(',')}]`);
         }
       });

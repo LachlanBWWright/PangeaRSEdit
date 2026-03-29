@@ -30,6 +30,7 @@ export function handleKeyF(
   resourceId: string,
   hexData: string,
 ): KeyFRaw[] {
+  void resourceName;
   void resourceId;
   void hexData;
 

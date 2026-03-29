@@ -59,41 +59,48 @@ export type BG3DGltfWorkerResponse =
   | {
       type: "bg3d-to-glb";
       result: ArrayBuffer;
+      skeletonResult?: ArrayBuffer;
       parsed?: BG3DParseResult;
       requestId?: string;
     }
   | {
       type: "glb-to-bg3d";
       result: ArrayBuffer;
+      skeletonResult?: ArrayBuffer;
       parsed?: BG3DParseResult;
       requestId?: string;
     }
   | {
       type: "glb-to-bg3d-with-skeleton";
       bg3dResult: ArrayBuffer;
+      skeletonResult?: ArrayBuffer;
       parsed?: BG3DParseResult;
       requestId?: string;
     }
   | {
       type: "bg3d-with-skeleton-to-glb";
       result: ArrayBuffer;
+      skeletonResult?: ArrayBuffer;
       parsed?: BG3DParseResult;
       requestId?: string;
     }
   | {
       type: "bg3d-parsed-to-glb";
       result: ArrayBuffer;
+      skeletonResult?: ArrayBuffer;
       parsed: BG3DParseResult;
       requestId?: string;
     }
   | {
       type: "bg3d-parsed-to-bg3d";
       result: ArrayBuffer;
+      skeletonResult?: ArrayBuffer;
       requestId?: string;
     }
   | {
       type: "error";
       error: string;
+      skeletonResult?: ArrayBuffer;
       requestId?: string;
     };
 

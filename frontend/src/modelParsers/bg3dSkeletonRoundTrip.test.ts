@@ -249,16 +249,7 @@ describe("BG3D Skeleton Round-trip with FULL ACCURACY", () => {
     const originalBg3d = unwrap(originalBg3dRes);
 
     // Convert to glTF and back
-    const gltfDocument = bg3dParsedToGLTF(originalBg3d, {
-      bg3dBuffer: bg3dData.buffer.slice(
-        bg3dData.byteOffset,
-        bg3dData.byteOffset + bg3dData.byteLength,
-      ),
-      skeletonBuffer: skeletonData.buffer.slice(
-        skeletonData.byteOffset,
-        skeletonData.byteOffset + skeletonData.byteLength,
-      ),
-    });
+    const gltfDocument = bg3dParsedToGLTF(originalBg3d);
 
     const roundtripBg3d = await gltfToBG3D(gltfDocument);
 

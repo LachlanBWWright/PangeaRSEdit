@@ -17,6 +17,12 @@ function bufferFromFile(filePath: string): ArrayBuffer {
   return buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength);
 }
 
+function toArrayBuffer(bytes: Uint8Array): ArrayBuffer {
+  const copy = new ArrayBuffer(bytes.byteLength);
+  new Uint8Array(copy).set(bytes);
+  return copy;
+}
+
 function hexToLatin1(hex: string): string {
   const bytes = new Uint8Array(hex.length / 2);
   for (let i = 0; i < bytes.length; i++) {
@@ -188,13 +194,14 @@ describe("Blob GLB roundtrip", () => {
     const gltfDocument = bg3dParsedToGLTF(originalParsed);
     const io = new NodeIO();
     const glbBytes = await io.writeBinary(gltfDocument);
-    expect(glbBytes.byteLength).toBeGreaterThan(0);
+    const glbBuffer = toArrayBuffer(glbBytes);
+    expect(glbBuffer.byteLength).toBeGreaterThan(0);
 
     const glbUrl = "blob:Blob.glb";
     vi.stubGlobal(
       "fetch",
       vi.fn().mockResolvedValue(
-        new Response(glbBytes, {
+        new Response(glbBuffer, {
           status: 200,
           headers: { "Content-Type": "model/gltf-binary" },
         }),
@@ -215,6 +222,7 @@ describe("Blob GLB roundtrip", () => {
     if (!artifacts.skeletonBytes) {
       return;
     }
+    const skeletonBytes = artifacts.skeletonBytes;
     expect(workerResponses.at(-1)?.skeletonResult).toBeUndefined();
 
     const bg3dExactMatch =
@@ -224,9 +232,9 @@ describe("Blob GLB roundtrip", () => {
       );
     const skeletonExactMatch =
       new Uint8Array(originalSkeleton).length ===
-        new Uint8Array(artifacts.skeletonBytes).length &&
+        new Uint8Array(skeletonBytes).length &&
       new Uint8Array(originalSkeleton).every(
-        (byte, index) => byte === new Uint8Array(artifacts.skeletonBytes)[index],
+        (byte, index) => byte === new Uint8Array(skeletonBytes)[index],
       );
     console.log("Blob BG3D byte-perfect:", bg3dExactMatch);
     console.log("Blob skeleton byte-perfect:", skeletonExactMatch);
@@ -234,7 +242,7 @@ describe("Blob GLB roundtrip", () => {
     expect(skeletonExactMatch).toBe(false);
 
     const recoveredSkeletonResource = await parseSkeletonRsrc(
-      artifacts.skeletonBytes,
+      skeletonBytes,
     );
     const recoveredParsedResult = parseBG3D(
       artifacts.bg3dBytes,
@@ -260,7 +268,7 @@ describe("Blob GLB roundtrip", () => {
     ).toEqual(originalParsed.skeleton?.animations.map((anim) => anim.name));
 
     const originalRaw = await parseRawSkeletonJson(originalSkeleton);
-    const recoveredRaw = await parseRawSkeletonJson(artifacts.skeletonBytes);
+    const recoveredRaw = await parseRawSkeletonJson(skeletonBytes);
     expect(Object.keys(recoveredRaw.alis ?? {})).toEqual(
       Object.keys(originalRaw.alis ?? {}),
     );
@@ -284,7 +292,7 @@ describe("Blob GLB roundtrip", () => {
     expect(originalAliases.length).toBeGreaterThan(1);
 
     const originalAliasTexts = originalAliases
-      .map((alias) => (typeof alias?.data === "string" ? hexToLatin1(alias.data) : ""))
+      .map((alias) => (isRecord(alias) && typeof alias.data === "string" ? hexToLatin1(alias.data) : ""))
       .filter((text) => text.length > 0);
 
     expect(originalAliasTexts.some((text) => text.includes("Blob.3df"))).toBe(
@@ -318,11 +326,12 @@ describe("Blob GLB roundtrip", () => {
     const gltfDocument = bg3dParsedToGLTF(originalParsedResult.value);
     const io = new NodeIO();
     const glbBytes = await io.writeBinary(gltfDocument);
+    const glbBuffer = toArrayBuffer(glbBytes);
 
     vi.stubGlobal(
       "fetch",
       vi.fn().mockResolvedValue(
-        new Response(glbBytes, {
+        new Response(glbBuffer, {
           status: 200,
           headers: { "Content-Type": "model/gltf-binary" },
         }),
@@ -334,9 +343,10 @@ describe("Blob GLB roundtrip", () => {
     if (artifactsResult.isErr() || !artifactsResult.value.skeletonBytes) {
       return;
     }
+    const skeletonBytes = artifactsResult.value.skeletonBytes;
     expect(workerResponses.at(-1)?.skeletonResult).toBeUndefined();
 
-    const recoveredRaw = await parseRawSkeletonJson(artifactsResult.value.skeletonBytes);
+    const recoveredRaw = await parseRawSkeletonJson(skeletonBytes);
     const recoveredAlias = getNestedRecord(recoveredRaw, "alis");
     expect(recoveredAlias).toBeDefined();
     if (!recoveredAlias) {
@@ -395,14 +405,7 @@ describe("Blob GLB roundtrip", () => {
       }
     }
     console.log("Blob skeleton section diffs:", JSON.stringify(sectionDiffs, null, 2));
-    // After clean GLB roundtrip, Evnt still cannot be represented in standard glTF,
-    // but RelP must now be reconstructed because Otto requires it at runtime.
-    const filteredOriginal = Object.fromEntries(
-      Object.entries(sectionSummary(originalRaw)).filter(
-        ([key]) => key !== "Evnt",
-      ),
-    );
-    expect(sectionSummary(recoveredRaw)).toEqual(filteredOriginal);
+    expect(sectionSummary(recoveredRaw)).toEqual(sectionSummary(originalRaw));
     expect(Object.keys(recoveredRaw.alis ?? {})).toEqual(
       Object.keys(originalRaw.alis ?? {}),
     );
@@ -428,11 +431,12 @@ describe("Blob GLB roundtrip", () => {
     const strippedGltf = bg3dParsedToGLTF(originalParsedResult.value);
     const io = new NodeIO();
     const strippedGlbBytes = await io.writeBinary(strippedGltf);
+    const strippedGlbBuffer = toArrayBuffer(strippedGlbBytes);
 
     vi.stubGlobal(
       "fetch",
       vi.fn().mockResolvedValue(
-        new Response(strippedGlbBytes, {
+        new Response(strippedGlbBuffer, {
           status: 200,
           headers: { "Content-Type": "model/gltf-binary" },
         }),
@@ -447,6 +451,7 @@ describe("Blob GLB roundtrip", () => {
     if (artifactsResult.isErr() || !artifactsResult.value.skeletonBytes) {
       return;
     }
+    const skeletonBytes = artifactsResult.value.skeletonBytes;
     expect(workerResponses.at(-1)?.skeletonResult).toBeUndefined();
 
     expect(
@@ -460,7 +465,7 @@ describe("Blob GLB roundtrip", () => {
       getExactByteMismatch(
         "Blob skeleton.rsrc",
         originalSkeleton,
-        artifactsResult.value.skeletonBytes,
+        skeletonBytes,
       ),
     ).toBeDefined();
     console.log(
@@ -469,11 +474,11 @@ describe("Blob GLB roundtrip", () => {
     );
     console.log(
       "Blob skeleton first differing offset:",
-      diffOffset(originalSkeleton, artifactsResult.value.skeletonBytes),
+      diffOffset(originalSkeleton, skeletonBytes),
     );
 
     const originalRaw = await parseRawSkeletonJson(originalSkeleton);
-    const recoveredRaw = await parseRawSkeletonJson(artifactsResult.value.skeletonBytes);
+    const recoveredRaw = await parseRawSkeletonJson(skeletonBytes);
     const originalMetadata = getNestedRecord(originalRaw, "_metadata");
     const recoveredMetadata = getNestedRecord(recoveredRaw, "_metadata");
 
@@ -484,7 +489,10 @@ describe("Blob GLB roundtrip", () => {
     expect(getNumericProperty(recoveredMetadata, "junk1")).toBe(0);
     expect(getNumericProperty(originalMetadata, "junk2")).toBe(1498);
     expect(getNumericProperty(recoveredMetadata, "junk2")).toBe(0);
-    expect(getNestedRecord(recoveredRaw, "Evnt")).toBeUndefined();
-    expect(getNestedRecord(originalRaw, "Evnt")).toBeDefined();
+    const recoveredEvnt = getNestedRecord(recoveredRaw, "Evnt");
+    const originalEvnt = getNestedRecord(originalRaw, "Evnt");
+    expect(recoveredEvnt).toBeDefined();
+    expect(originalEvnt).toBeDefined();
+    expect(Object.keys(recoveredEvnt || {})).toEqual(Object.keys(originalEvnt || {}));
   });
 });

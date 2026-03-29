@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Download, Plus, Trash2, Save } from "lucide-react";
+import { Download, Plus, Save } from "lucide-react";
 import { toast } from "sonner";
 import { hexToRgb, rgbToHex } from "@/utils/colorUtils";
 import {

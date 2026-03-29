@@ -101,7 +101,18 @@ export interface ParsedSkeleton {
 function transformToSkeletonResource(
   rawData: ParsedSkeleton,
 ): SkeletonResource {
-  const result: SkeletonResource = {
+  const result: {
+    _metadata?: Record<string, unknown>;
+    Hedr: NonNullable<SkeletonResource["Hedr"]>;
+    Bone: NonNullable<SkeletonResource["Bone"]>;
+    BonP: NonNullable<SkeletonResource["BonP"]>;
+    BonN: NonNullable<SkeletonResource["BonN"]>;
+    RelP: NonNullable<SkeletonResource["RelP"]>;
+    AnHd: NonNullable<SkeletonResource["AnHd"]>;
+    Evnt: NonNullable<SkeletonResource["Evnt"]>;
+    NumK: NonNullable<SkeletonResource["NumK"]>;
+    KeyF: NonNullable<SkeletonResource["KeyF"]>;
+  } = {
     _metadata: rawData?._metadata,
     Hedr: {},
     Bone: {},
