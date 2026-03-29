@@ -363,8 +363,18 @@ export function bg3dParsedToGLTF(
       m.setAlphaMode("MASK");
       m.setAlphaCutoff(0.5);
     } else if (mat.flags & BG3DMaterialFlags.BG3D_MATERIALFLAG_TEXTURED) {
-      m.setAlphaMode("MASK");
-      m.setAlphaCutoff(0.5);
+      // RGB-only textures are fully opaque
+      const hasAlphaTexture = mat.textures.some(
+        (t) =>
+          t.srcPixelFormat === PixelFormatSrc.GL_UNSIGNED_SHORT_1_5_5_5_REV ||
+          t.srcPixelFormat === PixelFormatSrc.GL_RGBA,
+      );
+      if (hasAlphaTexture) {
+        m.setAlphaMode("MASK");
+        m.setAlphaCutoff(0.5);
+      } else {
+        m.setAlphaMode("OPAQUE");
+      }
     }
 
     return m;
