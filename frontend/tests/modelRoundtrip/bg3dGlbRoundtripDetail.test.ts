@@ -1,5 +1,5 @@
-import { describe, it, expect } from "vitest";
-import { parseBG3D, bg3dParsedToBG3D } from "@/modelParsers/parseBG3D";
+import { describe, it } from "vitest";
+import { parseBG3D } from "@/modelParsers/parseBG3D";
 import { bg3dParsedToGLTF, gltfToBG3D } from "@/modelParsers/parsedBg3dGitfConverter";
 import { parseSkeletonRsrc } from "@/modelParsers/skeletonRsrc/parseSkeletonRsrcTS";
 import { unwrap } from "@/types/result";

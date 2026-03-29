@@ -2,7 +2,6 @@ import { describe, it, expect } from "vitest";
 import { existsSync, readFileSync } from "fs";
 import { join } from "path";
 import { parseGlbImportResult } from "./useFileUpload";
-import { parseBG3D } from "@/modelParsers/parseBG3D";
 import { parseSkeletonRsrc } from "@/modelParsers/skeletonRsrc/parseSkeletonRsrcTS";
 import { parseBG3DWithSkeletonResource } from "@/modelParsers/bg3dWithSkeleton";
 

@@ -1,7 +1,13 @@
 // bg3dWithSkeleton.ts
 // Combined parser for BG3D/3DMF files with skeleton data
 
-import { parseBG3D, BG3DParseResult } from "./parseBG3D";
+import {
+  parseBG3D,
+  BG3DParseResult,
+  type BG3DAnimation,
+  type BG3DAnimationEvent,
+  type BG3DKeyframe,
+} from "./parseBG3D";
 import { parse3DMF } from "./parse3dmf";
 import { parseSkeletonRsrc } from "./skeletonRsrc/parseSkeletonRsrcTS";
 import type { SkeletonResource } from "../python/structSpecs/skeleton/skeletonInterface";
@@ -162,7 +168,7 @@ function parseModelWithSkeletonResource(
           };
         }),
         animations: (() => {
-          const anims: any[] = [];
+          const anims: BG3DAnimation[] = [];
           const animHeaderEntries = Object.entries(skeleton.AnHd || {});
           animHeaderEntries.sort(([a], [b]) => parseInt(a, 10) - parseInt(b, 10));
 
@@ -171,10 +177,10 @@ function parseModelWithSkeletonResource(
             const animResourceId = parseInt(animId, 10);
             const animIndex = animResourceId - 1000;
 
-            const events: any[] = [];
+            const events: BG3DAnimationEvent[] = [];
             const eventEntry = skeleton.Evnt?.[animId];
             if (eventEntry) {
-              eventEntry.obj.forEach((event: any) => {
+              eventEntry.obj.forEach((event) => {
                 events.push({
                   time: event.time,
                   type: event.type,
@@ -183,14 +189,14 @@ function parseModelWithSkeletonResource(
               });
             }
 
-            const keyframes: Record<number, any[]> = {};
+            const keyframes: Record<number, BG3DKeyframe[]> = {};
             for (let boneIndex = 0; boneIndex < boneEntries.length; boneIndex++) {
               keyframes[boneIndex] = [];
               const keyframeResourceId = (1000 + animIndex * 100 + boneIndex).toString();
               const keyframeEntry = skeleton.KeyF?.[keyframeResourceId];
 
               if (keyframeEntry && keyframeEntry.obj && Array.isArray(keyframeEntry.obj)) {
-                keyframeEntry.obj.forEach((keyframe: any) => {
+                keyframeEntry.obj.forEach((keyframe) => {
                   keyframes[boneIndex]?.push({
                     tick: keyframe.tick,
                     accelerationMode: keyframe.accelerationMode,

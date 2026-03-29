@@ -53,7 +53,7 @@ describe("aliasResource", () => {
     }
 
     const bg3d = bufferFromFile(bg3dPath);
-    const skeleton = await parseSkeletonRsrc(bufferFromFile(skelPath));
+    await parseSkeletonRsrc(bufferFromFile(skelPath));
     const parsed = unwrap(parseBG3D(bg3d, skeleton));
     if (!parsed.skeleton) {
       throw new Error("Expected Otto skeleton data");
@@ -109,7 +109,7 @@ describe("aliasResource", () => {
     }
 
     const bg3d = bufferFromFile(bg3dPath);
-    const skeleton = await parseSkeletonRsrc(bufferFromFile(skelPath));
+    await parseSkeletonRsrc(bufferFromFile(skelPath));
     const parsedMeta = parse3DMFToMetaFile(bg3d);
     expect(parsedMeta.isOk()).toBe(true);
     if (parsedMeta.isErr()) {

@@ -48,7 +48,7 @@ describe("rsrcdump-ts skeleton audit", () => {
     const bytePerfectFiles: string[] = [];
     const typeOnlyMatches: string[] = [];
     const payloadOnlyMatches: string[] = [];
-    const mismatches: Array<{
+    const mismatches: {
       file: string;
       missingTypes?: string[];
       missingIds?: string[];
@@ -56,7 +56,7 @@ describe("rsrcdump-ts skeleton audit", () => {
       metadataDiffs?: string[];
       originalBytes: number;
       recoveredBytes: number;
-    }> = [];
+    }[] = [];
 
     for (const file of files) {
       const fileBuffer = await readFile(file);

@@ -9,7 +9,6 @@ import {
   bg3dParsedToGLTF,
   gltfToBG3D,
 } from "./parsedBg3dGitfConverter";
-import { bg3dParsedToBG3D } from "./parseBG3D";
 import { readFileSync } from "fs";
 import { join } from "path";
 import { NodeIO } from "@gltf-transform/core";

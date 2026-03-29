@@ -60,8 +60,13 @@ describe("BG3D produces clean GLB (no extras)", () => {
     // Verify materials
     expect(roundtripped.materials.length).toBe(parsed.materials.length);
     for (let i = 0; i < parsed.materials.length; i++) {
-      const orig = parsed.materials[i]!;
-      const rt = roundtripped.materials[i]!;
+      const orig = parsed.materials[i];
+      const rt = roundtripped.materials[i];
+      expect(orig).toBeDefined();
+      expect(rt).toBeDefined();
+      if (!orig || !rt) {
+        return;
+      }
       // diffuse color should match
       for (let c = 0; c < 4; c++) {
         expect(Math.abs((rt.diffuseColor[c] ?? 0) - (orig.diffuseColor[c] ?? 0))).toBeLessThan(0.01);
@@ -72,8 +77,15 @@ describe("BG3D produces clean GLB (no extras)", () => {
       expect(rt.textures.length).toBe(orig.textures.length);
       // texture dimensions should match
       for (let j = 0; j < orig.textures.length; j++) {
-        expect(rt.textures[j]!.width).toBe(orig.textures[j]!.width);
-        expect(rt.textures[j]!.height).toBe(orig.textures[j]!.height);
+        const originalTexture = orig.textures[j];
+        const roundtrippedTexture = rt.textures[j];
+        expect(originalTexture).toBeDefined();
+        expect(roundtrippedTexture).toBeDefined();
+        if (!originalTexture || !roundtrippedTexture) {
+          return;
+        }
+        expect(roundtrippedTexture.width).toBe(originalTexture.width);
+        expect(roundtrippedTexture.height).toBe(originalTexture.height);
       }
     }
     
