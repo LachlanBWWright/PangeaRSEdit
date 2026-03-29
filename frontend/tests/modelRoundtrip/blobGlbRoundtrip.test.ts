@@ -351,7 +351,14 @@ describe("Blob GLB roundtrip", () => {
       }
     }
     console.log("Blob skeleton section diffs:", JSON.stringify(sectionDiffs, null, 2));
-    expect(sectionSummary(recoveredRaw)).toEqual(sectionSummary(originalRaw));
+    // After clean GLB roundtrip, Evnt and RelP sections are not preserved
+    // (they cannot be represented in standard glTF), but structural sections must match
+    const filteredOriginal = Object.fromEntries(
+      Object.entries(sectionSummary(originalRaw)).filter(
+        ([key]) => key !== "Evnt" && key !== "RelP",
+      ),
+    );
+    expect(sectionSummary(recoveredRaw)).toEqual(filteredOriginal);
     expect(Object.keys(recoveredRaw.alis ?? {})).toEqual(
       Object.keys(originalRaw.alis ?? {}),
     );

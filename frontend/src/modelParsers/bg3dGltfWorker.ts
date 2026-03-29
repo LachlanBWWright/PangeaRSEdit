@@ -116,8 +116,7 @@ self.onmessage = async (e: MessageEvent<BG3DGltfWorkerMessage>) => {
         return;
       }
       const parsed = parseResult.value;
-      // Preserve original binary in GLB extras for byte-perfect roundtrip
-      const doc = bg3dParsedToGLTF(parsed, { bg3dBuffer: msg.buffer });
+      const doc = bg3dParsedToGLTF(parsed);
       const io = new WebIO();
       const glbBuffer = await io.writeBinary(doc);
       const arrBuffer = new Uint8Array(glbBuffer).buffer;
@@ -141,11 +140,7 @@ self.onmessage = async (e: MessageEvent<BG3DGltfWorkerMessage>) => {
         return;
       }
       const parsed = parseResult.value;
-      // Preserve both original binaries in GLB extras for byte-perfect roundtrip
-      const doc = bg3dParsedToGLTF(parsed, {
-        bg3dBuffer: msg.bg3dBuffer,
-        skeletonBuffer: msg.skeletonBuffer,
-      });
+      const doc = bg3dParsedToGLTF(parsed);
       const io = new WebIO();
       const glbBuffer = await io.writeBinary(doc);
       const arrBuffer = new Uint8Array(glbBuffer).buffer;

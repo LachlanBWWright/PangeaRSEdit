@@ -1,9 +1,7 @@
 import { describe, it, expect } from "vitest";
-import { parseBG3D, bg3dParsedToBG3D, type BG3DParseResult } from "@/modelParsers/parseBG3D";
-import { bg3dParsedToGLTF, gltfToBG3D, getOriginalBG3DBinary, getOriginalSkeletonBinary } from "@/modelParsers/parsedBg3dGitfConverter";
+import { parseBG3D, bg3dParsedToBG3D } from "@/modelParsers/parseBG3D";
+import { bg3dParsedToGLTF, gltfToBG3D } from "@/modelParsers/parsedBg3dGitfConverter";
 import { parseSkeletonRsrc } from "@/modelParsers/skeletonRsrc/parseSkeletonRsrcTS";
-import { bg3dSkeletonToSkeletonResource } from "@/modelParsers/skeletonExport";
-import { skeletonResourceToBinary } from "@/modelParsers/skeletonBinaryExport";
 import { unwrap } from "@/types/result";
 import { readFileSync, existsSync } from "fs";
 import { join } from "path";
@@ -67,44 +65,6 @@ describe("BG3D byte-perfect roundtrip", () => {
       expect(match).toBe(true);
     });
 
-    it(`${game}/${name}: GLB roundtrip with preserved binary is byte-perfect`, async () => {
-      if (!existsSync(bg3dPath)) { console.warn("Skip: not found"); return; }
-      const originalBg3d = bufferFromFile(bg3dPath);
-      const originalSkel = existsSync(skelPath) ? bufferFromFile(skelPath) : undefined;
-      
-      const skelResource = originalSkel ? await parseSkeletonRsrc(originalSkel) : undefined;
-      const parsed = unwrap(parseBG3D(originalBg3d, skelResource));
-      
-      const gltfDoc = bg3dParsedToGLTF(parsed, { bg3dBuffer: originalBg3d, skeletonBuffer: originalSkel });
-      const io = new NodeIO();
-      const glbBytes = await io.writeBinary(gltfDoc);
-      const readDoc = await io.readBinary(glbBytes);
-      
-      const preservedBg3d = getOriginalBG3DBinary(readDoc);
-      expect(preservedBg3d).toBeTruthy();
-      if (!preservedBg3d) return;
-      
-      const match = compareBuffers(
-        new Uint8Array(originalBg3d),
-        new Uint8Array(preservedBg3d),
-        `${game}/${name} GLB preserved`
-      );
-      expect(match).toBe(true);
-      
-      if (originalSkel) {
-        const preservedSkel = getOriginalSkeletonBinary(readDoc);
-        expect(preservedSkel).toBeTruthy();
-        if (preservedSkel) {
-          const skelMatch = compareBuffers(
-            new Uint8Array(originalSkel),
-            new Uint8Array(preservedSkel),
-            `${game}/${name} skeleton preserved`
-          );
-          expect(skelMatch).toBe(true);
-        }
-      }
-    });
-    
     it(`${game}/${name}: GLB roundtrip (semantic) produces valid BG3D`, async () => {
       if (!existsSync(bg3dPath)) { console.warn("Skip: not found"); return; }
       const originalBg3d = bufferFromFile(bg3dPath);
@@ -120,7 +80,6 @@ describe("BG3D byte-perfect roundtrip", () => {
       const roundtripped = await gltfToBG3D(readDoc);
       
       expect(roundtripped.materials.length).toBe(parsed.materials.length);
-      expect(roundtripped.headerBytes).toBeDefined();
       
       const reserialized = bg3dParsedToBG3D(roundtripped);
       expect(reserialized.byteLength).toBeGreaterThan(0);
