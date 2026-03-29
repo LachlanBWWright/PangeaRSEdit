@@ -112,7 +112,7 @@ export async function getBG3DDownloadArtifacts(
       parsed.skeleton,
       undefined,
       undefined,
-      parsed.skeleton.alisData,
+      undefined,
       parsed.skeleton.metadata,
       modelFileName,
       exportTarget,

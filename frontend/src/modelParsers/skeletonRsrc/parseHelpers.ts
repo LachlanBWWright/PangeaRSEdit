@@ -3,6 +3,48 @@
  */
 import type { BoneRaw, KeyFRaw } from "./parseSkeletonRsrcTS";
 
+function hexToBytes(hex: string): Uint8Array {
+  const bytes = new Uint8Array(hex.length / 2);
+  for (let i = 0; i < hex.length; i += 2) {
+    bytes[i / 2] = parseInt(hex.substring(i, i + 2), 16);
+  }
+  return bytes;
+}
+
+function bytesToHex(bytes: Uint8Array): string {
+  return Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("").toUpperCase();
+}
+
+export function decodePascalHexString(hexData: string): string {
+  if (!hexData || hexData.length === 0) return "";
+
+  const bytes = hexToBytes(hexData);
+  if (bytes.length === 0) return "";
+
+  const declaredLength = bytes[0] ?? 0;
+  const contentLength = Math.min(declaredLength, Math.max(0, bytes.length - 1));
+  if (declaredLength > 0 && contentLength > 0) {
+    const slice = bytes.slice(1, 1 + contentLength);
+    return Array.from(slice, (byte) => String.fromCharCode(byte)).join("");
+  }
+
+  const chars: string[] = [];
+  for (const byte of bytes) {
+    if (byte === 0) break;
+    chars.push(String.fromCharCode(byte));
+  }
+  return chars.join("");
+}
+
+export function encodePascalStringHex(text: string, totalBytes: number): string {
+  const bytes = new Uint8Array(totalBytes);
+  const encoded = Array.from(text, (ch) => ch.charCodeAt(0) & 0xff);
+  const contentLength = Math.min(encoded.length, Math.max(0, totalBytes - 1));
+  bytes[0] = contentLength;
+  bytes.set(encoded.slice(0, contentLength), 1);
+  return bytesToHex(bytes);
+}
+
 export function parseBonPData(hexData: string): { pointIndex: number }[] {
   if (!hexData || hexData.length === 0) return [];
 

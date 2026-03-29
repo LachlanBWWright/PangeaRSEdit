@@ -1,3 +1,4 @@
+import { decodePascalHexString } from "../parseHelpers";
 import type { AnHdRaw } from "../parseSkeletonRsrcTS";
 
 // Type guard for checking if value is a record
@@ -7,16 +8,17 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 export function handleAnHd(
   resourceName: string,
-  resourceData: AnHdRaw,
+  resourceData: AnHdRaw | { obj?: AnHdRaw } | undefined,
 ): AnHdRaw {
-  if (
-    resourceData &&
-    resourceData.animName !== undefined &&
-    resourceData.numAnimEvents !== undefined
-  ) {
-    const rd = resourceData;
+  const obj = isRecord(resourceData) && isRecord(resourceData.obj)
+    ? resourceData.obj
+    : resourceData;
+  if (obj && obj.animName !== undefined && obj.numAnimEvents !== undefined) {
+    const rd = obj;
     return {
-      animName: rd.animName,
+      animName: isRecord(resourceData) && isRecord(resourceData.obj)
+        ? decodePascalHexString(String(rd.animName))
+        : String(rd.animName),
       numAnimEvents: rd.numAnimEvents,
     };
   }

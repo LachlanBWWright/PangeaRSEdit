@@ -5,6 +5,7 @@ import type { SkeletonResource } from "../python/structSpecs/skeleton/skeletonIn
 import { loadBytesFromJson, isOk } from "@lachlanbwwright/rsrcdump-ts";
 import { skeletonSpecs } from "../python/structSpecs/skeleton/skeleton";
 import { ok, err, type Result } from "../types/result";
+import { encodePascalStringHex } from "./skeletonRsrc/parseHelpers";
 
 // Global storage for Finder Info to preserve during round-trip
 let globalFinderInfo: Uint8Array | undefined = undefined;
@@ -29,9 +30,27 @@ export function skeletonResourceToBinary(
     "Converting SkeletonResource to binary format using rsrcdump-ts...",
   );
 
+  const binarySkeletonResource = JSON.parse(
+    JSON.stringify(skeletonResource),
+  ) as SkeletonResource;
+
+  for (const entry of Object.values(binarySkeletonResource.Bone || {})) {
+    const boneName = entry?.obj?.name;
+    if (typeof boneName === "string") {
+      entry.obj.name = encodePascalStringHex(boneName, 32);
+    }
+  }
+
+  for (const entry of Object.values(binarySkeletonResource.AnHd || {})) {
+    const animName = entry?.obj?.animName;
+    if (typeof animName === "string") {
+      entry.obj.animName = encodePascalStringHex(animName, 33);
+    }
+  }
+
   // Use rsrcdump-ts loadBytesFromJson to convert back to binary
   const result = loadBytesFromJson(
-    skeletonResource,
+    binarySkeletonResource,
     skeletonSpecs,
     [],
     [],

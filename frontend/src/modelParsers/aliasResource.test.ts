@@ -8,6 +8,7 @@ import { bg3dSkeletonToSkeletonResource } from "./skeletonExport";
 import { skeletonResourceToBinary } from "./skeletonBinaryExport";
 import { getBG3DExportTarget } from "./bg3dExportTargets";
 import { unwrap } from "@/types/result";
+import { load, orderedFlatList, resourceTypeStr } from "@lachlanbwwright/rsrcdump-ts";
 
 function bufferFromFile(filePath: string): ArrayBuffer {
   const buf = readFileSync(filePath);
@@ -17,6 +18,22 @@ function bufferFromFile(filePath: string): ArrayBuffer {
 function assertContainsAscii(bytes: ArrayBuffer, needle: string): void {
   const text = new TextDecoder("latin1").decode(bytes);
   expect(text.includes(needle)).toBe(true);
+}
+
+function flattenAlis(bytes: ArrayBuffer): Record<number, Uint8Array> {
+  const result = load(new Uint8Array(bytes));
+  expect(result.ok).toBe(true);
+  if (!result.ok) {
+    return {};
+  }
+
+  const out: Record<number, Uint8Array> = {};
+  for (const res of orderedFlatList(result.value)) {
+    if (resourceTypeStr(res) === "alis") {
+      out[res.num] = res.data;
+    }
+  }
+  return out;
 }
 
 describe("aliasResource", () => {
@@ -57,6 +74,12 @@ describe("aliasResource", () => {
     if (binaryResult.isErr()) {
       throw binaryResult.error;
     }
+
+    const original = flattenAlis(bufferFromFile(skelPath));
+    const recovered = flattenAlis(binaryResult.value);
+    expect(Object.keys(recovered)).toEqual(Object.keys(original));
+    expect(recovered[1000]).toEqual(original[1000]);
+    expect(recovered[1001]).toEqual(original[1001]);
 
     assertContainsAscii(binaryResult.value, "Blob.3df");
     assertContainsAscii(binaryResult.value, "Blob.bg3d");

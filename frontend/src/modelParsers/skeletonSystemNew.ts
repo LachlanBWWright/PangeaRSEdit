@@ -813,8 +813,8 @@ function createGltfAnimations(
         channelData.path === "rotation"
           ? 4
           : channelData.path === "translation" || channelData.path === "scale"
-          ? 3
-          : 1;
+            ? 3
+            : 1;
       const expectedValueCount =
         channelData.times.length * expectedValuesPerTime;
 
@@ -1167,8 +1167,8 @@ export function extractAnimationsFromGLTF(
         path === "rotation"
           ? 4
           : path === "translation" || path === "scale"
-          ? 3
-          : 1;
+            ? 3
+            : 1;
 
       // Get bone rest pose for converting relative translations to absolute
       const bone = bones && boneIndex < bones.length ? bones[boneIndex] : null;

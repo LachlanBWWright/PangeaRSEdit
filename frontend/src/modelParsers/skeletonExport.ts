@@ -68,7 +68,7 @@ export function bg3dSkeletonToSkeletonResource(
       : convertRelPointsToRelPFormat(skeleton.relPoints);
   const effectiveAlisData = hasEntries(alisData as Record<string, unknown> | undefined)
     ? alisData
-    : skeleton.alisData;
+    : undefined;
   const effectiveMetadata = metadata || skeleton.metadata;
 
   // Debug: Check what RelP data we received

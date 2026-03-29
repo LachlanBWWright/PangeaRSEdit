@@ -1859,8 +1859,8 @@ export async function gltfToBG3D(doc: Document): Promise<BG3DParseResult> {
         const alisDataRaw = skeletonExtras?.alisData;
         const alisData = isRecord(alisDataRaw) ? alisDataRaw : undefined;
 
-        const metadataRaw = skeletonExtras?.metadata;
-        const metadata = isRecord(metadataRaw) ? metadataRaw : undefined;
+    const metadataRaw = skeletonExtras?.metadata;
+    const metadata = isRecord(metadataRaw) ? metadataRaw : undefined;
 
         // Safely extract header values with type checking
         const headerVersion = typeof headerData?.version === "number" ? headerData.version : 272;
