@@ -166,6 +166,8 @@ describe("BG3D structural roundtrip (without preserved binary)", () => {
       // Serialize skeleton and verify
       if (roundtripped.skeleton) {
         const roundtrippedSkelResource = bg3dSkeletonToSkeletonResource(roundtripped.skeleton);
+        const numKEntry = roundtrippedSkelResource.NumK["1000"];
+        expect(numKEntry?.obj?.[0]).toHaveProperty("numKeyFrames");
         const skelBinaryResult = await skeletonResourceToBinary(roundtrippedSkelResource);
         if (skelBinaryResult.ok) {
           expect(skelBinaryResult.value.byteLength).toBeGreaterThan(0);

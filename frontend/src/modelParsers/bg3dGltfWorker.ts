@@ -67,12 +67,14 @@ export type BG3DGltfWorkerResponse =
       type: "glb-to-bg3d";
       result: ArrayBuffer;
       skeletonResult?: ArrayBuffer;
+      parsed?: BG3DParseResult;
       requestId?: string;
     }
   | {
       type: "glb-to-bg3d-with-skeleton";
       bg3dResult: ArrayBuffer;
       skeletonResult?: ArrayBuffer;
+      parsed?: BG3DParseResult;
       requestId?: string;
     }
   | {
@@ -179,6 +181,7 @@ self.onmessage = async (e: MessageEvent<BG3DGltfWorkerMessage>) => {
     } else if (msg.type === "glb-to-bg3d") {
       const io = new WebIO();
       const doc = await io.readBinary(new Uint8Array(msg.buffer));
+      const parsedBg3d = await gltfToBG3D(doc);
 
       // Prefer preserved original binary for byte-perfect roundtrip
       const preservedBg3d = getOriginalBG3DBinary(doc);
@@ -186,12 +189,13 @@ self.onmessage = async (e: MessageEvent<BG3DGltfWorkerMessage>) => {
 
       const bg3d = preservedBg3d
         ? preservedBg3d
-        : bg3dParsedToBG3D(await gltfToBG3D(doc));
+        : bg3dParsedToBG3D(parsedBg3d);
 
       const response: BG3DGltfWorkerResponse = {
         type: "glb-to-bg3d",
         result: bg3d,
         skeletonResult: preservedSkeleton ?? undefined,
+        parsed: parsedBg3d,
         requestId,
       };
       self.postMessage.call(self, response);
@@ -203,14 +207,16 @@ self.onmessage = async (e: MessageEvent<BG3DGltfWorkerMessage>) => {
       const preservedBg3d = getOriginalBG3DBinary(doc);
       const preservedSkeleton = getOriginalSkeletonBinary(doc);
 
+      const parsedBg3d = await gltfToBG3D(doc);
       const bg3d = preservedBg3d
         ? preservedBg3d
-        : bg3dParsedToBG3D(await gltfToBG3D(doc));
+        : bg3dParsedToBG3D(parsedBg3d);
 
       const response: BG3DGltfWorkerResponse = {
         type: "glb-to-bg3d-with-skeleton",
         bg3dResult: bg3d,
         skeletonResult: preservedSkeleton ?? undefined,
+        parsed: parsedBg3d,
         requestId,
       };
       self.postMessage.call(self, response);

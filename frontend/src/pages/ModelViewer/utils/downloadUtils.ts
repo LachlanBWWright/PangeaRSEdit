@@ -4,12 +4,168 @@
  * Handles exporting models in various formats (BG3D, GLB, 3DMF) and textures
  */
 
-import { BG3DParseResult } from "../../../modelParsers/parseBG3D";
+import { parseBG3D, type BG3DParseResult } from "../../../modelParsers/parseBG3D";
 import BG3DGltfWorker from "../../../modelParsers/bg3dGltfWorker?worker";
 import type { BG3DGltfWorkerMessage, BG3DGltfWorkerResponse } from "../../../modelParsers/bg3dGltfWorker";
+import { bg3dParseResultToMetaFile, write3DMFFromMetaFile } from "../../../modelParsers/threeDMF";
 import { bg3dSkeletonToSkeletonResource } from "../../../modelParsers/skeletonExport";
 import { skeletonResourceToBinary } from "../../../modelParsers/skeletonBinaryExport";
+import { DEFAULT_BG3D_EXPORT_TARGET, type BG3DExportTarget } from "../../../modelParsers/bg3dExportTargets";
 import type { Texture } from "../types";
+import { err, ok, fromPromise, type Result } from "@/types/result";
+
+async function loadGlbBytes(gltfUrl: string): Promise<Result<ArrayBuffer, Error>> {
+  const responseResult = await fromPromise(fetch(gltfUrl));
+  if (responseResult.isErr()) {
+    return err(
+      responseResult.error instanceof Error
+        ? responseResult.error
+        : new Error(String(responseResult.error)),
+    );
+  }
+
+  if (!responseResult.value.ok) {
+    return err(new Error(`Failed to fetch GLB data: ${responseResult.value.status}`));
+  }
+
+  const bytesResult = await fromPromise(responseResult.value.arrayBuffer());
+  if (bytesResult.isErr()) {
+    return err(
+      bytesResult.error instanceof Error
+        ? bytesResult.error
+        : new Error(String(bytesResult.error)),
+    );
+  }
+
+  return ok(bytesResult.value);
+}
+
+async function glbUrlToBg3dResponse(
+  gltfUrl: string,
+): Promise<Result<BG3DGltfWorkerResponse, Error>> {
+  const glbBytesResult = await loadGlbBytes(gltfUrl);
+  if (glbBytesResult.isErr()) {
+    return err(glbBytesResult.error);
+  }
+
+  const workerResult = await fromPromise(
+    new Promise<BG3DGltfWorkerResponse>((resolve, reject) => {
+      const worker = new BG3DGltfWorker();
+      worker.onmessage = (e) => {
+        resolve(e.data);
+        worker.terminate();
+      };
+      worker.onerror = (e) => {
+        reject(e);
+        worker.terminate();
+      };
+      const message: BG3DGltfWorkerMessage = {
+        type: "glb-to-bg3d",
+        buffer: glbBytesResult.value,
+      };
+      worker.postMessage(message);
+    }),
+  );
+  if (workerResult.isErr()) {
+    return err(
+      workerResult.error instanceof Error
+        ? workerResult.error
+        : new Error(String(workerResult.error)),
+    );
+  }
+
+  return ok(workerResult.value);
+}
+
+export interface BG3DDownloadArtifacts {
+  bg3dBytes: ArrayBuffer;
+  skeletonBytes?: ArrayBuffer;
+}
+
+export async function getBG3DDownloadArtifacts(
+  gltfUrl: string,
+  modelFileName = "Model",
+  exportTarget: BG3DExportTarget = DEFAULT_BG3D_EXPORT_TARGET,
+): Promise<Result<BG3DDownloadArtifacts, Error>> {
+  const result = await glbUrlToBg3dResponse(gltfUrl);
+  if (result.isErr()) {
+    return err(result.error);
+  }
+
+  if (result.value.type === "error") {
+    return err(new Error(`Failed to convert GLB to BG3D: ${result.value.error}`));
+  }
+
+  const parsedResult = result.value.parsed
+    ? ok(result.value.parsed)
+    : parseBG3D(result.value.result);
+  if (parsedResult.isErr()) {
+    return err(parsedResult.error);
+  }
+  const parsed = parsedResult.value;
+
+  let skeletonBytes: ArrayBuffer | undefined;
+  if (result.value.skeletonResult) {
+    skeletonBytes = result.value.skeletonResult;
+  } else if (parsed.skeleton) {
+    const skeletonResource = bg3dSkeletonToSkeletonResource(
+      parsed.skeleton,
+      undefined,
+      undefined,
+      parsed.skeleton.alisData,
+      parsed.skeleton.metadata,
+      modelFileName,
+      exportTarget,
+    );
+    const skeletonBinaryResult = skeletonResourceToBinary(skeletonResource);
+    if (skeletonBinaryResult.isErr()) {
+      return err(skeletonBinaryResult.error);
+    }
+    skeletonBytes = skeletonBinaryResult.value;
+  }
+
+  return ok({
+    bg3dBytes: result.value.result,
+    skeletonBytes,
+  });
+}
+
+export async function get3DMFDownloadBytes(
+  gltfUrl: string,
+): Promise<Result<ArrayBuffer, Error>> {
+  const result = await glbUrlToBg3dResponse(gltfUrl);
+  if (result.isErr()) {
+    return err(result.error);
+  }
+
+  if (result.value.type === "error") {
+    return err(new Error(`Failed to convert GLB to BG3D: ${result.value.error}`));
+  }
+
+  const parsedBg3dResult = result.value.parsed
+    ? ok(result.value.parsed)
+    : parseBG3D(result.value.result);
+  if (parsedBg3dResult.isErr()) {
+    return err(
+      new Error(
+        `Failed to parse GLB-derived BG3D: ${parsedBg3dResult.error.message}`,
+      ),
+    );
+  }
+  const parsedBg3d = parsedBg3dResult.value;
+
+  const metaResult = bg3dParseResultToMetaFile(parsedBg3d);
+  if (metaResult.isErr()) {
+    return err(new Error(`Failed to convert to 3DMF: ${metaResult.error.message}`));
+  }
+
+  const writeResult = write3DMFFromMetaFile(metaResult.value);
+  if (writeResult.isErr()) {
+    return err(new Error(`Failed to write 3DMF: ${writeResult.error.message}`));
+  }
+
+  return ok(writeResult.value);
+}
 
 /**
  * Downloads a texture as a PNG file
@@ -33,96 +189,41 @@ export async function downloadTexture(
 }
 
 /**
- * Downloads the BG3D model and optionally the skeleton resource
+ * Downloads the BG3D model and optionally the skeleton resource.
  *
- * Converts the parsed BG3D data back to binary format using a worker.
- * If the model has animations, also exports the skeleton as a .skeleton.rsrc file.
- *
- * @param bg3dParsed - Parsed BG3D model data
- * @param modelFileName - Optional custom filename for the BG3D file (without extension)
- * @param skeletonFileName - Optional custom filename for skeleton (without extension)
- * @throws Error if download or conversion fails
+ * The bytes come only from the current GLB URL via the worker response.
  */
 export async function downloadBG3DModel(
-  bg3dParsed: BG3DParseResult,
+  gltfUrl: string,
   modelFileName = "model",
   skeletonFileName = "model.skeleton",
-): Promise<void> {
-  return new Promise((resolve, reject) => {
-    const worker = new BG3DGltfWorker();
+  exportTarget: BG3DExportTarget = DEFAULT_BG3D_EXPORT_TARGET,
+): Promise<Result<void, Error>> {
+  const downloadBlob = (data: ArrayBuffer | Uint8Array, fileName: string) => {
+    const blob = new Blob([data], {
+      type: "application/octet-stream",
+    });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = fileName;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
 
-    worker.onmessage = async (e: MessageEvent<BG3DGltfWorkerResponse>) => {
-      const result = e.data;
-      if (result.type === "error") {
-        worker.terminate();
-        reject(new Error(`Failed to convert BG3D: ${result.error}`));
-        return;
-      }
+  const result = await getBG3DDownloadArtifacts(gltfUrl, modelFileName, exportTarget);
+  if (result.isErr()) {
+    return err(result.error);
+  }
 
-      if (result.type === "bg3d-parsed-to-bg3d") {
-        // Download the BG3D binary
-        const blob = new Blob([result.result], {
-          type: "application/octet-stream",
-        });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = `${modelFileName}.bg3d`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
+  downloadBlob(result.value.bg3dBytes, `${modelFileName}.bg3d`);
+  if (result.value.skeletonBytes) {
+    downloadBlob(result.value.skeletonBytes, `${skeletonFileName}.rsrc`);
+  }
 
-        // Also download skeleton if available
-        if (
-          bg3dParsed.skeleton &&
-          bg3dParsed.skeleton.animations.length > 0
-        ) {
-          const skeletonResource = bg3dSkeletonToSkeletonResource(
-            bg3dParsed.skeleton,
-          );
-
-          // Convert to binary .rsrc format
-          const skeletonBinaryResult = skeletonResourceToBinary(
-            skeletonResource,
-          );
-          if (skeletonBinaryResult.isErr()) {
-            console.error("Failed to convert skeleton to binary:", skeletonBinaryResult.error);
-            worker.terminate();
-            resolve();
-            return;
-          }
-          const skeletonBinary = skeletonBinaryResult.value;
-          const skeletonBlob = new Blob([skeletonBinary], {
-            type: "application/octet-stream",
-          });
-          const skeletonUrl = URL.createObjectURL(skeletonBlob);
-
-          const skeletonLink = document.createElement("a");
-          skeletonLink.href = skeletonUrl;
-          skeletonLink.download = `${skeletonFileName}.rsrc`;
-          document.body.appendChild(skeletonLink);
-          skeletonLink.click();
-          document.body.removeChild(skeletonLink);
-          URL.revokeObjectURL(skeletonUrl);
-        }
-
-        worker.terminate();
-        resolve();
-      }
-    };
-
-    worker.onerror = () => {
-      reject(new Error("Failed to process BG3D data"));
-      worker.terminate();
-    };
-
-    const message: BG3DGltfWorkerMessage = {
-      type: "bg3d-parsed-to-bg3d",
-      parsed: bg3dParsed,
-    };
-    worker.postMessage(message);
-  });
+  return ok(undefined);
 }
 
 /**
@@ -145,37 +246,20 @@ export function downloadGLBModel(
 }
 
 /**
- * Downloads the model in 3DMF format
+ * Downloads the model in 3DMF format.
  *
- * Converts the BG3D parsed data to 3DMF format and downloads as binary.
- *
- * @param bg3dParsed - Parsed BG3D model data
- * @param fileName - Optional custom filename (without extension)
- * @throws Error if conversion or download fails
+ * The bytes come only from the current GLB URL via the worker response.
  */
 export async function download3DMFModel(
-  bg3dParsed: BG3DParseResult,
+  gltfUrl: string,
   fileName = "model",
-): Promise<void> {
-  // Convert BG3DParseResult to 3DMF format
-  const { bg3dParseResultToMetaFile, write3DMFFromMetaFile } = await import(
-    "../../../modelParsers/threeDMF"
-  );
-
-  const metaResult = bg3dParseResultToMetaFile(bg3dParsed);
-  if (metaResult.isErr()) {
-    console.error(`Failed to convert to 3DMF: ${metaResult.error.message}`);
-    return;
+): Promise<Result<void, Error>> {
+  const bytesResult = await get3DMFDownloadBytes(gltfUrl);
+  if (bytesResult.isErr()) {
+    return err(bytesResult.error);
   }
 
-  const writeResult = write3DMFFromMetaFile(metaResult.value);
-  if (writeResult.isErr()) {
-    console.error(`Failed to write 3DMF: ${writeResult.error.message}`);
-    return;
-  }
-
-  // Download the 3DMF binary
-  const blob = new Blob([writeResult.value], {
+  const blob = new Blob([bytesResult.value], {
     type: "application/octet-stream",
   });
   const url = URL.createObjectURL(blob);
@@ -186,4 +270,6 @@ export async function download3DMFModel(
   a.click();
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
+
+  return ok(undefined);
 }

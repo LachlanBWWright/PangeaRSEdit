@@ -783,8 +783,6 @@ function createGltfAnimations(
       `  Creating animation "${anim.name}" with ${anim.channels.length} channels`,
     );
 
-    let successfulChannels = 0;
-
     // Process all channels
     const allChannels = anim.channels;
 
@@ -859,14 +857,6 @@ function createGltfAnimations(
       }
 
       // Create time accessor with additional validation
-      // Debug: Check the time data
-      console.log(
-        `        Time data for ${joint.getName()}.${
-          channelData.path
-        }: [${channelData.times.slice(0, 3).join(", ")}...] (${
-          channelData.times.length
-        } values)`,
-      );
 
       const timeAccessor = doc
         .createAccessor()
@@ -944,33 +934,6 @@ function createGltfAnimations(
       }
 
       gltfAnimation.addSampler(sampler).addChannel(channel);
-      successfulChannels++;
-      console.log(
-        `    Added sampler and channel: ${joint.getName()}.${
-          channelData.path
-        }`,
-      );
-    });
-
-    // Debug: Check if the animation has samplers after adding channels
-    const samplers = gltfAnimation.listSamplers();
-    console.log(
-      `  Animation "${anim.name}" final result: ${successfulChannels} channels added, ${samplers.length} samplers detected`,
-    );
-
-    // Debug: List the channels we just added
-    const channels = gltfAnimation.listChannels();
-    console.log(
-      `  Animation "${anim.name}" channels: ${channels.length} found`,
-    );
-    channels.forEach((channel, index) => {
-      const sampler = channel.getSampler();
-      const node = channel.getTargetNode();
-      console.log(
-        `    Channel ${index}: ${node?.getName()}.${channel.getTargetPath()}, sampler: ${
-          sampler ? "present" : "missing"
-        }`,
-      );
     });
 
     return gltfAnimation;

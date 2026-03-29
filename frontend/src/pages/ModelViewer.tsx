@@ -14,8 +14,8 @@ import {
   ResizablePanelGroup,
 } from "@/components/ui/resizable";
 import { fromPromise } from "@/types/result";
+import { DEFAULT_BG3D_EXPORT_TARGET, getBG3DExportTarget } from "@/modelParsers/bg3dExportTargets";
 
-import { SkeletonConversionPanel } from "@/components/SkeletonConversionPanel";
 import { BG3DParseResult } from "../modelParsers/parseBG3D";
 import { toast, Toaster } from "sonner";
 import { AnimationMixer, Group } from "three";
@@ -27,10 +27,12 @@ import {
 } from "./ModelViewer/utils/downloadUtils";
 import { useFileUpload } from "./ModelViewer/hooks/useFileUpload";
 import { useTextureManagement } from "./ModelViewer/hooks/useTextureManagement";
+import type { UploadStep } from "./ModelViewer/types";
 import type { Texture, ModelNode } from "./ModelViewer/types";
 
 export function ModelViewer() {
   const [gltfUrl, setGltfUrl] = useState<string | null>(null);
+  const [modelBaseName, setModelBaseName] = useState<string>("model");
   const [loading, setLoading] = useState(false);
   const [textures, setTextures] = useState<Texture[]>([]);
   const [animations, setAnimations] = useState<AnimationInfo[]>([]);
@@ -41,11 +43,11 @@ export function ModelViewer() {
   const [boneTransform, setBoneTransform] = useState<
     [number, number, number] | null
   >(null);
-  const [uploadStep, setUploadStep] = useState<
-    "select-bg3d" | "select-skeleton" | "completed"
-  >("select-bg3d");
+  const [uploadStep, setUploadStep] = useState<UploadStep>("select-bg3d");
   const [pendingBg3dFile, setPendingBg3dFile] = useState<File | null>(null);
-  const [useGameSelector, setUseGameSelector] = useState<boolean>(true); // New state for UI mode
+  const [bg3dExportTargetId, setBg3dExportTargetId] = useState(
+    DEFAULT_BG3D_EXPORT_TARGET.id,
+  );
   const [wireframeMode, setWireframeMode] = useState<boolean>(false);
   const [logBonePositions, setLogBonePositions] = useState<boolean>(false);
   const hasAnimations = animations.length > 0;
@@ -54,7 +56,7 @@ export function ModelViewer() {
   const [modelNodes, setModelNodes] = useState<ModelNode[]>([]);
   const [bg3dParsed, setBg3dParsed] = useState<BG3DParseResult | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-
+  const effectiveModelBaseName = modelBaseName.trim() || "model";
   // Initialize file upload hook
   const { uploadFile } = useFileUpload({
     onGltfUrlChange: setGltfUrl,
@@ -79,35 +81,42 @@ export function ModelViewer() {
 
   // Wrapper that delegates to the hook
   const handleFileUpload = (bg3dFile: File, skeletonFile?: File) => {
+    setModelBaseName(bg3dFile.name.replace(/\.[^.]+$/, ""));
     return uploadFile(bg3dFile, skeletonFile);
   };
 
   // Handle BG3D file selection (step 1 of two-step flow)
-  const handleBg3dFileSelect = (file: File) => {
+  const handleBg3dFileSelect = async (file: File) => {
+    const isGlb = file.name.toLowerCase().endsWith(".glb");
+    if (isGlb) {
+      await handleFileUpload(file);
+      return;
+    }
+
     setPendingBg3dFile(file);
     setUploadStep("select-skeleton");
   };
 
   // Handle skeleton file selection (step 2 of two-step flow)
-  const handleSkeletonFileSelect = (file?: File) => {
+  const handleSkeletonFileSelect = async (file?: File) => {
     if (pendingBg3dFile) {
-      handleFileUpload(pendingBg3dFile, file);
+      await handleFileUpload(pendingBg3dFile, file);
     }
   };
 
   // Skip skeleton selection and proceed with just the BG3D file
-  const handleSkipSkeleton = () => {
+  const handleSkipSkeleton = async () => {
     if (pendingBg3dFile) {
-      handleFileUpload(pendingBg3dFile);
+      await handleFileUpload(pendingBg3dFile);
     }
   };
 
-  function handleDrop(e: React.DragEvent) {
+  async function handleDrop(e: React.DragEvent) {
     e.preventDefault();
     const files = Array.from(e.dataTransfer.files);
     const modelFile = files.find((file) => {
       const name = file.name.toLowerCase();
-      return name.endsWith(".bg3d") || name.endsWith(".3dmf");
+      return name.endsWith(".bg3d") || name.endsWith(".3dmf") || name.endsWith(".glb");
     });
     const skeletonFile = files.find((file) =>
       file.name.toLowerCase().endsWith(".skeleton.rsrc"),
@@ -115,21 +124,21 @@ export function ModelViewer() {
 
     if (uploadStep === "select-bg3d") {
       if (modelFile) {
-        if (skeletonFile) {
-          // Both files dropped at once, process immediately
-          handleFileUpload(modelFile, skeletonFile);
+        if (modelFile.name.toLowerCase().endsWith(".glb")) {
+          await handleFileUpload(modelFile);
+        } else if (skeletonFile) {
+          await handleFileUpload(modelFile, skeletonFile);
         } else {
-          // Only model dropped, move to skeleton selection step
-          handleBg3dFileSelect(modelFile);
+          await handleBg3dFileSelect(modelFile);
         }
       } else if (skeletonFile) {
         toast.error("Please first select a BG3D or 3DMF file");
       } else {
-        toast.error("Please drop a BG3D or 3DMF file");
+        toast.error("Please drop a BG3D, 3DMF, or GLB file");
       }
     } else if (uploadStep === "select-skeleton") {
       if (skeletonFile) {
-        handleSkeletonFileSelect(skeletonFile);
+        await handleSkeletonFileSelect(skeletonFile);
       } else if (modelFile) {
         toast.error(
           "Already selected model file. Please select a skeleton file or skip this step.",
@@ -215,12 +224,17 @@ export function ModelViewer() {
   };
 
   const handleDownloadBG3D = async () => {
-    if (!bg3dParsed) {
-      toast.error("No BG3D data available for download");
+    if (!gltfUrl) {
+      toast.error("No GLB model available for BG3D download");
       return;
     }
 
-    const result = await fromPromise(downloadBG3DModel(bg3dParsed));
+    const result = await downloadBG3DModel(
+      gltfUrl,
+      effectiveModelBaseName,
+      `${effectiveModelBaseName}.skeleton`,
+      getBG3DExportTarget(bg3dExportTargetId),
+    );
     if (result.isErr()) {
       console.error("Error downloading BG3D:", result.error);
       toast.error(result.error.message);
@@ -235,17 +249,17 @@ export function ModelViewer() {
       return;
     }
 
-    downloadGLBModel(gltfUrl);
+    downloadGLBModel(gltfUrl, effectiveModelBaseName);
     toast.success("GLB model downloaded");
   };
 
   const handleDownload3DMF = async () => {
-    if (!bg3dParsed) {
-      toast.error("No model data available for download");
+    if (!gltfUrl) {
+      toast.error("No GLB model available for 3DMF download");
       return;
     }
 
-    const result = await fromPromise(download3DMFModel(bg3dParsed));
+    const result = await download3DMFModel(gltfUrl, effectiveModelBaseName);
     if (result.isErr()) {
       console.error("Error downloading 3DMF:", result.error);
       toast.error(result.error.message);
@@ -266,10 +280,10 @@ export function ModelViewer() {
     setBg3dParsed(null);
     setTextures([]);
     setModelNodes([]);
+    setModelBaseName("model");
     setScene(undefined);
     setUploadStep("select-bg3d");
     setPendingBg3dFile(null);
-    // Don't reset useGameSelector - let user keep their preference
     toast.success("Model cleared");
   };
 
@@ -279,40 +293,42 @@ export function ModelViewer() {
         <ResizablePanelGroup orientation="horizontal" className="h-full w-full">
           <ResizablePanel defaultSize={28} minSize={20} className="pr-3 min-w-0">
             <div className="flex h-full flex-col space-y-4 px-2 overflow-y-auto min-w-0">
-          <ModelUploadPanel
-            gltfUrl={gltfUrl}
-            useGameSelector={useGameSelector}
-            setUseGameSelector={setUseGameSelector}
-            loading={loading}
-            uploadStep={uploadStep}
-            pendingBg3dFile={pendingBg3dFile}
-            fileInputRef={fileInputRef}
-            handleDrop={handleDrop}
-            handleDragOver={handleDragOver}
-            handleBg3dFileSelect={handleBg3dFileSelect}
-            handleSkeletonFileSelect={handleSkeletonFileSelect}
-            handleSkipSkeleton={handleSkipSkeleton}
-            handleFileUpload={handleFileUpload}
-            handleDownloadBG3D={handleDownloadBG3D}
-            handleDownloadGLB={handleDownloadGLB}
-            handleDownload3DMF={handleDownload3DMF}
-            handleClearModel={handleClearModel}
-            onCancelSelection={() => {
-              setUploadStep("select-bg3d");
-              setPendingBg3dFile(null);
-            }}
-          />
+              <ModelUploadPanel
+                gltfUrl={gltfUrl}
+                loading={loading}
+                uploadStep={uploadStep}
+                pendingBg3dFile={pendingBg3dFile}
+                fileInputRef={fileInputRef}
+                handleDrop={handleDrop}
+                handleDragOver={handleDragOver}
+                handleBg3dFileSelect={handleBg3dFileSelect}
+                handleSkeletonFileSelect={handleSkeletonFileSelect}
+                handleSkipSkeleton={handleSkipSkeleton}
+                handleFileUpload={handleFileUpload}
+                handleDownloadBG3D={handleDownloadBG3D}
+                handleDownloadGLB={handleDownloadGLB}
+                handleDownload3DMF={handleDownload3DMF}
+                modelBaseName={modelBaseName}
+                onModelBaseNameChange={setModelBaseName}
+                bg3dExportTargetId={bg3dExportTargetId}
+                onBg3dExportTargetChange={setBg3dExportTargetId}
+                handleClearModel={handleClearModel}
+                onCancelSelection={() => {
+                  setUploadStep("select-bg3d");
+                  setPendingBg3dFile(null);
+                }}
+              />
 
-          {/* Visualization Controls */}
-          {gltfUrl && (
-            <VisualizationOptions
-              wireframeMode={wireframeMode}
-              setWireframeMode={setWireframeMode}
-              logBonePositions={logBonePositions}
-              setLogBonePositions={setLogBonePositions}
-              hasAnimations={hasAnimations}
-            />
-          )}
+              {/* Visualization Controls */}
+              {gltfUrl && (
+                <VisualizationOptions
+                  wireframeMode={wireframeMode}
+                  setWireframeMode={setWireframeMode}
+                  logBonePositions={logBonePositions}
+                  setLogBonePositions={setLogBonePositions}
+                  hasAnimations={hasAnimations}
+                />
+              )}
 
           {/* Model Hierarchy — visibility toggles + poly counts */}
           {gltfUrl && modelNodes.length > 0 && (
@@ -374,21 +390,6 @@ export function ModelViewer() {
                 )}
               </CardContent>
             </Card>
-          )}
-          {!gltfUrl && (
-            <>
-              <SkeletonConversionPanel
-                title="Convert BG3D / 3DMF to GLB"
-                description="Upload .bg3d or .3dmf and optional .skeleton.rsrc files to convert and download as .glb."
-                conversionType="bg3d-to-glb"
-              />
-
-              <SkeletonConversionPanel
-                title="Convert GLB to BG3D"
-                description="Upload a .glb file to convert and download as .bg3d."
-                conversionType="glb-to-bg3d"
-              />
-            </>
           )}
           {gltfUrl && (
             <p className="text-xs text-gray-400 px-1">

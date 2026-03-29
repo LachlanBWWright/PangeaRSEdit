@@ -190,6 +190,7 @@ export interface BG3DParseResult {
   materials: BG3DMaterial[];
   groups: BG3DGroup[];
   skeleton?: BG3DSkeleton;
+  metadata?: Record<string, unknown>;
 }
 
 /**

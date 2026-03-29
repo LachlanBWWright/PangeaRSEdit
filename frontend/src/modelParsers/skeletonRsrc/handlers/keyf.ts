@@ -30,7 +30,8 @@ export function handleKeyF(
   resourceId: string,
   hexData: string,
 ): KeyFRaw[] {
-  console.log(resourceId, hexData);
+  void resourceId;
+  void hexData;
 
   // Check if resourceData has obj field (rsrcdump format)
   if (
@@ -40,19 +41,9 @@ export function handleKeyF(
   ) {
     const objArr = resourceData.obj;
     if (objArr.length > 0 && isKeyFRaw(objArr[0])) {
-      console.log(
-        `KeyF ${resourceName} data from rsrcdump:`,
-        objArr.length,
-        "keyframes",
-      );
       return objArr.filter(isKeyFRaw);
     }
     // Handle empty or malformed obj array
-    console.log(
-      `KeyF ${resourceName} empty/malformed from rsrcdump:`,
-      objArr.length,
-      "keyframes",
-    );
     return objArr.filter(isKeyFRaw);
   }
 
@@ -66,18 +57,10 @@ export function handleKeyF(
   }
 
   // Fallback to hex parsing
-  console.log(`KeyF ${resourceName} raw resourceData:`, resourceData);
-  console.log(`KeyF ${resourceName} resourceData type:`, typeof resourceData);
-  console.log(
-    `KeyF ${resourceName} resourceData.keys:`,
-    isRecord(resourceData) ? Object.keys(resourceData) : [],
-  );
   const hex =
     isRecord(resourceData) && typeof resourceData.data === "string"
       ? resourceData.data
       : "";
-  console.log(`KeyF ${resourceName} hex data length:`, hex.length);
   const obj = parseKeyFData(hex);
-  console.log(`KeyF ${resourceName} parsed from hex:`, obj.length, "keyframes");
   return obj;
 }
