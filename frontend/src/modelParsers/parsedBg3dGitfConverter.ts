@@ -996,6 +996,8 @@ export function bg3dParsedToGLTF(
   // - keyframe accelerationMode - glTF doesn't have this concept
   const extrasData: Record<string, unknown> = {
     bg3dFields: {
+      // Original BG3D file header for byte-perfect roundtrip
+      headerBytes: parsed.headerBytes || [],
       // Note: Skeleton data (bones, pointIndices, animations) stored in native glTF format
       // Store BG3D-specific material properties
       materialExtras: (parsed.materials || []).map((mat) => ({
@@ -1092,6 +1094,12 @@ export async function gltfToBG3D(doc: Document): Promise<BG3DParseResult> {
     ? rootExtras.bg3dFields
     : undefined;
   const bg3dFields = isRecord(bg3dFieldsRaw) ? bg3dFieldsRaw : undefined;
+
+  // Restore preserved header bytes
+  const headerBytesRaw = bg3dFields?.headerBytes;
+  const headerBytes = isArray(headerBytesRaw)
+    ? headerBytesRaw.filter((v): v is number => typeof v === "number")
+    : undefined;
 
   // Extract BG3D-specific metadata from extras (only non-glTF-representable data)
   const materialExtrasRaw = bg3dFields?.materialExtras;
@@ -2044,10 +2052,11 @@ export async function gltfToBG3D(doc: Document): Promise<BG3DParseResult> {
     .map((node) => processNode(node))
     .filter(isBG3DGroup);
 
-  return {
+    return {
     materials,
     groups,
     skeleton,
+    headerBytes: headerBytes && headerBytes.length === 20 ? headerBytes : undefined,
   };
 }
 
