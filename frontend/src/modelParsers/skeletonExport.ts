@@ -43,6 +43,10 @@ function hasEntries(value: Record<string, unknown> | undefined): boolean {
   return !!value && Object.keys(value).length > 0;
 }
 
+function getRecord(value: unknown): Record<string, unknown> | undefined {
+  return isRecord(value) ? value : undefined;
+}
+
 /**
  * Convert BG3D skeleton data to SkeletonResource format
  * @param skeleton BG3D skeleton data
@@ -62,17 +66,17 @@ export function bg3dSkeletonToSkeletonResource(
   exportTarget: BG3DExportTarget = DEFAULT_BG3D_EXPORT_TARGET,
 ): SkeletonResource {
   // Use skeleton's own data if not explicitly provided
+  const relPRecord = getRecord(relP);
+  const alisRecord = getRecord(alisData);
   const effectiveRelP =
-    hasEntries(relP as Record<string, unknown> | undefined)
-      ? relP
+    hasEntries(relPRecord)
+      ? relPRecord
       : convertRelPointsToRelPFormat(skeleton.relPoints);
-  const effectiveAlisData = hasEntries(alisData as Record<string, unknown> | undefined)
-    ? alisData
-    : undefined;
-  const effectiveMetadata = metadata || skeleton.metadata;
+  const effectiveAlisData = hasEntries(alisRecord) ? alisRecord : undefined;
+  const effectiveMetadata = getRecord(metadata) || skeleton.metadata || {};
 
   // Debug: Check what RelP data we received
-  const effectiveRelPObj = isRecord(effectiveRelP) ? effectiveRelP : undefined;
+  const effectiveRelPObj = getRecord(effectiveRelP);
   if (effectiveRelPObj && effectiveRelPObj["1000"]) {
     const rEntry = isRecord(effectiveRelPObj["1000"]) ? effectiveRelPObj["1000"] : undefined;
     const len = rEntry && isArray(rEntry.obj)
@@ -265,8 +269,9 @@ export function bg3dSkeletonToSkeletonResource(
 
   // Build RelP safely without type assertions
   const relPResult: Record<string, RelPEntry> = {};
-  if (hasEntries(effectiveRelP as Record<string, unknown> | undefined)) {
-    Object.entries(effectiveRelP).forEach(([key, value]) => {
+  const effectiveRelPRecord = getRecord(effectiveRelP);
+  if (hasEntries(effectiveRelPRecord)) {
+    Object.entries(effectiveRelPRecord).forEach(([key, value]) => {
       if (isRelPEntry(value)) {
         relPResult[key] = value;
       }
@@ -284,7 +289,7 @@ export function bg3dSkeletonToSkeletonResource(
     Bone: bones,
     BonP: bonP,
     BonN: bonN,
-    _metadata: isRecord(effectiveMetadata) ? effectiveMetadata : {}, // Include metadata if provided or from skeleton, otherwise empty
+    _metadata: effectiveMetadata,
   };
 
   if (hasEntries(anHd)) {
@@ -313,7 +318,34 @@ export function bg3dSkeletonToSkeletonResource(
     result.alis = aliasResource;
   }
 
-  return result as SkeletonResource;
+  const skeletonResource: SkeletonResource = {
+    _metadata: result._metadata,
+    Hedr: result.Hedr || {},
+    Bone: result.Bone || {},
+    BonP: result.BonP || {},
+    BonN: result.BonN || {},
+  };
+
+  if (result.RelP) {
+    skeletonResource.RelP = result.RelP;
+  }
+  if (result.AnHd) {
+    skeletonResource.AnHd = result.AnHd;
+  }
+  if (result.Evnt) {
+    skeletonResource.Evnt = result.Evnt;
+  }
+  if (result.NumK) {
+    skeletonResource.NumK = result.NumK;
+  }
+  if (result.KeyF) {
+    skeletonResource.KeyF = result.KeyF;
+  }
+  if (result.alis) {
+    skeletonResource.alis = result.alis;
+  }
+
+  return skeletonResource;
 }
 
 /**

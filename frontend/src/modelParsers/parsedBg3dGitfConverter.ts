@@ -1245,9 +1245,11 @@ export async function gltfToBG3D(doc: Document): Promise<BG3DParseResult> {
           });
 
         const bonePointSets: Set<number>[] = bones.map(() => new Set<number>());
-        const boneNormalSets: Set<number>[] = bones.map(
-          () => new Set<number>(),
-        );
+        const boneNormalSets: Set<number>[] = bones.map(() => new Set<number>());
+        const pointToJointMap = new Map<
+          number,
+          { jointIndex: number; weight: number }
+        >();
 
         let meshIndexForSkinning = 0;
         doc
@@ -1278,6 +1280,9 @@ export async function gltfToBG3D(doc: Document): Promise<BG3DParseResult> {
                   const decomposedIndex = vertexToDecomposedIndex.get(key);
                   if (decomposedIndex === undefined) continue;
 
+                  let bestJointIndex = -1;
+                  let bestWeight = 0;
+
                   for (let ji = 0; ji < 4; ji++) {
                     const jointIndex = jointsArray[vi * 4 + ji];
                     const weight = weightsArray[vi * 4 + ji];
@@ -1285,13 +1290,22 @@ export async function gltfToBG3D(doc: Document): Promise<BG3DParseResult> {
                     if (
                       weight !== undefined &&
                       jointIndex !== undefined &&
+                      weight > bestWeight &&
                       weight > 0 &&
                       jointIndex < bones.length
                     ) {
-                      const pointSet = bonePointSets[jointIndex];
-                      const normalSet = boneNormalSets[jointIndex];
-                      if (pointSet) pointSet.add(decomposedIndex);
-                      if (normalSet) normalSet.add(decomposedIndex);
+                      bestJointIndex = jointIndex;
+                      bestWeight = weight;
+                    }
+                  }
+
+                  if (bestJointIndex >= 0) {
+                    const previousOwner = pointToJointMap.get(decomposedIndex);
+                    if (!previousOwner || bestWeight > previousOwner.weight) {
+                      pointToJointMap.set(decomposedIndex, {
+                        jointIndex: bestJointIndex,
+                        weight: bestWeight,
+                      });
                     }
                   }
                 }
@@ -1299,6 +1313,17 @@ export async function gltfToBG3D(doc: Document): Promise<BG3DParseResult> {
             });
             meshIndexForSkinning++;
           });
+
+        pointToJointMap.forEach((owner, decomposedIndex) => {
+          const pointSet = bonePointSets[owner.jointIndex];
+          const normalSet = boneNormalSets[owner.jointIndex];
+          if (pointSet) {
+            pointSet.add(decomposedIndex);
+          }
+          if (normalSet) {
+            normalSet.add(decomposedIndex);
+          }
+        });
 
         bones.forEach((bone, index) => {
           const pointSet = bonePointSets[index];
@@ -1312,6 +1337,22 @@ export async function gltfToBG3D(doc: Document): Promise<BG3DParseResult> {
           bone.numPointsAttachedToBone = bone.pointIndices.length;
           bone.numNormalsAttachedToBone = bone.normalIndices.length;
         });
+
+        const relPoints: [number, number, number][] = reverseDecomposedPointList.map(
+          (point, decomposedIndex) => {
+            const owner = pointToJointMap.get(decomposedIndex);
+            const bone = owner ? bones[owner.jointIndex] : undefined;
+            if (!bone) {
+              return [point.realPoint[0], point.realPoint[1], point.realPoint[2]];
+            }
+
+            return [
+              point.realPoint[0] - bone.coordX,
+              point.realPoint[1] - bone.coordY,
+              point.realPoint[2] - bone.coordZ,
+            ];
+          },
+        );
 
         // Reconstruct animations purely from glTF animation data
         const animations = extractAnimationsFromGLTF(doc, bones);
@@ -1329,6 +1370,9 @@ export async function gltfToBG3D(doc: Document): Promise<BG3DParseResult> {
           num3DMFLimbs: 0,
           bones,
           animations,
+          relPoints: {
+            "1000": relPoints,
+          },
         };
       }
   }

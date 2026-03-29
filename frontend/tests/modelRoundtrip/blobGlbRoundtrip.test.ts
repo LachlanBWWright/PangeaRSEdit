@@ -351,11 +351,11 @@ describe("Blob GLB roundtrip", () => {
       }
     }
     console.log("Blob skeleton section diffs:", JSON.stringify(sectionDiffs, null, 2));
-    // After clean GLB roundtrip, Evnt and RelP sections are not preserved
-    // (they cannot be represented in standard glTF), but structural sections must match
+    // After clean GLB roundtrip, Evnt still cannot be represented in standard glTF,
+    // but RelP must now be reconstructed because Otto requires it at runtime.
     const filteredOriginal = Object.fromEntries(
       Object.entries(sectionSummary(originalRaw)).filter(
-        ([key]) => key !== "Evnt" && key !== "RelP",
+        ([key]) => key !== "Evnt",
       ),
     );
     expect(sectionSummary(recoveredRaw)).toEqual(filteredOriginal);
