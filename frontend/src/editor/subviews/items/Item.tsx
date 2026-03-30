@@ -35,19 +35,17 @@ export const Item = memo(function Item({
   setItemData: Updater<ItemData>;
   itemIdx: number;
 }) {
-  const setSelectedItem = useSetAtom(SelectedItem);
   const item = itemData.Itms[1000].obj[itemIdx];
-  const itemForRender = item ?? {
-    x: 0,
-    z: 0,
-    type: 0,
-    p0: 0,
-    p1: 0,
-    p2: 0,
-    p3: 0,
-  };
+  const setSelectedItem = useSetAtom(SelectedItem);
   const [hovering, setHovering] = useState(false);
   const globals = useAtomValue(Globals);
+  const itemType = item?.type ?? 0;
+  const itemP0 = item?.p0 ?? 0;
+  const itemP1 = item?.p1 ?? 0;
+  const itemP2 = item?.p2 ?? 0;
+  const itemP3 = item?.p3 ?? 0;
+  const itemPosX = item?.x ?? 0;
+  const itemPosZ = item?.z ?? 0;
 
   const handleMouseOver = useCallback(() => setHovering(true), []);
   const handleMouseLeave = useCallback(() => setHovering(false), []);
@@ -67,31 +65,31 @@ export const Item = memo(function Item({
     },
     [itemIdx, setItemData],
   );
-  const itemX = itemForRender.x - ITEM_BOX_OFFSET;
-  const itemZ = itemForRender.z - ITEM_BOX_OFFSET;
-  const itemName = getItemName(globals, itemForRender.type);
+  const itemX = itemPosX - ITEM_BOX_OFFSET;
+  const itemZ = itemPosZ - ITEM_BOX_OFFSET;
+  const itemName = getItemName(globals, itemType);
 
   // Check if this is a liquid patch item (water, lava, honey, slime in Bugdom 1/Nanosaur 1)
-  const liquidPatchStyle = getLiquidPatchStyle(globals, itemForRender.type);
+  const liquidPatchStyle = getLiquidPatchStyle(globals, itemType);
   const liquidPatchDimensions = useMemo(
     () =>
       liquidPatchStyle
         ? getLiquidPatchDimensions(
             globals,
-            itemForRender.type,
-            itemForRender.p0,
-            itemForRender.p1,
-            itemForRender.p2,
-            itemForRender.p3,
+            itemType,
+            itemP0,
+            itemP1,
+            itemP2,
+            itemP3,
           )
         : null,
     [
       globals,
-      itemForRender.type,
-      itemForRender.p0,
-      itemForRender.p1,
-      itemForRender.p2,
-      itemForRender.p3,
+      itemType,
+      itemP0,
+      itemP1,
+      itemP2,
+      itemP3,
       liquidPatchStyle,
     ],
   );
@@ -102,26 +100,26 @@ export const Item = memo(function Item({
             globals,
             headerData,
             terrainData,
-            itemForRender.type,
-            itemForRender.p0,
-            itemForRender.p1,
-            itemForRender.p2,
-            itemForRender.p3,
-            itemForRender.x,
-            itemForRender.z,
+            itemType,
+            itemP0,
+            itemP1,
+            itemP2,
+            itemP3,
+            itemPosX,
+            itemPosZ,
           )
         : null,
     [
       globals,
       headerData,
       terrainData,
-      itemForRender.type,
-      itemForRender.p0,
-      itemForRender.p1,
-      itemForRender.p2,
-      itemForRender.p3,
-      itemForRender.x,
-      itemForRender.z,
+      itemType,
+      itemP0,
+      itemP1,
+      itemP2,
+      itemP3,
+      itemPosX,
+      itemPosZ,
       liquidPatchStyle,
     ],
   );
@@ -136,8 +134,8 @@ export const Item = memo(function Item({
     const dims = liquidPatchDimensions;
 
     // Position is centered on the item coordinates
-    const rectX = itemForRender.x - dims.width2D / 2;
-    const rectZ = itemForRender.z - dims.depth2D / 2;
+    const rectX = itemPosX - dims.width2D / 2;
+    const rectZ = itemPosZ - dims.depth2D / 2;
 
     if (liquidPatchCanvas) {
       return (

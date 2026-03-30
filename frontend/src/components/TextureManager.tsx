@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { TextureItem } from "./TextureManager/TextureItem";
-import { useMemo, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { toast } from "sonner";
 import { ImageEditor } from "./ImageEditor";
 import { fromPromise } from "@/types/result";
@@ -27,13 +27,11 @@ export function TextureManager({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [selectedTexture, setSelectedTexture] = useState<Texture | null>(null);
   const [showPreviews, setShowPreviews] = useState(true);
-  const [expandedTextures, setExpandedTextures] = useState<Set<number> | null>(null);
+  const [expandedTextures, setExpandedTextures] = useState<Set<number>>(
+    () => new Set(textures.map((_, index) => index)),
+  );
   const [isEditorOpen, setIsEditorOpen] = useState(false);
   const [textureToEdit, setTextureToEdit] = useState<Texture | null>(null);
-  const effectiveExpandedTextures = useMemo(
-    () => expandedTextures ?? new Set(textures.map((_, index) => index)),
-    [expandedTextures, textures],
-  );
 
   const handleReplaceTexture = async (texture: Texture, file: File) => {
     if (!onReplaceTexture) return;
@@ -110,7 +108,7 @@ export function TextureManager({
   };
 
   const toggleTextureExpansion = (index: number) => {
-    const newExpanded = new Set(effectiveExpandedTextures);
+    const newExpanded = new Set(expandedTextures);
     if (newExpanded.has(index)) {
       newExpanded.delete(index);
     } else {
@@ -155,7 +153,7 @@ export function TextureManager({
           key={index}
           texture={texture}
           index={index}
-          expanded={effectiveExpandedTextures.has(index)}
+          expanded={expandedTextures.has(index)}
           toggleExpansion={toggleTextureExpansion}
           fileInputRef={fileInputRef}
           setSelectedTexture={setSelectedTexture}

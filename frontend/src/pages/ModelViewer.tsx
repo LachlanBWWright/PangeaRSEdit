@@ -422,8 +422,11 @@ export function ModelViewer() {
         >,
       );
     }
+    if (!gltfBuffer) {
+      return {};
+    }
     return gltfAnimationMetadata;
-  }, [bg3dParsed, gltfAnimationMetadata]);
+  }, [bg3dParsed, gltfAnimationMetadata, gltfBuffer]);
 
   // Removed unused handleTexturesExtracted and handleNodesExtracted
 
