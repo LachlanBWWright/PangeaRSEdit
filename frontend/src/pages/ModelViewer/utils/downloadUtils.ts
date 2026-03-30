@@ -14,8 +14,14 @@ import { DEFAULT_BG3D_EXPORT_TARGET, type BG3DExportTarget } from "../../../mode
 import type { Texture } from "../types";
 import { err, ok, fromPromise, type Result } from "@/types/result";
 
-async function loadGlbBytes(gltfUrl: string): Promise<Result<ArrayBuffer, Error>> {
-  const responseResult = await fromPromise(fetch(gltfUrl));
+async function loadGlbBytes(
+  gltfSource: string | ArrayBuffer,
+): Promise<Result<ArrayBuffer, Error>> {
+  if (gltfSource instanceof ArrayBuffer) {
+    return ok(gltfSource);
+  }
+
+  const responseResult = await fromPromise(fetch(gltfSource));
   if (responseResult.isErr()) {
     return err(
       responseResult.error instanceof Error
@@ -41,9 +47,9 @@ async function loadGlbBytes(gltfUrl: string): Promise<Result<ArrayBuffer, Error>
 }
 
 async function glbUrlToBg3dResponse(
-  gltfUrl: string,
+  gltfSource: string | ArrayBuffer,
 ): Promise<Result<BG3DGltfWorkerResponse, Error>> {
-  const glbBytesResult = await loadGlbBytes(gltfUrl);
+  const glbBytesResult = await loadGlbBytes(gltfSource);
   if (glbBytesResult.isErr()) {
     return err(glbBytesResult.error);
   }
@@ -97,11 +103,11 @@ function toBlobPart(data: ArrayBuffer | Uint8Array): ArrayBuffer {
 }
 
 export async function getBG3DDownloadArtifacts(
-  gltfUrl: string,
+  gltfSource: string | ArrayBuffer,
   modelFileName = "Model",
   exportTarget: BG3DExportTarget = DEFAULT_BG3D_EXPORT_TARGET,
 ): Promise<Result<BG3DDownloadArtifacts, Error>> {
-  const result = await glbUrlToBg3dResponse(gltfUrl);
+  const result = await glbUrlToBg3dResponse(gltfSource);
   if (result.isErr()) {
     return err(result.error);
   }
@@ -148,11 +154,11 @@ export async function getBG3DDownloadArtifacts(
 }
 
 export async function get3DMFDownloadArtifacts(
-  gltfUrl: string,
+  gltfSource: string | ArrayBuffer,
   modelFileName = "model",
   exportTarget: BG3DExportTarget = DEFAULT_BG3D_EXPORT_TARGET,
 ): Promise<Result<ThreeDMFDownloadArtifacts, Error>> {
-  const result = await glbUrlToBg3dResponse(gltfUrl);
+  const result = await glbUrlToBg3dResponse(gltfSource);
   if (result.isErr()) {
     return err(result.error);
   }
@@ -237,7 +243,7 @@ export async function downloadTexture(
  * The bytes come only from the current GLB URL via the worker response.
  */
 export async function downloadBG3DModel(
-  gltfUrl: string,
+  gltfSource: string | ArrayBuffer,
   modelFileName = "model",
   skeletonFileName = "model.skeleton",
   exportTarget: BG3DExportTarget = DEFAULT_BG3D_EXPORT_TARGET,
@@ -256,7 +262,7 @@ export async function downloadBG3DModel(
     URL.revokeObjectURL(url);
   };
 
-  const result = await getBG3DDownloadArtifacts(gltfUrl, modelFileName, exportTarget);
+  const result = await getBG3DDownloadArtifacts(gltfSource, modelFileName, exportTarget);
   if (result.isErr()) {
     return err(result.error);
   }
@@ -294,12 +300,12 @@ export function downloadGLBModel(
  * The bytes come only from the current GLB URL via the worker response.
  */
 export async function download3DMFModel(
-  gltfUrl: string,
+  gltfSource: string | ArrayBuffer,
   fileName = "model",
   exportTarget: BG3DExportTarget = DEFAULT_BG3D_EXPORT_TARGET,
 ): Promise<Result<void, Error>> {
   const bytesResult = await get3DMFDownloadArtifacts(
-    gltfUrl,
+    gltfSource,
     fileName,
     exportTarget,
   );

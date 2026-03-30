@@ -13,6 +13,17 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
+function toExactArrayBuffer(data: ArrayBuffer | Uint8Array): ArrayBuffer {
+  if (data instanceof ArrayBuffer) {
+    return data;
+  }
+  const copy = new ArrayBuffer(data.byteLength);
+  new Uint8Array(copy).set(
+    new Uint8Array(data.buffer, data.byteOffset, data.byteLength),
+  );
+  return copy;
+}
+
 function normalizeEvents(events: AnimationEvent[]): AnimationEvent[] {
   return events
     .map((event) => ({
@@ -53,6 +64,15 @@ function readAnimationEvents(anim: Animation): AnimationEvent[] {
       };
     })
     .filter((event): event is AnimationEvent => event !== null);
+}
+
+export async function normalizeGlbBuffer(
+  buffer: ArrayBuffer,
+): Promise<ArrayBuffer> {
+  const io = new WebIO();
+  const doc = await io.readBinary(new Uint8Array(buffer));
+  const glb = await io.writeBinary(doc);
+  return toExactArrayBuffer(glb);
 }
 
 export async function extractAnimationMetadataFromGlb(
@@ -102,5 +122,5 @@ export async function updateGlbAnimationEvents(
   animation.setExtras(nextExtras);
 
   const glb = await io.writeBinary(doc);
-  return ok(new Uint8Array(glb).buffer);
+  return ok(toExactArrayBuffer(glb));
 }

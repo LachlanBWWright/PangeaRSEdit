@@ -6,6 +6,17 @@ import { WebIO } from "@gltf-transform/core";
 import type { SkeletonResource } from "../python/structSpecs/skeleton/skeletonInterface";
 import { isErr, Result, fromPromise } from "../types/result";
 
+function toExactArrayBuffer(data: ArrayBuffer | Uint8Array): ArrayBuffer {
+  if (data instanceof ArrayBuffer) {
+    return data;
+  }
+  const copy = new ArrayBuffer(data.byteLength);
+  new Uint8Array(copy).set(
+    new Uint8Array(data.buffer, data.byteOffset, data.byteLength),
+  );
+  return copy;
+}
+
 // Helper function to detect file format and parse accordingly
 function parseModelBuffer(buffer: ArrayBuffer): Result<BG3DParseResult, Error> {
   // Check magic number to detect format
@@ -136,7 +147,7 @@ self.onmessage = async (e: MessageEvent<BG3DGltfWorkerMessage>) => {
       const doc = bg3dParsedToGLTF(parsed);
       const io = new WebIO();
       const glbBuffer = await io.writeBinary(doc);
-      const arrBuffer = new Uint8Array(glbBuffer).buffer;
+      const arrBuffer = toExactArrayBuffer(glbBuffer);
 
       const response: BG3DGltfWorkerResponse = {
         type: "bg3d-to-glb",
@@ -160,7 +171,7 @@ self.onmessage = async (e: MessageEvent<BG3DGltfWorkerMessage>) => {
       const doc = bg3dParsedToGLTF(parsed);
       const io = new WebIO();
       const glbBuffer = await io.writeBinary(doc);
-      const arrBuffer = new Uint8Array(glbBuffer).buffer;
+      const arrBuffer = toExactArrayBuffer(glbBuffer);
 
       const response: BG3DGltfWorkerResponse = {
         type: "bg3d-with-skeleton-to-glb",
@@ -187,7 +198,7 @@ self.onmessage = async (e: MessageEvent<BG3DGltfWorkerMessage>) => {
       const doc = bg3dParsedToGLTF(parsed);
       const io = new WebIO();
       const glbBuffer = await io.writeBinary(doc);
-      const arrBuffer = new Uint8Array(glbBuffer).buffer;
+      const arrBuffer = toExactArrayBuffer(glbBuffer);
 
       const response: BG3DGltfWorkerResponse = {
         type: "model-with-skeleton-to-glb",
@@ -200,7 +211,7 @@ self.onmessage = async (e: MessageEvent<BG3DGltfWorkerMessage>) => {
       const doc = bg3dParsedToGLTF(msg.parsed);
       const io = new WebIO();
       const glbBuffer = await io.writeBinary(doc);
-      const arrBuffer = new Uint8Array(glbBuffer).buffer;
+      const arrBuffer = toExactArrayBuffer(glbBuffer);
 
       const response: BG3DGltfWorkerResponse = {
         type: "bg3d-parsed-to-glb",

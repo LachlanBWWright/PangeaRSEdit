@@ -30,6 +30,7 @@ export interface AnimationViewerProps {
   gameLabel?: string | null;
   modelSourceKind?: ModelSourceKind | null;
   onAnimationChange?: (animationIndex: number | null) => void;
+  onAnimationsChange?: (animations: AnimationInfo[]) => void;
   onBoneSelectionChange?: (boneName: string | null) => void;
   onAnimationEventsChange?: (
     animationIndex: number,

@@ -155,7 +155,7 @@ export function ModelHierarchy({
           </Button>
         </div>
       </CardHeader>
-      <CardContent className="pt-0 space-y-1 max-h-60 overflow-y-auto">
+      <CardContent className="min-h-0 pt-0 space-y-1 max-h-60 overflow-y-auto">
         {nodes.map((node) => {
           // Use the stored THREE object reference for proper matching
           // This avoids index mismatch issues when bones/joints are filtered out
