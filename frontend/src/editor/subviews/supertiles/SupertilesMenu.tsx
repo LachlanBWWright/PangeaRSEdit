@@ -308,8 +308,8 @@ export function SupertileMenu({
             }
           }}
         />
-        {/* Edit button moved to its own row */}
-        <div className="flex gap-2 w-full pt-2">
+        {/* Edit button in same group as upload */}
+        <div className="flex gap-2 w-full">
           <Button
             className="flex-1"
             size="sm"

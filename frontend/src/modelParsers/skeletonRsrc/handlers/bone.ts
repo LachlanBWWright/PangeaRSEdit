@@ -1,4 +1,5 @@
 import { parseBoneDataFallback } from "../parseHelpers";
+import { decodePascalHexString } from "../parseHelpers";
 import type { BoneRaw } from "../parseSkeletonRsrcTS";
 
 // Type guard for checking if value is a record
@@ -39,33 +40,7 @@ export function handleBone(
 
   if (isBoneRaw(boneData)) {
     const rd = boneData;
-    // Handle Pascal string format: 1 byte length + name characters (up to 31 bytes)
-    // The name field is 32 bytes total in File_BoneDefinitionType
-    let cleanName = rd.name || resourceName;
-
-    // Check if this is a Pascal string format: [length][name...]
-    if (cleanName.length >= 1) {
-      const lengthByte = cleanName.charCodeAt(0);
-      // If 1st char is a small number (1-31) indicating name length
-      if (
-        lengthByte > 0 &&
-        lengthByte <= 31 &&
-        lengthByte <= cleanName.length - 1
-      ) {
-        console.log(
-          `[bone handler] Detected Pascal string: length=${lengthByte}, total_len=${cleanName.length}`,
-        );
-        // Skip 1-byte length, read name
-        cleanName = cleanName.substring(1, 1 + lengthByte);
-        console.log(`[bone handler] After strip: ${JSON.stringify(cleanName)}`);
-      }
-    }
-
-    // Also truncate at first null character to avoid corruption from padding
-    const nullIndex = cleanName.indexOf("\0");
-    if (nullIndex >= 0) {
-      cleanName = cleanName.substring(0, nullIndex);
-    }
+    const cleanName = decodePascalHexString(rd.name || "") || resourceName;
     const obj: BoneRaw = {
       parentBone: rd.parentBone,
       name: cleanName,

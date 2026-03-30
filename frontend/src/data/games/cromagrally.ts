@@ -9,7 +9,6 @@ export const cromagrally: GameInfo = {
       bg3dFile: "/PangeaRSEdit/games/cromagrally/skeletons/CroMag.bg3d",
       skeletonFile:
         "/PangeaRSEdit/games/cromagrally/skeletons/CroMag.skeleton.rsrc",
-      description: "Cro-Mag character with animations",
       category: "Characters",
     },
     {

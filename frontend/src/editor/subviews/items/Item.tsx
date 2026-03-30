@@ -1,31 +1,51 @@
 import { Updater } from "use-immer";
 import { ItemData } from "@/python/structSpecs/LevelTypes";
-import { Label, Rect, Tag, Text } from "react-konva";
+import { Image as KonvaImage, Rect } from "react-konva";
 import type Konva from "konva";
 import { SelectedItem } from "../../../data/items/itemAtoms";
 import { useAtomValue, useSetAtom } from "jotai";
-import { useState, useCallback, memo } from "react";
+import { useState, useCallback, memo, useMemo } from "react";
 import { Globals } from "@/data/globals/globals";
 import { getItemName } from "@/data/items/getItemNames";
 import { updateItem } from "../../../data/selectors";
-import { getLiquidPatchStyle, getLiquidPatchDimensions } from "@/data/items/liquidPatchItems";
-
-const ITEM_BOX_SIZE = 12;
-const ITEM_BOX_OFFSET = ITEM_BOX_SIZE / 2;
+import {
+  getLiquidPatchStyle,
+  getLiquidPatchDimensions,
+  getLiquidPatchCanvas,
+} from "@/data/items/liquidPatchItems";
+import { HeaderData, TerrainData } from "@/python/structSpecs/LevelTypes";
+import {
+  HoverNameTag,
+  ITEM_BOX_OFFSET,
+  ITEM_BOX_SIZE,
+  ITEM_TAG_GAP,
+  ItemTypeNumber,
+} from "../shared/nodeVisuals";
 
 export const Item = memo(function Item({
   itemData,
+  headerData,
+  terrainData,
   setItemData,
   itemIdx,
 }: {
   itemData: ItemData;
+  headerData: HeaderData;
+  terrainData: TerrainData;
   setItemData: Updater<ItemData>;
   itemIdx: number;
 }) {
-  const setSelectedItem = useSetAtom(SelectedItem);
   const item = itemData.Itms[1000].obj[itemIdx];
+  const setSelectedItem = useSetAtom(SelectedItem);
   const [hovering, setHovering] = useState(false);
   const globals = useAtomValue(Globals);
+  const itemType = item?.type ?? 0;
+  const itemP0 = item?.p0 ?? 0;
+  const itemP1 = item?.p1 ?? 0;
+  const itemP2 = item?.p2 ?? 0;
+  const itemP3 = item?.p3 ?? 0;
+  const itemPosX = item?.x ?? 0;
+  const itemPosZ = item?.z ?? 0;
 
   const handleMouseOver = useCallback(() => setHovering(true), []);
   const handleMouseLeave = useCallback(() => setHovering(false), []);
@@ -45,30 +65,112 @@ export const Item = memo(function Item({
     },
     [itemIdx, setItemData],
   );
-  if (item === null || item === undefined) return null;
-
-  const itemX = item.x - ITEM_BOX_OFFSET;
-  const itemZ = item.z - ITEM_BOX_OFFSET;
-  const itemName = getItemName(globals, item.type);
+  const itemX = itemPosX - ITEM_BOX_OFFSET;
+  const itemZ = itemPosZ - ITEM_BOX_OFFSET;
+  const itemName = getItemName(globals, itemType);
 
   // Check if this is a liquid patch item (water, lava, honey, slime in Bugdom 1/Nanosaur 1)
-  const liquidPatchStyle = getLiquidPatchStyle(globals, item.type);
+  const liquidPatchStyle = getLiquidPatchStyle(globals, itemType);
+  const liquidPatchDimensions = useMemo(
+    () =>
+      liquidPatchStyle
+        ? getLiquidPatchDimensions(
+            globals,
+            itemType,
+            itemP0,
+            itemP1,
+            itemP2,
+            itemP3,
+          )
+        : null,
+    [
+      globals,
+      itemType,
+      itemP0,
+      itemP1,
+      itemP2,
+      itemP3,
+      liquidPatchStyle,
+    ],
+  );
+  const liquidPatchCanvas = useMemo(
+    () =>
+      liquidPatchStyle
+        ? getLiquidPatchCanvas(
+            globals,
+            headerData,
+            terrainData,
+            itemType,
+            itemP0,
+            itemP1,
+            itemP2,
+            itemP3,
+            itemPosX,
+            itemPosZ,
+          )
+        : null,
+    [
+      globals,
+      headerData,
+      terrainData,
+      itemType,
+      itemP0,
+      itemP1,
+      itemP2,
+      itemP3,
+      itemPosX,
+      itemPosZ,
+      liquidPatchStyle,
+    ],
+  );
+
+  if (item === null || item === undefined) return null;
 
   // Render liquid patch items as rectangles to resemble water bodies
   if (liquidPatchStyle) {
-    // Calculate dimensions based on item parameters
-    const dims = getLiquidPatchDimensions(
-      globals,
-      item.type,
-      item.p0,
-      item.p1,
-      item.p2,
-      item.p3
-    );
+    if (!liquidPatchDimensions) {
+      return null;
+    }
+    const dims = liquidPatchDimensions;
 
     // Position is centered on the item coordinates
-    const rectX = item.x - dims.width2D / 2;
-    const rectZ = item.z - dims.depth2D / 2;
+    const rectX = itemPosX - dims.width2D / 2;
+    const rectZ = itemPosZ - dims.depth2D / 2;
+
+    if (liquidPatchCanvas) {
+      return (
+        <>
+          <KonvaImage
+            image={liquidPatchCanvas.canvas}
+            x={rectX}
+            y={rectZ}
+            width={liquidPatchCanvas.width}
+            height={liquidPatchCanvas.height}
+            draggable
+            onMouseOver={handleMouseOver}
+            onMouseLeave={handleMouseLeave}
+            onMouseDown={handleMouseDown}
+            onDragStart={handleMouseDown}
+            onDragEnd={(e: Konva.KonvaEventObject<DragEvent>) => {
+              updateItem(setItemData, itemIdx, {
+                x: Math.round(e.target.x() + liquidPatchCanvas.width / 2),
+                z: Math.round(e.target.y() + liquidPatchCanvas.height / 2),
+              });
+            }}
+            perfectDrawEnabled={false}
+          />
+          {hovering && (
+            <HoverNameTag
+              x={rectX + liquidPatchCanvas.width + ITEM_TAG_GAP}
+              y={item.z - ITEM_BOX_OFFSET}
+              text={liquidPatchStyle.name}
+              fill={liquidPatchStyle.color2D}
+              textColor="white"
+            />
+          )}
+        </>
+      );
+    }
 
     return (
       <>
@@ -113,10 +215,13 @@ export const Item = memo(function Item({
           listening={false}
         />
         {hovering && (
-          <Label opacity={1} x={item.x + dims.width2D / 2 + 5} y={item.z}>
-            <Tag fill={liquidPatchStyle.color2D} />
-            <Text text={liquidPatchStyle.name} fontSize={10} fill="white" />
-          </Label>
+          <HoverNameTag
+            x={rectX + dims.width2D + ITEM_TAG_GAP}
+            y={item.z - ITEM_BOX_OFFSET}
+            text={liquidPatchStyle.name}
+            fill={liquidPatchStyle.color2D}
+            textColor="white"
+          />
         )}
       </>
     );
@@ -138,25 +243,26 @@ export const Item = memo(function Item({
         onMouseDown={handleMouseDown}
         onDragStart={handleMouseDown}
         onDragEnd={handleDragEnd}
+        perfectDrawEnabled={false}
       />
 
-      <Text
-        text={item.type.toString()}
-        fill="black"
-        visible={!hovering}
-        fontSize={8}
-        x={itemX}
-        y={itemZ}
-        draggable
-        onMouseOver={handleMouseOver}
-        onMouseLeave={handleMouseLeave}
-      />
+      {!hovering && (
+        <ItemTypeNumber
+         x={itemX}
+         y={itemZ}
+          value={item.type.toString()}
+          fill="black"
+        />
+      )}
 
       {hovering && (
-        <Label opacity={1} x={item.x + 15} y={item.z}>
-          <Tag fill="red" />
-          <Text text={itemName} fontSize={8} fill="black" />
-        </Label>
+        <HoverNameTag
+          x={itemX + ITEM_BOX_SIZE + ITEM_TAG_GAP}
+          y={itemZ}
+          text={itemName}
+          fill="red"
+          textColor="black"
+        />
       )}
     </>
   );

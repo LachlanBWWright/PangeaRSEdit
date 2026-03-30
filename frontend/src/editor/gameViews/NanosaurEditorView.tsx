@@ -111,7 +111,7 @@ export function NanosaurEditorView({
         setView={setView}
         terrainHasSTgd={showSupertileMenu}
       />
-      <div>
+      <div className="overflow-y-auto">
         {view === View.items && itemData && (
           <ItemMenu
             itemData={itemData}

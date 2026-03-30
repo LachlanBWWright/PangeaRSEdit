@@ -48,6 +48,7 @@ export function MightyMikeKonvaView({
   itemData,
   setItemData,
   terrainData,
+  setTerrainData,
   mapImages,
   view,
   stage,
@@ -154,13 +155,15 @@ export function MightyMikeKonvaView({
           <MightyMikeSupertiles
             headerData={headerData}
             terrainData={terrainData}
+            setTerrainData={setTerrainData}
             mapImages={mapImages}
             showCollisionOverlay={showCollisionOverlay}
+            view={view}
           />
         )}
 
-        {/* Items - shown except when in tiles view */}
-        {view !== View.tiles && itemData && (
+        {/* Items - always shown */}
+        {itemData && (
           <MightyMikeItems
             itemData={itemData}
             setItemData={setItemDataNotNull}

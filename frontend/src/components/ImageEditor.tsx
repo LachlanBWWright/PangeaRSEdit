@@ -7,7 +7,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Save, X, Undo, Redo } from "lucide-react";
+import { Save, X, Undo, Redo, ZoomIn, ZoomOut } from "lucide-react";
 import { ToolsPanel } from "./ImageEditor/ToolsPanel";
 import { toast } from "sonner";
 import Konva from "konva";
@@ -31,6 +31,17 @@ interface ImageEditorProps {
     onSave: (editedImageData: ImageData) => Promise<void>;
   }[];
   imageName?: string;
+  /**
+   * When provided, the editor operates in palette-constrained mode:
+   * the free color picker is hidden and only these colors can be used for painting.
+   * Each entry is a CSS hex color string (e.g. "#ff0080").
+   */
+  paletteColors?: string[];
+  /**
+   * Called when the user replaces a palette entry (palette mode only).
+   * The host component should remap all pixels of the old color to the new color.
+   */
+  onReplacePaletteColor?: (index: number, newColor: string) => void;
 }
 
 export function ImageEditor({
@@ -40,11 +51,15 @@ export function ImageEditor({
   onSave,
   saveActions,
   imageName,
+  paletteColors,
+  onReplacePaletteColor,
 }: ImageEditorProps) {
   const [tool] = useState<"brush">("brush");
   const [brushSize, setBrushSize] = useState([5]);
   const [brushShape, setBrushShape] = useState<"circle" | "square">("circle");
-  const [brushColor, setBrushColor] = useState("#ffffff");
+  const [brushColor, setBrushColor] = useState(
+    () => paletteColors?.[0] ?? "#ffffff",
+  );
   const [isDrawing, setIsDrawing] = useState(false);
   const [strokes, setStrokes] = useState<BrushStroke[]>([]);
   const [currentStroke, setCurrentStroke] = useState<BrushStroke | null>(null);
@@ -53,11 +68,13 @@ export function ImageEditor({
   const [historyIndex, setHistoryIndex] = useState(-1);
   const [saving, setSaving] = useState(false);
   const [scale, setScale] = useState(1);
+  const [baseScale, setBaseScale] = useState(1);
 
   const stageRef = useRef<Konva.Stage>(null);
   const layerRef = useRef<Konva.Layer>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
 
-  // Predefined color palette
+  // Predefined color palette (used only in free-color mode)
   const colorPalette = [
     "#ffffff",
     "#000000",
@@ -81,31 +98,36 @@ export function ImageEditor({
     "#80ff80",
   ];
 
-  // Load image when dialog opens
+  // Load image when dialog opens; state is reset inside onload to avoid cascading setState in effect
   useEffect(() => {
-    if (isOpen && imageUrl) {
-      const img = new window.Image();
-      img.crossOrigin = "anonymous";
-      img.onload = () => {
-        setImage(img);
-        // Calculate scale for display
-        const scaleX = Math.min(800 / img.width, 1);
-        const scaleY = Math.min(600 / img.height, 1);
-        const finalScale = Math.min(scaleX, scaleY);
-        setScale(finalScale);
+    if (!isOpen || !imageUrl) return;
+    const img = new window.Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () => {
+      setImage(img);
+      // Calculate scale for display
+      const scaleX = Math.min(800 / img.width, 1);
+      const scaleY = Math.min(600 / img.height, 1);
+      const finalScale = Math.min(scaleX, scaleY);
+      setScale(finalScale);
+      setBaseScale(finalScale);
 
-        // Reset editor state
-        setStrokes([]);
-        setCurrentStroke(null);
-        setHistory([]);
-        setHistoryIndex(-1);
-      };
-      img.onerror = () => {
-        toast.error("Failed to load image for editing");
-      };
-      img.src = imageUrl;
-    }
-  }, [isOpen, imageUrl]);
+      // Reset editor state
+      setStrokes([]);
+      setCurrentStroke(null);
+      setHistory([]);
+      setHistoryIndex(-1);
+      // Default brush to first palette color when in palette mode
+      const defaultPaletteColor = paletteColors?.[0];
+      if (defaultPaletteColor) {
+        setBrushColor(defaultPaletteColor);
+      }
+    };
+    img.onerror = () => {
+      toast.error("Failed to load image for editing");
+    };
+    img.src = imageUrl;
+  }, [isOpen, imageUrl, paletteColors]);
 
   const saveToHistory = (newStrokes: BrushStroke[]) => {
     const newHistory = history.slice(0, historyIndex + 1);
@@ -274,9 +296,42 @@ export function ImageEditor({
     }
   };
 
+  const zoomOut = () => {
+    setScale((current) => Math.max(baseScale * 0.1, current / 1.25));
+  };
+
+  const zoomIn = () => {
+    setScale((current) => Math.min(baseScale * 20, current * 1.25));
+  };
+
+  const resetZoom = () => {
+    setScale(baseScale);
+  };
+
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    const handleWheelNative = (e: WheelEvent) => {
+      e.preventDefault();
+      const scaleBy = 1.1;
+      const direction = e.deltaY > 0 ? -1 : 1;
+      
+      setScale((current) => {
+        const newScale = direction > 0 ? current * scaleBy : current / scaleBy;
+        return Math.min(baseScale * 20, Math.max(baseScale * 0.1, newScale));
+      });
+    };
+
+    container.addEventListener("wheel", handleWheelNative, { passive: false, capture: true });
+    return () => {
+      container.removeEventListener("wheel", handleWheelNative, { capture: true });
+    };
+  }, [baseScale]);
+
   if (!image) {
     return (
-      <Dialog open={isOpen} onOpenChange={handleClose}>
+      <Dialog open={isOpen} onOpenChange={(open) => { if (!open) handleClose(); }}>
         <DialogContent className="max-w-4xl h-[80vh] text-white">
           <DialogHeader>
             <DialogTitle className="text-white">
@@ -292,31 +347,11 @@ export function ImageEditor({
   }
 
   return (
-    <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="max-w-6xl h-[85vh] flex flex-col text-white">
-        <DialogHeader>
-          <DialogTitle className="flex items-center justify-between text-white">
-            <span>Image Editor - {imageName || "Untitled"}</span>
-            <div className="flex space-x-2">
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={undo}
-                disabled={historyIndex < 0}
-                title="Undo"
-              >
-                <Undo className="w-4 h-4" />
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={redo}
-                disabled={historyIndex >= history.length - 1}
-                title="Redo"
-              >
-                <Redo className="w-4 h-4" />
-              </Button>
-            </div>
+    <Dialog open={isOpen} onOpenChange={(open) => { if (!open) handleClose(); }}>
+      <DialogContent className="max-w-6xl h-[85vh] flex flex-col text-white pr-14">
+        <DialogHeader className="space-y-3">
+          <DialogTitle className="text-white">
+            Image Editor - {imageName || "Untitled"}
           </DialogTitle>
         </DialogHeader>
 
@@ -330,55 +365,126 @@ export function ImageEditor({
             brushColor={brushColor}
             setBrushColor={setBrushColor}
             colorPalette={colorPalette}
+            paletteColors={paletteColors}
+            onReplacePaletteColor={onReplacePaletteColor}
           />
 
           {/* Canvas Area */}
-          <div className="flex-1 bg-gray-900 rounded overflow-hidden">
-            <div className="w-full h-full flex items-center justify-center">
-              <Stage
-                ref={stageRef}
-                width={Math.min(800, image.width * scale)}
-                height={Math.min(600, image.height * scale)}
-                scaleX={scale}
-                scaleY={scale}
-                onMouseDown={handleMouseDown}
-                onMousemove={handleMouseMove}
-                onMouseup={handleMouseUp}
-                className="border border-gray-600"
+          <div className="flex-1 bg-gray-900 rounded overflow-hidden relative">
+            {/* Overlay Controls */}
+            <div className="absolute top-4 right-4 z-10 flex flex-row items-center gap-2 bg-gray-800/90 p-1.5 rounded-lg shadow-xl border border-gray-700">
+              <div className="flex items-center gap-1 border-r border-gray-700 pr-2 mr-1">
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-8 w-8 p-0 hover:bg-gray-700 text-gray-300"
+                  onClick={undo}
+                  disabled={historyIndex < 0}
+                  title="Undo"
+                >
+                  <Undo className="w-4 h-4" />
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-8 w-8 p-0 hover:bg-gray-700 text-gray-300"
+                  onClick={redo}
+                  disabled={historyIndex >= history.length - 1}
+                  title="Redo"
+                >
+                  <Redo className="w-4 h-4" />
+                </Button>
+              </div>
+              <div className="flex items-center gap-1">
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-8 w-8 p-0 hover:bg-gray-700 text-gray-300"
+                  onClick={zoomOut}
+                  title="Zoom out"
+                >
+                  <ZoomOut className="w-4 h-4" />
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-8 w-8 p-0 hover:bg-gray-700 text-gray-300"
+                  onClick={zoomIn}
+                  title="Zoom in"
+                >
+                  <ZoomIn className="w-4 h-4" />
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-8 px-2 text-[11px] font-medium hover:bg-gray-700 text-gray-300 min-w-[3rem]"
+                  onClick={resetZoom}
+                >
+                  {Math.round(scale * 100)}%
+                </Button>
+              </div>
+            </div>
+
+            <div 
+              ref={containerRef}
+              className="w-full h-full overflow-auto custom-scrollbar"
+            >
+
+              <div 
+                className="flex p-20"
+                style={{
+                  minWidth: "100%",
+                  minHeight: "100%",
+                  width: image.width * scale + 160,
+                  height: image.height * scale + 160
+                }}
               >
-                <Layer ref={layerRef}>
-                  <Image image={image} />
+                <div className="m-auto shadow-2xl border border-gray-800">
+                  <Stage
+                    ref={stageRef}
+                    width={image.width * scale}
+                    height={image.height * scale}
+                    scaleX={scale}
+                    scaleY={scale}
+                    onMouseDown={handleMouseDown}
+                    onMouseMove={handleMouseMove}
+                    onMouseUp={handleMouseUp}
+                  >
+                    <Layer ref={layerRef}>
+                      <Image image={image} />
 
-                  {/* Render completed strokes */}
-                  {strokes.map((stroke, i) => (
-                    <Line
-                      key={i}
-                      points={stroke.points}
-                      stroke={stroke.color}
-                      strokeWidth={stroke.size}
-                      lineCap={stroke.shape === "circle" ? "round" : "square"}
-                      lineJoin={stroke.shape === "circle" ? "round" : "miter"}
-                      globalCompositeOperation="source-over"
-                    />
-                  ))}
+                      {/* Render completed strokes */}
+                      {strokes.map((stroke, i) => (
+                        <Line
+                          key={i}
+                          points={stroke.points}
+                          stroke={stroke.color}
+                          strokeWidth={stroke.size}
+                          lineCap={stroke.shape === "circle" ? "round" : "square"}
+                          lineJoin={stroke.shape === "circle" ? "round" : "miter"}
+                          globalCompositeOperation="source-over"
+                        />
+                      ))}
 
-                  {/* Render current stroke */}
-                  {currentStroke && (
-                    <Line
-                      points={currentStroke.points}
-                      stroke={currentStroke.color}
-                      strokeWidth={currentStroke.size}
-                      lineCap={
-                        currentStroke.shape === "circle" ? "round" : "square"
-                      }
-                      lineJoin={
-                        currentStroke.shape === "circle" ? "round" : "miter"
-                      }
-                      globalCompositeOperation="source-over"
-                    />
-                  )}
-                </Layer>
-              </Stage>
+                      {/* Render current stroke */}
+                      {currentStroke && (
+                        <Line
+                          points={currentStroke.points}
+                          stroke={currentStroke.color}
+                          strokeWidth={currentStroke.size}
+                          lineCap={
+                            currentStroke.shape === "circle" ? "round" : "square"
+                          }
+                          lineJoin={
+                            currentStroke.shape === "circle" ? "round" : "miter"
+                          }
+                          globalCompositeOperation="source-over"
+                        />
+                      )}
+                    </Layer>
+                  </Stage>
+                </div>
+              </div>
             </div>
           </div>
         </div>

@@ -17,3 +17,9 @@ export const CurrentScene = atom<string | undefined>(undefined);
  * When true, tiles with collision masking enabled will show a visual overlay
  */
 export const ShowMightyMikeCollisionOverlay = atom<boolean>(false);
+
+/**
+ * When true, clicking/dragging over tiles in the map toggles their hasCollisionMask value.
+ * This allows painting collision on/off across multiple tiles quickly.
+ */
+export const CollisionBrushMode = atom<boolean>(false);

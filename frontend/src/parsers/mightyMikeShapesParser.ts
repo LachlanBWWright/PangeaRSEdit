@@ -102,7 +102,7 @@ export interface FrameHeader {
 export interface ShapeFrame {
   header: FrameHeader;
   pixels: Uint8Array; // 8-bit indexed color data
-  mask?: Uint8Array; // 1-bit mask data
+  mask?: Uint8Array; // Byte-per-pixel mask (0x00=opaque, 0xFF=transparent)
 }
 
 export interface Shape {
@@ -354,11 +354,12 @@ function parseShapeList(
         };
       }
 
-      // Extract pixel data
+      // Extract pixel data.
+      // pixelOffset is also relative to shapeBase and can be negative.
       const pixelDataSize = header.width * header.height;
       const pixelStartOffset = shapeBase + header.pixelOffset;
 
-      if (pixelStartOffset + pixelDataSize > bytes.length) {
+      if (pixelStartOffset < 0 || pixelStartOffset + pixelDataSize > bytes.length) {
         return {
           success: false,
           shapes: [],
@@ -373,13 +374,16 @@ function parseShapeList(
         pixelStartOffset + pixelDataSize
       );
 
-      // Extract mask data if present
+      // Extract mask data if present (byte-per-pixel, not bit-per-pixel).
+      // maskOffset is relative to shapeBase (the shape header) and is typically
+      // *negative* because pixel/mask data is laid out before the shape headers.
+      // The original check `> 0` was wrong; use a bounds check instead.
       let mask: Uint8Array | undefined;
-      if (header.maskOffset > 0) {
+      if (header.maskOffset !== 0) {
         const maskStartOffset = shapeBase + header.maskOffset;
-        const maskSize = Math.ceil((header.width * header.height) / 8);
+        const maskSize = header.width * header.height;
 
-        if (maskStartOffset + maskSize <= bytes.length) {
+        if (maskStartOffset >= 0 && maskStartOffset + maskSize <= bytes.length) {
           mask = bytes.slice(maskStartOffset, maskStartOffset + maskSize);
         }
       }
@@ -427,15 +431,14 @@ export function shapeFrameToCanvas(
     const colorIndex = frame.pixels[i] ?? 0;
     const color = colorTable[colorIndex] || { r: 0, g: 0, b: 0 };
 
-    // Check mask to determine transparency
+    // The mask is byte-per-pixel (one mask byte per pixel).
+    // In the game: dest = (dest & mask) | src
+    // mask=0x00 means show sprite pixel (opaque), mask=0xFF means transparent
     let alpha = 255;
     if (frame.mask) {
-      const byteIndex = Math.floor(i / 8);
-      const bitIndex = i % 8;
-      const maskByte = frame.mask[byteIndex];
+      const maskByte = frame.mask[i];
       if (maskByte !== undefined) {
-        const isOpaque = (maskByte & (1 << bitIndex)) !== 0;
-        alpha = isOpaque ? 255 : 0;
+        alpha = maskByte === 0x00 ? 255 : 0;
       }
     }
 

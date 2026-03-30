@@ -10,6 +10,7 @@
  * - NO water
  */
 
+import { memo } from "react";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { View } from "../viewEnum";
@@ -20,7 +21,7 @@ interface Props {
   terrainHasSTgd?: boolean;
 }
 
-export function Bugdom1EditorToolbar({
+export const Bugdom1EditorToolbar = memo(function Bugdom1EditorToolbar({
   view,
   setView,
   terrainHasSTgd,
@@ -60,4 +61,4 @@ export function Bugdom1EditorToolbar({
       <Separator />
     </>
   );
-}
+});

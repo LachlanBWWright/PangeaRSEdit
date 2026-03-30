@@ -6,6 +6,7 @@
 
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   CurrentTopologyBrushMode,
   CurrentTopologyValueMode,
@@ -100,32 +101,38 @@ export function OttoMaticTilesMenu({
 
   return (
     <div className="flex flex-col gap-2">
-      <div className="grid grid-cols-4 gap-2">
-        <Button
-          selected={tileView === TileViews.Topology}
-          onClick={() => setTileView(TileViews.Topology)}
-        >
-          Topology
-        </Button>
-        <Button
-          selected={tileView === TileViews.Flags}
-          onClick={() => setTileView(TileViews.Flags)}
-        >
-          Empty Tiles
-        </Button>
-        <Button
-          selected={tileView === TileViews.ElectricFloor0}
-          onClick={() => setTileView(TileViews.ElectricFloor0)}
-        >
-          Electric Floor 1
-        </Button>
-        <Button
-          selected={tileView === TileViews.ElectricFloor1}
-          onClick={() => setTileView(TileViews.ElectricFloor1)}
-        >
-          Electric Floor 2
-        </Button>
-      </div>
+      <Tabs
+        value={
+          tileView === TileViews.Topology
+            ? "topology"
+            : tileView === TileViews.Flags
+              ? "flags"
+              : tileView === TileViews.ElectricFloor0
+                ? "electric0"
+                : "electric1"
+        }
+        onValueChange={(value) => {
+          if (value === "topology") setTileView(TileViews.Topology);
+          else if (value === "flags") setTileView(TileViews.Flags);
+          else if (value === "electric0") setTileView(TileViews.ElectricFloor0);
+          else if (value === "electric1") setTileView(TileViews.ElectricFloor1);
+        }}
+      >
+        <TabsList className="grid grid-flow-col auto-cols-fr gap-2 w-full overflow-clip">
+          <TabsTrigger className="w-full" value="topology">
+            Topology
+          </TabsTrigger>
+          <TabsTrigger className="w-full" value="flags">
+            Empty Tiles
+          </TabsTrigger>
+          <TabsTrigger className="w-full" value="electric0">
+            Electric Floor 1
+          </TabsTrigger>
+          <TabsTrigger className="w-full" value="electric1">
+            Electric Floor 2
+          </TabsTrigger>
+        </TabsList>
+      </Tabs>
 
       {tileView === TileViews.Topology && (
         <div className="grid grid-cols-[auto_1fr_auto_1fr] gap-2 items-center">

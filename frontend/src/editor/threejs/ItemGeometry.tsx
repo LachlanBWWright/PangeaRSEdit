@@ -23,9 +23,15 @@ interface ItemGeometryProps {
   itemData: ItemData;
   headerData: HeaderData;
   terrainData: TerrainData;
+  onItemPointerDown?: (itemIdx: number) => void;
+  draggingItemIdx?: number | null;
+  topologyVersion?: number;
 }
 
 const ITEM_SIZE = 50; // World units for item cube size
+const DRAG_HIGHLIGHT_COLOR = 0x00aaff;
+const DRAG_HIGHLIGHT_OPACITY = 0.4;
+const DRAG_HIGHLIGHT_SCALE = 0.8;
 
 /**
  * Colored cube fallback for items without 3D models
@@ -173,6 +179,8 @@ export const ItemGeometry: React.FC<ItemGeometryProps> = ({
   itemData,
   headerData,
   terrainData,
+  onItemPointerDown,
+  draggingItemIdx,
 }) => {
   const globals = useAtomValue(Globals);
   const show3DItemModels = useAtomValue(Show3DItemModels);
@@ -311,6 +319,31 @@ export const ItemGeometry: React.FC<ItemGeometryProps> = ({
           worldZ,
         ];
 
+        // Highlight dragged item
+        const isDragging = draggingItemIdx === idx;
+
+        // Wrap in a group for pointer events when drag is enabled
+        const wrapWithDrag = (content: React.ReactNode) =>
+          onItemPointerDown ? (
+            <group
+              key={`item-drag-${idx}`}
+              onPointerDown={(e) => {
+                e.stopPropagation();
+                if (e.nativeEvent.button === 0) onItemPointerDown(idx);
+              }}
+            >
+              {content}
+              {isDragging && (
+                <mesh position={[0, 0, 0]}>
+                  <sphereGeometry args={[ITEM_SIZE * DRAG_HIGHLIGHT_SCALE, 8, 8]} />
+                  <meshBasicMaterial color={DRAG_HIGHLIGHT_COLOR} transparent opacity={DRAG_HIGHLIGHT_OPACITY} wireframe />
+                </mesh>
+              )}
+            </group>
+          ) : (
+            <React.Fragment key={`item-frag-${idx}`}>{content}</React.Fragment>
+          );
+
         // Check if this is a liquid patch item (water/lava/honey/slime in Bugdom 1/Nanosaur 1)
         const liquidPatchStyle = getLiquidPatchStyle(globals, item.type);
         if (liquidPatchStyle) {
@@ -348,14 +381,14 @@ export const ItemGeometry: React.FC<ItemGeometryProps> = ({
             ? dims.yValue3D
             : snappedTerrainY + dims.yValue3D;
 
-          return (
+          return wrapWithDrag(
             <LiquidPatchPlane
               key={`liquid-patch-${idx}`}
               position={[snappedWorldX, liquidY, snappedWorldZ]}
               width={dims.width3D}
               depth={dims.depth3D}
               style={liquidPatchStyle}
-            />
+            />,
           );
         }
 
@@ -369,12 +402,12 @@ export const ItemGeometry: React.FC<ItemGeometryProps> = ({
 
           // Show spinning cube while loading
           if (isLoading) {
-            return (
+            return wrapWithDrag(
               <LoadingCube
                 key={`item-loading-${idx}`}
                 position={position}
                 itemType={item.type}
-              />
+              />,
             );
           }
 
@@ -382,25 +415,25 @@ export const ItemGeometry: React.FC<ItemGeometryProps> = ({
           if (modelGltf && !hasError) {
             const clonedScene = clonedScenesByCacheKey.get(itemCacheKey);
             if (clonedScene) {
-              return (
+              return wrapWithDrag(
                 <ItemModel
                   key={`item-model-${idx}`}
                   position={position}
                   itemType={item.type}
                   clonedScene={clonedScene}
-                />
+                />,
               );
             }
           }
         }
 
         // Default: colored cube
-        return (
+        return wrapWithDrag(
           <ColoredCube
             key={`item-cube-${idx}`}
             position={position}
             itemType={item.type}
-          />
+          />,
         );
       })}
     </group>

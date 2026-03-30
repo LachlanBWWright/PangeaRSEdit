@@ -26,9 +26,9 @@ export function TextureManager({
 }: TextureManagerProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [selectedTexture, setSelectedTexture] = useState<Texture | null>(null);
-  const [showPreviews, setShowPreviews] = useState(false);
+  const [showPreviews, setShowPreviews] = useState(true);
   const [expandedTextures, setExpandedTextures] = useState<Set<number>>(
-    new Set(),
+    () => new Set(textures.map((_, index) => index)),
   );
   const [isEditorOpen, setIsEditorOpen] = useState(false);
   const [textureToEdit, setTextureToEdit] = useState<Texture | null>(null);

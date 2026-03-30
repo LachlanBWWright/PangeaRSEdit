@@ -44,6 +44,7 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import { toast } from "sonner";
 import { Vector3, Mesh, MOUSE } from "three";
 import type { Event } from "three";
+import type { Updater } from "use-immer";
 
 // Type guard for THREE events with point
 interface ThreeEventWithPoint extends Event<string, unknown> {
@@ -136,6 +137,7 @@ export function ThreeView({
   splineData,
   terrainData,
   mapImages,
+  setItemData,
 }: {
   headerData: HeaderData;
   fenceData: FenceData | null;
@@ -144,6 +146,7 @@ export function ThreeView({
   splineData: SplineData | null;
   terrainData: TerrainData;
   mapImages: HTMLCanvasElement[];
+  setItemData?: Updater<ItemData | null>;
 }) {
   const globals = useAtomValue(Globals);
   const show3DSplines = useAtomValue(Show3DSplines);
@@ -163,7 +166,15 @@ export function ThreeView({
   const terrainMeshRef = useRef<Mesh>(null);
   const [intersectionPoint, setIntersectionPoint] = useState<{ x: number; y: number; z: number } | null>(null);
   const [isEditing, setIsEditing] = useState(false);
+  // Incremented when the 3D topology brush finishes a stroke so fence/item geometry
+  // re-reads terrain heights (the brush directly mutates terrainData in place for
+  // performance, so the useMemo deps don't see the change otherwise).
+  const [topologyVersion, setTopologyVersion] = useState(0);
   const lastBrushCenterRef = useRef<{ x: number; y: number } | null>(null);
+
+  // Item drag state
+  const [draggingItemIdx, setDraggingItemIdx] = useState<number | null>(null);
+  const dragItemRef = useRef<number | null>(null);
   
   const isEditingTopology = tileViewMode === TileViews.Topology;
 
@@ -187,6 +198,22 @@ export function ThreeView({
     topologyValue === 0 ? undefined : topologyValue < 0 ? "down" : "up";
 
   const handlePointerMove = useCallback((event: Event<string, unknown>) => {
+    // Handle item dragging
+    if (dragItemRef.current !== null && setItemData && hasPointProperty(event)) {
+      const worldX = event.point.x;
+      const worldZ = event.point.z;
+      const scale = globals.TILE_INGAME_SIZE / globals.TILE_SIZE;
+      const itemIdx = dragItemRef.current;
+      setItemData((data) => {
+        if (!data) return;
+        const item = data.Itms[1000]?.obj?.[itemIdx];
+        if (!item) return;
+        item.x = Math.round(worldX / scale);
+        item.z = Math.round(worldZ / scale);
+      });
+      return;
+    }
+
     if (!isEditingTopology || !terrainMeshRef.current) return;
 
     if (hasPointProperty(event)) {
@@ -294,7 +321,7 @@ export function ThreeView({
         }
       }
     }
-  }, [isEditingTopology, isEditing, brushMode, brushRadius, valueMode, topologyValue, header, globals, terrainData, editRoofAndFloor, roofFloorElevation]);
+  }, [isEditingTopology, isEditing, brushMode, brushRadius, valueMode, topologyValue, header, globals, terrainData, editRoofAndFloor, roofFloorElevation, setItemData]);
 
   const handlePointerDown = useCallback((event: Event<string, unknown>) => {
     if (!isEditingTopology) return;
@@ -389,9 +416,25 @@ export function ThreeView({
     }
   }, [isEditingTopology, brushMode, brushRadius, valueMode, topologyValue, header, globals, terrainData, editRoofAndFloor, roofFloorElevation]);
 
+  /** Called when a user starts dragging an item in the 3D view. */
+  const handleItemPointerDown = useCallback((itemIdx: number) => {
+    if (!setItemData) return;
+    dragItemRef.current = itemIdx;
+    setDraggingItemIdx(itemIdx);
+  }, [setItemData]);
+
   const handlePointerUp = useCallback(() => {
+    // Clear item drag
+    if (dragItemRef.current !== null) {
+      dragItemRef.current = null;
+      setDraggingItemIdx(null);
+      setTopologyVersion((v) => v + 1);
+      return;
+    }
     setIsEditing(false);
     lastBrushCenterRef.current = null;
+    // Increment topologyVersion so FenceGeometry/ItemGeometry re-read terrain heights.
+    setTopologyVersion((v) => v + 1);
   }, []);
 
   // Ensure header is defined before rendering TestGeometry
@@ -421,7 +464,7 @@ export function ThreeView({
         // Make the controls the default camera controls
         makeDefault
         // Disable controls during editing
-        enabled={!isEditing}
+        enabled={!isEditing && draggingItemIdx === null}
         // Smooth movement
         enableDamping
         dampingFactor={0.08}
@@ -436,18 +479,19 @@ export function ThreeView({
         // Keep panning aligned with the ground plane, so panning feels intuitive
         screenSpacePanning={false}
         mouseButtons={{
-          LEFT: MOUSE.PAN,
+          LEFT: MOUSE.ROTATE,
           MIDDLE: MOUSE.DOLLY,
-          RIGHT: MOUSE.ROTATE,
+          RIGHT: MOUSE.PAN,
         }}
         // Start looking at the center of the map
         target={[unitsWide / 2, 0, unitsHigh / 2]}
       />
 
       {/* Lighting for 3D item models and terrain */}
-      <ambientLight intensity={0.9} />
-      <directionalLight position={[1, 1, 0.5]} intensity={1} />
-      <directionalLight position={[-1, -0.5, -0.5]} intensity={0.3} />
+      <ambientLight intensity={1.15} />
+      <hemisphereLight args={[0xffffff, 0x8090a0, 0.7]} />
+      <directionalLight position={[1, 1.5, 0.75]} intensity={1.25} />
+      <directionalLight position={[-1, 0.25, -0.5]} intensity={0.5} />
 
       {/* Exporter hook component (listens for export triggers) */}
       <SceneExporter />
@@ -487,6 +531,7 @@ export function ThreeView({
           fenceData={fenceData}
           headerData={headerData}
           terrainData={terrainData}
+          topologyVersion={topologyVersion}
         />
       )}
       {liquidData && show3DLiquid && (
@@ -501,7 +546,22 @@ export function ThreeView({
           itemData={itemData}
           headerData={headerData}
           terrainData={terrainData}
+          onItemPointerDown={setItemData ? handleItemPointerDown : undefined}
+          draggingItemIdx={draggingItemIdx}
+          topologyVersion={topologyVersion}
         />
+      )}
+      {/* Drag plane: invisible mesh above terrain that captures pointer events during item drag */}
+      {draggingItemIdx !== null && (
+        <mesh
+          position={[unitsWide / 2, 1, unitsHigh / 2]}
+          rotation={[-Math.PI / 2, 0, 0]}
+          onPointerMove={handlePointerMove}
+          onPointerUp={handlePointerUp}
+        >
+          <planeGeometry args={[unitsWide * 4, unitsHigh * 4]} />
+          <meshBasicMaterial transparent opacity={0} depthWrite={false} />
+        </mesh>
       )}
       {splineData && show3DSplines && (
         <SplineGeometry

@@ -8,6 +8,7 @@ export { AnimationControls } from "./AnimationControls";
 export { AnimationEditor } from "./AnimationEditor";
 export { KeyframeEditor } from "./KeyframeEditor";
 export { AnimationMetadataDisplay } from "./AnimationMetadataDisplay";
+export { AnimationEventEditor } from "./AnimationEventEditor";
 export { AnimationCreator } from "./AnimationCreator";
 export { useAnimationPlayback, reindexAnimations, configureActionLoop } from "./hooks";
 export * from "./types";

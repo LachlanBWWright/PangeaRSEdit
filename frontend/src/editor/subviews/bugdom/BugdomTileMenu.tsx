@@ -20,7 +20,7 @@ import {
 } from "@/python/structSpecs/LevelTypes";
 import { Globals } from "../../../data/globals/globals";
 import { Button } from "@/components/ui/button";
-import { useState, useMemo, useRef } from "react";
+import { useState, useMemo, useRef, useCallback } from "react";
 import { Edit, FlipHorizontal, FlipVertical, RotateCw, Upload } from "lucide-react";
 import { toast } from "sonner";
 import { ImageEditor } from "@/components/ImageEditor";
@@ -29,6 +29,7 @@ import {
   canRemoveSupertileRow,
   getSupertileCounts,
 } from "../supertiles/supertileResizeGuards";
+import { TileCanvas } from "../shared/TileCanvas";
 import {
   TILENUM_MASK,
   TILE_FLIPX_MASK,
@@ -381,6 +382,81 @@ export function BugdomTileMenu({
     toast.success(`Edited palette tile #${selectedPaletteTile}`);
   };
 
+  /**
+   * Extract unique colors from the tile image currently being edited.
+   * Bugdom/Nanosaur tiles use a fixed palette so the set is small.
+   * Returns an array of CSS hex color strings (opaque pixels only).
+   */
+  const paletteColorsForEdit = useMemo<string[]>(() => {
+    const canvas = mapImages[selectedPaletteTile];
+    if (!canvas) return [];
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return [];
+    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const { data } = imageData;
+    const seen = new Set<string>();
+    const colors: string[] = [];
+    for (let i = 0; i < data.length; i += 4) {
+      const a = data[i + 3] ?? 0;
+      if (a < 128) continue; // skip transparent pixels
+      const r = data[i] ?? 0;
+      const g = data[i + 1] ?? 0;
+      const b = data[i + 2] ?? 0;
+      const hex = `#${r.toString(16).padStart(2, "0")}${g.toString(16).padStart(2, "0")}${b.toString(16).padStart(2, "0")}`;
+      if (!seen.has(hex)) {
+        seen.add(hex);
+        colors.push(hex);
+      }
+    }
+    return colors;
+  }, [mapImages, selectedPaletteTile]);
+
+  /**
+   * Replace a palette color across the entire tile image.
+   * Remaps every pixel matching `paletteColorsForEdit[index]` to `newColor`.
+   */
+  const handleReplacePaletteColor = useCallback(
+    (index: number, newColor: string) => {
+      const canvas = mapImages[selectedPaletteTile];
+      if (!canvas) return;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return;
+      const oldColor = paletteColorsForEdit[index];
+      if (!oldColor) return;
+
+      // Parse old color
+      const oldR = parseInt(oldColor.slice(1, 3), 16);
+      const oldG = parseInt(oldColor.slice(3, 5), 16);
+      const oldB = parseInt(oldColor.slice(5, 7), 16);
+
+      // Parse new color
+      const newR = parseInt(newColor.slice(1, 3), 16);
+      const newG = parseInt(newColor.slice(3, 5), 16);
+      const newB = parseInt(newColor.slice(5, 7), 16);
+
+      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      const { data } = imageData;
+      for (let i = 0; i < data.length; i += 4) {
+        if (
+          data[i] === oldR &&
+          data[i + 1] === oldG &&
+          data[i + 2] === oldB &&
+          (data[i + 3] ?? 0) >= 128
+        ) {
+          data[i] = newR;
+          data[i + 1] = newG;
+          data[i + 2] = newB;
+        }
+      }
+      ctx.putImageData(imageData, 0, 0);
+
+      const newMapImages = [...mapImages];
+      newMapImages[selectedPaletteTile] = canvas;
+      setMapImages(newMapImages);
+    },
+    [mapImages, selectedPaletteTile, paletteColorsForEdit, setMapImages],
+  );
+
   if (!layerData) {
     return (
       <div className="p-4 text-white">
@@ -600,11 +676,7 @@ export function BugdomTileMenu({
                 onClick={() => setSelectedPaletteTile(idx)}
                 title={`Tile #${idx}`}
               >
-                <Stage width={32} height={32}>
-                  <Layer>
-                    {img && <Image image={img} width={32} height={32} />}
-                  </Layer>
-                </Stage>
+                <TileCanvas image={img} size={32} />
               </div>
             ))}
           </div>
@@ -644,6 +716,8 @@ export function BugdomTileMenu({
         imageUrl={mapImages[selectedPaletteTile]?.toDataURL("image/png") ?? ""}
         imageName={`Palette_${selectedPaletteTile}`}
         onSave={handleSavePaletteEdit}
+        paletteColors={paletteColorsForEdit}
+        onReplacePaletteColor={handleReplacePaletteColor}
       />
     </div>
   );

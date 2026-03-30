@@ -2,7 +2,6 @@ import React from "react";
 import { useAtomValue } from "jotai";
 import { itemFilterStateAtom, FilterMode } from "@/data/items/itemFilterAtoms";
 import { isItemVisible } from "@/data/items/itemFilterUtils";
-import { Globals } from "@/data/globals/globals";
 import type { TerrainItem } from "@/python/structSpecs/LevelTypes";
 
 interface FilterStatusBarProps {
@@ -15,21 +14,12 @@ interface FilterStatusBarProps {
  */
 export const FilterStatusBar: React.FC<FilterStatusBarProps> = ({ items }) => {
   const filter = useAtomValue(itemFilterStateAtom);
-  const globals = useAtomValue(Globals);
 
   if (filter.mode === FilterMode.SHOW_ALL) {
     return null; // Don't show when not filtering
   }
 
-  // Create a lookup function for item type names
-  const getTypeName = (itemType: number): string | undefined => {
-    const itemTypes = globals.ITEM_TYPES;
-    return itemTypes ? itemTypes[itemType] : undefined;
-  };
-
-  const visibleItems = items.filter(item => 
-    isItemVisible(item.type, filter, getTypeName)
-  );
+  const visibleItems = items.filter(item => isItemVisible(item.type, filter));
   const totalCount = items.length;
   const hiddenCount = totalCount - visibleItems.length;
 

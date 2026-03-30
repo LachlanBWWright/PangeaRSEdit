@@ -10,19 +10,24 @@
  */
 
 import { useAtomValue } from "jotai";
-import { useRef, useState } from "react";
-import { Layer, Stage, Image } from "react-konva";
+import { useMemo, useRef, useState } from "react";
 import { SelectedTile } from "@/data/supertiles/supertileAtoms";
 import { Updater } from "use-immer";
 import { HeaderData, TerrainData } from "@/python/structSpecs/LevelTypes";
 import { FileUpload } from "@/components/FileUpload";
 import { Button } from "@/components/ui/button";
 import { ImageEditor } from "@/components/ImageEditor";
-import { Edit, Download, Upload, Shield } from "lucide-react";
+import { Edit, Download, Upload, Shield, Info, Paintbrush } from "lucide-react";
 import { toast } from "sonner";
 import { fromPromise } from "@/types/result";
 import { useAtom } from "jotai";
-import { ShowMightyMikeCollisionOverlay } from "@/data/game/gameAtoms";
+import { CollisionBrushMode, ShowMightyMikeCollisionOverlay } from "@/data/game/gameAtoms";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import {
   Select,
   SelectContent,
@@ -30,6 +35,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { TileCanvas } from "../shared/TileCanvas";
 
 // Type guard helpers
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -70,9 +76,13 @@ export function MightyMikeTileMenu({
   const [showCollisionOverlay, setShowCollisionOverlay] = useAtom(
     ShowMightyMikeCollisionOverlay
   );
+  const [collisionBrushMode, setCollisionBrushMode] = useAtom(CollisionBrushMode);
 
   // Local state
-  const [selectedPaletteTile, setSelectedPaletteTile] = useState<number>(0);
+  const [manualTilePaletteSelection, setManualTilePaletteSelection] = useState<{
+    tile: number;
+    palette: number;
+  } | null>(null);
   const [isEditingTile, setIsEditingTile] = useState(false);
   const [editingImageUrl, setEditingImageUrl] = useState<string | null>(null);
   const [isEditingPaletteTile, setIsEditingPaletteTile] = useState(false);
@@ -80,7 +90,10 @@ export function MightyMikeTileMenu({
 
   // Get required data
   const header = headerData.Hedr[1000].obj;
-  const layr = terrainData.Layr?.[1000]?.obj || [];
+  const layr = useMemo(
+    () => terrainData.Layr?.[1000]?.obj ?? [],
+    [terrainData.Layr],
+  );
   const xlatTable = terrainData.Xlat?.[1000]?.obj;
 
   // Get collision data from Mighty Mike metadata using type guards
@@ -94,6 +107,25 @@ export function MightyMikeTileMenu({
   const mapWidth = header.mapWidth;
   const mapHeight = header.mapHeight;
   const totalTiles = mapWidth * mapHeight;
+
+  const selectedPaletteTile = useMemo(() => {
+    if (selectedTile < 0 || selectedTile >= layr.length) return 0;
+    const tileIndexValue = layr[selectedTile];
+    if (tileIndexValue === undefined || tileIndexValue === null) return 0;
+    let imageIndex: number = tileIndexValue;
+    if (xlatTable && tileIndexValue >= 0 && tileIndexValue < xlatTable.length) {
+      const entry = xlatTable[tileIndexValue];
+      if (entry && typeof entry === "object" && "idx" in entry) {
+        imageIndex = (entry as { idx: number }).idx;
+      }
+    }
+    if (imageIndex >= 0 && imageIndex < mapImages.length) {
+      return manualTilePaletteSelection?.tile === selectedTile
+        ? manualTilePaletteSelection.palette
+        : imageIndex;
+    }
+    return 0;
+  }, [selectedTile, layr, xlatTable, mapImages.length, manualTilePaletteSelection]);
 
   // Helper: Get collision properties for current tile
   const getCollisionProperties = (): {
@@ -281,25 +313,15 @@ export function MightyMikeTileMenu({
     property: "hasCollisionMask" | "usePixelAccurateCollision",
     value: boolean
   ) => {
-    if (selectedTile < 0 || selectedTile >= mightyMikeTileValuesArray.length) {
-      toast.error("Invalid tile selected");
-      return;
-    }
-
-    // Update the tile value in the array
-    const tileValue = mightyMikeTileValuesArray[selectedTile];
-    if (!isRecord(tileValue)) return;
-
-    tileValue[property] = value;
-
-    // Update state to trigger re-render
     setTerrainData((data) => {
-      if (!data.Layr) return;
-      // Force a state update by touching the layer data
-      const layer = data.Layr[1000];
-      if (layer) {
-        layer.obj = [...(layer.obj || [])];
-      }
+      const meta = isRecord(data._metadata) && isRecord(data._metadata[1000]) && isRecord(data._metadata[1000].obj)
+        ? data._metadata[1000].obj
+        : undefined;
+      const tileValues = meta && isArray(meta.mightyMikeTileValues) ? meta.mightyMikeTileValues : undefined;
+      if (!tileValues || selectedTile < 0 || selectedTile >= tileValues.length) return;
+      const tileVal = tileValues[selectedTile];
+      if (!isRecord(tileVal)) return;
+      tileVal[property] = value;
     });
 
     toast.success(
@@ -425,45 +447,31 @@ export function MightyMikeTileMenu({
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
-      <div className="grid grid-cols-4 gap-2 p-2 border-b border-gray-600">
-        <Button onClick={() => onResize("top", 1)}>Add Row Top</Button>
-        <Button onClick={() => onResize("bottom", 1)}>Add Row Bottom</Button>
-        <Button onClick={() => onResize("left", 1)}>Add Column Left</Button>
-        <Button onClick={() => onResize("right", 1)}>Add Column Right</Button>
-      </div>
-      {/* Collision Overlay Toggle */}
-      <div className="p-2 border-b border-gray-600 flex items-center justify-between">
-        <span className="text-sm font-semibold">Collision Overlay</span>
-        <Button
-          size="sm"
-          variant={showCollisionOverlay ? "default" : "outline"}
-          onClick={() => setShowCollisionOverlay(!showCollisionOverlay)}
-          title={
-            showCollisionOverlay
-              ? "Hide collision mask overlay"
-              : "Show collision mask overlay"
-          }
-        >
-          <Shield className="w-4 h-4" />
-        </Button>
+      <div className="grid grid-cols-4 gap-2 p-2 border-b border-gray-600 flex-none">
+        <Button size="sm" onClick={() => onResize("top", 1)}>Add Row Top</Button>
+        <Button size="sm" onClick={() => onResize("bottom", 1)}>Add Row Bottom</Button>
+        <Button size="sm" onClick={() => onResize("left", 1)}>Add Column Left</Button>
+        <Button size="sm" onClick={() => onResize("right", 1)}>Add Column Right</Button>
+        <Button size="sm" variant="outline" onClick={() => onResize("top", -1)}>Remove Row Top</Button>
+        <Button size="sm" variant="outline" onClick={() => onResize("bottom", -1)}>Remove Row Bottom</Button>
+        <Button size="sm" variant="outline" onClick={() => onResize("left", -1)}>Remove Column Left</Button>
+        <Button size="sm" variant="outline" onClick={() => onResize("right", -1)}>Remove Column Right</Button>
       </div>
 
-      {/* Main Content Grid */}
-      <div className="grid grid-cols-3 gap-2 p-2 flex-1 overflow-y-auto">
+      {/* Main Content Grid — each column manages its own overflow */}
+      <div className="grid grid-cols-3 gap-2 p-2 flex-1 min-h-0 overflow-hidden">
       {/* Left Column: Selected Tile Operations */}
-      <div className="flex flex-col gap-2">
-        <p className="font-bold">Selected Tile #{selectedTile}</p>
+      <div className="flex flex-col gap-2 overflow-y-auto">
+        <p className="font-bold text-sm">Tile #{selectedTile}</p>
 
-        {/* Tile Preview */}
-        <Stage width={120} height={120} className="mx-auto border border-gray-600">
-          <Layer>
-            {currentTileCanvas && <TileImage image={currentTileCanvas} />}
-          </Layer>
-        </Stage>
+        {/* Compact Tile Preview */}
+        <div className="border border-gray-600 self-start">
+          <TileCanvas image={currentTileCanvas ?? undefined} size={64} />
+        </div>
 
         {/* Upload Button */}
         <div>
-          <p className="text-sm mb-1">Replace Tile Image</p>
+          <p className="text-xs mb-1">Replace Image</p>
           <FileUpload
             acceptType="image"
             disabled={currentImageIndex === null}
@@ -494,35 +502,70 @@ export function MightyMikeTileMenu({
         </Button>
       </div>
 
-      {/* Middle Column: Tile Information */}
+      {/* Middle Column: Collision Overlay + Collision Properties + Tile Info (in tooltip) */}
       <div className="flex flex-col gap-2 text-sm overflow-y-auto">
-        <div>
-          <p className="font-bold">Tile Information</p>
-          <div className="space-y-1">
-            <p>Map Size: {mapWidth} × {mapHeight}</p>
-            <p>Total Tiles: {totalTiles}</p>
-            <p>Available Images: {mapImages.length}</p>
-            <p>Selected Pos: {selectedTile}</p>
-            <p>
-              Logical Index:{" "}
-              {selectedTile < layr.length ? layr[selectedTile] : "N/A"}
-            </p>
-            <p>Physical Index: {currentImageIndex ?? "N/A"}</p>
-            <p>Has Xlat: {xlatTable ? "Yes" : "No"}</p>
-          </div>
+        {/* Collision Overlay Toggle */}
+        <div className="flex items-center justify-between">
+          <span className="text-xs font-semibold">Collision Overlay</span>
+          <Button
+            size="sm"
+            variant={showCollisionOverlay ? "default" : "outline"}
+            onClick={() => setShowCollisionOverlay(!showCollisionOverlay)}
+            title={
+              showCollisionOverlay
+                ? "Hide collision mask overlay"
+                : "Show collision mask overlay"
+            }
+          >
+            <Shield className="w-4 h-4" />
+          </Button>
         </div>
+
+        {/* Collision brush toggle */}
+        <div className="flex items-center justify-between">
+          <span className="text-xs font-semibold">Collision Brush</span>
+          <Button
+            size="sm"
+            variant={collisionBrushMode ? "default" : "outline"}
+            onClick={() => setCollisionBrushMode(!collisionBrushMode)}
+            title={collisionBrushMode ? "Disable collision brush (click tiles to toggle)" : "Enable collision brush — drag to toggle collision on tiles"}
+          >
+            <Paintbrush className="w-4 h-4" />
+          </Button>
+        </div>
+
+        {/* Tile Information — collapsed into an info tooltip to save space */}
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button className="flex items-center gap-1 text-xs text-gray-400 hover:text-white cursor-pointer w-fit">
+                <Info className="w-3 h-3" />
+                Tile Info
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="right" className="text-xs space-y-0.5 max-w-48">
+              <p>Map: {mapWidth} × {mapHeight}</p>
+              <p>Total: {totalTiles}</p>
+              <p>Images: {mapImages.length}</p>
+              <p>Pos: {selectedTile}</p>
+              <p>Logical: {selectedTile < layr.length ? layr[selectedTile] : "N/A"}</p>
+              <p>Physical: {currentImageIndex ?? "N/A"}</p>
+              <p>Xlat: {xlatTable ? "Yes" : "No"}</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
 
         {/* Collision Properties Section */}
         {mightyMikeTileValuesArray.length > 0 && (() => {
           const collisionProps = getCollisionProperties();
           return (
             <div className="border-t border-gray-600 pt-2">
-              <p className="font-bold">Collision Properties</p>
+              <p className="font-bold text-xs mb-1">Collision</p>
               {collisionProps ? (
                 <div className="space-y-2">
                   {/* Collision Mask Toggle */}
                   <div className="flex items-center justify-between">
-                    <span>Collision Mask:</span>
+                    <span className="text-xs">Mask:</span>
                     <Select
                       value={
                         collisionProps.hasCollisionMask ? "enabled" : "disabled"
@@ -547,7 +590,7 @@ export function MightyMikeTileMenu({
                   {/* Collision Type Selector */}
                   {collisionProps.hasCollisionMask && (
                     <div className="flex items-center justify-between text-xs">
-                      <span>Collision Type:</span>
+                      <span>Type:</span>
                       <Select
                         value={
                           collisionProps.usePixelAccurateCollision
@@ -574,7 +617,7 @@ export function MightyMikeTileMenu({
                 </div>
               ) : (
                 <p className="text-gray-500 text-xs">
-                  No collision data available
+                  No collision data
                 </p>
               )}
             </div>
@@ -583,16 +626,21 @@ export function MightyMikeTileMenu({
       </div>
 
       {/* Right Column: Tile Palette */}
-      <div className="flex flex-col gap-2">
-        <p className="font-bold">Tile Palette</p>
+      <div className="flex flex-col gap-2 min-h-0">
+        <p className="font-bold text-sm flex-none">Tile Palette</p>
 
-        {/* Scrollable Tile Grid */}
-        <div className="flex-1 overflow-y-auto border border-gray-600 p-2">
+        {/* Scrollable Tile Grid — overflow-auto so it doesn't cause the whole menu to overflow */}
+        <div className="flex-1 overflow-auto border border-gray-600 p-1">
           <div className="grid grid-cols-4 gap-1">
             {mapImages.map((img, idx) => (
               <div
                 key={idx}
-                onClick={() => setSelectedPaletteTile(idx)}
+                onClick={() =>
+                  setManualTilePaletteSelection({
+                    tile: selectedTile,
+                    palette: idx,
+                  })
+                }
                 className={`cursor-pointer transition-all ${
                   selectedPaletteTile === idx
                     ? "ring-2 ring-green-500 rounded"
@@ -600,16 +648,12 @@ export function MightyMikeTileMenu({
                 }`}
                 title={`Tile #${idx}`}
               >
-                <Stage width={32} height={32} className="bg-black">
-                  <Layer>
-                    <TileImage image={img} />
-                  </Layer>
-                </Stage>
+                <TileCanvas image={img} size={32} />
               </div>
             ))}
           </div>
         </div>
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-2 gap-2 flex-none">
           <Button
             size="sm"
             variant="outline"
@@ -675,10 +719,4 @@ export function MightyMikeTileMenu({
       )}
     </div>
   );
-}
-
-// Helper component to display tile image
-function TileImage({ image }: { image: HTMLCanvasElement }) {
-  if (!image) return null;
-  return <Image image={image} width={TILE_SIZE} height={TILE_SIZE} />;
 }

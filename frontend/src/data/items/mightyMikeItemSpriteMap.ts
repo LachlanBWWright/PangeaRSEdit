@@ -128,7 +128,7 @@ export const MIGHTY_MIKE_ITEM_SPRITE_MAP: Record<number, ItemSpriteMapping> = {
   11: {
     itemType: 11,
     groupNum: 3,
-    spriteType: 8, // ObjType_ClownCar
+    spriteType: 6, // ObjType_ClownCar
     scene: "clown",
   },
 
@@ -156,13 +156,13 @@ export const MIGHTY_MIKE_ITEM_SPRITE_MAP: Record<number, ItemSpriteMapping> = {
     scene: "clown",
   },
 
-  // Item 15: Health Powerup
+  // Item 15: Health Powerup (scene-specific sprite from area-specific2 shapes)
   15: {
     itemType: 15,
-    groupNum: -1,
-    spriteType: -1,
-    shapesFile: "bonus.shapes",
-    notes: "Scene-specific health powerups stored in bonus.shapes",
+    groupNum: 3, // GROUP_AREA_SPECIFIC2
+    spriteType: 4, // Jurassic=4, Clown=4 (default); Candy=5, Fairy=1, Bargain area1=1
+    scene: "jurassic", // fallback scene so getItemShapesFile returns jurassic2.shapes
+    notes: "Scene-specific health powerup",
   },
 
   // Item 16: Flower Clown (Clown)
@@ -185,24 +185,26 @@ export const MIGHTY_MIKE_ITEM_SPRITE_MAP: Record<number, ItemSpriteMapping> = {
   18: {
     itemType: 18,
     groupNum: 3,
-    spriteType: 11, // ObjType_RaceCar
+    spriteType: 6, // ObjType_RaceCar
     scene: "bargain",
   },
 
-  // Item 19: Key
+  // Item 19: Key (scene-specific - group2 of the current scene)
+  // Jurassic: ObjType_JurassicKeys=5, Clown: ObjType_ClownKeys=5,
+  // Candy: ObjType_CandyKeys=1, Fairy: ObjType_FairyKeys=5, Bargain: ObjType_BargainKeys=3
   19: {
     itemType: 19,
-    groupNum: -1,
-    spriteType: -1,
-    shapesFile: "bonus.shapes",
-    notes: "Color keys stored in bonus.shapes",
+    groupNum: 3, // GROUP_AREA_SPECIFIC2 for jurassic/clown/candy/fairy (bargain=area1)
+    spriteType: 5, // Default to jurassic/clown/fairy index 5; candy uses 1, bargain uses 3
+    scene: "jurassic", // fallback scene so getItemShapesFile returns jurassic2.shapes
+    notes: "Color keys - scene-specific index (jurassic/clown/fairy=5, candy=1, bargain=3)",
   },
 
   // Item 20: Clown Door (Clown)
   20: {
     itemType: 20,
     groupNum: 3,
-    spriteType: 3, // ObjType_ClownDoor
+    spriteType: 2, // ObjType_ClownDoor
     scene: "clown",
   },
 
@@ -226,14 +228,14 @@ export const MIGHTY_MIKE_ITEM_SPRITE_MAP: Record<number, ItemSpriteMapping> = {
   23: {
     itemType: 23,
     groupNum: 3,
-    spriteType: 4, // ObjType_Star
+    spriteType: 3, // ObjType_Star
     scene: "clown",
   },
 
   // Item 24: Chocolate Bunny (Candy)
   24: {
     itemType: 24,
-    groupNum: 3,
+    groupNum: 2, // GROUP_AREA_SPECIFIC
     spriteType: 2, // ObjType_ChocBunny
     scene: "candy",
   },
@@ -241,7 +243,7 @@ export const MIGHTY_MIKE_ITEM_SPRITE_MAP: Record<number, ItemSpriteMapping> = {
   // Item 25: Gingerbread Man (Candy)
   25: {
     itemType: 25,
-    groupNum: 3,
+    groupNum: 2, // GROUP_AREA_SPECIFIC
     spriteType: 3, // ObjType_GBread
     scene: "candy",
   },
@@ -250,7 +252,7 @@ export const MIGHTY_MIKE_ITEM_SPRITE_MAP: Record<number, ItemSpriteMapping> = {
   26: {
     itemType: 26,
     groupNum: 3,
-    spriteType: 10, // ObjType_Mint
+    spriteType: 6, // ObjType_Mint
     scene: "candy",
   },
 
@@ -266,7 +268,7 @@ export const MIGHTY_MIKE_ITEM_SPRITE_MAP: Record<number, ItemSpriteMapping> = {
   28: {
     itemType: 28,
     groupNum: 3,
-    spriteType: 4, // ObjType_GBear
+    spriteType: 0, // ObjType_RedGummy
     scene: "candy",
   },
 
@@ -290,7 +292,7 @@ export const MIGHTY_MIKE_ITEM_SPRITE_MAP: Record<number, ItemSpriteMapping> = {
   31: {
     itemType: 31,
     groupNum: 3,
-    spriteType: 11, // ObjType_JurassicDoor
+    spriteType: 6, // ObjType_JurassicDoor
     scene: "jurassic",
   },
 
@@ -298,32 +300,31 @@ export const MIGHTY_MIKE_ITEM_SPRITE_MAP: Record<number, ItemSpriteMapping> = {
   32: {
     itemType: 32,
     groupNum: 3,
-    spriteType: 6, // ObjType_Carmel
+    spriteType: 2, // ObjType_Carmel
     scene: "candy",
   },
 
-  // Item 33: Weapon Powerup
+  // Item 33: Weapon Powerup (GROUP_WEAPONS, ObjType_WeaponPOWs=10, parm[0]=weapon type)
   33: {
     itemType: 33,
     groupNum: 4, // GROUP_WEAPONS
-    spriteType: -1,
+    spriteType: 10, // ObjType_WeaponPOWs
     shapesFile: "weapon.shapes",
   },
 
-  // Item 34: Misc Powerup
+  // Item 34: Misc Powerup (GROUP_WEAPONS, ObjType_MiscPOWs=14, parm[0]=misc type)
   34: {
     itemType: 34,
-    groupNum: -1,
-    spriteType: -1,
-    shapesFile: "bonus.shapes",
-    notes: "Scene-specific misc powerups in bonus.shapes",
+    groupNum: 4, // GROUP_WEAPONS
+    spriteType: 14, // ObjType_MiscPOWs
+    shapesFile: "weapon.shapes",
   },
 
   // Item 35: Gum Ball (Candy)
   35: {
     itemType: 35,
     groupNum: 3,
-    spriteType: 7, // ObjType_GumBall
+    spriteType: 3, // ObjType_GumBall
     scene: "candy",
   },
 
@@ -331,7 +332,7 @@ export const MIGHTY_MIKE_ITEM_SPRITE_MAP: Record<number, ItemSpriteMapping> = {
   36: {
     itemType: 36,
     groupNum: 3,
-    spriteType: 8, // ObjType_LemonDrop
+    spriteType: 4, // ObjType_LemonDrop
     scene: "candy",
   },
 
@@ -371,7 +372,7 @@ export const MIGHTY_MIKE_ITEM_SPRITE_MAP: Record<number, ItemSpriteMapping> = {
   41: {
     itemType: 41,
     groupNum: 3,
-    spriteType: 7, // ObjType_Soldier
+    spriteType: 3, // ObjType_Soldier
     scene: "fairy",
   },
 
@@ -395,7 +396,7 @@ export const MIGHTY_MIKE_ITEM_SPRITE_MAP: Record<number, ItemSpriteMapping> = {
   44: {
     itemType: 44,
     groupNum: 3,
-    spriteType: 8, // ObjType_FairyDoor
+    spriteType: 4, // ObjType_FairyDoor
     scene: "fairy",
   },
 
@@ -411,9 +412,8 @@ export const MIGHTY_MIKE_ITEM_SPRITE_MAP: Record<number, ItemSpriteMapping> = {
   46: {
     itemType: 46,
     groupNum: 3,
-    spriteType: 5, // ObjType_FairyHealth or similar
+    spriteType: 1, // ObjType_FairyHealth (used by AddPoisonApple)
     scene: "fairy",
-    notes: "May be custom sprite",
   },
 
   // Item 47: Slinky (Bargain)
@@ -468,7 +468,7 @@ export const MIGHTY_MIKE_ITEM_SPRITE_MAP: Record<number, ItemSpriteMapping> = {
   53: {
     itemType: 53,
     groupNum: 3,
-    spriteType: 9, // ObjType_Top
+    spriteType: 4, // ObjType_Top
     scene: "bargain",
   },
 
@@ -476,17 +476,17 @@ export const MIGHTY_MIKE_ITEM_SPRITE_MAP: Record<number, ItemSpriteMapping> = {
   54: {
     itemType: 54,
     groupNum: 3,
-    spriteType: 10, // ObjType_FireHydrant
+    spriteType: 5, // ObjType_FireHydrant
     scene: "bargain",
   },
 
-  // Item 55: Key Color (Color key)
+  // Item 55: Key Color (COLOR key display) - GROUP_MAIN, ObjType_KeyColor=9
   55: {
     itemType: 55,
-    groupNum: -1,
-    spriteType: -1,
-    shapesFile: "bonus.shapes",
-    notes: "Color keys in bonus.shapes",
+    groupNum: 0, // GROUP_MAIN
+    spriteType: 9, // ObjType_KeyColor
+    shapesFile: "main.shapes",
+    notes: "Color key icon in main.shapes",
   },
 };
 
@@ -504,6 +504,8 @@ export function getItemSpriteMapping(itemType: number): ItemSpriteMapping | null
 /**
  * Get the .shapes file name for a given item and scene.
  * For scene-specific items, construct the filename based on the scene name and group number.
+ * If the item has no explicit scene but belongs to a scene-specific group,
+ * uses the current level scene (for items like health powerups that vary by scene).
  */
 export function getItemShapesFile(itemType: number, scene?: string): string | null {
   const mapping = MIGHTY_MIKE_ITEM_SPRITE_MAP[itemType];
@@ -514,14 +516,17 @@ export function getItemShapesFile(itemType: number, scene?: string): string | nu
     return mapping.shapesFile;
   }
 
+  // Determine which scene to use: item's explicit scene, or the level's current scene
+  const effectiveScene = mapping.scene || scene;
+
   // For scene-specific items, construct the filename
-  if (mapping.scene && scene) {
+  if (effectiveScene) {
     if (mapping.groupNum === 2) {
       // GROUP_AREA_SPECIFIC (first area)
-      return `${mapping.scene}1.shapes`;
+      return `${effectiveScene}1.shapes`;
     } else if (mapping.groupNum === 3) {
       // GROUP_AREA_SPECIFIC2 (second area)
-      return `${mapping.scene}2.shapes`;
+      return `${effectiveScene}2.shapes`;
     }
   }
 

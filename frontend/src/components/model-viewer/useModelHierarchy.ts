@@ -14,6 +14,16 @@ function extractNode(obj: Object3D, level = 0): ModelNode | null {
     return null;
   }
 
+  let polyCount: number | undefined;
+  if (obj instanceof Mesh && obj.geometry) {
+    const geo = obj.geometry;
+    if (geo.index) {
+      polyCount = Math.floor(geo.index.count / 3);
+    } else if (geo.attributes.position) {
+      polyCount = Math.floor(geo.attributes.position.count / 3);
+    }
+  }
+
   const node: ModelNode = {
     name: obj.name || `Node_${obj.id}`,
     type:
@@ -22,6 +32,7 @@ function extractNode(obj: Object3D, level = 0): ModelNode | null {
     children: [],
     meshIndex: obj instanceof Mesh ? obj.id : undefined,
     nodeIndex: obj.id,
+    polyCount,
     // Store reference to the original THREE object for proper matching later
     threeObject: obj,
   };

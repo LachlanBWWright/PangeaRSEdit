@@ -13,6 +13,7 @@ import { MightyMikeEditorToolbar } from "../toolbars/MightyMikeEditorToolbar";
 
 import { MightyMikeItemMenu } from "../subviews/items/MightyMikeItemMenu";
 import { MightyMikeTileMenu } from "../subviews/mightymike/MightyMikeTileMenu";
+import { MightyMikeAltMapEditorPanel } from "../subviews/mightymike/MightyMikeAltMapEditor";
 import { MightyMikeKonvaView } from "../canvas/MightyMikeKonvaView";
 import { View } from "../viewEnum";
 import { ItemFilterToggle } from "../subviews/filters/ItemFilterToggle";
@@ -121,12 +122,7 @@ export function MightyMikeEditorView({
           />
         )}
         {view === View.tiles && (
-          <div className="p-4">
-            <h3 className="font-bold">Tile Attributes</h3>
-            <p className="text-sm text-gray-600">
-              Tile collision and behavior attributes (view only for Mighty Mike).
-            </p>
-          </div>
+          <MightyMikeAltMapEditorPanel />
         )}
       </div>
       <div className="w-full min-h-0 flex-1 border-2 border-black overflow-clip relative">

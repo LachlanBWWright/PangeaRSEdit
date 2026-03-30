@@ -10,6 +10,7 @@ export interface ModelNode {
   children?: ModelNode[];
   meshIndex?: number;
   nodeIndex?: number;
+  polyCount?: number;
   // Reference to the original THREE.Object3D for proper matching
   threeObject?: Object3D;
 }

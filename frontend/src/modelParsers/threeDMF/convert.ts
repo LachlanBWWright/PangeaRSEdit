@@ -57,13 +57,42 @@ function pixmapToBG3DTexture(pixmap: TQ3Pixmap): BG3DTexture {
       dstPixelFormat = PixelFormatDst.GL_UNSIGNED_SHORT_5_5_5_1;
   }
 
+  let pixels: Uint8Array;
+  if (pixmap.pixelType === PixelType.RGB32) {
+    const numPixels = pixmap.width * pixmap.height;
+    pixels = new Uint8Array(numPixels * 3);
+    for (let i = 0; i < numPixels; i++) {
+      pixels[i * 3 + 0] = pixmap.image[i * 4 + 1] ?? 0; // R
+      pixels[i * 3 + 1] = pixmap.image[i * 4 + 2] ?? 0; // G
+      pixels[i * 3 + 2] = pixmap.image[i * 4 + 3] ?? 0; // B
+    }
+  } else if (pixmap.pixelType === PixelType.ARGB32) {
+    const numPixels = pixmap.width * pixmap.height;
+    pixels = new Uint8Array(numPixels * 4);
+    for (let i = 0; i < numPixels; i++) {
+      pixels[i * 4 + 0] = pixmap.image[i * 4 + 1] ?? 0; // R
+      pixels[i * 4 + 1] = pixmap.image[i * 4 + 2] ?? 0; // G
+      pixels[i * 4 + 2] = pixmap.image[i * 4 + 3] ?? 0; // B
+      pixels[i * 4 + 3] = pixmap.image[i * 4 + 0] ?? 255; // A
+    }
+  } else if (pixmap.pixelType === PixelType.RGB16) {
+    // RGB16 in 3DMF has no alpha, but we're parsing it into ARGB1555 buffer format.
+    // Force the highest bit to 1 so the pixel is opaque.
+    pixels = new Uint8Array(pixmap.image);
+    for (let i = 0; i < pixels.length; i += 2) {
+      pixels[i] = (pixels[i] ?? 0) | 0x80; // Big-endian high byte
+    }
+  } else {
+    pixels = new Uint8Array(pixmap.image);
+  }
+
   return {
     width: pixmap.width,
     height: pixmap.height,
     srcPixelFormat,
     dstPixelFormat,
-    bufferSize: pixmap.image.length,
-    pixels: new Uint8Array(pixmap.image),
+    bufferSize: pixels.length,
+    pixels,
   };
 }
 
@@ -290,9 +319,32 @@ function bg3dTextureToPixmap(texture: BG3DTexture): TQ3Pixmap {
   }
 
   const rowBytes = texture.width * bytesPerPixel;
+  
+  let image: Uint8Array;
+  if (texture.srcPixelFormat === PixelFormatSrc.GL_RGB) {
+    const numPixels = texture.width * texture.height;
+    image = new Uint8Array(numPixels * 4);
+    for (let i = 0; i < numPixels; i++) {
+      image[i * 4 + 0] = 0; // x (ignored)
+      image[i * 4 + 1] = texture.pixels[i * 3 + 0] ?? 0; // R
+      image[i * 4 + 2] = texture.pixels[i * 3 + 1] ?? 0; // G
+      image[i * 4 + 3] = texture.pixels[i * 3 + 2] ?? 0; // B
+    }
+  } else if (texture.srcPixelFormat === PixelFormatSrc.GL_RGBA) {
+    const numPixels = texture.width * texture.height;
+    image = new Uint8Array(numPixels * 4);
+    for (let i = 0; i < numPixels; i++) {
+      image[i * 4 + 0] = texture.pixels[i * 4 + 3] ?? 255; // A
+      image[i * 4 + 1] = texture.pixels[i * 4 + 0] ?? 0; // R
+      image[i * 4 + 2] = texture.pixels[i * 4 + 1] ?? 0; // G
+      image[i * 4 + 3] = texture.pixels[i * 4 + 2] ?? 0; // B
+    }
+  } else {
+    image = new Uint8Array(texture.pixels);
+  }
 
   return {
-    image: new Uint8Array(texture.pixels),
+    image,
     width: texture.width,
     height: texture.height,
     rowBytes,

@@ -164,7 +164,12 @@ export function Nanosaur1KonvaView({
 
         {/* Items - shown except when in tiles view */}
         {view !== View.tiles && itemData && (
-          <Items itemData={itemData} setItemData={setItemDataNotNull} />
+          <Items
+            headerData={headerData}
+            terrainData={terrainData}
+            itemData={itemData}
+            setItemData={setItemDataNotNull}
+          />
         )}
       </Stage>
     </div>

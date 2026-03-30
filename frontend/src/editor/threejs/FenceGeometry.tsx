@@ -15,6 +15,8 @@ interface FenceGeometryProps {
   fenceData: FenceData;
   headerData: HeaderData;
   terrainData: TerrainData;
+  /** Incremented by the 3D topology brush after each stroke to force terrain-height recompute. */
+  topologyVersion?: number;
 }
 
 // Import helper functions from separate files to avoid Fast Refresh warnings
@@ -109,6 +111,7 @@ const FenceSegmentMesh: React.FC<FenceSegmentMeshProps> = ({
           map={texture}
           side={DoubleSide}
           transparent={true}
+          alphaTest={0.5}
         />
       ) : (
         <meshStandardMaterial color={fenceColor} side={DoubleSide} />
@@ -126,7 +129,7 @@ interface FenceGroupData {
   }[];
 }
 
-const FenceGeometryComponent: React.FC<FenceGeometryProps> = ({ fenceData, headerData, terrainData }) => {
+const FenceGeometryComponent: React.FC<FenceGeometryProps> = ({ fenceData, headerData, terrainData, topologyVersion }) => {
   const globals = useAtomValue(Globals);
   const [textures, setTextures] = useState<Map<string, Texture>>(new Map());
 
@@ -188,7 +191,10 @@ const FenceGeometryComponent: React.FC<FenceGeometryProps> = ({ fenceData, heade
       !fenceData.Fenc[1000] ||
       !fenceData.FnNb ||
       !headerData.Hedr?.[1000]?.obj ||
-      !terrainData.YCrd?.[1000]?.obj
+      !terrainData.YCrd?.[1000]?.obj ||
+      // topologyVersion is a cache-bust counter: the 3D topology brush mutates
+      // terrainData.YCrd in place, so referencing it here makes this memo recompute.
+      topologyVersion === undefined
     ) {
       return null;
     }
@@ -263,7 +269,7 @@ const FenceGeometryComponent: React.FC<FenceGeometryProps> = ({ fenceData, heade
     });
 
     return groups;
-  }, [fenceData, headerData, terrainData, globals, textures]);
+  }, [fenceData, headerData, terrainData, globals, textures, topologyVersion]);
 
   if (!fenceGroups) {
     return null;

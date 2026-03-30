@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { SkeletonSelectionPanel } from "./SkeletonConversionPanel/SkeletonSelectionPanel";
 import BG3DGltfWorker from "../modelParsers/bg3dGltfWorker?worker";
@@ -9,6 +9,7 @@ import {
 import { parseSkeletonRsrc } from "../modelParsers/skeletonRsrc/parseSkeletonRsrcTS";
 import { bg3dSkeletonToSkeletonResource } from "../modelParsers/skeletonExport";
 import { skeletonResourceToBinary } from "../modelParsers/skeletonBinaryExport";
+import { DEFAULT_BG3D_EXPORT_TARGET } from "../modelParsers/bg3dExportTargets";
 import type { SkeletonResource } from "../python/structSpecs/skeleton/skeletonInterface";
 import { toast } from "sonner";
 import { DropArea } from "./SkeletonConversionPanel/DropArea";
@@ -30,39 +31,76 @@ export function SkeletonConversionPanel({
   >("select-bg3d");
   const [pendingBg3dFile, setPendingBg3dFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
+  const primaryInputRef = useRef<HTMLInputElement | null>(null);
 
-  const handleFileConversion = async (bg3dFile: File, skeletonFile?: File) => {
+  const pushLog = (message: string) => {
+    const entry = `[${title}] ${message}`;
+    console.log(entry);
+  };
+
+  const handleFileConversion = async (
+    bg3dFile: File,
+    skeletonFile?: File,
+  ) => {
     setLoading(true);
+    const toastId = toast.loading(
+      `Converting ${bg3dFile.name}${skeletonFile ? ` + ${skeletonFile.name}` : ""}...`,
+    );
+    pushLog(
+      `Starting ${conversionType} for ${bg3dFile.name}${
+        skeletonFile ? ` + ${skeletonFile.name}` : ""
+      }.`,
+    );
 
-    const bg3dBufferResult = await fromPromise(bg3dFile.arrayBuffer());
-    if (bg3dBufferResult.isErr()) {
-      toast.error(`${title} conversion failed: ${bg3dBufferResult.error.message}`);
-      setLoading(false);
-      return;
-    }
-    const bg3dBuffer = bg3dBufferResult.value;
-
-    let skeletonData: SkeletonResource | undefined;
-
-    // Parse skeleton file if provided using TypeScript implementation
-    if (skeletonFile) {
-      const skeletonBufferResult = await fromPromise(skeletonFile.arrayBuffer());
-      if (skeletonBufferResult.isErr()) {
-        toast.error(`Failed to read skeleton file: ${skeletonBufferResult.error.message}`);
-        setLoading(false);
+    const conversionResult = await fromPromise((async () => {
+      const bg3dBufferResult = await fromPromise(bg3dFile.arrayBuffer());
+      if (bg3dBufferResult.isErr()) {
+        const message = `Failed to read model file: ${bg3dBufferResult.error.message}`;
+        pushLog(message);
+        toast.dismiss(toastId);
+        toast.error(`${title} conversion failed: ${bg3dBufferResult.error.message}`);
         return;
       }
-      const skeletonArrayBuffer = skeletonBufferResult.value;
+      const bg3dBuffer = bg3dBufferResult.value;
+      pushLog(`Read ${bg3dBuffer.byteLength} bytes from ${bg3dFile.name}.`);
 
-      const skeletonParseResult = await fromPromise(parseSkeletonRsrc(skeletonArrayBuffer));
-      if (skeletonParseResult.isErr()) {
-        toast.error(`Failed to parse skeleton file: ${skeletonParseResult.error.message}`);
-        setLoading(false);
-        return;
+      let skeletonData: SkeletonResource | undefined;
+
+      if (skeletonFile) {
+        pushLog(`Reading skeleton file ${skeletonFile.name}.`);
+        const skeletonBufferResult = await fromPromise(
+          skeletonFile.arrayBuffer(),
+        );
+        if (skeletonBufferResult.isErr()) {
+          const message = `Failed to read skeleton file: ${skeletonBufferResult.error.message}`;
+          pushLog(message);
+          toast.dismiss(toastId);
+          toast.error(message);
+          return;
+        }
+        const skeletonRawBuffer = skeletonBufferResult.value;
+        pushLog(
+          `Read ${skeletonRawBuffer.byteLength} bytes from ${skeletonFile.name}.`,
+        );
+
+        pushLog("Parsing skeleton resource.");
+        const skeletonParseResult = await fromPromise(
+          parseSkeletonRsrc(skeletonRawBuffer),
+        );
+        if (skeletonParseResult.isErr()) {
+          const message = `Failed to parse skeleton file: ${skeletonParseResult.error.message}`;
+          pushLog(message);
+          toast.dismiss(toastId);
+          toast.error(message);
+          return;
+        }
+        skeletonData = skeletonParseResult.value;
+        pushLog(
+          `Parsed skeleton with ${Object.keys(skeletonData.Bone || {}).length} bones and ${Object.keys(skeletonData.AnHd || {}).length} animations.`,
+        );
       }
-      skeletonData = skeletonParseResult.value;
-    }
 
+      pushLog("Starting GLB conversion worker.");
       const worker = new BG3DGltfWorker();
 
       const result = await new Promise<BG3DGltfWorkerResponse>(
@@ -77,9 +115,7 @@ export function SkeletonConversionPanel({
             worker.terminate();
           };
 
-          // Choose the appropriate message type based on conversion direction and skeleton presence
           let message: BG3DGltfWorkerMessage;
-
           if (conversionType === "bg3d-to-glb") {
             message = skeletonData
               ? {
@@ -92,7 +128,6 @@ export function SkeletonConversionPanel({
                   buffer: bg3dBuffer,
                 };
           } else {
-            // glb-to-bg3d conversion
             message = {
               type: "glb-to-bg3d",
               buffer: bg3dBuffer,
@@ -103,9 +138,12 @@ export function SkeletonConversionPanel({
         },
       );
 
+      pushLog(`Worker finished with ${result.type}.`);
+
       if (result.type === "error") {
+        pushLog(`Conversion failed: ${result.error}`);
+        toast.dismiss(toastId);
         toast.error(result.error);
-        setLoading(false);
         return;
       }
 
@@ -113,7 +151,6 @@ export function SkeletonConversionPanel({
         result.type === conversionType ||
         result.type === "bg3d-with-skeleton-to-glb"
       ) {
-        // Download the converted file
         const outputExtension =
           conversionType === "bg3d-to-glb" ? "glb" : "bg3d";
         const outputMimeType =
@@ -125,6 +162,7 @@ export function SkeletonConversionPanel({
           `.${outputExtension}`,
         );
 
+        pushLog(`Downloading ${downloadName}.`);
         const convertedBlob = new Blob([result.result], {
           type: outputMimeType,
         });
@@ -137,12 +175,12 @@ export function SkeletonConversionPanel({
         document.body.removeChild(a);
         setTimeout(() => URL.revokeObjectURL(url), 1000);
 
-        // If we converted BG3D to GLB and we have animations, also generate skeleton file
         if (
           conversionType === "bg3d-to-glb" &&
           result.type === "bg3d-with-skeleton-to-glb" &&
           result.parsed?.skeleton
         ) {
+          pushLog("Serializing skeleton.rsrc for download.");
           const skeletonResource = bg3dSkeletonToSkeletonResource(
             result.parsed.skeleton,
           );
@@ -151,57 +189,126 @@ export function SkeletonConversionPanel({
             skeletonResource,
           );
           if (skeletonBinaryResult.isErr()) {
-            console.error("Failed to convert skeleton to binary:", skeletonBinaryResult.error);
+            console.error(
+              "Failed to convert skeleton to binary:",
+              skeletonBinaryResult.error,
+            );
+            pushLog(
+              `Skeleton file generation failed: ${skeletonBinaryResult.error.message}`,
+            );
+            toast.dismiss(toastId);
             toast.success(
               `${title} conversion completed (skeleton file generation failed)`,
             );
           } else {
             const skeletonBinary = skeletonBinaryResult.value;
+            const skeletonName = bg3dFile.name.replace(
+              /\.bg3d$/i,
+              ".skeleton.rsrc",
+            );
+            pushLog(`Downloading ${skeletonName}.`);
 
-            // Download the skeleton file
             const skeletonBlob = new Blob([skeletonBinary], {
               type: "application/octet-stream",
             });
             const skeletonUrl = URL.createObjectURL(skeletonBlob);
             const skeletonLink = document.createElement("a");
             skeletonLink.href = skeletonUrl;
-            skeletonLink.download = bg3dFile.name.replace(
-              /\.bg3d$/,
-              ".skeleton.rsrc",
-            );
+            skeletonLink.download = skeletonName;
             document.body.appendChild(skeletonLink);
             skeletonLink.click();
             document.body.removeChild(skeletonLink);
             setTimeout(() => URL.revokeObjectURL(skeletonUrl), 1000);
 
+            toast.dismiss(toastId);
             toast.success(`${title} conversion completed with skeleton file`);
           }
+        } else if (conversionType === "glb-to-bg3d" && result.parsed?.skeleton) {
+          pushLog("Serializing skeleton.rsrc from GLB data.");
+          const skeletonResource = bg3dSkeletonToSkeletonResource(
+            result.parsed.skeleton,
+            undefined,
+            undefined,
+            result.parsed.skeleton.alisData,
+            result.parsed.skeleton.metadata,
+            bg3dFile.name.replace(/\.(glb|bg3d|3dmf)$/i, ""),
+            DEFAULT_BG3D_EXPORT_TARGET,
+          );
+          const skeletonBinaryResult = skeletonResourceToBinary(skeletonResource);
+          if (skeletonBinaryResult.isErr()) {
+            toast.dismiss(toastId);
+            toast.error(
+              `${title} conversion failed: ${skeletonBinaryResult.error.message}`,
+            );
+            return;
+          }
+          const skeletonBlob = new Blob([skeletonBinaryResult.value], {
+            type: "application/octet-stream",
+          });
+          const skeletonUrl = URL.createObjectURL(skeletonBlob);
+          const skeletonLink = document.createElement("a");
+          skeletonLink.href = skeletonUrl;
+          skeletonLink.download = bg3dFile.name.replace(
+            /\.glb$/i,
+            ".skeleton.rsrc",
+          );
+          document.body.appendChild(skeletonLink);
+          skeletonLink.click();
+          document.body.removeChild(skeletonLink);
+          setTimeout(() => URL.revokeObjectURL(skeletonUrl), 1000);
+
+          toast.dismiss(toastId);
+          toast.success(`${title} conversion completed with skeleton file`);
         } else {
+          toast.dismiss(toastId);
           toast.success(`${title} conversion completed`);
         }
 
-        // Reset state
         setUploadStep("select-bg3d");
         setPendingBg3dFile(null);
+        pushLog("Conversion completed successfully.");
       }
-
+    })());
+    if (conversionResult.isErr()) {
+      const message = conversionResult.error.message;
+      pushLog(`Unexpected conversion error: ${message}`);
+      toast.dismiss(toastId);
+      toast.error(`${title} conversion failed: ${message}`);
+    }
     setLoading(false);
   };
 
-  const handleBg3dFileSelect = (bg3dFile: File) => {
+  const handleBg3dFileSelect = async (bg3dFile: File) => {
+    pushLog(`Selected primary file ${bg3dFile.name}.`);
+
+    if (conversionType === "glb-to-bg3d") {
+      setPendingBg3dFile(null);
+      setUploadStep("select-bg3d");
+      toast.message(`${title}: GLB selected`, {
+        description: bg3dFile.name,
+      });
+      await handleFileConversion(bg3dFile);
+      return;
+    }
+
     setPendingBg3dFile(bg3dFile);
     setUploadStep("select-skeleton");
+    toast.message(`${title}: BG3D selected`, {
+      description: bg3dFile.name,
+    });
   };
 
-  const handleSkeletonFileSelect = (skeletonFile: File) => {
+  const handleSkeletonFileSelect = async (skeletonFile: File) => {
     if (pendingBg3dFile) {
-      handleFileConversion(pendingBg3dFile, skeletonFile);
+      pushLog(`Selected skeleton file ${skeletonFile.name}.`);
+      await handleFileConversion(pendingBg3dFile, skeletonFile);
     }
   };
 
-  const handleSkipSkeleton = () => {
+  const handleSkipSkeleton = async () => {
     if (pendingBg3dFile) {
-      handleFileConversion(pendingBg3dFile);
+      pushLog("Skipping skeleton upload.");
+      await handleFileConversion(pendingBg3dFile);
     }
   };
 
@@ -220,11 +327,13 @@ export function SkeletonConversionPanel({
     if (uploadStep === "select-bg3d") {
       if (primaryFile) {
         if (skeletonFile && conversionType === "bg3d-to-glb") {
-          // Both files dropped at once for bg3d-to-glb
+          pushLog(
+            `Dropped ${primaryFile.name} and ${skeletonFile.name} together.`,
+          );
           await handleFileConversion(primaryFile, skeletonFile);
         } else {
-          // Only primary file dropped
-          handleBg3dFileSelect(primaryFile);
+          pushLog(`Dropped primary file ${primaryFile.name}.`);
+          await handleBg3dFileSelect(primaryFile);
         }
       } else {
         toast.error(
@@ -235,7 +344,7 @@ export function SkeletonConversionPanel({
       }
     } else if (uploadStep === "select-skeleton") {
       if (skeletonFile) {
-        handleSkeletonFileSelect(skeletonFile);
+        await handleSkeletonFileSelect(skeletonFile);
       } else {
         toast.error(
           "Please drop a skeleton.rsrc file or click 'Skip Skeleton'",
@@ -252,7 +361,7 @@ export function SkeletonConversionPanel({
       const expectedExt =
         conversionType === "bg3d-to-glb" ? [".bg3d", ".3dmf"] : [".glb"];
       if (expectedExt.some((ext) => file.name.toLowerCase().endsWith(ext))) {
-        handleBg3dFileSelect(file);
+        await handleBg3dFileSelect(file);
       } else {
         toast.error(
           conversionType === "bg3d-to-glb"
@@ -262,33 +371,32 @@ export function SkeletonConversionPanel({
       }
     } else if (uploadStep === "select-skeleton") {
       if (file.name.toLowerCase().endsWith(".skeleton.rsrc")) {
-        handleSkeletonFileSelect(file);
+        await handleSkeletonFileSelect(file);
       } else {
         toast.error("Please select a skeleton.rsrc file");
       }
     }
 
-    e.target.value = ""; // Reset input
+    e.target.value = "";
   };
 
-  const inputId = `${conversionType}-skeleton-upload`;
   const expectedExt = conversionType === "bg3d-to-glb" ? "BG3D or 3DMF" : "GLB";
   const fileAccept = conversionType === "bg3d-to-glb" ? ".bg3d,.3dmf" : ".glb";
+  const openPrimaryPicker = () => primaryInputRef.current?.click();
 
   return (
     <Card className="bg-gray-800 border-gray-700">
       <CardHeader>
         <CardTitle className="text-white">{title}</CardTitle>
       </CardHeader>
-      <CardContent className="space-y-2">
+      <CardContent className="space-y-3">
         <p className="text-sm text-gray-300">{description}</p>
 
         {uploadStep === "select-bg3d" && (
           <>
             <DropArea
-              id={inputId}
               onDrop={handleDrop}
-              onClick={() => document.getElementById(inputId)?.click()}
+              onClick={openPrimaryPicker}
             >
               <p className="text-gray-400 mb-2">
                 Drop a {expectedExt} file here or click to select
@@ -303,7 +411,7 @@ export function SkeletonConversionPanel({
               type="file"
               accept={fileAccept}
               className="hidden"
-              id={inputId}
+              ref={primaryInputRef}
               onChange={handleFileInput}
             />
           </>
@@ -312,23 +420,19 @@ export function SkeletonConversionPanel({
         {uploadStep === "select-skeleton" &&
           pendingBg3dFile &&
           conversionType === "bg3d-to-glb" && (
-            <>
-              <SkeletonSelectionPanel
-                pendingBg3dFileName={pendingBg3dFile.name}
-                inputId={inputId}
-                onDrop={handleDrop}
-                onFileInputChange={handleFileInput}
-                onSkipSkeleton={handleSkipSkeleton}
-                onCancel={() => {
-                  setUploadStep("select-bg3d");
-                  setPendingBg3dFile(null);
-                }}
-                loading={loading}
-              />
-            </>
+            <SkeletonSelectionPanel
+              pendingBg3dFileName={pendingBg3dFile.name}
+              onDrop={handleDrop}
+              onFileInputChange={handleFileInput}
+              onSkipSkeleton={handleSkipSkeleton}
+              onCancel={() => {
+                pushLog("Cancelled skeleton selection.");
+                setUploadStep("select-bg3d");
+                setPendingBg3dFile(null);
+              }}
+              loading={loading}
+            />
           )}
-
-        {loading && <p className="text-center text-gray-400">Converting...</p>}
       </CardContent>
     </Card>
   );

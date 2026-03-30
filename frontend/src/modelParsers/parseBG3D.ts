@@ -190,6 +190,9 @@ export interface BG3DParseResult {
   materials: BG3DMaterial[];
   groups: BG3DGroup[];
   skeleton?: BG3DSkeleton;
+  metadata?: Record<string, unknown>;
+  /** Original 20-byte BG3D file header (headerString[16] + NumVersion[4]) for byte-perfect roundtrip */
+  headerBytes?: number[];
 }
 
 /**
@@ -204,6 +207,13 @@ export function parseBG3D(
 ): Result<BG3DParseResult, Error> {
   const view = new DataView(buffer);
   let offset = 0;
+
+  // Preserve the full 20-byte BG3D header for byte-perfect roundtrip
+  const headerBytes: number[] = [];
+  for (let i = 0; i < 20; i++) {
+    headerBytes.push(view.getUint8(i));
+  }
+
   // Read header (first 4 bytes should be 'BG3D')
   const headerString = String.fromCharCode(
     view.getUint8(offset++),
@@ -606,6 +616,7 @@ export function parseBG3D(
     materials,
     groups,
     skeleton: skeleton ? convertSkeletonResourceToBG3D(skeleton) : undefined,
+    headerBytes,
   });
 }
 
@@ -791,15 +802,10 @@ function convertSkeletonResourceToBG3D(
   // Extract alis data from skeleton resource (stored at skeleton.alis = { "1000": {...} })
   // We want to preserve just the inner structure { "1000": { name: "alis", order: 1000, data: "..." } }
   let alisData: Record<string, unknown> | undefined = undefined;
-  Object.keys(skeleton).forEach((key) => {
-    if (key.toLowerCase() === "alis") {
-      // Store the inner structure directly, not wrapped in another object
-      const skelKey = skeleton[key as keyof typeof skeleton];
-      if (isRecord(skelKey)) {
-        alisData = skelKey;
-      }
-    }
-  });
+  const maybeAlis = skeleton.alis;
+  if (isRecord(maybeAlis)) {
+    alisData = maybeAlis;
+  }
 
   return {
     version: header.version,
@@ -828,13 +834,25 @@ export function bg3dParsedToBG3D(parsed: BG3DParseResult): ArrayBuffer {
   const buffer = new ArrayBuffer(size);
   const view = new DataView(buffer);
 
-  // Write header: use original if provided, else default
-
-  view.setUint8(offset++, "B".charCodeAt(0));
-  view.setUint8(offset++, "G".charCodeAt(0));
-  view.setUint8(offset++, "3".charCodeAt(0));
-  view.setUint8(offset++, "D".charCodeAt(0));
-  for (let i = 0; i < 16; i++) view.setUint8(offset++, 0);
+  // Write header: use preserved original bytes if available, else default
+  if (parsed.headerBytes && parsed.headerBytes.length === 20) {
+    for (let i = 0; i < 20; i++) {
+      view.setUint8(offset++, parsed.headerBytes[i] ?? 0);
+    }
+  } else {
+    view.setUint8(offset++, "B".charCodeAt(0));
+    view.setUint8(offset++, "G".charCodeAt(0));
+    view.setUint8(offset++, "3".charCodeAt(0));
+    view.setUint8(offset++, "D".charCodeAt(0));
+    // Default: "BG3D 1.0        " + version 1.0.0.0
+    const defaultRest = " 1.0            ";
+    for (let i = 0; i < 12; i++) view.setUint8(offset++, defaultRest.charCodeAt(i));
+    // Version: 1.0.0.0 (major=1, minor=0, bugRev=0, stage=0)
+    view.setUint8(offset++, 1);
+    view.setUint8(offset++, 0);
+    view.setUint8(offset++, 0);
+    view.setUint8(offset++, 0);
+  }
 
   // Write all materials
   for (const material of parsed.materials) {
@@ -1071,7 +1089,16 @@ function isBG3DGeometry(obj: BG3DGeometry | BG3DGroup): obj is BG3DGeometry {
 export function convertBG3DToSkeletonResource(
   skeleton: BG3DSkeleton,
 ): SkeletonResource {
-  const skeletonResource: SkeletonResource = {
+  const skeletonResource: {
+    Hedr: NonNullable<SkeletonResource["Hedr"]>;
+    Bone: NonNullable<SkeletonResource["Bone"]>;
+    BonP: NonNullable<SkeletonResource["BonP"]>;
+    BonN: NonNullable<SkeletonResource["BonN"]>;
+    AnHd: NonNullable<SkeletonResource["AnHd"]>;
+    Evnt: NonNullable<SkeletonResource["Evnt"]>;
+    NumK: NonNullable<SkeletonResource["NumK"]>;
+    KeyF: NonNullable<SkeletonResource["KeyF"]>;
+  } = {
     Hedr: {},
     Bone: {},
     BonP: {},

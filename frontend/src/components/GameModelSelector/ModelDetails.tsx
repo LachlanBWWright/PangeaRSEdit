@@ -2,7 +2,6 @@ export interface GameModel {
   name: string;
   bg3dFile: string;
   skeletonFile?: string;
-  description?: string;
   category: "Characters" | "Levels" | "Objects";
 }
 
@@ -25,11 +24,6 @@ export function ModelDetails({ selectedModel }: Props) {
         <p>
           <strong>Skeleton File:</strong>{" "}
           {selectedModel.skeletonFile.split("/").pop()}
-        </p>
-      )}
-      {selectedModel.description && (
-        <p>
-          <strong>Description:</strong> {selectedModel.description}
         </p>
       )}
     </div>

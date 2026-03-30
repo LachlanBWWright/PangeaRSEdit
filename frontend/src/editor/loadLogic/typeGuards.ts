@@ -13,12 +13,10 @@ export function isNanosaur1LevelData(
   if (!("header" in d && "textureLayer" in d)) return false;
   if (!isRecord(d.header)) return false;
   if (!Array.isArray(d.textureLayer)) return false;
-  // textureLayer should be a 2D array of numbers (basic sanity check)
+  // textureLayer is a flat number[] (one tile-index per entry)
   if (
-    !d.textureLayer.every(
-      (row: unknown) =>
-        Array.isArray(row) && row.every((v: unknown) => typeof v === "number"),
-    )
+    d.textureLayer.length > 0 &&
+    !d.textureLayer.every((v: unknown) => typeof v === "number")
   )
     return false;
   return true;

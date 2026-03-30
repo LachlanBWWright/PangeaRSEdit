@@ -144,7 +144,7 @@ export function StandardEditorView({
         setView={setView}
         terrainHasSTgd={showSupertileMenu}
       />
-      <div>
+      <div className="overflow-y-auto">
         {view === View.fences && (
           fenceData ? (
             <FenceMenu fenceData={fenceData} setFenceData={setFenceDataNotNull} />
@@ -215,6 +215,7 @@ export function StandardEditorView({
             splineData={splineData}
             terrainData={terrainData}
             mapImages={mapImages}
+            setItemData={setItemData}
           />
         ) : (
           <StandardKonvaView

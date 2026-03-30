@@ -1,3 +1,7 @@
+import React, { useRef } from "react";
+import { Upload } from "lucide-react";
+import { Button } from "@/components/ui/button";
+
 interface Props {
   className?: string;
   acceptType: string;
@@ -5,22 +9,32 @@ interface Props {
   handleOnChange: (e: React.ChangeEvent<HTMLInputElement>) => Promise<void>;
 }
 
-export function FileUpload({
-  className,
-  handleOnChange,
-  acceptType,
-  disabled,
-}: Props) {
+/**
+ * Themed file upload button — visually consistent with the rest of the editor.
+ * Renders a styled Button with a hidden <input type="file"> attached.
+ */
+export function FileUpload({ className, handleOnChange, acceptType, disabled }: Props) {
+  const inputRef = useRef<HTMLInputElement>(null);
   return (
-    <input
-      className={
-        "file:border-0 bg-black rounded-xl border-2 border-white  file:bg-blue-500 file:hover:bg-blue-600 file:disabled:bg-blue-300 file:enabled:hover:cursor-pointer  text-white file:text-white  " +
-        className
-      }
-      type="file"
-      accept={acceptType}
-      onChange={handleOnChange}
-      disabled={disabled}
-    />
+    <div className={className}>
+      <Button
+        size="sm"
+        variant="outline"
+        disabled={disabled}
+        onClick={() => inputRef.current?.click()}
+        className="w-full"
+      >
+        <Upload className="w-4 h-4 mr-1" />
+        Upload
+      </Button>
+      <input
+        ref={inputRef}
+        type="file"
+        accept={acceptType}
+        className="hidden"
+        disabled={disabled}
+        onChange={handleOnChange}
+      />
+    </div>
   );
 }

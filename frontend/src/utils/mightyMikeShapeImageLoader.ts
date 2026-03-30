@@ -5,17 +5,57 @@
  * All functions return Result types for explicit error handling.
  */
 
-import { parseShapesFile, shapeFrameToCanvas, ShapesFile } from "../parsers/mightyMikeShapesParser";
+import { parseShapesFile, shapeFrameToCanvas, ShapesFile, RGBColor } from "../parsers/mightyMikeShapesParser";
 import { getItemShapesFile, getItemSpriteMapping } from "../data/items/mightyMikeItemSpriteMap";
 import { Result, ok, err, isErr, fromPromise } from "../types/result";
+import { gMightyMikePalette } from "./mightyMikePalette";
 
 const SHAPES_BASE_PATH = "/PangeaRSEdit/data/mightymike/shapes";
 
 // Cache for loaded .shapes files
 const shapesFileCache = new Map<string, ShapesFile>();
 
-// Cache for rendered frame canvases
-const frameCanvasCache = new Map<string, HTMLCanvasElement>();
+/** Canvas plus the sprite's hot-spot offsets from the game's FrameHeader. */
+export interface ItemFrameImage {
+  canvas: HTMLCanvasElement;
+  /** Horizontal offset from item world-position to the top-left of the sprite (negative = sprite starts left of item). */
+  offsetX: number;
+  /** Vertical offset from item world-position to the top of the sprite (negative = sprite starts above item). */
+  offsetY: number;
+}
+
+// Cache for rendered frame images (canvas + offsets)
+const frameCanvasCache = new Map<string, ItemFrameImage>();
+
+// Cached palette conversion to avoid recreating on every frame render
+let cachedPaletteRGBA: Uint8Array | null = null;
+let cachedPaletteColors: RGBColor[] | null = null;
+
+/**
+ * Get the current game palette as an array of RGBColor objects
+ * compatible with the shapes parser's shapeFrameToCanvas function.
+ *
+ * The palette data comes from the global MightyMikePaletteManager,
+ * which should be loaded with border.tga palette data before rendering sprites.
+ */
+function getGamePaletteColors(): RGBColor[] {
+  const paletteRGBA = gMightyMikePalette.getPaletteAsRGBA();
+  if (cachedPaletteRGBA === paletteRGBA && cachedPaletteColors) {
+    return cachedPaletteColors;
+  }
+  const colors: RGBColor[] = [];
+  for (let i = 0; i < 256; i++) {
+    const offset = i * 4;
+    colors.push({
+      r: paletteRGBA[offset] ?? 0,
+      g: paletteRGBA[offset + 1] ?? 0,
+      b: paletteRGBA[offset + 2] ?? 0,
+    });
+  }
+  cachedPaletteRGBA = paletteRGBA;
+  cachedPaletteColors = colors;
+  return colors;
+}
 
 /**
  * Load a .shapes file from the public folder and cache it
@@ -74,17 +114,15 @@ function getFrameCacheKey(
   return `${shapesFile}:${shapeIndex}:${frameIndex}`;
 }
 
-const ITEM_DISPLAY_SIZE = 12; // Size to scale item sprites to (in pixels)
-
 /**
- * Load and render a specific frame from a shape as a canvas
- * Scales the sprite to ITEM_DISPLAY_SIZE for use in the level editor
+ * Load and render a specific frame from a shape as a canvas.
+ * Returns the sprite at its natural pixel size for the level editor, with frame offsets.
  */
 async function loadShapeFrame(
   shapesFilename: string,
   shapeIndex: number,
   frameIndex = 0
-): Promise<Result<HTMLCanvasElement>> {
+): Promise<Result<ItemFrameImage>> {
   const cacheKey = getFrameCacheKey(shapesFilename, shapeIndex, frameIndex);
 
   // Check cache first
@@ -134,40 +172,32 @@ async function loadShapeFrame(
     );
   }
 
-  // Render frame to canvas at original size
-  const originalCanvasResult = shapeFrameToCanvas(frame, shapesFile.colorTable);
+  // Render frame to canvas using the actual game palette (not the greyscale default)
+  const paletteColors = getGamePaletteColors();
+  const originalCanvasResult = shapeFrameToCanvas(frame, paletteColors);
   if (isErr(originalCanvasResult)) {
     return err(originalCanvasResult.error);
   }
-  const originalCanvas = originalCanvasResult.value;
 
-  // Scale down to display size (12x12 pixels) for the level editor
-  const scaledCanvas = document.createElement('canvas');
-  scaledCanvas.width = ITEM_DISPLAY_SIZE;
-  scaledCanvas.height = ITEM_DISPLAY_SIZE;
+  const frameImage: ItemFrameImage = {
+    canvas: originalCanvasResult.value,
+    offsetX: frame.header.offsetX,
+    offsetY: frame.header.offsetY,
+  };
 
-  const ctx = scaledCanvas.getContext('2d');
-  if (!ctx) {
-    return err(new Error('Failed to get canvas context for scaling'));
-  }
-
-  // Use nearest-neighbor scaling to preserve pixel art appearance
-  ctx.imageSmoothingEnabled = false;
-  ctx.drawImage(originalCanvas, 0, 0, ITEM_DISPLAY_SIZE, ITEM_DISPLAY_SIZE);
-
-  // Cache the rendered canvas
-  frameCanvasCache.set(cacheKey, scaledCanvas);
-  return ok(scaledCanvas);
+  // Cache and return at natural pixel size
+  frameCanvasCache.set(cacheKey, frameImage);
+  return ok(frameImage);
 }
 
 /**
- * Load an item's image (first frame) for display in the level editor
- * Returns Ok(canvas) if successful, Ok(null) if item has no sprite, or Err if loading failed
+ * Load an item's image (first frame) for display in the level editor.
+ * Returns Ok({canvas, offsetX, offsetY}) if successful, Ok(null) if item has no sprite, or Err if loading failed.
  */
 export async function loadItemImage(
   itemType: number,
   currentScene?: string
-): Promise<Result<HTMLCanvasElement | null>> {
+): Promise<Result<ItemFrameImage | null>> {
   const mapping = getItemSpriteMapping(itemType);
   if (!mapping) {
     return ok(null); // Item has no sprite
@@ -223,6 +253,8 @@ export async function preloadItemImages(
 export function clearItemImageCache(): void {
   shapesFileCache.clear();
   frameCanvasCache.clear();
+  cachedPaletteRGBA = null;
+  cachedPaletteColors = null;
 }
 
 /**

@@ -16,6 +16,7 @@ import { SelectedWaterBody } from "@/data/water/waterAtoms";
 import { useAtomValue, useSetAtom } from "jotai";
 import { useRef, useCallback, useState, useEffect } from "react";
 import { Stage } from "react-konva";
+import Konva from "konva";
 import { Updater } from "use-immer";
 import { Items } from "../subviews/Items";
 import { Fences } from "../subviews/Fences";
@@ -146,6 +147,58 @@ export function OttoMaticKonvaView({
     [setSplineData],
   );
 
+  const handleStageClick = useCallback(
+    (e: Konva.KonvaEventObject<MouseEvent>) => {
+      if (clickToAddItem === undefined) return;
+      const stageRef = e.target.getStage();
+      const pos = stageRef?.getRelativePointerPosition();
+      if (!pos) return;
+      setItemDataNotNull((itemData) => {
+        itemData.Itms[1000].obj.push({
+          x: Math.round(pos.x),
+          z: Math.round(pos.y),
+          type: clickToAddItem,
+          flags: 0,
+          p0: 0,
+          p1: 0,
+          p2: 0,
+          p3: 0,
+        });
+      });
+    },
+    [clickToAddItem, setItemDataNotNull],
+  );
+
+  const handleStageDblClick = useCallback(() => {
+    setSelectedFence(undefined);
+    setSelectedItem(undefined);
+    setSelectedSpline(undefined);
+    setSelectedWaterBody(null);
+  }, [setSelectedFence, setSelectedItem, setSelectedSpline, setSelectedWaterBody]);
+
+  const handleStageWheel = useCallback(
+    (e: Konva.KonvaEventObject<WheelEvent>) => {
+      e.evt.preventDefault();
+      const scaleBy = 1.05;
+      const stageRef = e.target.getStage();
+      if (!stageRef) return;
+      const oldScale = stageRef.scaleX();
+      const pointerPosition = stageRef.getPointerPosition();
+      if (!pointerPosition) return;
+      const mousePointTo = {
+        x: pointerPosition.x / oldScale - stageRef.x() / oldScale,
+        y: pointerPosition.y / oldScale - stageRef.y() / oldScale,
+      };
+      const newScale = e.evt.deltaY < 0 ? oldScale * scaleBy : oldScale / scaleBy;
+      setStage({
+        scale: newScale,
+        x: (pointerPosition.x / newScale - mousePointTo.x) * newScale,
+        y: (pointerPosition.y / newScale - mousePointTo.y) * newScale,
+      });
+    },
+    [setStage],
+  );
+
   return (
     <div ref={containerRef} style={{ width: "100%", height: "100%" }}>
       <Stage
@@ -156,58 +209,9 @@ export function OttoMaticKonvaView({
         x={stage.x}
         y={stage.y}
         draggable={true}
-        onClick={(e) => {
-          if (clickToAddItem === undefined) return;
-          const stage = e.target.getStage();
-
-          const pos = stage?.getRelativePointerPosition();
-          if (!pos) return;
-          const x = Math.round(pos.x);
-          const z = Math.round(pos.y);
-
-          setItemDataNotNull((itemData) => {
-            itemData.Itms[1000].obj.push({
-              x: x,
-              z: z,
-              type: clickToAddItem,
-              flags: 0,
-              p0: 0,
-              p1: 0,
-              p2: 0,
-              p3: 0,
-            });
-          });
-        }}
-        onDblClick={() => {
-          setSelectedFence(undefined);
-          setSelectedItem(undefined);
-          setSelectedSpline(undefined);
-          setSelectedWaterBody(null);
-        }}
-        onWheel={(e) => {
-          e.evt.preventDefault();
-
-          const scaleBy = 1.05;
-          const stage = e.target.getStage();
-          if (!stage) return;
-          const oldScale = stage.scaleX();
-          const pointerPosition = stage.getPointerPosition();
-          if (!pointerPosition) return;
-
-          const mousePointTo = {
-            x: pointerPosition.x / oldScale - stage.x() / oldScale,
-            y: pointerPosition.y / oldScale - stage.y() / oldScale,
-          };
-
-          const newScale =
-            e.evt.deltaY < 0 ? oldScale * scaleBy : oldScale / scaleBy;
-
-          setStage({
-            scale: newScale,
-            x: (pointerPosition.x / newScale - mousePointTo.x) * newScale,
-            y: (pointerPosition.y / newScale - mousePointTo.y) * newScale,
-          });
-        }}
+        onClick={handleStageClick}
+        onDblClick={handleStageDblClick}
+        onWheel={handleStageWheel}
       >
         {/* Render pre-composed supertiles (Otto uses STgd) */}
         {terrainData && terrainData.STgd && (
@@ -229,10 +233,13 @@ export function OttoMaticKonvaView({
         )}
 
         {/* Show all layers except when in tiles view */}
-        {view !== View.tiles && (
+        {/* Supertiles/overview mode — show all layers in default order */}
+        {view === View.supertiles && (
           <>
             {liquidData && (
               <WaterBodies
+                headerData={headerData}
+                terrainData={terrainData}
                 liquidData={liquidData}
                 setLiquidData={setLiquidDataNotNull}
               />
@@ -244,7 +251,12 @@ export function OttoMaticKonvaView({
               />
             )}
             {itemData && (
-              <Items itemData={itemData} setItemData={setItemDataNotNull} />
+              <Items
+                headerData={headerData}
+                terrainData={terrainData}
+                itemData={itemData}
+                setItemData={setItemDataNotNull}
+              />
             )}
             {splineData && (
               <Splines
@@ -260,12 +272,19 @@ export function OttoMaticKonvaView({
           <>
             {liquidData && (
               <WaterBodies
+                headerData={headerData}
+                terrainData={terrainData}
                 liquidData={liquidData}
                 setLiquidData={setLiquidDataNotNull}
               />
             )}
             {itemData && (
-              <Items itemData={itemData} setItemData={setItemDataNotNull} />
+              <Items
+                headerData={headerData}
+                terrainData={terrainData}
+                itemData={itemData}
+                setItemData={setItemDataNotNull}
+              />
             )}
             {splineData && (
               <Splines
@@ -292,7 +311,12 @@ export function OttoMaticKonvaView({
               />
             )}
             {itemData && (
-              <Items itemData={itemData} setItemData={setItemDataNotNull} />
+              <Items
+                headerData={headerData}
+                terrainData={terrainData}
+                itemData={itemData}
+                setItemData={setItemDataNotNull}
+              />
             )}
             {splineData && (
               <Splines
@@ -302,6 +326,8 @@ export function OttoMaticKonvaView({
             )}
             {liquidData && (
               <WaterBodies
+                headerData={headerData}
+                terrainData={terrainData}
                 liquidData={liquidData}
                 setLiquidData={setLiquidDataNotNull}
               />
@@ -314,12 +340,19 @@ export function OttoMaticKonvaView({
           <>
             {liquidData && (
               <WaterBodies
+                headerData={headerData}
+                terrainData={terrainData}
                 liquidData={liquidData}
                 setLiquidData={setLiquidDataNotNull}
               />
             )}
             {itemData && (
-              <Items itemData={itemData} setItemData={setItemDataNotNull} />
+              <Items
+                headerData={headerData}
+                terrainData={terrainData}
+                itemData={itemData}
+                setItemData={setItemDataNotNull}
+              />
             )}
             {fenceData && (
               <Fences
@@ -341,6 +374,8 @@ export function OttoMaticKonvaView({
           <>
             {liquidData && (
               <WaterBodies
+                headerData={headerData}
+                terrainData={terrainData}
                 liquidData={liquidData}
                 setLiquidData={setLiquidDataNotNull}
               />
@@ -358,7 +393,12 @@ export function OttoMaticKonvaView({
               />
             )}
             {itemData && (
-              <Items itemData={itemData} setItemData={setItemDataNotNull} />
+              <Items
+                headerData={headerData}
+                terrainData={terrainData}
+                itemData={itemData}
+                setItemData={setItemDataNotNull}
+              />
             )}
           </>
         )}

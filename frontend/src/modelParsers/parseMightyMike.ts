@@ -90,14 +90,17 @@ function parseTileImages(
   buffer: ArrayBuffer,
   offsetToTileDefinitions: number,
   numTileDefinitions: number,
-  _transparencyColors?: number[], // Note: transparency colors are for collision detection only
+  transparencyColors?: number[],
   palette?: Uint8Array,
-): HTMLCanvasElement[] {
+): { tileImages: HTMLCanvasElement[]; collisionImages: HTMLCanvasElement[] } {
   const tileImages: HTMLCanvasElement[] = [];
+  const collisionImages: HTMLCanvasElement[] = [];
   const TILE_SIZE = 32;
-  const BYTES_PER_TILE = TILE_SIZE * TILE_SIZE; // 32x32 = 1024 bytes per tile (8-bit indexed)
+  const BYTES_PER_TILE = TILE_SIZE * TILE_SIZE;
 
-  // Use provided palette or fall back to default grayscale
+  // Build a fast lookup set for non-collidable palette indices
+  const transparentSet = new Set<number>(transparencyColors ?? []);
+
   const colorPalette = palette || createDefaultPalette();
 
   if (!palette && numTileDefinitions > 0) {
@@ -105,12 +108,6 @@ function parseTileImages(
       "[TILE RENDER] ⚠️ NO PALETTE PROVIDED - Using default grayscale fallback! This will result in gray tiles!",
     );
   }
-
-  // NOTE: In the original C code, transparency colors (gColorMaskArray) are used ONLY
-  // for collision detection via the render engine's collision system.
-  // They are NOT used to make pixels visually transparent.
-  // Every pixel is rendered with its palette color.
-  // Therefore, we do NOT create a colorIsTransparent array for visual rendering.
 
   const tileData = new Uint8Array(buffer, offsetToTileDefinitions);
 
@@ -120,39 +117,53 @@ function parseTileImages(
     canvas.height = TILE_SIZE;
     const ctx = canvas.getContext("2d");
 
-    if (!ctx) {
+    const collisionCanvas = document.createElement("canvas");
+    collisionCanvas.width = TILE_SIZE;
+    collisionCanvas.height = TILE_SIZE;
+    const collisionCtx = collisionCanvas.getContext("2d");
+
+    if (!ctx || !collisionCtx) {
       console.warn(`Failed to get canvas context for tile ${tileIndex}`);
       continue;
     }
 
     const imageData = ctx.createImageData(TILE_SIZE, TILE_SIZE);
+    const collisionData = collisionCtx.createImageData(TILE_SIZE, TILE_SIZE);
     const offset = tileIndex * BYTES_PER_TILE;
 
-    // Convert indexed color to RGBA
-    // All pixels use their palette color; no special transparency handling
     for (let i = 0; i < BYTES_PER_TILE; i++) {
       if (offset + i >= tileData.length) break;
 
-      const colorIndex = tileData[offset + i];
+      const colorIndex = tileData[offset + i] ?? 0;
       const pixelOffset = i * 4;
 
-      // Bounds check for palette access
-      const colorIdx = colorIndex || 0; // Default to 0 if undefined
-      const paletteOffset = (colorIdx & 0xff) * 4;
+      // Visual tile: render with palette color
+      const paletteOffset = (colorIndex & 0xff) * 4;
       if (paletteOffset + 3 < colorPalette.length) {
-        // Copy RGBA directly from palette
         imageData.data[pixelOffset + 0] = colorPalette[paletteOffset] ?? 0;
         imageData.data[pixelOffset + 1] = colorPalette[paletteOffset + 1] ?? 0;
         imageData.data[pixelOffset + 2] = colorPalette[paletteOffset + 2] ?? 0;
         imageData.data[pixelOffset + 3] = colorPalette[paletteOffset + 3] ?? 255;
       }
+
+      // Collision canvas: orange (200,120,0,200) for solid pixels, transparent for non-collidable
+      if (!transparentSet.has(colorIndex)) {
+        collisionData.data[pixelOffset + 0] = 200; // R
+        collisionData.data[pixelOffset + 1] = 120; // G
+        collisionData.data[pixelOffset + 2] = 0;   // B
+        collisionData.data[pixelOffset + 3] = 200; // A
+      } else {
+        collisionData.data[pixelOffset + 3] = 0; // transparent
+      }
     }
 
     ctx.putImageData(imageData, 0, 0);
+    collisionCtx.putImageData(collisionData, 0, 0);
     tileImages.push(canvas);
+    collisionImages.push(collisionCanvas);
   }
 
-  return tileImages;
+  return { tileImages, collisionImages };
 }
 
 export function parseMightyMikeTileSet(
@@ -305,8 +316,8 @@ export function parseMightyMikeTileSet(
       transparencyColors.push(data.getUint16(offset, false));
     }
 
-    // Parse tile images from raw pixel data
-    const tileImages = parseTileImages(
+    // Parse tile images from raw pixel data (also generates pixel-accurate collision canvases)
+    const { tileImages, collisionImages } = parseTileImages(
       decompressedBuffer,
       offsetToTileDefinitions,
       numTileDefinitions,
@@ -325,6 +336,7 @@ export function parseMightyMikeTileSet(
       tileAnimations,
       transparencyColors,
       tileImages,
+      collisionImages,
     };
 
   return ok(tileset);

@@ -245,19 +245,10 @@ export function SpriteViewer() {
 
   const handleLoadTilesetFile = async (filename: string) => {
     setLoading(true);
-    // Map scene names to TGA files
-    const sceneToTga: Record<string, string> = {
-      bargain: "bargainscene",
-      candy: "candyscene",
-      clown: "clownscene",
-      fairy: "fairyscene",
-      jurassic: "dinoscene",
-    };
 
-    const tgaName = sceneToTga[filename] || filename;
-
-    // Load TGA for palette
-    const tgaUrl = `assets/mightyMike/terrain/${tgaName}.tga`;
+    // The game renders levels using the border.tga palette (set during
+    // InitArea → LoadBorderImage), not the per-scene cinema TGA palettes.
+    const tgaUrl = `assets/mightyMike/terrain/border.tga`;
     const tgaFetchResult = await fromPromise(fetch(tgaUrl));
 
     if (tgaFetchResult.isErr()) {

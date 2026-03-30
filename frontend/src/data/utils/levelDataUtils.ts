@@ -113,6 +113,7 @@ export function splitLevelData(levelData: LevelData | null): AtomicLevelData {
     "Xlat",
     "Vcol",
     "_metadata",
+    "tileset",
   ]);
   const extraResources: Record<string, unknown> = {};
   if (isRecord(levelData)) {
@@ -140,6 +141,8 @@ export function splitLevelData(levelData: LevelData | null): AtomicLevelData {
         },
         ...(levelData.Xlat !== undefined ? { Xlat: levelData.Xlat } : {}),
         ...(levelData.Vcol !== undefined ? { Vcol: levelData.Vcol } : {}),
+        // Preserve game-specific tileset data (e.g. MightyMikeTileSet with collisionImages)
+        ...(levelData.tileset !== undefined ? { tileset: levelData.tileset } : {}),
       }
     : null;
 
