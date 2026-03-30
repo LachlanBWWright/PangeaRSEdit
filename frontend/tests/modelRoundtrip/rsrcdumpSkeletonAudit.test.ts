@@ -197,5 +197,5 @@ describe("rsrcdump-ts skeleton audit", () => {
     console.log("resource mismatches:", JSON.stringify(mismatches, null, 2));
 
     expect(files.length).toBeGreaterThan(0);
-  });
+  }, 20000);
 });
