@@ -3,7 +3,7 @@
  * Refactored into smaller, maintainable sub-components
  */
 
-import { useState, useEffect, useRef, useMemo } from "react";
+import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   AnimationClip,
@@ -11,13 +11,17 @@ import {
   VectorKeyframeTrack,
 } from "three";
 import { AnimationSelector } from "./AnimationSelector";
-import { AnimationControls } from "./AnimationControls";
 import { AnimationEditor } from "./AnimationEditor";
 import { KeyframeEditor } from "./KeyframeEditor";
 import { AnimationMetadataDisplay } from "./AnimationMetadataDisplay";
+import { AnimationEventEditor } from "./AnimationEventEditor";
 import { AnimationCreator } from "./AnimationCreator";
 import { useAnimationPlayback, reindexAnimations } from "./hooks";
-import type { AnimationInfo, AnimationViewerProps } from "./types";
+import type {
+  AnimationEvent,
+  AnimationInfo,
+  AnimationViewerProps,
+} from "./types";
 import {
   extractBoneNames,
   parseTrackName,
@@ -29,11 +33,25 @@ import {
   durationErrorMessage,
 } from "./utils";
 
+type KeyframeHistorySnapshot = {
+  animations: AnimationInfo[];
+  selectedAnimation: number | null;
+  selectedBoneName: string;
+  selectedTrackProperty: TrackProperty;
+  selectedKeyframeIndex: number | null;
+  keyframeTimeInput: string;
+  keyframeValueInputs: string[];
+  isCreatingKeyframe: boolean;
+};
+
 export function AnimationViewer({
   animations,
   animationMixer,
+  gameLabel,
+  modelSourceKind,
   onAnimationChange,
   onBoneSelectionChange,
+  onAnimationEventsChange,
   animationMetadata,
   boneTransform,
 }: AnimationViewerProps) {
@@ -60,9 +78,24 @@ export function AnimationViewer({
   const [selectedKeyframeIndex, setSelectedKeyframeIndex] = useState<
     number | null
   >(null);
+  const [isCreatingKeyframe, setIsCreatingKeyframe] = useState(false);
   const [keyframeTimeInput, setKeyframeTimeInput] = useState("");
   const [keyframeValueInputs, setKeyframeValueInputs] = useState<string[]>([]);
+  const [selectedEventIndex, setSelectedEventIndex] = useState<number | null>(
+    null,
+  );
+  const [draftEventsByAnimation, setDraftEventsByAnimation] = useState<
+    Record<number, AnimationEvent[]>
+  >({});
+  const [keyframeUndoStack, setKeyframeUndoStack] = useState<
+    KeyframeHistorySnapshot[]
+  >([]);
+  const [keyframeRedoStack, setKeyframeRedoStack] = useState<
+    KeyframeHistorySnapshot[]
+  >([]);
   const autoNameCounterRef = useRef(animations.length + 1);
+  const keyframeHistoryLockRef = useRef(false);
+  const lastKeyframeSaveSignatureRef = useRef<string | null>(null);
   const baseAnimations = useMemo(
     () => reindexAnimations(animations),
     [animations],
@@ -89,6 +122,116 @@ export function AnimationViewer({
   }, [selectedAnimationInfo]);
 
   const selectedTrackConfig = TRACK_PROPERTY_CONFIG[selectedTrackProperty];
+
+  const captureKeyframeSnapshot = useCallback((): KeyframeHistorySnapshot => {
+    return {
+      animations: editableAnimations.map((anim) => ({
+        ...anim,
+        clip: anim.clip.clone(),
+      })),
+      selectedAnimation,
+      selectedBoneName,
+      selectedTrackProperty,
+      selectedKeyframeIndex,
+      keyframeTimeInput,
+      keyframeValueInputs: [...keyframeValueInputs],
+      isCreatingKeyframe,
+    };
+  }, [
+    editableAnimations,
+    isCreatingKeyframe,
+    keyframeTimeInput,
+    keyframeValueInputs,
+    selectedAnimation,
+    selectedBoneName,
+    selectedKeyframeIndex,
+    selectedTrackProperty,
+  ]);
+
+  const makeKeyframeSignature = useCallback(
+    (
+      animationIndex: number | null,
+      boneName: string,
+      trackProperty: TrackProperty,
+      keyframeIndex: number | null,
+      timeInput: string,
+      valueInputs: string[],
+      creating: boolean,
+    ) =>
+      [
+        animationIndex ?? "none",
+        boneName,
+        trackProperty,
+        keyframeIndex ?? "new",
+        creating ? "create" : "select",
+        timeInput,
+        ...valueInputs,
+      ].join("|"),
+    [],
+  );
+
+  const resetKeyframeHistory = useCallback(() => {
+    keyframeHistoryLockRef.current = false;
+    lastKeyframeSaveSignatureRef.current = null;
+    setKeyframeUndoStack([]);
+    setKeyframeRedoStack([]);
+  }, []);
+
+  const restoreKeyframeSnapshot = useCallback(
+    (snapshot: KeyframeHistorySnapshot) => {
+      keyframeHistoryLockRef.current = true;
+      setDraftAnimations(snapshot.animations);
+      setSelectedAnimation(snapshot.selectedAnimation);
+      setSelectedBoneName(snapshot.selectedBoneName);
+      setSelectedTrackProperty(snapshot.selectedTrackProperty);
+      setSelectedKeyframeIndex(snapshot.selectedKeyframeIndex);
+      setKeyframeTimeInput(snapshot.keyframeTimeInput);
+      setKeyframeValueInputs(snapshot.keyframeValueInputs);
+      setIsCreatingKeyframe(snapshot.isCreatingKeyframe);
+      setKeyframeError(null);
+      lastKeyframeSaveSignatureRef.current = makeKeyframeSignature(
+        snapshot.selectedAnimation,
+        snapshot.selectedBoneName,
+        snapshot.selectedTrackProperty,
+        snapshot.selectedKeyframeIndex,
+        snapshot.keyframeTimeInput,
+        snapshot.keyframeValueInputs,
+        snapshot.isCreatingKeyframe,
+      );
+      window.setTimeout(() => {
+        keyframeHistoryLockRef.current = false;
+      }, 0);
+    },
+    [makeKeyframeSignature],
+  );
+
+  const handleUndoKeyframeChange = useCallback(() => {
+    if (keyframeUndoStack.length === 0) {
+      return;
+    }
+    const previous = keyframeUndoStack[keyframeUndoStack.length - 1];
+    if (!previous) {
+      return;
+    }
+    const current = captureKeyframeSnapshot();
+    setKeyframeUndoStack((stack) => stack.slice(0, -1));
+    setKeyframeRedoStack((stack) => [...stack, current]);
+    restoreKeyframeSnapshot(previous);
+  }, [captureKeyframeSnapshot, keyframeUndoStack, restoreKeyframeSnapshot]);
+
+  const handleRedoKeyframeChange = useCallback(() => {
+    if (keyframeRedoStack.length === 0) {
+      return;
+    }
+    const next = keyframeRedoStack[keyframeRedoStack.length - 1];
+    if (!next) {
+      return;
+    }
+    const current = captureKeyframeSnapshot();
+    setKeyframeRedoStack((stack) => stack.slice(0, -1));
+    setKeyframeUndoStack((stack) => [...stack, current]);
+    restoreKeyframeSnapshot(next);
+  }, [captureKeyframeSnapshot, keyframeRedoStack, restoreKeyframeSnapshot]);
 
   const selectedTrack = useMemo(() => {
     if (!selectedAnimationInfo || !selectedBoneName) {
@@ -155,6 +298,38 @@ export function AnimationViewer({
       ? animationMetadata[selectedAnimationInfo.name]
       : undefined;
 
+  const selectedEvents = useMemo(() => {
+    if (!selectedAnimationInfo) {
+      return [];
+    }
+    return (
+      draftEventsByAnimation[selectedAnimationInfo.index] ??
+      selectedMetadata?.events ??
+      []
+    );
+  }, [draftEventsByAnimation, selectedAnimationInfo, selectedMetadata?.events]);
+
+  const commitSelectedEvents = (
+    events: AnimationEvent[],
+    nextSelectedIndex: number | null,
+  ) => {
+    if (!selectedAnimationInfo) {
+      return;
+    }
+    const normalized = events
+      .map((event) => ({
+        time: Number.isFinite(event.time) ? event.time : 0,
+        type: Number.isFinite(event.type) ? event.type : 0,
+        value: Number.isFinite(event.value) ? event.value : 0,
+      }));
+    setDraftEventsByAnimation((prev) => ({
+      ...prev,
+      [selectedAnimationInfo.index]: normalized,
+    }));
+    setSelectedEventIndex(nextSelectedIndex);
+    onAnimationEventsChange?.(selectedAnimationInfo.index, normalized);
+  };
+
   useEffect(() => {
     onBoneSelectionChange?.(selectedBoneName || null);
   }, [selectedBoneName, onBoneSelectionChange]);
@@ -189,6 +364,171 @@ export function AnimationViewer({
     editableAnimations,
     onAnimationChange,
   );
+
+  useEffect(() => {
+    if (!selectedAnimationInfo || !selectedBoneName) {
+      return;
+    }
+    if (selectedKeyframeIndex === null && !isCreatingKeyframe) {
+      lastKeyframeSaveSignatureRef.current = null;
+      return;
+    }
+    if (keyframeHistoryLockRef.current) {
+      return;
+    }
+
+    const signature = makeKeyframeSignature(
+      selectedAnimationInfo.index,
+      selectedBoneName,
+      selectedTrackProperty,
+      selectedKeyframeIndex,
+      keyframeTimeInput,
+      keyframeValueInputs,
+      isCreatingKeyframe,
+    );
+    if (signature === lastKeyframeSaveSignatureRef.current) {
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      if (!selectedAnimationInfo || !selectedBoneName) {
+        return;
+      }
+      if (selectedKeyframeIndex === null && !isCreatingKeyframe) {
+        return;
+      }
+      if (keyframeHistoryLockRef.current) {
+        return;
+      }
+
+      const timeValue = Number(keyframeTimeInput);
+      const componentCount = selectedTrackConfig.components.length;
+      if (
+        !Number.isFinite(timeValue) ||
+        timeValue < 0 ||
+        keyframeValueInputs.length !== componentCount
+      ) {
+        return;
+      }
+      const parsedValues = keyframeValueInputs.map((value) => Number(value));
+      if (parsedValues.some((value) => !Number.isFinite(value))) {
+        return;
+      }
+
+      const trackName = `${selectedBoneName}.${selectedTrackConfig.trackName}`;
+      const currentTrack = selectedTrack ?? null;
+      const stride = componentCount;
+      let times: number[] = [];
+      let values: number[] = [];
+      if (currentTrack) {
+        times = Array.from(currentTrack.times);
+        values = Array.from(currentTrack.values);
+      }
+      if (
+        currentTrack &&
+        selectedKeyframeIndex !== null &&
+        selectedKeyframeIndex < times.length
+      ) {
+        times[selectedKeyframeIndex] = timeValue;
+        parsedValues.forEach((value, offset) => {
+          values[selectedKeyframeIndex * stride + offset] = value;
+        });
+      } else {
+        times.push(timeValue);
+        values.push(...parsedValues);
+      }
+      const combined = times.map((time, index) => ({
+        time,
+        values: values.slice(index * stride, index * stride + stride),
+      }));
+      combined.sort((a, b) => a.time - b.time);
+      const nextTimes = combined.map((entry) => entry.time);
+      const nextValues = combined.flatMap((entry) => entry.values);
+      const updatedIndex = combined.findIndex(
+        (entry) =>
+          Math.abs(entry.time - timeValue) < KEYFRAME_TIME_EPSILON &&
+          entry.values.length === parsedValues.length &&
+          entry.values.every(
+            (value, offset) => value === parsedValues[offset],
+          ),
+      );
+      const nextIndex =
+        updatedIndex >= 0
+          ? updatedIndex
+          : selectedKeyframeIndex ?? combined.length - 1;
+      const nextTrack = currentTrack
+        ? currentTrack.clone()
+        : selectedTrackConfig.trackName === "quaternion"
+          ? new QuaternionKeyframeTrack(trackName, nextTimes, nextValues)
+          : new VectorKeyframeTrack(trackName, nextTimes, nextValues);
+      nextTrack.times = new Float32Array(nextTimes);
+      nextTrack.values = new Float32Array(nextValues);
+      const nextTracks = selectedAnimationInfo.clip.tracks
+        .filter((track) => track !== currentTrack)
+        .concat(nextTrack);
+      const nextClip = new AnimationClip(
+        selectedAnimationInfo.name,
+        selectedAnimationInfo.duration,
+        nextTracks,
+      );
+
+      keyframeHistoryLockRef.current = true;
+      setKeyframeUndoStack((stack) => [...stack, captureKeyframeSnapshot()]);
+      setKeyframeRedoStack([]);
+      updateSelectedAnimation((anim) => ({
+        ...anim,
+        clip: nextClip,
+      }));
+      const selectedEntry = combined[nextIndex];
+      if (selectedEntry) {
+        setSelectedKeyframeIndex(nextIndex);
+        setKeyframeTimeInput(selectedEntry.time.toString());
+        setKeyframeValueInputs(
+          selectedEntry.values.map((value) => value.toString()),
+        );
+        if (currentActionRef.current?.paused) {
+          currentActionRef.current.time = selectedEntry.time;
+          setCurrentTime(selectedEntry.time);
+        }
+      }
+      setIsCreatingKeyframe(false);
+      setKeyframeError(null);
+      lastKeyframeSaveSignatureRef.current = makeKeyframeSignature(
+        selectedAnimationInfo.index,
+        selectedBoneName,
+        selectedTrackProperty,
+        nextIndex,
+        selectedEntry?.time.toString() ?? timeValue.toString(),
+        selectedEntry
+          ? selectedEntry.values.map((value) => value.toString())
+          : parsedValues.map((value) => value.toString()),
+        false,
+      );
+      window.setTimeout(() => {
+        keyframeHistoryLockRef.current = false;
+      }, 0);
+    }, 250);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [
+    captureKeyframeSnapshot,
+    currentActionRef,
+    isCreatingKeyframe,
+    keyframeTimeInput,
+    keyframeValueInputs,
+    makeKeyframeSignature,
+    selectedAnimationInfo,
+    selectedBoneName,
+    selectedKeyframeIndex,
+    selectedTrack,
+    selectedTrackConfig.components.length,
+    selectedTrackConfig.trackName,
+    selectedTrackProperty,
+    setCurrentTime,
+    updateSelectedAnimation,
+  ]);
 
   const handlePlay = () => {
     if (currentActionRef.current && animationMixer) {
@@ -248,7 +588,8 @@ export function AnimationViewer({
     setDurationError(null);
   };
 
-  const handleCreateAnimation = (fromSelection: boolean) => {
+  const handleCreateAnimation = (sourceAnimationIndex: number | null) => {
+    resetKeyframeHistory();
     const trimmedName = newAnimationName.trim();
     const nextAutoIndex = autoNameCounterRef.current;
     const nextName =
@@ -264,10 +605,11 @@ export function AnimationViewer({
       return;
     }
     const nextDuration = parsedDuration.value;
-    const clip =
-      fromSelection && selectedAnimationInfo?.clip
-        ? selectedAnimationInfo.clip.clone()
-        : new AnimationClip(nextName, nextDuration, []);
+    const sourceClip =
+      sourceAnimationIndex !== null
+        ? editableAnimations[sourceAnimationIndex]?.clip ?? null
+        : null;
+    const clip = sourceClip ? sourceClip.clone() : new AnimationClip(nextName, nextDuration, []);
     clip.name = nextName;
     clip.duration = nextDuration;
     const nextIndex = editableAnimations.length;
@@ -355,108 +697,35 @@ export function AnimationViewer({
   const handleSelectKeyframe = (index: number) => {
     const keyframe = selectedKeyframes[index];
     if (!keyframe) return;
+    if (selectedKeyframeIndex === index && !isCreatingKeyframe) {
+      setSelectedKeyframeIndex(null);
+      setIsCreatingKeyframe(false);
+      setKeyframeTimeInput("");
+      setKeyframeValueInputs([]);
+      setKeyframeError(null);
+      lastKeyframeSaveSignatureRef.current = null;
+      return;
+    }
+    setIsCreatingKeyframe(false);
     setSelectedKeyframeIndex(index);
     setKeyframeTimeInput(keyframe.time.toString());
     setKeyframeValueInputs(keyframe.values.map((value) => value.toString()));
     setKeyframeError(null);
+    lastKeyframeSaveSignatureRef.current = makeKeyframeSignature(
+      selectedAnimationInfo?.index ?? null,
+      selectedBoneName,
+      selectedTrackProperty,
+      index,
+      keyframe.time.toString(),
+      keyframe.values.map((value) => value.toString()),
+      false,
+    );
     if (currentActionRef.current) {
       currentActionRef.current.time = keyframe.time;
       currentActionRef.current.paused = true;
       setCurrentTime(keyframe.time);
       setPlayingState(false);
     }
-  };
-
-  const handleApplyKeyframe = () => {
-    if (!selectedAnimationInfo || !selectedBoneName) return;
-    const timeValue = Number.parseFloat(keyframeTimeInput);
-    if (!Number.isFinite(timeValue) || timeValue < 0) {
-      setKeyframeError("Enter a valid keyframe time.");
-      return;
-    }
-    const componentCount = selectedTrackConfig.components.length;
-    if (keyframeValueInputs.length !== componentCount) {
-      setKeyframeError("Enter all component values.");
-      return;
-    }
-    const parsedValues = keyframeValueInputs.map((value) =>
-      Number.parseFloat(value),
-    );
-    if (parsedValues.some((value) => !Number.isFinite(value))) {
-      setKeyframeError("Enter valid numeric values.");
-      return;
-    }
-    const trackName = `${selectedBoneName}.${selectedTrackConfig.trackName}`;
-    const currentTrack = selectedTrack ?? null;
-    const stride = componentCount;
-    let times: number[] = [];
-    let values: number[] = [];
-    if (currentTrack) {
-      times = Array.from(currentTrack.times);
-      values = Array.from(currentTrack.values);
-    }
-    if (
-      currentTrack &&
-      selectedKeyframeIndex !== null &&
-      selectedKeyframeIndex < times.length
-    ) {
-      times[selectedKeyframeIndex] = timeValue;
-      parsedValues.forEach((value, offset) => {
-        values[selectedKeyframeIndex * stride + offset] = value;
-      });
-    } else {
-      times.push(timeValue);
-      values.push(...parsedValues);
-    }
-    const combined = times.map((time, index) => ({
-      time,
-      values: values.slice(index * stride, index * stride + stride),
-    }));
-    combined.sort((a, b) => a.time - b.time);
-    const nextTimes = combined.map((entry) => entry.time);
-    const nextValues = combined.flatMap((entry) => entry.values);
-    const updatedIndex = combined.findIndex(
-      (entry) =>
-        Math.abs(entry.time - timeValue) < KEYFRAME_TIME_EPSILON &&
-        entry.values.length === parsedValues.length &&
-        entry.values.every((value, offset) => value === parsedValues[offset]),
-    );
-    const nextIndex =
-      updatedIndex >= 0
-        ? updatedIndex
-        : selectedKeyframeIndex ?? combined.length - 1;
-    const nextTrack = currentTrack
-      ? currentTrack.clone()
-      : selectedTrackConfig.trackName === "quaternion"
-        ? new QuaternionKeyframeTrack(trackName, nextTimes, nextValues)
-        : new VectorKeyframeTrack(trackName, nextTimes, nextValues);
-    nextTrack.times = new Float32Array(nextTimes);
-    nextTrack.values = new Float32Array(nextValues);
-    const nextTracks = selectedAnimationInfo.clip.tracks
-      .filter((track) => track !== currentTrack)
-      .concat(nextTrack);
-    const nextClip = new AnimationClip(
-      selectedAnimationInfo.name,
-      selectedAnimationInfo.duration,
-      nextTracks,
-    );
-    updateSelectedAnimation((anim) => ({
-      ...anim,
-      clip: nextClip,
-    }));
-    const selectedEntry = combined[nextIndex];
-    if (selectedEntry) {
-      setSelectedKeyframeIndex(nextIndex);
-      setKeyframeTimeInput(selectedEntry.time.toString());
-      setKeyframeValueInputs(
-        selectedEntry.values.map((value) => value.toString()),
-      );
-      if (currentActionRef.current?.paused) {
-        currentActionRef.current.time = selectedEntry.time;
-        setCurrentTime(selectedEntry.time);
-      }
-    }
-    setKeyframeError(null);
   };
 
   const handleUseBoneTransform = () => {
@@ -477,6 +746,8 @@ export function AnimationViewer({
     ) {
       return;
     }
+    setKeyframeUndoStack((stack) => [...stack, captureKeyframeSnapshot()]);
+    setKeyframeRedoStack([]);
     const stride = selectedTrackConfig.components.length;
     const times = Array.from(selectedTrack.times);
     const values = Array.from(selectedTrack.values);
@@ -515,14 +786,22 @@ export function AnimationViewer({
       clip: nextClip,
     }));
     setSelectedKeyframeIndex(null);
+    setIsCreatingKeyframe(false);
     setKeyframeTimeInput("");
     setKeyframeValueInputs([]);
     setKeyframeError(null);
+    lastKeyframeSaveSignatureRef.current = null;
   };
 
   const handleDeleteAnimation = () => {
     if (selectedAnimation === null) return;
+    resetKeyframeHistory();
     const deletedIndex = selectedAnimation;
+    setDraftEventsByAnimation((prev) => {
+      const next = { ...prev };
+      delete next[deletedIndex];
+      return next;
+    });
     setDraftAnimations((prev) => {
       const currentAnimations = prev ?? baseAnimations;
       return reindexAnimations(
@@ -538,22 +817,27 @@ export function AnimationViewer({
     setEditDurationInput("");
     setSelectedBoneName("");
     setSelectedKeyframeIndex(null);
+    setIsCreatingKeyframe(false);
     setKeyframeTimeInput("");
     setKeyframeValueInputs([]);
+    setSelectedEventIndex(null);
     setKeyframeError(null);
     setDurationError(null);
   };
 
   const handleAnimationSelectionChange = (value: string) => {
     if (value === "none") {
+      resetKeyframeHistory();
       setSelectedAnimation(null);
       setEditName("");
       setEditDurationInput("");
       setSelectedBoneName("");
       setSelectedTrackProperty("position");
       setSelectedKeyframeIndex(null);
+      setIsCreatingKeyframe(false);
       setKeyframeTimeInput("");
       setKeyframeValueInputs([]);
+      setSelectedEventIndex(null);
       setKeyframeError(null);
       setDurationError(null);
       return;
@@ -564,6 +848,7 @@ export function AnimationViewer({
     const resolvedAnimation =
       resolvedIndex !== null ? editableAnimations[resolvedIndex] : null;
     if (resolvedAnimation) {
+      resetKeyframeHistory();
       setEditName(resolvedAnimation.name);
       setEditDurationInput(resolvedAnimation.duration.toString());
       const nextBoneName =
@@ -571,8 +856,10 @@ export function AnimationViewer({
       setSelectedBoneName(nextBoneName);
       setSelectedTrackProperty("position");
       setSelectedKeyframeIndex(null);
+      setIsCreatingKeyframe(false);
       setKeyframeTimeInput("");
       setKeyframeValueInputs([]);
+      setSelectedEventIndex(null);
       setKeyframeError(null);
       setDurationError(null);
     }
@@ -581,30 +868,36 @@ export function AnimationViewer({
   const handleBoneNameChange = (boneName: string) => {
     setSelectedBoneName(boneName);
     setSelectedKeyframeIndex(null);
+    setIsCreatingKeyframe(false);
     setKeyframeTimeInput("");
     setKeyframeValueInputs(
       Array(selectedTrackConfig.components.length).fill(""),
     );
     setKeyframeError(null);
+    lastKeyframeSaveSignatureRef.current = null;
   };
 
   const handleTrackPropertyChange = (property: TrackProperty) => {
     setSelectedTrackProperty(property);
     setSelectedKeyframeIndex(null);
+    setIsCreatingKeyframe(false);
     setKeyframeTimeInput("");
     setKeyframeValueInputs(
       Array(TRACK_PROPERTY_CONFIG[property].components.length).fill(""),
     );
     setKeyframeError(null);
+    lastKeyframeSaveSignatureRef.current = null;
   };
 
   const handleNewKeyframe = () => {
+    setIsCreatingKeyframe(true);
     setSelectedKeyframeIndex(null);
     setKeyframeTimeInput("");
     setKeyframeValueInputs(
       Array(selectedTrackConfig.components.length).fill(""),
     );
     setKeyframeError(null);
+    lastKeyframeSaveSignatureRef.current = null;
   };
 
   const handleKeyframeValueInputChange = (index: number, value: string) => {
@@ -618,24 +911,60 @@ export function AnimationViewer({
   const handleTimelineRowClick = (boneName: string) => {
     setSelectedBoneName(boneName);
     setSelectedTrackProperty("position");
-    const timelineRow = timelineRows.find((row) => row.boneName === boneName);
-    setSelectedKeyframeIndex((prev) => {
-      if (!timelineRow || timelineRow.times.length === 0) {
-        return null;
-      }
-      const nextIndex = prev ?? 0;
-      return Math.min(nextIndex, timelineRow.times.length - 1);
-    });
+    setIsCreatingKeyframe(false);
+    setSelectedKeyframeIndex(null);
+    setKeyframeTimeInput("");
+    setKeyframeValueInputs(
+      Array(TRACK_PROPERTY_CONFIG.position.components.length).fill(""),
+    );
+    setKeyframeError(null);
+    lastKeyframeSaveSignatureRef.current = null;
+  };
+
+  const handleSelectEvent = (index: number) => {
+    const event = selectedEvents[index];
+    if (!event) {
+      return;
+    }
+    setSelectedEventIndex(index);
+  };
+
+  const handleNewEvent = () => {
+    if (!selectedAnimationInfo) {
+      return;
+    }
+    const time = Math.max(0, Math.round(currentTime * 30));
+    const nextEvents = [...selectedEvents, { time, type: 0, value: 0 }];
+    const nextIndex = nextEvents.length - 1;
+    commitSelectedEvents(nextEvents, nextIndex);
+  };
+
+  const handleUpdateEvent = (index: number, event: AnimationEvent) => {
+    if (!selectedAnimationInfo || index < 0 || index >= selectedEvents.length) {
+      return;
+    }
+    const nextEvents = selectedEvents.map((current, currentIndex) =>
+      currentIndex === index ? event : current,
+    );
+    commitSelectedEvents(nextEvents, index);
+  };
+
+  const handleDeleteEvent = (index: number) => {
+    if (!selectedAnimationInfo || index < 0 || index >= selectedEvents.length) {
+      return;
+    }
+    const nextEvents = selectedEvents.filter((_, currentIndex) => currentIndex !== index);
+    const nextIndex =
+      nextEvents.length === 0
+        ? null
+        : Math.min(index, nextEvents.length - 1);
+    commitSelectedEvents(nextEvents, nextIndex);
   };
 
   const handleApplyEditorChanges = () => {
     handleUpdateAnimation();
     handleApplyDuration();
   };
-
-  const timelineDuration = selectedAnimationInfo?.duration ?? 0;
-  const timelinePlayhead =
-    timelineDuration > 0 ? (currentTime / timelineDuration) * 100 : 0;
 
   return (
     <Card className="bg-gray-800 border-gray-700">
@@ -651,19 +980,14 @@ export function AnimationViewer({
           onSelectionChange={handleAnimationSelectionChange}
         />
 
-        {selectedAnimationInfo && (
-          <AnimationControls
-            hasActiveAction={hasActiveAction}
-            isPlaying={isPlaying}
-            currentTime={currentTime}
-            duration={duration}
-            onPlay={handlePlay}
-            onPause={handlePlay}
-            onStop={handleStop}
-            onReset={handleReset}
-            onSeek={handleTimeChange}
-          />
-        )}
+        <AnimationCreator
+          editableAnimations={editableAnimations}
+          newAnimationName={newAnimationName}
+          newAnimationDurationInput={newAnimationDurationInput}
+          onNameChange={setNewAnimationName}
+          onDurationChange={setNewAnimationDurationInput}
+          onCreate={handleCreateAnimation}
+        />
 
         <div className="space-y-3 border-t border-gray-700 pt-3">
           <div className="text-xs font-semibold text-gray-300">
@@ -686,32 +1010,65 @@ export function AnimationViewer({
 
         <div className="space-y-3 border-t border-gray-700 pt-3">
           <div className="text-xs font-semibold text-gray-300">
-            Edit Keyframes
+            Animation Timeline
           </div>
           <KeyframeEditor
             selectedAnimationInfo={selectedAnimationInfo}
+            hasActiveAction={hasActiveAction}
+            isPlaying={isPlaying}
+            currentTime={currentTime}
+            duration={duration}
             selectedBoneName={selectedBoneName}
             availableBoneNames={availableBoneNames}
             selectedTrackProperty={selectedTrackProperty}
             selectedKeyframes={selectedKeyframes}
             selectedKeyframeIndex={selectedKeyframeIndex}
+            selectedEvents={selectedEvents}
+            selectedEventIndex={selectedEventIndex}
             keyframeTimeInput={keyframeTimeInput}
             keyframeValueInputs={keyframeValueInputs}
             keyframeError={keyframeError}
-            timelineDuration={timelineDuration}
-            timelinePlayhead={timelinePlayhead}
             timelineRows={timelineRows}
             boneTransform={boneTransform ?? null}
+            gameLabel={gameLabel}
+            modelSourceKind={modelSourceKind}
+            isCreatingKeyframe={isCreatingKeyframe}
+            canUndo={keyframeUndoStack.length > 0}
+            canRedo={keyframeRedoStack.length > 0}
             onBoneNameChange={handleBoneNameChange}
             onTrackPropertyChange={handleTrackPropertyChange}
             onSelectKeyframe={handleSelectKeyframe}
+            onSelectEvent={handleSelectEvent}
             onNewKeyframe={handleNewKeyframe}
             onTimeInputChange={setKeyframeTimeInput}
             onValueInputChange={handleKeyframeValueInputChange}
             onUseBoneTransform={handleUseBoneTransform}
-            onApplyKeyframe={handleApplyKeyframe}
             onDeleteKeyframe={handleDeleteKeyframe}
             onTimelineRowClick={handleTimelineRowClick}
+            onUndo={handleUndoKeyframeChange}
+            onRedo={handleRedoKeyframeChange}
+            onPlay={handlePlay}
+            onPause={handlePlay}
+            onStop={handleStop}
+            onReset={handleReset}
+            onSeek={handleTimeChange}
+          />
+        </div>
+
+        <div className="space-y-3 border-t border-gray-700 pt-3">
+          <div className="text-xs font-semibold text-gray-300">
+            Animation Events
+          </div>
+          <AnimationEventEditor
+            selectedAnimationInfo={selectedAnimationInfo}
+            selectedEvents={selectedEvents}
+            selectedEventIndex={selectedEventIndex}
+            gameLabel={gameLabel}
+            modelSourceKind={modelSourceKind}
+            onSelectEvent={handleSelectEvent}
+            onAddEvent={handleNewEvent}
+            onUpdateEvent={handleUpdateEvent}
+            onDeleteEvent={handleDeleteEvent}
           />
         </div>
 
@@ -727,19 +1084,6 @@ export function AnimationViewer({
           />
         </div>
 
-        <div className="space-y-3 border-t border-gray-700 pt-3">
-          <div className="text-xs font-semibold text-gray-300">
-            Create Animation
-          </div>
-          <AnimationCreator
-            newAnimationName={newAnimationName}
-            newAnimationDurationInput={newAnimationDurationInput}
-            onNameChange={setNewAnimationName}
-            onDurationChange={setNewAnimationDurationInput}
-            onCreateWithTracks={() => handleCreateAnimation(true)}
-            onCreateEmpty={() => handleCreateAnimation(false)}
-          />
-        </div>
       </CardContent>
     </Card>
   );

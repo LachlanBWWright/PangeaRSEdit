@@ -45,6 +45,12 @@ export type BG3DGltfWorkerMessage =
       requestId?: string;
     }
   | {
+      type: "model-with-skeleton-to-glb";
+      modelBuffer: ArrayBuffer;
+      skeletonData: SkeletonResource;
+      requestId?: string;
+    }
+  | {
       type: "bg3d-parsed-to-glb";
       parsed: BG3DParseResult;
       requestId?: string;
@@ -79,6 +85,13 @@ export type BG3DGltfWorkerResponse =
     }
   | {
       type: "bg3d-with-skeleton-to-glb";
+      result: ArrayBuffer;
+      skeletonResult?: ArrayBuffer;
+      parsed?: BG3DParseResult;
+      requestId?: string;
+    }
+  | {
+      type: "model-with-skeleton-to-glb";
       result: ArrayBuffer;
       skeletonResult?: ArrayBuffer;
       parsed?: BG3DParseResult;
@@ -153,6 +166,33 @@ self.onmessage = async (e: MessageEvent<BG3DGltfWorkerMessage>) => {
         type: "bg3d-with-skeleton-to-glb",
         result: arrBuffer,
         parsed: parsed,
+        requestId,
+      };
+      self.postMessage.call(self, response);
+    } else if (msg.type === "model-with-skeleton-to-glb") {
+      const parseResult = parseBG3DWithSkeletonResource(
+        msg.modelBuffer,
+        msg.skeletonData,
+      );
+      if (isErr(parseResult)) {
+        const response: BG3DGltfWorkerResponse = {
+          type: "error",
+          error: parseResult.error.message,
+          requestId,
+        };
+        self.postMessage(response);
+        return;
+      }
+      const parsed = parseResult.value;
+      const doc = bg3dParsedToGLTF(parsed);
+      const io = new WebIO();
+      const glbBuffer = await io.writeBinary(doc);
+      const arrBuffer = new Uint8Array(glbBuffer).buffer;
+
+      const response: BG3DGltfWorkerResponse = {
+        type: "model-with-skeleton-to-glb",
+        result: arrBuffer,
+        parsed,
         requestId,
       };
       self.postMessage.call(self, response);

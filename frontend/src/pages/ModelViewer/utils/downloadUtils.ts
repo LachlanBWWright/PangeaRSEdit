@@ -82,6 +82,11 @@ export interface BG3DDownloadArtifacts {
   skeletonBytes?: ArrayBuffer;
 }
 
+export interface ThreeDMFDownloadArtifacts {
+  modelBytes: ArrayBuffer;
+  skeletonBytes?: ArrayBuffer;
+}
+
 function toBlobPart(data: ArrayBuffer | Uint8Array): ArrayBuffer {
   if (data instanceof ArrayBuffer) {
     return data;
@@ -142,9 +147,11 @@ export async function getBG3DDownloadArtifacts(
   });
 }
 
-export async function get3DMFDownloadBytes(
+export async function get3DMFDownloadArtifacts(
   gltfUrl: string,
-): Promise<Result<ArrayBuffer, Error>> {
+  modelFileName = "model",
+  exportTarget: BG3DExportTarget = DEFAULT_BG3D_EXPORT_TARGET,
+): Promise<Result<ThreeDMFDownloadArtifacts, Error>> {
   const result = await glbUrlToBg3dResponse(gltfUrl);
   if (result.isErr()) {
     return err(result.error);
@@ -179,7 +186,28 @@ export async function get3DMFDownloadBytes(
     return err(new Error(`Failed to write 3DMF: ${writeResult.error.message}`));
   }
 
-  return ok(writeResult.value);
+  let skeletonBytes: ArrayBuffer | undefined;
+  if (parsedBg3d.skeleton) {
+    const skeletonResource = bg3dSkeletonToSkeletonResource(
+      parsedBg3d.skeleton,
+      undefined,
+      undefined,
+      undefined,
+      parsedBg3d.skeleton.metadata,
+      modelFileName,
+      exportTarget,
+    );
+    const skeletonBinaryResult = skeletonResourceToBinary(skeletonResource);
+    if (skeletonBinaryResult.isErr()) {
+      return err(skeletonBinaryResult.error);
+    }
+    skeletonBytes = skeletonBinaryResult.value;
+  }
+
+  return ok({
+    modelBytes: writeResult.value,
+    skeletonBytes,
+  });
 }
 
 /**
@@ -268,13 +296,18 @@ export function downloadGLBModel(
 export async function download3DMFModel(
   gltfUrl: string,
   fileName = "model",
+  exportTarget: BG3DExportTarget = DEFAULT_BG3D_EXPORT_TARGET,
 ): Promise<Result<void, Error>> {
-  const bytesResult = await get3DMFDownloadBytes(gltfUrl);
+  const bytesResult = await get3DMFDownloadArtifacts(
+    gltfUrl,
+    fileName,
+    exportTarget,
+  );
   if (bytesResult.isErr()) {
     return err(bytesResult.error);
   }
 
-  const blob = new Blob([bytesResult.value], {
+  const blob = new Blob([bytesResult.value.modelBytes], {
     type: "application/octet-stream",
   });
   const url = URL.createObjectURL(blob);
@@ -285,6 +318,20 @@ export async function download3DMFModel(
   a.click();
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
+
+  if (bytesResult.value.skeletonBytes) {
+    const skeletonBlob = new Blob([bytesResult.value.skeletonBytes], {
+      type: "application/octet-stream",
+    });
+    const skeletonUrl = URL.createObjectURL(skeletonBlob);
+    const skeletonLink = document.createElement("a");
+    skeletonLink.href = skeletonUrl;
+    skeletonLink.download = `${fileName}.skeleton.rsrc`;
+    document.body.appendChild(skeletonLink);
+    skeletonLink.click();
+    document.body.removeChild(skeletonLink);
+    URL.revokeObjectURL(skeletonUrl);
+  }
 
   return ok(undefined);
 }

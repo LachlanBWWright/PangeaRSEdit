@@ -1,7 +1,12 @@
-import { useState, useRef, useCallback, useMemo } from "react";
+import { useState, useRef, useCallback, useMemo, useEffect } from "react";
 import { ModelCanvas } from "./ModelCanvas";
 import { ModelHierarchy } from "@/components/ModelHierarchy";
-import { AnimationViewer, AnimationInfo } from "@/components/AnimationViewer";
+import {
+  AnimationViewer,
+  AnimationInfo,
+  type AnimationEvent,
+  type ModelSourceKind,
+} from "@/components/AnimationViewer";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Upload } from "lucide-react";
 import { TextureManager } from "@/components/TextureManager";
@@ -14,11 +19,21 @@ import {
   ResizablePanelGroup,
 } from "@/components/ui/resizable";
 import { fromPromise } from "@/types/result";
-import { DEFAULT_BG3D_EXPORT_TARGET, getBG3DExportTarget } from "@/modelParsers/bg3dExportTargets";
+import { BG3D_EXPORT_TARGETS, getBG3DExportTarget } from "@/modelParsers/bg3dExportTargets";
 
 import { BG3DParseResult } from "../modelParsers/parseBG3D";
 import { toast, Toaster } from "sonner";
 import { AnimationMixer, Group } from "three";
+import BG3DGltfWorker from "../modelParsers/bg3dGltfWorker?worker";
+import {
+  extractAnimationMetadataFromGlb,
+  updateGlbAnimationEvents,
+  type GltfAnimationMetadata,
+} from "../modelParsers/gltfAnimationEvents";
+import type {
+  BG3DGltfWorkerMessage,
+  BG3DGltfWorkerResponse,
+} from "../modelParsers/bg3dGltfWorker";
 import {
   downloadTexture,
   downloadBG3DModel,
@@ -36,6 +51,10 @@ export function ModelViewer() {
   const [loading, setLoading] = useState(false);
   const [textures, setTextures] = useState<Texture[]>([]);
   const [animations, setAnimations] = useState<AnimationInfo[]>([]);
+  const [gltfBuffer, setGltfBuffer] = useState<ArrayBuffer | null>(null);
+  const [gltfAnimationMetadata, setGltfAnimationMetadata] = useState<
+    Record<string, GltfAnimationMetadata>
+  >({});
   const [animationMixer, setAnimationMixer] = useState<AnimationMixer | null>(
     null,
   );
@@ -45,9 +64,6 @@ export function ModelViewer() {
   >(null);
   const [uploadStep, setUploadStep] = useState<UploadStep>("select-bg3d");
   const [pendingBg3dFile, setPendingBg3dFile] = useState<File | null>(null);
-  const [bg3dExportTargetId, setBg3dExportTargetId] = useState(
-    DEFAULT_BG3D_EXPORT_TARGET.id,
-  );
   const [wireframeMode, setWireframeMode] = useState<boolean>(false);
   const [logBonePositions, setLogBonePositions] = useState<boolean>(false);
   const hasAnimations = animations.length > 0;
@@ -55,11 +71,15 @@ export function ModelViewer() {
   const [scene, setScene] = useState<Group | undefined>(undefined);
   const [modelNodes, setModelNodes] = useState<ModelNode[]>([]);
   const [bg3dParsed, setBg3dParsed] = useState<BG3DParseResult | null>(null);
+  const [gameLabel, setGameLabel] = useState<string | null>(null);
+  const [modelSourceKind, setModelSourceKind] =
+    useState<ModelSourceKind | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const effectiveModelBaseName = modelBaseName.trim() || "model";
   // Initialize file upload hook
   const { uploadFile } = useFileUpload({
     onGltfUrlChange: setGltfUrl,
+    onGltfBufferChange: setGltfBuffer,
     onBg3dParsedChange: setBg3dParsed,
     onTexturesChange: setTextures,
     onLoadingChange: setLoading,
@@ -80,8 +100,23 @@ export function ModelViewer() {
   });
 
   // Wrapper that delegates to the hook
-  const handleFileUpload = (bg3dFile: File, skeletonFile?: File) => {
+  const handleFileUpload = (
+    bg3dFile: File,
+    skeletonFile?: File,
+    loadedGameLabel?: string,
+  ) => {
     setModelBaseName(bg3dFile.name.replace(/\.[^.]+$/, ""));
+    setGameLabel(loadedGameLabel ?? null);
+    const lowerName = bg3dFile.name.toLowerCase();
+    if (lowerName.endsWith(".3dmf")) {
+      setModelSourceKind("3dmf");
+    } else if (lowerName.endsWith(".bg3d")) {
+      setModelSourceKind("bg3d");
+    } else if (lowerName.endsWith(".glb")) {
+      setModelSourceKind("glb");
+    } else {
+      setModelSourceKind("unknown");
+    }
     return uploadFile(bg3dFile, skeletonFile);
   };
 
@@ -94,6 +129,7 @@ export function ModelViewer() {
     }
 
     setPendingBg3dFile(file);
+    setModelSourceKind(file.name.toLowerCase().endsWith(".3dmf") ? "3dmf" : "bg3d");
     setUploadStep("select-skeleton");
   };
 
@@ -186,24 +222,192 @@ export function ModelViewer() {
     setBoneTransform(null);
   }, []);
 
-  const animationMetadata = useMemo(() => {
-    if (!bg3dParsed?.skeleton?.animations) {
-      return {};
-    }
-    return bg3dParsed.skeleton.animations.reduce(
-      (acc, animation) => {
-        acc[animation.name] = {
-          eventCount: animation.numAnimEvents,
-          events: animation.events,
+  const handleAnimationEventsChange = useCallback(
+    async (animationIndex: number, events: AnimationEvent[]) => {
+      const nextEvents = events.map((event) => ({ ...event }));
+
+      if (bg3dParsed?.skeleton?.animations) {
+        if (
+          animationIndex < 0 ||
+          animationIndex >= bg3dParsed.skeleton.animations.length
+        ) {
+          toast.error(
+            "Animation event edits can only be persisted for imported animations",
+          );
+          return;
+        }
+
+        const updatedParsed: BG3DParseResult = {
+          ...bg3dParsed,
+          skeleton: {
+            ...bg3dParsed.skeleton,
+            animations: bg3dParsed.skeleton.animations.map((animation, index) =>
+              index === animationIndex
+                ? {
+                    ...animation,
+                    numAnimEvents: nextEvents.length,
+                    events: nextEvents,
+                  }
+                : animation,
+            ),
+          },
         };
-        return acc;
-      },
-      {} as Record<
-        string,
-        { eventCount: number; events: { time: number; type: number; value: number }[] }
-      >,
-    );
-  }, [bg3dParsed]);
+
+        const worker = new BG3DGltfWorker();
+        const workerResult = await fromPromise(
+          new Promise<BG3DGltfWorkerResponse>((resolve, reject) => {
+            worker.onmessage = (e) => {
+              resolve(e.data);
+              worker.terminate();
+            };
+            worker.onerror = (e) => {
+              reject(e);
+              worker.terminate();
+            };
+            const message: BG3DGltfWorkerMessage = {
+              type: "bg3d-parsed-to-glb",
+              parsed: updatedParsed,
+            };
+            worker.postMessage(message);
+          }),
+        );
+
+        if (workerResult.isErr()) {
+          toast.error(
+            `Failed to update animation events: ${
+              workerResult.error instanceof Error
+                ? workerResult.error.message
+                : String(workerResult.error)
+            }`,
+          );
+          return;
+        }
+
+        const result = workerResult.value;
+        if (result.type === "error") {
+          toast.error(`Failed to update animation events: ${result.error}`);
+          return;
+        }
+        if (result.type !== "bg3d-parsed-to-glb") {
+          toast.error(
+            `Unexpected worker response while updating animation events: ${result.type}`,
+          );
+          return;
+        }
+
+        if (gltfUrl) {
+          URL.revokeObjectURL(gltfUrl);
+        }
+
+        const glbBlob = new Blob([result.result], {
+          type: "model/gltf-binary",
+        });
+        const newUrl = URL.createObjectURL(glbBlob);
+        setBg3dParsed(result.parsed ?? updatedParsed);
+        setGltfBuffer(result.result);
+        setGltfUrl(newUrl);
+        try {
+          const metadata = await extractAnimationMetadataFromGlb(result.result);
+          setGltfAnimationMetadata(metadata);
+        } catch (error) {
+          console.warn("Failed to refresh animation metadata after edit", error);
+        }
+        toast.success(
+          `Updated animation events for animation #${animationIndex + 1}`,
+        );
+        return;
+      }
+
+      if (!gltfBuffer) {
+        toast.error("No GLB buffer available for animation event edits");
+        return;
+      }
+
+      if (animationIndex < 0 || animationIndex >= animations.length) {
+        toast.error("Animation event edits can only target loaded animations");
+        return;
+      }
+
+      try {
+        const updatedBuffer = await updateGlbAnimationEvents(
+          gltfBuffer,
+          animationIndex,
+          nextEvents,
+        );
+
+        if (gltfUrl) {
+          URL.revokeObjectURL(gltfUrl);
+        }
+
+        const glbBlob = new Blob([updatedBuffer], {
+          type: "model/gltf-binary",
+        });
+        const newUrl = URL.createObjectURL(glbBlob);
+        setGltfBuffer(updatedBuffer);
+        setGltfUrl(newUrl);
+        try {
+          const metadata = await extractAnimationMetadataFromGlb(updatedBuffer);
+          setGltfAnimationMetadata(metadata);
+        } catch (error) {
+          console.warn("Failed to refresh animation metadata after edit", error);
+        }
+        toast.success(
+          `Updated animation events for animation #${animationIndex + 1}`,
+        );
+      } catch (error) {
+        toast.error(
+          `Failed to update animation events: ${
+            error instanceof Error ? error.message : String(error)
+          }`,
+        );
+      }
+    },
+    [animations.length, bg3dParsed, gltfBuffer, gltfUrl],
+  );
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!gltfBuffer || bg3dParsed?.skeleton?.animations) {
+      setGltfAnimationMetadata({});
+      return undefined;
+    }
+
+    void extractAnimationMetadataFromGlb(gltfBuffer)
+      .then((metadata) => {
+        if (!cancelled) {
+          setGltfAnimationMetadata(metadata);
+        }
+      })
+      .catch((error) => {
+        console.warn("Failed to extract animation metadata from GLB", error);
+        if (!cancelled) {
+          setGltfAnimationMetadata({});
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [bg3dParsed, gltfBuffer]);
+
+  const animationMetadata = useMemo(() => {
+    if (bg3dParsed?.skeleton?.animations) {
+      return bg3dParsed.skeleton.animations.reduce(
+        (acc, animation) => {
+          acc[animation.name] = {
+            eventCount: animation.numAnimEvents,
+            events: animation.events,
+          };
+          return acc;
+        },
+        {} as Record<
+          string,
+          { eventCount: number; events: { time: number; type: number; value: number }[] }
+        >,
+      );
+    }
+    return gltfAnimationMetadata;
+  }, [bg3dParsed, gltfAnimationMetadata]);
 
   // Removed unused handleTexturesExtracted and handleNodesExtracted
 
@@ -223,7 +427,7 @@ export function ModelViewer() {
     return replaceTexture(texture, newFile);
   };
 
-  const handleDownloadBG3D = async () => {
+  const handleDownloadBG3D = async (exportTargetId: string) => {
     if (!gltfUrl) {
       toast.error("No GLB model available for BG3D download");
       return;
@@ -233,7 +437,7 @@ export function ModelViewer() {
       gltfUrl,
       effectiveModelBaseName,
       `${effectiveModelBaseName}.skeleton`,
-      getBG3DExportTarget(bg3dExportTargetId),
+      getBG3DExportTarget(exportTargetId),
     );
     if (result.isErr()) {
       console.error("Error downloading BG3D:", result.error);
@@ -253,19 +457,43 @@ export function ModelViewer() {
     toast.success("GLB model downloaded");
   };
 
-  const handleDownload3DMF = async () => {
+  const handleDownload3DMF = async (exportTargetId: string) => {
     if (!gltfUrl) {
       toast.error("No GLB model available for 3DMF download");
       return;
     }
 
-    const result = await download3DMFModel(gltfUrl, effectiveModelBaseName);
+    const result = await download3DMFModel(
+      gltfUrl,
+      effectiveModelBaseName,
+      getBG3DExportTarget(exportTargetId),
+    );
     if (result.isErr()) {
       console.error("Error downloading 3DMF:", result.error);
       toast.error(result.error.message);
       return;
     }
     toast.success("3DMF model downloaded");
+  };
+
+  const handleDownloadSelectedExport = async (targetId: string) => {
+    if (!gltfUrl) {
+      toast.error("No model available for download");
+      return;
+    }
+
+    const target = getBG3DExportTarget(targetId);
+    if (targetId === "glb") {
+      handleDownloadGLB();
+      return;
+    }
+
+    if (target.companionExtension === "3df") {
+      await handleDownload3DMF(target.id);
+      return;
+    }
+
+    await handleDownloadBG3D(target.id);
   };
 
   const handleTextureEdit = (
@@ -277,7 +505,11 @@ export function ModelViewer() {
 
   const handleClearModel = () => {
     setGltfUrl(null);
+    setGltfBuffer(null);
+    setGltfAnimationMetadata({});
     setBg3dParsed(null);
+    setGameLabel(null);
+    setModelSourceKind(null);
     setTextures([]);
     setModelNodes([]);
     setModelBaseName("model");
@@ -289,10 +521,14 @@ export function ModelViewer() {
 
   return (
     <>
-      <div className="h-full p-4 bg-gray-900 text-white">
+      <div className="h-full overflow-hidden p-4 bg-gray-900 text-white">
         <ResizablePanelGroup orientation="horizontal" className="h-full w-full">
-          <ResizablePanel defaultSize={28} minSize={20} className="pr-3 min-w-0">
-            <div className="flex h-full flex-col space-y-4 px-2 overflow-y-auto min-w-0">
+          <ResizablePanel
+            defaultSize={28}
+            minSize={20}
+            className="min-h-0 min-w-0 pr-3"
+          >
+            <div className="flex h-full min-h-0 min-w-0 flex-col space-y-4 overflow-y-auto overflow-x-hidden px-2">
               <ModelUploadPanel
                 gltfUrl={gltfUrl}
                 loading={loading}
@@ -305,13 +541,13 @@ export function ModelViewer() {
                 handleSkeletonFileSelect={handleSkeletonFileSelect}
                 handleSkipSkeleton={handleSkipSkeleton}
                 handleFileUpload={handleFileUpload}
-                handleDownloadBG3D={handleDownloadBG3D}
-                handleDownloadGLB={handleDownloadGLB}
-                handleDownload3DMF={handleDownload3DMF}
                 modelBaseName={modelBaseName}
                 onModelBaseNameChange={setModelBaseName}
-                bg3dExportTargetId={bg3dExportTargetId}
-                onBg3dExportTargetChange={setBg3dExportTargetId}
+                exportTargets={[
+                  ...BG3D_EXPORT_TARGETS,
+                  { id: "glb", label: "GLB" },
+                ]}
+                handleDownloadSelectedExport={handleDownloadSelectedExport}
                 handleClearModel={handleClearModel}
                 onCancelSelection={() => {
                   setUploadStep("select-bg3d");
@@ -343,11 +579,14 @@ export function ModelViewer() {
 
           {/* Animation Viewer - Show when animations are available */}
           {gltfUrl && hasAnimations && (
-            <AnimationViewer
+          <AnimationViewer
               key={gltfUrl}
               animations={animations}
               animationMixer={animationMixer}
+              gameLabel={gameLabel}
+              modelSourceKind={modelSourceKind}
               onBoneSelectionChange={handleBoneSelectionChange}
+              onAnimationEventsChange={handleAnimationEventsChange}
               animationMetadata={animationMetadata}
               boneTransform={boneTransform}
             />
@@ -361,7 +600,7 @@ export function ModelViewer() {
                   Texture Management
                 </CardTitle>
               </CardHeader>
-              <CardContent className="max-h-60 overflow-y-auto">
+              <CardContent>
                 {textures.length > 0 ? (
                   <TextureManager
                     textures={textures}
@@ -390,12 +629,6 @@ export function ModelViewer() {
                 )}
               </CardContent>
             </Card>
-          )}
-          {gltfUrl && (
-            <p className="text-xs text-gray-400 px-1">
-              Conversion tools are hidden while a model is loaded. Clear the
-              model to convert another file.
-            </p>
           )}
              </div>
            </ResizablePanel>

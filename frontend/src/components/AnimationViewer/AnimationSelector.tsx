@@ -27,7 +27,7 @@ export function AnimationSelector({
 
   return (
     <div className="space-y-2">
-      <label className="text-sm text-gray-300">Select Animation</label>
+      <label className="text-sm text-gray-300">Animation</label>
       <Select value={selectedAnimationValue} onValueChange={onSelectionChange}>
         <SelectTrigger className="bg-gray-700 border-gray-600 text-white">
           <SelectValue />

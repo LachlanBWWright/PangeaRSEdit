@@ -22,6 +22,7 @@ import { unwrap, isOk } from "@/types/result";
 import { existsSync, readFileSync } from "fs";
 import { join } from "path";
 import { NodeIO } from "@gltf-transform/core";
+import { validateBytes } from "gltf-validator";
 
 function bufferFromFile(filePath: string): ArrayBuffer {
   const buf = readFileSync(filePath);
@@ -162,6 +163,89 @@ describe("3DMF → GLB → 3DMF structural roundtrip", () => {
       }
     });
   });
+});
+
+describe("Bugdom 1 and Nanosaur 1 3DMF skeleton event parity", () => {
+  const gamesRoot = join(__dirname, "../../public/games");
+
+  const eventFiles = [
+    { game: "bugdom1", name: "Ant" },
+    { game: "bugdom1", name: "Spider" },
+    { game: "bugdom1", name: "Slug" },
+    { game: "nanosaur1", name: "Deinon" },
+    { game: "nanosaur1", name: "Rex" },
+    { game: "nanosaur1", name: "Tricer" },
+  ];
+
+  for (const { game, name } of eventFiles) {
+    const modelPath = join(gamesRoot, game, "skeletons", `${name}.3dmf`);
+    const skelPath = join(gamesRoot, game, "skeletons", `${name}.skeleton.rsrc`);
+
+    it(`${game}/${name}: 3DMF+skeleton events survive direct GLB conversion`, async () => {
+      if (!existsSync(modelPath) || !existsSync(skelPath)) {
+        console.warn(`Skipping - files not found: ${modelPath}`);
+        return;
+      }
+
+      const modelBuffer = bufferFromFile(modelPath);
+      const skelBuffer = bufferFromFile(skelPath);
+
+      const skeletonResource = await parseSkeletonRsrc(skelBuffer);
+      const parsed = parseBG3DWithSkeletonResource(modelBuffer, skeletonResource);
+      expect(parsed.ok).toBe(true);
+      if (!parsed.ok) return;
+
+      const original = parsed.value;
+      expect(original.skeleton).toBeDefined();
+      expect(original.skeleton?.animations.length).toBeGreaterThan(0);
+
+      const supportedTypes = new Set([0, 1, 2, 3, 4, 5, 6, 7]);
+      original.skeleton?.animations.forEach((animation) => {
+        animation.events.forEach((event) => {
+          expect(supportedTypes.has(event.type)).toBe(true);
+        });
+      });
+
+      const gltfDoc = bg3dParsedToGLTF(original);
+      const io = new NodeIO();
+      const glbBytes = await io.writeBinary(gltfDoc);
+      expect(glbBytes.length).toBeGreaterThan(0);
+
+      const validation = await validateBytes(glbBytes);
+      expect(validation.issues.numErrors).toBe(0);
+
+      const roundtripped = await gltfToBG3D(await io.readBinary(glbBytes));
+      expect(roundtripped.skeleton).toBeDefined();
+      if (!roundtripped.skeleton || !original.skeleton) return;
+
+      expect(roundtripped.skeleton.animations.length).toBe(
+        original.skeleton.animations.length,
+      );
+
+      for (let animIndex = 0; animIndex < original.skeleton.animations.length; animIndex++) {
+        const originalAnimation = original.skeleton.animations[animIndex];
+        const roundtrippedAnimation = roundtripped.skeleton.animations[animIndex];
+
+        expect(roundtrippedAnimation).toBeDefined();
+        if (!roundtrippedAnimation) continue;
+
+        expect(roundtrippedAnimation.events.length).toBe(
+          originalAnimation.events.length,
+        );
+
+        for (let eventIndex = 0; eventIndex < originalAnimation.events.length; eventIndex++) {
+          const originalEvent = originalAnimation.events[eventIndex];
+          const roundtrippedEvent = roundtrippedAnimation.events[eventIndex];
+          expect(roundtrippedEvent).toBeDefined();
+          if (!roundtrippedEvent) continue;
+
+          expect(roundtrippedEvent.time).toBe(originalEvent.time);
+          expect(roundtrippedEvent.type).toBe(originalEvent.type);
+          expect(roundtrippedEvent.value).toBe(originalEvent.value);
+        }
+      }
+    });
+  }
 });
 
 describe("3DMF standalone models → GLB → 3DMF roundtrip", () => {

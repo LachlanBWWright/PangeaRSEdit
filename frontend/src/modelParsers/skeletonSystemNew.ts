@@ -5,7 +5,7 @@
  * 1. Proper bone hierarchy construction (parent-child relationships)
  * 2. Correct coordinate space conversion (Otto absolute → glTF local)
  * 3. Fixed animation targeting (joints in scene before animations)
- * 4. Native glTF animation format (not stored in extras)
+ * 4. Native glTF animation format with BG3D animation events preserved in extras
  */
 
 import { Document, Node, Skin, Animation, Buffer } from "@gltf-transform/core";
@@ -15,8 +15,47 @@ import {
   BG3DBone,
   BG3DAnimation,
   BG3DKeyframe,
+  BG3DAnimationEvent,
 } from "./parseBG3D";
 import { Result, ok, err, isErr } from "../types/result";
+
+const ANIMATION_EXTRA_NAMESPACE = "pangears";
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function parseAnimationEventsFromExtras(anim: Animation): BG3DAnimationEvent[] {
+  const extras = anim.getExtras();
+  const namespaced = isRecord(extras)
+    ? isRecord(extras[ANIMATION_EXTRA_NAMESPACE])
+      ? extras[ANIMATION_EXTRA_NAMESPACE]
+      : undefined
+    : undefined;
+  const candidate =
+    namespaced && Array.isArray(namespaced.events)
+      ? namespaced
+      : isRecord(extras) && Array.isArray(extras.events)
+        ? extras
+        : undefined;
+
+  if (!candidate || !Array.isArray(candidate.events)) {
+    return [];
+  }
+
+  return candidate.events
+    .map((event) => {
+      if (!isRecord(event)) {
+        return null;
+      }
+      return {
+        time: typeof event.time === "number" ? event.time : 0,
+        type: typeof event.type === "number" ? event.type : 0,
+        value: typeof event.value === "number" ? event.value : 0,
+      };
+    })
+    .filter((event): event is BG3DAnimationEvent => event !== null);
+}
 
 /**
  * Convert Euler angles (in radians) to quaternion
@@ -63,6 +102,7 @@ interface ProcessedAnimation {
   name: string;
   duration: number;
   channels: AnimationChannelData[];
+  events: BG3DAnimationEvent[];
 }
 
 interface AnimationChannelData {
@@ -661,6 +701,11 @@ function processSkeletonAnimations(
   return bg3dAnimations.map((anim) => {
     const channels: AnimationChannelData[] = [];
     let maxTime = 0;
+    const events = anim.events.map((event) => ({
+      time: event.time,
+      type: event.type,
+      value: event.value,
+    }));
 
     console.log(`  Processing animation "${anim.name}"`);
 
@@ -745,6 +790,7 @@ function processSkeletonAnimations(
       name: anim.name,
       duration: maxTime,
       channels,
+      events,
     };
   });
 }
@@ -768,15 +814,9 @@ function createGltfAnimations(
     return [];
   }
 
-  // Filter out animations with no channels
-  const validAnimations = processedAnimations.filter(
-    (anim) => anim.channels.length > 0,
-  );
-  console.log(
-    `Creating ${validAnimations.length} animations (filtered from ${processedAnimations.length})`,
-  );
+  console.log(`Creating ${processedAnimations.length} animations`);
 
-  return validAnimations.map((anim) => {
+  return processedAnimations.map((anim) => {
     const gltfAnimation = doc.createAnimation(anim.name);
 
     console.log(
@@ -934,6 +974,17 @@ function createGltfAnimations(
       }
 
       gltfAnimation.addSampler(sampler).addChannel(channel);
+    });
+
+    gltfAnimation.setExtras({
+      [ANIMATION_EXTRA_NAMESPACE]: {
+        numAnimEvents: anim.events.length,
+        events: anim.events.map((event) => ({
+          time: event.time,
+          type: event.type,
+          value: event.value,
+        })),
+      },
     });
 
     return gltfAnimation;
@@ -1260,10 +1311,12 @@ export function extractAnimationsFromGLTF(
       } bone tracks`,
     );
 
+    const events = parseAnimationEventsFromExtras(anim);
+
     return {
       name: anim.getName() || "Unknown",
-      numAnimEvents: 0,
-      events: [],
+      numAnimEvents: events.length,
+      events,
       keyframes,
     };
   });

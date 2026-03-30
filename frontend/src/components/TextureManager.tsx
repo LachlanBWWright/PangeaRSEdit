@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { TextureItem } from "./TextureManager/TextureItem";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { ImageEditor } from "./ImageEditor";
 import { fromPromise } from "@/types/result";
@@ -26,9 +26,9 @@ export function TextureManager({
 }: TextureManagerProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [selectedTexture, setSelectedTexture] = useState<Texture | null>(null);
-  const [showPreviews, setShowPreviews] = useState(false);
+  const [showPreviews, setShowPreviews] = useState(true);
   const [expandedTextures, setExpandedTextures] = useState<Set<number>>(
-    new Set(),
+    () => new Set(textures.map((_, index) => index)),
   );
   const [isEditorOpen, setIsEditorOpen] = useState(false);
   const [textureToEdit, setTextureToEdit] = useState<Texture | null>(null);
@@ -127,6 +127,11 @@ export function TextureManager({
     }
     setShowPreviews(!showPreviews);
   };
+
+  useEffect(() => {
+    setExpandedTextures(new Set(textures.map((_, index) => index)));
+    setShowPreviews(true);
+  }, [textures]);
 
   if (textures.length === 0) {
     return null;

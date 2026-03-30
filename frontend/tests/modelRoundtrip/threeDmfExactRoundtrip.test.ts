@@ -4,7 +4,7 @@ import { readFileSync, existsSync } from "fs";
 import { join } from "path";
 import { bg3dParsedToGLTF } from "@/modelParsers/parsedBg3dGitfConverter";
 import { parse3DMFToMetaFile, metaFileToBG3DParseResult } from "@/modelParsers/threeDMF";
-import { get3DMFDownloadBytes } from "@/pages/ModelViewer/utils/downloadUtils";
+import { get3DMFDownloadArtifacts } from "@/pages/ModelViewer/utils/downloadUtils";
 import type { BG3DParseResult } from "@/modelParsers/parseBG3D";
 import type { BG3DGltfWorkerResponse } from "@/modelParsers/bg3dGltfWorker";
 
@@ -130,12 +130,23 @@ describe("3DMF download after GLB import", () => {
     workerBg3dResult = response.result;
     workerParsed = response.parsed;
 
-    const bytesResult = await get3DMFDownloadBytes(gltfUrl);
+    const bytesResult = await get3DMFDownloadArtifacts(
+      gltfUrl,
+      "Rex",
+      {
+        id: "nanosaur",
+        label: "Nanosaur",
+        companionExtension: "3df",
+        aliasResourceId: 1000,
+        aliasName: "Limb 3DMF Alias",
+        aliasPathPrefix: "Projects:Nanosaur:Data:Skeletons:",
+      },
+    );
     if (bytesResult.isErr()) {
       throw bytesResult.error;
     }
 
-    const bytes = bytesResult.value;
+    const bytes = bytesResult.value.modelBytes;
     expect(bytes.byteLength).toBeGreaterThan(0);
 
     const parseResult = parse3DMFToMetaFile(bytes);

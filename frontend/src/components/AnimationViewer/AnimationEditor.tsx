@@ -117,6 +117,7 @@ export function AnimationEditor({
         </Button>
         <Button
           size="sm"
+          variant="destructive"
           className="flex-1"
           onClick={() => {
             if (

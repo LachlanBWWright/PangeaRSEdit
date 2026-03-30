@@ -3,7 +3,7 @@
  *
  * Manages the file upload workflow including:
  * - File format detection and validation
- * - 3DMF to BG3D conversion
+ * - 3DMF parsing and direct GLB conversion
  * - Skeleton file loading and merging
  * - GLB conversion via worker
  * - Texture extraction
@@ -31,6 +31,8 @@ import { fromPromise, ok, err, type Result } from "@/types/result";
 export interface UseFileUploadOptions {
   /** Called when glTF URL is available */
   onGltfUrlChange: (url: string) => void;
+  /** Called when the raw GLB buffer is available */
+  onGltfBufferChange: (buffer: ArrayBuffer | null) => void;
   /** Called when BG3D parsed data is available */
   onBg3dParsedChange: (parsed: BG3DParseResult) => void;
   /** Called when textures are extracted */
@@ -67,6 +69,7 @@ export async function parseGlbImportResult(
 export function useFileUpload(options: UseFileUploadOptions) {
   const {
     onGltfUrlChange,
+    onGltfBufferChange,
     onBg3dParsedChange,
     onTexturesChange,
     onLoadingChange,
@@ -172,6 +175,7 @@ export function useFileUpload(options: UseFileUploadOptions) {
 
         const parsed = parsedResult.value;
 
+        onGltfBufferChange(glbBufferResult.value);
         onBg3dParsedChange(parsed);
         const textures = await extractTexturesFromBG3D(parsed);
         onTexturesChange(textures);
@@ -190,11 +194,6 @@ export function useFileUpload(options: UseFileUploadOptions) {
 
       // Handle 3DMF conversion path
       if (is3dmf) {
-        const { parse3DMFToMetaFile, metaFileToBG3DParseResult } =
-          await import("../../../modelParsers/threeDMF");
-        const { bg3dParsedToBG3D: convert3dmfToBG3D } =
-          await import("../../../modelParsers/parseBG3D");
-
         const dmfBufferResult = await fromPromise(bg3dFile.arrayBuffer());
         if (dmfBufferResult.isErr()) {
           const message = `Failed to read 3DMF file: ${dmfBufferResult.error.message}`;
@@ -203,21 +202,6 @@ export function useFileUpload(options: UseFileUploadOptions) {
           return err(new Error(message));
         }
         const dmfBuffer = dmfBufferResult.value;
-        const parseResult = parse3DMFToMetaFile(dmfBuffer);
-        if (parseResult.isErr()) {
-          const message = `Failed to parse 3DMF file: ${parseResult.error.message}`;
-          toast.error(message);
-          onLoadingChange(false);
-          return err(new Error(message));
-        }
-
-        const bg3dResult = metaFileToBG3DParseResult(parseResult.value);
-        if (bg3dResult.isErr()) {
-          const message = `Failed to convert 3DMF to BG3D: ${bg3dResult.error.message}`;
-          toast.error(message);
-          onLoadingChange(false);
-          return err(new Error(message));
-        }
 
         // Parse skeleton file if provided
         let skeletonData: SkeletonResource | undefined;
@@ -250,12 +234,6 @@ export function useFileUpload(options: UseFileUploadOptions) {
             }
           }
         }
-        onBg3dParsedChange(bg3dResult.value);
-        const textures = await extractTexturesFromBG3D(bg3dResult.value);
-        onTexturesChange(textures);
-
-        // Convert the parsed BG3D back to binary format for GLB conversion
-        const bg3dBuffer = convert3dmfToBG3D(bg3dResult.value);
 
         // Process with worker for GLB conversion
         const worker = new BG3DGltfWorker();
@@ -269,20 +247,20 @@ export function useFileUpload(options: UseFileUploadOptions) {
               reject(e);
               worker.terminate();
             };
- 
+
             if (skeletonData) {
-              // Send skeleton data with the model
+              // Send the original 3DMF buffer plus skeleton data directly.
               const message: BG3DGltfWorkerMessage = {
-                type: "bg3d-with-skeleton-to-glb",
-                bg3dBuffer: bg3dBuffer,
+                type: "model-with-skeleton-to-glb",
+                modelBuffer: dmfBuffer,
                 skeletonData,
               };
               worker.postMessage(message);
             } else {
-              // Send model only
+              // Send the original 3DMF buffer directly.
               const message: BG3DGltfWorkerMessage = {
                 type: "bg3d-to-glb",
-                buffer: bg3dBuffer,
+                buffer: dmfBuffer,
               };
               worker.postMessage(message);
             }
@@ -423,10 +401,12 @@ export function useFileUpload(options: UseFileUploadOptions) {
 
       if (
         result.type === "bg3d-to-glb" ||
-        result.type === "bg3d-with-skeleton-to-glb"
+        result.type === "bg3d-with-skeleton-to-glb" ||
+        result.type === "model-with-skeleton-to-glb"
       ) {
         const enhancedParsed = result.parsed;
         if (enhancedParsed) {
+          onGltfBufferChange(result.result);
           onBg3dParsedChange(enhancedParsed);
 
           // Extract and display textures
@@ -460,6 +440,7 @@ export function useFileUpload(options: UseFileUploadOptions) {
       onTexturesChange,
       onLoadingChange,
       onUploadStepChange,
+      onGltfBufferChange,
     ],
   );
 

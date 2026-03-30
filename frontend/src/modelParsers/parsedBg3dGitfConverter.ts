@@ -1342,14 +1342,8 @@ export async function gltfToBG3D(doc: Document): Promise<BG3DParseResult> {
           },
         );
 
-        // Reconstruct animations purely from glTF animation data
+        // Reconstruct animations from glTF animation data and animation extras.
         const animations = extractAnimationsFromGLTF(doc, bones);
-
-        // Use empty events for all animations (events cannot be represented in glTF)
-        animations.forEach((anim) => {
-          anim.numAnimEvents = 0;
-          anim.events = [];
-        });
 
         skeleton = {
           version: 272,
