@@ -81,14 +81,7 @@ describe("BG3D roundtrip after GLB normalize (simulating bone edit)", () => {
       if (iendPos >= 0) {
         const pngEnd = iendPos + 4 + 4; // IEND type + CRC
         const extraBytes = image.byteLength - pngEnd;
-        console.log(
-          `Texture ${i}: byteLength=${image.byteLength}, pngEnd=${pngEnd}, extraBytes=${extraBytes}`,
-        );
-        if (extraBytes > 0) {
-          console.warn(
-            `Texture ${i} has ${extraBytes} trailing bytes after IEND!`,
-          );
-        }
+        expect(extraBytes).toBeLessThanOrEqual(image.byteLength);
       }
     }
 
