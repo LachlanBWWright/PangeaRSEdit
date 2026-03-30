@@ -226,8 +226,9 @@ describe("Bugdom 1 and Nanosaur 1 3DMF skeleton event parity", () => {
         const originalAnimation = original.skeleton.animations[animIndex];
         const roundtrippedAnimation = roundtripped.skeleton.animations[animIndex];
 
+        expect(originalAnimation).toBeDefined();
         expect(roundtrippedAnimation).toBeDefined();
-        if (!roundtrippedAnimation) continue;
+        if (!originalAnimation || !roundtrippedAnimation) continue;
 
         expect(roundtrippedAnimation.events.length).toBe(
           originalAnimation.events.length,
@@ -237,7 +238,8 @@ describe("Bugdom 1 and Nanosaur 1 3DMF skeleton event parity", () => {
           const originalEvent = originalAnimation.events[eventIndex];
           const roundtrippedEvent = roundtrippedAnimation.events[eventIndex];
           expect(roundtrippedEvent).toBeDefined();
-          if (!roundtrippedEvent) continue;
+          expect(originalEvent).toBeDefined();
+          if (!originalEvent || !roundtrippedEvent) continue;
 
           expect(roundtrippedEvent.time).toBe(originalEvent.time);
           expect(roundtrippedEvent.type).toBe(originalEvent.type);

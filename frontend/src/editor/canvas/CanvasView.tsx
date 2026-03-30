@@ -287,6 +287,8 @@ export function KonvaView({
             <>
               {liquidData && (
                 <WaterBodies
+                  headerData={headerData}
+                  terrainData={terrainData}
                   liquidData={liquidData}
                   setLiquidData={safeSetLiquidData}
                 />
@@ -298,7 +300,12 @@ export function KonvaView({
                 />
               )}
               {itemData && (
-                <Items itemData={itemData} setItemData={safeSetItemData} />
+                <Items
+                  headerData={headerData}
+                  terrainData={terrainData}
+                  itemData={itemData}
+                  setItemData={safeSetItemData}
+                />
               )}
               {splineData && (
                 <Splines
@@ -312,12 +319,19 @@ export function KonvaView({
           <>
             {liquidData && (
               <WaterBodies
+                headerData={headerData}
+                terrainData={terrainData}
                 liquidData={liquidData}
                 setLiquidData={safeSetLiquidData}
               />
             )}
             {itemData && (
-              <Items itemData={itemData} setItemData={safeSetItemData} />
+              <Items
+                headerData={headerData}
+                terrainData={terrainData}
+                itemData={itemData}
+                setItemData={safeSetItemData}
+              />
             )}
             {splineData && (
               <Splines
@@ -342,7 +356,12 @@ export function KonvaView({
               />
             )}
             {itemData && (
-              <Items itemData={itemData} setItemData={safeSetItemData} />
+              <Items
+                headerData={headerData}
+                terrainData={terrainData}
+                itemData={itemData}
+                setItemData={safeSetItemData}
+              />
             )}
             {splineData && (
               <Splines
@@ -352,6 +371,8 @@ export function KonvaView({
             )}
             {liquidData && (
               <WaterBodies
+                headerData={headerData}
+                terrainData={terrainData}
                 liquidData={liquidData}
                 setLiquidData={safeSetLiquidData}
               />
@@ -362,12 +383,19 @@ export function KonvaView({
           <>
             {liquidData && (
               <WaterBodies
+                headerData={headerData}
+                terrainData={terrainData}
                 liquidData={liquidData}
                 setLiquidData={safeSetLiquidData}
               />
             )}
             {itemData && (
-              <Items itemData={itemData} setItemData={safeSetItemData} />
+              <Items
+                headerData={headerData}
+                terrainData={terrainData}
+                itemData={itemData}
+                setItemData={safeSetItemData}
+              />
             )}
             {fenceData && (
               <Fences
@@ -387,6 +415,8 @@ export function KonvaView({
           <>
             {liquidData && (
               <WaterBodies
+                headerData={headerData}
+                terrainData={terrainData}
                 liquidData={liquidData}
                 setLiquidData={safeSetLiquidData}
               />
@@ -404,7 +434,12 @@ export function KonvaView({
               />
             )}
             {itemData && (
-              <Items itemData={itemData} setItemData={safeSetItemData} />
+              <Items
+                headerData={headerData}
+                terrainData={terrainData}
+                itemData={itemData}
+                setItemData={safeSetItemData}
+              />
             )}
           </>
         )}

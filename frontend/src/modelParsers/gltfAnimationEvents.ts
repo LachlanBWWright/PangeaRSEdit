@@ -1,5 +1,6 @@
 import { WebIO, type Animation } from "@gltf-transform/core";
 import type { AnimationEvent } from "@/components/AnimationViewer";
+import { err, ok, type Result } from "@/types/result";
 
 const ANIMATION_EXTRA_NAMESPACE = "pangears";
 
@@ -79,12 +80,14 @@ export async function updateGlbAnimationEvents(
   buffer: ArrayBuffer,
   animationIndex: number,
   events: AnimationEvent[],
-): Promise<ArrayBuffer> {
+): Promise<Result<ArrayBuffer, Error>> {
   const io = new WebIO();
   const doc = await io.readBinary(new Uint8Array(buffer));
   const animation = doc.getRoot().listAnimations()[animationIndex];
   if (!animation) {
-    throw new Error(`Animation #${animationIndex + 1} was not found in the GLB`);
+    return err(
+      new Error(`Animation #${animationIndex + 1} was not found in the GLB`),
+    );
   }
 
   const nextExtras = isRecord(animation.getExtras())
@@ -99,5 +102,5 @@ export async function updateGlbAnimationEvents(
   animation.setExtras(nextExtras);
 
   const glb = await io.writeBinary(doc);
-  return new Uint8Array(glb).buffer;
+  return ok(new Uint8Array(glb).buffer);
 }

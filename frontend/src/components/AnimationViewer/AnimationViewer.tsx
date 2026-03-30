@@ -33,7 +33,7 @@ import {
   durationErrorMessage,
 } from "./utils";
 
-type KeyframeHistorySnapshot = {
+interface KeyframeHistorySnapshot {
   animations: AnimationInfo[];
   selectedAnimation: number | null;
   selectedBoneName: string;
@@ -42,7 +42,7 @@ type KeyframeHistorySnapshot = {
   keyframeTimeInput: string;
   keyframeValueInputs: string[];
   isCreatingKeyframe: boolean;
-};
+}
 
 export function AnimationViewer({
   animations,
@@ -334,7 +334,7 @@ export function AnimationViewer({
     onBoneSelectionChange?.(selectedBoneName || null);
   }, [selectedBoneName, onBoneSelectionChange]);
 
-  const updateSelectedAnimation = (
+  const updateSelectedAnimation = useCallback((
     updater: (current: AnimationInfo) => AnimationInfo,
   ) => {
     if (selectedAnimation === null) {
@@ -348,7 +348,7 @@ export function AnimationViewer({
         ),
       );
     });
-  };
+  }, [baseAnimations, selectedAnimation]);
 
   const {
     isPlaying,
@@ -798,9 +798,9 @@ export function AnimationViewer({
     resetKeyframeHistory();
     const deletedIndex = selectedAnimation;
     setDraftEventsByAnimation((prev) => {
-      const next = { ...prev };
-      delete next[deletedIndex];
-      return next;
+      return Object.fromEntries(
+        Object.entries(prev).filter(([key]) => key !== String(deletedIndex)),
+      );
     });
     setDraftAnimations((prev) => {
       const currentAnimations = prev ?? baseAnimations;

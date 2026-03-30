@@ -101,7 +101,11 @@ function drawBubbles(ctx: CanvasRenderingContext2D, bubbleColor: string) {
     [34, 48, 2],
     [50, 52, 3],
   ];
-  for (const [x, y, radius] of points) {
+  for (const point of points) {
+    const [x, y, radius] = point;
+    if (x === undefined || y === undefined || radius === undefined) {
+      continue;
+    }
     ctx.beginPath();
     ctx.arc(x, y, radius, 0, Math.PI * 2);
     ctx.fill();
@@ -546,50 +550,55 @@ export function buildLiquidBodyCanvas(
   const pattern = ctx.createPattern(texture, "repeat");
   if (!pattern) return null;
 
-  ctx.save();
-  try {
-    ctx.translate(-minX, -minY);
-    ctx.beginPath();
-    ctx.moveTo(points[0][0], points[0][1]);
-    for (let i = 1; i < points.length; i++) {
-      ctx.lineTo(points[i][0], points[i][1]);
-    }
-    ctx.closePath();
-    ctx.clip();
-
-    for (let y = Math.floor(minY / cellSize) * cellSize; y < maxY; y += cellSize) {
-      for (let x = Math.floor(minX / cellSize) * cellSize; x < maxX; x += cellSize) {
-        const terrainHeights = [
-          sampleTerrainHeightAtPoint(x + 1, y + 1, headerData, terrainData, globals),
-          sampleTerrainHeightAtPoint(x + cellSize - 1, y + 1, headerData, terrainData, globals),
-          sampleTerrainHeightAtPoint(x + 1, y + cellSize - 1, headerData, terrainData, globals),
-          sampleTerrainHeightAtPoint(
-            x + cellSize - 1,
-            y + cellSize - 1,
-            headerData,
-            terrainData,
-            globals,
-          ),
-          sampleTerrainHeightAtPoint(
-            x + cellSize / 2,
-            y + cellSize / 2,
-            headerData,
-            terrainData,
-            globals,
-          ),
-        ];
-        const opacity = getLiquidCoverageOpacity(liquidSurfaceY, terrainHeights);
-        if (opacity <= 0) continue;
-
-        ctx.globalAlpha = opacity;
-        ctx.fillStyle = pattern;
-        ctx.fillRect(x, y, cellSize, cellSize);
-      }
-    }
-  } finally {
-    ctx.restore();
-    ctx.globalAlpha = 1;
+  const firstPoint = points[0];
+  if (!firstPoint) {
+    return null;
   }
+  ctx.save();
+  ctx.translate(-minX, -minY);
+  ctx.beginPath();
+  ctx.moveTo(firstPoint[0], firstPoint[1]);
+  for (let i = 1; i < points.length; i++) {
+    const point = points[i];
+    if (!point) {
+      continue;
+    }
+    ctx.lineTo(point[0], point[1]);
+  }
+  ctx.closePath();
+  ctx.clip();
+
+  for (let y = Math.floor(minY / cellSize) * cellSize; y < maxY; y += cellSize) {
+    for (let x = Math.floor(minX / cellSize) * cellSize; x < maxX; x += cellSize) {
+      const terrainHeights = [
+        sampleTerrainHeightAtPoint(x + 1, y + 1, headerData, terrainData, globals),
+        sampleTerrainHeightAtPoint(x + cellSize - 1, y + 1, headerData, terrainData, globals),
+        sampleTerrainHeightAtPoint(x + 1, y + cellSize - 1, headerData, terrainData, globals),
+        sampleTerrainHeightAtPoint(
+          x + cellSize - 1,
+          y + cellSize - 1,
+          headerData,
+          terrainData,
+          globals,
+        ),
+        sampleTerrainHeightAtPoint(
+          x + cellSize / 2,
+          y + cellSize / 2,
+          headerData,
+          terrainData,
+          globals,
+        ),
+      ];
+      const opacity = getLiquidCoverageOpacity(liquidSurfaceY, terrainHeights);
+      if (opacity <= 0) continue;
+
+      ctx.globalAlpha = opacity;
+      ctx.fillStyle = pattern;
+      ctx.fillRect(x, y, cellSize, cellSize);
+    }
+  }
+  ctx.restore();
+  ctx.globalAlpha = 1;
 
   return {
     canvas,

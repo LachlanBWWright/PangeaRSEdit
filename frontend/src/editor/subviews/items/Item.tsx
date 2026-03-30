@@ -37,6 +37,15 @@ export const Item = memo(function Item({
 }) {
   const setSelectedItem = useSetAtom(SelectedItem);
   const item = itemData.Itms[1000].obj[itemIdx];
+  const itemForRender = item ?? {
+    x: 0,
+    z: 0,
+    type: 0,
+    p0: 0,
+    p1: 0,
+    p2: 0,
+    p3: 0,
+  };
   const [hovering, setHovering] = useState(false);
   const globals = useAtomValue(Globals);
 
@@ -58,35 +67,31 @@ export const Item = memo(function Item({
     },
     [itemIdx, setItemData],
   );
-  if (item === null || item === undefined) return null;
-
-  const itemX = item.x - ITEM_BOX_OFFSET;
-  const itemZ = item.z - ITEM_BOX_OFFSET;
-  const itemName = getItemName(globals, item.type);
+  const itemX = itemForRender.x - ITEM_BOX_OFFSET;
+  const itemZ = itemForRender.z - ITEM_BOX_OFFSET;
+  const itemName = getItemName(globals, itemForRender.type);
 
   // Check if this is a liquid patch item (water, lava, honey, slime in Bugdom 1/Nanosaur 1)
-  const liquidPatchStyle = getLiquidPatchStyle(globals, item.type);
+  const liquidPatchStyle = getLiquidPatchStyle(globals, itemForRender.type);
   const liquidPatchDimensions = useMemo(
     () =>
       liquidPatchStyle
         ? getLiquidPatchDimensions(
             globals,
-            item.type,
-            item.p0,
-            item.p1,
-            item.p2,
-            item.p3,
+            itemForRender.type,
+            itemForRender.p0,
+            itemForRender.p1,
+            itemForRender.p2,
+            itemForRender.p3,
           )
         : null,
     [
-      globals.GAME_TYPE,
-      globals.TILE_SIZE,
-      globals.TILE_INGAME_SIZE,
-      item.type,
-      item.p0,
-      item.p1,
-      item.p2,
-      item.p3,
+      globals,
+      itemForRender.type,
+      itemForRender.p0,
+      itemForRender.p1,
+      itemForRender.p2,
+      itemForRender.p3,
       liquidPatchStyle,
     ],
   );
@@ -97,39 +102,42 @@ export const Item = memo(function Item({
             globals,
             headerData,
             terrainData,
-            item.type,
-            item.p0,
-            item.p1,
-            item.p2,
-            item.p3,
-            item.x,
-            item.z,
+            itemForRender.type,
+            itemForRender.p0,
+            itemForRender.p1,
+            itemForRender.p2,
+            itemForRender.p3,
+            itemForRender.x,
+            itemForRender.z,
           )
         : null,
     [
-      globals.GAME_TYPE,
-      globals.TILE_SIZE,
-      globals.TILE_INGAME_SIZE,
+      globals,
       headerData,
       terrainData,
-      item.type,
-      item.p0,
-      item.p1,
-      item.p2,
-      item.p3,
-      item.x,
-      item.z,
+      itemForRender.type,
+      itemForRender.p0,
+      itemForRender.p1,
+      itemForRender.p2,
+      itemForRender.p3,
+      itemForRender.x,
+      itemForRender.z,
       liquidPatchStyle,
     ],
   );
 
+  if (item === null || item === undefined) return null;
+
   // Render liquid patch items as rectangles to resemble water bodies
   if (liquidPatchStyle) {
-    const dims = liquidPatchDimensions!;
+    if (!liquidPatchDimensions) {
+      return null;
+    }
+    const dims = liquidPatchDimensions;
 
     // Position is centered on the item coordinates
-    const rectX = item.x - dims.width2D / 2;
-    const rectZ = item.z - dims.depth2D / 2;
+    const rectX = itemForRender.x - dims.width2D / 2;
+    const rectZ = itemForRender.z - dims.depth2D / 2;
 
     if (liquidPatchCanvas) {
       return (

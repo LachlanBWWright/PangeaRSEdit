@@ -6,6 +6,10 @@ import { parseBG3D } from "../../src/modelParsers/parseBG3D";
 import { unwrap } from "../../src/types/result";
 import { bg3dParsedToGLTF, gltfToBG3D } from "../../src/modelParsers/parsedBg3dGitfConverter";
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
 describe("BG3D animation events round-trip", () => {
   const bg3dPath = join(
     __dirname,
@@ -54,12 +58,10 @@ describe("BG3D animation events round-trip", () => {
     const gltfAnimation = gltfDoc.getRoot().listAnimations()[sourceIndex];
     expect(gltfAnimation).toBeDefined();
 
-    const gltfExtras = gltfAnimation?.getExtras() as
-      | Record<string, unknown>
-      | undefined;
-    const gltfPangears = gltfExtras?.pangears as
-      | { numAnimEvents?: number; events?: { time: number; type: number; value: number }[] }
-      | undefined;
+    const gltfExtras = gltfAnimation?.getExtras();
+    const gltfPangears = isRecord(gltfExtras) && isRecord(gltfExtras.pangears)
+      ? gltfExtras.pangears
+      : undefined;
     expect(gltfPangears?.numAnimEvents).toBe(sourceAnimation.events.length);
     expect(gltfPangears?.events).toEqual(sourceAnimation.events);
 

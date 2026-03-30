@@ -50,12 +50,16 @@ describe("generic glTF animation event extras", () => {
     const glbBuffer = await io.writeBinary(doc);
     const sourceBuffer = new Uint8Array(glbBuffer).buffer;
 
-    const updatedBuffer = await updateGlbAnimationEvents(sourceBuffer, 0, [
+    const updatedBufferResult = await updateGlbAnimationEvents(sourceBuffer, 0, [
       { time: 12, type: 8, value: 3 },
       { time: 2, type: 0, value: 0 },
     ]);
+    expect(updatedBufferResult.isOk()).toBe(true);
+    if (updatedBufferResult.isErr()) {
+      return;
+    }
 
-    const metadata = await extractAnimationMetadataFromGlb(updatedBuffer);
+    const metadata = await extractAnimationMetadataFromGlb(updatedBufferResult.value);
     expect(metadata.PlainGLB?.eventCount).toBe(2);
     expect(metadata.PlainGLB?.events).toEqual([
       { time: 2, type: 0, value: 0 },

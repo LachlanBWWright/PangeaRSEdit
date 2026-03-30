@@ -315,10 +315,10 @@ describe("BG3D download after GLB import", () => {
     // Events are not preserved in clean GLB roundtrip
     expect(
       recoveredParsed.skeleton?.animations.map((anim) => anim.numAnimEvents),
-    ).toEqual(parsed.skeleton?.animations.map(() => 0));
+    ).toEqual(parsed.skeleton?.animations.map((anim) => anim.numAnimEvents));
     expect(
       recoveredParsed.skeleton?.animations.map((anim) => anim.events.length),
-    ).toEqual(parsed.skeleton?.animations.map(() => 0));
+    ).toEqual(parsed.skeleton?.animations.map((anim) => anim.events.length));
 
     const originalForkDiff = diffForks(originalSkeleton, skeletonBytes);
     console.log(

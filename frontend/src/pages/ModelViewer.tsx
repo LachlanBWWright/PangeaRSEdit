@@ -306,11 +306,16 @@ export function ModelViewer() {
         setBg3dParsed(result.parsed ?? updatedParsed);
         setGltfBuffer(result.result);
         setGltfUrl(newUrl);
-        try {
-          const metadata = await extractAnimationMetadataFromGlb(result.result);
-          setGltfAnimationMetadata(metadata);
-        } catch (error) {
-          console.warn("Failed to refresh animation metadata after edit", error);
+        const metadataResult = await fromPromise(
+          extractAnimationMetadataFromGlb(result.result),
+        );
+        if (metadataResult.isOk()) {
+          setGltfAnimationMetadata(metadataResult.value);
+        } else {
+          console.warn(
+            "Failed to refresh animation metadata after edit",
+            metadataResult.error,
+          );
         }
         toast.success(
           `Updated animation events for animation #${animationIndex + 1}`,
@@ -328,39 +333,51 @@ export function ModelViewer() {
         return;
       }
 
-      try {
-        const updatedBuffer = await updateGlbAnimationEvents(
+      const updatedBufferResult = await fromPromise(
+        updateGlbAnimationEvents(
           gltfBuffer,
           animationIndex,
           nextEvents,
-        );
-
-        if (gltfUrl) {
-          URL.revokeObjectURL(gltfUrl);
-        }
-
-        const glbBlob = new Blob([updatedBuffer], {
-          type: "model/gltf-binary",
-        });
-        const newUrl = URL.createObjectURL(glbBlob);
-        setGltfBuffer(updatedBuffer);
-        setGltfUrl(newUrl);
-        try {
-          const metadata = await extractAnimationMetadataFromGlb(updatedBuffer);
-          setGltfAnimationMetadata(metadata);
-        } catch (error) {
-          console.warn("Failed to refresh animation metadata after edit", error);
-        }
-        toast.success(
-          `Updated animation events for animation #${animationIndex + 1}`,
-        );
-      } catch (error) {
+        ),
+      );
+      if (updatedBufferResult.isErr()) {
         toast.error(
-          `Failed to update animation events: ${
-            error instanceof Error ? error.message : String(error)
-          }`,
+          `Failed to update animation events: ${updatedBufferResult.error.message}`,
+        );
+        return;
+      }
+      if (updatedBufferResult.value.isErr()) {
+        toast.error(
+          `Failed to update animation events: ${updatedBufferResult.value.error.message}`,
+        );
+        return;
+      }
+      const updatedBuffer = updatedBufferResult.value.value;
+
+      if (gltfUrl) {
+        URL.revokeObjectURL(gltfUrl);
+      }
+
+      const glbBlob = new Blob([updatedBuffer], {
+        type: "model/gltf-binary",
+      });
+      const newUrl = URL.createObjectURL(glbBlob);
+      setGltfBuffer(updatedBuffer);
+      setGltfUrl(newUrl);
+      const metadataResult = await fromPromise(
+        extractAnimationMetadataFromGlb(updatedBuffer),
+      );
+      if (metadataResult.isOk()) {
+        setGltfAnimationMetadata(metadataResult.value);
+      } else {
+        console.warn(
+          "Failed to refresh animation metadata after edit",
+          metadataResult.error,
         );
       }
+      toast.success(
+        `Updated animation events for animation #${animationIndex + 1}`,
+      );
     },
     [animations.length, bg3dParsed, gltfBuffer, gltfUrl],
   );
@@ -368,7 +385,6 @@ export function ModelViewer() {
   useEffect(() => {
     let cancelled = false;
     if (!gltfBuffer || bg3dParsed?.skeleton?.animations) {
-      setGltfAnimationMetadata({});
       return undefined;
     }
 
