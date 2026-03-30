@@ -49,6 +49,17 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
+function toExactArrayBuffer(data: Uint8Array | ArrayBuffer): ArrayBuffer {
+  if (data instanceof ArrayBuffer) {
+    return data.slice(0);
+  }
+  const copy = new ArrayBuffer(data.byteLength);
+  new Uint8Array(copy).set(
+    new Uint8Array(data.buffer, data.byteOffset, data.byteLength),
+  );
+  return copy;
+}
+
 /**
  * Matrix utilities for coordinate transformations
  */
@@ -963,17 +974,7 @@ export async function gltfToBG3D(doc: Document): Promise<BG3DParseResult> {
               isJpeg: true,
             });
           } else if (isPNG) {
-            const imageBuffer = (() => {
-              const buf = image.buffer;
-              if (buf instanceof ArrayBuffer) return buf;
-              const u8 = new Uint8Array(buf);
-              const newBuffer = u8.buffer.slice(0);
-              if (!(newBuffer instanceof ArrayBuffer)) {
-                console.error("Failed to convert to ArrayBuffer - using empty buffer");
-                return new ArrayBuffer(0);
-              }
-              return newBuffer;
-            })();
+            const imageBuffer = toExactArrayBuffer(image);
             const rgbaRes = await pngToRgba8(imageBuffer);
 
             // Infer srcPixelFormat from actual pixel data

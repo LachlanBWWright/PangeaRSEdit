@@ -11,6 +11,7 @@ import { bg3dParseResultToMetaFile, write3DMFFromMetaFile } from "../../../model
 import { bg3dSkeletonToSkeletonResource } from "../../../modelParsers/skeletonExport";
 import { skeletonResourceToBinary } from "../../../modelParsers/skeletonBinaryExport";
 import { DEFAULT_BG3D_EXPORT_TARGET, type BG3DExportTarget } from "../../../modelParsers/bg3dExportTargets";
+import { getGlbToBg3dWorkerResponse } from "./bg3dGltfWorkerResponses";
 import type { Texture } from "../types";
 import { err, ok, fromPromise, type Result } from "@/types/result";
 
@@ -65,10 +66,10 @@ async function glbUrlToBg3dResponse(
         reject(e);
         worker.terminate();
       };
-      const message: BG3DGltfWorkerMessage = {
+      const message = {
         type: "glb-to-bg3d",
         buffer: glbBytesResult.value,
-      };
+      } satisfies BG3DGltfWorkerMessage;
       worker.postMessage(message);
     }),
   );
@@ -112,24 +113,28 @@ export async function getBG3DDownloadArtifacts(
     return err(result.error);
   }
 
-  if (result.value.type === "error") {
-    return err(new Error(`Failed to convert GLB to BG3D: ${result.value.error}`));
+  const workerResponseResult = getGlbToBg3dWorkerResponse(
+    result.value,
+    "convert GLB to BG3D for BG3D export",
+  );
+  if (workerResponseResult.isErr()) {
+    return err(workerResponseResult.error);
   }
-  if (result.value.type !== "glb-to-bg3d") {
-    return err(new Error(`Unexpected worker response type: ${result.value.type}`));
-  }
+  const workerResponse = workerResponseResult.value;
 
-  const parsedResult = result.value.parsed
-    ? ok(result.value.parsed)
-    : parseBG3D(result.value.result);
+  const parsedResult = workerResponse.parsed
+    ? ok(workerResponse.parsed)
+    : parseBG3D(workerResponse.result);
   if (parsedResult.isErr()) {
-    return err(parsedResult.error);
+    return err(
+      new Error(`Failed to parse converted BG3D for export: ${parsedResult.error.message}`),
+    );
   }
   const parsed = parsedResult.value;
 
   let skeletonBytes: ArrayBuffer | undefined;
-  if (result.value.skeletonResult) {
-    skeletonBytes = result.value.skeletonResult;
+  if (workerResponse.skeletonResult) {
+    skeletonBytes = workerResponse.skeletonResult;
   } else if (parsed.skeleton) {
     const skeletonResource = bg3dSkeletonToSkeletonResource(
       parsed.skeleton,
@@ -148,7 +153,7 @@ export async function getBG3DDownloadArtifacts(
   }
 
   return ok({
-    bg3dBytes: result.value.result,
+    bg3dBytes: workerResponse.result,
     skeletonBytes,
   });
 }
@@ -163,16 +168,18 @@ export async function get3DMFDownloadArtifacts(
     return err(result.error);
   }
 
-  if (result.value.type === "error") {
-    return err(new Error(`Failed to convert GLB to BG3D: ${result.value.error}`));
+  const workerResponseResult = getGlbToBg3dWorkerResponse(
+    result.value,
+    "convert GLB to BG3D for 3DMF export",
+  );
+  if (workerResponseResult.isErr()) {
+    return err(workerResponseResult.error);
   }
-  if (result.value.type !== "glb-to-bg3d") {
-    return err(new Error(`Unexpected worker response type: ${result.value.type}`));
-  }
+  const workerResponse = workerResponseResult.value;
 
-  const parsedBg3dResult = result.value.parsed
-    ? ok(result.value.parsed)
-    : parseBG3D(result.value.result);
+  const parsedBg3dResult = workerResponse.parsed
+    ? ok(workerResponse.parsed)
+    : parseBG3D(workerResponse.result);
   if (parsedBg3dResult.isErr()) {
     return err(
       new Error(
@@ -184,12 +191,14 @@ export async function get3DMFDownloadArtifacts(
 
   const metaResult = bg3dParseResultToMetaFile(parsedBg3d);
   if (metaResult.isErr()) {
-    return err(new Error(`Failed to convert to 3DMF: ${metaResult.error.message}`));
+    return err(
+      new Error(`Failed to convert BG3D export data to 3DMF: ${metaResult.error.message}`),
+    );
   }
 
   const writeResult = write3DMFFromMetaFile(metaResult.value);
   if (writeResult.isErr()) {
-    return err(new Error(`Failed to write 3DMF: ${writeResult.error.message}`));
+    return err(new Error(`Failed to serialize 3DMF export: ${writeResult.error.message}`));
   }
 
   let skeletonBytes: ArrayBuffer | undefined;
