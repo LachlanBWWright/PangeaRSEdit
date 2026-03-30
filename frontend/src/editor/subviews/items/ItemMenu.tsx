@@ -14,7 +14,7 @@ import {
 import { TerrainItemTypeParams, ItemType } from "../../../data/items/ottoItemType";
 import type { ParamDescription, FlagDescription } from "../../../data/items/itemParams";
 import { parseU16, parseU8 } from "../../../utils/numberParsers";
-import { useEffect } from "react";
+import { memo, useCallback, useEffect, useMemo } from "react";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -31,7 +31,7 @@ import { ParamTooltip } from "./ParamTooltip";
 import { Label } from "@/components/ui/label";
 import { getGameKeyFromName } from "@/validation/gameRepositories";
 
-export function ItemMenu({
+export const ItemMenu = memo(function ItemMenu({
   itemData,
   setItemData,
 }: {
@@ -49,27 +49,78 @@ export function ItemMenu({
   const selectedItemData =
     selectedItem !== undefined ? itemData.Itms[1000].obj[selectedItem] : null;
 
-  const itemTypesResult = getItemTypes(globals);
-  const allItemValues = itemTypesResult.isOk()
-    ? itemTypesResult.value
-        .map((key) => parseInt(key))
-        .filter((key) => isNaN(key) === false)
-    : [];
+  const allItemValues = useMemo(() => {
+    const result = getItemTypes(globals);
+    return result.isOk()
+      ? result.value.map((key) => parseInt(key)).filter((key) => !isNaN(key))
+      : [];
+  }, [globals]);
 
-  // Filter to safe items if enabled
-  const itemValues = filterToSafe && safeItemTypes.size > 0
-    ? allItemValues.filter((type) => safeItemTypes.has(type))
-    : allItemValues;
+  const itemValues = useMemo(
+    () =>
+      filterToSafe && safeItemTypes.size > 0
+        ? allItemValues.filter((type) => safeItemTypes.has(type))
+        : allItemValues,
+    [filterToSafe, safeItemTypes, allItemValues],
+  );
+
+  const handleTypeChange = useCallback(
+    (e: string) => {
+      const newItemType = parseInt(e);
+      setItemData((draft) => {
+        if (selectedItem === undefined) return;
+        const item = draft.Itms[1000]?.obj?.[selectedItem];
+        if (item) item.type = newItemType;
+      });
+    },
+    [selectedItem, setItemData],
+  );
+
+  const handleDeleteItem = useCallback(() => {
+    if (selectedItem === undefined) return;
+    setItemData((draft) => {
+      draft.Itms[1000].obj.splice(selectedItem, 1);
+    });
+    setSelectedItem(undefined);
+  }, [selectedItem, setItemData, setSelectedItem]);
 
   return (
     <div className="flex flex-col gap-2">
       {selectedItemData === null || selectedItemData === undefined ? (
         <AddItemMenu />
       ) : (
-        <p>
-          Item {selectedItemData.type} ({selectedItemData.x},
-          {selectedItemData.z})
-        </p>
+        <div className="grid grid-cols-[auto_1fr_auto_1fr] gap-x-2 gap-y-1 items-center text-sm">
+          <span className="text-gray-400">X</span>
+          <Input
+            type="number"
+            className="h-7 text-xs"
+            value={selectedItemData.x}
+            onChange={(e) => {
+              const val = parseInt(e.target.value);
+              if (isNaN(val)) return;
+              setItemData((draft) => {
+                if (selectedItem === undefined) return;
+                const item = draft.Itms[1000]?.obj?.[selectedItem];
+                if (item) item.x = val;
+              });
+            }}
+          />
+          <span className="text-gray-400">Z</span>
+          <Input
+            type="number"
+            className="h-7 text-xs"
+            value={selectedItemData.z}
+            onChange={(e) => {
+              const val = parseInt(e.target.value);
+              if (isNaN(val)) return;
+              setItemData((draft) => {
+                if (selectedItem === undefined) return;
+                const item = draft.Itms[1000]?.obj?.[selectedItem];
+                if (item) item.z = val;
+              });
+            }}
+          />
+        </div>
       )}
 
       <div className="flex flex-col gap-2">
@@ -77,16 +128,7 @@ export function ItemMenu({
           <>
             <Select
               value={selectedItemData.type.toString() ?? ""}
-              onValueChange={(e) => {
-                const newItemType = parseInt(e);
-                setItemData((draft) => {
-                  if (selectedItem === undefined) return;
-                  const item = draft.Itms[1000]?.obj?.[selectedItem];
-                  if (item) {
-                    item.type = newItemType;
-                  }
-                });
-              }}
+              onValueChange={handleTypeChange}
             >
               <SelectTrigger>
                 <SelectValue>
@@ -237,13 +279,7 @@ export function ItemMenu({
             <Button
               variant="destructive"
               disabled={selectedItem === undefined}
-              onClick={() => {
-                if (selectedItem === undefined) return;
-                setItemData((draft) => {
-                  draft.Itms[1000].obj.splice(selectedItem, 1);
-                });
-                setSelectedItem(undefined);
-              }}
+              onClick={handleDeleteItem}
             >
               Delete Item
             </Button>
@@ -252,21 +288,22 @@ export function ItemMenu({
       </div>
     </div>
   );
-}
+});
 
 function AddItemMenu() {
   const [clickToAddItem, setClickToAddItem] = useAtom(ClickToAddItem);
+  const globals = useAtomValue(Globals);
+
   useEffect(() => {
     return () => setClickToAddItem(undefined);
   }, [setClickToAddItem]);
-  const globals = useAtomValue(Globals);
 
-  const itemTypesResult = getItemTypes(globals);
-  const itemValues = itemTypesResult.isOk()
-    ? itemTypesResult.value
-        .map((key) => parseInt(key))
-        .filter((key) => isNaN(key) === false)
-    : [];
+  const itemValues = useMemo(() => {
+    const result = getItemTypes(globals);
+    return result.isOk()
+      ? result.value.map((key) => parseInt(key)).filter((key) => !isNaN(key))
+      : [];
+  }, [globals]);
 
   if (clickToAddItem !== undefined)
     return (

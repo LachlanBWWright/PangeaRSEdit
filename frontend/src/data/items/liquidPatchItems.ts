@@ -9,6 +9,8 @@
  */
 
 import { Game, GlobalsInterface } from "../globals/globals";
+import { HeaderData, TerrainData } from "@/python/structSpecs/LevelTypes";
+import { sampleTerrainHeightAtPoint } from "@/editor/subviews/water/liquidRenderingUtils";
 
 /**
  * Types of liquid patches that can appear as items
@@ -48,6 +50,12 @@ export interface LiquidPatchDimensions {
   yValue3D: number;
   /** If true, yValue3D is an absolute Y position; if false, it's an offset from terrain height */
   isAbsoluteY: boolean;
+}
+
+export interface LiquidPatchCanvas {
+  canvas: HTMLCanvasElement;
+  width: number;
+  height: number;
 }
 
 /**
@@ -163,6 +171,10 @@ const BUGDOM_DEFAULT_TILES = 4;
  * Default tile count for Nanosaur 1 liquid patches
  */
 const NANOSAUR_DEFAULT_TILES = 4;
+const NANOSAUR_LAVA_Y_OFFSET = 50.0;
+const NANOSAUR_LAVA_FIXED_Y = 305.0;
+const NANOSAUR_WATER_Y_OFFSET = 50.0;
+const NANOSAUR_WATER_FIXED_Y = 210.0;
 
 /**
  * Bugdom 1 liquid Y position lookup table.
@@ -186,6 +198,14 @@ const BUGDOM_WATER_DEFAULT_Y_OFFSET = 3.0;
  * Default Y offset for Bugdom 1 other liquids when p2 is 0
  */
 const BUGDOM_OTHER_LIQUID_DEFAULT_Y_OFFSET = 40.0;
+const LIQUID_PATCH_CANVAS_CACHE = new WeakMap<
+  TerrainData,
+  Map<string, HTMLCanvasElement>
+>();
+const LIQUID_PATCH_CANVAS_NO_TERRAIN_CACHE = new Map<
+  string,
+  HTMLCanvasElement
+>();
 
 /**
  * Get the dimensions of a liquid patch based on game and item parameters.
@@ -276,12 +296,32 @@ export function getLiquidPatchDimensions(
   if (globals.GAME_TYPE === Game.NANOSAUR) {
     // Nanosaur 1 - both LavaPatch and WaterPatch use 2.0x default scale
     let scale = 2.0;
+    let yValue3D = 0;
+    let isAbsoluteY = false;
 
     if (itemType === 4) {
       // LavaPatch - p3 bit 2 = half-size flag
       // Default is 2.0x scale, bit 2 set = 1.0x scale
       const halfSizeFlag = (p3 & (1 << 2)) !== 0;
       scale = halfSizeFlag ? 1.0 : 2.0;
+      const autoY = (p3 & 1) !== 0;
+      if (autoY) {
+        yValue3D = NANOSAUR_LAVA_Y_OFFSET;
+        isAbsoluteY = false;
+      } else {
+        yValue3D = NANOSAUR_LAVA_FIXED_Y;
+        isAbsoluteY = true;
+      }
+    } else if (itemType === 14) {
+      // WaterPatch - p3 bit 0 toggles terrain-relative placement
+      const autoY = (p3 & 1) !== 0;
+      if (autoY) {
+        yValue3D = NANOSAUR_WATER_Y_OFFSET;
+        isAbsoluteY = false;
+      } else {
+        yValue3D = NANOSAUR_WATER_FIXED_Y;
+        isAbsoluteY = true;
+      }
     }
     // WaterPatch (type 14) always uses 2.0x scale
 
@@ -293,10 +333,6 @@ export function getLiquidPatchDimensions(
     // Size in editor coordinates (2D) - divide by scale factor
     const width2D = width3D / coordScale;
     const depth2D = depth3D / coordScale;
-
-    // Nanosaur Y offset - not implemented, would need source code analysis
-    const yValue3D = 0;
-    const isAbsoluteY = false;
 
     return { width2D, depth2D, width3D, depth3D, yValue3D, isAbsoluteY };
   }
@@ -310,4 +346,160 @@ export function getLiquidPatchDimensions(
     yValue3D: 0,
     isAbsoluteY: false,
   };
+}
+
+function drawLiquidPatchCanvas(
+  canvas: HTMLCanvasElement,
+  style: LiquidPatchStyle,
+  globals: GlobalsInterface,
+  headerData: HeaderData | null,
+  terrainData: TerrainData | null,
+  width: number,
+  height: number,
+  centerX: number,
+  centerZ: number,
+  liquidSurfaceY: number,
+) {
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return;
+
+  ctx.clearRect(0, 0, width, height);
+  ctx.imageSmoothingEnabled = false;
+
+  const cellSize = Math.max(2, Math.round(globals.TILE_SIZE / 8));
+  const left = centerX - width / 2;
+  const top = centerZ - height / 2;
+
+  for (let y = 0; y < height; y += cellSize) {
+    for (let x = 0; x < width; x += cellSize) {
+      const sampleX = left + x + cellSize / 2;
+      const sampleZ = top + y + cellSize / 2;
+      const terrainY =
+        headerData && terrainData
+          ? sampleTerrainHeightAtPoint(
+              sampleX,
+              sampleZ,
+              headerData,
+              terrainData,
+              globals,
+            )
+          : -Infinity;
+      if (terrainY > liquidSurfaceY) continue;
+
+      ctx.globalAlpha = 0.9;
+      ctx.fillStyle = style.fill2D;
+      ctx.fillRect(
+        x,
+        y,
+        Math.min(cellSize, width - x),
+        Math.min(cellSize, height - y),
+      );
+    }
+  }
+
+  ctx.globalAlpha = 1;
+  ctx.strokeStyle = style.color2D;
+  ctx.lineJoin = "miter";
+  ctx.lineCap = "square";
+
+  const outerStroke = 3;
+  ctx.lineWidth = outerStroke;
+  ctx.strokeRect(
+    outerStroke / 2,
+    outerStroke / 2,
+    Math.max(0, width - outerStroke),
+    Math.max(0, height - outerStroke),
+  );
+
+  const innerWidth = Math.max(0, width * 0.7);
+  const innerHeight = Math.max(0, height * 0.7);
+  const innerX = (width - innerWidth) / 2;
+  const innerY = (height - innerHeight) / 2;
+  ctx.lineWidth = 1;
+  ctx.strokeRect(innerX, innerY, innerWidth, innerHeight);
+
+  ctx.fillStyle = style.color2D;
+  ctx.fillRect(width / 2 - 4, height / 2 - 4, 8, 8);
+}
+
+export function getLiquidPatchCanvas(
+  globals: GlobalsInterface,
+  headerData: HeaderData | null,
+  terrainData: TerrainData | null,
+  itemType: number,
+  p0: number,
+  p1: number,
+  p2: number,
+  p3: number,
+  centerX: number,
+  centerZ: number,
+): LiquidPatchCanvas | null {
+  const style = getLiquidPatchStyle(globals, itemType);
+  if (!style) return null;
+
+  const dims = getLiquidPatchDimensions(globals, itemType, p0, p1, p2, p3);
+  const width = Math.max(1, Math.round(dims.width2D));
+  const height = Math.max(1, Math.round(dims.depth2D));
+  const liquidSurfaceY = dims.isAbsoluteY
+    ? dims.yValue3D
+    : headerData && terrainData
+      ? sampleTerrainHeightAtPoint(
+          centerX,
+          centerZ,
+          headerData,
+          terrainData,
+          globals,
+        ) + dims.yValue3D
+      : dims.yValue3D;
+
+  const cacheKey = [
+    globals.GAME_TYPE,
+    globals.TILE_SIZE,
+    globals.TILE_INGAME_SIZE,
+    itemType,
+    p0,
+    p1,
+    p2,
+    p3,
+    width,
+    height,
+    Math.round(centerX),
+    Math.round(centerZ),
+    Math.round(liquidSurfaceY),
+  ].join(":");
+
+  const cachedCanvas = terrainData
+    ? LIQUID_PATCH_CANVAS_CACHE.get(terrainData)?.get(cacheKey)
+    : LIQUID_PATCH_CANVAS_NO_TERRAIN_CACHE.get(cacheKey);
+  if (cachedCanvas) {
+    return { canvas: cachedCanvas, width, height };
+  }
+
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+  drawLiquidPatchCanvas(
+    canvas,
+    style,
+    globals,
+    headerData,
+    terrainData,
+    width,
+    height,
+    centerX,
+    centerZ,
+    liquidSurfaceY,
+  );
+  if (terrainData) {
+    let terrainCache = LIQUID_PATCH_CANVAS_CACHE.get(terrainData);
+    if (!terrainCache) {
+      terrainCache = new Map<string, HTMLCanvasElement>();
+      LIQUID_PATCH_CANVAS_CACHE.set(terrainData, terrainCache);
+    }
+    terrainCache.set(cacheKey, canvas);
+  } else {
+    LIQUID_PATCH_CANVAS_NO_TERRAIN_CACHE.set(cacheKey, canvas);
+  }
+
+  return { canvas, width, height };
 }

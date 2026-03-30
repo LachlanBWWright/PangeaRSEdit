@@ -184,10 +184,10 @@ describe("BG3D + Skeleton Roundtrip Tests with FULL ACCURACY", () => {
       "RelP:",
       Object.keys(roundtrip1SkeletonResource.RelP || {}).length,
     );
-    console.log("AnHd:", Object.keys(roundtrip1SkeletonResource.AnHd).length);
-    console.log("Evnt:", Object.keys(roundtrip1SkeletonResource.Evnt).length);
-    console.log("NumK:", Object.keys(roundtrip1SkeletonResource.NumK).length);
-    console.log("KeyF:", Object.keys(roundtrip1SkeletonResource.KeyF).length);
+    console.log("AnHd:", Object.keys(roundtrip1SkeletonResource.AnHd || {}).length);
+    console.log("Evnt:", Object.keys(roundtrip1SkeletonResource.Evnt || {}).length);
+    console.log("NumK:", Object.keys(roundtrip1SkeletonResource.NumK || {}).length);
+    console.log("KeyF:", Object.keys(roundtrip1SkeletonResource.KeyF || {}).length);
     console.log(
       "alis:",
       Object.keys(roundtrip1SkeletonResource.alis || {}).length,
@@ -272,10 +272,10 @@ describe("BG3D + Skeleton Roundtrip Tests with FULL ACCURACY", () => {
       "RelP:",
       Object.keys(roundtrip2SkeletonResource.RelP || {}).length,
     );
-    console.log("AnHd:", Object.keys(roundtrip2SkeletonResource.AnHd).length);
-    console.log("Evnt:", Object.keys(roundtrip2SkeletonResource.Evnt).length);
-    console.log("NumK:", Object.keys(roundtrip2SkeletonResource.NumK).length);
-    console.log("KeyF:", Object.keys(roundtrip2SkeletonResource.KeyF).length);
+    console.log("AnHd:", Object.keys(roundtrip2SkeletonResource.AnHd || {}).length);
+    console.log("Evnt:", Object.keys(roundtrip2SkeletonResource.Evnt || {}).length);
+    console.log("NumK:", Object.keys(roundtrip2SkeletonResource.NumK || {}).length);
+    console.log("KeyF:", Object.keys(roundtrip2SkeletonResource.KeyF || {}).length);
     console.log(
       "alis:",
       Object.keys(roundtrip2SkeletonResource.alis || {}).length,
@@ -320,8 +320,8 @@ describe("BG3D + Skeleton Roundtrip Tests with FULL ACCURACY", () => {
 
     // Debug: Compare first keyframe resource
     console.log("\n=== FIRST KEYFRAME RESOURCE COMPARISON ===");
-    const rt1KeyF1000 = roundtrip1SkeletonResource.KeyF["1000"];
-    const rt2KeyF1000 = roundtrip2SkeletonResource.KeyF["1000"];
+    const rt1KeyF1000 = roundtrip1SkeletonResource.KeyF?.["1000"];
+    const rt2KeyF1000 = roundtrip2SkeletonResource.KeyF?.["1000"];
     console.log("RT1 KeyF 1000 count:", rt1KeyF1000?.obj?.length || 0);
     console.log("RT2 KeyF 1000 count:", rt2KeyF1000?.obj?.length || 0);
     if (rt1KeyF1000?.obj?.[0] && rt2KeyF1000?.obj?.[0]) {
@@ -595,16 +595,7 @@ describe("BG3D + Skeleton Roundtrip Tests with FULL ACCURACY", () => {
     expect(originalBg3d.ok).toBe(true);
     if (!originalBg3d.ok) return;
     const originalBg3dParsed = originalBg3d.value;
-    const gltfResult = await bg3dParsedToGLTF(originalBg3dParsed, {
-      bg3dBuffer: bg3dData.buffer.slice(
-        bg3dData.byteOffset,
-        bg3dData.byteOffset + bg3dData.byteLength,
-      ),
-      skeletonBuffer: skeletonData.buffer.slice(
-        skeletonData.byteOffset,
-        skeletonData.byteOffset + skeletonData.byteLength,
-      ),
-    });
+    const gltfResult = await bg3dParsedToGLTF(originalBg3dParsed);
     const roundtripResult = await gltfToBG3D(gltfResult);
 
     // Get skeletons with null checks

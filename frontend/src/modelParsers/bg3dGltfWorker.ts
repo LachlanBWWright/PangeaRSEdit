@@ -45,6 +45,12 @@ export type BG3DGltfWorkerMessage =
       requestId?: string;
     }
   | {
+      type: "model-with-skeleton-to-glb";
+      modelBuffer: ArrayBuffer;
+      skeletonData: SkeletonResource;
+      requestId?: string;
+    }
+  | {
       type: "bg3d-parsed-to-glb";
       parsed: BG3DParseResult;
       requestId?: string;
@@ -59,40 +65,55 @@ export type BG3DGltfWorkerResponse =
   | {
       type: "bg3d-to-glb";
       result: ArrayBuffer;
+      skeletonResult?: ArrayBuffer;
       parsed?: BG3DParseResult;
       requestId?: string;
     }
   | {
       type: "glb-to-bg3d";
       result: ArrayBuffer;
+      skeletonResult?: ArrayBuffer;
+      parsed?: BG3DParseResult;
       requestId?: string;
     }
   | {
       type: "glb-to-bg3d-with-skeleton";
       bg3dResult: ArrayBuffer;
       skeletonResult?: ArrayBuffer;
+      parsed?: BG3DParseResult;
       requestId?: string;
     }
   | {
       type: "bg3d-with-skeleton-to-glb";
       result: ArrayBuffer;
+      skeletonResult?: ArrayBuffer;
+      parsed?: BG3DParseResult;
+      requestId?: string;
+    }
+  | {
+      type: "model-with-skeleton-to-glb";
+      result: ArrayBuffer;
+      skeletonResult?: ArrayBuffer;
       parsed?: BG3DParseResult;
       requestId?: string;
     }
   | {
       type: "bg3d-parsed-to-glb";
       result: ArrayBuffer;
+      skeletonResult?: ArrayBuffer;
       parsed: BG3DParseResult;
       requestId?: string;
     }
   | {
       type: "bg3d-parsed-to-bg3d";
       result: ArrayBuffer;
+      skeletonResult?: ArrayBuffer;
       requestId?: string;
     }
   | {
       type: "error";
       error: string;
+      skeletonResult?: ArrayBuffer;
       requestId?: string;
     };
 
@@ -148,6 +169,33 @@ self.onmessage = async (e: MessageEvent<BG3DGltfWorkerMessage>) => {
         requestId,
       };
       self.postMessage.call(self, response);
+    } else if (msg.type === "model-with-skeleton-to-glb") {
+      const parseResult = parseBG3DWithSkeletonResource(
+        msg.modelBuffer,
+        msg.skeletonData,
+      );
+      if (isErr(parseResult)) {
+        const response: BG3DGltfWorkerResponse = {
+          type: "error",
+          error: parseResult.error.message,
+          requestId,
+        };
+        self.postMessage(response);
+        return;
+      }
+      const parsed = parseResult.value;
+      const doc = bg3dParsedToGLTF(parsed);
+      const io = new WebIO();
+      const glbBuffer = await io.writeBinary(doc);
+      const arrBuffer = new Uint8Array(glbBuffer).buffer;
+
+      const response: BG3DGltfWorkerResponse = {
+        type: "model-with-skeleton-to-glb",
+        result: arrBuffer,
+        parsed,
+        requestId,
+      };
+      self.postMessage.call(self, response);
     } else if (msg.type === "bg3d-parsed-to-glb") {
       const doc = bg3dParsedToGLTF(msg.parsed);
       const io = new WebIO();
@@ -172,31 +220,26 @@ self.onmessage = async (e: MessageEvent<BG3DGltfWorkerMessage>) => {
     } else if (msg.type === "glb-to-bg3d") {
       const io = new WebIO();
       const doc = await io.readBinary(new Uint8Array(msg.buffer));
-      const parsed = gltfToBG3D(doc);
-      const bg3d = bg3dParsedToBG3D(await parsed);
+      const parsedBg3d = await gltfToBG3D(doc);
+      const bg3d = bg3dParsedToBG3D(parsedBg3d);
+
       const response: BG3DGltfWorkerResponse = {
         type: "glb-to-bg3d",
         result: bg3d,
+        parsed: parsedBg3d,
         requestId,
       };
       self.postMessage.call(self, response);
     } else if (msg.type === "glb-to-bg3d-with-skeleton") {
       const io = new WebIO();
       const doc = await io.readBinary(new Uint8Array(msg.buffer));
-      const parsed = gltfToBG3D(doc);
-      const bg3d = bg3dParsedToBG3D(await parsed);
-      
-      // TODO: Generate skeleton resource file if animations exist
-      let skeletonResult: ArrayBuffer | undefined;
-      const parsedData = await parsed;
-      if (parsedData.skeleton?.animations && parsedData.skeleton.animations.length > 0) {
-        // For now, we'll need to implement skeleton generation from BG3D
-      }
-      
+      const parsedBg3d = await gltfToBG3D(doc);
+      const bg3d = bg3dParsedToBG3D(parsedBg3d);
+
       const response: BG3DGltfWorkerResponse = {
         type: "glb-to-bg3d-with-skeleton",
         bg3dResult: bg3d,
-        skeletonResult,
+        parsed: parsedBg3d,
         requestId,
       };
       self.postMessage.call(self, response);

@@ -114,6 +114,32 @@ describe("Bugdom 1 Full Save Pipeline", () => {
       const reparsedResult = await saveToJson(serialized, bugdomSpecs, [], []);
       expect(reparsedResult.ok).toBe(true);
     });
+
+    testFn(`should preserve Timg texture data through full save pipeline for ${levelFile}`, async () => {
+      const { serialized, combined } = await runBugdomPipeline(levelFile);
+
+      // Timg must survive split → combine → sanitize
+      expect(combined.Timg).toBeDefined();
+
+      // Re-parse the serialized binary and confirm Timg is still present
+      const reparsedResult = await saveToJson(serialized, bugdomSpecs, [], []);
+      expect(reparsedResult.ok).toBe(true);
+      if (!reparsedResult.ok) return;
+
+      function isRecord(v: unknown): v is Record<string, unknown> {
+        return typeof v === "object" && v !== null;
+      }
+      const reparsed = JSON.parse(reparsedResult.value) as unknown;
+      expect(isRecord(reparsed) && "Timg" in reparsed).toBe(true);
+      if (!isRecord(reparsed) || !isRecord(reparsed.Timg)) return;
+      const timg1000 = reparsed.Timg["1000"];
+      expect(isRecord(timg1000) && typeof timg1000.data === "string" && timg1000.data.length > 0).toBe(true);
+
+      // Texture hex data must be identical to original
+      if (!isRecord(combined.Timg) || !isRecord(combined.Timg["1000"])) return;
+      const originalHex = combined.Timg["1000"].data;
+      expect(isRecord(timg1000) && timg1000.data).toBe(originalHex);
+    });
   }
 });
 

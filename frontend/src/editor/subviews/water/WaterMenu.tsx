@@ -20,8 +20,9 @@ import {
 } from "@/components/ui/select";
 import { getWaterBodyTypes } from "@/data/water/getWaterBodyTypes";
 import { Input } from "@/components/ui/input";
+import { memo, useMemo } from "react";
 
-export function WaterMenu({
+export const WaterMenu = memo(function WaterMenu({
   liquidData,
   setLiquidData,
 }: {
@@ -31,6 +32,13 @@ export function WaterMenu({
   const [selectedWaterBody, setSelectedWaterBody] = useAtom(SelectedWaterBody);
   const [selectedWaterNub, setSelectedWaterNub] = useAtom(SelectedWaterNub);
   const globals = useAtomValue(Globals);
+
+  const waterBodyValues = useMemo(() => {
+    const result = getWaterBodyTypes(globals);
+    return result.isOk()
+      ? result.value.map((key) => parseInt(key)).filter((key) => !isNaN(key))
+      : [];
+  }, [globals]);
 
   if (liquidData.Liqd === undefined) return null;
 
@@ -45,13 +53,6 @@ export function WaterMenu({
     selectedWaterNub < waterBodyData.numNubs
       ? waterBodyData.nubs[selectedWaterNub]
       : null;
-
-  const waterTypesResult = getWaterBodyTypes(globals);
-  const waterBodyValues = waterTypesResult.isOk()
-    ? waterTypesResult.value
-        .map((key) => parseInt(key))
-        .filter((key) => isNaN(key) === false)
-    : [];
 
   return (
     <div className="flex flex-col gap-2 w-full">
@@ -295,4 +296,4 @@ export function WaterMenu({
       </div>
     </div>
   );
-}
+});

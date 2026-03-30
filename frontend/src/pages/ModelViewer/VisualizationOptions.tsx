@@ -6,6 +6,7 @@ interface Props {
   setWireframeMode: (v: boolean) => void;
   logBonePositions: boolean;
   setLogBonePositions: (v: boolean) => void;
+  hasAnimations: boolean;
 }
 
 export function VisualizationOptions({
@@ -13,6 +14,7 @@ export function VisualizationOptions({
   setWireframeMode,
   logBonePositions,
   setLogBonePositions,
+  hasAnimations,
 }: Props) {
   return (
     <Card className="bg-gray-800 border-gray-700">
@@ -27,7 +29,7 @@ export function VisualizationOptions({
             htmlFor="wireframe-mode"
             className="text-sm text-gray-300 cursor-pointer"
           >
-            Wireframe + Skeleton
+            {hasAnimations ? "Wireframe + Skeleton" : "Wireframe"}
           </label>
           <Switch
             id="wireframe-mode"
@@ -35,20 +37,22 @@ export function VisualizationOptions({
             onCheckedChange={setWireframeMode}
           />
         </div>
-        <div className="flex items-center justify-between">
-          <label
-            htmlFor="log-bone-positions"
-            className="text-sm text-gray-300 cursor-pointer"
-          >
-            Log Bone Positions
-          </label>
-          <Switch
-            id="log-bone-positions"
-            checked={logBonePositions}
-            onCheckedChange={setLogBonePositions}
-          />
-        </div>
-        {logBonePositions && (
+        {hasAnimations && (
+          <div className="flex items-center justify-between">
+            <label
+              htmlFor="log-bone-positions"
+              className="text-sm text-gray-300 cursor-pointer"
+            >
+              Log Bone Positions
+            </label>
+            <Switch
+              id="log-bone-positions"
+              checked={logBonePositions}
+              onCheckedChange={setLogBonePositions}
+            />
+          </div>
+        )}
+        {hasAnimations && logBonePositions && (
           <p className="text-xs text-gray-400 italic">
             Check console for bone position logs during animation playback
           </p>

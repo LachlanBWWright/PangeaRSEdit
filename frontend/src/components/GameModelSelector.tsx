@@ -7,7 +7,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Play } from "lucide-react";
 import { toast } from "sonner";
 import { fromPromise } from "@/types/result";
 
@@ -15,7 +14,6 @@ export interface GameModel {
   name: string;
   bg3dFile: string;
   skeletonFile?: string;
-  description?: string;
   category: "Characters" | "Levels" | "Objects";
 }
 
@@ -31,6 +29,7 @@ export interface GameModelSelectorProps {
   onLoadModel: (
     bg3dFile: File,
     skeletonFile?: File,
+    gameLabel?: string,
   ) => Promise<Result<void, Error>>;
   loading: boolean;
 }
@@ -45,7 +44,7 @@ export function GameModelSelector({
   const [selectedCategory, setSelectedCategory] =
     useState<string>("Characters");
   const [selectedModel, setSelectedModel] = useState<GameModel | null>(null);
-  const [loadWithSkeleton, setLoadWithSkeleton] = useState<boolean>(true);
+  const hasSkeletonFile = selectedModel?.skeletonFile !== undefined;
 
   const selectedGame = GAMES.find((game) => game.id === selectedGameId);
 
@@ -77,7 +76,7 @@ export function GameModelSelector({
     }
   }, [selectedGameId, selectedGame, availableCategories]);
 
-  const handleLoadSelectedModel = async () => {
+  const handleLoadSelectedModel = async (loadSkeletons: boolean) => {
     if (!selectedModel) {
       toast.error("Please select a model to load");
       return;
@@ -121,7 +120,7 @@ export function GameModelSelector({
     let skeletonFile: File | undefined;
 
     // If skeleton file exists and user wants to load it
-    if (selectedModel.skeletonFile && loadWithSkeleton) {
+    if (selectedModel.skeletonFile && loadSkeletons) {
       const skeletonFetchResult = await fromPromise(
         fetch(selectedModel.skeletonFile),
       );
@@ -167,176 +166,146 @@ export function GameModelSelector({
       }
     }
 
-    const loadResult = await onLoadModel(bg3dFile, skeletonFile);
+    const loadResult = await onLoadModel(
+      bg3dFile,
+      skeletonFile,
+      selectedGame?.name,
+    );
     if (loadResult.isErr()) {
       console.error("Error loading selected model:", loadResult.error);
       toast.error(`Failed to load ${selectedModel.name}`);
     }
   };
 
-  const hasSkeletonFile = selectedModel?.skeletonFile !== undefined;
-
   return (
     <div className="space-y-4">
-        {/* Game Selection */}
+      {/* Game Selection */}
+      <div className="space-y-2">
+        <label className="text-sm text-gray-300">Game</label>
+        <Select value={selectedGameId} onValueChange={setSelectedGameId}>
+          <SelectTrigger className="w-full bg-gray-700 border-gray-600 text-white">
+            <SelectValue placeholder="Select a game" />
+          </SelectTrigger>
+          <SelectContent className="bg-gray-700 border-gray-600">
+            {GAMES.map((game) => (
+              <SelectItem
+                key={game.id}
+                value={game.id}
+                className="text-white focus:bg-gray-600"
+              >
+                {game.name} {game.models.length === 0 && "(No models available)"}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      {/* Model Category Selection */}
+      {selectedGame && availableCategories.length > 1 && (
         <div className="space-y-2">
-          <label className="text-sm text-gray-300">Game</label>
-          <Select value={selectedGameId} onValueChange={setSelectedGameId}>
+          <label className="text-sm text-gray-300">Category</label>
+          <Select value={selectedCategory} onValueChange={setSelectedCategory}>
             <SelectTrigger className="w-full bg-gray-700 border-gray-600 text-white">
-              <SelectValue placeholder="Select a game" />
+              <SelectValue placeholder="Select a category" />
             </SelectTrigger>
             <SelectContent className="bg-gray-700 border-gray-600">
-              {GAMES.map((game) => (
+              {availableCategories.map((category) => (
                 <SelectItem
-                  key={game.id}
-                  value={game.id}
+                  key={category}
+                  value={category}
                   className="text-white focus:bg-gray-600"
                 >
-                  {game.name}{" "}
-                  {game.models.length === 0 && "(No models available)"}
+                  {category}
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
         </div>
+      )}
 
-        {/* Model Category Selection */}
-        {selectedGame && availableCategories.length > 1 && (
-          <div className="space-y-2">
-            <label className="text-sm text-gray-300">Category</label>
+      {/* Model Selection */}
+      {selectedGame && (
+        <div className="space-y-2">
+          <label className="text-sm text-gray-300">Model</label>
+          {availableModels.length > 0 ? (
             <Select
-              value={selectedCategory}
-              onValueChange={setSelectedCategory}
+              value={selectedModel?.name || ""}
+              onValueChange={(modelName) => {
+                const model = availableModels.find((m) => m.name === modelName);
+                setSelectedModel(model || null);
+              }}
             >
               <SelectTrigger className="w-full bg-gray-700 border-gray-600 text-white">
-                <SelectValue placeholder="Select a category" />
+                <SelectValue placeholder="Select a model" />
               </SelectTrigger>
               <SelectContent className="bg-gray-700 border-gray-600">
-                {availableCategories.map((category) => (
-                    <SelectItem
-                      key={category}
-                      value={category}
-                      className="text-white focus:bg-gray-600"
-                    >
-                      {category}
-                    </SelectItem>
+                {availableModels.map((model) => (
+                  <SelectItem
+                    key={model.name}
+                    value={model.name}
+                    className="text-white focus:bg-gray-600"
+                  >
+                    {model.name}
+                  </SelectItem>
                 ))}
               </SelectContent>
             </Select>
-          </div>
-        )}
+          ) : (
+            <div className="rounded border border-gray-600 bg-gray-700 p-3 text-sm text-gray-400">
+              No models available for {selectedGame.name}. Files need to be
+              copied to the public folder.
+            </div>
+          )}
+        </div>
+      )}
 
-        {/* Model Selection */}
-        {selectedGame && (
-          <div className="space-y-2">
-            <label className="text-sm text-gray-300">Model</label>
-            {availableModels.length > 0 ? (
-              <Select
-                value={selectedModel?.name || ""}
-                onValueChange={(modelName) => {
-                  const model = availableModels.find(
-                    (m) => m.name === modelName,
-                  );
-                  setSelectedModel(model || null);
-                }}
-              >
-                <SelectTrigger className="w-full bg-gray-700 border-gray-600 text-white">
-                  <SelectValue placeholder="Select a model" />
-                </SelectTrigger>
-                <SelectContent className="bg-gray-700 border-gray-600">
-                  {availableModels.map((model) => (
-                    <SelectItem
-                      key={model.name}
-                      value={model.name}
-                      className="text-white focus:bg-gray-600"
-                    >
-                      <div className="flex flex-col">
-                        <span>{model.name}</span>
-                        {model.description && (
-                          <span className="text-xs text-gray-400">
-                            {model.description}
-                          </span>
-                        )}
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            ) : (
-              <div className="text-sm text-gray-400 p-3 bg-gray-700 rounded border border-gray-600">
-                No models available for {selectedGame.name}. Files need to be
-                copied to the public folder.
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Skeleton Loading Option */}
-        {selectedModel && hasSkeletonFile && (
+      {/* Skeleton Loading Option */}
+      {selectedModel && (
           <div className="space-y-2">
             <label className="text-sm text-gray-300">Animation Data</label>
-            <div className="space-y-2">
-              <label className="flex items-center space-x-2 cursor-pointer">
-                <input
-                  type="radio"
-                  name="skeletonOption"
-                  checked={loadWithSkeleton}
-                  onChange={() => setLoadWithSkeleton(true)}
-                  className="text-blue-500"
-                />
-                <span className="text-sm text-white">
-                  Load with skeleton data (includes animations)
-                </span>
-              </label>
-              <label className="flex items-center space-x-2 cursor-pointer">
-                <input
-                  type="radio"
-                  name="skeletonOption"
-                  checked={!loadWithSkeleton}
-                  onChange={() => setLoadWithSkeleton(false)}
-                  className="text-blue-500"
-                />
-                <span className="text-sm text-white">
-                  Load model only (no animations)
-                </span>
-              </label>
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+              <Button
+                type="button"
+                disabled={!selectedModel || loading || !hasSkeletonFile}
+                onClick={() => void handleLoadSelectedModel(true)}
+                className="w-full"
+              >
+                Load with skeletons
+              </Button>
+              <Button
+                type="button"
+                disabled={!selectedModel || loading}
+                onClick={() => void handleLoadSelectedModel(false)}
+                className="w-full"
+              >
+                Load without skeletons
+              </Button>
             </div>
-          </div>
-        )}
-
-        {/* Load Button */}
-        <Button
-          onClick={handleLoadSelectedModel}
-          disabled={!selectedModel || loading}
-          className="w-full"
-        >
-          <Play className="w-4 h-4 mr-2" />
-          {loading ? "Loading..." : `Load ${selectedModel?.name || "Model"}`}
-        </Button>
-
-        {/* Model Info */}
-        {selectedModel && (
-          <div className="text-xs text-gray-400 space-y-1 p-3 bg-gray-700 rounded">
-            <p>
-              <strong>Model:</strong> {selectedModel.name}
-            </p>
-            <p>
-              <strong>Model File:</strong>{" "}
-              {selectedModel.bg3dFile.split("/").pop()}
-            </p>
-            {selectedModel.skeletonFile && (
-              <p>
-                <strong>Skeleton File:</strong>{" "}
-                {selectedModel.skeletonFile.split("/").pop()}
-              </p>
-            )}
-            {selectedModel.description && (
-              <p>
-                <strong>Description:</strong> {selectedModel.description}
+            {!hasSkeletonFile && (
+              <p className="text-xs text-gray-500">
+                This model does not provide a companion skeleton file.
               </p>
             )}
           </div>
-        )}
+      )}
+
+      {/* Model Info */}
+      {selectedModel && (
+        <div className="space-y-1 rounded bg-gray-700 p-3 text-xs text-gray-400">
+          <p>
+            <strong>Model:</strong> {selectedModel.name}
+          </p>
+          <p>
+            <strong>Model File:</strong> {selectedModel.bg3dFile.split("/").pop()}
+          </p>
+          {selectedModel.skeletonFile && (
+            <p>
+              <strong>Skeleton File:</strong>{" "}
+              {selectedModel.skeletonFile.split("/").pop()}
+            </p>
+          )}
+        </div>
+      )}
     </div>
   );
 }

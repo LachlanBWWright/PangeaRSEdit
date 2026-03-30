@@ -10,7 +10,7 @@ import { ItemData, HeaderData } from "@/python/structSpecs/LevelTypes";
 import { useAtom, useAtomValue } from "jotai";
 import { Button } from "@/components/ui/button";
 import { ClickToAddItem, SelectedItem } from "../../../data/items/itemAtoms";
-import { useEffect, memo } from "react";
+import { memo, useMemo } from "react";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -23,11 +23,14 @@ import { getItemName } from "@/data/items/getItemNames";
 import { Globals } from "@/data/globals/globals";
 import { getItemTypes } from "@/data/items/getItemTypes";
 import { Image as ImageIcon, ImageOff } from "lucide-react";
-import { parseU8, parseU16 } from "@/utils/numberParsers";
+import { parseU8 } from "@/utils/numberParsers";
 import { atom } from "jotai";
+import { getMightyMikeItemParams } from "@/data/items/mightyMikeItemParams";
+import { ParamTooltip } from "./ParamTooltip";
+import { getParamTooltip } from "./getParamTooltip";
 
 // Atom to track if item images should be shown globally for all items
-export const ShowMightyMikeItemImages = atom(false);
+export const ShowMightyMikeItemImages = atom(true);
 
 export const MightyMikeItemMenu = memo(function MightyMikeItemMenu({
   itemData,
@@ -42,17 +45,17 @@ export const MightyMikeItemMenu = memo(function MightyMikeItemMenu({
   const [selectedItem, setSelectedItem] = useAtom(SelectedItem);
   const [showItemImages, setShowItemImages] = useAtom(ShowMightyMikeItemImages);
 
+  const itemValues = useMemo(() => {
+    const result = getItemTypes(globals);
+    return result.isOk()
+      ? result.value.map((key) => parseInt(key)).filter((key) => !isNaN(key))
+      : [];
+  }, [globals]);
+
   if (itemData.Itms === undefined) return null;
 
   const selectedItemData =
     selectedItem !== undefined ? itemData.Itms[1000].obj[selectedItem] : null;
-
-  const itemTypesResult = getItemTypes(globals);
-  const itemValues = itemTypesResult.isOk()
-    ? itemTypesResult.value
-        .map((key) => parseInt(key))
-        .filter((key) => isNaN(key) === false)
-    : [];
 
   return (
     <div className="flex flex-col gap-2">
@@ -79,8 +82,8 @@ export const MightyMikeItemMenu = memo(function MightyMikeItemMenu({
       {selectedItemData === null || selectedItemData === undefined ? (
         <AddItemMenu />
       ) : (
-        <p>
-          Item {selectedItemData.type} ({selectedItemData.x},
+        <p className="text-xs text-gray-400">
+          Item {selectedItemData.type} ({selectedItemData.x},{" "}
           {selectedItemData.z})
         </p>
       )}
@@ -120,25 +123,53 @@ export const MightyMikeItemMenu = memo(function MightyMikeItemMenu({
             </Select>
 
             <div className="grid grid-cols-[auto_1fr_auto_1fr] gap-2 items-baseline">
-              <label className="text-sm font-medium">Flags</label>
+              {/* X/Z position (editable for precision placement; drag in canvas for quick placement) */}
+              <label className="text-sm font-medium">X</label>
               <Input
                 type="number"
-                className="col-span-3"
-                value={selectedItemData.flags.toString()}
+                value={selectedItemData.x.toString()}
                 onChange={(e) => {
-                  setItemData((itemData) => {
-                    if (selectedItem === undefined) return;
-                    const item = itemData.Itms[1000]?.obj?.[selectedItem];
-                    if (item) {
-                      item.flags = parseU16(e.target.value);
-                    }
-                  });
+                  const v = parseInt(e.target.value);
+                  if (!isNaN(v)) {
+                    setItemData((itemData) => {
+                      if (selectedItem === undefined) return;
+                      const item = itemData.Itms[1000]?.obj?.[selectedItem];
+                      if (item) item.x = v;
+                    });
+                  }
+                }}
+              />
+              {/* 'Z' is the vertical screen coordinate in MM (stored as TerrainItem.z) */}
+              <label className="text-sm font-medium">Z</label>
+              <Input
+                type="number"
+                value={selectedItemData.z.toString()}
+                onChange={(e) => {
+                  const v = parseInt(e.target.value);
+                  if (!isNaN(v)) {
+                    setItemData((itemData) => {
+                      if (selectedItem === undefined) return;
+                      const item = itemData.Itms[1000]?.obj?.[selectedItem];
+                      if (item) item.z = v;
+                    });
+                  }
                 }}
               />
 
               {([0, 1, 2, 3] as const).map((i) => {
                 const paramKey = `p${i}` as const;
                 const value = selectedItemData[paramKey];
+                const itemParams = getMightyMikeItemParams(selectedItemData.type);
+                const param = itemParams[paramKey];
+                const tooltip = getParamTooltip(param);
+                const label =
+                  param && typeof param !== "string" && param.type === "Integer"
+                    ? param.description.split(" (")[0]
+                    : `Parameter ${i}`;
+                const codeSample =
+                  param && typeof param !== "string" && param.type === "Integer"
+                    ? param.codeSample
+                    : undefined;
                 const setValue = (v: number) => {
                   setItemData((itemData) => {
                     if (selectedItem === undefined) return;
@@ -149,9 +180,12 @@ export const MightyMikeItemMenu = memo(function MightyMikeItemMenu({
                   });
                 };
                 return [
-                  <label key={`label-${i}`} className="text-sm font-medium">
-                    Parameter {i}
-                  </label>,
+                  <ParamTooltip
+                    key={`label-${i}`}
+                    label={label}
+                    tooltip={tooltip}
+                    codeSample={codeSample}
+                  />,
                   <Input
                     key={`input-${i}`}
                     type="number"
@@ -184,17 +218,14 @@ export const MightyMikeItemMenu = memo(function MightyMikeItemMenu({
 
 function AddItemMenu() {
   const [clickToAddItem, setClickToAddItem] = useAtom(ClickToAddItem);
-  useEffect(() => {
-    return () => setClickToAddItem(undefined);
-  }, [setClickToAddItem]);
   const globals = useAtomValue(Globals);
 
-  const itemTypesResult = getItemTypes(globals);
-  const itemValues = itemTypesResult.isOk()
-    ? itemTypesResult.value
-        .map((key) => parseInt(key))
-        .filter((key) => isNaN(key) === false)
-    : [];
+  const itemValues = useMemo(() => {
+    const result = getItemTypes(globals);
+    return result.isOk()
+      ? result.value.map((key) => parseInt(key)).filter((key) => !isNaN(key))
+      : [];
+  }, [globals]);
 
   if (clickToAddItem !== undefined)
     return (

@@ -91,7 +91,7 @@ async function testGame(game: string, filePath: string) {
 
   // Convert to glTF
   console.log("Converting to glTF...");
-  const gltfDoc = bg3dParsedToGLTF(parsedValue, { bg3dBuffer: arrayBuffer });
+  const gltfDoc = bg3dParsedToGLTF(parsedValue);
   console.log(`✅ glTF: ${gltfDoc.getRoot().listMeshes().length} meshes`);
 
   // Convert back to BG3D

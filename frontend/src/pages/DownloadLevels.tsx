@@ -10,6 +10,44 @@ import {
 } from "@/components/ui/card";
 import { getGamesByCategory, type Level } from "@/data/levels";
 import { toast } from "sonner";
+import { zip } from "fflate";
+import { ResultAsync } from "neverthrow";
+
+/** Fetch a URL as a Uint8Array using ResultAsync. */
+function fetchBytes(url: string): ResultAsync<Uint8Array<ArrayBuffer>, Error> {
+  return ResultAsync.fromPromise(
+    fetch(url)
+      .then((resp) => {
+        if (!resp.ok) return Promise.reject(new Error(`HTTP ${resp.status}: ${url}`));
+        return resp.arrayBuffer();
+      })
+      .then((buf) => new Uint8Array(buf)),
+    (e) => (e instanceof Error ? e : new Error(String(e))),
+  );
+}
+
+/** Zip files using fflate, returning a ResultAsync. */
+function zipFiles(files: Record<string, Uint8Array<ArrayBuffer>>): ResultAsync<Uint8Array<ArrayBuffer>, Error> {
+  return ResultAsync.fromPromise(
+    new Promise<Uint8Array<ArrayBuffer>>((resolve, reject) => {
+      zip(files, (e, data) => {
+        if (e) reject(e);
+        else resolve(data.slice(0));
+      });
+    }),
+    (e) => (e instanceof Error ? e : new Error(String(e))),
+  );
+}
+
+/** Build a timestamp string suitable for filenames: YYYYMMDD_HHMMSS */
+function fileTimestamp(): string {
+  const now = new Date();
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return (
+    `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}` +
+    `_${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`
+  );
+}
 
 interface LevelCardProps {
   level: Level;
@@ -19,37 +57,47 @@ function LevelCard({ level }: LevelCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
 
   const downloadLevel = () => {
-    let downloadedAny = false;
-    // Create a temporary link element to download the .ter file
-    const downloadFile = (url: string, filename: string) => {
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = filename;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-    };
+    const fetchPairs: { name: string; url: string }[] = [];
+    if (level.terFile) fetchPairs.push({ name: level.terFile.split("/").pop() ?? `${level.id}.ter`, url: level.terFile });
+    if (level.rsrcFile) fetchPairs.push({ name: level.rsrcFile.split("/").pop() ?? `${level.id}.ter.rsrc`, url: level.rsrcFile });
 
-    // Download .ter file if it exists
-    if (level.terFile) {
-      const terFilename = level.terFile.split("/").pop() || `${level.id}.ter`;
-      downloadFile(level.terFile, terFilename);
-      downloadedAny = true;
-    }
-
-    // Download .ter.rsrc file if it exists
-    if (level.rsrcFile) {
-      const rsrcFilename =
-        level.rsrcFile.split("/").pop() || `${level.id}.ter.rsrc`;
-      downloadFile(level.rsrcFile, rsrcFilename);
-      downloadedAny = true;
-    }
-
-    if (!downloadedAny) {
+    if (fetchPairs.length === 0) {
       toast.error("No downloadable files found for this level");
       return;
     }
-    toast.success(`Started downloading ${level.name}`);
+
+    const levelNumber = level.category?.replace(/\D/g, "") ?? level.id;
+    const zipName = `${level.gameDisplayName} Level ${levelNumber} (${fileTimestamp()}).zip`
+      .replace(/[/\\:*?"<>|]/g, "_");
+
+    // Fetch all files, then zip
+    const fetchAll = ResultAsync.combine(
+      fetchPairs.map(({ name, url }) =>
+        fetchBytes(url).map((data) => ({ name, data })),
+      ),
+    );
+
+    void fetchAll
+      .andThen((pairs) => {
+        const files: Record<string, Uint8Array<ArrayBuffer>> = {};
+        for (const { name, data } of pairs) files[name] = data;
+        return zipFiles(files);
+      })
+      .match(
+        (data) => {
+          const blob = new Blob([data], { type: "application/zip" });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = zipName;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+          toast.success(`Downloaded ${zipName}`);
+        },
+        (e) => toast.error(`Download failed: ${e.message}`),
+      );
   };
 
   return (
@@ -82,7 +130,7 @@ function LevelCard({ level }: LevelCardProps) {
             <p className="text-gray-400 text-sm">{level.summary}</p>
           </div>
           <Button
-            onClick={downloadLevel}
+            onClick={() => void downloadLevel()}
             className="ml-4 bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-2"
             size="sm"
           >

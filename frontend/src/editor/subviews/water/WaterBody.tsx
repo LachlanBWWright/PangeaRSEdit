@@ -1,20 +1,29 @@
 import { Updater } from "use-immer";
-import { LiquidData } from "@/python/structSpecs/LevelTypes";
-import { Circle, Line } from "react-konva";
+import { LiquidData, HeaderData, TerrainData } from "@/python/structSpecs/LevelTypes";
+import { Circle, Image as KonvaImage, Line } from "react-konva";
 import Konva from "konva";
-import { useAtom } from "jotai";
+import { useAtom, useAtomValue } from "jotai";
 import {
   SelectedWaterBody,
   SelectedWaterNub,
 } from "../../../data/water/waterAtoms";
-import { memo, useState, useRef } from "react";
+import { memo, useMemo, useState, useRef } from "react";
+import { Globals } from "@/data/globals/globals";
+import {
+  buildLiquidBodyCanvas,
+  getLiquidVisualStyle,
+} from "./liquidRenderingUtils";
 
 export const WaterBody = memo(
   ({
+    headerData,
+    terrainData,
     liquidData,
     setLiquidData,
     waterBodyIdx,
   }: {
+    headerData: HeaderData;
+    terrainData: TerrainData;
     liquidData: LiquidData;
     setLiquidData: Updater<LiquidData>;
     waterBodyIdx: number;
@@ -22,36 +31,57 @@ export const WaterBody = memo(
     const [selectedWaterBody, setSelectedWaterBody] =
       useAtom(SelectedWaterBody);
     const [selectedWaterNub, setSelectedWaterNub] = useAtom(SelectedWaterNub);
+    const globals = useAtomValue(Globals);
     const waterBody = liquidData.Liqd[1000].obj[waterBodyIdx];
     const [initialDragState, setInitialDragState] = useState<
       [number, number][] | null
     >(null);
-    const nubRafRefs = useRef<Record<number, number | null>>({});
+    const lineRef = useRef<Konva.Line | null>(null);
+    /** Mutable preview nub positions during drag — updated imperatively to avoid per-frame state. */
+    const previewNubsRef = useRef<[number, number][] | null>(null);
+
+    const bodyCanvas = useMemo(
+      () =>
+        waterBody
+          ? buildLiquidBodyCanvas(globals, headerData, terrainData, waterBody)
+          : null,
+      [globals, headerData, terrainData, waterBody],
+    );
 
     if (!waterBody) return <></>;
 
-    const waterNubs = waterBody.nubs
-      .filter((_, nubIdx) => nubIdx < waterBody.numNubs)
-      .flatMap((nub) => [nub[0], nub[1]]);
+    const visibleNubs = waterBody.nubs.filter((_, nubIdx) => nubIdx < waterBody.numNubs);
+    const waterNubs = visibleNubs.flatMap((nub) => [nub[0], nub[1]]);
+    const style = getLiquidVisualStyle(globals, waterBody.type);
 
     return (
       <>
+        {bodyCanvas && (
+          <KonvaImage
+            image={bodyCanvas.canvas}
+            x={bodyCanvas.x}
+            y={bodyCanvas.y}
+            listening={false}
+            perfectDrawEnabled={false}
+          />
+        )}
         <Line
+          ref={lineRef}
           points={waterNubs}
-          stroke={
-            waterBodyIdx === selectedWaterBody ? "#9999FFDD" : "#9999FF77"
-          }
+          stroke={waterBodyIdx === selectedWaterBody ? "#dce2ff" : style.strokeColor}
           strokeWidth={waterBodyIdx === selectedWaterBody ? 5 : 2}
+          perfectDrawEnabled={false}
+          hitStrokeWidth={10}
           onClick={() => setSelectedWaterBody(waterBodyIdx)}
           closed
-          fill={waterBodyIdx === selectedWaterBody ? "#9999FFDD" : "#9999FF77"}
+          fill={waterBodyIdx === selectedWaterBody ? "#9999FF08" : "#9999FF04"}
           draggable
           onDragStart={() => {
-            const waterBody = liquidData.Liqd[1000].obj[waterBodyIdx];
-            if (!waterBody) return;
+            const body = liquidData.Liqd[1000].obj[waterBodyIdx];
+            if (!body) return;
             setInitialDragState(
-              waterBody.nubs
-                .filter((_, nubIdx) => nubIdx < waterBody.numNubs)
+              body.nubs
+                .filter((_, nubIdx) => nubIdx < body.numNubs)
                 .map((nub) => [nub[0], nub[1]]),
             );
             setSelectedWaterBody(waterBodyIdx);
@@ -66,17 +96,18 @@ export const WaterBody = memo(
             const dragDz = e.target.y();
 
             setLiquidData((draft) => {
-              const waterBody = draft.Liqd[1000].obj[waterBodyIdx];
-              if (!waterBody) return;
-              const currentNubs = waterBody.nubs;
+              const body = draft.Liqd[1000].obj[waterBodyIdx];
+              if (!body) return;
               for (let i = 0; i < initialDragState.length; i++) {
-                const nub = currentNubs[i];
+                const nub = body.nubs[i];
                 const initNub = initialDragState[i];
-                if (nub && initNub && i < waterBody.numNubs) {
+                if (nub && initNub && i < body.numNubs) {
                   nub[0] = initNub[0] + dragDx;
                   nub[1] = initNub[1] + dragDz;
                 }
               }
+              body.hotSpotX += dragDx;
+              body.hotSpotZ += dragDz;
             });
             e.target.x(0);
             e.target.y(0);
@@ -84,73 +115,70 @@ export const WaterBody = memo(
           }}
         />
         {waterBodyIdx === selectedWaterBody &&
-          (() => {
-            const waterBody = liquidData.Liqd[1000].obj[waterBodyIdx];
-            if (!waterBody) return null;
-            return waterBody.nubs.map((nub, nubIdx) => {
-              if (waterBody.numNubs <= nubIdx) return null;
+          waterBody.nubs.map((nub, nubIdx) => {
+            if (waterBody.numNubs <= nubIdx) return null;
 
-              return (
-                <Circle
-                  x={nub[0]}
-                  y={nub[1]}
-                  key={waterBodyIdx + "-" + nubIdx}
-                  radius={
-                    selectedWaterNub === nubIdx &&
-                    selectedWaterBody === waterBodyIdx
-                      ? 8
-                      : 5
+            return (
+              <Circle
+                x={nub[0]}
+                y={nub[1]}
+                key={waterBodyIdx + "-" + nubIdx}
+                radius={
+                  selectedWaterNub === nubIdx &&
+                  selectedWaterBody === waterBodyIdx
+                    ? 8
+                    : 5
+                }
+                fill={
+                  selectedWaterNub === nubIdx &&
+                  selectedWaterBody === waterBodyIdx
+                    ? "#FF99FFDD"
+                    : "#9999FFDD"
+                }
+                stroke="black"
+                strokeWidth={2}
+                draggable={true}
+                perfectDrawEnabled={false}
+                onClick={() => {
+                  setSelectedWaterBody(waterBodyIdx);
+                  setSelectedWaterNub(nubIdx);
+                }}
+                onDragStart={() => {
+                  setSelectedWaterBody(waterBodyIdx);
+                  setSelectedWaterNub(nubIdx);
+                  previewNubsRef.current = waterBody.nubs
+                    .filter((_, i) => i < waterBody.numNubs)
+                    .map((n) => [n[0], n[1]] as [number, number]);
+                }}
+                onDragMove={(e: Konva.KonvaEventObject<DragEvent>) => {
+                  const newX = Math.round(e.target.x());
+                  const newY = Math.round(e.target.y());
+                  if (!previewNubsRef.current) return;
+                  const preview = previewNubsRef.current;
+                  const updated = preview[nubIdx];
+                  if (updated) {
+                    updated[0] = newX;
+                    updated[1] = newY;
                   }
-                  fill={
-                    selectedWaterNub === nubIdx &&
-                    selectedWaterBody === waterBodyIdx
-                      ? "#FF99FFDD"
-                      : "#9999FFDD"
+                  if (lineRef.current) {
+                    lineRef.current.points(preview.flatMap((n) => [n[0], n[1]]));
+                    lineRef.current.getLayer()?.batchDraw();
                   }
-                  draggable={true}
-                  onClick={() => {
-                    setSelectedWaterBody(waterBodyIdx);
-                    setSelectedWaterNub(nubIdx);
-                  }}
-                  onDragStart={() => {
-                    setSelectedWaterBody(waterBodyIdx);
-                    setSelectedWaterNub(nubIdx);
-                  }}
-                  onDragMove={(e: Konva.KonvaEventObject<DragEvent>) => {
-                    const newX = Math.round(e.target.x());
-                    const newY = Math.round(e.target.y());
-
-                    const existingRafId = nubRafRefs.current[nubIdx];
-                    if (existingRafId !== undefined)
-                      if (existingRafId !== null) cancelAnimationFrame(existingRafId);
-                    nubRafRefs.current[nubIdx] = requestAnimationFrame(() => {
-                      setLiquidData((liquidData) => {
-                        const wb = liquidData.Liqd[1000].obj[waterBodyIdx];
-                        const nubToUpdate = wb?.nubs[nubIdx];
-                        if (nubToUpdate) {
-                          nubToUpdate[0] = newX;
-                          nubToUpdate[1] = newY;
-                        }
-                      });
-                    });
-                  }}
-                  onDragEnd={(e: Konva.KonvaEventObject<DragEvent>) => {
-                    const existingRafIdEnd = nubRafRefs.current[nubIdx];
-                    if (existingRafIdEnd !== undefined)
-                      if (existingRafIdEnd !== null) cancelAnimationFrame(existingRafIdEnd);
-                    setLiquidData((liquidData) => {
-                      const wb = liquidData.Liqd[1000].obj[waterBodyIdx];
-                      const nubToUpdate = wb?.nubs[nubIdx];
-                      if (nubToUpdate) {
-                        nubToUpdate[0] = Math.round(e.target.x());
-                        nubToUpdate[1] = Math.round(e.target.y());
-                      }
-                    });
-                  }}
-                />
-              );
-            });
-          })()}
+                }}
+                onDragEnd={(e: Konva.KonvaEventObject<DragEvent>) => {
+                  previewNubsRef.current = null;
+                  setLiquidData((liquidData) => {
+                    const wb = liquidData.Liqd[1000].obj[waterBodyIdx];
+                    const nubToUpdate = wb?.nubs[nubIdx];
+                    if (nubToUpdate) {
+                      nubToUpdate[0] = Math.round(e.target.x());
+                      nubToUpdate[1] = Math.round(e.target.y());
+                    }
+                  });
+                }}
+              />
+            );
+          })}
         {selectedWaterBody === waterBodyIdx && (
           <Circle
             x={waterBody.hotSpotX}

@@ -67,9 +67,12 @@ export function IndividualTilesMenu({
 
   useEffect(() => {
     if (tileView !== TileViews.Topology) {
-      setCanvasViewMode(CanvasView.TWO_D);
+      // Reset shared TileViewMode to avoid stale state in topology-only editors.
+      setTileView(TileViews.Topology);
+      return;
     }
-  }, [tileView, setCanvasViewMode]);
+    setCanvasViewMode(CanvasView.TWO_D);
+  }, [tileView, setCanvasViewMode, setTileView]);
 
   const handleMinYChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newValue = parseFloat(e.target.value);
@@ -95,15 +98,6 @@ export function IndividualTilesMenu({
 
   return (
     <div className="flex flex-col gap-2">
-      <div className="grid grid-cols-1 gap-2">
-        <Button
-          selected={tileView === TileViews.Topology}
-          onClick={() => setTileView(TileViews.Topology)}
-        >
-          Topology
-        </Button>
-      </div>
-
       <div className="text-sm text-gray-500 p-2 bg-gray-800 rounded">
         <p>This game uses individual 32x32 tiles.</p>
         <p>Tile attributes are edited through the Supertiles menu.</p>

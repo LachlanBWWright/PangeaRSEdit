@@ -101,7 +101,18 @@ export interface ParsedSkeleton {
 function transformToSkeletonResource(
   rawData: ParsedSkeleton,
 ): SkeletonResource {
-  const result: SkeletonResource = {
+  const result: {
+    _metadata?: Record<string, unknown>;
+    Hedr: NonNullable<SkeletonResource["Hedr"]>;
+    Bone: NonNullable<SkeletonResource["Bone"]>;
+    BonP: NonNullable<SkeletonResource["BonP"]>;
+    BonN: NonNullable<SkeletonResource["BonN"]>;
+    RelP: NonNullable<SkeletonResource["RelP"]>;
+    AnHd: NonNullable<SkeletonResource["AnHd"]>;
+    Evnt: NonNullable<SkeletonResource["Evnt"]>;
+    NumK: NonNullable<SkeletonResource["NumK"]>;
+    KeyF: NonNullable<SkeletonResource["KeyF"]>;
+  } = {
     _metadata: rawData?._metadata,
     Hedr: {},
     Bone: {},
@@ -126,35 +137,71 @@ function transformToSkeletonResource(
       // Assign entries to their proper typed records
       // Each handler returns the correctly typed object
       if (typeName === "Hedr") {
-        // Hedr doesn't have a handler, use the raw data
-        const hedrObj = resourceData?.obj ?? hexData ?? resourceData;
+        // Hedr should be parsed from structured fields only.
+        const hedrObj = resourceData?.obj ?? resourceData;
         if (isHedrRaw(hedrObj)) {
-          result.Hedr[resourceId] = { name: resourceName, order: resourceIdNum, obj: hedrObj };
+          result.Hedr[resourceId] = {
+            name: resourceName,
+            order: resourceIdNum,
+            obj: hedrObj,
+          };
         }
       } else if (typeName === "Bone") {
         const boneObj = handleBone(resourceName, resourceData, resourceId, hexData);
-        result.Bone[resourceId] = { name: resourceName, order: resourceIdNum, obj: boneObj };
+        result.Bone[resourceId] = {
+          name: resourceName,
+          order: resourceIdNum,
+          obj: boneObj,
+        };
       } else if (typeName === "BonP") {
         const bonpObj = handleBonP(resourceName, resourceData, hexData);
-        result.BonP[resourceId] = { name: resourceName, order: resourceIdNum, obj: bonpObj };
+        result.BonP[resourceId] = {
+          name: resourceName,
+          order: resourceIdNum,
+          obj: bonpObj,
+        };
       } else if (typeName === "BonN") {
         const bonnObj = handleBonN(resourceName, resourceData, hexData);
-        result.BonN[resourceId] = { name: resourceName, order: resourceIdNum, obj: bonnObj };
+        result.BonN[resourceId] = {
+          name: resourceName,
+          order: resourceIdNum,
+          obj: bonnObj,
+        };
       } else if (typeName === "RelP" && result.RelP) {
         const relpObj = handleRelP(resourceName, resourceData, resourceId, hexData);
-        result.RelP[resourceId] = { name: resourceName, order: resourceIdNum, obj: relpObj };
+        result.RelP[resourceId] = {
+          name: resourceName,
+          order: resourceIdNum,
+          obj: relpObj,
+        };
       } else if (typeName === "AnHd") {
         const anhdObj = handleAnHd(resourceName, resourceData);
-        result.AnHd[resourceId] = { name: resourceName, order: resourceIdNum, obj: anhdObj };
+        result.AnHd[resourceId] = {
+          name: resourceName,
+          order: resourceIdNum,
+          obj: anhdObj,
+        };
       } else if (typeName === "Evnt") {
         const evntObj = handleEvnt(resourceName, resourceData, resourceId, hexData);
-        result.Evnt[resourceId] = { name: resourceName, order: resourceIdNum, obj: evntObj };
+        result.Evnt[resourceId] = {
+          name: resourceName,
+          order: resourceIdNum,
+          obj: evntObj,
+        };
       } else if (typeName === "NumK") {
         const numkObj = handleNumK(resourceName, resourceData, hexData);
-        result.NumK[resourceId] = { name: resourceName, order: resourceIdNum, obj: numkObj };
+        result.NumK[resourceId] = {
+          name: resourceName,
+          order: resourceIdNum,
+          obj: numkObj,
+        };
       } else if (typeName === "KeyF") {
         const keyfObj = handleKeyF(resourceName, resourceData, resourceId, hexData);
-        result.KeyF[resourceId] = { name: resourceName, order: resourceIdNum, obj: keyfObj };
+        result.KeyF[resourceId] = {
+          name: resourceName,
+          order: resourceIdNum,
+          obj: keyfObj,
+        };
       }
     }
   }

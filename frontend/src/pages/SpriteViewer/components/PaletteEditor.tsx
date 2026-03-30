@@ -1,14 +1,13 @@
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Download, Plus, Trash2, Save } from "lucide-react";
+import { Download, Plus, Save } from "lucide-react";
 import { toast } from "sonner";
+import { hexToRgb, rgbToHex } from "@/utils/colorUtils";
 import {
   Palette,
   updatePaletteColor,
   renamePalette,
-  rgbToHex,
-  hexToRgb,
   exportPaletteFile,
 } from "../utils/paletteUtils";
 
@@ -33,6 +32,14 @@ export function PaletteEditor({
       const updated = updatePaletteColor(palette, index, rgb);
       onPaletteChange(updated);
     }
+  };
+
+  const handleChannelChange = (index: number, channel: "r" | "g" | "b", value: number) => {
+    const color = palette.colors[index];
+    if (!color) return;
+    const updatedColor = { ...color, [channel]: Math.min(255, Math.max(0, value)) };
+    const updated = updatePaletteColor(palette, index, updatedColor);
+    onPaletteChange(updated);
   };
 
   const handleNameChange = () => {
@@ -132,14 +139,17 @@ export function PaletteEditor({
           <div className="grid grid-cols-8 gap-1 max-h-96 overflow-y-auto p-2 bg-gray-900 rounded">
             {palette.colors.map((color, idx) => (
               <div key={idx} className="relative group">
-                <input
-                  type="color"
-                  value={rgbToHex(color)}
-                  onChange={(e) => handleColorChange(idx, e.target.value)}
+                <div
+                  className={`w-6 h-6 cursor-pointer rounded border transition-colors ${
+                    editingIndex === idx
+                      ? "border-blue-500 ring-1 ring-blue-500"
+                      : "border-gray-600 hover:border-gray-400"
+                  }`}
+                  style={{ backgroundColor: rgbToHex(color.r, color.g, color.b) }}
+                  onClick={() => setEditingIndex(idx)}
                   title={`Color ${idx}`}
-                  className="w-6 h-6 cursor-pointer rounded border border-gray-600 hover:border-gray-400"
                 />
-                <span className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-1 bg-black text-white text-xs px-1 rounded opacity-0 group-hover:opacity-100 transition pointer-events-none whitespace-nowrap">
+                <span className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-1 bg-black text-white text-[10px] px-1 rounded opacity-0 group-hover:opacity-100 transition pointer-events-none whitespace-nowrap z-10">
                   {idx}
                 </span>
               </div>
@@ -154,86 +164,59 @@ export function PaletteEditor({
         if (!currentColor) return null;
         
         return (
-        <Card className="bg-gray-800 border-gray-700 border-blue-500">
-          <CardHeader>
-            <CardTitle className="text-white text-sm">
-              Edit Color {editingIndex}
+        <Card className="bg-gray-800 border-blue-500 shadow-lg">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-white text-sm flex justify-between items-center">
+              <span>Edit Color {editingIndex}</span>
+              <span className="text-xs text-blue-400 font-mono">
+                {rgbToHex(currentColor.r, currentColor.g, currentColor.b).toUpperCase()}
+              </span>
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-3">
-            <div className="flex gap-2">
-              <input
-                type="color"
-                value={rgbToHex(currentColor)}
-                onChange={(e) => handleColorChange(editingIndex, e.target.value)}
-                className="w-12 h-12 cursor-pointer rounded"
-              />
-              <div className="flex-1 space-y-1">
-                <label className="text-xs text-gray-400">
-                  R:{" "}
-                  <input
-                    type="number"
-                    min="0"
-                    max="255"
-                    value={currentColor.r}
-                    onChange={(e) => {
-                      const updated = updatePaletteColor(palette, editingIndex, {
-                        r: Math.min(255, Math.max(0, parseInt(e.target.value))),
-                        g: currentColor.g,
-                        b: currentColor.b,
-                      });
-                      onPaletteChange(updated);
-                    }}
-                    className="w-12 bg-gray-700 text-white rounded px-1 py-0 text-xs"
-                  />
-                </label>
-                <label className="text-xs text-gray-400">
-                  G:{" "}
-                  <input
-                    type="number"
-                    min="0"
-                    max="255"
-                    value={currentColor.g}
-                    onChange={(e) => {
-                      const updated = updatePaletteColor(palette, editingIndex, {
-                        r: currentColor.r,
-                        g: Math.min(255, Math.max(0, parseInt(e.target.value))),
-                        b: currentColor.b,
-                      });
-                      onPaletteChange(updated);
-                    }}
-                    className="w-12 bg-gray-700 text-white rounded px-1 py-0 text-xs"
-                  />
-                </label>
-                <label className="text-xs text-gray-400">
-                  B:{" "}
-                  <input
-                    type="number"
-                    min="0"
-                    max="255"
-                    value={currentColor.b}
-                    onChange={(e) => {
-                      const updated = updatePaletteColor(palette, editingIndex, {
-                        r: currentColor.r,
-                        g: currentColor.g,
-                        b: Math.min(255, Math.max(0, parseInt(e.target.value))),
-                      });
-                      onPaletteChange(updated);
-                    }}
-                    className="w-12 bg-gray-700 text-white rounded px-1 py-0 text-xs"
-                  />
-                </label>
+          <CardContent className="space-y-4">
+            <div className="flex gap-4 items-center">
+              <div className="relative w-16 h-16 rounded shadow-inner border border-gray-600 group shrink-0">
+                <div
+                  className="w-full h-full rounded"
+                  style={{ backgroundColor: rgbToHex(currentColor.r, currentColor.g, currentColor.b) }}
+                />
+                <input
+                  type="color"
+                  value={rgbToHex(currentColor.r, currentColor.g, currentColor.b)}
+                  onChange={(e) => handleColorChange(editingIndex, e.target.value)}
+                  className="absolute inset-0 opacity-0 w-full h-full cursor-pointer"
+                />
+              </div>
+              
+              <div className="flex-1 grid grid-cols-3 gap-2">
+                {(["r", "g", "b"] as const).map((channel) => (
+                  <div key={channel} className="space-y-1">
+                    <label className="text-[10px] text-gray-500 uppercase font-bold text-center block">
+                      {channel}
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      max="255"
+                      value={currentColor[channel]}
+                      onChange={(e) => handleChannelChange(editingIndex, channel, parseInt(e.target.value) || 0)}
+                      className="w-full bg-gray-700 border border-gray-600 rounded px-1 py-1.5 text-xs text-center text-gray-200 focus:border-blue-500 outline-none"
+                    />
+                  </div>
+                ))}
               </div>
             </div>
-            <Button
-              size="sm"
-              variant="ghost"
-              className="w-full text-white"
-              onClick={() => setEditingIndex(null)}
-            >
-              <Trash2 className="w-4 h-4 mr-1" />
-              Done Editing
-            </Button>
+            
+            <div className="flex gap-2 border-t border-gray-700 pt-3">
+              <Button
+                size="sm"
+                variant="outline"
+                className="flex-1 text-white border-gray-600 hover:bg-gray-700"
+                onClick={() => setEditingIndex(null)}
+              >
+                Done
+              </Button>
+            </div>
           </CardContent>
         </Card>
         );

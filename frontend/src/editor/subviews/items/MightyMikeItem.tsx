@@ -1,6 +1,6 @@
 import { Updater } from "use-immer";
 import { ItemData } from "@/python/structSpecs/LevelTypes";
-import { Label, Rect, Tag, Text, Image as KonvaImage } from "react-konva";
+import { Rect, Image as KonvaImage } from "react-konva";
 import type Konva from "konva";
 import { SelectedItem } from "../../../data/items/itemAtoms";
 import { useAtomValue, useSetAtom } from "jotai";
@@ -9,12 +9,16 @@ import { Globals } from "@/data/globals/globals";
 import { getItemName } from "@/data/items/getItemNames";
 import { selectItem, updateItem } from "../../../data/selectors";
 import { ShowMightyMikeItemImages } from "./MightyMikeItemMenu";
-import { loadItemImage } from "@/utils/mightyMikeShapeImageLoader";
+import { loadItemImage, type ItemFrameImage } from "@/utils/mightyMikeShapeImageLoader";
 import { CurrentScene } from "@/data/game/gameAtoms";
 import { isOk } from "@/types/result";
-
-const ITEM_BOX_SIZE = 12;
-const ITEM_BOX_OFFSET = ITEM_BOX_SIZE / 2;
+import {
+  HoverNameTag,
+  ITEM_BOX_OFFSET,
+  ITEM_BOX_SIZE,
+  ITEM_TAG_GAP,
+  ItemTypeNumber,
+} from "../shared/nodeVisuals";
 
 export const MightyMikeItem = memo(function MightyMikeItem({
   itemData,
@@ -34,7 +38,7 @@ export const MightyMikeItem = memo(function MightyMikeItem({
   const globals = useAtomValue(Globals);
   const showItemImages = useAtomValue(ShowMightyMikeItemImages);
   const currentScene = useAtomValue(CurrentScene);
-  const [itemImage, setItemImage] = useState<HTMLCanvasElement | null>(null);
+  const [itemImageData, setItemImageData] = useState<ItemFrameImage | null>(null);
 
   const handleMouseOver = useCallback(() => setHovering(true), []);
   const handleMouseLeave = useCallback(() => setHovering(false), []);
@@ -44,16 +48,18 @@ export const MightyMikeItem = memo(function MightyMikeItem({
   );
   const handleDragEnd = useCallback(
     (e: Konva.KonvaEventObject<DragEvent>) => {
+      // Apply the sprite's frame offset to map canvas top-left back to item world position.
+      // offsetX/offsetY are the sprite hot-spot offsets from the game's FrameHeader.
+      const ox = itemImageData ? itemImageData.offsetX : -ITEM_BOX_OFFSET;
+      const oy = itemImageData ? itemImageData.offsetY : -ITEM_BOX_OFFSET;
       updateItem(setItemData, itemIdx, {
-        x: Math.round(e.target.x() + ITEM_BOX_OFFSET),
-        z: Math.round(e.target.y() + ITEM_BOX_OFFSET),
+        x: Math.round(e.target.x() - ox),
+        z: Math.round(e.target.y() - oy),
       });
     },
-    [itemIdx, setItemData],
+    [itemIdx, setItemData, itemImageData],
   );
 
-  const itemX = useMemo(() => item?.x ? item.x - ITEM_BOX_OFFSET : 0, [item]);
-  const itemZ = useMemo(() => item?.z ? item.z - ITEM_BOX_OFFSET : 0, [item]);
   const itemName = useMemo(
     () => item ? getItemName(globals, item.type) : "",
     [item, globals]
@@ -62,21 +68,20 @@ export const MightyMikeItem = memo(function MightyMikeItem({
   // Load item image when toggle is on
   useEffect(() => {
     if (!showItemImages || !item) {
-      // Reset state asynchronously
-      Promise.resolve().then(() => setItemImage(null));
+      Promise.resolve().then(() => setItemImageData(null));
       return;
     }
 
     loadItemImage(item.type, currentScene)
       .then((result) => {
         if (isOk(result)) {
-          setItemImage(result.value);
+          setItemImageData(result.value);
         } else {
           console.warn(
             `Failed to load image for item ${item.type}:`,
             result.error.message
           );
-          setItemImage(null);
+          setItemImageData(null);
         }
       })
       .catch((error) => {
@@ -84,22 +89,27 @@ export const MightyMikeItem = memo(function MightyMikeItem({
           `Unexpected error loading image for item ${item.type}:`,
           error instanceof Error ? error.message : String(error)
         );
-        setItemImage(null);
+        setItemImageData(null);
       });
   }, [showItemImages, item, currentScene]);
 
   if (item === null || item === undefined) return null;
 
-  // If showing images and we have an image, use Konva Image instead of Rect
-  if (showItemImages && itemImage) {
+  // If showing images and we have an image, render at natural sprite size.
+  // The frame header's offsetX/offsetY map the sprite onto the item's world position
+  // the same way the game does: drawX = item.x + offsetX, drawY = item.z + offsetY.
+  if (showItemImages && itemImageData) {
+    const { canvas, offsetX, offsetY } = itemImageData;
+    const drawX = item.x + offsetX;
+    const drawY = item.z + offsetY;
     return (
       <>
         <KonvaImage
-          image={itemImage}
-          x={itemX}
-          y={itemZ}
-          width={ITEM_BOX_SIZE}
-          height={ITEM_BOX_SIZE}
+          image={canvas}
+          x={drawX}
+          y={drawY}
+          width={canvas.width}
+          height={canvas.height}
           draggable
           onMouseOver={handleMouseOver}
           onMouseLeave={handleMouseLeave}
@@ -109,21 +119,26 @@ export const MightyMikeItem = memo(function MightyMikeItem({
         />
 
         {hovering && (
-          <Label opacity={1} x={item.x + 15} y={item.z}>
-            <Tag fill="red" />
-            <Text text={itemName} fontSize={8} fill="black" />
-          </Label>
+          <HoverNameTag
+            x={drawX + canvas.width + ITEM_TAG_GAP}
+            y={drawY}
+            text={itemName}
+            fill="red"
+            textColor="black"
+          />
         )}
       </>
     );
   }
 
   // Default: show box like original Item component
+  const boxX = item.x - ITEM_BOX_OFFSET;
+  const boxY = item.z - ITEM_BOX_OFFSET;
   return (
     <>
       <Rect
-        x={itemX}
-        y={itemZ}
+        x={boxX}
+        y={boxY}
         width={ITEM_BOX_SIZE}
         height={ITEM_BOX_SIZE}
         stroke="red"
@@ -134,25 +149,26 @@ export const MightyMikeItem = memo(function MightyMikeItem({
         onMouseDown={handleMouseDown}
         onDragStart={handleMouseDown}
         onDragEnd={handleDragEnd}
+        perfectDrawEnabled={false}
       />
 
-      <Text
-        text={item.type.toString()}
-        fill="black"
-        visible={!hovering}
-        fontSize={8}
-        x={itemX}
-        y={itemZ}
-        draggable
-        onMouseOver={handleMouseOver}
-        onMouseLeave={handleMouseLeave}
-      />
+      {!hovering && (
+        <ItemTypeNumber
+         x={boxX}
+         y={boxY}
+          value={item.type.toString()}
+          fill="black"
+        />
+      )}
 
       {hovering && (
-        <Label opacity={1} x={item.x + 15} y={item.z}>
-          <Tag fill="red" />
-          <Text text={itemName} fontSize={8} fill="black" />
-        </Label>
+        <HoverNameTag
+          x={boxX + ITEM_BOX_SIZE + ITEM_TAG_GAP}
+          y={boxY}
+          text={itemName}
+          fill="red"
+          textColor="black"
+        />
       )}
     </>
   );

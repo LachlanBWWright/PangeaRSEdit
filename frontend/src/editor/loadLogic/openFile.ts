@@ -31,6 +31,14 @@ export interface OpenFileArgs {
   setData: (d: AtomicLevelData) => void;
 }
 
+export function getTrtTextureUrl(levelUrl: string): string {
+  const baseUrl = levelUrl.replace(/\.ter$/i, "");
+  if (baseUrl.endsWith("Level1Pro")) {
+    return `${baseUrl.slice(0, -"Pro".length)}.trt`;
+  }
+  return `${baseUrl}.trt`;
+}
+
 export async function openFile({
   url: rUrl,
   gameType,
@@ -64,7 +72,7 @@ export async function openFile({
   setMapFile(new File([file], name));
 
   if (gameType.DATA_TYPE === DataType.TRT_FILE) {
-    url = url.split(".")[0] + ".trt";
+    url = getTrtTextureUrl(url);
   }
 
   const parseResult = await parseLevelDataFile(

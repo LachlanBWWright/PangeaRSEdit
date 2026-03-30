@@ -13,6 +13,8 @@ import type {
   RelPEntry,
 } from "../python/structSpecs/skeleton/skeletonInterface";
 import type { BG3DSkeleton } from "./parseBG3D";
+import { DEFAULT_BG3D_EXPORT_TARGET, type BG3DExportTarget } from "./bg3dExportTargets";
+import { buildAliasResourceEntry } from "./aliasResource";
 
 /**
  * Type guard helper functions for safe extraction from unknown values
@@ -37,6 +39,14 @@ function isRelPEntry(value: unknown): value is RelPEntry {
   return isRecord(value) && 'name' in value && 'order' in value && 'obj' in value;
 }
 
+function hasEntries(value: Record<string, unknown> | undefined): boolean {
+  return !!value && Object.keys(value).length > 0;
+}
+
+function getRecord(value: unknown): Record<string, unknown> | undefined {
+  return isRecord(value) ? value : undefined;
+}
+
 /**
  * Convert BG3D skeleton data to SkeletonResource format
  * @param skeleton BG3D skeleton data
@@ -52,15 +62,21 @@ export function bg3dSkeletonToSkeletonResource(
   evntData?: Record<string, unknown>,
   alisData?: Record<string, unknown>,
   metadata?: unknown,
+  fileBaseName?: string,
+  exportTarget: BG3DExportTarget = DEFAULT_BG3D_EXPORT_TARGET,
 ): SkeletonResource {
   // Use skeleton's own data if not explicitly provided
+  const relPRecord = getRecord(relP);
+  const alisRecord = getRecord(alisData);
   const effectiveRelP =
-    relP || convertRelPointsToRelPFormat(skeleton.relPoints);
-  const effectiveAlisData = alisData || skeleton.alisData;
-  const effectiveMetadata = metadata || skeleton.metadata;
+    hasEntries(relPRecord)
+      ? relPRecord
+      : convertRelPointsToRelPFormat(skeleton.relPoints);
+  const effectiveAlisData = hasEntries(alisRecord) ? alisRecord : undefined;
+  const effectiveMetadata = getRecord(metadata) || skeleton.metadata || {};
 
   // Debug: Check what RelP data we received
-  const effectiveRelPObj = isRecord(effectiveRelP) ? effectiveRelP : undefined;
+  const effectiveRelPObj = getRecord(effectiveRelP);
   if (effectiveRelPObj && effectiveRelPObj["1000"]) {
     const rEntry = isRecord(effectiveRelPObj["1000"]) ? effectiveRelPObj["1000"] : undefined;
     const len = rEntry && isArray(rEntry.obj)
@@ -134,9 +150,10 @@ export function bg3dSkeletonToSkeletonResource(
   const anHd: Record<string, AnHdEntry> = {};
   // Use provided evntData if available, otherwise create empty
   const evnt: Record<string, EvntEntry> = {};
-  if (isRecord(evntData)) {
+  const evntRecord = getRecord(evntData);
+  if (evntRecord && hasEntries(evntRecord)) {
     // Copy the evntData entries safely
-    Object.entries(evntData).forEach(([key, value]) => {
+    Object.entries(evntRecord).forEach(([key, value]) => {
       if (isEvntEntry(value)) {
         evnt[key] = value;
       }
@@ -147,40 +164,45 @@ export function bg3dSkeletonToSkeletonResource(
 
   skeleton.animations.forEach((animation, animIndex) => {
     const animResourceId = 1000 + animIndex;
+    const animResourceKey = animResourceId.toString();
+    const emittedEvents = evntRecord?.[animResourceKey]
+      ? evnt[animResourceKey]?.obj ?? []
+      : animation.events.map((event) => ({
+          time: event.time,
+          type: event.type,
+          value: event.value,
+        }));
 
     // Animation header - use resource IDs starting from 1000
-    anHd[animResourceId.toString()] = {
+    anHd[animResourceKey] = {
       name: animation.name, // Use actual animation name, not generic "Animation Header"
       order: animResourceId,
       obj: {
         animName: animation.name,
-        numAnimEvents: animation.numAnimEvents,
+        numAnimEvents: emittedEvents.length,
       },
     };
 
-    // Animation events (only if evntData not provided)
-    if (!evntData && animation.events.length > 0) {
-      evnt[animResourceId.toString()] = {
-        name: "Animation Events",
+    if (!evntRecord?.[animResourceKey]) {
+      evnt[animResourceKey] = {
+        name: animation.name,
         order: animResourceId,
-        obj: animation.events.map((event) => ({
-          time: event.time,
-          type: event.type,
-          value: event.value,
-        })),
+        obj: emittedEvents,
       };
     }
 
-    // NumK resource: ONE per animation, contains array of keyframe counts for all bones
-    // Initialize array with skeleton.numJoints entries (all 0)
-    const numKeyFramesArray = new Array(skeleton.numJoints).fill(0);
+    // NumK resource: one entry per joint, each with a named `numKeyFrames` field.
+    // The binary serializer expects an array of objects here, not raw numbers.
+    const numKeyFramesEntries: { numKeyFrames: number }[] = new Array(
+      skeleton.numJoints,
+    ).fill(0).map(() => ({ numKeyFrames: 0 }));
 
     // Process keyframes for each bone
     Object.entries(animation.keyframes).forEach(([boneIndexStr, keyframes]) => {
       const boneIndex = parseInt(boneIndexStr);
 
       // Store the number of keyframes for this bone in the array
-      numKeyFramesArray[boneIndex] = keyframes.length;
+      numKeyFramesEntries[boneIndex] = { numKeyFrames: keyframes.length };
 
       // KeyF resource ID: pattern is 1000 + (animIndex * 100) + boneIndex
       const keyFResourceId = 1000 + animIndex * 100 + boneIndex;
@@ -228,21 +250,22 @@ export function bg3dSkeletonToSkeletonResource(
     numK[animResourceId.toString()] = {
       name: animation.name,
       order: animResourceId,
-      obj: numKeyFramesArray, // Array of signed bytes, one per bone
+      obj: numKeyFramesEntries,
     };
   });
 
   // Build RelP safely without type assertions
   const relPResult: Record<string, RelPEntry> = {};
-  if (isRecord(effectiveRelP)) {
-    Object.entries(effectiveRelP).forEach(([key, value]) => {
+  const effectiveRelPRecord = getRecord(effectiveRelP);
+  if (effectiveRelPRecord && hasEntries(effectiveRelPRecord)) {
+    Object.entries(effectiveRelPRecord).forEach(([key, value]) => {
       if (isRelPEntry(value)) {
         relPResult[key] = value;
       }
     });
   }
 
-  return {
+  const result: Partial<SkeletonResource> = {
     Hedr: {
       "1000": {
         name: "Header",
@@ -253,17 +276,63 @@ export function bg3dSkeletonToSkeletonResource(
     Bone: bones,
     BonP: bonP,
     BonN: bonN,
-    RelP: relPResult, // Include RelP if provided or from skeleton, otherwise empty
-    AnHd: anHd,
-    Evnt: evnt,
-    NumK: numK,
-    KeyF: keyF,
-    alis:
-      effectiveAlisData && Object.keys(effectiveAlisData).length > 0
-        ? effectiveAlisData
-        : { "1000": { name: "alis", order: 1000, data: "00" } }, // Ensure alis resource exists (placeholder hex data if missing)
-    _metadata: isRecord(effectiveMetadata) ? effectiveMetadata : {}, // Include metadata if provided or from skeleton, otherwise empty
+    _metadata: effectiveMetadata,
   };
+
+  if (hasEntries(anHd)) {
+    result.AnHd = anHd;
+  }
+  if (hasEntries(numK)) {
+    result.NumK = numK;
+  }
+  if (hasEntries(keyF)) {
+    result.KeyF = keyF;
+  }
+  if (hasEntries(relPResult)) {
+    result.RelP = relPResult;
+  }
+  if (hasEntries(evnt)) {
+    result.Evnt = evnt;
+  }
+  const aliasResource =
+    effectiveAlisData && Object.keys(effectiveAlisData).length > 0
+      ? effectiveAlisData
+      : buildAliasResourceEntry(
+          fileBaseName || skeleton.bones[0]?.name || "Model",
+          exportTarget,
+        );
+  if (hasEntries(aliasResource)) {
+    result.alis = aliasResource;
+  }
+
+  const skeletonResource: SkeletonResource = {
+    _metadata: result._metadata,
+    Hedr: result.Hedr || {},
+    Bone: result.Bone || {},
+    BonP: result.BonP || {},
+    BonN: result.BonN || {},
+  };
+
+  if (result.RelP) {
+    skeletonResource.RelP = result.RelP;
+  }
+  if (result.AnHd) {
+    skeletonResource.AnHd = result.AnHd;
+  }
+  if (result.Evnt) {
+    skeletonResource.Evnt = result.Evnt;
+  }
+  if (result.NumK) {
+    skeletonResource.NumK = result.NumK;
+  }
+  if (result.KeyF) {
+    skeletonResource.KeyF = result.KeyF;
+  }
+  if (result.alis) {
+    skeletonResource.alis = result.alis;
+  }
+
+  return skeletonResource;
 }
 
 /**
@@ -277,7 +346,7 @@ function convertRelPointsToRelPFormat(relPoints?: Record<string, [number, number
   const relP: Record<string, RelPEntry> = {};
   Object.entries(relPoints).forEach(([resourceId, points]) => {
     relP[resourceId] = {
-      name: `RelP_${resourceId}`,
+      name: "Relative Point Offset",
       order: parseInt(resourceId, 10),
       obj: points.map(([x, y, z]) => ({
         relOffsetX: x,

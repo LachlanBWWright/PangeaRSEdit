@@ -3,17 +3,20 @@ import {
   TerrainData,
   HeaderData,
 } from "@/python/structSpecs/LevelTypes";
-import { Layer, Image } from "react-konva";
+import { Layer, Image, Circle, Rect } from "react-konva";
 import { Updater } from "use-immer";
 import {
   CurrentTopologyBrushMode,
   CurrentTopologyValueMode,
+  TopologyBrushMode,
   TopologyValueMode,
   TileViewMode,
   TileViews,
   TopologyBrushRadius,
   TopologyOpacity,
   TopologyValue,
+  ShowRoofInTopology,
+  ShowRoofGapInTopology,
 } from "../../data/tiles/tileAtoms";
 import { useAtomValue } from "jotai";
 import { Globals } from "../../data/globals/globals";
@@ -130,15 +133,22 @@ export function TopologyTiles({
   const topologyBrushRadius = useAtomValue(TopologyBrushRadius);
   const globals = useAtomValue(Globals);
   const opacity = useAtomValue(TopologyOpacity);
+  const showRoof = useAtomValue(ShowRoofInTopology);
+  const showRoofGap = useAtomValue(ShowRoofGapInTopology);
   const [isDragging, setIsDragging] = useState(false);
   const [lastBrushPoint, setLastBrushPoint] = useState<{ x: number; y: number } | null>(
     null,
   );
+  const [brushPreviewPoint, setBrushPreviewPoint] = useState<{
+    x: number;
+    y: number;
+  } | null>(null);
 
   const header = useMemo(() => headerData.Hedr[1000].obj, [headerData.Hedr]);
 
   // Guard against missing or empty YCrd data
   const yCrdData = terrainData.YCrd?.[1000]?.obj;
+  const roofYCrdData = terrainData.YCrd?.[1001]?.obj;
 
   const coordColours = useMemo(() => {
     if (!yCrdData || yCrdData.length === 0) {
@@ -147,6 +157,30 @@ export function TopologyTiles({
     }
     return yCrdData.flatMap((e) => elevationToRGBA(header, e));
   }, [yCrdData, header]);
+
+  // Alpha for the semi-transparent roof/gap overlay (0-255)
+  const ROOF_OVERLAY_ALPHA = 180;
+
+  // Roof colour overlay: blue tint representing ceiling elevation
+  const roofCoordColours = useMemo(() => {
+    if (!roofYCrdData || roofYCrdData.length === 0) return [];
+    return roofYCrdData.flatMap((e) => {
+      const grey = ((e - header.minY) / Math.max(1, header.maxY - header.minY)) * 255;
+      return [Math.round(grey * 0.4), Math.round(grey * 0.6), 255, ROOF_OVERLAY_ALPHA];
+    });
+  }, [roofYCrdData, header, ROOF_OVERLAY_ALPHA]);
+
+  // Gap (roof - floor) colour map: red = tight, green = spacious
+  const gapColours = useMemo(() => {
+    if (!roofYCrdData || !yCrdData || roofYCrdData.length === 0 || yCrdData.length === 0) return [];
+    return roofYCrdData.flatMap((roofY, i) => {
+      const floorY = yCrdData[i] ?? 0;
+      const gap = Math.max(0, roofY - floorY);
+      const maxGap = header.maxY - header.minY;
+      const ratio = Math.min(1, gap / Math.max(1, maxGap));
+      return [Math.round((1 - ratio) * 255), Math.round(ratio * 255), 0, ROOF_OVERLAY_ALPHA];
+    });
+  }, [roofYCrdData, yCrdData, header, ROOF_OVERLAY_ALPHA]);
 
   const imgCanvas = useMemo(() => {
     // Guard against empty data - create a 1x1 placeholder
@@ -167,6 +201,18 @@ export function TopologyTiles({
     }
     return result.value;
   }, [header, coordColours, yCrdData]);
+
+  const roofImgCanvas = useMemo(() => {
+    if (!showRoof || !roofYCrdData || roofYCrdData.length === 0) return null;
+    const colors = showRoofGap ? gapColours : roofCoordColours;
+    if (colors.length === 0) return null;
+    const result = createImageCanvas(
+      header.mapWidth + 1,
+      header.mapHeight + 1,
+      colors,
+    );
+    return result.isOk() ? result.value : null;
+  }, [showRoof, showRoofGap, roofYCrdData, roofCoordColours, gapColours, header]);
 
   const setPixels = (pixelList: PixelType[]) => {
     // Guard against missing YCrd data
@@ -212,6 +258,9 @@ export function TopologyTiles({
     setPixels(pixelList);
   };
 
+  const previewSize = (topologyBrushRadius - 1) * globals.TILE_SIZE;
+  const showBrushPreview = isEditingTopology && brushPreviewPoint !== null;
+
   return (
     <Layer imageSmoothingEnabled={false}>
       <Image
@@ -235,16 +284,18 @@ export function TopologyTiles({
           if (!pos) return;
           const centerX = Math.round(pos.x);
           const centerY = Math.round(pos.y);
+          setBrushPreviewPoint({ x: centerX, y: centerY });
           setIsDragging(true);
           setLastBrushPoint({ x: centerX, y: centerY });
           applyBrushAt(centerX, centerY);
         }}
         onMouseMove={(e) => {
-          if (!isEditingTopology || !isDragging) return;
           const pos = e.target.getStage()?.getRelativePointerPosition();
           if (!pos) return;
           const centerX = Math.round(pos.x);
           const centerY = Math.round(pos.y);
+          setBrushPreviewPoint({ x: centerX, y: centerY });
+          if (!isEditingTopology || !isDragging) return;
           const lineStart =
             currentTopologyValueMode === TopologyValueMode.SET_VALUE
               ? undefined
@@ -256,8 +307,50 @@ export function TopologyTiles({
           setIsDragging(false);
           setLastBrushPoint(null);
         }}
+        onMouseLeave={() => {
+          setIsDragging(false);
+          setLastBrushPoint(null);
+          setBrushPreviewPoint(null);
+        }}
         image={imgCanvas ?? undefined}
       />
+      {showBrushPreview &&
+        (currentTopologyBrushMode === TopologyBrushMode.CIRCLE_BRUSH ? (
+          <Circle
+            x={brushPreviewPoint.x}
+            y={brushPreviewPoint.y}
+            radius={previewSize}
+            stroke="#44ff44"
+            strokeWidth={2}
+            dash={[6, 4]}
+            listening={false}
+            perfectDrawEnabled={false}
+          />
+        ) : (
+          <Rect
+            x={brushPreviewPoint.x - previewSize}
+            y={brushPreviewPoint.y - previewSize}
+            width={previewSize * 2}
+            height={previewSize * 2}
+            stroke="#44ff44"
+            strokeWidth={2}
+            dash={[6, 4]}
+            listening={false}
+            perfectDrawEnabled={false}
+          />
+        ))}
+      {/* Roof overlay (semi-transparent, shown when showRoof is on and YCrd 1001 exists) */}
+      {showRoof && roofImgCanvas && (
+        <Image
+          x={0}
+          y={0}
+          opacity={opacity * 0.6}
+          width={(header.mapWidth + 1) * globals.TILE_SIZE}
+          height={(header.mapHeight + 1) * globals.TILE_SIZE}
+          image={roofImgCanvas}
+          listening={false}
+        />
+      )}
     </Layer>
   );
 }

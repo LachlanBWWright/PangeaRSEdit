@@ -123,9 +123,9 @@ export interface SkeletonResource {
   BonP: Record<string, BonPEntry>;
   BonN: Record<string, BonNEntry>;
   RelP?: Record<string, RelPEntry>;
-  AnHd: Record<string, AnHdEntry>;
-  Evnt: Record<string, EvntEntry>;
-  NumK: Record<string, NumKEntry>;
-  KeyF: Record<string, KeyFEntry>;
+  AnHd?: Record<string, AnHdEntry>;
+  Evnt?: Record<string, EvntEntry>;
+  NumK?: Record<string, NumKEntry>;
+  KeyF?: Record<string, KeyFEntry>;
   [key: string]: unknown;
 }

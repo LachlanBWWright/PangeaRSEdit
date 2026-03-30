@@ -10,7 +10,7 @@ import {
   SelectedSplineItem,
 } from "../../../data/splines/splineAtoms";
 import { SPLINE_KEY_BASE } from "./splineUtils";
-import { useEffect } from "react";
+import { memo, useEffect } from "react";
 import {
   AddNewSplineMenu,
   EditSplineItemMenu,
@@ -26,7 +26,7 @@ import {
 import { Globals } from "@/data/globals/globals";
 import { getSplineItemName } from "@/data/splines/getSplineItemNames";
 
-export function SplineMenu({
+export const SplineMenu = memo(function SplineMenu({
   splineData,
   setSplineData,
 }: {
@@ -96,4 +96,4 @@ export function SplineMenu({
       </div>
     </div>
   );
-}
+});

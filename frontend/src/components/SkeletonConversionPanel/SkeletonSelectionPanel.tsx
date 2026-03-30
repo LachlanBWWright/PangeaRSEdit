@@ -1,3 +1,4 @@
+import { useRef } from "react";
 import React from "react";
 import { Button } from "@/components/ui/button";
 import { X } from "lucide-react";
@@ -5,7 +6,6 @@ import { DropArea } from "./DropArea";
 
 interface Props {
   pendingBg3dFileName: string;
-  inputId: string;
   onDrop: (e: React.DragEvent) => void;
   onFileInputChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onSkipSkeleton: () => void;
@@ -15,13 +15,14 @@ interface Props {
 
 export function SkeletonSelectionPanel({
   pendingBg3dFileName,
-  inputId,
   onDrop,
   onFileInputChange,
   onSkipSkeleton,
   onCancel,
   loading,
 }: Props) {
+  const skeletonInputRef = useRef<HTMLInputElement | null>(null);
+
   return (
     <>
       <div className="text-sm text-gray-300 mb-3">
@@ -29,9 +30,8 @@ export function SkeletonSelectionPanel({
       </div>
 
       <DropArea
-        id={inputId}
         onDrop={onDrop}
-        onClick={() => document.getElementById(inputId)?.click()}
+        onClick={() => skeletonInputRef.current?.click()}
       >
         <p className="text-gray-400 mb-2">
           Drop skeleton file here or click to select
@@ -45,7 +45,7 @@ export function SkeletonSelectionPanel({
         type="file"
         accept=".skeleton.rsrc"
         className="hidden"
-        id={inputId}
+        ref={skeletonInputRef}
         onChange={onFileInputChange}
       />
 

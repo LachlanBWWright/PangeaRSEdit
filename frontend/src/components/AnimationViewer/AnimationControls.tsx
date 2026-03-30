@@ -3,7 +3,6 @@
  */
 
 import { Button } from "@/components/ui/button";
-import { Slider } from "@/components/ui/slider";
 import { Play, Pause, Square, RotateCcw } from "lucide-react";
 import { formatTime } from "./utils";
 
@@ -16,7 +15,6 @@ interface AnimationControlsProps {
   onPause: () => void;
   onStop: () => void;
   onReset: () => void;
-  onSeek: (time: number) => void;
 }
 
 export function AnimationControls({
@@ -28,7 +26,6 @@ export function AnimationControls({
   onPause,
   onStop,
   onReset,
-  onSeek,
 }: AnimationControlsProps) {
   return (
     <div className="space-y-3">
@@ -59,13 +56,6 @@ export function AnimationControls({
           <span>{formatTime(currentTime)}</span>
           <span>{formatTime(duration)}</span>
         </div>
-        <Slider
-          value={[currentTime]}
-          onValueChange={(values) => onSeek(values[0] ?? 0)}
-          max={duration}
-          step={0.001}
-          disabled={!hasActiveAction}
-        />
       </div>
     </div>
   );

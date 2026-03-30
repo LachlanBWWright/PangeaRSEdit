@@ -9,6 +9,7 @@
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { View } from "../viewEnum";
+import { memo } from "react";
 
 interface Props {
   view: View;
@@ -16,7 +17,7 @@ interface Props {
   terrainHasSTgd?: boolean;
 }
 
-export function StandardEditorToolbar({
+export const StandardEditorToolbar = memo(function StandardEditorToolbar({
   view,
   setView,
   terrainHasSTgd,
@@ -60,4 +61,4 @@ export function StandardEditorToolbar({
       <Separator />
     </>
   );
-}
+});

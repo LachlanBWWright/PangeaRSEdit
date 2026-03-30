@@ -1,4 +1,5 @@
 import { describe, test, expect, vi, beforeEach } from "vitest";
+import { SkeletonConversionPanel } from "@/components/SkeletonConversionPanel";
 
 // Mock dependencies that the ModelViewer component uses
 vi.mock("sonner", () => ({
@@ -256,6 +257,10 @@ describe("ModelViewer Two-Step Upload Logic", () => {
 });
 
 describe("SkeletonConversionPanel Logic", () => {
+  test("component imports and is callable", () => {
+    expect(typeof SkeletonConversionPanel).toBe("function");
+  });
+
   test("handles conversion type validation", () => {
     const getFileExtensions = (conversionType: string) => {
       const expectedExt =

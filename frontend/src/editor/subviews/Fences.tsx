@@ -4,8 +4,9 @@ import { Updater } from "use-immer";
 import { Fence } from "./fences/Fence";
 import { useAtomValue } from "jotai";
 import { SelectedFence } from "@/data/fences/fenceAtoms";
+import { memo } from "react";
 
-export function Fences({
+export const Fences = memo(function Fences({
   fenceData,
   setFenceData,
 }: {
@@ -34,4 +35,4 @@ export function Fences({
       )}
     </Layer>
   );
-}
+});

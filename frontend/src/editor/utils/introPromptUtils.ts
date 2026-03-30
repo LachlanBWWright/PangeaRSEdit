@@ -185,9 +185,11 @@ export function prepareDownloadData(
 ): LevelData {
   const cloneableData = { ...data };
   const rawTileset = Reflect.get(cloneableData, "tileset");
-  if (isRecord(rawTileset) && "tileImages" in rawTileset) {
+  if (isRecord(rawTileset)) {
     const sanitizedTileset = { ...rawTileset };
+    // Strip HTMLCanvasElement fields that cannot be structuredCloned
     Reflect.deleteProperty(sanitizedTileset, "tileImages");
+    Reflect.deleteProperty(sanitizedTileset, "collisionImages");
     Reflect.set(cloneableData, "tileset", sanitizedTileset);
   }
   let workingData = structuredClone(cloneableData);

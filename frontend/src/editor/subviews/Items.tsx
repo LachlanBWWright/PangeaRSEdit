@@ -1,29 +1,25 @@
-import { ItemData } from "@/python/structSpecs/LevelTypes";
+import { HeaderData, ItemData, TerrainData } from "@/python/structSpecs/LevelTypes";
 import { Layer, Rect } from "react-konva";
 import { Updater } from "use-immer";
 import { Item } from "./items/Item";
-import { memo, useMemo, useCallback } from "react";
+import { memo, useMemo } from "react";
 import { useAtomValue } from "jotai";
-import { Globals } from "@/data/globals/globals";
 import { itemFilterStateAtom } from "@/data/items/itemFilterAtoms";
 import { isItemVisible } from "@/data/items/itemFilterUtils";
 
 export const Items = memo(
   ({
+    headerData,
+    terrainData,
     itemData,
     setItemData,
   }: {
+    headerData: HeaderData;
+    terrainData: TerrainData;
     itemData: ItemData;
     setItemData: Updater<ItemData>;
   }) => {
-    const globals = useAtomValue(Globals);
     const filterState = useAtomValue(itemFilterStateAtom);
-
-    // Create a function to get item type names from globals
-    const getTypeName = useCallback(
-      (itemType: number) => globals.ITEM_TYPES[itemType],
-      [globals.ITEM_TYPES]
-    );
 
     // Compute which item indices should be visible based on filter
     const visibleItemIndices = useMemo(() => {
@@ -34,13 +30,13 @@ export const Items = memo(
       
       for (let idx = 0; idx < items.length; idx++) {
         const item = items[idx];
-        if (item && isItemVisible(item.type, filterState, getTypeName)) {
+        if (item && isItemVisible(item.type, filterState)) {
           indices.push(idx);
         }
       }
       
       return indices;
-    }, [itemData.Itms, filterState, getTypeName]);
+    }, [itemData.Itms, filterState]);
 
     if (!itemData.Itms) return <></>;
 
@@ -48,7 +44,14 @@ export const Items = memo(
       <Layer>
         <Rect />
         {visibleItemIndices.map((itemIdx) => (
-          <Item key={itemIdx} itemData={itemData} setItemData={setItemData} itemIdx={itemIdx} />
+          <Item
+            key={itemIdx}
+            headerData={headerData}
+            terrainData={terrainData}
+            itemData={itemData}
+            setItemData={setItemData}
+            itemIdx={itemIdx}
+          />
         ))}
       </Layer>
     );

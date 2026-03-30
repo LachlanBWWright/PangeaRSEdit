@@ -8,6 +8,7 @@
  * - NO fences, water, or splines (Mighty Mike is 2D only)
  */
 
+import { memo } from "react";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { View } from "../viewEnum";
@@ -17,7 +18,7 @@ interface Props {
   setView: (v: View) => void;
 }
 
-export function MightyMikeEditorToolbar({
+export const MightyMikeEditorToolbar = memo(function MightyMikeEditorToolbar({
   view,
   setView,
 }: Props) {
@@ -46,4 +47,4 @@ export function MightyMikeEditorToolbar({
       <Separator />
     </>
   );
-}
+});
