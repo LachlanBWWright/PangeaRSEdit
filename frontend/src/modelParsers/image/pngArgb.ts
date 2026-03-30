@@ -87,6 +87,58 @@ export function rgba8ToPng(
   return encoded;
 }
 
+/**
+ * Trim a PNG buffer so it ends exactly after the IEND chunk's CRC.
+ *
+ * GLB containers may pad image data for 4-byte alignment.  pngjs rejects
+ * buffers that contain trailing bytes after the IEND chunk, so we strip
+ * them before handing the data to the decoder.
+ */
+function trimPngBuffer(
+  buf: Buffer<ArrayBufferLike> | ArrayBuffer,
+): ArrayBuffer {
+  const bytes =
+    buf instanceof ArrayBuffer ? new Uint8Array(buf) : new Uint8Array(buf);
+
+  // PNG chunk layout: [4-byte length][4-byte type][length-byte data][4-byte CRC]
+  // Walk chunks starting after the 8-byte PNG signature.
+  let offset = 8; // skip PNG signature
+  while (offset + 8 <= bytes.byteLength) {
+    const chunkLen =
+      ((bytes[offset] ?? 0) << 24) |
+      ((bytes[offset + 1] ?? 0) << 16) |
+      ((bytes[offset + 2] ?? 0) << 8) |
+      (bytes[offset + 3] ?? 0);
+
+    const isIEND =
+      bytes[offset + 4] === 0x49 &&
+      bytes[offset + 5] === 0x45 &&
+      bytes[offset + 6] === 0x4e &&
+      bytes[offset + 7] === 0x44;
+
+    // Move past length(4) + type(4) + data(chunkLen) + CRC(4)
+    offset += 12 + chunkLen;
+
+    if (isIEND) {
+      break;
+    }
+  }
+
+  if (offset < bytes.byteLength) {
+    // There are trailing bytes – return a trimmed copy
+    const trimmed = new ArrayBuffer(offset);
+    new Uint8Array(trimmed).set(bytes.subarray(0, offset));
+    return trimmed;
+  }
+  // No trimming needed – return a clean ArrayBuffer copy
+  if (buf instanceof ArrayBuffer) {
+    return buf;
+  }
+  const copy = new ArrayBuffer(bytes.byteLength);
+  new Uint8Array(copy).set(bytes);
+  return copy;
+}
+
 // Decode PNG Buffer to RGBA Uint8Array
 export async function pngToRgba8(
   pngBuffer: Buffer<ArrayBufferLike> | ArrayBuffer,
@@ -95,8 +147,8 @@ export async function pngToRgba8(
   width: number;
   height: number;
 }> {
-  const decoded = await Jimp.fromBuffer(pngBuffer);
-  //const decoded = PNG.sync.read(pngBuffer);
+  const trimmed = trimPngBuffer(pngBuffer);
+  const decoded = await Jimp.fromBuffer(trimmed);
   return {
     data: decoded.bitmap.data,
     width: decoded.width,
