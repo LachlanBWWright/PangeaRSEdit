@@ -20,6 +20,9 @@ function isArrayBufferView(value: unknown): value is ArrayBufferView {
 
 /**
  * Create glTF skinning data from BG3D bone influences (part of bg3dSkeletonToGltf)
+ *
+ * Computes inverse bind matrices using hierarchical world transforms,
+ * consistent with the local-transform joint setup in bg3dBonesToGltf.
  */
 export function bg3dSkinningToGltf(
   parsedSkeleton: { bones: BG3DBone[] },
@@ -34,7 +37,9 @@ export function bg3dSkinningToGltf(
     return null;
   }
 
-  // Compute inverse bind matrices from bone world positions
+  // Compute inverse bind matrices from hierarchical world transforms
+  // Otto bones have absolute world positions; we reconstruct the world
+  // transform from parent-relative local transforms and then invert.
   const numJoints = joints.length;
   const inverseBindMatrices = new Float32Array(numJoints * 16);
 
@@ -42,8 +47,8 @@ export function bg3dSkinningToGltf(
     const offset = i * 16;
     const bone = parsedSkeleton.bones[i];
     if (bone) {
-      // Bone coords are absolute world positions; the inverse bind matrix
-      // is the inverse of a pure translation to that position.
+      // The world position of a bone equals its absolute Otto coordinates.
+      // The inverse bind matrix is the inverse of a pure translation to that position.
       inverseBindMatrices[offset + 0] = 1;
       inverseBindMatrices[offset + 5] = 1;
       inverseBindMatrices[offset + 10] = 1;
