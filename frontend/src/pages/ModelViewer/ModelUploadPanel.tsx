@@ -124,7 +124,7 @@ export function ModelUploadPanel({
                 <input
                   ref={fileInputRef}
                   type="file"
-                  accept={awaitingSkeleton ? ".skeleton.rsrc" : fileAccept}
+                  accept={awaitingSkeleton ? ".skeleton.rsrc,.rsrc" : fileAccept}
                   className="hidden"
                   onChange={(e) => {
                     const file = e.target.files?.[0];

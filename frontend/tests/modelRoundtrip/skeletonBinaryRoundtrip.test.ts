@@ -118,10 +118,10 @@ describe("Skeleton .rsrc binary round-trip with keyframe modification (BG3D)", (
       coordY: b.coordY,
       coordZ: b.coordZ,
     }));
-    const baselineKeyframes: Record<string, Array<{
+    const baselineKeyframes: Record<string, {
       coordX: number; coordY: number; coordZ: number;
       rotationX: number; rotationY: number; rotationZ: number;
-    }>> = {};
+    }[]> = {};
     const firstAnim = parsed.skeleton.animations[0];
     if (firstAnim) {
       for (const [boneIdx, kfList] of Object.entries(firstAnim.keyframes)) {
@@ -267,9 +267,9 @@ describe("Skeleton .rsrc binary round-trip with keyframe modification (3DMF)", (
     // Snapshot baseline values BEFORE mutation
     const baselineBoneCount = parsed.skeleton.bones.length;
     const baselineAnimCount = parsed.skeleton.animations.length;
-    const baselineKeyframes: Record<string, Array<{
+    const baselineKeyframes: Record<string, {
       coordX: number; coordY: number; coordZ: number;
-    }>> = {};
+    }[]> = {};
     const firstAnim = parsed.skeleton.animations[0];
     if (firstAnim) {
       for (const [boneIdx, kfList] of Object.entries(firstAnim.keyframes)) {
