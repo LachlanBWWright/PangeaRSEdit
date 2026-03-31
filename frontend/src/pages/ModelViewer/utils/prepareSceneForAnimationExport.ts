@@ -6,7 +6,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 function hasWireframe(mat: Material): mat is Material & { wireframe: boolean } {
-  return "wireframe" in mat;
+  return "wireframe" in mat && typeof mat.wireframe === "boolean";
 }
 
 export function prepareSceneForAnimationExport(scene: Object3D): Object3D {
