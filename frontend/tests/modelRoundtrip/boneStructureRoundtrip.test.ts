@@ -374,6 +374,8 @@ describe("Euler ↔ quaternion round-trip accuracy", () => {
   });
 
   it("euler→quaternion→euler for larger angles", () => {
+    // Test various rotation scenarios: multi-axis, negative angles,
+    // identity, and axis-aligned 90° rotations (near gimbal lock)
     const testAngles = [
       { x: Math.PI / 4, y: Math.PI / 3, z: Math.PI / 6 },
       { x: -0.5, y: 1.2, z: -0.8 },
