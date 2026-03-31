@@ -37,22 +37,23 @@ describe("prepareSceneForAnimationExport", () => {
 
     const exportScene = prepareSceneForAnimationExport(scene);
 
-    let clonedPelvis: Bone | null = null;
-    let clonedKnee: Bone | null = null;
+    const foundBones = new Map<string, Bone>();
     exportScene.traverse((object) => {
-      if (object instanceof Bone && object.name === "Pelvis") {
-        clonedPelvis = object;
-      } else if (object instanceof Bone && object.name === "RightKnee") {
-        clonedKnee = object;
+      if (object instanceof Bone) {
+        foundBones.set(object.name, object);
       }
     });
 
-    expect(clonedPelvis).not.toBeNull();
-    expect(clonedKnee).not.toBeNull();
-    expect(clonedPelvis?.position.y).toBeCloseTo(-44.4, 5);
-    expect(clonedPelvis?.position.z).toBeCloseTo(8.4, 5);
-    expect(clonedKnee?.position.y).toBeCloseTo(-36, 5);
-    expect(clonedKnee?.position.z).toBeCloseTo(-9.6, 5);
+    const clonedPelvis = foundBones.get("Pelvis");
+    const clonedKnee = foundBones.get("RightKnee");
+
+    expect(clonedPelvis).toBeDefined();
+    expect(clonedKnee).toBeDefined();
+    if (!clonedPelvis || !clonedKnee) return;
+    expect(clonedPelvis.position.y).toBeCloseTo(-44.4, 5);
+    expect(clonedPelvis.position.z).toBeCloseTo(8.4, 5);
+    expect(clonedKnee.position.y).toBeCloseTo(-36, 5);
+    expect(clonedKnee.position.z).toBeCloseTo(-9.6, 5);
 
     expect(pelvis.position.y).toBeCloseTo(-34.9, 5);
     expect(knee.position.y).toBeCloseTo(-26.4, 5);
