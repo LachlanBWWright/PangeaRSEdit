@@ -231,7 +231,7 @@ self.onmessage = async (e: MessageEvent<BG3DGltfWorkerMessage>) => {
     } else if (msg.type === "glb-to-bg3d") {
       const io = new WebIO();
       const doc = await io.readBinary(new Uint8Array(msg.buffer));
-      const parsedBg3d = await gltfToBG3D(doc);
+      const parsedBg3d = gltfToBG3D(doc);
       const bg3d = bg3dParsedToBG3D(parsedBg3d);
 
       const response = {
@@ -244,7 +244,7 @@ self.onmessage = async (e: MessageEvent<BG3DGltfWorkerMessage>) => {
     } else if (msg.type === "glb-to-bg3d-with-skeleton") {
       const io = new WebIO();
       const doc = await io.readBinary(new Uint8Array(msg.buffer));
-      const parsedBg3d = await gltfToBG3D(doc);
+      const parsedBg3d = gltfToBG3D(doc);
       const bg3d = bg3dParsedToBG3D(parsedBg3d);
 
       const response = {

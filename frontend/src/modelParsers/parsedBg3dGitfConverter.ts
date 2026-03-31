@@ -913,11 +913,10 @@ export function bg3dParsedToGLTF(
   return doc;
 }
 
-export async function gltfToBG3D(doc: Document): Promise<BG3DParseResult> {
+export function gltfToBG3D(doc: Document): BG3DParseResult {
   // 1. Restore materials from glTF materials (infer BG3D flags from standard glTF data)
   const docMaterials = doc.getRoot().listMaterials();
-  const materials: BG3DMaterial[] = await Promise.all(
-    docMaterials.map(async (mat) => {
+  const materials: BG3DMaterial[] = docMaterials.map((mat) => {
       let diffuseColor: [number, number, number, number] = [1, 1, 1, 1];
       const baseColor = mat.getBaseColorFactor();
       if (Array.isArray(baseColor) && baseColor.length === 4) {
@@ -975,7 +974,7 @@ export async function gltfToBG3D(doc: Document): Promise<BG3DParseResult> {
             });
           } else if (isPNG) {
             const imageBuffer = toExactArrayBuffer(image);
-            const rgbaRes = await pngToRgba8(imageBuffer);
+            const rgbaRes = pngToRgba8(imageBuffer);
 
             // Infer srcPixelFormat from actual pixel data
             // Check if any pixel has non-255 alpha (indicating true RGBA)
@@ -1027,8 +1026,7 @@ export async function gltfToBG3D(doc: Document): Promise<BG3DParseResult> {
         flags,
         textures,
       };
-    }),
-  );
+    });
 
   // 2. Restore skeleton data purely from glTF Skin and Animations
   let skeleton: BG3DSkeleton | undefined = undefined;

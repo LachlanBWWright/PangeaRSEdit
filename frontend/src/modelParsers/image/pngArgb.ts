@@ -1,13 +1,13 @@
 import { PNG } from "pngjs/browser";
-import { Jimp } from "jimp";
+import { Buffer } from "buffer";
 
 // Decode PNG Buffer to RGB8 Uint8Array (strips alpha)
-export async function pngToRgb8(pngBuffer: ArrayBuffer): Promise<{
+export function pngToRgb8(pngBuffer: ArrayBuffer): {
   data: Uint8Array;
   width: number;
   height: number;
-}> {
-  const { data: rgba, width, height } = await pngToRgba8(pngBuffer);
+} {
+  const { data: rgba, width, height } = pngToRgba8(pngBuffer);
   const rgb = new Uint8Array((rgba.length / 4) * 3);
   for (let i = 0, j = 0; i < rgba.length; i += 4, j += 3) {
     rgb[j + 0] = rgba[i + 0] ?? 0;
@@ -140,17 +140,21 @@ function trimPngBuffer(
 }
 
 // Decode PNG Buffer to RGBA Uint8Array
-export async function pngToRgba8(
+export function pngToRgba8(
   pngBuffer: Buffer<ArrayBufferLike> | ArrayBuffer,
-): Promise<{
+): {
   data: Uint8Array;
   width: number;
   height: number;
-}> {
+} {
   const trimmed = trimPngBuffer(pngBuffer);
-  const decoded = await Jimp.fromBuffer(trimmed);
+  // Use PNG.sync.read from the same pngjs/browser we use for encoding,
+  // bypassing Jimp which bundles a separate pngjs@6 copy that may
+  // mishandle ArrayBuffer→Buffer conversion for trimmed data.
+  const buf = Buffer.from(new Uint8Array(trimmed));
+  const decoded = PNG.sync.read(buf);
   return {
-    data: decoded.bitmap.data,
+    data: new Uint8Array(decoded.data),
     width: decoded.width,
     height: decoded.height,
   };
@@ -167,12 +171,12 @@ export function argb16ToPng(
 }
 
 // Convert PNG Buffer to 16-bit ARGB1555 (Uint16Array)
-export async function pngToArgb16(pngBuffer: ArrayBuffer): Promise<{
+export function pngToArgb16(pngBuffer: ArrayBuffer): {
   data: Uint16Array;
   width: number;
   height: number;
-}> {
-  const { data: rgba, width, height } = await pngToRgba8(pngBuffer);
+} {
+  const { data: rgba, width, height } = pngToRgba8(pngBuffer);
   const argb16 = rgba8ToArgb16(rgba);
   return { data: argb16, width, height };
 }

@@ -7,7 +7,6 @@ import { parseBG3D, bg3dParsedToBG3D } from "./parseBG3D";
 import { bg3dParsedToGLTF, gltfToBG3D } from "./parsedBg3dGitfConverter";
 import { existsSync, readFileSync } from "fs";
 import { join } from "path";
-import { fromPromise } from "../types/result";
 
 const GAMES_ROOT = join(__dirname, "../../../../games");
 
@@ -96,12 +95,7 @@ async function testGame(game: string, filePath: string) {
 
   // Convert back to BG3D
   console.log("Converting back to BG3D...");
-  const roundtripResult = await fromPromise(gltfToBG3D(gltfDoc));
-  if (roundtripResult.isErr()) {
-    console.log(`❌ Error: ${roundtripResult.error.message}`);
-    return { game, success: false, error: roundtripResult.error.message };
-  }
-  const roundtripParsed = roundtripResult.value;
+  const roundtripParsed = gltfToBG3D(gltfDoc);
   console.log(`✅ Roundtrip: ${roundtripParsed.materials.length} materials`);
 
   // Binary roundtrip

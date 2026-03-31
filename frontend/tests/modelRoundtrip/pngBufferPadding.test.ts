@@ -54,7 +54,7 @@ describe("PNG buffer padding in GLB roundtrip", () => {
 
     const imageBuffer = new ArrayBuffer(image.byteLength);
     new Uint8Array(imageBuffer).set(image);
-    const result = await pngToRgba8(imageBuffer);
+    const result = pngToRgba8(imageBuffer);
     expect(result.width).toBe(2);
     expect(result.height).toBe(2);
   });
@@ -70,7 +70,7 @@ describe("PNG buffer padding in GLB roundtrip", () => {
     new Uint8Array(paddedBuffer).set(new Uint8Array(pngData));
 
     // pngToRgba8 should now succeed even with trailing bytes
-    const result = await pngToRgba8(paddedBuffer);
+    const result = pngToRgba8(paddedBuffer);
     expect(result.width).toBe(2);
     expect(result.height).toBe(2);
   });
@@ -93,7 +93,7 @@ describe("PNG buffer padding in GLB roundtrip", () => {
     new Uint8Array(copy).set(paddedView);
 
     // Should still decode correctly
-    const result = await pngToRgba8(copy);
+    const result = pngToRgba8(copy);
     expect(result.width).toBe(2);
     expect(result.height).toBe(2);
   });
