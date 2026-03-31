@@ -685,16 +685,6 @@ export function AnimationViewer({
     }
   };
 
-  const handleLoopToggle = () => {
-    if (selectedAnimation === null || !selectedAnimationInfo) return;
-    const nextLoop = !(selectedAnimationInfo.loop ?? true);
-    updateSelectedAnimation((anim) => ({
-      ...anim,
-      loop: nextLoop,
-      loopMode: nextLoop ? "loop" : "once",
-    }));
-  };
-
   const handleLoopModeChange = (mode: LoopMode) => {
     if (selectedAnimation === null || !selectedAnimationInfo) return;
     updateSelectedAnimation((anim) => ({
@@ -1185,7 +1175,6 @@ export function AnimationViewer({
             durationError={durationError}
             onNameChange={setEditName}
             onDurationInputChange={setEditDurationInput}
-            onLoopToggle={handleLoopToggle}
             onLoopModeChange={handleLoopModeChange}
             onDurationModeChange={setDurationMode}
             onApplyChanges={handleApplyEditorChanges}

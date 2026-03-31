@@ -176,18 +176,6 @@ function EnhancedModelMeshComponent({
               }
             });
           });
-
-          // Log bone positions
-          console.log("=== Skeleton Bone Positions ===");
-          skeleton.bones.forEach((bone, index) => {
-            const worldPosition = new Vector3();
-            bone.getWorldPosition(worldPosition);
-            console.log(`Bone ${index} (${bone.name}):`, {
-              local: bone.position.toArray(),
-              world: worldPosition.toArray(),
-              children: bone.children.length,
-            });
-          });
         }
       });
     }

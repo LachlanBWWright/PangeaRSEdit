@@ -4,7 +4,6 @@
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Switch } from "@/components/ui/switch";
 import {
   Select,
   SelectContent,
@@ -23,7 +22,6 @@ interface AnimationEditorProps {
   durationError: string | null;
   onNameChange: (name: string) => void;
   onDurationInputChange: (duration: string) => void;
-  onLoopToggle: () => void;
   onLoopModeChange: (mode: LoopMode) => void;
   onDurationModeChange: (mode: "scale" | "truncate") => void;
   onApplyChanges: () => void;
@@ -38,7 +36,6 @@ export function AnimationEditor({
   durationError,
   onNameChange,
   onDurationInputChange,
-  onLoopToggle,
   onLoopModeChange,
   onDurationModeChange,
   onApplyChanges,
