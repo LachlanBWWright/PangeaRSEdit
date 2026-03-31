@@ -51,6 +51,8 @@ interface KeyframeEditorProps {
   keyframeError: string | null;
   timelineRows: TimelineRow[];
   boneTransform: [number, number, number] | null;
+  boneRotation?: [number, number, number, number] | null;
+  boneScale?: [number, number, number] | null;
   gameLabel?: string | null;
   modelSourceKind?: ModelSourceKind | null;
   isCreatingKeyframe: boolean;
@@ -63,6 +65,8 @@ interface KeyframeEditorProps {
   onTimeInputChange: (time: string) => void;
   onValueInputChange: (index: number, value: string) => void;
   onUseBoneTransform: () => void;
+  onUseGizmoRotation?: () => void;
+  onUseGizmoScale?: () => void;
   onDeleteKeyframe: () => void;
   onTimelineRowClick: (boneName: string, time: number) => void;
   onTimelineEventClick: (index: number) => void;
@@ -94,6 +98,8 @@ export function KeyframeEditor({
   keyframeError,
   timelineRows,
   boneTransform,
+  boneRotation,
+  boneScale,
   gameLabel,
   modelSourceKind,
   isCreatingKeyframe,
@@ -106,6 +112,8 @@ export function KeyframeEditor({
   onTimeInputChange,
   onValueInputChange,
   onUseBoneTransform,
+  onUseGizmoRotation,
+  onUseGizmoScale,
   onDeleteKeyframe,
   onTimelineRowClick,
   onTimelineEventClick,
@@ -595,10 +603,48 @@ export function KeyframeEditor({
                   );
                 })}
                 <Button size="sm" onClick={onUseBoneTransform}>
-                  Use Gizmo Values
+                  Use Gizmo Position
                 </Button>
                 <p className="text-amber-400 text-[10px] leading-snug mt-1">
-                  Click &quot;Use Gizmo Values&quot; to apply the gizmo position to this keyframe.
+                  Click &quot;Use Gizmo Position&quot; to apply the gizmo position to this keyframe.
+                </p>
+              </div>
+            )}
+            {boneRotation && selectedTrackProperty === "rotation" && onUseGizmoRotation && (
+              <div className="space-y-1 text-[10px] text-gray-400">
+                {boneRotation.map((val, index) => {
+                  const labels = ["X", "Y", "Z", "W"];
+                  const label = labels[index] ?? `Q${index}`;
+                  return (
+                    <div key={`gizmo-rot-${index}`}>
+                      Gizmo {label}: {val.toFixed(4)}
+                    </div>
+                  );
+                })}
+                <Button size="sm" onClick={onUseGizmoRotation}>
+                  Use Gizmo Rotation
+                </Button>
+                <p className="text-amber-400 text-[10px] leading-snug mt-1">
+                  Click &quot;Use Gizmo Rotation&quot; to apply the quaternion to this keyframe.
+                </p>
+              </div>
+            )}
+            {boneScale && selectedTrackProperty === "scale" && onUseGizmoScale && (
+              <div className="space-y-1 text-[10px] text-gray-400">
+                {boneScale.map((val, index) => {
+                  const labels = ["X", "Y", "Z"];
+                  const label = labels[index] ?? `S${index}`;
+                  return (
+                    <div key={`gizmo-scale-${index}`}>
+                      Gizmo {label}: {val.toFixed(4)}
+                    </div>
+                  );
+                })}
+                <Button size="sm" onClick={onUseGizmoScale}>
+                  Use Gizmo Scale
+                </Button>
+                <p className="text-amber-400 text-[10px] leading-snug mt-1">
+                  Click &quot;Use Gizmo Scale&quot; to apply the scale to this keyframe.
                 </p>
               </div>
             )}

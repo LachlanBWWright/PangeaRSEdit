@@ -10,7 +10,7 @@ export { KeyframeEditor } from "./KeyframeEditor";
 export { AnimationMetadataDisplay } from "./AnimationMetadataDisplay";
 export { AnimationEventEditor } from "./AnimationEventEditor";
 export { AnimationCreator } from "./AnimationCreator";
-export { useAnimationPlayback, reindexAnimations, configureActionLoop } from "./hooks";
+export { useAnimationPlayback, reindexAnimations, configureActionLoop, type LoopMode } from "./hooks";
 export * from "./types";
 export * from "./utils";
 export * from "./constants";

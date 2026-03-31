@@ -67,6 +67,13 @@ export function ModelViewer() {
   const [boneTransform, setBoneTransform] = useState<
     [number, number, number] | null
   >(null);
+  const [boneRotation, setBoneRotation] = useState<
+    [number, number, number, number] | null
+  >(null);
+  const [boneScale, setBoneScale] = useState<
+    [number, number, number] | null
+  >(null);
+  const [gizmoMode, setGizmoMode] = useState<import("@/components/model-viewer/types").GizmoMode>("translate");
   const [uploadStep, setUploadStep] = useState<UploadStep>("select-bg3d");
   const [pendingBg3dFile, setPendingBg3dFile] = useState<File | null>(null);
   const [wireframeMode, setWireframeMode] = useState<boolean>(false);
@@ -427,9 +434,32 @@ export function ModelViewer() {
     [],
   );
 
+  const handleBoneRotationChange = useCallback(
+    (quaternion: [number, number, number, number]) => {
+      setBoneRotation(quaternion);
+    },
+    [],
+  );
+
+  const handleBoneScaleChange = useCallback(
+    (scale: [number, number, number]) => {
+      setBoneScale(scale);
+    },
+    [],
+  );
+
+  const handleGizmoModeChange = useCallback(
+    (mode: import("@/components/model-viewer/types").GizmoMode) => {
+      setGizmoMode(mode);
+    },
+    [],
+  );
+
   const handleBoneSelectionChange = useCallback((boneName: string | null) => {
     setSelectedBoneName(boneName);
     setBoneTransform(null);
+    setBoneRotation(null);
+    setBoneScale(null);
   }, []);
 
   const handleAnimationEventsChange = useCallback(
@@ -829,6 +859,9 @@ export function ModelViewer() {
                     onAnimationEventsChange={handleAnimationEventsChange}
                     animationMetadata={animationMetadata}
                     boneTransform={boneTransform}
+                    boneRotation={boneRotation}
+                    boneScale={boneScale}
+                    onGizmoModeChange={handleGizmoModeChange}
                   />
                 )}
 
@@ -889,6 +922,9 @@ export function ModelViewer() {
                     logBonePositions={logBonePositions}
                     selectedBoneName={hasAnimations ? selectedBoneName : null}
                     onBoneTransformChange={handleBoneTransformChange}
+                    onBoneRotationChange={handleBoneRotationChange}
+                    onBoneScaleChange={handleBoneScaleChange}
+                    gizmoMode={gizmoMode}
                   />
                 </ErrorBoundary>
               ) : (

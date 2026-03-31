@@ -3,6 +3,8 @@ import { Object3D, Group, AnimationMixer } from "three";
 import { AnimationInfo } from "@/components/AnimationViewer";
 import { Game } from "@/data/globals/globals";
 
+export type GizmoMode = "translate" | "rotate" | "scale";
+
 export interface ModelNode {
   name: string;
   type: "mesh" | "node" | "group";
@@ -24,9 +26,12 @@ export interface ModelCanvasProps {
     mixer: AnimationMixer | null,
   ) => void;
   onBoneTransformChange?: (position: [number, number, number]) => void;
+  onBoneRotationChange?: (quaternion: [number, number, number, number]) => void;
+  onBoneScaleChange?: (scale: [number, number, number]) => void;
   wireframeMode?: boolean;
   showSkeleton?: boolean;
   logBonePositions?: boolean;
   selectedBoneName?: string | null;
   gameType?: Game;
+  gizmoMode?: GizmoMode;
 }

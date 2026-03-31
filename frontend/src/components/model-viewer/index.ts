@@ -4,4 +4,4 @@ export { AnimationUpdater } from "./AnimationUpdater";
 export { useModelHierarchy } from "./useModelHierarchy";
 export { useModelAnimations } from "./useModelAnimations";
 export { isJoint } from "./utils";
-export type { ModelNode, ModelCanvasProps } from "./types";
+export type { ModelNode, ModelCanvasProps, GizmoMode } from "./types";

@@ -13,6 +13,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import type { AnimationInfo } from "./types";
+import type { LoopMode } from "./hooks";
 
 interface AnimationEditorProps {
   selectedAnimationInfo: AnimationInfo | null;
@@ -23,6 +24,7 @@ interface AnimationEditorProps {
   onNameChange: (name: string) => void;
   onDurationInputChange: (duration: string) => void;
   onLoopToggle: () => void;
+  onLoopModeChange: (mode: LoopMode) => void;
   onDurationModeChange: (mode: "scale" | "truncate") => void;
   onApplyChanges: () => void;
   onDeleteAnimation: () => void;
@@ -37,6 +39,7 @@ export function AnimationEditor({
   onNameChange,
   onDurationInputChange,
   onLoopToggle,
+  onLoopModeChange,
   onDurationModeChange,
   onApplyChanges,
   onDeleteAnimation,
@@ -72,12 +75,34 @@ export function AnimationEditor({
           <p className="text-xs text-red-300">{durationError}</p>
         )}
       </div>
-      <div className="flex items-center justify-between">
-        <span className="text-xs text-gray-300">Loop Animation</span>
-        <Switch
-          checked={selectedAnimationInfo.loop ?? true}
-          onCheckedChange={onLoopToggle}
-        />
+      <div className="space-y-2">
+        <label className="text-xs text-gray-300">Playback Mode</label>
+        <Select
+          value={selectedAnimationInfo.loopMode ?? (selectedAnimationInfo.loop ? "loop" : "once")}
+          onValueChange={(value) => onLoopModeChange(value as LoopMode)}
+        >
+          <SelectTrigger className="bg-gray-700 border-gray-600 text-white">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent className="bg-gray-700 border-gray-600 text-white">
+            <SelectItem value="loop" className="text-white focus:bg-gray-600">
+              Loop
+            </SelectItem>
+            <SelectItem value="pingpong" className="text-white focus:bg-gray-600">
+              Zigzag (Ping-Pong)
+            </SelectItem>
+            <SelectItem value="once" className="text-white focus:bg-gray-600">
+              Play Once
+            </SelectItem>
+          </SelectContent>
+        </Select>
+        <p className="text-xs text-gray-400">
+          {(selectedAnimationInfo.loopMode ?? (selectedAnimationInfo.loop ? "loop" : "once")) === "loop"
+            ? "Animation repeats from start when finished."
+            : (selectedAnimationInfo.loopMode ?? (selectedAnimationInfo.loop ? "loop" : "once")) === "pingpong"
+              ? "Animation plays forward then backward (zigzag)."
+              : "Animation plays once and stops at the end."}
+        </p>
       </div>
       <div className="space-y-2">
         <label className="text-xs text-gray-300">Duration Change Mode</label>
