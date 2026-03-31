@@ -240,6 +240,7 @@ export function useFileUpload(options: UseFileUploadOptions) {
 
         // Parse skeleton file if provided
         let skeletonData: SkeletonResource | undefined;
+        let skeletonFailed = false;
         if (skeletonFile) {
           const skeletonBufferResult = await fromPromise(
             skeletonFile.arrayBuffer(),
@@ -252,6 +253,7 @@ export function useFileUpload(options: UseFileUploadOptions) {
             toast.error(
               `Failed to read skeleton file: ${skeletonBufferResult.error.message}`,
             );
+            skeletonFailed = true;
           } else {
             const skeletonParseResult = await fromPromise(
               parseSkeletonRsrc(skeletonBufferResult.value),
@@ -264,6 +266,7 @@ export function useFileUpload(options: UseFileUploadOptions) {
               toast.error(
                 `Failed to parse skeleton file: ${skeletonParseResult.error.message}`,
               );
+              skeletonFailed = true;
             } else {
               skeletonData = skeletonParseResult.value;
             }
@@ -323,7 +326,15 @@ export function useFileUpload(options: UseFileUploadOptions) {
           return err(responseResult.error);
         }
 
-        return finalizeModelLoad(bg3dFile.name, responseResult.value);
+        let displayFileName: string;
+        if (skeletonFile && !skeletonFailed) {
+          displayFileName = `${bg3dFile.name} + ${skeletonFile.name}`;
+        } else if (skeletonFile && skeletonFailed) {
+          displayFileName = `${bg3dFile.name} (skeleton failed to load)`;
+        } else {
+          displayFileName = bg3dFile.name;
+        }
+        return finalizeModelLoad(displayFileName, responseResult.value);
       }
 
       // Handle standard BG3D file processing
@@ -335,9 +346,10 @@ export function useFileUpload(options: UseFileUploadOptions) {
         return err(new Error(message));
       }
       const bg3dArrayBuffer = bg3dBufferResult.value;
-      let skeletonData: SkeletonResource | undefined;
 
       // Parse skeleton file if provided
+      let skeletonData: SkeletonResource | undefined;
+      let skeletonFailed = false;
       if (skeletonFile) {
         const skeletonBufferResult = await fromPromise(
           skeletonFile.arrayBuffer(),
@@ -350,6 +362,7 @@ export function useFileUpload(options: UseFileUploadOptions) {
           toast.error(
             `Failed to read skeleton file: ${skeletonBufferResult.error.message}`,
           );
+          skeletonFailed = true;
         } else {
           const skeletonParseResult = await fromPromise(
             parseSkeletonRsrc(skeletonBufferResult.value),
@@ -359,6 +372,7 @@ export function useFileUpload(options: UseFileUploadOptions) {
             toast.error(
               `Failed to parse skeleton file: ${skeletonParseResult.error.message}`,
             );
+            skeletonFailed = true;
           } else {
             skeletonData = skeletonParseResult.value;
           }
@@ -418,9 +432,14 @@ export function useFileUpload(options: UseFileUploadOptions) {
         return err(responseResult.error);
       }
 
-      const displayFileName = skeletonFile
-        ? `${bg3dFile.name} + ${skeletonFile.name}`
-        : bg3dFile.name;
+      let displayFileName: string;
+      if (skeletonFile && !skeletonFailed) {
+        displayFileName = `${bg3dFile.name} + ${skeletonFile.name}`;
+      } else if (skeletonFile && skeletonFailed) {
+        displayFileName = `${bg3dFile.name} (skeleton failed to load)`;
+      } else {
+        displayFileName = bg3dFile.name;
+      }
       return finalizeModelLoad(displayFileName, responseResult.value);
     },
     [

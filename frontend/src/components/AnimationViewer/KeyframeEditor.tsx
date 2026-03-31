@@ -597,6 +597,9 @@ export function KeyframeEditor({
                 <Button size="sm" onClick={onUseBoneTransform}>
                   Use Gizmo Values
                 </Button>
+                <p className="text-amber-400 text-[10px] leading-snug mt-1">
+                  Click &quot;Use Gizmo Values&quot; to apply the gizmo position to this keyframe.
+                </p>
               </div>
             )}
             <div className="space-y-3">
