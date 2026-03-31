@@ -1044,23 +1044,28 @@ export function gltfToBG3D(doc: Document): BG3DParseResult {
       const joints = skin.listJoints();
 
       if (joints.length > 0) {
-        const bones: BG3DBone[] = joints.map((joint, index) => {
-          const matrix = joint.getMatrix();
-          let coordX = 0,
-            coordY = 0,
-            coordZ = 0;
+        // Recover rest-pose bone positions from inverse bind matrices when available.
+        // Joint transforms may reflect the current animation state after a Three.js
+        // GLTFExporter round-trip, but inverse bind matrices always encode the bind pose.
+        const ibmAccessor = skin.getInverseBindMatrices();
+        const ibmArray = ibmAccessor?.getArray();
+        const hasIBM = ibmArray instanceof Float32Array && ibmArray.length >= joints.length * 16;
 
-          if (matrix && matrix.length >= 12) {
-            coordX = matrix[12] ?? 0;
-            coordY = matrix[13] ?? 0;
-            coordZ = matrix[14] ?? 0;
-          } else {
-            const translation = joint.getTranslation() || [0, 0, 0];
-            coordX = translation[0] ?? 0;
-            coordY = translation[1] ?? 0;
-            coordZ = translation[2] ?? 0;
+        // Pre-compute bind-pose world transforms from inverse bind matrices
+        const bindPoseWorldTransforms: Matrix4[] = [];
+        if (hasIBM) {
+          for (let i = 0; i < joints.length; i++) {
+            const offset = i * 16;
+            const ibm = new Matrix4();
+            for (let j = 0; j < 16; j++) {
+              ibm.data[j] = ibmArray[offset + j] ?? 0;
+            }
+            // worldTransform = inverse(inverseBindMatrix)
+            bindPoseWorldTransforms.push(ibm.invert());
           }
+        }
 
+        const bones: BG3DBone[] = joints.map((joint, index) => {
           let parentBone = -1;
           const jointParents = joint
             .listParents()
@@ -1076,6 +1081,21 @@ export function gltfToBG3D(doc: Document): BG3DParseResult {
             }
           }
 
+          // Use bind-pose world position from IBM, falling back to joint transforms
+          let coordX = 0, coordY = 0, coordZ = 0;
+          const bindWorld = bindPoseWorldTransforms[index];
+          if (bindWorld) {
+            const t = bindWorld.getTranslation();
+            coordX = t.x;
+            coordY = t.y;
+            coordZ = t.z;
+          } else {
+            const translation = joint.getTranslation() || [0, 0, 0];
+            coordX = translation[0] ?? 0;
+            coordY = translation[1] ?? 0;
+            coordZ = translation[2] ?? 0;
+          }
+
           return {
             parentBone,
             name: joint.getName() || `bone_${index}`,
@@ -1089,69 +1109,72 @@ export function gltfToBG3D(doc: Document): BG3DParseResult {
           };
         });
 
-        // Calculate absolute world coordinates (glTF stores relative transforms)
-        const worldTransforms: Matrix4[] = new Array(bones.length);
+        // When IBM is available bone.coord* are already absolute world positions.
+        // Otherwise compute from the joint node hierarchy (legacy fallback).
+        if (!hasIBM) {
+          const worldTransforms: Matrix4[] = new Array(bones.length);
 
-        bones.forEach((bone, index) => {
-          const joint = joints[index];
-          if (!joint) return;
+          bones.forEach((bone, index) => {
+            const joint = joints[index];
+            if (!joint) return;
 
-          let localMatrix: Matrix4;
-          const jointMatrix = joint.getMatrix();
-          if (jointMatrix && jointMatrix.length >= 16) {
-            localMatrix = new Matrix4();
-            for (let i = 0; i < 16; i++) {
-              localMatrix.data[i] = jointMatrix[i] ?? 0;
-            }
-          } else {
-            const translation = joint.getTranslation() || [0, 0, 0];
-            const rotation = joint.getRotation() || [0, 0, 0, 1];
-            const scale = joint.getScale() || [1, 1, 1];
+            let localMatrix: Matrix4;
+            const jointMatrix = joint.getMatrix();
+            if (jointMatrix && jointMatrix.length >= 16) {
+              localMatrix = new Matrix4();
+              for (let i = 0; i < 16; i++) {
+                localMatrix.data[i] = jointMatrix[i] ?? 0;
+              }
+            } else {
+              const translation = joint.getTranslation() || [0, 0, 0];
+              const rotation = joint.getRotation() || [0, 0, 0, 1];
+              const scale = joint.getScale() || [1, 1, 1];
 
-            localMatrix = new Matrix4()
-              .setTranslation(
-                translation[0] ?? 0,
-                translation[1] ?? 0,
-                translation[2] ?? 0,
-              )
-              .multiply(
-                new Matrix4().makeRotationFromQuaternion(
-                  new Quaternion(
-                    rotation[0] ?? 0,
-                    rotation[1] ?? 0,
-                    rotation[2] ?? 0,
-                    rotation[3] ?? 1,
+              localMatrix = new Matrix4()
+                .setTranslation(
+                  translation[0] ?? 0,
+                  translation[1] ?? 0,
+                  translation[2] ?? 0,
+                )
+                .multiply(
+                  new Matrix4().makeRotationFromQuaternion(
+                    new Quaternion(
+                      rotation[0] ?? 0,
+                      rotation[1] ?? 0,
+                      rotation[2] ?? 0,
+                      rotation[3] ?? 1,
+                    ),
                   ),
-                ),
-              )
-              .multiply(
-                new Matrix4().makeScale(
-                  scale[0] ?? 1,
-                  scale[1] ?? 1,
-                  scale[2] ?? 1,
-                ),
-              );
-          }
+                )
+                .multiply(
+                  new Matrix4().makeScale(
+                    scale[0] ?? 1,
+                    scale[1] ?? 1,
+                    scale[2] ?? 1,
+                  ),
+                );
+            }
 
-          if (bone.parentBone >= 0 && bone.parentBone < bones.length) {
-            const parentWorld = worldTransforms[bone.parentBone];
-            if (parentWorld) {
-              worldTransforms[index] = parentWorld.multiply(localMatrix);
+            if (bone.parentBone >= 0 && bone.parentBone < bones.length) {
+              const parentWorld = worldTransforms[bone.parentBone];
+              if (parentWorld) {
+                worldTransforms[index] = parentWorld.multiply(localMatrix);
+              } else {
+                worldTransforms[index] = localMatrix;
+              }
             } else {
               worldTransforms[index] = localMatrix;
             }
-          } else {
-            worldTransforms[index] = localMatrix;
-          }
 
-          const currentWorld = worldTransforms[index];
-          if (currentWorld) {
-            const worldTranslation = currentWorld.getTranslation();
-            bone.coordX = worldTranslation.x;
-            bone.coordY = worldTranslation.y;
-            bone.coordZ = worldTranslation.z;
-          }
-        });
+            const currentWorld = worldTransforms[index];
+            if (currentWorld) {
+              const worldTranslation = currentWorld.getTranslation();
+              bone.coordX = worldTranslation.x;
+              bone.coordY = worldTranslation.y;
+              bone.coordZ = worldTranslation.z;
+            }
+          });
+        }
 
         // Reconstruct pointIndices and normalIndices from mesh skinning data
         interface ReverseDecomposedPoint {
