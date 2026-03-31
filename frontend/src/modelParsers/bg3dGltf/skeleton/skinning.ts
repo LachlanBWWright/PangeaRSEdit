@@ -34,18 +34,30 @@ export function bg3dSkinningToGltf(
     return null;
   }
 
-  // Create inverse bind matrices for the skin
+  // Compute inverse bind matrices from bone world positions
   const numJoints = joints.length;
   const inverseBindMatrices = new Float32Array(numJoints * 16);
 
-  // For now, use identity matrices for inverse bind matrices
-  // In a full implementation, these would be calculated from the bone transforms
   for (let i = 0; i < numJoints; i++) {
     const offset = i * 16;
-    inverseBindMatrices[offset + 0] = 1; // Identity matrix
-    inverseBindMatrices[offset + 5] = 1;
-    inverseBindMatrices[offset + 10] = 1;
-    inverseBindMatrices[offset + 15] = 1;
+    const bone = parsedSkeleton.bones[i];
+    if (bone) {
+      // Bone coords are absolute world positions; the inverse bind matrix
+      // is the inverse of a pure translation to that position.
+      inverseBindMatrices[offset + 0] = 1;
+      inverseBindMatrices[offset + 5] = 1;
+      inverseBindMatrices[offset + 10] = 1;
+      inverseBindMatrices[offset + 12] = -bone.coordX;
+      inverseBindMatrices[offset + 13] = -bone.coordY;
+      inverseBindMatrices[offset + 14] = -bone.coordZ;
+      inverseBindMatrices[offset + 15] = 1;
+    } else {
+      // Identity fallback
+      inverseBindMatrices[offset + 0] = 1;
+      inverseBindMatrices[offset + 5] = 1;
+      inverseBindMatrices[offset + 10] = 1;
+      inverseBindMatrices[offset + 15] = 1;
+    }
   }
 
   const inverseBindMatricesAccessor = doc
@@ -56,7 +68,6 @@ export function bg3dSkinningToGltf(
 
   // Create the skin
   const skin = doc.createSkin();
-  // Use first joint as skeleton root (parent lookup omitted for type-safety)
   const firstJoint = joints[0];
   if (firstJoint) {
     skin.setSkeleton(firstJoint);
