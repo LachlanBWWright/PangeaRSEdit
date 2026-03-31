@@ -536,3 +536,241 @@ describe("gltfSkeletonToBg3d full round-trip", () => {
     }
   });
 });
+
+describe("Non-zero root bone round-trip (production path)", () => {
+  /** Skeleton where the root bone is NOT at the origin. */
+  function makeOffsetRootSkeleton(): BG3DSkeleton {
+    const bones: BG3DBone[] = [
+      {
+        parentBone: -1,
+        name: "Pelvis",
+        coordX: 5,
+        coordY: 30,
+        coordZ: -10,
+        numPointsAttachedToBone: 0,
+        numNormalsAttachedToBone: 0,
+        pointIndices: [],
+        normalIndices: [],
+      },
+      {
+        parentBone: 0,
+        name: "Torso",
+        coordX: 5,
+        coordY: 50,
+        coordZ: -10,
+        numPointsAttachedToBone: 0,
+        numNormalsAttachedToBone: 0,
+        pointIndices: [],
+        normalIndices: [],
+      },
+      {
+        parentBone: 0,
+        name: "LeftLeg",
+        coordX: 2,
+        coordY: 20,
+        coordZ: -10,
+        numPointsAttachedToBone: 0,
+        numNormalsAttachedToBone: 0,
+        pointIndices: [],
+        normalIndices: [],
+      },
+    ];
+
+    // Keyframe coords must be LOCAL (relative to parent)
+    const animations: BG3DAnimation[] = [
+      {
+        name: "Idle",
+        numAnimEvents: 0,
+        events: [],
+        keyframes: {
+          // Pelvis: local = absolute (root bone)
+          "0": [
+            {
+              tick: 0,
+              accelerationMode: 1,
+              coordX: 5,
+              coordY: 30,
+              coordZ: -10,
+              rotationX: 0,
+              rotationY: 0,
+              rotationZ: 0,
+              scaleX: 1,
+              scaleY: 1,
+              scaleZ: 1,
+            },
+          ],
+          // Torso: local = (5,50,-10) - (5,30,-10) = (0,20,0)
+          "1": [
+            {
+              tick: 0,
+              accelerationMode: 1,
+              coordX: 0,
+              coordY: 20,
+              coordZ: 0,
+              rotationX: 0,
+              rotationY: 0,
+              rotationZ: 0,
+              scaleX: 1,
+              scaleY: 1,
+              scaleZ: 1,
+            },
+          ],
+          // LeftLeg: local = (2,20,-10) - (5,30,-10) = (-3,-10,0)
+          "2": [
+            {
+              tick: 0,
+              accelerationMode: 1,
+              coordX: -3,
+              coordY: -10,
+              coordZ: 0,
+              rotationX: 0,
+              rotationY: 0,
+              rotationZ: 0,
+              scaleX: 1,
+              scaleY: 1,
+              scaleZ: 1,
+            },
+          ],
+        },
+      },
+    ];
+
+    return {
+      version: 272,
+      numAnims: animations.length,
+      numJoints: bones.length,
+      num3DMFLimbs: 0,
+      bones,
+      animations,
+    };
+  }
+
+  it("preserves absolute bone positions with non-zero root", () => {
+    const skeleton = makeOffsetRootSkeleton();
+    const doc = new Document();
+    const buffer = doc.createBuffer("base");
+
+    const result = createSkeletonSystem(doc, skeleton, buffer);
+    expect(isErr(result)).toBe(false);
+    if (isErr(result)) return;
+
+    const recovered = gltfSkeletonToBg3d(doc);
+    expect(recovered).toBeDefined();
+    if (!recovered) return;
+
+    for (let i = 0; i < skeleton.bones.length; i++) {
+      const orig = skeleton.bones[i];
+      const rec = recovered.bones[i];
+      if (!orig || !rec) continue;
+
+      expect(rec.coordX).toBeCloseTo(orig.coordX, 2);
+      expect(rec.coordY).toBeCloseTo(orig.coordY, 2);
+      expect(rec.coordZ).toBeCloseTo(orig.coordZ, 2);
+      expect(rec.parentBone).toBe(orig.parentBone);
+    }
+  });
+
+  it("preserves local keyframe coords with non-zero root", () => {
+    const skeleton = makeOffsetRootSkeleton();
+    const doc = new Document();
+    const buffer = doc.createBuffer("base");
+
+    const result = createSkeletonSystem(doc, skeleton, buffer);
+    expect(isErr(result)).toBe(false);
+    if (isErr(result)) return;
+
+    const recovered = gltfSkeletonToBg3d(doc);
+    expect(recovered).toBeDefined();
+    if (!recovered) return;
+
+    const origAnim = skeleton.animations[0];
+    const recAnim = recovered.animations[0];
+    expect(origAnim).toBeDefined();
+    expect(recAnim).toBeDefined();
+    if (!origAnim || !recAnim) return;
+
+    for (const boneKey of Object.keys(origAnim.keyframes)) {
+      const boneIdx = parseInt(boneKey);
+      const origKfs = origAnim.keyframes[boneIdx];
+      const recKfs = recAnim.keyframes[boneIdx];
+      if (!origKfs || !recKfs) continue;
+
+      expect(recKfs.length).toBe(origKfs.length);
+
+      for (let k = 0; k < origKfs.length; k++) {
+        const o = origKfs[k];
+        const r = recKfs[k];
+        if (!o || !r) continue;
+
+        expect(r.coordX).toBeCloseTo(o.coordX, 2);
+        expect(r.coordY).toBeCloseTo(o.coordY, 2);
+        expect(r.coordZ).toBeCloseTo(o.coordZ, 2);
+      }
+    }
+  });
+
+  it("modifying child keyframe does not change parent rest position", () => {
+    const skeleton = makeOffsetRootSkeleton();
+
+    // Move Torso keyframe dramatically
+    const anim = skeleton.animations[0];
+    expect(anim).toBeDefined();
+    if (!anim) return;
+    const torsoKfs = anim.keyframes[1];
+    expect(torsoKfs).toBeDefined();
+    if (!torsoKfs || torsoKfs.length === 0) return;
+    const kf = torsoKfs[0];
+    if (!kf) return;
+
+    kf.coordX += 50;
+    kf.coordY += 100;
+
+    const doc = new Document();
+    const buffer = doc.createBuffer("base");
+    const result = createSkeletonSystem(doc, skeleton, buffer);
+    expect(isErr(result)).toBe(false);
+    if (isErr(result)) return;
+
+    const recovered = gltfSkeletonToBg3d(doc);
+    expect(recovered).toBeDefined();
+    if (!recovered) return;
+
+    // Pelvis (parent) rest position must be unchanged
+    const pelvis = recovered.bones[0];
+    expect(pelvis).toBeDefined();
+    if (!pelvis) return;
+    expect(pelvis.coordX).toBeCloseTo(5, 2);
+    expect(pelvis.coordY).toBeCloseTo(30, 2);
+    expect(pelvis.coordZ).toBeCloseTo(-10, 2);
+
+    // LeftLeg (sibling) rest position must be unchanged
+    const leftLeg = recovered.bones[2];
+    expect(leftLeg).toBeDefined();
+    if (!leftLeg) return;
+    expect(leftLeg.coordX).toBeCloseTo(2, 2);
+    expect(leftLeg.coordY).toBeCloseTo(20, 2);
+    expect(leftLeg.coordZ).toBeCloseTo(-10, 2);
+
+    // Torso rest position also must be unchanged
+    // (only the keyframe changed, not the bone definition)
+    const torso = recovered.bones[1];
+    expect(torso).toBeDefined();
+    if (!torso) return;
+    expect(torso.coordX).toBeCloseTo(5, 2);
+    expect(torso.coordY).toBeCloseTo(50, 2);
+    expect(torso.coordZ).toBeCloseTo(-10, 2);
+
+    // Torso keyframe should reflect the modification
+    const recAnim = recovered.animations[0];
+    expect(recAnim).toBeDefined();
+    if (!recAnim) return;
+    const recTorsoKfs = recAnim.keyframes[1];
+    expect(recTorsoKfs).toBeDefined();
+    if (!recTorsoKfs || recTorsoKfs.length === 0) return;
+    const recKf = recTorsoKfs[0];
+    if (!recKf) return;
+    expect(recKf.coordX).toBeCloseTo(50, 2);
+    expect(recKf.coordY).toBeCloseTo(120, 2);
+    expect(recKf.coordZ).toBeCloseTo(0, 2);
+  });
+});

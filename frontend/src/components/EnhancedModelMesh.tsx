@@ -4,12 +4,19 @@ import {
   Mesh,
   Object3D,
   SkinnedMesh,
+  Bone,
   SphereGeometry,
   MeshBasicMaterial,
   Vector3,
   CylinderGeometry,
 } from "three";
 import { useEffect, useRef, memo } from "react";
+import { useFrame } from "@react-three/fiber";
+
+interface BoneTubeRef {
+  tube: Mesh;
+  childBone: Bone;
+}
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
@@ -40,6 +47,7 @@ function EnhancedModelMeshComponent({
   selectedBoneName = null,
 }: EnhancedModelMeshProps) {
   const skeletonHelpersRef = useRef<(SkeletonHelper | Mesh)[]>([]);
+  const boneTubesRef = useRef<BoneTubeRef[]>([]);
 
   useEffect(() => {
     if (!scene) return;
@@ -97,6 +105,7 @@ function EnhancedModelMeshComponent({
       }
     });
     skeletonHelpersRef.current = [];
+    boneTubesRef.current = [];
 
     if (showSkeleton) {
       const defaultBoneColor = 0x00ff00;
@@ -111,10 +120,8 @@ function EnhancedModelMeshComponent({
 
           skeleton.bones.forEach((bone) => {
             const boneMesh = new Mesh(boneGeometry, boneMaterial.clone());
-            // Position at origin since this is added as a child of the bone
-            // The bone's position already defines where this sphere appears in space
             boneMesh.position.set(0, 0, 0);
-            boneMesh.scale.setScalar(0.3); // Small spheres at joints
+            boneMesh.scale.setScalar(0.3);
             boneMesh.userData.boneName = bone.name;
             const material = Array.isArray(boneMesh.material)
               ? boneMesh.material[0]
@@ -126,52 +133,28 @@ function EnhancedModelMeshComponent({
             skeletonHelpersRef.current.push(boneMesh);
           });
 
-          // Create bone connection tubes (only connect parent to child bones in skeleton)
+          // Create bone connection tubes between parent-child pairs.
+          // Tubes use unit-height geometry and are scaled dynamically each
+          // frame so they always stretch from parent joint to child joint.
           skeleton.bones.forEach((bone) => {
             skeleton.bones.forEach((otherBone) => {
-              // Check if otherBone is a direct child of bone in the skeleton
-              // A bone is a child if its parent is this bone
-              if (otherBone.parent === bone) {
+              if (otherBone.parent === bone && otherBone instanceof Bone) {
                 const end = new Vector3().copy(otherBone.position);
                 const distance = end.length();
 
                 if (distance > 0.001) {
-                  // Create tube connecting parent to child bone
-                  const tubeGeometry = new CylinderGeometry(
-                    0.08,
-                    0.08,
-                    distance,
-                    4,
-                  );
+                  const tubeGeometry = new CylinderGeometry(0.08, 0.08, 1, 4);
                   const tubeMaterial = new MeshBasicMaterial({
                     color: 0xffff00,
                   });
                   const tube = new Mesh(tubeGeometry, tubeMaterial);
 
-                  // Position tube at midpoint between origin and child (since we're in parent bone space)
-                  tube.position.copy(end).multiplyScalar(0.5);
-
-                  // Orient tube to point toward child
-                  // CylinderGeometry points along Y-axis by default, so we need to rotate from Y to direction
-                  const direction = end.clone().normalize();
-                  const yAxis = new Vector3(0, 1, 0);
-
-                  // If direction is already pointing up, no rotation needed
-                  if (Math.abs(direction.dot(yAxis)) < 0.9999) {
-                    // Calculate rotation axis as cross product of Y and direction
-                    const axis = new Vector3()
-                      .crossVectors(yAxis, direction)
-                      .normalize();
-                    // Calculate angle between Y and direction
-                    const angle = Math.acos(
-                      Math.min(1, Math.max(-1, yAxis.dot(direction))),
-                    );
-                    tube.quaternion.setFromAxisAngle(axis, angle);
-                  }
-
-                  // Add tube as child of parent bone so it moves with skeleton animation
                   bone.add(tube);
                   skeletonHelpersRef.current.push(tube);
+                  boneTubesRef.current.push({
+                    tube,
+                    childBone: otherBone,
+                  });
                 }
               }
             });
@@ -203,8 +186,45 @@ function EnhancedModelMeshComponent({
         }
       });
       skeletonHelpersRef.current = [];
+      boneTubesRef.current = [];
     };
   }, [scene, showSkeleton]);
+
+  // Re-orient helper tubes every frame so they always connect parent → child
+  const _yAxis = useRef(new Vector3(0, 1, 0));
+  const _end = useRef(new Vector3());
+  const _dir = useRef(new Vector3());
+  const _axis = useRef(new Vector3());
+
+  useFrame(() => {
+    const yAxis = _yAxis.current;
+
+    for (const { tube, childBone } of boneTubesRef.current) {
+      const end = _end.current.copy(childBone.position);
+      const distance = end.length();
+
+      if (distance < 0.001) {
+        tube.scale.set(0, 0, 0);
+        continue;
+      }
+
+      tube.position.copy(end).multiplyScalar(0.5);
+      tube.scale.set(1, distance, 1);
+
+      const dir = _dir.current.copy(end).divideScalar(distance);
+      const dot = dir.dot(yAxis);
+
+      if (dot > 0.9999) {
+        tube.quaternion.set(0, 0, 0, 1);
+      } else if (dot < -0.9999) {
+        tube.quaternion.set(0, 0, 1, 0);
+      } else {
+        const axis = _axis.current.crossVectors(yAxis, dir).normalize();
+        const angle = Math.acos(Math.min(1, Math.max(-1, dot)));
+        tube.quaternion.setFromAxisAngle(axis, angle);
+      }
+    }
+  });
 
   useEffect(() => {
     if (!showSkeleton) return;

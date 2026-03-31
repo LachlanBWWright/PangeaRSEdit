@@ -297,3 +297,153 @@ describe("Skeleton keyframe round-trip (3DMF)", () => {
     expect(afterRevert.skeleton.animations.length).toBe(baselineAnimCount);
   });
 });
+
+describe("Parent bone stability when child keyframe changes", () => {
+  const bg3dPath = join(__dirname, "../../public/games/ottomatic/skeletons/Blob.bg3d");
+  const skelPath = join(__dirname, "../../public/games/ottomatic/skeletons/Blob.skeleton.rsrc");
+
+  it("modifying a child bone keyframe does not corrupt parent bone positions", async () => {
+    if (!existsSync(bg3dPath) || !existsSync(skelPath)) {
+      console.warn("Skipping: Blob files not found");
+      return;
+    }
+
+    const originalBg3d = bufferFromFile(bg3dPath);
+    const skeletonResource = await parseSkeletonRsrc(bufferFromFile(skelPath));
+    const parsed = unwrap(parseBG3D(originalBg3d, skeletonResource));
+    expect(parsed.skeleton).toBeDefined();
+    if (!parsed.skeleton) return;
+
+    const skel = parsed.skeleton;
+
+    // Snapshot ALL bone rest positions and ALL keyframe values
+    const originalBonePositions = skel.bones.map((b) => ({
+      coordX: b.coordX,
+      coordY: b.coordY,
+      coordZ: b.coordZ,
+      parentBone: b.parentBone,
+    }));
+
+    // Find a child bone (parentBone >= 0) with keyframes
+    const firstAnim = skel.animations[0];
+    expect(firstAnim).toBeDefined();
+    if (!firstAnim) return;
+
+    let childBoneIndex = -1;
+    for (let i = 0; i < skel.bones.length; i++) {
+      const bone = skel.bones[i];
+      if (!bone) continue;
+      if (bone.parentBone >= 0) {
+        const kfs = firstAnim.keyframes[i];
+        if (kfs && kfs.length > 0) {
+          childBoneIndex = i;
+          break;
+        }
+      }
+    }
+    expect(childBoneIndex).toBeGreaterThanOrEqual(0);
+    if (childBoneIndex < 0) return;
+
+    const childBone = skel.bones[childBoneIndex];
+    expect(childBone).toBeDefined();
+    if (!childBone) return;
+    const parentBoneIndex = childBone.parentBone;
+
+    // Modify the child bone's first keyframe position dramatically
+    const childKfs = firstAnim.keyframes[childBoneIndex];
+    expect(childKfs).toBeDefined();
+    if (!childKfs || childKfs.length === 0) return;
+    const childKf = childKfs[0];
+    if (!childKf) return;
+
+    const origChildCoord = { x: childKf.coordX, y: childKf.coordY, z: childKf.coordZ };
+    childKf.coordX += 100;
+    childKf.coordY += 200;
+    childKf.coordZ += 300;
+
+    // Round-trip through production GLB path
+    const afterModify = await roundTripThroughGlb(parsed);
+    expect(afterModify.skeleton).toBeDefined();
+    if (!afterModify.skeleton) return;
+
+    // ALL bone rest positions must be unchanged (including the child bone's rest position)
+    for (let i = 0; i < originalBonePositions.length; i++) {
+      const orig = originalBonePositions[i];
+      const rt = afterModify.skeleton.bones[i];
+      if (!orig || !rt) continue;
+
+      expect(rt.coordX).toBeCloseTo(orig.coordX, 1);
+      expect(rt.coordY).toBeCloseTo(orig.coordY, 1);
+      expect(rt.coordZ).toBeCloseTo(orig.coordZ, 1);
+      expect(rt.parentBone).toBe(orig.parentBone);
+    }
+
+    // The child bone's modified keyframe should have survived
+    const rtAnim = afterModify.skeleton.animations[0];
+    expect(rtAnim).toBeDefined();
+    if (!rtAnim) return;
+
+    const rtChildKfs = rtAnim.keyframes[childBoneIndex];
+    expect(rtChildKfs).toBeDefined();
+    if (!rtChildKfs || rtChildKfs.length === 0) return;
+    const rtChildKf = rtChildKfs[0];
+    if (!rtChildKf) return;
+
+    expect(rtChildKf.coordX).toBeCloseTo(origChildCoord.x + 100, 1);
+    expect(rtChildKf.coordY).toBeCloseTo(origChildCoord.y + 200, 1);
+    expect(rtChildKf.coordZ).toBeCloseTo(origChildCoord.z + 300, 1);
+
+    // The parent bone's keyframes should be completely unchanged
+    const origParentKfs = firstAnim.keyframes[parentBoneIndex];
+    const rtParentKfs = rtAnim.keyframes[parentBoneIndex];
+    if (origParentKfs && rtParentKfs) {
+      expect(rtParentKfs.length).toBe(origParentKfs.length);
+      for (let k = 0; k < origParentKfs.length; k++) {
+        const origKf = origParentKfs[k];
+        const rtKf = rtParentKfs[k];
+        if (!origKf || !rtKf) continue;
+        expect(rtKf.coordX).toBeCloseTo(origKf.coordX, 1);
+        expect(rtKf.coordY).toBeCloseTo(origKf.coordY, 1);
+        expect(rtKf.coordZ).toBeCloseTo(origKf.coordZ, 1);
+      }
+    }
+  });
+
+  it("all bone keyframe coords match local rest offsets at rest pose", async () => {
+    if (!existsSync(bg3dPath) || !existsSync(skelPath)) {
+      console.warn("Skipping: Blob files not found");
+      return;
+    }
+
+    const originalBg3d = bufferFromFile(bg3dPath);
+    const skeletonResource = await parseSkeletonRsrc(bufferFromFile(skelPath));
+    const parsed = unwrap(parseBG3D(originalBg3d, skeletonResource));
+    expect(parsed.skeleton).toBeDefined();
+    if (!parsed.skeleton) return;
+
+    const skel = parsed.skeleton;
+    const firstAnim = skel.animations[0];
+    expect(firstAnim).toBeDefined();
+    if (!firstAnim) return;
+
+    // For each bone, the first keyframe's coord should match
+    // the bone's LOCAL offset from its parent (rest pose)
+    for (let i = 0; i < skel.bones.length; i++) {
+      const bone = skel.bones[i];
+      if (!bone) continue;
+      const kfs = firstAnim.keyframes[i];
+      if (!kfs || kfs.length === 0) continue;
+      const kf0 = kfs[0];
+      if (!kf0) continue;
+
+      const parentBone = bone.parentBone >= 0 ? skel.bones[bone.parentBone] : null;
+      const localX = parentBone ? bone.coordX - parentBone.coordX : bone.coordX;
+      const localY = parentBone ? bone.coordY - parentBone.coordY : bone.coordY;
+      const localZ = parentBone ? bone.coordZ - parentBone.coordZ : bone.coordZ;
+
+      expect(kf0.coordX).toBeCloseTo(localX, 1);
+      expect(kf0.coordY).toBeCloseTo(localY, 1);
+      expect(kf0.coordZ).toBeCloseTo(localZ, 1);
+    }
+  });
+});
