@@ -211,7 +211,7 @@ function EnhancedModelMeshComponent({
       tube.position.copy(end).multiplyScalar(0.5);
       tube.scale.set(1, distance, 1);
 
-      const dir = _dir.current.copy(end).divideScalar(distance);
+      const dir = _dir.current.copy(end).normalize();
       const dot = dir.dot(yAxis);
 
       if (dot > 0.9999) {
