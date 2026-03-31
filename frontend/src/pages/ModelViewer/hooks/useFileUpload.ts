@@ -30,6 +30,13 @@ import type { SkeletonResource } from "../../../python/structSpecs/skeleton/skel
 import type { Texture } from "../types";
 import { fromPromise, ok, err, type Result } from "@/types/result";
 
+function isSkeletonFileName(fileName: string): boolean {
+  const lowerCaseName = fileName.toLowerCase();
+  return (
+    lowerCaseName.endsWith(".skeleton.rsrc") || lowerCaseName.endsWith(".rsrc")
+  );
+}
+
 /**
  * Configuration for the useFileUpload hook
  */
@@ -141,9 +148,10 @@ export function useFileUpload(options: UseFileUploadOptions) {
 
       if (
         skeletonFile &&
-        !skeletonFile.name.toLowerCase().endsWith(".skeleton.rsrc")
+        !isSkeletonFileName(skeletonFile.name)
       ) {
-        const message = "Skeleton file must be a .skeleton.rsrc file";
+        const message =
+          "Skeleton file must be a .skeleton.rsrc or .rsrc file";
         toast.error(message);
         return err(new Error(message));
       }

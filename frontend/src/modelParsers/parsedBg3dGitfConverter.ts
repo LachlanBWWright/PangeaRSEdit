@@ -1182,14 +1182,15 @@ export function gltfToBG3D(doc: Document): BG3DParseResult {
           refs: { meshIndex: number; vertexIndex: number }[];
         }
         const reverseDecomposedPointList: ReverseDecomposedPoint[] = [];
-        function reversePointsMatchExactly(
+        const reverseMatchThreshold = 0.001;
+        function reversePointsMatchCloseEnough(
           p1: [number, number, number] | number[],
           p2: [number, number, number] | number[],
         ): boolean {
           return (
-            p1[0] === p2[0] &&
-            p1[1] === p2[1] &&
-            p1[2] === p2[2]
+            Math.abs(p1[0] - p2[0]) < reverseMatchThreshold &&
+            Math.abs(p1[1] - p2[1]) < reverseMatchThreshold &&
+            Math.abs(p1[2] - p2[2]) < reverseMatchThreshold
           );
         }
 
@@ -1226,7 +1227,7 @@ export function gltfToBG3D(doc: Document): BG3DParseResult {
                     const point = reverseDecomposedPointList[i];
                     if (
                       point &&
-                      reversePointsMatchExactly(vertex, point.realPoint)
+                      reversePointsMatchCloseEnough(vertex, point.realPoint)
                     ) {
                       foundIndex = i;
                       break;
@@ -1260,6 +1261,7 @@ export function gltfToBG3D(doc: Document): BG3DParseResult {
 
         const bonePointSets: Set<number>[] = bones.map(() => new Set<number>());
         const boneNormalSets: Set<number>[] = bones.map(() => new Set<number>());
+        const pointToJointSets = new Map<number, Set<number>>();
         const pointToJointMap = new Map<
           number,
           { jointIndex: number; weight: number }
@@ -1304,6 +1306,20 @@ export function gltfToBG3D(doc: Document): BG3DParseResult {
                     if (
                       weight !== undefined &&
                       jointIndex !== undefined &&
+                      weight > 0 &&
+                      jointIndex < bones.length
+                    ) {
+                      let jointSet = pointToJointSets.get(decomposedIndex);
+                      if (!jointSet) {
+                        jointSet = new Set<number>();
+                        pointToJointSets.set(decomposedIndex, jointSet);
+                      }
+                      jointSet.add(jointIndex);
+                    }
+
+                    if (
+                      weight !== undefined &&
+                      jointIndex !== undefined &&
                       weight > bestWeight &&
                       weight > 0 &&
                       jointIndex < bones.length
@@ -1328,15 +1344,17 @@ export function gltfToBG3D(doc: Document): BG3DParseResult {
             meshIndexForSkinning++;
           });
 
-        pointToJointMap.forEach((owner, decomposedIndex) => {
-          const pointSet = bonePointSets[owner.jointIndex];
-          const normalSet = boneNormalSets[owner.jointIndex];
-          if (pointSet) {
-            pointSet.add(decomposedIndex);
-          }
-          if (normalSet) {
-            normalSet.add(decomposedIndex);
-          }
+        pointToJointSets.forEach((jointSet, decomposedIndex) => {
+          jointSet.forEach((jointIndex) => {
+            const pointSet = bonePointSets[jointIndex];
+            const normalSet = boneNormalSets[jointIndex];
+            if (pointSet) {
+              pointSet.add(decomposedIndex);
+            }
+            if (normalSet) {
+              normalSet.add(decomposedIndex);
+            }
+          });
         });
 
         bones.forEach((bone, index) => {

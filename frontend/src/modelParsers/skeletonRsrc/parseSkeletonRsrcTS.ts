@@ -239,12 +239,16 @@ export async function parseSkeletonRsrcJson(
   const result = await saveToJson(uint8Array, skeletonSpecs, [], []);
   const parseResult = result.ok ? ok(result.value) : err(result.error);
   if (parseResult.isErr()) {
-    return Promise.reject(parseResult.error);
+    const errorMessage =
+      parseResult.error instanceof Error
+        ? parseResult.error.message
+        : String(parseResult.error);
+    return Promise.reject(new Error(errorMessage));
   }
   const parsed: unknown = JSON.parse(parseResult.value);
   // Validate the parsed structure at runtime
   if (!isParsedSkeleton(parsed)) {
-    return Promise.reject("Invalid skeleton structure");
+    return Promise.reject(new Error("Invalid skeleton structure"));
   }
   return parsed;
 }
@@ -252,6 +256,18 @@ export async function parseSkeletonRsrcJson(
 // Type guard for ParsedSkeleton
 function isParsedSkeleton(value: unknown): value is ParsedSkeleton {
   if (!isRecord(value)) return false;
-  // Check for at least one expected skeleton resource key
-  return 'Hedr' in value || 'Bone' in value || 'AnHd' in value;
+  const knownResourceTypes = [
+    "Hedr",
+    "Bone",
+    "BonP",
+    "BonN",
+    "RelP",
+    "AnHd",
+    "Evnt",
+    "NumK",
+    "KeyF",
+    "Nams",
+    "Bnds",
+  ];
+  return knownResourceTypes.some((resourceType) => resourceType in value);
 }

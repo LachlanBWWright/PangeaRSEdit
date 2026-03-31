@@ -133,11 +133,14 @@ export function ModelUploadPanel({
                     }
 
                     if (awaitingSkeleton) {
-                      if (file.name.toLowerCase().endsWith(".skeleton.rsrc")) {
+                      const isSkeletonFile =
+                        file.name.toLowerCase().endsWith(".skeleton.rsrc") ||
+                        file.name.toLowerCase().endsWith(".rsrc");
+                      if (isSkeletonFile) {
                         handleSkeletonFileSelect(file);
                       } else {
                         toast.error(
-                          `"${file.name}" is not a .skeleton.rsrc file. Please select a valid skeleton file or skip this step.`,
+                          `"${file.name}" is not a .skeleton.rsrc or .rsrc file. Please select a valid skeleton file or skip this step.`,
                         );
                       }
                       return;
