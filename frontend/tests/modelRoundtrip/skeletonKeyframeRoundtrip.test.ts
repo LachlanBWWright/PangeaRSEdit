@@ -45,19 +45,19 @@ function mutateFirstKeyframePosition(
   deltaY: number,
   deltaZ: number,
 ): void {
-  const firstAnimKey = Object.keys(skeleton.animations[0]?.keyframes ?? {})[0];
-  if (firstAnimKey === undefined) throw new Error("No animation keyframes");
+  const anim = skeleton.animations[0];
+  if (!anim) throw new Error("No animations");
+  const firstBoneIndex = Number(Object.keys(anim.keyframes)[0]);
+  if (!Number.isFinite(firstBoneIndex)) throw new Error("No animation keyframes");
 
-  const kfList = skeleton.animations[0]?.keyframes[firstAnimKey];
+  const kfList = anim.keyframes[firstBoneIndex];
   if (!kfList || kfList.length === 0) throw new Error("Empty keyframe list");
 
   const kf = kfList[0];
   if (!kf) throw new Error("No first keyframe");
-  if (typeof kf === "object" && "coordX" in kf) {
-    kf.coordX = (kf.coordX ?? 0) + deltaX;
-    kf.coordY = (kf.coordY ?? 0) + deltaY;
-    kf.coordZ = (kf.coordZ ?? 0) + deltaZ;
-  }
+  kf.coordX = (kf.coordX ?? 0) + deltaX;
+  kf.coordY = (kf.coordY ?? 0) + deltaY;
+  kf.coordZ = (kf.coordZ ?? 0) + deltaZ;
 }
 
 interface KeyframeSnapshot {
@@ -67,20 +67,17 @@ interface KeyframeSnapshot {
 }
 
 function snapshotKeyframes(skeleton: BG3DSkeleton): KeyframeSnapshot[] {
-  const firstAnimKey = Object.keys(skeleton.animations[0]?.keyframes ?? {})[0];
-  if (firstAnimKey === undefined) return [];
+  const anim = skeleton.animations[0];
+  if (!anim) return [];
+  const firstBoneIndex = Number(Object.keys(anim.keyframes)[0]);
+  if (!Number.isFinite(firstBoneIndex)) return [];
 
-  const kfList = skeleton.animations[0]?.keyframes[firstAnimKey] ?? [];
-  return kfList.map((kf) => {
-    if (typeof kf === "object" && "coordX" in kf) {
-      return {
-        coordX: typeof kf.coordX === "number" ? kf.coordX : 0,
-        coordY: typeof kf.coordY === "number" ? kf.coordY : 0,
-        coordZ: typeof kf.coordZ === "number" ? kf.coordZ : 0,
-      };
-    }
-    return { coordX: 0, coordY: 0, coordZ: 0 };
-  });
+  const kfList = anim.keyframes[firstBoneIndex] ?? [];
+  return kfList.map((kf) => ({
+    coordX: kf.coordX ?? 0,
+    coordY: kf.coordY ?? 0,
+    coordZ: kf.coordZ ?? 0,
+  }));
 }
 
 describe("Skeleton keyframe round-trip (BG3D)", () => {

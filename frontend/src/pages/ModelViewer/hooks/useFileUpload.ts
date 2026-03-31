@@ -249,8 +249,8 @@ export function useFileUpload(options: UseFileUploadOptions) {
               "Error reading skeleton file:",
               skeletonBufferResult.error,
             );
-            toast.warning(
-              "Failed to load skeleton, continuing without animations",
+            toast.error(
+              `Failed to read skeleton file: ${skeletonBufferResult.error.message}`,
             );
           } else {
             const skeletonParseResult = await fromPromise(
@@ -261,8 +261,8 @@ export function useFileUpload(options: UseFileUploadOptions) {
                 "Error parsing skeleton:",
                 skeletonParseResult.error,
               );
-              toast.warning(
-                "Failed to load skeleton, continuing without animations",
+              toast.error(
+                `Failed to parse skeleton file: ${skeletonParseResult.error.message}`,
               );
             } else {
               skeletonData = skeletonParseResult.value;
@@ -347,8 +347,8 @@ export function useFileUpload(options: UseFileUploadOptions) {
             "Error reading skeleton file:",
             skeletonBufferResult.error,
           );
-          toast.warning(
-            "Failed to load skeleton, continuing without animations",
+          toast.error(
+            `Failed to read skeleton file: ${skeletonBufferResult.error.message}`,
           );
         } else {
           const skeletonParseResult = await fromPromise(
@@ -356,8 +356,8 @@ export function useFileUpload(options: UseFileUploadOptions) {
           );
           if (skeletonParseResult.isErr()) {
             console.error("Error parsing skeleton:", skeletonParseResult.error);
-            toast.warning(
-              "Failed to load skeleton, continuing without animations",
+            toast.error(
+              `Failed to parse skeleton file: ${skeletonParseResult.error.message}`,
             );
           } else {
             skeletonData = skeletonParseResult.value;
