@@ -17,7 +17,11 @@ import { KeyframeEditor } from "./KeyframeEditor";
 import { AnimationMetadataDisplay } from "./AnimationMetadataDisplay";
 import { AnimationEventEditor } from "./AnimationEventEditor";
 import { AnimationCreator } from "./AnimationCreator";
-import { useAnimationPlayback, reindexAnimations } from "./hooks";
+import {
+  useAnimationPlayback,
+  reindexAnimations,
+  syncAnimationActionTime,
+} from "./hooks";
 import type {
   AnimationEvent,
   AnimationInfo,
@@ -528,7 +532,11 @@ export function AnimationViewer({
           selectedEntry.values.map((value) => value.toString()),
         );
         if (currentActionRef.current?.paused) {
-          currentActionRef.current.time = selectedEntry.time;
+          syncAnimationActionTime(
+            animationMixer,
+            currentActionRef.current,
+            selectedEntry.time,
+          );
           setCurrentTime(selectedEntry.time);
         }
       }
@@ -554,6 +562,7 @@ export function AnimationViewer({
       window.clearTimeout(timeoutId);
     };
   }, [
+    animationMixer,
     captureKeyframeSnapshot,
     currentActionRef,
     isCreatingKeyframe,
@@ -587,7 +596,7 @@ export function AnimationViewer({
   const handleStop = () => {
     if (currentActionRef.current) {
       currentActionRef.current.stop();
-      currentActionRef.current.time = 0;
+      syncAnimationActionTime(animationMixer, currentActionRef.current, 0);
       setCurrentTime(0);
       setPlayingState(false);
     }
@@ -595,7 +604,7 @@ export function AnimationViewer({
 
   const handleReset = () => {
     if (currentActionRef.current) {
-      currentActionRef.current.time = 0;
+      syncAnimationActionTime(animationMixer, currentActionRef.current, 0);
       setCurrentTime(0);
     }
   };
@@ -603,9 +612,8 @@ export function AnimationViewer({
   const handleTimeChange = (newTime: number) => {
     const time = newTime;
     if (currentActionRef.current && animationMixer) {
-      currentActionRef.current.time = time;
+      syncAnimationActionTime(animationMixer, currentActionRef.current, time);
       setCurrentTime(time);
-      animationMixer.update(0);
     }
   };
 
@@ -735,7 +743,7 @@ export function AnimationViewer({
     setDurationError(null);
   };
 
-  const handleSelectKeyframe = (index: number) => {
+  const handleSelectKeyframe = useCallback((index: number) => {
     const keyframe = selectedKeyframes[index];
     if (!keyframe) return;
     if (selectedKeyframeIndex === index && !isCreatingKeyframe) {
@@ -762,12 +770,28 @@ export function AnimationViewer({
       false,
     );
     if (currentActionRef.current) {
-      currentActionRef.current.time = keyframe.time;
       currentActionRef.current.paused = true;
+      syncAnimationActionTime(
+        animationMixer,
+        currentActionRef.current,
+        keyframe.time,
+      );
       setCurrentTime(keyframe.time);
       setPlayingState(false);
     }
-  };
+  }, [
+    animationMixer,
+    currentActionRef,
+    isCreatingKeyframe,
+    makeKeyframeSignature,
+    selectedAnimationInfo,
+    selectedBoneName,
+    selectedKeyframeIndex,
+    selectedKeyframes,
+    selectedTrackProperty,
+    setCurrentTime,
+    setPlayingState,
+  ]);
 
   useEffect(() => {
     const pending = pendingTimelineSelectionRef.current;

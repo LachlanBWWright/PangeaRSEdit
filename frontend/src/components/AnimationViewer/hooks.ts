@@ -19,6 +19,18 @@ export const configureActionLoop = (action: AnimationAction, loop: boolean) => {
   action.clampWhenFinished = !loop;
 };
 
+export const syncAnimationActionTime = (
+  animationMixer: AnimationMixer | null,
+  action: AnimationAction | null,
+  time: number,
+) => {
+  if (!animationMixer || !action) {
+    return;
+  }
+  action.time = time;
+  animationMixer.update(0);
+};
+
 export function useAnimationPlayback(
   animationMixer: AnimationMixer | null,
   selectedAnimation: number | null,
@@ -85,6 +97,7 @@ export function useAnimationPlayback(
       action.play();
       action.paused = true;
     }
+    syncAnimationActionTime(animationMixer, action, action.time);
     Promise.resolve().then(() => {
       setDuration(clip.duration);
       setCurrentTime(action.time);

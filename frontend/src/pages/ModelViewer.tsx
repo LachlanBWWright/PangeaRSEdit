@@ -43,6 +43,7 @@ import {
   download3DMFModel,
 } from "./ModelViewer/utils/downloadUtils";
 import { getParsedToGlbWorkerResponse } from "./ModelViewer/utils/bg3dGltfWorkerResponses";
+import { prepareSceneForAnimationExport } from "./ModelViewer/utils/prepareSceneForAnimationExport";
 import { useFileUpload } from "./ModelViewer/hooks/useFileUpload";
 import { useTextureManagement } from "./ModelViewer/hooks/useTextureManagement";
 import type { UploadStep } from "./ModelViewer/types";
@@ -209,12 +210,13 @@ export function ModelViewer() {
       }
 
       const exporter = new GLTFExporter();
+      const exportScene = prepareSceneForAnimationExport(scene);
       const animationsToExport = animationInfos.map((animation) => animation.clip);
 
       const exportedResult = await fromPromise(
         new Promise<ArrayBuffer>((resolve, reject) => {
           exporter.parse(
-            scene,
+            exportScene,
             (result) => {
               if (result instanceof ArrayBuffer) {
                 resolve(result);
