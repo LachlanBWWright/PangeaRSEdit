@@ -14,6 +14,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { toast } from "sonner";
 import type { UploadStep } from "./types";
 
 /* interface Texture {
@@ -134,6 +135,10 @@ export function ModelUploadPanel({
                     if (awaitingSkeleton) {
                       if (file.name.toLowerCase().endsWith(".skeleton.rsrc")) {
                         handleSkeletonFileSelect(file);
+                      } else {
+                        toast.error(
+                          `"${file.name}" is not a .skeleton.rsrc file. Please select a valid skeleton file or skip this step.`,
+                        );
                       }
                       return;
                     }
@@ -144,6 +149,10 @@ export function ModelUploadPanel({
                       file.name.toLowerCase().endsWith(".glb")
                     ) {
                       handleBg3dFileSelect(file);
+                    } else {
+                      toast.error(
+                        `"${file.name}" is not a supported model file. Please select a .bg3d, .3dmf, or .glb file.`,
+                      );
                     }
                   }}
                 />
