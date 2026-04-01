@@ -166,9 +166,9 @@ describe("bone order recovery", () => {
 
     const joints = [pelvis, torso, rightHip, leftHip];
 
-    expect(getJointParentBoneIndex(pelvis, joints, armature)).toBe(-1);
-    expect(getJointParentBoneIndex(torso, joints, armature)).toBe(0);
-    expect(getJointParentBoneIndex(rightHip, joints, armature)).toBe(0);
-    expect(getJointParentBoneIndex(leftHip, joints, armature)).toBe(0);
+    expect(getJointParentBoneIndex(pelvis, joints)).toBe(-1);
+    expect(getJointParentBoneIndex(torso, joints)).toBe(0);
+    expect(getJointParentBoneIndex(rightHip, joints)).toBe(0);
+    expect(getJointParentBoneIndex(leftHip, joints)).toBe(0);
   });
 });

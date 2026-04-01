@@ -56,14 +56,14 @@ type ParentLinkedNode<T> = {
 export function getJointParentBoneIndex<T extends ParentLinkedNode<T>>(
   joint: T,
   joints: T[],
-  skeletonRoot: T | null,
 ): number {
   const jointParent = joint.getParentNode();
-  if (!jointParent || jointParent === skeletonRoot) {
+  if (!jointParent) {
     return -1;
   }
 
-  return joints.indexOf(jointParent);
+  const parentIndex = joints.indexOf(jointParent);
+  return parentIndex >= 0 ? parentIndex : -1;
 }
 
 function toExactArrayBuffer(data: Uint8Array | ArrayBuffer): ArrayBuffer {
@@ -1086,7 +1086,6 @@ export function gltfToBG3D(doc: Document): BG3DParseResult {
           const parentBone = getJointParentBoneIndex(
             joint,
             joints,
-            skin.getSkeleton(),
           );
 
           // Use bind-pose world position from IBM, falling back to joint transforms
