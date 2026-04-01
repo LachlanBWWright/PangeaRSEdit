@@ -49,6 +49,23 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
+type ParentLinkedNode<T> = {
+  getParentNode(): T | null;
+};
+
+export function getJointParentBoneIndex<T extends ParentLinkedNode<T>>(
+  joint: T,
+  joints: T[],
+  skeletonRoot: T | null,
+): number {
+  const jointParent = joint.getParentNode();
+  if (!jointParent || jointParent === skeletonRoot) {
+    return -1;
+  }
+
+  return joints.indexOf(jointParent);
+}
+
 function toExactArrayBuffer(data: Uint8Array | ArrayBuffer): ArrayBuffer {
   if (data instanceof ArrayBuffer) {
     return data.slice(0);
@@ -1066,20 +1083,11 @@ export function gltfToBG3D(doc: Document): BG3DParseResult {
         }
 
         const bones: BG3DBone[] = joints.map((joint, index) => {
-          let parentBone = -1;
-          const jointParents = joint
-            .listParents()
-            .filter((p): p is Node => p instanceof Node);
-          if (jointParents.length > 0) {
-            const jointParent = jointParents[0];
-            const skeletonRoot = skin.getSkeleton();
-            if (jointParent && jointParent !== skeletonRoot) {
-              const parentIndex = joints.indexOf(jointParent);
-              if (parentIndex !== -1) {
-                parentBone = parentIndex;
-              }
-            }
-          }
+          const parentBone = getJointParentBoneIndex(
+            joint,
+            joints,
+            skin.getSkeleton(),
+          );
 
           // Use bind-pose world position from IBM, falling back to joint transforms
           let coordX = 0, coordY = 0, coordZ = 0;

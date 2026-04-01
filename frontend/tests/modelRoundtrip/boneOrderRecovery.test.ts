@@ -1,6 +1,9 @@
 import { Document, NodeIO } from "@gltf-transform/core";
 import { describe, expect, it } from "vitest";
-import { gltfToBG3D } from "@/modelParsers/parsedBg3dGitfConverter";
+import {
+  getJointParentBoneIndex,
+  gltfToBG3D,
+} from "@/modelParsers/parsedBg3dGitfConverter";
 import { gltfJointsToBg3dBones } from "@/modelParsers/bg3dGltf/skeleton/bones";
 
 function makeScrambledSkeletonDocument(): Document {
@@ -126,5 +129,46 @@ describe("bone order recovery", () => {
     expect(grandchild?.coordZ).toBeCloseTo(0, 5);
     expect(child?.coordY).toBeCloseTo(2, 5);
     expect(root?.coordY).toBeCloseTo(0, 5);
+  });
+
+  it("uses the immediate parent node even when other ancestry information would be misleading", () => {
+    interface MockJoint {
+      name: string;
+      getParentNode(): MockJoint | null;
+      listParents(): MockJoint[];
+    }
+
+    const armature: MockJoint = {
+      name: "Armature",
+      getParentNode: () => null,
+      listParents: () => [],
+    };
+    const pelvis: MockJoint = {
+      name: "Pelvis",
+      getParentNode: () => armature,
+      listParents: () => [armature],
+    };
+    const torso: MockJoint = {
+      name: "Torso",
+      getParentNode: () => pelvis,
+      listParents: () => [armature, pelvis],
+    };
+    const rightHip: MockJoint = {
+      name: "RightHip",
+      getParentNode: () => pelvis,
+      listParents: () => [armature, pelvis],
+    };
+    const leftHip: MockJoint = {
+      name: "LeftHip",
+      getParentNode: () => pelvis,
+      listParents: () => [armature, pelvis],
+    };
+
+    const joints = [pelvis, torso, rightHip, leftHip];
+
+    expect(getJointParentBoneIndex(pelvis, joints, armature)).toBe(-1);
+    expect(getJointParentBoneIndex(torso, joints, armature)).toBe(0);
+    expect(getJointParentBoneIndex(rightHip, joints, armature)).toBe(0);
+    expect(getJointParentBoneIndex(leftHip, joints, armature)).toBe(0);
   });
 });
