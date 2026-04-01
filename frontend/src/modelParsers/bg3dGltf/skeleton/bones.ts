@@ -142,7 +142,10 @@ export function gltfJointsToBg3dBones(joints: Node[], skin: Skin): BG3DBone[] {
   });
 
   // Second pass: compute absolute world positions from hierarchical local transforms
-  const worldTransforms: Array<Mat4 | undefined> = new Array(bones.length);
+  const worldTransforms: (Mat4 | undefined)[] = Array.from(
+    { length: bones.length },
+    () => undefined,
+  );
 
   const getLocalMatrix = (index: number): Mat4 | undefined => {
     const joint = joints[index];

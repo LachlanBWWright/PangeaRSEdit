@@ -58,8 +58,7 @@ describe("BG3D roundtrip after GLB normalize (simulating bone edit)", () => {
 
     // Check textures for padding issues
     const textures = doc4.getRoot().listTextures();
-    for (let i = 0; i < textures.length; i++) {
-      const tex = textures[i];
+    for (const tex of textures) {
       if (!tex) continue;
       const image = tex.getImage();
       if (!(image instanceof Uint8Array)) continue;

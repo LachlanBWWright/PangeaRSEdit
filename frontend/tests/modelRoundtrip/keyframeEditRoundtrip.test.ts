@@ -68,8 +68,9 @@ describe("Keyframe edit roundtrip", () => {
 
     // Check EVERY bone's rest position (absolute world coords)
     for (let i = 0; i < originalBones.length; i++) {
-      const orig = originalBones[i]!;
-      const rt = rtBones[i]!;
+      const orig = originalBones[i];
+      const rt = rtBones[i];
+      if (!orig || !rt) continue;
       expect(rt.name).toBe(orig.name);
       expect(rt.parentBone).toBe(orig.parentBone);
       expect(rt.coordX).toBeCloseTo(orig.coordX, 1);
@@ -104,23 +105,25 @@ describe("Keyframe edit roundtrip", () => {
     );
 
     for (let a = 0; a < parsed.skeleton.animations.length; a++) {
-      const origAnim = parsed.skeleton.animations[a]!;
-      const rtAnim = roundtripped.skeleton.animations[a]!;
+      const origAnim = parsed.skeleton.animations[a];
+      const rtAnim = roundtripped.skeleton.animations[a];
+      if (!origAnim || !rtAnim) continue;
       expect(rtAnim.name).toBe(origAnim.name);
 
       // Check keyframes for each bone
       for (const boneIndexStr of Object.keys(origAnim.keyframes)) {
         const boneIdx = parseInt(boneIndexStr);
-        const origKeyframes = origAnim.keyframes[boneIdx]!;
+        const origKeyframes = origAnim.keyframes[boneIdx];
         const rtKeyframes = rtAnim.keyframes[boneIdx];
 
         expect(rtKeyframes).toBeDefined();
-        if (!rtKeyframes) continue;
+        if (!origKeyframes || !rtKeyframes) continue;
         expect(rtKeyframes.length).toBe(origKeyframes.length);
 
         for (let k = 0; k < origKeyframes.length; k++) {
-          const origKf = origKeyframes[k]!;
-          const rtKf = rtKeyframes[k]!;
+          const origKf = origKeyframes[k];
+          const rtKf = rtKeyframes[k];
+          if (!origKf || !rtKf) continue;
           expect(rtKf.tick).toBe(origKf.tick);
           // Translation
           expect(rtKf.coordX).toBeCloseTo(origKf.coordX, 1);
@@ -157,7 +160,8 @@ describe("Keyframe edit roundtrip", () => {
     const animations = doc.getRoot().listAnimations();
     expect(animations.length).toBeGreaterThan(0);
 
-    const firstAnim = animations[0]!;
+    const firstAnim = animations[0];
+    if (!firstAnim) return;
     const channels = firstAnim.listChannels();
 
     // Find a translation channel for the first bone (Pelvis)
@@ -169,11 +173,11 @@ describe("Keyframe edit roundtrip", () => {
         const output = sampler.getOutput();
         if (!output) continue;
         const arr = output.getArray();
-        if (!arr || arr.length < 3) continue;
+        if (!(arr instanceof Float32Array) || arr.length < 3) continue;
 
         // Modify the first keyframe's Y value by +5.0
         const originalY = arr[1];
-        (arr as Float32Array)[1] = (originalY ?? 0) + 5.0;
+        arr[1] = (originalY ?? 0) + 5.0;
         modifiedChannel = true;
         break;
       }
@@ -196,8 +200,9 @@ describe("Keyframe edit roundtrip", () => {
     // This is the critical check - bone REST positions should NOT change
     // even when animation keyframes are modified
     for (let i = 0; i < originalBones.length; i++) {
-      const orig = originalBones[i]!;
-      const rt = rtBones[i]!;
+      const orig = originalBones[i];
+      const rt = rtBones[i];
+      if (!orig || !rt) continue;
       expect(rt.name).toBe(orig.name);
       expect(rt.parentBone).toBe(orig.parentBone);
       // Bone rest positions MUST be preserved within 0.1 tolerance
@@ -209,7 +214,8 @@ describe("Keyframe edit roundtrip", () => {
     // Step 6: Check bone hierarchy relationships
     // Verify the "extends from parent" relationship is maintained
     for (let i = 0; i < rtBones.length; i++) {
-      const bone = rtBones[i]!;
+      const bone = rtBones[i];
+      if (!bone) continue;
       if (bone.parentBone >= 0) {
         const parent = rtBones[bone.parentBone];
         expect(parent).toBeDefined();
@@ -221,7 +227,8 @@ describe("Keyframe edit roundtrip", () => {
         const localOffsetZ = bone.coordZ - parent.coordZ;
 
         // The same offset should match the original
-        const origBone = originalBones[i]!;
+        const origBone = originalBones[i];
+        if (!origBone) continue;
         const origParent = originalBones[origBone.parentBone];
         if (origParent) {
           const origLocalX = origBone.coordX - origParent.coordX;
@@ -241,21 +248,23 @@ describe("Keyframe edit roundtrip", () => {
 
     // Check animation at index 1 onwards (index 0 was modified)
     for (let a = 1; a < origAnims.length; a++) {
-      const origAnim = origAnims[a]!;
-      const rtAnim = rtAnims[a]!;
+      const origAnim = origAnims[a];
+      const rtAnim = rtAnims[a];
+      if (!origAnim || !rtAnim) continue;
       expect(rtAnim.name).toBe(origAnim.name);
 
       for (const boneIndexStr of Object.keys(origAnim.keyframes)) {
         const boneIdx = parseInt(boneIndexStr);
-        const origKeyframes = origAnim.keyframes[boneIdx]!;
+        const origKeyframes = origAnim.keyframes[boneIdx];
         const rtKeyframes = rtAnim.keyframes[boneIdx];
 
-        if (!rtKeyframes) continue;
+        if (!origKeyframes || !rtKeyframes) continue;
         expect(rtKeyframes.length).toBe(origKeyframes.length);
 
         for (let k = 0; k < origKeyframes.length; k++) {
-          const origKf = origKeyframes[k]!;
-          const rtKf = rtKeyframes[k]!;
+          const origKf = origKeyframes[k];
+          const rtKf = rtKeyframes[k];
+          if (!origKf || !rtKf) continue;
           // Other animations should be fully preserved
           expect(rtKf.coordX).toBeCloseTo(origKf.coordX, 1);
           expect(rtKf.coordY).toBeCloseTo(origKf.coordY, 1);
@@ -280,16 +289,17 @@ describe("Keyframe edit roundtrip", () => {
 
     // --- First pass: modify keyframe, export ---
     const doc1 = bg3dParsedToGLTF(parsed);
-    const anim1 = doc1.getRoot().listAnimations()[0]!;
+    const anim1 = doc1.getRoot().listAnimations()[0];
+    if (!anim1) return;
     let originalY = 0;
     for (const channel of anim1.listChannels()) {
       if (channel.getTargetPath() === "translation") {
         const sampler = channel.getSampler();
         const output = sampler?.getOutput();
         const arr = output?.getArray();
-        if (arr && arr.length >= 3) {
+        if (arr instanceof Float32Array && arr.length >= 3) {
           originalY = arr[1] ?? 0;
-          (arr as Float32Array)[1] = originalY + 10.0;
+          arr[1] = originalY + 10.0;
           break;
         }
       }
@@ -303,14 +313,15 @@ describe("Keyframe edit roundtrip", () => {
 
     // --- Second pass: revert keyframe, export ---
     const doc2 = bg3dParsedToGLTF(pass1);
-    const anim2 = doc2.getRoot().listAnimations()[0]!;
+    const anim2 = doc2.getRoot().listAnimations()[0];
+    if (!anim2) return;
     for (const channel of anim2.listChannels()) {
       if (channel.getTargetPath() === "translation") {
         const sampler = channel.getSampler();
         const output = sampler?.getOutput();
         const arr = output?.getArray();
-        if (arr && arr.length >= 3) {
-          (arr as Float32Array)[1] = originalY;
+        if (arr instanceof Float32Array && arr.length >= 3) {
+          arr[1] = originalY;
           break;
         }
       }
@@ -328,8 +339,9 @@ describe("Keyframe edit roundtrip", () => {
     expect(finalBones.length).toBe(origBones.length);
 
     for (let i = 0; i < origBones.length; i++) {
-      const orig = origBones[i]!;
-      const final_ = finalBones[i]!;
+      const orig = origBones[i];
+      const final_ = finalBones[i];
+      if (!orig || !final_) continue;
       expect(final_.coordX).toBeCloseTo(orig.coordX, 0);
       expect(final_.coordY).toBeCloseTo(orig.coordY, 0);
       expect(final_.coordZ).toBeCloseTo(orig.coordZ, 0);
@@ -337,19 +349,21 @@ describe("Keyframe edit roundtrip", () => {
 
     // Compare animation keyframes
     for (let a = 0; a < parsed.skeleton.animations.length; a++) {
-      const origAnim = parsed.skeleton.animations[a]!;
-      const finalAnim = pass2.skeleton.animations[a]!;
+      const origAnim = parsed.skeleton.animations[a];
+      const finalAnim = pass2.skeleton.animations[a];
+      if (!origAnim || !finalAnim) continue;
 
       for (const boneIndexStr of Object.keys(origAnim.keyframes)) {
         const boneIdx = parseInt(boneIndexStr);
-        const origKfs = origAnim.keyframes[boneIdx]!;
+        const origKfs = origAnim.keyframes[boneIdx];
         const finalKfs = finalAnim.keyframes[boneIdx];
-        if (!finalKfs) continue;
+        if (!origKfs || !finalKfs) continue;
         expect(finalKfs.length).toBe(origKfs.length);
 
         for (let k = 0; k < origKfs.length; k++) {
-          const origKf = origKfs[k]!;
-          const finalKf = finalKfs[k]!;
+          const origKf = origKfs[k];
+          const finalKf = finalKfs[k];
+          if (!origKf || !finalKf) continue;
           expect(finalKf.coordX).toBeCloseTo(origKf.coordX, 1);
           expect(finalKf.coordY).toBeCloseTo(origKf.coordY, 1);
           expect(finalKf.coordZ).toBeCloseTo(origKf.coordZ, 1);

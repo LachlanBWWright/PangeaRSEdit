@@ -80,7 +80,11 @@ export function AnimationEditor({
             <>
               <Select
                 value={effectiveMode}
-                onValueChange={(value) => onLoopModeChange(value as LoopMode)}
+                onValueChange={(value) => {
+                  if (value === "loop" || value === "pingpong" || value === "once") {
+                    onLoopModeChange(value);
+                  }
+                }}
               >
                 <SelectTrigger className="bg-gray-700 border-gray-600 text-white">
                   <SelectValue />

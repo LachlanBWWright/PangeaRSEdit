@@ -49,9 +49,9 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-type ParentLinkedNode<T> = {
+interface ParentLinkedNode<T> {
   getParentNode(): T | null;
-};
+}
 
 export function getJointParentBoneIndex<T extends ParentLinkedNode<T>>(
   joint: T,
@@ -1119,7 +1119,10 @@ export function gltfToBG3D(doc: Document): BG3DParseResult {
         // When IBM is available bone.coord* are already absolute world positions.
         // Otherwise compute from the joint node hierarchy (legacy fallback).
         if (!hasIBM) {
-          const worldTransforms: Array<Matrix4 | undefined> = new Array(bones.length);
+          const worldTransforms: (Matrix4 | undefined)[] = Array.from(
+            { length: bones.length },
+            () => undefined,
+          );
 
           const getLocalMatrix = (index: number): Matrix4 | undefined => {
             const joint = joints[index];
