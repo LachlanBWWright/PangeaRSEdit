@@ -1112,61 +1112,82 @@ export function gltfToBG3D(doc: Document): BG3DParseResult {
         // When IBM is available bone.coord* are already absolute world positions.
         // Otherwise compute from the joint node hierarchy (legacy fallback).
         if (!hasIBM) {
-          const worldTransforms: Matrix4[] = new Array(bones.length);
+          const worldTransforms: Array<Matrix4 | undefined> = new Array(bones.length);
 
-          bones.forEach((bone, index) => {
+          const getLocalMatrix = (index: number): Matrix4 | undefined => {
             const joint = joints[index];
-            if (!joint) return;
+            if (!joint) {
+              return undefined;
+            }
 
-            let localMatrix: Matrix4;
             const jointMatrix = joint.getMatrix();
             if (jointMatrix && jointMatrix.length >= 16) {
-              localMatrix = new Matrix4();
+              const matrix = new Matrix4();
               for (let i = 0; i < 16; i++) {
-                localMatrix.data[i] = jointMatrix[i] ?? 0;
+                matrix.data[i] = jointMatrix[i] ?? 0;
               }
-            } else {
-              const translation = joint.getTranslation() || [0, 0, 0];
-              const rotation = joint.getRotation() || [0, 0, 0, 1];
-              const scale = joint.getScale() || [1, 1, 1];
+              return matrix;
+            }
 
-              localMatrix = new Matrix4()
-                .setTranslation(
-                  translation[0] ?? 0,
-                  translation[1] ?? 0,
-                  translation[2] ?? 0,
-                )
-                .multiply(
-                  new Matrix4().makeRotationFromQuaternion(
-                    new Quaternion(
-                      rotation[0] ?? 0,
-                      rotation[1] ?? 0,
-                      rotation[2] ?? 0,
-                      rotation[3] ?? 1,
-                    ),
+            const translation = joint.getTranslation() || [0, 0, 0];
+            const rotation = joint.getRotation() || [0, 0, 0, 1];
+            const scale = joint.getScale() || [1, 1, 1];
+
+            return new Matrix4()
+              .setTranslation(
+                translation[0] ?? 0,
+                translation[1] ?? 0,
+                translation[2] ?? 0,
+              )
+              .multiply(
+                new Matrix4().makeRotationFromQuaternion(
+                  new Quaternion(
+                    rotation[0] ?? 0,
+                    rotation[1] ?? 0,
+                    rotation[2] ?? 0,
+                    rotation[3] ?? 1,
                   ),
-                )
-                .multiply(
-                  new Matrix4().makeScale(
-                    scale[0] ?? 1,
-                    scale[1] ?? 1,
-                    scale[2] ?? 1,
-                  ),
-                );
+                ),
+              )
+              .multiply(
+                new Matrix4().makeScale(
+                  scale[0] ?? 1,
+                  scale[1] ?? 1,
+                  scale[2] ?? 1,
+                ),
+              );
+          };
+
+          const getWorldTransform = (index: number): Matrix4 | undefined => {
+            const existing = worldTransforms[index];
+            if (existing) {
+              return existing;
+            }
+
+            const bone = bones[index];
+            if (!bone) {
+              return undefined;
+            }
+
+            const localMatrix = getLocalMatrix(index);
+            if (!localMatrix) {
+              return undefined;
             }
 
             if (bone.parentBone >= 0 && bone.parentBone < bones.length) {
-              const parentWorld = worldTransforms[bone.parentBone];
-              if (parentWorld) {
-                worldTransforms[index] = parentWorld.multiply(localMatrix);
-              } else {
-                worldTransforms[index] = localMatrix;
-              }
+              const parentWorld = getWorldTransform(bone.parentBone);
+              worldTransforms[index] = parentWorld
+                ? parentWorld.multiply(localMatrix)
+                : localMatrix;
             } else {
               worldTransforms[index] = localMatrix;
             }
 
-            const currentWorld = worldTransforms[index];
+            return worldTransforms[index];
+          };
+
+          bones.forEach((bone, index) => {
+            const currentWorld = getWorldTransform(index);
             if (currentWorld) {
               const worldTranslation = currentWorld.getTranslation();
               bone.coordX = worldTranslation.x;

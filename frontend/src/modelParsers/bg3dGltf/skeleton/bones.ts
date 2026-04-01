@@ -142,45 +142,70 @@ export function gltfJointsToBg3dBones(joints: Node[], skin: Skin): BG3DBone[] {
   });
 
   // Second pass: compute absolute world positions from hierarchical local transforms
-  const worldTransforms: Mat4[] = new Array(bones.length);
+  const worldTransforms: Array<Mat4 | undefined> = new Array(bones.length);
 
-  bones.forEach((bone, index) => {
+  const getLocalMatrix = (index: number): Mat4 | undefined => {
     const joint = joints[index];
-    if (!joint) return;
-
-    // Build local transform matrix from joint TRS
-    let localMatrix: Mat4;
-    const jointMatrix = joint.getMatrix();
-    if (jointMatrix && jointMatrix.length >= 16) {
-      localMatrix = createMatrix4();
-      for (let i = 0; i < 16; i++) {
-        localMatrix[i] = jointMatrix[i] ?? 0;
-      }
-    } else {
-      const translation = joint.getTranslation() || [0, 0, 0];
-      localMatrix = createMatrix4();
-      setTranslation(
-        localMatrix,
-        translation[0],
-        translation[1],
-        translation[2],
-      );
+    if (!joint) {
+      return undefined;
     }
 
-    // Compose with parent to get world transform
-    if (bone.parentBone >= 0 && bone.parentBone < bones.length) {
-      const parentWorld = worldTransforms[bone.parentBone];
-      if (parentWorld) {
-        worldTransforms[index] = multiply(parentWorld, localMatrix);
-      } else {
-        worldTransforms[index] = localMatrix;
+    const jointMatrix = joint.getMatrix();
+    if (jointMatrix && jointMatrix.length >= 16) {
+      const matrix = createMatrix4();
+      for (let i = 0; i < 16; i++) {
+        matrix[i] = jointMatrix[i] ?? 0;
       }
+      return matrix;
+    }
+
+    const translation = joint.getTranslation() || [0, 0, 0];
+    const matrix = createMatrix4();
+    setTranslation(
+      matrix,
+      translation[0] ?? 0,
+      translation[1] ?? 0,
+      translation[2] ?? 0,
+    );
+    return matrix;
+  };
+
+  const getWorldTransform = (index: number): Mat4 | undefined => {
+    const existing = worldTransforms[index];
+    if (existing) {
+      return existing;
+    }
+
+    const bone = bones[index];
+    if (!bone) {
+      return undefined;
+    }
+
+    const localMatrix = getLocalMatrix(index);
+    if (!localMatrix) {
+      return undefined;
+    }
+
+    if (bone.parentBone >= 0 && bone.parentBone < bones.length) {
+      const parentWorld = getWorldTransform(bone.parentBone);
+      worldTransforms[index] = parentWorld
+        ? multiply(parentWorld, localMatrix)
+        : localMatrix;
     } else {
       worldTransforms[index] = localMatrix;
     }
 
+    return worldTransforms[index];
+  };
+
+  bones.forEach((bone, index) => {
+    const worldTransform = getWorldTransform(index);
+    if (!worldTransform) {
+      return;
+    }
+
     // Extract absolute world position (no coordinate flip needed)
-    const worldTranslation = getTranslation(worldTransforms[index]);
+    const worldTranslation = getTranslation(worldTransform);
     bone.coordX = worldTranslation.x;
     bone.coordY = worldTranslation.y;
     bone.coordZ = worldTranslation.z;
