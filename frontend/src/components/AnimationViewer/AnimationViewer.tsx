@@ -4,6 +4,7 @@
  */
 
 import { useState, useEffect, useRef, useMemo, useCallback } from "react";
+import type { RefObject } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   AnimationClip,
@@ -16,7 +17,12 @@ import { KeyframeEditor } from "./KeyframeEditor";
 import { AnimationMetadataDisplay } from "./AnimationMetadataDisplay";
 import { AnimationEventEditor } from "./AnimationEventEditor";
 import { AnimationCreator } from "./AnimationCreator";
-import { useAnimationPlayback, reindexAnimations } from "./hooks";
+import {
+  useAnimationPlayback,
+  reindexAnimations,
+  syncAnimationActionTime,
+  type LoopMode,
+} from "./hooks";
 import type {
   AnimationEvent,
   AnimationInfo,
@@ -50,10 +56,14 @@ export function AnimationViewer({
   gameLabel,
   modelSourceKind,
   onAnimationChange,
+  onAnimationsChange,
   onBoneSelectionChange,
   onAnimationEventsChange,
   animationMetadata,
   boneTransform,
+  boneRotation,
+  boneScale,
+  onGizmoModeChange,
 }: AnimationViewerProps) {
   const [draftAnimations, setDraftAnimations] = useState<AnimationInfo[] | null>(
     null,
@@ -95,12 +105,39 @@ export function AnimationViewer({
   >([]);
   const autoNameCounterRef = useRef(animations.length + 1);
   const keyframeHistoryLockRef = useRef(false);
+  const pendingTimelineSelectionRef = useRef<{
+    boneName: string;
+    time: number;
+    property: TrackProperty;
+  } | null>(null);
+  const editKeyframesSectionRef = useRef<HTMLDivElement | null>(null);
+  const eventsSectionRef = useRef<HTMLDivElement | null>(null);
   const lastKeyframeSaveSignatureRef = useRef<string | null>(null);
+  const onAnimationsChangeRef = useRef(onAnimationsChange);
   const baseAnimations = useMemo(
     () => reindexAnimations(animations),
     [animations],
   );
   const editableAnimations = draftAnimations ?? baseAnimations;
+
+  useEffect(() => {
+    onAnimationsChangeRef.current = onAnimationsChange;
+  }, [onAnimationsChange]);
+
+  useEffect(() => {
+    if (!draftAnimations) {
+      return;
+    }
+
+    onAnimationsChangeRef.current?.(
+      reindexAnimations(
+        draftAnimations.map((animation) => ({
+          ...animation,
+          clip: animation.clip.clone(),
+        })),
+      ),
+    );
+  }, [draftAnimations]);
 
   useEffect(() => {
     autoNameCounterRef.current = animations.length + 1;
@@ -122,6 +159,8 @@ export function AnimationViewer({
   }, [selectedAnimationInfo]);
 
   const selectedTrackConfig = TRACK_PROPERTY_CONFIG[selectedTrackProperty];
+  const isTrackProperty = (value: string): value is TrackProperty =>
+    value in TRACK_PROPERTY_CONFIG;
 
   const captureKeyframeSnapshot = useCallback((): KeyframeHistorySnapshot => {
     return {
@@ -350,6 +389,16 @@ export function AnimationViewer({
     });
   }, [baseAnimations, selectedAnimation]);
 
+  const scrollSectionIntoView = useCallback(
+    (sectionRef: RefObject<HTMLDivElement | null>) => {
+      sectionRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    },
+    [],
+  );
+
   const {
     isPlaying,
     currentTime,
@@ -487,7 +536,11 @@ export function AnimationViewer({
           selectedEntry.values.map((value) => value.toString()),
         );
         if (currentActionRef.current?.paused) {
-          currentActionRef.current.time = selectedEntry.time;
+          syncAnimationActionTime(
+            animationMixer,
+            currentActionRef.current,
+            selectedEntry.time,
+          );
           setCurrentTime(selectedEntry.time);
         }
       }
@@ -513,6 +566,7 @@ export function AnimationViewer({
       window.clearTimeout(timeoutId);
     };
   }, [
+    animationMixer,
     captureKeyframeSnapshot,
     currentActionRef,
     isCreatingKeyframe,
@@ -546,7 +600,7 @@ export function AnimationViewer({
   const handleStop = () => {
     if (currentActionRef.current) {
       currentActionRef.current.stop();
-      currentActionRef.current.time = 0;
+      syncAnimationActionTime(animationMixer, currentActionRef.current, 0);
       setCurrentTime(0);
       setPlayingState(false);
     }
@@ -554,7 +608,7 @@ export function AnimationViewer({
 
   const handleReset = () => {
     if (currentActionRef.current) {
-      currentActionRef.current.time = 0;
+      syncAnimationActionTime(animationMixer, currentActionRef.current, 0);
       setCurrentTime(0);
     }
   };
@@ -562,9 +616,8 @@ export function AnimationViewer({
   const handleTimeChange = (newTime: number) => {
     const time = newTime;
     if (currentActionRef.current && animationMixer) {
-      currentActionRef.current.time = time;
+      syncAnimationActionTime(animationMixer, currentActionRef.current, time);
       setCurrentTime(time);
-      animationMixer.update(0);
     }
   };
 
@@ -632,12 +685,12 @@ export function AnimationViewer({
     }
   };
 
-  const handleLoopToggle = () => {
+  const handleLoopModeChange = (mode: LoopMode) => {
     if (selectedAnimation === null || !selectedAnimationInfo) return;
-    const nextLoop = !(selectedAnimationInfo.loop ?? true);
     updateSelectedAnimation((anim) => ({
       ...anim,
-      loop: nextLoop,
+      loop: mode !== "once",
+      loopMode: mode,
     }));
   };
 
@@ -694,7 +747,7 @@ export function AnimationViewer({
     setDurationError(null);
   };
 
-  const handleSelectKeyframe = (index: number) => {
+  const handleSelectKeyframe = useCallback((index: number) => {
     const keyframe = selectedKeyframes[index];
     if (!keyframe) return;
     if (selectedKeyframeIndex === index && !isCreatingKeyframe) {
@@ -721,12 +774,59 @@ export function AnimationViewer({
       false,
     );
     if (currentActionRef.current) {
-      currentActionRef.current.time = keyframe.time;
       currentActionRef.current.paused = true;
+      syncAnimationActionTime(
+        animationMixer,
+        currentActionRef.current,
+        keyframe.time,
+      );
       setCurrentTime(keyframe.time);
       setPlayingState(false);
     }
-  };
+  }, [
+    animationMixer,
+    currentActionRef,
+    isCreatingKeyframe,
+    makeKeyframeSignature,
+    selectedAnimationInfo,
+    selectedBoneName,
+    selectedKeyframeIndex,
+    selectedKeyframes,
+    selectedTrackProperty,
+    setCurrentTime,
+    setPlayingState,
+  ]);
+
+  useEffect(() => {
+    const pending = pendingTimelineSelectionRef.current;
+    if (!pending || !selectedAnimationInfo || !selectedBoneName) {
+      return;
+    }
+    if (
+      pending.boneName !== selectedBoneName ||
+      pending.property !== selectedTrackProperty
+    ) {
+      return;
+    }
+
+    const matchedIndex = selectedKeyframes.findIndex(
+      (keyframe) =>
+        Math.abs(keyframe.time - pending.time) < KEYFRAME_TIME_EPSILON,
+    );
+    if (matchedIndex < 0) {
+      pendingTimelineSelectionRef.current = null;
+      return;
+    }
+
+    pendingTimelineSelectionRef.current = null;
+    handleSelectKeyframe(matchedIndex);
+  }, [
+    handleSelectKeyframe,
+    selectedAnimationInfo,
+    selectedBoneName,
+    selectedKeyframes,
+    selectedTrackProperty,
+  ]);
 
   const handleUseBoneTransform = () => {
     if (!boneTransform || selectedTrackProperty !== "position") {
@@ -734,6 +834,26 @@ export function AnimationViewer({
     }
     setKeyframeValueInputs(
       boneTransform.map((value) => value.toFixed(3)),
+    );
+    setKeyframeError(null);
+  };
+
+  const handleUseGizmoRotation = () => {
+    if (!boneRotation || selectedTrackProperty !== "rotation") {
+      return;
+    }
+    setKeyframeValueInputs(
+      boneRotation.map((value) => value.toFixed(6)),
+    );
+    setKeyframeError(null);
+  };
+
+  const handleUseGizmoScale = () => {
+    if (!boneScale || selectedTrackProperty !== "scale") {
+      return;
+    }
+    setKeyframeValueInputs(
+      boneScale.map((value) => value.toFixed(4)),
     );
     setKeyframeError(null);
   };
@@ -887,6 +1007,15 @@ export function AnimationViewer({
     );
     setKeyframeError(null);
     lastKeyframeSaveSignatureRef.current = null;
+    // Auto-sync gizmo mode with track property
+    if (onGizmoModeChange) {
+      const modeMap: Record<TrackProperty, import("@/components/model-viewer/types").GizmoMode> = {
+        position: "translate",
+        rotation: "rotate",
+        scale: "scale",
+      };
+      onGizmoModeChange(modeMap[property]);
+    }
   };
 
   const handleNewKeyframe = () => {
@@ -908,17 +1037,57 @@ export function AnimationViewer({
     });
   };
 
-  const handleTimelineRowClick = (boneName: string) => {
+  const handleTimelineRowClick = (boneName: string, time: number) => {
+    const matchingTrack =
+      selectedAnimationInfo?.clip.tracks.find((track) => {
+        const parsed = parseTrackName(track.name);
+        if (!parsed || parsed.boneName !== boneName) {
+          return false;
+        }
+        if (
+          isTrackProperty(parsed.property) &&
+          parsed.property === selectedTrackProperty
+        ) {
+          return Array.from(track.times).some(
+            (trackTime) => Math.abs(trackTime - time) < KEYFRAME_TIME_EPSILON,
+          );
+        }
+        return false;
+      }) ??
+      selectedAnimationInfo?.clip.tracks.find((track) => {
+        const parsed = parseTrackName(track.name);
+        if (!parsed || parsed.boneName !== boneName) {
+          return false;
+        }
+        return Array.from(track.times).some(
+          (trackTime) => Math.abs(trackTime - time) < KEYFRAME_TIME_EPSILON,
+        );
+      }) ??
+      null;
+    const matchingTrackProperty = matchingTrack
+      ? parseTrackName(matchingTrack.name)
+      : null;
+    const nextTrackProperty: TrackProperty =
+      matchingTrackProperty && isTrackProperty(matchingTrackProperty.property)
+        ? matchingTrackProperty.property
+        : selectedTrackProperty;
+
+    pendingTimelineSelectionRef.current = {
+      boneName,
+      time,
+      property: nextTrackProperty,
+    };
     setSelectedBoneName(boneName);
-    setSelectedTrackProperty("position");
+    setSelectedTrackProperty(nextTrackProperty);
     setIsCreatingKeyframe(false);
     setSelectedKeyframeIndex(null);
     setKeyframeTimeInput("");
     setKeyframeValueInputs(
-      Array(TRACK_PROPERTY_CONFIG.position.components.length).fill(""),
+      Array(TRACK_PROPERTY_CONFIG[nextTrackProperty].components.length).fill(""),
     );
     setKeyframeError(null);
     lastKeyframeSaveSignatureRef.current = null;
+    scrollSectionIntoView(editKeyframesSectionRef);
   };
 
   const handleSelectEvent = (index: number) => {
@@ -927,6 +1096,11 @@ export function AnimationViewer({
       return;
     }
     setSelectedEventIndex(index);
+  };
+
+  const handleTimelineEventClick = (index: number) => {
+    handleSelectEvent(index);
+    scrollSectionIntoView(eventsSectionRef);
   };
 
   const handleNewEvent = () => {
@@ -967,13 +1141,13 @@ export function AnimationViewer({
   };
 
   return (
-    <Card className="bg-gray-800 border-gray-700">
+    <Card className="flex min-h-0 flex-col overflow-hidden bg-gray-800 border-gray-700">
       <CardHeader>
         <CardTitle className="text-white text-sm">
           Animations ({editableAnimations.length})
         </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-4">
+      <CardContent className="min-h-0 flex-1 space-y-4 overflow-y-auto">
         <AnimationSelector
           selectedAnimation={selectedAnimation}
           editableAnimations={editableAnimations}
@@ -1001,7 +1175,7 @@ export function AnimationViewer({
             durationError={durationError}
             onNameChange={setEditName}
             onDurationInputChange={setEditDurationInput}
-            onLoopToggle={handleLoopToggle}
+            onLoopModeChange={handleLoopModeChange}
             onDurationModeChange={setDurationMode}
             onApplyChanges={handleApplyEditorChanges}
             onDeleteAnimation={handleDeleteAnimation}
@@ -1030,6 +1204,8 @@ export function AnimationViewer({
             keyframeError={keyframeError}
             timelineRows={timelineRows}
             boneTransform={boneTransform ?? null}
+            boneRotation={boneRotation ?? null}
+            boneScale={boneScale ?? null}
             gameLabel={gameLabel}
             modelSourceKind={modelSourceKind}
             isCreatingKeyframe={isCreatingKeyframe}
@@ -1038,13 +1214,16 @@ export function AnimationViewer({
             onBoneNameChange={handleBoneNameChange}
             onTrackPropertyChange={handleTrackPropertyChange}
             onSelectKeyframe={handleSelectKeyframe}
-            onSelectEvent={handleSelectEvent}
             onNewKeyframe={handleNewKeyframe}
             onTimeInputChange={setKeyframeTimeInput}
             onValueInputChange={handleKeyframeValueInputChange}
             onUseBoneTransform={handleUseBoneTransform}
+            onUseGizmoRotation={handleUseGizmoRotation}
+            onUseGizmoScale={handleUseGizmoScale}
             onDeleteKeyframe={handleDeleteKeyframe}
             onTimelineRowClick={handleTimelineRowClick}
+            onTimelineEventClick={handleTimelineEventClick}
+            editKeyframesSectionRef={editKeyframesSectionRef}
             onUndo={handleUndoKeyframeChange}
             onRedo={handleRedoKeyframeChange}
             onPlay={handlePlay}
@@ -1055,7 +1234,10 @@ export function AnimationViewer({
           />
         </div>
 
-        <div className="space-y-3 border-t border-gray-700 pt-3">
+        <div
+          ref={eventsSectionRef}
+          className="space-y-3 border-t border-gray-700 pt-3"
+        >
           <div className="text-xs font-semibold text-gray-300">
             Animation Events
           </div>

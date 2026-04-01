@@ -5,7 +5,10 @@
 
 import { BG3DSkeleton, BG3DAnimation } from "../parseBG3D";
 
-import { createSkeletonSystem } from "../skeletonSystemNew";
+import {
+  createSkeletonSystem,
+  extractAnimationsFromGLTF,
+} from "../skeletonSystemNew";
 
 import { Document, Skin } from "@gltf-transform/core";
 import { parseSkeletonRsrc } from "../skeletonRsrc/parseSkeletonRsrcTS";
@@ -20,11 +23,6 @@ import {
   gltfSkinningToBg3d,
   originalSkeletonBinarySkinningToBg3d,
 } from "./skeleton/skinning";
-// TODO: Implement animation conversion functions
-// import {
-//   gltfAnimationsToBg3d,
-//   originalSkeletonBinaryAnimationsToBg3d,
-// } from "./skeleton/animations";
 
 /**
  * Convert BG3D skeleton to glTF skeleton system
@@ -98,9 +96,8 @@ export function gltfSkeletonToBg3d(doc: Document): BG3DSkeleton | undefined {
   // Extract skinning data and populate bone influences
   gltfSkinningToBg3d(bones, doc);
 
-  // Extract animations from glTF
-  // TODO: Implement animation extraction
-  const animations: BG3DAnimation[] = [];
+  // Extract animations from glTF document
+  const animations = extractAnimationsFromGLTF(doc, bones);
 
   const skeleton: BG3DSkeleton = {
     version: 272,

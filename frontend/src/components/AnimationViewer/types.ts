@@ -17,6 +17,7 @@ export interface AnimationInfo {
   index: number;
   clip: AnimationClip;
   loop?: boolean;
+  loopMode?: import("./hooks").LoopMode;
 }
 
 export interface AnimationMetadata {
@@ -30,6 +31,7 @@ export interface AnimationViewerProps {
   gameLabel?: string | null;
   modelSourceKind?: ModelSourceKind | null;
   onAnimationChange?: (animationIndex: number | null) => void;
+  onAnimationsChange?: (animations: AnimationInfo[]) => void;
   onBoneSelectionChange?: (boneName: string | null) => void;
   onAnimationEventsChange?: (
     animationIndex: number,
@@ -37,6 +39,9 @@ export interface AnimationViewerProps {
   ) => void;
   animationMetadata?: Record<string, AnimationMetadata>;
   boneTransform?: [number, number, number] | null;
+  boneRotation?: [number, number, number, number] | null;
+  boneScale?: [number, number, number] | null;
+  onGizmoModeChange?: (mode: import("@/components/model-viewer/types").GizmoMode) => void;
 }
 
 export interface TimelineRow {

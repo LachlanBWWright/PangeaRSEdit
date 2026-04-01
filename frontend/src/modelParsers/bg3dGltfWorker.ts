@@ -6,6 +6,17 @@ import { WebIO } from "@gltf-transform/core";
 import type { SkeletonResource } from "../python/structSpecs/skeleton/skeletonInterface";
 import { isErr, Result, fromPromise } from "../types/result";
 
+function toExactArrayBuffer(data: ArrayBuffer | Uint8Array): ArrayBuffer {
+  if (data instanceof ArrayBuffer) {
+    return data;
+  }
+  const copy = new ArrayBuffer(data.byteLength);
+  new Uint8Array(copy).set(
+    new Uint8Array(data.buffer, data.byteOffset, data.byteLength),
+  );
+  return copy;
+}
+
 // Helper function to detect file format and parse accordingly
 function parseModelBuffer(buffer: ArrayBuffer): Result<BG3DParseResult, Error> {
   // Check magic number to detect format
@@ -124,11 +135,11 @@ self.onmessage = async (e: MessageEvent<BG3DGltfWorkerMessage>) => {
     if (msg.type === "bg3d-to-glb") {
       const parseResult = parseModelBuffer(msg.buffer);
       if (isErr(parseResult)) {
-        const response: BG3DGltfWorkerResponse = {
+        const response = {
           type: "error",
           error: parseResult.error.message,
           requestId,
-        };
+        } satisfies BG3DGltfWorkerResponse;
         self.postMessage(response);
         return;
       }
@@ -136,23 +147,23 @@ self.onmessage = async (e: MessageEvent<BG3DGltfWorkerMessage>) => {
       const doc = bg3dParsedToGLTF(parsed);
       const io = new WebIO();
       const glbBuffer = await io.writeBinary(doc);
-      const arrBuffer = new Uint8Array(glbBuffer).buffer;
+      const arrBuffer = toExactArrayBuffer(glbBuffer);
 
-      const response: BG3DGltfWorkerResponse = {
+      const response = {
         type: "bg3d-to-glb",
         result: arrBuffer,
-        parsed: parsed,
+        parsed,
         requestId,
-      };
+      } satisfies BG3DGltfWorkerResponse;
       self.postMessage.call(self, response);
     } else if (msg.type === "bg3d-with-skeleton-to-glb") {
       const parseResult = parseBG3DWithSkeletonResource(msg.bg3dBuffer, msg.skeletonData);
       if (isErr(parseResult)) {
-        const response: BG3DGltfWorkerResponse = {
+        const response = {
           type: "error",
           error: parseResult.error.message,
           requestId,
-        };
+        } satisfies BG3DGltfWorkerResponse;
         self.postMessage(response);
         return;
       }
@@ -160,14 +171,14 @@ self.onmessage = async (e: MessageEvent<BG3DGltfWorkerMessage>) => {
       const doc = bg3dParsedToGLTF(parsed);
       const io = new WebIO();
       const glbBuffer = await io.writeBinary(doc);
-      const arrBuffer = new Uint8Array(glbBuffer).buffer;
+      const arrBuffer = toExactArrayBuffer(glbBuffer);
 
-      const response: BG3DGltfWorkerResponse = {
+      const response = {
         type: "bg3d-with-skeleton-to-glb",
         result: arrBuffer,
-        parsed: parsed,
+        parsed,
         requestId,
-      };
+      } satisfies BG3DGltfWorkerResponse;
       self.postMessage.call(self, response);
     } else if (msg.type === "model-with-skeleton-to-glb") {
       const parseResult = parseBG3DWithSkeletonResource(
@@ -175,11 +186,11 @@ self.onmessage = async (e: MessageEvent<BG3DGltfWorkerMessage>) => {
         msg.skeletonData,
       );
       if (isErr(parseResult)) {
-        const response: BG3DGltfWorkerResponse = {
+        const response = {
           type: "error",
           error: parseResult.error.message,
           requestId,
-        };
+        } satisfies BG3DGltfWorkerResponse;
         self.postMessage(response);
         return;
       }
@@ -187,77 +198,77 @@ self.onmessage = async (e: MessageEvent<BG3DGltfWorkerMessage>) => {
       const doc = bg3dParsedToGLTF(parsed);
       const io = new WebIO();
       const glbBuffer = await io.writeBinary(doc);
-      const arrBuffer = new Uint8Array(glbBuffer).buffer;
+      const arrBuffer = toExactArrayBuffer(glbBuffer);
 
-      const response: BG3DGltfWorkerResponse = {
+      const response = {
         type: "model-with-skeleton-to-glb",
         result: arrBuffer,
         parsed,
         requestId,
-      };
+      } satisfies BG3DGltfWorkerResponse;
       self.postMessage.call(self, response);
     } else if (msg.type === "bg3d-parsed-to-glb") {
       const doc = bg3dParsedToGLTF(msg.parsed);
       const io = new WebIO();
       const glbBuffer = await io.writeBinary(doc);
-      const arrBuffer = new Uint8Array(glbBuffer).buffer;
+      const arrBuffer = toExactArrayBuffer(glbBuffer);
 
-      const response: BG3DGltfWorkerResponse = {
+      const response = {
         type: "bg3d-parsed-to-glb",
         result: arrBuffer,
         parsed: msg.parsed,
         requestId,
-      };
+      } satisfies BG3DGltfWorkerResponse;
       self.postMessage.call(self, response);
     } else if (msg.type === "bg3d-parsed-to-bg3d") {
       const bg3dBuffer = bg3dParsedToBG3D(msg.parsed);
-      const response: BG3DGltfWorkerResponse = {
+      const response = {
         type: "bg3d-parsed-to-bg3d",
         result: bg3dBuffer,
         requestId,
-      };
+      } satisfies BG3DGltfWorkerResponse;
       self.postMessage.call(self, response);
     } else if (msg.type === "glb-to-bg3d") {
       const io = new WebIO();
       const doc = await io.readBinary(new Uint8Array(msg.buffer));
-      const parsedBg3d = await gltfToBG3D(doc);
+      const parsedBg3d = gltfToBG3D(doc);
       const bg3d = bg3dParsedToBG3D(parsedBg3d);
 
-      const response: BG3DGltfWorkerResponse = {
+      const response = {
         type: "glb-to-bg3d",
         result: bg3d,
         parsed: parsedBg3d,
         requestId,
-      };
+      } satisfies BG3DGltfWorkerResponse;
       self.postMessage.call(self, response);
     } else if (msg.type === "glb-to-bg3d-with-skeleton") {
       const io = new WebIO();
       const doc = await io.readBinary(new Uint8Array(msg.buffer));
-      const parsedBg3d = await gltfToBG3D(doc);
+      const parsedBg3d = gltfToBG3D(doc);
       const bg3d = bg3dParsedToBG3D(parsedBg3d);
 
-      const response: BG3DGltfWorkerResponse = {
+      const response = {
         type: "glb-to-bg3d-with-skeleton",
         bg3dResult: bg3d,
         parsed: parsedBg3d,
         requestId,
-      };
+      } satisfies BG3DGltfWorkerResponse;
       self.postMessage.call(self, response);
     } else {
-      const response: BG3DGltfWorkerResponse = {
+      const response = {
         type: "error",
         error: "Unknown conversion type",
         requestId,
-      };
+      } satisfies BG3DGltfWorkerResponse;
       self.postMessage(response);
     }
   })());
   if (result.isErr()) {
-    const response: BG3DGltfWorkerResponse = {
+    const response = {
       type: "error",
       error: result.error instanceof Error ? result.error.message : String(result.error),
       requestId,
-    };
+    } satisfies BG3DGltfWorkerResponse;
     self.postMessage(response);
   }
 };

@@ -263,22 +263,22 @@ export function GameModelSelector({
       {selectedModel && (
           <div className="space-y-2">
             <label className="text-sm text-gray-300">Animation Data</label>
-            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+            <div className="grid grid-cols-1 gap-2">
               <Button
                 type="button"
                 disabled={!selectedModel || loading || !hasSkeletonFile}
                 onClick={() => void handleLoadSelectedModel(true)}
-                className="w-full"
+                className="w-full capitalize"
               >
-                Load with skeletons
+                Load With Skeleton
               </Button>
               <Button
                 type="button"
                 disabled={!selectedModel || loading}
                 onClick={() => void handleLoadSelectedModel(false)}
-                className="w-full"
+                className="w-full capitalize"
               >
-                Load without skeletons
+                Load Without Skeleton
               </Button>
             </div>
             {!hasSkeletonFile && (

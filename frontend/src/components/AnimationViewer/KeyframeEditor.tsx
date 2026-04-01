@@ -2,7 +2,7 @@
  * Keyframe Editor component for editing animation keyframes
  */
 
-import type { MouseEvent } from "react";
+import { useMemo, type MouseEvent, type RefObject } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -51,6 +51,8 @@ interface KeyframeEditorProps {
   keyframeError: string | null;
   timelineRows: TimelineRow[];
   boneTransform: [number, number, number] | null;
+  boneRotation?: [number, number, number, number] | null;
+  boneScale?: [number, number, number] | null;
   gameLabel?: string | null;
   modelSourceKind?: ModelSourceKind | null;
   isCreatingKeyframe: boolean;
@@ -59,13 +61,16 @@ interface KeyframeEditorProps {
   onBoneNameChange: (boneName: string) => void;
   onTrackPropertyChange: (property: TrackProperty) => void;
   onSelectKeyframe: (index: number) => void;
-  onSelectEvent: (index: number) => void;
   onNewKeyframe: () => void;
   onTimeInputChange: (time: string) => void;
   onValueInputChange: (index: number, value: string) => void;
   onUseBoneTransform: () => void;
+  onUseGizmoRotation?: () => void;
+  onUseGizmoScale?: () => void;
   onDeleteKeyframe: () => void;
-  onTimelineRowClick: (boneName: string) => void;
+  onTimelineRowClick: (boneName: string, time: number) => void;
+  onTimelineEventClick: (index: number) => void;
+  editKeyframesSectionRef?: RefObject<HTMLDivElement | null>;
   onUndo: () => void;
   onRedo: () => void;
   onPlay: () => void;
@@ -93,6 +98,8 @@ export function KeyframeEditor({
   keyframeError,
   timelineRows,
   boneTransform,
+  boneRotation,
+  boneScale,
   gameLabel,
   modelSourceKind,
   isCreatingKeyframe,
@@ -101,13 +108,16 @@ export function KeyframeEditor({
   onBoneNameChange,
   onTrackPropertyChange,
   onSelectKeyframe,
-  onSelectEvent,
   onNewKeyframe,
   onTimeInputChange,
   onValueInputChange,
   onUseBoneTransform,
+  onUseGizmoRotation,
+  onUseGizmoScale,
   onDeleteKeyframe,
   onTimelineRowClick,
+  onTimelineEventClick,
+  editKeyframesSectionRef,
   onUndo,
   onRedo,
   onPlay,
@@ -116,20 +126,17 @@ export function KeyframeEditor({
   onReset,
   onSeek,
 }: KeyframeEditorProps) {
-  if (!selectedAnimationInfo) {
-    return (
-      <p className="text-xs text-gray-400">
-        Select an animation to edit keyframes.
-      </p>
-    );
-  }
-
   const selectedTrackConfig = TRACK_PROPERTY_CONFIG[selectedTrackProperty];
   const ticksPerSecond = TICKS_PER_SECOND;
   const timelineDuration = duration;
-  const totalTicks = Math.max(1, Math.ceil(timelineDuration * ticksPerSecond));
-  const timelinePlayhead =
-    timelineDuration > 0 ? (currentTime / timelineDuration) * 100 : 0;
+  const totalTicks = useMemo(
+    () => Math.max(1, Math.ceil(timelineDuration * ticksPerSecond)),
+    [timelineDuration, ticksPerSecond],
+  );
+  const timelinePlayhead = useMemo(
+    () => (timelineDuration > 0 ? (currentTime / timelineDuration) * 100 : 0),
+    [currentTime, timelineDuration],
+  );
   const clampTimelinePercent = (position: number) =>
     Math.min(99.5, Math.max(0, position));
   const showKeyframeDetails = selectedKeyframeIndex !== null || isCreatingKeyframe;
@@ -139,12 +146,170 @@ export function KeyframeEditor({
       : selectedTrackProperty === "scale"
         ? "Scale is per-axis. 1 keeps the axis unchanged, values above 1 enlarge it, and values below 1 shrink it."
         : "Position is the bone offset along the X, Y, and Z axes.";
-  const rulerTicks = Array.from(
-    { length: Math.floor(totalTicks / ticksPerSecond) + 1 },
-    (_value, index) => index * ticksPerSecond,
+  const rulerTicks = useMemo(() => {
+    const ticks = Array.from(
+      { length: Math.floor(totalTicks / ticksPerSecond) + 1 },
+      (_value, index) => index * ticksPerSecond,
+    );
+    if (ticks[ticks.length - 1] !== totalTicks) {
+      ticks.push(totalTicks);
+    }
+    return ticks;
+  }, [ticksPerSecond, totalTicks]);
+  const timelineEventMarkers = useMemo(
+    () =>
+      selectedEvents.map((event, index) => {
+        const position = totalTicks > 0 ? (event.time / totalTicks) * 100 : 0;
+        const isSelected = selectedEventIndex === index;
+        const valueLabel = getAnimationEventValueLabel(
+          event.type,
+          event.value,
+          modelSourceKind,
+          gameLabel,
+        );
+        const valueDetails = getAnimationEventDetails(
+          event.type,
+          event.value,
+          modelSourceKind,
+          gameLabel,
+        );
+        return (
+          <button
+            key={`${event.time}-${event.type}-${event.value}-${index}`}
+            type="button"
+            className={`absolute top-1/2 h-4 w-4 -translate-x-1/2 -translate-y-1/2 rotate-45 border ${
+              isSelected
+                ? "border-amber-100 bg-amber-500"
+                : "border-amber-300 bg-amber-400"
+            }`}
+            style={{
+              left: `${clampTimelinePercent(position)}%`,
+            }}
+            onClick={() => onTimelineEventClick(index)}
+            title={`Event @ ${event.time} ticks (${formatTime(
+              event.time / ticksPerSecond,
+            )}) - ${formatAnimationEventType(event.type)} - ${valueLabel}${
+              valueDetails ? `: ${valueDetails}` : ""
+            }${
+              getAnimationEventTooltip(event.type)
+                ? ` | ${getAnimationEventTooltip(event.type)}`
+                : ""
+            }`}
+          />
+        );
+      }),
+    [
+      gameLabel,
+      modelSourceKind,
+      onTimelineEventClick,
+      selectedEventIndex,
+      selectedEvents,
+      ticksPerSecond,
+      totalTicks,
+    ],
   );
-  if (rulerTicks[rulerTicks.length - 1] !== totalTicks) {
-    rulerTicks.push(totalTicks);
+  const timelineRowsMarkup = useMemo(
+    () =>
+      timelineRows.map((row) => {
+        const isSelected = row.boneName === selectedBoneName;
+        return (
+          <div key={row.boneName} className="space-y-1">
+            <div className="text-[10px] uppercase tracking-wide text-gray-400">
+              {formatBoneLabel(row.boneName)}
+            </div>
+            <div
+              className={`relative h-8 overflow-hidden rounded-md ${
+                isSelected ? "bg-blue-950/35" : "bg-gray-800/80"
+              }`}
+            >
+              <div
+                className="pointer-events-none absolute inset-0"
+                aria-hidden="true"
+              >
+                {rulerTicks.map((tick) => {
+                  const position = (tick / totalTicks) * 100;
+                  const isMajor = tick % ticksPerSecond === 0;
+                  return (
+                    <div
+                      key={`bone-grid-${row.boneName}-${tick}`}
+                      className="absolute top-0 h-full"
+                      style={{
+                        left: `${clampTimelinePercent(position)}%`,
+                      }}
+                    >
+                      <div
+                        className={`absolute bottom-0 w-px ${
+                          isMajor ? "h-full bg-gray-600/80" : "h-3 bg-gray-700"
+                        }`}
+                      />
+                    </div>
+                  );
+                })}
+                <div
+                  className="absolute top-0 h-full w-px bg-blue-400/80"
+                  style={{
+                    left: `${clampTimelinePercent(timelinePlayhead)}%`,
+                  }}
+                />
+              </div>
+              {row.times.map((time, index) => {
+                const position =
+                  timelineDuration > 0 ? (time / timelineDuration) * 100 : 0;
+                return (
+                  <button
+                    key={`${row.boneName}-${time}-${index}`}
+                    type="button"
+                    className="absolute top-1/2 h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full bg-blue-400"
+                    style={{
+                      left: `${clampTimelinePercent(position)}%`,
+                    }}
+                    onClick={() => onTimelineRowClick(row.boneName, time)}
+                    title={`${formatTime(time)}`}
+                  />
+                );
+              })}
+            </div>
+          </div>
+        );
+      }),
+    [
+      onTimelineRowClick,
+      rulerTicks,
+      selectedBoneName,
+      timelineDuration,
+      timelinePlayhead,
+      timelineRows,
+      ticksPerSecond,
+      totalTicks,
+    ],
+  );
+  const keyframeButtons = useMemo(
+    () =>
+      selectedKeyframes.map((keyframe, index) => {
+        const isSelected = selectedKeyframeIndex === index;
+        return (
+          <Button
+            key={`${keyframe.time}-${index}`}
+            size="sm"
+            className={`w-full justify-between ${
+              isSelected ? "bg-blue-700 hover:bg-blue-700" : ""
+            }`}
+            onClick={() => onSelectKeyframe(index)}
+          >
+            <span>#{index + 1}</span>
+            <span>{formatTime(keyframe.time)}</span>
+          </Button>
+        );
+      }),
+    [onSelectKeyframe, selectedKeyframeIndex, selectedKeyframes],
+  );
+
+  if (!selectedAnimationInfo) {
+    return (
+      <p className="text-xs text-gray-400">
+        Select an animation to edit keyframes.
+      </p>
+    );
   }
 
   const handleTimelineSeek = (event: MouseEvent<HTMLDivElement>) => {
@@ -257,252 +422,143 @@ export function KeyframeEditor({
                   }}
                 />
               </div>
-              {selectedEvents.map((event, index) => {
-                const position = totalTicks > 0 ? (event.time / totalTicks) * 100 : 0;
-                const isSelected = selectedEventIndex === index;
-                const valueLabel = getAnimationEventValueLabel(
-                  event.type,
-                  event.value,
-                  modelSourceKind,
-                  gameLabel,
-                );
-                const valueDetails = getAnimationEventDetails(
-                  event.type,
-                  event.value,
-                  modelSourceKind,
-                  gameLabel,
-                );
-                return (
-                  <button
-                    key={`${event.time}-${event.type}-${event.value}-${index}`}
-                    type="button"
-                    className={`absolute top-1/2 h-4 w-4 -translate-x-1/2 -translate-y-1/2 rotate-45 border ${
-                      isSelected
-                        ? "border-amber-100 bg-amber-500"
-                        : "border-amber-300 bg-amber-400"
-                    }`}
-                    style={{
-                      left: `${clampTimelinePercent(position)}%`,
-                    }}
-                    onClick={() => onSelectEvent(index)}
-                    title={`Event @ ${event.time} ticks (${formatTime(
-                      event.time / ticksPerSecond,
-                    )}) - ${formatAnimationEventType(event.type)} - ${valueLabel}${
-                      valueDetails ? `: ${valueDetails}` : ""
-                    }${
-                      getAnimationEventTooltip(event.type)
-                        ? ` | ${getAnimationEventTooltip(event.type)}`
-                        : ""
-                    }`}
-                  />
-                );
-              })}
+              {timelineEventMarkers}
             </div>
           </div>
 
-          {timelineRows.map((row) => {
-            const isSelected = row.boneName === selectedBoneName;
-            return (
-              <div key={row.boneName} className="space-y-1">
-                <div className="text-[10px] uppercase tracking-wide text-gray-400">
-                  {formatBoneLabel(row.boneName)}
-                </div>
-                <div
-                  className={`relative h-8 overflow-hidden rounded-md ${
-                    isSelected ? "bg-blue-950/35" : "bg-gray-800/80"
-                  }`}
-                >
-                  <div
-                    className="pointer-events-none absolute inset-0"
-                    aria-hidden="true"
-                  >
-                    {rulerTicks.map((tick) => {
-                      const position = (tick / totalTicks) * 100;
-                      const isMajor = tick % ticksPerSecond === 0;
+          {timelineRowsMarkup}
+        </div>
+      </div>
+
+      <div
+        ref={editKeyframesSectionRef}
+        className="space-y-3 border-t border-gray-700 pt-3"
+      >
+        <div className="text-xs font-semibold text-gray-300">
+          Edit Keyframes
+        </div>
+        <div className="space-y-3 rounded-lg border border-gray-700 bg-gray-900/30 p-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div className="space-y-2">
+              <label className="text-xs text-gray-300">Bone</label>
+              <Select value={selectedBoneName} onValueChange={onBoneNameChange}>
+                <SelectTrigger className="bg-gray-700 border-gray-600 text-white">
+                  <SelectValue placeholder="Select bone" />
+                </SelectTrigger>
+                <SelectContent className="max-h-60 bg-gray-700 border-gray-600 text-white">
+                  {availableBoneNames.length === 0 ? (
+                    <div className="px-2 py-1 text-xs text-gray-400">
+                      No bones found
+                    </div>
+                  ) : (
+                    availableBoneNames.map((bone) => {
+                      const formattedBone = formatBoneLabel(bone);
                       return (
-                        <div
-                          key={`bone-grid-${row.boneName}-${tick}`}
-                          className="absolute top-0 h-full"
-                          style={{
-                            left: `${clampTimelinePercent(position)}%`,
-                          }}
+                        <SelectItem
+                          key={bone}
+                          value={bone}
+                          className="text-white focus:bg-gray-600"
+                          textValue={formattedBone}
                         >
-                          <div
-                            className={`absolute bottom-0 w-px ${
-                              isMajor ? "h-full bg-gray-600/80" : "h-3 bg-gray-700"
-                            }`}
-                          />
-                        </div>
+                          <span
+                            className={`block ${BONE_NAME_MAX_WIDTH_CLASS} truncate`}
+                            title={bone}
+                          >
+                            {formattedBone}
+                          </span>
+                        </SelectItem>
                       );
-                    })}
-                    <div
-                      className="absolute top-0 h-full w-px bg-blue-400/80"
-                      style={{
-                        left: `${clampTimelinePercent(timelinePlayhead)}%`,
-                      }}
-                    />
-                  </div>
-                  {row.times.map((time, index) => {
-                    const position =
-                      timelineDuration > 0 ? (time / timelineDuration) * 100 : 0;
-                    return (
-                      <button
-                        key={`${row.boneName}-${time}-${index}`}
-                        type="button"
-                        className="absolute top-1/2 h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full bg-blue-400"
-                        style={{
-                          left: `${clampTimelinePercent(position)}%`,
-                        }}
-                        onClick={() => onTimelineRowClick(row.boneName)}
-                        title={`${formatTime(time)}`}
-                      />
-                    );
-                  })}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
+                    })
+                  )}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <label className="text-xs text-gray-300">Track</label>
+              <Select
+                value={selectedTrackProperty}
+                onValueChange={(value) => {
+                  const nextProperty =
+                    value === "rotation"
+                      ? "rotation"
+                      : value === "scale"
+                        ? "scale"
+                        : "position";
+                  onTrackPropertyChange(nextProperty);
+                }}
+              >
+                <SelectTrigger className="bg-gray-700 border-gray-600 text-white">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="bg-gray-700 border-gray-600 text-white">
+                  {Object.entries(TRACK_PROPERTY_CONFIG).map(([key, config]) => (
+                    <SelectItem
+                      key={key}
+                      value={key}
+                      className="text-white focus:bg-gray-600"
+                    >
+                      {config.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
 
-      <div className="space-y-3 rounded-lg border border-gray-700 bg-gray-900/30 p-3">
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <div className="space-y-2">
-            <label className="text-xs text-gray-300">Bone</label>
-            <Select value={selectedBoneName} onValueChange={onBoneNameChange}>
-              <SelectTrigger className="bg-gray-700 border-gray-600 text-white">
-                <SelectValue placeholder="Select bone" />
-              </SelectTrigger>
-              <SelectContent className="max-h-60 bg-gray-700 border-gray-600 text-white">
-                {availableBoneNames.length === 0 ? (
-                  <div className="px-2 py-1 text-xs text-gray-400">
-                    No bones found
-                  </div>
-                ) : (
-                  availableBoneNames.map((bone) => {
-                    const formattedBone = formatBoneLabel(bone);
-                    return (
-                      <SelectItem
-                        key={bone}
-                        value={bone}
-                        className="text-white focus:bg-gray-600"
-                        textValue={formattedBone}
-                      >
-                        <span
-                          className={`block ${BONE_NAME_MAX_WIDTH_CLASS} truncate`}
-                          title={bone}
-                        >
-                          {formattedBone}
-                        </span>
-                      </SelectItem>
-                    );
-                  })
-                )}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-2">
-            <label className="text-xs text-gray-300">Track</label>
-            <Select
-              value={selectedTrackProperty}
-              onValueChange={(value) => {
-                const nextProperty =
-                  value === "rotation"
-                    ? "rotation"
-                    : value === "scale"
-                      ? "scale"
-                      : "position";
-                onTrackPropertyChange(nextProperty);
-              }}
-            >
-              <SelectTrigger className="bg-gray-700 border-gray-600 text-white">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent className="bg-gray-700 border-gray-600 text-white">
-                {Object.entries(TRACK_PROPERTY_CONFIG).map(([key, config]) => (
-                  <SelectItem
-                    key={key}
-                    value={key}
-                    className="text-white focus:bg-gray-600"
-                  >
-                    {config.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
-      </div>
-
-      <div className="space-y-2">
-        <div className="flex items-center justify-between text-xs text-gray-300">
-          <span>Keyframes</span>
-          <div className="flex items-center gap-2">
-            <Button
-              size="sm"
-              variant="secondary"
-              onClick={onUndo}
-              disabled={!canUndo}
-            >
-              Undo
-            </Button>
-            <Button
-              size="sm"
-              variant="secondary"
-              onClick={onRedo}
-              disabled={!canRedo}
-            >
-              Redo
-            </Button>
-          </div>
-        </div>
-        {selectedKeyframes.length > 0 ? (
-          <div
-            className={`space-y-2 ${KEYFRAME_LIST_MAX_HEIGHT_CLASS} overflow-y-auto rounded-md border border-gray-700 p-2`}
-          >
-            {selectedKeyframes.map((keyframe, index) => {
-              const isSelected = selectedKeyframeIndex === index;
-              return (
+            <div className="flex items-center justify-between text-xs text-gray-300">
+              <span>Keyframes</span>
+              <div className="flex items-center gap-2">
                 <Button
-                  key={`${keyframe.time}-${index}`}
                   size="sm"
-                  className={`w-full justify-between ${
-                    isSelected ? "bg-blue-700 hover:bg-blue-700" : ""
-                  }`}
-                  onClick={() => onSelectKeyframe(index)}
+                  variant="secondary"
+                  onClick={onUndo}
+                  disabled={!canUndo}
                 >
-                  <span>#{index + 1}</span>
-                  <span>{formatTime(keyframe.time)}</span>
+                  Undo
                 </Button>
-              );
-            })}
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  onClick={onRedo}
+                  disabled={!canRedo}
+                >
+                  Redo
+                </Button>
+              </div>
+            </div>
+            {selectedKeyframes.length > 0 ? (
+              <div
+                className={`space-y-2 ${KEYFRAME_LIST_MAX_HEIGHT_CLASS} overflow-y-auto rounded-md border border-gray-700 p-2`}
+              >
+                {keyframeButtons}
+              </div>
+            ) : (
+              <p className="text-xs text-gray-400">
+                No keyframes found for this track.
+              </p>
+            )}
+            <Button
+              size="sm"
+              className={`w-full ${
+                isCreatingKeyframe
+                  ? "border-blue-300 bg-blue-700 text-white hover:bg-blue-700"
+                  : ""
+              }`}
+              onClick={onNewKeyframe}
+            >
+              {isCreatingKeyframe ? "Creating Keyframe" : "New Keyframe"}
+            </Button>
           </div>
-        ) : (
-          <p className="text-xs text-gray-400">
-            No keyframes found for this track.
-          </p>
-        )}
-        <Button
-          size="sm"
-          className={`w-full ${
-            isCreatingKeyframe
-              ? "border-blue-300 bg-blue-700 text-white hover:bg-blue-700"
-              : ""
-          }`}
-          onClick={onNewKeyframe}
-        >
-          {isCreatingKeyframe ? "Creating Keyframe" : "New Keyframe"}
-        </Button>
-      </div>
 
-      {showKeyframeDetails && (
-        <div
-          className={`space-y-4 rounded-md border p-3 ${
-            isCreatingKeyframe
-              ? "border-blue-500/70 bg-blue-950/30"
-              : "border-gray-700 bg-gray-900/20"
-          }`}
-        >
+          {showKeyframeDetails && (
+            <div
+              className={`space-y-4 rounded-md border p-3 ${
+                isCreatingKeyframe
+                  ? "border-blue-500/70 bg-blue-950/30"
+                  : "border-gray-700 bg-gray-900/20"
+              }`}
+            >
           <div className="flex items-center justify-between">
             <div className="text-xs font-semibold text-gray-200">
               {isCreatingKeyframe
@@ -547,23 +603,68 @@ export function KeyframeEditor({
                   );
                 })}
                 <Button size="sm" onClick={onUseBoneTransform}>
-                  Use Gizmo Values
+                  Use Gizmo Position
                 </Button>
+                <p className="text-amber-400 text-[10px] leading-snug mt-1">
+                  Click &quot;Use Gizmo Position&quot; to apply the gizmo position to this keyframe.
+                </p>
+              </div>
+            )}
+            {boneRotation && selectedTrackProperty === "rotation" && onUseGizmoRotation && (
+              <div className="space-y-1 text-[10px] text-gray-400">
+                {boneRotation.map((val, index) => {
+                  const labels = ["X", "Y", "Z", "W"];
+                  const label = labels[index] ?? `Q${index}`;
+                  return (
+                    <div key={`gizmo-rot-${index}`}>
+                      Gizmo {label}: {val.toFixed(4)}
+                    </div>
+                  );
+                })}
+                <Button size="sm" onClick={onUseGizmoRotation}>
+                  Use Gizmo Rotation
+                </Button>
+                <p className="text-amber-400 text-[10px] leading-snug mt-1">
+                  Click &quot;Use Gizmo Rotation&quot; to apply the quaternion to this keyframe.
+                </p>
+              </div>
+            )}
+            {boneScale && selectedTrackProperty === "scale" && onUseGizmoScale && (
+              <div className="space-y-1 text-[10px] text-gray-400">
+                {boneScale.map((val, index) => {
+                  const labels = ["X", "Y", "Z"];
+                  const label = labels[index] ?? `S${index}`;
+                  return (
+                    <div key={`gizmo-scale-${index}`}>
+                      Gizmo {label}: {val.toFixed(4)}
+                    </div>
+                  );
+                })}
+                <Button size="sm" onClick={onUseGizmoScale}>
+                  Use Gizmo Scale
+                </Button>
+                <p className="text-amber-400 text-[10px] leading-snug mt-1">
+                  Click &quot;Use Gizmo Scale&quot; to apply the scale to this keyframe.
+                </p>
               </div>
             )}
             <div className="space-y-3">
               {selectedTrackConfig.components.map((label, index) => (
-                <Input
-                  key={label}
-                  type="text"
-                  inputMode="decimal"
-                  placeholder={label}
-                  value={keyframeValueInputs[index] ?? ""}
-                  onChange={(event) =>
-                    onValueInputChange(index, event.target.value)
-                  }
-                  className={KEYFRAME_VALUE_INPUT_CLASS}
-                />
+                <div key={label} className="space-y-1">
+                  <label className="text-[10px] uppercase tracking-wide text-gray-400">
+                    {label}
+                  </label>
+                  <Input
+                    type="text"
+                    inputMode="decimal"
+                    placeholder={label}
+                    value={keyframeValueInputs[index] ?? ""}
+                    onChange={(event) =>
+                      onValueInputChange(index, event.target.value)
+                    }
+                    className={KEYFRAME_VALUE_INPUT_CLASS}
+                  />
+                </div>
               ))}
             </div>
           </div>
@@ -595,6 +696,8 @@ export function KeyframeEditor({
           </div>
         </div>
       )}
+        </div>
+      </div>
     </div>
   );
 }

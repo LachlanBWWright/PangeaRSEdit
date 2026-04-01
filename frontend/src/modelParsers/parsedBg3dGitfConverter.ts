@@ -49,6 +49,34 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
+interface ParentLinkedNode<T> {
+  getParentNode(): T | null;
+}
+
+export function getJointParentBoneIndex<T extends ParentLinkedNode<T>>(
+  joint: T,
+  joints: T[],
+): number {
+  const jointParent = joint.getParentNode();
+  if (!jointParent) {
+    return -1;
+  }
+
+  const parentIndex = joints.indexOf(jointParent);
+  return parentIndex >= 0 ? parentIndex : -1;
+}
+
+function toExactArrayBuffer(data: Uint8Array | ArrayBuffer): ArrayBuffer {
+  if (data instanceof ArrayBuffer) {
+    return data.slice(0);
+  }
+  const copy = new ArrayBuffer(data.byteLength);
+  new Uint8Array(copy).set(
+    new Uint8Array(data.buffer, data.byteOffset, data.byteLength),
+  );
+  return copy;
+}
+
 /**
  * Matrix utilities for coordinate transformations
  */
@@ -902,11 +930,10 @@ export function bg3dParsedToGLTF(
   return doc;
 }
 
-export async function gltfToBG3D(doc: Document): Promise<BG3DParseResult> {
+export function gltfToBG3D(doc: Document): BG3DParseResult {
   // 1. Restore materials from glTF materials (infer BG3D flags from standard glTF data)
   const docMaterials = doc.getRoot().listMaterials();
-  const materials: BG3DMaterial[] = await Promise.all(
-    docMaterials.map(async (mat) => {
+  const materials: BG3DMaterial[] = docMaterials.map((mat) => {
       let diffuseColor: [number, number, number, number] = [1, 1, 1, 1];
       const baseColor = mat.getBaseColorFactor();
       if (Array.isArray(baseColor) && baseColor.length === 4) {
@@ -963,18 +990,8 @@ export async function gltfToBG3D(doc: Document): Promise<BG3DParseResult> {
               isJpeg: true,
             });
           } else if (isPNG) {
-            const imageBuffer = (() => {
-              const buf = image.buffer;
-              if (buf instanceof ArrayBuffer) return buf;
-              const u8 = new Uint8Array(buf);
-              const newBuffer = u8.buffer.slice(0);
-              if (!(newBuffer instanceof ArrayBuffer)) {
-                console.error("Failed to convert to ArrayBuffer - using empty buffer");
-                return new ArrayBuffer(0);
-              }
-              return newBuffer;
-            })();
-            const rgbaRes = await pngToRgba8(imageBuffer);
+            const imageBuffer = toExactArrayBuffer(image);
+            const rgbaRes = pngToRgba8(imageBuffer);
 
             // Infer srcPixelFormat from actual pixel data
             // Check if any pixel has non-255 alpha (indicating true RGBA)
@@ -1026,8 +1043,7 @@ export async function gltfToBG3D(doc: Document): Promise<BG3DParseResult> {
         flags,
         textures,
       };
-    }),
-  );
+    });
 
   // 2. Restore skeleton data purely from glTF Skin and Animations
   let skeleton: BG3DSkeleton | undefined = undefined;
@@ -1045,36 +1061,46 @@ export async function gltfToBG3D(doc: Document): Promise<BG3DParseResult> {
       const joints = skin.listJoints();
 
       if (joints.length > 0) {
-        const bones: BG3DBone[] = joints.map((joint, index) => {
-          const matrix = joint.getMatrix();
-          let coordX = 0,
-            coordY = 0,
-            coordZ = 0;
+        // Recover rest-pose bone positions from inverse bind matrices when available.
+        // Joint transforms may reflect the current animation state after a Three.js
+        // GLTFExporter round-trip, but inverse bind matrices always encode the bind pose.
+        const ibmAccessor = skin.getInverseBindMatrices();
+        const ibmArray = ibmAccessor?.getArray();
+        const hasIBM = ibmArray instanceof Float32Array && ibmArray.length >= joints.length * 16;
 
-          if (matrix && matrix.length >= 12) {
-            coordX = matrix[12] ?? 0;
-            coordY = matrix[13] ?? 0;
-            coordZ = matrix[14] ?? 0;
+        // Pre-compute bind-pose world transforms from inverse bind matrices
+        const bindPoseWorldTransforms: Matrix4[] = [];
+        if (hasIBM) {
+          for (let i = 0; i < joints.length; i++) {
+            const offset = i * 16;
+            const ibm = new Matrix4();
+            for (let j = 0; j < 16; j++) {
+              ibm.data[j] = ibmArray[offset + j] ?? 0;
+            }
+            // worldTransform = inverse(inverseBindMatrix)
+            bindPoseWorldTransforms.push(ibm.invert());
+          }
+        }
+
+        const bones: BG3DBone[] = joints.map((joint, index) => {
+          const parentBone = getJointParentBoneIndex(
+            joint,
+            joints,
+          );
+
+          // Use bind-pose world position from IBM, falling back to joint transforms
+          let coordX = 0, coordY = 0, coordZ = 0;
+          const bindWorld = bindPoseWorldTransforms[index];
+          if (bindWorld) {
+            const t = bindWorld.getTranslation();
+            coordX = t.x;
+            coordY = t.y;
+            coordZ = t.z;
           } else {
             const translation = joint.getTranslation() || [0, 0, 0];
             coordX = translation[0] ?? 0;
             coordY = translation[1] ?? 0;
             coordZ = translation[2] ?? 0;
-          }
-
-          let parentBone = -1;
-          const jointParents = joint
-            .listParents()
-            .filter((p): p is Node => p instanceof Node);
-          if (jointParents.length > 0) {
-            const jointParent = jointParents[0];
-            const skeletonRoot = skin.getSkeleton();
-            if (jointParent && jointParent !== skeletonRoot) {
-              const parentIndex = joints.indexOf(jointParent);
-              if (parentIndex !== -1) {
-                parentBone = parentIndex;
-              }
-            }
           }
 
           return {
@@ -1090,26 +1116,34 @@ export async function gltfToBG3D(doc: Document): Promise<BG3DParseResult> {
           };
         });
 
-        // Calculate absolute world coordinates (glTF stores relative transforms)
-        const worldTransforms: Matrix4[] = new Array(bones.length);
+        // When IBM is available bone.coord* are already absolute world positions.
+        // Otherwise compute from the joint node hierarchy (legacy fallback).
+        if (!hasIBM) {
+          const worldTransforms: (Matrix4 | undefined)[] = Array.from(
+            { length: bones.length },
+            () => undefined,
+          );
 
-        bones.forEach((bone, index) => {
-          const joint = joints[index];
-          if (!joint) return;
-
-          let localMatrix: Matrix4;
-          const jointMatrix = joint.getMatrix();
-          if (jointMatrix && jointMatrix.length >= 16) {
-            localMatrix = new Matrix4();
-            for (let i = 0; i < 16; i++) {
-              localMatrix.data[i] = jointMatrix[i] ?? 0;
+          const getLocalMatrix = (index: number): Matrix4 | undefined => {
+            const joint = joints[index];
+            if (!joint) {
+              return undefined;
             }
-          } else {
+
+            const jointMatrix = joint.getMatrix();
+            if (jointMatrix && jointMatrix.length >= 16) {
+              const matrix = new Matrix4();
+              for (let i = 0; i < 16; i++) {
+                matrix.data[i] = jointMatrix[i] ?? 0;
+              }
+              return matrix;
+            }
+
             const translation = joint.getTranslation() || [0, 0, 0];
             const rotation = joint.getRotation() || [0, 0, 0, 1];
             const scale = joint.getScale() || [1, 1, 1];
 
-            localMatrix = new Matrix4()
+            return new Matrix4()
               .setTranslation(
                 translation[0] ?? 0,
                 translation[1] ?? 0,
@@ -1132,27 +1166,46 @@ export async function gltfToBG3D(doc: Document): Promise<BG3DParseResult> {
                   scale[2] ?? 1,
                 ),
               );
-          }
+          };
 
-          if (bone.parentBone >= 0 && bone.parentBone < bones.length) {
-            const parentWorld = worldTransforms[bone.parentBone];
-            if (parentWorld) {
-              worldTransforms[index] = parentWorld.multiply(localMatrix);
+          const getWorldTransform = (index: number): Matrix4 | undefined => {
+            const existing = worldTransforms[index];
+            if (existing) {
+              return existing;
+            }
+
+            const bone = bones[index];
+            if (!bone) {
+              return undefined;
+            }
+
+            const localMatrix = getLocalMatrix(index);
+            if (!localMatrix) {
+              return undefined;
+            }
+
+            if (bone.parentBone >= 0 && bone.parentBone < bones.length) {
+              const parentWorld = getWorldTransform(bone.parentBone);
+              worldTransforms[index] = parentWorld
+                ? parentWorld.multiply(localMatrix)
+                : localMatrix;
             } else {
               worldTransforms[index] = localMatrix;
             }
-          } else {
-            worldTransforms[index] = localMatrix;
-          }
 
-          const currentWorld = worldTransforms[index];
-          if (currentWorld) {
-            const worldTranslation = currentWorld.getTranslation();
-            bone.coordX = worldTranslation.x;
-            bone.coordY = worldTranslation.y;
-            bone.coordZ = worldTranslation.z;
-          }
-        });
+            return worldTransforms[index];
+          };
+
+          bones.forEach((bone, index) => {
+            const currentWorld = getWorldTransform(index);
+            if (currentWorld) {
+              const worldTranslation = currentWorld.getTranslation();
+              bone.coordX = worldTranslation.x;
+              bone.coordY = worldTranslation.y;
+              bone.coordZ = worldTranslation.z;
+            }
+          });
+        }
 
         // Reconstruct pointIndices and normalIndices from mesh skinning data
         interface ReverseDecomposedPoint {
@@ -1160,14 +1213,15 @@ export async function gltfToBG3D(doc: Document): Promise<BG3DParseResult> {
           refs: { meshIndex: number; vertexIndex: number }[];
         }
         const reverseDecomposedPointList: ReverseDecomposedPoint[] = [];
-        function reversePointsMatchExactly(
+        const reverseMatchThreshold = 0.001;
+        function reversePointsMatchCloseEnough(
           p1: [number, number, number] | number[],
           p2: [number, number, number] | number[],
         ): boolean {
           return (
-            p1[0] === p2[0] &&
-            p1[1] === p2[1] &&
-            p1[2] === p2[2]
+            Math.abs(p1[0] - p2[0]) < reverseMatchThreshold &&
+            Math.abs(p1[1] - p2[1]) < reverseMatchThreshold &&
+            Math.abs(p1[2] - p2[2]) < reverseMatchThreshold
           );
         }
 
@@ -1204,7 +1258,7 @@ export async function gltfToBG3D(doc: Document): Promise<BG3DParseResult> {
                     const point = reverseDecomposedPointList[i];
                     if (
                       point &&
-                      reversePointsMatchExactly(vertex, point.realPoint)
+                      reversePointsMatchCloseEnough(vertex, point.realPoint)
                     ) {
                       foundIndex = i;
                       break;
@@ -1238,6 +1292,7 @@ export async function gltfToBG3D(doc: Document): Promise<BG3DParseResult> {
 
         const bonePointSets: Set<number>[] = bones.map(() => new Set<number>());
         const boneNormalSets: Set<number>[] = bones.map(() => new Set<number>());
+        const pointToJointSets = new Map<number, Set<number>>();
         const pointToJointMap = new Map<
           number,
           { jointIndex: number; weight: number }
@@ -1282,6 +1337,20 @@ export async function gltfToBG3D(doc: Document): Promise<BG3DParseResult> {
                     if (
                       weight !== undefined &&
                       jointIndex !== undefined &&
+                      weight > 0 &&
+                      jointIndex < bones.length
+                    ) {
+                      let jointSet = pointToJointSets.get(decomposedIndex);
+                      if (!jointSet) {
+                        jointSet = new Set<number>();
+                        pointToJointSets.set(decomposedIndex, jointSet);
+                      }
+                      jointSet.add(jointIndex);
+                    }
+
+                    if (
+                      weight !== undefined &&
+                      jointIndex !== undefined &&
                       weight > bestWeight &&
                       weight > 0 &&
                       jointIndex < bones.length
@@ -1306,15 +1375,17 @@ export async function gltfToBG3D(doc: Document): Promise<BG3DParseResult> {
             meshIndexForSkinning++;
           });
 
-        pointToJointMap.forEach((owner, decomposedIndex) => {
-          const pointSet = bonePointSets[owner.jointIndex];
-          const normalSet = boneNormalSets[owner.jointIndex];
-          if (pointSet) {
-            pointSet.add(decomposedIndex);
-          }
-          if (normalSet) {
-            normalSet.add(decomposedIndex);
-          }
+        pointToJointSets.forEach((jointSet, decomposedIndex) => {
+          jointSet.forEach((jointIndex) => {
+            const pointSet = bonePointSets[jointIndex];
+            const normalSet = boneNormalSets[jointIndex];
+            if (pointSet) {
+              pointSet.add(decomposedIndex);
+            }
+            if (normalSet) {
+              normalSet.add(decomposedIndex);
+            }
+          });
         });
 
         bones.forEach((bone, index) => {

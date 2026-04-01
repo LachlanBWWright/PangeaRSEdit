@@ -3,9 +3,11 @@
  */
 
 import { useState, useRef, useEffect } from "react";
-import { AnimationMixer, AnimationAction, LoopOnce, LoopRepeat } from "three";
+import { AnimationMixer, AnimationAction, LoopOnce, LoopRepeat, LoopPingPong } from "three";
 import type { AnimationInfo } from "./types";
 import { FALLBACK_LOOP_VALUE, MIN_PLAYBACK_RATIO } from "./utils";
+
+export type LoopMode = "loop" | "pingpong" | "once";
 
 export const reindexAnimations = (items: AnimationInfo[]) =>
   items.map((anim, index) => ({
@@ -14,9 +16,29 @@ export const reindexAnimations = (items: AnimationInfo[]) =>
     loop: anim.loop ?? FALLBACK_LOOP_VALUE,
   }));
 
-export const configureActionLoop = (action: AnimationAction, loop: boolean) => {
-  action.setLoop(loop ? LoopRepeat : LoopOnce, loop ? Infinity : 0);
-  action.clampWhenFinished = !loop;
+export const configureActionLoop = (action: AnimationAction, loop: boolean, loopMode?: LoopMode) => {
+  if (loopMode === "pingpong") {
+    action.setLoop(LoopPingPong, Infinity);
+    action.clampWhenFinished = false;
+  } else if (loop || loopMode === "loop") {
+    action.setLoop(LoopRepeat, Infinity);
+    action.clampWhenFinished = false;
+  } else {
+    action.setLoop(LoopOnce, 0);
+    action.clampWhenFinished = true;
+  }
+};
+
+export const syncAnimationActionTime = (
+  animationMixer: AnimationMixer | null,
+  action: AnimationAction | null,
+  time: number,
+) => {
+  if (!animationMixer || !action) {
+    return;
+  }
+  action.time = time;
+  animationMixer.update(0);
 };
 
 export function useAnimationPlayback(
@@ -72,7 +94,7 @@ export function useAnimationPlayback(
     }
     const action = animationMixer.clipAction(clip);
     action.reset();
-    configureActionLoop(action, animationInfo.loop ?? true);
+    configureActionLoop(action, animationInfo.loop ?? true, animationInfo.loopMode);
     if (!isNewSelection && previousRatio >= MIN_PLAYBACK_RATIO) {
       action.time = Math.min(clip.duration, previousRatio * clip.duration);
     }
@@ -85,6 +107,7 @@ export function useAnimationPlayback(
       action.play();
       action.paused = true;
     }
+    syncAnimationActionTime(animationMixer, action, action.time);
     Promise.resolve().then(() => {
       setDuration(clip.duration);
       setCurrentTime(action.time);

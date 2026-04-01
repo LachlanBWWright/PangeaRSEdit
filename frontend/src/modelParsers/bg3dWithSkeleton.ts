@@ -97,74 +97,63 @@ function parseModelWithSkeletonResource(
     const result = modelResult.value;
 
     if (skeleton && skeleton.Bone) {
-      // Extract header info
-      const boneEntries = Object.values(skeleton.Bone || {});
+      // Sort bone entries by order (same approach as parseBG3D.ts)
+      const boneKeyValues = Object.entries(skeleton.Bone);
+      boneKeyValues.sort(([, a], [, b]) => a.order - b.order);
+
       const animEntries = Object.values(skeleton.AnHd || {});
       const numAnims = animEntries.length ?? 0;
-      const numJoints = boneEntries.length;
+      const numJoints = boneKeyValues.length;
 
-      // Type guard helper
-      function isRecord(value: unknown): value is Record<string, unknown> {
-        return (
-          typeof value === "object" && value !== null && !Array.isArray(value)
-        );
-      }
-
-      function getNumberArray(value: unknown): number[] {
-        if (Array.isArray(value) && value.every((v) => typeof v === "number")) {
-          return value;
-        }
-        return [];
-      }
+      // Extract header info if available
+      const headerEntries = Object.values(skeleton.Hedr || {});
+      const header = headerEntries[0]?.obj;
+      const num3DMFLimbs = header?.num3DMFLimbs ?? numJoints;
 
       result.skeleton = {
-        version: 1, // Default version for 3DMF skeletons
+        version: header?.version ?? 1,
         numAnims,
         numJoints,
-        num3DMFLimbs: numJoints, // Typically same as numJoints for 3DMF
-        bones: boneEntries.map((bone: unknown, index: number) => {
-          if (!isRecord(bone)) {
-            return {
-              parentBone: -1,
-              name: `bone_${index}`,
-              coordX: 0,
-              coordY: 0,
-              coordZ: 0,
-              numPointsAttachedToBone: 0,
-              numNormalsAttachedToBone: 0,
-              pointIndices: [],
-              normalIndices: [],
-            };
+        num3DMFLimbs,
+        bones: boneKeyValues.map(([boneId, boneEntry], index) => {
+          const boneObj = boneEntry.obj;
+
+          // Read point indices from the BonP resource (same as parseBG3D)
+          const pointIndices: number[] = [];
+          const bonePEntry = skeleton.BonP?.[boneId];
+          if (bonePEntry) {
+            pointIndices.push(
+              ...bonePEntry.obj.map((p) => p.pointIndex),
+            );
           }
-          
-          // In SkeletonResource, bone is a BoneEntry like { name, order, obj }
-          // We need to access bone.obj for the actual bone data
-          const boneEntry = bone;
-          const boneObj = isRecord(boneEntry.obj) ? boneEntry.obj : boneEntry;
-          
-          // Handle both old formats (coord.x, pointList) and new formats (coordX, pointIndices)
-          const coordX = typeof boneObj.coordX === "number" ? boneObj.coordX : 
-                         (isRecord(boneObj.coord) && typeof boneObj.coord.x === "number" ? boneObj.coord.x : 0);
-          const coordY = typeof boneObj.coordY === "number" ? boneObj.coordY : 
-                         (isRecord(boneObj.coord) && typeof boneObj.coord.y === "number" ? boneObj.coord.y : 0);
-          const coordZ = typeof boneObj.coordZ === "number" ? boneObj.coordZ : 
-                         (isRecord(boneObj.coord) && typeof boneObj.coord.z === "number" ? boneObj.coord.z : 0);
-          
-          const pointList = getNumberArray(boneObj.pointIndices || boneObj.pointList);
-          const normalList = getNumberArray(boneObj.normalIndices || boneObj.normalList);
-          
-          // Note: rsrcdump might use 'parentBone', 'name', 'numPointsAttachedToBone' directly on obj
+
+          // Read normal indices from the BonN resource (same as parseBG3D)
+          const normalIndices: number[] = [];
+          const boneNEntry = skeleton.BonN?.[boneId];
+          if (boneNEntry) {
+            normalIndices.push(
+              ...boneNEntry.obj.map((n) => n.normal),
+            );
+          }
+
           return {
-            parentBone: typeof boneObj.parentBone === "number" ? boneObj.parentBone : -1,
-            name: typeof boneObj.name === "string" ? boneObj.name : 
-                  (typeof boneEntry.name === "string" ? boneEntry.name : `bone_${index}`),
-            coordX,
-            coordY,
-            coordZ,
-            numPointsAttachedToBone: typeof boneObj.numPointsAttachedToBone === "number" ? boneObj.numPointsAttachedToBone : pointList.length,
-            numNormalsAttachedToBone: typeof boneObj.numNormalsAttachedToBone === "number" ? boneObj.numNormalsAttachedToBone : normalList.length,
-            pointIndices: pointList,
-            normalIndices: normalList,
+            parentBone: boneObj.parentBone,
+            name: boneObj.name || boneEntry.name || `bone_${index}`,
+            coordX: boneObj.coordX,
+            coordY: boneObj.coordY,
+            coordZ: boneObj.coordZ,
+            numPointsAttachedToBone: boneObj.numPointsAttachedToBone,
+            numNormalsAttachedToBone: boneObj.numNormalsAttachedToBone,
+            reserved0: boneObj.reserved0,
+            reserved1: boneObj.reserved1,
+            reserved2: boneObj.reserved2,
+            reserved3: boneObj.reserved3,
+            reserved4: boneObj.reserved4,
+            reserved5: boneObj.reserved5,
+            reserved6: boneObj.reserved6,
+            reserved7: boneObj.reserved7,
+            pointIndices,
+            normalIndices,
           };
         }),
         animations: (() => {
@@ -190,7 +179,7 @@ function parseModelWithSkeletonResource(
             }
 
             const keyframes: Record<number, BG3DKeyframe[]> = {};
-            for (let boneIndex = 0; boneIndex < boneEntries.length; boneIndex++) {
+            for (let boneIndex = 0; boneIndex < numJoints; boneIndex++) {
               keyframes[boneIndex] = [];
               const keyframeResourceId = (1000 + animIndex * 100 + boneIndex).toString();
               const keyframeEntry = skeleton.KeyF?.[keyframeResourceId];
