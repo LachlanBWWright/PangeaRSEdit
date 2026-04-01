@@ -35,6 +35,7 @@ describe("ModelViewer Two-Step Upload Logic", () => {
   test("validates skeleton file names correctly", () => {
     const validSkeletonFiles = [
       "test.skeleton.rsrc",
+      "test.rsrc",
       "Model.SKELETON.RSRC",
       "complex-name_123.skeleton.rsrc",
     ];
@@ -43,16 +44,23 @@ describe("ModelViewer Two-Step Upload Logic", () => {
       "test.txt",
       "model.glb",
       "test.bg3d",
-      "test.rsrc",
       "skeleton.skeleton",
     ];
 
     validSkeletonFiles.forEach((filename) => {
-      expect(filename.toLowerCase().endsWith(".skeleton.rsrc")).toBe(true);
+      const lowerCaseName = filename.toLowerCase();
+      expect(
+        lowerCaseName.endsWith(".skeleton.rsrc") ||
+          lowerCaseName.endsWith(".rsrc"),
+      ).toBe(true);
     });
 
     invalidSkeletonFiles.forEach((filename) => {
-      expect(filename.toLowerCase().endsWith(".skeleton.rsrc")).toBe(false);
+      const lowerCaseName = filename.toLowerCase();
+      expect(
+        lowerCaseName.endsWith(".skeleton.rsrc") ||
+          lowerCaseName.endsWith(".rsrc"),
+      ).toBe(false);
     });
   });
 

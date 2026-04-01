@@ -183,12 +183,11 @@ export function bg3dTexturesToGltf(
 /**
  * Convert glTF materials back to BG3D materials
  */
-export async function gltfMaterialsToBg3d(
+export function gltfMaterialsToBg3d(
   docMaterials: Material[],
   materialExtras: Record<string, unknown>[],
-): Promise<BG3DMaterial[]> {
-  const materials: BG3DMaterial[] = await Promise.all(
-    docMaterials.map(async (mat, index) => {
+): BG3DMaterial[] {
+  const materials: BG3DMaterial[] = docMaterials.map((mat, index) => {
       let diffuseColor: [number, number, number, number] = [1, 1, 1, 1];
       const baseColor = mat.getBaseColorFactor();
       if (Array.isArray(baseColor) && baseColor.length === 4) {
@@ -231,7 +230,7 @@ export async function gltfMaterialsToBg3d(
               const temp = new Uint8Array(image.buffer);
               imageBuffer = temp.slice().buffer;
             }
-            const rgbaRes = await pngToRgba8(imageBuffer);
+            const rgbaRes = pngToRgba8(imageBuffer);
             const rgb = new Uint8Array((rgbaRes.data.length / 4) * 3);
             for (let i = 0, j = 0; i < rgbaRes.data.length; i += 4, j += 3) {
               rgb[j + 0] = rgbaRes.data[i + 0] ?? 0;
@@ -274,8 +273,7 @@ export async function gltfMaterialsToBg3d(
         flags,
         textures,
       };
-    }),
-  );
+    });
 
   return materials;
 }

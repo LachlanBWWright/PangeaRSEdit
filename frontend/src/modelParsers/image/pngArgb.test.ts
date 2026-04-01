@@ -35,7 +35,7 @@ describe("16-bit ARGB1555 <-> PNG roundtrip", () => {
     // Encode to PNG
     const png = rgba8ToPng(rgba, width, height);
     // Decode PNG back to RGBA8
-    const { data: rgba2, width: w2, height: h2 } = await pngToRgba8(png);
+    const { data: rgba2, width: w2, height: h2 } = pngToRgba8(png);
     expect(w2).toBe(width);
     expect(h2).toBe(height);
     // Convert back to ARGB16

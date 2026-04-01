@@ -56,10 +56,13 @@ export function ModelCanvas(props: ModelCanvasProps) {
     onSceneReady,
     onAnimationsReady,
     onBoneTransformChange,
+    onBoneRotationChange,
+    onBoneScaleChange,
     wireframeMode,
     showSkeleton,
     logBonePositions,
     selectedBoneName,
+    gizmoMode = "translate",
   } = props;
 
   // Always call hooks unconditionally (must be called in every render in same order)
@@ -86,28 +89,62 @@ export function ModelCanvas(props: ModelCanvasProps) {
     return found;
   }, [scene, selectedBoneName]);
   const lastBoneTransformRef = useRef<[number, number, number] | null>(null);
+  const lastBoneRotationRef = useRef<[number, number, number, number] | null>(null);
+  const lastBoneScaleRef = useRef<[number, number, number] | null>(null);
   const BONE_TRANSFORM_THRESHOLD = 0.0005; // Small threshold to avoid noisy gizmo updates.
 
   const handleBoneTransformChange = useCallback(() => {
-    if (!selectedBoneObject || !onBoneTransformChange) {
+    if (!selectedBoneObject) {
       return;
     }
-    const { x, y, z } = selectedBoneObject.position;
-    const previous = lastBoneTransformRef.current;
-    if (
-      previous &&
-      Math.abs(previous[0] - x) < BONE_TRANSFORM_THRESHOLD &&
-      Math.abs(previous[1] - y) < BONE_TRANSFORM_THRESHOLD &&
-      Math.abs(previous[2] - z) < BONE_TRANSFORM_THRESHOLD
-    ) {
-      return;
+
+    if (gizmoMode === "translate" && onBoneTransformChange) {
+      const { x, y, z } = selectedBoneObject.position;
+      const previous = lastBoneTransformRef.current;
+      if (
+        previous &&
+        Math.abs(previous[0] - x) < BONE_TRANSFORM_THRESHOLD &&
+        Math.abs(previous[1] - y) < BONE_TRANSFORM_THRESHOLD &&
+        Math.abs(previous[2] - z) < BONE_TRANSFORM_THRESHOLD
+      ) {
+        return;
+      }
+      lastBoneTransformRef.current = [x, y, z];
+      onBoneTransformChange([x, y, z]);
+    } else if (gizmoMode === "rotate" && onBoneRotationChange) {
+      const q = selectedBoneObject.quaternion;
+      const previous = lastBoneRotationRef.current;
+      if (
+        previous &&
+        Math.abs(previous[0] - q.x) < BONE_TRANSFORM_THRESHOLD &&
+        Math.abs(previous[1] - q.y) < BONE_TRANSFORM_THRESHOLD &&
+        Math.abs(previous[2] - q.z) < BONE_TRANSFORM_THRESHOLD &&
+        Math.abs(previous[3] - q.w) < BONE_TRANSFORM_THRESHOLD
+      ) {
+        return;
+      }
+      lastBoneRotationRef.current = [q.x, q.y, q.z, q.w];
+      onBoneRotationChange([q.x, q.y, q.z, q.w]);
+    } else if (gizmoMode === "scale" && onBoneScaleChange) {
+      const { x, y, z } = selectedBoneObject.scale;
+      const previous = lastBoneScaleRef.current;
+      if (
+        previous &&
+        Math.abs(previous[0] - x) < BONE_TRANSFORM_THRESHOLD &&
+        Math.abs(previous[1] - y) < BONE_TRANSFORM_THRESHOLD &&
+        Math.abs(previous[2] - z) < BONE_TRANSFORM_THRESHOLD
+      ) {
+        return;
+      }
+      lastBoneScaleRef.current = [x, y, z];
+      onBoneScaleChange([x, y, z]);
     }
-    lastBoneTransformRef.current = [x, y, z];
-    onBoneTransformChange([x, y, z]);
-  }, [selectedBoneObject, onBoneTransformChange]);
+  }, [selectedBoneObject, onBoneTransformChange, onBoneRotationChange, onBoneScaleChange, gizmoMode]);
 
   useEffect(() => {
     lastBoneTransformRef.current = null;
+    lastBoneRotationRef.current = null;
+    lastBoneScaleRef.current = null;
     if (selectedBoneObject) {
       handleBoneTransformChange();
     }
@@ -164,7 +201,7 @@ export function ModelCanvas(props: ModelCanvasProps) {
         {selectedBoneObject && (
           <TransformControls
             object={selectedBoneObject}
-            mode="translate"
+            mode={gizmoMode}
             size={0.7}
             onObjectChange={handleBoneTransformChange}
             onMouseDown={() => setIsTransforming(true)}

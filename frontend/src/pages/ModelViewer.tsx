@@ -18,7 +18,7 @@ import {
   ResizablePanel,
   ResizablePanelGroup,
 } from "@/components/ui/resizable";
-import { fromPromise } from "@/types/result";
+import { err, fromPromise, ok } from "@/types/result";
 import { BG3D_EXPORT_TARGETS, getBG3DExportTarget } from "@/modelParsers/bg3dExportTargets";
 
 import { BG3DParseResult } from "../modelParsers/parseBG3D";
@@ -42,6 +42,8 @@ import {
   downloadGLBModel,
   download3DMFModel,
 } from "./ModelViewer/utils/downloadUtils";
+import { getParsedToGlbWorkerResponse } from "./ModelViewer/utils/bg3dGltfWorkerResponses";
+import { prepareSceneForAnimationExport } from "./ModelViewer/utils/prepareSceneForAnimationExport";
 import { useFileUpload } from "./ModelViewer/hooks/useFileUpload";
 import { useTextureManagement } from "./ModelViewer/hooks/useTextureManagement";
 import type { UploadStep } from "./ModelViewer/types";
@@ -65,6 +67,13 @@ export function ModelViewer() {
   const [boneTransform, setBoneTransform] = useState<
     [number, number, number] | null
   >(null);
+  const [boneRotation, setBoneRotation] = useState<
+    [number, number, number, number] | null
+  >(null);
+  const [boneScale, setBoneScale] = useState<
+    [number, number, number] | null
+  >(null);
+  const [gizmoMode, setGizmoMode] = useState<import("@/components/model-viewer/types").GizmoMode>("translate");
   const [uploadStep, setUploadStep] = useState<UploadStep>("select-bg3d");
   const [pendingBg3dFile, setPendingBg3dFile] = useState<File | null>(null);
   const [wireframeMode, setWireframeMode] = useState<boolean>(false);
@@ -204,16 +213,17 @@ export function ModelViewer() {
   const exportSceneWithAnimations = useCallback(
     async (animationInfos: AnimationInfo[]) => {
       if (!scene) {
-        return null;
+        return ok(null);
       }
 
       const exporter = new GLTFExporter();
+      const exportScene = prepareSceneForAnimationExport(scene);
       const animationsToExport = animationInfos.map((animation) => animation.clip);
 
       const exportedResult = await fromPromise(
         new Promise<ArrayBuffer>((resolve, reject) => {
           exporter.parse(
-            scene,
+            exportScene,
             (result) => {
               if (result instanceof ArrayBuffer) {
                 resolve(result);
@@ -236,10 +246,10 @@ export function ModelViewer() {
       );
 
       if (exportedResult.isErr()) {
-        throw exportedResult.error;
+        return err(exportedResult.error);
       }
 
-      return exportedResult.value;
+      return ok(exportedResult.value);
     },
     [scene],
   );
@@ -268,15 +278,15 @@ export function ModelViewer() {
           updateGlbAnimationEvents(nextBuffer, animationIndex, events),
         );
         if (updatedBufferResult.isErr()) {
-          throw updatedBufferResult.error;
+          return err(updatedBufferResult.error);
         }
         if (updatedBufferResult.value.isErr()) {
-          throw updatedBufferResult.value.error;
+          return err(updatedBufferResult.value.error);
         }
         nextBuffer = updatedBufferResult.value.value;
       }
 
-      return nextBuffer;
+      return ok(nextBuffer);
     },
     [bg3dParsed?.skeleton?.animations, gltfAnimationMetadata],
   );
@@ -291,74 +301,99 @@ export function ModelViewer() {
 
       const requestId = ++animationPersistRequestIdRef.current;
 
-      try {
-        const exportedBuffer = await exportSceneWithAnimations(animationInfos);
-        if (!exportedBuffer) {
-          return;
-        }
-
-        const bufferWithEvents = await buildUpdatedGlbBuffer(
-          exportedBuffer,
-          animationInfos,
+      const exportedBufferResult = await exportSceneWithAnimations(animationInfos);
+      if (exportedBufferResult.isErr()) {
+        console.error(
+          "Failed to export animation edits to GLB",
+          exportedBufferResult.error,
         );
-        const normalizedBuffer = await normalizeGlbBuffer(bufferWithEvents);
-
-        if (requestId !== animationPersistRequestIdRef.current) {
-          return;
-        }
-
-        if (gltfUrl) {
-          URL.revokeObjectURL(gltfUrl);
-        }
-
-        const glbBlob = new Blob([normalizedBuffer], {
-          type: "model/gltf-binary",
-        });
-        const newUrl = URL.createObjectURL(glbBlob);
-
-        setAnimations(animationInfos);
-        latestAnimationsRef.current = animationInfos;
-        setGltfBuffer(normalizedBuffer);
-        setGltfUrl(newUrl);
-
-        const metadataResult = await fromPromise(
-          extractAnimationMetadataFromGlb(normalizedBuffer),
-        );
-        if (metadataResult.isOk()) {
-          setGltfAnimationMetadata(metadataResult.value);
-        }
-
-        const workerResult = await fromPromise(
-          new Promise<BG3DGltfWorkerResponse>((resolve, reject) => {
-            const worker = new BG3DGltfWorker();
-            worker.onmessage = (e) => {
-              resolve(e.data);
-              worker.terminate();
-            };
-            worker.onerror = (e) => {
-              reject(e);
-              worker.terminate();
-            };
-            worker.postMessage({
-              type: "glb-to-bg3d",
-              buffer: normalizedBuffer,
-            } satisfies BG3DGltfWorkerMessage);
-          }),
-        );
-
-        if (workerResult.isOk()) {
-          const result = workerResult.value;
-          if (result.type === "glb-to-bg3d" && result.parsed) {
-            setBg3dParsed(result.parsed);
-          }
-        }
-      } catch (error) {
-        console.error("Failed to persist animation edits", error);
         toast.error(
-          `Failed to persist animation edits: ${
-            error instanceof Error ? error.message : String(error)
-          }`,
+          `Failed to export animation edits to GLB: ${exportedBufferResult.error.message}`,
         );
+        return;
+      }
+      if (!exportedBufferResult.value) {
+        return;
+      }
+
+      const bufferWithEventsResult = await buildUpdatedGlbBuffer(
+        exportedBufferResult.value,
+        animationInfos,
+      );
+      if (bufferWithEventsResult.isErr()) {
+        console.error(
+          "Failed to update animation event metadata",
+          bufferWithEventsResult.error,
+        );
+        toast.error(
+          `Failed to update animation event metadata: ${bufferWithEventsResult.error.message}`,
+        );
+        return;
+      }
+
+      const normalizedBufferResult = await fromPromise(
+        normalizeGlbBuffer(bufferWithEventsResult.value),
+      );
+      if (normalizedBufferResult.isErr()) {
+        console.error(
+          "Failed to normalize animation-edited GLB",
+          normalizedBufferResult.error,
+        );
+        toast.error(
+          `Failed to normalize animation-edited GLB: ${normalizedBufferResult.error.message}`,
+        );
+        return;
+      }
+      const normalizedBuffer = normalizedBufferResult.value;
+
+      if (requestId !== animationPersistRequestIdRef.current) {
+        return;
+      }
+
+      if (gltfUrl) {
+        URL.revokeObjectURL(gltfUrl);
+      }
+
+      const glbBlob = new Blob([normalizedBuffer], {
+        type: "model/gltf-binary",
+      });
+      const newUrl = URL.createObjectURL(glbBlob);
+
+      setAnimations(animationInfos);
+      latestAnimationsRef.current = animationInfos;
+      setGltfBuffer(normalizedBuffer);
+      setGltfUrl(newUrl);
+
+      const metadataResult = await fromPromise(
+        extractAnimationMetadataFromGlb(normalizedBuffer),
+      );
+      if (metadataResult.isOk()) {
+        setGltfAnimationMetadata(metadataResult.value);
+      }
+
+      const workerResult = await fromPromise(
+        new Promise<BG3DGltfWorkerResponse>((resolve, reject) => {
+          const worker = new BG3DGltfWorker();
+          worker.onmessage = (e) => {
+            resolve(e.data);
+            worker.terminate();
+          };
+          worker.onerror = (e) => {
+            reject(e);
+            worker.terminate();
+          };
+          worker.postMessage({
+            type: "glb-to-bg3d",
+            buffer: normalizedBuffer,
+          } satisfies BG3DGltfWorkerMessage);
+        }),
+      );
+
+      if (workerResult.isOk()) {
+        const result = workerResult.value;
+        if (result.type === "glb-to-bg3d" && result.parsed) {
+          setBg3dParsed(result.parsed);
+        }
       }
     },
     [buildUpdatedGlbBuffer, exportSceneWithAnimations, gltfUrl, scene],
@@ -399,9 +434,32 @@ export function ModelViewer() {
     [],
   );
 
+  const handleBoneRotationChange = useCallback(
+    (quaternion: [number, number, number, number]) => {
+      setBoneRotation(quaternion);
+    },
+    [],
+  );
+
+  const handleBoneScaleChange = useCallback(
+    (scale: [number, number, number]) => {
+      setBoneScale(scale);
+    },
+    [],
+  );
+
+  const handleGizmoModeChange = useCallback(
+    (mode: import("@/components/model-viewer/types").GizmoMode) => {
+      setGizmoMode(mode);
+    },
+    [],
+  );
+
   const handleBoneSelectionChange = useCallback((boneName: string | null) => {
     setSelectedBoneName(boneName);
     setBoneTransform(null);
+    setBoneRotation(null);
+    setBoneScale(null);
   }, []);
 
   const handleAnimationEventsChange = useCallback(
@@ -446,10 +504,10 @@ export function ModelViewer() {
               reject(e);
               worker.terminate();
             };
-            const message: BG3DGltfWorkerMessage = {
+            const message = {
               type: "bg3d-parsed-to-glb",
               parsed: updatedParsed,
-            };
+            } satisfies BG3DGltfWorkerMessage;
             worker.postMessage(message);
           }),
         );
@@ -465,17 +523,15 @@ export function ModelViewer() {
           return;
         }
 
-        const result = workerResult.value;
-        if (result.type === "error") {
-          toast.error(`Failed to update animation events: ${result.error}`);
+        const responseResult = getParsedToGlbWorkerResponse(
+          workerResult.value,
+          "update animation events",
+        );
+        if (responseResult.isErr()) {
+          toast.error(responseResult.error.message);
           return;
         }
-        if (result.type !== "bg3d-parsed-to-glb") {
-          toast.error(
-            `Unexpected worker response while updating animation events: ${result.type}`,
-          );
-          return;
-        }
+        const result = responseResult.value;
 
         if (gltfUrl) {
           URL.revokeObjectURL(gltfUrl);
@@ -635,9 +691,13 @@ export function ModelViewer() {
       toast.error("No GLB model available for BG3D download");
       return;
     }
+    if (!gltfBuffer) {
+      toast.error("No GLB buffer available for BG3D download");
+      return;
+    }
 
     const result = await downloadBG3DModel(
-      gltfBuffer!,
+      gltfBuffer,
       effectiveModelBaseName,
       `${effectiveModelBaseName}.skeleton`,
       getBG3DExportTarget(exportTargetId),
@@ -665,9 +725,13 @@ export function ModelViewer() {
       toast.error("No GLB model available for 3DMF download");
       return;
     }
+    if (!gltfBuffer) {
+      toast.error("No GLB buffer available for 3DMF download");
+      return;
+    }
 
     const result = await download3DMFModel(
-      gltfBuffer!,
+      gltfBuffer,
       effectiveModelBaseName,
       getBG3DExportTarget(exportTargetId),
     );
@@ -795,6 +859,9 @@ export function ModelViewer() {
                     onAnimationEventsChange={handleAnimationEventsChange}
                     animationMetadata={animationMetadata}
                     boneTransform={boneTransform}
+                    boneRotation={boneRotation}
+                    boneScale={boneScale}
+                    onGizmoModeChange={handleGizmoModeChange}
                   />
                 )}
 
@@ -855,6 +922,9 @@ export function ModelViewer() {
                     logBonePositions={logBonePositions}
                     selectedBoneName={hasAnimations ? selectedBoneName : null}
                     onBoneTransformChange={handleBoneTransformChange}
+                    onBoneRotationChange={handleBoneRotationChange}
+                    onBoneScaleChange={handleBoneScaleChange}
+                    gizmoMode={gizmoMode}
                   />
                 </ErrorBoundary>
               ) : (

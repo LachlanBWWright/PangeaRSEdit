@@ -17,7 +17,12 @@ import { KeyframeEditor } from "./KeyframeEditor";
 import { AnimationMetadataDisplay } from "./AnimationMetadataDisplay";
 import { AnimationEventEditor } from "./AnimationEventEditor";
 import { AnimationCreator } from "./AnimationCreator";
-import { useAnimationPlayback, reindexAnimations } from "./hooks";
+import {
+  useAnimationPlayback,
+  reindexAnimations,
+  syncAnimationActionTime,
+  type LoopMode,
+} from "./hooks";
 import type {
   AnimationEvent,
   AnimationInfo,
@@ -56,6 +61,9 @@ export function AnimationViewer({
   onAnimationEventsChange,
   animationMetadata,
   boneTransform,
+  boneRotation,
+  boneScale,
+  onGizmoModeChange,
 }: AnimationViewerProps) {
   const [draftAnimations, setDraftAnimations] = useState<AnimationInfo[] | null>(
     null,
@@ -528,7 +536,11 @@ export function AnimationViewer({
           selectedEntry.values.map((value) => value.toString()),
         );
         if (currentActionRef.current?.paused) {
-          currentActionRef.current.time = selectedEntry.time;
+          syncAnimationActionTime(
+            animationMixer,
+            currentActionRef.current,
+            selectedEntry.time,
+          );
           setCurrentTime(selectedEntry.time);
         }
       }
@@ -554,6 +566,7 @@ export function AnimationViewer({
       window.clearTimeout(timeoutId);
     };
   }, [
+    animationMixer,
     captureKeyframeSnapshot,
     currentActionRef,
     isCreatingKeyframe,
@@ -587,7 +600,7 @@ export function AnimationViewer({
   const handleStop = () => {
     if (currentActionRef.current) {
       currentActionRef.current.stop();
-      currentActionRef.current.time = 0;
+      syncAnimationActionTime(animationMixer, currentActionRef.current, 0);
       setCurrentTime(0);
       setPlayingState(false);
     }
@@ -595,7 +608,7 @@ export function AnimationViewer({
 
   const handleReset = () => {
     if (currentActionRef.current) {
-      currentActionRef.current.time = 0;
+      syncAnimationActionTime(animationMixer, currentActionRef.current, 0);
       setCurrentTime(0);
     }
   };
@@ -603,9 +616,8 @@ export function AnimationViewer({
   const handleTimeChange = (newTime: number) => {
     const time = newTime;
     if (currentActionRef.current && animationMixer) {
-      currentActionRef.current.time = time;
+      syncAnimationActionTime(animationMixer, currentActionRef.current, time);
       setCurrentTime(time);
-      animationMixer.update(0);
     }
   };
 
@@ -673,12 +685,12 @@ export function AnimationViewer({
     }
   };
 
-  const handleLoopToggle = () => {
+  const handleLoopModeChange = (mode: LoopMode) => {
     if (selectedAnimation === null || !selectedAnimationInfo) return;
-    const nextLoop = !(selectedAnimationInfo.loop ?? true);
     updateSelectedAnimation((anim) => ({
       ...anim,
-      loop: nextLoop,
+      loop: mode !== "once",
+      loopMode: mode,
     }));
   };
 
@@ -735,7 +747,7 @@ export function AnimationViewer({
     setDurationError(null);
   };
 
-  const handleSelectKeyframe = (index: number) => {
+  const handleSelectKeyframe = useCallback((index: number) => {
     const keyframe = selectedKeyframes[index];
     if (!keyframe) return;
     if (selectedKeyframeIndex === index && !isCreatingKeyframe) {
@@ -762,12 +774,28 @@ export function AnimationViewer({
       false,
     );
     if (currentActionRef.current) {
-      currentActionRef.current.time = keyframe.time;
       currentActionRef.current.paused = true;
+      syncAnimationActionTime(
+        animationMixer,
+        currentActionRef.current,
+        keyframe.time,
+      );
       setCurrentTime(keyframe.time);
       setPlayingState(false);
     }
-  };
+  }, [
+    animationMixer,
+    currentActionRef,
+    isCreatingKeyframe,
+    makeKeyframeSignature,
+    selectedAnimationInfo,
+    selectedBoneName,
+    selectedKeyframeIndex,
+    selectedKeyframes,
+    selectedTrackProperty,
+    setCurrentTime,
+    setPlayingState,
+  ]);
 
   useEffect(() => {
     const pending = pendingTimelineSelectionRef.current;
@@ -806,6 +834,26 @@ export function AnimationViewer({
     }
     setKeyframeValueInputs(
       boneTransform.map((value) => value.toFixed(3)),
+    );
+    setKeyframeError(null);
+  };
+
+  const handleUseGizmoRotation = () => {
+    if (!boneRotation || selectedTrackProperty !== "rotation") {
+      return;
+    }
+    setKeyframeValueInputs(
+      boneRotation.map((value) => value.toFixed(6)),
+    );
+    setKeyframeError(null);
+  };
+
+  const handleUseGizmoScale = () => {
+    if (!boneScale || selectedTrackProperty !== "scale") {
+      return;
+    }
+    setKeyframeValueInputs(
+      boneScale.map((value) => value.toFixed(4)),
     );
     setKeyframeError(null);
   };
@@ -959,6 +1007,15 @@ export function AnimationViewer({
     );
     setKeyframeError(null);
     lastKeyframeSaveSignatureRef.current = null;
+    // Auto-sync gizmo mode with track property
+    if (onGizmoModeChange) {
+      const modeMap: Record<TrackProperty, import("@/components/model-viewer/types").GizmoMode> = {
+        position: "translate",
+        rotation: "rotate",
+        scale: "scale",
+      };
+      onGizmoModeChange(modeMap[property]);
+    }
   };
 
   const handleNewKeyframe = () => {
@@ -1118,7 +1175,7 @@ export function AnimationViewer({
             durationError={durationError}
             onNameChange={setEditName}
             onDurationInputChange={setEditDurationInput}
-            onLoopToggle={handleLoopToggle}
+            onLoopModeChange={handleLoopModeChange}
             onDurationModeChange={setDurationMode}
             onApplyChanges={handleApplyEditorChanges}
             onDeleteAnimation={handleDeleteAnimation}
@@ -1147,6 +1204,8 @@ export function AnimationViewer({
             keyframeError={keyframeError}
             timelineRows={timelineRows}
             boneTransform={boneTransform ?? null}
+            boneRotation={boneRotation ?? null}
+            boneScale={boneScale ?? null}
             gameLabel={gameLabel}
             modelSourceKind={modelSourceKind}
             isCreatingKeyframe={isCreatingKeyframe}
@@ -1159,6 +1218,8 @@ export function AnimationViewer({
             onTimeInputChange={setKeyframeTimeInput}
             onValueInputChange={handleKeyframeValueInputChange}
             onUseBoneTransform={handleUseBoneTransform}
+            onUseGizmoRotation={handleUseGizmoRotation}
+            onUseGizmoScale={handleUseGizmoScale}
             onDeleteKeyframe={handleDeleteKeyframe}
             onTimelineRowClick={handleTimelineRowClick}
             onTimelineEventClick={handleTimelineEventClick}
