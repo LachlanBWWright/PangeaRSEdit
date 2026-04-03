@@ -9,6 +9,8 @@ import { StandardHeader } from "@/python/structSpecs/LevelTypes";
 // Minimum vertical distance between roof and floor (in game units)
 // Ensures roof is always above floor with reasonable separation
 export const MIN_ROOF_FLOOR_DISTANCE = 10;
+const MIN_INT16 = -32768;
+const MAX_INT16 = 32767;
 
 export interface PixelType {
   x: number;
@@ -214,7 +216,7 @@ function getUpdatedBrushValue(
 }
 
 function clampInt16(value: number): number {
-  return Math.max(-32768, Math.min(32767, Math.round(value)));
+  return Math.max(MIN_INT16, Math.min(MAX_INT16, Math.round(value)));
 }
 
 function getBrushTileCoordinates(

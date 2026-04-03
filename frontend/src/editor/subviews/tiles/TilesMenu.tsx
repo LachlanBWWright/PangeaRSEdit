@@ -303,8 +303,9 @@ export function TilesMenu({
                     </SelectContent>
                   </Select>
                   <p className="col-span-2 text-sm text-gray-400">
-                    Midpoint mode moves both layers together. ± Difference mode
-                    edits ceiling clearance around the current midpoint.
+                    Midpoint mode moves the floor and ceiling together. ±
+                    Difference mode edits ceiling clearance around the current
+                    midpoint.
                   </p>
                 </>
               )}

@@ -268,7 +268,8 @@ export function IndividualTilesMenu({
               </div>
               <p className="col-span-2 text-sm text-gray-400">
                 Midpoint mode moves floor and ceiling together. ± Difference mode
-                keeps the midpoint fixed and edits the half-gap around it.
+                keeps the midpoint fixed and edits the ceiling clearance distance
+                around it.
               </p>
             </>
           )}

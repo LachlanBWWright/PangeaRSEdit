@@ -13,7 +13,7 @@ import {
   isTerrainVertexInaccessible,
 } from "../utils/terrainAccessibility";
 
-const ACCESSIBILITY_OVERLAY_HEIGHT_OFFSET = 2;
+const ACCESSIBILITY_OVERLAY_HEIGHT_OFFSET = 2; // Keeps the mask above terrain to avoid z-fighting.
 
 export function TerrainAccessibilityOverlay({
   headerData,

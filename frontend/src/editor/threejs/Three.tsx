@@ -197,7 +197,7 @@ export function ThreeView({
   const displacementDirection =
     topologyValue === 0 ? undefined : topologyValue < 0 ? "down" : "up";
 
-  const updateMeshGeometryHeights = useCallback(
+  const updateMeshGeometryElevations = useCallback(
     (mesh: Mesh | null, heights: number[] | undefined) => {
       if (!mesh || !mesh.geometry || !heights) {
         return;
@@ -302,9 +302,9 @@ export function ThreeView({
           layerEditMode,
         );
         lastBrushCenterRef.current = currentCenter;
-        updateMeshGeometryHeights(terrainMeshRef.current, terrainData.YCrd[1000].obj);
+        updateMeshGeometryElevations(terrainMeshRef.current, terrainData.YCrd[1000].obj);
         if (layerEditMode !== TopologyLayerEditMode.FLOOR) {
-          updateMeshGeometryHeights(
+          updateMeshGeometryElevations(
             roofMeshRef.current,
             terrainData.YCrd?.[1001]?.obj,
           );
@@ -322,7 +322,7 @@ export function ThreeView({
     setItemData,
     terrainData,
     topologyValue,
-    updateMeshGeometryHeights,
+    updateMeshGeometryElevations,
     valueMode,
   ]);
 
@@ -385,9 +385,9 @@ export function ThreeView({
         layerEditMode,
       );
 
-      updateMeshGeometryHeights(terrainMeshRef.current, terrainData.YCrd[1000].obj);
+      updateMeshGeometryElevations(terrainMeshRef.current, terrainData.YCrd[1000].obj);
       if (layerEditMode !== TopologyLayerEditMode.FLOOR) {
-        updateMeshGeometryHeights(
+        updateMeshGeometryElevations(
           roofMeshRef.current,
           terrainData.YCrd?.[1001]?.obj,
         );
@@ -402,7 +402,7 @@ export function ThreeView({
     layerEditMode,
     terrainData,
     topologyValue,
-    updateMeshGeometryHeights,
+    updateMeshGeometryElevations,
     valueMode,
   ]);
 

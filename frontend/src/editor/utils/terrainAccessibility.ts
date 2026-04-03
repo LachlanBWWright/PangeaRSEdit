@@ -31,11 +31,11 @@ export function getAccessibilityOverlayLabel(game: Game): string {
 export function getAccessibilityOverlayHelp(game: Game): string | null {
   switch (game) {
     case Game.BUGDOM:
-      return "Change BUGDOM_ACCESSIBILITY_MIN_GAP in this file to tune the ceiling clearance threshold.";
+      return "For developers: tune BUGDOM_ACCESSIBILITY_MIN_GAP in this file to change the ceiling clearance threshold.";
     case Game.NANOSAUR:
-      return "Change NANOSAUR_MAX_REACHABLE_HEIGHT in this file to tune the Nanosaur 1 height limit.";
+      return "For developers: tune NANOSAUR_MAX_REACHABLE_HEIGHT in this file to change the Nanosaur 1 height limit.";
     case Game.NANOSAUR_2:
-      return "Change NANOSAUR2_MAX_REACHABLE_HEIGHT in this file to tune the Nanosaur 2 height limit.";
+      return "For developers: tune NANOSAUR2_MAX_REACHABLE_HEIGHT in this file to change the Nanosaur 2 height limit.";
     default:
       return null;
   }
