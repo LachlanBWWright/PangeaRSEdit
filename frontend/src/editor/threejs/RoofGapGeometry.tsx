@@ -10,9 +10,11 @@ const ROOF_GAP_VERTEX_SAMPLE_STRIDE = 2;
 export function RoofGapGeometry({
   headerData,
   terrainData,
+  topologyVersion,
 }: {
   headerData: HeaderData;
   terrainData: TerrainData;
+  topologyVersion?: number;
 }) {
   const globals = useAtomValue(Globals);
   const showRoof = useAtomValue(ShowRoofInTopology);
@@ -57,7 +59,15 @@ export function RoofGapGeometry({
     const lineGeometry = new BufferGeometry();
     lineGeometry.setAttribute("position", new Float32BufferAttribute(positions, 3));
     return lineGeometry;
-  }, [floor, globals.TILE_INGAME_SIZE, header, roof, showRoof, showRoofGap]);
+  }, [
+    floor,
+    globals.TILE_INGAME_SIZE,
+    header,
+    roof,
+    showRoof,
+    showRoofGap,
+    topologyVersion,
+  ]);
 
   const material = useMemo(
     () =>

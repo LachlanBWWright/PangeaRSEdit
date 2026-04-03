@@ -2,11 +2,13 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
+  CurrentTopologyLayerEditMode,
   CurrentTopologyBrushMode,
   CurrentTopologyValueMode,
   TileViewMode,
   TileViews,
   TopologyBrushMode,
+  TopologyLayerEditMode,
   TopologyBrushRadius,
   TopologyOpacity,
   TopologyValue,
@@ -15,8 +17,6 @@ import {
   TileBrushType,
   ShowRoofInTopology,
   ShowRoofGapInTopology,
-  EditRoofAndFloorTogether,
-  RoofFloorElevation,
 } from "../../../data/tiles/tileAtoms";
 import { useAtom, useAtomValue } from "jotai";
 import {
@@ -65,8 +65,7 @@ export function TilesMenu({
     useAtom(TileBrushType);
   const [showRoof, setShowRoof] = useAtom(ShowRoofInTopology);
   const [showRoofGap, setShowRoofGap] = useAtom(ShowRoofGapInTopology);
-  const [editTogether, setEditTogether] = useAtom(EditRoofAndFloorTogether);
-  const [roofFloorElevation, setRoofFloorElevation] = useAtom(RoofFloorElevation);
+  const [layerEditMode, setLayerEditMode] = useAtom(CurrentTopologyLayerEditMode);
   const globals = useAtomValue(Globals);
 
   const header = headerData?.Hedr?.[1000]?.obj;
@@ -267,30 +266,46 @@ export function TilesMenu({
                       onCheckedChange={setShowRoofGap}
                     />
                   </div>
-                  <div className="flex flex-row justify-center gap-2 items-center col-span-2">
-                    <p>Edit Floor &amp; Roof Together</p>
-                    <Switch
-                      checked={editTogether}
-                      onCheckedChange={setEditTogether}
-                    />
-                  </div>
-                  {editTogether && (
-                    <>
-                      <p>Center Elevation</p>
-                      <Input
-                        type="number"
-                        value={roofFloorElevation}
-                        onChange={(e) =>
-                          setRoofFloorElevation(parseInt(e.target.value) || 100)
-                        }
-                      />
-                      <p className="col-span-2 text-sm text-gray-400">
-                        Center elevation is the reference point used to keep
-                        floor/roof spacing consistent. Roof always stays above
-                        floor.
-                      </p>
-                    </>
-                  )}
+                  <p>Edit Target</p>
+                  <Select
+                    value={layerEditMode}
+                    onValueChange={(value) => {
+                      if (
+                        value === TopologyLayerEditMode.FLOOR ||
+                        value === TopologyLayerEditMode.ROOF ||
+                        value === TopologyLayerEditMode.MIDPOINT ||
+                        value === TopologyLayerEditMode.DIFFERENCE
+                      ) {
+                        setLayerEditMode(value);
+                      }
+                    }}
+                  >
+                    <SelectTrigger>
+                      {layerEditMode === TopologyLayerEditMode.FLOOR && "Floor Only"}
+                      {layerEditMode === TopologyLayerEditMode.ROOF && "Ceiling Only"}
+                      {layerEditMode === TopologyLayerEditMode.MIDPOINT && "Midpoint"}
+                      {layerEditMode === TopologyLayerEditMode.DIFFERENCE &&
+                        "± Difference"}
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value={TopologyLayerEditMode.FLOOR}>
+                        Floor Only
+                      </SelectItem>
+                      <SelectItem value={TopologyLayerEditMode.ROOF}>
+                        Ceiling Only
+                      </SelectItem>
+                      <SelectItem value={TopologyLayerEditMode.MIDPOINT}>
+                        Midpoint
+                      </SelectItem>
+                      <SelectItem value={TopologyLayerEditMode.DIFFERENCE}>
+                        ± Difference
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p className="col-span-2 text-sm text-gray-400">
+                    Midpoint mode moves both layers together. ± Difference mode
+                    edits ceiling clearance around the current midpoint.
+                  </p>
                 </>
               )}
             </>

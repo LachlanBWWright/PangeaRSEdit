@@ -20,8 +20,9 @@ import {
   TopologyValueMode,
   TileEditingEnabled,
   TileBrushType,
+  ShowAccessibilityOverlay,
 } from "../../data/tiles/tileAtoms";
-import { useAtom } from "jotai";
+import { useAtom, useAtomValue } from "jotai";
 import {
   Select,
   SelectContent,
@@ -42,6 +43,12 @@ import { useEffect } from "react";
 import { Switch } from "@/components/ui/switch";
 import { HeaderData } from "@/python/structSpecs/LevelTypes";
 import { Updater } from "use-immer";
+import { Globals } from "@/data/globals/globals";
+import {
+  getAccessibilityOverlayHelp,
+  getAccessibilityOverlayLabel,
+  supportsAccessibilityOverlay,
+} from "../utils/terrainAccessibility";
 
 export function StandardTilesMenu({
   headerData,
@@ -67,10 +74,16 @@ export function StandardTilesMenu({
     useAtom(TileEditingEnabled);
   const [selectedTileBrushType, setSelectedTileBrushType] =
     useAtom(TileBrushType);
+  const [showAccessibilityOverlay, setShowAccessibilityOverlay] = useAtom(
+    ShowAccessibilityOverlay,
+  );
+  const globals = useAtomValue(Globals);
 
   const header = headerData?.Hedr?.[1000]?.obj;
   const minY = header?.minY || 0;
   const maxY = header?.maxY || 0;
+  const canShowAccessibility = supportsAccessibilityOverlay(globals.GAME_TYPE);
+  const accessibilityHelp = getAccessibilityOverlayHelp(globals.GAME_TYPE);
 
   useEffect(() => {
     if (tileView !== TileViews.Topology) {
@@ -193,6 +206,22 @@ export function StandardTilesMenu({
               setTopologyOpacity(parseFloat(e.target.value) || 1)
             }
           />
+          {canShowAccessibility && (
+            <>
+              <div className="flex flex-row justify-center gap-2 items-center col-span-2">
+                <p>{getAccessibilityOverlayLabel(globals.GAME_TYPE)}</p>
+                <Switch
+                  checked={showAccessibilityOverlay}
+                  onCheckedChange={setShowAccessibilityOverlay}
+                />
+              </div>
+              {accessibilityHelp && (
+                <p className="col-span-2 text-sm text-gray-400">
+                  {accessibilityHelp}
+                </p>
+              )}
+            </>
+          )}
           <div className="flex flex-row justify-between gap-2 items-center col-span-2">
             <div className="flex items-center gap-2">
               <p>Show 3D View (Experimental)</p>

@@ -8,7 +8,11 @@ import { Mesh, PlaneGeometry, DoubleSide } from "three";
 import type { Event } from "three";
 import { useAtomValue } from "jotai";
 import { Globals } from "@/data/globals/globals";
-import { ShowRoofInTopology } from "@/data/tiles/tileAtoms";
+import {
+  CurrentTopologyLayerEditMode,
+  ShowRoofInTopology,
+  TopologyLayerEditMode,
+} from "@/data/tiles/tileAtoms";
 
 /**
  * Roof geometry component for Bugdom 1 and other games with YCrd 1001 resource.
@@ -17,18 +21,27 @@ import { ShowRoofInTopology } from "@/data/tiles/tileAtoms";
 export const RoofGeometry = forwardRef<
   Mesh,
   {
-    headerData: HeaderData;
-    terrainData: TerrainData;
-    onPointerDown?: (event: Event) => void;
-    onPointerMove?: (event: Event) => void;
-    onPointerUp?: (event: Event) => void;
-  }
->(function RoofGeometry(
-  { headerData, terrainData, onPointerDown, onPointerMove, onPointerUp },
-  ref
-) {
+     headerData: HeaderData;
+     terrainData: TerrainData;
+     topologyVersion?: number;
+     onPointerDown?: (event: Event) => void;
+     onPointerMove?: (event: Event) => void;
+     onPointerUp?: (event: Event) => void;
+   }
+ >(function RoofGeometry(
+   {
+     headerData,
+     terrainData,
+     topologyVersion,
+     onPointerDown,
+     onPointerMove,
+     onPointerUp,
+   },
+   ref
+ ) {
   const globals = useAtomValue(Globals);
   const showRoof = useAtomValue(ShowRoofInTopology);
+  const layerEditMode = useAtomValue(CurrentTopologyLayerEditMode);
 
   const header: StandardHeader | undefined = headerData.Hedr?.[1000]?.obj;
 
@@ -51,12 +64,10 @@ export const RoofGeometry = forwardRef<
 
   // Build roof geometry from YCrd 1001 (if present)
   const geometry = useMemo(() => {
-    if (
-      !showRoof ||
-      !terrainData.YCrd?.[1001]?.obj ||
-      !header
-    )
-      return null;
+     const shouldShowRoof =
+       showRoof || layerEditMode !== TopologyLayerEditMode.FLOOR;
+     if (!shouldShowRoof || !terrainData.YCrd?.[1001]?.obj || !header)
+       return null;
 
     // PlaneGeometry: width, height, widthSegments, heightSegments
     const geom = new PlaneGeometry(
@@ -80,18 +91,25 @@ export const RoofGeometry = forwardRef<
     positionAttr.needsUpdate = true;
     return geom;
   }, [
-    showRoof,
-    numWide,
-    numHigh,
-    yScale,
-    globals.TILE_INGAME_SIZE,
-    header,
-    terrainData.YCrd,
-  ]);
+     showRoof,
+     layerEditMode,
+     numWide,
+     numHigh,
+     yScale,
+     globals.TILE_INGAME_SIZE,
+     header,
+     terrainData.YCrd,
+     topologyVersion,
+   ]);
 
-  if (!showRoof || !header || !geometry || !terrainData.YCrd?.[1001]) {
-    return null;
-  }
+   if (
+     (!showRoof && layerEditMode === TopologyLayerEditMode.FLOOR) ||
+     !header ||
+     !geometry ||
+     !terrainData.YCrd?.[1001]
+   ) {
+     return null;
+   }
 
   return (
     <mesh

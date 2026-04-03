@@ -6,9 +6,11 @@ import {
 import { Layer, Image, Circle, Rect } from "react-konva";
 import { Updater } from "use-immer";
 import {
+  CurrentTopologyLayerEditMode,
   CurrentTopologyBrushMode,
   CurrentTopologyValueMode,
   TopologyBrushMode,
+  TopologyLayerEditMode,
   TopologyValueMode,
   TileViewMode,
   TileViews,
@@ -17,14 +19,23 @@ import {
   TopologyValue,
   ShowRoofInTopology,
   ShowRoofGapInTopology,
+  ShowAccessibilityOverlay,
 } from "../../data/tiles/tileAtoms";
 import { useAtomValue } from "jotai";
-import { Globals } from "../../data/globals/globals";
+import { Game, Globals } from "../../data/globals/globals";
 import { useMemo, useState } from "react";
 import { createImageCanvas } from "./tiles/tilesUtils";
 import { elevationToRGBA } from "./tiles/tilesUtils";
-import { calculateBrushPixels, applyTopologyBrush, PixelType } from "../utils/topologyBrushUtils";
+import {
+  calculateBrushPixels,
+  applyTopologyBrushWithTarget,
+  PixelType,
+} from "../utils/topologyBrushUtils";
 import { FlagTileEditor } from "./tiles/FlagTileEditor";
+import {
+  buildAccessibilityMaskColors,
+  hasAccessibleOverlayData,
+} from "../utils/terrainAccessibility";
 
 /* 
 
@@ -129,12 +140,14 @@ export function TopologyTiles({
 }) {
   const currentTopologyBrushMode = useAtomValue(CurrentTopologyBrushMode);
   const currentTopologyValueMode = useAtomValue(CurrentTopologyValueMode);
+  const currentLayerEditMode = useAtomValue(CurrentTopologyLayerEditMode);
   const topologyValue = useAtomValue(TopologyValue);
   const topologyBrushRadius = useAtomValue(TopologyBrushRadius);
   const globals = useAtomValue(Globals);
   const opacity = useAtomValue(TopologyOpacity);
   const showRoof = useAtomValue(ShowRoofInTopology);
   const showRoofGap = useAtomValue(ShowRoofGapInTopology);
+  const showAccessibilityOverlay = useAtomValue(ShowAccessibilityOverlay);
   const [isDragging, setIsDragging] = useState(false);
   const [lastBrushPoint, setLastBrushPoint] = useState<{ x: number; y: number } | null>(
     null,
@@ -202,8 +215,13 @@ export function TopologyTiles({
     return result.value;
   }, [header, coordColours, yCrdData]);
 
+  const showRoofOverlay =
+    showRoof ||
+    (globals.GAME_TYPE === Game.BUGDOM &&
+      currentLayerEditMode !== TopologyLayerEditMode.FLOOR);
+
   const roofImgCanvas = useMemo(() => {
-    if (!showRoof || !roofYCrdData || roofYCrdData.length === 0) return null;
+    if (!showRoofOverlay || !roofYCrdData || roofYCrdData.length === 0) return null;
     const colors = showRoofGap ? gapColours : roofCoordColours;
     if (colors.length === 0) return null;
     const result = createImageCanvas(
@@ -212,7 +230,50 @@ export function TopologyTiles({
       colors,
     );
     return result.isOk() ? result.value : null;
-  }, [showRoof, showRoofGap, roofYCrdData, roofCoordColours, gapColours, header]);
+  }, [
+    gapColours,
+    header,
+    roofCoordColours,
+    roofYCrdData,
+    showRoofGap,
+    showRoofOverlay,
+  ]);
+
+  const accessibilityMaskCanvas = useMemo(() => {
+    if (
+      !showAccessibilityOverlay ||
+      !hasAccessibleOverlayData(
+        globals.GAME_TYPE,
+        header,
+        yCrdData,
+        roofYCrdData,
+      )
+    ) {
+      return null;
+    }
+
+    const colors = buildAccessibilityMaskColors(
+      globals.GAME_TYPE,
+      yCrdData,
+      roofYCrdData,
+    );
+    if (colors.length === 0) {
+      return null;
+    }
+
+    const result = createImageCanvas(
+      header.mapWidth + 1,
+      header.mapHeight + 1,
+      colors,
+    );
+    return result.isOk() ? result.value : null;
+  }, [
+    globals.GAME_TYPE,
+    header,
+    roofYCrdData,
+    showAccessibilityOverlay,
+    yCrdData,
+  ]);
 
   const setPixels = (pixelList: PixelType[]) => {
     // Guard against missing YCrd data
@@ -221,18 +282,23 @@ export function TopologyTiles({
     setTerrainData((data) => {
       if (!data.YCrd?.[1000]?.obj) return;
 
-      // Use shared brush application utility
-      applyTopologyBrush(data.YCrd[1000].obj, pixelList, {
-        centerX: 0, // Not used in applyTopologyBrush
-        centerY: 0, // Not used in applyTopologyBrush
-        radius: (topologyBrushRadius - 1) * globals.TILE_SIZE,
-        brushMode: currentTopologyBrushMode,
-        valueMode: currentTopologyValueMode,
-        value: topologyValue,
-        header,
-        globals,
-        tileSize: globals.TILE_SIZE,
-      });
+      applyTopologyBrushWithTarget(
+        data.YCrd[1000].obj,
+        data.YCrd?.[1001]?.obj,
+        pixelList,
+        {
+          centerX: 0,
+          centerY: 0,
+          radius: (topologyBrushRadius - 1) * globals.TILE_SIZE,
+          brushMode: currentTopologyBrushMode,
+          valueMode: currentTopologyValueMode,
+          value: topologyValue,
+          header,
+          globals,
+          tileSize: globals.TILE_SIZE,
+        },
+        currentLayerEditMode,
+      );
     });
   };
 
@@ -339,8 +405,7 @@ export function TopologyTiles({
             perfectDrawEnabled={false}
           />
         ))}
-      {/* Roof overlay (semi-transparent, shown when showRoof is on and YCrd 1001 exists) */}
-      {showRoof && roofImgCanvas && (
+      {showRoofOverlay && roofImgCanvas && (
         <Image
           x={0}
           y={0}
@@ -348,6 +413,17 @@ export function TopologyTiles({
           width={(header.mapWidth + 1) * globals.TILE_SIZE}
           height={(header.mapHeight + 1) * globals.TILE_SIZE}
           image={roofImgCanvas}
+          listening={false}
+        />
+      )}
+      {accessibilityMaskCanvas && (
+        <Image
+          x={0}
+          y={0}
+          opacity={1}
+          width={(header.mapWidth + 1) * globals.TILE_SIZE}
+          height={(header.mapHeight + 1) * globals.TILE_SIZE}
+          image={accessibilityMaskCanvas}
           listening={false}
         />
       )}

@@ -1,4 +1,8 @@
-import { TopologyBrushMode, TopologyValueMode } from "@/data/tiles/tileAtoms";
+import {
+  TopologyBrushMode,
+  TopologyLayerEditMode,
+  TopologyValueMode,
+} from "@/data/tiles/tileAtoms";
 import type { GlobalsInterface } from "@/data/globals/globals";
 import { StandardHeader } from "@/python/structSpecs/LevelTypes";
 
@@ -189,6 +193,144 @@ export function applyTopologyBrush(
       -32768,
       Math.min(32767, Math.round(newValue))
     );
+  });
+}
+
+function getUpdatedBrushValue(
+  currentValue: number,
+  pixel: PixelType,
+  valueMode: TopologyValueMode,
+): number {
+  switch (valueMode) {
+    case TopologyValueMode.SET_VALUE:
+      return pixel.value;
+    case TopologyValueMode.DELTA_VALUE:
+      return currentValue + pixel.value;
+    case TopologyValueMode.DELTA_WITH_DROPOFF:
+      return currentValue + pixel.value * (1 - pixel.distance);
+    default:
+      return currentValue;
+  }
+}
+
+function clampInt16(value: number): number {
+  return Math.max(-32768, Math.min(32767, Math.round(value)));
+}
+
+function getPixelIndex(
+  pixel: PixelType,
+  params: BrushParams,
+): number | null {
+  const xTile = Math.floor(pixel.x / params.tileSize);
+  const yTile = Math.floor(pixel.y / params.tileSize);
+
+  if (
+    xTile < 0 ||
+    xTile >= params.header.mapWidth ||
+    yTile < 0 ||
+    yTile >= params.header.mapHeight
+  ) {
+    return null;
+  }
+
+  const index = yTile * (params.header.mapWidth + 1) + xTile;
+  return index >= 0 ? index : null;
+}
+
+export function applyTopologyBrushWithTarget(
+  floorArray: Int16Array | number[],
+  roofArray: Int16Array | number[] | undefined,
+  pixels: PixelType[],
+  params: BrushParams,
+  editMode: TopologyLayerEditMode,
+): void {
+  if (!roofArray || editMode === TopologyLayerEditMode.FLOOR) {
+    pixels.forEach((pixel) => {
+      const index = getPixelIndex(pixel, params);
+      if (index === null || index >= floorArray.length) {
+        return;
+      }
+
+      const floorHeight = floorArray[index];
+      if (floorHeight === undefined) {
+        return;
+      }
+
+      const updatedFloor = clampInt16(
+        getUpdatedBrushValue(floorHeight, pixel, params.valueMode),
+      );
+      if (!roofArray) {
+        floorArray[index] = updatedFloor;
+        return;
+      }
+
+      const roofHeight = roofArray[index];
+      if (roofHeight === undefined) {
+        floorArray[index] = updatedFloor;
+        return;
+      }
+
+      floorArray[index] = Math.min(
+        updatedFloor,
+        roofHeight - MIN_ROOF_FLOOR_DISTANCE,
+      );
+    });
+    return;
+  }
+
+  pixels.forEach((pixel) => {
+    const index = getPixelIndex(pixel, params);
+    if (
+      index === null ||
+      index >= floorArray.length ||
+      index >= roofArray.length
+    ) {
+      return;
+    }
+
+    const currentFloor = floorArray[index];
+    const currentRoof = roofArray[index];
+    if (currentFloor === undefined || currentRoof === undefined) {
+      return;
+    }
+
+    if (editMode === TopologyLayerEditMode.ROOF) {
+      roofArray[index] = Math.max(
+        clampInt16(getUpdatedBrushValue(currentRoof, pixel, params.valueMode)),
+        currentFloor + MIN_ROOF_FLOOR_DISTANCE,
+      );
+      return;
+    }
+
+    const currentMidpoint = (currentFloor + currentRoof) / 2;
+    const currentHalfDifference = Math.max(
+      MIN_ROOF_FLOOR_DISTANCE / 2,
+      (currentRoof - currentFloor) / 2,
+    );
+
+    if (editMode === TopologyLayerEditMode.MIDPOINT) {
+      const nextMidpoint = getUpdatedBrushValue(
+        currentMidpoint,
+        pixel,
+        params.valueMode,
+      );
+      floorArray[index] = clampInt16(nextMidpoint - currentHalfDifference);
+      roofArray[index] = clampInt16(nextMidpoint + currentHalfDifference);
+      return;
+    }
+
+    const nextHalfDifference = Math.max(
+      MIN_ROOF_FLOOR_DISTANCE / 2,
+      Math.abs(
+        getUpdatedBrushValue(
+          currentHalfDifference,
+          pixel,
+          params.valueMode,
+        ),
+      ),
+    );
+    floorArray[index] = clampInt16(currentMidpoint - nextHalfDifference);
+    roofArray[index] = clampInt16(currentMidpoint + nextHalfDifference);
   });
 }
 

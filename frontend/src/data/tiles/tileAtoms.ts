@@ -20,6 +20,13 @@ export enum TopologyValueMode {
   DELTA_WITH_DROPOFF,
 }
 
+export enum TopologyLayerEditMode {
+  FLOOR = "floor",
+  ROOF = "roof",
+  MIDPOINT = "midpoint",
+  DIFFERENCE = "difference",
+}
+
 export const CurrentTopologyBrushMode = atom<TopologyBrushMode>(
   TopologyBrushMode.CIRCLE_BRUSH,
 );
@@ -33,11 +40,12 @@ export const TopologyValue = atom<number>(0);
 
 export const TopologyOpacity = atom<number>(1);
 
-// Roof support atoms (for Bugdom 1 and games with YCrd 1001)
 export const ShowRoofInTopology = atom<boolean>(false);
 export const ShowRoofGapInTopology = atom<boolean>(false);
-export const EditRoofAndFloorTogether = atom<boolean>(false);
-export const RoofFloorElevation = atom<number>(100); // Center elevation for dual editing
+export const ShowAccessibilityOverlay = atom<boolean>(false);
+export const CurrentTopologyLayerEditMode = atom<TopologyLayerEditMode>(
+  TopologyLayerEditMode.FLOOR,
+);
 
 // Tile editing atoms
 export const TileEditingEnabled = atom<boolean>(false);
