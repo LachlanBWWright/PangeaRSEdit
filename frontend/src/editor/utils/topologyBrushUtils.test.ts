@@ -283,6 +283,6 @@ describe("topologyBrushUtils line brush math", () => {
       TopologyLayerEditMode.FLOOR,
     );
 
-    expect(floor[0]).toBe(roof[0] - MIN_ROOF_FLOOR_DISTANCE);
+    expect(floor[0]).toBe(50 - MIN_ROOF_FLOOR_DISTANCE);
   });
 });

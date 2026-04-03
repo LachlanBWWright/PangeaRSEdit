@@ -23,7 +23,6 @@ export const RoofGeometry = forwardRef<
   {
      headerData: HeaderData;
      terrainData: TerrainData;
-     topologyVersion?: number;
      onPointerDown?: (event: Event) => void;
      onPointerMove?: (event: Event) => void;
      onPointerUp?: (event: Event) => void;
@@ -32,7 +31,6 @@ export const RoofGeometry = forwardRef<
    {
      headerData,
      terrainData,
-     topologyVersion,
      onPointerDown,
      onPointerMove,
      onPointerUp,
@@ -99,7 +97,6 @@ export const RoofGeometry = forwardRef<
      globals.TILE_INGAME_SIZE,
      header,
      terrainData.YCrd,
-     topologyVersion,
    ]);
 
    if (

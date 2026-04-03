@@ -18,11 +18,9 @@ const ACCESSIBILITY_OVERLAY_HEIGHT_OFFSET = 2;
 export function TerrainAccessibilityOverlay({
   headerData,
   terrainData,
-  topologyVersion,
 }: {
   headerData: HeaderData;
   terrainData: TerrainData;
-  topologyVersion: number;
 }) {
   const globals = useAtomValue(Globals);
   const showAccessibilityOverlay = useAtomValue(ShowAccessibilityOverlay);
@@ -144,7 +142,6 @@ export function TerrainAccessibilityOverlay({
     header,
     roofHeights,
     showAccessibilityOverlay,
-    topologyVersion,
     yScale,
   ]);
 

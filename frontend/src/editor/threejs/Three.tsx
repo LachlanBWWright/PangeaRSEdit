@@ -496,23 +496,23 @@ export function ThreeView({
       />
       {/* Roof geometry (Bugdom 1 and games with YCrd 1001) */}
       <RoofGeometry
+        key={`roof-${topologyVersion}`}
         ref={roofMeshRef}
         headerData={headerData}
         terrainData={terrainData}
-        topologyVersion={topologyVersion}
         onPointerDown={isEditingTopology ? handlePointerDown : undefined}
         onPointerMove={isEditingTopology ? handlePointerMove : undefined}
         onPointerUp={isEditingTopology ? handlePointerUp : undefined}
       />
       <RoofGapGeometry
+        key={`roof-gap-${topologyVersion}`}
         headerData={headerData}
         terrainData={terrainData}
-        topologyVersion={topologyVersion}
       />
       <TerrainAccessibilityOverlay
+        key={`accessibility-${topologyVersion}`}
         headerData={headerData}
         terrainData={terrainData}
-        topologyVersion={topologyVersion}
       />
       {isEditingTopology && (
         <>
