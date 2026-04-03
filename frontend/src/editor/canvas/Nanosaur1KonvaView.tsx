@@ -15,7 +15,9 @@ import { Stage } from "react-konva";
 import { Updater } from "use-immer";
 import { ClickToAddItem, SelectedItem } from "@/data/items/itemAtoms";
 import { Items } from "../subviews/Items";
+import { AccessibilityMaskOverlay } from "../subviews/AccessibilityMaskOverlay";
 import { IndividualTileSupertiles } from "../subviews/supertiles/IndividualTileSupertiles";
+import { Tiles } from "../subviews/Tiles";
 import {
   HeaderData,
   ItemData,
@@ -46,6 +48,7 @@ export function Nanosaur1KonvaView({
   itemData,
   setItemData,
   terrainData,
+  setTerrainData,
   mapImages,
   view,
   stage,
@@ -159,8 +162,21 @@ export function Nanosaur1KonvaView({
           />
         )}
 
-        {/* Nanosaur 1 has no tile attributes or topology editing */}
-        {/* Individual tiles are composed into supertiles at render time */}
+        {view !== View.tiles && (
+          <AccessibilityMaskOverlay
+            headerData={headerData}
+            terrainData={terrainData}
+          />
+        )}
+
+        {view === View.tiles && (
+          <Tiles
+            headerData={headerData}
+            terrainData={terrainData}
+            setTerrainData={setTerrainData}
+            isEditingTopology={true}
+          />
+        )}
 
         {/* Items - shown except when in tiles view */}
         {view !== View.tiles && itemData && (

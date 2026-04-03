@@ -1,5 +1,6 @@
 import {
   TopologyBrushMode,
+  TopologyDualEditMode,
   TopologyLayerEditMode,
   TopologyValueMode,
 } from "@/data/tiles/tileAtoms";
@@ -269,6 +270,7 @@ export function applyTopologyBrushWithTarget(
   pixels: PixelType[],
   params: BrushParams,
   editMode: TopologyLayerEditMode,
+  dualEditMode: TopologyDualEditMode = TopologyDualEditMode.MIDPOINT,
 ): void {
   if (!roofArray || editMode === TopologyLayerEditMode.FLOOR) {
     pixels.forEach((pixel) => {
@@ -331,7 +333,7 @@ export function applyTopologyBrushWithTarget(
     const { midpoint: currentMidpoint, halfDifference: currentHalfDifference } =
       getCurrentRoofShape(currentFloor, currentRoof);
 
-    if (editMode === TopologyLayerEditMode.MIDPOINT) {
+    if (dualEditMode === TopologyDualEditMode.MIDPOINT) {
       const nextMidpoint = getUpdatedBrushValue(
         currentMidpoint,
         pixel,

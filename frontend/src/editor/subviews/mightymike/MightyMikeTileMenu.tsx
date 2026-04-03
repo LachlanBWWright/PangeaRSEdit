@@ -340,6 +340,19 @@ export function MightyMikeTileMenu({
       return;
     }
 
+    const sourceBitmapResult = await fromPromise(createImageBitmap(file));
+    if (sourceBitmapResult.isErr()) {
+      toast.error(`Failed to read tile: ${sourceBitmapResult.error.message}`);
+      return;
+    }
+    if (
+      sourceBitmapResult.value.width !== TILE_SIZE ||
+      sourceBitmapResult.value.height !== TILE_SIZE
+    ) {
+      toast.error(`Tiles must be ${TILE_SIZE}×${TILE_SIZE}`);
+      return;
+    }
+
     // Create 32x32 canvas for the tile
     const canvas = document.createElement("canvas");
     canvas.width = TILE_SIZE;
@@ -386,6 +399,18 @@ export function MightyMikeTileMenu({
       toast.error("Invalid palette tile selected");
       return;
     }
+    const sourceBitmapResult = await fromPromise(createImageBitmap(file));
+    if (sourceBitmapResult.isErr()) {
+      toast.error(`Failed to read palette tile: ${sourceBitmapResult.error.message}`);
+      return;
+    }
+    if (
+      sourceBitmapResult.value.width !== TILE_SIZE ||
+      sourceBitmapResult.value.height !== TILE_SIZE
+    ) {
+      toast.error(`Palette tiles must be ${TILE_SIZE}×${TILE_SIZE}`);
+      return;
+    }
     const canvas = document.createElement("canvas");
     canvas.width = TILE_SIZE;
     canvas.height = TILE_SIZE;
@@ -430,6 +455,100 @@ export function MightyMikeTileMenu({
     setMapImages(nextImages);
     setIsEditingPaletteTile(false);
     toast.success(`Edited palette tile #${selectedPaletteTile}`);
+  };
+
+  const createBlankTileCanvas = () => {
+    const canvas = document.createElement("canvas");
+    canvas.width = TILE_SIZE;
+    canvas.height = TILE_SIZE;
+    const context = canvas.getContext("2d");
+    if (context) {
+      context.clearRect(0, 0, TILE_SIZE, TILE_SIZE);
+    }
+    return canvas;
+  };
+
+  const isPaletteTileInUse = useMemo(() => {
+    const matchingLogicalIndices = new Set<number>();
+    if (xlatTable) {
+      xlatTable.forEach((entry, logicalIndex) => {
+        if (isRecord(entry) && entry.idx === selectedPaletteTile) {
+          matchingLogicalIndices.add(logicalIndex);
+        }
+      });
+    } else {
+      matchingLogicalIndices.add(selectedPaletteTile);
+    }
+
+    if (matchingLogicalIndices.size === 0) {
+      return false;
+    }
+
+    return layr.some((tileIndex) => matchingLogicalIndices.has(tileIndex));
+  }, [layr, selectedPaletteTile, xlatTable]);
+
+  const handleAddPaletteTile = () => {
+    const newImageIndex = mapImages.length;
+    setMapImages([...mapImages, createBlankTileCanvas()]);
+    setTerrainData((data) => {
+      if (data.Xlat?.[1000]?.obj) {
+        data.Xlat[1000].obj.push({ idx: newImageIndex });
+      }
+    });
+    setManualTilePaletteSelection({
+      tile: selectedTile,
+      palette: newImageIndex,
+    });
+    toast.success(`Added palette tile #${newImageIndex}`);
+  };
+
+  const handleRemovePaletteTile = () => {
+    if (selectedPaletteTile < 0 || selectedPaletteTile >= mapImages.length) {
+      toast.error("Invalid palette tile selected");
+      return;
+    }
+    if (isPaletteTileInUse) {
+      toast.error("Cannot remove a palette tile that is still in use");
+      return;
+    }
+
+    setMapImages(mapImages.filter((_, index) => index !== selectedPaletteTile));
+    setTerrainData((data) => {
+      const xlat = data.Xlat?.[1000]?.obj;
+      if (!xlat) {
+        return;
+      }
+
+      const keptEntries = xlat
+        .map((entry, logicalIndex) => ({ entry, logicalIndex }))
+        .filter(({ entry }) => isRecord(entry) && entry.idx !== selectedPaletteTile);
+      const logicalIndexMap = new Map<number, number>();
+      keptEntries.forEach(({ logicalIndex }, nextLogicalIndex) => {
+        logicalIndexMap.set(logicalIndex, nextLogicalIndex);
+      });
+
+      const xlatEntry = data.Xlat?.[1000];
+      if (!xlatEntry) {
+        return;
+      }
+      xlatEntry.obj = keptEntries.map(({ entry }) => ({
+        idx:
+          typeof entry.idx === "number" && entry.idx > selectedPaletteTile
+            ? entry.idx - 1
+            : Number(entry.idx ?? 0),
+      }));
+
+      if (data.Layr?.[1000]?.obj) {
+        data.Layr[1000].obj = data.Layr[1000].obj.map(
+          (logicalIndex) => logicalIndexMap.get(logicalIndex) ?? logicalIndex,
+        );
+      }
+    });
+    setManualTilePaletteSelection({
+      tile: selectedTile,
+      palette: Math.max(0, selectedPaletteTile - 1),
+    });
+    toast.success("Palette tile removed");
   };
 
   // Validate selected tile is in bounds
@@ -679,6 +798,17 @@ export function MightyMikeTileMenu({
             accept="image/*"
             onChange={handleUploadPaletteTile}
           />
+          <Button size="sm" variant="outline" onClick={handleAddPaletteTile}>
+            Add palette tile
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={handleRemovePaletteTile}
+            disabled={isPaletteTileInUse || mapImages.length <= 1}
+          >
+            Remove palette tile
+          </Button>
         </div>
 
         {/* Replace Button */}

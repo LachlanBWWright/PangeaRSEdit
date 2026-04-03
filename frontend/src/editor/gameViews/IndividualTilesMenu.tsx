@@ -8,19 +8,21 @@
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
+  CurrentTopologyDualEditMode,
+  CurrentTopologyHeightmapDisplayMode,
   CurrentTopologyLayerEditMode,
   CurrentTopologyBrushMode,
   CurrentTopologyValueMode,
   TileViewMode,
   TileViews,
   TopologyBrushMode,
+  TopologyDualEditMode,
+  TopologyHeightmapDisplayMode,
   TopologyLayerEditMode,
   TopologyBrushRadius,
   TopologyOpacity,
   TopologyValue,
   TopologyValueMode,
-  ShowAccessibilityOverlay,
-  ShowRoofGapInTopology,
   ShowRoofInTopology,
 } from "../../data/tiles/tileAtoms";
 import { useAtom, useAtomValue } from "jotai";
@@ -45,11 +47,6 @@ import { Switch } from "@/components/ui/switch";
 import { HeaderData } from "@/python/structSpecs/LevelTypes";
 import { Updater } from "use-immer";
 import { Game, Globals } from "@/data/globals/globals";
-import {
-  getAccessibilityOverlayHelp,
-  getAccessibilityOverlayLabel,
-  supportsAccessibilityOverlay,
-} from "../utils/terrainAccessibility";
 
 export function IndividualTilesMenu({
   headerData,
@@ -72,19 +69,17 @@ export function IndividualTilesMenu({
   const [show3DLiquid, setShow3DLiquid] = useAtom(Show3DLiquid);
   const [show3DItemModels, setShow3DItemModels] = useAtom(Show3DItemModels);
   const [layerEditMode, setLayerEditMode] = useAtom(CurrentTopologyLayerEditMode);
-  const [showRoof, setShowRoof] = useAtom(ShowRoofInTopology);
-  const [showRoofGap, setShowRoofGap] = useAtom(ShowRoofGapInTopology);
-  const [showAccessibilityOverlay, setShowAccessibilityOverlay] = useAtom(
-    ShowAccessibilityOverlay,
+  const [dualEditMode, setDualEditMode] = useAtom(CurrentTopologyDualEditMode);
+  const [heightmapDisplayMode, setHeightmapDisplayMode] = useAtom(
+    CurrentTopologyHeightmapDisplayMode,
   );
+  const [showRoof, setShowRoof] = useAtom(ShowRoofInTopology);
   const globals = useAtomValue(Globals);
 
   const header = headerData?.Hedr?.[1000]?.obj;
   const minY = header?.minY || 0;
   const maxY = header?.maxY || 0;
   const hasRoofLayer = globals.GAME_TYPE === Game.BUGDOM;
-  const canShowAccessibility = supportsAccessibilityOverlay(globals.GAME_TYPE);
-  const accessibilityHelp = getAccessibilityOverlayHelp(globals.GAME_TYPE);
 
   useEffect(() => {
     if (tileView !== TileViews.Topology) {
@@ -98,10 +93,19 @@ export function IndividualTilesMenu({
   useEffect(() => {
     if (!hasRoofLayer) {
       setShowRoof(false);
-      setShowRoofGap(false);
       setLayerEditMode(TopologyLayerEditMode.FLOOR);
     }
-  }, [hasRoofLayer, setLayerEditMode, setShowRoof, setShowRoofGap]);
+  }, [hasRoofLayer, setLayerEditMode, setShowRoof]);
+
+  useEffect(() => {
+    if (
+      hasRoofLayer &&
+      heightmapDisplayMode === TopologyHeightmapDisplayMode.AUTO &&
+      layerEditMode === TopologyLayerEditMode.ROOF
+    ) {
+      setShowRoof(true);
+    }
+  }, [hasRoofLayer, heightmapDisplayMode, layerEditMode, setShowRoof]);
 
   const handleMinYChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newValue = parseFloat(e.target.value);
@@ -187,8 +191,11 @@ export function IndividualTilesMenu({
             onChange={(e) => setBrushRadius(parseInt(e.target.value) || 0)}
           />
           <p>
-            {layerEditMode === TopologyLayerEditMode.DIFFERENCE
+            {layerEditMode === TopologyLayerEditMode.BOTH &&
+            dualEditMode === TopologyDualEditMode.DIFFERENCE
               ? "Difference Value"
+              : layerEditMode === TopologyLayerEditMode.BOTH
+              ? "Midpoint Value"
               : "Height Value"}
           </p>
           <Input
@@ -206,11 +213,10 @@ export function IndividualTilesMenu({
                   if (
                     value === TopologyLayerEditMode.FLOOR ||
                     value === TopologyLayerEditMode.ROOF ||
-                    value === TopologyLayerEditMode.MIDPOINT ||
-                    value === TopologyLayerEditMode.DIFFERENCE
+                    value === TopologyLayerEditMode.BOTH
                   ) {
                     setLayerEditMode(value);
-                    if (value !== TopologyLayerEditMode.FLOOR) {
+                    if (value === TopologyLayerEditMode.ROOF) {
                       setShowRoof(true);
                     }
                   }
@@ -219,9 +225,8 @@ export function IndividualTilesMenu({
                 <SelectTrigger>
                   {layerEditMode === TopologyLayerEditMode.FLOOR && "Floor Only"}
                   {layerEditMode === TopologyLayerEditMode.ROOF && "Ceiling Only"}
-                  {layerEditMode === TopologyLayerEditMode.MIDPOINT && "Midpoint"}
-                  {layerEditMode === TopologyLayerEditMode.DIFFERENCE &&
-                    "± Difference"}
+                  {layerEditMode === TopologyLayerEditMode.BOTH &&
+                    "Both (Midpoint ± Difference)"}
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value={TopologyLayerEditMode.FLOOR}>
@@ -230,11 +235,46 @@ export function IndividualTilesMenu({
                   <SelectItem value={TopologyLayerEditMode.ROOF}>
                     Ceiling Only
                   </SelectItem>
-                  <SelectItem value={TopologyLayerEditMode.MIDPOINT}>
-                    Midpoint
+                  <SelectItem value={TopologyLayerEditMode.BOTH}>
+                    Both (Midpoint ± Difference)
                   </SelectItem>
-                  <SelectItem value={TopologyLayerEditMode.DIFFERENCE}>
-                    ± Difference
+                </SelectContent>
+              </Select>
+            </>
+          )}
+
+          {hasRoofLayer && (
+            <>
+              <p>Heightmap Display</p>
+              <Select
+                value={heightmapDisplayMode}
+                onValueChange={(value) => {
+                  if (
+                    value === TopologyHeightmapDisplayMode.AUTO ||
+                    value === TopologyHeightmapDisplayMode.FLOOR ||
+                    value === TopologyHeightmapDisplayMode.ROOF
+                  ) {
+                    setHeightmapDisplayMode(value);
+                  }
+                }}
+              >
+                <SelectTrigger>
+                  {heightmapDisplayMode === TopologyHeightmapDisplayMode.AUTO &&
+                    "Auto"}
+                  {heightmapDisplayMode === TopologyHeightmapDisplayMode.FLOOR &&
+                    "Floor"}
+                  {heightmapDisplayMode === TopologyHeightmapDisplayMode.ROOF &&
+                    "Ceiling"}
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={TopologyHeightmapDisplayMode.AUTO}>
+                    Auto
+                  </SelectItem>
+                  <SelectItem value={TopologyHeightmapDisplayMode.FLOOR}>
+                    Floor
+                  </SelectItem>
+                  <SelectItem value={TopologyHeightmapDisplayMode.ROOF}>
+                    Ceiling
                   </SelectItem>
                 </SelectContent>
               </Select>
@@ -255,37 +295,40 @@ export function IndividualTilesMenu({
           />
           {hasRoofLayer && (
             <>
-              <div className="flex flex-row justify-center gap-2 items-center col-span-2">
-                <p>Show Ceiling Layer</p>
-                <Switch checked={showRoof} onCheckedChange={setShowRoof} />
-              </div>
-              <div className="flex flex-row justify-center gap-2 items-center col-span-2">
-                <p>Show Floor/Ceiling Gap</p>
-                <Switch
-                  checked={showRoofGap}
-                  onCheckedChange={setShowRoofGap}
-                />
-              </div>
-              <p className="col-span-2 text-sm text-gray-400">
-                Midpoint mode moves floor and ceiling together. ± Difference mode
-                keeps the midpoint fixed and edits the ceiling clearance distance
-                around it.
-              </p>
-            </>
-          )}
-          {canShowAccessibility && (
-            <>
-              <div className="flex flex-row justify-center gap-2 items-center col-span-2">
-                <p>{getAccessibilityOverlayLabel(globals.GAME_TYPE)}</p>
-                <Switch
-                  checked={showAccessibilityOverlay}
-                  onCheckedChange={setShowAccessibilityOverlay}
-                />
-              </div>
-              {accessibilityHelp && (
-                <p className="col-span-2 text-sm text-gray-400">
-                  {accessibilityHelp}
-                </p>
+              {layerEditMode === TopologyLayerEditMode.BOTH && (
+                <>
+                  <p>Both-Mode Brush</p>
+                  <Select
+                    value={dualEditMode}
+                    onValueChange={(value) => {
+                      if (
+                        value === TopologyDualEditMode.MIDPOINT ||
+                        value === TopologyDualEditMode.DIFFERENCE
+                      ) {
+                        setDualEditMode(value);
+                      }
+                    }}
+                  >
+                    <SelectTrigger>
+                      {dualEditMode === TopologyDualEditMode.MIDPOINT &&
+                        "Edit Midpoint"}
+                      {dualEditMode === TopologyDualEditMode.DIFFERENCE &&
+                        "Edit Difference"}
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value={TopologyDualEditMode.MIDPOINT}>
+                        Edit Midpoint
+                      </SelectItem>
+                      <SelectItem value={TopologyDualEditMode.DIFFERENCE}>
+                        Edit Difference
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p className="col-span-2 text-sm text-gray-400">
+                    Both mode keeps floor and ceiling paired. Switch the brush
+                    between midpoint and clearance editing without leaving the mode.
+                  </p>
+                </>
               )}
             </>
           )}
@@ -307,6 +350,12 @@ export function IndividualTilesMenu({
           </div>
           {canvasViewMode === CanvasView.THREE_D && (
             <>
+              {hasRoofLayer && (
+                <div className="flex flex-row justify-center gap-2 items-center col-span-2">
+                  <p>Show Ceiling Layer</p>
+                  <Switch checked={showRoof} onCheckedChange={setShowRoof} />
+                </div>
+              )}
               <div className="flex flex-row justify-center gap-2 items-center col-span-2">
                 <p>Show Splines</p>
                 <Switch

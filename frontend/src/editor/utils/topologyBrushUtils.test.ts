@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   TopologyBrushMode,
+  TopologyDualEditMode,
   TopologyLayerEditMode,
   TopologyValueMode,
 } from "@/data/tiles/tileAtoms";
@@ -198,7 +199,8 @@ describe("topologyBrushUtils line brush math", () => {
         globals: OttoGlobals,
         tileSize: 1,
       },
-      TopologyLayerEditMode.MIDPOINT,
+      TopologyLayerEditMode.BOTH,
+      TopologyDualEditMode.MIDPOINT,
     );
 
     expect(floor[0]).toBe(-20);
@@ -239,7 +241,8 @@ describe("topologyBrushUtils line brush math", () => {
         globals: OttoGlobals,
         tileSize: 1,
       },
-      TopologyLayerEditMode.DIFFERENCE,
+      TopologyLayerEditMode.BOTH,
+      TopologyDualEditMode.DIFFERENCE,
     );
 
     expect(floor[0]).toBe(60);

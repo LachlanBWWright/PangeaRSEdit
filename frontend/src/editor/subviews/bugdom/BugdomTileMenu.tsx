@@ -349,6 +349,15 @@ export function BugdomTileMenu({
       toast.error("Failed to create canvas context");
       return;
     }
+    const sourceBitmap = await createImageBitmap(file);
+    if (
+      sourceBitmap.width !== PALETTE_TILE_SIZE ||
+      sourceBitmap.height !== PALETTE_TILE_SIZE
+    ) {
+      event.target.value = "";
+      toast.error(`Palette tiles must be ${PALETTE_TILE_SIZE}×${PALETTE_TILE_SIZE}`);
+      return;
+    }
     context.fillStyle = "black";
     context.fillRect(0, 0, PALETTE_TILE_SIZE, PALETTE_TILE_SIZE);
     const imageBitmap = await createImageBitmap(file, {
@@ -380,6 +389,101 @@ export function BugdomTileMenu({
     setMapImages(newMapImages);
     setIsEditingPaletteTile(false);
     toast.success(`Edited palette tile #${selectedPaletteTile}`);
+  };
+
+  const createBlankTileCanvas = () => {
+    const canvas = document.createElement("canvas");
+    canvas.width = PALETTE_TILE_SIZE;
+    canvas.height = PALETTE_TILE_SIZE;
+    const context = canvas.getContext("2d");
+    if (context) {
+      context.clearRect(0, 0, PALETTE_TILE_SIZE, PALETTE_TILE_SIZE);
+    }
+    return canvas;
+  };
+
+  const isPaletteTileInUse = useMemo(() => {
+    if (!layerData) {
+      return false;
+    }
+
+    const matchingLogicalIndices = new Set<number>();
+    if (xlatTable) {
+      xlatTable.forEach((entry, logicalIndex) => {
+        if (entry?.idx === selectedPaletteTile) {
+          matchingLogicalIndices.add(logicalIndex);
+        }
+      });
+    } else {
+      matchingLogicalIndices.add(selectedPaletteTile);
+    }
+
+    if (matchingLogicalIndices.size === 0) {
+      return false;
+    }
+
+    return layerData.some((tileValue) =>
+      matchingLogicalIndices.has(tileValue & TILENUM_MASK),
+    );
+  }, [layerData, selectedPaletteTile, xlatTable]);
+
+  const handleAddPaletteTile = () => {
+    const newImageIndex = mapImages.length;
+    setMapImages([...mapImages, createBlankTileCanvas()]);
+    setTerrainData((data) => {
+      if (data.Xlat?.[1000]?.obj) {
+        data.Xlat[1000].obj.push({ idx: newImageIndex });
+      }
+    });
+    setSelectedPaletteTile(newImageIndex);
+    toast.success(`Added palette tile #${newImageIndex}`);
+  };
+
+  const handleRemovePaletteTile = () => {
+    if (selectedPaletteTile < 0 || selectedPaletteTile >= mapImages.length) {
+      toast.error("Invalid palette tile selected");
+      return;
+    }
+    if (isPaletteTileInUse) {
+      toast.error("Cannot remove a palette tile that is still in use");
+      return;
+    }
+
+    setMapImages(mapImages.filter((_, index) => index !== selectedPaletteTile));
+    setTerrainData((data) => {
+      const xlat = data.Xlat?.[1000]?.obj;
+      if (xlat) {
+        const keptEntries = xlat
+          .map((entry, logicalIndex) => ({ entry, logicalIndex }))
+          .filter(({ entry }) => entry.idx !== selectedPaletteTile);
+        const logicalIndexMap = new Map<number, number>();
+        keptEntries.forEach(({ logicalIndex }, nextLogicalIndex) => {
+          logicalIndexMap.set(logicalIndex, nextLogicalIndex);
+        });
+
+        const xlatEntry = data.Xlat?.[1000];
+        if (xlatEntry) {
+          xlatEntry.obj = keptEntries.map(({ entry }) => ({
+            idx:
+              entry.idx > selectedPaletteTile ? entry.idx - 1 : entry.idx,
+          }));
+        }
+
+        if (data.Layr?.[1000]?.obj) {
+          data.Layr[1000].obj = data.Layr[1000].obj.map((tileValue) => {
+            const logicalIndex = tileValue & TILENUM_MASK;
+            const remappedLogicalIndex = logicalIndexMap.get(logicalIndex);
+            if (remappedLogicalIndex === undefined) {
+              return tileValue;
+            }
+            return (tileValue & ~TILENUM_MASK) | remappedLogicalIndex;
+          });
+        }
+      }
+
+    });
+    setSelectedPaletteTile((current) => Math.max(0, current - 1));
+    toast.success("Palette tile removed");
   };
 
   /**
@@ -707,6 +811,17 @@ export function BugdomTileMenu({
             accept="image/*"
             onChange={handleUploadPaletteTile}
           />
+          <Button size="sm" variant="outline" onClick={handleAddPaletteTile}>
+            Add palette tile
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={handleRemovePaletteTile}
+            disabled={isPaletteTileInUse || mapImages.length <= 1}
+          >
+            Remove palette tile
+          </Button>
         </div>
       </div>
       </div>

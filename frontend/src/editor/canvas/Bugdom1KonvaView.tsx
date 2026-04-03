@@ -21,6 +21,7 @@ import { Items } from "../subviews/Items";
 import { Fences } from "../subviews/Fences";
 import { Splines } from "../subviews/Splines";
 import { IndividualTileSupertiles } from "../subviews/supertiles/IndividualTileSupertiles";
+import { AccessibilityMaskOverlay } from "../subviews/AccessibilityMaskOverlay";
 import { Tiles } from "../subviews/Tiles";
 import {
   HeaderData,
@@ -203,6 +204,13 @@ export function Bugdom1KonvaView({
             headerData={headerData}
             terrainData={terrainData}
             mapImages={mapImages}
+          />
+        )}
+
+        {view !== View.tiles && (
+          <AccessibilityMaskOverlay
+            headerData={headerData}
+            terrainData={terrainData}
           />
         )}
 

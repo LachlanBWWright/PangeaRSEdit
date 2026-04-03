@@ -22,6 +22,7 @@ import { Items } from "../subviews/Items";
 import { Fences } from "../subviews/Fences";
 import { Splines } from "../subviews/Splines";
 import { WaterBodies } from "../subviews/WaterBodies";
+import { AccessibilityMaskOverlay } from "../subviews/AccessibilityMaskOverlay";
 import { Tiles } from "../subviews/Tiles";
 import { StandardSupertiles } from "../subviews/supertiles/StandardSupertiles";
 import {
@@ -219,6 +220,13 @@ export function OttoMaticKonvaView({
             headerData={headerData}
             terrainData={terrainData}
             mapImages={mapImages}
+          />
+        )}
+
+        {view !== View.tiles && (
+          <AccessibilityMaskOverlay
+            headerData={headerData}
+            terrainData={terrainData}
           />
         )}
 

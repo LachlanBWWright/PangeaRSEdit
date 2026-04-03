@@ -2,8 +2,6 @@ import { Canvas, useThree } from "@react-three/fiber";
 import { MapControls } from "@react-three/drei";
 import { TerrainGeometry } from "./Terrain";
 import { RoofGeometry } from "./RoofGeometry";
-import { RoofGapGeometry } from "./RoofGapGeometry";
-import { TerrainAccessibilityOverlay } from "./TerrainAccessibilityOverlay";
 import { FenceGeometry } from "./FenceGeometry";
 import { LiquidGeometry } from "./LiquidGeometry";
 import { ItemGeometry } from "./ItemGeometry";
@@ -23,6 +21,7 @@ import {
 import {
   TileViewMode,
   TileViews,
+  CurrentTopologyDualEditMode,
   CurrentTopologyBrushMode,
   CurrentTopologyLayerEditMode,
   TopologyBrushRadius,
@@ -157,6 +156,7 @@ export function ThreeView({
   // Topology editing state
   const tileViewMode = useAtomValue(TileViewMode);
   const brushMode = useAtomValue(CurrentTopologyBrushMode);
+  const dualEditMode = useAtomValue(CurrentTopologyDualEditMode);
   const layerEditMode = useAtomValue(CurrentTopologyLayerEditMode);
   const brushRadius = useAtomValue(TopologyBrushRadius);
   const valueMode = useAtomValue(CurrentTopologyValueMode);
@@ -300,6 +300,7 @@ export function ThreeView({
             lineEnd,
           },
           layerEditMode,
+          dualEditMode,
         );
         lastBrushCenterRef.current = currentCenter;
         updateMeshGeometryElevations(terrainMeshRef.current, terrainData.YCrd[1000].obj);
@@ -318,6 +319,7 @@ export function ThreeView({
     header,
     isEditing,
     isEditingTopology,
+    dualEditMode,
     layerEditMode,
     setItemData,
     terrainData,
@@ -383,6 +385,7 @@ export function ThreeView({
           lineEnd: currentCenter,
         },
         layerEditMode,
+        dualEditMode,
       );
 
       updateMeshGeometryElevations(terrainMeshRef.current, terrainData.YCrd[1000].obj);
@@ -399,6 +402,7 @@ export function ThreeView({
     globals,
     header,
     isEditingTopology,
+    dualEditMode,
     layerEditMode,
     terrainData,
     topologyValue,
@@ -503,16 +507,6 @@ export function ThreeView({
         onPointerDown={isEditingTopology ? handlePointerDown : undefined}
         onPointerMove={isEditingTopology ? handlePointerMove : undefined}
         onPointerUp={isEditingTopology ? handlePointerUp : undefined}
-      />
-      <RoofGapGeometry
-        key={`roof-gap-${topologyVersion}`}
-        headerData={headerData}
-        terrainData={terrainData}
-      />
-      <TerrainAccessibilityOverlay
-        key={`accessibility-${topologyVersion}`}
-        headerData={headerData}
-        terrainData={terrainData}
       />
       {isEditingTopology && (
         <>

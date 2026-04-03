@@ -22,6 +22,7 @@ import { ThreeView } from "../threejs/Three";
 import { View } from "../viewEnum";
 import { ItemFilterToggle } from "../subviews/filters/ItemFilterToggle";
 import { EditorCanvasControls } from "../subviews/EditorCanvasControls";
+import { AccessibilityOverlayControls } from "../subviews/AccessibilityOverlayControls";
 import {
   EmptyFencePrompt,
   EmptyWaterPrompt,
@@ -145,6 +146,7 @@ export function StandardEditorView({
         terrainHasSTgd={showSupertileMenu}
       />
       <div className="overflow-y-auto">
+        {view !== View.tiles && <AccessibilityOverlayControls />}
         {view === View.fences && (
           fenceData ? (
             <FenceMenu fenceData={fenceData} setFenceData={setFenceDataNotNull} />

@@ -23,8 +23,18 @@ export enum TopologyValueMode {
 export enum TopologyLayerEditMode {
   FLOOR = "floor",
   ROOF = "roof",
+  BOTH = "both",
+}
+
+export enum TopologyDualEditMode {
   MIDPOINT = "midpoint",
   DIFFERENCE = "difference",
+}
+
+export enum TopologyHeightmapDisplayMode {
+  AUTO = "auto",
+  FLOOR = "floor",
+  ROOF = "roof",
 }
 
 export const CurrentTopologyBrushMode = atom<TopologyBrushMode>(
@@ -41,11 +51,15 @@ export const TopologyValue = atom<number>(0);
 export const TopologyOpacity = atom<number>(1);
 
 export const ShowRoofInTopology = atom<boolean>(false);
-export const ShowRoofGapInTopology = atom<boolean>(false);
 export const ShowAccessibilityOverlay = atom<boolean>(false);
 export const CurrentTopologyLayerEditMode = atom<TopologyLayerEditMode>(
   TopologyLayerEditMode.FLOOR,
 );
+export const CurrentTopologyDualEditMode = atom<TopologyDualEditMode>(
+  TopologyDualEditMode.MIDPOINT,
+);
+export const CurrentTopologyHeightmapDisplayMode =
+  atom<TopologyHeightmapDisplayMode>(TopologyHeightmapDisplayMode.AUTO);
 
 // Tile editing atoms
 export const TileEditingEnabled = atom<boolean>(false);

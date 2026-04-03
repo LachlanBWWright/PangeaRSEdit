@@ -6,10 +6,13 @@ import {
 import { Layer, Image, Circle, Rect } from "react-konva";
 import { Updater } from "use-immer";
 import {
+  CurrentTopologyDualEditMode,
+  CurrentTopologyHeightmapDisplayMode,
   CurrentTopologyLayerEditMode,
   CurrentTopologyBrushMode,
   CurrentTopologyValueMode,
   TopologyBrushMode,
+  TopologyHeightmapDisplayMode,
   TopologyLayerEditMode,
   TopologyValueMode,
   TileViewMode,
@@ -17,12 +20,9 @@ import {
   TopologyBrushRadius,
   TopologyOpacity,
   TopologyValue,
-  ShowRoofInTopology,
-  ShowRoofGapInTopology,
-  ShowAccessibilityOverlay,
 } from "../../data/tiles/tileAtoms";
 import { useAtomValue } from "jotai";
-import { Game, Globals } from "../../data/globals/globals";
+import { Globals } from "../../data/globals/globals";
 import { useMemo, useState } from "react";
 import { createImageCanvas } from "./tiles/tilesUtils";
 import { elevationToRGBA } from "./tiles/tilesUtils";
@@ -32,10 +32,6 @@ import {
   PixelType,
 } from "../utils/topologyBrushUtils";
 import { FlagTileEditor } from "./tiles/FlagTileEditor";
-import {
-  buildAccessibilityMaskColors,
-  hasAccessibleOverlayData,
-} from "../utils/terrainAccessibility";
 
 /* 
 
@@ -141,13 +137,12 @@ export function TopologyTiles({
   const currentTopologyBrushMode = useAtomValue(CurrentTopologyBrushMode);
   const currentTopologyValueMode = useAtomValue(CurrentTopologyValueMode);
   const currentLayerEditMode = useAtomValue(CurrentTopologyLayerEditMode);
+  const currentDualEditMode = useAtomValue(CurrentTopologyDualEditMode);
+  const heightmapDisplayMode = useAtomValue(CurrentTopologyHeightmapDisplayMode);
   const topologyValue = useAtomValue(TopologyValue);
   const topologyBrushRadius = useAtomValue(TopologyBrushRadius);
   const globals = useAtomValue(Globals);
   const opacity = useAtomValue(TopologyOpacity);
-  const showRoof = useAtomValue(ShowRoofInTopology);
-  const showRoofGap = useAtomValue(ShowRoofGapInTopology);
-  const showAccessibilityOverlay = useAtomValue(ShowAccessibilityOverlay);
   const [isDragging, setIsDragging] = useState(false);
   const [lastBrushPoint, setLastBrushPoint] = useState<{ x: number; y: number } | null>(
     null,
@@ -155,6 +150,7 @@ export function TopologyTiles({
   const [brushPreviewPoint, setBrushPreviewPoint] = useState<{
     x: number;
     y: number;
+    scale: number;
   } | null>(null);
 
   const header = useMemo(() => headerData.Hedr[1000].obj, [headerData.Hedr]);
@@ -163,41 +159,44 @@ export function TopologyTiles({
   const yCrdData = terrainData.YCrd?.[1000]?.obj;
   const roofYCrdData = terrainData.YCrd?.[1001]?.obj;
 
-  const coordColours = useMemo(() => {
+  const displayedHeightmap = useMemo(() => {
     if (!yCrdData || yCrdData.length === 0) {
+      return yCrdData;
+    }
+
+    if (!roofYCrdData || roofYCrdData.length === 0) {
+      return yCrdData;
+    }
+
+    if (heightmapDisplayMode === TopologyHeightmapDisplayMode.FLOOR) {
+      return yCrdData;
+    }
+
+    if (heightmapDisplayMode === TopologyHeightmapDisplayMode.ROOF) {
+      return roofYCrdData;
+    }
+
+    return currentLayerEditMode === TopologyLayerEditMode.ROOF
+      ? roofYCrdData
+      : yCrdData;
+  }, [
+    currentLayerEditMode,
+    heightmapDisplayMode,
+    roofYCrdData,
+    yCrdData,
+  ]);
+
+  const coordColours = useMemo(() => {
+    if (!displayedHeightmap || displayedHeightmap.length === 0) {
       // Return a minimal valid array for empty data
       return [128, 128, 128, 255];
     }
-    return yCrdData.flatMap((e) => elevationToRGBA(header, e));
-  }, [yCrdData, header]);
-
-  // Alpha for the semi-transparent roof/gap overlay (0-255)
-  const ROOF_OVERLAY_ALPHA = 180;
-
-  // Roof colour overlay: blue tint representing ceiling elevation
-  const roofCoordColours = useMemo(() => {
-    if (!roofYCrdData || roofYCrdData.length === 0) return [];
-    return roofYCrdData.flatMap((e) => {
-      const grey = ((e - header.minY) / Math.max(1, header.maxY - header.minY)) * 255;
-      return [Math.round(grey * 0.4), Math.round(grey * 0.6), 255, ROOF_OVERLAY_ALPHA];
-    });
-  }, [roofYCrdData, header, ROOF_OVERLAY_ALPHA]);
-
-  // Gap (roof - floor) colour map: red = tight, green = spacious
-  const gapColours = useMemo(() => {
-    if (!roofYCrdData || !yCrdData || roofYCrdData.length === 0 || yCrdData.length === 0) return [];
-    return roofYCrdData.flatMap((roofY, i) => {
-      const floorY = yCrdData[i] ?? 0;
-      const gap = Math.max(0, roofY - floorY);
-      const maxGap = header.maxY - header.minY;
-      const ratio = Math.min(1, gap / Math.max(1, maxGap));
-      return [Math.round((1 - ratio) * 255), Math.round(ratio * 255), 0, ROOF_OVERLAY_ALPHA];
-    });
-  }, [roofYCrdData, yCrdData, header, ROOF_OVERLAY_ALPHA]);
+    return displayedHeightmap.flatMap((e) => elevationToRGBA(header, e));
+  }, [displayedHeightmap, header]);
 
   const imgCanvas = useMemo(() => {
     // Guard against empty data - create a 1x1 placeholder
-    if (!yCrdData || yCrdData.length === 0) {
+    if (!displayedHeightmap || displayedHeightmap.length === 0) {
       const canvas = document.createElement("canvas");
       canvas.width = 1;
       canvas.height = 1;
@@ -213,69 +212,9 @@ export function TopologyTiles({
       return null;
     }
     return result.value;
-  }, [header, coordColours, yCrdData]);
+  }, [coordColours, displayedHeightmap, header]);
 
-  const showRoofOverlay =
-    showRoof ||
-    (globals.GAME_TYPE === Game.BUGDOM &&
-      currentLayerEditMode !== TopologyLayerEditMode.FLOOR);
-
-  const roofImgCanvas = useMemo(() => {
-    if (!showRoofOverlay || !roofYCrdData || roofYCrdData.length === 0) return null;
-    const colors = showRoofGap ? gapColours : roofCoordColours;
-    if (colors.length === 0) return null;
-    const result = createImageCanvas(
-      header.mapWidth + 1,
-      header.mapHeight + 1,
-      colors,
-    );
-    return result.isOk() ? result.value : null;
-  }, [
-    gapColours,
-    header,
-    roofCoordColours,
-    roofYCrdData,
-    showRoofGap,
-    showRoofOverlay,
-  ]);
-
-  const accessibilityMaskCanvas = useMemo(() => {
-    if (
-      !showAccessibilityOverlay ||
-      !hasAccessibleOverlayData(
-        globals.GAME_TYPE,
-        header,
-        yCrdData,
-        roofYCrdData,
-      )
-    ) {
-      return null;
-    }
-
-    const colors = buildAccessibilityMaskColors(
-      globals.GAME_TYPE,
-      yCrdData,
-      roofYCrdData,
-    );
-    if (colors.length === 0) {
-      return null;
-    }
-
-    const result = createImageCanvas(
-      header.mapWidth + 1,
-      header.mapHeight + 1,
-      colors,
-    );
-    return result.isOk() ? result.value : null;
-  }, [
-    globals.GAME_TYPE,
-    header,
-    roofYCrdData,
-    showAccessibilityOverlay,
-    yCrdData,
-  ]);
-
-  const setPixels = (pixelList: PixelType[]) => {
+  const setPixels = (pixelList: PixelType[], brushRadiusPixels: number) => {
     // Guard against missing YCrd data
     if (!yCrdData || yCrdData.length === 0) return;
 
@@ -289,7 +228,7 @@ export function TopologyTiles({
         {
           centerX: 0,
           centerY: 0,
-          radius: (topologyBrushRadius - 1) * globals.TILE_SIZE,
+          radius: brushRadiusPixels,
           brushMode: currentTopologyBrushMode,
           valueMode: currentTopologyValueMode,
           value: topologyValue,
@@ -298,6 +237,7 @@ export function TopologyTiles({
           tileSize: globals.TILE_SIZE,
         },
         currentLayerEditMode,
+        currentDualEditMode,
       );
     });
   };
@@ -305,9 +245,10 @@ export function TopologyTiles({
   const applyBrushAt = (
     centerX: number,
     centerY: number,
+    stageScale: number,
     lineStart?: { x: number; y: number },
   ) => {
-    const radius = (topologyBrushRadius - 1) * globals.TILE_SIZE;
+    const radius = Math.max(1, topologyBrushRadius) / Math.max(1, stageScale);
     const pixelList = calculateBrushPixels({
       centerX,
       centerY,
@@ -321,10 +262,13 @@ export function TopologyTiles({
       lineStart,
       lineEnd: { x: centerX, y: centerY },
     });
-    setPixels(pixelList);
+    setPixels(pixelList, radius);
   };
 
-  const previewSize = (topologyBrushRadius - 1) * globals.TILE_SIZE;
+  const previewSize =
+    brushPreviewPoint === null
+      ? 0
+      : Math.max(1, topologyBrushRadius) / Math.max(1, brushPreviewPoint.scale);
   const showBrushPreview = isEditingTopology && brushPreviewPoint !== null;
 
   return (
@@ -338,35 +282,40 @@ export function TopologyTiles({
         onClick={(e) => {
           if (!isEditingTopology) return;
           const pos = e.target.getStage()?.getRelativePointerPosition();
+          const stageScale = e.target.getStage()?.scaleX() ?? 1;
           if (!pos) return;
 
           const centerX = Math.round(pos.x);
           const centerY = Math.round(pos.y);
-          applyBrushAt(centerX, centerY);
+          applyBrushAt(centerX, centerY, stageScale);
         }}
         onMouseDown={(e) => {
           if (!isEditingTopology) return;
-          const pos = e.target.getStage()?.getRelativePointerPosition();
+          const stage = e.target.getStage();
+          const pos = stage?.getRelativePointerPosition();
+          const stageScale = stage?.scaleX() ?? 1;
           if (!pos) return;
           const centerX = Math.round(pos.x);
           const centerY = Math.round(pos.y);
-          setBrushPreviewPoint({ x: centerX, y: centerY });
+          setBrushPreviewPoint({ x: centerX, y: centerY, scale: stageScale });
           setIsDragging(true);
           setLastBrushPoint({ x: centerX, y: centerY });
-          applyBrushAt(centerX, centerY);
+          applyBrushAt(centerX, centerY, stageScale);
         }}
         onMouseMove={(e) => {
-          const pos = e.target.getStage()?.getRelativePointerPosition();
+          const stage = e.target.getStage();
+          const pos = stage?.getRelativePointerPosition();
+          const stageScale = stage?.scaleX() ?? 1;
           if (!pos) return;
           const centerX = Math.round(pos.x);
           const centerY = Math.round(pos.y);
-          setBrushPreviewPoint({ x: centerX, y: centerY });
+          setBrushPreviewPoint({ x: centerX, y: centerY, scale: stageScale });
           if (!isEditingTopology || !isDragging) return;
           const lineStart =
             currentTopologyValueMode === TopologyValueMode.SET_VALUE
               ? undefined
               : lastBrushPoint ?? { x: centerX, y: centerY };
-          applyBrushAt(centerX, centerY, lineStart);
+          applyBrushAt(centerX, centerY, stageScale, lineStart);
           setLastBrushPoint({ x: centerX, y: centerY });
         }}
         onMouseUp={() => {
@@ -405,28 +354,6 @@ export function TopologyTiles({
             perfectDrawEnabled={false}
           />
         ))}
-      {showRoofOverlay && roofImgCanvas && (
-        <Image
-          x={0}
-          y={0}
-          opacity={opacity * 0.6}
-          width={(header.mapWidth + 1) * globals.TILE_SIZE}
-          height={(header.mapHeight + 1) * globals.TILE_SIZE}
-          image={roofImgCanvas}
-          listening={false}
-        />
-      )}
-      {accessibilityMaskCanvas && (
-        <Image
-          x={0}
-          y={0}
-          opacity={1}
-          width={(header.mapWidth + 1) * globals.TILE_SIZE}
-          height={(header.mapHeight + 1) * globals.TILE_SIZE}
-          image={accessibilityMaskCanvas}
-          listening={false}
-        />
-      )}
     </Layer>
   );
 }

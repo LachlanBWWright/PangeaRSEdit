@@ -2,21 +2,17 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
-  CurrentTopologyLayerEditMode,
   CurrentTopologyBrushMode,
   CurrentTopologyValueMode,
   TileViewMode,
   TileViews,
   TopologyBrushMode,
-  TopologyLayerEditMode,
   TopologyBrushRadius,
   TopologyOpacity,
   TopologyValue,
   TopologyValueMode,
   TileEditingEnabled,
   TileBrushType,
-  ShowRoofInTopology,
-  ShowRoofGapInTopology,
 } from "../../../data/tiles/tileAtoms";
 import { useAtom, useAtomValue } from "jotai";
 import {
@@ -63,15 +59,9 @@ export function TilesMenu({
     useAtom(TileEditingEnabled);
   const [selectedTileBrushType, setSelectedTileBrushType] =
     useAtom(TileBrushType);
-  const [showRoof, setShowRoof] = useAtom(ShowRoofInTopology);
-  const [showRoofGap, setShowRoofGap] = useAtom(ShowRoofGapInTopology);
-  const [layerEditMode, setLayerEditMode] = useAtom(CurrentTopologyLayerEditMode);
   const globals = useAtomValue(Globals);
 
   const header = headerData?.Hedr?.[1000]?.obj;
-  // Bugdom source uses Layr 1000 for floor and Layr 1001 for ceiling when gDoCeiling is enabled
-  // (games/bugdom/src/System/File.c reads Layr 1001 and YCrd 1001 for roof terrain).
-  const hasRoofLayer = globals.GAME_TYPE === Game.BUGDOM;
   const minY = header?.minY || 0;
   const maxY = header?.maxY || 0;
 
@@ -94,13 +84,6 @@ export function TilesMenu({
       setCanvasViewMode(CanvasView.TWO_D);
     }
   }, [tileView, setCanvasViewMode]);
-
-  useEffect(() => {
-    if (!hasRoofLayer) {
-      setShowRoof(false);
-      setShowRoofGap(false);
-    }
-  }, [hasRoofLayer, setShowRoof, setShowRoofGap]);
 
   const handleMinYChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newValue = parseFloat(e.target.value);
@@ -246,71 +229,6 @@ export function TilesMenu({
               setTopologyOpacity(parseFloat(e.target.value) || 1)
             }
           />
-
-          {/* Roof support controls (for games with YCrd 1001 like Bugdom 1) */}
-          {hasRoofLayer && (
-            <>
-              <div className="flex flex-row justify-center gap-2 items-center col-span-2 mt-2 p-2 bg-gray-800 rounded">
-                <p>Show Roof (YCrd 1001)</p>
-                <Switch
-                  checked={showRoof}
-                  onCheckedChange={setShowRoof}
-                />
-              </div>
-              {showRoof && (
-                <>
-                  <div className="flex flex-row justify-center gap-2 items-center col-span-2">
-                    <p>Show Roof/Floor Gap</p>
-                    <Switch
-                      checked={showRoofGap}
-                      onCheckedChange={setShowRoofGap}
-                    />
-                  </div>
-                  <p>Edit Target</p>
-                  <Select
-                    value={layerEditMode}
-                    onValueChange={(value) => {
-                      if (
-                        value === TopologyLayerEditMode.FLOOR ||
-                        value === TopologyLayerEditMode.ROOF ||
-                        value === TopologyLayerEditMode.MIDPOINT ||
-                        value === TopologyLayerEditMode.DIFFERENCE
-                      ) {
-                        setLayerEditMode(value);
-                      }
-                    }}
-                  >
-                    <SelectTrigger>
-                      {layerEditMode === TopologyLayerEditMode.FLOOR && "Floor Only"}
-                      {layerEditMode === TopologyLayerEditMode.ROOF && "Ceiling Only"}
-                      {layerEditMode === TopologyLayerEditMode.MIDPOINT && "Midpoint"}
-                      {layerEditMode === TopologyLayerEditMode.DIFFERENCE &&
-                        "± Difference"}
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value={TopologyLayerEditMode.FLOOR}>
-                        Floor Only
-                      </SelectItem>
-                      <SelectItem value={TopologyLayerEditMode.ROOF}>
-                        Ceiling Only
-                      </SelectItem>
-                      <SelectItem value={TopologyLayerEditMode.MIDPOINT}>
-                        Midpoint
-                      </SelectItem>
-                      <SelectItem value={TopologyLayerEditMode.DIFFERENCE}>
-                        ± Difference
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <p className="col-span-2 text-sm text-gray-400">
-                    Midpoint mode moves the floor and ceiling together. ±
-                    Difference mode edits ceiling clearance around the current
-                    midpoint.
-                  </p>
-                </>
-              )}
-            </>
-          )}
 
           <div className="flex flex-row justify-between gap-2 items-center col-span-2">
             <div className="flex items-center gap-2">

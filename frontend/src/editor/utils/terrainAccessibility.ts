@@ -28,19 +28,6 @@ export function getAccessibilityOverlayLabel(game: Game): string {
   }
 }
 
-export function getAccessibilityOverlayHelp(game: Game): string | null {
-  switch (game) {
-    case Game.BUGDOM:
-      return "For developers: tune BUGDOM_ACCESSIBILITY_MIN_GAP in this file to change the ceiling clearance threshold.";
-    case Game.NANOSAUR:
-      return "For developers: tune NANOSAUR_MAX_REACHABLE_HEIGHT in this file to change the Nanosaur 1 height limit.";
-    case Game.NANOSAUR_2:
-      return "For developers: tune NANOSAUR2_MAX_REACHABLE_HEIGHT in this file to change the Nanosaur 2 height limit.";
-    default:
-      return null;
-  }
-}
-
 function getAccessibilityMaskAlpha(
   inaccessible: boolean,
 ): [number, number, number, number] {
