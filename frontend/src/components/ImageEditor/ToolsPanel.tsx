@@ -205,7 +205,6 @@ export function ToolsPanel({
                       type="color"
                       defaultValue={color}
                       className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                      title="Hold/Right-click replacement not implemented, using hidden picker"
                       onChange={(e) => {
                         const input = e.target;
                         if (!(input instanceof HTMLInputElement)) return;

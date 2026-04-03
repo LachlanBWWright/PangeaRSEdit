@@ -48,6 +48,8 @@ export const RoofGeometry = forwardRef<
   const internalMeshRef = useRef<Mesh>(null);
   const mapTileSize = header?.tileSize ?? 1;
   const yScale = globals.TILE_INGAME_SIZE / Math.max(1, mapTileSize);
+  const shouldShowRoof =
+    showRoof || layerEditMode !== TopologyLayerEditMode.FLOOR;
 
   // Combine internal ref with forwarded ref
   useEffect(() => {
@@ -62,10 +64,9 @@ export const RoofGeometry = forwardRef<
 
   // Build roof geometry from YCrd 1001 (if present)
   const geometry = useMemo(() => {
-     const shouldShowRoof =
-       showRoof || layerEditMode !== TopologyLayerEditMode.FLOOR;
-     if (!shouldShowRoof || !terrainData.YCrd?.[1001]?.obj || !header)
-       return null;
+    if (!shouldShowRoof || !terrainData.YCrd?.[1001]?.obj || !header) {
+      return null;
+    }
 
     // PlaneGeometry: width, height, widthSegments, heightSegments
     const geom = new PlaneGeometry(
@@ -89,24 +90,18 @@ export const RoofGeometry = forwardRef<
     positionAttr.needsUpdate = true;
     return geom;
   }, [
-     showRoof,
-     layerEditMode,
-     numWide,
-     numHigh,
-     yScale,
-     globals.TILE_INGAME_SIZE,
-     header,
-     terrainData.YCrd,
-   ]);
+    shouldShowRoof,
+    numWide,
+    numHigh,
+    yScale,
+    globals.TILE_INGAME_SIZE,
+    header,
+    terrainData.YCrd,
+  ]);
 
-   if (
-     (!showRoof && layerEditMode === TopologyLayerEditMode.FLOOR) ||
-     !header ||
-     !geometry ||
-     !terrainData.YCrd?.[1001]
-   ) {
-     return null;
-   }
+  if (!shouldShowRoof || !header || !geometry || !terrainData.YCrd?.[1001]) {
+    return null;
+  }
 
   return (
     <mesh
