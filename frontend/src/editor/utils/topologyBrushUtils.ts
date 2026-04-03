@@ -217,10 +217,10 @@ function clampInt16(value: number): number {
   return Math.max(-32768, Math.min(32767, Math.round(value)));
 }
 
-function getPixelIndex(
+function getBrushTileCoordinates(
   pixel: PixelType,
   params: BrushParams,
-): number | null {
+): { xTile: number; yTile: number } | null {
   const xTile = Math.floor(pixel.x / params.tileSize);
   const yTile = Math.floor(pixel.y / params.tileSize);
 
@@ -233,8 +233,32 @@ function getPixelIndex(
     return null;
   }
 
-  const index = yTile * (params.header.mapWidth + 1) + xTile;
-  return index >= 0 ? index : null;
+  return { xTile, yTile };
+}
+
+function getPixelIndex(
+  pixel: PixelType,
+  params: BrushParams,
+): number | null {
+  const tileCoordinates = getBrushTileCoordinates(pixel, params);
+  if (!tileCoordinates) {
+    return null;
+  }
+
+  return tileCoordinates.yTile * (params.header.mapWidth + 1) + tileCoordinates.xTile;
+}
+
+function getCurrentRoofShape(
+  currentFloor: number,
+  currentRoof: number,
+): { midpoint: number; halfDifference: number } {
+  return {
+    midpoint: (currentFloor + currentRoof) / 2,
+    halfDifference: Math.max(
+      MIN_ROOF_FLOOR_DISTANCE / 2,
+      (currentRoof - currentFloor) / 2,
+    ),
+  };
 }
 
 export function applyTopologyBrushWithTarget(
@@ -302,11 +326,8 @@ export function applyTopologyBrushWithTarget(
       return;
     }
 
-    const currentMidpoint = (currentFloor + currentRoof) / 2;
-    const currentHalfDifference = Math.max(
-      MIN_ROOF_FLOOR_DISTANCE / 2,
-      (currentRoof - currentFloor) / 2,
-    );
+    const { midpoint: currentMidpoint, halfDifference: currentHalfDifference } =
+      getCurrentRoofShape(currentFloor, currentRoof);
 
     if (editMode === TopologyLayerEditMode.MIDPOINT) {
       const nextMidpoint = getUpdatedBrushValue(

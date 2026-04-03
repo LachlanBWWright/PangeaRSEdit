@@ -57,6 +57,12 @@ export function TerrainAccessibilityOverlay({
         const topRightIndex = topLeftIndex + 1;
         const bottomLeftIndex = (z + 1) * rowWidth + x;
         const bottomRightIndex = bottomLeftIndex + 1;
+        const vertexIndices = [
+          topLeftIndex,
+          topRightIndex,
+          bottomLeftIndex,
+          bottomRightIndex,
+        ];
 
         const topLeftFloor = floorHeights[topLeftIndex];
         const topRightFloor = floorHeights[topRightIndex];
@@ -71,27 +77,13 @@ export function TerrainAccessibilityOverlay({
           continue;
         }
 
-        const inaccessible =
+        const inaccessible = vertexIndices.some((vertexIndex) =>
           isTerrainVertexInaccessible(
             globals.GAME_TYPE,
-            topLeftFloor,
-            roofHeights?.[topLeftIndex],
-          ) ||
-          isTerrainVertexInaccessible(
-            globals.GAME_TYPE,
-            topRightFloor,
-            roofHeights?.[topRightIndex],
-          ) ||
-          isTerrainVertexInaccessible(
-            globals.GAME_TYPE,
-            bottomLeftFloor,
-            roofHeights?.[bottomLeftIndex],
-          ) ||
-          isTerrainVertexInaccessible(
-            globals.GAME_TYPE,
-            bottomRightFloor,
-            roofHeights?.[bottomRightIndex],
-          );
+            floorHeights[vertexIndex] ?? 0,
+            roofHeights?.[vertexIndex],
+          ),
+        );
 
         if (!inaccessible) {
           continue;
