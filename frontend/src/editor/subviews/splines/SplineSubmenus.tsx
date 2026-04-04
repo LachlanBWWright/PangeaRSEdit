@@ -5,7 +5,6 @@ import { SplineData } from "@/python/structSpecs/LevelTypes";
 import { useAtom, useAtomValue } from "jotai";
 import {
   TerrainItemTypeParams,
-  ItemType,
 } from "../../../data/items/ottoItemType";
 import { ParamTooltip } from "../items/ParamTooltip";
 import { getParamTooltip } from "../items/getParamTooltip";
@@ -116,6 +115,8 @@ export function EditSplineItemMenu({
   const currentSplineItemData = splineItemData.at(selectedSplineItem);
 
   if (currentSplineItemData === undefined) return <></>;
+  const currentSplineItemParams =
+    TerrainItemTypeParams[currentSplineItemData.type];
 
   return (
     <>
@@ -170,9 +171,7 @@ export function EditSplineItemMenu({
       <div className="grid grid-cols-[auto_1fr_auto_1fr] gap-2 items-center">
         <ParamTooltip
           label={<span>Flags</span>}
-          tooltip={
-            TerrainItemTypeParams[currentSplineItemData.type as ItemType].flags
-          }
+          tooltip={currentSplineItemParams?.flags ?? "Unknown"}
           codeSample={undefined}
           citationGame={citationGame ?? undefined}
         />
@@ -198,10 +197,7 @@ export function EditSplineItemMenu({
 
         {([0, 1, 2, 3] as const).map((i) => {
           const paramKey = `p${i}` as const;
-          const param =
-            TerrainItemTypeParams[currentSplineItemData.type as ItemType][
-              paramKey
-            ];
+          const param = currentSplineItemParams?.[paramKey] ?? "Unknown";
           const value = currentSplineItemData[paramKey];
           const setValue = (v: number) => {
             setSplineData((splineData) => {
@@ -226,7 +222,12 @@ export function EditSplineItemMenu({
               codeSample={
                 typeof param === "string" || !param || param.type !== "Integer"
                   ? undefined
-                  : param.codeSample
+                  : {
+                      code: param.defaultCitation.code,
+                      fileName: param.defaultCitation.fileName,
+                      lineNumber: param.defaultCitation.lineNumber,
+                      endLineNumber: param.defaultCitation.endLineNumber,
+                    }
               }
               citationGame={citationGame ?? undefined}
             />,

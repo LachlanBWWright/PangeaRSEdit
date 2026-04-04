@@ -1,4 +1,4 @@
-import { ItemParams } from "../items/itemParams";
+import { ItemParamsSource } from "../items/itemParams";
 
 export enum SplineItemType {
   Enemy_BoxerFly, // 3: ENEMY: BOXERFLY
@@ -31,7 +31,7 @@ export const splineItemTypeNames: Record<SplineItemType, string> = {
 };
 
 // Parameter descriptions for each spline item type
-export const bugdomSplineItemTypeParams: Record<SplineItemType, ItemParams> = {
+export const bugdomSplineItemTypeParams: Record<SplineItemType, ItemParamsSource> = {
   [SplineItemType.Enemy_BoxerFly]: {
     flags: "Spline item flags",
     p0: "Unused",
@@ -181,4 +181,4 @@ export const bugdomSplineItemTypeParams: Record<SplineItemType, ItemParams> = {
   },
 };
 
-export type BugdomSplineItemParams = ItemParams;
+export type BugdomSplineItemParams = ItemParamsSource;

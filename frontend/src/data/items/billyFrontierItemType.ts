@@ -1,4 +1,4 @@
-import { ItemParams } from "./itemParams";
+import { ItemParams, ItemParamsSource, defineItemParams } from "./itemParams";
 
 export enum ItemType {
   StartCoords, // My Start Coords
@@ -80,11 +80,12 @@ export const itemTypeNames: Record<ItemType, string> = {
   [ItemType.Peso]: "Peso",
 };
 
+type BillyFrontierItemParamsSource = ItemParamsSource;
 export type BillyFrontierItemParams = ItemParams;
 
-export const billyFrontierItemTypeParams: Record<
+const billyFrontierItemTypeParamsSource: Record<
   ItemType,
-  BillyFrontierItemParams
+  BillyFrontierItemParamsSource
 > = {
   [ItemType.StartCoords]: {
     flags: "Unknown",
@@ -595,3 +596,8 @@ export const billyFrontierItemTypeParams: Record<
     p3: "Unknown",
   },
 };
+
+export const billyFrontierItemTypeParams = defineItemParams(
+  "billyfrontier",
+  billyFrontierItemTypeParamsSource,
+);

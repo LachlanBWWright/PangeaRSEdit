@@ -1,4 +1,4 @@
-import { ItemParams } from "./itemParams";
+import { ItemParams, ItemParamsSource, defineItemParams } from "./itemParams";
 
 export enum ItemType {
   StartCoords, // My Start Coords
@@ -140,9 +140,10 @@ export const itemTypeNames: Record<ItemType, string> = {
   [ItemType.VikingSpline]: "VikingSpline",
 };
 
+type CroMagItemParamsSource = ItemParamsSource;
 export type CroMagItemParams = ItemParams;
 
-export const croMagItemTypeParams: Record<ItemType, CroMagItemParams> = {
+const croMagItemTypeParamsSource: Record<ItemType, CroMagItemParamsSource> = {
   [ItemType.StartCoords]: {
     flags: "Unknown",
     p0: {
@@ -803,3 +804,8 @@ export const croMagItemTypeParams: Record<ItemType, CroMagItemParams> = {
     p3: "Unknown",
   },
 };
+
+export const croMagItemTypeParams = defineItemParams(
+  "cromag",
+  croMagItemTypeParamsSource,
+);

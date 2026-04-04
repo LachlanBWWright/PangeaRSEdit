@@ -220,12 +220,12 @@ export async function verifyCitation(
   }
   
   // Calculate the end line (estimate based on code length)
-  const codeLineCount = citation.codeSample.code.split('\n').length;
-  const startLine = citation.codeSample.lineNumber;
+  const codeLineCount = citation.citation.code.split('\n').length;
+  const startLine = citation.citation.lineNumber;
   const endLine = startLine + codeLineCount + 5; // Add some buffer
   
   // Fetch the file
-  const fileResult = await cache.getGameFile(citation.game, citation.codeSample.fileName);
+  const fileResult = await cache.getGameFile(citation.game, citation.citation.fileName);
   
   if (fileResult.isErr()) {
     const error = fileResult.error;
@@ -233,7 +233,7 @@ export async function verifyCitation(
       return {
         citation,
         status: VerificationStatus.FILE_NOT_FOUND,
-        message: `File not found: ${citation.codeSample.fileName}`,
+        message: `File not found: ${citation.citation.fileName}`,
       };
     }
     return {
@@ -260,7 +260,7 @@ export async function verifyCitation(
   const actualCode = actualLines.join('\n');
   
   // Compare the code
-  const comparison = compareCode(citation.codeSample.code, actualCode);
+  const comparison = compareCode(citation.citation.code, actualCode);
   
   if (comparison.match) {
     return {
@@ -273,7 +273,7 @@ export async function verifyCitation(
   }
   
   // Code doesn't match - search the entire file
-  const foundLocation = findCodeInFile(citation.codeSample.code, fileLines);
+  const foundLocation = findCodeInFile(citation.citation.code, fileLines);
   
   if (foundLocation) {
     return {

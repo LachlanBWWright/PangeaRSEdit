@@ -40,6 +40,16 @@ export function Navigation() {
         </Button>
         <Button
           asChild
+          variant={location.pathname === "/sprite-viewer" ? "default" : "ghost"}
+          className="flex items-center gap-2"
+        >
+          <Link to="/sprite-viewer" className="text-white">
+            <Image className="w-4 h-4" />
+            <span>Sprite Editor</span>
+          </Link>
+        </Button>
+        <Button
+          asChild
           variant={
             location.pathname === "/download-levels" ? "default" : "ghost"
           }
@@ -52,18 +62,6 @@ export function Navigation() {
         </Button>
         {showExperimentalLinks && (
           <>
-            <Button
-              asChild
-              variant={
-                location.pathname === "/sprite-viewer" ? "default" : "ghost"
-              }
-              className="flex items-center gap-2"
-            >
-              <Link to="/sprite-viewer" className="text-white">
-                <Image className="w-4 h-4" />
-                <span>Sprite Viewer</span>
-              </Link>
-            </Button>
             <Button
               asChild
               variant={location.pathname === "/item-models" ? "default" : "ghost"}

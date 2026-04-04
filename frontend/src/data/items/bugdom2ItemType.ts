@@ -1,4 +1,4 @@
-import { ItemParams } from "./itemParams";
+import { ItemParams, ItemParamsSource, defineItemParams } from "./itemParams";
 
 export enum ItemType {
   StartCoords, // My Start Coords
@@ -178,9 +178,10 @@ export const itemTypeNames: Record<ItemType, string> = {
   [ItemType.GliderPart]: "Glider Part",
 };
 
+type Bugdom2ItemParamsSource = ItemParamsSource;
 export type Bugdom2ItemParams = ItemParams;
 
-const bugdom2DefaultParams: Bugdom2ItemParams = {
+const bugdom2DefaultParams: Bugdom2ItemParamsSource = {
   flags: "Unknown",
   p0: "Unknown",
   p1: "Unknown",
@@ -188,7 +189,7 @@ const bugdom2DefaultParams: Bugdom2ItemParams = {
   p3: "Unknown",
 };
 
-export const bugdom2ItemTypeParams: Record<ItemType, Bugdom2ItemParams> = {
+const bugdom2ItemTypeParamsSource: Record<ItemType, Bugdom2ItemParamsSource> = {
   [ItemType.StartCoords]: {
     flags: "Unknown",
     p0: {
@@ -1488,3 +1489,8 @@ export const bugdom2ItemTypeParams: Record<ItemType, Bugdom2ItemParams> = {
     p3: "Unknown",
   },
 };
+
+export const bugdom2ItemTypeParams = defineItemParams(
+  "bugdom2",
+  bugdom2ItemTypeParamsSource,
+);

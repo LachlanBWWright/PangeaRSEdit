@@ -1,4 +1,4 @@
-import { ItemParams } from "./itemParams";
+import { ItemParams, ItemParamsSource, defineItemParams } from "./itemParams";
 
 export enum ItemType {
   StartCoords, // My Start Coords
@@ -134,9 +134,10 @@ export const itemTypeNames: Record<ItemType, string> = {
   [ItemType.KingWaterPipe]: "King Water Pipe",
 };
 
+type BugdomItemParamsSource = ItemParamsSource;
 export type BugdomItemParams = ItemParams;
 
-export const bugdomItemTypeParams: Record<ItemType, BugdomItemParams> = {
+const bugdomItemTypeParamsSource: Record<ItemType, BugdomItemParamsSource> = {
   [ItemType.StartCoords]: {
     flags: "Unknown",
     p0: {
@@ -1040,3 +1041,8 @@ export const bugdomItemTypeParams: Record<ItemType, BugdomItemParams> = {
     p3: "Unknown",
   },
 };
+
+export const bugdomItemTypeParams = defineItemParams(
+  "bugdom",
+  bugdomItemTypeParamsSource,
+);

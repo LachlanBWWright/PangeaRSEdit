@@ -30,7 +30,7 @@ import {
 } from "@/data/items/billyFrontierItemType";
 import { itemTypeNames as mightyMikeItemTypeNames } from "@/data/items/mightyMikeItemType";
 import { getCitationPermalink, type SourceCitation } from "@/data/items/itemModelTypes";
-import type { CodeSample, ItemParams, ParamDescription } from "@/data/items/itemParams";
+import type { Citation, ItemParams, ParamDescription } from "@/data/items/itemParams";
 
 export type ParamStatus = "unknown" | "correct" | "incorrect";
 
@@ -148,7 +148,7 @@ const GAME_AUDIT_CONFIGS: readonly GameAuditConfig[] = [
   },
 ];
 
-function toParamCitation(sample: CodeSample): ParamCitationDetail {
+function toParamCitation(sample: Citation): ParamCitationDetail {
   return {
     fileName: sample.fileName,
     lineNumber: sample.lineNumber,
@@ -156,14 +156,16 @@ function toParamCitation(sample: CodeSample): ParamCitationDetail {
   };
 }
 
-function hasValidCodeSample(value: unknown): value is CodeSample {
+function hasValidCitation(value: unknown): value is Citation {
   if (typeof value !== "object" || value === null) {
     return false;
   }
+  const url = Reflect.get(value, "url");
   const fileName = Reflect.get(value, "fileName");
   const lineNumber = Reflect.get(value, "lineNumber");
   const code = Reflect.get(value, "code");
   return (
+    typeof url === "string" &&
     typeof fileName === "string" &&
     typeof lineNumber === "number" &&
     typeof code === "string"
@@ -178,12 +180,19 @@ function paramAuditDetail(param: ParamDescription | undefined): ParamAuditDetail
     return { summary: param, citations: [] };
   }
   if (param.type === "Integer") {
-    const citations = param.codeSample ? [toParamCitation(param.codeSample)] : [];
-    return { summary: param.description, citations };
+    return {
+      summary: param.description,
+      citations: [
+        toParamCitation(param.defaultCitation),
+        ...(param.additionalCitations ?? []).map((citation) =>
+          toParamCitation(citation),
+        ),
+      ],
+    };
   }
   const citations = param.flags
-    .map((flag) => flag.codeSample)
-    .filter(hasValidCodeSample)
+    .map((flag) => flag.defaultCitation)
+    .filter(hasValidCitation)
     .map((sample) => toParamCitation(sample));
   return { summary: `Bit Flags (${param.flags.length})`, citations };
 }

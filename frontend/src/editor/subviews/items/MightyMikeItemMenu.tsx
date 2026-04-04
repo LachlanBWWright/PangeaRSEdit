@@ -231,10 +231,6 @@ export const MightyMikeItemMenu = memo(function MightyMikeItemMenu({
                   param && typeof param !== "string" && param.type === "Integer"
                     ? param.description.split(" (")[0]
                     : `Parameter ${i}`;
-                const codeSample =
-                  param && typeof param !== "string" && param.type === "Integer"
-                    ? param.codeSample
-                    : undefined;
                 const setValue = (v: number) => {
                   setItemData((itemData) => {
                     if (selectedItem === undefined) return;
@@ -249,7 +245,16 @@ export const MightyMikeItemMenu = memo(function MightyMikeItemMenu({
                     key={`label-${i}`}
                     label={label}
                     tooltip={tooltip}
-                    codeSample={codeSample}
+                    defaultCitation={
+                      param && typeof param !== "string"
+                        ? param.defaultCitation
+                        : undefined
+                    }
+                    additionalCitations={
+                      param && typeof param !== "string"
+                        ? param.additionalCitations
+                        : undefined
+                    }
                   />,
                   <Input
                     key={`input-${i}`}

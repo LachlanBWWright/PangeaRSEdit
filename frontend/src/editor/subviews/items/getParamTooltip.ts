@@ -5,7 +5,7 @@ export function getParamTooltip(param: ParamDescription | string): string {
   if (typeof param === "string") return param;
   if (param && param.type === "Integer") {
     let t = param.description;
-    if (param.codeSample) t += `\nExample: ${param.codeSample.code}`;
+    t += `\nExample: ${param.defaultCitation.code}`;
     return t;
   }
   if (param && param.type === "Bit Flags" && Array.isArray(param.flags)) {
@@ -13,7 +13,7 @@ export function getParamTooltip(param: ParamDescription | string): string {
       .map(
         (f) =>
           `${f.index}: ${f.description}` +
-          (f.codeSample ? `\nExample: ${f.codeSample.code}` : ""),
+          (f.defaultCitation.code ? `\nExample: ${f.defaultCitation.code}` : ""),
       )
       .join("\n\n");
   }

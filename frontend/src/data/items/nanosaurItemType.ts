@@ -1,4 +1,4 @@
-import { ItemParams } from "./itemParams";
+import { ItemParams, ItemParamsSource, defineItemParams } from "./itemParams";
 
 export enum ItemType {
   StartCoords, // My Start Coords
@@ -46,9 +46,10 @@ export const itemTypeNames: Record<ItemType, string> = {
   [ItemType.SporePod]: "Spore pod",
 };
 
+type NanosaurItemParamsSource = ItemParamsSource;
 export type NanosaurItemParams = ItemParams;
 
-export const nanosaurItemTypeParams: Record<ItemType, NanosaurItemParams> = {
+const nanosaurItemTypeParamsSource: Record<ItemType, NanosaurItemParamsSource> = {
   [ItemType.StartCoords]: {
     flags: "Unknown",
     p0: {
@@ -385,3 +386,8 @@ export const nanosaurItemTypeParams: Record<ItemType, NanosaurItemParams> = {
     p3: "Unknown",
   },
 };
+
+export const nanosaurItemTypeParams = defineItemParams(
+  "nanosaur",
+  nanosaurItemTypeParamsSource,
+);

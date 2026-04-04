@@ -94,14 +94,14 @@ export function generateMarkdownReport(report: VerificationReport): string {
       const { citation, actualLineNumber, message } = result;
       const permalink = getGitHubPermalink(
         citation.game,
-        citation.codeSample.fileName,
-        actualLineNumber ?? citation.codeSample.lineNumber
+        citation.citation.fileName,
+        actualLineNumber ?? citation.citation.lineNumber
       );
       
       lines.push(`### ${citation.game} - ${citation.itemType} (${citation.parameterName})`);
       lines.push("");
-      lines.push(`- **File:** \`${citation.codeSample.fileName}\``);
-      lines.push(`- **Expected Line:** ${citation.codeSample.lineNumber}`);
+      lines.push(`- **File:** \`${citation.citation.fileName}\``);
+      lines.push(`- **Expected Line:** ${citation.citation.lineNumber}`);
       lines.push(`- **Actual Line:** ${actualLineNumber ?? "Unknown"}`);
       if (permalink) {
         lines.push(`- **Link:** [View on GitHub](${permalink})`);
@@ -126,8 +126,8 @@ export function generateMarkdownReport(report: VerificationReport): string {
       lines.push(`### ${citation.game} - ${citation.itemType} (${citation.parameterName})`);
       lines.push("");
       lines.push(`- **Status:** ${formatStatus(status)}`);
-      lines.push(`- **File:** \`${citation.codeSample.fileName}\``);
-      lines.push(`- **Line:** ${citation.codeSample.lineNumber}`);
+      lines.push(`- **File:** \`${citation.citation.fileName}\``);
+      lines.push(`- **Line:** ${citation.citation.lineNumber}`);
       if (similarity !== undefined) {
         lines.push(`- **Similarity:** ${(similarity * 100).toFixed(1)}%`);
       }
@@ -137,7 +137,7 @@ export function generateMarkdownReport(report: VerificationReport): string {
       lines.push("");
       lines.push("**Expected Code:**");
       lines.push("```c");
-      lines.push(citation.codeSample.code);
+      lines.push(citation.citation.code);
       lines.push("```");
       lines.push("");
       if (result.actualCode) {
@@ -217,7 +217,7 @@ export function generateTextReport(report: VerificationReport): string {
     for (const result of report.failures) {
       lines.push(`[${result.citation.game}] ${result.citation.itemType}.${result.citation.parameterName}`);
       lines.push(`  Status: ${formatStatus(result.status)}`);
-      lines.push(`  File: ${result.citation.codeSample.fileName}:${result.citation.codeSample.lineNumber}`);
+      lines.push(`  File: ${result.citation.citation.fileName}:${result.citation.citation.lineNumber}`);
       if (result.message) {
         lines.push(`  Message: ${result.message}`);
       }
@@ -260,8 +260,8 @@ function formatResultForJson(result: VerificationResult): object {
     itemTypeNumber: result.citation.itemTypeNumber,
     parameter: result.citation.parameterName,
     status: result.status,
-    file: result.citation.codeSample.fileName,
-    expectedLine: result.citation.codeSample.lineNumber,
+    file: result.citation.citation.fileName,
+    expectedLine: result.citation.citation.lineNumber,
     actualLine: result.actualLineNumber,
     similarity: result.similarity,
     message: result.message,
@@ -307,7 +307,7 @@ export function suggestFixes(failures: VerificationResult[]): CitationFix[] {
           suggestedLineNumber: actualLineNumber ?? null,
           suggestedCode: null,
           action: "update_line",
-          reason: `Code found at line ${actualLineNumber} instead of ${citation.codeSample.lineNumber}`,
+          reason: `Code found at line ${actualLineNumber} instead of ${citation.citation.lineNumber}`,
         };
         break;
         
@@ -319,7 +319,7 @@ export function suggestFixes(failures: VerificationResult[]): CitationFix[] {
             parameterName: citation.parameterName,
             sourceFile: citation.sourceFile,
           },
-          suggestedLineNumber: citation.codeSample.lineNumber,
+          suggestedLineNumber: citation.citation.lineNumber,
           suggestedCode: actualCode ?? null,
           action: "update_code",
           reason: "Code at specified line has changed",
@@ -337,7 +337,7 @@ export function suggestFixes(failures: VerificationResult[]): CitationFix[] {
           suggestedLineNumber: null,
           suggestedCode: null,
           action: "investigate",
-          reason: `File ${citation.codeSample.fileName} not found - may have been moved or renamed`,
+          reason: `File ${citation.citation.fileName} not found - may have been moved or renamed`,
         };
         break;
         
@@ -352,7 +352,7 @@ export function suggestFixes(failures: VerificationResult[]): CitationFix[] {
           suggestedLineNumber: null,
           suggestedCode: null,
           action: "investigate",
-          reason: `Line ${citation.codeSample.lineNumber} exceeds file length`,
+          reason: `Line ${citation.citation.lineNumber} exceeds file length`,
         };
         break;
         

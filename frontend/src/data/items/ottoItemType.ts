@@ -1,4 +1,4 @@
-import { ItemParams } from "./itemParams";
+import { ItemParams, ItemParamsSource, defineItemParams } from "./itemParams";
 
 export enum ItemType {
   StartCoords, // My Start Coords
@@ -224,9 +224,10 @@ export const itemTypeNames: Record<ItemType, string> = {
   [ItemType.BrainPort]: "Brain Port",
 };
 
+type OttoItemParamsSource = ItemParamsSource;
 export type OttoItemParams = ItemParams;
 
-const ottoDefaultParams: OttoItemParams = {
+const ottoDefaultParams: OttoItemParamsSource = {
   flags: "Unknown",
   p0: "Unknown",
   p1: "Unknown",
@@ -234,7 +235,7 @@ const ottoDefaultParams: OttoItemParams = {
   p3: "Unknown",
 };
 
-export const TerrainItemTypeParams: Record<ItemType, OttoItemParams> = {
+const terrainItemTypeParamsSource: Record<ItemType, OttoItemParamsSource> = {
   [ItemType.StartCoords]: {
     flags: "Used internally by terrain system",
     p0: {
@@ -1899,6 +1900,11 @@ export const TerrainItemTypeParams: Record<ItemType, OttoItemParams> = {
     p3: "Unused",
   },
 };
+
+export const TerrainItemTypeParams = defineItemParams(
+  "ottomatic",
+  terrainItemTypeParamsSource,
+);
 
 //Level restriction - Return 0 if available across levels, -1 if item isn't available (wasn't implemented in game)
 export function getLevelRestriction(itemType: ItemType): number {

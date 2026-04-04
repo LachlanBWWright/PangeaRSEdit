@@ -11,8 +11,8 @@ import {
   SafeItemTypes, 
   FilterToSafeItems 
 } from "../../../data/items/itemAtoms";
-import { TerrainItemTypeParams, ItemType } from "../../../data/items/ottoItemType";
-import type { ParamDescription, FlagDescription } from "../../../data/items/itemParams";
+import { TerrainItemTypeParams } from "../../../data/items/ottoItemType";
+import type { FlagDescription, ParamDescription } from "../../../data/items/itemParams";
 import { parseU16, parseU8 } from "../../../utils/numberParsers";
 import { memo, useCallback, useEffect, useMemo } from "react";
 import { Input } from "@/components/ui/input";
@@ -29,7 +29,6 @@ import { Globals } from "@/data/globals/globals";
 import { getItemTypes } from "@/data/items/getItemTypes";
 import { ParamTooltip } from "./ParamTooltip";
 import { Label } from "@/components/ui/label";
-import { getGameKeyFromName } from "@/validation/gameRepositories";
 
 export const ItemMenu = memo(function ItemMenu({
   itemData,
@@ -44,10 +43,13 @@ export const ItemMenu = memo(function ItemMenu({
   const [selectedItem, setSelectedItem] = useAtom(SelectedItem);
   const safeItemTypes = useAtomValue(SafeItemTypes);
   const [filterToSafe, setFilterToSafe] = useAtom(FilterToSafeItems);
-  const citationGame = getGameKeyFromName(globals.GAME_NAME);
 
   const selectedItemData =
     selectedItem !== undefined ? itemData.Itms[1000].obj[selectedItem] : null;
+  const selectedItemParams =
+    selectedItemData !== null && selectedItemData !== undefined
+      ? TerrainItemTypeParams[selectedItemData.type]
+      : undefined;
 
   const allItemValues = useMemo(() => {
     const result = getItemTypes(globals);
@@ -171,10 +173,8 @@ export const ItemMenu = memo(function ItemMenu({
                   <span className="text-baseline align-text-bottom">Flags</span>
                 }
                 tooltip={
-                  TerrainItemTypeParams[selectedItemData.type as ItemType].flags
+                  selectedItemParams?.flags ?? "Unknown"
                 }
-                codeSample={undefined}
-                citationGame={citationGame ?? undefined}
               />
               <Input
                 type="number"
@@ -194,8 +194,7 @@ export const ItemMenu = memo(function ItemMenu({
               {/* Param 0-3, refactored */}
               {([0, 1, 2, 3] as const).map((i) => {
                 const paramKey = `p${i}` as const;
-                const param =
-                  TerrainItemTypeParams[selectedItemData.type as ItemType][paramKey];
+                const param = selectedItemParams?.[paramKey] ?? "Unknown";
                 const value = selectedItemData[paramKey];
                 const setValue = (v: number) => {
                   setItemData((draft) => {
@@ -211,12 +210,16 @@ export const ItemMenu = memo(function ItemMenu({
                     key={`tooltip-${i}`}
                     label={<span>{`Parameter ${i}`}</span>}
                     tooltip={getParamTooltip(param)}
-                    codeSample={
-                      typeof param === "string" || !param || param.type !== "Integer"
+                    defaultCitation={
+                      typeof param === "string" || !param
                         ? undefined
-                        : param.codeSample
+                        : param.defaultCitation
                     }
-                    citationGame={citationGame ?? undefined}
+                    additionalCitations={
+                      typeof param === "string" || !param
+                        ? undefined
+                        : param.additionalCitations
+                    }
                   />,
                   param &&
                   typeof param !== "string" &&
@@ -349,7 +352,7 @@ function getParamTooltip(param: ParamDescription): string {
   if (typeof param === "string") return param;
   if (param && param.type === "Integer") {
     let t = param.description;
-    if (param.codeSample) t += `\nExample: ${param.codeSample.code}`;
+    t += `\nExample: ${param.defaultCitation.code}`;
     return t;
   }
   if (param && param.type === "Bit Flags" && Array.isArray(param.flags)) {
@@ -357,7 +360,7 @@ function getParamTooltip(param: ParamDescription): string {
       .map(
         (f) =>
           `${f.index}: ${f.description}` +
-          (f.codeSample ? `\nExample: ${f.codeSample.code}` : ""),
+          (f.defaultCitation.code ? `\nExample: ${f.defaultCitation.code}` : ""),
       )
       .join("\n\n");
   }

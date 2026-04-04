@@ -1,4 +1,4 @@
-import { ItemParams } from "../items/itemParams";
+import { ItemParamsSource } from "../items/itemParams";
 
 export enum SplineItemType {
   Enemy_Raptor = 15, // 15:  raptor enemy
@@ -19,7 +19,7 @@ export const splineItemTypeNames: Record<SplineItemType, string> = {
 };
 
 // Parameter descriptions for each spline item type
-export const nanosaur2SplineItemTypeParams: Record<SplineItemType, ItemParams> =
+export const nanosaur2SplineItemTypeParams: Record<SplineItemType, ItemParamsSource> =
   {
     [SplineItemType.Enemy_Raptor]: {
       flags: "Raptor enemy behavior flags",
@@ -94,4 +94,4 @@ export const nanosaur2SplineItemTypeParams: Record<SplineItemType, ItemParams> =
     },
   };
 
-export type Nanosaur2SplineItemParams = ItemParams;
+export type Nanosaur2SplineItemParams = ItemParamsSource;
