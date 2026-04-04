@@ -12,7 +12,11 @@ import { Show3DItemModels } from "@/data/canvasView/canvasViewAtoms";
 import { getTerrainHeightAtPoint } from "./fenceUtils/getTerrainHeightAtPoint";
 import { useItemModelCache } from "./hooks/useOttoItemModelCache";
 import { getGameMapper } from "@/data/items/mappers";
-import { getParamByIndex } from "@/data/items/standardParamTypes";
+import {
+  getParamByIndex,
+  calculateRotation,
+  isRotationParam,
+} from "@/data/items/standardParamTypes";
 import {
   getLiquidPatchStyle,
   getLiquidPatchDimensions,
@@ -108,13 +112,21 @@ const LoadingCube: React.FC<{
 
 /**
  * Individual item model renderer - clones the pre-cloned scene for each instance
+ * and applies a per-item rotation on top of the model-level rotationY baked in.
  */
 const ItemModel: React.FC<{
   position: [number, number, number];
   itemType: number;
   clonedScene: Group;
-}> = ({ position, clonedScene }) => {
-  const instanceScene = useMemo(() => clonedScene.clone(true), [clonedScene]);
+  extraRotationY?: number;
+}> = ({ position, clonedScene, extraRotationY }) => {
+  const instanceScene = useMemo(() => {
+    const clone = clonedScene.clone(true);
+    if (extraRotationY !== undefined && extraRotationY !== 0) {
+      clone.rotateY(extraRotationY);
+    }
+    return clone;
+  }, [clonedScene, extraRotationY]);
 
   return <primitive object={instanceScene} position={position} dispose={null} />;
 };
@@ -415,12 +427,25 @@ export const ItemGeometry: React.FC<ItemGeometryProps> = ({
           if (modelGltf && !hasError) {
             const clonedScene = clonedScenesByCacheKey.get(itemCacheKey);
             if (clonedScene) {
+              // Compute per-item rotation from rotationParam if defined
+              const params = { p0: item.p0, p1: item.p1, p2: item.p2, p3: item.p3 };
+              const mapping = mapper?.getMapping(item.type, undefined, params);
+              let extraRotationY = 0;
+              if (mapping?.rotationParam) {
+                const rp = mapping.rotationParam;
+                if (isRotationParam(rp.rotationType)) {
+                  const paramValue = getParamByIndex(params, rp.paramIndex);
+                  extraRotationY = calculateRotation(paramValue, rp.rotationType);
+                }
+              }
+
               return wrapWithDrag(
                 <ItemModel
                   key={`item-model-${idx}`}
                   position={position}
                   itemType={item.type}
                   clonedScene={clonedScene}
+                  extraRotationY={extraRotationY !== 0 ? extraRotationY : undefined}
                 />,
               );
             }

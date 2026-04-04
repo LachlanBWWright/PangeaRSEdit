@@ -1,11 +1,12 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
-import { Download, Maximize2 } from "lucide-react";
+import { Download, Maximize2, ZoomIn, ZoomOut, Paintbrush, Eraser, Pipette, Eye } from "lucide-react";
 import { toast } from "sonner";
 import {
   parseShapesFile,
   shapeFrameToCanvas,
   ShapesFile,
+  ShapeFrame,
 } from "@/parsers/mightyMikeShapesParser";
 import { parseTGAToCanvas } from "@/utils/tgaImageParser";
 import { parseTilesetFile, createTilesetGridPreview, rerenderTilesetWithPalette, RGBColor } from "@/parsers/mightyMikeTilesetParser";
@@ -20,8 +21,22 @@ import { createPalette, clonePalette, Palette } from "./SpriteViewer/utils/palet
 import { TilesetEditor } from "./SpriteViewer/components/TilesetEditor";
 import { MightyMikeTileset } from "@/parsers/mightyMikeTilesetParser";
 import { gMightyMikePalette } from "@/utils/mightyMikePalette";
+import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
 
 type FileType = "sprites" | "tga" | "tileset";
+type EditMode = "view" | "paint" | "erase" | "eyedropper";
+
+const CANVAS_PADDING = 40;
+
+interface SpriteRenderParams {
+  originX: number;
+  originY: number;
+  zoom: number;
+  spriteOffsetX: number;
+  spriteOffsetY: number;
+  spriteW: number;
+  spriteH: number;
+}
 
 interface SpriteData {
   type: "sprites";
@@ -86,6 +101,19 @@ export function SpriteViewer() {
   });
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  // Edit/pan state
+  const [editMode, setEditMode] = useState<EditMode>("view");
+  const [selectedPaletteColorIndex, setSelectedPaletteColorIndex] = useState<number>(0);
+  const [panOffset, setPanOffset] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
+  const [isPanning, setIsPanning] = useState(false);
+
+  // Refs for imperative pan/paint tracking
+  const isPanningRef = useRef(false);
+  const panStartRef = useRef<{ x: number; y: number } | null>(null);
+  const panOffsetStartRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
+  const isPaintingRef = useRef(false);
+  const renderParamsRef = useRef<SpriteRenderParams | null>(null);
 
   // ===== File Loading Handlers =====
 
@@ -449,12 +477,35 @@ export function SpriteViewer() {
     }
 
     const sourceCanvas = sourceCanvasResult.value;
-    const displayCanvas = canvasRef.current;
-    const scaledWidth = sourceCanvas.width * displayOptions.zoomLevel;
-    const scaledHeight = sourceCanvas.height * displayOptions.zoomLevel;
+    const zoom = displayOptions.zoomLevel;
+    const spriteW = frame.header.width;
+    const spriteH = frame.header.height;
+    const offsetX = frame.header.offsetX;
+    const offsetY = frame.header.offsetY;
 
-    displayCanvas.width = Math.max(scaledWidth + 20, 100);
-    displayCanvas.height = Math.max(scaledHeight + 20, 100);
+    // Compute canvas dimensions so the full sprite and origin are always visible
+    const leftSpace = offsetX + CANVAS_PADDING;
+    const topSpace = offsetY + CANVAS_PADDING;
+    const rightSpace = spriteW - offsetX + CANVAS_PADDING;
+    const bottomSpace = spriteH - offsetY + CANVAS_PADDING;
+
+    const displayCanvas = canvasRef.current;
+    displayCanvas.width = Math.max((leftSpace + rightSpace) * zoom, 100);
+    displayCanvas.height = Math.max((topSpace + bottomSpace) * zoom, 100);
+
+    // Origin (hotspot) sits at (originX, originY) in canvas pixels
+    const originX = leftSpace * zoom;
+    const originY = topSpace * zoom;
+
+    renderParamsRef.current = {
+      originX,
+      originY,
+      zoom,
+      spriteOffsetX: offsetX,
+      spriteOffsetY: offsetY,
+      spriteW,
+      spriteH,
+    };
 
     const ctx = displayCanvas.getContext("2d");
     if (!ctx) return;
@@ -467,7 +518,7 @@ export function SpriteViewer() {
     if (displayOptions.showGrid) {
       ctx.strokeStyle = "rgba(255, 255, 255, 0.1)";
       ctx.lineWidth = 1;
-      const gridSize = 10 * displayOptions.zoomLevel;
+      const gridSize = 10 * zoom;
       for (let x = 0; x < displayCanvas.width; x += gridSize) {
         ctx.beginPath();
         ctx.moveTo(x, 0);
@@ -482,23 +533,32 @@ export function SpriteViewer() {
       }
     }
 
-    // Sprite
-    const offsetX = 10 + frame.header.offsetX * displayOptions.zoomLevel;
-    const offsetY = 10 + frame.header.offsetY * displayOptions.zoomLevel;
+    // Sprite: pixel (0,0) at (originX - offsetX*zoom, originY - offsetY*zoom)
+    const spriteDrawX = originX - offsetX * zoom;
+    const spriteDrawY = originY - offsetY * zoom;
 
     ctx.imageSmoothingEnabled = false;
-    ctx.drawImage(sourceCanvas, offsetX, offsetY, scaledWidth, scaledHeight);
+    ctx.drawImage(sourceCanvas, spriteDrawX, spriteDrawY, spriteW * zoom, spriteH * zoom);
 
     // Bounds
     if (displayOptions.showBounds) {
       ctx.strokeStyle = "rgba(0, 255, 0, 0.5)";
       ctx.lineWidth = 2;
-      ctx.strokeRect(offsetX, offsetY, scaledWidth, scaledHeight);
+      ctx.strokeRect(spriteDrawX, spriteDrawY, spriteW * zoom, spriteH * zoom);
     }
 
-    // Origin marker
-    ctx.fillStyle = "rgba(255, 0, 0, 0.5)";
-    ctx.fillRect(10 - 2, 10 - 2, 4, 4);
+    // Red crosshair at origin (hotspot)
+    const crosshairSize = 10;
+    ctx.strokeStyle = "rgba(255, 0, 0, 0.8)";
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(originX - crosshairSize, originY);
+    ctx.lineTo(originX + crosshairSize, originY);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(originX, originY - crosshairSize);
+    ctx.lineTo(originX, originY + crosshairSize);
+    ctx.stroke();
   }, [loadedData, selectedShapeIndex, selectedFrameIndex, currentPalette.colors, displayOptions]);
 
   const renderTGAOrTileset = useCallback(() => {
@@ -547,6 +607,121 @@ export function SpriteViewer() {
       }
     }
   }, [loadedData, selectedShapeIndex, selectedFrameIndex, displayOptions, currentPalette, selectedTileIndex, renderSprites, renderTGAOrTileset]);
+
+  // ===== Pixel editing =====
+
+  const editPixelAtCanvasPos = useCallback((canvasX: number, canvasY: number) => {
+    if (!renderParamsRef.current) return;
+    if (loadedData?.type !== "sprites") return;
+
+    const { originX, originY, zoom, spriteOffsetX, spriteOffsetY, spriteW, spriteH } = renderParamsRef.current;
+    const spriteDrawX = originX - spriteOffsetX * zoom;
+    const spriteDrawY = originY - spriteOffsetY * zoom;
+
+    const pixelX = Math.floor((canvasX - spriteDrawX) / zoom);
+    const pixelY = Math.floor((canvasY - spriteDrawY) / zoom);
+
+    if (pixelX < 0 || pixelX >= spriteW || pixelY < 0 || pixelY >= spriteH) return;
+
+    const pixelIndex = pixelY * spriteW + pixelX;
+    const shape = loadedData.data.shapes[selectedShapeIndex];
+    if (!shape) return;
+    const frame = shape.frames[selectedFrameIndex];
+    if (!frame) return;
+
+    if (editMode === "eyedropper") {
+      const colorIndex = frame.pixels[pixelIndex];
+      if (colorIndex !== undefined) {
+        setSelectedPaletteColorIndex(colorIndex);
+        toast.success(`Picked color index ${colorIndex}`);
+      }
+      return;
+    }
+
+    const newColor = editMode === "erase" ? 0 : selectedPaletteColorIndex;
+    const newPixels = new Uint8Array(frame.pixels);
+    newPixels[pixelIndex] = newColor;
+
+    const newFrame: ShapeFrame = { ...frame, pixels: newPixels };
+    const newFrames = [...shape.frames];
+    newFrames[selectedFrameIndex] = newFrame;
+    const newShape = { ...shape, frames: newFrames };
+    const newShapes = [...loadedData.data.shapes];
+    newShapes[selectedShapeIndex] = newShape;
+
+    setLoadedData({
+      ...loadedData,
+      data: { ...loadedData.data, shapes: newShapes },
+    });
+  }, [loadedData, selectedShapeIndex, selectedFrameIndex, editMode, selectedPaletteColorIndex]);
+
+  const handleCanvasMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    if (editMode === "view") return;
+    if (e.button !== 0) return;
+    if (e.altKey) return;
+    isPaintingRef.current = true;
+    editPixelAtCanvasPos(e.nativeEvent.offsetX, e.nativeEvent.offsetY);
+  };
+
+  const handleCanvasMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    if (!isPaintingRef.current || editMode === "view" || editMode === "eyedropper") return;
+    editPixelAtCanvasPos(e.nativeEvent.offsetX, e.nativeEvent.offsetY);
+  };
+
+  const handleCanvasMouseUp = () => {
+    isPaintingRef.current = false;
+  };
+
+  // ===== Viewport pan / zoom handlers =====
+
+  const handleViewportMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (e.button === 1 || (e.button === 0 && e.altKey)) {
+      e.preventDefault();
+      isPanningRef.current = true;
+      setIsPanning(true);
+      panStartRef.current = { x: e.clientX, y: e.clientY };
+      panOffsetStartRef.current = { ...panOffset };
+    }
+  };
+
+  const handleViewportMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!isPanningRef.current || !panStartRef.current) return;
+    const dx = e.clientX - panStartRef.current.x;
+    const dy = e.clientY - panStartRef.current.y;
+    setPanOffset({
+      x: panOffsetStartRef.current.x + dx,
+      y: panOffsetStartRef.current.y + dy,
+    });
+  };
+
+  const handleViewportMouseUp = () => {
+    isPanningRef.current = false;
+    setIsPanning(false);
+    panStartRef.current = null;
+  };
+
+  const handleWheel = (e: React.WheelEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    const factor = e.deltaY < 0 ? 1.25 : 0.8;
+    setDisplayOptions((prev) => ({
+      ...prev,
+      zoomLevel: Math.min(16, Math.max(0.25, prev.zoomLevel * factor)),
+    }));
+  };
+
+  const handleZoomIn = () => {
+    setDisplayOptions((prev) => ({
+      ...prev,
+      zoomLevel: Math.min(16, prev.zoomLevel * 1.25),
+    }));
+  };
+
+  const handleZoomOut = () => {
+    setDisplayOptions((prev) => ({
+      ...prev,
+      zoomLevel: Math.max(0.25, prev.zoomLevel * 0.8),
+    }));
+  };
 
   // ===== Export =====
 
@@ -840,11 +1015,24 @@ export function SpriteViewer() {
       }
   };
 
+  const selectedColor = currentPalette.colors[selectedPaletteColorIndex];
+  const selectedColorStyle = selectedColor
+    ? `rgb(${selectedColor.r},${selectedColor.g},${selectedColor.b})`
+    : "black";
+
+  const viewportCursor = isPanning
+    ? "grabbing"
+    : editMode === "paint" || editMode === "eyedropper"
+      ? "crosshair"
+      : editMode === "erase"
+        ? "cell"
+        : "default";
+
   return (
-    <>
-      <div className="h-full flex gap-4 p-4 bg-gray-900 text-white">
-        {/* Left sidebar - Controls */}
-        <div className="flex flex-col w-96 space-y-4 px-2 overflow-y-auto">
+    <ResizablePanelGroup orientation="horizontal" className="h-full bg-gray-900 text-white">
+      {/* Left sidebar */}
+      <ResizablePanel defaultSize={25} minSize={15} maxSize={50}>
+        <div className="h-full flex flex-col space-y-4 px-2 py-4 overflow-y-auto">
           {/* File Upload Panel */}
           <FileUploadPanel
             selectedType={uploadFileType}
@@ -893,7 +1081,6 @@ export function SpriteViewer() {
                   palette={currentPalette}
                   onPaletteChange={(updated) => {
                     setCurrentPalette(updated);
-                    // Update in custom palettes list if it exists there
                     const idx = customPalettes.findIndex(
                       (p) => p.name === updated.name,
                     );
@@ -926,6 +1113,64 @@ export function SpriteViewer() {
               }}
               onFrameChange={setSelectedFrameIndex}
             />
+          )}
+
+          {/* Pixel edit mode (only for sprites) */}
+          {loadedData?.type === "sprites" && (
+            <div className="space-y-2">
+              <p className="text-xs text-gray-400 font-medium uppercase tracking-wide">Edit Mode</p>
+              <div className="flex flex-wrap gap-1">
+                <Button
+                  size="sm"
+                  variant={editMode === "view" ? "default" : "outline"}
+                  className="text-white"
+                  onClick={() => setEditMode("view")}
+                >
+                  <Eye className="w-3 h-3 mr-1" /> View
+                </Button>
+                <Button
+                  size="sm"
+                  variant={editMode === "paint" ? "default" : "outline"}
+                  className="text-white"
+                  onClick={() => setEditMode("paint")}
+                >
+                  <Paintbrush className="w-3 h-3 mr-1" /> Paint
+                </Button>
+                <Button
+                  size="sm"
+                  variant={editMode === "erase" ? "default" : "outline"}
+                  className="text-white"
+                  onClick={() => setEditMode("erase")}
+                >
+                  <Eraser className="w-3 h-3 mr-1" /> Erase
+                </Button>
+                <Button
+                  size="sm"
+                  variant={editMode === "eyedropper" ? "default" : "outline"}
+                  className="text-white"
+                  onClick={() => setEditMode("eyedropper")}
+                >
+                  <Pipette className="w-3 h-3 mr-1" /> Pick
+                </Button>
+              </div>
+              {(editMode === "paint" || editMode === "eyedropper") && (
+                <div className="flex items-center gap-2">
+                  <div
+                    className="w-6 h-6 rounded border border-gray-600 flex-shrink-0"
+                    style={{ backgroundColor: selectedColorStyle }}
+                  />
+                  <span className="text-xs text-gray-300 w-16">Index: {selectedPaletteColorIndex}</span>
+                  <input
+                    type="range"
+                    min={0}
+                    max={255}
+                    value={selectedPaletteColorIndex}
+                    onChange={(e) => setSelectedPaletteColorIndex(parseInt(e.target.value, 10))}
+                    className="flex-1"
+                  />
+                </div>
+              )}
+            </div>
           )}
 
           {/* Tileset Editor (only for tilesets) */}
@@ -1002,16 +1247,46 @@ export function SpriteViewer() {
             </div>
           )}
         </div>
+      </ResizablePanel>
 
-        {/* Main viewport - Content Display */}
-        <div className="flex-1 bg-gray-800 rounded-lg overflow-hidden min-h-0 flex flex-col">
+      <ResizableHandle withHandle />
+
+      {/* Main viewport */}
+      <ResizablePanel>
+        <div className="h-full relative bg-gray-800 rounded-r-lg overflow-hidden flex flex-col">
+          {/* Zoom overlay buttons */}
+          <div className="absolute top-2 right-2 z-10 flex flex-col gap-1">
+            <Button size="icon" variant="secondary" onClick={handleZoomIn} title="Zoom in">
+              <ZoomIn className="w-4 h-4" />
+            </Button>
+            <Button size="icon" variant="secondary" onClick={handleZoomOut} title="Zoom out">
+              <ZoomOut className="w-4 h-4" />
+            </Button>
+          </div>
+
           {loadedData ? (
-            <div className="flex-1 flex items-center justify-center overflow-auto p-4">
-              <canvas
-                ref={canvasRef}
-                className="max-w-full max-h-full"
-                style={{ imageRendering: "pixelated" }}
-              />
+            <div
+              className="flex-1 overflow-auto"
+              style={{ cursor: viewportCursor }}
+              onWheel={handleWheel}
+              onMouseDown={handleViewportMouseDown}
+              onMouseMove={handleViewportMouseMove}
+              onMouseUp={handleViewportMouseUp}
+              onMouseLeave={handleViewportMouseUp}
+            >
+              <div
+                className="flex items-center justify-center p-8 min-w-full min-h-full"
+                style={{ transform: `translate(${panOffset.x}px, ${panOffset.y}px)` }}
+              >
+                <canvas
+                  ref={canvasRef}
+                  style={{ imageRendering: "pixelated" }}
+                  onMouseDown={handleCanvasMouseDown}
+                  onMouseMove={handleCanvasMouseMove}
+                  onMouseUp={handleCanvasMouseUp}
+                  onMouseLeave={handleCanvasMouseUp}
+                />
+              </div>
             </div>
           ) : (
             <div className="flex items-center justify-center h-full text-gray-400">
@@ -1019,17 +1294,13 @@ export function SpriteViewer() {
                 <div className="w-24 h-24 mx-auto mb-4 rounded-full bg-gray-700 flex items-center justify-center">
                   <Maximize2 className="w-12 h-12" />
                 </div>
-                <h3 className="text-xl font-semibold mb-2">
-                  No Content Loaded
-                </h3>
-                <p className="text-sm">
-                  Load a file to view sprites, images, or tilesets
-                </p>
+                <h3 className="text-xl font-semibold mb-2">No Content Loaded</h3>
+                <p className="text-sm">Load a file to view sprites, images, or tilesets</p>
               </div>
             </div>
           )}
         </div>
-      </div>
-    </>
+      </ResizablePanel>
+    </ResizablePanelGroup>
   );
 }
