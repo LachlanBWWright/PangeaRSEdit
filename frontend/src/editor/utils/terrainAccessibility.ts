@@ -1,17 +1,15 @@
 import { Game } from "@/data/globals/globals";
 import type { StandardHeader } from "@/python/structSpecs/LevelTypes";
 
-export const BUGDOM_ACCESSIBILITY_MIN_GAP = 120;
-export const NANOSAUR_MAX_REACHABLE_HEIGHT = 900;
+export const BUGDOM_ACCESSIBILITY_MIN_GAP = 1;
+export const NANOSAUR_MAX_REACHABLE_HEIGHT = 233;
 export const NANOSAUR2_MAX_REACHABLE_HEIGHT = 1400;
 
 const ACCESSIBILITY_MASK_ALPHA = 150;
 
 export function supportsAccessibilityOverlay(game: Game): boolean {
   return (
-    game === Game.BUGDOM ||
-    game === Game.NANOSAUR ||
-    game === Game.NANOSAUR_2
+    game === Game.BUGDOM || game === Game.NANOSAUR || game === Game.NANOSAUR_2
   );
 }
 
@@ -39,9 +37,13 @@ export function isTerrainVertexInaccessible(
   floorHeight: number,
   roofHeight: number | undefined,
 ): boolean {
+  console.log("roofHeight", roofHeight, "floorHeight", floorHeight);
   switch (game) {
     case Game.BUGDOM:
-      return roofHeight !== undefined && roofHeight - floorHeight < BUGDOM_ACCESSIBILITY_MIN_GAP;
+      return (
+        roofHeight !== undefined &&
+        roofHeight - floorHeight < BUGDOM_ACCESSIBILITY_MIN_GAP
+      );
     case Game.NANOSAUR:
       return floorHeight > NANOSAUR_MAX_REACHABLE_HEIGHT;
     case Game.NANOSAUR_2:
@@ -78,7 +80,9 @@ export function hasAccessibleOverlayData(
   }
 
   if (game === Game.BUGDOM) {
-    return roofHeights !== undefined && roofHeights.length === floorHeights.length;
+    return (
+      roofHeights !== undefined && roofHeights.length === floorHeights.length
+    );
   }
 
   return supportsAccessibilityOverlay(game);
