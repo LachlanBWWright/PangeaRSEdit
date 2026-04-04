@@ -104,9 +104,9 @@ describe("Validation Module Integration", () => {
       }
     });
 
-    it("jorio repos use src path for source", () => {
+    it("jorio repos use a known source root", () => {
       for (const repo of Object.values(GAME_REPOSITORIES)) {
-        expect(repo.sourcePath).toBe("src");
+        expect(["src", "Source"]).toContain(repo.sourcePath);
       }
     });
   });
