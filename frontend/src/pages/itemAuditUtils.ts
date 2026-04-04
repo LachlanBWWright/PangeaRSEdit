@@ -179,9 +179,13 @@ function paramAuditDetail(param: ParamDescription | undefined): ParamAuditDetail
   if (param === "Unused" || param === "Unknown") {
     return { summary: param, citations: [] };
   }
-  if (param.type === "Integer") {
+  if (param.type === "Integer" || param.type === "Rotation" || param.type === "TypeSelector") {
     return {
-      summary: param.description,
+      summary: param.type === "Rotation"
+        ? `Rotation × ${param.multiplier} (${param.divisions}-way)`
+        : param.type === "TypeSelector"
+          ? `Type (${Object.values(param.options).join(", ")})`
+          : param.description,
       citations: [
         toParamCitation(param.defaultCitation),
         ...(param.additionalCitations ?? []).map((citation) =>

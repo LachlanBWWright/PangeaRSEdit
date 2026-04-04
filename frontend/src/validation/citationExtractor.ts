@@ -54,7 +54,7 @@ function isParamDescription(value: unknown): value is ParamDescription {
     return false;
   }
 
-  if (value.type === "Integer") {
+  if (value.type === "Integer" || value.type === "Rotation" || value.type === "TypeSelector") {
     return isCitation(value.defaultCitation);
   }
 
@@ -122,7 +122,7 @@ function extractParamCitations(param: ParamDescription): ParamCitation[] {
     return [];
   }
 
-  if (param.type === "Integer") {
+  if (param.type === "Integer" || param.type === "Rotation" || param.type === "TypeSelector") {
     return [
       param.defaultCitation,
       ...(param.additionalCitations ?? []),

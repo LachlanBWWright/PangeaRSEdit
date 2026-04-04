@@ -537,8 +537,10 @@ const terrainItemTypeParamsSource: Record<ItemType, OttoItemParamsSource> = {
   [ItemType.Barn]: {
     flags: "Auto-fade status bits",
     p0: {
-      type: "Integer",
+      type: "Rotation",
       description: "Rotation (0-3, multiplied by PI/2)",
+      divisions: 4,
+      multiplier: "PI/2",
       codeSample: {
         code: "gNewObjectDefinition.rot = itemPtr->parm[0] * (PI/2);",
         fileName: "Items/Items.c",
@@ -559,8 +561,10 @@ const terrainItemTypeParamsSource: Record<ItemType, OttoItemParamsSource> = {
   [ItemType.WoodenGate]: {
     flags: "Auto-fade status bits",
     p0: {
-      type: "Integer",
+      type: "Rotation",
       description: "Rotation (0=0°, 1=90°)",
+      divisions: 4,
+      multiplier: "PI/2",
       codeSample: {
         code: "if (itemPtr->parm[0] == 1)\n  gNewObjectDefinition.rot = PI/2;\nelse\n  gNewObjectDefinition.rot = 0;",
         fileName: "Items/Triggers.c",
@@ -625,8 +629,10 @@ const terrainItemTypeParamsSource: Record<ItemType, OttoItemParamsSource> = {
   [ItemType.MetalGate]: {
     flags: "Auto-fade status bits",
     p0: {
-      type: "Integer",
+      type: "Rotation",
       description: "Rotation (0=0°, 1=90°)",
+      divisions: 4,
+      multiplier: "PI/2",
       codeSample: {
         code: "if (itemPtr->parm[0] == 1)\n  gNewObjectDefinition.rot = PI/2;\nelse\n  gNewObjectDefinition.rot = 0;",
         fileName: "Items/Triggers.c",
@@ -640,9 +646,18 @@ const terrainItemTypeParamsSource: Record<ItemType, OttoItemParamsSource> = {
   [ItemType.FencePost]: {
     flags: "Auto-fade status bits",
     p0: {
-      type: "Integer",
-      description:
-        "Post type (0=Wood Farm, 1=Metal Farm, 2=Wood Jungle, 3=Crunch Apocalypse, 4=Brass Cloud, 5=Rock FireIce, 6=Ice FireIce, 7=Neuron Brain)",
+      type: "TypeSelector",
+      description: "Post type (0=Wood Farm, 1=Metal Farm, 2=Wood Jungle, 3=Crunch Apocalypse, 4=Brass Cloud, 5=Rock FireIce, 6=Ice FireIce, 7=Neuron Brain)",
+      options: {
+        0: "Wood Farm",
+        1: "Metal Farm",
+        2: "Wood Jungle",
+        3: "Crunch Apocalypse",
+        4: "Brass Cloud",
+        5: "Rock FireIce",
+        6: "Ice FireIce",
+        7: "Neuron Brain",
+      },
       codeSample: {
         code: "int type = itemPtr->parm[0]; // get post type",
         fileName: "Items/Items.c",
@@ -656,8 +671,10 @@ const terrainItemTypeParamsSource: Record<ItemType, OttoItemParamsSource> = {
   [ItemType.Windmill]: {
     flags: "Auto-fade status bits | Keep back faces | No texture wrap",
     p0: {
-      type: "Integer",
+      type: "Rotation",
       description: "Rotation (0=0°, 1=90°, 2=180°, 3=270°)",
+      divisions: 4,
+      multiplier: "PI/2",
       codeSample: {
         code: "gNewObjectDefinition.rot = r = (float)itemPtr->parm[0] * (PI/2);",
         fileName: "Items/Items.c",
@@ -693,8 +710,9 @@ const terrainItemTypeParamsSource: Record<ItemType, OttoItemParamsSource> = {
   [ItemType.Rock]: {
     flags: "Auto-fade status bits",
     p0: {
-      type: "Integer",
+      type: "TypeSelector",
       description: "Rock type (0=Small, 1=Large)",
+      options: { 0: "Small", 1: "Large" },
       codeSample: {
         code: "int type = itemPtr->parm[0]; // get rock type",
         fileName: "Items/Items.c",
@@ -876,8 +894,10 @@ const terrainItemTypeParamsSource: Record<ItemType, OttoItemParamsSource> = {
   [ItemType.JungleGate]: {
     flags: "Auto-fade status bits",
     p0: {
-      type: "Integer",
+      type: "Rotation",
       description: "Rotation (0-3, multiplied by PI/2)",
+      divisions: 4,
+      multiplier: "PI/2",
       codeSample: {
         code: "gNewObjectDefinition.rot = itemPtr->parm[0] * (PI/2);",
         fileName: "Items/Items.c",
@@ -891,8 +911,10 @@ const terrainItemTypeParamsSource: Record<ItemType, OttoItemParamsSource> = {
   [ItemType.CrunchDoor]: {
     flags: "Auto-fade status bits",
     p0: {
-      type: "Integer",
+      type: "Rotation",
       description: "Rotation (0-3, multiplied by PI/2)",
+      divisions: 4,
+      multiplier: "PI/2",
       codeSample: {
         code: "gNewObjectDefinition.rot = itemPtr->parm[0] * (PI/2);",
         fileName: "Items/Items.c",

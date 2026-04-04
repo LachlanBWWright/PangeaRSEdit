@@ -41,6 +41,25 @@ export type ParamDescriptionSource =
       type: "Bit Flags";
       flags: FlagDescriptionSource[];
     }
+  | {
+      /** Rotation parameter: value * (2π / divisions) = angle in radians */
+      type: "Rotation";
+      description: string;
+      /** Number of discrete rotation steps (e.g., 4 for 0/90/180/270°) */
+      divisions: number;
+      /** Human-readable multiplier string (e.g., "PI/2", "PI2/8") */
+      multiplier: string;
+      codeSample: CodeSample;
+      additionalCodeSamples?: CodeSample[];
+    }
+  | {
+      /** Parameter selects a discrete type/variant from a named set */
+      type: "TypeSelector";
+      description: string;
+      options: Record<number, string>;
+      codeSample: CodeSample;
+      additionalCodeSamples?: CodeSample[];
+    }
   | "Unused"
   | "Unknown";
 
@@ -54,6 +73,21 @@ export type ParamDescription =
   | {
       type: "Bit Flags";
       flags: FlagDescription[];
+      defaultCitation: Citation;
+      additionalCitations?: Citation[];
+    }
+  | {
+      type: "Rotation";
+      description: string;
+      divisions: number;
+      multiplier: string;
+      defaultCitation: Citation;
+      additionalCitations?: Citation[];
+    }
+  | {
+      type: "TypeSelector";
+      description: string;
+      options: Record<number, string>;
       defaultCitation: Citation;
       additionalCitations?: Citation[];
     }
@@ -126,6 +160,35 @@ function normalizeParamDescription(
     return {
       type: "Integer",
       description: param.description,
+      defaultCitation: toCitation(game, param.description, param.codeSample),
+      additionalCitations: toAdditionalCitations(
+        game,
+        param.description,
+        param.additionalCodeSamples,
+      ),
+    };
+  }
+
+  if (param.type === "Rotation") {
+    return {
+      type: "Rotation",
+      description: param.description,
+      divisions: param.divisions,
+      multiplier: param.multiplier,
+      defaultCitation: toCitation(game, param.description, param.codeSample),
+      additionalCitations: toAdditionalCitations(
+        game,
+        param.description,
+        param.additionalCodeSamples,
+      ),
+    };
+  }
+
+  if (param.type === "TypeSelector") {
+    return {
+      type: "TypeSelector",
+      description: param.description,
+      options: param.options,
       defaultCitation: toCitation(game, param.description, param.codeSample),
       additionalCitations: toAdditionalCitations(
         game,
