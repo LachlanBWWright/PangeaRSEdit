@@ -10,7 +10,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Plus } from "lucide-react";
-import { Palette, PREDEFINED_PALETTES } from "../utils/paletteUtils";
+import {
+  Palette,
+  PREDEFINED_PALETTE_OPTIONS,
+} from "../utils/paletteUtils";
 
 interface PaletteSelectorProps {
   palettes: Palette[];
@@ -25,13 +28,22 @@ export function PaletteSelector({
   onPaletteSelect,
   onCreateNew,
 }: PaletteSelectorProps) {
-  const predefined = Object.values(PREDEFINED_PALETTES);
-  const allPalettes = [...predefined, ...palettes];
+  const predefined = PREDEFINED_PALETTE_OPTIONS;
+  const selectedBuiltin = predefined.find(
+    (palette) => palette.palette.name === currentPalette.name,
+  );
+  const selectedValue = selectedBuiltin?.key ?? currentPalette.name;
 
   const handleValueChange = (name: string) => {
-    const found = allPalettes.find((p) => p.name === name);
-    if (found) {
-      onPaletteSelect(found);
+    const builtin = predefined.find((palette) => palette.key === name);
+    if (builtin) {
+      onPaletteSelect(builtin.palette);
+      return;
+    }
+
+    const custom = palettes.find((palette) => palette.name === name);
+    if (custom) {
+      onPaletteSelect(custom);
     }
   };
 
@@ -41,7 +53,7 @@ export function PaletteSelector({
         <CardTitle className="text-white text-sm">Palettes</CardTitle>
       </CardHeader>
       <CardContent className="space-y-2">
-        <Select value={currentPalette.name} onValueChange={handleValueChange}>
+        <Select value={selectedValue} onValueChange={handleValueChange}>
           <SelectTrigger className="w-full bg-gray-700 border-gray-600 text-white">
             <SelectValue placeholder="Select a palette" />
           </SelectTrigger>
@@ -50,11 +62,11 @@ export function PaletteSelector({
               <SelectLabel className="text-gray-400">Built-in</SelectLabel>
               {predefined.map((palette) => (
                 <SelectItem
-                  key={palette.name}
-                  value={palette.name}
+                  key={palette.key}
+                  value={palette.key}
                   className="text-white focus:bg-gray-600"
                 >
-                  {palette.name}
+                  {palette.label} ({palette.sourceFile})
                 </SelectItem>
               ))}
             </SelectGroup>

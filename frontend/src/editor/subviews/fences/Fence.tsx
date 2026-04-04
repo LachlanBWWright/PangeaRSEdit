@@ -8,6 +8,7 @@ import { useAtom, useAtomValue } from "jotai";
 import { memo, useCallback, useEffect, useState } from "react";
 import { Globals } from "@/data/globals/globals";
 import { getFenceImagePath } from "@/data/fences/getFenceImagePath";
+import { useFenceImageSource } from "@/data/fences/useFenceImageSource";
 
 const NUB_KEY_BASE = 1000;
 const MIN_NUBS = 2;
@@ -84,7 +85,8 @@ export const Fence = memo(
     const isSelected = fenceIdx === selectedFence;
     const color = isSelected ? "red" : getColour(fenceIdx);
     const imageSrc = fenceNubs ? getFenceImagePath(globals, fenceObj?.fenceType ?? 0) : null;
-    const fenceImage = useFenceImage(imageSrc || null);
+    const displayImageSrc = useFenceImageSource(imageSrc);
+    const fenceImage = useFenceImage(displayImageSrc);
 
     // Stable callbacks so FenceNub memo is not defeated on every preview update
     const handlePreviewNub = useCallback(

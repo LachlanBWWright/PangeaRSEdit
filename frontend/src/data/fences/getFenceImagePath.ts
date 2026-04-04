@@ -1,6 +1,11 @@
 import { Game, GlobalsInterface } from "../globals/globals";
 import { FenceType as Nanosaur2FenceType } from "./nanosaur2FenceType";
 
+function withBaseUrl(path: string): string {
+  const base = (import.meta.env?.BASE_URL as string | undefined) ?? "/";
+  return `${base}${path.replace(/^\/+/, "")}`;
+}
+
 /**
  * Gets the asset path for a fence image based on game type and fence type
  */
@@ -10,18 +15,35 @@ export function getFenceImagePath(
 ): string {
   switch (globals.GAME_TYPE) {
     case Game.OTTO_MATIC:
-      return `assets/ottoMatic/fences/fence${String(fenceType).padStart(
-        3,
-        "0",
-      )}.png`;
+      return withBaseUrl(
+        `assets/ottoMatic/fences/fence${String(fenceType).padStart(3, "0")}.png`,
+      );
 
     case Game.BUGDOM:
-      return `assets/bugdom/fences/${2000 + fenceType}.jpg`;
+      return withBaseUrl(`assets/bugdom/fences/${2000 + fenceType}.jpg`);
 
     case Game.BUGDOM_2: {
-      // Bugdom 1 has 9 fence textures (2000-2008), reuse them for Bugdom 2.
-      const fallbackIndex = fenceType % 9;
-      return `assets/bugdom/fences/${2000 + fallbackIndex}.jpg`;
+      // Bugdom 2 fence thumbnails come from the ported sprite series in the
+      // Bugdom 2 data tree, not from Bugdom 1's fence JPGs.
+      const bugdom2FenceImages = [
+        "games/pangea-ports/games/Bugdom2-Android/Data/Sprites/Global/012.tga",
+        "games/pangea-ports/games/Bugdom2-Android/Data/Sprites/Level1_Garden/004.tga",
+        "games/pangea-ports/games/Bugdom2-Android/Data/Sprites/Level3_DogHair/002.tga",
+        "games/pangea-ports/games/Bugdom2-Android/Data/Sprites/Global/013.tga",
+        "games/pangea-ports/games/Bugdom2-Android/Data/Sprites/Level3_DogHair/003.tga",
+        "games/pangea-ports/games/Bugdom2-Android/Data/Sprites/Level3_DogHair/004.tga",
+        "games/pangea-ports/games/Bugdom2-Android/Data/Sprites/Level5_Playroom/002.tga",
+        "games/pangea-ports/games/Bugdom2-Android/Data/Sprites/Level5_Playroom/003.tga",
+        "games/pangea-ports/games/Bugdom2-Android/Data/Sprites/Level9_Balsa/001.tga",
+        "games/pangea-ports/games/Bugdom2-Android/Data/Sprites/Level6_Closet/001.tga",
+        "games/pangea-ports/games/Bugdom2-Android/Data/Sprites/Level6_Closet/002.tga",
+        "games/pangea-ports/games/Bugdom2-Android/Data/Sprites/Level6_Closet/003.tga",
+        "games/pangea-ports/games/Bugdom2-Android/Data/Sprites/Level6_Closet/004.tga",
+        "games/pangea-ports/games/Bugdom2-Android/Data/Sprites/Level10_Park/000.tga",
+        "games/pangea-ports/games/Bugdom2-Android/Data/Sprites/Level8_Garbage/000.tga",
+        "games/pangea-ports/games/Bugdom2-Android/Data/Sprites/Level8_Garbage/001.tga",
+      ];
+      return withBaseUrl(bugdom2FenceImages[fenceType] ?? bugdom2FenceImages[0]!);
     }
 
     case Game.BILLY_FRONTIER: {
@@ -43,7 +65,9 @@ export function getFenceImagePath(
         "global007.png", // SWAMPTREE
         "global002.png", // PICKETFENCE
       ];
-      return `assets/billyFrontier/fences/${billyFiles[fenceType] || "global003.png"}`;
+      return withBaseUrl(
+        `assets/billyFrontier/fences/${billyFiles[fenceType] || "global003.png"}`,
+      );
     }
 
     case Game.CRO_MAG: {
@@ -77,22 +101,24 @@ export function getFenceImagePath(
         "chinadesign.png",
         "viking.png",
       ];
-      return fenceType < croMagFiles.length
-        ? `assets/croMag/fences/${croMagFiles[fenceType]}`
-        : `assets/croMag/fences/desertskin.png`; // fallback
+      return withBaseUrl(
+        fenceType < croMagFiles.length
+          ? `assets/croMag/fences/${croMagFiles[fenceType]}`
+          : `assets/croMag/fences/desertskin.png`,
+      ); // fallback
     }
 
     case Game.NANOSAUR_2: {
       switch (fenceType) {
         case Nanosaur2FenceType.LEVEL_1_PINETREE:
-          return "assets/nanosaur2/fences/pinefence.jpg";
+          return withBaseUrl("assets/nanosaur2/fences/pinefence.jpg");
         case Nanosaur2FenceType.LEVEL_2_DUSTDEVIL:
-          return "assets/nanosaur2/fences/dustdevil.jpg";
+          return withBaseUrl("assets/nanosaur2/fences/dustdevil.jpg");
         case Nanosaur2FenceType.LEVEL_1_BLOCKENEMY:
         case Nanosaur2FenceType.LEVEL_2_BLOCKENEMY:
         case Nanosaur2FenceType.LEVEL_3_BLOCKENEMY:
         default:
-          return "assets/nanosaur2/fences/blockenemy.png";
+          return withBaseUrl("assets/nanosaur2/fences/blockenemy.png");
       }
     }
 

@@ -15,6 +15,32 @@ import { Globals } from "@/data/globals/globals";
 import { getFenceName } from "@/data/fences/getFenceNames";
 import { getFenceTypes } from "@/data/fences/getFenceTypes";
 import { getFenceImagePath } from "@/data/fences/getFenceImagePath";
+import { useFenceImageSource } from "@/data/fences/useFenceImageSource";
+
+function FenceThumbnail({
+  src,
+  alt,
+  className,
+}: {
+  src: string;
+  alt: string;
+  className: string;
+}) {
+  const resolvedSrc = useFenceImageSource(src);
+
+  if (!resolvedSrc) return null;
+
+  return (
+    <img
+      src={resolvedSrc}
+      alt={alt}
+      className={className}
+      onError={(e) => {
+        e.currentTarget.style.display = "none";
+      }}
+    />
+  );
+}
 
 const NUB_KEY_BASE = 1000;
 /** Fences must keep at least this many nubs so they remain valid line segments. */
@@ -46,6 +72,7 @@ export const FenceMenu = memo(function FenceMenu({
     fenceDataObj && fenceDataObj !== undefined
       ? getFenceImagePath(globals, fenceDataObj.fenceType)
       : null;
+  const fencePreviewImageSrc = useFenceImageSource(fencePreviewPath);
 
   const numNubs = fenceDataObj?.numNubs ?? 0;
   const canRemoveNub = selectedFence !== undefined && numNubs > MIN_NUBS;
@@ -121,11 +148,10 @@ export const FenceMenu = memo(function FenceMenu({
                     >
                       <span className="flex items-center gap-2">
                         {imgPath && (
-                          <img
+                          <FenceThumbnail
                             src={imgPath}
                             alt=""
                             className="h-4 w-6 object-cover rounded-sm flex-shrink-0"
-                            onError={(e) => { e.currentTarget.style.display = "none"; }}
                           />
                         )}
                         {getFenceName(globals, key)}
@@ -245,14 +271,16 @@ export const FenceMenu = memo(function FenceMenu({
         {/* Right column: fence type preview image */}
         {fencePreviewPath && (
           <div className="border border-gray-600 rounded bg-gray-800 p-2 flex items-center justify-center w-40 self-start">
-            <img
-              src={fencePreviewPath}
-              alt={fenceDataObj ? getFenceName(globals, fenceDataObj.fenceType) : ""}
-              className="max-h-36 max-w-full object-contain"
-              onError={(e) => {
-                e.currentTarget.style.display = "none";
-              }}
-            />
+            {fencePreviewImageSrc ? (
+              <img
+                src={fencePreviewImageSrc}
+                alt={fenceDataObj ? getFenceName(globals, fenceDataObj.fenceType) : ""}
+                className="max-h-36 max-w-full object-contain"
+                onError={(e) => {
+                  e.currentTarget.style.display = "none";
+                }}
+              />
+            ) : null}
           </div>
         )}
       </div>

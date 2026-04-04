@@ -14,7 +14,7 @@ import {
   AtomicLevelData,
   isLevelDataLike,
 } from "../../data/utils/levelDataUtils";
-import { extractTGAPalette } from "../../utils/tgaParser";
+import { extractTGAPaletteRaw } from "../../utils/tgaParser";
 import { gMightyMikePalette } from "../../utils/mightyMikePalette";
 import { clearItemImageCache } from "../../utils/mightyMikeShapeImageLoader";
 import { MIGHTY_MIKE_SCENES } from "@/data/game/gameAtoms";
@@ -103,7 +103,7 @@ async function loadBorderPalette(
   }
 
   const tgaBuffer = bufferResult.value;
-  const paletteResult = extractTGAPalette(tgaBuffer);
+  const paletteResult = extractTGAPaletteRaw(tgaBuffer);
 
   if (!paletteResult) {
     return null;

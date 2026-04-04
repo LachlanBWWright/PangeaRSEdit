@@ -16,6 +16,13 @@ export interface Palette {
   colors: PaletteColor[];
 }
 
+export interface PredefinedPaletteOption {
+  key: string;
+  label: string;
+  sourceFile: string;
+  palette: Palette;
+}
+
 /**
  * Create a new palette with default name
  */
@@ -111,6 +118,39 @@ export const PREDEFINED_PALETTES: Record<string, Palette> = {
   fairy: createPalette("Fairy"),
   jurassic: createPalette("Jurassic"),
 };
+
+export const PREDEFINED_PALETTE_OPTIONS: PredefinedPaletteOption[] = [
+  {
+    key: "candy",
+    label: "Candy",
+    sourceFile: "candyscene.tga",
+    palette: PREDEFINED_PALETTES.candy!,
+  },
+  {
+    key: "bargain",
+    label: "Bargain",
+    sourceFile: "bargainscene.tga",
+    palette: PREDEFINED_PALETTES.bargain!,
+  },
+  {
+    key: "clown",
+    label: "Clown",
+    sourceFile: "clownscene.tga",
+    palette: PREDEFINED_PALETTES.clown!,
+  },
+  {
+    key: "fairy",
+    label: "Fairy",
+    sourceFile: "fairyscene.tga",
+    palette: PREDEFINED_PALETTES.fairy!,
+  },
+  {
+    key: "jurassic",
+    label: "Jurassic",
+    sourceFile: "dinoscene.tga",
+    palette: PREDEFINED_PALETTES.jurassic!,
+  },
+];
 
 /**
  * Serialize palette to JSON

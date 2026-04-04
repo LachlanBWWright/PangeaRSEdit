@@ -9,6 +9,7 @@ import {
   ShapeFrame,
 } from "@/parsers/mightyMikeShapesParser";
 import { parseTGAToCanvas } from "@/utils/tgaImageParser";
+import { extractTGAPaletteRaw } from "@/utils/tgaParser";
 import { parseTilesetFile, createTilesetGridPreview, rerenderTilesetWithPalette, RGBColor } from "@/parsers/mightyMikeTilesetParser";
 import { isErr, fromPromise } from "@/types/result";
 import { FileUploadPanel } from "./SpriteViewer/components/FileUploadPanel";
@@ -115,6 +116,35 @@ export function SpriteViewer() {
   const isPaintingRef = useRef(false);
   const renderParamsRef = useRef<SpriteRenderParams | null>(null);
 
+  const loadBorderPalette = useCallback(async () => {
+    const url = "assets/mightyMike/terrain/border.tga";
+    const fetchResult = await fromPromise(fetch(url));
+    if (fetchResult.isErr()) {
+      console.error("Error loading border palette:", fetchResult.error);
+      return null;
+    }
+
+    const response = fetchResult.value;
+    if (!response.ok) {
+      console.error(`Failed to load border palette: ${response.statusText}`);
+      return null;
+    }
+
+    const bufferResult = await fromPromise(response.arrayBuffer());
+    if (bufferResult.isErr()) {
+      console.error("Error reading border palette:", bufferResult.error);
+      return null;
+    }
+
+    const paletteResult = extractTGAPaletteRaw(bufferResult.value);
+    if (!paletteResult) {
+      console.error("Invalid border palette format");
+      return null;
+    }
+
+    return new Uint8Array(paletteResult.colors);
+  }, [currentPalette.colors]);
+
   // ===== File Loading Handlers =====
 
   const handleCustomFileUpload = async (file: File, fileType: FileType) => {
@@ -157,6 +187,23 @@ export function SpriteViewer() {
       });
       setSelectedShapeIndex(0);
       setSelectedFrameIndex(0);
+      const borderPaletteRGBA = await loadBorderPalette();
+      if (borderPaletteRGBA) {
+        gMightyMikePalette.loadPaletteFromRGBA(borderPaletteRGBA);
+        const loadedPalette = createPalette("Border Palette");
+        const paletteColors: typeof currentPalette.colors = [];
+        const correctedRGBA = gMightyMikePalette.getPaletteAsRGBA();
+        for (let i = 0; i < 256; i++) {
+          const offset = i * 4;
+          paletteColors.push({
+            r: correctedRGBA[offset] ?? 0,
+            g: correctedRGBA[offset + 1] ?? 0,
+            b: correctedRGBA[offset + 2] ?? 0,
+          });
+        }
+        loadedPalette.colors = paletteColors;
+        setCurrentPalette(loadedPalette);
+      }
       toast.success(`Loaded: ${result.value.shapes.length} shapes`);
     } else if (fileType === "tga") {
       const result = parseTGAToCanvas(buffer);
@@ -222,6 +269,23 @@ export function SpriteViewer() {
     });
     setSelectedShapeIndex(0);
     setSelectedFrameIndex(0);
+    const borderPaletteRGBA = await loadBorderPalette();
+    if (borderPaletteRGBA) {
+      gMightyMikePalette.loadPaletteFromRGBA(borderPaletteRGBA);
+      const loadedPalette = createPalette("Border Palette");
+      const paletteColors: typeof currentPalette.colors = [];
+      const correctedRGBA = gMightyMikePalette.getPaletteAsRGBA();
+      for (let i = 0; i < 256; i++) {
+        const offset = i * 4;
+        paletteColors.push({
+          r: correctedRGBA[offset] ?? 0,
+          g: correctedRGBA[offset + 1] ?? 0,
+          b: correctedRGBA[offset + 2] ?? 0,
+        });
+      }
+      loadedPalette.colors = paletteColors;
+      setCurrentPalette(loadedPalette);
+    }
     toast.success(`Loaded ${filename}: ${result.value.shapes.length} shapes`);
     setLoading(false);
   };
@@ -1029,10 +1093,11 @@ export function SpriteViewer() {
         : "default";
 
   return (
-    <ResizablePanelGroup orientation="horizontal" className="h-full bg-gray-900 text-white">
-      {/* Left sidebar */}
-      <ResizablePanel defaultSize={25} minSize={15} maxSize={50}>
-        <div className="h-full flex flex-col space-y-4 px-2 py-4 overflow-y-auto">
+    <div className="h-full overflow-hidden p-4 bg-gray-900 text-white">
+      <ResizablePanelGroup orientation="horizontal" className="h-full w-full min-w-0">
+        {/* Left sidebar */}
+        <ResizablePanel defaultSize={28} minSize={18} className="min-h-0 min-w-0 pr-3">
+          <div className="h-full flex flex-col space-y-4 px-2 py-4 overflow-y-auto overflow-x-hidden">
           {/* File Upload Panel */}
           <FileUploadPanel
             selectedType={uploadFileType}
@@ -1247,13 +1312,13 @@ export function SpriteViewer() {
             </div>
           )}
         </div>
-      </ResizablePanel>
+        </ResizablePanel>
 
-      <ResizableHandle withHandle />
+        <ResizableHandle withHandle />
 
-      {/* Main viewport */}
-      <ResizablePanel>
-        <div className="h-full relative bg-gray-800 rounded-r-lg overflow-hidden flex flex-col">
+        {/* Main viewport */}
+        <ResizablePanel defaultSize={72} minSize={35} className="min-h-0">
+          <div className="h-full relative bg-gray-800 rounded-lg overflow-hidden flex flex-col">
           {/* Zoom overlay buttons */}
           <div className="absolute top-2 right-2 z-10 flex flex-col gap-1">
             <Button size="icon" variant="secondary" onClick={handleZoomIn} title="Zoom in">
@@ -1299,8 +1364,9 @@ export function SpriteViewer() {
               </div>
             </div>
           )}
-        </div>
-      </ResizablePanel>
-    </ResizablePanelGroup>
+          </div>
+        </ResizablePanel>
+      </ResizablePanelGroup>
+    </div>
   );
 }
