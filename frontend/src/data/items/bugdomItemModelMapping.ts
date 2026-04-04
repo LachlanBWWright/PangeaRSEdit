@@ -14,6 +14,9 @@
  * - /skeletons/*.3dmf - Character skeletons
  */
 
+import type { RotationParam } from "./standardParamTypes";
+import { ROTATION_4_WAY } from "./standardParamTypes";
+
 /**
  * Describes how to load and render a 3D model for a Bugdom item type
  */
@@ -38,6 +41,12 @@ export interface BugdomItemModelMapping {
 
   /** Y-axis rotation offset in radians (default: 0) */
   rotationY?: number;
+
+  /** Which item param controls Y-axis rotation */
+  rotationParam?: {
+    paramIndex: 0 | 1 | 2 | 3;
+    rotationType: RotationParam;
+  };
 }
 
 /**
@@ -92,7 +101,7 @@ export const BUGDOM_ITEM_MODEL_MAPPINGS: Record<
   26: { modelFile: "BeeHive_Models.3dmf", modelPath: "models", modelIndex: 0 }, // Honeycomb platform
   28: { modelFile: "Night_Models.3dmf", modelPath: "models", modelIndex: 0 }, // Firecracker
   32: { modelFile: "Global_Models1.3dmf", modelPath: "models", modelIndex: 1 }, // Checkpoint
-  39: { modelFile: "Forest_Models.3dmf", modelPath: "models", modelIndex: 0 }, // Exit Log
+  39: { modelFile: "Forest_Models.3dmf", modelPath: "models", modelIndex: 0, rotationParam: { paramIndex: 0, rotationType: ROTATION_4_WAY } }, // Exit Log
   41: { modelFile: "Forest_Models.3dmf", modelPath: "models", modelIndex: 1 }, // Thorn Bush
   50: { modelFile: "Forest_Models.3dmf", modelPath: "models", modelIndex: 2 }, // Rock Ledge
   51: { modelFile: "Forest_Models.3dmf", modelPath: "models", modelIndex: 3 }, // Stump

@@ -43,6 +43,7 @@ function convertToUniversal(mapping: Bugdom2ItemModelMapping): UniversalItemMode
     scaleY: mapping.scaleY,
     rotationY: mapping.rotationY,
     positionOffset: mapping.positionOffset,
+    rotationParam: mapping.rotationParam,
     citations: mapping.citations,
   };
 }

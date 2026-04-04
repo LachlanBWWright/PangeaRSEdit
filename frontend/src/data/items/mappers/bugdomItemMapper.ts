@@ -40,6 +40,7 @@ export class BugdomItemMapper implements GameItemModelMapper {
       skeletonFile: mapping.skeletonFile,
       scale: mapping.scale,
       rotationY: mapping.rotationY,
+      rotationParam: mapping.rotationParam,
     };
   }
   

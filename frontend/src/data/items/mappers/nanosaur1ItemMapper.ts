@@ -40,6 +40,7 @@ export class Nanosaur1ItemMapper implements GameItemModelMapper {
       skeletonFile: mapping.skeletonFile,
       scale: mapping.scale,
       rotationY: mapping.rotationY,
+      rotationParam: mapping.rotationParam,
     };
   }
 

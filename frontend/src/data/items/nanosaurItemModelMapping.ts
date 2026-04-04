@@ -9,6 +9,8 @@
  * - /skeletons/*.3dmf - Character skeletons
  */
 
+import type { RotationParam } from "./standardParamTypes";
+
 /**
  * Describes how to load and render a 3D model for a Nanosaur item type
  */
@@ -33,6 +35,12 @@ export interface NanosaurItemModelMapping {
 
   /** Y-axis rotation offset in radians (default: 0) */
   rotationY?: number;
+
+  /** Which item param controls Y-axis rotation */
+  rotationParam?: {
+    paramIndex: 0 | 1 | 2 | 3;
+    rotationType: RotationParam;
+  };
 }
 
 /**

@@ -20,6 +20,7 @@
  */
 
 import type { SourceCitation } from "./itemModelTypes";
+import type { RotationParam } from "./standardParamTypes";
 
 /**
  * Describes how to load and render a 3D model for a Bugdom 2 item type
@@ -57,6 +58,12 @@ export interface Bugdom2ItemModelMapping {
 
   /** Position offset in world units [x, y, z] */
   positionOffset?: [number, number, number];
+
+  /** Which item param controls Y-axis rotation */
+  rotationParam?: {
+    paramIndex: 0 | 1 | 2 | 3;
+    rotationType: RotationParam;
+  };
 
   /** Source code citations for this mapping */
   citations?: SourceCitation[];
