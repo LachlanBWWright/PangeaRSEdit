@@ -21,6 +21,7 @@
 
 import type { SourceCitation } from "./itemModelTypes";
 import type { RotationParam } from "./standardParamTypes";
+import { ROTATION_4_WAY, ROTATION_8_WAY } from "./standardParamTypes";
 
 /**
  * Describes how to load and render a 3D model for a Bugdom 2 item type
@@ -148,11 +149,11 @@ export const BUGDOM2_ITEM_MODEL_MAPPINGS: Record<
   // 30: Tulip Pot (SIDEWALK_ObjType_TulipPot = 30, scale 3.0)
   30: { modelFile: "Level2_Sidewalk.bg3d", modelPath: "models", modelIndex: 30, scale: 3.0 },
   // 28: Windmill (SIDEWALK_ObjType_WindmillBase = 28, + Blades)
-  28: { modelFile: "Level2_Sidewalk.bg3d", modelPath: "models", modelIndex: 28, groupSize: 2 },
+  28: { modelFile: "Level2_Sidewalk.bg3d", modelPath: "models", modelIndex: 28, groupSize: 2, rotationParam: { paramIndex: 0, rotationType: ROTATION_4_WAY } },
 
   // Sidewalk level items (Level2_Sidewalk.bg3d - MODEL_GROUP_LEVELSPECIFIC)
   // 17: Brick (SIDEWALK_ObjType_Brick = 8, scale 2.5)
-  17: { modelFile: "Level2_Sidewalk.bg3d", modelPath: "models", modelIndex: 8, scale: 2.5 },
+  17: { modelFile: "Level2_Sidewalk.bg3d", modelPath: "models", modelIndex: 8, scale: 2.5, rotationParam: { paramIndex: 0, rotationType: ROTATION_4_WAY } },
   // 18: Post (SIDEWALK_ObjType_Post_Brick = 12, scale 1.5)
   18: { modelFile: "Level2_Sidewalk.bg3d", modelPath: "models", modelIndex: 12, scale: 1.5 },
   // 21: Pebble (SIDEWALK_ObjType_LargeStone = 9, scale ~1.0)
@@ -162,7 +163,7 @@ export const BUGDOM2_ITEM_MODEL_MAPPINGS: Record<
   // 24: Pool Leaf (SIDEWALK_ObjType_PoolLeaf1 = 16, scale ~2.0)
   24: { modelFile: "Level2_Sidewalk.bg3d", modelPath: "models", modelIndex: 16, scale: 2.0 },
   // 27: Dog House (SIDEWALK_ObjType_DogHouse = 27, scale 2.0)
-  27: { modelFile: "Level2_Sidewalk.bg3d", modelPath: "models", modelIndex: 27, scale: 2.0 },
+  27: { modelFile: "Level2_Sidewalk.bg3d", modelPath: "models", modelIndex: 27, scale: 2.0, rotationParam: { paramIndex: 0, rotationType: ROTATION_8_WAY } },
   // 31: Beach Ball (SIDEWALK_ObjType_BeachBall = 22, scale 2.5)
   31: { modelFile: "Level2_Sidewalk.bg3d", modelPath: "models", modelIndex: 22, scale: 2.5 },
   // 32: Chlorine Float (SIDEWALK_ObjType_ChlorineFloat = 23, scale 3.0)
@@ -255,7 +256,7 @@ export const BUGDOM2_ITEM_MODEL_MAPPINGS: Record<
   // 9: Acorn (GLOBAL_ObjType_Acorn = 25)
   9: { modelFile: "Global.bg3d", modelPath: "models", modelIndex: 25 },
   // 13: Door (level-specific, uses GARDEN_ObjType_RedDoor = 5 on Garden, scale 1.8)
-  13: { modelFile: "Level1_Garden.bg3d", modelPath: "models", modelIndex: 5, scale: 1.8 },
+  13: { modelFile: "Level1_Garden.bg3d", modelPath: "models", modelIndex: 5, scale: 1.8, rotationParam: { paramIndex: 0, rotationType: ROTATION_4_WAY } },
   // 20: Shrub Root (FOLIAGE_ObjType_ShrubRoot = 10)
   20: { modelFile: "Foliage.bg3d", modelPath: "models", modelIndex: 10 },
   // 26: Squish Berry (SIDEWALK_ObjType_SquishBerry = 25)
