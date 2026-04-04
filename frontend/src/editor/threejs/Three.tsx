@@ -57,6 +57,12 @@ function hasPointProperty(event: Event<string, unknown>): event is ThreeEventWit
   return "point" in event && event.point instanceof Vector3;
 }
 
+function hasNativePointerEvent(
+  event: Event<string, unknown>,
+): event is ThreeEventWithPoint {
+  return "nativeEvent" in event;
+}
+
 import {
   calculateBrushPixels,
   applyTopologyBrushToSnapshot,
@@ -404,7 +410,7 @@ export function ThreeView({
     ) {
       return;
     }
-    if (event.nativeEvent?.shiftKey) {
+    if (hasNativePointerEvent(event) && event.nativeEvent?.shiftKey) {
       return;
     }
     
