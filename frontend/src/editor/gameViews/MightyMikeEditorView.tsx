@@ -26,11 +26,30 @@ import {
 } from "../utils/editorViewUtils";
 import { applyResizeToAtomicData } from "../utils/levelResizeHandlers";
 import { Globals } from "@/data/globals/globals";
-import { useAtomValue } from "jotai";
+import { useAtomValue, useSetAtom } from "jotai";
 import type { MightyMikeEditorViewProps } from "../utils/editorViewTypes";
 import {
   ItemData,
 } from "@/python/structSpecs/LevelTypes";
+import { CurrentScene } from "@/data/game/gameAtoms";
+
+function getCurrentSceneFromTerrainData(
+  terrainData: MightyMikeEditorViewProps["terrainData"],
+): string | undefined {
+  const metadata = terrainData._metadata?.[1000];
+  if (
+    metadata &&
+    typeof metadata === "object" &&
+    "obj" in metadata &&
+    metadata.obj &&
+    typeof metadata.obj === "object" &&
+    "mightyMikeScene" in metadata.obj &&
+    typeof metadata.obj.mightyMikeScene === "string"
+  ) {
+    return metadata.obj.mightyMikeScene;
+  }
+  return undefined;
+}
 
 export function MightyMikeEditorView({
   headerData,
@@ -46,6 +65,7 @@ export function MightyMikeEditorView({
   dataHistory,
 }: MightyMikeEditorViewProps) {
   const globals = useAtomValue(Globals);
+  const setCurrentScene = useSetAtom(CurrentScene);
   // Default to items view since MightyMike doesn't have fences
   const [view, setView] = useState<View>(View.items);
   const [stage, setStage] = useImmer({ scale: 1, x: 0, y: 0 });
@@ -59,6 +79,10 @@ export function MightyMikeEditorView({
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [handleKeyDown]);
+
+  useEffect(() => {
+    setCurrentScene(getCurrentSceneFromTerrainData(terrainData));
+  }, [setCurrentScene, terrainData]);
 
   const zoomIn = useMemo(() => createZoomInHandler(setStage), [setStage]);
   const zoomOut = useMemo(() => createZoomOutHandler(setStage), [setStage]);

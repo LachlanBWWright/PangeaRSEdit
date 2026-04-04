@@ -10,7 +10,7 @@ import { ItemData, HeaderData } from "@/python/structSpecs/LevelTypes";
 import { useAtom, useAtomValue } from "jotai";
 import { Button } from "@/components/ui/button";
 import { ClickToAddItem, SelectedItem } from "../../../data/items/itemAtoms";
-import { memo, useMemo } from "react";
+import { memo, useEffect, useMemo, useState } from "react";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -28,6 +28,10 @@ import { atom } from "jotai";
 import { getMightyMikeItemParams } from "@/data/items/mightyMikeItemParams";
 import { ParamTooltip } from "./ParamTooltip";
 import { getParamTooltip } from "./getParamTooltip";
+import { CurrentScene, MIGHTY_MIKE_SCENES } from "@/data/game/gameAtoms";
+import { loadItemImage, type ItemFrameImage } from "@/utils/mightyMikeShapeImageLoader";
+import { isOk } from "@/types/result";
+import { TileCanvas } from "../shared/TileCanvas";
 
 // Atom to track if item images should be shown globally for all items
 export const ShowMightyMikeItemImages = atom(true);
@@ -44,6 +48,8 @@ export const MightyMikeItemMenu = memo(function MightyMikeItemMenu({
   const globals = useAtomValue(Globals);
   const [selectedItem, setSelectedItem] = useAtom(SelectedItem);
   const [showItemImages, setShowItemImages] = useAtom(ShowMightyMikeItemImages);
+  const [currentScene, setCurrentScene] = useAtom(CurrentScene);
+  const [previewImage, setPreviewImage] = useState<ItemFrameImage | null>(null);
 
   const itemValues = useMemo(() => {
     const result = getItemTypes(globals);
@@ -52,10 +58,40 @@ export const MightyMikeItemMenu = memo(function MightyMikeItemMenu({
       : [];
   }, [globals]);
 
-  if (itemData.Itms === undefined) return null;
-
   const selectedItemData =
-    selectedItem !== undefined ? itemData.Itms[1000].obj[selectedItem] : null;
+    itemData.Itms !== undefined && selectedItem !== undefined
+      ? itemData.Itms[1000].obj[selectedItem]
+      : null;
+
+  useEffect(() => {
+    if (!selectedItemData) {
+      Promise.resolve().then(() => setPreviewImage(null));
+      return;
+    }
+
+    let cancelled = false;
+    loadItemImage(selectedItemData.type, currentScene)
+      .then((result) => {
+        if (cancelled) {
+          return;
+        }
+        if (isOk(result)) {
+          setPreviewImage(result.value);
+        } else {
+          setPreviewImage(null);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setPreviewImage(null);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [currentScene, selectedItemData]);
+
+  if (itemData.Itms === undefined) return null;
 
   return (
     <div className="flex flex-col gap-2">
@@ -79,13 +115,42 @@ export const MightyMikeItemMenu = memo(function MightyMikeItemMenu({
         )}
       </Button>
 
+      <div className="grid grid-cols-[auto_1fr_auto] items-center gap-2">
+        <label className="text-sm font-medium">Scene</label>
+        <Select
+          value={currentScene ?? ""}
+          onValueChange={(value) => setCurrentScene(value)}
+        >
+          <SelectTrigger>
+            <SelectValue placeholder="Select scene" />
+          </SelectTrigger>
+          <SelectContent>
+            {MIGHTY_MIKE_SCENES.map((scene) => (
+              <SelectItem key={scene} value={scene}>
+                {scene}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={() => window.open("#/sprite-viewer", "_blank", "noopener,noreferrer")}
+        >
+          Sprite Viewer
+        </Button>
+      </div>
+
       {selectedItemData === null || selectedItemData === undefined ? (
         <AddItemMenu />
       ) : (
-        <p className="text-xs text-gray-400">
-          Item {selectedItemData.type} ({selectedItemData.x},{" "}
-          {selectedItemData.z})
-        </p>
+        <div className="flex items-center gap-3">
+          {previewImage && <TileCanvas image={previewImage.canvas} size={48} />}
+          <p className="text-xs text-gray-400">
+            Item {selectedItemData.type} ({selectedItemData.x},{" "}
+            {selectedItemData.z})
+          </p>
+        </div>
       )}
 
       <div className="flex flex-col gap-2">

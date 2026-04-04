@@ -248,7 +248,9 @@ export function TopologyTiles({
     stageScale: number,
     lineStart?: { x: number; y: number },
   ) => {
-    const radius = Math.max(1, topologyBrushRadius) / Math.max(1, stageScale);
+    const radius =
+      ((Math.max(1, topologyBrushRadius) - 1) * globals.TILE_SIZE) /
+      Math.max(1, stageScale);
     const pixelList = calculateBrushPixels({
       centerX,
       centerY,
@@ -268,7 +270,8 @@ export function TopologyTiles({
   const previewSize =
     brushPreviewPoint === null
       ? 0
-      : Math.max(1, topologyBrushRadius) / Math.max(1, brushPreviewPoint.scale);
+      : ((Math.max(1, topologyBrushRadius) - 1) * globals.TILE_SIZE) /
+        Math.max(1, brushPreviewPoint.scale);
   const showBrushPreview = isEditingTopology && brushPreviewPoint !== null;
 
   return (

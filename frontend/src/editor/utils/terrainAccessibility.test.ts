@@ -6,8 +6,27 @@ import {
   NANOSAUR_MAX_REACHABLE_HEIGHT,
   buildAccessibilityMaskColors,
   getAccessibilityOverlayLabel,
+  hasAccessibleOverlayData,
   isTerrainVertexInaccessible,
 } from "./terrainAccessibility";
+import type { StandardHeader } from "@/python/structSpecs/LevelTypes";
+
+const testHeader: StandardHeader = {
+  version: 1,
+  numItems: 0,
+  mapWidth: 1,
+  mapHeight: 1,
+  tileSize: 1,
+  minY: 0,
+  maxY: 0,
+  numSplines: 0,
+  numFences: 0,
+  numTilePages: 0,
+  numTiles: 0,
+  numUniqueSupertiles: 0,
+  numWaterPatches: 0,
+  numCheckpoints: 0,
+};
 
 describe("terrainAccessibility", () => {
   it("marks Bugdom vertices as inaccessible when the ceiling gap is too small", () => {
@@ -55,12 +74,32 @@ describe("terrainAccessibility", () => {
     expect(colors.slice(4, 8)).toEqual([0, 0, 0, 0]);
   });
 
-  it("describes the active threshold in the toggle label", () => {
-    expect(getAccessibilityOverlayLabel(Game.BUGDOM)).toContain(
-      BUGDOM_ACCESSIBILITY_MIN_GAP.toString(),
+  it("keeps the toggle label generic in the UI", () => {
+    expect(getAccessibilityOverlayLabel()).toBe(
+      "Show inaccessible terrain mask",
     );
-    expect(getAccessibilityOverlayLabel(Game.NANOSAUR)).toContain(
-      NANOSAUR_MAX_REACHABLE_HEIGHT.toString(),
+    expect(getAccessibilityOverlayLabel()).toBe(
+      "Show inaccessible terrain mask",
     );
+  });
+
+  it("only exposes Bugdom masking when the level actually has ceiling data", () => {
+    expect(
+      hasAccessibleOverlayData(
+        Game.BUGDOM,
+        testHeader,
+        [0, 0, 0, 0],
+        undefined,
+      ),
+    ).toBe(false);
+
+    expect(
+      hasAccessibleOverlayData(
+        Game.BUGDOM,
+        testHeader,
+        [0, 0, 0, 0],
+        [10, 10, 10, 10],
+      ),
+    ).toBe(true);
   });
 });

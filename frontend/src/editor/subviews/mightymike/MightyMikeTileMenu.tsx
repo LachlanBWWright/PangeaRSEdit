@@ -16,6 +16,7 @@ import { Updater } from "use-immer";
 import { HeaderData, TerrainData } from "@/python/structSpecs/LevelTypes";
 import { FileUpload } from "@/components/FileUpload";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { ImageEditor } from "@/components/ImageEditor";
 import { Edit, Download, Upload, Shield, Info, Paintbrush } from "lucide-react";
 import { toast } from "sonner";
@@ -48,6 +49,10 @@ function isArray(value: unknown): value is unknown[] {
 
 function getBoolean(value: unknown, defaultValue = false): boolean {
   return typeof value === 'boolean' ? value : defaultValue;
+}
+
+function getNumber(value: unknown, defaultValue = 0): number {
+  return typeof value === "number" ? value : defaultValue;
 }
 
 interface MightyMikeTileMenuProps {
@@ -95,6 +100,13 @@ export function MightyMikeTileMenu({
     [terrainData.Layr],
   );
   const xlatTable = terrainData.Xlat?.[1000]?.obj;
+  const tilesetTileAttributes = useMemo(() => {
+    const tileset = isRecord(terrainData.tileset) ? terrainData.tileset : undefined;
+    const tileAttributes = tileset && isArray(tileset.tileAttributes)
+      ? tileset.tileAttributes
+      : [];
+    return tileAttributes.filter(isRecord);
+  }, [terrainData.tileset]);
 
   // Get collision data from Mighty Mike metadata using type guards
   const metadata = isRecord(terrainData._metadata) ? terrainData._metadata : undefined;
@@ -535,7 +547,7 @@ export function MightyMikeTileMenu({
         idx:
           typeof entry.idx === "number" && entry.idx > selectedPaletteTile
             ? entry.idx - 1
-            : Number(entry.idx ?? 0),
+            : getNumber(entry.idx),
       }));
 
       if (data.Layr?.[1000]?.obj) {
@@ -563,6 +575,34 @@ export function MightyMikeTileMenu({
   const currentImageIndex = getCurrentTileImageIndex();
   const currentTileCanvas =
     currentImageIndex !== null ? mapImages[currentImageIndex] : null;
+  const currentTileAttributes =
+    currentImageIndex !== null && currentImageIndex < tilesetTileAttributes.length
+      ? tilesetTileAttributes[currentImageIndex]
+      : null;
+
+  const handleUpdateTileAttribute = (
+    property: "flags" | "p0" | "p1" | "p2" | "p3" | "p4",
+    value: number,
+  ) => {
+    if (currentImageIndex === null) {
+      return;
+    }
+
+    setTerrainData((data) => {
+      const tileset = isRecord(data.tileset) ? data.tileset : undefined;
+      const tileAttributes =
+        tileset && isArray(tileset.tileAttributes) ? tileset.tileAttributes : undefined;
+      const tileAttribute = tileAttributes?.[currentImageIndex];
+      if (isRecord(tileAttribute)) {
+        tileAttribute[property] = value;
+      }
+
+      const levelTileAttribute = data.Atrb?.[1000]?.obj?.[currentImageIndex];
+      if (levelTileAttribute && (property === "flags" || property === "p0" || property === "p1")) {
+        levelTileAttribute[property] = value;
+      }
+    });
+  };
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
@@ -742,6 +782,30 @@ export function MightyMikeTileMenu({
             </div>
           );
         })()}
+
+        {currentTileAttributes && (
+          <div className="border-t border-gray-600 pt-2">
+            <p className="font-bold text-xs mb-1">Tile Attributes</p>
+            <div className="grid grid-cols-[auto_1fr] gap-2 items-center text-xs">
+              {(["flags", "p0", "p1", "p2", "p3", "p4"] as const).map((property) => (
+                <div key={property} className="contents">
+                  <label>{property.toUpperCase()}</label>
+                  <Input
+                    type="number"
+                    value={getNumber(currentTileAttributes[property]).toString()}
+                    onChange={(e) =>
+                      handleUpdateTileAttribute(
+                        property,
+                        Number.parseInt(e.target.value || "0", 10) || 0,
+                      )
+                    }
+                    className="h-7 text-xs"
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Right Column: Tile Palette */}

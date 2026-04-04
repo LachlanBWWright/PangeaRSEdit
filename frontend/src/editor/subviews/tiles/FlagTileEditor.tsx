@@ -67,7 +67,9 @@ export function FlagTileEditor({
 
     const centerX = Math.round(pos.x / globals.TILE_SIZE) * globals.TILE_SIZE;
     const centerY = Math.round(pos.y / globals.TILE_SIZE) * globals.TILE_SIZE;
-    const radius = Math.max(0, topologyBrushRadius) / Math.max(1, stageScale);
+    const radius =
+      ((Math.max(1, topologyBrushRadius) - 1) * globals.TILE_SIZE) /
+      Math.max(1, stageScale);
 
     setTerrainData((data) => {
       if (!data.Layr?.[1000]?.obj || !data.Atrb?.[1000]?.obj) return;

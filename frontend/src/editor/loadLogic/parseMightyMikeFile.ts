@@ -17,8 +17,17 @@ import {
 import { extractTGAPalette } from "../../utils/tgaParser";
 import { gMightyMikePalette } from "../../utils/mightyMikePalette";
 import { clearItemImageCache } from "../../utils/mightyMikeShapeImageLoader";
+import { MIGHTY_MIKE_SCENES } from "@/data/game/gameAtoms";
 
 import { isRecord, isMightyMikeMap } from "./typeGuards";
+
+function getMightyMikeSceneFromPath(mapFileUrl?: string): string | undefined {
+  return MIGHTY_MIKE_SCENES.find((scene) =>
+    mapFileUrl?.endsWith(`/${scene}.map-1`) ||
+    mapFileUrl?.endsWith(`/${scene}.map-2`) ||
+    mapFileUrl?.endsWith(`/${scene}.map-3`),
+  );
+}
 
 // Type guard for MightyMikeTileSet
 function isMightyMikeTileSet(value: unknown): value is MightyMikeTileSet {
@@ -127,6 +136,7 @@ export async function parseMightyMikeFile(
 
   let tilesetData = null;
   let paletteData: Uint8Array | null = null;
+  const mightyMikeScene = getMightyMikeSceneFromPath(mapFileUrl);
 
   if (mapFileUrl) {
     paletteData = await loadBorderPalette(mapFileUrl);
@@ -237,11 +247,17 @@ export async function parseMightyMikeFile(
     Atrb: {
       1000: {
         name: "Tile Attribute Data",
-        obj: new Array(tilesetData?.numTileDefinitions || 100).fill({
-          flags: 0,
-          p0: 0,
-          p1: 0,
-        }),
+        obj:
+          tilesetData?.tileAttributes.map((attribute) => ({
+            flags: attribute.flags,
+            p0: attribute.p0,
+            p1: attribute.p1,
+          })) ??
+          new Array(tilesetData?.numTileDefinitions || 100).fill({
+            flags: 0,
+            p0: 0,
+            p1: 0,
+          }),
         order: 6,
       },
     },
@@ -291,6 +307,7 @@ export async function parseMightyMikeFile(
       1000: {
         name: "Metadata",
         obj: {
+          mightyMikeScene,
           mightyMikeMapData: mapResult.value,
           mightyMikeTileValues: mapResult.value.mapImage.flat(),
         },

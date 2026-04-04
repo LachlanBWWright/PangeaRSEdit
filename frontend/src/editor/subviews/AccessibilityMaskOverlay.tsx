@@ -10,6 +10,7 @@ import type {
 } from "@/python/structSpecs/LevelTypes";
 import { createImageCanvas } from "./tiles/tilesUtils";
 import {
+  hasAccessibleOverlayData,
   supportsAccessibilityOverlay,
   isTerrainVertexInaccessible,
 } from "../utils/terrainAccessibility";
@@ -36,7 +37,13 @@ export function AccessibilityMaskOverlay({
       !showAccessibilityOverlay ||
       !header ||
       !floorHeights ||
-      !supportsAccessibilityOverlay(globals.GAME_TYPE)
+      !supportsAccessibilityOverlay(globals.GAME_TYPE) ||
+      !hasAccessibleOverlayData(
+        globals.GAME_TYPE,
+        header,
+        floorHeights,
+        roofHeights,
+      )
     ) {
       return null;
     }

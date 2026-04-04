@@ -13,17 +13,8 @@ export function supportsAccessibilityOverlay(game: Game): boolean {
   );
 }
 
-export function getAccessibilityOverlayLabel(game: Game): string {
-  switch (game) {
-    case Game.BUGDOM:
-      return `Mask low-ceiling areas (< ${BUGDOM_ACCESSIBILITY_MIN_GAP})`;
-    case Game.NANOSAUR:
-      return `Mask heights above ${NANOSAUR_MAX_REACHABLE_HEIGHT}`;
-    case Game.NANOSAUR_2:
-      return `Mask heights above ${NANOSAUR2_MAX_REACHABLE_HEIGHT}`;
-    default:
-      return "Mask inaccessible terrain";
-  }
+export function getAccessibilityOverlayLabel(): string {
+  return "Show inaccessible terrain mask";
 }
 
 function getAccessibilityMaskAlpha(
@@ -37,7 +28,6 @@ export function isTerrainVertexInaccessible(
   floorHeight: number,
   roofHeight: number | undefined,
 ): boolean {
-  console.log("roofHeight", roofHeight, "floorHeight", floorHeight);
   switch (game) {
     case Game.BUGDOM:
       return (
@@ -81,7 +71,13 @@ export function hasAccessibleOverlayData(
 
   if (game === Game.BUGDOM) {
     return (
-      roofHeights !== undefined && roofHeights.length === floorHeights.length
+      roofHeights !== undefined &&
+      roofHeights.length === floorHeights.length &&
+      roofHeights.some(
+        (roofHeight, index) =>
+          floorHeights[index] !== undefined &&
+          roofHeight - floorHeights[index] > 0,
+      )
     );
   }
 

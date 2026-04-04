@@ -23,6 +23,7 @@ import {
   TopologyOpacity,
   TopologyValue,
   TopologyValueMode,
+  ShowAccessibilityOverlay,
   ShowRoofInTopology,
 } from "../../data/tiles/tileAtoms";
 import { useAtom, useAtomValue } from "jotai";
@@ -44,16 +45,23 @@ import {
 } from "@/data/canvasView/canvasViewAtoms";
 import { useEffect } from "react";
 import { Switch } from "@/components/ui/switch";
-import { HeaderData } from "@/python/structSpecs/LevelTypes";
+import { HeaderData, TerrainData } from "@/python/structSpecs/LevelTypes";
 import { Updater } from "use-immer";
 import { Game, Globals } from "@/data/globals/globals";
+import {
+  getAccessibilityOverlayLabel,
+  hasAccessibleOverlayData,
+  supportsAccessibilityOverlay,
+} from "../utils/terrainAccessibility";
 
 export function IndividualTilesMenu({
   headerData,
   setHeaderData,
+  terrainData,
 }: {
   headerData: HeaderData;
   setHeaderData: Updater<HeaderData>;
+  terrainData: TerrainData;
 }) {
   const [tileView, setTileView] = useAtom(TileViewMode);
   const [brushMode, setBrushMode] = useAtom(CurrentTopologyBrushMode);
@@ -74,12 +82,21 @@ export function IndividualTilesMenu({
     CurrentTopologyHeightmapDisplayMode,
   );
   const [showRoof, setShowRoof] = useAtom(ShowRoofInTopology);
+  const [showAccessibilityOverlay, setShowAccessibilityOverlay] = useAtom(
+    ShowAccessibilityOverlay,
+  );
   const globals = useAtomValue(Globals);
 
   const header = headerData?.Hedr?.[1000]?.obj;
   const minY = header?.minY || 0;
   const maxY = header?.maxY || 0;
   const hasRoofLayer = globals.GAME_TYPE === Game.BUGDOM;
+  const canShowAccessibilityOverlay = hasAccessibleOverlayData(
+    globals.GAME_TYPE,
+    header,
+    terrainData.YCrd?.[1000]?.obj,
+    terrainData.YCrd?.[1001]?.obj,
+  );
 
   useEffect(() => {
     if (tileView !== TileViews.Topology) {
@@ -106,6 +123,16 @@ export function IndividualTilesMenu({
       setShowRoof(true);
     }
   }, [hasRoofLayer, heightmapDisplayMode, layerEditMode, setShowRoof]);
+
+  useEffect(() => {
+    if (!canShowAccessibilityOverlay && showAccessibilityOverlay) {
+      setShowAccessibilityOverlay(false);
+    }
+  }, [
+    canShowAccessibilityOverlay,
+    setShowAccessibilityOverlay,
+    showAccessibilityOverlay,
+  ]);
 
   const handleMinYChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newValue = parseFloat(e.target.value);
@@ -293,6 +320,16 @@ export function IndividualTilesMenu({
               setTopologyOpacity(parseFloat(e.target.value) || 1)
             }
           />
+          {supportsAccessibilityOverlay(globals.GAME_TYPE) &&
+            canShowAccessibilityOverlay && (
+              <div className="flex items-center justify-between col-span-4 rounded border border-gray-700 px-3 py-2">
+                <p>{getAccessibilityOverlayLabel()}</p>
+                <Switch
+                  checked={showAccessibilityOverlay}
+                  onCheckedChange={setShowAccessibilityOverlay}
+                />
+              </div>
+            )}
           {hasRoofLayer && (
             <>
               {layerEditMode === TopologyLayerEditMode.BOTH && (

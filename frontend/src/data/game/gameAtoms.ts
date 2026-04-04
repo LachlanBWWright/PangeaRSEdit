@@ -11,6 +11,13 @@ import { atom } from "jotai";
  * Possible values: "jurassic", "candy", "clown", "fairy", "bargain"
  */
 export const CurrentScene = atom<string | undefined>(undefined);
+export const MIGHTY_MIKE_SCENES = [
+  "jurassic",
+  "candy",
+  "fairy",
+  "clown",
+  "bargain",
+] as const;
 
 /**
  * Toggle for visualizing collision masks on Mighty Mike tiles

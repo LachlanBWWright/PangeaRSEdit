@@ -11,6 +11,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   CurrentTopologyBrushMode,
   CurrentTopologyValueMode,
+  ShowAccessibilityOverlay,
   TileViewMode,
   TileViews,
   TopologyBrushMode,
@@ -21,7 +22,7 @@ import {
   TileEditingEnabled,
   TileBrushType,
 } from "../../data/tiles/tileAtoms";
-import { useAtom } from "jotai";
+import { useAtom, useAtomValue } from "jotai";
 import {
   Select,
   SelectContent,
@@ -40,15 +41,23 @@ import {
 } from "@/data/canvasView/canvasViewAtoms";
 import { useEffect } from "react";
 import { Switch } from "@/components/ui/switch";
-import { HeaderData } from "@/python/structSpecs/LevelTypes";
+import { HeaderData, TerrainData } from "@/python/structSpecs/LevelTypes";
 import { Updater } from "use-immer";
+import { Globals } from "@/data/globals/globals";
+import {
+  getAccessibilityOverlayLabel,
+  hasAccessibleOverlayData,
+  supportsAccessibilityOverlay,
+} from "../utils/terrainAccessibility";
 
 export function StandardTilesMenu({
   headerData,
   setHeaderData,
+  terrainData,
 }: {
   headerData: HeaderData;
   setHeaderData: Updater<HeaderData>;
+  terrainData: TerrainData;
 }) {
   const [tileView, setTileView] = useAtom(TileViewMode);
   const [brushMode, setBrushMode] = useAtom(CurrentTopologyBrushMode);
@@ -67,16 +76,36 @@ export function StandardTilesMenu({
     useAtom(TileEditingEnabled);
   const [selectedTileBrushType, setSelectedTileBrushType] =
     useAtom(TileBrushType);
+  const [showAccessibilityOverlay, setShowAccessibilityOverlay] = useAtom(
+    ShowAccessibilityOverlay,
+  );
+  const globals = useAtomValue(Globals);
 
   const header = headerData?.Hedr?.[1000]?.obj;
   const minY = header?.minY || 0;
   const maxY = header?.maxY || 0;
+  const canShowAccessibilityOverlay = hasAccessibleOverlayData(
+    globals.GAME_TYPE,
+    header,
+    terrainData.YCrd?.[1000]?.obj,
+    terrainData.YCrd?.[1001]?.obj,
+  );
 
   useEffect(() => {
     if (tileView !== TileViews.Topology) {
       setCanvasViewMode(CanvasView.TWO_D);
     }
   }, [tileView, setCanvasViewMode]);
+
+  useEffect(() => {
+    if (!canShowAccessibilityOverlay && showAccessibilityOverlay) {
+      setShowAccessibilityOverlay(false);
+    }
+  }, [
+    canShowAccessibilityOverlay,
+    setShowAccessibilityOverlay,
+    showAccessibilityOverlay,
+  ]);
 
   const handleMinYChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newValue = parseFloat(e.target.value);
@@ -193,6 +222,16 @@ export function StandardTilesMenu({
               setTopologyOpacity(parseFloat(e.target.value) || 1)
             }
           />
+          {supportsAccessibilityOverlay(globals.GAME_TYPE) &&
+            canShowAccessibilityOverlay && (
+              <div className="flex items-center justify-between col-span-4 rounded border border-gray-700 px-3 py-2">
+                <p>{getAccessibilityOverlayLabel()}</p>
+                <Switch
+                  checked={showAccessibilityOverlay}
+                  onCheckedChange={setShowAccessibilityOverlay}
+                />
+              </div>
+            )}
           <div className="flex flex-row justify-between gap-2 items-center col-span-2">
             <div className="flex items-center gap-2">
               <p>Show 3D View (Experimental)</p>
