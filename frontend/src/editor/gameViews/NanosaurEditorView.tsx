@@ -160,6 +160,7 @@ export function NanosaurEditorView({
             splineData={null}
             terrainData={terrainData}
             mapImages={mapImages}
+            setTerrainData={setTerrainData}
           />
         ) : (
           <Nanosaur1KonvaView

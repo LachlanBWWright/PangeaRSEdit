@@ -59,9 +59,11 @@ function hasPointProperty(event: Event<string, unknown>): event is ThreeEventWit
 
 import {
   calculateBrushPixels,
-  applyTopologyBrushWithTarget,
+  applyTopologyBrushToSnapshot,
+  cloneHeightArray,
   worldToTile,
   brushRadiusToWorldRadius,
+  mergeBrushPixels,
 } from "../utils/topologyBrushUtils";
 
 function SceneExporter() {
@@ -137,6 +139,7 @@ export function ThreeView({
   terrainData,
   mapImages,
   setItemData,
+  setTerrainData,
 }: {
   headerData: HeaderData;
   fenceData: FenceData | null;
@@ -146,6 +149,7 @@ export function ThreeView({
   terrainData: TerrainData;
   mapImages: HTMLCanvasElement[];
   setItemData?: Updater<ItemData | null>;
+  setTerrainData?: Updater<TerrainData>;
 }) {
   const globals = useAtomValue(Globals);
   const show3DSplines = useAtomValue(Show3DSplines);
@@ -166,11 +170,21 @@ export function ThreeView({
   const roofMeshRef = useRef<Mesh>(null);
   const [intersectionPoint, setIntersectionPoint] = useState<{ x: number; y: number; z: number } | null>(null);
   const [isEditing, setIsEditing] = useState(false);
+  const [isShiftHeld, setIsShiftHeld] = useState(false);
   // Incremented when the 3D topology brush finishes a stroke so fence/item geometry
   // re-reads terrain heights (the brush directly mutates terrainData in place for
   // performance, so the useMemo deps don't see the change otherwise).
   const [topologyVersion, setTopologyVersion] = useState(0);
   const lastBrushCenterRef = useRef<{ x: number; y: number } | null>(null);
+  const topologyStrokeRef = useRef<{
+    floorSnapshot: number[];
+    roofSnapshot: number[] | undefined;
+    draftFloor: number[];
+    draftRoof: number[] | undefined;
+    pixels: ReturnType<typeof calculateBrushPixels>;
+    brushRadiusWorld: number;
+    lastPoint: { x: number; y: number };
+  } | null>(null);
 
   // Item drag state
   const [draggingItemIdx, setDraggingItemIdx] = useState<number | null>(null);
@@ -197,6 +211,27 @@ export function ThreeView({
   const displacementDirection =
     topologyValue === 0 ? undefined : topologyValue < 0 ? "down" : "up";
 
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Shift") {
+        setIsShiftHeld(true);
+      }
+    };
+
+    const handleKeyUp = (event: KeyboardEvent) => {
+      if (event.key === "Shift") {
+        setIsShiftHeld(false);
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    window.addEventListener("keyup", handleKeyUp);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("keyup", handleKeyUp);
+    };
+  }, []);
+
   const updateMeshGeometryElevations = useCallback(
     (mesh: Mesh | null, heights: number[] | undefined) => {
       if (!mesh || !mesh.geometry || !heights) {
@@ -221,6 +256,92 @@ export function ThreeView({
     },
     [yScale],
   );
+
+  const applyDraftToMeshes = useCallback((
+    draftFloor: number[],
+    draftRoof: number[] | undefined,
+  ) => {
+    updateMeshGeometryElevations(terrainMeshRef.current, draftFloor);
+    if (layerEditMode !== TopologyLayerEditMode.FLOOR) {
+      updateMeshGeometryElevations(roofMeshRef.current, draftRoof);
+    }
+  }, [layerEditMode, updateMeshGeometryElevations]);
+
+  const updateTopologyStroke = useCallback((
+    currentCenter: { x: number; y: number },
+    previousStroke: typeof topologyStrokeRef.current,
+  ) => {
+    const brushRadiusWorld =
+      previousStroke?.brushRadiusWorld ??
+      brushRadiusToWorldRadius(brushRadius, globals.TILE_INGAME_SIZE);
+    const floorSnapshot =
+      previousStroke?.floorSnapshot ?? cloneHeightArray(terrainData.YCrd?.[1000]?.obj);
+
+    if (!floorSnapshot || floorSnapshot.length === 0) {
+      return null;
+    }
+
+    const roofSnapshot =
+      previousStroke?.roofSnapshot ?? cloneHeightArray(terrainData.YCrd?.[1001]?.obj);
+    const lineStart = previousStroke?.lastPoint;
+    const nextPixels = calculateBrushPixels({
+      centerX: currentCenter.x,
+      centerY: currentCenter.y,
+      radius: brushRadiusWorld,
+      brushMode,
+      valueMode,
+      value: topologyValue,
+      header,
+      globals,
+      tileSize: globals.TILE_INGAME_SIZE,
+      lineStart,
+      lineEnd: currentCenter,
+    });
+    const pixels = mergeBrushPixels([
+      previousStroke?.pixels ?? [],
+      nextPixels,
+    ]);
+    const draft = applyTopologyBrushToSnapshot(
+      floorSnapshot,
+      roofSnapshot,
+      pixels,
+      {
+        centerX: currentCenter.x,
+        centerY: currentCenter.y,
+        radius: brushRadiusWorld,
+        brushMode,
+        valueMode,
+        value: topologyValue,
+        header,
+        globals,
+        tileSize: globals.TILE_INGAME_SIZE,
+        lineStart,
+        lineEnd: currentCenter,
+      },
+      layerEditMode,
+      dualEditMode,
+    );
+
+    return {
+      floorSnapshot,
+      roofSnapshot,
+      draftFloor: draft.floor,
+      draftRoof: draft.roof,
+      pixels,
+      brushRadiusWorld,
+      lastPoint: currentCenter,
+    };
+  }, [
+    brushMode,
+    brushRadius,
+    dualEditMode,
+    globals,
+    header,
+    layerEditMode,
+    terrainData,
+    topologyValue,
+    valueMode,
+  ]);
 
   const handlePointerMove = useCallback((event: Event<string, unknown>) => {
     // Handle item dragging
@@ -250,82 +371,28 @@ export function ThreeView({
 
       // Calculate affected pixels for preview
       const tileCoords = worldToTile(event.point.x, event.point.z, globals.TILE_INGAME_SIZE);
-      const radius = brushRadiusToWorldRadius(
-        brushRadius,
-        globals.TILE_INGAME_SIZE,
-      );
       const currentCenter = {
         x: tileCoords.x * globals.TILE_INGAME_SIZE,
         y: tileCoords.z * globals.TILE_INGAME_SIZE,
       };
-      const lineStart = isEditing ? lastBrushCenterRef.current ?? currentCenter : undefined;
-      const lineEnd = currentCenter;
-      
-      const pixels = calculateBrushPixels({
-        centerX: currentCenter.x,
-        centerY: currentCenter.y,
-        radius,
-        brushMode,
-        valueMode,
-        value: topologyValue,
-        header,
-        globals,
-        tileSize: globals.TILE_INGAME_SIZE,
-        lineStart,
-        lineEnd,
-      });
-
-      // Apply brush while dragging (if isEditing)
-      // Performance note: This applies on every mouse move during editing.
-      // For very large terrains, consider debouncing or using requestAnimationFrame
-      // to limit update frequency. Current implementation prioritizes responsiveness
-      // for typical game level sizes (tested with maps up to 256x256 tiles).
-      if (isEditing && terrainData.YCrd?.[1000]?.obj) {
+      if (isEditing && topologyStrokeRef.current) {
         event.stopPropagation?.();
-        applyTopologyBrushWithTarget(
-          terrainData.YCrd[1000].obj,
-          terrainData.YCrd?.[1001]?.obj,
-          pixels,
-          {
-            centerX: currentCenter.x,
-            centerY: currentCenter.y,
-            radius,
-            brushMode,
-            valueMode,
-            value: topologyValue,
-            header,
-            globals,
-            tileSize: globals.TILE_INGAME_SIZE,
-            lineStart,
-            lineEnd,
-          },
-          layerEditMode,
-          dualEditMode,
-        );
-        lastBrushCenterRef.current = currentCenter;
-        updateMeshGeometryElevations(terrainMeshRef.current, terrainData.YCrd[1000].obj);
-        if (layerEditMode !== TopologyLayerEditMode.FLOOR) {
-          updateMeshGeometryElevations(
-            roofMeshRef.current,
-            terrainData.YCrd?.[1001]?.obj,
-          );
+        const nextStroke = updateTopologyStroke(currentCenter, topologyStrokeRef.current);
+        if (!nextStroke) {
+          return;
         }
+        topologyStrokeRef.current = nextStroke;
+        lastBrushCenterRef.current = currentCenter;
+        applyDraftToMeshes(nextStroke.draftFloor, nextStroke.draftRoof);
       }
     }
   }, [
-    brushMode,
-    brushRadius,
+    applyDraftToMeshes,
     globals,
-    header,
     isEditing,
     isEditingTopology,
-    dualEditMode,
-    layerEditMode,
     setItemData,
-    terrainData,
-    topologyValue,
-    updateMeshGeometryElevations,
-    valueMode,
+    updateTopologyStroke,
   ]);
 
   const handlePointerDown = useCallback((event: Event<string, unknown>) => {
@@ -337,6 +404,9 @@ export function ThreeView({
     ) {
       return;
     }
+    if (event.nativeEvent?.shiftKey) {
+      return;
+    }
     
     if (hasPointProperty(event) && terrainData.YCrd?.[1000]?.obj) {
       event.stopPropagation?.();
@@ -344,70 +414,25 @@ export function ThreeView({
       
       // Apply brush
       const tileCoords = worldToTile(event.point.x, event.point.z, globals.TILE_INGAME_SIZE);
-      const radius = brushRadiusToWorldRadius(
-        brushRadius,
-        globals.TILE_INGAME_SIZE,
-      );
       const currentCenter = {
         x: tileCoords.x * globals.TILE_INGAME_SIZE,
         y: tileCoords.z * globals.TILE_INGAME_SIZE,
       };
-      lastBrushCenterRef.current = currentCenter;
-      const pixels = calculateBrushPixels({
-        centerX: currentCenter.x,
-        centerY: currentCenter.y,
-        radius,
-        brushMode,
-        valueMode,
-        value: topologyValue,
-        header,
-        globals,
-        tileSize: globals.TILE_INGAME_SIZE,
-        lineStart: currentCenter,
-        lineEnd: currentCenter,
-      });
-
-      applyTopologyBrushWithTarget(
-        terrainData.YCrd[1000].obj,
-        terrainData.YCrd?.[1001]?.obj,
-        pixels,
-        {
-          centerX: currentCenter.x,
-          centerY: currentCenter.y,
-          radius,
-          brushMode,
-          valueMode,
-          value: topologyValue,
-          header,
-          globals,
-          tileSize: globals.TILE_INGAME_SIZE,
-          lineStart: currentCenter,
-          lineEnd: currentCenter,
-        },
-        layerEditMode,
-        dualEditMode,
-      );
-
-      updateMeshGeometryElevations(terrainMeshRef.current, terrainData.YCrd[1000].obj);
-      if (layerEditMode !== TopologyLayerEditMode.FLOOR) {
-        updateMeshGeometryElevations(
-          roofMeshRef.current,
-          terrainData.YCrd?.[1001]?.obj,
-        );
+      const stroke = updateTopologyStroke(currentCenter, null);
+      if (!stroke) {
+        setIsEditing(false);
+        return;
       }
+      topologyStrokeRef.current = stroke;
+      lastBrushCenterRef.current = currentCenter;
+      applyDraftToMeshes(stroke.draftFloor, stroke.draftRoof);
     }
   }, [
-    brushMode,
-    brushRadius,
-    globals,
-    header,
+    applyDraftToMeshes,
+    globals.TILE_INGAME_SIZE,
     isEditingTopology,
-    dualEditMode,
-    layerEditMode,
     terrainData,
-    topologyValue,
-    updateMeshGeometryElevations,
-    valueMode,
+    updateTopologyStroke,
   ]);
 
   /** Called when a user starts dragging an item in the 3D view. */
@@ -425,11 +450,25 @@ export function ThreeView({
       setTopologyVersion((v) => v + 1);
       return;
     }
+    if (topologyStrokeRef.current && setTerrainData) {
+      const completedStroke = topologyStrokeRef.current;
+      setTerrainData((data) => {
+        if (!data.YCrd?.[1000]?.obj) {
+          return;
+        }
+
+        data.YCrd[1000].obj = completedStroke.draftFloor;
+        if (completedStroke.draftRoof && data.YCrd?.[1001]?.obj) {
+          data.YCrd[1001].obj = completedStroke.draftRoof;
+        }
+      });
+    }
+    topologyStrokeRef.current = null;
     setIsEditing(false);
     lastBrushCenterRef.current = null;
     // Increment topologyVersion so FenceGeometry/ItemGeometry re-read terrain heights.
     setTopologyVersion((v) => v + 1);
-  }, []);
+  }, [setTerrainData]);
 
   // Ensure header is defined before rendering TestGeometry
   if (!header) {
@@ -473,7 +512,7 @@ export function ThreeView({
         // Keep panning aligned with the ground plane, so panning feels intuitive
         screenSpacePanning={false}
         mouseButtons={{
-          LEFT: MOUSE.ROTATE,
+          LEFT: isShiftHeld ? MOUSE.PAN : MOUSE.ROTATE,
           MIDDLE: MOUSE.DOLLY,
           RIGHT: MOUSE.PAN,
         }}

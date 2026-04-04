@@ -217,6 +217,7 @@ export function OttoMaticEditorView({
             splineData={splineData}
             terrainData={terrainData}
             mapImages={mapImages}
+            setTerrainData={setTerrainData}
           />
         ) : (
           <OttoMaticKonvaView

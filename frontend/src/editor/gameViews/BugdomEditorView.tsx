@@ -201,6 +201,7 @@ export function BugdomEditorView({
             splineData={splineData}
             terrainData={terrainData}
             mapImages={mapImages}
+            setTerrainData={setTerrainData}
           />
         ) : (
           <Bugdom1KonvaView

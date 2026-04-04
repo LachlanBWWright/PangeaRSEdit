@@ -39,6 +39,10 @@ export function getLevelIndex(info: AnyLevelInfo): number {
 
 export interface GamePortConfig {
   readonly game: Game;
+  /** Relative Pangea Ports site path used by the shared browser launcher. */
+  readonly siteLaunchPath: string;
+  /** Build the query string that skips directly to the selected level/track/area. */
+  readonly buildLaunchQuery: (levelIndex: number) => URLSearchParams;
   /** Directory name under frontend/public/wasm/ for local WASM files. */
   readonly wasmDir: string;
   /** Main JS filename produced by the Emscripten build (e.g. "OttoMatic.js"). */
@@ -87,9 +91,24 @@ export interface GamePortConfig {
   readonly cdnBaseUrl?: string;
 }
 
+export function buildPangeaPortsUrl(
+  baseUrl: string,
+  config: GamePortConfig,
+  levelIndex: number,
+): string {
+  const normalizedBaseUrl = baseUrl.endsWith("/")
+    ? baseUrl
+    : `${baseUrl}/`;
+  const url = new URL(config.siteLaunchPath, normalizedBaseUrl);
+  url.search = config.buildLaunchQuery(levelIndex).toString();
+  return url.toString();
+}
+
 export const GAME_PORT_CONFIGS: Readonly<Record<Game, GamePortConfig>> = {
   [Game.OTTO_MATIC]: {
     game: Game.OTTO_MATIC,
+    siteLaunchPath: "OttoMatic-Android/OttoMatic.html",
+    buildLaunchQuery: (n) => new URLSearchParams({ level: String(n), embed: "1" }),
     wasmDir: "ottomatic",
     mainJs: "OttoMatic.js",
     remoteGameUrl: (n) =>
@@ -117,6 +136,13 @@ export const GAME_PORT_CONFIGS: Readonly<Record<Game, GamePortConfig>> = {
 
   [Game.NANOSAUR]: {
     game: Game.NANOSAUR,
+    siteLaunchPath: "Nanosaur-android/game/index.html",
+    buildLaunchQuery: (n) =>
+      new URLSearchParams({
+        level: String(n),
+        skipMenu: "1",
+        embed: "1",
+      }),
     wasmDir: "nanosaur",
     mainJs: "Nanosaur.js",
     remoteGameUrl: () =>
@@ -132,6 +158,12 @@ export const GAME_PORT_CONFIGS: Readonly<Record<Game, GamePortConfig>> = {
 
   [Game.BUGDOM]: {
     game: Game.BUGDOM,
+    siteLaunchPath: "Bugdom-android/game.html",
+    buildLaunchQuery: (n) =>
+      new URLSearchParams({
+        level: String(n),
+        embed: "1",
+      }),
     wasmDir: "bugdom",
     mainJs: "Bugdom.js",
     remoteGameUrl: (n) =>
@@ -148,6 +180,12 @@ export const GAME_PORT_CONFIGS: Readonly<Record<Game, GamePortConfig>> = {
 
   [Game.BUGDOM_2]: {
     game: Game.BUGDOM_2,
+    siteLaunchPath: "Bugdom2-Android/Bugdom2.html",
+    buildLaunchQuery: (n) =>
+      new URLSearchParams({
+        level: String(n),
+        embed: "1",
+      }),
     wasmDir: "bugdom2",
     mainJs: "Bugdom2.js",
     remoteGameUrl: (n) =>
@@ -163,6 +201,13 @@ export const GAME_PORT_CONFIGS: Readonly<Record<Game, GamePortConfig>> = {
 
   [Game.CRO_MAG]: {
     game: Game.CRO_MAG,
+    siteLaunchPath: "CroMagRally-Android/game/CroMagRally.html",
+    buildLaunchQuery: (n) =>
+      new URLSearchParams({
+        track: String(n),
+        car: "1",
+        embed: "1",
+      }),
     wasmDir: "cromagrally",
     mainJs: "CroMagRally.js",
     remoteGameUrl: (n) =>
@@ -178,6 +223,12 @@ export const GAME_PORT_CONFIGS: Readonly<Record<Game, GamePortConfig>> = {
 
   [Game.BILLY_FRONTIER]: {
     game: Game.BILLY_FRONTIER,
+    siteLaunchPath: "BillyFrontier-Android/game/billyfrontier.html",
+    buildLaunchQuery: (n) =>
+      new URLSearchParams({
+        level: String(n),
+        embed: "1",
+      }),
     wasmDir: "billyfrontier",
     mainJs: "billyfrontier.js",
     remoteGameUrl: (n) =>
@@ -204,6 +255,12 @@ export const GAME_PORT_CONFIGS: Readonly<Record<Game, GamePortConfig>> = {
 
   [Game.MIGHTY_MIKE]: {
     game: Game.MIGHTY_MIKE,
+    siteLaunchPath: "MightyMike-Android/index.html",
+    buildLaunchQuery: (n) =>
+      new URLSearchParams({
+        level: `${String(Math.floor(n / 3))}:${String(n % 3)}`,
+        embed: "1",
+      }),
     wasmDir: "mightymike",
     mainJs: "MightyMike.js",
     remoteGameUrl: () =>
@@ -218,6 +275,12 @@ export const GAME_PORT_CONFIGS: Readonly<Record<Game, GamePortConfig>> = {
 
   [Game.NANOSAUR_2]: {
     game: Game.NANOSAUR_2,
+    siteLaunchPath: "Nanosaur2-Android/Nanosaur2.html",
+    buildLaunchQuery: (n) =>
+      new URLSearchParams({
+        level: String(n),
+        embed: "1",
+      }),
     wasmDir: "nanosaur2",
     mainJs: "Nanosaur2.js",
     remoteGameUrl: (n) =>

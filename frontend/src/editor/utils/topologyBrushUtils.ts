@@ -20,6 +20,11 @@ export interface PixelType {
   distance: number;
 }
 
+export interface StrokePoint {
+  x: number;
+  y: number;
+}
+
 export interface BrushParams {
   centerX: number;
   centerY: number;
@@ -76,7 +81,6 @@ export function calculateBrushPixels(params: BrushParams): PixelType[] {
     return pixelList;
   }
   const hasLine =
-    params.valueMode !== TopologyValueMode.SET_VALUE &&
     lineStart !== undefined &&
     lineEnd !== undefined;
   const lineStartPoint = lineStart ?? { x: centerX, y: centerY };
@@ -139,6 +143,39 @@ export function calculateBrushPixels(params: BrushParams): PixelType[] {
   }
 
   return pixelList;
+}
+
+function getPixelKey(pixel: PixelType): string {
+  return `${String(pixel.x)},${String(pixel.y)}`;
+}
+
+export function mergeBrushPixels(
+  pixelGroups: readonly (readonly PixelType[])[],
+): PixelType[] {
+  const mergedPixels = new Map<string, PixelType>();
+
+  pixelGroups.forEach((pixels) => {
+    pixels.forEach((pixel) => {
+      const key = getPixelKey(pixel);
+      const existingPixel = mergedPixels.get(key);
+
+      if (!existingPixel || pixel.distance < existingPixel.distance) {
+        mergedPixels.set(key, pixel);
+      }
+    });
+  });
+
+  return Array.from(mergedPixels.values());
+}
+
+export function cloneHeightArray(
+  heightArray: Int16Array | number[] | undefined,
+): number[] | undefined {
+  if (!heightArray) {
+    return undefined;
+  }
+
+  return Array.from(heightArray);
 }
 
 /**
@@ -357,6 +394,29 @@ export function applyTopologyBrushWithTarget(
     floorArray[index] = clampInt16(currentMidpoint - nextHalfDifference);
     roofArray[index] = clampInt16(currentMidpoint + nextHalfDifference);
   });
+}
+
+export function applyTopologyBrushToSnapshot(
+  floorArray: Int16Array | number[],
+  roofArray: Int16Array | number[] | undefined,
+  pixels: PixelType[],
+  params: BrushParams,
+  editMode: TopologyLayerEditMode,
+  dualEditMode: TopologyDualEditMode = TopologyDualEditMode.MIDPOINT,
+): { floor: number[]; roof: number[] | undefined } {
+  const nextFloor = cloneHeightArray(floorArray) ?? [];
+  const nextRoof = cloneHeightArray(roofArray);
+
+  applyTopologyBrushWithTarget(
+    nextFloor,
+    nextRoof,
+    pixels,
+    params,
+    editMode,
+    dualEditMode,
+  );
+
+  return { floor: nextFloor, roof: nextRoof };
 }
 
 /**

@@ -220,6 +220,7 @@ export function StandardEditorView({
             terrainData={terrainData}
             mapImages={mapImages}
             setItemData={setItemData}
+            setTerrainData={setTerrainData}
           />
         ) : (
           <StandardKonvaView
