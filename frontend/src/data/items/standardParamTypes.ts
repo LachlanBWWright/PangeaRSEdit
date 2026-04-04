@@ -196,6 +196,17 @@ export const ROTATION_4_WAY: RotationParam = {
 };
 
 /**
+ * 2-way rotation (0° or 90°)
+ * p * PI/2 radians, only values 0 and 1 are meaningful
+ */
+export const ROTATION_2_WAY: RotationParam = {
+  type: "Rotation",
+  divisions: 4,
+  multiplier: "PI/2",
+  description: "Rotation 0° or 90° (0 = 0°, 1 = 90°)",
+};
+
+/**
  * 8-way rotation (45 degree steps)
  * p0 * PI/4 radians
  */

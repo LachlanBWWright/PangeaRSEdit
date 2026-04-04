@@ -81,6 +81,7 @@ function convertToUniversal(mapping: ItemModelMapping): UniversalItemModelMappin
     scaleY: mapping.scaleY,
     rotationY: mapping.rotationY,
     positionOffset: mapping.positionOffset,
+    rotationParam: mapping.rotationParam,
     citations: mapping.citations ? [...mapping.citations] : undefined,
   };
 }

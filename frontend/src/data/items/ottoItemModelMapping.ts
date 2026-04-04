@@ -14,6 +14,8 @@
 
 import { ItemType } from "./ottoItemType";
 import type { SourceCitation } from "./itemModelTypes";
+import type { RotationParam } from "./standardParamTypes";
+import { ROTATION_2_WAY, ROTATION_4_WAY } from "./standardParamTypes";
 
 /**
  * Describes how to load and render a 3D model for an item type
@@ -53,6 +55,12 @@ export interface ItemModelMapping {
 
   /** Position offset in world units [x, y, z] */
   positionOffset?: [number, number, number];
+
+  /** Which item param controls Y-axis rotation for this item */
+  rotationParam?: {
+    paramIndex: 0 | 1 | 2 | 3;
+    rotationType: RotationParam;
+  };
 
   /** Source code citations for this mapping */
   citations?: SourceCitation[];
@@ -182,6 +190,7 @@ export const OTTO_ITEM_MODEL_MAPPINGS: Record<
     modelPath: "models",
     modelIndex: 1,
     scale: 1.5,
+    rotationParam: { paramIndex: 0, rotationType: ROTATION_4_WAY },
     citations: [{ file: "src/Items/Items.c", line: 146, description: "scale = 1.5" }],
   },
   [ItemType.Silo]: {
@@ -196,6 +205,7 @@ export const OTTO_ITEM_MODEL_MAPPINGS: Record<
     modelPath: "models",
     modelIndex: 3,
     scale: 1.5,
+    rotationParam: { paramIndex: 0, rotationType: ROTATION_2_WAY },
     citations: [
       { file: "src/Items/Triggers.c", line: 49, description: "#define WOODFENCE_SCALE 1.5f" },
       { file: "src/Items/Triggers.c", line: 206, description: "scale = WOODFENCE_SCALE" },
@@ -206,6 +216,7 @@ export const OTTO_ITEM_MODEL_MAPPINGS: Record<
     modelPath: "models",
     modelIndex: 6,
     scale: 1.3,
+    rotationParam: { paramIndex: 0, rotationType: ROTATION_2_WAY },
     citations: [
       { file: "src/Items/Triggers.c", line: 50, description: "#define METALFENCE_SCALE 1.3f" },
       { file: "src/Items/Triggers.c", line: 444, description: "scale = METALFENCE_SCALE" },
@@ -266,6 +277,7 @@ export const OTTO_ITEM_MODEL_MAPPINGS: Record<
     modelIndex: 23,
     groupSize: 2,
     scale: 4.0,
+    rotationParam: { paramIndex: 0, rotationType: ROTATION_4_WAY },
     citations: [
       { file: "src/Items/Items.c", line: 44, description: "#define WINDMILL_SCALE 4.0f" },
       { file: "src/Items/Items.c", line: 709, description: "scale = WINDMILL_SCALE" },
@@ -427,6 +439,7 @@ export const OTTO_ITEM_MODEL_MAPPINGS: Record<
     modelPath: "models",
     modelIndex: 1,
     scale: 3.0,
+    rotationParam: { paramIndex: 0, rotationType: ROTATION_2_WAY },
     citations: [
       { file: "src/Items/Triggers2.c", line: 36, description: "#define JUNGLEGATE_SCALE 3.0f" },
       { file: "src/Items/Triggers2.c", line: 77, description: "scale = JUNGLEGATE_SCALE" },
@@ -438,6 +451,7 @@ export const OTTO_ITEM_MODEL_MAPPINGS: Record<
     modelIndex: 1,
     groupSize: 3,
     scale: 5.0,
+    rotationParam: { paramIndex: 0, rotationType: ROTATION_4_WAY },
     citations: [{ file: "src/Items/Traps.c", line: 1204, description: "scale = 5.0" }],
   },
   [ItemType.Manhole]: {
