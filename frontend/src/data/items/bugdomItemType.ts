@@ -144,7 +144,7 @@ const bugdomItemTypeParamsSource: Record<ItemType, BugdomItemParamsSource> = {
       type: "Integer",
       description: "Starting aim/rotation (0-7, where each unit = 45°)",
       codeSample: {
-        code: "gMyStartAim = itemPtr[i].parm[0]; // get aim 0..7\ngCheckPointRot = (float)(gMyStartAim/2) * (PI2/4);",
+        code: "gMyStartAim = itemPtr[i].parm[0];\t\t\t\t\t\t\t\t// get aim 0..7",
         fileName: "src/Terrain/Terrain2.c",
         lineNumber: 213,
       },
@@ -177,7 +177,7 @@ const bugdomItemTypeParamsSource: Record<ItemType, BugdomItemParamsSource> = {
       description:
         "Content-specific parameter - for keys: specifies which key ID (0-3), for other content types: unused",
       codeSample: {
-        code: "newObj->KeyNum = theNut->NutParm1; // key ID# is stored here\ntype = keyTypes[gLevelType] + theNut->NutParm1; // NutParm1 has key ID #",
+        code: "newObj->KeyNum = theNut->NutParm1;\t\t\t// key ID# is in here",
         fileName: "src/Items/Triggers.c",
         lineNumber: 1099,
       },
@@ -187,7 +187,7 @@ const bugdomItemTypeParamsSource: Record<ItemType, BugdomItemParamsSource> = {
       description:
         "Detonator ID - for hive levels, specifies which detonator can blow up this nut",
       codeSample: {
-        code: "id = itemPtr->parm[2]; // get detonator id\nnewObj->NutDetonatorID = id; // remember detonator ID",
+        code: "id = itemPtr->parm[2];\t\t\t\t\t// get detonator id",
         fileName: "src/Items/Triggers.c",
         lineNumber: 236,
       },
@@ -210,7 +210,7 @@ const bugdomItemTypeParamsSource: Record<ItemType, BugdomItemParamsSource> = {
           description:
             "Can blow up - nut can be detonated by explosives (for hive levels)",
           codeSample: {
-            code: "canBlow = itemPtr->parm[3] & (1<<1); // see if can blow\nnewObj->DetonateNut = canBlow; // remember if get detonated",
+            code: "canBlow = itemPtr->parm[3] & (1<<1);\t// see if can blow",
             fileName: "src/Items/Triggers.c",
             lineNumber: 237,
           },
@@ -283,7 +283,7 @@ const bugdomItemTypeParamsSource: Record<ItemType, BugdomItemParamsSource> = {
       type: "Integer",
       description: "Ant type (0=normal, 1=rock thrower)",
       codeSample: {
-        code: "rockThrower = itemPtr->parm[0] == 1; // see if rock thrower\nnewObj->RockThrower = rockThrower;",
+        code: "rockThrower = itemPtr->parm[0] == 1;					// see if rock thrower",
         fileName: "src/Enemies/Enemy_Ant.c",
         lineNumber: 149,
       },
@@ -339,7 +339,7 @@ const bugdomItemTypeParamsSource: Record<ItemType, BugdomItemParamsSource> = {
       type: "Integer",
       description: "Width in tiles (0 = default of 4 tiles)",
       codeSample: {
-        code: "width = itemPtr->parm[0];\nif (width == 0)\n  width = 4;  // Default 4 tiles",
+        code: "width = itemPtr->parm[0];",
         fileName: "src/Items/Liquids.c",
         lineNumber: 339,
       },
@@ -348,18 +348,18 @@ const bugdomItemTypeParamsSource: Record<ItemType, BugdomItemParamsSource> = {
       type: "Integer",
       description: "Depth in tiles (0 = default of 4 tiles)",
       codeSample: {
-        code: "depth = itemPtr->parm[1];\nif (depth == 0)\n  depth = 4;  // Default 4 tiles",
+        code: "depth = itemPtr->parm[1];",
         fileName: "src/Items/Liquids.c",
-        lineNumber: 341,
+        lineNumber: 340,
       },
     },
     p2: {
       type: "Integer",
       description: "Y offset (×4 world units) or Y table index when p3 bit 2 is set",
       codeSample: {
-        code: "yOff *= 4.0f;\ny = GetTerrainHeightAtCoord(x,z,FLOOR)+yOff;",
+        code: "y = GetTerrainHeightAtCoord(x,z,FLOOR)+yOff;\t\t// get y coord of patch",
         fileName: "src/Items/Liquids.c",
-        lineNumber: 329,
+        lineNumber: 333,
       },
     },
     p3: {
@@ -387,9 +387,9 @@ const bugdomItemTypeParamsSource: Record<ItemType, BugdomItemParamsSource> = {
           index: 2,
           description: "Use indexed Y mode (p2 is table index instead of offset)",
           codeSample: {
-            code: "if (itemPtr->parm[3] & (1<<2))\n  y = yTable[itemPtr->parm[2]];",
+            code: "y = yTable[itemPtr->parm[2]];\t\t\t\t\t// get y from table\t\t",
             fileName: "src/Items/Liquids.c",
-            lineNumber: 273,
+            lineNumber: 321,
           },
         },
       ],
@@ -494,9 +494,9 @@ const bugdomItemTypeParamsSource: Record<ItemType, BugdomItemParamsSource> = {
           index: 0,
           description: "Is metal platform (vs brick)",
           codeSample: {
-            code: "Boolean isMetal = itemPtr->parm[0] & 1;\ngNewObjectDefinition.type = HIVE_MObjType_BrickPlatform + (int)isMetal;",
+            code: "Boolean\t\t\tisMetal = itemPtr->parm[0] & 1;",
             fileName: "src/Items/Triggers.c",
-            lineNumber: 444,
+            lineNumber: 443,
           },
         },
       ],
@@ -518,9 +518,9 @@ const bugdomItemTypeParamsSource: Record<ItemType, BugdomItemParamsSource> = {
           index: 1,
           description: "Is small platform",
           codeSample: {
-            code: "Boolean isSmall = itemPtr->parm[3] & (1<<1);",
+            code: "Boolean\t\t\tisSmall = itemPtr->parm[3] & (1<<1);",
             fileName: "src/Items/Triggers.c",
-            lineNumber: 445,
+            lineNumber: 444,
           },
         },
       ],
@@ -532,27 +532,27 @@ const bugdomItemTypeParamsSource: Record<ItemType, BugdomItemParamsSource> = {
       type: "Integer",
       description: "Width in tiles (0 = default of 4 tiles)",
       codeSample: {
-        code: "width = itemPtr->parm[0];\nif (width == 0)\n  width = 4;",
+        code: "width = itemPtr->parm[0];\t\t\t\t\t\t\t\t// get width & depth of water patch",
         fileName: "src/Items/Liquids.c",
-        lineNumber: 819,
+        lineNumber: 839,
       },
     },
     p1: {
       type: "Integer",
       description: "Depth in tiles (0 = default of 4 tiles)",
       codeSample: {
-        code: "depth = itemPtr->parm[1];\nif (depth == 0)\n  depth = 4;",
+        code: "depth = itemPtr->parm[1];",
         fileName: "src/Items/Liquids.c",
-        lineNumber: 821,
+        lineNumber: 840,
       },
     },
     p2: {
       type: "Integer",
       description: "Y offset (×10 world units) or Y table index when p3 bit 0 is set",
       codeSample: {
-        code: "yOff *= 10.0f;\ny = GetTerrainHeightAtCoord(x,z,FLOOR)+yOff;",
+        code: "y = GetTerrainHeightAtCoord(x,z,FLOOR)+yOff;\t\t// get y coord of patch",
         fileName: "src/Items/Liquids.c",
-        lineNumber: 832,
+        lineNumber: 836,
       },
     },
     p3: {
@@ -562,9 +562,9 @@ const bugdomItemTypeParamsSource: Record<ItemType, BugdomItemParamsSource> = {
           index: 0,
           description: "Use indexed Y mode (p2 is table index instead of offset)",
           codeSample: {
-            code: "if (itemPtr->parm[3]&1)\n  y = gLiquidYTable[kind][itemPtr->parm[2]];",
+            code: "y = gLiquidYTable[kind][itemPtr->parm[2]];\t\t\t// get y from table",
             fileName: "src/Items/Liquids.c",
-            lineNumber: 830,
+            lineNumber: 828,
           },
         },
       ],
@@ -577,7 +577,7 @@ const bugdomItemTypeParamsSource: Record<ItemType, BugdomItemParamsSource> = {
       description:
         "Firecracker type (for hive: ID#, for night: cherry bomb type)",
       codeSample: {
-        code: "id = itemPtr->parm[0]; // get ID # (hive)\n// or\ngNewObjectDefinition.type = NIGHT_MObjType_CherryBomb + itemPtr->parm[0]; // (night)",
+        code: "id = itemPtr->parm[0];							// get ID #",
         fileName: "src/Items/Items2.c",
         lineNumber: 80,
       },
@@ -613,7 +613,7 @@ const bugdomItemTypeParamsSource: Record<ItemType, BugdomItemParamsSource> = {
       type: "Integer",
       description: "Checkpoint number",
       codeSample: {
-        code: "int checkpointNum = itemPtr->parm[0];\ndroplet->CheckPointNum = itemPtr->parm[0]; // save checkpoint #",
+        code: "int		checkpointNum = itemPtr->parm[0];",
         fileName: "src/Items/Triggers2.c",
         lineNumber: 69,
       },
@@ -687,7 +687,7 @@ const bugdomItemTypeParamsSource: Record<ItemType, BugdomItemParamsSource> = {
       type: "Integer",
       description: "Rotation (0-3, where each unit = 90°)",
       codeSample: {
-        code: "Byte rot = itemPtr->parm[0];\ngNewObjectDefinition.rot = rot * (PI/2);",
+        code: "Byte		rot = itemPtr->parm[0];",
         fileName: "src/Items/Triggers2.c",
         lineNumber: 245,
       },
@@ -761,7 +761,7 @@ const bugdomItemTypeParamsSource: Record<ItemType, BugdomItemParamsSource> = {
       type: "Integer",
       description: "Detonator ID (for hive levels with keyed enemies)",
       codeSample: {
-        code: "if (!gDetonatorBlown[itemPtr->parm[1]]) // see if detonator has been triggered\n  return(false);",
+        code: "if (!gDetonatorBlown[itemPtr->parm[1]])						// see if detonator has been triggered",
         fileName: "src/Enemies/Enemy_Bee_Flying.c",
         lineNumber: 99,
       },
@@ -774,7 +774,7 @@ const bugdomItemTypeParamsSource: Record<ItemType, BugdomItemParamsSource> = {
           index: 0,
           description: "Keyed to detonator (for hive levels)",
           codeSample: {
-            code: "if (itemPtr->parm[3] & 1) // see if we care\n  if (!gDetonatorBlown[itemPtr->parm[1]]) // see if detonator has been triggered",
+            code: "if (itemPtr->parm[3] & 1)										// see if we care",
             fileName: "src/Enemies/Enemy_Bee_Flying.c",
             lineNumber: 97,
           },
@@ -788,7 +788,7 @@ const bugdomItemTypeParamsSource: Record<ItemType, BugdomItemParamsSource> = {
       type: "Integer",
       description: "Detonator ID (for hive levels with keyed enemies)",
       codeSample: {
-        code: "if (!gDetonatorBlown[itemPtr->parm[0]]) // see if detonator has been triggered\n  return(false);",
+        code: "if (!gDetonatorBlown[itemPtr->parm[0]])									// see if detonator has been triggered",
         fileName: "src/Enemies/Enemy_WorkerBee.c",
         lineNumber: 105,
       },
@@ -802,7 +802,7 @@ const bugdomItemTypeParamsSource: Record<ItemType, BugdomItemParamsSource> = {
           index: 0,
           description: "Keyed to detonator",
           codeSample: {
-            code: "if (itemPtr->parm[3] & 1) // see if we care\n  if (!gDetonatorBlown[itemPtr->parm[0]]) // see if detonator has been triggered",
+            code: "if (itemPtr->parm[3] & 1)										// see if we care",
             fileName: "src/Enemies/Enemy_WorkerBee.c",
             lineNumber: 103,
           },
@@ -816,7 +816,7 @@ const bugdomItemTypeParamsSource: Record<ItemType, BugdomItemParamsSource> = {
       type: "Integer",
       description: "Queen bee base number (queen is at base #0)",
       codeSample: {
-        code: "if (itemPtr->parm[0] != 0) // queen is at base #0\n  return(false);",
+        code: "if (itemPtr->parm[0] != 0)			// queen is at base #0",
         fileName: "src/Enemies/Enemy_QueenBee.c",
         lineNumber: 114,
       },
@@ -879,27 +879,27 @@ const bugdomItemTypeParamsSource: Record<ItemType, BugdomItemParamsSource> = {
       type: "Integer",
       description: "Width in tiles (0 = default of 4 tiles)",
       codeSample: {
-        code: "width = itemPtr->parm[0];\nif (width == 0)\n  width = 4;",
+        code: "width = itemPtr->parm[0];								// get width & depth of water patch",
         fileName: "src/Items/Liquids.c",
-        lineNumber: 819,
+        lineNumber: 839,
       },
     },
     p1: {
       type: "Integer",
       description: "Depth in tiles (0 = default of 4 tiles)",
       codeSample: {
-        code: "depth = itemPtr->parm[1];\nif (depth == 0)\n  depth = 4;",
+        code: "depth = itemPtr->parm[1];",
         fileName: "src/Items/Liquids.c",
-        lineNumber: 821,
+        lineNumber: 840,
       },
     },
     p2: {
       type: "Integer",
       description: "Y offset (×10 world units) or Y table index when p3 bit 0 is set",
       codeSample: {
-        code: "yOff *= 10.0f;\ny = GetTerrainHeightAtCoord(x,z,FLOOR)+yOff;",
+        code: "y = GetTerrainHeightAtCoord(x,z,FLOOR)+yOff;		// get y coord of patch",
         fileName: "src/Items/Liquids.c",
-        lineNumber: 832,
+        lineNumber: 836,
       },
     },
     p3: {
@@ -909,9 +909,9 @@ const bugdomItemTypeParamsSource: Record<ItemType, BugdomItemParamsSource> = {
           index: 0,
           description: "Use indexed Y mode (p2 is table index instead of offset)",
           codeSample: {
-            code: "if (itemPtr->parm[3]&1)\n  y = gLiquidYTable[kind][itemPtr->parm[2]];",
+            code: "y = gLiquidYTable[kind][itemPtr->parm[2]];			// get y from table",
             fileName: "src/Items/Liquids.c",
-            lineNumber: 830,
+            lineNumber: 828,
           },
         },
       ],
@@ -923,27 +923,27 @@ const bugdomItemTypeParamsSource: Record<ItemType, BugdomItemParamsSource> = {
       type: "Integer",
       description: "Width in tiles (0 = default of 4 tiles)",
       codeSample: {
-        code: "width = itemPtr->parm[0];\nif (width == 0)\n  width = 4;",
+        code: "width = itemPtr->parm[0];								// get width & depth of water patch",
         fileName: "src/Items/Liquids.c",
-        lineNumber: 819,
+        lineNumber: 839,
       },
     },
     p1: {
       type: "Integer",
       description: "Depth in tiles (0 = default of 4 tiles)",
       codeSample: {
-        code: "depth = itemPtr->parm[1];\nif (depth == 0)\n  depth = 4;",
+        code: "depth = itemPtr->parm[1];",
         fileName: "src/Items/Liquids.c",
-        lineNumber: 821,
+        lineNumber: 840,
       },
     },
     p2: {
       type: "Integer",
       description: "Y offset (×10 world units) or Y table index when p3 bit 0 is set",
       codeSample: {
-        code: "yOff *= 10.0f;\ny = GetTerrainHeightAtCoord(x,z,FLOOR)+yOff;",
+        code: "y = GetTerrainHeightAtCoord(x,z,FLOOR)+yOff;		// get y coord of patch",
         fileName: "src/Items/Liquids.c",
-        lineNumber: 832,
+        lineNumber: 836,
       },
     },
     p3: {
@@ -953,9 +953,9 @@ const bugdomItemTypeParamsSource: Record<ItemType, BugdomItemParamsSource> = {
           index: 0,
           description: "Use indexed Y mode (p2 is table index instead of offset)",
           codeSample: {
-            code: "if (itemPtr->parm[3]&1)\n  y = gLiquidYTable[kind][itemPtr->parm[2]];",
+            code: "y = gLiquidYTable[kind][itemPtr->parm[2]];			// get y from table",
             fileName: "src/Items/Liquids.c",
-            lineNumber: 830,
+            lineNumber: 828,
           },
         },
       ],
@@ -985,7 +985,7 @@ const bugdomItemTypeParamsSource: Record<ItemType, BugdomItemParamsSource> = {
       description:
         "King Ant type flag (if any bits set, this isn't the real King)",
       codeSample: {
-        code: "if (itemPtr->parm[3]) // if any bits set then this isnt the real King\n  return(false);",
+        code: "if (itemPtr->parm[3])			// if any bits set then this isnt the real Queen",
         fileName: "src/Enemies/Enemy_KingAnt.c",
         lineNumber: 106,
       },

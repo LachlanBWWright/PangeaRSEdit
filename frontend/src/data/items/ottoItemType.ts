@@ -459,7 +459,7 @@ const terrainItemTypeParamsSource: Record<ItemType, OttoItemParamsSource> = {
           index: 0,
           description: "Always add (ignore max limit)",
           codeSample: {
-            code: "if (!(itemPtr->parm[3] & 1)) { /* check max limit */ }",
+            code: "if (!(itemPtr->parm[3] & 1))								// see if always add",
             fileName: "Enemies/Farm/Enemy_Onion.c",
             lineNumber: 100,
           },
@@ -488,7 +488,7 @@ const terrainItemTypeParamsSource: Record<ItemType, OttoItemParamsSource> = {
           index: 0,
           description: "Always add (ignore max limit)",
           codeSample: {
-            code: "if (!(itemPtr->parm[3] & 1)) { /* check max limit */ }",
+            code: "if (!(itemPtr->parm[3] & 1))								// see if always add",
             fileName: "Enemies/Farm/Enemy_Corn.c",
             lineNumber: 98,
           },
@@ -517,7 +517,7 @@ const terrainItemTypeParamsSource: Record<ItemType, OttoItemParamsSource> = {
           index: 0,
           description: "Always add (ignore max limit)",
           codeSample: {
-            code: "if (!(itemPtr->parm[3] & 1)) { /* check max limit */ }",
+            code: "if (!(itemPtr->parm[3] & 1))								// see if always add",
             fileName: "Enemies/Farm/Enemy_Tomato.c",
             lineNumber: 100,
           },
@@ -797,7 +797,7 @@ const terrainItemTypeParamsSource: Record<ItemType, OttoItemParamsSource> = {
       type: "Integer",
       description: "Crystal color (0=Blue, 1=Green, 2=Red)",
       codeSample: {
-        code: "switch(itemPtr->parm[1]) { ... }",
+        code: "switch(itemPtr->parm[0])",
         fileName: "Items/Items.c",
         lineNumber: 1386,
       },
@@ -818,9 +818,9 @@ const terrainItemTypeParamsSource: Record<ItemType, OttoItemParamsSource> = {
       type: "Integer",
       description: "Tube type (0=Bent, 1=Straight)",
       codeSample: {
-        code: "int type = itemPtr->parm[0]; // get tube type",
+        code: "int		type = itemPtr->parm[0];",
         fileName: "Items/Items.c",
-        lineNumber: 1672,
+        lineNumber: 1671,
       },
     },
     p1: {
@@ -1207,7 +1207,7 @@ const terrainItemTypeParamsSource: Record<ItemType, OttoItemParamsSource> = {
       type: "Integer",
       description: "Platform type (0-3)",
       codeSample: {
-        code: "int type = itemPtr->parm[0];\ngNewObjectDefinition.type = BLOBBOSS_ObjType_BarPlatform_Blue + type;",
+        code: "gNewObjectDefinition.type 		= BLOBBOSS_ObjType_BarPlatform_Blue + type;",
         fileName: "Items/Triggers.c",
         lineNumber: 1349,
       },
@@ -1218,7 +1218,7 @@ const terrainItemTypeParamsSource: Record<ItemType, OttoItemParamsSource> = {
       codeSample: {
         code: "newObj->SpinOffset = (float)itemPtr->parm[1] * (PI2 / 8.0f);",
         fileName: "Items/Triggers.c",
-        lineNumber: 1393,
+        lineNumber: 1389,
       },
     },
 
@@ -1408,9 +1408,9 @@ const terrainItemTypeParamsSource: Record<ItemType, OttoItemParamsSource> = {
       type: "Integer",
       description: "Rotation (0-3, multiplied by PI2/4)",
       codeSample: {
-        code: "gNewObjectDefinition.rot = (float)itemPtr->parm[0] * (PI2 / 4.0f);",
+        code: "gNewObjectDefinition.rot 		= (float)itemPtr->parm[0] * (PI2 / 4.0f);",
         fileName: "Items/HumanCannonball.c",
-        lineNumber: 48,
+        lineNumber: 55,
       },
     },
     p1: "Unused",
@@ -1482,7 +1482,7 @@ const terrainItemTypeParamsSource: Record<ItemType, OttoItemParamsSource> = {
           index: 0,
           description: "Always add (ignore max limit)",
           codeSample: {
-            code: "if (!(itemPtr->parm[3] & 1)) { /* check max limit */ }",
+            code: "if (!(itemPtr->parm[3] & 1))								// see if always add",
             fileName: "Enemies/Cloud/Enemy_Clown.c",
             lineNumber: 118,
           },
@@ -1535,9 +1535,9 @@ const terrainItemTypeParamsSource: Record<ItemType, OttoItemParamsSource> = {
       type: "Integer",
       description: "Rotation (0-7, multiplied by PI2/8)",
       codeSample: {
-        code: "gNewObjectDefinition.rot = (float)itemPtr->parm[0] * (PI2/8); // set rotation for RocketSled",
+        code: "gNewObjectDefinition.rot 		= (float)itemPtr->parm[0] * (PI2/8);",
         fileName: "Items/RocketSled.c",
-        lineNumber: 54,
+        lineNumber: 67,
       },
     },
     p1: "Unused",
@@ -1568,7 +1568,7 @@ const terrainItemTypeParamsSource: Record<ItemType, OttoItemParamsSource> = {
       codeSample: {
         code: "newObj->ZigOrZag = itemPtr->parm[1];",
         fileName: "Items/items2.c",
-        lineNumber: 82,
+        lineNumber: 89,
       },
     },
     p2: "Unused",
@@ -1583,7 +1583,7 @@ const terrainItemTypeParamsSource: Record<ItemType, OttoItemParamsSource> = {
       codeSample: {
         code: "gNewObjectDefinition.rot = (float)itemPtr->parm[0] * (PI2/8.0f);",
         fileName: "Items/Volcano.c",
-        lineNumber: 69,
+        lineNumber: 67,
       },
     },
     p1: "Unused",
@@ -1661,9 +1661,9 @@ const terrainItemTypeParamsSource: Record<ItemType, OttoItemParamsSource> = {
           index: 0,
           description: "Always add (ignore max limit)",
           codeSample: {
-            code: "if (!(itemPtr->parm[3] & 1)) { /* check max limit */ }",
+            code: "if (!(itemPtr->parm[3] & 1))								// see if always add",
             fileName: "Enemies/FireIce/Enemy_HammerBot.c",
-            lineNumber: 91,
+            lineNumber: 90,
           },
         },
         {
@@ -1690,7 +1690,7 @@ const terrainItemTypeParamsSource: Record<ItemType, OttoItemParamsSource> = {
           index: 0,
           description: "Always add (ignore max limit)",
           codeSample: {
-            code: "if (!(itemPtr->parm[3] & 1)) { /* check max limit */ }",
+            code: "if (!(itemPtr->parm[3] & 1))								// see if always add",
             fileName: "Enemies/FireIce/Enemy_DrillBot.c",
             lineNumber: 90,
           },
@@ -1719,7 +1719,7 @@ const terrainItemTypeParamsSource: Record<ItemType, OttoItemParamsSource> = {
           index: 0,
           description: "Always add (ignore max limit)",
           codeSample: {
-            code: "if (!(itemPtr->parm[3] & 1)) { /* check max limit */ }",
+            code: "if (!(itemPtr->parm[3] & 1))								// see if always add",
             fileName: "Enemies/FireIce/Enemy_SwingerBot.c",
             lineNumber: 85,
           },

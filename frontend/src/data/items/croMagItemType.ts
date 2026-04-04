@@ -186,9 +186,9 @@ const croMagItemTypeParamsSource: Record<ItemType, CroMagItemParamsSource> = {
       type: "Integer",
       description: "Cactus type (0-1)",
       codeSample: {
-        code: "short cactusType = itemPtr->parm[0];\nif (cactusType > 1) cactusType = 1;\ngNewObjectDefinition.type = DESERT_ObjType_Cactus + cactusType;",
+        code: "short	cactusType = itemPtr->parm[0];			// get cactus type",
         fileName: "Source/Items/Triggers.c",
-        lineNumber: 775,
+        lineNumber: 776,
       },
     },
     p1: "Unknown",
@@ -197,9 +197,9 @@ const croMagItemTypeParamsSource: Record<ItemType, CroMagItemParamsSource> = {
       type: "Integer",
       description: "Non-solid flag (0 = solid, 1 = non-solid)",
       codeSample: {
-        code: "Boolean notSolid = itemPtr->parm[3];\nif (!notSolid) {\n    /* set collision */\n}",
+        code: "Boolean	notSolid = itemPtr->parm[3];",
         fileName: "Source/Items/Triggers.c",
-        lineNumber: 774,
+        lineNumber: 775,
       },
     },
   },
@@ -223,9 +223,9 @@ const croMagItemTypeParamsSource: Record<ItemType, CroMagItemParamsSource> = {
           index: 0,
           description: "Use fixed height (based on track and type)",
           codeSample: {
-            code: "if (itemPtr->parm[3] & 1) {\n    y = gWaterHeights[gTrackNum][itemPtr->parm[0]];\n} else {\n    y = GetTerrainY(x,z) + 100.0f;\n}",
+            code: "if (itemPtr->parm[3] & 1)\t\t\t\t\t\t// see if use fixed height",
             fileName: "Source/Terrain/Liquids.c",
-            lineNumber: 113,
+            lineNumber: 116,
           },
         },
       ],
@@ -260,9 +260,9 @@ const croMagItemTypeParamsSource: Record<ItemType, CroMagItemParamsSource> = {
       type: "Integer",
       description: "Tree type (0-3, varies by track)",
       codeSample: {
-        code: "if (itemPtr->parm[0] >= 4) return false;\n.type = types[gTrackNum][itemPtr->parm[0]],",
+        code: ".type 		= types[gTrackNum][itemPtr->parm[0]],",
         fileName: "Source/Items/Items.c",
-        lineNumber: 330,
+        lineNumber: 342,
       },
     },
     p1: "Unknown",
@@ -283,7 +283,7 @@ const croMagItemTypeParamsSource: Record<ItemType, CroMagItemParamsSource> = {
           index: 1,
           description: "Bump up position (+500 units)",
           codeSample: {
-            code: "if (itemPtr->parm[3] & (1<<1)) def.coord.y += 500.0f;",
+            code: "def.coord.y += 500.0f;",
             fileName: "Source/Items/Items.c",
             lineNumber: 354,
           },
@@ -297,9 +297,9 @@ const croMagItemTypeParamsSource: Record<ItemType, CroMagItemParamsSource> = {
       type: "Integer",
       description: "POW type (bone, oil slick, etc.)",
       codeSample: {
-        code: "powType = itemPtr->parm[0];\n.type = GLOBAL_ObjType_BonePOW + powType,",
+        code: "powType = itemPtr->parm[0];								// get POW type",
         fileName: "Source/Items/Triggers.c",
-        lineNumber: 202,
+        lineNumber: 203,
       },
     },
     p1: {
@@ -584,9 +584,9 @@ const croMagItemTypeParamsSource: Record<ItemType, CroMagItemParamsSource> = {
       type: "Integer",
       description: "House type (varies by track: hut, cabin, dome, etc.)",
       codeSample: {
-        code: "short type = itemPtr->parm[0];\n.type = info[gTrackNum].type[type],",
+        code: ".type 		= info[gTrackNum].type[type],",
         fileName: "Source/Items/Items.c",
-        lineNumber: 1288,
+        lineNumber: 1295,
       },
     },
     p1: {

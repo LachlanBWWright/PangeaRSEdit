@@ -302,9 +302,9 @@ const nanosaur2ItemTypeParamsSource: Record<ItemType, ItemParamsSource> = {
       type: "Integer",
       description: "Rock type/variant (different rock models)",
       codeSample: {
-        code: ".type = base + itemPtr->parm[0],",
+        code: ".type 		= base + itemPtr->parm[0],",
         fileName: "Source/Items/Items.c",
-        lineNumber: 227,
+        lineNumber: 226,
       },
     },
     p1: {
@@ -312,9 +312,9 @@ const nanosaur2ItemTypeParamsSource: Record<ItemType, ItemParamsSource> = {
       description:
         "Rotation (0=random, 1-8 = specific rotation where each unit = 45°)",
       codeSample: {
-        code: "long rot = itemPtr->parm[1];\n.rot = (rot == 0) ? (RandomFloat()*PI2) : ((float)(rot-1) * (PI2/8.0f)),",
+        code: ".rot		= (rot == 0) ? (RandomFloat()*PI2) : ((float)(rot-1) * (PI2/8.0f)),",
         fileName: "Source/Items/Items.c",
-        lineNumber: 202,
+        lineNumber: 233,
       },
     },
     p2: "Unknown",
@@ -428,7 +428,7 @@ const nanosaur2ItemTypeParamsSource: Record<ItemType, ItemParamsSource> = {
       type: "Integer",
       description: "Tree variant type (different bent pine models)",
       codeSample: {
-        code: ".type = LEVEL1_ObjType_BentPine1_Trunk + itemPtr->parm[0],\n// ...\ndef.type = LEVEL1_ObjType_BentPine1_Leaves + itemPtr->parm[0];",
+        code: ".type 		= LEVEL1_ObjType_BentPine1_Trunk + itemPtr->parm[0],",
         fileName: "Source/Items/Trees.c",
         lineNumber: 548,
       },
@@ -465,7 +465,7 @@ const nanosaur2ItemTypeParamsSource: Record<ItemType, ItemParamsSource> = {
           index: 0,
           description: "Always add flag (bypass enemy count limits)",
           codeSample: {
-            code: "if (!(itemPtr->parm[3] & 1)) // see if always add\n  if (gNumEnemyOfKind[ENEMY_KIND_BRACH] >= MAX_BRACHS)\n    return(false);",
+            code: "if (!(itemPtr->parm[3] & 1))\t\t\t\t\t\t\t\t// see if always add",
             fileName: "Source/Enemies/Enemy_Brach.c",
             lineNumber: 85,
           },

@@ -37,7 +37,7 @@ export const GAME_REPOSITORIES: Record<string, GameRepository> = {
     owner: "jorio",
     repo: "Bugdom2",
     branch: "master",
-    sourcePath: "src",
+    sourcePath: "Source",
   },
   bugdom: {
     owner: "jorio",
@@ -55,19 +55,19 @@ export const GAME_REPOSITORIES: Record<string, GameRepository> = {
     owner: "jorio",
     repo: "Nanosaur2",
     branch: "master",
-    sourcePath: "src",
+    sourcePath: "Source",
   },
   cromag: {
     owner: "jorio",
     repo: "CroMagRally",
     branch: "master",
-    sourcePath: "src",
+    sourcePath: "Source",
   },
   billyfrontier: {
     owner: "jorio",
     repo: "BillyFrontier",
     branch: "master",
-    sourcePath: "src",
+    sourcePath: "Source",
   },
   mightymike: {
     owner: "jorio",

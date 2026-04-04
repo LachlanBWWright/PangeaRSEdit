@@ -117,7 +117,7 @@ const billyFrontierItemTypeParamsSource: Record<
       type: "Integer",
       description: "Rotation (0-7, where each unit = 45°)",
       codeSample: {
-        code: "float rot = (float)itemPtr->parm[1] * (PI2/8);",
+        code: "float	rot 		= (float)itemPtr->parm[1] * (PI2/8);",
         fileName: "Source/System/Areas/Duel.c",
         lineNumber: 389,
       },
@@ -177,9 +177,9 @@ const billyFrontierItemTypeParamsSource: Record<
       type: "Integer",
       description: "Plant type (Cactus in town, MushroomTree in swamp)",
       codeSample: {
-        code: "gNewObjectDefinition.type = TOWN_ObjType_Cactus + itemPtr->parm[0];\n// or SWAMP_ObjType_MushroomTree + itemPtr->parm[0];",
+        code: "gNewObjectDefinition.type 		= TOWN_ObjType_Cactus + itemPtr->parm[0];",
         fileName: "Source/Items/Items.c",
-        lineNumber: 226,
+        lineNumber: 225,
       },
     },
     p1: "Unknown",
@@ -222,7 +222,7 @@ const billyFrontierItemTypeParamsSource: Record<
       type: "Integer",
       description: "Stop point (target position for enemy movement)",
       codeSample: {
-        code: "short stopPoint = itemPtr->parm[0];\nnewObj->StopPoint = stopPoint;",
+        code: "short	stopPoint 	= itemPtr->parm[0];",
         fileName: "Source/Enemy/Enemy_FrogMan.c",
         lineNumber: 62,
       },
@@ -231,7 +231,7 @@ const billyFrontierItemTypeParamsSource: Record<
       type: "Integer",
       description: "Rotation (0-7, where each unit = 45°)",
       codeSample: {
-        code: "float rot = (float)itemPtr->parm[1] * (PI2/8);",
+        code: "float	rot 		= (float)itemPtr->parm[1] * (PI2/8);",
         fileName: "Source/Enemy/Enemy_FrogMan.c",
         lineNumber: 63,
       },
@@ -245,7 +245,7 @@ const billyFrontierItemTypeParamsSource: Record<
       type: "Integer",
       description: "Stop point (target position for enemy movement)",
       codeSample: {
-        code: "short stopPoint = itemPtr->parm[0];\nnewObj->StopPoint = stopPoint;",
+        code: "short	stopPoint 	= itemPtr->parm[0];",
         fileName: "Source/Enemy/Enemy_Bandito.c",
         lineNumber: 233,
       },
@@ -254,7 +254,7 @@ const billyFrontierItemTypeParamsSource: Record<
       type: "Integer",
       description: "Action type (0=duck down, 1=duck left, 2=duck right)",
       codeSample: {
-        code: "short actionType = itemPtr->parm[1];\nnewObj->ActionType = actionType;",
+        code: "short	actionType 	= itemPtr->parm[1];",
         fileName: "Source/Enemy/Enemy_Bandito.c",
         lineNumber: 234,
       },
@@ -276,9 +276,9 @@ const billyFrontierItemTypeParamsSource: Record<
       type: "Integer",
       description: "Barrel type (0=regular barrel, 1=TNT barrel)",
       codeSample: {
-        code: "gNewObjectDefinition.type = GLOBAL_ObjType_Barrel + itemPtr->parm[0];\nif (itemPtr->parm[0] == 1) newObj->What = WHAT_TNT;",
+        code: "gNewObjectDefinition.type 		= GLOBAL_ObjType_Barrel + itemPtr->parm[0];",
         fileName: "Source/Items/Items.c",
-        lineNumber: 296,
+        lineNumber: 297,
       },
     },
     p1: "Unknown",
@@ -291,9 +291,9 @@ const billyFrontierItemTypeParamsSource: Record<
       type: "Integer",
       description: "Crate type (0-1=wood, 2+=metal, cannot be busted)",
       codeSample: {
-        code: "int type = itemPtr->parm[0];\nif (type >= 2) newObj->HitByBulletCallback = nil;",
+        code: "int		type = itemPtr->parm[0];",
         fileName: "Source/Items/Items.c",
-        lineNumber: 328,
+        lineNumber: 327,
       },
     },
     p1: {
@@ -344,7 +344,7 @@ const billyFrontierItemTypeParamsSource: Record<
       type: "Integer",
       description: "Post type (0=wood fence post)",
       codeSample: {
-        code: "int type = itemPtr->parm[0];\nswitch(type) {\n  case 0: // wood fence post\n    gNewObjectDefinition.type = GLOBAL_ObjType_WoodPost;\n}",
+        code: "int		type = itemPtr->parm[0];",
         fileName: "Source/Items/Items.c",
         lineNumber: 955,
       },
@@ -374,9 +374,9 @@ const billyFrontierItemTypeParamsSource: Record<
       type: "Integer",
       description: "Smoke kind/type",
       codeSample: {
-        code: "newObj = MakeSmoker(x,z, itemPtr->parm[0]);\nnewObj->Kind = kind; // save smoke kind",
+        code: "newObj = MakeSmoker(x,z, itemPtr->parm[0]);",
         fileName: "Source/Effects/Particles.c",
-        lineNumber: 1490,
+        lineNumber: 1491,
       },
     },
     p1: "Unknown",
@@ -396,9 +396,9 @@ const billyFrontierItemTypeParamsSource: Record<
       type: "Integer",
       description: "Rotation (0-7, where each unit = 45°)",
       codeSample: {
-        code: "gNewObjectDefinition.rot = (float)itemPtr->parm[0] * (PI2/8);",
+        code: "gNewObjectDefinition.rot 		= (float)itemPtr->parm[0] * (PI2/8);	",
         fileName: "Source/Items/Items.c",
-        lineNumber: 1124,
+        lineNumber: 1123,
       },
     },
     p1: "Unknown",
@@ -411,9 +411,9 @@ const billyFrontierItemTypeParamsSource: Record<
       type: "Integer",
       description: "Rotation (0-7, where each unit = 45°)",
       codeSample: {
-        code: "gNewObjectDefinition.rot = (float)itemPtr->parm[0] * (PI2/8);",
+        code: "gNewObjectDefinition.rot 		= (float)itemPtr->parm[0] * (PI2/8);	",
         fileName: "Source/Items/Items.c",
-        lineNumber: 1154,
+        lineNumber: 1153,
       },
     },
     p1: "Unknown",
@@ -491,7 +491,7 @@ const billyFrontierItemTypeParamsSource: Record<
       type: "Integer",
       description: "Stop point (target position for ghost movement)",
       codeSample: {
-        code: "short stopPoint = itemPtr->parm[1];\nnewObj->StopPoint = stopPoint;",
+        code: "short	stopPoint 	= itemPtr->parm[1];",
         fileName: "Source/Enemy/Enemy_TremorGhost.c",
         lineNumber: 61,
       },
@@ -519,7 +519,7 @@ const billyFrontierItemTypeParamsSource: Record<
       type: "Integer",
       description: "Stop point (target position for enemy movement)",
       codeSample: {
-        code: "short stopPoint = itemPtr->parm[0];\nnewObj->StopPoint = stopPoint;",
+        code: "short	stopPoint 	= itemPtr->parm[0];",
         fileName: "Source/Enemy/Enemy_TremorAlien.c",
         lineNumber: 132,
       },
@@ -563,7 +563,7 @@ const billyFrontierItemTypeParamsSource: Record<
       type: "Integer",
       description: "Stop point (target position for enemy movement)",
       codeSample: {
-        code: "short stopPoint = itemPtr->parm[0];\nnewObj->StopPoint = stopPoint;",
+        code: "short	stopPoint 	= itemPtr->parm[0];",
         fileName: "Source/Enemy/Enemy_Shorty.c",
         lineNumber: 239,
       },
@@ -572,7 +572,7 @@ const billyFrontierItemTypeParamsSource: Record<
       type: "Integer",
       description: "Action type (0=duck down, 1=duck left, 2=duck right)",
       codeSample: {
-        code: "short actionType = itemPtr->parm[1];\nnewObj->ActionType = actionType;",
+        code: "short	actionType 	= itemPtr->parm[1];",
         fileName: "Source/Enemy/Enemy_Shorty.c",
         lineNumber: 240,
       },

@@ -72,7 +72,7 @@ const nanosaurItemTypeParamsSource: Record<ItemType, NanosaurItemParamsSource> =
       description:
         "Power-up type (0=HeatSeek, 1=Laser, 2=TriBlast, 3=Health, 4=Shield, 5=Nuke, 6=Sonic)",
       codeSample: {
-        code: "n = itemPtr->parm[0]; // parm0 = powerup type\nshort types[] = {GLOBAL_MObjType_HeatSeekPOW,GLOBAL_MObjType_LaserPOW,GLOBAL_MObjType_TriBlastPOW,GLOBAL_MObjType_HealthPOW,GLOBAL_MObjType_ShieldPOW,GLOBAL_MObjType_NukePOW,GLOBAL_MObjType_Sonic};",
+        code: "n = itemPtr->parm[0];\t\t\t\t\t\t\t\t// parm0 = powerup type",
         fileName: "src/Items/Triggers.c",
         lineNumber: 242,
       },
@@ -101,7 +101,7 @@ const nanosaurItemTypeParamsSource: Record<ItemType, NanosaurItemParamsSource> =
           index: 0,
           description: "Always add flag (bypass enemy count limits)",
           codeSample: {
-            code: "if (!(itemPtr->parm[3] & 1)) // see if always add\n  if (gNumEnemyOfKind[ENEMY_KIND_TRICER] >= MAX_TRICER)\n    return(false);",
+            code: "if (!(itemPtr->parm[3] & 1))\t\t\t\t// see if always add ",
             fileName: "src/Enemies/Enemy_TriCer.c",
             lineNumber: 93,
           },
@@ -121,7 +121,7 @@ const nanosaurItemTypeParamsSource: Record<ItemType, NanosaurItemParamsSource> =
           index: 0,
           description: "Always add flag (bypass enemy count limits)",
           codeSample: {
-            code: "if (!(itemPtr->parm[3] & 1)) // see if always add\n  if (gNumEnemyOfKind[ENEMY_KIND_REX] >= MAX_REX)\n    return(false);",
+            code: "if (!(itemPtr->parm[3] & 1))\t\t\t\t// see if always add ",
             fileName: "src/Enemies/Enemy_Rex.c",
             lineNumber: 83,
           },
@@ -171,11 +171,11 @@ const nanosaurItemTypeParamsSource: Record<ItemType, NanosaurItemParamsSource> =
     flags: "Unknown",
     p0: {
       type: "Integer",
-      description: "Egg species type (0-NUM_EGG_SPECIES)",
-      codeSample: {
-        code: "if (itemPtr->parm[0] >= NUM_EGG_SPECIES) // make sure egg type is legal\n  return(true);\ngNewObjectDefinition.type = LEVEL0_MObjType_Egg1 + itemPtr->parm[0];",
+          description: "Egg species type (0-NUM_EGG_SPECIES)",
+          codeSample: {
+        code: "gNewObjectDefinition.type = LEVEL0_MObjType_Egg1 + itemPtr->parm[0];\t",
         fileName: "src/Items/Pickups.c",
-        lineNumber: 54,
+        lineNumber: 62,
       },
     },
     p1: "Unknown",
@@ -187,7 +187,7 @@ const nanosaurItemTypeParamsSource: Record<ItemType, NanosaurItemParamsSource> =
           index: 0,
           description: "Has nest (egg comes with a nest object)",
           codeSample: {
-            code: "if (itemPtr->parm[3] & 1) // see if has nest\n  MakeEggNest(x,z);",
+            code: "if (itemPtr->parm[3] & 1)",
             fileName: "src/Items/Pickups.c",
             lineNumber: 94,
           },
@@ -207,7 +207,7 @@ const nanosaurItemTypeParamsSource: Record<ItemType, NanosaurItemParamsSource> =
           index: 0,
           description: "Auto Y positioning (follow terrain height)",
           codeSample: {
-            code: "if (itemPtr->parm[3] & 1)\n  y = GetTerrainHeightAtCoord_Planar(x,z);",
+            code: "if (itemPtr->parm[3] & 1)",
             fileName: "src/Items/Items.c",
             lineNumber: 316,
           },
@@ -227,7 +227,7 @@ const nanosaurItemTypeParamsSource: Record<ItemType, NanosaurItemParamsSource> =
           index: 0,
           description: "Always add flag (bypass enemy count limits)",
           codeSample: {
-            code: "if (!(itemPtr->parm[3] & 1)) // see if always add\n  if (gNumEnemyOfKind[ENEMY_KIND_PTERA] >= MAX_PTERA)\n    return(false);",
+            code: "if (!(itemPtr->parm[3] & 1))\t\t\t\t// see if always add ",
             fileName: "src/Enemies/Enemy_Ptera.c",
             lineNumber: 80,
           },
@@ -256,7 +256,7 @@ const nanosaurItemTypeParamsSource: Record<ItemType, NanosaurItemParamsSource> =
           index: 0,
           description: "Always add flag (bypass enemy count limits)",
           codeSample: {
-            code: "if (!(itemPtr->parm[3] & 1)) // see if always add\n  if (gNumEnemyOfKind[ENEMY_KIND_STEGO] >= MAX_STEGO)\n    return(false);",
+            code: "if (!(itemPtr->parm[3] & 1))\t\t\t\t// see if always add ",
             fileName: "src/Enemies/Enemy_Stego.c",
             lineNumber: 70,
           },
@@ -278,7 +278,7 @@ const nanosaurItemTypeParamsSource: Record<ItemType, NanosaurItemParamsSource> =
       description:
         "Tree type (0=Fern, 1=StickPalm, 2=Bamboo, 3=Cypress, 4=MainPalm, 5=PinePalm)",
       codeSample: {
-        code: "i = itemPtr->parm[0]; // get tree type\nif ((i < 0) || (i > 5)) // verify it\n  return(true);\ngNewObjectDefinition.type = LEVEL0_MObjType_Tree1 + i;",
+        code: "i =  itemPtr->parm[0];\t\t\t\t\t\t\t// get tree type",
         fileName: "src/Items/Items.c",
         lineNumber: 410,
       },
@@ -321,7 +321,7 @@ const nanosaurItemTypeParamsSource: Record<ItemType, NanosaurItemParamsSource> =
       type: "Integer",
       description: "Crystal type (0-2, different crystal variants)",
       codeSample: {
-        code: "n = itemPtr->parm[0]; // parm0 = crystal type\nif ((n < 0) || (n > 2)) // verify crystal type\n  return(true);\nshort types[] = {LEVEL0_MObjType_Crystal1,LEVEL0_MObjType_Crystal2,LEVEL0_MObjType_Crystal3};",
+        code: "n = itemPtr->parm[0];\t\t\t\t\t\t\t\t// parm0 = crystal type",
         fileName: "src/Items/Triggers.c",
         lineNumber: 373,
       },
@@ -342,7 +342,7 @@ const nanosaurItemTypeParamsSource: Record<ItemType, NanosaurItemParamsSource> =
           index: 0,
           description: "Always add flag (bypass enemy count limits)",
           codeSample: {
-            code: "if (!(itemPtr->parm[3] & 1)) // see if always add\n  if (gNumEnemyOfKind[ENEMY_KIND_SPITTER] >= MAX_SPITTER)\n    return(false);",
+            code: "if (!(itemPtr->parm[3] & 1))\t\t\t\t// see if always add ",
             fileName: "src/Enemies/Enemy_Spitter.c",
             lineNumber: 78,
           },
