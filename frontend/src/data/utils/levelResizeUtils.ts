@@ -9,6 +9,7 @@ import type {
   SplineData,
   LiquidData,
 } from "@/python/structSpecs/LevelTypes";
+import { createBlankSupertileEntry } from "@/python/structSpecs/LevelTypes";
 import type { MightyMikeMap, MightyMikeTileValue } from "@/python/structSpecs/mightyMikeInterface";
 
 export type ResizeDirection = "top" | "bottom" | "left" | "right";
@@ -192,7 +193,7 @@ function resizeTerrainData(
       newSTHeight,
       offsetSTX,
       offsetSTZ,
-      { isEmpty: true, superTileId: 0 },
+      createBlankSupertileEntry(globals.EMPTY_TILE_IDX),
     );
     resized.STgd = {
       ...terrainData.STgd,

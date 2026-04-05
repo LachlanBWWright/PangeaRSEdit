@@ -132,7 +132,7 @@ export const Bugdom2Globals: GlobalsInterface = {
   STRUCT_SPECS: bugdom2Specs,
   SUPERTILE_TEXMAP_SIZE: 128, //Dimensions of each supertile texture
   TILES_PER_SUPERTILE: 8, //How many tiles are in a supertile
-  EMPTY_TILE_IDX: 0,
+  EMPTY_TILE_IDX: -1, //Source: games/bugdom2/Source/Headers/terrain.h - EMPTY_SUPERTILE = -1
   TILE_INGAME_SIZE: 225.0,
   TILE_SIZE: 16, //How many units each tile is
   LIQD_NUBS: 100,

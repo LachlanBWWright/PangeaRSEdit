@@ -5,6 +5,8 @@ import { Updater } from "use-immer";
 import {
   HeaderData,
   TerrainData,
+  isSupertileEmpty,
+  createBlankSupertileEntry,
 } from "@/python/structSpecs/LevelTypes";
 import { RefObject, useRef, useState } from "react";
 import { Globals } from "../../../data/globals/globals";
@@ -154,7 +156,7 @@ export function SupertileMenu({
             continue;
           }
           if (mode === "non-empty") {
-            if (tileEntry.superTileId !== 0) {
+            if (!isSupertileEmpty(tileEntry)) {
               nextImages[tileEntry.superTileId] = slice;
             }
           } else {
@@ -192,7 +194,7 @@ export function SupertileMenu({
       for (let x = 0; x < tilesWide; x++) {
         const tileIndex = y * tilesWide + x;
         const tileEntry = stgd[tileIndex];
-        if (!tileEntry || tileEntry.superTileId === 0) {
+        if (!tileEntry || isSupertileEmpty(tileEntry)) {
           continue;
         }
         const tileImage = mapImages[tileEntry.superTileId];
@@ -295,7 +297,8 @@ export function SupertileMenu({
           accept="image/*"
           disabled={
             selectedTile >= stgd.length ||
-            (stgd[selectedTile]?.superTileId ?? 0) === 0
+            !stgd[selectedTile] ||
+            isSupertileEmpty(stgd[selectedTile])
           }
           onFile={async (file) => {
             const canvas = await loadImageIntoCanvas(
@@ -315,7 +318,7 @@ export function SupertileMenu({
             size="sm"
             variant="outline"
             onClick={handleEditTileTexture}
-            disabled={(stgd[selectedTile]?.superTileId ?? 0) === 0}
+            disabled={!stgd[selectedTile] || isSupertileEmpty(stgd[selectedTile])}
           >
             <Edit className="w-4 h-4 mr-1" />
             Edit
@@ -396,13 +399,14 @@ export function SupertileMenu({
           variant="destructive"
           disabled={
             selectedTile >= stgd.length ||
-            (stgd[selectedTile]?.superTileId ?? 0) === 0
+            !stgd[selectedTile] ||
+            isSupertileEmpty(stgd[selectedTile])
           }
           onClick={() => {
             setTerrainData((terrainDraft) => {
               const stgdEntry = terrainDraft.STgd?.[1000];
               if (!stgdEntry?.obj) return;
-              stgdEntry.obj[selectedTile] = { isEmpty: true, superTileId: 0 };
+              stgdEntry.obj[selectedTile] = createBlankSupertileEntry(globals.EMPTY_TILE_IDX);
             });
           }}
         >

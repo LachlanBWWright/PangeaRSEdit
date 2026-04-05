@@ -33,8 +33,6 @@ interface Props {
   terrainDataBlob: Blob | null;
 }
 
-const REMOTE_PANGEA_PORTS_BASE_URL = "https://lachlanbwwright.github.io/Pangea-Ports/";
-
 const GAME_DISPLAY_NAMES: Readonly<Record<Game, string>> = {
   [Game.OTTO_MATIC]: "Otto Matic",
   [Game.NANOSAUR]: "Nanosaur",
@@ -115,17 +113,16 @@ export function TestGameDialog(props: Props) {
 
   const buildLaunchUrl = useCallback((selectedLevel: number) => {
     const localBaseUrl = buildLocalPangeaPortsBaseUrl();
-    const baseUrl = localPangeaPortsAvailable ? localBaseUrl : REMOTE_PANGEA_PORTS_BASE_URL;
-    return buildPangeaPortsUrl(baseUrl, config, selectedLevel);
-  }, [config, localPangeaPortsAvailable]);
+    return buildPangeaPortsUrl(localBaseUrl, config, selectedLevel);
+  }, [config]);
 
   const sourceLabel = useMemo(() => {
     if (localPangeaPortsAvailable === null) {
       return "Checking for the bundled Pangea Ports launcher…";
     }
     return localPangeaPortsAvailable
-      ? "Using the bundled Pangea Ports launcher."
-      : "Using the hosted Pangea Ports launcher.";
+      ? "Bundled Pangea Ports launcher is available."
+      : "Pangea Ports launcher is not bundled with this build. See docs/in-game-preview-setup.md for setup instructions.";
   }, [localPangeaPortsAvailable]);
 
   const handleStartPreview = useCallback(() => {
@@ -136,6 +133,8 @@ export function TestGameDialog(props: Props) {
   const handleOpenInNewTab = useCallback(() => {
     window.open(buildLaunchUrl(levelNumber), "_blank", "noopener,noreferrer");
   }, [buildLaunchUrl, levelNumber]);
+
+  const previewUnavailable = localPangeaPortsAvailable === false;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -173,19 +172,25 @@ export function TestGameDialog(props: Props) {
             </SelectContent>
           </Select>
 
-          <Button variant="outline" onClick={handleStartPreview}>
+          <Button variant="outline" onClick={handleStartPreview} disabled={previewUnavailable}>
             {activePreviewUrl === null ? "Start Preview" : "Reload Preview"}
           </Button>
 
-          <Button variant="outline" onClick={handleOpenInNewTab}>
+          <Button variant="outline" onClick={handleOpenInNewTab} disabled={previewUnavailable}>
             Open in New Tab ↗
           </Button>
         </div>
 
         <div className="flex-1 min-h-0 relative rounded overflow-hidden border border-border bg-black">
-          {activePreviewUrl === null ? (
+          {previewUnavailable ? (
             <div className="absolute inset-0 flex items-center justify-center text-muted-foreground text-center p-6">
-              Launch the shared Pangea Ports shell to jump directly into the selected level.
+              The Pangea Ports launcher is not available in this build.
+              <br />
+              See <code>docs/in-game-preview-setup.md</code> for instructions on setting it up locally, or check the GitHub Actions CI for automated deployment.
+            </div>
+          ) : activePreviewUrl === null ? (
+            <div className="absolute inset-0 flex items-center justify-center text-muted-foreground text-center p-6">
+              Launch the bundled Pangea Ports shell to jump directly into the selected level.
             </div>
           ) : (
             <iframe

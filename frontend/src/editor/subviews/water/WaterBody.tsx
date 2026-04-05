@@ -106,8 +106,7 @@ export const WaterBody = memo(
                   nub[1] = initNub[1] + dragDz;
                 }
               }
-              body.hotSpotX += dragDx;
-              body.hotSpotZ += dragDz;
+              // hotSpotX/Z stays fixed when dragging the body polygon
             });
             e.target.x(0);
             e.target.y(0);
