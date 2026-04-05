@@ -20,6 +20,14 @@ export default defineConfig({
   },
   plugins: [react()],
   worker: { format: "es" },
+  server: {
+    watch: {
+      ignored: [
+        "**/_codeql_detected_source_root",
+        "**/_codeql_detected_source_root/**",
+      ],
+    },
+  },
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
