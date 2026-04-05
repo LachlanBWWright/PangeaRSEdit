@@ -5,6 +5,9 @@ import type {
   HeaderData,
   ItemData,
   TerrainItem,
+  FenceData,
+  SplineData,
+  LiquidData,
 } from "@/python/structSpecs/LevelTypes";
 import type { MightyMikeMap, MightyMikeTileValue } from "@/python/structSpecs/mightyMikeInterface";
 
@@ -259,6 +262,105 @@ function resizeItCo(data: TerrainData): TerrainData {
     },
   };
 }
+
+function resizeFences(
+  fenceData: FenceData,
+  offsetXUnits: number,
+  offsetZUnits: number,
+): FenceData {
+  const fenceList = fenceData.Fenc[1000]?.obj ?? [];
+  return {
+    Fenc: {
+      1000: {
+        ...fenceData.Fenc[1000],
+        obj: fenceList.map((fence) => ({
+          ...fence,
+          bbLeft: fence.bbLeft + offsetXUnits,
+          bbRight: fence.bbRight + offsetXUnits,
+          bbTop: fence.bbTop + offsetZUnits,
+          bbBottom: fence.bbBottom + offsetZUnits,
+        })),
+      },
+    },
+    FnNb: Object.fromEntries(
+      Object.entries(fenceData.FnNb).map(([key, record]) => [
+        key,
+        {
+          ...record,
+          obj: record.obj.map(([x, y]) => [x + offsetXUnits, y + offsetZUnits] as [number, number]),
+        },
+      ]),
+    ),
+  };
+}
+
+function resizeSplines(
+  splineData: SplineData,
+  offsetXUnits: number,
+  offsetZUnits: number,
+): SplineData {
+  const splineList = splineData.Spln[1000]?.obj ?? [];
+  return {
+    ...splineData,
+    Spln: {
+      1000: {
+        ...splineData.Spln[1000],
+        obj: splineList.map((spline) => ({
+          ...spline,
+          bbLeft: spline.bbLeft + offsetXUnits,
+          bbRight: spline.bbRight + offsetXUnits,
+          bbTop: spline.bbTop + offsetZUnits,
+          bbBottom: spline.bbBottom + offsetZUnits,
+        })),
+      },
+    },
+    SpNb: Object.fromEntries(
+      Object.entries(splineData.SpNb).map(([key, record]) => [
+        key,
+        {
+          ...record,
+          obj: record.obj.map((nub) => ({ ...nub, x: nub.x + offsetXUnits, z: nub.z + offsetZUnits })),
+        },
+      ]),
+    ),
+    SpPt: Object.fromEntries(
+      Object.entries(splineData.SpPt).map(([key, record]) => [
+        key,
+        {
+          ...record,
+          obj: record.obj.map((pt) => ({ ...pt, x: pt.x + offsetXUnits, z: pt.z + offsetZUnits })),
+        },
+      ]),
+    ),
+  };
+}
+
+function resizeLiquids(
+  liquidData: LiquidData,
+  offsetXUnits: number,
+  offsetZUnits: number,
+): LiquidData {
+  const liquidList = liquidData.Liqd[1000]?.obj ?? [];
+  return {
+    Liqd: {
+      1000: {
+        ...liquidData.Liqd[1000],
+        obj: liquidList.map((liquid) => ({
+          ...liquid,
+          hotSpotX: liquid.hotSpotX + offsetXUnits,
+          hotSpotZ: liquid.hotSpotZ + offsetZUnits,
+          bBoxLeft: liquid.bBoxLeft + offsetXUnits,
+          bBoxRight: liquid.bBoxRight + offsetXUnits,
+          bBoxTop: liquid.bBoxTop + offsetZUnits,
+          bBoxBottom: liquid.bBoxBottom + offsetZUnits,
+          nubs: liquid.nubs.map(([x, z]) => [x + offsetXUnits, z + offsetZUnits] as [number, number]),
+        })),
+      },
+    },
+  };
+}
+
+export { resizeFences, resizeSplines, resizeLiquids };
 
 function updateHeader(
   headerData: HeaderData,

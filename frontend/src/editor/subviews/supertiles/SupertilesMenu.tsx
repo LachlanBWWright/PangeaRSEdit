@@ -391,6 +391,23 @@ export function SupertileMenu({
 
         <p>Current Tile: #{selectedTile}</p>
         <p>Texture ID: {stgd[selectedTile]?.superTileId || 0}</p>
+        <Button
+          size="sm"
+          variant="destructive"
+          disabled={
+            selectedTile >= stgd.length ||
+            (stgd[selectedTile]?.superTileId ?? 0) === 0
+          }
+          onClick={() => {
+            setTerrainData((terrainDraft) => {
+              const stgdEntry = terrainDraft.STgd?.[1000];
+              if (!stgdEntry?.obj) return;
+              stgdEntry.obj[selectedTile] = { isEmpty: true, superTileId: 0 };
+            });
+          }}
+        >
+          Set to Blank
+        </Button>
       </div>
       </div>
       <ImageEditor

@@ -17,12 +17,19 @@ import { HeaderData, TerrainData } from "@/python/structSpecs/LevelTypes";
 import { FileUpload } from "@/components/FileUpload";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
 import { ImageEditor } from "@/components/ImageEditor";
-import { Edit, Download, Upload, Shield, Info, Paintbrush } from "lucide-react";
+import { Edit, Download, Upload, Shield, Info, Paintbrush, Layers } from "lucide-react";
 import { toast } from "sonner";
 import { fromPromise } from "@/types/result";
 import { useAtom } from "jotai";
-import { CollisionBrushMode, ShowMightyMikeCollisionOverlay } from "@/data/game/gameAtoms";
+import {
+  CollisionBrushMode,
+  ShowMightyMikeCollisionOverlay,
+  ShowMightyMikeParamsOverlay,
+  ParamBrushField,
+  ParamBrushValue,
+} from "@/data/game/gameAtoms";
 import {
   Tooltip,
   TooltipContent,
@@ -78,10 +85,11 @@ export function MightyMikeTileMenu({
   onResize,
 }: MightyMikeTileMenuProps) {
   const selectedTile = useAtomValue(SelectedTile);
-  const [showCollisionOverlay, setShowCollisionOverlay] = useAtom(
-    ShowMightyMikeCollisionOverlay
-  );
+  const [showCollisionOverlay, setShowCollisionOverlay] = useAtom(ShowMightyMikeCollisionOverlay);
   const [collisionBrushMode, setCollisionBrushMode] = useAtom(CollisionBrushMode);
+  const [showParamsOverlay, setShowParamsOverlay] = useAtom(ShowMightyMikeParamsOverlay);
+  const [paramBrushField, setParamBrushField] = useAtom(ParamBrushField);
+  const [paramBrushValue, setParamBrushValue] = useAtom(ParamBrushValue);
 
   // Local state
   const [manualTilePaletteSelection, setManualTilePaletteSelection] = useState<{
@@ -784,12 +792,39 @@ export function MightyMikeTileMenu({
         })()}
 
         {currentTileAttributes && (
-          <div className="border-t border-gray-600 pt-2">
-            <p className="font-bold text-xs mb-1">Tile Attributes</p>
-            <div className="grid grid-cols-[auto_1fr] gap-2 items-center text-xs">
-              {(["flags", "p0", "p1", "p2", "p3", "p4"] as const).map((property) => (
+          <div className="border-t border-gray-600 pt-2 space-y-2">
+            <p className="font-bold text-xs">Tile Parameters</p>
+
+            {/* Flags as individual bit checkboxes */}
+            <div>
+              <p className="text-xs text-gray-400 mb-1">Flags</p>
+              <div className="grid grid-cols-2 gap-x-2 gap-y-1">
+                {[0, 1, 2, 3, 4, 5, 6, 7].map((bit) => {
+                  const mask = 1 << bit;
+                  const checked = (getNumber(currentTileAttributes["flags"]) & mask) !== 0;
+                  return (
+                    <label key={bit} className="flex items-center gap-1 text-xs cursor-pointer">
+                      <Checkbox
+                        checked={checked}
+                        onCheckedChange={(val) => {
+                          const current = getNumber(currentTileAttributes["flags"]);
+                          const next = val ? current | mask : current & ~mask;
+                          handleUpdateTileAttribute("flags", next);
+                        }}
+                        className="h-3 w-3"
+                      />
+                      <span>Bit {bit}</span>
+                    </label>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Numeric params */}
+            <div className="grid grid-cols-[auto_1fr] gap-x-2 gap-y-1 items-center text-xs">
+              {(["p0", "p1"] as const).map((property) => (
                 <div key={property} className="contents">
-                  <label>{property.toUpperCase()}</label>
+                  <label className="text-gray-300">Parameter {property[1]}</label>
                   <Input
                     type="number"
                     value={getNumber(currentTileAttributes[property]).toString()}
@@ -803,6 +838,51 @@ export function MightyMikeTileMenu({
                   />
                 </div>
               ))}
+            </div>
+
+            {/* Param Brush Controls */}
+            <div className="border-t border-gray-600 pt-2">
+              <p className="text-xs text-gray-400 mb-1">Param Brush</p>
+              <div className="flex flex-col gap-1">
+                <div className="flex items-center gap-1">
+                  <Select
+                    value={paramBrushField ?? "none"}
+                    onValueChange={(v) => {
+                      if (v === "flags" || v === "p0" || v === "p1") {
+                        setParamBrushField(v);
+                      } else {
+                        setParamBrushField(null);
+                      }
+                    }}
+                  >
+                    <SelectTrigger className="h-7 text-xs flex-1">
+                      <SelectValue placeholder="Off" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">Off</SelectItem>
+                      <SelectItem value="flags">Flags</SelectItem>
+                      <SelectItem value="p0">Parameter 0</SelectItem>
+                      <SelectItem value="p1">Parameter 1</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Input
+                    type="number"
+                    className="h-7 text-xs w-16"
+                    value={paramBrushValue}
+                    onChange={(e) => setParamBrushValue(Number.parseInt(e.target.value || "0", 10) || 0)}
+                    disabled={paramBrushField === null}
+                  />
+                </div>
+                <Button
+                  size="sm"
+                  variant={showParamsOverlay ? "default" : "outline"}
+                  className="w-full"
+                  onClick={() => setShowParamsOverlay(!showParamsOverlay)}
+                >
+                  <Layers className="w-3 h-3 mr-1" />
+                  {showParamsOverlay ? "Hide Params Overlay" : "Show Params Overlay"}
+                </Button>
+              </div>
             </div>
           </div>
         )}

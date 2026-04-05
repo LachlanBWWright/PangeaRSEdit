@@ -30,3 +30,20 @@ export const ShowMightyMikeCollisionOverlay = atom<boolean>(false);
  * This allows painting collision on/off across multiple tiles quickly.
  */
 export const CollisionBrushMode = atom<boolean>(false);
+
+/**
+ * Toggle for visualizing tile attribute params on Mighty Mike tiles.
+ * When true, tiles with non-default flags/p0/p1 will show a colour-coded overlay.
+ */
+export const ShowMightyMikeParamsOverlay = atom<boolean>(false);
+
+/**
+ * Which tile attribute field the param brush is currently painting.
+ * Null = param brush inactive (select mode).
+ */
+export const ParamBrushField = atom<"flags" | "p0" | "p1" | null>(null);
+
+/**
+ * The value the param brush writes when active.
+ */
+export const ParamBrushValue = atom<number>(1);

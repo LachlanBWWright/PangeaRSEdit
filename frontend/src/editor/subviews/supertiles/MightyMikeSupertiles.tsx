@@ -13,7 +13,12 @@ import { Layer, Image, Rect } from "react-konva";
 import { memo, useCallback, useMemo } from "react";
 import { useAtom, useAtomValue } from "jotai";
 import { SelectedTile } from "@/data/supertiles/supertileAtoms";
-import { CollisionBrushMode } from "@/data/game/gameAtoms";
+import {
+  CollisionBrushMode,
+  ShowMightyMikeParamsOverlay,
+  ParamBrushField,
+  ParamBrushValue,
+} from "@/data/game/gameAtoms";
 import { TerrainData, HeaderData } from "@/python/structSpecs/LevelTypes";
 import { Updater } from "use-immer";
 import type Konva from "konva";
@@ -68,6 +73,9 @@ const MightyMikeSupertilesComponent = ({
   const [selectedTile, setSelectedTile] = useAtom(SelectedTile);
   const collisionBrushMode = useAtomValue(CollisionBrushMode);
   const altMapBrushValue = useAtomValue(AltMapBrushValue);
+  const showParamsOverlay = useAtomValue(ShowMightyMikeParamsOverlay);
+  const paramBrushField = useAtomValue(ParamBrushField);
+  const paramBrushValue = useAtomValue(ParamBrushValue);
   const showAltMap = view === View.tiles;
   const header = headerData.Hedr[1000].obj;
   const mapWidth = header.mapWidth;
@@ -103,6 +111,13 @@ const MightyMikeSupertilesComponent = ({
     return flat;
   }, [terrainData._metadata]);
 
+  // Tile attributes from tileset for param overlay and param brush
+  const tileAttributes = useMemo(() => {
+    const tilesetRaw = isRecord(terrainData.tileset) ? terrainData.tileset : undefined;
+    const attrs = tilesetRaw && isArray(tilesetRaw.tileAttributes) ? tilesetRaw.tileAttributes : [];
+    return attrs.filter(isRecord);
+  }, [terrainData.tileset]);
+
   // Brush handler: toggle hasCollisionMask for a tile
   const handleBrushTile = useCallback((tileIdx: number) => {
     setTerrainData((data) => {
@@ -116,6 +131,35 @@ const MightyMikeSupertilesComponent = ({
       tileVal.hasCollisionMask = !tileVal.hasCollisionMask;
     });
   }, [setTerrainData]);
+
+  /** Paint a param value at a tile index (using physical/palette tile index). */
+  const handleBrushParam = useCallback((tileIdx: number) => {
+    if (!paramBrushField) return;
+    const physicalIdx = (() => {
+      const logical = terrainData.Layr?.[1000]?.obj?.[tileIdx];
+      if (logical === undefined) return null;
+      const xlt = terrainData.Xlat?.[1000]?.obj;
+      if (xlt && logical < xlt.length) {
+        const entry = xlt[logical];
+        if (isRecord(entry) && typeof entry.idx === "number") return entry.idx;
+      }
+      return typeof logical === "number" ? logical : null;
+    })();
+    if (physicalIdx === null) return;
+
+    setTerrainData((data) => {
+      const tileset = isRecord(data.tileset) ? data.tileset : undefined;
+      const attrs = tileset && isArray(tileset.tileAttributes) ? tileset.tileAttributes : undefined;
+      const attr = attrs?.[physicalIdx];
+      if (isRecord(attr)) {
+        attr[paramBrushField] = paramBrushValue;
+      }
+      const levelAttr = data.Atrb?.[1000]?.obj?.[physicalIdx];
+      if (levelAttr && (paramBrushField === "flags" || paramBrushField === "p0" || paramBrushField === "p1")) {
+        levelAttr[paramBrushField] = paramBrushValue;
+      }
+    });
+  }, [paramBrushField, paramBrushValue, terrainData.Layr, terrainData.Xlat, setTerrainData]);
 
   /** Paint an alt-map value at a tile index. Initializes the alt-map on first use. */
   const handleBrushAltMap = useCallback((tileIdx: number) => {
@@ -274,6 +318,46 @@ const MightyMikeSupertilesComponent = ({
     return canvas;
   }, [showAltMap, altMapFlat, mapWidth, mapHeight]);
 
+  /**
+   * Pre-bake params overlay: colour-codes tiles that have non-default flags/params.
+   */
+  const paramsCanvas = useMemo<HTMLCanvasElement | null>(() => {
+    if (!showParamsOverlay || tileAttributes.length === 0) return null;
+    const canvas = document.createElement("canvas");
+    canvas.width = mapWidth * TILE_SIZE;
+    canvas.height = mapHeight * TILE_SIZE;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return null;
+
+    layr.forEach((rawTileIndex, i) => {
+      if (rawTileIndex === 0 || rawTileIndex === undefined || rawTileIndex === null) return;
+      const imgIdx = resolvedImageIndices[i];
+      if (typeof imgIdx !== "number" || imgIdx >= tileAttributes.length) return;
+      const attr = tileAttributes[imgIdx];
+      if (!attr) return;
+      const flags = typeof attr["flags"] === "number" ? attr["flags"] : 0;
+      const p0 = typeof attr["p0"] === "number" ? attr["p0"] : 0;
+      const p1 = typeof attr["p1"] === "number" ? attr["p1"] : 0;
+      if (flags === 0 && p0 === 0 && p1 === 0) return;
+      const tx = (i % mapWidth) * TILE_SIZE;
+      const ty = Math.floor(i / mapWidth) * TILE_SIZE;
+      if (flags !== 0) {
+        ctx.fillStyle = "rgba(220, 50, 50, 0.55)";
+        ctx.fillRect(tx, ty, TILE_SIZE / 2, TILE_SIZE / 2);
+      }
+      if (p0 !== 0) {
+        ctx.fillStyle = "rgba(50, 200, 50, 0.55)";
+        ctx.fillRect(tx + TILE_SIZE / 2, ty, TILE_SIZE / 2, TILE_SIZE / 2);
+      }
+      if (p1 !== 0) {
+        ctx.fillStyle = "rgba(50, 100, 220, 0.55)";
+        ctx.fillRect(tx, ty + TILE_SIZE / 2, TILE_SIZE, TILE_SIZE / 2);
+      }
+    });
+
+    return canvas;
+  }, [showParamsOverlay, tileAttributes, resolvedImageIndices, layr, mapWidth, mapHeight]);
+
   /** Map a Konva Image click/mousemove to a tile index in the tile grid's coordinate space. */
   const getTileIndexFromEvent = useCallback(
     (e: Konva.KonvaEventObject<MouseEvent>): number | null => {
@@ -299,13 +383,15 @@ const MightyMikeSupertilesComponent = ({
       if (tileIdx === null) return;
       if (showAltMap) {
         handleBrushAltMap(tileIdx);
+      } else if (paramBrushField) {
+        handleBrushParam(tileIdx);
       } else if (collisionBrushMode) {
         handleBrushTile(tileIdx);
       } else {
         setSelectedTile(tileIdx);
       }
     },
-    [showAltMap, collisionBrushMode, getTileIndexFromEvent, handleBrushAltMap, handleBrushTile, setSelectedTile],
+    [showAltMap, collisionBrushMode, paramBrushField, getTileIndexFromEvent, handleBrushAltMap, handleBrushTile, handleBrushParam, setSelectedTile],
   );
 
   const handleCanvasMouseMove = useCallback(
@@ -315,11 +401,13 @@ const MightyMikeSupertilesComponent = ({
       if (tileIdx === null) return;
       if (showAltMap) {
         handleBrushAltMap(tileIdx);
+      } else if (paramBrushField) {
+        handleBrushParam(tileIdx);
       } else if (collisionBrushMode) {
         handleBrushTile(tileIdx);
       }
     },
-    [showAltMap, collisionBrushMode, getTileIndexFromEvent, handleBrushAltMap, handleBrushTile],
+    [showAltMap, collisionBrushMode, paramBrushField, getTileIndexFromEvent, handleBrushAltMap, handleBrushTile, handleBrushParam],
   );
 
   // Selected tile highlight position
@@ -349,6 +437,18 @@ const MightyMikeSupertilesComponent = ({
       {showCollisionOverlay && collisionCanvas && (
         <Image
           image={collisionCanvas}
+          x={0}
+          y={0}
+          width={mapWidth * TILE_SIZE}
+          height={mapHeight * TILE_SIZE}
+          listening={false}
+        />
+      )}
+
+      {/* Params overlay: colour-coded indicators for tiles with non-default attributes */}
+      {showParamsOverlay && paramsCanvas && (
+        <Image
+          image={paramsCanvas}
           x={0}
           y={0}
           width={mapWidth * TILE_SIZE}

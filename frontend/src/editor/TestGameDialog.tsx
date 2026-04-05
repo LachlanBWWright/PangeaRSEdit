@@ -83,13 +83,23 @@ export function TestGameDialog(props: Props) {
 
   useEffect(() => {
     const localBaseUrl = buildLocalPangeaPortsBaseUrl();
-    const probeUrl = buildPangeaPortsUrl(localBaseUrl, config, config.defaultLevel);
+    // Probe the game's main JS file (not the HTML). Vite's SPA fallback serves
+    // text/html for any unknown path; the real game JS file returns
+    // application/javascript, so content-type distinguishes the two cases.
+    const siteLaunchDir = config.siteLaunchPath.substring(
+      0,
+      config.siteLaunchPath.lastIndexOf("/") + 1,
+    );
+    const probeUrl = new URL(`${siteLaunchDir}${config.mainJs}`, localBaseUrl).href;
     let cancelled = false;
 
     fetch(probeUrl, { method: "HEAD" })
       .then((response) => {
         if (!cancelled) {
-          setLocalPangeaPortsAvailable(response.ok);
+          const contentType = response.headers.get("content-type") ?? "";
+          setLocalPangeaPortsAvailable(
+            response.ok && !contentType.includes("text/html"),
+          );
         }
       })
       .catch(() => {
