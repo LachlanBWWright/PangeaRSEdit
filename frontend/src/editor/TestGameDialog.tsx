@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -17,7 +17,6 @@ import {
 } from "@/components/ui/select";
 import { Game } from "../data/globals/globals";
 import {
-  buildPangeaPortsUrl,
   GAME_PORT_CONFIGS,
   getLevelIndex,
   type AnyLevelInfo,
@@ -31,6 +30,7 @@ interface Props {
   onLevelNumberChange: (n: number) => void;
   terrainRsrcBlob: Blob | null;
   terrainDataBlob: Blob | null;
+  terrainDataBase64: string | null;
 }
 
 const GAME_DISPLAY_NAMES: Readonly<Record<Game, string>> = {
@@ -54,8 +54,226 @@ function levelLabel(info: AnyLevelInfo, idx: number): string {
   return `Lv ${String(idx + 1)}: ${info.name}`;
 }
 
-function buildLocalPangeaPortsBaseUrl(): string {
-  return new URL("games/pangea-ports/", window.location.href).href;
+interface PreviewModule {
+  FS?: {
+    writeFile: (path: string, data: Uint8Array) => void;
+  };
+  ccall?: (
+    ident: string,
+    returnType: string | null,
+    argTypes: string[],
+    args: unknown[],
+  ) => unknown;
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function getPreviewTerrainPaths(
+  info: AnyLevelInfo | undefined,
+  config: (typeof GAME_PORT_CONFIGS)[Game],
+): { dataPath: string; rsrcPath: string | null } | null {
+  if (!info || !("terrainFile" in info)) {
+    return null;
+  }
+  const dataPath = config.terrain?.getDataPath
+    ? config.terrain.getDataPath(info.terrainFile)
+    : `/Data/Terrain/${info.terrainFile}`;
+  const rsrcPath = config.terrain?.getRsrcPath
+    ? config.terrain.getRsrcPath(info.terrainFile)
+    : null;
+  return { dataPath, rsrcPath };
+}
+
+async function waitForPreviewModule(
+  targetWindow: WindowProxy | Window | null | undefined,
+): Promise<PreviewModule | null> {
+  if (!targetWindow) {
+    return null;
+  }
+  for (let i = 0; i < 150; i += 1) {
+    const module = (targetWindow as Window & { Module?: PreviewModule }).Module;
+    if (module?.FS?.writeFile && module.ccall) {
+      return module;
+    }
+    await sleep(100);
+  }
+  return null;
+}
+
+function escapeHtml(value: string): string {
+  return value
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
+}
+
+function buildGameArguments(
+  config: (typeof GAME_PORT_CONFIGS)[Game],
+  levelNumber: number,
+  terrainPath: string | null,
+): string[] {
+  switch (config.game) {
+    case Game.OTTO_MATIC:
+      return terrainPath
+        ? ["--level", String(levelNumber), "--terrain", terrainPath]
+        : ["--level", String(levelNumber)];
+    case Game.NANOSAUR:
+      return ["--level", String(levelNumber), "--skip-menu"];
+    case Game.BUGDOM:
+      return [];
+    case Game.BUGDOM_2:
+      return ["--level", String(levelNumber)];
+    case Game.CRO_MAG:
+      return ["--track", String(levelNumber), "--car", "1"];
+    case Game.BILLY_FRONTIER:
+      return ["--level", String(levelNumber)];
+    case Game.MIGHTY_MIKE:
+      return ["--level", `${String(Math.floor(levelNumber / 3))}:${String(levelNumber % 3)}`];
+    case Game.NANOSAUR_2:
+      return ["--level", String(levelNumber)];
+    default:
+      return [];
+  }
+}
+
+function buildPreviewHtml(
+  config: (typeof GAME_PORT_CONFIGS)[Game],
+  levelNumber: number,
+  terrainBase64: string | null,
+  previewTerrainPaths: { dataPath: string; rsrcPath: string | null } | null,
+): string {
+  const appBaseUrl = new URL(import.meta.env.BASE_URL, window.location.origin).href;
+  const localAssetBase = new URL(`wasm/${config.wasmDir}/`, appBaseUrl).href;
+  const cdnBase = config.cdnBaseUrl ? `${config.cdnBaseUrl.replace(/\/$/, "")}/` : localAssetBase;
+  const args = buildGameArguments(config, levelNumber, previewTerrainPaths?.dataPath ?? null);
+  const previewUrl = new URL(`games/pangea-ports/games/${config.siteLaunchPath}`, appBaseUrl);
+  previewUrl.search = config.buildLaunchQuery(levelNumber).toString();
+  const extraGlobalBootstrap = [
+    `window._startLevel = ${String(levelNumber)};`,
+    config.game === Game.NANOSAUR ? "window._skipMenu = 1;" : "",
+    config.game === Game.CRO_MAG ? `window._track = ${String(levelNumber)};` : "",
+    config.game === Game.BUGDOM ? `window.BUGDOM_START_LEVEL = ${String(levelNumber)};` : "",
+    config.game === Game.BUGDOM_2 ? `window._startLevel = ${String(levelNumber)};` : "",
+  ]
+    .filter(Boolean)
+    .join("\n    ");
+
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${escapeHtml(GAME_DISPLAY_NAMES[config.game])} Preview</title>
+  <style>
+    html, body {
+      margin: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: #000;
+    }
+    #loading-card {
+      position: fixed;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      gap: 0.75rem;
+      color: #e6edf3;
+      font-family: system-ui, -apple-system, sans-serif;
+      background: linear-gradient(180deg, rgba(0,0,0,0.92), rgba(6,10,14,0.98));
+      z-index: 2;
+    }
+    #canvas {
+      display: block;
+      width: 100vw;
+      height: 100vh;
+      outline: none;
+      background: #000;
+    }
+    #status {
+      color: #9ca3af;
+      font-size: 14px;
+    }
+  </style>
+</head>
+<body>
+  <div id="loading-card">
+    <div style="font-size:18px;font-weight:600;">Launching ${escapeHtml(GAME_DISPLAY_NAMES[config.game])}</div>
+    <div id="status">Preparing game runtime…</div>
+  </div>
+  <canvas id="canvas" tabindex="-1"></canvas>
+  <script>
+    function decodeBase64ToBytes(base64) {
+      var binary = atob(base64);
+      var bytes = new Uint8Array(binary.length);
+      for (var i = 0; i < binary.length; i += 1) {
+        bytes[i] = binary.charCodeAt(i);
+      }
+      return bytes;
+    }
+
+    try {
+      history.replaceState(null, "", ${JSON.stringify(previewUrl.pathname + previewUrl.search)});
+    } catch (err) {
+      console.warn("Unable to rewrite preview URL:", err);
+    }
+    window.__previewLevel = ${String(levelNumber)};
+    window.__previewTerrainBase64 = ${JSON.stringify(terrainBase64)};
+    ${extraGlobalBootstrap}
+    window.Module = {
+      canvas: document.getElementById('canvas'),
+      arguments: ${JSON.stringify(args)},
+      preRun: [
+        function () {
+          if (!window.__previewTerrainBase64 || !${JSON.stringify(Boolean(previewTerrainPaths))}) return;
+          try {
+            var bytes = decodeBase64ToBytes(window.__previewTerrainBase64);
+            var vfs = typeof FS !== "undefined" ? FS : (Module && Module.FS ? Module.FS : null);
+            if (!vfs || !vfs.writeFile) {
+              console.warn("Preview terrain preload skipped: FS.writeFile is unavailable");
+              return;
+            }
+            try { vfs.mkdir('/Data'); } catch (err) {}
+            try { vfs.mkdir('/Data/Terrain'); } catch (err) {}
+            vfs.writeFile(${JSON.stringify(previewTerrainPaths?.dataPath ?? "")}, bytes);
+            ${previewTerrainPaths?.rsrcPath ? `vfs.writeFile(${JSON.stringify(previewTerrainPaths.rsrcPath)}, bytes);` : ""}
+          } catch (err) {
+            console.warn("Preview terrain preload failed:", err);
+          }
+        }
+      ],
+      locateFile: function(path) {
+        if (path.endsWith('.js') || path.endsWith('.wasm')) {
+          return new URL(path, ${JSON.stringify(localAssetBase)}).href;
+        }
+        return new URL(path, ${JSON.stringify(cdnBase)}).href;
+      },
+      setStatus: function(text) {
+        var el = document.getElementById('status');
+        var card = document.getElementById('loading-card');
+        if (!text) {
+          if (card) card.style.display = 'none';
+          return;
+        }
+        if (el) el.textContent = text;
+      },
+      monitorRunDependencies: function(left) {
+        var el = document.getElementById('status');
+        if (el) el.textContent = left > 0 ? ('Loading game… (' + left + ')') : 'Starting game…';
+      }
+    };
+    ${config.game === Game.NANOSAUR ? "window.SetCustomTerrainFile = function(path) { return Module.ccall('SetCustomTerrainFile', null, ['string'], [path]); };" : ""}
+    ${config.game === Game.BUGDOM ? "window.BUGDOM_NO_FENCE_COLLISION = false;" : ""}
+  </script>
+  <script src="${escapeHtml(`${localAssetBase}${config.mainJs}`)}"></script>
+</body>
+</html>`;
 }
 
 export function TestGameDialog(props: Props) {
@@ -65,76 +283,73 @@ export function TestGameDialog(props: Props) {
     gameType,
     levelNumber,
     onLevelNumberChange,
+    terrainDataBlob,
+    terrainDataBase64,
   } = props;
   const config = GAME_PORT_CONFIGS[gameType];
-  const [localPangeaPortsAvailable, setLocalPangeaPortsAvailable] = useState<boolean | null>(
-    null,
-  );
-  const [activePreviewUrl, setActivePreviewUrl] = useState<string | null>(null);
+  const [previewStarted, setPreviewStarted] = useState(false);
   const [previewKey, setPreviewKey] = useState(0);
+  const previewFrameRef = useRef<HTMLIFrameElement | null>(null);
   const currentLevelInfo =
     config.levels.find((level) => getLevelIndex(level) === levelNumber) ??
     config.levels[0];
+  const previewTerrainPaths = getPreviewTerrainPaths(currentLevelInfo, config);
   const levelLabelText = currentLevelInfo
     ? levelLabel(currentLevelInfo, config.levels.indexOf(currentLevelInfo))
     : "";
 
-  useEffect(() => {
-    const localBaseUrl = buildLocalPangeaPortsBaseUrl();
-    // Probe the game's main JS file (not the HTML). Vite's SPA fallback serves
-    // text/html for any unknown path; the real game JS file returns
-    // application/javascript, so content-type distinguishes the two cases.
-    const siteLaunchDir = config.siteLaunchPath.substring(
-      0,
-      config.siteLaunchPath.lastIndexOf("/") + 1,
-    );
-    const probeUrl = new URL(`${siteLaunchDir}${config.mainJs}`, localBaseUrl).href;
-    let cancelled = false;
+  const previewHtml = buildPreviewHtml(
+    config,
+    levelNumber,
+    terrainDataBase64,
+    previewTerrainPaths,
+  );
 
-    fetch(probeUrl, { method: "HEAD" })
-      .then((response) => {
-        if (!cancelled) {
-          const contentType = response.headers.get("content-type") ?? "";
-          setLocalPangeaPortsAvailable(
-            response.ok && !contentType.includes("text/html"),
-          );
-        }
-      })
-      .catch(() => {
-        if (!cancelled) {
-          setLocalPangeaPortsAvailable(false);
-        }
-      });
+  const sourceLabel = "Direct game shell preview.";
 
-    return () => {
-      cancelled = true;
-    };
-  }, [config]);
+  const injectPreviewIntoWindow = useCallback(
+    async (targetWindow: Window | null | undefined) => {
+      if (!targetWindow || !terrainDataBlob || !previewTerrainPaths) {
+        return;
+      }
 
-  const buildLaunchUrl = useCallback((selectedLevel: number) => {
-    const localBaseUrl = buildLocalPangeaPortsBaseUrl();
-    return buildPangeaPortsUrl(localBaseUrl, config, selectedLevel);
-  }, [config]);
+      const module = await waitForPreviewModule(targetWindow);
+      if (!module) {
+        return;
+      }
 
-  const sourceLabel = useMemo(() => {
-    if (localPangeaPortsAvailable === null) {
-      return "Checking for the bundled Pangea Ports launcher…";
-    }
-    return localPangeaPortsAvailable
-      ? "Bundled Pangea Ports launcher is available."
-      : "Pangea Ports launcher is not bundled with this build. See docs/in-game-preview-setup.md for setup instructions.";
-  }, [localPangeaPortsAvailable]);
+      const bytes = new Uint8Array(await terrainDataBlob.arrayBuffer());
+      module.FS.writeFile(previewTerrainPaths.dataPath, bytes);
+      if (previewTerrainPaths.rsrcPath) {
+        module.FS.writeFile(previewTerrainPaths.rsrcPath, bytes);
+      }
 
-  const handleStartPreview = useCallback(() => {
-    setActivePreviewUrl(buildLaunchUrl(levelNumber));
+      if (
+        config.game !== Game.OTTO_MATIC &&
+        config.terrain?.setPathFn &&
+        "terrainFile" in (currentLevelInfo ?? {})
+      ) {
+        module.ccall(config.terrain.setPathFn, null, ["string"], [
+          config.terrain.getSetPathArg(currentLevelInfo.terrainFile),
+        ]);
+      }
+    },
+    [config, currentLevelInfo, previewTerrainPaths, terrainDataBlob],
+  );
+
+  const handleStartPreview = () => {
+    setPreviewStarted(true);
     setPreviewKey((currentKey) => currentKey + 1);
-  }, [buildLaunchUrl, levelNumber]);
+  };
 
-  const handleOpenInNewTab = useCallback(() => {
-    window.open(buildLaunchUrl(levelNumber), "_blank", "noopener,noreferrer");
-  }, [buildLaunchUrl, levelNumber]);
-
-  const previewUnavailable = localPangeaPortsAvailable === false;
+  const handleOpenInNewTab = () => {
+    const previewWindow = window.open("", "_blank");
+    if (!previewWindow) return;
+    previewWindow.document.open();
+    previewWindow.document.write(previewHtml);
+    previewWindow.document.close();
+    void injectPreviewIntoWindow(previewWindow);
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -172,31 +387,29 @@ export function TestGameDialog(props: Props) {
             </SelectContent>
           </Select>
 
-          <Button variant="outline" onClick={handleStartPreview} disabled={previewUnavailable}>
-            {activePreviewUrl === null ? "Start Preview" : "Reload Preview"}
+          <Button variant="outline" onClick={handleStartPreview}>
+            {previewStarted ? "Reload Preview" : "Start Preview"}
           </Button>
 
-          <Button variant="outline" onClick={handleOpenInNewTab} disabled={previewUnavailable}>
+          <Button variant="outline" onClick={handleOpenInNewTab}>
             Open in New Tab ↗
           </Button>
         </div>
 
         <div className="flex-1 min-h-0 relative rounded overflow-hidden border border-border bg-black">
-          {previewUnavailable ? (
+          {!previewStarted ? (
             <div className="absolute inset-0 flex items-center justify-center text-muted-foreground text-center p-6">
-              The Pangea Ports launcher is not available in this build.
-              <br />
-              See <code>docs/in-game-preview-setup.md</code> for instructions on setting it up locally, or check the GitHub Actions CI for automated deployment.
-            </div>
-          ) : activePreviewUrl === null ? (
-            <div className="absolute inset-0 flex items-center justify-center text-muted-foreground text-center p-6">
-              Launch the bundled Pangea Ports shell to jump directly into the selected level.
+              Launch the direct game shell to jump straight into the selected level.
             </div>
           ) : (
             <iframe
-              key={`${String(previewKey)}-${activePreviewUrl}`}
+              ref={previewFrameRef}
+              key={`${String(previewKey)}-${String(levelNumber)}`}
               title={`${GAME_DISPLAY_NAMES[config.game]} preview`}
-              src={activePreviewUrl}
+              srcDoc={previewHtml}
+              onLoad={() => {
+                void injectPreviewIntoWindow(previewFrameRef.current?.contentWindow);
+              }}
               className="absolute inset-0 h-full w-full border-0 bg-black"
               allow="fullscreen"
             />
@@ -205,7 +418,7 @@ export function TestGameDialog(props: Props) {
 
         <DialogFooter className="flex-row gap-2 justify-between sm:justify-between">
           <p className="text-xs text-muted-foreground self-center">
-            The level selector lives only inside this preview dialog.
+            The level selector stays here; the game shell opens directly below.
           </p>
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Close

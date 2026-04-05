@@ -39,8 +39,10 @@ export function getLevelIndex(info: AnyLevelInfo): number {
 
 export interface GamePortConfig {
   readonly game: Game;
-  /** Relative Pangea Ports site path used by the shared browser launcher. */
+  /** Relative path to the direct WASM game shell within public/games/pangea-ports/. */
   readonly siteLaunchPath: string;
+  /** Relative path to the committed shell file used by the editor preview. */
+  readonly previewShellPath: string;
   /** Build the query string that skips directly to the selected level/track/area. */
   readonly buildLaunchQuery: (levelIndex: number) => URLSearchParams;
   /** Directory name under frontend/public/wasm/ for local WASM files. */
@@ -108,6 +110,7 @@ export const GAME_PORT_CONFIGS: Readonly<Record<Game, GamePortConfig>> = {
   [Game.OTTO_MATIC]: {
     game: Game.OTTO_MATIC,
     siteLaunchPath: "OttoMatic-Android/OttoMatic.html",
+    previewShellPath: "OttoMatic-Android/docs/shell.html",
     buildLaunchQuery: (n) => new URLSearchParams({ level: String(n), embed: "1" }),
     wasmDir: "ottomatic",
     mainJs: "OttoMatic.js",
@@ -137,6 +140,7 @@ export const GAME_PORT_CONFIGS: Readonly<Record<Game, GamePortConfig>> = {
   [Game.NANOSAUR]: {
     game: Game.NANOSAUR,
     siteLaunchPath: "Nanosaur-android/game/index.html",
+    previewShellPath: "Nanosaur-android/packaging/emscripten/shell.html",
     buildLaunchQuery: (n) =>
       new URLSearchParams({
         level: String(n),
@@ -159,6 +163,7 @@ export const GAME_PORT_CONFIGS: Readonly<Record<Game, GamePortConfig>> = {
   [Game.BUGDOM]: {
     game: Game.BUGDOM,
     siteLaunchPath: "Bugdom-android/game.html",
+    previewShellPath: "Bugdom-android/docs/shell.html",
     buildLaunchQuery: (n) =>
       new URLSearchParams({
         level: String(n),
@@ -181,6 +186,7 @@ export const GAME_PORT_CONFIGS: Readonly<Record<Game, GamePortConfig>> = {
   [Game.BUGDOM_2]: {
     game: Game.BUGDOM_2,
     siteLaunchPath: "Bugdom2-Android/Bugdom2.html",
+    previewShellPath: "Bugdom2-Android/packaging/shell.html",
     buildLaunchQuery: (n) =>
       new URLSearchParams({
         level: String(n),
@@ -202,6 +208,7 @@ export const GAME_PORT_CONFIGS: Readonly<Record<Game, GamePortConfig>> = {
   [Game.CRO_MAG]: {
     game: Game.CRO_MAG,
     siteLaunchPath: "CroMagRally-Android/game/CroMagRally.html",
+    previewShellPath: "CroMagRally-Android/packaging/emscripten/shell.html",
     buildLaunchQuery: (n) =>
       new URLSearchParams({
         track: String(n),
@@ -224,6 +231,7 @@ export const GAME_PORT_CONFIGS: Readonly<Record<Game, GamePortConfig>> = {
   [Game.BILLY_FRONTIER]: {
     game: Game.BILLY_FRONTIER,
     siteLaunchPath: "BillyFrontier-Android/game/billyfrontier.html",
+    previewShellPath: "BillyFrontier-Android/packaging/emscripten_shell.html",
     buildLaunchQuery: (n) =>
       new URLSearchParams({
         level: String(n),
@@ -256,6 +264,7 @@ export const GAME_PORT_CONFIGS: Readonly<Record<Game, GamePortConfig>> = {
   [Game.MIGHTY_MIKE]: {
     game: Game.MIGHTY_MIKE,
     siteLaunchPath: "MightyMike-Android/index.html",
+    previewShellPath: "MightyMike-Android/docs/index.html",
     buildLaunchQuery: (n) =>
       new URLSearchParams({
         level: `${String(Math.floor(n / 3))}:${String(n % 3)}`,
@@ -276,6 +285,7 @@ export const GAME_PORT_CONFIGS: Readonly<Record<Game, GamePortConfig>> = {
   [Game.NANOSAUR_2]: {
     game: Game.NANOSAUR_2,
     siteLaunchPath: "Nanosaur2-Android/Nanosaur2.html",
+    previewShellPath: "Nanosaur2-Android/packaging/wasm/shell.html",
     buildLaunchQuery: (n) =>
       new URLSearchParams({
         level: String(n),

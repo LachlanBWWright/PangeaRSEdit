@@ -1,7 +1,12 @@
 import { LzssMessage, LzssResponse } from "@/utils/lzssWorker";
-import LzssWorker from "../utils/lzssWorker?worker";
+import LzssWorker from "../../utils/lzssWorker?worker";
 import { LevelData, type LevelMetadata } from "@/python/structSpecs/LevelTypes";
-import { DataType, TileImageFormat, type GlobalsInterface } from "../globals/globals";
+import {
+  DataType,
+  Game,
+  TileImageFormat,
+  type GlobalsInterface,
+} from "../globals/globals";
 import { validateResourceForkJson } from "../utils/levelDataUtils";
 import { toast } from "../../hooks/use-toast";
 import { loadBytesFromJson } from "@lachlanbwwright/rsrcdump-ts";
@@ -72,6 +77,87 @@ function getMightyMikeMapData(
   const nested = getNestedMetadata(metadata, "1000");
   const nestedMap = nested?.mightyMikeMapData;
   return isMightyMikeMap(nestedMap) ? nestedMap : undefined;
+}
+
+export function serializePrimaryMapBlob(
+  data: LevelData,
+  globals: GlobalsInterface,
+): Blob | null {
+  const cloneableCombined = isRecord(data.tileset)
+    ? {
+        ...data,
+        tileset: Object.fromEntries(
+          Object.entries(data.tileset).filter(
+            ([key]) => key !== "tileImages" && key !== "collisionImages",
+          ),
+        ),
+      }
+    : data;
+
+  const combinedData = structuredClone(cloneableCombined);
+
+  // Keep the serialized preview aligned with the download/save path.
+  if (globals.DATA_TYPE !== DataType.RSRC_FORK) {
+    delete combinedData.Timg;
+  }
+
+  if (globals.GAME_TYPE === Game.NANOSAUR) {
+    const metadata = isRecord(combinedData._metadata)
+      ? combinedData._metadata
+      : undefined;
+    const rawLevelData = metadata?.nanosaur1RawLevel;
+    if (!isNanosaur1LevelData(rawLevelData)) return null;
+
+    const compileResult = compileNanosaur1Level(combinedData, rawLevelData);
+    if (compileResult.isErr()) return null;
+    return new Blob([compileResult.value], { type: ".ter" });
+  }
+
+  if (globals.GAME_TYPE === Game.MIGHTY_MIKE) {
+    const mightyMikeData = getMightyMikeMapData(combinedData._metadata);
+    if (!mightyMikeData) return null;
+    return new Blob([mightyMikeMapToCompressedBinary(mightyMikeData)], {
+      type: ".map",
+    });
+  }
+
+  if (globals.DATA_TYPE === DataType.RSRC_FORK) {
+    const sanitized = sanitizeResourceForkJson(combinedData);
+    const validation = validateResourceForkJson(sanitized);
+    if (validation.isErr()) return null;
+
+    const saveResult = loadBytesFromJson(
+      sanitized,
+      globals.STRUCT_SPECS,
+      [],
+      [],
+      true,
+    );
+    const serializedResult = saveResult.ok
+      ? ok(saveResult.value)
+      : err(saveResult.error);
+    if (serializedResult.isErr()) return null;
+
+    return new Blob([serializedResult.value.slice(0)], { type: ".ter.rsrc" });
+  }
+
+  const sanitized = sanitizeResourceForkJson(combinedData);
+  const validation = validateResourceForkJson(sanitized);
+  if (validation.isErr()) return null;
+
+  const saveResult = loadBytesFromJson(
+    sanitized,
+    globals.STRUCT_SPECS,
+    [],
+    [],
+    true,
+  );
+  const serializedResult = saveResult.ok
+    ? ok(saveResult.value)
+    : err(saveResult.error);
+  if (serializedResult.isErr()) return null;
+
+  return new Blob([serializedResult.value.slice(0)], { type: ".ter.rsrc" });
 }
 /**
  * Save and download map and images as in IntroPrompt

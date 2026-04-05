@@ -49,6 +49,7 @@ import {
 import {
   GAME_PORT_CONFIGS,
 } from "./utils/gamePortConfig";
+import { serializePrimaryMapBlob } from "@/data/saveMap/saveMap";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -100,6 +101,7 @@ export function IntroPrompt() {
   const [ottoLevelNumber, setOttoLevelNumber] = useState(DEFAULT_OTTO_LEVEL);
   const [terrainRsrcBlob, setTerrainRsrcBlob] = useState<Blob | null>(null);
   const [terrainDataBlob, setTerrainDataBlob] = useState<Blob | null>(null);
+  const [terrainDataBase64, setTerrainDataBase64] = useState<string | null>(null);
   // Helper to get current atomic data
   const getCurrentAtomicData = useCallback((): AtomicLevelData => {
     return {
@@ -556,6 +558,9 @@ export function IntroPrompt() {
     setMapImagesFile(undefined);
     setTunnelData(null);
     setTunnelFileName("");
+    setTerrainRsrcBlob(null);
+    setTerrainDataBlob(null);
+    setTerrainDataBase64(null);
   }, [setAllAtomicData]);
 
   const handleCreateBlankLevel = useCallback(
@@ -614,11 +619,39 @@ export function IntroPrompt() {
     ],
   );
 
-  const handleTestLevel = useCallback(() => {
+  function arrayBufferToBase64(buffer: ArrayBuffer): string {
+    const bytes = new Uint8Array(buffer);
+    let binary = "";
+    const chunkSize = 0x8000;
+    for (let i = 0; i < bytes.length; i += chunkSize) {
+      const chunk = bytes.subarray(i, i + chunkSize);
+      binary += String.fromCharCode(...chunk);
+    }
+    return btoa(binary);
+  }
+
+  const handleTestLevel = useCallback(async () => {
+    const combinedDataResult = combineLevelData(getCurrentAtomicData());
+    if (!isOk(combinedDataResult)) {
+      toast.error("Preview failed", {
+        description: combinedDataResult.error.message,
+      });
+      return;
+    }
+    const combinedData = prepareDownloadData(combinedDataResult.value, globals);
+    const previewBlob = serializePrimaryMapBlob(combinedData, globals);
+    if (!previewBlob) {
+      toast.error("Preview failed", {
+        description: "Could not serialize the selected level for preview.",
+      });
+      return;
+    }
+    const previewBytes = await previewBlob.arrayBuffer();
     setTerrainRsrcBlob(null);
-    setTerrainDataBlob(null);
+    setTerrainDataBlob(previewBlob);
+    setTerrainDataBase64(arrayBufferToBase64(previewBytes));
     setTestDialogOpen(true);
-  }, []);
+  }, [getCurrentAtomicData, globals]);
 
   // Handle tunnel data updates
   const handleTunnelDataUpdate = useCallback((data: TunnelData) => {
@@ -692,15 +725,16 @@ export function IntroPrompt() {
 
         {/* TestGameDialog lives outside the toolbar; always rendered when port config exists */}
         {GAME_PORT_CONFIGS[globals.GAME_TYPE] && (
-          <TestGameDialog
-            open={testDialogOpen}
-            onOpenChange={setTestDialogOpen}
-            gameType={globals.GAME_TYPE}
-            levelNumber={ottoLevelNumber}
-            onLevelNumberChange={setOttoLevelNumber}
-            terrainRsrcBlob={terrainRsrcBlob}
-            terrainDataBlob={terrainDataBlob}
-          />
+        <TestGameDialog
+          open={testDialogOpen}
+          onOpenChange={setTestDialogOpen}
+          gameType={globals.GAME_TYPE}
+          levelNumber={ottoLevelNumber}
+          onLevelNumberChange={setOttoLevelNumber}
+          terrainRsrcBlob={terrainRsrcBlob}
+          terrainDataBlob={terrainDataBlob}
+          terrainDataBase64={terrainDataBase64}
+        />
         )}
       </div>
       <hr />
