@@ -7,7 +7,7 @@ import { bg3dParsedToGLTF, gltfToBG3D } from "@/modelParsers/parsedBg3dGitfConve
 import { parseSkeletonRsrc } from "@/modelParsers/skeletonRsrc/parseSkeletonRsrcTS";
 import { bg3dSkeletonToSkeletonResource } from "@/modelParsers/skeletonExport";
 import { skeletonResourceToBinary } from "@/modelParsers/skeletonBinaryExport";
-import { unwrap } from "@/types/result";
+// migrated from custom unwrap helper to neverthrow instance methods
 
 function bufferFromFile(filePath: string): ArrayBuffer {
   const buf = readFileSync(filePath);
@@ -28,7 +28,10 @@ describe("Otto GLB skeleton RelP roundtrip", () => {
       const originalBg3d = bufferFromFile(bg3dPath);
       const originalSkel = bufferFromFile(skelPath);
       const originalResource = await parseSkeletonRsrc(originalSkel);
-      const parsed = unwrap(parseBG3D(originalBg3d, originalResource));
+      const parsedRes = parseBG3D(originalBg3d, originalResource);
+      expect(parsedRes.isOk()).toBe(true);
+      if (!parsedRes.isOk()) return;
+      const parsed = parsedRes.value;
       expect(parsed.skeleton?.relPoints?.["1000"]?.length).toBeGreaterThan(0);
 
       const doc = bg3dParsedToGLTF(parsed);
@@ -53,8 +56,8 @@ describe("Otto GLB skeleton RelP roundtrip", () => {
       );
 
       const binaryResult = skeletonResourceToBinary(roundtrippedResource);
-      expect(binaryResult.ok).toBe(true);
-      if (!binaryResult.ok) {
+      expect(binaryResult.isOk()).toBe(true);
+      if (!binaryResult.isOk()) {
         return;
       }
 

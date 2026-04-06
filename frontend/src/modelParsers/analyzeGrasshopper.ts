@@ -6,7 +6,6 @@
 import { existsSync, readFileSync } from "fs";
 import { join } from "path";
 import { parseBG3D } from "./parseBG3D";
-import { isErr } from "../types/result";
 
 const GRASSHOPPER_PATH = join(
   __dirname,
@@ -47,8 +46,8 @@ function analyzeFile() {
   );
 
   const result = parseBG3D(arrayBuffer);
-  if (isErr(result)) {
-    console.log(`\n❌ Parse error: ${result.error.message}`);
+  if (result.isErr()) {
+    console.log(`\n❌ Parse error: ${String(result.error)}`);
     return;
   }
 
@@ -73,11 +72,11 @@ function analyzeFile() {
         inspectGroup(child.children as unknown[], depth + 1);
       } else {
         geomCount++;
-        if (child['boundingBox'] !== undefined) {
+        if ("boundingBox" in child) {
           hasBoundingBox = true;
           console.log(
             `  Found bounding box in geometry ${geomCount}:`,
-            child['boundingBox'],
+            child.boundingBox,
           );
         }
       }
@@ -107,9 +106,7 @@ function analyzeFile() {
   for (let i = 0; i < parsed.materials.length; i++) {
     const mat = parsed.materials[i];
     if (!mat) continue;
-    console.log(
-      `Material ${i}: flags=${mat.flags}, textures=${mat.textures.length}`,
-    );
+      console.log(`Material ${i}: flags=${mat.flags}, textures=${mat.textures.length}`);
     for (let j = 0; j < mat.textures.length; j++) {
       const tex = mat.textures[j];
       if (!tex) continue;

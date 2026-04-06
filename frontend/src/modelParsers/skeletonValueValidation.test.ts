@@ -20,7 +20,7 @@ import { readFileSync } from "fs";
 import { join } from "path";
 import { NodeIO, Mesh, Primitive } from "@gltf-transform/core";
 import { validateBytes } from "gltf-validator";
-import { unwrap } from "../types/result";
+// migrated from custom unwrap helper to neverthrow instance methods
 
 describe("Comprehensive Skeleton Value Validation", () => {
   const ottoBg3dPath = join(
@@ -77,7 +77,22 @@ describe("Comprehensive Skeleton Value Validation", () => {
       originalBg3dData.byteOffset + originalBg3dData.byteLength,
     );
     const originalBg3dRes = parseBG3D(bg3dBuffer, originalSkeletonResource);
-    const originalBg3d = unwrap(originalBg3dRes);
+    expect(originalBg3dRes.isOk()).toBe(true);
+    if (!originalBg3dRes.isOk()) return {
+      boneHierarchy: false,
+      coordinates: false,
+      vertexBinding: false,
+      animations: false,
+      gltfCompliance: false,
+      details: {
+        boneCount: { original: 0, roundtrip: 0 },
+        coordinateErrors: [],
+        vertexBindingErrors: [],
+        animationErrors: [],
+        gltfValidationErrors: 0,
+      },
+    };
+    const originalBg3d = originalBg3dRes.value;
 
     // Execute roundtrip
     const gltfDoc = bg3dParsedToGLTF(originalBg3d);
@@ -381,7 +396,9 @@ describe("Comprehensive Skeleton Value Validation", () => {
       originalBg3dData.byteOffset + originalBg3dData.byteLength,
     );
     const originalBg3dResLocal = parseBG3D(bg3dBuffer2, originalSkeletonResource);
-    const originalBg3d = unwrap(originalBg3dResLocal);
+    expect(originalBg3dResLocal.isOk()).toBe(true);
+    if (!originalBg3dResLocal.isOk()) return;
+    const originalBg3d = originalBg3dResLocal.value;
 
     // Convert to glTF
     const gltfDoc = bg3dParsedToGLTF(originalBg3d);
@@ -476,11 +493,13 @@ describe("Comprehensive Skeleton Value Validation", () => {
       originalBg3dData.byteOffset + originalBg3dData.byteLength,
     );
     const originalBg3dResLocal2 = parseBG3D(bg3dBuffer3, originalSkeletonResource);
-    const originalBg3d2 = unwrap(originalBg3dResLocal2);
+    expect(originalBg3dResLocal2.isOk()).toBe(true);
+    if (!originalBg3dResLocal2.isOk()) return;
+    const originalBg3d2 = originalBg3dResLocal2.value;
 
     // Analyze bone positions
     if (!originalBg3d2.skeleton) {
-      throw new Error("Expected skeleton to be defined");
+      expect.fail("Expected skeleton to be defined");
     }
     const bones = originalBg3d2.skeleton.bones;
     console.log("Original bone positions:");

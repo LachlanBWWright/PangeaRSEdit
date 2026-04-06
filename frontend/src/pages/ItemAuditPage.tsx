@@ -17,7 +17,7 @@ import {
 import { Game } from "@/data/globals/globals";
 import BG3DGltfWorker from "@/modelParsers/bg3dGltfWorker?worker";
 import type { BG3DGltfWorkerResponse } from "@/modelParsers/bg3dGltfWorker";
-import { fromPromise } from "@/types/result";
+import { ResultAsync } from "neverthrow";
 import { getGameMapper } from "@/data/items/mappers";
 import {
   buildItemAuditEntries,
@@ -207,31 +207,39 @@ export function ItemAuditPage() {
       }
       setPreviewLoading(true);
       const modelUrl = `${currentConfig.basePath}/${previewMapping.modelPath}/${previewMapping.modelFile}`;
-      const fetchResult = await fromPromise(fetch(modelUrl));
-      if (fetchResult.isErr()) {
-        finishWithError(fetchResult.error.message);
+      const responseResult = await ResultAsync.fromPromise(
+        fetch(modelUrl),
+        (e) => (e instanceof Error ? e : new Error(String(e))),
+      );
+      if (responseResult.isErr()) {
+        finishWithError(responseResult.error.message);
         return;
       }
-      const response = fetchResult.value;
+      const response = responseResult.value;
       if (!response.ok) {
         finishWithError(`Failed to load model (${response.status})`);
         return;
       }
-      const bufferResult = await fromPromise(response.arrayBuffer());
-      if (bufferResult.isErr()) {
-        finishWithError(bufferResult.error.message);
+      const arrayBufferResult = await ResultAsync.fromPromise(
+        response.arrayBuffer(),
+        (e) => (e instanceof Error ? e : new Error(String(e))),
+      );
+      if (arrayBufferResult.isErr()) {
+        finishWithError(arrayBufferResult.error.message);
         return;
       }
+      const arrayBuffer = arrayBufferResult.value;
 
-      const workerResult = await fromPromise(
+      const workerResult = await ResultAsync.fromPromise(
         new Promise<BG3DGltfWorkerResponse>((resolve, reject) => {
           worker.onmessage = (event) => resolve(event.data);
           worker.onerror = (event) =>
             reject(new Error(event.message || "Model conversion worker failed"));
-          const arrayBuffer = bufferResult.value;
           worker.postMessage({ type: "bg3d-to-glb", buffer: arrayBuffer }, [arrayBuffer]);
         }),
+        (e) => (e instanceof Error ? e : new Error(String(e))),
       );
+
       if (workerResult.isErr()) {
         finishWithError(workerResult.error.message);
         return;
@@ -246,7 +254,10 @@ export function ItemAuditPage() {
       const glbBlob = new Blob([converted.result], { type: "model/gltf-binary" });
       const glbUrl = URL.createObjectURL(glbBlob);
       const loader = new GLTFLoader();
-      const gltfResult = await fromPromise(loader.loadAsync(glbUrl));
+      const gltfResult = await ResultAsync.fromPromise(
+        loader.loadAsync(glbUrl),
+        (e) => (e instanceof Error ? e : new Error(String(e))),
+      );
       URL.revokeObjectURL(glbUrl);
       if (gltfResult.isErr()) {
         finishWithError(gltfResult.error.message);
@@ -310,13 +321,17 @@ export function ItemAuditPage() {
     }
     setImportStatus("Importing audit report...");
     void (async () => {
-      const textResult = await fromPromise(file.text());
+      const textResult = await ResultAsync.fromPromise(
+        file.text(),
+        (e) => (e instanceof Error ? e : new Error(String(e))),
+      );
       if (textResult.isErr()) {
         setImportStatus(`Failed to read file: ${textResult.error.message}`);
         return;
       }
-      const parsedResult = await fromPromise(
+      const parsedResult = await ResultAsync.fromPromise(
         Promise.resolve().then(() => JSON.parse(textResult.value)),
+        (e) => (e instanceof Error ? e : new Error(String(e))),
       );
       if (parsedResult.isErr()) {
         setImportStatus(`Invalid JSON: ${parsedResult.error.message}`);

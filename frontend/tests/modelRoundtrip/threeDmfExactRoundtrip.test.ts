@@ -33,7 +33,7 @@ vi.mock("@/modelParsers/bg3dGltfWorker?worker", () => ({
 
     postMessage() {
       if (!workerBg3dResult) {
-        throw new Error("workerBg3dResult was not initialized");
+        expect.fail("workerBg3dResult was not initialized");
       }
 
       this.onmessage?.(
@@ -76,15 +76,15 @@ describe("3DMF download after GLB import", () => {
     const originalModel = bufferFromFile(modelPath);
     const originalSkeleton = bufferFromFile(skelPath);
     const originalMeta = parse3DMFToMetaFile(originalModel);
-    expect(originalMeta.ok).toBe(true);
-    if (!originalMeta.ok) {
-      throw originalMeta.error;
+    expect(originalMeta.isOk()).toBe(true);
+    if (!originalMeta.isOk()) {
+      expect.fail(String(originalMeta.error));
     }
 
     const parsedResult = metaFileToBG3DParseResult(originalMeta.value);
     expect(parsedResult.isOk()).toBe(true);
     if (parsedResult.isErr()) {
-      throw parsedResult.error;
+      expect.fail(String(parsedResult.error));
     }
 
     const parsed = parsedResult.value;
@@ -112,19 +112,19 @@ describe("3DMF download after GLB import", () => {
 
     await import("@/modelParsers/bg3dGltfWorker");
     if (typeof workerScope.onmessage !== "function") {
-      throw new Error("Expected worker onmessage to be installed");
+      expect.fail("Expected worker onmessage to be installed");
     }
 
-    await workerScope.onmessage(
-        createMessageEvent({
-          type: "glb-to-bg3d" as const,
-          buffer: glbBuffer,
-        }),
-      );
+	    await workerScope.onmessage(
+	        createMessageEvent({
+	          type: "glb-to-bg3d",
+	          buffer: glbBuffer,
+	        }),
+	      );
 
     const response = postMessage.mock.calls.at(-1)?.[0];
     if (!response || response.type !== "glb-to-bg3d" || !response.parsed) {
-      throw new Error("Expected parsed BG3D data from GLB import");
+      expect.fail("Expected parsed BG3D data from GLB import");
     }
 
     workerBg3dResult = response.result;
@@ -143,22 +143,22 @@ describe("3DMF download after GLB import", () => {
       },
     );
     if (bytesResult.isErr()) {
-      throw bytesResult.error;
+      expect.fail(String(bytesResult.error));
     }
 
     const bytes = bytesResult.value.modelBytes;
     expect(bytes.byteLength).toBeGreaterThan(0);
 
     const parseResult = parse3DMFToMetaFile(bytes);
-    expect(parseResult.ok).toBe(true);
-    if (!parseResult.ok) {
-      throw parseResult.error;
+    expect(parseResult.isOk()).toBe(true);
+    if (!parseResult.isOk()) {
+      expect.fail(String(parseResult.error));
     }
 
     const bg3dResult = metaFileToBG3DParseResult(parseResult.value);
     expect(bg3dResult.isOk()).toBe(true);
     if (bg3dResult.isErr()) {
-      throw bg3dResult.error;
+      expect.fail(String(bg3dResult.error));
     }
 
     if (bg3dResult.value.skeleton) {

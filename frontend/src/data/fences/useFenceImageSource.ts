@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useReducer } from "react";
 import { parseTGAToCanvas } from "@/utils/tgaImageParser";
 
 const dataUrlCache = new Map<string, string>();
@@ -15,70 +15,77 @@ async function loadTgaAsDataUrl(src: string): Promise<string | null> {
   const inflight = inflightLoads.get(src);
   if (inflight) return inflight;
 
-  const promise = (async () => {
-    try {
-      const response = await fetch(src);
+  const promise = fetch(src)
+    .then((response) => {
       if (!response.ok) {
-        console.warn(`Failed to fetch TGA thumbnail ${src}: ${response.statusText}`);
+        console.warn(
+          `Failed to fetch TGA thumbnail ${src}: ${response.statusText}`,
+        );
         return null;
       }
-
-      const buffer = await response.arrayBuffer();
+      return response.arrayBuffer();
+    })
+    .then((buffer) => {
+      if (!buffer) return null;
       const canvasResult = parseTGAToCanvas(buffer);
       if (canvasResult.isErr()) {
-        console.warn(`Failed to parse TGA thumbnail ${src}: ${canvasResult.error.message}`);
+        console.warn(
+          `Failed to parse TGA thumbnail ${src}: ${canvasResult.error.message}`,
+        );
         return null;
       }
-
       const dataUrl = canvasResult.value.toDataURL("image/png");
       dataUrlCache.set(src, dataUrl);
       return dataUrl;
-    } catch (error) {
+    })
+    .catch((error: unknown) => {
       console.warn(
         `Failed to load TGA thumbnail ${src}:`,
         error instanceof Error ? error.message : String(error),
       );
       return null;
-    } finally {
+    })
+    .finally(() => {
       inflightLoads.delete(src);
-    }
-  })();
+    });
 
   inflightLoads.set(src, promise);
   return promise;
 }
 
+interface FenceImageAction {
+  src: string | null;
+}
+
 export function useFenceImageSource(src: string | null): string | null {
-  const [resolvedSrc, setResolvedSrc] = useState<string | null>(null);
+  const [resolvedSrc, dispatch] = useReducer(
+    (_state: string | null, action: FenceImageAction) => action.src,
+    null,
+  );
 
   useEffect(() => {
     let cancelled = false;
 
-    if (!src) {
-      setResolvedSrc(null);
-      return;
-    }
-
-    if (!isRenderableImagePath(src)) {
-      setResolvedSrc(null);
+    if (!src || !isRenderableImagePath(src)) {
+      dispatch({ src: null });
       return;
     }
 
     if (!src.toLowerCase().endsWith(".tga")) {
-      setResolvedSrc(src);
+      dispatch({ src });
       return;
     }
 
     const cached = dataUrlCache.get(src);
     if (cached) {
-      setResolvedSrc(cached);
+      dispatch({ src: cached });
       return;
     }
 
-    setResolvedSrc(null);
+    dispatch({ src: null });
     void loadTgaAsDataUrl(src).then((dataUrl) => {
       if (!cancelled) {
-        setResolvedSrc(dataUrl);
+        dispatch({ src: dataUrl });
       }
     });
 

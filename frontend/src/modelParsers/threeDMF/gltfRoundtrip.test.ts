@@ -187,8 +187,8 @@ describe.skip("3DMF glTF Full Roundtrip Tests", () => {
 
         // Step 1: Parse 3DMF → BG3DParseResult
         const parseResult = parse3DMF(fileBuffer);
-        expect(parseResult.ok).toBe(true);
-        if (!parseResult.ok) {
+        expect(parseResult.isOk()).toBe(true);
+        if (!parseResult.isOk()) {
           console.log(`Parse error: ${parseResult.error.message}`);
           return;
         }
@@ -271,8 +271,8 @@ describe.skip("3DMF glTF Full Roundtrip Tests", () => {
 
         // Step 2: Parse 3DMF with skeleton → BG3DParseResult
         const parseResult = parseBG3DWithSkeletonResource(modelBuffer, skeletonResource);
-        expect(parseResult.ok).toBe(true);
-        if (!parseResult.ok) {
+        expect(parseResult.isOk()).toBe(true);
+        if (!parseResult.isOk()) {
           console.log(`Parse error: ${parseResult.error.message}`);
           return;
         }
@@ -342,8 +342,8 @@ describe.skip("3DMF glTF Full Roundtrip Tests", () => {
 
       // First roundtrip
       const parse1 = parse3DMF(fileBuffer);
-      expect(parse1.ok).toBe(true);
-      if (!parse1.ok) return;
+      expect(parse1.isOk()).toBe(true);
+      if (!parse1.isOk()) return;
       
       const gltf1 = await bg3dParsedToGLTF(parse1.value);
       const rt1 = await gltfToBG3D(gltf1);
@@ -389,8 +389,8 @@ describe.skip("3DMF glTF Full Roundtrip Tests", () => {
 
         // Step 1: Parse 3DMF → BG3DParseResult
         const parseResult = parse3DMF(fileBuffer);
-        expect(parseResult.ok).toBe(true);
-        if (!parseResult.ok) {
+        expect(parseResult.isOk()).toBe(true);
+        if (!parseResult.isOk()) {
           console.log(`Parse error: ${parseResult.error.message}`);
           return;
         }

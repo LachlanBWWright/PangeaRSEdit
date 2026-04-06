@@ -17,7 +17,7 @@
  * All functions return Result types for explicit error handling.
  */
 
-import { Result, ok, err } from "../types/result";
+import { ok, err, type Result } from "neverthrow";
 
 export const PACK_TYPE_RLB = 0;
 export const PACK_TYPE_LZSS = 1;
@@ -36,7 +36,9 @@ export interface DecompressedFile {
 /**
  * Decompresses an RLB-compressed file from Mighty Mike (byte-level run-length encoding)
  */
-export function rlbDecompress(compressedBuffer: ArrayBuffer): Result<DecompressedFile> {
+export function rlbDecompress(
+  compressedBuffer: ArrayBuffer,
+): Result<DecompressedFile, Error> {
   const input = new DataView(compressedBuffer);
 
   // Read header
@@ -98,7 +100,9 @@ export function rlbDecompress(compressedBuffer: ArrayBuffer): Result<Decompresse
 /**
  * Decompresses an RLW-compressed file from Mighty Mike
  */
-export function rlwDecompress(compressedBuffer: ArrayBuffer): Result<DecompressedFile> {
+export function rlwDecompress(
+  compressedBuffer: ArrayBuffer,
+): Result<DecompressedFile, Error> {
   const input = new DataView(compressedBuffer);
 
   // Read header

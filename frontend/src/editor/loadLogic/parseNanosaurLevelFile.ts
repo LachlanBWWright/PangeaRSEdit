@@ -1,5 +1,7 @@
 import { LevelData, type LevelMetadata } from "@/python/structSpecs/LevelTypes";
-import { Result, ok, err, fromPromise } from "@/types/result";
+import { Result, ok, err, ResultAsync } from "neverthrow";
+
+const mapErr = (e: unknown) => (e instanceof Error ? e : new Error(String(e)));
 import {
   parseNanosaur1Level,
   nanosaur1LevelToLevelData,
@@ -13,7 +15,7 @@ export async function parseNanosaurLevelFile(
   gameType: GlobalsInterface,
   setData: (data: AtomicLevelData) => void,
 ): Promise<Result<LevelData, Error>> {
-  const bufferResult = await fromPromise(file.arrayBuffer());
+  const bufferResult = await ResultAsync.fromPromise(file.arrayBuffer(), mapErr);
   if (bufferResult.isErr()) {
     return err(new Error(`Failed to read file buffer: ${bufferResult.error.message}`));
   }

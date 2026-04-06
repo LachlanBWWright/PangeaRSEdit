@@ -4,8 +4,13 @@
  * Converts TunnelData back to binary format for saving.
  */
 
-import type { Result } from "@/types/result";
-import { ok, err, tryFn } from "@/types/result";
+import { Result, ok, err } from "neverthrow";
+
+function tryFn<T>(fn: () => T): Result<T, Error> {
+  return Result.fromThrowable(fn, (e) =>
+    e instanceof Error ? e : new Error(String(e)),
+  )();
+}
 import type {
   TunnelData,
   TunnelSplinePoint,
@@ -138,7 +143,10 @@ class BinaryWriter {
 /**
  * Serialize a spline point
  */
-function serializeSplinePoint(writer: BinaryWriter, point: TunnelSplinePoint): void {
+function serializeSplinePoint(
+  writer: BinaryWriter,
+  point: TunnelSplinePoint,
+): void {
   writer.writePoint3D(point.point);
   writer.writeVector3D(point.up);
 }
@@ -213,7 +221,9 @@ function serializeSection(writer: BinaryWriter, section: TunnelSection): void {
  * @param data - The tunnel data to serialize
  * @returns Result containing the binary ArrayBuffer or an error
  */
-export function serializeTunnelFile(data: TunnelData): Result<ArrayBuffer, Error> {
+export function serializeTunnelFile(
+  data: TunnelData,
+): Result<ArrayBuffer, Error> {
   // Use tryFn to convert BinaryWriter throws to Result
   const serializeResult = tryFn(() => {
     const writer = new BinaryWriter();
@@ -262,7 +272,11 @@ export function serializeTunnelFile(data: TunnelData): Result<ArrayBuffer, Error
   });
 
   if (serializeResult.isErr()) {
-    return err(new Error(`Failed to serialize tunnel file: ${serializeResult.error.message}`));
+    return err(
+      new Error(
+        `Failed to serialize tunnel file: ${serializeResult.error.message}`,
+      ),
+    );
   }
 
   return ok(serializeResult.value);

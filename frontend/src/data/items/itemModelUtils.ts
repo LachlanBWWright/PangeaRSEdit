@@ -13,7 +13,8 @@ import {
   getMapperCoverageSummary,
 } from "./mappers";
 import { UniversalItemModelMapping, ItemCategory } from "./itemModelTypes";
-import { Result, ok, err } from "@/types/result";
+import { Result } from "neverthrow";
+import { ok, err } from "neverthrow";
 
 /**
  * Get a summary of all mapped items for a specific game

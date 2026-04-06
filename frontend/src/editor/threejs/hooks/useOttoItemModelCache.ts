@@ -16,7 +16,7 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import BG3DGltfWorker from "@/modelParsers/bg3dGltfWorker?worker";
 import type { BG3DGltfWorkerResponse } from "@/modelParsers/bg3dGltfWorker";
-import { fromPromise } from "@/types/result";
+import { ResultAsync } from "neverthrow";
 import { getGameMapper } from "@/data/items/mappers";
 import { Game } from "@/data/globals/globals";
 import { getParamByIndex } from "@/data/items/standardParamTypes";
@@ -162,7 +162,10 @@ function loadFileGltf(worker: Worker, fileUrl: string): Promise<GLTF> {
   if (cached) return cached;
 
   const promise = (async () => {
-    const fetchResult = await fromPromise(fetch(fileUrl));
+    const fetchResult = await ResultAsync.fromPromise(
+      fetch(fileUrl),
+      (e) => (e instanceof Error ? e : new Error(String(e))),
+    );
     if (fetchResult.isErr()) {
       return Promise.reject(new Error(`Failed to fetch: ${fetchResult.error.message} (${fileUrl})`));
     }
@@ -170,7 +173,10 @@ function loadFileGltf(worker: Worker, fileUrl: string): Promise<GLTF> {
     if (!response.ok) {
       return Promise.reject(new Error(`Failed to fetch: ${response.statusText} (${fileUrl})`));
     }
-    const bufferResult = await fromPromise(response.arrayBuffer());
+    const bufferResult = await ResultAsync.fromPromise(
+      response.arrayBuffer(),
+      (e) => (e instanceof Error ? e : new Error(String(e))),
+    );
     if (bufferResult.isErr()) {
       return Promise.reject(new Error(`Failed to read buffer: ${bufferResult.error.message}`));
     }
@@ -213,7 +219,7 @@ function loadFileGltf(worker: Worker, fileUrl: string): Promise<GLTF> {
   fileGltfCache.set(fileUrl, promise);
 
   // Remove from cache on failure so it can be retried
-  promise.catch(() => {
+  promise.then(undefined, () => {
     fileGltfCache.delete(fileUrl);
   });
 
@@ -348,7 +354,10 @@ export const useItemModelCache = (game: Game = Game.OTTO_MATIC): UseItemModelCac
       );
 
       // Load the full BG3D file (cached at the file level)
-      const fullGltfResult = await fromPromise(loadFileGltf(getWorker(), bg3dUrl));
+    const fullGltfResult = await ResultAsync.fromPromise(
+      loadFileGltf(getWorker(), bg3dUrl),
+      (e) => (e instanceof Error ? e : new Error(String(e))),
+    );
 
       if (fullGltfResult.isErr()) {
         console.error(

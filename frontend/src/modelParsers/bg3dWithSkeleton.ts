@@ -11,7 +11,9 @@ import {
 import { parse3DMF } from "./parse3dmf";
 import { parseSkeletonRsrc } from "./skeletonRsrc/parseSkeletonRsrcTS";
 import type { SkeletonResource } from "../python/structSpecs/skeleton/skeletonInterface";
-import { Result, err, isErr, ok, fromPromise } from "../types/result";
+import { err, ok, ResultAsync, type Result } from "neverthrow";
+
+const mapErr = (e: unknown) => (e instanceof Error ? e : new Error(String(e)));
 
 /**
  * Detect if a buffer is a 3DMF file based on magic number
@@ -37,7 +39,10 @@ export async function parseBG3DWithSkeleton(
   console.log("Parsing skeleton resource...");
 
   // Parse skeleton data using the existing skeleton parser
-  const skeletonResult = await fromPromise(parseSkeletonRsrc(skeletonBuffer));
+  const skeletonResult = await ResultAsync.fromPromise(
+    parseSkeletonRsrc(skeletonBuffer),
+    mapErr,
+  );
   if (skeletonResult.isErr()) {
     return err(skeletonResult.error);
   }
@@ -49,7 +54,7 @@ export async function parseBG3DWithSkeleton(
   // Parse model with skeleton data
   const result = parseModelWithSkeletonResource(modelBuffer, skeleton);
 
-  if (isErr(result)) {
+  if (result.isErr()) {
     return result;
   }
 
@@ -88,7 +93,7 @@ function parseModelWithSkeletonResource(
     // Parse 3DMF file - note: 3DMF models with skeletons may need special handling
     // For now, parse the model and add skeleton data manually
     const modelResult = parse3DMF(modelBuffer);
-    if (isErr(modelResult)) {
+    if (modelResult.isErr()) {
       return modelResult;
     }
 

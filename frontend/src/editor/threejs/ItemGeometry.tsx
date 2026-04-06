@@ -1,5 +1,6 @@
 import React, { useMemo, useEffect, useRef, useCallback } from "react";
 import { Mesh, Group, DoubleSide } from "three";
+import { ResultAsync } from "neverthrow";
 import {
   ItemData,
   HeaderData,
@@ -296,9 +297,15 @@ export const ItemGeometry: React.FC<ItemGeometryProps> = ({
         if (!firstItem) return;
         
         const params = { p0: firstItem.p0, p1: firstItem.p1, p2: firstItem.p2, p3: firstItem.p3 };
-        loadModel(firstItem.type, params).catch((err) => {
-          console.error(`Failed to load model for item type ${firstItem.type}:`, err);
-        });
+        void (async () => {
+          const loadResult = await ResultAsync.fromPromise(
+            loadModel(firstItem.type, params),
+            (e) => (e instanceof Error ? e : new Error(String(e))),
+          );
+          if (loadResult.isErr()) {
+            console.error(`Failed to load model for item type ${firstItem.type}:`, loadResult.error);
+          }
+        })();
       });
     }
   }, [show3DItemModels, itemsByCacheKey, loadModel]);

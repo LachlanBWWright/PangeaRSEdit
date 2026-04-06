@@ -42,7 +42,7 @@ describe("Debug Conversion", () => {
     );
 
     // Handle Result type
-    if (!originalBg3dResult.ok) {
+    if (!originalBg3dResult.isOk()) {
       console.log("Failed to parse BG3D:", originalBg3dResult.error);
       return;
     }

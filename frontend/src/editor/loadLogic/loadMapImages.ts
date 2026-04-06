@@ -6,7 +6,7 @@ import {
   JpegDecompressResponse,
 } from "@/utils/jpegDecompressWorker";
 import { TileImageFormat, type GlobalsInterface } from "@/data/globals/globals";
-import { Result, ok, err } from "@/types/result";
+import { ok, err, type Result } from "neverthrow";
 
 export async function loadMapImages(
   dataView: DataView,

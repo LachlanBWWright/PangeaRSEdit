@@ -46,8 +46,8 @@ describe("Tile Import System", () => {
   describe("getTileImportRequirements", () => {
     it("returns correct requirements for Bugdom 1", () => {
       const result = getTileImportRequirements(Game.BUGDOM);
-      expect(result.ok).toBe(true);
-      if (result.ok) {
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
         expect(result.value.tileSize).toBe(32);
         expect(result.value.maxTiles).toBe(1024);
         expect(result.value.format).toBe("16bit");
@@ -56,8 +56,8 @@ describe("Tile Import System", () => {
 
     it("returns correct requirements for Nanosaur 1", () => {
       const result = getTileImportRequirements(Game.NANOSAUR);
-      expect(result.ok).toBe(true);
-      if (result.ok) {
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
         expect(result.value.tileSize).toBe(32);
         expect(result.value.maxTiles).toBe(1024);
         expect(result.value.format).toBe("16bit");
@@ -66,7 +66,7 @@ describe("Tile Import System", () => {
 
     it("returns error for unsupported games", () => {
       const result = getTileImportRequirements(Game.OTTO_MATIC);
-      expect(result.ok).toBe(false);
+      expect(result.isOk()).toBe(false);
     });
   });
 
@@ -96,13 +96,13 @@ describe("Tile Import System", () => {
     it("convertTileDataToPreview rejects invalid data length", () => {
       const invalidData = new Uint8Array(100); // Wrong size
       const result = convertTileDataToPreview(invalidData, 32);
-      expect(result.ok).toBe(false);
+      expect(result.isOk()).toBe(false);
     });
 
     it("convertTileDataToPreview rejects empty data", () => {
       const emptyData = new Uint8Array(0);
       const result = convertTileDataToPreview(emptyData, 32);
-      expect(result.ok).toBe(false);
+      expect(result.isOk()).toBe(false);
     });
 
     it("validates correct data length for 32x32 tile", () => {

@@ -12,7 +12,7 @@
  * - Offset at +26: Transparency colors
  */
 
-import { Result, ok, err } from "@/types/result";
+import { ok, err, type Result } from "neverthrow";
 import { rlbDecompress } from "@/utils/rlwDecompress";
 
 export interface RGBColor {
@@ -36,7 +36,7 @@ export interface MightyMikeTileset {
 export function parseTilesetFile(
   buffer: ArrayBuffer,
   palette: RGBColor[]
-): Result<MightyMikeTileset> {
+): Result<MightyMikeTileset, Error> {
   // Decompress the tileset data
   const decompressResult = rlbDecompress(buffer);
   if (decompressResult.isErr()) {

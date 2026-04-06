@@ -44,19 +44,19 @@ describe("3DMF Byte-Accurate Roundtrip Tests", () => {
 
       // Parse original
       const parseResult = parse3DMFToMetaFile(fileBuffer);
-      expect(parseResult.ok).toBe(true);
-      if (!parseResult.ok) return;
+      expect(parseResult.isOk()).toBe(true);
+      if (!parseResult.isOk()) return;
 
       const originalMeta = parseResult.value;
 
       // Write and re-parse
       const writeResult = write3DMFFromMetaFile(originalMeta);
-      expect(writeResult.ok).toBe(true);
-      if (!writeResult.ok) return;
+      expect(writeResult.isOk()).toBe(true);
+      if (!writeResult.isOk()) return;
 
       const reParseResult = parse3DMFToMetaFile(writeResult.value);
-      expect(reParseResult.ok).toBe(true);
-      if (!reParseResult.ok) return;
+      expect(reParseResult.isOk()).toBe(true);
+      if (!reParseResult.isOk()) return;
 
       const roundtripMeta = reParseResult.value;
 
@@ -96,16 +96,16 @@ describe("3DMF Byte-Accurate Roundtrip Tests", () => {
       const fileBuffer = readFileSync(testFile).buffer;
 
       const parseResult = parse3DMFToMetaFile(fileBuffer);
-      expect(parseResult.ok).toBe(true);
-      if (!parseResult.ok) return;
+      expect(parseResult.isOk()).toBe(true);
+      if (!parseResult.isOk()) return;
 
       const writeResult = write3DMFFromMetaFile(parseResult.value);
-      expect(writeResult.ok).toBe(true);
-      if (!writeResult.ok) return;
+      expect(writeResult.isOk()).toBe(true);
+      if (!writeResult.isOk()) return;
 
       const reParseResult = parse3DMFToMetaFile(writeResult.value);
-      expect(reParseResult.ok).toBe(true);
-      if (!reParseResult.ok) return;
+      expect(reParseResult.isOk()).toBe(true);
+      if (!reParseResult.isOk()) return;
 
       for (let meshIdx = 0; meshIdx < parseResult.value.numMeshes; meshIdx++) {
         const origMesh = parseResult.value.meshes[meshIdx];
@@ -138,16 +138,16 @@ describe("3DMF Byte-Accurate Roundtrip Tests", () => {
       const fileBuffer = readFileSync(testFile).buffer;
 
       const parseResult = parse3DMFToMetaFile(fileBuffer);
-      expect(parseResult.ok).toBe(true);
-      if (!parseResult.ok) return;
+      expect(parseResult.isOk()).toBe(true);
+      if (!parseResult.isOk()) return;
 
       const writeResult = write3DMFFromMetaFile(parseResult.value);
-      expect(writeResult.ok).toBe(true);
-      if (!writeResult.ok) return;
+      expect(writeResult.isOk()).toBe(true);
+      if (!writeResult.isOk()) return;
 
       const reParseResult = parse3DMFToMetaFile(writeResult.value);
-      expect(reParseResult.ok).toBe(true);
-      if (!reParseResult.ok) return;
+      expect(reParseResult.isOk()).toBe(true);
+      if (!reParseResult.isOk()) return;
 
       for (let meshIdx = 0; meshIdx < parseResult.value.numMeshes; meshIdx++) {
         const origMesh = parseResult.value.meshes[meshIdx];
@@ -183,16 +183,16 @@ describe("3DMF Byte-Accurate Roundtrip Tests", () => {
       const fileBuffer = readFileSync(testFile).buffer;
 
       const parseResult = parse3DMFToMetaFile(fileBuffer);
-      expect(parseResult.ok).toBe(true);
-      if (!parseResult.ok) return;
+      expect(parseResult.isOk()).toBe(true);
+      if (!parseResult.isOk()) return;
 
       const writeResult = write3DMFFromMetaFile(parseResult.value);
-      expect(writeResult.ok).toBe(true);
-      if (!writeResult.ok) return;
+      expect(writeResult.isOk()).toBe(true);
+      if (!writeResult.isOk()) return;
 
       const reParseResult = parse3DMFToMetaFile(writeResult.value);
-      expect(reParseResult.ok).toBe(true);
-      if (!reParseResult.ok) return;
+      expect(reParseResult.isOk()).toBe(true);
+      if (!reParseResult.isOk()) return;
 
       for (let meshIdx = 0; meshIdx < parseResult.value.numMeshes; meshIdx++) {
         const origMesh = parseResult.value.meshes[meshIdx];
@@ -229,16 +229,16 @@ describe("3DMF Byte-Accurate Roundtrip Tests", () => {
       const fileBuffer = readFileSync(testFile).buffer;
 
       const parseResult = parse3DMFToMetaFile(fileBuffer);
-      expect(parseResult.ok).toBe(true);
-      if (!parseResult.ok) return;
+      expect(parseResult.isOk()).toBe(true);
+      if (!parseResult.isOk()) return;
 
       const writeResult = write3DMFFromMetaFile(parseResult.value);
-      expect(writeResult.ok).toBe(true);
-      if (!writeResult.ok) return;
+      expect(writeResult.isOk()).toBe(true);
+      if (!writeResult.isOk()) return;
 
       const reParseResult = parse3DMFToMetaFile(writeResult.value);
-      expect(reParseResult.ok).toBe(true);
-      if (!reParseResult.ok) return;
+      expect(reParseResult.isOk()).toBe(true);
+      if (!reParseResult.isOk()) return;
 
       for (let meshIdx = 0; meshIdx < parseResult.value.numMeshes; meshIdx++) {
         const origMesh = parseResult.value.meshes[meshIdx];
@@ -269,16 +269,16 @@ describe("3DMF Byte-Accurate Roundtrip Tests", () => {
       const fileBuffer = readFileSync(testFile).buffer;
 
       const parseResult = parse3DMFToMetaFile(fileBuffer);
-      expect(parseResult.ok).toBe(true);
-      if (!parseResult.ok) return;
+      expect(parseResult.isOk()).toBe(true);
+      if (!parseResult.isOk()) return;
 
       const writeResult = write3DMFFromMetaFile(parseResult.value);
-      expect(writeResult.ok).toBe(true);
-      if (!writeResult.ok) return;
+      expect(writeResult.isOk()).toBe(true);
+      if (!writeResult.isOk()) return;
 
       const reParseResult = parse3DMFToMetaFile(writeResult.value);
-      expect(reParseResult.ok).toBe(true);
-      if (!reParseResult.ok) return;
+      expect(reParseResult.isOk()).toBe(true);
+      if (!reParseResult.isOk()) return;
 
       for (let meshIdx = 0; meshIdx < parseResult.value.numMeshes; meshIdx++) {
         const origMesh = parseResult.value.meshes[meshIdx];
@@ -317,18 +317,18 @@ describe("3DMF Byte-Accurate Roundtrip Tests", () => {
 
         // Parse original
         const parseResult = parse3DMFToMetaFile(fileBuffer);
-        expect(parseResult.ok).toBe(true);
-        if (!parseResult.ok) return;
+        expect(parseResult.isOk()).toBe(true);
+        if (!parseResult.isOk()) return;
 
         // Write
         const writeResult = write3DMFFromMetaFile(parseResult.value);
-        expect(writeResult.ok).toBe(true);
-        if (!writeResult.ok) return;
+        expect(writeResult.isOk()).toBe(true);
+        if (!writeResult.isOk()) return;
 
         // Re-parse
         const reParseResult = parse3DMFToMetaFile(writeResult.value);
-        expect(reParseResult.ok).toBe(true);
-        if (!reParseResult.ok) return;
+        expect(reParseResult.isOk()).toBe(true);
+        if (!reParseResult.isOk()) return;
 
         // Compare structure
         expect(reParseResult.value.numMeshes).toBe(parseResult.value.numMeshes);

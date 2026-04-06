@@ -118,6 +118,32 @@ function createTestData(): { terrainData: TerrainData; headerData: HeaderData } 
   return { terrainData, headerData };
 }
 
+function isTileOptimizationResult(x: unknown): x is TileOptimizationResult {
+  if (typeof x !== "object" || x === null) {
+    return false;
+  }
+
+  const success: unknown = Reflect.get(x, "success");
+  const removedCount: unknown = Reflect.get(x, "removedCount");
+  const oldToNewMapping: unknown = Reflect.get(x, "oldToNewMapping");
+  const message: unknown = Reflect.get(x, "message");
+
+  if (typeof success !== "boolean") {
+    return false;
+  }
+  if (typeof removedCount !== "number") {
+    return false;
+  }
+  if (!(oldToNewMapping instanceof Map)) {
+    return false;
+  }
+  if (message !== undefined && typeof message !== "string") {
+    return false;
+  }
+
+  return true;
+}
+
 describe("Tile Optimization", () => {
   describe("analyzeUnusedTiles", () => {
     it("finds unused tiles", () => {
@@ -155,24 +181,24 @@ describe("Tile Optimization", () => {
   });
 
   describe("compactTileIndices", () => {
-    it("removes unused tiles", () => {
-      const { terrainData } = createTestData();
+	    it("removes unused tiles", () => {
+	      const { terrainData } = createTestData();
 
-      let result: TileOptimizationResult | undefined = undefined;
-      const optimized = produce(terrainData, (draft) => {
-        result = compactTileIndices(draft);
-      });
+	      let result: unknown = undefined;
+	      const optimized = produce(terrainData, (draft) => {
+	        result = compactTileIndices(draft);
+	      });
 
-      expect(result).toBeDefined();
-      if (result) {
-        const res = result as TileOptimizationResult;
-        expect(res.success).toBe(true);
-        expect(res.removedCount).toBe(3);
-      }
+	      if (!isTileOptimizationResult(result)) {
+	        expect.fail("Expected tile optimization result");
+	        return;
+	      }
+	      expect(result.success).toBe(true);
+	      expect(result.removedCount).toBe(3);
 
-      // Should have only 3 tiles now
-      expect(optimized.Atrb[1000].obj).toHaveLength(3);
-    });
+	      // Should have only 3 tiles now
+	      expect(optimized.Atrb[1000].obj).toHaveLength(3);
+	    });
 
     it("remaps layer indices", () => {
       const { terrainData } = createTestData();
@@ -212,8 +238,8 @@ describe("Tile Optimization", () => {
       expect(atrb[2]?.flags).toBe(5);
     });
 
-    it("reports no changes when no unused tiles", () => {
-      const { terrainData } = createTestData();
+	    it("reports no changes when no unused tiles", () => {
+	      const { terrainData } = createTestData();
       
       // Use all tiles
       const allUsedData = produce(terrainData, (draft) => {
@@ -225,20 +251,20 @@ describe("Tile Optimization", () => {
         }
       });
 
-      let result: TileOptimizationResult | undefined = undefined;
-      produce(allUsedData, (draft) => {
-        result = compactTileIndices(draft);
-      });
+	      let result: unknown = undefined;
+	      produce(allUsedData, (draft) => {
+	        result = compactTileIndices(draft);
+	      });
 
-      expect(result).toBeDefined();
-      if (result) {
-        const res = result as TileOptimizationResult;
-        expect(res.success).toBe(true);
-        expect(res.removedCount).toBe(0);
-        expect(res.message).toContain("No unused tiles");
-      }
-    });
-  });
+	      if (!isTileOptimizationResult(result)) {
+	        expect.fail("Expected tile optimization result");
+	        return;
+	      }
+	      expect(result.success).toBe(true);
+	      expect(result.removedCount).toBe(0);
+	      expect(result.message).toContain("No unused tiles");
+	    });
+	  });
 
   describe("validateOptimization", () => {
     it("returns empty array for valid data", () => {

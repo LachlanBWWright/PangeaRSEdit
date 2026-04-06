@@ -14,7 +14,7 @@ import { join } from "path";
 import { parseBG3D } from "@/modelParsers/parseBG3D";
 import { parseSkeletonRsrc } from "@/modelParsers/skeletonRsrc/parseSkeletonRsrcTS";
 import { bg3dParsedToGLTF, gltfToBG3D } from "@/modelParsers/parsedBg3dGitfConverter";
-import { unwrap } from "@/types/result";
+// migrated from custom unwrap helper to neverthrow instance methods
 
 function bufferFromFile(filePath: string): ArrayBuffer {
   const buf = readFileSync(filePath);
@@ -39,7 +39,10 @@ describe("BG3D + skeleton exact roundtrip", () => {
     const originalSkeleton = bufferFromFile(skelPath);
 
     const skeletonResource = await parseSkeletonRsrc(originalSkeleton);
-    const parsed = unwrap(parseBG3D(originalBg3d, skeletonResource));
+    const parsedRes = parseBG3D(originalBg3d, skeletonResource);
+    expect(parsedRes.isOk()).toBe(true);
+    if (!parsedRes.isOk()) return;
+    const parsed = parsedRes.value;
 
     const gltfDocument = bg3dParsedToGLTF(parsed);
 

@@ -169,8 +169,8 @@ describe("Edit Operations", () => {
       };
 
       const mergeResult = mergeOperations(first, second);
-      expect(mergeResult.ok).toBe(true);
-      if (mergeResult.ok && mergeResult.value.type === "MoveItem") {
+      expect(mergeResult.isOk()).toBe(true);
+      if (mergeResult.isOk() && mergeResult.value.type === "MoveItem") {
         const merged = mergeResult.value;
         expect(merged.type).toBe("MoveItem");
         expect(merged.itemIndex).toBe(0);
@@ -202,8 +202,8 @@ describe("Edit Operations", () => {
       };
 
       const mergeResult = mergeOperations(first, second);
-      expect(mergeResult.ok).toBe(true);
-      if (mergeResult.ok && mergeResult.value.type === "MoveSplineNub") {
+      expect(mergeResult.isOk()).toBe(true);
+      if (mergeResult.isOk() && mergeResult.value.type === "MoveSplineNub") {
         const merged = mergeResult.value;
         expect(merged.oldX).toBe(0);
         expect(merged.oldZ).toBe(0);

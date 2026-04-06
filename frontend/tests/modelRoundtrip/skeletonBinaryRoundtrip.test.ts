@@ -19,7 +19,7 @@ import { bg3dParsedToGLTF, gltfToBG3D } from "@/modelParsers/parsedBg3dGitfConve
 import { bg3dSkeletonToSkeletonResource } from "@/modelParsers/skeletonExport";
 import { skeletonResourceToBinary } from "@/modelParsers/skeletonBinaryExport";
 import { parseBG3DWithSkeletonResource } from "@/modelParsers/bg3dWithSkeleton";
-import { unwrap } from "@/types/result";
+// migrated from custom unwrap helper to neverthrow instance methods
 
 function bufferFromFile(filePath: string): ArrayBuffer {
   const buf = readFileSync(filePath);
@@ -56,7 +56,7 @@ function uint8ToArrayBuffer(data: Uint8Array): ArrayBuffer {
  */
 function exportSkeletonBytes(parsed: BG3DParseResult, modelName: string): Uint8Array {
   if (!parsed.skeleton) {
-    throw new Error("No skeleton data in BG3DParseResult");
+    expect.fail("No skeleton data in BG3DParseResult");
   }
   const resource = bg3dSkeletonToSkeletonResource(
     parsed.skeleton,
@@ -68,7 +68,7 @@ function exportSkeletonBytes(parsed: BG3DParseResult, modelName: string): Uint8A
   );
   const result = skeletonResourceToBinary(resource);
   if (result.isErr()) {
-    throw new Error(`Failed to export skeleton: ${result.error.message}`);
+    expect.fail(`Failed to export skeleton: ${result.error.message}`);
   }
   return new Uint8Array(result.value);
 }
@@ -80,15 +80,15 @@ function mutateFirstKeyframePosition(
   deltaZ: number,
 ): void {
   const anim = skeleton.animations[0];
-  if (!anim) throw new Error("No animations");
+  if (!anim) expect.fail("No animations");
   const firstBoneIndex = Number(Object.keys(anim.keyframes)[0]);
-  if (!Number.isFinite(firstBoneIndex)) throw new Error("No animation keyframes");
+  if (!Number.isFinite(firstBoneIndex)) expect.fail("No animation keyframes");
 
   const kfList = anim.keyframes[firstBoneIndex];
-  if (!kfList || kfList.length === 0) throw new Error("Empty keyframe list");
+  if (!kfList || kfList.length === 0) expect.fail("Empty keyframe list");
 
   const kf = kfList[0];
-  if (!kf) throw new Error("No first keyframe");
+  if (!kf) expect.fail("No first keyframe");
   kf.coordX = (kf.coordX ?? 0) + deltaX;
   kf.coordY = (kf.coordY ?? 0) + deltaY;
   kf.coordZ = (kf.coordZ ?? 0) + deltaZ;
@@ -106,7 +106,10 @@ describe("Skeleton .rsrc binary round-trip with keyframe modification (BG3D)", (
 
     const originalBg3d = bufferFromFile(bg3dPath);
     const skeletonResource = await parseSkeletonRsrc(bufferFromFile(skelPath));
-    const parsed = unwrap(parseBG3D(originalBg3d, skeletonResource));
+    const parsedRes = parseBG3D(originalBg3d, skeletonResource);
+    expect(parsedRes.isOk()).toBe(true);
+    if (!parsedRes.isOk()) return;
+    const parsed = parsedRes.value;
     expect(parsed.skeleton).toBeDefined();
     if (!parsed.skeleton) return;
 
@@ -186,7 +189,10 @@ describe("Skeleton .rsrc binary round-trip with keyframe modification (BG3D)", (
 
     // Verify the exported bytes can be re-parsed
     const reResource = await parseSkeletonRsrc(uint8ToArrayBuffer(exportedBytes));
-    const reParsed = unwrap(parseBG3D(bufferFromFile(bg3dPath), reResource));
+    const reParsedRes = parseBG3D(bufferFromFile(bg3dPath), reResource);
+    expect(reParsedRes.isOk()).toBe(true);
+    if (!reParsedRes.isOk()) return;
+    const reParsed = reParsedRes.value;
     expect(reParsed.skeleton).toBeDefined();
     if (!reParsed.skeleton) return;
     expect(reParsed.skeleton.bones.length).toBe(baselineBoneCount);
@@ -201,7 +207,10 @@ describe("Skeleton .rsrc binary round-trip with keyframe modification (BG3D)", (
 
     const originalBg3d = bufferFromFile(bg3dPath);
     const skeletonResource = await parseSkeletonRsrc(bufferFromFile(skelPath));
-    const parsed = unwrap(parseBG3D(originalBg3d, skeletonResource));
+    const parsedRes2 = parseBG3D(originalBg3d, skeletonResource);
+    expect(parsedRes2.isOk()).toBe(true);
+    if (!parsedRes2.isOk()) return;
+    const parsed = parsedRes2.value;
     if (!parsed.skeleton) return;
 
     // Baseline BG3D export
@@ -222,8 +231,11 @@ describe("Skeleton .rsrc binary round-trip with keyframe modification (BG3D)", (
     }
 
     const originalBg3d = bufferFromFile(bg3dPath);
-    const skeletonResource = await parseSkeletonRsrc(bufferFromFile(skelPath));
-    const parsed = unwrap(parseBG3D(originalBg3d, skeletonResource));
+    const skeletonResource2 = await parseSkeletonRsrc(bufferFromFile(skelPath));
+    const parsedRes3 = parseBG3D(originalBg3d, skeletonResource2);
+    expect(parsedRes3.isOk()).toBe(true);
+    if (!parsedRes3.isOk()) return;
+    const parsed = parsedRes3.value;
     if (!parsed.skeleton) return;
 
     // Export skeleton to binary, then re-parse it
@@ -231,7 +243,10 @@ describe("Skeleton .rsrc binary round-trip with keyframe modification (BG3D)", (
     const reResource = await parseSkeletonRsrc(uint8ToArrayBuffer(exportedBytes));
 
     // Re-parse with skeleton
-    const reparsed = unwrap(parseBG3D(originalBg3d, reResource));
+    const reparsedRes = parseBG3D(originalBg3d, reResource);
+    expect(reparsedRes.isOk()).toBe(true);
+    if (!reparsedRes.isOk()) return;
+    const reparsed = reparsedRes.value;
     if (!reparsed.skeleton) return;
 
     // Compare bone positions

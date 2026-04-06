@@ -8,6 +8,13 @@ import path from "path";
 // Base path to the games folder
 const GAMES_BASE_PATH = path.resolve(__dirname, "../../../games");
 
+interface FixturePathsEntry {
+  terrainRsrc?: string;
+  terrainTer?: string | null;
+  terrainTrt?: string;
+  name: string;
+}
+
 export const FIXTURE_PATHS = {
   ottomatic: {
     terrainRsrc: path.join(
@@ -74,6 +81,6 @@ export const FIXTURE_PATHS = {
     ),
     name: "town_duel",
   },
-} as const;
+} satisfies Record<string, FixturePathsEntry>;
 
 export type GameName = keyof typeof FIXTURE_PATHS;

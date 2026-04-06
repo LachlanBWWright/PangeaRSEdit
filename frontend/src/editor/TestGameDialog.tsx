@@ -66,6 +66,28 @@ interface PreviewModule {
   ) => unknown;
 }
 
+function isFunction(value: unknown): value is (...args: unknown[]) => unknown {
+  return typeof value === "function";
+}
+
+function isPreviewModule(value: unknown): value is PreviewModule {
+  if (typeof value !== "object" || value === null) {
+    return false;
+  }
+
+  const fs: unknown = Reflect.get(value, "FS");
+  const ccall: unknown = Reflect.get(value, "ccall");
+  if (!isFunction(ccall)) {
+    return false;
+  }
+
+  if (typeof fs !== "object" || fs === null) {
+    return false;
+  }
+  const writeFile: unknown = Reflect.get(fs, "writeFile");
+  return isFunction(writeFile);
+}
+
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -93,9 +115,9 @@ async function waitForPreviewModule(
     return null;
   }
   for (let i = 0; i < 150; i += 1) {
-    const module = (targetWindow as Window & { Module?: PreviewModule }).Module;
-    if (module?.FS?.writeFile && module.ccall) {
-      return module;
+    const candidate: unknown = Reflect.get(targetWindow, "Module");
+    if (isPreviewModule(candidate)) {
+      return candidate;
     }
     await sleep(100);
   }
@@ -209,48 +231,47 @@ function buildPreviewHtml(
   </div>
   <canvas id="canvas" tabindex="-1"></canvas>
   <script>
-    function decodeBase64ToBytes(base64) {
-      var binary = atob(base64);
-      var bytes = new Uint8Array(binary.length);
-      for (var i = 0; i < binary.length; i += 1) {
-        bytes[i] = binary.charCodeAt(i);
-      }
-      return bytes;
-    }
+	    function decodeBase64ToBytes(base64) {
+	      var binary = atob(base64);
+	      var bytes = new Uint8Array(binary.length);
+	      for (var i = 0; i < binary.length; i += 1) {
+	        bytes[i] = binary.charCodeAt(i);
+	      }
+	      return bytes;
+	    }
 
-    try {
-      history.replaceState(null, "", ${JSON.stringify(previewUrl.pathname + previewUrl.search)});
-    } catch (err) {
-      console.warn("Unable to rewrite preview URL:", err);
-    }
-    window.__previewLevel = ${String(levelNumber)};
-    window.__previewTerrainBase64 = ${JSON.stringify(terrainBase64)};
-    ${extraGlobalBootstrap}
-    window.Module = {
-      canvas: document.getElementById('canvas'),
-      arguments: ${JSON.stringify(args)},
-      preRun: [
-        function () {
-          if (!window.__previewTerrainBase64 || !${JSON.stringify(Boolean(previewTerrainPaths))}) return;
-          try {
-            var bytes = decodeBase64ToBytes(window.__previewTerrainBase64);
-            var vfs = typeof FS !== "undefined" ? FS : (Module && Module.FS ? Module.FS : null);
-            if (!vfs || !vfs.writeFile) {
-              console.warn("Preview terrain preload skipped: FS.writeFile is unavailable");
-              return;
-            }
-            try { vfs.mkdir('/Data'); } catch (err) {}
-            try { vfs.mkdir('/Data/Terrain'); } catch (err) {}
-            vfs.writeFile(${JSON.stringify(previewTerrainPaths?.dataPath ?? "")}, bytes);
-            ${previewTerrainPaths?.rsrcPath ? `vfs.writeFile(${JSON.stringify(previewTerrainPaths.rsrcPath)}, bytes);` : ""}
-          } catch (err) {
-            console.warn("Preview terrain preload failed:", err);
-          }
-        }
-      ],
-      locateFile: function(path) {
-        if (path.endsWith('.js') || path.endsWith('.wasm')) {
-          return new URL(path, ${JSON.stringify(localAssetBase)}).href;
+	    if (typeof history !== "undefined" && typeof history.replaceState === "function") {
+	      history.replaceState(null, "", ${JSON.stringify(previewUrl.pathname + previewUrl.search)});
+	    }
+	    window.__previewLevel = ${String(levelNumber)};
+	    window.__previewTerrainBase64 = ${JSON.stringify(terrainBase64)};
+	    ${extraGlobalBootstrap}
+	    window.Module = {
+	      canvas: document.getElementById('canvas'),
+	      arguments: ${JSON.stringify(args)},
+	      preRun: [
+	        function () {
+	          if (!window.__previewTerrainBase64 || !${JSON.stringify(Boolean(previewTerrainPaths))}) return;
+	          var bytes = decodeBase64ToBytes(window.__previewTerrainBase64);
+	          var vfs =
+	            typeof FS !== "undefined"
+	              ? FS
+	              : (typeof Module !== "undefined" && Module && Module.FS ? Module.FS : null);
+	          if (!vfs || typeof vfs.writeFile !== "function") {
+	            console.warn("Preview terrain preload skipped: FS.writeFile is unavailable");
+	            return;
+	          }
+	          if (typeof vfs.analyzePath === "function" && typeof vfs.mkdir === "function") {
+	            if (!vfs.analyzePath('/Data').exists) vfs.mkdir('/Data');
+	            if (!vfs.analyzePath('/Data/Terrain').exists) vfs.mkdir('/Data/Terrain');
+	          }
+	          vfs.writeFile(${JSON.stringify(previewTerrainPaths?.dataPath ?? "")}, bytes);
+	          ${previewTerrainPaths?.rsrcPath ? `vfs.writeFile(${JSON.stringify(previewTerrainPaths.rsrcPath)}, bytes);` : ""}
+	        }
+	      ],
+	      locateFile: function(path) {
+	        if (path.endsWith('.js') || path.endsWith('.wasm')) {
+	          return new URL(path, ${JSON.stringify(localAssetBase)}).href;
         }
         return new URL(path, ${JSON.stringify(cdnBase)}).href;
       },
@@ -319,17 +340,26 @@ export function TestGameDialog(props: Props) {
       }
 
       const bytes = new Uint8Array(await terrainDataBlob.arrayBuffer());
-      module.FS.writeFile(previewTerrainPaths.dataPath, bytes);
+      const fs = module.FS;
+      if (!fs) {
+        return;
+      }
+      fs.writeFile(previewTerrainPaths.dataPath, bytes);
       if (previewTerrainPaths.rsrcPath) {
-        module.FS.writeFile(previewTerrainPaths.rsrcPath, bytes);
+        fs.writeFile(previewTerrainPaths.rsrcPath, bytes);
       }
 
       if (
         config.game !== Game.OTTO_MATIC &&
         config.terrain?.setPathFn &&
-        "terrainFile" in (currentLevelInfo ?? {})
+        currentLevelInfo &&
+        "terrainFile" in currentLevelInfo
       ) {
-        module.ccall(config.terrain.setPathFn, null, ["string"], [
+        const ccall = module.ccall;
+        if (!ccall) {
+          return;
+        }
+        ccall(config.terrain.setPathFn, null, ["string"], [
           config.terrain.getSetPathArg(currentLevelInfo.terrainFile),
         ]);
       }

@@ -9,7 +9,7 @@ import { parseBG3DWithSkeletonResource } from "@/modelParsers/bg3dWithSkeleton";
 import { getBG3DDownloadArtifacts } from "@/pages/ModelViewer/utils/downloadUtils";
 import type { BG3DParseResult } from "@/modelParsers/parseBG3D";
 import type { BG3DGltfWorkerResponse } from "@/modelParsers/bg3dGltfWorker";
-import { unwrap } from "@/types/result";
+// migrated from custom unwrap helper to neverthrow instance methods
 
 let workerBg3dResult: ArrayBuffer | null = null;
 let workerParsed: BG3DParseResult | null = null;
@@ -36,7 +36,7 @@ vi.mock("@/modelParsers/bg3dGltfWorker?worker", () => ({
 
     postMessage() {
       if (!workerBg3dResult) {
-        throw new Error("workerBg3dResult was not initialized");
+        expect.fail("workerBg3dResult was not initialized");
       }
 
       this.onmessage?.(
@@ -79,7 +79,10 @@ describe("Animated GLB import download", () => {
     const originalBg3d = bufferFromFile(bg3dPath);
     const originalSkeleton = bufferFromFile(skelPath);
     const skeletonResource = await parseSkeletonRsrc(originalSkeleton);
-    const parsed = unwrap(parseBG3D(originalBg3d, skeletonResource));
+    const parsedRes = parseBG3D(originalBg3d, skeletonResource);
+    expect(parsedRes.isOk()).toBe(true);
+    if (!parsedRes.isOk()) return;
+    const parsed = parsedRes.value;
 
     // Build a GLB without preserving original alias data so the export path
     // must synthesize a valid alias record from the selected game preset.
@@ -110,19 +113,19 @@ describe("Animated GLB import download", () => {
 
     await import("@/modelParsers/bg3dGltfWorker");
     if (typeof workerScope.onmessage !== "function") {
-      throw new Error("Expected worker onmessage to be installed");
+      expect.fail("Expected worker onmessage to be installed");
     }
 
-    await workerScope.onmessage(
-        createMessageEvent({
-          type: "glb-to-bg3d" as const,
-          buffer: glbBuffer,
-        }),
-      );
+	    await workerScope.onmessage(
+	        createMessageEvent({
+	          type: "glb-to-bg3d",
+	          buffer: glbBuffer,
+	        }),
+	      );
 
     const response = postMessage.mock.calls.at(-1)?.[0];
     if (!response || response.type !== "glb-to-bg3d" || !response.parsed) {
-      throw new Error("Expected parsed BG3D data from animated GLB import");
+      expect.fail("Expected parsed BG3D data from animated GLB import");
     }
 
     workerBg3dResult = response.result;
@@ -130,18 +133,18 @@ describe("Animated GLB import download", () => {
 
     const artifactsResult = await getBG3DDownloadArtifacts(gltfUrl);
     if (artifactsResult.isErr()) {
-      throw artifactsResult.error;
+      expect.fail(String(artifactsResult.error));
     }
 
     const artifacts = artifactsResult.value;
     if (!artifacts.skeletonBytes) {
-      throw new Error("Expected synthesized skeleton bytes from animated GLB import");
+      expect.fail("Expected synthesized skeleton bytes from animated GLB import");
     }
 
     const importedSkeleton = await parseSkeletonRsrc(artifacts.skeletonBytes);
     const importedParsed = parseBG3DWithSkeletonResource(artifacts.bg3dBytes, importedSkeleton);
     if (importedParsed.isErr()) {
-      throw importedParsed.error;
+      expect.fail(String(importedParsed.error));
     }
 
     expect(artifacts.bg3dBytes.byteLength).toBeGreaterThan(0);

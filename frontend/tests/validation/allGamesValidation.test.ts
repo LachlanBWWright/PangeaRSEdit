@@ -111,7 +111,7 @@ describe("All Games Validation Tests", () => {
 
           function assertIsRecord(x: unknown): asserts x is Record<string, unknown> {
             if (typeof x !== "object" || x === null) {
-              throw new Error(`${fileName} parseResult did not return an object`);
+              expect.fail(`${fileName} parseResult did not return an object`);
             }
           }
 
@@ -124,11 +124,11 @@ describe("All Games Validation Tests", () => {
 
           // Apply preprocessing
           const preprocessResult = preprocessJson(parsed, game.globals);
-          expect(preprocessResult.ok).toBe(true);
-          if (!preprocessResult.ok) {
+          expect(preprocessResult.isOk()).toBe(true);
+          if (preprocessResult.isErr()) {
             console.error(
               `${game.name} ${fileName} preprocess error:`,
-              preprocessResult.error.message
+              preprocessResult.error.message,
             );
             return;
           }
@@ -142,7 +142,7 @@ describe("All Games Validation Tests", () => {
             game.globals.GAME_TYPE
           );
 
-          if (!validationResult.ok) {
+          if (validationResult.isErr()) {
             console.error(`${game.name} ${fileName} validation errors:`);
             console.error(validationResult.error.message);
             
@@ -151,7 +151,7 @@ describe("All Games Validation Tests", () => {
             console.error('First 20 validation errors:', errorLines.join('\n'));
           }
 
-          expect(validationResult.ok).toBe(true);
+          expect(validationResult.isOk()).toBe(true);
           console.log(`✅ ${game.name} ${fileName} passed validation`);
         });
       }

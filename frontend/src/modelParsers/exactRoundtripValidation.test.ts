@@ -55,7 +55,7 @@ describe("Exact Byte-for-Byte Roundtrip Validation", () => {
     );
 
     // Handle Result type
-    if (!originalBg3dResult.ok) {
+    if (!originalBg3dResult.isOk()) {
       console.log("Failed to parse BG3D:", originalBg3dResult.error);
       return;
     }
@@ -80,7 +80,7 @@ describe("Exact Byte-for-Byte Roundtrip Validation", () => {
       roundtripSkeletonResource,
     );
 
-    if (!roundtripSkeletonBinaryResult.ok) {
+    if (!roundtripSkeletonBinaryResult.isOk()) {
       console.error("Failed to convert skeleton to binary:", roundtripSkeletonBinaryResult.error);
       return;
     }

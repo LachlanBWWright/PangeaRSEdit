@@ -26,7 +26,7 @@ import {
   CarouselPrevious,
   CarouselNext,
 } from "@/components/ui/carousel";
-import type { Result } from "@/types/result";
+import { Result } from "neverthrow";
 import type { TunnelData } from "@/data/tunnelParser/types";
 
 // Level component props type

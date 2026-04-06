@@ -12,7 +12,7 @@ import {
 } from "./levelDataSchemas";
 import { LevelDataSchema } from "./games/ottoMatic";
 import { validateMightyMikeLevel } from "./games/mightyMike";
-import { isOk, isErr } from "../types/result";
+// migrated from custom isOk/isErr helpers to neverthrow instance methods
 
 describe("Level Data Zod Schemas", () => {
   describe("headerFullSchema", () => {
@@ -166,13 +166,13 @@ describe("Level Data Zod Schemas", () => {
           numCheckpoints: 2,
         };
         const result = validateHeader(header, false);
-        expect(isOk(result)).toBe(true);
+        expect(result.isOk()).toBe(true);
       });
 
       it("should return Err for invalid header", () => {
         const header = { version: "not a number" };
         const result = validateHeader(header, false);
-        expect(isErr(result)).toBe(true);
+        expect(result.isErr()).toBe(true);
       });
     });
 
@@ -183,8 +183,8 @@ describe("Level Data Zod Schemas", () => {
           { x: 300, z: 400, type: 2, flags: 1, p0: 1, p1: 2, p2: 3, p3: 4 },
         ];
         const result = validateItems(items);
-        expect(isOk(result)).toBe(true);
-        if (isOk(result)) {
+        expect(result.isOk()).toBe(true);
+        if (result.isOk()) {
           expect(result.value.length).toBe(2);
         }
       });
@@ -192,7 +192,7 @@ describe("Level Data Zod Schemas", () => {
       it("should return Err for invalid items", () => {
         const items = [{ x: "not a number" }]; // invalid item
         const result = validateItems(items);
-        expect(isErr(result)).toBe(true);
+        expect(result.isErr()).toBe(true);
       });
     });
 
@@ -210,7 +210,7 @@ describe("Level Data Zod Schemas", () => {
           },
         ];
         const result = validateFences(fences);
-        expect(isOk(result)).toBe(true);
+        expect(result.isOk()).toBe(true);
       });
     });
 
@@ -221,7 +221,7 @@ describe("Level Data Zod Schemas", () => {
           { flags: 1, p0: 3, p1: 4 },
         ];
         const result = validateTileAttributes(attrs);
-        expect(isOk(result)).toBe(true);
+        expect(result.isOk()).toBe(true);
       });
     });
   });
@@ -325,13 +325,13 @@ describe("Level Data Zod Schemas", () => {
       };
 
       const result = validateMightyMikeLevel(minimalLevel);
-      expect(isErr(result)).toBe(true);
+      expect(result.isErr()).toBe(true);
     });
 
     it("should return Ok when TEMP_MIGHTY_MIKE_FLAG is present and true", () => {
       const validLevel = { TEMP_MIGHTY_MIKE_FLAG: true };
       const result = validateMightyMikeLevel(validLevel);
-      expect(isOk(result)).toBe(true);
+      expect(result.isOk()).toBe(true);
     });
   });
 });

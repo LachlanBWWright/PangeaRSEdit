@@ -3,7 +3,6 @@ import { readFileSync, existsSync } from "fs";
 import { join } from "path";
 import { parseMightyMikeMap, mightyMikeMapToBinary, mightyMikeMapToCompressedBinary } from "@/modelParsers/parseMightyMike";
 import { rlwDecompress } from "@/utils/rlwDecompress";
-import { isOk } from "@/types/result";
 
 function bufferToArrayBuffer(buf: Buffer): ArrayBuffer {
   const ab = new ArrayBuffer(buf.length);
@@ -46,14 +45,14 @@ describe("Byte-perfect roundtrip", () => {
 
       // Decompress original
       const decompResult = rlwDecompress(originalAB);
-      expect(isOk(decompResult)).toBe(true);
-      if (!isOk(decompResult)) return;
+      expect(decompResult.isOk()).toBe(true);
+      if (!decompResult.isOk()) return;
       const originalDecompressed = new Uint8Array(decompResult.value.data);
 
       // Parse
       const parseResult = parseMightyMikeMap(originalAB);
-      expect(parseResult.ok).toBe(true);
-      if (!parseResult.ok) return;
+      expect(parseResult.isOk()).toBe(true);
+      if (!parseResult.isOk()) return;
 
       // Export to uncompressed
       const exportedUncompressed = new Uint8Array(mightyMikeMapToBinary(parseResult.value));
@@ -64,7 +63,7 @@ describe("Byte-perfect roundtrip", () => {
       // Compare bytes
       for (let i = 0; i < originalDecompressed.length; i++) {
         if (exportedUncompressed[i] !== originalDecompressed[i]) {
-          throw new Error(
+          expect.fail(
             `Byte mismatch at offset ${i}: original=0x${(originalDecompressed[i] ?? 0).toString(16)} exported=0x${(exportedUncompressed[i] ?? 0).toString(16)}`
           );
         }
@@ -84,16 +83,16 @@ describe("Byte-perfect roundtrip", () => {
 
       // Parse original
       const parseResult = parseMightyMikeMap(originalAB);
-      expect(parseResult.ok).toBe(true);
-      if (!parseResult.ok) return;
+      expect(parseResult.isOk()).toBe(true);
+      if (!parseResult.isOk()) return;
 
       // Export to compressed binary
       const compressed = mightyMikeMapToCompressedBinary(parseResult.value);
 
       // Re-parse compressed output
       const reParseResult = parseMightyMikeMap(compressed);
-      expect(reParseResult.ok).toBe(true);
-      if (!reParseResult.ok) return;
+      expect(reParseResult.isOk()).toBe(true);
+      if (!reParseResult.isOk()) return;
 
       const reParsed = reParseResult.value;
       expect(reParsed.mapWidth).toBe(parseResult.value.mapWidth);
@@ -107,7 +106,7 @@ describe("Byte-perfect roundtrip", () => {
       expect(reExportBinary.length).toBe(origBinary.length);
       for (let i = 0; i < origBinary.length; i++) {
         if (reExportBinary[i] !== origBinary[i]) {
-          throw new Error(
+          expect.fail(
             `Byte mismatch at offset ${i} after compressed roundtrip`
           );
         }

@@ -3,7 +3,7 @@ import type { AtomicLevelData } from "@/data/utils/levelDataUtils";
 import { combineLevelData, splitLevelData } from "@/data/utils/levelDataUtils";
 import type { ResizeDirection } from "@/data/utils/levelResizeUtils";
 import { ITEM_BOUNDS_WARNING, resizeLevel, resizeFences, resizeSplines, resizeLiquids } from "@/data/utils/levelResizeUtils";
-import { err, ok, type Result } from "@/types/result";
+import { err, ok, type Result } from "neverthrow";
 
 export interface ResizeUIOptions {
   direction: ResizeDirection;

@@ -5,8 +5,13 @@
  * Based on games/bugdom2/Source/System/File.c LoadTunnel function.
  */
 
-import type { Result } from "@/types/result";
-import { ok, err, tryFn } from "@/types/result";
+import { Result, ok, err } from "neverthrow";
+
+function tryFn<T>(fn: () => T): Result<T, Error> {
+  return Result.fromThrowable(fn, (e) =>
+    e instanceof Error ? e : new Error(String(e)),
+  )();
+}
 import type {
   TunnelData,
   TunnelHeader,
@@ -120,7 +125,9 @@ class BinaryReader {
   }
 
   readBytes(length: number): Uint8Array {
-    const bytes = new Uint8Array(this.view.buffer.slice(this.offset, this.offset + length));
+    const bytes = new Uint8Array(
+      this.view.buffer.slice(this.offset, this.offset + length),
+    );
     this.offset += length;
     return bytes;
   }
@@ -274,9 +281,15 @@ function parseSection(reader: BinaryReader): TunnelSection {
  * @param buffer - The raw binary data from the .tun file
  * @returns Result containing the parsed TunnelData or an error
  */
-export function parseTunnelFile(buffer: ArrayBuffer): Result<TunnelData, Error> {
+export function parseTunnelFile(
+  buffer: ArrayBuffer,
+): Result<TunnelData, Error> {
   if (buffer.byteLength < 92) {
-    return err(new Error(`File too small: ${buffer.byteLength} bytes (minimum 92 bytes required for header)`));
+    return err(
+      new Error(
+        `File too small: ${buffer.byteLength} bytes (minimum 92 bytes required for header)`,
+      ),
+    );
   }
 
   // Use tryFn to convert BinaryReader DataView errors to Result
@@ -332,15 +345,25 @@ export function parseTunnelFile(buffer: ArrayBuffer): Result<TunnelData, Error> 
   });
 
   if (parseResult.isErr()) {
-    return err(new Error(`Failed to parse tunnel file: ${parseResult.error.message}`));
+    return err(
+      new Error(`Failed to parse tunnel file: ${parseResult.error.message}`),
+    );
   }
 
   const tunnelData = parseResult.value;
 
   // Validate header values
-  if (tunnelData.header.numNubs < 0 || tunnelData.header.numSplinePoints < 0 ||
-      tunnelData.header.numSections < 0 || tunnelData.header.numItems < 0) {
-    return err(new Error(`Invalid header: negative counts (nubs=${tunnelData.header.numNubs}, splinePoints=${tunnelData.header.numSplinePoints}, sections=${tunnelData.header.numSections}, items=${tunnelData.header.numItems})`));
+  if (
+    tunnelData.header.numNubs < 0 ||
+    tunnelData.header.numSplinePoints < 0 ||
+    tunnelData.header.numSections < 0 ||
+    tunnelData.header.numItems < 0
+  ) {
+    return err(
+      new Error(
+        `Invalid header: negative counts (nubs=${tunnelData.header.numNubs}, splinePoints=${tunnelData.header.numSplinePoints}, sections=${tunnelData.header.numSections}, items=${tunnelData.header.numItems})`,
+      ),
+    );
   }
 
   return ok(tunnelData);

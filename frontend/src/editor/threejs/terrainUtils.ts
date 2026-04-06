@@ -3,7 +3,8 @@ import {
   TerrainData,
 } from "@/python/structSpecs/LevelTypes";
 import { GlobalsInterface, DataType } from "@/data/globals/globals";
-import { Result, ok, err } from "@/types/result";
+import { Result } from "neverthrow";
+import { ok, err } from "neverthrow";
 
 export function combineMapImagesFromSTgd(
   mapImages: HTMLCanvasElement[],

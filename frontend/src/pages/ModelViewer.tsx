@@ -18,7 +18,9 @@ import {
   ResizablePanel,
   ResizablePanelGroup,
 } from "@/components/ui/resizable";
-import { err, fromPromise, ok } from "@/types/result";
+import { ResultAsync, err, ok } from "neverthrow";
+
+const mapErr = (e: unknown) => (e instanceof Error ? e : new Error(String(e)));
 import { BG3D_EXPORT_TARGETS, getBG3DExportTarget } from "@/modelParsers/bg3dExportTargets";
 
 import { BG3DParseResult } from "../modelParsers/parseBG3D";
@@ -220,7 +222,7 @@ export function ModelViewer() {
       const exportScene = prepareSceneForAnimationExport(scene);
       const animationsToExport = animationInfos.map((animation) => animation.clip);
 
-      const exportedResult = await fromPromise(
+      const exportedResult = await ResultAsync.fromPromise(
         new Promise<ArrayBuffer>((resolve, reject) => {
           exporter.parse(
             exportScene,
@@ -243,6 +245,7 @@ export function ModelViewer() {
             },
           );
         }),
+        (e) => (e instanceof Error ? e : new Error(String(e))),
       );
 
       if (exportedResult.isErr()) {
@@ -274,8 +277,9 @@ export function ModelViewer() {
           continue;
         }
 
-        const updatedBufferResult = await fromPromise(
+        const updatedBufferResult = await ResultAsync.fromPromise(
           updateGlbAnimationEvents(nextBuffer, animationIndex, events),
+          (e) => (e instanceof Error ? e : new Error(String(e))),
         );
         if (updatedBufferResult.isErr()) {
           return err(updatedBufferResult.error);
@@ -331,9 +335,10 @@ export function ModelViewer() {
         return;
       }
 
-      const normalizedBufferResult = await fromPromise(
+      const normalizedBufferResult = await ResultAsync.fromPromise(
         normalizeGlbBuffer(bufferWithEventsResult.value),
-      );
+        (e) => (e instanceof Error ? e : new Error(String(e))),
+        );
       if (normalizedBufferResult.isErr()) {
         console.error(
           "Failed to normalize animation-edited GLB",
@@ -364,14 +369,15 @@ export function ModelViewer() {
       setGltfBuffer(normalizedBuffer);
       setGltfUrl(newUrl);
 
-      const metadataResult = await fromPromise(
+      const metadataResult = await ResultAsync.fromPromise(
         extractAnimationMetadataFromGlb(normalizedBuffer),
-      );
+        (e) => (e instanceof Error ? e : new Error(String(e))),
+        );
       if (metadataResult.isOk()) {
         setGltfAnimationMetadata(metadataResult.value);
       }
 
-      const workerResult = await fromPromise(
+      const workerResult = await ResultAsync.fromPromise(
         new Promise<BG3DGltfWorkerResponse>((resolve, reject) => {
           const worker = new BG3DGltfWorker();
           worker.onmessage = (e) => {
@@ -387,6 +393,7 @@ export function ModelViewer() {
             buffer: normalizedBuffer,
           } satisfies BG3DGltfWorkerMessage);
         }),
+        (e) => (e instanceof Error ? e : new Error(String(e))),
       );
 
       if (workerResult.isOk()) {
@@ -494,7 +501,7 @@ export function ModelViewer() {
         };
 
         const worker = new BG3DGltfWorker();
-        const workerResult = await fromPromise(
+        const workerResult = await ResultAsync.fromPromise(
           new Promise<BG3DGltfWorkerResponse>((resolve, reject) => {
             worker.onmessage = (e) => {
               resolve(e.data);
@@ -510,6 +517,7 @@ export function ModelViewer() {
             } satisfies BG3DGltfWorkerMessage;
             worker.postMessage(message);
           }),
+          mapErr,
         );
 
         if (workerResult.isErr()) {
@@ -546,8 +554,9 @@ export function ModelViewer() {
         setBg3dParsed(result.parsed ?? updatedParsed);
         setGltfBuffer(normalizedBuffer);
         setGltfUrl(newUrl);
-        const metadataResult = await fromPromise(
+        const metadataResult = await ResultAsync.fromPromise(
           extractAnimationMetadataFromGlb(normalizedBuffer),
+          mapErr,
         );
         if (metadataResult.isOk()) {
           setGltfAnimationMetadata(metadataResult.value);
@@ -573,12 +582,13 @@ export function ModelViewer() {
         return;
       }
 
-      const updatedBufferResult = await fromPromise(
+      const updatedBufferResult = await ResultAsync.fromPromise(
         updateGlbAnimationEvents(
           gltfBuffer,
           animationIndex,
           nextEvents,
         ),
+        mapErr,
       );
       if (updatedBufferResult.isErr()) {
         toast.error(
@@ -604,8 +614,9 @@ export function ModelViewer() {
       const newUrl = URL.createObjectURL(glbBlob);
       setGltfBuffer(normalizedBuffer);
       setGltfUrl(newUrl);
-      const metadataResult = await fromPromise(
+      const metadataResult = await ResultAsync.fromPromise(
         extractAnimationMetadataFromGlb(normalizedBuffer),
+        mapErr,
       );
       if (metadataResult.isOk()) {
         setGltfAnimationMetadata(metadataResult.value);
@@ -628,18 +639,19 @@ export function ModelViewer() {
       return undefined;
     }
 
-    void extractAnimationMetadataFromGlb(gltfBuffer)
-      .then((metadata) => {
-        if (!cancelled) {
-          setGltfAnimationMetadata(metadata);
-        }
-      })
-      .catch((error) => {
-        console.warn("Failed to extract animation metadata from GLB", error);
-        if (!cancelled) {
-          setGltfAnimationMetadata({});
-        }
-      });
+    void (async () => {
+      const result = await ResultAsync.fromPromise(
+        extractAnimationMetadataFromGlb(gltfBuffer),
+        (e) => (e instanceof Error ? e : new Error(String(e))),
+      );
+      if (cancelled) return;
+      if (result.isErr()) {
+        console.warn("Failed to extract animation metadata from GLB", result.error);
+        if (!cancelled) setGltfAnimationMetadata({});
+        return;
+      }
+      if (!cancelled) setGltfAnimationMetadata(result.value);
+    })();
 
     return () => {
       cancelled = true;
@@ -673,7 +685,10 @@ export function ModelViewer() {
   // Removed handleClonedSceneUpdate, handled in ModelCanvas
 
   async function handleDownloadTexture(texture: Texture) {
-    const result = await fromPromise(downloadTexture(texture, texture.name));
+    const result = await ResultAsync.fromPromise(
+      downloadTexture(texture, texture.name),
+      mapErr,
+    );
     if (result.isErr()) {
       console.error("Error downloading texture:", result.error);
       toast.error("Failed to download texture");

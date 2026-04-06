@@ -8,7 +8,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-import { fromPromise } from "@/types/result";
+import { ResultAsync } from "neverthrow";
 
 export interface GameModel {
   name: string;
@@ -23,7 +23,7 @@ export interface GameInfo {
   models: GameModel[];
 }
 
-import type { Result } from "@/types/result";
+import { Result } from "neverthrow";
 
 export interface GameModelSelectorProps {
   onLoadModel: (
@@ -83,7 +83,10 @@ export function GameModelSelector({
     }
 
     // Fetch the model file (could be BG3D or 3DMF)
-    const bg3dFetchResult = await fromPromise(fetch(selectedModel.bg3dFile));
+    const bg3dFetchResult = await ResultAsync.fromPromise(
+      fetch(selectedModel.bg3dFile),
+      (e) => (e instanceof Error ? e : new Error(String(e))),
+    );
     if (bg3dFetchResult.isErr()) {
       console.error("Error loading selected model:", bg3dFetchResult.error);
       toast.error(`Failed to load ${selectedModel.name}`);
@@ -98,7 +101,10 @@ export function GameModelSelector({
       return;
     }
 
-    const bg3dBufferResult = await fromPromise(bg3dResponse.arrayBuffer());
+    const bg3dBufferResult = await ResultAsync.fromPromise(
+      bg3dResponse.arrayBuffer(),
+      (e) => (e instanceof Error ? e : new Error(String(e))),
+    );
     if (bg3dBufferResult.isErr()) {
       console.error("Error loading selected model:", bg3dBufferResult.error);
       toast.error(`Failed to load ${selectedModel.name}`);
@@ -121,8 +127,9 @@ export function GameModelSelector({
 
     // If skeleton file exists and user wants to load it
     if (selectedModel.skeletonFile && loadSkeletons) {
-      const skeletonFetchResult = await fromPromise(
+      const skeletonFetchResult = await ResultAsync.fromPromise(
         fetch(selectedModel.skeletonFile),
+        (e) => (e instanceof Error ? e : new Error(String(e))),
       );
       if (skeletonFetchResult.isErr()) {
         console.warn(
@@ -134,14 +141,15 @@ export function GameModelSelector({
       } else {
         const skeletonResponse = skeletonFetchResult.value;
         if (skeletonResponse.ok) {
-          const skeletonBufferResult = await fromPromise(
+          const skeletonBufferResult = await ResultAsync.fromPromise(
             skeletonResponse.arrayBuffer(),
+            (e) => (e instanceof Error ? e : new Error(String(e))),
           );
-            if (skeletonBufferResult.isErr()) {
-              console.warn(
-                `${selectedModel.name} skeleton file read failed, loading without animations`,
-              );
-              toast.warning(
+          if (skeletonBufferResult.isErr()) {
+            console.warn(
+              `${selectedModel.name} skeleton file read failed, loading without animations`,
+            );
+            toast.warning(
               "Failed to read skeleton file, loading model without animations",
             );
           } else {

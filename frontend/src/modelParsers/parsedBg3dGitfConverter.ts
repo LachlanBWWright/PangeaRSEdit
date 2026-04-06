@@ -29,8 +29,6 @@ import {
 
 import { decodeJpegNode } from "../utils/jpegDecompress";
 
-import { isErr } from "../types/result";
-
 import {
   Document,
   Mesh,
@@ -514,11 +512,8 @@ export function bg3dParsedToGLTF(
       baseBuffer,
     );
 
-    if (isErr(skeletonSystemResult)) {
-      console.error(
-        "Failed to create skeleton system:",
-        skeletonSystemResult.error,
-      );
+    if (skeletonSystemResult.isErr()) {
+      console.error("Failed to create skeleton system:", skeletonSystemResult.error);
     } else {
       gltfSkin = skeletonSystemResult.value.skin;
     }

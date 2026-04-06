@@ -2,7 +2,8 @@ import { Updater } from "use-immer";
 import { LevelData, type Liquid } from "@/python/structSpecs/LevelTypes";
 import { SPLINE_KEY_BASE } from "../../editor/subviews/splines/splineUtils";
 import { Game, GlobalsInterface } from "../globals/globals";
-import { Result, ok, err } from "../../types/result";
+import { ok, err } from "neverthrow";
+import { Result } from "neverthrow";
 
 // Type guard helper
 export function isRecord(value: unknown): value is Record<string, unknown> {

@@ -71,8 +71,8 @@ describe("Mighty Mike Roundtrip Tests", () => {
   describe("Map Parsing", () => {
     it("should parse jurassic.map-1 without errors", () => {
       const result = parseMightyMikeMap(jurassicMapBuffer);
-      expect(result.ok).toBe(true);
-      if (result.ok) {
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
         expect(result.value.mapWidth).toBeGreaterThan(0);
         expect(result.value.mapHeight).toBeGreaterThan(0);
         console.log("✓ Map parsed:", {
@@ -84,7 +84,7 @@ describe("Mighty Mike Roundtrip Tests", () => {
 
     it("should have valid tile indices in map", () => {
       const result = parseMightyMikeMap(jurassicMapBuffer);
-      if (result.ok) {
+      if (result.isOk()) {
         const mapImage = result.value.mapImage.flat();
         const nonZeroTiles = mapImage.filter((tileValue) => tileValue.tileIndex !== 0);
         expect(nonZeroTiles.length).toBeGreaterThan(0);
@@ -101,8 +101,8 @@ describe("Mighty Mike Roundtrip Tests", () => {
         jurassicTilesetBuffer,
         jurassicPalette ?? undefined
       );
-      expect(result.ok).toBe(true);
-      if (result.ok) {
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
         expect(result.value.numTileDefinitions).toBeGreaterThan(0);
         console.log("✓ Tileset parsed:", {
           tiles: result.value.numTileDefinitions,
@@ -115,7 +115,7 @@ describe("Mighty Mike Roundtrip Tests", () => {
         jurassicTilesetBuffer,
         jurassicPalette ?? undefined
       );
-      if (result.ok) {
+      if (result.isOk()) {
         // In vitest/jsdom, canvas context getImageData doesn't persist putImageData,
         // so we just verify that: 1) tiles were created, 2) they're HTMLCanvasElements
         let validTiles = 0;
@@ -163,7 +163,7 @@ describe("Mighty Mike Roundtrip Tests", () => {
         jurassicTilesetBuffer,
         jurassicPalette ?? undefined
       );
-      if (result.ok && jurassicPalette) {
+      if (result.isOk() && jurassicPalette) {
         // In vitest/jsdom, canvas imageData doesn't work properly, so just verify palette is applied
         // by checking that we have both opaque tiles and that palette was used
         const opaqueCanvases = (result.value.tileImages ?? []).filter(
@@ -191,11 +191,11 @@ describe("Mighty Mike Roundtrip Tests", () => {
         expect(tileset).toBeDefined();
         if (!tileset) return;
         const result = parseMightyMikeTileSet(tileset.buffer, tileset.palette ?? undefined);
-        if (!result.ok) {
+        if (!result.isOk()) {
           console.error(`✗ ${scene.name} tileset failed:`, result.error);
         }
-        expect(result.ok).toBe(true);
-        if (result.ok && result.value.tileImages) {
+        expect(result.isOk()).toBe(true);
+        if (result.isOk() && result.value.tileImages) {
           console.log(`✓ ${scene.name} tileset:`, {
             tiles: result.value.numTileDefinitions,
             xlateEntries: result.value.numXlateEntries,

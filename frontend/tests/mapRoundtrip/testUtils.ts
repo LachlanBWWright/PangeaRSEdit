@@ -11,7 +11,7 @@ import {
   compareLevelData,
   compareBuffers,
 } from "../../src/data/mapRoundtrip/parseLevel";
-import { fromPromise } from "../../src/types/result";
+// fromPromise (legacy helper) removed; use standard try/catch for promises here
 
 /**
  * Read a file as ArrayBuffer
@@ -28,8 +28,9 @@ export async function readFileAsBuffer(filePath: string): Promise<ArrayBuffer> {
  * Check if a file exists
  */
 export async function fileExists(filePath: string): Promise<boolean> {
-  const result = await fromPromise(access(filePath));
-  return result.ok;
+  return access(filePath)
+    .then(() => true)
+    .catch(() => false);
 }
 
 /**
@@ -269,7 +270,7 @@ export function createMapRoundtripTestSuite(config: {
         x: unknown,
       ): asserts x is Record<string, unknown> {
         if (typeof x !== "object" || x === null) {
-          throw new Error("Parsed data is not an object");
+          expect.fail("Parsed data is not an object");
         }
       }
       expect(() => {

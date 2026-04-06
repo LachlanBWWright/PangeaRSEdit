@@ -18,7 +18,7 @@ import { parseSkeletonRsrc } from "@/modelParsers/skeletonRsrc/parseSkeletonRsrc
 import { parseBG3DWithSkeletonResource } from "@/modelParsers/bg3dWithSkeleton";
 import { bg3dSkeletonToSkeletonResource } from "@/modelParsers/skeletonExport";
 import { skeletonResourceToBinary } from "@/modelParsers/skeletonBinaryExport";
-import { unwrap, isOk } from "@/types/result";
+// migrated from custom unwrap helper to neverthrow instance methods
 import { existsSync, readFileSync } from "fs";
 import { join } from "path";
 import { NodeIO } from "@gltf-transform/core";
@@ -51,14 +51,23 @@ describe("3DMF native roundtrip (parse → write → reparse)", () => {
       const original = bufferFromFile(filePath);
 
       // Parse to native format
-      const metaFile = unwrap(parse3DMFNative(original));
+      const metaRes = parse3DMFNative(original);
+      expect(metaRes.isOk()).toBe(true);
+      if (!metaRes.isOk()) return;
+      const metaFile = metaRes.value;
 
       // Write back to 3DMF
-      const rewritten = unwrap(write3DMFNative(metaFile));
+      const rewrittenRes = write3DMFNative(metaFile);
+      expect(rewrittenRes.isOk()).toBe(true);
+      if (!rewrittenRes.isOk()) return;
+      const rewritten = rewrittenRes.value;
       expect(rewritten.byteLength).toBeGreaterThan(0);
 
       // Re-parse and verify structure
-      const reparsed = unwrap(parse3DMFNative(rewritten));
+      const reparsedRes = parse3DMFNative(rewritten);
+      expect(reparsedRes.isOk()).toBe(true);
+      if (!reparsedRes.isOk()) return;
+      const reparsed = reparsedRes.value;
       expect(reparsed.numMeshes).toBe(metaFile.numMeshes);
       expect(reparsed.numTextures).toBe(metaFile.numTextures);
       // numTopLevelGroups may change during write due to group flattening
@@ -95,12 +104,15 @@ describe("3DMF → GLB → 3DMF structural roundtrip", () => {
 
       // Parse 3DMF with skeleton (pass raw buffer, not parsed result)
       const withSkeletonResult = parseBG3DWithSkeletonResource(modelBuffer, skelResource);
-      expect(withSkeletonResult.ok).toBe(true);
-      if (!withSkeletonResult.ok) return;
+      expect(withSkeletonResult.isOk()).toBe(true);
+      if (withSkeletonResult.isErr()) return;
       const withSkeleton = withSkeletonResult.value;
 
       // Also parse without skeleton for reference
-      const parsed = unwrap(parse3DMF(modelBuffer));
+      const parsedRes = parse3DMF(modelBuffer);
+      expect(parsedRes.isOk()).toBe(true);
+      if (!parsedRes.isOk()) return;
+      const parsed = parsedRes.value;
       expect(parsed.materials.length).toBeGreaterThan(0);
 
       expect(withSkeleton.skeleton).toBeDefined();
@@ -132,14 +144,14 @@ describe("3DMF → GLB → 3DMF structural roundtrip", () => {
 
       // Convert back to 3DMF and verify it can be re-parsed
       const rewritten3dmf = bg3dParsedTo3DMF(roundtripped);
-      expect(isOk(rewritten3dmf)).toBe(true);
-      if (isOk(rewritten3dmf)) {
+      expect(rewritten3dmf.isOk()).toBe(true);
+      if (rewritten3dmf.isOk()) {
         expect(rewritten3dmf.value.byteLength).toBeGreaterThan(0);
 
         // Re-parse the roundtripped 3DMF
         const reparsedResult = parse3DMF(rewritten3dmf.value);
-        expect(isOk(reparsedResult)).toBe(true);
-        if (isOk(reparsedResult)) {
+        expect(reparsedResult.isOk()).toBe(true);
+        if (reparsedResult.isOk()) {
           // Material count may differ due to texture flattening during conversion
           expect(reparsedResult.value.materials.length).toBeGreaterThan(0);
         }
@@ -150,11 +162,12 @@ describe("3DMF → GLB → 3DMF structural roundtrip", () => {
         const rtSkelResource = bg3dSkeletonToSkeletonResource(roundtripped.skeleton);
         const skelBinaryResult = await skeletonResourceToBinary(rtSkelResource);
 
-        if (skelBinaryResult.ok) {
-          expect(skelBinaryResult.value.byteLength).toBeGreaterThan(0);
+        if (skelBinaryResult.isOk()) {
+          const bin = skelBinaryResult.value;
+          expect(bin.byteLength).toBeGreaterThan(0);
 
           // Re-parse roundtripped skeleton and verify bone count
-          const reparsedSkel = await parseSkeletonRsrc(skelBinaryResult.value);
+          const reparsedSkel = await parseSkeletonRsrc(bin);
           const origBoneCount = Object.keys(skelResource.Bone || {}).length;
           const rtBoneCount = Object.keys(reparsedSkel.Bone || {}).length;
           expect(rtBoneCount).toBe(origBoneCount);
@@ -192,8 +205,8 @@ describe("Bugdom 1 and Nanosaur 1 3DMF skeleton event parity", () => {
 
       const skeletonResource = await parseSkeletonRsrc(skelBuffer);
       const parsed = parseBG3DWithSkeletonResource(modelBuffer, skeletonResource);
-      expect(parsed.ok).toBe(true);
-      if (!parsed.ok) return;
+      expect(parsed.isOk()).toBe(true);
+      if (parsed.isErr()) return;
 
       const original = parsed.value;
       expect(original.skeleton).toBeDefined();
@@ -270,7 +283,10 @@ describe("3DMF standalone models → GLB → 3DMF roundtrip", () => {
       const modelBuffer = bufferFromFile(modelPath);
 
       // Parse 3DMF to shared IR (no skeleton)
-      const parsed = unwrap(parse3DMF(modelBuffer));
+      const parsedRes2 = parse3DMF(modelBuffer);
+      expect(parsedRes2.isOk()).toBe(true);
+      if (!parsedRes2.isOk()) return;
+      const parsed = parsedRes2.value;
 
       // Convert to GLB
       const gltfDoc = bg3dParsedToGLTF(parsed);

@@ -11,7 +11,10 @@ import {
 import { parseTGAToCanvas } from "@/utils/tgaImageParser";
 import { extractTGAPaletteRaw } from "@/utils/tgaParser";
 import { parseTilesetFile, createTilesetGridPreview, rerenderTilesetWithPalette, RGBColor } from "@/parsers/mightyMikeTilesetParser";
-import { isErr, fromPromise } from "@/types/result";
+import { ResultAsync } from "neverthrow";
+
+const mapErr = (e: unknown) => (e instanceof Error ? e : new Error(String(e)));
+
 import { FileUploadPanel } from "./SpriteViewer/components/FileUploadPanel";
 import { MightyMikeAssetBrowser } from "./SpriteViewer/components/MightyMikeAssetBrowser";
 import { SpriteControls } from "./SpriteViewer/components/SpriteControls";
@@ -118,7 +121,7 @@ export function SpriteViewer() {
 
   const loadBorderPalette = useCallback(async () => {
     const url = "assets/mightyMike/terrain/border.tga";
-    const fetchResult = await fromPromise(fetch(url));
+    const fetchResult = await ResultAsync.fromPromise(fetch(url), mapErr);
     if (fetchResult.isErr()) {
       console.error("Error loading border palette:", fetchResult.error);
       return null;
@@ -130,7 +133,7 @@ export function SpriteViewer() {
       return null;
     }
 
-    const bufferResult = await fromPromise(response.arrayBuffer());
+    const bufferResult = await ResultAsync.fromPromise(response.arrayBuffer(), mapErr);
     if (bufferResult.isErr()) {
       console.error("Error reading border palette:", bufferResult.error);
       return null;
@@ -143,7 +146,7 @@ export function SpriteViewer() {
     }
 
     return new Uint8Array(paletteResult.colors);
-  }, [currentPalette.colors]);
+  }, []);
 
   // ===== File Loading Handlers =====
 
@@ -164,7 +167,7 @@ export function SpriteViewer() {
     }
 
     setLoading(true);
-    const bufferResult = await fromPromise(file.arrayBuffer());
+    const bufferResult = await ResultAsync.fromPromise(file.arrayBuffer(), mapErr);
     if (bufferResult.isErr()) {
       console.error("Error loading file:", bufferResult.error);
       toast.error(bufferResult.error.message);
@@ -175,7 +178,7 @@ export function SpriteViewer() {
 
     if (fileType === "sprites") {
       const result = parseShapesFile(buffer);
-      if (isErr(result)) {
+      if (result.isErr()) {
         toast.error(`Failed to parse: ${result.error.message}`);
         setLoading(false);
         return;
@@ -207,7 +210,7 @@ export function SpriteViewer() {
       toast.success(`Loaded: ${result.value.shapes.length} shapes`);
     } else if (fileType === "tga") {
       const result = parseTGAToCanvas(buffer);
-      if (isErr(result)) {
+      if (result.isErr()) {
         toast.error(`Failed to parse: ${result.error.message}`);
         setLoading(false);
         return;
@@ -229,7 +232,7 @@ export function SpriteViewer() {
   const handleLoadSpritesFile = async (filename: string) => {
     setLoading(true);
     const url = `data/mightymike/shapes/${filename}.shapes`;
-    const fetchResult = await fromPromise(fetch(url));
+    const fetchResult = await ResultAsync.fromPromise(fetch(url), mapErr);
 
     if (fetchResult.isErr()) {
       console.error("Error loading sprites:", fetchResult.error);
@@ -245,7 +248,7 @@ export function SpriteViewer() {
       return;
     }
 
-    const bufferResult = await fromPromise(response.arrayBuffer());
+    const bufferResult = await ResultAsync.fromPromise(response.arrayBuffer(), mapErr);
     if (bufferResult.isErr()) {
       console.error("Error loading sprites:", bufferResult.error);
       toast.error(bufferResult.error.message);
@@ -256,7 +259,7 @@ export function SpriteViewer() {
     const buffer = bufferResult.value;
     const result = parseShapesFile(buffer);
 
-    if (isErr(result)) {
+    if (result.isErr()) {
       toast.error(`Failed to parse shapes file: ${result.error.message}`);
       setLoading(false);
       return;
@@ -293,7 +296,7 @@ export function SpriteViewer() {
   const handleLoadTGAFile = async (filename: string) => {
     setLoading(true);
     const url = `assets/mightyMike/terrain/${filename}.tga`;
-    const fetchResult = await fromPromise(fetch(url));
+    const fetchResult = await ResultAsync.fromPromise(fetch(url), mapErr);
 
     if (fetchResult.isErr()) {
       console.error("Error loading TGA:", fetchResult.error);
@@ -309,7 +312,7 @@ export function SpriteViewer() {
       return;
     }
 
-    const bufferResult = await fromPromise(response.arrayBuffer());
+    const bufferResult = await ResultAsync.fromPromise(response.arrayBuffer(), mapErr);
     if (bufferResult.isErr()) {
       console.error("Error loading TGA:", bufferResult.error);
       toast.error(bufferResult.error.message);
@@ -320,7 +323,7 @@ export function SpriteViewer() {
     const buffer = bufferResult.value;
     const result = parseTGAToCanvas(buffer);
 
-    if (isErr(result)) {
+    if (result.isErr()) {
       toast.error(`Failed to parse TGA file: ${result.error.message}`);
       setLoading(false);
       return;
@@ -341,7 +344,7 @@ export function SpriteViewer() {
     // The game renders levels using the border.tga palette (set during
     // InitArea → LoadBorderImage), not the per-scene cinema TGA palettes.
     const tgaUrl = `assets/mightyMike/terrain/border.tga`;
-    const tgaFetchResult = await fromPromise(fetch(tgaUrl));
+      const tgaFetchResult = await ResultAsync.fromPromise(fetch(tgaUrl), mapErr);
 
     if (tgaFetchResult.isErr()) {
       console.error("Error loading tileset:", tgaFetchResult.error);
@@ -357,7 +360,7 @@ export function SpriteViewer() {
       return;
     }
 
-    const tgaBufferResult = await fromPromise(tgaResponse.arrayBuffer());
+      const tgaBufferResult = await ResultAsync.fromPromise(tgaResponse.arrayBuffer(), mapErr);
     if (tgaBufferResult.isErr()) {
       console.error("Error loading tileset:", tgaBufferResult.error);
       toast.error(tgaBufferResult.error.message);
@@ -367,7 +370,7 @@ export function SpriteViewer() {
     const tgaBuffer = tgaBufferResult.value;
       const tgaCanvasResult = parseTGAToCanvas(tgaBuffer);
 
-      if (isErr(tgaCanvasResult)) {
+      if (tgaCanvasResult.isErr()) {
         toast.error(`Failed to parse TGA file: ${tgaCanvasResult.error.message}`);
         return;
       }
@@ -443,7 +446,7 @@ export function SpriteViewer() {
 
       // Load and parse tileset with gamma-corrected palette
       const tilesetUrl = `assets/mightyMike/terrain/${filename}.tileset`;
-      const tilesetFetchResult = await fromPromise(fetch(tilesetUrl));
+      const tilesetFetchResult = await ResultAsync.fromPromise(fetch(tilesetUrl), mapErr);
 
       if (tilesetFetchResult.isErr()) {
         console.error("Error loading tileset:", tilesetFetchResult.error);
@@ -459,7 +462,7 @@ export function SpriteViewer() {
         return;
       }
 
-      const tilesetBufferResult = await fromPromise(tilesetResponse.arrayBuffer());
+      const tilesetBufferResult = await ResultAsync.fromPromise(tilesetResponse.arrayBuffer(), mapErr);
       if (tilesetBufferResult.isErr()) {
         console.error("Error loading tileset:", tilesetBufferResult.error);
         toast.error(tilesetBufferResult.error.message);
@@ -482,7 +485,7 @@ export function SpriteViewer() {
 
       const tilesetResult = parseTilesetFile(tilesetBuffer, tilsetPalette);
 
-      if (isErr(tilesetResult)) {
+      if (tilesetResult.isErr()) {
         toast.error(`Failed to parse tileset: ${tilesetResult.error.message}`);
         return;
       }
@@ -535,7 +538,7 @@ export function SpriteViewer() {
     if (!frame) return;
 
     const sourceCanvasResult = shapeFrameToCanvas(frame, currentPalette.colors);
-    if (isErr(sourceCanvasResult)) {
+    if (sourceCanvasResult.isErr()) {
       toast.error("Failed to render frame");
       return;
     }
@@ -819,7 +822,7 @@ export function SpriteViewer() {
         frame,
         currentPalette.colors,
       );
-      if (!isErr(frameCanvasResult)) {
+      if (frameCanvasResult.isOk()) {
         const link = document.createElement("a");
         link.href = frameCanvasResult.value.toDataURL("image/png");
         link.download = `shape_${selectedShapeIndex}_frame_${frameIdx}.png`;
@@ -899,7 +902,7 @@ export function SpriteViewer() {
       const tgaName = sceneToTga[sceneName] || sceneName;
       const tgaUrl = `assets/mightyMike/terrain/${tgaName}.tga`;
 
-      const fetchResult = await fromPromise(fetch(tgaUrl));
+    const fetchResult = await ResultAsync.fromPromise(fetch(tgaUrl), mapErr);
       if (fetchResult.isErr()) {
         console.error("Error loading palette:", fetchResult.error);
         toast.error("Failed to load palette");
@@ -912,7 +915,7 @@ export function SpriteViewer() {
         return;
       }
 
-      const bufferResult = await fromPromise(response.arrayBuffer());
+    const bufferResult = await ResultAsync.fromPromise(response.arrayBuffer(), mapErr);
       if (bufferResult.isErr()) {
         console.error("Error loading palette:", bufferResult.error);
         toast.error("Failed to load palette");
@@ -989,7 +992,7 @@ export function SpriteViewer() {
     const tgaName = sceneToTga[sceneName] || sceneName;
     const tgaUrl = `assets/mightyMike/terrain/${tgaName}.tga`;
 
-    const fetchResult = await fromPromise(fetch(tgaUrl));
+    const fetchResult = await ResultAsync.fromPromise(fetch(tgaUrl), mapErr);
     if (fetchResult.isErr()) {
       console.error("Error loading tileset palette:", fetchResult.error);
       toast.error("Failed to load palette");
@@ -1002,7 +1005,7 @@ export function SpriteViewer() {
       return;
     }
 
-    const bufferResult = await fromPromise(response.arrayBuffer());
+    const bufferResult = await ResultAsync.fromPromise(response.arrayBuffer(), mapErr);
     if (bufferResult.isErr()) {
       console.error("Error loading tileset palette:", bufferResult.error);
       toast.error("Failed to load palette");

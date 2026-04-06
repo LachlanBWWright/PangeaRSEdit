@@ -10,7 +10,6 @@ import { bg3dParsedToGLTF, gltfToBG3D } from "./parsedBg3dGitfConverter";
 import { parseBG3D, bg3dParsedToBG3D } from "./parseBG3D";
 import { bg3dSkeletonToSkeletonResource } from "./skeletonExport";
 import { skeletonResourceToBinary } from "./skeletonBinaryExport";
-import { isErr } from "../types/result";
 
 async function main() {
   const ottoBg3dPath = join(__dirname, "../public/Otto.bg3d");
@@ -38,7 +37,7 @@ async function main() {
     originalSkeletonResource,
   );
 
-  if (isErr(originalBg3dResult)) {
+  if (originalBg3dResult.isErr()) {
     console.error("Failed to parse BG3D:", originalBg3dResult.error);
     return;
   }
@@ -111,7 +110,7 @@ async function main() {
     roundtrip1SkeletonResourceParsed,
   );
 
-  if (isErr(roundtrip1Bg3dParsedResult)) {
+  if (roundtrip1Bg3dParsedResult.isErr()) {
     console.error("Failed to parse roundtrip BG3D:", roundtrip1Bg3dParsedResult.error);
     return;
   }

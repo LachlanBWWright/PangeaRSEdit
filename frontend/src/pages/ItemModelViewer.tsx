@@ -38,7 +38,7 @@ import { getGameMapper } from "@/data/items/mappers";
 import { ottoItemMapper } from "@/data/items/mappers/ottoItemMapper";
 import type { UniversalItemModelMapping } from "@/data/items/itemModelTypes";
 import { getCitationPermalink } from "@/data/items/itemModelTypes";
-import { fromPromise, err, ok, type Result } from "@/types/result";
+import { ResultAsync, err, ok, type Result } from "neverthrow";
 
 /**
  * Camera configuration for optimal model viewing
@@ -393,18 +393,19 @@ export function ItemModelViewer() {
     console.log(`Loading model from: ${modelPath}, index: ${mapping.modelIndex}`);
     setStatus(`Fetching ${mapping.modelFile}...`);
 
-    const fetchResult = await fromPromise(fetch(modelPath));
-    if (fetchResult.isErr()) {
-      const errorMsg = fetchResult.error.message;
-      setError(errorMsg);
+    const responseResult = await ResultAsync.fromPromise(
+      fetch(modelPath),
+      (e) => (e instanceof Error ? e : new Error(String(e))),
+    );
+    if (responseResult.isErr()) {
+      const msg = responseResult.error.message;
+      setError(msg);
       const itemName = selectedItem?.name ?? "item";
-      setStatus(`Error loading ${itemName}: ${errorMsg}`);
-      console.error("Model load error:", fetchResult.error);
+      setStatus(`Error loading ${itemName}: ${msg}`);
       setLoading(false);
       return;
     }
-
-    const response = fetchResult.value;
+    const response = responseResult.value;
     if (!response.ok) {
       const errorMsg = `Failed to fetch model: ${response.statusText} (${modelPath})`;
       setError(errorMsg);
@@ -414,12 +415,15 @@ export function ItemModelViewer() {
       return;
     }
 
-    const bufferResult = await fromPromise(response.arrayBuffer());
+    const bufferResult = await ResultAsync.fromPromise(
+      response.arrayBuffer(),
+      (e) => (e instanceof Error ? e : new Error(String(e))),
+    );
     if (bufferResult.isErr()) {
-      const errorMsg = bufferResult.error.message;
-      setError(errorMsg);
+      const msg = bufferResult.error.message;
+      setError(msg);
       const itemName = selectedItem?.name ?? "item";
-      setStatus(`Error loading ${itemName}: ${errorMsg}`);
+      setStatus(`Error loading ${itemName}: ${msg}`);
       console.error("Model load error:", bufferResult.error);
       setLoading(false);
       return;
@@ -493,15 +497,16 @@ export function ItemModelViewer() {
       const blobUrl = URL.createObjectURL(blob);
 
       const loader = new GLTFLoader();
-      const gltfResult = await fromPromise(
+      const gltfResult = await ResultAsync.fromPromise(
         new Promise<GLTF>((resolve, reject) => {
           loader.load(
             blobUrl,
             (gltf) => resolve(gltf),
             undefined,
-            (err) => reject(err)
+            (err) => reject(err),
           );
-        })
+        }),
+        (e) => (e instanceof Error ? e : new Error(String(e))),
       );
 
       URL.revokeObjectURL(blobUrl);

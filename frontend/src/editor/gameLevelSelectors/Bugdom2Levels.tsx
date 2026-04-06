@@ -5,7 +5,7 @@ import { Bugdom2Globals, type GlobalsInterface } from "@/data/globals/globals";
 import { parseTunnelFile } from "@/data/tunnelParser/parseTunnelFile";
 import type { TunnelData } from "@/data/tunnelParser/types";
 import { toast } from "sonner";
-import { fromPromise } from "@/types/result";
+import { ResultAsync } from "neverthrow";
 
 export function Bugdom2Levels({
   openFile,
@@ -18,15 +18,15 @@ export function Bugdom2Levels({
     async (tunnelPath: string, fileName: string) => {
       if (!onTunnelLoad) return;
 
-      const fetchResult = await fromPromise(fetch(tunnelPath));
-      if (fetchResult.isErr()) {
-        toast.error(`Failed to fetch ${fileName}`, {
-          description: fetchResult.error.message,
-        });
+      const responseResult = await ResultAsync.fromPromise(
+        fetch(tunnelPath),
+        (e) => (e instanceof Error ? e : new Error(String(e))),
+      );
+      if (responseResult.isErr()) {
+        toast.error(`Failed to fetch ${fileName}`, { description: responseResult.error.message });
         return;
       }
-
-      const response = fetchResult.value;
+      const response = responseResult.value;
       if (!response.ok) {
         toast.error(`Failed to fetch ${fileName}`, {
           description: `HTTP ${response.status}: ${response.statusText}`,
@@ -34,15 +34,17 @@ export function Bugdom2Levels({
         return;
       }
 
-      const bufferResult = await fromPromise(response.arrayBuffer());
-      if (bufferResult.isErr()) {
-        toast.error("Failed to read response", {
-          description: bufferResult.error.message,
-        });
-        return;
-      }
+       const bufferResult = await ResultAsync.fromPromise(
+         response.arrayBuffer(),
+         (e) => (e instanceof Error ? e : new Error(String(e))),
+       );
+       if (bufferResult.isErr()) {
+         toast.error("Failed to read response", { description: bufferResult.error.message });
+         return;
+       }
+       const buffer = bufferResult.value;
 
-      const result = parseTunnelFile(bufferResult.value);
+      const result = parseTunnelFile(buffer);
 
       if (result.isErr()) {
         toast.error("Failed to parse tunnel file", {

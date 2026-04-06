@@ -49,9 +49,9 @@ describe("MightyMike Byte-Accurate Roundtrip Tests - All 5 Levels", () => {
 
         // Parse the file
         const parseResult = parseMightyMikeMap(bufferToArrayBuffer(originalBuffer));
-        expect(parseResult.ok).toBe(true);
+        expect(parseResult.isOk()).toBe(true);
 
-        if (!parseResult.ok) {
+        if (!parseResult.isOk()) {
           console.error(`Failed to parse ${name}:`, parseResult.error);
           return;
         }
@@ -74,9 +74,9 @@ describe("MightyMike Byte-Accurate Roundtrip Tests - All 5 Levels", () => {
         const reExportArrayBuffer = new ArrayBuffer(exportedData.length);
         new Uint8Array(reExportArrayBuffer).set(exportedData);
         const reParseResult = parseMightyMikeMap(reExportArrayBuffer);
-        expect(reParseResult.ok).toBe(true);
+        expect(reParseResult.isOk()).toBe(true);
 
-        if (reParseResult.ok) {
+        if (reParseResult.isOk()) {
           const reParsedMap = reParseResult.value;
 
           // Verify the re-parsed map matches the originally parsed map
@@ -99,7 +99,7 @@ describe("MightyMike Byte-Accurate Roundtrip Tests - All 5 Levels", () => {
             const origItem = parsedMap.items[i];
             const reparsedItem = reParsedMap.items[i];
             if (!origItem || !reparsedItem) {
-              throw new Error(`Missing item at index ${i}`);
+              expect.fail(`Missing item at index ${i}`);
             }
             expect(reparsedItem.x).toBe(origItem.x);
             expect(reparsedItem.y).toBe(origItem.y);
@@ -167,9 +167,9 @@ describe("MightyMike Byte-Accurate Roundtrip Tests - All 5 Levels", () => {
         const buffer = readFileSync(path);
         const result = parseMightyMikeMap(bufferToArrayBuffer(buffer));
 
-        expect(result.ok).toBe(true);
+        expect(result.isOk()).toBe(true);
 
-        if (!result.ok) return;
+        if (!result.isOk()) return;
 
         const map = result.value;
 
@@ -230,9 +230,9 @@ describe("MightyMike Byte-Accurate Roundtrip Tests - All 5 Levels", () => {
         const originalBuffer = readFileSync(filePath);
 
         const parseResult = parseMightyMikeMap(bufferToArrayBuffer(originalBuffer));
-        expect(parseResult.ok).toBe(true);
+        expect(parseResult.isOk()).toBe(true);
 
-        if (!parseResult.ok) return;
+        if (!parseResult.isOk()) return;
 
         // Verify parsing was successful
         const parsedMap = parseResult.value;
@@ -247,9 +247,9 @@ describe("MightyMike Byte-Accurate Roundtrip Tests - All 5 Levels", () => {
         const exportedArrayBuffer = new ArrayBuffer(exportedData.length);
         new Uint8Array(exportedArrayBuffer).set(exportedData);
         const reParseResult = parseMightyMikeMap(exportedArrayBuffer);
-        expect(reParseResult.ok).toBe(true);
+        expect(reParseResult.isOk()).toBe(true);
 
-        if (reParseResult.ok) {
+        if (reParseResult.isOk()) {
           const reParsedMap = reParseResult.value;
 
           // Verify structural integrity
@@ -271,7 +271,7 @@ describe("MightyMike Byte-Accurate Roundtrip Tests - All 5 Levels", () => {
             const origItem = parsedMap.items[i];
             const reparsedItem = reParsedMap.items[i];
             if (!origItem || !reparsedItem) {
-              throw new Error(`Missing item at index ${i}`);
+              expect.fail(`Missing item at index ${i}`);
             }
             expect(reparsedItem.x).toBe(origItem.x);
             expect(reparsedItem.y).toBe(origItem.y);

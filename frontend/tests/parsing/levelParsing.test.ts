@@ -15,7 +15,6 @@ import {
   serializeLevelData,
 } from "@/data/mapRoundtrip/parseLevel";
 import { LevelData } from "@/python/structSpecs/LevelTypes";
-import { isErr } from "@/types/result";
 
 // Helper to construct a minimal valid LevelData object for tests
 function minimalLevelData(base: Partial<LevelData> = {}): LevelData {
@@ -395,7 +394,7 @@ describe("Level Parsing - Pure Functions", () => {
       // Use unknown to create a null/undefined case that still satisfies runtime checks
       function assertIsLevel(x: unknown): asserts x is LevelData {
         if (typeof x !== "object" || x === null || !("Hedr" in x)) {
-          throw new Error("Value is not a LevelData");
+          expect.fail("Value is not a LevelData");
         }
       }
 
@@ -597,7 +596,7 @@ describe("Level Parsing - Pure Functions", () => {
     it("should handle deeply nested structures", () => {
       function assertIsLevel(x: unknown): asserts x is LevelData {
         if (typeof x !== "object" || x === null || !("Hedr" in x)) {
-          throw new Error("Value is not a LevelData");
+          expect.fail("Value is not a LevelData");
         }
       }
 
@@ -707,7 +706,7 @@ describe("Level Parsing - Pure Functions", () => {
       const result = await parseLevelBuffer(buffer, { structSpecs: [] });
 
       // Since we're passing an invalid buffer, it should return an error
-      expect(isErr(result)).toBe(true);
+      expect(result.isErr()).toBe(true);
     });
   });
 

@@ -2,7 +2,7 @@ import { LevelData } from "@/python/structSpecs/LevelTypes";
 import { AtomicLevelData } from "@/data/utils/levelDataUtils";
 import type { GlobalsInterface } from "@/data/globals/globals";
 import { DataType } from "@/data/globals/globals";
-import { Result } from "@/types/result";
+import { Result } from "neverthrow";
 import { parseNanosaurLevelFile } from "./parseNanosaurLevelFile";
 import { parseMightyMikeFile } from "./parseMightyMikeFile";
 import { parseRsrcLevelFile } from "./parseRsrcLevelFile";

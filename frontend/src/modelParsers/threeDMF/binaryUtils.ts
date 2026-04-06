@@ -3,7 +3,7 @@
  * 3DMF files use big-endian byte order
  */
 
-import { Result, ok, err } from "../../types/result";
+import { ok, err, type Result } from "neverthrow";
 
 export class BigEndianReader {
   private view: DataView;

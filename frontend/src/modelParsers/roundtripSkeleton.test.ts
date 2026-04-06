@@ -124,8 +124,8 @@ describe("BG3D + Skeleton Roundtrip Tests with FULL ACCURACY", () => {
     );
 
     // parseBG3D returns a Result; ensure it's ok and use the `.value` for the converter
-    expect(originalBg3d.ok).toBe(true);
-    if (!originalBg3d.ok) return;
+    expect(originalBg3d.isOk()).toBe(true);
+    if (!originalBg3d.isOk()) return;
     const originalBg3dParsed = originalBg3d.value;
 
     // Convert to glTF WITHOUT storing original binary (no extras!)
@@ -213,7 +213,7 @@ describe("BG3D + Skeleton Roundtrip Tests with FULL ACCURACY", () => {
     const roundtrip1SkeletonBinaryResult = skeletonResourceToBinary(
       roundtrip1SkeletonResource,
     );
-    if (!roundtrip1SkeletonBinaryResult.ok) {
+    if (!roundtrip1SkeletonBinaryResult.isOk()) {
       console.error("Failed to convert skeleton to binary:", roundtrip1SkeletonBinaryResult.error);
       return;
     }
@@ -239,8 +239,8 @@ describe("BG3D + Skeleton Roundtrip Tests with FULL ACCURACY", () => {
     );
 
     // Convert to glTF again
-    expect(roundtrip1Bg3dParsed.ok).toBe(true);
-    if (!roundtrip1Bg3dParsed.ok) return;
+    expect(roundtrip1Bg3dParsed.isOk()).toBe(true);
+    if (!roundtrip1Bg3dParsed.isOk()) return;
     const roundtrip1Bg3dParsedValue = roundtrip1Bg3dParsed.value;
     const gltf2 = await bg3dParsedToGLTF(roundtrip1Bg3dParsedValue);
 
@@ -292,7 +292,7 @@ describe("BG3D + Skeleton Roundtrip Tests with FULL ACCURACY", () => {
     const roundtrip2SkeletonBinaryResult = skeletonResourceToBinary(
       roundtrip2SkeletonResource,
     );
-    if (!roundtrip2SkeletonBinaryResult.ok) {
+    if (!roundtrip2SkeletonBinaryResult.isOk()) {
       console.error("Failed to convert skeleton to binary:", roundtrip2SkeletonBinaryResult.error);
       return;
     }
@@ -592,8 +592,8 @@ describe("BG3D + Skeleton Roundtrip Tests with FULL ACCURACY", () => {
     );
 
     // Unwrap parse result and Convert to GLB and back (storing original binary for exact roundtrip)
-    expect(originalBg3d.ok).toBe(true);
-    if (!originalBg3d.ok) return;
+    expect(originalBg3d.isOk()).toBe(true);
+    if (!originalBg3d.isOk()) return;
     const originalBg3dParsed = originalBg3d.value;
     const gltfResult = await bg3dParsedToGLTF(originalBg3dParsed);
     const roundtripResult = await gltfToBG3D(gltfResult);
@@ -670,8 +670,8 @@ describe("BG3D + Skeleton Roundtrip Tests with FULL ACCURACY", () => {
     );
 
     // Unwrap parse result and Convert to GLB
-    expect(originalBg3d.ok).toBe(true);
-    if (!originalBg3d.ok) return;
+    expect(originalBg3d.isOk()).toBe(true);
+    if (!originalBg3d.isOk()) return;
     const originalBg3dParsed = originalBg3d.value;
     const gltfResult = await bg3dParsedToGLTF(originalBg3dParsed);
     const animations = gltfResult.getRoot().listAnimations();

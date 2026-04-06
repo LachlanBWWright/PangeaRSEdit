@@ -21,7 +21,6 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { ImageEditor } from "@/components/ImageEditor";
 import { Edit, Download, Upload, Shield, Info, Paintbrush, Layers } from "lucide-react";
 import { toast } from "sonner";
-import { fromPromise } from "@/types/result";
 import { useAtom } from "jotai";
 import {
   CollisionBrushMode,
@@ -360,15 +359,14 @@ export function MightyMikeTileMenu({
       return;
     }
 
-    const sourceBitmapResult = await fromPromise(createImageBitmap(file));
-    if (sourceBitmapResult.isErr()) {
-      toast.error(`Failed to read tile: ${sourceBitmapResult.error.message}`);
+    const sourceBitmap = await createImageBitmap(file).catch((error: unknown) => {
+      toast.error(`Failed to read tile: ${error instanceof Error ? error.message : String(error)}`);
+      return null;
+    });
+    if (!sourceBitmap) {
       return;
     }
-    if (
-      sourceBitmapResult.value.width !== TILE_SIZE ||
-      sourceBitmapResult.value.height !== TILE_SIZE
-    ) {
+    if (sourceBitmap.width !== TILE_SIZE || sourceBitmap.height !== TILE_SIZE) {
       toast.error(`Tiles must be ${TILE_SIZE}×${TILE_SIZE}`);
       return;
     }
@@ -388,20 +386,17 @@ export function MightyMikeTileMenu({
     context.fillRect(0, 0, canvas.width, canvas.height);
 
     // Resize and draw image
-    const bitmapResult = await fromPromise(
-      createImageBitmap(file, {
-        resizeWidth: TILE_SIZE,
-        resizeHeight: TILE_SIZE,
-        resizeQuality: "high",
-      })
-    );
-
-    if (bitmapResult.isErr()) {
-      toast.error(`Failed to upload tile: ${bitmapResult.error.message}`);
+    const imageBitmap = await createImageBitmap(file, {
+      resizeWidth: TILE_SIZE,
+      resizeHeight: TILE_SIZE,
+      resizeQuality: "high",
+    }).catch((error: unknown) => {
+      toast.error(`Failed to upload tile: ${error instanceof Error ? error.message : String(error)}`);
+      return null;
+    });
+    if (!imageBitmap) {
       return;
     }
-
-    const imageBitmap = bitmapResult.value;
     context.drawImage(imageBitmap, 0, 0);
 
     // Update mapImages
@@ -419,15 +414,14 @@ export function MightyMikeTileMenu({
       toast.error("Invalid palette tile selected");
       return;
     }
-    const sourceBitmapResult = await fromPromise(createImageBitmap(file));
-    if (sourceBitmapResult.isErr()) {
-      toast.error(`Failed to read palette tile: ${sourceBitmapResult.error.message}`);
+    const sourceBitmap = await createImageBitmap(file).catch((error: unknown) => {
+      toast.error(`Failed to read palette tile: ${error instanceof Error ? error.message : String(error)}`);
+      return null;
+    });
+    if (!sourceBitmap) {
       return;
     }
-    if (
-      sourceBitmapResult.value.width !== TILE_SIZE ||
-      sourceBitmapResult.value.height !== TILE_SIZE
-    ) {
+    if (sourceBitmap.width !== TILE_SIZE || sourceBitmap.height !== TILE_SIZE) {
       toast.error(`Palette tiles must be ${TILE_SIZE}×${TILE_SIZE}`);
       return;
     }
@@ -441,18 +435,18 @@ export function MightyMikeTileMenu({
     }
     context.fillStyle = "black";
     context.fillRect(0, 0, canvas.width, canvas.height);
-    const bitmapResult = await fromPromise(
-      createImageBitmap(file, {
-        resizeWidth: TILE_SIZE,
-        resizeHeight: TILE_SIZE,
-        resizeQuality: "high",
-      }),
-    );
-    if (bitmapResult.isErr()) {
-      toast.error(`Failed to upload palette tile: ${bitmapResult.error.message}`);
+    const bmp = await createImageBitmap(file, {
+      resizeWidth: TILE_SIZE,
+      resizeHeight: TILE_SIZE,
+      resizeQuality: "high",
+    }).catch((error: unknown) => {
+      toast.error(`Failed to upload palette tile: ${error instanceof Error ? error.message : String(error)}`);
+      return null;
+    });
+    if (!bmp) {
       return;
     }
-    context.drawImage(bitmapResult.value, 0, 0);
+    context.drawImage(bmp, 0, 0);
     const nextImages = [...mapImages];
     nextImages[selectedPaletteTile] = canvas;
     setMapImages(nextImages);

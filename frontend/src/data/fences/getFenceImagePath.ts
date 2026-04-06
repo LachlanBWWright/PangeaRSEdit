@@ -43,7 +43,9 @@ export function getFenceImagePath(
         "games/pangea-ports/games/Bugdom2-Android/Data/Sprites/Level8_Garbage/000.tga",
         "games/pangea-ports/games/Bugdom2-Android/Data/Sprites/Level8_Garbage/001.tga",
       ];
-      return withBaseUrl(bugdom2FenceImages[fenceType] ?? bugdom2FenceImages[0]!);
+      return withBaseUrl(
+        bugdom2FenceImages[fenceType] ?? bugdom2FenceImages[0] ?? "",
+      );
     }
 
     case Game.BILLY_FRONTIER: {

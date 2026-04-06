@@ -1,4 +1,5 @@
-import { Result, ok, err } from "../types/result";
+import { ok, err } from "neverthrow";
+import { Result } from "neverthrow";
 
 export function sixteenBitToImageData(data: DataView, imageData: ImageData): Result<void, Error> {
   if (imageData.data.length !== data.byteLength * 2) {

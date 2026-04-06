@@ -1,7 +1,8 @@
 // classicPostprocessor.ts
 // Converts an array of 32x32 HTMLCanvasElement images into the Nanosaur 1/Bugdom 1 tile file format (big-endian ARGB1555)
 
-import { Result, ok, err } from "../../types/result";
+import { ok, err } from "neverthrow";
+import { Result } from "neverthrow";
 
 /**
  * Convert an array of 32x32 canvas images to a Nanosaur 1/Bugdom 1 tile ArrayBuffer

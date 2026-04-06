@@ -7,7 +7,7 @@
  * All functions return Result types for explicit error handling.
  */
 
-import { Result, err, ok } from "../types/result";
+import { err, ok, type Result } from "neverthrow";
 import { parseTGAHeader } from "./tgaCommon";
 
 /**
@@ -17,7 +17,7 @@ import { parseTGAHeader } from "./tgaCommon";
  * - RLE compressed RGB/RGBA (types 10, 11)
  * - RLE compressed indexed color (type 9)
  */
-export function parseTGAToCanvas(buffer: ArrayBuffer): Result<HTMLCanvasElement> {
+export function parseTGAToCanvas(buffer: ArrayBuffer): Result<HTMLCanvasElement, Error> {
   const data = new DataView(buffer);
   const header = parseTGAHeader(data);
 

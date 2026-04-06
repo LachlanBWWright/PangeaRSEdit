@@ -1,5 +1,6 @@
 import { GlobalsInterface } from "../globals/globals";
-import { Result, ok, err } from "../../types/result";
+import { ok, err } from "neverthrow";
+import { Result } from "neverthrow";
 
 export function getFenceTypes(globals: GlobalsInterface): Result<string[], Error> {
   // Return the keys of the FENCE_TYPES mapping from globals

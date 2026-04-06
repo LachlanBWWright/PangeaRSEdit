@@ -12,7 +12,7 @@ import {
 import { preprocessJson } from "../processors/ottoPreprocessor";
 import { fixNullToZero } from "../processors/nullToZeroFixer";
 import { DataType, GlobalsInterface } from "../globals/globals";
-import { Result, ok, err, isErr, tryFn } from "../../types/result";
+import { err, ok, Result } from "neverthrow";
 import { saveToJson, loadBytesFromJson } from "@lachlanbwwright/rsrcdump-ts";
 
 // Type guard helper
@@ -50,19 +50,20 @@ export async function parseLevelBuffer(
     return err(parsedJsonResult.error);
   }
 
-  const jsonParseResult = tryFn(() => JSON.parse(parsedJsonResult.value));
-  if (jsonParseResult.isErr()) {
-    return err(new Error(`JSON parse failed: ${jsonParseResult.error.message}`));
+  const parsedResult = Result.fromThrowable(
+    (json: string) => JSON.parse(json) as unknown,
+    (error) => (error instanceof Error ? error : new Error(String(error))),
+  )(parsedJsonResult.value);
+  if (parsedResult.isErr()) {
+    return err(parsedResult.error);
   }
 
-  const parsed: unknown = jsonParseResult.value;
-
   // Fix null values from rsrcdump-ts v1.0.4 bug (returns null for numeric zeros)
-  if (isRecord(parsed)) {
-    fixNullToZero(parsed);
+  if (isRecord(parsedResult.value)) {
+    fixNullToZero(parsedResult.value);
     // Validate the parsed structure has the expected LevelData shape
-    if (isLevelDataLike(parsed)) {
-      return ok(parsed);
+    if (isLevelDataLike(parsedResult.value)) {
+      return ok(parsedResult.value);
     }
     return err(new Error("Parsed data does not match LevelData structure"));
   }
@@ -85,21 +86,22 @@ export function parseNanosaur1Buffer(
   buffer: ArrayBuffer,
   gameType?: GlobalsInterface,
 ): Result<LevelData, Error> {
-  const parseResult = tryFn(() => {
-    const rawLevelData = parseNanosaur1Level(buffer);
-    return nanosaur1LevelToLevelData(
-      rawLevelData,
-      gameType?.TILE_SIZE ?? 32,
-      gameType?.TILE_INGAME_SIZE ?? 140,
-      4.0,
-    );
-  });
+  const rawLevelResult = Result.fromThrowable(
+    () => parseNanosaur1Level(buffer),
+    (error) => (error instanceof Error ? error : new Error(String(error))),
+  )();
 
-  if (parseResult.isErr()) {
-    return err(parseResult.error);
+  if (rawLevelResult.isErr()) {
+    return err(rawLevelResult.error);
   }
 
-  return ok(parseResult.value);
+  const converted = nanosaur1LevelToLevelData(
+    rawLevelResult.value,
+    gameType?.TILE_SIZE ?? 32,
+    gameType?.TILE_INGAME_SIZE ?? 140,
+    4.0,
+  );
+  return ok(converted);
 }
 
 /**
@@ -159,7 +161,7 @@ export async function parseLevelForGame(
     structSpecs: gameType.STRUCT_SPECS,
   });
 
-  if (isErr(parseResult)) {
+  if (parseResult.isErr()) {
     return err(parseResult.error);
   }
 
@@ -168,7 +170,7 @@ export async function parseLevelForGame(
     return err(new Error("Parsed data is not an object"));
   }
   const preprocessResult = preprocessJson(parseResult.value, gameType);
-  if (isErr(preprocessResult)) {
+  if (preprocessResult.isErr()) {
     return err(preprocessResult.error);
   }
 
@@ -199,7 +201,7 @@ export async function performRoundtrip(
   // Parse the original buffer
   const originalResult = await parseLevelForGame(buffer, gameType);
 
-  if (isErr(originalResult)) {
+  if (originalResult.isErr()) {
     return err(
       new Error(`Failed to parse original: ${originalResult.error.message}`),
     );
@@ -210,7 +212,7 @@ export async function performRoundtrip(
     structSpecs: gameType.STRUCT_SPECS,
   });
 
-  if (isErr(serializedResult)) {
+  if (serializedResult.isErr()) {
     return err(
       new Error(`Failed to serialize: ${serializedResult.error.message}`),
     );
@@ -222,7 +224,7 @@ export async function performRoundtrip(
     gameType,
   );
 
-  if (isErr(roundtripResult)) {
+  if (roundtripResult.isErr()) {
     return err(
       new Error(`Failed to parse roundtrip: ${roundtripResult.error.message}`),
     );

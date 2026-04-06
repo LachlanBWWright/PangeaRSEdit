@@ -3,7 +3,7 @@
  * This enables interoperability between the older 3DMF format and the newer BG3D format
  */
 
-import { Result, ok } from "../../types/result";
+import { ok, type Result } from "neverthrow";
 import {
   TQ3MetaFile,
   TQ3TriMeshData,
@@ -141,24 +141,28 @@ function textureShaderToBG3DMaterial(
  */
 function triMeshToBG3DGeometry(mesh: TQ3TriMeshData): BG3DGeometry {
   // Convert vertices
-  const vertices: [number, number, number][] = mesh.points.map((p) => [p.x, p.y, p.z]);
+  const vertices: [number, number, number][] = mesh.points.map(
+    (p): [number, number, number] => [p.x, p.y, p.z],
+  );
 
   // Convert normals
   let normals: [number, number, number][] | undefined;
   if (mesh.vertexNormals) {
-    normals = mesh.vertexNormals.map((n) => [n.x, n.y, n.z]);
+    normals = mesh.vertexNormals.map(
+      (n): [number, number, number] => [n.x, n.y, n.z],
+    );
   }
 
   // Convert UVs (note: UV V was flipped during parsing, so these are already correct)
   let uvs: [number, number][] | undefined;
   if (mesh.vertexUVs) {
-    uvs = mesh.vertexUVs.map((uv) => [uv.u, uv.v]);
+    uvs = mesh.vertexUVs.map((uv): [number, number] => [uv.u, uv.v]);
   }
 
   // Convert colors
   let colors: [number, number, number, number][] | undefined;
   if (mesh.vertexColors) {
-    colors = mesh.vertexColors.map((c) => [
+    colors = mesh.vertexColors.map((c): [number, number, number, number] => [
       Math.round(c.r * 255),
       Math.round(c.g * 255),
       Math.round(c.b * 255),
@@ -167,16 +171,18 @@ function triMeshToBG3DGeometry(mesh: TQ3TriMeshData): BG3DGeometry {
   }
 
   // Convert triangles
-  const triangles: [number, number, number][] = mesh.triangles.map((t) => [
-    t.pointIndices[0],
-    t.pointIndices[1],
-    t.pointIndices[2],
-  ]);
+  const triangles: [number, number, number][] = mesh.triangles.map(
+    (t): [number, number, number] => [
+      t.pointIndices[0],
+      t.pointIndices[1],
+      t.pointIndices[2],
+    ],
+  );
 
   // Convert bounding box
-  const boundingBox = {
-    min: [mesh.bBox.min.x, mesh.bBox.min.y, mesh.bBox.min.z] as [number, number, number],
-    max: [mesh.bBox.max.x, mesh.bBox.max.y, mesh.bBox.max.z] as [number, number, number],
+  const boundingBox: { min: [number, number, number]; max: [number, number, number] } = {
+    min: [mesh.bBox.min.x, mesh.bBox.min.y, mesh.bBox.min.z],
+    max: [mesh.bBox.max.x, mesh.bBox.max.y, mesh.bBox.max.z],
   };
 
   return {

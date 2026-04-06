@@ -10,8 +10,9 @@ import {
 import { Save, X, Undo, Redo, ZoomIn, ZoomOut } from "lucide-react";
 import { ToolsPanel } from "./ImageEditor/ToolsPanel";
 import { toast } from "sonner";
+import { ResultAsync } from "neverthrow";
 import Konva from "konva";
-import { fromPromise } from "@/types/result";
+// removed result shim; use direct promise handling
 import { hexToRgb } from "@/utils/colorUtils";
 // Event typing removed - handlers don't need explicit event param here
 
@@ -274,7 +275,10 @@ export function ImageEditor({
     const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
 
     // Call the save callback
-    const saveResult = await fromPromise(customSaveHandler(imageData));
+    const saveResult = await ResultAsync.fromPromise(
+      customSaveHandler(imageData),
+      (e) => (e instanceof Error ? e : new Error(String(e))),
+    );
     if (saveResult.isErr()) {
       console.error("Error saving edited image:", saveResult.error);
       toast.error("Failed to save edited image");
@@ -319,16 +323,21 @@ export function ImageEditor({
       e.preventDefault();
       const scaleBy = 1.1;
       const direction = e.deltaY > 0 ? -1 : 1;
-      
+
       setScale((current) => {
         const newScale = direction > 0 ? current * scaleBy : current / scaleBy;
         return Math.min(baseScale * 20, Math.max(baseScale * 0.1, newScale));
       });
     };
 
-    container.addEventListener("wheel", handleWheelNative, { passive: false, capture: true });
+    container.addEventListener("wheel", handleWheelNative, {
+      passive: false,
+      capture: true,
+    });
     return () => {
-      container.removeEventListener("wheel", handleWheelNative, { capture: true });
+      container.removeEventListener("wheel", handleWheelNative, {
+        capture: true,
+      });
     };
   }, [baseScale]);
 
@@ -375,7 +384,12 @@ export function ImageEditor({
 
   if (!image) {
     return (
-      <Dialog open={isOpen} onOpenChange={(open) => { if (!open) handleClose(); }}>
+      <Dialog
+        open={isOpen}
+        onOpenChange={(open) => {
+          if (!open) handleClose();
+        }}
+      >
         <DialogContent className="max-w-4xl h-[80vh] text-white">
           <DialogHeader>
             <DialogTitle className="text-white">
@@ -391,7 +405,12 @@ export function ImageEditor({
   }
 
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => { if (!open) handleClose(); }}>
+    <Dialog
+      open={isOpen}
+      onOpenChange={(open) => {
+        if (!open) handleClose();
+      }}
+    >
       <DialogContent className="max-w-6xl h-[85vh] flex flex-col text-white pr-14">
         <DialogHeader className="space-y-3">
           <DialogTitle className="text-white">
@@ -401,19 +420,19 @@ export function ImageEditor({
 
         <div className="flex flex-1 gap-4 overflow-hidden">
           {/* Tools Panel */}
-            <ToolsPanel
-              brushSize={brushSize}
-              setBrushSize={setBrushSize}
+          <ToolsPanel
+            brushSize={brushSize}
+            setBrushSize={setBrushSize}
             brushShape={brushShape}
             setBrushShape={setBrushShape}
             brushColor={brushColor}
             setBrushColor={setBrushColor}
-              colorPalette={colorPalette}
-              paletteColors={paletteColors}
-              onReplacePaletteColor={onReplacePaletteColor}
-              highlightSelectedColorUsage={highlightSelectedColorUsage}
-              setHighlightSelectedColorUsage={setHighlightSelectedColorUsage}
-            />
+            colorPalette={colorPalette}
+            paletteColors={paletteColors}
+            onReplacePaletteColor={onReplacePaletteColor}
+            highlightSelectedColorUsage={highlightSelectedColorUsage}
+            setHighlightSelectedColorUsage={setHighlightSelectedColorUsage}
+          />
 
           {/* Canvas Area */}
           <div className="flex-1 bg-gray-900 rounded overflow-hidden relative">
@@ -471,18 +490,17 @@ export function ImageEditor({
               </div>
             </div>
 
-            <div 
+            <div
               ref={containerRef}
               className="w-full h-full overflow-auto custom-scrollbar"
             >
-
-              <div 
+              <div
                 className="flex p-20"
                 style={{
                   minWidth: "100%",
                   minHeight: "100%",
                   width: image.width * scale + 160,
-                  height: image.height * scale + 160
+                  height: image.height * scale + 160,
                 }}
               >
                 <div className="m-auto shadow-2xl border border-gray-800">
@@ -512,8 +530,12 @@ export function ImageEditor({
                           points={stroke.points}
                           stroke={stroke.color}
                           strokeWidth={stroke.size}
-                          lineCap={stroke.shape === "circle" ? "round" : "square"}
-                          lineJoin={stroke.shape === "circle" ? "round" : "miter"}
+                          lineCap={
+                            stroke.shape === "circle" ? "round" : "square"
+                          }
+                          lineJoin={
+                            stroke.shape === "circle" ? "round" : "miter"
+                          }
                           globalCompositeOperation="source-over"
                         />
                       ))}
@@ -525,7 +547,9 @@ export function ImageEditor({
                           stroke={currentStroke.color}
                           strokeWidth={currentStroke.size}
                           lineCap={
-                            currentStroke.shape === "circle" ? "round" : "square"
+                            currentStroke.shape === "circle"
+                              ? "round"
+                              : "square"
                           }
                           lineJoin={
                             currentStroke.shape === "circle" ? "round" : "miter"

@@ -24,6 +24,7 @@ export default defineConfig(
       "dist/**",
       "coverage/**",
       "public/wasm/**",
+      "public/games/pangea-ports/**",
     ],
   },
   [
@@ -35,13 +36,14 @@ export default defineConfig(
   {
     plugins: {
       "typescript-eslint": tseslint,
-      "functional": functionalPlugin,
-      "neverthrow": neverthrowPlugin,
+      functional: functionalPlugin,
+      neverthrow: neverthrowPlugin,
     },
     languageOptions: {
       parser: tsParser,
       parserOptions: {
         projectService: true,
+        allowDefaultProject: true,
         tsconfigRootDir: process.cwd(),
       },
     },
@@ -51,22 +53,7 @@ export default defineConfig(
       // Enforce Result types - ban throw statements and try/catch blocks
       "functional/no-throw-statements": "error",
       "functional/no-try-statements": "error",
-      "neverthrow/must-use-result": "off",
-    },
-  },
-  // Allow try/catch ONLY in result.ts utilities
-  {
-    files: ["src/types/result.ts"],
-    rules: {
-      "functional/no-throw-statements": "off",
-      "functional/no-try-statements": "off",
-    },
-  },
-  // Allow throw in test files (for test utilities and assertions)
-  {
-    files: ["**/*.test.ts", "**/*.test.tsx", "**/tests/**"],
-    rules: {
-      "functional/no-throw-statements": "off",
+      //"neverthrow/must-use-result": "error",
     },
   },
 );

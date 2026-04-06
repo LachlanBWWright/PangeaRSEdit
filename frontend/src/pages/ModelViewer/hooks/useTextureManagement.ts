@@ -22,7 +22,9 @@ import type { BG3DParseResult } from "../../../modelParsers/parseBG3D";
 import { extractTexturesFromBG3D } from "../utils/textureUtils";
 import { rgba8ToArgb16 } from "../../../modelParsers/image/pngArgb";
 import type { Texture } from "../types";
-import { fromPromise } from "@/types/result";
+import { ResultAsync } from "neverthrow";
+
+const mapErr = (e: unknown) => (e instanceof Error ? e : new Error(String(e)));
 
 /**
  * Configuration for the useTextureManagement hook
@@ -189,8 +191,8 @@ export function useTextureManagement(options: UseTextureManagementOptions) {
 
             // Convert updated BG3D back to GLB
             const worker = new BG3DGltfWorker();
-            const result = await new Promise<BG3DGltfWorkerResponse>(
-              (workerResolve, workerReject) => {
+            const result = await ResultAsync.fromPromise(
+              new Promise<BG3DGltfWorkerResponse>((workerResolve, workerReject) => {
                 worker.onmessage = (e) => {
                   workerResolve(e.data);
                   worker.terminate();
@@ -204,27 +206,34 @@ export function useTextureManagement(options: UseTextureManagementOptions) {
                   parsed: updatedBG3D,
                 };
                 worker.postMessage(message);
-              },
+              }),
+              mapErr,
             );
-
-            if (result.type === "error") {
-              toast.error(`Error replacing texture: ${result.error}`);
-              reject(new Error(result.error));
+            if (result.isErr()) {
+              toast.error(`Error replacing texture: ${result.error.message}`);
+              reject(result.error);
               return;
             }
 
-            if (result.type === "bg3d-parsed-to-glb") {
+            const workerResponse = result.value;
+            if (workerResponse.type === "error") {
+              toast.error(`Error replacing texture: ${workerResponse.error}`);
+              reject(new Error(workerResponse.error));
+              return;
+            }
+
+            if (workerResponse.type === "bg3d-parsed-to-glb") {
               // Clean up old URL first
               if (gltfUrl) {
                 URL.revokeObjectURL(gltfUrl);
               }
 
               // Update state with parsed data from worker (preserves all BG3D state including edited textures)
-              const preservedBG3D = result.parsed || updatedBG3D;
+              const preservedBG3D = workerResponse.parsed || updatedBG3D;
               onBg3dParsedChange(preservedBG3D);
 
               // Create new GLTF URL
-              const glbBlob = new Blob([result.result], {
+              const glbBlob = new Blob([workerResponse.result], {
                 type: "model/gltf-binary",
               });
               const newUrl = URL.createObjectURL(glbBlob);
@@ -275,31 +284,32 @@ export function useTextureManagement(options: UseTextureManagementOptions) {
       ctx.putImageData(editedImageData, 0, 0);
 
       // Convert canvas to blob and create File
-      const blobResult = await fromPromise(
-        new Promise<Blob>((resolve, reject) => {
-          canvas.toBlob((b) => {
-            if (b) {
-              resolve(b);
-            } else {
-              reject(new Error("Failed to convert canvas to blob"));
-            }
-          }, "image/png");
-        })
-      );
-
+      const blobResult = await ResultAsync.fromPromise(
+                new Promise<Blob>((resolve, reject) => {
+                  canvas.toBlob((b) => {
+                    if (b) {
+                      resolve(b);
+                    } else {
+                      reject(new Error("Failed to convert canvas to blob"));
+                    }
+                  }, "image/png");
+                }),
+                (e) => (e instanceof Error ? e : new Error(String(e))),
+              );
       if (blobResult.isErr()) {
         console.error("Error editing texture:", blobResult.error);
         toast.error(blobResult.error.message);
         return;
       }
-
-      const blob = blobResult.value;
-      const file = new File([blob], `${texture.name}.png`, {
+      const file = new File([blobResult.value], `${texture.name}.png`, {
         type: "image/png",
       });
 
       // Use the existing replaceTexture function
-      const replaceResult = await fromPromise(replaceTexture(texture, file));
+      const replaceResult = await ResultAsync.fromPromise(
+        replaceTexture(texture, file),
+        mapErr,
+      );
       if (replaceResult.isErr()) {
         console.error("Error editing texture:", replaceResult.error);
         toast.error(replaceResult.error.message);

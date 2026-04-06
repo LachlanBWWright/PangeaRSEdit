@@ -1,5 +1,7 @@
 import { LevelData } from "../../python/structSpecs/LevelTypes";
-import { Result, ok, err, fromPromise } from "../../types/result";
+import { ok, err, ResultAsync, type Result } from "neverthrow";
+
+const mapErr = (e: unknown) => (e instanceof Error ? e : new Error(String(e)));
 import {
   parseMightyMikeMap,
   parseMightyMikeTileSet,
@@ -8,6 +10,8 @@ import {
 import type {
   MightyMikeTileSet,
   MightyMikeTileValue,
+  MightyMikeItem,
+  MightyMikeTileAttribute,
 } from "../../python/structSpecs/mightyMikeInterface";
 import {
   splitLevelData,
@@ -91,17 +95,12 @@ async function loadBorderPalette(
     tgaUrl = `${import.meta.env.BASE_URL}assets/mightyMike/terrain/${tgaFilename}`;
   }
 
-  const fetchResult = await fromPromise(fetch(tgaUrl));
-  if (fetchResult.isErr() || !fetchResult.value.ok) {
-    return null;
-  }
-
+  const fetchResult = await ResultAsync.fromPromise(fetch(tgaUrl), mapErr);
+  if (fetchResult.isErr()) return null;
   const response = fetchResult.value;
-  const bufferResult = await fromPromise(response.arrayBuffer());
-  if (bufferResult.isErr()) {
-    return null;
-  }
-
+  if (!response.ok) return null;
+  const bufferResult = await ResultAsync.fromPromise(response.arrayBuffer(), mapErr);
+  if (bufferResult.isErr()) return null;
   const tgaBuffer = bufferResult.value;
   const paletteResult = extractTGAPaletteRaw(tgaBuffer);
 
@@ -121,7 +120,7 @@ export async function parseMightyMikeFile(
   mapFileUrl?: string,
   setMapImages?: (images: HTMLCanvasElement[]) => void,
 ): Promise<Result<LevelData, Error>> {
-  const bufferResult = await fromPromise(file.arrayBuffer());
+  const bufferResult = await ResultAsync.fromPromise(file.arrayBuffer(), mapErr);
   if (bufferResult.isErr()) {
     return err(
       new Error(`Failed to read file buffer: ${bufferResult.error.message}`),
@@ -148,17 +147,12 @@ export async function parseMightyMikeFile(
     }
 
     const tilesetUrl = mapFileUrl.replace(/\.map-\d+$/, ".tileset");
-    const tilesetFetchResult = await fromPromise(fetch(tilesetUrl));
+    const tilesetFetchResult = await ResultAsync.fromPromise(fetch(tilesetUrl), mapErr);
     if (tilesetFetchResult.isOk() && tilesetFetchResult.value.ok) {
-      const tilesetBufferResult = await fromPromise(
-        tilesetFetchResult.value.arrayBuffer(),
-      );
+      const tilesetBufferResult = await ResultAsync.fromPromise(tilesetFetchResult.value.arrayBuffer(), mapErr);
       if (tilesetBufferResult.isOk()) {
         const tilesetBuffer = tilesetBufferResult.value;
-        const tilesetResult = parseMightyMikeTileSet(
-          tilesetBuffer,
-          paletteData || undefined,
-        );
+        const tilesetResult = parseMightyMikeTileSet(tilesetBuffer, paletteData || undefined);
 
         if (tilesetResult.isOk()) {
           tilesetData = tilesetResult.value;
@@ -195,7 +189,7 @@ export async function parseMightyMikeFile(
         name: "Terrain Layer Matrix",
         obj: mapResult.value.mapImage
           .flat()
-          .map((tileValue) => tileValue.tileIndex),
+          .map((tileValue: MightyMikeTileValue) => tileValue.tileIndex),
         order: 1,
       },
     },
@@ -231,7 +225,7 @@ export async function parseMightyMikeFile(
     Itms: {
       1000: {
         name: "Terrain Items List",
-        obj: mapResult.value.items.map((item) => ({
+        obj: mapResult.value.items.map((item: MightyMikeItem) => ({
           x: item.x,
           z: item.y,
           type: item.type,
@@ -248,7 +242,7 @@ export async function parseMightyMikeFile(
       1000: {
         name: "Tile Attribute Data",
         obj:
-          tilesetData?.tileAttributes.map((attribute) => ({
+          tilesetData?.tileAttributes.map((attribute: MightyMikeTileAttribute) => ({
             flags: attribute.flags,
             p0: attribute.p0,
             p1: attribute.p1,
@@ -274,7 +268,7 @@ export async function parseMightyMikeFile(
       Xlat: {
         1000: {
           name: "Tile Translation Table",
-          obj: tilesetData.xlateTable.map((idx) => ({ idx })),
+          obj: tilesetData.xlateTable.map((idx: number) => ({ idx })),
         },
       },
     }),

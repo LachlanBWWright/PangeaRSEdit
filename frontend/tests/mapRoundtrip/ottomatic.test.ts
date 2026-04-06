@@ -76,7 +76,7 @@ describe("Otto Matic Map Roundtrip", () => {
     const jsonData = JSON.parse(jsonStringResult.value);
     function assertIsRecord(x: unknown): asserts x is Record<string, unknown> {
       if (typeof x !== "object" || x === null)
-        throw new Error("Parsed data is not an object");
+        expect.fail("Parsed data is not an object");
     }
     assertIsRecord(jsonData);
     assertIsRecord(jsonData.Hedr);
@@ -123,7 +123,7 @@ describe("Otto Matic Map Roundtrip", () => {
     // Preprocessing should not throw
     function assertIsRecord(x: unknown): asserts x is Record<string, unknown> {
       if (typeof x !== "object" || x === null) {
-        throw new Error("Parsed data is not an object");
+        expect.fail("Parsed data is not an object");
       }
     }
     function isRecord(x: unknown): x is Record<string, unknown> {
@@ -168,7 +168,7 @@ describe("Otto Matic Map Roundtrip", () => {
 
     function assertIsRecord(x: unknown): asserts x is Record<string, unknown> {
       if (typeof x !== "object" || x === null)
-        throw new Error("Parsed data is not an object");
+        expect.fail("Parsed data is not an object");
     }
     assertIsRecord(jsonData1);
 
@@ -371,7 +371,7 @@ describe("Otto Matic Map Roundtrip", () => {
           x: unknown,
         ): asserts x is { x: number; z: number; type: number } {
           if (typeof x !== "object" || x === null)
-            throw new Error("Item is not an object");
+            expect.fail("Item is not an object");
           const xProp = Reflect.get(x, "x");
           const zProp = Reflect.get(x, "z");
           const typeProp = Reflect.get(x, "type");
@@ -380,7 +380,7 @@ describe("Otto Matic Map Roundtrip", () => {
             typeof zProp !== "number" ||
             typeof typeProp !== "number"
           ) {
-            throw new Error("Item is missing numeric fields");
+            expect.fail("Item is missing numeric fields");
           }
         }
         assertIsItem(items1[0]);

@@ -1,5 +1,6 @@
 import { LevelData } from "@/python/structSpecs/LevelTypes";
-import { Result, ok, err, fromPromise } from "@/types/result";
+import { ok, err, ResultAsync } from "neverthrow";
+import type { Result } from "neverthrow";
 import { preprocessJson } from "@/data/processors/ottoPreprocessor";
 import { fixNullToZero } from "@/data/processors/nullToZeroFixer";
 import { isRecord } from "./typeGuards";
@@ -17,33 +18,59 @@ export async function parseRsrcLevelFile(
   gameType: GlobalsInterface,
   setData: (data: AtomicLevelData) => void,
 ): Promise<Result<LevelData, Error>> {
-  const bufferResult = await fromPromise(file.arrayBuffer());
-  if (bufferResult.isErr()) {
-    return err(
-      new Error(`Failed to read file buffer: ${bufferResult.error.message}`),
-    );
-  }
-
-  const levelBuffer = bufferResult.value;
-  const bytes = new Uint8Array(levelBuffer);
+  const levelBufferResult = await ResultAsync.fromPromise(
+    file.arrayBuffer(),
+    (e) => (e instanceof Error ? e : new Error(String(e))),
+  );
+  if (levelBufferResult.isErr()) return err(levelBufferResult.error);
+  const bytes = new Uint8Array(levelBufferResult.value);
 
   // Use rsrcdump-ts to parse the resource fork
-  const parseResult = await saveToJson(
+  const parseRaw = await saveToJson(
     bytes,
     gameType.STRUCT_SPECS,
     [], // includeTypes
     [], // excludeTypes
   );
 
-  const parsedJsonResult = parseResult.ok
-    ? ok(parseResult.value)
-    : err(new Error(parseResult.error));
-
-  if (parsedJsonResult.isErr()) {
-    return err(parsedJsonResult.error);
+  // saveToJson is a third-party function that has, historically, returned
+  // different shapes (a neverthrow Result instance or a plain { ok, value, error } object).
+  // Normalize it locally to a neverthrow Result<string, Error> so callers can use
+  // the instance API safely.
+  function isNeverthrowResult(value: unknown): value is Result<string, Error> {
+    if (typeof value !== "object" || value === null) return false;
+    return (
+      typeof Reflect.get(value, "isOk") === "function" &&
+      typeof Reflect.get(value, "isErr") === "function"
+    );
   }
 
-  const parsedUnknown: unknown = JSON.parse(parsedJsonResult.value);
+  function isPlainSaveToJson(value: unknown): value is {
+    ok: boolean;
+    value?: unknown;
+    error?: unknown;
+  } {
+    if (typeof value !== "object" || value === null) return false;
+    return typeof Reflect.get(value, "ok") === "boolean";
+  }
+
+  function normalizeSaveToJsonResult(r: unknown): Result<string, Error> {
+    if (isNeverthrowResult(r)) {
+      return r;
+    }
+    if (isPlainSaveToJson(r)) {
+      if (r.ok && typeof r.value === "string") {
+        return ok(r.value);
+      }
+      return err(new Error(String(r.error)));
+    }
+    return err(new Error("saveToJson returned unexpected shape"));
+  }
+
+  const parseResult = normalizeSaveToJsonResult(parseRaw);
+  if (parseResult.isErr()) return err(parseResult.error);
+
+  const parsedUnknown: unknown = JSON.parse(parseResult.value);
 
   // Validate that parsed data is an object
   if (!isRecord(parsedUnknown)) {

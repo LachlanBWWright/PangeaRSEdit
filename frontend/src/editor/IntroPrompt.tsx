@@ -30,7 +30,6 @@ import {
   validateResourceForkJson,
   sanitizeResourceForkJson,
 } from "../data/utils/levelDataUtils";
-import { err, isOk, ok } from "../types/result";
 import { createBlankLevel, getDefaultDimensions } from "@/data/levelTemplates";
 import { SafeItemTypes, SafeSplineItemTypes } from "../data/items/itemAtoms";
 import { extractSafeItemTypes } from "../data/items/extractSafeItemTypes";
@@ -282,7 +281,7 @@ export function IntroPrompt() {
     // Combine atomic data for serialization; optional sections may be missing
     const combinedDataResult = combineLevelData(getCurrentAtomicData());
 
-    if (!isOk(combinedDataResult)) {
+    if (combinedDataResult.isErr()) {
       console.error(
         "Download failed: Could not combine level data",
         combinedDataResult.error,
@@ -374,19 +373,15 @@ export function IntroPrompt() {
         true, // adf
       );
 
-      const serializedResult = saveResult.ok
-        ? ok(saveResult.value)
-        : err(saveResult.error);
-
-      if (serializedResult.isErr()) {
-        console.error("Download failed:", serializedResult.error);
+      if (!saveResult.ok) {
+        console.error("Download failed:", saveResult.error);
         toast.error("Download failed", {
-          description: String(serializedResult.error),
+          description: String(saveResult.error),
         });
         return;
       }
 
-      const loadRes = serializedResult.value;
+      const loadRes = saveResult.value;
 
       if (!loadRes || loadRes.byteLength === 0) {
         console.error("Download failed: Generated map data is empty");
@@ -632,7 +627,7 @@ export function IntroPrompt() {
 
   const handleTestLevel = useCallback(async () => {
     const combinedDataResult = combineLevelData(getCurrentAtomicData());
-    if (!isOk(combinedDataResult)) {
+    if (combinedDataResult.isErr()) {
       toast.error("Preview failed", {
         description: combinedDataResult.error.message,
       });
@@ -665,7 +660,7 @@ export function IntroPrompt() {
 
   const handleDownload = useCallback(() => {
     const combinedDataResult = combineLevelData(getCurrentAtomicData());
-    if (isOk(combinedDataResult)) {
+    if (combinedDataResult.isOk()) {
       const combinedData = prepareDownloadData(combinedDataResult.value, globals);
       setAllAtomicData(splitLevelData(combinedData));
     }

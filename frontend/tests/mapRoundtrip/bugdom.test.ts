@@ -82,7 +82,7 @@ describe("Bugdom Map Roundtrip", () => {
     const jsonData = JSON.parse(jsonStringResult.value);
     function assertIsRecord(x: unknown): asserts x is Record<string, unknown> {
       if (typeof x !== "object" || x === null)
-        throw new Error("Parsed data is not an object");
+        expect.fail("Parsed data is not an object");
     }
     assertIsRecord(jsonData);
     expect(jsonData).toBeDefined();
@@ -133,7 +133,7 @@ describe("Bugdom Map Roundtrip", () => {
     // Preprocessing should not throw
     function assertIsRecord(x: unknown): asserts x is Record<string, unknown> {
       if (typeof x !== "object" || x === null) {
-        throw new Error("Parsed data is not an object");
+        expect.fail("Parsed data is not an object");
       }
     }
     expect(() => {

@@ -11,7 +11,7 @@ import { selectItem, updateItem } from "../../../data/selectors";
 import { ShowMightyMikeItemImages } from "./MightyMikeItemMenu";
 import { loadItemImage, type ItemFrameImage } from "@/utils/mightyMikeShapeImageLoader";
 import { CurrentScene } from "@/data/game/gameAtoms";
-import { isOk } from "@/types/result";
+import { ResultAsync } from "neverthrow";
 import {
   HoverNameTag,
   ITEM_BOX_OFFSET,
@@ -71,26 +71,29 @@ export const MightyMikeItem = memo(function MightyMikeItem({
       Promise.resolve().then(() => setItemImageData(null));
       return;
     }
+    void (async () => {
+      const loadResult = await ResultAsync.fromPromise(
+        loadItemImage(item.type, currentScene),
+        (e) => (e instanceof Error ? e : new Error(String(e))),
+      );
 
-    loadItemImage(item.type, currentScene)
-      .then((result) => {
-        if (isOk(result)) {
-          setItemImageData(result.value);
-        } else {
-          console.warn(
-            `Failed to load image for item ${item.type}:`,
-            result.error.message
-          );
-          setItemImageData(null);
-        }
-      })
-      .catch((error) => {
+      if (loadResult.isErr()) {
         console.warn(
           `Unexpected error loading image for item ${item.type}:`,
-          error instanceof Error ? error.message : String(error)
+          loadResult.error.message,
         );
         setItemImageData(null);
-      });
+        return;
+      }
+
+      const result = loadResult.value;
+      if (result.isOk()) {
+        setItemImageData(result.value);
+      } else {
+        console.warn(`Failed to load image for item ${item.type}:`, result.error.message);
+        setItemImageData(null);
+      }
+    })();
   }, [showItemImages, item, currentScene]);
 
   if (item === null || item === undefined) return null;

@@ -30,7 +30,7 @@ import { ParamTooltip } from "./ParamTooltip";
 import { getParamTooltip } from "./getParamTooltip";
 import { CurrentScene, MIGHTY_MIKE_SCENES } from "@/data/game/gameAtoms";
 import { loadItemImage, type ItemFrameImage } from "@/utils/mightyMikeShapeImageLoader";
-import { isOk } from "@/types/result";
+import { ResultAsync } from "neverthrow";
 import { TileCanvas } from "../shared/TileCanvas";
 
 // Atom to track if item images should be shown globally for all items
@@ -70,22 +70,23 @@ export const MightyMikeItemMenu = memo(function MightyMikeItemMenu({
     }
 
     let cancelled = false;
-    loadItemImage(selectedItemData.type, currentScene)
-      .then((result) => {
-        if (cancelled) {
-          return;
-        }
-        if (isOk(result)) {
-          setPreviewImage(result.value);
-        } else {
-          setPreviewImage(null);
-        }
-      })
-      .catch(() => {
-        if (!cancelled) {
-          setPreviewImage(null);
-        }
-      });
+    void (async () => {
+      const loadResult = await ResultAsync.fromPromise(
+        loadItemImage(selectedItemData.type, currentScene),
+        (e) => (e instanceof Error ? e : new Error(String(e))),
+      );
+      if (cancelled) return;
+      if (loadResult.isErr()) {
+        setPreviewImage(null);
+        return;
+      }
+      const result = loadResult.value;
+      if (result.isOk()) {
+        setPreviewImage(result.value);
+      } else {
+        setPreviewImage(null);
+      }
+    })();
     return () => {
       cancelled = true;
     };

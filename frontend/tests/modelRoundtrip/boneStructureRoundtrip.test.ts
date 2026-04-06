@@ -23,7 +23,6 @@ import {
   createSkeletonSystem,
   extractAnimationsFromGLTF,
 } from "@/modelParsers/skeletonSystemNew";
-import { isErr } from "@/types/result";
 import type {
   BG3DSkeleton,
   BG3DBone,
@@ -322,8 +321,8 @@ describe("Euler ↔ quaternion round-trip accuracy", () => {
 
     // Create skeleton system with animations
     const result = createSkeletonSystem(doc, skeleton, baseBuffer);
-    expect(isErr(result)).toBe(false);
-    if (isErr(result)) return;
+    expect(result.isErr()).toBe(false);
+    if (result.isErr()) return;
 
     // Extract animations back from the glTF document
     const recoveredAnimations = extractAnimationsFromGLTF(
@@ -434,7 +433,7 @@ describe("Euler ↔ quaternion round-trip accuracy", () => {
       const doc = new Document();
       const buffer = doc.createBuffer("base");
       const result = createSkeletonSystem(doc, skeleton, buffer);
-      if (isErr(result)) continue;
+      if (result.isErr()) continue;
 
       const recovered = extractAnimationsFromGLTF(doc, skeleton.bones);
       const recKf = recovered[0]?.keyframes["0"]?.[0];
@@ -456,8 +455,8 @@ describe("gltfSkeletonToBg3d full round-trip", () => {
 
     // Forward: BG3D → glTF
     const result = createSkeletonSystem(doc, skeleton, buffer);
-    expect(isErr(result)).toBe(false);
-    if (isErr(result)) return;
+    expect(result.isErr()).toBe(false);
+    if (result.isErr()) return;
 
     // Reverse: glTF → BG3D via modular module
     const recovered = gltfSkeletonToBg3d(doc);
@@ -651,8 +650,8 @@ describe("Non-zero root bone round-trip (production path)", () => {
     const buffer = doc.createBuffer("base");
 
     const result = createSkeletonSystem(doc, skeleton, buffer);
-    expect(isErr(result)).toBe(false);
-    if (isErr(result)) return;
+    expect(result.isErr()).toBe(false);
+    if (result.isErr()) return;
 
     const recovered = gltfSkeletonToBg3d(doc);
     expect(recovered).toBeDefined();
@@ -676,8 +675,8 @@ describe("Non-zero root bone round-trip (production path)", () => {
     const buffer = doc.createBuffer("base");
 
     const result = createSkeletonSystem(doc, skeleton, buffer);
-    expect(isErr(result)).toBe(false);
-    if (isErr(result)) return;
+    expect(result.isErr()).toBe(false);
+    if (result.isErr()) return;
 
     const recovered = gltfSkeletonToBg3d(doc);
     expect(recovered).toBeDefined();
@@ -728,8 +727,8 @@ describe("Non-zero root bone round-trip (production path)", () => {
     const doc = new Document();
     const buffer = doc.createBuffer("base");
     const result = createSkeletonSystem(doc, skeleton, buffer);
-    expect(isErr(result)).toBe(false);
-    if (isErr(result)) return;
+    expect(result.isErr()).toBe(false);
+    if (result.isErr()) return;
 
     const recovered = gltfSkeletonToBg3d(doc);
     expect(recovered).toBeDefined();

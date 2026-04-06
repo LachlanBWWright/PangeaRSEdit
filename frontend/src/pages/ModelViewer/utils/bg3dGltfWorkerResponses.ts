@@ -1,5 +1,5 @@
 import type { BG3DGltfWorkerResponse } from "@/modelParsers/bg3dGltfWorker";
-import { err, ok, type Result } from "@/types/result";
+import { err, ok, type Result } from "neverthrow";
 
 export type ModelToGlbWorkerResponse = Extract<
   BG3DGltfWorkerResponse,

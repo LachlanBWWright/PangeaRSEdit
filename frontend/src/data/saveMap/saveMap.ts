@@ -13,7 +13,7 @@ import { loadBytesFromJson } from "@lachlanbwwright/rsrcdump-ts";
 import type { Nanosaur1LevelData } from "@/data/processors/classicProprocessor";
 import type { MightyMikeMap } from "@/python/structSpecs/mightyMikeInterface";
 import { sanitizeResourceForkJson } from "../utils/levelDataUtils";
-import { err, ok } from "@/types/result";
+import { err, ok } from "neverthrow";
 import { compileNanosaur1Level } from "@/editor/loadLogic/compileNanosaur1Level";
 import { mightyMikeMapToCompressedBinary } from "@/modelParsers/parseMightyMike";
 

@@ -19,8 +19,8 @@ describe("Item Model Utilities", () => {
   describe("getGameMappingSummary", () => {
     it("returns summary for Otto Matic", () => {
       const result = getGameMappingSummary(Game.OTTO_MATIC);
-      expect(result.ok).toBe(true);
-      if (result.ok) {
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
         expect(result.value.game).toBe(Game.OTTO_MATIC);
         expect(result.value.totalMapped).toBeGreaterThan(0);
       }
@@ -28,8 +28,8 @@ describe("Item Model Utilities", () => {
 
     it("returns summary for Nanosaur 2", () => {
       const result = getGameMappingSummary(Game.NANOSAUR_2);
-      expect(result.ok).toBe(true);
-      if (result.ok) {
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
         expect(result.value.game).toBe(Game.NANOSAUR_2);
         expect(result.value.totalMapped).toBeGreaterThan(0);
       }
@@ -37,8 +37,8 @@ describe("Item Model Utilities", () => {
 
     it("returns summary for Cro-Mag Rally", () => {
       const result = getGameMappingSummary(Game.CRO_MAG);
-      expect(result.ok).toBe(true);
-      if (result.ok) {
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
         expect(result.value.game).toBe(Game.CRO_MAG);
         expect(result.value.totalMapped).toBeGreaterThan(0);
       }
@@ -46,13 +46,13 @@ describe("Item Model Utilities", () => {
 
     it("returns error for game without mapper", () => {
       const result = getGameMappingSummary(Game.MIGHTY_MIKE);
-      expect(result.ok).toBe(false);
+      expect(result.isOk()).toBe(false);
     });
 
     it("includes mapping statistics", () => {
       const result = getGameMappingSummary(Game.OTTO_MATIC);
-      expect(result.ok).toBe(true);
-      if (result.ok) {
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
         expect(typeof result.value.mappingsWithVariants).toBe("number");
         expect(typeof result.value.mappingsWithRotation).toBe("number");
         expect(typeof result.value.mappingsWithScale).toBe("number");
@@ -64,8 +64,8 @@ describe("Item Model Utilities", () => {
   describe("validateGameMappings", () => {
     it("validates Otto Matic mappings", () => {
       const result = validateGameMappings(Game.OTTO_MATIC);
-      expect(result.ok).toBe(true);
-      if (result.ok) {
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
         expect(typeof result.value.valid).toBe("boolean");
         expect(Array.isArray(result.value.issues)).toBe(true);
         expect(Array.isArray(result.value.warnings)).toBe(true);
@@ -74,38 +74,38 @@ describe("Item Model Utilities", () => {
 
     it("validates Nanosaur 2 mappings", () => {
       const result = validateGameMappings(Game.NANOSAUR_2);
-      expect(result.ok).toBe(true);
+      expect(result.isOk()).toBe(true);
     });
 
     it("validates Cro-Mag Rally mappings", () => {
       const result = validateGameMappings(Game.CRO_MAG);
-      expect(result.ok).toBe(true);
+      expect(result.isOk()).toBe(true);
     });
 
     it("validates Billy Frontier mappings", () => {
       const result = validateGameMappings(Game.BILLY_FRONTIER);
-      expect(result.ok).toBe(true);
+      expect(result.isOk()).toBe(true);
     });
 
     it("returns error for game without mapper", () => {
       const result = validateGameMappings(Game.MIGHTY_MIKE);
-      expect(result.ok).toBe(false);
+      expect(result.isOk()).toBe(false);
     });
   });
 
   describe("findDuplicateMappings", () => {
     it("returns duplicate analysis for Otto Matic", () => {
       const result = findDuplicateMappings(Game.OTTO_MATIC);
-      expect(result.ok).toBe(true);
-      if (result.ok) {
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
         expect(Array.isArray(result.value.duplicates)).toBe(true);
       }
     });
 
     it("returns empty duplicates if no duplicates exist", () => {
       const result = findDuplicateMappings(Game.NANOSAUR);
-      expect(result.ok).toBe(true);
-      if (result.ok) {
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
         // May or may not have duplicates, but should be an array
         expect(Array.isArray(result.value.duplicates)).toBe(true);
       }
@@ -113,15 +113,15 @@ describe("Item Model Utilities", () => {
 
     it("returns error for game without mapper", () => {
       const result = findDuplicateMappings(Game.MIGHTY_MIKE);
-      expect(result.ok).toBe(false);
+      expect(result.isOk()).toBe(false);
     });
   });
 
   describe("getUniqueModelFiles", () => {
     it("returns unique files for Otto Matic", () => {
       const result = getUniqueModelFiles(Game.OTTO_MATIC);
-      expect(result.ok).toBe(true);
-      if (result.ok) {
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
         expect(Array.isArray(result.value.modelFiles)).toBe(true);
         expect(Array.isArray(result.value.skeletonFiles)).toBe(true);
         expect(result.value.totalFiles).toBe(
@@ -132,16 +132,16 @@ describe("Item Model Utilities", () => {
 
     it("returns unique files for Nanosaur 2", () => {
       const result = getUniqueModelFiles(Game.NANOSAUR_2);
-      expect(result.ok).toBe(true);
-      if (result.ok) {
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
         expect(result.value.totalFiles).toBeGreaterThan(0);
       }
     });
 
     it("returns sorted file lists", () => {
       const result = getUniqueModelFiles(Game.OTTO_MATIC);
-      expect(result.ok).toBe(true);
-      if (result.ok) {
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
         const files = result.value.modelFiles;
         const sorted = [...files].sort();
         expect(files).toEqual(sorted);
@@ -150,7 +150,7 @@ describe("Item Model Utilities", () => {
 
     it("returns error for game without mapper", () => {
       const result = getUniqueModelFiles(Game.MIGHTY_MIKE);
-      expect(result.ok).toBe(false);
+      expect(result.isOk()).toBe(false);
     });
   });
 

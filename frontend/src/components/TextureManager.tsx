@@ -3,19 +3,22 @@ import { TextureItem } from "./TextureManager/TextureItem";
 import { useRef, useState } from "react";
 import { toast } from "sonner";
 import { ImageEditor } from "./ImageEditor";
-import { fromPromise } from "@/types/result";
+import { ResultAsync } from "neverthrow";
 
 interface Texture {
   name: string;
   url: string;
-  type: 'diffuse' | 'normal' | 'other';
+  type: "diffuse" | "normal" | "other";
 }
 
 interface TextureManagerProps {
   textures: Texture[];
   onDownloadTexture: (texture: Texture) => void;
   onReplaceTexture?: (texture: Texture, file: File) => Promise<void>;
-  onTextureEdit?: (texture: Texture, editedImageData: ImageData) => Promise<void>;
+  onTextureEdit?: (
+    texture: Texture,
+    editedImageData: ImageData,
+  ) => Promise<void>;
 }
 
 export function TextureManager({
@@ -36,9 +39,12 @@ export function TextureManager({
   const handleReplaceTexture = async (texture: Texture, file: File) => {
     if (!onReplaceTexture) return;
 
-    const result = await fromPromise(onReplaceTexture(texture, file));
-    if (result.isErr()) {
-      console.error("Failed to replace texture:", result.error);
+    const replaceResult = await ResultAsync.fromPromise(
+      onReplaceTexture(texture, file),
+      (e) => (e instanceof Error ? e : new Error(String(e))),
+    );
+    if (replaceResult.isErr()) {
+      console.error("Failed to replace texture:", replaceResult.error);
       toast.error("Failed to replace texture");
       return;
     }
@@ -55,9 +61,12 @@ export function TextureManager({
 
     // Use onTextureEdit if available, otherwise fall back to onReplaceTexture
     if (onTextureEdit) {
-      const result = await fromPromise(onTextureEdit(textureToEdit, editedImageData));
-      if (result.isErr()) {
-        console.error("Error saving edited texture:", result.error);
+      const editResult = await ResultAsync.fromPromise(
+        onTextureEdit(textureToEdit, editedImageData),
+        (e) => (e instanceof Error ? e : new Error(String(e))),
+      );
+      if (editResult.isErr()) {
+        console.error("Error saving edited texture:", editResult.error);
         toast.error("Failed to save edited texture");
         return;
       }
@@ -77,27 +86,29 @@ export function TextureManager({
       ctx.putImageData(editedImageData, 0, 0);
 
       // Convert canvas to blob and then to file
-      const blobResult = await fromPromise(
+      const blobResult = await ResultAsync.fromPromise(
         new Promise<Blob>((resolve, reject) => {
           canvas.toBlob((blob) => {
             if (blob) resolve(blob);
             else reject(new Error("Failed to convert canvas to blob"));
           }, "image/png");
-        })
+        }),
+        (e) => (e instanceof Error ? e : new Error(String(e))),
       );
-
       if (blobResult.isErr()) {
-        console.error("Error saving edited texture:", blobResult.error);
+        console.error("Failed to convert canvas to blob", blobResult.error);
         toast.error("Failed to save edited texture");
         return;
       }
-
       const blob = blobResult.value;
       const file = new File([blob], `${textureToEdit.name}.png`, {
         type: "image/png",
       });
 
-      const replaceResult = await fromPromise(onReplaceTexture(textureToEdit, file));
+      const replaceResult = await ResultAsync.fromPromise(
+        onReplaceTexture(textureToEdit, file),
+        (e) => (e instanceof Error ? e : new Error(String(e))),
+      );
       if (replaceResult.isErr()) {
         console.error("Error saving edited texture:", replaceResult.error);
         toast.error("Failed to save edited texture");

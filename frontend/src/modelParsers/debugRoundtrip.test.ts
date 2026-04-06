@@ -41,7 +41,7 @@ describe("Debug Skeleton Roundtrip", () => {
     );
 
     // Handle Result type
-    if (!bg3dResult.ok) {
+    if (!bg3dResult.isOk()) {
       console.log("Failed to parse BG3D:", bg3dResult.error);
       return;
     }
@@ -130,7 +130,7 @@ describe("Debug Skeleton Roundtrip", () => {
     );
 
     // Handle Result type
-    if (!bg3dResult.ok) {
+    if (!bg3dResult.isOk()) {
       console.log("Failed to parse BG3D:", bg3dResult.error);
       return;
     }
