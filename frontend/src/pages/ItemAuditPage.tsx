@@ -320,7 +320,7 @@ export function ItemAuditPage() {
       return;
     }
     setImportStatus("Importing audit report...");
-    void (async () => {
+    const loadReport = async () => {
       const textResult = await ResultAsync.fromPromise(
         file.text(),
         (e) => (e instanceof Error ? e : new Error(String(e))),
@@ -361,7 +361,9 @@ export function ItemAuditPage() {
       }
       autoDownloadedRef.current = false;
       setImportStatus("Audit report imported successfully.");
-    })();
+    };
+
+    void loadReport();
   };
 
   const updateDecision = (updater: (current: ItemAuditDecision) => ItemAuditDecision) => {

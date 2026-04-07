@@ -29,7 +29,7 @@ export const SplineItemGeometry: React.FC<SplineItemGeometryProps> = ({
   const splinePointsBySplineIdx = splineData.SpPt;
   const hasValidData = !!splines && !!splineItemsBySplineIdx;
 
-  const itemsGroup = (() => {
+  const buildItemsGroup = () => {
     if (!hasValidData || !splines) return [];
     const group: React.ReactElement[] = [];
     const scale = globals.TILE_INGAME_SIZE / globals.TILE_SIZE;
@@ -123,7 +123,9 @@ export const SplineItemGeometry: React.FC<SplineItemGeometryProps> = ({
     });
 
     return group;
-  })();
+  };
+
+  const itemsGroup = buildItemsGroup();
 
   if (!hasValidData) {
     return null;

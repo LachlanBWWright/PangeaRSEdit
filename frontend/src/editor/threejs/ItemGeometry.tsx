@@ -297,7 +297,7 @@ export const ItemGeometry: React.FC<ItemGeometryProps> = ({
         if (!firstItem) return;
         
         const params = { p0: firstItem.p0, p1: firstItem.p1, p2: firstItem.p2, p3: firstItem.p3 };
-        void (async () => {
+        const loadItemModel = async () => {
           const loadResult = await ResultAsync.fromPromise(
             loadModel(firstItem.type, params),
             (e) => (e instanceof Error ? e : new Error(String(e))),
@@ -305,7 +305,9 @@ export const ItemGeometry: React.FC<ItemGeometryProps> = ({
           if (loadResult.isErr()) {
             console.error(`Failed to load model for item type ${firstItem.type}:`, loadResult.error);
           }
-        })();
+        };
+
+        void loadItemModel();
       });
     }
   }, [show3DItemModels, itemsByCacheKey, loadModel]);

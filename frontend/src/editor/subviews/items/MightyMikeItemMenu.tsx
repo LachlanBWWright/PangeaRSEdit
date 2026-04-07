@@ -32,6 +32,7 @@ import { CurrentScene, MIGHTY_MIKE_SCENES } from "@/data/game/gameAtoms";
 import { loadItemImage, type ItemFrameImage } from "@/utils/mightyMikeShapeImageLoader";
 import { ResultAsync } from "neverthrow";
 import { TileCanvas } from "../shared/TileCanvas";
+import { EmptyDataPrompt } from "../EmptyDataPrompts";
 
 // Atom to track if item images should be shown globally for all items
 export const ShowMightyMikeItemImages = atom(true);
@@ -60,8 +61,9 @@ export const MightyMikeItemMenu = memo(function MightyMikeItemMenu({
 
   const selectedItemData =
     itemData.Itms !== undefined && selectedItem !== undefined
-      ? itemData.Itms[1000].obj[selectedItem]
+      ? itemData.Itms?.[1000]?.obj?.[selectedItem]
       : null;
+  const itemCount = itemData.Itms?.[1000]?.obj?.length ?? 0;
 
   useEffect(() => {
     if (!selectedItemData) {
@@ -70,7 +72,7 @@ export const MightyMikeItemMenu = memo(function MightyMikeItemMenu({
     }
 
     let cancelled = false;
-    void (async () => {
+    const loadPreviewImage = async () => {
       const loadResult = await ResultAsync.fromPromise(
         loadItemImage(selectedItemData.type, currentScene),
         (e) => (e instanceof Error ? e : new Error(String(e))),
@@ -86,7 +88,9 @@ export const MightyMikeItemMenu = memo(function MightyMikeItemMenu({
       } else {
         setPreviewImage(null);
       }
-    })();
+    };
+
+    void loadPreviewImage();
     return () => {
       cancelled = true;
     };
@@ -95,7 +99,7 @@ export const MightyMikeItemMenu = memo(function MightyMikeItemMenu({
   if (itemData.Itms === undefined) return null;
 
   return (
-    <div className="flex flex-col gap-2 min-h-full">
+    <div className="flex h-full flex-col gap-2">
       {/* Global Toggle for Item Images */}
       <Button
         size="sm"
@@ -116,7 +120,7 @@ export const MightyMikeItemMenu = memo(function MightyMikeItemMenu({
         )}
       </Button>
 
-      <div className="grid grid-cols-[auto_1fr_auto] items-center gap-2 flex-1 min-h-0">
+      <div className="grid grid-cols-[auto_1fr_auto] items-center gap-2">
         <label className="text-sm font-medium">Scene</label>
         <Select
           value={currentScene ?? ""}
@@ -143,7 +147,7 @@ export const MightyMikeItemMenu = memo(function MightyMikeItemMenu({
       </div>
 
       {selectedItemData === null || selectedItemData === undefined ? (
-        <AddItemMenu />
+        <AddItemMenu hasItems={itemCount > 0} />
       ) : (
         <div className="flex items-center gap-3">
           {previewImage && <TileCanvas image={previewImage.canvas} size={48} />}
@@ -287,7 +291,7 @@ export const MightyMikeItemMenu = memo(function MightyMikeItemMenu({
   );
 });
 
-function AddItemMenu() {
+function AddItemMenu({ hasItems }: { hasItems: boolean }) {
   const [clickToAddItem, setClickToAddItem] = useAtom(ClickToAddItem);
   const globals = useAtomValue(Globals);
 
@@ -334,5 +338,17 @@ function AddItemMenu() {
       </>
     );
 
-  return <Button onClick={() => setClickToAddItem(0)}>Add Items</Button>;
+  return (
+    <EmptyDataPrompt
+      title={hasItems ? "No Item Selected" : "No Items"}
+      description={
+        hasItems
+          ? "Select an item on the canvas or add another one."
+          : "This level doesn't have any items yet. Add your first item to get started."
+      }
+      buttonText={hasItems ? "Add More Items" : "Add First Item"}
+      onInitialize={() => setClickToAddItem(0)}
+      fillHeight
+    />
+  );
 }

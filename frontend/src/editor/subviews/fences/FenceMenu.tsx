@@ -16,6 +16,7 @@ import { getFenceName } from "@/data/fences/getFenceNames";
 import { getFenceTypes } from "@/data/fences/getFenceTypes";
 import { getFenceImagePath } from "@/data/fences/getFenceImagePath";
 import { useFenceImageSource } from "@/data/fences/useFenceImageSource";
+import { EmptyDataPrompt } from "../EmptyDataPrompts";
 
 function FenceThumbnail({
   src,
@@ -65,8 +66,9 @@ export const FenceMenu = memo(function FenceMenu({
 
   const fenceDataObj =
     selectedFence !== undefined
-      ? fenceData.Fenc[1000].obj[selectedFence]
+      ? fenceData.Fenc?.[1000]?.obj?.[selectedFence]
       : null;
+  const fenceCount = fenceData.Fenc?.[1000]?.obj?.length ?? 0;
 
   const fencePreviewPath =
     fenceDataObj && fenceDataObj !== undefined
@@ -75,47 +77,62 @@ export const FenceMenu = memo(function FenceMenu({
   const fencePreviewImageSrc = useFenceImageSource(fencePreviewPath);
   const numNubs = fenceDataObj?.numNubs ?? 0;
 
+  if (fenceDataObj === null || fenceDataObj === undefined) {
+    const hasFences = fenceCount > 0;
+    return (
+      <EmptyDataPrompt
+        title={hasFences ? "No Fence Selected" : "No Fences"}
+        description={
+          hasFences
+            ? "Select a fence on the canvas or add another one."
+            : "This level doesn't have any fences yet. Add your first fence to get started."
+        }
+        buttonText={hasFences ? "Add New Fence" : "Add First Fence"}
+        onInitialize={() => {
+          setFenceData((data) => {
+            const nextFenceIndex = data.Fenc[1000].obj.length;
+
+            data.Fenc[1000].obj.push({
+              fenceType: 0,
+              numNubs: MIN_NUBS,
+              junkNubListPtr: 0,
+              bbTop: 0,
+              bbBottom: 0,
+              bbLeft: 0,
+              bbRight: 0,
+            });
+
+            data.FnNb[nextFenceIndex + NUB_KEY_BASE] = {
+              name: "Fence Nub List",
+              obj: [
+                [0, 0],
+                [1000, 1000],
+              ],
+              order: 999,
+            };
+
+            setSelectedFence(nextFenceIndex);
+          });
+        }}
+        fillHeight
+      />
+    );
+  }
+
   return (
     <div className="flex flex-col gap-2 min-h-full">
-      {fenceDataObj === null ? (
-        <Button
-          onClick={() => {
-            setFenceData((data) => {
-              const keys = Object.keys(data.Fenc[1000].obj);
-              const lastStr = keys.length !== 0 ? keys[keys.length - 1] : "999";
-              const last = parseInt(lastStr ?? "999") + 1;
-
-              data.Fenc[1000].obj.push({
-                fenceType: 0,
-                numNubs: MIN_NUBS,
-                junkNubListPtr: 0,
-                bbTop: 0,
-                bbBottom: 0,
-                bbLeft: 0,
-                bbRight: 0,
-              });
-
-              data.FnNb[last + NUB_KEY_BASE] = {
-                name: "Fence Nub List",
-                obj: [
-                  [0, 0],
-                  [1000, 1000],
-                ],
-                order: 999,
-              };
-            });
-          }}
-        >
-          Add New Fence
-        </Button>
-      ) : (
-        <p>
-          Fence {selectedFence} ({numNubs} points)
-        </p>
-      )}
+      <p>
+        Fence {selectedFence} ({numNubs} points)
+      </p>
 
       {/* Two-column layout: left = type + delete; right = preview (when available) */}
-      <div className={fencePreviewPath ? "grid grid-cols-[1fr_auto] gap-2 w-full flex-1 min-h-0" : "w-full flex-1 min-h-0"}>
+      <div
+        className={
+          fencePreviewPath
+            ? "grid grid-cols-[1fr_auto] gap-2 w-full flex-1 min-h-0"
+            : "w-full flex-1 min-h-0"
+        }
+      >
         {/* Left column */}
         <div className="flex flex-col gap-2 flex-1 min-h-0">
           {fenceDataObj !== null && fenceDataObj !== undefined && (
@@ -149,7 +166,7 @@ export const FenceMenu = memo(function FenceMenu({
                           <FenceThumbnail
                             src={imgPath}
                             alt=""
-                            className="h-4 w-6 object-cover rounded-sm flex-shrink-0"
+                            className="h-4 w-6 object-cover rounded-sm shrink-0"
                           />
                         )}
                         {getFenceName(globals, key)}
@@ -197,7 +214,11 @@ export const FenceMenu = memo(function FenceMenu({
             {fencePreviewImageSrc ? (
               <img
                 src={fencePreviewImageSrc}
-                alt={fenceDataObj ? getFenceName(globals, fenceDataObj.fenceType) : ""}
+                alt={
+                  fenceDataObj
+                    ? getFenceName(globals, fenceDataObj.fenceType)
+                    : ""
+                }
                 className="max-h-36 max-w-full object-contain"
                 onError={(e) => {
                   e.currentTarget.style.display = "none";

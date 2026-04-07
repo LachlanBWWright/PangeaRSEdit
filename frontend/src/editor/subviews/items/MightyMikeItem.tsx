@@ -71,7 +71,7 @@ export const MightyMikeItem = memo(function MightyMikeItem({
       Promise.resolve().then(() => setItemImageData(null));
       return;
     }
-    void (async () => {
+    const loadImageData = async () => {
       const loadResult = await ResultAsync.fromPromise(
         loadItemImage(item.type, currentScene),
         (e) => (e instanceof Error ? e : new Error(String(e))),
@@ -93,7 +93,9 @@ export const MightyMikeItem = memo(function MightyMikeItem({
         console.warn(`Failed to load image for item ${item.type}:`, result.error.message);
         setItemImageData(null);
       }
-    })();
+    };
+
+    void loadImageData();
   }, [showItemImages, item, currentScene]);
 
   if (item === null || item === undefined) return null;

@@ -259,160 +259,188 @@ export function SupertileMenu({
   };
 
   return (
-    <div className="flex flex-col gap-2">
-      <div className="grid grid-cols-4 gap-2">
-        <Button onClick={() => onResizeSupertiles("top", 1)}>
-          Add Supertile Row Top
-        </Button>
-        <Button onClick={() => onResizeSupertiles("bottom", 1)}>
-          Add Supertile Row Bottom
-        </Button>
-        <Button onClick={() => onResizeSupertiles("left", 1)}>
-          Add Supertile Column Left
-        </Button>
-        <Button onClick={() => onResizeSupertiles("right", 1)}>
-          Add Supertile Column Right
-        </Button>
-      </div>
-      <div className="grid grid-cols-4 gap-2">
-        <Button variant="destructive" onClick={() => handleRemoveSupertile("top")}>
-          Remove Supertile Row Top
-        </Button>
-        <Button variant="destructive" onClick={() => handleRemoveSupertile("bottom")}>
-          Remove Supertile Row Bottom
-        </Button>
-        <Button variant="destructive" onClick={() => handleRemoveSupertile("left")}>
-          Remove Supertile Column Left
-        </Button>
-        <Button variant="destructive" onClick={() => handleRemoveSupertile("right")}>
-          Remove Supertile Column Right
-        </Button>
-      </div>
-      <div className="grid grid-cols-3 gap-2">
-      <div className="flex flex-col gap-2">
-        <p>Replace Selected Tile ({selectedTile})</p>
-        <ImageDropzone
-          inputRef={tileUploadInputRef}
-          label="Drop tile image or click to browse"
-          accept="image/*"
-          disabled={
-            selectedTile >= stgd.length ||
-            !stgd[selectedTile] ||
-            isSupertileEmpty(stgd[selectedTile])
-          }
-          onFile={async (file) => {
-            const canvas = await loadImageIntoCanvas(
-              file,
-              globals.SUPERTILE_TEXMAP_SIZE,
-              globals.SUPERTILE_TEXMAP_SIZE,
-            );
-            if (canvas) {
-              updateSelectedTileFromCanvas(canvas);
+    <div className="flex h-full min-h-0 flex-col gap-2 overflow-hidden">
+      <div className="grid min-h-0 flex-1 grid-cols-3 grid-rows-1 gap-2">
+        <div className="flex h-full min-h-0 flex-col gap-2">
+          <p>Replace Selected Tile ({selectedTile})</p>
+          <ImageDropzone
+            inputRef={tileUploadInputRef}
+            label="Drop tile image or click to browse"
+            accept="image/*"
+            disabled={
+              selectedTile >= stgd.length ||
+              !stgd[selectedTile] ||
+              isSupertileEmpty(stgd[selectedTile])
             }
-          }}
-        />
-        {/* Edit button in same group as upload */}
-        <div className="flex gap-2 w-full">
+            onFile={async (file) => {
+              const canvas = await loadImageIntoCanvas(
+                file,
+                globals.SUPERTILE_TEXMAP_SIZE,
+                globals.SUPERTILE_TEXMAP_SIZE,
+              );
+              if (canvas) {
+                updateSelectedTileFromCanvas(canvas);
+              }
+            }}
+          />
+          {/* Edit button in same group as upload */}
+          <div className="flex w-full gap-2">
+            <Button
+              className="flex-1"
+              size="sm"
+              variant="outline"
+              onClick={handleEditTileTexture}
+              disabled={
+                !stgd[selectedTile] || isSupertileEmpty(stgd[selectedTile])
+              }
+            >
+              <Edit className="mr-1 h-4 w-4" />
+              Edit
+            </Button>
+          </div>
+          <Stage width={120} height={120} className="mx-auto">
+            <Layer>
+              <ImageDisplay
+                image={
+                  mapImages[stgd[selectedTile]?.superTileId ?? 0] ?? undefined
+                }
+              />
+            </Layer>
+          </Stage>
+          <p>Download Selected Tile</p>
           <Button
-            className="flex-1"
             size="sm"
-            variant="outline"
-            onClick={handleEditTileTexture}
-            disabled={!stgd[selectedTile] || isSupertileEmpty(stgd[selectedTile])}
+            onClick={() => {
+              const tileEntry = stgd[selectedTile];
+              if (tileEntry) {
+                downloadSelectedTile(
+                  mapImages,
+                  tileEntry.superTileId,
+                  selectedTile,
+                );
+              }
+            }}
           >
-            <Edit className="w-4 h-4 mr-1" />
-            Edit
+            Download
           </Button>
         </div>
-        <Stage width={120} height={120} className="mx-auto">
-          <Layer>
-            <ImageDisplay
-              image={mapImages[stgd[selectedTile]?.superTileId ?? 0] ?? undefined}
-            />
-          </Layer>
-        </Stage>
-        <p>Download Selected Tile</p>
-        <Button
-          size="sm"
-          onClick={() => {
-            const tileEntry = stgd[selectedTile];
-            if (tileEntry) {
-              downloadSelectedTile(
-                mapImages,
-                tileEntry.superTileId,
-                selectedTile,
+        <div className="flex h-full min-h-0 flex-col gap-2">
+          <p>Upload Image For Whole Map</p>
+          <ImageDropzone
+            inputRef={mapUploadInputRef}
+            label="Drop map image or click to browse"
+            accept="image/*"
+            onFile={async (file) => {
+              const canvas = await loadImageIntoCanvas(
+                file,
+                globals.SUPERTILE_TEXMAP_SIZE *
+                  (hedr.mapWidth / globals.TILES_PER_SUPERTILE),
+                globals.SUPERTILE_TEXMAP_SIZE *
+                  (hedr.mapHeight / globals.TILES_PER_SUPERTILE),
               );
+              if (canvas) {
+                applyWholeMapCanvas(canvas, "regenerate-all");
+              }
+            }}
+          />
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => {
+              const mapCanvas = buildWholeMapCanvas();
+              if (!mapCanvas) {
+                return;
+              }
+              setMapEditorImageUrl(mapCanvas.toDataURL("image/png"));
+              setMapEditorOpen(true);
+            }}
+          >
+            Edit whole map in texture editor
+          </Button>
+          <div className="flex-1" />
+          <p>Download Image For Whole Map</p>
+          <Button
+            size="sm"
+            onClick={() =>
+              downloadMapImage(mapImages, headerData, terrainData, globals)
             }
-          }}
-        >
-          Download
-        </Button>
-      </div>
-      <div className="flex flex-col gap-2">
-        <p>Upload Image For Whole Map</p>
-        <ImageDropzone
-          inputRef={mapUploadInputRef}
-          label="Drop map image or click to browse"
-          accept="image/*"
-          onFile={async (file) => {
-            const canvas = await loadImageIntoCanvas(
-              file,
-              globals.SUPERTILE_TEXMAP_SIZE *
-                (hedr.mapWidth / globals.TILES_PER_SUPERTILE),
-              globals.SUPERTILE_TEXMAP_SIZE *
-                (hedr.mapHeight / globals.TILES_PER_SUPERTILE),
-            );
-            if (canvas) {
-              applyWholeMapCanvas(canvas, "regenerate-all");
+          >
+            Download
+          </Button>
+        </div>
+        <div className="flex h-full min-h-0 flex-col gap-2 overflow-auto pr-1">
+          <div className="grid grid-cols-2 gap-2">
+            <Button onClick={() => onResizeSupertiles("top", 1)}>
+              Add Supertile Row Top
+            </Button>
+            <Button onClick={() => onResizeSupertiles("bottom", 1)}>
+              Add Supertile Row Bottom
+            </Button>
+            <Button onClick={() => onResizeSupertiles("left", 1)}>
+              Add Supertile Column Left
+            </Button>
+            <Button onClick={() => onResizeSupertiles("right", 1)}>
+              Add Supertile Column Right
+            </Button>
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <Button
+              variant="destructive"
+              onClick={() => handleRemoveSupertile("top")}
+            >
+              Remove Supertile Row Top
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => handleRemoveSupertile("bottom")}
+            >
+              Remove Supertile Row Bottom
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => handleRemoveSupertile("left")}
+            >
+              Remove Supertile Column Left
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => handleRemoveSupertile("right")}
+            >
+              Remove Supertile Column Right
+            </Button>
+          </div>
+          <div className="flex flex-col gap-1 text-sm">
+            <div className="flex flex-wrap gap-x-4 gap-y-1">
+              <p>Supertiles Wide: {supertileCounts.width}</p>
+              <p>Supertiles High: {supertileCounts.height}</p>
+              <p>Unique Supertiles: {hedr.numUniqueSupertiles}</p>
+            </div>
+            <div className="flex flex-wrap gap-x-4 gap-y-1">
+              <p>Current Tile: #{selectedTile}</p>
+              <p>Texture ID: {stgd[selectedTile]?.superTileId || 0}</p>
+            </div>
+          </div>
+          <Button
+            size="sm"
+            variant="destructive"
+            disabled={
+              selectedTile >= stgd.length ||
+              !stgd[selectedTile] ||
+              isSupertileEmpty(stgd[selectedTile])
             }
-          }}
-        />
-        <Button
-          size="sm"
-          variant="outline"
-          onClick={() => {
-            const mapCanvas = buildWholeMapCanvas();
-            if (!mapCanvas) {
-              return;
-            }
-            setMapEditorImageUrl(mapCanvas.toDataURL("image/png"));
-            setMapEditorOpen(true);
-          }}
-        >
-          Edit whole map in texture editor
-        </Button>
-        <div className="flex-1" />
-        <p>Download Image For Whole Map</p>
-        <Button size="sm" onClick={() => downloadMapImage(mapImages, headerData, terrainData, globals)}>
-          Download
-        </Button>
-      </div>
-      <div className="flex flex-col gap-2">
-        <p>Supertiles Wide: {supertileCounts.width}</p>
-        <p>Supertiles High: {supertileCounts.height}</p>
-        <p>Unique Supertiles {hedr.numUniqueSupertiles}</p>
-
-        <p>Current Tile: #{selectedTile}</p>
-        <p>Texture ID: {stgd[selectedTile]?.superTileId || 0}</p>
-        <Button
-          size="sm"
-          variant="destructive"
-          disabled={
-            selectedTile >= stgd.length ||
-            !stgd[selectedTile] ||
-            isSupertileEmpty(stgd[selectedTile])
-          }
-          onClick={() => {
-            setTerrainData((terrainDraft) => {
-              const stgdEntry = terrainDraft.STgd?.[1000];
-              if (!stgdEntry?.obj) return;
-              stgdEntry.obj[selectedTile] = createBlankSupertileEntry(globals.EMPTY_TILE_IDX);
-            });
-          }}
-        >
-          Set to Blank
-        </Button>
-      </div>
+            onClick={() => {
+              setTerrainData((terrainDraft) => {
+                const stgdEntry = terrainDraft.STgd?.[1000];
+                if (!stgdEntry?.obj) return;
+                stgdEntry.obj[selectedTile] = createBlankSupertileEntry(
+                  globals.EMPTY_TILE_IDX,
+                );
+              });
+            }}
+          >
+            Set to Blank
+          </Button>
+        </div>
       </div>
       <ImageEditor
         isOpen={tileEditorOpen}

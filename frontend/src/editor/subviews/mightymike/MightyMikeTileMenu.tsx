@@ -61,6 +61,78 @@ function getNumber(value: unknown, defaultValue = 0): number {
   return typeof value === "number" ? value : defaultValue;
 }
 
+type CollisionProperties = {
+  hasCollisionMask: boolean;
+  usePixelAccurateCollision: boolean;
+} | null;
+
+interface CollisionPropertiesSectionProps {
+  collisionProps: CollisionProperties;
+  onUpdateCollisionProperty: (
+    property: "hasCollisionMask" | "usePixelAccurateCollision",
+    value: boolean,
+  ) => void;
+}
+
+function CollisionPropertiesSection({
+  collisionProps,
+  onUpdateCollisionProperty,
+}: CollisionPropertiesSectionProps) {
+  return (
+    <div className="border-t border-gray-600 pt-2">
+      <p className="font-bold text-xs mb-1">Collision</p>
+      {collisionProps ? (
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-xs">Mask:</span>
+            <Select
+              value={collisionProps.hasCollisionMask ? "enabled" : "disabled"}
+              onValueChange={(value) =>
+                onUpdateCollisionProperty("hasCollisionMask", value === "enabled")
+              }
+            >
+              <SelectTrigger className="w-24 h-7 text-xs">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="enabled">Enabled</SelectItem>
+                <SelectItem value="disabled">Disabled</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {collisionProps.hasCollisionMask && (
+            <div className="flex items-center justify-between text-xs">
+              <span>Type:</span>
+              <Select
+                value={
+                  collisionProps.usePixelAccurateCollision ? "pixel" : "tile"
+                }
+                onValueChange={(value) =>
+                  onUpdateCollisionProperty(
+                    "usePixelAccurateCollision",
+                    value === "pixel",
+                  )
+                }
+              >
+                <SelectTrigger className="w-24 h-7 text-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="pixel">Pixel-Accurate</SelectItem>
+                  <SelectItem value="tile">Tile-Based</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+        </div>
+      ) : (
+        <p className="text-gray-500 text-xs">No collision data</p>
+      )}
+    </div>
+  );
+}
+
 interface MightyMikeTileMenuProps {
   headerData: HeaderData;
   setHeaderData: Updater<HeaderData>;
@@ -575,6 +647,7 @@ export function MightyMikeTileMenu({
   }
 
   const currentImageIndex = getCurrentTileImageIndex();
+  const collisionProps = getCollisionProperties();
   const currentTileCanvas =
     currentImageIndex !== null ? mapImages[currentImageIndex] : null;
   const currentTileAttributes =
@@ -717,73 +790,12 @@ export function MightyMikeTileMenu({
         </TooltipProvider>
 
         {/* Collision Properties Section */}
-        {mightyMikeTileValuesArray.length > 0 && (() => {
-          const collisionProps = getCollisionProperties();
-          return (
-            <div className="border-t border-gray-600 pt-2">
-              <p className="font-bold text-xs mb-1">Collision</p>
-              {collisionProps ? (
-                <div className="space-y-2">
-                  {/* Collision Mask Toggle */}
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs">Mask:</span>
-                    <Select
-                      value={
-                        collisionProps.hasCollisionMask ? "enabled" : "disabled"
-                      }
-                      onValueChange={(value) =>
-                        handleUpdateCollisionProperty(
-                          "hasCollisionMask",
-                          value === "enabled"
-                        )
-                      }
-                    >
-                      <SelectTrigger className="w-24 h-7 text-xs">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="enabled">Enabled</SelectItem>
-                        <SelectItem value="disabled">Disabled</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  {/* Collision Type Selector */}
-                  {collisionProps.hasCollisionMask && (
-                    <div className="flex items-center justify-between text-xs">
-                      <span>Type:</span>
-                      <Select
-                        value={
-                          collisionProps.usePixelAccurateCollision
-                            ? "pixel"
-                            : "tile"
-                        }
-                        onValueChange={(value) =>
-                          handleUpdateCollisionProperty(
-                            "usePixelAccurateCollision",
-                            value === "pixel"
-                          )
-                        }
-                      >
-                        <SelectTrigger className="w-24 h-7 text-xs">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="pixel">Pixel-Accurate</SelectItem>
-                          <SelectItem value="tile">Tile-Based</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <p className="text-gray-500 text-xs">
-                  No collision data
-                </p>
-              )}
-            </div>
-          );
-        })()}
+        {mightyMikeTileValuesArray.length > 0 ? (
+          <CollisionPropertiesSection
+            collisionProps={collisionProps}
+            onUpdateCollisionProperty={handleUpdateCollisionProperty}
+          />
+        ) : null}
 
         {currentTileAttributes && (
           <div className="border-t border-gray-600 pt-2 space-y-2">

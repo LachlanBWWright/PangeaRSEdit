@@ -135,7 +135,7 @@ const MightyMikeSupertilesComponent = ({
   /** Paint a param value at a tile index (using physical/palette tile index). */
   const handleBrushParam = useCallback((tileIdx: number) => {
     if (!paramBrushField) return;
-    const physicalIdx = (() => {
+    const resolvePhysicalIdx = () => {
       const logical = terrainData.Layr?.[1000]?.obj?.[tileIdx];
       if (logical === undefined) return null;
       const xlt = terrainData.Xlat?.[1000]?.obj;
@@ -144,7 +144,8 @@ const MightyMikeSupertilesComponent = ({
         if (isRecord(entry) && typeof entry.idx === "number") return entry.idx;
       }
       return typeof logical === "number" ? logical : null;
-    })();
+    };
+    const physicalIdx = resolvePhysicalIdx();
     if (physicalIdx === null) return;
 
     setTerrainData((data) => {

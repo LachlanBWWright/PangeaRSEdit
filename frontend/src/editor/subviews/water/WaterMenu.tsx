@@ -21,6 +21,7 @@ import {
 import { getWaterBodyTypes } from "@/data/water/getWaterBodyTypes";
 import { Input } from "@/components/ui/input";
 import { memo, useMemo } from "react";
+import { EmptyDataPrompt } from "../EmptyDataPrompts";
 
 export const WaterMenu = memo(function WaterMenu({
   liquidData,
@@ -44,8 +45,9 @@ export const WaterMenu = memo(function WaterMenu({
 
   const waterBodyData =
     selectedWaterBody !== null
-      ? liquidData.Liqd[1000].obj[selectedWaterBody]
+      ? liquidData.Liqd?.[1000]?.obj?.[selectedWaterBody]
       : null;
+  const waterBodyCount = liquidData.Liqd?.[1000]?.obj?.length ?? 0;
 
   const selectedNubData =
     waterBodyData &&
@@ -54,46 +56,59 @@ export const WaterMenu = memo(function WaterMenu({
       ? waterBodyData.nubs[selectedWaterNub]
       : null;
 
+  if (waterBodyData === null || waterBodyData === undefined) {
+    const hasWaterBodies = waterBodyCount > 0;
+    return (
+      <EmptyDataPrompt
+        title={hasWaterBodies ? "No Water Body Selected" : "No Water Bodies"}
+        description={
+          hasWaterBodies
+            ? "Select a water body on the canvas or add another one."
+            : "This level doesn't have any water bodies yet. Add your first water body to get started."
+        }
+        buttonText={hasWaterBodies ? "Add New Water Body" : "Add First Water Body"}
+        onInitialize={() =>
+          setLiquidData((draft) => {
+            const nextWaterBodyIndex = draft.Liqd[1000].obj.length;
+
+            draft.Liqd[1000].obj.push({
+              type: 0,
+              nubs: [
+                [100, 100],
+                [100, 200],
+                [200, 200],
+                [200, 100],
+              ],
+              numNubs: 4,
+              hotSpotX: 150,
+              hotSpotZ: 150,
+              bBoxTop: 200,
+              bBoxLeft: 200,
+              bBoxBottom: 200,
+              bBoxRight: 200,
+              height: 0,
+              flags: 0,
+              reserved: 0,
+            });
+
+            for (let i = 4; i < globals.LIQD_NUBS; i++) {
+              draft.Liqd[1000].obj.at(-1)?.nubs.push([0, 0]);
+            }
+
+            setSelectedWaterBody(nextWaterBodyIndex);
+            setSelectedWaterNub(null);
+          })
+        }
+        fillHeight
+      />
+    );
+  }
+
   return (
     <div className="flex flex-col gap-2 w-full min-h-full">
-      {waterBodyData === null || waterBodyData === undefined ? (
-        <Button
-          onClick={() =>
-            setLiquidData((draft) => {
-              draft.Liqd[1000].obj.push({
-                type: 0,
-                nubs: [
-                  [100, 100],
-                  [100, 200],
-                  [200, 200],
-                  [200, 100],
-                ],
-                numNubs: 4,
-                hotSpotX: 150,
-                hotSpotZ: 150,
-                bBoxTop: 200,
-                bBoxLeft: 200,
-                bBoxBottom: 200,
-                bBoxRight: 200,
-                height: 0,
-                flags: 0,
-                reserved: 0,
-              });
-
-              //Push additional water nubs
-              for (let i = 4; i < globals.LIQD_NUBS; i++) {
-                draft.Liqd[1000].obj.at(-1)?.nubs.push([0, 0]);
-              }
-            })
-          }
-        >
-          Add New Water Body
-        </Button>
-      ) : (
-        <p>
-          Item {waterBodyData.type} ({waterBodyNames[waterBodyData.type]})
-        </p>
-      )}
+      <p>
+        Water Body {waterBodyData.type} ({waterBodyNames[waterBodyData.type]})
+      </p>
 
       <div className="flex flex-col gap-2 flex-1 min-h-0">
         {waterBodyData !== null && waterBodyData !== undefined && (

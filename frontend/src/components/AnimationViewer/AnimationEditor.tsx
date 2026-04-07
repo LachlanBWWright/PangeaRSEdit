@@ -49,6 +49,9 @@ export function AnimationEditor({
     );
   }
 
+  const effectiveMode: LoopMode =
+    selectedAnimationInfo.loopMode ?? (selectedAnimationInfo.loop ? "loop" : "once");
+
   return (
     <div className="space-y-3">
       <div className="space-y-2">
@@ -74,43 +77,38 @@ export function AnimationEditor({
       </div>
       <div className="space-y-2">
         <label className="text-xs text-gray-300">Playback Mode</label>
-        {(() => {
-          const effectiveMode: LoopMode = selectedAnimationInfo.loopMode ?? (selectedAnimationInfo.loop ? "loop" : "once");
-          return (
-            <>
-              <Select
-                value={effectiveMode}
-                onValueChange={(value) => {
-                  if (value === "loop" || value === "pingpong" || value === "once") {
-                    onLoopModeChange(value);
-                  }
-                }}
-              >
-                <SelectTrigger className="bg-gray-700 border-gray-600 text-white">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent className="bg-gray-700 border-gray-600 text-white">
-                  <SelectItem value="loop" className="text-white focus:bg-gray-600">
-                    Loop
-                  </SelectItem>
-                  <SelectItem value="pingpong" className="text-white focus:bg-gray-600">
-                    Zigzag (Ping-Pong)
-                  </SelectItem>
-                  <SelectItem value="once" className="text-white focus:bg-gray-600">
-                    Play Once
-                  </SelectItem>
-                </SelectContent>
-              </Select>
-              <p className="text-xs text-gray-400">
-                {effectiveMode === "loop"
-                  ? "Animation repeats from start when finished."
-                  : effectiveMode === "pingpong"
-                    ? "Animation plays forward then backward (zigzag)."
-                    : "Animation plays once and stops at the end."}
-              </p>
-            </>
-          );
-        })()}
+        <>
+          <Select
+            value={effectiveMode}
+            onValueChange={(value) => {
+              if (value === "loop" || value === "pingpong" || value === "once") {
+                onLoopModeChange(value);
+              }
+            }}
+          >
+            <SelectTrigger className="bg-gray-700 border-gray-600 text-white">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent className="bg-gray-700 border-gray-600 text-white">
+              <SelectItem value="loop" className="text-white focus:bg-gray-600">
+                Loop
+              </SelectItem>
+              <SelectItem value="pingpong" className="text-white focus:bg-gray-600">
+                Zigzag (Ping-Pong)
+              </SelectItem>
+              <SelectItem value="once" className="text-white focus:bg-gray-600">
+                Play Once
+              </SelectItem>
+            </SelectContent>
+          </Select>
+          <p className="text-xs text-gray-400">
+            {effectiveMode === "loop"
+              ? "Animation repeats from start when finished."
+              : effectiveMode === "pingpong"
+                ? "Animation plays forward then backward (zigzag)."
+                : "Animation plays once and stops at the end."}
+          </p>
+        </>
       </div>
       <div className="space-y-2">
         <label className="text-xs text-gray-300">Duration Change Mode</label>

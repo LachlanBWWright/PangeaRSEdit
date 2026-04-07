@@ -86,10 +86,11 @@ export function parseNanosaur1Buffer(
   buffer: ArrayBuffer,
   gameType?: GlobalsInterface,
 ): Result<LevelData, Error> {
-  const rawLevelResult = Result.fromThrowable(
+  const parseRawLevel = Result.fromThrowable(
     () => parseNanosaur1Level(buffer),
     (error) => (error instanceof Error ? error : new Error(String(error))),
-  )();
+  );
+  const rawLevelResult = parseRawLevel();
 
   if (rawLevelResult.isErr()) {
     return err(rawLevelResult.error);

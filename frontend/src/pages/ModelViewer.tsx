@@ -639,7 +639,7 @@ export function ModelViewer() {
       return undefined;
     }
 
-    void (async () => {
+    const extractMetadata = async () => {
       const result = await ResultAsync.fromPromise(
         extractAnimationMetadataFromGlb(gltfBuffer),
         (e) => (e instanceof Error ? e : new Error(String(e))),
@@ -651,7 +651,9 @@ export function ModelViewer() {
         return;
       }
       if (!cancelled) setGltfAnimationMetadata(result.value);
-    })();
+    };
+
+    void extractMetadata();
 
     return () => {
       cancelled = true;

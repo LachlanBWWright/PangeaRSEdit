@@ -884,18 +884,13 @@ export function AnimationViewer({
     const baseTracks = selectedAnimationInfo.clip.tracks.filter(
       (track) => track !== selectedTrack,
     );
+    const nextTrack = selectedTrack.clone();
+    nextTrack.times = new Float32Array(nextTimes);
+    nextTrack.values = new Float32Array(nextValues);
     const nextTracks =
       nextTimes.length === 0
         ? baseTracks
-        : [
-            ...baseTracks,
-            (() => {
-              const nextTrack = selectedTrack.clone();
-              nextTrack.times = new Float32Array(nextTimes);
-              nextTrack.values = new Float32Array(nextValues);
-              return nextTrack;
-            })(),
-          ];
+        : [...baseTracks, nextTrack];
     const nextClip = new AnimationClip(
       selectedAnimationInfo.name,
       selectedAnimationInfo.duration,

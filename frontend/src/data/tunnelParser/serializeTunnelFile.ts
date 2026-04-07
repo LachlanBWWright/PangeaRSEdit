@@ -7,9 +7,11 @@
 import { Result, ok, err } from "neverthrow";
 
 function tryFn<T>(fn: () => T): Result<T, Error> {
-  return Result.fromThrowable(fn, (e) =>
-    e instanceof Error ? e : new Error(String(e)),
-  )();
+  try {
+    return ok(fn());
+  } catch (e) {
+    return err(e instanceof Error ? e : new Error(String(e)));
+  }
 }
 import type {
   TunnelData,

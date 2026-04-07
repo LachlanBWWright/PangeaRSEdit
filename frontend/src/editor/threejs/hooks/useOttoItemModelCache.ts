@@ -161,7 +161,7 @@ function loadFileGltf(worker: Worker, fileUrl: string): Promise<GLTF> {
   const cached = fileGltfCache.get(fileUrl);
   if (cached) return cached;
 
-  const promise = (async () => {
+  const createPromise = async () => {
     const fetchResult = await ResultAsync.fromPromise(
       fetch(fileUrl),
       (e) => (e instanceof Error ? e : new Error(String(e))),
@@ -213,7 +213,9 @@ function loadFileGltf(worker: Worker, fileUrl: string): Promise<GLTF> {
 
     URL.revokeObjectURL(glbUrl);
     return gltf;
-  })();
+  };
+
+  const promise = createPromise();
 
   // Cache the promise so concurrent requests share the same load
   fileGltfCache.set(fileUrl, promise);

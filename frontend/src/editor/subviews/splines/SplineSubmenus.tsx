@@ -35,48 +35,62 @@ import {
 import { Label } from "@/components/ui/label";
 import { useMemo } from "react";
 import { detectSplineType, SplineType } from "@/data/splines/splineTypeDetection";
+import { EmptyDataPrompt } from "../EmptyDataPrompts";
 
 export function AddNewSplineMenu({
   setSplineData,
+  hasSplines,
 }: {
   setSplineData: Updater<SplineData>;
+  hasSplines: boolean;
 }) {
+  const [, setSelectedSpline] = useAtom(SelectedSpline);
+  const [, setSelectedSplineItem] = useAtom(SelectedSplineItem);
+
   return (
-    <>
-      <Button
-        onClick={() => {
-          setSplineData((splineData) => {
-            splineData.Spln[1000].obj.push({
-              bbBottom: 200,
-              bbLeft: 100,
-              bbRight: 200,
-              bbTop: 100,
-              numItems: 0,
-              numNubs: 3,
-              numPoints: 200,
-            });
-            const splinePos =
-              SPLINE_KEY_BASE + splineData.Spln[1000].obj.length - 1;
+    <EmptyDataPrompt
+      title={hasSplines ? "No Spline Selected" : "No Splines"}
+      description={
+        hasSplines
+          ? "Select a spline on the canvas or add another one."
+          : "This level doesn't have any splines yet. Add your first spline to get started."
+      }
+      buttonText={hasSplines ? "Add New Spline" : "Add First Spline"}
+      onInitialize={() => {
+        setSplineData((splineData) => {
+          const nextSplineIndex = splineData.Spln[1000].obj.length;
 
-            splineData.SpIt[splinePos] = { obj: [] };
-            splineData.SpNb[splinePos] = {
-              obj: [
-                { x: 100, z: 200 },
-                { x: 150, z: 100 },
-                { x: 200, z: 200 },
-                { x: 100, z: 200 },
-              ],
-            };
-
-            splineData.SpPt[splinePos] = {
-              obj: getPoints(splineData.SpNb[splinePos].obj),
-            };
+          splineData.Spln[1000].obj.push({
+            bbBottom: 200,
+            bbLeft: 100,
+            bbRight: 200,
+            bbTop: 100,
+            numItems: 0,
+            numNubs: 3,
+            numPoints: 200,
           });
-        }}
-      >
-        Add New Spline
-      </Button>
-    </>
+          const splinePos = SPLINE_KEY_BASE + nextSplineIndex;
+
+          splineData.SpIt[splinePos] = { obj: [] };
+          splineData.SpNb[splinePos] = {
+            obj: [
+              { x: 100, z: 200 },
+              { x: 150, z: 100 },
+              { x: 200, z: 200 },
+              { x: 100, z: 200 },
+            ],
+          };
+
+          splineData.SpPt[splinePos] = {
+            obj: getPoints(splineData.SpNb[splinePos].obj),
+          };
+
+          setSelectedSpline(nextSplineIndex);
+          setSelectedSplineItem(undefined);
+        });
+      }}
+      fillHeight
+    />
   );
 }
 
@@ -110,12 +124,85 @@ export function EditSplineItemMenu({
     [filterToSafe, safeSplineItemTypes, allSplineItemValues],
   );
 
-  if (selectedSpline === undefined) return <p>No Selected Spline</p>;
-  if (selectedSplineItem === undefined) return <></>;
+  if (selectedSplineItem === undefined) {
+    const hasSplineItems = splineItemData.length > 0;
+    return (
+      <EmptyDataPrompt
+        title={hasSplineItems ? "No Spline Item Selected" : "No Spline Items"}
+        description={
+          hasSplineItems
+            ? "Select a spline item to edit or add another one."
+            : "This spline doesn't have any items yet. Add your first spline item to get started."
+        }
+        buttonText={hasSplineItems ? "Add New Spline Item" : "Add First Spline Item"}
+        onInitialize={() => {
+          setSplineData((splineData) => {
+            if (selectedSpline === undefined) return;
+            const splineItems =
+              splineData.SpIt[SPLINE_KEY_BASE + selectedSpline]?.obj;
+            if (!splineItems) return;
+            splineItems.push({
+              placement: 0,
+              type: 0,
+              p0: 0,
+              p1: 0,
+              p2: 0,
+              p3: 0,
+              flags: 0,
+            });
+            const newItemIndex = splineItems.length - 1;
+            const spline = splineData.Spln[1000]?.obj?.[selectedSpline];
+            if (spline) {
+              spline.numItems = splineItems.length;
+            }
+            setSelectedSplineItem(newItemIndex);
+          });
+        }}
+        fillHeight
+      />
+    );
+  }
 
   const currentSplineItemData = splineItemData.at(selectedSplineItem);
 
-  if (currentSplineItemData === undefined) return <></>;
+  if (currentSplineItemData === undefined) {
+    const hasSplineItems = splineItemData.length > 0;
+    return (
+      <EmptyDataPrompt
+        title={hasSplineItems ? "No Spline Item Selected" : "No Spline Items"}
+        description={
+          hasSplineItems
+            ? "Select a spline item to edit or add another one."
+            : "This spline doesn't have any items yet. Add your first spline item to get started."
+        }
+        buttonText={hasSplineItems ? "Add New Spline Item" : "Add First Spline Item"}
+        onInitialize={() => {
+          setSplineData((splineData) => {
+            if (selectedSpline === undefined) return;
+            const splineItems =
+              splineData.SpIt[SPLINE_KEY_BASE + selectedSpline]?.obj;
+            if (!splineItems) return;
+            splineItems.push({
+              placement: 0,
+              type: 0,
+              p0: 0,
+              p1: 0,
+              p2: 0,
+              p3: 0,
+              flags: 0,
+            });
+            const newItemIndex = splineItems.length - 1;
+            const spline = splineData.Spln[1000]?.obj?.[selectedSpline];
+            if (spline) {
+              spline.numItems = splineItems.length;
+            }
+            setSelectedSplineItem(newItemIndex);
+          });
+        }}
+        fillHeight
+      />
+    );
+  }
   const currentSplineItemParams =
     TerrainItemTypeParams[currentSplineItemData.type];
 
