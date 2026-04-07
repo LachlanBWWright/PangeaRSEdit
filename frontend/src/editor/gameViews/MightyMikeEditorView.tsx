@@ -18,6 +18,7 @@ import { MightyMikeKonvaView } from "../canvas/MightyMikeKonvaView";
 import { View } from "../viewEnum";
 import { ItemFilterToggle } from "../subviews/filters/ItemFilterToggle";
 import { EditorCanvasControls } from "../subviews/EditorCanvasControls";
+import { MenuSection } from "./MenuSection";
 import {
   createNonNullUpdater,
   createUndoRedoKeyHandler,
@@ -27,6 +28,7 @@ import {
 import { applyResizeToAtomicData } from "../utils/levelResizeHandlers";
 import { Globals } from "@/data/globals/globals";
 import { useAtomValue, useSetAtom } from "jotai";
+import { editorNavbarTabsAtom } from "@/data/globals/editorNavbarAtoms";
 import type { MightyMikeEditorViewProps } from "../utils/editorViewTypes";
 import {
   ItemData,
@@ -66,6 +68,7 @@ export function MightyMikeEditorView({
 }: MightyMikeEditorViewProps) {
   const globals = useAtomValue(Globals);
   const setCurrentScene = useSetAtom(CurrentScene);
+  const setEditorNavbarTabs = useSetAtom(editorNavbarTabsAtom);
   // Default to items view since MightyMike doesn't have fences
   const [view, setView] = useState<View>(View.items);
   const [stage, setStage] = useImmer({ scale: 1, x: 0, y: 0 });
@@ -83,6 +86,17 @@ export function MightyMikeEditorView({
   useEffect(() => {
     setCurrentScene(getCurrentSceneFromTerrainData(terrainData));
   }, [setCurrentScene, terrainData]);
+
+  useEffect(() => {
+    setEditorNavbarTabs(
+      <MightyMikeEditorToolbar
+        view={view}
+        setView={setView}
+        compact
+      />,
+    );
+    return () => setEditorNavbarTabs(null);
+  }, [setEditorNavbarTabs, view, setView]);
 
   const zoomIn = useMemo(() => createZoomInHandler(setStage), [setStage]);
   const zoomOut = useMemo(() => createZoomOutHandler(setStage), [setStage]);
@@ -121,11 +135,7 @@ export function MightyMikeEditorView({
 
   return (
     <div className="flex flex-col flex-1 w-full gap-2 min-h-0">
-      <MightyMikeEditorToolbar
-        view={view}
-        setView={setView}
-      />
-      <div className="h-80 overflow-y-auto border-b border-gray-600">
+      <MenuSection className="border-b border-gray-600">
         {view === View.items && itemData && (
           <MightyMikeItemMenu
             itemData={itemData}
@@ -148,7 +158,7 @@ export function MightyMikeEditorView({
         {view === View.tiles && (
           <MightyMikeAltMapEditorPanel />
         )}
-      </div>
+      </MenuSection>
       <div className="w-full min-h-0 flex-1 border-2 border-black overflow-clip relative">
         <div className="absolute top-2 right-2 z-10 flex gap-2">
           <EditorCanvasControls

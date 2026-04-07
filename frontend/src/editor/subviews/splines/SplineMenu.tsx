@@ -50,7 +50,7 @@ export const SplineMenu = memo(function SplineMenu({
       : null;
 
   return (
-    <div className="flex flex-col gap-2">
+    <div className="flex flex-col gap-2 min-h-full">
       {splineItemData === null || splineItemData === undefined ? (
         <AddNewSplineMenu setSplineData={setSplineData} />
       ) : (
@@ -80,7 +80,7 @@ export const SplineMenu = memo(function SplineMenu({
         </Select>
       )}
 
-      <div className="flex flex-col gap-2">
+      <div className="flex flex-col gap-2 flex-1 min-h-0">
         {splineItemData && (
           <EditSplineItemMenu
             splineItemData={splineItemData}

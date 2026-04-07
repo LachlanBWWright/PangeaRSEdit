@@ -15,25 +15,27 @@ interface Props {
   view: View;
   setView: (v: View) => void;
   terrainHasSTgd?: boolean;
+  compact?: boolean;
 }
 
 export const StandardEditorToolbar = memo(function StandardEditorToolbar({
   view,
   setView,
   terrainHasSTgd,
+  compact,
 }: Props) {
   const currentValue =
     view === View.fences
       ? "fences"
       : view === View.water
-      ? "water"
-      : view === View.items
-      ? "items"
-      : view === View.splines
-      ? "splines"
-      : view === View.tiles
-      ? "tiles"
-      : "supertiles";
+        ? "water"
+        : view === View.items
+          ? "items"
+          : view === View.splines
+            ? "splines"
+            : view === View.tiles
+              ? "tiles"
+              : "supertiles";
 
   const handleValueChange = (value: string) => {
     if (value === "fences") setView(View.fences);
@@ -46,19 +48,39 @@ export const StandardEditorToolbar = memo(function StandardEditorToolbar({
 
   return (
     <>
-      <Tabs value={currentValue} onValueChange={handleValueChange}>
-        <TabsList className="grid grid-flow-col auto-cols-fr gap-2 w-full overflow-clip">
-          <TabsTrigger className="w-full" value="fences">Fences</TabsTrigger>
-          <TabsTrigger className="w-full" value="water">Water</TabsTrigger>
-          <TabsTrigger className="w-full" value="items">Items</TabsTrigger>
-          <TabsTrigger className="w-full" value="splines">Splines</TabsTrigger>
-          <TabsTrigger className="w-full" value="tiles">Tiles</TabsTrigger>
+      <Tabs
+        className="flex-1"
+        value={currentValue}
+        onValueChange={handleValueChange}
+      >
+        <TabsList
+          className={
+            compact
+              ? "grid grid-flow-col auto-cols-fr w-full overflow-clip"
+              : "grid grid-flow-col auto-cols-max gap-2 w-max min-w-max overflow-x-auto"
+          }
+        >
+          <TabsTrigger className="w-full" value="fences">
+            Fences
+          </TabsTrigger>
+          <TabsTrigger className="w-full" value="water">
+            Water
+          </TabsTrigger>
+          <TabsTrigger className="w-full" value="items">
+            Items
+          </TabsTrigger>
+          <TabsTrigger className="w-full" value="splines">
+            Splines
+          </TabsTrigger>
+          <TabsTrigger className="w-full" value="tiles">
+            Tiles
+          </TabsTrigger>
           <TabsTrigger className="w-full" value="supertiles" disabled={!terrainHasSTgd}>
             Supertiles
           </TabsTrigger>
         </TabsList>
       </Tabs>
-      <Separator />
+      {!compact && <Separator />}
     </>
   );
 });

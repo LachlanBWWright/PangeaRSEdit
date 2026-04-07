@@ -13,7 +13,7 @@ import {
 } from "../../../data/items/itemAtoms";
 import { TerrainItemTypeParams } from "../../../data/items/ottoItemType";
 import type { FlagDescription, ParamDescription } from "../../../data/items/itemParams";
-import { parseU16, parseU8 } from "../../../utils/numberParsers";
+import { parseU8 } from "../../../utils/numberParsers";
 import { memo, useCallback, useEffect, useMemo } from "react";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -87,11 +87,11 @@ export const ItemMenu = memo(function ItemMenu({
   }, [selectedItem, setItemData, setSelectedItem]);
 
   return (
-    <div className="flex flex-col gap-2">
+    <div className="flex flex-col gap-2 min-h-full">
       {selectedItemData === null || selectedItemData === undefined ? (
         <AddItemMenu />
       ) : (
-        <div className="grid grid-cols-[auto_1fr_auto_1fr] gap-x-2 gap-y-1 items-center text-sm">
+        <div className="grid grid-cols-[auto_1fr_auto_1fr] gap-x-2 gap-y-1 items-center text-sm flex-1 min-h-0">
           <span className="text-gray-400">X</span>
           <Input
             type="number"
@@ -125,7 +125,7 @@ export const ItemMenu = memo(function ItemMenu({
         </div>
       )}
 
-      <div className="flex flex-col gap-2">
+      <div className="flex flex-col gap-2 flex-1 min-h-0">
         {selectedItemData !== null && selectedItemData !== undefined && (
           <>
             <Select
@@ -168,29 +168,6 @@ export const ItemMenu = memo(function ItemMenu({
             )}
 
             <div className="grid grid-cols-[auto_1fr_auto_1fr] gap-2 items-baseline">
-              <ParamTooltip
-                label={
-                  <span className="text-baseline align-text-bottom">Flags</span>
-                }
-                tooltip={
-                  selectedItemParams?.flags ?? "Unknown"
-                }
-              />
-              <Input
-                type="number"
-                className="col-span-3"
-                value={selectedItemData.flags.toString()}
-                onChange={(e) => {
-                  setItemData((draft) => {
-                    if (selectedItem === undefined) return;
-                    const item = draft.Itms[1000]?.obj?.[selectedItem];
-                    if (item) {
-                      item.flags = parseU16(e.target.value);
-                    }
-                  });
-                }}
-              />
-
               {/* Param 0-3, refactored */}
               {([0, 1, 2, 3] as const).map((i) => {
                 const paramKey = `p${i}` as const;

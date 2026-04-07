@@ -95,7 +95,7 @@ export const MightyMikeItemMenu = memo(function MightyMikeItemMenu({
   if (itemData.Itms === undefined) return null;
 
   return (
-    <div className="flex flex-col gap-2">
+    <div className="flex flex-col gap-2 min-h-full">
       {/* Global Toggle for Item Images */}
       <Button
         size="sm"
@@ -116,7 +116,7 @@ export const MightyMikeItemMenu = memo(function MightyMikeItemMenu({
         )}
       </Button>
 
-      <div className="grid grid-cols-[auto_1fr_auto] items-center gap-2">
+      <div className="grid grid-cols-[auto_1fr_auto] items-center gap-2 flex-1 min-h-0">
         <label className="text-sm font-medium">Scene</label>
         <Select
           value={currentScene ?? ""}
@@ -154,7 +154,7 @@ export const MightyMikeItemMenu = memo(function MightyMikeItemMenu({
         </div>
       )}
 
-      <div className="flex flex-col gap-2">
+      <div className="flex flex-col gap-2 flex-1 min-h-0">
         {selectedItemData !== null && selectedItemData !== undefined && (
           <>
             <Select

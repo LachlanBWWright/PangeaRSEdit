@@ -11,6 +11,14 @@ import { UploadPrompt } from "./UploadPrompt";
 import { EditorView } from "./EditorView";
 import { TunnelEditor } from "./tunnel/TunnelEditor";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Updater, useImmer } from "use-immer";
 import {
   Globals,
@@ -45,10 +53,13 @@ import {
   DEFAULT_OTTO_LEVEL,
   inferLevelNumberFromFilename,
 } from "./utils/ottoLevelNumbers";
-import {
-  GAME_PORT_CONFIGS,
-} from "./utils/gamePortConfig";
+import { GAME_PORT_CONFIGS } from "./utils/gamePortConfig";
 import { serializePrimaryMapBlob } from "@/data/saveMap/saveMap";
+import {
+  editorNavbarActionsAtom,
+  editorNavbarLeftAtom,
+  editorNavbarOpenAtom,
+} from "@/data/globals/editorNavbarAtoms";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -62,6 +73,9 @@ export interface DataHistory {
 export function IntroPrompt() {
   const globals = useAtomValue(Globals);
   const setGlobals = useSetAtom(Globals);
+  const setEditorNavbarOpen = useSetAtom(editorNavbarOpenAtom);
+  const setEditorNavbarLeft = useSetAtom(editorNavbarLeftAtom);
+  const setEditorNavbarActions = useSetAtom(editorNavbarActionsAtom);
 
   // Atomic data types instead of monolithic data
   const [headerData, setHeaderData] = useImmer<HeaderData | null>(null);
@@ -97,10 +111,13 @@ export function IntroPrompt() {
   );
   const [processed, setProcessed] = useState(false);
   const [testDialogOpen, setTestDialogOpen] = useState(false);
+  const [newMapConfirmOpen, setNewMapConfirmOpen] = useState(false);
   const [ottoLevelNumber, setOttoLevelNumber] = useState(DEFAULT_OTTO_LEVEL);
   const [terrainRsrcBlob, setTerrainRsrcBlob] = useState<Blob | null>(null);
   const [terrainDataBlob, setTerrainDataBlob] = useState<Blob | null>(null);
-  const [terrainDataBase64, setTerrainDataBase64] = useState<string | null>(null);
+  const [terrainDataBase64, setTerrainDataBase64] = useState<string | null>(
+    null,
+  );
   // Helper to get current atomic data
   const getCurrentAtomicData = useCallback((): AtomicLevelData => {
     return {
@@ -295,17 +312,16 @@ export function IntroPrompt() {
     // Strip HTMLCanvasElement references (e.g. tileset.tileImages, collisionImages) before cloning
     const rawCombined = combinedDataResult.value;
     const rawTileset = rawCombined.tileset;
-    const cloneableCombined =
-      isRecord(rawTileset)
-        ? {
-            ...rawCombined,
-            tileset: Object.fromEntries(
-              Object.entries(rawTileset).filter(
-                ([key]) => key !== "tileImages" && key !== "collisionImages",
-              ),
+    const cloneableCombined = isRecord(rawTileset)
+      ? {
+          ...rawCombined,
+          tileset: Object.fromEntries(
+            Object.entries(rawTileset).filter(
+              ([key]) => key !== "tileImages" && key !== "collisionImages",
             ),
-          }
-        : rawCombined;
+          ),
+        }
+      : rawCombined;
     const combinedData = structuredClone(cloneableCombined);
 
     //TODO: Find better solution
@@ -418,7 +434,9 @@ export function IntroPrompt() {
     if (globals.DATA_TYPE === DataType.TRT_FILE) {
       if (mapImagesFile) {
         const trtBuffer = await mapImagesFile.arrayBuffer();
-        const trtBlob = new Blob([trtBuffer], { type: "application/octet-stream" });
+        const trtBlob = new Blob([trtBuffer], {
+          type: "application/octet-stream",
+        });
         const trtUrl = URL.createObjectURL(trtBlob);
         const trtLink = document.createElement("a");
         trtLink.href = trtUrl;
@@ -661,12 +679,79 @@ export function IntroPrompt() {
   const handleDownload = useCallback(() => {
     const combinedDataResult = combineLevelData(getCurrentAtomicData());
     if (combinedDataResult.isOk()) {
-      const combinedData = prepareDownloadData(combinedDataResult.value, globals);
+      const combinedData = prepareDownloadData(
+        combinedDataResult.value,
+        globals,
+      );
       setAllAtomicData(splitLevelData(combinedData));
     }
     setBlockHistoryUpdate(true);
     setProcessed(true);
   }, [getCurrentAtomicData, globals, setAllAtomicData, setBlockHistoryUpdate]);
+
+  const handleConfirmNewMap = useCallback(() => {
+    setNewMapConfirmOpen(false);
+    clearAllState();
+  }, [clearAllState]);
+
+  useEffect(() => {
+    const left =
+      mapFile && mapImages ? (
+        <Button onClick={() => setNewMapConfirmOpen(true)}>←New Map</Button>
+      ) : null;
+    const editorActions =
+      mapFile && mapImages ? (
+        <>
+          {GAME_PORT_CONFIGS[globals.GAME_TYPE] && (
+            <Button
+              data-testid="test-level-button"
+              variant="outline"
+              onClick={handleTestLevel}
+            >
+              Preview in Game
+            </Button>
+          )}
+          <Button data-testid="download-button" onClick={handleDownload}>
+            Download
+          </Button>
+          {GAME_PORT_CONFIGS[globals.GAME_TYPE] && (
+            <TestGameDialog
+              open={testDialogOpen}
+              onOpenChange={setTestDialogOpen}
+              gameType={globals.GAME_TYPE}
+              levelNumber={ottoLevelNumber}
+              onLevelNumberChange={setOttoLevelNumber}
+              terrainRsrcBlob={terrainRsrcBlob}
+              terrainDataBlob={terrainDataBlob}
+              terrainDataBase64={terrainDataBase64}
+            />
+          )}
+        </>
+      ) : null;
+
+    setEditorNavbarOpen(Boolean(left || editorActions));
+    setEditorNavbarLeft(left);
+    setEditorNavbarActions(editorActions);
+    return () => {
+      setEditorNavbarOpen(false);
+      setEditorNavbarLeft(null);
+      setEditorNavbarActions(null);
+    };
+  }, [
+    globals.GAME_TYPE,
+    handleDownload,
+    handleTestLevel,
+    mapFile,
+    mapImages,
+    ottoLevelNumber,
+    setEditorNavbarActions,
+    setEditorNavbarLeft,
+    setEditorNavbarOpen,
+    terrainDataBlob,
+    terrainDataBase64,
+    terrainRsrcBlob,
+    testDialogOpen,
+  ]);
 
   // If we have tunnel data, show the tunnel editor
   if (tunnelData) {
@@ -696,43 +781,26 @@ export function IntroPrompt() {
     );
   return (
     <div className="flex flex-col gap-2 text-white overflow-auto min-w-full p-2 md:p-6 h-[calc(100vh-56px)]">
-      <div className="flex flex-row items-center justify-center gap-2 mx-auto w-full">
-        <Button onClick={clearAllState}>←New Map</Button>
-        <div className="flex-1" />
-
-        {GAME_PORT_CONFIGS[globals.GAME_TYPE] && (
-          <Button
-            data-testid="test-level-button"
-            variant="outline"
-            onClick={handleTestLevel}
-          >
-            Preview in Game
-          </Button>
-        )}
-
-        {/* Download — always rightmost */}
-        <Button
-          data-testid="download-button"
-          onClick={handleDownload}
-        >
-          Download
-        </Button>
-
-        {/* TestGameDialog lives outside the toolbar; always rendered when port config exists */}
-        {GAME_PORT_CONFIGS[globals.GAME_TYPE] && (
-        <TestGameDialog
-          open={testDialogOpen}
-          onOpenChange={setTestDialogOpen}
-          gameType={globals.GAME_TYPE}
-          levelNumber={ottoLevelNumber}
-          onLevelNumberChange={setOttoLevelNumber}
-          terrainRsrcBlob={terrainRsrcBlob}
-          terrainDataBlob={terrainDataBlob}
-          terrainDataBase64={terrainDataBase64}
-        />
-        )}
-      </div>
-      <hr />
+      <Dialog open={newMapConfirmOpen} onOpenChange={setNewMapConfirmOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Start a new map?</DialogTitle>
+            <DialogDescription>
+              This will clear the current level from the editor. Any unsaved
+              changes will be lost.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setNewMapConfirmOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button onClick={handleConfirmNewMap}>Yes, go back</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       {/* Render editor when we have images; allow some atomic pieces to be null. */}
       {mapImages && headerData && terrainData ? (
         <EditorView

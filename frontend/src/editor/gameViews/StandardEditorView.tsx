@@ -22,6 +22,7 @@ import { ThreeView } from "../threejs/Three";
 import { View } from "../viewEnum";
 import { ItemFilterToggle } from "../subviews/filters/ItemFilterToggle";
 import { EditorCanvasControls } from "../subviews/EditorCanvasControls";
+import { MenuSection } from "./MenuSection";
 import {
   EmptyFencePrompt,
   EmptyWaterPrompt,
@@ -41,6 +42,8 @@ import {
 } from "../utils/editorViewUtils";
 import { applySupertileResizeToAtomicData } from "../utils/levelResizeHandlers";
 import { Globals } from "@/data/globals/globals";
+import { useSetAtom } from "jotai";
+import { editorNavbarTabsAtom } from "@/data/globals/editorNavbarAtoms";
 import type { EditorViewProps } from "../utils/editorViewTypes";
 import {
   ItemData,
@@ -70,6 +73,7 @@ export function StandardEditorView({
 }: EditorViewProps) {
   const canvasViewMode = useAtomValue(CanvasViewMode);
   const globals = useAtomValue(Globals);
+  const setEditorNavbarTabs = useSetAtom(editorNavbarTabsAtom);
   const [view, setView] = useState<View>(View.fences);
   const [stage, setStage] = useImmer({ scale: 1, x: 0, y: 0 });
 
@@ -104,6 +108,18 @@ export function StandardEditorView({
   );
 
   const showSupertileMenu = terrainHasSupertileData(terrainData);
+  useEffect(() => {
+    setEditorNavbarTabs(
+      <StandardEditorToolbar
+        view={view}
+        setView={setView}
+        terrainHasSTgd={showSupertileMenu}
+        compact
+      />,
+    );
+    return () => setEditorNavbarTabs(null);
+  }, [setEditorNavbarTabs, showSupertileMenu, view, setView]);
+
   const handleSupertileResize = (
     direction: "top" | "bottom" | "left" | "right",
     supertileCount: number,
@@ -139,12 +155,7 @@ export function StandardEditorView({
 
   return (
     <div className="flex flex-col flex-1 w-full gap-2 min-h-0">
-      <StandardEditorToolbar
-        view={view}
-        setView={setView}
-        terrainHasSTgd={showSupertileMenu}
-      />
-      <div className="overflow-y-auto">
+      <MenuSection>
         {view === View.fences && (
           fenceData ? (
             <FenceMenu fenceData={fenceData} setFenceData={setFenceDataNotNull} />
@@ -197,7 +208,7 @@ export function StandardEditorView({
             onResizeSupertiles={handleSupertileResize}
           />
         )}
-      </div>
+      </MenuSection>
       <div className="w-full min-h-0 flex-1 border-2 border-black overflow-clip relative">
         <div className="absolute top-2 right-2 z-10 flex gap-2">
           <EditorCanvasControls
