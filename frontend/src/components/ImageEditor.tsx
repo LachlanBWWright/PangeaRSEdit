@@ -12,6 +12,7 @@ import { ToolsPanel } from "./ImageEditor/ToolsPanel";
 import { toast } from "sonner";
 import { ResultAsync } from "neverthrow";
 import Konva from "konva";
+import { mapErr } from "@/utils/mapErr";
 // removed result shim; use direct promise handling
 import { hexToRgb } from "@/utils/colorUtils";
 // Event typing removed - handlers don't need explicit event param here
@@ -277,7 +278,7 @@ export function ImageEditor({
     // Call the save callback
     const saveResult = await ResultAsync.fromPromise(
       customSaveHandler(imageData),
-      (e) => (e instanceof Error ? e : new Error(String(e))),
+      mapErr,
     );
     if (saveResult.isErr()) {
       console.error("Error saving edited image:", saveResult.error);
@@ -482,7 +483,7 @@ export function ImageEditor({
                 <Button
                   size="sm"
                   variant="ghost"
-                  className="h-8 px-2 text-[11px] font-medium hover:bg-gray-700 text-gray-300 min-w-[3rem]"
+                  className="h-8 px-2 text-[11px] font-medium hover:bg-gray-700 text-gray-300 min-w-12"
                   onClick={resetZoom}
                 >
                   {Math.round(scale * 100)}%

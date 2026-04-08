@@ -14,6 +14,7 @@ import type { SkeletonResource } from "../python/structSpecs/skeleton/skeletonIn
 import { toast } from "sonner";
 import { DropArea } from "./SkeletonConversionPanel/DropArea";
 import { ResultAsync } from "neverthrow";
+import { mapErr } from "@/utils/mapErr";
 
 interface SkeletonConversionPanelProps {
   title: string;
@@ -52,10 +53,10 @@ export function SkeletonConversionPanel({
       }.`,
     );
 
-    try {
+    await (async () => {
       const bg3dResult = await ResultAsync.fromPromise(
         bg3dFile.arrayBuffer(),
-        (e) => (e instanceof Error ? e : new Error(String(e))),
+        mapErr,
       );
       if (bg3dResult.isErr()) {
         const message = `Failed to read model file: ${bg3dResult.error.message}`;
@@ -73,7 +74,7 @@ export function SkeletonConversionPanel({
         pushLog(`Reading skeleton file ${skeletonFile.name}.`);
         const skeletonRawResult = await ResultAsync.fromPromise(
           skeletonFile.arrayBuffer(),
-          (e) => (e instanceof Error ? e : new Error(String(e))),
+          mapErr,
         );
         if (skeletonRawResult.isErr()) {
           const message = `Failed to read skeleton file: ${skeletonRawResult.error.message}`;
@@ -90,7 +91,7 @@ export function SkeletonConversionPanel({
         pushLog("Parsing skeleton resource.");
         const skeletonParseResult = await ResultAsync.fromPromise(
           parseSkeletonRsrc(skeletonRawBuffer),
-          (e) => (e instanceof Error ? e : new Error(String(e))),
+          mapErr,
         );
         if (skeletonParseResult.isErr()) {
           const message = `Failed to parse skeleton file: ${skeletonParseResult.error.message}`;
@@ -273,14 +274,14 @@ export function SkeletonConversionPanel({
         setPendingBg3dFile(null);
         pushLog("Conversion completed successfully.");
       }
-    } catch (error) {
+    })().catch((error: unknown) => {
       const message = error instanceof Error ? error.message : String(error);
       pushLog(`Unexpected conversion error: ${message}`);
       toast.dismiss(toastId);
       toast.error(`${title} conversion failed: ${message}`);
-    } finally {
+    }).finally(() => {
       setLoading(false);
-    }
+    });
   };
 
   const handleBg3dFileSelect = async (bg3dFile: File) => {

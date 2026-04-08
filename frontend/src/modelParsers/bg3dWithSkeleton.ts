@@ -1,6 +1,7 @@
 // bg3dWithSkeleton.ts
 // Combined parser for BG3D/3DMF files with skeleton data
 
+import { mapErr } from "@/utils/mapErr";
 import {
   parseBG3D,
   BG3DParseResult,
@@ -13,7 +14,6 @@ import { parseSkeletonRsrc } from "./skeletonRsrc/parseSkeletonRsrcTS";
 import type { SkeletonResource } from "../python/structSpecs/skeleton/skeletonInterface";
 import { err, ok, ResultAsync, type Result } from "neverthrow";
 
-const mapErr = (e: unknown) => (e instanceof Error ? e : new Error(String(e)));
 
 /**
  * Detect if a buffer is a 3DMF file based on magic number

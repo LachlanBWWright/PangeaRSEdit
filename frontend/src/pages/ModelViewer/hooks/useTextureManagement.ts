@@ -1,3 +1,4 @@
+import { mapErr } from "@/utils/mapErr";
 /**
  * Custom hook for texture replacement and editing operations
  *
@@ -24,7 +25,6 @@ import { rgba8ToArgb16 } from "../../../modelParsers/image/pngArgb";
 import type { Texture } from "../types";
 import { ResultAsync } from "neverthrow";
 
-const mapErr = (e: unknown) => (e instanceof Error ? e : new Error(String(e)));
 
 /**
  * Configuration for the useTextureManagement hook
@@ -294,7 +294,7 @@ export function useTextureManagement(options: UseTextureManagementOptions) {
                     }
                   }, "image/png");
                 }),
-                (e) => (e instanceof Error ? e : new Error(String(e))),
+                mapErr,
               );
       if (blobResult.isErr()) {
         console.error("Error editing texture:", blobResult.error);

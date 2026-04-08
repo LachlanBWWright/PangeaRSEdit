@@ -1,7 +1,6 @@
 import { LevelData, type LevelMetadata } from "@/python/structSpecs/LevelTypes";
 import { Result, ok, err, ResultAsync } from "neverthrow";
 
-const mapErr = (e: unknown) => (e instanceof Error ? e : new Error(String(e)));
 import {
   parseNanosaur1Level,
   nanosaur1LevelToLevelData,
@@ -9,6 +8,7 @@ import {
 import { splitLevelData, AtomicLevelData } from "@/data/utils/levelDataUtils";
 import type { GlobalsInterface } from "@/data/globals/globals";
 import { validateLevelDataForGame } from "@/validation/validateLevelForGame";
+import { mapErr } from "@/utils/mapErr";
 
 export async function parseNanosaurLevelFile(
   file: Blob,

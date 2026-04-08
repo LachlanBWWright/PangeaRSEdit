@@ -1,3 +1,4 @@
+import { mapErr } from "@/utils/mapErr";
 /**
  * File download and export utilities for the ModelViewer
  *
@@ -15,7 +16,6 @@ import { getGlbToBg3dWorkerResponse } from "./bg3dGltfWorkerResponses";
 import type { Texture } from "../types";
 import { ResultAsync, err, ok, type Result } from "neverthrow";
 
-const mapErr = (e: unknown) => (e instanceof Error ? e : new Error(String(e)));
 
 async function loadGlbBytes(
   gltfSource: string | ArrayBuffer,
@@ -26,7 +26,7 @@ async function loadGlbBytes(
 
   const responseResult = await ResultAsync.fromPromise(
     fetch(gltfSource),
-    (e) => (e instanceof Error ? e : new Error(String(e))),
+    mapErr,
   );
   if (responseResult.isErr()) {
     return err(
@@ -42,7 +42,7 @@ async function loadGlbBytes(
 
   const bytesResult = await ResultAsync.fromPromise(
     responseResult.value.arrayBuffer(),
-    (e) => (e instanceof Error ? e : new Error(String(e))),
+    mapErr,
   );
   if (bytesResult.isErr()) {
     return err(

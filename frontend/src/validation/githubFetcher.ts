@@ -5,6 +5,7 @@
  * Includes caching to avoid rate limiting and retry logic for reliability.
  */
 
+import { mapErr } from "@/utils/mapErr";
 import { err, ok, ResultAsync, type Result } from "neverthrow";
 import { GAME_REPOSITORIES, type GameRepository } from "./gameRepositories";
 
@@ -63,7 +64,7 @@ export async function fetchGitHubFile(
       await delay(rateLimitConfig.retryDelay * Math.pow(2, attempt - 1));
     }
 
-    const fetchResult = await ResultAsync.fromPromise(fetch(url), (e) => (e instanceof Error ? e : new Error(String(e))));
+    const fetchResult = await ResultAsync.fromPromise(fetch(url), mapErr);
     if (fetchResult.isErr()) {
       lastError = fetchResult.error;
       continue;
@@ -83,7 +84,7 @@ export async function fetchGitHubFile(
       return err(new Error(`HTTP ${response.status}: ${response.statusText}`));
     }
 
-    const textResult = await ResultAsync.fromPromise(response.text(), (e) => (e instanceof Error ? e : new Error(String(e))));
+    const textResult = await ResultAsync.fromPromise(response.text(), mapErr);
     if (textResult.isErr()) {
       lastError = textResult.error;
       continue;

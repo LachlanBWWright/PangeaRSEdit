@@ -1,3 +1,4 @@
+import { mapErr } from "@/utils/mapErr";
 /**
  * Custom hook for handling BG3D/3DMF file uploads
  *
@@ -30,7 +31,6 @@ import type { SkeletonResource } from "../../../python/structSpecs/skeleton/skel
 import type { Texture } from "../types";
 import { ResultAsync, ok, err, type Result } from "neverthrow";
 
-const mapErr = (e: unknown) => (e instanceof Error ? e : new Error(String(e)));
 
 function isSkeletonFileName(fileName: string): boolean {
   const lowerCaseName = fileName.toLowerCase();
@@ -163,7 +163,7 @@ export function useFileUpload(options: UseFileUploadOptions) {
       if (isGlb) {
         const glbBufferResult = await ResultAsync.fromPromise(
           bg3dFile.arrayBuffer(),
-          (e) => (e instanceof Error ? e : new Error(String(e))),
+          mapErr,
         );
         if (glbBufferResult.isErr()) {
           const message = `Failed to read GLB file: ${glbBufferResult.error.message}`;
@@ -193,7 +193,7 @@ export function useFileUpload(options: UseFileUploadOptions) {
 
         const workerResult = await ResultAsync.fromPromise(
           workerPromise,
-          (e) => (e instanceof Error ? e : new Error(String(e))),
+          mapErr,
         );
         if (workerResult.isErr()) {
           const message =
@@ -247,7 +247,7 @@ export function useFileUpload(options: UseFileUploadOptions) {
       if (is3dmf) {
         const dmfBufferResult = await ResultAsync.fromPromise(
           bg3dFile.arrayBuffer(),
-          (e) => (e instanceof Error ? e : new Error(String(e))),
+          mapErr,
         );
         if (dmfBufferResult.isErr()) {
           const message = `Failed to read 3DMF file: ${dmfBufferResult.error.message}`;
@@ -263,7 +263,7 @@ export function useFileUpload(options: UseFileUploadOptions) {
         if (skeletonFile) {
             const skeletonBufferResult = await ResultAsync.fromPromise(
               skeletonFile.arrayBuffer(),
-              (e) => (e instanceof Error ? e : new Error(String(e))),
+              mapErr,
             );
           if (skeletonBufferResult.isErr()) {
             console.error(
@@ -277,7 +277,7 @@ export function useFileUpload(options: UseFileUploadOptions) {
           } else {
               const skeletonParseResult = await ResultAsync.fromPromise(
                 parseSkeletonRsrc(skeletonBufferResult.value),
-                (e) => (e instanceof Error ? e : new Error(String(e))),
+                mapErr,
               );
             if (skeletonParseResult.isErr()) {
               console.error(
@@ -328,7 +328,7 @@ export function useFileUpload(options: UseFileUploadOptions) {
 
         const workerResult = await ResultAsync.fromPromise(
           workerPromise,
-          (e) => (e instanceof Error ? e : new Error(String(e))),
+          mapErr,
         );
         if (workerResult.isErr()) {
           const message =
@@ -364,7 +364,7 @@ export function useFileUpload(options: UseFileUploadOptions) {
       // Handle standard BG3D file processing
         const bg3dBufferResult = await ResultAsync.fromPromise(
           bg3dFile.arrayBuffer(),
-          (e) => (e instanceof Error ? e : new Error(String(e))),
+          mapErr,
         );
       if (bg3dBufferResult.isErr()) {
         const message = `Failed to read BG3D file: ${bg3dBufferResult.error.message}`;
@@ -380,7 +380,7 @@ export function useFileUpload(options: UseFileUploadOptions) {
       if (skeletonFile) {
         const skeletonBufferResult = await ResultAsync.fromPromise(
             skeletonFile.arrayBuffer(),
-            (e) => (e instanceof Error ? e : new Error(String(e))),
+            mapErr,
           );
         if (skeletonBufferResult.isErr()) {
           console.error(
@@ -394,7 +394,7 @@ export function useFileUpload(options: UseFileUploadOptions) {
         } else {
           const skeletonParseResult = await ResultAsync.fromPromise(
             parseSkeletonRsrc(skeletonBufferResult.value),
-            (e) => (e instanceof Error ? e : new Error(String(e))),
+            mapErr,
           );
           if (skeletonParseResult.isErr()) {
             console.error("Error parsing skeleton:", skeletonParseResult.error);

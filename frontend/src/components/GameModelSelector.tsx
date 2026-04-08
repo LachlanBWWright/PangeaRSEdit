@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/select";
 import { toast } from "sonner";
 import { ResultAsync } from "neverthrow";
+import { mapErr } from "@/utils/mapErr";
 
 export interface GameModel {
   name: string;
@@ -85,7 +86,7 @@ export function GameModelSelector({
     // Fetch the model file (could be BG3D or 3DMF)
     const bg3dFetchResult = await ResultAsync.fromPromise(
       fetch(selectedModel.bg3dFile),
-      (e) => (e instanceof Error ? e : new Error(String(e))),
+      mapErr,
     );
     if (bg3dFetchResult.isErr()) {
       console.error("Error loading selected model:", bg3dFetchResult.error);
@@ -103,7 +104,7 @@ export function GameModelSelector({
 
     const bg3dBufferResult = await ResultAsync.fromPromise(
       bg3dResponse.arrayBuffer(),
-      (e) => (e instanceof Error ? e : new Error(String(e))),
+      mapErr,
     );
     if (bg3dBufferResult.isErr()) {
       console.error("Error loading selected model:", bg3dBufferResult.error);
@@ -129,7 +130,7 @@ export function GameModelSelector({
     if (selectedModel.skeletonFile && loadSkeletons) {
       const skeletonFetchResult = await ResultAsync.fromPromise(
         fetch(selectedModel.skeletonFile),
-        (e) => (e instanceof Error ? e : new Error(String(e))),
+        mapErr,
       );
       if (skeletonFetchResult.isErr()) {
         console.warn(
@@ -143,7 +144,7 @@ export function GameModelSelector({
         if (skeletonResponse.ok) {
           const skeletonBufferResult = await ResultAsync.fromPromise(
             skeletonResponse.arrayBuffer(),
-            (e) => (e instanceof Error ? e : new Error(String(e))),
+            mapErr,
           );
           if (skeletonBufferResult.isErr()) {
             console.warn(

@@ -13,7 +13,6 @@ import { extractTGAPaletteRaw } from "@/utils/tgaParser";
 import { parseTilesetFile, createTilesetGridPreview, rerenderTilesetWithPalette, RGBColor } from "@/parsers/mightyMikeTilesetParser";
 import { ResultAsync } from "neverthrow";
 
-const mapErr = (e: unknown) => (e instanceof Error ? e : new Error(String(e)));
 
 import { FileUploadPanel } from "./SpriteViewer/components/FileUploadPanel";
 import { MightyMikeAssetBrowser } from "./SpriteViewer/components/MightyMikeAssetBrowser";
@@ -26,6 +25,7 @@ import { TilesetEditor } from "./SpriteViewer/components/TilesetEditor";
 import { MightyMikeTileset } from "@/parsers/mightyMikeTilesetParser";
 import { gMightyMikePalette } from "@/utils/mightyMikePalette";
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
+import { mapErr } from "@/utils/mapErr";
 
 type FileType = "sprites" | "tga" | "tileset";
 type EditMode = "view" | "paint" | "erase" | "eyedropper";

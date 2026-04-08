@@ -4,6 +4,7 @@ import { useRef, useState } from "react";
 import { toast } from "sonner";
 import { ImageEditor } from "./ImageEditor";
 import { ResultAsync } from "neverthrow";
+import { mapErr } from "@/utils/mapErr";
 
 interface Texture {
   name: string;
@@ -41,7 +42,7 @@ export function TextureManager({
 
     const replaceResult = await ResultAsync.fromPromise(
       onReplaceTexture(texture, file),
-      (e) => (e instanceof Error ? e : new Error(String(e))),
+      mapErr,
     );
     if (replaceResult.isErr()) {
       console.error("Failed to replace texture:", replaceResult.error);
@@ -63,7 +64,7 @@ export function TextureManager({
     if (onTextureEdit) {
       const editResult = await ResultAsync.fromPromise(
         onTextureEdit(textureToEdit, editedImageData),
-        (e) => (e instanceof Error ? e : new Error(String(e))),
+        mapErr,
       );
       if (editResult.isErr()) {
         console.error("Error saving edited texture:", editResult.error);
@@ -93,7 +94,7 @@ export function TextureManager({
             else reject(new Error("Failed to convert canvas to blob"));
           }, "image/png");
         }),
-        (e) => (e instanceof Error ? e : new Error(String(e))),
+        mapErr,
       );
       if (blobResult.isErr()) {
         console.error("Failed to convert canvas to blob", blobResult.error);
@@ -107,7 +108,7 @@ export function TextureManager({
 
       const replaceResult = await ResultAsync.fromPromise(
         onReplaceTexture(textureToEdit, file),
-        (e) => (e instanceof Error ? e : new Error(String(e))),
+        mapErr,
       );
       if (replaceResult.isErr()) {
         console.error("Error saving edited texture:", replaceResult.error);

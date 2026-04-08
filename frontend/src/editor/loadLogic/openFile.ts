@@ -10,6 +10,7 @@ import type { AtomicLevelData } from "@/data/utils/levelDataUtils";
 import { parseLevelDataFile } from "./parseLevelDataFile";
 import { toast } from "sonner";
 import { ResultAsync } from "neverthrow";
+import { mapErr } from "@/utils/mapErr";
 
 /**
  * Convert hex string to Uint8Array (browser-compatible)
@@ -64,7 +65,7 @@ export async function openFile({
 
   const levelResponseResult = await ResultAsync.fromPromise(
     fetch(rsrcName),
-    (e) => (e instanceof Error ? e : new Error(String(e))),
+    mapErr,
   );
   if (levelResponseResult.isErr()) {
     toast.error("Failed to download level file", {
@@ -131,7 +132,7 @@ export async function openFile({
   } else if (gameType.DATA_TYPE === DataType.TRT_FILE) {
     const imgResResult = await ResultAsync.fromPromise(
       fetch(url),
-      (e) => (e instanceof Error ? e : new Error(String(e))),
+      mapErr,
     );
     if (imgResResult.isErr() || !imgResResult.value.ok) {
       toast.error("Failed to download texture file", {
@@ -150,7 +151,7 @@ export async function openFile({
   } else if (gameType.DATA_TYPE !== DataType.RSRC_FORK) {
     const imgResResult = await ResultAsync.fromPromise(
       fetch(url),
-      (e) => (e instanceof Error ? e : new Error(String(e))),
+      mapErr,
     );
     if (imgResResult.isErr() || !imgResResult.value.ok) {
       toast.error("Failed to download texture file", {

@@ -6,6 +6,7 @@ import { parseTunnelFile } from "@/data/tunnelParser/parseTunnelFile";
 import type { TunnelData } from "@/data/tunnelParser/types";
 import { toast } from "sonner";
 import { ResultAsync } from "neverthrow";
+import { mapErr } from "@/utils/mapErr";
 
 export function Bugdom2Levels({
   openFile,
@@ -20,7 +21,7 @@ export function Bugdom2Levels({
 
       const responseResult = await ResultAsync.fromPromise(
         fetch(tunnelPath),
-        (e) => (e instanceof Error ? e : new Error(String(e))),
+        mapErr,
       );
       if (responseResult.isErr()) {
         toast.error(`Failed to fetch ${fileName}`, { description: responseResult.error.message });
@@ -36,7 +37,7 @@ export function Bugdom2Levels({
 
        const bufferResult = await ResultAsync.fromPromise(
          response.arrayBuffer(),
-         (e) => (e instanceof Error ? e : new Error(String(e))),
+         mapErr,
        );
        if (bufferResult.isErr()) {
          toast.error("Failed to read response", { description: bufferResult.error.message });

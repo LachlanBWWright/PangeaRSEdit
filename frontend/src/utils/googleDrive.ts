@@ -1,6 +1,6 @@
 import { ResultAsync } from "neverthrow";
+import { mapErr } from "@/utils/mapErr";
 
-const mapErr = (e: unknown) => (e instanceof Error ? e : new Error(String(e)));
 
 export async function uploadFileToGoogleDrive(
   file: File,

@@ -1,3 +1,4 @@
+import { mapErr } from "@/utils/mapErr";
 /**
  * MightyMikeItemMenu.tsx
  *
@@ -75,7 +76,7 @@ export const MightyMikeItemMenu = memo(function MightyMikeItemMenu({
     const loadPreviewImage = async () => {
       const loadResult = await ResultAsync.fromPromise(
         loadItemImage(selectedItemData.type, currentScene),
-        (e) => (e instanceof Error ? e : new Error(String(e))),
+        mapErr,
       );
       if (cancelled) return;
       if (loadResult.isErr()) {

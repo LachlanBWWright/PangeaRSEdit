@@ -1,3 +1,4 @@
+import { mapErr } from "@/utils/mapErr";
 /**
  * Test model loaders for demo and testing purposes
  *
@@ -6,7 +7,6 @@
 
 import { err, ok, type Result, ResultAsync } from "neverthrow";
 
-const mapErr = (e: unknown) => (e instanceof Error ? e : new Error(String(e)));
 
 /**
  * Loads the Otto test model with skeleton
@@ -23,7 +23,7 @@ export async function loadOttoTestModel(): Promise<Result<{
       fetch("/PangeaRSEdit/games/ottomatic/skeletons/Otto.bg3d"),
       fetch("/PangeaRSEdit/games/ottomatic/skeletons/Otto.skeleton.rsrc"),
     ]),
-    (e) => (e instanceof Error ? e : new Error(String(e))),
+    mapErr,
   );
   if (responsesResult.isErr()) {
     return Promise.reject(responsesResult.error);
@@ -36,7 +36,7 @@ export async function loadOttoTestModel(): Promise<Result<{
 
   const bg3dArrayBufferResult = await ResultAsync.fromPromise(
     bg3dResponse.arrayBuffer(),
-    (e) => (e instanceof Error ? e : new Error(String(e))),
+    mapErr,
   );
   if (bg3dArrayBufferResult.isErr()) return Promise.reject(bg3dArrayBufferResult.error);
   const bg3dArrayBuffer = bg3dArrayBufferResult.value;
@@ -48,7 +48,7 @@ export async function loadOttoTestModel(): Promise<Result<{
   if (skeletonResponse.ok) {
     const skeletonArrayBufferResult = await ResultAsync.fromPromise(
       skeletonResponse.arrayBuffer(),
-      (e) => (e instanceof Error ? e : new Error(String(e))),
+      mapErr,
     );
     if (skeletonArrayBufferResult.isErr()) return Promise.reject(skeletonArrayBufferResult.error);
     const skeletonArrayBuffer = skeletonArrayBufferResult.value;

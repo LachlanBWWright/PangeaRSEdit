@@ -1,3 +1,4 @@
+import { mapErr } from "@/utils/mapErr";
 /**
  * Tile Export System
  * 
@@ -220,18 +221,18 @@ export async function exportTilePalette(
     // Draw tile to canvas using createImageBitmap for proper async loading
     const fetched = await ResultAsync.fromPromise(
       fetch(tileResult.value.dataUrl),
-      (e) => (e instanceof Error ? e : new Error(String(e))),
+      mapErr,
     );
     if (fetched.isErr()) continue;
     const blobResult = await ResultAsync.fromPromise(
       fetched.value.blob(),
-      (e) => (e instanceof Error ? e : new Error(String(e))),
+      mapErr,
     );
     if (blobResult.isErr()) continue;
     const blob = blobResult.value;
     const bitmapResult = await ResultAsync.fromPromise(
       createImageBitmap(blob),
-      (e) => (e instanceof Error ? e : new Error(String(e))),
+      mapErr,
     );
     if (bitmapResult.isErr()) continue;
     const bitmap = bitmapResult.value;

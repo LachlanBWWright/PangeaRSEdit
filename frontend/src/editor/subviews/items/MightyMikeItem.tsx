@@ -19,6 +19,7 @@ import {
   ITEM_TAG_GAP,
   ItemTypeNumber,
 } from "../shared/nodeVisuals";
+import { mapErr } from "@/utils/mapErr";
 
 export const MightyMikeItem = memo(function MightyMikeItem({
   itemData,
@@ -74,7 +75,7 @@ export const MightyMikeItem = memo(function MightyMikeItem({
     const loadImageData = async () => {
       const loadResult = await ResultAsync.fromPromise(
         loadItemImage(item.type, currentScene),
-        (e) => (e instanceof Error ? e : new Error(String(e))),
+        mapErr,
       );
 
       if (loadResult.isErr()) {

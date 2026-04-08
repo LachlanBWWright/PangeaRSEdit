@@ -5,6 +5,7 @@
  * Allows selecting a game, model file, and specific model index to load.
  */
 
+import { mapErr } from "@/utils/mapErr";
 import React, { useState, useCallback, useRef, useMemo } from "react";
 import { Canvas } from "@react-three/fiber";
 import { OrbitControls, Grid } from "@react-three/drei";
@@ -25,7 +26,6 @@ import type { BG3DGltfWorkerResponse } from "@/modelParsers/bg3dGltfWorker";
 import { GLTFLoader, type GLTF } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { ResultAsync } from "neverthrow";
 
-const mapErr = (e: unknown) => (e instanceof Error ? e : new Error(String(e)));
 
 /**
  * Describes a model file with its path and label

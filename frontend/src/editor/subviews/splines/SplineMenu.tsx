@@ -91,10 +91,7 @@ export const SplineMenu = memo(function SplineMenu({
           />
         )}
         {splineItemData !== null && splineItemData !== undefined && (
-          <EditSplineMenu
-            splineData={splineData}
-            setSplineData={setSplineData}
-          />
+          <EditSplineMenu setSplineData={setSplineData} />
         )}
       </div>
     </div>

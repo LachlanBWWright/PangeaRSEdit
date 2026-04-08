@@ -1,7 +1,6 @@
 import { LevelData } from "../../python/structSpecs/LevelTypes";
 import { ok, err, ResultAsync, type Result } from "neverthrow";
 
-const mapErr = (e: unknown) => (e instanceof Error ? e : new Error(String(e)));
 import {
   parseMightyMikeMap,
   parseMightyMikeTileSet,
@@ -24,6 +23,7 @@ import { clearItemImageCache } from "../../utils/mightyMikeShapeImageLoader";
 import { MIGHTY_MIKE_SCENES } from "@/data/game/gameAtoms";
 
 import { isRecord, isMightyMikeMap } from "./typeGuards";
+import { mapErr } from "@/utils/mapErr";
 
 function getMightyMikeSceneFromPath(mapFileUrl?: string): string | undefined {
   return MIGHTY_MIKE_SCENES.find((scene) =>

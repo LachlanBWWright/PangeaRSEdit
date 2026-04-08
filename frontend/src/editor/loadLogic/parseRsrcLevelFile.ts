@@ -12,6 +12,7 @@ import {
 } from "@/data/utils/levelDataUtils";
 import { validateLevelDataForGame } from "@/validation/validateLevelForGame";
 import { saveToJson } from "@lachlanbwwright/rsrcdump-ts";
+import { mapErr } from "@/utils/mapErr";
 
 export async function parseRsrcLevelFile(
   file: Blob,
@@ -20,7 +21,7 @@ export async function parseRsrcLevelFile(
 ): Promise<Result<LevelData, Error>> {
   const levelBufferResult = await ResultAsync.fromPromise(
     file.arrayBuffer(),
-    (e) => (e instanceof Error ? e : new Error(String(e))),
+    mapErr,
   );
   if (levelBufferResult.isErr()) return err(levelBufferResult.error);
   const bytes = new Uint8Array(levelBufferResult.value);

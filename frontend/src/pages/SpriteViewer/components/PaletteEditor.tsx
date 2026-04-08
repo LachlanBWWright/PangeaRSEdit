@@ -53,6 +53,7 @@ export function PaletteEditor({
 
   const currentColor =
     editingIndex !== null ? palette.colors[editingIndex] ?? null : null;
+  const currentIndex = editingIndex;
 
   return (
     <div className="space-y-4">
@@ -162,7 +163,7 @@ export function PaletteEditor({
       </Card>
 
       {/* Color Details Editor */}
-      {currentColor ? (
+      {currentColor && currentIndex !== null ? (
         <Card className="bg-gray-800 border-blue-500 shadow-lg">
           <CardHeader className="pb-2">
             <CardTitle className="text-white text-sm flex justify-between items-center">
@@ -182,7 +183,7 @@ export function PaletteEditor({
                 <input
                   type="color"
                   value={rgbToHex(currentColor.r, currentColor.g, currentColor.b)}
-                  onChange={(e) => handleColorChange(editingIndex!, e.target.value)}
+                  onChange={(e) => handleColorChange(currentIndex, e.target.value)}
                   className="absolute inset-0 opacity-0 w-full h-full cursor-pointer"
                 />
               </div>
@@ -198,7 +199,7 @@ export function PaletteEditor({
                       min="0"
                       max="255"
                       value={currentColor[channel]}
-                      onChange={(e) => handleChannelChange(editingIndex!, channel, parseInt(e.target.value) || 0)}
+                      onChange={(e) => handleChannelChange(currentIndex, channel, parseInt(e.target.value) || 0)}
                       className="w-full bg-gray-700 border border-gray-600 rounded px-1 py-1.5 text-xs text-center text-gray-200 focus:border-blue-500 outline-none"
                     />
                   </div>

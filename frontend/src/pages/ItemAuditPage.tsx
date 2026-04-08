@@ -28,6 +28,7 @@ import {
   type ItemAuditDecision,
   type ParamStatus,
 } from "./itemAuditUtils";
+import { mapErr } from "@/utils/mapErr";
 
 interface StatusSelectProps {
   value: ParamStatus;
@@ -209,7 +210,7 @@ export function ItemAuditPage() {
       const modelUrl = `${currentConfig.basePath}/${previewMapping.modelPath}/${previewMapping.modelFile}`;
       const responseResult = await ResultAsync.fromPromise(
         fetch(modelUrl),
-        (e) => (e instanceof Error ? e : new Error(String(e))),
+        mapErr,
       );
       if (responseResult.isErr()) {
         finishWithError(responseResult.error.message);
@@ -222,7 +223,7 @@ export function ItemAuditPage() {
       }
       const arrayBufferResult = await ResultAsync.fromPromise(
         response.arrayBuffer(),
-        (e) => (e instanceof Error ? e : new Error(String(e))),
+        mapErr,
       );
       if (arrayBufferResult.isErr()) {
         finishWithError(arrayBufferResult.error.message);
@@ -237,7 +238,7 @@ export function ItemAuditPage() {
             reject(new Error(event.message || "Model conversion worker failed"));
           worker.postMessage({ type: "bg3d-to-glb", buffer: arrayBuffer }, [arrayBuffer]);
         }),
-        (e) => (e instanceof Error ? e : new Error(String(e))),
+        mapErr,
       );
 
       if (workerResult.isErr()) {
@@ -256,7 +257,7 @@ export function ItemAuditPage() {
       const loader = new GLTFLoader();
       const gltfResult = await ResultAsync.fromPromise(
         loader.loadAsync(glbUrl),
-        (e) => (e instanceof Error ? e : new Error(String(e))),
+        mapErr,
       );
       URL.revokeObjectURL(glbUrl);
       if (gltfResult.isErr()) {
@@ -323,7 +324,7 @@ export function ItemAuditPage() {
     const loadReport = async () => {
       const textResult = await ResultAsync.fromPromise(
         file.text(),
-        (e) => (e instanceof Error ? e : new Error(String(e))),
+        mapErr,
       );
       if (textResult.isErr()) {
         setImportStatus(`Failed to read file: ${textResult.error.message}`);
@@ -331,7 +332,7 @@ export function ItemAuditPage() {
       }
       const parsedResult = await ResultAsync.fromPromise(
         Promise.resolve().then(() => JSON.parse(textResult.value)),
-        (e) => (e instanceof Error ? e : new Error(String(e))),
+        mapErr,
       );
       if (parsedResult.isErr()) {
         setImportStatus(`Invalid JSON: ${parsedResult.error.message}`);

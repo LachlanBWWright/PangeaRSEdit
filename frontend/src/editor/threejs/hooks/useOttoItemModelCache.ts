@@ -1,3 +1,4 @@
+import { mapErr } from "@/utils/mapErr";
 /**
  * Hook for lazy-loading and caching item 3D models
  *
@@ -164,7 +165,7 @@ function loadFileGltf(worker: Worker, fileUrl: string): Promise<GLTF> {
   const createPromise = async () => {
     const fetchResult = await ResultAsync.fromPromise(
       fetch(fileUrl),
-      (e) => (e instanceof Error ? e : new Error(String(e))),
+      mapErr,
     );
     if (fetchResult.isErr()) {
       return Promise.reject(new Error(`Failed to fetch: ${fetchResult.error.message} (${fileUrl})`));
@@ -175,7 +176,7 @@ function loadFileGltf(worker: Worker, fileUrl: string): Promise<GLTF> {
     }
     const bufferResult = await ResultAsync.fromPromise(
       response.arrayBuffer(),
-      (e) => (e instanceof Error ? e : new Error(String(e))),
+      mapErr,
     );
     if (bufferResult.isErr()) {
       return Promise.reject(new Error(`Failed to read buffer: ${bufferResult.error.message}`));
@@ -358,7 +359,7 @@ export const useItemModelCache = (game: Game = Game.OTTO_MATIC): UseItemModelCac
       // Load the full BG3D file (cached at the file level)
     const fullGltfResult = await ResultAsync.fromPromise(
       loadFileGltf(getWorker(), bg3dUrl),
-      (e) => (e instanceof Error ? e : new Error(String(e))),
+      mapErr,
     );
 
       if (fullGltfResult.isErr()) {

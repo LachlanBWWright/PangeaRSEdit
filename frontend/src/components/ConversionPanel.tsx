@@ -6,6 +6,7 @@ import {
   BG3DGltfWorkerResponse,
 } from "../modelParsers/bg3dGltfWorker";
 import { ResultAsync } from "neverthrow";
+import { mapErr } from "@/utils/mapErr";
 
 interface ConversionPanelProps {
   title: string;
@@ -31,7 +32,7 @@ export function ConversionPanel({
 
     const bufferResult = await ResultAsync.fromPromise(
       file.arrayBuffer(),
-      (e) => (e instanceof Error ? e : new Error(String(e))),
+      mapErr,
     );
     if (bufferResult.isErr()) {
       alert(`${title} conversion failed: ${bufferResult.error.message}`);
@@ -59,7 +60,7 @@ export function ConversionPanel({
 
         worker.postMessage(message, [buffer]);
       }),
-      (e) => (e instanceof Error ? e : new Error(String(e))),
+      mapErr,
     );
 
     if (workerResult.isErr()) {

@@ -5,6 +5,7 @@
  * All functions return Result types for explicit error handling.
  */
 
+import { mapErr } from "@/utils/mapErr";
 import {
   parseShapesFile,
   shapeFrameToCanvas,
@@ -76,7 +77,7 @@ async function loadShapesFile(
 
   const url = `${SHAPES_BASE_PATH}/${shapesFilename}`;
 
-  const fetchResult = await ResultAsync.fromPromise(fetch(url), (e) => (e instanceof Error ? e : new Error(String(e))));
+  const fetchResult = await ResultAsync.fromPromise(fetch(url), mapErr);
   if (fetchResult.isErr()) {
     return err(new Error(`Failed to load shapes file '${shapesFilename}': ${fetchResult.error.message}`));
   }
@@ -86,7 +87,7 @@ async function loadShapesFile(
     return err(new Error(`HTTP ${response.status}: ${response.statusText}`));
   }
 
-  const bufferResult = await ResultAsync.fromPromise(response.arrayBuffer(), (e) => (e instanceof Error ? e : new Error(String(e))));
+  const bufferResult = await ResultAsync.fromPromise(response.arrayBuffer(), mapErr);
   if (bufferResult.isErr()) {
     return err(new Error(`Failed to read buffer from '${shapesFilename}': ${bufferResult.error.message}`));
   }

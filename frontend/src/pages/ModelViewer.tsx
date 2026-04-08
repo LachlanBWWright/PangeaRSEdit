@@ -20,7 +20,6 @@ import {
 } from "@/components/ui/resizable";
 import { ResultAsync, err, ok } from "neverthrow";
 
-const mapErr = (e: unknown) => (e instanceof Error ? e : new Error(String(e)));
 import { BG3D_EXPORT_TARGETS, getBG3DExportTarget } from "@/modelParsers/bg3dExportTargets";
 
 import { BG3DParseResult } from "../modelParsers/parseBG3D";
@@ -50,6 +49,7 @@ import { useFileUpload } from "./ModelViewer/hooks/useFileUpload";
 import { useTextureManagement } from "./ModelViewer/hooks/useTextureManagement";
 import type { UploadStep } from "./ModelViewer/types";
 import type { Texture, ModelNode } from "./ModelViewer/types";
+import { mapErr } from "@/utils/mapErr";
 
 export function ModelViewer() {
   const [gltfUrl, setGltfUrl] = useState<string | null>(null);
@@ -245,7 +245,7 @@ export function ModelViewer() {
             },
           );
         }),
-        (e) => (e instanceof Error ? e : new Error(String(e))),
+        mapErr,
       );
 
       if (exportedResult.isErr()) {
@@ -279,7 +279,7 @@ export function ModelViewer() {
 
         const updatedBufferResult = await ResultAsync.fromPromise(
           updateGlbAnimationEvents(nextBuffer, animationIndex, events),
-          (e) => (e instanceof Error ? e : new Error(String(e))),
+          mapErr,
         );
         if (updatedBufferResult.isErr()) {
           return err(updatedBufferResult.error);
@@ -337,7 +337,7 @@ export function ModelViewer() {
 
       const normalizedBufferResult = await ResultAsync.fromPromise(
         normalizeGlbBuffer(bufferWithEventsResult.value),
-        (e) => (e instanceof Error ? e : new Error(String(e))),
+        mapErr,
         );
       if (normalizedBufferResult.isErr()) {
         console.error(
@@ -371,7 +371,7 @@ export function ModelViewer() {
 
       const metadataResult = await ResultAsync.fromPromise(
         extractAnimationMetadataFromGlb(normalizedBuffer),
-        (e) => (e instanceof Error ? e : new Error(String(e))),
+        mapErr,
         );
       if (metadataResult.isOk()) {
         setGltfAnimationMetadata(metadataResult.value);
@@ -393,7 +393,7 @@ export function ModelViewer() {
             buffer: normalizedBuffer,
           } satisfies BG3DGltfWorkerMessage);
         }),
-        (e) => (e instanceof Error ? e : new Error(String(e))),
+        mapErr,
       );
 
       if (workerResult.isOk()) {
@@ -642,7 +642,7 @@ export function ModelViewer() {
     const extractMetadata = async () => {
       const result = await ResultAsync.fromPromise(
         extractAnimationMetadataFromGlb(gltfBuffer),
-        (e) => (e instanceof Error ? e : new Error(String(e))),
+        mapErr,
       );
       if (cancelled) return;
       if (result.isErr()) {

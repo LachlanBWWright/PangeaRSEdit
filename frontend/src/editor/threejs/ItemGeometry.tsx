@@ -23,6 +23,7 @@ import {
   getLiquidPatchDimensions,
   LiquidPatchStyle,
 } from "@/data/items/liquidPatchItems";
+import { mapErr } from "@/utils/mapErr";
 
 interface ItemGeometryProps {
   itemData: ItemData;
@@ -300,7 +301,7 @@ export const ItemGeometry: React.FC<ItemGeometryProps> = ({
         const loadItemModel = async () => {
           const loadResult = await ResultAsync.fromPromise(
             loadModel(firstItem.type, params),
-            (e) => (e instanceof Error ? e : new Error(String(e))),
+            mapErr,
           );
           if (loadResult.isErr()) {
             console.error(`Failed to load model for item type ${firstItem.type}:`, loadResult.error);

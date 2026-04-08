@@ -413,10 +413,8 @@ export function EditSplineItemMenu({
 }
 
 export function EditSplineMenu({
-  splineData: _splineData,
   setSplineData,
 }: {
-  splineData: SplineData;
   setSplineData: Updater<SplineData>;
 }) {
   const selectedSpline = useAtomValue(SelectedSpline);
