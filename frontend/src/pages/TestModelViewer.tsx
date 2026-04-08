@@ -791,10 +791,8 @@ export function TestModelViewer() {
           camera={{ position: [300, 200, 300], fov: 50, near: 1, far: 50000 }}
           style={{ background: "#1a1a2e" }}
         >
-          <ambientLight intensity={0.5} />
-          <directionalLight position={[10, 10, 5]} intensity={1} />
-          <directionalLight position={[-10, -10, -5]} intensity={0.5} />
-          
+          <ambientLight intensity={1} />
+
           <ModelDisplay gltfScene={gltfScene} />
           
           <OrbitControls />

@@ -18,9 +18,6 @@ import type { UniversalItemModelMapping } from "./itemModelTypes";
 import { ROTATION_4_WAY } from "./standardParamTypes";
 import { ItemType } from "./bugdomItemType";
 
-/** @deprecated Use UniversalItemModelMapping from itemModelTypes instead */
-export type BugdomItemModelMapping = UniversalItemModelMapping;
-
 /**
  * Comprehensive mapping of all Bugdom item types to their 3D models
  *

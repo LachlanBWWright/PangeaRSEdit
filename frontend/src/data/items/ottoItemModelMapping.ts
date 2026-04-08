@@ -16,16 +16,6 @@ import { ItemType } from "./ottoItemType";
 import type { UniversalItemModelMapping } from "./itemModelTypes";
 import { ROTATION_2_WAY, ROTATION_4_WAY } from "./standardParamTypes";
 
-/** @deprecated Use UniversalItemModelMapping from itemModelTypes instead */
-export type ItemModelMapping = UniversalItemModelMapping;
-
-/**
- * Get item model mapping for a given item type
- */
-export function getItemModelMapping(itemType: number): ItemModelMapping | undefined {
-  return OTTO_ITEM_MODEL_MAPPINGS[itemType];
-}
-
 /**
  * Comprehensive mapping of all Otto Matic item types to their 3D models
  *
@@ -38,7 +28,7 @@ export function getItemModelMapping(itemType: number): ItemModelMapping | undefi
  */
 export const OTTO_ITEM_MODEL_MAPPINGS: Record<
   number,
-  ItemModelMapping | undefined
+  UniversalItemModelMapping | undefined
 > = {
   // 0: StartCoords (no visual model)
 

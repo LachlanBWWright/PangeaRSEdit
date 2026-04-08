@@ -14,7 +14,7 @@ import {
   type GameItemModelMapper, 
   type UniversalItemModelMapping,
 } from "../itemModelTypes";
-import { OTTO_ITEM_MODEL_MAPPINGS, type ItemModelMapping } from "../ottoItemModelMapping";
+import { OTTO_ITEM_MODEL_MAPPINGS } from "../ottoItemModelMapping";
 import { ItemType } from "../ottoItemType";
 import { 
   OTTO_HUMAN_TYPE, 
@@ -66,27 +66,6 @@ function convertModelVariant(variant: ModelVariant): UniversalItemModelMapping {
 }
 
 /**
- * Convert Otto-specific mapping to universal format
- */
-function convertToUniversal(mapping: ItemModelMapping): UniversalItemModelMapping {
-  return {
-    modelFile: mapping.modelFile,
-    modelPath: mapping.modelPath,
-    modelIndex: mapping.modelIndex,
-    groupSize: mapping.groupSize,
-    requiresSkeleton: mapping.requiresSkeleton,
-    skeletonFile: mapping.skeletonFile,
-    scale: mapping.scale,
-    scaleXZ: mapping.scaleXZ,
-    scaleY: mapping.scaleY,
-    rotationY: mapping.rotationY,
-    positionOffset: mapping.positionOffset,
-    rotationParam: mapping.rotationParam,
-    citations: mapping.citations ? [...mapping.citations] : undefined,
-  };
-}
-
-/**
  * Get param-dependent model mapping using the standardized param type system
  */
 function getParamDependentMapping(
@@ -122,11 +101,8 @@ export class OttoItemMapper implements GameItemModelMapper {
       return getParamDependentMapping(paramConfig, params);
     }
     
-    // Standard mapping lookup
-    const mapping = OTTO_ITEM_MODEL_MAPPINGS[itemType];
-    if (!mapping) return undefined;
-    
-    return convertToUniversal(mapping);
+    // Standard mapping lookup — OTTO_ITEM_MODEL_MAPPINGS already uses UniversalItemModelMapping
+    return OTTO_ITEM_MODEL_MAPPINGS[itemType];
   }
   
   /**

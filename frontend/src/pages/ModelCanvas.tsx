@@ -185,9 +185,7 @@ export function ModelCanvas(props: ModelCanvasProps) {
         gl={{ antialias: true, alpha: true }}
         style={{ background: "transparent" }}
       >
-        <ambientLight intensity={0.8} color={"#ffffff"} />
-        <directionalLight position={[10, 10, 5]} intensity={1} />
-        <directionalLight position={[-10, -10, -5]} intensity={1} />
+        <ambientLight intensity={1} color={"#ffffff"} />
         {gltfResult?.scene && (
           <EnhancedModelMesh
             key={gltfResult.scene.uuid}
