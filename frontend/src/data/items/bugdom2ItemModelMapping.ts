@@ -23,9 +23,6 @@ import type { UniversalItemModelMapping } from "./itemModelTypes";
 import { ROTATION_4_WAY, ROTATION_8_WAY } from "./standardParamTypes";
 import { ItemType } from "./bugdom2ItemType";
 
-/** @deprecated Use UniversalItemModelMapping from itemModelTypes instead */
-export type Bugdom2ItemModelMapping = UniversalItemModelMapping;
-
 /**
  * Comprehensive mapping of all Bugdom 2 item types to their 3D models
  *
@@ -150,15 +147,4 @@ export const BUGDOM2_ITEM_MODEL_MAPPINGS: Record<
   [ItemType.POW]: { modelFile: "Global.bg3d", modelPath: "models", modelIndex: 13 }, // GLOBAL_ObjType_HealthPOW = 13
   [ItemType.Firecracker]: { modelFile: "Global.bg3d", modelPath: "models", modelIndex: 30 }, // GLOBAL_ObjType_Firecracker = 30
   [ItemType.Butterfly]: { modelFile: "Global.bg3d", modelPath: "models", modelIndex: 10 }, // GLOBAL_ObjType_ButterflyBody = 10 (groupSize 3: body + left/right wings)
-};
-
-/**
- * Get the model mapping for a specific Bugdom 2 item type
- * @param itemType Item type ID
- * @returns Mapping if available, undefined otherwise
- */
-export const getBugdom2ItemModelMapping = (
-  itemType: number,
-): UniversalItemModelMapping | undefined => {
-  return BUGDOM2_ITEM_MODEL_MAPPINGS[itemType];
 };

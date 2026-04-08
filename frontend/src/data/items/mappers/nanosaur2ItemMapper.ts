@@ -152,6 +152,9 @@ const NANOSAUR2_BASE_MAPPINGS: Record<number, UniversalItemModelMapping> = {
 
 
   // ---- LEVEL 2: DESERT (level2.bg3d) ----
+  // LEVEL2_ObjType_DustDevilTop = 4
+  [ItemType.DustDevil]: { modelFile: "level2.bg3d", modelPath: "models", modelIndex: 4 },
+
   // LEVEL2_ObjType_Tree1 = 5 ... Tree5 = 9; Canopies = 10-14
   [ItemType.DesertTree]: {
     modelFile: "level2.bg3d", modelPath: "models", modelIndex: 5,

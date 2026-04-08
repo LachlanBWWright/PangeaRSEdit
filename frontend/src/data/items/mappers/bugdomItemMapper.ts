@@ -13,7 +13,7 @@ import {
   type GameItemModelMapper, 
   type UniversalItemModelMapping,
 } from "../itemModelTypes";
-import { BUGDOM_ITEM_MODEL_MAPPINGS, getBugdomItemModelMapping } from "../bugdomItemModelMapping";
+import { BUGDOM_ITEM_MODEL_MAPPINGS } from "../bugdomItemModelMapping";
 
 /**
  * Bugdom 1 item model mapper
@@ -29,7 +29,7 @@ export class BugdomItemMapper implements GameItemModelMapper {
   getMapping(
     itemType: number,
   ): UniversalItemModelMapping | undefined {
-    return getBugdomItemModelMapping(itemType);
+    return BUGDOM_ITEM_MODEL_MAPPINGS[itemType];
   }
   
   getMappedTypes(): number[] {

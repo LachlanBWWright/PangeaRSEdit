@@ -102,12 +102,3 @@ export const BUGDOM_ITEM_MODEL_MAPPINGS: Record<
   [ItemType.Nut]: { modelFile: "Global_Models1.3dmf", modelPath: "models", modelIndex: 2 }, // GLOBAL1_MObjType_Nut = 2
   [ItemType.WallEnd]: { modelFile: "Global_Models1.3dmf", modelPath: "models", modelIndex: 4 }, // GLOBAL1_MObjType_WallEnd = 4
 };
-
-/**
- * Get the model mapping for a specific Bugdom item type
- */
-export const getBugdomItemModelMapping = (
-  itemType: number,
-): UniversalItemModelMapping | undefined => {
-  return BUGDOM_ITEM_MODEL_MAPPINGS[itemType];
-};

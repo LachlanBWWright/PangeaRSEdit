@@ -12,9 +12,6 @@
 import type { UniversalItemModelMapping } from "./itemModelTypes";
 import { ItemType } from "./nanosaurItemType";
 
-/** @deprecated Use UniversalItemModelMapping from itemModelTypes instead */
-export type NanosaurItemModelMapping = UniversalItemModelMapping;
-
 /**
  * Nanosaur item model mappings
  */
@@ -44,13 +41,4 @@ export const NANOSAUR_ITEM_MODEL_MAPPINGS: Record<
   [ItemType.StepStone]: { modelFile: "Level1_Models.3dmf", modelPath: "models", modelIndex: 7 },
   [ItemType.RollingBoulder]: { modelFile: "Level1_Models.3dmf", modelPath: "models", modelIndex: 8 },
   [ItemType.SporePod]: { modelFile: "Level1_Models.3dmf", modelPath: "models", modelIndex: 9 },
-};
-
-/**
- * Get the model mapping for a specific Nanosaur item type
- */
-export const getNanosaurItemModelMapping = (
-  itemType: number,
-): UniversalItemModelMapping | undefined => {
-  return NANOSAUR_ITEM_MODEL_MAPPINGS[itemType];
 };
