@@ -10,7 +10,7 @@ import {
   type GameItemModelMapper, 
   type UniversalItemModelMapping,
 } from "../itemModelTypes";
-import { BUGDOM2_ITEM_MODEL_MAPPINGS, type Bugdom2ItemModelMapping } from "../bugdom2ItemModelMapping";
+import { BUGDOM2_ITEM_MODEL_MAPPINGS } from "../bugdom2ItemModelMapping";
 
 /**
  * Bugdom 2 level model file associations
@@ -28,27 +28,6 @@ const BUGDOM2_LEVEL_MODELS: Record<number, string> = {
 };
 
 /**
- * Convert Bugdom2-specific mapping to universal format
- */
-function convertToUniversal(mapping: Bugdom2ItemModelMapping): UniversalItemModelMapping {
-  return {
-    modelFile: mapping.modelFile,
-    modelPath: mapping.modelPath,
-    modelIndex: mapping.modelIndex,
-    groupSize: mapping.groupSize,
-    requiresSkeleton: mapping.requiresSkeleton,
-    skeletonFile: mapping.skeletonFile,
-    scale: mapping.scale,
-    scaleXZ: mapping.scaleXZ,
-    scaleY: mapping.scaleY,
-    rotationY: mapping.rotationY,
-    positionOffset: mapping.positionOffset,
-    rotationParam: mapping.rotationParam,
-    citations: mapping.citations,
-  };
-}
-
-/**
  * Bugdom 2 item model mapper
  */
 export class Bugdom2ItemMapper implements GameItemModelMapper {
@@ -57,10 +36,7 @@ export class Bugdom2ItemMapper implements GameItemModelMapper {
   getMapping(
     itemType: number,
   ): UniversalItemModelMapping | undefined {
-    const mapping = BUGDOM2_ITEM_MODEL_MAPPINGS[itemType];
-    if (!mapping) return undefined;
-    
-    return convertToUniversal(mapping);
+    return BUGDOM2_ITEM_MODEL_MAPPINGS[itemType];
   }
   
   getMappedTypes(): number[] {

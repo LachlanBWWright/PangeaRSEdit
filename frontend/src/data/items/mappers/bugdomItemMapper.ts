@@ -29,19 +29,7 @@ export class BugdomItemMapper implements GameItemModelMapper {
   getMapping(
     itemType: number,
   ): UniversalItemModelMapping | undefined {
-    const mapping = getBugdomItemModelMapping(itemType);
-    if (!mapping) return undefined;
-    
-    return {
-      modelFile: mapping.modelFile,
-      modelPath: mapping.modelPath,
-      modelIndex: mapping.modelIndex,
-      requiresSkeleton: mapping.requiresSkeleton,
-      skeletonFile: mapping.skeletonFile,
-      scale: mapping.scale,
-      rotationY: mapping.rotationY,
-      rotationParam: mapping.rotationParam,
-    };
+    return getBugdomItemModelMapping(itemType);
   }
   
   getMappedTypes(): number[] {

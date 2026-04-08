@@ -29,19 +29,7 @@ export class Nanosaur1ItemMapper implements GameItemModelMapper {
   getMapping(
     itemType: number,
   ): UniversalItemModelMapping | undefined {
-    const mapping = getNanosaurItemModelMapping(itemType);
-    if (!mapping) return undefined;
-    
-    return {
-      modelFile: mapping.modelFile,
-      modelPath: mapping.modelPath,
-      modelIndex: mapping.modelIndex,
-      requiresSkeleton: mapping.requiresSkeleton,
-      skeletonFile: mapping.skeletonFile,
-      scale: mapping.scale,
-      rotationY: mapping.rotationY,
-      rotationParam: mapping.rotationParam,
-    };
+    return getNanosaurItemModelMapping(itemType);
   }
 
   /**

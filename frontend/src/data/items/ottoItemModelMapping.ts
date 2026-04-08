@@ -13,58 +13,11 @@
  */
 
 import { ItemType } from "./ottoItemType";
-import type { SourceCitation } from "./itemModelTypes";
-import type { RotationParam } from "./standardParamTypes";
+import type { UniversalItemModelMapping } from "./itemModelTypes";
 import { ROTATION_2_WAY, ROTATION_4_WAY } from "./standardParamTypes";
 
-/**
- * Describes how to load and render a 3D model for an item type
- */
-export interface ItemModelMapping {
-  /** BG3D filename (e.g., "level1_farm.bg3d", "Otto.bg3d") */
-  modelFile: string;
-
-  /** Subdirectory in /games/ottomatic/ */
-  modelPath: "models" | "skeletons";
-
-  /** Model index within the BG3D file (0-indexed) */
-  modelIndex: number;
-
-  /** Number of consecutive subgroups to include (default: 1).
-   *  Some items are composed of multiple consecutive subgroups in the BG3D file
-   *  (e.g., Windmill base + propeller, TeleportBase + dish). */
-  groupSize?: number;
-
-  /** True if model requires skeleton data for rigging */
-  requiresSkeleton?: boolean;
-
-  /** Skeleton .rsrc filename */
-  skeletonFile?: string;
-
-  /** Uniform scale multiplier (default: 1.0) */
-  scale?: number;
-
-  /** Horizontal scale multiplier (X/Z axes, default: 1.0) */
-  scaleXZ?: number;
-
-  /** Vertical scale multiplier (Y axis, default: 1.0) */
-  scaleY?: number;
-
-  /** Y-axis rotation offset in radians (default: 0) */
-  rotationY?: number;
-
-  /** Position offset in world units [x, y, z] */
-  positionOffset?: [number, number, number];
-
-  /** Which item param controls Y-axis rotation for this item */
-  rotationParam?: {
-    paramIndex: 0 | 1 | 2 | 3;
-    rotationType: RotationParam;
-  };
-
-  /** Source code citations for this mapping */
-  citations?: SourceCitation[];
-}
+/** @deprecated Use UniversalItemModelMapping from itemModelTypes instead */
+export type ItemModelMapping = UniversalItemModelMapping;
 
 /**
  * Get item model mapping for a given item type
