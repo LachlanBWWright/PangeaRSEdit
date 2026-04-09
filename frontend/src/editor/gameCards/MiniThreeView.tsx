@@ -136,6 +136,7 @@ export function MiniThreeView({
                 showSkeleton={false}
                 logBonePositions={false}
                 gameType={gameType}
+                previewLighting
               />
           ) : mounted ? (
             <div className="flex items-center justify-center h-full text-gray-500">

@@ -63,6 +63,7 @@ export function ModelCanvas(props: ModelCanvasProps) {
     logBonePositions,
     selectedBoneName,
     gizmoMode = "translate",
+    previewLighting = false,
   } = props;
 
   // Always call hooks unconditionally (must be called in every render in same order)
@@ -185,8 +186,14 @@ export function ModelCanvas(props: ModelCanvasProps) {
         gl={{ antialias: true, alpha: true }}
         style={{ background: "transparent" }}
       >
-        <ambientLight intensity={0.5} color={"#ffffff"} />
-        <directionalLight position={[1, 2, 1]} intensity={1} />
+        {previewLighting ? (
+          <ambientLight intensity={1.25} color={"#ffffff"} />
+        ) : (
+          <>
+            <ambientLight intensity={0.5} color={"#ffffff"} />
+            <directionalLight position={[1, 2, 1]} intensity={1} />
+          </>
+        )}
         {gltfResult?.scene && (
           <EnhancedModelMesh
             key={gltfResult.scene.uuid}
@@ -194,6 +201,7 @@ export function ModelCanvas(props: ModelCanvasProps) {
             wireframeMode={wireframeMode}
             showSkeleton={showSkeleton}
             selectedBoneName={selectedBoneName}
+            previewLighting={previewLighting}
             position={modelPosition}
           />
         )}
