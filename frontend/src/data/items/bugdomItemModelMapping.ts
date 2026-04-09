@@ -15,7 +15,6 @@
  */
 
 import type { UniversalItemModelMapping } from "./itemModelTypes";
-import { ROTATION_4_WAY } from "./standardParamTypes";
 import { ItemType } from "./bugdomItemType";
 
 /**
@@ -74,7 +73,7 @@ export const BUGDOM_ITEM_MODEL_MAPPINGS: Record<
   [ItemType.Tree]: { modelFile: "Pond_Models.3dmf", modelPath: "models", modelIndex: 0 }, // flight level tree (uses pond models)
 
   // Forest level models (Forest_Models.3dmf; indices = FOREST_MObjType values)
-  [ItemType.ExitLog]: { modelFile: "Forest_Models.3dmf", modelPath: "models", modelIndex: 1, rotationParam: { paramIndex: 0, rotationType: ROTATION_4_WAY } }, // FOREST_MObjType_Tree = 1... actually exit log model
+  [ItemType.ExitLog]: { modelFile: "Global_Models2.3dmf", modelPath: "models", modelIndex: 1 }, // GLOBAL2_MObjType_ExitLog = 1
   [ItemType.Thorn]: { modelFile: "Forest_Models.3dmf", modelPath: "models", modelIndex: 8 }, // FOREST_MObjType_Thorn1 = 8
   [ItemType.RockLedge]: { modelFile: "Forest_Models.3dmf", modelPath: "models", modelIndex: 10 }, // FOREST_MObjType_FlatRock = 10
   [ItemType.Stump]: { modelFile: "Forest_Models.3dmf", modelPath: "models", modelIndex: 6 }, // FOREST_MObjType_Stump = 6
@@ -85,7 +84,7 @@ export const BUGDOM_ITEM_MODEL_MAPPINGS: Record<
   [ItemType.Firecracker]: { modelFile: "BeeHive_Models.3dmf", modelPath: "models", modelIndex: 3 }, // HIVE_MObjType_Firecracker = 3
   [ItemType.Detonator]: { modelFile: "BeeHive_Models.3dmf", modelPath: "models", modelIndex: 4 }, // HIVE_MObjType_DetonatorGreen = 4
   [ItemType.HiveDoor]: { modelFile: "BeeHive_Models.3dmf", modelPath: "models", modelIndex: 10 }, // HIVE_MObjType_HiveDoor_Green = 10
-  [ItemType.HoneyTube]: { modelFile: "BeeHive_Models.3dmf", modelPath: "models", modelIndex: 21 }, // HIVE_MObjType_BentTube = 21
+  [ItemType.HoneyTube]: { modelFile: "BeeHive_Models.3dmf", modelPath: "models", modelIndex: 20 }, // HIVE_MObjType_BentTube = 20
   [ItemType.FloorSpike]: { modelFile: "BeeHive_Models.3dmf", modelPath: "models", modelIndex: 25 }, // HIVE_MObjType_FloorSpike = 25
 
   // Night level models (Night_Models.3dmf; indices = NIGHT_MObjType values)
