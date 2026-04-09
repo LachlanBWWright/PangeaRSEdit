@@ -394,34 +394,6 @@ export function IndividualTilesMenu({
                 </div>
               )}
               <div className="flex flex-row justify-center gap-2 items-center col-span-2">
-                <p>Show Splines</p>
-                <Switch
-                  checked={show3DSplines}
-                  onCheckedChange={setShow3DSplines}
-                />
-              </div>
-              <div className="flex flex-row justify-center gap-2 items-center col-span-2">
-                <p>Show Items</p>
-                <Switch
-                  checked={show3DItems}
-                  onCheckedChange={setShow3DItems}
-                />
-              </div>
-              <div className="flex flex-row justify-center gap-2 items-center col-span-2">
-                <p>Show Fences</p>
-                <Switch
-                  checked={show3DFences}
-                  onCheckedChange={setShow3DFences}
-                />
-              </div>
-              <div className="flex flex-row justify-center gap-2 items-center col-span-2">
-                <p>Show Liquid</p>
-                <Switch
-                  checked={show3DLiquid}
-                  onCheckedChange={setShow3DLiquid}
-                />
-              </div>
-              <div className="flex flex-row justify-center gap-2 items-center col-span-2">
                 <p>Show 3D Models</p>
                 <Switch
                   checked={show3DItemModels}
