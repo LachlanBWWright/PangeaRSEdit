@@ -51,8 +51,9 @@ export function parseTGAToCanvas(buffer: ArrayBuffer): Result<HTMLCanvasElement,
   }
 
   // For indexed color, pixel depth is 8 bits per pixel
-  // For RGB/RGBA, pixel depth is 24 or 32 bits per pixel
+  // For RGB/RGBA, pixel depth is 16, 24, or 32 bits per pixel
   let bytesPerPixel = header.pixelDepth / 8;
+  let is16Bit = false;
 
   if (isIndexed) {
     if (header.pixelDepth !== 8) {
@@ -64,10 +65,14 @@ export function parseTGAToCanvas(buffer: ArrayBuffer): Result<HTMLCanvasElement,
     }
     bytesPerPixel = 1; // indexed color is 1 byte per pixel
   } else {
-    if (bytesPerPixel !== 3 && bytesPerPixel !== 4) {
+    if (header.pixelDepth === 16) {
+      // 16-bit formats: ARGB1555 or BGR555, stored as little-endian uint16
+      is16Bit = true;
+      bytesPerPixel = 2;
+    } else if (bytesPerPixel !== 3 && bytesPerPixel !== 4) {
       return err(
         new Error(
-          `Unsupported pixel depth: ${header.pixelDepth} bits (must be 24 or 32)`,
+          `Unsupported pixel depth: ${header.pixelDepth} bits (must be 16, 24 or 32)`,
         )
       );
     }
@@ -114,6 +119,16 @@ export function parseTGAToCanvas(buffer: ArrayBuffer): Result<HTMLCanvasElement,
       pixels,
       isRLE,
     );
+  } else if (is16Bit) {
+    parse16BitData(
+      data,
+      dataOffset,
+      header.imageWidth,
+      header.imageHeight,
+      pixels,
+      isRLE,
+      header.imageDescriptor,
+    );
   } else if (isRLE) {
     parseRLEData(
       data,
@@ -152,7 +167,94 @@ export function parseTGAToCanvas(buffer: ArrayBuffer): Result<HTMLCanvasElement,
 }
 
 /**
- * Parse uncompressed TGA pixel data
+ * Decode a single 16-bit ARGB1555 / BGR555 word to RGBA bytes.
+ * Bit layout (little-endian uint16): A[15] R[14:10] G[9:5] B[4:0]
+ * When the MSB (alpha bit) is 0 and the upper bits look like BGR555 the
+ * image is treated as fully opaque (alpha=255), which is correct for the
+ * Bugdom 2 sprite sheets that store plain colour without an alpha channel.
+ */
+function decode16BitPixel(
+  word: number,
+  imageDescriptor: number,
+  outPixels: Uint8ClampedArray,
+  pixelIndex: number,
+): void {
+  const hasAlphaAttr = (imageDescriptor & 0x0f) !== 0;
+  if (hasAlphaAttr) {
+    // ARGB1555: bit 15 = alpha (1=opaque, 0=transparent)
+    const a = (word >> 15) & 1 ? 255 : 0;
+    const r = Math.round(((word >> 10) & 0x1f) * (255 / 31));
+    const g = Math.round(((word >> 5) & 0x1f) * (255 / 31));
+    const b = Math.round((word & 0x1f) * (255 / 31));
+    outPixels[pixelIndex * 4 + 0] = r;
+    outPixels[pixelIndex * 4 + 1] = g;
+    outPixels[pixelIndex * 4 + 2] = b;
+    outPixels[pixelIndex * 4 + 3] = a;
+  } else {
+    // BGR555 (no alpha): bits 14:10=R, 9:5=G, 4:0=B, opaque
+    const r = Math.round(((word >> 10) & 0x1f) * (255 / 31));
+    const g = Math.round(((word >> 5) & 0x1f) * (255 / 31));
+    const b = Math.round((word & 0x1f) * (255 / 31));
+    outPixels[pixelIndex * 4 + 0] = r;
+    outPixels[pixelIndex * 4 + 1] = g;
+    outPixels[pixelIndex * 4 + 2] = b;
+    outPixels[pixelIndex * 4 + 3] = 255;
+  }
+}
+
+/**
+ * Parse 16-bit TGA pixel data (uncompressed or RLE).
+ * Supports ARGB1555 and BGR555 encodings.
+ */
+function parse16BitData(
+  data: DataView,
+  offset: number,
+  width: number,
+  height: number,
+  pixels: Uint8ClampedArray,
+  isRLE: boolean,
+  imageDescriptor: number,
+): void {
+  let pixelIndex = 0;
+  let dataOffset = offset;
+  const totalPixels = width * height;
+
+  if (isRLE) {
+    while (pixelIndex < totalPixels && dataOffset < data.byteLength) {
+      const packetHeader = data.getUint8(dataOffset);
+      dataOffset++;
+      const isRLEPacket = (packetHeader & 0x80) !== 0;
+      const packetCount = (packetHeader & 0x7f) + 1;
+
+      if (isRLEPacket) {
+        if (dataOffset + 2 > data.byteLength) break;
+        const word = data.getUint16(dataOffset, true);
+        dataOffset += 2;
+        for (let i = 0; i < packetCount && pixelIndex < totalPixels; i++) {
+          decode16BitPixel(word, imageDescriptor, pixels, pixelIndex++);
+        }
+      } else {
+        for (let i = 0; i < packetCount && pixelIndex < totalPixels; i++) {
+          if (dataOffset + 2 > data.byteLength) break;
+          const word = data.getUint16(dataOffset, true);
+          dataOffset += 2;
+          decode16BitPixel(word, imageDescriptor, pixels, pixelIndex++);
+        }
+      }
+    }
+  } else {
+    for (let y = 0; y < height; y++) {
+      for (let x = 0; x < width; x++) {
+        if (dataOffset + 2 > data.byteLength) break;
+        const word = data.getUint16(dataOffset, true);
+        dataOffset += 2;
+        decode16BitPixel(word, imageDescriptor, pixels, pixelIndex++);
+      }
+    }
+  }
+}
+
+/**
  */
 function parseUncompressedData(
   data: DataView,
