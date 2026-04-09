@@ -357,12 +357,6 @@ export function bg3dParsedToGLTF(
     const m = doc.createMaterial("BG3DMaterial");
     m.setName(`Material_${i.toString().padStart(4, "0")}`);
     m.setBaseColorFactor(mat.diffuseColor);
-    // BG3D textures are baked diffuse color maps, not PBR. Use fully diffuse
-    // materials (metalness=0, roughness=1) so that pure ambient light produces
-    // renderColor == textureColor. Without this the glTF spec default
-    // metallicFactor=1 makes ambient-only scenes render fully black.
-    m.setMetallicFactor(0);
-    m.setRoughnessFactor(1);
 
     // Set alpha mode based on BG3D material flags.
     // JPEG textures (Nanosaur 2) are opaque unless they carry a separate alpha channel

@@ -880,7 +880,8 @@ export function ItemModelViewer() {
           }}
           style={{ background: "#1a1a2e" }}
         >
-          <ambientLight intensity={1} />
+          <ambientLight intensity={0.5} />
+          <directionalLight position={[1, 2, 1]} intensity={1} />
 
           <ModelDisplay gltfScene={gltfScene} />
 

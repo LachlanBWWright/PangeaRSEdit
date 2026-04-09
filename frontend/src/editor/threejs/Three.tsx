@@ -526,8 +526,9 @@ export function ThreeView({
         target={[unitsWide / 2, 0, unitsHigh / 2]}
       />
 
-      {/* Full ambient lighting so model colors match raw textures */}
-      <ambientLight intensity={1} />
+      {/* Lighting */}
+      <ambientLight intensity={0.5} />
+      <directionalLight position={[1, 2, 1]} intensity={1} />
 
       {/* Exporter hook component (listens for export triggers) */}
       <SceneExporter />
