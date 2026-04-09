@@ -71,6 +71,9 @@ export interface ModelVariant {
   rotationY?: number;
   /** Position offset [x, y, z] relative to the item's terrain position */
   positionOffset?: [number, number, number];
+  /** Vertical offset so the model base sits at ground level (world units).
+   *  Mirrors the game's `Coord.y -= BBox.min.y` correction for skeleton objects. */
+  yOffset?: number;
   /** References to game source code that define this mapping */
   citations?: readonly import("./itemModelTypes").SourceCitation[];
 }
@@ -320,6 +323,8 @@ export const OTTO_HUMAN_TYPE: TypeSelectorParam = {
       modelIndex: 0,
       requiresSkeleton: true,
       skeletonFile: "Farmer.skeleton.rsrc",
+      scale: 2.0,
+      yOffset: 200,
     },
     1: {
       modelFile: "BeeWoman.bg3d",
@@ -327,6 +332,8 @@ export const OTTO_HUMAN_TYPE: TypeSelectorParam = {
       modelIndex: 0,
       requiresSkeleton: true,
       skeletonFile: "BeeWoman.skeleton.rsrc",
+      scale: 2.0,
+      yOffset: 200,
     },
     2: {
       modelFile: "Scientist.bg3d",
@@ -334,6 +341,8 @@ export const OTTO_HUMAN_TYPE: TypeSelectorParam = {
       modelIndex: 0,
       requiresSkeleton: true,
       skeletonFile: "Scientist.skeleton.rsrc",
+      scale: 2.0,
+      yOffset: 200,
     },
     3: {
       modelFile: "SkirtLady.bg3d",
@@ -341,6 +350,8 @@ export const OTTO_HUMAN_TYPE: TypeSelectorParam = {
       modelIndex: 0,
       requiresSkeleton: true,
       skeletonFile: "SkirtLady.skeleton.rsrc",
+      scale: 2.0,
+      yOffset: 200,
     },
   },
 };

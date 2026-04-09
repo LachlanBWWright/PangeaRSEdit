@@ -116,6 +116,10 @@ const LoadingCube: React.FC<{
 /**
  * Individual item model renderer - clones the pre-cloned scene for each instance
  * and applies a per-item rotation on top of the model-level rotationY baked in.
+ *
+ * The clonedScene may carry a baked-in position offset (from positionOffset / yOffset).
+ * Wrapping in a group ensures that offset is applied on top of the world position
+ * instead of being overwritten by the position prop.
  */
 const ItemModel: React.FC<{
   position: [number, number, number];
@@ -131,7 +135,11 @@ const ItemModel: React.FC<{
     return clone;
   }, [clonedScene, extraRotationY]);
 
-  return <primitive object={instanceScene} position={position} dispose={null} />;
+  return (
+    <group position={position}>
+      <primitive object={instanceScene} dispose={null} />
+    </group>
+  );
 };
 
 /**
@@ -275,13 +283,18 @@ export const ItemGeometry: React.FC<ItemGeometryProps> = ({
             cloned.rotateY(mapping.rotationY);
           }
 
-          // Apply position offset if specified
+          // Apply position offset and/or yOffset so the model base sits at ground level.
+          // The offset is stored on the cloned scene and is treated as a local child
+          // offset when ItemModel wraps the primitive in a group at the world position.
+          const yOff = mapping.yOffset ?? 0;
           if (mapping.positionOffset) {
             cloned.position.set(
               mapping.positionOffset[0],
-              mapping.positionOffset[1],
+              mapping.positionOffset[1] + yOff,
               mapping.positionOffset[2],
             );
+          } else if (yOff !== 0) {
+            cloned.position.set(0, yOff, 0);
           }
 
           scenes.set(cacheKey, cloned);

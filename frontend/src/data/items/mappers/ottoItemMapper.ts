@@ -61,6 +61,7 @@ function convertModelVariant(variant: ModelVariant): UniversalItemModelMapping {
     scaleY: variant.scaleY,
     rotationY: variant.rotationY,
     positionOffset: variant.positionOffset,
+    yOffset: variant.yOffset,
     citations: variant.citations ? [...variant.citations] : undefined,
   };
 }
