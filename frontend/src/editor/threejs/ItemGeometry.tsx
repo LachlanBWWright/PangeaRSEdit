@@ -10,6 +10,7 @@ import { useAtomValue } from "jotai";
 import { useFrame } from "@react-three/fiber";
 import { Globals } from "@/data/globals/globals";
 import { Show3DItemModels } from "@/data/canvasView/canvasViewAtoms";
+import { LevelNumber } from "@/data/globals/levelNumber";
 import { getTerrainHeightAtPoint } from "./fenceUtils/getTerrainHeightAtPoint";
 import { useItemModelCache } from "./hooks/useOttoItemModelCache";
 import { getGameMapper } from "@/data/items/mappers";
@@ -198,6 +199,7 @@ export const ItemGeometry: React.FC<ItemGeometryProps> = ({
 }) => {
   const globals = useAtomValue(Globals);
   const show3DItemModels = useAtomValue(Show3DItemModels);
+  const levelNum = useAtomValue(LevelNumber);
   
   // Use GAME_TYPE directly from globals
   const currentGame = globals.GAME_TYPE;
@@ -209,10 +211,9 @@ export const ItemGeometry: React.FC<ItemGeometryProps> = ({
   // Get the mapper for the current game
   const mapper = useMemo(() => getGameMapper(currentGame), [currentGame]);
 
-  // Generate a cache key for an item including its params
-  // Uses the mapper to determine which items are param-dependent
+  // Generate a cache key for an item including its params and level
+  // Uses the mapper to determine which items are param-dependent or level-dependent
   const getItemCacheKey = useCallback((itemType: number, p0: number, p1: number, p2: number, p3: number): string => {
-    // Use the mapper to check if this item is param-dependent
     const gamePrefix = `g${currentGame}_`;
     if (mapper?.isParamDependent?.(itemType)) {
       const config = mapper.getParamDependentConfig?.(itemType);
@@ -221,11 +222,13 @@ export const ItemGeometry: React.FC<ItemGeometryProps> = ({
         const paramValue = getParamByIndex(params, config.paramIndex);
         return `${gamePrefix}${itemType}_p${config.paramIndex}_${paramValue}`;
       }
-      // Fallback: use p1 for backwards compatibility
       return `${gamePrefix}${itemType}_p1_${p1}`;
     }
+    if (levelNum !== undefined && mapper?.isLevelDependent?.(itemType)) {
+      return `${gamePrefix}${itemType}_lv${levelNum}`;
+    }
     return `${gamePrefix}${itemType}`;
-  }, [currentGame, mapper]);
+  }, [currentGame, mapper, levelNum]);
 
   // Group items by cache key for easier processing
   // This handles param-dependent items by grouping by the full key
@@ -256,7 +259,7 @@ export const ItemGeometry: React.FC<ItemGeometryProps> = ({
       const cachedModel = modelCache.get(cacheKey);
       if (cachedModel?.gltf && !cachedModel.error) {
         const params = { p0: firstItem.p0, p1: firstItem.p1, p2: firstItem.p2, p3: firstItem.p3 };
-        const mapping = mapper?.getMapping(firstItem.type, undefined, params);
+        const mapping = mapper?.getMapping(firstItem.type, levelNum, params);
         if (mapping && cachedModel.gltf.scene) {
           const cloned = cachedModel.gltf.scene.clone(true);
 
@@ -300,7 +303,7 @@ export const ItemGeometry: React.FC<ItemGeometryProps> = ({
         const params = { p0: firstItem.p0, p1: firstItem.p1, p2: firstItem.p2, p3: firstItem.p3 };
         const loadItemModel = async () => {
           const loadResult = await ResultAsync.fromPromise(
-            loadModel(firstItem.type, params),
+            loadModel(firstItem.type, params, levelNum),
             mapErr,
           );
           if (loadResult.isErr()) {
@@ -439,7 +442,7 @@ export const ItemGeometry: React.FC<ItemGeometryProps> = ({
             if (clonedScene) {
               // Compute per-item rotation from rotationParam if defined
               const params = { p0: item.p0, p1: item.p1, p2: item.p2, p3: item.p3 };
-              const mapping = mapper?.getMapping(item.type, undefined, params);
+              const mapping = mapper?.getMapping(item.type, levelNum, params);
               let extraRotationY = 0;
               if (mapping?.rotationParam) {
                 const rp = mapping.rotationParam;

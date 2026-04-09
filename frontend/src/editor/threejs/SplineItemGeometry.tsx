@@ -9,6 +9,7 @@ import {
 import { useAtomValue } from "jotai";
 import { Globals } from "@/data/globals/globals";
 import { Show3DItemModels } from "@/data/canvasView/canvasViewAtoms";
+import { LevelNumber } from "@/data/globals/levelNumber";
 import { getTerrainHeightAtPoint } from "./fenceUtils/getTerrainHeightAtPoint";
 import { useItemModelCache } from "./hooks/useOttoItemModelCache";
 import { getGameMapper } from "@/data/items/mappers";
@@ -64,6 +65,7 @@ export const SplineItemGeometry: React.FC<SplineItemGeometryProps> = ({
 }) => {
   const globals = useAtomValue(Globals);
   const show3DItemModels = useAtomValue(Show3DItemModels);
+  const levelNum = useAtomValue(LevelNumber);
   const currentGame = globals.GAME_TYPE;
   const { modelCache, loadModel } = useItemModelCache(currentGame);
   const mapper = useMemo(() => getGameMapper(currentGame), [currentGame]);
@@ -89,7 +91,7 @@ export const SplineItemGeometry: React.FC<SplineItemGeometryProps> = ({
     if (!show3DItemModels) return;
     uniqueSplineItemTypes.forEach((itemType) => {
       const triggerLoad = async () => {
-        const result = await ResultAsync.fromPromise(loadModel(itemType), mapErr);
+        const result = await ResultAsync.fromPromise(loadModel(itemType, undefined, levelNum), mapErr);
         if (result.isErr()) {
           console.error(`[SplineItemGeometry] Failed to load model for spline item type ${itemType}:`, result.error);
         }
@@ -102,10 +104,13 @@ export const SplineItemGeometry: React.FC<SplineItemGeometryProps> = ({
   const clonedScenesByType = useMemo(() => {
     const scenes = new Map<number, Group | null>();
     uniqueSplineItemTypes.forEach((itemType) => {
-      const cacheKey = `g${currentGame}_${itemType}`;
+      const isLevelDep = mapper?.isLevelDependent?.(itemType) && levelNum !== undefined;
+      const cacheKey = isLevelDep
+        ? `g${currentGame}_${itemType}_lv${levelNum}`
+        : `g${currentGame}_${itemType}`;
       const cachedModel = modelCache.get(cacheKey);
       if (cachedModel?.gltf && !cachedModel.error) {
-        const mapping = mapper?.getMapping(itemType);
+        const mapping = mapper?.getMapping(itemType, levelNum);
         if (mapping && cachedModel.gltf.scene) {
           const cloned = cachedModel.gltf.scene.clone(true);
           const baseScale = mapping.scale ?? 1;
@@ -119,7 +124,7 @@ export const SplineItemGeometry: React.FC<SplineItemGeometryProps> = ({
       }
     });
     return scenes;
-  }, [modelCache, uniqueSplineItemTypes, mapper, currentGame]);
+  }, [modelCache, uniqueSplineItemTypes, mapper, currentGame, levelNum]);
 
   if (!hasValidData || !splines) return null;
 
@@ -160,7 +165,10 @@ export const SplineItemGeometry: React.FC<SplineItemGeometryProps> = ({
           const key = `spline-item-${splineIdx}-${itemIdx}`;
 
           if (show3DItemModels) {
-            const cacheKey = `g${currentGame}_${item.type}`;
+            const isLevelDep = mapper?.isLevelDependent?.(item.type) && levelNum !== undefined;
+            const cacheKey = isLevelDep
+              ? `g${currentGame}_${item.type}_lv${levelNum}`
+              : `g${currentGame}_${item.type}`;
             const cachedModel = modelCache.get(cacheKey);
 
             if (cachedModel?.loading) {

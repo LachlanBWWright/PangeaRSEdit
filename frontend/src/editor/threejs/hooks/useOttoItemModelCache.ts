@@ -45,7 +45,7 @@ interface ItemParams {
 
 interface UseItemModelCacheReturn {
   modelCache: Map<string, CachedModel>;
-  loadModel: (itemType: number, params?: ItemParams) => Promise<GLTF | null>;
+  loadModel: (itemType: number, params?: ItemParams, levelNum?: number) => Promise<GLTF | null>;
   isLoading: (itemType: number, params?: ItemParams) => boolean;
   hasError: (itemType: number, params?: ItemParams) => boolean;
 }
@@ -66,9 +66,9 @@ const GAME_BASE_PATHS: Record<Game, string> = {
 
 /**
  * Generate a cache key that includes game, item type, and relevant params
- * Uses the mapper to determine which items are param-dependent
+ * Uses the mapper to determine which items are param-dependent or level-dependent
  */
-function getCacheKey(game: Game, itemType: number, params?: ItemParams): string {
+function getCacheKey(game: Game, itemType: number, params?: ItemParams, levelNum?: number): string {
   const mapper = getGameMapper(game);
   const gamePrefix = `g${game}_`;
   
@@ -80,6 +80,11 @@ function getCacheKey(game: Game, itemType: number, params?: ItemParams): string 
     }
     return `${gamePrefix}${itemType}_p1_${params.p1}`;
   }
+  
+  if (levelNum !== undefined && mapper?.isLevelDependent?.(itemType)) {
+    return `${gamePrefix}${itemType}_lv${levelNum}`;
+  }
+  
   return `${gamePrefix}${itemType}`;
 }
 
@@ -317,8 +322,8 @@ export const useItemModelCache = (game: Game = Game.OTTO_MATIC): UseItemModelCac
    * Load a 3D model for an item type
    */
   const loadModel = useCallback(
-    async (itemType: number, params?: ItemParams): Promise<GLTF | null> => {
-      const cacheKey = getCacheKey(game, itemType, params);
+    async (itemType: number, params?: ItemParams, levelNum?: number): Promise<GLTF | null> => {
+      const cacheKey = getCacheKey(game, itemType, params, levelNum);
 
       // Skip if already in-flight (avoids stale closure issues)
       if (inFlightRef.current.has(cacheKey)) {
@@ -334,7 +339,7 @@ export const useItemModelCache = (game: Game = Game.OTTO_MATIC): UseItemModelCac
 
       // Get mapping
       const mapper = getGameMapper(game);
-      const mapping = mapper?.getMapping(itemType, undefined, params);
+      const mapping = mapper?.getMapping(itemType, levelNum, params);
       if (!mapping) {
         return null;
       }

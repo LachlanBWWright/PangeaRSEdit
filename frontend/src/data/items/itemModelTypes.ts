@@ -169,6 +169,12 @@ export interface GameItemModelMapper {
   getMappingCount(): number;
   
   /**
+   * Check if an item type requires a different model per level.
+   * For level-dependent items, the model varies based on the current level number.
+   */
+  isLevelDependent?(itemType: number): boolean;
+  
+  /**
    * Check if an item type has param-dependent model selection.
    * For param-dependent items, the model varies based on item parameters.
    */
