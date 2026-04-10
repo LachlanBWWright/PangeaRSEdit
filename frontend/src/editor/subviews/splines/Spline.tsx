@@ -6,10 +6,12 @@ import type {
 } from "@/python/structSpecs/LevelTypes";
 import { Line, Circle, Rect, Text } from "react-konva";
 import type Konva from "konva";
-import { useAtom, useAtomValue } from "jotai";
+import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { memo, useCallback, useMemo, useState, useRef } from "react";
 import { getPoints } from "../../../utils/spline";
-import { SelectedSpline } from "../../../data/splines/splineAtoms";
+import { SelectedSpline, SelectedSplineNub } from "../../../data/splines/splineAtoms";
+import { ActiveView } from "@/data/globals/activeViewAtom";
+import { View } from "@/editor/viewEnum";
 import { getSplineItemName } from "@/data/splines/getSplineItemNames";
 import { Globals } from "@/data/globals/globals";
 import {
@@ -214,6 +216,8 @@ const SplineNub = memo(
     onNubChange: () => void;
   }) => {
     const [selectedSpline, setSelectedSpline] = useAtom(SelectedSpline);
+    const setActiveView = useSetAtom(ActiveView);
+    const setSelectedSplineNub = useSetAtom(SelectedSplineNub);
     const [hovering, setHovering] = useState(false);
     return (
       <>
@@ -226,8 +230,16 @@ const SplineNub = memo(
           stroke="black"
           strokeWidth={2}
           perfectDrawEnabled={false}
-          onMouseDown={() => setSelectedSpline(splineIdx)}
-          onDragStart={() => setSelectedSpline(splineIdx)}
+          onMouseDown={() => {
+            setSelectedSpline(splineIdx);
+            setActiveView(View.splines);
+            setSelectedSplineNub(nubIdx);
+          }}
+          onDragStart={() => {
+            setSelectedSpline(splineIdx);
+            setActiveView(View.splines);
+            setSelectedSplineNub(nubIdx);
+          }}
           onDragMove={(e: Konva.KonvaEventObject<DragEvent>) => {
             onNubPreviewMove(nubIdx, Math.round(e.target.x()), Math.round(e.target.y()));
           }}

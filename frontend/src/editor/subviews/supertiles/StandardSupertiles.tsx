@@ -83,7 +83,6 @@ export const StandardSupertiles = memo(
                 />
               ) : (
                 <Rect
-                  onClick={() => setSelectedTile(i)}
                   x={
                     (i * globals.SUPERTILE_TEXMAP_SIZE) %
                     (globals.SUPERTILE_TEXMAP_SIZE * supertilesWide)
@@ -95,6 +94,7 @@ export const StandardSupertiles = memo(
                   width={globals.SUPERTILE_TEXMAP_SIZE}
                   height={globals.SUPERTILE_TEXMAP_SIZE}
                   fill="black"
+                  listening={false}
                 />
               )}
               {isSelected && (
