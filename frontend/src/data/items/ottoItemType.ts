@@ -711,8 +711,8 @@ const terrainItemTypeParamsSource: Record<ItemType, OttoItemParamsSource> = {
     flags: "Auto-fade status bits",
     p0: {
       type: "TypeSelector",
-      description: "Rock type (0=Small, 1=Large)",
-      options: { 0: "Small", 1: "Large" },
+      description: "Rock type (0=Small, 1=Medium, 2=Large)",
+      options: { 0: "Small", 1: "Medium", 2: "Large" },
       codeSample: {
         code: "int type = itemPtr->parm[0]; // get rock type",
         fileName: "Items/Items.c",
@@ -726,8 +726,9 @@ const terrainItemTypeParamsSource: Record<ItemType, OttoItemParamsSource> = {
   [ItemType.Hay]: {
     flags: "Auto-fade status bits",
     p0: {
-      type: "Integer",
-      description: "Hay bale type (0=Regular, 1=Round)",
+      type: "TypeSelector",
+      description: "Hay bale type (0=Brick, 1=Cylinder)",
+      options: { 0: "Brick", 1: "Cylinder" },
       codeSample: {
         code: "int type = itemPtr->parm[0]; // get hay type",
         fileName: "Items/Items.c",

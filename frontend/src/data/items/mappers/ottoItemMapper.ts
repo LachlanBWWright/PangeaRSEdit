@@ -18,6 +18,8 @@ import { OTTO_ITEM_MODEL_MAPPINGS } from "../ottoItemModelMapping";
 import { ItemType } from "../ottoItemType";
 import { 
   OTTO_HUMAN_TYPE, 
+  OTTO_ROCK_TYPE,
+  OTTO_HAY_TYPE,
   type ModelVariant,
   type TypeSelectorParam,
   getModelVariant,
@@ -43,6 +45,14 @@ const PARAM_DEPENDENT_ITEMS: Record<number, ParamDependentConfig> = {
     paramIndex: 1, // p1 controls human type
     paramType: OTTO_HUMAN_TYPE,
   },
+  [ItemType.Rock]: {
+    paramIndex: 0, // p0 selects Small/Medium/Large
+    paramType: OTTO_ROCK_TYPE,
+  },
+  [ItemType.Hay]: {
+    paramIndex: 0, // p0 selects Brick/Cylinder
+    paramType: OTTO_HAY_TYPE,
+  },
 };
 
 /**
@@ -62,6 +72,7 @@ function convertModelVariant(variant: ModelVariant): UniversalItemModelMapping {
     rotationY: variant.rotationY,
     positionOffset: variant.positionOffset,
     yOffset: variant.yOffset,
+    rotationParam: variant.rotationParam,
     citations: variant.citations ? [...variant.citations] : undefined,
   };
 }

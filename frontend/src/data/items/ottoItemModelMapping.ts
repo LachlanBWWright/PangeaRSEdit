@@ -226,13 +226,8 @@ export const OTTO_ITEM_MODEL_MAPPINGS: Record<
       { file: "src/Items/Items.c", line: 709, description: "scale = WINDMILL_SCALE" },
     ],
   },
-  [ItemType.Rock]: {
-    modelFile: "level1_farm.bg3d",
-    modelPath: "models",
-    modelIndex: 27,
-    scale: 2.0,
-    citations: [{ file: "src/Items/Items.c", line: 577, description: "scale = 2.0 + sin(x)" }],
-  },
+  // Rock: param-dependent (p0=0→Small, p0=1→Medium, p0=2→Large); handled by OttoItemMapper
+  [ItemType.Rock]: undefined,
   [ItemType.ExitRocket]: {
     modelFile: "global.bg3d",
     modelPath: "models",
@@ -822,13 +817,8 @@ export const OTTO_ITEM_MODEL_MAPPINGS: Record<
     scale: 2.3,
     citations: [{ file: "src/Items/Items.c", line: 546, description: "scale = 2.3f" }],
   },
-  [ItemType.Hay]: {
-    modelFile: "level1_farm.bg3d",
-    modelPath: "models",
-    modelIndex: 30, // FARM_ObjType_HayBrick
-    scale: 1.3,
-    citations: [{ file: "src/Items/Items.c", line: 607, description: "scale = 1.3" }],
-  },
+  // Hay: param-dependent (p0=0→Brick, p0=1→Cylinder); handled by OttoItemMapper
+  [ItemType.Hay]: undefined,
   
   // Fire/Ice level items (indices from FIREICE_ObjType enum in mobjtypes.h)
   [ItemType.LavaStone]: {
