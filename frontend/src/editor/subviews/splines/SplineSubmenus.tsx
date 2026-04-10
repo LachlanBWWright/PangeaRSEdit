@@ -13,8 +13,9 @@ import { parseU8 } from "../../../utils/numberParsers";
 import {
   SelectedSpline,
   SelectedSplineItem,
+  SelectedSplineNub,
 } from "../../../data/splines/splineAtoms";
-import { SPLINE_KEY_BASE } from "./splineUtils";
+import { SPLINE_KEY_BASE, updateSplinePointsFromNubs } from "./splineUtils";
 import { getPoints } from "../../../utils/spline";
 import { Input } from "@/components/ui/input";
 import {
@@ -413,13 +414,16 @@ export function EditSplineItemMenu({
 }
 
 export function EditSplineMenu({
+  splineData,
   setSplineData,
 }: {
+  splineData: SplineData;
   setSplineData: Updater<SplineData>;
 }) {
   const selectedSpline = useAtomValue(SelectedSpline);
   const [, setSelectedSpline] = useAtom(SelectedSpline);
   const [, setSelectedSplineItem] = useAtom(SelectedSplineItem);
+  const [selectedSplineNub, setSelectedSplineNub] = useAtom(SelectedSplineNub);
 
   const removeSplineAtIndex = (splineIdx: number) => {
     setSplineData((draft) => {
@@ -458,8 +462,127 @@ export function EditSplineMenu({
     if (selectedSpline === splineIdx) setSelectedSpline(undefined);
   };
 
+  const splineNubs =
+    selectedSpline !== undefined
+      ? (splineData.SpNb[SPLINE_KEY_BASE + selectedSpline]?.obj ?? [])
+      : [];
+  const numSplineNubs =
+    selectedSpline !== undefined
+      ? (splineData.Spln[1000]?.obj?.[selectedSpline]?.numNubs ?? splineNubs.length)
+      : 0;
+  const selectedNubData =
+    selectedSplineNub !== null ? splineNubs[selectedSplineNub] : null;
+
   return (
-    <div className="grid grid-cols-6 gap-2">
+    <>
+      {/* Nub list and coordinate editing */}
+      {selectedSpline !== undefined && (
+        <>
+          <p className="text-sm font-medium">Nubs</p>
+          <div className="flex flex-wrap gap-1">
+            {splineNubs.slice(0, numSplineNubs).map((nub, idx) => (
+              <Button
+                key={idx}
+                size="sm"
+                variant={selectedSplineNub === idx ? "default" : "outline"}
+                onClick={() =>
+                  setSelectedSplineNub(selectedSplineNub === idx ? null : idx)
+                }
+              >
+                {idx}: ({nub.x}, {nub.z})
+              </Button>
+            ))}
+          </div>
+
+          {selectedNubData && selectedSplineNub !== null && (
+            <>
+              <p className="text-sm font-medium">
+                Adjust Nub {selectedSplineNub} Position
+              </p>
+              <div className="grid grid-cols-[auto_1fr_auto_1fr] gap-2 items-center">
+                <label htmlFor="splineNubX" className="text-sm font-medium">
+                  X
+                </label>
+                <Input
+                  id="splineNubX"
+                  type="number"
+                  value={selectedNubData.x}
+                  onChange={(e) => {
+                    const newValue = parseInt(e.target.value);
+                    if (isNaN(newValue)) return;
+                    setSplineData((draft) => {
+                      if (selectedSpline === undefined || selectedSplineNub === null) return;
+                      const nub = draft.SpNb[SPLINE_KEY_BASE + selectedSpline]?.obj?.[selectedSplineNub];
+                      if (nub) nub.x = newValue;
+                    });
+                    updateSplinePointsFromNubs(selectedSpline, setSplineData);
+                  }}
+                  placeholder="X"
+                />
+                <label htmlFor="splineNubZ" className="text-sm font-medium">
+                  Z
+                </label>
+                <Input
+                  id="splineNubZ"
+                  type="number"
+                  value={selectedNubData.z}
+                  onChange={(e) => {
+                    const newValue = parseInt(e.target.value);
+                    if (isNaN(newValue)) return;
+                    setSplineData((draft) => {
+                      if (selectedSpline === undefined || selectedSplineNub === null) return;
+                      const nub = draft.SpNb[SPLINE_KEY_BASE + selectedSpline]?.obj?.[selectedSplineNub];
+                      if (nub) nub.z = newValue;
+                    });
+                    updateSplinePointsFromNubs(selectedSpline, setSplineData);
+                  }}
+                  placeholder="Z"
+                />
+              </div>
+            </>
+          )}
+
+          <div className="flex gap-2">
+            <Button
+              onClick={() => {
+                setSplineData((draft) => {
+                  if (selectedSpline === undefined) return;
+                  const nubEntry = draft.SpNb[SPLINE_KEY_BASE + selectedSpline];
+                  const spline = draft.Spln[1000]?.obj?.[selectedSpline];
+                  if (!nubEntry || !spline) return;
+                  const lastNub = nubEntry.obj[nubEntry.obj.length - 1];
+                  if (!lastNub) return;
+                  nubEntry.obj.push({ x: lastNub.x + 50, z: lastNub.z + 50 });
+                  spline.numNubs = nubEntry.obj.length;
+                });
+                updateSplinePointsFromNubs(selectedSpline, setSplineData);
+              }}
+            >
+              Add Nub
+            </Button>
+            <Button
+              variant="destructive"
+              disabled={selectedSplineNub === null || numSplineNubs <= 3}
+              onClick={() => {
+                setSplineData((draft) => {
+                  if (selectedSpline === undefined || selectedSplineNub === null) return;
+                  const nubEntry = draft.SpNb[SPLINE_KEY_BASE + selectedSpline];
+                  const spline = draft.Spln[1000]?.obj?.[selectedSpline];
+                  if (!nubEntry || !spline || spline.numNubs <= 3) return;
+                  nubEntry.obj.splice(selectedSplineNub, 1);
+                  spline.numNubs = nubEntry.obj.length;
+                });
+                setSelectedSplineNub(null);
+                updateSplinePointsFromNubs(selectedSpline, setSplineData);
+              }}
+            >
+              Remove Nub
+            </Button>
+          </div>
+        </>
+      )}
+
+      <div className="grid grid-cols-6 gap-2">
       <Button
         onClick={() => {
           setSplineData((splineData) => {
@@ -610,5 +733,6 @@ export function EditSplineMenu({
         Add Spline Item
       </Button>
     </div>
+    </>
   );
 }
