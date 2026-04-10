@@ -475,25 +475,9 @@ export function EditSplineMenu({
 
   return (
     <>
-      {/* Nub list and coordinate editing */}
+      {/* Nub coordinate editing (nub selected by clicking in Konva view) */}
       {selectedSpline !== undefined && (
         <>
-          <p className="text-sm font-medium">Nubs</p>
-          <div className="flex flex-wrap gap-1">
-            {splineNubs.slice(0, numSplineNubs).map((nub, idx) => (
-              <Button
-                key={idx}
-                size="sm"
-                variant={selectedSplineNub === idx ? "default" : "outline"}
-                onClick={() =>
-                  setSelectedSplineNub(selectedSplineNub === idx ? null : idx)
-                }
-              >
-                {idx}: ({nub.x}, {nub.z})
-              </Button>
-            ))}
-          </div>
-
           {selectedNubData && selectedSplineNub !== null && (
             <>
               <p className="text-sm font-medium">

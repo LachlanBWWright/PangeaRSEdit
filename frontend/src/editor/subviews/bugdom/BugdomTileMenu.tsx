@@ -573,7 +573,7 @@ export function BugdomTileMenu({
 
   return (
     <div className="flex flex-col gap-4 p-2">
-      <div className="grid grid-cols-4 gap-2">
+      <div className="grid grid-cols-2 gap-2">
         <Button onClick={() => onResizeSupertiles("top", 1)}>
           Add Supertile Row Top
         </Button>
@@ -587,7 +587,7 @@ export function BugdomTileMenu({
           Add Supertile Column Right
         </Button>
       </div>
-      <div className="grid grid-cols-4 gap-2">
+      <div className="grid grid-cols-2 gap-2">
         <Button variant="destructive" onClick={() => handleRemoveSupertile("top")}>
           Remove Supertile Row Top
         </Button>

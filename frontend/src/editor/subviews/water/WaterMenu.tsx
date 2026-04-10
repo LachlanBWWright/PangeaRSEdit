@@ -22,6 +22,8 @@ import { getWaterBodyTypes } from "@/data/water/getWaterBodyTypes";
 import { Input } from "@/components/ui/input";
 import { memo, useMemo } from "react";
 import { EmptyDataPrompt } from "../EmptyDataPrompts";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { Info } from "lucide-react";
 
 export const WaterMenu = memo(function WaterMenu({
   liquidData,
@@ -145,7 +147,18 @@ export const WaterMenu = memo(function WaterMenu({
             {/* Hotspot Adjustments */}
             {waterBodyData && selectedWaterBody !== null && (
               <>
-                <p>Adjust Hotspot Position</p>
+                <div className="flex items-center gap-1">
+                  <p>Adjust Hotspot Position</p>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Info className="w-3.5 h-3.5 text-gray-400 cursor-help shrink-0" />
+                    </TooltipTrigger>
+                    <TooltipContent side="right" className="max-w-xs">
+                      The liquid&apos;s height is determined by sampling the terrain height at this
+                      hotspot position and adding the liquid&apos;s Y offset to it.
+                    </TooltipContent>
+                  </Tooltip>
+                </div>
                 <div className="grid grid-cols-[auto_1fr_auto_1fr] gap-2  items-center">
                   <label
                     htmlFor="hotspotX"

@@ -304,7 +304,8 @@ const SplineItem = memo(
           y={z - ITEM_BOX_OFFSET}
           width={ITEM_BOX_SIZE}
           height={ITEM_BOX_SIZE}
-          stroke="blue"
+          stroke="black"
+          strokeWidth={1}
           fill="blue"
           onMouseOver={() => setHovering(true)}
           onMouseLeave={() => setHovering(false)}

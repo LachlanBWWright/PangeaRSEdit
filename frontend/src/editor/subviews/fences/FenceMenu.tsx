@@ -234,30 +234,13 @@ export const FenceMenu = memo(function FenceMenu({
         )}
       </div>
 
-      {/* Nub list and coordinate editing */}
+      {/* Nub coordinate editing (nub selected by clicking in Konva view) */}
       {selectedFence !== undefined && (() => {
         const nubs = fenceData.FnNb[selectedFence + NUB_KEY_BASE]?.obj ?? [];
-        const visibleNubs = nubs.slice(0, numNubs);
         const selectedNubCoords =
           selectedFenceNub !== null ? nubs[selectedFenceNub] : null;
         return (
           <>
-            <p className="text-sm font-medium">Nubs</p>
-            <div className="flex flex-wrap gap-1">
-              {visibleNubs.map((nub, idx) => (
-                <Button
-                  key={idx}
-                  size="sm"
-                  variant={selectedFenceNub === idx ? "default" : "outline"}
-                  onClick={() =>
-                    setSelectedFenceNub(selectedFenceNub === idx ? null : idx)
-                  }
-                >
-                  {idx}: ({nub[0]}, {nub[1]})
-                </Button>
-              ))}
-            </div>
-
             {selectedNubCoords && selectedFenceNub !== null && (
               <>
                 <p className="text-sm font-medium">

@@ -235,7 +235,8 @@ export const Item = memo(function Item({
         y={itemZ}
         width={ITEM_BOX_SIZE}
         height={ITEM_BOX_SIZE}
-        stroke="red"
+        stroke="black"
+        strokeWidth={1}
         fill="red"
         draggable
         onMouseOver={handleMouseOver}
