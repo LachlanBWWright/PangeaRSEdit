@@ -7,11 +7,12 @@
  * - 3D terrain view
  */
 
-import { useState, useEffect, useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { StandardEditorToolbar } from "../toolbars/StandardEditorToolbar";
 import { Updater, useImmer } from "use-immer";
 import { useAtomValue } from "jotai";
 import { CanvasView, CanvasViewMode } from "@/data/canvasView/canvasViewAtoms";
+import { ActiveView } from "@/data/globals/activeViewAtom";
 
 import { FenceMenu } from "../subviews/fences/FenceMenu";
 import { ItemMenu } from "../subviews/items/ItemMenu";
@@ -76,7 +77,7 @@ export function OttoMaticEditorView({
   const canvasViewMode = useAtomValue(CanvasViewMode);
   const globals = useAtomValue(Globals);
   const setEditorNavbarTabs = useSetAtom(editorNavbarTabsAtom);
-  const [view, setView] = useState<View>(View.fences);
+  const view = useAtomValue(ActiveView);
   const [stage, setStage] = useImmer({ scale: 1, x: 0, y: 0 });
 
   const handleKeyDown = useMemo(
@@ -113,14 +114,12 @@ export function OttoMaticEditorView({
   useEffect(() => {
     setEditorNavbarTabs(
       <StandardEditorToolbar
-        view={view}
-        setView={setView}
         terrainHasSTgd={showSupertileMenu}
         compact
       />,
     );
     return () => setEditorNavbarTabs(null);
-  }, [setEditorNavbarTabs, showSupertileMenu, view, setView]);
+  }, [setEditorNavbarTabs, showSupertileMenu]);
 
   const handleSupertileResize = (
     direction: "top" | "bottom" | "left" | "right",

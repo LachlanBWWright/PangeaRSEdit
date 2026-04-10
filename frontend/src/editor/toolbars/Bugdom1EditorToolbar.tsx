@@ -14,20 +14,19 @@ import { memo } from "react";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { View } from "../viewEnum";
+import { useAtom } from "jotai";
+import { ActiveView } from "@/data/globals/activeViewAtom";
 
 interface Props {
-  view: View;
-  setView: (v: View) => void;
   terrainHasSTgd?: boolean;
   compact?: boolean;
 }
 
 export const Bugdom1EditorToolbar = memo(function Bugdom1EditorToolbar({
-  view,
-  setView,
   terrainHasSTgd,
   compact,
 }: Props) {
+  const [view, setView] = useAtom(ActiveView);
   const currentValue =
     view === View.fences
       ? "fences"

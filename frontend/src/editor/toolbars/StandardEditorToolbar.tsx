@@ -10,20 +10,19 @@ import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { View } from "../viewEnum";
 import { memo } from "react";
+import { useAtom } from "jotai";
+import { ActiveView } from "@/data/globals/activeViewAtom";
 
 interface Props {
-  view: View;
-  setView: (v: View) => void;
   terrainHasSTgd?: boolean;
   compact?: boolean;
 }
 
 export const StandardEditorToolbar = memo(function StandardEditorToolbar({
-  view,
-  setView,
   terrainHasSTgd,
   compact,
 }: Props) {
+  const [view, setView] = useAtom(ActiveView);
   const currentValue =
     view === View.fences
       ? "fences"

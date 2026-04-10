@@ -5,11 +5,12 @@
  * Has fences, items, splines but different tile system (no water)
  */
 
-import { useState, useEffect, useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { Bugdom1EditorToolbar } from "../toolbars/Bugdom1EditorToolbar";
 import { Updater, useImmer } from "use-immer";
 import { useAtomValue } from "jotai";
 import { CanvasView, CanvasViewMode } from "@/data/canvasView/canvasViewAtoms";
+import { ActiveView } from "@/data/globals/activeViewAtom";
 
 import { FenceMenu } from "../subviews/fences/FenceMenu";
 import { ItemMenu } from "../subviews/items/ItemMenu";
@@ -68,7 +69,7 @@ export function BugdomEditorView({
   const canvasViewMode = useAtomValue(CanvasViewMode);
   const globals = useAtomValue(Globals);
   const setEditorNavbarTabs = useSetAtom(editorNavbarTabsAtom);
-  const [view, setView] = useState<View>(View.fences);
+  const view = useAtomValue(ActiveView);
   const [stage, setStage] = useImmer({ scale: 1, x: 0, y: 0 });
 
   const handleKeyDown = useMemo(
@@ -101,14 +102,12 @@ export function BugdomEditorView({
   useEffect(() => {
     setEditorNavbarTabs(
       <Bugdom1EditorToolbar
-        view={view}
-        setView={setView}
         terrainHasSTgd={showSupertileMenu}
         compact
       />,
     );
     return () => setEditorNavbarTabs(null);
-  }, [setEditorNavbarTabs, showSupertileMenu, view, setView]);
+  }, [setEditorNavbarTabs, showSupertileMenu]);
 
   const handleSupertileResize = (
     direction: "top" | "bottom" | "left" | "right",

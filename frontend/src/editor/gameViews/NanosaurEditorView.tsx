@@ -8,11 +8,12 @@
  * - Just items and terrain
  */
 
-import { useState, useEffect, useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { Nanosaur1EditorToolbar } from "../toolbars/Nanosaur1EditorToolbar";
 import { Updater, useImmer } from "use-immer";
 import { useAtomValue } from "jotai";
 import { CanvasView, CanvasViewMode } from "@/data/canvasView/canvasViewAtoms";
+import { ActiveView } from "@/data/globals/activeViewAtom";
 
 import { ItemMenu } from "../subviews/items/ItemMenu";
 import { IndividualTilesMenu } from "./IndividualTilesMenu";
@@ -52,8 +53,7 @@ export function NanosaurEditorView({
 }: NanosaurEditorViewProps) {
   const canvasViewMode = useAtomValue(CanvasViewMode);
   const globals = useAtomValue(Globals);
-  // Default to items view since Nanosaur doesn't have fences
-  const [view, setView] = useState<View>(View.items);
+  const view = useAtomValue(ActiveView);
   const [stage, setStage] = useImmer({ scale: 1, x: 0, y: 0 });
 
   const handleKeyDown = useMemo(
@@ -108,8 +108,6 @@ export function NanosaurEditorView({
   return (
     <div className="flex flex-col flex-1 w-full gap-2 min-h-0">
       <Nanosaur1EditorToolbar
-        view={view}
-        setView={setView}
         terrainHasSTgd={showSupertileMenu}
       />
       <MenuSection>

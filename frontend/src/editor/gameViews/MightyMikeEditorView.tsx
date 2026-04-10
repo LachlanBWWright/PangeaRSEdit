@@ -7,7 +7,7 @@
  * - No fences, water bodies, or splines
  */
 
-import { useState, useEffect, useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { useImmer, Updater } from "use-immer";
 import { MightyMikeEditorToolbar } from "../toolbars/MightyMikeEditorToolbar";
 
@@ -34,6 +34,7 @@ import {
   ItemData,
 } from "@/python/structSpecs/LevelTypes";
 import { CurrentScene } from "@/data/game/gameAtoms";
+import { ActiveView } from "@/data/globals/activeViewAtom";
 
 function getCurrentSceneFromTerrainData(
   terrainData: MightyMikeEditorViewProps["terrainData"],
@@ -70,7 +71,7 @@ export function MightyMikeEditorView({
   const setCurrentScene = useSetAtom(CurrentScene);
   const setEditorNavbarTabs = useSetAtom(editorNavbarTabsAtom);
   // Default to items view since MightyMike doesn't have fences
-  const [view, setView] = useState<View>(View.items);
+  const view = useAtomValue(ActiveView);
   const [stage, setStage] = useImmer({ scale: 1, x: 0, y: 0 });
 
   const handleKeyDown = useMemo(
@@ -90,13 +91,11 @@ export function MightyMikeEditorView({
   useEffect(() => {
     setEditorNavbarTabs(
       <MightyMikeEditorToolbar
-        view={view}
-        setView={setView}
         compact
       />,
     );
     return () => setEditorNavbarTabs(null);
-  }, [setEditorNavbarTabs, view, setView]);
+  }, [setEditorNavbarTabs]);
 
   const zoomIn = useMemo(() => createZoomInHandler(setStage), [setStage]);
   const zoomOut = useMemo(() => createZoomOutHandler(setStage), [setStage]);

@@ -12,18 +12,17 @@ import { memo } from "react";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { View } from "../viewEnum";
+import { useAtom } from "jotai";
+import { ActiveView } from "@/data/globals/activeViewAtom";
 
 interface Props {
-  view: View;
-  setView: (v: View) => void;
   terrainHasSTgd?: boolean;
 }
 
 export const Nanosaur1EditorToolbar = memo(function Nanosaur1EditorToolbar({
-  view,
-  setView,
   terrainHasSTgd,
 }: Props) {
+  const [view, setView] = useAtom(ActiveView);
   const currentValue =
     view === View.items
       ? "items"
