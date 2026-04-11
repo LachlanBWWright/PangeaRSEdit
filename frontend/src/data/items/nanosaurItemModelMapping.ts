@@ -20,11 +20,17 @@ export const NANOSAUR_ITEM_MODEL_MAPPINGS: Record<
   UniversalItemModelMapping | undefined
 > = {
   // Enemy skeletons
-  [ItemType.Enemy_Tricer]: { modelFile: "Tricer.3dmf", modelPath: "skeletons", modelIndex: 0, requiresSkeleton: true, skeletonFile: "Tricer.skeleton.rsrc" },
-  [ItemType.Enemy_Rex]: { modelFile: "Rex.3dmf", modelPath: "skeletons", modelIndex: 0, requiresSkeleton: true, skeletonFile: "Rex.skeleton.rsrc" },
-  [ItemType.Enemy_Ptera]: { modelFile: "Ptera.3dmf", modelPath: "skeletons", modelIndex: 0, requiresSkeleton: true, skeletonFile: "Ptera.skeleton.rsrc" },
-  [ItemType.Enemy_Stego]: { modelFile: "Stego.3dmf", modelPath: "skeletons", modelIndex: 0, requiresSkeleton: true, skeletonFile: "Stego.skeleton.rsrc" },
-  [ItemType.Enemy_Spitter]: { modelFile: "Diloph.3dmf", modelPath: "skeletons", modelIndex: 0, requiresSkeleton: true, skeletonFile: "Diloph.skeleton.rsrc" },
+  // Scales and yOffset from src/Enemies/Enemy_*.c: scale set after MakeEnemySkeleton; coord.y = terrainY (FOOT_OFFSET=0 → yOffset=-25)
+  // Tricer: TRICER_SCALE=2.2, FOOT_OFFSET=0 (src/Enemies/Enemy_TriCer.c)
+  [ItemType.Enemy_Tricer]: { modelFile: "Tricer.3dmf", modelPath: "skeletons", modelIndex: 0, requiresSkeleton: true, skeletonFile: "Tricer.skeleton.rsrc", scale: 2.2, yOffset: -25 },
+  // Rex: REX_SCALE=1.2, FOOT_OFFSET=0 (src/Enemies/Enemy_Rex.c)
+  [ItemType.Enemy_Rex]: { modelFile: "Rex.3dmf", modelPath: "skeletons", modelIndex: 0, requiresSkeleton: true, skeletonFile: "Rex.skeleton.rsrc", scale: 1.2, yOffset: -25 },
+  // Ptera: PTERA_SCALE=1.0, coord.y += FLIGHT_HEIGHT(100) — hovers 100 above terrain (src/Enemies/Enemy_Ptera.c)
+  [ItemType.Enemy_Ptera]: { modelFile: "Ptera.3dmf", modelPath: "skeletons", modelIndex: 0, requiresSkeleton: true, skeletonFile: "Ptera.skeleton.rsrc", scale: 1.0, yOffset: 75 },
+  // Stego: STEGO_SCALE=1.4, FOOT_OFFSET=-72*1.4=-100.8 → coord.y -= FOOT_OFFSET raises origin 100.8 above terrain (src/Enemies/Enemy_Stego.c)
+  [ItemType.Enemy_Stego]: { modelFile: "Stego.3dmf", modelPath: "skeletons", modelIndex: 0, requiresSkeleton: true, skeletonFile: "Stego.skeleton.rsrc", scale: 1.4, yOffset: 76 },
+  // Spitter: SPITTER_SCALE=0.8, FOOT_OFFSET=0 (src/Enemies/Enemy_Spitter.c)
+  [ItemType.Enemy_Spitter]: { modelFile: "Diloph.3dmf", modelPath: "skeletons", modelIndex: 0, requiresSkeleton: true, skeletonFile: "Diloph.skeleton.rsrc", scale: 0.8, yOffset: -25 },
 
   // Global models (Global_Models.3dmf = MODEL_GROUP_GLOBAL)
   // Indices from GLOBAL_MObjType_* enum in mobjtypes.h

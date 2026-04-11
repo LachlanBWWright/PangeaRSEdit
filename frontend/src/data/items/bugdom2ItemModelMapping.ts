@@ -70,15 +70,15 @@ export const BUGDOM2_ITEM_MODEL_MAPPINGS: Record<
   [ItemType.MouseTrap]: { modelFile: "MouseTrap.bg3d", modelPath: "skeletons", modelIndex: 0, requiresSkeleton: true, skeletonFile: "MouseTrap.skeleton.rsrc" },
 
   // Foliage items (Foliage.bg3d - MODEL_GROUP_FOLIAGE)
-  [ItemType.Daisy]: { modelFile: "Foliage.bg3d", modelPath: "models", modelIndex: 0 }, // FOLIAGE_ObjType_Daisy1 = 0
-  [ItemType.Grass]: { modelFile: "Foliage.bg3d", modelPath: "models", modelIndex: 7 }, // FOLIAGE_ObjType_Grass1 = 7
-  [ItemType.Tulip]: { modelFile: "Foliage.bg3d", modelPath: "models", modelIndex: 3 }, // FOLIAGE_ObjType_Tulip1 = 3
-  [ItemType.Rose]: { modelFile: "Foliage.bg3d", modelPath: "models", modelIndex: 11 }, // FOLIAGE_ObjType_Rose = 11
+  [ItemType.Daisy]: { modelFile: "Foliage.bg3d", modelPath: "models", modelIndex: 0, scale: 2.0 }, // FOLIAGE_ObjType_Daisy1 = 0; scale: 1.0+RandomFloat()*2.0 → avg 2.0
+  [ItemType.Grass]: { modelFile: "Foliage.bg3d", modelPath: "models", modelIndex: 7, scale: 2.5 }, // FOLIAGE_ObjType_Grass1 = 7; scale: 1.7+RandomFloat()*1.8 → avg 2.6
+  [ItemType.Tulip]: { modelFile: "Foliage.bg3d", modelPath: "models", modelIndex: 3, scale: 3.0 }, // FOLIAGE_ObjType_Tulip1 = 3; scale: 2.5+RandomFloat()*1.5 → avg 3.25
+  [ItemType.Rose]: { modelFile: "Foliage.bg3d", modelPath: "models", modelIndex: 11, scale: 3.0 }, // FOLIAGE_ObjType_Rose = 11; scale: 2.5+RandomFloat()*1.5 → avg 3.25
   [ItemType.ShrubRoot]: { modelFile: "Foliage.bg3d", modelPath: "models", modelIndex: 10 }, // FOLIAGE_ObjType_ShrubRoot = 10
 
   // Garden level items (Level1_Garden.bg3d)
   [ItemType.SprinklerHead]: { modelFile: "Level1_Garden.bg3d", modelPath: "models", modelIndex: 1, groupSize: 2, rotationParam: { paramIndex: 0, rotationType: ROTATION_4_WAY } }, // GARDEN_ObjType_SprinklerBase = 1; parm[0] * (PI/2) sets rotation
-  [ItemType.Scarecrow]: { modelFile: "Level1_Garden.bg3d", modelPath: "models", modelIndex: 8, groupSize: 3 }, // GARDEN_ObjType_ScarecrowBody = 8
+  [ItemType.Scarecrow]: { modelFile: "Level1_Garden.bg3d", modelPath: "models", modelIndex: 8, scale: 1.1, groupSize: 3 }, // GARDEN_ObjType_ScarecrowBody = 8; scale = SCARECROW_SCALE = 1.1
   [ItemType.Door]: { modelFile: "Level1_Garden.bg3d", modelPath: "models", modelIndex: 5, scale: 1.8, rotationParam: { paramIndex: 0, rotationType: ROTATION_4_WAY } }, // GARDEN_ObjType_RedDoor = 5
 
   // Sidewalk level items (Level2_Sidewalk.bg3d)
@@ -93,10 +93,10 @@ export const BUGDOM2_ITEM_MODEL_MAPPINGS: Record<
   [ItemType.TulipPot]: { modelFile: "Level2_Sidewalk.bg3d", modelPath: "models", modelIndex: 30, scale: 3.0 }, // SIDEWALK_ObjType_TulipPot = 30
   [ItemType.BeachBall]: { modelFile: "Level2_Sidewalk.bg3d", modelPath: "models", modelIndex: 22, scale: 2.5 }, // SIDEWALK_ObjType_BeachBall = 22
   [ItemType.ChlorineFloat]: { modelFile: "Level2_Sidewalk.bg3d", modelPath: "models", modelIndex: 23, scale: 3.0 }, // SIDEWALK_ObjType_ChlorineFloat = 23
-  [ItemType.PoolRingFloat]: { modelFile: "Level2_Sidewalk.bg3d", modelPath: "models", modelIndex: 24 }, // SIDEWALK_ObjType_PoolRingFloat = 24
-  [ItemType.DrainPipe]: { modelFile: "Level2_Sidewalk.bg3d", modelPath: "models", modelIndex: 31 }, // SIDEWALK_ObjType_DrainPipe = 31
+  [ItemType.PoolRingFloat]: { modelFile: "Level2_Sidewalk.bg3d", modelPath: "models", modelIndex: 24, scale: 3.0 }, // SIDEWALK_ObjType_PoolRingFloat = 24
+  [ItemType.DrainPipe]: { modelFile: "Level2_Sidewalk.bg3d", modelPath: "models", modelIndex: 31, scale: 2.5 }, // SIDEWALK_ObjType_DrainPipe = 31
   [ItemType.RideBall]: { modelFile: "Level2_Sidewalk.bg3d", modelPath: "models", modelIndex: 15, rotationParam: { paramIndex: 0, rotationType: ROTATION_8_WAY } }, // SIDEWALK_ObjType_RideBall = 15; parm[0] * (PI2/8) = PI/4 per step
-  [ItemType.GlassBottle]: { modelFile: "Level2_Sidewalk.bg3d", modelPath: "models", modelIndex: 33 }, // SIDEWALK_ObjType_Bottle = 33
+  [ItemType.GlassBottle]: { modelFile: "Level2_Sidewalk.bg3d", modelPath: "models", modelIndex: 33, scale: 2.1 }, // SIDEWALK_ObjType_Bottle = 33
   [ItemType.SquishBerry]: { modelFile: "Level2_Sidewalk.bg3d", modelPath: "models", modelIndex: 25 }, // SIDEWALK_ObjType_SquishBerry = 25
 
   // Playroom level items (Level5_Playroom.bg3d)
@@ -143,9 +143,9 @@ export const BUGDOM2_ITEM_MODEL_MAPPINGS: Record<
   [ItemType.Kindling]: { modelFile: "Level10_Park.bg3d", modelPath: "models", modelIndex: 24 }, // PARK_ObjType_Twig = 24
 
   // Global items (Global.bg3d)
-  [ItemType.SnailShell]: { modelFile: "Global.bg3d", modelPath: "models", modelIndex: 26 }, // GLOBAL_ObjType_SnailShell = 26
-  [ItemType.Acorn]: { modelFile: "Global.bg3d", modelPath: "models", modelIndex: 25 }, // GLOBAL_ObjType_Acorn = 25
+  [ItemType.SnailShell]: { modelFile: "Global.bg3d", modelPath: "models", modelIndex: 26, scale: 1.2 }, // GLOBAL_ObjType_SnailShell = 26; scale = SNAIL_SCALE = 1.2
+  [ItemType.Acorn]: { modelFile: "Global.bg3d", modelPath: "models", modelIndex: 25, scale: 1.1 }, // GLOBAL_ObjType_Acorn = 25
   [ItemType.POW]: { modelFile: "Global.bg3d", modelPath: "models", modelIndex: 13 }, // GLOBAL_ObjType_HealthPOW = 13
-  [ItemType.Firecracker]: { modelFile: "Global.bg3d", modelPath: "models", modelIndex: 30 }, // GLOBAL_ObjType_Firecracker = 30
-  [ItemType.Butterfly]: { modelFile: "Global.bg3d", modelPath: "models", modelIndex: 10 }, // GLOBAL_ObjType_ButterflyBody = 10 (groupSize 3: body + left/right wings)
+  [ItemType.Firecracker]: { modelFile: "Global.bg3d", modelPath: "models", modelIndex: 30, scale: 1.1 }, // GLOBAL_ObjType_Firecracker = 30
+  [ItemType.Butterfly]: { modelFile: "Global.bg3d", modelPath: "models", modelIndex: 10, scale: 0.6, yOffset: 125 }, // GLOBAL_ObjType_ButterflyBody = 10 (groupSize 3: body + left/right wings); coord.y = terrainY + 150
 };

@@ -288,79 +288,95 @@ const CROMAG_BASE_MAPPINGS: Record<number, UniversalItemModelMapping> = {
 
 
   // ---- SKELETONS ----
+  // Scales from Source/Items/Traps.c and Source/Items/Items.c; yOffset = game's coord.y offset above terrainY minus 25
   [ItemType.Yeti]: {
     modelFile: "Yeti.bg3d", modelPath: "skeletons", modelIndex: 0,
     requiresSkeleton: true, skeletonFile: "yeti.skeleton.rsrc",
+    scale: 7.0, yOffset: 325, // YETI_SCALE=7.0; coord.y = terrainY + YETI_YOFF(350)
   },
 
   [ItemType.BrontoNeck]: {
     modelFile: "BrontoNeck.bg3d", modelPath: "skeletons", modelIndex: 0,
     requiresSkeleton: true, skeletonFile: "brontoneck.skeleton.rsrc",
+    scale: 50.0, yOffset: 475, // scale=50; coord.y = terrainY + 500
   },
 
   [ItemType.Catapult]: {
     modelFile: "Catapult.bg3d", modelPath: "skeletons", modelIndex: 0,
     requiresSkeleton: true, skeletonFile: "catapult.skeleton.rsrc",
+    scale: 4.5, yOffset: -25, // scale=4.5; coord.y = GetMinTerrainY (model base at terrain)
   },
 
   [ItemType.FlagPole]: {
     modelFile: "Flag.bg3d", modelPath: "skeletons", modelIndex: 0,
     requiresSkeleton: true, skeletonFile: "flag.skeleton.rsrc",
+    scale: 10.0, yOffset: -25, // scale=10; coord.y = terrainY - bbox.min.y (model base at terrain)
   },
 
   [ItemType.Flower]: {
     modelFile: "Flower.bg3d", modelPath: "skeletons", modelIndex: 0,
     requiresSkeleton: true, skeletonFile: "flower.skeleton.rsrc",
+    scale: 20.0, yOffset: -25, // scale=20; coord.y = terrainY
   },
 
   [ItemType.Dragon]: {
     modelFile: "Dragon.bg3d", modelPath: "skeletons", modelIndex: 0,
     requiresSkeleton: true, skeletonFile: "dragon.skeleton.rsrc",
+    scale: 20.0, yOffset: 4975, // scale=20; coord.y = terrainY + 5000
   },
 
   [ItemType.Druid]: {
     modelFile: "Druid.bg3d", modelPath: "skeletons", modelIndex: 0,
     requiresSkeleton: true, skeletonFile: "druid.skeleton.rsrc",
+    scale: 5.0, yOffset: -25, // scale=5; coord.y = terrainY
   },
 
   [ItemType.CamelSpline]: {
     modelFile: "Camel.bg3d", modelPath: "skeletons", modelIndex: 0,
     requiresSkeleton: true, skeletonFile: "camel.skeleton.rsrc",
+    scale: 3.0, yOffset: -25, // CAMEL_SCALE=3; coord.y = terrainY
   },
 
   [ItemType.BeetleSpline]: {
     modelFile: "Beetle.bg3d", modelPath: "skeletons", modelIndex: 0,
     requiresSkeleton: true, skeletonFile: "beetle.skeleton.rsrc",
+    scale: 1.0, yOffset: 15, // BEETLE_SCALE=1; coord.y = terrainY + BEETLE_YOFF(40)
   },
 
   [ItemType.SharkSpline]: {
     modelFile: "Shark.bg3d", modelPath: "skeletons", modelIndex: 0,
     requiresSkeleton: true, skeletonFile: "shark.skeleton.rsrc",
+    scale: 25.0, yOffset: -25, // SHARK_SCALE=25; placed underwater (SHARK_YOFF=5000 from water)
   },
 
   [ItemType.TrollSpline]: {
     modelFile: "Troll.bg3d", modelPath: "skeletons", modelIndex: 0,
     requiresSkeleton: true, skeletonFile: "troll.skeleton.rsrc",
+    scale: 4.5, yOffset: -25, // TROLL_SCALE=4.5; coord.y = terrainY
   },
 
   [ItemType.PteradactylSpline]: {
     modelFile: "Pterodactyl.bg3d", modelPath: "skeletons", modelIndex: 0,
     requiresSkeleton: true, skeletonFile: "pterodactyl.skeleton.rsrc",
+    scale: 15.0, yOffset: 3975, // PTERADACTYL_SCALE=15; coord.y = terrainY + PTERADACTYL_YOFF(4000)
   },
 
   [ItemType.MummySpline]: {
     modelFile: "Mummy.bg3d", modelPath: "skeletons", modelIndex: 0,
     requiresSkeleton: true, skeletonFile: "mummy.skeleton.rsrc",
+    scale: 3.0, yOffset: -25, // MUMMY_SCALE=3; coord.y = terrainY
   },
 
   [ItemType.PolarBearSpline]: {
     modelFile: "PolarBear.bg3d", modelPath: "skeletons", modelIndex: 0,
     requiresSkeleton: true, skeletonFile: "polarbear.skeleton.rsrc",
+    scale: 3.0, yOffset: -25, // BEAR_SCALE=3; coord.y = terrainY
   },
 
   [ItemType.VikingSpline]: {
     modelFile: "Viking.bg3d", modelPath: "skeletons", modelIndex: 0,
     requiresSkeleton: true, skeletonFile: "viking.skeleton.rsrc",
+    scale: 1.6, yOffset: -25, // VIKING_SCALE=1.6; coord.y = terrainY
   },
 };
 
