@@ -16,6 +16,7 @@
 
 import type { UniversalItemModelMapping } from "./itemModelTypes";
 import { ItemType } from "./bugdomItemType";
+import { ROTATION_4_WAY } from "./standardParamTypes";
 
 /**
  * Comprehensive mapping of all Bugdom item types to their 3D models
@@ -73,7 +74,7 @@ export const BUGDOM_ITEM_MODEL_MAPPINGS: Record<
   [ItemType.Tree]: { modelFile: "Pond_Models.3dmf", modelPath: "models", modelIndex: 0 }, // flight level tree (uses pond models)
 
   // Forest level models (Forest_Models.3dmf; indices = FOREST_MObjType values)
-  [ItemType.ExitLog]: { modelFile: "Global_Models2.3dmf", modelPath: "models", modelIndex: 1 }, // GLOBAL2_MObjType_ExitLog = 1
+  [ItemType.ExitLog]: { modelFile: "Global_Models2.3dmf", modelPath: "models", modelIndex: 1, rotationParam: { paramIndex: 0, rotationType: ROTATION_4_WAY } }, // GLOBAL2_MObjType_ExitLog = 1; parm[0] sets rotation (0-3, 90° per step)
   [ItemType.Thorn]: { modelFile: "Forest_Models.3dmf", modelPath: "models", modelIndex: 8 }, // FOREST_MObjType_Thorn1 = 8
   [ItemType.RockLedge]: { modelFile: "Forest_Models.3dmf", modelPath: "models", modelIndex: 10 }, // FOREST_MObjType_FlatRock = 10
   [ItemType.Stump]: { modelFile: "Forest_Models.3dmf", modelPath: "models", modelIndex: 6 }, // FOREST_MObjType_Stump = 6

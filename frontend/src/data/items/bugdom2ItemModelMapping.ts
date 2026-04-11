@@ -77,7 +77,7 @@ export const BUGDOM2_ITEM_MODEL_MAPPINGS: Record<
   [ItemType.ShrubRoot]: { modelFile: "Foliage.bg3d", modelPath: "models", modelIndex: 10 }, // FOLIAGE_ObjType_ShrubRoot = 10
 
   // Garden level items (Level1_Garden.bg3d)
-  [ItemType.SprinklerHead]: { modelFile: "Level1_Garden.bg3d", modelPath: "models", modelIndex: 1, groupSize: 2 }, // GARDEN_ObjType_SprinklerBase = 1
+  [ItemType.SprinklerHead]: { modelFile: "Level1_Garden.bg3d", modelPath: "models", modelIndex: 1, groupSize: 2, rotationParam: { paramIndex: 0, rotationType: ROTATION_4_WAY } }, // GARDEN_ObjType_SprinklerBase = 1; parm[0] * (PI/2) sets rotation
   [ItemType.Scarecrow]: { modelFile: "Level1_Garden.bg3d", modelPath: "models", modelIndex: 8, groupSize: 3 }, // GARDEN_ObjType_ScarecrowBody = 8
   [ItemType.Door]: { modelFile: "Level1_Garden.bg3d", modelPath: "models", modelIndex: 5, scale: 1.8, rotationParam: { paramIndex: 0, rotationType: ROTATION_4_WAY } }, // GARDEN_ObjType_RedDoor = 5
 
@@ -85,16 +85,17 @@ export const BUGDOM2_ITEM_MODEL_MAPPINGS: Record<
   [ItemType.Brick]: { modelFile: "Level2_Sidewalk.bg3d", modelPath: "models", modelIndex: 8, scale: 2.5, rotationParam: { paramIndex: 0, rotationType: ROTATION_4_WAY } }, // SIDEWALK_ObjType_Brick = 8
   [ItemType.Post]: { modelFile: "Level2_Sidewalk.bg3d", modelPath: "models", modelIndex: 12, scale: 1.5 }, // SIDEWALK_ObjType_Post_Brick = 12
   [ItemType.Pebble]: { modelFile: "Level2_Sidewalk.bg3d", modelPath: "models", modelIndex: 9 }, // SIDEWALK_ObjType_LargeStone = 9
-  [ItemType.PoolCoping]: { modelFile: "Level2_Sidewalk.bg3d", modelPath: "models", modelIndex: 20 }, // SIDEWALK_ObjType_Coping = 20
+  [ItemType.PoolCoping]: { modelFile: "Level2_Sidewalk.bg3d", modelPath: "models", modelIndex: 20, rotationParam: { paramIndex: 0, rotationType: ROTATION_4_WAY } }, // SIDEWALK_ObjType_Coping = 20; parm[0] * (PI2/4) = PI/2 per step
   [ItemType.PoolLeaf]: { modelFile: "Level2_Sidewalk.bg3d", modelPath: "models", modelIndex: 16, scale: 2.0 }, // SIDEWALK_ObjType_PoolLeaf1 = 16
-  [ItemType.DogHouse]: { modelFile: "Level2_Sidewalk.bg3d", modelPath: "models", modelIndex: 27, scale: 2.0, rotationParam: { paramIndex: 0, rotationType: ROTATION_8_WAY } }, // SIDEWALK_ObjType_DogHouse = 27
+  // DogHouse: base rotation is PI (180°), offset + parm[0]*PI/2; use ROTATION_4_WAY with PI offset
+  [ItemType.DogHouse]: { modelFile: "Level2_Sidewalk.bg3d", modelPath: "models", modelIndex: 27, scale: 2.0, rotationParam: { paramIndex: 0, rotationType: { type: "Rotation", divisions: 4, multiplier: "PI2/4", offset: Math.PI, description: "Dog house rotation (0-3, PI/2 per step, starting at 180°)" } } }, // SIDEWALK_ObjType_DogHouse = 27
   [ItemType.Windmill]: { modelFile: "Level2_Sidewalk.bg3d", modelPath: "models", modelIndex: 28, groupSize: 2, rotationParam: { paramIndex: 0, rotationType: ROTATION_4_WAY } }, // SIDEWALK_ObjType_WindmillBase = 28
   [ItemType.TulipPot]: { modelFile: "Level2_Sidewalk.bg3d", modelPath: "models", modelIndex: 30, scale: 3.0 }, // SIDEWALK_ObjType_TulipPot = 30
   [ItemType.BeachBall]: { modelFile: "Level2_Sidewalk.bg3d", modelPath: "models", modelIndex: 22, scale: 2.5 }, // SIDEWALK_ObjType_BeachBall = 22
   [ItemType.ChlorineFloat]: { modelFile: "Level2_Sidewalk.bg3d", modelPath: "models", modelIndex: 23, scale: 3.0 }, // SIDEWALK_ObjType_ChlorineFloat = 23
   [ItemType.PoolRingFloat]: { modelFile: "Level2_Sidewalk.bg3d", modelPath: "models", modelIndex: 24 }, // SIDEWALK_ObjType_PoolRingFloat = 24
   [ItemType.DrainPipe]: { modelFile: "Level2_Sidewalk.bg3d", modelPath: "models", modelIndex: 31 }, // SIDEWALK_ObjType_DrainPipe = 31
-  [ItemType.RideBall]: { modelFile: "Level2_Sidewalk.bg3d", modelPath: "models", modelIndex: 15 }, // SIDEWALK_ObjType_RideBall = 15
+  [ItemType.RideBall]: { modelFile: "Level2_Sidewalk.bg3d", modelPath: "models", modelIndex: 15, rotationParam: { paramIndex: 0, rotationType: ROTATION_8_WAY } }, // SIDEWALK_ObjType_RideBall = 15; parm[0] * (PI2/8) = PI/4 per step
   [ItemType.GlassBottle]: { modelFile: "Level2_Sidewalk.bg3d", modelPath: "models", modelIndex: 33 }, // SIDEWALK_ObjType_Bottle = 33
   [ItemType.SquishBerry]: { modelFile: "Level2_Sidewalk.bg3d", modelPath: "models", modelIndex: 25 }, // SIDEWALK_ObjType_SquishBerry = 25
 

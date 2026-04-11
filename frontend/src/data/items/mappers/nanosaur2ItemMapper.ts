@@ -18,7 +18,7 @@ import {
   type UniversalItemModelMapping,
 } from "../itemModelTypes";
 import { ItemType } from "../nanosaur2ItemType";
-import { ROTATION_8_WAY } from "../standardParamTypes";
+import { ROTATION_4_WAY, ROTATION_8_WAY } from "../standardParamTypes";
 
 /**
  * Level-specific model file names for Nanosaur 2
@@ -58,7 +58,8 @@ const NANOSAUR2_BASE_MAPPINGS: Record<number, UniversalItemModelMapping> = {
   // GLOBAL_ObjType_ForestDoor_Door = 26, KeyHolder = 27
   [ItemType.ForestDoor]: {
     modelFile: "global.bg3d", modelPath: "models", modelIndex: 26, groupSize: 2,
-    rotationParam: { paramIndex: 1, rotationType: ROTATION_8_WAY },
+    // parm[1] * (PI/2) sets rotation (0-3, 90° per step) - Source/Items/ForestDoor.c:61
+    rotationParam: { paramIndex: 1, rotationType: ROTATION_4_WAY },
   },
 
   // GLOBAL_ObjType_ForestDoor_Key = 28, Ring = 29
@@ -271,7 +272,8 @@ const NANOSAUR2_BASE_MAPPINGS: Record<number, UniversalItemModelMapping> = {
   // Source/Items/Trees.c AddSwampFallenTree: scale = 1.2 + RandomFloat2() * .2f
   [ItemType.SwampFallenTree]: {
     modelFile: "swamp.bg3d", modelPath: "models", modelIndex: 37, scale: 1.2,
-    rotationParam: { paramIndex: 0, rotationType: ROTATION_8_WAY },
+    // parm[1]: 0=random, 1-8 = (value-1)*PI2/8; offset by -PI/4 to correct for 1-indexed formula
+    rotationParam: { paramIndex: 1, rotationType: { type: "Rotation", divisions: 8, multiplier: "PI2/8", offset: -Math.PI / 4, description: "Rotation (0=random, 1-8 = specific 45° steps; 0° when value=1)" } },
     variants: { 0: { modelIndex: 37 }, 1: { modelIndex: 38 } },
   },
 

@@ -657,7 +657,7 @@ const bugdom2ItemTypeParamsSource: Record<ItemType, Bugdom2ItemParamsSource> = {
     flags: "Unknown",
     p0: {
       type: "Integer",
-      description: "Dog house rotation (0-7, where each unit = 45°)",
+      description: "Dog house rotation (0-3, where each unit = 90°, starting at 180°)",
       codeSample: {
         code: "gNewObjectDefinition.rot = PI + ((float)itemPtr->parm[0] * (PI2/4));",
         fileName: "Source/Items/Items.c",

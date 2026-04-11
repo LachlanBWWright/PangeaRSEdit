@@ -271,7 +271,7 @@ const terrainItemTypeParamsSource: Record<ItemType, OttoItemParamsSource> = {
     flags: "Auto-fade status bits",
     p0: {
       type: "Integer",
-      description: "Rotation (0=0°, 1=180°)",
+      description: "Rotation (0=0°, 1=90°, 2=180°, 3=270°)",
       codeSample: {
         code: "gNewObjectDefinition.rot = itemPtr->parm[0] * (PI/2);",
         fileName: "Items/Items.c",
@@ -783,7 +783,7 @@ const terrainItemTypeParamsSource: Record<ItemType, OttoItemParamsSource> = {
     },
     p1: {
       type: "Integer",
-      description: "Rotation (0-3, multiplied by PI/2)",
+      description: "Rotation (0-3, multiplied by PI2/8 = PI/4 per step)",
       codeSample: {
         code: "gNewObjectDefinition.rot = r = (float)itemPtr->parm[1] * (PI2/8);",
         fileName: "Items/Items.c",
@@ -1237,7 +1237,7 @@ const terrainItemTypeParamsSource: Record<ItemType, OttoItemParamsSource> = {
     },
     p1: {
       type: "Integer",
-      description: "Rotation (0-3, multiplied by PI2/4)",
+      description: "Initial spin offset (0-3, PI2/8 = PI/4 per step)",
       codeSample: {
         code: "newObj->SpinOffset = (float)itemPtr->parm[1] * (PI2 / 8.0f);",
         fileName: "Items/Triggers.c",
@@ -1358,9 +1358,9 @@ const terrainItemTypeParamsSource: Record<ItemType, OttoItemParamsSource> = {
     },
     p1: {
       type: "Integer",
-      description: "Rotation (0-7, multiplied by PI2/8)",
+      description: "Rotation (0-3, multiplied by PI2/4 = PI/2 per step)",
       codeSample: {
-        code: "gNewObjectDefinition.rot = (float)itemPtr->parm[0] * (PI2/4.0f);",
+        code: "gNewObjectDefinition.rot = (float)itemPtr->parm[1] * (PI2/4.0f);",
         fileName: "Items/Items.c",
         lineNumber: 1871,
       },
@@ -1772,7 +1772,7 @@ const terrainItemTypeParamsSource: Record<ItemType, OttoItemParamsSource> = {
     },
     p1: {
       type: "Integer",
-      description: "Rotation (0-7, multiplied by PI2/8)",
+      description: "Rotation (0-15, multiplied by PI2/16 = PI/8 per step)",
       codeSample: {
         code: "float rot = (float)itemPtr->parm[1] * (PI2/16);",
         fileName: "Items/items2.c",

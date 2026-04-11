@@ -193,6 +193,18 @@ export type StandardParamType =
 // ============================================================================
 
 /**
+ * 2-step rotation (0° or 180°)
+ * p * PI radians; only values 0 and 1 are meaningful.
+ * Formula: (value/2) * 2*PI = value * PI
+ */
+export const ROTATION_PI_STEP: RotationParam = {
+  type: "Rotation",
+  divisions: 2,
+  multiplier: "PI",
+  description: "Rotation 0° or 180° (0 = 0°, 1 = 180°)",
+};
+
+/**
  * 4-way rotation (0, 90, 180, 270 degrees)
  * p0 * PI/2 radians
  */
