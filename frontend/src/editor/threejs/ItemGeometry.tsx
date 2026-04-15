@@ -302,7 +302,7 @@ export const ItemGeometry: React.FC<ItemGeometryProps> = ({
       }
     });
     return scenes;
-  }, [modelCache, itemsByCacheKey, mapper]);
+  }, [modelCache, itemsByCacheKey, mapper, levelNum]);
 
   useEffect(() => {
     // Load 3D models for all games that have model support
@@ -327,7 +327,7 @@ export const ItemGeometry: React.FC<ItemGeometryProps> = ({
         void loadItemModel();
       });
     }
-  }, [show3DItemModels, itemsByCacheKey, loadModel]);
+  }, [show3DItemModels, itemsByCacheKey, loadModel, levelNum]);
 
   // Early return after all hooks
   if (!items || items.length === 0) {

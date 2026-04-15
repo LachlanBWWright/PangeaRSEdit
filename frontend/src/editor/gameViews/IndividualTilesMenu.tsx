@@ -37,10 +37,6 @@ import {
   CanvasView,
   CanvasViewMode,
   Export3DScene,
-  Show3DSplines,
-  Show3DItems,
-  Show3DFences,
-  Show3DLiquid,
   Show3DItemModels,
 } from "@/data/canvasView/canvasViewAtoms";
 import { useEffect } from "react";
@@ -71,10 +67,6 @@ export function IndividualTilesMenu({
   const [toplogyOpacity, setTopologyOpacity] = useAtom(TopologyOpacity);
   const [canvasViewMode, setCanvasViewMode] = useAtom(CanvasViewMode);
   const [, setExport3DScene] = useAtom(Export3DScene);
-  const [show3DSplines, setShow3DSplines] = useAtom(Show3DSplines);
-  const [show3DItems, setShow3DItems] = useAtom(Show3DItems);
-  const [show3DFences, setShow3DFences] = useAtom(Show3DFences);
-  const [show3DLiquid, setShow3DLiquid] = useAtom(Show3DLiquid);
   const [show3DItemModels, setShow3DItemModels] = useAtom(Show3DItemModels);
   const [layerEditMode, setLayerEditMode] = useAtom(CurrentTopologyLayerEditMode);
   const [dualEditMode, setDualEditMode] = useAtom(CurrentTopologyDualEditMode);

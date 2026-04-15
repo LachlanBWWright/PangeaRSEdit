@@ -50,10 +50,10 @@ export function TilesMenu({
   const [value, setValue] = useAtom(TopologyValue);
   const [toplogyOpacity, setTopologyOpacity] = useAtom(TopologyOpacity);
   const [canvasViewMode, setCanvasViewMode] = useAtom(CanvasViewMode);
-  const [show3DSplines, setShow3DSplines] = useAtom(Show3DSplines);
-  const [show3DItems, setShow3DItems] = useAtom(Show3DItems);
-  const [show3DFences, setShow3DFences] = useAtom(Show3DFences);
-  const [show3DLiquid, setShow3DLiquid] = useAtom(Show3DLiquid);
+  const [, setShow3DSplines] = useAtom(Show3DSplines);
+  const [, setShow3DItems] = useAtom(Show3DItems);
+  const [, setShow3DFences] = useAtom(Show3DFences);
+  const [, setShow3DLiquid] = useAtom(Show3DLiquid);
   const [, setExport3DScene] = useAtom(Export3DScene);
   const [tileEditingEnabled, setTileEditingEnabled] =
     useAtom(TileEditingEnabled);

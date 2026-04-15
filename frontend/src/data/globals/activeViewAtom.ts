@@ -24,7 +24,7 @@ const _activeViewAtom = atom<View>(View.fences);
  */
 export const ActiveView = atom(
   (get) => get(_activeViewAtom),
-  (get, set, newView: View) => {
+  (_get, set, newView: View) => {
     set(_activeViewAtom, newView);
 
     if (newView !== View.fences) {

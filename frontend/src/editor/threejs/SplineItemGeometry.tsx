@@ -98,7 +98,7 @@ export const SplineItemGeometry: React.FC<SplineItemGeometryProps> = ({
       };
       void triggerLoad();
     });
-  }, [show3DItemModels, uniqueSplineItemTypes, loadModel]);
+  }, [show3DItemModels, uniqueSplineItemTypes, loadModel, levelNum]);
 
   // Pre-clone scenes once per model, applying scale from the mapping
   const clonedScenesByType = useMemo(() => {

@@ -76,11 +76,11 @@ function EnhancedModelMeshComponent({
   useEffect(() => {
     if (!scene || !previewLighting) return;
 
-    const resettableMaterials: Array<{
+    const resettableMaterials: {
       material: Material;
       metalness?: number;
       roughness?: number;
-    }> = [];
+    }[] = [];
 
     scene.traverse((object) => {
       if (!(object instanceof Mesh) || !object.material) return;
