@@ -32,7 +32,7 @@ import {
   Show3DItemModels,
   Export3DScene,
 } from "@/data/canvasView/canvasViewAtoms";
-import { useEffect } from "react";
+
 import { Switch } from "@/components/ui/switch";
 import { HeaderData } from "@/python/structSpecs/LevelTypes";
 import { Updater } from "use-immer";
@@ -62,12 +62,6 @@ export function OttoMaticTilesMenu({
   const header = headerData?.Hedr?.[1000]?.obj;
   const minY = header?.minY || 0;
   const maxY = header?.maxY || 0;
-
-  useEffect(() => {
-    if (tileView !== TileViews.Topology) {
-      setCanvasViewMode(CanvasView.TWO_D);
-    }
-  }, [tileView, setCanvasViewMode]);
 
   const handleMinYChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newValue = parseFloat(e.target.value);
@@ -105,9 +99,9 @@ export function OttoMaticTilesMenu({
         }
         onValueChange={(value) => {
           if (value === "topology") setTileView(TileViews.Topology);
-          else if (value === "flags") setTileView(TileViews.Flags);
-          else if (value === "electric0") setTileView(TileViews.ElectricFloor0);
-          else if (value === "electric1") setTileView(TileViews.ElectricFloor1);
+          else if (value === "flags") { setTileView(TileViews.Flags); setCanvasViewMode(CanvasView.TWO_D); }
+          else if (value === "electric0") { setTileView(TileViews.ElectricFloor0); setCanvasViewMode(CanvasView.TWO_D); }
+          else if (value === "electric1") { setTileView(TileViews.ElectricFloor1); setCanvasViewMode(CanvasView.TWO_D); }
         }}
       >
         <TabsList className="grid grid-flow-col auto-cols-fr gap-2 w-full overflow-clip">

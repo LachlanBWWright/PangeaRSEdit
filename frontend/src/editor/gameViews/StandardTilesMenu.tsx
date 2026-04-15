@@ -84,12 +84,6 @@ export function StandardTilesMenu({
   );
 
   useEffect(() => {
-    if (tileView !== TileViews.Topology) {
-      setCanvasViewMode(CanvasView.TWO_D);
-    }
-  }, [tileView, setCanvasViewMode]);
-
-  useEffect(() => {
     if (!canShowAccessibilityOverlay && showAccessibilityOverlay) {
       setShowAccessibilityOverlay(false);
     }
@@ -125,11 +119,14 @@ export function StandardTilesMenu({
     <div className="flex flex-col gap-2">
       <Tabs
         value={tileView === TileViews.Topology ? "topology" : "flags"}
-        onValueChange={(value) =>
-          setTileView(
-            value === "topology" ? TileViews.Topology : TileViews.Flags,
-          )
-        }
+        onValueChange={(value) => {
+          if (value === "topology") {
+            setTileView(TileViews.Topology);
+          } else {
+            setTileView(TileViews.Flags);
+            setCanvasViewMode(CanvasView.TWO_D);
+          }
+        }}
       >
         <TabsList className="grid grid-flow-col auto-cols-fr gap-2 w-full overflow-clip">
           <TabsTrigger className="w-full" value="topology">

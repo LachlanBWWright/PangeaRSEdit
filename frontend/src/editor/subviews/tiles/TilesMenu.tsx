@@ -30,7 +30,7 @@ import {
   Show3DLiquid,
   Export3DScene,
 } from "@/data/canvasView/canvasViewAtoms";
-import { useEffect } from "react";
+
 import { Switch } from "@/components/ui/switch";
 import { HeaderData } from "@/python/structSpecs/LevelTypes";
 import { Updater } from "use-immer";
@@ -79,28 +79,7 @@ export function TilesMenu({
   // Only show tile flags if game uses tile attribute system
   const hasTileFlags = !usesIndividualTiles;
 
-  useEffect(() => {
-    if (tileView !== TileViews.Topology) {
-      setCanvasViewMode(CanvasView.TWO_D);
-    }
-  }, [tileView, setCanvasViewMode]);
 
-  useEffect(() => {
-    if (canvasViewMode !== CanvasView.THREE_D) {
-      return;
-    }
-
-    setShow3DSplines(true);
-    setShow3DItems(true);
-    setShow3DFences(true);
-    setShow3DLiquid(true);
-  }, [
-    canvasViewMode,
-    setShow3DFences,
-    setShow3DItems,
-    setShow3DLiquid,
-    setShow3DSplines,
-  ]);
 
   const handleMinYChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newValue = parseFloat(e.target.value);
@@ -134,9 +113,9 @@ export function TilesMenu({
         }
         onValueChange={(v) => {
           if (v === "topology") setTileView(TileViews.Topology);
-          else if (v === "flags") setTileView(TileViews.Flags);
-          else if (v === "electric0") setTileView(TileViews.ElectricFloor0);
-          else if (v === "electric1") setTileView(TileViews.ElectricFloor1);
+          else if (v === "flags") { setTileView(TileViews.Flags); setCanvasViewMode(CanvasView.TWO_D); }
+          else if (v === "electric0") { setTileView(TileViews.ElectricFloor0); setCanvasViewMode(CanvasView.TWO_D); }
+          else if (v === "electric1") { setTileView(TileViews.ElectricFloor1); setCanvasViewMode(CanvasView.TWO_D); }
         }}
       >
         <TabsList className="grid grid-flow-col auto-cols-fr w-full">
@@ -254,6 +233,12 @@ export function TilesMenu({
                 checked={canvasViewMode === CanvasView.THREE_D}
                 onCheckedChange={(e) => {
                   setCanvasViewMode(e ? CanvasView.THREE_D : CanvasView.TWO_D);
+                  if (e) {
+                    setShow3DSplines(true);
+                    setShow3DItems(true);
+                    setShow3DFences(true);
+                    setShow3DLiquid(true);
+                  }
                 }}
               />
             </div>

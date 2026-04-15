@@ -10,7 +10,8 @@
  */
 
 import { useAtomValue, useSetAtom } from "jotai";
-import { useRef, useCallback, useState, useEffect } from "react";
+import { useCallback } from "react";
+import { useContainerSize } from "@/hooks/useContainerSize";
 import { Stage } from "react-konva";
 import { Updater } from "use-immer";
 import { ClickToAddItem, SelectedItem } from "@/data/items/itemAtoms";
@@ -57,30 +58,7 @@ export function Nanosaur1KonvaView({
   const setSelectedItem = useSetAtom(SelectedItem);
   const clickToAddItem = useAtomValue(ClickToAddItem);
 
-  const containerRef = useRef<HTMLDivElement>(null);
-  const [containerSize, setContainerSize] = useState({
-    width: 3000,
-    height: 2000,
-  });
-
-  useEffect(() => {
-    const updateSize = () => {
-      if (containerRef.current) {
-        setContainerSize({
-          width: containerRef.current.offsetWidth,
-          height: containerRef.current.offsetHeight,
-        });
-      }
-    };
-    updateSize();
-    if (typeof ResizeObserver !== "undefined") {
-      const obs = new ResizeObserver(() => updateSize());
-      if (containerRef.current) obs.observe(containerRef.current);
-      return () => obs.disconnect();
-    }
-    window.addEventListener("resize", updateSize);
-    return () => window.removeEventListener("resize", updateSize);
-  }, []);
+  const [containerRef, containerSize] = useContainerSize();
 
   // Non-null updater for items
   const setItemDataNotNull: Updater<ItemData> = useCallback(
