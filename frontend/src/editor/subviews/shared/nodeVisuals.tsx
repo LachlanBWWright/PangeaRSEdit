@@ -1,4 +1,6 @@
+import { useRef, useEffect } from "react";
 import { Group, Rect, Text } from "react-konva";
+import type Konva from "konva";
 
 export const ITEM_BOX_SIZE = 12;
 export const ITEM_BOX_OFFSET = ITEM_BOX_SIZE / 2;
@@ -59,9 +61,15 @@ export function HoverNameTag({
   textColor: string;
 }) {
   const width = estimateTagWidth(text);
+  const groupRef = useRef<Konva.Group>(null);
+
+  // Ensure the tag is always drawn above other nodes in the same layer
+  useEffect(() => {
+    groupRef.current?.moveToTop();
+  });
 
   return (
-    <Group x={x} y={y}>
+    <Group ref={groupRef} x={x} y={y}>
       <Rect
         width={width}
         height={ITEM_BOX_SIZE}
