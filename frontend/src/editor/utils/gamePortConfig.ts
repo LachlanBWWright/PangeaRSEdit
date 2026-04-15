@@ -6,14 +6,14 @@
  */
 
 import { Game } from "../../data/globals/globals";
-import { OTTO_LEVELS, type OttoLevelInfo } from "./ottoLevelNumbers";
-import { NANOSAUR_LEVELS, type NanosaurLevelInfo } from "./nanosaurLevelNumbers";
-import { BUGDOM_LEVELS, type BugdomLevelInfo } from "./bugdomLevelNumbers";
-import { BUGDOM2_LEVELS, type Bugdom2LevelInfo } from "./bugdom2LevelNumbers";
+import { OTTO_LEVELS, type OttoLevelInfo, inferLevelNumberFromFilename as inferOttoLevel } from "./ottoLevelNumbers";
+import { NANOSAUR_LEVELS, type NanosaurLevelInfo, inferLevelNumberFromFilename as inferNanosaurLevel } from "./nanosaurLevelNumbers";
+import { BUGDOM_LEVELS, type BugdomLevelInfo, inferLevelNumberFromFilename as inferBugdomLevel } from "./bugdomLevelNumbers";
+import { BUGDOM2_LEVELS, type Bugdom2LevelInfo, inferLevelNumberFromFilename as inferBugdom2Level } from "./bugdom2LevelNumbers";
 import { CROMAG_TRACKS, type CroMagTrackInfo } from "./croMagLevelNumbers";
-import { BILLY_FRONTIER_AREAS, type BillyFrontierAreaInfo } from "./billyFrontierLevelNumbers";
+import { BILLY_FRONTIER_AREAS, type BillyFrontierAreaInfo, inferLevelNumberFromFilename as inferBillyLevel } from "./billyFrontierLevelNumbers";
 import { MIGHTY_MIKE_LEVELS, type MightyMikeLevelInfo } from "./mightyMikeLevelNumbers";
-import { NANOSAUR2_LEVELS, type Nanosaur2LevelInfo } from "./nanosaur2LevelNumbers";
+import { NANOSAUR2_LEVELS, type Nanosaur2LevelInfo, inferLevelNumberFromFilename as inferNanosaur2Level } from "./nanosaur2LevelNumbers";
 
 export type AnyLevelInfo =
   | OttoLevelInfo
@@ -75,13 +75,13 @@ export interface GamePortConfig {
   readonly hasFenceCollision: boolean;
   readonly hasGodMode: boolean;
   readonly hasSpeedMultiplier: boolean;
-  // ----- Terrain injection (for Otto Matic only in this version) -----
+  // ----- Terrain injection -----
   readonly terrain?: {
     getRsrcPath?: (terrainFile: string) => string;
     getDataPath: (terrainFile: string) => string;
-    /** ccall to set the active terrain path after writing to FS. */
-    setPathFn: string;
-    getSetPathArg: (terrainFile: string) => string;
+    /** ccall to set the active terrain path after writing to FS. Omit when not needed. */
+    setPathFn?: string;
+    getSetPathArg?: (terrainFile: string) => string;
   };
   /** Whether a WASM build is publicly available (false for MightyMike). */
   readonly wasmAvailable: boolean;
@@ -104,6 +104,32 @@ export function buildPangeaPortsUrl(
   const url = new URL(config.siteLaunchPath, normalizedBaseUrl);
   url.search = config.buildLaunchQuery(levelIndex).toString();
   return url.toString();
+}
+
+/**
+ * Infers the preview level index from the loaded file's name.
+ * Returns `undefined` when the filename cannot be matched to a known level.
+ */
+export function inferPreviewLevelFromFilename(
+  game: Game,
+  filename: string,
+): number | undefined {
+  switch (game) {
+    case Game.OTTO_MATIC:
+      return inferOttoLevel(filename);
+    case Game.NANOSAUR:
+      return inferNanosaurLevel(filename);
+    case Game.BUGDOM:
+      return inferBugdomLevel(filename);
+    case Game.BUGDOM_2:
+      return inferBugdom2Level(filename);
+    case Game.BILLY_FRONTIER:
+      return inferBillyLevel(filename);
+    case Game.NANOSAUR_2:
+      return inferNanosaur2Level(filename);
+    default:
+      return undefined;
+  }
 }
 
 export const GAME_PORT_CONFIGS: Readonly<Record<Game, GamePortConfig>> = {
@@ -156,6 +182,11 @@ export const GAME_PORT_CONFIGS: Readonly<Record<Game, GamePortConfig>> = {
     hasFenceCollision: true,
     hasGodMode: false,
     hasSpeedMultiplier: false,
+    terrain: {
+      getDataPath: (f) => `/Data/Terrain/${f}`,
+      setPathFn: "SetCustomTerrainFile",
+      getSetPathArg: (f) => `/Data/Terrain/${f}`,
+    },
     wasmAvailable: true,
     cdnBaseUrl: "https://lachlanbwwright.github.io/Nanosaur-android/game",
   },
@@ -179,6 +210,11 @@ export const GAME_PORT_CONFIGS: Readonly<Record<Game, GamePortConfig>> = {
     hasFenceCollision: true,
     hasGodMode: false,
     hasSpeedMultiplier: false,
+    terrain: {
+      getDataPath: (f) => `/Data/Terrain/${f}`,
+      setPathFn: "BugdomSetTerrainOverride",
+      getSetPathArg: (f) => `:Terrain:${f}`,
+    },
     wasmAvailable: true,
     cdnBaseUrl: "https://lachlanbwwright.github.io/Bugdom-android",
   },
@@ -201,6 +237,10 @@ export const GAME_PORT_CONFIGS: Readonly<Record<Game, GamePortConfig>> = {
     hasFenceCollision: true,
     hasGodMode: false,
     hasSpeedMultiplier: false,
+    terrain: {
+      // Bugdom 2 VFS uses paths without a leading slash (relative to working dir)
+      getDataPath: (f) => `Data/Terrain/${f}`,
+    },
     wasmAvailable: true,
     cdnBaseUrl: "https://lachlanbwwright.github.io/Bugdom2-Android",
   },
@@ -300,6 +340,11 @@ export const GAME_PORT_CONFIGS: Readonly<Record<Game, GamePortConfig>> = {
     hasFenceCollision: true,
     hasGodMode: false,
     hasSpeedMultiplier: false,
+    terrain: {
+      getDataPath: (f) => `/Data/Terrain/${f}`,
+      setPathFn: "Nanosaur2_SetTerrainOverridePath",
+      getSetPathArg: (f) => `/Data/Terrain/${f}`,
+    },
     wasmAvailable: true,
     cdnBaseUrl: "https://lachlanbwwright.github.io/Nanosaur2-Android",
   },

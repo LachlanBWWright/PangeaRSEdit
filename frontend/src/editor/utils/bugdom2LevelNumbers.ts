@@ -5,23 +5,35 @@
  * Terrain file names are inferred from the game source (Bugdom2-Android).
  */
 
+import { Bugdom2LevelType } from "./levelType";
+
 export interface Bugdom2LevelInfo {
-  readonly levelNumber: number;
+  readonly levelNumber: Bugdom2LevelType;
   readonly name: string;
   readonly terrainFile: string;
 }
 
 export const BUGDOM2_LEVELS: readonly Bugdom2LevelInfo[] = [
-  { levelNumber: 0, name: "Garden", terrainFile: "Level1_Garden.ter" },
-  { levelNumber: 1, name: "Slime Pit", terrainFile: "Level2_SlimePit.ter" },
-  { levelNumber: 2, name: "Garbage Can", terrainFile: "Level3_GarbageCan.ter" },
-  { levelNumber: 3, name: "Culvert", terrainFile: "Level4_Culvert.ter" },
-  { levelNumber: 4, name: "Closet", terrainFile: "Level5_Closet.ter" },
-  { levelNumber: 5, name: "Attic", terrainFile: "Level6_Attic.ter" },
-  { levelNumber: 6, name: "Basement", terrainFile: "Level7_Basement.ter" },
-  { levelNumber: 7, name: "Garbage Dump", terrainFile: "Level8_GarbageDump.ter" },
-  { levelNumber: 8, name: "Kingdom", terrainFile: "Level9_Kingdom.ter" },
-  { levelNumber: 9, name: "Final Battle", terrainFile: "Level10_FinalBattle.ter" },
+  { levelNumber: Bugdom2LevelType.Garden, name: "Garden", terrainFile: "Level1_Garden.ter" },
+  { levelNumber: Bugdom2LevelType.SlimePit, name: "Slime Pit", terrainFile: "Level2_SlimePit.ter" },
+  { levelNumber: Bugdom2LevelType.GarbageCan, name: "Garbage Can", terrainFile: "Level3_GarbageCan.ter" },
+  { levelNumber: Bugdom2LevelType.Culvert, name: "Culvert", terrainFile: "Level4_Culvert.ter" },
+  { levelNumber: Bugdom2LevelType.Closet, name: "Closet", terrainFile: "Level5_Closet.ter" },
+  { levelNumber: Bugdom2LevelType.Attic, name: "Attic", terrainFile: "Level6_Attic.ter" },
+  { levelNumber: Bugdom2LevelType.Basement, name: "Basement", terrainFile: "Level7_Basement.ter" },
+  { levelNumber: Bugdom2LevelType.GarbageDump, name: "Garbage Dump", terrainFile: "Level8_GarbageDump.ter" },
+  { levelNumber: Bugdom2LevelType.Kingdom, name: "Kingdom", terrainFile: "Level9_Kingdom.ter" },
+  { levelNumber: Bugdom2LevelType.FinalBattle, name: "Final Battle", terrainFile: "Level10_FinalBattle.ter" },
 ] satisfies readonly Bugdom2LevelInfo[];
 
-export const DEFAULT_BUGDOM2_LEVEL = 0;
+export const DEFAULT_BUGDOM2_LEVEL: Bugdom2LevelType = Bugdom2LevelType.Garden;
+
+export function inferLevelNumberFromFilename(
+  filename: string,
+): number | undefined {
+  const base = filename.split("/").pop() ?? filename;
+  const match = BUGDOM2_LEVELS.find(
+    (l) => base.toLowerCase() === l.terrainFile.toLowerCase(),
+  );
+  return match?.levelNumber;
+}

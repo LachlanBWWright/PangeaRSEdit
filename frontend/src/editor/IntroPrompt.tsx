@@ -50,10 +50,9 @@ import { prepareDownloadData } from "./utils/introPromptUtils";
 import { createBlankMapImagesForGame } from "./IntroPrompt/canvasUtils";
 import { TestGameDialog } from "./TestGameDialog";
 import {
-  DEFAULT_OTTO_LEVEL,
-  inferLevelNumberFromFilename,
-} from "./utils/ottoLevelNumbers";
-import { GAME_PORT_CONFIGS } from "./utils/gamePortConfig";
+  GAME_PORT_CONFIGS,
+  inferPreviewLevelFromFilename,
+} from "./utils/gamePortConfig";
 import { serializePrimaryMapBlob } from "@/data/saveMap/saveMap";
 import {
   editorNavbarActionsAtom,
@@ -112,7 +111,7 @@ export function IntroPrompt() {
   const [processed, setProcessed] = useState(false);
   const [testDialogOpen, setTestDialogOpen] = useState(false);
   const [newMapConfirmOpen, setNewMapConfirmOpen] = useState(false);
-  const [ottoLevelNumber, setOttoLevelNumber] = useState(DEFAULT_OTTO_LEVEL);
+  const [previewLevelNumber, setPreviewLevelNumber] = useState(0);
   const [terrainRsrcBlob, setTerrainRsrcBlob] = useState<Blob | null>(null);
   const [terrainDataBlob, setTerrainDataBlob] = useState<Blob | null>(null);
   const [terrainDataBase64, setTerrainDataBase64] = useState<string | null>(
@@ -229,13 +228,13 @@ export function IntroPrompt() {
     setDataHistory,
   ]);
 
-  // When a new Otto Matic terrain file is loaded, infer the level number from the filename
-  // so the "Test Level" dialog opens at the correct level by default.
+  // When a terrain file is loaded, infer the level number from the filename
+  // so the "Preview in Game" dialog opens at the correct level by default.
   useEffect(() => {
-    if (!mapFile || globals.GAME_TYPE !== Game.OTTO_MATIC) return;
-    const inferred = inferLevelNumberFromFilename(mapFile.name);
+    if (!mapFile) return;
+    const inferred = inferPreviewLevelFromFilename(globals.GAME_TYPE, mapFile.name);
     if (inferred !== undefined) {
-      Promise.resolve().then(() => setOttoLevelNumber(inferred));
+      Promise.resolve().then(() => setPreviewLevelNumber(inferred));
     }
   }, [mapFile, globals.GAME_TYPE]);
 
@@ -614,12 +613,8 @@ export function IntroPrompt() {
       setMapImages(mapImagesArray);
       setDataHistory(() => ({ items: [blankAtomicData], index: 0 }));
       setBlockHistoryUpdate(true);
-      if (gameType.GAME_TYPE === Game.OTTO_MATIC) {
-        setOttoLevelNumber(DEFAULT_OTTO_LEVEL);
-      } else {
-        const portConfig = GAME_PORT_CONFIGS[gameType.GAME_TYPE];
-        setOttoLevelNumber(portConfig?.defaultLevel ?? 0);
-      }
+      const portConfig = GAME_PORT_CONFIGS[gameType.GAME_TYPE];
+      setPreviewLevelNumber(portConfig?.defaultLevel ?? 0);
     },
     [
       setGlobals,
@@ -719,8 +714,8 @@ export function IntroPrompt() {
               open={testDialogOpen}
               onOpenChange={setTestDialogOpen}
               gameType={globals.GAME_TYPE}
-              levelNumber={ottoLevelNumber}
-              onLevelNumberChange={setOttoLevelNumber}
+              levelNumber={previewLevelNumber}
+              onLevelNumberChange={setPreviewLevelNumber}
               terrainRsrcBlob={terrainRsrcBlob}
               terrainDataBlob={terrainDataBlob}
               terrainDataBase64={terrainDataBase64}
@@ -743,7 +738,7 @@ export function IntroPrompt() {
     handleTestLevel,
     mapFile,
     mapImages,
-    ottoLevelNumber,
+    previewLevelNumber,
     setEditorNavbarActions,
     setEditorNavbarLeft,
     setEditorNavbarOpen,

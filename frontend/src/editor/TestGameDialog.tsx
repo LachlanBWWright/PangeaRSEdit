@@ -352,6 +352,7 @@ export function TestGameDialog(props: Props) {
       if (
         config.game !== Game.OTTO_MATIC &&
         config.terrain?.setPathFn &&
+        config.terrain.getSetPathArg &&
         currentLevelInfo &&
         "terrainFile" in currentLevelInfo
       ) {
