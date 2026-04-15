@@ -240,172 +240,75 @@ export function OttoMaticKonvaView({
           />
         )}
 
-        {/* Show all layers except when in tiles view */}
-        {/* Supertiles/overview mode — show all layers in default order */}
-        {view === View.supertiles && (
+        {/* All non-tiles views: render layers with stable keys so React preserves
+            component instances when switching tabs. The primary view's layer is
+            rendered last to ensure it appears on top (highest z-order). */}
+        {view !== View.tiles && (
           <>
-            {liquidData && (
+            {/* Base layers - rendered first (below primary) */}
+            {liquidData && view !== View.water && (
               <WaterBodies
+                key="water"
                 headerData={headerData}
                 terrainData={terrainData}
                 liquidData={liquidData}
                 setLiquidData={setLiquidDataNotNull}
               />
             )}
-            {fenceData && (
+            {fenceData && view !== View.fences && (
               <Fences
+                key="fences"
                 fenceData={fenceData}
                 setFenceData={setFenceDataNotNull}
               />
             )}
-            {itemData && (
+            {itemData && view !== View.items && (
               <Items
+                key="items"
                 headerData={headerData}
                 terrainData={terrainData}
                 itemData={itemData}
                 setItemData={setItemDataNotNull}
               />
             )}
-            {splineData && (
+            {splineData && view !== View.splines && (
               <Splines
+                key="splines"
                 splineData={splineData}
                 setSplineData={setSplineDataNotNull}
               />
             )}
-          </>
-        )}
-
-        {/* Fence view - fences are primary */}
-        {view === View.fences && (
-          <>
-            {liquidData && (
+            {/* Primary layer rendered last (highest z-order) */}
+            {view === View.water && liquidData && (
               <WaterBodies
+                key="water"
                 headerData={headerData}
                 terrainData={terrainData}
                 liquidData={liquidData}
                 setLiquidData={setLiquidDataNotNull}
               />
             )}
-            {itemData && (
+            {view === View.fences && fenceData && (
+              <Fences
+                key="fences"
+                fenceData={fenceData}
+                setFenceData={setFenceDataNotNull}
+              />
+            )}
+            {view === View.items && itemData && (
               <Items
+                key="items"
                 headerData={headerData}
                 terrainData={terrainData}
                 itemData={itemData}
                 setItemData={setItemDataNotNull}
               />
             )}
-            {splineData && (
+            {view === View.splines && splineData && (
               <Splines
+                key="splines"
                 splineData={splineData}
                 setSplineData={setSplineDataNotNull}
-              />
-            )}
-            {fenceData && (
-              <Fences
-                fenceData={fenceData}
-                setFenceData={setFenceDataNotNull}
-              />
-            )}
-          </>
-        )}
-
-        {/* Water view - water is primary */}
-        {view === View.water && (
-          <>
-            {fenceData && (
-              <Fences
-                fenceData={fenceData}
-                setFenceData={setFenceDataNotNull}
-              />
-            )}
-            {itemData && (
-              <Items
-                headerData={headerData}
-                terrainData={terrainData}
-                itemData={itemData}
-                setItemData={setItemDataNotNull}
-              />
-            )}
-            {splineData && (
-              <Splines
-                splineData={splineData}
-                setSplineData={setSplineDataNotNull}
-              />
-            )}
-            {liquidData && (
-              <WaterBodies
-                headerData={headerData}
-                terrainData={terrainData}
-                liquidData={liquidData}
-                setLiquidData={setLiquidDataNotNull}
-              />
-            )}
-          </>
-        )}
-
-        {/* Spline view - splines are primary */}
-        {view === View.splines && (
-          <>
-            {liquidData && (
-              <WaterBodies
-                headerData={headerData}
-                terrainData={terrainData}
-                liquidData={liquidData}
-                setLiquidData={setLiquidDataNotNull}
-              />
-            )}
-            {itemData && (
-              <Items
-                headerData={headerData}
-                terrainData={terrainData}
-                itemData={itemData}
-                setItemData={setItemDataNotNull}
-              />
-            )}
-            {fenceData && (
-              <Fences
-                fenceData={fenceData}
-                setFenceData={setFenceDataNotNull}
-              />
-            )}
-            {splineData && (
-              <Splines
-                splineData={splineData}
-                setSplineData={setSplineDataNotNull}
-              />
-            )}
-          </>
-        )}
-
-        {/* Items view - items are primary */}
-        {view === View.items && (
-          <>
-            {liquidData && (
-              <WaterBodies
-                headerData={headerData}
-                terrainData={terrainData}
-                liquidData={liquidData}
-                setLiquidData={setLiquidDataNotNull}
-              />
-            )}
-            {fenceData && (
-              <Fences
-                fenceData={fenceData}
-                setFenceData={setFenceDataNotNull}
-              />
-            )}
-            {splineData && (
-              <Splines
-                splineData={splineData}
-                setSplineData={setSplineDataNotNull}
-              />
-            )}
-            {itemData && (
-              <Items
-                headerData={headerData}
-                terrainData={terrainData}
-                itemData={itemData}
-                setItemData={setItemDataNotNull}
               />
             )}
           </>

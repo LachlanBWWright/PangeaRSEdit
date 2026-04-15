@@ -226,111 +226,58 @@ export function Bugdom1KonvaView({
 
         {/* Bugdom 1 has no tile attributes editing - individual tiles are composed into supertiles at render time */}
 
-        {/* Show all layers except when in tiles view */}
+        {/* All non-tiles views: render layers with stable keys so React preserves
+            component instances when switching tabs. The primary view's layer is
+            rendered last to ensure it appears on top (highest z-order). */}
         {view !== View.tiles && (
           <>
-            {/* Fence view - fences are primary */}
-            {view === View.fences && (
-              <>
-                {itemData && (
-                  <Items
-                    headerData={headerData}
-                    terrainData={terrainData}
-                    itemData={itemData}
-                    setItemData={setItemDataNotNull}
-                  />
-                )}
-                {splineData && (
-                  <Splines
-                    splineData={splineData}
-                    setSplineData={setSplineDataNotNull}
-                  />
-                )}
-                {fenceData && (
-                  <Fences
-                    fenceData={fenceData}
-                    setFenceData={setFenceDataNotNull}
-                  />
-                )}
-              </>
+            {/* Base layers - rendered first (below primary) */}
+            {fenceData && view !== View.fences && (
+              <Fences
+                key="fences"
+                fenceData={fenceData}
+                setFenceData={setFenceDataNotNull}
+              />
             )}
-
-            {/* Spline view - splines are primary */}
-            {view === View.splines && (
-              <>
-                {itemData && (
-                  <Items
-                    headerData={headerData}
-                    terrainData={terrainData}
-                    itemData={itemData}
-                    setItemData={setItemDataNotNull}
-                  />
-                )}
-                {fenceData && (
-                  <Fences
-                    fenceData={fenceData}
-                    setFenceData={setFenceDataNotNull}
-                  />
-                )}
-                {splineData && (
-                  <Splines
-                    splineData={splineData}
-                    setSplineData={setSplineDataNotNull}
-                  />
-                )}
-              </>
+            {itemData && view !== View.items && (
+              <Items
+                key="items"
+                headerData={headerData}
+                terrainData={terrainData}
+                itemData={itemData}
+                setItemData={setItemDataNotNull}
+              />
             )}
-
-            {/* Items view - items are primary */}
-            {view === View.items && (
-              <>
-                {fenceData && (
-                  <Fences
-                    fenceData={fenceData}
-                    setFenceData={setFenceDataNotNull}
-                  />
-                )}
-                {splineData && (
-                  <Splines
-                    splineData={splineData}
-                    setSplineData={setSplineDataNotNull}
-                  />
-                )}
-                {itemData && (
-                  <Items
-                    headerData={headerData}
-                    terrainData={terrainData}
-                    itemData={itemData}
-                    setItemData={setItemDataNotNull}
-                  />
-                )}
-              </>
+            {splineData && view !== View.splines && (
+              <Splines
+                key="splines"
+                splineData={splineData}
+                setSplineData={setSplineDataNotNull}
+              />
             )}
-
-            {/* Supertiles view - show all */}
-            {view === View.supertiles && (
-              <>
-                {fenceData && (
-                  <Fences
-                    fenceData={fenceData}
-                    setFenceData={setFenceDataNotNull}
-                  />
-                )}
-                {itemData && (
-                  <Items
-                    headerData={headerData}
-                    terrainData={terrainData}
-                    itemData={itemData}
-                    setItemData={setItemDataNotNull}
-                  />
-                )}
-                {splineData && (
-                  <Splines
-                    splineData={splineData}
-                    setSplineData={setSplineDataNotNull}
-                  />
-                )}
-              </>
+            {/* Primary layer rendered last (highest z-order) */}
+            {view === View.fences && fenceData && (
+              <Fences
+                key="fences"
+                fenceData={fenceData}
+                setFenceData={setFenceDataNotNull}
+              />
+            )}
+            {view === View.items && itemData && (
+              <Items
+                key="items"
+                headerData={headerData}
+                terrainData={terrainData}
+                itemData={itemData}
+                setItemData={setItemDataNotNull}
+              />
+            )}
+            {view === View.splines && splineData && (
+              <Splines
+                key="splines"
+                splineData={splineData}
+                setSplineData={setSplineDataNotNull}
+              />
             )}
           </>
         )}
