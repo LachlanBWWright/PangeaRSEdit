@@ -4,6 +4,14 @@ export const ITEM_BOX_SIZE = 12;
 export const ITEM_BOX_OFFSET = ITEM_BOX_SIZE / 2;
 export const ITEM_TAG_GAP = 4;
 
+export interface HoverTagInfo {
+  x: number;
+  y: number;
+  text: string;
+  fill: string;
+  textColor: string;
+}
+
 function estimateTagWidth(label: string) {
   return Math.max(ITEM_BOX_SIZE, label.length * 6 + 8);
 }

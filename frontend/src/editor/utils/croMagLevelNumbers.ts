@@ -1,7 +1,8 @@
 /**
  * Cro-Mag Rally track number definitions.
  *
- * Cro-Mag Rally uses 1-based track numbers (1–17).
+ * Cro-Mag Rally uses 1-based track numbers (?track=N, 1–17).
+ * Internally the game stores 0-based indices (TRACK_NUM_DESERT = 0 … TRACK_NUM_RAMPS = 16).
  * The ?track=N URL parameter controls which track loads at startup.
  * Cars are selected via ?car=N (1-based, 0 = random).
  */
@@ -14,24 +15,27 @@ export interface CroMagTrackInfo {
 }
 
 export const CROMAG_TRACKS: readonly CroMagTrackInfo[] = [
-  { trackNumber: CroMagLevelType.StoneAgeSpeedway, name: "Stone Age Speedway" },
-  { trackNumber: CroMagLevelType.IceAgeRally, name: "Ice Age Rally" },
-  { trackNumber: CroMagLevelType.LavaLand, name: "Lava Land" },
-  { trackNumber: CroMagLevelType.JungleJoyride, name: "Jungle Joyride" },
-  // Track names 5–17 are not yet confirmed from the game source; using generic labels
-  { trackNumber: CroMagLevelType.Track5, name: "Track 5" },
-  { trackNumber: CroMagLevelType.Track6, name: "Track 6" },
-  { trackNumber: CroMagLevelType.Track7, name: "Track 7" },
-  { trackNumber: CroMagLevelType.Track8, name: "Track 8" },
-  { trackNumber: CroMagLevelType.Track9, name: "Track 9" },
-  { trackNumber: CroMagLevelType.Track10, name: "Track 10" },
-  { trackNumber: CroMagLevelType.Track11, name: "Track 11" },
-  { trackNumber: CroMagLevelType.Track12, name: "Track 12" },
-  { trackNumber: CroMagLevelType.Track13, name: "Track 13" },
-  { trackNumber: CroMagLevelType.Track14, name: "Track 14" },
-  { trackNumber: CroMagLevelType.Track15, name: "Track 15" },
-  { trackNumber: CroMagLevelType.Track16, name: "Track 16" },
-  { trackNumber: CroMagLevelType.Track17, name: "Track 17" },
+  // Stone Age (tracks 1–3)
+  { trackNumber: CroMagLevelType.Desert,       name: "Stone Age Desert" },
+  { trackNumber: CroMagLevelType.Jungle,       name: "Stone Age Jungle" },
+  { trackNumber: CroMagLevelType.Ice,          name: "Stone Age Ice" },
+  // Bronze Age (tracks 4–6)
+  { trackNumber: CroMagLevelType.Crete,        name: "Bronze Age Crete" },
+  { trackNumber: CroMagLevelType.China,        name: "Bronze Age China" },
+  { trackNumber: CroMagLevelType.Egypt,        name: "Bronze Age Egypt" },
+  // Iron Age (tracks 7–9)
+  { trackNumber: CroMagLevelType.Europe,       name: "Iron Age Europe" },
+  { trackNumber: CroMagLevelType.Scandinavia,  name: "Iron Age Scandinavia" },
+  { trackNumber: CroMagLevelType.Atlantis,     name: "Iron Age Atlantis" },
+  // Battle arenas (tracks 10–17)
+  { trackNumber: CroMagLevelType.Stonehenge,   name: "Battle: Stonehenge" },
+  { trackNumber: CroMagLevelType.Aztec,        name: "Battle: Aztec" },
+  { trackNumber: CroMagLevelType.Coliseum,     name: "Battle: Coliseum" },
+  { trackNumber: CroMagLevelType.Maze,         name: "Battle: Maze" },
+  { trackNumber: CroMagLevelType.Celtic,       name: "Battle: Celtic" },
+  { trackNumber: CroMagLevelType.TarPits,      name: "Battle: Tar Pits" },
+  { trackNumber: CroMagLevelType.Spiral,       name: "Battle: Spiral" },
+  { trackNumber: CroMagLevelType.Ramps,        name: "Battle: Ramps" },
 ] satisfies readonly CroMagTrackInfo[];
 
-export const DEFAULT_CROMAG_TRACK: CroMagLevelType = CroMagLevelType.StoneAgeSpeedway;
+export const DEFAULT_CROMAG_TRACK: CroMagLevelType = CroMagLevelType.Desert;

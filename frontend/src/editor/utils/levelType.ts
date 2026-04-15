@@ -49,36 +49,40 @@ export enum NanosaurLevelType {
 }
 
 export enum Nanosaur2LevelType {
-  Level1 = 0,
-  Level2 = 1,
-  Level3 = 2,
-  Level4 = 3,
-  Level5 = 4,
-  Level6 = 5,
-  Level7 = 6,
-  Level8 = 7,
-  Level9 = 8,
+  Adventure1 = 0,
+  Adventure2 = 1,
+  Adventure3 = 2,
+  Race1 = 3,
+  Race2 = 4,
+  Battle1 = 5,
+  Battle2 = 6,
+  Flag1 = 7,
+  Flag2 = 8,
 }
 
-/** CroMag Rally uses 1-based track numbers. */
+/** CroMag Rally uses 1-based track numbers (?track=N). Internally 0-based: Desert=0 … Ramps=16. */
 export enum CroMagLevelType {
-  StoneAgeSpeedway = 1,
-  IceAgeRally = 2,
-  LavaLand = 3,
-  JungleJoyride = 4,
-  Track5 = 5,
-  Track6 = 6,
-  Track7 = 7,
-  Track8 = 8,
-  Track9 = 9,
-  Track10 = 10,
-  Track11 = 11,
-  Track12 = 12,
-  Track13 = 13,
-  Track14 = 14,
-  Track15 = 15,
-  Track16 = 16,
-  Track17 = 17,
+  // Stone Age
+  Desert = 1,
+  Jungle = 2,
+  Ice = 3,
+  // Bronze Age
+  Crete = 4,
+  China = 5,
+  Egypt = 6,
+  // Iron Age
+  Europe = 7,
+  Scandinavia = 8,
+  Atlantis = 9,
+  // Battle arenas
+  Stonehenge = 10,
+  Aztec = 11,
+  Coliseum = 12,
+  Maze = 13,
+  Celtic = 14,
+  TarPits = 15,
+  Spiral = 16,
+  Ramps = 17,
 }
 
 export enum BillyFrontierLevelType {
@@ -97,14 +101,24 @@ export enum BillyFrontierLevelType {
 }
 
 export enum MightyMikeLevelType {
-  Level1 = 0,
-  Level2 = 1,
-  Level3 = 2,
-  Level4 = 3,
-  Level5 = 4,
-  Level6 = 5,
-  Level7 = 6,
-  Level8 = 7,
-  Level9 = 8,
-  Level10 = 9,
+  // Scene 0: Jurassic
+  Jurassic1 = 0,
+  Jurassic2 = 1,
+  Jurassic3 = 2,
+  // Scene 1: Candy
+  Candy1 = 3,
+  Candy2 = 4,
+  Candy3 = 5,
+  // Scene 2: Fairy
+  Fairy1 = 6,
+  Fairy2 = 7,
+  Fairy3 = 8,
+  // Scene 3: Clown
+  Clown1 = 9,
+  Clown2 = 10,
+  Clown3 = 11,
+  // Scene 4: Bargain
+  Bargain1 = 12,
+  Bargain2 = 13,
+  Bargain3 = 14,
 }

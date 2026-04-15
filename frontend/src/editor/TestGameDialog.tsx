@@ -170,7 +170,6 @@ function buildPreviewHtml(
 ): string {
   const appBaseUrl = new URL(import.meta.env.BASE_URL, window.location.origin).href;
   const localAssetBase = new URL(`wasm/${config.wasmDir}/`, appBaseUrl).href;
-  const cdnBase = config.cdnBaseUrl ? `${config.cdnBaseUrl.replace(/\/$/, "")}/` : localAssetBase;
   const args = buildGameArguments(config, levelNumber, previewTerrainPaths?.dataPath ?? null);
   const previewUrl = new URL(`games/pangea-ports/games/${config.siteLaunchPath}`, appBaseUrl);
   previewUrl.search = config.buildLaunchQuery(levelNumber).toString();
@@ -270,10 +269,7 @@ function buildPreviewHtml(
 	        }
 	      ],
 	      locateFile: function(path) {
-	        if (path.endsWith('.js') || path.endsWith('.wasm')) {
-	          return new URL(path, ${JSON.stringify(localAssetBase)}).href;
-        }
-        return new URL(path, ${JSON.stringify(cdnBase)}).href;
+	        return new URL(path, ${JSON.stringify(localAssetBase)}).href;
       },
       setStatus: function(text) {
         var el = document.getElementById('status');

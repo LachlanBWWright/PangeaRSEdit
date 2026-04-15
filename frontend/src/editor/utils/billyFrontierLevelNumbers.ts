@@ -33,9 +33,10 @@ export const DEFAULT_BILLY_AREA: BillyFrontierLevelType = BillyFrontierLevelType
 export function inferLevelNumberFromFilename(
   filename: string,
 ): number | undefined {
-  const base = filename.split("/").pop() ?? filename;
+  const raw = filename.split("/").pop() ?? filename;
+  const base = raw.toLowerCase().replace(/\.rsrc$/, "");
   const match = BILLY_FRONTIER_AREAS.find(
-    (l) => base.toLowerCase() === l.terrainFile.toLowerCase(),
+    (l) => base === l.terrainFile.toLowerCase(),
   );
   return match?.areaNumber;
 }

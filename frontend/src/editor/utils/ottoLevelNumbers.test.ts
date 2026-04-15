@@ -38,6 +38,11 @@ describe("inferLevelNumberFromFilename", () => {
     expect(inferLevelNumberFromFilename("CustomLevel.ter")).toBeUndefined();
   });
 
+  it("strips .rsrc suffix before matching", () => {
+    expect(inferLevelNumberFromFilename("Apocalypse.ter.rsrc")).toBe(3);
+    expect(inferLevelNumberFromFilename("assets/ottoMatic/terrain/Cloud.ter.rsrc")).toBe(4);
+  });
+
   it("returns undefined for empty string", () => {
     expect(inferLevelNumberFromFilename("")).toBeUndefined();
   });

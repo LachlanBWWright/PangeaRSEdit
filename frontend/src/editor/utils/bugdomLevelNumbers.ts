@@ -31,9 +31,10 @@ export const DEFAULT_BUGDOM_LEVEL: BugdomLevelType = BugdomLevelType.Training;
 export function inferLevelNumberFromFilename(
   filename: string,
 ): number | undefined {
-  const base = filename.split("/").pop() ?? filename;
+  const raw = filename.split("/").pop() ?? filename;
+  const base = raw.toLowerCase().replace(/\.rsrc$/, "");
   const match = BUGDOM_LEVELS.find(
-    (l) => base.toLowerCase() === l.terrainFile.toLowerCase(),
+    (l) => base === l.terrainFile.toLowerCase(),
   );
   return match?.levelNumber;
 }
