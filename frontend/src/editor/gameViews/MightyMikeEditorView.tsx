@@ -35,6 +35,7 @@ import {
 } from "@/python/structSpecs/LevelTypes";
 import { CurrentScene } from "@/data/game/gameAtoms";
 import { ActiveView } from "@/data/globals/activeViewAtom";
+import { useWindowKeyDown } from "@/hooks/useWindowKeyDown";
 
 function getCurrentSceneFromTerrainData(
   terrainData: MightyMikeEditorViewProps["terrainData"],
@@ -79,10 +80,7 @@ export function MightyMikeEditorView({
     [undoData, redoData]
   );
 
-  useEffect(() => {
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [handleKeyDown]);
+  useWindowKeyDown(handleKeyDown);
 
   useEffect(() => {
     setCurrentScene(getCurrentSceneFromTerrainData(terrainData));

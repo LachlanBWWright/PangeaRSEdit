@@ -5,7 +5,7 @@
  * Has fences, items, splines but different tile system (no water)
  */
 
-import { useEffect, useMemo } from "react";
+import { useMemo } from "react";
 import { Bugdom1EditorToolbar } from "../toolbars/Bugdom1EditorToolbar";
 import { Updater, useImmer } from "use-immer";
 import { useAtomValue } from "jotai";
@@ -48,6 +48,7 @@ import {
   FenceData,
   SplineData,
 } from "@/python/structSpecs/LevelTypes";
+import { useWindowKeyDown } from "@/hooks/useWindowKeyDown";
 
 export function BugdomEditorView({
   headerData,
@@ -77,10 +78,7 @@ export function BugdomEditorView({
     [undoData, redoData]
   );
 
-  useEffect(() => {
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [handleKeyDown]);
+  useWindowKeyDown(handleKeyDown);
 
   const zoomIn = useMemo(() => createZoomInHandler(setStage), [setStage]);
   const zoomOut = useMemo(() => createZoomOutHandler(setStage), [setStage]);

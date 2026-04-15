@@ -46,6 +46,7 @@ import { Globals } from "@/data/globals/globals";
 import { useSetAtom } from "jotai";
 import { editorNavbarTabsAtom } from "@/data/globals/editorNavbarAtoms";
 import type { EditorViewProps } from "../utils/editorViewTypes";
+import { useWindowKeyDown } from "@/hooks/useWindowKeyDown";
 import {
   ItemData,
   LiquidData,
@@ -83,10 +84,7 @@ export function StandardEditorView({
     [undoData, redoData]
   );
 
-  useEffect(() => {
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [handleKeyDown]);
+  useWindowKeyDown(handleKeyDown);
 
   const zoomIn = useMemo(() => createZoomInHandler(setStage), [setStage]);
   const zoomOut = useMemo(() => createZoomOutHandler(setStage), [setStage]);

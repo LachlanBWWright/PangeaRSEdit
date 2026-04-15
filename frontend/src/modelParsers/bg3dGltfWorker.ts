@@ -128,10 +128,10 @@ export type BG3DGltfWorkerResponse =
       requestId?: string;
     };
 
-self.onmessage = async (e: MessageEvent<BG3DGltfWorkerMessage>) => {
+self.onmessage = (e: MessageEvent<BG3DGltfWorkerMessage>) => {
   const msg = e.data;
   const requestId = msg.requestId;
-  try {
+  return (async () => {
     if (msg.type === "bg3d-to-glb") {
       const parseResult = parseModelBuffer(msg.buffer);
       if (parseResult.isErr()) {
@@ -262,12 +262,12 @@ self.onmessage = async (e: MessageEvent<BG3DGltfWorkerMessage>) => {
       } satisfies BG3DGltfWorkerResponse;
       self.postMessage(response);
     }
-  } catch (error: unknown) {
+  })().catch((error: unknown) => {
     const response = {
       type: "error",
       error: error instanceof Error ? error.message : String(error),
       requestId,
     } satisfies BG3DGltfWorkerResponse;
     self.postMessage(response);
-  }
+  });
 };

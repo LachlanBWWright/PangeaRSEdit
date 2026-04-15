@@ -54,6 +54,7 @@ import {
   FenceData,
   SplineData,
 } from "@/python/structSpecs/LevelTypes";
+import { useWindowKeyDown } from "@/hooks/useWindowKeyDown";
 
 export function OttoMaticEditorView({
   headerData,
@@ -85,10 +86,7 @@ export function OttoMaticEditorView({
     [undoData, redoData]
   );
 
-  useEffect(() => {
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [handleKeyDown]);
+  useWindowKeyDown(handleKeyDown);
 
   const zoomIn = useMemo(() => createZoomInHandler(setStage), [setStage]);
   const zoomOut = useMemo(() => createZoomOutHandler(setStage), [setStage]);

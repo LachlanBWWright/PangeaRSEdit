@@ -57,11 +57,12 @@ export function GameModelSelector({
   }, [selectedGameId]);
 
   // Derive effective category: fall back to first available when current is not valid
-  const effectiveCategory = availableCategories.includes(
-    selectedCategory as GameModel["category"],
-  )
-    ? selectedCategory
-    : (availableCategories[0] ?? "Characters");
+  const isValidCategory = (cat: string): cat is GameModel["category"] =>
+    cat === "Characters" || cat === "Levels" || cat === "Objects";
+  const effectiveCategory =
+    isValidCategory(selectedCategory) && availableCategories.includes(selectedCategory)
+      ? selectedCategory
+      : (availableCategories[0] ?? "Characters");
 
   const availableModels =
     selectedGame?.models.filter(
