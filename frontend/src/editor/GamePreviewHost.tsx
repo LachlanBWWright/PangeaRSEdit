@@ -32,13 +32,44 @@ export function GamePreviewHost({
   runToken,
 }: Props) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const [canvasSize, setCanvasSize] = useState<{ width: number; height: number } | null>(
+    null,
+  );
   const [statusText, setStatusText] = useState("Preparing game runtime…");
   const [errorText, setErrorText] = useState<string | null>(null);
 
   useEffect(() => {
-    let cancelled = false;
     const canvas = canvasRef.current;
     if (!canvas) {
+      return;
+    }
+
+    const updateSize = () => {
+      const { clientWidth, clientHeight } = canvas;
+      if (clientWidth > 0 && clientHeight > 0) {
+        setCanvasSize({ width: Math.round(clientWidth), height: Math.round(clientHeight) });
+      }
+    };
+
+    updateSize();
+    const frame = window.requestAnimationFrame(updateSize);
+    const observer =
+      typeof ResizeObserver !== "undefined"
+        ? new ResizeObserver(updateSize)
+        : null;
+    observer?.observe(canvas);
+
+    return () => {
+      window.cancelAnimationFrame(frame);
+      observer?.disconnect();
+    };
+  }, [runToken, config.game]);
+
+  useEffect(() => {
+    let cancelled = false;
+    let loadTimer: number | undefined;
+    const canvas = canvasRef.current;
+    if (!canvas || !canvasSize) {
       return;
     }
 
@@ -68,26 +99,37 @@ export function GamePreviewHost({
       },
     });
 
+    canvas.width = canvasSize.width;
+    canvas.height = canvasSize.height;
+
     previewWindow.Module = module as unknown as PreviewWindow["Module"];
     const scriptUrl = new URL(config.mainJs, assetBaseUrl).href + `?v=${cacheBustToken}`;
-    void (async () => {
-      try {
-        await loadPreviewRuntime(module, scriptUrl);
-      } catch (error) {
-        if (cancelled) {
-          return;
+    loadTimer = window.setTimeout(() => {
+      void (async () => {
+        try {
+          if (cancelled) {
+            return;
+          }
+          await loadPreviewRuntime(module, scriptUrl);
+        } catch (error) {
+          if (cancelled) {
+            return;
+          }
+          const message =
+            error instanceof Error
+              ? error.message
+              : `Failed to load ${config.mainJs}.`;
+          setErrorText(message);
+          setStatusText("Failed to start game.");
         }
-        const message =
-          error instanceof Error
-            ? error.message
-            : `Failed to load ${config.mainJs}.`;
-        setErrorText(message);
-        setStatusText("Failed to start game.");
-      }
-    })();
+      })();
+    }, 0);
 
     return () => {
       cancelled = true;
+      if (typeof loadTimer !== "undefined") {
+        window.clearTimeout(loadTimer);
+      }
       cleanupGlobals();
       if (previewWindow.Module === module) {
         if (typeof previousModule === "undefined") {
@@ -97,7 +139,7 @@ export function GamePreviewHost({
         }
       }
     };
-  }, [config, currentLevelInfo, levelNumber, runToken, terrainDataBase64]);
+  }, [canvasSize, config, currentLevelInfo, levelNumber, runToken, terrainDataBase64]);
 
   const showStatus = Boolean(statusText) || Boolean(errorText);
 
@@ -105,6 +147,8 @@ export function GamePreviewHost({
     <div className="absolute inset-0 bg-black">
       <canvas
         ref={canvasRef}
+        width={canvasSize?.width ?? 640}
+        height={canvasSize?.height ?? 480}
         className="h-full w-full block bg-black outline-none"
         tabIndex={-1}
       />

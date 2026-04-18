@@ -20,8 +20,14 @@ export interface PreviewTerrainPaths {
 export interface PreviewRuntimeModule {
   canvas: HTMLCanvasElement;
   arguments: string[];
+  preInit?: Array<() => void>;
   preRun: Array<() => void>;
   locateFile: (path: string) => string;
+  webglContextAttributes?: {
+    powerPreference?: string;
+    antialias?: boolean;
+    preserveDrawingBuffer?: boolean;
+  };
   setStatus?: (text: string) => void;
   monitorRunDependencies?: (left: number) => void;
   onRuntimeInitialized?: () => void;
@@ -31,6 +37,12 @@ export interface PreviewRuntimeModule {
     analyzePath?: (path: string) => { exists: boolean };
     mkdir?: (path: string) => void;
   };
+  FS_createPath?: (
+    parent: string,
+    path: string,
+    canRead: boolean,
+    canWrite: boolean,
+  ) => void;
   ccall?: (
     ident: string,
     returnType: string | null,
@@ -129,6 +141,32 @@ function ensureDir(vfs: NonNullable<PreviewRuntimeModule["FS"]>, path: string): 
   }
 }
 
+function ensurePreviewPrefsDirs(module: PreviewRuntimeModule, config: GamePortConfig): void {
+  const fsCreatePath = module.FS_createPath;
+
+  if (typeof fsCreatePath === "function") {
+    try {
+      fsCreatePath("/", "home", true, true);
+      fsCreatePath("/home", "web_user", true, true);
+      fsCreatePath("/home/web_user", ".config", true, true);
+      fsCreatePath(`/home/web_user/.config`, config.prefsFolderName, true, true);
+      return;
+    } catch {
+      // Fall back to the FS API below if the generated helper is unavailable.
+    }
+  }
+
+  const vfs = module.FS;
+  if (!vfs) {
+    return;
+  }
+
+  ensureDir(vfs, "/home");
+  ensureDir(vfs, "/home/web_user");
+  ensureDir(vfs, "/home/web_user/.config");
+  ensureDir(vfs, `/home/web_user/.config/${config.prefsFolderName}`);
+}
+
 export function applyPreviewGlobals(
   win: PreviewWindow,
   config: GamePortConfig,
@@ -214,38 +252,30 @@ export function createPreviewModule(
 
   return {
     canvas,
+    webglContextAttributes: {
+      powerPreference: "high-performance",
+      antialias: false,
+      preserveDrawingBuffer: false,
+    },
     arguments: buildGameArguments(config, levelNumber, terrainPaths?.dataPath ?? null),
+    preInit: [
+      () => {
+        const module = (window as unknown as PreviewWindow).Module;
+        if (!module) {
+          return;
+        }
+
+        ensurePreviewPrefsDirs(module, config);
+      },
+    ],
     preRun: [
       () => {
         const module = (window as unknown as PreviewWindow).Module;
-        const vfs = module?.FS;
-        if (!vfs) {
+        if (!module) {
           return;
         }
 
-        ensureDir(vfs, "/home");
-        ensureDir(vfs, "/home/web_user");
-        ensureDir(vfs, "/home/web_user/.config");
-        ensureDir(vfs, `/home/web_user/.config/${config.prefsFolderName}`);
-
-        if (!terrainBytes || !terrainPaths) {
-          return;
-        }
-
-        if (typeof vfs.mkdir === "function") {
-          ensureDir(vfs, "/Data");
-          ensureDir(vfs, "/Data/Terrain");
-        }
-
-        if (typeof vfs.writeFile !== "function") {
-          onError("Preview terrain preload skipped: FS.writeFile is unavailable.");
-          return;
-        }
-
-        vfs.writeFile(terrainPaths.dataPath, terrainBytes);
-        if (terrainPaths.rsrcPath) {
-          vfs.writeFile(terrainPaths.rsrcPath, terrainBytes);
-        }
+        ensurePreviewPrefsDirs(module, config);
       },
     ],
     locateFile: (path: string) => new URL(path, assetBaseUrl).href + `?v=${cacheBustToken}`,
@@ -259,6 +289,26 @@ export function createPreviewModule(
       const module = (window as unknown as PreviewWindow).Module;
       if (!module) {
         return;
+      }
+
+      if (terrainBytes && terrainPaths) {
+        const vfs = module.FS;
+        if (!vfs) {
+          onError("Preview terrain injection skipped: FS is unavailable.");
+          return;
+        }
+        if (typeof vfs.mkdir === "function") {
+          ensureDir(vfs, "/Data");
+          ensureDir(vfs, "/Data/Terrain");
+        }
+        if (typeof vfs.writeFile !== "function") {
+          onError("Preview terrain injection skipped: FS.writeFile is unavailable.");
+          return;
+        }
+        vfs.writeFile(terrainPaths.dataPath, terrainBytes);
+        if (terrainPaths.rsrcPath) {
+          vfs.writeFile(terrainPaths.rsrcPath, terrainBytes);
+        }
       }
 
       if (
