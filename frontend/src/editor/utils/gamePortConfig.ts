@@ -41,14 +41,14 @@ export interface GamePortConfig {
   readonly game: Game;
   /** Relative path to the direct WASM game shell within games/pangea-ports/. */
   readonly siteLaunchPath: string;
-  /** Relative path to the committed shell file used by the editor preview. */
-  readonly previewShellPath: string;
   /** Build the query string that skips directly to the selected level/track/area. */
   readonly buildLaunchQuery: (levelIndex: number) => URLSearchParams;
   /** Directory name under frontend/public/.generated/pangea-ports/wasm/ for local WASM files. */
   readonly wasmDir: string;
   /** Main JS filename produced by the Emscripten build (e.g. "OttoMatic.js"). */
   readonly mainJs: string;
+  /** Preference folder name under /home/web_user/.config inside the browser FS. */
+  readonly prefsFolderName: string;
   /** GitHub Pages URL for the game page (remote play fallback). */
   readonly remoteGameUrl: (levelIndex: number) => string;
   /** All available levels/tracks/areas. */
@@ -130,10 +130,10 @@ export const GAME_PORT_CONFIGS: Readonly<Record<Game, GamePortConfig>> = {
   [Game.OTTO_MATIC]: {
     game: Game.OTTO_MATIC,
     siteLaunchPath: "OttoMatic-Android/OttoMatic.html",
-    previewShellPath: "OttoMatic-Android/docs/shell.html",
     buildLaunchQuery: (n) => new URLSearchParams({ level: String(n), embed: "1" }),
     wasmDir: "ottomatic",
     mainJs: "OttoMatic.js",
+    prefsFolderName: "OttoMatic",
     remoteGameUrl: (n) =>
       `https://lachlanbwwright.github.io/OttoMatic-Android/?level=${String(n)}`,
     levels: OTTO_LEVELS,
@@ -159,7 +159,6 @@ export const GAME_PORT_CONFIGS: Readonly<Record<Game, GamePortConfig>> = {
   [Game.NANOSAUR]: {
     game: Game.NANOSAUR,
     siteLaunchPath: "Nanosaur-android/game/index.html",
-    previewShellPath: "Nanosaur-android/packaging/emscripten/shell.html",
     buildLaunchQuery: (n) =>
       new URLSearchParams({
         level: String(n),
@@ -168,6 +167,7 @@ export const GAME_PORT_CONFIGS: Readonly<Record<Game, GamePortConfig>> = {
       }),
     wasmDir: "nanosaur",
     mainJs: "Nanosaur.js",
+    prefsFolderName: "Nanosaur",
     remoteGameUrl: () =>
       "https://lachlanbwwright.github.io/Nanosaur-android/game/index.html?level=0&skipMenu=1",
     levels: NANOSAUR_LEVELS,
@@ -186,7 +186,6 @@ export const GAME_PORT_CONFIGS: Readonly<Record<Game, GamePortConfig>> = {
   [Game.BUGDOM]: {
     game: Game.BUGDOM,
     siteLaunchPath: "Bugdom-android/game.html",
-    previewShellPath: "Bugdom-android/docs/shell.html",
     buildLaunchQuery: (n) =>
       new URLSearchParams({
         level: String(n),
@@ -194,6 +193,7 @@ export const GAME_PORT_CONFIGS: Readonly<Record<Game, GamePortConfig>> = {
       }),
     wasmDir: "bugdom",
     mainJs: "Bugdom.js",
+    prefsFolderName: "Bugdom",
     remoteGameUrl: (n) =>
       `https://lachlanbwwright.github.io/Bugdom-android/game.html?level=${String(n)}`,
     levels: BUGDOM_LEVELS,
@@ -213,7 +213,6 @@ export const GAME_PORT_CONFIGS: Readonly<Record<Game, GamePortConfig>> = {
   [Game.BUGDOM_2]: {
     game: Game.BUGDOM_2,
     siteLaunchPath: "Bugdom2-Android/Bugdom2.html",
-    previewShellPath: "Bugdom2-Android/packaging/shell.html",
     buildLaunchQuery: (n) =>
       new URLSearchParams({
         level: String(n),
@@ -221,6 +220,7 @@ export const GAME_PORT_CONFIGS: Readonly<Record<Game, GamePortConfig>> = {
       }),
     wasmDir: "bugdom2",
     mainJs: "Bugdom2.js",
+    prefsFolderName: "Bugdom2",
     remoteGameUrl: (n) =>
       `https://lachlanbwwright.github.io/Bugdom2-Android/Bugdom2.html?level=${String(n)}`,
     levels: BUGDOM2_LEVELS,
@@ -238,7 +238,6 @@ export const GAME_PORT_CONFIGS: Readonly<Record<Game, GamePortConfig>> = {
   [Game.CRO_MAG]: {
     game: Game.CRO_MAG,
     siteLaunchPath: "CroMagRally-Android/game/CroMagRally.html",
-    previewShellPath: "CroMagRally-Android/packaging/emscripten/shell.html",
     buildLaunchQuery: (n) =>
       new URLSearchParams({
         track: String(n),
@@ -247,6 +246,7 @@ export const GAME_PORT_CONFIGS: Readonly<Record<Game, GamePortConfig>> = {
       }),
     wasmDir: "cromagrally",
     mainJs: "CroMagRally.js",
+    prefsFolderName: "CroMagRally",
     remoteGameUrl: (n) =>
       `https://lachlanbwwright.github.io/CroMagRally-Android/game/CroMagRally.html?track=${String(n)}`,
     levels: CROMAG_TRACKS,
@@ -260,7 +260,6 @@ export const GAME_PORT_CONFIGS: Readonly<Record<Game, GamePortConfig>> = {
   [Game.BILLY_FRONTIER]: {
     game: Game.BILLY_FRONTIER,
     siteLaunchPath: "BillyFrontier-Android/game/billyfrontier.html",
-    previewShellPath: "BillyFrontier-Android/packaging/emscripten_shell.html",
     buildLaunchQuery: (n) =>
       new URLSearchParams({
         level: String(n),
@@ -268,6 +267,7 @@ export const GAME_PORT_CONFIGS: Readonly<Record<Game, GamePortConfig>> = {
       }),
     wasmDir: "billyfrontier",
     mainJs: "billyfrontier.js",
+    prefsFolderName: "BillyFrontier",
     remoteGameUrl: (n) =>
       `https://lachlanbwwright.github.io/BillyFrontier-Android/game/billyfrontier.html#level=${String(n)}`,
     levels: BILLY_FRONTIER_AREAS,
@@ -292,7 +292,6 @@ export const GAME_PORT_CONFIGS: Readonly<Record<Game, GamePortConfig>> = {
   [Game.MIGHTY_MIKE]: {
     game: Game.MIGHTY_MIKE,
     siteLaunchPath: "MightyMike-Android/index.html",
-    previewShellPath: "MightyMike-Android/docs/index.html",
     buildLaunchQuery: (n) =>
       new URLSearchParams({
         level: `${String(Math.floor(n / 3))}:${String(n % 3)}`,
@@ -300,6 +299,7 @@ export const GAME_PORT_CONFIGS: Readonly<Record<Game, GamePortConfig>> = {
       }),
     wasmDir: "mightymike",
     mainJs: "MightyMike.js",
+    prefsFolderName: "MightyMike",
     remoteGameUrl: () =>
       "https://github.com/LachlanBWWright/MightyMike-Android",
     levels: MIGHTY_MIKE_LEVELS,
@@ -313,7 +313,6 @@ export const GAME_PORT_CONFIGS: Readonly<Record<Game, GamePortConfig>> = {
   [Game.NANOSAUR_2]: {
     game: Game.NANOSAUR_2,
     siteLaunchPath: "Nanosaur2-Android/Nanosaur2.html",
-    previewShellPath: "Nanosaur2-Android/packaging/wasm/shell.html",
     buildLaunchQuery: (n) =>
       new URLSearchParams({
         level: String(n),
@@ -321,6 +320,7 @@ export const GAME_PORT_CONFIGS: Readonly<Record<Game, GamePortConfig>> = {
       }),
     wasmDir: "nanosaur2",
     mainJs: "Nanosaur2.js",
+    prefsFolderName: "Nanosaur2",
     remoteGameUrl: (n) =>
       `https://lachlanbwwright.github.io/Nanosaur2-Android/?level=${String(n)}`,
     levels: NANOSAUR2_LEVELS,
@@ -328,6 +328,12 @@ export const GAME_PORT_CONFIGS: Readonly<Record<Game, GamePortConfig>> = {
     hasFenceCollision: true,
     hasGodMode: false,
     hasSpeedMultiplier: false,
+    getSkipToLevelCcall: (n) => ({
+      fn: "Nanosaur2_SkipToLevel",
+      returnType: null,
+      argTypes: ["number"],
+      args: [n],
+    }),
     terrain: {
       getDataPath: (f) => `/Data/Terrain/${f}`,
       setPathFn: "Nanosaur2_SetTerrainOverridePath",

@@ -35,8 +35,11 @@ If this file is present (and the response is `Content-Type: application/javascri
 2. Build and stage the WASM assets into the frontend's generated public tree:
 
    ```bash
-   scripts/build-pangea-ports.sh
+   cd frontend
+   npm run build:games
    ```
+
+   From the monorepo root, the equivalent shell command is `scripts/build-pangea-ports.sh`.
 
 3. Start the dev server as usual:
 
