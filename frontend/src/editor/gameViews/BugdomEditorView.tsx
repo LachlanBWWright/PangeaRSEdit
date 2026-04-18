@@ -5,7 +5,7 @@
  * Has fences, items, splines but different tile system (no water)
  */
 
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { Bugdom1EditorToolbar } from "../toolbars/Bugdom1EditorToolbar";
 import { Updater, useImmer } from "use-immer";
 import { useAtomValue } from "jotai";

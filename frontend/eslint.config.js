@@ -23,8 +23,7 @@ export default defineConfig(
       "test-glb-export.ts",
       "dist/**",
       "coverage/**",
-      "public/wasm/**",
-      "public/games/pangea-ports/**",
+      "public/.generated/**",
     ],
   },
   [

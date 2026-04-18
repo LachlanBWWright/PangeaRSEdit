@@ -39,13 +39,13 @@ export function getLevelIndex(info: AnyLevelInfo): number {
 
 export interface GamePortConfig {
   readonly game: Game;
-  /** Relative path to the direct WASM game shell within public/games/pangea-ports/. */
+  /** Relative path to the direct WASM game shell within games/pangea-ports/. */
   readonly siteLaunchPath: string;
   /** Relative path to the committed shell file used by the editor preview. */
   readonly previewShellPath: string;
   /** Build the query string that skips directly to the selected level/track/area. */
   readonly buildLaunchQuery: (levelIndex: number) => URLSearchParams;
-  /** Directory name under frontend/public/wasm/ for local WASM files. */
+  /** Directory name under frontend/public/.generated/pangea-ports/wasm/ for local WASM files. */
   readonly wasmDir: string;
   /** Main JS filename produced by the Emscripten build (e.g. "OttoMatic.js"). */
   readonly mainJs: string;

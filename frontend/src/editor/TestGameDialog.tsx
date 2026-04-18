@@ -169,7 +169,7 @@ function buildPreviewHtml(
   previewTerrainPaths: { dataPath: string; rsrcPath: string | null } | null,
 ): string {
   const appBaseUrl = new URL(import.meta.env.BASE_URL, window.location.origin).href;
-  const localAssetBase = new URL(`wasm/${config.wasmDir}/`, appBaseUrl).href;
+  const localAssetBase = new URL(`.generated/pangea-ports/wasm/${config.wasmDir}/`, appBaseUrl).href;
   const args = buildGameArguments(config, levelNumber, previewTerrainPaths?.dataPath ?? null);
   const previewUrl = new URL(`games/pangea-ports/games/${config.siteLaunchPath}`, appBaseUrl);
   previewUrl.search = config.buildLaunchQuery(levelNumber).toString();
