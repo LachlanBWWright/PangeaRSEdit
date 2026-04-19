@@ -22,6 +22,7 @@ export interface PreviewRuntimeModule {
   arguments: string[];
   preInit?: Array<() => void>;
   preRun: Array<() => void>;
+  postRun?: Array<() => void>;
   locateFile: (path: string) => string;
   webglContextAttributes?: {
     powerPreference?: string;
@@ -282,7 +283,11 @@ export function createPreviewModule(
     ],
     locateFile: (path: string) => new URL(path, assetBaseUrl).href + `?v=${cacheBustToken}`,
     setStatus: (text: string) => {
-      onStatus(text);
+      // Ignore setStatus calls once the runtime is up; the overlay was already
+      // cleared by onRuntimeInitialized and must not reappear.
+      if (!runtimeInitialized) {
+        onStatus(text);
+      }
     },
     monitorRunDependencies: (left: number) => {
       if (runtimeInitialized) return;
@@ -311,13 +316,12 @@ export function createPreviewModule(
           onError("Preview terrain injection skipped: FS.writeFile is unavailable.");
           return;
         }
-        // For RSRC_FORK games the terrain bytes are the resource fork.
-        // Write only to the .rsrc sidecar so the data fork (often much larger)
-        // is not overwritten with the wrong content.
+        // Write terrain bytes to the data-fork path. For games that also have a
+        // resource-fork sidecar (.ter.rsrc), write there too — the specific path
+        // the game reads from varies per Emscripten port.
+        vfs.writeFile(terrainPaths.dataPath, terrainBytes);
         if (terrainPaths.rsrcPath) {
           vfs.writeFile(terrainPaths.rsrcPath, terrainBytes);
-        } else {
-          vfs.writeFile(terrainPaths.dataPath, terrainBytes);
         }
 
         if (
@@ -326,22 +330,39 @@ export function createPreviewModule(
           currentLevelInfo &&
           "terrainFile" in currentLevelInfo
         ) {
-          module.ccall?.(config.terrain.setPathFn, null, ["string"], [
-            config.terrain.getSetPathArg(currentLevelInfo.terrainFile),
-          ]);
+          try {
+            module.ccall?.(config.terrain.setPathFn, null, ["string"], [
+              config.terrain.getSetPathArg(currentLevelInfo.terrainFile),
+            ]);
+          } catch {
+            // Ignore if the override function is unavailable in this build.
+          }
         }
       }
 
       const skipToLevel = config.getSkipToLevelCcall?.(levelNumber);
       if (skipToLevel) {
-        module.ccall?.(
-          skipToLevel.fn,
-          skipToLevel.returnType,
-          skipToLevel.argTypes,
-          skipToLevel.args,
-        );
+        try {
+          module.ccall?.(
+            skipToLevel.fn,
+            skipToLevel.returnType,
+            skipToLevel.argTypes,
+            skipToLevel.args,
+          );
+        } catch {
+          // Ignore if the skip-to-level function is unavailable in this build.
+        }
       }
     },
+    // postRun fires after callMain returns and serves as a reliable backstop:
+    // even if onRuntimeInitialized already cleared the overlay, this ensures
+    // the status text is empty once the game is fully running.
+    postRun: [
+      () => {
+        runtimeInitialized = true;
+        onStatus("");
+      },
+    ],
     onAbort: (reason: unknown) => {
       const message =
         typeof reason === "string"
@@ -360,8 +381,11 @@ export async function loadPreviewRuntime(
 ): Promise<() => void> {
   let stopped = false;
   const pendingRafIds = new Set<number>();
+  const pendingTimerIds = new Set<number>();
   const realRaf = window.requestAnimationFrame.bind(window);
   const realCaf = window.cancelAnimationFrame.bind(window);
+  const realSetTimeout = window.setTimeout.bind(window);
+  const realClearTimeout = window.clearTimeout.bind(window);
 
   function gameRaf(callback: FrameRequestCallback): number {
     const id = realRaf((time: number) => {
@@ -377,32 +401,56 @@ export async function loadPreviewRuntime(
     realCaf(id);
   }
 
+  function gameSetTimeout(callback: () => void, delay?: number): number {
+    const cb = callback;
+    const id = realSetTimeout(() => {
+      pendingTimerIds.delete(id);
+      if (!stopped) cb();
+    }, delay);
+    pendingTimerIds.add(id);
+    return id;
+  }
+
+  function gameClearTimeout(id?: number): void {
+    if (typeof id === "number") {
+      pendingTimerIds.delete(id);
+    }
+    realClearTimeout(id);
+  }
+
   const response = await fetch(scriptUrl, { credentials: "same-origin" });
   if (!response.ok) {
     throw new Error(`Failed to load ${scriptUrl}: ${response.status}`);
   }
 
   const source = await response.text();
-  // Shadow requestAnimationFrame/cancelAnimationFrame so that the game's main
-  // loop uses our tracked wrappers. This lets us cancel the loop on cleanup
-  // without patching the real global (which would affect React/Three.js).
+  // Shadow requestAnimationFrame, cancelAnimationFrame, setTimeout, and
+  // clearTimeout so the game's main loop and deferred callbacks use our
+  // tracked wrappers.  On cleanup, all pending callbacks are cancelled
+  // without touching the real globals.
   const runner = new Function(
     "module",
     "window",
     "requestAnimationFrame",
     "cancelAnimationFrame",
+    "setTimeout",
+    "clearTimeout",
     `"use strict"; var Module = module;\n${source}\nreturn Module;`,
   ) as (
     module: PreviewRuntimeModule,
     window: Window,
     raf: (cb: FrameRequestCallback) => number,
     caf: (id: number) => void,
+    st: (cb: () => void, delay?: number) => number,
+    ct: (id?: number) => void,
   ) => PreviewRuntimeModule;
-  runner(module, window, gameRaf, gameCaf);
+  runner(module, window, gameRaf, gameCaf, gameSetTimeout, gameClearTimeout);
 
   return () => {
     stopped = true;
     for (const id of pendingRafIds) realCaf(id);
+    for (const id of pendingTimerIds) realClearTimeout(id);
     pendingRafIds.clear();
+    pendingTimerIds.clear();
   };
 }

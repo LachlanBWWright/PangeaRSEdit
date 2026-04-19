@@ -326,12 +326,6 @@ export const GAME_PORT_CONFIGS: Readonly<Record<Game, GamePortConfig>> = {
     hasFenceCollision: true,
     hasGodMode: false,
     hasSpeedMultiplier: false,
-    getSkipToLevelCcall: (n) => ({
-      fn: "Nanosaur2_SkipToLevel",
-      returnType: null,
-      argTypes: ["number"],
-      args: [n],
-    }),
     terrain: {
       getRsrcPath: (f) => `/Data/Terrain/${f}.rsrc`,
       getDataPath: (f) => `/Data/Terrain/${f}`,
