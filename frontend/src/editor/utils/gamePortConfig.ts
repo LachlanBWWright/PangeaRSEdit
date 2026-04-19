@@ -10,7 +10,7 @@ import { OTTO_LEVELS, type OttoLevelInfo, inferLevelNumberFromFilename as inferO
 import { NANOSAUR_LEVELS, type NanosaurLevelInfo, inferLevelNumberFromFilename as inferNanosaurLevel } from "./nanosaurLevelNumbers";
 import { BUGDOM_LEVELS, type BugdomLevelInfo, inferLevelNumberFromFilename as inferBugdomLevel } from "./bugdomLevelNumbers";
 import { BUGDOM2_LEVELS, type Bugdom2LevelInfo, inferLevelNumberFromFilename as inferBugdom2Level } from "./bugdom2LevelNumbers";
-import { CROMAG_TRACKS, type CroMagTrackInfo } from "./croMagLevelNumbers";
+import { CROMAG_TRACKS, type CroMagTrackInfo, inferLevelNumberFromFilename as inferCroMagLevel } from "./croMagLevelNumbers";
 import { BILLY_FRONTIER_AREAS, type BillyFrontierAreaInfo, inferLevelNumberFromFilename as inferBillyLevel } from "./billyFrontierLevelNumbers";
 import { MIGHTY_MIKE_LEVELS, type MightyMikeLevelInfo } from "./mightyMikeLevelNumbers";
 import { NANOSAUR2_LEVELS, type Nanosaur2LevelInfo, inferLevelNumberFromFilename as inferNanosaur2Level } from "./nanosaur2LevelNumbers";
@@ -121,6 +121,8 @@ export function inferPreviewLevelFromFilename(
       return inferBillyLevel(filename);
     case Game.NANOSAUR_2:
       return inferNanosaur2Level(filename);
+    case Game.CRO_MAG:
+      return inferCroMagLevel(filename);
     default:
       return undefined;
   }
@@ -256,6 +258,10 @@ export const GAME_PORT_CONFIGS: Readonly<Record<Game, GamePortConfig>> = {
     hasFenceCollision: true,
     hasGodMode: false,
     hasSpeedMultiplier: false,
+    terrain: {
+      getRsrcPath: (f) => `/Data/Terrain/${f}.rsrc`,
+      getDataPath: (f) => `/Data/Terrain/${f}`,
+    },
     wasmAvailable: true,
   },
 

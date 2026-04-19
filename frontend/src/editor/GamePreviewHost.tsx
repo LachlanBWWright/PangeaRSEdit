@@ -46,8 +46,6 @@ export function GamePreviewHost({
 
   useEffect(() => {
     let cancelled = false;
-    let sizeFrame: number | undefined;
-    let loadTimer: number | undefined;
     let stopGame: (() => void) | null = null;
     let activeModule: PreviewRuntimeModule | null = null;
     const canvas = canvasRef.current;
@@ -62,26 +60,20 @@ export function GamePreviewHost({
     }
 
     const previewWindow = window as unknown as PreviewWindow;
+    const previousModule = previewWindow.Module;
     const cleanupGlobals = applyPreviewGlobals(previewWindow, config, levelNumber);
     const terrainPaths = getPreviewTerrainPaths(currentLevelInfo, config);
     const assetBaseUrl = buildPreviewAssetBaseUrl(config);
     const cacheBustToken = `${String(config.game)}-${String(levelNumber)}-${String(runToken)}`;
-    const previousModule = previewWindow.Module;
 
     setErrorText(null);
     setStatusText("Preparing game runtime…");
 
-    // Wait one animation frame so the dialog layout settles before we measure the
-    // canvas and hand it to the WASM runtime. This prevents the game from starting
-    // at an incorrect resolution while the dialog's CSS transition is still running.
-    sizeFrame = window.requestAnimationFrame(() => {
-      if (cancelled) return;
+    function startGame(width: number, height: number): void {
+      if (cancelled || !canvas) return;
 
-      const { clientWidth, clientHeight } = canvas;
-      if (clientWidth > 0 && clientHeight > 0) {
-        canvas.width = Math.round(clientWidth);
-        canvas.height = Math.round(clientHeight);
-      }
+      canvas.width = width;
+      canvas.height = height;
 
       activeModule = createPreviewModule({
         config,
@@ -90,8 +82,8 @@ export function GamePreviewHost({
         canvas,
         assetBaseUrl,
         cacheBustToken,
-        terrainDataBytes,
-        terrainRsrcBytes,
+        terrainDataBytes: terrainDataBytes ?? null,
+        terrainRsrcBytes: terrainRsrcBytes ?? null,
         terrainPaths,
         onStatus: (text) => {
           if (!cancelled) {
@@ -110,40 +102,52 @@ export function GamePreviewHost({
       previewWindow.Module = activeModule as unknown as PreviewWindow["Module"];
       const scriptUrl = new URL(config.mainJs, assetBaseUrl).href + `?v=${cacheBustToken}`;
 
-      loadTimer = window.setTimeout(() => {
-        void (async () => {
-          if (cancelled || activeModule === null) return;
-          const stopOrErr = await ResultAsync.fromPromise(
-            loadPreviewRuntime(activeModule, scriptUrl),
-            (e) => (e instanceof Error ? e : new Error(String(e))),
-          );
-          if (cancelled) {
-            if (stopOrErr.isOk()) stopOrErr.value();
-            return;
-          }
-          if (stopOrErr.isErr()) {
-            setErrorText(stopOrErr.error.message);
-            setStatusText("Failed to start game.");
-            return;
-          }
-          stopGame = stopOrErr.value;
-        })();
-      }, 0);
+      void (async () => {
+        if (cancelled || activeModule === null) return;
+        const stopOrErr = await ResultAsync.fromPromise(
+          loadPreviewRuntime(activeModule, scriptUrl),
+          (e) => (e instanceof Error ? e : new Error(String(e))),
+        );
+        if (cancelled) {
+          if (stopOrErr.isOk()) stopOrErr.value();
+          return;
+        }
+        if (stopOrErr.isErr()) {
+          setErrorText(stopOrErr.error.message);
+          setStatusText("Failed to start game.");
+          return;
+        }
+        stopGame = stopOrErr.value;
+      })();
+    }
+
+    // Use ResizeObserver to wait for the canvas to have real layout dimensions
+    // before handing it to the WASM runtime, preventing the game from starting
+    // at the wrong resolution while the dialog's CSS is still settling.
+    const observer = new ResizeObserver((entries) => {
+      observer.disconnect();
+      if (cancelled) return;
+      const rect = entries[0]?.contentRect;
+      const width = rect && rect.width > 0 ? Math.round(rect.width) : canvas.clientWidth;
+      const height = rect && rect.height > 0 ? Math.round(rect.height) : canvas.clientHeight;
+      if (width > 0 && height > 0) {
+        startGame(width, height);
+      }
     });
+    observer.observe(canvas);
 
     return () => {
       cancelled = true;
-      if (sizeFrame !== undefined) window.cancelAnimationFrame(sizeFrame);
-      if (loadTimer !== undefined) window.clearTimeout(loadTimer);
+      observer.disconnect();
       stopGame?.();
       stopGame = null;
       cleanupGlobals();
-      if (activeModule !== null && previewWindow.Module === (activeModule as unknown as PreviewWindow["Module"])) {
-        if (previousModule === undefined) {
-          delete previewWindow.Module;
-        } else {
-          previewWindow.Module = previousModule;
-        }
+      // Always restore window.Module to its pre-effect value so subsequent game
+      // runs don't inherit stale Emscripten module state.
+      if (previousModule === undefined) {
+        delete previewWindow.Module;
+      } else {
+        previewWindow.Module = previousModule;
       }
     };
   }, [config, currentLevelInfo, levelNumber, runToken, terrainDataBytes, terrainRsrcBytes]);
