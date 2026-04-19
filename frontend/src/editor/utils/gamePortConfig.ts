@@ -272,12 +272,7 @@ export const GAME_PORT_CONFIGS: Readonly<Record<Game, GamePortConfig>> = {
       `https://lachlanbwwright.github.io/BillyFrontier-Android/game/billyfrontier.html#level=${String(n)}`,
     levels: BILLY_FRONTIER_AREAS,
     defaultLevel: 0,
-    getSkipToLevelCcall: (n) => ({
-      fn: "BF_SetDirectLaunchLevel",
-      returnType: null,
-      argTypes: ["number"],
-      args: [n],
-    }),
+    getSkipToLevelCcall: undefined,
     hasFenceCollision: true,
     hasGodMode: false,
     hasSpeedMultiplier: false,
@@ -307,7 +302,7 @@ export const GAME_PORT_CONFIGS: Readonly<Record<Game, GamePortConfig>> = {
     hasFenceCollision: false,
     hasGodMode: false,
     hasSpeedMultiplier: false,
-    wasmAvailable: false,
+    wasmAvailable: true,
   },
 
   [Game.NANOSAUR_2]: {

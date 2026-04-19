@@ -146,11 +146,13 @@ export function GamePreviewHost({
   return (
     <div className="absolute inset-0 bg-black">
       <canvas
+        id="canvas"
         ref={canvasRef}
         width={canvasSize?.width ?? 640}
         height={canvasSize?.height ?? 480}
         className="h-full w-full block bg-black outline-none"
         tabIndex={-1}
+        onContextMenu={(e) => { e.preventDefault(); }}
       />
       {showStatus ? (
         <div className="absolute inset-0 flex items-center justify-center flex-col gap-3 bg-gradient-to-b from-black/90 to-slate-950/95 text-center p-6">

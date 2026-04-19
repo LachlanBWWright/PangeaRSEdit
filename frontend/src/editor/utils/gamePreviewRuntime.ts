@@ -95,7 +95,7 @@ export function buildGameArguments(
     case Game.CRO_MAG:
       return ["--track", String(levelNumber), "--car", "1"];
     case Game.BILLY_FRONTIER:
-      return ["--level", String(levelNumber)];
+      return [];
     case Game.MIGHTY_MIKE:
       return ["--level", `${String(Math.floor(levelNumber / 3))}:${String(levelNumber % 3)}`];
     case Game.NANOSAUR_2:
@@ -309,17 +309,17 @@ export function createPreviewModule(
         if (terrainPaths.rsrcPath) {
           vfs.writeFile(terrainPaths.rsrcPath, terrainBytes);
         }
-      }
 
-      if (
-        config.terrain?.setPathFn &&
-        config.terrain.getSetPathArg &&
-        currentLevelInfo &&
-        "terrainFile" in currentLevelInfo
-      ) {
-        module.ccall?.(config.terrain.setPathFn, null, ["string"], [
-          config.terrain.getSetPathArg(currentLevelInfo.terrainFile),
-        ]);
+        if (
+          config.terrain?.setPathFn &&
+          config.terrain.getSetPathArg &&
+          currentLevelInfo &&
+          "terrainFile" in currentLevelInfo
+        ) {
+          module.ccall?.(config.terrain.setPathFn, null, ["string"], [
+            config.terrain.getSetPathArg(currentLevelInfo.terrainFile),
+          ]);
+        }
       }
 
       const skipToLevel = config.getSkipToLevelCcall?.(levelNumber);
