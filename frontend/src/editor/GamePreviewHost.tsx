@@ -104,13 +104,18 @@ export function GamePreviewHost({
 
     previewWindow.Module = module as unknown as PreviewWindow["Module"];
     const scriptUrl = new URL(config.mainJs, assetBaseUrl).href + `?v=${cacheBustToken}`;
+    let stopGame: (() => void) | null = null;
     loadTimer = window.setTimeout(() => {
       void (async () => {
         try {
           if (cancelled) {
             return;
           }
-          await loadPreviewRuntime(module, scriptUrl);
+          stopGame = await loadPreviewRuntime(module, scriptUrl);
+          if (cancelled) {
+            stopGame();
+            stopGame = null;
+          }
         } catch (error) {
           if (cancelled) {
             return;
@@ -130,6 +135,8 @@ export function GamePreviewHost({
       if (typeof loadTimer !== "undefined") {
         window.clearTimeout(loadTimer);
       }
+      stopGame?.();
+      stopGame = null;
       cleanupGlobals();
       if (previewWindow.Module === module) {
         if (typeof previousModule === "undefined") {

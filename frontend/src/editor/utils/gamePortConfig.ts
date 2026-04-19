@@ -203,6 +203,7 @@ export const GAME_PORT_CONFIGS: Readonly<Record<Game, GamePortConfig>> = {
     hasGodMode: false,
     hasSpeedMultiplier: false,
     terrain: {
+      getRsrcPath: (f) => `/Data/Terrain/${f}.rsrc`,
       getDataPath: (f) => `/Data/Terrain/${f}`,
       setPathFn: "BugdomSetTerrainOverride",
       getSetPathArg: (f) => `:Terrain:${f}`,
@@ -230,6 +231,7 @@ export const GAME_PORT_CONFIGS: Readonly<Record<Game, GamePortConfig>> = {
     hasSpeedMultiplier: false,
     terrain: {
       // Bugdom 2 VFS uses paths without a leading slash (relative to working dir)
+      getRsrcPath: (f) => `Data/Terrain/${f}.rsrc`,
       getDataPath: (f) => `Data/Terrain/${f}`,
     },
     wasmAvailable: true,
@@ -277,6 +279,7 @@ export const GAME_PORT_CONFIGS: Readonly<Record<Game, GamePortConfig>> = {
     hasGodMode: false,
     hasSpeedMultiplier: false,
     terrain: {
+      getRsrcPath: (f) => `Data/Terrain/${f}.rsrc`,
       getDataPath: (f) => `Data/Terrain/${f}`,
       setPathFn: "BF_SetTerrainFile",
       getSetPathArg: (f) => `:Terrain:${f}`,
@@ -330,6 +333,7 @@ export const GAME_PORT_CONFIGS: Readonly<Record<Game, GamePortConfig>> = {
       args: [n],
     }),
     terrain: {
+      getRsrcPath: (f) => `/Data/Terrain/${f}.rsrc`,
       getDataPath: (f) => `/Data/Terrain/${f}`,
       setPathFn: "Nanosaur2_SetTerrainOverridePath",
       getSetPathArg: (f) => `/Data/Terrain/${f}`,

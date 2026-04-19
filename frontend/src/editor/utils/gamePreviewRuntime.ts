@@ -250,6 +250,8 @@ export function createPreviewModule(
     onError,
   } = options;
 
+  let runtimeInitialized = false;
+
   return {
     canvas,
     webglContextAttributes: {
@@ -283,9 +285,13 @@ export function createPreviewModule(
       onStatus(text);
     },
     monitorRunDependencies: (left: number) => {
+      if (runtimeInitialized) return;
       onStatus(left > 0 ? `Loading game… (${left})` : "Starting game…");
     },
     onRuntimeInitialized: () => {
+      runtimeInitialized = true;
+      onStatus("");
+
       const module = (window as unknown as PreviewWindow).Module;
       if (!module) {
         return;
@@ -305,9 +311,13 @@ export function createPreviewModule(
           onError("Preview terrain injection skipped: FS.writeFile is unavailable.");
           return;
         }
-        vfs.writeFile(terrainPaths.dataPath, terrainBytes);
+        // For RSRC_FORK games the terrain bytes are the resource fork.
+        // Write only to the .rsrc sidecar so the data fork (often much larger)
+        // is not overwritten with the wrong content.
         if (terrainPaths.rsrcPath) {
           vfs.writeFile(terrainPaths.rsrcPath, terrainBytes);
+        } else {
+          vfs.writeFile(terrainPaths.dataPath, terrainBytes);
         }
 
         if (
@@ -347,17 +357,52 @@ export function createPreviewModule(
 export async function loadPreviewRuntime(
   module: PreviewRuntimeModule,
   scriptUrl: string,
-): Promise<void> {
+): Promise<() => void> {
+  let stopped = false;
+  const pendingRafIds = new Set<number>();
+  const realRaf = window.requestAnimationFrame.bind(window);
+  const realCaf = window.cancelAnimationFrame.bind(window);
+
+  function gameRaf(callback: FrameRequestCallback): number {
+    const id = realRaf((time: number) => {
+      pendingRafIds.delete(id);
+      if (!stopped) callback(time);
+    });
+    pendingRafIds.add(id);
+    return id;
+  }
+
+  function gameCaf(id: number): void {
+    pendingRafIds.delete(id);
+    realCaf(id);
+  }
+
   const response = await fetch(scriptUrl, { credentials: "same-origin" });
   if (!response.ok) {
     throw new Error(`Failed to load ${scriptUrl}: ${response.status}`);
   }
 
   const source = await response.text();
+  // Shadow requestAnimationFrame/cancelAnimationFrame so that the game's main
+  // loop uses our tracked wrappers. This lets us cancel the loop on cleanup
+  // without patching the real global (which would affect React/Three.js).
   const runner = new Function(
     "module",
     "window",
+    "requestAnimationFrame",
+    "cancelAnimationFrame",
     `"use strict"; var Module = module;\n${source}\nreturn Module;`,
-  ) as (module: PreviewRuntimeModule, window: Window) => PreviewRuntimeModule;
-  runner(module, window);
+  ) as (
+    module: PreviewRuntimeModule,
+    window: Window,
+    raf: (cb: FrameRequestCallback) => number,
+    caf: (id: number) => void,
+  ) => PreviewRuntimeModule;
+  runner(module, window, gameRaf, gameCaf);
+
+  return () => {
+    stopped = true;
+    for (const id of pendingRafIds) realCaf(id);
+    pendingRafIds.clear();
+  };
 }
