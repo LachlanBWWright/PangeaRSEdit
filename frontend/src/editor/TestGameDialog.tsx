@@ -32,9 +32,8 @@ interface Props {
   gameType: Game;
   levelNumber: number;
   onLevelNumberChange: (n: number) => void;
-  terrainRsrcBlob: Blob | null;
-  terrainDataBlob: Blob | null;
-  terrainDataBase64: string | null;
+  terrainDataBytes: Uint8Array | null;
+  terrainRsrcBytes: Uint8Array | null;
 }
 
 export function TestGameDialog(props: Props) {
@@ -44,7 +43,8 @@ export function TestGameDialog(props: Props) {
     gameType,
     levelNumber,
     onLevelNumberChange,
-    terrainDataBase64,
+    terrainDataBytes,
+    terrainRsrcBytes,
   } = props;
   const config = GAME_PORT_CONFIGS[gameType];
   const [previewStarted, setPreviewStarted] = useState(false);
@@ -127,7 +127,8 @@ export function TestGameDialog(props: Props) {
               config={config}
               levelNumber={levelNumber}
               currentLevelInfo={currentLevelInfo}
-              terrainDataBase64={terrainDataBase64}
+              terrainDataBytes={terrainDataBytes}
+              terrainRsrcBytes={terrainRsrcBytes}
               runToken={runToken}
             />
           )}

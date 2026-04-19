@@ -160,6 +160,58 @@ export function serializePrimaryMapBlob(
   return new Blob([serializedResult.value.slice(0)], { type: ".ter.rsrc" });
 }
 /**
+ * Builds the terrain byte arrays for VFS injection in the in-browser game preview.
+ * Mirrors the download path exactly: the same serialization used when the user
+ * clicks "Download" is used here, except the bytes are returned for injection
+ * into the Emscripten virtual filesystem instead of being saved to disk.
+ *
+ * Returns:
+ *   dataBytes  – bytes for the data-fork path (.ter images for STANDARD/LZSS,
+ *                compiled level for TRT_FILE, null otherwise)
+ *   rsrcBytes  – bytes for the resource-fork sidecar (.ter.rsrc map data for
+ *                STANDARD/LZSS and RSRC_FORK, null otherwise)
+ *
+ * Returns null when serialization fails (callers should abort the preview).
+ */
+export async function buildPreviewTerrainBlobs(
+  data: LevelData,
+  globals: GlobalsInterface,
+  mapImages: HTMLCanvasElement[] | undefined,
+): Promise<{ dataBytes: Uint8Array | null; rsrcBytes: Uint8Array | null } | null> {
+  if (globals.DATA_TYPE === DataType.RSRC_FORK) {
+    const rsrcBuffer = await processMapData({ data, globals });
+    if (rsrcBuffer.byteLength === 0) return null;
+    return { dataBytes: null, rsrcBytes: new Uint8Array(rsrcBuffer) };
+  }
+
+  if (globals.DATA_TYPE === DataType.TRT_FILE) {
+    const rawLevelData = getNanosaurRawLevel(data._metadata);
+    if (!rawLevelData) return null;
+    const compileResult = compileNanosaur1Level(data, rawLevelData);
+    if (compileResult.isErr()) return null;
+    return { dataBytes: new Uint8Array(compileResult.value), rsrcBytes: null };
+  }
+
+  if (
+    globals.DATA_TYPE === DataType.STANDARD &&
+    globals.TILE_IMAGE_FORMAT !== TileImageFormat.JPG
+  ) {
+    if (!mapImages || mapImages.length === 0) return null;
+    const bufferList = await compressMapImages(mapImages);
+    const imageBuffer = combineBuffersForDownload(bufferList);
+    const rsrcBuffer = await processMapData({ data, globals });
+    if (rsrcBuffer.byteLength === 0) return null;
+    return {
+      dataBytes: new Uint8Array(imageBuffer),
+      rsrcBytes: new Uint8Array(rsrcBuffer),
+    };
+  }
+
+  // JPG (Nanosaur 2) and MIGHTY_MIKE formats are not yet implemented for preview.
+  return { dataBytes: null, rsrcBytes: null };
+}
+
+/**
  * Save and download map and images as in IntroPrompt
  */
 export async function saveMap({

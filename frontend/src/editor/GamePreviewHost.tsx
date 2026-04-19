@@ -3,7 +3,6 @@ import {
   applyPreviewGlobals,
   buildPreviewAssetBaseUrl,
   createPreviewModule,
-  decodeBase64ToBytes,
   getPreviewTerrainPaths,
   loadPreviewRuntime,
   GAME_DISPLAY_NAMES,
@@ -15,7 +14,10 @@ interface Props {
   readonly config: GamePortConfig;
   readonly levelNumber: number;
   readonly currentLevelInfo: AnyLevelInfo | undefined;
-  readonly terrainDataBase64: string | null;
+  /** Bytes for the data-fork terrain file (.ter images or compiled .ter). */
+  readonly terrainDataBytes: Uint8Array | null;
+  /** Bytes for the resource-fork terrain sidecar (.ter.rsrc). */
+  readonly terrainRsrcBytes: Uint8Array | null;
   readonly runToken: number;
 }
 
@@ -28,7 +30,8 @@ export function GamePreviewHost({
   config,
   levelNumber,
   currentLevelInfo,
-  terrainDataBase64,
+  terrainDataBytes,
+  terrainRsrcBytes,
   runToken,
 }: Props) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -76,7 +79,6 @@ export function GamePreviewHost({
     const previewWindow = window as unknown as PreviewWindow;
     const cleanupGlobals = applyPreviewGlobals(previewWindow, config, levelNumber);
     const terrainPaths = getPreviewTerrainPaths(currentLevelInfo, config);
-    const terrainBytes = terrainDataBase64 ? decodeBase64ToBytes(terrainDataBase64) : null;
     const assetBaseUrl = buildPreviewAssetBaseUrl(config);
     const cacheBustToken = `${String(config.game)}-${String(levelNumber)}-${String(runToken)}`;
     const previousModule = previewWindow.Module as PreviewRuntimeModule | undefined;
@@ -87,7 +89,8 @@ export function GamePreviewHost({
       canvas,
       assetBaseUrl,
       cacheBustToken,
-      terrainBytes,
+      terrainDataBytes,
+      terrainRsrcBytes,
       terrainPaths,
       onStatus: (text) => {
         setErrorText(null);
@@ -146,7 +149,7 @@ export function GamePreviewHost({
         }
       }
     };
-  }, [canvasSize, config, currentLevelInfo, levelNumber, runToken, terrainDataBase64]);
+  }, [canvasSize, config, currentLevelInfo, levelNumber, runToken, terrainDataBytes, terrainRsrcBytes]);
 
   const showStatus = Boolean(statusText) || Boolean(errorText);
 

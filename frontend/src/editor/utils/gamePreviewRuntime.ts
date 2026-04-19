@@ -1,4 +1,5 @@
 import { Game } from "../../data/globals/globals";
+import { Result } from "neverthrow";
 import type { AnyLevelInfo, GamePortConfig } from "./gamePortConfig";
 
 export const GAME_DISPLAY_NAMES: Readonly<Record<Game, string>> = {
@@ -128,33 +129,33 @@ export function buildPreviewAssetBaseUrl(config: GamePortConfig): string {
 }
 
 function ensureDir(vfs: NonNullable<PreviewRuntimeModule["FS"]>, path: string): void {
-  try {
-    if (typeof vfs.analyzePath === "function" && vfs.analyzePath(path).exists) {
-      return;
-    }
-  } catch {
-    // Fall through and let mkdir handle the race.
+  if (typeof vfs.analyzePath === "function") {
+    const analyzeResult = Result.fromThrowable(
+      () => vfs.analyzePath!(path),
+      (e) => (e instanceof Error ? e : new Error(String(e))),
+    )();
+    if (analyzeResult.isOk() && analyzeResult.value.exists) return;
   }
-  try {
-    vfs.mkdir?.(path);
-  } catch {
-    // Ignore existing-path races.
-  }
+  Result.fromThrowable(
+    () => { vfs.mkdir?.(path); },
+    (e) => (e instanceof Error ? e : new Error(String(e))),
+  )();
 }
 
 function ensurePreviewPrefsDirs(module: PreviewRuntimeModule, config: GamePortConfig): void {
   const fsCreatePath = module.FS_createPath;
 
   if (typeof fsCreatePath === "function") {
-    try {
-      fsCreatePath("/", "home", true, true);
-      fsCreatePath("/home", "web_user", true, true);
-      fsCreatePath("/home/web_user", ".config", true, true);
-      fsCreatePath(`/home/web_user/.config`, config.prefsFolderName, true, true);
-      return;
-    } catch {
-      // Fall back to the FS API below if the generated helper is unavailable.
-    }
+    const createResult = Result.fromThrowable(
+      () => {
+        fsCreatePath("/", "home", true, true);
+        fsCreatePath("/home", "web_user", true, true);
+        fsCreatePath("/home/web_user", ".config", true, true);
+        fsCreatePath(`/home/web_user/.config`, config.prefsFolderName, true, true);
+      },
+      (e) => (e instanceof Error ? e : new Error(String(e))),
+    )();
+    if (createResult.isOk()) return;
   }
 
   const vfs = module.FS;
@@ -229,7 +230,10 @@ export interface PreviewModuleOptions {
   readonly canvas: HTMLCanvasElement;
   readonly assetBaseUrl: string;
   readonly cacheBustToken: string;
-  readonly terrainBytes: Uint8Array | null;
+  /** Bytes for the data-fork terrain path (.ter images for STANDARD, compiled .ter for TRT_FILE). */
+  readonly terrainDataBytes: Uint8Array | null;
+  /** Bytes for the resource-fork terrain path (.ter.rsrc map data for STANDARD / RSRC_FORK). */
+  readonly terrainRsrcBytes: Uint8Array | null;
   readonly terrainPaths: PreviewTerrainPaths | null;
   readonly onStatus: (text: string) => void;
   readonly onError: (text: string) => void;
@@ -245,7 +249,8 @@ export function createPreviewModule(
     canvas,
     assetBaseUrl,
     cacheBustToken,
-    terrainBytes,
+    terrainDataBytes,
+    terrainRsrcBytes,
     terrainPaths,
     onStatus,
     onError,
@@ -302,26 +307,43 @@ export function createPreviewModule(
         return;
       }
 
-      if (terrainBytes && terrainPaths) {
+      if (terrainPaths && (terrainDataBytes ?? terrainRsrcBytes)) {
         const vfs = module.FS;
         if (!vfs) {
           onError("Preview terrain injection skipped: FS is unavailable.");
+          return;
+        }
+        if (typeof vfs.writeFile !== "function") {
+          onError("Preview terrain injection skipped: FS.writeFile is unavailable.");
           return;
         }
         if (typeof vfs.mkdir === "function") {
           ensureDir(vfs, "/Data");
           ensureDir(vfs, "/Data/Terrain");
         }
-        if (typeof vfs.writeFile !== "function") {
-          onError("Preview terrain injection skipped: FS.writeFile is unavailable.");
-          return;
+
+        // Write the data-fork file (.ter images for STANDARD, compiled level for TRT_FILE).
+        if (terrainDataBytes) {
+          const writeDataResult = Result.fromThrowable(
+            () => vfs.writeFile(terrainPaths.dataPath, terrainDataBytes),
+            (e) => (e instanceof Error ? e : new Error(String(e))),
+          )();
+          if (writeDataResult.isErr()) {
+            onError(`Failed to write terrain data file: ${writeDataResult.error.message}`);
+            return;
+          }
         }
-        // Write terrain bytes to the data-fork path. For games that also have a
-        // resource-fork sidecar (.ter.rsrc), write there too — the specific path
-        // the game reads from varies per Emscripten port.
-        vfs.writeFile(terrainPaths.dataPath, terrainBytes);
-        if (terrainPaths.rsrcPath) {
-          vfs.writeFile(terrainPaths.rsrcPath, terrainBytes);
+
+        // Write the resource-fork sidecar (.ter.rsrc map data for STANDARD / RSRC_FORK).
+        if (terrainRsrcBytes && terrainPaths.rsrcPath) {
+          const writeRsrcResult = Result.fromThrowable(
+            () => vfs.writeFile(terrainPaths.rsrcPath!, terrainRsrcBytes),
+            (e) => (e instanceof Error ? e : new Error(String(e))),
+          )();
+          if (writeRsrcResult.isErr()) {
+            onError(`Failed to write terrain rsrc file: ${writeRsrcResult.error.message}`);
+            return;
+          }
         }
 
         if (
@@ -330,28 +352,29 @@ export function createPreviewModule(
           currentLevelInfo &&
           "terrainFile" in currentLevelInfo
         ) {
-          try {
-            module.ccall?.(config.terrain.setPathFn, null, ["string"], [
-              config.terrain.getSetPathArg(currentLevelInfo.terrainFile),
-            ]);
-          } catch {
-            // Ignore if the override function is unavailable in this build.
-          }
+          Result.fromThrowable(
+            () => module.ccall?.(
+              config.terrain!.setPathFn!,
+              null,
+              ["string"],
+              [config.terrain!.getSetPathArg!(currentLevelInfo.terrainFile)],
+            ),
+            (e) => (e instanceof Error ? e : new Error(String(e))),
+          )();
         }
       }
 
       const skipToLevel = config.getSkipToLevelCcall?.(levelNumber);
       if (skipToLevel) {
-        try {
-          module.ccall?.(
+        Result.fromThrowable(
+          () => module.ccall?.(
             skipToLevel.fn,
             skipToLevel.returnType,
             skipToLevel.argTypes,
             skipToLevel.args,
-          );
-        } catch {
-          // Ignore if the skip-to-level function is unavailable in this build.
-        }
+          ),
+          (e) => (e instanceof Error ? e : new Error(String(e))),
+        )();
       }
     },
     // postRun fires after callMain returns and serves as a reliable backstop:
