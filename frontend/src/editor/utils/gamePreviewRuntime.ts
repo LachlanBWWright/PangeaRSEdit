@@ -69,15 +69,6 @@ export function levelLabel(info: AnyLevelInfo, idx: number): string {
   return `Lv ${String(idx + 1)}: ${info.name}`;
 }
 
-export function decodeBase64ToBytes(base64: string): Uint8Array {
-  const binary = atob(base64);
-  const bytes = new Uint8Array(binary.length);
-  for (let i = 0; i < binary.length; i += 1) {
-    bytes[i] = binary.charCodeAt(i);
-  }
-  return bytes;
-}
-
 export function buildGameArguments(
   config: GamePortConfig,
   levelNumber: number,
@@ -257,6 +248,25 @@ export function createPreviewModule(
   } = options;
 
   let runtimeInitialized = false;
+  // Fallback: if the game's Emscripten build never fires onRuntimeInitialized or
+  // postRun (e.g. emscripten_exit_with_live_runtime builds), clear the overlay
+  // after a generous timeout so the user isn't stuck on the loading screen.
+  let overlayFallbackTimer: ReturnType<typeof window.setTimeout> | undefined;
+  function scheduleOverlayFallback(): void {
+    if (overlayFallbackTimer !== undefined) return;
+    overlayFallbackTimer = window.setTimeout(() => {
+      if (!runtimeInitialized) {
+        runtimeInitialized = true;
+        onStatus("");
+      }
+    }, 8_000);
+  }
+  function clearOverlayFallback(): void {
+    if (overlayFallbackTimer !== undefined) {
+      window.clearTimeout(overlayFallbackTimer);
+      overlayFallbackTimer = undefined;
+    }
+  }
 
   return {
     canvas,
@@ -284,13 +294,18 @@ export function createPreviewModule(
         }
 
         ensurePreviewPrefsDirs(module, config);
+        // Schedule overlay fallback here — preRun is reliably called just before
+        // main() so the timer starts as late as possible to minimise false fires.
+        scheduleOverlayFallback();
       },
     ],
     locateFile: (path: string) => new URL(path, assetBaseUrl).href + `?v=${cacheBustToken}`,
     setStatus: (text: string) => {
-      // Ignore setStatus calls once the runtime is up; the overlay was already
-      // cleared by onRuntimeInitialized and must not reappear.
-      if (!runtimeInitialized) {
+      // Block non-empty status updates after the runtime is up (they would re-show
+      // the loading overlay). Always pass empty-string through so that builds which
+      // never fire onRuntimeInitialized/postRun can still clear the overlay via the
+      // standard Emscripten "setStatus('')" call.
+      if (!runtimeInitialized || text === "") {
         onStatus(text);
       }
     },
@@ -299,6 +314,7 @@ export function createPreviewModule(
       onStatus(left > 0 ? `Loading game… (${left})` : "Starting game…");
     },
     onRuntimeInitialized: () => {
+      clearOverlayFallback();
       runtimeInitialized = true;
       onStatus("");
 
@@ -377,11 +393,9 @@ export function createPreviewModule(
         )();
       }
     },
-    // postRun fires after callMain returns and serves as a reliable backstop:
-    // even if onRuntimeInitialized already cleared the overlay, this ensures
-    // the status text is empty once the game is fully running.
     postRun: [
       () => {
+        clearOverlayFallback();
         runtimeInitialized = true;
         onStatus("");
       },
@@ -441,8 +455,23 @@ export async function loadPreviewRuntime(
     realClearTimeout(id);
   }
 
+  // Track AudioContext instances created by the game so they can be closed on cleanup.
+  const trackedAudioContexts = new Set<AudioContext>();
+  const savedAudioContext = AudioContext;
+  class TrackedAudioContext extends AudioContext {
+    constructor(opts?: AudioContextOptions) {
+      super(opts);
+      trackedAudioContexts.add(this);
+    }
+  }
+  Result.fromThrowable(
+    () => { window.AudioContext = TrackedAudioContext; },
+    (e) => (e instanceof Error ? e : new Error(String(e))),
+  )();
+
   const response = await fetch(scriptUrl, { credentials: "same-origin" });
   if (!response.ok) {
+    window.AudioContext = savedAudioContext;
     throw new Error(`Failed to load ${scriptUrl}: ${response.status}`);
   }
 
@@ -475,5 +504,17 @@ export async function loadPreviewRuntime(
     for (const id of pendingTimerIds) realClearTimeout(id);
     pendingRafIds.clear();
     pendingTimerIds.clear();
+    // Restore the original AudioContext constructor and close any contexts the game opened.
+    Result.fromThrowable(
+      () => { window.AudioContext = savedAudioContext; },
+      (e) => (e instanceof Error ? e : new Error(String(e))),
+    )();
+    for (const ctx of trackedAudioContexts) {
+      Result.fromThrowable(
+        () => ctx.close(),
+        (e) => (e instanceof Error ? e : new Error(String(e))),
+      )();
+    }
+    trackedAudioContexts.clear();
   };
 }

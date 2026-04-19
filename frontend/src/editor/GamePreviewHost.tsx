@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { ResultAsync } from "neverthrow";
 import {
   applyPreviewGlobals,
   buildPreviewAssetBaseUrl,
@@ -14,17 +15,22 @@ interface Props {
   readonly config: GamePortConfig;
   readonly levelNumber: number;
   readonly currentLevelInfo: AnyLevelInfo | undefined;
-  /** Bytes for the data-fork terrain file (.ter images or compiled .ter). */
-  readonly terrainDataBytes: Uint8Array | null;
-  /** Bytes for the resource-fork terrain sidecar (.ter.rsrc). */
-  readonly terrainRsrcBytes: Uint8Array | null;
+  /**
+   * Bytes for the data-fork terrain file (.ter images or compiled .ter).
+   * `undefined` = serialization is still in progress (shows "Preparing level data…").
+   * `null`      = no data-fork file needed for this game.
+   */
+  readonly terrainDataBytes: Uint8Array | null | undefined;
+  /**
+   * Bytes for the resource-fork terrain sidecar (.ter.rsrc).
+   * `undefined` = serialization is still in progress.
+   * `null`      = no rsrc file needed for this game.
+   */
+  readonly terrainRsrcBytes: Uint8Array | null | undefined;
   readonly runToken: number;
 }
 
-type PreviewWindow = Window &
-  {
-    Module?: PreviewRuntimeModule;
-  };
+type PreviewWindow = Window & { Module?: PreviewRuntimeModule };
 
 export function GamePreviewHost({
   config,
@@ -35,44 +41,23 @@ export function GamePreviewHost({
   runToken,
 }: Props) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const [canvasSize, setCanvasSize] = useState<{ width: number; height: number } | null>(
-    null,
-  );
   const [statusText, setStatusText] = useState("Preparing game runtime…");
   const [errorText, setErrorText] = useState<string | null>(null);
 
   useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) {
-      return;
-    }
-
-    const updateSize = () => {
-      const { clientWidth, clientHeight } = canvas;
-      if (clientWidth > 0 && clientHeight > 0) {
-        setCanvasSize({ width: Math.round(clientWidth), height: Math.round(clientHeight) });
-      }
-    };
-
-    updateSize();
-    const frame = window.requestAnimationFrame(updateSize);
-    const observer =
-      typeof ResizeObserver !== "undefined"
-        ? new ResizeObserver(updateSize)
-        : null;
-    observer?.observe(canvas);
-
-    return () => {
-      window.cancelAnimationFrame(frame);
-      observer?.disconnect();
-    };
-  }, [runToken, config.game]);
-
-  useEffect(() => {
     let cancelled = false;
+    let sizeFrame: number | undefined;
     let loadTimer: number | undefined;
+    let stopGame: (() => void) | null = null;
+    let activeModule: PreviewRuntimeModule | null = null;
     const canvas = canvasRef.current;
-    if (!canvas || !canvasSize) {
+    if (!canvas) return;
+
+    // Terrain bytes are still being serialized — show a holding status and wait.
+    // The effect will re-run automatically when the bytes prop changes to non-undefined.
+    if (terrainDataBytes === undefined || terrainRsrcBytes === undefined) {
+      setErrorText(null);
+      setStatusText("Preparing level data…");
       return;
     }
 
@@ -81,75 +66,87 @@ export function GamePreviewHost({
     const terrainPaths = getPreviewTerrainPaths(currentLevelInfo, config);
     const assetBaseUrl = buildPreviewAssetBaseUrl(config);
     const cacheBustToken = `${String(config.game)}-${String(levelNumber)}-${String(runToken)}`;
-    const previousModule = previewWindow.Module as PreviewRuntimeModule | undefined;
-    const module = createPreviewModule({
-      config,
-      levelNumber,
-      currentLevelInfo,
-      canvas,
-      assetBaseUrl,
-      cacheBustToken,
-      terrainDataBytes,
-      terrainRsrcBytes,
-      terrainPaths,
-      onStatus: (text) => {
-        setErrorText(null);
-        setStatusText(text);
-      },
-      onError: (text) => {
-        setErrorText(text);
-        setStatusText("Failed to start game.");
-      },
+    const previousModule = previewWindow.Module;
+
+    setErrorText(null);
+    setStatusText("Preparing game runtime…");
+
+    // Wait one animation frame so the dialog layout settles before we measure the
+    // canvas and hand it to the WASM runtime. This prevents the game from starting
+    // at an incorrect resolution while the dialog's CSS transition is still running.
+    sizeFrame = window.requestAnimationFrame(() => {
+      if (cancelled) return;
+
+      const { clientWidth, clientHeight } = canvas;
+      if (clientWidth > 0 && clientHeight > 0) {
+        canvas.width = Math.round(clientWidth);
+        canvas.height = Math.round(clientHeight);
+      }
+
+      activeModule = createPreviewModule({
+        config,
+        levelNumber,
+        currentLevelInfo,
+        canvas,
+        assetBaseUrl,
+        cacheBustToken,
+        terrainDataBytes,
+        terrainRsrcBytes,
+        terrainPaths,
+        onStatus: (text) => {
+          if (!cancelled) {
+            setErrorText(null);
+            setStatusText(text);
+          }
+        },
+        onError: (text) => {
+          if (!cancelled) {
+            setErrorText(text);
+            setStatusText("Failed to start game.");
+          }
+        },
+      });
+
+      previewWindow.Module = activeModule as unknown as PreviewWindow["Module"];
+      const scriptUrl = new URL(config.mainJs, assetBaseUrl).href + `?v=${cacheBustToken}`;
+
+      loadTimer = window.setTimeout(() => {
+        void (async () => {
+          if (cancelled || activeModule === null) return;
+          const stopOrErr = await ResultAsync.fromPromise(
+            loadPreviewRuntime(activeModule, scriptUrl),
+            (e) => (e instanceof Error ? e : new Error(String(e))),
+          );
+          if (cancelled) {
+            if (stopOrErr.isOk()) stopOrErr.value();
+            return;
+          }
+          if (stopOrErr.isErr()) {
+            setErrorText(stopOrErr.error.message);
+            setStatusText("Failed to start game.");
+            return;
+          }
+          stopGame = stopOrErr.value;
+        })();
+      }, 0);
     });
-
-    canvas.width = canvasSize.width;
-    canvas.height = canvasSize.height;
-
-    previewWindow.Module = module as unknown as PreviewWindow["Module"];
-    const scriptUrl = new URL(config.mainJs, assetBaseUrl).href + `?v=${cacheBustToken}`;
-    let stopGame: (() => void) | null = null;
-    loadTimer = window.setTimeout(() => {
-      void (async () => {
-        try {
-          if (cancelled) {
-            return;
-          }
-          stopGame = await loadPreviewRuntime(module, scriptUrl);
-          if (cancelled) {
-            stopGame();
-            stopGame = null;
-          }
-        } catch (error) {
-          if (cancelled) {
-            return;
-          }
-          const message =
-            error instanceof Error
-              ? error.message
-              : `Failed to load ${config.mainJs}.`;
-          setErrorText(message);
-          setStatusText("Failed to start game.");
-        }
-      })();
-    }, 0);
 
     return () => {
       cancelled = true;
-      if (typeof loadTimer !== "undefined") {
-        window.clearTimeout(loadTimer);
-      }
+      if (sizeFrame !== undefined) window.cancelAnimationFrame(sizeFrame);
+      if (loadTimer !== undefined) window.clearTimeout(loadTimer);
       stopGame?.();
       stopGame = null;
       cleanupGlobals();
-      if (previewWindow.Module === module) {
-        if (typeof previousModule === "undefined") {
+      if (activeModule !== null && previewWindow.Module === (activeModule as unknown as PreviewWindow["Module"])) {
+        if (previousModule === undefined) {
           delete previewWindow.Module;
         } else {
-          previewWindow.Module = previousModule as unknown as PreviewWindow["Module"];
+          previewWindow.Module = previousModule;
         }
       }
     };
-  }, [canvasSize, config, currentLevelInfo, levelNumber, runToken, terrainDataBytes, terrainRsrcBytes]);
+  }, [config, currentLevelInfo, levelNumber, runToken, terrainDataBytes, terrainRsrcBytes]);
 
   const showStatus = Boolean(statusText) || Boolean(errorText);
 
@@ -158,8 +155,6 @@ export function GamePreviewHost({
       <canvas
         id="canvas"
         ref={canvasRef}
-        width={canvasSize?.width ?? 640}
-        height={canvasSize?.height ?? 480}
         className="h-full w-full block bg-black outline-none"
         tabIndex={-1}
         onContextMenu={(e) => { e.preventDefault(); }}

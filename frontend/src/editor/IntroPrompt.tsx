@@ -112,8 +112,8 @@ export function IntroPrompt() {
   const [testDialogOpen, setTestDialogOpen] = useState(false);
   const [newMapConfirmOpen, setNewMapConfirmOpen] = useState(false);
   const [previewLevelNumber, setPreviewLevelNumber] = useState(0);
-  const [terrainDataBytes, setTerrainDataBytes] = useState<Uint8Array | null>(null);
-  const [terrainRsrcBytes, setTerrainRsrcBytes] = useState<Uint8Array | null>(null);
+  const [terrainDataBytes, setTerrainDataBytes] = useState<Uint8Array | null | undefined>(undefined);
+  const [terrainRsrcBytes, setTerrainRsrcBytes] = useState<Uint8Array | null | undefined>(undefined);
   // Helper to get current atomic data
   const getCurrentAtomicData = useCallback((): AtomicLevelData => {
     return {
@@ -227,12 +227,14 @@ export function IntroPrompt() {
 
   // When a terrain file is loaded, infer the level number from the filename
   // so the "Preview in Game" dialog opens at the correct level by default.
+  // Fall back to the game's defaultLevel for games without filename inference
+  // (e.g. Cro-Mag Rally uses 1-based track numbers, not 0).
   useEffect(() => {
     if (!mapFile) return;
+    const portConfig = GAME_PORT_CONFIGS[globals.GAME_TYPE];
     const inferred = inferPreviewLevelFromFilename(globals.GAME_TYPE, mapFile.name);
-    if (inferred !== undefined) {
-      Promise.resolve().then(() => setPreviewLevelNumber(inferred));
-    }
+    const level = inferred ?? portConfig?.defaultLevel ?? 0;
+    Promise.resolve().then(() => setPreviewLevelNumber(level));
   }, [mapFile, globals.GAME_TYPE]);
 
   // Warn before unloading the tab when a level is loaded to prevent accidental data loss.
@@ -567,8 +569,8 @@ export function IntroPrompt() {
     setMapImagesFile(undefined);
     setTunnelData(null);
     setTunnelFileName("");
-    setTerrainDataBytes(null);
-    setTerrainRsrcBytes(null);
+    setTerrainDataBytes(undefined);
+    setTerrainRsrcBytes(undefined);
   }, [setAllAtomicData]);
 
   const handleCreateBlankLevel = useCallback(
@@ -623,7 +625,7 @@ export function IntroPrompt() {
     ],
   );
 
-  const handleTestLevel = useCallback(async () => {
+  const handleTestLevel = useCallback(() => {
     const combinedDataResult = combineLevelData(getCurrentAtomicData());
     if (combinedDataResult.isErr()) {
       toast.error("Preview failed", {
@@ -632,18 +634,25 @@ export function IntroPrompt() {
       return;
     }
     const combinedData = prepareDownloadData(combinedDataResult.value, globals);
-    // Build both terrain byte arrays exactly as the download path would — including
-    // async LZSS image compression for STANDARD games — then inject into the VFS.
-    const blobs = await buildPreviewTerrainBlobs(combinedData, globals, mapImages);
-    if (!blobs) {
-      toast.error("Preview failed", {
-        description: "Could not serialize the selected level for preview.",
-      });
-      return;
-    }
-    setTerrainDataBytes(blobs.dataBytes);
-    setTerrainRsrcBytes(blobs.rsrcBytes);
+    // Reset bytes to undefined (loading sentinel) and open the dialog immediately so
+    // the user sees the level selector without any delay.  Serialization (including
+    // async LZSS compression for STANDARD games) runs in the background.  The
+    // GamePreviewHost shows "Preparing level data…" until the bytes arrive.
+    setTerrainDataBytes(undefined);
+    setTerrainRsrcBytes(undefined);
     setTestDialogOpen(true);
+    void buildPreviewTerrainBlobs(combinedData, globals, mapImages).then((blobs) => {
+      if (!blobs) {
+        toast.error("Preview failed", {
+          description: "Could not serialize the selected level for preview.",
+        });
+        setTerrainDataBytes(null);
+        setTerrainRsrcBytes(null);
+        return;
+      }
+      setTerrainDataBytes(blobs.dataBytes);
+      setTerrainRsrcBytes(blobs.rsrcBytes);
+    });
   }, [getCurrentAtomicData, globals, mapImages]);
 
   // Handle tunnel data updates

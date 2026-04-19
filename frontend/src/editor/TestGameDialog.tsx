@@ -32,8 +32,8 @@ interface Props {
   gameType: Game;
   levelNumber: number;
   onLevelNumberChange: (n: number) => void;
-  terrainDataBytes: Uint8Array | null;
-  terrainRsrcBytes: Uint8Array | null;
+  terrainDataBytes: Uint8Array | null | undefined;
+  terrainRsrcBytes: Uint8Array | null | undefined;
 }
 
 export function TestGameDialog(props: Props) {
