@@ -2,12 +2,6 @@ import { Game } from "../../data/globals/globals";
 import { Result } from "neverthrow";
 import type { AnyLevelInfo, GamePortConfig } from "./gamePortConfig";
 
-// Capture the browser's original AudioContext at module load time so that every
-// game run can safely restore to it, even if a previous cleanup was delayed and
-// left window.AudioContext pointing to a TrackedAudioContext subclass.
-const _nativeAudioContext: typeof AudioContext | undefined =
-  typeof AudioContext !== "undefined" ? AudioContext : undefined;
-
 export const GAME_DISPLAY_NAMES: Readonly<Record<Game, string>> = {
   [Game.OTTO_MATIC]: "Otto Matic",
   [Game.NANOSAUR]: "Nanosaur",
@@ -257,7 +251,7 @@ export function createPreviewModule(
   // Fallback: if the game's Emscripten build never fires onRuntimeInitialized or
   // postRun (e.g. emscripten_exit_with_live_runtime builds), clear the overlay
   // after a generous timeout so the user isn't stuck on the loading screen.
-  let overlayFallbackTimer: ReturnType<typeof window.setTimeout> | undefined;
+  let overlayFallbackTimer: number | undefined;
   function scheduleOverlayFallback(): void {
     if (overlayFallbackTimer !== undefined) return;
     overlayFallbackTimer = window.setTimeout(() => {
@@ -274,7 +268,12 @@ export function createPreviewModule(
     }
   }
 
-  return {
+  // Self-reference holder: set after the module object is created so that
+  // preInit/preRun/onRuntimeInitialized can use the module directly without
+  // reading window.Module (which may be deleted or stale on a second run).
+  const moduleRef: { current: PreviewRuntimeModule | null } = { current: null };
+
+  const result: PreviewRuntimeModule = {
     canvas,
     webglContextAttributes: {
       powerPreference: "high-performance",
@@ -284,7 +283,7 @@ export function createPreviewModule(
     arguments: buildGameArguments(config, levelNumber, terrainPaths?.dataPath ?? null),
     preInit: [
       () => {
-        const module = (window as unknown as PreviewWindow).Module;
+        const module = moduleRef.current;
         if (!module) {
           return;
         }
@@ -294,7 +293,7 @@ export function createPreviewModule(
     ],
     preRun: [
       () => {
-        const module = (window as unknown as PreviewWindow).Module;
+        const module = moduleRef.current;
         if (!module) {
           return;
         }
@@ -324,7 +323,7 @@ export function createPreviewModule(
       runtimeInitialized = true;
       onStatus("");
 
-      const module = (window as unknown as PreviewWindow).Module;
+      const module = moduleRef.current;
       if (!module) {
         return;
       }
@@ -416,6 +415,9 @@ export function createPreviewModule(
       onError(message);
     },
   };
+
+  moduleRef.current = result;
+  return result;
 }
 
 export async function loadPreviewRuntime(
@@ -462,10 +464,8 @@ export async function loadPreviewRuntime(
   }
 
   // Track AudioContext instances created by the game so they can be closed on cleanup.
-  // Use the native AudioContext captured at module load to avoid chaining subclasses
-  // across multiple game runs (race condition when cleanup is delayed).
   const trackedAudioContexts = new Set<AudioContext>();
-  const savedAudioContext = _nativeAudioContext ?? AudioContext;
+  const savedAudioContext = AudioContext;
   class TrackedAudioContext extends savedAudioContext {
     constructor(opts?: AudioContextOptions) {
       super(opts);

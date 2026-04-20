@@ -121,16 +121,17 @@ export function GamePreviewHost({
       })();
     }
 
-    // Use ResizeObserver to wait for the canvas to have real layout dimensions
-    // before handing it to the WASM runtime, preventing the game from starting
-    // at the wrong resolution while the dialog's CSS is still settling.
+    // Use ResizeObserver to wait until the canvas has non-zero layout dimensions
+    // before handing it to the WASM runtime. The dialog's CSS animation may cause
+    // the canvas to initially report zero size; we keep observing until we get a
+    // valid measurement so the game always starts at the correct resolution.
     const observer = new ResizeObserver((entries) => {
-      observer.disconnect();
       if (cancelled) return;
       const rect = entries[0]?.contentRect;
       const width = rect && rect.width > 0 ? Math.round(rect.width) : canvas.clientWidth;
       const height = rect && rect.height > 0 ? Math.round(rect.height) : canvas.clientHeight;
       if (width > 0 && height > 0) {
+        observer.disconnect();
         startGame(width, height);
       }
     });

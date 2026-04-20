@@ -188,7 +188,7 @@ export function BugdomEditorView({
           />
         )}
       </MenuSection>
-      <div className="w-full min-h-0 flex-1 border-2 border-black overflow-clip relative">
+      <div className="w-full min-h-0 flex-1 border-2 border-black overflow-hidden relative">
         <div className="absolute top-2 right-2 z-10 flex gap-2">
           <EditorCanvasControls
             undoData={undoData}

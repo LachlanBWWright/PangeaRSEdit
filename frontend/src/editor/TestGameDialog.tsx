@@ -77,7 +77,7 @@ export function TestGameDialog(props: Props) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[90vw] h-[90vh] flex flex-col">
+      <DialogContent className="w-[90vw] max-w-[90vw] h-[90vh] flex flex-col">
         <DialogHeader>
           <DialogTitle>
             {`Preview in ${GAME_DISPLAY_NAMES[config.game]}`}
