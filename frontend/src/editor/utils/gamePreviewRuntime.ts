@@ -1,5 +1,5 @@
 import { Game } from "../../data/globals/globals";
-import { Result } from "neverthrow";
+import { Result, ResultAsync } from "neverthrow";
 import type { AnyLevelInfo, GamePortConfig } from "./gamePortConfig";
 
 export const GAME_DISPLAY_NAMES: Readonly<Record<Game, string>> = {
@@ -250,6 +250,72 @@ export interface PreviewModuleOptions {
   readonly onError: (text: string) => void;
 }
 
+/**
+ * Writes terrain bytes to the Emscripten VFS.
+ * Called both from preRun (early, before game's own preRun reads terrain) and
+ * onRuntimeInitialized (late, as a fallback).  Writes are idempotent: the second
+ * call simply overwrites the same paths with the same bytes.
+ */
+function writeTerrainToVfs(
+  module: PreviewRuntimeModule,
+  config: GamePortConfig,
+  currentLevelInfo: AnyLevelInfo | undefined,
+  terrainPaths: PreviewTerrainPaths,
+  terrainDataBytes: Uint8Array | null,
+  terrainRsrcBytes: Uint8Array | null,
+  onError: (text: string) => void,
+): void {
+  if (!(terrainDataBytes ?? terrainRsrcBytes)) return;
+
+  const vfs = module.FS;
+  if (!vfs) return;
+  if (typeof vfs.writeFile !== "function") return;
+
+  if (typeof vfs.mkdir === "function") {
+    ensureDir(vfs, "/Data");
+    ensureDir(vfs, "/Data/Terrain");
+  }
+
+  if (terrainDataBytes) {
+    const writeDataResult = Result.fromThrowable(
+      () => vfs.writeFile(terrainPaths.dataPath, terrainDataBytes),
+      (e) => (e instanceof Error ? e : new Error(String(e))),
+    )();
+    if (writeDataResult.isErr()) {
+      onError(`Failed to write terrain data file: ${writeDataResult.error.message}`);
+      return;
+    }
+  }
+
+  if (terrainRsrcBytes && terrainPaths.rsrcPath) {
+    const writeRsrcResult = Result.fromThrowable(
+      () => vfs.writeFile(terrainPaths.rsrcPath!, terrainRsrcBytes),
+      (e) => (e instanceof Error ? e : new Error(String(e))),
+    )();
+    if (writeRsrcResult.isErr()) {
+      onError(`Failed to write terrain rsrc file: ${writeRsrcResult.error.message}`);
+      return;
+    }
+  }
+
+  if (
+    config.terrain?.setPathFn &&
+    config.terrain.getSetPathArg &&
+    currentLevelInfo &&
+    "terrainFile" in currentLevelInfo
+  ) {
+    Result.fromThrowable(
+      () => module.ccall?.(
+        config.terrain!.setPathFn!,
+        null,
+        ["string"],
+        [config.terrain!.getSetPathArg!(currentLevelInfo.terrainFile)],
+      ),
+      (e) => (e instanceof Error ? e : new Error(String(e))),
+    )();
+  }
+}
+
 export function createPreviewModule(
   options: PreviewModuleOptions,
 ): PreviewRuntimeModule {
@@ -319,6 +385,13 @@ export function createPreviewModule(
         }
 
         ensurePreviewPrefsDirs(module, config);
+
+        // Inject terrain in preRun so the files are in the VFS before any
+        // game-owned preRun hooks try to read them (e.g. CroMag Rally).
+        if (terrainPaths) {
+          writeTerrainToVfs(module, config, currentLevelInfo, terrainPaths, terrainDataBytes, terrainRsrcBytes, onError);
+        }
+
         // Schedule overlay fallback here — preRun is reliably called just before
         // main() so the timer starts as late as possible to minimise false fires.
         scheduleOverlayFallback();
@@ -348,61 +421,10 @@ export function createPreviewModule(
         return;
       }
 
-      if (terrainPaths && (terrainDataBytes ?? terrainRsrcBytes)) {
-        const vfs = module.FS;
-        if (!vfs) {
-          onError("Preview terrain injection skipped: FS is unavailable.");
-          return;
-        }
-        if (typeof vfs.writeFile !== "function") {
-          onError("Preview terrain injection skipped: FS.writeFile is unavailable.");
-          return;
-        }
-        if (typeof vfs.mkdir === "function") {
-          ensureDir(vfs, "/Data");
-          ensureDir(vfs, "/Data/Terrain");
-        }
-
-        // Write the data-fork file (.ter images for STANDARD, compiled level for TRT_FILE).
-        if (terrainDataBytes) {
-          const writeDataResult = Result.fromThrowable(
-            () => vfs.writeFile(terrainPaths.dataPath, terrainDataBytes),
-            (e) => (e instanceof Error ? e : new Error(String(e))),
-          )();
-          if (writeDataResult.isErr()) {
-            onError(`Failed to write terrain data file: ${writeDataResult.error.message}`);
-            return;
-          }
-        }
-
-        // Write the resource-fork sidecar (.ter.rsrc map data for STANDARD / RSRC_FORK).
-        if (terrainRsrcBytes && terrainPaths.rsrcPath) {
-          const writeRsrcResult = Result.fromThrowable(
-            () => vfs.writeFile(terrainPaths.rsrcPath!, terrainRsrcBytes),
-            (e) => (e instanceof Error ? e : new Error(String(e))),
-          )();
-          if (writeRsrcResult.isErr()) {
-            onError(`Failed to write terrain rsrc file: ${writeRsrcResult.error.message}`);
-            return;
-          }
-        }
-
-        if (
-          config.terrain?.setPathFn &&
-          config.terrain.getSetPathArg &&
-          currentLevelInfo &&
-          "terrainFile" in currentLevelInfo
-        ) {
-          Result.fromThrowable(
-            () => module.ccall?.(
-              config.terrain!.setPathFn!,
-              null,
-              ["string"],
-              [config.terrain!.getSetPathArg!(currentLevelInfo.terrainFile)],
-            ),
-            (e) => (e instanceof Error ? e : new Error(String(e))),
-          )();
-        }
+      // Also inject terrain here as a fallback for games that initialize the
+      // VFS only during runtime (after preRun has already fired).
+      if (terrainPaths) {
+        writeTerrainToVfs(module, config, currentLevelInfo, terrainPaths, terrainDataBytes, terrainRsrcBytes, onError);
       }
 
       const skipToLevel = config.getSkipToLevelCcall?.(levelNumber);
@@ -483,6 +505,20 @@ export async function loadPreviewRuntime(
     realClearTimeout(id);
   }
 
+  // Patch window.{requestAnimationFrame,cancelAnimationFrame,setTimeout,clearTimeout}
+  // so game code that accesses them via window.* (rather than bare names) is also
+  // tracked and cancelled on cleanup.  The previous values are restored in cleanup.
+  const prevWindowRaf = window.requestAnimationFrame;
+  const prevWindowCaf = window.cancelAnimationFrame;
+  const prevWindowSt = window.setTimeout;
+  const prevWindowCt = window.clearTimeout;
+  Result.fromThrowable(() => {
+    window.requestAnimationFrame = gameRaf as typeof window.requestAnimationFrame;
+    window.cancelAnimationFrame = gameCaf;
+    window.setTimeout = gameSetTimeout as typeof window.setTimeout;
+    window.clearTimeout = gameClearTimeout as typeof window.clearTimeout;
+  }, (e) => (e instanceof Error ? e : new Error(String(e))))();
+
   // Track AudioContext instances created by the game so they can be closed on cleanup.
   const trackedAudioContexts = new Set<AudioContext>();
   const savedAudioContext = AudioContext;
@@ -497,34 +533,71 @@ export async function loadPreviewRuntime(
     (e) => (e instanceof Error ? e : new Error(String(e))),
   )();
 
-  const response = await fetch(scriptUrl, { credentials: "same-origin" });
-  if (!response.ok) {
-    window.AudioContext = savedAudioContext;
-    throw new Error(`Failed to load ${scriptUrl}: ${response.status}`);
+  const response = await ResultAsync.fromPromise(
+    fetch(scriptUrl, { credentials: "same-origin" }),
+    (e) => (e instanceof Error ? e : new Error(String(e))),
+  );
+
+  // Restore patched globals on any early-exit path.
+  function restoreWindowGlobals(): void {
+    Result.fromThrowable(() => {
+      window.requestAnimationFrame = prevWindowRaf;
+      window.cancelAnimationFrame = prevWindowCaf;
+      window.setTimeout = prevWindowSt;
+      window.clearTimeout = prevWindowCt;
+      window.AudioContext = savedAudioContext;
+    }, (e) => (e instanceof Error ? e : new Error(String(e))))();
   }
 
-  const source = await response.text();
+  if (response.isErr() || !response.value.ok) {
+    const status = response.isOk() ? response.value.status : 0;
+    restoreWindowGlobals();
+    throw new Error(`Failed to load ${scriptUrl}: ${String(status)}`);
+  }
+
+  const sourceResult = await ResultAsync.fromPromise(
+    response.value.text(),
+    (e) => (e instanceof Error ? e : new Error(String(e))),
+  );
+  if (sourceResult.isErr()) {
+    restoreWindowGlobals();
+    throw sourceResult.error;
+  }
+  const source = sourceResult.value;
+
   // Shadow requestAnimationFrame, cancelAnimationFrame, setTimeout, and
-  // clearTimeout so the game's main loop and deferred callbacks use our
-  // tracked wrappers.  On cleanup, all pending callbacks are cancelled
-  // without touching the real globals.
-  const runner = new Function(
-    "module",
-    "window",
-    "requestAnimationFrame",
-    "cancelAnimationFrame",
-    "setTimeout",
-    "clearTimeout",
-    `"use strict"; var Module = module;\n${source}\nreturn Module;`,
-  ) as (
-    module: PreviewRuntimeModule,
-    window: Window,
-    raf: (cb: FrameRequestCallback) => number,
-    caf: (id: number) => void,
-    st: (cb: () => void, delay?: number) => number,
-    ct: (id?: number) => void,
-  ) => PreviewRuntimeModule;
-  runner(module, window, gameRaf, gameCaf, gameSetTimeout, gameClearTimeout);
+  // clearTimeout as function parameters so bare name references inside the
+  // game script also use our wrappers (window.* calls are handled by the
+  // global patches above).
+  const runner = Result.fromThrowable(
+    () => new Function(
+      "module",
+      "window",
+      "requestAnimationFrame",
+      "cancelAnimationFrame",
+      "setTimeout",
+      "clearTimeout",
+      `"use strict"; var Module = module;\n${source}\nreturn Module;`,
+    ) as (
+      module: PreviewRuntimeModule,
+      window: Window,
+      raf: (cb: FrameRequestCallback) => number,
+      caf: (id: number) => void,
+      st: (cb: () => void, delay?: number) => number,
+      ct: (id?: number) => void,
+    ) => PreviewRuntimeModule,
+    (e) => (e instanceof Error ? e : new Error(String(e))),
+  )();
+
+  if (runner.isErr()) {
+    restoreWindowGlobals();
+    throw runner.error;
+  }
+
+  Result.fromThrowable(
+    () => runner.value(module, window, gameRaf, gameCaf, gameSetTimeout, gameClearTimeout),
+    (e) => (e instanceof Error ? e : new Error(String(e))),
+  )();
 
   return () => {
     stopped = true;
@@ -532,16 +605,15 @@ export async function loadPreviewRuntime(
     for (const id of pendingTimerIds) realClearTimeout(id);
     pendingRafIds.clear();
     pendingTimerIds.clear();
-    // Restore the original AudioContext constructor and close any contexts the game opened.
-    Result.fromThrowable(
-      () => { window.AudioContext = savedAudioContext; },
-      (e) => (e instanceof Error ? e : new Error(String(e))),
-    )();
+    restoreWindowGlobals();
+    // Close any AudioContexts the game opened; guard against already-closed contexts.
     for (const ctx of trackedAudioContexts) {
-      Result.fromThrowable(
-        () => ctx.close(),
-        (e) => (e instanceof Error ? e : new Error(String(e))),
-      )();
+      if (ctx.state !== "closed") {
+        void ResultAsync.fromPromise(
+          ctx.close(),
+          (e) => (e instanceof Error ? e : new Error(String(e))),
+        );
+      }
     }
     trackedAudioContexts.clear();
   };

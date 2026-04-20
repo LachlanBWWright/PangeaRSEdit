@@ -207,7 +207,19 @@ export async function buildPreviewTerrainBlobs(
     };
   }
 
-  // JPG (Nanosaur 2) and MIGHTY_MIKE formats are not yet implemented for preview.
+  if (
+    globals.DATA_TYPE === DataType.STANDARD &&
+    globals.TILE_IMAGE_FORMAT === TileImageFormat.JPG
+  ) {
+    // Tile images use JPEG format (e.g. Nanosaur 2) — image compression is not
+    // yet implemented for preview.  Inject the map data (.ter.rsrc) so the
+    // game uses the edited layout with its default preloaded tile textures.
+    const rsrcBuffer = await processMapData({ data, globals });
+    if (rsrcBuffer.byteLength === 0) return null;
+    return { dataBytes: null, rsrcBytes: new Uint8Array(rsrcBuffer) };
+  }
+
+  // MIGHTY_MIKE format is not yet implemented for preview.
   return { dataBytes: null, rsrcBytes: null };
 }
 

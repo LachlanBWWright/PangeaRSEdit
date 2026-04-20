@@ -123,22 +123,28 @@ export function GamePreviewHost({
 
     // Use ResizeObserver to wait until the canvas has non-zero layout dimensions
     // before handing it to the WASM runtime. The dialog's CSS animation may cause
-    // the canvas to initially report zero size; we keep observing until we get a
-    // valid measurement so the game always starts at the correct resolution.
+    // the canvas to initially report zero or intermediate sizes; we debounce the
+    // observer so the game only starts once the size has stabilised for ~150 ms.
+    let startTimer: number | undefined;
     const observer = new ResizeObserver((entries) => {
       if (cancelled) return;
       const rect = entries[0]?.contentRect;
       const width = rect && rect.width > 0 ? Math.round(rect.width) : canvas.clientWidth;
       const height = rect && rect.height > 0 ? Math.round(rect.height) : canvas.clientHeight;
       if (width > 0 && height > 0) {
-        observer.disconnect();
-        startGame(width, height);
+        if (startTimer !== undefined) window.clearTimeout(startTimer);
+        startTimer = window.setTimeout(() => {
+          if (cancelled) return;
+          observer.disconnect();
+          startGame(width, height);
+        }, 150);
       }
     });
     observer.observe(canvas);
 
     return () => {
       cancelled = true;
+      if (startTimer !== undefined) window.clearTimeout(startTimer);
       observer.disconnect();
       stopGame?.();
       stopGame = null;
