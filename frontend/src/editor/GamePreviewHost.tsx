@@ -61,7 +61,7 @@ export function GamePreviewHost({
 
     const previewWindow = window as unknown as PreviewWindow;
     const previousModule = previewWindow.Module;
-    const cleanupGlobals = applyPreviewGlobals(previewWindow, config, levelNumber);
+    const cleanupGlobals = applyPreviewGlobals(previewWindow, config, levelNumber, terrainPaths?.dataPath ?? null);
     const terrainPaths = getPreviewTerrainPaths(currentLevelInfo, config);
     const assetBaseUrl = buildPreviewAssetBaseUrl(config);
     const cacheBustToken = `${String(config.game)}-${String(levelNumber)}-${String(runToken)}`;

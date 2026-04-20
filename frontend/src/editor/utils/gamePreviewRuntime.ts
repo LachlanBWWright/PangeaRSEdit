@@ -164,6 +164,7 @@ export function applyPreviewGlobals(
   win: PreviewWindow,
   config: GamePortConfig,
   levelNumber: number,
+  terrainDataPath: string | null,
 ): () => void {
   const previousValues = new Map<string, unknown>();
   const setGlobal = (key: string, value: unknown) => {
@@ -180,6 +181,12 @@ export function applyPreviewGlobals(
 
   if (config.game === Game.BUGDOM) {
     setGlobal("BUGDOM_NO_FENCE_COLLISION", false);
+    // The Bugdom build reads window.BUGDOM_TERRAIN_FILE to determine which
+    // terrain file to load. Set it when a custom terrain is available so the
+    // game opens the injected file rather than the default preloaded one.
+    if (terrainDataPath) {
+      setGlobal("BUGDOM_TERRAIN_FILE", terrainDataPath);
+    }
   }
 
   const preloadVars = config.getPreLoadVars?.(levelNumber) ?? {};
