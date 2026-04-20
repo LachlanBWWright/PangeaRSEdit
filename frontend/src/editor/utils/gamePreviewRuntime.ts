@@ -168,8 +168,15 @@ export function applyPreviewGlobals(
 ): () => void {
   const previousValues = new Map<string, unknown>();
   const setGlobal = (key: string, value: unknown) => {
-    previousValues.set(key, Reflect.get(win, key));
-    Reflect.set(win, key, value);
+    const previous = Result.fromThrowable(
+      () => Reflect.get(win, key),
+      (e) => (e instanceof Error ? e : new Error(String(e))),
+    )();
+    previousValues.set(key, previous.isOk() ? previous.value : undefined);
+    Result.fromThrowable(
+      () => { Reflect.set(win, key, value); },
+      (e) => (e instanceof Error ? e : new Error(String(e))),
+    )();
   };
 
   if (config.game === Game.NANOSAUR) {
@@ -213,9 +220,15 @@ export function applyPreviewGlobals(
   return () => {
     for (const [key, value] of previousValues.entries()) {
       if (typeof value === "undefined") {
-        delete (win as unknown as Record<string, unknown>)[key];
+        Result.fromThrowable(
+          () => { delete (win as unknown as Record<string, unknown>)[key]; },
+          (e) => (e instanceof Error ? e : new Error(String(e))),
+        )();
       } else {
-        Reflect.set(win, key, value);
+        Result.fromThrowable(
+          () => { Reflect.set(win, key, value); },
+          (e) => (e instanceof Error ? e : new Error(String(e))),
+        )();
       }
     }
   };
