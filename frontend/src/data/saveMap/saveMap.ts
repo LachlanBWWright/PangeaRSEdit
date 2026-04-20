@@ -196,15 +196,27 @@ export async function buildPreviewTerrainBlobs(
     globals.DATA_TYPE === DataType.STANDARD &&
     globals.TILE_IMAGE_FORMAT !== TileImageFormat.JPG
   ) {
-    if (!mapImages || mapImages.length === 0) return null;
-    const bufferList = await compressMapImages(mapImages);
-    const imageBuffer = combineBuffersForDownload(bufferList);
     const rsrcBuffer = await processMapData({ data, globals });
     if (rsrcBuffer.byteLength === 0) return null;
+
+    if (!mapImages || mapImages.length === 0) {
+      // Tile images not available — inject map layout only, game uses preloaded tile textures.
+      return { dataBytes: null, rsrcBytes: new Uint8Array(rsrcBuffer) };
+    }
+
+    const bufferList = await compressMapImages(mapImages);
+    const imageBuffer = combineBuffersForDownload(bufferList);
     return {
       dataBytes: new Uint8Array(imageBuffer),
       rsrcBytes: new Uint8Array(rsrcBuffer),
     };
+  }
+
+  if (globals.DATA_TYPE === DataType.MIGHTY_MIKE) {
+    const mightyMikeData = getMightyMikeMapData(data._metadata);
+    if (!mightyMikeData) return null;
+    const buffer = mightyMikeMapToCompressedBinary(mightyMikeData);
+    return { dataBytes: new Uint8Array(buffer), rsrcBytes: null };
   }
 
   if (
@@ -219,7 +231,6 @@ export async function buildPreviewTerrainBlobs(
     return { dataBytes: null, rsrcBytes: new Uint8Array(rsrcBuffer) };
   }
 
-  // MIGHTY_MIKE format is not yet implemented for preview.
   return { dataBytes: null, rsrcBytes: null };
 }
 

@@ -14,16 +14,16 @@ export interface BugdomLevelInfo {
 }
 
 export const BUGDOM_LEVELS: readonly BugdomLevelInfo[] = [
-  { levelNumber: BugdomLevelType.Training, name: "Training", terrainFile: "Lawn.ter" },
-  { levelNumber: BugdomLevelType.Lawn, name: "Lawn", terrainFile: "Lawn.ter" },
-  { levelNumber: BugdomLevelType.Pond, name: "Pond", terrainFile: "Pond.ter" },
-  { levelNumber: BugdomLevelType.Forest, name: "Forest", terrainFile: "Forest.ter" },
-  { levelNumber: BugdomLevelType.HiveAttack, name: "Hive Attack", terrainFile: "Hive.ter" },
-  { levelNumber: BugdomLevelType.BeeHive, name: "Bee Hive", terrainFile: "Hive.ter" },
-  { levelNumber: BugdomLevelType.QueenBee, name: "Queen Bee", terrainFile: "Hive.ter" },
-  { levelNumber: BugdomLevelType.NightAttack, name: "Night Attack", terrainFile: "Night.ter" },
-  { levelNumber: BugdomLevelType.AntHill, name: "Ant Hill", terrainFile: "Anthill.ter" },
-  { levelNumber: BugdomLevelType.AntKing, name: "Ant King", terrainFile: "Anthill.ter" },
+  { levelNumber: BugdomLevelType.Training,   name: "Training",    terrainFile: "Training.ter" },
+  { levelNumber: BugdomLevelType.Lawn,       name: "Lawn",        terrainFile: "Lawn.ter" },
+  { levelNumber: BugdomLevelType.Pond,       name: "Pond",        terrainFile: "Pond.ter" },
+  { levelNumber: BugdomLevelType.Forest,     name: "Forest",      terrainFile: "Beach.ter" },
+  { levelNumber: BugdomLevelType.HiveAttack, name: "Hive Attack", terrainFile: "Flight.ter" },
+  { levelNumber: BugdomLevelType.BeeHive,    name: "Bee Hive",    terrainFile: "BeeHive.ter" },
+  { levelNumber: BugdomLevelType.QueenBee,   name: "Queen Bee",   terrainFile: "QueenBee.ter" },
+  { levelNumber: BugdomLevelType.NightAttack,name: "Night Attack",terrainFile: "Night.ter" },
+  { levelNumber: BugdomLevelType.AntHill,    name: "Ant Hill",    terrainFile: "AntHill.ter" },
+  { levelNumber: BugdomLevelType.AntKing,    name: "Ant King",    terrainFile: "AntKing.ter" },
 ] satisfies readonly BugdomLevelInfo[];
 
 export const DEFAULT_BUGDOM_LEVEL: BugdomLevelType = BugdomLevelType.Training;

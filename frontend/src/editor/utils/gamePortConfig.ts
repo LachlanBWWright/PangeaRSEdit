@@ -12,7 +12,7 @@ import { BUGDOM_LEVELS, type BugdomLevelInfo, inferLevelNumberFromFilename as in
 import { BUGDOM2_LEVELS, type Bugdom2LevelInfo, inferLevelNumberFromFilename as inferBugdom2Level } from "./bugdom2LevelNumbers";
 import { CROMAG_TRACKS, getCroMagVfsTerrainFile, type CroMagTrackInfo, inferLevelNumberFromFilename as inferCroMagLevel } from "./croMagLevelNumbers";
 import { BILLY_FRONTIER_AREAS, type BillyFrontierAreaInfo, inferLevelNumberFromFilename as inferBillyLevel } from "./billyFrontierLevelNumbers";
-import { MIGHTY_MIKE_LEVELS, type MightyMikeLevelInfo } from "./mightyMikeLevelNumbers";
+import { MIGHTY_MIKE_LEVELS, type MightyMikeLevelInfo, inferLevelNumberFromFilename as inferMightyMikeLevel } from "./mightyMikeLevelNumbers";
 import { NANOSAUR2_LEVELS, type Nanosaur2LevelInfo, inferLevelNumberFromFilename as inferNanosaur2Level } from "./nanosaur2LevelNumbers";
 
 export type AnyLevelInfo =
@@ -123,6 +123,8 @@ export function inferPreviewLevelFromFilename(
       return inferNanosaur2Level(filename);
     case Game.CRO_MAG:
       return inferCroMagLevel(filename);
+    case Game.MIGHTY_MIKE:
+      return inferMightyMikeLevel(filename);
     default:
       return undefined;
   }
@@ -207,6 +209,8 @@ export const GAME_PORT_CONFIGS: Readonly<Record<Game, GamePortConfig>> = {
     terrain: {
       getRsrcPath: (f) => `/Data/Terrain/${f}.rsrc`,
       getDataPath: (f) => `/Data/Terrain/${f}`,
+      setPathFn: "BugdomSetTerrainOverride",
+      getSetPathArg: (f) => `/Data/Terrain/${f}.rsrc`,
     },
     wasmAvailable: true,
   },
@@ -309,6 +313,9 @@ export const GAME_PORT_CONFIGS: Readonly<Record<Game, GamePortConfig>> = {
     hasFenceCollision: false,
     hasGodMode: false,
     hasSpeedMultiplier: false,
+    terrain: {
+      getDataPath: (f) => `/Data/Terrain/${f}`,
+    },
     wasmAvailable: true,
   },
 

@@ -164,7 +164,7 @@ export function applyPreviewGlobals(
   win: PreviewWindow,
   config: GamePortConfig,
   levelNumber: number,
-  terrainDataPath: string | null,
+  terrainPaths: PreviewTerrainPaths | null,
 ): () => void {
   const previousValues = new Map<string, unknown>();
   const setGlobal = (key: string, value: unknown) => {
@@ -188,11 +188,11 @@ export function applyPreviewGlobals(
 
   if (config.game === Game.BUGDOM) {
     setGlobal("BUGDOM_NO_FENCE_COLLISION", false);
-    // The Bugdom build reads window.BUGDOM_TERRAIN_FILE to determine which
-    // terrain file to load. Set it when a custom terrain is available so the
-    // game opens the injected file rather than the default preloaded one.
-    if (terrainDataPath) {
-      setGlobal("BUGDOM_TERRAIN_FILE", terrainDataPath);
+    // Bugdom reads BUGDOM_TERRAIN_FILE pre-init to find the .ter.rsrc to open.
+    // Use the rsrc path so it resolves to the file that actually exists in the VFS.
+    const bugdomTerrainPath = terrainPaths?.rsrcPath ?? null;
+    if (bugdomTerrainPath) {
+      setGlobal("BUGDOM_TERRAIN_FILE", bugdomTerrainPath);
     }
   }
 
@@ -385,12 +385,6 @@ export function createPreviewModule(
         }
 
         ensurePreviewPrefsDirs(module, config);
-
-        // Inject terrain in preRun so the files are in the VFS before any
-        // game-owned preRun hooks try to read them (e.g. CroMag Rally).
-        if (terrainPaths) {
-          writeTerrainToVfs(module, config, currentLevelInfo, terrainPaths, terrainDataBytes, terrainRsrcBytes, onError);
-        }
 
         // Schedule overlay fallback here — preRun is reliably called just before
         // main() so the timer starts as late as possible to minimise false fires.
