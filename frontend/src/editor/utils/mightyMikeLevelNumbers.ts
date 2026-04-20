@@ -31,9 +31,9 @@ export const MIGHTY_MIKE_LEVELS: readonly MightyMikeLevelInfo[] = [
   { levelNumber: MightyMikeLevelType.Clown1,    name: "Clown 1",           terrainFile: "clown.map-1" },
   { levelNumber: MightyMikeLevelType.Clown2,    name: "Clown 2",           terrainFile: "clown.map-2" },
   { levelNumber: MightyMikeLevelType.Clown3,    name: "Clown 3",           terrainFile: "clown.map-3" },
-  { levelNumber: MightyMikeLevelType.Bargain1,  name: "Bargain Basement 1",terrainFile: "bargain.map-1" },
-  { levelNumber: MightyMikeLevelType.Bargain2,  name: "Bargain Basement 2",terrainFile: "bargain.map-2" },
-  { levelNumber: MightyMikeLevelType.Bargain3,  name: "Bargain Basement 3",terrainFile: "bargain.map-3" },
+  { levelNumber: MightyMikeLevelType.Bargain1,  name: "Bargain Basement 1", terrainFile: "bargain.map-1" },
+  { levelNumber: MightyMikeLevelType.Bargain2,  name: "Bargain Basement 2", terrainFile: "bargain.map-2" },
+  { levelNumber: MightyMikeLevelType.Bargain3,  name: "Bargain Basement 3", terrainFile: "bargain.map-3" },
 ] satisfies readonly MightyMikeLevelInfo[];
 
 export const DEFAULT_MIGHTY_MIKE_LEVEL: MightyMikeLevelType = MightyMikeLevelType.Jurassic1;

@@ -21,9 +21,9 @@ export const BUGDOM_LEVELS: readonly BugdomLevelInfo[] = [
   { levelNumber: BugdomLevelType.HiveAttack, name: "Hive Attack", terrainFile: "Flight.ter" },
   { levelNumber: BugdomLevelType.BeeHive,    name: "Bee Hive",    terrainFile: "BeeHive.ter" },
   { levelNumber: BugdomLevelType.QueenBee,   name: "Queen Bee",   terrainFile: "QueenBee.ter" },
-  { levelNumber: BugdomLevelType.NightAttack,name: "Night Attack",terrainFile: "Night.ter" },
-  { levelNumber: BugdomLevelType.AntHill,    name: "Ant Hill",    terrainFile: "AntHill.ter" },
-  { levelNumber: BugdomLevelType.AntKing,    name: "Ant King",    terrainFile: "AntKing.ter" },
+  { levelNumber: BugdomLevelType.NightAttack, name: "Night Attack", terrainFile: "Night.ter" },
+  { levelNumber: BugdomLevelType.AntHill,     name: "Ant Hill",    terrainFile: "AntHill.ter" },
+  { levelNumber: BugdomLevelType.AntKing,     name: "Ant King",    terrainFile: "AntKing.ter" },
 ] satisfies readonly BugdomLevelInfo[];
 
 export const DEFAULT_BUGDOM_LEVEL: BugdomLevelType = BugdomLevelType.Training;
