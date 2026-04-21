@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { ResultAsync } from "neverthrow";
 import {
   applyPreviewGlobals,
-  buildPreviewAssetBaseUrl,
+  buildPreviewAssetBaseUrls,
   createPreviewModule,
   getPreviewTerrainPaths,
   loadPreviewRuntime,
@@ -32,6 +32,10 @@ interface Props {
 
 type PreviewWindow = Window & { Module?: PreviewRuntimeModule };
 
+function isScriptNotFoundError(error: Error): boolean {
+  return error.message.includes(": 404");
+}
+
 export function GamePreviewHost({
   config,
   levelNumber,
@@ -48,8 +52,21 @@ export function GamePreviewHost({
     let cancelled = false;
     let stopGame: (() => void) | null = null;
     let activeModule: PreviewRuntimeModule | null = null;
+    const resizePulseTimerIds = new Set<number>();
     const canvas = canvasRef.current;
     if (!canvas) return;
+
+    const triggerResizePulse = () => {
+      const emitResize = () => {
+        window.dispatchEvent(new Event("resize"));
+      };
+      emitResize();
+      const timerId = window.setTimeout(() => {
+        resizePulseTimerIds.delete(timerId);
+        emitResize();
+      }, 120);
+      resizePulseTimerIds.add(timerId);
+    };
 
     // Terrain bytes are still being serialized — show a holding status and wait.
     // The effect will re-run automatically when the bytes prop changes to non-undefined.
@@ -63,8 +80,14 @@ export function GamePreviewHost({
     const previousModule = previewWindow.Module;
     const terrainPaths = getPreviewTerrainPaths(currentLevelInfo, config);
     const cleanupGlobals = applyPreviewGlobals(previewWindow, config, levelNumber, terrainPaths);
-    const assetBaseUrl = buildPreviewAssetBaseUrl(config);
+    const assetBaseUrls = buildPreviewAssetBaseUrls(config);
     const cacheBustToken = `${String(config.game)}-${String(levelNumber)}-${String(runToken)}`;
+    const handleFullscreenChange = () => {
+      if (!cancelled) {
+        triggerResizePulse();
+      }
+    };
+    document.addEventListener("fullscreenchange", handleFullscreenChange);
 
     setErrorText(null);
     setStatusText("Preparing game runtime…");
@@ -74,50 +97,64 @@ export function GamePreviewHost({
 
       canvas.width = width;
       canvas.height = height;
-
-      activeModule = createPreviewModule({
-        config,
-        levelNumber,
-        currentLevelInfo,
-        canvas,
-        assetBaseUrl,
-        cacheBustToken,
-        terrainDataBytes: terrainDataBytes ?? null,
-        terrainRsrcBytes: terrainRsrcBytes ?? null,
-        terrainPaths,
-        onStatus: (text) => {
-          if (!cancelled) {
-            setErrorText(null);
-            setStatusText(text);
-          }
-        },
-        onError: (text) => {
-          if (!cancelled) {
-            setErrorText(text);
-            setStatusText("Failed to start game.");
-          }
-        },
-      });
-
-      previewWindow.Module = activeModule as unknown as PreviewWindow["Module"];
-      const scriptUrl = new URL(config.mainJs, assetBaseUrl).href + `?v=${cacheBustToken}`;
+      triggerResizePulse();
 
       void (async () => {
-        if (cancelled || activeModule === null) return;
-        const stopOrErr = await ResultAsync.fromPromise(
-          loadPreviewRuntime(activeModule, scriptUrl),
-          (e) => (e instanceof Error ? e : new Error(String(e))),
-        );
-        if (cancelled) {
-          if (stopOrErr.isOk()) stopOrErr.value();
+        const baseUrls = assetBaseUrls.length > 0 ? assetBaseUrls : [window.location.href];
+        for (let baseUrlIndex = 0; baseUrlIndex < baseUrls.length; baseUrlIndex += 1) {
+          const assetBaseUrl = baseUrls[baseUrlIndex];
+          if (!assetBaseUrl) {
+            continue;
+          }
+          activeModule = createPreviewModule({
+            config,
+            levelNumber,
+            currentLevelInfo,
+            canvas,
+            assetBaseUrl,
+            cacheBustToken,
+            terrainDataBytes: terrainDataBytes ?? null,
+            terrainRsrcBytes: terrainRsrcBytes ?? null,
+            terrainPaths,
+            onStatus: (text) => {
+              if (!cancelled) {
+                setErrorText(null);
+                setStatusText(text);
+              }
+            },
+            onError: (text) => {
+              if (!cancelled) {
+                setErrorText(text);
+                setStatusText("Failed to start game.");
+              }
+            },
+          });
+
+          previewWindow.Module = activeModule as unknown as PreviewWindow["Module"];
+          const scriptUrl = new URL(config.mainJs, assetBaseUrl).href + `?v=${cacheBustToken}`;
+          const stopOrErr = await ResultAsync.fromPromise(
+            loadPreviewRuntime(activeModule, scriptUrl),
+            (e) => (e instanceof Error ? e : new Error(String(e))),
+          );
+          if (cancelled) {
+            if (stopOrErr.isOk()) stopOrErr.value();
+            return;
+          }
+          if (stopOrErr.isErr()) {
+            const canTryNextBase =
+              isScriptNotFoundError(stopOrErr.error) &&
+              baseUrlIndex < baseUrls.length - 1;
+            if (canTryNextBase) {
+              continue;
+            }
+            setErrorText(stopOrErr.error.message);
+            setStatusText("Failed to start game.");
+            return;
+          }
+          stopGame = stopOrErr.value;
+          triggerResizePulse();
           return;
         }
-        if (stopOrErr.isErr()) {
-          setErrorText(stopOrErr.error.message);
-          setStatusText("Failed to start game.");
-          return;
-        }
-        stopGame = stopOrErr.value;
       })();
     }
 
@@ -148,6 +185,11 @@ export function GamePreviewHost({
       observer.disconnect();
       stopGame?.();
       stopGame = null;
+      for (const timerId of resizePulseTimerIds) {
+        window.clearTimeout(timerId);
+      }
+      resizePulseTimerIds.clear();
+      document.removeEventListener("fullscreenchange", handleFullscreenChange);
       cleanupGlobals();
       // Always restore window.Module to its pre-effect value so subsequent game
       // runs don't inherit stale Emscripten module state.

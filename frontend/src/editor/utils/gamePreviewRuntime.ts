@@ -125,9 +125,17 @@ export function getPreviewTerrainPaths(
   return { dataPath, rsrcPath };
 }
 
-export function buildPreviewAssetBaseUrl(config: GamePortConfig): string {
+export function buildPreviewAssetBaseUrls(config: GamePortConfig): string[] {
   const appBaseUrl = new URL(import.meta.env.BASE_URL, window.location.origin).href;
-  return new URL(`.generated/pangea-ports/wasm/${config.wasmDir}/`, appBaseUrl).href;
+  const generatedBase = new URL(`.generated/pangea-ports/wasm/${config.wasmDir}/`, appBaseUrl).href;
+  const legacyBase = new URL(`wasm/${config.wasmDir}/`, appBaseUrl).href;
+  return generatedBase === legacyBase
+    ? [generatedBase]
+    : [generatedBase, legacyBase];
+}
+
+export function buildPreviewAssetBaseUrl(config: GamePortConfig): string {
+  return buildPreviewAssetBaseUrls(config)[0] ?? "";
 }
 
 function ensureDir(vfs: NonNullable<PreviewRuntimeModule["FS"]>, path: string): void {
@@ -423,6 +431,9 @@ export function createPreviewModule(
         }
 
         ensurePreviewPrefsDirs(module, config);
+        if (terrainPaths) {
+          writeTerrainToVfs(module, config, currentLevelInfo, terrainPaths, terrainDataBytes, terrainRsrcBytes, onError);
+        }
 
         // Schedule overlay fallback here — preRun is reliably called just before
         // main() so the timer starts as late as possible to minimise false fires.
