@@ -39,6 +39,17 @@ export interface PreviewRuntimeModule {
     analyzePath?: (path: string) => { exists: boolean };
     mkdir?: (path: string) => void;
   };
+  /** Removes a file from the VFS. Exposed by all Emscripten builds including those that don't expose Module.FS. */
+  FS_unlink?: (path: string) => void;
+  /** Creates a data file in the VFS. Used as a fallback write mechanism when Module.FS is absent. */
+  FS_createDataFile?: (
+    parent: string,
+    name: string,
+    data: Uint8Array,
+    canRead: boolean,
+    canWrite: boolean,
+    canOwn: boolean,
+  ) => void;
   FS_createPath?: (
     parent: string,
     path: string,
@@ -188,9 +199,10 @@ export function applyPreviewGlobals(
 
   if (config.game === Game.BUGDOM) {
     setGlobal("BUGDOM_NO_FENCE_COLLISION", false);
-    // Bugdom reads BUGDOM_TERRAIN_FILE pre-init to find the .ter.rsrc to open.
-    // Use the rsrc path so it resolves to the file that actually exists in the VFS.
-    const bugdomTerrainPath = terrainPaths?.rsrcPath ?? null;
+    // Bugdom reads BUGDOM_TERRAIN_FILE and appends ".rsrc" internally to open the
+    // resource fork.  Pass the data-fork path (without .rsrc) so the game resolves
+    // the correct VFS path: e.g. "/Data/Terrain/Training.ter" → opens "Training.ter.rsrc".
+    const bugdomTerrainPath = terrainPaths?.dataPath ?? null;
     if (bugdomTerrainPath) {
       setGlobal("BUGDOM_TERRAIN_FILE", bugdomTerrainPath);
     }
@@ -251,10 +263,45 @@ export interface PreviewModuleOptions {
 }
 
 /**
+ * Writes a single file into the Emscripten VFS.
+ * Tries Module.FS.writeFile first (available in most builds).
+ * Falls back to FS_unlink + FS_createDataFile for builds that don't expose Module.FS
+ * (e.g. CroMag Rally).
+ */
+function writeFileToVfs(
+  module: PreviewRuntimeModule,
+  path: string,
+  data: Uint8Array,
+): Result<void, Error> {
+  const vfs = module.FS;
+  if (vfs && typeof vfs.writeFile === "function") {
+    return Result.fromThrowable(
+      () => { vfs.writeFile(path, data); },
+      (e) => (e instanceof Error ? e : new Error(String(e))),
+    )();
+  }
+  if (typeof module.FS_unlink !== "function" || typeof module.FS_createDataFile !== "function") {
+    return Result.fromThrowable(
+      (): void => { throw new Error("No VFS write mechanism available"); },
+      (e) => (e instanceof Error ? e : new Error(String(e))),
+    )();
+  }
+  const lastSlash = path.lastIndexOf("/");
+  const parentDir = path.substring(0, lastSlash);
+  const filename = path.substring(lastSlash + 1);
+  return Result.fromThrowable(
+    () => {
+      module.FS_unlink!(path);
+      module.FS_createDataFile!(parentDir, filename, data, true, true, false);
+    },
+    (e) => (e instanceof Error ? e : new Error(String(e))),
+  )();
+}
+
+/**
  * Writes terrain bytes to the Emscripten VFS.
- * Called both from preRun (early, before game's own preRun reads terrain) and
- * onRuntimeInitialized (late, as a fallback).  Writes are idempotent: the second
- * call simply overwrites the same paths with the same bytes.
+ * Runs in onRuntimeInitialized, before callMain, so the game reads the injected
+ * bytes when it opens the terrain file in main().
  */
 function writeTerrainToVfs(
   module: PreviewRuntimeModule,
@@ -268,19 +315,13 @@ function writeTerrainToVfs(
   if (!(terrainDataBytes ?? terrainRsrcBytes)) return;
 
   const vfs = module.FS;
-  if (!vfs) return;
-  if (typeof vfs.writeFile !== "function") return;
-
-  if (typeof vfs.mkdir === "function") {
+  if (vfs && typeof vfs.mkdir === "function") {
     ensureDir(vfs, "/Data");
     ensureDir(vfs, "/Data/Terrain");
   }
 
   if (terrainDataBytes) {
-    const writeDataResult = Result.fromThrowable(
-      () => vfs.writeFile(terrainPaths.dataPath, terrainDataBytes),
-      (e) => (e instanceof Error ? e : new Error(String(e))),
-    )();
+    const writeDataResult = writeFileToVfs(module, terrainPaths.dataPath, terrainDataBytes);
     if (writeDataResult.isErr()) {
       onError(`Failed to write terrain data file: ${writeDataResult.error.message}`);
       return;
@@ -288,10 +329,7 @@ function writeTerrainToVfs(
   }
 
   if (terrainRsrcBytes && terrainPaths.rsrcPath) {
-    const writeRsrcResult = Result.fromThrowable(
-      () => vfs.writeFile(terrainPaths.rsrcPath!, terrainRsrcBytes),
-      (e) => (e instanceof Error ? e : new Error(String(e))),
-    )();
+    const writeRsrcResult = writeFileToVfs(module, terrainPaths.rsrcPath, terrainRsrcBytes);
     if (writeRsrcResult.isErr()) {
       onError(`Failed to write terrain rsrc file: ${writeRsrcResult.error.message}`);
       return;

@@ -210,7 +210,9 @@ export const GAME_PORT_CONFIGS: Readonly<Record<Game, GamePortConfig>> = {
       getRsrcPath: (f) => `/Data/Terrain/${f}.rsrc`,
       getDataPath: (f) => `/Data/Terrain/${f}`,
       setPathFn: "BugdomSetTerrainOverride",
-      getSetPathArg: (f) => `/Data/Terrain/${f}.rsrc`,
+      // BugdomSetTerrainOverride (and BUGDOM_TERRAIN_FILE) expect the data-fork path;
+      // the game appends ".rsrc" itself to open the resource fork.
+      getSetPathArg: (f) => `/Data/Terrain/${f}`,
     },
     wasmAvailable: true,
   },
