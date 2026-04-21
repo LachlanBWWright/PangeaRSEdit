@@ -1,0 +1,627 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Mighty Mike – WebAssembly</title>
+  <style>
+    :root {
+      --accent: #f7c34f;
+      --bg:     #0f0f07;
+      --panel:  #1a1a10;
+      --border: #2e2e1e;
+      --text:   #e8e8d8;
+      --dim:    #8a8a6a;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: system-ui, -apple-system, sans-serif;
+      line-height: 1.5;
+    }
+
+    /* ── Header ──────────────────────────────────────────── */
+    #header {
+      text-align: center;
+      padding: 1.25rem 1rem 0.75rem;
+      border-bottom: 1px solid var(--border);
+    }
+    #header h1 {
+      font-size: 2rem;
+      color: var(--accent);
+      letter-spacing: 3px;
+      text-transform: uppercase;
+    }
+    #header p { color: var(--dim); font-size: 0.85rem; margin-top: 0.25rem; }
+
+    /* ── Game area ───────────────────────────────────────── */
+    #game-wrap {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 1rem;
+      position: relative;       /* stacking context for loading overlay */
+    }
+
+    /* Loading card — overlays the canvas until game starts.
+       Canvas stays visible with real dimensions so SDL3 can read its
+       CSS size when creating the window (SDL3 will create a 0×0 surface
+       if the canvas is hidden via display:none or height:0). */
+    #loading-card {
+      position: absolute;
+      top: 1rem;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 10;              /* above canvas */
+      width: 100%;
+      max-width: 800px;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 2rem 1.5rem;
+      text-align: center;
+    }
+    #status-text {
+      font-size: 1.05rem;
+      color: var(--accent);
+      min-height: 1.6rem;
+    }
+    #progress-bar {
+      width: 100%;
+      max-width: 420px;
+      height: 6px;
+      margin: 0.75rem auto 0.35rem;
+      accent-color: var(--accent);
+    }
+    #progress-label { font-size: 0.78rem; color: var(--dim); }
+
+    /* Canvas — always in the DOM with proper dimensions for SDL3 */
+    #canvas {
+      max-width: 100%;
+      border-radius: 6px;
+      outline: none;
+      background: #000;
+    }
+
+    /* Fullscreen: center + letterbox the canvas in the fullscreen wrapper */
+    #game-wrap:fullscreen,
+    #game-wrap:-webkit-full-screen,
+    #game-wrap:-moz-full-screen {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 100vw;
+      height: 100vh;
+      background: #000;
+    }
+    #game-wrap:fullscreen #canvas,
+    #game-wrap:-webkit-full-screen #canvas,
+    #game-wrap:-moz-full-screen #canvas {
+      width: auto !important;
+      height: 100vh !important;
+      max-width: 100vw !important;
+      max-height: 100vh !important;
+      border-radius: 0 !important;
+    }
+
+    /* Toolbar below canvas */
+    #toolbar {
+      display: none;
+      gap: 0.5rem;
+      padding: 0.5rem 0;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    /* ── Generic button ──────────────────────────────────── */
+    .btn {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 0.35rem 0.8rem;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 0.88rem;
+      transition: background 0.12s, border-color 0.12s;
+    }
+    .btn:hover  { background: #2a2a1a; border-color: var(--accent); }
+    .btn.on     { background: #2a2a0d; border-color: var(--accent); color: var(--accent); }
+    .btn.danger { border-color: #c04040; color: #e06060; }
+    .btn.danger:hover { background: #2a0d0d; }
+
+    /* ── Developer / Level-editor panel ──────────────────── */
+    #dev-panel {
+      width: 100%;
+      max-width: 800px;
+      margin: 0.5rem auto 1.5rem;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 1.25rem 1.5rem;
+    }
+    #dev-panel h2 {
+      color: var(--accent);
+      font-size: 1rem;
+      margin-bottom: 0.5rem;
+    }
+    #dev-panel .sub {
+      color: var(--dim);
+      font-size: 0.82rem;
+      margin-bottom: 1rem;
+    }
+
+    .dev-section { margin-bottom: 1.1rem; }
+    .dev-section h3 {
+      font-size: 0.88rem;
+      color: #b0b090;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 0.3rem;
+      margin-bottom: 0.6rem;
+    }
+    .dev-row {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin: 0.45rem 0;
+      flex-wrap: wrap;
+    }
+    .dev-row label {
+      min-width: 160px;
+      font-size: 0.88rem;
+      color: #c8c8b0;
+    }
+    input[type="text"], input[type="number"] {
+      background: #0a0a06;
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 0.3rem 0.55rem;
+      border-radius: 4px;
+      font-size: 0.85rem;
+    }
+    input[type="text"] { flex: 1; min-width: 200px; }
+    input[type="number"] { width: 5em; }
+    input[type="text"]:focus, input[type="number"]:focus {
+      outline: none;
+      border-color: var(--accent);
+    }
+    code {
+      background: #0a0a06;
+      border: 1px solid var(--border);
+      padding: 0.15rem 0.4rem;
+      border-radius: 4px;
+      font-size: 0.82rem;
+      color: var(--accent);
+      font-family: "SFMono-Regular", Consolas, monospace;
+    }
+    .dev-note {
+      font-size: 0.8rem;
+      color: var(--dim);
+      margin-top: 0.3rem;
+    }
+    .fence-status {
+      color: var(--dim);
+      font-size: 0.85em;
+    }
+
+    /* ── Footer ──────────────────────────────────────────── */
+    #footer {
+      text-align: center;
+      padding: 1.2rem;
+      color: var(--dim);
+      font-size: 0.78rem;
+      border-top: 1px solid var(--border);
+    }
+    #footer a { color: #7a7a60; text-decoration: none; }
+    #footer a:hover { color: var(--accent); }
+    body.embedded-shell {
+      height: 100dvh;
+      overflow: hidden;
+    }
+    body.embedded-shell #header,
+    body.embedded-shell #dev-panel,
+    body.embedded-shell #footer {
+      display: none !important;
+    }
+    body.embedded-shell #game-wrap {
+      padding: 0;
+      height: 100dvh;
+      align-items: stretch;
+    }
+    body.embedded-shell #canvas {
+      display: block;
+      width: 100%;
+      height: 100dvh;
+      max-width: none;
+      border-radius: 0;
+    }
+    body.embedded-shell #loading-card {
+      inset: 0;
+      transform: none;
+      max-width: none;
+      border: none;
+      border-radius: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+    body.embedded-shell #toolbar {
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      z-index: 11;
+      padding: 0.75rem;
+      background: linear-gradient(180deg, rgba(15,15,7,0) 0%, rgba(15,15,7,0.92) 100%);
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ══ Header ══════════════════════════════════════════════ -->
+  <div id="header">
+    <h1>🐜 Mighty Mike</h1>
+    <p>WebAssembly port — runs in your browser via Emscripten</p>
+  </div>
+
+  <!-- ══ Game area ══════════════════════════════════════════ -->
+  <div id="game-wrap">
+
+    <!-- Loading card (overlays the canvas until the game starts) -->
+    <div id="loading-card">
+      <div id="status-text">Initializing…</div>
+      <progress id="progress-bar" value="0" max="1"></progress>
+      <div id="progress-label">Downloading game data…</div>
+    </div>
+
+    <!-- WebGL canvas (always visible with real dimensions for SDL3 sizing) -->
+    <canvas id="canvas" width="640" height="480" oncontextmenu="event.preventDefault()" tabindex="-1"></canvas>
+
+    <!-- Controls shown after load -->
+    <div id="toolbar">
+      <button class="btn" id="fullscreen-btn">⛶ Fullscreen</button>
+    </div>
+  </div>
+
+  <!-- ══ Developer / Level-editor panel ═══════════════════ -->
+  <div id="dev-panel">
+    <h2>🛠 Developer / Level-editor Tools</h2>
+    <p class="sub">
+      Use the controls below to jump to levels, override maps, and toggle cheats.
+      The game also accepts <code>?level=SCENE:AREA</code> and
+      <code>?mapOverride=PATH</code> URL params to skip menus on startup.
+    </p>
+
+    <!-- Level selection -->
+    <div class="dev-section">
+      <h3>Level Navigation</h3>
+      <div class="dev-row">
+        <label for="scene-input">Scene (0–4)</label>
+        <input type="number" id="scene-input" min="0" max="4" value="0" />
+      </div>
+      <div class="dev-row">
+        <label for="area-input">Area (0–2)</label>
+        <input type="number" id="area-input" min="0" max="2" value="0" />
+      </div>
+      <div class="dev-row">
+        <label for="map-override-input">Map override path</label>
+        <input type="text" id="map-override-input"
+               placeholder=":Maps:custom.map-1" />
+      </div>
+      <div class="dev-row">
+        <button class="btn" id="jump-btn">Jump to level</button>
+        <span class="dev-note">Reloads the page with ?level=&lt;scene&gt;:&lt;area&gt;</span>
+      </div>
+    </div>
+
+    <!-- Cheats -->
+    <div class="dev-section">
+      <h3>Cheats &amp; Debug</h3>
+      <div class="dev-row">
+        <label>Fence collisions</label>
+        <button class="btn on" id="fence-toggle">✓ Enabled</button>
+        <span id="fence-status" class="fence-status">unknown</span>
+      </div>
+    </div>
+
+    <!-- Quick reference -->
+    <div class="dev-section">
+      <h3>Quick Reference</h3>
+      <div class="dev-row"><code>?level=0:1</code> — skip to scene 0, area 1</div>
+      <div class="dev-row"><code>?mapOverride=:Maps:custom.map-1</code> — load a custom map file</div>
+      <div class="dev-row"><code>Cheat_SetFenceCollision(0)</code> — disable fence collisions</div>
+      <div class="dev-row"><code>Cheat_SetFenceCollision(1)</code> — re-enable fence collisions</div>
+    </div>
+  </div>
+
+  <!-- ══ Footer ═══════════════════════════════════════════ -->
+  <div id="footer">
+    <p>
+      Mighty Mike © 1995 Pangea Software, Inc. &nbsp;|&nbsp;
+      WebAssembly port:
+      <a href="https://github.com/LachlanBWWright/MightyMike-Android">LachlanBWWright/MightyMike-Android</a>
+      &nbsp;|&nbsp;
+      <a href="https://github.com/jorio/MightyMike">Original source: jorio/MightyMike</a>
+    </p>
+  </div>
+
+  <!-- ══ Emscripten Module config ═════════════════════════ -->
+  <!--
+    The CI/CD build produces MightyMike.js + MightyMike.wasm.
+    If those files are not present (e.g. viewing this page standalone),
+    the page remains functional and shows a helpful error message.
+  -->
+  <script>
+    // ─────────────────────────────────────────────────────────────────────────
+    // KNOWN BROWSER WARNINGS (NOT ERRORS - GAME WORKS FINE)
+    // ─────────────────────────────────────────────────────────────────────────
+    // 1. ScriptProcessorNode deprecation warning:
+    //    This comes from SDL3's audio backend using deprecated Web Audio API.
+    //    The game's audio works correctly. SDL3 will migrate to AudioWorklet in
+    //    a future release. This is a cosmetic warning only.
+    //
+    // 2. Non-passive event listener warnings (wheel, touchstart, touchmove):
+    //    These come from SDL3's event handling code. They allow the game to
+    //    prevent default browser scrolling behavior. Modern best practice would
+    //    use passive listeners, but SDL3 needs to prevent defaults for game input.
+    //    These warnings don't affect functionality or performance.
+    // ─────────────────────────────────────────────────────────────────────────
+
+    // ── URL param parsing for level-editor integration ────
+    (function () {
+      var params = new URLSearchParams(window.location.search);
+      window._directLevel = params.get('level') || '';      // e.g. "0:1"
+      window._mapOverride = params.get('mapOverride') || ''; // e.g. ":Maps:custom.map-1"
+    })();
+
+    // ── Global error handler for WASM exceptions ────────────
+    window.addEventListener('error', function(e) {
+      console.error('[MightyMike] Unhandled error:', e.message, e.filename, e.lineno);
+    });
+    window.addEventListener('unhandledrejection', function(e) {
+      console.error('[MightyMike] Unhandled promise rejection:', e.reason);
+    });
+
+    var _fenceEnabled = true;
+    var _isEmbedded = new URLSearchParams(window.location.search).get('embed') === '1';
+
+    if (_isEmbedded) {
+      document.body.classList.add('embedded-shell');
+    }
+
+    function syncCanvasSize() {
+      if (typeof Module === 'undefined' || !Module.canvas) return;
+      if (document.fullscreenElement || document.webkitFullscreenElement) return;
+      var cssW = Module.canvas.clientWidth;
+      var cssH = Module.canvas.clientHeight;
+      if (!cssW || !cssH) return;
+      var w = Math.round(cssW);
+      var h = Math.round(cssH);
+      if (w && h && (Module.canvas.width !== w || Module.canvas.height !== h)) {
+        if (Module.setCanvasSize) Module.setCanvasSize(w, h);
+        else { Module.canvas.width = w; Module.canvas.height = h; }
+      }
+    }
+
+    // ── Emscripten Module pre-config ──────────────────────
+    var Module = {
+      canvas: document.getElementById('canvas'),
+
+      // Request the high-performance (discrete/dedicated) GPU where available
+      webglContextAttributes: {
+        powerPreference: 'high-performance'
+      },
+
+      print: function(text) {
+        console.log('[MightyMike] ' + text);
+      },
+      printErr: function(text) {
+        console.warn('[MightyMike stderr] ' + text);
+      },
+
+      onAbort: function(what) {
+        console.error('[MightyMike] ABORT: ' + what);
+        var el = document.getElementById('status-text');
+        if (el) el.textContent = 'Error: ' + what;
+        var card = document.getElementById('loading-card');
+        if (card) card.style.display = '';
+      },
+
+      onExit: function(code) {
+        if (code !== 0) {
+          console.error('[MightyMike] Exited with code: ' + code);
+          var el = document.getElementById('status-text');
+          if (el) el.textContent = 'Game exited with error (code ' + code + ')';
+          var card = document.getElementById('loading-card');
+          if (card) card.style.display = '';
+        }
+      },
+
+      onRuntimeInitialized: function() {
+        console.log('[MightyMike] Runtime initialized');
+        var el = document.getElementById('status-text');
+        if (el) el.textContent = 'Starting game…';
+
+        // Apply direct-boot params (safety net; Boot.cpp also reads URLSearchParams)
+        if (window._directLevel) {
+          var parts = window._directLevel.split(':');
+          if (parts.length === 2) {
+            try {
+              Module.ccall('Boot_SetDirectLevel', null,
+                ['number', 'number'], [parseInt(parts[0]), parseInt(parts[1])]);
+            } catch (e) { console.warn('Boot_SetDirectLevel not available:', e); }
+          }
+        }
+        if (window._mapOverride) {
+          try {
+            Module.ccall('Boot_SetCustomMapPath', null, ['string'], [window._mapOverride]);
+          } catch (e) { console.warn('Boot_SetCustomMapPath not available:', e); }
+        }
+
+        // Sync fence-collision toggle UI with current game state
+        refreshFenceStatus();
+
+        // ── Standard PangeaGame API ───────────────────────────────────────
+        // MightyMike uses ?level=SCENE:AREA for level skip.
+        window.PangeaGame = {
+          // skipToLevel(n) where n is a flat 0-based area index (converted to scene:area)
+          // or pass "SCENE:AREA" string directly.
+          skipToLevel: function(n) {
+            var url = new URL(window.location.href);
+            url.searchParams.set('level', typeof n === 'string' ? n : n);
+            window.location.href = url.toString();
+          },
+          // setLevel: runtime variant — Boot_SetDirectLevel(scene, area)
+          setLevel: function(scene, area) {
+            if (area === undefined) { area = scene; scene = 0; }
+            return Module.ccall('Boot_SetDirectLevel', null, ['number','number'], [scene, area]);
+          },
+          getCurrentLevel: function() {
+            var params = new URLSearchParams(window.location.search);
+            return params.get('level') || '';
+          },
+          setFenceCollisions: function(enabled) {
+            return Module.ccall('Cheat_SetFenceCollision', null, ['number'], [enabled ? 1 : 0]);
+          },
+          getFenceCollisions: function() {
+            return Module.ccall('Cheat_GetFenceCollision', 'number', [], []) !== 0;
+          },
+        };
+        console.log('[MightyMike] PangeaGame API ready. Use PangeaGame.skipToLevel("SCENE:AREA") to jump to a level.');
+      },
+
+      preRun: [function() {
+        // Create the config directory in the virtual filesystem
+        try { FS.mkdir('/home'); } catch (e) { /* ignore if exists */ }
+        try { FS.mkdir('/home/web_user'); } catch (e) { /* ignore if exists */ }
+        try { FS.mkdir('/home/web_user/.config'); } catch (e) { /* ignore if exists */ }
+        try { FS.mkdir('/home/web_user/.config/MightyMike'); } catch (e) { /* ignore if exists */ }
+      }],
+
+      setStatus: function(text) {
+        var el      = document.getElementById('status-text');
+        var card    = document.getElementById('loading-card');
+        var canvas  = document.getElementById('canvas');
+        var toolbar = document.getElementById('toolbar');
+
+        if (text) {
+          if (el) el.textContent = text;
+        } else {
+          // Loading finished — hide the loading overlay, focus canvas
+          if (card)    card.style.display   = 'none';
+          syncCanvasSize();
+          if (canvas)  canvas.focus();
+          if (toolbar) toolbar.style.display = 'flex';
+        }
+      },
+
+      monitorRunDependencies: function(left) {
+        var bar   = document.getElementById('progress-bar');
+        var label = document.getElementById('progress-label');
+        if (!bar) return;
+        if (left === 0) {
+          bar.value = 1;
+          if (label) label.textContent = 'Preparing…';
+          console.log('[MightyMike] All dependencies loaded');
+        } else {
+          bar.value = Math.max(0, 1 - (left * 0.02));
+        }
+      }
+    };
+
+    // ── Load the game script ──────────────────────────────
+    (function() {
+      var s = document.createElement('script');
+      s.src = 'MightyMike.js';
+      s.onerror = function() {
+        var el = document.getElementById('status-text');
+        if (el) el.textContent =
+          'MightyMike.js not found – make sure the WASM build artifacts are ' +
+          'present in the same directory as this page.';
+        var label = document.getElementById('progress-label');
+        if (label) label.textContent = 'Build artifacts missing.';
+      };
+      document.body.appendChild(s);
+    })();
+
+    // ── UI helpers ────────────────────────────────────────
+
+    function refreshFenceStatus() {
+      if (!Module || !Module.ccall) return;
+      try {
+        var enabled = Module.ccall('Cheat_GetFenceCollision', 'number', [], []);
+        _fenceEnabled = !!enabled;
+        var btn = document.getElementById('fence-toggle');
+        var status = document.getElementById('fence-status');
+        if (btn) {
+          btn.textContent = _fenceEnabled ? '✓ Enabled' : '✗ Disabled';
+          btn.className   = 'btn' + (_fenceEnabled ? ' on' : ' danger');
+        }
+        if (status) {
+          status.textContent = _fenceEnabled ? 'enabled (default)' : 'DISABLED';
+        }
+      } catch (e) { console.warn('Cheat_GetFenceCollision not available:', e); }
+    }
+
+    document.getElementById('fence-toggle').addEventListener('click', function() {
+      if (!Module || !Module.ccall) return;
+      _fenceEnabled = !_fenceEnabled;
+      try {
+        Module.ccall('Cheat_SetFenceCollision', null, ['number'], [_fenceEnabled ? 1 : 0]);
+      } catch (e) { console.warn('Module not ready yet:', e); }
+      refreshFenceStatus();
+    });
+
+    // ── Developer panel: Jump to level ────────────────────
+    document.getElementById('jump-btn').addEventListener('click', function() {
+      var scene  = document.getElementById('scene-input').value;
+      var area   = document.getElementById('area-input').value;
+      var mapOvr = document.getElementById('map-override-input').value.trim();
+      var url    = new URL(window.location.href);
+      url.searchParams.set('level', scene + ':' + area);
+      if (mapOvr) {
+        url.searchParams.set('mapOverride', mapOvr);
+      } else {
+        url.searchParams.delete('mapOverride');
+      }
+      window.location.href = url.toString();
+    });
+
+    // Pre-fill the dev panel from current URL params
+    if (window._directLevel) {
+      var p = window._directLevel.split(':');
+      if (p.length === 2) {
+        document.getElementById('scene-input').value = p[0];
+        document.getElementById('area-input').value  = p[1];
+      }
+    }
+    if (window._mapOverride) {
+      document.getElementById('map-override-input').value = window._mapOverride;
+    }
+
+    // ── Fullscreen button ─────────────────────────────────
+    document.getElementById('fullscreen-btn').addEventListener('click', function() {
+      var container = document.getElementById('game-wrap');
+      if (!document.fullscreenElement) {
+        container.requestFullscreen().catch(function(err) {
+          console.warn('Fullscreen error:', err);
+        });
+      } else {
+        document.exitFullscreen();
+      }
+    });
+
+    ['resize','fullscreenchange','webkitfullscreenchange','mozfullscreenchange'].forEach(function(evt) {
+      window.addEventListener(evt, function() {
+        requestAnimationFrame(syncCanvasSize);
+        // Extra delayed sync: fullscreen exit layout may not settle within one rAF
+        setTimeout(syncCanvasSize, 100);
+      });
+    });
+  </script>
+</body>
+</html>

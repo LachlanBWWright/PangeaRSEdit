@@ -1,0 +1,762 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Otto Matic — WebAssembly</title>
+  <style>
+    :root {
+      --accent: #4fc3f7;
+      --bg:     #07070f;
+      --panel:  #10102a;
+      --border: #1e1e3a;
+      --text:   #d8d8e8;
+      --dim:    #6a6a8a;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: system-ui, -apple-system, sans-serif;
+      line-height: 1.5;
+    }
+
+    /* ── Header ──────────────────────────────────────────── */
+    #header {
+      text-align: center;
+      padding: 1.25rem 1rem 0.75rem;
+      border-bottom: 1px solid var(--border);
+    }
+    #header h1 {
+      font-size: 2rem;
+      color: var(--accent);
+      letter-spacing: 3px;
+      text-transform: uppercase;
+    }
+    #header p { color: var(--dim); font-size: 0.85rem; margin-top: 0.25rem; }
+
+    /* ── Game area ───────────────────────────────────────── */
+    #game-wrap {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 1rem;
+      position: relative;       /* stacking context for loading overlay */
+    }
+
+    /* Loading card — overlays the canvas until game starts */
+    #loading-card {
+      position: absolute;
+      top: 1rem;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 10;              /* above canvas */
+      width: 100%;
+      max-width: 800px;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 2rem 1.5rem;
+      text-align: center;
+    }
+    #loading-card img {
+      max-width: 280px;
+      width: 100%;
+      margin-bottom: 1.25rem;
+      /* Hide broken-image if logo.png is absent */
+    }
+    #loading-card img[src=""][alt]::after { content: attr(alt); display: block; }
+    #status-text {
+      font-size: 1.05rem;
+      color: var(--accent);
+      min-height: 1.6rem;
+    }
+    #progress-bar {
+      width: 100%;
+      max-width: 420px;
+      height: 6px;
+      margin: 0.75rem auto 0.35rem;
+      accent-color: var(--accent);
+    }
+    #progress-label { font-size: 0.78rem; color: var(--dim); }
+
+    /* Canvas — always in the DOM with proper dimensions for SDL3.
+       Visually obscured by the loading-card overlay until game starts. */
+    #canvas {
+      max-width: 100%;
+      border-radius: 6px;
+      outline: none;
+    }
+
+    /* Fullscreen: letterbox the canvas */
+    #canvas:fullscreen,
+    #canvas:-webkit-full-screen,
+    #canvas:-moz-full-screen {
+      width: auto !important;
+      height: 100vh !important;
+      max-width: 100vw !important;
+      max-height: 100vh !important;
+      border-radius: 0 !important;
+    }
+
+    /* Toolbar below canvas */
+    #toolbar {
+      display: none;
+      gap: 0.5rem;
+      padding: 0.5rem 0;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    /* ── Generic button ──────────────────────────────────── */
+    .btn {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 0.35rem 0.8rem;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 0.88rem;
+      transition: background 0.12s, border-color 0.12s;
+    }
+    .btn:hover  { background: #1a1a3a; border-color: var(--accent); }
+    .btn.on     { background: #0d2a40; border-color: var(--accent); color: var(--accent); }
+    .btn.danger { border-color: #c04040; color: #e06060; }
+    .btn.danger:hover { background: #2a0d0d; }
+
+    /* ── API / docs panel ────────────────────────────────── */
+    #api-panel {
+      width: 100%;
+      max-width: 800px;
+      margin: 0.5rem auto 1.5rem;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 1.25rem 1.5rem;
+    }
+    #api-panel h2 {
+      color: var(--accent);
+      font-size: 1rem;
+      margin-bottom: 0.5rem;
+    }
+    #api-panel .sub {
+      color: var(--dim);
+      font-size: 0.82rem;
+      margin-bottom: 1rem;
+    }
+
+    .api-section { margin-bottom: 1.1rem; }
+    .api-section h3 {
+      font-size: 0.88rem;
+      color: #9090b0;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 0.3rem;
+      margin-bottom: 0.6rem;
+    }
+    .api-row {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin: 0.45rem 0;
+      flex-wrap: wrap;
+    }
+    .api-row label {
+      min-width: 160px;
+      font-size: 0.88rem;
+      color: #b0b0c8;
+    }
+    input[type="text"] {
+      flex: 1;
+      min-width: 200px;
+      background: #0a0a1a;
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 0.3rem 0.55rem;
+      border-radius: 4px;
+      font-size: 0.85rem;
+    }
+    input[type="text"]:focus {
+      outline: none;
+      border-color: var(--accent);
+    }
+    code {
+      background: #0a0a1a;
+      border: 1px solid var(--border);
+      padding: 0.15rem 0.4rem;
+      border-radius: 4px;
+      font-size: 0.82rem;
+      color: var(--accent);
+      font-family: "SFMono-Regular", Consolas, monospace;
+    }
+    .api-note {
+      font-size: 0.8rem;
+      color: var(--dim);
+      margin-top: 0.3rem;
+    }
+
+    /* ── Footer ──────────────────────────────────────────── */
+    #footer {
+      text-align: center;
+      padding: 1.2rem;
+      color: var(--dim);
+      font-size: 0.78rem;
+      border-top: 1px solid var(--border);
+    }
+    #footer a { color: #7070a0; text-decoration: none; }
+    #footer a:hover { color: var(--accent); }
+    body.embedded-shell {
+      height: 100dvh;
+      overflow: hidden;
+    }
+    body.embedded-shell #header,
+    body.embedded-shell #dev-panel,
+    body.embedded-shell #footer {
+      display: none !important;
+    }
+    body.embedded-shell #game-wrap {
+      padding: 0;
+      height: 100dvh;
+      align-items: stretch;
+    }
+    body.embedded-shell #canvas {
+      display: block;
+      width: 100%;
+      height: 100dvh;
+      max-width: none;
+      border-radius: 0;
+    }
+    body.embedded-shell #loading-card {
+      inset: 0;
+      transform: none;
+      max-width: none;
+      border: none;
+      border-radius: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+    body.embedded-shell #toolbar {
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      z-index: 11;
+      padding: 0.75rem;
+      background: linear-gradient(180deg, rgba(10,10,18,0) 0%, rgba(10,10,18,0.92) 100%);
+    }
+
+    {{{ STYLE }}}
+  </style>
+</head>
+<body>
+
+  <!-- ══ Header ══════════════════════════════════════════════ -->
+  <div id="header">
+    <h1>🤖 Otto Matic</h1>
+    <p>WebAssembly port — runs in your browser via Emscripten</p>
+  </div>
+
+  <!-- ══ Game area ══════════════════════════════════════════ -->
+  <div id="game-wrap">
+
+    <!-- Loading card -->
+    <div id="loading-card">
+      <img src="logo.png" alt="Otto Matic" onerror="this.style.opacity='0'">
+      <div id="status-text">Initialising…</div>
+      <progress id="progress-bar" value="0" max="1"></progress>
+      <div id="progress-label">Downloading game data…</div>
+    </div>
+
+    <!-- WebGL canvas (invisible while loading) -->
+    <canvas id="canvas" width="640" height="480" oncontextmenu="event.preventDefault()" tabindex="-1"></canvas>
+
+    <!-- Controls shown after load -->
+    <div id="toolbar">
+      <button class="btn" onclick="toggleFullscreen()">⛶ Fullscreen</button>
+      <button class="btn" id="btn-mute" onclick="toggleMute()">🔊 Unmute</button>
+    </div>
+  </div>
+
+  <!-- ══ Level Editor API panel ═══════════════════════════ -->
+  <div id="api-panel">
+    <h2>Level Editor API</h2>
+    <p class="sub">
+      These exported WASM functions can be called from the browser console or
+      injected by your level-editor integration. The game also accepts
+      <code>?level=N</code> and <code>?terrain=PATH</code> URL params to skip
+      menus and load a specific level on startup.
+    </p>
+
+    <!-- Cheats -->
+    <div class="api-section">
+      <h3>Cheats &amp; Debug</h3>
+      <div class="api-row">
+        <label>Fence collisions</label>
+        <button class="btn on" id="btn-fence" onclick="toggleFences()">✓ Enabled</button>
+        <code>OttoMatic_SetFenceCollisions(0 | 1)</code>
+      </div>
+      <div class="api-row">
+        <label>God mode (immortality)</label>
+        <button class="btn" id="btn-god" onclick="toggleGodMode()">✗ Off</button>
+        <code>OttoMatic_SetGodMode(0 | 1)</code>
+      </div>
+      <div class="api-row">
+        <label for="speed-mult">Speed multiplier</label>
+        <input type="number" id="speed-mult" value="1.0" min="0.1" max="10" step="0.5" style="width:5em">
+        <button class="btn" onclick="applySpeed()">Apply</button>
+        <code>OttoMatic_SetSpeedMultiplier(float)</code>
+      </div>
+    </div>
+
+    <!-- Warp / Teleport -->
+    <div class="api-section">
+      <h3>Warp &amp; Navigation</h3>
+      <div class="api-row">
+        <label for="warp-level">Skip to level (0–9)</label>
+        <input type="number" id="warp-level" value="0" min="0" max="9" style="width:4em">
+        <button class="btn" onclick="skipToLevel()">Go</button>
+        <code>OttoMatic_SkipToLevel(int)</code>
+      </div>
+      <div class="api-row">
+        <label for="warp-x">Teleport player</label>
+        <input type="number" id="warp-x" placeholder="X" aria-label="X coordinate" style="width:5em">
+        <input type="number" id="warp-y" placeholder="Y" aria-label="Y coordinate" style="width:5em">
+        <input type="number" id="warp-z" placeholder="Z" aria-label="Z coordinate" style="width:5em">
+        <button class="btn" onclick="warpToCoord()">Warp</button>
+      </div>
+      <div class="api-row">
+        <label>Player state</label>
+        <span id="player-state" style="color:var(--dim);font-size:0.85em">—</span>
+        <button class="btn" onclick="refreshPlayerState()">Refresh</button>
+      </div>
+    </div>
+
+    <!-- Terrain override -->
+    <div class="api-section">
+      <h3>Terrain Override</h3>
+      <div class="api-row">
+        <label for="terrain-path">Terrain file path</label>
+        <input type="text" id="terrain-path" placeholder="/Data/Terrain/Level1.ter">
+        <button class="btn" onclick="applyTerrain()">Apply</button>
+      </div>
+      <div class="api-row">
+        <label for="ter-upload">Upload .ter file</label>
+        <input type="file" id="ter-upload" accept=".ter" style="font-size:0.85em">
+        <button class="btn" onclick="uploadTerrainFile()">Upload &amp; Apply</button>
+      </div>
+      <div class="api-row">
+        <label for="ter-rsrc-upload">Upload .ter.rsrc file</label>
+        <input type="file" id="ter-rsrc-upload" accept=".rsrc" style="font-size:0.85em">
+        <button class="btn" onclick="uploadTerrainRsrcFile()">Upload</button>
+      </div>
+      <p class="api-note">
+        Upload a <code>.ter</code> data fork and its companion <code>.ter.rsrc</code>
+        resource fork to inject custom terrain. Files are written to the WASM virtual
+        filesystem under <code>/Data/Terrain/</code>. You can also use
+        <code>FS.writeFile()</code> from the console and then call
+        <code>OttoMatic_SetTerrainPath</code>.
+      </p>
+    </div>
+
+    <!-- Quick reference -->
+    <div class="api-section">
+      <h3>Quick Reference</h3>
+      <div class="api-row"><code>OttoMatic_SetFenceCollisions(0)</code> — disable fence collisions (pass through fences)</div>
+      <div class="api-row"><code>OttoMatic_SetFenceCollisions(1)</code> — re-enable fence collisions</div>
+      <div class="api-row"><code>OttoMatic_SetGodMode(1)</code> — enable god mode (immortality)</div>
+      <div class="api-row"><code>OttoMatic_SetGodMode(0)</code> — disable god mode</div>
+      <div class="api-row"><code>OttoMatic_SetSpeedMultiplier(2.0)</code> — double movement speed</div>
+      <div class="api-row"><code>OttoMatic_WarpToCoord(x, y, z)</code> — teleport player to world coordinates</div>
+      <div class="api-row"><code>OttoMatic_SkipToLevel(3)</code> — skip to level 3 (0–9)</div>
+      <div class="api-row"><code>OttoMatic_GetCurrentLevel()</code> — returns current level number</div>
+      <div class="api-row"><code>OttoMatic_GetPlayerX/Y/Z()</code> — returns player world coordinate</div>
+      <div class="api-row"><code>OttoMatic_GetPlayerHealth()</code> — returns health (0.0–1.0)</div>
+      <div class="api-row"><code>OttoMatic_GetPlayerLives()</code> — returns remaining lives</div>
+      <div class="api-row"><code>OttoMatic_SetTerrainPath("/Data/Terrain/foo.ter")</code> — override terrain file for current level</div>
+      <div class="api-row" style="margin-top:0.5rem">URL params: <code>?level=3</code> · <code>?terrain=/Data/Terrain/Custom.ter</code></div>
+    </div>
+  </div>
+
+  <!-- ══ Footer ═══════════════════════════════════════════ -->
+  <div id="footer">
+    <p>
+      Otto Matic © 2001 Pangea Software, Inc. &nbsp;|&nbsp;
+      WebAssembly port:
+      <a href="https://github.com/LachlanBWWright/OttoMatic-Android">LachlanBWWright/OttoMatic-Android</a>
+      &nbsp;|&nbsp;
+      <a href="https://github.com/jorio/OttoMatic">Original source: jorio/OttoMatic</a>
+    </p>
+  </div>
+
+  <!-- ══ Emscripten Module config ═════════════════════════ -->
+  <script>
+    // ─────────────────────────────────────────────────────────────────────────
+    // KNOWN BROWSER WARNINGS (NOT ERRORS - GAME WORKS FINE)
+    // ─────────────────────────────────────────────────────────────────────────
+    // 1. ScriptProcessorNode deprecation warning:
+    //    This comes from SDL3's audio backend using deprecated Web Audio API.
+    //    The game's audio works correctly. SDL3 will migrate to AudioWorklet in
+    //    a future release. This is a cosmetic warning only.
+    //
+    // 2. Non-passive event listener warnings (wheel, touchstart, touchmove):
+    //    These come from SDL3's event handling code. They allow the game to
+    //    prevent default browser scrolling behavior. Modern best practice would
+    //    use passive listeners, but SDL3 needs to prevent defaults for game input.
+    //    These warnings don't affect functionality or performance.
+    // ─────────────────────────────────────────────────────────────────────────
+
+    // ── URL param parsing for level-editor integration ────
+    (function () {
+      var params = new URLSearchParams(window.location.search);
+      window._startLevel   = params.has('level')   ? parseInt(params.get('level'),  10) : -1;
+      window._startTerrain = params.get('terrain') || '';
+    })();
+
+    var _fenceEnabled = true;
+    var _muted        = false;
+
+    // ── Global error handler for WASM exceptions ────────────
+    window.addEventListener('error', function(e) {
+      console.error('[OttoMatic] Unhandled error:', e.message, e.filename, e.lineno);
+    });
+    window.addEventListener('unhandledrejection', function(e) {
+      console.error('[OttoMatic] Unhandled promise rejection:', e.reason);
+    });
+
+    // ── Emscripten Module ─────────────────────────────────
+    var _isEmbedded = new URLSearchParams(window.location.search).get('embed') === '1';
+
+    if (_isEmbedded) {
+      document.body.classList.add('embedded-shell');
+    }
+
+    function syncCanvasSize() {
+      if (typeof Module === 'undefined' || !Module.canvas) return;
+      if (document.fullscreenElement || document.webkitFullscreenElement) return;
+      var cssW = Module.canvas.clientWidth;
+      var cssH = Module.canvas.clientHeight;
+      if (!cssW || !cssH) return;
+      var w = Math.round(cssW);
+      var h = Math.round(cssH);
+      if (w && h && (Module.canvas.width !== w || Module.canvas.height !== h)) {
+        if (Module.setCanvasSize) Module.setCanvasSize(w, h);
+        else { Module.canvas.width = w; Module.canvas.height = h; }
+      }
+    }
+
+    var Module = {
+      canvas: document.getElementById('canvas'),
+
+      // Request the high-performance (discrete/dedicated) GPU where available.
+      // Without this, browsers may default to the integrated GPU, causing poor
+      // frame rates even though the CPU is not the bottleneck.
+      webglContextAttributes: {
+        powerPreference: 'high-performance',
+        antialias: false,
+        preserveDrawingBuffer: false
+      },
+
+      // Pass level/terrain as C argc/argv when provided via URL params
+      arguments: (function () {
+        var a = [];
+        if (window._startLevel >= 0)  { a.push('--level',   String(window._startLevel)); }
+        if (window._startTerrain)     { a.push('--terrain', window._startTerrain); }
+        return a;
+      }()),
+
+      print:    function (t) { console.log('[OttoMatic]',  t); },
+      printErr: function (t) {
+        // Log stderr output as warnings for visibility in the console.
+        // Emscripten's LEGACY_GL_EMULATION may intercept console methods; using
+        // string concatenation avoids extra stack traces from those hooks.
+        console.warn('[OttoMatic stderr] ' + t);
+      },
+
+      // Log key lifecycle events for debugging
+      onAbort: function (what) {
+        console.error('[OttoMatic] ABORT: ' + what);
+        var el = document.getElementById('status-text');
+        if (el) el.textContent = 'Error: ' + what;
+        var card = document.getElementById('loading-card');
+        if (card) card.style.display = '';
+      },
+
+      // Catch unhandled exceptions from the WASM module
+      onExit: function (code) {
+        if (code !== 0) {
+          console.error('[OttoMatic] Exited with code: ' + code);
+          var el = document.getElementById('status-text');
+          if (el) el.textContent = 'Game exited with error (code ' + code + ')';
+          var card = document.getElementById('loading-card');
+          if (card) card.style.display = '';
+        }
+      },
+
+      onRuntimeInitialized: function () {
+        console.log('[OttoMatic] Runtime initialized');
+        var el = document.getElementById('status-text');
+        if (el) el.textContent = 'Starting game…';
+
+        // ── Standard PangeaGame API ──────────────────────────────────────
+        // Exposes a consistent interface shared across all Pangea Ports WASM
+        // builds. Set on window inside onRuntimeInitialized so Module is ready.
+        window.PangeaGame = {
+          skipToLevel: function(n) {
+            return Module.ccall('OttoMatic_SkipToLevel', null, ['number'], [n]);
+          },
+          getCurrentLevel: function() {
+            return Module.ccall('OttoMatic_GetCurrentLevel', 'number');
+          },
+          setTerrainPath: function(path) {
+            return Module.ccall('OttoMatic_SetTerrainPath', null, ['string'], [path]);
+          },
+          setFenceCollisions: function(enabled) {
+            return Module.ccall('OttoMatic_SetFenceCollisions', null, ['number'], [enabled ? 1 : 0]);
+          },
+          setSpeedMultiplier: function(mult) {
+            return Module.ccall('OttoMatic_SetSpeedMultiplier', null, ['number'], [mult]);
+          },
+          getPlayerHealth: function() {
+            return Module.ccall('OttoMatic_GetPlayerHealth', 'number');
+          },
+          getPlayerLives: function() {
+            return Module.ccall('OttoMatic_GetPlayerLives', 'number');
+          },
+        };
+        // Convenience aliases (legacy API names remain available)
+        window.OttoMatic_SkipToLevel        = function(n)    { return window.PangeaGame.skipToLevel(n); };
+        window.OttoMatic_GetCurrentLevel    = function()     { return window.PangeaGame.getCurrentLevel(); };
+        window.OttoMatic_SetTerrainPath     = function(p)    { return window.PangeaGame.setTerrainPath(p); };
+        window.OttoMatic_SetFenceCollisions = function(e)    { return window.PangeaGame.setFenceCollisions(e); };
+        window.OttoMatic_SetSpeedMultiplier = function(mult) { return window.PangeaGame.setSpeedMultiplier(mult); };
+        window.OttoMatic_GetPlayerHealth    = function()     { return window.PangeaGame.getPlayerHealth(); };
+        window.OttoMatic_GetPlayerLives     = function()     { return window.PangeaGame.getPlayerLives(); };
+        console.log('[OttoMatic] PangeaGame API ready. Use PangeaGame.skipToLevel(N) to jump to a level.');
+      },
+
+      preRun: [function() {
+        // Suppress the DirCreate error for the config directory
+        // The browser's virtual filesystem doesn't need this directory for the game to work
+        try {
+          // Create parent directories if they don't exist
+          FS.mkdir('/home');
+        } catch (e) { /* ignore if exists */ }
+        try {
+          FS.mkdir('/home/web_user');
+        } catch (e) { /* ignore if exists */ }
+        try {
+          FS.mkdir('/home/web_user/.config');
+        } catch (e) { /* ignore if exists */ }
+        try {
+          FS.mkdir('/home/web_user/.config/OttoMatic');
+        } catch (e) { /* ignore if exists */ }
+      }],
+
+      setStatus: function (text) {
+        var el      = document.getElementById('status-text');
+        var card    = document.getElementById('loading-card');
+        var canvas  = document.getElementById('canvas');
+        var toolbar = document.getElementById('toolbar');
+
+        if (text) {
+          if (el) el.textContent = text;
+        } else {
+          // Loading finished — hide the loading overlay, focus canvas
+          if (card)    card.style.display    = 'none';
+          syncCanvasSize();
+          if (canvas)  canvas.focus();
+          if (toolbar) toolbar.style.display  = 'flex';
+        }
+      },
+
+      monitorRunDependencies: function (left) {
+        var bar   = document.getElementById('progress-bar');
+        var label = document.getElementById('progress-label');
+        if (!bar) return;
+        if (left === 0) {
+          bar.value = 1;
+          if (label) label.textContent = 'Preparing…';
+          console.log('[OttoMatic] All dependencies loaded');
+        } else {
+          // Heuristic: each dependency counts for ~2% progress
+          bar.value = Math.max(0, 1 - (left * 0.02));
+        }
+      }
+    };
+
+    // ── UI helpers ────────────────────────────────────────
+
+    function toggleFences() {
+      _fenceEnabled = !_fenceEnabled;
+      var btn = document.getElementById('btn-fence');
+      try {
+        Module.ccall('OttoMatic_SetFenceCollisions', null, ['number'],
+                     [_fenceEnabled ? 1 : 0]);
+      } catch (e) {
+        console.warn('Module not ready yet:', e);
+      }
+      if (btn) {
+        btn.textContent = _fenceEnabled ? '✓ Enabled' : '✗ Disabled';
+        btn.className   = 'btn' + (_fenceEnabled ? ' on' : ' danger');
+      }
+    }
+
+    function applyTerrain() {
+      var path = (document.getElementById('terrain-path') || {}).value || '';
+      if (!path) return;
+      try {
+        Module.ccall('OttoMatic_SetTerrainPath', null, ['string'], [path]);
+      } catch (e) {
+        console.warn('Module not ready yet:', e);
+      }
+    }
+
+    var _godMode = false;
+    function toggleGodMode() {
+      _godMode = !_godMode;
+      var btn = document.getElementById('btn-god');
+      try {
+        Module.ccall('OttoMatic_SetGodMode', null, ['number'], [_godMode ? 1 : 0]);
+      } catch (e) {
+        console.warn('Module not ready yet:', e);
+      }
+      if (btn) {
+        btn.textContent = _godMode ? '✓ On' : '✗ Off';
+        btn.className   = 'btn' + (_godMode ? ' on' : '');
+      }
+    }
+
+    function applySpeed() {
+      var val = parseFloat((document.getElementById('speed-mult') || {}).value) || 1.0;
+      try {
+        Module.ccall('OttoMatic_SetSpeedMultiplier', null, ['number'], [val]);
+      } catch (e) {
+        console.warn('Module not ready yet:', e);
+      }
+    }
+
+    function skipToLevel() {
+      var lvl = parseInt((document.getElementById('warp-level') || {}).value, 10);
+      if (isNaN(lvl)) return;
+      try {
+        Module.ccall('OttoMatic_SkipToLevel', null, ['number'], [lvl]);
+      } catch (e) {
+        console.warn('Module not ready yet:', e);
+      }
+    }
+
+    function warpToCoord() {
+      var x = parseFloat((document.getElementById('warp-x') || {}).value) || 0;
+      var y = parseFloat((document.getElementById('warp-y') || {}).value) || 0;
+      var z = parseFloat((document.getElementById('warp-z') || {}).value) || 0;
+      try {
+        Module.ccall('OttoMatic_WarpToCoord', null, ['number','number','number'], [x, y, z]);
+      } catch (e) {
+        console.warn('Module not ready yet:', e);
+      }
+    }
+
+    function refreshPlayerState() {
+      var span = document.getElementById('player-state');
+      if (!span) return;
+      try {
+        var x     = Module.ccall('OttoMatic_GetPlayerX', 'number', [], []);
+        var y     = Module.ccall('OttoMatic_GetPlayerY', 'number', [], []);
+        var z     = Module.ccall('OttoMatic_GetPlayerZ', 'number', [], []);
+        var hp    = Module.ccall('OttoMatic_GetPlayerHealth', 'number', [], []);
+        var lives = Module.ccall('OttoMatic_GetPlayerLives', 'number', [], []);
+        var lvl   = Module.ccall('OttoMatic_GetCurrentLevel', 'number', [], []);
+        span.textContent = 'Level ' + lvl + ' | Pos: (' + x.toFixed(0) + ', ' + y.toFixed(0) + ', ' + z.toFixed(0) + ') | HP: ' + (hp * 100).toFixed(0) + '% | Lives: ' + lives;
+      } catch (e) {
+        span.textContent = 'Not available yet';
+      }
+    }
+
+    function toggleFullscreen() {
+      var c = document.getElementById('canvas');
+      if (!c) return;
+      if (document.fullscreenElement) {
+        document.exitFullscreen();
+      } else {
+        c.requestFullscreen().catch(function (e) { console.warn(e); });
+      }
+    }
+
+    function uploadTerrainFile() {
+      var input = document.getElementById('ter-upload');
+      if (!input || !input.files.length) return;
+      var file = input.files[0];
+      var reader = new FileReader();
+      reader.onload = function(e) {
+        var data = new Uint8Array(e.target.result);
+        var vfsPath = '/Data/Terrain/' + file.name;
+        try {
+          Module.FS.writeFile(vfsPath, data);
+          Module.ccall('OttoMatic_SetTerrainPath', null, ['string'], [vfsPath]);
+          console.log('[LevelEditor] Uploaded terrain: ' + vfsPath + ' (' + data.length + ' bytes)');
+          var pathInput = document.getElementById('terrain-path');
+          if (pathInput) pathInput.value = vfsPath;
+        } catch (err) {
+          console.error('Upload failed:', err);
+        }
+      };
+      reader.readAsArrayBuffer(file);
+    }
+
+    function uploadTerrainRsrcFile() {
+      var input = document.getElementById('ter-rsrc-upload');
+      if (!input || !input.files.length) return;
+      var file = input.files[0];
+      var reader = new FileReader();
+      reader.onload = function(e) {
+        var data = new Uint8Array(e.target.result);
+        // Resource forks are stored alongside the data fork with .rsrc extension
+        var vfsPath = '/Data/Terrain/' + file.name;
+        try {
+          Module.FS.writeFile(vfsPath, data);
+          console.log('[LevelEditor] Uploaded resource fork: ' + vfsPath + ' (' + data.length + ' bytes)');
+        } catch (err) {
+          console.error('Upload failed:', err);
+        }
+      };
+      reader.readAsArrayBuffer(file);
+    }
+
+    function toggleMute() {
+      _muted = !_muted;
+      var btn = document.getElementById('btn-mute');
+      // Emscripten SDL audio can be suspended via the AudioContext
+      try {
+        var ctx = Module.SDL2 && Module.SDL2.audioContext;
+        if (ctx) {
+          if (_muted) ctx.suspend(); else ctx.resume();
+        }
+      } catch (e) { /* ignore */ }
+      if (btn) btn.textContent = _muted ? '🔇 Muted' : '🔊 Unmute';
+    }
+
+    ['resize','fullscreenchange','webkitfullscreenchange','mozfullscreenchange'].forEach(function(evt) {
+      window.addEventListener(evt, function() {
+        requestAnimationFrame(syncCanvasSize);
+        // And another one for good measure (some browsers lag)
+        requestAnimationFrame(function() { requestAnimationFrame(syncCanvasSize); });
+        // Extra delayed sync: fullscreen exit layout may not settle within two rAFs
+        setTimeout(syncCanvasSize, 100);
+      });
+    });
+
+    // Use ResizeObserver for more reliable canvas sizing
+    if (typeof ResizeObserver !== 'undefined' && Module.canvas) {
+      new ResizeObserver(function() {
+        window.requestAnimationFrame(syncCanvasSize);
+      }).observe(Module.canvas);
+    }
+  </script>
+
+  {{{ SCRIPT }}}
+</body>
+</html>

@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bugdom 2 – WebAssembly</title>
+  <style>
+    :root {
+      --accent: #6fbf6f;
+      --bg:     #0d0d0d;
+      --panel:  #111a11;
+      --border: #1f3a1f;
+      --text:   #d0d0d0;
+      --dim:    #666;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: system-ui, -apple-system, 'Segoe UI', Arial, sans-serif;
+      min-height: 100vh;
+      line-height: 1.5;
+    }
+
+    header {
+      background: linear-gradient(180deg, #0a1a0a 0%, var(--bg) 100%);
+      border-bottom: 1px solid var(--border);
+      padding: 24px 32px 20px 32px;
+      display: flex;
+      align-items: center;
+      gap: 24px;
+    }
+
+    header h1 {
+      font-size: 2.2em;
+      color: var(--accent);
+      text-shadow: 0 0 24px #2a6a2a;
+    }
+
+    header p {
+      font-size: 0.9em;
+      color: var(--dim);
+    }
+
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 32px 24px;
+    }
+
+    /* ── Game Frame ──────────────────────────────────────────── */
+    .game-frame-wrapper {
+      background: #000;
+      border: 2px solid var(--border);
+      border-radius: 6px;
+      overflow: hidden;
+      margin-bottom: 32px;
+      position: relative;
+      aspect-ratio: 4/3;
+      max-height: 70vh;
+    }
+
+    .game-frame-wrapper iframe {
+      width: 100%;
+      height: 100%;
+      border: none;
+      display: block;
+    }
+
+    .play-overlay {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: rgba(0,10,0,0.85);
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .play-overlay:hover { background: rgba(0,10,0,0.70); }
+
+    .play-btn {
+      width: 80px;
+      height: 80px;
+      border-radius: 50%;
+      background: #2a7a2a;
+      border: 3px solid var(--accent);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 2.5em;
+      color: #d0ffd0;
+      margin-bottom: 16px;
+      transition: transform 0.15s, background 0.15s;
+    }
+
+    .play-overlay:hover .play-btn {
+      transform: scale(1.1);
+      background: #3a9a3a;
+    }
+
+    .play-label {
+      font-size: 1.1em;
+      color: #9fe09f;
+    }
+
+    .game-loaded .play-overlay { display: none; }
+
+    /* ── Sections ─────────────────────────────────────────────── */
+    section { margin-bottom: 28px; }
+
+    h2 {
+      font-size: 1.2em;
+      color: var(--accent);
+      margin-bottom: 10px;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 6px;
+    }
+
+    p, li {
+      line-height: 1.7;
+      font-size: 0.95em;
+      color: #bbb;
+    }
+
+    ul { padding-left: 20px; }
+
+    code, pre {
+      font-family: 'Consolas', 'Courier New', monospace;
+      background: #111;
+      border: 1px solid #2a3a2a;
+      border-radius: 3px;
+      padding: 2px 6px;
+      font-size: 0.88em;
+      color: #9fe09f;
+    }
+
+    pre {
+      padding: 12px 16px;
+      overflow-x: auto;
+      line-height: 1.6;
+      display: block;
+    }
+
+    /* ── Level Grid ───────────────────────────────────────────── */
+    .level-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+      gap: 8px;
+      margin-top: 8px;
+    }
+
+    .level-card {
+      background: var(--panel);
+      border: 1px solid #2a3a2a;
+      border-radius: 4px;
+      padding: 8px 12px;
+      font-size: 0.85em;
+      color: #9fe09f;
+      text-decoration: none;
+      transition: background 0.15s, border-color 0.15s;
+    }
+
+    .level-card:hover {
+      background: #1a2a1a;
+      border-color: #4a7a4a;
+    }
+
+    .level-num {
+      font-size: 0.75em;
+      color: #555;
+    }
+
+    /* ── Footer ───────────────────────────────────────────────── */
+    footer {
+      text-align: center;
+      padding: 20px;
+      font-size: 0.8em;
+      color: #444;
+      border-top: 1px solid #1a1a1a;
+    }
+    footer a { color: #5a9f5a; }
+  </style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>🐛 Bugdom 2</h1>
+    <p>WebAssembly Build &nbsp;·&nbsp; © 2002 Pangea Software &nbsp;·&nbsp; Open-source port</p>
+  </div>
+</header>
+
+<div class="container">
+
+  <!-- ── Game Frame ──────────────────────────────────────────── -->
+  <div class="game-frame-wrapper" id="game-wrapper">
+    <div class="play-overlay" id="play-overlay" onclick="loadGame()">
+      <div class="play-btn">▶</div>
+      <span class="play-label">Click to Play</span>
+    </div>
+    <iframe id="game-iframe" src="" allow="autoplay" title="Bugdom 2 WebAssembly"></iframe>
+  </div>
+
+  <!-- ── Quick Level Jump ─────────────────────────────────────── -->
+  <section>
+    <h2>Jump to Level</h2>
+    <p>Start the game directly at a specific level by clicking below (skips all menus):</p>
+    <div class="level-grid" id="level-grid"></div>
+  </section>
+
+  <!-- ── URL Parameters ──────────────────────────────────────── -->
+  <section>
+    <h2>URL Parameters</h2>
+    <ul>
+      <li><code>?level=N</code> – Start immediately at level N (0–9), skipping all title screens and menus.</li>
+    </ul>
+    <p style="margin-top:8px">Example: <code id="level-url-example"></code></p>
+  </section>
+
+  <!-- ── JavaScript API ──────────────────────────────────────── -->
+  <section>
+    <h2>JavaScript Cheat / Debug API</h2>
+    <p>Open the browser console while the game is running and use these commands via the <code>gameAPI</code> helper (initialized automatically when the game loads):</p>
+    <pre>// Fence collision
+gameAPI.setFenceCollisionEnabled(false);   // disable (walk through fences)
+gameAPI.setFenceCollisionEnabled(true);    // re-enable
+gameAPI.getFenceCollisionEnabled();         // query (returns true/false)
+
+// Player health and lives
+gameAPI.setPlayerHealth(1.0);              // full health (0.0–1.0)
+gameAPI.setPlayerLives(9);                 // set lives count
+gameAPI.fullHeal();                        // full health + lives + map
+
+// Level control
+gameAPI.winLevel();                        // immediately complete current level
+gameAPI.setStartLevel(3);                  // queue jump to level 3</pre>
+  </section>
+
+  <!-- ── Level File Override ─────────────────────────────────── -->
+  <section>
+    <h2>Level File Override</h2>
+    <p>Replace any game data file at runtime (useful for testing custom level files):</p>
+    <pre>// Fetch your custom terrain file and write it into the virtual filesystem
+fetch('my_custom_level.ter')
+  .then(r => r.arrayBuffer())
+  .then(buf => {
+    var gameFrame = document.getElementById('game-iframe');
+    var M = gameFrame.contentWindow.Module;
+    M.FS.writeFile('Data/Terrain/Level1_Garden.ter', new Uint8Array(buf));
+  });</pre>
+    <p style="margin-top:8px">
+      Call this <em>before</em> the level loads (e.g. right after the game starts with <code>?level=0</code>).
+      The game will use your file instead of the bundled one.
+    </p>
+  </section>
+
+</div>
+
+<footer>
+  Bugdom 2 &nbsp;·&nbsp; © 2002 Pangea Software, Inc. &nbsp;·&nbsp;
+  Open-source port by Iliyas Jorio &nbsp;·&nbsp;
+  <a href="https://github.com/LachlanBWWright/Bugdom2-Android">GitHub</a>
+</footer>
+
+<script>
+  var GAME_URL = 'Bugdom2.html';
+
+  var levels = [
+    { n: 0, name: 'Gnome Garden'  },
+    { n: 1, name: 'Sidewalk'      },
+    { n: 2, name: 'Fido'          },
+    { n: 3, name: 'Plumbing'      },
+    { n: 4, name: 'Playroom'      },
+    { n: 5, name: 'Closet'        },
+    { n: 6, name: 'Gutter'        },
+    { n: 7, name: 'Garbage'       },
+    { n: 8, name: 'Balsa Plane'   },
+    { n: 9, name: 'Park'          },
+  ];
+
+  // Build level cards
+  var grid = document.getElementById('level-grid');
+  levels.forEach(function(lv) {
+    var a = document.createElement('a');
+    a.className = 'level-card';
+    a.href = '#';
+    a.innerHTML = '<span class="level-num">Level ' + lv.n + '</span><br>' + lv.name;
+    a.addEventListener('click', function(e) {
+      e.preventDefault();
+      loadGame(lv.n);
+    });
+    grid.appendChild(a);
+  });
+
+  // Example URL
+  document.getElementById('level-url-example').textContent =
+    window.location.href.split('?')[0] + '?level=3';
+
+  function loadGame(level) {
+    var src = GAME_URL;
+    if (level !== undefined) src += '?level=' + level;
+    document.getElementById('game-iframe').src = src;
+    document.getElementById('game-wrapper').classList.add('game-loaded');
+
+    // Set up gameAPI proxy once the iframe's Module is ready
+    var iframe = document.getElementById('game-iframe');
+    iframe.addEventListener('load', function() {
+      var attempts = 0;
+      function trySetupAPI() {
+        var M = iframe.contentWindow && iframe.contentWindow.Module;
+        if (M && M.ccall) {
+          window.gameAPI = {
+            setFenceCollisionEnabled: function(en) {
+              M.ccall('SetFenceCollisionEnabled', null, ['number'], [en ? 1 : 0]);
+            },
+            getFenceCollisionEnabled: function() {
+              return M.ccall('GetFenceCollisionEnabled', 'number', [], []) !== 0;
+            },
+            setPlayerHealth: function(h) {
+              M.ccall('SetPlayerHealth', null, ['number'], [h]);
+            },
+            setPlayerLives: function(n) {
+              M.ccall('SetPlayerLives', null, ['number'], [n]);
+            },
+            fullHeal: function() {
+              M.ccall('FullHeal', null, [], []);
+            },
+            winLevel: function() {
+              M.ccall('WinLevel', null, [], []);
+            },
+            setStartLevel: function(n) {
+              M.ccall('SetStartLevel', null, ['number'], [n]);
+            }
+          };
+          console.log('[Bugdom2] gameAPI ready. Commands: setFenceCollisionEnabled, setPlayerHealth, setPlayerLives, fullHeal, winLevel, setStartLevel');
+        } else if (++attempts < 100) {
+          setTimeout(trySetupAPI, 200);
+        }
+      }
+      trySetupAPI();
+    });
+  }
+</script>
+</body>
+</html>

@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Play Bugdom in your browser — a classic 3D platformer by Pangea Software, now running via WebAssembly. No installation required.">
+  <meta property="og:title" content="Bugdom – Play in Browser">
+  <meta property="og:description" content="Control Rollie McFly in this classic 3D platformer — now playable in your browser via WebAssembly.">
+  <meta property="og:image" content="screenshot.webp">
+  <meta property="og:type" content="website">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🐛</text></svg>">
+  <title>Bugdom – Play in Browser</title>
+  <style>
+    :root {
+      --bg: #0d1117;
+      --card: #161b22;
+      --border: #30363d;
+      --accent: #ffd700;
+      --text: #e6edf3;
+      --muted: #8b949e;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      line-height: 1.6;
+    }
+    header {
+      background: var(--card);
+      border-bottom: 1px solid var(--border);
+      padding: 24px 32px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+    header h1 {
+      font-size: 2em;
+      color: var(--accent);
+    }
+    header p { color: var(--muted); }
+    .hero {
+      text-align: center;
+      padding: 48px 32px;
+      background: linear-gradient(180deg, #1c2333 0%, var(--bg) 100%);
+    }
+    .hero h2 { font-size: 1.8em; margin-bottom: 12px; }
+    .hero p { color: var(--muted); margin-bottom: 24px; max-width: 600px; margin-inline: auto; }
+    .btn {
+      display: inline-block;
+      padding: 14px 32px;
+      background: var(--accent);
+      color: #000;
+      text-decoration: none;
+      font-weight: bold;
+      font-size: 1.1em;
+      border-radius: 8px;
+      transition: opacity 0.2s;
+    }
+    .btn:hover { opacity: 0.85; }
+    .btn-secondary {
+      background: var(--card);
+      color: var(--text);
+      border: 1px solid var(--border);
+      margin-left: 12px;
+    }
+    .screenshot {
+      display: block;
+      max-width: 800px;
+      width: 100%;
+      margin: 32px auto;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+    }
+    .container { max-width: 960px; margin: 0 auto; padding: 0 32px; }
+    .section { padding: 48px 0; }
+    .section h2 { font-size: 1.4em; margin-bottom: 16px; color: var(--accent); }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 20px;
+    }
+    .card h3 { margin-bottom: 8px; }
+    .card p { color: var(--muted); font-size: 0.9em; }
+    code {
+      background: #21262d;
+      color: #e6edf3;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-family: monospace;
+      font-size: 0.9em;
+    }
+    pre {
+      background: #161b22;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 16px;
+      overflow-x: auto;
+      margin: 12px 0;
+    }
+    pre code { background: none; padding: 0; }
+    .levels-table { width: 100%; border-collapse: collapse; }
+    .levels-table th, .levels-table td {
+      padding: 8px 12px;
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+    }
+    .levels-table th { color: var(--accent); font-weight: 600; }
+    footer {
+      text-align: center;
+      padding: 32px;
+      color: var(--muted);
+      border-top: 1px solid var(--border);
+      font-size: 0.9em;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>🐛 Bugdom</h1>
+    <p>A classic 3D platformer — now playable in your browser via WebAssembly</p>
+  </div>
+</header>
+
+<div class="hero">
+  <h2>Play Bugdom in Your Browser</h2>
+  <p>
+    Control Rollie McFly, a roly-poly bug on a mission to free the garden from the fire ants.
+    No installation required — powered by WebAssembly.
+  </p>
+  <a href="game.html" class="btn">▶ Play Now</a>
+  <a href="game.html?dev" class="btn btn-secondary">🛠 Developer Mode</a>
+
+  <img src="screenshot.webp" alt="Bugdom screenshot" class="screenshot"
+    onerror="this.style.display='none'">
+</div>
+
+<div class="container">
+
+  <div class="section">
+    <h2>Level Select</h2>
+    <p>Jump directly to any level using the URL <code>?level=N</code> parameter.</p>
+    <table class="levels-table">
+      <thead>
+        <tr><th>#</th><th>Level</th><th>Type</th><th>Direct Link</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>0</td><td>Training</td><td>Lawn</td><td><a href="game.html?level=0">Play →</a></td></tr>
+        <tr><td>1</td><td>Lawn</td><td>Lawn</td><td><a href="game.html?level=1">Play →</a></td></tr>
+        <tr><td>2</td><td>Pond</td><td>Pond</td><td><a href="game.html?level=2">Play →</a></td></tr>
+        <tr><td>3</td><td>Forest</td><td>Forest</td><td><a href="game.html?level=3">Play →</a></td></tr>
+        <tr><td>4</td><td>Hive Attack</td><td>Hive</td><td><a href="game.html?level=4">Play →</a></td></tr>
+        <tr><td>5</td><td>Bee Hive</td><td>Hive</td><td><a href="game.html?level=5">Play →</a></td></tr>
+        <tr><td>6</td><td>Queen Bee</td><td>Hive (Boss)</td><td><a href="game.html?level=6">Play →</a></td></tr>
+        <tr><td>7</td><td>Night Attack</td><td>Night</td><td><a href="game.html?level=7">Play →</a></td></tr>
+        <tr><td>8</td><td>Ant Hill</td><td>Anthill</td><td><a href="game.html?level=8">Play →</a></td></tr>
+        <tr><td>9</td><td>Ant King</td><td>Anthill (Boss)</td><td><a href="game.html?level=9">Play →</a></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="section">
+    <h2>Level Editor Integration</h2>
+    <div class="grid">
+      <div class="card">
+        <h3>🎯 Direct Level Load</h3>
+        <p>Add <code>?level=N</code> to the URL to skip all menus and load straight into level N.</p>
+      </div>
+      <div class="card">
+        <h3>🗺 Custom Terrain</h3>
+        <p>Override the terrain file with <code>?terrainFile=:Terrain:Custom.ter</code>. The file must be placed in Emscripten's virtual filesystem.</p>
+      </div>
+      <div class="card">
+        <h3>🛠 Developer Mode</h3>
+        <p>Add <code>?dev</code> to show the developer toolbar with level select, terrain override, and cheat toggles.</p>
+      </div>
+      <div class="card">
+        <h3>🚧 Fence Collision</h3>
+        <p>Add <code>?noFenceCollision=1</code> to disable fence collisions for unobstructed exploration.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>JavaScript API</h2>
+    <p>When running in the browser, Bugdom exposes a JavaScript API for external tools and level editors:</p>
+    <pre><code>// Fence collision control
+Module.ccall('BugdomSetFenceCollision', null, ['number'], [0]); // disable fences
+Module.ccall('BugdomSetFenceCollision', null, ['number'], [1]); // enable fences
+Module.ccall('BugdomGetFenceCollision', 'number', [], []);      // 1=enabled, 0=disabled
+
+// Query current level (0-9)
+Module.ccall('BugdomGetCurrentLevel', 'number', [], []);
+
+// Override terrain file for the next level load
+// colonPath is a Mac-style colon-path relative to the Data directory
+// e.g. ':Terrain:MyLevel.ter'
+Module.ccall('BugdomSetTerrainOverride', null, ['string'], [':Terrain:MyLevel.ter']);
+
+// Pre-set options before game starts (via window globals before page load):
+window.BUGDOM_START_LEVEL = 3;                    // jump to level 3
+window.BUGDOM_TERRAIN_FILE = ':Terrain:My.ter';   // custom terrain
+window.BUGDOM_NO_FENCE_COLLISION = true;          // disable fence collisions
+</code></pre>
+  </div>
+
+  <div class="section">
+    <h2>Controls</h2>
+    <div class="grid">
+      <div class="card">
+        <h3>🖱 Mouse</h3>
+        <p>Move mouse to control camera. Click to capture mouse. Press <code>Escape</code> to release.</p>
+      </div>
+      <div class="card">
+        <h3>⌨️ Keyboard</h3>
+        <p><code>WASD</code> / Arrow keys: Move<br>
+           <code>Space</code>: Jump<br>
+           <code>Escape</code>: Pause</p>
+      </div>
+      <div class="card">
+        <h3>🎮 Gamepad</h3>
+        <p>Standard gamepad controllers are supported via the browser's Gamepad API.</p>
+      </div>
+      <div class="card">
+        <h3>🔊 Audio</h3>
+        <p>Click the canvas to interact with the page and enable audio (browser requirement).</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>Documentation</h2>
+    <div class="grid">
+      <div class="card">
+        <h3>📖 Game Manual</h3>
+        <p>Original instruction manuals:
+          <a href="Instructions.pdf" style="color:var(--accent)">EN</a> ·
+          <a href="Instructions-DE.pdf" style="color:var(--accent)">DE</a> ·
+          <a href="Instructions-FR.pdf" style="color:var(--accent)">FR</a> ·
+          <a href="Instructions-ES.pdf" style="color:var(--accent)">ES</a> ·
+          <a href="Instructions-IT.pdf" style="color:var(--accent)">IT</a> ·
+          <a href="Instructions-JA.pdf" style="color:var(--accent)">JA</a> ·
+          <a href="Instructions-SV.pdf" style="color:var(--accent)">SV</a>
+        </p>
+      </div>
+      <div class="card">
+        <h3>⚛️ React Integration</h3>
+        <p>Embed the game in a React app. See the
+          <a href="https://github.com/LachlanBWWright/Bugdom-android/blob/master/docs/REACT-INTEGRATION-GUIDE.md"
+             style="color:var(--accent)">React Integration Guide</a>.
+        </p>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<footer>
+  <p>Bugdom © 1999 Pangea Software, Inc. &mdash; Source port by Iliyas Jorio &mdash; Android &amp; WebAssembly port</p>
+  <p style="margin-top:8px">
+    <a href="https://github.com/LachlanBWWright/Bugdom-android" style="color:var(--muted)">GitHub</a>
+    &middot;
+    <a href="https://github.com/LachlanBWWright/OttoMatic-Android/blob/master/docs/SDL-WASM-PORTING-GUIDE.md"
+       style="color:var(--muted)">SDL WASM Porting Guide</a>
+  </p>
+</footer>
+
+</body>
+</html>

@@ -1,0 +1,542 @@
+<!DOCTYPE html>
+<html lang="en-us">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Billy Frontier WebAssembly build – a Wild West action game by Pangea Software running in the browser.">
+  <title>Billy Frontier &mdash; WebAssembly</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: #1a1a1a;
+      color: #eee;
+      font-family: system-ui, -apple-system, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
+    }
+    header {
+      width: 100%;
+      background: #111;
+      padding: 8px 16px;
+      text-align: center;
+      font-size: 1.1em;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      border-bottom: 2px solid #c0922a;
+    }
+
+    /* Game area — uses relative positioning for loading overlay */
+    #game-wrap {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 16px;
+      position: relative;
+    }
+
+    /* Loading card — overlays the canvas until game starts.
+       Canvas stays visible with real dimensions so SDL3 can read its size. */
+    #loading-card {
+      position: absolute;
+      top: 16px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 10;
+      width: 100%;
+      max-width: 660px;
+      background: #222;
+      border: 1px solid #444;
+      border-radius: 10px;
+      padding: 2rem 1.5rem;
+      text-align: center;
+    }
+    #status-text {
+      font-size: 1.05rem;
+      color: #c0922a;
+      min-height: 1.6rem;
+    }
+    #progress-bar {
+      width: 100%;
+      max-width: 420px;
+      height: 6px;
+      margin: 0.75rem auto 0.35rem;
+      accent-color: #c0922a;
+    }
+    #progress-label { font-size: 0.78rem; color: #888; }
+
+    /* Canvas — always in the DOM with proper dimensions for SDL3 */
+    canvas.emscripten {
+      border: 0;
+      background: black;
+      max-width: 100%;
+      max-height: 80vh;
+      display: block;
+      border-radius: 6px;
+      outline: none;
+    }
+
+    /* Fullscreen: letterbox the canvas rather than stretching it.
+       width:auto preserves the canvas pixel aspect ratio. */
+    canvas.emscripten:fullscreen,
+    canvas.emscripten:-webkit-full-screen,
+    canvas.emscripten:-moz-full-screen {
+      width: auto !important;
+      height: 100vh !important;
+      max-width: 100vw !important;
+      max-height: 100vh !important;
+      border-radius: 0 !important;
+    }
+
+    /* Toolbar shown after load */
+    #toolbar {
+      display: none;
+      gap: 8px;
+      padding: 8px 0;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+    .toolbar-btn {
+      background: #333;
+      color: #eee;
+      border: 1px solid #555;
+      border-radius: 4px;
+      padding: 4px 12px;
+      cursor: pointer;
+      font-size: 0.85em;
+    }
+    .toolbar-btn:hover { background: #444; border-color: #c0922a; }
+
+    #output { display: none; }
+    #controls {
+      background: #222;
+      border: 1px solid #444;
+      border-radius: 6px;
+      padding: 12px 16px;
+      margin: 8px 0 16px 0;
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      justify-content: center;
+      align-items: center;
+      font-size: 0.85em;
+    }
+    #controls label { color: #ccc; }
+    #controls select, #controls button, #controls input[type=file] {
+      background: #333;
+      color: #eee;
+      border: 1px solid #555;
+      border-radius: 4px;
+      padding: 4px 8px;
+      cursor: pointer;
+    }
+    #controls button:hover { background: #444; }
+    footer {
+      width: 100%;
+      text-align: center;
+      padding: 12px;
+      color: #555;
+      font-size: 0.78em;
+      border-top: 1px solid #333;
+    }
+    footer a { color: #888; text-decoration: none; }
+    footer a:hover { color: #c0922a; }
+    header a.back-link {
+      color: #888;
+      text-decoration: none;
+      float: left;
+    }
+    header a.back-link:hover { color: #c0922a; }
+    body.embedded-shell {
+      height: 100dvh;
+      overflow: hidden;
+    }
+    body.embedded-shell header,
+    body.embedded-shell footer,
+    body.embedded-shell #controls {
+      display: none !important;
+    }
+    body.embedded-shell #game-wrap {
+      width: 100%;
+      padding: 0;
+      height: 100dvh;
+      align-items: stretch;
+    }
+    body.embedded-shell canvas.emscripten {
+      width: 100%;
+      height: 100dvh;
+      max-width: none;
+      max-height: none;
+      border-radius: 0;
+    }
+    body.embedded-shell #loading-card {
+      inset: 0;
+      transform: none;
+      max-width: none;
+      border: none;
+      border-radius: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+    body.embedded-shell #toolbar {
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      z-index: 11;
+      padding: 12px;
+      background: linear-gradient(180deg, rgba(26,26,26,0) 0%, rgba(26,26,26,0.92) 100%);
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <a class="back-link" href="../">&#x2190; Back</a>
+    Billy Frontier &mdash; WebAssembly
+  </header>
+
+  <div id="game-wrap">
+    <!-- Loading card overlays the canvas until game is ready -->
+    <div id="loading-card">
+      <div id="status-text">Initializing&hellip;</div>
+      <progress id="progress-bar" value="0" max="1"></progress>
+      <div id="progress-label">Downloading game data&hellip;</div>
+    </div>
+
+    <!-- WebGL canvas — always visible with real dimensions so SDL3 can size the window -->
+    <canvas class="emscripten" id="canvas" width="640" height="480"
+            oncontextmenu="event.preventDefault()" tabindex="-1"></canvas>
+
+    <!-- Toolbar shown after load -->
+    <div id="toolbar">
+      <button class="toolbar-btn" onclick="toggleFullscreen()">&#x26F6; Fullscreen</button>
+      <button class="toolbar-btn" id="btn-mute" onclick="toggleMute()">&#x1F50A; Sound</button>
+    </div>
+  </div>
+
+  <!-- Level Editor Controls -->
+  <div id="controls">
+    <label for="level-select">Level:</label>
+    <select id="level-select">
+      <option value="-1">Normal startup</option>
+      <option value="0">Town Duel 1</option>
+      <option value="1">Town Shootout</option>
+      <option value="2">Town Duel 2</option>
+      <option value="3">Town Stampede</option>
+      <option value="4">Town Duel 3</option>
+      <option value="5">Target Practice 1</option>
+      <option value="6">Swamp Duel 1</option>
+      <option value="7">Swamp Shootout</option>
+      <option value="8">Swamp Duel 2</option>
+      <option value="9">Swamp Stampede</option>
+      <option value="10">Swamp Duel 3</option>
+      <option value="11">Target Practice 2</option>
+    </select>
+
+    <button id="btn-set-level">Set Level &amp; Restart</button>
+
+    <label>
+      <input type="checkbox" id="chk-fence"> Fence Collision
+    </label>
+
+    <label for="terrain-file">Override Terrain:</label>
+    <input type="file" id="terrain-file" accept=".ter">
+  </div>
+
+  <textarea id="output" rows="8"></textarea>
+
+  <footer>
+    &copy; 2003 Pangea Software, Inc. &nbsp;|&nbsp;
+    <a href="https://github.com/LachlanBWWright/BillyFrontier-Android">Source on GitHub</a>
+  </footer>
+
+  {{{ SCRIPT }}}
+
+  <script>
+    // ─────────────────────────────────────────────────────────────────────────
+    // KNOWN BROWSER WARNINGS (NOT ERRORS — GAME WORKS FINE)
+    // ─────────────────────────────────────────────────────────────────────────
+    // 1. ScriptProcessorNode deprecation: SDL3 audio backend uses deprecated
+    //    Web Audio API. Audio works correctly; SDL3 will migrate to AudioWorklet.
+    // 2. Non-passive event listeners (wheel, touchstart, touchmove): SDL3 needs
+    //    to prevent default browser scrolling for game input.
+    // ─────────────────────────────────────────────────────────────────────────
+
+    // ── Global error handler ──────────────────────────────
+    window.addEventListener('error', function(e) {
+      console.error('[BillyFrontier] Unhandled error:', e.message, e.filename, e.lineno);
+    });
+    window.addEventListener('unhandledrejection', function(e) {
+      console.error('[BillyFrontier] Unhandled promise rejection:', e.reason);
+    });
+
+    var _isEmbedded = new URLSearchParams(window.location.search).get('embed') === '1';
+    if (_isEmbedded) {
+      document.body.classList.add('embedded-shell');
+    }
+
+    function syncCanvasSize() {
+      if (typeof Module === 'undefined' || !Module.canvas) return;
+      // Skip canvas resize while in fullscreen: the browser CSS-scales the
+      // canvas content to fill the screen, preventing zoom glitches on toggle.
+      if (document.fullscreenElement || document.webkitFullscreenElement) return;
+      var cssW = Module.canvas.clientWidth;
+      var cssH = Module.canvas.clientHeight;
+      if (!cssW || !cssH) return;  // layout not settled yet
+      var w = Math.round(cssW);
+      var h = Math.round(cssH);
+      if (w && h && (Module.canvas.width !== w || Module.canvas.height !== h)) {
+        if (Module.setCanvasSize) Module.setCanvasSize(w, h);
+        else { Module.canvas.width = w; Module.canvas.height = h; }
+      }
+    }
+
+    // ── Emscripten Module ─────────────────────────────────
+    var Module = {
+      canvas: document.getElementById('canvas'),
+
+      // Request high-performance (discrete) GPU where available
+      webglContextAttributes: {
+        powerPreference: 'high-performance'
+      },
+
+      print: function(text) { console.log('[BillyFrontier] ' + text); },
+      printErr: function(text) { console.warn('[BillyFrontier stderr] ' + text); },
+
+      onAbort: function(what) {
+        console.error('[BillyFrontier] ABORT: ' + what);
+        var el = document.getElementById('status-text');
+        if (el) el.textContent = 'Error: ' + what;
+        var card = document.getElementById('loading-card');
+        if (card) card.style.display = '';
+      },
+
+      onExit: function(code) {
+        if (code !== 0) {
+          console.error('[BillyFrontier] Exited with code: ' + code);
+          var el = document.getElementById('status-text');
+          if (el) el.textContent = 'Game exited with error (code ' + code + ')';
+          var card = document.getElementById('loading-card');
+          if (card) card.style.display = '';
+        }
+      },
+
+      onRuntimeInitialized: function() {
+        console.log('[BillyFrontier] Runtime initialized');
+        var el = document.getElementById('status-text');
+        if (el) el.textContent = 'Starting game\u2026';
+
+        // ── Standard PangeaGame API ─────────────────────────────────────────
+        // Consistent interface for level-editor integration across all Pangea
+        // Ports WASM builds. Must be set inside onRuntimeInitialized so Module
+        // exports are available.
+        window.PangeaGame = {
+          // skipToLevel: reload with ?level=N so gDirectLaunchLevel is set at
+          // startup. BF_SetDirectLaunchLevel can also be called at runtime.
+          skipToLevel: function(n) {
+            var url = new URL(window.location.href);
+            url.searchParams.set('level', n);
+            window.location.href = url.toString();
+          },
+          setLevel: function(n) {
+            // Runtime variant: jump without page reload (resets current game state)
+            return Module.ccall('BF_SetDirectLaunchLevel', null, ['number'], [n]);
+          },
+          getCurrentLevel: function() {
+            // Billy Frontier doesn't expose a get-current-level export; returns
+            // the level that was requested via URL, or -1 if not set.
+            var params = new URLSearchParams(window.location.search);
+            var l = params.get('level');
+            return l !== null ? parseInt(l, 10) : -1;
+          },
+          setFenceCollisions: function(enabled) {
+            return Module.ccall('BF_SetFenceCollision', null, ['number'], [enabled ? 1 : 0]);
+          },
+          getFenceCollisions: function() {
+            return Module.ccall('BF_GetFenceCollision', 'number', [], []) !== 0;
+          },
+          setTerrainOverride: function(path) {
+            return Module.ccall('BF_SetTerrainFile', null, ['string'], [path]);
+          },
+          loadTerrainData: function(data, length) {
+            return Module.ccall('BF_LoadTerrainData', null, ['array', 'number'], [data, length]);
+          },
+        };
+        console.log('[BillyFrontier] PangeaGame API ready.');
+      },
+
+      preRun: [function() {
+        // Create config directory in the virtual filesystem
+        try { FS.mkdir('/home'); } catch (e) { /* exists */ }
+        try { FS.mkdir('/home/web_user'); } catch (e) { /* exists */ }
+        try { FS.mkdir('/home/web_user/.config'); } catch (e) { /* exists */ }
+        try { FS.mkdir('/home/web_user/.config/BillyFrontier'); } catch (e) { /* exists */ }
+      }],
+
+      setStatus: function(text) {
+        var el      = document.getElementById('status-text');
+        var card    = document.getElementById('loading-card');
+        var canvas  = document.getElementById('canvas');
+        var toolbar = document.getElementById('toolbar');
+
+        if (text) {
+          if (el) el.textContent = text;
+          // Update progress bar from "N/M" pattern
+          var match = text.match(/(\d+(\.\d+)?)\/(\d+)/);
+          if (match) {
+            var bar = document.getElementById('progress-bar');
+            if (bar) bar.value = parseInt(match[1]) / parseInt(match[3]);
+          }
+        } else {
+          // Loading finished — hide the loading overlay, show toolbar, focus canvas
+          if (card)    card.style.display   = 'none';
+          syncCanvasSize();
+          if (canvas)  canvas.focus();
+          if (toolbar) toolbar.style.display = 'flex';
+        }
+      },
+
+      monitorRunDependencies: function(left) {
+        var bar   = document.getElementById('progress-bar');
+        var label = document.getElementById('progress-label');
+        if (!bar) return;
+        if (left === 0) {
+          bar.value = 1;
+          if (label) label.textContent = 'Preparing\u2026';
+        } else {
+          bar.value = Math.max(0, 1 - (left * 0.02));
+        }
+      }
+    };
+
+    // Use ResizeObserver for more reliable canvas sizing
+    if (typeof ResizeObserver !== 'undefined' && Module.canvas) {
+      new ResizeObserver(function() {
+        window.requestAnimationFrame(syncCanvasSize);
+      }).observe(Module.canvas);
+    }
+
+    // ── Fullscreen toggle ─────────────────────────────────
+    function toggleFullscreen() {
+      var canvas = document.getElementById('canvas');
+      try {
+        if (!document.fullscreenElement) {
+          var fn = canvas.requestFullscreen || canvas.webkitRequestFullscreen || canvas.mozRequestFullScreen;
+          if (fn) fn.call(canvas);
+        } else {
+          var fn = document.exitFullscreen || document.webkitExitFullscreen || document.mozCancelFullScreen;
+          if (fn) fn.call(document);
+        }
+      } catch (e) {
+        console.warn('[BillyFrontier] Fullscreen not supported:', e);
+      }
+    }
+
+    // ── Mute toggle (Web Audio API) ───────────────────────
+    // SDL2 stores the AudioContext in SDL.audioContext; SDL3 may use a
+    // different location.  We check both known spots so the mute button
+    // works regardless of which SDL version the Emscripten build uses.
+    var _audioMuted = false;
+    function toggleMute() {
+      var btn = document.getElementById('btn-mute');
+      var ctx = (typeof SDL === 'object' && SDL.audioContext) || null;
+      if (!ctx && typeof AudioContext !== 'undefined') {
+        ctx = window._sdlAudioContext || null;
+      }
+      _audioMuted = !_audioMuted;
+      if (ctx && typeof ctx.suspend === 'function' && typeof ctx.resume === 'function') {
+        _audioMuted ? ctx.suspend() : ctx.resume();
+      }
+      btn.textContent = _audioMuted ? '\uD83D\uDD07 Muted' : '\uD83D\uDD0A Sound';
+    }
+
+    // -----------------------------------------------------------------------
+    // Level Editor Controls
+    // -----------------------------------------------------------------------
+
+    document.getElementById('btn-set-level').addEventListener('click', function() {
+      var level = parseInt(document.getElementById('level-select').value, 10);
+      // Reload the page with the chosen level encoded in the URL hash.
+      // This is the most reliable way to apply the level selection, since
+      // the level is parsed during startup (before the game initialises).
+      var hash = 'level=' + level;
+      var currentHash = window.location.hash.replace(/^#/, '');
+      // Preserve other hash params (e.g. terrain=)
+      var parts = currentHash.split('&').filter(function(p) {
+        return p && !p.startsWith('level=');
+      });
+      parts.unshift(hash);
+      window.location.hash = parts.join('&');
+      window.location.reload();
+    });
+
+    document.getElementById('chk-fence').addEventListener('change', function() {
+      if (typeof Module.ccall === 'function') {
+        Module.ccall('BF_SetFenceCollision', null, ['number'], [this.checked ? 1 : 0]);
+      }
+    });
+
+    // Sync checkbox state after Module is ready
+    window.addEventListener('load', function() {
+      var checkInterval = setInterval(function() {
+        if (typeof Module.ccall === 'function') {
+          var enabled = Module.ccall('BF_GetFenceCollision', 'number', [], []);
+          document.getElementById('chk-fence').checked = (enabled === 1);
+          clearInterval(checkInterval);
+        }
+      }, 500);
+    });
+
+    // Upload a custom terrain .ter file into the Emscripten virtual filesystem
+    document.getElementById('terrain-file').addEventListener('change', function(e) {
+      var file = e.target.files[0];
+      if (!file) return;
+      var reader = new FileReader();
+      reader.onload = function(ev) {
+        var data = new Uint8Array(ev.target.result);
+        if (typeof Module.ccall === 'function' && Module.FS) {
+          // Write to Data/Terrain/ so it sits alongside the bundled terrain files.
+          // The Pomme colon-path ':Terrain:custom_level.ter' is relative to Data/System,
+          // navigating up one directory then into Terrain/.
+          Module.FS.writeFile('Data/Terrain/custom_level.ter', data);
+          Module.ccall('BF_SetTerrainFile', null, ['string'], [':Terrain:custom_level.ter']);
+          alert('Terrain file "' + file.name + '" loaded. It will be used on the next level load.');
+        } else {
+          alert('Game not ready yet. Please wait until it has fully loaded.');
+        }
+      };
+      reader.readAsArrayBuffer(file);
+    });
+
+    // Apply level from URL hash on page load
+    (function() {
+      var hash = window.location.hash.replace(/^#/, '');
+      hash.split('&').forEach(function(pair) {
+        var eq = pair.indexOf('=');
+        if (eq < 0) return;
+        var key = pair.slice(0, eq);
+        var val = pair.slice(eq + 1);
+        if (key === 'level') {
+          document.getElementById('level-select').value = val;
+        }
+      });
+    })();
+
+    ['resize','fullscreenchange','webkitfullscreenchange','mozfullscreenchange'].forEach(function(evt) {
+      window.addEventListener(evt, function() {
+        // Delay by one rAF so the browser can complete its layout/resize after
+        // the fullscreen transition before we read clientWidth/clientHeight.
+        requestAnimationFrame(syncCanvasSize);
+        // And another one for good measure (some browsers lag)
+        requestAnimationFrame(function() { requestAnimationFrame(syncCanvasSize); });
+        // Extra delayed sync: fullscreen exit layout may not settle within two rAFs
+        setTimeout(syncCanvasSize, 100);
+      });
+    });
+  </script>
+</body>
+</html>

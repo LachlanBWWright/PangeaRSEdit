@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Version=1.0
+Name=Bugdom 2
+Comment=Track down the Bully Bee and get your knapsack back!
+Icon=io.jor.bugdom2
+Exec=Bugdom2
+Terminal=false
+Categories=Game;

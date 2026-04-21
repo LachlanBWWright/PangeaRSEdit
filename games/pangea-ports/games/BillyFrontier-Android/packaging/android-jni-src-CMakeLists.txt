@@ -1,0 +1,46 @@
+cmake_minimum_required(VERSION 3.6)
+
+project(BillyFrontier_Android)
+
+set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_C_STANDARD 17)
+
+# Pomme settings (must be set before add_subdirectory)
+set(POMME_NO_GRAPHICS true)
+set(POMME_NO_INPUT    true)
+set(POMME_NO_MP3      false)
+set(POMME_NO_QD3D     true)
+set(POMME_NO_VIDEO    true)
+add_compile_definitions(POMME_CASE_SENSITIVE_FSSPEC=1)
+
+# Android NDK sets CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY (sysroot-only search).
+# SDL was added via add_subdirectory(SDL) in the parent jni/CMakeLists.txt,
+# so its build tree is at ${CMAKE_BINARY_DIR}/SDL.  Add it to CMAKE_FIND_ROOT_PATH
+# so Pomme's find_package(SDL3) can locate SDL3Config.cmake.
+list(APPEND CMAKE_FIND_ROOT_PATH "${CMAKE_BINARY_DIR}/SDL")
+
+# Pomme is placed at app/jni/Pomme during CI setup
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../Pomme Pomme_build EXCLUDE_FROM_ALL)
+
+# Glob all game source files (Source/ was copied here)
+file(GLOB_RECURSE GAME_SOURCES
+    ${CMAKE_CURRENT_SOURCE_DIR}/*.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/*.cpp
+)
+
+# Build as a shared library for Android (required by SDL)
+add_library(main SHARED ${GAME_SOURCES})
+
+target_include_directories(main PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/Headers
+)
+
+target_compile_options(main PRIVATE
+    -fexceptions
+    -Wall
+    -Wno-multichar
+    -Wno-unknown-pragmas
+    -Wno-unused-parameter
+)
+
+target_link_libraries(main PRIVATE SDL3::SDL3 Pomme)

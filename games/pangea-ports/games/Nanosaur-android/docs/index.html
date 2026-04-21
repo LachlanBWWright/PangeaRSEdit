@@ -1,0 +1,215 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Nanosaur – WebAssembly</title>
+  <link rel="icon" type="image/x-icon" href="Nanosaur.ico">
+  <meta name="description" content="Play Nanosaur, the classic 1998 dinosaur game, directly in your browser via WebAssembly. No installation required.">
+  <meta property="og:title" content="Nanosaur – Play in Browser">
+  <meta property="og:description" content="Classic 1998 dinosaur game – now playable in your browser via WebAssembly">
+  <meta property="og:image" content="screenshot.png">
+  <meta property="og:type" content="website">
+  <style>
+    :root {
+      --accent: #ff8800;
+      --bg:     #0d0d0d;
+      --panel:  #1a1a1a;
+      --border: #333;
+      --text:   #eee;
+      --dim:    #aaa;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+      min-height: 100vh;
+    }
+
+    header {
+      background: linear-gradient(135deg, #1a0a00, #2a1500);
+      border-bottom: 2px solid var(--accent);
+      padding: 24px;
+      text-align: center;
+    }
+
+    header h1 {
+      font-size: 2.5em;
+      color: var(--accent);
+      text-shadow: 0 2px 8px rgba(255,136,0,0.4);
+      margin-bottom: 6px;
+    }
+
+    header p {
+      color: var(--dim);
+      font-size: 0.9em;
+    }
+
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 24px 16px;
+    }
+
+    .screenshot-frame {
+      background: #000;
+      border: 2px solid var(--border);
+      border-radius: 8px;
+      overflow: hidden;
+      margin-bottom: 24px;
+    }
+
+    .screenshot-frame img {
+      width: 100%;
+      display: block;
+    }
+
+    .launch-btn {
+      display: block;
+      background: linear-gradient(135deg, var(--accent), #c60);
+      color: #111;
+      text-align: center;
+      padding: 16px 32px;
+      border-radius: 6px;
+      font-size: 1.2em;
+      font-weight: bold;
+      text-decoration: none;
+      margin: 0 auto 24px;
+      max-width: 300px;
+      box-shadow: 0 4px 16px rgba(255,136,0,0.3);
+      transition: transform 0.15s, box-shadow 0.15s;
+    }
+
+    .launch-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(255,136,0,0.5);
+    }
+
+    .info-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    .info-card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 16px;
+    }
+
+    .info-card h3 { color: var(--accent); margin-bottom: 8px; font-size: 0.95em; text-transform: uppercase; letter-spacing: 0.05em; }
+    .info-card p, .info-card li { font-size: 0.85em; color: var(--dim); line-height: 1.6; }
+    .info-card ul { padding-left: 16px; }
+
+    .url-params {
+      background: #111;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 16px;
+      margin-bottom: 24px;
+    }
+
+    .url-params h3 { color: var(--accent); margin-bottom: 10px; font-size: 0.95em; text-transform: uppercase; }
+
+    .url-params code {
+      background: var(--panel);
+      color: #7df;
+      padding: 2px 6px;
+      border-radius: 3px;
+      font-size: 0.85em;
+    }
+
+    .url-params p { font-size: 0.85em; color: var(--dim); margin-bottom: 8px; line-height: 1.6; }
+
+    .param-example {
+      font-family: monospace;
+      font-size: 0.8em;
+      color: #7df;
+      background: #0a0a1a;
+      padding: 10px 14px;
+      border-radius: 4px;
+      margin-top: 10px;
+      overflow-x: auto;
+      white-space: nowrap;
+    }
+
+    footer {
+      text-align: center;
+      color: #444;
+      font-size: 0.75em;
+      padding: 24px;
+      border-top: 1px solid #222;
+    }
+
+    footer a { color: #666; }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>🦕 Nanosaur</h1>
+  <p>Classic 1998 dinosaur game – now playable in your browser via WebAssembly</p>
+</header>
+
+<div class="container">
+  <a class="launch-btn" href="game/index.html">▶ Play Nanosaur</a>
+
+  <div class="screenshot-frame">
+    <img src="screenshot.png" alt="Nanosaur gameplay screenshot">
+  </div>
+
+  <div class="info-grid">
+    <div class="info-card">
+      <h3>🎮 Controls</h3>
+      <ul>
+        <li>Arrow keys / WASD – move</li>
+        <li>Space – jump / jetpack</li>
+        <li>Ctrl – fire weapon</li>
+        <li>Tab – switch weapon</li>
+        <li>Escape – pause</li>
+      </ul>
+    </div>
+    <div class="info-card">
+      <h3>🛠️ Level Editor Integration</h3>
+      <p>This WebAssembly build supports direct level loading and a cheat/debug menu.
+         Use URL parameters to load custom levels or skip the menus for rapid testing.</p>
+    </div>
+    <div class="info-card">
+      <h3>🕹️ Cheat Menu</h3>
+      <p>The game page includes a JavaScript cheat menu for level editor testing. You can toggle fence collisions, restore health, fill fuel, and more — all controllable from JavaScript.</p>
+    </div>
+  </div>
+
+  <div class="url-params">
+    <h3>🔗 URL Parameters</h3>
+    <p>Append these query parameters to the game URL for level editor / testing workflows:</p>
+    <p><code>level=N</code> – Load level N directly (skips title &amp; menus). Currently only level <code>0</code> is supported.</p>
+    <p><code>terrainFile=path</code> – Override the terrain <code>.ter</code> file with a custom path.</p>
+    <p><code>skipMenu=1</code> – Skip title screens and go straight to gameplay.</p>
+    <div class="param-example">
+      game/index.html?level=0&amp;skipMenu=1
+    </div>
+  </div>
+
+  <div class="info-card" style="margin-bottom:24px">
+    <h3>ℹ️ About</h3>
+    <p>Nanosaur is © 1998 Pangea Software, Inc. Source port by <a href="https://github.com/jorio/Nanosaur" style="color:#7df">Iliyas Jorio</a>.
+       This WebAssembly port was created for use with the Nanosaur level editor.
+       The game data files are embedded in the WebAssembly bundle.
+    </p>
+    <p style="margin-top:8px"><strong>Requirements:</strong> A modern browser with WebAssembly and WebGL support (Chrome, Firefox, Safari, Edge).</p>
+  </div>
+</div>
+
+<footer>
+  <p>Nanosaur © 1998 Pangea Software, Inc. · Source port © 2025 Iliyas Jorio ·
+     <a href="https://github.com/LachlanBWWright/Nanosaur-android">GitHub</a>
+  </p>
+</footer>
+
+</body>
+</html>

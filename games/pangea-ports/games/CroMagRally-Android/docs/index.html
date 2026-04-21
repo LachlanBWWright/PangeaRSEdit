@@ -1,0 +1,221 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏎️</text></svg>">
+  <title>Cro-Mag Rally – Play in Browser</title>
+  <style>
+    :root {
+      --accent: #f90;
+      --bg:     #0a0a0a;
+      --panel:  #1a1a1a;
+      --border: #333;
+      --text:   #eee;
+      --dim:    #888;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg); color: var(--text);
+      font-family: system-ui, -apple-system, sans-serif;
+      display: flex; flex-direction: column;
+      align-items: center; min-height: 100vh;
+    }
+    header {
+      background: var(--panel); width: 100%; padding: 16px 24px;
+      border-bottom: 2px solid var(--accent);
+      display: flex; align-items: center; gap: 16px;
+    }
+    header h1 { font-size: 1.6rem; color: var(--accent); }
+    header p  { color: var(--dim); font-size: 0.9rem; }
+
+    main {
+      max-width: 860px; width: 100%; padding: 32px 24px;
+      display: flex; flex-direction: column; gap: 32px;
+    }
+
+    .hero-img {
+      width: 100%; border-radius: 10px;
+      border: 1px solid var(--border);
+    }
+
+    .game-frame-wrapper {
+      width: 100%; background: #000;
+      border: 2px solid var(--border); border-radius: 8px; overflow: hidden;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .game-frame-wrapper iframe {
+      width: 100%; aspect-ratio: 4/3; border: none; display: block;
+    }
+
+    .section { display: flex; flex-direction: column; gap: 12px; }
+    .section h2 { color: var(--accent); font-size: 1.2rem; }
+
+    .params-form { display: flex; flex-wrap: wrap; gap: 12px; }
+    .param-group { display: flex; flex-direction: column; gap: 4px; }
+    .param-group label { font-size: 0.8rem; color: var(--dim); }
+    .param-group input, .param-group select {
+      background: #222; border: 1px solid #444; border-radius: 4px;
+      color: var(--text); padding: 6px 10px; font-size: 0.9rem;
+    }
+    .launch-link {
+      display: inline-block; margin-top: 8px;
+      padding: 8px 20px; background: var(--accent); color: #111;
+      border-radius: 6px; text-decoration: none; font-weight: bold;
+    }
+    .launch-link:hover { background: #ffb733; }
+
+    .tracks-grid {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+      gap: 8px;
+    }
+    .track-btn {
+      padding: 8px 12px; background: var(--panel); border: 1px solid var(--border);
+      border-radius: 6px; cursor: pointer; color: var(--text); font-size: 0.85rem;
+      text-align: left;
+    }
+    .track-btn:hover { background: #2a2a2a; border-color: var(--accent); }
+    .track-btn span { display: block; color: var(--dim); font-size: 0.75rem; }
+
+    code { background: #222; padding: 2px 6px; border-radius: 3px; font-size: 0.85rem; }
+    pre  { background: var(--panel); border: 1px solid var(--border); border-radius: 6px;
+           padding: 12px 16px; overflow-x: auto; font-size: 0.8rem; line-height: 1.5; }
+    a    { color: var(--accent); }
+
+    footer {
+      width: 100%; padding: 16px 24px;
+      border-top: 1px solid var(--border);
+      text-align: center; color: var(--dim); font-size: 0.8rem;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div>
+      <h1>🏎️ Cro-Mag Rally</h1>
+      <p>WebAssembly build · Play in your browser</p>
+    </div>
+  </header>
+
+  <main>
+
+    <!-- ── Screenshot ─────────────────────────────────────── -->
+    <img class="hero-img" src="screenshot.webp" alt="Cro-Mag Rally gameplay: prehistoric racer driving through a volcanic island track">
+
+    <!-- ── Quick launch ─────────────────────────────────────── -->
+    <section class="section">
+      <h2>Quick Launch</h2>
+      <p>Choose a track and car below, then click <strong>Launch</strong> to open the game in a new tab.</p>
+
+      <div class="params-form" id="params-form">
+        <div class="param-group">
+          <label for="sel-track">Track (1–17)</label>
+          <select id="sel-track">
+            <option value="1">1 – Stone Age Desert</option>
+            <option value="2">2 – Stone Age Jungle</option>
+            <option value="3">3 – Stone Age Ice</option>
+            <option value="4">4 – Bronze Age Crete</option>
+            <option value="5">5 – Bronze Age China</option>
+            <option value="6">6 – Bronze Age Egypt</option>
+            <option value="7">7 – Iron Age Europe</option>
+            <option value="8">8 – Iron Age Scandinavia</option>
+            <option value="9">9 – Iron Age Atlantis</option>
+            <option value="10">10 – Battle Stonehenge</option>
+            <option value="11">11 – Battle Aztec</option>
+            <option value="12">12 – Battle Coliseum</option>
+            <option value="13">13 – Battle Maze</option>
+            <option value="14">14 – Battle Celtic</option>
+            <option value="15">15 – Battle Tar Pits</option>
+            <option value="16">16 – Battle Spiral</option>
+            <option value="17">17 – Battle Ramps</option>
+          </select>
+        </div>
+        <div class="param-group">
+          <label for="sel-car">Car (1-based, 0 = random)</label>
+          <input type="number" id="sel-car" value="0" min="0" max="10" style="width:80px">
+        </div>
+        <div class="param-group">
+          <label for="chk-no-fence">Disable Fences</label>
+          <input type="checkbox" id="chk-no-fence" style="margin-top:10px">
+        </div>
+      </div>
+      <a id="launch-link" class="launch-link" href="game/CroMagRally.html" target="_blank">▶ Launch</a>
+    </section>
+
+    <!-- ── Embed ─────────────────────────────────────────────── -->
+    <section class="section">
+      <h2>Preview</h2>
+      <p>The game can also run inline. Click <strong>Load game in iframe</strong> below.</p>
+      <div class="game-frame-wrapper">
+        <iframe id="game-iframe" src="about:blank" allowfullscreen></iframe>
+      </div>
+      <button onclick="loadIframe()" style="align-self:start; padding:6px 16px; background:var(--panel); border:1px solid var(--border); border-radius:4px; color:var(--text); cursor:pointer;">
+        Load game in iframe
+      </button>
+    </section>
+
+    <!-- ── Level editor API ──────────────────────────────────── -->
+    <section class="section">
+      <h2>Level Editor Integration</h2>
+
+      <h3 style="color:#ccc;font-size:1rem;margin-top:8px">URL Parameters</h3>
+      <p>Append parameters to the game URL to control startup:</p>
+      <pre>?track=3          # which track to load (1-based, default 1)
+?car=2            # which car to use   (1-based, default random)
+?noFenceCollision=1   # disable fence collision
+?levelOverride=:Terrain:MyLevel.ter  # use custom terrain file</pre>
+
+      <h3 style="color:#ccc;font-size:1rem;margin-top:8px">JavaScript Cheat API</h3>
+      <p>Once the game is running you can call these from the browser console or from a parent frame:</p>
+      <pre>// Toggle fence collisions at runtime
+GameCheat.setFenceCollision(0);   // disable
+GameCheat.setFenceCollision(1);   // enable
+
+// Query current state
+GameCheat.getFenceCollision();    // returns 0 or 1</pre>
+
+      <h3 style="color:#ccc;font-size:1rem;margin-top:8px">Loading a Custom Level File</h3>
+      <p>You can inject a custom <code>.ter</code> file into the game's virtual filesystem from JavaScript:</p>
+      <pre>// From a parent page or the browser console:
+fetch('/path/to/MyLevel.ter')
+  .then(r => r.arrayBuffer())
+  .then(buf => {
+    gameWindow.loadLevelOverride(buf, ':Terrain:MyLevel.ter');
+    // Then reload the game iframe with ?levelOverride=:Terrain:MyLevel.ter
+  });</pre>
+    </section>
+
+  </main>
+
+  <footer>
+    <p>© 2000 Pangea Software, Inc. · Ported to WebAssembly with Emscripten</p>
+  </footer>
+
+  <script>
+    var GAME_PATH = 'game/CroMagRally.html';
+
+    function buildURL() {
+      var track = document.getElementById('sel-track').value;
+      var car   = document.getElementById('sel-car').value;
+      var noFence = document.getElementById('chk-no-fence').checked;
+      var url = GAME_PATH + '?track=' + track;
+      if (car > 0) url += '&car=' + car;
+      if (noFence) url += '&noFenceCollision=1';
+      return url;
+    }
+
+    // Update the launch link whenever any param changes
+    function updateLink() {
+      document.getElementById('launch-link').href = buildURL();
+    }
+    document.getElementById('sel-track').addEventListener('change', updateLink);
+    document.getElementById('sel-car').addEventListener('input', updateLink);
+    document.getElementById('chk-no-fence').addEventListener('change', updateLink);
+    updateLink();
+
+    function loadIframe() {
+      document.getElementById('game-iframe').src = buildURL();
+    }
+  </script>
+</body>
+</html>

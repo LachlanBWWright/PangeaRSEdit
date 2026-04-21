@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Play Nanosaur 2 in your browser — Pangea Software's classic dinosaur adventure, rebuilt for WebAssembly.">
+  <meta property="og:title" content="Nanosaur 2 — Play in Browser">
+  <meta property="og:description" content="Pangea Software's classic dinosaur adventure, running natively in your browser via WebAssembly.">
+  <meta property="og:type" content="website">
+  <title>Nanosaur 2 — WebAssembly</title>
+  <link rel="icon" type="image/png" href="logo.png">
+  <style>
+    :root {
+      --accent: #6ecf6e;
+      --bg:     #070f07;
+      --panel:  #102a10;
+      --border: #1e3a1e;
+      --text:   #d8e8d8;
+      --dim:    #6a8a6a;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: system-ui, -apple-system, sans-serif;
+      line-height: 1.5;
+    }
+
+    /* ── Header ──────────────────────────────────────────── */
+    #header {
+      text-align: center;
+      padding: 1.25rem 1rem 0.75rem;
+      border-bottom: 1px solid var(--border);
+    }
+    #header h1 {
+      font-size: 2rem;
+      color: var(--accent);
+      letter-spacing: 3px;
+      text-transform: uppercase;
+    }
+    #header p { color: var(--dim); font-size: 0.85rem; margin-top: 0.25rem; }
+
+    /* ── Game area ───────────────────────────────────────── */
+    #game-wrap {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 1rem;
+      position: relative;       /* stacking context for loading overlay */
+    }
+
+    /* Loading card — overlays the canvas until game starts */
+    #loading-card {
+      position: absolute;
+      top: 1rem;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 10;              /* above canvas */
+      width: 100%;
+      max-width: 800px;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 2rem 1.5rem;
+      text-align: center;
+    }
+    #loading-card img {
+      max-width: 280px;
+      width: 100%;
+      margin-bottom: 1.25rem;
+    }
+    #status-text {
+      font-size: 1.05rem;
+      color: var(--accent);
+      min-height: 1.6rem;
+    }
+    #progress-bar {
+      width: 100%;
+      max-width: 420px;
+      height: 6px;
+      margin: 0.75rem auto 0.35rem;
+      accent-color: var(--accent);
+    }
+    #progress-label { font-size: 0.78rem; color: var(--dim); }
+
+    /* Canvas — always in the DOM with proper dimensions for SDL3.
+       Visually obscured by the loading-card overlay until game starts. */
+    #canvas {
+      max-width: 100%;
+      border-radius: 6px;
+      outline: none;
+    }
+
+    /* Toolbar below canvas */
+    #toolbar {
+      display: none;
+      gap: 0.5rem;
+      padding: 0.5rem 0;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    /* ── Generic button ──────────────────────────────────── */
+    .btn {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 0.35rem 0.8rem;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 0.88rem;
+      transition: background 0.12s, border-color 0.12s;
+    }
+    .btn:hover  { background: #1a3a1a; border-color: var(--accent); }
+    .btn.on     { background: #0d400d; border-color: var(--accent); color: var(--accent); }
+    .btn.danger { border-color: #c04040; color: #e06060; }
+    .btn.danger:hover { background: #2a0d0d; }
+
+    /* ── Info panel ──────────────────────────────────────── */
+    #info-panel {
+      width: 100%;
+      max-width: 800px;
+      margin: 0.5rem auto 1.5rem;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 1.25rem 1.5rem;
+    }
+    #info-panel h2 {
+      color: var(--accent);
+      font-size: 1rem;
+      margin-bottom: 0.5rem;
+    }
+    #info-panel .sub {
+      color: var(--dim);
+      font-size: 0.82rem;
+      margin-bottom: 1rem;
+    }
+
+    .info-section { margin-bottom: 1.1rem; }
+    .info-section h3 {
+      font-size: 0.88rem;
+      color: #90b090;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 0.3rem;
+      margin-bottom: 0.6rem;
+    }
+    .info-row {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin: 0.45rem 0;
+      flex-wrap: wrap;
+    }
+    .info-row label {
+      min-width: 160px;
+      font-size: 0.88rem;
+      color: #b0c8b0;
+    }
+
+    kbd {
+      background: #0a1a0a;
+      border: 1px solid var(--border);
+      border-radius: 3px;
+      padding: 0.1em 0.4em;
+      font-family: monospace;
+      font-size: 0.85em;
+    }
+
+    code {
+      color: var(--accent);
+      font-size: 0.82em;
+    }
+
+    /* ── Footer ──────────────────────────────────────────── */
+    #footer {
+      text-align: center;
+      padding: 1rem;
+      border-top: 1px solid var(--border);
+      font-size: 0.78rem;
+      color: var(--dim);
+    }
+    #footer a { color: var(--accent); text-decoration: none; }
+    #footer a:hover { text-decoration: underline; }
+
+    /* ── Responsive ──────────────────────────────────────── */
+    @media (max-width: 600px) {
+      #header h1 { font-size: 1.4rem; }
+      .info-row label { min-width: 120px; }
+      .info-row code { font-size: 0.72rem; word-break: break-all; }
+    }
+  </style>
+</head>
+<body>
+
+  <div id="header">
+    <h1>🦕 Nanosaur 2</h1>
+    <p>WebAssembly Port — Play in your browser</p>
+  </div>
+
+  <div id="game-wrap">
+    <!-- Loading overlay -->
+    <div id="loading-card">
+      <img src="logo.png" alt="Nanosaur 2">
+      <div id="status-text">Preparing…</div>
+      <progress id="progress-bar" value="0" max="1"></progress>
+      <div id="progress-label"></div>
+    </div>
+
+    <!-- SDL3 canvas — must be visible and sized when SDL creates the window -->
+    <canvas id="canvas" width="800" height="600"
+            oncontextmenu="event.preventDefault()" tabindex="-1"></canvas>
+
+    <!-- Controls (shown after game loads) -->
+    <div id="toolbar">
+      <button class="btn" onclick="toggleFullscreen()">⛶ Fullscreen</button>
+      <button class="btn" id="btn-mute" onclick="toggleMute()">🔊 Unmute</button>
+      <button class="btn on" id="btn-fence" onclick="toggleFences()">✓ Fences</button>
+    </div>
+  </div>
+
+  <!-- Information panel -->
+  <div id="info-panel">
+    <h2>🦕 Nanosaur 2 — WebAssembly</h2>
+    <p class="sub">Pangea Software's classic dinosaur adventure, running natively in your browser via Emscripten &amp; WebGL.</p>
+
+    <div class="info-section">
+      <h3>Controls</h3>
+      <div class="info-row"><label>Movement</label> <span>Arrow keys / WASD</span></div>
+      <div class="info-row"><label>Attack / Fire</label> <span>Space / Left Click</span></div>
+      <div class="info-row"><label>Camera</label> <span>Mouse</span></div>
+    </div>
+
+    <div class="info-section">
+      <h3>Tips</h3>
+      <div class="info-row">
+        <span>Click the canvas to capture the mouse. Press <kbd>Escape</kbd> to release it. Use the Fullscreen button for the best experience.</span>
+      </div>
+    </div>
+
+    <div class="info-section">
+      <h3>URL Parameters</h3>
+      <div class="info-row"><label><code>?level=N</code></label> <span>Skip to level N (0–8)</span></div>
+    </div>
+
+    <div class="info-section">
+      <h3>JavaScript API (Console)</h3>
+      <div class="info-row"><label>Fence collisions</label> <span><code>Module.ccall('Nanosaur2_SetFenceCollisionsEnabled', null, ['number'], [0])</code></span></div>
+      <div class="info-row"><label>Current level</label> <span><code>Module.ccall('Nanosaur2_GetCurrentLevel', 'number')</code></span></div>
+    </div>
+  </div>
+
+  <div id="footer">
+    <p>© 2004 Pangea Software, Inc. • Open-source port by
+      <a href="https://github.com/jorio" target="_blank" rel="noopener">Iliyas Jorio</a> •
+      <a href="https://github.com/LachlanBWWright/Nanosaur2-Android" target="_blank" rel="noopener">Source on GitHub</a>
+    </p>
+  </div>
+
+  <!-- All custom JavaScript is in ONE block so Emscripten's HTML minifier
+       cannot accidentally merge it with the Emscripten module loader script. -->
+  <script>
+    var _muted = false;
+    var _fenceEnabled = true;
+
+    function syncCanvasSize() {
+      if (typeof Module === 'undefined' || !Module.canvas) return;
+      var dpr = window.devicePixelRatio || 1;
+      var cssW = Module.canvas.clientWidth;
+      var cssH = Module.canvas.clientHeight;
+      if (!cssW || !cssH) return;
+      var w = Math.floor(cssW * dpr);
+      var h = Math.floor(cssH * dpr);
+      if (w && h && (Module.canvas.width !== w || Module.canvas.height !== h)) {
+        if (Module.setCanvasSize) Module.setCanvasSize(w, h);
+        else { Module.canvas.width = w; Module.canvas.height = h; }
+      }
+    }
+
+    var Module = {
+      canvas: document.getElementById('canvas'),
+
+      // Emscripten calls setStatus during load to report download progress
+      setStatus: function(text) {
+        var lbl  = document.getElementById('status-text');
+        var plbl = document.getElementById('progress-label');
+        var bar  = document.getElementById('progress-bar');
+        if (!text) {
+          // Empty string → loading finished
+          if (lbl) lbl.textContent = 'Starting game…';
+          if (bar) bar.value = 1;
+          return;
+        }
+        if (lbl) lbl.textContent = text;
+        if (plbl) plbl.textContent = text;
+
+        // Parse "Downloading data… (X/Y)" style progress messages
+        var m = text.match(/\((\d+(?:\.\d+)?)\s*\/\s*(\d+)\)/);
+        if (m && bar) {
+          var loaded = parseFloat(m[1]);
+          var total  = parseFloat(m[2]);
+          bar.value  = total > 0 ? loaded / total : 0;
+        }
+        // Parse "X remaining" style dependency progress
+        var mr = text.match(/(\d+)\s+remaining/);
+        if (mr && bar) {
+          var left = parseInt(mr[1], 10);
+          if (left === 0) {
+            bar.value = 1;
+          } else {
+            // Heuristic: each dependency counts for ~2% progress
+            bar.value = Math.max(0, 1 - (left * 0.02));
+          }
+        }
+      },
+
+      onRuntimeInitialized: function() {
+        // Hide loading overlay, show toolbar
+        var card = document.getElementById('loading-card');
+        if (card) card.style.display = 'none';
+        var tb = document.getElementById('toolbar');
+        if (tb) tb.style.display = 'flex';
+
+        // ── Standard PangeaGame API ──────────────────────────────────────
+        // Exposes a consistent interface shared across all Pangea Ports WASM
+        // builds. Set on window inside onRuntimeInitialized so Module is ready.
+        window.PangeaGame = {
+          skipToLevel: function(n) {
+            return Module.ccall('Nanosaur2_SkipToLevel', null, ['number'], [n]);
+          },
+          getCurrentLevel: function() {
+            return Module.ccall('Nanosaur2_GetCurrentLevel', 'number');
+          },
+          setFenceCollisions: function(enabled) {
+            return Module.ccall('Nanosaur2_SetFenceCollisionsEnabled', null, ['number'], [enabled ? 1 : 0]);
+          },
+        };
+        // Convenience aliases
+        window.Nanosaur2_SkipToLevel                  = function(n) { return window.PangeaGame.skipToLevel(n); };
+        window.Nanosaur2_GetCurrentLevel              = function()  { return window.PangeaGame.getCurrentLevel(); };
+        window.Nanosaur2_SetFenceCollisionsEnabled    = function(e) { return window.PangeaGame.setFenceCollisions(e); };
+        console.log('[Nanosaur2] PangeaGame API ready. Use PangeaGame.skipToLevel(N) to jump to a level.');
+      },
+
+      // Display fatal errors in the loading card instead of silently failing
+      onAbort: function(what) {
+        var lbl = document.getElementById('status-text');
+        if (lbl) lbl.textContent = 'Fatal error: ' + what;
+        var bar = document.getElementById('progress-bar');
+        if (bar) bar.style.display = 'none';
+      },
+    };
+
+    // Use ResizeObserver for more reliable canvas sizing
+    if (typeof ResizeObserver !== 'undefined' && Module.canvas) {
+      new ResizeObserver(function() {
+        window.requestAnimationFrame(syncCanvasSize);
+      }).observe(Module.canvas);
+    }
+
+    // ── Browser compatibility check ──────────────────────────────────────
+    (function() {
+      var lbl = document.getElementById('status-text');
+      if (typeof WebAssembly === 'undefined') {
+        if (lbl) lbl.textContent = 'Your browser does not support WebAssembly.';
+        return;
+      }
+      var cv = document.createElement('canvas');
+      var gl = cv.getContext('webgl') || cv.getContext('experimental-webgl');
+      if (!gl) {
+        if (lbl) lbl.textContent = 'Your browser does not support WebGL.';
+      }
+    })();
+
+    // ── UI helpers ────────────────────────────────────────
+
+    function toggleFullscreen() {
+      var c = document.getElementById('canvas');
+      if (!c) return;
+      if (document.fullscreenElement) {
+        document.exitFullscreen();
+      } else {
+        c.requestFullscreen().catch(function (e) { console.warn(e); });
+      }
+    }
+
+    function toggleMute() {
+      _muted = !_muted;
+      var btn = document.getElementById('btn-mute');
+      // Try SDL3 namespace first, fall back to SDL2 (Emscripten may use either)
+      try {
+        var ctx = (Module.SDL3 && Module.SDL3.audioContext)
+               || (Module.SDL2 && Module.SDL2.audioContext);
+        if (ctx) {
+          if (_muted) ctx.suspend(); else ctx.resume();
+        }
+      } catch (e) { /* ignore */ }
+      if (btn) btn.textContent = _muted ? '🔇 Muted' : '🔊 Unmute';
+    }
+
+    function toggleFences() {
+      _fenceEnabled = !_fenceEnabled;
+      var btn = document.getElementById('btn-fence');
+      try {
+        Module.ccall('Nanosaur2_SetFenceCollisionsEnabled', null, ['number'],
+                     [_fenceEnabled ? 1 : 0]);
+      } catch (e) {
+        console.warn('Module not ready yet:', e);
+      }
+      if (btn) {
+        btn.textContent = _fenceEnabled ? '✓ Fences' : '✗ No Fences';
+        btn.className   = 'btn' + (_fenceEnabled ? ' on' : ' danger');
+      }
+    }
+
+    ['resize','fullscreenchange','webkitfullscreenchange','mozfullscreenchange'].forEach(function(evt) {
+      window.addEventListener(evt, function() {
+        requestAnimationFrame(syncCanvasSize);
+        // And another one for good measure (some browsers lag)
+        requestAnimationFrame(function() { requestAnimationFrame(syncCanvasSize); });
+        // Extra delayed sync: fullscreen exit layout may not settle within two rAFs
+        setTimeout(syncCanvasSize, 100);
+      });
+    });
+  </script>
+
+  {{{ SCRIPT }}}
+</body>
+</html>

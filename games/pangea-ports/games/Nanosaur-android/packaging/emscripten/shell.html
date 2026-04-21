@@ -1,0 +1,645 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Nanosaur — WebAssembly</title>
+  <link rel="icon" type="image/x-icon" href="../Nanosaur.ico">
+  <meta name="description" content="Nanosaur – Classic 1998 dinosaur game running in your browser via WebAssembly">
+  <style>
+    :root {
+      --accent: #ff8800;
+      --bg:     #0d0d0d;
+      --panel:  #1a1a1a;
+      --border: #333;
+      --text:   #eee;
+      --dim:    #888;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: system-ui, -apple-system, sans-serif;
+      line-height: 1.5;
+    }
+
+    /* ── Header ──────────────────────────────────────────── */
+    #header {
+      text-align: center;
+      padding: 1.25rem 1rem 0.75rem;
+      border-bottom: 1px solid var(--border);
+      background: linear-gradient(135deg, #1a0a00, #2a1500);
+    }
+    #header h1 {
+      font-size: 2rem;
+      color: var(--accent);
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      text-shadow: 0 2px 8px rgba(255,136,0,0.4);
+    }
+    #header p { color: var(--dim); font-size: 0.85rem; margin-top: 0.25rem; }
+
+    /* ── Game area ───────────────────────────────────────── */
+    #game-wrap {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 1rem;
+      position: relative;
+    }
+
+    /* Loading card — overlays the canvas until game starts */
+    #loading-card {
+      position: absolute;
+      top: 1rem;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 10;
+      width: 100%;
+      max-width: 960px;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 2rem 1.5rem;
+      text-align: center;
+    }
+    #loading-card h2 {
+      color: var(--accent);
+      font-size: 1.5rem;
+      margin-bottom: 1rem;
+    }
+    #status-text {
+      font-size: 1.05rem;
+      color: var(--accent);
+      min-height: 1.6rem;
+    }
+    #progress-bar {
+      width: 100%;
+      max-width: 420px;
+      height: 6px;
+      margin: 0.75rem auto 0.35rem;
+      accent-color: var(--accent);
+    }
+    #progress-label { font-size: 0.78rem; color: var(--dim); }
+
+    /* Canvas — always in the DOM with proper dimensions for SDL3 */
+    #canvas {
+      max-width: 100%;
+      width: 960px;
+      aspect-ratio: 4/3;
+      border-radius: 6px;
+      outline: none;
+      background: #000;
+      cursor: crosshair;
+    }
+
+    /* Fullscreen: letterbox */
+    #canvas:fullscreen,
+    #canvas:-webkit-full-screen,
+    #canvas:-moz-full-screen {
+      width: auto !important;
+      height: 100vh !important;
+      max-width: 100vw !important;
+      max-height: 100vh !important;
+      border-radius: 0 !important;
+      aspect-ratio: unset !important;
+    }
+
+    /* Toolbar below canvas */
+    #toolbar {
+      display: none;
+      gap: 0.5rem;
+      padding: 0.5rem 0;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    /* ── Generic button ──────────────────────────────────── */
+    .btn {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 0.35rem 0.8rem;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 0.88rem;
+      transition: background 0.12s, border-color 0.12s;
+    }
+    .btn:hover  { background: #2a2a2a; border-color: var(--accent); }
+    .btn.on     { background: #2a1500; border-color: var(--accent); color: var(--accent); }
+    .btn.danger { border-color: #c04040; color: #e06060; }
+    .btn.danger:hover { background: #2a0d0d; }
+
+    /* ── Controls / API panel ────────────────────────────── */
+    #api-panel {
+      width: 100%;
+      max-width: 960px;
+      margin: 0.5rem auto 1.5rem;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 1.25rem 1.5rem;
+    }
+    #api-panel h2 {
+      color: var(--accent);
+      font-size: 1rem;
+      margin-bottom: 0.5rem;
+    }
+    #api-panel .sub {
+      color: var(--dim);
+      font-size: 0.82rem;
+      margin-bottom: 1rem;
+    }
+
+    .api-section { margin-bottom: 1.1rem; }
+    .api-section h3 {
+      font-size: 0.88rem;
+      color: #aaa;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 0.3rem;
+      margin-bottom: 0.6rem;
+    }
+    .api-row {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin: 0.45rem 0;
+      flex-wrap: wrap;
+    }
+    .api-row label {
+      min-width: 160px;
+      font-size: 0.88rem;
+      color: #b0b0c8;
+    }
+
+    .api-section code {
+      background: #111;
+      color: #7df;
+      padding: 2px 6px;
+      border-radius: 3px;
+      font-size: 0.82rem;
+    }
+
+    #score-display { font-size: 0.85em; color: var(--dim); margin-top: 8px; }
+
+    /* ── Footer ──────────────────────────────────────────── */
+    footer {
+      text-align: center;
+      color: #555;
+      font-size: 0.75em;
+      padding: 1rem;
+      border-top: 1px solid #222;
+    }
+    footer a { color: #777; }
+
+    /* ── Mobile responsiveness ────────────────────────────── */
+    @media (max-width: 640px) {
+      #header h1 { font-size: 1.4rem; letter-spacing: 1px; }
+      #loading-card { padding: 1rem; }
+      #api-panel { padding: 0.75rem 1rem; }
+      .api-row label { min-width: auto; width: 100%; }
+    }
+    body.embedded-shell {
+      height: 100dvh;
+      overflow: hidden;
+    }
+    body.embedded-shell #header,
+    body.embedded-shell #api-panel,
+    body.embedded-shell footer {
+      display: none !important;
+    }
+    body.embedded-shell #game-wrap {
+      padding: 0;
+      height: 100dvh;
+      align-items: stretch;
+    }
+    body.embedded-shell #canvas {
+      display: block;
+      width: 100%;
+      height: 100dvh;
+      max-width: none;
+      border-radius: 0;
+    }
+    body.embedded-shell #loading-card {
+      inset: 0;
+      transform: none;
+      max-width: none;
+      border: none;
+      border-radius: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+    body.embedded-shell #toolbar {
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      z-index: 11;
+      padding: 0.75rem;
+      background: linear-gradient(180deg, rgba(8,16,12,0) 0%, rgba(8,16,12,0.92) 100%);
+    }
+  </style>
+</head>
+<body>
+
+<div id="header">
+  <h1>🦕 Nanosaur</h1>
+  <p>Classic 1998 dinosaur game — WebAssembly Edition</p>
+</div>
+
+<div id="game-wrap">
+  <!-- Loading card overlays the canvas until game starts -->
+  <div id="loading-card">
+    <img src="../Nanosaur.png" alt="Nanosaur" style="max-width:128px;width:100%;margin-bottom:1rem"
+         onerror="this.style.display='none'">
+    <h2>Nanosaur</h2>
+    <div id="status-text">Downloading…</div>
+    <progress id="progress-bar" value="0" max="1"></progress>
+    <div id="progress-label"></div>
+  </div>
+
+  <canvas id="canvas" oncontextmenu="event.preventDefault()" tabindex="-1"
+          width="960" height="720"></canvas>
+
+  <div id="toolbar">
+    <button class="btn" onclick="toggleFullscreen()">⛶ Fullscreen</button>
+    <button class="btn" id="btn-mute" onclick="toggleMute()">🔊 Unmute</button>
+  </div>
+</div>
+
+<!-- Controls / Cheat Menu panel -->
+<div id="api-panel">
+  <h2>🎮 Cheat Menu / Level Editor Controls</h2>
+  <p class="sub">These controls call exported WASM functions. The game also accepts
+    <code>?level=N</code> and <code>?skipMenu=1</code> URL params.</p>
+
+  <div class="api-section">
+    <h3>Cheats &amp; Debug</h3>
+    <div class="api-row">
+      <label>Fence collisions</label>
+      <button class="btn on" id="btn-fence" onclick="toggleFence()">✓ Enabled</button>
+    </div>
+    <div class="api-row">
+      <button class="btn" onclick="doCheat('CheatRestoreHealth')">❤️ Restore Health</button>
+      <button class="btn" onclick="doCheat('CheatFillFuel')">⛽ Fill Fuel</button>
+      <button class="btn" onclick="doCheat('CheatGetWeapons')">🔫 Get All Weapons</button>
+      <button class="btn" onclick="doCheat('CheatGetAllEggs')">🥚 Get All Eggs</button>
+    </div>
+  </div>
+
+  <div class="api-section">
+    <h3>Terrain Override</h3>
+    <div class="api-row">
+      <label>Upload .ter file</label>
+      <input type="file" id="terrain-file-input" accept=".ter" style="display:none"
+             onchange="loadTerrainFile(this)">
+      <button class="btn" onclick="document.getElementById('terrain-file-input').click()">
+        📂 Upload .ter file
+      </button>
+      <button class="btn" onclick="clearCustomTerrain()" title="Revert to default terrain">↩️ Default</button>
+      <span id="terrain-file-name" style="font-size:0.75em; color:var(--dim); margin-left:6px;"></span>
+    </div>
+    <p class="sub">Upload a <code>.ter</code> file to inject custom terrain into the WASM virtual filesystem.
+       You can also use <code>FS.writeFile()</code> from the console and then call
+       <code>SetCustomTerrainFile</code>.</p>
+  </div>
+
+  <div class="api-section">
+    <h3>Quick Reference</h3>
+    <div class="api-row"><code>SetFenceCollisionsEnabled(0)</code> — disable fence collisions</div>
+    <div class="api-row"><code>SetFenceCollisionsEnabled(1)</code> — re-enable fence collisions</div>
+    <div class="api-row"><code>CheatRestoreHealth()</code> — restore health</div>
+    <div class="api-row"><code>CheatFillFuel()</code> — fill jet fuel</div>
+    <div class="api-row"><code>CheatGetWeapons()</code> — get all weapons</div>
+    <div class="api-row"><code>CheatGetAllEggs()</code> — get all eggs</div>
+    <div class="api-row"><code>GetGameScore()</code> — returns current score</div>
+    <div class="api-row"><code>SetCustomTerrainFile("/Data/Terrain/foo.ter")</code> — override terrain file</div>
+    <div class="api-row"><code>ClearCustomTerrainFile()</code> — revert to default terrain</div>
+  </div>
+
+  <div id="score-display">Score: —</div>
+</div>
+
+<footer>
+  <p><a href="../">← Back to Nanosaur</a></p>
+  <p>Nanosaur © 1998 Pangea Software, Inc. · Source port © 2025 Iliyas Jorio ·
+     <a href="https://github.com/LachlanBWWright/Nanosaur-android">GitHub</a>
+  </p>
+</footer>
+
+<script>
+  // ── Browser compatibility check ────────────────────────
+  (function() {
+    if (typeof WebAssembly === 'undefined') {
+      var card = document.getElementById('loading-card');
+      if (card) {
+        card.innerHTML = '<h2 style="color:#e06060">Browser Not Supported</h2>' +
+          '<p style="color:#aaa;margin-top:1rem">Your browser does not support WebAssembly. ' +
+          'Please use a modern browser such as Chrome, Firefox, Safari, or Edge.</p>';
+      }
+      return;
+    }
+    var c = document.createElement('canvas');
+    if (!c.getContext('webgl') && !c.getContext('webgl2')) {
+      var card = document.getElementById('loading-card');
+      if (card) {
+        card.innerHTML = '<h2 style="color:#e06060">WebGL Not Available</h2>' +
+          '<p style="color:#aaa;margin-top:1rem">Your browser or device does not support WebGL. ' +
+          'Please enable hardware acceleration or try a different browser.</p>';
+      }
+    }
+  })();
+
+  // ── URL parameter parsing ─────────────────────────────
+  (function() {
+    var params = new URLSearchParams(window.location.search);
+    window._startLevel = params.has('level') ? parseInt(params.get('level'), 10) : -1;
+    window._skipMenu = params.has('skipMenu') ? parseInt(params.get('skipMenu'), 10) : 0;
+    window._startTerrain = params.get('terrainFile') || '';
+  })();
+
+  // ── Emscripten Module configuration ───────────────────
+
+  var _fenceEnabled = true;
+  var _muted = false;
+  var _scoreTimer = null;
+  var _isEmbedded = new URLSearchParams(window.location.search).get('embed') === '1';
+
+  // Global error handlers
+  window.addEventListener('error', function(e) {
+    console.error('[Nanosaur] Unhandled error:', e.message, e.filename, e.lineno);
+  });
+  window.addEventListener('unhandledrejection', function(e) {
+    console.error('[Nanosaur] Unhandled promise rejection:', e.reason);
+  });
+
+  if (_isEmbedded) {
+    document.body.classList.add('embedded-shell');
+  }
+
+  function syncCanvasSize() {
+    if (typeof Module === 'undefined' || !Module.canvas) return;
+    if (document.fullscreenElement || document.webkitFullscreenElement) return;
+    var cssW = Module.canvas.clientWidth;
+    var cssH = Module.canvas.clientHeight;
+    if (!cssW || !cssH) return;
+    var w = Math.round(cssW);
+    var h = Math.round(cssH);
+    if (w && h && (Module.canvas.width !== w || Module.canvas.height !== h)) {
+      if (Module.setCanvasSize) Module.setCanvasSize(w, h);
+      else { Module.canvas.width = w; Module.canvas.height = h; }
+    }
+  }
+
+  var Module = {
+    canvas: document.getElementById('canvas'),
+
+    webglContextAttributes: {
+      powerPreference: 'high-performance',
+      antialias: false,
+      preserveDrawingBuffer: false
+    },
+
+    print:    function(t) { console.log('[Nanosaur]', t); },
+    printErr: function(t) { console.warn('[Nanosaur stderr]', t); },
+
+    onAbort: function(reason) {
+      console.error('[Nanosaur] ABORT:', reason);
+      var stext = document.getElementById('status-text');
+      if (stext) stext.textContent = 'Error: ' + reason;
+      var card = document.getElementById('loading-card');
+      if (card) card.style.display = '';
+    },
+
+    onExit: function(code) {
+      if (code !== 0) {
+        console.error('[Nanosaur] Exited with code:', code);
+        var stext = document.getElementById('status-text');
+        if (stext) stext.textContent = 'Game exited with error (code ' + code + ')';
+        var card = document.getElementById('loading-card');
+        if (card) card.style.display = '';
+      }
+    },
+
+    preRun: [function() {
+      // Create config directory for persistent settings
+      try { FS.mkdir('/home'); } catch(e) {}
+      try { FS.mkdir('/home/web_user'); } catch(e) {}
+      try { FS.mkdir('/home/web_user/.config'); } catch(e) {}
+    }],
+
+    setStatus: function(text) {
+      var card  = document.getElementById('loading-card');
+      var bar   = document.getElementById('progress-bar');
+      var label = document.getElementById('progress-label');
+      var stext = document.getElementById('status-text');
+
+      if (!text || text === '') {
+        // Loading finished — hide overlay, show toolbar, focus canvas for input
+        if (card)  card.style.display = 'none';
+        syncCanvasSize();
+        var c = document.getElementById('canvas');
+        if (c) c.focus();
+        var tb = document.getElementById('toolbar');
+        if (tb) tb.style.display = 'flex';
+        startScorePolling();
+        return;
+      }
+
+      if (card) card.style.display = '';
+
+      var m = text.match(/([^(]+)\((\d+(\.\d+)?)\/(\d+)\)/);
+      if (m) {
+        stext.textContent = m[1].trim();
+        var pct = parseInt(m[2]) / parseInt(m[4]);
+        bar.value = pct;
+        label.textContent = Math.round(pct * 100) + '%';
+      } else {
+        stext.textContent = text;
+      }
+    },
+
+    monitorRunDependencies: function(left) {
+      var bar = document.getElementById('progress-bar');
+      var label = document.getElementById('progress-label');
+      if (left === 0) {
+        if (bar) bar.value = 1;
+        if (label) label.textContent = 'Preparing…';
+        console.log('[Nanosaur] All dependencies loaded');
+      } else {
+        if (bar) {
+          bar.value = Math.max(0, 1 - (left * 0.02));
+        }
+      }
+    },
+
+    onRuntimeInitialized: function() {
+      console.log('[Nanosaur] Runtime initialized');
+      var stext = document.getElementById('status-text');
+      if (stext) stext.textContent = 'Starting game…';
+      Module.setStatus('');
+
+      // ── Standard PangeaGame API ─────────────────────────────────────────
+      // Nanosaur uses ?level=N URL param for level-skip at startup.
+      // There is no runtime SetStartLevel export, so skipToLevel reloads.
+      window.PangeaGame = {
+        skipToLevel: function(n) {
+          var url = new URL(window.location.href);
+          url.searchParams.set('level', n);
+          url.searchParams.set('skipMenu', '1');
+          window.location.href = url.toString();
+        },
+        getCurrentLevel: function() {
+          return window._startLevel !== undefined ? window._startLevel : -1;
+        },
+        setFenceCollisions: function(enabled) {
+          return Module.ccall('SetFenceCollisionsEnabled', null, ['number'], [enabled ? 1 : 0]);
+        },
+        getFenceCollisions: function() {
+          return Module.ccall('GetFenceCollisionsEnabled', 'number', [], []) !== 0;
+        },
+      };
+      console.log('[Nanosaur] PangeaGame API ready. Use PangeaGame.skipToLevel(N) to jump to a level (reloads page).');
+    }
+  };
+
+  window.onerror = function(msg, url, line) {
+    console.error('[Nanosaur] Window error:', msg, url, line);
+    var stext = document.getElementById('status-text');
+    if (stext) stext.textContent = 'Error: ' + msg;
+  };
+
+  // ── UI helpers ────────────────────────────────────────
+
+  // Resume audio context on first user interaction (browser autoplay policy)
+  (function() {
+    function resumeAudio() {
+      try {
+        var ctx = (Module.SDL3 && Module.SDL3.audioContext)
+               || (Module.SDL2 && Module.SDL2.audioContext);
+        if (ctx && ctx.state === 'suspended') {
+          ctx.resume();
+          console.log('[Nanosaur] Audio context resumed');
+        }
+      } catch (e) { /* ignore */ }
+    }
+    document.addEventListener('click', resumeAudio, {once: true});
+    document.addEventListener('keydown', resumeAudio, {once: true});
+  })();
+
+  function toggleFence() {
+    _fenceEnabled = !_fenceEnabled;
+    var btn = document.getElementById('btn-fence');
+    try {
+      Module.ccall('SetFenceCollisionsEnabled', null, ['number'],
+                   [_fenceEnabled ? 1 : 0]);
+    } catch (e) {
+      console.warn('Module not ready yet:', e);
+    }
+    if (btn) {
+      btn.textContent = _fenceEnabled ? '✓ Enabled' : '✗ Disabled';
+      btn.className   = 'btn' + (_fenceEnabled ? ' on' : ' danger');
+    }
+  }
+
+  function doCheat(fnName) {
+    try {
+      Module.ccall(fnName, null, [], []);
+    } catch (e) {
+      console.warn('Module not ready yet:', e);
+    }
+  }
+
+  function startScorePolling() {
+    if (_scoreTimer) return;
+    _scoreTimer = setInterval(function() {
+      try {
+        var score = Module.ccall('GetGameScore', 'number', [], []);
+        document.getElementById('score-display').textContent = 'Score: ' + score;
+      } catch (e) { /* not ready */ }
+    }, 500);
+  }
+
+  function toggleFullscreen() {
+    var c = document.getElementById('canvas');
+    if (!c) return;
+    if (document.fullscreenElement) {
+      document.exitFullscreen();
+    } else {
+      c.requestFullscreen().catch(function (e) { console.warn(e); });
+    }
+  }
+
+  function toggleMute() {
+    _muted = !_muted;
+    var btn = document.getElementById('btn-mute');
+    try {
+      // SDL3 uses Module.SDL3.audioContext; fall back to SDL2 for compatibility
+      var ctx = (Module.SDL3 && Module.SDL3.audioContext)
+             || (Module.SDL2 && Module.SDL2.audioContext);
+      if (ctx) {
+        if (_muted) ctx.suspend(); else ctx.resume();
+      }
+    } catch (e) { /* ignore */ }
+    if (btn) btn.textContent = _muted ? '🔇 Muted' : '🔊 Unmute';
+  }
+
+  ['resize','fullscreenchange','webkitfullscreenchange','mozfullscreenchange'].forEach(function(evt) {
+    window.addEventListener(evt, function() {
+      requestAnimationFrame(syncCanvasSize);
+      // And another one for good measure (some browsers lag)
+      requestAnimationFrame(function() { requestAnimationFrame(syncCanvasSize); });
+      // Extra delayed sync: fullscreen exit layout may not settle within two rAFs
+      setTimeout(syncCanvasSize, 100);
+    });
+  });
+
+  // Use ResizeObserver for more reliable canvas sizing
+  if (typeof ResizeObserver !== 'undefined' && Module.canvas) {
+    new ResizeObserver(function() {
+      window.requestAnimationFrame(syncCanvasSize);
+    }).observe(Module.canvas);
+  }
+
+  // ── Custom terrain file loading ───────────────────────
+
+  function loadTerrainFile(input) {
+    var file = input.files[0];
+    if (!file) return;
+
+    var reader = new FileReader();
+    reader.onload = function(e) {
+      var data = new Uint8Array(e.target.result);
+      var vfsPath = '/Data/Terrain/' + file.name;
+      try {
+        FS.writeFile(vfsPath, data);
+        document.getElementById('terrain-file-name').textContent = file.name + ' ✓';
+        Module.ccall('SetCustomTerrainFile', null, ['string'], [vfsPath]);
+        console.log('[Nanosaur] Uploaded terrain: ' + vfsPath + ' (' + data.length + ' bytes)');
+      } catch (err) {
+        console.error('[Nanosaur] Failed to write terrain file:', err);
+        document.getElementById('terrain-file-name').textContent = 'Error: ' + err.message;
+      }
+    };
+    reader.readAsArrayBuffer(file);
+  }
+
+  function clearCustomTerrain() {
+    document.getElementById('terrain-file-name').textContent = '';
+    document.getElementById('terrain-file-input').value = '';
+    try {
+      Module.ccall('ClearCustomTerrainFile', null, [], []);
+    } catch (e) {
+      console.warn('Module not ready yet:', e);
+    }
+  }
+</script>
+
+{{{ SCRIPT }}}
+</body>
+</html>

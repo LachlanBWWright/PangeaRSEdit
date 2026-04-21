@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Play Billy Frontier, a Wild West action game by Pangea Software, directly in your browser via WebAssembly.">
+  <meta property="og:title" content="Billy Frontier – Play in Browser">
+  <meta property="og:description" content="Classic Wild West action game – now playable in your browser via WebAssembly.">
+  <meta property="og:image" content="screenshot.webp">
+  <meta property="og:type" content="website">
+  <title>Billy Frontier – Play in Browser</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: #111;
+      color: #eee;
+      font-family: 'Segoe UI', Tahoma, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    header {
+      width: 100%;
+      background: linear-gradient(to bottom, #2a1800, #111);
+      padding: 32px 16px 24px;
+      text-align: center;
+      border-bottom: 3px solid #c0922a;
+    }
+    header h1 {
+      font-size: 2.4em;
+      letter-spacing: 4px;
+      text-transform: uppercase;
+      color: #e8bc60;
+      text-shadow: 0 2px 8px rgba(0,0,0,0.8);
+    }
+    header p {
+      color: #aaa;
+      margin-top: 8px;
+      font-size: 0.95em;
+    }
+    main {
+      max-width: 760px;
+      width: 100%;
+      padding: 32px 16px;
+      flex: 1;
+    }
+    .play-btn {
+      display: block;
+      width: 100%;
+      max-width: 360px;
+      margin: 0 auto 24px;
+      background: #c0922a;
+      color: #fff;
+      text-align: center;
+      text-decoration: none;
+      font-size: 1.3em;
+      font-weight: bold;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      padding: 16px 32px;
+      border-radius: 6px;
+      box-shadow: 0 4px 16px rgba(192,146,42,0.4);
+      transition: background 0.2s, box-shadow 0.2s;
+    }
+    .play-btn:hover {
+      background: #d4a93a;
+      box-shadow: 0 6px 20px rgba(192,146,42,0.6);
+    }
+    section { margin-bottom: 28px; }
+    h2 {
+      font-size: 1.1em;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      color: #c0922a;
+      margin-bottom: 10px;
+      border-bottom: 1px solid #333;
+      padding-bottom: 4px;
+    }
+    p, li { color: #ccc; line-height: 1.6; margin-bottom: 6px; }
+    ul { padding-left: 20px; }
+    code {
+      background: #222;
+      padding: 2px 6px;
+      border-radius: 3px;
+      font-size: 0.9em;
+      color: #f0c060;
+    }
+    .screenshot {
+      display: block;
+      max-width: 100%;
+      border-radius: 6px;
+      margin: 0 auto 24px;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.6);
+    }
+    .note {
+      background: #1e1500;
+      border-left: 3px solid #c0922a;
+      padding: 10px 14px;
+      border-radius: 0 4px 4px 0;
+      font-size: 0.9em;
+      color: #bbb;
+    }
+    footer {
+      width: 100%;
+      text-align: center;
+      padding: 16px;
+      color: #555;
+      font-size: 0.8em;
+      border-top: 1px solid #222;
+    }
+    footer a { color: #888; text-decoration: none; }
+    footer a:hover { color: #c0922a; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Billy Frontier</h1>
+    <p>Classic Wild West action – now playable in your browser via WebAssembly</p>
+  </header>
+
+  <main>
+    <a href="game/billyfrontier.html" class="play-btn">▶ Play Now</a>
+
+    <img src="screenshot.webp" alt="Billy Frontier gameplay screenshot" class="screenshot">
+
+    <section>
+      <h2>About</h2>
+      <p>
+        Billy Frontier is a Wild West action game originally created by
+        <strong>Pangea Software</strong> in 2003. This WebAssembly port uses
+        <a href="https://emscripten.org/" style="color:#c0922a">Emscripten</a>
+        and SDL3 to run natively in modern browsers.
+      </p>
+    </section>
+
+    <section>
+      <h2>Controls</h2>
+      <ul>
+        <li><strong>Mouse / Aim:</strong> Look around / aim</li>
+        <li><strong>Left Click:</strong> Shoot</li>
+        <li><strong>Right Click / Ctrl:</strong> Duck</li>
+        <li><strong>Space / Alt:</strong> Jump / Continue</li>
+        <li><strong>Arrow Keys / WASD:</strong> Navigate menus / move</li>
+        <li><strong>Escape:</strong> Pause</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>Level Editor Integration</h2>
+      <p>
+        The game supports direct level launch for use with external level editors.
+        Append a URL query string to skip the title screen and jump straight to a level:
+      </p>
+      <p><code>billyfrontier.html?level=1</code></p>
+      <p>Supported area numbers (see controls on the game page):</p>
+      <ul>
+        <li>0 – Town Duel 1 &nbsp; 1 – Town Shootout &nbsp; 2 – Town Duel 2</li>
+        <li>3 – Town Stampede &nbsp; 4 – Town Duel 3 &nbsp; 5 – Target Practice 1</li>
+        <li>6 – Swamp Duel 1 &nbsp; 7 – Swamp Shootout &nbsp; 8 – Swamp Duel 2</li>
+        <li>9 – Swamp Stampede &nbsp; 10 – Swamp Duel 3 &nbsp; 11 – Target Practice 2</li>
+      </ul>
+      <p>You can also supply a custom terrain file override via query parameter:</p>
+      <p><code>billyfrontier.html?level=1&amp;terrainFile=:Terrain:custom_level.ter</code></p>
+      <p>For backward compatibility, the older <code>#level=...</code> / <code>#terrain=...</code> hash form still works.</p>
+      <p>Or use the on-screen file picker to upload a custom <code>.ter</code> file at runtime.</p>
+    </section>
+
+    <section>
+      <h2>JavaScript API (for level editors)</h2>
+      <p>Once the Module is loaded, the following functions are available:</p>
+      <ul>
+        <li><code>Module.ccall('BF_SetDirectLaunchLevel', null, ['number'], [area])</code> – skip to area</li>
+        <li><code>Module.ccall('BF_SetFenceCollision', null, ['number'], [1])</code> – enable fence collisions</li>
+        <li><code>Module.ccall('BF_SetFenceCollision', null, ['number'], [0])</code> – disable fence collisions</li>
+        <li><code>Module.ccall('BF_LoadTerrainData', null, ['array', 'number'], [bytes, bytes.length])</code> – upload and activate a custom terrain file in one call</li>
+        <li><code>Module.FS.writeFile('Data/Terrain/custom_level.ter', data)</code> then <code>Module.ccall('BF_SetTerrainFile', null, ['string'], [':Terrain:custom_level.ter'])</code> – manually upload and activate a custom terrain file</li>
+      </ul>
+    </section>
+
+    <div class="note">
+      <strong>Note:</strong> The WebAssembly build requires a browser that supports
+      WebAssembly and WebGL. Chrome, Firefox, Edge,
+      and Safari all meet these requirements. Audio uses the Web Audio API
+      (ScriptProcessorNode fallback) and works without special headers.
+    </div>
+  </main>
+
+  <footer>
+    &copy; 2003 Pangea Software, Inc. &mdash;
+    <a href="https://github.com/LachlanBWWright/BillyFrontier-Android">Source on GitHub</a>
+  </footer>
+</body>
+</html>

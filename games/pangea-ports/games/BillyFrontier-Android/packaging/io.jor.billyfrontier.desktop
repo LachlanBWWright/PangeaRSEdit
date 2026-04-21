@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Version=1.0
+Name=Billy Frontier
+Comment=Cowboys in space
+Icon=io.jor.billyfrontier
+Exec=BillyFrontier
+Terminal=false
+Categories=Game;

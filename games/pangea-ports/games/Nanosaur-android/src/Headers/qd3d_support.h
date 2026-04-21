@@ -1,0 +1,107 @@
+//
+// qd3d_support.h
+//
+
+#pragma once
+
+#include <QD3D.h>
+#include "textmesh.h"
+
+
+#define	MIN_FPS				4
+#define	MAX_FPS				500
+
+#define	MAX_FILL_LIGHTS		4
+
+typedef	struct
+{
+	GWorldPtr				gworld;
+	TQ3ColorRGBA			clearColor;
+	Rect					paneClip;			// not pane size, but clip:  left = amount to clip off left
+	bool					keepBackdropAspectRatio;
+}QD3DViewDefType;
+
+
+typedef	struct
+{
+	TQ3InterpolationStyle	interpolation;
+	TQ3BackfacingStyle		backfacing;
+	TQ3FillStyle			fill;
+	Boolean					usePhong;
+}QD3DStyleDefType;
+
+
+typedef struct
+{
+	TQ3Point3D				from;
+	TQ3Point3D				to;
+	TQ3Vector3D				up;
+	float					hither;
+	float					yon;
+	float					fov;
+}QD3DCameraDefType;
+
+typedef	struct
+{
+	Boolean			useFog;
+	float			fogHither;
+	float			fogYon;
+	TQ3FogMode		fogMode;
+
+	float			ambientBrightness;
+	TQ3ColorRGB		ambientColor;
+	int				numFillLights;
+	TQ3Vector3D		fillDirection[MAX_FILL_LIGHTS];
+	TQ3ColorRGB		fillColor[MAX_FILL_LIGHTS];
+	float			fillBrightness[MAX_FILL_LIGHTS];
+}QD3DLightDefType;
+
+
+		/* QD3DSetupInputType */
+		
+typedef struct
+{
+	QD3DViewDefType			view;
+	QD3DStyleDefType		styles;
+	QD3DCameraDefType		camera;
+	QD3DLightDefType		lights;
+}QD3DSetupInputType;
+
+
+		/* QD3DSetupOutputType */
+
+typedef struct
+{
+	Boolean					isActive;
+	Rect					paneClip;			// not pane size, but clip:  left = amount to clip off left
+	bool					needScissorTest;
+	bool					keepBackdropAspectRatio;
+	float					hither,yon;
+	float					fov;
+	float					viewportAspectRatio;
+	TQ3ColorRGBA			clearColor;
+	TQ3CameraPlacement		cameraPlacement;
+	QD3DLightDefType		lights;
+}QD3DSetupOutputType;
+
+
+//===========================================================
+
+void QD3D_Boot(void);
+void QD3D_Shutdown(void);
+extern	void QD3D_SetupWindow(QD3DSetupInputType *setupDefPtr, QD3DSetupOutputType **outputHandle);
+extern	void QD3D_DisposeWindowSetup(QD3DSetupOutputType **dataHandle);
+extern	void QD3D_UpdateCameraFromTo(QD3DSetupOutputType *setupInfo, TQ3Point3D *from, TQ3Point3D *to);
+extern	void QD3D_DrawScene(QD3DSetupOutputType *setupInfo, void (*drawRoutine)(QD3DSetupOutputType *));
+extern	void QD3D_UpdateCameraFrom(QD3DSetupOutputType *setupInfo, TQ3Point3D *from);
+extern	void QD3D_MoveCameraFromTo(QD3DSetupOutputType *setupInfo, TQ3Vector3D *moveVector, TQ3Vector3D *lookAtVector);
+extern	void	QD3D_CalcFramesPerSecond(void);
+extern	void QD3D_NewViewDef(QD3DSetupInputType *viewDef);
+void MakeShadowTexture(void);
+void QD3D_OnWindowResized(void);
+
+GLuint QD3D_LoadTextureFile(int textureRezID, int flags);
+
+void QD3D_UpdateDebugTextMesh(const char* text);
+void QD3D_DrawDebugTextMesh(void);
+void QD3D_DrawPillarbox(void);
