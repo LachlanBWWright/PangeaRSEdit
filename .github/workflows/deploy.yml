@@ -12,15 +12,12 @@ jobs:
 
     steps:
       - name: Checkout repo
-        uses: actions/checkout@v3
-
-      - name: Clone Pangea Ports (game WASM builds for in-game preview)
-        run: |
-          git clone --depth 1 https://github.com/LachlanBWWright/Pangea-Ports \
-            frontend/public/games/pangea-ports
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
 
       - name: Setup Node
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: "20"
 
